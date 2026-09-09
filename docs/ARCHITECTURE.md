@@ -43,6 +43,11 @@ value-copy semantics across C, C++, Go, and JavaScript. Strict checking rejects
 unknown, duplicate, excessive, or incorrectly typed fields. This applies to
 declared `.kry` records, not arbitrary host-language aggregate syntax.
 
+Portable emission captures each call argument once, in source order. Reading
+a nested field captures the field value directly instead of copying every
+enclosing record. Record arguments still have independent value semantics,
+including when a later argument mutates the original record.
+
 Portable policy records now support immutable UTF-8 `string` values, including
 empty initialization, field assignment, copying, parameters, returns,
 conditionals, and content equality (`==` / `!=`). Literals preserve embedded

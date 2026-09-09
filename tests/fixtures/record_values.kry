@@ -78,6 +78,8 @@ CheckNested :: () -> i32 #export {
 }
 
 Check :: () -> i32 #export {
+    capture_result: i32 = CheckCaptures()
+    if capture_result != 0 { return capture_result }
     literal_result: i32 = CheckLiterals()
     if literal_result != 0 { return literal_result }
     original: Sample
@@ -100,6 +102,22 @@ Check :: () -> i32 #export {
     if copy.id != 41 { return 12 }
     if CheckNested() != 0 { return 40 }
     return CheckStrings()
+}
+
+Captured :: (snapshot: Sample, before: i32, incremented: i32, after: i32) -> bool {
+    return snapshot.count == 4 && before == 4 && incremented == 4 && after == 5
+}
+
+CheckCaptures :: () -> i32 #export {
+    frame: Frame
+    frame.content.first.count = 4
+    # Each argument must retain its value before the next one mutates the source.
+    if !Captured(frame.content.first, frame.content.first.count,
+        frame.content.first.count++, frame.content.first.count) { return 70 }
+    if frame.content.first.count != 5 { return 71 }
+    if ChangedFrame(frame).content.first.count != 31 { return 72 }
+    if frame.content.first.count != 5 { return 73 }
+    return 0
 }
 
 CheckLiterals :: () -> i32 #export {

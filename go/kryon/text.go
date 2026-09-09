@@ -90,84 +90,78 @@ type TextAppearance struct {
 func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, theme_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
 	var style TextAppearance = TextAppearance{}
 	var value_0 int32 = font
-	var value_1 int32 = value_0
-	var value_2 int32 = inherited_font
-	var value_3 int32 = value_2
-	var value_4 int32 = default_font
-	var value_5 int32 = value_4
-	var value_6 int32 = Style_ResolveFont(value_1, value_3, value_5)
-	style.Font = value_6
-	var value_7 uint32 = color
-	style.Color = value_7
-	var value_8 bool = color_set
-	var value_9 bool = !value_8
-	if value_9 {
-		var value_10 uint32 = theme_color
-		style.Color = value_10
-		var value_11 bool = inherited_color_set
-		if value_11 {
-			var value_12 uint32 = inherited_color
-			style.Color = value_12
+	var value_1 int32 = inherited_font
+	var value_2 int32 = default_font
+	var value_3 int32 = Style_ResolveFont(value_0, value_1, value_2)
+	style.Font = value_3
+	var value_4 uint32 = color
+	style.Color = value_4
+	var value_5 bool = color_set
+	var value_6 bool = !value_5
+	if value_6 {
+		var value_7 uint32 = theme_color
+		style.Color = value_7
+		var value_8 bool = inherited_color_set
+		if value_8 {
+			var value_9 uint32 = inherited_color
+			style.Color = value_9
 		}
 	}
-	var value_13 bool = disabled
-	var value_14 bool = value_13
-	if !value_14 {
-		var value_15 bool = inherited_disabled
-		value_14 = value_15
+	var value_10 bool = disabled
+	var value_11 bool = value_10
+	if !value_11 {
+		var value_12 bool = inherited_disabled
+		value_11 = value_12
 	}
-	var value_16 bool = value_14
-	if value_16 {
-		var value_17 bool = color_set
-		var value_18 bool = value_17
+	var value_13 bool = value_11
+	if value_13 {
+		var value_14 bool = color_set
+		var value_15 bool = value_14
+		if !value_15 {
+			var value_16 bool = inherited_color_set
+			var value_17 bool = !value_16
+			value_15 = value_17
+		}
+		var value_18 bool = value_15
 		if !value_18 {
-			var value_19 bool = inherited_color_set
+			var value_19 bool = inherited_disabled
 			var value_20 bool = !value_19
 			value_18 = value_20
 		}
-		var value_21 bool = value_18
-		if !value_21 {
-			var value_22 bool = inherited_disabled
-			var value_23 bool = !value_22
-			value_21 = value_23
-		}
-		value_16 = value_21
+		value_13 = value_18
 	}
-	if value_16 {
-		var value_24 TextAppearance = style
-		var value_25 uint32 = value_24.Color
-		var value_26 int32 = 255
-		var value_27 uint32 = uint32(number_6fc06049_bits(uint64(value_26), uint64(0), 32, false, 0))
-		var value_28 uint32 = uint32(number_6fc06049_bits(uint64(value_25), uint64(value_27), 32, false, 8))
-		var value_29 float32 = float32(value_28)
-		var value_30 float32 = 0.45
-		var value_31 float32 = value_29 * value_30
-		var value_32 uint32 = uint32(number_6fc06049_bits(uint64(number_6fc06049_float(float64(value_31), 32, false)), uint64(0), 32, false, 0))
-		var alpha uint32 = value_32
-		var value_33 TextAppearance = style
-		var value_34 uint32 = value_33.Color
-		var value_35 int32 = 8
-		var value_36 uint32 = uint32(number_6fc06049_bits(uint64(value_35), uint64(0), 32, false, 0))
-		var value_37 uint32 = uint32(number_6fc06049_bits(uint64(value_34), uint64(value_36), 32, false, 7))
-		var value_38 int32 = 8
-		var value_39 uint32 = uint32(number_6fc06049_bits(uint64(value_38), uint64(0), 32, false, 0))
-		var value_40 uint32 = uint32(number_6fc06049_bits(uint64(value_37), uint64(value_39), 32, false, 6))
-		var value_41 uint32 = alpha
-		var value_42 uint32 = uint32(number_6fc06049_bits(uint64(value_40), uint64(value_41), 32, false, 9))
-		style.Color = value_42
+	if value_13 {
+		var value_21 uint32 = style.Color
+		var value_22 int32 = 255
+		var value_23 uint32 = uint32(number_6fc06049_bits(uint64(value_22), uint64(0), 32, false, 0))
+		var value_24 uint32 = uint32(number_6fc06049_bits(uint64(value_21), uint64(value_23), 32, false, 8))
+		var value_25 float32 = float32(value_24)
+		var value_26 float32 = 0.45
+		var value_27 float32 = value_25 * value_26
+		var value_28 uint32 = uint32(number_6fc06049_bits(uint64(number_6fc06049_float(float64(value_27), 32, false)), uint64(0), 32, false, 0))
+		var alpha uint32 = value_28
+		var value_29 uint32 = style.Color
+		var value_30 int32 = 8
+		var value_31 uint32 = uint32(number_6fc06049_bits(uint64(value_30), uint64(0), 32, false, 0))
+		var value_32 uint32 = uint32(number_6fc06049_bits(uint64(value_29), uint64(value_31), 32, false, 7))
+		var value_33 int32 = 8
+		var value_34 uint32 = uint32(number_6fc06049_bits(uint64(value_33), uint64(0), 32, false, 0))
+		var value_35 uint32 = uint32(number_6fc06049_bits(uint64(value_32), uint64(value_34), 32, false, 6))
+		var value_36 uint32 = alpha
+		var value_37 uint32 = uint32(number_6fc06049_bits(uint64(value_35), uint64(value_36), 32, false, 9))
+		style.Color = value_37
 	}
-	var value_43 int32 = letter_spacing
-	style.LetterSpacing = value_43
-	var value_44 TextAppearance = style
-	var value_45 int32 = value_44.LetterSpacing
-	var value_46 int32 = 0
-	var value_47 bool = value_45 < value_46
-	if value_47 {
-		var value_48 int32 = 0
-		style.LetterSpacing = value_48
+	var value_38 int32 = letter_spacing
+	style.LetterSpacing = value_38
+	var value_39 int32 = style.LetterSpacing
+	var value_40 int32 = 0
+	var value_41 bool = value_39 < value_40
+	if value_41 {
+		var value_42 int32 = 0
+		style.LetterSpacing = value_42
 	}
-	var value_49 TextAppearance = style
-	return value_49
+	var value_43 TextAppearance = style
+	return value_43
 }
 
 func Text_TextExtent(requested float32, measured float32) float32 {

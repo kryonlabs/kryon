@@ -92,30 +92,27 @@ func SplitButton_ResolveLayout(width float32, height float32) SplitLayout {
 	var layout SplitLayout = SplitLayout{}
 	var value_0 float32 = width
 	layout.Width = value_0
-	var value_1 SplitLayout = layout
-	var value_2 float32 = value_1.Width
-	var value_3 float32 = height
-	var value_4 float32 = 2.0
-	var value_5 float32 = value_3 * value_4
-	var value_6 bool = value_2 < value_5
-	if value_6 {
-		var value_7 float32 = height
-		var value_8 float32 = 2.0
-		var value_9 float32 = value_7 * value_8
-		layout.Width = value_9
+	var value_1 float32 = layout.Width
+	var value_2 float32 = height
+	var value_3 float32 = 2.0
+	var value_4 float32 = value_2 * value_3
+	var value_5 bool = value_1 < value_4
+	if value_5 {
+		var value_6 float32 = height
+		var value_7 float32 = 2.0
+		var value_8 float32 = value_6 * value_7
+		layout.Width = value_8
 	}
-	var value_10 SplitLayout = layout
-	var value_11 float32 = value_10.Width
-	var value_12 float32 = height
-	var value_13 float32 = value_11 - value_12
-	layout.ActionWidth = value_13
-	var value_14 SplitLayout = layout
-	var value_15 float32 = value_14.ActionWidth
-	layout.MenuOffset = value_15
-	var value_16 float32 = height
-	layout.MenuWidth = value_16
-	var value_17 float32 = 8.0
-	layout.DividerInset = value_17
-	var value_18 SplitLayout = layout
-	return value_18
+	var value_9 float32 = layout.Width
+	var value_10 float32 = height
+	var value_11 float32 = value_9 - value_10
+	layout.ActionWidth = value_11
+	var value_12 float32 = layout.ActionWidth
+	layout.MenuOffset = value_12
+	var value_13 float32 = height
+	layout.MenuWidth = value_13
+	var value_14 float32 = 8.0
+	layout.DividerInset = value_14
+	var value_15 SplitLayout = layout
+	return value_15
 }

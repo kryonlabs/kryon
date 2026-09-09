@@ -256,50 +256,43 @@ func Style_ResolveState(explicit_state int32, disabled bool, loading bool, press
 
 func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool, pressed bool, hovered bool, focused bool, selected bool) InteractionState {
 	var value_0 int32 = explicit_state
-	var value_1 int32 = value_0
-	var value_2 bool = disabled
-	var value_3 bool = value_2
-	var value_4 bool = loading
-	var value_5 bool = value_4
-	var value_6 bool = pressed
-	var value_7 bool = value_6
-	var value_8 bool = hovered
-	var value_9 bool = value_8
-	var value_10 bool = focused
-	var value_11 bool = value_10
-	var value_12 bool = selected
-	var value_13 bool = value_12
-	var value_14 int32 = Style_ResolveState(value_1, value_3, value_5, value_7, value_9, value_11, value_13)
-	var state int32 = value_14
-	var value_15 InteractionState = InteractionState{}
-	var value_16 int32 = state
-	value_15.State = value_16
-	var value_17 bool = hovered
-	value_15.Hovered = value_17
-	var value_18 bool = pressed
-	value_15.Pressed = value_18
-	var value_19 bool = focused
-	value_15.Focused = value_19
-	var interaction InteractionState = value_15
-	var value_20 int32 = explicit_state
-	var value_21 int32 = StatePolicyStateAuto
-	var value_22 bool = value_20 != value_21
-	if value_22 {
-		var value_23 int32 = state
-		var value_24 int32 = StatePolicyStateHover
-		var value_25 bool = value_23 == value_24
-		interaction.Hovered = value_25
-		var value_26 int32 = state
-		var value_27 int32 = StatePolicyStatePressed
-		var value_28 bool = value_26 == value_27
-		interaction.Pressed = value_28
-		var value_29 int32 = state
-		var value_30 int32 = StatePolicyStateFocus
-		var value_31 bool = value_29 == value_30
-		interaction.Focused = value_31
+	var value_1 bool = disabled
+	var value_2 bool = loading
+	var value_3 bool = pressed
+	var value_4 bool = hovered
+	var value_5 bool = focused
+	var value_6 bool = selected
+	var value_7 int32 = Style_ResolveState(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
+	var state int32 = value_7
+	var value_8 InteractionState = InteractionState{}
+	var value_9 int32 = state
+	value_8.State = value_9
+	var value_10 bool = hovered
+	value_8.Hovered = value_10
+	var value_11 bool = pressed
+	value_8.Pressed = value_11
+	var value_12 bool = focused
+	value_8.Focused = value_12
+	var interaction InteractionState = value_8
+	var value_13 int32 = explicit_state
+	var value_14 int32 = StatePolicyStateAuto
+	var value_15 bool = value_13 != value_14
+	if value_15 {
+		var value_16 int32 = state
+		var value_17 int32 = StatePolicyStateHover
+		var value_18 bool = value_16 == value_17
+		interaction.Hovered = value_18
+		var value_19 int32 = state
+		var value_20 int32 = StatePolicyStatePressed
+		var value_21 bool = value_19 == value_20
+		interaction.Pressed = value_21
+		var value_22 int32 = state
+		var value_23 int32 = StatePolicyStateFocus
+		var value_24 bool = value_22 == value_23
+		interaction.Focused = value_24
 	}
-	var value_32 InteractionState = interaction
-	return value_32
+	var value_25 InteractionState = interaction
+	return value_25
 }
 
 func Style_DefaultFields() uint32 {
@@ -463,599 +456,402 @@ func Style_ContentBounds(width float32, height float32, padding_x float32, paddi
 	var value_18 float32 = value_16 * value_17
 	var value_19 float32 = value_15 - value_18
 	box.Height = value_19
-	var value_20 ContentBox = box
-	var value_21 float32 = value_20.Width
-	var value_22 float32 = 0.0
-	var value_23 bool = value_21 < value_22
-	if value_23 {
-		var value_24 float32 = 0.0
-		box.Width = value_24
+	var value_20 float32 = box.Width
+	var value_21 float32 = 0.0
+	var value_22 bool = value_20 < value_21
+	if value_22 {
+		var value_23 float32 = 0.0
+		box.Width = value_23
 	}
-	var value_25 ContentBox = box
-	var value_26 float32 = value_25.Height
-	var value_27 float32 = 0.0
-	var value_28 bool = value_26 < value_27
-	if value_28 {
-		var value_29 float32 = 0.0
-		box.Height = value_29
+	var value_24 float32 = box.Height
+	var value_25 float32 = 0.0
+	var value_26 bool = value_24 < value_25
+	if value_26 {
+		var value_27 float32 = 0.0
+		box.Height = value_27
 	}
-	var value_30 ContentBox = box
-	return value_30
+	var value_28 ContentBox = box
+	return value_28
 }
 
 func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleData {
-	var value_0 StyleData = normal
-	var value_1 uint32 = value_0.Background
-	var value_2 uint32 = value_1
-	var value_3 StyleData = hover
-	var value_4 uint32 = value_3.Background
-	var value_5 uint32 = value_4
-	var value_6 StyleData = press
-	var value_7 uint32 = value_6.Background
-	var value_8 uint32 = value_7
-	var value_9 StyleData = focus
-	var value_10 uint32 = value_9.Background
-	var value_11 uint32 = value_10
+	var value_0 uint32 = normal.Background
+	var value_1 uint32 = hover.Background
+	var value_2 uint32 = press.Background
+	var value_3 uint32 = focus.Background
+	var value_4 float32 = h
+	var value_5 float32 = p
+	var value_6 float32 = f
+	var value_7 uint32 = Surface_InteractionColor(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
+	resolved.Background = value_7
+	var value_8 uint32 = normal.Foreground
+	var value_9 uint32 = hover.Foreground
+	var value_10 uint32 = press.Foreground
+	var value_11 uint32 = focus.Foreground
 	var value_12 float32 = h
-	var value_13 float32 = value_12
-	var value_14 float32 = p
-	var value_15 float32 = value_14
-	var value_16 float32 = f
-	var value_17 float32 = value_16
-	var value_18 uint32 = Surface_InteractionColor(value_2, value_5, value_8, value_11, value_13, value_15, value_17)
-	resolved.Background = value_18
-	var value_19 StyleData = normal
-	var value_20 uint32 = value_19.Foreground
-	var value_21 uint32 = value_20
-	var value_22 StyleData = hover
-	var value_23 uint32 = value_22.Foreground
-	var value_24 uint32 = value_23
-	var value_25 StyleData = press
-	var value_26 uint32 = value_25.Foreground
-	var value_27 uint32 = value_26
-	var value_28 StyleData = focus
-	var value_29 uint32 = value_28.Foreground
-	var value_30 uint32 = value_29
-	var value_31 float32 = h
-	var value_32 float32 = value_31
-	var value_33 float32 = p
-	var value_34 float32 = value_33
-	var value_35 float32 = f
-	var value_36 float32 = value_35
-	var value_37 uint32 = Surface_InteractionColor(value_21, value_24, value_27, value_30, value_32, value_34, value_36)
-	resolved.Foreground = value_37
-	var value_38 StyleData = normal
-	var value_39 uint32 = value_38.Border
-	var value_40 uint32 = value_39
-	var value_41 StyleData = hover
-	var value_42 uint32 = value_41.Border
-	var value_43 uint32 = value_42
-	var value_44 StyleData = press
-	var value_45 uint32 = value_44.Border
-	var value_46 uint32 = value_45
-	var value_47 StyleData = focus
-	var value_48 uint32 = value_47.Border
-	var value_49 uint32 = value_48
-	var value_50 float32 = h
-	var value_51 float32 = value_50
-	var value_52 float32 = p
-	var value_53 float32 = value_52
+	var value_13 float32 = p
+	var value_14 float32 = f
+	var value_15 uint32 = Surface_InteractionColor(value_8, value_9, value_10, value_11, value_12, value_13, value_14)
+	resolved.Foreground = value_15
+	var value_16 uint32 = normal.Border
+	var value_17 uint32 = hover.Border
+	var value_18 uint32 = press.Border
+	var value_19 uint32 = focus.Border
+	var value_20 float32 = h
+	var value_21 float32 = p
+	var value_22 float32 = f
+	var value_23 uint32 = Surface_InteractionColor(value_16, value_17, value_18, value_19, value_20, value_21, value_22)
+	resolved.Border = value_23
+	var value_24 uint32 = normal.Focus
+	var value_25 uint32 = hover.Focus
+	var value_26 uint32 = press.Focus
+	var value_27 uint32 = focus.Focus
+	var value_28 float32 = h
+	var value_29 float32 = p
+	var value_30 float32 = f
+	var value_31 uint32 = Surface_InteractionColor(value_24, value_25, value_26, value_27, value_28, value_29, value_30)
+	resolved.Focus = value_31
+	var value_32 float32 = normal.Radius
+	var value_33 float32 = hover.Radius
+	var value_34 float32 = press.Radius
+	var value_35 float32 = focus.Radius
+	var value_36 float32 = h
+	var value_37 float32 = p
+	var value_38 float32 = f
+	var value_39 float32 = Surface_InteractionValue(value_32, value_33, value_34, value_35, value_36, value_37, value_38)
+	resolved.Radius = value_39
+	var value_40 float32 = normal.BorderWidth
+	var value_41 float32 = hover.BorderWidth
+	var value_42 float32 = press.BorderWidth
+	var value_43 float32 = focus.BorderWidth
+	var value_44 float32 = h
+	var value_45 float32 = p
+	var value_46 float32 = f
+	var value_47 float32 = Surface_InteractionValue(value_40, value_41, value_42, value_43, value_44, value_45, value_46)
+	resolved.BorderWidth = value_47
+	var value_48 float32 = normal.Opacity
+	var value_49 float32 = hover.Opacity
+	var value_50 float32 = press.Opacity
+	var value_51 float32 = focus.Opacity
+	var value_52 float32 = h
+	var value_53 float32 = p
 	var value_54 float32 = f
-	var value_55 float32 = value_54
-	var value_56 uint32 = Surface_InteractionColor(value_40, value_43, value_46, value_49, value_51, value_53, value_55)
-	resolved.Border = value_56
-	var value_57 StyleData = normal
-	var value_58 uint32 = value_57.Focus
-	var value_59 uint32 = value_58
-	var value_60 StyleData = hover
-	var value_61 uint32 = value_60.Focus
-	var value_62 uint32 = value_61
-	var value_63 StyleData = press
-	var value_64 uint32 = value_63.Focus
-	var value_65 uint32 = value_64
-	var value_66 StyleData = focus
-	var value_67 uint32 = value_66.Focus
-	var value_68 uint32 = value_67
-	var value_69 float32 = h
-	var value_70 float32 = value_69
-	var value_71 float32 = p
-	var value_72 float32 = value_71
-	var value_73 float32 = f
-	var value_74 float32 = value_73
-	var value_75 uint32 = Surface_InteractionColor(value_59, value_62, value_65, value_68, value_70, value_72, value_74)
-	resolved.Focus = value_75
-	var value_76 StyleData = normal
-	var value_77 float32 = value_76.Radius
-	var value_78 float32 = value_77
-	var value_79 StyleData = hover
-	var value_80 float32 = value_79.Radius
-	var value_81 float32 = value_80
-	var value_82 StyleData = press
-	var value_83 float32 = value_82.Radius
-	var value_84 float32 = value_83
-	var value_85 StyleData = focus
-	var value_86 float32 = value_85.Radius
-	var value_87 float32 = value_86
-	var value_88 float32 = h
-	var value_89 float32 = value_88
-	var value_90 float32 = p
-	var value_91 float32 = value_90
-	var value_92 float32 = f
-	var value_93 float32 = value_92
-	var value_94 float32 = Surface_InteractionValue(value_78, value_81, value_84, value_87, value_89, value_91, value_93)
-	resolved.Radius = value_94
-	var value_95 StyleData = normal
-	var value_96 float32 = value_95.BorderWidth
-	var value_97 float32 = value_96
-	var value_98 StyleData = hover
-	var value_99 float32 = value_98.BorderWidth
-	var value_100 float32 = value_99
-	var value_101 StyleData = press
-	var value_102 float32 = value_101.BorderWidth
-	var value_103 float32 = value_102
-	var value_104 StyleData = focus
-	var value_105 float32 = value_104.BorderWidth
-	var value_106 float32 = value_105
-	var value_107 float32 = h
-	var value_108 float32 = value_107
-	var value_109 float32 = p
-	var value_110 float32 = value_109
-	var value_111 float32 = f
-	var value_112 float32 = value_111
-	var value_113 float32 = Surface_InteractionValue(value_97, value_100, value_103, value_106, value_108, value_110, value_112)
-	resolved.BorderWidth = value_113
-	var value_114 StyleData = normal
-	var value_115 float32 = value_114.Opacity
-	var value_116 float32 = value_115
-	var value_117 StyleData = hover
-	var value_118 float32 = value_117.Opacity
-	var value_119 float32 = value_118
-	var value_120 StyleData = press
-	var value_121 float32 = value_120.Opacity
-	var value_122 float32 = value_121
-	var value_123 StyleData = focus
-	var value_124 float32 = value_123.Opacity
-	var value_125 float32 = value_124
-	var value_126 float32 = h
-	var value_127 float32 = value_126
-	var value_128 float32 = p
-	var value_129 float32 = value_128
-	var value_130 float32 = f
-	var value_131 float32 = value_130
-	var value_132 float32 = Surface_InteractionValue(value_116, value_119, value_122, value_125, value_127, value_129, value_131)
-	resolved.Opacity = value_132
-	var value_133 StyleData = normal
-	var value_134 float32 = value_133.OffsetX
-	var value_135 float32 = value_134
-	var value_136 StyleData = hover
-	var value_137 float32 = value_136.OffsetX
-	var value_138 float32 = value_137
-	var value_139 StyleData = press
-	var value_140 float32 = value_139.OffsetX
-	var value_141 float32 = value_140
-	var value_142 StyleData = focus
-	var value_143 float32 = value_142.OffsetX
-	var value_144 float32 = value_143
-	var value_145 float32 = h
-	var value_146 float32 = value_145
-	var value_147 float32 = p
-	var value_148 float32 = value_147
-	var value_149 float32 = f
-	var value_150 float32 = value_149
-	var value_151 float32 = Surface_InteractionValue(value_135, value_138, value_141, value_144, value_146, value_148, value_150)
-	resolved.OffsetX = value_151
-	var value_152 StyleData = normal
-	var value_153 float32 = value_152.OffsetY
-	var value_154 float32 = value_153
-	var value_155 StyleData = hover
-	var value_156 float32 = value_155.OffsetY
-	var value_157 float32 = value_156
-	var value_158 StyleData = press
-	var value_159 float32 = value_158.OffsetY
-	var value_160 float32 = value_159
-	var value_161 StyleData = focus
-	var value_162 float32 = value_161.OffsetY
-	var value_163 float32 = value_162
-	var value_164 float32 = h
-	var value_165 float32 = value_164
-	var value_166 float32 = p
-	var value_167 float32 = value_166
-	var value_168 float32 = f
-	var value_169 float32 = value_168
-	var value_170 float32 = Surface_InteractionValue(value_154, value_157, value_160, value_163, value_165, value_167, value_169)
-	resolved.OffsetY = value_170
-	var value_171 StyleData = resolved
-	return value_171
+	var value_55 float32 = Surface_InteractionValue(value_48, value_49, value_50, value_51, value_52, value_53, value_54)
+	resolved.Opacity = value_55
+	var value_56 float32 = normal.OffsetX
+	var value_57 float32 = hover.OffsetX
+	var value_58 float32 = press.OffsetX
+	var value_59 float32 = focus.OffsetX
+	var value_60 float32 = h
+	var value_61 float32 = p
+	var value_62 float32 = f
+	var value_63 float32 = Surface_InteractionValue(value_56, value_57, value_58, value_59, value_60, value_61, value_62)
+	resolved.OffsetX = value_63
+	var value_64 float32 = normal.OffsetY
+	var value_65 float32 = hover.OffsetY
+	var value_66 float32 = press.OffsetY
+	var value_67 float32 = focus.OffsetY
+	var value_68 float32 = h
+	var value_69 float32 = p
+	var value_70 float32 = f
+	var value_71 float32 = Surface_InteractionValue(value_64, value_65, value_66, value_67, value_68, value_69, value_70)
+	resolved.OffsetY = value_71
+	var value_72 StyleData = resolved
+	return value_72
 }
 
 func Style_TransitionFrame(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleFrame {
 	var result StyleFrame = StyleFrame{}
 	var value_0 StyleData = resolved
-	var value_1 StyleData = value_0
-	var value_2 StyleData = normal
-	var value_3 StyleData = value_2
-	var value_4 StyleData = hover
-	var value_5 StyleData = value_4
-	var value_6 StyleData = press
-	var value_7 StyleData = value_6
-	var value_8 StyleData = focus
-	var value_9 StyleData = value_8
-	var value_10 float32 = h
-	var value_11 float32 = value_10
-	var value_12 float32 = p
-	var value_13 float32 = value_12
-	var value_14 float32 = f
-	var value_15 float32 = value_14
-	var value_16 StyleData = Style_TransitionValues(value_1, value_3, value_5, value_7, value_9, value_11, value_13, value_15)
-	result.Value = value_16
-	var value_17 StyleData = normal
-	var value_18 uint32 = value_17.Fields
-	var value_19 uint32 = value_18
-	var value_20 StyleData = normal
-	var value_21 uint32 = value_20.Background
-	var value_22 uint32 = value_21
-	var value_23 StyleData = normal
-	var value_24 uint32 = value_23.BackgroundEnd
-	var value_25 uint32 = value_24
-	var value_26 FillStates = Surface_FillState(value_19, value_22, value_25)
-	var value_27 FillStates = value_26
-	var value_28 StyleData = hover
-	var value_29 uint32 = value_28.Fields
-	var value_30 uint32 = value_29
-	var value_31 StyleData = hover
-	var value_32 uint32 = value_31.Background
-	var value_33 uint32 = value_32
-	var value_34 StyleData = hover
-	var value_35 uint32 = value_34.BackgroundEnd
-	var value_36 uint32 = value_35
-	var value_37 FillStates = Surface_FillState(value_30, value_33, value_36)
-	var value_38 FillStates = value_37
-	var value_39 StyleData = press
-	var value_40 uint32 = value_39.Fields
-	var value_41 uint32 = value_40
-	var value_42 StyleData = press
-	var value_43 uint32 = value_42.Background
-	var value_44 uint32 = value_43
-	var value_45 StyleData = press
-	var value_46 uint32 = value_45.BackgroundEnd
-	var value_47 uint32 = value_46
-	var value_48 FillStates = Surface_FillState(value_41, value_44, value_47)
-	var value_49 FillStates = value_48
-	var value_50 StyleData = focus
-	var value_51 uint32 = value_50.Fields
-	var value_52 uint32 = value_51
-	var value_53 StyleData = focus
-	var value_54 uint32 = value_53.Background
-	var value_55 uint32 = value_54
-	var value_56 StyleData = focus
-	var value_57 uint32 = value_56.BackgroundEnd
-	var value_58 uint32 = value_57
-	var value_59 FillStates = Surface_FillState(value_52, value_55, value_58)
-	var value_60 FillStates = value_59
-	var value_61 float32 = h
-	var value_62 float32 = value_61
-	var value_63 float32 = p
-	var value_64 float32 = value_63
-	var value_65 float32 = f
-	var value_66 float32 = value_65
-	var value_67 FillStates = Surface_FillTransition(value_27, value_38, value_49, value_60, value_62, value_64, value_66)
-	result.Fill = value_67
-	var value_68 StyleFrame = result
-	return value_68
+	var value_1 StyleData = normal
+	var value_2 StyleData = hover
+	var value_3 StyleData = press
+	var value_4 StyleData = focus
+	var value_5 float32 = h
+	var value_6 float32 = p
+	var value_7 float32 = f
+	var value_8 StyleData = Style_TransitionValues(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7)
+	result.Value = value_8
+	var value_9 uint32 = normal.Fields
+	var value_10 uint32 = normal.Background
+	var value_11 uint32 = normal.BackgroundEnd
+	var value_12 FillStates = Surface_FillState(value_9, value_10, value_11)
+	var value_13 uint32 = hover.Fields
+	var value_14 uint32 = hover.Background
+	var value_15 uint32 = hover.BackgroundEnd
+	var value_16 FillStates = Surface_FillState(value_13, value_14, value_15)
+	var value_17 uint32 = press.Fields
+	var value_18 uint32 = press.Background
+	var value_19 uint32 = press.BackgroundEnd
+	var value_20 FillStates = Surface_FillState(value_17, value_18, value_19)
+	var value_21 uint32 = focus.Fields
+	var value_22 uint32 = focus.Background
+	var value_23 uint32 = focus.BackgroundEnd
+	var value_24 FillStates = Surface_FillState(value_21, value_22, value_23)
+	var value_25 float32 = h
+	var value_26 float32 = p
+	var value_27 float32 = f
+	var value_28 FillStates = Surface_FillTransition(value_12, value_16, value_20, value_24, value_25, value_26, value_27)
+	result.Fill = value_28
+	var value_29 StyleFrame = result
+	return value_29
 }
 
 func Style_MergeValues(base StyleData, override StyleData) StyleData {
-	var value_0 StyleData = override
-	var value_1 uint32 = value_0.Fields
-	var value_2 int32 = FieldFieldBackground
-	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(value_3), 32, false, 8))
-	var value_5 int32 = 0
-	var value_6 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 bool = value_4 != value_6
-	if value_7 {
-		var value_8 StyleData = override
-		var value_9 uint32 = value_8.Background
-		base.Background = value_9
+	var value_0 uint32 = override.Fields
+	var value_1 int32 = FieldFieldBackground
+	var value_2 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_4 int32 = 0
+	var value_5 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 bool = value_3 != value_5
+	if value_6 {
+		var value_7 uint32 = override.Background
+		base.Background = value_7
 	}
-	var value_10 StyleData = override
-	var value_11 uint32 = value_10.Fields
-	var value_12 int32 = FieldFieldForeground
+	var value_8 uint32 = override.Fields
+	var value_9 int32 = FieldFieldForeground
+	var value_10 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_8), uint64(value_10), 32, false, 8))
+	var value_12 int32 = 0
 	var value_13 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_12), uint64(0), 32, false, 0))
-	var value_14 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_11), uint64(value_13), 32, false, 8))
-	var value_15 int32 = 0
-	var value_16 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_15), uint64(0), 32, false, 0))
-	var value_17 bool = value_14 != value_16
-	if value_17 {
-		var value_18 StyleData = override
-		var value_19 uint32 = value_18.Foreground
-		base.Foreground = value_19
+	var value_14 bool = value_11 != value_13
+	if value_14 {
+		var value_15 uint32 = override.Foreground
+		base.Foreground = value_15
 	}
-	var value_20 StyleData = override
-	var value_21 uint32 = value_20.Fields
-	var value_22 int32 = FieldFieldBorder
-	var value_23 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_21), uint64(value_23), 32, false, 8))
-	var value_25 int32 = 0
+	var value_16 uint32 = override.Fields
+	var value_17 int32 = FieldFieldBorder
+	var value_18 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_17), uint64(0), 32, false, 0))
+	var value_19 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_16), uint64(value_18), 32, false, 8))
+	var value_20 int32 = 0
+	var value_21 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 bool = value_19 != value_21
+	if value_22 {
+		var value_23 uint32 = override.Border
+		base.Border = value_23
+	}
+	var value_24 uint32 = override.Fields
+	var value_25 int32 = FieldFieldFocus
 	var value_26 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 bool = value_24 != value_26
-	if value_27 {
-		var value_28 StyleData = override
-		var value_29 uint32 = value_28.Border
-		base.Border = value_29
+	var value_27 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_24), uint64(value_26), 32, false, 8))
+	var value_28 int32 = 0
+	var value_29 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_28), uint64(0), 32, false, 0))
+	var value_30 bool = value_27 != value_29
+	if value_30 {
+		var value_31 uint32 = override.Focus
+		base.Focus = value_31
 	}
-	var value_30 StyleData = override
-	var value_31 uint32 = value_30.Fields
-	var value_32 int32 = FieldFieldFocus
-	var value_33 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_31), uint64(value_33), 32, false, 8))
-	var value_35 int32 = 0
-	var value_36 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_35), uint64(0), 32, false, 0))
-	var value_37 bool = value_34 != value_36
-	if value_37 {
-		var value_38 StyleData = override
-		var value_39 uint32 = value_38.Focus
-		base.Focus = value_39
+	var value_32 uint32 = override.Fields
+	var value_33 int32 = FieldFieldRadius
+	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(value_34), 32, false, 8))
+	var value_36 int32 = 0
+	var value_37 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_38 bool = value_35 != value_37
+	if value_38 {
+		var value_39 float32 = override.Radius
+		base.Radius = value_39
 	}
-	var value_40 StyleData = override
-	var value_41 uint32 = value_40.Fields
-	var value_42 int32 = FieldFieldRadius
-	var value_43 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_42), uint64(0), 32, false, 0))
-	var value_44 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_41), uint64(value_43), 32, false, 8))
-	var value_45 int32 = 0
-	var value_46 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_45), uint64(0), 32, false, 0))
-	var value_47 bool = value_44 != value_46
-	if value_47 {
-		var value_48 StyleData = override
-		var value_49 float32 = value_48.Radius
-		base.Radius = value_49
+	var value_40 uint32 = override.Fields
+	var value_41 int32 = FieldFieldBorderWidth
+	var value_42 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_40), uint64(value_42), 32, false, 8))
+	var value_44 int32 = 0
+	var value_45 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_44), uint64(0), 32, false, 0))
+	var value_46 bool = value_43 != value_45
+	if value_46 {
+		var value_47 float32 = override.BorderWidth
+		base.BorderWidth = value_47
 	}
-	var value_50 StyleData = override
-	var value_51 uint32 = value_50.Fields
-	var value_52 int32 = FieldFieldBorderWidth
+	var value_48 uint32 = override.Fields
+	var value_49 int32 = FieldFieldOpacity
+	var value_50 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_49), uint64(0), 32, false, 0))
+	var value_51 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_48), uint64(value_50), 32, false, 8))
+	var value_52 int32 = 0
 	var value_53 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_52), uint64(0), 32, false, 0))
-	var value_54 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_51), uint64(value_53), 32, false, 8))
-	var value_55 int32 = 0
-	var value_56 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_55), uint64(0), 32, false, 0))
-	var value_57 bool = value_54 != value_56
-	if value_57 {
-		var value_58 StyleData = override
-		var value_59 float32 = value_58.BorderWidth
-		base.BorderWidth = value_59
+	var value_54 bool = value_51 != value_53
+	if value_54 {
+		var value_55 float32 = override.Opacity
+		base.Opacity = value_55
 	}
-	var value_60 StyleData = override
-	var value_61 uint32 = value_60.Fields
-	var value_62 int32 = FieldFieldOpacity
-	var value_63 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_62), uint64(0), 32, false, 0))
-	var value_64 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_61), uint64(value_63), 32, false, 8))
-	var value_65 int32 = 0
+	var value_56 uint32 = override.Fields
+	var value_57 int32 = FieldFieldPaddingX
+	var value_58 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_57), uint64(0), 32, false, 0))
+	var value_59 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_56), uint64(value_58), 32, false, 8))
+	var value_60 int32 = 0
+	var value_61 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_60), uint64(0), 32, false, 0))
+	var value_62 bool = value_59 != value_61
+	if value_62 {
+		var value_63 float32 = override.PaddingX
+		base.PaddingX = value_63
+	}
+	var value_64 uint32 = override.Fields
+	var value_65 int32 = FieldFieldPaddingY
 	var value_66 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_65), uint64(0), 32, false, 0))
-	var value_67 bool = value_64 != value_66
-	if value_67 {
-		var value_68 StyleData = override
-		var value_69 float32 = value_68.Opacity
-		base.Opacity = value_69
+	var value_67 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_64), uint64(value_66), 32, false, 8))
+	var value_68 int32 = 0
+	var value_69 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_68), uint64(0), 32, false, 0))
+	var value_70 bool = value_67 != value_69
+	if value_70 {
+		var value_71 float32 = override.PaddingY
+		base.PaddingY = value_71
 	}
-	var value_70 StyleData = override
-	var value_71 uint32 = value_70.Fields
-	var value_72 int32 = FieldFieldPaddingX
-	var value_73 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_72), uint64(0), 32, false, 0))
-	var value_74 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_71), uint64(value_73), 32, false, 8))
-	var value_75 int32 = 0
-	var value_76 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_75), uint64(0), 32, false, 0))
-	var value_77 bool = value_74 != value_76
-	if value_77 {
-		var value_78 StyleData = override
-		var value_79 float32 = value_78.PaddingX
-		base.PaddingX = value_79
+	var value_72 uint32 = override.Fields
+	var value_73 int32 = FieldFieldGap
+	var value_74 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_73), uint64(0), 32, false, 0))
+	var value_75 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_72), uint64(value_74), 32, false, 8))
+	var value_76 int32 = 0
+	var value_77 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_76), uint64(0), 32, false, 0))
+	var value_78 bool = value_75 != value_77
+	if value_78 {
+		var value_79 float32 = override.Gap
+		base.Gap = value_79
 	}
-	var value_80 StyleData = override
-	var value_81 uint32 = value_80.Fields
-	var value_82 int32 = FieldFieldPaddingY
-	var value_83 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_82), uint64(0), 32, false, 0))
-	var value_84 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_81), uint64(value_83), 32, false, 8))
-	var value_85 int32 = 0
-	var value_86 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_85), uint64(0), 32, false, 0))
-	var value_87 bool = value_84 != value_86
-	if value_87 {
-		var value_88 StyleData = override
-		var value_89 float32 = value_88.PaddingY
-		base.PaddingY = value_89
+	var value_80 uint32 = override.Fields
+	var value_81 int32 = FieldFieldFontSize
+	var value_82 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_81), uint64(0), 32, false, 0))
+	var value_83 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_80), uint64(value_82), 32, false, 8))
+	var value_84 int32 = 0
+	var value_85 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_84), uint64(0), 32, false, 0))
+	var value_86 bool = value_83 != value_85
+	if value_86 {
+		var value_87 float32 = override.FontSize
+		base.FontSize = value_87
 	}
-	var value_90 StyleData = override
-	var value_91 uint32 = value_90.Fields
-	var value_92 int32 = FieldFieldGap
+	var value_88 uint32 = override.Fields
+	var value_89 int32 = FieldFieldIconSize
+	var value_90 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_89), uint64(0), 32, false, 0))
+	var value_91 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_88), uint64(value_90), 32, false, 8))
+	var value_92 int32 = 0
 	var value_93 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_92), uint64(0), 32, false, 0))
-	var value_94 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_91), uint64(value_93), 32, false, 8))
-	var value_95 int32 = 0
-	var value_96 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_95), uint64(0), 32, false, 0))
-	var value_97 bool = value_94 != value_96
-	if value_97 {
-		var value_98 StyleData = override
-		var value_99 float32 = value_98.Gap
-		base.Gap = value_99
+	var value_94 bool = value_91 != value_93
+	if value_94 {
+		var value_95 float32 = override.IconSize
+		base.IconSize = value_95
 	}
-	var value_100 StyleData = override
-	var value_101 uint32 = value_100.Fields
-	var value_102 int32 = FieldFieldFontSize
-	var value_103 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_102), uint64(0), 32, false, 0))
-	var value_104 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_101), uint64(value_103), 32, false, 8))
-	var value_105 int32 = 0
+	var value_96 uint32 = override.Fields
+	var value_97 int32 = FieldFieldContentOffset
+	var value_98 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_97), uint64(0), 32, false, 0))
+	var value_99 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_96), uint64(value_98), 32, false, 8))
+	var value_100 int32 = 0
+	var value_101 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_100), uint64(0), 32, false, 0))
+	var value_102 bool = value_99 != value_101
+	if value_102 {
+		var value_103 float32 = override.OffsetX
+		base.OffsetX = value_103
+	}
+	var value_104 uint32 = override.Fields
+	var value_105 int32 = FieldFieldContentOffset
 	var value_106 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_105), uint64(0), 32, false, 0))
-	var value_107 bool = value_104 != value_106
-	if value_107 {
-		var value_108 StyleData = override
-		var value_109 float32 = value_108.FontSize
-		base.FontSize = value_109
+	var value_107 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_104), uint64(value_106), 32, false, 8))
+	var value_108 int32 = 0
+	var value_109 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_108), uint64(0), 32, false, 0))
+	var value_110 bool = value_107 != value_109
+	if value_110 {
+		var value_111 float32 = override.OffsetY
+		base.OffsetY = value_111
 	}
-	var value_110 StyleData = override
-	var value_111 uint32 = value_110.Fields
-	var value_112 int32 = FieldFieldIconSize
-	var value_113 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_112), uint64(0), 32, false, 0))
-	var value_114 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_111), uint64(value_113), 32, false, 8))
-	var value_115 int32 = 0
-	var value_116 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_115), uint64(0), 32, false, 0))
-	var value_117 bool = value_114 != value_116
-	if value_117 {
-		var value_118 StyleData = override
-		var value_119 float32 = value_118.IconSize
-		base.IconSize = value_119
+	var value_112 uint32 = override.Fields
+	var value_113 int32 = FieldFieldBackgroundEnd
+	var value_114 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_113), uint64(0), 32, false, 0))
+	var value_115 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_112), uint64(value_114), 32, false, 8))
+	var value_116 int32 = 0
+	var value_117 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_116), uint64(0), 32, false, 0))
+	var value_118 bool = value_115 != value_117
+	if value_118 {
+		var value_119 uint32 = override.BackgroundEnd
+		base.BackgroundEnd = value_119
 	}
-	var value_120 StyleData = override
-	var value_121 uint32 = value_120.Fields
-	var value_122 int32 = FieldFieldContentOffset
-	var value_123 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_122), uint64(0), 32, false, 0))
-	var value_124 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_121), uint64(value_123), 32, false, 8))
-	var value_125 int32 = 0
-	var value_126 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_125), uint64(0), 32, false, 0))
-	var value_127 bool = value_124 != value_126
-	if value_127 {
-		var value_128 StyleData = override
-		var value_129 float32 = value_128.OffsetX
-		base.OffsetX = value_129
+	var value_120 uint32 = override.Fields
+	var value_121 int32 = FieldFieldMaterial
+	var value_122 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_121), uint64(0), 32, false, 0))
+	var value_123 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_120), uint64(value_122), 32, false, 8))
+	var value_124 int32 = 0
+	var value_125 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_124), uint64(0), 32, false, 0))
+	var value_126 bool = value_123 != value_125
+	if value_126 {
+		var value_127 int32 = override.Material
+		base.Material = value_127
 	}
-	var value_130 StyleData = override
-	var value_131 uint32 = value_130.Fields
-	var value_132 int32 = FieldFieldContentOffset
+	var value_128 uint32 = override.Fields
+	var value_129 int32 = FieldFieldTypeface
+	var value_130 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_129), uint64(0), 32, false, 0))
+	var value_131 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_128), uint64(value_130), 32, false, 8))
+	var value_132 int32 = 0
 	var value_133 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_132), uint64(0), 32, false, 0))
-	var value_134 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_131), uint64(value_133), 32, false, 8))
-	var value_135 int32 = 0
-	var value_136 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_135), uint64(0), 32, false, 0))
-	var value_137 bool = value_134 != value_136
-	if value_137 {
-		var value_138 StyleData = override
-		var value_139 float32 = value_138.OffsetY
-		base.OffsetY = value_139
+	var value_134 bool = value_131 != value_133
+	if value_134 {
+		var value_135 string = override.Typeface
+		base.Typeface = value_135
 	}
-	var value_140 StyleData = override
-	var value_141 uint32 = value_140.Fields
-	var value_142 int32 = FieldFieldBackgroundEnd
-	var value_143 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_142), uint64(0), 32, false, 0))
-	var value_144 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_141), uint64(value_143), 32, false, 8))
-	var value_145 int32 = 0
-	var value_146 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_145), uint64(0), 32, false, 0))
-	var value_147 bool = value_144 != value_146
-	if value_147 {
-		var value_148 StyleData = override
-		var value_149 uint32 = value_148.BackgroundEnd
-		base.BackgroundEnd = value_149
-	}
-	var value_150 StyleData = override
-	var value_151 uint32 = value_150.Fields
-	var value_152 int32 = FieldFieldMaterial
-	var value_153 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_152), uint64(0), 32, false, 0))
-	var value_154 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_151), uint64(value_153), 32, false, 8))
-	var value_155 int32 = 0
-	var value_156 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_155), uint64(0), 32, false, 0))
-	var value_157 bool = value_154 != value_156
-	if value_157 {
-		var value_158 StyleData = override
-		var value_159 int32 = value_158.Material
-		base.Material = value_159
-	}
-	var value_160 StyleData = override
-	var value_161 uint32 = value_160.Fields
-	var value_162 int32 = FieldFieldTypeface
-	var value_163 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_162), uint64(0), 32, false, 0))
-	var value_164 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_161), uint64(value_163), 32, false, 8))
-	var value_165 int32 = 0
-	var value_166 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_165), uint64(0), 32, false, 0))
-	var value_167 bool = value_164 != value_166
-	if value_167 {
-		var value_168 StyleData = override
-		var value_169 string = value_168.Typeface
-		base.Typeface = value_169
-	}
-	var value_170 StyleData = base
-	var value_171 uint32 = value_170.Fields
-	var value_172 StyleData = override
-	var value_173 uint32 = value_172.Fields
-	var value_174 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_171), uint64(value_173), 32, false, 9))
-	base.Fields = value_174
-	var value_175 StyleData = base
-	return value_175
+	var value_136 uint32 = base.Fields
+	var value_137 uint32 = override.Fields
+	var value_138 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_136), uint64(value_137), 32, false, 9))
+	base.Fields = value_138
+	var value_139 StyleData = base
+	return value_139
 }
 
 func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleData {
 	var value_0 StyleData = base
-	var value_1 StyleData = value_0
-	var value_2 StyleStates = states
-	var value_3 StyleData = value_2.Normal
-	var value_4 StyleData = value_3
-	var value_5 StyleData = Style_MergeValues(value_1, value_4)
-	base = value_5
-	var value_6 int32 = state
-	var value_7 int32 = StatePolicyStateHover
-	var value_8 bool = value_6 == value_7
-	if value_8 {
-		var value_9 StyleData = base
-		var value_10 StyleData = value_9
-		var value_11 StyleStates = states
-		var value_12 StyleData = value_11.Hover
-		var value_13 StyleData = value_12
-		var value_14 StyleData = Style_MergeValues(value_10, value_13)
+	var value_1 StyleData = states.Normal
+	var value_2 StyleData = Style_MergeValues(value_0, value_1)
+	base = value_2
+	var value_3 int32 = state
+	var value_4 int32 = StatePolicyStateHover
+	var value_5 bool = value_3 == value_4
+	if value_5 {
+		var value_6 StyleData = base
+		var value_7 StyleData = states.Hover
+		var value_8 StyleData = Style_MergeValues(value_6, value_7)
+		return value_8
+	}
+	var value_9 int32 = state
+	var value_10 int32 = StatePolicyStatePressed
+	var value_11 bool = value_9 == value_10
+	if value_11 {
+		var value_12 StyleData = base
+		var value_13 StyleData = states.Pressed
+		var value_14 StyleData = Style_MergeValues(value_12, value_13)
 		return value_14
 	}
 	var value_15 int32 = state
-	var value_16 int32 = StatePolicyStatePressed
+	var value_16 int32 = StatePolicyStateFocus
 	var value_17 bool = value_15 == value_16
 	if value_17 {
 		var value_18 StyleData = base
-		var value_19 StyleData = value_18
-		var value_20 StyleStates = states
-		var value_21 StyleData = value_20.Pressed
-		var value_22 StyleData = value_21
-		var value_23 StyleData = Style_MergeValues(value_19, value_22)
-		return value_23
+		var value_19 StyleData = states.Focused
+		var value_20 StyleData = Style_MergeValues(value_18, value_19)
+		return value_20
 	}
-	var value_24 int32 = state
-	var value_25 int32 = StatePolicyStateFocus
-	var value_26 bool = value_24 == value_25
-	if value_26 {
-		var value_27 StyleData = base
-		var value_28 StyleData = value_27
-		var value_29 StyleStates = states
-		var value_30 StyleData = value_29.Focused
-		var value_31 StyleData = value_30
-		var value_32 StyleData = Style_MergeValues(value_28, value_31)
+	var value_21 int32 = state
+	var value_22 int32 = StatePolicyStateDisabled
+	var value_23 bool = value_21 == value_22
+	if value_23 {
+		var value_24 StyleData = base
+		var value_25 StyleData = states.Disabled
+		var value_26 StyleData = Style_MergeValues(value_24, value_25)
+		return value_26
+	}
+	var value_27 int32 = state
+	var value_28 int32 = StatePolicyStateLoading
+	var value_29 bool = value_27 == value_28
+	if value_29 {
+		var value_30 StyleData = base
+		var value_31 StyleData = states.Loading
+		var value_32 StyleData = Style_MergeValues(value_30, value_31)
 		return value_32
 	}
 	var value_33 int32 = state
-	var value_34 int32 = StatePolicyStateDisabled
+	var value_34 int32 = StatePolicyStateSelected
 	var value_35 bool = value_33 == value_34
 	if value_35 {
 		var value_36 StyleData = base
-		var value_37 StyleData = value_36
-		var value_38 StyleStates = states
-		var value_39 StyleData = value_38.Disabled
-		var value_40 StyleData = value_39
-		var value_41 StyleData = Style_MergeValues(value_37, value_40)
-		return value_41
+		var value_37 StyleData = states.Selected
+		var value_38 StyleData = Style_MergeValues(value_36, value_37)
+		return value_38
 	}
-	var value_42 int32 = state
-	var value_43 int32 = StatePolicyStateLoading
-	var value_44 bool = value_42 == value_43
-	if value_44 {
-		var value_45 StyleData = base
-		var value_46 StyleData = value_45
-		var value_47 StyleStates = states
-		var value_48 StyleData = value_47.Loading
-		var value_49 StyleData = value_48
-		var value_50 StyleData = Style_MergeValues(value_46, value_49)
-		return value_50
-	}
-	var value_51 int32 = state
-	var value_52 int32 = StatePolicyStateSelected
-	var value_53 bool = value_51 == value_52
-	if value_53 {
-		var value_54 StyleData = base
-		var value_55 StyleData = value_54
-		var value_56 StyleStates = states
-		var value_57 StyleData = value_56.Selected
-		var value_58 StyleData = value_57
-		var value_59 StyleData = Style_MergeValues(value_55, value_58)
-		return value_59
-	}
-	var value_60 StyleData = base
-	return value_60
+	var value_39 StyleData = base
+	return value_39
 }

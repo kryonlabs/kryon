@@ -146,275 +146,159 @@ const (
 func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, palette Palette, metrics Metrics) StyleData {
 	var style StyleData = StyleData{}
 	var value_0 int32 = tone
-	var value_1 int32 = value_0
-	var value_2 int32 = emphasis
-	var value_3 int32 = value_2
-	var value_4 int32 = state
-	var value_5 int32 = value_4
-	var value_6 Palette = palette
-	var value_7 uint32 = value_6.Surface
-	var value_8 uint32 = value_7
-	var value_9 Palette = palette
-	var value_10 uint32 = value_9.Accent
-	var value_11 uint32 = value_10
-	var value_12 Palette = palette
-	var value_13 uint32 = value_12.AccentHover
-	var value_14 uint32 = value_13
-	var value_15 Palette = palette
-	var value_16 uint32 = value_15.AccentPressed
-	var value_17 uint32 = value_16
-	var value_18 Palette = palette
-	var value_19 uint32 = value_18.SurfaceRaised
-	var value_20 uint32 = value_19
-	var value_21 Palette = palette
-	var value_22 uint32 = value_21.Danger
-	var value_23 uint32 = value_22
-	var value_24 Palette = palette
-	var value_25 uint32 = value_24.Success
-	var value_26 uint32 = value_25
-	var value_27 Palette = palette
-	var value_28 uint32 = value_27.Warning
-	var value_29 uint32 = value_28
-	var value_30 uint32 = Button_ButtonBackground(value_1, value_3, value_5, value_8, value_11, value_14, value_17, value_20, value_23, value_26, value_29)
-	style.Background = value_30
-	var value_31 int32 = tone
-	var value_32 int32 = value_31
-	var value_33 int32 = emphasis
-	var value_34 int32 = value_33
-	var value_35 int32 = state
-	var value_36 int32 = value_35
-	var value_37 Palette = palette
-	var value_38 uint32 = value_37.Surface
-	var value_39 uint32 = value_38
-	var value_40 Palette = palette
-	var value_41 uint32 = value_40.OnAccent
-	var value_42 uint32 = value_41
-	var value_43 Palette = palette
-	var value_44 uint32 = value_43.Text
-	var value_45 uint32 = value_44
-	var value_46 Palette = palette
-	var value_47 uint32 = value_46.Danger
-	var value_48 uint32 = value_47
-	var value_49 Palette = palette
-	var value_50 uint32 = value_49.OnDanger
-	var value_51 uint32 = value_50
-	var value_52 Palette = palette
-	var value_53 uint32 = value_52.Success
-	var value_54 uint32 = value_53
-	var value_55 Palette = palette
-	var value_56 uint32 = value_55.OnSuccess
-	var value_57 uint32 = value_56
-	var value_58 Palette = palette
-	var value_59 uint32 = value_58.Warning
-	var value_60 uint32 = value_59
-	var value_61 Palette = palette
-	var value_62 uint32 = value_61.OnWarning
-	var value_63 uint32 = value_62
-	var value_64 Palette = palette
-	var value_65 uint32 = value_64.Link
-	var value_66 uint32 = value_65
-	var value_67 Palette = palette
-	var value_68 uint32 = value_67.TextDisabled
-	var value_69 uint32 = value_68
-	var value_70 Palette = palette
-	var value_71 uint32 = value_70.Accent
-	var value_72 uint32 = value_71
-	var value_73 uint32 = Button_ButtonForeground(value_32, value_34, value_36, value_39, value_42, value_45, value_48, value_51, value_54, value_57, value_60, value_63, value_66, value_69, value_72)
-	style.Foreground = value_73
-	var value_74 int32 = tone
-	var value_75 int32 = value_74
-	var value_76 int32 = emphasis
-	var value_77 int32 = value_76
-	var value_78 int32 = state
-	var value_79 int32 = value_78
-	var value_80 Palette = palette
-	var value_81 uint32 = value_80.Surface
-	var value_82 uint32 = value_81
-	var value_83 Palette = palette
-	var value_84 uint32 = value_83.Accent
-	var value_85 uint32 = value_84
-	var value_86 Palette = palette
-	var value_87 uint32 = value_86.SurfaceRaised
-	var value_88 uint32 = value_87
-	var value_89 Palette = palette
-	var value_90 uint32 = value_89.Danger
-	var value_91 uint32 = value_90
-	var value_92 Palette = palette
-	var value_93 uint32 = value_92.Success
-	var value_94 uint32 = value_93
-	var value_95 Palette = palette
-	var value_96 uint32 = value_95.Warning
-	var value_97 uint32 = value_96
-	var value_98 uint32 = Button_ButtonBorder(value_75, value_77, value_79, value_82, value_85, value_88, value_91, value_94, value_97)
-	style.Border = value_98
-	var value_99 int32 = tone
-	var value_100 int32 = value_99
-	var value_101 int32 = emphasis
-	var value_102 int32 = value_101
-	var value_103 Palette = palette
-	var value_104 uint32 = value_103.Surface
-	var value_105 uint32 = value_104
-	var value_106 Palette = palette
-	var value_107 uint32 = value_106.Focus
-	var value_108 uint32 = value_107
-	var value_109 Palette = palette
-	var value_110 uint32 = value_109.Success
-	var value_111 uint32 = value_110
-	var value_112 uint32 = Button_ButtonFocus(value_100, value_102, value_105, value_108, value_111)
-	style.Focus = value_112
-	var value_113 Metrics = metrics
-	var value_114 float32 = value_113.RadiusMedium
-	var radius float32 = value_114
-	var value_115 int32 = state
-	var value_116 int32 = StatePolicyStateNormal
-	var value_117 bool = value_115 == value_116
-	var value_118 bool = value_117
-	if !value_118 {
-		var value_119 int32 = state
-		var value_120 int32 = StatePolicyStateHover
-		var value_121 bool = value_119 == value_120
-		value_118 = value_121
+	var value_1 int32 = emphasis
+	var value_2 int32 = state
+	var value_3 uint32 = palette.Surface
+	var value_4 uint32 = palette.Accent
+	var value_5 uint32 = palette.AccentHover
+	var value_6 uint32 = palette.AccentPressed
+	var value_7 uint32 = palette.SurfaceRaised
+	var value_8 uint32 = palette.Danger
+	var value_9 uint32 = palette.Success
+	var value_10 uint32 = palette.Warning
+	var value_11 uint32 = Button_ButtonBackground(value_0, value_1, value_2, value_3, value_4, value_5, value_6, value_7, value_8, value_9, value_10)
+	style.Background = value_11
+	var value_12 int32 = tone
+	var value_13 int32 = emphasis
+	var value_14 int32 = state
+	var value_15 uint32 = palette.Surface
+	var value_16 uint32 = palette.OnAccent
+	var value_17 uint32 = palette.Text
+	var value_18 uint32 = palette.Danger
+	var value_19 uint32 = palette.OnDanger
+	var value_20 uint32 = palette.Success
+	var value_21 uint32 = palette.OnSuccess
+	var value_22 uint32 = palette.Warning
+	var value_23 uint32 = palette.OnWarning
+	var value_24 uint32 = palette.Link
+	var value_25 uint32 = palette.TextDisabled
+	var value_26 uint32 = palette.Accent
+	var value_27 uint32 = Button_ButtonForeground(value_12, value_13, value_14, value_15, value_16, value_17, value_18, value_19, value_20, value_21, value_22, value_23, value_24, value_25, value_26)
+	style.Foreground = value_27
+	var value_28 int32 = tone
+	var value_29 int32 = emphasis
+	var value_30 int32 = state
+	var value_31 uint32 = palette.Surface
+	var value_32 uint32 = palette.Accent
+	var value_33 uint32 = palette.SurfaceRaised
+	var value_34 uint32 = palette.Danger
+	var value_35 uint32 = palette.Success
+	var value_36 uint32 = palette.Warning
+	var value_37 uint32 = Button_ButtonBorder(value_28, value_29, value_30, value_31, value_32, value_33, value_34, value_35, value_36)
+	style.Border = value_37
+	var value_38 int32 = tone
+	var value_39 int32 = emphasis
+	var value_40 uint32 = palette.Surface
+	var value_41 uint32 = palette.Focus
+	var value_42 uint32 = palette.Success
+	var value_43 uint32 = Button_ButtonFocus(value_38, value_39, value_40, value_41, value_42)
+	style.Focus = value_43
+	var value_44 float32 = metrics.RadiusMedium
+	var radius float32 = value_44
+	var value_45 int32 = state
+	var value_46 int32 = StatePolicyStateNormal
+	var value_47 bool = value_45 == value_46
+	var value_48 bool = value_47
+	if !value_48 {
+		var value_49 int32 = state
+		var value_50 int32 = StatePolicyStateHover
+		var value_51 bool = value_49 == value_50
+		value_48 = value_51
 	}
-	if value_118 {
-		var value_122 int32 = size
-		var value_123 int32 = value_122
-		var value_124 Metrics = metrics
-		var value_125 float32 = value_124.RadiusMedium
-		var value_126 float32 = value_125
-		var value_127 Metrics = metrics
-		var value_128 float32 = value_127.RadiusMedium
-		var value_129 Metrics = metrics
-		var value_130 float32 = value_129.RadiusLarge
-		var value_131 float32 = value_128 + value_130
-		var value_132 float32 = 0.5
-		var value_133 float32 = value_131 * value_132
-		var value_134 float32 = value_133
-		var value_135 Metrics = metrics
-		var value_136 float32 = value_135.RadiusMedium
-		var value_137 float32 = value_136
-		var value_138 float32 = Style_SizeValue(value_123, value_126, value_134, value_137)
-		radius = value_138
+	if value_48 {
+		var value_52 int32 = size
+		var value_53 float32 = metrics.RadiusMedium
+		var value_54 float32 = metrics.RadiusMedium
+		var value_55 float32 = metrics.RadiusLarge
+		var value_56 float32 = value_54 + value_55
+		var value_57 float32 = 0.5
+		var value_58 float32 = value_56 * value_57
+		var value_59 float32 = metrics.RadiusMedium
+		var value_60 float32 = Style_SizeValue(value_52, value_53, value_58, value_59)
+		radius = value_60
 	}
-	var value_139 int32 = emphasis
-	var value_140 int32 = EmphasisPolicyEmphasisOutline
-	var value_141 bool = value_139 == value_140
-	var value_142 bool = value_141
-	if value_142 {
-		var value_143 int32 = state
-		var value_144 int32 = StatePolicyStateNormal
-		var value_145 bool = value_143 == value_144
-		var value_146 bool = value_145
-		if !value_146 {
-			var value_147 int32 = state
-			var value_148 int32 = StatePolicyStateHover
-			var value_149 bool = value_147 == value_148
-			value_146 = value_149
+	var value_61 int32 = emphasis
+	var value_62 int32 = EmphasisPolicyEmphasisOutline
+	var value_63 bool = value_61 == value_62
+	var value_64 bool = value_63
+	if value_64 {
+		var value_65 int32 = state
+		var value_66 int32 = StatePolicyStateNormal
+		var value_67 bool = value_65 == value_66
+		var value_68 bool = value_67
+		if !value_68 {
+			var value_69 int32 = state
+			var value_70 int32 = StatePolicyStateHover
+			var value_71 bool = value_69 == value_70
+			value_68 = value_71
 		}
-		value_142 = value_146
+		value_64 = value_68
 	}
-	if value_142 {
-		var value_150 int32 = size
-		var value_151 int32 = value_150
-		var value_152 Metrics = metrics
-		var value_153 float32 = value_152.RadiusMedium
-		var value_154 float32 = value_153
-		var value_155 Metrics = metrics
-		var value_156 float32 = value_155.RadiusLarge
-		var value_157 float32 = value_156
-		var value_158 Metrics = metrics
-		var value_159 float32 = value_158.RadiusLarge
-		var value_160 float32 = value_159
-		var value_161 float32 = Style_SizeValue(value_151, value_154, value_157, value_160)
-		radius = value_161
+	if value_64 {
+		var value_72 int32 = size
+		var value_73 float32 = metrics.RadiusMedium
+		var value_74 float32 = metrics.RadiusLarge
+		var value_75 float32 = metrics.RadiusLarge
+		var value_76 float32 = Style_SizeValue(value_72, value_73, value_74, value_75)
+		radius = value_76
 	}
-	var value_162 float32 = radius
-	var value_163 float32 = value_162
-	var value_164 Metrics = metrics
-	var value_165 float32 = value_164.RadiusPill
-	var value_166 float32 = value_165
-	var value_167 bool = pill
-	var value_168 bool = value_167
-	var value_169 bool = circle
-	var value_170 bool = value_169
-	var value_171 float32 = Button_ShapeRadius(value_163, value_166, value_168, value_170)
-	style.Radius = value_171
-	var value_172 Metrics = metrics
-	var value_173 float32 = value_172.BorderWidth
-	style.BorderWidth = value_173
-	var value_174 float32 = 1.0
-	style.Opacity = value_174
-	var value_175 int32 = size
-	var value_176 int32 = value_175
-	var value_177 Metrics = metrics
-	var value_178 float32 = value_177.ControlPaddingSmall
-	var value_179 float32 = value_178
-	var value_180 Metrics = metrics
-	var value_181 float32 = value_180.ControlPaddingMedium
-	var value_182 float32 = value_181
-	var value_183 Metrics = metrics
-	var value_184 float32 = value_183.ControlPaddingLarge
-	var value_185 float32 = value_184
-	var value_186 float32 = Style_SizeValue(value_176, value_179, value_182, value_185)
-	style.PaddingX = value_186
-	var value_187 float32 = 8.0
-	style.PaddingY = value_187
-	var value_188 Metrics = metrics
-	var value_189 float32 = value_188.ControlGap
-	style.Gap = value_189
-	var value_190 int32 = size
-	var value_191 int32 = value_190
-	var value_192 Metrics = metrics
-	var value_193 float32 = value_192.FontSizeSmall
-	var value_194 float32 = value_193
-	var value_195 Metrics = metrics
-	var value_196 float32 = value_195.FontSizeMedium
-	var value_197 float32 = value_196
-	var value_198 Metrics = metrics
-	var value_199 float32 = value_198.FontSizeLarge
-	var value_200 float32 = value_199
-	var value_201 float32 = Style_SizeValue(value_191, value_194, value_197, value_200)
-	style.FontSize = value_201
-	var value_202 int32 = size
-	var value_203 int32 = value_202
-	var value_204 Metrics = metrics
-	var value_205 float32 = value_204.IconSizeSmall
-	var value_206 float32 = value_205
-	var value_207 Metrics = metrics
-	var value_208 float32 = value_207.IconSizeMedium
-	var value_209 float32 = value_208
-	var value_210 Metrics = metrics
-	var value_211 float32 = value_210.IconSizeLarge
-	var value_212 float32 = value_211
-	var value_213 float32 = Style_SizeValue(value_203, value_206, value_209, value_212)
-	style.IconSize = value_213
-	var value_214 int32 = 0
-	style.Material = value_214
-	var value_215 uint32 = Style_DefaultFields()
-	style.Fields = value_215
-	var value_216 int32 = size
-	var value_217 int32 = SizePolicySizeLarge
-	var value_218 bool = value_216 == value_217
-	var value_219 bool = value_218
-	if value_219 {
-		var value_220 Palette = palette
-		var value_221 uint32 = value_220.Surface
-		var value_222 uint32 = value_221
-		var value_223 bool = Button_LightSurface(value_222)
-		var value_224 bool = !value_223
-		value_219 = value_224
+	var value_77 float32 = radius
+	var value_78 float32 = metrics.RadiusPill
+	var value_79 bool = pill
+	var value_80 bool = circle
+	var value_81 float32 = Button_ShapeRadius(value_77, value_78, value_79, value_80)
+	style.Radius = value_81
+	var value_82 float32 = metrics.BorderWidth
+	style.BorderWidth = value_82
+	var value_83 float32 = 1.0
+	style.Opacity = value_83
+	var value_84 int32 = size
+	var value_85 float32 = metrics.ControlPaddingSmall
+	var value_86 float32 = metrics.ControlPaddingMedium
+	var value_87 float32 = metrics.ControlPaddingLarge
+	var value_88 float32 = Style_SizeValue(value_84, value_85, value_86, value_87)
+	style.PaddingX = value_88
+	var value_89 float32 = 8.0
+	style.PaddingY = value_89
+	var value_90 float32 = metrics.ControlGap
+	style.Gap = value_90
+	var value_91 int32 = size
+	var value_92 float32 = metrics.FontSizeSmall
+	var value_93 float32 = metrics.FontSizeMedium
+	var value_94 float32 = metrics.FontSizeLarge
+	var value_95 float32 = Style_SizeValue(value_91, value_92, value_93, value_94)
+	style.FontSize = value_95
+	var value_96 int32 = size
+	var value_97 float32 = metrics.IconSizeSmall
+	var value_98 float32 = metrics.IconSizeMedium
+	var value_99 float32 = metrics.IconSizeLarge
+	var value_100 float32 = Style_SizeValue(value_96, value_97, value_98, value_99)
+	style.IconSize = value_100
+	var value_101 int32 = 0
+	style.Material = value_101
+	var value_102 uint32 = Style_DefaultFields()
+	style.Fields = value_102
+	var value_103 int32 = size
+	var value_104 int32 = SizePolicySizeLarge
+	var value_105 bool = value_103 == value_104
+	var value_106 bool = value_105
+	if value_106 {
+		var value_107 uint32 = palette.Surface
+		var value_108 bool = Button_LightSurface(value_107)
+		var value_109 bool = !value_108
+		value_106 = value_109
 	}
-	if value_219 {
-		var value_225 string = "semibold"
-		style.Typeface = value_225
-		var value_226 StyleData = style
-		var value_227 uint32 = value_226.Fields
-		var value_228 int32 = FieldFieldTypeface
-		var value_229 uint32 = uint32(number_533abbd6_bits(uint64(value_228), uint64(0), 32, false, 0))
-		var value_230 uint32 = uint32(number_533abbd6_bits(uint64(value_227), uint64(value_229), 32, false, 9))
-		style.Fields = value_230
+	if value_106 {
+		var value_110 string = "semibold"
+		style.Typeface = value_110
+		var value_111 uint32 = style.Fields
+		var value_112 int32 = FieldFieldTypeface
+		var value_113 uint32 = uint32(number_533abbd6_bits(uint64(value_112), uint64(0), 32, false, 0))
+		var value_114 uint32 = uint32(number_533abbd6_bits(uint64(value_111), uint64(value_113), 32, false, 9))
+		style.Fields = value_114
 	}
-	var value_231 StyleData = style
-	return value_231
+	var value_115 StyleData = style
+	return value_115
 }
 
 func Button_CanActivate(disabled bool, loading bool) bool {
@@ -431,343 +315,195 @@ func Button_CanActivate(disabled bool, loading bool) bool {
 
 func Button_ResolveAppearance(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, disabled bool, loading bool, selected bool, palette Palette, metrics Metrics, styles StyleStates) StyleData {
 	var value_0 int32 = state
-	var value_1 int32 = value_0
-	var value_2 bool = disabled
-	var value_3 bool = value_2
-	var value_4 bool = loading
-	var value_5 bool = value_4
-	var value_6 bool = selected
-	var value_7 bool = value_6
-	var value_8 StateFlags = Style_ResolveFlags(value_1, value_3, value_5, value_7)
-	var flags StateFlags = value_8
-	var value_9 int32 = state
-	var value_10 int32 = value_9
-	var value_11 StateFlags = flags
-	var value_12 bool = value_11.Disabled
-	var value_13 bool = value_12
-	var value_14 StateFlags = flags
-	var value_15 bool = value_14.Loading
-	var value_16 bool = value_15
-	var value_17 bool = false
-	var value_18 bool = value_17
-	var value_19 bool = false
-	var value_20 bool = value_19
-	var value_21 bool = false
-	var value_22 bool = value_21
-	var value_23 StateFlags = flags
-	var value_24 bool = value_23.Selected
-	var value_25 bool = value_24
-	var value_26 int32 = Style_ResolveState(value_10, value_13, value_16, value_18, value_20, value_22, value_25)
-	var effective int32 = value_26
-	var value_27 int32 = tone
-	var value_28 int32 = value_27
-	var value_29 int32 = emphasis
-	var value_30 int32 = value_29
-	var value_31 int32 = effective
-	var value_32 int32 = value_31
-	var value_33 int32 = size
-	var value_34 int32 = value_33
-	var value_35 bool = pill
-	var value_36 bool = value_35
-	var value_37 bool = circle
-	var value_38 bool = value_37
-	var value_39 Palette = palette
-	var value_40 Palette = value_39
-	var value_41 Metrics = metrics
-	var value_42 Metrics = value_41
-	var value_43 StyleData = Button_DefaultButtonStyle(value_28, value_30, value_32, value_34, value_36, value_38, value_40, value_42)
-	var base StyleData = value_43
-	var value_44 StyleData = base
-	var value_45 StyleData = value_44
-	var value_46 StyleStates = styles
-	var value_47 StyleStates = value_46
-	var value_48 int32 = effective
-	var value_49 int32 = value_48
-	var value_50 StyleData = Style_ResolveValues(value_45, value_47, value_49)
-	return value_50
+	var value_1 bool = disabled
+	var value_2 bool = loading
+	var value_3 bool = selected
+	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
+	var flags StateFlags = value_4
+	var value_5 int32 = state
+	var value_6 bool = flags.Disabled
+	var value_7 bool = flags.Loading
+	var value_8 bool = false
+	var value_9 bool = false
+	var value_10 bool = false
+	var value_11 bool = flags.Selected
+	var value_12 int32 = Style_ResolveState(value_5, value_6, value_7, value_8, value_9, value_10, value_11)
+	var effective int32 = value_12
+	var value_13 int32 = tone
+	var value_14 int32 = emphasis
+	var value_15 int32 = effective
+	var value_16 int32 = size
+	var value_17 bool = pill
+	var value_18 bool = circle
+	var value_19 Palette = palette
+	var value_20 Metrics = metrics
+	var value_21 StyleData = Button_DefaultButtonStyle(value_13, value_14, value_15, value_16, value_17, value_18, value_19, value_20)
+	var base StyleData = value_21
+	var value_22 StyleData = base
+	var value_23 StyleStates = styles
+	var value_24 int32 = effective
+	var value_25 StyleData = Style_ResolveValues(value_22, value_23, value_24)
+	return value_25
 }
 
 func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, disabled bool, loading bool, selected bool, palette Palette, metrics Metrics, styles StyleStates, automatic bool, h float32, p float32, f float32) StyleFrame {
 	var value_0 int32 = state
-	var value_1 int32 = value_0
-	var value_2 bool = disabled
-	var value_3 bool = value_2
-	var value_4 bool = loading
-	var value_5 bool = value_4
-	var value_6 bool = selected
-	var value_7 bool = value_6
-	var value_8 StateFlags = Style_ResolveFlags(value_1, value_3, value_5, value_7)
-	var flags StateFlags = value_8
+	var value_1 bool = disabled
+	var value_2 bool = loading
+	var value_3 bool = selected
+	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
+	var flags StateFlags = value_4
 	var frame StyleFrame = StyleFrame{}
-	var value_9 int32 = tone
-	var value_10 int32 = value_9
-	var value_11 int32 = emphasis
-	var value_12 int32 = value_11
-	var value_13 int32 = state
-	var value_14 int32 = value_13
-	var value_15 int32 = size
-	var value_16 int32 = value_15
-	var value_17 bool = pill
-	var value_18 bool = value_17
-	var value_19 bool = circle
-	var value_20 bool = value_19
-	var value_21 bool = disabled
-	var value_22 bool = value_21
-	var value_23 bool = loading
-	var value_24 bool = value_23
-	var value_25 bool = selected
-	var value_26 bool = value_25
-	var value_27 Palette = palette
-	var value_28 Palette = value_27
-	var value_29 Metrics = metrics
-	var value_30 Metrics = value_29
-	var value_31 StyleStates = styles
-	var value_32 StyleStates = value_31
-	var value_33 StyleData = Button_ResolveAppearance(value_10, value_12, value_14, value_16, value_18, value_20, value_22, value_24, value_26, value_28, value_30, value_32)
-	frame.Value = value_33
-	var value_34 StyleFrame = frame
-	var value_35 StyleData = value_34.Value
-	var value_36 uint32 = value_35.Fields
-	var value_37 uint32 = value_36
-	var value_38 StyleFrame = frame
-	var value_39 StyleData = value_38.Value
-	var value_40 uint32 = value_39.Background
-	var value_41 uint32 = value_40
-	var value_42 StyleFrame = frame
-	var value_43 StyleData = value_42.Value
-	var value_44 uint32 = value_43.BackgroundEnd
-	var value_45 uint32 = value_44
-	var value_46 FillStates = Surface_FillState(value_37, value_41, value_45)
-	frame.Fill = value_46
-	var value_47 bool = automatic
-	var value_48 bool = value_47
-	if value_48 {
-		var value_49 StateFlags = flags
-		var value_50 bool = value_49.Disabled
-		var value_51 bool = !value_50
-		value_48 = value_51
+	var value_5 int32 = tone
+	var value_6 int32 = emphasis
+	var value_7 int32 = state
+	var value_8 int32 = size
+	var value_9 bool = pill
+	var value_10 bool = circle
+	var value_11 bool = disabled
+	var value_12 bool = loading
+	var value_13 bool = selected
+	var value_14 Palette = palette
+	var value_15 Metrics = metrics
+	var value_16 StyleStates = styles
+	var value_17 StyleData = Button_ResolveAppearance(value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12, value_13, value_14, value_15, value_16)
+	frame.Value = value_17
+	var value_18 uint32 = frame.Value.Fields
+	var value_19 uint32 = frame.Value.Background
+	var value_20 uint32 = frame.Value.BackgroundEnd
+	var value_21 FillStates = Surface_FillState(value_18, value_19, value_20)
+	frame.Fill = value_21
+	var value_22 bool = automatic
+	var value_23 bool = value_22
+	if value_23 {
+		var value_24 bool = flags.Disabled
+		var value_25 bool = !value_24
+		value_23 = value_25
 	}
-	var value_52 bool = value_48
-	if value_52 {
-		var value_53 StateFlags = flags
-		var value_54 bool = value_53.Loading
-		var value_55 bool = !value_54
-		value_52 = value_55
+	var value_26 bool = value_23
+	if value_26 {
+		var value_27 bool = flags.Loading
+		var value_28 bool = !value_27
+		value_26 = value_28
 	}
-	var value_56 bool = value_52
-	if value_56 {
-		var value_57 StateFlags = flags
-		var value_58 bool = value_57.Selected
-		var value_59 bool = !value_58
-		value_56 = value_59
+	var value_29 bool = value_26
+	if value_29 {
+		var value_30 bool = flags.Selected
+		var value_31 bool = !value_30
+		value_29 = value_31
 	}
-	if value_56 {
-		var value_60 int32 = tone
-		var value_61 int32 = value_60
-		var value_62 int32 = emphasis
-		var value_63 int32 = value_62
-		var value_64 int32 = StatePolicyStateNormal
-		var value_65 int32 = value_64
-		var value_66 int32 = size
-		var value_67 int32 = value_66
-		var value_68 bool = pill
-		var value_69 bool = value_68
-		var value_70 bool = circle
-		var value_71 bool = value_70
-		var value_72 bool = false
-		var value_73 bool = value_72
-		var value_74 bool = false
-		var value_75 bool = value_74
-		var value_76 bool = false
-		var value_77 bool = value_76
-		var value_78 Palette = palette
-		var value_79 Palette = value_78
-		var value_80 Metrics = metrics
-		var value_81 Metrics = value_80
+	if value_29 {
+		var value_32 int32 = tone
+		var value_33 int32 = emphasis
+		var value_34 int32 = StatePolicyStateNormal
+		var value_35 int32 = size
+		var value_36 bool = pill
+		var value_37 bool = circle
+		var value_38 bool = false
+		var value_39 bool = false
+		var value_40 bool = false
+		var value_41 Palette = palette
+		var value_42 Metrics = metrics
+		var value_43 StyleStates = styles
+		var value_44 StyleData = Button_ResolveAppearance(value_32, value_33, value_34, value_35, value_36, value_37, value_38, value_39, value_40, value_41, value_42, value_43)
+		var normal StyleData = value_44
+		var value_45 int32 = tone
+		var value_46 int32 = emphasis
+		var value_47 int32 = StatePolicyStateHover
+		var value_48 int32 = size
+		var value_49 bool = pill
+		var value_50 bool = circle
+		var value_51 bool = false
+		var value_52 bool = false
+		var value_53 bool = false
+		var value_54 Palette = palette
+		var value_55 Metrics = metrics
+		var value_56 StyleStates = styles
+		var value_57 StyleData = Button_ResolveAppearance(value_45, value_46, value_47, value_48, value_49, value_50, value_51, value_52, value_53, value_54, value_55, value_56)
+		var hover StyleData = value_57
+		var value_58 int32 = tone
+		var value_59 int32 = emphasis
+		var value_60 int32 = StatePolicyStatePressed
+		var value_61 int32 = size
+		var value_62 bool = pill
+		var value_63 bool = circle
+		var value_64 bool = false
+		var value_65 bool = false
+		var value_66 bool = false
+		var value_67 Palette = palette
+		var value_68 Metrics = metrics
+		var value_69 StyleStates = styles
+		var value_70 StyleData = Button_ResolveAppearance(value_58, value_59, value_60, value_61, value_62, value_63, value_64, value_65, value_66, value_67, value_68, value_69)
+		var press StyleData = value_70
+		var value_71 int32 = tone
+		var value_72 int32 = emphasis
+		var value_73 int32 = StatePolicyStateFocus
+		var value_74 int32 = size
+		var value_75 bool = pill
+		var value_76 bool = circle
+		var value_77 bool = false
+		var value_78 bool = false
+		var value_79 bool = false
+		var value_80 Palette = palette
+		var value_81 Metrics = metrics
 		var value_82 StyleStates = styles
-		var value_83 StyleStates = value_82
-		var value_84 StyleData = Button_ResolveAppearance(value_61, value_63, value_65, value_67, value_69, value_71, value_73, value_75, value_77, value_79, value_81, value_83)
-		var normal StyleData = value_84
-		var value_85 int32 = tone
-		var value_86 int32 = value_85
-		var value_87 int32 = emphasis
-		var value_88 int32 = value_87
-		var value_89 int32 = StatePolicyStateHover
-		var value_90 int32 = value_89
-		var value_91 int32 = size
-		var value_92 int32 = value_91
-		var value_93 bool = pill
-		var value_94 bool = value_93
-		var value_95 bool = circle
-		var value_96 bool = value_95
-		var value_97 bool = false
-		var value_98 bool = value_97
-		var value_99 bool = false
-		var value_100 bool = value_99
-		var value_101 bool = false
-		var value_102 bool = value_101
-		var value_103 Palette = palette
-		var value_104 Palette = value_103
-		var value_105 Metrics = metrics
-		var value_106 Metrics = value_105
-		var value_107 StyleStates = styles
-		var value_108 StyleStates = value_107
-		var value_109 StyleData = Button_ResolveAppearance(value_86, value_88, value_90, value_92, value_94, value_96, value_98, value_100, value_102, value_104, value_106, value_108)
-		var hover StyleData = value_109
-		var value_110 int32 = tone
-		var value_111 int32 = value_110
-		var value_112 int32 = emphasis
-		var value_113 int32 = value_112
-		var value_114 int32 = StatePolicyStatePressed
-		var value_115 int32 = value_114
-		var value_116 int32 = size
-		var value_117 int32 = value_116
-		var value_118 bool = pill
-		var value_119 bool = value_118
-		var value_120 bool = circle
-		var value_121 bool = value_120
-		var value_122 bool = false
-		var value_123 bool = value_122
-		var value_124 bool = false
-		var value_125 bool = value_124
-		var value_126 bool = false
-		var value_127 bool = value_126
-		var value_128 Palette = palette
-		var value_129 Palette = value_128
-		var value_130 Metrics = metrics
-		var value_131 Metrics = value_130
-		var value_132 StyleStates = styles
-		var value_133 StyleStates = value_132
-		var value_134 StyleData = Button_ResolveAppearance(value_111, value_113, value_115, value_117, value_119, value_121, value_123, value_125, value_127, value_129, value_131, value_133)
-		var press StyleData = value_134
-		var value_135 int32 = tone
-		var value_136 int32 = value_135
-		var value_137 int32 = emphasis
-		var value_138 int32 = value_137
-		var value_139 int32 = StatePolicyStateFocus
-		var value_140 int32 = value_139
-		var value_141 int32 = size
-		var value_142 int32 = value_141
-		var value_143 bool = pill
-		var value_144 bool = value_143
-		var value_145 bool = circle
-		var value_146 bool = value_145
-		var value_147 bool = false
-		var value_148 bool = value_147
-		var value_149 bool = false
-		var value_150 bool = value_149
-		var value_151 bool = false
-		var value_152 bool = value_151
-		var value_153 Palette = palette
-		var value_154 Palette = value_153
-		var value_155 Metrics = metrics
-		var value_156 Metrics = value_155
-		var value_157 StyleStates = styles
-		var value_158 StyleStates = value_157
-		var value_159 StyleData = Button_ResolveAppearance(value_136, value_138, value_140, value_142, value_144, value_146, value_148, value_150, value_152, value_154, value_156, value_158)
-		var focus StyleData = value_159
-		var value_160 StyleFrame = frame
-		var value_161 StyleData = value_160.Value
-		var value_162 StyleData = value_161
-		var value_163 StyleData = normal
-		var value_164 StyleData = value_163
-		var value_165 StyleData = hover
-		var value_166 StyleData = value_165
-		var value_167 StyleData = press
-		var value_168 StyleData = value_167
-		var value_169 StyleData = focus
-		var value_170 StyleData = value_169
-		var value_171 float32 = h
-		var value_172 float32 = value_171
-		var value_173 float32 = p
-		var value_174 float32 = value_173
-		var value_175 float32 = f
-		var value_176 float32 = value_175
-		var value_177 StyleFrame = Style_TransitionFrame(value_162, value_164, value_166, value_168, value_170, value_172, value_174, value_176)
-		frame = value_177
+		var value_83 StyleData = Button_ResolveAppearance(value_71, value_72, value_73, value_74, value_75, value_76, value_77, value_78, value_79, value_80, value_81, value_82)
+		var focus StyleData = value_83
+		var value_84 StyleData = frame.Value
+		var value_85 StyleData = normal
+		var value_86 StyleData = hover
+		var value_87 StyleData = press
+		var value_88 StyleData = focus
+		var value_89 float32 = h
+		var value_90 float32 = p
+		var value_91 float32 = f
+		var value_92 StyleFrame = Style_TransitionFrame(value_84, value_85, value_86, value_87, value_88, value_89, value_90, value_91)
+		frame = value_92
 	}
-	var value_178 StyleFrame = frame
-	return value_178
+	var value_93 StyleFrame = frame
+	return value_93
 }
 
 func Button_MeasureSize(request ButtonMeasure) MeasuredSize {
 	var result MeasuredSize = MeasuredSize{}
-	var value_0 ButtonMeasure = request
-	var value_1 float32 = value_0.LabelHeight
-	var text_height float32 = value_1
-	var value_2 ButtonMeasure = request
-	var value_3 bool = value_2.IconOnly
-	if value_3 {
-		var value_4 float32 = 0.0
-		text_height = value_4
+	var value_0 float32 = request.LabelHeight
+	var text_height float32 = value_0
+	var value_1 bool = request.IconOnly
+	if value_1 {
+		var value_2 float32 = 0.0
+		text_height = value_2
 	}
-	var value_5 ButtonMeasure = request
-	var value_6 float32 = value_5.Height
-	var value_7 float32 = value_6
-	var value_8 ButtonMeasure = request
-	var value_9 float32 = value_8.MinimumHeight
-	var value_10 float32 = value_9
-	var value_11 float32 = text_height
-	var value_12 float32 = value_11
-	var value_13 ButtonMeasure = request
-	var value_14 float32 = value_13.PaddingY
-	var value_15 float32 = value_14
-	var value_16 float32 = Style_FitHeight(value_7, value_10, value_12, value_15)
-	result.Height = value_16
-	var value_17 MeasuredSize = result
-	var value_18 float32 = value_17.Height
-	var value_19 float32 = value_18
-	var value_20 ButtonMeasure = request
-	var value_21 float32 = value_20.LabelWidth
-	var value_22 float32 = value_21
-	var value_23 ButtonMeasure = request
-	var value_24 float32 = value_23.IconSize
-	var value_25 float32 = value_24
-	var value_26 ButtonMeasure = request
-	var value_27 float32 = value_26.Gap
-	var value_28 float32 = value_27
-	var value_29 ButtonMeasure = request
-	var value_30 float32 = value_29.PaddingX
-	var value_31 float32 = value_30
-	var value_32 ButtonMeasure = request
-	var value_33 bool = value_32.HasIcon
-	var value_34 bool = value_33
-	var value_35 ButtonMeasure = request
-	var value_36 bool = value_35.IconOnly
-	var value_37 bool = value_36
-	var value_38 ContentSize = Button_MeasureContent(value_19, value_22, value_25, value_28, value_31, value_34, value_37)
-	var content ContentSize = value_38
-	var value_39 ButtonMeasure = request
-	var value_40 float32 = value_39.Width
-	var value_41 float32 = value_40
-	var value_42 MeasuredSize = result
-	var value_43 float32 = value_42.Height
-	var value_44 float32 = value_43
-	var value_45 ContentSize = content
-	var value_46 float32 = value_45.Width
-	var value_47 float32 = value_46
-	var value_48 ButtonMeasure = request
-	var value_49 float32 = value_48.AvailableWidth
-	var value_50 float32 = value_49
-	var value_51 ButtonMeasure = request
-	var value_52 bool = value_51.FullWidth
-	var value_53 bool = value_52
-	var value_54 ButtonMeasure = request
-	var value_55 bool = value_54.Square
-	var value_56 bool = value_55
-	if !value_56 {
-		var value_57 ButtonMeasure = request
-		var value_58 bool = value_57.IconOnly
-		value_56 = value_58
+	var value_3 float32 = request.Height
+	var value_4 float32 = request.MinimumHeight
+	var value_5 float32 = text_height
+	var value_6 float32 = request.PaddingY
+	var value_7 float32 = Style_FitHeight(value_3, value_4, value_5, value_6)
+	result.Height = value_7
+	var value_8 float32 = result.Height
+	var value_9 float32 = request.LabelWidth
+	var value_10 float32 = request.IconSize
+	var value_11 float32 = request.Gap
+	var value_12 float32 = request.PaddingX
+	var value_13 bool = request.HasIcon
+	var value_14 bool = request.IconOnly
+	var value_15 ContentSize = Button_MeasureContent(value_8, value_9, value_10, value_11, value_12, value_13, value_14)
+	var content ContentSize = value_15
+	var value_16 float32 = request.Width
+	var value_17 float32 = result.Height
+	var value_18 float32 = content.Width
+	var value_19 float32 = request.AvailableWidth
+	var value_20 bool = request.FullWidth
+	var value_21 bool = request.Square
+	var value_22 bool = value_21
+	if !value_22 {
+		var value_23 bool = request.IconOnly
+		value_22 = value_23
 	}
-	var value_59 bool = value_56
-	var value_60 ButtonMeasure = request
-	var value_61 bool = value_60.Circle
-	var value_62 bool = value_61
-	var value_63 float32 = Button_ShapeWidth(value_41, value_44, value_47, value_50, value_53, value_59, value_62)
-	result.Width = value_63
-	var value_64 MeasuredSize = result
-	return value_64
+	var value_24 bool = request.Circle
+	var value_25 float32 = Button_ShapeWidth(value_16, value_17, value_18, value_19, value_20, value_22, value_24)
+	result.Width = value_25
+	var value_26 MeasuredSize = result
+	return value_26
 }
 
 func Button_MeasureContent(height float32, label_width float32, requested_icon_size float32, gap float32, padding_x float32, has_icon bool, icon_only bool) ContentSize {
@@ -856,78 +592,67 @@ func Button_MeasureContent(height float32, label_width float32, requested_icon_s
 func Button_ContentLayout(width float32, height float32, label_width float32, requested_icon_size float32, gap float32, has_icon bool, icon_only bool, trailing bool, offset_x float32, offset_y float32) ButtonContent {
 	var result ButtonContent = ButtonContent{}
 	var value_0 float32 = height
-	var value_1 float32 = value_0
-	var value_2 float32 = label_width
-	var value_3 float32 = value_2
-	var value_4 float32 = requested_icon_size
-	var value_5 float32 = value_4
-	var value_6 float32 = gap
-	var value_7 float32 = value_6
-	var value_8 float32 = 0.0
-	var value_9 float32 = value_8
-	var value_10 bool = has_icon
-	var value_11 bool = value_10
-	var value_12 bool = icon_only
-	var value_13 bool = value_12
-	var value_14 ContentSize = Button_MeasureContent(value_1, value_3, value_5, value_7, value_9, value_11, value_13)
-	var measured ContentSize = value_14
-	var value_15 ContentSize = measured
-	var value_16 float32 = value_15.IconSize
-	var icon_size float32 = value_16
-	var value_17 ContentSize = measured
-	var value_18 float32 = value_17.TextWidth
-	label_width = value_18
-	var value_19 ContentSize = measured
-	var value_20 float32 = value_19.Gap
-	gap = value_20
-	var value_21 float32 = width
-	var value_22 ContentSize = measured
-	var value_23 float32 = value_22.Width
-	var value_24 float32 = value_21 - value_23
-	var value_25 float32 = 0.5
-	var value_26 float32 = value_24 * value_25
-	var value_27 float32 = offset_x
-	var value_28 float32 = value_26 + value_27
-	var x float32 = value_28
-	var value_29 float32 = x
-	result.IconX = value_29
+	var value_1 float32 = label_width
+	var value_2 float32 = requested_icon_size
+	var value_3 float32 = gap
+	var value_4 float32 = 0.0
+	var value_5 bool = has_icon
+	var value_6 bool = icon_only
+	var value_7 ContentSize = Button_MeasureContent(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
+	var measured ContentSize = value_7
+	var value_8 float32 = measured.IconSize
+	var icon_size float32 = value_8
+	var value_9 float32 = measured.TextWidth
+	label_width = value_9
+	var value_10 float32 = measured.Gap
+	gap = value_10
+	var value_11 float32 = width
+	var value_12 float32 = measured.Width
+	var value_13 float32 = value_11 - value_12
+	var value_14 float32 = 0.5
+	var value_15 float32 = value_13 * value_14
+	var value_16 float32 = offset_x
+	var value_17 float32 = value_15 + value_16
+	var x float32 = value_17
+	var value_18 float32 = x
+	result.IconX = value_18
+	var value_19 float32 = height
+	var value_20 float32 = icon_size
+	var value_21 float32 = value_19 - value_20
+	var value_22 float32 = 0.5
+	var value_23 float32 = value_21 * value_22
+	var value_24 float32 = offset_y
+	var value_25 float32 = value_23 + value_24
+	result.IconY = value_25
+	var value_26 float32 = icon_size
+	result.IconSize = value_26
+	var value_27 float32 = x
+	result.TextX = value_27
+	var value_28 float32 = offset_y
+	result.TextY = value_28
+	var value_29 float32 = label_width
+	result.TextWidth = value_29
 	var value_30 float32 = height
-	var value_31 float32 = icon_size
-	var value_32 float32 = value_30 - value_31
-	var value_33 float32 = 0.5
-	var value_34 float32 = value_32 * value_33
-	var value_35 float32 = offset_y
-	var value_36 float32 = value_34 + value_35
-	result.IconY = value_36
-	var value_37 float32 = icon_size
-	result.IconSize = value_37
-	var value_38 float32 = x
-	result.TextX = value_38
-	var value_39 float32 = offset_y
-	result.TextY = value_39
-	var value_40 float32 = label_width
-	result.TextWidth = value_40
-	var value_41 float32 = height
-	result.TextHeight = value_41
-	var value_42 bool = has_icon
-	if value_42 {
-		var value_43 bool = trailing
-		if value_43 {
-			var value_44 float32 = result.IconX
-			var value_45 float32 = label_width
-			var value_46 float32 = gap
-			var value_47 float32 = value_45 + value_46
-			result.IconX = value_44 + value_47
+	result.TextHeight = value_30
+	var value_31 bool = has_icon
+	if value_31 {
+		var value_32 bool = trailing
+		if value_32 {
+			var value_33 float32 = result.IconX
+			var value_34 float32 = label_width
+			var value_35 float32 = gap
+			var value_36 float32 = value_34 + value_35
+			result.IconX = value_33 + value_36
 		} else {
-			var value_48 float32 = result.TextX
-			var value_49 float32 = icon_size
-			var value_50 float32 = gap
-			var value_51 float32 = value_49 + value_50
-			result.TextX = value_48 + value_51
+			var value_37 float32 = result.TextX
+			var value_38 float32 = icon_size
+			var value_39 float32 = gap
+			var value_40 float32 = value_38 + value_39
+			result.TextX = value_37 + value_40
 		}
 	}
-	var value_52 ButtonContent = result
-	return value_52
+	var value_41 ButtonContent = result
+	return value_41
 }
 
 func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {
@@ -1066,46 +791,34 @@ func Button_MixColor(from uint32, to uint32, amount uint32) uint32 {
 	var value_49 uint32 = uint32(number_533abbd6_bits(uint64(value_46), uint64(value_48), 32, false, 8))
 	var ta uint32 = value_49
 	var value_50 uint32 = fr
-	var value_51 uint32 = value_50
-	var value_52 uint32 = tr
-	var value_53 uint32 = value_52
-	var value_54 uint32 = amount
-	var value_55 uint32 = value_54
-	var value_56 uint32 = Button_MixByte(value_51, value_53, value_55)
-	var value_57 int32 = 24
-	var value_58 uint32 = uint32(number_533abbd6_bits(uint64(value_57), uint64(0), 32, false, 0))
-	var value_59 uint32 = uint32(number_533abbd6_bits(uint64(value_56), uint64(value_58), 32, false, 6))
-	var value_60 uint32 = fg
-	var value_61 uint32 = value_60
-	var value_62 uint32 = tg
-	var value_63 uint32 = value_62
-	var value_64 uint32 = amount
-	var value_65 uint32 = value_64
-	var value_66 uint32 = Button_MixByte(value_61, value_63, value_65)
-	var value_67 int32 = 16
-	var value_68 uint32 = uint32(number_533abbd6_bits(uint64(value_67), uint64(0), 32, false, 0))
-	var value_69 uint32 = uint32(number_533abbd6_bits(uint64(value_66), uint64(value_68), 32, false, 6))
-	var value_70 uint32 = uint32(number_533abbd6_bits(uint64(value_59), uint64(value_69), 32, false, 9))
-	var value_71 uint32 = fb
-	var value_72 uint32 = value_71
-	var value_73 uint32 = tb
-	var value_74 uint32 = value_73
+	var value_51 uint32 = tr
+	var value_52 uint32 = amount
+	var value_53 uint32 = Button_MixByte(value_50, value_51, value_52)
+	var value_54 int32 = 24
+	var value_55 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_53), uint64(value_55), 32, false, 6))
+	var value_57 uint32 = fg
+	var value_58 uint32 = tg
+	var value_59 uint32 = amount
+	var value_60 uint32 = Button_MixByte(value_57, value_58, value_59)
+	var value_61 int32 = 16
+	var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_61), uint64(0), 32, false, 0))
+	var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_62), 32, false, 6))
+	var value_64 uint32 = uint32(number_533abbd6_bits(uint64(value_56), uint64(value_63), 32, false, 9))
+	var value_65 uint32 = fb
+	var value_66 uint32 = tb
+	var value_67 uint32 = amount
+	var value_68 uint32 = Button_MixByte(value_65, value_66, value_67)
+	var value_69 int32 = 8
+	var value_70 uint32 = uint32(number_533abbd6_bits(uint64(value_69), uint64(0), 32, false, 0))
+	var value_71 uint32 = uint32(number_533abbd6_bits(uint64(value_68), uint64(value_70), 32, false, 6))
+	var value_72 uint32 = uint32(number_533abbd6_bits(uint64(value_64), uint64(value_71), 32, false, 9))
+	var value_73 uint32 = fa
+	var value_74 uint32 = ta
 	var value_75 uint32 = amount
-	var value_76 uint32 = value_75
-	var value_77 uint32 = Button_MixByte(value_72, value_74, value_76)
-	var value_78 int32 = 8
-	var value_79 uint32 = uint32(number_533abbd6_bits(uint64(value_78), uint64(0), 32, false, 0))
-	var value_80 uint32 = uint32(number_533abbd6_bits(uint64(value_77), uint64(value_79), 32, false, 6))
-	var value_81 uint32 = uint32(number_533abbd6_bits(uint64(value_70), uint64(value_80), 32, false, 9))
-	var value_82 uint32 = fa
-	var value_83 uint32 = value_82
-	var value_84 uint32 = ta
-	var value_85 uint32 = value_84
-	var value_86 uint32 = amount
-	var value_87 uint32 = value_86
-	var value_88 uint32 = Button_MixByte(value_83, value_85, value_87)
-	var value_89 uint32 = uint32(number_533abbd6_bits(uint64(value_81), uint64(value_88), 32, false, 9))
-	return value_89
+	var value_76 uint32 = Button_MixByte(value_73, value_74, value_75)
+	var value_77 uint32 = uint32(number_533abbd6_bits(uint64(value_72), uint64(value_76), 32, false, 9))
+	return value_77
 }
 
 func Button_ToneColor(tone int32, accent uint32, neutral uint32, danger uint32, success uint32, warning uint32) uint32 {
@@ -1188,945 +901,811 @@ func Button_LightSurface(color uint32) bool {
 
 func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface uint32, accent uint32, accent_hover uint32, accent_pressed uint32, neutral uint32, danger uint32, success uint32, warning uint32) uint32 {
 	var value_0 int32 = tone
-	var value_1 int32 = value_0
-	var value_2 uint32 = accent
-	var value_3 uint32 = value_2
-	var value_4 uint32 = neutral
-	var value_5 uint32 = value_4
-	var value_6 uint32 = danger
-	var value_7 uint32 = value_6
-	var value_8 uint32 = success
-	var value_9 uint32 = value_8
-	var value_10 uint32 = warning
-	var value_11 uint32 = value_10
-	var value_12 uint32 = Button_ToneColor(value_1, value_3, value_5, value_7, value_9, value_11)
-	var base uint32 = value_12
-	var value_13 uint32 = base
-	var background uint32 = value_13
-	var value_14 uint32 = surface
-	var value_15 uint32 = value_14
-	var value_16 bool = Button_LightSurface(value_15)
-	var light bool = value_16
-	var value_17 bool = light
-	var value_18 bool = !value_17
-	var value_19 bool = value_18
-	if value_19 {
-		var value_20 int32 = emphasis
-		var value_21 int32 = EmphasisPolicyEmphasisFilled
-		var value_22 bool = value_20 == value_21
-		value_19 = value_22
+	var value_1 uint32 = accent
+	var value_2 uint32 = neutral
+	var value_3 uint32 = danger
+	var value_4 uint32 = success
+	var value_5 uint32 = warning
+	var value_6 uint32 = Button_ToneColor(value_0, value_1, value_2, value_3, value_4, value_5)
+	var base uint32 = value_6
+	var value_7 uint32 = base
+	var background uint32 = value_7
+	var value_8 uint32 = surface
+	var value_9 bool = Button_LightSurface(value_8)
+	var light bool = value_9
+	var value_10 bool = light
+	var value_11 bool = !value_10
+	var value_12 bool = value_11
+	if value_12 {
+		var value_13 int32 = emphasis
+		var value_14 int32 = EmphasisPolicyEmphasisFilled
+		var value_15 bool = value_13 == value_14
+		value_12 = value_15
 	}
-	var value_23 bool = value_19
-	if value_23 {
-		var value_24 int32 = tone
-		var value_25 int32 = TonePolicyToneAccent
-		var value_26 bool = value_24 != value_25
-		value_23 = value_26
+	var value_16 bool = value_12
+	if value_16 {
+		var value_17 int32 = tone
+		var value_18 int32 = TonePolicyToneAccent
+		var value_19 bool = value_17 != value_18
+		value_16 = value_19
 	}
-	var value_27 bool = value_23
-	if value_27 {
+	var value_20 bool = value_16
+	if value_20 {
+		var value_21 int32 = tone
+		var value_22 int32 = TonePolicyToneNeutral
+		var value_23 bool = value_21 != value_22
+		value_20 = value_23
+	}
+	if value_20 {
+		var value_24 uint32 = surface
+		var value_25 uint32 = base
+		var value_26 uint32 = 32
+		var value_27 uint32 = Button_MixColor(value_24, value_25, value_26)
+		background = value_27
 		var value_28 int32 = tone
-		var value_29 int32 = TonePolicyToneNeutral
-		var value_30 bool = value_28 != value_29
-		value_27 = value_30
-	}
-	if value_27 {
-		var value_31 uint32 = surface
-		var value_32 uint32 = value_31
-		var value_33 uint32 = base
-		var value_34 uint32 = value_33
-		var value_35 uint32 = 32
-		var value_36 uint32 = value_35
-		var value_37 uint32 = Button_MixColor(value_32, value_34, value_36)
-		background = value_37
-		var value_38 int32 = tone
-		var value_39 int32 = TonePolicyToneDanger
-		var value_40 bool = value_38 == value_39
-		if value_40 {
-			var value_41 uint32 = surface
-			var value_42 uint32 = value_41
-			var value_43 uint32 = base
-			var value_44 uint32 = value_43
-			var value_45 uint32 = 57
-			var value_46 uint32 = value_45
-			var value_47 uint32 = Button_MixColor(value_42, value_44, value_46)
-			background = value_47
+		var value_29 int32 = TonePolicyToneDanger
+		var value_30 bool = value_28 == value_29
+		if value_30 {
+			var value_31 uint32 = surface
+			var value_32 uint32 = base
+			var value_33 uint32 = 57
+			var value_34 uint32 = Button_MixColor(value_31, value_32, value_33)
+			background = value_34
 		}
+		var value_35 int32 = tone
+		var value_36 int32 = TonePolicyToneWarning
+		var value_37 bool = value_35 == value_36
+		if value_37 {
+			var value_38 uint32 = surface
+			var value_39 uint32 = base
+			var value_40 uint32 = 18
+			var value_41 uint32 = Button_MixColor(value_38, value_39, value_40)
+			background = value_41
+		}
+	}
+	var value_42 bool = light
+	var value_43 bool = value_42
+	if value_43 {
+		var value_44 int32 = emphasis
+		var value_45 int32 = EmphasisPolicyEmphasisFilled
+		var value_46 bool = value_44 == value_45
+		value_43 = value_46
+	}
+	var value_47 bool = value_43
+	if value_47 {
 		var value_48 int32 = tone
-		var value_49 int32 = TonePolicyToneWarning
-		var value_50 bool = value_48 == value_49
-		if value_50 {
-			var value_51 uint32 = surface
-			var value_52 uint32 = value_51
-			var value_53 uint32 = base
-			var value_54 uint32 = value_53
-			var value_55 uint32 = 18
-			var value_56 uint32 = value_55
-			var value_57 uint32 = Button_MixColor(value_52, value_54, value_56)
-			background = value_57
+		var value_49 int32 = TonePolicyToneAccent
+		var value_50 bool = value_48 != value_49
+		value_47 = value_50
+	}
+	if value_47 {
+		var value_51 uint32 = surface
+		var value_52 uint32 = base
+		var value_53 uint32 = 16
+		var value_54 uint32 = Button_MixColor(value_51, value_52, value_53)
+		background = value_54
+		var value_55 int32 = tone
+		var value_56 int32 = TonePolicyToneDanger
+		var value_57 bool = value_55 == value_56
+		var value_58 bool = value_57
+		if !value_58 {
+			var value_59 int32 = tone
+			var value_60 int32 = TonePolicyToneWarning
+			var value_61 bool = value_59 == value_60
+			value_58 = value_61
 		}
-	}
-	var value_58 bool = light
-	var value_59 bool = value_58
-	if value_59 {
-		var value_60 int32 = emphasis
-		var value_61 int32 = EmphasisPolicyEmphasisFilled
-		var value_62 bool = value_60 == value_61
-		value_59 = value_62
-	}
-	var value_63 bool = value_59
-	if value_63 {
-		var value_64 int32 = tone
-		var value_65 int32 = TonePolicyToneAccent
-		var value_66 bool = value_64 != value_65
-		value_63 = value_66
-	}
-	if value_63 {
-		var value_67 uint32 = surface
-		var value_68 uint32 = value_67
-		var value_69 uint32 = base
-		var value_70 uint32 = value_69
-		var value_71 uint32 = 16
-		var value_72 uint32 = value_71
-		var value_73 uint32 = Button_MixColor(value_68, value_70, value_72)
-		background = value_73
-		var value_74 int32 = tone
-		var value_75 int32 = TonePolicyToneDanger
-		var value_76 bool = value_74 == value_75
-		var value_77 bool = value_76
-		if !value_77 {
-			var value_78 int32 = tone
-			var value_79 int32 = TonePolicyToneWarning
-			var value_80 bool = value_78 == value_79
-			value_77 = value_80
-		}
-		if value_77 {
-			var value_81 int32 = 18
-			var value_82 uint32 = uint32(number_533abbd6_bits(uint64(value_81), uint64(0), 32, false, 0))
-			var amount uint32 = value_82
-			var value_83 int32 = tone
-			var value_84 int32 = TonePolicyToneWarning
-			var value_85 bool = value_83 == value_84
-			var value_86 bool = value_85
-			if value_86 {
-				var value_87 int32 = state
-				var value_88 int32 = StatePolicyStateDisabled
-				var value_89 bool = value_87 != value_88
-				value_86 = value_89
+		if value_58 {
+			var value_62 int32 = 18
+			var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_62), uint64(0), 32, false, 0))
+			var amount uint32 = value_63
+			var value_64 int32 = tone
+			var value_65 int32 = TonePolicyToneWarning
+			var value_66 bool = value_64 == value_65
+			var value_67 bool = value_66
+			if value_67 {
+				var value_68 int32 = state
+				var value_69 int32 = StatePolicyStateDisabled
+				var value_70 bool = value_68 != value_69
+				value_67 = value_70
 			}
-			if value_86 {
-				var value_90 int32 = 20
-				var value_91 uint32 = uint32(number_533abbd6_bits(uint64(value_90), uint64(0), 32, false, 0))
-				amount = value_91
+			if value_67 {
+				var value_71 int32 = 20
+				var value_72 uint32 = uint32(number_533abbd6_bits(uint64(value_71), uint64(0), 32, false, 0))
+				amount = value_72
 			}
-			var value_92 uint32 = surface
-			var value_93 uint32 = value_92
-			var value_94 uint32 = base
-			var value_95 uint32 = value_94
-			var value_96 int32 = 255
-			var value_97 uint32 = uint32(number_533abbd6_bits(uint64(value_96), uint64(0), 32, false, 0))
-			var value_98 uint32 = value_97
-			var value_99 uint32 = Surface_ChromaColor(value_95, value_98)
-			var value_100 uint32 = value_99
-			var value_101 uint32 = amount
-			var value_102 uint32 = value_101
-			var value_103 uint32 = Button_MixColor(value_93, value_100, value_102)
-			background = value_103
+			var value_73 uint32 = surface
+			var value_74 uint32 = base
+			var value_75 int32 = 255
+			var value_76 uint32 = uint32(number_533abbd6_bits(uint64(value_75), uint64(0), 32, false, 0))
+			var value_77 uint32 = Surface_ChromaColor(value_74, value_76)
+			var value_78 uint32 = amount
+			var value_79 uint32 = Button_MixColor(value_73, value_77, value_78)
+			background = value_79
 		}
-		var value_104 int32 = tone
-		var value_105 int32 = TonePolicyToneSuccess
-		var value_106 bool = value_104 == value_105
-		if value_106 {
-			var value_107 uint32 = surface
-			var value_108 uint32 = value_107
-			var value_109 uint32 = base
-			var value_110 uint32 = value_109
-			var value_111 int32 = 200
-			var value_112 uint32 = uint32(number_533abbd6_bits(uint64(value_111), uint64(0), 32, false, 0))
-			var value_113 uint32 = value_112
-			var value_114 uint32 = Surface_ChromaColor(value_110, value_113)
-			var value_115 uint32 = value_114
-			var value_116 uint32 = 20
-			var value_117 uint32 = value_116
-			var value_118 uint32 = Button_MixColor(value_108, value_115, value_117)
-			background = value_118
+		var value_80 int32 = tone
+		var value_81 int32 = TonePolicyToneSuccess
+		var value_82 bool = value_80 == value_81
+		if value_82 {
+			var value_83 uint32 = surface
+			var value_84 uint32 = base
+			var value_85 int32 = 200
+			var value_86 uint32 = uint32(number_533abbd6_bits(uint64(value_85), uint64(0), 32, false, 0))
+			var value_87 uint32 = Surface_ChromaColor(value_84, value_86)
+			var value_88 uint32 = 20
+			var value_89 uint32 = Button_MixColor(value_83, value_87, value_88)
+			background = value_89
 		}
 	}
-	var value_119 int32 = emphasis
-	var value_120 int32 = EmphasisPolicyEmphasisSoft
-	var value_121 bool = value_119 == value_120
-	if value_121 {
-		var value_122 uint32 = surface
-		var value_123 uint32 = value_122
-		var value_124 uint32 = base
-		var value_125 uint32 = value_124
-		var value_126 uint32 = 14
-		var value_127 uint32 = value_126
-		var value_128 uint32 = Button_MixColor(value_123, value_125, value_127)
-		background = value_128
-		var value_129 bool = light
-		if value_129 {
-			var value_130 uint32 = surface
-			var value_131 uint32 = value_130
-			var value_132 uint32 = base
-			var value_133 uint32 = value_132
-			var value_134 uint32 = 6
-			var value_135 uint32 = value_134
-			var value_136 uint32 = Button_MixColor(value_131, value_133, value_135)
-			background = value_136
+	var value_90 int32 = emphasis
+	var value_91 int32 = EmphasisPolicyEmphasisSoft
+	var value_92 bool = value_90 == value_91
+	if value_92 {
+		var value_93 uint32 = surface
+		var value_94 uint32 = base
+		var value_95 uint32 = 14
+		var value_96 uint32 = Button_MixColor(value_93, value_94, value_95)
+		background = value_96
+		var value_97 bool = light
+		if value_97 {
+			var value_98 uint32 = surface
+			var value_99 uint32 = base
+			var value_100 uint32 = 6
+			var value_101 uint32 = Button_MixColor(value_98, value_99, value_100)
+			background = value_101
 		}
-		var value_137 bool = light
-		var value_138 bool = value_137
-		if value_138 {
-			var value_139 int32 = tone
-			var value_140 int32 = TonePolicyToneNeutral
-			var value_141 bool = value_139 == value_140
-			value_138 = value_141
+		var value_102 bool = light
+		var value_103 bool = value_102
+		if value_103 {
+			var value_104 int32 = tone
+			var value_105 int32 = TonePolicyToneNeutral
+			var value_106 bool = value_104 == value_105
+			value_103 = value_106
 		}
-		if value_138 {
-			var value_142 uint32 = base
-			background = value_142
+		if value_103 {
+			var value_107 uint32 = base
+			background = value_107
 		}
-		var value_143 bool = light
-		var value_144 bool = !value_143
-		var value_145 bool = value_144
-		if value_145 {
-			var value_146 int32 = tone
-			var value_147 int32 = TonePolicyToneNeutral
-			var value_148 bool = value_146 == value_147
-			value_145 = value_148
+		var value_108 bool = light
+		var value_109 bool = !value_108
+		var value_110 bool = value_109
+		if value_110 {
+			var value_111 int32 = tone
+			var value_112 int32 = TonePolicyToneNeutral
+			var value_113 bool = value_111 == value_112
+			value_110 = value_113
 		}
-		if value_145 {
-			var value_149 uint32 = surface
-			var value_150 uint32 = value_149
-			var value_151 uint32 = base
-			var value_152 uint32 = value_151
-			var value_153 uint32 = 85
-			var value_154 uint32 = value_153
-			var value_155 uint32 = Button_MixColor(value_150, value_152, value_154)
-			background = value_155
+		if value_110 {
+			var value_114 uint32 = surface
+			var value_115 uint32 = base
+			var value_116 uint32 = 85
+			var value_117 uint32 = Button_MixColor(value_114, value_115, value_116)
+			background = value_117
 		}
 	}
-	var value_156 int32 = emphasis
-	var value_157 int32 = EmphasisPolicyEmphasisOutline
-	var value_158 bool = value_156 == value_157
-	if value_158 {
-		var value_159 uint32 = surface
-		background = value_159
-		var value_160 bool = light
-		if value_160 {
-			var value_161 uint32 = surface
-			var value_162 uint32 = value_161
-			var value_163 uint32 = base
-			var value_164 uint32 = value_163
-			var value_165 uint32 = 4
-			var value_166 uint32 = value_165
-			var value_167 uint32 = Button_MixColor(value_162, value_164, value_166)
-			var tinted uint32 = value_167
-			var value_168 uint32 = tinted
-			var value_169 int32 = 8
-			var value_170 uint32 = uint32(number_533abbd6_bits(uint64(value_169), uint64(0), 32, false, 0))
-			var value_171 uint32 = uint32(number_533abbd6_bits(uint64(value_168), uint64(value_170), 32, false, 7))
-			var value_172 int32 = 8
-			var value_173 uint32 = uint32(number_533abbd6_bits(uint64(value_172), uint64(0), 32, false, 0))
-			var value_174 uint32 = uint32(number_533abbd6_bits(uint64(value_171), uint64(value_173), 32, false, 6))
-			var value_175 uint32 = surface
-			var value_176 int32 = 255
-			var value_177 uint32 = uint32(number_533abbd6_bits(uint64(value_176), uint64(0), 32, false, 0))
-			var value_178 uint32 = uint32(number_533abbd6_bits(uint64(value_175), uint64(value_177), 32, false, 8))
-			var value_179 uint32 = uint32(number_533abbd6_bits(uint64(value_174), uint64(value_178), 32, false, 9))
-			background = value_179
+	var value_118 int32 = emphasis
+	var value_119 int32 = EmphasisPolicyEmphasisOutline
+	var value_120 bool = value_118 == value_119
+	if value_120 {
+		var value_121 uint32 = surface
+		background = value_121
+		var value_122 bool = light
+		if value_122 {
+			var value_123 uint32 = surface
+			var value_124 uint32 = base
+			var value_125 uint32 = 4
+			var value_126 uint32 = Button_MixColor(value_123, value_124, value_125)
+			var tinted uint32 = value_126
+			var value_127 uint32 = tinted
+			var value_128 int32 = 8
+			var value_129 uint32 = uint32(number_533abbd6_bits(uint64(value_128), uint64(0), 32, false, 0))
+			var value_130 uint32 = uint32(number_533abbd6_bits(uint64(value_127), uint64(value_129), 32, false, 7))
+			var value_131 int32 = 8
+			var value_132 uint32 = uint32(number_533abbd6_bits(uint64(value_131), uint64(0), 32, false, 0))
+			var value_133 uint32 = uint32(number_533abbd6_bits(uint64(value_130), uint64(value_132), 32, false, 6))
+			var value_134 uint32 = surface
+			var value_135 int32 = 255
+			var value_136 uint32 = uint32(number_533abbd6_bits(uint64(value_135), uint64(0), 32, false, 0))
+			var value_137 uint32 = uint32(number_533abbd6_bits(uint64(value_134), uint64(value_136), 32, false, 8))
+			var value_138 uint32 = uint32(number_533abbd6_bits(uint64(value_133), uint64(value_137), 32, false, 9))
+			background = value_138
 		}
 	}
-	var value_180 int32 = emphasis
-	var value_181 int32 = EmphasisPolicyEmphasisGhost
-	var value_182 bool = value_180 == value_181
-	if value_182 {
-		var value_183 uint32 = surface
-		background = value_183
+	var value_139 int32 = emphasis
+	var value_140 int32 = EmphasisPolicyEmphasisGhost
+	var value_141 bool = value_139 == value_140
+	if value_141 {
+		var value_142 uint32 = surface
+		background = value_142
 	}
-	var value_184 int32 = emphasis
-	var value_185 int32 = EmphasisPolicyEmphasisLink
-	var value_186 bool = value_184 == value_185
-	if value_186 {
-		var value_187 uint32 = surface
-		background = value_187
+	var value_143 int32 = emphasis
+	var value_144 int32 = EmphasisPolicyEmphasisLink
+	var value_145 bool = value_143 == value_144
+	if value_145 {
+		var value_146 uint32 = surface
+		background = value_146
 	}
-	var value_188 int32 = state
-	var value_189 int32 = StatePolicyStateHover
-	var value_190 bool = value_188 == value_189
-	if value_190 {
-		var value_191 bool = light
-		var value_192 bool = !value_191
-		var value_193 bool = value_192
-		if value_193 {
-			var value_194 int32 = tone
-			var value_195 int32 = TonePolicyToneNeutral
-			var value_196 bool = value_194 == value_195
-			value_193 = value_196
+	var value_147 int32 = state
+	var value_148 int32 = StatePolicyStateHover
+	var value_149 bool = value_147 == value_148
+	if value_149 {
+		var value_150 bool = light
+		var value_151 bool = !value_150
+		var value_152 bool = value_151
+		if value_152 {
+			var value_153 int32 = tone
+			var value_154 int32 = TonePolicyToneNeutral
+			var value_155 bool = value_153 == value_154
+			value_152 = value_155
 		}
-		var value_197 bool = value_193
-		if value_197 {
-			var value_198 int32 = emphasis
-			var value_199 int32 = EmphasisPolicyEmphasisSoft
-			var value_200 bool = value_198 == value_199
-			value_197 = value_200
+		var value_156 bool = value_152
+		if value_156 {
+			var value_157 int32 = emphasis
+			var value_158 int32 = EmphasisPolicyEmphasisSoft
+			var value_159 bool = value_157 == value_158
+			value_156 = value_159
 		}
-		if value_197 {
-			var value_201 uint32 = background
-			var value_202 uint32 = value_201
-			var value_203 uint32 = accent_hover
-			var value_204 uint32 = value_203
-			var value_205 uint32 = 12
-			var value_206 uint32 = value_205
-			var value_207 uint32 = Button_MixColor(value_202, value_204, value_206)
-			return value_207
+		if value_156 {
+			var value_160 uint32 = background
+			var value_161 uint32 = accent_hover
+			var value_162 uint32 = 12
+			var value_163 uint32 = Button_MixColor(value_160, value_161, value_162)
+			return value_163
 		}
-		var value_208 bool = light
-		var value_209 bool = !value_208
-		var value_210 bool = value_209
-		if value_210 {
-			var value_211 int32 = emphasis
-			var value_212 int32 = EmphasisPolicyEmphasisFilled
-			var value_213 bool = value_211 == value_212
-			value_210 = value_213
+		var value_164 bool = light
+		var value_165 bool = !value_164
+		var value_166 bool = value_165
+		if value_166 {
+			var value_167 int32 = emphasis
+			var value_168 int32 = EmphasisPolicyEmphasisFilled
+			var value_169 bool = value_167 == value_168
+			value_166 = value_169
 		}
-		var value_214 bool = value_210
-		if value_214 {
-			var value_215 int32 = tone
-			var value_216 int32 = TonePolicyToneAccent
-			var value_217 bool = value_215 != value_216
-			value_214 = value_217
+		var value_170 bool = value_166
+		if value_170 {
+			var value_171 int32 = tone
+			var value_172 int32 = TonePolicyToneAccent
+			var value_173 bool = value_171 != value_172
+			value_170 = value_173
 		}
-		var value_218 bool = value_214
-		if value_218 {
-			var value_219 int32 = tone
-			var value_220 int32 = TonePolicyToneNeutral
-			var value_221 bool = value_219 != value_220
-			value_218 = value_221
+		var value_174 bool = value_170
+		if value_174 {
+			var value_175 int32 = tone
+			var value_176 int32 = TonePolicyToneNeutral
+			var value_177 bool = value_175 != value_176
+			value_174 = value_177
 		}
-		if value_218 {
-			var value_222 int32 = tone
-			var value_223 int32 = TonePolicyToneDanger
-			var value_224 bool = value_222 == value_223
-			if value_224 {
-				var value_225 uint32 = surface
-				var value_226 uint32 = value_225
-				var value_227 uint32 = base
-				var value_228 uint32 = value_227
-				var value_229 uint32 = 65
-				var value_230 uint32 = value_229
-				var value_231 uint32 = Button_MixColor(value_226, value_228, value_230)
+		if value_174 {
+			var value_178 int32 = tone
+			var value_179 int32 = TonePolicyToneDanger
+			var value_180 bool = value_178 == value_179
+			if value_180 {
+				var value_181 uint32 = surface
+				var value_182 uint32 = base
+				var value_183 uint32 = 65
+				var value_184 uint32 = Button_MixColor(value_181, value_182, value_183)
+				return value_184
+			}
+			var value_185 int32 = tone
+			var value_186 int32 = TonePolicyToneWarning
+			var value_187 bool = value_185 == value_186
+			if value_187 {
+				var value_188 uint32 = surface
+				var value_189 uint32 = base
+				var value_190 uint32 = 36
+				var value_191 uint32 = Button_MixColor(value_188, value_189, value_190)
+				return value_191
+			}
+			var value_192 uint32 = surface
+			var value_193 uint32 = base
+			var value_194 uint32 = 58
+			var value_195 uint32 = Button_MixColor(value_192, value_193, value_194)
+			return value_195
+		}
+		var value_196 int32 = tone
+		var value_197 int32 = TonePolicyToneAccent
+		var value_198 bool = value_196 == value_197
+		var value_199 bool = value_198
+		if value_199 {
+			var value_200 int32 = emphasis
+			var value_201 int32 = EmphasisPolicyEmphasisFilled
+			var value_202 bool = value_200 == value_201
+			value_199 = value_202
+		}
+		if value_199 {
+			var value_203 bool = light
+			if value_203 {
+				var value_204 uint32 = accent_hover
+				var value_205 uint32 = surface
+				var value_206 uint32 = 46
+				var value_207 uint32 = Button_MixColor(value_204, value_205, value_206)
+				return value_207
+			}
+			var value_208 uint32 = accent
+			var value_209 uint32 = accent_hover
+			var value_210 uint32 = 15
+			var value_211 uint32 = Button_MixColor(value_208, value_209, value_210)
+			return value_211
+		}
+		var value_212 bool = light
+		if value_212 {
+			var value_213 int32 = emphasis
+			var value_214 int32 = EmphasisPolicyEmphasisGhost
+			var value_215 bool = value_213 == value_214
+			if value_215 {
+				var value_216 uint32 = surface
+				var value_217 uint32 = base
+				var value_218 uint32 = 5
+				var value_219 uint32 = Button_MixColor(value_216, value_217, value_218)
+				var tinted uint32 = value_219
+				var value_220 uint32 = tinted
+				var value_221 int32 = 8
+				var value_222 uint32 = uint32(number_533abbd6_bits(uint64(value_221), uint64(0), 32, false, 0))
+				var value_223 uint32 = uint32(number_533abbd6_bits(uint64(value_220), uint64(value_222), 32, false, 7))
+				var value_224 int32 = 8
+				var value_225 uint32 = uint32(number_533abbd6_bits(uint64(value_224), uint64(0), 32, false, 0))
+				var value_226 uint32 = uint32(number_533abbd6_bits(uint64(value_223), uint64(value_225), 32, false, 6))
+				var value_227 uint32 = surface
+				var value_228 int32 = 255
+				var value_229 uint32 = uint32(number_533abbd6_bits(uint64(value_228), uint64(0), 32, false, 0))
+				var value_230 uint32 = uint32(number_533abbd6_bits(uint64(value_227), uint64(value_229), 32, false, 8))
+				var value_231 uint32 = uint32(number_533abbd6_bits(uint64(value_226), uint64(value_230), 32, false, 9))
 				return value_231
 			}
-			var value_232 int32 = tone
-			var value_233 int32 = TonePolicyToneWarning
+			var value_232 int32 = emphasis
+			var value_233 int32 = EmphasisPolicyEmphasisOutline
 			var value_234 bool = value_232 == value_233
-			if value_234 {
-				var value_235 uint32 = surface
-				var value_236 uint32 = value_235
-				var value_237 uint32 = base
-				var value_238 uint32 = value_237
-				var value_239 uint32 = 36
-				var value_240 uint32 = value_239
-				var value_241 uint32 = Button_MixColor(value_236, value_238, value_240)
-				return value_241
+			var value_235 bool = value_234
+			if !value_235 {
+				var value_236 int32 = emphasis
+				var value_237 int32 = EmphasisPolicyEmphasisLink
+				var value_238 bool = value_236 == value_237
+				value_235 = value_238
 			}
-			var value_242 uint32 = surface
-			var value_243 uint32 = value_242
-			var value_244 uint32 = base
-			var value_245 uint32 = value_244
-			var value_246 uint32 = 58
-			var value_247 uint32 = value_246
-			var value_248 uint32 = Button_MixColor(value_243, value_245, value_247)
-			return value_248
-		}
-		var value_249 int32 = tone
-		var value_250 int32 = TonePolicyToneAccent
-		var value_251 bool = value_249 == value_250
-		var value_252 bool = value_251
-		if value_252 {
-			var value_253 int32 = emphasis
-			var value_254 int32 = EmphasisPolicyEmphasisFilled
-			var value_255 bool = value_253 == value_254
-			value_252 = value_255
-		}
-		if value_252 {
-			var value_256 bool = light
-			if value_256 {
-				var value_257 uint32 = accent_hover
-				var value_258 uint32 = value_257
-				var value_259 uint32 = surface
-				var value_260 uint32 = value_259
-				var value_261 uint32 = 46
-				var value_262 uint32 = value_261
-				var value_263 uint32 = Button_MixColor(value_258, value_260, value_262)
-				return value_263
+			if value_235 {
+				var value_239 uint32 = surface
+				var value_240 uint32 = base
+				var value_241 uint32 = 3
+				var value_242 uint32 = Button_MixColor(value_239, value_240, value_241)
+				return value_242
 			}
-			var value_264 uint32 = accent
-			var value_265 uint32 = value_264
-			var value_266 uint32 = accent_hover
-			var value_267 uint32 = value_266
-			var value_268 uint32 = 15
-			var value_269 uint32 = value_268
-			var value_270 uint32 = Button_MixColor(value_265, value_267, value_269)
-			return value_270
+			var value_243 uint32 = background
+			var value_244 uint32 = surface
+			var value_245 uint32 = 16
+			var value_246 uint32 = Button_MixColor(value_243, value_244, value_245)
+			return value_246
 		}
-		var value_271 bool = light
-		if value_271 {
-			var value_272 int32 = emphasis
-			var value_273 int32 = EmphasisPolicyEmphasisGhost
-			var value_274 bool = value_272 == value_273
-			if value_274 {
-				var value_275 uint32 = surface
-				var value_276 uint32 = value_275
+		var value_247 uint32 = background
+		var value_248 uint32 = base
+		var value_249 uint32 = 8
+		var value_250 uint32 = Button_MixColor(value_247, value_248, value_249)
+		return value_250
+	}
+	var value_251 int32 = state
+	var value_252 int32 = StatePolicyStatePressed
+	var value_253 bool = value_251 == value_252
+	if value_253 {
+		var value_254 bool = light
+		if value_254 {
+			var value_255 int32 = tone
+			var value_256 int32 = TonePolicyToneAccent
+			var value_257 bool = value_255 == value_256
+			var value_258 bool = value_257
+			if value_258 {
+				var value_259 int32 = emphasis
+				var value_260 int32 = EmphasisPolicyEmphasisFilled
+				var value_261 bool = value_259 == value_260
+				value_258 = value_261
+			}
+			if value_258 {
+				var value_262 uint32 = surface
+				var value_263 uint32 = base
+				var value_264 uint32 = accent_pressed
+				var value_265 uint32 = 30
+				var value_266 uint32 = Button_MixColor(value_263, value_264, value_265)
+				var value_267 uint32 = 18
+				var value_268 uint32 = Button_MixColor(value_262, value_266, value_267)
+				return value_268
+			}
+			var value_269 int32 = emphasis
+			var value_270 int32 = EmphasisPolicyEmphasisOutline
+			var value_271 bool = value_269 == value_270
+			var value_272 bool = value_271
+			if !value_272 {
+				var value_273 int32 = emphasis
+				var value_274 int32 = EmphasisPolicyEmphasisLink
+				var value_275 bool = value_273 == value_274
+				value_272 = value_275
+			}
+			if value_272 {
+				var value_276 uint32 = surface
 				var value_277 uint32 = base
-				var value_278 uint32 = value_277
-				var value_279 uint32 = 5
-				var value_280 uint32 = value_279
-				var value_281 uint32 = Button_MixColor(value_276, value_278, value_280)
-				var tinted uint32 = value_281
-				var value_282 uint32 = tinted
-				var value_283 int32 = 8
-				var value_284 uint32 = uint32(number_533abbd6_bits(uint64(value_283), uint64(0), 32, false, 0))
-				var value_285 uint32 = uint32(number_533abbd6_bits(uint64(value_282), uint64(value_284), 32, false, 7))
-				var value_286 int32 = 8
-				var value_287 uint32 = uint32(number_533abbd6_bits(uint64(value_286), uint64(0), 32, false, 0))
-				var value_288 uint32 = uint32(number_533abbd6_bits(uint64(value_285), uint64(value_287), 32, false, 6))
-				var value_289 uint32 = surface
-				var value_290 int32 = 255
-				var value_291 uint32 = uint32(number_533abbd6_bits(uint64(value_290), uint64(0), 32, false, 0))
-				var value_292 uint32 = uint32(number_533abbd6_bits(uint64(value_289), uint64(value_291), 32, false, 8))
-				var value_293 uint32 = uint32(number_533abbd6_bits(uint64(value_288), uint64(value_292), 32, false, 9))
-				return value_293
+				var value_278 uint32 = 3
+				var value_279 uint32 = Button_MixColor(value_276, value_277, value_278)
+				return value_279
 			}
-			var value_294 int32 = emphasis
-			var value_295 int32 = EmphasisPolicyEmphasisOutline
-			var value_296 bool = value_294 == value_295
-			var value_297 bool = value_296
-			if !value_297 {
-				var value_298 int32 = emphasis
-				var value_299 int32 = EmphasisPolicyEmphasisLink
-				var value_300 bool = value_298 == value_299
-				value_297 = value_300
+			var value_280 int32 = tone
+			var value_281 int32 = TonePolicyToneDanger
+			var value_282 bool = value_280 == value_281
+			var value_283 bool = value_282
+			if value_283 {
+				var value_284 int32 = emphasis
+				var value_285 int32 = EmphasisPolicyEmphasisFilled
+				var value_286 bool = value_284 == value_285
+				value_283 = value_286
 			}
-			if value_297 {
-				var value_301 uint32 = surface
-				var value_302 uint32 = value_301
-				var value_303 uint32 = base
-				var value_304 uint32 = value_303
-				var value_305 uint32 = 3
-				var value_306 uint32 = value_305
-				var value_307 uint32 = Button_MixColor(value_302, value_304, value_306)
-				return value_307
+			if value_283 {
+				var value_287 uint32 = background
+				var value_288 uint32 = surface
+				var value_289 uint32 = 20
+				var value_290 uint32 = Button_MixColor(value_287, value_288, value_289)
+				return value_290
 			}
-			var value_308 uint32 = background
-			var value_309 uint32 = value_308
+			var value_291 uint32 = background
+			return value_291
+		}
+		var value_292 int32 = emphasis
+		var value_293 int32 = EmphasisPolicyEmphasisFilled
+		var value_294 bool = value_292 == value_293
+		var value_295 bool = value_294
+		if value_295 {
+			var value_296 int32 = tone
+			var value_297 int32 = TonePolicyToneNeutral
+			var value_298 bool = value_296 != value_297
+			value_295 = value_298
+		}
+		var value_299 bool = value_295
+		if value_299 {
+			var value_300 int32 = tone
+			var value_301 int32 = TonePolicyToneAccent
+			var value_302 bool = value_300 != value_301
+			value_299 = value_302
+		}
+		if value_299 {
+			var value_303 int32 = tone
+			var value_304 int32 = TonePolicyToneWarning
+			var value_305 bool = value_303 == value_304
+			if value_305 {
+				var value_306 uint32 = surface
+				var value_307 uint32 = base
+				var value_308 uint32 = 10
+				var value_309 uint32 = Button_MixColor(value_306, value_307, value_308)
+				return value_309
+			}
 			var value_310 uint32 = surface
-			var value_311 uint32 = value_310
-			var value_312 uint32 = 16
-			var value_313 uint32 = value_312
-			var value_314 uint32 = Button_MixColor(value_309, value_311, value_313)
-			return value_314
+			var value_311 uint32 = base
+			var value_312 uint32 = 18
+			var value_313 uint32 = Button_MixColor(value_310, value_311, value_312)
+			return value_313
 		}
-		var value_315 uint32 = background
-		var value_316 uint32 = value_315
-		var value_317 uint32 = base
-		var value_318 uint32 = value_317
-		var value_319 uint32 = 8
-		var value_320 uint32 = value_319
-		var value_321 uint32 = Button_MixColor(value_316, value_318, value_320)
-		return value_321
+		var value_314 int32 = tone
+		var value_315 int32 = TonePolicyToneAccent
+		var value_316 bool = value_314 == value_315
+		var value_317 bool = value_316
+		if value_317 {
+			var value_318 int32 = emphasis
+			var value_319 int32 = EmphasisPolicyEmphasisFilled
+			var value_320 bool = value_318 == value_319
+			value_317 = value_320
+		}
+		if value_317 {
+			var value_321 uint32 = surface
+			var value_322 uint32 = accent_pressed
+			var value_323 uint32 = 22
+			var value_324 uint32 = Button_MixColor(value_321, value_322, value_323)
+			return value_324
+		}
+		var value_325 int32 = emphasis
+		var value_326 int32 = EmphasisPolicyEmphasisOutline
+		var value_327 bool = value_325 == value_326
+		if value_327 {
+			var value_328 uint32 = background
+			var value_329 uint32 = base
+			var value_330 uint32 = 12
+			var value_331 uint32 = Button_MixColor(value_328, value_329, value_330)
+			return value_331
+		}
+		var value_332 uint32 = background
+		var value_333 uint32 = base
+		var value_334 uint32 = 14
+		var value_335 uint32 = Button_MixColor(value_332, value_333, value_334)
+		return value_335
 	}
-	var value_322 int32 = state
-	var value_323 int32 = StatePolicyStatePressed
-	var value_324 bool = value_322 == value_323
-	if value_324 {
-		var value_325 bool = light
-		if value_325 {
-			var value_326 int32 = tone
-			var value_327 int32 = TonePolicyToneAccent
-			var value_328 bool = value_326 == value_327
-			var value_329 bool = value_328
-			if value_329 {
-				var value_330 int32 = emphasis
-				var value_331 int32 = EmphasisPolicyEmphasisFilled
-				var value_332 bool = value_330 == value_331
-				value_329 = value_332
-			}
-			if value_329 {
-				var value_333 uint32 = surface
-				var value_334 uint32 = value_333
-				var value_335 uint32 = base
-				var value_336 uint32 = value_335
-				var value_337 uint32 = accent_pressed
-				var value_338 uint32 = value_337
-				var value_339 uint32 = 30
-				var value_340 uint32 = value_339
-				var value_341 uint32 = Button_MixColor(value_336, value_338, value_340)
-				var value_342 uint32 = value_341
-				var value_343 uint32 = 18
-				var value_344 uint32 = value_343
-				var value_345 uint32 = Button_MixColor(value_334, value_342, value_344)
-				return value_345
-			}
-			var value_346 int32 = emphasis
-			var value_347 int32 = EmphasisPolicyEmphasisOutline
-			var value_348 bool = value_346 == value_347
-			var value_349 bool = value_348
-			if !value_349 {
-				var value_350 int32 = emphasis
-				var value_351 int32 = EmphasisPolicyEmphasisLink
-				var value_352 bool = value_350 == value_351
-				value_349 = value_352
-			}
-			if value_349 {
-				var value_353 uint32 = surface
-				var value_354 uint32 = value_353
-				var value_355 uint32 = base
-				var value_356 uint32 = value_355
-				var value_357 uint32 = 3
-				var value_358 uint32 = value_357
-				var value_359 uint32 = Button_MixColor(value_354, value_356, value_358)
-				return value_359
-			}
-			var value_360 int32 = tone
-			var value_361 int32 = TonePolicyToneDanger
-			var value_362 bool = value_360 == value_361
-			var value_363 bool = value_362
-			if value_363 {
-				var value_364 int32 = emphasis
-				var value_365 int32 = EmphasisPolicyEmphasisFilled
-				var value_366 bool = value_364 == value_365
-				value_363 = value_366
-			}
-			if value_363 {
-				var value_367 uint32 = background
-				var value_368 uint32 = value_367
-				var value_369 uint32 = surface
-				var value_370 uint32 = value_369
-				var value_371 uint32 = 20
-				var value_372 uint32 = value_371
-				var value_373 uint32 = Button_MixColor(value_368, value_370, value_372)
-				return value_373
-			}
-			var value_374 uint32 = background
-			return value_374
-		}
-		var value_375 int32 = emphasis
-		var value_376 int32 = EmphasisPolicyEmphasisFilled
+	var value_336 bool = light
+	var value_337 bool = value_336
+	if value_337 {
+		var value_338 int32 = state
+		var value_339 int32 = StatePolicyStateFocus
+		var value_340 bool = value_338 == value_339
+		value_337 = value_340
+	}
+	var value_341 bool = value_337
+	if value_341 {
+		var value_342 int32 = tone
+		var value_343 int32 = TonePolicyToneAccent
+		var value_344 bool = value_342 == value_343
+		value_341 = value_344
+	}
+	var value_345 bool = value_341
+	if value_345 {
+		var value_346 int32 = emphasis
+		var value_347 int32 = EmphasisPolicyEmphasisFilled
+		var value_348 bool = value_346 == value_347
+		value_345 = value_348
+	}
+	if value_345 {
+		var value_349 uint32 = surface
+		var value_350 uint32 = base
+		var value_351 uint32 = 10
+		var value_352 uint32 = Button_MixColor(value_349, value_350, value_351)
+		return value_352
+	}
+	var value_353 bool = light
+	var value_354 bool = !value_353
+	var value_355 bool = value_354
+	if value_355 {
+		var value_356 int32 = state
+		var value_357 int32 = StatePolicyStateFocus
+		var value_358 bool = value_356 == value_357
+		value_355 = value_358
+	}
+	var value_359 bool = value_355
+	if value_359 {
+		var value_360 int32 = tone
+		var value_361 int32 = TonePolicyToneAccent
+		var value_362 bool = value_360 == value_361
+		value_359 = value_362
+	}
+	var value_363 bool = value_359
+	if value_363 {
+		var value_364 int32 = emphasis
+		var value_365 int32 = EmphasisPolicyEmphasisFilled
+		var value_366 bool = value_364 == value_365
+		value_363 = value_366
+	}
+	if value_363 {
+		var value_367 uint32 = accent_pressed
+		return value_367
+	}
+	var value_368 bool = light
+	var value_369 bool = !value_368
+	var value_370 bool = value_369
+	if value_370 {
+		var value_371 int32 = state
+		var value_372 int32 = StatePolicyStateFocus
+		var value_373 bool = value_371 == value_372
+		value_370 = value_373
+	}
+	var value_374 bool = value_370
+	if value_374 {
+		var value_375 int32 = tone
+		var value_376 int32 = TonePolicyToneNeutral
 		var value_377 bool = value_375 == value_376
-		var value_378 bool = value_377
-		if value_378 {
-			var value_379 int32 = tone
-			var value_380 int32 = TonePolicyToneNeutral
-			var value_381 bool = value_379 != value_380
-			value_378 = value_381
-		}
-		var value_382 bool = value_378
-		if value_382 {
-			var value_383 int32 = tone
-			var value_384 int32 = TonePolicyToneAccent
-			var value_385 bool = value_383 != value_384
-			value_382 = value_385
-		}
-		if value_382 {
-			var value_386 int32 = tone
-			var value_387 int32 = TonePolicyToneWarning
-			var value_388 bool = value_386 == value_387
-			if value_388 {
-				var value_389 uint32 = surface
-				var value_390 uint32 = value_389
-				var value_391 uint32 = base
-				var value_392 uint32 = value_391
-				var value_393 uint32 = 10
-				var value_394 uint32 = value_393
-				var value_395 uint32 = Button_MixColor(value_390, value_392, value_394)
-				return value_395
-			}
-			var value_396 uint32 = surface
-			var value_397 uint32 = value_396
-			var value_398 uint32 = base
-			var value_399 uint32 = value_398
-			var value_400 uint32 = 18
-			var value_401 uint32 = value_400
-			var value_402 uint32 = Button_MixColor(value_397, value_399, value_401)
-			return value_402
-		}
-		var value_403 int32 = tone
-		var value_404 int32 = TonePolicyToneAccent
-		var value_405 bool = value_403 == value_404
-		var value_406 bool = value_405
-		if value_406 {
-			var value_407 int32 = emphasis
-			var value_408 int32 = EmphasisPolicyEmphasisFilled
-			var value_409 bool = value_407 == value_408
-			value_406 = value_409
-		}
-		if value_406 {
-			var value_410 uint32 = surface
-			var value_411 uint32 = value_410
-			var value_412 uint32 = accent_pressed
-			var value_413 uint32 = value_412
-			var value_414 uint32 = 22
-			var value_415 uint32 = value_414
-			var value_416 uint32 = Button_MixColor(value_411, value_413, value_415)
-			return value_416
-		}
-		var value_417 int32 = emphasis
-		var value_418 int32 = EmphasisPolicyEmphasisOutline
-		var value_419 bool = value_417 == value_418
-		if value_419 {
-			var value_420 uint32 = background
-			var value_421 uint32 = value_420
-			var value_422 uint32 = base
-			var value_423 uint32 = value_422
-			var value_424 uint32 = 12
-			var value_425 uint32 = value_424
-			var value_426 uint32 = Button_MixColor(value_421, value_423, value_425)
-			return value_426
-		}
-		var value_427 uint32 = background
-		var value_428 uint32 = value_427
-		var value_429 uint32 = base
-		var value_430 uint32 = value_429
-		var value_431 uint32 = 14
-		var value_432 uint32 = value_431
-		var value_433 uint32 = Button_MixColor(value_428, value_430, value_432)
-		return value_433
+		value_374 = value_377
 	}
-	var value_434 bool = light
+	var value_378 bool = value_374
+	if value_378 {
+		var value_379 int32 = emphasis
+		var value_380 int32 = EmphasisPolicyEmphasisSoft
+		var value_381 bool = value_379 == value_380
+		value_378 = value_381
+	}
+	if value_378 {
+		var value_382 int32 = 16777215
+		var value_383 uint32 = uint32(number_533abbd6_bits(uint64(value_382), uint64(0), 32, false, 0))
+		var value_384 int32 = 8
+		var value_385 uint32 = uint32(number_533abbd6_bits(uint64(value_384), uint64(0), 32, false, 0))
+		var value_386 uint32 = uint32(number_533abbd6_bits(uint64(value_383), uint64(value_385), 32, false, 6))
+		var value_387 uint32 = background
+		var value_388 int32 = 255
+		var value_389 uint32 = uint32(number_533abbd6_bits(uint64(value_388), uint64(0), 32, false, 0))
+		var value_390 uint32 = uint32(number_533abbd6_bits(uint64(value_387), uint64(value_389), 32, false, 8))
+		var value_391 uint32 = uint32(number_533abbd6_bits(uint64(value_386), uint64(value_390), 32, false, 9))
+		var white uint32 = value_391
+		var value_392 uint32 = background
+		var value_393 uint32 = white
+		var value_394 uint32 = 5
+		var value_395 uint32 = Button_MixColor(value_392, value_393, value_394)
+		return value_395
+	}
+	var value_396 bool = light
+	var value_397 bool = !value_396
+	var value_398 bool = value_397
+	if value_398 {
+		var value_399 int32 = state
+		var value_400 int32 = StatePolicyStateFocus
+		var value_401 bool = value_399 == value_400
+		value_398 = value_401
+	}
+	var value_402 bool = value_398
+	if value_402 {
+		var value_403 int32 = tone
+		var value_404 int32 = TonePolicyToneDanger
+		var value_405 bool = value_403 == value_404
+		value_402 = value_405
+	}
+	var value_406 bool = value_402
+	if value_406 {
+		var value_407 int32 = emphasis
+		var value_408 int32 = EmphasisPolicyEmphasisFilled
+		var value_409 bool = value_407 == value_408
+		value_406 = value_409
+	}
+	if value_406 {
+		var value_410 uint32 = surface
+		var value_411 uint32 = base
+		var value_412 uint32 = 38
+		var value_413 uint32 = Button_MixColor(value_410, value_411, value_412)
+		return value_413
+	}
+	var value_414 bool = light
+	var value_415 bool = !value_414
+	var value_416 bool = value_415
+	if value_416 {
+		var value_417 int32 = state
+		var value_418 int32 = StatePolicyStateFocus
+		var value_419 bool = value_417 == value_418
+		value_416 = value_419
+	}
+	var value_420 bool = value_416
+	if value_420 {
+		var value_421 int32 = tone
+		var value_422 int32 = TonePolicyToneWarning
+		var value_423 bool = value_421 == value_422
+		value_420 = value_423
+	}
+	var value_424 bool = value_420
+	if value_424 {
+		var value_425 int32 = emphasis
+		var value_426 int32 = EmphasisPolicyEmphasisFilled
+		var value_427 bool = value_425 == value_426
+		value_424 = value_427
+	}
+	if value_424 {
+		var value_428 uint32 = surface
+		var value_429 uint32 = base
+		var value_430 uint32 = 22
+		var value_431 uint32 = Button_MixColor(value_428, value_429, value_430)
+		return value_431
+	}
+	var value_432 int32 = state
+	var value_433 int32 = StatePolicyStateFocus
+	var value_434 bool = value_432 == value_433
 	var value_435 bool = value_434
 	if value_435 {
-		var value_436 int32 = state
-		var value_437 int32 = StatePolicyStateFocus
+		var value_436 int32 = emphasis
+		var value_437 int32 = EmphasisPolicyEmphasisLink
 		var value_438 bool = value_436 == value_437
 		value_435 = value_438
 	}
-	var value_439 bool = value_435
-	if value_439 {
-		var value_440 int32 = tone
-		var value_441 int32 = TonePolicyToneAccent
-		var value_442 bool = value_440 == value_441
-		value_439 = value_442
+	if value_435 {
+		var value_439 uint32 = surface
+		var value_440 uint32 = base
+		var value_441 uint32 = 8
+		var value_442 uint32 = Button_MixColor(value_439, value_440, value_441)
+		var tinted uint32 = value_442
+		var value_443 uint32 = tinted
+		var value_444 int32 = 8
+		var value_445 uint32 = uint32(number_533abbd6_bits(uint64(value_444), uint64(0), 32, false, 0))
+		var value_446 uint32 = uint32(number_533abbd6_bits(uint64(value_443), uint64(value_445), 32, false, 7))
+		var value_447 int32 = 8
+		var value_448 uint32 = uint32(number_533abbd6_bits(uint64(value_447), uint64(0), 32, false, 0))
+		var value_449 uint32 = uint32(number_533abbd6_bits(uint64(value_446), uint64(value_448), 32, false, 6))
+		var value_450 uint32 = surface
+		var value_451 int32 = 255
+		var value_452 uint32 = uint32(number_533abbd6_bits(uint64(value_451), uint64(0), 32, false, 0))
+		var value_453 uint32 = uint32(number_533abbd6_bits(uint64(value_450), uint64(value_452), 32, false, 8))
+		var value_454 uint32 = uint32(number_533abbd6_bits(uint64(value_449), uint64(value_453), 32, false, 9))
+		return value_454
 	}
-	var value_443 bool = value_439
-	if value_443 {
-		var value_444 int32 = emphasis
-		var value_445 int32 = EmphasisPolicyEmphasisFilled
-		var value_446 bool = value_444 == value_445
-		value_443 = value_446
+	var value_455 int32 = state
+	var value_456 int32 = StatePolicyStateSelected
+	var value_457 bool = value_455 == value_456
+	if value_457 {
+		var value_458 uint32 = background
+		var value_459 uint32 = base
+		var value_460 uint32 = 12
+		var value_461 uint32 = Button_MixColor(value_458, value_459, value_460)
+		return value_461
 	}
-	if value_443 {
-		var value_447 uint32 = surface
-		var value_448 uint32 = value_447
-		var value_449 uint32 = base
-		var value_450 uint32 = value_449
-		var value_451 uint32 = 10
-		var value_452 uint32 = value_451
-		var value_453 uint32 = Button_MixColor(value_448, value_450, value_452)
-		return value_453
-	}
-	var value_454 bool = light
-	var value_455 bool = !value_454
-	var value_456 bool = value_455
-	if value_456 {
-		var value_457 int32 = state
-		var value_458 int32 = StatePolicyStateFocus
-		var value_459 bool = value_457 == value_458
-		value_456 = value_459
-	}
-	var value_460 bool = value_456
-	if value_460 {
-		var value_461 int32 = tone
-		var value_462 int32 = TonePolicyToneAccent
-		var value_463 bool = value_461 == value_462
-		value_460 = value_463
-	}
-	var value_464 bool = value_460
+	var value_462 int32 = state
+	var value_463 int32 = StatePolicyStateLoading
+	var value_464 bool = value_462 == value_463
 	if value_464 {
-		var value_465 int32 = emphasis
-		var value_466 int32 = EmphasisPolicyEmphasisFilled
-		var value_467 bool = value_465 == value_466
-		value_464 = value_467
-	}
-	if value_464 {
-		var value_468 uint32 = accent_pressed
-		return value_468
-	}
-	var value_469 bool = light
-	var value_470 bool = !value_469
-	var value_471 bool = value_470
-	if value_471 {
-		var value_472 int32 = state
-		var value_473 int32 = StatePolicyStateFocus
-		var value_474 bool = value_472 == value_473
-		value_471 = value_474
-	}
-	var value_475 bool = value_471
-	if value_475 {
-		var value_476 int32 = tone
-		var value_477 int32 = TonePolicyToneNeutral
-		var value_478 bool = value_476 == value_477
-		value_475 = value_478
-	}
-	var value_479 bool = value_475
-	if value_479 {
-		var value_480 int32 = emphasis
-		var value_481 int32 = EmphasisPolicyEmphasisSoft
-		var value_482 bool = value_480 == value_481
-		value_479 = value_482
-	}
-	if value_479 {
-		var value_483 int32 = 16777215
-		var value_484 uint32 = uint32(number_533abbd6_bits(uint64(value_483), uint64(0), 32, false, 0))
-		var value_485 int32 = 8
-		var value_486 uint32 = uint32(number_533abbd6_bits(uint64(value_485), uint64(0), 32, false, 0))
-		var value_487 uint32 = uint32(number_533abbd6_bits(uint64(value_484), uint64(value_486), 32, false, 6))
-		var value_488 uint32 = background
-		var value_489 int32 = 255
-		var value_490 uint32 = uint32(number_533abbd6_bits(uint64(value_489), uint64(0), 32, false, 0))
-		var value_491 uint32 = uint32(number_533abbd6_bits(uint64(value_488), uint64(value_490), 32, false, 8))
-		var value_492 uint32 = uint32(number_533abbd6_bits(uint64(value_487), uint64(value_491), 32, false, 9))
-		var white uint32 = value_492
-		var value_493 uint32 = background
-		var value_494 uint32 = value_493
-		var value_495 uint32 = white
-		var value_496 uint32 = value_495
-		var value_497 uint32 = 5
-		var value_498 uint32 = value_497
-		var value_499 uint32 = Button_MixColor(value_494, value_496, value_498)
-		return value_499
-	}
-	var value_500 bool = light
-	var value_501 bool = !value_500
-	var value_502 bool = value_501
-	if value_502 {
-		var value_503 int32 = state
-		var value_504 int32 = StatePolicyStateFocus
-		var value_505 bool = value_503 == value_504
-		value_502 = value_505
-	}
-	var value_506 bool = value_502
-	if value_506 {
-		var value_507 int32 = tone
-		var value_508 int32 = TonePolicyToneDanger
-		var value_509 bool = value_507 == value_508
-		value_506 = value_509
-	}
-	var value_510 bool = value_506
-	if value_510 {
-		var value_511 int32 = emphasis
-		var value_512 int32 = EmphasisPolicyEmphasisFilled
-		var value_513 bool = value_511 == value_512
-		value_510 = value_513
-	}
-	if value_510 {
-		var value_514 uint32 = surface
-		var value_515 uint32 = value_514
-		var value_516 uint32 = base
-		var value_517 uint32 = value_516
-		var value_518 uint32 = 38
-		var value_519 uint32 = value_518
-		var value_520 uint32 = Button_MixColor(value_515, value_517, value_519)
-		return value_520
-	}
-	var value_521 bool = light
-	var value_522 bool = !value_521
-	var value_523 bool = value_522
-	if value_523 {
-		var value_524 int32 = state
-		var value_525 int32 = StatePolicyStateFocus
-		var value_526 bool = value_524 == value_525
-		value_523 = value_526
-	}
-	var value_527 bool = value_523
-	if value_527 {
-		var value_528 int32 = tone
-		var value_529 int32 = TonePolicyToneWarning
-		var value_530 bool = value_528 == value_529
-		value_527 = value_530
-	}
-	var value_531 bool = value_527
-	if value_531 {
-		var value_532 int32 = emphasis
-		var value_533 int32 = EmphasisPolicyEmphasisFilled
-		var value_534 bool = value_532 == value_533
-		value_531 = value_534
-	}
-	if value_531 {
-		var value_535 uint32 = surface
-		var value_536 uint32 = value_535
-		var value_537 uint32 = base
-		var value_538 uint32 = value_537
-		var value_539 uint32 = 22
-		var value_540 uint32 = value_539
-		var value_541 uint32 = Button_MixColor(value_536, value_538, value_540)
-		return value_541
-	}
-	var value_542 int32 = state
-	var value_543 int32 = StatePolicyStateFocus
-	var value_544 bool = value_542 == value_543
-	var value_545 bool = value_544
-	if value_545 {
-		var value_546 int32 = emphasis
-		var value_547 int32 = EmphasisPolicyEmphasisLink
-		var value_548 bool = value_546 == value_547
-		value_545 = value_548
-	}
-	if value_545 {
-		var value_549 uint32 = surface
-		var value_550 uint32 = value_549
-		var value_551 uint32 = base
-		var value_552 uint32 = value_551
-		var value_553 uint32 = 8
-		var value_554 uint32 = value_553
-		var value_555 uint32 = Button_MixColor(value_550, value_552, value_554)
-		var tinted uint32 = value_555
-		var value_556 uint32 = tinted
-		var value_557 int32 = 8
-		var value_558 uint32 = uint32(number_533abbd6_bits(uint64(value_557), uint64(0), 32, false, 0))
-		var value_559 uint32 = uint32(number_533abbd6_bits(uint64(value_556), uint64(value_558), 32, false, 7))
-		var value_560 int32 = 8
-		var value_561 uint32 = uint32(number_533abbd6_bits(uint64(value_560), uint64(0), 32, false, 0))
-		var value_562 uint32 = uint32(number_533abbd6_bits(uint64(value_559), uint64(value_561), 32, false, 6))
-		var value_563 uint32 = surface
-		var value_564 int32 = 255
-		var value_565 uint32 = uint32(number_533abbd6_bits(uint64(value_564), uint64(0), 32, false, 0))
-		var value_566 uint32 = uint32(number_533abbd6_bits(uint64(value_563), uint64(value_565), 32, false, 8))
-		var value_567 uint32 = uint32(number_533abbd6_bits(uint64(value_562), uint64(value_566), 32, false, 9))
-		return value_567
-	}
-	var value_568 int32 = state
-	var value_569 int32 = StatePolicyStateSelected
-	var value_570 bool = value_568 == value_569
-	if value_570 {
-		var value_571 uint32 = background
-		var value_572 uint32 = value_571
-		var value_573 uint32 = base
-		var value_574 uint32 = value_573
-		var value_575 uint32 = 12
-		var value_576 uint32 = value_575
-		var value_577 uint32 = Button_MixColor(value_572, value_574, value_576)
-		return value_577
-	}
-	var value_578 int32 = state
-	var value_579 int32 = StatePolicyStateLoading
-	var value_580 bool = value_578 == value_579
-	if value_580 {
-		var value_581 bool = light
-		if value_581 {
-			var value_582 uint32 = surface
-			var value_583 uint32 = value_582
-			var value_584 uint32 = background
-			var value_585 uint32 = value_584
-			var value_586 uint32 = 4
-			var value_587 uint32 = value_586
-			var value_588 uint32 = Button_MixColor(value_583, value_585, value_587)
-			return value_588
+		var value_465 bool = light
+		if value_465 {
+			var value_466 uint32 = surface
+			var value_467 uint32 = background
+			var value_468 uint32 = 4
+			var value_469 uint32 = Button_MixColor(value_466, value_467, value_468)
+			return value_469
 		}
-		var value_589 int32 = emphasis
-		var value_590 int32 = EmphasisPolicyEmphasisFilled
-		var value_591 bool = value_589 == value_590
-		var value_592 bool = value_591
-		if value_592 {
-			var value_593 int32 = tone
-			var value_594 int32 = TonePolicyToneAccent
-			var value_595 bool = value_593 != value_594
-			value_592 = value_595
+		var value_470 int32 = emphasis
+		var value_471 int32 = EmphasisPolicyEmphasisFilled
+		var value_472 bool = value_470 == value_471
+		var value_473 bool = value_472
+		if value_473 {
+			var value_474 int32 = tone
+			var value_475 int32 = TonePolicyToneAccent
+			var value_476 bool = value_474 != value_475
+			value_473 = value_476
 		}
-		var value_596 bool = value_592
-		if value_596 {
-			var value_597 int32 = tone
-			var value_598 int32 = TonePolicyToneNeutral
-			var value_599 bool = value_597 != value_598
-			value_596 = value_599
+		var value_477 bool = value_473
+		if value_477 {
+			var value_478 int32 = tone
+			var value_479 int32 = TonePolicyToneNeutral
+			var value_480 bool = value_478 != value_479
+			value_477 = value_480
 		}
-		if value_596 {
-			var value_600 uint32 = surface
-			var value_601 uint32 = value_600
-			var value_602 uint32 = base
-			var value_603 uint32 = value_602
-			var value_604 uint32 = 14
-			var value_605 uint32 = value_604
-			var value_606 uint32 = Button_MixColor(value_601, value_603, value_605)
-			return value_606
+		if value_477 {
+			var value_481 uint32 = surface
+			var value_482 uint32 = base
+			var value_483 uint32 = 14
+			var value_484 uint32 = Button_MixColor(value_481, value_482, value_483)
+			return value_484
 		}
-		var value_607 uint32 = surface
-		var value_608 uint32 = value_607
-		var value_609 uint32 = background
-		var value_610 uint32 = value_609
-		var value_611 uint32 = 18
-		var value_612 uint32 = value_611
-		var value_613 uint32 = Button_MixColor(value_608, value_610, value_612)
-		return value_613
+		var value_485 uint32 = surface
+		var value_486 uint32 = background
+		var value_487 uint32 = 18
+		var value_488 uint32 = Button_MixColor(value_485, value_486, value_487)
+		return value_488
 	}
-	var value_614 int32 = state
-	var value_615 int32 = StatePolicyStateDisabled
-	var value_616 bool = value_614 == value_615
-	if value_616 {
-		var value_617 bool = light
-		var value_618 bool = value_617
-		if value_618 {
-			var value_619 int32 = tone
-			var value_620 int32 = TonePolicyToneAccent
-			var value_621 bool = value_619 == value_620
-			value_618 = value_621
+	var value_489 int32 = state
+	var value_490 int32 = StatePolicyStateDisabled
+	var value_491 bool = value_489 == value_490
+	if value_491 {
+		var value_492 bool = light
+		var value_493 bool = value_492
+		if value_493 {
+			var value_494 int32 = tone
+			var value_495 int32 = TonePolicyToneAccent
+			var value_496 bool = value_494 == value_495
+			value_493 = value_496
 		}
-		var value_622 bool = value_618
-		if value_622 {
-			var value_623 int32 = emphasis
-			var value_624 int32 = EmphasisPolicyEmphasisFilled
-			var value_625 bool = value_623 == value_624
-			value_622 = value_625
+		var value_497 bool = value_493
+		if value_497 {
+			var value_498 int32 = emphasis
+			var value_499 int32 = EmphasisPolicyEmphasisFilled
+			var value_500 bool = value_498 == value_499
+			value_497 = value_500
 		}
-		if value_622 {
-			var value_626 uint32 = surface
-			var value_627 uint32 = value_626
-			var value_628 uint32 = background
-			var value_629 uint32 = value_628
-			var value_630 uint32 = 8
-			var value_631 uint32 = value_630
-			var value_632 uint32 = Button_MixColor(value_627, value_629, value_631)
-			return value_632
+		if value_497 {
+			var value_501 uint32 = surface
+			var value_502 uint32 = background
+			var value_503 uint32 = 8
+			var value_504 uint32 = Button_MixColor(value_501, value_502, value_503)
+			return value_504
 		}
-		var value_633 bool = light
-		var value_634 bool = !value_633
-		var value_635 bool = value_634
-		if value_635 {
-			var value_636 int32 = tone
-			var value_637 int32 = TonePolicyToneAccent
-			var value_638 bool = value_636 == value_637
-			value_635 = value_638
+		var value_505 bool = light
+		var value_506 bool = !value_505
+		var value_507 bool = value_506
+		if value_507 {
+			var value_508 int32 = tone
+			var value_509 int32 = TonePolicyToneAccent
+			var value_510 bool = value_508 == value_509
+			value_507 = value_510
 		}
-		var value_639 bool = value_635
-		if value_639 {
-			var value_640 int32 = emphasis
-			var value_641 int32 = EmphasisPolicyEmphasisFilled
-			var value_642 bool = value_640 == value_641
-			value_639 = value_642
+		var value_511 bool = value_507
+		if value_511 {
+			var value_512 int32 = emphasis
+			var value_513 int32 = EmphasisPolicyEmphasisFilled
+			var value_514 bool = value_512 == value_513
+			value_511 = value_514
 		}
-		if value_639 {
-			var value_643 uint32 = surface
-			var value_644 uint32 = value_643
-			var value_645 uint32 = background
-			var value_646 uint32 = value_645
-			var value_647 uint32 = 20
-			var value_648 uint32 = value_647
-			var value_649 uint32 = Button_MixColor(value_644, value_646, value_648)
-			return value_649
+		if value_511 {
+			var value_515 uint32 = surface
+			var value_516 uint32 = background
+			var value_517 uint32 = 20
+			var value_518 uint32 = Button_MixColor(value_515, value_516, value_517)
+			return value_518
 		}
-		var value_650 uint32 = surface
-		var value_651 uint32 = value_650
-		var value_652 uint32 = background
-		var value_653 uint32 = value_652
-		var value_654 uint32 = 45
-		var value_655 uint32 = value_654
-		var value_656 uint32 = Button_MixColor(value_651, value_653, value_655)
-		return value_656
+		var value_519 uint32 = surface
+		var value_520 uint32 = background
+		var value_521 uint32 = 45
+		var value_522 uint32 = Button_MixColor(value_519, value_520, value_521)
+		return value_522
 	}
-	var value_657 uint32 = background
-	return value_657
+	var value_523 uint32 = background
+	return value_523
 }
 
 func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface uint32, on_accent uint32, text uint32, danger uint32, on_danger uint32, success uint32, on_success uint32, warning uint32, on_warning uint32, link uint32, disabled_text uint32, accent uint32) uint32 {
@@ -2135,273 +1714,223 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 uint32 = surface
-		var value_4 uint32 = value_3
-		var value_5 bool = Button_LightSurface(value_4)
-		if value_5 {
-			var value_6 int32 = tone
-			var value_7 int32 = TonePolicyToneNeutral
-			var value_8 bool = value_6 != value_7
-			if value_8 {
-				var value_9 int32 = 70
-				var value_10 uint32 = uint32(number_533abbd6_bits(uint64(value_9), uint64(0), 32, false, 0))
-				var amount uint32 = value_10
-				var value_11 int32 = tone
-				var value_12 int32 = TonePolicyToneDanger
-				var value_13 bool = value_11 == value_12
-				if value_13 {
-					var value_14 int32 = 55
-					var value_15 uint32 = uint32(number_533abbd6_bits(uint64(value_14), uint64(0), 32, false, 0))
-					amount = value_15
+		var value_4 bool = Button_LightSurface(value_3)
+		if value_4 {
+			var value_5 int32 = tone
+			var value_6 int32 = TonePolicyToneNeutral
+			var value_7 bool = value_5 != value_6
+			if value_7 {
+				var value_8 int32 = 70
+				var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
+				var amount uint32 = value_9
+				var value_10 int32 = tone
+				var value_11 int32 = TonePolicyToneDanger
+				var value_12 bool = value_10 == value_11
+				if value_12 {
+					var value_13 int32 = 55
+					var value_14 uint32 = uint32(number_533abbd6_bits(uint64(value_13), uint64(0), 32, false, 0))
+					amount = value_14
 				}
-				var value_16 uint32 = disabled_text
-				var value_17 uint32 = value_16
-				var value_18 int32 = tone
-				var value_19 int32 = value_18
-				var value_20 uint32 = link
-				var value_21 uint32 = value_20
-				var value_22 uint32 = text
-				var value_23 uint32 = value_22
-				var value_24 uint32 = danger
-				var value_25 uint32 = value_24
-				var value_26 uint32 = success
-				var value_27 uint32 = value_26
-				var value_28 uint32 = warning
-				var value_29 uint32 = value_28
-				var value_30 uint32 = Button_ToneColor(value_19, value_21, value_23, value_25, value_27, value_29)
-				var value_31 uint32 = value_30
-				var value_32 uint32 = amount
-				var value_33 uint32 = value_32
-				var value_34 uint32 = Button_MixColor(value_17, value_31, value_33)
-				return value_34
+				var value_15 uint32 = disabled_text
+				var value_16 int32 = tone
+				var value_17 uint32 = link
+				var value_18 uint32 = text
+				var value_19 uint32 = danger
+				var value_20 uint32 = success
+				var value_21 uint32 = warning
+				var value_22 uint32 = Button_ToneColor(value_16, value_17, value_18, value_19, value_20, value_21)
+				var value_23 uint32 = amount
+				var value_24 uint32 = Button_MixColor(value_15, value_22, value_23)
+				return value_24
 			}
-			var value_35 uint32 = disabled_text
-			var value_36 uint32 = value_35
-			var value_37 uint32 = text
-			var value_38 uint32 = value_37
-			var value_39 uint32 = 35
-			var value_40 uint32 = value_39
-			var value_41 uint32 = Button_MixColor(value_36, value_38, value_40)
-			return value_41
+			var value_25 uint32 = disabled_text
+			var value_26 uint32 = text
+			var value_27 uint32 = 35
+			var value_28 uint32 = Button_MixColor(value_25, value_26, value_27)
+			return value_28
 		}
-		var value_42 int32 = emphasis
-		var value_43 int32 = EmphasisPolicyEmphasisLink
-		var value_44 bool = value_42 == value_43
-		if value_44 {
-			var value_45 uint32 = link
-			var value_46 uint32 = value_45
-			var value_47 uint32 = text
-			var value_48 uint32 = value_47
-			var value_49 uint32 = 35
-			var value_50 uint32 = value_49
-			var value_51 uint32 = Button_MixColor(value_46, value_48, value_50)
-			return value_51
+		var value_29 int32 = emphasis
+		var value_30 int32 = EmphasisPolicyEmphasisLink
+		var value_31 bool = value_29 == value_30
+		if value_31 {
+			var value_32 uint32 = link
+			var value_33 uint32 = text
+			var value_34 uint32 = 35
+			var value_35 uint32 = Button_MixColor(value_32, value_33, value_34)
+			return value_35
 		}
-		var value_52 uint32 = disabled_text
-		var value_53 uint32 = value_52
-		var value_54 uint32 = text
-		var value_55 uint32 = value_54
-		var value_56 uint32 = 90
-		var value_57 uint32 = value_56
-		var value_58 uint32 = Button_MixColor(value_53, value_55, value_57)
-		return value_58
+		var value_36 uint32 = disabled_text
+		var value_37 uint32 = text
+		var value_38 uint32 = 90
+		var value_39 uint32 = Button_MixColor(value_36, value_37, value_38)
+		return value_39
 	}
-	var value_59 int32 = state
-	var value_60 int32 = StatePolicyStateLoading
-	var value_61 bool = value_59 == value_60
-	if value_61 {
-		var value_62 int32 = tone
-		var value_63 int32 = value_62
-		var value_64 uint32 = accent
-		var value_65 uint32 = value_64
-		var value_66 uint32 = text
-		var value_67 uint32 = value_66
-		var value_68 uint32 = danger
-		var value_69 uint32 = value_68
-		var value_70 uint32 = success
-		var value_71 uint32 = value_70
-		var value_72 uint32 = warning
-		var value_73 uint32 = value_72
-		var value_74 uint32 = Button_ToneColor(value_63, value_65, value_67, value_69, value_71, value_73)
-		return value_74
+	var value_40 int32 = state
+	var value_41 int32 = StatePolicyStateLoading
+	var value_42 bool = value_40 == value_41
+	if value_42 {
+		var value_43 int32 = tone
+		var value_44 uint32 = accent
+		var value_45 uint32 = text
+		var value_46 uint32 = danger
+		var value_47 uint32 = success
+		var value_48 uint32 = warning
+		var value_49 uint32 = Button_ToneColor(value_43, value_44, value_45, value_46, value_47, value_48)
+		return value_49
 	}
-	var value_75 uint32 = surface
-	var value_76 uint32 = value_75
-	var value_77 bool = Button_LightSurface(value_76)
-	if value_77 {
-		var value_78 uint32 = success
-		var value_79 uint32 = value_78
-		var value_80 uint32 = success
-		var value_81 int32 = 255
-		var value_82 uint32 = uint32(number_533abbd6_bits(uint64(value_81), uint64(0), 32, false, 0))
-		var value_83 uint32 = uint32(number_533abbd6_bits(uint64(value_80), uint64(value_82), 32, false, 8))
-		var value_84 uint32 = value_83
-		var value_85 uint32 = 50
-		var value_86 uint32 = value_85
-		var value_87 uint32 = Button_MixColor(value_79, value_84, value_86)
-		success = value_87
-		var value_88 uint32 = warning
-		var value_89 uint32 = value_88
-		var value_90 uint32 = warning
-		var value_91 int32 = 255
-		var value_92 uint32 = uint32(number_533abbd6_bits(uint64(value_91), uint64(0), 32, false, 0))
-		var value_93 uint32 = uint32(number_533abbd6_bits(uint64(value_90), uint64(value_92), 32, false, 8))
-		var value_94 uint32 = value_93
-		var value_95 uint32 = 60
-		var value_96 uint32 = value_95
-		var value_97 uint32 = Button_MixColor(value_89, value_94, value_96)
-		warning = value_97
+	var value_50 uint32 = surface
+	var value_51 bool = Button_LightSurface(value_50)
+	if value_51 {
+		var value_52 uint32 = success
+		var value_53 uint32 = success
+		var value_54 int32 = 255
+		var value_55 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(0), 32, false, 0))
+		var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_53), uint64(value_55), 32, false, 8))
+		var value_57 uint32 = 50
+		var value_58 uint32 = Button_MixColor(value_52, value_56, value_57)
+		success = value_58
+		var value_59 uint32 = warning
+		var value_60 uint32 = warning
+		var value_61 int32 = 255
+		var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_61), uint64(0), 32, false, 0))
+		var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_62), 32, false, 8))
+		var value_64 uint32 = 60
+		var value_65 uint32 = Button_MixColor(value_59, value_63, value_64)
+		warning = value_65
 	}
-	var value_98 int32 = emphasis
-	var value_99 int32 = EmphasisPolicyEmphasisLink
-	var value_100 bool = value_98 == value_99
-	if value_100 {
-		var value_101 uint32 = link
-		return value_101
+	var value_66 int32 = emphasis
+	var value_67 int32 = EmphasisPolicyEmphasisLink
+	var value_68 bool = value_66 == value_67
+	if value_68 {
+		var value_69 uint32 = link
+		return value_69
 	}
-	var value_102 int32 = emphasis
-	var value_103 int32 = EmphasisPolicyEmphasisFilled
-	var value_104 bool = value_102 != value_103
-	if value_104 {
-		var value_105 uint32 = surface
-		var value_106 uint32 = value_105
-		var value_107 bool = Button_LightSurface(value_106)
-		var value_108 bool = !value_107
-		var value_109 bool = value_108
-		if value_109 {
-			var value_110 int32 = tone
-			var value_111 int32 = TonePolicyToneAccent
-			var value_112 bool = value_110 == value_111
-			value_109 = value_112
+	var value_70 int32 = emphasis
+	var value_71 int32 = EmphasisPolicyEmphasisFilled
+	var value_72 bool = value_70 != value_71
+	if value_72 {
+		var value_73 uint32 = surface
+		var value_74 bool = Button_LightSurface(value_73)
+		var value_75 bool = !value_74
+		var value_76 bool = value_75
+		if value_76 {
+			var value_77 int32 = tone
+			var value_78 int32 = TonePolicyToneAccent
+			var value_79 bool = value_77 == value_78
+			value_76 = value_79
 		}
-		if value_109 {
-			var value_113 uint32 = text
-			return value_113
+		if value_76 {
+			var value_80 uint32 = text
+			return value_80
 		}
-		var value_114 int32 = tone
-		var value_115 int32 = value_114
-		var value_116 uint32 = link
-		var value_117 uint32 = value_116
-		var value_118 uint32 = text
-		var value_119 uint32 = value_118
-		var value_120 uint32 = danger
-		var value_121 uint32 = value_120
-		var value_122 uint32 = success
-		var value_123 uint32 = value_122
-		var value_124 uint32 = warning
-		var value_125 uint32 = value_124
-		var value_126 uint32 = Button_ToneColor(value_115, value_117, value_119, value_121, value_123, value_125)
-		return value_126
+		var value_81 int32 = tone
+		var value_82 uint32 = link
+		var value_83 uint32 = text
+		var value_84 uint32 = danger
+		var value_85 uint32 = success
+		var value_86 uint32 = warning
+		var value_87 uint32 = Button_ToneColor(value_81, value_82, value_83, value_84, value_85, value_86)
+		return value_87
 	}
-	var value_127 uint32 = surface
-	var value_128 uint32 = value_127
-	var value_129 bool = Button_LightSurface(value_128)
-	var value_130 bool = value_129
-	if value_130 {
-		var value_131 int32 = tone
-		var value_132 int32 = TonePolicyToneAccent
-		var value_133 bool = value_131 != value_132
-		value_130 = value_133
+	var value_88 uint32 = surface
+	var value_89 bool = Button_LightSurface(value_88)
+	var value_90 bool = value_89
+	if value_90 {
+		var value_91 int32 = tone
+		var value_92 int32 = TonePolicyToneAccent
+		var value_93 bool = value_91 != value_92
+		value_90 = value_93
 	}
-	if value_130 {
-		var value_134 int32 = tone
-		var value_135 int32 = value_134
-		var value_136 uint32 = link
-		var value_137 uint32 = value_136
-		var value_138 uint32 = text
-		var value_139 uint32 = value_138
-		var value_140 uint32 = danger
-		var value_141 uint32 = value_140
-		var value_142 uint32 = success
-		var value_143 uint32 = value_142
-		var value_144 uint32 = warning
-		var value_145 uint32 = value_144
-		var value_146 uint32 = Button_ToneColor(value_135, value_137, value_139, value_141, value_143, value_145)
+	if value_90 {
+		var value_94 int32 = tone
+		var value_95 uint32 = link
+		var value_96 uint32 = text
+		var value_97 uint32 = danger
+		var value_98 uint32 = success
+		var value_99 uint32 = warning
+		var value_100 uint32 = Button_ToneColor(value_94, value_95, value_96, value_97, value_98, value_99)
+		return value_100
+	}
+	var value_101 uint32 = surface
+	var value_102 bool = Button_LightSurface(value_101)
+	var value_103 bool = value_102
+	if value_103 {
+		var value_104 int32 = state
+		var value_105 int32 = StatePolicyStatePressed
+		var value_106 bool = value_104 == value_105
+		var value_107 bool = value_106
+		if !value_107 {
+			var value_108 int32 = state
+			var value_109 int32 = StatePolicyStateHover
+			var value_110 bool = value_108 == value_109
+			value_107 = value_110
+		}
+		var value_111 bool = value_107
+		if !value_111 {
+			var value_112 int32 = state
+			var value_113 int32 = StatePolicyStateFocus
+			var value_114 bool = value_112 == value_113
+			value_111 = value_114
+		}
+		value_103 = value_111
+	}
+	if value_103 {
+		var value_115 uint32 = link
+		return value_115
+	}
+	var value_116 int32 = tone
+	var value_117 int32 = TonePolicyToneDanger
+	var value_118 bool = value_116 == value_117
+	if value_118 {
+		var value_119 uint32 = on_danger
+		return value_119
+	}
+	var value_120 int32 = tone
+	var value_121 int32 = TonePolicyToneSuccess
+	var value_122 bool = value_120 == value_121
+	if value_122 {
+		var value_123 uint32 = on_success
+		return value_123
+	}
+	var value_124 int32 = tone
+	var value_125 int32 = TonePolicyToneWarning
+	var value_126 bool = value_124 == value_125
+	if value_126 {
+		var value_127 int32 = state
+		var value_128 int32 = StatePolicyStatePressed
+		var value_129 bool = value_127 == value_128
+		if value_129 {
+			var value_130 uint32 = warning
+			var value_131 int32 = 8
+			var value_132 uint32 = uint32(number_533abbd6_bits(uint64(value_131), uint64(0), 32, false, 0))
+			var value_133 uint32 = uint32(number_533abbd6_bits(uint64(value_130), uint64(value_132), 32, false, 7))
+			var value_134 int32 = 8
+			var value_135 uint32 = uint32(number_533abbd6_bits(uint64(value_134), uint64(0), 32, false, 0))
+			var value_136 uint32 = uint32(number_533abbd6_bits(uint64(value_133), uint64(value_135), 32, false, 6))
+			var value_137 uint32 = on_warning
+			var value_138 int32 = 255
+			var value_139 uint32 = uint32(number_533abbd6_bits(uint64(value_138), uint64(0), 32, false, 0))
+			var value_140 uint32 = uint32(number_533abbd6_bits(uint64(value_137), uint64(value_139), 32, false, 8))
+			var value_141 uint32 = uint32(number_533abbd6_bits(uint64(value_136), uint64(value_140), 32, false, 9))
+			var warm uint32 = value_141
+			var value_142 uint32 = on_warning
+			var value_143 uint32 = warm
+			var value_144 uint32 = 15
+			var value_145 uint32 = Button_MixColor(value_142, value_143, value_144)
+			return value_145
+		}
+		var value_146 uint32 = on_warning
 		return value_146
 	}
-	var value_147 uint32 = surface
-	var value_148 uint32 = value_147
-	var value_149 bool = Button_LightSurface(value_148)
-	var value_150 bool = value_149
-	if value_150 {
-		var value_151 int32 = state
-		var value_152 int32 = StatePolicyStatePressed
-		var value_153 bool = value_151 == value_152
-		var value_154 bool = value_153
-		if !value_154 {
-			var value_155 int32 = state
-			var value_156 int32 = StatePolicyStateHover
-			var value_157 bool = value_155 == value_156
-			value_154 = value_157
-		}
-		var value_158 bool = value_154
-		if !value_158 {
-			var value_159 int32 = state
-			var value_160 int32 = StatePolicyStateFocus
-			var value_161 bool = value_159 == value_160
-			value_158 = value_161
-		}
-		value_150 = value_158
+	var value_147 int32 = tone
+	var value_148 int32 = TonePolicyToneNeutral
+	var value_149 bool = value_147 == value_148
+	if value_149 {
+		var value_150 uint32 = text
+		return value_150
 	}
-	if value_150 {
-		var value_162 uint32 = link
-		return value_162
-	}
-	var value_163 int32 = tone
-	var value_164 int32 = TonePolicyToneDanger
-	var value_165 bool = value_163 == value_164
-	if value_165 {
-		var value_166 uint32 = on_danger
-		return value_166
-	}
-	var value_167 int32 = tone
-	var value_168 int32 = TonePolicyToneSuccess
-	var value_169 bool = value_167 == value_168
-	if value_169 {
-		var value_170 uint32 = on_success
-		return value_170
-	}
-	var value_171 int32 = tone
-	var value_172 int32 = TonePolicyToneWarning
-	var value_173 bool = value_171 == value_172
-	if value_173 {
-		var value_174 int32 = state
-		var value_175 int32 = StatePolicyStatePressed
-		var value_176 bool = value_174 == value_175
-		if value_176 {
-			var value_177 uint32 = warning
-			var value_178 int32 = 8
-			var value_179 uint32 = uint32(number_533abbd6_bits(uint64(value_178), uint64(0), 32, false, 0))
-			var value_180 uint32 = uint32(number_533abbd6_bits(uint64(value_177), uint64(value_179), 32, false, 7))
-			var value_181 int32 = 8
-			var value_182 uint32 = uint32(number_533abbd6_bits(uint64(value_181), uint64(0), 32, false, 0))
-			var value_183 uint32 = uint32(number_533abbd6_bits(uint64(value_180), uint64(value_182), 32, false, 6))
-			var value_184 uint32 = on_warning
-			var value_185 int32 = 255
-			var value_186 uint32 = uint32(number_533abbd6_bits(uint64(value_185), uint64(0), 32, false, 0))
-			var value_187 uint32 = uint32(number_533abbd6_bits(uint64(value_184), uint64(value_186), 32, false, 8))
-			var value_188 uint32 = uint32(number_533abbd6_bits(uint64(value_183), uint64(value_187), 32, false, 9))
-			var warm uint32 = value_188
-			var value_189 uint32 = on_warning
-			var value_190 uint32 = value_189
-			var value_191 uint32 = warm
-			var value_192 uint32 = value_191
-			var value_193 uint32 = 15
-			var value_194 uint32 = value_193
-			var value_195 uint32 = Button_MixColor(value_190, value_192, value_194)
-			return value_195
-		}
-		var value_196 uint32 = on_warning
-		return value_196
-	}
-	var value_197 int32 = tone
-	var value_198 int32 = TonePolicyToneNeutral
-	var value_199 bool = value_197 == value_198
-	if value_199 {
-		var value_200 uint32 = text
-		return value_200
-	}
-	var value_201 uint32 = on_accent
-	return value_201
+	var value_151 uint32 = on_accent
+	return value_151
 }
 
 func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32, success uint32) uint32 {
@@ -2411,87 +1940,84 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 	var value_3 uint32 = uint32(number_533abbd6_bits(uint64(value_0), uint64(value_2), 32, false, 8))
 	var alpha uint32 = value_3
 	var value_4 uint32 = surface
-	var value_5 uint32 = value_4
-	var value_6 bool = Button_LightSurface(value_5)
-	var value_7 bool = !value_6
-	if value_7 {
-		var value_8 int32 = tone
-		var value_9 int32 = TonePolicyToneSuccess
-		var value_10 bool = value_8 == value_9
-		if value_10 {
-			var value_11 uint32 = success
-			var value_12 uint32 = value_11
-			var value_13 int32 = 255
-			var value_14 uint32 = uint32(number_533abbd6_bits(uint64(value_13), uint64(0), 32, false, 0))
-			var value_15 uint32 = value_14
-			var value_16 uint32 = Surface_ChromaColor(value_12, value_15)
-			var luminous uint32 = value_16
-			var value_17 uint32 = luminous
+	var value_5 bool = Button_LightSurface(value_4)
+	var value_6 bool = !value_5
+	if value_6 {
+		var value_7 int32 = tone
+		var value_8 int32 = TonePolicyToneSuccess
+		var value_9 bool = value_7 == value_8
+		if value_9 {
+			var value_10 uint32 = success
+			var value_11 int32 = 255
+			var value_12 uint32 = uint32(number_533abbd6_bits(uint64(value_11), uint64(0), 32, false, 0))
+			var value_13 uint32 = Surface_ChromaColor(value_10, value_12)
+			var luminous uint32 = value_13
+			var value_14 uint32 = luminous
+			var value_15 int32 = 8
+			var value_16 uint32 = uint32(number_533abbd6_bits(uint64(value_15), uint64(0), 32, false, 0))
+			var value_17 uint32 = uint32(number_533abbd6_bits(uint64(value_14), uint64(value_16), 32, false, 7))
 			var value_18 int32 = 8
 			var value_19 uint32 = uint32(number_533abbd6_bits(uint64(value_18), uint64(0), 32, false, 0))
-			var value_20 uint32 = uint32(number_533abbd6_bits(uint64(value_17), uint64(value_19), 32, false, 7))
-			var value_21 int32 = 8
-			var value_22 uint32 = uint32(number_533abbd6_bits(uint64(value_21), uint64(0), 32, false, 0))
-			var value_23 uint32 = uint32(number_533abbd6_bits(uint64(value_20), uint64(value_22), 32, false, 6))
-			var value_24 uint32 = alpha
-			var value_25 uint32 = uint32(number_533abbd6_bits(uint64(value_23), uint64(value_24), 32, false, 9))
-			return value_25
+			var value_20 uint32 = uint32(number_533abbd6_bits(uint64(value_17), uint64(value_19), 32, false, 6))
+			var value_21 uint32 = alpha
+			var value_22 uint32 = uint32(number_533abbd6_bits(uint64(value_20), uint64(value_21), 32, false, 9))
+			return value_22
 		}
-		var value_26 uint32 = focus
-		return value_26
+		var value_23 uint32 = focus
+		return value_23
 	}
-	var value_27 int32 = emphasis
-	var value_28 int32 = EmphasisPolicyEmphasisSoft
-	var value_29 bool = value_27 == value_28
-	var value_30 bool = value_29
-	if !value_30 {
-		var value_31 int32 = emphasis
-		var value_32 int32 = EmphasisPolicyEmphasisGhost
-		var value_33 bool = value_31 == value_32
-		value_30 = value_33
+	var value_24 int32 = emphasis
+	var value_25 int32 = EmphasisPolicyEmphasisSoft
+	var value_26 bool = value_24 == value_25
+	var value_27 bool = value_26
+	if !value_27 {
+		var value_28 int32 = emphasis
+		var value_29 int32 = EmphasisPolicyEmphasisGhost
+		var value_30 bool = value_28 == value_29
+		value_27 = value_30
 	}
-	var value_34 bool = value_30
-	if !value_34 {
-		var value_35 int32 = emphasis
-		var value_36 int32 = EmphasisPolicyEmphasisLink
-		var value_37 bool = value_35 == value_36
-		value_34 = value_37
+	var value_31 bool = value_27
+	if !value_31 {
+		var value_32 int32 = emphasis
+		var value_33 int32 = EmphasisPolicyEmphasisLink
+		var value_34 bool = value_32 == value_33
+		value_31 = value_34
 	}
-	if value_34 {
-		var value_38 uint32 = alpha
-		var value_39 int32 = 18
+	if value_31 {
+		var value_35 uint32 = alpha
+		var value_36 int32 = 18
+		var value_37 uint32 = uint32(number_533abbd6_bits(uint64(value_36), uint64(0), 32, false, 0))
+		var value_38 uint32 = uint32(number_533abbd6_bits(uint64(value_35), uint64(value_37), 32, false, 3))
+		var value_39 int32 = 100
 		var value_40 uint32 = uint32(number_533abbd6_bits(uint64(value_39), uint64(0), 32, false, 0))
-		var value_41 uint32 = uint32(number_533abbd6_bits(uint64(value_38), uint64(value_40), 32, false, 3))
-		var value_42 int32 = 100
-		var value_43 uint32 = uint32(number_533abbd6_bits(uint64(value_42), uint64(0), 32, false, 0))
-		var value_44 uint32 = uint32(number_533abbd6_bits(uint64(value_41), uint64(value_43), 32, false, 4))
-		alpha = value_44
+		var value_41 uint32 = uint32(number_533abbd6_bits(uint64(value_38), uint64(value_40), 32, false, 4))
+		alpha = value_41
 	}
-	var value_45 int32 = tone
-	var value_46 int32 = TonePolicyToneSuccess
-	var value_47 bool = value_45 == value_46
-	if value_47 {
-		var value_48 uint32 = success
+	var value_42 int32 = tone
+	var value_43 int32 = TonePolicyToneSuccess
+	var value_44 bool = value_42 == value_43
+	if value_44 {
+		var value_45 uint32 = success
+		var value_46 int32 = 8
+		var value_47 uint32 = uint32(number_533abbd6_bits(uint64(value_46), uint64(0), 32, false, 0))
+		var value_48 uint32 = uint32(number_533abbd6_bits(uint64(value_45), uint64(value_47), 32, false, 7))
 		var value_49 int32 = 8
 		var value_50 uint32 = uint32(number_533abbd6_bits(uint64(value_49), uint64(0), 32, false, 0))
-		var value_51 uint32 = uint32(number_533abbd6_bits(uint64(value_48), uint64(value_50), 32, false, 7))
-		var value_52 int32 = 8
-		var value_53 uint32 = uint32(number_533abbd6_bits(uint64(value_52), uint64(0), 32, false, 0))
-		var value_54 uint32 = uint32(number_533abbd6_bits(uint64(value_51), uint64(value_53), 32, false, 6))
-		var value_55 uint32 = alpha
-		var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(value_55), 32, false, 9))
-		return value_56
+		var value_51 uint32 = uint32(number_533abbd6_bits(uint64(value_48), uint64(value_50), 32, false, 6))
+		var value_52 uint32 = alpha
+		var value_53 uint32 = uint32(number_533abbd6_bits(uint64(value_51), uint64(value_52), 32, false, 9))
+		return value_53
 	}
-	var value_57 uint32 = focus
+	var value_54 uint32 = focus
+	var value_55 int32 = 8
+	var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_55), uint64(0), 32, false, 0))
+	var value_57 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(value_56), 32, false, 7))
 	var value_58 int32 = 8
 	var value_59 uint32 = uint32(number_533abbd6_bits(uint64(value_58), uint64(0), 32, false, 0))
-	var value_60 uint32 = uint32(number_533abbd6_bits(uint64(value_57), uint64(value_59), 32, false, 7))
-	var value_61 int32 = 8
-	var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_61), uint64(0), 32, false, 0))
-	var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_62), 32, false, 6))
-	var value_64 uint32 = alpha
-	var value_65 uint32 = uint32(number_533abbd6_bits(uint64(value_63), uint64(value_64), 32, false, 9))
-	return value_65
+	var value_60 uint32 = uint32(number_533abbd6_bits(uint64(value_57), uint64(value_59), 32, false, 6))
+	var value_61 uint32 = alpha
+	var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_61), 32, false, 9))
+	return value_62
 }
 
 func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32, accent uint32, neutral uint32, danger uint32, success uint32, warning uint32) uint32 {
@@ -2512,95 +2038,104 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		return value_9
 	}
 	var value_10 int32 = tone
-	var value_11 int32 = value_10
-	var value_12 uint32 = accent
-	var value_13 uint32 = value_12
-	var value_14 uint32 = neutral
-	var value_15 uint32 = value_14
-	var value_16 uint32 = danger
-	var value_17 uint32 = value_16
-	var value_18 uint32 = success
-	var value_19 uint32 = value_18
-	var value_20 uint32 = warning
-	var value_21 uint32 = value_20
-	var value_22 uint32 = Button_ToneColor(value_11, value_13, value_15, value_17, value_19, value_21)
-	var base uint32 = value_22
-	var value_23 uint32 = surface
-	var value_24 uint32 = value_23
-	var value_25 bool = Button_LightSurface(value_24)
-	var value_26 bool = value_25
-	if value_26 {
-		var value_27 int32 = emphasis
-		var value_28 int32 = EmphasisPolicyEmphasisFilled
-		var value_29 bool = value_27 == value_28
-		value_26 = value_29
+	var value_11 uint32 = accent
+	var value_12 uint32 = neutral
+	var value_13 uint32 = danger
+	var value_14 uint32 = success
+	var value_15 uint32 = warning
+	var value_16 uint32 = Button_ToneColor(value_10, value_11, value_12, value_13, value_14, value_15)
+	var base uint32 = value_16
+	var value_17 uint32 = surface
+	var value_18 bool = Button_LightSurface(value_17)
+	var value_19 bool = value_18
+	if value_19 {
+		var value_20 int32 = emphasis
+		var value_21 int32 = EmphasisPolicyEmphasisFilled
+		var value_22 bool = value_20 == value_21
+		value_19 = value_22
 	}
-	var value_30 bool = value_26
-	if value_30 {
-		var value_31 int32 = tone
-		var value_32 int32 = TonePolicyToneAccent
-		var value_33 bool = value_31 != value_32
-		value_30 = value_33
+	var value_23 bool = value_19
+	if value_23 {
+		var value_24 int32 = tone
+		var value_25 int32 = TonePolicyToneAccent
+		var value_26 bool = value_24 != value_25
+		value_23 = value_26
 	}
-	if value_30 {
-		var value_34 uint32 = surface
-		var value_35 uint32 = value_34
-		var value_36 uint32 = base
-		var value_37 uint32 = value_36
-		var value_38 uint32 = 28
-		var value_39 uint32 = value_38
-		var value_40 uint32 = Button_MixColor(value_35, value_37, value_39)
-		base = value_40
+	if value_23 {
+		var value_27 uint32 = surface
+		var value_28 uint32 = base
+		var value_29 uint32 = 28
+		var value_30 uint32 = Button_MixColor(value_27, value_28, value_29)
+		base = value_30
 	}
-	var value_41 int32 = state
-	var value_42 int32 = StatePolicyStateDisabled
-	var value_43 bool = value_41 == value_42
-	if value_43 {
-		var value_44 int32 = 25
-		var value_45 uint32 = uint32(number_533abbd6_bits(uint64(value_44), uint64(0), 32, false, 0))
-		var amount uint32 = value_45
-		var value_46 int32 = tone
-		var value_47 int32 = TonePolicyToneNeutral
-		var value_48 bool = value_46 == value_47
-		if value_48 {
-			var value_49 int32 = 45
-			var value_50 uint32 = uint32(number_533abbd6_bits(uint64(value_49), uint64(0), 32, false, 0))
-			amount = value_50
+	var value_31 int32 = state
+	var value_32 int32 = StatePolicyStateDisabled
+	var value_33 bool = value_31 == value_32
+	if value_33 {
+		var value_34 int32 = 25
+		var value_35 uint32 = uint32(number_533abbd6_bits(uint64(value_34), uint64(0), 32, false, 0))
+		var amount uint32 = value_35
+		var value_36 int32 = tone
+		var value_37 int32 = TonePolicyToneNeutral
+		var value_38 bool = value_36 == value_37
+		if value_38 {
+			var value_39 int32 = 45
+			var value_40 uint32 = uint32(number_533abbd6_bits(uint64(value_39), uint64(0), 32, false, 0))
+			amount = value_40
 		}
-		var value_51 uint32 = surface
-		var value_52 uint32 = value_51
-		var value_53 uint32 = base
-		var value_54 uint32 = value_53
-		var value_55 uint32 = amount
-		var value_56 uint32 = value_55
-		var value_57 uint32 = Button_MixColor(value_52, value_54, value_56)
-		return value_57
+		var value_41 uint32 = surface
+		var value_42 uint32 = base
+		var value_43 uint32 = amount
+		var value_44 uint32 = Button_MixColor(value_41, value_42, value_43)
+		return value_44
 	}
-	var value_58 uint32 = surface
-	var value_59 uint32 = value_58
-	var value_60 bool = Button_LightSurface(value_59)
-	var value_61 bool = value_60
-	if value_61 {
-		var value_62 int32 = state
-		var value_63 int32 = StatePolicyStatePressed
-		var value_64 bool = value_62 == value_63
-		value_61 = value_64
+	var value_45 uint32 = surface
+	var value_46 bool = Button_LightSurface(value_45)
+	var value_47 bool = value_46
+	if value_47 {
+		var value_48 int32 = state
+		var value_49 int32 = StatePolicyStatePressed
+		var value_50 bool = value_48 == value_49
+		value_47 = value_50
 	}
-	var value_65 bool = value_61
-	if value_65 {
-		var value_66 int32 = tone
-		var value_67 int32 = TonePolicyToneAccent
-		var value_68 bool = value_66 == value_67
-		value_65 = value_68
+	var value_51 bool = value_47
+	if value_51 {
+		var value_52 int32 = tone
+		var value_53 int32 = TonePolicyToneAccent
+		var value_54 bool = value_52 == value_53
+		value_51 = value_54
 	}
-	if value_65 {
-		var value_69 uint32 = surface
-		var value_70 uint32 = value_69
-		var value_71 uint32 = base
-		var value_72 uint32 = value_71
-		var value_73 uint32 = 25
-		var value_74 uint32 = value_73
-		var value_75 uint32 = Button_MixColor(value_70, value_72, value_74)
+	if value_51 {
+		var value_55 uint32 = surface
+		var value_56 uint32 = base
+		var value_57 uint32 = 25
+		var value_58 uint32 = Button_MixColor(value_55, value_56, value_57)
+		return value_58
+	}
+	var value_59 int32 = state
+	var value_60 int32 = StatePolicyStateLoading
+	var value_61 bool = value_59 == value_60
+	var value_62 bool = value_61
+	if value_62 {
+		var value_63 uint32 = surface
+		var value_64 bool = Button_LightSurface(value_63)
+		value_62 = value_64
+	}
+	if value_62 {
+		var value_65 int32 = emphasis
+		var value_66 int32 = EmphasisPolicyEmphasisOutline
+		var value_67 bool = value_65 == value_66
+		if value_67 {
+			var value_68 uint32 = surface
+			var value_69 uint32 = base
+			var value_70 uint32 = 25
+			var value_71 uint32 = Button_MixColor(value_68, value_69, value_70)
+			return value_71
+		}
+		var value_72 uint32 = surface
+		var value_73 uint32 = base
+		var value_74 uint32 = 12
+		var value_75 uint32 = Button_MixColor(value_72, value_73, value_74)
 		return value_75
 	}
 	var value_76 int32 = state
@@ -2609,127 +2144,78 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_79 bool = value_78
 	if value_79 {
 		var value_80 uint32 = surface
-		var value_81 uint32 = value_80
-		var value_82 bool = Button_LightSurface(value_81)
+		var value_81 bool = Button_LightSurface(value_80)
+		var value_82 bool = !value_81
 		value_79 = value_82
 	}
 	if value_79 {
-		var value_83 int32 = emphasis
-		var value_84 int32 = EmphasisPolicyEmphasisOutline
-		var value_85 bool = value_83 == value_84
-		if value_85 {
-			var value_86 uint32 = surface
-			var value_87 uint32 = value_86
-			var value_88 uint32 = base
-			var value_89 uint32 = value_88
-			var value_90 uint32 = 25
-			var value_91 uint32 = value_90
-			var value_92 uint32 = Button_MixColor(value_87, value_89, value_91)
-			return value_92
+		var value_83 uint32 = surface
+		var value_84 uint32 = base
+		var value_85 uint32 = 16
+		var value_86 uint32 = Button_MixColor(value_83, value_84, value_85)
+		var border uint32 = value_86
+		var value_87 int32 = tone
+		var value_88 int32 = TonePolicyToneNeutral
+		var value_89 bool = value_87 == value_88
+		var value_90 bool = value_89
+		if !value_90 {
+			var value_91 int32 = emphasis
+			var value_92 int32 = EmphasisPolicyEmphasisOutline
+			var value_93 bool = value_91 == value_92
+			value_90 = value_93
 		}
-		var value_93 uint32 = surface
-		var value_94 uint32 = value_93
-		var value_95 uint32 = base
-		var value_96 uint32 = value_95
-		var value_97 uint32 = 12
-		var value_98 uint32 = value_97
-		var value_99 uint32 = Button_MixColor(value_94, value_96, value_98)
-		return value_99
-	}
-	var value_100 int32 = state
-	var value_101 int32 = StatePolicyStateLoading
-	var value_102 bool = value_100 == value_101
-	var value_103 bool = value_102
-	if value_103 {
-		var value_104 uint32 = surface
-		var value_105 uint32 = value_104
-		var value_106 bool = Button_LightSurface(value_105)
-		var value_107 bool = !value_106
-		value_103 = value_107
-	}
-	if value_103 {
-		var value_108 uint32 = surface
-		var value_109 uint32 = value_108
-		var value_110 uint32 = base
-		var value_111 uint32 = value_110
-		var value_112 uint32 = 16
-		var value_113 uint32 = value_112
-		var value_114 uint32 = Button_MixColor(value_109, value_111, value_113)
-		var border uint32 = value_114
-		var value_115 int32 = tone
-		var value_116 int32 = TonePolicyToneNeutral
-		var value_117 bool = value_115 == value_116
-		var value_118 bool = value_117
-		if !value_118 {
-			var value_119 int32 = emphasis
-			var value_120 int32 = EmphasisPolicyEmphasisOutline
-			var value_121 bool = value_119 == value_120
-			value_118 = value_121
+		if value_90 {
+			var value_94 uint32 = border
+			var value_95 float32 = 0.0
+			var value_96 uint32 = Surface_Opacity(value_94, value_95)
+			return value_96
 		}
-		if value_118 {
-			var value_122 uint32 = border
-			var value_123 uint32 = value_122
-			var value_124 float32 = 0.0
-			var value_125 float32 = value_124
-			var value_126 uint32 = Surface_Opacity(value_123, value_125)
-			return value_126
-		}
-		var value_127 uint32 = border
-		return value_127
+		var value_97 uint32 = border
+		return value_97
 	}
-	var value_128 int32 = emphasis
-	var value_129 int32 = EmphasisPolicyEmphasisSoft
-	var value_130 bool = value_128 == value_129
-	if value_130 {
-		var value_131 uint32 = surface
-		var value_132 uint32 = value_131
-		var value_133 bool = Button_LightSurface(value_132)
-		if value_133 {
-			var value_134 int32 = tone
-			var value_135 int32 = TonePolicyToneNeutral
-			var value_136 bool = value_134 == value_135
-			if value_136 {
-				var value_137 uint32 = accent
-				base = value_137
+	var value_98 int32 = emphasis
+	var value_99 int32 = EmphasisPolicyEmphasisSoft
+	var value_100 bool = value_98 == value_99
+	if value_100 {
+		var value_101 uint32 = surface
+		var value_102 bool = Button_LightSurface(value_101)
+		if value_102 {
+			var value_103 int32 = tone
+			var value_104 int32 = TonePolicyToneNeutral
+			var value_105 bool = value_103 == value_104
+			if value_105 {
+				var value_106 uint32 = accent
+				base = value_106
 			}
-			var value_138 uint32 = surface
-			var value_139 uint32 = value_138
-			var value_140 uint32 = base
-			var value_141 uint32 = value_140
-			var value_142 uint32 = 14
-			var value_143 uint32 = value_142
-			var value_144 uint32 = Button_MixColor(value_139, value_141, value_143)
-			return value_144
+			var value_107 uint32 = surface
+			var value_108 uint32 = base
+			var value_109 uint32 = 14
+			var value_110 uint32 = Button_MixColor(value_107, value_108, value_109)
+			return value_110
 		}
-		var value_145 int32 = tone
-		var value_146 int32 = TonePolicyToneNeutral
-		var value_147 bool = value_145 == value_146
-		var value_148 bool = value_147
-		if value_148 {
-			var value_149 int32 = state
-			var value_150 int32 = StatePolicyStateHover
-			var value_151 bool = value_149 == value_150
-			value_148 = value_151
+		var value_111 int32 = tone
+		var value_112 int32 = TonePolicyToneNeutral
+		var value_113 bool = value_111 == value_112
+		var value_114 bool = value_113
+		if value_114 {
+			var value_115 int32 = state
+			var value_116 int32 = StatePolicyStateHover
+			var value_117 bool = value_115 == value_116
+			value_114 = value_117
 		}
-		if value_148 {
-			var value_152 uint32 = base
-			var value_153 uint32 = value_152
-			var value_154 uint32 = accent
-			var value_155 uint32 = value_154
-			var value_156 uint32 = 45
-			var value_157 uint32 = value_156
-			var value_158 uint32 = Button_MixColor(value_153, value_155, value_157)
-			return value_158
+		if value_114 {
+			var value_118 uint32 = base
+			var value_119 uint32 = accent
+			var value_120 uint32 = 45
+			var value_121 uint32 = Button_MixColor(value_118, value_119, value_120)
+			return value_121
 		}
-		var value_159 uint32 = surface
-		var value_160 uint32 = value_159
-		var value_161 uint32 = base
-		var value_162 uint32 = value_161
-		var value_163 uint32 = 28
-		var value_164 uint32 = value_163
-		var value_165 uint32 = Button_MixColor(value_160, value_162, value_164)
-		return value_165
+		var value_122 uint32 = surface
+		var value_123 uint32 = base
+		var value_124 uint32 = 28
+		var value_125 uint32 = Button_MixColor(value_122, value_123, value_124)
+		return value_125
 	}
-	var value_166 uint32 = base
-	return value_166
+	var value_126 uint32 = base
+	return value_126
 }

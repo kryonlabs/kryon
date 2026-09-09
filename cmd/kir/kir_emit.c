@@ -653,15 +653,24 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
     int count=0;
     size_t n=(size_t)format(text,sizeof(text),"%s(",expr->name);
     for(int child=expr->first_child;child>=0;child=e->fn->exprs[child].next_sibling) {
-        char argument[KIR_TEXT_MAX],capture[KIR_NAME_MAX];
+        char argument[KIR_TEXT_MAX];
         emit_expr(e,child,e->fn->exprs[child].type,argument,sizeof(argument));
-        fresh(e,capture);
-        declare(e,capture,e->fn->exprs[child].type,argument);
-        n+=(size_t)format(text+n,sizeof(text)-n,"%s%s",count?",":"",capture);
+        /* emit_expr already captures each result before the next argument.
+         * A second capture only copies the same scalar or owned record. */
+        n+=(size_t)format(text+n,sizeof(text)-n,"%s%s",count?",":"",argument);
         count++;
     }
     format(text+n,sizeof(text)-n,")");
     e->resolve(e->context,text,out,size);
+}
+
+static int
+member_path(const KirFunction *fn, int index)
+{
+    const KirExpr *expr = &fn->exprs[index];
+    if(expr->kind == KIR_EXPR_IDENT)
+        return 1;
+    return expr->kind == KIR_EXPR_MEMBER && member_path(fn, expr->left);
 }
 
 static void
@@ -693,7 +702,12 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
     }
     case KIR_EXPR_MEMBER: {
         char field[KIR_NAME_MAX];
-        emit_expr(e, expr->left, e->fn->exprs[expr->left].type, a, sizeof(a));
+        /* Reading a field needs a snapshot of that field, not a copy of every
+         * enclosing record. Calls and other computed bases still evaluate once. */
+        if(member_path(e->fn, expr->left))
+            emit_destination(e, expr->left, a, sizeof(a));
+        else
+            emit_expr(e, expr->left, e->fn->exprs[expr->left].type, a, sizeof(a));
         if(e->target == KIR_GO) kir_go_field_ident(expr->name, field, sizeof(field));
         else kir_copy(field, sizeof(field), expr->name);
         format(result, sizeof(result), "%s.%s", a, field);
