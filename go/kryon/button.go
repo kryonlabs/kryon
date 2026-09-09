@@ -83,6 +83,10 @@ func number_533abbd6_bits(a, b uint64, w uint, sign bool, op int) uint64 {
 	panic("invalid numeric operation")
 }
 
+type ButtonInstance struct {
+	Motion InteractionMotion
+}
+
 type ContentSize struct {
 	Width     float32
 	TextWidth float32

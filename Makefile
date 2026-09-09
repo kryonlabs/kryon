@@ -65,34 +65,10 @@ INSTALL ?= install
 CFLAGS ?= -Wall -Wextra -O2
 GENERATED_INCLUDE_DIR = $(BUILD_DIR)/generated/include
 GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
-BUTTON_POLICY_KRY = runtime/button.kry
-BUTTON_POLICY_C = $(GENERATED_SRC_DIR)/runtime/button.c
-BUTTON_POLICY_H = $(GENERATED_SRC_DIR)/runtime/button.h
-BUTTON_POLICY_STAMP = $(GENERATED_SRC_DIR)/runtime/.controls.stamp
-SURFACE_RUNTIME_KRY = runtime/surface.kry
-SURFACE_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/surface.c
-SURFACE_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/surface.h
-SURFACE_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
-THEME_RUNTIME_KRY = runtime/theme.kry
-THEME_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/theme.c
-THEME_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/theme.h
-THEME_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
-STYLE_RUNTIME_KRY = runtime/style.kry
-STYLE_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/style.c
-STYLE_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/style.h
-STYLE_RUNTIME_STAMP = $(SURFACE_RUNTIME_STAMP)
-TEXT_RUNTIME_KRY = runtime/text.kry
-TEXT_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/text.c
-TEXT_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/text.h
-TEXT_RUNTIME_STAMP = $(BUTTON_POLICY_STAMP)
-MENU_BUTTON_RUNTIME_KRY = runtime/menu_button.kry
-MENU_BUTTON_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/menu_button.c
-MENU_BUTTON_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/menu_button.h
-MENU_BUTTON_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.menu_button.stamp
-SPLIT_BUTTON_RUNTIME_KRY = runtime/split_button.kry
-SPLIT_BUTTON_RUNTIME_C = $(GENERATED_SRC_DIR)/runtime/split_button.c
-SPLIT_BUTTON_RUNTIME_H = $(GENERATED_SRC_DIR)/runtime/split_button.h
-SPLIT_BUTTON_RUNTIME_STAMP = $(GENERATED_SRC_DIR)/runtime/.split_button.stamp
+RUNTIME_KRY := $(sort $(wildcard runtime/*.kry))
+RUNTIME_C = $(patsubst runtime/%.kry,$(GENERATED_SRC_DIR)/runtime/%.c,$(RUNTIME_KRY))
+RUNTIME_H = $(RUNTIME_C:.c=.h)
+RUNTIME_GO = $(patsubst runtime/%.kry,go/kryon/%.go,$(RUNTIME_KRY))
 CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
@@ -277,8 +253,7 @@ SRCS := $(filter-out $(KRYON_TERMI_SRCS),$(SRCS))
 endif
 
 SRCS += $(ICON_ASSETS_C) $(ICON_NAMES_C) $(EMBED_ASSETS_C) \
-	$(BUTTON_POLICY_C) $(THEME_RUNTIME_C) $(STYLE_RUNTIME_C) $(MENU_BUTTON_RUNTIME_C) \
-	$(SPLIT_BUTTON_RUNTIME_C) $(SURFACE_RUNTIME_C) $(TEXT_RUNTIME_C) $(KRYON_BACKEND_SRCS)
+	$(RUNTIME_C) $(KRYON_BACKEND_SRCS)
 KRYON_PUBLIC_HEADERS := $(wildcard include/*.h) $(wildcard include/sync/*.h) $(ICON_TYPES_H)
 
 # Drop the Box2D physics sources when physics is disabled (UI-only builds).
@@ -586,16 +561,16 @@ lightfield-translation-test:
 
 .PHONY: style-policy-test
 .PHONY: text-policy-test
-text-policy-test: $(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H) $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C)
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(TEXT_RUNTIME_C) $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/text-policy-test
+text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
 	$(BUILD_DIR)/text-policy-test
 
-style-policy-test: $(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H) $(SURFACE_RUNTIME_C)
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(STYLE_RUNTIME_C) $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/style-policy-test
+style-policy-test: $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/style.h $(GENERATED_SRC_DIR)/runtime/surface.c
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
 	$(BUILD_DIR)/style-policy-test
 
-surface-policy-test: $(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H)
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(SURFACE_RUNTIME_C) -lm -o $(BUILD_DIR)/surface-policy-test
+surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
 	$(BUILD_DIR)/surface-policy-test
 
 lightfield-reference-test:
@@ -739,67 +714,29 @@ K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
 $(K2C): $(K2C_SRCS) $(K2C_HDRS) | $(BUILD_DIR)/bin
 	$(CC) $(CFLAGS) -Icmd/kir -o $@ $(K2C_SRCS)
 
-$(BUTTON_POLICY_STAMP): $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY) $(K2C)
-	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY)
-	touch $@
+# Compile the complete shared module set once, including newly added widgets.
+# Grouped outputs also regenerate correctly when one generated file is missing.
+$(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
+	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(RUNTIME_KRY)
 
-$(BUTTON_POLICY_C) $(BUTTON_POLICY_H): $(BUTTON_POLICY_STAMP)
-	@test -f $@
+$(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
+$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/instance.h
 
-$(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H): $(SURFACE_RUNTIME_STAMP)
-	@test -f $@
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h
 
-$(THEME_RUNTIME_C) $(THEME_RUNTIME_H): $(THEME_RUNTIME_STAMP)
-	@test -f $@
-
-$(MENU_BUTTON_RUNTIME_STAMP): $(MENU_BUTTON_RUNTIME_KRY) $(K2C)
-	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(MENU_BUTTON_RUNTIME_KRY)
-	touch $@
-
-$(MENU_BUTTON_RUNTIME_C) $(MENU_BUTTON_RUNTIME_H): $(MENU_BUTTON_RUNTIME_STAMP)
-	@test -f $@
-
-$(SPLIT_BUTTON_RUNTIME_STAMP): $(SPLIT_BUTTON_RUNTIME_KRY) $(K2C)
-	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(SPLIT_BUTTON_RUNTIME_KRY)
-	touch $@
-
-$(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H): $(SPLIT_BUTTON_RUNTIME_STAMP)
-	@test -f $@
-
-$(BUILD_DIR)/core/theme.o: $(THEME_RUNTIME_H)
-$(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H): $(STYLE_RUNTIME_STAMP)
-	@test -f $@
-
-$(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H): $(TEXT_RUNTIME_STAMP)
-	@test -f $@
-
-$(BUILD_DIR)/ui/ui_tree.o: $(TEXT_RUNTIME_H)
-
-$(BUILD_DIR)/ui/ui_style.o: $(THEME_RUNTIME_H) $(STYLE_RUNTIME_H)
+$(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h
-$(BUILD_DIR)/ui/ui.o: $(SURFACE_RUNTIME_H)
-$(BUILD_DIR)/ui/ui_icons.o: $(SURFACE_RUNTIME_H)
-$(BUILD_DIR)/ui/ui_tree.o: $(SURFACE_RUNTIME_H)
-$(BUILD_DIR)/ui/button.o: $(BUTTON_POLICY_H) $(SURFACE_RUNTIME_H)
-$(BUILD_DIR)/ui/ui_tree.o: $(MENU_BUTTON_RUNTIME_H) $(SPLIT_BUTTON_RUNTIME_H)
+$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATED_SRC_DIR)/runtime/split_button.h
 
-.PHONY: generate-button-policy
-generate-button-policy: $(BUTTON_POLICY_C) $(BUTTON_POLICY_H) \
-	$(SURFACE_RUNTIME_C) $(SURFACE_RUNTIME_H) \
-	$(THEME_RUNTIME_C) $(THEME_RUNTIME_H) \
-	$(STYLE_RUNTIME_C) $(STYLE_RUNTIME_H) \
-	$(TEXT_RUNTIME_C) $(TEXT_RUNTIME_H) \
-	$(MENU_BUTTON_RUNTIME_C) $(MENU_BUTTON_RUNTIME_H) \
-	$(SPLIT_BUTTON_RUNTIME_C) $(SPLIT_BUTTON_RUNTIME_H) $(K2GO)
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(BUTTON_POLICY_KRY) $(SURFACE_RUNTIME_KRY) $(STYLE_RUNTIME_KRY) $(THEME_RUNTIME_KRY) $(TEXT_RUNTIME_KRY)
-	gofmt -w go/kryon/text.go
-	gofmt -w go/kryon/surface.go go/kryon/style.go
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(MENU_BUTTON_RUNTIME_KRY)
-	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(SPLIT_BUTTON_RUNTIME_KRY)
-	gofmt -w go/kryon/button.go
-	gofmt -w go/kryon/theme.go
-	gofmt -w go/kryon/menu_button.go
-	gofmt -w go/kryon/split_button.go
+.PHONY: generate-runtime generate-button-policy
+generate-button-policy: generate-runtime
+generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO)
+	$(K2GO) --strict --no-main --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
+	gofmt -w $(RUNTIME_GO)
 
 K2CPP_SRCS := $(sort $(wildcard cmd/k2cpp/*.c)) $(KIR_SRCS)
 K2CPP_HDRS := cmd/k2cpp/k2cpp_lower.h $(KIR_HDRS)

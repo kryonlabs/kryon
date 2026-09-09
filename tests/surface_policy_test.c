@@ -368,8 +368,6 @@ int main(void)
     SurfaceLayer light_focus_border = LightfieldLayer(4, 72, 40, 8, 1, 0xeef5ffff,
         0x12882200, 0x12882200, 0x8844cc80, 0, 0, 1, false, 1, 0xffffffff);
     assert((light_focus_border.color & 255) == 0);
-    assert(!MotionExpired(0) && !MotionExpired(12));
-    assert(MotionExpired(13) && MotionExpired(-1));
     SurfaceLayer light_hover = LightfieldLayer(3, 72, 36, 8, 1, 0x90c6fe80,
         0x006cffff, 0x006cffff, 0x006cffff, 1, 0, 0, false, 1, 0xffffffff);
     assert(light_hover.end_color == GradientColor(0x90c6fe80, 0xffffff80, 0.12f));

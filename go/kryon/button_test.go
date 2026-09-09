@@ -86,7 +86,7 @@ func TestButtonMotionIdentitySurvivesContentAndOrderChanges(t *testing.T) {
 			r.EndFrame()
 			expected = Surface_AdvanceInteractionMotion(expected, true, false, false,
 				true, false, false, false, r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
-			if r.buttonMotion[ids[0]].tracks.Hover.Value != expected.Hover.Value || r.buttonMotion[ids[1]].tracks.Hover.Value != 0 {
+			if instanceState[ButtonInstance](r, uint64(uint32(ids[0]))).Motion.Hover.Value != expected.Hover.Value || instanceState[ButtonInstance](r, uint64(uint32(ids[1]))).Motion.Hover.Value != 0 {
 				t.Fatal("moving and relabeling a stable instance must not reset or transfer its animation")
 			}
 		}

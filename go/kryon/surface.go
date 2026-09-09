@@ -3211,20 +3211,6 @@ func Surface_MaterialLayerCount(material int32) int32 {
 	return value_4
 }
 
-func Surface_MotionExpired(age int64) bool {
-	var value_0 int64 = age
-	var value_1 int64 = 0
-	var value_2 bool = value_0 < value_1
-	var value_3 bool = value_2
-	if !value_3 {
-		var value_4 int64 = age
-		var value_5 int64 = 12
-		var value_6 bool = value_4 > value_5
-		value_3 = value_6
-	}
-	return value_3
-}
-
 func Surface_SegmentCoverage(pixel_x float32, segment_x float32, segment_width float32, surface_width float32) float32 {
 	var value_0 float32 = 1.0
 	var coverage float32 = value_0

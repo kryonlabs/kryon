@@ -1,0 +1,7 @@
+#module "instance"
+
+# Frames belong to the render host that owns the instance. A short absence
+# preserves interaction continuity; removed instances eventually release storage.
+InstanceExpired :: (age: i64) -> bool #export {
+    return age < 0 || age > 12
+}

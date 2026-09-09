@@ -1613,7 +1613,7 @@ type runtime struct {
 	frameTimeSet      bool
 	frameDeltaMS      float32
 	elapsedTime       time.Duration
-	buttonMotion      map[int32]buttonMotionState
+	instances         map[instanceKey]*instanceEntry
 	focusID           int32
 	autoFocusID       int32
 	clipboard         string
@@ -1695,12 +1695,6 @@ type runtime struct {
 	scrollDragOffset  *int32
 	scrollDragGrab    float32
 	disabledCount     int32
-}
-
-// Storage and time acquisition are host concerns; interpolation lives in .kry.
-type buttonMotionState struct {
-	tracks    InteractionMotion
-	frameSeen int
 }
 
 type themePalette struct {
@@ -2012,7 +2006,10 @@ func (r *runtime) Selection(focusID int32) (anchor, cursor int32, ok bool) {
 	return int32(s.Anchor), int32(s.Cursor), ok
 }
 
-func (r *runtime) Close()                  { r.closed = true }
+func (r *runtime) Close() {
+	r.closed = true
+	r.instances = nil
+}
 func (r *runtime) WindowShouldClose() bool { return r.closed || r.frames > 0 }
 func (r *runtime) BeginFrame() {
 	r.applyThemeFamily()
@@ -2028,11 +2025,7 @@ func (r *runtime) BeginFrame() {
 	}
 	r.frameStarted = now
 	r.frameTimeSet = true
-	for id, motion := range r.buttonMotion {
-		if Surface_MotionExpired(int64(r.frames - motion.frameSeen)) {
-			delete(r.buttonMotion, id)
-		}
-	}
+	r.expireInstances()
 	if len(r.popupInputScopes) != 0 {
 		panic("unclosed popup input scope at frame boundary")
 	}
@@ -2485,21 +2478,16 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		loading, held || pressed, hovered, focused, props.Selected)
 	state := ButtonState(interaction.State)
 	hovered, held, focused = interaction.Hovered, interaction.Pressed, interaction.Focused
-	if r.buttonMotion == nil {
-		r.buttonMotion = make(map[int32]buttonMotionState)
-	}
-	motion := r.buttonMotion[props.ID]
+	motion := &instanceState[ButtonInstance](r, uint64(uint32(props.ID))).Motion
 	metrics := defaultThemeMetrics()
 	if r.activeTheme != nil {
 		metrics = r.activeTheme.Metrics
 	}
-	motion.tracks = Surface_AdvanceInteractionMotion(motion.tracks, hovered, held, focused,
+	*motion = Surface_AdvanceInteractionMotion(*motion, hovered, held, focused,
 		Surface_DefaultMotionEnabled(), props.State != ButtonStateAuto, props.Disabled, loading,
 		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
-	motion.frameSeen = r.frames
-	r.buttonMotion[props.ID] = motion
 	appearance := resolveButtonFrame(theme, r.effectiveDark(), r.activeTheme, props, state,
-		props.State == ButtonStateAuto, motion.tracks.Hover.Value, motion.tracks.Press.Value, motion.tracks.Focus.Value)
+		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
 	paint := unpackStyle(appearance.Value)
 	fillStates := appearance.Fill
 	label := props.Label
@@ -2526,9 +2514,9 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		Pressed:     held,
 		Focused:     focused || state == ButtonStateFocus,
 		Hovered:     hovered,
-		MotionValid: true, HoverAmount: motion.tracks.Hover.Value,
+		MotionValid: true, HoverAmount: motion.Hover.Value,
 		ElapsedMS:   float64(r.elapsedTime) / float64(time.Millisecond),
-		PressAmount: motion.tracks.Press.Value, FocusAmount: motion.tracks.Focus.Value,
+		PressAmount: motion.Press.Value, FocusAmount: motion.Focus.Value,
 		Selected: props.Selected,
 		Loading:  loading, Pill: props.Pill || props.Circle,
 		IconOnly: props.IconOnly, IconType: props.IconType,

@@ -3,6 +3,7 @@
 #include "../src/ui/toolkit_store.h"
 #include "runtime/button.h"
 #include "runtime/split_button.h"
+#include "runtime/instance.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -14,30 +15,42 @@ static void advance_store(ToolkitStore *store, int frames)
 
 static void check_motion_store_ownership(void)
 {
+    typedef struct CounterInstance {
+        int count;
+    } CounterInstance;
     ToolkitStore *first = toolkit_store_new();
     ToolkitStore *second = toolkit_store_new();
     ToolkitStore *previous = toolkit_store_swap(first);
-    InteractionMotion *first_motion = toolkit_button_motion(17);
+    InteractionMotion *first_motion = &instance_state(ButtonInstance, 17)->motion;
     first_motion->hover.value = 0.75f;
     first_motion->press.value = 0.25f;
-    InteractionMotion *collision = toolkit_button_motion(17 + 512);
+    CounterInstance *counter = instance_state(CounterInstance, 17);
+    assert(counter->count == 0);
+    counter->count = 42;
+    assert(instance_state(CounterInstance, 17)->count == 42);
+    assert(instance_state(CounterInstance, UINT64_C(1) << 40)->count == 0);
+    assert(first_motion->hover.value == 0.75f);
+    assert(!InstanceExpired(0) && !InstanceExpired(12));
+    assert(InstanceExpired(13) && InstanceExpired(-1));
+    InteractionMotion *collision = &instance_state(ButtonInstance, 17 + 512)->motion;
     assert(collision != first_motion && collision->hover.value == 0);
     collision->focus.value = 0.5f;
     assert(toolkit_store_swap(second) == first);
-    InteractionMotion *second_motion = toolkit_button_motion(17);
+    InteractionMotion *second_motion = &instance_state(ButtonInstance, 17)->motion;
     assert(second_motion != first_motion && second_motion->hover.value == 0);
+    assert(instance_state(CounterInstance, 17)->count == 0);
     second_motion->hover.value = 0.125f;
     assert(toolkit_store_swap(first) == second);
     advance_store(first, 1);
-    assert(toolkit_button_motion(17)->hover.value == 0.75f);
-    assert(toolkit_button_motion(17)->press.value == 0.25f);
-    assert(toolkit_button_motion(17 + 512)->focus.value == 0.5f);
+    assert(instance_state(ButtonInstance, 17)->motion.hover.value == 0.75f);
+    assert(instance_state(ButtonInstance, 17)->motion.press.value == 0.25f);
+    assert(instance_state(ButtonInstance, 17 + 512)->motion.focus.value == 0.5f);
     advance_store(first, 13);
-    assert(toolkit_button_motion(17)->hover.value == 0);
+    assert(instance_state(ButtonInstance, 17)->motion.hover.value == 0);
     toolkit_store_swap(second);
     /* Frames in the first host must not age the idle second host. */
     advance_store(second, 1);
-    assert(toolkit_button_motion(17)->hover.value == 0.125f);
+    assert(instance_state(ButtonInstance, 17)->motion.hover.value == 0.125f);
     toolkit_store_swap(previous);
     toolkit_store_free(first);
     toolkit_store_free(second);
@@ -48,24 +61,24 @@ static void check_motion_store_growth(void)
     ToolkitStore *store = toolkit_store_new();
     ToolkitStore *previous = toolkit_store_swap(store);
     for(unsigned int key = 1; key <= 1536; key++) {
-        InteractionMotion *motion = toolkit_button_motion(key);
+        InteractionMotion *motion = &instance_state(ButtonInstance, key)->motion;
         motion->hover.value = (float)key / 1536.0f;
     }
     /* Reordering a large set of live widgets must not evict their tracks. */
     advance_store(store, 1);
     for(unsigned int key = 1536; key > 0; key--)
-        assert(toolkit_button_motion(key)->hover.value == (float)key / 1536.0f);
+        assert(instance_state(ButtonInstance, key)->motion.hover.value == (float)key / 1536.0f);
     advance_store(store, 14);
     for(unsigned int key = 1; key <= 1536; key++)
-        assert(toolkit_button_motion(key)->hover.value == 0);
-    toolkit_button_motion(9)->focus.value = 0.25f;
-    toolkit_button_motion(9 + 1024)->focus.value = 0.5f;
+        assert(instance_state(ButtonInstance, key)->motion.hover.value == 0);
+    instance_state(ButtonInstance, 9)->motion.focus.value = 0.25f;
+    instance_state(ButtonInstance, 9 + 1024)->motion.focus.value = 0.5f;
     advance_store(store, 9);
-    toolkit_button_motion(9 + 512)->focus.value = 0.75f;
+    instance_state(ButtonInstance, 9 + 512)->motion.focus.value = 0.75f;
     advance_store(store, 5);
-    assert(toolkit_button_motion(9 + 512)->focus.value == 0.75f);
-    assert(toolkit_button_motion(9)->focus.value == 0);
-    assert(toolkit_button_motion(9 + 1024)->focus.value == 0);
+    assert(instance_state(ButtonInstance, 9 + 512)->motion.focus.value == 0.75f);
+    assert(instance_state(ButtonInstance, 9)->motion.focus.value == 0);
+    assert(instance_state(ButtonInstance, 9 + 1024)->motion.focus.value == 0);
     toolkit_store_swap(previous);
     toolkit_store_free(store);
 }

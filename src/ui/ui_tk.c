@@ -3,6 +3,7 @@
 #include "ui_numeric_input_internal.h"
 #include "ui_popup_input_internal.h"
 #include "toolkit_store.h"
+#include "runtime/instance.h"
 #include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -16,7 +17,7 @@ static const TextInputStyle kryon_zero_text_input_style;
 #define UI_TK_MENU_DEPTH_MAX 8
 #define UI_TK_CONTEXT_MENU_MAX_ITEMS 64
 #define UI_RADIO_ANIM_MAX 128
-#define UI_BUTTON_MOTION_BUCKETS 512
+#define UI_INSTANCE_BUCKETS 512
 #define UI_DRAG_DROP_DATA_MAX 1024
 #define UI_NUMERIC_INPUT_BUCKETS 128
 typedef struct UINumericClickState {
@@ -76,12 +77,14 @@ typedef struct UITreeHeaderNav {
     int depth;
 } UITreeHeaderNav;
 
-typedef struct ButtonMotionEntry {
-    unsigned int key;
-    InteractionMotion motion;
+typedef struct InstanceEntry {
+    uint64_t key;
+    const char *type;
+    size_t size;
+    void *value;
     unsigned long frame_seen;
-    struct ButtonMotionEntry *next;
-} ButtonMotionEntry;
+    struct InstanceEntry *next;
+} InstanceEntry;
 
 struct ToolkitStore {
     int drag_active;
@@ -94,8 +97,8 @@ struct ToolkitStore {
     int canvas_depth;
     int canvas_mode_depth;
     UIRadioAnimState radio_anim[UI_RADIO_ANIM_MAX];
-    ButtonMotionEntry *button_motion[UI_BUTTON_MOTION_BUCKETS];
-    unsigned long button_motion_frame;
+    InstanceEntry *instances[UI_INSTANCE_BUCKETS];
+    unsigned long instance_frame;
     int last_table_id;
     int last_table_row;
     int last_table_column;
@@ -162,10 +165,11 @@ toolkit_store_free(ToolkitStore *store)
         return;
     if(store == current_toolkit_store || store == &fallback_toolkit_store)
         abort();
-    for(int i = 0; i < UI_BUTTON_MOTION_BUCKETS; i++) {
-        ButtonMotionEntry *entry = store->button_motion[i];
+    for(int i = 0; i < UI_INSTANCE_BUCKETS; i++) {
+        InstanceEntry *entry = store->instances[i];
         while(entry != NULL) {
-            ButtonMotionEntry *next = entry->next;
+            InstanceEntry *next = entry->next;
+            free(entry->value);
             free(entry);
             entry = next;
         }
@@ -205,13 +209,14 @@ toolkit_store_frame(ToolkitStore *store)
 {
     if(store == NULL)
         return;
-    unsigned long frame = ++store->button_motion_frame;
-    for(int i = 0; i < UI_BUTTON_MOTION_BUCKETS; i++) {
-        ButtonMotionEntry **link = &store->button_motion[i];
+    unsigned long frame = ++store->instance_frame;
+    for(int i = 0; i < UI_INSTANCE_BUCKETS; i++) {
+        InstanceEntry **link = &store->instances[i];
         while(*link != NULL) {
-            ButtonMotionEntry *entry = *link;
-            if(MotionExpired((int64_t)(frame - entry->frame_seen))) {
+            InstanceEntry *entry = *link;
+            if(InstanceExpired((int64_t)(frame - entry->frame_seen))) {
                 *link = entry->next;
+                free(entry->value);
                 free(entry);
             } else {
                 link = &entry->next;
@@ -220,27 +225,33 @@ toolkit_store_frame(ToolkitStore *store)
     }
 }
 
-InteractionMotion *
-toolkit_button_motion(unsigned int key)
+void *
+toolkit_instance(const char *type, uint64_t key, size_t size)
 {
     ToolkitStore *store = current_toolkit_store;
-    unsigned long frame = store->button_motion_frame;
-    unsigned int bucket = key % UI_BUTTON_MOTION_BUCKETS;
-    for(ButtonMotionEntry *entry = store->button_motion[bucket]; entry != NULL;
+    unsigned int bucket = key % UI_INSTANCE_BUCKETS;
+    for(InstanceEntry *entry = store->instances[bucket]; entry != NULL;
         entry = entry->next) {
-        if(entry->key == key) {
-            entry->frame_seen = frame;
-            return &entry->motion;
+        if(entry->key == key && strcmp(entry->type, type) == 0) {
+            if(entry->size != size)
+                abort();
+            entry->frame_seen = store->instance_frame;
+            return entry->value;
         }
     }
-    ButtonMotionEntry *entry = calloc(1, sizeof(*entry));
+    InstanceEntry *entry = calloc(1, sizeof(*entry));
     if(entry == NULL)
         abort();
+    entry->value = calloc(1, size);
+    if(entry->value == NULL)
+        abort();
     entry->key = key;
-    entry->frame_seen = frame;
-    entry->next = store->button_motion[bucket];
-    store->button_motion[bucket] = entry;
-    return &entry->motion;
+    entry->type = type;
+    entry->size = size;
+    entry->frame_seen = store->instance_frame;
+    entry->next = store->instances[bucket];
+    store->instances[bucket] = entry;
+    return entry->value;
 }
 
 static ToolkitStore *

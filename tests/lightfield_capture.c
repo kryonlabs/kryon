@@ -6,6 +6,7 @@
 #include "../src/ui/ui_blend_internal.h"
 #include "../src/ui/ui_style_internal.h"
 #include "../src/ui/toolkit_store.h"
+#include "runtime/button.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -44,7 +45,7 @@ static void check_explicit_button_motion(void)
             EndTree();
             EndUIFrame();
             EndDrawing();
-            InteractionMotion *motion = toolkit_button_motion(key);
+            InteractionMotion *motion = &instance_state(ButtonInstance, key)->motion;
             assert(motion->hover.value == (state == ButtonStateHover));
             assert(motion->press.value == (state == ButtonStatePressed));
             assert(motion->focus.value == (state == ButtonStateFocus));
@@ -82,7 +83,7 @@ static void check_button_blocking_motion(void)
             EndDisabled();
             EndUIFrame();
             EndDrawing();
-            InteractionMotion *motion = toolkit_button_motion(key);
+            InteractionMotion *motion = &instance_state(ButtonInstance, key)->motion;
             if(frame == 1) {
                 assert(motion->hover.value > 0);
                 assert(motion->press.value > 0);
@@ -128,8 +129,8 @@ static void check_button_motion_identity(int moving_id, int other_id)
             metrics.transition_normal_ms, metrics.transition_fast_ms);
         unsigned int moving_key = (2166136261u ^ (unsigned int)moving_id) * 16777619u;
         unsigned int other_key = (2166136261u ^ (unsigned int)other_id) * 16777619u;
-        assert(toolkit_button_motion(moving_key)->hover.value == expected.hover.value);
-        assert(toolkit_button_motion(other_key)->hover.value == 0);
+        assert(instance_state(ButtonInstance, moving_key)->motion.hover.value == expected.hover.value);
+        assert(instance_state(ButtonInstance, other_key)->motion.hover.value == 0);
     }
 }
 
@@ -644,10 +645,10 @@ int main(int argc, char **argv)
                 ui_blend_capture();
                 BeginUIFrame(1536, 1024, 1.0f);
                 ButtonsExample((Rectangle){0, 0, 1536, 1024});
-                InteractionMotion *other = toolkit_button_motion(other_key);
+                InteractionMotion *other = &instance_state(ButtonInstance, other_key)->motion;
                 assert(other->hover.value == 0 && other->press.value == 0 && other->focus.value == 0);
                 if(frame == 23) {
-                    InteractionMotion *active = toolkit_button_motion(active_key);
+                    InteractionMotion *active = &instance_state(ButtonInstance, active_key)->motion;
                     assert(active->hover.value == (stage == 1 || stage == 2));
                     assert(active->press.value == (stage == 2));
                     assert(active->focus.value == (stage == 2 || stage == 3));

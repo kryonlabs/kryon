@@ -752,11 +752,6 @@ MaterialLayerCount :: (material: i32) -> i32 #export {
     return 12
 }
 
-# Age is measured in the owning host's frames, never another window's clock.
-MotionExpired :: (age: i64) -> bool #export {
-    return age < 0 || age > 12
-}
-
 # Joined segments share one outer surface. Only interior seams clip the
 # paint; the outermost edges retain their complete external glow.
 SegmentCoverage :: (pixel_x: float, segment_x: float, segment_width: float, surface_width: float) -> float #export {

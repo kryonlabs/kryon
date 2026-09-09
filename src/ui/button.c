@@ -212,7 +212,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             while(*label != '\0')
                 key = (key ^ (unsigned char)*label++) * 16777619u;
         }
-        InteractionMotion *motion = toolkit_button_motion(key);
+        InteractionMotion *motion = &instance_state(ButtonInstance, key)->motion;
         {
             float dt = GetFrameTime();
             ThemeMetrics metrics = GetThemeMetrics();

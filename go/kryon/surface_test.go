@@ -366,7 +366,7 @@ func TestDarkFocusFaceRetainsItsColorAndAlpha(t *testing.T) {
 
 func TestMotionExpiresInItsOwnersFrames(t *testing.T) {
 	for _, age := range []int64{-1, 0, 1, 12, 13, 1000} {
-		if Surface_MotionExpired(age) != (age < 0 || age > 12) {
+		if Instance_InstanceExpired(age) != (age < 0 || age > 12) {
 			t.Fatalf("wrong motion lifetime at age %d", age)
 		}
 	}
@@ -812,12 +812,12 @@ func TestDefaultButtonMotionAndZeroDurationOptOut(t *testing.T) {
 	r.mousePos = Vector2{X: 20, Y: 20}
 	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30}, ID: 90}
 	r.buttonAt(props)
-	if got := r.buttonMotion[90].tracks.Hover.Value; got != 0.875 {
+	if got := instanceState[ButtonInstance](r, uint64(uint32(90))).Motion.Hover.Value; got != 0.875 {
 		t.Fatalf("default hover should animate halfway through 140ms: %v", got)
 	}
 	r.mousePos = Vector2{X: 0, Y: 0}
 	r.buttonAt(props)
-	if got := r.buttonMotion[90].tracks.Hover.Value; got != 0.109375 {
+	if got := instanceState[ButtonInstance](r, uint64(uint32(90))).Motion.Hover.Value; got != 0.109375 {
 		t.Fatalf("hover exit should reverse smoothly: %v", got)
 	}
 	theme := ThemeDefaultLight()
@@ -826,7 +826,7 @@ func TestDefaultButtonMotionAndZeroDurationOptOut(t *testing.T) {
 	r.SetTheme(theme)
 	r.mousePos = Vector2{X: 20, Y: 20}
 	r.buttonAt(props)
-	if got := r.buttonMotion[90].tracks.Hover.Value; got != 1 {
+	if got := instanceState[ButtonInstance](r, uint64(uint32(90))).Motion.Hover.Value; got != 1 {
 		t.Fatalf("zero-duration motion opt-out did not snap: %v", got)
 	}
 	r.EndFrame()

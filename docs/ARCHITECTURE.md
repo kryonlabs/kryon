@@ -235,16 +235,20 @@ State belongs to a stable widget instance within a window, not to a declaration
 global. Reordering keyed children must preserve their state; separate windows
 and separate instances must not share interaction or animation tracks.
 
-C button motion now uses the host-owned `ToolkitStore`, which existing frame
-bindings switch for native windows, nested rendering hosts, and headless UI
-frames. Store destruction releases the tracks with the host; equal button IDs
-in separate stores no longer share motion. Dynamically allocated entries retain
-all live tracks, including hash-bucket collisions, rather than evicting live
-buttons at a fixed capacity. Each host frame advances and sweeps its own store,
-even when no buttons are drawn. C and Go use `MotionExpired` in
-`runtime/surface.kry` for the shared twelve-frame retention rule; frames from
-another host cannot expire these entries. This is not yet the completed generic
-widget-instance lifetime model. Go keeps button tracks in its runtime instance.
+`runtime/button.kry` declares `ButtonInstance`, including its motion tracks.
+C's host-owned `ToolkitStore` and Go's runtime allocate typed instance records
+by a 64-bit key. Types and render hosts have separate namespaces; inserting or
+reordering other instances preserves existing records and their addresses.
+Existing C frame bindings select the store for native windows, nested rendering
+hosts, and headless UI frames. Closing a host releases its instance storage.
+`runtime/instance.kry` supplies the shared twelve-frame retention rule. Each
+host sweeps its own store even when no buttons are drawn; another host's frames
+cannot expire its entries. Button uses this storage in both native runtimes.
+Compiler-managed state access, hierarchical instance keys, and typed child slots
+remain necessary before this is a complete declaration lifecycle.
+
+Runtime generation discovers `runtime/*.kry` as one checked module set. Adding
+a shared module does not require another per-widget C or Go generation rule.
 
 Migrate Button end-to-end as the first composition/state test, followed by Text.
 Do not call this complete merely because a new declaration parses: tests must

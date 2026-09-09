@@ -3,6 +3,11 @@
 #import "theme"
 #import "surface"
 
+# The declaration owns the retained shape; hosts only allocate it by identity.
+ButtonInstance :: struct {
+    motion: InteractionMotion
+}
+
 # Widget defaults produce the shared Style value. Hosts adapt theme records;
 # they must not independently assemble button colors, sizing, or presence bits.
 DefaultButtonStyle :: (tone: i32, emphasis: i32, state: i32, size: i32,
