@@ -1,7 +1,7 @@
 # Kryon Text and Button Content Specification
 
-Status: selected design  
-Scope: canonical `.kry` Text node, typography, and Button content composition  
+Status: selected design\
+Scope: canonical `.kry` Text node, typography, and Button content composition\
 Rule: one implementation, one theme, no public `UI` prefixes, no legacy aliases
 
 ![Text role and tone system](assets/text-proposal-a-role-tone.png)

@@ -1,8 +1,8 @@
 # Kryon Theme and Text Specification
 
-Status: proposal for review  
-Scope: canonical read-only text, typography tokens, text measurement, selection, and shared text behavior in controls  
-Companion: [Theme and Button Specification](THEME_AND_BUTTON_SPEC.md)  
+Status: proposal for review\
+Scope: canonical read-only text, typography tokens, text measurement, selection, and shared text behavior in controls\
+Companion: [Theme and Button Specification](THEME_AND_BUTTON_SPEC.md)\
 Rule: no legacy text API, public `UI` prefix, renderer-specific style, or per-call theme reconstruction remains in the target state
 
 ![Text node widget sprite sheet](assets/text-node-widget-sprite-sheet.png)
