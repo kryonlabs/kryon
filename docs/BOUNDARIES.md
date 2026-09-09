@@ -60,3 +60,8 @@ coverage belong in the product repository.
 Keep `examples/manifest.json` current when adding, removing, or renaming
 examples. The manifest is the stable inventory for example metadata and curated
 render-exact fixtures.
+
+Widget props contracts belong in the declaration source. Button's C header and
+native Go props type are generated from `runtime/button_props.kry`; handwritten
+host code consumes these types. Host geometry, texture, and style types remain
+external dependencies while their shared declarations are migrated.

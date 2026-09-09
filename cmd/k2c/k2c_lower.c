@@ -1344,7 +1344,7 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             fprintf(h, "};\n");
             continue;
         }
-        fprintf(h, "\ntypedef struct {\n");
+        fprintf(h, "\ntypedef struct %s {\n", ty->name);
         /* Each body line is a field decl: 'name: [N] Type' / 'name: Type'. */
         {
             const char *line = ty->body;

@@ -3,6 +3,7 @@
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
+#include "ui_button_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_overlay.h"
@@ -251,29 +252,6 @@ UIWidgetNode NodeThemeSettings(ThemeSettingsProps settings);
 UIWidgetNode NodeThemePicker(int x, int y, int w);
 UIWidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
 UIWidgetNode NodeTitleBar(int height);
-
-typedef struct ButtonProps {
-    Rectangle bounds;
-    const char *label;
-    int font;
-    int id;
-    ButtonTone tone;
-    ButtonEmphasis emphasis;
-    ControlSize size;
-    int disabled;
-    int loading;
-    int selected;
-    int full_width;
-    int pill;
-    int circle;
-    Texture2D icon;
-    int icon_type;
-    IconPlacement icon_placement;
-    int icon_only;
-    int square;
-    ButtonState state;
-    ControlStyle style;
-} ButtonProps;
 
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 

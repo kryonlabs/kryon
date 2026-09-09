@@ -106,7 +106,7 @@ is_runtime_go_type(const char *type)
 static void
 qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
 {
-    if(is_runtime_go_type(type))
+    if(!runtime_output && is_runtime_go_type(type))
         snprintf(dst, dst_size, "%s.%s", K2GO_RUNTIME_PKG, type);
     else
         snprintf(dst, dst_size, "%s", type);

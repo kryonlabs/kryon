@@ -1,0 +1,26 @@
+#module "button_props"
+#import "ui_controls.h"
+
+# Shared public contract. Hosts provide the geometry, texture, and style types.
+ButtonProps :: struct {
+    bounds: Rectangle
+    label: const char*
+    font: i32
+    id: i32
+    tone: ButtonTone
+    emphasis: ButtonEmphasis
+    size: ControlSize
+    disabled: bool
+    loading: bool
+    selected: bool
+    full_width: bool
+    pill: bool
+    circle: bool
+    icon: Texture2D
+    icon_type: i32
+    icon_placement: IconPlacement
+    icon_only: bool
+    square: bool
+    state: ButtonState
+    style: ControlStyle
+}

@@ -2569,3 +2569,10 @@ int main(void) {
     return 0;
 }
 ```
+
+Button's public props contract is declared in `runtime/button_props.kry`. Runtime
+generation produces `include/ui_button_props.generated.h` and
+`go/kryon/button_props.go`; edit the declaration, then run `make generate-runtime`.
+The C flags now use `bool`, matching their declared meaning and Go types. Rebuild
+C consumers together with the library because the props record layout changed.
+The label remains a borrowed C string and a native Go string.

@@ -1377,6 +1377,7 @@ include/theme_meta.h macro THEME_COUNT
 include/theme_style.h enum THEME_STYLE_CLASSIC
 include/theme_style.h enum THEME_STYLE_DEFAULT
 include/theme_style.h enum THEME_STYLE_SYSTEM
+include/ui_button_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_clip.h function BeginUIClip
 include/ui_clip.h function EndUIClip
 include/ui_clip.h function GetUIClipEffective

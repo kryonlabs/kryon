@@ -511,29 +511,6 @@ type ThemeSettingsResult struct {
 	StyleChanged   int32
 }
 
-type ButtonProps struct {
-	Bounds        Rectangle
-	Label         string
-	Font          int32
-	ID            int32
-	Tone          ButtonTone
-	Emphasis      ButtonEmphasis
-	Size          ControlSize
-	Disabled      bool
-	Loading       bool
-	Selected      bool
-	FullWidth     bool
-	Pill          bool
-	Circle        bool
-	Icon          Texture2D
-	IconType      int32
-	IconPlacement IconPlacement
-	IconOnly      bool
-	Square        bool
-	State         ButtonState
-	Style         ControlStyle
-}
-
 type MenuButtonProps struct {
 	Button    ButtonProps
 	MenuID    int32
