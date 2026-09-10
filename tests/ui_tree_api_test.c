@@ -734,6 +734,42 @@ main(void)
     }
 
     {
+        char value[512] = "";
+        const char *payload =
+            "line-00\nline-01\nline-02\nline-03\nline-04\nline-05\n"
+            "line-06\nline-07\nline-08\nline-09\nline-10\nline-11";
+        int cursor = 0;
+        int focused = 1;
+        int scroll_y = 0;
+
+        InjectReset();
+        SetUIClipboardTextValue(payload);
+        SetUIFocus(1005);
+        InjectKey(KEY_LEFT_CONTROL, 1);
+        InjectKeyTap(KEY_V);
+        InjectPump();
+        BeginTree(1005);
+        TextArea((TextAreaProps){
+            .bounds = {10, 10, 160, 56}, .text = value,
+            .text_size = sizeof(value), .cursor_position = &cursor,
+            .focused = &focused, .scroll_y = &scroll_y,
+            .max_codepoints = 511, .focus_id = 1005,
+            .font = 16, .line_gap = 4
+        });
+        ReconcileTree();
+        LayoutTree();
+        RouteInput();
+        InjectKey(KEY_LEFT_CONTROL, 0);
+        InjectPump();
+        check_int("retained textarea preserves pasted newlines",
+                  strcmp(value, payload), 0);
+        check_int("retained textarea bulk paste moves cursor",
+                  cursor, (int)strlen(payload));
+        check_int("retained textarea bulk paste reveals caret",
+                  scroll_y > 0, 1);
+    }
+
+    {
         char value[64] = "textarea-probe";
         int cursor = 0;
         int focused = 0;
@@ -889,6 +925,59 @@ main(void)
         check_int("font token restores prior font",
                   ui_active_font_token(), 0);
         ClearUIFonts();
+    }
+    {
+        RouterRoute routes[] = {
+            {1, -1, "home", "Home", "main"},
+            {2, 1, "settings", "Settings", "main"}
+        };
+        RouterState state = {0};
+        RouterResult result;
+
+        BeginTree(4100);
+        result = Router((RouterProps){
+            .bounds = {0, 0, 120, 80},
+            .key = Key("router-test"),
+            .state = &state,
+            .routes = routes,
+            .route_count = 2,
+            .initial_route = 1
+        });
+        EndTree();
+        check_int("router initializes to initial route", result.route, 1);
+        check_int("router initial frame is not changed", result.changed, 0);
+        nodes = GetTreeNodes(&count);
+        check_int("router node is retained",
+                  count > 1 ? (int)nodes[1].kind : -1,
+                  UI_WIDGET_ROUTER_NODE);
+
+        RouterNavigate(&state, 2);
+        BeginTree(4100);
+        result = Router((RouterProps){
+            .bounds = {0, 0, 120, 80},
+            .key = Key("router-test"),
+            .state = &state,
+            .routes = routes,
+            .route_count = 2,
+            .initial_route = 1
+        });
+        EndTree();
+        check_int("router applies queued route", result.route, 2);
+        check_int("router reports queued route change", result.changed, 1);
+        check_int("router tracks previous route", result.previous_route, 1);
+
+        BeginTree(4100);
+        result = Router((RouterProps){
+            .bounds = {0, 0, 120, 80},
+            .key = Key("router-test"),
+            .state = &state,
+            .routes = routes,
+            .route_count = 2,
+            .initial_route = 1
+        });
+        EndTree();
+        check_int("router settles after change", result.changed, 0);
+        check_int("router keeps current route", result.route, 2);
     }
     return failures == 0 ? 0 : 1;
 }

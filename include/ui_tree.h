@@ -85,7 +85,8 @@ typedef enum UIWidgetKind {
     UI_WIDGET_ANGLE_SLIDER_NODE,
     UI_WIDGET_FLOAT_DRAG_NODE,
     UI_WIDGET_INT_DRAG_NODE,
-    UI_WIDGET_TEXT_INPUT_PAINT_NODE
+    UI_WIDGET_TEXT_INPUT_PAINT_NODE,
+    UI_WIDGET_ROUTER_NODE
 } UIWidgetKind;
 
 /* Prepared painting only: no editing-state pointers survive submission. */
@@ -524,11 +525,58 @@ typedef struct {
     KeyID key;
 } RowProps;
 
+enum {
+    ROUTER_NO_ROUTE = -2147483647
+};
+
+typedef struct RouterRoute {
+    int id;
+    int parent;
+    const char *path;
+    const char *title;
+    const char *group;
+} RouterRoute;
+
+typedef struct RouterState {
+    int initialized;
+    int current_route;
+    int previous_route;
+    int requested_route;
+    int changed;
+    int route_version;
+    unsigned int generation;
+} RouterState;
+
+typedef struct RouterProps {
+    Rectangle bounds;
+    KeyID key;
+    RouterState *state;
+    const RouterRoute *routes;
+    int route_count;
+    int initial_route;
+    int sync_url;
+    int replace_on_init;
+} RouterProps;
+
+typedef struct RouterResult {
+    int route;
+    int previous_route;
+    int requested_route;
+    int changed;
+    const RouterRoute *route_info;
+} RouterResult;
+
 GridMetrics MeasureGrid(GridProps props);
 GridCursor BeginGridCursor(GridProps props);
 GridCursor GridStep(GridCursor cursor, int32_t height, int32_t column_span);
 int32_t GridCursorHeight(GridCursor cursor);
 
+void RouterStateInit(RouterState *state, int initial_route);
+void RouterNavigate(RouterState *state, int route_id);
+int RouterSetRoute(RouterProps props, int route_id, int push);
+const RouterRoute *RouterFindRoute(const RouterRoute *routes, int route_count,
+                                   int route_id);
+RouterResult Router(RouterProps props);
 NodeId Column(ColumnProps props);
 NodeId Row(RowProps props);
 NodeId Grid(GridProps props);

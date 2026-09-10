@@ -624,6 +624,7 @@ ui_tree_node_uses_retained_layout(NodeId id)
            parent->kind == UI_WIDGET_ROW_NODE ||
            parent->kind == UI_WIDGET_GRID_NODE ||
            parent->kind == UI_WIDGET_STACK_NODE ||
+           parent->kind == UI_WIDGET_ROUTER_NODE ||
            parent->kind == UI_WIDGET_BUTTON_NODE;
 }
 
@@ -768,6 +769,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_FLOAT_DRAG_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_INT_DRAG_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_INPUT_PAINT_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_ROUTER_NODE] = {ui_measure_bounds_height},
 };
 
 KeyID
@@ -1477,6 +1479,8 @@ RouteInput(void)
                 changed |= ui_text_delete_range(
                     field->text, field->text_size, &state->cursor, start, end);
             {
+                int allow_newlines =
+                    node->kind == UI_WIDGET_TEXT_AREA_NODE;
                 TextEdit edit;
 
                 memset(&edit, 0, sizeof(edit));
@@ -1486,7 +1490,7 @@ RouteInput(void)
                 edit.max_codepoints = field->max_codepoints;
                 edit.filter = field->filter;
                 edit.filter_user_data = field->filter_user_data;
-                changed |= ui_text_paste_clipboard(edit, 0);
+                changed |= ui_text_paste_clipboard(edit, allow_newlines);
             }
             state->anchor = state->cursor;
             selection_changed = 1;
@@ -1696,6 +1700,12 @@ DrawTree(void)
     int i;
     int window_ready = IsWindowReady();
 
+    if(getenv("KRYON_DEBUG_TREE") != NULL) {
+        Color dbg_bg = GetThemeBackground();
+        fprintf(stderr, "DrawTree: invalid=%u committed=%d ready=%d themebg=%d,%d,%d,%d\\n",
+                ui_tree_invalid, ui_committed_node_count, window_ready,
+                dbg_bg.r, dbg_bg.g, dbg_bg.b, dbg_bg.a);
+    }
     if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
         return;
     /* Requests made while painting belong to the next animation frame. */
@@ -1705,6 +1715,10 @@ DrawTree(void)
         UIClipState parent_clip = {0};
         UIBlendState parent_blend = {{0}};
 
+        if(getenv("KRYON_DEBUG_TREE") != NULL)
+            fprintf(stderr, "node[%d] kind=%d bounds=%.0f,%.0f,%.0f,%.0f flags=%u\\n",
+                    i, (int)node->kind, node->bounds.x, node->bounds.y,
+                    node->bounds.width, node->bounds.height, node->flags);
         if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
             continue;
 
@@ -2084,6 +2098,7 @@ ui_accessibility_role(UIWidgetKind kind)
     case UI_WIDGET_ROW_NODE:
     case UI_WIDGET_STACK_NODE:
     case UI_WIDGET_GRID_NODE:
+    case UI_WIDGET_ROUTER_NODE:
     case UI_WIDGET_GROUP_NODE: return "group";
     case UI_WIDGET_PICTURE_NODE: return "img";
     default: return NULL;
@@ -4114,4 +4129,217 @@ Screen(ColumnProps props)
 {
     return ui_begin_layout_node(UI_WIDGET_GROUP_NODE, props.key, props.bounds,
                                 props.gap, props.padding);
+}
+
+static const RouterRoute *
+router_find_route_index(const RouterRoute *routes, int route_count, int route_id,
+                        int *index_out)
+{
+    int i;
+
+    if(index_out != NULL)
+        *index_out = -1;
+    if(routes == NULL || route_count <= 0)
+        return NULL;
+    for(i = 0; i < route_count; i++) {
+        if(routes[i].id == route_id) {
+            if(index_out != NULL)
+                *index_out = i;
+            return &routes[i];
+        }
+    }
+    return NULL;
+}
+
+const RouterRoute *
+RouterFindRoute(const RouterRoute *routes, int route_count, int route_id)
+{
+    return router_find_route_index(routes, route_count, route_id, NULL);
+}
+
+void
+RouterStateInit(RouterState *state, int initial_route)
+{
+    if(state == NULL)
+        return;
+    state->initialized = 1;
+    state->current_route = initial_route;
+    state->previous_route = initial_route;
+    state->requested_route = ROUTER_NO_ROUTE;
+    state->changed = 0;
+    state->route_version = GetRouteVersion();
+    state->generation = 0;
+}
+
+void
+RouterNavigate(RouterState *state, int route_id)
+{
+    if(state == NULL)
+        return;
+    state->requested_route = route_id;
+    InvalidateTree(UI_INVALIDATE_PAINT);
+}
+
+static void
+router_copy_hash_id(char *dst, size_t dst_size, const char *hash)
+{
+    size_t n = 0;
+
+    if(dst == NULL || dst_size == 0)
+        return;
+    dst[0] = '\0';
+    if(hash == NULL)
+        return;
+    while(*hash == ' ' || *hash == '\t' || *hash == '#')
+        hash++;
+    if(*hash == '/')
+        hash++;
+    while(hash[n] != '\0' && hash[n] != '/' && hash[n] != '?' &&
+          hash[n] != '&' && n + 1 < dst_size) {
+        dst[n] = hash[n];
+        n++;
+    }
+    dst[n] = '\0';
+}
+
+static int
+router_route_for_hash(RouterProps props)
+{
+    char id[128];
+    int i;
+
+    router_copy_hash_id(id, sizeof(id), GetRouteHash());
+    if(id[0] == '\0')
+        return ROUTER_NO_ROUTE;
+    for(i = 0; i < props.route_count; i++) {
+        const char *path = props.routes[i].path;
+
+        if(path == NULL)
+            continue;
+        while(*path == '#')
+            path++;
+        if(*path == '/')
+            path++;
+        if(strcmp(path, id) == 0)
+            return props.routes[i].id;
+    }
+    return ROUTER_NO_ROUTE;
+}
+
+static void
+router_write_url(RouterProps props, int route_id, int push)
+{
+    const RouterRoute *route;
+    const char *base;
+    const char *path;
+    char url[320];
+
+    if(!props.sync_url)
+        return;
+    route = RouterFindRoute(props.routes, props.route_count, route_id);
+    if(route == NULL || route->path == NULL || route->path[0] == '\0')
+        return;
+    base = GetRoutePath();
+    if(base == NULL || base[0] == '\0')
+        base = "/";
+    path = route->path;
+    while(*path == '#')
+        path++;
+    if(*path == '/')
+        path++;
+    snprintf(url, sizeof(url), "%s#/%s", base, path);
+    if(push)
+        PushRoute(url);
+    else
+        ReplaceRoute(url);
+    if(props.state != NULL)
+        props.state->route_version = GetRouteVersion();
+}
+
+int
+RouterSetRoute(RouterProps props, int route_id, int push)
+{
+    RouterState *state = props.state;
+
+    if(state == NULL ||
+       RouterFindRoute(props.routes, props.route_count, route_id) == NULL)
+        return 0;
+    if(!state->initialized)
+        RouterStateInit(state, props.initial_route);
+    state->changed = state->current_route != route_id;
+    state->previous_route = state->current_route;
+    state->current_route = route_id;
+    state->requested_route = ROUTER_NO_ROUTE;
+    if(state->changed)
+        state->generation++;
+    router_write_url(props, route_id, push);
+    return state->changed;
+}
+
+RouterResult
+Router(RouterProps props)
+{
+    RouterResult result = {0};
+    RouterState *state = props.state;
+    int next = ROUTER_NO_ROUTE;
+    int push = 0;
+    NodeId node;
+
+    if(state == NULL)
+        return result;
+    if(!state->initialized) {
+        int initial = props.initial_route;
+        int from_hash = props.sync_url ? router_route_for_hash(props)
+                                       : ROUTER_NO_ROUTE;
+
+        if(from_hash != ROUTER_NO_ROUTE)
+            initial = from_hash;
+        RouterStateInit(state, initial);
+        if(props.sync_url && from_hash == ROUTER_NO_ROUTE &&
+           props.replace_on_init)
+            router_write_url(props, initial, 0);
+    }
+
+    state->changed = 0;
+    state->previous_route = state->current_route;
+    if(props.sync_url) {
+        int version = GetRouteVersion();
+
+        if(version != state->route_version) {
+            int from_hash = router_route_for_hash(props);
+
+            state->route_version = version;
+            if(from_hash != ROUTER_NO_ROUTE)
+                next = from_hash;
+        }
+    }
+    if(state->requested_route != ROUTER_NO_ROUTE) {
+        next = state->requested_route;
+        push = 1;
+        state->requested_route = ROUTER_NO_ROUTE;
+    }
+    if(next != ROUTER_NO_ROUTE &&
+       RouterFindRoute(props.routes, props.route_count, next) != NULL &&
+       next != state->current_route) {
+        state->previous_route = state->current_route;
+        state->current_route = next;
+        state->changed = 1;
+        state->generation++;
+        router_write_url(props, next, push);
+        InvalidateTree(UI_INVALIDATE_PAINT);
+    }
+
+    node = ui_tree_add((int)((props.key != 0 ? props.key : Key("Router")) &
+                             0x7fffffffU),
+                       UI_WIDGET_ROUTER_NODE, props.bounds, NULL);
+    if(node >= 0)
+        ui_tree_nodes[node].key = props.key != 0 ? props.key : Key("Router");
+
+    result.route = state->current_route;
+    result.previous_route = state->previous_route;
+    result.requested_route = state->requested_route;
+    result.changed = state->changed;
+    result.route_info = RouterFindRoute(props.routes, props.route_count,
+                                        state->current_route);
+    return result;
 }
