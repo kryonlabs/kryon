@@ -53,7 +53,7 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 	frame.Disabled, frame.Focused, frame.Hovered, frame.Pressed = disabled, focused, hovered, held
 	frame.MotionValid = true
 	frame.HoverAmount, frame.PressAmount, frame.FocusAmount = motion.Hover.Value, motion.Press.Value, motion.Focus.Value
-	r.record(frame)
+	r.recordButton(frame)
 	return unpackRGBA(Surface_Opacity(packRGBA(paint.Foreground), paint.Opacity))
 }
 

@@ -672,7 +672,7 @@ func TestButtonUsesSharedStyleGradient(t *testing.T) {
 	})
 	ops := r.FrameOps()
 	op := ops[len(ops)-1]
-	if op.Kind != FrameOpButton || !op.HasBackgroundEnd || op.BackgroundEnd.B != 200 {
+	if op.Kind != FrameOpButton || !(op.Button.Appearance.Value.Fields&uint32(StyleBackgroundEnd) != 0) || unpackRGBA(op.Button.Appearance.Value.BackgroundEnd).B != 200 {
 		t.Fatalf("button lost the shared gradient style: %+v", op)
 	}
 	img := image.NewRGBA(image.Rect(0, 0, 80, 48))
@@ -701,14 +701,14 @@ func TestCustomGradientPresenceFadesWithInteraction(t *testing.T) {
 		r.buttonAt(props)
 		ops := r.FrameOps()
 		op := ops[len(ops)-1]
-		if !op.FillStatesValid || op.FillStates.Normal || !op.FillStates.Hover {
-			t.Fatalf("lost state-specific gradient presence: %+v", op.FillStates)
+		if !op.Button.Material.FillValid || op.Button.Appearance.Fill.Normal || !op.Button.Appearance.Fill.Hover {
+			t.Fatalf("lost state-specific gradient presence: %+v", op.Button.Appearance.Fill)
 		}
-		amount := op.FillStates.HoverAmount
+		amount := op.Button.Appearance.Fill.HoverAmount
 		if amount <= 0 || amount >= 1 {
 			t.Fatalf("expected an in-flight fade, got %v", amount)
 		}
-		got := Surface_ApplyFillStates(material, op.FillStates, 1)
+		got := Surface_ApplyFillStates(material, op.Button.Appearance.Fill, 1)
 		want := Surface_GradientColor(material.EndColor, 0x0000ff00, amount)
 		if got.EndColor != want {
 			t.Fatalf("gradient snapped on entering/leaving hover: %08x != %08x", got.EndColor, want)
@@ -851,27 +851,27 @@ func TestCustomPaintMetricsFadeAndReverseWithoutMovingHitBounds(t *testing.T) {
 	r.frameDeltaMS = 70
 	r.mousePos = Vector2{X: 30, Y: 30}
 	hover := paint()
-	if hover.Radius != 11 || hover.BorderWidth != 2.75 || hover.Opacity != 0.34375 ||
-		hover.ContentOffset != (Vector2{X: 3.5, Y: -1.75}) || hover.Bounds != props.Bounds {
+	if hover.Button.Appearance.Value.Radius != 11 || hover.Button.Appearance.Value.BorderWidth != 2.75 || hover.Button.Appearance.Value.Opacity != 0.34375 ||
+		(Vector2{X: hover.Button.Appearance.Value.OffsetX, Y: hover.Button.Appearance.Value.OffsetY}) != (Vector2{X: 3.5, Y: -1.75}) || hover.Bounds != props.Bounds {
 		t.Fatalf("paint metrics must fade without changing hit geometry: %+v", hover)
 	}
 	r.frameDeltaMS = 0
 	r.mousePos = Vector2{}
 	reversed := paint()
-	if reversed.Radius != hover.Radius || reversed.BorderWidth != hover.BorderWidth ||
-		reversed.Opacity != hover.Opacity || reversed.ContentOffset != hover.ContentOffset {
+	if reversed.Button.Appearance.Value.Radius != hover.Button.Appearance.Value.Radius || reversed.Button.Appearance.Value.BorderWidth != hover.Button.Appearance.Value.BorderWidth ||
+		reversed.Button.Appearance.Value.Opacity != hover.Button.Appearance.Value.Opacity || (Vector2{X: reversed.Button.Appearance.Value.OffsetX, Y: reversed.Button.Appearance.Value.OffsetY}) != (Vector2{X: hover.Button.Appearance.Value.OffsetX, Y: hover.Button.Appearance.Value.OffsetY}) {
 		t.Fatal("reversing an interaction must begin at the current displayed metrics")
 	}
 	r.frameDeltaMS = 140
 	settled := paint()
-	if settled.Radius != 4 || settled.BorderWidth != 1 || settled.Opacity != 1 || settled.ContentOffset != (Vector2{}) {
+	if settled.Button.Appearance.Value.Radius != 4 || settled.Button.Appearance.Value.BorderWidth != 1 || settled.Button.Appearance.Value.Opacity != 1 || (Vector2{X: settled.Button.Appearance.Value.OffsetX, Y: settled.Button.Appearance.Value.OffsetY}) != (Vector2{}) {
 		t.Fatal("settled paint metrics must return to their exact normal values")
 	}
 	props.State = ButtonStateHover
 	r.frameDeltaMS = 0
 	explicit := paint()
-	if explicit.Radius != 12 || explicit.BorderWidth != 3 || explicit.Opacity != 0.25 ||
-		explicit.ContentOffset != (Vector2{X: 4, Y: -2}) {
+	if explicit.Button.Appearance.Value.Radius != 12 || explicit.Button.Appearance.Value.BorderWidth != 3 || explicit.Button.Appearance.Value.Opacity != 0.25 ||
+		(Vector2{X: explicit.Button.Appearance.Value.OffsetX, Y: explicit.Button.Appearance.Value.OffsetY}) != (Vector2{X: 4, Y: -2}) {
 		t.Fatal("explicit preview states must use their exact target metrics immediately")
 	}
 	props.Style.Pressed = Style{Fields: fields}
@@ -908,7 +908,7 @@ func TestCustomFocusColorFadesAndReverses(t *testing.T) {
 	paint := func() Color {
 		r.buttonAt(props)
 		ops := r.FrameOps()
-		return ops[len(ops)-1].FocusColor
+		return unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Focus)
 	}
 	r.mousePos = Vector2{}
 	r.focusID = 93
@@ -982,20 +982,20 @@ func TestAutomaticFocusFadesMaterialColors(t *testing.T) {
 	focused := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateFocus)
 	r.buttonAt(props)
 	ops := r.FrameOps()
-	got := ops[len(ops)-1].Color
+	got := unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background)
 	want := unpackRGBA(Surface_GradientColor(packRGBA(normal.Background), packRGBA(focused.Background), 0.875))
 	if got != want || got == normal.Background || got == focused.Background {
 		t.Fatalf("focus material did not fade: got=%v want=%v", got, want)
 	}
 	r.buttonAt(props)
 	ops = r.FrameOps()
-	if ops[len(ops)-1].Color != focused.Background {
+	if unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) != focused.Background {
 		t.Fatal("automatic focus did not reach the explicitly focused material")
 	}
 	r.focusID = 0
 	r.buttonAt(props)
 	ops = r.FrameOps()
-	if ops[len(ops)-1].Color == normal.Background || ops[len(ops)-1].Color == focused.Background {
+	if unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) == normal.Background || unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) == focused.Background {
 		t.Fatal("focus exit snapped instead of fading")
 	}
 	r.EndFrame()
@@ -2348,7 +2348,7 @@ func TestLoadingButtonIsBusyRatherThanDisabled(t *testing.T) {
 	}
 	ops := r.FrameOps()
 	op := ops[len(ops)-1]
-	if !op.Loading || op.Disabled || op.Focused {
+	if !op.Button.Props.Loading || op.Disabled || op.Focused {
 		t.Fatalf("busy state was conflated with disabled or focused: %+v", op)
 	}
 	r.EndFrame()

@@ -1357,6 +1357,10 @@ are preserved at fractional scale; circle, square, and icon-only shapes use
 the resolved height for their width. Shared `.kry` bodies can copy and compare
 the borrowed `label` and style `typeface` fields. C callers retain ownership of
 those null-terminated strings; null labels behave as empty labels.
+Go `FrameOpButton` stores the shared frame in `op.Button`. Inspect its
+`Props`, `Appearance`, `Material`, and `Font` rather than flattened paint fields.
+The operation's `Bounds` and `SurfaceBounds` still specify final placement;
+painting applies them to a copy of the frame, preserving the recorded value.
 The shared `PaintButton` pass accepts a resolved frame, physical label width,
 elapsed time, disclosure state, and synchronous `SurfacePainter`/`Painter`
 callbacks. It emits the surface layers, then the mark and label; callbacks must

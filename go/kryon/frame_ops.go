@@ -28,7 +28,7 @@ type FrameOp struct {
 	Kind              FrameOpKind
 	Bounds            Rectangle
 	SurfaceBounds     Rectangle
-	ContentBounds     Rectangle
+	Button            ButtonFrame
 	AmbientColor      Color
 	Disclosure        bool
 	Polygon           [4]Vector2
@@ -99,4 +99,24 @@ type FrameOp struct {
 
 type frameOpController interface {
 	FrameOps() []FrameOp
+}
+
+// Legacy control producers convert their operation once, before it enters the
+// frame stream. Button itself records the shared frame without this adapter.
+func buttonOperation(op FrameOp) FrameOp {
+	op.Button = ButtonFrame{
+		Props: ButtonProps{Bounds: op.Bounds, ID: op.ID, Label: op.Text, Disabled: op.Disabled, Loading: op.Loading, IconType: op.IconType,
+			IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)},
+		Appearance: StyleFrame{Value: StyleData{IconSize: op.IconSize, Gap: op.Gap,
+			OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}},
+		Material: frameMaterial(op), Font: op.FontSize,
+		Foreground: Surface_Opacity(packRGBA(op.TextColor), op.Opacity),
+	}
+	return op
+}
+
+func (r *runtime) recordButton(op FrameOp) {
+	r.record(op)
+	index := len(r.ops) - 1
+	r.ops[index] = buttonOperation(r.ops[index])
 }

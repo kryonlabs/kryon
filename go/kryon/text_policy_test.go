@@ -46,8 +46,8 @@ func TestLiveButtonStyleResolvesFontAtPaintTime(t *testing.T) {
 				want = explicit
 			}
 			frame := r.FrameOps()[0]
-			if frame.FontSize != want || frame.Bounds != props.Bounds {
-				t.Fatalf("hover %v explicit %d: got font %d bounds %+v, want font %d bounds %+v", hovered, explicit, frame.FontSize, frame.Bounds, want, props.Bounds)
+			if frame.Button.Font != want || frame.Bounds != props.Bounds {
+				t.Fatalf("hover %v explicit %d: got font %d bounds %+v, want font %d bounds %+v", hovered, explicit, frame.Button.Font, frame.Bounds, want, props.Bounds)
 			}
 		}
 	}
@@ -80,7 +80,7 @@ func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 					buttons++
 				}
 				if op.Kind == FrameOpText {
-					want := unpackRGBA(Surface_Opacity(packRGBA(button.TextColor), button.Opacity))
+					want := unpackRGBA(Surface_Opacity(packRGBA(unpackRGBA(button.Button.Appearance.Value.Foreground)), button.Button.Appearance.Value.Opacity))
 					if op.Color != want {
 						t.Fatalf("nested text differs from its animated surface: got %+v, want %+v", op.Color, want)
 					}
@@ -99,7 +99,7 @@ func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 			painted := RenderFrame(320, 160, r.FrameOps())
 			background := RenderFrame(320, 160, withoutText)
 			visible := !bytes.Equal(painted.Pix, background.Pix)
-			if visible != (Surface_Opacity(packRGBA(button.TextColor), button.Opacity)&255 > 0) {
+			if visible != (Surface_Opacity(packRGBA(unpackRGBA(button.Button.Appearance.Value.Foreground)), button.Button.Appearance.Value.Opacity)&255 > 0) {
 				t.Fatal("composed text pixels do not follow the resolved fade alpha")
 			}
 			return button
@@ -108,17 +108,17 @@ func TestComposedTextUsesAnimatedButtonFrame(t *testing.T) {
 		normal := draw(0)
 		r.QueueMouseMove(80, 50)
 		middle := draw(35 * time.Millisecond)
-		if middle.HoverAmount != 0.578125 || middle.TextColor == normal.TextColor || middle.TextColor == props.Style.Hover.Foreground {
+		if middle.Button.Material.Hover != 0.578125 || unpackRGBA(middle.Button.Appearance.Value.Foreground) == unpackRGBA(normal.Button.Appearance.Value.Foreground) || unpackRGBA(middle.Button.Appearance.Value.Foreground) == props.Style.Hover.Foreground {
 			t.Fatalf("hover must advance exactly once and produce an intermediate style: %+v", middle)
 		}
 		settled := draw(140 * time.Millisecond)
-		if settled.TextColor != props.Style.Hover.Foreground || settled.Opacity != 1 {
+		if unpackRGBA(settled.Button.Appearance.Value.Foreground) != props.Style.Hover.Foreground || settled.Button.Appearance.Value.Opacity != 1 {
 			t.Fatalf("hover did not reach its endpoint: %+v", settled)
 		}
 		r.QueueMouseMove(300, 150)
 		draw(35 * time.Millisecond)
 		returned := draw(140 * time.Millisecond)
-		if returned.TextColor != normal.TextColor || returned.Opacity != normal.Opacity {
+		if unpackRGBA(returned.Button.Appearance.Value.Foreground) != unpackRGBA(normal.Button.Appearance.Value.Foreground) || returned.Button.Appearance.Value.Opacity != normal.Button.Appearance.Value.Opacity {
 			t.Fatal("hover exit did not restore the original transparent style")
 		}
 	}
@@ -226,7 +226,7 @@ func TestExplicitButtonStateMeasuresItsResolvedFont(t *testing.T) {
 				wantFont = explicit
 			}
 			ops := r.FrameOps()
-			if len(ops) != 1 || ops[0].FontSize != wantFont ||
+			if len(ops) != 1 || ops[0].Button.Font != wantFont ||
 				ops[0].Bounds.Width != float32(runtimeTextWidth(props.Label, wantFont))+padding*2 {
 				t.Fatalf("state %v must measure and paint the same font %d: %+v", state, wantFont, ops)
 			}

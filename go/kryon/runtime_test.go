@@ -401,7 +401,7 @@ func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
 	}
 	want := resolveButtonStyle(rt.theme(), rt.effectiveDark(), rt.activeTheme,
 		ButtonProps{Disabled: true}, ButtonStateDisabled)
-	if ops[0].Color != want.Background || ops[0].TextColor != want.Foreground || ops[0].BorderColor != want.Border {
+	if unpackRGBA(ops[0].Button.Appearance.Value.Background) != want.Background || unpackRGBA(ops[0].Button.Appearance.Value.Foreground) != want.Foreground || unpackRGBA(ops[0].Button.Appearance.Value.Border) != want.Border {
 		t.Fatal("disabled scope did not use the canonical disabled button style")
 	}
 	if rt.contentDisabled() {

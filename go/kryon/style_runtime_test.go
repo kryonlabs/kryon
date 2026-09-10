@@ -35,7 +35,7 @@ func TestTypefaceStylePresenceAndButtonMeasurement(t *testing.T) {
 			t.Fatalf("typeface %q did not reach rendering", name)
 		}
 		style := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme, props, ButtonStateNormal)
-		want := float32(runtimeTextWidthWithFont(props.Label, frame.FontSize, fontID)) + 2*style.PaddingX
+		want := float32(runtimeTextWidthWithFont(props.Label, frame.Button.Font, fontID)) + 2*style.PaddingX
 		if frame.Bounds.Width != want {
 			t.Fatalf("typeface %q measurement=%g want=%g", name, frame.Bounds.Width, want)
 		}

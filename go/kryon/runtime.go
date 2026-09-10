@@ -2261,9 +2261,9 @@ func (r *runtime) BeginButton(props ButtonProps) {
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	r.record(frame)
 	r.layout = append(r.layout, layoutFrame{
-		bounds: frame.ContentBounds,
-		center: true, textFont: frame.FontSize,
-		textColor: unpackRGBA(Surface_Opacity(packRGBA(frame.TextColor), frame.Opacity)), textColorSet: true,
+		bounds: frame.Button.ContentBounds,
+		center: true, textFont: frame.Button.Font,
+		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
 		textDisabled: frame.Disabled,
 	})
 	if label != "" {
@@ -2369,34 +2369,11 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
 	resolved := Button_BuildFrame(props, input, appearance, motion, surfaceBounds,
 		packRGBA(theme.surface), 1, int32(appearance.Value.FontSize), Text16)
-	props = resolved.Props
-	paint := unpackStyle(resolved.Appearance.Value)
-	frame := FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label,
-		ContentBounds: resolved.ContentBounds,
-		FillStates:    resolved.Appearance.Fill, FillStatesValid: true,
-		BackgroundEnd: paint.BackgroundEnd, HasBackgroundEnd: paint.Fields&StyleBackgroundEnd != 0,
-		SurfaceBounds: surfaceBounds,
-		AmbientColor:  theme.surface,
-		Disclosure:    disclosure,
-		Color:         paint.Background, BorderColor: paint.Border,
-		TextColor: paint.Foreground, FocusColor: paint.Focus, Radius: paint.Radius,
-		BorderWidth: paint.BorderWidth, Opacity: paint.Opacity,
-		Material:      paint.Material,
-		ContentOffset: paint.ContentOffset, Gap: paint.Gap, ID: props.ID,
-		FontSize:    resolved.Font,
-		FontID:      registeredTypeface(paint.Typeface),
-		Disabled:    props.Disabled,
-		Pressed:     held,
-		Focused:     focused,
-		Hovered:     hovered,
-		MotionValid: true, HoverAmount: motion.Hover.Value,
-		ElapsedMS:   float64(r.elapsedTime) / float64(time.Millisecond),
-		PressAmount: motion.Press.Value, FocusAmount: motion.Focus.Value,
-		Selected: props.Selected,
-		Loading:  props.Loading, Pill: props.Pill,
-		IconOnly: props.IconOnly, IconType: props.IconType,
-		IconSize:      paint.IconSize,
-		IconPlacement: int32(props.IconPlacement)}
+	frame := FrameOp{Kind: FrameOpButton, Button: resolved,
+		Bounds: resolved.Props.Bounds, SurfaceBounds: surfaceBounds, Text: resolved.Props.Label, ID: resolved.Props.ID,
+		FontID:     registeredTypeface(appearance.Value.Typeface),
+		Disclosure: disclosure, ElapsedMS: float64(r.elapsedTime) / float64(time.Millisecond),
+		Disabled: resolved.Props.Disabled, Pressed: held, Focused: focused, Hovered: hovered}
 	return frame, input.Activated
 }
 
@@ -2623,7 +2600,7 @@ func (r *runtime) ImageButton(props ImageButtonProps) bool {
 	if focused {
 		border = r.theme().focus
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Color: props.Background, BorderColor: border, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
 	r.record(FrameOp{Kind: FrameOpPicture, Bounds: bounds, Text: props.Picture.AssetPath, Color: props.Picture.Tint, Disabled: props.Disabled})
@@ -2918,7 +2895,7 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 		if rowFocused {
 			border = theme.focus
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: row, Text: props.Items[i], Color: fill, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: int32(i) == clicked, Focused: rowFocused})
 	}
@@ -2987,7 +2964,7 @@ func (r *runtime) ColorButton(props ColorButtonProps) bool {
 	if focused {
 		border = t.focus
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: props.Bounds, Text: props.Label, Color: props.Color, BorderColor: border, TextColor: t.text, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
 	return pressed
@@ -3191,7 +3168,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		if focused && int32(i) == selected {
 			border = theme.focus
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: tab, Clip: bounds, HasClip: true,
 			Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: fill,
@@ -3762,7 +3739,7 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 	if focused {
 		border = t.focus
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Text: text, Color: color, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: id, Row: component, Disabled: disabled, Pressed: r.drag.active && r.drag.token == id*16+component+1, Focused: focused})
 }
@@ -4976,7 +4953,7 @@ func (r *runtime) IconButton(props IconButtonProps) bool {
 		fill = mixColor(theme.surface, background, 0.45)
 		iconColor = mixColor(theme.icon, theme.surface, 0.55)
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: props.Bounds, Color: fill, BorderColor: border, ID: props.FocusID, Disabled: props.Disabled, Pressed: pressed})
 	iconX := int32(props.Bounds.X) + (int32(props.Bounds.Width)-size)/2
@@ -5052,7 +5029,7 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		fillW = float32(*value-min) / float32(max-min) * bounds.Width
 	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: track.X, Y: track.Y, Width: fillW, Height: track.Height}, Color: theme.buttonHover, ID: id, Selected: true})
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: bounds.X + fillW - 6, Y: trackY - 7, Width: 12, Height: 22}, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: changed})
 	return changed
@@ -5089,7 +5066,7 @@ func (r *runtime) Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel s
 	if *value != 0 {
 		activeX = bounds.X + bounds.Width - activeW - 3
 	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: activeX, Y: bounds.Y + 3, Width: activeW, Height: bounds.Height - 6}, Color: theme.button, BorderColor: theme.buttonHover, ID: id, Pressed: pressed, Selected: *value != 0})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: offLabel, Color: theme.text, FontSize: Text16, ID: id})
@@ -5148,7 +5125,7 @@ func (r *runtime) drawActionModal(title, message string, labels []string, fieldH
 		if i == len(labels)-1 {
 			fill = t.buttonHover
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Text: label, Color: fill, BorderColor: t.border, TextColor: t.text, FontSize: Text14, Pressed: pressed})
 		if pressed {
@@ -5257,7 +5234,7 @@ func (r *runtime) TopNav(props TopNavProps) {
 		}
 		drop := Rectangle{X: b.X + float32(pad), Y: b.Y + float32((h-dh)/2), Width: b.Width - float32(pad*2), Height: float32(dh)}
 		if props.Disabled {
-			r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+			r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 				BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 				AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: drop, Text: selectedLabel(labels[:count], props.SelectedIndex), Color: t.surface, BorderColor: t.border, TextColor: t.icon, FontSize: Text16, ID: props.ID, Disabled: true})
 		} else {
@@ -5903,7 +5880,7 @@ func (r *runtime) Notebook(p NotebookProps) int32 {
 		if sel {
 			fill = t.surface
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: b, Text: s, Color: fill, BorderColor: t.border, TextColor: t.text, FontSize: Text16, Pressed: pressed, Selected: sel})
 		if pressed && !sel {
@@ -6099,7 +6076,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		fg.A = uint8(float32(fg.A) * 0.45)
 	}
 	label := elideText(mark+"  "+p.Label, body.Width-12, Text16)
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: header, Text: label, Color: bg, BorderColor: border, TextColor: fg, FontSize: Text16, Pressed: pressed, Selected: p.Selected, ID: p.ID, Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
 	if p.Visible != nil {

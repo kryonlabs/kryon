@@ -329,8 +329,12 @@ overrides, physical layer bounds, visibility, and content displacement have one
 implementation. Hosts submit resolved styles and rasterize SurfaceDrawing
 commands. Button's BuildFrame now assembles normalized props, its material,
 content insets, physical font fallback, foreground opacity, and repaint state.
-The C styled paint path consumes that frame directly; native Go adapts it to
-its operation stream. Both rasterizers invoke `.kry` PaintButton, which owns
+The C styled paint path consumes that frame directly; native Go stores it in
+FrameOp.Button without flattening its props, style, or material fields.
+Composed content inherits its font, color, and bounds from that same frame.
+The renderer applies final host placement to a copy before painting. Legacy
+control producers convert their old operation fields when recorded, after
+inherited disabled-state processing; the rasterizer accepts only shared frames. Both rasterizers invoke `.kry` PaintButton, which owns
 surface-layer and content command sequencing through synchronous typed Painter
 and SurfacePainter callbacks. The native adapters supply glyph measurements
 and execute commands in the receiving rasterizer. Style/theme acquisition, legacy C appearances, and child

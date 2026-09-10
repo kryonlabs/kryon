@@ -114,6 +114,11 @@ layers precede the mark and label commands. `SurfacePainter` and `Painter`
 are borrowed synchronous rasterizer callbacks. The retained C renderer invokes
 this pass after layout; Go invokes it when rasterizing its operation stream.
 Their callbacks execute commands without choosing Button content or layer order.
+The Go operation stream carries ButtonFrame by value, including its original
+props and full style/material contracts. It must not reconstruct that frame
+from flattened fields during rendering. Generic host placement and clip state
+remain operation metadata. Older control producers adapt once when recorded;
+that adapter remains temporary until those controls use shared declarations.
 
 Typed child-content parameters belong to KIR. `#slot` declares a synchronous,
 void-returning callable signature; generated C/C++ uses a typed callback plus its borrowed context,

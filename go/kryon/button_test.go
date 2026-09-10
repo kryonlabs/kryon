@@ -222,11 +222,11 @@ func TestExplicitDisabledButtonOverridesLoadingAppearance(t *testing.T) {
 		State: ButtonStateDisabled, Loading: true,
 		Style: ControlStyle{Disabled: Style{Fields: StyleBackground, Background: Color{1, 2, 3, 128}}},
 	}, Rectangle{}, false)
-	if activated || !frame.Disabled || !frame.Loading || frame.Hovered || frame.Pressed || frame.Focused {
+	if activated || !frame.Disabled || !frame.Button.Props.Loading || frame.Hovered || frame.Pressed || frame.Focused {
 		t.Fatalf("explicit disabled state lost to loading: %+v, activated=%v", frame, activated)
 	}
-	if frame.Color != (Color{1, 2, 3, 128}) {
-		t.Fatalf("disabled appearance lost its explicit style: %+v", frame.Color)
+	if unpackRGBA(frame.Button.Appearance.Value.Background) != (Color{1, 2, 3, 128}) {
+		t.Fatalf("disabled appearance lost its explicit style: %+v", unpackRGBA(frame.Button.Appearance.Value.Background))
 	}
 }
 
@@ -449,8 +449,8 @@ func TestDisabledScopeResolvesButtonStyleBeforeMeasurement(t *testing.T) {
 		op := r.FrameOps()[0]
 		if !scoped {
 			direct = op
-		} else if op.Bounds != direct.Bounds || op.FontSize != direct.FontSize ||
-			op.Color != direct.Color || op.TextColor != direct.TextColor || op.BorderColor != direct.BorderColor {
+		} else if op.Bounds != direct.Bounds || op.Button.Font != direct.Button.Font ||
+			unpackRGBA(op.Button.Appearance.Value.Background) != unpackRGBA(direct.Button.Appearance.Value.Background) || unpackRGBA(op.Button.Appearance.Value.Foreground) != unpackRGBA(direct.Button.Appearance.Value.Foreground) || unpackRGBA(op.Button.Appearance.Value.Border) != unpackRGBA(direct.Button.Appearance.Value.Border) {
 			t.Fatalf("scoped disabled style differs from explicit disabled: scoped=%+v direct=%+v", op, direct)
 		}
 		if scoped && !reflect.DeepEqual(RenderFrame(400, 180, []FrameOp{op}).Pix,
@@ -484,16 +484,16 @@ func TestButtonBlockingStateClearsAndRestartsMotion(t *testing.T) {
 			draw(false)
 			r.QueueKey(KeySpace)
 			active, clicked := draw(false)
-			if !clicked || active.HoverAmount <= 0 || active.PressAmount <= 0 || active.FocusAmount <= 0 {
+			if !clicked || active.Button.Material.Hover <= 0 || active.Button.Material.Press <= 0 || active.Button.Material.Focus <= 0 {
 				t.Fatalf("test did not establish live interaction: %+v", active)
 			}
 			r.QueueKey(KeySpace)
 			blocked, clicked := draw(true)
-			if clicked || blocked.HoverAmount != 0 || blocked.PressAmount != 0 || blocked.FocusAmount != 0 {
+			if clicked || blocked.Button.Material.Hover != 0 || blocked.Button.Material.Press != 0 || blocked.Button.Material.Focus != 0 {
 				t.Fatalf("blocking state retained interaction or activated: %+v", blocked)
 			}
 			resumed, clicked := draw(false)
-			if clicked || resumed.HoverAmount <= 0 || resumed.HoverAmount >= 1 || resumed.PressAmount != 0 {
+			if clicked || resumed.Button.Material.Hover <= 0 || resumed.Button.Material.Hover >= 1 || resumed.Button.Material.Press != 0 {
 				t.Fatalf("unblocking did not restart hover cleanly: %+v", resumed)
 			}
 		})
@@ -522,9 +522,9 @@ func TestExplicitButtonPreviewDoesNotAnimateActivation(t *testing.T) {
 		if state == ButtonStateFocus {
 			wantFocus = 1
 		}
-		if clicked != wantClick || op.HoverAmount != wantHover || op.PressAmount != wantPress || op.FocusAmount != wantFocus {
+		if clicked != wantClick || op.Button.Material.Hover != wantHover || op.Button.Material.Press != wantPress || op.Button.Material.Focus != wantFocus {
 			t.Errorf("state %v: clicked %v motion %g/%g/%g, want %v %g/%g/%g", state, clicked,
-				op.HoverAmount, op.PressAmount, op.FocusAmount, wantClick, wantHover, wantPress, wantFocus)
+				op.Button.Material.Hover, op.Button.Material.Press, op.Button.Material.Focus, wantClick, wantHover, wantPress, wantFocus)
 		}
 	}
 }
@@ -547,10 +547,10 @@ func TestDisabledLabelsRemainReadableWithoutBecomingInteractive(t *testing.T) {
 		}
 		brightness := func(c Color) int { return int(c.R) + int(c.G) + int(c.B) }
 		if theme.Mode == ThemeModeDark {
-			if brightness(op.TextColor) <= brightness(theme.Colors.DisabledText) {
+			if brightness(unpackRGBA(op.Button.Appearance.Value.Foreground)) <= brightness(theme.Colors.DisabledText) {
 				t.Fatal("dark disabled labels must retain contrast against the muted face")
 			}
-		} else if brightness(op.TextColor) >= brightness(theme.Colors.DisabledText) {
+		} else if brightness(unpackRGBA(op.Button.Appearance.Value.Foreground)) >= brightness(theme.Colors.DisabledText) {
 			t.Fatal("light disabled labels must not wash out against the pale face")
 		}
 		r.EndFrame()
@@ -651,8 +651,8 @@ func TestSplitButtonSharedSurfaceAndIndependentActions(t *testing.T) {
 				if op.ID != int32(19+buttons) {
 					t.Fatal("explicit split-button IDs changed")
 				}
-				if op.SurfaceBounds != bounds {
-					t.Fatalf("segment does not share outer surface: %+v", op.SurfaceBounds)
+				if op.Button.Material.Surface != bounds {
+					t.Fatalf("segment does not share outer surface: %+v", op.Button.Material.Surface)
 				}
 			}
 			if buttons != 2 {
@@ -718,11 +718,11 @@ func TestButtonControlStyleLayersTransparentAndStateValues(t *testing.T) {
 		},
 	})
 	op := r.ops[len(r.ops)-1]
-	if op.Color != transparent || op.TextColor != hoverText {
-		t.Fatalf("custom colors = %#v/%#v", op.Color, op.TextColor)
+	if unpackRGBA(op.Button.Appearance.Value.Background) != transparent || unpackRGBA(op.Button.Appearance.Value.Foreground) != hoverText {
+		t.Fatalf("custom colors = %#v/%#v", unpackRGBA(op.Button.Appearance.Value.Background), unpackRGBA(op.Button.Appearance.Value.Foreground))
 	}
-	if op.Radius != 0 || op.ContentOffset != (Vector2{X: 2, Y: 1}) {
-		t.Fatalf("custom geometry = radius %v offset %#v", op.Radius, op.ContentOffset)
+	if op.Button.Appearance.Value.Radius != 0 || (Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}) != (Vector2{X: 2, Y: 1}) {
+		t.Fatalf("custom geometry = radius %v offset %#v", op.Button.Appearance.Value.Radius, (Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}))
 	}
 }
 
@@ -813,9 +813,9 @@ func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
 						expected = 12
 						bounds = neighbor.Bounds
 					}
-					if op.Radius != expected || op.Bounds != bounds {
+					if op.Button.Appearance.Value.Radius != expected || op.Bounds != bounds {
 						t.Fatalf("button %d after %v: radius=%g, want %g; bounds=%+v",
-							op.ID, delta, op.Radius, expected, op.Bounds)
+							op.ID, delta, op.Button.Appearance.Value.Radius, expected, op.Bounds)
 					}
 					seen++
 				}

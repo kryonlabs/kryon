@@ -15,6 +15,10 @@ import (
 
 // Compiled beside the transpiled example by lightfield-go-capture. This runs
 // the actual .kry screen through native Go, without a C bridge or a window.
+func colorValue(value uint32) kryon.Color {
+	return kryon.Color{R: uint8(value >> 24), G: uint8(value >> 16), B: uint8(value >> 8), A: uint8(value)}
+}
+
 func TestCaptureLightfield(t *testing.T) {
 	directory := os.Getenv("KRYON_LIGHTFIELD_CAPTURE_DIR")
 	if directory == "" {
@@ -170,12 +174,12 @@ func TestCaptureLightfield(t *testing.T) {
 					want := kryon.ThemeDefaultDark().Colors.Text
 					if theme.name == "light" {
 						want = kryon.ThemeDefaultLight().Colors.Link
-						if op.Loading {
+						if op.Button.Props.Loading {
 							want = kryon.ThemeDefaultLight().Colors.Accent
 						}
 					}
-					if op.TextColor != want {
-						t.Fatalf("%s ghost %d: ink %+v, want %+v", theme.name, op.ID, op.TextColor, want)
+					if colorValue(op.Button.Appearance.Value.Foreground) != want {
+						t.Fatalf("%s ghost %d: ink %+v, want %+v", theme.name, op.ID, colorValue(op.Button.Appearance.Value.Foreground), want)
 					}
 				}
 			}
@@ -188,8 +192,8 @@ func TestCaptureLightfield(t *testing.T) {
 					if op.ID == 3023 {
 						wantIconSize = 20
 					}
-					if op.IconSize != wantIconSize {
-						t.Fatalf("icon-row button %d: icon size=%g, want %g", op.ID, op.IconSize, wantIconSize)
+					if op.Button.Appearance.Value.IconSize != wantIconSize {
+						t.Fatalf("icon-row button %d: icon size=%g, want %g", op.ID, op.Button.Appearance.Value.IconSize, wantIconSize)
 					}
 				}
 				iconButtons++
@@ -205,10 +209,10 @@ func TestCaptureLightfield(t *testing.T) {
 						offsetX = -8
 					}
 				}
-				if op.FontSize != font || op.ContentOffset != (kryon.Vector2{X: offsetX, Y: -1}) ||
+				if op.Button.Font != font || (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}) != (kryon.Vector2{X: offsetX, Y: -1}) ||
 					op.Bounds != (kryon.Rectangle{X: 24, Y: top, Width: 720, Height: height}) {
 					t.Fatalf("full-width content lost its reference layout: id=%d font=%d offset=%+v bounds=%+v",
-						op.ID, op.FontSize, op.ContentOffset, op.Bounds)
+						op.ID, op.Button.Font, (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}), op.Bounds)
 				}
 				fullWidthButtons++
 			}
@@ -270,8 +274,8 @@ func TestCaptureLightfield(t *testing.T) {
 				if theme.name == "dark" && row == 2 {
 					labelY = 1
 				}
-				if op.Bounds != want || op.FontSize != sizeFont[row] || op.ContentOffset != (kryon.Vector2{X: sizeLabelX[row], Y: labelY}) {
-					t.Fatalf("size button %d: bounds=%+v font=%d offset=%+v; want bounds=%+v font=%d offsetX=%g", op.ID, op.Bounds, op.FontSize, op.ContentOffset, want, sizeFont[row], sizeLabelX[row])
+				if op.Bounds != want || op.Button.Font != sizeFont[row] || (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}) != (kryon.Vector2{X: sizeLabelX[row], Y: labelY}) {
+					t.Fatalf("size button %d: bounds=%+v font=%d offset=%+v; want bounds=%+v font=%d offsetX=%g", op.ID, op.Bounds, op.Button.Font, (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}), want, sizeFont[row], sizeLabelX[row])
 				}
 				sizeButtons++
 			}
@@ -333,8 +337,8 @@ func TestCaptureLightfield(t *testing.T) {
 				} else if op.ID >= 1010 && op.ID <= 1017 && op.ID != 1013 && op.ID != 1017 {
 					offsetY = -1
 				}
-				if op.FontSize != font || op.ContentOffset != (kryon.Vector2{Y: offsetY}) {
-					t.Fatalf("button %d lost its shared label style: font=%d offset=%+v", op.ID, op.FontSize, op.ContentOffset)
+				if op.Button.Font != font || (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}) != (kryon.Vector2{Y: offsetY}) {
+					t.Fatalf("button %d lost its shared label style: font=%d offset=%+v", op.ID, op.Button.Font, (kryon.Vector2{X: op.Button.Appearance.Value.OffsetX, Y: op.Button.Appearance.Value.OffsetY}))
 				}
 				row, column := (op.ID-1000)/10, (op.ID-1000)%10
 				if column >= 8 {
@@ -490,7 +494,7 @@ func TestCaptureLightfieldSplit(t *testing.T) {
 		}
 	}
 	left, right := buttons[1000], buttons[11000]
-	if left.Bounds.X != 81 || right.Bounds.X != 849 || left.AmbientColor == right.AmbientColor {
+	if left.Bounds.X != 81 || right.Bounds.X != 849 || left.Button.Material.Ambient == right.Button.Material.Ambient {
 		t.Fatalf("split panels lost position or theme: left %+v right %+v", left, right)
 	}
 	if kryon.GetThemeMode() != kryon.ThemeModeSystem {
@@ -572,22 +576,22 @@ func TestCaptureLightfieldSplit(t *testing.T) {
 		raster := func(op kryon.FrameOp) []byte {
 			op.Bounds.X, op.Bounds.Y = 12, 12
 			return kryon.RenderFrame(96, 64, []kryon.FrameOp{
-				{Kind: kryon.FrameOpBackground, Color: op.AmbientColor}, op,
+				{Kind: kryon.FrameOpBackground, Color: colorValue(op.Button.Material.Ambient)}, op,
 			}).Pix
 		}
 		otherPixels := raster(resting[otherID])
 		checkOther := func(stage string, current map[int32]kryon.FrameOp) {
 			t.Helper()
 			other := current[otherID]
-			if other.Hovered || other.Pressed || other.Focused || other.HoverAmount != 0 ||
-				other.PressAmount != 0 || other.FocusAmount != 0 ||
+			if other.Hovered || other.Pressed || other.Focused || other.Button.Material.Hover != 0 ||
+				other.Button.Material.Press != 0 || other.Button.Material.Focus != 0 ||
 				!bytes.Equal(otherPixels, raster(other)) {
 				t.Fatalf("%s on %d changed the other panel's control %d", stage, activeID, otherID)
 			}
 		}
 		input.QueueMouseMove(x, y)
 		hovered := draw(12)
-		if !hovered[activeID].Hovered || hovered[activeID].HoverAmount <= 0 ||
+		if !hovered[activeID].Hovered || hovered[activeID].Button.Material.Hover <= 0 ||
 			bytes.Equal(raster(active), raster(hovered[activeID])) {
 			t.Fatalf("hover did not animate split control %d", activeID)
 		}
@@ -814,11 +818,11 @@ func fitButtonLabels(t *testing.T, theme string, ops []kryon.FrameOp) {
 			op.Bounds.X, op.Bounds.Y = 8-float32(cropStart), 8
 			op.SurfaceBounds = kryon.Rectangle{}
 			op.HasClip = false
-			op.FontSize = font
+			op.Button.Font = font
 			op.FontID = face
-			op.ContentOffset = kryon.Vector2{X: dx, Y: dy}
+			op.Button.Appearance.Value.OffsetX, op.Button.Appearance.Value.OffsetY = dx, dy
 			actual := kryon.RenderFrame(cropEnd-cropStart+16, int(op.Bounds.Height)+16, []kryon.FrameOp{
-				{Kind: kryon.FrameOpBackground, Color: op.AmbientColor}, op,
+				{Kind: kryon.FrameOpBackground, Color: colorValue(op.Button.Material.Ambient)}, op,
 			})
 			// Hold geometry/material constant, measuring the central label area
 			// across resting, hover, pressed, focused and disabled appearances.
@@ -835,8 +839,8 @@ func fitButtonLabels(t *testing.T, theme string, ops []kryon.FrameOp) {
 		}
 		return math.Sqrt(squared / float64(count))
 	}
-	defaultFont := buttons[0].FontSize
-	defaultOffset := buttons[0].ContentOffset
+	defaultFont := buttons[0].Button.Font
+	defaultOffset := (kryon.Vector2{X: buttons[0].Button.Appearance.Value.OffsetX, Y: buttons[0].Button.Appearance.Value.OffsetY})
 	defaultFace := buttons[0].FontID
 	faces := []uint32{defaultFace}
 	if os.Getenv("KRYON_FIT_BUTTON_TYPEFACES") == "1" {

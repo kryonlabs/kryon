@@ -50,7 +50,7 @@ func TestMaterialSelectionAndExplicitZero(t *testing.T) {
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus} {
 		props.State = state
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-		if frame.Material != MaterialFlat {
+		if MaterialKind(frame.Button.Material.Value.Material) != MaterialFlat {
 			t.Fatal("resolved material did not reach the renderer")
 		}
 		img := RenderFrame(100, 60, []FrameOp{frame})
@@ -68,7 +68,7 @@ func TestMaterialSelectionAndExplicitZero(t *testing.T) {
 	props.Style.Hover = Style{Fields: StyleMaterial, Material: MaterialLightfield}
 	props.State = ButtonStateHover
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-	if frame.Material != MaterialLightfield {
+	if MaterialKind(frame.Button.Material.Value.Material) != MaterialLightfield {
 		t.Fatal("explicit zero-valued Lightfield did not replace inherited flat material")
 	}
 }

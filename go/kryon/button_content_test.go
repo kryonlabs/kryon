@@ -194,12 +194,12 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: UIIconTypePlay,
 			Style: ControlStyle{Normal: Style{Fields: StyleIconSize, IconSize: size}}})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-		if frame.IconSize != size {
-			t.Fatalf("style icon size %v was rounded to %v before rendering", size, frame.IconSize)
+		if frame.Button.Appearance.Value.IconSize != size {
+			t.Fatalf("style icon size %v was rounded to %v before rendering", size, frame.Button.Appearance.Value.IconSize)
 		}
-		labelWidth := float32(runtimeTextWidth("Run", frame.FontSize))
+		labelWidth := float32(runtimeTextWidth("Run", frame.Button.Font))
 		content := Button_ContentLayout(props.Bounds.Width, props.Bounds.Height, labelWidth,
-			size, frame.Gap, true, false, false, 0, 0)
+			size, frame.Button.Appearance.Value.Gap, true, false, false, 0, 0)
 		if content.IconSize != max(float32(0), size) {
 			t.Fatalf("custom icon size %v replaced by %v", size, content.IconSize)
 		}
@@ -207,10 +207,10 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 			if props.Bounds.Width != labelWidth+2*defaultThemeMetrics().ControlPaddingMedium {
 				t.Fatalf("hidden icon must not reserve a size or gap: width %v, text %v", props.Bounds.Width, labelWidth)
 			}
-			frame.IconType = UIIconTypeNone
+			frame.Button.Props.IconType = UIIconTypeNone
 			expected := RenderFrame(160, 60, []FrameOp{frame})
 			for _, icon := range []int32{UIIconTypePlay, UIIconTypeText} {
-				frame.IconType = icon
+				frame.Button.Props.IconType = icon
 				actual := RenderFrame(160, 60, []FrameOp{frame})
 				if !bytes.Equal(actual.Pix, expected.Pix) {
 					t.Fatal("zero-sized vector and fallback icons must paint no pixels")
@@ -250,8 +250,8 @@ func TestButtonMeasurementClampsPaddingLikeContentBounds(t *testing.T) {
 func TestButtonTextTruncatesFractionalOriginLikeC(t *testing.T) {
 	ensureDefaultUIFont()
 	width := float32(runtimeTextWidth("Run", 18)) + 21
-	op := FrameOp{Kind: FrameOpButton, Bounds: Rectangle{X: 4.25, Y: 3.25, Width: width, Height: 40},
-		Text: "Run", FontSize: 18, TextColor: White, Opacity: 1}
+	op := buttonOperation(FrameOp{Kind: FrameOpButton, Bounds: Rectangle{X: 4.25, Y: 3.25, Width: width, Height: 40},
+		Text: "Run", FontSize: 18, TextColor: White, Opacity: 1})
 	actual := image.NewRGBA(image.Rect(0, 0, 100, 50))
 	expected := image.NewRGBA(actual.Bounds())
 	renderButton(actual, op)
@@ -325,8 +325,8 @@ func TestDefaultAndExplicitButtonSizes(t *testing.T) {
 	}{{ControlSizeMedium, 40, 18}, {ControlSizeSmall, 32, 16}, {ControlSizeLarge, 48, 20}} {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", Size: test.size})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-		if props.Bounds.Height != test.height || props.Font != 0 || frame.FontSize != test.font {
-			t.Fatalf("size %v: got height %v/request %v/painted font %v", test.size, props.Bounds.Height, props.Font, frame.FontSize)
+		if props.Bounds.Height != test.height || props.Font != 0 || frame.Button.Font != test.font {
+			t.Fatalf("size %v: got height %v/request %v/painted font %v", test.size, props.Bounds.Height, props.Font, frame.Button.Font)
 		}
 	}
 	if props := r.resolveButtonProps(ButtonProps{Label: "Run"}); props.Bounds.Height != 40 || props.Font != 0 {
@@ -340,16 +340,16 @@ func TestButtonZeroPaddingAndGapRemainExplicit(t *testing.T) {
 	props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: UIIconTypePlay,
 		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleGap, PaddingX: 0, Gap: 0}}})
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-	want := float32(runtimeTextWidth("Run", frame.FontSize)) + 18
+	want := float32(runtimeTextWidth("Run", frame.Button.Font)) + 18
 	if props.Bounds.Width != want {
 		t.Fatalf("zero padding/gap was replaced by defaults: got %v, want %v", props.Bounds.Width, want)
 	}
 }
 
 func TestRenderedButtonTextHasNoExtraPadding(t *testing.T) {
-	img := RenderFrame(100, 40, []FrameOp{{Kind: FrameOpButton,
+	img := RenderFrame(100, 40, []FrameOp{buttonOperation(FrameOp{Kind: FrameOpButton,
 		Bounds: Rectangle{Width: 100, Height: 40}, Text: "Run", FontSize: 18,
-		Color: Black, BorderColor: Black, TextColor: White, Opacity: 1, Radius: 8}})
+		Color: Black, BorderColor: Black, TextColor: White, Opacity: 1, Radius: 8})})
 	left, right := 100, -1
 	for y := 8; y < 32; y++ {
 		for x := 10; x < 90; x++ {

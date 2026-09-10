@@ -33,7 +33,7 @@ func TestSecondaryButtonUsesQuietSurface(t *testing.T) {
 	r.Button(ButtonProps{Bounds: Rectangle{Width: 100, Height: 48}})
 	r.Button(ButtonProps{Bounds: Rectangle{Y: 60, Width: 100, Height: 48}, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft})
 	ops := r.FrameOps()
-	if len(ops) != 2 || ops[0].Color == ops[1].Color {
+	if len(ops) != 2 || unpackRGBA(ops[0].Button.Appearance.Value.Background) == unpackRGBA(ops[1].Button.Appearance.Value.Background) {
 		t.Fatalf("secondary button must use the quiet surface: %+v; surface=%+v button=%+v", ops, r.theme().surface, r.theme().button)
 	}
 }
@@ -59,8 +59,8 @@ func TestCarouselArrowsUseStandardButtonStates(t *testing.T) {
 			t.Fatalf("%s: expected two standard button surfaces, got %d", state, len(ops))
 		}
 		next := ops[1]
-		if next.Kind != FrameOpButton || !next.IconOnly || next.IconType != UIIconTypeRight ||
-			next.Bounds.Width != 56 || next.Bounds.Height != 56 || next.Radius < 28 {
+		if next.Kind != FrameOpButton || !next.Button.Props.IconOnly || next.Button.Props.IconType != UIIconTypeRight ||
+			next.Bounds.Width != 56 || next.Bounds.Height != 56 || next.Button.Appearance.Value.Radius < 28 {
 			t.Fatalf("%s: arrow is not a standard circular button: %+v", state, next)
 		}
 		if state == "hover" && !next.Hovered {

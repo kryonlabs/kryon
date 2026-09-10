@@ -147,15 +147,12 @@ func renderSurfaceDrawing(img *image.RGBA, command SurfaceDrawing) {
 }
 
 func renderButton(img *image.RGBA, op FrameOp) {
-	frame := ButtonFrame{
-		Props: ButtonProps{Label: op.Text, Loading: op.Loading, IconType: op.IconType,
-			IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)},
-		Appearance: StyleFrame{Value: StyleData{IconSize: op.IconSize, Gap: op.Gap,
-			OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}},
-		Material: frameMaterial(op), Font: op.FontSize,
-		Foreground: Surface_Opacity(packRGBA(op.TextColor), op.Opacity),
-	}
-	Button_PaintButton(frame, float32(runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)),
+	frame := op.Button
+	frame.Props.Bounds = op.Bounds
+	frame.Material.Bounds = op.Bounds
+	frame.Material.Surface = op.SurfaceBounds
+	frame.Material = Material_PrepareMaterial(frame.Material)
+	Button_PaintButton(frame, float32(runtimeTextWidthWithFont(frame.Props.Label, frame.Font, op.FontID)),
 		op.ElapsedMS, op.Disclosure,
 		func(command SurfaceDrawing) { renderSurfaceDrawing(img, command) },
 		func(command Drawing) { renderDrawing(img, command, op.FontID) })
