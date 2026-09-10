@@ -327,7 +327,9 @@ C and Go execute these commands with their text and pixel rasterizers. Material
 layer assembly lives in `runtime/material.kry`: shared surface selection, fill
 overrides, physical layer bounds, visibility, and content displacement have one
 implementation. Hosts submit resolved styles and rasterize SurfaceDrawing
-commands. Button's BuildFrame now assembles normalized props, its material,
+commands. Button's AdvanceFrame sequences retained motion, style resolution,
+and BuildFrame from host input samples, theme values, timing, and scale.
+BuildFrame assembles normalized props, its material,
 content insets, physical font fallback, foreground opacity, and repaint state.
 The C styled paint path consumes that frame directly; native Go stores it in
 FrameOp.Button without flattening its props, style, or material fields.

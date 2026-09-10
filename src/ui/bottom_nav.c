@@ -29,9 +29,9 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
         *hovered = active && UIHoverEffectsEnabled();
     if(inside && !captured) {
         if(disabled)
-            MarkUIDisabled();
+            MarkDisabled();
         else
-            MarkUIClickable();
+            MarkClickable();
     }
     if(mouse_release_activates_rect(bounds, mouse, active)) {
         UIConsumeRelease();
@@ -73,7 +73,7 @@ ui_bottom_nav_mix(Color a, Color b, float t)
 }
 
 BottomNavResult
-DrawUIBottomNav(BottomNavProps nav)
+RenderBottomNav(BottomNavProps nav)
 {
     BottomNavResult result = {-1, -1, 0, 0};
     int count = nav.count;
@@ -123,7 +123,7 @@ DrawUIBottomNav(BottomNavProps nav)
     bounds.height = (float)height;
     widget = BeginUIWidget("bottom_nav", "tmp:bottom-nav", bounds,
                            UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "DrawUIBottomNav");
+    UIWidgetSetAction(&widget, "RenderBottomNav");
 
     bar.x = (float)side_margin;
     bar.y = (float)(y + Scale(8));
@@ -227,7 +227,7 @@ bottom_nav_option_index(const BottomNavOption *options, int option_count,
 }
 
 BottomNavConfigResult
-DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
+RenderBottomNavConfigModal(BottomNavConfigProps modal)
 {
     static int route_scroll_offset = 0;
     BottomNavConfigResult result = {0, 0};
@@ -274,7 +274,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         selected[i] = bottom_nav_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
-    frame = DrawUIModalFrame(Scale(340),
+    frame = RenderModalFrame(Scale(340),
                                 Scale(128) + row_h * route_count + add_h + Scale(58),
                                 modal.title,
                                 kryon_zero_texture2d,
@@ -316,7 +316,7 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
-        DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
+        RenderText(slot_label, frame.content_x, y, GetFontSize(), c_text);
         if(Combobox((ComboboxProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
             .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {

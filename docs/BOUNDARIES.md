@@ -98,9 +98,9 @@ Material painting follows the same boundary. `runtime/material.kry` assembles
 SurfaceDrawing commands from resolved styles, retained fills, and interaction
 amounts. Backends own clipping and pixel submission; C may batch equal adjacent
 pixels without changing the shared layer, color, or coverage rules.
-Button frame assembly connects these stages in `.kry`. Hosts provide the
-resolved appearance, sampled motion, physical font size, and scale; BuildFrame
-owns normalized content flags, font fallback, opacity, content bounds, and
+Button frame assembly connects these stages in `.kry`. Hosts provide input samples, palette and metric values, style overrides,
+frame timing, and scale. AdvanceFrame owns retained motion and appearance
+resolution before BuildFrame assembles the result. BuildFrame owns normalized content flags, font fallback, opacity, content bounds, and
 repaint eligibility. Content drawing consumes the same resolved StyleData,
 without converting it back to public Style solely for drawing.
 Inset scaling and child centering also belong to the shared declaration code.

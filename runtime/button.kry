@@ -354,6 +354,26 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     return result
 }
 
+# Resolve an animated frame from host theme data. Input is sampled separately
+# so retained painting can reuse it without consuming activation twice.
+AdvanceFrame :: (key: u64, props: ButtonProps, input: ButtonInput,
+    palette: Palette, metrics: Metrics, styles: StyleStates, enabled: bool,
+    delta_ms: float, surface: Rectangle, ambient: u32, scale: float,
+    fallback_font: i32) -> ButtonFrame #export {
+    props.disabled = input.flags.disabled
+    props.loading = input.flags.loading
+    props.selected = input.flags.selected
+    motion: InteractionMotion = AdvanceButtonMotion(key, props, input, enabled,
+        delta_ms, metrics.transition_normal_ms, metrics.transition_fast_ms)
+    appearance: StyleFrame = ResolveFrame((i32)props.tone, (i32)props.emphasis,
+        input.interaction.state, (i32)props.size, props.pill, props.circle,
+        props.disabled, props.loading, props.selected, palette, metrics, styles,
+        (i32)props.state == ButtonStateAuto, motion.hover.value,
+        motion.press.value, motion.focus.value)
+    return BuildFrame(props, input, appearance, motion, surface, ambient, scale,
+        (i32)((float)(i32)appearance.value.font_size * scale + 0.5), fallback_font)
+}
+
 # Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
 # invoke this after layout; callbacks never outlive this paint pass.
 PaintButton :: (frame: ButtonFrame, label_width: float, elapsed_ms: f64,

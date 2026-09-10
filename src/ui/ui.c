@@ -365,7 +365,7 @@ ui_set_cursor_intent(int cursor, int priority)
 }
 
 void
-MarkUIClickable(void)
+MarkClickable(void)
 {
     if(g_ui_cursor_clickable != NULL)
         *g_ui_cursor_clickable = 1;
@@ -373,7 +373,7 @@ MarkUIClickable(void)
 }
 
 void
-MarkUICursor(int cursor)
+MarkCursor(int cursor)
 {
     int priority = UI_CURSOR_PRIORITY_CLICKABLE;
 
@@ -391,7 +391,7 @@ MarkUICursor(int cursor)
 }
 
 void
-MarkUIDisabled(void)
+MarkDisabled(void)
 {
     if(g_ui_cursor_disabled != NULL)
         *g_ui_cursor_disabled = 1;
@@ -832,9 +832,9 @@ UIHandleClick(Rectangle bounds, int disabled, int *hover)
     if(hover != NULL)
         *hover = active && UIHoverEffectsEnabled();
     if(disabled && mouse_inside && !captured)
-        MarkUIDisabled();
+        MarkDisabled();
     if(active)
-        MarkUIClickable();
+        MarkClickable();
     if(mouse_release_activates_rect(bounds, mouse_world, active)) {
         UIConsumeRelease();
         return 1;
@@ -870,9 +870,9 @@ UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
     if(hover != NULL)
         *hover = active && UIHoverEffectsEnabled();
     if(disabled && mouse_inside && !captured)
-        MarkUIDisabled();
+        MarkDisabled();
     if(active)
-        MarkUIClickable();
+        MarkClickable();
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !g_ui_release_consumed &&
        !UIInputCapturesClick(mouse_world) &&
@@ -1267,7 +1267,7 @@ ui_text_draw_context_overlay(void)
     menu.open = &g_ui_text_context_open;
     menu.x = &g_ui_text_context_x;
     menu.y = &g_ui_text_context_y;
-    command = DrawUIContextMenu(menu);
+    command = RenderContextMenu(menu);
     if(command != 0) {
         memset(&edit, 0, sizeof(edit));
         edit.text = g_ui_text_context_text;
@@ -1330,7 +1330,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    DrawUIText(value, x, y, font_size, color);
+    RenderText(value, x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1437,7 +1437,7 @@ DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Col
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
-    DrawUIText(value, (int)rect.x, y, font_size, color);
+    RenderText(value, (int)rect.x, y, font_size, color);
     EndUIClip();
 }
 
@@ -1754,7 +1754,7 @@ SetUIFocusTextInputActive(int active)
 }
 
 void
-DrawUIFocus(Rectangle bounds)
+RenderFocus(Rectangle bounds)
 {
     DrawRectangleLinesEx((Rectangle){bounds.x - Scale(3), bounds.y - Scale(3),
                                      bounds.width + Scale(6), bounds.height + Scale(6)},
@@ -1831,7 +1831,7 @@ static int ui_text_width_before_cursor(const char *text, int font,
                                        int cursor_position);
 
 static void
-DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
+RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
                   int selection_end, int composition_start,
@@ -1909,7 +1909,7 @@ DrawUITextInputEx(Rectangle bounds, const char *text, int cursor_position,
                       ui_default_style() ? ui_alpha(c_circle, 82) :
                                             (Color){78, 132, 196, 135});
     }
-    DrawUIText(value, text_x, text_y, font, text_color);
+    RenderText(value, text_x, text_y, font, text_color);
 
     if(composition_end > composition_start) {
         char composition[1024];
@@ -1958,7 +1958,7 @@ DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
                          TextInputStyle style)
 {
-    DrawUITextInputEx(bounds, text, cursor_position, focused, 1,
+    RenderTextInputEx(bounds, text, cursor_position, focused, 1,
                       cursor_visible, font, style, 0, 0, 0, 0, 0);
 }
 
@@ -2017,7 +2017,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int focused, int font, TextInputStyle style,
                              int selection_start, int selection_end)
 {
-    DrawUITextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
+    RenderTextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
                       selection_start, selection_end, 0, 0, 0);
 }
 
@@ -2112,7 +2112,7 @@ EditText(TextEdit edit)
 }
 
 int
-RenderTextInputControl(TextInputProps input)
+ui_text_input_control_render(TextInputProps input)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2141,7 +2141,7 @@ RenderTextInputControl(TextInputProps input)
 }
 
 int
-DrawUIHref(HrefProps link)
+RenderHref(HrefProps link)
 {
     char editor_id[96];
     UIWidget widget;
@@ -2186,14 +2186,14 @@ DrawUIHref(HrefProps link)
         color = link.hover_color.a != 0 ? link.hover_color : LightenUIColor(color, 18);
 
     if(active) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             clicked = 1;
     } else if(link.disabled && !captured && mouse_inside) {
-        MarkUIDisabled();
+        MarkDisabled();
     }
 
-    DrawUIText(text, (int)bounds.x,
+    RenderText(text, (int)bounds.x,
                GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(hovered && text_w > 0) {
@@ -2203,7 +2203,7 @@ DrawUIHref(HrefProps link)
     }
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(bounds);
+        RenderFocus(bounds);
     }
     if(clicked)
         UIConsumeRelease();
@@ -2933,7 +2933,7 @@ ui_draw_syntax_line(const char *line, int len, int x, int y, int font,
                                       style);
         if(token[0] != ' ' && token[0] != '\t')
             first_token = 0;
-        DrawUIText(token, x, y, font, color);
+        RenderText(token, x, y, font, color);
         x += TextWidth(token, font);
         offset += token_len;
     }
@@ -2992,7 +2992,7 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
                                                 (Color){0, 96, 192, 72},
                                                 selection_start, selection_end);
                     if(syntax == SyntaxNone)
-                        DrawUIText(line, text_x, draw_y, line_font, style.text);
+                        RenderText(line, text_x, draw_y, line_font, style.text);
                     else
                         ui_draw_syntax_line(line, line_len, text_x, draw_y,
                                             line_font, syntax, style);
@@ -3143,7 +3143,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
         area.bounds.width - padding_x * 2,
         area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+        RenderText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(area.text, cursor,
@@ -3415,7 +3415,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
             DrawRectangle((int)gutter.x, y - Scale(2), (int)gutter.width,
                           line_h, area.style.border);
         snprintf(label, sizeof(label), "%d", line_no);
-        DrawUIText(label, (int)gutter.x + Scale(6), y, Scale(10),
+        RenderText(label, (int)gutter.x + Scale(6), y, Scale(10),
                    line_no == active ? area.style.text : GetThemeIcon());
         y += line_h;
         if(y > (int)(gutter.y + gutter.height))
@@ -3427,7 +3427,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
 }
 
 int
-RenderTextArea(TextAreaProps area)
+ui_text_area_render(TextAreaProps area)
 {
     char editor_id[96];
     UIWidget widget;
@@ -3973,7 +3973,7 @@ RenderTextArea(TextAreaProps area)
                                     area.bounds.width - padding_x * 2 - scrollbar_w,
                                     area.bounds.height - padding_y * 2});
     if(area.text[0] == '\0' && !focused && area.placeholder != NULL)
-        DrawUIText(area.placeholder, (int)area.bounds.x + padding_x,
+        RenderText(area.placeholder, (int)area.bounds.x + padding_x,
                    first_line_y, font, area.style.border);
     else
         ui_draw_text_area_text(display_text, display_cursor,
@@ -4352,7 +4352,7 @@ SetTextAreaSelection(int focus_id, int anchor, int cursor)
 }
 
 int
-RenderTextField(TextFieldProps field)
+ui_text_field_render(TextFieldProps field)
 {
     enum { TEXT_FIELD_FALLBACK_FOCUS_SLOTS = 128 };
     typedef struct {
@@ -4931,7 +4931,7 @@ ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint p
         return;
     int previous_font = ui_active_font_token();
     PopUIFont(paint.font_token);
-    DrawUITextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
+    RenderTextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
                       paint.caret, paint.font, paint.style,
                       paint.selection_start, paint.selection_end,
                       paint.composition_start, paint.composition_end,
@@ -4985,7 +4985,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
 }
 
 int
-DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
+RenderReadonlyTextBox(ReadonlyTextBoxProps box)
 {
     char editor_id[96];
     UIWidget widget;
@@ -5028,7 +5028,7 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
 
         if(TextWidth(text + offset, font) <= content_w) {
             snprintf(line, sizeof(line), "%s", text + offset);
-            DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
+            RenderText(line, (int)box.bounds.x + padding_x, draw_y,
                             font, box.style.text);
             break;
         }
@@ -5041,17 +5041,17 @@ DrawUIReadonlyTextBox(ReadonlyTextBoxProps box)
             chunk_len++;
         }
         snprintf(line, sizeof(line), "%.*s", chunk_len, text + offset);
-        DrawUIText(line, (int)box.bounds.x + padding_x, draw_y,
+        RenderText(line, (int)box.bounds.x + padding_x, draw_y,
                         font, box.style.text);
         draw_y += line_h + line_gap;
         offset += chunk_len;
     }
     if(len == 0)
-        DrawUIText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
+        RenderText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
     EndUIClip();
 
     if(active) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
             EndUIWidget(&widget);
@@ -5116,7 +5116,7 @@ ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
 }
 
 void
-DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
+RenderBevel(int x, int y, int w, int h, Color light, Color dark)
 {
     DrawLine(x, y, x + w - 1, y, light);
     DrawLine(x, y, x, y + h - 1, light);
@@ -5125,10 +5125,10 @@ DrawUIBevel(int x, int y, int w, int h, Color light, Color dark)
 }
 
 void
-DrawUITextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
+RenderTextLines(const char **lines, int count, int x, int *y, int font, int line_h, Color color)
 {
     for(int i = 0; i < count; i++) {
-        DrawUIText(lines[i], x, *y, font, color);
+        RenderText(lines[i], x, *y, font, color);
         *y += line_h;
     }
 }
@@ -5309,7 +5309,7 @@ ResolveUIFocusID(int id)
 }
 
 void
-DrawUIFrameOverlays(void)
+RenderFrameOverlays(void)
 {
     if(g_ui_overlays_drawn_frame == g_ui_frame_serial)
         return;
@@ -5324,7 +5324,7 @@ DrawUIFrameOverlays(void)
 void
 EndUIFrame(void)
 {
-    DrawUIFrameOverlays();
+    RenderFrameOverlays();
     EndUIFocus();
     /* Unhandled text from a popup-captured frame must not be replayed into an
      * underlying editor after dismissal. Retain ordinary non-popup queue
@@ -5490,7 +5490,7 @@ DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint)
 }
 
 int
-DrawUISubtabBar(SubtabBarProps bar)
+RenderSubtabBar(SubtabBarProps bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -5562,9 +5562,9 @@ DrawUISubtabBar(SubtabBarProps bar)
 
         if(is_active) {
             if(is_disabled)
-                MarkUIDisabled();
+                MarkDisabled();
             else if(!is_selected)
-                MarkUIClickable();
+                MarkClickable();
 
             if(released)
                 clicked_tab = i;
@@ -5595,7 +5595,7 @@ DrawUISubtabBar(SubtabBarProps bar)
 }
 
 void
-DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
+RenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
 {
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
@@ -5610,15 +5610,15 @@ DrawUIIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
     if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
        !UIInputCapturesClick(mouse_world)) {
         hover = UIHoverEffectsEnabled();
-        MarkUIClickable();
+        MarkClickable();
     }
 
     if(hover) {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button_hover);
-        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
+        RenderBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
     } else {
         DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button);
-        DrawUIBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
+        RenderBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
     }
 
     DrawCustomIcon(x, y, icon_size, icon, WHITE);

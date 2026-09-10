@@ -2,22 +2,22 @@
 #include "ui_picture_internal.h"
 
 void
-DrawUITutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
+RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
     DrawRectangle(x, y, w, h, DarkenUIColor(c_bg, 12));
-    DrawUIBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
+    RenderBevel(x, y, w, h, DarkenUIColor(c_bg, 45), LightenUIColor(c_bg, 35));
     int font = GetFontSize();
     int tw = TextWidth(label, font);
-    DrawUIText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
+    RenderText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
 }
 
 void
-DrawUITutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
+RenderTutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
 {
     PictureProps picture = {0};
 
     if(texture.id == 0) {
-        DrawUITutorialImagePlaceholder(fallback, x, y, w, h);
+        RenderTutorialImagePlaceholder(fallback, x, y, w, h);
         return;
     }
 

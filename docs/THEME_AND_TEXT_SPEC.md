@@ -80,7 +80,7 @@ and commit behavior. They shall use the same `Theme`, `ControlSize`, typography,
 selection, and focus tokens as `Text` and `Button`. They shall not maintain a
 parallel `TextInputStyle` theme.
 
-The end state contains no positional `Text(...)` overload, public `DrawUIText*`,
+The end state contains no positional `Text(...)` overload, public `RenderText*`,
 `UIText*`, `TextStyle`, `TextInputStyle`, `ParagraphText`, `LabelText`,
 `BulletText`, `TextLines`, or generated compatibility shim. Maintained callers
 are migrated to canonical props and the old surface is deleted.
@@ -117,13 +117,13 @@ are migrated to canonical props and the old surface is deleted.
 
 | Use | Remove or keep private |
 |---|---|
-| `Text` | positional `Text`, `DrawUIText*`, `UIText*` |
+| `Text` | positional `Text`, `RenderText*`, `UIText*` |
 | `TextProps` | parallel text node structs |
 | `TextRole` | raw public size/style recipes |
 | `TextTone` | direct theme-color getters in app text calls |
 | `MeasureText` | `TextWidth`, `TextHeight`, renderer-specific measurement |
 | `TextMetrics` | unrelated width/height/baseline helpers |
-| `TextField`, `TextArea` | `TextInputControl`, `RenderTextField`, `RenderTextArea` |
+| `TextField`, `TextArea` | `TextInputControl`, `ui_text_field_render`, `ui_text_area_render` |
 
 Internal rasterization, glyph fallback, platform composition, and painting
 helpers may keep focused private names. They are not public widget APIs.
@@ -474,7 +474,7 @@ Text hint: {
 ```
 
 Generated output emits one explicit `TextProps` value. It does not lower role
-back into raw font sizes/colors, call `DrawUIText*`, inject a runtime object, or
+back into raw font sizes/colors, call `RenderText*`, inject a runtime object, or
 select a backend-specific font.
 
 The zero-value pairing is intentionally symmetrical:
@@ -550,7 +550,7 @@ line boxes, baseline positions, clipping, selection ranges, and semantic paint.
 | `TextProps.font` | `TextProps.role` resolved through `ThemeTypography` |
 | `TextProps.color` | `TextProps.tone` resolved through `ThemeColors` |
 | positional or macro `Text` forms | `Text(TextProps)` only |
-| public `DrawUIText*` and `DrawScaledUIText` | private painter behind `Text` |
+| public `RenderText*` and `DrawScaledUIText` | private painter behind `Text` |
 | public `TextStyle` | remove; role + tone + theme |
 | public `TextInputStyle` | remove; shared control and theme resolution |
 | `TextWidth` / `TextHeight` / baseline helpers | `MeasureText(TextProps)` |
@@ -612,7 +612,7 @@ selection rectangles—not screenshots alone. Screenshot tests verify hierarchy,
 contrast, clipping, alignment, cursor/focus paint, and theme switching.
 
 Run the clean text API scanner across every changed source root. Its final
-denylist includes positional `Text`, public/generated `DrawUI*Text`, `UIText*`,
+denylist includes positional `Text`, public/generated draw-prefixed text helpers, `UIText*`,
 `TextInputStyle`, raw `.font`/`.color` text styling, and removed helper widgets.
 
 ## 20. Acceptance criteria

@@ -68,9 +68,9 @@ void SetUIModalCapture(Rectangle bounds);
 void SetTextInputPlatformCallback(TextInputPlatformCallback callback);
 void SetUICursorClickable(int *cursor_clickable);
 void SetUICursorDisabled(int *cursor_disabled);
-void MarkUICursor(int cursor);
-void MarkUIClickable(void);
-void MarkUIDisabled(void);
+void MarkCursor(int cursor);
+void MarkClickable(void);
+void MarkDisabled(void);
 /* The cursor the intents marked so far this frame (test/diagnostic aid). */
 int GetUIMouseCursor(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);

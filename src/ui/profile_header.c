@@ -200,7 +200,7 @@ ui_draw_pfp_fallback(int x, int y, int size, Color color)
 }
 
 SidebarAccountHeaderResult
-DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
+RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
 {
     SidebarAccountHeaderResult result = {0};
     int height = header.height > 0 ? header.height : Scale(138);
@@ -262,7 +262,7 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     header_bounds.height = (float)height;
     DrawRectangleRounded(header_bounds, 0.06f, 8, DarkenUIColor(c_surface, 6));
     if(CheckCollisionPointRec(mouse, pfp_bounds) && !UIInputCapturesClick(mouse)) {
-        MarkUIClickable();
+        MarkClickable();
         if(released) {
             UIConsumeRelease();
             result.pfp_clicked = 1;
@@ -291,7 +291,7 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
 
     if(CheckCollisionPointRec(mouse, username_bounds) &&
        !UIInputCapturesClick(mouse)) {
-        MarkUIClickable();
+        MarkClickable();
         if(released) {
             UIConsumeRelease();
             result.username_clicked = 1;
@@ -300,28 +300,28 @@ DrawUISidebarAccountHeader(SidebarAccountHeaderProps header)
     DrawFittedTextInRect(username, username_bounds, name_font,
                            Text8, c_text);
     if(subtitle[0] != '\0')
-        DrawUIText(subtitle, name_x, name_y + Scale(22), small_font,
+        RenderText(subtitle, name_x, name_y + Scale(22), small_font,
                    DarkenUIColor(c_text, 34));
 
     if(CheckCollisionPointRec(mouse, friends_bounds) &&
        !UIInputCapturesClick(mouse)) {
         DrawRectangleRounded(friends_bounds, 0.18f, 8,
                              LightenUIColor(c_surface, 8));
-        MarkUIClickable();
+        MarkClickable();
         if(released) {
             UIConsumeRelease();
             result.friends_clicked = 1;
         }
     }
     if(friends_text[0] != '\0')
-        DrawUIText(friends_text, header.x + Scale(12),
+        RenderText(friends_text, header.x + Scale(12),
                    count_y + Scale(8), small_font, c_text);
 
     return result;
 }
 
 ProfilePicturePickerResult
-DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
+RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
 {
     ProfilePicturePickerResult result = {0};
     static int default_scroll_offset = 0;
@@ -374,7 +374,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
     if(height > max_height)
         height = max_height;
 
-    frame = DrawUIModalFrame(width, height,
+    frame = RenderModalFrame(width, height,
                              modal.title != NULL ? modal.title : "Profile picture",
                              kryon_zero_texture2d, modal.close_icon);
     if(frame.right_clicked) {
@@ -436,7 +436,7 @@ DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal)
                                  cell - icon_inset * 2, c_icon);
 
         if(hovered) {
-            MarkUIClickable();
+            MarkClickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                 UIConsumeRelease();
                 if(modal.selected_icon_type != NULL)

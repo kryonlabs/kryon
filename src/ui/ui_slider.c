@@ -53,8 +53,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     else
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     if(can_draw) {
-        DrawUIText(label, x, y, label_font, c_text);
-        DrawUIText(value_text, x + w - TextWidth(value_text, value_font),
+        RenderText(label, x, y, label_font, c_text);
+        RenderText(value_text, x + w - TextWidth(value_text, value_font),
                    y, value_font, c_text);
     }
 
@@ -67,13 +67,13 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                                  0.5f, 8, DarkenUIColor(c_bg, 20));
         } else if(!ui_default_style()) {
             DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
-            DrawUIBevel(x, track_y, w, track_h,
+            RenderBevel(x, track_y, w, track_h,
                         DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
         }
     }
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
             g_ui_slider_active_id = id;
     }
@@ -136,7 +136,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                             (float)(knob_h / 2), LightenUIColor(c_button, 24));
         } else {
             DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
+            RenderBevel(knob_x, knob_y, knob_w, knob_h,
                         LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
         }
     }
@@ -193,12 +193,12 @@ ui_render_vertical_slider(int id, int x, int y, int h,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
         DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(track_x, y, track_w, h,
+        RenderBevel(track_x, y, track_w, h,
                     DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
     }
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
             g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
@@ -250,11 +250,11 @@ ui_render_vertical_slider(int id, int x, int y, int h,
         } else {
             DrawRectangle(track_x, position_y, track_w, y + h - position_y,
                           c_button_hover);
-            DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
+            RenderBevel(track_x, position_y, track_w, y + h - position_y,
                         LightenUIColor(c_button_hover, 35),
                         DarkenUIColor(c_button_hover, 35));
             DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
+            RenderBevel(knob_x, knob_y, knob_w, knob_h,
                         LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
         }
     }
@@ -314,7 +314,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
     } else {
         DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        DrawUIBevel(track_x, y, track_w, h,
+        RenderBevel(track_x, y, track_w, h,
                     DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
     }
 
@@ -322,7 +322,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         callback(callback_user_data, x, y, h, min, max, *value);
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
             g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
@@ -374,11 +374,11 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         } else {
             DrawRectangle(track_x, position_y, track_w, y + h - position_y,
                           c_button_hover);
-            DrawUIBevel(track_x, position_y, track_w, y + h - position_y,
+            RenderBevel(track_x, position_y, track_w, y + h - position_y,
                         LightenUIColor(c_button_hover, 35),
                         DarkenUIColor(c_button_hover, 35));
             DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            DrawUIBevel(knob_x, knob_y, knob_w, knob_h,
+            RenderBevel(knob_x, knob_y, knob_w, knob_h,
                         LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
         }
     }
@@ -388,7 +388,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
 }
 
 int
-DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
+RenderToggleSwitch(int x, int y, int w, int h, int *value,
                    const char *off_label, const char *on_label)
 {
     char editor_id[96];
@@ -435,9 +435,9 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
 
     if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
         if(enabled)
-            MarkUIClickable();
+            MarkClickable();
         else
-            MarkUIDisabled();
+            MarkDisabled();
     }
 
     pressed = enabled && CheckCollisionPointRec(mouse_world, bounds) &&
@@ -509,9 +509,9 @@ DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
                              0.5f, 8, DarkenUIColor(c_bg, 20));
         DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h},
                              0.5f, 8, c_button);
-        DrawUIText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
+        RenderText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
                    font, label_color);
-        DrawUIText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
+        RenderText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
                    font, label_color);
     }
 
@@ -551,9 +551,9 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 
     if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
         if(disabled)
-            MarkUIDisabled();
+            MarkDisabled();
         else
-            MarkUIClickable();
+            MarkClickable();
     }
 
     pressed = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
@@ -603,7 +603,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         DrawRectangleRoundedLines(box, radius, 8, border);
     } else {
         DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
-        DrawUIBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
+        RenderBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
                     DarkenUIColor(c_bg, 30), LightenUIColor(c_bg, 20));
     }
 
@@ -616,7 +616,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                  x + box_size - padding, box_y + padding, mark_color);
     }
 
-    DrawUIText(label, x + box_size + label_gap,
+    RenderText(label, x + box_size + label_gap,
                GetUIControlTextY(label, y, row_h, font),
                font, label_color);
 
@@ -625,7 +625,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 }
 
 int
-DrawUICheckboxToggle(int x, int y, const char *label, int *value)
+RenderCheckboxToggle(int x, int y, const char *label, int *value)
 {
     return DrawDisabledUICheckboxToggle(x, y, label, value, 0);
 }

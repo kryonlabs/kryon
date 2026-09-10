@@ -50,8 +50,8 @@ static void check_invalid_layer_end(UIPaintLayerToken token, const char *label)
 extern void rlSetBlendFactorsSeparate(int srcRGB, int dstRGB, int srcAlpha,
                                       int dstAlpha, int eqRGB, int eqAlpha);
 
-void __real_DrawUIText(const char *text, int x, int y, int font, Color color);
-void __wrap_DrawUIText(const char *text, int x, int y, int font, Color color)
+void __real_RenderText(const char *text, int x, int y, int font, Color color);
+void __wrap_RenderText(const char *text, int x, int y, int font, Color color)
 {
     if(expected_dropdown_text != NULL && text != NULL &&
        strcmp(text, expected_dropdown_text) == 0)
@@ -63,7 +63,7 @@ void __wrap_DrawUIText(const char *text, int x, int y, int font, Color color)
     if(text != NULL && strcmp(text, "# a comment") == 0)
         syntax_comment_lines++;
     (void)color;
-    __real_DrawUIText(text, x, y, font, color);
+    __real_RenderText(text, x, y, font, color);
 }
 
 static void check_pixel(Image image, int x, int y, Color expected, const char *label)
@@ -83,7 +83,7 @@ static void check_layered_text_not_boxed(UIPaintLayers *layers,
     ClearBackground(BLACK);
     ui_paint_layers_frame(layers,64,64);
     UIPaintLayerToken text_layer = ui_paint_layer_begin(layers,901);
-    DrawUIText("Hi",4,4,20,WHITE);
+    RenderText("Hi",4,4,20,WHITE);
     ui_paint_layer_end(text_layer);
     ui_paint_layers_composite(layers);
     EndTextureMode();
@@ -385,19 +385,19 @@ int main(void)
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
     ui_paint_layers_frame(gesture_a,64,64);
-    if(!DrawUIDragDropSource(drag_source)) {
+    if(!RenderDragDropSource(drag_source)) {
         fprintf(stderr,"first host did not retain its drag payload\n");
         failures++;
     }
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
     ui_paint_layers_frame(gesture_b,64,64);
-    if(DrawUIDragDropSource(drag_source)) {
+    if(RenderDragDropSource(drag_source)) {
         fprintf(stderr,"drag payload crossed render hosts\n");
         failures++;
     }
     ui_paint_layers_composite(gesture_b);
-    if(!DrawUIDragDropSource(drag_source)) {
+    if(!RenderDragDropSource(drag_source)) {
         fprintf(stderr,"restored host lost its drag payload\n");
         failures++;
     }
@@ -418,7 +418,7 @@ int main(void)
         ClearBackground(BLACK);
         ui_paint_layers_frame(host_a,size,size);
         int host_a_open = frame == 0 ? 0 : -1;
-        MenuBarResult host_a_menu = DrawUIMenuBar(
+        MenuBarResult host_a_menu = RenderMenuBar(
             41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"first host lost its open menu: %d\n",
@@ -443,7 +443,7 @@ int main(void)
         ClearBackground(BLUE);
         ui_paint_layers_frame(host_b,16,16);
         int host_b_open = -1;
-        MenuBarResult host_b_menu = DrawUIMenuBar(
+        MenuBarResult host_b_menu = RenderMenuBar(
             41300, (Rectangle){0,0,16,12}, host_menus, 1, &host_b_open);
         if(host_b_menu.open_index != -1) {
             fprintf(stderr,"open menu crossed hosts: %d\n",
@@ -473,7 +473,7 @@ int main(void)
         }
         BeginTextureMode(host_target);
         host_a_open = -1;
-        host_a_menu = DrawUIMenuBar(
+        host_a_menu = RenderMenuBar(
             41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"restored host has wrong open menu: %d\n",
@@ -734,7 +734,7 @@ int main(void)
     BeginTextureMode(outer);
     ClearBackground(RED);
     BeginUIClip(10,10,20,20);
-    DrawUIText("wide", 10 + (20 - TextWidth("wide",16)) / 2,
+    RenderText("wide", 10 + (20 - TextWidth("wide",16)) / 2,
                TextBaselineY("wide",10,20,16),16,WHITE);
     EndUIClip();
     DrawRectangle(25,10,5,20,BLUE);
@@ -777,7 +777,7 @@ int main(void)
             .secure = secure};
         BeginTextureMode(outer);
         ClearBackground(RED);
-        RenderTextField(editor);
+        ui_text_field_render(editor);
         DrawRectangle(45,8,15,24,BLUE);
         EndTextureMode();
         Image editor_reference = LoadImageFromTexture(outer.texture);
@@ -785,7 +785,7 @@ int main(void)
         ClearBackground(BLACK);
         BeginTree(Key("editor paint lifecycle"));
         Rect(0,0,64,64,RED,BLANK);
-        RenderTextField(editor);
+        ui_text_field_render(editor);
         memset(editor_text,'X',3);
         Rect(45,8,15,24,BLUE,BLANK);
         EndTree();

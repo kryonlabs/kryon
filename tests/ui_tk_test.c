@@ -487,18 +487,18 @@ test_step_button_keyboard_navigation(void)
         .value_count=1,.step=2,.step_fast=10};
 
     InjectReset();
-    BeginUIFrame(240,140,1); DrawUISpinbox(spin); DrawUIInputInt(field); EndUIFrame();
+    BeginUIFrame(240,140,1); RenderSpinbox(spin); RenderInputInt(field); EndUIFrame();
     SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginUIFrame(240,140,1);
-    check_int("spinbox keyboard changed",DrawUISpinbox(spin),1);
-    DrawUIInputInt(field); EndUIFrame();
+    check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
+    RenderInputInt(field); EndUIFrame();
     check_int("spinbox keyboard increment",value,3);
 
     {
         UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
         SetUIFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
-        BeginUIFrame(240,140,1); DrawUISpinbox(spin);
-        check_int("numeric step keyboard changed",DrawUIInputInt(field),1);
+        BeginUIFrame(240,140,1); RenderSpinbox(spin);
+        check_int("numeric step keyboard changed",RenderInputInt(field),1);
         EndUIFrame();
         check_int("numeric step keyboard increment",input,6);
     }
@@ -506,7 +506,7 @@ test_step_button_keyboard_navigation(void)
     spin.disabled = 1;
     SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginUIFrame(240,140,1);
-    check_int("disabled spinbox keyboard",DrawUISpinbox(spin),0);
+    check_int("disabled spinbox keyboard",RenderSpinbox(spin),0);
     EndUIFrame();
     check_int("disabled spinbox value",value,3);
     InjectReset();
@@ -704,7 +704,7 @@ test_focusable_image_keyboard_navigation(void)
 
     InjectReset();
     BeginUIFrame(240,180,1);
-    DrawUIInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
+    RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
     ImageButton((ImageButtonProps){picture,BLACK,621,0});
     ColorButton((ColorButtonProps){
         .bounds={10,90,80,30},.id=622,.label="Color",.color=RED
@@ -714,7 +714,7 @@ test_focusable_image_keyboard_navigation(void)
     SetUIFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginUIFrame(240,180,1);
     check_int("invisible button Enter activation",
-              DrawUIInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0}),1);
+              RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0}),1);
     EndUIFrame();
 
     SetUIFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
@@ -1017,12 +1017,12 @@ test_icon_button_activation(void)
         InjectTap(30, 30);
         InjectPump();
         BeginUIFrame(220, 100, 1.0f);
-        check_int("icon button press", DrawUIIconButton(button), 0);
+        check_int("icon button press", RenderIconButton(button), 0);
         EndUIFrame();
         InjectPump();
         BeginUIFrame(220, 100, 1.0f);
-        check_int("icon button release", DrawUIIconButton(button), !disabled);
-        check_int("icon button release consumed", DrawUIIconButton(button), 0);
+        check_int("icon button release", RenderIconButton(button), !disabled);
+        check_int("icon button release consumed", RenderIconButton(button), 0);
         EndUIFrame();
     }
     InjectReset();
@@ -2630,7 +2630,7 @@ test_popup_combo_keyboard_ownership(void)
         if(inside)
             ui_popup_input_end(child);
         ui_popup_input_end(parent);
-        DrawUIFrameOverlays();
+        RenderFrameOverlays();
         check_int("obscured combo ignores Escape",
                   dropdown_captures((Vector2){20,50}),!inside);
         ui_popup_input_finish(context);
@@ -3099,32 +3099,32 @@ test_list_box_keyboard_navigation(void)
 
     InjectReset(); InjectKeyTap(KEY_END); InjectPump();
     BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list End changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list End changed",RenderListBox(list),1); EndUIFrame();
     check_int("list End selection",selected,7);
     check_int("list End reveal",offset,144);
 
     InjectKeyTap(KEY_UP); InjectPump();
     BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list Up changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list Up changed",RenderListBox(list),1); EndUIFrame();
     check_int("list Up selection",selected,6);
     check_int("list Up retains viewport",offset,144);
 
     InjectKeyTap(KEY_HOME); InjectPump();
     BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list Home changed",DrawUIListBox(list),1); EndUIFrame();
+    check_int("list Home changed",RenderListBox(list),1); EndUIFrame();
     check_int("list Home selection",selected,0);
     check_int("list Home reveal",offset,0);
 
     list.disabled = 1;
     InjectKeyTap(KEY_END); InjectPump();
     BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("disabled list rejects End",DrawUIListBox(list),0); EndUIFrame();
+    check_int("disabled list rejects End",RenderListBox(list),0); EndUIFrame();
     check_int("disabled list selection",selected,0);
     list.disabled = 0;
     selected = -1;
     InjectReset(); InjectPump();
     BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("idle list unchanged",DrawUIListBox(list),0); EndUIFrame();
+    check_int("idle list unchanged",RenderListBox(list),0); EndUIFrame();
     check_int("idle list keeps no selection",selected,-1);
     InjectReset();
 }
@@ -3148,7 +3148,7 @@ test_popup_list_box_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
         if(!inside) ui_popup_input_end(child);
         SetUIFocus(list.id);
-        DrawUIListBox(list);
+        RenderListBox(list);
         check_int("only top popup list handles keyboard",selected,inside ? 1 : 0);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);

@@ -42,7 +42,7 @@ if [ -n "$form_matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|DrawUIDropdown|DrawUIDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITopNavAction|UITopNavResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITopNavAction|UITopNavResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
         go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -171,8 +171,9 @@ if [ -n "$stale_doc_matches" ]; then
     exit 1
 fi
 
+draw_ui_pattern='Draw''UI[A-Za-z0-9_]*'
 api_doc_matches="$(
-    rg -n '\b(DrawUI[A-Za-z0-9_]*|UITextInputControlNode|QueueUITextInput[A-Za-z0-9_]*|UIGenericButtonNode|UIVerticalSliderNode|UIActionModalNode|UIModalNode|UIModal3ButtonNode|UIModalFrameNode)\b' \
+    rg -n "\b(${draw_ui_pattern}|UITextInputControlNode|QueueUITextInput[A-Za-z0-9_]*|UIGenericButtonNode|UIVerticalSliderNode|UIActionModalNode|UIModalNode|UIModal3ButtonNode|UIModalFrameNode)\b" \
         docs/API.md || true
 )"
 
@@ -205,7 +206,7 @@ public_control_draw_matches="$(
 )"
 
 if [ -n "$public_control_draw_matches" ]; then
-    echo "Public control headers must expose clean widget names, not DrawUI* internals:"
+    echo "Public control headers must expose clean widget names, not stale draw-prefixed internals:"
     echo "$public_control_draw_matches"
     exit 1
 fi
@@ -240,7 +241,7 @@ public_text_draw_matches="$(
 )"
 
 if [ -n "$public_text_draw_matches" ]; then
-    echo "Public text headers must expose clean text names, not DrawUI* internals:"
+    echo "Public text headers must expose clean text names, not stale draw-prefixed internals:"
     echo "$public_text_draw_matches"
     exit 1
 fi
@@ -314,7 +315,7 @@ if [ -n "$split_context_popup_matches" ]; then
 fi
 
 public_text_layout_matches="$(
-    rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|DrawUITextLayout)\b' \
+    rg -n '\b(UITextLayout|UITextElement|UITextElementType|ParseUITextLayout|ReflowUITextLayout|GetUITextLayoutHeight|FreeUITextLayout|RenderTextLayout)\b' \
         include/ui_text_layout.h \
         docs/API.md \
         --glob '!vendor/**' \
@@ -360,7 +361,7 @@ if [ -n "$public_text_input_matches" ]; then
 fi
 
 internal_text_input_matches="$(
-    rg -n '\b(DrawUITextInputControl|DrawUITextField|DrawUITextArea|UITextFieldState|UITextSelection|UITextAreaHeightCacheEntry)\b' \
+    rg -n '\b(RenderTextInputControl|RenderTextField|RenderTextArea|UITextFieldState|UITextSelection|UITextAreaHeightCacheEntry)\b' \
         src/ui/ui.c \
         src/ui/ui_tree.c \
         src/ui/rows.c \
@@ -377,7 +378,7 @@ if [ -n "$internal_text_input_matches" ]; then
 fi
 
 internal_button_matches="$(
-    rg -n '\b(DrawUIButton|DrawUITextButton|DrawUIGenericButton)\b' \
+    rg -n '\b(RenderButton|RenderTextButton|RenderGenericButton)\b' \
         src/ui/button.c \
         src/ui/rows.c \
         src/ui/bottom_nav.c \
@@ -390,7 +391,7 @@ internal_button_matches="$(
 )"
 
 if [ -n "$internal_button_matches" ]; then
-    echo "Button implementation must use clean internal Render* names without stale DrawUI prefixes:"
+    echo "Button implementation must use clean internal Render* names without stale draw prefixes:"
     echo "$internal_button_matches"
     exit 1
 fi
@@ -403,7 +404,7 @@ public_tree_draw_matches="$(
 )"
 
 if [ -n "$public_tree_draw_matches" ]; then
-    echo "Public retained tree headers must expose clean lifecycle names, not DrawUI* internals:"
+    echo "Public retained tree headers must expose clean lifecycle names, not stale draw-prefixed internals:"
     echo "$public_tree_draw_matches"
     exit 1
 fi

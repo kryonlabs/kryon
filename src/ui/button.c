@@ -5,7 +5,7 @@
 #include "runtime/style.h"
 #include "runtime/surface.h"
 
-
+static void ui_button_theme_values(Palette *palette, Metrics *metrics);
 
 static void
 ui_draw_button_content(const ButtonSpec *button, Rectangle bounds,
@@ -133,6 +133,29 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             while(*label != '\0')
                 key = (key ^ (unsigned char)*label++) * 16777619u;
         }
+        if(button.style_resolved) {
+            props = button.props;
+            Palette palette;
+            Metrics tokens;
+            ui_button_theme_values(&palette, &tokens);
+            ButtonFrame frame = AdvanceFrame(key, props, input, palette, tokens,
+                ui_pack_style_states(props.style), cues, GetFrameTime() * 1000.0f,
+                button.surface_bounds, ColorToInt(GetThemeSurface()), GetUIScale(), GetFontSize());
+            if(frame.repaint)
+                InvalidateTree(UI_INVALIDATE_PAINT);
+            text = GetColor(frame.foreground);
+            if(foreground != NULL)
+                *foreground = text;
+            if(focused)
+                SetUIFocusTextInputActive(0);
+            int typeface_token = PushUIFont(frame.appearance.value.typeface.data);
+            PaintButton(frame, TextWidth(frame.props.label != NULL ? frame.props.label : "", frame.font),
+                GetTime() * 1000.0, button.disclosure, ui_surface_painter, ui_painter);
+            PopUIFont(typeface_token);
+            if(handle_input)
+                EndUIWidget(&widget);
+            return handle_input ? input.activated : 0;
+        }
         ThemeMetrics metrics = GetThemeMetrics();
         motion = AdvanceButtonMotion(key, props, input, cues,
             GetFrameTime() * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
@@ -143,29 +166,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         hover_amount = hovered ? 1.0f : 0.0f;
         press_amount = retained_pressed ? 1.0f : 0.0f;
         focus_amount = focused ? 1.0f : 0.0f;
-    }
-
-    if(default_controls && button.style_resolved) {
-        props = button.props;
-        StyleFrame appearance = ui_button_style_frame(props, state,
-            button.props.state == ButtonStateAuto, hover_amount, press_amount, focus_amount);
-        ButtonFrame frame = BuildFrame(props, input, appearance, motion, button.surface_bounds,
-            ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
-            Scale(appearance.value.font_size), GetFontSize());
-        if(frame.repaint)
-            InvalidateTree(UI_INVALIDATE_PAINT);
-        text = GetColor(frame.foreground);
-        if(foreground != NULL)
-            *foreground = text;
-        if(focused)
-            SetUIFocusTextInputActive(0);
-        int typeface_token = PushUIFont(appearance.value.typeface.data);
-        PaintButton(frame, TextWidth(frame.props.label != NULL ? frame.props.label : "", frame.font),
-            GetTime() * 1000.0, button.disclosure, ui_surface_painter, ui_painter);
-        PopUIFont(typeface_token);
-        if(handle_input)
-            EndUIWidget(&widget);
-        return handle_input ? input.activated : 0;
     }
 
     if(default_controls) {
@@ -227,7 +227,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                                      button.props.disabled);
     if(focused) {
         SetUIFocusTextInputActive(0);
-        DrawUIFocus(draw_bounds);
+        RenderFocus(draw_bounds);
     }
 
     if(foreground != NULL)
@@ -240,7 +240,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 }
 
 int
-RenderButton(ButtonSpec button)
+ui_button_render(ButtonSpec button)
 {
     return ui_render_button(button, 1, 1, 0, 0, NULL);
 }
@@ -260,7 +260,7 @@ ui_paint_button(ButtonSpec button, int hovered, int pressed)
 }
 
 int
-DrawUIIconButton(IconButtonProps button)
+RenderIconButton(IconButtonProps button)
 {
     ButtonSpec spec = {0};
     float scale = (float)Scale(1000) / 1000.0f;
@@ -315,11 +315,11 @@ DrawUIIconButton(IconButtonProps button)
     spec.paint.foreground = button.icon_color;
     spec.paint.border = button.border;
     spec.paint.radius = button.radius;
-    return RenderButton(spec);
+    return ui_button_render(spec);
 }
 
 int
-RenderTextButton(int x, int y, const char *label, int *hover)
+ui_text_button_render(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int font = GetFontSize();
@@ -355,7 +355,7 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     spec.paint.foreground = c_text;
     spec.paint.border = LightenUIColor(c_button, 32);
     spec.paint.radius = 0.06f;
-    return RenderButton(spec);
+    return ui_button_render(spec);
 }
 
 Style
@@ -364,9 +364,8 @@ ResolveButtonStyle(ButtonProps button, ButtonState state)
     return ui_unpack_style(ui_button_style_frame(button, state, 0, 0, 0, 0).value);
 }
 
-StyleFrame
-ui_button_style_frame(ButtonProps button, ButtonState state,
-                     int automatic, float h, float p, float f)
+static void
+ui_button_theme_values(Palette *palette_out, Metrics *metrics_out)
 {
     ThemeScheme scheme = ui_default_scheme();
     const Theme *theme = GetThemeRef();
@@ -407,6 +406,8 @@ ui_button_style_frame(ButtonProps button, ButtonState state,
     };
     ThemeMetrics metrics = GetThemeMetrics();
     Metrics tokens = {
+        .transition_normal_ms = metrics.transition_normal_ms,
+        .transition_fast_ms = metrics.transition_fast_ms,
         .radius_medium = metrics.radius_medium,
         .radius_large = metrics.radius_large,
         .radius_pill = metrics.radius_pill,
@@ -422,6 +423,17 @@ ui_button_style_frame(ButtonProps button, ButtonState state,
         .icon_size_medium = metrics.icon_size_medium,
         .icon_size_large = metrics.icon_size_large
     };
+    *palette_out = palette;
+    *metrics_out = tokens;
+}
+
+StyleFrame
+ui_button_style_frame(ButtonProps button, ButtonState state,
+                      int automatic, float h, float p, float f)
+{
+    Palette palette;
+    Metrics tokens;
+    ui_button_theme_values(&palette, &tokens);
     return ResolveFrame(button.tone, button.emphasis,
         state, button.size, button.pill, button.circle, button.disabled,
         button.loading, button.selected, palette, tokens,
@@ -560,7 +572,7 @@ SegmentedControl(SegmentedControlProps control)
                 button.paint.border = paint.border;
                 button.paint.radius = paint.radius;
                 button.style_resolved = 1;
-                if(RenderButton(button)) {
+                if(ui_button_render(button)) {
                     result.clicked_index = item_index;
                     if(control.selected_index != NULL &&
                        *control.selected_index != item_index) {
@@ -727,7 +739,7 @@ ScoreControl(ScoreControlProps control)
             button.paint.border = selected_value ? c_button : Fade(c_text, 0.30f);
             button.paint.radius = 0.08f;
             button.style_resolved = 1;
-            if(RenderButton(button)) {
+            if(ui_button_render(button)) {
                 result.clicked = 1;
                 result.clicked_value = value;
                 if(control.value != NULL && *control.value != value) {
@@ -744,7 +756,7 @@ ScoreControl(ScoreControlProps control)
 }
 
 int
-DrawUIInfoButton(int center_x, int center_y, int diameter)
+RenderInfoButton(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = Scale(32);
@@ -766,7 +778,7 @@ DrawUIInfoButton(int center_x, int center_y, int diameter)
     active = CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world);
     if(active) {
         hover = UIHoverEffectsEnabled();
-        MarkUIClickable();
+        MarkClickable();
     }
 
     if(ui_default_style()) {

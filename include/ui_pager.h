@@ -25,6 +25,6 @@ typedef struct UIGuidePagerResult {
     UISwipeResult swipe;
 } UIGuidePagerResult;
 
-UIGuidePagerResult DrawUIGuidePager(UIGuidePagerProps pager);
+UIGuidePagerResult GuidePager(UIGuidePagerProps pager);
 
 #endif

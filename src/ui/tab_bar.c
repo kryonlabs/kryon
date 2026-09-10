@@ -335,7 +335,7 @@ ui_pane_tab_bar_tab_width(PaneTabBar bar, int index, int min_tab_w,
 }
 
 int
-DrawUITabBar(TabBarProps bar)
+RenderTabBar(TabBarProps bar)
 {
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
@@ -638,7 +638,7 @@ DrawUITabBar(TabBarProps bar)
                 int y = TextBaselineY(tab->label, (int)text_rect.y,
                                    (int)text_rect.height, font);
                 ui_begin_world_clip(text_rect);
-                DrawUITextStyled(tab->label, (int)text_rect.x, y,
+                RenderTextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
             } else if(ui_default_style()) {
@@ -647,7 +647,7 @@ DrawUITabBar(TabBarProps bar)
                 int label_y = TextBaselineY(tab->label, (int)text_rect.y,
                                             (int)text_rect.height, font);
                 ui_begin_world_clip(text_rect);
-                DrawUIText(tab->label, label_x, label_y, font, text_color);
+                RenderText(tab->label, label_x, label_y, font, text_color);
                 EndUIClip();
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
@@ -659,7 +659,7 @@ DrawUITabBar(TabBarProps bar)
                 DrawRectangleRounded(close_rect, 0.40f, 6,
                                      ui_default_style() ? ui_default_scheme().surface_variant
                                                          : DarkenUIColor(c_button_hover, 8));
-            DrawUIText("x",
+            RenderText("x",
                          (int)(close_rect.x + (close_rect.width -
                                                (float)TextWidth("x", font)) * 0.5f),
                          TextBaselineY("x", (int)close_rect.y, (int)close_rect.height, font),
@@ -669,9 +669,9 @@ DrawUITabBar(TabBarProps bar)
         // Handle click detection
         if(is_active) {
             if(is_disabled)
-                MarkUIDisabled();
+                MarkDisabled();
             else
-                MarkUIClickable();
+                MarkClickable();
 
             if(!is_disabled && IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
                 clicked_tab = -1;
@@ -726,7 +726,7 @@ DrawUITabBar(TabBarProps bar)
         }
 
         if(focused && i == (clicked_tab >= 0 ? clicked_tab : bar.selected_index))
-            DrawUIFocus(tab_rect);
+            RenderFocus(tab_rect);
 
         tab_x += tab_w + tab_gap;
     }
@@ -815,7 +815,7 @@ DrawUITabBar(TabBarProps bar)
 }
 
 PaneTabBarResult
-DrawUIPaneTabBar(PaneTabBar bar)
+RenderPaneTabBar(PaneTabBar bar)
 {
     PaneTabBarResult result = {-1, -1};
     TabBarProps tabs = {0};
@@ -849,7 +849,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
     tabs.scroll_offset = bar.scroll_offset;
     tabs.focus_selected = 0;
     tabs.closed_index = NULL;
-    result.clicked_index = DrawUITabBar(tabs);
+    result.clicked_index = RenderTabBar(tabs);
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
        bar.bounds.height <= 0)
@@ -905,7 +905,7 @@ DrawUIPaneTabBar(PaneTabBar bar)
                     tab_bar_store->pane_drag_reported = 1;
                 }
             }
-            MarkUIClickable();
+            MarkClickable();
         }
         tab_x += tab_w + tab_gap;
     }
@@ -939,7 +939,7 @@ GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 }
 
 void
-DrawUIPaneDropPreview(Rectangle bounds, PaneDropZone zone)
+RenderPaneDropPreview(Rectangle bounds, PaneDropZone zone)
 {
     Rectangle preview = bounds;
 

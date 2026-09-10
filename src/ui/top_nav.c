@@ -35,14 +35,14 @@ ui_top_nav_title(const char *title, Rectangle bounds, int side_reserved)
         font--;
         title_w = TextWidth(title, font);
     }
-    DrawUIText(title, (int)bounds.x + ((int)bounds.width - title_w) / 2,
+    RenderText(title, (int)bounds.x + ((int)bounds.width - title_w) / 2,
                  (int)bounds.y + GetUIControlTextY(title, 0,
                                                    (int)bounds.height, font),
                  font, c_text);
 }
 
 TopNavResult
-DrawUITopNav(TopNavProps nav)
+RenderTopNav(TopNavProps nav)
 {
     TopNavResult result = {-1, -1};
     int x = nav.x;
@@ -70,7 +70,7 @@ DrawUITopNav(TopNavProps nav)
 
     widget = BeginUIWidget("top_nav", "tmp:top-nav", bounds,
                            UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "DrawUITopNav");
+    UIWidgetSetAction(&widget, "RenderTopNav");
     ui_top_nav_background(bounds);
 
     if(nav.action_count > 0 && nav.actions != NULL)

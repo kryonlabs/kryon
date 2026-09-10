@@ -305,7 +305,7 @@ ui_dropdown(ComboboxProps props)
     int *selected_index = props.selected_index;
     BeginDisabled(props.disabled);
     if(props.disabled)
-        MarkUIDisabled();
+        MarkDisabled();
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
@@ -398,7 +398,7 @@ ui_dropdown(ComboboxProps props)
     }
 
     if(active)
-        MarkUIClickable();
+        MarkClickable();
 
     int pointer_activate = active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int next_open = Trigger(state->open, UIContentDisabled(), option_count, focused,
@@ -445,7 +445,7 @@ ui_dropdown(ComboboxProps props)
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
-        DrawUIText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, button_text);
+        RenderText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, button_text);
         EndUIClip();
         PopUIFont(font_token);
     }
@@ -622,7 +622,7 @@ dropdown_paint_menu(int id)
         }
 
         {
-            if(option_active) MarkUIClickable();
+            if(option_active) MarkClickable();
 
             if(CanCommit(!options[i].disabled, state->just_opened, false, false,
                 option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
@@ -658,7 +658,7 @@ dropdown_paint_menu(int id)
                 (int)(g_ui_camera.offset.y + visible_y * g_ui_camera.zoom),
                 (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
                 (int)(visible_h * g_ui_camera.zoom));
-            DrawUIText(options[i].label, text_x,
+            RenderText(options[i].label, text_x,
                        GetUIControlTextY(options[i].label, option_y, option_h, font),
                        font, row_text);
             EndUIClip();

@@ -124,6 +124,6 @@ theme. No dropdown-specific Classic, Material, or bevel drawing path remains.
 
 `Combobox` uses one props-based C implementation. The positional `Dropdown` and
 `DropdownOptions` entry points are data adapters for existing callers; they do
-not retain separate interaction or painting logic. `DrawUICombobox` is removed.
+not retain separate interaction or painting logic. `RenderCombobox` is removed.
 Opening and reselecting the current value do not report a selection change.
 Wheel movement advances one row per unit in both native hosts.

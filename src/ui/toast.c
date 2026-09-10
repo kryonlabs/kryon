@@ -41,11 +41,11 @@ ShowToast(const char *message)
 void
 DrawToast(void)
 {
-    DrawUIToast();
+    RenderToast();
 }
 
 void
-DrawUIToast(void)
+RenderToast(void)
 {
     int font = GetSmallFontSize();
     int pad_x = Scale(14);
@@ -92,7 +92,7 @@ DrawUIToast(void)
     DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
     DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, Scale(1),
                                 DarkenUIColor(c_surface, 46));
-    DrawUIText(display,
+    RenderText(display,
                x + (w - text_w) / 2,
                GetUIControlTextY(display, y, h, font),
                font, c_text);

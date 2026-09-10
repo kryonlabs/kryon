@@ -393,6 +393,66 @@ main(void)
     check_int("event delivered once", NextEvent(&event), 0);
 
     {
+        UIFrameState saved = SaveUIFrameState();
+        int stopped = 0;
+
+        InjectReset();
+        while(NextEvent(&event)) {
+        }
+        BeginUIFrame(320, 240, 1.0f);
+        BeginTree(441);
+        Button((ButtonProps){.bounds = {10, 10, 100, 40},
+                             .label = "First", .id = 4411});
+        Button((ButtonProps){.bounds = {10, 60, 100, 40},
+                             .label = "Second", .id = 4412});
+        Button((ButtonProps){.bounds = {10, 110, 100, 40},
+                             .label = "Third", .id = 4413});
+        EndTree();
+        EndUIFrame();
+        nodes = GetTreeNodes(&count);
+        check_int("atomic tree initial count", count, 4);
+
+        InjectTap(25, 25);
+        InjectPump();
+        BeginUIFrame(320, 240, 1.0f);
+        BeginTree(441);
+        check_int("atomic tree press does not stop",
+                  Button((ButtonProps){.bounds = {10, 10, 100, 40},
+                                       .label = "First", .id = 4411}), 0);
+        Button((ButtonProps){.bounds = {10, 60, 100, 40},
+                             .label = "Second", .id = 4412});
+        Button((ButtonProps){.bounds = {10, 110, 100, 40},
+                             .label = "Third", .id = 4413});
+        EndTree();
+        EndUIFrame();
+
+        InjectPump();
+        BeginUIFrame(320, 240, 1.0f);
+        BeginTree(441);
+        if(Button((ButtonProps){.bounds = {10, 10, 100, 40},
+                                .label = "First", .id = 4411})) {
+            stopped = 1;
+        }
+        if(!stopped) {
+            Button((ButtonProps){.bounds = {10, 60, 100, 40},
+                                 .label = "Second", .id = 4412});
+            Button((ButtonProps){.bounds = {10, 110, 100, 40},
+                                 .label = "Third", .id = 4413});
+        }
+        EndTree();
+        EndUIFrame();
+        nodes = GetTreeNodes(&count);
+        check_int("atomic tree click reached handler", stopped, 1);
+        check_int("atomic tree kept complete count", count, 4);
+        check_int("atomic tree kept second sibling", nodes[2].id, 4412);
+        check_int("atomic tree kept third sibling", nodes[3].id, 4413);
+        while(NextEvent(&event)) {
+        }
+        InjectReset();
+        RestoreUIFrameState(saved);
+    }
+
+    {
         char password[32] = "secret";
         int cursor = 6;
         int focused = 0;

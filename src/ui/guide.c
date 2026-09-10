@@ -138,7 +138,7 @@ guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
 }
 
 UIGuideResult
-DrawUIGuideOverlay(GuideOverlayProps guide)
+RenderGuideOverlay(GuideOverlayProps guide)
 {
     UIGuideResult result = {0};
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
@@ -259,7 +259,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     icon_props.icon = guide.close_icon;
     icon_props.icon_size = Scale(16);
     icon_props.icon_padding = Scale(6);
-    if(DrawUIIconButton(icon_props)) {
+    if(RenderIconButton(icon_props)) {
         result.closed = 1;
         return result;
     }
@@ -290,7 +290,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     }
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
-    DrawUIText(page_text, (int)tip.x + pad,
+    RenderText(page_text, (int)tip.x + pad,
                     controls_y + (button_size - page_font) / 2,
                     page_font, GetThemeText());
 
@@ -306,7 +306,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
         icon_props.icon = guide.back_icon;
         icon_props.icon_size = Scale(19);
         icon_props.icon_padding = Scale(7);
-        if(DrawUIIconButton(icon_props)) {
+        if(RenderIconButton(icon_props)) {
             *guide.step = step - 1;
             result.changed = 1;
             result.step = *guide.step;
@@ -322,7 +322,7 @@ DrawUIGuideOverlay(GuideOverlayProps guide)
     icon_props.icon = finish ? guide.done_icon : guide.next_icon;
     icon_props.icon_size = Scale(19);
     icon_props.icon_padding = Scale(7);
-    if(DrawUIIconButton(icon_props)) {
+    if(RenderIconButton(icon_props)) {
         if(finish) {
             result.finished = 1;
         } else {

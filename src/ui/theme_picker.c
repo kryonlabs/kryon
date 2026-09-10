@@ -180,7 +180,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
             mode_index = i;
     }
     if(show_mode) {
-        DrawUIText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
+        RenderText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
                    settings.x, y, font, c_text);
         if(Combobox((ComboboxProps){.id = settings.id_base + 1, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = mode_options, .option_count = mode_count, .selected_index = &mode_index})) {
@@ -210,7 +210,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
         state->palette_index = ui_clampi(palette_index, 0, palette_count - 1);
         palette_index = state->palette_index;
     }
-    DrawUIText(ui_theme_settings_text(settings.palette_label, "theme_color_label", "Color"),
+    RenderText(ui_theme_settings_text(settings.palette_label, "theme_color_label", "Color"),
                settings.x, y, font, c_text);
     if(Combobox((ComboboxProps){.id = settings.id_base + 2, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = theme_options, .option_count = palette_count, .selected_index = state != NULL ? &state->palette_index : &palette_index})) {
@@ -241,7 +241,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
             if(*settings.theme_style == style_values[i])
                 style_index = i;
         }
-        DrawUIText(ui_theme_settings_text(settings.style_label, "theme_style_label", "Style"),
+        RenderText(ui_theme_settings_text(settings.style_label, "theme_style_label", "Style"),
                    settings.x, y, font, c_text);
         if(Combobox((ComboboxProps){.id = settings.id_base + 3, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = style_options, .option_count = 3, .selected_index = &style_index})) {
@@ -416,7 +416,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
                         selected == (int)theme ? c_text : DarkenUIColor(c_bg, 30));
 
         if(is_hovered) {
-            MarkUIClickable();
+            MarkClickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                 UIConsumeRelease();
                 selected = theme;
@@ -428,7 +428,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 
         const char *name = ui_theme_label(theme);
         int name_w = TextWidth(name, small_font);
-        DrawUIText(name, cx - name_w / 2,
+        RenderText(name, cx - name_w / 2,
                         cy + layout.circle_size / 2 + layout.label_gap,
                         small_font, c_text);
     }
@@ -437,7 +437,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
 }
 
 int
-DrawUIThemeSwitcher(int x, int y, int w, const char *label,
+RenderThemeSwitcher(int x, int y, int w, const char *label,
                        const char *light_label, const char *dark_label,
                        int *theme_id, int *dark_mode)
 {
@@ -445,12 +445,12 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
     int font = GetFontSize();
     int dark = dark_mode != NULL ? *dark_mode : 0;
 
-    DrawUIText(label ? label : "Theme", x, y, font, c_text);
+    RenderText(label ? label : "Theme", x, y, font, c_text);
 
     int light_w = TextWidth(light_label ? light_label : "Light", font);
     int dark_w = TextWidth(dark_label ? dark_label : "Dark", font);
     int max_label_w = light_w > dark_w ? light_w : dark_w;
-        /* Match DrawUIToggleSwitchs classic content minimum so the switch does
+        /* Match RenderToggleSwitchs classic content minimum so the switch does
      * not silently grow past the computed rect */
     int toggle_w = (max_label_w + Scale(16)) * 2 + Scale(6);
     int min_toggle_w = Scale(100);
@@ -462,7 +462,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
     int toggle_h = Scale(28);
     int toggle_x = x + w - toggle_w - Scale(8);
     int toggle_y = y - Scale(2);
-    if(DrawUIToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
+    if(RenderToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
                              light_label ? light_label : "Light",
                              dark_label ? dark_label : "Dark")) {
         if(dark_mode != NULL)
@@ -477,7 +477,7 @@ DrawUIThemeSwitcher(int x, int y, int w, const char *label,
 }
 
 int
-DrawUIThemePicker(int x, int y, int w, int dark_mode,
+RenderThemePicker(int x, int y, int w, int dark_mode,
                      int *theme_id)
 {
     int changed = 0;

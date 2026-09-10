@@ -30,16 +30,16 @@ main(void)
 
     /* Draw order = stacking order: a disabled card first, then a button
      * on top of it. The button's hand must win. */
-    MarkUIDisabled();
+    MarkDisabled();
     check(GetUIMouseCursor() == MOUSE_CURSOR_NOT_ALLOWED,
           "disabled control shows the not-allowed cursor");
-    MarkUIClickable();
+    MarkClickable();
     check(GetUIMouseCursor() == MOUSE_CURSOR_POINTING_HAND,
           "clickable foreground overrides disabled background");
-    MarkUICursor(MOUSE_CURSOR_IBEAM);
+    MarkCursor(MOUSE_CURSOR_IBEAM);
     check(GetUIMouseCursor() == MOUSE_CURSOR_IBEAM,
           "text foreground overrides disabled background");
-    MarkUICursor(MOUSE_CURSOR_RESIZE_EW);
+    MarkCursor(MOUSE_CURSOR_RESIZE_EW);
     check(GetUIMouseCursor() == MOUSE_CURSOR_RESIZE_EW,
           "resize foreground overrides disabled background");
 
@@ -53,7 +53,7 @@ main(void)
           "no intents resets to the default cursor");
 
     /* Disabled alone still shows not-allowed. */
-    MarkUIDisabled();
+    MarkDisabled();
     check(GetUIMouseCursor() == MOUSE_CURSOR_NOT_ALLOWED,
           "lone disabled control keeps the not-allowed cursor");
 

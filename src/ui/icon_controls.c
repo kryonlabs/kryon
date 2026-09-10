@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 int
-DrawUIIconSliderPopup(IconSliderPopupProps popup)
+RenderIconSliderPopup(IconSliderPopupProps popup)
 {
     int popup_w;
     int popup_h;
@@ -50,7 +50,7 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
     }
 
     DrawRectangle(popup_x, popup_y, popup_w, popup_h, c_surface);
-    DrawUIBevel(popup_x, popup_y, popup_w, popup_h,
+    RenderBevel(popup_x, popup_y, popup_w, popup_h,
                 LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
 
     return ui_render_vertical_slider(popup.id, popup_x + popup_w / 2,
@@ -60,7 +60,7 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
 }
 
 IconRowResult
-DrawUIBottomIconRow(BottomIconRowProps row)
+RenderBottomIconRow(BottomIconRowProps row)
 {
     IconRowResult result = {-1, 0, 0};
     int count = row.count;

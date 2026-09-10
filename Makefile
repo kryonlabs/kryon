@@ -1138,7 +1138,7 @@ $(UI_WINDOW_TEST): tests/ui_window_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD
 # Pixel integration test for the raylib/X11 presenter; requires GNU-style --wrap.
 $(BUILD_DIR)/tests/texture_scope_test: tests/texture_scope_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=LoadImageFromTexture -Wl,--wrap=DrawUIText -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=LoadImageFromTexture -Wl,--wrap=RenderText -o $@
 
 .PHONY: texture-scope-test
 texture-scope-test: $(BUILD_DIR)/tests/texture_scope_test

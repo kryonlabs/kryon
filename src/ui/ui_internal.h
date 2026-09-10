@@ -44,9 +44,9 @@ enum {
 
 Vector2 ui_mouse_world(void);
 void ui_camera_ensure_sane(void);
-void MarkUICursor(int cursor);
-void MarkUIClickable(void);
-void MarkUIDisabled(void);
+void MarkCursor(int cursor);
+void MarkClickable(void);
+void MarkDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
 int UIHoverEffectsEnabled(void);
 const char *ui_inspect_control_id(char *buf, size_t buf_size,
@@ -105,8 +105,8 @@ int ui_caret_blink_visible(void);
 /* Navigate to a URL: in-browser redirect on web, platform opener otherwise.
  * A no-op for a NULL/empty url. */
 void ui_open_url(const char *url);
-void DrawUIFrameOverlays(void);
-void DrawUIFocus(Rectangle bounds);
+void RenderFrameOverlays(void);
+void RenderFocus(Rectangle bounds);
 int ui_readonly_text_box_height(const char *text, int font, int width,
                                TextInputStyle style, int line_gap);
 int ui_label_text_field_height(LabelTextFieldProps row);
@@ -120,7 +120,7 @@ int ui_theme_picker_height(int w);
 int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(ParagraphSpec paragraph);
-void DrawUIText(const char *text, int x, int y, int font_size, Color color);
+void RenderText(const char *text, int x, int y, int font_size, Color color);
 typedef struct TextNavigationInput {
     const char *text;
     const TextAreaProps *area;
@@ -138,17 +138,17 @@ int ui_text_word_left(const char *text, int cursor);
 int ui_text_word_right(const char *text, int cursor);
 int ui_text_navigation_key(int multiline);
 int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
-void DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
+void RenderTextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
-void DrawUITextStyled(const char *text, int x, int y, TextStyle style);
-void DrawUINonSelectableText(const char *text, int x, int y, int font_size,
+void RenderTextStyled(const char *text, int x, int y, TextStyle style);
+void RenderNonSelectableText(const char *text, int x, int y, int font_size,
                              Color color);
 void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
 void DrawCenteredUIText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
 int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
                                  int line_gap);
-int DrawUISelectableTextBlock(SelectableTextBlock block);
+int RenderSelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,
                       Color color);
 void DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
@@ -156,33 +156,33 @@ void DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
 void ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y);
 void ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y,
                                int align);
-void DrawUIBevel(int x, int y, int w, int h, Color light, Color dark);
-void DrawUITextLines(const char **lines, int count, int x, int *y, int font,
+void RenderBevel(int x, int y, int w, int h, Color light, Color dark);
+void RenderTextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);
 void ui_paint_text_box(const char *text, Rectangle bounds, int font,
                        Color color, int wrap, int align, int vertical_align,
                        int font_token, int letter_spacing);
 int ui_set_text_letter_spacing(int spacing);
 int ui_get_text_letter_spacing(void);
-void DrawUITransitionFade(const UITransition *transition, int width,
+void RenderTransitionFade(const UITransition *transition, int width,
                           int height, Color color);
 int ui_scrollbar(int x, int y, int viewport_h, int content_h,
                  int *scroll_offset, int max_scroll, int overlay);
 void ui_scrollbar_cancel(int *scroll_offset);
-int RenderButton(ButtonSpec button);
+int ui_button_render(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
-int DrawUIIconButton(IconButtonProps button);
-int DrawUIHref(HrefProps link);
-int RenderTextInputControl(TextInputProps input);
+int RenderIconButton(IconButtonProps button);
+int RenderHref(HrefProps link);
+int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
                      TextInputStyle style);
-int RenderTextField(TextFieldProps field);
-int RenderTextArea(TextAreaProps area);
+int ui_text_field_render(TextFieldProps field);
+int ui_text_area_render(TextAreaProps area);
 int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);
 void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);
 void ui_paint_text_area(TextAreaProps area, int cursor, int focused,
@@ -191,11 +191,11 @@ void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
                                     int selection_start, int selection_end,
                                     int composition_start,
                                     int composition_end);
-int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
+int RenderReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
-int DrawUIInfoButton(int center_x, int center_y, int diameter);
-int RenderTextButton(int x, int y, const char *label, int *hover);
-void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,
+int RenderInfoButton(int center_x, int center_y, int diameter);
+int ui_text_button_render(int x, int y, const char *label, int *hover);
+void RenderIconLink(int x, int y, int icon_size, Texture2D icon,
                     const char *url);
 int ui_render_slider(int id, int x, int y, int w, const char *label, int min,
                      int max, int *value, const char *suffix,
@@ -205,55 +205,55 @@ int ui_render_vertical_slider(int id, int x, int y, int h, int min, int max,
 int ui_render_vertical_slider_with_marks(
     int id, int x, int y, int h, int min, int max, int *value,
     UIVerticalSliderMarkCallback callback, void *callback_user_data);
-int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
+int RenderToggleSwitch(int x, int y, int w, int h, int *value,
                        const char *off_label, const char *on_label);
-int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
+int RenderCheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
 int ui_dropdown(ComboboxProps props);
-void DrawUIInfoRows(InfoRowsProps rows);
-int DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w);
-int DrawUISectionLabel(SectionLabelProps label, int x, int y);
-int DrawUICheckboxRow(CheckboxRowProps row, int x, int y);
-int DrawUIOverlayButton(OverlayButtonProps button);
-int DrawUIButtonRow(ButtonRowProps row);
-int DrawUIIconSliderPopup(IconSliderPopupProps popup);
-IconRowResult DrawUIBottomIconRow(BottomIconRowProps row);
-BottomNavResult DrawUIBottomNav(BottomNavProps nav);
-BottomNavConfigResult DrawUIBottomNavConfigModal(BottomNavConfigProps modal);
-TopNavResult DrawUITopNav(TopNavProps nav);
-ToolbarResult DrawUIToolbar(ToolbarProps toolbar);
-ToolbarHeaderResult DrawUIToolbarHeader(ToolbarHeaderProps header);
-int DrawUISubtabBar(SubtabBarProps bar);
+void RenderInfoRows(InfoRowsProps rows);
+int RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w);
+int RenderSectionLabel(SectionLabelProps label, int x, int y);
+int RenderCheckboxRow(CheckboxRowProps row, int x, int y);
+int RenderOverlayButton(OverlayButtonProps button);
+int RenderButtonRow(ButtonRowProps row);
+int RenderIconSliderPopup(IconSliderPopupProps popup);
+IconRowResult RenderBottomIconRow(BottomIconRowProps row);
+BottomNavResult RenderBottomNav(BottomNavProps nav);
+BottomNavConfigResult RenderBottomNavConfigModal(BottomNavConfigProps modal);
+TopNavResult RenderTopNav(TopNavProps nav);
+ToolbarResult RenderToolbar(ToolbarProps toolbar);
+ToolbarHeaderResult RenderToolbarHeader(ToolbarHeaderProps header);
+int RenderSubtabBar(SubtabBarProps bar);
 int ui_tab_bar_keyboard_input(TabBarProps bar);
-int DrawUITabBar(TabBarProps bar);
-PaneTabBarResult DrawUIPaneTabBar(PaneTabBar bar);
+int RenderTabBar(TabBarProps bar);
+PaneTabBarResult RenderPaneTabBar(PaneTabBar bar);
 PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
-void DrawUIPaneDropPreview(Rectangle bounds, PaneDropZone zone);
-void DrawUISeparator(Rectangle bounds, int vertical);
-void DrawUISeparatorText(SeparatorTextProps separator);
-int DrawUIDragDropSource(DragDropSourceProps source);
-int DrawUIDragDropTarget(DragDropTargetProps target);
-int DrawUIMultiSelectList(MultiSelectListProps list);
-int DrawUISelectable(SelectableProps selectable);
-int DrawUICheckboxFlags(CheckboxFlagsProps checkbox);
-int DrawUIInvisibleButton(InvisibleButtonProps button);
-int DrawUIArrowButton(ArrowButtonProps button);
-void DrawUIBullet(Rectangle bounds);
-int DrawUIColorEdit3(ColorEditProps edit);
-int DrawUIColorEdit4(ColorEditProps edit);
-int DrawUIColorPicker3(ColorEditProps picker);
-int DrawUIColorPicker4(ColorEditProps picker);
-int DrawUIColorButton(ColorButtonProps button);
-MenuBarResult DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus,
+void RenderPaneDropPreview(Rectangle bounds, PaneDropZone zone);
+void RenderSeparator(Rectangle bounds, int vertical);
+void RenderSeparatorText(SeparatorTextProps separator);
+int RenderDragDropSource(DragDropSourceProps source);
+int RenderDragDropTarget(DragDropTargetProps target);
+int RenderMultiSelectList(MultiSelectListProps list);
+int RenderSelectable(SelectableProps selectable);
+int RenderCheckboxFlags(CheckboxFlagsProps checkbox);
+int RenderInvisibleButton(InvisibleButtonProps button);
+int RenderArrowButton(ArrowButtonProps button);
+void RenderBullet(Rectangle bounds);
+int RenderColorEdit3(ColorEditProps edit);
+int RenderColorEdit4(ColorEditProps edit);
+int RenderColorPicker3(ColorEditProps picker);
+int RenderColorPicker4(ColorEditProps picker);
+int RenderColorButton(ColorButtonProps button);
+MenuBarResult RenderMenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);
-int DrawUIPopupMenu(int id, int x, int y, const MenuItem *items,
+int RenderPopupMenu(int id, int x, int y, const MenuItem *items,
                     int item_count);
-int DrawUIContextMenu(ContextMenuProps menu);
-int DrawUIRadioButton(RadioButtonProps radio);
-void DrawUIProgressBar(ProgressBarProps progress);
-void DrawUIPlotLines(PlotProps plot);
-void DrawUIPlotHistogram(PlotProps plot);
+int RenderContextMenu(ContextMenuProps menu);
+int RenderRadioButton(RadioButtonProps radio);
+void RenderProgressBar(ProgressBarProps progress);
+void RenderPlotLines(PlotProps plot);
+void RenderPlotHistogram(PlotProps plot);
 int ui_update_drag_float(DragFloatProps drag);
 int ui_update_drag_int(DragIntProps drag);
 void ui_paint_drag_float(DragFloatProps drag);
@@ -264,60 +264,60 @@ void ui_paint_slider_float(SliderFloatProps slider, int vertical);
 void ui_paint_slider_int(SliderIntProps slider, int vertical);
 int ui_update_slider_angle(SliderAngleProps slider);
 void ui_paint_slider_angle(SliderAngleProps slider);
-int DrawUIInputFloat(InputFloatProps input);
-int DrawUIInputInt(InputIntProps input);
-int DrawUIInputDouble(InputDoubleProps input);
-int DrawUISpinbox(SpinboxProps spinbox);
-void DrawUILabelFrame(LabelFrameProps frame);
-void DrawUIImageBox(ImageBoxProps image);
-int DrawUIListBox(ListBoxProps list);
-int DrawUITreeView(TreeViewProps tree);
-int DrawUICascadingTreeView(CascadingTreeViewProps tree);
-int DrawUISourceView(SourceViewProps source);
-int DrawUITableView(TableViewProps table);
+int RenderInputFloat(InputFloatProps input);
+int RenderInputInt(InputIntProps input);
+int RenderInputDouble(InputDoubleProps input);
+int RenderSpinbox(SpinboxProps spinbox);
+void RenderLabelFrame(LabelFrameProps frame);
+void RenderImageBox(ImageBoxProps image);
+int RenderListBox(ListBoxProps list);
+int RenderTreeView(TreeViewProps tree);
+int RenderCascadingTreeView(CascadingTreeViewProps tree);
+int RenderSourceView(SourceViewProps source);
+int RenderTableView(TableViewProps table);
 void ui_consume_focus_tab(void);
-void DrawUICanvasGrid(Rectangle bounds, int step, Color color);
-int DrawUINotebook(NotebookProps notebook);
-int DrawUIPanedView(PanedViewProps panes);
-int DrawUICollapsible(CollapsibleProps section);
-int DrawUIMessageDialog(MessageDialogProps dialog);
-int DrawUIConfirmDialog(ConfirmDialogProps dialog);
-int DrawUIPromptDialog(PromptDialogProps dialog);
-int DrawUITextPopover(TextPopoverProps popover);
-int DrawUIPickerDialog(PickerDialogProps picker);
-int DrawUIColorPicker(Rectangle bounds, Color *color);
-void DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-UIGuideResult DrawUIGuideOverlay(GuideOverlayProps guide);
+void RenderCanvasGrid(Rectangle bounds, int step, Color color);
+int RenderNotebook(NotebookProps notebook);
+int RenderPanedView(PanedViewProps panes);
+int RenderCollapsible(CollapsibleProps section);
+int RenderMessageDialog(MessageDialogProps dialog);
+int RenderConfirmDialog(ConfirmDialogProps dialog);
+int RenderPromptDialog(PromptDialogProps dialog);
+int RenderTextPopover(TextPopoverProps popover);
+int RenderPickerDialog(PickerDialogProps picker);
+int RenderColorPicker(Rectangle bounds, Color *color);
+void RenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
+UIGuideResult RenderGuideOverlay(GuideOverlayProps guide);
 int DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state);
 ThemeSettingsResult DrawThemeSettingsMenus(ThemeSettingsProps settings,
                                                ThemeSettingsState *state);
-int DrawUIThemeSwitcher(int x, int y, int w, const char *label,
+int RenderThemeSwitcher(int x, int y, int w, const char *label,
                         const char *light_label, const char *dark_label,
                         int *theme_id, int *dark_mode);
-int DrawUIThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
-void DrawUITutorialImagePlaceholder(const char *label, int x, int y,
+int RenderThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
+void RenderTutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
-void DrawUITutorialImage(Texture2D texture, const char *fallback,
+void RenderTutorialImage(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
-int DrawUIActionModal(ModalProps modal);
-int DrawUIModal(const char *title, const char *message,
+int RenderActionModal(ModalProps modal);
+int RenderModal(const char *title, const char *message,
                 const char *cancel_btn, const char *confirm_btn);
-int DrawUIModal3Button(const char *title, const char *message,
+int RenderModal3Button(const char *title, const char *message,
                        const char *left_btn, const char *middle_btn,
                        const char *right_btn);
-void DrawUITitleBar(const char *title, int height);
-int DrawUIReturnTitleBar(Texture2D return_icon, const char *title,
+void RenderTitleBar(const char *title, int height);
+int RenderReturnTitleBar(Texture2D return_icon, const char *title,
                          int height);
-int DrawUIReturnDropdownTitleBar(Texture2D return_icon,
+int RenderReturnDropdownTitleBar(Texture2D return_icon,
                                  UITitleBarDropdown dropdown, int height);
-UIPanelFrame DrawUIModalFrame(int width, int height, const char *title,
+UIPanelFrame RenderModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
-SidebarAccountHeaderResult DrawUISidebarAccountHeader(SidebarAccountHeaderProps header);
-ProfilePicturePickerResult DrawUIProfilePicturePickerModal(ProfilePicturePickerProps modal);
-void DrawUIReorderHandle(int x, int y, int w, int h, int active);
-void DrawUIReorderPlaceholder(Rectangle bounds);
-void DrawUIToast(void);
-void DrawUIInspectOverlay(void);
+SidebarAccountHeaderResult RenderSidebarAccountHeader(SidebarAccountHeaderProps header);
+ProfilePicturePickerResult RenderProfilePicturePickerModal(ProfilePicturePickerProps modal);
+void RenderReorderHandle(int x, int y, int w, int h, int active);
+void RenderReorderPlaceholder(Rectangle bounds);
+void RenderToast(void);
+void RenderInspectOverlay(void);
 
 /* Retained submissions borrow this destination until EndTree. The caller
  * separately captures immediate drawing and owns the texture lifetime. */

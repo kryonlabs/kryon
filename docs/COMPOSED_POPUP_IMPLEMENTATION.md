@@ -30,7 +30,7 @@ popup must not submit children.
 
 ## Verified architectural constraints
 
-- `src/ui/ui.c:DrawUIFrameOverlays` runs dropdown, menu and text-context overlays
+- `src/ui/ui.c:RenderFrameOverlays` runs dropdown, menu and text-context overlays
   after ordinary UI content and resets the drawing clip first.
 - `src/ui/ui_tree.c:EndTree` performs layout, input and painting after the app's
   widget calls. A content scope must therefore survive beyond its lexical end

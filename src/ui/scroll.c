@@ -530,7 +530,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     int thumb_hover = thumb_active && UIHoverEffectsEnabled();
 
     if(thumb_active)
-        MarkUIClickable();
+        MarkClickable();
 
     /* Handle drag state */
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&

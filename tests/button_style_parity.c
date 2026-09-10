@@ -265,6 +265,33 @@ static void check_button_content_drawing(void)
     assert(frame.content_bounds.width == 68 && frame.content_bounds.height == 56);
 }
 
+static void check_animated_button_frame(void)
+{
+    ToolkitStore *store = toolkit_store_new();
+    ToolkitStore *previous = toolkit_store_swap(store);
+    ButtonProps props = {.label = "Run", .bounds = {10, 20, 100, 40}};
+    StyleStates styles = {.normal = {.fields = StyleFontSize, .font_size = 17}};
+    Palette palette = DefaultPalette(false);
+    Metrics metrics = DefaultMetrics();
+    ButtonInput input = ResolveButtonInput(props, (Activation){.hovered = true});
+    ButtonFrame frame = AdvanceFrame(701, props, input, palette, metrics, styles,
+        true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
+    assert(frame.font == 26);
+    assert(frame.material.hover > 0 && frame.material.hover < 1 && frame.repaint);
+    float first_hover = frame.material.hover;
+    frame = AdvanceFrame(701, props, input, palette, metrics, styles,
+        true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
+    assert(frame.material.hover > first_hover);
+    props.state = ButtonStateLoading;
+    input = ResolveButtonInput(props, (Activation){.activated = true, .hovered = true});
+    frame = AdvanceFrame(701, props, input, palette, metrics, styles,
+        true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
+    assert(frame.props.loading && frame.props.label[0] == '\0' && !input.activated);
+    assert(strcmp(props.label, "Run") == 0);
+    toolkit_store_swap(previous);
+    toolkit_store_free(store);
+}
+
 int main(void)
 {
     Rectangle owner = {10, 20, 100, 80};
@@ -290,6 +317,7 @@ int main(void)
     material.fill_valid = true;
     drawing = PaintMaterialLayer(material, 0);
     assert(!drawing.visible && !drawing.layer.gradient);
+    check_animated_button_frame();
     check_button_content_drawing();
     check_button_input();
     const int enum_pairs[][2] = {

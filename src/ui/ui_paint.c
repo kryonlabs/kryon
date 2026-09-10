@@ -54,7 +54,7 @@ ui_draw(Drawing command)
     case DrawingText: {
         int baseline = TextBaselineY(command.text, (int)bounds.y,
             (int)bounds.height, command.font);
-        DrawUIText(command.text, (int)bounds.x, baseline, command.font, color);
+        RenderText(command.text, (int)bounds.x, baseline, command.font, color);
         break;
     }
     case DrawingIcon:

@@ -291,9 +291,9 @@ ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
         *focused = RegisterUIFocus(id, bounds) &&
                    !ui_popup_input_focus_captures(id);
     if(hot)
-        MarkUIClickable();
+        MarkClickable();
     else if(inside && !captured && !enabled)
-        MarkUIDisabled();
+        MarkDisabled();
     if(mouse_release_activates_rect(bounds, mouse, hot)) {
         UIConsumeRelease();
         if(id > 0)
@@ -499,7 +499,7 @@ Place(Rectangle parent, int x, int y, int w, int h)
 }
 
 void
-DrawUISeparator(Rectangle bounds, int vertical)
+RenderSeparator(Rectangle bounds, int vertical)
 {
     if(!IsWindowReady())
         return;
@@ -512,7 +512,7 @@ DrawUISeparator(Rectangle bounds, int vertical)
 }
 
 void
-DrawUISeparatorText(SeparatorTextProps separator)
+RenderSeparatorText(SeparatorTextProps separator)
 {
     const char *label = separator.label != NULL ? separator.label : "";
     int font = separator.font > 0 ? separator.font : GetSmallFontSize();
@@ -525,7 +525,7 @@ DrawUISeparatorText(SeparatorTextProps separator)
     if(!IsWindowReady())
         return;
     if(label[0] != '\0') {
-        DrawUIText(label, (int)separator.bounds.x, text_y, font, color);
+        RenderText(label, (int)separator.bounds.x, text_y, font, color);
         line_x += text_width + Scale(12);
     }
     if(line_x < (int)(separator.bounds.x + separator.bounds.width))
@@ -535,7 +535,7 @@ DrawUISeparatorText(SeparatorTextProps separator)
 }
 
 int
-DrawUIDragDropSource(DragDropSourceProps source)
+RenderDragDropSource(DragDropSourceProps source)
 {
     ToolkitStore *toolkit = toolkit_state();
     int hot;
@@ -550,7 +550,7 @@ DrawUIDragDropSource(DragDropSourceProps source)
         return 0;
     hot = ui_hot(source.bounds);
     if(hot)
-        MarkUIClickable();
+        MarkClickable();
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         toolkit->drag_drop = (UIDragDropState){0};
         toolkit->drag_drop.active = 1;
@@ -568,7 +568,7 @@ DrawUIDragDropSource(DragDropSourceProps source)
 }
 
 int
-DrawUIDragDropTarget(DragDropTargetProps target)
+RenderDragDropTarget(DragDropTargetProps target)
 {
     ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
@@ -623,7 +623,7 @@ ui_multi_select_apply(MultiSelectListProps list, int index, int control,
 }
 
 int
-DrawUIMultiSelectList(MultiSelectListProps list)
+RenderMultiSelectList(MultiSelectListProps list)
 {
     Vector2 mouse = ui_mouse_world();
     int row_height = list.row_height > 0 ? list.row_height : Scale(28);
@@ -687,13 +687,13 @@ DrawUIMultiSelectList(MultiSelectListProps list)
         if(IsWindowReady()) {
             if(list.selected[i] || hot)
                 DrawRectangleRec(row, list.selected[i] ? c_button_hover : c_button);
-            DrawUIText(list.items[i] != NULL ? list.items[i] : "",
+            RenderText(list.items[i] != NULL ? list.items[i] : "",
                        (int)row.x + Scale(8),
                        ui_row_text_y(row, GetSmallFontSize()),
                        GetSmallFontSize(), disabled ? c_icon : c_text);
         }
         if(hot)
-            disabled ? MarkUIDisabled() : MarkUIClickable();
+            disabled ? MarkDisabled() : MarkClickable();
         if(hot && !disabled &&
            IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
@@ -706,7 +706,7 @@ DrawUIMultiSelectList(MultiSelectListProps list)
         }
     }
     if(IsWindowReady() && focused)
-        DrawUIFocus(list.bounds);
+        RenderFocus(list.bounds);
     if(list.selected_count != NULL) {
         int count = 0;
         for(int i = 0; i < list.item_count; i++)
@@ -717,7 +717,7 @@ DrawUIMultiSelectList(MultiSelectListProps list)
 }
 
 int
-DrawUIInvisibleButton(InvisibleButtonProps button)
+RenderInvisibleButton(InvisibleButtonProps button)
 {
     ButtonSpec spec = {.props = {.bounds = button.bounds, .font = GetSmallFontSize(),
                                 .id = button.id, .disabled = button.disabled}};
@@ -725,7 +725,7 @@ DrawUIInvisibleButton(InvisibleButtonProps button)
 }
 
 int
-DrawUIArrowButton(ArrowButtonProps button)
+RenderArrowButton(ArrowButtonProps button)
 {
     if(!IsWindowReady())
         return 0;
@@ -733,12 +733,12 @@ DrawUIArrowButton(ArrowButtonProps button)
     if(button.direction == ARROW_RIGHT) label = ">";
     else if(button.direction == ARROW_UP) label = "^";
     else if(button.direction == ARROW_DOWN) label = "v";
-    return RenderButton((ButtonSpec){.props = {.bounds = button.bounds, .label = label,
+    return ui_button_render((ButtonSpec){.props = {.bounds = button.bounds, .label = label,
         .font = GetSmallFontSize(), .id = button.id, .disabled = button.disabled}});
 }
 
 void
-DrawUIBullet(Rectangle bounds)
+RenderBullet(Rectangle bounds)
 {
     if(!IsWindowReady())
         return;
@@ -750,7 +750,7 @@ DrawUIBullet(Rectangle bounds)
 }
 
 int
-DrawUISelectable(SelectableProps selectable)
+RenderSelectable(SelectableProps selectable)
 {
     Vector2 mouse = ui_mouse_world();
     int selected = selectable.selected != NULL && *selectable.selected;
@@ -765,13 +765,13 @@ DrawUISelectable(SelectableProps selectable)
         DrawRectangleRec(selectable.bounds,
                          selected ? GetThemeButton() : GetThemeButtonHover());
     if(IsWindowReady())
-        DrawUIText(selectable.label != NULL ? selectable.label : "",
+        RenderText(selectable.label != NULL ? selectable.label : "",
                    (int)selectable.bounds.x + Scale(8),
                    ui_row_text_y(selectable.bounds, GetFontSize()),
                    GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
     if(focused && IsWindowReady())
-        DrawUIFocus(selectable.bounds);
+        RenderFocus(selectable.bounds);
     if(pressed) {
         if(selectable.selected != NULL)
             *selectable.selected = !*selectable.selected;
@@ -781,7 +781,7 @@ DrawUISelectable(SelectableProps selectable)
 }
 
 int
-DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
+RenderCheckboxFlags(CheckboxFlagsProps checkbox)
 {
     int checked = checkbox.flags != NULL &&
                   ((*checkbox.flags & checkbox.flags_value) == checkbox.flags_value);
@@ -802,13 +802,13 @@ DrawUICheckboxFlags(CheckboxFlagsProps checkbox)
                           (int)box.y + Scale(4),
                           box_size - Scale(8), box_size - Scale(8),
                           GetThemeCircle());
-        DrawUIText(checkbox.label != NULL ? checkbox.label : "",
+        RenderText(checkbox.label != NULL ? checkbox.label : "",
                    (int)box.x + box_size + Scale(8),
                    ui_row_text_y(checkbox.bounds, GetFontSize()),
                    GetFontSize(), disabled
                        ? Fade(GetThemeText(), 0.45f) : GetThemeText());
         if(focused)
-            DrawUIFocus(box);
+            RenderFocus(box);
     }
     if(pressed) {
         if(checked)
@@ -874,20 +874,20 @@ ui_color_picker_float(ColorEditProps picker, int channels)
         DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
         DrawRectangleLinesEx(swatch, 1.0f, c_button);
         if(picker.label != NULL)
-            DrawUIText(picker.label, (int)swatch.x + Scale(6),
+            RenderText(picker.label, (int)swatch.x + Scale(6),
                        ui_row_text_y(swatch, GetSmallFontSize()),
                        GetSmallFontSize(), c_text);
     }
     return changed;
 }
 
-int DrawUIColorEdit3(ColorEditProps edit) { return ui_color_edit(edit, 3); }
-int DrawUIColorEdit4(ColorEditProps edit) { return ui_color_edit(edit, 4); }
-int DrawUIColorPicker3(ColorEditProps picker) { return ui_color_picker_float(picker, 3); }
-int DrawUIColorPicker4(ColorEditProps picker) { return ui_color_picker_float(picker, 4); }
+int RenderColorEdit3(ColorEditProps edit) { return ui_color_edit(edit, 3); }
+int RenderColorEdit4(ColorEditProps edit) { return ui_color_edit(edit, 4); }
+int RenderColorPicker3(ColorEditProps picker) { return ui_color_picker_float(picker, 3); }
+int RenderColorPicker4(ColorEditProps picker) { return ui_color_picker_float(picker, 4); }
 
 int
-DrawUIColorButton(ColorButtonProps button)
+RenderColorButton(ColorButtonProps button)
 {
     int pressed;
     pressed = HandleButton((ButtonSpec){.props = {.bounds = button.bounds,
@@ -906,12 +906,12 @@ DrawUIColorButton(ColorButtonProps button)
     DrawRectangleLinesEx(button.bounds, 1.0f,
                          ui_hot(button.bounds) ? c_button_hover : c_button);
     if(button.label != NULL)
-        DrawUIText(button.label, (int)button.bounds.x + Scale(6),
+        RenderText(button.label, (int)button.bounds.x + Scale(6),
                    ui_row_text_y(button.bounds, GetSmallFontSize()),
                    GetSmallFontSize(), c_text);
     if(!button.disabled && IsUIFocusActive(button.id) &&
        !ui_popup_input_focus_captures(button.id))
-        DrawUIFocus(button.bounds);
+        RenderFocus(button.bounds);
     return pressed;
 }
 
@@ -1046,7 +1046,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
     PushUIInputCapture(panel, 1);
     mouse = ui_mouse_world();
     if(ui_contains(panel, mouse))
-        MarkUICursor(MOUSE_CURSOR_DEFAULT);
+        MarkCursor(MOUSE_CURSOR_DEFAULT);
 
     for(int i = 0; i < item_count; i++) {
         Rectangle row = {(float)x + 4, (float)y + 4 + (float)(i * row_h),
@@ -1060,7 +1060,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 
         if(item->kind == MenuSeparator) {
             if(can_draw)
-                DrawUISeparator(row, 0);
+                RenderSeparator(row, 0);
             continue;
         }
 
@@ -1074,25 +1074,25 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             }
             if(can_draw)
                 DrawRectangleRec(row, GetThemeButtonHover());
-            MarkUIClickable();
+            MarkClickable();
         }
         if(selected && !hot && can_draw)
             DrawRectangleRec(row, GetThemeButtonHover());
         if(item->disabled && row_hot)
-            MarkUIDisabled();
+            MarkDisabled();
         if(can_draw && item->checked)
-            DrawUIText("*", (int)row.x + Scale(8), ui_row_text_y(row, font), font, GetThemeIcon());
+            RenderText("*", (int)row.x + Scale(8), ui_row_text_y(row, font), font, GetThemeIcon());
         if(can_draw)
-            DrawUIText(item->label != NULL ? item->label : "",
+            RenderText(item->label != NULL ? item->label : "",
                        (int)row.x + Scale(28), ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton()
                                             : GetThemeText());
         if(can_draw && item->accelerator != NULL)
-            DrawUIText(item->accelerator, (int)(row.x + row.width - accel_w),
+            RenderText(item->accelerator, (int)(row.x + row.width - accel_w),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(can_draw && item->kind == MenuSubmenu)
-            DrawUIText(">", (int)(row.x + row.width - Scale(18)),
+            RenderText(">", (int)(row.x + row.width - Scale(18)),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
         if(hot && item->kind == MenuSubmenu)
@@ -1211,7 +1211,7 @@ queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
 }
 
 MenuBarResult
-DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
+RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
 {
     ToolkitStore *state = toolkit_state();
     MenuBarResult result = {0, -1};
@@ -1314,9 +1314,9 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
         if(can_draw && (hot || open))
             DrawRectangleRec(item, open ? c_button : c_button_hover);
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
         if(can_draw)
-            DrawUIText(menus[i].label != NULL ? menus[i].label : "",
+            RenderText(menus[i].label != NULL ? menus[i].label : "",
                        x + Scale(12), ui_row_text_y(item, font), font,
                        c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -1364,7 +1364,7 @@ DrawUIMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     if(open_index != NULL)
         *open_index = result.open_index;
     if(can_draw && focused)
-        DrawUIFocus(bounds);
+        RenderFocus(bounds);
     return result;
 }
 
@@ -1416,7 +1416,7 @@ ui_draw_menu_overlays(void)
 }
 
 int
-DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
+RenderPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 {
     Rectangle panel = menu_items_panel_bounds(x,y,items,item_count);
     int focused = !UIContentDisabled() && id > 0 && RegisterUIFocus(id,panel);
@@ -1431,7 +1431,7 @@ DrawUIPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 }
 
 int
-DrawUIContextMenu(ContextMenuProps menu)
+RenderContextMenu(ContextMenuProps menu)
 {
     ToolkitStore *state = toolkit_state();
     Vector2 mouse = ui_mouse_world();
@@ -1496,13 +1496,13 @@ DrawUIContextMenu(ContextMenuProps menu)
     ui_menu_track_panel(panel);
     PushUIInputCapture(panel, 1);
     if(ui_contains(panel, mouse))
-        MarkUICursor(MOUSE_CURSOR_DEFAULT);
+        MarkCursor(MOUSE_CURSOR_DEFAULT);
     queue_context_menu_overlay(menu, suppress_close);
     return 0;
 }
 
 int
-DrawUIRadioButton(RadioButtonProps radio)
+RenderRadioButton(RadioButtonProps radio)
 {
     ToolkitStore *toolkit = toolkit_state();
     int font = GetFontSize();
@@ -1529,9 +1529,9 @@ DrawUIRadioButton(RadioButtonProps radio)
     down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
-        MarkUIClickable();
+        MarkClickable();
     if(radio.disabled)
-        MarkUIDisabled();
+        MarkDisabled();
     if(!IsWindowReady())
         return activated ? radio.id : 0;
     if(ui_default_style()) {
@@ -1612,7 +1612,7 @@ DrawUIRadioButton(RadioButtonProps radio)
         if(fill_radius > 0.2f)
             DrawCircleV(center, fill_radius, fill);
         DrawRing(center, outer - stroke, outer, 0.0f, 360.0f, 48, ring);
-        DrawUIText(radio.label != NULL ? radio.label : "",
+        RenderText(radio.label != NULL ? radio.label : "",
                    (int)radio.bounds.x + touch + Scale(4),
                    ui_row_text_y(radio.bounds, font), font, label);
     } else {
@@ -1621,11 +1621,11 @@ DrawUIRadioButton(RadioButtonProps radio)
         if(radio.checked)
             DrawCircleV(center, (float)diameter / 2.0f - (float)Scale(3),
                         radio.disabled ? c_button : c_text);
-        DrawUIText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + Scale(8),
+        RenderText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + Scale(8),
                    ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
     }
     if(focused && IsWindowReady())
-        DrawUIFocus(hit_bounds);
+        RenderFocus(hit_bounds);
     if(activated) {
         return radio.id;
     }
@@ -1633,7 +1633,7 @@ DrawUIRadioButton(RadioButtonProps radio)
 }
 
 void
-DrawUIProgressBar(ProgressBarProps progress)
+RenderProgressBar(ProgressBarProps progress)
 {
     float t;
     Rectangle fill = progress.bounds;
@@ -1671,7 +1671,7 @@ DrawUIProgressBar(ProgressBarProps progress)
             text_x = (int)fill_end - text_w - pad;
             text_color = ui_default_on_color(fill_color);
         }
-        DrawUIText(label, text_x, text_y, font, text_color);
+        RenderText(label, text_x, text_y, font, text_color);
     }
 }
 
@@ -1749,25 +1749,25 @@ ui_plot(PlotProps plot, int histogram)
     }
     EndUIClip();
     if(plot.label != NULL)
-        DrawUIText(plot.label, (int)plot.bounds.x + Scale(6),
+        RenderText(plot.label, (int)plot.bounds.x + Scale(6),
                    (int)plot.bounds.y + Scale(4), GetSmallFontSize(), c_text);
     if(plot.overlay != NULL) {
         int font = GetSmallFontSize();
         int width = TextWidth(plot.overlay, font);
-        DrawUIText(plot.overlay,
+        RenderText(plot.overlay,
                    (int)(plot.bounds.x + plot.bounds.width) - width - Scale(6),
                    (int)plot.bounds.y + Scale(4), font, c_text);
     }
 }
 
 void
-DrawUIPlotLines(PlotProps plot)
+RenderPlotLines(PlotProps plot)
 {
     ui_plot(plot, 0);
 }
 
 void
-DrawUIPlotHistogram(PlotProps plot)
+RenderPlotHistogram(PlotProps plot)
 {
     ui_plot(plot, 1);
 }
@@ -1864,7 +1864,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     }
 
     BeginDisabled(!enabled);
-    if(RenderTextField((TextFieldProps){
+    if(ui_text_field_render((TextFieldProps){
             .bounds = bounds,
             .text = state->text,
             .text_size = sizeof(state->text),
@@ -1921,7 +1921,7 @@ ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
     if(disabled && toolkit->drag_active == token)
         toolkit->drag_active = 0;
     if(hot)
-        MarkUIClickable();
+        MarkClickable();
     if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         toolkit->drag_active = token;
         toolkit->drag_last_x = mouse.x;
@@ -2094,17 +2094,17 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused
 {
     DrawRectangleRec(bounds, disabled ? c_surface : c_button);
     DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
-    DrawUIText(text, (int)bounds.x + Scale(6),
+    RenderText(text, (int)bounds.x + Scale(6),
                ui_row_text_y(bounds, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
-    if(focused) DrawUIFocus(bounds);
+    if(focused) RenderFocus(bounds);
 }
 
 static void
 ui_paint_drag_label(Rectangle bounds, const char *label)
 {
     if(label != NULL)
-        DrawUIText(label, (int)bounds.x + Scale(6),
+        RenderText(label, (int)bounds.x + Scale(6),
                    (int)bounds.y - GetSmallFontSize() - Scale(2),
                    GetSmallFontSize(), c_text);
 }
@@ -2175,7 +2175,7 @@ ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
     if(disabled && toolkit->slider_active == token)
         toolkit->slider_active = 0;
     if(hot)
-        MarkUIClickable();
+        MarkClickable();
     if(pressed) {
         toolkit->slider_active = token;
         toolkit->slider_owner = ui_popup_input_owner();
@@ -2300,18 +2300,18 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
                       Scale(4), (int)cell.height, c_text);
     }
     DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
-    DrawUIText(text, (int)cell.x + Scale(6),
+    RenderText(text, (int)cell.x + Scale(6),
                ui_row_text_y(cell, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
     if(focused)
-        DrawUIFocus(cell);
+        RenderFocus(cell);
 }
 
 static void
 ui_draw_slider_label(Rectangle bounds, const char *label)
 {
     if(IsWindowReady() && label != NULL)
-        DrawUIText(label, (int)bounds.x + Scale(6),
+        RenderText(label, (int)bounds.x + Scale(6),
                    (int)bounds.y - GetSmallFontSize() - Scale(2),
                    GetSmallFontSize(), c_text);
 }
@@ -2624,7 +2624,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             plus.x = minus.x + minus.width;
             plus.width = button_w;
         }
-        if(RenderTextField((TextFieldProps){field_bounds, state->text,
+        if(ui_text_field_render((TextFieldProps){field_bounds, state->text,
                                                      sizeof(state->text), &state->cursor,
                                                      &state->focused, 63,
                                                      GetSmallFontSize(), token,
@@ -2672,7 +2672,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
 }
 
 int
-DrawUIInputFloat(InputFloatProps input)
+RenderInputFloat(InputFloatProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2680,7 +2680,7 @@ DrawUIInputFloat(InputFloatProps input)
 }
 
 int
-DrawUIInputInt(InputIntProps input)
+RenderInputInt(InputIntProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2688,7 +2688,7 @@ DrawUIInputInt(InputIntProps input)
 }
 
 int
-DrawUIInputDouble(InputDoubleProps input)
+RenderInputDouble(InputDoubleProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2696,7 +2696,7 @@ DrawUIInputDouble(InputDoubleProps input)
 }
 
 int
-DrawUISpinbox(SpinboxProps spinbox)
+RenderSpinbox(SpinboxProps spinbox)
 {
     int button_w = Scale(28);
     int changed = 0;
@@ -2714,7 +2714,7 @@ DrawUISpinbox(SpinboxProps spinbox)
     text.width -= button_w * 2;
 
     if(spinbox.disabled)
-        MarkUIDisabled();
+        MarkDisabled();
     if(spinbox.value_text != NULL)
         snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
     else
@@ -2726,7 +2726,7 @@ DrawUISpinbox(SpinboxProps spinbox)
                            (int)(text.y + text.height / 2), GetFontSize(),
                            c_text);
     }
-    if(RenderButton((ButtonSpec){.props = {.bounds = left, .label = "-",
+    if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
         .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = spinbox.disabled},
         .paint = {.background = c_button, .foreground = c_text, .border = c_button},
         .hover_background = c_button_hover}) &&
@@ -2741,7 +2741,7 @@ DrawUISpinbox(SpinboxProps spinbox)
         if(*spinbox.value < spinbox.min)
             *spinbox.value = spinbox.min;
     }
-    if(RenderButton((ButtonSpec){.props = {.bounds = right, .label = "+",
+    if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
         .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = spinbox.disabled},
         .paint = {.background = c_button, .foreground = c_text, .border = c_button},
         .hover_background = c_button_hover}) &&
@@ -2760,7 +2760,7 @@ DrawUISpinbox(SpinboxProps spinbox)
 }
 
 void
-DrawUILabelFrame(LabelFrameProps frame)
+RenderLabelFrame(LabelFrameProps frame)
 {
     int font = GetSmallFontSize();
     DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
@@ -2769,13 +2769,13 @@ DrawUILabelFrame(LabelFrameProps frame)
         int w = TextWidth(frame.title, font) + pad * 2;
         DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - Scale(8),
                       w, Scale(18), c_bg);
-        DrawUIText(frame.title, (int)frame.bounds.x + pad * 2,
+        RenderText(frame.title, (int)frame.bounds.x + pad * 2,
                    (int)frame.bounds.y - Scale(9), font, c_text);
     }
 }
 
 void
-DrawUIImageBox(ImageBoxProps image)
+RenderImageBox(ImageBoxProps image)
 {
     DrawRectangleRec(image.bounds, c_surface);
     if(image.texture.id != 0)
@@ -2812,7 +2812,7 @@ EndListBox(void)
 }
 
 int
-DrawUIListBox(ListBoxProps list)
+RenderListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
     int font = GetFontSize();
@@ -2880,9 +2880,9 @@ DrawUIListBox(ListBoxProps list)
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
         if(paint)
-            DrawUIText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
+            RenderText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
                        (int)row.x + Scale(8), ui_row_text_y(row, font), font,
                        disabled ? DarkenUIColor(c_text, 38) : c_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
@@ -2898,12 +2898,12 @@ DrawUIListBox(ListBoxProps list)
                         (int)list.bounds.y, (int)list.bounds.height,
                         list.item_count * row_h, list.scroll_offset, max_scroll, 0);
     if(paint && focused)
-        DrawUIFocus(list.bounds);
+        RenderFocus(list.bounds);
     return changed;
 }
 
 int
-DrawUITreeView(TreeViewProps tree)
+RenderTreeView(TreeViewProps tree)
 {
     int paint = IsWindowReady();
     int font = GetFontSize();
@@ -2938,17 +2938,17 @@ DrawUITreeView(TreeViewProps tree)
             DrawRectangleRec(row, c_button_hover);
         if(paint) {
             if(item->expanded)
-                DrawUIText("v", x, ui_row_text_y(row, font), font,
+                RenderText("v", x, ui_row_text_y(row, font), font,
                            tree.disabled ? DarkenUIColor(c_icon, 38) : c_icon);
             else
-                DrawUIText(">", x, ui_row_text_y(row, font), font,
+                RenderText(">", x, ui_row_text_y(row, font), font,
                            tree.disabled ? DarkenUIColor(c_icon, 38) : c_icon);
-            DrawUIText(item->label != NULL ? item->label : "",
+            RenderText(item->label != NULL ? item->label : "",
                        x + Scale(18), ui_row_text_y(row, font), font,
                        tree.disabled ? DarkenUIColor(c_text, 38) : c_text);
         }
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && item->selectable && tree.selected_id != NULL) {
             UIConsumeRelease();
             *tree.selected_id = item->id;
@@ -3076,7 +3076,7 @@ ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
         return;
     y = TextBaselineY(value, (int)rect.y, (int)rect.height, font);
     BeginUIClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
-    DrawUIText(value, (int)rect.x, y, font, color);
+    RenderText(value, (int)rect.x, y, font, color);
     EndUIClip();
 }
 
@@ -3115,7 +3115,7 @@ ui_draw_tree_file_mark(Rectangle box, int hot)
 }
 
 int
-DrawUICascadingTreeView(CascadingTreeViewProps tree)
+RenderCascadingTreeView(CascadingTreeViewProps tree)
 {
     int font = GetFontSize();
     int row_h = tree.row_height > 0 ? Scale(tree.row_height) : Scale(28);
@@ -3176,7 +3176,7 @@ DrawUICascadingTreeView(CascadingTreeViewProps tree)
         else if(hot)
             DrawRectangleRec(row, GetThemeButtonHover());
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
 
         mark = (Rectangle){
             (float)x,
@@ -3325,11 +3325,11 @@ ui_draw_source_line(const char *text, int len, int x, int y, int font,
         return;
     n = ui_source_expand_line(line, sizeof(line), text, len, 4);
     line[n] = '\0';
-    DrawUIText(line, x, y, font, color);
+    RenderText(line, x, y, font, color);
 }
 
 int
-DrawUISourceView(SourceViewProps source)
+RenderSourceView(SourceViewProps source)
 {
     const char *text = source.text != NULL ? source.text : "";
     int font = source.font_size > 0 ? source.font_size : GetSmallFontSize();
@@ -3364,7 +3364,7 @@ DrawUISourceView(SourceViewProps source)
     mouse = ui_mouse_world();
     if(ui_contains(view, mouse)) {
         PushUIInputCapture(view, 1);
-        MarkUIClickable();
+        MarkClickable();
     }
 
     content_h = line_count * line_h;
@@ -3402,7 +3402,7 @@ DrawUISourceView(SourceViewProps source)
             end = line + strlen(line);
         len = (int)(end - line);
         if(source.show_line_numbers) {
-            DrawUIText(TextFormat("%d", line_no), (int)view.x, y, font,
+            RenderText(TextFormat("%d", line_no), (int)view.x, y, font,
                        GetThemeIcon());
         }
         BeginUIClip((int)view.x + gutter_w, y,
@@ -3742,7 +3742,7 @@ EndTableCell(void)
 }
 
 int
-DrawUITableView(TableViewProps table)
+RenderTableView(TableViewProps table)
 {
     ToolkitStore *toolkit = toolkit_state();
     int paint = IsWindowReady();
@@ -3825,7 +3825,7 @@ DrawUITableView(TableViewProps table)
                 toolkit->resize_start_width = ui_table_column_width(table, column,
                                                            default_col_w);
                 toolkit->resize_owner = ui_popup_input_owner();
-                MarkUIClickable();
+                MarkClickable();
             }
         }
         if(toolkit->resize_column >= 0 && toolkit->resize_table_id == table.id) {
@@ -3839,7 +3839,7 @@ DrawUITableView(TableViewProps table)
                     table.column_widths[toolkit->resize_column] = width;
                     changed = 1;
                 }
-                MarkUIClickable();
+                MarkClickable();
             }
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
                 UIConsumeRelease();
@@ -3902,7 +3902,7 @@ DrawUITableView(TableViewProps table)
                             (Vector2){0,0}, angle, font, 1, text_color);
                     EndUIClip();
                 }
-            } else DrawUIText(label, (int)head.x + Scale(6), ui_row_text_y(head, font), font, text_color);
+            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, font), font, text_color);
             if(table.resizable && table.column_widths != NULL) {
                 BeginUIClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
@@ -3966,7 +3966,7 @@ DrawUITableView(TableViewProps table)
         else if(paint && hot)
             DrawRectangleRec(row, c_button_hover);
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
         for(int slot = 0; slot < table.column_count; slot++) {
             int c = ui_table_display_column(table, slot);
             if(c < 0)
@@ -3990,7 +3990,7 @@ DrawUITableView(TableViewProps table)
                     text_color = table.rows[r].text_colors[c];
                 if(table.disabled)
                     text_color = DarkenUIColor(text_color, 38);
-                DrawUIText(text, x + Scale(6), ui_row_text_y(row, font), font, text_color);
+                RenderText(text, x + Scale(6), ui_row_text_y(row, font), font, text_color);
                 EndUIClip();
             }
         }
@@ -4057,7 +4057,7 @@ DrawUITableView(TableViewProps table)
                         (table.row_count - frozen_rows) * row_h,
                         table.scroll_offset, max_scroll, 0);
     if(paint && focused)
-        DrawUIFocus(table.bounds);
+        RenderFocus(table.bounds);
     return changed;
 }
 
@@ -4136,7 +4136,7 @@ EndCanvas(Canvas canvas)
 }
 
 void
-DrawUICanvasGrid(Rectangle bounds, int step, Color color)
+RenderCanvasGrid(Rectangle bounds, int step, Color color)
 {
     int scaled = Scale(step);
     if(scaled < 4)
@@ -4160,7 +4160,7 @@ CanvasHitTest(Vector2 point, Rectangle *items, int item_count)
 }
 
 int
-DrawUINotebook(NotebookProps notebook)
+RenderNotebook(NotebookProps notebook)
 {
     int font = GetFontSize();
     int changed = 0;
@@ -4176,9 +4176,9 @@ DrawUINotebook(NotebookProps notebook)
         if(hot)
             DrawRectangleRec(tab, c_button_hover);
         DrawRectangleLinesEx(tab, 1.0f, c_button);
-        DrawUIText(notebook.tabs[i], x + Scale(14), ui_row_text_y(tab, font), font, c_text);
+        RenderText(notebook.tabs[i], x + Scale(14), ui_row_text_y(tab, font), font, c_text);
         if(hot)
-            MarkUIClickable();
+            MarkClickable();
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && notebook.selected_index != NULL) {
             UIConsumeRelease();
             *notebook.selected_index = i;
@@ -4193,7 +4193,7 @@ DrawUINotebook(NotebookProps notebook)
 }
 
 int
-DrawUIPanedView(PanedViewProps panes)
+RenderPanedView(PanedViewProps panes)
 {
     ToolkitStore *toolkit = toolkit_state();
     int changed = 0;
@@ -4213,7 +4213,7 @@ DrawUIPanedView(PanedViewProps panes)
     if(UIContentDisabled() && toolkit->active_split == panes.split)
         toolkit->active_split = NULL;
     if(!UIContentDisabled() && ui_hot(handle)) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             toolkit->active_split = panes.split;
             toolkit->active_split_owner = ui_popup_input_owner();
@@ -4292,7 +4292,7 @@ ui_tree_header_target(int id, int key)
 }
 
 int
-DrawUICollapsible(CollapsibleProps section)
+RenderCollapsible(CollapsibleProps section)
 {
     ToolkitStore *toolkit = toolkit_state();
     int font = GetFontSize();
@@ -4326,7 +4326,7 @@ DrawUICollapsible(CollapsibleProps section)
         changed = closed = 1;
     }
     if(enabled && !closed && ui_hot(body)) {
-        MarkUIClickable();
+        MarkClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             UIConsumeRelease();
             if(section.id > 0) SetUIFocus(section.id);
@@ -4361,26 +4361,26 @@ DrawUICollapsible(CollapsibleProps section)
         if(!section.tree || section.selected)
             DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
         if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
-        DrawUIText(section.leaf ? "•" : section.open != NULL && *section.open ? "v" : ">",
+        RenderText(section.leaf ? "•" : section.open != NULL && *section.open ? "v" : ">",
                    (int)header.x + Scale(8), ui_row_text_y(header, font), font, icon);
         BeginUIClip((int)header.x + Scale(28), (int)header.y,
                     (int)fmaxf(0.0f, body.width - Scale(28)), (int)header.height);
-        DrawUIText(section.label != NULL ? section.label : "",
+        RenderText(section.label != NULL ? section.label : "",
                    (int)header.x + Scale(28), ui_row_text_y(header, font), font, text);
         EndUIClip();
         if(section.visible != NULL)
-            DrawUIText("x",
+            RenderText("x",
                        (int)(close_bounds.x +
                              (close_bounds.width - TextWidth("x", font)) * 0.5f),
                        ui_row_text_y(close_bounds, font), font,
                        close_hover ? c_link : text);
-        if(focused) DrawUIFocus(header);
+        if(focused) RenderFocus(header);
     }
     return changed;
 }
 
 int
-DrawUIMessageDialog(MessageDialogProps dialog)
+RenderMessageDialog(MessageDialogProps dialog)
 {
     const ModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
                                   ButtonToneAccent, ButtonEmphasisFilled, 0};
@@ -4393,11 +4393,11 @@ DrawUIMessageDialog(MessageDialogProps dialog)
     props.action_count = 1;
     props.close_icon = g_ui_x_icon;
     props.max_width = Scale(420);
-    return DrawUIActionModal(props);
+    return RenderActionModal(props);
 }
 
 int
-DrawUIConfirmDialog(ConfirmDialogProps dialog)
+RenderConfirmDialog(ConfirmDialogProps dialog)
 {
     ModalAction actions[2] = {
         {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
@@ -4412,11 +4412,11 @@ DrawUIConfirmDialog(ConfirmDialogProps dialog)
     props.action_count = 2;
     props.close_icon = g_ui_x_icon;
     props.max_width = Scale(460);
-    return DrawUIActionModal(props);
+    return RenderActionModal(props);
 }
 
 int
-DrawUIPromptDialog(PromptDialogProps dialog)
+RenderPromptDialog(PromptDialogProps dialog)
 {
     int result;
     int commit_pressed = 0;
@@ -4434,7 +4434,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
     props.action_count = 2;
     props.close_icon = g_ui_x_icon;
     props.max_width = Scale(460);
-    result = DrawUIActionModal(props);
+    result = RenderActionModal(props);
     if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
         Rectangle field = {(float)(ui_view_width / 2 - Scale(190)),
                            (float)(ui_view_height / 2 - Scale(4)),
@@ -4449,7 +4449,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
         field_props.font = GetFontSize();
         field_props.focus_id = 7301;
         field_props.commit_pressed = &commit_pressed;
-        RenderTextField(field_props);
+        ui_text_field_render(field_props);
         if(result == 0 && commit_pressed)
             result = 2;
         if(result == 0 && IsKeyPressed(KEY_ESCAPE))
@@ -4459,7 +4459,7 @@ DrawUIPromptDialog(PromptDialogProps dialog)
 }
 
 int
-DrawUITextPopover(TextPopoverProps popover)
+RenderTextPopover(TextPopoverProps popover)
 {
     int result = 0;
     int font = GetFontSize();
@@ -4537,7 +4537,7 @@ DrawUITextPopover(TextPopoverProps popover)
 
     label_w = TextWidth(popover.title != NULL ? popover.title : "", small_font);
     if(label_w > 0) {
-        DrawUIText(popover.title, popover_x + pad,
+        RenderText(popover.title, popover_x + pad,
                    TextBaselineY(popover.title, popover_y + pad, field_h,
                                  small_font),
                    small_font, c_text);
@@ -4584,7 +4584,7 @@ DrawUITextPopover(TextPopoverProps popover)
     field.focus_id = popover.id > 0 ? popover.id : 8401;
     field.style = field_style;
     field.commit_pressed = &commit_pressed;
-    RenderTextField(field);
+    ui_text_field_render(field);
 
     if(Button((ButtonProps){
         .bounds = close_bounds, .icon = g_ui_x_icon,
@@ -4602,7 +4602,7 @@ DrawUITextPopover(TextPopoverProps popover)
 }
 
 int
-DrawUIPickerDialog(PickerDialogProps picker)
+RenderPickerDialog(PickerDialogProps picker)
 {
     int pad = Scale(14);
     int title_h = Scale(34);
@@ -4646,7 +4646,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
 
     DrawRectangleRounded(panel, 0.06f, 8, c_surface);
     DrawRectangleRoundedLines(panel, 0.06f, 8, DarkenUIColor(c_surface, 30));
-    DrawUIText(picker.title != NULL ? picker.title : "",
+    RenderText(picker.title != NULL ? picker.title : "",
                x + pad, y + pad, GetFontSize(), c_text);
 
     y += title_h;
@@ -4666,7 +4666,7 @@ DrawUIPickerDialog(PickerDialogProps picker)
         button.paint.foreground = c_text;
         button.paint.border = c_button;
         button.paint.radius = 0.08f;
-        if(RenderButton(button)) {
+        if(ui_button_render(button)) {
             return i + 1;
         }
         if(has_icon) {
@@ -4701,13 +4701,13 @@ DrawUIPickerDialog(PickerDialogProps picker)
     button.paint.foreground = c_text;
     button.paint.border = c_button;
     button.paint.radius = 0.08f;
-    if(RenderButton(button))
+    if(ui_button_render(button))
         return -1;
     return 0;
 }
 
 int
-DrawUIColorPicker(Rectangle bounds, Color *color)
+RenderColorPicker(Rectangle bounds, Color *color)
 {
     int changed = 0;
     int r, g, b;
@@ -4763,7 +4763,7 @@ DispatchAccelerators(const Accelerator *accelerators, int count)
 }
 
 void
-DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
+RenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
 {
     int font = GetSmallFontSize();
     if(nodes == NULL)
@@ -4772,7 +4772,7 @@ DrawUIFocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
         Color color = nodes[i].focused ? c_link : c_icon;
         DrawRectangleLinesEx(nodes[i].bounds, 1.0f, color);
         if(nodes[i].label != NULL)
-            DrawUIText(nodes[i].label, (int)nodes[i].bounds.x,
+            RenderText(nodes[i].label, (int)nodes[i].bounds.x,
                        (int)nodes[i].bounds.y - TextLineHeight(font), font, color);
     }
 }

@@ -41,7 +41,7 @@ draw_text(const char *s, int x, int y, int size, unsigned color)
 {
     if(s == NULL)
         s = "";
-    DrawUIText(s, x, y, size, unpack_color(color));
+    RenderText(s, x, y, size, unpack_color(color));
 }
 
 static int

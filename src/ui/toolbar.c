@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 ToolbarResult
-DrawUIToolbar(ToolbarProps toolbar)
+RenderToolbar(ToolbarProps toolbar)
 {
     ToolbarResult result = {-1, -1};
     int side_padding = toolbar.side_padding < 0
@@ -86,7 +86,7 @@ DrawUIToolbar(ToolbarProps toolbar)
 }
 
 ToolbarHeaderResult
-DrawUIToolbarHeader(ToolbarHeaderProps header)
+RenderToolbarHeader(ToolbarHeaderProps header)
 {
     ToolbarHeaderResult result;
     ToolbarProps toolbar = header.toolbar;
@@ -132,6 +132,6 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
             toolbar.width = 0;
     }
 
-    result.toolbar = DrawUIToolbar(toolbar);
+    result.toolbar = RenderToolbar(toolbar);
     return result;
 }

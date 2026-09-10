@@ -1361,6 +1361,10 @@ Go `FrameOpButton` stores the shared frame in `op.Button`. Inspect its
 `Props`, `Appearance`, `Material`, and `Font` rather than flattened paint fields.
 The operation's `Bounds` and `SurfaceBounds` still specify final placement;
 painting applies them to a copy of the frame, preserving the recorded value.
+The shared `AdvanceFrame` pass resolves retained motion, appearance, and the
+complete ButtonFrame from a stable key, input sample, palette, metrics, style
+overrides, animation timing, surface bounds, scale, and fallback font. Hosts
+sample input separately so retained painting does not consume activation again.
 The shared `PaintButton` pass accepts a resolved frame, physical label width,
 elapsed time, disclosure state, and synchronous `SurfacePainter`/`Painter`
 callbacks. It emits the surface layers, then the mark and label; callbacks must
@@ -1384,7 +1388,11 @@ measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity
 is needed.
 
-**Returns:** 1 if clicked, 0 otherwise
+**Returns:** 1 if clicked, 0 otherwise. In retained `BeginTree`/`EndTree`
+declarations, reconciliation is atomic: a synchronous activation observed while
+the tree is being declared cannot replace the previous complete tree with a
+partial declaration. Retained hosts should consume `UI_EVENT_CLICK` from
+`NextEvent` after `EndTree` when wiring purely declarative state updates.
 
 `BeginButton(props)` opens a centered content area until `End()`. Logical style
 padding is scaled into that area. Unpositioned children fill missing dimensions

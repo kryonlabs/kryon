@@ -19,7 +19,7 @@ ui_pager_button(Rectangle bounds, const char *label, ButtonEmphasis emphasis,
 }
 
 UIGuidePagerResult
-DrawUIGuidePager(UIGuidePagerProps pager)
+GuidePager(UIGuidePagerProps pager)
 {
     UIGuidePagerResult result = {0};
     int page_count = pager.page_count > 0 ? pager.page_count : 1;

@@ -36,7 +36,7 @@ pager_frame(float x, float y, int down)
     InjectPump();
     BeginUIFrame(320, 480, 1.0f);
     BeginUIFocus();
-    result = DrawUIGuidePager(pager);
+    result = GuidePager(pager);
     EndUIFocus();
     EndUIFrame();
     return result;

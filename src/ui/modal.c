@@ -18,7 +18,7 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
     props.radius = 0.12f;
     if(hover != NULL)
         *hover = 0;
-    return DrawUIIconButton(props);
+    return RenderIconButton(props);
 }
 
 static int
@@ -31,7 +31,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                  !UIInputCapturesClick(mouse_world);
 
     if(active)
-        MarkUIClickable();
+        MarkClickable();
 
     if(Button((ButtonProps){.bounds= bounds, .label=label, .font=font,
                             .tone=tone, .emphasis=emphasis,
@@ -129,7 +129,7 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 }
 
 int
-DrawUIActionModal(ModalProps modal)
+RenderActionModal(ModalProps modal)
 {
     int screen_pad = Scale(24);
     int modal_min_w = Scale(280);
@@ -217,13 +217,13 @@ DrawUIActionModal(ModalProps modal)
                                    ui_radius_px(bounds, tokens.panel_radius));
     } else {
         DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-        DrawUIBevel(modal_x, modal_y, modal_w, modal_h,
+        RenderBevel(modal_x, modal_y, modal_w, modal_h,
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
     title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
-    DrawUIText(modal.title != NULL ? modal.title : "",
+    RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
                modal_y + Scale(14), title_font, c_text);
 
@@ -251,7 +251,7 @@ DrawUIActionModal(ModalProps modal)
 }
 
 int
-DrawUIModal(const char *title, const char *message,
+RenderModal(const char *title, const char *message,
                const char *cancel_btn, const char *confirm_btn)
 {
     ModalAction actions[2] = {
@@ -266,11 +266,11 @@ DrawUIModal(const char *title, const char *message,
     props.actions = actions;
     props.action_count = 2;
     props.max_width = 360;
-    return DrawUIActionModal(props);
+    return RenderActionModal(props);
 }
 
 int
-DrawUIModal3Button(const char *title, const char *message,
+RenderModal3Button(const char *title, const char *message,
                     const char *left_btn, const char *middle_btn, const char *right_btn)
 {
     ModalAction actions[3] = {
@@ -286,7 +286,7 @@ DrawUIModal3Button(const char *title, const char *message,
     props.actions = actions;
     props.action_count = 3;
     props.max_width = 420;
-    return DrawUIActionModal(props);
+    return RenderActionModal(props);
 }
 
 int
@@ -326,7 +326,7 @@ ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
 }
 
 UIPanelFrame
-DrawUIModalFrame(int width, int height, const char *title,
+RenderModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
                     Texture2D right_icon)
 {
@@ -409,11 +409,11 @@ DrawUIModalFrame(int width, int height, const char *title,
                                    ui_radius_px(bounds, tokens.panel_radius));
     } else {
         DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
-        DrawUIBevel(frame.x, frame.y, frame.w, frame.h,
+        RenderBevel(frame.x, frame.y, frame.w, frame.h,
                     LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
     }
 
-    DrawUIText(title, frame.x + (frame.w - title_w) / 2,
+    RenderText(title, frame.x + (frame.w - title_w) / 2,
                     frame.y + Scale(14), title_font, c_text);
 
     if(left_icon.id != 0) {

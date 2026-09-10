@@ -65,6 +65,31 @@ func TestButtonPaintCallbacks(t *testing.T) {
 	}
 }
 
+func TestButtonAdvanceFrame(t *testing.T) {
+	r := New(AppConfig{}).(*runtime)
+	props := ButtonProps{Label: "Run", Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
+	palette, metrics := Theme_DefaultPalette(false), Theme_DefaultMetrics()
+	styles := StyleStates{Normal: StyleData{Fields: uint32(StyleFontSize), FontSize: 17}}
+	input := Button_ResolveButtonInput(props, Activation{Hovered: true})
+	advance := func() ButtonFrame {
+		return r.Button_AdvanceFrame(701, props, input, palette, metrics, styles,
+			true, 16, Rectangle{}, palette.Surface, 1.5, 16)
+	}
+	frame := advance()
+	if frame.Font != 26 || frame.Material.Hover <= 0 || frame.Material.Hover >= 1 || !frame.Repaint {
+		t.Fatalf("fractional font scaling or animated frame: %+v", frame)
+	}
+	if next := advance(); next.Material.Hover <= frame.Material.Hover {
+		t.Fatal("stable identity did not retain animation progress")
+	}
+	props.State = ButtonStateLoading
+	input = Button_ResolveButtonInput(props, Activation{Activated: true, Hovered: true})
+	frame = advance()
+	if !frame.Props.Loading || frame.Props.Label != "" || input.Activated || props.Label != "Run" {
+		t.Fatalf("explicit loading state or caller isolation: %+v", frame)
+	}
+}
+
 func TestButtonFrameAssembly(t *testing.T) {
 	props := ButtonProps{Label: "Run", State: ButtonStateLoading, Circle: true,
 		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 80}}

@@ -447,7 +447,7 @@ PictureTexture(Texture2D texture, PictureProps picture)
                                       picture.style.scrim_top,
                                       picture.style.scrim_bottom);
     if(theme_style == THEME_STYLE_CLASSIC) {
-        DrawUIBevel((int)picture.bounds.x, (int)picture.bounds.y,
+        RenderBevel((int)picture.bounds.x, (int)picture.bounds.y,
                     (int)picture.bounds.width, (int)picture.bounds.height,
                     LightenUIColor(GetThemeBackground(), 52),
                     DarkenUIColor(GetThemeBackground(), 50));

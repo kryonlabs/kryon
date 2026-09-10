@@ -91,7 +91,7 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
 - `termi` - terminal-cell backend, no raylib (`src/backend/termi_*.c`). It
   keeps the normal Kryon surface and widget API: apps still call
   `InitWindow`, `BeginDrawing`, `DrawRectangle`, `Button`, `TextField`, and
-  `DrawUIText`-using widgets. The backend maps Kryon's pixel layout units onto
+  `RenderText`-using widgets. The backend maps Kryon's pixel layout units onto
   terminal cells (`TERMI_CELL_WIDTH` x `TERMI_CELL_HEIGHT`) and renders native
   terminal primitives: rectangles become colored cell regions, rectangle
   outlines become terminal line cells, and UI text goes through the native text

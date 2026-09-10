@@ -1028,7 +1028,7 @@
 - Rename public text layout API
 - Hide retained tree draw internals
 - Hide text draw internals from public header
-- Hide composite DrawUI APIs from public headers
+- Hide composite draw-prefixed UI APIs from public headers
 - Hide legacy control draw APIs from public header
 - Rename public text input queue API
 - Assert generated long text runtime stability
@@ -1827,7 +1827,7 @@
   the `ide` target (freeing the bare `kryon` name for the build tool). App
   `project.kryon` target entries that call `sh vendor/kryon/scripts/kryon.sh`
   are updated in downstream apps.
-- Add a `value_text_override` parameter to `DrawUISlider`, `UISliderNode`, and
+- Add a `value_text_override` parameter to the slider drawing helper, `UISliderNode`, and
   `Slider`. When non-NULL it replaces the default numeric value label, letting
   callers render custom value text (for example, named steps). This is a
   breaking signature change: all callers must add the new argument (NULL keeps

@@ -797,7 +797,7 @@ ui_draw_text_with_font_token(const char *text, int x, int y, int font_size,
 
     if(token >= 0 && token < g_ui_font_count)
         g_ui_active_font = token;
-    DrawUIText(text, x, y, font_size, color);
+    RenderText(text, x, y, font_size, color);
     g_ui_active_font = previous;
 }
 
@@ -1393,7 +1393,7 @@ GetUIFontScale(Font font, int font_size)
 }
 
 void
-DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
+RenderTextEx(const char *text, int x, int y, int font_size, Color color,
              int selectable_arg)
 {
     int normalized_font_size = ui_text_normalize_token_size(font_size);
@@ -1436,7 +1436,7 @@ DrawUITextEx(const char *text, int x, int y, int font_size, Color color,
         int captured = UIInputCapturesClick(mouse);
 
         if(inside && !captured)
-            MarkUICursor(MOUSE_CURSOR_IBEAM);
+            MarkCursor(MOUSE_CURSOR_IBEAM);
 
         if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             int offset = ui_text_byte_offset_at_x(text, font_size, (int)mouse.x - x);
@@ -1654,7 +1654,7 @@ MeasureUISelectableTextBlock(const char *text, int width, int font_size,
 }
 
 int
-DrawUISelectableTextBlock(SelectableTextBlock block)
+RenderSelectableTextBlock(SelectableTextBlock block)
 {
     UITextBlockLine *lines = NULL;
     Vector2 mouse = ui_mouse_world();
@@ -1681,7 +1681,7 @@ DrawUISelectableTextBlock(SelectableTextBlock block)
         int inside = CheckCollisionPointRec(mouse, hit);
 
         if(inside && !captured)
-            MarkUICursor(MOUSE_CURSOR_IBEAM);
+            MarkCursor(MOUSE_CURSOR_IBEAM);
         if(inside && !captured && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             int local = ui_text_byte_offset_at_x(line, block.font_size,
                                                  (int)(mouse.x - block.bounds.x));
@@ -1767,7 +1767,7 @@ DrawUISelectableTextBlock(SelectableTextBlock block)
                                    ui_text_default_selection_color(block.color),
                                    start - lines[i].start, end - lines[i].start);
         if(line != NULL)
-            DrawUITextEx(line, (int)block.bounds.x, y, block.font_size,
+            RenderTextEx(line, (int)block.bounds.x, y, block.font_size,
                          block.color, 0);
         free(line);
     }
@@ -1776,9 +1776,9 @@ DrawUISelectableTextBlock(SelectableTextBlock block)
 }
 
 void
-DrawUIText(const char *text, int x, int y, int font_size, Color color)
+RenderText(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextEx(text, x, y, font_size, color, 1);
+    RenderTextEx(text, x, y, font_size, color, 1);
 }
 
 static void
@@ -1835,12 +1835,12 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
 }
 
 void
-DrawUITextStyled(const char *text, int x, int y, TextStyle style)
+RenderTextStyled(const char *text, int x, int y, TextStyle style)
 {
     int font_size = style.font_size > 0 ? style.font_size : TextBaseSize;
 
     if(!style.italic) {
-        DrawUITextEx(text, x, y, font_size, style.color, style.selectable);
+        RenderTextEx(text, x, y, font_size, style.color, style.selectable);
         return;
     }
 
@@ -1848,15 +1848,15 @@ DrawUITextStyled(const char *text, int x, int y, TextStyle style)
 }
 
 void
-DrawUITextItalic(const char *text, int x, int y, int font_size, Color color)
+RenderTextItalic(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextStyled(text, x, y, (TextStyle){font_size, color, 1, 1});
+    RenderTextStyled(text, x, y, (TextStyle){font_size, color, 1, 1});
 }
 
 void
-DrawUINonSelectableText(const char *text, int x, int y, int font_size, Color color)
+RenderNonSelectableText(const char *text, int x, int y, int font_size, Color color)
 {
-    DrawUITextEx(text, x, y, font_size, color, 0);
+    RenderTextEx(text, x, y, font_size, color, 0);
 }
 
 int
@@ -1924,7 +1924,7 @@ DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, 
     int line_h = TextLineHeight(font_size);
     int y = TextBaselineY("Hg", center_y - line_h / 2, line_h, font_size);
 
-    DrawUIText(text, center_x - text_w / 2, y, font_size, color);
+    RenderText(text, center_x - text_w / 2, y, font_size, color);
 }
 
 int

@@ -200,7 +200,7 @@ DrawTerminalPaneScrollIndicator(TerminalPaneScrollIndicator indicator)
     DrawRectangleRec(badge, colors.scroll_indicator);
     DrawRectangleLines((int)badge.x, (int)badge.y, (int)badge.width,
                        (int)badge.height, colors.border);
-    DrawUIText(label, (int)badge.x + Scale(5),
+    RenderText(label, (int)badge.x + Scale(5),
                (int)badge.y + Scale(4), font,
                colors.scroll_indicator_text);
     return badge;
@@ -310,7 +310,7 @@ DrawTerminalPane(TerminalPane pane)
             rows = metrics.rows;
         for(row = 0; row < rows; row++) {
             TerminalLine(pane.terminal, row, line, (int)sizeof(line));
-            DrawUIText(line, (int)metrics.content.x,
+            RenderText(line, (int)metrics.content.x,
                        (int)metrics.content.y + row * metrics.line_height,
                        font, text);
         }

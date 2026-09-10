@@ -1403,7 +1403,6 @@ include/ui_controls.h function MergeStyle
 include/ui_controls.h function QueueTextInputBackspace
 include/ui_controls.h function QueueTextInputCodepoint
 include/ui_controls.h function QueueTextInputEnter
-include/ui_controls.h function RenderButton
 include/ui_controls.h function ResolveControlStyle
 include/ui_controls.h function ScoreControl
 include/ui_controls.h function SegmentedControl
@@ -1434,9 +1433,9 @@ include/ui_core.h function InitUI
 include/ui_core.h function IsUIDesktopMode
 include/ui_core.h function IsUIFocusActivatePressed
 include/ui_core.h function IsUIFocusActive
-include/ui_core.h function MarkUIClickable
-include/ui_core.h function MarkUICursor
-include/ui_core.h function MarkUIDisabled
+include/ui_core.h function MarkClickable
+include/ui_core.h function MarkCursor
+include/ui_core.h function MarkDisabled
 include/ui_core.h function PopUIInputClip
 include/ui_core.h function PushUIInputCapture
 include/ui_core.h function PushUIInputClip
@@ -1701,7 +1700,7 @@ include/ui_page.h function SetPageCanonicalURL
 include/ui_page.h function SetPageDescription
 include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
-include/ui_pager.h function DrawUIGuidePager
+include/ui_pager.h function GuidePager
 include/ui_picture.h enum PICTURE_FIT_CONTAIN
 include/ui_picture.h enum PICTURE_FIT_COVER
 include/ui_picture.h enum PICTURE_FIT_STRETCH

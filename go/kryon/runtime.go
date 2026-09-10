@@ -2357,24 +2357,16 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 	props.ID = r.resolveFocusID(props.ID)
 	theme := r.theme()
 	input := r.Button_ReadButtonInput(props)
-	props.Disabled, props.Loading, props.Selected = input.Flags.Disabled, input.Flags.Loading, input.Flags.Selected
-	state := ButtonState(input.Interaction.State)
-	hovered, held, focused := input.Interaction.Hovered, input.Interaction.Pressed, input.Interaction.Focused
-	metrics := defaultThemeMetrics()
-	if r.activeTheme != nil {
-		metrics = r.activeTheme.Metrics
-	}
-	motion := r.Button_AdvanceButtonMotion(uint64(uint32(props.ID)), props, input, Surface_DefaultMotionEnabled(),
-		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
-	appearance := resolveButtonFrame(theme, r.effectiveDark(), r.activeTheme, props, state,
-		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
-	resolved := Button_BuildFrame(props, input, appearance, motion, surfaceBounds,
-		packRGBA(theme.surface), 1, int32(appearance.Value.FontSize), Text16)
+	palette, metrics := buttonThemeValues(theme, r.effectiveDark(), r.activeTheme)
+	resolved := r.Button_AdvanceFrame(uint64(uint32(props.ID)), props, input,
+		palette, metrics, packStyleStates(props.Style), Surface_DefaultMotionEnabled(),
+		r.frameDeltaMS, surfaceBounds, packRGBA(theme.surface), 1, Text16)
 	frame := FrameOp{Kind: FrameOpButton, Button: resolved,
 		Bounds: resolved.Props.Bounds, SurfaceBounds: surfaceBounds, Text: resolved.Props.Label, ID: resolved.Props.ID,
-		FontID:     registeredTypeface(appearance.Value.Typeface),
+		FontID:     registeredTypeface(resolved.Appearance.Value.Typeface),
 		Disclosure: disclosure, ElapsedMS: float64(r.elapsedTime) / float64(time.Millisecond),
-		Disabled: resolved.Props.Disabled, Pressed: held, Focused: focused, Hovered: hovered}
+		Disabled: resolved.Props.Disabled, Pressed: input.Interaction.Pressed,
+		Focused: input.Interaction.Focused, Hovered: input.Interaction.Hovered}
 	return frame, input.Activated
 }
 
@@ -2427,6 +2419,13 @@ func resolveButtonStyle(theme themePalette, dark bool, active *Theme, props Butt
 
 func resolveButtonFrame(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState,
 	automatic bool, hover, press, focusAmount float32) StyleFrame {
+	palette, tokens := buttonThemeValues(theme, dark, active)
+	return Button_ResolveFrame(int32(props.Tone), int32(props.Emphasis),
+		int32(state), int32(props.Size), props.Pill, props.Circle, props.Disabled,
+		props.Loading, props.Selected, palette, tokens, packStyleStates(props.Style), automatic, hover, press, focusAmount)
+}
+
+func buttonThemeValues(theme themePalette, dark bool, active *Theme) (Palette, Metrics) {
 	scheme := materialScheme(theme, dark)
 	defaults := Theme_DefaultPalette(dark)
 	surface, neutral := scheme.Surface, scheme.SurfaceVariant
@@ -2462,6 +2461,7 @@ func resolveButtonFrame(theme themePalette, dark bool, active *Theme, props Butt
 		Link: packRGBA(link), Focus: packRGBA(focus),
 	}
 	tokens := Metrics{
+		TransitionNormalMs: metrics.TransitionNormalMS, TransitionFastMs: metrics.TransitionFastMS,
 		RadiusMedium: metrics.RadiusMedium, RadiusPill: metrics.RadiusPill,
 		RadiusLarge: metrics.RadiusLarge,
 		BorderWidth: metrics.BorderWidth, ControlGap: metrics.ControlGap,
@@ -2472,9 +2472,7 @@ func resolveButtonFrame(theme themePalette, dark bool, active *Theme, props Butt
 		FontSizeLarge: metrics.FontSizeLarge, IconSizeSmall: metrics.IconSizeSmall,
 		IconSizeMedium: metrics.IconSizeMedium, IconSizeLarge: metrics.IconSizeLarge,
 	}
-	return Button_ResolveFrame(int32(props.Tone), int32(props.Emphasis),
-		int32(state), int32(props.Size), props.Pill, props.Circle, props.Disabled,
-		props.Loading, props.Selected, palette, tokens, packStyleStates(props.Style), automatic, hover, press, focusAmount)
+	return palette, tokens
 }
 
 func packRGBA(c Color) uint32 {
@@ -4490,7 +4488,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Font)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), FontID: selectedFontID, ID: id, Row: -1})
 	r.dropdownChevron(id, bounds, open, foreground)
 	if !open {
-		return pressed || changed
+		return changed
 	}
 	itemH := bounds.Height
 	layer := r.beginPaintLayer(id)
@@ -4587,7 +4585,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}})
 		}
 	}
-	return pressed || changed
+	return changed
 }
 func (r *runtime) Column(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpColumn)

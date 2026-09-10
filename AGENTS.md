@@ -39,7 +39,8 @@ for native C, and `k2cpp` for native C++ (C++ codegen over the C runtime).
 
 Generated Go must be native Go and must not use cgo, `go/kryui`, `kryruntime`,
 or an injected `rt` runtime object. Generated C must not call stale prefixed UI
-symbols such as `DrawUI*`, `UIText*`, `TextInputControl`, or `UIRender*`.
+symbols such as draw-prefixed UI helpers, `UIText*`, `TextInputControl`, or
+`UIRender*`.
 
 Existing compatibility code may only remain while actively migrating callers.
 Do not expand it, duplicate it under another alias, or use it from generated

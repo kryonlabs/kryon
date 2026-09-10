@@ -1018,6 +1018,66 @@ func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFra
 	return value_42
 }
 
+func (instance_host_0 *runtime) Button_AdvanceFrame(key uint64, props ButtonProps, input ButtonInput, palette Palette, metrics Metrics, styles StyleStates, enabled bool, delta_ms float32, surface Rectangle, ambient uint32, scale float32, fallback_font int32) ButtonFrame {
+	var value_0 bool = input.Flags.Disabled
+	props.Disabled = value_0
+	var value_1 bool = input.Flags.Loading
+	props.Loading = value_1
+	var value_2 bool = input.Flags.Selected
+	props.Selected = value_2
+	var value_3 uint64 = key
+	var value_4 ButtonProps = props
+	var value_5 ButtonInput = input
+	var value_6 bool = enabled
+	var value_7 float32 = delta_ms
+	var value_8 float32 = metrics.TransitionNormalMs
+	var value_9 float32 = metrics.TransitionFastMs
+	var value_10 InteractionMotion = instance_host_0.Button_AdvanceButtonMotion(value_3, value_4, value_5, value_6, value_7, value_8, value_9)
+	var motion InteractionMotion = value_10
+	var value_11 ButtonTone = ButtonTone(props.Tone)
+	var value_12 int32 = int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0))
+	var value_13 ButtonEmphasis = ButtonEmphasis(props.Emphasis)
+	var value_14 int32 = int32(number_runtime_bits(uint64(value_13), uint64(0), 32, true, 0))
+	var value_15 int32 = input.Interaction.State
+	var value_16 ControlSize = ControlSize(props.Size)
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0))
+	var value_18 bool = props.Pill
+	var value_19 bool = props.Circle
+	var value_20 bool = props.Disabled
+	var value_21 bool = props.Loading
+	var value_22 bool = props.Selected
+	var value_23 Palette = palette
+	var value_24 Metrics = metrics
+	var value_25 StyleStates = styles
+	var value_26 ButtonState = ButtonState(props.State)
+	var value_27 int32 = int32(number_runtime_bits(uint64(value_26), uint64(0), 32, true, 0))
+	var value_28 int32 = int32(ButtonStateAuto)
+	var value_29 bool = value_27 == value_28
+	var value_30 float32 = motion.Hover.Value
+	var value_31 float32 = motion.Press.Value
+	var value_32 float32 = motion.Focus.Value
+	var value_33 StyleFrame = Button_ResolveFrame(value_12, value_14, value_15, value_17, value_18, value_19, value_20, value_21, value_22, value_23, value_24, value_25, value_29, value_30, value_31, value_32)
+	var appearance StyleFrame = value_33
+	var value_34 ButtonProps = props
+	var value_35 ButtonInput = input
+	var value_36 StyleFrame = appearance
+	var value_37 InteractionMotion = motion
+	var value_38 Rectangle = surface
+	var value_39 uint32 = ambient
+	var value_40 float32 = scale
+	var value_41 float32 = appearance.Value.FontSize
+	var value_42 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_41), 32, true)), uint64(0), 32, true, 0))
+	var value_43 float32 = float32(value_42)
+	var value_44 float32 = scale
+	var value_45 float32 = value_43 * value_44
+	var value_46 float32 = 0.5
+	var value_47 float32 = value_45 + value_46
+	var value_48 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_47), 32, true)), uint64(0), 32, true, 0))
+	var value_49 int32 = fallback_font
+	var value_50 ButtonFrame = Button_BuildFrame(value_34, value_35, value_36, value_37, value_38, value_39, value_40, value_48, value_49)
+	return value_50
+}
+
 func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float64, disclosure bool, surface SurfacePainter, draw Painter) {
 	var value_0 int32 = 0
 	var layer int32 = value_0

@@ -55,6 +55,7 @@ static int ui_reconcile_matched_old_capacity = 0;
 static int ui_tree_screen_id = 0;
 static KeyID ui_tree_screen_key = 0;
 static int ui_tree_building = 0;
+static int ui_tree_build_activation = 0;
 static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
 static unsigned long ui_tree_declaration;
@@ -101,6 +102,7 @@ typedef struct UIWidgetOps {
 } UIWidgetOps;
 
 static UIWidgetNode *ui_tree_node(NodeId id);
+static void ui_tree_note_build_activation(int activated);
 static void DrawTree(void);
 /* Apply semantic metadata when the retained text is actually painted. */
 #if defined(__GNUC__) || defined(__clang__)
@@ -609,6 +611,13 @@ ui_tree_mark_painted_immediate(NodeId id)
         node->flags |= UI_NODE_PAINTED_IMMEDIATE;
 }
 
+static void
+ui_tree_note_build_activation(int activated)
+{
+    if(ui_tree_building && activated)
+        ui_tree_build_activation = 1;
+}
+
 static int
 ui_tree_node_uses_retained_layout(NodeId id)
 {
@@ -806,6 +815,7 @@ BeginTree(KeyID screen_key)
     ui_tree_paint_capture_count = 0;
     ui_tree_input_capture_count = 0;
     ui_tree_building = 1;
+    ui_tree_build_activation = 0;
     ui_tree_stack_depth = 0;
     root = ui_tree_add(ui_tree_screen_id, UI_WIDGET_SCREEN_NODE,
                        (Rectangle){0, 0, ui_view_width, ui_view_height}, NULL);
@@ -967,6 +977,14 @@ ReconcileTree(void)
     unsigned invalid_before = ui_tree_invalid;
     int i;
 
+    if(ui_tree_build_activation && ui_committed_node_count > 0) {
+        ui_tree_clear_pending();
+        ui_tree_node_count = 0;
+        ui_tree_build_activation = 0;
+        ui_tree_invalid |= UI_INVALIDATE_PAINT;
+        return;
+    }
+    ui_tree_build_activation = 0;
     if(!ui_tree_reserve(&ui_committed_nodes, &ui_committed_node_capacity,
                         ui_tree_node_count))
         return;
@@ -1649,7 +1667,7 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
             y = TextBaselineY(value, (int)bounds.y, (int)bounds.height, font);
         else
             y += (int)TextAlignmentOffset((int)bounds.height, text_height, vertical_align);
-        DrawUIText(value, x, y, font, color);
+        RenderText(value, x, y, font, color);
     }
     if(needs_clip)
         EndUIClip();
@@ -1956,7 +1974,7 @@ DrawTree(void)
             int changed;
 
             if(node->kind == UI_WIDGET_TOGGLE_NODE) {
-                changed = DrawUIToggleSwitch(
+                changed = RenderToggleSwitch(
                     (int)node->bounds.x, (int)node->bounds.y,
                     (int)node->bounds.width, (int)node->bounds.height,
                     value, node->data.toggle.off_label,
@@ -1964,15 +1982,15 @@ DrawTree(void)
                 if(IsUIFocusActive(node->id) &&
                    !ui_popup_input_snapshot_keyboard_captures(
                        ui_tree_input_snapshot(node)) && IsWindowReady())
-                    DrawUIFocus(node->bounds);
+                    RenderFocus(node->bounds);
             } else {
-                changed = DrawUICheckboxToggle(
+                changed = RenderCheckboxToggle(
                     (int)node->bounds.x, (int)node->bounds.y,
                     node->data.checkbox.label, value);
                 if(IsUIFocusActive(node->id) &&
                    !ui_popup_input_snapshot_keyboard_captures(
                        ui_tree_input_snapshot(node)) && IsWindowReady())
-                    DrawUIFocus(node->bounds);
+                    RenderFocus(node->bounds);
             }
             if(changed && value != NULL) {
                 UIEvent event = {0};
@@ -2005,7 +2023,7 @@ Overlays(void)
 {
     if(!IsWindowReady())
         return;
-    DrawUIFrameOverlays();
+    RenderFrameOverlays();
 }
 
 const UIWidgetNode *
@@ -2311,7 +2329,7 @@ Picture(PictureProps picture)
     if(texture.id == 0) {
         DrawRectangleRec(picture.bounds, GetThemeSurface());
         DrawRectangleLinesEx(picture.bounds, 1.0f, GetThemeButtonHover());
-        DrawUIText("Missing image", (int)picture.bounds.x + Scale(8),
+        RenderText("Missing image", (int)picture.bounds.x + Scale(8),
                    (int)picture.bounds.y + Scale(8), Text12,
                    GetThemeIcon());
         return;
@@ -2520,7 +2538,7 @@ TextLines(const char **lines, int count, int x, int *y, int font,
 
     ui_tree_add(0, UI_WIDGET_TEXT_NODE,
                 (Rectangle){x, start_y, 0, count * line_h}, lines);
-    DrawUITextLines(lines, count, x, y, font, line_h, color);
+    RenderTextLines(lines, count, x, y, font, line_h, color);
 }
 
 void
@@ -2596,7 +2614,7 @@ void
 Bevel(int x, int y, int w, int h, Color light, Color dark)
 {
     ui_tree_add(0, UI_WIDGET_RECT_NODE, (Rectangle){x, y, w, h}, NULL);
-    DrawUIBevel(x, y, w, h, light, dark);
+    RenderBevel(x, y, w, h, light, dark);
 }
 
 int
@@ -2613,7 +2631,8 @@ ButtonNode(ButtonSpec button)
         ui_tree_nodes[node].data.button.props.label =
             ui_tree_nodes[node].owned_text;
     }
-    clicked = ui_tree_building ? HandleButton(button) : RenderButton(button);
+    clicked = ui_tree_building ? HandleButton(button) : ui_button_render(button);
+    ui_tree_note_build_activation(clicked);
     return clicked;
 }
 
@@ -2625,7 +2644,8 @@ IconButton(IconButtonProps button)
 
     node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
                        &button);
-    clicked = DrawUIIconButton(button);
+    clicked = RenderIconButton(button);
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }
@@ -2636,7 +2656,7 @@ Href(HrefProps link)
     if(link.bounds.height <= 0)
         link.bounds.height = TextHeight(link.text, link.font);
     ui_tree_add(link.focus_id, UI_WIDGET_TEXT_NODE, link.bounds, &link);
-    return DrawUIHref(link);
+    return RenderHref(link);
 }
 
 void
@@ -2669,7 +2689,7 @@ TextField(TextFieldProps field)
     }
     if(ui_tree_building)
         return 0;
-    return RenderTextField(field);
+    return ui_text_field_render(field);
 }
 
 int
@@ -2682,7 +2702,8 @@ InfoButton(int id, int center_x, int center_y, int diameter)
                        (Rectangle){center_x - diameter / 2,
                                    center_y - diameter / 2,
                                    diameter, diameter}, NULL);
-    clicked = DrawUIInfoButton(center_x, center_y, diameter);
+    clicked = RenderInfoButton(center_x, center_y, diameter);
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }
@@ -2695,7 +2716,7 @@ IconLink(int id, int x, int y, int icon_size, Texture2D icon,
 
     node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
                        (Rectangle){x, y, icon_size, icon_size}, url);
-    DrawUIIconLink(x, y, icon_size, icon, url);
+    RenderIconLink(x, y, icon_size, icon, url);
     ui_tree_mark_painted_immediate(node);
 }
 
@@ -2786,11 +2807,11 @@ Toggle(int id, int x, int y, int w, int h, int *value,
     if(ui_tree_building)
         return changed;
     paint_value = value != NULL ? *value : 0;
-    (void)DrawUIToggleSwitch(x, y, w, h,
+    (void)RenderToggleSwitch(x, y, w, h,
                              value != NULL ? &paint_value : NULL,
                              off_label, on_label);
     if(focused && IsWindowReady())
-        DrawUIFocus((Rectangle){x,y,w,h});
+        RenderFocus((Rectangle){x,y,w,h});
     return changed;
 }
 
@@ -2828,10 +2849,10 @@ Checkbox(int id, int x, int y, const char *label, int *value)
     if(ui_tree_building)
         return changed;
     paint_value = value != NULL ? *value : 0;
-    (void)DrawUICheckboxToggle(x, y, label,
+    (void)RenderCheckboxToggle(x, y, label,
                                value != NULL ? &paint_value : NULL);
     if(focused && IsWindowReady())
-        DrawUIFocus((Rectangle){x,y,Scale(30)+TextWidth(label,font),Scale(34)});
+        RenderFocus((Rectangle){x,y,Scale(30)+TextWidth(label,font),Scale(34)});
     return changed;
 }
 
@@ -2859,35 +2880,35 @@ void
 Separator(Rectangle bounds, int vertical)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
-    DrawUISeparator(bounds, vertical);
+    RenderSeparator(bounds, vertical);
 }
 
 void
 SeparatorText(SeparatorTextProps separator)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, separator.bounds, &separator);
-    DrawUISeparatorText(separator);
+    RenderSeparatorText(separator);
 }
 
 int
 DragDropSource(DragDropSourceProps source)
 {
     ui_tree_add(source.id, UI_WIDGET_CUSTOM_NODE, source.bounds, &source);
-    return DrawUIDragDropSource(source);
+    return RenderDragDropSource(source);
 }
 
 int
 DragDropTarget(DragDropTargetProps target)
 {
     ui_tree_add(target.id, UI_WIDGET_CUSTOM_NODE, target.bounds, &target);
-    return DrawUIDragDropTarget(target);
+    return RenderDragDropTarget(target);
 }
 
 int
 MultiSelectList(MultiSelectListProps list)
 {
     ui_tree_add(list.id, UI_WIDGET_CUSTOM_NODE, list.bounds, &list);
-    return DrawUIMultiSelectList(list);
+    return RenderMultiSelectList(list);
 }
 
 MenuBarResult
@@ -2895,7 +2916,7 @@ MenuBar(int id, Rectangle bounds, const Menu *menus,
               int menu_count, int *open_index)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, bounds, open_index);
-    return DrawUIMenuBar(id, bounds, menus, menu_count, open_index);
+    return RenderMenuBar(id, bounds, menus, menu_count, open_index);
 }
 
 int
@@ -2903,42 +2924,42 @@ PopupMenu(int id, int x, int y, const MenuItem *items,
                 int item_count)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, 0, 0}, items);
-    return DrawUIPopupMenu(id, x, y, items, item_count);
+    return RenderPopupMenu(id, x, y, items, item_count);
 }
 
 int
 ContextMenu(ContextMenuProps menu)
 {
     ui_tree_add(menu.id, UI_WIDGET_CUSTOM_NODE, menu.trigger, &menu);
-    return DrawUIContextMenu(menu);
+    return RenderContextMenu(menu);
 }
 
 int
 Radio(RadioButtonProps radio)
 {
     ui_tree_add(radio.id, UI_WIDGET_CUSTOM_NODE, radio.bounds, &radio);
-    return DrawUIRadioButton(radio);
+    return RenderRadioButton(radio);
 }
 
 void
 Progress(ProgressBarProps progress)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, progress.bounds, &progress);
-    DrawUIProgressBar(progress);
+    RenderProgressBar(progress);
 }
 
 void
 PlotLines(PlotProps plot)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, plot.bounds, &plot);
-    DrawUIPlotLines(plot);
+    RenderPlotLines(plot);
 }
 
 void
 PlotHistogram(PlotProps plot)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, plot.bounds, &plot);
-    DrawUIPlotHistogram(plot);
+    RenderPlotHistogram(plot);
 }
 
 int
@@ -3170,7 +3191,7 @@ int
 InputFloat(InputFloatProps input)
 {
     int depth = ui_numeric_input_begin(input.id, &input.bounds);
-    int changed = DrawUIInputFloat(input);
+    int changed = RenderInputFloat(input);
     ui_tree_stack_depth = depth;
     return changed;
 }
@@ -3179,7 +3200,7 @@ int
 InputInt(InputIntProps input)
 {
     int depth = ui_numeric_input_begin(input.id, &input.bounds);
-    int changed = DrawUIInputInt(input);
+    int changed = RenderInputInt(input);
     ui_tree_stack_depth = depth;
     return changed;
 }
@@ -3188,7 +3209,7 @@ int
 InputDouble(InputDoubleProps input)
 {
     int depth = ui_numeric_input_begin(input.id, &input.bounds);
-    int changed = DrawUIInputDouble(input);
+    int changed = RenderInputDouble(input);
     ui_tree_stack_depth = depth;
     return changed;
 }
@@ -3197,7 +3218,7 @@ int
 Spinbox(SpinboxProps spinbox)
 {
     ui_tree_add(spinbox.id, UI_WIDGET_CUSTOM_NODE, spinbox.bounds, &spinbox);
-    return DrawUISpinbox(spinbox);
+    return RenderSpinbox(spinbox);
 }
 
 int
@@ -3211,49 +3232,49 @@ void
 LabelFrame(LabelFrameProps frame)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, frame.bounds, &frame);
-    DrawUILabelFrame(frame);
+    RenderLabelFrame(frame);
 }
 
 void
 ImageBox(ImageBoxProps image)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, image.bounds, &image);
-    DrawUIImageBox(image);
+    RenderImageBox(image);
 }
 
 int
 ListBox(ListBoxProps list)
 {
     ui_tree_add(list.id, UI_WIDGET_CUSTOM_NODE, list.bounds, &list);
-    return DrawUIListBox(list);
+    return RenderListBox(list);
 }
 
 int
 TreeView(TreeViewProps tree)
 {
     ui_tree_add(tree.id, UI_WIDGET_CUSTOM_NODE, tree.bounds, &tree);
-    return DrawUITreeView(tree);
+    return RenderTreeView(tree);
 }
 
 int
 CascadingTreeView(CascadingTreeViewProps tree)
 {
     ui_tree_add(tree.id, UI_WIDGET_CUSTOM_NODE, tree.bounds, &tree);
-    return DrawUICascadingTreeView(tree);
+    return RenderCascadingTreeView(tree);
 }
 
 int
 SourceView(SourceViewProps source)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, source.bounds, &source);
-    return DrawUISourceView(source);
+    return RenderSourceView(source);
 }
 
 int
 TableView(TableViewProps table)
 {
     ui_tree_add(table.id, UI_WIDGET_CUSTOM_NODE, table.bounds, &table);
-    return DrawUITableView(table);
+    return RenderTableView(table);
 }
 
 int
@@ -3271,42 +3292,42 @@ TextArea(TextAreaProps area)
     ui_tree_invalid |= UI_INVALIDATE_PAINT;
     if(ui_tree_building)
         return 0;
-    return RenderTextArea(area);
+    return ui_text_area_render(area);
 }
 
 void
 CanvasGrid(Rectangle bounds, int step, Color color)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
-    DrawUICanvasGrid(bounds, step, color);
+    RenderCanvasGrid(bounds, step, color);
 }
 
 int
 Notebook(NotebookProps notebook)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, notebook.bounds, &notebook);
-    return DrawUINotebook(notebook);
+    return RenderNotebook(notebook);
 }
 
 int
 PanedView(PanedViewProps panes)
 {
     ui_tree_add(panes.id, UI_WIDGET_CUSTOM_NODE, panes.bounds, &panes);
-    return DrawUIPanedView(panes);
+    return RenderPanedView(panes);
 }
 
 int
 Collapsible(CollapsibleProps section)
 {
     ui_tree_add(section.id, UI_WIDGET_CUSTOM_NODE, section.bounds, &section);
-    return DrawUICollapsible(section);
+    return RenderCollapsible(section);
 }
 
 int
 ColorPicker(Rectangle bounds, Color *color)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, color);
-    return DrawUIColorPicker(bounds, color);
+    return RenderColorPicker(bounds, color);
 }
 
 /* Paint declarations preceding an immediate overlay before its scrim. Keep
@@ -3336,7 +3357,7 @@ ActionModal(ModalProps modal)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
-    return DrawUIActionModal(modal);
+    return RenderActionModal(modal);
 }
 
 int
@@ -3344,7 +3365,7 @@ MessageDialog(MessageDialogProps dialog)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
-    return DrawUIMessageDialog(dialog);
+    return RenderMessageDialog(dialog);
 }
 
 int
@@ -3352,7 +3373,7 @@ ConfirmDialog(ConfirmDialogProps dialog)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
-    return DrawUIConfirmDialog(dialog);
+    return RenderConfirmDialog(dialog);
 }
 
 int
@@ -3360,7 +3381,7 @@ PromptDialog(PromptDialogProps dialog)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &dialog);
-    return DrawUIPromptDialog(dialog);
+    return RenderPromptDialog(dialog);
 }
 
 int
@@ -3368,7 +3389,7 @@ TextPopover(TextPopoverProps popover)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(popover.id, UI_WIDGET_CUSTOM_NODE, popover.anchor, &popover);
-    return DrawUITextPopover(popover);
+    return RenderTextPopover(popover);
 }
 
 int
@@ -3376,14 +3397,14 @@ PickerDialog(PickerDialogProps picker)
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &picker);
-    return DrawUIPickerDialog(picker);
+    return RenderPickerDialog(picker);
 }
 
 void
 Focus(Rectangle bounds)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
-    DrawUIFocus(bounds);
+    RenderFocus(bounds);
 }
 
 void
@@ -3391,14 +3412,14 @@ FocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){0, 0, ui_view_width, ui_view_height}, nodes);
-    DrawUIFocusDebugOverlay(nodes, count);
+    RenderFocusDebugOverlay(nodes, count);
 }
 
 UIGuideResult
 GuideOverlay(GuideOverlayProps guide)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, guide.view_width, guide.view_height}, &guide);
-    return DrawUIGuideOverlay(guide);
+    return RenderGuideOverlay(guide);
 }
 
 int
@@ -3408,7 +3429,7 @@ ThemeSwitcher(int x, int y, int w, const char *label,
 {
     ui_tree_add(0, UI_WIDGET_THEME_SETTINGS_NODE,
                 (Rectangle){x, y, w, Scale(58)}, theme_id);
-    return DrawUIThemeSwitcher(x, y, w, label, light_label, dark_label,
+    return RenderThemeSwitcher(x, y, w, label, light_label, dark_label,
                                theme_id, dark_mode);
 }
 
@@ -3417,14 +3438,14 @@ ThemePicker(int x, int y, int w, int dark_mode, int *theme_id)
 {
     ui_tree_add(0, UI_WIDGET_THEME_PICKER_NODE,
                 (Rectangle){x, y, w, 0}, theme_id);
-    return DrawUIThemePicker(x, y, w, dark_mode, theme_id);
+    return RenderThemePicker(x, y, w, dark_mode, theme_id);
 }
 
 void
 TutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, w, h}, label);
-    DrawUITutorialImagePlaceholder(label, x, y, w, h);
+    RenderTutorialImagePlaceholder(label, x, y, w, h);
 }
 
 void
@@ -3432,7 +3453,7 @@ TutorialImage(Texture2D texture, const char *fallback, int x, int y,
                     int w, int h)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, w, h}, fallback);
-    DrawUITutorialImage(texture, fallback, x, y, w, h);
+    RenderTutorialImage(texture, fallback, x, y, w, h);
 }
 
 void
@@ -3441,7 +3462,7 @@ TransitionFade(const UITransition *transition, int width, int height,
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, width, height},
                 transition);
-    DrawUITransitionFade(transition, width, height, color);
+    RenderTransitionFade(transition, width, height, color);
 }
 
 void
@@ -3450,7 +3471,7 @@ InfoRows(InfoRowsProps rows)
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){rows.x, rows.y, rows.width,
                             rows.row_height * rows.row_count}, &rows);
-    DrawUIInfoRows(rows);
+    RenderInfoRows(rows);
 }
 
 int
@@ -3463,7 +3484,7 @@ LabelTextField(LabelTextFieldProps row, int x, int y, int w)
                      (Rectangle){x, y, w, 0}, NULL);
     node = NodeLabelTextField(row, x, y, w);
     ui_tree_store_node(id, node);
-    return DrawUILabelTextField(row, x, y, w);
+    return RenderLabelTextField(row, x, y, w);
 }
 
 int
@@ -3476,7 +3497,7 @@ SectionLabel(SectionLabelProps label, int x, int y)
                      (Rectangle){x, y, 0, 0}, NULL);
     node = NodeSectionLabel(label, x, y);
     ui_tree_store_node(id, node);
-    return DrawUISectionLabel(label, x, y);
+    return RenderSectionLabel(label, x, y);
 }
 
 int
@@ -3489,7 +3510,7 @@ CheckboxRow(CheckboxRowProps row, int x, int y)
                      (Rectangle){x, y, 0, 0}, NULL);
     node = NodeCheckboxRow(row, x, y);
     ui_tree_store_node(id, node);
-    return DrawUICheckboxRow(row, x, y);
+    return RenderCheckboxRow(row, x, y);
 }
 
 int
@@ -3499,7 +3520,8 @@ OverlayButton(OverlayButtonProps button)
     int clicked;
 
     node = ui_tree_add(0, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    clicked = DrawUIOverlayButton(button);
+    clicked = RenderOverlayButton(button);
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }
@@ -3514,7 +3536,7 @@ ButtonRow(ButtonRowProps row)
                      (Rectangle){row.x, row.y, row.width, 0}, NULL);
     node = NodeButtonRow(row);
     ui_tree_store_node(id, node);
-    return DrawUIButtonRow(row);
+    return RenderButtonRow(row);
 }
 
 int
@@ -3522,7 +3544,7 @@ IconSliderPopup(IconSliderPopupProps popup)
 {
     ui_tree_add(popup.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){popup.x, popup.y, 0, 0}, &popup);
-    return DrawUIIconSliderPopup(popup);
+    return RenderIconSliderPopup(popup);
 }
 
 IconRowResult
@@ -3530,7 +3552,7 @@ BottomIconRow(BottomIconRowProps row)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){0, 0, row.view_width, row.view_height}, &row);
-    return DrawUIBottomIconRow(row);
+    return RenderBottomIconRow(row);
 }
 
 BottomNavResult
@@ -3538,14 +3560,14 @@ BottomNav(BottomNavProps nav)
 {
     ui_tree_add(0, UI_WIDGET_BOTTOM_NAV_NODE,
                 (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav);
-    return DrawUIBottomNav(nav);
+    return RenderBottomNav(nav);
 }
 
 BottomNavConfigResult
 BottomNavConfig(BottomNavConfigProps modal)
 {
     ui_tree_add(modal.id, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
-    return DrawUIBottomNavConfigModal(modal);
+    return RenderBottomNavConfigModal(modal);
 }
 
 TopNavResult
@@ -3553,7 +3575,7 @@ TopNav(TopNavProps nav)
 {
     ui_tree_add(nav.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){nav.x, nav.y, nav.width, nav.height}, &nav);
-    return DrawUITopNav(nav);
+    return RenderTopNav(nav);
 }
 
 ToolbarResult
@@ -3561,7 +3583,7 @@ Toolbar(ToolbarProps toolbar)
 {
     ui_tree_add(toolbar.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){toolbar.x, toolbar.y, toolbar.width, toolbar.height}, &toolbar);
-    return DrawUIToolbar(toolbar);
+    return RenderToolbar(toolbar);
 }
 
 ToolbarHeaderResult
@@ -3569,35 +3591,47 @@ ToolbarHeader(ToolbarHeaderProps header)
 {
     ui_tree_add(header.toolbar.id, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){0, 0, header.toolbar.width, header.toolbar.height}, &header);
-    return DrawUIToolbarHeader(header);
+    return RenderToolbarHeader(header);
 }
 
 int
 SubtabBar(SubtabBarProps bar)
 {
+    int clicked;
+
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
-    return DrawUISubtabBar(bar);
+    clicked = RenderSubtabBar(bar);
+    ui_tree_note_build_activation(clicked >= 0);
+    return clicked;
 }
 
 int
 TabBar(TabBarProps bar)
 {
+    int clicked;
+
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
-    return DrawUITabBar(bar);
+    clicked = RenderTabBar(bar);
+    ui_tree_note_build_activation(clicked >= 0);
+    return clicked;
 }
 
 PaneTabBarResult
 PaneTabs(PaneTabBar bar)
 {
+    PaneTabBarResult result;
+
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
-    return DrawUIPaneTabBar(bar);
+    result = RenderPaneTabBar(bar);
+    ui_tree_note_build_activation(result.clicked_index >= 0);
+    return result;
 }
 
 void
 PaneDropPreview(Rectangle bounds, PaneDropZone zone)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, &zone);
-    DrawUIPaneDropPreview(bounds, zone);
+    RenderPaneDropPreview(bounds, zone);
 }
 
 SidebarAccountHeaderResult
@@ -3605,28 +3639,28 @@ SidebarAccountHeader(SidebarAccountHeaderProps header)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE,
                 (Rectangle){header.x, header.y, header.width, header.height}, &header);
-    return DrawUISidebarAccountHeader(header);
+    return RenderSidebarAccountHeader(header);
 }
 
 ProfilePicturePickerResult
 ProfilePicturePicker(ProfilePicturePickerProps modal)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
-    return DrawUIProfilePicturePickerModal(modal);
+    return RenderProfilePicturePickerModal(modal);
 }
 
 void
 ReorderHandle(int id, int x, int y, int w, int h, int active)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, w, h}, NULL);
-    DrawUIReorderHandle(x, y, w, h, active);
+    RenderReorderHandle(x, y, w, h, active);
 }
 
 void
 ReorderPlaceholder(Rectangle bounds)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
-    DrawUIReorderPlaceholder(bounds);
+    RenderReorderPlaceholder(bounds);
 }
 
 int
@@ -3635,7 +3669,7 @@ Modal(const char *title, const char *message,
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, title);
-    return DrawUIModal(title, message, cancel_btn, confirm_btn);
+    return RenderModal(title, message, cancel_btn, confirm_btn);
 }
 
 int
@@ -3645,7 +3679,7 @@ Modal3Button(const char *title, const char *message,
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, title);
-    return DrawUIModal3Button(title, message, left_btn, middle_btn, right_btn);
+    return RenderModal3Button(title, message, left_btn, middle_btn, right_btn);
 }
 
 void
@@ -3653,7 +3687,7 @@ TitleBar(const char *title, int height)
 {
     ui_tree_add(0, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, title);
-    DrawUITitleBar(title, height);
+    RenderTitleBar(title, height);
 }
 
 int
@@ -3661,7 +3695,7 @@ ReturnTitleBar(Texture2D return_icon, const char *title, int height)
 {
     ui_tree_add(0, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, title);
-    return DrawUIReturnTitleBar(return_icon, title, height);
+    return RenderReturnTitleBar(return_icon, title, height);
 }
 
 int
@@ -3670,7 +3704,7 @@ ReturnDropdownTitleBar(Texture2D return_icon,
 {
     ui_tree_add(dropdown.id, UI_WIDGET_TITLE_BAR_NODE,
                 (Rectangle){0, 0, ui_view_width, height}, &dropdown);
-    return DrawUIReturnDropdownTitleBar(return_icon, dropdown, height);
+    return RenderReturnDropdownTitleBar(return_icon, dropdown, height);
 }
 
 UIPanelFrame
@@ -3679,7 +3713,7 @@ ModalFrame(int width, int height, const char *title,
 {
     ui_tree_paint_before_overlay();
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, width, height}, title);
-    return DrawUIModalFrame(width, height, title, left_icon, right_icon);
+    return RenderModalFrame(width, height, title, left_icon, right_icon);
 }
 
 static Rectangle
@@ -3744,7 +3778,8 @@ ui_tree_surface_button(ButtonProps button, Rectangle surface_bounds, int disclos
         ui_tree_nodes[node].data.button.props.label =
             ui_tree_nodes[node].owned_text;
     }
-    clicked = ui_tree_building ? HandleButton(spec) : RenderButton(spec);
+    clicked = ui_tree_building ? HandleButton(spec) : ui_button_render(spec);
+    ui_tree_note_build_activation(clicked);
     return clicked;
 }
 
@@ -3857,7 +3892,7 @@ Selectable(SelectableProps selectable)
 {
     ui_tree_add(selectable.id, UI_WIDGET_CUSTOM_NODE, selectable.bounds,
                 &selectable);
-    return DrawUISelectable(selectable);
+    return RenderSelectable(selectable);
 }
 
 int
@@ -3865,7 +3900,7 @@ CheckboxFlags(CheckboxFlagsProps checkbox)
 {
     ui_tree_add(checkbox.id, UI_WIDGET_CUSTOM_NODE, checkbox.bounds,
                 &checkbox);
-    return DrawUICheckboxFlags(checkbox);
+    return RenderCheckboxFlags(checkbox);
 }
 
 void
@@ -3883,14 +3918,15 @@ ImageButton(ImageButtonProps image)
     int activated;
 
     ui_tree_add(image.id, UI_WIDGET_CUSTOM_NODE, image.picture.bounds, NULL);
-    activated = DrawUIInvisibleButton(hit);
+    activated = RenderInvisibleButton(hit);
+    ui_tree_note_build_activation(activated);
     if(IsWindowReady()) {
         DrawRectangleRec(image.picture.bounds, image.background);
         DrawRectangleLinesEx(image.picture.bounds, 1.0f, GetThemeButton());
         Picture(image.picture);
         if(IsUIFocusActive(image.id) &&
            !ui_popup_input_focus_captures(image.id))
-            DrawUIFocus(image.picture.bounds);
+            RenderFocus(image.picture.bounds);
     }
     return activated;
 }
@@ -3931,7 +3967,8 @@ ClosableTabBar(ClosableTabBarProps bar)
     props.id = bar.id;
     props.disabled = bar.disabled;
     ui_tree_add(0, UI_WIDGET_TAB_BAR_NODE, bar.bounds, &bar);
-    clicked = DrawUITabBar(props);
+    clicked = RenderTabBar(props);
+    ui_tree_note_build_activation(clicked >= 0);
     if(clicked >= 0 && bar.selected_index != NULL)
         *bar.selected_index = clicked;
     return clicked;
@@ -3941,8 +3978,9 @@ int
 InvisibleButton(InvisibleButtonProps button)
 {
     NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    int clicked = DrawUIInvisibleButton(button);
+    int clicked = RenderInvisibleButton(button);
 
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }
@@ -3951,8 +3989,9 @@ int
 ArrowButton(ArrowButtonProps button)
 {
     NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    int clicked = DrawUIArrowButton(button);
+    int clicked = RenderArrowButton(button);
 
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }
@@ -3961,43 +4000,44 @@ void
 Bullet(Rectangle bounds)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
-    DrawUIBullet(bounds);
+    RenderBullet(bounds);
 }
 
 int
 ColorEdit3(ColorEditProps edit)
 {
     ui_tree_add(edit.id, UI_WIDGET_CUSTOM_NODE, edit.bounds, &edit);
-    return DrawUIColorEdit3(edit);
+    return RenderColorEdit3(edit);
 }
 
 int
 ColorEdit4(ColorEditProps edit)
 {
     ui_tree_add(edit.id, UI_WIDGET_CUSTOM_NODE, edit.bounds, &edit);
-    return DrawUIColorEdit4(edit);
+    return RenderColorEdit4(edit);
 }
 
 int
 ColorPicker3(ColorEditProps picker)
 {
     ui_tree_add(picker.id, UI_WIDGET_CUSTOM_NODE, picker.bounds, &picker);
-    return DrawUIColorPicker3(picker);
+    return RenderColorPicker3(picker);
 }
 
 int
 ColorPicker4(ColorEditProps picker)
 {
     ui_tree_add(picker.id, UI_WIDGET_CUSTOM_NODE, picker.bounds, &picker);
-    return DrawUIColorPicker4(picker);
+    return RenderColorPicker4(picker);
 }
 
 int
 ColorButton(ColorButtonProps button)
 {
     NodeId node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, &button);
-    int clicked = DrawUIColorButton(button);
+    int clicked = RenderColorButton(button);
 
+    ui_tree_note_build_activation(clicked);
     ui_tree_mark_painted_immediate(node);
     return clicked;
 }

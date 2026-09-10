@@ -327,7 +327,6 @@ void SetTextAreaSelection(int focus_id, int anchor, int cursor);
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
 
-int RenderButton(ButtonSpec button);
 int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 int GetScoreControlHeight(ScoreControlProps control);

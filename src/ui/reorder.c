@@ -199,7 +199,7 @@ UpdateUIReorderList(UIReorderList list)
 }
 
 void
-DrawUIReorderHandle(int x, int y, int w, int h, int active)
+RenderReorderHandle(int x, int y, int w, int h, int active)
 {
     int dot = Scale(3);
     int gap = Scale(4);
@@ -212,7 +212,7 @@ DrawUIReorderHandle(int x, int y, int w, int h, int active)
 
     if(w <= 0 || h <= 0)
         return;
-    MarkUIClickable();
+    MarkClickable();
     for(int row = 0; row < 3; row++) {
         for(int col = 0; col < 2; col++) {
             DrawRectangle(start_x + col * (dot + col_gap),
@@ -223,7 +223,7 @@ DrawUIReorderHandle(int x, int y, int w, int h, int active)
 }
 
 void
-DrawUIReorderPlaceholder(Rectangle bounds)
+RenderReorderPlaceholder(Rectangle bounds)
 {
     int x = (int)bounds.x;
     int y = (int)bounds.y;

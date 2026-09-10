@@ -22,7 +22,7 @@ and paints UTF-8 text from the active `Theme`. Editable content remains
 `TextField` or `TextArea`.
 
 There is no `UIText`, `UITextNode`, `WidgetText`, positional Text overload, or
-public `DrawUIText*` alternative.
+public `RenderText*` alternative.
 
 ## 2. Button uses Text directly
 
@@ -213,7 +213,7 @@ loading, localization, emoji, combining marks, CJK, and bidirectional text.
 4. Lower label shorthand to a child Text node.
 5. Migrate composed widgets and maintained callers.
 6. Update all generated and runtime backends.
-7. Delete positional Text, public `DrawUIText*`, `UIText*`, `TextStyle`,
+7. Delete positional Text, public `RenderText*`, `UIText*`, `TextStyle`,
    `TextInputStyle`, duplicate measurement helpers, and Button label rendering.
 8. Run parity, accessibility, screenshot, and clean-API tests.
 9. Commit Kryon on master before updating downstream submodule pointers.

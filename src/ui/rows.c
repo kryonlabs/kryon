@@ -1,7 +1,7 @@
 #include "ui_internal.h"
 
 void
-DrawUIInfoRows(InfoRowsProps rows)
+RenderInfoRows(InfoRowsProps rows)
 {
     Color background = rows.background.a != 0
                            ? rows.background
@@ -53,7 +53,7 @@ GetUILabelTextFieldHeight(LabelTextFieldProps row)
 }
 
 int
-DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
+RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
     int label_font = row.label_font > 0 ? row.label_font : GetSmallFontSize();
     int label_h = row.label_h > 0 ? row.label_h : Scale(22);
@@ -62,9 +62,9 @@ DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w)
     Color label_color = row.label_color.a != 0 ? row.label_color : DarkenUIColor(c_text, 34);
     TextFieldProps field = row.field;
 
-    DrawUIText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
+    RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
     field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
-    return RenderTextField(field);
+    return ui_text_field_render(field);
 }
 
 int
@@ -74,7 +74,7 @@ ui_section_label_height(SectionLabelProps label)
 }
 
 int
-DrawUISectionLabel(SectionLabelProps label, int x, int y)
+RenderSectionLabel(SectionLabelProps label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetSmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
@@ -82,11 +82,11 @@ DrawUISectionLabel(SectionLabelProps label, int x, int y)
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 
-    DrawUIText(text, x, y, font, color);
+    RenderText(text, x, y, font, color);
     if(!label.info_button)
         return 0;
     label_w = TextWidth(text, font);
-    return DrawUIInfoButton(x + label_w + Scale(16),
+    return RenderInfoButton(x + label_w + Scale(16),
                                y + font / 2 + Scale(1), icon_d);
 }
 
@@ -97,15 +97,15 @@ ui_checkbox_row_height(CheckboxRowProps row)
 }
 
 int
-DrawUICheckboxRow(CheckboxRowProps row, int x, int y)
+RenderCheckboxRow(CheckboxRowProps row, int x, int y)
 {
     if(row.disabled)
         return DrawDisabledUICheckboxToggle(x, y, row.label, row.value, 1);
-    return DrawUICheckboxToggle(x, y, row.label, row.value);
+    return RenderCheckboxToggle(x, y, row.label, row.value);
 }
 
 int
-DrawUIOverlayButton(OverlayButtonProps button)
+RenderOverlayButton(OverlayButtonProps button)
 {
     Vector2 mouse;
     int mouse_inside;
@@ -141,7 +141,7 @@ DrawUIOverlayButton(OverlayButtonProps button)
         DrawRectangleLinesEx(button.bounds, Scale(1), border);
     if(button.label != NULL) {
         text_w = TextWidth(button.label, font);
-        DrawUIText(button.label,
+        RenderText(button.label,
                         (int)(button.bounds.x + (button.bounds.width - text_w) / 2),
                         GetUIControlTextY(button.label, (int)button.bounds.y,
                                         (int)button.bounds.height, font),
@@ -149,9 +149,9 @@ DrawUIOverlayButton(OverlayButtonProps button)
     }
 
     if(button.disabled && !captured && mouse_inside)
-        MarkUIDisabled();
+        MarkDisabled();
     if(active)
-        MarkUIClickable();
+        MarkClickable();
 
     return active && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
@@ -385,7 +385,7 @@ FormButtons(Form *form, ButtonRowProps row)
 }
 
 int
-DrawUIButtonRow(ButtonRowProps row)
+RenderButtonRow(ButtonRowProps row)
 {
     int clicked = -1;
     int gap = row.gap > 0 ? row.gap : Scale(6);
