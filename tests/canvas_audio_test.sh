@@ -27,7 +27,19 @@ mkdir -p "$work"
 cp "$root/tests/canvas_audio_main.c" "$work/main.c"
 cp "$root/tests/canvas_audio_run.js" "$work/pre.js"
 
-emcc -I"$root/include" -Wall -Wextra -O1 \
+# kryon.h includes the generated ui_icon_types.h; pass the generated include
+# dirs from the last completed build (same discovery as canvas_backend_test.sh).
+generated=""
+for d in "$root"/build/*/generated; do
+    [ -f "$d/include/ui_icon_types.h" ] && generated=$d
+done
+if [ -n "$generated" ]; then
+    gen_inc="-I$generated/include -I$generated/src"
+else
+    gen_inc=""
+fi
+
+emcc -I"$root/include" $gen_inc -Wall -Wextra -O1 \
     -sASYNCIFY -sENVIRONMENT=node,web -sEXIT_RUNTIME=1 \
     --pre-js "$work/pre.js" \
     -o "$work/canvas_audio_smoke.js" \

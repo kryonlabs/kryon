@@ -1184,6 +1184,8 @@ def canvas_backend_sources() -> list[str]:
             "src/scene/node_collision_shape2d.c",
         }:
             continue
+        if path.name.startswith("dom_"):
+            continue
         if path.name.startswith("libdraw_"):
             continue
         if path.name.startswith("termi_"):
@@ -1268,10 +1270,25 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
         print(f"missing embedded assets for web Canvas generated-C matrix: {assets}", file=sys.stderr)
         return 1
 
+    # Generated runtime dir: carries ui_icon_types.h (included by kryon.h), the
+    # runtime headers used by src/ui/*.c, and the widget C lowered from
+    # runtime/*.kry (button, dropdown, ...) that src/ui/*.c links against.
+    generated_dir = None
+    for candidate in sorted((ROOT / "build").glob("*/generated")):
+        if (candidate / "kryon_null_backend.c").exists() and (candidate / "include" / "ui_icon_types.h").exists():
+            generated_dir = candidate
+    if generated_dir is None:
+        print("missing generated runtime dir for web Canvas generated-C matrix (run 'make' once first)", file=sys.stderr)
+        return 1
+    runtime_sources = [
+        str(path)
+        for path in sorted((generated_dir / "src").rglob("*.c"))
+    ]
+
     failures = []
     observed_gaps = set()
     backend_sources = canvas_backend_sources()
-    null_backend = ROOT / "build" / "generated" / "kryon_null_backend.c"
+    null_backend = generated_dir / "kryon_null_backend.c"
     if null_backend.exists():
         backend_sources.append(str(null_backend))
     with tempfile.TemporaryDirectory(prefix="kryon-web-canvas-c-matrix.") as tmp:
@@ -1311,6 +1328,10 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 emcc,
                 "-Iinclude",
                 "-I",
+                str(generated_dir / "include"),
+                "-I",
+                str(generated_dir / "src"),
+                "-I",
                 str(out_dir),
                 "-Iexamples",
                 "-DKRYON_WITH_PHYSICS=0",
@@ -1326,7 +1347,7 @@ def verify_web_canvas_c_visuals(data: dict, args: argparse.Namespace) -> int:
                 "-o",
                 str(js_path),
                 "tests/generated_c_capture_main.c",
-            ] + generated_c_sources(out_dir) + backend_sources + [str(assets)]
+            ] + generated_c_sources(out_dir) + backend_sources + runtime_sources + [str(assets)]
             run = subprocess.run(
                 compile_cmd,
                 cwd=ROOT,
