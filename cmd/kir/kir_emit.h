@@ -14,10 +14,12 @@ int KirCanEmitBody(const KirModule *module, const KirFunction *fn);
 int KirEmitJsRecordValue(FILE *out, const KirModule *module, const char *type,
                          const char *source);
 void KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target);
+void KirEmitNumberSupport(FILE *out, KirTarget target, const char *prefix);
 void KirEmitStringType(FILE *out);
 /* instance_host is the native Go implementation receiver, or an empty string
- * for application functions and the other targets. */
+ * for application functions and the other targets. number_support overrides
+ * the module-local numeric helper prefix when a package shares one definition. */
 int KirEmitBody(FILE *out, const KirModule *module, const KirFunction *fn,
                 KirTarget target, KirResolveTarget resolve, void *context,
-                const char *instance_host);
+                const char *instance_host, const char *number_support);
 #endif

@@ -11,85 +11,6 @@ package kryon
 // #import material
 // #import ui_text.h
 // #import ui_core.h
-func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
-	bits := w
-	if sign {
-		bits--
-	}
-	bound := float64(1)
-	for i := uint(0); i < bits; i++ {
-		bound *= 2
-	}
-	lower := float64(0)
-	if sign {
-		lower = -bound
-	}
-	if !(x >= lower && x < bound) {
-		panic("float conversion out of range")
-	}
-	if sign {
-		return uint64(int64(x))
-	}
-	return uint64(x)
-}
-func number_533abbd6_bits(a, b uint64, w uint, sign bool, op int) uint64 {
-	mask := ^uint64(0)
-	if w < 64 {
-		mask = (uint64(1) << w) - 1
-	}
-	shift := b
-	a &= mask
-	b &= mask
-	switch op {
-	case 0:
-		return a
-	case 1:
-		return (a + b) & mask
-	case 2:
-		return (a - b) & mask
-	case 3:
-		return (a * b) & mask
-	case 4, 5:
-		if b == 0 {
-			panic("integer division by zero")
-		}
-		if sign {
-			x := int64(a<<(64-w)) >> (64 - w)
-			y := int64(b<<(64-w)) >> (64 - w)
-			if op == 4 {
-				return uint64(x/y) & mask
-			}
-			return uint64(x%y) & mask
-		}
-		if op == 4 {
-			return a / b
-		}
-		return a % b
-	case 6, 7:
-		if shift >= uint64(w) {
-			panic("invalid shift count")
-		}
-		if op == 6 {
-			return (a << shift) & mask
-		}
-		if shift == 0 {
-			return a
-		}
-		result := a >> shift
-		if sign && (a&(uint64(1)<<(w-1))) != 0 {
-			result |= mask ^ (mask >> shift)
-		}
-		return result
-	case 8:
-		return a & b
-	case 9:
-		return a | b
-	case 10:
-		return a ^ b
-	}
-	panic("invalid numeric operation")
-}
-
 type ButtonInput struct {
 	Flags       StateFlags
 	Interaction InteractionState
@@ -135,7 +56,7 @@ type ButtonFrame struct {
 func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput {
 	var result ButtonInput = ButtonInput{}
 	var value_0 ButtonState = ButtonState(props.State)
-	var value_1 int32 = int32(number_533abbd6_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
 	var value_2 bool = props.Disabled
 	var value_3 bool = props.Loading
 	var value_4 bool = props.Selected
@@ -153,7 +74,7 @@ func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput
 	}
 	result.Activated = value_10
 	var value_12 ButtonState = ButtonState(props.State)
-	var value_13 int32 = int32(number_533abbd6_bits(uint64(value_12), uint64(0), 32, true, 0))
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0))
 	var value_14 bool = result.Flags.Disabled
 	var value_15 bool = result.Flags.Loading
 	var value_16 bool = enabled
@@ -183,7 +104,7 @@ func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput
 
 func (instance_host_0 *runtime) Button_ReadButtonInput(props ButtonProps) ButtonInput {
 	var value_0 ButtonState = ButtonState(props.State)
-	var value_1 int32 = int32(number_533abbd6_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
 	var value_2 bool = props.Disabled
 	var value_3 bool = props.Loading
 	var value_4 bool = props.Selected
@@ -211,7 +132,7 @@ func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, props But
 	var value_4 bool = input.Interaction.Focused
 	var value_5 bool = enabled
 	var value_6 ButtonState = ButtonState(props.State)
-	var value_7 int32 = int32(number_533abbd6_bits(uint64(value_6), uint64(0), 32, true, 0))
+	var value_7 int32 = int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0))
 	var value_8 int32 = int32(ButtonStateAuto)
 	var value_9 bool = value_7 != value_8
 	var value_10 bool = input.Flags.Disabled
@@ -375,8 +296,8 @@ func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int
 		style.Typeface = value_110
 		var value_111 uint32 = style.Fields
 		var value_112 int32 = int32(StyleTypeface)
-		var value_113 uint32 = uint32(number_533abbd6_bits(uint64(value_112), uint64(0), 32, false, 0))
-		var value_114 uint32 = uint32(number_533abbd6_bits(uint64(value_111), uint64(value_113), 32, false, 9))
+		var value_113 uint32 = uint32(number_runtime_bits(uint64(value_112), uint64(0), 32, false, 0))
+		var value_114 uint32 = uint32(number_runtime_bits(uint64(value_111), uint64(value_113), 32, false, 9))
 		style.Fields = value_114
 	}
 	var value_115 StyleData = style
@@ -608,7 +529,7 @@ func Button_MeasureBounds(props ButtonProps, paint Style, minimum_height float32
 	if !value_26 {
 		var value_27 uint32 = props.Icon.ID
 		var value_28 int32 = 0
-		var value_29 uint32 = uint32(number_533abbd6_bits(uint64(value_28), uint64(0), 32, false, 0))
+		var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
 		var value_30 bool = value_27 != value_29
 		value_26 = value_30
 	}
@@ -850,7 +771,7 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, f
 	if !value_5 {
 		var value_6 uint32 = props.Icon.ID
 		var value_7 int32 = 0
-		var value_8 uint32 = uint32(number_533abbd6_bits(uint64(value_7), uint64(0), 32, false, 0))
+		var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
 		var value_9 bool = value_6 != value_8
 		value_5 = value_9
 	}
@@ -876,7 +797,7 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, f
 	var value_25 bool = has_icon
 	var value_26 bool = props.IconOnly
 	var value_27 IconPlacement = IconPlacement(props.IconPlacement)
-	var value_28 int32 = int32(number_533abbd6_bits(uint64(value_27), uint64(0), 32, true, 0))
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0))
 	var value_29 int32 = int32(IconPlacementTrailing)
 	var value_30 bool = value_28 == value_29
 	var value_31 float32 = paint.OffsetX
@@ -956,7 +877,7 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, f
 		} else {
 			var value_85 uint32 = props.Icon.ID
 			var value_86 int32 = 0
-			var value_87 uint32 = uint32(number_533abbd6_bits(uint64(value_86), uint64(0), 32, false, 0))
+			var value_87 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(0), 32, false, 0))
 			var value_88 bool = value_85 != value_87
 			if value_88 {
 				var value_89 int32 = DrawingKindDrawingTexture
@@ -1182,110 +1103,110 @@ func Button_ShapeRadius(normal_radius float32, pill_radius float32, pill bool, c
 func Button_MixByte(from uint32, to uint32, amount uint32) uint32 {
 	var value_0 uint32 = from
 	var value_1 int32 = 100
-	var value_2 uint32 = uint32(number_533abbd6_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
 	var value_3 uint32 = amount
-	var value_4 uint32 = uint32(number_533abbd6_bits(uint64(value_2), uint64(value_3), 32, false, 2))
-	var value_5 uint32 = uint32(number_533abbd6_bits(uint64(value_0), uint64(value_4), 32, false, 3))
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, false, 2))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_4), 32, false, 3))
 	var value_6 uint32 = to
 	var value_7 uint32 = amount
-	var value_8 uint32 = uint32(number_533abbd6_bits(uint64(value_6), uint64(value_7), 32, false, 3))
-	var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_5), uint64(value_8), 32, false, 1))
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, false, 3))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_8), 32, false, 1))
 	var value_10 int32 = 50
-	var value_11 uint32 = uint32(number_533abbd6_bits(uint64(value_10), uint64(0), 32, false, 0))
-	var value_12 uint32 = uint32(number_533abbd6_bits(uint64(value_9), uint64(value_11), 32, false, 1))
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(value_11), 32, false, 1))
 	var value_13 int32 = 100
-	var value_14 uint32 = uint32(number_533abbd6_bits(uint64(value_13), uint64(0), 32, false, 0))
-	var value_15 uint32 = uint32(number_533abbd6_bits(uint64(value_12), uint64(value_14), 32, false, 4))
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_14), 32, false, 4))
 	return value_15
 }
 
 func Button_MixColor(from uint32, to uint32, amount uint32) uint32 {
 	var value_0 uint32 = from
 	var value_1 int32 = 24
-	var value_2 uint32 = uint32(number_533abbd6_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_533abbd6_bits(uint64(value_0), uint64(value_2), 32, false, 7))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 7))
 	var value_4 int32 = 255
-	var value_5 uint32 = uint32(number_533abbd6_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 uint32 = uint32(number_533abbd6_bits(uint64(value_3), uint64(value_5), 32, false, 8))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, false, 8))
 	var fr uint32 = value_6
 	var value_7 uint32 = from
 	var value_8 int32 = 16
-	var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 uint32 = uint32(number_533abbd6_bits(uint64(value_7), uint64(value_9), 32, false, 7))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 7))
 	var value_11 int32 = 255
-	var value_12 uint32 = uint32(number_533abbd6_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_533abbd6_bits(uint64(value_10), uint64(value_12), 32, false, 8))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 8))
 	var fg uint32 = value_13
 	var value_14 uint32 = from
 	var value_15 int32 = 8
-	var value_16 uint32 = uint32(number_533abbd6_bits(uint64(value_15), uint64(0), 32, false, 0))
-	var value_17 uint32 = uint32(number_533abbd6_bits(uint64(value_14), uint64(value_16), 32, false, 7))
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_16), 32, false, 7))
 	var value_18 int32 = 255
-	var value_19 uint32 = uint32(number_533abbd6_bits(uint64(value_18), uint64(0), 32, false, 0))
-	var value_20 uint32 = uint32(number_533abbd6_bits(uint64(value_17), uint64(value_19), 32, false, 8))
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(value_19), 32, false, 8))
 	var fb uint32 = value_20
 	var value_21 uint32 = from
 	var value_22 int32 = 255
-	var value_23 uint32 = uint32(number_533abbd6_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 uint32 = uint32(number_533abbd6_bits(uint64(value_21), uint64(value_23), 32, false, 8))
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 8))
 	var fa uint32 = value_24
 	var value_25 uint32 = to
 	var value_26 int32 = 24
-	var value_27 uint32 = uint32(number_533abbd6_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 uint32 = uint32(number_533abbd6_bits(uint64(value_25), uint64(value_27), 32, false, 7))
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 7))
 	var value_29 int32 = 255
-	var value_30 uint32 = uint32(number_533abbd6_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 uint32 = uint32(number_533abbd6_bits(uint64(value_28), uint64(value_30), 32, false, 8))
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(value_30), 32, false, 8))
 	var tr uint32 = value_31
 	var value_32 uint32 = to
 	var value_33 int32 = 16
-	var value_34 uint32 = uint32(number_533abbd6_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 uint32 = uint32(number_533abbd6_bits(uint64(value_32), uint64(value_34), 32, false, 7))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 7))
 	var value_36 int32 = 255
-	var value_37 uint32 = uint32(number_533abbd6_bits(uint64(value_36), uint64(0), 32, false, 0))
-	var value_38 uint32 = uint32(number_533abbd6_bits(uint64(value_35), uint64(value_37), 32, false, 8))
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_38 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(value_37), 32, false, 8))
 	var tg uint32 = value_38
 	var value_39 uint32 = to
 	var value_40 int32 = 8
-	var value_41 uint32 = uint32(number_533abbd6_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 uint32 = uint32(number_533abbd6_bits(uint64(value_39), uint64(value_41), 32, false, 7))
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(value_41), 32, false, 7))
 	var value_43 int32 = 255
-	var value_44 uint32 = uint32(number_533abbd6_bits(uint64(value_43), uint64(0), 32, false, 0))
-	var value_45 uint32 = uint32(number_533abbd6_bits(uint64(value_42), uint64(value_44), 32, false, 8))
+	var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
+	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(value_44), 32, false, 8))
 	var tb uint32 = value_45
 	var value_46 uint32 = to
 	var value_47 int32 = 255
-	var value_48 uint32 = uint32(number_533abbd6_bits(uint64(value_47), uint64(0), 32, false, 0))
-	var value_49 uint32 = uint32(number_533abbd6_bits(uint64(value_46), uint64(value_48), 32, false, 8))
+	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
+	var value_49 uint32 = uint32(number_runtime_bits(uint64(value_46), uint64(value_48), 32, false, 8))
 	var ta uint32 = value_49
 	var value_50 uint32 = fr
 	var value_51 uint32 = tr
 	var value_52 uint32 = amount
 	var value_53 uint32 = Button_MixByte(value_50, value_51, value_52)
 	var value_54 int32 = 24
-	var value_55 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(0), 32, false, 0))
-	var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_53), uint64(value_55), 32, false, 6))
+	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(value_55), 32, false, 6))
 	var value_57 uint32 = fg
 	var value_58 uint32 = tg
 	var value_59 uint32 = amount
 	var value_60 uint32 = Button_MixByte(value_57, value_58, value_59)
 	var value_61 int32 = 16
-	var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_61), uint64(0), 32, false, 0))
-	var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_62), 32, false, 6))
-	var value_64 uint32 = uint32(number_533abbd6_bits(uint64(value_56), uint64(value_63), 32, false, 9))
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
+	var value_63 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(value_62), 32, false, 6))
+	var value_64 uint32 = uint32(number_runtime_bits(uint64(value_56), uint64(value_63), 32, false, 9))
 	var value_65 uint32 = fb
 	var value_66 uint32 = tb
 	var value_67 uint32 = amount
 	var value_68 uint32 = Button_MixByte(value_65, value_66, value_67)
 	var value_69 int32 = 8
-	var value_70 uint32 = uint32(number_533abbd6_bits(uint64(value_69), uint64(0), 32, false, 0))
-	var value_71 uint32 = uint32(number_533abbd6_bits(uint64(value_68), uint64(value_70), 32, false, 6))
-	var value_72 uint32 = uint32(number_533abbd6_bits(uint64(value_64), uint64(value_71), 32, false, 9))
+	var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
+	var value_71 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(value_70), 32, false, 6))
+	var value_72 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(value_71), 32, false, 9))
 	var value_73 uint32 = fa
 	var value_74 uint32 = ta
 	var value_75 uint32 = amount
 	var value_76 uint32 = Button_MixByte(value_73, value_74, value_75)
-	var value_77 uint32 = uint32(number_533abbd6_bits(uint64(value_72), uint64(value_76), 32, false, 9))
+	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(value_76), 32, false, 9))
 	return value_77
 }
 
@@ -1325,44 +1246,44 @@ func Button_ToneColor(tone int32, accent uint32, neutral uint32, danger uint32, 
 func Button_LightSurface(color uint32) bool {
 	var value_0 uint32 = color
 	var value_1 int32 = 24
-	var value_2 uint32 = uint32(number_533abbd6_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_533abbd6_bits(uint64(value_0), uint64(value_2), 32, false, 7))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 7))
 	var value_4 int32 = 255
-	var value_5 uint32 = uint32(number_533abbd6_bits(uint64(value_4), uint64(0), 32, false, 0))
-	var value_6 uint32 = uint32(number_533abbd6_bits(uint64(value_3), uint64(value_5), 32, false, 8))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(value_5), 32, false, 8))
 	var r uint32 = value_6
 	var value_7 uint32 = color
 	var value_8 int32 = 16
-	var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 uint32 = uint32(number_533abbd6_bits(uint64(value_7), uint64(value_9), 32, false, 7))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 7))
 	var value_11 int32 = 255
-	var value_12 uint32 = uint32(number_533abbd6_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_533abbd6_bits(uint64(value_10), uint64(value_12), 32, false, 8))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 8))
 	var g uint32 = value_13
 	var value_14 uint32 = color
 	var value_15 int32 = 8
-	var value_16 uint32 = uint32(number_533abbd6_bits(uint64(value_15), uint64(0), 32, false, 0))
-	var value_17 uint32 = uint32(number_533abbd6_bits(uint64(value_14), uint64(value_16), 32, false, 7))
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_16), 32, false, 7))
 	var value_18 int32 = 255
-	var value_19 uint32 = uint32(number_533abbd6_bits(uint64(value_18), uint64(0), 32, false, 0))
-	var value_20 uint32 = uint32(number_533abbd6_bits(uint64(value_17), uint64(value_19), 32, false, 8))
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(value_19), 32, false, 8))
 	var b uint32 = value_20
 	var value_21 uint32 = r
 	var value_22 int32 = 299
-	var value_23 uint32 = uint32(number_533abbd6_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 uint32 = uint32(number_533abbd6_bits(uint64(value_21), uint64(value_23), 32, false, 3))
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 3))
 	var value_25 uint32 = g
 	var value_26 int32 = 587
-	var value_27 uint32 = uint32(number_533abbd6_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 uint32 = uint32(number_533abbd6_bits(uint64(value_25), uint64(value_27), 32, false, 3))
-	var value_29 uint32 = uint32(number_533abbd6_bits(uint64(value_24), uint64(value_28), 32, false, 1))
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 3))
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_28), 32, false, 1))
 	var value_30 uint32 = b
 	var value_31 int32 = 114
-	var value_32 uint32 = uint32(number_533abbd6_bits(uint64(value_31), uint64(0), 32, false, 0))
-	var value_33 uint32 = uint32(number_533abbd6_bits(uint64(value_30), uint64(value_32), 32, false, 3))
-	var value_34 uint32 = uint32(number_533abbd6_bits(uint64(value_29), uint64(value_33), 32, false, 1))
+	var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(value_32), 32, false, 3))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_33), 32, false, 1))
 	var value_35 int32 = 150000
-	var value_36 uint32 = uint32(number_533abbd6_bits(uint64(value_35), uint64(0), 32, false, 0))
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
 	var value_37 bool = value_34 > value_36
 	return value_37
 }
@@ -1464,7 +1385,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		}
 		if value_58 {
 			var value_62 int32 = 18
-			var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_62), uint64(0), 32, false, 0))
+			var value_63 uint32 = uint32(number_runtime_bits(uint64(value_62), uint64(0), 32, false, 0))
 			var amount uint32 = value_63
 			var value_64 int32 = tone
 			var value_65 int32 = int32(ButtonToneWarning)
@@ -1478,13 +1399,13 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			}
 			if value_67 {
 				var value_71 int32 = 20
-				var value_72 uint32 = uint32(number_533abbd6_bits(uint64(value_71), uint64(0), 32, false, 0))
+				var value_72 uint32 = uint32(number_runtime_bits(uint64(value_71), uint64(0), 32, false, 0))
 				amount = value_72
 			}
 			var value_73 uint32 = surface
 			var value_74 uint32 = base
 			var value_75 int32 = 255
-			var value_76 uint32 = uint32(number_533abbd6_bits(uint64(value_75), uint64(0), 32, false, 0))
+			var value_76 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(0), 32, false, 0))
 			var value_77 uint32 = Surface_ChromaColor(value_74, value_76)
 			var value_78 uint32 = amount
 			var value_79 uint32 = Button_MixColor(value_73, value_77, value_78)
@@ -1497,7 +1418,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			var value_83 uint32 = surface
 			var value_84 uint32 = base
 			var value_85 int32 = 200
-			var value_86 uint32 = uint32(number_533abbd6_bits(uint64(value_85), uint64(0), 32, false, 0))
+			var value_86 uint32 = uint32(number_runtime_bits(uint64(value_85), uint64(0), 32, false, 0))
 			var value_87 uint32 = Surface_ChromaColor(value_84, value_86)
 			var value_88 uint32 = 20
 			var value_89 uint32 = Button_MixColor(value_83, value_87, value_88)
@@ -1565,16 +1486,16 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			var tinted uint32 = value_126
 			var value_127 uint32 = tinted
 			var value_128 int32 = 8
-			var value_129 uint32 = uint32(number_533abbd6_bits(uint64(value_128), uint64(0), 32, false, 0))
-			var value_130 uint32 = uint32(number_533abbd6_bits(uint64(value_127), uint64(value_129), 32, false, 7))
+			var value_129 uint32 = uint32(number_runtime_bits(uint64(value_128), uint64(0), 32, false, 0))
+			var value_130 uint32 = uint32(number_runtime_bits(uint64(value_127), uint64(value_129), 32, false, 7))
 			var value_131 int32 = 8
-			var value_132 uint32 = uint32(number_533abbd6_bits(uint64(value_131), uint64(0), 32, false, 0))
-			var value_133 uint32 = uint32(number_533abbd6_bits(uint64(value_130), uint64(value_132), 32, false, 6))
+			var value_132 uint32 = uint32(number_runtime_bits(uint64(value_131), uint64(0), 32, false, 0))
+			var value_133 uint32 = uint32(number_runtime_bits(uint64(value_130), uint64(value_132), 32, false, 6))
 			var value_134 uint32 = surface
 			var value_135 int32 = 255
-			var value_136 uint32 = uint32(number_533abbd6_bits(uint64(value_135), uint64(0), 32, false, 0))
-			var value_137 uint32 = uint32(number_533abbd6_bits(uint64(value_134), uint64(value_136), 32, false, 8))
-			var value_138 uint32 = uint32(number_533abbd6_bits(uint64(value_133), uint64(value_137), 32, false, 9))
+			var value_136 uint32 = uint32(number_runtime_bits(uint64(value_135), uint64(0), 32, false, 0))
+			var value_137 uint32 = uint32(number_runtime_bits(uint64(value_134), uint64(value_136), 32, false, 8))
+			var value_138 uint32 = uint32(number_runtime_bits(uint64(value_133), uint64(value_137), 32, false, 9))
 			background = value_138
 		}
 	}
@@ -1707,16 +1628,16 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 				var tinted uint32 = value_219
 				var value_220 uint32 = tinted
 				var value_221 int32 = 8
-				var value_222 uint32 = uint32(number_533abbd6_bits(uint64(value_221), uint64(0), 32, false, 0))
-				var value_223 uint32 = uint32(number_533abbd6_bits(uint64(value_220), uint64(value_222), 32, false, 7))
+				var value_222 uint32 = uint32(number_runtime_bits(uint64(value_221), uint64(0), 32, false, 0))
+				var value_223 uint32 = uint32(number_runtime_bits(uint64(value_220), uint64(value_222), 32, false, 7))
 				var value_224 int32 = 8
-				var value_225 uint32 = uint32(number_533abbd6_bits(uint64(value_224), uint64(0), 32, false, 0))
-				var value_226 uint32 = uint32(number_533abbd6_bits(uint64(value_223), uint64(value_225), 32, false, 6))
+				var value_225 uint32 = uint32(number_runtime_bits(uint64(value_224), uint64(0), 32, false, 0))
+				var value_226 uint32 = uint32(number_runtime_bits(uint64(value_223), uint64(value_225), 32, false, 6))
 				var value_227 uint32 = surface
 				var value_228 int32 = 255
-				var value_229 uint32 = uint32(number_533abbd6_bits(uint64(value_228), uint64(0), 32, false, 0))
-				var value_230 uint32 = uint32(number_533abbd6_bits(uint64(value_227), uint64(value_229), 32, false, 8))
-				var value_231 uint32 = uint32(number_533abbd6_bits(uint64(value_226), uint64(value_230), 32, false, 9))
+				var value_229 uint32 = uint32(number_runtime_bits(uint64(value_228), uint64(0), 32, false, 0))
+				var value_230 uint32 = uint32(number_runtime_bits(uint64(value_227), uint64(value_229), 32, false, 8))
+				var value_231 uint32 = uint32(number_runtime_bits(uint64(value_226), uint64(value_230), 32, false, 9))
 				return value_231
 			}
 			var value_232 int32 = emphasis
@@ -1959,15 +1880,15 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	}
 	if value_378 {
 		var value_382 int32 = 16777215
-		var value_383 uint32 = uint32(number_533abbd6_bits(uint64(value_382), uint64(0), 32, false, 0))
+		var value_383 uint32 = uint32(number_runtime_bits(uint64(value_382), uint64(0), 32, false, 0))
 		var value_384 int32 = 8
-		var value_385 uint32 = uint32(number_533abbd6_bits(uint64(value_384), uint64(0), 32, false, 0))
-		var value_386 uint32 = uint32(number_533abbd6_bits(uint64(value_383), uint64(value_385), 32, false, 6))
+		var value_385 uint32 = uint32(number_runtime_bits(uint64(value_384), uint64(0), 32, false, 0))
+		var value_386 uint32 = uint32(number_runtime_bits(uint64(value_383), uint64(value_385), 32, false, 6))
 		var value_387 uint32 = background
 		var value_388 int32 = 255
-		var value_389 uint32 = uint32(number_533abbd6_bits(uint64(value_388), uint64(0), 32, false, 0))
-		var value_390 uint32 = uint32(number_533abbd6_bits(uint64(value_387), uint64(value_389), 32, false, 8))
-		var value_391 uint32 = uint32(number_533abbd6_bits(uint64(value_386), uint64(value_390), 32, false, 9))
+		var value_389 uint32 = uint32(number_runtime_bits(uint64(value_388), uint64(0), 32, false, 0))
+		var value_390 uint32 = uint32(number_runtime_bits(uint64(value_387), uint64(value_389), 32, false, 8))
+		var value_391 uint32 = uint32(number_runtime_bits(uint64(value_386), uint64(value_390), 32, false, 9))
 		var white uint32 = value_391
 		var value_392 uint32 = background
 		var value_393 uint32 = white
@@ -2053,16 +1974,16 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var tinted uint32 = value_442
 		var value_443 uint32 = tinted
 		var value_444 int32 = 8
-		var value_445 uint32 = uint32(number_533abbd6_bits(uint64(value_444), uint64(0), 32, false, 0))
-		var value_446 uint32 = uint32(number_533abbd6_bits(uint64(value_443), uint64(value_445), 32, false, 7))
+		var value_445 uint32 = uint32(number_runtime_bits(uint64(value_444), uint64(0), 32, false, 0))
+		var value_446 uint32 = uint32(number_runtime_bits(uint64(value_443), uint64(value_445), 32, false, 7))
 		var value_447 int32 = 8
-		var value_448 uint32 = uint32(number_533abbd6_bits(uint64(value_447), uint64(0), 32, false, 0))
-		var value_449 uint32 = uint32(number_533abbd6_bits(uint64(value_446), uint64(value_448), 32, false, 6))
+		var value_448 uint32 = uint32(number_runtime_bits(uint64(value_447), uint64(0), 32, false, 0))
+		var value_449 uint32 = uint32(number_runtime_bits(uint64(value_446), uint64(value_448), 32, false, 6))
 		var value_450 uint32 = surface
 		var value_451 int32 = 255
-		var value_452 uint32 = uint32(number_533abbd6_bits(uint64(value_451), uint64(0), 32, false, 0))
-		var value_453 uint32 = uint32(number_533abbd6_bits(uint64(value_450), uint64(value_452), 32, false, 8))
-		var value_454 uint32 = uint32(number_533abbd6_bits(uint64(value_449), uint64(value_453), 32, false, 9))
+		var value_452 uint32 = uint32(number_runtime_bits(uint64(value_451), uint64(0), 32, false, 0))
+		var value_453 uint32 = uint32(number_runtime_bits(uint64(value_450), uint64(value_452), 32, false, 8))
+		var value_454 uint32 = uint32(number_runtime_bits(uint64(value_449), uint64(value_453), 32, false, 9))
 		return value_454
 	}
 	var value_455 int32 = state
@@ -2189,14 +2110,14 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 			var value_7 bool = value_5 != value_6
 			if value_7 {
 				var value_8 int32 = 70
-				var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
+				var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
 				var amount uint32 = value_9
 				var value_10 int32 = tone
 				var value_11 int32 = int32(ButtonToneDanger)
 				var value_12 bool = value_10 == value_11
 				if value_12 {
 					var value_13 int32 = 55
-					var value_14 uint32 = uint32(number_533abbd6_bits(uint64(value_13), uint64(0), 32, false, 0))
+					var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
 					amount = value_14
 				}
 				var value_15 uint32 = disabled_text
@@ -2252,16 +2173,16 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		var value_52 uint32 = success
 		var value_53 uint32 = success
 		var value_54 int32 = 255
-		var value_55 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(0), 32, false, 0))
-		var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_53), uint64(value_55), 32, false, 8))
+		var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+		var value_56 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(value_55), 32, false, 8))
 		var value_57 uint32 = 50
 		var value_58 uint32 = Button_MixColor(value_52, value_56, value_57)
 		success = value_58
 		var value_59 uint32 = warning
 		var value_60 uint32 = warning
 		var value_61 int32 = 255
-		var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_61), uint64(0), 32, false, 0))
-		var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_62), 32, false, 8))
+		var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
+		var value_63 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(value_62), 32, false, 8))
 		var value_64 uint32 = 60
 		var value_65 uint32 = Button_MixColor(value_59, value_63, value_64)
 		warning = value_65
@@ -2370,16 +2291,16 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		if value_129 {
 			var value_130 uint32 = warning
 			var value_131 int32 = 8
-			var value_132 uint32 = uint32(number_533abbd6_bits(uint64(value_131), uint64(0), 32, false, 0))
-			var value_133 uint32 = uint32(number_533abbd6_bits(uint64(value_130), uint64(value_132), 32, false, 7))
+			var value_132 uint32 = uint32(number_runtime_bits(uint64(value_131), uint64(0), 32, false, 0))
+			var value_133 uint32 = uint32(number_runtime_bits(uint64(value_130), uint64(value_132), 32, false, 7))
 			var value_134 int32 = 8
-			var value_135 uint32 = uint32(number_533abbd6_bits(uint64(value_134), uint64(0), 32, false, 0))
-			var value_136 uint32 = uint32(number_533abbd6_bits(uint64(value_133), uint64(value_135), 32, false, 6))
+			var value_135 uint32 = uint32(number_runtime_bits(uint64(value_134), uint64(0), 32, false, 0))
+			var value_136 uint32 = uint32(number_runtime_bits(uint64(value_133), uint64(value_135), 32, false, 6))
 			var value_137 uint32 = on_warning
 			var value_138 int32 = 255
-			var value_139 uint32 = uint32(number_533abbd6_bits(uint64(value_138), uint64(0), 32, false, 0))
-			var value_140 uint32 = uint32(number_533abbd6_bits(uint64(value_137), uint64(value_139), 32, false, 8))
-			var value_141 uint32 = uint32(number_533abbd6_bits(uint64(value_136), uint64(value_140), 32, false, 9))
+			var value_139 uint32 = uint32(number_runtime_bits(uint64(value_138), uint64(0), 32, false, 0))
+			var value_140 uint32 = uint32(number_runtime_bits(uint64(value_137), uint64(value_139), 32, false, 8))
+			var value_141 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(value_140), 32, false, 9))
 			var warm uint32 = value_141
 			var value_142 uint32 = on_warning
 			var value_143 uint32 = warm
@@ -2404,8 +2325,8 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32, success uint32) uint32 {
 	var value_0 uint32 = focus
 	var value_1 int32 = 255
-	var value_2 uint32 = uint32(number_533abbd6_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_533abbd6_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
 	var alpha uint32 = value_3
 	var value_4 uint32 = surface
 	var value_5 bool = Button_LightSurface(value_4)
@@ -2417,18 +2338,18 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 		if value_9 {
 			var value_10 uint32 = success
 			var value_11 int32 = 255
-			var value_12 uint32 = uint32(number_533abbd6_bits(uint64(value_11), uint64(0), 32, false, 0))
+			var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
 			var value_13 uint32 = Surface_ChromaColor(value_10, value_12)
 			var luminous uint32 = value_13
 			var value_14 uint32 = luminous
 			var value_15 int32 = 8
-			var value_16 uint32 = uint32(number_533abbd6_bits(uint64(value_15), uint64(0), 32, false, 0))
-			var value_17 uint32 = uint32(number_533abbd6_bits(uint64(value_14), uint64(value_16), 32, false, 7))
+			var value_16 uint32 = uint32(number_runtime_bits(uint64(value_15), uint64(0), 32, false, 0))
+			var value_17 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_16), 32, false, 7))
 			var value_18 int32 = 8
-			var value_19 uint32 = uint32(number_533abbd6_bits(uint64(value_18), uint64(0), 32, false, 0))
-			var value_20 uint32 = uint32(number_533abbd6_bits(uint64(value_17), uint64(value_19), 32, false, 6))
+			var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
+			var value_20 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(value_19), 32, false, 6))
 			var value_21 uint32 = alpha
-			var value_22 uint32 = uint32(number_533abbd6_bits(uint64(value_20), uint64(value_21), 32, false, 9))
+			var value_22 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, false, 9))
 			return value_22
 		}
 		var value_23 uint32 = focus
@@ -2454,11 +2375,11 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 	if value_31 {
 		var value_35 uint32 = alpha
 		var value_36 int32 = 18
-		var value_37 uint32 = uint32(number_533abbd6_bits(uint64(value_36), uint64(0), 32, false, 0))
-		var value_38 uint32 = uint32(number_533abbd6_bits(uint64(value_35), uint64(value_37), 32, false, 3))
+		var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
+		var value_38 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(value_37), 32, false, 3))
 		var value_39 int32 = 100
-		var value_40 uint32 = uint32(number_533abbd6_bits(uint64(value_39), uint64(0), 32, false, 0))
-		var value_41 uint32 = uint32(number_533abbd6_bits(uint64(value_38), uint64(value_40), 32, false, 4))
+		var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
+		var value_41 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(value_40), 32, false, 4))
 		alpha = value_41
 	}
 	var value_42 int32 = tone
@@ -2467,24 +2388,24 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 	if value_44 {
 		var value_45 uint32 = success
 		var value_46 int32 = 8
-		var value_47 uint32 = uint32(number_533abbd6_bits(uint64(value_46), uint64(0), 32, false, 0))
-		var value_48 uint32 = uint32(number_533abbd6_bits(uint64(value_45), uint64(value_47), 32, false, 7))
+		var value_47 uint32 = uint32(number_runtime_bits(uint64(value_46), uint64(0), 32, false, 0))
+		var value_48 uint32 = uint32(number_runtime_bits(uint64(value_45), uint64(value_47), 32, false, 7))
 		var value_49 int32 = 8
-		var value_50 uint32 = uint32(number_533abbd6_bits(uint64(value_49), uint64(0), 32, false, 0))
-		var value_51 uint32 = uint32(number_533abbd6_bits(uint64(value_48), uint64(value_50), 32, false, 6))
+		var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+		var value_51 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(value_50), 32, false, 6))
 		var value_52 uint32 = alpha
-		var value_53 uint32 = uint32(number_533abbd6_bits(uint64(value_51), uint64(value_52), 32, false, 9))
+		var value_53 uint32 = uint32(number_runtime_bits(uint64(value_51), uint64(value_52), 32, false, 9))
 		return value_53
 	}
 	var value_54 uint32 = focus
 	var value_55 int32 = 8
-	var value_56 uint32 = uint32(number_533abbd6_bits(uint64(value_55), uint64(0), 32, false, 0))
-	var value_57 uint32 = uint32(number_533abbd6_bits(uint64(value_54), uint64(value_56), 32, false, 7))
+	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
+	var value_57 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(value_56), 32, false, 7))
 	var value_58 int32 = 8
-	var value_59 uint32 = uint32(number_533abbd6_bits(uint64(value_58), uint64(0), 32, false, 0))
-	var value_60 uint32 = uint32(number_533abbd6_bits(uint64(value_57), uint64(value_59), 32, false, 6))
+	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
+	var value_60 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(value_59), 32, false, 6))
 	var value_61 uint32 = alpha
-	var value_62 uint32 = uint32(number_533abbd6_bits(uint64(value_60), uint64(value_61), 32, false, 9))
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, false, 9))
 	return value_62
 }
 
@@ -2494,7 +2415,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 int32 = 0
-		var value_4 uint32 = uint32(number_533abbd6_bits(uint64(value_3), uint64(0), 32, false, 0))
+		var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
 		return value_4
 	}
 	var value_5 int32 = emphasis
@@ -2502,7 +2423,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_7 bool = value_5 == value_6
 	if value_7 {
 		var value_8 int32 = 0
-		var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
+		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
 		return value_9
 	}
 	var value_10 int32 = tone
@@ -2541,14 +2462,14 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_33 bool = value_31 == value_32
 	if value_33 {
 		var value_34 int32 = 25
-		var value_35 uint32 = uint32(number_533abbd6_bits(uint64(value_34), uint64(0), 32, false, 0))
+		var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
 		var amount uint32 = value_35
 		var value_36 int32 = tone
 		var value_37 int32 = int32(ButtonToneNeutral)
 		var value_38 bool = value_36 == value_37
 		if value_38 {
 			var value_39 int32 = 45
-			var value_40 uint32 = uint32(number_533abbd6_bits(uint64(value_39), uint64(0), 32, false, 0))
+			var value_40 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(0), 32, false, 0))
 			amount = value_40
 		}
 		var value_41 uint32 = surface

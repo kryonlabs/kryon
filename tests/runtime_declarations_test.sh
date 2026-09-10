@@ -13,6 +13,7 @@ cmp "$work/runtime_declarations.generated.h" cmd/kir/runtime_declarations.genera
 "$build/bin/k2go" --strict --no-main --runtime-implementation --pkg kryon \
     --root . -o "$work/go" runtime/*.kry
 gofmt -w "$work/go"/*.go
+cmp "$work/go/numeric_support.go" go/kryon/numeric_support.go
 for source in runtime/*_props.kry; do
     name=$(basename "$source" .kry)
     cmp "$work/c/runtime/$name.h" "include/ui_$name.generated.h"

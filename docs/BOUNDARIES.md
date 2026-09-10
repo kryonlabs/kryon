@@ -72,6 +72,10 @@ hosts supply font measurements and available space, while `.kry` owns bounds
 and shape decisions. Borrowed label/typeface fields retain host-owned storage;
 shared code does not turn length-aware string views into C pointers.
 Runtime-generated Go binds host services to the owning runtime receiver.
+Its arithmetic support belongs to the compiler and is emitted once per runtime
+package in `numeric_support.go`. Widgets must not duplicate those helpers or
+replace them with handwritten approximations. Ordinary application generation
+keeps its independent per-module numeric support.
 Generic `#extern` calls propagate this dependency through shared helpers, while
 direct Go package imports stay stateless. Application host bridges remain
 separate from runtime implementation; no runtime-wide mutable service setter is

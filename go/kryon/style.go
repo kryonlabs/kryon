@@ -3,85 +3,6 @@ package kryon
 
 // #import surface
 // #import control_props
-func number_bf4c9b4b_float(x float64, w uint, sign bool) uint64 {
-	bits := w
-	if sign {
-		bits--
-	}
-	bound := float64(1)
-	for i := uint(0); i < bits; i++ {
-		bound *= 2
-	}
-	lower := float64(0)
-	if sign {
-		lower = -bound
-	}
-	if !(x >= lower && x < bound) {
-		panic("float conversion out of range")
-	}
-	if sign {
-		return uint64(int64(x))
-	}
-	return uint64(x)
-}
-func number_bf4c9b4b_bits(a, b uint64, w uint, sign bool, op int) uint64 {
-	mask := ^uint64(0)
-	if w < 64 {
-		mask = (uint64(1) << w) - 1
-	}
-	shift := b
-	a &= mask
-	b &= mask
-	switch op {
-	case 0:
-		return a
-	case 1:
-		return (a + b) & mask
-	case 2:
-		return (a - b) & mask
-	case 3:
-		return (a * b) & mask
-	case 4, 5:
-		if b == 0 {
-			panic("integer division by zero")
-		}
-		if sign {
-			x := int64(a<<(64-w)) >> (64 - w)
-			y := int64(b<<(64-w)) >> (64 - w)
-			if op == 4 {
-				return uint64(x/y) & mask
-			}
-			return uint64(x%y) & mask
-		}
-		if op == 4 {
-			return a / b
-		}
-		return a % b
-	case 6, 7:
-		if shift >= uint64(w) {
-			panic("invalid shift count")
-		}
-		if op == 6 {
-			return (a << shift) & mask
-		}
-		if shift == 0 {
-			return a
-		}
-		result := a >> shift
-		if sign && (a&(uint64(1)<<(w-1))) != 0 {
-			result |= mask ^ (mask >> shift)
-		}
-		return result
-	case 8:
-		return a & b
-	case 9:
-		return a | b
-	case 10:
-		return a ^ b
-	}
-	panic("invalid numeric operation")
-}
-
 type StateFlags struct {
 	Disabled bool
 	Loading  bool
@@ -256,46 +177,46 @@ func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool,
 
 func Style_DefaultFields() uint32 {
 	var value_0 int32 = int32(StyleBackground)
-	var value_1 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_0), uint64(0), 32, false, 0))
+	var value_1 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(0), 32, false, 0))
 	var value_2 int32 = int32(StyleForeground)
-	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_2), uint64(0), 32, false, 0))
-	var value_4 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(value_3), 32, false, 9))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(value_3), 32, false, 9))
 	var value_5 int32 = int32(StyleBorder)
-	var value_6 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_4), uint64(value_6), 32, false, 9))
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 9))
 	var value_8 int32 = int32(StyleFocus)
-	var value_9 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_8), uint64(0), 32, false, 0))
-	var value_10 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_7), uint64(value_9), 32, false, 9))
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 9))
 	var value_11 int32 = int32(StyleRadius)
-	var value_12 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_11), uint64(0), 32, false, 0))
-	var value_13 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_10), uint64(value_12), 32, false, 9))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_12), 32, false, 9))
 	var value_14 int32 = int32(StyleBorderWidth)
-	var value_15 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_14), uint64(0), 32, false, 0))
-	var value_16 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_13), uint64(value_15), 32, false, 9))
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(0), 32, false, 0))
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(value_15), 32, false, 9))
 	var value_17 int32 = int32(StyleOpacity)
-	var value_18 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_16), uint64(value_18), 32, false, 9))
+	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(value_18), 32, false, 9))
 	var value_20 int32 = int32(StylePaddingX)
-	var value_21 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_20), uint64(0), 32, false, 0))
-	var value_22 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_19), uint64(value_21), 32, false, 9))
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 9))
 	var value_23 int32 = int32(StylePaddingY)
-	var value_24 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_23), uint64(0), 32, false, 0))
-	var value_25 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_22), uint64(value_24), 32, false, 9))
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
+	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(value_24), 32, false, 9))
 	var value_26 int32 = int32(StyleGap)
-	var value_27 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_26), uint64(0), 32, false, 0))
-	var value_28 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_25), uint64(value_27), 32, false, 9))
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 9))
 	var value_29 int32 = int32(StyleFontSize)
-	var value_30 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_29), uint64(0), 32, false, 0))
-	var value_31 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_28), uint64(value_30), 32, false, 9))
+	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(0), 32, false, 0))
+	var value_31 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(value_30), 32, false, 9))
 	var value_32 int32 = int32(StyleIconSize)
-	var value_33 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(0), 32, false, 0))
-	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_31), uint64(value_33), 32, false, 9))
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(value_33), 32, false, 9))
 	var value_35 int32 = int32(StyleContentOffset)
-	var value_36 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_35), uint64(0), 32, false, 0))
-	var value_37 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_34), uint64(value_36), 32, false, 9))
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(value_36), 32, false, 9))
 	var value_38 int32 = int32(StyleMaterial)
-	var value_39 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_38), uint64(0), 32, false, 0))
-	var value_40 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_37), uint64(value_39), 32, false, 9))
+	var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
+	var value_40 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(value_39), 32, false, 9))
 	return value_40
 }
 
@@ -559,10 +480,10 @@ func Style_TransitionFrame(resolved StyleData, normal StyleData, hover StyleData
 func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	var value_0 uint32 = override.Fields
 	var value_1 int32 = int32(StyleBackground)
-	var value_2 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_0), uint64(value_2), 32, false, 8))
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_2), 32, false, 8))
 	var value_4 int32 = 0
-	var value_5 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_4), uint64(0), 32, false, 0))
+	var value_5 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(0), 32, false, 0))
 	var value_6 bool = value_3 != value_5
 	if value_6 {
 		var value_7 uint32 = override.Background
@@ -570,10 +491,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_8 uint32 = override.Fields
 	var value_9 int32 = int32(StyleForeground)
-	var value_10 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_8), uint64(value_10), 32, false, 8))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_10), 32, false, 8))
 	var value_12 int32 = 0
-	var value_13 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
 	var value_14 bool = value_11 != value_13
 	if value_14 {
 		var value_15 uint32 = override.Foreground
@@ -581,10 +502,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_16 uint32 = override.Fields
 	var value_17 int32 = int32(StyleBorder)
-	var value_18 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_17), uint64(0), 32, false, 0))
-	var value_19 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_16), uint64(value_18), 32, false, 8))
+	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
+	var value_19 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(value_18), 32, false, 8))
 	var value_20 int32 = 0
-	var value_21 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
 	var value_22 bool = value_19 != value_21
 	if value_22 {
 		var value_23 uint32 = override.Border
@@ -592,10 +513,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_24 uint32 = override.Fields
 	var value_25 int32 = int32(StyleFocus)
-	var value_26 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_24), uint64(value_26), 32, false, 8))
+	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_26), 32, false, 8))
 	var value_28 int32 = 0
-	var value_29 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_28), uint64(0), 32, false, 0))
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
 	var value_30 bool = value_27 != value_29
 	if value_30 {
 		var value_31 uint32 = override.Focus
@@ -603,10 +524,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_32 uint32 = override.Fields
 	var value_33 int32 = int32(StyleRadius)
-	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(value_34), 32, false, 8))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 8))
 	var value_36 int32 = 0
-	var value_37 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
 	var value_38 bool = value_35 != value_37
 	if value_38 {
 		var value_39 float32 = override.Radius
@@ -614,10 +535,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_40 uint32 = override.Fields
 	var value_41 int32 = int32(StyleBorderWidth)
-	var value_42 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_41), uint64(0), 32, false, 0))
-	var value_43 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_40), uint64(value_42), 32, false, 8))
+	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
+	var value_43 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(value_42), 32, false, 8))
 	var value_44 int32 = 0
-	var value_45 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_44), uint64(0), 32, false, 0))
+	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
 	var value_46 bool = value_43 != value_45
 	if value_46 {
 		var value_47 float32 = override.BorderWidth
@@ -625,10 +546,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_48 uint32 = override.Fields
 	var value_49 int32 = int32(StyleOpacity)
-	var value_50 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_49), uint64(0), 32, false, 0))
-	var value_51 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_48), uint64(value_50), 32, false, 8))
+	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_48), uint64(value_50), 32, false, 8))
 	var value_52 int32 = 0
-	var value_53 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_52), uint64(0), 32, false, 0))
+	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
 	var value_54 bool = value_51 != value_53
 	if value_54 {
 		var value_55 float32 = override.Opacity
@@ -636,10 +557,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_56 uint32 = override.Fields
 	var value_57 int32 = int32(StylePaddingX)
-	var value_58 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_57), uint64(0), 32, false, 0))
-	var value_59 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_56), uint64(value_58), 32, false, 8))
+	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
+	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_56), uint64(value_58), 32, false, 8))
 	var value_60 int32 = 0
-	var value_61 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_60), uint64(0), 32, false, 0))
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
 	var value_62 bool = value_59 != value_61
 	if value_62 {
 		var value_63 float32 = override.PaddingX
@@ -647,10 +568,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_64 uint32 = override.Fields
 	var value_65 int32 = int32(StylePaddingY)
-	var value_66 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_65), uint64(0), 32, false, 0))
-	var value_67 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_64), uint64(value_66), 32, false, 8))
+	var value_66 uint32 = uint32(number_runtime_bits(uint64(value_65), uint64(0), 32, false, 0))
+	var value_67 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(value_66), 32, false, 8))
 	var value_68 int32 = 0
-	var value_69 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_68), uint64(0), 32, false, 0))
+	var value_69 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(0), 32, false, 0))
 	var value_70 bool = value_67 != value_69
 	if value_70 {
 		var value_71 float32 = override.PaddingY
@@ -658,10 +579,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_72 uint32 = override.Fields
 	var value_73 int32 = int32(StyleGap)
-	var value_74 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_73), uint64(0), 32, false, 0))
-	var value_75 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_72), uint64(value_74), 32, false, 8))
+	var value_74 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(0), 32, false, 0))
+	var value_75 uint32 = uint32(number_runtime_bits(uint64(value_72), uint64(value_74), 32, false, 8))
 	var value_76 int32 = 0
-	var value_77 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_76), uint64(0), 32, false, 0))
+	var value_77 uint32 = uint32(number_runtime_bits(uint64(value_76), uint64(0), 32, false, 0))
 	var value_78 bool = value_75 != value_77
 	if value_78 {
 		var value_79 float32 = override.Gap
@@ -669,10 +590,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_80 uint32 = override.Fields
 	var value_81 int32 = int32(StyleFontSize)
-	var value_82 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_81), uint64(0), 32, false, 0))
-	var value_83 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_80), uint64(value_82), 32, false, 8))
+	var value_82 uint32 = uint32(number_runtime_bits(uint64(value_81), uint64(0), 32, false, 0))
+	var value_83 uint32 = uint32(number_runtime_bits(uint64(value_80), uint64(value_82), 32, false, 8))
 	var value_84 int32 = 0
-	var value_85 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_84), uint64(0), 32, false, 0))
+	var value_85 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(0), 32, false, 0))
 	var value_86 bool = value_83 != value_85
 	if value_86 {
 		var value_87 float32 = override.FontSize
@@ -680,10 +601,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_88 uint32 = override.Fields
 	var value_89 int32 = int32(StyleIconSize)
-	var value_90 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_89), uint64(0), 32, false, 0))
-	var value_91 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_88), uint64(value_90), 32, false, 8))
+	var value_90 uint32 = uint32(number_runtime_bits(uint64(value_89), uint64(0), 32, false, 0))
+	var value_91 uint32 = uint32(number_runtime_bits(uint64(value_88), uint64(value_90), 32, false, 8))
 	var value_92 int32 = 0
-	var value_93 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_92), uint64(0), 32, false, 0))
+	var value_93 uint32 = uint32(number_runtime_bits(uint64(value_92), uint64(0), 32, false, 0))
 	var value_94 bool = value_91 != value_93
 	if value_94 {
 		var value_95 float32 = override.IconSize
@@ -691,10 +612,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_96 uint32 = override.Fields
 	var value_97 int32 = int32(StyleContentOffset)
-	var value_98 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_97), uint64(0), 32, false, 0))
-	var value_99 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_96), uint64(value_98), 32, false, 8))
+	var value_98 uint32 = uint32(number_runtime_bits(uint64(value_97), uint64(0), 32, false, 0))
+	var value_99 uint32 = uint32(number_runtime_bits(uint64(value_96), uint64(value_98), 32, false, 8))
 	var value_100 int32 = 0
-	var value_101 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_100), uint64(0), 32, false, 0))
+	var value_101 uint32 = uint32(number_runtime_bits(uint64(value_100), uint64(0), 32, false, 0))
 	var value_102 bool = value_99 != value_101
 	if value_102 {
 		var value_103 float32 = override.OffsetX
@@ -702,10 +623,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_104 uint32 = override.Fields
 	var value_105 int32 = int32(StyleContentOffset)
-	var value_106 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_105), uint64(0), 32, false, 0))
-	var value_107 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_104), uint64(value_106), 32, false, 8))
+	var value_106 uint32 = uint32(number_runtime_bits(uint64(value_105), uint64(0), 32, false, 0))
+	var value_107 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(value_106), 32, false, 8))
 	var value_108 int32 = 0
-	var value_109 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_108), uint64(0), 32, false, 0))
+	var value_109 uint32 = uint32(number_runtime_bits(uint64(value_108), uint64(0), 32, false, 0))
 	var value_110 bool = value_107 != value_109
 	if value_110 {
 		var value_111 float32 = override.OffsetY
@@ -713,10 +634,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_112 uint32 = override.Fields
 	var value_113 int32 = int32(StyleBackgroundEnd)
-	var value_114 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_113), uint64(0), 32, false, 0))
-	var value_115 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_112), uint64(value_114), 32, false, 8))
+	var value_114 uint32 = uint32(number_runtime_bits(uint64(value_113), uint64(0), 32, false, 0))
+	var value_115 uint32 = uint32(number_runtime_bits(uint64(value_112), uint64(value_114), 32, false, 8))
 	var value_116 int32 = 0
-	var value_117 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_116), uint64(0), 32, false, 0))
+	var value_117 uint32 = uint32(number_runtime_bits(uint64(value_116), uint64(0), 32, false, 0))
 	var value_118 bool = value_115 != value_117
 	if value_118 {
 		var value_119 uint32 = override.BackgroundEnd
@@ -724,10 +645,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_120 uint32 = override.Fields
 	var value_121 int32 = int32(StyleMaterial)
-	var value_122 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_121), uint64(0), 32, false, 0))
-	var value_123 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_120), uint64(value_122), 32, false, 8))
+	var value_122 uint32 = uint32(number_runtime_bits(uint64(value_121), uint64(0), 32, false, 0))
+	var value_123 uint32 = uint32(number_runtime_bits(uint64(value_120), uint64(value_122), 32, false, 8))
 	var value_124 int32 = 0
-	var value_125 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_124), uint64(0), 32, false, 0))
+	var value_125 uint32 = uint32(number_runtime_bits(uint64(value_124), uint64(0), 32, false, 0))
 	var value_126 bool = value_123 != value_125
 	if value_126 {
 		var value_127 int32 = override.Material
@@ -735,10 +656,10 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_128 uint32 = override.Fields
 	var value_129 int32 = int32(StyleTypeface)
-	var value_130 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_129), uint64(0), 32, false, 0))
-	var value_131 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_128), uint64(value_130), 32, false, 8))
+	var value_130 uint32 = uint32(number_runtime_bits(uint64(value_129), uint64(0), 32, false, 0))
+	var value_131 uint32 = uint32(number_runtime_bits(uint64(value_128), uint64(value_130), 32, false, 8))
 	var value_132 int32 = 0
-	var value_133 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_132), uint64(0), 32, false, 0))
+	var value_133 uint32 = uint32(number_runtime_bits(uint64(value_132), uint64(0), 32, false, 0))
 	var value_134 bool = value_131 != value_133
 	if value_134 {
 		var value_135 string = override.Typeface
@@ -746,7 +667,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	}
 	var value_136 uint32 = base.Fields
 	var value_137 uint32 = override.Fields
-	var value_138 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_136), uint64(value_137), 32, false, 9))
+	var value_138 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(value_137), 32, false, 9))
 	base.Fields = value_138
 	var value_139 StyleData = base
 	return value_139

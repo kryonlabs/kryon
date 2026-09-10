@@ -5,85 +5,6 @@ package kryon
 // #import style
 // #import control_props
 // #import surface
-func number_b8890cb7_float(x float64, w uint, sign bool) uint64 {
-	bits := w
-	if sign {
-		bits--
-	}
-	bound := float64(1)
-	for i := uint(0); i < bits; i++ {
-		bound *= 2
-	}
-	lower := float64(0)
-	if sign {
-		lower = -bound
-	}
-	if !(x >= lower && x < bound) {
-		panic("float conversion out of range")
-	}
-	if sign {
-		return uint64(int64(x))
-	}
-	return uint64(x)
-}
-func number_b8890cb7_bits(a, b uint64, w uint, sign bool, op int) uint64 {
-	mask := ^uint64(0)
-	if w < 64 {
-		mask = (uint64(1) << w) - 1
-	}
-	shift := b
-	a &= mask
-	b &= mask
-	switch op {
-	case 0:
-		return a
-	case 1:
-		return (a + b) & mask
-	case 2:
-		return (a - b) & mask
-	case 3:
-		return (a * b) & mask
-	case 4, 5:
-		if b == 0 {
-			panic("integer division by zero")
-		}
-		if sign {
-			x := int64(a<<(64-w)) >> (64 - w)
-			y := int64(b<<(64-w)) >> (64 - w)
-			if op == 4 {
-				return uint64(x/y) & mask
-			}
-			return uint64(x%y) & mask
-		}
-		if op == 4 {
-			return a / b
-		}
-		return a % b
-	case 6, 7:
-		if shift >= uint64(w) {
-			panic("invalid shift count")
-		}
-		if op == 6 {
-			return (a << shift) & mask
-		}
-		if shift == 0 {
-			return a
-		}
-		result := a >> shift
-		if sign && (a&(uint64(1)<<(w-1))) != 0 {
-			result |= mask ^ (mask >> shift)
-		}
-		return result
-	case 8:
-		return a & b
-	case 9:
-		return a | b
-	case 10:
-		return a ^ b
-	}
-	panic("invalid numeric operation")
-}
-
 type MaterialPaint struct {
 	Bounds    Rectangle
 	Surface   Rectangle
@@ -190,10 +111,10 @@ func Material_PaintMaterialLayer(paint MaterialPaint, index int32) SurfaceDrawin
 			var value_28 SurfaceLayer = layer
 			var value_29 uint32 = value.Fields
 			var value_30 int32 = int32(StyleBackgroundEnd)
-			var value_31 uint32 = uint32(number_b8890cb7_bits(uint64(value_30), uint64(0), 32, false, 0))
-			var value_32 uint32 = uint32(number_b8890cb7_bits(uint64(value_29), uint64(value_31), 32, false, 8))
+			var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
+			var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 8))
 			var value_33 int32 = 0
-			var value_34 uint32 = uint32(number_b8890cb7_bits(uint64(value_33), uint64(0), 32, false, 0))
+			var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
 			var value_35 bool = value_32 != value_34
 			var value_36 uint32 = value.Background
 			var value_37 uint32 = value.BackgroundEnd
@@ -262,10 +183,10 @@ func Material_PaintMaterialLayer(paint MaterialPaint, index int32) SurfaceDrawin
 	if value_83 {
 		var value_84 uint32 = layer.Color
 		var value_85 int32 = 255
-		var value_86 uint32 = uint32(number_b8890cb7_bits(uint64(value_85), uint64(0), 32, false, 0))
-		var value_87 uint32 = uint32(number_b8890cb7_bits(uint64(value_84), uint64(value_86), 32, false, 8))
+		var value_86 uint32 = uint32(number_runtime_bits(uint64(value_85), uint64(0), 32, false, 0))
+		var value_87 uint32 = uint32(number_runtime_bits(uint64(value_84), uint64(value_86), 32, false, 8))
 		var value_88 int32 = 0
-		var value_89 uint32 = uint32(number_b8890cb7_bits(uint64(value_88), uint64(0), 32, false, 0))
+		var value_89 uint32 = uint32(number_runtime_bits(uint64(value_88), uint64(0), 32, false, 0))
 		var value_90 bool = value_87 != value_89
 		var value_91 bool = value_90
 		if !value_91 {
@@ -274,10 +195,10 @@ func Material_PaintMaterialLayer(paint MaterialPaint, index int32) SurfaceDrawin
 			if value_93 {
 				var value_94 uint32 = layer.EndColor
 				var value_95 int32 = 255
-				var value_96 uint32 = uint32(number_b8890cb7_bits(uint64(value_95), uint64(0), 32, false, 0))
-				var value_97 uint32 = uint32(number_b8890cb7_bits(uint64(value_94), uint64(value_96), 32, false, 8))
+				var value_96 uint32 = uint32(number_runtime_bits(uint64(value_95), uint64(0), 32, false, 0))
+				var value_97 uint32 = uint32(number_runtime_bits(uint64(value_94), uint64(value_96), 32, false, 8))
 				var value_98 int32 = 0
-				var value_99 uint32 = uint32(number_b8890cb7_bits(uint64(value_98), uint64(0), 32, false, 0))
+				var value_99 uint32 = uint32(number_runtime_bits(uint64(value_98), uint64(0), 32, false, 0))
 				var value_100 bool = value_97 != value_99
 				value_93 = value_100
 			}

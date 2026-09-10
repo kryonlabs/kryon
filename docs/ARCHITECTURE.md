@@ -196,8 +196,13 @@ Strict portable emission supports declared `.kry` enum values in function
 parameters, returns, locals, conditionals, and record fields, including imported
 types. Values use signed 32-bit storage: C emits an `int32_t` typedef, C++ a
 fixed-underlying-type enum, Go a named `int32` type, and JavaScript checked
-numeric values. Explicit numeric casts use the shared integer conversion rules;
-zero initialization and record copies preserve enum fields. The shared checker
+numeric values. Explicit numeric casts use the shared integer conversion rules.
+Native runtime Go modules use one generated `numeric_support.go` for checked
+arithmetic and conversions. The compiler emits that support from the same
+numeric emitter used by ordinary applications. Application files retain their
+module-local support so a generated file can still compile independently.
+The runtime generator reserves the `numeric_support` output basename.
+Zero initialization and record copies preserve enum fields. The shared checker
 rejects implicit integer-to-enum and cross-enum assignments, record-to-enum
 casts, and enum compound arithmetic. Enum member constants retain their existing
 integer expression behavior; use an explicit enum cast when assigning them to

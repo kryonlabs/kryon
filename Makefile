@@ -68,7 +68,7 @@ GENERATED_SRC_DIR = $(BUILD_DIR)/generated/src
 RUNTIME_KRY := $(sort $(wildcard runtime/*.kry))
 RUNTIME_C = $(patsubst runtime/%.kry,$(GENERATED_SRC_DIR)/runtime/%.c,$(RUNTIME_KRY))
 RUNTIME_H = $(RUNTIME_C:.c=.h)
-RUNTIME_GO = $(patsubst runtime/%.kry,go/kryon/%.go,$(RUNTIME_KRY))
+RUNTIME_GO = $(patsubst runtime/%.kry,go/kryon/%.go,$(RUNTIME_KRY)) go/kryon/numeric_support.go
 CPPFLAGS_BASE = -I$(GENERATED_INCLUDE_DIR) -I$(GENERATED_SRC_DIR) -Iinclude $(KRYON_PHYSICS_CPPFLAGS)
 ICON_DIR ?= icons
 ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
@@ -467,6 +467,7 @@ language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
 	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c $(KIR_SRCS) -o $(BUILD_DIR)/tests/kir_expression_test
 	$(BUILD_DIR)/tests/kir_expression_test
 	python3 tests/language_semantics_test.py $(BUILD_DIR)
+	python3 tests/runtime_numbers_test.py $(BUILD_DIR)
 	python3 tests/widget_declarations_test.py $(BUILD_DIR)
 	python3 tests/imported_cast_test.py $(BUILD_DIR)
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)

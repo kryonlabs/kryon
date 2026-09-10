@@ -225,6 +225,12 @@ KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target)
             fputs("#include \"ui_instance.h\"\n", out);
     }
     number_prefix(module, p, sizeof(p));
+    KirEmitNumberSupport(out, target, p);
+}
+
+void
+KirEmitNumberSupport(FILE *out, KirTarget target, const char *p)
+{
     if(target == KIR_C || target == KIR_CPP) {
         fprintf(out, "#include <stdint.h>\n#include <stdbool.h>\n#include <stdlib.h>\n\n");
         fprintf(out,
@@ -1012,7 +1018,8 @@ emit_sequence(Emitter *e,int begin,int end)
 
 int
 KirEmitBody(FILE *out,const KirModule *module,const KirFunction *fn,KirTarget target,
-            KirResolveTarget resolver,void *context,const char *instance_host)
+            KirResolveTarget resolver,void *context,const char *instance_host,
+            const char *number_support)
 {
     Emitter e={0};char params[64][KIR_TEXT_MAX];int count;
     if(!KirCanEmitBody(module, fn))return 0;
@@ -1020,7 +1027,10 @@ KirEmitBody(FILE *out,const KirModule *module,const KirFunction *fn,KirTarget ta
     e.instance_host = instance_host;
     e.locals=calloc((size_t)fn->stmt_count+65,sizeof(*e.locals));
     if(!e.locals) { fprintf(stderr,"out of memory during scalar emission\n"); exit(1); }
-    number_prefix(module,e.numbers,sizeof(e.numbers));
+    if(number_support && *number_support)
+        kir_copy(e.numbers, sizeof(e.numbers), number_support);
+    else
+        number_prefix(module,e.numbers,sizeof(e.numbers));
     count=*kir_skip_ws(fn->args)?kir_split_top(fn->args,params[0],64,sizeof(params[0])):0;
     for(int i=0;i<count;i++) {
         char *colon=strchr(params[i],':');*colon++=0;kir_trim_in_place(params[i]);

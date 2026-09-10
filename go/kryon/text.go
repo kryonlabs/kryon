@@ -2,85 +2,6 @@
 package kryon
 
 // #import style
-func number_6fc06049_float(x float64, w uint, sign bool) uint64 {
-	bits := w
-	if sign {
-		bits--
-	}
-	bound := float64(1)
-	for i := uint(0); i < bits; i++ {
-		bound *= 2
-	}
-	lower := float64(0)
-	if sign {
-		lower = -bound
-	}
-	if !(x >= lower && x < bound) {
-		panic("float conversion out of range")
-	}
-	if sign {
-		return uint64(int64(x))
-	}
-	return uint64(x)
-}
-func number_6fc06049_bits(a, b uint64, w uint, sign bool, op int) uint64 {
-	mask := ^uint64(0)
-	if w < 64 {
-		mask = (uint64(1) << w) - 1
-	}
-	shift := b
-	a &= mask
-	b &= mask
-	switch op {
-	case 0:
-		return a
-	case 1:
-		return (a + b) & mask
-	case 2:
-		return (a - b) & mask
-	case 3:
-		return (a * b) & mask
-	case 4, 5:
-		if b == 0 {
-			panic("integer division by zero")
-		}
-		if sign {
-			x := int64(a<<(64-w)) >> (64 - w)
-			y := int64(b<<(64-w)) >> (64 - w)
-			if op == 4 {
-				return uint64(x/y) & mask
-			}
-			return uint64(x%y) & mask
-		}
-		if op == 4 {
-			return a / b
-		}
-		return a % b
-	case 6, 7:
-		if shift >= uint64(w) {
-			panic("invalid shift count")
-		}
-		if op == 6 {
-			return (a << shift) & mask
-		}
-		if shift == 0 {
-			return a
-		}
-		result := a >> shift
-		if sign && (a&(uint64(1)<<(w-1))) != 0 {
-			result |= mask ^ (mask >> shift)
-		}
-		return result
-	case 8:
-		return a & b
-	case 9:
-		return a | b
-	case 10:
-		return a ^ b
-	}
-	panic("invalid numeric operation")
-}
-
 type TextAppearance struct {
 	Font          int32
 	Color         uint32
@@ -133,22 +54,22 @@ func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32,
 	if value_13 {
 		var value_21 uint32 = style.Color
 		var value_22 int32 = 255
-		var value_23 uint32 = uint32(number_6fc06049_bits(uint64(value_22), uint64(0), 32, false, 0))
-		var value_24 uint32 = uint32(number_6fc06049_bits(uint64(value_21), uint64(value_23), 32, false, 8))
+		var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
+		var value_24 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(value_23), 32, false, 8))
 		var value_25 float32 = float32(value_24)
 		var value_26 float32 = 0.45
 		var value_27 float32 = value_25 * value_26
-		var value_28 uint32 = uint32(number_6fc06049_bits(uint64(number_6fc06049_float(float64(value_27), 32, false)), uint64(0), 32, false, 0))
+		var value_28 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, false)), uint64(0), 32, false, 0))
 		var alpha uint32 = value_28
 		var value_29 uint32 = style.Color
 		var value_30 int32 = 8
-		var value_31 uint32 = uint32(number_6fc06049_bits(uint64(value_30), uint64(0), 32, false, 0))
-		var value_32 uint32 = uint32(number_6fc06049_bits(uint64(value_29), uint64(value_31), 32, false, 7))
+		var value_31 uint32 = uint32(number_runtime_bits(uint64(value_30), uint64(0), 32, false, 0))
+		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_29), uint64(value_31), 32, false, 7))
 		var value_33 int32 = 8
-		var value_34 uint32 = uint32(number_6fc06049_bits(uint64(value_33), uint64(0), 32, false, 0))
-		var value_35 uint32 = uint32(number_6fc06049_bits(uint64(value_32), uint64(value_34), 32, false, 6))
+		var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+		var value_35 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(value_34), 32, false, 6))
 		var value_36 uint32 = alpha
-		var value_37 uint32 = uint32(number_6fc06049_bits(uint64(value_35), uint64(value_36), 32, false, 9))
+		var value_37 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(value_36), 32, false, 9))
 		style.Color = value_37
 	}
 	var value_38 int32 = letter_spacing

@@ -1177,7 +1177,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     }
     fprintf(f, ") {\n");
     fprintf(f, "  $state = $state || moduleState;\n");
-    if(KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m, "")) {
+    if(KirEmitBody(f,m,fn,KIR_JS,resolve_body_symbol,(void *)m, "", NULL)) {
         fprintf(f,"}\n\n"); return;
     }
     for(int i = 0; i < n; i++) {

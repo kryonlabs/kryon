@@ -748,7 +748,7 @@ static void
 lower_body(FILE *c, const KirModule *m, const K2cppModuleSyms *restab, int restab_count, const KirFunction *fn)
 {
     BodySymbols symbols = {m, restab, restab_count};
-    if(KirEmitBody(c, m, fn, KIR_CPP, resolve_body_symbol, &symbols, "")) return;
+    if(KirEmitBody(c, m, fn, KIR_CPP, resolve_body_symbol, &symbols, "", NULL)) return;
     int indent = 1;
     int j;
     char shadow[LOWER_TEXT_MAX];   /* param + local names shadow functions */
