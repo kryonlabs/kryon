@@ -85,6 +85,11 @@ KirResolveEnumMember(const KirModule *module, const char *name,
 {
     *owner = NULL;
     *type = NULL;
+    /* An empty identifier is never a member reference: unsupported host
+     * expressions lower to empty names and the lenient checker relies on
+     * them staying unresolved instead of turning into ambiguity errors. */
+    if(!*name)
+        return 0;
     /* Local declarations shadow imports, just as functions and types do. */
     for(int pass = 0; pass < 2; pass++) {
         int count = pass == 0 ? 1 : module->import_count;

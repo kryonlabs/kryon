@@ -361,4 +361,38 @@ if "$k2c" --root "$work" -o "$work/out" "$work/src/c_define_fail.kry" 2>"$work/c
 fi
 grep -Fq "use 'INVALID :: value'; #define is not Kry syntax" "$work/c_define_fail.err"
 
+# Regression: a module-qualified call lowers to an empty checker name, and an
+# empty identifier used to match the tail token of every enum body, so two
+# anonymous enums turned the tolerated call into a fatal (silent) "ambiguous
+# enum member" and k2c exited 1 without a diagnostic.
+cat > "$work/src/tolerant_panel.kry" <<'EOF'
+#module "src.ui.tolerant_panel"
+
+reset :: (count: int) {
+    unused count
+}
+EOF
+
+cat > "$work/src/tolerant_enums.kry" <<'EOF'
+#module "src.ui.tolerant_enums"
+#import "kryon.h"
+ui :: #import "src/ui/tolerant_panel"
+
+#enum {
+    FixturePad = 6,
+    FixtureBuf = 256,
+}
+
+#enum {
+    FixtureNodeUnknown,
+    FixtureNodeText,
+}
+
+UseEnums :: () {
+    ui.reset(FixturePad)
+}
+EOF
+
+"$k2c" --root "$work" -o "$work/out" "$work/src/tolerant_enums.kry" "$work/src/tolerant_panel.kry"
+
 echo "k2c ok"
