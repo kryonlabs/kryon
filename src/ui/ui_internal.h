@@ -19,6 +19,7 @@
 
 extern Color c_text, c_bg, c_surface, c_circle, c_button, c_button_hover, c_icon, c_link;
 extern Camera2D g_ui_camera;
+void ui_begin_world_clip(Rectangle rect);
 extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
 extern unsigned long g_ui_frame_serial;

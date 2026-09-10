@@ -470,7 +470,7 @@ DrawUITabBar(TabBarProps bar)
         }
     }
 
-    BeginUIClip(bar_x, bar_y, bar_w, bar_h);
+    ui_begin_world_clip(bar.bounds);
     PushUIInputClip(bar.bounds);
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
@@ -637,15 +637,18 @@ DrawUITabBar(TabBarProps bar)
             if(tab->italic) {
                 int y = TextBaselineY(tab->label, (int)text_rect.y,
                                    (int)text_rect.height, font);
-                BeginUIClip((int)text_rect.x, (int)text_rect.y,
-                            (int)text_rect.width, (int)text_rect.height);
+                ui_begin_world_clip(text_rect);
                 DrawUITextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
                 EndUIClip();
             } else if(ui_default_style()) {
-                ui_paint_text_box(tab->label, text_rect, font, text_color,
-                                  TextWrapNone, TextAlignCenter,
-                                  TextAlignCenter, ui_active_font_token(), 0);
+                int label_x = (int)text_rect.x +
+                    ((int)text_rect.width - TextWidth(tab->label, font)) / 2;
+                int label_y = TextBaselineY(tab->label, (int)text_rect.y,
+                                            (int)text_rect.height, font);
+                ui_begin_world_clip(text_rect);
+                DrawUIText(tab->label, label_x, label_y, font, text_color);
+                EndUIClip();
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }

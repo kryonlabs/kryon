@@ -1296,7 +1296,7 @@ ui_world_rect_to_screen(Rectangle rect)
     };
 }
 
-static void
+void
 ui_begin_world_clip(Rectangle rect)
 {
     Rectangle screen = ui_world_rect_to_screen(rect);
