@@ -28,16 +28,27 @@ typedef struct Counters {
     double area;
 } Counters;
 
-typedef void (*BenchFn)(Counters *, int);
+typedef void (*BenchFn)(Counters *, unsigned long long);
 
 typedef struct Result {
     const char *widget;
     const char *appearance;
-    int iterations;
+    unsigned long long iterations;
+    double target_seconds;
+    double wall_seconds;
     double startup_us;
     double wall_us_per_frame;
     double cpu_us_per_frame;
+    double cpu_total_ms;
+    double cpu_percent;
+    double fps_throughput;
+    double cpu_percent_at_60fps;
+    double cpu_percent_at_60fps_1000;
+    long rss_start_kib;
+    long rss_end_kib;
+    long rss_peak_kib;
     long rss_delta_kib;
+    long rss_peak_delta_kib;
     double layers_per_frame;
     double visible_layers_per_frame;
     double draw_calls_per_frame;
@@ -125,6 +136,58 @@ paint_material(Counters *c, MaterialPaint paint)
         surface_counter(c, PaintMaterialLayer(paint, i));
 }
 
+typedef struct InteractionSample {
+    float hover;
+    float press;
+    float focus;
+    ButtonState state;
+} InteractionSample;
+
+static float
+ramp(unsigned long long position, unsigned long long start, unsigned long long end)
+{
+    if(position <= start)
+        return 0.0f;
+    if(position >= end)
+        return 1.0f;
+    return (float)(position - start) / (float)(end - start);
+}
+
+static InteractionSample
+interaction_sample(unsigned long long i, unsigned long long offset)
+{
+    unsigned long long phase = (i + offset) % 360ull;
+    InteractionSample sample;
+    memset(&sample, 0, sizeof(sample));
+    sample.state = ButtonStateNormal;
+
+    if(phase < 60ull) {
+        return sample;
+    } else if(phase < 140ull) {
+        sample.hover = ramp(phase, 60ull, 140ull);
+    } else if(phase < 200ull) {
+        sample.hover = 1.0f;
+        sample.press = ramp(phase, 140ull, 200ull);
+    } else if(phase < 240ull) {
+        sample.hover = 1.0f;
+        sample.press = 1.0f - ramp(phase, 200ull, 240ull);
+        sample.focus = ramp(phase, 200ull, 240ull);
+    } else if(phase < 320ull) {
+        sample.hover = 1.0f - ramp(phase, 240ull, 320ull);
+        sample.focus = 1.0f;
+    } else {
+        sample.focus = 1.0f - ramp(phase, 320ull, 360ull);
+    }
+
+    if(sample.press > 0.05f)
+        sample.state = ButtonStatePressed;
+    else if(sample.hover > 0.05f)
+        sample.state = ButtonStateHover;
+    else if(sample.focus > 0.05f)
+        sample.state = ButtonStateFocus;
+    return sample;
+}
+
 static InteractionMotion
 sample_motion(float hover, float press, float focus)
 {
@@ -151,9 +214,6 @@ make_button_frame(ButtonProps props, ButtonState state,
     ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
                                    PackedColor(0x092039u, 255u), 1.0f,
                                    (int)appearance.value.font_size, 18);
-    frame.appearance = ui_style_apply_effects_frame(frame.appearance);
-    frame.material.value = frame.appearance.value;
-    frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);
     return frame;
 }
 
@@ -165,6 +225,8 @@ make_dropdown_style(int role, int selected, ButtonState state)
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     Style base = ResolveButtonStyle(props, state);
+    if(role == 0)
+        return ui_style_apply_effects(base);
     props.tone = ButtonToneAccent;
     props.emphasis = role == 2 ? SelectionEmphasis(PackedColor(0x092039u, 255u))
                                : ButtonEmphasisFilled;
@@ -177,7 +239,7 @@ make_dropdown_style(int role, int selected, ButtonState state)
 }
 
 static void
-bench_text(Counters *c, int i)
+bench_text(Counters *c, unsigned long long i)
 {
     (void)i;
     Drawing text = {.kind = DrawingText, .bounds = {24, 24, 188, 24},
@@ -187,7 +249,7 @@ bench_text(Counters *c, int i)
 }
 
 static void
-bench_button(Counters *c, int i)
+bench_button(Counters *c, unsigned long long i)
 {
     ButtonProps props;
     memset(&props, 0, sizeof(props));
@@ -197,14 +259,15 @@ bench_button(Counters *c, int i)
     props.tone = ButtonToneAccent;
     props.emphasis = ButtonEmphasisFilled;
     props.size = ControlSizeMedium;
-    ButtonFrame frame = make_button_frame(props, ButtonStateHover, 0.55f, 0.0f, 0.0f);
+    InteractionSample sample = interaction_sample(i, 0ull);
+    ButtonFrame frame = make_button_frame(props, sample.state, sample.hover, sample.press, sample.focus);
     SurfacePainter surface = {.context = c, .call = surface_counter};
     Painter painter = {.context = c, .call = drawing_counter};
     PaintButton(frame, 104.0f, (double)i * 16.67, 0, surface, painter);
 }
 
 static void
-bench_text_input(Counters *c, int i)
+bench_text_input(Counters *c, unsigned long long i)
 {
     ButtonProps props;
     memset(&props, 0, sizeof(props));
@@ -214,7 +277,8 @@ bench_text_input(Counters *c, int i)
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     props.size = ControlSizeMedium;
-    ButtonFrame frame = make_button_frame(props, ButtonStateFocus, 0.20f, 0.0f, 1.0f);
+    InteractionSample sample = interaction_sample(i, 73ull);
+    ButtonFrame frame = make_button_frame(props, sample.state, sample.hover * 0.35f, sample.press * 0.25f, sample.focus);
     paint_material(c, frame.material);
     drawing_counter(c, (Drawing){.kind = DrawingText, .bounds = {32, 30, 190, 20},
         .text = "freelancermap.de", .font = 18, .color = frame.foreground});
@@ -223,7 +287,7 @@ bench_text_input(Counters *c, int i)
 }
 
 static void
-bench_dropdown(Counters *c, int i)
+bench_dropdown(Counters *c, unsigned long long i)
 {
     ButtonProps props;
     memset(&props, 0, sizeof(props));
@@ -233,20 +297,18 @@ bench_dropdown(Counters *c, int i)
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     props.size = ControlSizeMedium;
-    Style paint = make_dropdown_style(0, 0, ButtonStateHover);
-    StyleFrame appearance = {.value = ui_style_apply_effects_data(
-        ui_pack_style_states((ControlStyle){.normal = paint}).normal)};
+    InteractionSample sample = interaction_sample(i, 149ull);
+    int selected = ((i / 90ull) & 1ull) != 0ull;
+    Style paint = make_dropdown_style(selected ? 2 : 0, selected, sample.state);
+    StyleFrame appearance = {.value = ui_pack_style_states((ControlStyle){.normal = paint}).normal};
     appearance.fill = ui_style_apply_effects_fill(FillState(
         appearance.value.fields, appearance.value.background,
         appearance.value.background_end));
-    Activation sample = {.hovered = 1, .pressed = 0, .focused = 0};
-    ButtonInput input = ResolveButtonInput(props, sample);
-    ButtonFrame frame = BuildFrame(props, input, appearance, sample_motion(0.55f, 0.0f, 0.0f),
+    Activation activation = {.hovered = sample.hover > 0.05f, .pressed = sample.press > 0.05f, .focused = sample.focus > 0.05f};
+    ButtonInput input = ResolveButtonInput(props, activation);
+    ButtonFrame frame = BuildFrame(props, input, appearance, sample_motion(sample.hover, sample.press, sample.focus),
                                    (Rectangle){0}, PackedColor(0x092039u, 255u), 1.0f,
                                    (int)appearance.value.font_size, 18);
-    frame.appearance = ui_style_apply_effects_frame(frame.appearance);
-    frame.material.value = frame.appearance.value;
-    frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);
     paint_material(c, frame.material);
     drawing_counter(c, (Drawing){.kind = DrawingText, .bounds = {34, 30, 130, 20},
         .text = "Inner Breeze", .font = frame.font, .color = frame.foreground});
@@ -254,43 +316,91 @@ bench_dropdown(Counters *c, int i)
         .color = frame.foreground});
 }
 
-static Result
-run_case(const char *widget, BenchFn fn, int fancy, int iterations)
+static double
+startup_sample_us(BenchFn fn, int fancy, unsigned long long startup_iteration)
 {
-    enum { WARMUP = 2000 };
+    enum { STARTUP_BATCH = 256 };
     Counters counters;
-    double startup_start, startup_us, wall_start, wall_end, cpu_start, cpu_end;
-    long rss_before, rss_after;
-    const char *appearance = fancy ? "glow" : "simple";
+    double start;
 
     memset(&counters, 0, sizeof(counters));
     SetFancyEffectsEnabled(fancy);
-    startup_start = now_us();
-    fn(&counters, 0);
-    startup_us = now_us() - startup_start;
+    start = now_us();
+    for(int i = 0; i < STARTUP_BATCH; ++i)
+        fn(&counters, startup_iteration);
+    return (now_us() - start) / (double)STARTUP_BATCH;
+}
+
+static Result
+run_case(const char *widget, BenchFn fn, int fancy, unsigned long long min_iterations,
+         double target_seconds, unsigned long long startup_iteration)
+{
+    enum { WARMUP = 2000, STARTUP_SAMPLES = 32, CHECK_INTERVAL = 65536 };
+    Counters counters;
+    double startup_us, wall_start, wall_end, cpu_start, cpu_end, target_us;
+    long rss_before, rss_after, rss_peak;
+    unsigned long long iterations = 0;
+    const char *appearance = fancy ? "glow" : "simple";
+
+    startup_us = startup_sample_us(fn, fancy, startup_iteration);
+    for(int i = 1; i < STARTUP_SAMPLES; ++i) {
+        double sample = startup_sample_us(fn, fancy, startup_iteration);
+        if(sample < startup_us)
+            startup_us = sample;
+    }
 
     memset(&counters, 0, sizeof(counters));
+    SetFancyEffectsEnabled(fancy);
     for(int i = 0; i < WARMUP; ++i)
-        fn(&counters, i);
+        fn(&counters, (unsigned long long)i);
 
     memset(&counters, 0, sizeof(counters));
     rss_before = rss_kib();
+    rss_peak = rss_before;
     cpu_start = cpu_us();
     wall_start = now_us();
-    for(int i = 0; i < iterations; ++i)
-        fn(&counters, i);
+    target_us = target_seconds * 1000000.0;
+    if(target_us < 0.0)
+        target_us = 0.0;
+
+    for(;;) {
+        fn(&counters, iterations);
+        iterations++;
+        if((iterations % CHECK_INTERVAL) == 0ull) {
+            long current_rss = rss_kib();
+            double elapsed = now_us() - wall_start;
+            if(current_rss > rss_peak)
+                rss_peak = current_rss;
+            if(iterations >= min_iterations && elapsed >= target_us)
+                break;
+        }
+    }
+
     wall_end = now_us();
     cpu_end = cpu_us();
     rss_after = rss_kib();
+    if(rss_after > rss_peak)
+        rss_peak = rss_after;
 
     Result result = {
         .widget = widget,
         .appearance = appearance,
         .iterations = iterations,
+        .target_seconds = target_seconds,
+        .wall_seconds = (wall_end - wall_start) / 1000000.0,
         .startup_us = startup_us,
         .wall_us_per_frame = (wall_end - wall_start) / (double)iterations,
         .cpu_us_per_frame = (cpu_end - cpu_start) / (double)iterations,
+        .cpu_total_ms = (cpu_end - cpu_start) / 1000.0,
+        .cpu_percent = (wall_end > wall_start) ? (cpu_end - cpu_start) / (wall_end - wall_start) * 100.0 : 0.0,
+        .fps_throughput = (wall_end > wall_start) ? (double)iterations * 1000000.0 / (wall_end - wall_start) : 0.0,
+        .cpu_percent_at_60fps = (cpu_end - cpu_start) / (double)iterations * 60.0 / 1000000.0 * 100.0,
+        .cpu_percent_at_60fps_1000 = (cpu_end - cpu_start) / (double)iterations * 60.0 / 1000000.0 * 100000.0,
+        .rss_start_kib = rss_before,
+        .rss_end_kib = rss_after,
+        .rss_peak_kib = rss_peak,
         .rss_delta_kib = rss_after - rss_before,
+        .rss_peak_delta_kib = rss_peak - rss_before,
         .layers_per_frame = (double)counters.surface_calls / (double)iterations,
         .visible_layers_per_frame = (double)counters.surface_visible / (double)iterations,
         .draw_calls_per_frame = (double)counters.draw_calls / (double)iterations,
@@ -299,41 +409,66 @@ run_case(const char *widget, BenchFn fn, int fancy, int iterations)
     return result;
 }
 
-static int
+static unsigned long long
 iterations_from_env(void)
 {
-    const char *value = getenv("KRYON_APPEARANCE_BENCH_ITERS");
-    long parsed;
+    const char *value = getenv("KRYON_APPEARANCE_BENCH_MIN_ITERS");
+    unsigned long long parsed;
+    if(value == NULL || *value == '\0') {
+        value = getenv("KRYON_APPEARANCE_BENCH_ITERS");
+        if(value == NULL || *value == '\0')
+            return 1000ull;
+    }
+    parsed = strtoull(value, NULL, 10);
+    if(parsed < 1ull)
+        parsed = 1ull;
+    return parsed;
+}
+
+static double
+seconds_from_env(void)
+{
+    const char *value = getenv("KRYON_APPEARANCE_BENCH_SECONDS");
+    double parsed;
     if(value == NULL || *value == '\0')
-        return 100000;
-    parsed = strtol(value, NULL, 10);
-    if(parsed < 1000)
-        parsed = 1000;
-    if(parsed > 5000000)
-        parsed = 5000000;
-    return (int)parsed;
+        return 10.0;
+    parsed = strtod(value, NULL);
+    if(parsed < 0.1)
+        parsed = 0.1;
+    if(parsed > 60.0)
+        parsed = 60.0;
+    return parsed;
 }
 
 static void
 print_json(Result r)
 {
-    printf("{\"benchmark\":\"control_appearance\",\"widget\":\"%s\",\"appearance\":\"%s\",\"iterations\":%d,\"startup_us\":%.3f,\"wall_us_per_frame\":%.3f,\"cpu_us_per_frame\":%.3f,\"rss_delta_kib\":%ld,\"surface_layers_per_frame\":%.2f,\"visible_layers_per_frame\":%.2f,\"draw_calls_per_frame\":%.2f,\"glow_layers_total\":%llu}\n",
-           r.widget, r.appearance, r.iterations, r.startup_us,
-           r.wall_us_per_frame, r.cpu_us_per_frame, r.rss_delta_kib,
+    printf("{\"benchmark\":\"control_appearance\",\"widget\":\"%s\",\"appearance\":\"%s\",\"target_seconds\":%.3f,\"wall_seconds\":%.3f,\"iterations\":%llu,\"startup_us\":%.3f,\"wall_us_per_frame\":%.3f,\"cpu_us_per_frame\":%.3f,\"cpu_total_ms\":%.3f,\"cpu_percent\":%.2f,\"fps_throughput\":%.2f,\"cpu_percent_at_60fps\":%.4f,\"cpu_percent_at_60fps_1000\":%.2f,\"rss_start_kib\":%ld,\"rss_end_kib\":%ld,\"rss_peak_kib\":%ld,\"rss_delta_kib\":%ld,\"rss_peak_delta_kib\":%ld,\"surface_layers_per_frame\":%.2f,\"visible_layers_per_frame\":%.2f,\"draw_calls_per_frame\":%.2f,\"glow_layers_total\":%llu}\n",
+           r.widget, r.appearance, r.target_seconds, r.wall_seconds,
+           r.iterations, r.startup_us, r.wall_us_per_frame,
+           r.cpu_us_per_frame, r.cpu_total_ms, r.cpu_percent,
+           r.fps_throughput, r.cpu_percent_at_60fps, r.cpu_percent_at_60fps_1000,
+           r.rss_start_kib, r.rss_end_kib, r.rss_peak_kib,
+           r.rss_delta_kib, r.rss_peak_delta_kib,
            r.layers_per_frame, r.visible_layers_per_frame,
            r.draw_calls_per_frame, r.glow_layers);
+    fflush(stdout);
 }
 
 static void
 print_markdown(Result *results, int count)
 {
-    puts("| Widget | Appearance | Startup us | CPU us/frame | Wall us/frame | RSS delta KiB | Surface layers/frame | Draw calls/frame | Glow layers/frame |");
-    puts("|---|---:|---:|---:|---:|---:|---:|---:|---:|");
+    puts("| Widget | Appearance | Seconds | Iterations | Startup us | CPU ms | Saturated CPU % | 60 FPS CPU % | 60 FPS x1000 CPU % | CPU us/frame | Wall us/frame | RSS start KiB | RSS end KiB | RSS peak KiB | Peak delta KiB | Surface layers/frame | Draw calls/frame | Glow layers/frame |");
+    puts("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
     for(int i = 0; i < count; ++i) {
         Result r = results[i];
-        printf("| %s | %s | %.3f | %.3f | %.3f | %ld | %.2f | %.2f | %.2f |\n",
-               r.widget, r.appearance, r.startup_us, r.cpu_us_per_frame,
-               r.wall_us_per_frame, r.rss_delta_kib, r.layers_per_frame,
+        printf("| %s | %s | %.3f | %llu | %.3f | %.3f | %.2f | %.4f | %.2f | %.3f | %.3f | %ld | %ld | %ld | %ld | %.2f | %.2f | %.2f |\n",
+               r.widget, r.appearance, r.wall_seconds, r.iterations,
+               r.startup_us, r.cpu_total_ms, r.cpu_percent,
+               r.cpu_percent_at_60fps, r.cpu_percent_at_60fps_1000,
+               r.cpu_us_per_frame, r.wall_us_per_frame,
+               r.rss_start_kib, r.rss_end_kib, r.rss_peak_kib,
+               r.rss_peak_delta_kib, r.layers_per_frame,
                r.draw_calls_per_frame,
                (double)r.glow_layers / (double)r.iterations);
     }
@@ -343,6 +478,10 @@ static int
 validate_results(Result *results, int count)
 {
     int failures = 0;
+    for(int i = 0; i < count; ++i) {
+        if(results[i].startup_us >= 2.0)
+            failures++;
+    }
     for(int i = 0; i + 1 < count; i += 2) {
         Result fancy = results[i];
         Result simple = results[i + 1];
@@ -363,24 +502,45 @@ validate_results(Result *results, int count)
     return failures;
 }
 
+static void
+warm_benchmark_process(void)
+{
+    Counters counters;
+    memset(&counters, 0, sizeof(counters));
+    for(int i = 0; i < 128; ++i)
+        (void)now_us();
+    bench_text(&counters, 0);
+    bench_button(&counters, 0);
+    bench_text_input(&counters, 0);
+    bench_dropdown(&counters, 0);
+}
+
 int
 main(void)
 {
-    int iterations = iterations_from_env();
+    unsigned long long min_iterations = iterations_from_env();
+    double target_seconds = seconds_from_env();
     Result results[8];
     int n = 0;
 
-    results[n++] = run_case("Text", bench_text, 1, iterations);
-    results[n++] = run_case("Text", bench_text, 0, iterations);
-    results[n++] = run_case("TextInput", bench_text_input, 1, iterations);
-    results[n++] = run_case("TextInput", bench_text_input, 0, iterations);
-    results[n++] = run_case("Button", bench_button, 1, iterations);
-    results[n++] = run_case("Button", bench_button, 0, iterations);
-    results[n++] = run_case("Dropdown", bench_dropdown, 1, iterations);
-    results[n++] = run_case("Dropdown", bench_dropdown, 0, iterations);
+    warm_benchmark_process();
+    results[n++] = run_case("Text", bench_text, 1, min_iterations, target_seconds, 0ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("Text", bench_text, 0, min_iterations, target_seconds, 0ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("TextInput", bench_text_input, 1, min_iterations, target_seconds, 287ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("TextInput", bench_text_input, 0, min_iterations, target_seconds, 287ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("Button", bench_button, 1, min_iterations, target_seconds, 0ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("Button", bench_button, 0, min_iterations, target_seconds, 0ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("Dropdown", bench_dropdown, 1, min_iterations, target_seconds, 211ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("Dropdown", bench_dropdown, 0, min_iterations, target_seconds, 211ull);
+    print_json(results[n - 1]);
 
-    for(int i = 0; i < n; ++i)
-        print_json(results[i]);
     print_markdown(results, n);
     return validate_results(results, n) == 0 ? 0 : 1;
 }

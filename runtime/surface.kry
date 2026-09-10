@@ -864,6 +864,18 @@ GlassLayer :: (index: i32, width: float, height: float, radius: float,
     return layer
 }
 
+FinishLightfieldLayer :: (layer: SurfaceLayer, index: i32,
+    background: u32, opacity: float) -> SurfaceLayer {
+    if index == 0 || index == 1 || index == 4 {
+        face_opacity: float = (float)(background & (u32)255) / 255.0
+        layer.color = Opacity(layer.color, face_opacity)
+        layer.end_color = Opacity(layer.end_color, face_opacity)
+    }
+    layer.color = Opacity(layer.color, opacity)
+    layer.end_color = Opacity(layer.end_color, opacity)
+    return layer
+}
+
 LightfieldLayer :: (
     index: i32, width: float, height: float, radius: float,
     border_width: float, background: u32, border: u32, light: u32,
@@ -938,6 +950,7 @@ LightfieldLayer :: (
         }
         if disabled { alpha = 8.0 }
         layer.color = (u32)alpha
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == 1 {
         layer.x = 1.0
@@ -990,6 +1003,7 @@ LightfieldLayer :: (
             layer.color = Opacity(layer.color, 0.0)
             layer.gradient = true
         }
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == 2 {
         layer.is_face = true
@@ -1102,6 +1116,7 @@ LightfieldLayer :: (
             }
         }
         layer.gradient = true
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == 3 {
         layer.stroke = border_width
@@ -1129,6 +1144,7 @@ LightfieldLayer :: (
                 layer.gradient = true
             }
         }
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == 4 {
         # Hover raises the crown to the face edge without moving the lower
@@ -1195,6 +1211,7 @@ LightfieldLayer :: (
         }
         layer.end_color = Opacity(GradientColor(rim_light, white, whitening), bottom)
         layer.gradient = true
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     if index == 5 || index == 6 {
         gap: float = 1.0
@@ -1249,6 +1266,7 @@ LightfieldLayer :: (
             layer.stroke = 1.5
         }
         layer.color = Opacity(rim_color, strength)
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     # A translucent light volume sits behind the content, inset from the rim.
     # Its rounded coverage is the clip: no blur can leak onto the surroundings.
@@ -1333,6 +1351,7 @@ LightfieldLayer :: (
             edge_contrast: float = Unit(((float)ColorChroma(border) - body_chroma - 64.0) / 64.0)
             layer.gradient_bias = edge_contrast * Unit((96.0 - body_chroma) / 32.0) * (1.0 - p)
         }
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     # A broad crown reflection gives the face volume without a hard gloss
     # stripe. It is clipped inside the same rounded face as the lower light.
@@ -1358,6 +1377,7 @@ LightfieldLayer :: (
         layer.color = Opacity(white, strength)
         layer.end_color = Opacity(white, 0.0)
         layer.gradient = true
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     # Pressing places the upper edge above the recessed face. This inward
     # shadow follows the same continuous press track as the face displacement;
@@ -1377,6 +1397,7 @@ LightfieldLayer :: (
         layer.color = Opacity(background & (u32)255, strength)
         layer.end_color = (u32)0
         layer.gradient = true
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
     # Optical bloom belongs to the narrow focus edge, not a blurred face.
     # A stroked field leaves the label center clear; the material volume above
@@ -1399,14 +1420,7 @@ LightfieldLayer :: (
         strength: float = Unit(focused) * edge_light
         if (border & (u32)255) == (u32)0 { strength *= 0.35 }
         layer.color = Opacity(DepthColor(focus_color, 1.0), strength)
+        return FinishLightfieldLayer(layer, index, background, opacity)
     }
-    # Face-derived shadow and rim must not resurrect a transparent surface.
-    if index == 0 || index == 1 || index == 4 {
-        face_opacity: float = (float)(background & (u32)255) / 255.0
-        layer.color = Opacity(layer.color, face_opacity)
-        layer.end_color = Opacity(layer.end_color, face_opacity)
-    }
-    layer.color = Opacity(layer.color, opacity)
-    layer.end_color = Opacity(layer.end_color, opacity)
-    return layer
+    return FinishLightfieldLayer(layer, index, background, opacity)
 }

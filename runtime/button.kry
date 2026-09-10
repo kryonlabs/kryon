@@ -131,14 +131,27 @@ ResolveFrame :: (tone: i32, emphasis: i32, state: i32, size: i32,
         disabled, loading, selected, palette, metrics, styles)
     frame.fill = FillState(frame.value.fields, frame.value.background, frame.value.background_end)
     if automatic && !flags.disabled && !flags.loading && !flags.selected {
-        normal: StyleData = ResolveAppearance(tone, emphasis, ButtonStateNormal, size,
-            pill, circle, false, false, false, palette, metrics, styles)
-        hover: StyleData = ResolveAppearance(tone, emphasis, ButtonStateHover, size,
-            pill, circle, false, false, false, palette, metrics, styles)
-        press: StyleData = ResolveAppearance(tone, emphasis, ButtonStatePressed, size,
-            pill, circle, false, false, false, palette, metrics, styles)
-        focus: StyleData = ResolveAppearance(tone, emphasis, ButtonStateFocus, size,
-            pill, circle, false, false, false, palette, metrics, styles)
+        if h <= 0.0 && p <= 0.0 && f <= 0.0 { return frame }
+        normal: StyleData = frame.value
+        if state != ButtonStateNormal {
+            normal = ResolveAppearance(tone, emphasis, ButtonStateNormal, size,
+                pill, circle, false, false, false, palette, metrics, styles)
+        }
+        hover: StyleData = normal
+        press: StyleData = normal
+        focus: StyleData = normal
+        if h > 0.0 {
+            hover = ResolveAppearance(tone, emphasis, ButtonStateHover, size,
+                pill, circle, false, false, false, palette, metrics, styles)
+        }
+        if p > 0.0 {
+            press = ResolveAppearance(tone, emphasis, ButtonStatePressed, size,
+                pill, circle, false, false, false, palette, metrics, styles)
+        }
+        if f > 0.0 {
+            focus = ResolveAppearance(tone, emphasis, ButtonStateFocus, size,
+                pill, circle, false, false, false, palette, metrics, styles)
+        }
         frame = TransitionFrame(frame.value, normal, hover, press, focus, h, p, f)
     }
     return frame

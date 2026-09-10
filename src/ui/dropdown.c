@@ -135,6 +135,8 @@ dropdown_style(int role, int selected, ButtonState state)
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
     Style base = ResolveButtonStyle(props, state);
+    if(role == 0)
+        return ui_style_apply_effects(base);
     props.tone = ButtonToneAccent;
     props.emphasis = role == 2
         ? SelectionEmphasis(ColorToInt(GetThemeSurface())) : ButtonEmphasisFilled;
