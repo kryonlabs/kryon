@@ -627,6 +627,12 @@ DrawUITabBar(TabBarProps bar)
             (float)content_h
         };
 
+        if(ui_default_style() && tab->icon.id == 0) {
+            text_rect.x = (float)(tab_x + text_pad);
+            text_rect.width = (float)(tab_w - text_pad * 2 -
+                (tab->closeable ? close_size + close_pad : 0));
+        }
+
         if(text_rect.width > 0 && has_label) {
             if(tab->italic) {
                 int y = TextBaselineY(tab->label, (int)text_rect.y,
