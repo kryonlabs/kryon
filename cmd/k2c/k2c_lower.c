@@ -1316,8 +1316,12 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
             continue;
         emit_guard_open(h, ty->guard);
         if(ty->is_enum) {
-            /* Enum values have a signed 32-bit representation on every target. */
-            fprintf(h, "\ntypedef int32_t %s;\nenum {\n", ty->name);
+            /* Native contracts retain their public C enum tags. */
+            int native = KirFindRuntimeType(ty->name, NULL) != NULL;
+            if(native)
+                fprintf(h, "\ntypedef enum %s {\n", ty->name);
+            else
+                fprintf(h, "\ntypedef int32_t %s;\nenum {\n", ty->name);
             {
                 const char *line = ty->body;
 
@@ -1341,7 +1345,10 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
                     line = nl ? nl + 1 : NULL;
                 }
             }
-            fprintf(h, "};\n");
+            if(native)
+                fprintf(h, "} %s;\n", ty->name);
+            else
+                fprintf(h, "};\n");
             continue;
         }
         fprintf(h, "\ntypedef struct %s {\n", ty->name);

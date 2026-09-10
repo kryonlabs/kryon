@@ -63,10 +63,15 @@ render-exact fixtures.
 
 Widget props contracts belong in the declaration source. Button's C header and
 native Go props type are generated from `runtime/button_props.kry`; handwritten
-host code consumes these types. Host geometry, texture, and style types remain
-external dependencies while their shared declarations are migrated.
+host code consumes these types. Host geometry and texture types remain external dependencies; control style
+records now use their own shared declaration.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources
 through the same frontend. Runtime types are a fallback after lexical and
 explicitly imported application types.
+
+Control style records and constants belong to `runtime/control_props.kry`. Native
+hosts consume generated C/Go interfaces and the web host re-exports generated
+JavaScript constants. Backends must not add independent control enum or field
+tables; the compiler reads this contract through its embedded declaration source.

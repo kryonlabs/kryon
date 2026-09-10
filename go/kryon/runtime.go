@@ -52,11 +52,6 @@ type Font struct {
 
 type KeyID uint64
 type Side int32
-type ButtonTone int32
-type ButtonEmphasis int32
-type ControlSize int32
-type ButtonState int32
-type IconPlacement int32
 type SyntaxMode int32
 type ThemeId int32
 type ThemeStyle int32
@@ -65,48 +60,6 @@ type ThemeMode int32
 type PictureFit int32
 type MenuItemKind int32
 type UISemanticKind int32
-type MaterialKind int32
-
-const (
-	MaterialLightfield MaterialKind = iota
-	MaterialFlat
-)
-
-const (
-	StyleBackground    uint32 = FieldFieldBackground
-	StyleForeground    uint32 = FieldFieldForeground
-	StyleBorder        uint32 = FieldFieldBorder
-	StyleFocus         uint32 = FieldFieldFocus
-	StyleRadius        uint32 = FieldFieldRadius
-	StyleBorderWidth   uint32 = FieldFieldBorderWidth
-	StyleOpacity       uint32 = FieldFieldOpacity
-	StylePaddingX      uint32 = FieldFieldPaddingX
-	StylePaddingY      uint32 = FieldFieldPaddingY
-	StyleGap           uint32 = FieldFieldGap
-	StyleFontSize      uint32 = FieldFieldFontSize
-	StyleIconSize      uint32 = FieldFieldIconSize
-	StyleContentOffset uint32 = FieldFieldContentOffset
-	StyleBackgroundEnd uint32 = FieldFieldBackgroundEnd
-	StyleMaterial      uint32 = FieldFieldMaterial
-	StyleTypeface      uint32 = FieldFieldTypeface
-)
-
-type Style struct {
-	Fields                                uint32
-	Background, Foreground, Border, Focus Color
-	Radius, BorderWidth, Opacity          float32
-	PaddingX, PaddingY, Gap               float32
-	FontSize, IconSize                    float32
-	ContentOffset                         Vector2
-	BackgroundEnd                         Color
-	Material                              MaterialKind
-	Typeface                              string
-}
-
-type ControlStyle struct {
-	Normal, Hover, Pressed, Focused Style
-	Disabled, Loading, Selected     Style
-}
 
 const (
 	FlagVsyncHint       uint = 0x00000040
@@ -149,43 +102,9 @@ const (
 	SideBottom
 	SideLeft
 	SideRight
-
-	ButtonToneNeutral ButtonTone = TonePolicyToneNeutral
-	ButtonToneAccent  ButtonTone = TonePolicyToneAccent
-	ButtonToneDanger  ButtonTone = TonePolicyToneDanger
-	ButtonToneSuccess ButtonTone = TonePolicyToneSuccess
-	ButtonToneWarning ButtonTone = TonePolicyToneWarning
 )
 
 const (
-	ButtonEmphasisFilled  ButtonEmphasis = EmphasisPolicyEmphasisFilled
-	ButtonEmphasisSoft    ButtonEmphasis = EmphasisPolicyEmphasisSoft
-	ButtonEmphasisOutline ButtonEmphasis = EmphasisPolicyEmphasisOutline
-	ButtonEmphasisGhost   ButtonEmphasis = EmphasisPolicyEmphasisGhost
-	ButtonEmphasisLink    ButtonEmphasis = EmphasisPolicyEmphasisLink
-)
-
-const (
-	ControlSizeMedium ControlSize = SizePolicySizeMedium
-	ControlSizeSmall  ControlSize = SizePolicySizeSmall
-	ControlSizeLarge  ControlSize = SizePolicySizeLarge
-)
-
-const (
-	IconPlacementLeading IconPlacement = iota
-	IconPlacementTrailing
-)
-
-const (
-	ButtonStateAuto     ButtonState = StatePolicyStateAuto
-	ButtonStateNormal   ButtonState = StatePolicyStateNormal
-	ButtonStateHover    ButtonState = StatePolicyStateHover
-	ButtonStatePressed  ButtonState = StatePolicyStatePressed
-	ButtonStateFocus    ButtonState = StatePolicyStateFocus
-	ButtonStateDisabled ButtonState = StatePolicyStateDisabled
-	ButtonStateLoading  ButtonState = StatePolicyStateLoading
-	ButtonStateSelected ButtonState = StatePolicyStateSelected
-
 	SyntaxNone SyntaxMode = 0
 	SyntaxKry  SyntaxMode = 1
 	SyntaxC    SyntaxMode = 2

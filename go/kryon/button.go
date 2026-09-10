@@ -4,6 +4,7 @@ package kryon
 // #import style
 // #import theme
 // #import surface
+// #import control_props
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
 	bits := w
 	if sign {
@@ -127,26 +128,6 @@ type ButtonContent struct {
 	TextHeight float32
 }
 
-type Tone int32
-
-const (
-	TonePolicyToneNeutral = 0
-	TonePolicyToneAccent  = 1
-	TonePolicyToneDanger  = 2
-	TonePolicyToneSuccess = 3
-	TonePolicyToneWarning = 4
-)
-
-type Emphasis int32
-
-const (
-	EmphasisPolicyEmphasisFilled  = 0
-	EmphasisPolicyEmphasisSoft    = 1
-	EmphasisPolicyEmphasisOutline = 2
-	EmphasisPolicyEmphasisGhost   = 3
-	EmphasisPolicyEmphasisLink    = 4
-)
-
 func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, hovered bool, pressed bool, focused bool, enabled bool, explicit_state bool, disabled bool, loading bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
 	var value_0 uint64 = key
 	retained := instanceState[ButtonInstance](instance_host_0, uint64(value_0))
@@ -220,12 +201,12 @@ func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int
 	var value_44 float32 = metrics.RadiusMedium
 	var radius float32 = value_44
 	var value_45 int32 = state
-	var value_46 int32 = StatePolicyStateNormal
+	var value_46 int32 = int32(ButtonStateNormal)
 	var value_47 bool = value_45 == value_46
 	var value_48 bool = value_47
 	if !value_48 {
 		var value_49 int32 = state
-		var value_50 int32 = StatePolicyStateHover
+		var value_50 int32 = int32(ButtonStateHover)
 		var value_51 bool = value_49 == value_50
 		value_48 = value_51
 	}
@@ -242,17 +223,17 @@ func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int
 		radius = value_60
 	}
 	var value_61 int32 = emphasis
-	var value_62 int32 = EmphasisPolicyEmphasisOutline
+	var value_62 int32 = int32(ButtonEmphasisOutline)
 	var value_63 bool = value_61 == value_62
 	var value_64 bool = value_63
 	if value_64 {
 		var value_65 int32 = state
-		var value_66 int32 = StatePolicyStateNormal
+		var value_66 int32 = int32(ButtonStateNormal)
 		var value_67 bool = value_65 == value_66
 		var value_68 bool = value_67
 		if !value_68 {
 			var value_69 int32 = state
-			var value_70 int32 = StatePolicyStateHover
+			var value_70 int32 = int32(ButtonStateHover)
 			var value_71 bool = value_69 == value_70
 			value_68 = value_71
 		}
@@ -303,7 +284,7 @@ func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int
 	var value_102 uint32 = Style_DefaultFields()
 	style.Fields = value_102
 	var value_103 int32 = size
-	var value_104 int32 = SizePolicySizeLarge
+	var value_104 int32 = int32(ControlSizeLarge)
 	var value_105 bool = value_103 == value_104
 	var value_106 bool = value_105
 	if value_106 {
@@ -316,7 +297,7 @@ func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int
 		var value_110 string = "semibold"
 		style.Typeface = value_110
 		var value_111 uint32 = style.Fields
-		var value_112 int32 = FieldFieldTypeface
+		var value_112 int32 = int32(StyleTypeface)
 		var value_113 uint32 = uint32(number_533abbd6_bits(uint64(value_112), uint64(0), 32, false, 0))
 		var value_114 uint32 = uint32(number_533abbd6_bits(uint64(value_111), uint64(value_113), 32, false, 9))
 		style.Fields = value_114
@@ -419,7 +400,7 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 	if value_29 {
 		var value_32 int32 = tone
 		var value_33 int32 = emphasis
-		var value_34 int32 = StatePolicyStateNormal
+		var value_34 int32 = int32(ButtonStateNormal)
 		var value_35 int32 = size
 		var value_36 bool = pill
 		var value_37 bool = circle
@@ -433,7 +414,7 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 		var normal StyleData = value_44
 		var value_45 int32 = tone
 		var value_46 int32 = emphasis
-		var value_47 int32 = StatePolicyStateHover
+		var value_47 int32 = int32(ButtonStateHover)
 		var value_48 int32 = size
 		var value_49 bool = pill
 		var value_50 bool = circle
@@ -447,7 +428,7 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 		var hover StyleData = value_57
 		var value_58 int32 = tone
 		var value_59 int32 = emphasis
-		var value_60 int32 = StatePolicyStatePressed
+		var value_60 int32 = int32(ButtonStatePressed)
 		var value_61 int32 = size
 		var value_62 bool = pill
 		var value_63 bool = circle
@@ -461,7 +442,7 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 		var press StyleData = value_70
 		var value_71 int32 = tone
 		var value_72 int32 = emphasis
-		var value_73 int32 = StatePolicyStateFocus
+		var value_73 int32 = int32(ButtonStateFocus)
 		var value_74 int32 = size
 		var value_75 bool = pill
 		var value_76 bool = circle
@@ -847,28 +828,28 @@ func Button_MixColor(from uint32, to uint32, amount uint32) uint32 {
 
 func Button_ToneColor(tone int32, accent uint32, neutral uint32, danger uint32, success uint32, warning uint32) uint32 {
 	var value_0 int32 = tone
-	var value_1 int32 = TonePolicyToneAccent
+	var value_1 int32 = int32(ButtonToneAccent)
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 uint32 = accent
 		return value_3
 	}
 	var value_4 int32 = tone
-	var value_5 int32 = TonePolicyToneDanger
+	var value_5 int32 = int32(ButtonToneDanger)
 	var value_6 bool = value_4 == value_5
 	if value_6 {
 		var value_7 uint32 = danger
 		return value_7
 	}
 	var value_8 int32 = tone
-	var value_9 int32 = TonePolicyToneSuccess
+	var value_9 int32 = int32(ButtonToneSuccess)
 	var value_10 bool = value_8 == value_9
 	if value_10 {
 		var value_11 uint32 = success
 		return value_11
 	}
 	var value_12 int32 = tone
-	var value_13 int32 = TonePolicyToneWarning
+	var value_13 int32 = int32(ButtonToneWarning)
 	var value_14 bool = value_12 == value_13
 	if value_14 {
 		var value_15 uint32 = warning
@@ -942,21 +923,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_12 bool = value_11
 	if value_12 {
 		var value_13 int32 = emphasis
-		var value_14 int32 = EmphasisPolicyEmphasisFilled
+		var value_14 int32 = int32(ButtonEmphasisFilled)
 		var value_15 bool = value_13 == value_14
 		value_12 = value_15
 	}
 	var value_16 bool = value_12
 	if value_16 {
 		var value_17 int32 = tone
-		var value_18 int32 = TonePolicyToneAccent
+		var value_18 int32 = int32(ButtonToneAccent)
 		var value_19 bool = value_17 != value_18
 		value_16 = value_19
 	}
 	var value_20 bool = value_16
 	if value_20 {
 		var value_21 int32 = tone
-		var value_22 int32 = TonePolicyToneNeutral
+		var value_22 int32 = int32(ButtonToneNeutral)
 		var value_23 bool = value_21 != value_22
 		value_20 = value_23
 	}
@@ -967,7 +948,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_27 uint32 = Button_MixColor(value_24, value_25, value_26)
 		background = value_27
 		var value_28 int32 = tone
-		var value_29 int32 = TonePolicyToneDanger
+		var value_29 int32 = int32(ButtonToneDanger)
 		var value_30 bool = value_28 == value_29
 		if value_30 {
 			var value_31 uint32 = surface
@@ -977,7 +958,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			background = value_34
 		}
 		var value_35 int32 = tone
-		var value_36 int32 = TonePolicyToneWarning
+		var value_36 int32 = int32(ButtonToneWarning)
 		var value_37 bool = value_35 == value_36
 		if value_37 {
 			var value_38 uint32 = surface
@@ -991,14 +972,14 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_43 bool = value_42
 	if value_43 {
 		var value_44 int32 = emphasis
-		var value_45 int32 = EmphasisPolicyEmphasisFilled
+		var value_45 int32 = int32(ButtonEmphasisFilled)
 		var value_46 bool = value_44 == value_45
 		value_43 = value_46
 	}
 	var value_47 bool = value_43
 	if value_47 {
 		var value_48 int32 = tone
-		var value_49 int32 = TonePolicyToneAccent
+		var value_49 int32 = int32(ButtonToneAccent)
 		var value_50 bool = value_48 != value_49
 		value_47 = value_50
 	}
@@ -1009,12 +990,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_54 uint32 = Button_MixColor(value_51, value_52, value_53)
 		background = value_54
 		var value_55 int32 = tone
-		var value_56 int32 = TonePolicyToneDanger
+		var value_56 int32 = int32(ButtonToneDanger)
 		var value_57 bool = value_55 == value_56
 		var value_58 bool = value_57
 		if !value_58 {
 			var value_59 int32 = tone
-			var value_60 int32 = TonePolicyToneWarning
+			var value_60 int32 = int32(ButtonToneWarning)
 			var value_61 bool = value_59 == value_60
 			value_58 = value_61
 		}
@@ -1023,12 +1004,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			var value_63 uint32 = uint32(number_533abbd6_bits(uint64(value_62), uint64(0), 32, false, 0))
 			var amount uint32 = value_63
 			var value_64 int32 = tone
-			var value_65 int32 = TonePolicyToneWarning
+			var value_65 int32 = int32(ButtonToneWarning)
 			var value_66 bool = value_64 == value_65
 			var value_67 bool = value_66
 			if value_67 {
 				var value_68 int32 = state
-				var value_69 int32 = StatePolicyStateDisabled
+				var value_69 int32 = int32(ButtonStateDisabled)
 				var value_70 bool = value_68 != value_69
 				value_67 = value_70
 			}
@@ -1047,7 +1028,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			background = value_79
 		}
 		var value_80 int32 = tone
-		var value_81 int32 = TonePolicyToneSuccess
+		var value_81 int32 = int32(ButtonToneSuccess)
 		var value_82 bool = value_80 == value_81
 		if value_82 {
 			var value_83 uint32 = surface
@@ -1061,7 +1042,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		}
 	}
 	var value_90 int32 = emphasis
-	var value_91 int32 = EmphasisPolicyEmphasisSoft
+	var value_91 int32 = int32(ButtonEmphasisSoft)
 	var value_92 bool = value_90 == value_91
 	if value_92 {
 		var value_93 uint32 = surface
@@ -1081,7 +1062,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_103 bool = value_102
 		if value_103 {
 			var value_104 int32 = tone
-			var value_105 int32 = TonePolicyToneNeutral
+			var value_105 int32 = int32(ButtonToneNeutral)
 			var value_106 bool = value_104 == value_105
 			value_103 = value_106
 		}
@@ -1094,7 +1075,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_110 bool = value_109
 		if value_110 {
 			var value_111 int32 = tone
-			var value_112 int32 = TonePolicyToneNeutral
+			var value_112 int32 = int32(ButtonToneNeutral)
 			var value_113 bool = value_111 == value_112
 			value_110 = value_113
 		}
@@ -1107,7 +1088,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		}
 	}
 	var value_118 int32 = emphasis
-	var value_119 int32 = EmphasisPolicyEmphasisOutline
+	var value_119 int32 = int32(ButtonEmphasisOutline)
 	var value_120 bool = value_118 == value_119
 	if value_120 {
 		var value_121 uint32 = surface
@@ -1135,21 +1116,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		}
 	}
 	var value_139 int32 = emphasis
-	var value_140 int32 = EmphasisPolicyEmphasisGhost
+	var value_140 int32 = int32(ButtonEmphasisGhost)
 	var value_141 bool = value_139 == value_140
 	if value_141 {
 		var value_142 uint32 = surface
 		background = value_142
 	}
 	var value_143 int32 = emphasis
-	var value_144 int32 = EmphasisPolicyEmphasisLink
+	var value_144 int32 = int32(ButtonEmphasisLink)
 	var value_145 bool = value_143 == value_144
 	if value_145 {
 		var value_146 uint32 = surface
 		background = value_146
 	}
 	var value_147 int32 = state
-	var value_148 int32 = StatePolicyStateHover
+	var value_148 int32 = int32(ButtonStateHover)
 	var value_149 bool = value_147 == value_148
 	if value_149 {
 		var value_150 bool = light
@@ -1157,14 +1138,14 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_152 bool = value_151
 		if value_152 {
 			var value_153 int32 = tone
-			var value_154 int32 = TonePolicyToneNeutral
+			var value_154 int32 = int32(ButtonToneNeutral)
 			var value_155 bool = value_153 == value_154
 			value_152 = value_155
 		}
 		var value_156 bool = value_152
 		if value_156 {
 			var value_157 int32 = emphasis
-			var value_158 int32 = EmphasisPolicyEmphasisSoft
+			var value_158 int32 = int32(ButtonEmphasisSoft)
 			var value_159 bool = value_157 == value_158
 			value_156 = value_159
 		}
@@ -1180,27 +1161,27 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_166 bool = value_165
 		if value_166 {
 			var value_167 int32 = emphasis
-			var value_168 int32 = EmphasisPolicyEmphasisFilled
+			var value_168 int32 = int32(ButtonEmphasisFilled)
 			var value_169 bool = value_167 == value_168
 			value_166 = value_169
 		}
 		var value_170 bool = value_166
 		if value_170 {
 			var value_171 int32 = tone
-			var value_172 int32 = TonePolicyToneAccent
+			var value_172 int32 = int32(ButtonToneAccent)
 			var value_173 bool = value_171 != value_172
 			value_170 = value_173
 		}
 		var value_174 bool = value_170
 		if value_174 {
 			var value_175 int32 = tone
-			var value_176 int32 = TonePolicyToneNeutral
+			var value_176 int32 = int32(ButtonToneNeutral)
 			var value_177 bool = value_175 != value_176
 			value_174 = value_177
 		}
 		if value_174 {
 			var value_178 int32 = tone
-			var value_179 int32 = TonePolicyToneDanger
+			var value_179 int32 = int32(ButtonToneDanger)
 			var value_180 bool = value_178 == value_179
 			if value_180 {
 				var value_181 uint32 = surface
@@ -1210,7 +1191,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 				return value_184
 			}
 			var value_185 int32 = tone
-			var value_186 int32 = TonePolicyToneWarning
+			var value_186 int32 = int32(ButtonToneWarning)
 			var value_187 bool = value_185 == value_186
 			if value_187 {
 				var value_188 uint32 = surface
@@ -1226,12 +1207,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			return value_195
 		}
 		var value_196 int32 = tone
-		var value_197 int32 = TonePolicyToneAccent
+		var value_197 int32 = int32(ButtonToneAccent)
 		var value_198 bool = value_196 == value_197
 		var value_199 bool = value_198
 		if value_199 {
 			var value_200 int32 = emphasis
-			var value_201 int32 = EmphasisPolicyEmphasisFilled
+			var value_201 int32 = int32(ButtonEmphasisFilled)
 			var value_202 bool = value_200 == value_201
 			value_199 = value_202
 		}
@@ -1253,7 +1234,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_212 bool = light
 		if value_212 {
 			var value_213 int32 = emphasis
-			var value_214 int32 = EmphasisPolicyEmphasisGhost
+			var value_214 int32 = int32(ButtonEmphasisGhost)
 			var value_215 bool = value_213 == value_214
 			if value_215 {
 				var value_216 uint32 = surface
@@ -1276,12 +1257,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 				return value_231
 			}
 			var value_232 int32 = emphasis
-			var value_233 int32 = EmphasisPolicyEmphasisOutline
+			var value_233 int32 = int32(ButtonEmphasisOutline)
 			var value_234 bool = value_232 == value_233
 			var value_235 bool = value_234
 			if !value_235 {
 				var value_236 int32 = emphasis
-				var value_237 int32 = EmphasisPolicyEmphasisLink
+				var value_237 int32 = int32(ButtonEmphasisLink)
 				var value_238 bool = value_236 == value_237
 				value_235 = value_238
 			}
@@ -1305,18 +1286,18 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		return value_250
 	}
 	var value_251 int32 = state
-	var value_252 int32 = StatePolicyStatePressed
+	var value_252 int32 = int32(ButtonStatePressed)
 	var value_253 bool = value_251 == value_252
 	if value_253 {
 		var value_254 bool = light
 		if value_254 {
 			var value_255 int32 = tone
-			var value_256 int32 = TonePolicyToneAccent
+			var value_256 int32 = int32(ButtonToneAccent)
 			var value_257 bool = value_255 == value_256
 			var value_258 bool = value_257
 			if value_258 {
 				var value_259 int32 = emphasis
-				var value_260 int32 = EmphasisPolicyEmphasisFilled
+				var value_260 int32 = int32(ButtonEmphasisFilled)
 				var value_261 bool = value_259 == value_260
 				value_258 = value_261
 			}
@@ -1331,12 +1312,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 				return value_268
 			}
 			var value_269 int32 = emphasis
-			var value_270 int32 = EmphasisPolicyEmphasisOutline
+			var value_270 int32 = int32(ButtonEmphasisOutline)
 			var value_271 bool = value_269 == value_270
 			var value_272 bool = value_271
 			if !value_272 {
 				var value_273 int32 = emphasis
-				var value_274 int32 = EmphasisPolicyEmphasisLink
+				var value_274 int32 = int32(ButtonEmphasisLink)
 				var value_275 bool = value_273 == value_274
 				value_272 = value_275
 			}
@@ -1348,12 +1329,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 				return value_279
 			}
 			var value_280 int32 = tone
-			var value_281 int32 = TonePolicyToneDanger
+			var value_281 int32 = int32(ButtonToneDanger)
 			var value_282 bool = value_280 == value_281
 			var value_283 bool = value_282
 			if value_283 {
 				var value_284 int32 = emphasis
-				var value_285 int32 = EmphasisPolicyEmphasisFilled
+				var value_285 int32 = int32(ButtonEmphasisFilled)
 				var value_286 bool = value_284 == value_285
 				value_283 = value_286
 			}
@@ -1368,25 +1349,25 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			return value_291
 		}
 		var value_292 int32 = emphasis
-		var value_293 int32 = EmphasisPolicyEmphasisFilled
+		var value_293 int32 = int32(ButtonEmphasisFilled)
 		var value_294 bool = value_292 == value_293
 		var value_295 bool = value_294
 		if value_295 {
 			var value_296 int32 = tone
-			var value_297 int32 = TonePolicyToneNeutral
+			var value_297 int32 = int32(ButtonToneNeutral)
 			var value_298 bool = value_296 != value_297
 			value_295 = value_298
 		}
 		var value_299 bool = value_295
 		if value_299 {
 			var value_300 int32 = tone
-			var value_301 int32 = TonePolicyToneAccent
+			var value_301 int32 = int32(ButtonToneAccent)
 			var value_302 bool = value_300 != value_301
 			value_299 = value_302
 		}
 		if value_299 {
 			var value_303 int32 = tone
-			var value_304 int32 = TonePolicyToneWarning
+			var value_304 int32 = int32(ButtonToneWarning)
 			var value_305 bool = value_303 == value_304
 			if value_305 {
 				var value_306 uint32 = surface
@@ -1402,12 +1383,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			return value_313
 		}
 		var value_314 int32 = tone
-		var value_315 int32 = TonePolicyToneAccent
+		var value_315 int32 = int32(ButtonToneAccent)
 		var value_316 bool = value_314 == value_315
 		var value_317 bool = value_316
 		if value_317 {
 			var value_318 int32 = emphasis
-			var value_319 int32 = EmphasisPolicyEmphasisFilled
+			var value_319 int32 = int32(ButtonEmphasisFilled)
 			var value_320 bool = value_318 == value_319
 			value_317 = value_320
 		}
@@ -1419,7 +1400,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			return value_324
 		}
 		var value_325 int32 = emphasis
-		var value_326 int32 = EmphasisPolicyEmphasisOutline
+		var value_326 int32 = int32(ButtonEmphasisOutline)
 		var value_327 bool = value_325 == value_326
 		if value_327 {
 			var value_328 uint32 = background
@@ -1438,21 +1419,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_337 bool = value_336
 	if value_337 {
 		var value_338 int32 = state
-		var value_339 int32 = StatePolicyStateFocus
+		var value_339 int32 = int32(ButtonStateFocus)
 		var value_340 bool = value_338 == value_339
 		value_337 = value_340
 	}
 	var value_341 bool = value_337
 	if value_341 {
 		var value_342 int32 = tone
-		var value_343 int32 = TonePolicyToneAccent
+		var value_343 int32 = int32(ButtonToneAccent)
 		var value_344 bool = value_342 == value_343
 		value_341 = value_344
 	}
 	var value_345 bool = value_341
 	if value_345 {
 		var value_346 int32 = emphasis
-		var value_347 int32 = EmphasisPolicyEmphasisFilled
+		var value_347 int32 = int32(ButtonEmphasisFilled)
 		var value_348 bool = value_346 == value_347
 		value_345 = value_348
 	}
@@ -1468,21 +1449,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_355 bool = value_354
 	if value_355 {
 		var value_356 int32 = state
-		var value_357 int32 = StatePolicyStateFocus
+		var value_357 int32 = int32(ButtonStateFocus)
 		var value_358 bool = value_356 == value_357
 		value_355 = value_358
 	}
 	var value_359 bool = value_355
 	if value_359 {
 		var value_360 int32 = tone
-		var value_361 int32 = TonePolicyToneAccent
+		var value_361 int32 = int32(ButtonToneAccent)
 		var value_362 bool = value_360 == value_361
 		value_359 = value_362
 	}
 	var value_363 bool = value_359
 	if value_363 {
 		var value_364 int32 = emphasis
-		var value_365 int32 = EmphasisPolicyEmphasisFilled
+		var value_365 int32 = int32(ButtonEmphasisFilled)
 		var value_366 bool = value_364 == value_365
 		value_363 = value_366
 	}
@@ -1495,21 +1476,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_370 bool = value_369
 	if value_370 {
 		var value_371 int32 = state
-		var value_372 int32 = StatePolicyStateFocus
+		var value_372 int32 = int32(ButtonStateFocus)
 		var value_373 bool = value_371 == value_372
 		value_370 = value_373
 	}
 	var value_374 bool = value_370
 	if value_374 {
 		var value_375 int32 = tone
-		var value_376 int32 = TonePolicyToneNeutral
+		var value_376 int32 = int32(ButtonToneNeutral)
 		var value_377 bool = value_375 == value_376
 		value_374 = value_377
 	}
 	var value_378 bool = value_374
 	if value_378 {
 		var value_379 int32 = emphasis
-		var value_380 int32 = EmphasisPolicyEmphasisSoft
+		var value_380 int32 = int32(ButtonEmphasisSoft)
 		var value_381 bool = value_379 == value_380
 		value_378 = value_381
 	}
@@ -1536,21 +1517,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_398 bool = value_397
 	if value_398 {
 		var value_399 int32 = state
-		var value_400 int32 = StatePolicyStateFocus
+		var value_400 int32 = int32(ButtonStateFocus)
 		var value_401 bool = value_399 == value_400
 		value_398 = value_401
 	}
 	var value_402 bool = value_398
 	if value_402 {
 		var value_403 int32 = tone
-		var value_404 int32 = TonePolicyToneDanger
+		var value_404 int32 = int32(ButtonToneDanger)
 		var value_405 bool = value_403 == value_404
 		value_402 = value_405
 	}
 	var value_406 bool = value_402
 	if value_406 {
 		var value_407 int32 = emphasis
-		var value_408 int32 = EmphasisPolicyEmphasisFilled
+		var value_408 int32 = int32(ButtonEmphasisFilled)
 		var value_409 bool = value_407 == value_408
 		value_406 = value_409
 	}
@@ -1566,21 +1547,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 	var value_416 bool = value_415
 	if value_416 {
 		var value_417 int32 = state
-		var value_418 int32 = StatePolicyStateFocus
+		var value_418 int32 = int32(ButtonStateFocus)
 		var value_419 bool = value_417 == value_418
 		value_416 = value_419
 	}
 	var value_420 bool = value_416
 	if value_420 {
 		var value_421 int32 = tone
-		var value_422 int32 = TonePolicyToneWarning
+		var value_422 int32 = int32(ButtonToneWarning)
 		var value_423 bool = value_421 == value_422
 		value_420 = value_423
 	}
 	var value_424 bool = value_420
 	if value_424 {
 		var value_425 int32 = emphasis
-		var value_426 int32 = EmphasisPolicyEmphasisFilled
+		var value_426 int32 = int32(ButtonEmphasisFilled)
 		var value_427 bool = value_425 == value_426
 		value_424 = value_427
 	}
@@ -1592,12 +1573,12 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		return value_431
 	}
 	var value_432 int32 = state
-	var value_433 int32 = StatePolicyStateFocus
+	var value_433 int32 = int32(ButtonStateFocus)
 	var value_434 bool = value_432 == value_433
 	var value_435 bool = value_434
 	if value_435 {
 		var value_436 int32 = emphasis
-		var value_437 int32 = EmphasisPolicyEmphasisLink
+		var value_437 int32 = int32(ButtonEmphasisLink)
 		var value_438 bool = value_436 == value_437
 		value_435 = value_438
 	}
@@ -1622,7 +1603,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		return value_454
 	}
 	var value_455 int32 = state
-	var value_456 int32 = StatePolicyStateSelected
+	var value_456 int32 = int32(ButtonStateSelected)
 	var value_457 bool = value_455 == value_456
 	if value_457 {
 		var value_458 uint32 = background
@@ -1632,7 +1613,7 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		return value_461
 	}
 	var value_462 int32 = state
-	var value_463 int32 = StatePolicyStateLoading
+	var value_463 int32 = int32(ButtonStateLoading)
 	var value_464 bool = value_462 == value_463
 	if value_464 {
 		var value_465 bool = light
@@ -1644,19 +1625,19 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 			return value_469
 		}
 		var value_470 int32 = emphasis
-		var value_471 int32 = EmphasisPolicyEmphasisFilled
+		var value_471 int32 = int32(ButtonEmphasisFilled)
 		var value_472 bool = value_470 == value_471
 		var value_473 bool = value_472
 		if value_473 {
 			var value_474 int32 = tone
-			var value_475 int32 = TonePolicyToneAccent
+			var value_475 int32 = int32(ButtonToneAccent)
 			var value_476 bool = value_474 != value_475
 			value_473 = value_476
 		}
 		var value_477 bool = value_473
 		if value_477 {
 			var value_478 int32 = tone
-			var value_479 int32 = TonePolicyToneNeutral
+			var value_479 int32 = int32(ButtonToneNeutral)
 			var value_480 bool = value_478 != value_479
 			value_477 = value_480
 		}
@@ -1674,21 +1655,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		return value_488
 	}
 	var value_489 int32 = state
-	var value_490 int32 = StatePolicyStateDisabled
+	var value_490 int32 = int32(ButtonStateDisabled)
 	var value_491 bool = value_489 == value_490
 	if value_491 {
 		var value_492 bool = light
 		var value_493 bool = value_492
 		if value_493 {
 			var value_494 int32 = tone
-			var value_495 int32 = TonePolicyToneAccent
+			var value_495 int32 = int32(ButtonToneAccent)
 			var value_496 bool = value_494 == value_495
 			value_493 = value_496
 		}
 		var value_497 bool = value_493
 		if value_497 {
 			var value_498 int32 = emphasis
-			var value_499 int32 = EmphasisPolicyEmphasisFilled
+			var value_499 int32 = int32(ButtonEmphasisFilled)
 			var value_500 bool = value_498 == value_499
 			value_497 = value_500
 		}
@@ -1704,14 +1685,14 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 		var value_507 bool = value_506
 		if value_507 {
 			var value_508 int32 = tone
-			var value_509 int32 = TonePolicyToneAccent
+			var value_509 int32 = int32(ButtonToneAccent)
 			var value_510 bool = value_508 == value_509
 			value_507 = value_510
 		}
 		var value_511 bool = value_507
 		if value_511 {
 			var value_512 int32 = emphasis
-			var value_513 int32 = EmphasisPolicyEmphasisFilled
+			var value_513 int32 = int32(ButtonEmphasisFilled)
 			var value_514 bool = value_512 == value_513
 			value_511 = value_514
 		}
@@ -1734,21 +1715,21 @@ func Button_ButtonBackground(tone int32, emphasis int32, state int32, surface ui
 
 func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface uint32, on_accent uint32, text uint32, danger uint32, on_danger uint32, success uint32, on_success uint32, warning uint32, on_warning uint32, link uint32, disabled_text uint32, accent uint32) uint32 {
 	var value_0 int32 = state
-	var value_1 int32 = StatePolicyStateDisabled
+	var value_1 int32 = int32(ButtonStateDisabled)
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 uint32 = surface
 		var value_4 bool = Button_LightSurface(value_3)
 		if value_4 {
 			var value_5 int32 = tone
-			var value_6 int32 = TonePolicyToneNeutral
+			var value_6 int32 = int32(ButtonToneNeutral)
 			var value_7 bool = value_5 != value_6
 			if value_7 {
 				var value_8 int32 = 70
 				var value_9 uint32 = uint32(number_533abbd6_bits(uint64(value_8), uint64(0), 32, false, 0))
 				var amount uint32 = value_9
 				var value_10 int32 = tone
-				var value_11 int32 = TonePolicyToneDanger
+				var value_11 int32 = int32(ButtonToneDanger)
 				var value_12 bool = value_10 == value_11
 				if value_12 {
 					var value_13 int32 = 55
@@ -1774,7 +1755,7 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 			return value_28
 		}
 		var value_29 int32 = emphasis
-		var value_30 int32 = EmphasisPolicyEmphasisLink
+		var value_30 int32 = int32(ButtonEmphasisLink)
 		var value_31 bool = value_29 == value_30
 		if value_31 {
 			var value_32 uint32 = link
@@ -1790,7 +1771,7 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		return value_39
 	}
 	var value_40 int32 = state
-	var value_41 int32 = StatePolicyStateLoading
+	var value_41 int32 = int32(ButtonStateLoading)
 	var value_42 bool = value_40 == value_41
 	if value_42 {
 		var value_43 int32 = tone
@@ -1823,14 +1804,14 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		warning = value_65
 	}
 	var value_66 int32 = emphasis
-	var value_67 int32 = EmphasisPolicyEmphasisLink
+	var value_67 int32 = int32(ButtonEmphasisLink)
 	var value_68 bool = value_66 == value_67
 	if value_68 {
 		var value_69 uint32 = link
 		return value_69
 	}
 	var value_70 int32 = emphasis
-	var value_71 int32 = EmphasisPolicyEmphasisFilled
+	var value_71 int32 = int32(ButtonEmphasisFilled)
 	var value_72 bool = value_70 != value_71
 	if value_72 {
 		var value_73 uint32 = surface
@@ -1839,7 +1820,7 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		var value_76 bool = value_75
 		if value_76 {
 			var value_77 int32 = tone
-			var value_78 int32 = TonePolicyToneAccent
+			var value_78 int32 = int32(ButtonToneAccent)
 			var value_79 bool = value_77 == value_78
 			value_76 = value_79
 		}
@@ -1861,7 +1842,7 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 	var value_90 bool = value_89
 	if value_90 {
 		var value_91 int32 = tone
-		var value_92 int32 = TonePolicyToneAccent
+		var value_92 int32 = int32(ButtonToneAccent)
 		var value_93 bool = value_91 != value_92
 		value_90 = value_93
 	}
@@ -1880,19 +1861,19 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 	var value_103 bool = value_102
 	if value_103 {
 		var value_104 int32 = state
-		var value_105 int32 = StatePolicyStatePressed
+		var value_105 int32 = int32(ButtonStatePressed)
 		var value_106 bool = value_104 == value_105
 		var value_107 bool = value_106
 		if !value_107 {
 			var value_108 int32 = state
-			var value_109 int32 = StatePolicyStateHover
+			var value_109 int32 = int32(ButtonStateHover)
 			var value_110 bool = value_108 == value_109
 			value_107 = value_110
 		}
 		var value_111 bool = value_107
 		if !value_111 {
 			var value_112 int32 = state
-			var value_113 int32 = StatePolicyStateFocus
+			var value_113 int32 = int32(ButtonStateFocus)
 			var value_114 bool = value_112 == value_113
 			value_111 = value_114
 		}
@@ -1903,25 +1884,25 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		return value_115
 	}
 	var value_116 int32 = tone
-	var value_117 int32 = TonePolicyToneDanger
+	var value_117 int32 = int32(ButtonToneDanger)
 	var value_118 bool = value_116 == value_117
 	if value_118 {
 		var value_119 uint32 = on_danger
 		return value_119
 	}
 	var value_120 int32 = tone
-	var value_121 int32 = TonePolicyToneSuccess
+	var value_121 int32 = int32(ButtonToneSuccess)
 	var value_122 bool = value_120 == value_121
 	if value_122 {
 		var value_123 uint32 = on_success
 		return value_123
 	}
 	var value_124 int32 = tone
-	var value_125 int32 = TonePolicyToneWarning
+	var value_125 int32 = int32(ButtonToneWarning)
 	var value_126 bool = value_124 == value_125
 	if value_126 {
 		var value_127 int32 = state
-		var value_128 int32 = StatePolicyStatePressed
+		var value_128 int32 = int32(ButtonStatePressed)
 		var value_129 bool = value_127 == value_128
 		if value_129 {
 			var value_130 uint32 = warning
@@ -1947,7 +1928,7 @@ func Button_ButtonForeground(tone int32, emphasis int32, state int32, surface ui
 		return value_146
 	}
 	var value_147 int32 = tone
-	var value_148 int32 = TonePolicyToneNeutral
+	var value_148 int32 = int32(ButtonToneNeutral)
 	var value_149 bool = value_147 == value_148
 	if value_149 {
 		var value_150 uint32 = text
@@ -1968,7 +1949,7 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 	var value_6 bool = !value_5
 	if value_6 {
 		var value_7 int32 = tone
-		var value_8 int32 = TonePolicyToneSuccess
+		var value_8 int32 = int32(ButtonToneSuccess)
 		var value_9 bool = value_7 == value_8
 		if value_9 {
 			var value_10 uint32 = success
@@ -1991,19 +1972,19 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 		return value_23
 	}
 	var value_24 int32 = emphasis
-	var value_25 int32 = EmphasisPolicyEmphasisSoft
+	var value_25 int32 = int32(ButtonEmphasisSoft)
 	var value_26 bool = value_24 == value_25
 	var value_27 bool = value_26
 	if !value_27 {
 		var value_28 int32 = emphasis
-		var value_29 int32 = EmphasisPolicyEmphasisGhost
+		var value_29 int32 = int32(ButtonEmphasisGhost)
 		var value_30 bool = value_28 == value_29
 		value_27 = value_30
 	}
 	var value_31 bool = value_27
 	if !value_31 {
 		var value_32 int32 = emphasis
-		var value_33 int32 = EmphasisPolicyEmphasisLink
+		var value_33 int32 = int32(ButtonEmphasisLink)
 		var value_34 bool = value_32 == value_33
 		value_31 = value_34
 	}
@@ -2018,7 +1999,7 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 		alpha = value_41
 	}
 	var value_42 int32 = tone
-	var value_43 int32 = TonePolicyToneSuccess
+	var value_43 int32 = int32(ButtonToneSuccess)
 	var value_44 bool = value_42 == value_43
 	if value_44 {
 		var value_45 uint32 = success
@@ -2046,7 +2027,7 @@ func Button_ButtonFocus(tone int32, emphasis int32, surface uint32, focus uint32
 
 func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32, accent uint32, neutral uint32, danger uint32, success uint32, warning uint32) uint32 {
 	var value_0 int32 = emphasis
-	var value_1 int32 = EmphasisPolicyEmphasisGhost
+	var value_1 int32 = int32(ButtonEmphasisGhost)
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 int32 = 0
@@ -2054,7 +2035,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		return value_4
 	}
 	var value_5 int32 = emphasis
-	var value_6 int32 = EmphasisPolicyEmphasisLink
+	var value_6 int32 = int32(ButtonEmphasisLink)
 	var value_7 bool = value_5 == value_6
 	if value_7 {
 		var value_8 int32 = 0
@@ -2074,14 +2055,14 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_19 bool = value_18
 	if value_19 {
 		var value_20 int32 = emphasis
-		var value_21 int32 = EmphasisPolicyEmphasisFilled
+		var value_21 int32 = int32(ButtonEmphasisFilled)
 		var value_22 bool = value_20 == value_21
 		value_19 = value_22
 	}
 	var value_23 bool = value_19
 	if value_23 {
 		var value_24 int32 = tone
-		var value_25 int32 = TonePolicyToneAccent
+		var value_25 int32 = int32(ButtonToneAccent)
 		var value_26 bool = value_24 != value_25
 		value_23 = value_26
 	}
@@ -2093,14 +2074,14 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		base = value_30
 	}
 	var value_31 int32 = state
-	var value_32 int32 = StatePolicyStateDisabled
+	var value_32 int32 = int32(ButtonStateDisabled)
 	var value_33 bool = value_31 == value_32
 	if value_33 {
 		var value_34 int32 = 25
 		var value_35 uint32 = uint32(number_533abbd6_bits(uint64(value_34), uint64(0), 32, false, 0))
 		var amount uint32 = value_35
 		var value_36 int32 = tone
-		var value_37 int32 = TonePolicyToneNeutral
+		var value_37 int32 = int32(ButtonToneNeutral)
 		var value_38 bool = value_36 == value_37
 		if value_38 {
 			var value_39 int32 = 45
@@ -2118,14 +2099,14 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	var value_47 bool = value_46
 	if value_47 {
 		var value_48 int32 = state
-		var value_49 int32 = StatePolicyStatePressed
+		var value_49 int32 = int32(ButtonStatePressed)
 		var value_50 bool = value_48 == value_49
 		value_47 = value_50
 	}
 	var value_51 bool = value_47
 	if value_51 {
 		var value_52 int32 = tone
-		var value_53 int32 = TonePolicyToneAccent
+		var value_53 int32 = int32(ButtonToneAccent)
 		var value_54 bool = value_52 == value_53
 		value_51 = value_54
 	}
@@ -2137,7 +2118,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		return value_58
 	}
 	var value_59 int32 = state
-	var value_60 int32 = StatePolicyStateLoading
+	var value_60 int32 = int32(ButtonStateLoading)
 	var value_61 bool = value_59 == value_60
 	var value_62 bool = value_61
 	if value_62 {
@@ -2147,7 +2128,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 	}
 	if value_62 {
 		var value_65 int32 = emphasis
-		var value_66 int32 = EmphasisPolicyEmphasisOutline
+		var value_66 int32 = int32(ButtonEmphasisOutline)
 		var value_67 bool = value_65 == value_66
 		if value_67 {
 			var value_68 uint32 = surface
@@ -2163,7 +2144,7 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		return value_75
 	}
 	var value_76 int32 = state
-	var value_77 int32 = StatePolicyStateLoading
+	var value_77 int32 = int32(ButtonStateLoading)
 	var value_78 bool = value_76 == value_77
 	var value_79 bool = value_78
 	if value_79 {
@@ -2179,12 +2160,12 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		var value_86 uint32 = Button_MixColor(value_83, value_84, value_85)
 		var border uint32 = value_86
 		var value_87 int32 = tone
-		var value_88 int32 = TonePolicyToneNeutral
+		var value_88 int32 = int32(ButtonToneNeutral)
 		var value_89 bool = value_87 == value_88
 		var value_90 bool = value_89
 		if !value_90 {
 			var value_91 int32 = emphasis
-			var value_92 int32 = EmphasisPolicyEmphasisOutline
+			var value_92 int32 = int32(ButtonEmphasisOutline)
 			var value_93 bool = value_91 == value_92
 			value_90 = value_93
 		}
@@ -2198,14 +2179,14 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 		return value_97
 	}
 	var value_98 int32 = emphasis
-	var value_99 int32 = EmphasisPolicyEmphasisSoft
+	var value_99 int32 = int32(ButtonEmphasisSoft)
 	var value_100 bool = value_98 == value_99
 	if value_100 {
 		var value_101 uint32 = surface
 		var value_102 bool = Button_LightSurface(value_101)
 		if value_102 {
 			var value_103 int32 = tone
-			var value_104 int32 = TonePolicyToneNeutral
+			var value_104 int32 = int32(ButtonToneNeutral)
 			var value_105 bool = value_103 == value_104
 			if value_105 {
 				var value_106 uint32 = accent
@@ -2218,12 +2199,12 @@ func Button_ButtonBorder(tone int32, emphasis int32, state int32, surface uint32
 			return value_110
 		}
 		var value_111 int32 = tone
-		var value_112 int32 = TonePolicyToneNeutral
+		var value_112 int32 = int32(ButtonToneNeutral)
 		var value_113 bool = value_111 == value_112
 		var value_114 bool = value_113
 		if value_114 {
 			var value_115 int32 = state
-			var value_116 int32 = StatePolicyStateHover
+			var value_116 int32 = int32(ButtonStateHover)
 			var value_117 bool = value_115 == value_116
 			value_114 = value_117
 		}

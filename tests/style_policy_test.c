@@ -11,40 +11,40 @@ int main(void)
             bool hovered = (bits & 8) != 0;
             bool focused = (bits & 16) != 0;
             bool selected = (bits & 32) != 0;
-            int expected = PolicyStateNormal;
-            if (selected) expected = PolicyStateSelected;
-            if (focused) expected = PolicyStateFocus;
-            if (hovered) expected = PolicyStateHover;
-            if (pressed) expected = PolicyStatePressed;
-            if (state != PolicyStateAuto) expected = state;
-            if (loading) expected = PolicyStateLoading;
-            if (disabled) expected = PolicyStateDisabled;
+            int expected = ButtonStateNormal;
+            if (selected) expected = ButtonStateSelected;
+            if (focused) expected = ButtonStateFocus;
+            if (hovered) expected = ButtonStateHover;
+            if (pressed) expected = ButtonStatePressed;
+            if (state != ButtonStateAuto) expected = state;
+            if (loading) expected = ButtonStateLoading;
+            if (disabled) expected = ButtonStateDisabled;
             InteractionState result = ResolveInteraction(state, disabled, loading,
                 pressed, hovered, focused, selected);
             assert(result.state == expected);
-            assert(result.hovered == (state == PolicyStateAuto ? hovered : expected == PolicyStateHover));
-            assert(result.pressed == (state == PolicyStateAuto ? pressed : expected == PolicyStatePressed));
-            assert(result.focused == (state == PolicyStateAuto ? focused : expected == PolicyStateFocus));
+            assert(result.hovered == (state == ButtonStateAuto ? hovered : expected == ButtonStateHover));
+            assert(result.pressed == (state == ButtonStateAuto ? pressed : expected == ButtonStatePressed));
+            assert(result.focused == (state == ButtonStateAuto ? focused : expected == ButtonStateFocus));
         }
         for (int bits = 0; bits < 8; bits++) {
             StateFlags flags = ResolveFlags(state, bits & 1, bits & 2, bits & 4);
-            assert(flags.disabled == ((bits & 1) != 0 || state == PolicyStateDisabled));
-            assert(flags.loading == ((bits & 2) != 0 || state == PolicyStateLoading));
-            assert(flags.selected == ((bits & 4) != 0 || state == PolicyStateSelected));
+            assert(flags.disabled == ((bits & 1) != 0 || state == ButtonStateDisabled));
+            assert(flags.loading == ((bits & 2) != 0 || state == ButtonStateLoading));
+            assert(flags.selected == ((bits & 4) != 0 || state == ButtonStateSelected));
         }
     }
     assert(DefaultFields() == 24575u);
-    assert((DefaultFields() & FieldBackgroundEnd) == 0);
-    StyleData named = {.fields = FieldTypeface, .typeface = {"semibold", 8}};
+    assert((DefaultFields() & StyleBackgroundEnd) == 0);
+    StyleData named = {.fields = StyleTypeface, .typeface = {"semibold", 8}};
     StyleData other = {.typeface = {"ignored", 7}};
     assert(StringEqual(MergeValues(named, other).typeface, named.typeface));
-    other.fields = FieldTypeface;
+    other.fields = StyleTypeface;
     assert(StringEqual(MergeValues(named, other).typeface, other.typeface));
     other.typeface = StringView(NULL, 0);
     assert(StringEqual(MergeValues(named, other).typeface, StringView("", 0)));
-    assert(SizeValue(PolicySizeMedium, 32, 40, 48) == 40);
-    assert(SizeValue(PolicySizeSmall, 32, 40, 48) == 32);
-    assert(SizeValue(PolicySizeLarge, 32, 40, 48) == 48);
+    assert(SizeValue(ControlSizeMedium, 32, 40, 48) == 40);
+    assert(SizeValue(ControlSizeSmall, 32, 40, 48) == 32);
+    assert(SizeValue(ControlSizeLarge, 32, 40, 48) == 48);
     assert(SizeValue(-1, 32, 40, 48) == 40);
     assert(SizeValue(99, 32, 40, 48) == 40);
     assert(FitHeight(0, 40, 18, 8) == 40);

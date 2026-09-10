@@ -443,6 +443,13 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
         int root = KirParseExpr(&parsed, m, src, (KirSourceSpan){0});
         if(root >= 0 && parsed.exprs[root].kind == KIR_EXPR_CAST) {
             const KirExpr *cast = &parsed.exprs[root];
+            const KirExpr *operand = &parsed.exprs[cast->right];
+            if(*KirScalarType(cast->name) &&
+               KirScalarLiteral(cast->name, operand->text, KIR_JS,
+                                cast->span, dst, dst_size)) {
+                free(parsed.exprs);
+                return;
+            }
             const KirModule *owner = NULL;
             const KirType *type = KirFindType(m, cast->name, &owner);
             if(type != NULL && type->is_enum) {

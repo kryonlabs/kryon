@@ -1,0 +1,94 @@
+#module "control_props"
+#import "kryon_compat.generated.h"
+
+ButtonTone :: enum {
+    ButtonToneNeutral = 0
+    ButtonToneAccent = 1
+    ButtonToneDanger = 2
+    ButtonToneSuccess = 3
+    ButtonToneWarning = 4
+}
+
+ButtonEmphasis :: enum {
+    ButtonEmphasisFilled = 0
+    ButtonEmphasisSoft = 1
+    ButtonEmphasisOutline = 2
+    ButtonEmphasisGhost = 3
+    ButtonEmphasisLink = 4
+}
+
+ControlSize :: enum {
+    ControlSizeMedium = 0
+    ControlSizeSmall = 1
+    ControlSizeLarge = 2
+}
+
+IconPlacement :: enum {
+    IconPlacementLeading = 0
+    IconPlacementTrailing = 1
+}
+
+ButtonState :: enum {
+    ButtonStateAuto = 0
+    ButtonStateNormal = 1
+    ButtonStateHover = 2
+    ButtonStatePressed = 3
+    ButtonStateFocus = 4
+    ButtonStateDisabled = 5
+    ButtonStateLoading = 6
+    ButtonStateSelected = 7
+}
+
+MaterialKind :: enum {
+    MaterialLightfield = 0
+    MaterialFlat = 1
+}
+
+StyleField :: enum {
+    StyleBackground = (uint32_t)1
+    StyleForeground = (uint32_t)2
+    StyleBorder = (uint32_t)4
+    StyleFocus = (uint32_t)8
+    StyleRadius = (uint32_t)16
+    StyleBorderWidth = (uint32_t)32
+    StyleOpacity = (uint32_t)64
+    StylePaddingX = (uint32_t)128
+    StylePaddingY = (uint32_t)256
+    StyleGap = (uint32_t)512
+    StyleFontSize = (uint32_t)1024
+    StyleIconSize = (uint32_t)2048
+    StyleContentOffset = (uint32_t)4096
+    StyleBackgroundEnd = (uint32_t)8192
+    StyleMaterial = (uint32_t)16384
+    StyleTypeface = (uint32_t)32768
+}
+
+Style :: struct {
+    fields: u32
+    background: Color
+    foreground: Color
+    border: Color
+    focus: Color
+    radius: float
+    border_width: float
+    opacity: float
+    padding_x: float
+    padding_y: float
+    gap: float
+    font_size: float
+    icon_size: float
+    content_offset: Vector2
+    background_end: Color
+    material: MaterialKind
+    typeface: const char*
+}
+
+ControlStyle :: struct {
+    normal: Style
+    hover: Style
+    pressed: Style
+    focused: Style
+    disabled: Style
+    loading: Style
+    selected: Style
+}

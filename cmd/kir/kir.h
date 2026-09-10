@@ -270,6 +270,7 @@ typedef struct KirProgram {
 int KirResolveFunction(const KirModule *module, const char *name,
                        const KirModule **owner, const KirFunction **function);
 /* Runtime contracts are parsed from embedded declaration sources. */
+const KirType *KirFindRuntimeEnumMember(const char *name);
 const KirType *KirFindRuntimeType(const char *name, const KirModule **owner);
 const KirType *KirFindType(const KirModule *module, const char *name,
                           const KirModule **owner);

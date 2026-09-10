@@ -734,7 +734,15 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         format(result, sizeof(result), "%s.%s", a, field);
         break;
     }
-    case KIR_EXPR_IDENT: resolve(e,expr->name,result,sizeof(result));break;
+    case KIR_EXPR_IDENT:
+        resolve(e, expr->name, result, sizeof(result));
+        if(e->target == KIR_GO &&
+           KirFindRuntimeEnumMember(expr->name) != NULL) {
+            const char *target = KirTargetType(type, KIR_GO);
+            kir_copy(a, sizeof(a), result);
+            format(result, sizeof(result), "%s(%s)", target != NULL ? target : type, a);
+        }
+        break;
     case KIR_EXPR_STRING:
         string_literal(expr, e->target, a, sizeof(a));
         if(e->target == KIR_C || e->target == KIR_CPP)

@@ -72,13 +72,12 @@ types in `cmd/kir/kir_parse.c`; native Go also carries a props-field mapping in
 `runtime/text.kry`, `runtime/style.kry`, and `runtime/surface.kry` remove some
 duplicated policy, but do not yet constitute complete widget declarations.
 
-Go's public Button tone, emphasis, state, and control-size constants take their
-values from generated `.kry` enums, while retaining their public Go types. The
-size enum and `SizeValue` selector belong to `runtime/style.kry`, so measurement
-and future widgets can use them without depending on button policy. C's public
-enum declarations remain separate ABI declarations; parity checks verify every
-member against `.kry`. Moving those public type declarations into the shared
-source is still pending.
+`runtime/control_props.kry` owns the public Button tone, emphasis, state, size,
+icon placement, material, and Style field constants, plus `Style` and
+`ControlStyle`. C and Go use generated interfaces; JavaScript re-exports the
+generated constants. Go retains the public enum types and the `uint32` flag
+constants. The duplicate internal policy enums have been removed. `SizeValue`
+remains in `runtime/style.kry` for reuse by measurement and other widgets.
 
 `runtime/style.kry` owns `StyleData` and the nested `StyleStates` record used
 by state resolution. C and Go convert their public `ControlStyle` values into
@@ -265,7 +264,8 @@ and uses this binding; C and Go no longer look up or mutate its stored tracks.
 
 `runtime/button_props.kry` now owns Button's public props fields. C and Go use
 generated declarations instead of separately maintained structs. Geometry,
-textures, and public style types still come from the host interface; the built-in
+and textures still come from the host interface; style types now have their own
+shared contract. The built-in
 widget body remains to be migrated. The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

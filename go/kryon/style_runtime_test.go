@@ -49,18 +49,18 @@ func TestSharedInteractionStatePrecedence(t *testing.T) {
 			disabled, loading := flags&1 != 0, flags&2 != 0
 			pressed, hovered := flags&4 != 0, flags&8 != 0
 			focused, selected := flags&16 != 0, flags&32 != 0
-			want := int32(StatePolicyStateNormal)
+			want := int32(int32(ButtonStateNormal))
 			for _, candidate := range []struct {
 				active bool
 				state  int32
 			}{
-				{selected, StatePolicyStateSelected},
-				{focused, StatePolicyStateFocus},
-				{hovered, StatePolicyStateHover},
-				{pressed, StatePolicyStatePressed},
-				{explicit != StatePolicyStateAuto, explicit},
-				{loading, StatePolicyStateLoading},
-				{disabled, StatePolicyStateDisabled},
+				{selected, int32(ButtonStateSelected)},
+				{focused, int32(ButtonStateFocus)},
+				{hovered, int32(ButtonStateHover)},
+				{pressed, int32(ButtonStatePressed)},
+				{explicit != int32(ButtonStateAuto), explicit},
+				{loading, int32(ButtonStateLoading)},
+				{disabled, int32(ButtonStateDisabled)},
 			} {
 				if candidate.active {
 					want = candidate.state
@@ -72,10 +72,10 @@ func TestSharedInteractionStatePrecedence(t *testing.T) {
 			}
 			interaction := Style_ResolveInteraction(explicit, disabled, loading, pressed, hovered, focused, selected)
 			expected := InteractionState{State: want, Hovered: hovered, Pressed: pressed, Focused: focused}
-			if explicit != StatePolicyStateAuto {
-				expected.Hovered = want == StatePolicyStateHover
-				expected.Pressed = want == StatePolicyStatePressed
-				expected.Focused = want == StatePolicyStateFocus
+			if explicit != int32(ButtonStateAuto) {
+				expected.Hovered = want == int32(ButtonStateHover)
+				expected.Pressed = want == int32(ButtonStatePressed)
+				expected.Focused = want == int32(ButtonStateFocus)
 			}
 			if interaction != expected {
 				t.Fatalf("explicit %d flags %d: interaction %+v, want %+v", explicit, flags, interaction, expected)
@@ -89,9 +89,9 @@ func TestSharedExplicitStateFlags(t *testing.T) {
 		for bits := 0; bits < 8; bits++ {
 			got := Style_ResolveFlags(state, bits&1 != 0, bits&2 != 0, bits&4 != 0)
 			want := StateFlags{
-				Disabled: bits&1 != 0 || state == StatePolicyStateDisabled,
-				Loading:  bits&2 != 0 || state == StatePolicyStateLoading,
-				Selected: bits&4 != 0 || state == StatePolicyStateSelected,
+				Disabled: bits&1 != 0 || state == int32(ButtonStateDisabled),
+				Loading:  bits&2 != 0 || state == int32(ButtonStateLoading),
+				Selected: bits&4 != 0 || state == int32(ButtonStateSelected),
 			}
 			if got != want {
 				t.Fatalf("state %d bits %d: flags %+v, want %+v", state, bits, got, want)

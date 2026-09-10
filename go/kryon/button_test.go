@@ -844,12 +844,12 @@ func TestLightButtonInteractionPreservesMaterialEmphasis(t *testing.T) {
 }
 
 func TestGeneratedButtonThemePolicy(t *testing.T) {
-	if ButtonStateHover != 2 || StatePolicyStateHover != 2 ||
-		ButtonToneAccent != 1 || TonePolicyToneAccent != 1 ||
-		ButtonEmphasisFilled != 0 || EmphasisPolicyEmphasisFilled != 0 {
+	if ButtonStateHover != 2 || int32(ButtonStateHover) != 2 ||
+		ButtonToneAccent != 1 || int32(ButtonToneAccent) != 1 ||
+		ButtonEmphasisFilled != 0 || int32(ButtonEmphasisFilled) != 0 {
 		t.Fatalf("public/generated enum values diverged: state=%d/%d tone=%d/%d emphasis=%d/%d",
-			ButtonStateHover, StatePolicyStateHover, ButtonToneAccent, TonePolicyToneAccent,
-			ButtonEmphasisFilled, EmphasisPolicyEmphasisFilled)
+			ButtonStateHover, int32(ButtonStateHover), ButtonToneAccent, int32(ButtonToneAccent),
+			ButtonEmphasisFilled, int32(ButtonEmphasisFilled))
 	}
 	surface := Color{16, 24, 40, 255}
 	accent := Color{37, 99, 235, 255}

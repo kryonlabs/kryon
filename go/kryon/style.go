@@ -2,6 +2,7 @@
 package kryon
 
 // #import surface
+// #import control_props
 func number_bf4c9b4b_float(x float64, w uint, sign bool) uint64 {
 	bits := w
 	if sign {
@@ -81,19 +82,6 @@ func number_bf4c9b4b_bits(a, b uint64, w uint, sign bool, op int) uint64 {
 	panic("invalid numeric operation")
 }
 
-type State int32
-
-const (
-	StatePolicyStateAuto     = 0
-	StatePolicyStateNormal   = 1
-	StatePolicyStateHover    = 2
-	StatePolicyStatePressed  = 3
-	StatePolicyStateFocus    = 4
-	StatePolicyStateDisabled = 5
-	StatePolicyStateLoading  = 6
-	StatePolicyStateSelected = 7
-)
-
 type StateFlags struct {
 	Disabled bool
 	Loading  bool
@@ -106,35 +94,6 @@ type InteractionState struct {
 	Pressed bool
 	Focused bool
 }
-
-type Field int32
-
-const (
-	FieldFieldBackground    = 1
-	FieldFieldForeground    = 2
-	FieldFieldBorder        = 4
-	FieldFieldFocus         = 8
-	FieldFieldRadius        = 16
-	FieldFieldBorderWidth   = 32
-	FieldFieldOpacity       = 64
-	FieldFieldPaddingX      = 128
-	FieldFieldPaddingY      = 256
-	FieldFieldGap           = 512
-	FieldFieldFontSize      = 1024
-	FieldFieldIconSize      = 2048
-	FieldFieldContentOffset = 4096
-	FieldFieldBackgroundEnd = 8192
-	FieldFieldMaterial      = 16384
-	FieldFieldTypeface      = 32768
-)
-
-type Size int32
-
-const (
-	SizePolicySizeMedium = 0
-	SizePolicySizeSmall  = 1
-	SizePolicySizeLarge  = 2
-)
 
 type ContentBox struct {
 	X      float32
@@ -185,7 +144,7 @@ func Style_ResolveFlags(state int32, disabled bool, loading bool, selected bool)
 	var value_1 bool = value_0
 	if !value_1 {
 		var value_2 int32 = state
-		var value_3 int32 = StatePolicyStateDisabled
+		var value_3 int32 = int32(ButtonStateDisabled)
 		var value_4 bool = value_2 == value_3
 		value_1 = value_4
 	}
@@ -194,7 +153,7 @@ func Style_ResolveFlags(state int32, disabled bool, loading bool, selected bool)
 	var value_6 bool = value_5
 	if !value_6 {
 		var value_7 int32 = state
-		var value_8 int32 = StatePolicyStateLoading
+		var value_8 int32 = int32(ButtonStateLoading)
 		var value_9 bool = value_7 == value_8
 		value_6 = value_9
 	}
@@ -203,7 +162,7 @@ func Style_ResolveFlags(state int32, disabled bool, loading bool, selected bool)
 	var value_11 bool = value_10
 	if !value_11 {
 		var value_12 int32 = state
-		var value_13 int32 = StatePolicyStateSelected
+		var value_13 int32 = int32(ButtonStateSelected)
 		var value_14 bool = value_12 == value_13
 		value_11 = value_14
 	}
@@ -215,16 +174,16 @@ func Style_ResolveFlags(state int32, disabled bool, loading bool, selected bool)
 func Style_ResolveState(explicit_state int32, disabled bool, loading bool, pressed bool, hovered bool, focused bool, selected bool) int32 {
 	var value_0 bool = disabled
 	if value_0 {
-		var value_1 int32 = StatePolicyStateDisabled
+		var value_1 int32 = int32(ButtonStateDisabled)
 		return value_1
 	}
 	var value_2 bool = loading
 	if value_2 {
-		var value_3 int32 = StatePolicyStateLoading
+		var value_3 int32 = int32(ButtonStateLoading)
 		return value_3
 	}
 	var value_4 int32 = explicit_state
-	var value_5 int32 = StatePolicyStateAuto
+	var value_5 int32 = int32(ButtonStateAuto)
 	var value_6 bool = value_4 != value_5
 	if value_6 {
 		var value_7 int32 = explicit_state
@@ -232,25 +191,25 @@ func Style_ResolveState(explicit_state int32, disabled bool, loading bool, press
 	}
 	var value_8 bool = pressed
 	if value_8 {
-		var value_9 int32 = StatePolicyStatePressed
+		var value_9 int32 = int32(ButtonStatePressed)
 		return value_9
 	}
 	var value_10 bool = hovered
 	if value_10 {
-		var value_11 int32 = StatePolicyStateHover
+		var value_11 int32 = int32(ButtonStateHover)
 		return value_11
 	}
 	var value_12 bool = focused
 	if value_12 {
-		var value_13 int32 = StatePolicyStateFocus
+		var value_13 int32 = int32(ButtonStateFocus)
 		return value_13
 	}
 	var value_14 bool = selected
 	if value_14 {
-		var value_15 int32 = StatePolicyStateSelected
+		var value_15 int32 = int32(ButtonStateSelected)
 		return value_15
 	}
-	var value_16 int32 = StatePolicyStateNormal
+	var value_16 int32 = int32(ButtonStateNormal)
 	return value_16
 }
 
@@ -275,19 +234,19 @@ func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool,
 	value_8.Focused = value_12
 	var interaction InteractionState = value_8
 	var value_13 int32 = explicit_state
-	var value_14 int32 = StatePolicyStateAuto
+	var value_14 int32 = int32(ButtonStateAuto)
 	var value_15 bool = value_13 != value_14
 	if value_15 {
 		var value_16 int32 = state
-		var value_17 int32 = StatePolicyStateHover
+		var value_17 int32 = int32(ButtonStateHover)
 		var value_18 bool = value_16 == value_17
 		interaction.Hovered = value_18
 		var value_19 int32 = state
-		var value_20 int32 = StatePolicyStatePressed
+		var value_20 int32 = int32(ButtonStatePressed)
 		var value_21 bool = value_19 == value_20
 		interaction.Pressed = value_21
 		var value_22 int32 = state
-		var value_23 int32 = StatePolicyStateFocus
+		var value_23 int32 = int32(ButtonStateFocus)
 		var value_24 bool = value_22 == value_23
 		interaction.Focused = value_24
 	}
@@ -296,45 +255,45 @@ func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool,
 }
 
 func Style_DefaultFields() uint32 {
-	var value_0 int32 = FieldFieldBackground
+	var value_0 int32 = int32(StyleBackground)
 	var value_1 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_0), uint64(0), 32, false, 0))
-	var value_2 int32 = FieldFieldForeground
+	var value_2 int32 = int32(StyleForeground)
 	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_2), uint64(0), 32, false, 0))
 	var value_4 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(value_3), 32, false, 9))
-	var value_5 int32 = FieldFieldBorder
+	var value_5 int32 = int32(StyleBorder)
 	var value_6 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_5), uint64(0), 32, false, 0))
 	var value_7 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_4), uint64(value_6), 32, false, 9))
-	var value_8 int32 = FieldFieldFocus
+	var value_8 int32 = int32(StyleFocus)
 	var value_9 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_8), uint64(0), 32, false, 0))
 	var value_10 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_7), uint64(value_9), 32, false, 9))
-	var value_11 int32 = FieldFieldRadius
+	var value_11 int32 = int32(StyleRadius)
 	var value_12 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_11), uint64(0), 32, false, 0))
 	var value_13 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_10), uint64(value_12), 32, false, 9))
-	var value_14 int32 = FieldFieldBorderWidth
+	var value_14 int32 = int32(StyleBorderWidth)
 	var value_15 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_14), uint64(0), 32, false, 0))
 	var value_16 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_13), uint64(value_15), 32, false, 9))
-	var value_17 int32 = FieldFieldOpacity
+	var value_17 int32 = int32(StyleOpacity)
 	var value_18 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_17), uint64(0), 32, false, 0))
 	var value_19 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_16), uint64(value_18), 32, false, 9))
-	var value_20 int32 = FieldFieldPaddingX
+	var value_20 int32 = int32(StylePaddingX)
 	var value_21 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_20), uint64(0), 32, false, 0))
 	var value_22 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_19), uint64(value_21), 32, false, 9))
-	var value_23 int32 = FieldFieldPaddingY
+	var value_23 int32 = int32(StylePaddingY)
 	var value_24 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_23), uint64(0), 32, false, 0))
 	var value_25 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_22), uint64(value_24), 32, false, 9))
-	var value_26 int32 = FieldFieldGap
+	var value_26 int32 = int32(StyleGap)
 	var value_27 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_26), uint64(0), 32, false, 0))
 	var value_28 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_25), uint64(value_27), 32, false, 9))
-	var value_29 int32 = FieldFieldFontSize
+	var value_29 int32 = int32(StyleFontSize)
 	var value_30 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_29), uint64(0), 32, false, 0))
 	var value_31 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_28), uint64(value_30), 32, false, 9))
-	var value_32 int32 = FieldFieldIconSize
+	var value_32 int32 = int32(StyleIconSize)
 	var value_33 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(0), 32, false, 0))
 	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_31), uint64(value_33), 32, false, 9))
-	var value_35 int32 = FieldFieldContentOffset
+	var value_35 int32 = int32(StyleContentOffset)
 	var value_36 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_35), uint64(0), 32, false, 0))
 	var value_37 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_34), uint64(value_36), 32, false, 9))
-	var value_38 int32 = FieldFieldMaterial
+	var value_38 int32 = int32(StyleMaterial)
 	var value_39 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_38), uint64(0), 32, false, 0))
 	var value_40 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_37), uint64(value_39), 32, false, 9))
 	return value_40
@@ -342,14 +301,14 @@ func Style_DefaultFields() uint32 {
 
 func Style_SizeValue(size int32, small float32, medium float32, large float32) float32 {
 	var value_0 int32 = size
-	var value_1 int32 = SizePolicySizeSmall
+	var value_1 int32 = int32(ControlSizeSmall)
 	var value_2 bool = value_0 == value_1
 	if value_2 {
 		var value_3 float32 = small
 		return value_3
 	}
 	var value_4 int32 = size
-	var value_5 int32 = SizePolicySizeLarge
+	var value_5 int32 = int32(ControlSizeLarge)
 	var value_6 bool = value_4 == value_5
 	if value_6 {
 		var value_7 float32 = large
@@ -599,7 +558,7 @@ func Style_TransitionFrame(resolved StyleData, normal StyleData, hover StyleData
 
 func Style_MergeValues(base StyleData, override StyleData) StyleData {
 	var value_0 uint32 = override.Fields
-	var value_1 int32 = FieldFieldBackground
+	var value_1 int32 = int32(StyleBackground)
 	var value_2 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_1), uint64(0), 32, false, 0))
 	var value_3 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_0), uint64(value_2), 32, false, 8))
 	var value_4 int32 = 0
@@ -610,7 +569,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Background = value_7
 	}
 	var value_8 uint32 = override.Fields
-	var value_9 int32 = FieldFieldForeground
+	var value_9 int32 = int32(StyleForeground)
 	var value_10 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_9), uint64(0), 32, false, 0))
 	var value_11 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_8), uint64(value_10), 32, false, 8))
 	var value_12 int32 = 0
@@ -621,7 +580,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Foreground = value_15
 	}
 	var value_16 uint32 = override.Fields
-	var value_17 int32 = FieldFieldBorder
+	var value_17 int32 = int32(StyleBorder)
 	var value_18 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_17), uint64(0), 32, false, 0))
 	var value_19 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_16), uint64(value_18), 32, false, 8))
 	var value_20 int32 = 0
@@ -632,7 +591,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Border = value_23
 	}
 	var value_24 uint32 = override.Fields
-	var value_25 int32 = FieldFieldFocus
+	var value_25 int32 = int32(StyleFocus)
 	var value_26 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_25), uint64(0), 32, false, 0))
 	var value_27 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_24), uint64(value_26), 32, false, 8))
 	var value_28 int32 = 0
@@ -643,7 +602,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Focus = value_31
 	}
 	var value_32 uint32 = override.Fields
-	var value_33 int32 = FieldFieldRadius
+	var value_33 int32 = int32(StyleRadius)
 	var value_34 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_33), uint64(0), 32, false, 0))
 	var value_35 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_32), uint64(value_34), 32, false, 8))
 	var value_36 int32 = 0
@@ -654,7 +613,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Radius = value_39
 	}
 	var value_40 uint32 = override.Fields
-	var value_41 int32 = FieldFieldBorderWidth
+	var value_41 int32 = int32(StyleBorderWidth)
 	var value_42 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_41), uint64(0), 32, false, 0))
 	var value_43 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_40), uint64(value_42), 32, false, 8))
 	var value_44 int32 = 0
@@ -665,7 +624,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.BorderWidth = value_47
 	}
 	var value_48 uint32 = override.Fields
-	var value_49 int32 = FieldFieldOpacity
+	var value_49 int32 = int32(StyleOpacity)
 	var value_50 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_49), uint64(0), 32, false, 0))
 	var value_51 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_48), uint64(value_50), 32, false, 8))
 	var value_52 int32 = 0
@@ -676,7 +635,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Opacity = value_55
 	}
 	var value_56 uint32 = override.Fields
-	var value_57 int32 = FieldFieldPaddingX
+	var value_57 int32 = int32(StylePaddingX)
 	var value_58 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_57), uint64(0), 32, false, 0))
 	var value_59 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_56), uint64(value_58), 32, false, 8))
 	var value_60 int32 = 0
@@ -687,7 +646,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.PaddingX = value_63
 	}
 	var value_64 uint32 = override.Fields
-	var value_65 int32 = FieldFieldPaddingY
+	var value_65 int32 = int32(StylePaddingY)
 	var value_66 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_65), uint64(0), 32, false, 0))
 	var value_67 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_64), uint64(value_66), 32, false, 8))
 	var value_68 int32 = 0
@@ -698,7 +657,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.PaddingY = value_71
 	}
 	var value_72 uint32 = override.Fields
-	var value_73 int32 = FieldFieldGap
+	var value_73 int32 = int32(StyleGap)
 	var value_74 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_73), uint64(0), 32, false, 0))
 	var value_75 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_72), uint64(value_74), 32, false, 8))
 	var value_76 int32 = 0
@@ -709,7 +668,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Gap = value_79
 	}
 	var value_80 uint32 = override.Fields
-	var value_81 int32 = FieldFieldFontSize
+	var value_81 int32 = int32(StyleFontSize)
 	var value_82 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_81), uint64(0), 32, false, 0))
 	var value_83 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_80), uint64(value_82), 32, false, 8))
 	var value_84 int32 = 0
@@ -720,7 +679,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.FontSize = value_87
 	}
 	var value_88 uint32 = override.Fields
-	var value_89 int32 = FieldFieldIconSize
+	var value_89 int32 = int32(StyleIconSize)
 	var value_90 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_89), uint64(0), 32, false, 0))
 	var value_91 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_88), uint64(value_90), 32, false, 8))
 	var value_92 int32 = 0
@@ -731,7 +690,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.IconSize = value_95
 	}
 	var value_96 uint32 = override.Fields
-	var value_97 int32 = FieldFieldContentOffset
+	var value_97 int32 = int32(StyleContentOffset)
 	var value_98 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_97), uint64(0), 32, false, 0))
 	var value_99 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_96), uint64(value_98), 32, false, 8))
 	var value_100 int32 = 0
@@ -742,7 +701,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.OffsetX = value_103
 	}
 	var value_104 uint32 = override.Fields
-	var value_105 int32 = FieldFieldContentOffset
+	var value_105 int32 = int32(StyleContentOffset)
 	var value_106 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_105), uint64(0), 32, false, 0))
 	var value_107 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_104), uint64(value_106), 32, false, 8))
 	var value_108 int32 = 0
@@ -753,7 +712,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.OffsetY = value_111
 	}
 	var value_112 uint32 = override.Fields
-	var value_113 int32 = FieldFieldBackgroundEnd
+	var value_113 int32 = int32(StyleBackgroundEnd)
 	var value_114 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_113), uint64(0), 32, false, 0))
 	var value_115 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_112), uint64(value_114), 32, false, 8))
 	var value_116 int32 = 0
@@ -764,7 +723,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.BackgroundEnd = value_119
 	}
 	var value_120 uint32 = override.Fields
-	var value_121 int32 = FieldFieldMaterial
+	var value_121 int32 = int32(StyleMaterial)
 	var value_122 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_121), uint64(0), 32, false, 0))
 	var value_123 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_120), uint64(value_122), 32, false, 8))
 	var value_124 int32 = 0
@@ -775,7 +734,7 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		base.Material = value_127
 	}
 	var value_128 uint32 = override.Fields
-	var value_129 int32 = FieldFieldTypeface
+	var value_129 int32 = int32(StyleTypeface)
 	var value_130 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_129), uint64(0), 32, false, 0))
 	var value_131 uint32 = uint32(number_bf4c9b4b_bits(uint64(value_128), uint64(value_130), 32, false, 8))
 	var value_132 int32 = 0
@@ -799,7 +758,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 	var value_2 StyleData = Style_MergeValues(value_0, value_1)
 	base = value_2
 	var value_3 int32 = state
-	var value_4 int32 = StatePolicyStateHover
+	var value_4 int32 = int32(ButtonStateHover)
 	var value_5 bool = value_3 == value_4
 	if value_5 {
 		var value_6 StyleData = base
@@ -808,7 +767,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 		return value_8
 	}
 	var value_9 int32 = state
-	var value_10 int32 = StatePolicyStatePressed
+	var value_10 int32 = int32(ButtonStatePressed)
 	var value_11 bool = value_9 == value_10
 	if value_11 {
 		var value_12 StyleData = base
@@ -817,7 +776,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 		return value_14
 	}
 	var value_15 int32 = state
-	var value_16 int32 = StatePolicyStateFocus
+	var value_16 int32 = int32(ButtonStateFocus)
 	var value_17 bool = value_15 == value_16
 	if value_17 {
 		var value_18 StyleData = base
@@ -826,7 +785,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 		return value_20
 	}
 	var value_21 int32 = state
-	var value_22 int32 = StatePolicyStateDisabled
+	var value_22 int32 = int32(ButtonStateDisabled)
 	var value_23 bool = value_21 == value_22
 	if value_23 {
 		var value_24 StyleData = base
@@ -835,7 +794,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 		return value_26
 	}
 	var value_27 int32 = state
-	var value_28 int32 = StatePolicyStateLoading
+	var value_28 int32 = int32(ButtonStateLoading)
 	var value_29 bool = value_27 == value_28
 	if value_29 {
 		var value_30 StyleData = base
@@ -844,7 +803,7 @@ func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleD
 		return value_32
 	}
 	var value_33 int32 = state
-	var value_34 int32 = StatePolicyStateSelected
+	var value_34 int32 = int32(ButtonStateSelected)
 	var value_35 bool = value_33 == value_34
 	if value_35 {
 		var value_36 StyleData = base

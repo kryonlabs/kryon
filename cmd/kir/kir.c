@@ -154,17 +154,44 @@ KirResolveFunction(const KirModule *module, const char *name,
     return *function != NULL;
 }
 
+static KirProgram *runtime_programs[sizeof(runtime_sources) / sizeof(runtime_sources[0])];
+
+static KirProgram *
+runtime_program(size_t source)
+{
+    if(runtime_programs[source] == NULL)
+        runtime_programs[source] = kir_parse_source(runtime_sources[source].path,
+                                                  runtime_sources[source].source);
+    return runtime_programs[source];
+}
+
+const KirType *
+KirFindRuntimeEnumMember(const char *name)
+{
+    if(!*name)
+        return NULL;
+    for(size_t source = 0; source < sizeof(runtime_programs) / sizeof(runtime_programs[0]); source++) {
+        KirProgram *program = runtime_program(source);
+        if(program == NULL)
+            continue;
+        for(int m = 0; m < program->module_count; m++) {
+            const KirModule *module = &program->modules[m];
+            for(int t = 0; t < module->type_count; t++) {
+                if(enum_has_member(&module->types[t], name))
+                    return &module->types[t];
+            }
+        }
+    }
+    return NULL;
+}
+
 const KirType *
 KirFindRuntimeType(const char *name, const KirModule **owner)
 {
-    static KirProgram *programs[sizeof(runtime_sources) / sizeof(runtime_sources[0])];
     if(owner != NULL)
         *owner = NULL;
-    for(size_t source = 0; source < sizeof(programs) / sizeof(programs[0]); source++) {
-        if(programs[source] == NULL)
-            programs[source] = kir_parse_source(runtime_sources[source].path,
-                                                runtime_sources[source].source);
-        KirProgram *program = programs[source];
+    for(size_t source = 0; source < sizeof(runtime_programs) / sizeof(runtime_programs[0]); source++) {
+        KirProgram *program = runtime_program(source);
         if(program == NULL)
             continue;
         for(int m = 0; m < program->module_count; m++) {

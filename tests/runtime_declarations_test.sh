@@ -13,7 +13,13 @@ cmp "$work/runtime_declarations.generated.h" cmd/kir/runtime_declarations.genera
 "$build/bin/k2go" --strict --no-main --runtime-implementation --pkg kryon \
     --root . -o "$work/go" runtime/*.kry
 gofmt -w "$work/go"/*.go
-cmp "$work/c/runtime/button_props.h" include/ui_button_props.generated.h
+for source in runtime/*_props.kry; do
+    name=$(basename "$source" .kry)
+    cmp "$work/c/runtime/$name.h" "include/ui_$name.generated.h"
+done
+"$build/bin/k2js" --strict --no-main --root runtime --runtime ./kryon-runtime.js \
+    -o "$work/web" runtime/control_props.kry
+cmp "$work/web/control_props.js" web/control_props.js
 for source in runtime/*.kry; do
     name=$(basename "$source" .kry)
     cmp "$work/go/$name.go" "go/kryon/$name.go"
@@ -25,8 +31,16 @@ cat > "$work/consumer.c" <<'C'
 int main(void) {
     struct ButtonProps value = {0};
     ButtonProps *props = &value;
+    enum ButtonTone tone = ButtonToneAccent;
+    enum ButtonState state = ButtonStateHover;
+    enum StyleField fields = StyleBackground;
+    props->tone = tone;
+    props->state = state;
+    props->style.normal.fields = fields;
     props->disabled = true;
-    return props->disabled ? 0 : 1;
+    return props->disabled && props->tone == ButtonToneAccent &&
+           props->state == ButtonStateHover &&
+           props->style.normal.fields == StyleBackground ? 0 : 1;
 }
 C
 ${CC:-cc} -Iinclude -I"$build/generated/include" "$work/consumer.c" -o "$work/consumer"

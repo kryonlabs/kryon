@@ -67,11 +67,9 @@ is_runtime_go_type(const char *type)
 		"Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
 		"Accelerator",
 		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
-        "ButtonTone", "ButtonEmphasis", "ButtonState", "ControlSize",
         "TextAlign", "TextWrap",
-        "Style", "ControlStyle", "MaterialKind",
         "Theme", "ThemeFamily", "ThemeColors", "ThemeMetrics",
-        "MenuButtonProps", "SplitButtonProps", "SplitButtonResult", "IconPlacement",
+        "MenuButtonProps", "SplitButtonProps", "SplitButtonResult",
         "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "ThemeSettingsState", "ThemeSettingsProps",
         "ThemeSettingsResult", "PictureFit", "UISemanticKind",
@@ -613,7 +611,8 @@ parse_enum(const KirType *t)
         e = &g_enums[g_enum_count++];
         memset(e, 0, sizeof(*e));
         kir_camel_ident(t->name, e->go_type, sizeof(e->go_type));
-        kir_camel_ident(t->name, e->prefix, sizeof(e->prefix));
+        if(KirFindRuntimeType(t->name, NULL) == NULL)
+            kir_camel_ident(t->name, e->prefix, sizeof(e->prefix));
     }
     while(*p != '\0') {
         char line[K2GO_TEXT_MAX];
@@ -959,11 +958,6 @@ props_field_at(const KirModule *module, const char *type, int index,
                        "Disabled", "Color", "HoverColor"}},
         {"ParagraphSpec", {"Text", "IconType", "IconSize", "Width",
                              "Font", "LineGap", "Color", "Align"}},
-        {"Style", {"Fields", "Background", "Foreground", "Border", "Focus",
-                    "Radius", "BorderWidth", "Opacity", "PaddingX", "PaddingY",
-                    "Gap", "FontSize", "IconSize", "ContentOffset", "BackgroundEnd", "Material"}},
-        {"ControlStyle", {"Normal", "Hover", "Pressed", "Focused",
-                           "Disabled", "Loading", "Selected"}},
         {"ThemeFamily", {"Name", "Light", "Dark"}},
         {"SelectableProps", {"Bounds", "ID", "Label", "Selected", "Disabled"}},
         {"CheckboxFlagsProps", {"Bounds", "ID", "Label", "Flags",
@@ -1983,6 +1977,41 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     continue;
                 }
             }
+            /* enum members: bare ALL_CAPS name -> qualified Go const */
+            {
+                const KirModule *owner = NULL;
+                const KirType *type = NULL;
+                if(KirResolveEnumMember(g_mod, ident, &owner, &type) == 1 && owner != g_mod) {
+                    char prefix[K2GO_NAME_MAX] = "";
+                    char member[K2GO_NAME_MAX];
+                    kir_copy(member, sizeof(member), ident);
+                    if(strcmp(type->name, "#enum") != 0 && KirFindRuntimeType(type->name, NULL) == NULL)
+                        kir_camel_ident(type->name, prefix, sizeof(prefix));
+                    else
+                        kir_camel_ident(ident, member, sizeof(member));
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s", prefix, member);
+                    p = q;
+                    continue;
+                }
+                K2goEnumMember *mem = k2go_const_entry(ident, il);
+
+                if(mem != NULL) {
+                    size_t gl = strlen(mem->go);
+
+                    if(dn + gl + 1 < dst_size) {
+                        memcpy(dst + dn, mem->go, gl);
+                        dn += gl;
+                    }
+                    p = q;
+                    continue;
+                }
+            }
+            if(KirFindRuntimeEnumMember(ident) != NULL) {
+                dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s",
+                    runtime_output ? "" : K2GO_RUNTIME_PKG ".", ident);
+                p = q;
+                continue;
+            }
             /* Public Kryon constants become package constants. */
             {
                 struct { const char *c; const char *go; } constants[] = {
@@ -2000,51 +2029,10 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"TextAlignStart", "TextAlignStart"},
 					{"TextAlignCenter", "TextAlignCenter"},
 					{"TextAlignEnd", "TextAlignEnd"},
-                    {"ButtonToneAccent", "ButtonToneAccent"},
-                    {"IconPlacementLeading", "IconPlacementLeading"},
-                    {"IconPlacementTrailing", "IconPlacementTrailing"},
                     {"UI_ICON_TYPE_PLAY", "UIIconTypePlay"},
                     {"UI_ICON_TYPE_PLUS", "UIIconTypePlus"},
                     {"UI_ICON_TYPE_SAVE", "UIIconTypeSave"},
                     {"UI_ICON_TYPE_TRASH", "UIIconTypeTrash"},
-                    {"ButtonToneNeutral", "ButtonToneNeutral"},
-                    {"ButtonToneDanger", "ButtonToneDanger"},
-                    {"ButtonToneSuccess", "ButtonToneSuccess"},
-                    {"ButtonToneWarning", "ButtonToneWarning"},
-                    {"ButtonEmphasisFilled", "ButtonEmphasisFilled"},
-                    {"ButtonEmphasisSoft", "ButtonEmphasisSoft"},
-                    {"ButtonEmphasisOutline", "ButtonEmphasisOutline"},
-                    {"ButtonEmphasisGhost", "ButtonEmphasisGhost"},
-                    {"ButtonEmphasisLink", "ButtonEmphasisLink"},
-                    {"ButtonStateAuto", "ButtonStateAuto"},
-                    {"ButtonStateNormal", "ButtonStateNormal"},
-                    {"ButtonStateHover", "ButtonStateHover"},
-                    {"ButtonStatePressed", "ButtonStatePressed"},
-                    {"ButtonStateFocus", "ButtonStateFocus"},
-                    {"ButtonStateDisabled", "ButtonStateDisabled"},
-                    {"ButtonStateLoading", "ButtonStateLoading"},
-                    {"ButtonStateSelected", "ButtonStateSelected"},
-                    {"StyleBackground", "StyleBackground"},
-                    {"StyleForeground", "StyleForeground"},
-                    {"StyleBorder", "StyleBorder"},
-                    {"StyleFocus", "StyleFocus"},
-                    {"StyleRadius", "StyleRadius"},
-                    {"StyleBorderWidth", "StyleBorderWidth"},
-                    {"StyleOpacity", "StyleOpacity"},
-                    {"StylePaddingX", "StylePaddingX"},
-                    {"StylePaddingY", "StylePaddingY"},
-                    {"StyleGap", "StyleGap"},
-                    {"StyleFontSize", "StyleFontSize"},
-                    {"StyleIconSize", "StyleIconSize"},
-                    {"StyleContentOffset", "StyleContentOffset"},
-                    {"StyleBackgroundEnd", "StyleBackgroundEnd"},
-                    {"StyleMaterial", "StyleMaterial"},
-                    {"StyleTypeface", "StyleTypeface"},
-                    {"MaterialLightfield", "MaterialLightfield"},
-                    {"MaterialFlat", "MaterialFlat"},
-                    {"ControlSizeSmall", "ControlSizeSmall"},
-                    {"ControlSizeMedium", "ControlSizeMedium"},
-                    {"ControlSizeLarge", "ControlSizeLarge"},
 					{"ComboFlagsNone", "ComboFlagsNone"},
 					{"ComboPopupAlignLeft", "ComboPopupAlignLeft"},
 					{"ComboHeightSmall", "ComboHeightSmall"},
@@ -2146,35 +2134,6 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     }
                 }
                 if(matched) {
-                    p = q;
-                    continue;
-                }
-            }
-            /* enum members: bare ALL_CAPS name -> qualified Go const */
-            {
-                const KirModule *owner = NULL;
-                const KirType *type = NULL;
-                if(KirResolveEnumMember(g_mod, ident, &owner, &type) == 1 && owner != g_mod) {
-                    char prefix[K2GO_NAME_MAX] = "";
-                    char member[K2GO_NAME_MAX];
-                    kir_copy(member, sizeof(member), ident);
-                    if(strcmp(type->name, "#enum") != 0)
-                        kir_camel_ident(type->name, prefix, sizeof(prefix));
-                    else
-                        kir_camel_ident(ident, member, sizeof(member));
-                    dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s", prefix, member);
-                    p = q;
-                    continue;
-                }
-                K2goEnumMember *mem = k2go_const_entry(ident, il);
-
-                if(mem != NULL) {
-                    size_t gl = strlen(mem->go);
-
-                    if(dn + gl + 1 < dst_size) {
-                        memcpy(dst + dn, mem->go, gl);
-                        dn += gl;
-                    }
                     p = q;
                     continue;
                 }
@@ -3019,9 +2978,21 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                                 snprintf(val, sizeof(val), "%s + 1",
                                          e->members[mI - 1].go);
                             }
-                            /* untyped: C enums convert implicitly; Go's
-                             * typed consts would not mix with int fields */
-                            fprintf(f, "\t%s = %s\n", mem->go, val);
+                            /* Native contracts preserve their public enum types.
+                             * An explicit scalar cast declares a flag constant's
+                             * representation without changing its numeric value. */
+                            char scalar[KIR_NAME_MAX] = "";
+                            const char *close = strchr(mem->val, ')');
+                            if(mem->val[0] == '(' && close != NULL &&
+                               (size_t)(close - mem->val - 1) < sizeof(scalar)) {
+                                memcpy(scalar, mem->val + 1, (size_t)(close - mem->val - 1));
+                                kir_trim_in_place(scalar);
+                            }
+                            if(KirFindRuntimeType(t->name, NULL) != NULL &&
+                               !*KirScalarType(scalar))
+                                fprintf(f, "\t%s %s = %s\n", mem->go, e->go_type, val);
+                            else
+                                fprintf(f, "\t%s = %s\n", mem->go, val);
                         }
                         fprintf(f, ")\n\n");
                     } else {

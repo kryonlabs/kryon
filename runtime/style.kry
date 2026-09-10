@@ -1,17 +1,8 @@
 #module "style"
 #import "surface"
+#import "control_props"
 
 # Interaction styling is shared by widgets, independent of activation logic.
-State :: enum {
-    PolicyStateAuto = 0
-    PolicyStateNormal = 1
-    PolicyStateHover = 2
-    PolicyStatePressed = 3
-    PolicyStateFocus = 4
-    PolicyStateDisabled = 5
-    PolicyStateLoading = 6
-    PolicyStateSelected = 7
-}
 
 StateFlags :: struct {
     disabled: bool
@@ -23,9 +14,9 @@ StateFlags :: struct {
 # Normalize before input, motion, or appearance so hosts cannot disagree.
 ResolveFlags :: (state: i32, disabled: bool, loading: bool, selected: bool) -> StateFlags #export {
     flags: StateFlags
-    flags.disabled = disabled || state == PolicyStateDisabled
-    flags.loading = loading || state == PolicyStateLoading
-    flags.selected = selected || state == PolicyStateSelected
+    flags.disabled = disabled || state == ButtonStateDisabled
+    flags.loading = loading || state == ButtonStateLoading
+    flags.selected = selected || state == ButtonStateSelected
     return flags
 }
 
@@ -38,14 +29,14 @@ ResolveState :: (
     focused: bool,
     selected: bool
 ) -> i32 #export {
-    if disabled { return PolicyStateDisabled }
-    if loading { return PolicyStateLoading }
-    if explicit_state != PolicyStateAuto { return explicit_state }
-    if pressed { return PolicyStatePressed }
-    if hovered { return PolicyStateHover }
-    if focused { return PolicyStateFocus }
-    if selected { return PolicyStateSelected }
-    return PolicyStateNormal
+    if disabled { return ButtonStateDisabled }
+    if loading { return ButtonStateLoading }
+    if explicit_state != ButtonStateAuto { return explicit_state }
+    if pressed { return ButtonStatePressed }
+    if hovered { return ButtonStateHover }
+    if focused { return ButtonStateFocus }
+    if selected { return ButtonStateSelected }
+    return ButtonStateNormal
 }
 
 InteractionState :: struct {
@@ -63,53 +54,30 @@ ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
         pressed, hovered, focused, selected)
     interaction: InteractionState = (InteractionState){.state = state,
         .hovered = hovered, .pressed = pressed, .focused = focused}
-    if explicit_state != PolicyStateAuto {
-        interaction.hovered = state == PolicyStateHover
-        interaction.pressed = state == PolicyStatePressed
-        interaction.focused = state == PolicyStateFocus
+    if explicit_state != ButtonStateAuto {
+        interaction.hovered = state == ButtonStateHover
+        interaction.pressed = state == ButtonStatePressed
+        interaction.focused = state == ButtonStateFocus
     }
     return interaction
 }
 
 # Presence is separate from value: zero and transparent are valid overrides.
-Field :: enum {
-    FieldBackground = 1
-    FieldForeground = 2
-    FieldBorder = 4
-    FieldFocus = 8
-    FieldRadius = 16
-    FieldBorderWidth = 32
-    FieldOpacity = 64
-    FieldPaddingX = 128
-    FieldPaddingY = 256
-    FieldGap = 512
-    FieldFontSize = 1024
-    FieldIconSize = 2048
-    FieldContentOffset = 4096
-    FieldBackgroundEnd = 8192
-    FieldMaterial = 16384
-    FieldTypeface = 32768
-}
 
 # Default styles initialize all basic properties, without a gradient endpoint.
 DefaultFields :: () -> u32 #export {
-    return (u32)FieldBackground | (u32)FieldForeground | (u32)FieldBorder |
-        (u32)FieldFocus | (u32)FieldRadius | (u32)FieldBorderWidth | (u32)FieldOpacity |
-        (u32)FieldPaddingX | (u32)FieldPaddingY | (u32)FieldGap | (u32)FieldFontSize |
-        (u32)FieldIconSize | (u32)FieldContentOffset | (u32)FieldMaterial
+    return (u32)StyleBackground | (u32)StyleForeground | (u32)StyleBorder |
+        (u32)StyleFocus | (u32)StyleRadius | (u32)StyleBorderWidth | (u32)StyleOpacity |
+        (u32)StylePaddingX | (u32)StylePaddingY | (u32)StyleGap | (u32)StyleFontSize |
+        (u32)StyleIconSize | (u32)StyleContentOffset | (u32)StyleMaterial
 }
 
-Size :: enum {
-    PolicySizeMedium = 0
-    PolicySizeSmall = 1
-    PolicySizeLarge = 2
-}
 
 # Zero-initialized props use medium sizing. Unknown sizes use the same fallback.
 # Selection belongs to shared style policy, not an individual widget.
 SizeValue :: (size: i32, small: float, medium: float, large: float) -> float #export {
-    if size == PolicySizeSmall { return small }
-    if size == PolicySizeLarge { return large }
+    if size == ControlSizeSmall { return small }
+    if size == ControlSizeLarge { return large }
     return medium
 }
 
@@ -216,23 +184,23 @@ TransitionFrame :: (resolved: StyleData, normal: StyleData, hover: StyleData,
 }
 
 MergeValues :: (base: StyleData, override: StyleData) -> StyleData #export {
-    if (override.fields & (u32)FieldBackground) != (u32)0 { base.background = override.background }
-    if (override.fields & (u32)FieldForeground) != (u32)0 { base.foreground = override.foreground }
-    if (override.fields & (u32)FieldBorder) != (u32)0 { base.border = override.border }
-    if (override.fields & (u32)FieldFocus) != (u32)0 { base.focus = override.focus }
-    if (override.fields & (u32)FieldRadius) != (u32)0 { base.radius = override.radius }
-    if (override.fields & (u32)FieldBorderWidth) != (u32)0 { base.border_width = override.border_width }
-    if (override.fields & (u32)FieldOpacity) != (u32)0 { base.opacity = override.opacity }
-    if (override.fields & (u32)FieldPaddingX) != (u32)0 { base.padding_x = override.padding_x }
-    if (override.fields & (u32)FieldPaddingY) != (u32)0 { base.padding_y = override.padding_y }
-    if (override.fields & (u32)FieldGap) != (u32)0 { base.gap = override.gap }
-    if (override.fields & (u32)FieldFontSize) != (u32)0 { base.font_size = override.font_size }
-    if (override.fields & (u32)FieldIconSize) != (u32)0 { base.icon_size = override.icon_size }
-    if (override.fields & (u32)FieldContentOffset) != (u32)0 { base.offset_x = override.offset_x }
-    if (override.fields & (u32)FieldContentOffset) != (u32)0 { base.offset_y = override.offset_y }
-    if (override.fields & (u32)FieldBackgroundEnd) != (u32)0 { base.background_end = override.background_end }
-    if (override.fields & (u32)FieldMaterial) != (u32)0 { base.material = override.material }
-    if (override.fields & (u32)FieldTypeface) != (u32)0 { base.typeface = override.typeface }
+    if (override.fields & (u32)StyleBackground) != (u32)0 { base.background = override.background }
+    if (override.fields & (u32)StyleForeground) != (u32)0 { base.foreground = override.foreground }
+    if (override.fields & (u32)StyleBorder) != (u32)0 { base.border = override.border }
+    if (override.fields & (u32)StyleFocus) != (u32)0 { base.focus = override.focus }
+    if (override.fields & (u32)StyleRadius) != (u32)0 { base.radius = override.radius }
+    if (override.fields & (u32)StyleBorderWidth) != (u32)0 { base.border_width = override.border_width }
+    if (override.fields & (u32)StyleOpacity) != (u32)0 { base.opacity = override.opacity }
+    if (override.fields & (u32)StylePaddingX) != (u32)0 { base.padding_x = override.padding_x }
+    if (override.fields & (u32)StylePaddingY) != (u32)0 { base.padding_y = override.padding_y }
+    if (override.fields & (u32)StyleGap) != (u32)0 { base.gap = override.gap }
+    if (override.fields & (u32)StyleFontSize) != (u32)0 { base.font_size = override.font_size }
+    if (override.fields & (u32)StyleIconSize) != (u32)0 { base.icon_size = override.icon_size }
+    if (override.fields & (u32)StyleContentOffset) != (u32)0 { base.offset_x = override.offset_x }
+    if (override.fields & (u32)StyleContentOffset) != (u32)0 { base.offset_y = override.offset_y }
+    if (override.fields & (u32)StyleBackgroundEnd) != (u32)0 { base.background_end = override.background_end }
+    if (override.fields & (u32)StyleMaterial) != (u32)0 { base.material = override.material }
+    if (override.fields & (u32)StyleTypeface) != (u32)0 { base.typeface = override.typeface }
     base.fields = base.fields | override.fields
     return base
 }
@@ -250,11 +218,11 @@ StyleStates :: struct {
 # A widget carries one state-style value, independent of host representation.
 ResolveValues :: (base: StyleData, states: StyleStates, state: i32) -> StyleData #export {
     base = MergeValues(base, states.normal)
-    if state == PolicyStateHover { return MergeValues(base, states.hover) }
-    if state == PolicyStatePressed { return MergeValues(base, states.pressed) }
-    if state == PolicyStateFocus { return MergeValues(base, states.focused) }
-    if state == PolicyStateDisabled { return MergeValues(base, states.disabled) }
-    if state == PolicyStateLoading { return MergeValues(base, states.loading) }
-    if state == PolicyStateSelected { return MergeValues(base, states.selected) }
+    if state == ButtonStateHover { return MergeValues(base, states.hover) }
+    if state == ButtonStatePressed { return MergeValues(base, states.pressed) }
+    if state == ButtonStateFocus { return MergeValues(base, states.focused) }
+    if state == ButtonStateDisabled { return MergeValues(base, states.disabled) }
+    if state == ButtonStateLoading { return MergeValues(base, states.loading) }
+    if state == ButtonStateSelected { return MergeValues(base, states.selected) }
     return base
 }

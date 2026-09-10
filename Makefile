@@ -567,11 +567,11 @@ lightfield-translation-test:
 .PHONY: style-policy-test
 .PHONY: text-policy-test
 text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
 	$(BUILD_DIR)/text-policy-test
 
 style-policy-test: $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/style.h $(GENERATED_SRC_DIR)/runtime/surface.c
-	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
 	$(BUILD_DIR)/style-policy-test
 
 surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
@@ -742,7 +742,7 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATE
 
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
-generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js include/ui_button_props.generated.h
+generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js include/ui_button_props.generated.h include/ui_control_props.generated.h
 	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
 
@@ -750,6 +750,12 @@ preflight test: runtime-declarations-check
 .PHONY: runtime-declarations-check
 runtime-declarations-check: $(K2C) $(K2GO) $(K2JS) $(ICON_TYPES_H)
 	CC="$(CC)" sh tests/runtime_declarations_test.sh $(BUILD_DIR)
+
+include/ui_control_props.generated.h: $(GENERATED_SRC_DIR)/runtime/control_props.h
+	cp $< $@
+
+web/control_props.js: runtime/control_props.kry $(K2JS)
+	$(K2JS) --strict --no-main --root runtime --runtime ./kryon-runtime.js -o web runtime/control_props.kry
 
 include/ui_button_props.generated.h: $(GENERATED_SRC_DIR)/runtime/button_props.h
 	cp $< $@
@@ -1310,11 +1316,11 @@ icons-import-mingcute: scripts/import-mingcute-icons.py
 $(EMBED_ASSETS_C): $(EMBED_ASSET_FILES) scripts/embed-assets.sh include/embedded_assets.h | $(BUILD_DIR)
 	sh scripts/embed-assets.sh $@ $(EMBED_ASSETS)
 
-$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: src/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
+$(BUILD_DIR)/%.o: $(BUILD_DIR)/%.c $(KRYON_PUBLIC_HEADERS) include/ui_button_props.generated.h include/ui_control_props.generated.h $(KRYON_BACKEND_STAMP) | $(BUILD_DIR) $(KRYON_SYNC_DEPS) $(KRYON_CURL_PROTOCOL_CHECK) $(KRYON_MARKDOWN_DEPS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c $< -o $@
 

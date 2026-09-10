@@ -2582,3 +2582,11 @@ application does not require locating the runtime source checkout. An explicit
 application type declaration takes precedence over the native contract of the
 same name. `make runtime-declarations-check` verifies that embedded sources and
 generated public interfaces match their `.kry` sources.
+
+`runtime/control_props.kry` owns the public control enums, `Style`, and
+`ControlStyle`. `make generate-runtime` synchronizes their C and Go declarations
+and the constants re-exported by the web runtime. Their public names, numeric
+values, and Go constant types are preserved. The former internal `Policy*` enums
+and `Field*` aliases are removed; shared declarations use the public names. Native
+contract enum constants retain their Go enum type unless their source explicitly
+casts the value to a scalar type, as the `uint32_t` Style flags do.
