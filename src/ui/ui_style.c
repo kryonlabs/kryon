@@ -15,6 +15,10 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
                           Color focus, float focused, float opacity,
                           FillStates fill_states, MaterialKind material)
 {
+    if(!FancyEffectsEnabled()) {
+        material = MaterialFlat;
+        memset(&fill_states, 0, sizeof(fill_states));
+    }
     MaterialPaint paint = {
         .bounds = bounds, .surface = surface_bounds,
         .value = {.background = ColorToInt(background), .border = ColorToInt(border),
@@ -25,13 +29,43 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
         .fill = fill_states, .fill_valid = true, .scale = (float)Scale(1000) / 1000.0f
     };
     paint = PrepareMaterial(paint);
-    for(int i = 0; i < MaterialLayerCount(material); i++)
+    for(int i = 0; i < MaterialLayerCount(paint.value.material); i++)
         ui_draw_surface(PaintMaterialLayer(paint, i));
     return MaterialContentBounds(paint);
 }
 
 static ThemeMetrics g_ui_style_override;
 static int g_ui_style_override_enabled = 0;
+static int g_fancy_effects_enabled = 1;
+
+void
+SetFancyEffectsEnabled(int enabled)
+{
+    int next = enabled != 0;
+    if(g_fancy_effects_enabled == next)
+        return;
+    g_fancy_effects_enabled = next;
+    InvalidateTree(UI_INVALIDATE_PAINT);
+}
+
+int
+FancyEffectsEnabled(void)
+{
+    return g_fancy_effects_enabled != 0;
+}
+
+static ThemeMetrics
+ui_apply_effects_metrics(ThemeMetrics tokens)
+{
+    if(g_fancy_effects_enabled)
+        return tokens;
+    tokens.shadow_blur = 0.0f;
+    tokens.shadow_alpha = 0;
+    tokens.shine_alpha = 0;
+    tokens.shadow_offset_y = 0;
+    return tokens;
+}
+
 
 #if !defined(KRYON_BACKEND_TERMI)
 typedef struct {
@@ -122,8 +156,8 @@ ThemeMetrics
 GetThemeMetrics(void)
 {
     if(g_ui_style_override_enabled)
-        return g_ui_style_override;
-    return GetThemeMetricsForThemeStyle(GetEffectiveThemeStyle());
+        return ui_apply_effects_metrics(g_ui_style_override);
+    return ui_apply_effects_metrics(GetThemeMetricsForThemeStyle(GetEffectiveThemeStyle()));
 }
 
 void
@@ -177,6 +211,35 @@ pack_style(Style value)
     };
 }
 
+StyleData
+ui_style_apply_effects_data(StyleData value)
+{
+    if(FancyEffectsEnabled())
+        return value;
+    value.material = MaterialFlat;
+    value.fields &= ~((uint32_t)StyleBackgroundEnd);
+    value.background_end = (uint32_t)0;
+    return value;
+}
+
+StyleFrame
+ui_style_apply_effects_frame(StyleFrame frame)
+{
+    frame.value = ui_style_apply_effects_data(frame.value);
+    if(!FancyEffectsEnabled())
+        memset(&frame.fill, 0, sizeof(frame.fill));
+    return frame;
+}
+
+FillStates
+ui_style_apply_effects_fill(FillStates fill)
+{
+    if(FancyEffectsEnabled())
+        return fill;
+    memset(&fill, 0, sizeof(fill));
+    return fill;
+}
+
 Style
 ui_unpack_style(StyleData value)
 {
@@ -214,6 +277,7 @@ ui_style_transition(Style resolved, Style normal, Style hover,
 {
     StyleFrame frame = TransitionFrame(pack_style(resolved), pack_style(normal),
         pack_style(hover), pack_style(press), pack_style(focus), h, p, f);
+    frame = ui_style_apply_effects_frame(frame);
     *fill = frame.fill;
     return ui_unpack_style(frame.value);
 }
@@ -221,8 +285,14 @@ ui_style_transition(Style resolved, Style normal, Style hover,
 FillStates
 ui_style_fill(Style value)
 {
-    return FillState(value.fields, ColorToInt(value.background),
-        ColorToInt(value.background_end));
+    return ui_style_apply_effects_fill(FillState(value.fields, ColorToInt(value.background),
+        ColorToInt(value.background_end)));
+}
+
+Style
+ui_style_apply_effects(Style value)
+{
+    return ui_unpack_style(ui_style_apply_effects_data(pack_style(value)));
 }
 
 StyleStates
@@ -482,7 +552,7 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     Color color = on_color;
     unsigned int hash = (unsigned int)key * 2654435761u;
 
-    if(key == 0)
+    if(key == 0 || !FancyEffectsEnabled())
         return;
     ripple = &g_default_ripples[hash % UI_DEFAULT_RIPPLE_MAX];
     if(ripple->key != hash || g_ui_frame_serial - ripple->frame_seen > 20) {

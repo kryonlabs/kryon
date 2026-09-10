@@ -307,6 +307,8 @@ typedef struct {
 ThemeMetrics GetThemeMetrics(void);
 ThemeMetrics GetThemeMetricsForThemeStyle(ThemeStyle style);
 ThemeScheme GetThemeScheme(void);
+void SetFancyEffectsEnabled(int enabled);
+int FancyEffectsEnabled(void);
 void SetThemeMetrics(ThemeMetrics tokens);
 void ClearThemeMetricsOverride(void);
 

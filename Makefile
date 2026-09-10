@@ -317,6 +317,9 @@ TEXT_INPUT_PLATFORM_TEST = $(BUILD_DIR)/tests/text_input_platform_test
 UI_WINDOW_SDL_CHECK = $(BUILD_DIR)/check/ui_window_sdl.o
 TEXT_INPUT_PERF_TEST = $(BUILD_DIR)/tests/text_input_perf_test
 TEXT_INPUT_PRECISION_TEST = $(BUILD_DIR)/tests/text_input_precision_test
+CONTROL_APPEARANCE_PERF_TEST = $(BUILD_DIR)/tests/control_appearance_perf_test
+CONTROL_APPEARANCE_CAPTURE = $(BUILD_DIR)/tests/control_appearance_capture
+CONTROL_APPEARANCE_CAPTURE_PNG = $(BUILD_DIR)/control-appearance-side-by-side.png
 SCENE_TREE_TEST = $(BUILD_DIR)/tests/scene_tree_test
 SCENE_PROPERTY_TEST = $(BUILD_DIR)/tests/scene_property_test
 ANIMATION_TEST = $(BUILD_DIR)/tests/animation_test
@@ -340,7 +343,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -1164,6 +1167,25 @@ $(TEXT_INPUT_PRECISION_TEST): tests/text_input_precision_test.c $(LIB) $(KRYON_B
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/text_input_precision_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
+
+$(CONTROL_APPEARANCE_PERF_TEST): tests/control_appearance_perf_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/control_appearance_perf_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+perf-control-appearance: $(CONTROL_APPEARANCE_PERF_TEST)
+	$(CONTROL_APPEARANCE_PERF_TEST)
+
+$(CONTROL_APPEARANCE_CAPTURE): tests/control_appearance_capture.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -Isrc/ui tests/control_appearance_capture.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+capture-control-appearance: $(CONTROL_APPEARANCE_CAPTURE)
+	rm -f $(CONTROL_APPEARANCE_CAPTURE_PNG)
+	xvfb-run -a $(CONTROL_APPEARANCE_CAPTURE) $(CONTROL_APPEARANCE_CAPTURE_PNG) || test -s $(CONTROL_APPEARANCE_CAPTURE_PNG)
 
 perf-text-input: $(K2KIR) $(K2C) $(K2GO) $(K2JS) $(K2B) $(TEXT_INPUT_PERF_TEST) $(TEXT_INPUT_PRECISION_TEST)
 	sh tests/text_input_perf.sh . $(BUILD_DIR)

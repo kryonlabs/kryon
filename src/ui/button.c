@@ -141,6 +141,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             ButtonFrame frame = AdvanceFrame(key, props, input, palette, tokens,
                 ui_pack_style_states(props.style), cues, GetFrameTime() * 1000.0f,
                 button.surface_bounds, ColorToInt(GetThemeSurface()), GetUIScale(), GetFontSize());
+            frame.appearance = ui_style_apply_effects_frame(frame.appearance);
+            frame.material.value = frame.appearance.value;
+            frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);
             if(frame.repaint)
                 InvalidateTree(UI_INVALIDATE_PAINT);
             text = GetColor(frame.foreground);
@@ -434,10 +437,10 @@ ui_button_style_frame(ButtonProps button, ButtonState state,
     Palette palette;
     Metrics tokens;
     ui_button_theme_values(&palette, &tokens);
-    return ResolveFrame(button.tone, button.emphasis,
+    return ui_style_apply_effects_frame(ResolveFrame(button.tone, button.emphasis,
         state, button.size, button.pill, button.circle, button.disabled,
         button.loading, button.selected, palette, tokens,
-        ui_pack_style_states(button.style), automatic, h, p, f);
+        ui_pack_style_states(button.style), automatic, h, p, f));
 }
 
 static int

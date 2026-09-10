@@ -1391,6 +1391,7 @@ include/ui_controls.h enum UI_ICON_SIZE_SMALL
 include/ui_controls.h enum UI_ICON_SIZE_TINY
 include/ui_controls.h function ClearThemeMetricsOverride
 include/ui_controls.h function EditText
+include/ui_controls.h function FancyEffectsEnabled
 include/ui_controls.h function GetScoreControlHeight
 include/ui_controls.h function GetSegmentedControlHeight
 include/ui_controls.h function GetTextAreaSelection
@@ -1406,6 +1407,7 @@ include/ui_controls.h function QueueTextInputEnter
 include/ui_controls.h function ResolveControlStyle
 include/ui_controls.h function ScoreControl
 include/ui_controls.h function SegmentedControl
+include/ui_controls.h function SetFancyEffectsEnabled
 include/ui_controls.h function SetTextAreaSelection
 include/ui_controls.h function SetThemeMetrics
 include/ui_controls.h function TextAreaGutter

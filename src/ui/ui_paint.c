@@ -78,6 +78,8 @@ ui_draw(Drawing command)
         break;
     case DrawingRing: {
         Ring ring = command.ring;
+        if(!FancyEffectsEnabled())
+            ring.glow_blur = 0.0f;
         float radius = LoadingPaintRadius(ring);
         for(int y = (int)floorf(ring.y - radius); y < (int)ceilf(ring.y + radius); y++) {
             for(int x = (int)floorf(ring.x - radius); x < (int)ceilf(ring.x + radius); x++) {

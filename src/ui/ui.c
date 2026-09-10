@@ -5660,7 +5660,7 @@ RenderSubtabBar(SubtabBarProps bar)
 
         if(is_selected) {
             int underline_h = Scale(cues ? 4 : 3);
-            if(cues) {
+            if(cues && FancyEffectsEnabled()) {
                 Color glow = accent;
                 glow.a = glow.a > 90 ? 90 : glow.a;
                 DrawRectangle(tab_x + Scale(10), bar_y + tab_h - underline_h - Scale(2),

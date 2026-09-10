@@ -139,10 +139,10 @@ dropdown_style(int role, int selected, ButtonState state)
     props.emphasis = role == 2
         ? SelectionEmphasis(ColorToInt(GetThemeSurface())) : ButtonEmphasisFilled;
     Style accent = ResolveButtonStyle(props, ButtonStateNormal);
-    return ui_unpack_style(Appearance(
+    return ui_style_apply_effects(ui_unpack_style(Appearance(
         ui_pack_style_states((ControlStyle){.normal = base}).normal,
         ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        ColorToInt(GetThemeSurface()), role, state, selected));
+        ColorToInt(GetThemeSurface()), role, state, selected)));
 }
 
 static ControlStyle
@@ -183,6 +183,9 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
         Scale(appearance.value.font_size), GetFontSize());
     if(frame.repaint)
         InvalidateTree(UI_INVALIDATE_PAINT);
+    frame.appearance = ui_style_apply_effects_frame(frame.appearance);
+    frame.material.value = frame.appearance.value;
+    frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);
     for(int i = 0; i < MaterialLayerCount(frame.material.value.material); i++)
         ui_draw_surface(PaintMaterialLayer(frame.material, i));
     return GetColor(frame.foreground);

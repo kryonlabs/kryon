@@ -38,6 +38,11 @@ ButtonsExample :: (viewport: Rectangle) #ui {
             .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
         Text((TextProps){.bounds={1335, 33, 200, 20}, .text="HUMAN TOMORROW —",
             .font=13, .letter_spacing=5, .color=chrome.colors.icon, .wrap=TextWrapNone})
+        effects_label: const char* = FancyEffectsEnabled() != 0 ? "Fancy" : "Simple"
+        if Button((ButtonProps){.bounds={1392, 46, 112, 28}, .label=effects_label, .id=40400,
+            .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft, .size=ControlSizeSmall}) {
+            SetFancyEffectsEnabled(FancyEffectsEnabled() == 0)
+        }
     } else {
         ButtonsPanel(viewport, 0, 0, 0, true)
     }
@@ -287,6 +292,11 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             }
             if Button((ButtonProps){.bounds={origin + 672, 22, 68, 32}, .label="Dark", .id=id_base + 92}) {
                 SetThemeMode(THEME_MODE_DARK)
+            }
+            effects_label: const char* = FancyEffectsEnabled() != 0 ? "Fancy" : "Simple"
+            if Button((ButtonProps){.bounds={origin + 542, 52, 198, 28}, .label=effects_label, .id=id_base + 93,
+                .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft, .size=ControlSizeSmall}) {
+                SetFancyEffectsEnabled(FancyEffectsEnabled() == 0)
             }
         }
         Text(theme_heading)

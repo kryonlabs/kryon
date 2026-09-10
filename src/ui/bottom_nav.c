@@ -180,9 +180,10 @@ RenderBottomNav(BottomNavProps nav)
             rounded.y = (float)active_y;
             rounded.width = (float)active_w;
             rounded.height = (float)active_h;
-            DrawRectangleRounded((Rectangle){rounded.x - Scale(2), rounded.y + Scale(4),
-                                             rounded.width + Scale(4), rounded.height},
-                                 0.24f, 16, ui_alpha(glow, 38));
+            if(FancyEffectsEnabled())
+                DrawRectangleRounded((Rectangle){rounded.x - Scale(2), rounded.y + Scale(4),
+                                                 rounded.width + Scale(4), rounded.height},
+                                     0.24f, 16, ui_alpha(glow, 38));
             DrawRectangleRounded(rounded, 0.24f, 16,
                                  ui_alpha(ui_bottom_nav_mix(accent, surface, 0.56f), 174));
             DrawRectangleRoundedLinesEx(rounded, 0.24f, 16, Scale(1),
