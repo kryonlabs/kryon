@@ -405,7 +405,7 @@ GetUIMouseCursor(void)
 }
 
 static void
-MarkUITextCursor(void)
+MarkTextCursor(void)
 {
     ui_set_cursor_intent(MOUSE_CURSOR_IBEAM, UI_CURSOR_PRIORITY_TEXT);
 }
@@ -3513,7 +3513,7 @@ ui_text_area_render(TextAreaProps area)
     mouse_inside = CheckCollisionPointRec(mouse_world, area.bounds);
     captured = UIInputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
-        MarkUITextCursor();
+        MarkTextCursor();
     drag_id = area.focus_id > 0 ? area.focus_id : 1;
     changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_AREA, drag_id,
                                             area.focused);
@@ -4484,7 +4484,7 @@ ui_text_field_render(TextFieldProps field)
     mouse_inside = CheckCollisionPointRec(mouse_world, field.bounds);
     captured = UIInputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
-        MarkUITextCursor();
+        MarkTextCursor();
     changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_FIELD,
                                             field.focus_id, field.focused);
     context_active = ui_text_context_matches(UI_TEXT_CONTEXT_FIELD,
