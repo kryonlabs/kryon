@@ -757,12 +757,8 @@ GetDefaultPlatformThemeStyle(void)
 {
 #if defined(KRYON_PLATFORM_PLAN9)
     return GetSystemThemeStyle();
-#elif defined(ANDROID_BUILD) && ANDROID_BUILD
-    return THEME_STYLE_DEFAULT;
-#elif defined(PLATFORM_ANDROID) || defined(__ANDROID__)
-    return THEME_STYLE_DEFAULT;
 #else
-    return THEME_STYLE_SYSTEM;
+    return THEME_STYLE_DEFAULT;
 #endif
 }
 

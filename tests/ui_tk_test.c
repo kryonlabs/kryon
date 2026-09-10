@@ -3773,7 +3773,7 @@ main(void)
 #elif defined(PLATFORM_ANDROID) || defined(__ANDROID__) || defined(ANDROID)
     check_int("android default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
 #else
-    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_SYSTEM);
+    check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
 #endif
 
     frame = BeginFrameBox(parent, 10, 10, 4);
