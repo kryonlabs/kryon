@@ -61,6 +61,7 @@ void ClearUIFonts(void);
  * KRYON_MEM_DEBUG (see kryon_mem.h). */
 void UIFontMemoryReport(const char *tag);
 int TextWidth(const char *text, int font_size);
+int MeasureTextWidth(const char *text, int font_size, const char *typeface);
 int TextHeight(const char *text, int font_size);
 int TextLineHeight(int font_size);
 int ScaledTextWidth(const char *text, int scale);

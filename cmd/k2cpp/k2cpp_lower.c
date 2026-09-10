@@ -1312,12 +1312,15 @@ static void
 emit_extern_prototype(FILE *c, const KirModule *m, const KirImport *imp)
 {
     char ret[LOWER_NAME_MAX];
+    char return_type[LOWER_NAME_MAX];
     char cargs[LOWER_TEXT_MAX];
     char conv[LOWER_TEXT_MAX];
     char symbol[LOWER_NAME_MAX];
     const char *cname = imp->name;
 
     extract_extern_signature(imp, ret, sizeof(ret), cargs, sizeof(cargs));
+    strip_alias_type(m, ret, return_type, sizeof(return_type));
+    kir_copy(ret, sizeof(ret), return_type);
     convert_args(m, cargs, conv, sizeof(conv));
     if(c_extern_symbol(imp, symbol, sizeof(symbol))) {
         cname = symbol;

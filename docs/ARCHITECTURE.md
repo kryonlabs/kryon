@@ -264,10 +264,15 @@ shared portable checker, even without `--strict`; a fallback must not turn an
 instance binding into a local or module global. Hierarchical keys and typed
 child slots remain necessary before this is a complete declaration lifecycle.
 
-With `k2go --runtime-implementation`, functions that access instances
+With `k2go --runtime-implementation`, functions that access instances or call
+host `#extern` services
 are methods on their owning runtime. The checker propagates this requirement
 through calls, so composed helpers preserve their receiver without consulting
-another window's active host. Application declarations use the active host's
+another window's active host. Runtime builds call host methods directly and do
+not generate a module-global Host interface or setter. Direct Go package imports
+remain ordinary stateless calls. Host services cannot run in runtime global
+initializers because no owning runtime exists there. Application declarations
+retain their explicit host-service bridge and use the active host's
 generic instance service. Button's retained motion update now lives in `.kry`
 and uses this binding; C and Go no longer look up or mutate its stored tracks.
 
@@ -281,7 +286,10 @@ these records without per-type compiler tables. Style types also have their own
 shared contract. Button measurement now reads ButtonProps and Style directly,
 including label presence, icon presence, shape precedence, and scaled bounds.
 The duplicate ButtonMeasure/MeasuredSize interface has been removed. Hosts
-provide glyph measurements, available space, and physical scale. Input, paint,
+provide font measurement, available space, and physical scale. The declaration
+now requests its label width through the MeasureTextWidth host service; native
+C and Go do not perform that request separately before calling the declaration.
+Input, paint,
 and child orchestration still need migration to complete the widget body.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application

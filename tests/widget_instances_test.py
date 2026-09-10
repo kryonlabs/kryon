@@ -142,10 +142,16 @@ assert.equal(read(second, 7n), 21);
 GO_INTERNAL_DRIVER = '''package kryon
 import "testing"
 func TestGeneratedHostMethods(t *testing.T) {
-    first := New(AppConfig{}).(*runtime)
-    second := New(AppConfig{}).(*runtime)
+    first := New(AppConfig{Width: 111}).(*runtime)
+    second := New(AppConfig{Width: 222}).(*runtime)
     // A runtime implementation must use its receiver, not the active app host.
     SetRuntime(second)
+    if first.HostCaller_ReadWidth() != 111 || second.HostCaller_ReadWidth() != 222 {
+        t.Fatal("host-service calls used the active runtime instead of their receiver")
+    }
+    if HostServices_FileName("a/b") != "b" {
+        t.Fatal("direct Go imports must remain stateless functions")
+    }
     if first.WidgetInstances_Counter(CounterProps{Key: 7, Amount: 3}) != 3 ||
        first.WidgetInstances_CounterBlock() != 8 ||
        first.WidgetInstances_ReadCounter(7) != 5 ||
@@ -202,10 +208,39 @@ with tempfile.TemporaryDirectory(prefix="kryon-widget-instances-") as directory:
     for runtime_file in (ROOT / "go/kryon").iterdir():
         if (runtime_file.suffix == ".go" and not runtime_file.name.endswith("_test.go")) or runtime_file.name in ("go.mod", "go.sum"):
             shutil.copyfile(runtime_file, internal / runtime_file.name)
+    services = work / "host_services.kry"
+    services.write_text('''#module "host_services"
+GetScreenWidth :: () -> i32 #extern
+Base :: (value: string) -> string #extern "path/filepath.Base"
+ReadHostWidth :: () -> i32 #export {
+    return GetScreenWidth()
+}
+FileName :: (value: string) -> string #export {
+    return Base(value)
+}
+''')
+    host_caller = work / "host_caller.kry"
+    host_caller.write_text('''#module "host_caller"
+#import "host_services"
+ReadWidth :: () -> i32 #export {
+    return ForwardedWidth()
+}
+ForwardedWidth :: () -> i32 {
+    return ReadHostWidth()
+}
+''')
     run(str(BIN / "k2go"), "--strict", "--no-main", "--runtime-implementation", "--pkg", "kryon",
-        "--root", str(work), "-o", str(internal), str(source), str(caller))
+        "--root", str(work), "-o", str(internal), str(source), str(caller), str(services), str(host_caller))
     (internal / "instances_test.go").write_text(GO_INTERNAL_DRIVER)
     run("go", "test", "./...", cwd=internal)
+    global_service = work / "global_service.kry"
+    global_service.write_text('''GetScreenWidth :: () -> i32 #extern
+width :: i32 = GetScreenWidth() #global
+''')
+    result = subprocess.run([str(BIN / "k2go"), "--no-main", "--runtime-implementation",
+                             "--root", str(work), "-o", str(work / "global"), str(global_service)],
+                            text=True, capture_output=True)
+    assert result.returncode != 0 and "require a function receiver" in result.stderr, result.stderr
     for replacement, diagnostic in (
         ("retained: i32 #instance(props.key)", "requires a declared record"),
         ("retained: CounterState #instance(true)", "key requires an integer"),

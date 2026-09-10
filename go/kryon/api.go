@@ -166,6 +166,9 @@ func Selection(focusID int32) (anchor, cursor int32, ok bool) {
 func ClearBackground(c Color) { active().ClearBackground(c) }
 func Background(c Color)      { active().Background(c) }
 func Text(props TextProps)    { active().Text(props) }
+func MeasureTextWidth(text string, font int32, typeface string) int32 {
+	return active().MeasureTextWidth(text, font, typeface)
+}
 func LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
 	active().LabelText(label, value, bounds, fontSize, color)
 }

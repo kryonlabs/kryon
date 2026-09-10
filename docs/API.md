@@ -1318,6 +1318,10 @@ are preserved at fractional scale; circle, square, and icon-only shapes use
 the resolved height for their width. Shared `.kry` bodies can copy and compare
 the borrowed `label` and style `typeface` fields. C callers retain ownership of
 those null-terminated strings; null labels behave as empty labels.
+`MeasureTextWidth(text, font_size, typeface)` measures physical text width using
+the requested typeface. C restores the previous typeface after the call; native
+Go exposes the same service on Runtime and as a package function. Button's
+shared declaration invokes this service when measuring its label.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

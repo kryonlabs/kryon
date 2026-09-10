@@ -248,6 +248,8 @@ expression_type(Checker *c, int index)
         break;
     case KIR_EXPR_CALL: {
         const KirFunction *callee = function(c, e->name, e->span);
+        if(callee != NULL && callee->is_extern && callee->extern_kind == KIR_EXTERN_HOST)
+            c->fn->uses_host = 1;
         const char *args = callee ? callee->args : NULL;
         const char *return_type = callee ? callee->return_type : "";
         char (*parts)[KIR_TEXT_MAX] = calloc(64, sizeof(*parts));
@@ -257,6 +259,8 @@ expression_type(Checker *c, int index)
         if(!callee) for(int i = 0; i < c->module->import_count; i++) {
             const KirImport *imp = &c->module->imports[i];
             if(imp->kind == KIR_IMPORT_EXTERN && !strcmp(imp->name, e->name)) {
+                if(imp->extern_kind == KIR_EXTERN_HOST)
+                    c->fn->uses_host = 1;
                 args = imp->args; return_type = imp->return_type; break;
             }
         }
@@ -570,6 +574,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             char params[64][KIR_TEXT_MAX];
             int n;
             c.fn = &c.module->functions[f]; c.count = 0; c.depth = 0;
+            c.fn->uses_host = c.fn->is_extern && c.fn->extern_kind == KIR_EXTERN_HOST;
             /* Imports are linked now. Rebuild expressions so imported types
              * participate in cast/grouping decisions before type checking. */
             KirStructureFunction(c.fn, c.module);
@@ -643,7 +648,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             int has_instances = 0;
             for(int i = 0; i < c.fn->stmt_count; i++)
                 has_instances |= c.fn->stmts[i].is_instance;
-            c.fn->uses_instance_host = has_instances;
+            c.fn->uses_host |= has_instances;
             if(has_instances && (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
                 fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
                         c.fn->span.path, c.fn->span.line, c.fn->name);
@@ -655,7 +660,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             }
         }
     }
-    /* Runtime implementations become host methods only when they need state.
+    /* Runtime implementations become host methods when they need host services.
      * Propagate through resolved calls, including mutually recursive modules. */
     int changed;
     do {
@@ -665,15 +670,15 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                 KirModule *module = &programs[p]->modules[m];
                 for(int f = 0; f < module->function_count; f++) {
                     KirFunction *fn = &module->functions[f];
-                    if(fn->uses_instance_host)
+                    if(fn->uses_host)
                         continue;
                     for(int x = 0; x < fn->expr_count; x++) {
                         const KirFunction *callee = NULL;
                         const KirModule *owner = NULL;
                         if(fn->exprs[x].kind == KIR_EXPR_CALL &&
                            KirResolveFunction(module, fn->exprs[x].name, &owner, &callee) == 1 &&
-                           callee->uses_instance_host) {
-                            fn->uses_instance_host = 1;
+                           callee->uses_host) {
+                            fn->uses_host = 1;
                             changed = 1;
                             break;
                         }

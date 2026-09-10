@@ -1042,6 +1042,15 @@ ui_set_text_letter_spacing(int spacing)
 }
 
 int
+MeasureTextWidth(const char *text, int font_size, const char *typeface)
+{
+    int token = PushUIFont(typeface);
+    int width = TextWidth(text, font_size);
+    PopUIFont(token);
+    return width;
+}
+
+int
 TextWidth(const char *text, int font_size)
 {
     int normalized_font_size = ui_text_normalize_token_size(font_size);

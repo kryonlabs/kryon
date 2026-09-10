@@ -1324,6 +1324,7 @@ type Runtime interface {
 	ClearBackground(Color)
 	Background(Color)
 	Text(TextProps)
+	MeasureTextWidth(text string, font int32, typeface string) int32
 	TextFormat(string, ...any) string
 	Scale(int32) int32
 	GetScreenWidth() int32
@@ -2436,9 +2437,12 @@ func (r *runtime) resolveSurfaceButtonProps(props ButtonProps, disclosure bool) 
 		}
 		availableWidth = right - props.Bounds.X
 	}
-	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, registeredTypeface(style.Typeface)))
-	props.Bounds = Button_MeasureBounds(props, style, height, font, labelWidth, availableWidth, 1, disclosure)
+	props.Bounds = r.Button_MeasureButton(props, style, height, font, availableWidth, 1, disclosure)
 	return props
+}
+
+func (r *runtime) MeasureTextWidth(text string, font int32, typeface string) int32 {
+	return int32(runtimeTextWidthWithFont(text, font, registeredTypeface(typeface)))
 }
 
 func resolveButtonStyle(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState) Style {

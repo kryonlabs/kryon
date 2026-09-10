@@ -678,6 +678,7 @@ parse_enum(const KirType *t)
 static void
 k2go_set_module(const KirModule *m, const char *guard)
 {
+    instance_receiver[0] = '\0';
     g_mod = m;
     snprintf(g_guard, sizeof(g_guard), "%s", guard);
     g_extern_count = 0;
@@ -1813,11 +1814,16 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                                                "%s.%s(",
                                                g_externs[xi].go_import_alias,
                                                g_externs[xi].go);
-                    else
+                    else {
+                        if(runtime_output && !*instance_receiver) {
+                            fprintf(stderr, "k2go: runtime host calls require a function receiver: %s\n", ident);
+                            exit(1);
+                        }
                         dn += (size_t)snprintf(dst + dn, K2GO_TEXT_MAX - dn,
                                                "%s.%s(",
-                                               g_externs[xi].host_var,
+                                               runtime_output ? instance_receiver : g_externs[xi].host_var,
                                                g_externs[xi].go);
+                    }
                     if(!all_ws) {
                         char parts[K2GO_EXTERN_PARAM_MAX][K2GO_TEXT_MAX];
                         int n = split_top(raw, parts, K2GO_EXTERN_PARAM_MAX);
@@ -2313,7 +2319,8 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
             memcpy(name, text, length);
             name[length] = '\0';
             kir_trim_in_place(name);
-            if(KirResolveFunction(module, name, &owner, &callee) == 1 && callee->uses_instance_host) {
+            if(KirResolveFunction(module, name, &owner, &callee) == 1 &&
+               !callee->is_extern && callee->uses_host) {
                 char call[K2GO_TEXT_MAX];
                 snprintf(call, sizeof(call), "%s.%s", instance_receiver, out);
                 kir_copy(out, size, call);
@@ -2332,7 +2339,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int saved_array_count = k2go_array_count;
 
     instance_receiver[0] = '\0';
-    if(runtime_output && fn->uses_instance_host) {
+    if(runtime_output && fn->uses_host) {
         int collision;
         int serial = 0;
         do {
@@ -2838,7 +2845,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         first_host = i;
                     host_count++;
                 }
-            if(host_count > 0) {
+            if(host_count > 0 && !runtime_output) {
                 fprintf(f, "// %sHost bridges '#extern' declarations to the",
                         guard);
                 fprintf(f, " embedding Go program.\ntype %sHost interface {\n",

@@ -4,6 +4,9 @@
 #import "surface"
 #import "control_props"
 #import "button_props"
+#import "ui_text.h"
+
+MeasureTextWidth :: (text: const char*, font: i32, typeface: const char*) -> i32 #extern
 
 # The declaration owns the retained shape; hosts only allocate it by identity.
 ButtonInstance :: struct {
@@ -119,6 +122,13 @@ ContentSize :: struct {
     text_width: float
     icon_size: float
     gap: float
+}
+
+MeasureButton :: (props: ButtonProps, paint: Style, minimum_height: float,
+    font: i32, available_width: float, scale: float, disclosure: bool) -> Rectangle #export {
+    label_width: float = (float)MeasureTextWidth(props.label, font, paint.typeface)
+    return MeasureBounds(props, paint, minimum_height, font, label_width,
+        available_width, scale, disclosure)
 }
 
 # The host supplies physical glyph measurements, available space, and scale.

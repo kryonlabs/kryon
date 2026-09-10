@@ -71,6 +71,12 @@ Button's measurement consumes these actual props and style records directly;
 hosts supply font measurements and available space, while `.kry` owns bounds
 and shape decisions. Borrowed label/typeface fields retain host-owned storage;
 shared code does not turn length-aware string views into C pointers.
+Runtime-generated Go binds host services to the owning runtime receiver.
+Generic `#extern` calls propagate this dependency through shared helpers, while
+direct Go package imports stay stateless. Application host bridges remain
+separate from runtime implementation; no runtime-wide mutable service setter is
+generated. MeasureTextWidth supplies font-specific measurement without making
+widget size decisions and restores the C host's previous typeface after use.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

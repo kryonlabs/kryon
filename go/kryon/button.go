@@ -6,6 +6,7 @@ package kryon
 // #import surface
 // #import control_props
 // #import button_props
+// #import ui_text.h
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
 	bits := w
 	if sign {
@@ -445,6 +446,25 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 	}
 	var value_93 StyleFrame = frame
 	return value_93
+}
+
+func (instance_host_0 *runtime) Button_MeasureButton(props ButtonProps, paint Style, minimum_height float32, font int32, available_width float32, scale float32, disclosure bool) Rectangle {
+	var value_0 string = props.Label
+	var value_1 int32 = font
+	var value_2 string = paint.Typeface
+	var value_3 int32 = instance_host_0.MeasureTextWidth(value_0, value_1, value_2)
+	var value_4 float32 = float32(value_3)
+	var label_width float32 = value_4
+	var value_5 ButtonProps = props
+	var value_6 Style = paint
+	var value_7 float32 = minimum_height
+	var value_8 int32 = font
+	var value_9 float32 = label_width
+	var value_10 float32 = available_width
+	var value_11 float32 = scale
+	var value_12 bool = disclosure
+	var value_13 Rectangle = Button_MeasureBounds(value_5, value_6, value_7, value_8, value_9, value_10, value_11, value_12)
+	return value_13
 }
 
 func Button_MeasureBounds(props ButtonProps, paint Style, minimum_height float32, font int32, label_width float32, available_width float32, scale float32, disclosure bool) Rectangle {

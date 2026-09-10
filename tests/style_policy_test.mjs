@@ -424,6 +424,18 @@ Object.assign(measurement.bounds, { width: 0, height: 0 });
 measurement.icon.id = 0;
 assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
   measureStyle, 80, 54, 48, 0, 2, true), { x: 1.25, y: 2.5, width: 145, height: 134 });
+const measurements = [];
+const measureHost = width => ({
+  MeasureTextWidth(text, font, typeface) {
+    measurements.push([text, font, typeface]);
+    return width;
+  }
+});
+assert.equal(button.Button_MeasureButton(null, undefined, measureHost(48), measurement,
+  measureStyle, 80, 54, 0, 2, true).width, 145);
+assert.equal(button.Button_MeasureButton(null, undefined, measureHost(68), measurement,
+  measureStyle, 80, 54, 0, 2, true).width, 165);
+assert.deepEqual(measurements, [["Run", 54, ""], ["Run", 54, ""]]);
 const theme = await import(pathToFileURL(process.argv[4]).href);
 const metrics = theme.Theme_DefaultMetrics(null);
 for (const dark of [false, true]) {

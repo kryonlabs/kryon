@@ -146,7 +146,7 @@ typedef struct KirFunction {
     int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
     int is_public;  /* exported function or project route */
     int checked;    /* shared checker resolved the function without errors */
-    int uses_instance_host; /* direct or transitive retained-state access */
+    int uses_host; /* direct or transitive host services or retained-state access */
     char extern_target[KIR_NAME_MAX];   /* '#extern "pkg.Fn"' quoted symbol */
     char extern_symbol[KIR_NAME_MAX];   /* stripped C symbol for c.* externs */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */

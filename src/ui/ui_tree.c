@@ -3748,11 +3748,7 @@ resolve_button_bounds(ButtonProps button, int disclosure)
         }
         available_width = right - bounds.x;
     }
-    int typeface_token = PushUIFont(style.typeface);
-    float label_width = (float)TextWidth(button.label != NULL ? button.label : "", font);
-    PopUIFont(typeface_token);
-    return MeasureBounds(button, style, height, font, label_width,
-                         available_width, scale, disclosure);
+    return MeasureButton(button, style, height, font, available_width, scale, disclosure);
 }
 
 static ButtonSpec

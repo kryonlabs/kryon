@@ -1787,6 +1787,7 @@ include/ui_text.h function GetUIFontForCodepoint
 include/ui_text.h function GetUIFontScale
 include/ui_text.h function LoadUIFontAsset
 include/ui_text.h function LoadUIFontFromMemory
+include/ui_text.h function MeasureTextWidth
 include/ui_text.h function PopTextSelectable
 include/ui_text.h function PopUIFont
 include/ui_text.h function PushTextSelectable
