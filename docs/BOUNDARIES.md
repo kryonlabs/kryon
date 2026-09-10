@@ -116,9 +116,12 @@ as a widget or host function. Slots cannot escape through records, module state,
 globals, or return values. Host-provided callables, initialized local aliases,
 and matching `.kry` function values are supported. Contextual function binding,
 callback adapters, and closure construction are shared compiler work; backend
-resolvers supply symbol spelling and hidden state/host arguments. Captured `.kry`
-child blocks still need lifting into these slots to move widget composition out
-of the backends.
+resolvers supply symbol spelling and hidden state/host arguments. Inline `.kry`
+slot bodies are lifted and checked in shared KIR. C/C++ environments borrow
+pointers to used lexical values; Go and JavaScript use native closures. Nested
+captures preserve reference updates and retained instance identity. Slot writes
+are limited to the declaring block, and hosts must invoke borrowed callbacks
+synchronously. Built-in widget composition still needs migration onto this path.
 Named widget blocks already bind props and named slot values in shared KIR.
 Required-slot validation, name conflicts, defaults, and source evaluation order
 are compiler responsibilities. Backends receive ordinary declarations,

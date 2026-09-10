@@ -301,7 +301,7 @@ passed by value, and unknown, duplicate, or incorrectly typed properties are
 errors. Declarations can appear later in the file or in an explicitly imported
 module; imported declarations must be public and their props record must be
 directly visible without a conflicting local type. Custom blocks currently
-accept prop fields and slot values; captured child blocks are not implemented.
+accept prop fields and slot values, including inline captured bodies.
 Their block names do not yet allocate persistent widget identity.
 Interactive compositions must therefore receive distinct stable control IDs
 from their caller; reusing a declaration does not automatically scope IDs in
@@ -320,8 +320,23 @@ for `Card :: (props: CardProps, content: Content) #ui`. Every slot must be suppl
 Slot names must differ from props fields and other slot names. Prop fields and
 slot values evaluate once in source order, including conditional slot selection;
 omitted props retain their zero values. This works for custom declarations named
-`Button` or `Text` as well as application-defined names. Captured child blocks
-are not implemented yet.
+`Button` or `Text` as well as application-defined names.
+
+An inline slot body can read and update enclosing local values:
+
+```kry
+count: i32 = 0
+child: Content = (bounds: Rectangle) #slot {
+    count += 1
+}
+```
+
+The same syntax supplies a block property: `content = (bounds: Rectangle) #slot { ... }`.
+Parameters must match the declared slot signature. Nested bodies capture by
+reference, including retained instance bindings and other slots. These calls
+are synchronous: a host must not retain the callback. A slot can be reassigned
+only within the block that declares its binding; assigning to an enclosing or
+captured slot is rejected to prevent borrowed locals from escaping their scope.
 
 A portable body can bind a typed retained record to an explicit integer key:
 

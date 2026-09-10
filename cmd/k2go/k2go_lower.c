@@ -22,6 +22,7 @@
 static int runtime_output;
 static const KirModule *type_scope;
 static char instance_receiver[KIR_NAME_MAX];
+static char state_receiver[KIR_NAME_MAX] = "st";
 
 /* ---------------------------------------------------------------- helpers */
 
@@ -673,12 +674,42 @@ parse_enum(const KirType *t)
     }
 }
 
+static int
+module_uses_identifier(const KirModule *module, const char *name)
+{
+    size_t length = strlen(name);
+    for(int function = 0; function < module->function_count; function++) {
+        const KirFunction *fn = &module->functions[function];
+        for(int statement = -1; statement < fn->stmt_count; statement++) {
+            const char *text = statement < 0 ? fn->args : fn->stmts[statement].text;
+            const char *found = text;
+            while((found = strstr(found, name)) != NULL) {
+                if((found == text || !kir_is_ident_char(found[-1])) &&
+                   !kir_is_ident_char(found[length]))
+                    return 1;
+                found += length;
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+is_state_reference(const char *text)
+{
+    size_t length = strlen(state_receiver);
+    return !strncmp(text, state_receiver, length) && text[length] == '.';
+}
+
 /* (Re)build the per-module context: extern bridge + enum constants. Must run
  * before any expression or statement is emitted for the module. */
 static void
 k2go_set_module(const KirModule *m, const char *guard)
 {
     instance_receiver[0] = '\0';
+    kir_copy(state_receiver, sizeof(state_receiver), "st");
+    for(int serial = 0; module_uses_identifier(m, state_receiver); serial++)
+        snprintf(state_receiver, sizeof(state_receiver), "module_state_%d", serial);
     g_mod = m;
     snprintf(g_guard, sizeof(g_guard), "%s", guard);
     g_extern_count = 0;
@@ -731,7 +762,7 @@ k2go_char_ptr_type(const char *type)
 static int
 k2go_expr_is_state_char_buffer(const char *expr)
 {
-    if(g_mod == NULL || strncmp(expr, "st.", 3) != 0)
+    if(g_mod == NULL || !is_state_reference(expr))
         return 0;
     for(int i = 0; i < g_mod->state_count; i++) {
         char name[K2GO_NAME_MAX];
@@ -741,7 +772,7 @@ k2go_expr_is_state_char_buffer(const char *expr)
            strchr(g_mod->state_fields[i].type, '*') != NULL)
             continue;
         kir_camel_ident(g_mod->state_fields[i].name, name, sizeof(name));
-        if(strcmp(expr + 3, name) == 0)
+        if(strcmp(expr + strlen(state_receiver) + 1, name) == 0)
             return 1;
     }
     return 0;
@@ -1509,7 +1540,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 }
                 if((strcmp(type, "TextFieldProps") == 0 ||
                     strcmp(type, "TextAreaProps") == 0) &&
-                   strcmp(field, "Text") == 0 && strncmp(value, "st.", 3) == 0)
+                   strcmp(field, "Text") == 0 && is_state_reference(value))
                     strncat(value, "[:]", sizeof(value) - strlen(value) - 1);
                 if(strcmp(type, "MenuItem") == 0 &&
                    (strcmp(field, "Label") == 0 ||
@@ -1758,29 +1789,14 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             sfi = state_field_index(m, ident, il);
             if(sfi >= 0) {
                 char camel_name[K2GO_NAME_MAX];
-                size_t cl;
-
                 kir_camel_ident(m->state_fields[sfi].name, camel_name, sizeof(camel_name));
-                cl = strlen(camel_name);
-                if(addr && dn + cl + 5 < dst_size) {
-                    dst[dn++] = '&';
-                    dst[dn++] = 's';
-                    dst[dn++] = 't';
-                    dst[dn++] = '.';
-                    memcpy(dst + dn, camel_name, cl);
-                    dn += cl;
-                    p = q;
-                    continue;
-                }
-                if(!addr && dn + cl + 4 < dst_size) {
-                    dst[dn++] = 's';
-                    dst[dn++] = 't';
-                    dst[dn++] = '.';
-                    memcpy(dst + dn, camel_name, cl);
-                    dn += cl;
-                    p = q;
-                    continue;
-                }
+                size_t needed = strlen(state_receiver) + strlen(camel_name) + 1 + (addr != 0);
+                if(needed >= dst_size - dn)
+                    break;
+                dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s.%s",
+                                       addr ? "&" : "", state_receiver, camel_name);
+                p = q;
+                continue;
             }
             /* '#extern' bridge: direct Go import for fully-qualified targets,
              * otherwise the historical host-interface method. The check
@@ -1883,14 +1899,12 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 }
                 p = kir_skip_ws(q) + 1;
                 /* empty arg list? */
-                if(*kir_skip_ws(p) == ')') {
-                    if(m->state_count > 0 && dn + 3 < dst_size) {
-                        memcpy(dst + dn, "st", 2);
-                        dn += 2;
-                    }
-                } else if(m->state_count > 0 && dn + 5 < dst_size) {
-                    memcpy(dst + dn, "st, ", 4);
-                    dn += 4;
+                if(m->state_count > 0) {
+                    const char *separator = *kir_skip_ws(p) == ')' ? "" : ", ";
+                    if(strlen(state_receiver) + strlen(separator) >= dst_size - dn)
+                        break;
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s",
+                                           state_receiver, separator);
                 }
                 continue;
             }
@@ -2359,9 +2373,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         int serial = 0;
         do {
             snprintf(instance_receiver, sizeof(instance_receiver), "instance_host_%d", serial++);
-            collision = strstr(fn->args, instance_receiver) != NULL;
-            for(int i = 0; i < fn->stmt_count; i++)
-                collision |= strstr(fn->stmts[i].text, instance_receiver) != NULL;
+            collision = module_uses_identifier(m, instance_receiver);
         } while(collision);
     }
     kir_camel_ident(fn->name, fname, sizeof(fname));
@@ -2376,7 +2388,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             fprintf(f, "(%s *runtime) ", instance_receiver);
         fprintf(f, "%s_%s(", guard, fname);
         if(m->state_count > 0) {
-            fprintf(f, "st *%sState", guard);
+            fprintf(f, "%s *%sState", state_receiver, guard);
             emitted = 1;
         }
         if(fn->args[0] != '\0') {
@@ -3050,7 +3062,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             /* functions ('#extern' prototypes have no body: they lower to
              * Host interface methods, not Go functions) */
             for(int i = 0; i < m->function_count; i++) {
-                if(m->functions[i].is_extern)
+                if(m->functions[i].is_extern || m->functions[i].is_closure)
                     continue;
                 lower_function(f, m, &m->functions[i], guard);
             }

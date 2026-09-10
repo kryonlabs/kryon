@@ -463,6 +463,15 @@ typedef struct UiBlock {
     unsigned scope_fields;
 } UiBlock;
 
+typedef struct SlotParseFrame {
+    int function_index;
+    int depth;
+    int block_count;
+    UiBlock *blocks;
+    int body_count;
+    int body_depth[8];
+} SlotParseFrame;
+
 static int
 is_layout_widget(const char *name)
 {
@@ -1114,6 +1123,33 @@ looks_like_function_header(const char *line)
     return paren_params_are_typed(body);
 }
 
+
+/* Inline bodies retain ordinary function parameter syntax, with an explicit
+ * #slot marker separating them from record and array initializers. */
+static int
+parse_slot_header(const char *text, char *binding, size_t binding_size,
+                   char *arguments, size_t arguments_size)
+{
+    const char *equals = strchr(text, '=');
+    const char *annotation = strstr(text, "#slot");
+    if(equals == NULL || annotation == NULL || equals >= annotation ||
+       strcmp(kir_skip_ws(annotation + 5), "{") != 0 ||
+       *kir_skip_ws(equals + 1) != '(')
+        return 0;
+    size_t length = (size_t)(equals - text);
+    if(length >= binding_size)
+        return 0;
+    memcpy(binding, text, length);
+    binding[length] = '\0';
+    kir_trim_in_place(binding);
+    char header[KIR_TEXT_MAX], name[KIR_NAME_MAX], result[KIR_NAME_MAX];
+    int written = snprintf(header, sizeof(header), "slot_body :: %s", equals + 1);
+    if(written < 0 || (size_t)written >= sizeof(header))
+        return 0;
+    parse_function_header(name, sizeof(name), arguments, arguments_size,
+                          result, sizeof(result), header);
+    return name[0] && !strcmp(result, "void");
+}
 
 /* ---- compile-time conditionals ------------------------------------------
  * '#if COND { ... } #else { ... }' regions use one model: top-level
@@ -1888,6 +1924,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int in_block_comment = 0;
     UiBlock ui_blocks[64];
     int ui_block_count = 0;
+    SlotParseFrame slot_frames[64];
+    int slot_frame_count = 0;
 
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
@@ -1957,10 +1995,13 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     char nc = pending[wl];
                     char uiw[KIR_NAME_MAX];
                     char uin[KIR_NAME_MAX];
+                    char slot_binding[KIR_TEXT_MAX], slot_arguments[KIR_TEXT_MAX];
 
                     header_line =
                         pending[0] == '#' ||
                         strcmp(pending, "{") == 0 ||   /* bare scope-open */
+                        parse_slot_header(pending, slot_binding, sizeof(slot_binding),
+                                          slot_arguments, sizeof(slot_arguments)) ||
                         parse_ui_block_header(pending, uiw, sizeof(uiw),
                                               uin, sizeof(uin)) ||
                         /* 'name :: Type = {' carries an initializer, not a
@@ -2664,6 +2705,18 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                    KirSpan(rel, line_no, 1));
             } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
+            } else if(t[0] == '}' && slot_frame_count > 0 && depth == 1 && ui_block_count == 0) {
+                if(*kir_skip_ws(t + 1))
+                    die("%s:%d: slot body closing brace must be on its own line", rel, line_no);
+                SlotParseFrame *frame = &slot_frames[--slot_frame_count];
+                fn = &module->functions[frame->function_index];
+                depth = frame->depth;
+                ui_block_count = frame->block_count;
+                if(ui_block_count)
+                    memcpy(ui_blocks, frame->blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
+                free(frame->blocks);
+                body_mcount = frame->body_count;
+                memcpy(body_mdepth, frame->body_depth, sizeof(body_mdepth));
             } else if(t[0] == '}' && ui_block_count > 0 &&
                       depth == ui_blocks[ui_block_count - 1].close_depth) {
                 UiBlock *block = &ui_blocks[ui_block_count - 1];
@@ -2722,6 +2775,42 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 char prop_value[KIR_TEXT_MAX];
                 char prop_line[KIR_TEXT_MAX];
 
+                char slot_binding[KIR_TEXT_MAX], slot_arguments[KIR_TEXT_MAX];
+                if(parse_slot_header(t, slot_binding, sizeof(slot_binding),
+                                     slot_arguments, sizeof(slot_arguments))) {
+                    if(slot_frame_count == 64)
+                        die("%s:%d: too many nested slot bodies", rel, line_no);
+                    SlotParseFrame *frame = &slot_frames[slot_frame_count++];
+                    frame->function_index = (int)(fn - module->functions);
+                    frame->depth = depth;
+                    frame->body_count = body_mcount;
+                    memcpy(frame->body_depth, body_mdepth, sizeof(body_mdepth));
+                    char name[KIR_NAME_MAX];
+                    snprintf(name, sizeof(name), "slot_body_%d_%d", module->function_count, line_no);
+                    KirSourceSpan span = KirSpan(rel, line_no, 1);
+                    if(ui_block_count > 0 && !ui_blocks[ui_block_count - 1].opened &&
+                       depth == ui_blocks[ui_block_count - 1].close_depth &&
+                       is_identifier_text(slot_binding)) {
+                        ui_block_append_prop(&ui_blocks[ui_block_count - 1], slot_binding, name, span);
+                    } else {
+                        char initializer[KIR_TEXT_MAX];
+                        ui_block_format(initializer, sizeof(initializer), span, "%s = %s", slot_binding, name);
+                        KirFunctionAddStmt(fn, strchr(slot_binding, ':') ? KIR_STMT_DECL : KIR_STMT_ASSIGN,
+                                           initializer, "", span);
+                    }
+                    frame->block_count = ui_block_count;
+                    frame->blocks = ui_block_count ? malloc((size_t)ui_block_count * sizeof(*ui_blocks)) : NULL;
+                    if(ui_block_count && frame->blocks == NULL)
+                        die("out of memory parsing slot body");
+                    if(ui_block_count)
+                        memcpy(frame->blocks, ui_blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
+                    fn = KirModuleAddFunction(module, name, slot_arguments, "void", 0, span);
+                    fn->is_closure = 1;
+                    kir_copy(fn->guard, sizeof(fn->guard), cur_guard);
+                    depth = 1;
+                    ui_block_count = body_mcount = 0;
+                    continue;
+                }
                 if(parse_ui_block_header(t, block_widget,
                                          sizeof(block_widget),
                                          block_name, sizeof(block_name))) {
@@ -2817,6 +2906,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
             }
         }
     }
+    if(slot_frame_count)
+        die("%s:%d: unterminated slot body", rel, line_no);
     if(in != NULL)
         fclose(in);
     for(int mi = 0; mi < program->module_count; mi++)

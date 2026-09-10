@@ -146,8 +146,9 @@ identity and private visibility; lexical values shadow function declarations.
 C/C++ adapters implement the borrowed-context callback ABI. Go and JavaScript
 closures preserve the resolved function's hidden module state and host arguments.
 Host use propagates through function references so native Go binds the originating
-runtime receiver. Captured child blocks still need lifting into these callables;
-this foundation does not remove the parser's child-block restriction.
+runtime receiver. Inline `#slot` bodies capture enclosing lexical bindings by
+reference and use the same callable ABI. Anonymous nested widget syntax without
+a named slot still uses the built-in scope path.
 Unknown, duplicate, and incorrectly typed props are errors even without strict
 mode. Tests execute local and imported declarations in both source orders in
 C, C++, Go, and JavaScript, including ordinary calls and record value semantics.
@@ -165,7 +166,8 @@ not bypass the declaration's signature. Unresolved host-header APIs do not yet
 provide that declaration metadata to KIR; their migration remains necessary.
 Braced `case` and `default` labels remain control flow, not widget declarations;
 cross-target tests execute both switch paths around ordinary widget calls.
-Child slots are still unsupported; child content is rejected explicitly.
+Declared child content uses explicit named slots; implicit child blocks remain
+unsupported for custom declarations.
 Explicit-key instance bindings are described below. Built-in widget migration
 is still pending.
 Portable `#ui` bodies use the same checked emitter as ordinary functions;
@@ -281,8 +283,9 @@ Integration tests execute custom blocks and ordinary calls against all four
 real hosts, including type isolation, reordered and wide keys, whole-record
 replacement, lexical shadowing, and expiration. Instance bodies must pass the
 shared portable checker, even without `--strict`; a fallback must not turn an
-instance binding into a local or module global. Hierarchical keys and typed
-child slots remain necessary before this is a complete declaration lifecycle.
+instance binding into a local or module global. Hierarchical keys and migration
+of built-in composition onto typed slots remain necessary before this is a
+complete declaration lifecycle.
 
 With `k2go --runtime-implementation`, functions that access instances or call
 host `#extern` services
@@ -326,8 +329,11 @@ its operation stream. Style/theme acquisition, legacy C appearances, and child
 lifecycle still need migration to complete the widget body.
 Its content geometry uses shared InsetBounds and CenterChild functions: the C
 retained child layout and Go layout scope no longer implement separate inset,
-missing-dimension, or centering rules. This does not add typed child slots;
-the declaration parser still rejects child content in user-defined widgets.
+missing-dimension, or centering rules. User-defined widgets now accept typed
+slots with inline captured bodies. Shared KIR lifts nested bodies, resolves
+lexical captures, checks signatures and borrowed lifetimes, and emits callback
+environments for C/C++ or native Go/JavaScript closures. Built-in Button still
+uses its existing host scope and needs migration to this declaration path.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

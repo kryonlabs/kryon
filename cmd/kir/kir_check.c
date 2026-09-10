@@ -9,12 +9,14 @@
 #include <string.h>
 
 typedef struct Binding {
+    int is_instance;
     char name[KIR_NAME_MAX];
     char type[KIR_NAME_MAX];
     int depth;
 } Binding;
 
 typedef struct Checker {
+    struct Checker *parent;
     KirProgram **programs;
     int program_count;
     KirModule *module;
@@ -83,6 +85,7 @@ bind(Checker *c, const char *name, const char *type, KirSourceSpan span)
     }
     kir_copy(c->bindings[c->count].name, KIR_NAME_MAX, name);
     kir_copy(c->bindings[c->count].type, KIR_NAME_MAX, type);
+    c->bindings[c->count].is_instance = 0;
     c->bindings[c->count++].depth = c->depth;
 }
 
@@ -98,11 +101,49 @@ function(Checker *c, const char *name, KirSourceSpan span)
     return found;
 }
 
+static int
+lexical_instance(Checker *c, const char *name)
+{
+    for(int i = c->count - 1; i >= 0; i--)
+        if(!strcmp(c->bindings[i].name, name))
+            return c->bindings[i].is_instance;
+    return c->parent ? lexical_instance(c->parent, name) : 0;
+}
+
+static const char *
+lookup_lexical(Checker *c, const char *name)
+{
+    for(int i = c->count - 1; i >= 0; i--)
+        if(!strcmp(c->bindings[i].name, name))
+            return c->bindings[i].type;
+    if(c->parent == NULL)
+        return "";
+    const char *type = lookup_lexical(c->parent, name);
+    if(!*type)
+        return "";
+    for(int i = 0; i < c->fn->capture_count; i++)
+        if(!strcmp(c->fn->captures[i].name, name))
+            return c->fn->captures[i].type;
+    KirCapture *captures = realloc(c->fn->captures,
+        (size_t)(c->fn->capture_count + 1) * sizeof(*captures));
+    if(captures == NULL) {
+        c->failed = 1;
+        return "";
+    }
+    c->fn->captures = captures;
+    KirCapture *capture = &captures[c->fn->capture_count++];
+    kir_copy(capture->name, sizeof(capture->name), name);
+    kir_copy(capture->type, sizeof(capture->type), type);
+    capture->is_instance = lexical_instance(c->parent, name);
+    return capture->type;
+}
+
 static const char *
 lookup(Checker *c, const char *name)
 {
-    for(int i = c->count - 1; i >= 0; i--)
-        if(!strcmp(c->bindings[i].name, name)) return c->bindings[i].type;
+    const char *lexical = lookup_lexical(c, name);
+    if(*lexical)
+        return lexical;
     for(int i = 0; i < c->module->state_count; i++)
         if(!strcmp(c->module->state_fields[i].name, name)) return c->module->state_fields[i].type;
     for(int i = 0; i < c->module->global_count; i++)
@@ -166,6 +207,8 @@ assignable(Checker *c, int index)
            e->kind == KIR_EXPR_POINTER_MEMBER || (e->kind == KIR_EXPR_UNARY && !strcmp(e->op, "*"));
 }
 
+static int check_function(Checker *c, KirFunction *fn);
+
 /* Function values require a slot context; ordinary names retain lexical lookup.
  * Annotate before recursively checking expressions so a declaration identifier
  * is not mistaken for an unresolved variable. */
@@ -221,6 +264,19 @@ contextual_slot(Checker *c, int index, const char *expected)
         c->errors++;
         c->failed = 1;
         return;
+    }
+    if(declaration->is_closure && !declaration->checked) {
+        Checker child = *c;
+        child.parent = c;
+        child.bindings = NULL;
+        child.count = child.capacity = 0;
+        child.errors = child.failed = 0;
+        child.strict = 1;
+        if(!check_function(&child, (KirFunction *)declaration))
+            child.failed = 1;
+        c->errors += child.errors;
+        c->failed |= child.failed;
+        free(child.bindings);
     }
     value->is_function_value = 1;
     kir_copy(value->type, sizeof(value->type), expected);
@@ -774,6 +830,147 @@ resolve_widget_blocks(Checker *c)
     return 1;
 }
 
+static int
+check_function(Checker *c, KirFunction *fn)
+{
+    int strict = c->strict;
+    int errors_before = c->errors;
+    int has_slots = fn->is_closure;
+    char params[64][KIR_TEXT_MAX];
+    int n;
+    c->fn = fn; c->count = 0; c->depth = 0;
+    c->fn->uses_host = c->fn->is_extern && c->fn->extern_kind == KIR_EXTERN_HOST;
+    const KirType *return_slot = KirFindType(c->module, c->fn->return_type, NULL);
+    if(return_slot != NULL && return_slot->is_slot) {
+        fprintf(stderr, "%s:%d: slot values cannot escape through returns\n",
+                c->fn->span.path, c->fn->span.line);
+        return 0;
+    }
+    /* Imports are linked now. Rebuild expressions so imported types
+     * participate in cast/grouping decisions before type checking. */
+    KirStructureFunction(c->fn, c->module);
+    if(!resolve_widget_blocks(c)) {
+        return 0;
+    }
+    n = *kir_skip_ws(c->fn->args) ? kir_split_top(c->fn->args, params[0], 64, sizeof(params[0])) : 0;
+    for(int a = 0; a < n; a++) {
+        char *colon = strchr(params[a], ':');
+        if(colon) {
+            *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
+            const KirType *parameter_type = KirFindType(c->module, colon, NULL);
+            has_slots |= parameter_type != NULL && parameter_type->is_slot;
+            bind(c, params[a], colon, c->fn->span);
+        } else error(c, c->fn->span, "strict parameters require name: type", params[a]);
+    }
+    for(int i = 0; i < c->fn->stmt_count; i++) {
+        KirStmt *st = &c->fn->stmts[i];
+        const char *type;
+        if(st->kind == KIR_STMT_BLOCK_CLOSE) {
+            while(c->count && c->bindings[c->count - 1].depth == c->depth) c->count--;
+            if(c->depth) c->depth--;
+        }
+        int errors_before_expression = c->errors;
+        if(st->declared_widget || st->is_instance)
+            c->strict = 1;
+        if(st->kind == KIR_STMT_DECL && !st->is_instance)
+            contextual_slot(c, st->expr_root, st->type);
+        if(st->kind == KIR_STMT_ASSIGN && st->lhs_root >= 0 &&
+           c->fn->exprs[st->lhs_root].kind == KIR_EXPR_IDENT)
+            contextual_slot(c, st->expr_root, lookup(c, c->fn->exprs[st->lhs_root].name));
+        type = expression_type(c, st->expr_root);
+        if(st->kind == KIR_STMT_WIDGET && st->expr_root >= 0 &&
+           *c->fn->exprs[st->expr_root].slot_type)
+            st->kind = KIR_STMT_EXPR;
+        if(st->kind == KIR_STMT_DECL) {
+            if(st->is_instance) {
+                const KirType *record = KirFindType(c->module, st->type, NULL);
+                if(record == NULL || record->is_enum || record->is_slot)
+                    error(c, st->span, "instance state requires a declared record type", st->type);
+                const char *key_type = KirScalarType(type);
+                if(st->expr_root < 0 || (strcmp(type, "integer") &&
+                   key_type[0] != 'i' && key_type[0] != 'u'))
+                    error(c, st->span, "instance key requires an integer", st->name);
+            } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
+                !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
+            else if(!compatible(st->type, type)) error(c, st->span, "initializer type mismatch", st->name);
+            const KirType *local_type = KirFindType(c->module, st->type, NULL);
+            if(local_type != NULL && local_type->is_slot) {
+                has_slots = 1;
+                if(st->expr_root < 0) {
+                    fprintf(stderr, "%s:%d: slot bindings require an initializer\n",
+                            st->span.path, st->span.line);
+                    c->failed = 1;
+                }
+            }
+            if(!st->is_instance)
+                check_borrowed_string(c, st->type, st->expr_root);
+            bind(c, st->name, st->type, st->span);
+            if(c->count && !strcmp(c->bindings[c->count - 1].name, st->name))
+                c->bindings[c->count - 1].is_instance = st->is_instance;
+        } else if(st->kind == KIR_STMT_ASSIGN) {
+            const char *lhs = expression_type(c, st->lhs_root);
+            const KirType *destination = KirFindType(c->module, lhs, NULL);
+            if(destination != NULL && destination->is_slot) {
+                int local = c->count - 1;
+                const char *name = c->fn->exprs[st->lhs_root].name;
+                while(local >= 0 && strcmp(c->bindings[local].name, name))
+                    local--;
+                if(local < 0 || c->bindings[local].depth != c->depth) {
+                    fprintf(stderr, "%s:%d: slot assignment cannot escape its lexical block: %s\n",
+                            st->span.path, st->span.line, name);
+                    c->failed = 1;
+                }
+            }
+            if(destination != NULL && destination->is_enum && strcmp(st->assignment_op, "="))
+                error(c, st->span, "enum compound assignment requires an explicit numeric cast", st->assignment_op);
+            if(text_type(lhs) && strcmp(st->assignment_op, "="))
+                error(c, st->span, "string compound assignment is not supported", st->assignment_op);
+            if(!assignable(c, st->lhs_root)) error(c, st->span, "assignment requires an assignable destination", "");
+            if(!compatible(lhs, type)) error(c, st->span, "assignment type mismatch", st->text);
+            check_borrowed_string(c, lhs, st->expr_root);
+        } else if(st->kind == KIR_STMT_RETURN) {
+            if(!compatible(c->fn->return_type, type)) error(c, st->span, "return type mismatch", c->fn->name);
+            check_borrowed_string(c, c->fn->return_type, st->expr_root);
+            if((st->expr_root < 0) != !strcmp(c->fn->return_type, "void"))
+                error(c, st->span, "return value does not match function signature", c->fn->name);
+        } else if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE) {
+            if(*type && strcmp(type, "bool")) error(c, st->span, "condition requires bool", type);
+        } else if(st->kind == KIR_STMT_RAW || st->kind == KIR_STMT_UNKNOWN ||
+                  st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_GOTO ||
+                  st->kind == KIR_STMT_LABEL || st->kind == KIR_STMT_WIDGET)
+            error(c, st->span, "statement is not supported by strict checking", st->text);
+        if(st->kind == KIR_STMT_BLOCK_OPEN || st->kind == KIR_STMT_IF ||
+           st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
+            c->depth++;
+        c->strict = strict;
+        if((st->declared_widget || st->is_instance) && c->errors != errors_before_expression)
+            c->failed = 1;
+    }
+    c->fn->checked = c->errors == errors_before;
+    for(int expression = 0; expression < c->fn->expr_count; expression++)
+        has_slots |= c->fn->exprs[expression].is_function_value;
+    int has_instances = 0;
+    for(int i = 0; i < c->fn->stmt_count; i++)
+        has_instances |= c->fn->stmts[i].is_instance;
+    c->fn->uses_host |= has_instances;
+    if(has_instances && (!c->fn->checked || !KirCanEmitBody(c->module, c->fn))) {
+        fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
+                c->fn->span.path, c->fn->span.line, c->fn->name);
+        c->failed = 1;
+    }
+    if(has_slots && !c->fn->is_extern &&
+       (!c->fn->checked || !KirCanEmitBody(c->module, c->fn))) {
+        fprintf(stderr, "%s:%d: slot parameters require a fully checked portable body: %s\n",
+                c->fn->span.path, c->fn->span.line, c->fn->name);
+        c->failed = 1;
+    }
+    if(strict && c->fn->checked && !c->fn->is_extern && !KirCanEmitBody(c->module, c->fn)) {
+        error(c,c->fn->span,"function is not supported by portable scalar emission",c->fn->name);
+        c->fn->checked=0;
+    }
+    return !c->failed;
+}
+
 int
 KirCheckPrograms(KirProgram **programs, int count, int strict)
 {
@@ -812,12 +1009,12 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             }
         }
     }
+    for(int p = 0; p < count; p++)
+        for(int m = 0; m < programs[p]->module_count; m++)
+            if(!check_type_declarations(&programs[p]->modules[m]))
+                return 0;
     for(int p = 0; p < count; p++) for(int m = 0; m < programs[p]->module_count; m++) {
         c.module = &programs[p]->modules[m];
-        if(!check_type_declarations(c.module)) {
-            free(c.bindings);
-            return 0;
-        }
         for(int i = 0; i < c.module->global_count + c.module->state_count; i++) {
             const char *type = i < c.module->global_count ? c.module->globals[i].type :
                 c.module->state_fields[i - c.module->global_count].type;
@@ -829,129 +1026,13 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             }
         }
         for(int f = 0; f < c.module->function_count; f++) {
-            int errors_before = c.errors;
-            int has_slots = 0;
-            char params[64][KIR_TEXT_MAX];
-            int n;
-            c.fn = &c.module->functions[f]; c.count = 0; c.depth = 0;
-            c.fn->uses_host = c.fn->is_extern && c.fn->extern_kind == KIR_EXTERN_HOST;
-            const KirType *return_slot = KirFindType(c.module, c.fn->return_type, NULL);
-            if(return_slot != NULL && return_slot->is_slot) {
-                fprintf(stderr, "%s:%d: slot values cannot escape through returns\n",
-                        c.fn->span.path, c.fn->span.line);
+            if(c.module->functions[f].is_closure)
+                continue;
+            if(!check_function(&c, &c.module->functions[f])) {
                 free(c.bindings);
                 return 0;
             }
-            /* Imports are linked now. Rebuild expressions so imported types
-             * participate in cast/grouping decisions before type checking. */
-            KirStructureFunction(c.fn, c.module);
-            if(!resolve_widget_blocks(&c)) {
-                free(c.bindings);
-                return 0;
-            }
-            n = *kir_skip_ws(c.fn->args) ? kir_split_top(c.fn->args, params[0], 64, sizeof(params[0])) : 0;
-            for(int a = 0; a < n; a++) {
-                char *colon = strchr(params[a], ':');
-                if(colon) {
-                    *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
-                    const KirType *parameter_type = KirFindType(c.module, colon, NULL);
-                    has_slots |= parameter_type != NULL && parameter_type->is_slot;
-                    bind(&c, params[a], colon, c.fn->span);
-                } else error(&c, c.fn->span, "strict parameters require name: type", params[a]);
-            }
-            for(int i = 0; i < c.fn->stmt_count; i++) {
-                KirStmt *st = &c.fn->stmts[i];
-                const char *type;
-                if(st->kind == KIR_STMT_BLOCK_CLOSE) {
-                    while(c.count && c.bindings[c.count - 1].depth == c.depth) c.count--;
-                    if(c.depth) c.depth--;
-                }
-                int errors_before_expression = c.errors;
-                if(st->declared_widget || st->is_instance)
-                    c.strict = 1;
-                if(st->kind == KIR_STMT_DECL && !st->is_instance)
-                    contextual_slot(&c, st->expr_root, st->type);
-                if(st->kind == KIR_STMT_ASSIGN && st->lhs_root >= 0 &&
-                   c.fn->exprs[st->lhs_root].kind == KIR_EXPR_IDENT)
-                    contextual_slot(&c, st->expr_root, lookup(&c, c.fn->exprs[st->lhs_root].name));
-                type = expression_type(&c, st->expr_root);
-                if(st->kind == KIR_STMT_WIDGET && st->expr_root >= 0 &&
-                   *c.fn->exprs[st->expr_root].slot_type)
-                    st->kind = KIR_STMT_EXPR;
-                if(st->kind == KIR_STMT_DECL) {
-                    if(st->is_instance) {
-                        const KirType *record = KirFindType(c.module, st->type, NULL);
-                        if(record == NULL || record->is_enum || record->is_slot)
-                            error(&c, st->span, "instance state requires a declared record type", st->type);
-                        const char *key_type = KirScalarType(type);
-                        if(st->expr_root < 0 || (strcmp(type, "integer") &&
-                           key_type[0] != 'i' && key_type[0] != 'u'))
-                            error(&c, st->span, "instance key requires an integer", st->name);
-                    } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
-                        !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
-                    else if(!compatible(st->type, type)) error(&c, st->span, "initializer type mismatch", st->name);
-                    const KirType *local_type = KirFindType(c.module, st->type, NULL);
-                    if(local_type != NULL && local_type->is_slot) {
-                        has_slots = 1;
-                        if(st->expr_root < 0) {
-                            fprintf(stderr, "%s:%d: slot bindings require an initializer\n",
-                                    st->span.path, st->span.line);
-                            c.failed = 1;
-                        }
-                    }
-                    if(!st->is_instance)
-                        check_borrowed_string(&c, st->type, st->expr_root);
-                    bind(&c, st->name, st->type, st->span);
-                } else if(st->kind == KIR_STMT_ASSIGN) {
-                    const char *lhs = expression_type(&c, st->lhs_root);
-                    const KirType *destination = KirFindType(c.module, lhs, NULL);
-                    if(destination != NULL && destination->is_enum && strcmp(st->assignment_op, "="))
-                        error(&c, st->span, "enum compound assignment requires an explicit numeric cast", st->assignment_op);
-                    if(text_type(lhs) && strcmp(st->assignment_op, "="))
-                        error(&c, st->span, "string compound assignment is not supported", st->assignment_op);
-                    if(!assignable(&c, st->lhs_root)) error(&c, st->span, "assignment requires an assignable destination", "");
-                    if(!compatible(lhs, type)) error(&c, st->span, "assignment type mismatch", st->text);
-                    check_borrowed_string(&c, lhs, st->expr_root);
-                } else if(st->kind == KIR_STMT_RETURN) {
-                    if(!compatible(c.fn->return_type, type)) error(&c, st->span, "return type mismatch", c.fn->name);
-                    check_borrowed_string(&c, c.fn->return_type, st->expr_root);
-                    if((st->expr_root < 0) != !strcmp(c.fn->return_type, "void"))
-                        error(&c, st->span, "return value does not match function signature", c.fn->name);
-                } else if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE) {
-                    if(*type && strcmp(type, "bool")) error(&c, st->span, "condition requires bool", type);
-                } else if(st->kind == KIR_STMT_RAW || st->kind == KIR_STMT_UNKNOWN ||
-                          st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_GOTO ||
-                          st->kind == KIR_STMT_LABEL || st->kind == KIR_STMT_WIDGET)
-                    error(&c, st->span, "statement is not supported by strict checking", st->text);
-                if(st->kind == KIR_STMT_BLOCK_OPEN || st->kind == KIR_STMT_IF ||
-                   st->kind == KIR_STMT_WHILE || st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH)
-                    c.depth++;
-                c.strict = strict;
-                if((st->declared_widget || st->is_instance) && c.errors != errors_before_expression)
-                    c.failed = 1;
-            }
-            c.fn->checked = c.errors == errors_before;
-            for(int expression = 0; expression < c.fn->expr_count; expression++)
-                has_slots |= c.fn->exprs[expression].is_function_value;
-            int has_instances = 0;
-            for(int i = 0; i < c.fn->stmt_count; i++)
-                has_instances |= c.fn->stmts[i].is_instance;
-            c.fn->uses_host |= has_instances;
-            if(has_instances && (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
-                fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
-                        c.fn->span.path, c.fn->span.line, c.fn->name);
-                c.failed = 1;
-            }
-            if(has_slots && !c.fn->is_extern &&
-               (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
-                fprintf(stderr, "%s:%d: slot parameters require a fully checked portable body: %s\n",
-                        c.fn->span.path, c.fn->span.line, c.fn->name);
-                c.failed = 1;
-            }
-            if(strict && c.fn->checked && !c.fn->is_extern && !KirCanEmitBody(c.module, c.fn)) {
-                error(&c,c.fn->span,"function is not supported by portable scalar emission",c.fn->name);
-                c.fn->checked=0;
-            }
+
         }
     }
     /* Runtime implementations become host methods when they need host services.

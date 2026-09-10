@@ -389,6 +389,8 @@ fresh(Emitter *e, char *name)
     do {
         format(name, KIR_NAME_MAX, "value_%d", e->serial++);
         collision = strstr(e->fn->args, name) != NULL;
+        for(int i = 0; i < e->fn->capture_count; i++)
+            collision |= !strcmp(e->fn->captures[i].name, name);
         for(int i = 0; i < e->fn->stmt_count; i++) collision |= strstr(e->fn->stmts[i].text, name) != NULL;
         for(int i = 0; i < e->module->state_count; i++) collision |= !strcmp(e->module->state_fields[i].name, name);
         for(int i = 0; i < e->module->global_count; i++) collision |= !strcmp(e->module->globals[i].name, name);
@@ -501,6 +503,20 @@ declare(Emitter *e, const char *name, const char *type, const char *value)
 }
 
 static void
+capture_context_name(const KirFunction *fn, char *out, size_t size)
+{
+    int serial = 0, collision;
+    do {
+        format(out, size, "capture_context_%d", serial++);
+        collision = strstr(fn->args, out) != NULL;
+        for(int i = 0; i < fn->stmt_count; i++)
+            collision |= strstr(fn->stmts[i].text, out) != NULL;
+        for(int i = 0; i < fn->capture_count; i++)
+            collision |= !strcmp(fn->captures[i].name, out);
+    } while(collision);
+}
+
+static void
 resolve(Emitter *e, const char *name, char *out, size_t size)
 {
     for(int i = e->local_count - 1; i >= 0; i--)
@@ -511,6 +527,21 @@ resolve(Emitter *e, const char *name, char *out, size_t size)
                 kir_copy(out, size, name);
             return;
         }
+    for(int i = 0; i < e->fn->capture_count; i++) {
+        const KirCapture *capture = &e->fn->captures[i];
+        if(strcmp(capture->name, name))
+            continue;
+        if(e->target == KIR_C || e->target == KIR_CPP) {
+            char context[KIR_NAME_MAX];
+            capture_context_name(e->fn, context, sizeof(context));
+            format(out, size, "(*%s->%s)", context, name);
+        } else if(capture->is_instance) {
+            format(out, size, e->target == KIR_JS ? "%s.value" : "(*%s)", name);
+        } else {
+            kir_copy(out, size, name);
+        }
+        return;
+    }
     e->resolve(e->context, name, out, size);
 }
 
@@ -735,7 +766,9 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
     if(*expr->slot_type) {
         char callable[KIR_NAME_MAX];
         fresh(e, callable);
-        declare(e, callable, expr->slot_type, expr->name);
+        char source[KIR_TEXT_MAX];
+        resolve(e, expr->name, source, sizeof(source));
+        declare(e, callable, expr->slot_type, source);
         if(e->target == KIR_C || e->target == KIR_CPP) {
             n = (size_t)format(text, sizeof(text), "%s.call(%s.context", callable, callable);
             count = 1;
@@ -782,6 +815,45 @@ KirEmitSlotWrappers(FILE *out, const KirModule *module, const KirFunction *fn,
         if(!value->is_function_value)
             continue;
         const KirType *slot = KirFindType(module, value->type, NULL);
+        const KirModule *owner = NULL;
+        const KirFunction *body = NULL;
+        KirResolveFunction(module, value->name, &owner, &body);
+        if(body != NULL && body->is_closure) {
+            KirEmitSlotWrappers(out, module, body, target, resolver, context);
+            char wrapper[KIR_NAME_MAX], capture_name[KIR_NAME_MAX];
+            slot_wrapper_name(module, fn, index, wrapper, sizeof(wrapper));
+            capture_context_name(body, capture_name, sizeof(capture_name));
+            if(body->capture_count) {
+                fprintf(out, "struct %s_environment {\n", wrapper);
+                for(int capture = 0; capture < body->capture_count; capture++) {
+                    const KirCapture *field = &body->captures[capture];
+                    const char *scalar = KirTargetType(field->type, target);
+                    fprintf(out, "    %s *%s;\n", scalar ? scalar : field->type, field->name);
+                }
+                fputs("};\n", out);
+            }
+            fprintf(out, "static void %s(void *%s_opaque", wrapper, capture_name);
+            char arguments[64][KIR_TEXT_MAX];
+            int count = *kir_skip_ws(body->args) ?
+                kir_split_top(body->args, arguments[0], 64, sizeof(arguments[0])) : 0;
+            for(int argument = 0; argument < count; argument++) {
+                char *colon = strchr(arguments[argument], ':');
+                *colon++ = '\0';
+                kir_trim_in_place(arguments[argument]);
+                kir_trim_in_place(colon);
+                const char *scalar = KirTargetType(colon, target);
+                fprintf(out, ", %s %s", scalar ? scalar : colon, arguments[argument]);
+            }
+            fputs(")\n{\n", out);
+            if(body->capture_count)
+                fprintf(out, "    struct %s_environment *%s = (struct %s_environment *)%s_opaque;\n",
+                        wrapper, capture_name, wrapper, capture_name);
+            else
+                fprintf(out, "    (void)%s_opaque;\n", capture_name);
+            KirEmitBody(out, module, body, target, resolver, context, "", NULL);
+            fputs("}\n", out);
+            continue;
+        }
         char parameters[64][KIR_TEXT_MAX];
         int count = *kir_skip_ws(slot->body) ?
             kir_split_top(slot->body, parameters[0], 64, sizeof(parameters[0])) : 0;
@@ -806,6 +878,61 @@ static void
 emit_function_value(Emitter *e, int index, char *out, size_t size)
 {
     const KirExpr *value = &e->fn->exprs[index];
+    const KirModule *owner = NULL;
+    const KirFunction *body = NULL;
+    KirResolveFunction(e->module, value->name, &owner, &body);
+    if(body != NULL && body->is_closure) {
+        char temporary[KIR_NAME_MAX];
+        fresh(e, temporary);
+        if(e->target == KIR_C || e->target == KIR_CPP) {
+            char wrapper[KIR_NAME_MAX];
+            slot_wrapper_name(e->module, e->fn, index, wrapper, sizeof(wrapper));
+            if(body->capture_count) {
+                char initializer[KIR_TEXT_MAX] = "";
+                size_t length = 0;
+                for(int capture = 0; capture < body->capture_count; capture++) {
+                    char source[KIR_TEXT_MAX];
+                    resolve(e, body->captures[capture].name, source, sizeof(source));
+                    length += (size_t)format(initializer + length, sizeof(initializer) - length,
+                        "%s&(%s)", capture ? ", " : "", source);
+                }
+                line(e, "struct %s_environment %s = {%s};", wrapper, temporary, initializer);
+                format(out, size, "(%s){&%s, %s}", value->type, temporary, wrapper);
+            } else {
+                format(out, size, "(%s){NULL, %s}", value->type, wrapper);
+            }
+            return;
+        }
+        char arguments[64][KIR_TEXT_MAX], signature[KIR_TEXT_MAX] = "";
+        int count = *kir_skip_ws(body->args) ?
+            kir_split_top(body->args, arguments[0], 64, sizeof(arguments[0])) : 0;
+        size_t length = 0;
+        for(int argument = 0; argument < count; argument++) {
+            char *colon = strchr(arguments[argument], ':');
+            *colon++ = '\0';
+            kir_trim_in_place(arguments[argument]);
+            kir_trim_in_place(colon);
+            char type[KIR_NAME_MAX] = "";
+            if(e->target == KIR_GO) {
+                const char *scalar = KirTargetType(colon, KIR_GO);
+                if(scalar)
+                    kir_copy(type, sizeof(type), scalar);
+                else
+                    e->resolve(e->context, colon, type, sizeof(type));
+            }
+            length += (size_t)format(signature + length, sizeof(signature) - length,
+                "%s%s%s%s", argument ? ", " : "", arguments[argument], *type ? " " : "", type);
+        }
+        if(e->target == KIR_GO)
+            line(e, "%s := func(%s) {", temporary, signature);
+        else
+            line(e, "const %s = (%s) => {", temporary, signature);
+        KirEmitBody(e->out, e->module, body, e->target, e->resolve, e->context,
+                    e->instance_host, e->numbers);
+        line(e, e->target == KIR_GO ? "}" : "};");
+        kir_copy(out, size, temporary);
+        return;
+    }
     if(e->target == KIR_C || e->target == KIR_CPP) {
         char wrapper[KIR_NAME_MAX];
         slot_wrapper_name(e->module, e->fn, index, wrapper, sizeof(wrapper));

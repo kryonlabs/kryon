@@ -1567,6 +1567,8 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
+        if(fn->is_closure)
+            continue;
         char cname[LOWER_NAME_MAX];
         char cargs[LOWER_TEXT_MAX];
         char cret[LOWER_NAME_MAX];
@@ -1644,6 +1646,8 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
      * definitions may reference them before their definition. */
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
+        if(fn->is_closure)
+            continue;
         char cname[LOWER_NAME_MAX];
         char cargs[LOWER_TEXT_MAX];
         char cret[LOWER_NAME_MAX];
@@ -1708,6 +1712,8 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     }
     for(i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
+        if(fn->is_closure)
+            continue;
         char cname[LOWER_NAME_MAX];
         char cargs[LOWER_TEXT_MAX];
         char cret[LOWER_NAME_MAX];

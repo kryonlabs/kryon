@@ -1603,7 +1603,7 @@ pick_frame_function(const KirModule *m)
         if(m->functions[i].is_ui && frame_parameters(m, &m->functions[i]) >= 0)
             return &m->functions[i];
     for(int i = 0; i < m->function_count; i++)
-        if(!m->functions[i].is_extern && m->functions[i].args[0] == '\0')
+        if((!m->functions[i].is_extern && !m->functions[i].is_closure) && m->functions[i].args[0] == '\0')
             return &m->functions[i];
     return NULL;
 }
@@ -1685,7 +1685,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
                 fprintf(f, "}\n\n");
             }
             for(int i = 0; i < m->function_count; i++) {
-                if(!m->functions[i].is_extern)
+                if((!m->functions[i].is_extern && !m->functions[i].is_closure))
                     lower_function(f, m, &m->functions[i], guard);
             }
             frame_fn = pick_frame_function(m);

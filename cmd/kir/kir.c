@@ -294,6 +294,7 @@ KirProgramFree(KirProgram *program)
         for(j = 0; j < m->function_count; j++) {
             free(m->functions[j].stmts);
             free(m->functions[j].exprs);
+            free(m->functions[j].captures);
         }
         free(m->state_fields);
         free(m->globals);

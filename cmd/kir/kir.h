@@ -137,6 +137,12 @@ typedef struct KirExpr {
     KirSourceSpan span;
 } KirExpr;
 
+typedef struct KirCapture {
+    int is_instance;
+    char name[KIR_NAME_MAX];
+    char type[KIR_NAME_MAX];
+} KirCapture;
+
 typedef struct KirFunction {
     char name[KIR_NAME_MAX];
     char args[KIR_TEXT_MAX];
@@ -145,6 +151,9 @@ typedef struct KirFunction {
     int is_extern;
     KirExternKind extern_kind;
     int is_colon;   /* 'Name :: (...) {' form: C name has no _kry_draw suffix */
+    int is_closure; /* inline slot body, emitted at its lexical binding */
+    KirCapture *captures;
+    int capture_count;
     int is_ui;      /* '#ui' function: declares a retained UI hierarchy */
     int is_public;  /* exported function or project route */
     int checked;    /* shared checker resolved the function without errors */

@@ -187,7 +187,17 @@ record's fields and supply subsequent slot parameters by name. Every slot is
 required, names cannot collide with props fields or other slots, and values
 evaluate once in source order. Omitted props fields remain zero-initialized.
 Block calls and ordinary calls invoke the same declaration, including declared
-widgets that use built-in names. Captured child blocks are not implemented yet.
+widgets that use built-in names.
+
+An inline body initializes a slot with `child: Content = (bounds: Rectangle)
+#slot { ... }`, or supplies a block property with `content = (bounds: Rectangle)
+#slot { ... }` (the signature and `#slot` appear on one logical line). Its exact
+parameter types must match the expected slot. Bodies may nest and read or mutate
+captured scalar and record bindings. Captured retained instances preserve their
+storage identity. A bare `return` exits only the inline body. Slot reassignment
+is allowed only in the binding's declaring block; writes to an outer block's
+slot or a captured slot are rejected. Host callbacks borrow these environments
+and must complete synchronously without retaining them.
 
 Plain call statements are UI declarations when they call Kryon widget/runtime
 functions. Leaf property-block widgets lower to the existing `WidgetProps`

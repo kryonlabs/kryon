@@ -46,6 +46,8 @@ CounterBlock :: () -> i32 #export {
     return ReadCounter(7) + ReadCounter(8)
 }
 
+CounterContent :: () #slot
+
 CheckInstanceReferences :: () -> i32 #export {
     next: u64 = (u64)100
     retained: CounterState #instance(next++)
@@ -86,5 +88,10 @@ CheckInstanceReferences :: () -> i32 #export {
     texture: Texture2D
     texture.width = 16
     if texture.id != (u32)0 || texture.width != 16 { return 12 }
+    update: CounterContent = () #slot {
+        retained = (CounterState){.value = 41, .label = "retained"}
+    }
+    update()
+    if alias.value != 41 || alias.label != "retained" { return 13 }
     return 0
 }
