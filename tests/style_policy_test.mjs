@@ -421,7 +421,7 @@ const measurement = {
 };
 let availableWidth = 0;
 const drawingProps = { ...measurement, icon_type: 1, icon: { ...measurement.icon, id: 0 } };
-const drawingStyle = { ...measureStyle, icon_size: 18, gap: 8, content_offset: { x: 2, y: -3 } };
+const drawingStyle = data({ icon_size: 18, gap: 8, offset_x: 2, offset_y: -3, material: 0, typeface: "" });
 const contentDrawing = disclosure => button.Button_PaintContent(null, undefined, undefined,
   drawingProps, { x: 10, y: 20, width: 200, height: 80 }, drawingStyle,
   32, 48, 0x12345680, 0xffffffff, 2, 375, disclosure);
@@ -441,6 +441,23 @@ assert.equal(drawing.label.kind, 0);
 assert.equal(drawing.mark.ring.x, 110);
 assert.equal(drawing.mark.ring.y, 60);
 assert.equal(drawing.mark.ring.outer_radius, 18);
+drawingProps.bounds = { x: 10, y: 20, width: 100, height: 80 };
+const frameAppearance = {
+  value: data({ padding_x: 8, padding_y: 6, foreground: 0x12345680, opacity: 0.5, material: 0, typeface: "" }),
+  fill: surface.Surface_FillState(null, undefined, undefined, 0, 0, 0),
+};
+const restingTrack = () => ({ value: 0, origin: 0, target: 0, elapsed_ms: 0 });
+const restingMotion = { hover: restingTrack(), press: restingTrack(), focus: restingTrack(), active: false };
+const frameInput = button.Button_ResolveButtonInput(null, undefined, undefined, drawingProps,
+  { activated: false, pressed: false, hovered: false, focused: false });
+const buttonFrame = button.Button_BuildFrame(null, undefined, undefined, drawingProps, frameInput,
+  frameAppearance, restingMotion, { x: 0, y: 0, width: 0, height: 0 }, 0xffffffff, 2, 32, 16);
+assert.equal(buttonFrame.props.label, "");
+assert.equal(drawingProps.label, "Run");
+assert.equal(buttonFrame.repaint, true);
+assert.equal(buttonFrame.font, 32);
+assert.equal(buttonFrame.foreground, 0x12345640);
+assert.deepEqual(buttonFrame.content_bounds, { x: 26, y: 32, width: 68, height: 56 });
 function checkMeasurement(width, height) {
   assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
     measureStyle, 40, 27, 24, availableWidth, 1, false), { x: 0, y: 0, width, height });

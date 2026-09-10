@@ -2348,7 +2348,6 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 	theme := r.theme()
 	input := r.Button_ReadButtonInput(props)
 	props.Disabled, props.Loading, props.Selected = input.Flags.Disabled, input.Flags.Loading, input.Flags.Selected
-	loading := props.Loading
 	state := ButtonState(input.Interaction.State)
 	hovered, held, focused := input.Interaction.Hovered, input.Interaction.Pressed, input.Interaction.Focused
 	metrics := defaultThemeMetrics()
@@ -2359,17 +2358,13 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
 	appearance := resolveButtonFrame(theme, r.effectiveDark(), r.activeTheme, props, state,
 		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
-	paint := unpackStyle(appearance.Value)
-	fillStates := appearance.Fill
-	label := props.Label
-	if loading {
-		label = ""
-	}
-	content := Style_ContentBounds(props.Bounds.Width, props.Bounds.Height, paint.PaddingX, paint.PaddingY)
-	frame := FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: label,
-		ContentBounds: Rectangle{X: props.Bounds.X + content.X, Y: props.Bounds.Y + content.Y,
-			Width: content.Width, Height: content.Height},
-		FillStates: fillStates, FillStatesValid: true,
+	resolved := Button_BuildFrame(props, input, appearance, motion, surfaceBounds,
+		packRGBA(theme.surface), 1, int32(appearance.Value.FontSize), Text16)
+	props = resolved.Props
+	paint := unpackStyle(resolved.Appearance.Value)
+	frame := FrameOp{Kind: FrameOpButton, Bounds: props.Bounds, Text: props.Label,
+		ContentBounds: resolved.ContentBounds,
+		FillStates:    resolved.Appearance.Fill, FillStatesValid: true,
 		BackgroundEnd: paint.BackgroundEnd, HasBackgroundEnd: paint.Fields&StyleBackgroundEnd != 0,
 		SurfaceBounds: surfaceBounds,
 		AmbientColor:  theme.surface,
@@ -2379,17 +2374,17 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		BorderWidth: paint.BorderWidth, Opacity: paint.Opacity,
 		Material:      paint.Material,
 		ContentOffset: paint.ContentOffset, Gap: paint.Gap, ID: props.ID,
-		FontSize:    Style_ResolveFont(props.Font, int32(paint.FontSize), Text16),
+		FontSize:    resolved.Font,
 		FontID:      registeredTypeface(paint.Typeface),
 		Disabled:    props.Disabled,
 		Pressed:     held,
-		Focused:     focused || state == ButtonStateFocus,
+		Focused:     focused,
 		Hovered:     hovered,
 		MotionValid: true, HoverAmount: motion.Hover.Value,
 		ElapsedMS:   float64(r.elapsedTime) / float64(time.Millisecond),
 		PressAmount: motion.Press.Value, FocusAmount: motion.Focus.Value,
 		Selected: props.Selected,
-		Loading:  loading, Pill: props.Pill || props.Circle,
+		Loading:  props.Loading, Pill: props.Pill,
 		IconOnly: props.IconOnly, IconType: props.IconType,
 		IconSize:      paint.IconSize,
 		IconPlacement: int32(props.IconPlacement)}

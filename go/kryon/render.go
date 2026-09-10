@@ -148,7 +148,7 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	text = unpackRGBA(Surface_Opacity(packRGBA(text), op.Opacity))
 	props := ButtonProps{Label: op.Text, Loading: op.Loading, IconType: op.IconType,
 		IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)}
-	paint := Style{IconSize: op.IconSize, Gap: op.Gap, ContentOffset: op.ContentOffset}
+	paint := StyleData{IconSize: op.IconSize, Gap: op.Gap, OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}
 	content := Button_PaintContent(props, face, paint, op.FontSize,
 		float32(runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)),
 		packRGBA(text), packRGBA(op.AmbientColor), 1, op.ElapsedMS, op.Disclosure)

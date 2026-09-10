@@ -233,7 +233,7 @@ static void check_button_content_drawing(void)
 {
     ButtonProps props = {.label = "Run", .icon_type = UI_ICON_TYPE_PLUS};
     Rectangle bounds = {10, 20, 200, 80};
-    Style paint = {.icon_size = 18, .gap = 8, .content_offset = {2, -3}};
+    StyleData paint = {.icon_size = 18, .gap = 8, .offset_x = 2, .offset_y = -3};
     ContentDrawing content = PaintContent(props, bounds, paint, 32, 48,
         0x12345680, 0xffffffff, 2, 375, false);
     assert(content.mark.kind == DrawingIcon && content.mark.icon == UI_ICON_TYPE_PLUS);
@@ -249,6 +249,16 @@ static void check_button_content_drawing(void)
     assert(content.mark.kind == DrawingRing && content.label.kind == DrawingNone);
     assert(content.mark.ring.x == 110 && content.mark.ring.y == 60);
     assert(content.mark.ring.outer_radius == 18);
+    props.bounds = (Rectangle){10, 20, 100, 80};
+    ButtonInput input = ResolveButtonInput(props, (Activation){0});
+    StyleFrame appearance = {.value = {.padding_x = 8, .padding_y = 6,
+        .foreground = 0x12345680, .opacity = 0.5}};
+    ButtonFrame frame = BuildFrame(props, input, appearance, (InteractionMotion){0},
+        (Rectangle){0}, 0xffffffff, 2, 32, 16);
+    assert(frame.props.loading && frame.props.label[0] == '\0' && frame.repaint);
+    assert(strcmp(props.label, "Run") == 0 && frame.font == 32 && frame.foreground == 0x12345640);
+    assert(frame.content_bounds.x == 26 && frame.content_bounds.y == 32);
+    assert(frame.content_bounds.width == 68 && frame.content_bounds.height == 56);
 }
 
 int main(void)

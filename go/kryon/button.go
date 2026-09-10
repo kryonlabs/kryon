@@ -8,6 +8,7 @@ package kryon
 // #import button_props
 // #import input_props
 // #import paint
+// #import material
 // #import ui_text.h
 // #import ui_core.h
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
@@ -119,6 +120,16 @@ type ButtonContent struct {
 type ContentDrawing struct {
 	Mark  Drawing
 	Label Drawing
+}
+
+type ButtonFrame struct {
+	Props         ButtonProps
+	Appearance    StyleFrame
+	Material      MaterialPaint
+	ContentBounds Rectangle
+	Font          int32
+	Foreground    uint32
+	Repaint       bool
 }
 
 func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput {
@@ -825,7 +836,7 @@ func Button_ContentLayout(width float32, height float32, label_width float32, re
 	return value_41
 }
 
-func Button_PaintContent(props ButtonProps, bounds Rectangle, paint Style, font int32, label_width float32, foreground uint32, ambient uint32, scale float32, elapsed_ms float64, disclosure bool) ContentDrawing {
+func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, font int32, label_width float32, foreground uint32, ambient uint32, scale float32, elapsed_ms float64, disclosure bool) ContentDrawing {
 	var result ContentDrawing = ContentDrawing{}
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -868,8 +879,8 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint Style, font 
 	var value_28 int32 = int32(number_533abbd6_bits(uint64(value_27), uint64(0), 32, true, 0))
 	var value_29 int32 = int32(IconPlacementTrailing)
 	var value_30 bool = value_28 == value_29
-	var value_31 float32 = paint.ContentOffset.X
-	var value_32 float32 = paint.ContentOffset.Y
+	var value_31 float32 = paint.OffsetX
+	var value_32 float32 = paint.OffsetY
 	var value_33 ButtonContent = Button_ContentLayout(value_16, value_19, value_22, value_23, value_24, value_25, value_26, value_30, value_31, value_32)
 	var content ButtonContent = value_33
 	var value_34 uint32 = foreground
@@ -1001,6 +1012,115 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint Style, font 
 	}
 	var value_119 ContentDrawing = result
 	return value_119
+}
+
+func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFrame, motion InteractionMotion, surface Rectangle, ambient uint32, scale float32, style_font int32, fallback_font int32) ButtonFrame {
+	var result ButtonFrame = ButtonFrame{}
+	var value_0 bool = input.Flags.Disabled
+	props.Disabled = value_0
+	var value_1 bool = input.Flags.Loading
+	props.Loading = value_1
+	var value_2 bool = input.Flags.Selected
+	props.Selected = value_2
+	var value_3 bool = props.Pill
+	var value_4 bool = value_3
+	if !value_4 {
+		var value_5 bool = props.Circle
+		value_4 = value_5
+	}
+	props.Pill = value_4
+	var value_6 bool = props.Loading
+	if value_6 {
+		var value_7 string = ""
+		props.Label = value_7
+	}
+	var value_8 ButtonProps = props
+	result.Props = value_8
+	var value_9 StyleFrame = appearance
+	result.Appearance = value_9
+	var value_10 Rectangle = props.Bounds
+	result.Material.Bounds = value_10
+	var value_11 Rectangle = surface
+	result.Material.Surface = value_11
+	var value_12 StyleData = appearance.Value
+	result.Material.Value = value_12
+	var value_13 uint32 = appearance.Value.Border
+	result.Material.Light = value_13
+	var value_14 uint32 = ambient
+	result.Material.Ambient = value_14
+	var value_15 float32 = motion.Hover.Value
+	result.Material.Hover = value_15
+	var value_16 float32 = motion.Press.Value
+	result.Material.Press = value_16
+	var value_17 float32 = motion.Focus.Value
+	result.Material.Focus = value_17
+	var value_18 bool = props.Disabled
+	result.Material.Disabled = value_18
+	var value_19 FillStates = appearance.Fill
+	result.Material.Fill = value_19
+	var value_20 bool = true
+	result.Material.FillValid = value_20
+	var value_21 float32 = scale
+	result.Material.Scale = value_21
+	var value_22 MaterialPaint = result.Material
+	var value_23 MaterialPaint = Material_PrepareMaterial(value_22)
+	result.Material = value_23
+	var value_24 float32 = result.Material.Scale
+	scale = value_24
+	var value_25 float32 = props.Bounds.Width
+	var value_26 float32 = scale
+	var value_27 float32 = value_25 / value_26
+	var value_28 float32 = props.Bounds.Height
+	var value_29 float32 = scale
+	var value_30 float32 = value_28 / value_29
+	var value_31 float32 = appearance.Value.PaddingX
+	var value_32 float32 = appearance.Value.PaddingY
+	var value_33 ContentBox = Style_ContentBounds(value_27, value_30, value_31, value_32)
+	var content ContentBox = value_33
+	var value_34 float32 = props.Bounds.X
+	var value_35 float32 = content.X
+	var value_36 float32 = scale
+	var value_37 float32 = value_35 * value_36
+	var value_38 float32 = value_34 + value_37
+	result.ContentBounds.X = value_38
+	var value_39 float32 = props.Bounds.Y
+	var value_40 float32 = content.Y
+	var value_41 float32 = scale
+	var value_42 float32 = value_40 * value_41
+	var value_43 float32 = value_39 + value_42
+	result.ContentBounds.Y = value_43
+	var value_44 float32 = content.Width
+	var value_45 float32 = scale
+	var value_46 float32 = value_44 * value_45
+	result.ContentBounds.Width = value_46
+	var value_47 float32 = content.Height
+	var value_48 float32 = scale
+	var value_49 float32 = value_47 * value_48
+	result.ContentBounds.Height = value_49
+	var value_50 int32 = props.Font
+	var value_51 int32 = style_font
+	var value_52 int32 = fallback_font
+	var value_53 int32 = Style_ResolveFont(value_50, value_51, value_52)
+	result.Font = value_53
+	var value_54 uint32 = appearance.Value.Foreground
+	var value_55 float32 = appearance.Value.Opacity
+	var value_56 uint32 = Surface_Opacity(value_54, value_55)
+	result.Foreground = value_56
+	var value_57 bool = motion.Active
+	var value_58 bool = value_57
+	if !value_58 {
+		var value_59 bool = props.Loading
+		var value_60 bool = value_59
+		if value_60 {
+			var value_61 bool = props.Disabled
+			var value_62 bool = !value_61
+			value_60 = value_62
+		}
+		value_58 = value_60
+	}
+	result.Repaint = value_58
+	var value_63 ButtonFrame = result
+	return value_63
 }
 
 func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {

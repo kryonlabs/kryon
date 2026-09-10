@@ -6,6 +6,7 @@
 #import "button_props"
 #import "input_props"
 #import "paint"
+#import "material"
 #import "ui_text.h"
 #import "ui_core.h"
 
@@ -258,7 +259,7 @@ ContentDrawing :: struct {
     label: Drawing
 }
 
-PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: Style,
+PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
     font: i32, label_width: float, foreground: u32, ambient: u32,
     scale: float, elapsed_ms: f64, disclosure: bool) -> ContentDrawing #export {
     result: ContentDrawing
@@ -267,7 +268,7 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: Style,
     content: ButtonContent = ContentLayout(bounds.width / scale, bounds.height / scale,
         label_width / scale, paint.icon_size, paint.gap, has_icon, props.icon_only,
         (i32)props.icon_placement == IconPlacementTrailing,
-        paint.content_offset.x, paint.content_offset.y)
+        paint.offset_x, paint.offset_y)
     result.mark.color = foreground
     if props.loading {
         result.mark.kind = DrawingRing
@@ -306,6 +307,55 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: Style,
         result.label.font = font
         result.label.color = foreground
     }
+    return result
+}
+
+ButtonFrame :: struct {
+    props: ButtonProps
+    appearance: StyleFrame
+    material: MaterialPaint
+    content_bounds: Rectangle
+    font: i32
+    foreground: u32
+    repaint: bool
+}
+
+# Finish the widget frame once; native backends only adapt this result to their
+# retained tree or operation stream. Rasterizers supply the physical font size.
+BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
+    motion: InteractionMotion, surface: Rectangle, ambient: u32,
+    scale: float, style_font: i32, fallback_font: i32) -> ButtonFrame #export {
+    result: ButtonFrame
+    props.disabled = input.flags.disabled
+    props.loading = input.flags.loading
+    props.selected = input.flags.selected
+    props.pill = props.pill || props.circle
+    if props.loading { props.label = "" }
+    result.props = props
+    result.appearance = appearance
+    result.material.bounds = props.bounds
+    result.material.surface = surface
+    result.material.value = appearance.value
+    result.material.light = appearance.value.border
+    result.material.ambient = ambient
+    result.material.hover = motion.hover.value
+    result.material.press = motion.press.value
+    result.material.focus = motion.focus.value
+    result.material.disabled = props.disabled
+    result.material.fill = appearance.fill
+    result.material.fill_valid = true
+    result.material.scale = scale
+    result.material = PrepareMaterial(result.material)
+    scale = result.material.scale
+    content: ContentBox = ContentBounds(props.bounds.width / scale,
+        props.bounds.height / scale, appearance.value.padding_x, appearance.value.padding_y)
+    result.content_bounds.x = props.bounds.x + content.x * scale
+    result.content_bounds.y = props.bounds.y + content.y * scale
+    result.content_bounds.width = content.width * scale
+    result.content_bounds.height = content.height * scale
+    result.font = ResolveFont(props.font, style_font, fallback_font)
+    result.foreground = Opacity(appearance.value.foreground, appearance.value.opacity)
+    result.repaint = motion.active || (props.loading && !props.disabled)
     return result
 }
 

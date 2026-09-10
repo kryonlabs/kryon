@@ -9,7 +9,7 @@ import (
 func TestButtonContentDrawing(t *testing.T) {
 	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus}
 	bounds := Rectangle{X: 10, Y: 20, Width: 200, Height: 80}
-	paint := Style{IconSize: 18, Gap: 8, ContentOffset: Vector2{X: 2, Y: -3}}
+	paint := StyleData{IconSize: 18, Gap: 8, OffsetX: 2, OffsetY: -3}
 	draw := func(disclosure bool) ContentDrawing {
 		return Button_PaintContent(props, bounds, paint, 32, 48, 0x12345680, 0xffffffff, 2, 375, disclosure)
 	}
@@ -38,6 +38,31 @@ func TestButtonContentDrawing(t *testing.T) {
 	props.Loading, props.IconOnly = false, true
 	if content = draw(false); content.Label.Kind != DrawingKindDrawingNone {
 		t.Fatal("icon-only drawing retained a label")
+	}
+}
+
+func TestButtonFrameAssembly(t *testing.T) {
+	props := ButtonProps{Label: "Run", State: ButtonStateLoading, Circle: true,
+		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 80}}
+	input := Button_ResolveButtonInput(props, Activation{})
+	appearance := StyleFrame{Value: StyleData{PaddingX: 8, PaddingY: 6,
+		Foreground: 0x12345680, Border: 0xaabbccff, Opacity: 0.5}}
+	frame := Button_BuildFrame(props, input, appearance, InteractionMotion{}, Rectangle{}, 0xffffffff, 2, 32, 16)
+	if !frame.Props.Loading || !frame.Props.Pill || frame.Props.Label != "" || props.Label != "Run" || !frame.Repaint {
+		t.Fatalf("frame flags or caller props changed: %+v", frame)
+	}
+	if frame.ContentBounds != (Rectangle{X: 26, Y: 32, Width: 68, Height: 56}) || frame.Font != 32 || frame.Foreground != 0x12345640 {
+		t.Fatalf("scaled content, physical font or opacity: %+v", frame)
+	}
+	if frame.Material.Bounds != props.Bounds || frame.Material.Surface != props.Bounds ||
+		frame.Material.Light != appearance.Value.Border || !frame.Material.FillValid || frame.Material.Scale != 2 {
+		t.Fatalf("material does not describe the resolved frame: %+v", frame.Material)
+	}
+	props.Disabled = true
+	input = Button_ResolveButtonInput(props, Activation{})
+	frame = Button_BuildFrame(props, input, appearance, InteractionMotion{}, Rectangle{}, 0, 1, 0, 17)
+	if !frame.Material.Disabled || frame.Repaint || frame.Font != 17 {
+		t.Fatalf("disabled loading must stop repainting and use font fallback: %+v", frame)
 	}
 }
 

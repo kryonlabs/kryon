@@ -299,8 +299,11 @@ C and Go execute these commands with their text and pixel rasterizers. Material
 layer assembly lives in `runtime/material.kry`: shared surface selection, fill
 overrides, physical layer bounds, visibility, and content displacement have one
 implementation. Hosts submit resolved styles and rasterize SurfaceDrawing
-commands. Button's frame/style orchestration and child lifecycle still need
-migration to complete the widget body.
+commands. Button's BuildFrame now assembles normalized props, its material,
+content insets, physical font fallback, foreground opacity, and repaint state.
+The C styled paint path consumes that frame directly; native Go adapts it to
+its operation stream. Style/theme acquisition, legacy C appearances, and child
+lifecycle still need migration to complete the widget body.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native
