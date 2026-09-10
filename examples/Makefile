@@ -113,7 +113,7 @@ KRYON_ALL_WEB_SRCS := $(KRYON_LIBRARY_SRCS) $(WEB_EMBED_ASSETS_C) $(KRYON_EXAMPL
 WEB_CFLAGS := -Wall -Wextra -std=gnu99 -O0 -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2 -D_DEFAULT_SOURCE -DSUPPORT_MODULE_RAUDIO=1 -DSUPPORT_FILEFORMAT_JPG=1 -DSUPPORT_FILEFORMAT_OGG=1 -DSUPPORT_FILEFORMAT_MP3=1 -DUI_EMBEDDED_ONLY=1 -DHAS_LIBOQS=1 -I$(KRYON_WEB_LIBOQS_BUILD_DIR)/include
 WEB_LDFLAGS := -sUSE_GLFW=3 -sALLOW_MEMORY_GROWTH=1 -sASYNCIFY -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sGLOBAL_BASE=16777216
 WEB_PRELOAD_FLAGS ?= $(if $(wildcard $(EMSCRIPTEN_FILE_PACKAGER)),--preload-file ../fonts/noto@fonts/noto,)
-WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLES)))
+WEB_OUTPUTS = $(addprefix $(EXAMPLES_WEB_SITE_DIR)/,$(addsuffix /index.html,$(EXAMPLE_NATIVE)))
 
 # Check if we're in nix-shell and use its flags
 CFLAGS += $(GTK_PKG_CFLAGS) -I$(CODEGEN_DIR)
@@ -123,17 +123,19 @@ endif
 
 LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
 
-EXAMPLES = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
+EXAMPLE_NATIVE = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
 	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
 	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility \
-	19_pictures 20_scene 20_scroll 21_signals 22_physics 23_animation 24_tilemap \
-	25_text_area_slider 26_widget_catalog 27_dropdowns
-EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLES))
+	19_pictures 20_scroll 25_text_area_slider 26_widget_catalog 27_dropdowns
+EXAMPLE_SCENE = 20_scene 21_signals 22_physics 23_animation 24_tilemap
+EXAMPLES = $(EXAMPLE_NATIVE) $(EXAMPLE_SCENE)
+EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLE_NATIVE))
+SCENE_CODEGEN := $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLE_SCENE)))
 
 .PHONY: all clean run list font-assets web web-clean
 .SECONDARY: $(addprefix $(CODEGEN_DIR)/,$(addsuffix .c,$(EXAMPLES))) $(addprefix $(CODEGEN_DIR)/,$(addsuffix .h,$(EXAMPLES)))
 
-all: $(KRYON_LIB) $(K2C) $(EXAMPLE_BINS) $(BIN_DIR)/02_buttons_krb
+all: $(KRYON_LIB) $(K2C) $(EXAMPLE_BINS) $(SCENE_CODEGEN) $(BIN_DIR)/02_buttons_krb
 
 $(KRYON_LIB):
 	@$(MAKE) -C .. KRYON_BACKEND=$(KRYON_BACKEND)
@@ -204,7 +206,7 @@ web-clean:
 	rm -rf $(BUILD_DIR) $(EXAMPLES_WEB_SITE_DIR)
 
 clean:
-	rm -f $(EXAMPLES)
+	rm -f $(EXAMPLE_NATIVE)
 	rm -rf $(BUILD_DIR)
 
 list:

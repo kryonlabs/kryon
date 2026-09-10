@@ -53,7 +53,7 @@ HeaderChannel :: (base: float, gain: float, amount: float) -> u8 {
     return (u8)(base + gain * amount)
 }
 
-LightfieldHeader :: () #ui {
+LightfieldHeader :: () #private {
     # The light gathers toward the right side of the shared header. Each
     # column uses the same portable Surface gradient as the widget faces.
     for int x = 0; x < 1536; x++ {
@@ -66,7 +66,7 @@ LightfieldHeader :: () #ui {
     }
 }
 
-ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int, theme_switch: bool) #ui {
+ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int, theme_switch: bool) #private {
     menu_items: [2] MenuItem = {
         {MenuCommand, "Open", "", 1, 0, 0, nil, 0},
         {MenuCommand, "Save", "", 2, 0, 0, nil, 0}

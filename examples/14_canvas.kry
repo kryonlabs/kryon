@@ -20,7 +20,7 @@ CanvasExample :: (viewport: Rectangle) #ui {
         Background(GetThemeBackground())
         canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
         CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
-        for i in 0..2 {
+        for int i = 0; i < 2; i++ {
             DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
             DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
         }
