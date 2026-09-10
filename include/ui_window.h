@@ -1,39 +1,39 @@
-#ifndef KRYON_UI_WINDOW_H
-#define KRYON_UI_WINDOW_H
+#ifndef KRYON_NATIVE_WINDOW_H
+#define KRYON_NATIVE_WINDOW_H
 
 /*
  * Extra OS windows rendered with the regular UI widgets.
  *
  * raylib owns one core window per process; these are additional plain SDL
- * windows that live next to it. Content is drawn between BeginUIWindow()
- * and EndUIWindow() with the normal widget calls (same rule as an offscreen
- * render texture): BeginUIWindow clears the window to its background color
- * and binds a UI frame sized to the window, EndUIWindow blits the result to
+ * windows that live next to it. Content is drawn between BeginNativeWindow()
+ * and EndNativeWindow() with the normal widget calls (same rule as an offscreen
+ * render texture): BeginNativeWindow clears the window to its background color
+ * and binds a UI frame sized to the window, EndNativeWindow blits the result to
  * the OS window. Call the pair once per frame while the window is open.
  *
  * Mouse events on these windows are kept out of the core windows input
- * state; poll them with IsUIWindowClicked().
+ * state; poll them with IsNativeWindowClicked().
  *
  * Desktop only; other platforms compile to no-ops. Linux and FreeBSD default
  * to a private X11 connection (secondary windows without touching the apps
  * SDL state); builds that prefer SDL windows, e.g. Wayland without XWayland,
- * compile this translation unit with -DUI_WINDOW_HAVE_SDL.
+ * compile this translation unit with -DNATIVE_WINDOW_HAVE_SDL.
  */
 
 #include "kryon_compat.generated.h"
 
-typedef struct UIWindow UIWindow;
+typedef struct NativeWindow NativeWindow;
 
 enum {
-    UI_WINDOW_BORDERLESS = 0x01,     /* no OS decorations */
-    UI_WINDOW_ALWAYS_ON_TOP = 0x02,  /* float above normal windows */
-    UI_WINDOW_SKIP_TASKBAR = 0x04,   /* keep the window out of taskbars/docks */
-    UI_WINDOW_TOP_RIGHT = 0x08,      /* x/y are margins from the top-right
+    NATIVE_WINDOW_BORDERLESS = 0x01,     /* no OS decorations */
+    NATIVE_WINDOW_ALWAYS_ON_TOP = 0x02,  /* float above normal windows */
+    NATIVE_WINDOW_SKIP_TASKBAR = 0x04,   /* keep the window out of taskbars/docks */
+    NATIVE_WINDOW_TOP_RIGHT = 0x08,      /* x/y are margins from the top-right
                                         corner of the primary displays work
                                         area instead of absolute positions */
-    UI_WINDOW_CENTER = 0x10,         /* center the window on the primary
+    NATIVE_WINDOW_CENTER = 0x10,         /* center the window on the primary
                                         displays work area (x/y ignored) */
-    UI_WINDOW_STICKY = 0x20          /* keep the window visible across
+    NATIVE_WINDOW_STICKY = 0x20          /* keep the window visible across
                                         virtual desktops/workspaces when the
                                         window system supports it */
 };
@@ -43,29 +43,29 @@ enum {
  * use (Scale etc.); pass the callers current combined DPI/user scale.
  * Returns NULL when windows are unsupported or resources ran out.
  */
-UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
+NativeWindow *OpenNativeWindow(const char *title, int x, int y, int width, int height,
                        int flags, Color background, float ui_scale);
 
-/* Close and free a window opened with OpenUIWindow. NULL is safe. */
-void CloseUIWindow(UIWindow *window);
+/* Close and free a window opened with OpenNativeWindow. NULL is safe. */
+void CloseNativeWindow(NativeWindow *window);
 
 /* Begin drawing this windows content; widgets draw into the window until
- * EndUIWindow(). Also ends itself safely if the window is NULL. */
-void BeginUIWindow(UIWindow *window);
+ * EndNativeWindow(). Also ends itself safely if the window is NULL. */
+void BeginNativeWindow(NativeWindow *window);
 
 /* Finish the window frame and blit it to the OS window. */
-void EndUIWindow(void);
+void EndNativeWindow(void);
 
 /* Consume "the user clicked this window" (left button release inside it). */
-int IsUIWindowClicked(UIWindow *window);
+int IsNativeWindowClicked(NativeWindow *window);
 
 /* Consume a right-button click on this window. */
-int IsUIWindowRightClicked(UIWindow *window);
+int IsNativeWindowRightClicked(NativeWindow *window);
 
 /* Consume "the user dragged this window" (left press-drag that moved it);
  * also swallows the originating click so it is not reported as a plain
  * click. */
-int IsUIWindowDragged(UIWindow *window);
+int IsNativeWindowDragged(NativeWindow *window);
 
 /* Once-per-frame pump for the window system: applies drag motion recorded
  * by the SDL event watch and bridges core-window close requests. Called
@@ -78,9 +78,9 @@ void PumpWindows(void);
 int StealCoreWindowClose(void);
 
 /* Current window position (top-left, screen coordinates). */
-void GetUIWindowPosition(UIWindow *window, int *x, int *y);
+void GetNativeWindowPosition(NativeWindow *window, int *x, int *y);
 
 /* Window-relative position of the last button press on this window. */
-void GetUIWindowClickPosition(UIWindow *window, int *x, int *y);
+void GetNativeWindowClickPosition(NativeWindow *window, int *x, int *y);
 
-#endif /* KRYON_UI_WINDOW_H */
+#endif /* KRYON_NATIVE_WINDOW_H */

@@ -1146,10 +1146,10 @@ texture-scope-test: $(BUILD_DIR)/tests/texture_scope_test
 
 # Compile-only coverage for the SDL secondary-window presenter (Wayland and
 # SDL-bundled platforms). The default Linux/FreeBSD build takes the X11 path,
-# so without this the UI_WINDOW_HAVE_SDL branch would rot uncompiled.
+# so without this the NATIVE_WINDOW_HAVE_SDL branch would rot uncompiled.
 $(UI_WINDOW_SDL_CHECK): src/ui/ui_window.c $(KRYON_COMPAT_HEADER) $(KRYON_BACKEND_RENAME_HEADER) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -DUI_WINDOW_HAVE_SDL \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -DNATIVE_WINDOW_HAVE_SDL \
 		$(RAY_SDL_CFLAGS) $(RAY_GL_CFLAGS) -I$(RAY_SDL_INCLUDE_DIR) \
 		-c $< -o $@
 

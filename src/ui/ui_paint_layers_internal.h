@@ -22,7 +22,7 @@ void ui_paint_layers_hide(UIPaintLayers *layers, int owner);
 void ui_paint_layers_composite(UIPaintLayers *layers);
 UIPopupInput *ui_paint_layers_input(UIPaintLayers *layers);
 void ui_window_layers_begin(void);
-/* Lazily obtain the active native UIWindow's context. Its frame, composition
+/* Lazily obtain the active native NativeWindow's context. Its frame, composition
  * and destruction belong to the window, not to the caller. */
 UIPaintLayers *ui_window_paint_layers(void);
 int ui_window_frame_active(void);

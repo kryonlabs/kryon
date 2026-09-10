@@ -381,13 +381,13 @@ The private `ui_paint_layers.c` context now owns temporary C render textures,
 collects mixed immediate/retained layers, and composites them in opening order.
 Nested layers remain above subsequent parent paint; hidden parents suppress
 descendants. Capture and composition restore drawing state, and texture resource
-operations preserve the active framebuffer. Native `UIWindow` hosts lazily own
+operations preserve the active framebuffer. Native `NativeWindow` hosts lazily own
 their context and handle its frame, composition and destruction. The private
 active-window accessor exposes that owner to future composed widgets without
 adding app-level lifecycle calls. Main UI frames own a separate lazy context:
 `SetUIFrame` starts it, `EndUIFrame` composites it, and `CloseWindow` releases
 its resources before graphics shutdown. The private frame accessor routes to
-the active UIWindow when appropriate. Presenter readback preserves the calling
+the active NativeWindow when appropriate. Presenter readback preserves the calling
 framebuffer. Layer scopes suspend the retained Row/Column path, keeping popup
 children in the screen tree without consuming the owner's layout slots. Scope
 exit checks balanced child layouts and restores the owner's path. Disabled

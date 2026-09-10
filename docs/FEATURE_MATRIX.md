@@ -241,7 +241,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Input | ✅ unified front-end, pointer gestures/ownership, keyboard focus + Tab + accelerators, clipboard, backend-neutral IME composition; no gamepad nav | ✅ native host key/mouse/text queues | ◐ vtable: mouse, press, wheel, text-key queue |
 | Accessibility | ◐ retained accessibility snapshots + host sink + DOM ARIA bridge; native screen-reader bridge pending | ✗ | ✗ |
 | i18n | ✅ locale strings + CJK font switching; no RTL | ✗ | ✗ |
-| Multi-window | ✅ `OpenUIWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |
+| Multi-window | ✅ `OpenNativeWindow` (X11 dlopen / SDL) | ✗ | — single framebuffer |
 | 3D rendering | ✅ camera + mesh/shader tier incl. curated rlgl entry points and raymath-style math3d (GLSL 100); raylib backend implements it, others stub it | ✗ | ✗ |
 | State/data binding | ✅ retained event queue; scene signals | ✅ `#ui` functions + retained events | ✅ field mounts (`KrbMount*`) + bytecode |
 | Dialogs/platform | ✅ file dialogs (web/portal/gtk/zenity/kdialog/yad), XDG paths, desktop metadata packaging, single-instance lock, tray, notifications (Android/web/Linux) | ✅ tray + notify polling | ◐ host capability imports (storage/http/audio/notify) |

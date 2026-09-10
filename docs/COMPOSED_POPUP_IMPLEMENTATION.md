@@ -37,7 +37,7 @@ popup must not submit children.
   for retained painting and hit testing, without retaining borrowed props.
 - Native controls also paint immediately. Reordering retained nodes alone is
   insufficient: it would omit immediate controls from the popup paint layer.
-- `src/ui/ui_window.c:BeginUIWindow` already enters a render texture before
+- `src/ui/ui_window.c:BeginNativeWindow` already enters a render texture before
   `BeginUIFrame`; its end path calls `EndUIFrame` before ending that texture.
   An overlay implementation must not restore the default framebuffer when the
   destination is an existing UI-window target.
@@ -85,7 +85,7 @@ Every begin must be balanced with an end before closing the window.
 
 `tests/texture_scope_test.c` verifies three nested offscreen targets with real
 pixel readback, including drawing resumed under a translated camera. It also
-opens a real `UIWindow`, nests two targets inside it, and checks the actual X11
+opens a real `NativeWindow`, nests two targets inside it, and checks the actual X11
 presenter's texture readback for preserved background and subsequent drawing.
 A test-only linker wrapper observes that readback without substituting a mock
 or exposing the window's private target. This integration test requires the
@@ -323,9 +323,9 @@ when the editor becomes editable again.
 The same framebuffer test interleaves two host contexts using the same owner ID,
 resizes one context from 32 to 64 pixels, reuses the other context's resources,
 and destroys one while the other destination is active. It verifies both hosts'
-immediate/retained pixels and subsequent drawing. The real X11 `UIWindow`
+immediate/retained pixels and subsequent drawing. The real X11 `NativeWindow`
 presenter readback now also checks an owned layer composited over later opaque
-retained content. Native `UIWindow` implementations lazily own their layer context:
+retained content. Native `NativeWindow` implementations lazily own their layer context:
 begin starts its frame, end composites before presentation, and close destroys
 it. Closing the active window first finishes its frame. The private accessor
 returns no context outside an active window; callers no longer manage its
@@ -337,7 +337,7 @@ or input state.
 The main UI frame now lazily owns a separate context through the same private
 frame accessor. `SetUIFrame` starts its layer frame and `EndUIFrame` composites
 it; `CloseWindow` releases its textures before closing the graphics context.
-UIWindow frames route to their own owner and do not end the main context. The
+NativeWindow frames route to their own owner and do not end the main context. The
 pixel test covers main-frame immediate/retained content, a missing owner,
 interleaving an auxiliary window, and closing/reopening the graphics context.
 Presenter texture readback preserves its caller's framebuffer, so interleaving

@@ -106,7 +106,7 @@ static void check_layered_text_not_boxed(UIPaintLayers *layers,
     }
 }
 
-/* Observe the real X11 presenter's readback without exposing UIWindow internals.
+/* Observe the real X11 presenter's readback without exposing NativeWindow internals.
  * Do not replace rendering or readback with a mock. */
 Image __real_LoadImageFromTexture(Texture2D texture);
 Image __wrap_LoadImageFromTexture(Texture2D texture)
@@ -115,9 +115,9 @@ Image __wrap_LoadImageFromTexture(Texture2D texture)
     if(check_window_readback) {
         window_readbacks++;
         /* Render-texture readback has its origin at the bottom. */
-        check_pixel(image,1,image.height-2,RED,"UIWindow retained background");
-        check_pixel(image,9,image.height-10,check_window_readback == 2 ? RED : GREEN,"UIWindow drawing after nested target");
-        check_pixel(image,41,image.height-42,check_window_readback == 2 ? RED : YELLOW,"UIWindow restored viewport");
+        check_pixel(image,1,image.height-2,RED,"NativeWindow retained background");
+        check_pixel(image,9,image.height-10,check_window_readback == 2 ? RED : GREEN,"NativeWindow drawing after nested target");
+        check_pixel(image,41,image.height-42,check_window_readback == 2 ? RED : YELLOW,"NativeWindow restored viewport");
     }
     return image;
 }
@@ -500,17 +500,17 @@ int main(void)
     }
     ui_paint_layers_destroy(host_a);
 
-    UIWindow *window = OpenUIWindow("nested UI paint target",0,0,64,64,
-                                   UI_WINDOW_BORDERLESS,RED,1);
+    NativeWindow *window = OpenNativeWindow("nested UI paint target",0,0,64,64,
+                                   NATIVE_WINDOW_BORDERLESS,RED,1);
     if(window == NULL) {
-        fprintf(stderr,"UIWindow integration requires a working desktop window backend\n");
+        fprintf(stderr,"NativeWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
         SetUIFocus(42001);
         for(int frame = 0; frame < 4; frame++) {
-            BeginUIWindow(window);
+            BeginNativeWindow(window);
             if(GetUIFocus() != (frame == 0 ? 0 : 42002)) {
-                fprintf(stderr,"UIWindow restored wrong owned focus: %d\n",
+                fprintf(stderr,"NativeWindow restored wrong owned focus: %d\n",
                         GetUIFocus());
                 failures++;
             }
@@ -528,7 +528,7 @@ int main(void)
                 if(window_layers == NULL) return 1;
                 UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
                 RegisterUIFocus(42002,(Rectangle){4,4,20,20});
-                BeginTree(Key("UIWindow owned layers"));
+                BeginTree(Key("NativeWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
                 Rect(40,40,4,4,YELLOW,BLANK);
@@ -538,21 +538,21 @@ int main(void)
                 EndTree();
             }
             check_window_readback = frame == 2 ? 2 : 1;
-            if(frame == 3) CloseUIWindow(window);
-            else EndUIWindow();
+            if(frame == 3) CloseNativeWindow(window);
+            else EndNativeWindow();
             check_window_readback = 0;
             if(GetUIFocus() != 42001) {
-                fprintf(stderr,"UIWindow leaked focus into caller: %d\n",
+                fprintf(stderr,"NativeWindow leaked focus into caller: %d\n",
                         GetUIFocus());
                 failures++;
             }
             if(ui_window_paint_layers() != NULL) {
-                fprintf(stderr,"ended UIWindow retained an active layer owner\n");
+                fprintf(stderr,"ended NativeWindow retained an active layer owner\n");
                 failures++;
             }
         }
         if(window_readbacks != 4) {
-            fprintf(stderr,"expected four real UIWindow presenter readbacks, got %d\n",window_readbacks);
+            fprintf(stderr,"expected four real NativeWindow presenter readbacks, got %d\n",window_readbacks);
             failures++;
         }
     }
@@ -903,8 +903,8 @@ int main(void)
     }
     InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
     UnloadRenderTexture(popup_target);
-    UIWindow *auxiliary = OpenUIWindow("interleaved layer host",0,0,64,64,
-                                       UI_WINDOW_BORDERLESS,BLUE,1);
+    NativeWindow *auxiliary = OpenNativeWindow("interleaved layer host",0,0,64,64,
+                                       NATIVE_WINDOW_BORDERLESS,BLUE,1);
     if(auxiliary == NULL) return 1;
     UIPopupInput *main_input = NULL;
     for(int frame = 0; frame < 2; frame++) {
@@ -940,7 +940,7 @@ int main(void)
         EndTree();
         if(frame == 0) {
             UIPaintLayers *main_owner = ui_frame_paint_layers();
-            BeginUIWindow(auxiliary);
+            BeginNativeWindow(auxiliary);
             if(ui_popup_input_current_captures((Vector2){9,9})) {
                 fprintf(stderr,"main popup capture leaked into auxiliary host\n");
                 failures++;
@@ -950,7 +950,7 @@ int main(void)
             UIPaintLayerToken aux_layer = ui_paint_layer_begin(aux_owner,1);
             DrawRectangle(0,0,4,4,GREEN);
             ui_paint_layer_end(aux_layer);
-            EndUIWindow();
+            EndNativeWindow();
             if(!ui_popup_input_current_captures((Vector2){9,9})) failures++;
             if(ui_frame_paint_layers() != main_owner) {
                 fprintf(stderr,"auxiliary frame consumed the main layer owner\n");
@@ -1007,7 +1007,7 @@ int main(void)
         fprintf(stderr,"public CloseCombo did not update caller state\n");
         failures++;
     }
-    CloseUIWindow(auxiliary);
+    CloseNativeWindow(auxiliary);
     UnloadRenderTexture(leaf); UnloadRenderTexture(inner); UnloadRenderTexture(outer);
     CloseWindow();
     if(ui_frame_paint_layers() != NULL) failures++;

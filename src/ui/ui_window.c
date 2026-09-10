@@ -17,7 +17,7 @@
  * Windows/macOS keep the plain SDL window path.
  */
 
-#if (defined(__linux__) || defined(__FreeBSD__)) && !defined(__ANDROID__) && !defined(ANDROID_BUILD) && !defined(UI_WINDOW_HAVE_SDL)
+#if (defined(__linux__) || defined(__FreeBSD__)) && !defined(__ANDROID__) && !defined(ANDROID_BUILD) && !defined(NATIVE_WINDOW_HAVE_SDL)
 
 #include <dlfcn.h>
 #include <stdio.h>
@@ -27,7 +27,7 @@
 
 #include "ui_core.h"
 
-#define UI_WINDOW_MAX 8
+#define NATIVE_WINDOW_MAX 8
 
 /* Minimal X declarations for the dlopend calls; types mirror the X headers
  * (XID/Window/Atom are unsigned long everywhere we ship, Display is opaque). */
@@ -161,8 +161,8 @@ typedef int (*InbeXChangeProperty)(Display *, Window, Atom, Atom, int, int,
 /* XCreateWindow attributes we set through XChangeWindowAttributes. */
 enum { InbeCWOverrideRedirect = 1 << 9 };
 
-#define UI_WINDOW_OWNS_PAINT_LAYERS 1
-struct UIWindow {
+#define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
+struct NativeWindow {
     Window window;
     UIPaintLayers *paint_layers;
     int focus_id;
@@ -188,9 +188,9 @@ static Display *ui_display;
 static void *ui_x11;
 static int ui_x11_tried;
 static void *ui_gc;
-static UIWindow *ui_windows[UI_WINDOW_MAX];
+static NativeWindow *ui_windows[NATIVE_WINDOW_MAX];
 static int ui_window_count;
-static UIWindow *ui_window_active;
+static NativeWindow *ui_window_active;
 
 static InbeXOpenDisplay ui_open_display;
 static InbeXDefaultRootWindow ui_root_window;
@@ -277,16 +277,16 @@ ui_x11_init(void)
 }
 
 static int
-ui_window_register(UIWindow *win)
+ui_window_register(NativeWindow *win)
 {
-    if(ui_window_count >= UI_WINDOW_MAX)
+    if(ui_window_count >= NATIVE_WINDOW_MAX)
         return 0;
     ui_windows[ui_window_count++] = win;
     return 1;
 }
 
 static void
-ui_window_unregister(UIWindow *win)
+ui_window_unregister(NativeWindow *win)
 {
     int i, j;
 
@@ -344,7 +344,7 @@ ui_window_apply_ewmh_hints(Window window, int flags)
     if(ui_intern_atom == NULL || ui_change_property == NULL)
         return;
 
-    if((flags & UI_WINDOW_BORDERLESS) != 0) {
+    if((flags & NATIVE_WINDOW_BORDERLESS) != 0) {
         Atom motif = ui_intern_atom(ui_display, "_MOTIF_WM_HINTS", 0);
         unsigned long hints[5] = { 2, 0, 0, 0, 0 };
         if(motif != 0)
@@ -353,17 +353,17 @@ ui_window_apply_ewmh_hints(Window window, int flags)
                                (const unsigned char *)hints, 5);
     }
 
-    if((flags & UI_WINDOW_ALWAYS_ON_TOP) != 0) {
+    if((flags & NATIVE_WINDOW_ALWAYS_ON_TOP) != 0) {
         Atom above = ui_intern_atom(ui_display, "_NET_WM_STATE_ABOVE", 0);
         if(above != 0)
             states[state_count++] = above;
     }
-    if((flags & UI_WINDOW_SKIP_TASKBAR) != 0) {
+    if((flags & NATIVE_WINDOW_SKIP_TASKBAR) != 0) {
         Atom skip = ui_intern_atom(ui_display, "_NET_WM_STATE_SKIP_TASKBAR", 0);
         if(skip != 0)
             states[state_count++] = skip;
     }
-    if((flags & UI_WINDOW_STICKY) != 0) {
+    if((flags & NATIVE_WINDOW_STICKY) != 0) {
         Atom sticky = ui_intern_atom(ui_display, "_NET_WM_STATE_STICKY", 0);
         Atom desktop = ui_intern_atom(ui_display, "_NET_WM_DESKTOP", 0);
         unsigned long all_desktops = 0xFFFFFFFFUL;
@@ -383,11 +383,11 @@ ui_window_apply_ewmh_hints(Window window, int flags)
     }
 }
 
-UIWindow *
-OpenUIWindow(const char *title, int x, int y, int width, int height,
+NativeWindow *
+OpenNativeWindow(const char *title, int x, int y, int width, int height,
              int flags, Color background, float ui_scale)
 {
-    UIWindow *win;
+    NativeWindow *win;
 
     /* The render texture below needs a live GL context; without the apps
      * main window there is nothing to share assets with and rlgl is not
@@ -395,19 +395,19 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_x11_init())
         return NULL;
 
-    if((flags & UI_WINDOW_TOP_RIGHT) != 0) {
+    if((flags & NATIVE_WINDOW_TOP_RIGHT) != 0) {
         int wx, wy, ww, wh;
         ui_primary_workarea(&wx, &wy, &ww, &wh);
         x = wx + ww - width - x;
         y = wy + y;
-    } else if((flags & UI_WINDOW_CENTER) != 0) {
+    } else if((flags & NATIVE_WINDOW_CENTER) != 0) {
         int wx, wy, ww, wh;
         ui_primary_workarea(&wx, &wy, &ww, &wh);
         x = wx + (ww - width) / 2;
         y = wy + (wh - height) / 2;
     }
 
-    win = (UIWindow *)calloc(1, sizeof(UIWindow));
+    win = (NativeWindow *)calloc(1, sizeof(NativeWindow));
     if(win == NULL)
         return NULL;
     win->window = ui_create_simple_window(ui_display, ui_root_window(ui_display),
@@ -430,8 +430,8 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
     /* Non-sticky borderless windows are override-redirect. Sticky windows
      * need the window manager to honor EWMH workspace hints, so they stay
      * managed and drop decorations through _MOTIF_WM_HINTS instead. */
-    if((flags & UI_WINDOW_BORDERLESS) != 0 &&
-       (flags & UI_WINDOW_STICKY) == 0 && ui_change_attributes != NULL) {
+    if((flags & NATIVE_WINDOW_BORDERLESS) != 0 &&
+       (flags & NATIVE_WINDOW_STICKY) == 0 && ui_change_attributes != NULL) {
         InbeXSetWindowAttributes attributes;
         memset(&attributes, 0, sizeof(attributes));
         attributes.override_redirect = 1; /* True */
@@ -460,11 +460,11 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 }
 
 void
-CloseUIWindow(UIWindow *window)
+CloseNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    if(ui_window_active == window) EndUIWindow();
+    if(ui_window_active == window) EndNativeWindow();
     ui_window_unregister(window);
     ui_paint_layers_destroy(window->paint_layers);
     if(window->ximage != NULL) {
@@ -479,7 +479,7 @@ CloseUIWindow(UIWindow *window)
 }
 
 void
-BeginUIWindow(UIWindow *window)
+BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
@@ -496,7 +496,7 @@ static void
 ui_window_dump(const unsigned char *flipped, int width, int height)
 {
     static double last_dump;
-    const char *path = getenv("KRYON_UI_WINDOW_DUMP");
+    const char *path = getenv("KRYON_NATIVE_WINDOW_DUMP");
     double now;
 
     if(path == NULL || path[0] == '\0')
@@ -518,7 +518,7 @@ ui_window_dump(const unsigned char *flipped, int width, int height)
 /* Convert the GL readback (RGBA byte order, bottom-up rows) into the XImage
  * buffer (server byte order, top-down rows). */
 static void
-ui_window_convert(UIWindow *window, const unsigned char *rgba)
+ui_window_convert(NativeWindow *window, const unsigned char *rgba)
 {
     InbeXImageInfo *info = (InbeXImageInfo *)window->ximage;
     int width = window->width, height = window->height;
@@ -547,7 +547,7 @@ ui_window_convert(UIWindow *window, const unsigned char *rgba)
 }
 
 static void
-ui_window_blit(UIWindow *window)
+ui_window_blit(NativeWindow *window)
 {
     if(ui_gc == NULL || ui_put_image == NULL || window->ximage == NULL)
         return;
@@ -556,7 +556,7 @@ ui_window_blit(UIWindow *window)
 }
 
 static void
-ui_window_poll_events(UIWindow *window)
+ui_window_poll_events(NativeWindow *window)
 {
     InbeXEvent event;
     int dirty = 0;
@@ -623,9 +623,9 @@ ui_window_poll_events(UIWindow *window)
 }
 
 void
-EndUIWindow(void)
+EndNativeWindow(void)
 {
-    UIWindow *window = ui_window_active;
+    NativeWindow *window = ui_window_active;
     Image image;
 
     if(window == NULL)
@@ -676,7 +676,7 @@ EndUIWindow(void)
 }
 
 int
-IsUIWindowClicked(UIWindow *window)
+IsNativeWindowClicked(NativeWindow *window)
 {
     if(window == NULL || !window->clicked)
         return 0;
@@ -685,7 +685,7 @@ IsUIWindowClicked(UIWindow *window)
 }
 
 int
-IsUIWindowRightClicked(UIWindow *window)
+IsNativeWindowRightClicked(NativeWindow *window)
 {
     if(window == NULL || !window->clicked || window->click_button != 3)
         return 0;
@@ -694,7 +694,7 @@ IsUIWindowRightClicked(UIWindow *window)
 }
 
 int
-IsUIWindowDragged(UIWindow *window)
+IsNativeWindowDragged(NativeWindow *window)
 {
     if(window == NULL || !window->dragged)
         return 0;
@@ -706,7 +706,7 @@ IsUIWindowDragged(UIWindow *window)
 }
 
 void
-GetUIWindowPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = window != NULL ? window->x : 0;
@@ -715,7 +715,7 @@ GetUIWindowPosition(UIWindow *window, int *x, int *y)
 }
 
 void
-GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowClickPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = window != NULL ? window->click_x : -1;
@@ -723,7 +723,7 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
         *y = window != NULL ? window->click_y : -1;
 }
 
-/* The Xlib path polls its windows inside EndUIWindow; nothing to pump. */
+/* The Xlib path polls its windows inside EndNativeWindow; nothing to pump. */
 void
 PumpWindows(void)
 {
@@ -749,11 +749,11 @@ StealCoreWindowClose(void)
 #include <string.h>
 #include "ui_core.h"
 
-#define UI_WINDOW_CLASS_NAME "KryonUIWindow"
-#define UI_WINDOW_APP_ICON 101
+#define NATIVE_WINDOW_CLASS_NAME "KryonNativeWindow"
+#define NATIVE_WINDOW_APP_ICON 101
 
-#define UI_WINDOW_OWNS_PAINT_LAYERS 1
-struct UIWindow {
+#define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
+struct NativeWindow {
     HWND window;
     UIPaintLayers *paint_layers;
     int focus_id;
@@ -770,9 +770,9 @@ struct UIWindow {
     POINT drag_last;
 };
 
-static UIWindow *ui_window_active;
+static NativeWindow *ui_window_active;
 static ATOM ui_window_class;
-static UIWindow *ui_windows[8];
+static NativeWindow *ui_windows[8];
 static int ui_window_count;
 static HWND ui_core_window;
 static WNDPROC ui_core_window_proc;
@@ -819,11 +819,11 @@ ui_window_hook_core_close(void)
 static LRESULT CALLBACK
 ui_window_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 {
-    UIWindow *window = (UIWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+    NativeWindow *window = (NativeWindow *)GetWindowLongPtr(hwnd, GWLP_USERDATA);
     POINT point;
     (void)wparam;
     if(message == WM_NCCREATE) {
-        window = (UIWindow *)((CREATESTRUCT *)lparam)->lpCreateParams;
+        window = (NativeWindow *)((CREATESTRUCT *)lparam)->lpCreateParams;
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)window);
     }
     if(window == NULL) return DefWindowProc(hwnd, message, wparam, lparam);
@@ -869,26 +869,26 @@ static int ui_window_register_class(void)
     wc.cbSize = sizeof(wc); wc.style = CS_HREDRAW|CS_VREDRAW;
     wc.lpfnWndProc = ui_window_proc; wc.hInstance = instance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hIcon = (HICON)LoadImageW(instance, MAKEINTRESOURCEW(UI_WINDOW_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
-    wc.hIconSm = wc.hIcon; wc.lpszClassName = UI_WINDOW_CLASS_NAME;
+    wc.hIcon = (HICON)LoadImageW(instance, MAKEINTRESOURCEW(NATIVE_WINDOW_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE);
+    wc.hIconSm = wc.hIcon; wc.lpszClassName = NATIVE_WINDOW_CLASS_NAME;
     ui_window_class = RegisterClassExA(&wc); return ui_window_class != 0;
 }
 
-UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
+NativeWindow *OpenNativeWindow(const char *title, int x, int y, int width, int height,
                        int flags, Color background, float ui_scale)
 {
-    UIWindow *window; DWORD style = WS_POPUP, ex_style = 0; RECT work;
+    NativeWindow *window; DWORD style = WS_POPUP, ex_style = 0; RECT work;
     if(width <= 0 || height <= 0 || !IsWindowReady() || !ui_window_register_class()) return NULL;
     SystemParametersInfo(SPI_GETWORKAREA, 0, &work, 0);
-    if(flags & UI_WINDOW_CENTER) { x = work.left+(work.right-work.left-width)/2; y = work.top+(work.bottom-work.top-height)/2; }
-    else if(flags & UI_WINDOW_TOP_RIGHT) { x = work.right-width-x; y = work.top+y; }
-    if(!(flags & UI_WINDOW_BORDERLESS)) style = WS_OVERLAPPEDWINDOW;
-    if(flags & UI_WINDOW_ALWAYS_ON_TOP) ex_style |= WS_EX_TOPMOST;
-    if(flags & UI_WINDOW_SKIP_TASKBAR) ex_style |= WS_EX_TOOLWINDOW;
-    window = (UIWindow *)calloc(1, sizeof(*window)); if(window == NULL) return NULL;
+    if(flags & NATIVE_WINDOW_CENTER) { x = work.left+(work.right-work.left-width)/2; y = work.top+(work.bottom-work.top-height)/2; }
+    else if(flags & NATIVE_WINDOW_TOP_RIGHT) { x = work.right-width-x; y = work.top+y; }
+    if(!(flags & NATIVE_WINDOW_BORDERLESS)) style = WS_OVERLAPPEDWINDOW;
+    if(flags & NATIVE_WINDOW_ALWAYS_ON_TOP) ex_style |= WS_EX_TOPMOST;
+    if(flags & NATIVE_WINDOW_SKIP_TASKBAR) ex_style |= WS_EX_TOOLWINDOW;
+    window = (NativeWindow *)calloc(1, sizeof(*window)); if(window == NULL) return NULL;
     window->width=width; window->height=height; window->scale=ui_scale>0?ui_scale:1; window->background=background; window->x=x; window->y=y;
     window->target=LoadRenderTexture(width,height); if(window->target.id==0) { free(window); return NULL; }
-    window->window=CreateWindowExA(ex_style,UI_WINDOW_CLASS_NAME,title?title:"Kryon",style,x,y,width,height,NULL,NULL,GetModuleHandle(NULL),window);
+    window->window=CreateWindowExA(ex_style,NATIVE_WINDOW_CLASS_NAME,title?title:"Kryon",style,x,y,width,height,NULL,NULL,GetModuleHandle(NULL),window);
     if(window->window==NULL) { UnloadRenderTexture(window->target); free(window); return NULL; }
     if(ui_window_count >= (int)(sizeof(ui_windows)/sizeof(ui_windows[0]))) {
         DestroyWindow(window->window); UnloadRenderTexture(window->target); free(window); return NULL;
@@ -897,10 +897,10 @@ UIWindow *OpenUIWindow(const char *title, int x, int y, int width, int height,
     ShowWindow(window->window,SW_SHOWNOACTIVATE); UpdateWindow(window->window); return window;
 }
 
-void CloseUIWindow(UIWindow *window)
+void CloseNativeWindow(NativeWindow *window)
 {
     if(!window) return;
-    if(ui_window_active == window) EndUIWindow();
+    if(ui_window_active == window) EndNativeWindow();
     ui_paint_layers_destroy(window->paint_layers);
     for(int i = 0; i < ui_window_count; i++) {
         if(ui_windows[i] != window) continue;
@@ -914,7 +914,7 @@ void CloseUIWindow(UIWindow *window)
     free(window);
 }
 
-void BeginUIWindow(UIWindow *window)
+void BeginNativeWindow(NativeWindow *window)
 {
     if(!window)
         return;
@@ -926,9 +926,9 @@ void BeginUIWindow(UIWindow *window)
     BeginUIFrame(window->width,window->height,window->scale);
     ui_window_layers_begin();
 }
-void EndUIWindow(void)
+void EndNativeWindow(void)
 {
-    UIWindow *window = ui_window_active;
+    NativeWindow *window = ui_window_active;
     Image image;
     BITMAPINFO info;
     HDC dc;
@@ -952,11 +952,11 @@ void EndUIWindow(void)
     info.bmiHeader.biWidth=window->width; info.bmiHeader.biHeight=window->height; info.bmiHeader.biPlanes=1; info.bmiHeader.biBitCount=32; info.bmiHeader.biCompression=BI_RGB;
     dc=GetDC(window->window); StretchDIBits(dc,0,0,window->width,window->height,0,0,window->width,window->height,window->pixels,&info,DIB_RGB_COLORS,SRCCOPY); ReleaseDC(window->window,dc);
 }
-int IsUIWindowClicked(UIWindow *w){int v=w&&w->clicked;if(w)w->clicked=0;return v;}
-int IsUIWindowRightClicked(UIWindow *w){int v=w&&w->right_clicked;if(w)w->right_clicked=0;return v;}
-int IsUIWindowDragged(UIWindow *w){int v=w&&w->dragged;if(w){w->dragged=0;if(v)w->clicked=0;}return v;}
-void GetUIWindowPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->x:0;if(y)*y=w?w->y:0;}
-void GetUIWindowClickPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->click_x:-1;if(y)*y=w?w->click_y:-1;}
+int IsNativeWindowClicked(NativeWindow *w){int v=w&&w->clicked;if(w)w->clicked=0;return v;}
+int IsNativeWindowRightClicked(NativeWindow *w){int v=w&&w->right_clicked;if(w)w->right_clicked=0;return v;}
+int IsNativeWindowDragged(NativeWindow *w){int v=w&&w->dragged;if(w){w->dragged=0;if(v)w->clicked=0;}return v;}
+void GetNativeWindowPosition(NativeWindow *w,int*x,int*y){if(x)*x=w?w->x:0;if(y)*y=w?w->y:0;}
+void GetNativeWindowClickPosition(NativeWindow *w,int*x,int*y){if(x)*x=w?w->click_x:-1;if(y)*y=w?w->click_y:-1;}
 void PumpWindows(void){MSG m;int i;for(i=0;i<ui_window_count;i++)while(PeekMessage(&m,ui_windows[i]->window,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessage(&m);}}
 int StealCoreWindowClose(void)
 {
@@ -964,7 +964,7 @@ int StealCoreWindowClose(void)
     return (int)InterlockedExchange(&ui_window_core_close_pending, 0);
 }
 
-#elif defined(UI_WINDOW_HAVE_SDL) /* SDL supports additional native windows
+#elif defined(NATIVE_WINDOW_HAVE_SDL) /* SDL supports additional native windows
                                    * on Wayland, Windows, and macOS. */
 
 #include <SDL2/SDL.h>
@@ -975,8 +975,8 @@ int StealCoreWindowClose(void)
 
 #include "ui_core.h"
 
-#define UI_WINDOW_OWNS_PAINT_LAYERS 1
-struct UIWindow {
+#define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
+struct NativeWindow {
     SDL_Window *window;
     UIPaintLayers *paint_layers;
     int focus_id;
@@ -1012,10 +1012,10 @@ struct UIWindow {
     int dragged;
 };
 
-static UIWindow **ui_windows;
+static NativeWindow **ui_windows;
 static int ui_window_count;
 static int ui_window_capacity;
-static UIWindow *ui_window_active;
+static NativeWindow *ui_window_active;
 static int ui_window_event_watch_installed;
 #if defined(__linux__) || defined(__FreeBSD__)
 static GLuint
@@ -1037,7 +1037,7 @@ ui_window_compile_shader(GLenum type, const char *source)
 }
 
 static int
-ui_window_init_presenter(UIWindow *window)
+ui_window_init_presenter(NativeWindow *window)
 {
     static const char *vertex_source =
         "attribute vec2 position; attribute vec2 texcoord;"
@@ -1092,7 +1092,7 @@ fail:
 }
 
 static void
-ui_window_present(UIWindow *window)
+ui_window_present(NativeWindow *window)
 {
     glViewport(0, 0, window->width, window->height);
     glDisable(GL_DEPTH_TEST);
@@ -1144,7 +1144,7 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
 
     if(window_id != 0) {
         for(int i = 0; i < ui_window_count; i++) {
-            UIWindow *window = ui_windows[i];
+            NativeWindow *window = ui_windows[i];
             if(window == NULL || window->window_id != window_id)
                 continue;
             if(event->type == SDL_WINDOWEVENT) {
@@ -1185,11 +1185,11 @@ ui_window_event_watch(void *userdata, SDL_Event *event)
 }
 
 static int
-ui_window_register(UIWindow *win)
+ui_window_register(NativeWindow *win)
 {
     if(ui_window_count == ui_window_capacity) {
         int capacity = ui_window_capacity > 0 ? ui_window_capacity * 2 : 8;
-        UIWindow **windows = (UIWindow **)realloc(
+        NativeWindow **windows = (NativeWindow **)realloc(
             ui_windows, (size_t)capacity * sizeof(*windows));
         if(windows == NULL)
             return 0;
@@ -1205,7 +1205,7 @@ ui_window_register(UIWindow *win)
 }
 
 static void
-ui_window_unregister(UIWindow *win)
+ui_window_unregister(NativeWindow *win)
 {
     int i, j;
 
@@ -1226,27 +1226,27 @@ ui_window_unregister(UIWindow *win)
     }
 }
 
-UIWindow *
-OpenUIWindow(const char *title, int x, int y, int width, int height,
+NativeWindow *
+OpenNativeWindow(const char *title, int x, int y, int width, int height,
              int flags, Color background, float ui_scale)
 {
-    UIWindow *win;
+    NativeWindow *win;
     Uint32 sdl_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
     SDL_Window *previous_window;
     SDL_GLContext previous_context;
 
     if(width <= 0 || height <= 0 || !IsWindowReady())
         return NULL;
-    if((flags & UI_WINDOW_BORDERLESS) != 0)
+    if((flags & NATIVE_WINDOW_BORDERLESS) != 0)
         sdl_flags |= SDL_WINDOW_BORDERLESS;
-    if((flags & UI_WINDOW_ALWAYS_ON_TOP) != 0)
+    if((flags & NATIVE_WINDOW_ALWAYS_ON_TOP) != 0)
         sdl_flags |= SDL_WINDOW_ALWAYS_ON_TOP;
-    if((flags & UI_WINDOW_SKIP_TASKBAR) != 0)
+    if((flags & NATIVE_WINDOW_SKIP_TASKBAR) != 0)
         sdl_flags |= SDL_WINDOW_SKIP_TASKBAR;
-    if((flags & (UI_WINDOW_TOP_RIGHT | UI_WINDOW_CENTER)) != 0) {
+    if((flags & (NATIVE_WINDOW_TOP_RIGHT | NATIVE_WINDOW_CENTER)) != 0) {
         SDL_Rect usable;
         if(SDL_GetDisplayUsableBounds(0, &usable) == 0) {
-            if((flags & UI_WINDOW_TOP_RIGHT) != 0) {
+            if((flags & NATIVE_WINDOW_TOP_RIGHT) != 0) {
                 x = usable.x + usable.w - width - x;
                 y = usable.y + y;
             } else {
@@ -1256,7 +1256,7 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
         }
     }
 
-    win = (UIWindow *)calloc(1, sizeof(UIWindow));
+    win = (NativeWindow *)calloc(1, sizeof(NativeWindow));
     if(win == NULL)
         return NULL;
     win->target = LoadRenderTexture(width, height);
@@ -1312,11 +1312,11 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 }
 
 void
-CloseUIWindow(UIWindow *window)
+CloseNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    if(ui_window_active == window) EndUIWindow();
+    if(ui_window_active == window) EndNativeWindow();
     ui_window_unregister(window);
     ui_paint_layers_destroy(window->paint_layers);
 #if defined(__linux__) || defined(__FreeBSD__)
@@ -1337,7 +1337,7 @@ CloseUIWindow(UIWindow *window)
 }
 
 void
-BeginUIWindow(UIWindow *window)
+BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
@@ -1351,9 +1351,9 @@ BeginUIWindow(UIWindow *window)
 }
 
 void
-EndUIWindow(void)
+EndNativeWindow(void)
 {
-    UIWindow *window = ui_window_active;
+    NativeWindow *window = ui_window_active;
 
     if(window == NULL)
         return;
@@ -1385,7 +1385,7 @@ EndUIWindow(void)
 }
 
 int
-IsUIWindowClicked(UIWindow *window)
+IsNativeWindowClicked(NativeWindow *window)
 {
     if(window == NULL || !window->clicked)
         return 0;
@@ -1394,7 +1394,7 @@ IsUIWindowClicked(UIWindow *window)
 }
 
 int
-IsUIWindowRightClicked(UIWindow *window)
+IsNativeWindowRightClicked(NativeWindow *window)
 {
     if(window == NULL || !window->right_clicked)
         return 0;
@@ -1403,7 +1403,7 @@ IsUIWindowRightClicked(UIWindow *window)
 }
 
 int
-IsUIWindowDragged(UIWindow *window)
+IsNativeWindowDragged(NativeWindow *window)
 {
     if(window == NULL || !window->dragged)
         return 0;
@@ -1416,7 +1416,7 @@ IsUIWindowDragged(UIWindow *window)
 }
 
 void
-GetUIWindowPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = window != NULL ? window->x : 0;
@@ -1461,7 +1461,7 @@ PumpWindows(void)
         ui_window_core_close_quit_pushed = 1;
     }
     for(int i = 0; i < ui_window_count; i++) {
-        UIWindow *window = ui_windows[i];
+        NativeWindow *window = ui_windows[i];
 
         if(window == NULL || !window->drag_active)
             continue;
@@ -1501,7 +1501,7 @@ PumpWindows(void)
 }
 
 void
-GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowClickPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = window != NULL ? window->click_x : -1;
@@ -1511,8 +1511,8 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 
 #else /* web/android: no extra windows */
 
-UIWindow *
-OpenUIWindow(const char *title, int x, int y, int width, int height,
+NativeWindow *
+OpenNativeWindow(const char *title, int x, int y, int width, int height,
              int flags, Color background, float ui_scale)
 {
     (void)title; (void)x; (void)y; (void)width; (void)height;
@@ -1521,38 +1521,38 @@ OpenUIWindow(const char *title, int x, int y, int width, int height,
 }
 
 void
-CloseUIWindow(UIWindow *window)
+CloseNativeWindow(NativeWindow *window)
 {
     (void)window;
 }
 
 void
-BeginUIWindow(UIWindow *window)
+BeginNativeWindow(NativeWindow *window)
 {
     (void)window;
 }
 
 void
-EndUIWindow(void)
+EndNativeWindow(void)
 {
 }
 
 int
-IsUIWindowClicked(UIWindow *window)
+IsNativeWindowClicked(NativeWindow *window)
 {
     (void)window;
     return 0;
 }
 
 int
-IsUIWindowRightClicked(UIWindow *window)
+IsNativeWindowRightClicked(NativeWindow *window)
 {
     (void)window;
     return 0;
 }
 
 int
-IsUIWindowDragged(UIWindow *window)
+IsNativeWindowDragged(NativeWindow *window)
 {
     (void)window;
     return 0;
@@ -1570,7 +1570,7 @@ StealCoreWindowClose(void)
 }
 
 void
-GetUIWindowPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = 0;
@@ -1580,7 +1580,7 @@ GetUIWindowPosition(UIWindow *window, int *x, int *y)
 }
 
 void
-GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
+GetNativeWindowClickPosition(NativeWindow *window, int *x, int *y)
 {
     if(x != NULL)
         *x = -1;
@@ -1593,8 +1593,8 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 
 UIPaintLayers *ui_window_paint_layers(void)
 {
-#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
-    UIWindow *window = ui_window_active;
+#if defined(NATIVE_WINDOW_OWNS_PAINT_LAYERS)
+    NativeWindow *window = ui_window_active;
     if(window == NULL) return NULL;
     if(window->paint_layers == NULL) {
         window->paint_layers = ui_paint_layers_create();
@@ -1608,7 +1608,7 @@ UIPaintLayers *ui_window_paint_layers(void)
 
 int ui_window_frame_active(void)
 {
-#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
+#if defined(NATIVE_WINDOW_OWNS_PAINT_LAYERS)
     return ui_window_active != NULL;
 #else
     return 0;
@@ -1617,8 +1617,8 @@ int ui_window_frame_active(void)
 
 void ui_window_layers_begin(void)
 {
-#if defined(UI_WINDOW_OWNS_PAINT_LAYERS)
-    UIWindow *window = ui_window_active;
+#if defined(NATIVE_WINDOW_OWNS_PAINT_LAYERS)
+    NativeWindow *window = ui_window_active;
     if(window == NULL) return;
     if(window->paint_layers == NULL)
         window->paint_layers = ui_paint_layers_create();

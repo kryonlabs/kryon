@@ -179,11 +179,8 @@ if [ -n "$reorder_api_matches" ]; then
 fi
 
 window_api_matches="$(
-    rg -n '\b(PumpUIWindows|StealUICoreWindowClose)\b' \
-        include src docs examples tests CHANGELOG.md \
-        --glob '!vendor/**' \
-        --glob '!build/**' \
-        --glob '!tests/public_api_names_test.sh' || true
+    rg -n '\b(UIWindow|OpenUIWindow|CloseUIWindow|BeginUIWindow|EndUIWindow|IsUIWindowClicked|IsUIWindowRightClicked|IsUIWindowDragged|GetUIWindowPosition|GetUIWindowClickPosition|UI_WINDOW_[A-Z_]+|PumpUIWindows|StealUICoreWindowClose)\b' \
+        include/ui_window.h src/ui/ui_window.c tests/ui_window_test.c tests/texture_scope_test.c docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html examples || true
 )"
 
 if [ -n "$window_api_matches" ]; then

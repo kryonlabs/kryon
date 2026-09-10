@@ -117,13 +117,13 @@ after painting, verified by the framebuffer test. The public combo scope uses
 the C paint-layer context, which owns and
 composites textures with scope-level drawing-state restoration. Real pixel tests
 cover mixed translucent/retained content, nested ordering, hidden parents and
-missing owners over an existing target. Native `UIWindow` now owns layer frame,
+missing owners over an existing target. Native `NativeWindow` now owns layer frame,
 composition and destruction. Main UI frames now own a separate context with
 automatic frame composition and pre-graphics-shutdown cleanup.
 Additional framebuffer checks interleave independent contexts with identical
 owner IDs, resize one, destroy the other while a destination is active, and
-verify the real X11 UIWindow presenter's owned-layer pixels. These prove paint
-resource isolation. The UIWindow presenter regression additionally exercises
+verify the real X11 NativeWindow presenter's owned-layer pixels. These prove paint
+resource isolation. The NativeWindow presenter regression additionally exercises
 automatic context management across consecutive frames, a missing owner and
 closing an active frame. It does not prove isolation of the still-global C
 widget/input state or Win32 runtime behavior.
