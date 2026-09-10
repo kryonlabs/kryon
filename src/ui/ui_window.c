@@ -725,12 +725,12 @@ GetUIWindowClickPosition(UIWindow *window, int *x, int *y)
 
 /* The Xlib path polls its windows inside EndUIWindow; nothing to pump. */
 void
-PumpUIWindows(void)
+PumpWindows(void)
 {
 }
 
 int
-StealUICoreWindowClose(void)
+StealCoreWindowClose(void)
 {
     return 0;
 }
@@ -957,8 +957,8 @@ int IsUIWindowRightClicked(UIWindow *w){int v=w&&w->right_clicked;if(w)w->right_
 int IsUIWindowDragged(UIWindow *w){int v=w&&w->dragged;if(w){w->dragged=0;if(v)w->clicked=0;}return v;}
 void GetUIWindowPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->x:0;if(y)*y=w?w->y:0;}
 void GetUIWindowClickPosition(UIWindow *w,int*x,int*y){if(x)*x=w?w->click_x:-1;if(y)*y=w?w->click_y:-1;}
-void PumpUIWindows(void){MSG m;int i;for(i=0;i<ui_window_count;i++)while(PeekMessage(&m,ui_windows[i]->window,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessage(&m);}}
-int StealUICoreWindowClose(void)
+void PumpWindows(void){MSG m;int i;for(i=0;i<ui_window_count;i++)while(PeekMessage(&m,ui_windows[i]->window,0,0,PM_REMOVE)){TranslateMessage(&m);DispatchMessage(&m);}}
+int StealCoreWindowClose(void)
 {
     ui_window_hook_core_close();
     return (int)InterlockedExchange(&ui_window_core_close_pending, 0);
@@ -1001,7 +1001,7 @@ struct UIWindow {
     int click_y;
     int x, y;                   /* current window position (kept by drag) */
     /* Borderless windows have no title bar, so dragging is app-side: the
-     * event watch only marks press/release, and PumpUIWindows follows the
+     * event watch only marks press/release, and PumpWindows follows the
      * global pointer from the frame loop - derived motion events lose the
      * final step to SDL3-style pointer batching, so the position itself is
      * the source of truth. */
@@ -1120,9 +1120,10 @@ ui_window_present(UIWindow *window)
 /* raylib owns SDLs normal event pump. An event watch sees secondary-window
  * pointer events without consuming the core windows events. The watch only
  * records plain state: it can run inside SDLs event pump, where calling
- * back into SDL (moving windows, pushing events) is not safe. PumpUIWindows
+ * back into SDL (moving windows, pushing events) is not safe. PumpWindows
  * applies the recorded state from the frame loop. */
 static int ui_window_core_close_pending;
+static int ui_window_core_close_quit_pushed;
 
 static int
 ui_window_event_watch(void *userdata, SDL_Event *event)
@@ -1427,11 +1428,14 @@ GetUIWindowPosition(UIWindow *window, int *x, int *y)
  * requests) from the frame loop, where calling into SDL is safe. Called
  * once per frame by SetUIFrame. */
 int
-StealUICoreWindowClose(void)
+StealCoreWindowClose(void)
 {
     int pending = ui_window_core_close_pending;
 
-    ui_window_core_close_pending = 0;
+    if(pending) {
+        ui_window_core_close_pending = 0;
+        ui_window_core_close_quit_pushed = 0;
+    }
     return pending;
 }
 
@@ -1444,17 +1448,17 @@ StealUICoreWindowClose(void)
 static int ui_window_drag_captured;
 
 void
-PumpUIWindows(void)
+PumpWindows(void)
 {
     int any_drag = 0;
 
-    if(ui_window_core_close_pending) {
+    if(ui_window_core_close_pending && !ui_window_core_close_quit_pushed) {
         SDL_Event quit;
 
         SDL_zero(quit);
         quit.type = SDL_QUIT;
         SDL_PushEvent(&quit);
-        ui_window_core_close_pending = 0;
+        ui_window_core_close_quit_pushed = 1;
     }
     for(int i = 0; i < ui_window_count; i++) {
         UIWindow *window = ui_windows[i];
@@ -1555,12 +1559,12 @@ IsUIWindowDragged(UIWindow *window)
 }
 
 void
-PumpUIWindows(void)
+PumpWindows(void)
 {
 }
 
 int
-StealUICoreWindowClose(void)
+StealCoreWindowClose(void)
 {
     return 0;
 }

@@ -1,6 +1,6 @@
 #include "ui_internal.h"
 
-typedef struct UIReorderState {
+typedef struct ReorderState {
     int list_id;
     int item_id;
     int from_index;
@@ -8,12 +8,12 @@ typedef struct UIReorderState {
     int press_offset_y;
     int scroll_start;
     int dragging;
-} UIReorderState;
+} ReorderState;
 
-static UIReorderState g_ui_reorder_state = {0};
+static ReorderState g_ui_reorder_state = {0};
 
 static int
-ui_reorder_find_index(const UIReorderList *list, int item_id)
+ui_reorder_find_index(const ReorderList *list, int item_id)
 {
     if(list == NULL || list->items == NULL)
         return -1;
@@ -25,7 +25,7 @@ ui_reorder_find_index(const UIReorderList *list, int item_id)
 }
 
 static int
-ui_reorder_target_index(const UIReorderList *list, int active_index,
+ui_reorder_target_index(const ReorderList *list, int active_index,
                         int pointer_y)
 {
     int target = 0;
@@ -34,7 +34,7 @@ ui_reorder_target_index(const UIReorderList *list, int active_index,
         return -1;
 
     for(int i = 0; i < list->item_count; i++) {
-        const UIReorderItem *item = &list->items[i];
+        const ReorderItem *item = &list->items[i];
         int center_y;
 
         if(i == active_index)
@@ -55,10 +55,10 @@ ui_reorder_cancel(void)
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 }
 
-UIReorderListResult
-UpdateUIReorderList(UIReorderList list)
+ReorderListResult
+UpdateReorderList(ReorderList list)
 {
-    UIReorderListResult result = {0};
+    ReorderListResult result = {0};
     Vector2 mouse = ui_mouse_world();
     int pointer_y = (int)mouse.y;
     int captured = ui_input_captures_click_internal(mouse, 0);
@@ -164,7 +164,7 @@ UpdateUIReorderList(UIReorderList list)
         return result;
 
     for(int i = 0; i < list.item_count; i++) {
-        const UIReorderItem *item = &list.items[i];
+        const ReorderItem *item = &list.items[i];
         Rectangle handle;
 
         if(item->disabled)

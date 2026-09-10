@@ -735,24 +735,24 @@ test_focusable_image_keyboard_navigation(void)
 static void
 test_reorder_uses_item_center_and_header_handle(void)
 {
-    UIReorderItem items[2] = {
+    ReorderItem items[2] = {
         {1, {10, 100, 200, 100}, 0},
         {2, {10, 210, 200, 100}, 0}
     };
-    UIReorderList list = {
+    ReorderList list = {
         .id = 811, .bounds = {0, 0, 300, 500},
         .items = items, .item_count = 2,
         .handle_width = 200, .handle_height = 40,
         .drag_threshold = 5
     };
-    UIReorderListResult result;
+    ReorderListResult result;
 
     InjectReset();
     InjectMousePosition(50, 170);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
     BeginUIFrame(300, 500, 1.0f);
-    result = UpdateUIReorderList(list);
+    result = UpdateReorderList(list);
     EndUIFrame();
     check_int("reorder ignores item body below handle", result.active, 0);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
@@ -763,14 +763,14 @@ test_reorder_uses_item_center_and_header_handle(void)
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
     BeginUIFrame(300, 500, 1.0f);
-    result = UpdateUIReorderList(list);
+    result = UpdateReorderList(list);
     EndUIFrame();
     check_int("reorder captures header", result.active, 1);
 
     InjectMousePosition(50, 240);
     InjectPump();
     BeginUIFrame(300, 500, 1.0f);
-    result = UpdateUIReorderList(list);
+    result = UpdateReorderList(list);
     EndUIFrame();
     check_int("reorder drag active", result.dragging, 1);
     check_int("reorder target follows lifted center", result.target_index, 1);
@@ -778,7 +778,7 @@ test_reorder_uses_item_center_and_header_handle(void)
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
     BeginUIFrame(300, 500, 1.0f);
-    result = UpdateUIReorderList(list);
+    result = UpdateReorderList(list);
     EndUIFrame();
 }
 

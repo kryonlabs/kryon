@@ -5374,7 +5374,7 @@ BeginUIFrame(int width, int height, float dpi)
 void
 SetUIFrame(Camera2D camera)
 {
-    PumpUIWindows();
+    PumpWindows();
     EndUIFocus();
     BeginUIFocus();
     g_ui_frame_serial++;

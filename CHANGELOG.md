@@ -1191,7 +1191,7 @@
 - Ui_window: follow the global pointer during drags, not motion events
 - Ui_window: flush a released drag's final motion
 - Ui_window: capture the mouse during drags and drop per-frame position reads
-- Ui_window: expose StealUICoreWindowClose for direct close polling
+- Ui_window: expose StealCoreWindowClose for direct close polling
 - Ui_window: bridge core-window close and drag on the SDL path
 - Kry_update: arch-aware AppImage appcast key
 - Kryui: Go bindings for kry_update_flow

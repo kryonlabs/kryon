@@ -7,12 +7,12 @@ typedef struct {
     int id;
     Rectangle bounds;
     int disabled;
-} UIReorderItem;
+} ReorderItem;
 
 typedef struct {
     int id;
     Rectangle bounds;
-    const UIReorderItem *items;
+    const ReorderItem *items;
     int item_count;
     int handle_width;
     int handle_height;
@@ -23,7 +23,7 @@ typedef struct {
     int viewport_bottom;
     int auto_scroll_margin;
     int auto_scroll_step;
-} UIReorderList;
+} ReorderList;
 
 typedef struct {
     int active;
@@ -36,8 +36,8 @@ typedef struct {
     int active_id;
     int pointer_y;
     int drag_delta_y;
-} UIReorderListResult;
+} ReorderListResult;
 
-UIReorderListResult UpdateUIReorderList(UIReorderList list);
+ReorderListResult UpdateReorderList(ReorderList list);
 
 #endif

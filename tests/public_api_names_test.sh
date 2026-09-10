@@ -164,6 +164,34 @@ if [ -n "$cursor_api_matches" ]; then
     exit 1
 fi
 
+reorder_api_matches="$(
+    rg -n '\b(UIReorder[A-Za-z0-9_]*|UpdateUIReorder[A-Za-z0-9_]*)\b' \
+        include src docs examples tests \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$reorder_api_matches" ]; then
+    echo "Reorder APIs must use clean Reorder* names without stale UI prefixes:"
+    echo "$reorder_api_matches"
+    exit 1
+fi
+
+window_api_matches="$(
+    rg -n '\b(PumpUIWindows|StealUICoreWindowClose)\b' \
+        include src docs examples tests CHANGELOG.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$window_api_matches" ]; then
+    echo "Window APIs must use PumpWindows and StealCoreWindowClose without stale UI prefixes:"
+    echo "$window_api_matches"
+    exit 1
+fi
+
 if [ -d go/kryui ]; then
     echo "The removed go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1

@@ -1737,7 +1737,7 @@ include/ui_profile.h function GetUIProfilePictureIconName
 include/ui_profile.h function GetUIProfilePictureIconType
 include/ui_profile.h function GetUIProfilePictureIconTypeForSyncID
 include/ui_profile.h function GetUISyncIDForProfilePictureIconType
-include/ui_reorder.h function UpdateUIReorderList
+include/ui_reorder.h function UpdateReorderList
 include/ui_rows.h function FormAdvance
 include/ui_rows.h function FormBegin
 include/ui_rows.h function FormButtons
@@ -2157,8 +2157,8 @@ include/ui_window.h function IsUIWindowClicked
 include/ui_window.h function IsUIWindowDragged
 include/ui_window.h function IsUIWindowRightClicked
 include/ui_window.h function OpenUIWindow
-include/ui_window.h function PumpUIWindows
-include/ui_window.h function StealUICoreWindowClose
+include/ui_window.h function PumpWindows
+include/ui_window.h function StealCoreWindowClose
 include/ui_window.h typedef UIWindow
 include/web.h function FlushWebStorageSync
 include/web.h function FlushWebStorageSyncBlocking
