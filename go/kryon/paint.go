@@ -3,6 +3,7 @@ package kryon
 
 // #import drawing_props
 // #import surface
+// #import material
 type DrawingKind int32
 
 const (
@@ -24,3 +25,7 @@ type Drawing struct {
 	Texture Texture2D
 	Ring    Ring
 }
+
+type Painter func(Drawing)
+
+type SurfacePainter func(SurfaceDrawing)

@@ -109,6 +109,12 @@ explicit-position bypass and missing-size behavior use the same functions.
 ContentBounds now returns the shared Rectangle contract; the duplicate
 ContentBox record has been removed.
 
+Button's modern paint pass is sequenced by `PaintButton` in `.kry`: surface
+layers precede the mark and label commands. `SurfacePainter` and `Painter`
+are borrowed synchronous rasterizer callbacks. The retained C renderer invokes
+this pass after layout; Go invokes it when rasterizing its operation stream.
+Their callbacks execute commands without choosing Button content or layer order.
+
 Typed child-content parameters belong to KIR. `#slot` declares a synchronous,
 void-returning callable signature; generated C/C++ uses a typed callback plus its borrowed context,
 native Go uses a function type, and JavaScript passes the callable unchanged.

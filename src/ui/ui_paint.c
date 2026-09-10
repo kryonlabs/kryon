@@ -96,3 +96,20 @@ ui_draw(Drawing command)
     }
     }
 }
+
+static void
+paint_surface(void *context, SurfaceDrawing command)
+{
+    (void)context;
+    ui_draw_surface(command);
+}
+
+static void
+paint_drawing(void *context, Drawing command)
+{
+    (void)context;
+    ui_draw(command);
+}
+
+const SurfacePainter ui_surface_painter = {NULL, paint_surface};
+const Painter ui_painter = {NULL, paint_drawing};

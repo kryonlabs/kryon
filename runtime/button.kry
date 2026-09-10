@@ -354,6 +354,23 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     return result
 }
 
+# Draw the resolved widget through borrowed rasterizer callbacks. Retained hosts
+# invoke this after layout; callbacks never outlive this paint pass.
+PaintButton :: (frame: ButtonFrame, label_width: float, elapsed_ms: f64,
+    disclosure: bool, surface: SurfacePainter, draw: Painter) #export {
+    layer: i32 = 0
+    while layer < MaterialLayerCount(frame.material.value.material) {
+        surface(PaintMaterialLayer(frame.material, layer))
+        layer += 1
+    }
+    content: ContentDrawing = PaintContent(frame.props,
+        MaterialContentBounds(frame.material), frame.appearance.value, frame.font,
+        label_width, frame.foreground, frame.material.ambient, frame.material.scale,
+        elapsed_ms, disclosure)
+    draw(content.mark)
+    draw(content.label)
+}
+
 ShapeWidth :: (
     width: float,
     height: float,

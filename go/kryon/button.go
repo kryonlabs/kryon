@@ -1018,6 +1018,47 @@ func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFra
 	return value_42
 }
 
+func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float64, disclosure bool, surface SurfacePainter, draw Painter) {
+	var value_0 int32 = 0
+	var layer int32 = value_0
+	for {
+		var value_1 int32 = layer
+		var value_2 int32 = frame.Material.Value.Material
+		var value_3 int32 = Surface_MaterialLayerCount(value_2)
+		var value_4 bool = value_1 < value_3
+		if !value_4 {
+			break
+		}
+		var value_5 SurfacePainter = surface
+		var value_6 MaterialPaint = frame.Material
+		var value_7 int32 = layer
+		var value_8 SurfaceDrawing = Material_PaintMaterialLayer(value_6, value_7)
+		value_5(value_8)
+		var value_9 int32 = layer
+		var value_10 int32 = 1
+		layer = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 1))
+	}
+	var value_11 ButtonProps = frame.Props
+	var value_12 MaterialPaint = frame.Material
+	var value_13 Rectangle = Material_MaterialContentBounds(value_12)
+	var value_14 StyleData = frame.Appearance.Value
+	var value_15 int32 = frame.Font
+	var value_16 float32 = label_width
+	var value_17 uint32 = frame.Foreground
+	var value_18 uint32 = frame.Material.Ambient
+	var value_19 float32 = frame.Material.Scale
+	var value_20 float64 = elapsed_ms
+	var value_21 bool = disclosure
+	var value_22 ContentDrawing = Button_PaintContent(value_11, value_13, value_14, value_15, value_16, value_17, value_18, value_19, value_20, value_21)
+	var content ContentDrawing = value_22
+	var value_23 Painter = draw
+	var value_24 Drawing = content.Mark
+	value_23(value_24)
+	var value_25 Painter = draw
+	var value_26 Drawing = content.Label
+	value_25(value_26)
+}
+
 func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {
 	var value_0 bool = square
 	var value_1 bool = value_0

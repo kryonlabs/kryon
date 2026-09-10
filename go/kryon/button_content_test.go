@@ -41,6 +41,30 @@ func TestButtonContentDrawing(t *testing.T) {
 	}
 }
 
+func TestButtonPaintCallbacks(t *testing.T) {
+	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus,
+		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
+	appearance := StyleFrame{Value: StyleData{IconSize: 16, Gap: 8, Opacity: 1,
+		Foreground: 0x123456ff, Background: 0xffffffff}}
+	frame := Button_BuildFrame(props, Button_ResolveButtonInput(props, Activation{}),
+		appearance, InteractionMotion{}, Rectangle{}, 0xffffffff, 1, 16, 16)
+	layers := 0
+	var commands []Drawing
+	Button_PaintButton(frame, 24, 0, false, func(command SurfaceDrawing) {
+		if len(commands) != 0 {
+			t.Fatal("surface layer emitted after content")
+		}
+		layers++
+		frame.Props.Label = "changed by host"
+	}, func(command Drawing) {
+		commands = append(commands, command)
+	})
+	if layers == 0 || len(commands) != 2 || commands[0].Kind != DrawingKindDrawingIcon ||
+		commands[1].Kind != DrawingKindDrawingText || commands[1].Text != "Run" {
+		t.Fatalf("paint order or borrowed callback isolation: layers=%d commands=%+v", layers, commands)
+	}
+}
+
 func TestButtonFrameAssembly(t *testing.T) {
 	props := ButtonProps{Label: "Run", State: ButtonStateLoading, Circle: true,
 		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 80}}

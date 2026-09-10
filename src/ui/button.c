@@ -156,20 +156,14 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             Scale(appearance.value.font_size), GetFontSize());
         if(frame.repaint)
             InvalidateTree(UI_INVALIDATE_PAINT);
-        for(int i = 0; i < MaterialLayerCount(frame.material.value.material); i++)
-            ui_draw_surface(PaintMaterialLayer(frame.material, i));
-        draw_bounds = MaterialContentBounds(frame.material);
         text = GetColor(frame.foreground);
         if(foreground != NULL)
             *foreground = text;
         if(focused)
             SetUIFocusTextInputActive(0);
         int typeface_token = PushUIFont(appearance.value.typeface.data);
-        ContentDrawing content = PaintContent(frame.props, draw_bounds, appearance.value, frame.font,
-            TextWidth(frame.props.label != NULL ? frame.props.label : "", frame.font), frame.foreground,
-            frame.material.ambient, frame.material.scale, GetTime() * 1000.0, button.disclosure);
-        ui_draw(content.mark);
-        ui_draw(content.label);
+        PaintButton(frame, TextWidth(frame.props.label != NULL ? frame.props.label : "", frame.font),
+            GetTime() * 1000.0, button.disclosure, ui_surface_painter, ui_painter);
         PopUIFont(typeface_token);
         if(handle_input)
             EndUIWidget(&widget);

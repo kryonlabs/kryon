@@ -1,6 +1,7 @@
 #module "paint"
 #import "drawing_props"
 #import "surface"
+#import "material"
 
 # Device-independent drawing commands. Hosts rasterize; widgets choose commands.
 DrawingKind :: enum {
@@ -22,3 +23,7 @@ Drawing :: struct {
     texture: Texture2D
     ring: Ring
 }
+
+# Synchronous rasterizer endpoints. The widget owns command order and content.
+Painter :: (command: Drawing) #slot
+SurfacePainter :: (command: SurfaceDrawing) #slot

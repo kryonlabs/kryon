@@ -1357,6 +1357,10 @@ are preserved at fractional scale; circle, square, and icon-only shapes use
 the resolved height for their width. Shared `.kry` bodies can copy and compare
 the borrowed `label` and style `typeface` fields. C callers retain ownership of
 those null-terminated strings; null labels behave as empty labels.
+The shared `PaintButton` pass accepts a resolved frame, physical label width,
+elapsed time, disclosure state, and synchronous `SurfacePainter`/`Painter`
+callbacks. It emits the surface layers, then the mark and label; callbacks must
+finish during the call and must not retain borrowed text or callback contexts.
 `MeasureTextWidth(text, font_size, typeface)` measures physical text width using
 the requested typeface. C restores the previous typeface after the call; native
 Go exposes the same service on Runtime and as a package function. Button's

@@ -95,7 +95,7 @@ func RenderCurrentFrame() *image.RGBA {
 	return RenderFrame(int(rt.GetScreenWidth()), int(rt.GetScreenHeight()), FrameOps())
 }
 
-func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
+func frameMaterial(op FrameOp) MaterialPaint {
 	hover, press, focus := float32(0), float32(0), float32(0)
 	if op.Hovered {
 		hover = 1
@@ -115,10 +115,14 @@ func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
 	if op.HasBackgroundEnd {
 		value.Fields = uint32(StyleBackgroundEnd)
 	}
-	paint := Material_PrepareMaterial(MaterialPaint{Bounds: op.Bounds, Surface: op.SurfaceBounds,
+	return Material_PrepareMaterial(MaterialPaint{Bounds: op.Bounds, Surface: op.SurfaceBounds,
 		Value: value, Light: packRGBA(op.BorderColor), Ambient: packRGBA(op.AmbientColor),
 		Hover: hover, Press: press, Focus: focus, Disabled: op.Disabled,
 		Fill: op.FillStates, FillValid: op.FillStatesValid, Scale: 1})
+}
+
+func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
+	paint := frameMaterial(op)
 	for i := int32(0); i < Surface_MaterialLayerCount(int32(op.Material)); i++ {
 		renderSurfaceDrawing(img, Material_PaintMaterialLayer(paint, i))
 	}
@@ -143,17 +147,18 @@ func renderSurfaceDrawing(img *image.RGBA, command SurfaceDrawing) {
 }
 
 func renderButton(img *image.RGBA, op FrameOp) {
-	face := renderMaterial(img, op)
-	text := op.TextColor
-	text = unpackRGBA(Surface_Opacity(packRGBA(text), op.Opacity))
-	props := ButtonProps{Label: op.Text, Loading: op.Loading, IconType: op.IconType,
-		IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)}
-	paint := StyleData{IconSize: op.IconSize, Gap: op.Gap, OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}
-	content := Button_PaintContent(props, face, paint, op.FontSize,
-		float32(runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)),
-		packRGBA(text), packRGBA(op.AmbientColor), 1, op.ElapsedMS, op.Disclosure)
-	renderDrawing(img, content.Mark, op.FontID)
-	renderDrawing(img, content.Label, op.FontID)
+	frame := ButtonFrame{
+		Props: ButtonProps{Label: op.Text, Loading: op.Loading, IconType: op.IconType,
+			IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)},
+		Appearance: StyleFrame{Value: StyleData{IconSize: op.IconSize, Gap: op.Gap,
+			OffsetX: op.ContentOffset.X, OffsetY: op.ContentOffset.Y}},
+		Material: frameMaterial(op), Font: op.FontSize,
+		Foreground: Surface_Opacity(packRGBA(op.TextColor), op.Opacity),
+	}
+	Button_PaintButton(frame, float32(runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)),
+		op.ElapsedMS, op.Disclosure,
+		func(command SurfaceDrawing) { renderSurfaceDrawing(img, command) },
+		func(command Drawing) { renderDrawing(img, command, op.FontID) })
 }
 
 func renderDrawing(img *image.RGBA, command Drawing, fontID uint32) {
