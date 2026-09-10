@@ -464,7 +464,7 @@ docs-site:
 .PHONY: language-test
 language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
 	@mkdir -p $(BUILD_DIR)/tests
-	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c cmd/kir/kir.c cmd/kir/kir_expr.c cmd/kir/kir_token.c cmd/kir/kir_text.c -o $(BUILD_DIR)/tests/kir_expression_test
+	$(CC) $(CFLAGS) -Icmd/kir tests/kir_expression_test.c $(KIR_SRCS) -o $(BUILD_DIR)/tests/kir_expression_test
 	$(BUILD_DIR)/tests/kir_expression_test
 	python3 tests/language_semantics_test.py $(BUILD_DIR)
 	python3 tests/widget_declarations_test.py $(BUILD_DIR)
@@ -711,7 +711,10 @@ $(KRYON_BACKEND_STAMP): | $(BUILD_DIR)
 	touch $@
 
 KIR_SRCS := cmd/kir/kir.c cmd/kir/kir_parse.c cmd/kir/kir_text.c cmd/kir/kir_token.c cmd/kir/kir_cleanup.c cmd/kir/kir_expr.c cmd/kir/kir_check.c cmd/kir/kir_emit.c
-KIR_HDRS := cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_emit.h
+cmd/kir/runtime_declarations.generated.h: scripts/embed-runtime-declarations.py $(wildcard runtime/*_props.kry)
+	python3 scripts/embed-runtime-declarations.py $@
+
+KIR_HDRS := cmd/kir/runtime_declarations.generated.h cmd/kir/kir.h cmd/kir/kir_parse.h cmd/kir/kir_text.h cmd/kir/kir_token.h cmd/kir/kir_cleanup.h cmd/kir/kir_expr.h cmd/kir/kir_check.h cmd/kir/kir_emit.h
 
 K2C_SRCS := $(sort $(wildcard cmd/k2c/*.c)) $(KIR_SRCS)
 K2C_HDRS := cmd/k2c/k2c_lower.h $(KIR_HDRS)
@@ -745,7 +748,7 @@ generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js include/ui_b
 
 preflight test: runtime-declarations-check
 .PHONY: runtime-declarations-check
-runtime-declarations-check: $(K2C) $(K2GO) $(ICON_TYPES_H)
+runtime-declarations-check: $(K2C) $(K2GO) $(K2JS) $(ICON_TYPES_H)
 	CC="$(CC)" sh tests/runtime_declarations_test.sh $(BUILD_DIR)
 
 include/ui_button_props.generated.h: $(GENERATED_SRC_DIR)/runtime/button_props.h

@@ -11,4 +11,7 @@
  */
 KirProgram *kir_parse_file(const char *path, const char *root);
 
+/* Parse immutable embedded text with the same frontend and source spans. */
+KirProgram *kir_parse_source(const char *path, const char *source);
+
 #endif /* KRYON_KIR_PARSE_H */

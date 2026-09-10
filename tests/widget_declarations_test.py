@@ -242,6 +242,10 @@ CardProps :: struct {
             "    props: CardProps\n    props.value = 5\n    props.appearance.inset = 7",
             "    props: CardProps = (CardProps){.value = 5, "
             ".appearance = (Appearance){.inset = 7}}"), styled_provider))
+        declarations.append((styled_caller.replace(
+            "    props: CardProps\n    props.value = 5\n    props.appearance.inset = 7",
+            "    props: CardProps = (CardProps){.value = 5, "
+            ".appearance = {.inset = 7}}"), styled_provider))
         enum_provider = PROVIDER + '''
 Inset :: enum {
     InsetNone = 0
@@ -265,6 +269,9 @@ Inset :: enum {
 }}
 '''
             declarations.append((declared_caller + local_declaration, PROVIDER))
+        # A lexical props declaration also shadows the embedded runtime contract.
+        declarations.append((CALLER.replace("CardProps", "ButtonProps"),
+                             PROVIDER.replace("CardProps", "ButtonProps")))
         for (source, declaration), sources in product(declarations, ((caller, provider), (provider, caller))):
             caller.write_text(source)
             provider.write_text(declaration)

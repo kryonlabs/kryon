@@ -269,6 +269,8 @@ typedef struct KirProgram {
 /* Local declarations shadow imports. Returns 1 found, 0 absent, -1 ambiguous. */
 int KirResolveFunction(const KirModule *module, const char *name,
                        const KirModule **owner, const KirFunction **function);
+/* Runtime contracts are parsed from embedded declaration sources. */
+const KirType *KirFindRuntimeType(const char *name, const KirModule **owner);
 const KirType *KirFindType(const KirModule *module, const char *name,
                           const KirModule **owner);
 int KirResolveEnumMember(const KirModule *module, const char *name,

@@ -2576,3 +2576,9 @@ generation produces `include/ui_button_props.generated.h` and
 The C flags now use `bool`, matching their declared meaning and Go types. Rebuild
 C consumers together with the library because the props record layout changed.
 The label remains a borrowed C string and a native Go string.
+
+Native props declarations are embedded in compiler binaries, so compiling an
+application does not require locating the runtime source checkout. An explicit
+application type declaration takes precedence over the native contract of the
+same name. `make runtime-declarations-check` verifies that embedded sources and
+generated public interfaces match their `.kry` sources.

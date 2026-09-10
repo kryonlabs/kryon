@@ -65,3 +65,8 @@ Widget props contracts belong in the declaration source. Button's C header and
 native Go props type are generated from `runtime/button_props.kry`; handwritten
 host code consumes these types. Host geometry, texture, and style types remain
 external dependencies while their shared declarations are migrated.
+
+The compiler's embedded runtime contracts contain `.kry` source text, not a second
+parsed schema or handwritten field table. KIR parses embedded and file sources
+through the same frontend. Runtime types are a fallback after lexical and
+explicitly imported application types.

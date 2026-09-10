@@ -19,6 +19,7 @@
 #define K2GO_RUNTIME_PKG "kryon"
 
 static int runtime_output;
+static const KirModule *type_scope;
 static char instance_receiver[KIR_NAME_MAX];
 
 /* ---------------------------------------------------------------- helpers */
@@ -60,6 +61,8 @@ stem_from_source(const char *src, char *dst, size_t dst_size)
 static int
 is_runtime_go_type(const char *type)
 {
+    if(KirFindRuntimeType(type, NULL) != NULL)
+        return 1;
     static const char *types[] = {
 		"Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
 		"Accelerator",
@@ -72,7 +75,7 @@ is_runtime_go_type(const char *type)
         "SyntaxMode", "ThemeStyle", "ThemeSource",
         "ThemeMode", "ThemeSettingsState", "ThemeSettingsProps",
         "ThemeSettingsResult", "PictureFit", "UISemanticKind",
-        "TextInputStyle", "ButtonProps", "SelectableProps", "CheckboxFlagsProps",
+        "TextInputStyle", "SelectableProps", "CheckboxFlagsProps",
 		"ImageWithBgProps", "ImageButtonProps", "IconButtonProps", "HrefProps",
 		"TabItemButtonProps", "Tab", "TabBarProps", "ClosableTabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
@@ -106,7 +109,9 @@ is_runtime_go_type(const char *type)
 static void
 qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
 {
-    if(!runtime_output && is_runtime_go_type(type))
+    const KirType *declared = type_scope != NULL ? KirFindType(type_scope, type, NULL) : NULL;
+    int local = declared != NULL && declared != KirFindRuntimeType(type, NULL);
+    if(!runtime_output && !local && is_runtime_go_type(type))
         snprintf(dst, dst_size, "%s.%s", K2GO_RUNTIME_PKG, type);
     else
         snprintf(dst, dst_size, "%s", type);
@@ -906,7 +911,8 @@ static int
 source_record(const KirModule *module, const char *name)
 {
     const KirType *record = KirFindType(module, name, NULL);
-    return record != NULL && !record->is_enum;
+    return record != NULL && !record->is_enum &&
+           record != KirFindRuntimeType(name, NULL);
 }
 
 static int
@@ -959,11 +965,6 @@ props_field_at(const KirModule *module, const char *type, int index,
         {"ControlStyle", {"Normal", "Hover", "Pressed", "Focused",
                            "Disabled", "Loading", "Selected"}},
         {"ThemeFamily", {"Name", "Light", "Dark"}},
-        {"ButtonProps", {"Bounds", "Label", "Font", "ID", "Tone",
-                         "Emphasis", "Size", "Disabled", "Loading",
-                         "Selected", "FullWidth", "Pill", "Circle", "Icon",
-                         "IconType", "IconPlacement", "IconOnly", "Square",
-                         "State", "Style"}},
         {"SelectableProps", {"Bounds", "ID", "Label", "Selected", "Disabled"}},
         {"CheckboxFlagsProps", {"Bounds", "ID", "Label", "Flags",
                                 "FlagsValue", "Disabled"}},
@@ -1524,8 +1525,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 char field[K2GO_NAME_MAX];
                 char value[K2GO_TEXT_MAX];
 
+                const char *source = part;
                 if(*part != '.') {
-                    /* positional initializer: map by C field order */
                     if(*part == '\0') {
                         positional++;
                         continue;
@@ -1534,45 +1535,42 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                         fprintf(stderr, "k2go: no positional field %d in %s\n", positional, type);
                         exit(1);
                     }
-                    if(!declared_record && (strcmp(field, "Bounds") == 0 ||
-                        strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
-                       *kir_skip_ws(part) == '{') {
-                        char rect[K2GO_TEXT_MAX];
-
-                        snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(part));
-                        tx_expr(m, rect, value, sizeof(value));
-                    } else if(!declared_record && strcmp(field, "Color") == 0 &&
-                              *kir_skip_ws(part) == '{') {
-                        char color[K2GO_TEXT_MAX];
-
-                        snprintf(color, sizeof(color), "(Color)%s", kir_skip_ws(part));
-                        tx_expr(m, color, value, sizeof(value));
-                    } else {
-                        tx_expr(m, part, value, sizeof(value));
-                    }
                 } else {
                     eq = strchr(part, '=');
                     if(eq == NULL)
                         continue;
                     *eq = '\0';
                     kir_go_field_ident(part + 1, field, sizeof(field));
-                    if(!declared_record && strcmp(field, "TextSize") == 0)
-                        continue;
-                    if(!declared_record && (strcmp(field, "Bounds") == 0 ||
-                        strcmp(field, "Trigger") == 0 || strcmp(field, "Indicators") == 0) &&
-                       *kir_skip_ws(eq + 1) == '{') {
-                        char rect[K2GO_TEXT_MAX];
-                        snprintf(rect, sizeof(rect), "(Rectangle)%s", kir_skip_ws(eq + 1));
-                        tx_expr(m, rect, value, sizeof(value));
-                    } else if(!declared_record && strcmp(field, "Color") == 0 &&
-                              *kir_skip_ws(eq + 1) == '{') {
-                        char color[K2GO_TEXT_MAX];
-
-                        snprintf(color, sizeof(color), "(Color)%s", kir_skip_ws(eq + 1));
-                        tx_expr(m, color, value, sizeof(value));
-                    } else {
-                        tx_expr(m, kir_skip_ws(eq + 1), value, sizeof(value));
+                    source = kir_skip_ws(eq + 1);
+                }
+                if(!declared_record && strcmp(field, "TextSize") == 0)
+                    continue;
+                char field_type[KIR_NAME_MAX] = "";
+                const KirType *contract = KirFindType(m, type, NULL);
+                KirTypeField member;
+                size_t offset = 0;
+                while(contract != NULL && KirTypeNextField(contract, &offset, &member) == 1) {
+                    char member_name[KIR_NAME_MAX];
+                    kir_go_field_ident(member.name, member_name, sizeof(member_name));
+                    if(!strcmp(member_name, field)) {
+                        kir_copy(field_type, sizeof(field_type), member.type);
+                        break;
                     }
+                }
+                /* Remaining host records use their legacy geometry convention. */
+                if(!*field_type && !declared_record) {
+                    if(!strcmp(field, "Bounds") || !strcmp(field, "Trigger") ||
+                       !strcmp(field, "Indicators"))
+                        kir_copy(field_type, sizeof(field_type), "Rectangle");
+                    else if(!strcmp(field, "Color"))
+                        kir_copy(field_type, sizeof(field_type), "Color");
+                }
+                if(*source == '{' && *field_type) {
+                    char typed[K2GO_TEXT_MAX];
+                    snprintf(typed, sizeof(typed), "(%s)%s", field_type, source);
+                    tx_expr(m, typed, value, sizeof(value));
+                } else {
+                    tx_expr(m, source, value, sizeof(value));
                 }
                 if((strcmp(type, "TextFieldProps") == 0 ||
                     strcmp(type, "TextAreaProps") == 0) &&
@@ -1589,7 +1587,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                 k2go_collapse_duplicate_slices(value);
                 if(emitted++)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, ", ");
-                if(!declared_record && (bool_prop_field(field) ||
+                if(!declared_record && ((!strcmp(field_type, "bool") ||
+                    (!*field_type && bool_prop_field(field))) ||
                     (strcmp(type, "TableViewProps") == 0 && strcmp(field, "CustomCells") == 0) ||
                     (strcmp(type, "CollapsibleProps") == 0 &&
                      (strcmp(field, "Tree") == 0 || strcmp(field, "Leaf") == 0 ||
@@ -2899,8 +2898,9 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 fprintf(stderr, "k2go: cannot write %s\n", path);
                 continue;
             }
-            k2go_set_module(m, guard);
+            type_scope = m;
             runtime_output = runtime_implementation;
+            k2go_set_module(m, guard);
             fprintf(f, "// Code generated by k2go from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);

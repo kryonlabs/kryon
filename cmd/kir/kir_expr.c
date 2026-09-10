@@ -87,6 +87,8 @@ record_initializer(ExprParser *p, size_t start, const char *type)
 {
     int first = -1;
     int last = -1;
+    int ordinal = 0;
+    const KirType *record = p->module ? KirFindType(p->module, type, NULL) : NULL;
     expect(p, "{");
     while(!p->failed && !is(p, "}") && p->token.kind != KIR_TOKEN_EOF) {
         size_t field_start = p->begin;
@@ -101,7 +103,30 @@ record_initializer(ExprParser *p, size_t start, const char *type)
             next(p);
             expect(p, "=");
         }
-        int value = expression(p, 1);
+        int value;
+        if(is(p, "{")) {
+            KirTypeField field;
+            size_t offset = 0;
+            int position = 0;
+            char field_type[KIR_NAME_MAX] = "";
+            while(record != NULL && KirTypeNextField(record, &offset, &field) == 1) {
+                if(named ? !strcmp(field.name, name) : position == ordinal) {
+                    kir_copy(field_type, sizeof(field_type), field.type);
+                    break;
+                }
+                position++;
+            }
+            if(++p->depth > 128) {
+                p->failed = 1;
+                p->depth--;
+                return -1;
+            }
+            value = record_initializer(p, p->begin, field_type);
+            p->depth--;
+        } else {
+            value = expression(p, 1);
+        }
+        ordinal++;
         if(value < 0) {
             p->failed = 1;
             break;

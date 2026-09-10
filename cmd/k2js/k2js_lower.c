@@ -982,7 +982,8 @@ emit_zero_value_nested(FILE *f, const KirModule *m, const char *type, int depth)
         return;
     }
     char literal[K2JS_TEXT_MAX];
-    const char *value = !strcmp(type, "string") ? "\"\"" :
+    const char *value = (!strcmp(type, "string") || !strcmp(type, "const char*") ||
+                         !strcmp(type, "char*")) ? "\"\"" :
                         !strcmp(KirScalarType(type), "bool") ? "false" : "0";
     if(KirScalarLiteral(type, value, KIR_JS, (KirSourceSpan){0}, literal, sizeof(literal)))
         fputs(literal, f);
@@ -1092,8 +1093,7 @@ emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
             if(KirFindType(m, type, NULL) != NULL) {
                 emit_indent(f, indent);
                 fprintf(f, "let %s = ", safe);
-                if(!KirEmitJsRecordValue(f, m, type, NULL))
-                    fputs("null", f);
+                emit_zero_value(f, m, type);
                 fputs(";\n", f);
                 return;
             }
@@ -1185,7 +1185,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             js_ident(parts[i], safe, sizeof(safe));
             fprintf(f, "  %s = ", safe);
             if(!KirEmitJsRecordValue(f, m, colon, safe))
-                fputs(safe, f);
+                fprintf(f, "kryon.copyValue(%s)", safe);
             fputs(";\n", f);
         }
     }

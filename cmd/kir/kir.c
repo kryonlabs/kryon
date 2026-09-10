@@ -1,4 +1,6 @@
 #include "kir.h"
+#include "kir_parse.h"
+#include "runtime_declarations.generated.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -148,6 +150,33 @@ KirResolveFunction(const KirModule *module, const char *name,
 }
 
 const KirType *
+KirFindRuntimeType(const char *name, const KirModule **owner)
+{
+    static KirProgram *programs[sizeof(runtime_sources) / sizeof(runtime_sources[0])];
+    if(owner != NULL)
+        *owner = NULL;
+    for(size_t source = 0; source < sizeof(programs) / sizeof(programs[0]); source++) {
+        if(programs[source] == NULL)
+            programs[source] = kir_parse_source(runtime_sources[source].path,
+                                                runtime_sources[source].source);
+        KirProgram *program = programs[source];
+        if(program == NULL)
+            continue;
+        for(int m = 0; m < program->module_count; m++) {
+            const KirModule *module = &program->modules[m];
+            for(int t = 0; t < module->type_count; t++) {
+                if(strcmp(module->types[t].name, name) == 0) {
+                    if(owner != NULL)
+                        *owner = module;
+                    return &module->types[t];
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
+const KirType *
 KirFindType(const KirModule *module, const char *name, const KirModule **owner)
 {
     const KirType *found = NULL;
@@ -178,6 +207,8 @@ KirFindType(const KirModule *module, const char *name, const KirModule **owner)
             scope = target;
         }
     }
+    if(found == NULL)
+        return KirFindRuntimeType(name, owner);
     if(owner)
         *owner = scope;
     return found;

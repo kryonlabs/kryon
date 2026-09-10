@@ -1828,10 +1828,28 @@ strip_block_comments(char *s, int *in_comment)
     *w = '\0';
 }
 
-KirProgram *
-kir_parse_file(const char *path, const char *root)
+/* File and embedded declarations share the complete frontend. */
+static char *
+read_source_line(char *line, size_t size, FILE *file, const char **source)
 {
-    FILE *in;
+    if(file != NULL)
+        return fgets(line, (int)size, file);
+    if(**source == '\0')
+        return NULL;
+    size_t length = 0;
+    while(length + 1 < size && **source != '\0') {
+        char next = *(*source)++;
+        line[length++] = next;
+        if(next == '\n')
+            break;
+    }
+    line[length] = '\0';
+    return line;
+}
+
+static KirProgram *
+parse_source(const char *path, const char *root, FILE *in, const char *source)
+{
     KirProgram *program;
     KirModule *module;
     KirFunction *fn = NULL;
@@ -1870,9 +1888,6 @@ kir_parse_file(const char *path, const char *root)
 
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
-    in = fopen(path, "rb");
-    if(in == NULL)
-        die("%s: open failed: %s", path, strerror(errno));
     snprintf(rel, sizeof(rel), "%s", relative_path(root, path));
     program = KirProgramNew();
     if(program == NULL)
@@ -1882,7 +1897,7 @@ kir_parse_file(const char *path, const char *root)
     if(module == NULL)
         die("out of memory");
 
-    while(have_look || onelineq_count > 0 || fgets(line, sizeof(line), in) != NULL) {
+    while(have_look || onelineq_count > 0 || read_source_line(line, sizeof(line), in, &source) != NULL) {
         char raw[K2KIR_LINE_MAX];
         char *t;
 
@@ -2086,7 +2101,7 @@ kir_parse_file(const char *path, const char *root)
                      * statement; the first non-continuation line is stashed
                      * for the next iteration (appending it blindly here is
                      * how block-closing '}'s used to get swallowed). */
-                    while(fgets(la, sizeof(la), in) != NULL) {
+                    while(read_source_line(la, sizeof(la), in, &source) != NULL) {
                         const char *lt;
                         int cont;
 
@@ -2789,7 +2804,8 @@ kir_parse_file(const char *path, const char *root)
             }
         }
     }
-    fclose(in);
+    if(in != NULL)
+        fclose(in);
     for(int mi = 0; mi < program->module_count; mi++)
         for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
             if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {
@@ -2799,4 +2815,19 @@ kir_parse_file(const char *path, const char *root)
             KirStructureFunction(&program->modules[mi].functions[fi], &program->modules[mi]);
         }
     return program;
+}
+
+KirProgram *
+kir_parse_file(const char *path, const char *root)
+{
+    FILE *in = fopen(path, "rb");
+    if(in == NULL)
+        die("%s: open failed: %s", path, strerror(errno));
+    return parse_source(path, root, in, NULL);
+}
+
+KirProgram *
+kir_parse_source(const char *path, const char *source)
+{
+    return parse_source(path, ".", NULL, source);
 }

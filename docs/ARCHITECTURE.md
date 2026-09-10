@@ -266,7 +266,12 @@ and uses this binding; C and Go no longer look up or mutate its stored tracks.
 `runtime/button_props.kry` now owns Button's public props fields. C and Go use
 generated declarations instead of separately maintained structs. Geometry,
 textures, and public style types still come from the host interface; the built-in
-compiler props registry and full widget body remain to be migrated.
+widget body remains to be migrated. The compiler embeds the declaration sources
+from `runtime/*_props.kry` and parses them with the same KIR frontend as application
+files. Button's Go field-order entry and type-name entry have been removed; native
+props lookup now reads that declaration. Explicit local or imported declarations
+take precedence. Other legacy host types still use the old registry until their
+contracts move into declaration sources.
 
 Runtime generation discovers `runtime/*.kry` as one checked module set. Adding
 a shared module does not require another per-widget C or Go generation rule.
