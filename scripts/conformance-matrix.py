@@ -312,17 +312,19 @@ GENERATED_C_COMPILE_GAPS = {
     "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
     "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
+    "tests/parity/buttons_layout.kry": "k2c lowers a locally declared #ui function used in property form as a host call; CancelAction(app) does not match its ActionProps signature.",
+    "tests/parity/composed.kry": "Generated-C glue references CreateAppHost/DestroyAppHost that this fixture's project C does not define.",
 }
 
 RAYLIB_C_RENDER_GAPS = {
-    "examples/01_file_dialog.kry": "Raylib generated-C capture is blank.",
-    "examples/02_buttons.kry": "Raylib generated-C capture is blank.",
-    "examples/04_modal.kry": "Raylib generated-C capture is blank.",
     "examples/09_geometry.kry": "Raylib generated-C capture is blank.",
+    "examples/10_menus.kry": "Raylib generated-C capture is blank.",
     "examples/11_basic_controls.kry": "Raylib generated-C capture is blank.",
+    "examples/12_collections.kry": "Raylib generated-C capture is blank.",
+    "examples/15_containers.kry": "Raylib generated-C capture is blank.",
     "examples/17_keyboard_platform.kry": "Raylib generated-C capture is blank.",
-    "tests/parity/fields.kry": "Raylib generated-C capture is blank.",
-    "tests/parity/focus.kry": "Raylib generated-C capture is blank.",
+    "examples/20_scroll.kry": "Raylib generated-C capture is blank.",
+    "tests/parity/drag_drop.kry": "Raylib generated-C capture is blank.",
 }
 
 LIBDRAW_C_RENDER_GAPS = {
@@ -335,16 +337,15 @@ LIBDRAW_C_RENDER_GAPS = {
 }
 
 WEB_CANVAS_C_RENDER_GAPS = {
-    "examples/01_file_dialog.kry": "Web Canvas generated-C capture is blank.",
-    "examples/02_buttons.kry": "Web Canvas generated-C capture is blank.",
     "examples/03_theme.kry": "Web Canvas generated-C capture traps in wasm.",
-    "examples/04_modal.kry": "Web Canvas generated-C capture is blank.",
     "examples/09_geometry.kry": "Web Canvas generated-C capture is blank.",
+    "examples/10_menus.kry": "Web Canvas generated-C capture is blank.",
     "examples/11_basic_controls.kry": "Web Canvas generated-C capture is blank.",
+    "examples/12_collections.kry": "Web Canvas generated-C capture is blank.",
+    "examples/15_containers.kry": "Web Canvas generated-C capture is blank.",
     "examples/17_keyboard_platform.kry": "Web Canvas generated-C capture is blank.",
-    "tests/parity/fields.kry": "Web Canvas generated-C capture is blank.",
-    "tests/parity/focus.kry": "Web Canvas generated-C capture is blank.",
-    "tests/parity/long_text.kry": "Web Canvas generated-C capture is blank.",
+    "examples/20_scroll.kry": "Web Canvas generated-C capture is blank.",
+    "tests/parity/drag_drop.kry": "Web Canvas generated-C capture is blank.",
 }
 
 LIBDRAW_C_VISUAL_GAPS = {
