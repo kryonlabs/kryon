@@ -278,7 +278,8 @@ Settings :: (viewport: Rectangle) #ui {
 ```
 
 Custom widgets can also use named blocks. Declare a `#ui`
-function with one record parameter, then supply its fields as block properties:
+function with a props record and optional typed slots, then supply its fields
+and slot values as block properties:
 
 ```kry
 CounterProps :: struct {
@@ -300,8 +301,8 @@ passed by value, and unknown, duplicate, or incorrectly typed properties are
 errors. Declarations can appear later in the file or in an explicitly imported
 module; imported declarations must be public and their props record must be
 directly visible without a conflicting local type. Custom blocks currently
-accept properties only: captured child blocks are not implemented. Their block
-names do not yet allocate persistent widget identity.
+accept prop fields and slot values; captured child blocks are not implemented.
+Their block names do not yet allocate persistent widget identity.
 Interactive compositions must therefore receive distinct stable control IDs
 from their caller; reusing a declaration does not automatically scope IDs in
 its body.
@@ -314,7 +315,13 @@ A matching `.kry` function can also supply the content: pass `DrawChild` as a sl
 argument, initialize `child: Content = DrawChild`, or assign it to an existing
 slot binding. Local, private, and imported functions keep their module state and
 runtime receiver. The parameter types and void return must match the slot exactly.
-Captured child blocks are not implemented yet.
+A block supplies a slot by its parameter name, for example `content = DrawChild`
+for `Card :: (props: CardProps, content: Content) #ui`. Every slot must be supplied.
+Slot names must differ from props fields and other slot names. Prop fields and
+slot values evaluate once in source order, including conditional slot selection;
+omitted props retain their zero values. This works for custom declarations named
+`Button` or `Text` as well as application-defined names. Captured child blocks
+are not implemented yet.
 
 A portable body can bind a typed retained record to an explicit integer key:
 

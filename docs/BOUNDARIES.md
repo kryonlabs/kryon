@@ -119,6 +119,12 @@ callback adapters, and closure construction are shared compiler work; backend
 resolvers supply symbol spelling and hidden state/host arguments. Captured `.kry`
 child blocks still need lifting into these slots to move widget composition out
 of the backends.
+Named widget blocks already bind props and named slot values in shared KIR.
+Required-slot validation, name conflicts, defaults, and source evaluation order
+are compiler responsibilities. Backends receive ordinary declarations,
+assignments, and a call; they do not maintain a second slot-argument mapping.
+Resolved function and lexical slot calls take precedence over built-in widget
+name classification.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

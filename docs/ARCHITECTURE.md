@@ -121,13 +121,16 @@ Ordinary function resolution is shared in KIR: local functions shadow imports,
 only public functions of explicitly imported modules are visible, and competing
 imports are diagnosed as ambiguous. C, C++, Go, and JavaScript lowering use the
 same resolved owner instead of searching a process-wide function-name table.
-Tests execute same-named providers in both input-file orders. Stateless custom
-blocks now resolve through that same lookup to `#ui` functions with one
-record parameter. KIR lowers their props to an ordinary typed record initializer
-and call before backend lowering. Blocks and record-valued calls share field
-validation, omitted-field defaults, and value-copy semantics; there is no
-separate per-field widget assignment path. A local holds the initialized props
-before the call so mixed host-control-flow bodies preserve evaluation order.
+Tests execute same-named providers in both input-file orders. Custom blocks
+resolve through that same lookup to `#ui` functions with a props record followed
+by optional typed slots. KIR zero-initializes the record, evaluates prop fields
+and slot values in their source order, then emits one ordinary typed call.
+Declared record fields supply property validation and nested-initializer types;
+slot parameters supply names and signatures. Every slot is required, and its
+name must not conflict with a props field or another slot. The same lowering
+handles blocks without slots, replacing the previous props-only constructor
+path. Ordinary calls that resolve to declarations or lexical slots also bypass
+the compiler's built-in widget statement classification.
 Leaf blocks with built-in names participate in that same lookup: an explicit
 local or imported `Button` or `Text` declaration owns its props type. Host
 props are a fallback only when no declaration resolves; an invalid declaration

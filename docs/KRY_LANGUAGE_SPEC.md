@@ -182,7 +182,12 @@ shadows a function with the same name. Each invocation evaluates the callable
 before its arguments, and record arguments are copied by value. Function values
 preserve their source module state and runtime receiver. Slots cannot be stored
 in records, module state, globals, or returned from functions; local bindings
-require an initializer. Captured child blocks are not implemented yet.
+require an initializer. A named widget block may initialize the first props
+record's fields and supply subsequent slot parameters by name. Every slot is
+required, names cannot collide with props fields or other slots, and values
+evaluate once in source order. Omitted props fields remain zero-initialized.
+Block calls and ordinary calls invoke the same declaration, including declared
+widgets that use built-in names. Captured child blocks are not implemented yet.
 
 Plain call statements are UI declarations when they call Kryon widget/runtime
 functions. Leaf property-block widgets lower to the existing `WidgetProps`

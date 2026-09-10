@@ -2,6 +2,7 @@
 """Execute typed child-content parameters through every generated backend."""
 
 import os
+from itertools import product
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,6 +28,7 @@ Placement :: struct {
 Empty :: () #slot
 state {
     total: i32 = 0
+    sequence: i32 = 0
 }
 Accumulate :: (placement: Placement, index: i32) {
     total += placement.x * index
@@ -40,6 +42,24 @@ Read :: () -> i32 {
 }
 Reset :: () {
     total = 0
+    sequence = 0
+}
+Next :: () -> i32 {
+    sequence += 1
+    return sequence
+}
+PanelProps :: struct {
+    first: i32
+    second: i32
+    placement: Placement
+}
+Panel :: (props: PanelProps, content: Content, finish: Empty) #ui {
+    content(props.placement, props.first)
+    content(props.placement, props.second)
+    finish()
+}
+Ignore :: (placement: Placement, index: i32) {
+    return
 }
 Render :: (content: Content, empty: Empty) #ui {
     placement: Placement = (Placement){.x = 7}
@@ -69,6 +89,35 @@ OwnContent :: () -> i32 {
     Forward(choose ? Accumulate : Child, Finish)
     return Read()
 }
+BlockContent :: () -> i32 {
+    Reset()
+    Panel example: {
+        first = Next()
+        content = Next() == 2 ? Accumulate : Ignore
+        second = Next()
+        placement = {7}
+        finish = Finish
+    }
+    return Read()
+}
+OrdinaryContent :: () -> i32 {
+    Reset()
+    props: PanelProps
+    props.first = Next()
+    content: Content = Next() == 2 ? Accumulate : Ignore
+    props.second = Next()
+    props.placement.x = 7
+    Panel(props, content, Finish)
+    return Read()
+}
+DefaultContent :: () -> i32 {
+    Reset()
+    Panel example: {
+        finish = Finish
+        content = Accumulate
+    }
+    return Read()
+}
 ImportedContent :: () -> i32 {
     Reset()
     choose: bool = false
@@ -90,7 +139,9 @@ with tempfile.TemporaryDirectory(prefix="kryon-widget-slots-") as directory:
         flags = ["--runtime", "./kryon-runtime.js"] if target == "js" else []
         command = [str(BUILD / "bin" / f"k2{target}"), "--no-main", *flags,
                    "--root", str(work), "-o", str(output)]
-        for sources in ((caller, provider), (provider, caller)):
+        for sources, widget in product(((caller, provider), (provider, caller)), ("Panel", "Button")):
+            provider.write_text(PROVIDER.replace("Panel ::", f"{widget} ::"))
+            caller.write_text(CALLER.replace("Panel example:", f"{widget} example:").replace("Panel(props", f"{widget}(props"))
             run(*command, "--strict", *map(str, sources))
             if target in ("c", "cpp"):
                 (output / "ui_inspect.h").write_text("")
@@ -108,7 +159,8 @@ int main(void) {{
     Content content = {{&sum, child}};
     Empty end = {{&sum, empty}};
     caller_Forward(content, end);
-    return sum != 49 || caller_OwnContent() != 49 || caller_ImportedContent() != 49;
+    return sum != 49 || caller_OwnContent() != 49 || caller_ImportedContent() != 49 ||
+        caller_BlockContent() != 29 || caller_OrdinaryContent() != 29 || caller_DefaultContent() != 1;
 }}
 ''')
                 compiler = os.environ.get("CC", "cc") if target == "c" else os.environ.get("CXX", "c++")
@@ -126,6 +178,9 @@ func TestSlots(t *testing.T) {
         placement.X = 100
     }, func() { sum++ })
     if sum != 49 { t.Fatalf("slot result = %d", sum) }
+    if Caller_BlockContent() != 29 || Caller_OrdinaryContent() != 29 || Caller_DefaultContent() != 1 {
+        t.Fatal("block slots must preserve source evaluation order and omitted props")
+    }
     if Slots_LocalContent(&SlotsState{Total: 100}) != 122 {
         t.Fatal("slot must retain the supplied module state")
     }
@@ -141,10 +196,12 @@ func TestSlots(t *testing.T) {
                     shutil.copyfile(runtime_file, output / runtime_file.name)
                 (output / "package.json").write_text('{"type":"module"}\n')
                 driver = output / "test.mjs"
-                driver.write_text('''import { Caller_Forward, Caller_OwnContent, Caller_ImportedContent } from "./caller.js";
+                driver.write_text('''import { Caller_Forward, Caller_OwnContent, Caller_ImportedContent, Caller_BlockContent, Caller_OrdinaryContent, Caller_DefaultContent } from "./caller.js";
 import { Slots_LocalContent } from "./slots.js";
 if (Slots_LocalContent(null, {total: 100}) !== 122)
     throw new Error("slot must retain the supplied module state");
+if (Caller_BlockContent(null) !== 29 || Caller_OrdinaryContent(null) !== 29 || Caller_DefaultContent(null) !== 1)
+    throw new Error("block slots must preserve source evaluation order and omitted props");
 let sum = 0;
 Caller_Forward(null, undefined, undefined, (placement, index) => {
     sum += placement.x * index;
@@ -156,6 +213,8 @@ if (Caller_OwnContent(null) !== 49 || Caller_ImportedContent(null) !== 49)
 ''')
                 run("node", str(driver))
 
+        provider.write_text(PROVIDER)
+        caller.write_text(CALLER)
         invalid = {
             "argument type": (PROVIDER.replace("content(placement, 1)", "content(placement, true)"), "argument type mismatch"),
             "argument count": (PROVIDER.replace("content(placement, 1)", "content(placement)"), "argument count mismatch"),
@@ -184,6 +243,24 @@ if (Caller_OwnContent(null) !== 49 || Caller_ImportedContent(null) !== 49)
                                     text=True, capture_output=True)
             if result.returncode == 0 or "argument type mismatch" not in result.stderr:
                 raise AssertionError(f"{target}: ordinary slot contract: {result.stderr}")
+        caller.write_text(CALLER)
+        invalid_blocks = {
+            "missing": (PROVIDER, CALLER.replace("        finish = Finish\n", ""), "missing required widget slot"),
+            "duplicate": (PROVIDER, CALLER.replace("        finish = Finish", "        finish = Finish\n        finish = Finish"), "duplicate widget property or slot"),
+            "unknown": (PROVIDER, CALLER.replace("        first = Next()", "        missing = Next()"), "unknown widget property or slot"),
+            "slot type": (PROVIDER, CALLER.replace("        finish = Finish", "        finish = Accumulate"), "function does not match slot signature"),
+            "parameter type": (PROVIDER.replace("finish: Empty) #ui", "finish: i32) #ui"), CALLER, "widget parameters after props must be typed slots"),
+            "name conflict": (PROVIDER.replace("    second: i32", "    content: i32\n    second: i32"), CALLER, "widget slot name conflicts"),
+        }
+        for name, (source, consumer, diagnostic) in invalid_blocks.items():
+            provider.write_text(source)
+            caller.write_text(consumer)
+            for strict in ([], ["--strict"]):
+                result = subprocess.run([*command, *strict, str(caller), str(provider)],
+                                        text=True, capture_output=True)
+                if result.returncode == 0 or diagnostic not in result.stderr:
+                    raise AssertionError(f"{target}: block {name}: {result.stderr}")
+        provider.write_text(PROVIDER)
         caller.write_text(CALLER)
         invalid_values = {
             "return": (PROVIDER.replace("Accumulate :: (placement: Placement, index: i32)",
@@ -215,8 +292,8 @@ SetValue :: (value: i32) #extern
 Record :: (value: i32) {
     SetValue(value)
 }
-Invoke :: (content: Content) {
-    content(17)
+Invoke :: (Button: Content) {
+    Button(17)
 }
 Run :: () {
     Invoke(Record)

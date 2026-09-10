@@ -315,9 +315,9 @@ if (actual !== 17) throw new Error(`block and function invocations disagree: ${a
         provider.write_text(PROVIDER)
         invalid = {
             "unknown": (CALLER.replace("Card first:", "Missing first:"), "unknown widget declaration"),
-            "field": (CALLER.replace("value = 3", "missing = 3"), "unknown initializer field"),
+            "field": (CALLER.replace("value = 3", "missing = 3"), "unknown widget property or slot"),
             "type": (CALLER.replace("value = 3", "value = true"), "type mismatch"),
-            "duplicate": (CALLER.replace("value = 3", "value = 3\n        value = 4"), "duplicate initializer field"),
+            "duplicate": (CALLER.replace("value = 3", "value = 3\n        value = 4"), "duplicate widget property or slot"),
             "not_ui": (CALLER.replace("Card first:", "Read first:"), "requires a #ui declaration"),
             "children": (CALLER.replace("value = 3", "value = 3\n        Read()"), "do not yet accept child content"),
             "call_type": (CALLER.replace("Card(props)", "Card(3)"), "argument type mismatch"),
@@ -334,9 +334,9 @@ if (actual !== 17) throw new Error(`block and function invocations disagree: ${a
             declaration = returning_provider.replace("Card ::", widget + " ::")
             source = CALLER.replace("Card ", widget + " ").replace("Card(", widget + "(")
             for invalid_source, invalid_declaration, diagnostic in (
-                (source.replace("value = 3", "missing = 3"), declaration, "unknown initializer field"),
+                (source.replace("value = 3", "missing = 3"), declaration, "unknown widget property or slot"),
                 (source.replace("value = 3", "value = true"), declaration, "type mismatch"),
-                (source.replace("value = 3", "value = 3\n        value = 4"), declaration, "duplicate initializer field"),
+                (source.replace("value = 3", "value = 3\n        value = 4"), declaration, "duplicate widget property or slot"),
                 (source, declaration.replace(" #ui", ""), "requires a #ui declaration"),
             ):
                 caller.write_text(invalid_source)

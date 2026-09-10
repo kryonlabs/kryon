@@ -5,6 +5,7 @@
 
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 
 typedef struct Binding {
@@ -533,24 +534,182 @@ check_type_declarations(const KirModule *module)
 }
 
 static int
+widget_statement(KirFunction *body, KirStmtKind kind, KirSourceSpan span,
+                  const char *format, ...)
+{
+    char text[KIR_TEXT_MAX];
+    va_list arguments;
+    va_start(arguments, format);
+    int length = vsnprintf(text, sizeof(text), format, arguments);
+    va_end(arguments);
+    if(length < 0 || (size_t)length >= sizeof(text))
+        return 0;
+    KirStmt *statement = KirFunctionAddStmt(body, kind, text, "", span);
+    if(statement == NULL)
+        return 0;
+    statement->declared_widget = 1;
+    return 1;
+}
+
+/* A block initializes props and callable arguments in source order, then calls
+ * the same declaration as ordinary function syntax. Captured child bodies can
+ * later enter this path as slot values without another backend widget path. */
+static int
+lower_widget_block(Checker *c, int index, const KirModule *owner,
+                      const KirType *props, const char *temporary,
+                      char parameters[][KIR_TEXT_MAX], int parameter_count)
+{
+    const KirStmt *source = &c->fn->stmts[index];
+    KirSourceSpan span = source->span;
+    KirFunction lowered = {0};
+    char fields[64][KIR_TEXT_MAX];
+    char slot_names[64][KIR_NAME_MAX] = {{0}};
+    const char *slot_types[64] = {0};
+    int supplied[64] = {0};
+    const char *diagnostic = "widget properties exceed the lowering size limit";
+    int field_count = *kir_skip_ws(source->args) ?
+        kir_split_top(source->args, fields[0], 64, sizeof(fields[0])) : 0;
+    if(field_count == 64)
+        goto failed;
+    for(int parameter = 1; parameter < parameter_count; parameter++) {
+        char *colon = strchr(parameters[parameter], ':');
+        diagnostic = "widget parameters after props must be typed slots";
+        if(colon == NULL)
+            goto failed;
+        *colon++ = '\0';
+        kir_trim_in_place(parameters[parameter]);
+        kir_trim_in_place(colon);
+        const KirType *slot = KirFindType(owner, colon, NULL);
+        if(slot == NULL || !slot->is_slot)
+            goto failed;
+        diagnostic = "widget slot type is shadowed or not directly imported";
+        if(KirFindType(c->module, colon, NULL) != slot)
+            goto failed;
+        slot_types[parameter] = colon;
+        int length = snprintf(slot_names[parameter], sizeof(slot_names[parameter]),
+                              "%s_slot_%d", temporary, parameter);
+        diagnostic = "widget slot binding exceeds the lowering size limit";
+        if(length < 0 || (size_t)length >= sizeof(slot_names[parameter]))
+            goto failed;
+        diagnostic = "widget slot name conflicts with a props field or another slot";
+        size_t offset = 0;
+        KirTypeField field;
+        while(KirTypeNextField(props, &offset, &field) == 1)
+            if(!strcmp(field.name, parameters[parameter]))
+                goto failed;
+        for(int previous = 1; previous < parameter; previous++)
+            if(!strcmp(parameters[previous], parameters[parameter]))
+                goto failed;
+    }
+    diagnostic = "widget properties exceed the lowering size limit";
+    if(!widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s", temporary, props->name))
+        goto failed;
+    for(int property = 0; property < field_count; property++) {
+        char *field = fields[property];
+        if(!*field)
+            continue;
+        char *equals = strchr(field, '=');
+        diagnostic = "invalid widget property";
+        if(field[0] != '.' || equals == NULL)
+            goto failed;
+        *equals++ = '\0';
+        kir_trim_in_place(field);
+        const char *name = field + 1;
+        for(int previous = 0; previous < property; previous++) {
+            diagnostic = "duplicate widget property or slot";
+            if(!strcmp(fields[previous], field))
+                goto failed;
+        }
+        int parameter = 1;
+        while(parameter < parameter_count && strcmp(parameters[parameter], name))
+            parameter++;
+        diagnostic = "widget properties exceed the lowering size limit";
+        if(parameter < parameter_count) {
+            supplied[parameter] = 1;
+            if(!widget_statement(&lowered, KIR_STMT_DECL, span, "%s: %s = %s",
+                                 slot_names[parameter], slot_types[parameter], equals))
+                goto failed;
+        } else {
+            char prefix[KIR_NAME_MAX + 3] = "";
+            size_t offset = 0;
+            KirTypeField field_type;
+            int found = 0;
+            while(KirTypeNextField(props, &offset, &field_type) == 1) {
+                if(!strcmp(field_type.name, name)) {
+                    found = 1;
+                    if(*kir_skip_ws(equals) == '{')
+                        snprintf(prefix, sizeof(prefix), "(%s)", field_type.type);
+                    break;
+                }
+            }
+            diagnostic = "unknown widget property or slot";
+            if(!found)
+                goto failed;
+            diagnostic = "widget properties exceed the lowering size limit";
+            if(!widget_statement(&lowered, KIR_STMT_ASSIGN, span, "%s.%s = %s%s",
+                                 temporary, name, prefix, kir_skip_ws(equals)))
+                goto failed;
+        }
+    }
+    char arguments[KIR_TEXT_MAX];
+    size_t length = (size_t)snprintf(arguments, sizeof(arguments), "%s", temporary);
+    for(int parameter = 1; parameter < parameter_count; parameter++) {
+        diagnostic = "missing required widget slot";
+        if(!supplied[parameter])
+            goto failed;
+        int added = snprintf(arguments + length, sizeof(arguments) - length, ", %s", slot_names[parameter]);
+        diagnostic = "widget arguments exceed the lowering size limit";
+        if(added < 0 || (size_t)added >= sizeof(arguments) - length)
+            goto failed;
+        length += (size_t)added;
+    }
+    if(!widget_statement(&lowered, KIR_STMT_EXPR, span, "%s(%s)", source->widget, arguments))
+        goto failed;
+    int replacement_count = lowered.stmt_count;
+    int total = c->fn->stmt_count - 1 + replacement_count;
+    KirStmt *statements = realloc(c->fn->stmts, (size_t)total * sizeof(*statements));
+    if(statements == NULL)
+        goto failed;
+    memmove(&statements[index + replacement_count], &statements[index + 1],
+            (size_t)(c->fn->stmt_count - index - 1) * sizeof(*statements));
+    memcpy(&statements[index], lowered.stmts, (size_t)replacement_count * sizeof(*statements));
+    c->fn->stmts = statements;
+    c->fn->stmt_count = c->fn->stmt_cap = total;
+    free(lowered.stmts);
+    return replacement_count;
+failed:
+    fprintf(stderr, "%s:%d: %s: %s\n", span.path, span.line, diagnostic, source->widget);
+    free(lowered.stmts);
+    c->failed = 1;
+    return -1;
+}
+
+static int
 resolve_widget_blocks(Checker *c)
 {
     int changed = 0;
     for(int i = 0; i < c->fn->stmt_count; i++) {
         KirStmt *statement = &c->fn->stmts[i];
-        if(!statement->declared_widget || statement->kind != KIR_STMT_WIDGET)
+        if(statement->kind != KIR_STMT_WIDGET)
             continue;
         const KirModule *owner = NULL;
         const KirFunction *declaration = NULL;
         int resolved = KirResolveFunction(c->module, statement->widget, &owner, &declaration);
+        if(!statement->declared_widget) {
+            if(resolved == 1) {
+                statement->kind = KIR_STMT_EXPR;
+                changed = 1;
+            }
+            continue;
+        }
         if(resolved == 0 && statement->widget_fallback) {
             statement->declared_widget = 0;
             statement->widget_fallback = 0;
             continue;
         }
-        char parameters[2][KIR_TEXT_MAX];
-        int count = declaration ? kir_split_top(declaration->args, parameters[0], 2, sizeof(parameters[0])) : 0;
-        char *type = count == 1 ? strchr(parameters[0], ':') : NULL;
+        char parameters[64][KIR_TEXT_MAX];
+        int count = declaration ? kir_split_top(declaration->args, parameters[0], 64, sizeof(parameters[0])) : 0;
+        char *type = count > 0 ? strchr(parameters[0], ':') : NULL;
         if(type != NULL) {
             type++;
             kir_trim_in_place(type);
@@ -563,7 +722,7 @@ resolve_widget_blocks(Checker *c)
             diagnostic = "unknown widget declaration";
         else if(!declaration->is_ui || declaration->is_extern)
             diagnostic = "widget block requires a #ui declaration";
-        else if(count != 1 || props == NULL || props->is_enum || props->is_slot)
+        else if(count < 1 || count == 64 || props == NULL || props->is_enum || props->is_slot)
             diagnostic = "widget declaration requires one typed record parameter";
         if(diagnostic != NULL) {
             fprintf(stderr, "%s:%d:%d: %s: %s\n", statement->span.path,
@@ -604,41 +763,10 @@ resolve_widget_blocks(Checker *c)
                              strstr(c->fn->stmts[s].args, temporary) != NULL;
             }
         } while(collision);
-        char initializer[KIR_TEXT_MAX];
-        int length = snprintf(initializer, sizeof(initializer), "%s: %s = (%s){%s}",
-                              temporary, type, type, statement->args);
-        if(length < 0 || (size_t)length >= sizeof(initializer)) {
-            fprintf(stderr, "%s:%d: widget property exceeds output limit\n",
-                    statement->span.path, statement->span.line);
-            c->failed = 1;
+        int added = lower_widget_block(c, i, owner, props, temporary, parameters, count);
+        if(added < 0)
             return 0;
-        }
-        /* Props use the ordinary record constructor and its field validation.
-         * Evaluate it before the call, including in mixed host-control-flow
-         * bodies whose backend still requires a named argument value. */
-        KirSourceSpan span = statement->span;
-        KirStmt *statements = realloc(c->fn->stmts,
-            (size_t)(c->fn->stmt_count + 1) * sizeof(*statements));
-        if(statements == NULL) {
-            c->failed = 1;
-            return 0;
-        }
-        c->fn->stmts = statements;
-        memmove(&statements[i + 1], &statements[i],
-                (size_t)(c->fn->stmt_count - i) * sizeof(*statements));
-        c->fn->stmt_count++;
-        c->fn->stmt_cap = c->fn->stmt_count;
-        memset(&statements[i], 0, sizeof(*statements));
-        statements[i].span = span;
-        statements[i].declared_widget = 1;
-        statements[i].kind = KIR_STMT_DECL;
-        kir_copy(statements[i].text, sizeof(statements[i].text), initializer);
-        statement = &statements[++i];
-        /* A block is a statement invocation: it may discard a widget's action
-         * result, just like an ordinary call used as a statement. */
-        statement->kind = KIR_STMT_EXPR;
-        snprintf(statement->text, sizeof(statement->text), "%s(%s)", statement->widget, temporary);
-        kir_copy(statement->args, sizeof(statement->args), temporary);
+        i += added - 1;
         changed = 1;
     }
     if(changed)
@@ -747,6 +875,9 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                    c.fn->exprs[st->lhs_root].kind == KIR_EXPR_IDENT)
                     contextual_slot(&c, st->expr_root, lookup(&c, c.fn->exprs[st->lhs_root].name));
                 type = expression_type(&c, st->expr_root);
+                if(st->kind == KIR_STMT_WIDGET && st->expr_root >= 0 &&
+                   *c.fn->exprs[st->expr_root].slot_type)
+                    st->kind = KIR_STMT_EXPR;
                 if(st->kind == KIR_STMT_DECL) {
                     if(st->is_instance) {
                         const KirType *record = KirFindType(c.module, st->type, NULL);
