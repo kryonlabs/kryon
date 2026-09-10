@@ -4606,21 +4606,13 @@ DrawUITextPopover(TextPopoverProps popover)
     field.commit_pressed = &commit_pressed;
     RenderTextField(field);
 
-    if(DrawUIPaddedIconBtn((int)close_bounds.x, (int)close_bounds.y,
-                           Scale(14), Scale(4), g_ui_x_icon, NULL))
+    if(Button((ButtonProps){
+        .bounds = close_bounds, .icon = g_ui_x_icon,
+        .icon_type = UI_ICON_TYPE_X, .icon_only = true,
+        .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+        .style = {.normal = {.fields = StyleIconSize, .icon_size = 14}}
+    }))
         result = 1;
-    if(g_ui_x_icon.id == 0) {
-        int hover = 0;
-        if(UIHandleClick(close_bounds, 0, &hover))
-            result = 1;
-        DrawUIText("x",
-                   (int)(close_bounds.x + (close_bounds.width -
-                                           (float)TextWidth("x", small_font)) *
-                                      0.5f),
-                   TextBaselineY("x", (int)close_bounds.y,
-                                 (int)close_bounds.height, small_font),
-                   small_font, hover ? c_link : c_text);
-    }
 
     if(result == 0 && commit_pressed)
         result = 2;

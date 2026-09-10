@@ -316,7 +316,6 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
-        int remove_hover = 0;
         DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
         if(draw_dropdown(modal.id + i, frame.content_x,
                           y + Scale(22),
@@ -327,10 +326,13 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
             modal.routes[i] = modal.options[selected[i]].route;
             result.changed = 1;
         }
-        if(DrawUIPaddedIconBtn(frame.content_x + frame.content_w - remove_w,
-                                  y + Scale(22), Scale(20),
-                                  Scale(8), modal.close_icon,
-                                  &remove_hover)) {
+        if(Button((ButtonProps){
+            .bounds = {frame.content_x + frame.content_w - remove_w,
+                       y + Scale(22), remove_w, remove_w},
+            .icon = modal.close_icon, .icon_only = true,
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+            .style = {.normal = {.fields = StyleIconSize, .icon_size = 20}}
+        })) {
             for(j = i; j < route_count - 1; j++)
                 modal.routes[j] = modal.routes[j + 1];
             route_count--;

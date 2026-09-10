@@ -101,13 +101,17 @@ DrawUITopNav(TopNavProps nav)
         int ax = x + w - pad - action_total -
                  i * (action_total + action_gap);
         int ay = y + (h - action_total) / 2;
-        int hover = 0;
 
         if(ay < y)
             ay = y;
         if(!nav.disabled && !action->disabled &&
-           DrawUIPaddedIconBtn(ax, ay, action_icon, action_pad,
-                                 action->icon, &hover))
+           Button((ButtonProps){
+               .bounds = {ax, ay, action_total, action_total},
+               .icon = action->icon, .icon_only = true,
+               .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+               .style = {.normal = {.fields = StyleIconSize,
+                   .icon_size = (float)action_icon * 1000.0f / Scale(1000)}}
+           }))
             result.clicked_action = i;
     }
 

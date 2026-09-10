@@ -361,10 +361,6 @@ int ButtonNode(ButtonSpec button);
 int IconButton(IconButtonProps button);
 int Href(HrefProps link);
 int TextField(TextFieldProps field);
-int IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
-                  int *hover);
-int PaddedIconBtn(int id, int x, int y, int size, int padding,
-                        Texture2D icon, int *hover);
 int InfoButton(int id, int center_x, int center_y, int diameter);
 void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                     const char *url);

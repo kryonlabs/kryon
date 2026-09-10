@@ -2019,7 +2019,6 @@ include/ui_tree.h function GuideOverlay
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Href
 include/ui_tree.h function Icon
-include/ui_tree.h function IconBtn
 include/ui_tree.h function IconButton
 include/ui_tree.h function IconLink
 include/ui_tree.h function IconSliderPopup
@@ -2064,7 +2063,6 @@ include/ui_tree.h function NodeTopNav
 include/ui_tree.h function Notebook
 include/ui_tree.h function OverlayButton
 include/ui_tree.h function Overlays
-include/ui_tree.h function PaddedIconBtn
 include/ui_tree.h function PaneDropPreview
 include/ui_tree.h function PaneTabs
 include/ui_tree.h function PanedView

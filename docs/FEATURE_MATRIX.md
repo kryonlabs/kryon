@@ -111,7 +111,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` | ✅ node |
 | Selectable / CheckboxFlags | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
-| IconButton / PaddedIconBtn | ✅ | ✅ | ✅ | ◐ `IconButton` only | ◐ `IconButton` only | ✗ |
+| IconButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | InfoButton | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Href (TextLink / TextLinkOpenURL) | ✅ | ✅ | ✅ | ✅ | ✅ `Href` | ✗ |
 | IconLink | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |

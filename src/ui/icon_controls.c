@@ -3,7 +3,6 @@
 int
 DrawUIIconSliderPopup(IconSliderPopupProps popup)
 {
-    int hover = 0;
     int popup_w;
     int popup_h;
     int popup_x;
@@ -17,8 +16,14 @@ DrawUIIconSliderPopup(IconSliderPopupProps popup)
         return 0;
 
     was_open = *popup.open;
-    icon_clicked = DrawUIPaddedIconBtn(popup.x, popup.y, popup.icon_size,
-                                       popup.icon_padding, popup.icon, &hover);
+    button_w = popup.icon_size + popup.icon_padding * 2;
+    icon_clicked = Button((ButtonProps){
+        .bounds = {popup.x, popup.y, button_w, button_w},
+        .icon = popup.icon, .icon_only = true,
+        .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+        .style = {.normal = {.fields = StyleIconSize,
+            .icon_size = (float)popup.icon_size * 1000.0f / Scale(1000)}}
+    });
     if(icon_clicked) {
         *popup.open = !was_open;
         if(was_open)
@@ -110,13 +115,17 @@ DrawUIBottomIconRow(BottomIconRowProps row)
     result.button_width = button_w;
 
     for(int i = 0; i < count; i++) {
-        int hover = 0;
         int x = start_x + i * (button_w + gap);
 
         if(row.items[i].disabled)
             continue;
-        if(DrawUIPaddedIconBtn(x, result.y, icon_size, icon_padding,
-                                   row.items[i].icon, &hover))
+        if(Button((ButtonProps){
+            .bounds = {x, result.y, button_w, button_w},
+            .icon = row.items[i].icon, .icon_only = true,
+            .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+            .style = {.normal = {.fields = StyleIconSize,
+                .icon_size = (float)icon_size * 1000.0f / Scale(1000)}}
+        }))
             result.clicked_index = i;
     }
 

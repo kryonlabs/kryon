@@ -194,9 +194,6 @@ void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
                                     int composition_end);
 int DrawUIReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
-int DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon,
-                        int *hover);
 int DrawUIInfoButton(int center_x, int center_y, int diameter);
 int RenderTextButton(int x, int y, const char *label, int *hover);
 void DrawUIIconLink(int x, int y, int icon_size, Texture2D icon,

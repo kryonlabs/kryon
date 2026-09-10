@@ -37,15 +37,18 @@ DrawUIToolbar(ToolbarProps toolbar)
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {
         for(int i = toolbar.action_count - 1; i >= 0; i--) {
-            int hover = 0;
             int action_x;
 
             controls_x -= action_w;
             action_x = controls_x;
             if(!toolbar.actions[i].disabled &&
-               DrawUIPaddedIconBtn(action_x, action_y, action_icon_size,
-                                       action_icon_padding,
-                                       toolbar.actions[i].icon, &hover))
+               Button((ButtonProps){
+                   .bounds = {action_x, action_y, action_w, action_w},
+                   .icon = toolbar.actions[i].icon, .icon_only = true,
+                   .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                   .style = {.normal = {.fields = StyleIconSize,
+                       .icon_size = (float)action_icon_size * 1000.0f / Scale(1000)}}
+               }))
                 result.clicked_action = i;
             controls_x -= action_gap;
         }
@@ -93,7 +96,6 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
     int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : Scale(20);
     int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : Scale(8);
     int leading_w = header.leading_width;
-    int hover = 0;
 
     memset(&result, 0, sizeof(result));
     if(leading_w <= 0 && header.leading_icon.id != 0)
@@ -115,10 +117,14 @@ DrawUIToolbarHeader(ToolbarHeaderProps header)
         DrawLine(0, height - 1, ui_view_width, height - 1,
                  DarkenUIColor(c_bg, 42));
         if(header.leading_icon.id != 0) {
-            result.leading_clicked = DrawUIPaddedIconBtn(Scale(12), Scale(12),
-                                                             icon_size, icon_padding,
-                                                             header.leading_icon,
-                                                             &hover);
+            result.leading_clicked = Button((ButtonProps){
+                .bounds = {Scale(12), Scale(12), icon_size + icon_padding * 2,
+                           icon_size + icon_padding * 2},
+                .icon = header.leading_icon, .icon_only = true,
+                .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                .style = {.normal = {.fields = StyleIconSize,
+                    .icon_size = (float)icon_size * 1000.0f / Scale(1000)}}
+            });
         }
         toolbar.x = leading_w;
         toolbar.y = 0;

@@ -2673,37 +2673,6 @@ TextField(TextFieldProps field)
 }
 
 int
-IconBtn(int id, int x, int y, UIIconSize size, Texture2D icon,
-              int *hover)
-{
-    int s = GetUIIconButtonSize(size);
-    NodeId node;
-    int clicked;
-
-    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE, (Rectangle){x, y, s, s},
-                       hover);
-    clicked = DrawUIIconBtn(x, y, size, icon, hover);
-    ui_tree_mark_painted_immediate(node);
-    return clicked;
-}
-
-int
-PaddedIconBtn(int id, int x, int y, int size, int padding,
-                    Texture2D icon, int *hover)
-{
-    NodeId node;
-    int clicked;
-
-    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                       (Rectangle){x, y, size + padding * 2,
-                                   size + padding * 2},
-                       hover);
-    clicked = DrawUIPaddedIconBtn(x, y, size, padding, icon, hover);
-    ui_tree_mark_painted_immediate(node);
-    return clicked;
-}
-
-int
 InfoButton(int id, int center_x, int center_y, int diameter)
 {
     NodeId node;

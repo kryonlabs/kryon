@@ -344,56 +344,6 @@ DrawUIIconButton(IconButtonProps button)
 }
 
 int
-DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
-{
-    int btn_size = GetUIIconButtonSize(size);
-    int padding = GetUIIconButtonPadding(size);
-    int w = btn_size + padding * 2;
-    int h = btn_size + padding * 2;
-    Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
-    Vector2 mouse_world = ui_mouse_world();
-    int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
-                  !UIInputCapturesClick(mouse_world) &&
-                  UIHoverEffectsEnabled();
-    IconButtonProps props;
-
-    if(hover != NULL)
-        *hover = hovered;
-    memset(&props, 0, sizeof(props));
-    props.bounds = bounds;
-    props.icon = icon;
-    props.icon_size = btn_size;
-    props.icon_padding = padding;
-    props.background = c_button;
-    props.hover_background = c_button_hover;
-    return DrawUIIconButton(props);
-}
-
-int
-DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *hover)
-{
-    Vector2 mouse_world = ui_mouse_world();
-    int w = size + padding * 2;
-    int h = size + padding * 2;
-    Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
-    int hovered = CheckCollisionPointRec(mouse_world, bounds) &&
-                  !UIInputCapturesClick(mouse_world) &&
-                  UIHoverEffectsEnabled();
-    IconButtonProps props;
-
-    if(hover != NULL)
-        *hover = hovered;
-    memset(&props, 0, sizeof(props));
-    props.bounds = bounds;
-    props.icon = icon;
-    props.icon_size = size;
-    props.icon_padding = padding;
-    props.background = c_button;
-    props.hover_background = c_button_hover;
-    return DrawUIIconButton(props);
-}
-
-int
 RenderTextButton(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();

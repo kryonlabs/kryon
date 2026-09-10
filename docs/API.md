@@ -2251,8 +2251,6 @@ rasterization stats under the same switch.
 ```c
 int GetUIIconButtonSize(UIIconSize size);
 int GetUIIconButtonPadding(UIIconSize size);
-int UIIconBtnNode(int id, int x, int y, UIIconSize size, Texture2D icon, int *hover);
-int UIPaddedIconBtnNode(int id, int x, int y, int size, int padding, Texture2D icon, int *hover);
 ```
 
 ### Styled Surfaces
