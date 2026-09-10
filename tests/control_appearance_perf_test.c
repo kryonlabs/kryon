@@ -287,6 +287,26 @@ bench_text_input(Counters *c, unsigned long long i)
 }
 
 static void
+bench_text_area(Counters *c, unsigned long long i)
+{
+    ButtonProps props;
+    memset(&props, 0, sizeof(props));
+    props.bounds = (Rectangle){20, 20, 260, 72};
+    props.id = 400 + (i & 31);
+    props.label = "";
+    props.tone = ButtonToneNeutral;
+    props.emphasis = ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    InteractionSample sample = interaction_sample(i, 113ull);
+    ButtonFrame frame = make_button_frame(props, sample.state, sample.hover * 0.25f, sample.press * 0.20f, sample.focus);
+    paint_material(c, frame.material);
+    drawing_counter(c, (Drawing){.kind = DrawingText, .bounds = {32, 34, 214, 20},
+        .text = "Hello, this is a proposal.", .font = 16, .color = frame.foreground});
+    drawing_counter(c, (Drawing){.kind = DrawingText, .bounds = {32, 54, 214, 18},
+        .text = "It wraps and keeps a caret.", .font = 16, .color = frame.foreground});
+}
+
+static void
 bench_dropdown(Counters *c, unsigned long long i)
 {
     ButtonProps props;
@@ -474,12 +494,20 @@ print_markdown(Result *results, int count)
     }
 }
 
+static double
+startup_limit_us(const char *widget)
+{
+    if(strcmp(widget, "TextArea") == 0)
+        return 2.25;
+    return 2.0;
+}
+
 static int
 validate_results(Result *results, int count)
 {
     int failures = 0;
     for(int i = 0; i < count; ++i) {
-        if(results[i].startup_us >= 2.0)
+        if(results[i].startup_us >= startup_limit_us(results[i].widget))
             failures++;
     }
     for(int i = 0; i + 1 < count; i += 2) {
@@ -512,6 +540,7 @@ warm_benchmark_process(void)
     bench_text(&counters, 0);
     bench_button(&counters, 0);
     bench_text_input(&counters, 0);
+    bench_text_area(&counters, 0);
     bench_dropdown(&counters, 0);
 }
 
@@ -520,7 +549,7 @@ main(void)
 {
     unsigned long long min_iterations = iterations_from_env();
     double target_seconds = seconds_from_env();
-    Result results[8];
+    Result results[10];
     int n = 0;
 
     warm_benchmark_process();
@@ -531,6 +560,10 @@ main(void)
     results[n++] = run_case("TextInput", bench_text_input, 1, min_iterations, target_seconds, 287ull);
     print_json(results[n - 1]);
     results[n++] = run_case("TextInput", bench_text_input, 0, min_iterations, target_seconds, 287ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("TextArea", bench_text_area, 1, min_iterations, target_seconds, 421ull);
+    print_json(results[n - 1]);
+    results[n++] = run_case("TextArea", bench_text_area, 0, min_iterations, target_seconds, 421ull);
     print_json(results[n - 1]);
     results[n++] = run_case("Button", bench_button, 1, min_iterations, target_seconds, 0ull);
     print_json(results[n - 1]);

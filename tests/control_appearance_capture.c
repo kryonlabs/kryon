@@ -11,6 +11,10 @@ render_column(int x, int fancy)
     static char field_text[] = "freelancermap.de";
     static int cursor = 15;
     static int selected = 1;
+    static char area_text[] = "Hello, this is a proposal.\nIt wraps across multiple lines\nand keeps a normal caret.";
+    static int area_cursor = 81;
+    static int area_focus = 1;
+    static int area_scroll = 0;
     static const char *items[] = {"Morning", "Inner Breeze", "Focus"};
     const char *title = fancy ? "Glow / fancy" : "Simple / no glow";
     const char *subtitle = fancy ? "glass, lightfield, blur layers" : "flat material, no glow layers";
@@ -34,15 +38,23 @@ render_column(int x, int fancy)
     DrawTextInput((Rectangle){x, 246, 300, 44}, field_text, cursor, 1, 1,
         Text18, (TextInputStyle){0}, 8100 + fancy);
 
-    Text((TextProps){.bounds = {x, 330, 260, 24}, .text = "Button",
+    Text((TextProps){.bounds = {x, 330, 260, 24}, .text = "TextArea",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
-    Button((ButtonProps){.bounds = {x, 362, 220, 44}, .label = "Save changes",
+    TextArea((TextAreaProps){.bounds = {x, 362, 300, 112}, .text = area_text,
+        .text_size = sizeof(area_text), .cursor_position = &area_cursor,
+        .focused = &area_focus, .scroll_y = &area_scroll, .max_codepoints = 127,
+        .font = Text16, .line_gap = 4, .focus_id = 8150 + fancy,
+        .placeholder = "Write proposal", .wrap = 1});
+
+    Text((TextProps){.bounds = {x, 510, 260, 24}, .text = "Button",
+        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+    Button((ButtonProps){.bounds = {x, 542, 220, 44}, .label = "Save changes",
         .id = 8200 + fancy, .tone = ButtonToneAccent,
         .emphasis = ButtonEmphasisFilled});
 
-    Text((TextProps){.bounds = {x, 450, 260, 24}, .text = "Dropdown",
+    Text((TextProps){.bounds = {x, 628, 260, 24}, .text = "Dropdown",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
-    Dropdown(8300 + fancy, x, 482, 260, 44, items, 3, &selected);
+    Dropdown(8300 + fancy, x, 660, 260, 44, items, 3, &selected);
 }
 
 int
@@ -50,7 +62,7 @@ main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/linux-x86_64/control-appearance-side-by-side.png";
     const int width = 900;
-    const int height = 620;
+    const int height = 760;
     RenderTexture2D target;
     Image image;
 
