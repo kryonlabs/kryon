@@ -90,6 +90,39 @@ c_str(char *dst, size_t dst_size, const char *src)
 }
 
 static int
+function_is_implicit_screen(const KirFunction *fn)
+{
+    const char *args = fn->args;
+    const char *colon;
+    const char *type;
+    const char *end;
+    size_t length;
+
+    if(args[0] == '\0')
+        return 1;
+    /* Only a single viewport Rectangle is callable from the generated
+     * route wrapper. Accept 'viewport: Rectangle' and C-style
+     * 'Rectangle viewport'; reject custom props and multi-arg helpers. */
+    if(strchr(args, ',') != NULL)
+        return 0;
+    colon = strrchr(args, ':');
+    if(colon != NULL) {
+        type = colon + 1;
+    } else {
+        type = args;
+        while(*type != '\0' && *type != ' ')
+            type++;
+    }
+    while(*type == ' ' || *type == '*')
+        type++;
+    end = type + strlen(type);
+    while(end > type && (end[-1] == ' ' || end[-1] == '*'))
+        end--;
+    length = (size_t)(end - type);
+    return length == 9 && strncmp(type, "Rectangle", 9) == 0;
+}
+
+static int
 collect_routes(KirProgram *const *progs, int prog_count,
                K2cRoute *routes, int max_routes)
 {
@@ -132,6 +165,12 @@ collect_routes(KirProgram *const *progs, int prog_count,
                 const KirFunction *fn = &mod->functions[j];
 
                 if(!fn->is_public || !fn->is_ui || fn->name[0] == '\0')
+                    continue;
+                /* Implicit routes must be callable screens: no arguments or
+                 * a single viewport Rectangle. Widget helpers declared #ui
+                 * with their own props struct stay out of the route table;
+                 * the generated wrapper could never build their arguments. */
+                if(!function_is_implicit_screen(fn))
                     continue;
                 if(function_has_explicit_route(mod, fn))
                     continue;

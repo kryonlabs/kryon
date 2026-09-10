@@ -315,9 +315,16 @@ if grep -Fq 'defer ' "$c"; then
     exit 1
 fi
 
+# kryon.h includes the generated ui_icon_types.h; pass the generated include
+# dirs from the last completed build (same discovery as canvas_backend_test.sh).
+gen_inc=""
+for d in "$root"/build/*/generated; do
+    [ -f "$d/include/ui_icon_types.h" ] && gen_inc="-I$d/include -I$d/src"
+done
+
 # the generated C compiles
-cc -fsyntax-only -I"$root/include" -I"$work/out" "$c"
-cc -fsyntax-only -I"$root/include" -I"$work/out" "$hc"
+cc -fsyntax-only -I"$root/include" $gen_inc -I"$work/out" "$c"
+cc -fsyntax-only -I"$root/include" $gen_inc -I"$work/out" "$hc"
 
 grep -Fq 'void Main(Rectangle viewport);' "$work/out/src/hierarchy.h"
 grep -Fq 'Screen((ColumnProps){.bounds = viewport, .padding = 8, .key = Key("Main/root")});' "$hc"

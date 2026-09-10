@@ -3,3 +3,10 @@
 composed_result :: (selected: int, move: int, disabled: int) -> int {
     return CarouselControls((CarouselControlsProps){.bounds = {0,0,320,160}, .indicators = {0,160,320,48}, .count = 4, .selected = selected, .move = move, .disabled = disabled, .id = 700})
 }
+
+# Visual-matrix screen: the generated-C visual harness renders routes, so the
+# composed carousel needs a screen entry to be captured alongside the
+# function-level parity checks above.
+composed_screen :: (viewport: Rectangle) #ui {
+    composed_result(1, 0, 0)
+}

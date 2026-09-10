@@ -1700,12 +1700,6 @@ DrawTree(void)
     int i;
     int window_ready = IsWindowReady();
 
-    if(getenv("KRYON_DEBUG_TREE") != NULL) {
-        Color dbg_bg = GetThemeBackground();
-        fprintf(stderr, "DrawTree: invalid=%u committed=%d ready=%d themebg=%d,%d,%d,%d\\n",
-                ui_tree_invalid, ui_committed_node_count, window_ready,
-                dbg_bg.r, dbg_bg.g, dbg_bg.b, dbg_bg.a);
-    }
     if((ui_tree_invalid & UI_INVALIDATE_PAINT) == 0)
         return;
     /* Requests made while painting belong to the next animation frame. */
@@ -1715,10 +1709,6 @@ DrawTree(void)
         UIClipState parent_clip = {0};
         UIBlendState parent_blend = {{0}};
 
-        if(getenv("KRYON_DEBUG_TREE") != NULL)
-            fprintf(stderr, "node[%d] kind=%d bounds=%.0f,%.0f,%.0f,%.0f flags=%u\\n",
-                    i, (int)node->kind, node->bounds.x, node->bounds.y,
-                    node->bounds.width, node->bounds.height, node->flags);
         if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
             continue;
 
@@ -2354,8 +2344,14 @@ Background(Color color)
 
     if(node >= 0)
         ui_tree_nodes[node].data.primitive.color = color;
-    if(ui_tree_building)
-        return;
+    if(ui_tree_building) {
+        /* A backdrop declared in a retained screen must paint now, in
+         * declaration order: widgets that render during this declaration
+         * already draw before EndTree, so deferring the fill to the tree
+         * paint pass would cover them. Keep the node for layout and input
+         * but stop the tree pass from painting it twice. */
+        ui_tree_mark_painted_immediate(node);
+    }
     DrawRectangleRec((Rectangle){0, 0, GetUIViewWidth(), GetUIViewHeight()},
                      color);
 }
