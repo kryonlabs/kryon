@@ -296,7 +296,11 @@ stored sample to the same resolver without consuming input again. Content
 painting now emits shared Drawing commands: `.kry` selects the loading ring,
 disclosure, texture or icon, and label, and positions them in physical space.
 C and Go execute these commands with their text and pixel rasterizers. Material
-orchestration and child lifecycle still need migration to complete the widget body.
+layer assembly lives in `runtime/material.kry`: shared surface selection, fill
+overrides, physical layer bounds, visibility, and content displacement have one
+implementation. Hosts submit resolved styles and rasterize SurfaceDrawing
+commands. Button's frame/style orchestration and child lifecycle still need
+migration to complete the widget body.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

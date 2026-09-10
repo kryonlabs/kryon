@@ -301,6 +301,28 @@ const data = (overrides = {}) => ({
   gap: 0, font_size: 0, icon_size: 0, offset_x: 0, offset_y: 0,
   background_end: 0, ...overrides,
 });
+const material = await import(new URL("./material.js", pathToFileURL(process.argv[2])).href);
+const materialPaint = material.Material_PrepareMaterial(null, undefined, undefined, {
+  bounds: { x: 50, y: 20, width: 80, height: 40 },
+  surface: { x: 10, y: 20, width: 160, height: 40 }, scale: 2,
+  value: data({ material: 1, typeface: "", radius: 4, opacity: 1,
+    fields: host.StyleBackgroundEnd, background: 0x12345600, background_end: 0xabcdef80 }),
+  light: 0, ambient: 0, hover: 0, press: 0, focus: 0, disabled: false,
+  fill: surface.Surface_FillState(null, undefined, undefined, 0, 0, 0), fill_valid: false,
+});
+let materialDrawing = material.Material_PaintMaterialLayer(null, undefined, undefined, materialPaint, 0);
+assert.equal(materialDrawing.visible, true);
+assert.equal(materialDrawing.layer.gradient, true);
+assert.equal(materialDrawing.layer.color, 0x12345600);
+assert.equal(materialDrawing.layer.end_color, 0xabcdef80);
+assert.equal(materialDrawing.layer.width, 80);
+assert.deepEqual(materialDrawing.bounds, materialPaint.surface);
+assert.deepEqual(materialDrawing.area, materialPaint.surface);
+assert.deepEqual(materialDrawing.segment, materialPaint.bounds);
+materialPaint.fill_valid = true;
+materialDrawing = material.Material_PaintMaterialLayer(null, undefined, undefined, materialPaint, 0);
+assert.equal(materialDrawing.visible, false);
+assert.equal(materialDrawing.layer.gradient, false);
 // Every public presence bit must select exactly its canonical .kry field(s).
 // Zero values are deliberate overrides, not absent fields.
 const fields = [

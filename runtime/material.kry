@@ -1,0 +1,82 @@
+#module "material"
+#import "drawing_props"
+#import "style"
+#import "control_props"
+#import "surface"
+
+# A resolved surface and its retained interaction sample. Lengths in StyleData
+# are logical; bounds and segment coordinates are physical.
+MaterialPaint :: struct {
+    bounds: Rectangle
+    surface: Rectangle
+    value: StyleData
+    light: u32
+    ambient: u32
+    hover: float
+    press: float
+    focus: float
+    disabled: bool
+    fill: FillStates
+    fill_valid: bool
+    scale: float
+}
+
+SurfaceDrawing :: struct {
+    layer: SurfaceLayer
+    bounds: Rectangle
+    area: Rectangle
+    scale: float
+    surface: Rectangle
+    segment: Rectangle
+    visible: bool
+}
+
+PrepareMaterial :: (paint: MaterialPaint) -> MaterialPaint #export {
+    if paint.scale <= 0.0 { paint.scale = 1.0 }
+    if paint.surface.width <= 0.0 || paint.surface.height <= 0.0 {
+        paint.surface = paint.bounds
+    }
+    return paint
+}
+
+MaterialContentBounds :: (paint: MaterialPaint) -> Rectangle #export {
+    result: Rectangle = paint.bounds
+    result.y += MaterialOffset(paint.value.material, paint.hover, paint.press,
+        paint.disabled) * paint.scale
+    return result
+}
+
+PaintMaterialLayer :: (paint: MaterialPaint, index: i32) -> SurfaceDrawing #export {
+    result: SurfaceDrawing
+    value: StyleData = paint.value
+    layer: SurfaceLayer = MaterialLayer(value.material, index,
+        paint.surface.width / paint.scale, paint.surface.height / paint.scale,
+        value.radius, value.border_width, value.background, value.border,
+        paint.light, value.focus, paint.hover, paint.press, paint.focus,
+        paint.disabled, value.opacity, paint.ambient)
+    if layer.is_face {
+        if paint.fill_valid {
+            layer = ApplyFillStates(layer, paint.fill, value.opacity)
+        } else {
+            layer = FillGradient(layer, (value.fields & (u32)StyleBackgroundEnd) != (u32)0,
+                value.background, value.background_end, value.opacity)
+        }
+    }
+    result.layer = layer
+    result.bounds.x = paint.surface.x + layer.x * paint.scale
+    result.bounds.y = paint.surface.y + layer.y * paint.scale
+    result.bounds.width = layer.width * paint.scale
+    result.bounds.height = layer.height * paint.scale
+    blur: float = layer.blur * paint.scale
+    result.area.x = result.bounds.x - blur
+    result.area.y = result.bounds.y - blur
+    result.area.width = result.bounds.width + 2.0 * blur
+    result.area.height = result.bounds.height + 2.0 * blur
+    result.visible = result.bounds.width > 0.0 && result.bounds.height > 0.0 &&
+        ((layer.color & (u32)255) != (u32)0 ||
+         (layer.gradient && (layer.end_color & (u32)255) != (u32)0))
+    result.scale = paint.scale
+    result.surface = paint.surface
+    result.segment = paint.bounds
+    return result
+}

@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "ui_paint_internal.h"
 #include "theme.h"
 #include "runtime/theme.h"
 #include "runtime/style.h"
@@ -14,56 +15,19 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
                           Color focus, float focused, float opacity,
                           FillStates fill_states, MaterialKind material)
 {
-    Rectangle face = bounds;
-    Rectangle segment = bounds;
-    if(surface_bounds.width > 0.0f && surface_bounds.height > 0.0f)
-        bounds = surface_bounds;
-    float scale = (float)Scale(1000) / 1000.0f;
-    if(scale <= 0.0f) scale = 1.0f;
-    for(int i = 0; i < MaterialLayerCount(material); i++) {
-        SurfaceLayer layer = MaterialLayer(material, i, bounds.width / scale,
-            bounds.height / scale, radius, border_width,
-            ColorToInt(background), ColorToInt(border), ColorToInt(light),
-            ColorToInt(focus), hover, press, focused, disabled, opacity,
-            ColorToInt(GetThemeSurface()));
-        if(layer.is_face)
-            layer = ApplyFillStates(layer, fill_states, opacity);
-        Rectangle rect = {bounds.x + layer.x * scale, bounds.y + layer.y * scale,
-                          layer.width * scale, layer.height * scale};
-        Color color = GetColor(layer.color);
-        if((color.a == 0 && (!layer.gradient || (layer.end_color & 255) == 0)) ||
-           rect.width <= 0 || rect.height <= 0) continue;
-        float blur = layer.blur * scale;
-        int left = (int)floorf(rect.x - blur);
-        int right = (int)ceilf(rect.x + rect.width + blur);
-        int top = (int)floorf(rect.y - blur);
-        int bottom = (int)ceilf(rect.y + rect.height + blur);
-        for(int y = top; y < bottom; y++) {
-            unsigned int shade = SampleColor(layer,
-                ((float)y + 0.5f - rect.y) / rect.height);
-            int run_start = left;
-            unsigned int run_color = 0;
-            for(int x = left; x <= right; x++) {
-                unsigned int pixel = 0;
-                if(x < right) {
-                    float coverage = SampleCoverage(layer, (float)x - rect.x,
-                        (float)y - rect.y, scale);
-                    coverage *= SegmentCoverage((float)x - bounds.x,
-                        segment.x - bounds.x, segment.width, bounds.width);
-                    pixel = Opacity(shade, coverage);
-                }
-                if(x == left) run_color = pixel;
-                if(pixel != run_color || x == right) {
-                    if((run_color & 255) != 0)
-                        DrawRectangle(run_start, y, x - run_start, 1, GetColor(run_color));
-                    run_start = x;
-                    run_color = pixel;
-                }
-            }
-        }
-    }
-    face.y += MaterialOffset(material, hover, press, disabled) * scale;
-    return face;
+    MaterialPaint paint = {
+        .bounds = bounds, .surface = surface_bounds,
+        .value = {.background = ColorToInt(background), .border = ColorToInt(border),
+                  .focus = ColorToInt(focus), .radius = radius,
+                  .border_width = border_width, .opacity = opacity, .material = material},
+        .light = ColorToInt(light), .ambient = ColorToInt(GetThemeSurface()),
+        .hover = hover, .press = press, .focus = focused, .disabled = disabled,
+        .fill = fill_states, .fill_valid = true, .scale = (float)Scale(1000) / 1000.0f
+    };
+    paint = PrepareMaterial(paint);
+    for(int i = 0; i < MaterialLayerCount(material); i++)
+        ui_draw_surface(PaintMaterialLayer(paint, i));
+    return MaterialContentBounds(paint);
 }
 
 static ThemeMetrics g_ui_style_override;

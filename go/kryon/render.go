@@ -96,12 +96,6 @@ func RenderCurrentFrame() *image.RGBA {
 }
 
 func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
-	fill, border := op.Color, op.BorderColor
-	face := op.Bounds
-	surface := op.Bounds
-	if op.SurfaceBounds.Width > 0 && op.SurfaceBounds.Height > 0 {
-		surface = op.SurfaceBounds
-	}
 	hover, press, focus := float32(0), float32(0), float32(0)
 	if op.Hovered {
 		hover = 1
@@ -115,38 +109,37 @@ func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
 	if op.MotionValid {
 		hover, press, focus = op.HoverAmount, op.PressAmount, op.FocusAmount
 	}
+	value := StyleData{Background: packRGBA(op.Color), Border: packRGBA(op.BorderColor),
+		Focus: packRGBA(op.FocusColor), Radius: op.Radius, BorderWidth: op.BorderWidth,
+		Opacity: op.Opacity, Material: int32(op.Material), BackgroundEnd: packRGBA(op.BackgroundEnd)}
+	if op.HasBackgroundEnd {
+		value.Fields = uint32(StyleBackgroundEnd)
+	}
+	paint := Material_PrepareMaterial(MaterialPaint{Bounds: op.Bounds, Surface: op.SurfaceBounds,
+		Value: value, Light: packRGBA(op.BorderColor), Ambient: packRGBA(op.AmbientColor),
+		Hover: hover, Press: press, Focus: focus, Disabled: op.Disabled,
+		Fill: op.FillStates, FillValid: op.FillStatesValid, Scale: 1})
 	for i := int32(0); i < Surface_MaterialLayerCount(int32(op.Material)); i++ {
-		layer := Surface_MaterialLayer(int32(op.Material), i, surface.Width, surface.Height,
-			op.Radius, op.BorderWidth, packRGBA(fill), packRGBA(border),
-			packRGBA(border), packRGBA(op.FocusColor), hover, press, focus,
-			op.Disabled, op.Opacity, packRGBA(op.AmbientColor))
-		if layer.IsFace {
-			if op.FillStatesValid {
-				layer = Surface_ApplyFillStates(layer, op.FillStates, op.Opacity)
-			} else {
-				layer = Surface_FillGradient(layer, op.HasBackgroundEnd, packRGBA(fill), packRGBA(op.BackgroundEnd), op.Opacity)
-			}
-		}
-		r := Rectangle{X: surface.X + layer.X, Y: surface.Y + layer.Y,
-			Width: layer.Width, Height: layer.Height}
-		c := unpackRGBA(layer.Color)
-		if c.A == 0 && (!layer.Gradient || layer.EndColor&255 == 0) {
-			continue
-		}
-		pixels := clipRect(img, Rectangle{X: r.X - layer.Blur, Y: r.Y - layer.Blur,
-			Width: r.Width + 2*layer.Blur, Height: r.Height + 2*layer.Blur})
-		for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
-			shade := Surface_SampleColor(layer, (float32(y)+0.5-r.Y)/r.Height)
-			for x := pixels.Min.X; x < pixels.Max.X; x++ {
-				coverage := Surface_SampleCoverage(layer, float32(x)-r.X, float32(y)-r.Y, 1)
-				coverage *= Surface_SegmentCoverage(float32(x)-surface.X,
-					op.Bounds.X-surface.X, op.Bounds.Width, surface.Width)
-				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(shade, coverage)))
-			}
+		renderSurfaceDrawing(img, Material_PaintMaterialLayer(paint, i))
+	}
+	return Material_MaterialContentBounds(paint)
+}
+
+func renderSurfaceDrawing(img *image.RGBA, command SurfaceDrawing) {
+	if !command.Visible {
+		return
+	}
+	layer, bounds := command.Layer, command.Bounds
+	pixels := clipRect(img, command.Area)
+	for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+		shade := Surface_SampleColor(layer, (float32(y)+0.5-bounds.Y)/bounds.Height)
+		for x := pixels.Min.X; x < pixels.Max.X; x++ {
+			coverage := Surface_SampleCoverage(layer, float32(x)-bounds.X, float32(y)-bounds.Y, command.Scale)
+			coverage *= Surface_SegmentCoverage(float32(x)-command.Surface.X,
+				command.Segment.X-command.Surface.X, command.Segment.Width, command.Surface.Width)
+			blendPixel(img, x, y, unpackRGBA(Surface_Opacity(shade, coverage)))
 		}
 	}
-	face.Y += Surface_MaterialOffset(int32(op.Material), hover, press, op.Disabled)
-	return face
 }
 
 func renderButton(img *image.RGBA, op FrameOp) {

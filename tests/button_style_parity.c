@@ -4,6 +4,7 @@
 #include "runtime/button.h"
 #include "runtime/split_button.h"
 #include "runtime/instance.h"
+#include "runtime/material.h"
 #include <stdio.h>
 #include <assert.h>
 
@@ -252,6 +253,20 @@ static void check_button_content_drawing(void)
 
 int main(void)
 {
+    MaterialPaint material = PrepareMaterial((MaterialPaint){
+        .bounds = {50, 20, 80, 40}, .surface = {10, 20, 160, 40}, .scale = 2,
+        .value = {.material = MaterialFlat, .radius = 4, .opacity = 1,
+            .fields = StyleBackgroundEnd, .background = 0x12345600, .background_end = 0xabcdef80}
+    });
+    SurfaceDrawing drawing = PaintMaterialLayer(material, 0);
+    assert(drawing.visible && drawing.layer.gradient);
+    assert(drawing.layer.color == 0x12345600 && drawing.layer.end_color == 0xabcdef80);
+    assert(drawing.layer.width == 80 && drawing.layer.height == 20);
+    assert(drawing.bounds.x == 10 && drawing.bounds.y == 20 && drawing.bounds.width == 160);
+    assert(drawing.area.width == 160 && drawing.segment.x == 50 && drawing.scale == 2);
+    material.fill_valid = true;
+    drawing = PaintMaterialLayer(material, 0);
+    assert(!drawing.visible && !drawing.layer.gradient);
     check_button_content_drawing();
     check_button_input();
     const int enum_pairs[][2] = {

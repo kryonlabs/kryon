@@ -1330,6 +1330,8 @@ the stored sample without calling this input service again.
 Button content uses the shared `.kry` drawing path. Loading replaces both label
 and icon; disclosure takes precedence over a texture or built-in icon. Content
 offsets and icon sizing use logical pixels, scaled into physical drawing bounds.
+Material layers also use shared `.kry` assembly, preserving gradient endpoints,
+joined-surface bounds, and content displacement across native renderers.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

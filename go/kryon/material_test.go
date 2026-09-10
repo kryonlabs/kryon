@@ -94,3 +94,35 @@ func TestFlatMaterialLayersPreserveAlphaAndFocus(t *testing.T) {
 		t.Fatal("flat content acquired an elevation offset")
 	}
 }
+
+func TestMaterialDrawingCoordinatesAndFill(t *testing.T) {
+	paint := Material_PrepareMaterial(MaterialPaint{
+		Bounds:  Rectangle{X: 50, Y: 20, Width: 80, Height: 40},
+		Surface: Rectangle{X: 10, Y: 20, Width: 160, Height: 40}, Scale: 2,
+		Value: StyleData{Material: int32(MaterialFlat), Radius: 4, Opacity: 1,
+			Fields: uint32(StyleBackgroundEnd), Background: 0x12345600, BackgroundEnd: 0xabcdef80},
+	})
+	command := Material_PaintMaterialLayer(paint, 0)
+	if !command.Visible || command.Bounds != paint.Surface || command.Area != paint.Surface ||
+		command.Segment != paint.Bounds || command.Scale != 2 ||
+		command.Layer.Width != 80 || command.Layer.Height != 20 || command.Layer.Radius != 4 {
+		t.Fatalf("scaled joined surface: %+v", command)
+	}
+	if !command.Layer.Gradient || command.Layer.Color != 0x12345600 || command.Layer.EndColor != 0xabcdef80 {
+		t.Fatalf("transparent gradient start was lost: %+v", command.Layer)
+	}
+	paint.FillValid = true
+	if command = Material_PaintMaterialLayer(paint, 0); command.Visible || command.Layer.Gradient {
+		t.Fatal("absent retained endpoints must preserve the material, not use the fallback gradient")
+	}
+	paint.Fill = FillStates{Normal: true, NormalStart: 0xff000080, NormalEnd: 0x00ff0040}
+	if command = Material_PaintMaterialLayer(paint, 0); !command.Visible || !command.Layer.Gradient ||
+		command.Layer.Color != 0xff000080 || command.Layer.EndColor != 0x00ff0040 {
+		t.Fatalf("retained fill override: %+v", command.Layer)
+	}
+	paint.Surface, paint.Scale = Rectangle{Width: 30}, 0
+	paint = Material_PrepareMaterial(paint)
+	if paint.Surface != paint.Bounds || paint.Scale != 1 || Material_MaterialContentBounds(paint) != paint.Bounds {
+		t.Fatalf("invalid surface and scale fallback: %+v", paint)
+	}
+}

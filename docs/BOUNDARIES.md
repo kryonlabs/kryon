@@ -88,6 +88,10 @@ hosts rasterize commands; they do not choose which content a Button displays.
 Font measurement, font resource lookup, clipping, and pixel blending remain
 device services. C supports texture commands; the Go frame stream still lacks
 texture resource rendering.
+Material painting follows the same boundary. `runtime/material.kry` assembles
+SurfaceDrawing commands from resolved styles, retained fills, and interaction
+amounts. Backends own clipping and pixel submission; C may batch equal adjacent
+pixels without changing the shared layer, color, or coverage rules.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources
