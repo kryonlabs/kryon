@@ -16,7 +16,7 @@ static int scope_count = 0;
 static bool dark_mode = false;
 #if defined(KRYON_BACKEND_LIBDRAW)
 #if defined(KRYON_PLATFORM_PLAN9)
-static int current_theme_id = THEME_PLAN9;
+static int current_theme_id = THEME_MONO;
 #else
 static int current_theme_id = THEME_MONO;
 #endif
@@ -784,7 +784,7 @@ GetDefaultThemeForThemeStyle(ThemeStyle style)
 {
 #if defined(KRYON_PLATFORM_PLAN9)
     if(style == THEME_STYLE_SYSTEM)
-        return THEME_PLAN9;
+        return THEME_MONO;
 #endif
     if(style == THEME_STYLE_SYSTEM)
         style = GetDefaultPlatformThemeStyle();

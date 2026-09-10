@@ -536,8 +536,6 @@ load_base_locale(void)
         {"theme_mono", "Mono"},
         {"theme_mint", "Mint"},
         {"theme_cobalt", "Cobalt"},
-        {"theme_plan9", "Plan9"},
-        {"theme_xfce", "Xfce"},
         {"theme_sweet", "Sweet"},
     };
 

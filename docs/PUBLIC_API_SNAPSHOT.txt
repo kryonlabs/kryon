@@ -1361,12 +1361,10 @@ include/theme_meta.h enum THEME_LAVENDER
 include/theme_meta.h enum THEME_MINT
 include/theme_meta.h enum THEME_MONO
 include/theme_meta.h enum THEME_OCEAN
-include/theme_meta.h enum THEME_PLAN9
 include/theme_meta.h enum THEME_SAGE
 include/theme_meta.h enum THEME_SKY
 include/theme_meta.h enum THEME_SUNSET
 include/theme_meta.h enum THEME_SWEET
-include/theme_meta.h enum THEME_XFCE
 include/theme_meta.h function GetThemeCatalogColor
 include/theme_meta.h function GetThemeCatalogScopeColor
 include/theme_meta.h function GetThemeLabel

@@ -6,7 +6,6 @@
 
 static const ThemeId theme_picker_order[THEME_COUNT] = {
     THEME_SWEET,
-    THEME_XFCE,
     THEME_COBALT,
     THEME_CHERRY,
     THEME_DAWN,
@@ -14,7 +13,6 @@ static const ThemeId theme_picker_order[THEME_COUNT] = {
     THEME_LAVENDER,
     THEME_MINT,
     THEME_MONO,
-    THEME_PLAN9,
     THEME_OCEAN,
     THEME_SAGE,
     THEME_INK,
