@@ -1445,7 +1445,7 @@ lower_module(const KirModule *m, const K2cppModuleSyms *restab, int restab_count
     for(i = 0; i < m->type_count; i++) {
         const KirType *ty = &m->types[i];
 
-        if(strcmp(ty->name, "#enum") == 0 ||
+        if(ty->is_extern || strcmp(ty->name, "#enum") == 0 ||
            strcmp(ty->name, "#typedef") == 0)
             continue;
         emit_guard_open(h, ty->guard);

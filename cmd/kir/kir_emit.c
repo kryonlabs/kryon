@@ -421,10 +421,14 @@ static void
 declare(Emitter *e, const char *name, const char *type, const char *value)
 {
     const char *target_type = KirTargetType(type, e->target);
-    if(target_type == NULL) target_type = type;
+    char resolved_type[KIR_NAME_MAX * 2];
+    if(target_type == NULL) {
+        e->resolve(e->context, type, resolved_type, sizeof(resolved_type));
+        target_type = resolved_type;
+    }
     if(enum_type(e->module, type)) {
         if(e->target == KIR_GO)
-            line(e, "var %s %s = %s(%s)", name, type, type, value);
+            line(e, "var %s %s = %s(%s)", name, target_type, target_type, value);
         else if(e->target == KIR_JS)
             line(e, "let %s = %s_value(%s,32,true);", name, e->numbers, value);
         else
@@ -866,7 +870,9 @@ static void
 zero_record(Emitter *e, const char *type, char *out, size_t size)
 {
     if(e->target == KIR_GO) {
-        format(out, size, "%s{}", type);
+        char target_type[KIR_NAME_MAX * 2];
+        e->resolve(e->context, type, target_type, sizeof(target_type));
+        format(out, size, "%s{}", target_type);
         return;
     }
     if(e->target != KIR_JS) {
@@ -904,15 +910,19 @@ emit_sequence(Emitter *e,int begin,int end)
         switch(st->kind) {
         case KIR_STMT_DECL:
             if(st->is_instance) {
+                char instance_type[KIR_NAME_MAX];
+                kir_copy(instance_type, sizeof(instance_type), st->type);
+                if(e->target == KIR_GO && e->resolve)
+                    e->resolve(e->context, st->type, instance_type, sizeof(instance_type));
                 const KirExpr *key = &e->fn->exprs[st->expr_root];
                 emit_expr(e, st->expr_root, key->kind == KIR_EXPR_INT ? "u64" : "i64",
                           value, sizeof(value));
                 if(e->target == KIR_GO && *e->instance_host)
                     line(e, "%s := instanceState[%s](%s, uint64(%s))",
-                         st->name, st->type, e->instance_host, value);
+                         st->name, instance_type, e->instance_host, value);
                 else if(e->target == KIR_GO)
                     line(e, "%s := kryon.InstanceState[%s](uint64(%s))",
-                         st->name, st->type, value);
+                         st->name, instance_type, value);
                 else if(e->target == KIR_JS) {
                     for(int depth = 0; depth < e->indent; depth++)
                         fputs("    ", e->out);

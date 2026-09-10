@@ -64,7 +64,7 @@ is_runtime_go_type(const char *type)
     if(KirFindRuntimeType(type, NULL) != NULL)
         return 1;
     static const char *types[] = {
-		"Vector2", "Rectangle", "Color", "Texture2D", "KeyID", "Side",
+		"KeyID", "Side",
 		"Accelerator",
 		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
         "TextAlign", "TextWrap",
@@ -108,7 +108,8 @@ static void
 qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
 {
     const KirType *declared = type_scope != NULL ? KirFindType(type_scope, type, NULL) : NULL;
-    int local = declared != NULL && declared != KirFindRuntimeType(type, NULL);
+    int local = declared != NULL && !declared->is_extern &&
+                declared != KirFindRuntimeType(type, NULL);
     if(!runtime_output && !local && is_runtime_go_type(type))
         snprintf(dst, dst_size, "%s.%s", K2GO_RUNTIME_PKG, type);
     else
@@ -137,12 +138,10 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"int8", "int8"}, {"int16", "int16"}, {"int32", "int32"},
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
         {"void", ""},
-        {"Vector2", "Vector2"}, {"Rectangle", "Rectangle"},
         {"FrameBox", "FrameBox"}, {"Grid", "Grid"},
         {"Canvas", "Canvas"},
         {"CanvasResult", "CanvasResult"},
         {"Side", "Side"},
-        {"Color", "Color"},     {"Texture2D", "Texture2D"},
         {NULL, NULL}
     };
     char t[K2GO_NAME_MAX];
@@ -1381,112 +1380,6 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 
         qualify_runtime_go_type(type, qtype, sizeof(qtype));
         p++;
-        if(strcmp(type, "Vector2") == 0 || strcmp(type, "Rectangle") == 0) {
-            char parts[5][K2GO_TEXT_MAX], out[K2GO_TEXT_MAX];
-            int n, i;
-            int field_count = strcmp(type, "Rectangle") == 0 ? 4 : 2;
-            size_t on = 0;
-
-            /* consume to the matching '}' */
-            {
-                char raw[K2GO_TEXT_MAX];
-                size_t rn = 0;
-                int depth = 1;
-                const char *q = p;
-
-                while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
-                    if(*q == '{')
-                        depth++;
-                    else if(*q == '}') {
-                        depth--;
-                        if(depth == 0)
-                            break;
-                    }
-                    raw[rn++] = *q++;
-                }
-                raw[rn] = '\0';
-                p = *q == '}' ? q + 1 : q;
-                n = *kir_skip_ws(raw) == '\0' ? 0 : split_top(raw, parts, 5);
-            }
-            if(n > field_count) {
-                fprintf(stderr, "k2go: %s initializer accepts at most %d fields\n",
-                        type, field_count);
-                exit(1);
-            }
-            snprintf(out, sizeof(out), "%s.%s", K2GO_RUNTIME_PKG,
-                     field_count == 4 ? "NewRectangle" : "NewVector2");
-            on = strlen(out);
-            out[on++] = '(';
-            for(i = 0; i < field_count; i++) {
-                char arg[K2GO_TEXT_MAX];
-
-                if(i < n)
-                    tx_expr(m, kir_skip_ws(parts[i]), arg, sizeof(arg));
-                else
-                    snprintf(arg, sizeof(arg), "0");
-                if(i > 0) {
-                    out[on++] = ',';
-                    out[on++] = ' ';
-                }
-                if(on + 8 < sizeof(out)) {
-                    memcpy(out + on, "float32(", 8);
-                    on += 8;
-                }
-                size_t al = strlen(arg);
-                if(on + al + 1 < sizeof(out)) {
-                    memcpy(out + on, arg, al);
-                    on += al;
-                }
-                if(on + 1 < sizeof(out))
-                    out[on++] = ')';
-            }
-            out[on++] = ')';
-            out[on] = '\0';
-            if(*dn + on + 1 < K2GO_TEXT_MAX) {
-                memcpy(dst + *dn, out, on);
-                *dn += on;
-            }
-            return p;
-        }
-        if(strcmp(type, "Color") == 0) {
-            char raw[K2GO_TEXT_MAX], parts[4][K2GO_TEXT_MAX];
-            int n;
-
-            {
-                size_t rn = 0;
-                int depth = 1;
-                const char *q = p;
-
-                while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
-                    if(*q == '{')
-                        depth++;
-                    else if(*q == '}') {
-                        depth--;
-                        if(depth == 0)
-                            break;
-                    }
-                    raw[rn++] = *q++;
-                }
-                raw[rn] = '\0';
-                p = *q == '}' ? q + 1 : q;
-                n = split_top(raw, parts, 4);
-            }
-            if(n == 4) {
-                char args[4][K2GO_TEXT_MAX];
-                static const char *fields[4] = {"R", "G", "B", "A"};
-
-                for(int i = 0; i < 4; i++)
-                    tx_expr(m, kir_skip_ws(parts[i]), args[i], sizeof(args[i]));
-                if(*dn + 4096 < K2GO_TEXT_MAX) {
-                    *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn,
-                        "%s.Color{%s: %s, %s: %s, %s: %s, %s: %s}",
-                        K2GO_RUNTIME_PKG,
-                        fields[0], args[0], fields[1], args[1],
-                        fields[2], args[2], fields[3], args[3]);
-                }
-            }
-            return p;
-        }
         /* Props/Spec use C designated initializers. Translate them to named
          * Go fields and give the untyped bounds literal its Rectangle type. */
         if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL ||
@@ -1565,6 +1458,15 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     tx_expr(m, typed, value, sizeof(value));
                 } else {
                     tx_expr(m, source, value, sizeof(value));
+                }
+                const char *scalar = KirScalarType(field_type);
+                if(*scalar && strcmp(scalar, "bool") && strcmp(scalar, "string")) {
+                    char scalar_type[KIR_NAME_MAX];
+                    char converted[K2GO_TEXT_MAX];
+                    if(go_type(field_type, scalar_type, sizeof(scalar_type))) {
+                        snprintf(converted, sizeof(converted), "%s(%s)", scalar_type, value);
+                        kir_copy(value, sizeof(value), converted);
+                    }
                 }
                 if((strcmp(type, "TextFieldProps") == 0 ||
                     strcmp(type, "TextAreaProps") == 0) &&
@@ -2368,6 +2270,8 @@ static void
 resolve_body_symbol(void *context, const char *text, char *out, size_t size)
 {
     const KirModule *module = context;
+    if(KirFindType(module, text, NULL) != NULL && go_type(text, out, size))
+        return;
     for(int i = 0; i < module->global_count; i++) {
         if(!strcmp(text, module->globals[i].name)) {
             kir_camel_ident(text, out, size);
@@ -2951,6 +2855,8 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
 
             for(int i = 0; i < m->type_count; i++) {
                 const KirType *t = &m->types[i];
+                if(t->is_extern && !runtime_output)
+                    continue;
 
                 if(t->is_enum) {
                     /* enums: typed constants with C counter semantics

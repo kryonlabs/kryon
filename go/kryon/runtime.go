@@ -25,26 +25,6 @@ type AppConfig struct {
 	FrameClock func() time.Time
 }
 
-type Vector2 struct {
-	X, Y float32
-}
-
-type Rectangle struct {
-	X, Y, Width, Height float32
-}
-
-type Color struct {
-	R, G, B, A uint8
-}
-
-type Texture2D struct {
-	ID      uint32
-	Width   int32
-	Height  int32
-	Mipmaps int32
-	Format  int32
-}
-
 type Font struct {
 	Texture Texture2D
 	ID      uint32

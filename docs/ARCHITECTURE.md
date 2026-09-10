@@ -263,9 +263,13 @@ generic instance service. Button's retained motion update now lives in `.kry`
 and uses this binding; C and Go no longer look up or mutate its stored tracks.
 
 `runtime/button_props.kry` now owns Button's public props fields. C and Go use
-generated declarations instead of separately maintained structs. Geometry,
-and textures still come from the host interface; style types now have their own
-shared contract. The built-in
+generated declarations instead of separately maintained structs.
+`runtime/drawing_props.kry` declares the fields of Vector2, Rectangle, Color,
+and Texture2D as `struct #extern` contracts. C and C++ reuse the graphics host's
+types; native runtime generation emits their Go structs. The shared checker can
+therefore validate field access, copies, zero values, and instance bindings for
+these records without per-type compiler tables. Style types also have their own
+shared contract. Borrowed C string fields still need portable body support. The built-in
 widget body remains to be migrated. The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

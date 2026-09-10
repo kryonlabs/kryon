@@ -1,4 +1,5 @@
 #module "widget_instances"
+#import "kryon_compat.generated.h"
 
 CounterState :: struct {
     value: i32
@@ -69,5 +70,21 @@ CheckInstanceReferences :: () -> i32 #export {
     literal: OtherState #instance(-1)
     negative.value = 23
     if literal.value != 23 { return 7 }
+    bounds: Rectangle #instance((u64)100)
+    bounds = (Rectangle){1, 2, 3, 4}
+    bounds_alias: Rectangle #instance((u64)100)
+    bounds_copy: Rectangle = bounds
+    bounds_copy.width = 90
+    if bounds_alias.width != 3 { return 8 }
+    if literal.value != 23 { return 9 }
+    empty: Rectangle
+    if empty.x != 0 || empty.height != 0 { return 10 }
+    tint: Color = (Color){1, 2, 3, 255}
+    tint_copy: Color = tint
+    tint_copy.a = 0
+    if tint.a != 255 { return 11 }
+    texture: Texture2D
+    texture.width = 16
+    if texture.id != (u32)0 || texture.width != 16 { return 12 }
     return 0
 }

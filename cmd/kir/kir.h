@@ -191,6 +191,7 @@ typedef struct KirType {
     char name[KIR_NAME_MAX];
     char body[KIR_TEXT_MAX * 2];
     int is_enum;   /* 'Name :: enum' — emit typedef enum, not struct */
+    int is_extern; /* host-owned C record; native Go emits the declared shape */
     char guard[KIR_TEXT_MAX];   /* enclosing '#if' condition (expanded) */
     KirSourceSpan span;
 } KirType;

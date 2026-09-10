@@ -1309,6 +1309,10 @@ int Button(ButtonProps button);
 ```
 
 Native Go uses the same props-only contract: `Button(ButtonProps) bool`.
+The Rectangle, Vector2, Color, and Texture2D field contracts come from
+`runtime/drawing_props.kry`. These records support typed field access and value
+copies in shared `.kry` functions. Their C/C++ definitions remain supplied by
+the graphics host; Go definitions are generated from the contract.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

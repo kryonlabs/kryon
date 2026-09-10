@@ -976,6 +976,9 @@ parse_extern_line(KirModule *module, const char *path, int line_no,
         return 0;
     if(!parse_symbol_before_colons(line, name, sizeof(name)))
         return 0;
+    const char *declaration = kir_skip_ws(strstr(line, "::") + 2);
+    if(starts_word(declaration, "struct") || starts_word(declaration, "enum"))
+        return 0;
     target[0] = '\0';
     symbol[0] = '\0';
     if(intrinsic != NULL) {
@@ -2562,6 +2565,9 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                       KirSpan(rel, line_no, 1));
                 if(ty != NULL) {
                     ty->is_enum = strncmp(after, "enum", 4) == 0;
+                    ty->is_extern = strstr(after, "#extern") != NULL;
+                    if(ty->is_enum && ty->is_extern)
+                        die("%s:%d: #extern type contracts require a struct", rel, line_no);
                     snprintf(ty->guard, sizeof(ty->guard), "%s", cur_guard);
                     mode = TYPE;
                 }

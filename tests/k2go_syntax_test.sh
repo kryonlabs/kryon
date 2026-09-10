@@ -398,8 +398,8 @@ grep -q 'ScrollOff int32' "$out"
 grep -q 'func main()' "$out"
 grep -q 'kryon.BeginFrame()' "$out"
 grep -q '&st.ScrollOff' "$out"
-grep -q 'kryon.NewVector2(float32(kryon.Scale(120)), float32(kryon.Scale(120)))' "$out"
-grep -q 'kryon.Color{R: 0x2d, G: 0x4d, B: 0x7b, A: 0xff}' "$out"
+grep -q 'kryon.Vector2{X: float32(kryon.Scale(120)), Y: float32(kryon.Scale(120))}' "$out"
+grep -q 'kryon.Color{R: uint8(0x2d), G: uint8(0x4d), B: uint8(0x7b), A: uint8(0xff)}' "$out"
 grep -q '0.0, 360.0' "$out"   # C float suffixes stripped
 if grep -q '0\.0f' "$out"; then
     echo "k2go left a C float suffix in Go output" >&2
@@ -507,12 +507,12 @@ grep -q 'Fade(' "$out"
 grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
-grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "GB"' "$out"
+grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "GB"' "$out"
 grep -q 'kryon.BeginDisabled((1) != 0)' "$out"
 grep -q 'kryon.EndDisabled()' "$out"
-grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.NewRectangle.*Label: "TB"' "$out"
+grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "TB"' "$out"
 grep -q 'Dropdown(22,' "$out"
-grep -q 'kryon.BeginFrameBox(kryon.NewRectangle' "$out"
+grep -q 'kryon.BeginFrameBox(kryon.Rectangle{' "$out"
 grep -q 'kryon.FramePack(&frame_box, kryon.SideTop' "$out"
 grep -q 'kryon.GridCell(layout_grid, 1, 1, 1, 1)' "$out"
 grep -q 'kryon.Place(packed,' "$out"
@@ -547,13 +547,13 @@ grep -q 'kryon.InputDouble(kryon.InputDoubleProps{.*Values: plot_doubles\[:\].*V
 grep -q 'Size: kryon.ControlSizeSmall' "$out"
 grep -q 'kryon.InvisibleButton(kryon.InvisibleButtonProps{' "$out"
 grep -q 'kryon.ArrowButton(kryon.ArrowButtonProps{.*Direction: 1' "$out"
-grep -q 'kryon.Bullet(kryon.NewRectangle' "$out"
-grep -q 'kryon.Separator(kryon.NewRectangle.*0)' "$out"
+grep -q 'kryon.Bullet(kryon.Rectangle{' "$out"
+grep -q 'kryon.Separator(kryon.Rectangle{.*0)' "$out"
 grep -q 'kryon.ColorEdit3(kryon.ColorEditProps{.*Values: edit_color\[:\].*ValueCount: 3' "$out"
 grep -q 'kryon.ColorEdit4(kryon.ColorEditProps{.*Values: edit_color\[:\].*ValueCount: 4' "$out"
 grep -q 'kryon.ColorPicker3(kryon.ColorEditProps{' "$out"
 grep -q 'kryon.ColorPicker4(kryon.ColorEditProps{' "$out"
-grep -q 'kryon.ColorButton(kryon.ColorButtonProps{.*Color: kryon.Color{R: 51, G: 102, B: 153, A: 204}' "$out"
+grep -q 'kryon.ColorButton(kryon.ColorButtonProps{.*Color: kryon.Color{R: uint8(51), G: uint8(102), B: uint8(153), A: uint8(204)}' "$out"
 grep -q 'Text: "colored"' "$out"
 grep -q 'Text: "disabled".*Disabled:' "$out"
 grep -q 'Text: "wrapped text"' "$out"
@@ -563,7 +563,7 @@ grep -q 'kryon.ValueBool("Enabled", st.Check != 0' "$out"
 grep -q 'kryon.ValueInt("Count", scalar' "$out"
 grep -q 'kryon.ValueUInt("Mask", 42' "$out"
 grep -q 'kryon.ValueFloat("Rate".*"%.1f"' "$out"
-grep -q 'kryon.MenuBar(46, kryon.NewRectangle.*menus\[:\], 1, &st.MenuOpen)' "$out"
+grep -q 'kryon.MenuBar(46, kryon.Rectangle{.*menus\[:\], 1, &st.MenuOpen)' "$out"
 grep -q 'kryon.PopupMenu(47, .*menu_items\[:\], 2)' "$out"
 grep -q 'kryon.ContextMenu(kryon.ContextMenuProps{.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
 grep -q 'kryon.BeginPopup(kryon.PopupProps{.*ID: 58.*Flags: kryon.PopupTooltip' "$out"
@@ -659,7 +659,7 @@ if "$k2go" --root "$work" -o "$work/out" "$work/src/geometry_extra.kry" 2>"$work
     echo "extra geometry fields were silently discarded" >&2
     exit 1
 fi
-grep -q 'Rectangle initializer accepts at most 4 fields' "$work/geometry_extra.err"
+grep -q 'no positional field 5 in Rectangle' "$work/geometry_extra.err"
 
 cat > "$work/src/assert_fail.kry" <<'EOF'
 #import "kryon.h"

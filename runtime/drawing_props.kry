@@ -1,0 +1,30 @@
+#module "drawing_props"
+#import "kryon_compat.generated.h"
+
+# The graphics host supplies these C types. Native Go uses the same field contract.
+Vector2 :: struct #extern {
+    x: float
+    y: float
+}
+
+Rectangle :: struct #extern {
+    x: float
+    y: float
+    width: float
+    height: float
+}
+
+Color :: struct #extern {
+    r: u8
+    g: u8
+    b: u8
+    a: u8
+}
+
+Texture2D :: struct #extern {
+    id: u32
+    width: i32
+    height: i32
+    mipmaps: i32
+    format: i32
+}

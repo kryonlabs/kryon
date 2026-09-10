@@ -742,7 +742,7 @@ $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATE
 
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
-generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js include/ui_button_props.generated.h include/ui_control_props.generated.h
+generate-runtime: $(RUNTIME_C) $(RUNTIME_H) $(K2GO) web/instance.js web/control_props.js include/ui_button_props.generated.h include/ui_control_props.generated.h include/ui_drawing_props.generated.h
 	$(K2GO) --strict --no-main --runtime-implementation --pkg kryon --root . -o go/kryon $(RUNTIME_KRY)
 	gofmt -w $(RUNTIME_GO)
 
@@ -750,6 +750,9 @@ preflight test: runtime-declarations-check
 .PHONY: runtime-declarations-check
 runtime-declarations-check: $(K2C) $(K2GO) $(K2JS) $(ICON_TYPES_H)
 	CC="$(CC)" sh tests/runtime_declarations_test.sh $(BUILD_DIR)
+
+include/ui_drawing_props.generated.h: $(GENERATED_SRC_DIR)/runtime/drawing_props.h
+	cp $< $@
 
 include/ui_control_props.generated.h: $(GENERATED_SRC_DIR)/runtime/control_props.h
 	cp $< $@
