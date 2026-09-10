@@ -383,7 +383,7 @@ static void check_button_font_measurement(void)
         const UIWidgetNode *nodes = GetTreeNodes(&count);
         int padding = Scale(state == ButtonStateNormal ? 8 : 19);
         assert(count == 2 && nodes[1].kind == UI_WIDGET_BUTTON_NODE);
-        assert(nodes[1].data.button.spec.font == 13);
+        assert(nodes[1].data.button.props.font == 13);
         assert(nodes[1].declared_bounds.width == TextWidth(props.label, 13) + padding * 2);
         EndUIFrame();
         EndDrawing();

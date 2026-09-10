@@ -2,7 +2,7 @@
 static const struct { const char *path; const char *source; } runtime_sources[] = {
     {"runtime/button_props.kry",
         "#module \"button_props\"\n"
-        "#import \"ui_controls.h\"\n"
+        "#import \"ui_control_props.generated.h\"\n"
         "\n"
         "# Shared public contract. Hosts provide the geometry, texture, and style types.\n"
         "ButtonProps :: struct {\n"

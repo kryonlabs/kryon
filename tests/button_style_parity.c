@@ -101,26 +101,30 @@ static void check_composed_button_style(ButtonProps props)
     assert(nodes[0].kind == UI_WIDGET_SCREEN_NODE);
     assert(nodes[1].kind == UI_WIDGET_BUTTON_NODE);
     assert(nodes[2].kind == UI_WIDGET_BUTTON_NODE);
-    const ButtonSpec *plain = &nodes[1].data.button.spec;
-    const ButtonSpec *composed = &nodes[2].data.button.spec;
-    assert(plain->focus_id == 11 && composed->focus_id == 12);
-    assert(plain->font == composed->font);
-    assert(plain->disabled == composed->disabled);
-    assert(plain->loading == composed->loading);
-    assert(plain->state == composed->state);
-    assert(plain->selected == composed->selected);
-    assert(plain->radius == composed->radius);
-    assert(plain->border_width == composed->border_width);
-    assert(plain->opacity == composed->opacity);
-    assert(plain->gap == composed->gap);
-    assert(plain->icon_size == composed->icon_size);
-    assert(plain->content_offset.x == composed->content_offset.x);
-    assert(plain->content_offset.y == composed->content_offset.y);
-    assert(ColorToInt(plain->background) == ColorToInt(composed->background));
+    const ButtonSpec *plain = &nodes[1].data.button;
+    const ButtonSpec *composed = &nodes[2].data.button;
+    assert(plain->props.id == 11 && composed->props.id == 12);
+    assert(plain->props.font == composed->props.font);
+    assert(plain->props.pill == props.pill && composed->props.pill == props.pill);
+    assert(plain->props.circle == props.circle && composed->props.circle == props.circle);
+    assert(plain->props.square == props.square && composed->props.square == props.square);
+    assert(plain->props.full_width == props.full_width && composed->props.full_width == props.full_width);
+    assert(plain->props.disabled == composed->props.disabled);
+    assert(plain->props.loading == composed->props.loading);
+    assert(plain->props.state == composed->props.state);
+    assert(plain->props.selected == composed->props.selected);
+    assert(plain->paint.radius == composed->paint.radius);
+    assert(plain->paint.border_width == composed->paint.border_width);
+    assert(plain->paint.opacity == composed->paint.opacity);
+    assert(plain->paint.gap == composed->paint.gap);
+    assert(plain->paint.icon_size == composed->paint.icon_size);
+    assert(plain->paint.content_offset.x == composed->paint.content_offset.x);
+    assert(plain->paint.content_offset.y == composed->paint.content_offset.y);
+    assert(ColorToInt(plain->paint.background) == ColorToInt(composed->paint.background));
     assert(ColorToInt(plain->hover_background) == ColorToInt(composed->hover_background));
-    assert(ColorToInt(plain->text) == ColorToInt(composed->text));
-    assert(ColorToInt(plain->border) == ColorToInt(composed->border));
-    assert(ColorToInt(plain->focus) == ColorToInt(composed->focus));
+    assert(ColorToInt(plain->paint.foreground) == ColorToInt(composed->paint.foreground));
+    assert(ColorToInt(plain->paint.border) == ColorToInt(composed->paint.border));
+    assert(ColorToInt(plain->paint.focus) == ColorToInt(composed->paint.focus));
 }
 
 static void check_explicit_state_font(void)
@@ -151,9 +155,9 @@ static void check_explicit_state_font(void)
             assert(count == 2 && nodes[1].kind == UI_WIDGET_BUTTON_NODE);
             /* The node retains the request; resolving it must still give the
                same font used for measurement, without freezing Style defaults. */
-            assert(nodes[1].data.button.spec.font == explicit_font);
+            assert(nodes[1].data.button.props.font == explicit_font);
             Style resolved = ResolveButtonStyle(props, state);
-            assert(ResolveFont(nodes[1].data.button.spec.font,
+            assert(ResolveFont(nodes[1].data.button.props.font,
                 Scale(resolved.font_size), GetFontSize()) == font);
             assert(nodes[1].declared_bounds.width == TextWidth(props.label, font) + padding * 2);
         }
@@ -357,14 +361,14 @@ int main(void)
         assert(count == 2 && nodes[1].kind == UI_WIDGET_BUTTON_NODE);
         if(!scoped) {
             direct_bounds = nodes[1].bounds;
-            direct_spec = nodes[1].data.button.spec;
+            direct_spec = nodes[1].data.button;
             assert(direct_bounds.height == 67);
         } else {
-            const ButtonSpec *spec = &nodes[1].data.button.spec;
+            const ButtonSpec *spec = &nodes[1].data.button;
             assert(nodes[1].bounds.width == direct_bounds.width && nodes[1].bounds.height == direct_bounds.height);
-            assert(spec->disabled && ColorToInt(spec->text) == ColorToInt(direct_spec.text));
-            assert(ColorToInt(spec->background) == ColorToInt(direct_spec.background));
-            assert(ColorToInt(spec->border) == ColorToInt(direct_spec.border));
+            assert(spec->props.disabled && ColorToInt(spec->paint.foreground) == ColorToInt(direct_spec.paint.foreground));
+            assert(ColorToInt(spec->paint.background) == ColorToInt(direct_spec.paint.background));
+            assert(ColorToInt(spec->paint.border) == ColorToInt(direct_spec.paint.border));
         }
         EndDisabled();
     }
@@ -642,6 +646,10 @@ int main(void)
             assert((unsigned int)ColorToInt(style.focus) == expected_focus);
         }
     }
+    check_composed_button_style((ButtonProps){.pill = true});
+    check_composed_button_style((ButtonProps){.circle = true});
+    check_composed_button_style((ButtonProps){.square = true});
+    check_composed_button_style((ButtonProps){.full_width = true});
     for(int dark = 0; dark < 2; dark++) {
         SetTheme(dark ? ThemeDefaultDark() : ThemeDefaultLight());
         for(int tone = 0; tone < 5; tone++) {

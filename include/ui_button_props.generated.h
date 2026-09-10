@@ -19,7 +19,7 @@ static inline bool StringEqual(String a, String b) {
     return a.length == b.length && (a.length == 0 || memcmp(a.data, b.data, a.length) == 0);
 }
 #endif
-#include "ui_controls.h"
+#include "ui_control_props.generated.h"
 
 typedef struct ButtonProps {
     Rectangle bounds;

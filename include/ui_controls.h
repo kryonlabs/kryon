@@ -4,6 +4,7 @@
 #include "kryon_compat.generated.h"
 #include "theme_style.h"
 #include "ui_control_props.generated.h"
+#include "ui_button_props.generated.h"
 #include "ui_icon_types.h"
 #include <stddef.h>
 
@@ -35,35 +36,10 @@ typedef struct {
 } TextInputStyle;
 
 typedef struct {
-    Rectangle bounds;
-    const char *label;
-    int font;
-    int focus_id;
-    int disabled;
-    Color background;
+    ButtonProps props;
+    Style paint;
     Color hover_background;
-    Color text;
-    Color border;
-    Color focus;
-    float radius;
-    float border_width;
-    float opacity;
-    float gap;
-    float icon_size;
-    Vector2 content_offset;
-    ButtonState state;
-    int loading;
-    int selected;
     int style_resolved;
-    MaterialKind material;
-    ControlSize size;
-    ButtonTone tone;
-    ButtonEmphasis emphasis;
-    ControlStyle style;
-    Texture2D icon;
-    UIIconType icon_type;
-    IconPlacement icon_placement;
-    int icon_only;
     Rectangle surface_bounds;
     int disclosure;
 } ButtonSpec;

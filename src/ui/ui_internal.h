@@ -170,7 +170,6 @@ int ui_scrollbar(int x, int y, int viewport_h, int content_h,
                  int *scroll_offset, int max_scroll, int overlay);
 void ui_scrollbar_cancel(int *scroll_offset);
 int RenderButton(ButtonSpec button);
-ButtonProps ui_button_style_props(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);

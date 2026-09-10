@@ -1,5 +1,5 @@
 #module "button_props"
-#import "ui_controls.h"
+#import "ui_control_props.generated.h"
 
 # Shared public contract. Hosts provide the geometry, texture, and style types.
 ButtonProps :: struct {

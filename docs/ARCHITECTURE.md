@@ -300,7 +300,12 @@ generic instance service. Button's retained motion update now lives in `.kry`
 and uses this binding; C and Go no longer look up or mutate its stored tracks.
 
 `runtime/button_props.kry` now owns Button's public props fields. C and Go use
-generated declarations instead of separately maintained structs.
+generated declarations instead of separately maintained structs. The retained
+C ButtonSpec also embeds that complete props record and the shared Style;
+conversion tables and duplicate tone/emphasis fields have been removed. Paint
+uses the declared pill/circle flags rather than reconstructing shape flags
+from a resolved radius. The remaining native ButtonSpec holds legacy paint and
+retained surface metadata until the host lifecycle is migrated.
 `runtime/drawing_props.kry` declares the fields of Vector2, Rectangle, Color,
 and Texture2D as `struct #extern` contracts. C and C++ reuse the graphics host's
 types; native runtime generation emits their Go structs. The shared checker can

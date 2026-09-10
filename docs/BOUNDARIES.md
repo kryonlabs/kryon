@@ -63,7 +63,9 @@ render-exact fixtures.
 
 Widget props contracts belong in the declaration source. Button's C header and
 native Go props type are generated from `runtime/button_props.kry`; handwritten
-host code consumes these types. Geometry and texture fields are declared in
+host code consumes these types. The C retained ButtonSpec embeds ButtonProps
+and the generated Style directly; it must not maintain another field schema or
+reconstruct props from paint metadata. Geometry and texture fields are declared in
 `runtime/drawing_props.kry`. Its `struct #extern` contracts reuse C/C++ host
 definitions and generate native Go definitions; graphics resource ownership
 remains with the host. Control style records use their own shared declaration.

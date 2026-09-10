@@ -1344,6 +1344,10 @@ int Button(ButtonProps button);
 ```
 
 Native Go uses the same props-only contract: `Button(ButtonProps) bool`.
+The low-level C `ButtonSpec` now embeds `ButtonProps props` and `Style paint`.
+Direct renderer callers use fields such as `.props.id` and `.paint.foreground`;
+retained nodes expose this record as `node.data.button`. Rebuild C callers with
+the updated headers because this record layout changed.
 The Rectangle, Vector2, Color, and Texture2D field contracts come from
 `runtime/drawing_props.kry`. These records support typed field access and value
 copies in shared `.kry` functions. Their C/C++ definitions remain supplied by

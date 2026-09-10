@@ -13,9 +13,9 @@ static void
 ui_draw_button_content(const ButtonSpec *button, Rectangle bounds,
                        int font, Color color)
 {
-    ButtonProps props = ui_button_style_props(*button);
-    StyleData paint = {.icon_size = button->icon_size, .gap = button->gap,
-                       .offset_x = button->content_offset.x, .offset_y = button->content_offset.y};
+    ButtonProps props = button->props;
+    StyleData paint = {.icon_size = button->paint.icon_size, .gap = button->paint.gap,
+                       .offset_x = button->paint.content_offset.x, .offset_y = button->paint.content_offset.y};
     ContentDrawing content = PaintContent(props, bounds, paint, font,
         TextWidth(props.label != NULL ? props.label : "", font), ColorToInt(color),
         ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
@@ -54,22 +54,6 @@ ui_draw_termi_button_outline(Rectangle bounds, Color border, int hovered,
 }
 
 
-ButtonProps
-ui_button_style_props(ButtonSpec button)
-{
-    return (ButtonProps){
-        .bounds = button.bounds, .id = button.focus_id,
-        .label = button.label, .font = button.font, .icon = button.icon,
-        .icon_type = button.icon_type > UI_ICON_TYPE_NONE && button.icon_type < UI_ICON_TYPE_COUNT
-            ? button.icon_type : UI_ICON_TYPE_NONE,
-        .icon_only = button.icon_only, .icon_placement = button.icon_placement,
-        .state = button.state, .size = button.size,
-        .tone = button.tone, .emphasis = button.emphasis, .style = button.style,
-        .disabled = button.disabled, .loading = button.loading,
-        .selected = button.selected
-    };
-}
-
 static int
 ui_render_button(ButtonSpec button, int handle_input, int paint,
                  int retained_hovered, int retained_pressed, Color *foreground)
@@ -78,12 +62,12 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     UIWidget widget;
     int hovered;
     int focused;
-    int font = button.font > 0 ? button.font : GetFontSize();
-    Color background = button.background.a != 0 ? button.background : c_button;
+    int font = button.props.font > 0 ? button.props.font : GetFontSize();
+    Color background = button.paint.background.a != 0 ? button.paint.background : c_button;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
-    Color text = button.text.a != 0 ? button.text : c_text;
-    Color border = button.border.a != 0 ? button.border : LightenUIColor(background, 32);
-    float radius = button.radius > 0.0f ? button.radius : 0.06f;
+    Color text = button.paint.foreground.a != 0 ? button.paint.foreground : c_text;
+    Color border = button.paint.border.a != 0 ? button.paint.border : LightenUIColor(background, 32);
+    float radius = button.paint.radius > 0.0f ? button.paint.radius : 0.06f;
     int cues = UITransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
@@ -101,15 +85,15 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                                ui_inspect_control_id(editor_id,
                                                      sizeof(editor_id),
                                                      "button",
-                                                     button.focus_id,
-                                                     button.label),
-                               button.bounds,
+                                                     button.props.id,
+                                                     button.props.label),
+                               button.props.bounds,
                                UI_WIDGET_MOVABLE |
                                UI_WIDGET_RESIZABLE);
-        button.bounds = widget.bounds;
-        UIWidgetSetAction(&widget, button.label);
+        button.props.bounds = widget.bounds;
+        UIWidgetSetAction(&widget, button.props.label);
     }
-    ButtonProps props = ui_button_style_props(button);
+    ButtonProps props = button.props;
     ButtonInput input;
     if(handle_input) {
         input = ReadButtonInput(props);
@@ -117,20 +101,20 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         Activation sample = {
             .hovered = retained_hovered,
             .pressed = retained_pressed,
-            .focused = button.focus_id > 0 && IsUIFocusActive(button.focus_id)
+            .focused = button.props.id > 0 && IsUIFocusActive(button.props.id)
         };
-        if(sample.focused && IsUIFocusActivatePressed(button.focus_id))
+        if(sample.focused && IsUIFocusActivatePressed(button.props.id))
             sample.pressed = true;
         input = ResolveButtonInput(props, sample);
     }
-    button.disabled = input.flags.disabled;
-    button.loading = input.flags.loading;
-    button.selected = input.flags.selected;
+    button.props.disabled = input.flags.disabled;
+    button.props.loading = input.flags.loading;
+    button.props.selected = input.flags.selected;
     ButtonState state = (ButtonState)input.interaction.state;
     hovered = input.interaction.hovered;
     retained_pressed = input.interaction.pressed;
     focused = input.interaction.focused;
-    draw_bounds = button.bounds;
+    draw_bounds = button.props.bounds;
     if(!paint || !IsWindowReady()) {
         if(focused)
             SetUIFocusTextInputActive(0);
@@ -142,12 +126,12 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
     if(default_controls) {
         unsigned int key = 2166136261u;
-        const char *label = button.label != NULL ? button.label : "";
+        const char *label = button.props.label != NULL ? button.props.label : "";
 
-        key = (key ^ (unsigned int)button.focus_id) * 16777619u;
-        if(button.focus_id == 0) {
-            key = (key ^ (unsigned int)(int)button.bounds.x) * 16777619u;
-            key = (key ^ (unsigned int)(int)button.bounds.y) * 16777619u;
+        key = (key ^ (unsigned int)button.props.id) * 16777619u;
+        if(button.props.id == 0) {
+            key = (key ^ (unsigned int)(int)button.props.bounds.x) * 16777619u;
+            key = (key ^ (unsigned int)(int)button.props.bounds.y) * 16777619u;
             while(*label != '\0')
                 key = (key ^ (unsigned char)*label++) * 16777619u;
         }
@@ -164,10 +148,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     }
 
     if(default_controls && button.style_resolved) {
-        props = ui_button_style_props(button);
-        props.pill = radius >= 0.5f;
+        props = button.props;
         StyleFrame appearance = resolve_button_frame(props, state,
-            button.state == ButtonStateAuto, hover_amount, press_amount, focus_amount);
+            button.props.state == ButtonStateAuto, hover_amount, press_amount, focus_amount);
         ButtonFrame frame = BuildFrame(props, input, appearance, motion, button.surface_bounds,
             ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
             Scale(appearance.value.font_size), GetFontSize());
@@ -194,29 +177,29 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     }
 
     if(default_controls) {
-        if(motion.active || (button.loading && !button.disabled))
+        if(motion.active || (button.props.loading && !button.props.disabled))
             InvalidateTree(UI_INVALIDATE_PAINT);
         ThemeScheme scheme = ui_default_scheme();
         FillStates fill_states = {0};
         border = scheme.outline;
         border.a = GetThemeMetrics().border_alpha;
-        if(button.disabled) {
+        if(button.props.disabled) {
             background = scheme.disabled_container;
             text = scheme.disabled_content;
         } else {
-            background = button.background.a != 0 ? button.background
+            background = button.paint.background.a != 0 ? button.paint.background
                                                   : scheme.surface_variant;
-            text = button.text.a != 0 ? button.text : scheme.on_surface_variant;
+            text = button.paint.foreground.a != 0 ? button.paint.foreground : scheme.on_surface_variant;
         }
         radius = GetThemeMetrics().control_radius;
-        button.opacity = 1.0f;
-        button.border_width = GetThemeMetrics().border_width;
-        button.focus = GetTheme().colors.focus;
+        button.paint.opacity = 1.0f;
+        button.paint.border_width = GetThemeMetrics().border_width;
+        button.paint.focus = GetTheme().colors.focus;
         draw_bounds = ui_draw_material(
             draw_bounds, button.surface_bounds, background, border, border, radius,
-            button.border_width, hover_amount, press_amount, button.disabled,
-            button.focus, focus_amount, button.opacity, fill_states, button.material);
-        text = GetColor(Opacity(ColorToInt(text), button.opacity));
+            button.paint.border_width, hover_amount, press_amount, button.props.disabled,
+            button.paint.focus, focus_amount, button.paint.opacity, fill_states, button.paint.material);
+        text = GetColor(Opacity(ColorToInt(text), button.paint.opacity));
         if(foreground != NULL)
             *foreground = text;
         if(focused)
@@ -230,14 +213,14 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             ? input.activated : 0;
     }
 
-    if(button.disabled) {
+    if(button.props.disabled) {
         background.a = background.a > 120 ? 120 : background.a;
         text.a = text.a > 150 ? 150 : text.a;
     }
     draw_background = ColorLerp(background, hover_background, hover_amount);
     draw_border = ColorLerp(border, LightenUIColor(hover_background, cues ? 54 : 40),
                             hover_amount);
-    if(termi_button && !button.disabled && retained_pressed)
+    if(termi_button && !button.props.disabled && retained_pressed)
         draw_background = DarkenUIColor(draw_background, 18);
     if(cues && hovered)
         draw_background = LightenUIColor(draw_background, 6);
@@ -249,7 +232,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     if(termi_button)
         ui_draw_termi_button_outline(draw_bounds, draw_border, hovered,
                                      retained_pressed,
-                                     button.disabled);
+                                     button.props.disabled);
     if(focused) {
         SetUIFocusTextInputActive(0);
         DrawUIFocus(draw_bounds);
@@ -279,7 +262,7 @@ HandleButton(ButtonSpec button)
 Color
 ui_paint_button(ButtonSpec button, int hovered, int pressed)
 {
-    Color foreground = button.text;
+    Color foreground = button.paint.foreground;
     (void)ui_render_button(button, 0, 1, hovered, pressed, &foreground);
     return foreground;
 }
@@ -301,45 +284,45 @@ DrawUIIconButton(IconButtonProps button)
     if(icon_size < 1)
         icon_size = 1;
 
-    spec.bounds = button.bounds;
-    spec.focus_id = button.focus_id;
-    spec.disabled = button.disabled;
-    spec.icon = button.icon;
-    spec.icon_type = button.icon_type;
-    spec.icon_only = 1;
-    spec.icon_size = (float)icon_size / scale;
-    spec.tone = ButtonToneNeutral;
-    spec.emphasis = button.background.a != 0
+    spec.props.bounds = button.bounds;
+    spec.props.id = button.focus_id;
+    spec.props.disabled = button.disabled;
+    spec.props.icon = button.icon;
+    spec.props.icon_type = button.icon_type;
+    spec.props.icon_only = 1;
+    spec.paint.icon_size = (float)icon_size / scale;
+    spec.props.tone = ButtonToneNeutral;
+    spec.props.emphasis = button.background.a != 0
         ? ButtonEmphasisSoft : ButtonEmphasisGhost;
     spec.style_resolved = 1;
-    spec.style.normal.fields = StyleIconSize;
-    spec.style.normal.icon_size = spec.icon_size;
+    spec.props.style.normal.fields = StyleIconSize;
+    spec.props.style.normal.icon_size = spec.paint.icon_size;
     if(button.background.a != 0) {
-        spec.style.normal.fields |= StyleBackground;
-        spec.style.normal.background = button.background;
+        spec.props.style.normal.fields |= StyleBackground;
+        spec.props.style.normal.background = button.background;
     }
     if(button.hover_background.a != 0) {
-        spec.style.hover.fields |= StyleBackground;
-        spec.style.hover.background = button.hover_background;
+        spec.props.style.hover.fields |= StyleBackground;
+        spec.props.style.hover.background = button.hover_background;
     }
     if(button.icon_color.a != 0) {
-        spec.style.normal.fields |= StyleForeground;
-        spec.style.normal.foreground = button.icon_color;
+        spec.props.style.normal.fields |= StyleForeground;
+        spec.props.style.normal.foreground = button.icon_color;
     }
     if(button.border.a != 0) {
-        spec.style.normal.fields |= StyleBorder;
-        spec.style.normal.border = button.border;
+        spec.props.style.normal.fields |= StyleBorder;
+        spec.props.style.normal.border = button.border;
     }
     if(button.radius > 0.0f) {
-        spec.style.normal.fields |= StyleRadius;
-        spec.style.normal.radius = button.radius *
+        spec.props.style.normal.fields |= StyleRadius;
+        spec.props.style.normal.radius = button.radius *
             fminf(button.bounds.width, button.bounds.height) / (2.0f * scale);
     }
-    spec.background = button.background;
+    spec.paint.background = button.background;
     spec.hover_background = button.hover_background;
-    spec.text = button.icon_color;
-    spec.border = button.border;
-    spec.radius = button.radius;
+    spec.paint.foreground = button.icon_color;
+    spec.paint.border = button.border;
+    spec.paint.radius = button.radius;
     return RenderButton(spec);
 }
 
@@ -372,14 +355,14 @@ RenderTextButton(int x, int y, const char *label, int *hover)
     if(hover != NULL)
         *hover = hovered;
     memset(&spec, 0, sizeof(spec));
-    spec.bounds = bounds;
-    spec.label = text;
-    spec.font = font;
-    spec.background = c_button;
+    spec.props.bounds = bounds;
+    spec.props.label = text;
+    spec.props.font = font;
+    spec.paint.background = c_button;
     spec.hover_background = c_button_hover;
-    spec.text = c_text;
-    spec.border = LightenUIColor(c_button, 32);
-    spec.radius = 0.06f;
+    spec.paint.foreground = c_text;
+    spec.paint.border = LightenUIColor(c_button, 32);
+    spec.paint.radius = 0.06f;
     return RenderButton(spec);
 }
 
@@ -568,22 +551,22 @@ SegmentedControl(SegmentedControlProps control)
 
                 memset(&button, 0, sizeof(button));
                 memset(&props, 0, sizeof(props));
-                button.bounds = (Rectangle){(float)x, (float)y,
+                button.props.bounds = (Rectangle){(float)x, (float)y,
                                             (float)button_w, (float)row_h};
-                button.label = option->label;
-                button.font = font;
-                button.focus_id = focus_id;
-                button.disabled = option->disabled;
+                button.props.label = option->label;
+                button.props.font = font;
+                button.props.id = focus_id;
+                button.props.disabled = option->disabled;
                 props.tone = item_index == selected
                     ? ButtonToneAccent : ButtonToneNeutral;
                 props.emphasis = ButtonEmphasisSoft;
                 props.selected = item_index == selected;
                 paint = ResolveButtonStyle(props, ButtonStateNormal);
-                button.background = paint.background;
+                button.paint.background = paint.background;
                 button.hover_background = paint.background;
-                button.text = paint.foreground;
-                button.border = paint.border;
-                button.radius = paint.radius;
+                button.paint.foreground = paint.foreground;
+                button.paint.border = paint.border;
+                button.paint.radius = paint.radius;
                 button.style_resolved = 1;
                 if(RenderButton(button)) {
                     result.clicked_index = item_index;
@@ -728,29 +711,29 @@ ScoreControl(ScoreControlProps control)
             score_label(label, sizeof(label), value);
             memset(&button, 0, sizeof(button));
             memset(&props, 0, sizeof(props));
-            button.bounds = (Rectangle){(float)x, (float)y,
+            button.props.bounds = (Rectangle){(float)x, (float)y,
                                         (float)button_w, (float)row_h};
-            button.label = label;
-            button.font = font;
-            button.focus_id = focus_id;
+            button.props.label = label;
+            button.props.font = font;
+            button.props.id = focus_id;
             props.tone = selected_value ? ButtonToneAccent : ButtonToneNeutral;
             props.emphasis = ButtonEmphasisSoft;
             props.selected = selected_value;
             paint = ResolveButtonStyle(props, ButtonStateNormal);
-            button.background = paint.background;
+            button.paint.background = paint.background;
             button.hover_background = paint.background;
-            button.text = paint.foreground;
+            button.paint.foreground = paint.foreground;
             if(value < 0 && !selected_value) {
-                button.background = DarkenUIColor(c_bg, 10);
+                button.paint.background = DarkenUIColor(c_bg, 10);
                 button.hover_background = DarkenUIColor(c_bg, 4);
-                button.text = Fade(c_text, 0.78f);
+                button.paint.foreground = Fade(c_text, 0.78f);
             } else if(value > 0 && !selected_value) {
-                button.background = c_surface;
+                button.paint.background = c_surface;
                 button.hover_background = LightenUIColor(c_surface, 8);
-                button.text = c_text;
+                button.paint.foreground = c_text;
             }
-            button.border = selected_value ? c_button : Fade(c_text, 0.30f);
-            button.radius = 0.08f;
+            button.paint.border = selected_value ? c_button : Fade(c_text, 0.30f);
+            button.paint.radius = 0.08f;
             button.style_resolved = 1;
             if(RenderButton(button)) {
                 result.clicked = 1;

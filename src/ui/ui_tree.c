@@ -429,8 +429,8 @@ ui_reconcile_node_changed(const UIWidgetNode *old_node,
         return 1;
     new_data = new_node->data;
     if(old_node->kind == UI_WIDGET_BUTTON_NODE) {
-        old_data.button.spec.label = NULL;
-        new_data.button.spec.label = NULL;
+        old_data.button.props.label = NULL;
+        new_data.button.props.label = NULL;
     }
     if(memcmp(&old_data, &new_data, sizeof(old_data)) != 0)
         return 1;
@@ -1129,11 +1129,11 @@ LayoutTree(void)
            parent->kind != UI_WIDGET_BUTTON_NODE)
             continue;
         if(parent->kind == UI_WIDGET_BUTTON_NODE) {
-            ButtonSpec *button = &parent->data.button.spec;
+            ButtonSpec *button = &parent->data.button;
             float scale = (float)Scale(1000) / 1000.0f;
             Style style = {.padding_x = 8, .padding_y = 8};
             if(button->style_resolved)
-                style = ResolveButtonStyle(ui_button_style_props(*button), button->state);
+                style = ResolveButtonStyle(button->props, button->props.state);
             Rectangle content = InsetBounds(parent->bounds, style.padding_x, style.padding_y, scale);
             content_x = content.x;
             content_y = content.y;
@@ -1226,8 +1226,8 @@ RouteInput(void)
         else if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
             focus_id = node->data.text_area.focus_id;
         else if(node->kind == UI_WIDGET_BUTTON_NODE &&
-                CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading))
-            focus_id = node->data.button.spec.focus_id;
+                CanActivate(node->data.button.props.disabled, node->data.button.props.loading))
+            focus_id = node->data.button.props.id;
         if(node->has_input_clip) PushUIInputClip(node->input_clip);
         if(UIFocusFrameOpen() && focus_id > 0)
             (void)ui_register_focus_snapshot(focus_id, node->bounds,
@@ -1246,7 +1246,7 @@ RouteInput(void)
             continue;
         before = node->flags;
         node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
-        if(CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading) &&
+        if(CanActivate(node->data.button.props.disabled, node->data.button.props.loading) &&
            (node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
            !ui_tree_input_blocked(node,mouse) &&
            (!node->has_input_clip || CheckCollisionPointRec(mouse,node->input_clip)) &&
@@ -1260,8 +1260,8 @@ RouteInput(void)
     }
     target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ? hit : -1;
     if(target >= 0 && ui_committed_nodes[target].kind == UI_WIDGET_BUTTON_NODE &&
-       CanActivate(ui_committed_nodes[target].data.button.spec.disabled,
-                   ui_committed_nodes[target].data.button.spec.loading)) {
+       CanActivate(ui_committed_nodes[target].data.button.props.disabled,
+                   ui_committed_nodes[target].data.button.props.loading)) {
         UIEvent event;
 
         memset(&event, 0, sizeof(event));
@@ -1277,8 +1277,8 @@ RouteInput(void)
 
         if(!UIFocusFrameOpen() ||
            node->kind != UI_WIDGET_BUTTON_NODE ||
-           !CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading) ||
-           !IsUIFocusActivatePressed(node->data.button.spec.focus_id))
+           !CanActivate(node->data.button.props.disabled, node->data.button.props.loading) ||
+           !IsUIFocusActivatePressed(node->data.button.props.id))
             continue;
         memset(&event, 0, sizeof(event));
         event.key = node->key;
@@ -1804,19 +1804,19 @@ DrawTree(void)
                      node->data.primitive.color);
             break;
         case UI_WIDGET_BUTTON_NODE: {
-            ButtonSpec spec = node->data.button.spec;
+            ButtonSpec spec = node->data.button;
             int hovered;
             int pressed;
 
             if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
                 break;
-            spec.bounds = node->bounds;
-            spec.label = node->first_child >= 0 ? "" :
+            spec.props.bounds = node->bounds;
+            spec.props.label = node->first_child >= 0 ? "" :
                 (node->owned_text != NULL ? node->owned_text : "");
             hovered = (node->flags & UI_NODE_HOVERED) != 0;
             pressed = (node->flags & UI_NODE_PRESSED) != 0;
             Color foreground = ui_paint_button(spec, hovered, pressed);
-            ui_tree_inherit_foreground(i, foreground, node->data.button.spec.disabled);
+            ui_tree_inherit_foreground(i, foreground, node->data.button.props.disabled);
             break;
         }
         case UI_WIDGET_TEXT_AREA_NODE: {
@@ -2122,7 +2122,7 @@ GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
                 label = ui_tree_first_text(ui_committed_nodes,
                                            ui_committed_node_count, i);
             if(label == NULL)
-                label = node->data.button.spec.label;
+                label = node->data.button.props.label;
         }
         else if(label == NULL && node->kind == UI_WIDGET_CHECKBOX_NODE)
             label = node->data.checkbox.label;
@@ -2135,7 +2135,7 @@ GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
                 node->state != NULL &&
                 ((TextFieldState *)node->state)->focused;
             nodes[count].disabled = node->kind == UI_WIDGET_BUTTON_NODE &&
-                !CanActivate(node->data.button.spec.disabled, node->data.button.spec.loading);
+                !CanActivate(node->data.button.props.disabled, node->data.button.props.loading);
             nodes[count].checked = node->kind == UI_WIDGET_CHECKBOX_NODE &&
                 node->data.checkbox.value != NULL &&
                 *node->data.checkbox.value != 0;
@@ -2358,16 +2358,16 @@ Text(TextProps props)
             UIWidgetNode *parent = ui_tree_node(ui_tree_stack[i]);
 
             if(parent != NULL && parent->kind == UI_WIDGET_BUTTON_NODE) {
-                ButtonSpec *button = &parent->data.button.spec;
+                ButtonSpec *button = &parent->data.button;
 
-                inherited_font = button->font;
+                inherited_font = button->props.font;
                 if(inherited_font <= 0) {
-                    Style style = ResolveButtonStyle(ui_button_style_props(*button), button->state);
-                    inherited_font = ResolveFont(button->font, Scale(style.font_size), GetFontSize());
+                    Style style = ResolveButtonStyle(button->props, button->props.state);
+                    inherited_font = ResolveFont(button->props.font, Scale(style.font_size), GetFontSize());
                 }
-                inherited_color = button->text;
+                inherited_color = button->paint.foreground;
                 inherited_color_set = true;
-                inherited_disabled = button->disabled;
+                inherited_disabled = button->props.disabled;
                 break;
             }
         }
@@ -2605,12 +2605,12 @@ ButtonNode(ButtonSpec button)
     NodeId node;
     int clicked;
 
-    node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
+    node = ui_tree_add(button.props.id, UI_WIDGET_BUTTON_NODE, button.props.bounds,
                        NULL);
     if(node >= 0) {
-        ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
-        ui_tree_nodes[node].data.button.spec = button;
-        ui_tree_nodes[node].data.button.spec.label =
+        ui_tree_nodes[node].owned_text = ui_tree_strdup(button.props.label);
+        ui_tree_nodes[node].data.button = button;
+        ui_tree_nodes[node].data.button.props.label =
             ui_tree_nodes[node].owned_text;
     }
     clicked = ui_tree_building ? HandleButton(button) : RenderButton(button);
@@ -3712,41 +3712,18 @@ static ButtonSpec
 ui_tree_button_spec(ButtonProps button, Rectangle surface_bounds, int disclosure)
 {
     Style paint;
+    button.disabled = button.disabled || button.state == ButtonStateDisabled || UIContentDisabled();
+    button.loading = button.loading || button.state == ButtonStateLoading;
     ButtonSpec spec = {
-        .bounds = button.bounds,
+        .props = button,
         .surface_bounds = surface_bounds,
         .disclosure = disclosure,
-        .label = button.label,
-        .font = button.font,
-        .focus_id = button.id,
-        .disabled = button.disabled || button.state == ButtonStateDisabled || UIContentDisabled(),
-        .state = button.state,
-        .loading = button.loading || button.state == ButtonStateLoading,
-        .selected = button.selected,
-        .style_resolved = 1,
-        .size = button.size,
-        .tone = button.tone,
-        .emphasis = button.emphasis,
-        .style = button.style,
-        .icon = button.icon,
-        .icon_type = button.icon_type,
-        .icon_placement = button.icon_placement,
-        .icon_only = button.icon_only
+        .style_resolved = 1
     };
-    button.disabled = spec.disabled;
     paint = ResolveButtonStyle(button, button.state);
-    spec.background = paint.background;
+    spec.paint = paint;
+    spec.paint.radius = ui_radius_px(button.bounds, paint.radius);
     spec.hover_background = paint.background;
-    spec.text = paint.foreground;
-    spec.border = paint.border;
-    spec.focus = paint.focus;
-    spec.radius = ui_radius_px(button.bounds, paint.radius);
-    spec.border_width = paint.border_width;
-    spec.opacity = paint.opacity;
-    spec.material = paint.material;
-    spec.gap = paint.gap;
-    spec.icon_size = paint.icon_size;
-    spec.content_offset = paint.content_offset;
     return spec;
 }
 
@@ -3761,13 +3738,11 @@ ui_tree_surface_button(ButtonProps button, Rectangle surface_bounds, int disclos
     int clicked;
 
     if(node >= 0) {
-        spec.bounds = ui_tree_nodes[node].bounds;
+        spec.props.bounds = ui_tree_nodes[node].bounds;
         ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
-        ui_tree_nodes[node].data.button.spec = spec;
-        ui_tree_nodes[node].data.button.spec.label =
+        ui_tree_nodes[node].data.button = spec;
+        ui_tree_nodes[node].data.button.props.label =
             ui_tree_nodes[node].owned_text;
-        ui_tree_nodes[node].data.button.tone = button.tone;
-        ui_tree_nodes[node].data.button.emphasis = button.emphasis;
     }
     clicked = ui_tree_building ? HandleButton(spec) : RenderButton(spec);
     return clicked;
@@ -3788,16 +3763,14 @@ BeginButton(ButtonProps button)
     button.bounds = resolve_button_bounds(button, 0);
     button.id = ResolveUIFocusID(button.id);
     spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
-    spec.label = "";
+    spec.props.label = "";
 
     node = ui_tree_add(button.id, UI_WIDGET_BUTTON_NODE, button.bounds, NULL);
     if(node < 0)
         return node;
-    spec.bounds = ui_tree_nodes[node].bounds;
+    spec.props.bounds = ui_tree_nodes[node].bounds;
     ui_tree_nodes[node].owned_text = ui_tree_strdup(button.label);
-    ui_tree_nodes[node].data.button.spec = spec;
-    ui_tree_nodes[node].data.button.tone = button.tone;
-    ui_tree_nodes[node].data.button.emphasis = button.emphasis;
+    ui_tree_nodes[node].data.button = spec;
     if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
         ui_tree_stack[ui_tree_stack_depth++] = node;
     if(button.label != NULL && button.label[0] != '\0')

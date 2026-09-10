@@ -156,11 +156,7 @@ typedef union UIWidgetData {
         int styled;
         Style style;
     } primitive;
-    struct {
-        ButtonSpec spec;
-        ButtonTone tone;
-        ButtonEmphasis emphasis;
-    } button;
+    ButtonSpec button;
     TextFieldProps text_field;
     TextAreaProps text_area;
     /* Retained interactive controls. Pointer fields follow the TextField

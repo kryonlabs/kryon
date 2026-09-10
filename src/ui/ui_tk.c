@@ -719,8 +719,8 @@ DrawUIMultiSelectList(MultiSelectListProps list)
 int
 DrawUIInvisibleButton(InvisibleButtonProps button)
 {
-    ButtonSpec spec = {button.bounds, "", GetSmallFontSize(), button.id,
-                       button.disabled, {0}, {0}, {0}, {0}, 0.0f};
+    ButtonSpec spec = {.props = {.bounds = button.bounds, .font = GetSmallFontSize(),
+                                .id = button.id, .disabled = button.disabled}};
     return HandleButton(spec);
 }
 
@@ -733,9 +733,8 @@ DrawUIArrowButton(ArrowButtonProps button)
     if(button.direction == ARROW_RIGHT) label = ">";
     else if(button.direction == ARROW_UP) label = "^";
     else if(button.direction == ARROW_DOWN) label = "v";
-    return RenderButton((ButtonSpec){button.bounds, label, GetSmallFontSize(),
-                                     button.id, button.disabled,
-                                     {0}, {0}, {0}, {0}, 0.0f});
+    return RenderButton((ButtonSpec){.props = {.bounds = button.bounds, .label = label,
+        .font = GetSmallFontSize(), .id = button.id, .disabled = button.disabled}});
 }
 
 void
@@ -891,9 +890,8 @@ int
 DrawUIColorButton(ColorButtonProps button)
 {
     int pressed;
-    pressed = HandleButton((ButtonSpec){button.bounds, "", GetSmallFontSize(),
-                                        button.id, button.disabled,
-                                        {0}, {0}, {0}, {0}, 0.0f});
+    pressed = HandleButton((ButtonSpec){.props = {.bounds = button.bounds,
+        .font = GetSmallFontSize(), .id = button.id, .disabled = button.disabled}});
     if(!IsWindowReady())
         return pressed;
     DrawRectangleRec(button.bounds, (Color){180, 180, 180, 255});
@@ -2728,8 +2726,10 @@ DrawUISpinbox(SpinboxProps spinbox)
                            (int)(text.y + text.height / 2), GetFontSize(),
                            c_text);
     }
-    if(RenderButton((ButtonSpec){left, "-", GetFontSize(), spinbox.id * 10 + 1, spinbox.disabled,
-                               c_button, c_button_hover, c_text, c_button, 0.0f}) &&
+    if(RenderButton((ButtonSpec){.props = {.bounds = left, .label = "-",
+        .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = spinbox.disabled},
+        .paint = {.background = c_button, .foreground = c_text, .border = c_button},
+        .hover_background = c_button_hover}) &&
        spinbox.value != NULL) {
         if(*spinbox.value > spinbox.min) {
             *spinbox.value -= spinbox.step;
@@ -2741,8 +2741,10 @@ DrawUISpinbox(SpinboxProps spinbox)
         if(*spinbox.value < spinbox.min)
             *spinbox.value = spinbox.min;
     }
-    if(RenderButton((ButtonSpec){right, "+", GetFontSize(), spinbox.id * 10 + 2, spinbox.disabled,
-                               c_button, c_button_hover, c_text, c_button, 0.0f}) &&
+    if(RenderButton((ButtonSpec){.props = {.bounds = right, .label = "+",
+        .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = spinbox.disabled},
+        .paint = {.background = c_button, .foreground = c_text, .border = c_button},
+        .hover_background = c_button_hover}) &&
        spinbox.value != NULL) {
         if(*spinbox.value < spinbox.max) {
             *spinbox.value += spinbox.step;
@@ -4675,17 +4677,17 @@ DrawUIPickerDialog(PickerDialogProps picker)
         int text_x = x + pad + Scale(12);
 
         memset(&button, 0, sizeof(button));
-        button.bounds.x = (float)(x + pad);
-        button.bounds.y = (float)y;
-        button.bounds.width = (float)(w - pad * 2);
-        button.bounds.height = (float)row_h;
-        button.label = "";
-        button.font = GetFontSize();
-        button.background = c_surface;
+        button.props.bounds.x = (float)(x + pad);
+        button.props.bounds.y = (float)y;
+        button.props.bounds.width = (float)(w - pad * 2);
+        button.props.bounds.height = (float)row_h;
+        button.props.label = "";
+        button.props.font = GetFontSize();
+        button.paint.background = c_surface;
         button.hover_background = c_button_hover;
-        button.text = c_text;
-        button.border = c_button;
-        button.radius = 0.08f;
+        button.paint.foreground = c_text;
+        button.paint.border = c_button;
+        button.paint.radius = 0.08f;
         if(RenderButton(button)) {
             return i + 1;
         }
@@ -4710,17 +4712,17 @@ DrawUIPickerDialog(PickerDialogProps picker)
 
     y += pad;
     memset(&button, 0, sizeof(button));
-    button.bounds.x = (float)(x + pad);
-    button.bounds.y = (float)y;
-    button.bounds.width = (float)(w - pad * 2);
-    button.bounds.height = (float)button_h;
-    button.label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel";
-    button.font = GetFontSize();
-    button.background = c_surface;
+    button.props.bounds.x = (float)(x + pad);
+    button.props.bounds.y = (float)y;
+    button.props.bounds.width = (float)(w - pad * 2);
+    button.props.bounds.height = (float)button_h;
+    button.props.label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel";
+    button.props.font = GetFontSize();
+    button.paint.background = c_surface;
     button.hover_background = c_button_hover;
-    button.text = c_text;
-    button.border = c_button;
-    button.radius = 0.08f;
+    button.paint.foreground = c_text;
+    button.paint.border = c_button;
+    button.paint.radius = 0.08f;
     if(RenderButton(button))
         return -1;
     return 0;
