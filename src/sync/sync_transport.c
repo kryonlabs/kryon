@@ -8,6 +8,7 @@
 #endif
 
 #include "sync.h"
+#include "sync_crypto.h"
 #include "platform.h"
 
 #include <stdint.h>
