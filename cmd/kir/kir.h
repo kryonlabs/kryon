@@ -123,6 +123,7 @@ typedef struct KirStmt {
 
 typedef struct KirExpr {
     KirExprKind kind;
+    int is_function_value; /* declaration bound to an expected slot signature */
     char slot_type[KIR_NAME_MAX]; /* lexical callable signature, empty for ordinary calls */
     char text[KIR_TEXT_MAX];
     char name[KIR_NAME_MAX];

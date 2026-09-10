@@ -760,6 +760,90 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
         e->resolve(e->context,text,out,size);
 }
 
+static void
+slot_wrapper_name(const KirModule *module, const KirFunction *fn, int index,
+                   char *out, size_t size)
+{
+    char prefix[64];
+    number_prefix(module, prefix, sizeof(prefix));
+    format(out, size, "%s_slot_%ld_%d", prefix, (long)(fn - module->functions), index);
+}
+
+/* C has no lexical function values. A file-scope adapter supplies the uniform
+ * borrowed-context slot ABI while ordinary .kry functions keep their own ABI. */
+void
+KirEmitSlotWrappers(FILE *out, const KirModule *module, const KirFunction *fn,
+                    KirTarget target, KirResolveTarget resolver, void *context)
+{
+    if((target != KIR_C && target != KIR_CPP) || !KirCanEmitBody(module, fn))
+        return;
+    for(int index = 0; index < fn->expr_count; index++) {
+        const KirExpr *value = &fn->exprs[index];
+        if(!value->is_function_value)
+            continue;
+        const KirType *slot = KirFindType(module, value->type, NULL);
+        char parameters[64][KIR_TEXT_MAX];
+        int count = *kir_skip_ws(slot->body) ?
+            kir_split_top(slot->body, parameters[0], 64, sizeof(parameters[0])) : 0;
+        char wrapper[KIR_NAME_MAX], call[KIR_TEXT_MAX], resolved[KIR_TEXT_MAX];
+        slot_wrapper_name(module, fn, index, wrapper, sizeof(wrapper));
+        fprintf(out, "static void %s(void *context", wrapper);
+        size_t length = (size_t)format(call, sizeof(call), "%s(", value->name);
+        for(int argument = 0; argument < count; argument++) {
+            const char *source = kir_skip_ws(strchr(parameters[argument], ':') + 1);
+            const char *scalar = KirTargetType(source, target);
+            fprintf(out, ", %s slot_arg_%d", scalar ? scalar : source, argument);
+            length += (size_t)format(call + length, sizeof(call) - length,
+                                      "%sslot_arg_%d", argument ? ", " : "", argument);
+        }
+        format(call + length, sizeof(call) - length, ")");
+        resolver(context, call, resolved, sizeof(resolved));
+        fprintf(out, ")\n{\n    (void)context;\n    %s;\n}\n", resolved);
+    }
+}
+
+static void
+emit_function_value(Emitter *e, int index, char *out, size_t size)
+{
+    const KirExpr *value = &e->fn->exprs[index];
+    if(e->target == KIR_C || e->target == KIR_CPP) {
+        char wrapper[KIR_NAME_MAX];
+        slot_wrapper_name(e->module, e->fn, index, wrapper, sizeof(wrapper));
+        format(out, size, "(%s){NULL, %s}", value->type, wrapper);
+        return;
+    }
+    const KirType *slot = KirFindType(e->module, value->type, NULL);
+    char parameters[64][KIR_TEXT_MAX];
+    int count = *kir_skip_ws(slot->body) ?
+        kir_split_top(slot->body, parameters[0], 64, sizeof(parameters[0])) : 0;
+    char arguments[KIR_TEXT_MAX] = "", signature[KIR_TEXT_MAX] = "";
+    char call[KIR_TEXT_MAX], resolved[KIR_TEXT_MAX];
+    size_t length = 0, signature_length = 0;
+    for(int argument = 0; argument < count; argument++) {
+        char parameter[KIR_NAME_MAX];
+        fresh(e, parameter);
+        length += (size_t)format(arguments + length, sizeof(arguments) - length,
+                                  "%s%s", argument ? ", " : "", parameter);
+        if(e->target == KIR_GO) {
+            const char *source = kir_skip_ws(strchr(parameters[argument], ':') + 1);
+            const char *scalar = KirTargetType(source, KIR_GO);
+            char type[KIR_NAME_MAX];
+            if(scalar)
+                kir_copy(type, sizeof(type), scalar);
+            else
+                e->resolve(e->context, source, type, sizeof(type));
+            signature_length += (size_t)format(signature + signature_length,
+                sizeof(signature) - signature_length, "%s%s %s", argument ? ", " : "", parameter, type);
+        }
+    }
+    format(call, sizeof(call), "%s(%s)", value->name, arguments);
+    e->resolve(e->context, call, resolved, sizeof(resolved));
+    if(e->target == KIR_GO)
+        format(out, size, "func(%s) { %s }", signature, resolved);
+    else
+        format(out, size, "(%s) => %s", arguments, resolved);
+}
+
 static int
 member_path(const KirFunction *fn, int index)
 {
@@ -810,6 +894,10 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         break;
     }
     case KIR_EXPR_IDENT:
+        if(expr->is_function_value) {
+            emit_function_value(e, index, result, sizeof(result));
+            break;
+        }
         resolve(e, expr->name, result, sizeof(result));
         if(e->target == KIR_GO &&
            KirFindRuntimeEnumMember(expr->name) != NULL) {

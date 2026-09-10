@@ -113,9 +113,12 @@ native Go uses a function type, and JavaScript passes the callable unchanged.
 The shared emitter performs argument evaluation and record copies before invoking
 it. A slot call is a lexical binding, so backends must not reinterpret its name
 as a widget or host function. Slots cannot escape through records, module state,
-globals, or return values. Host-provided callables and initialized local aliases
-are supported; captured `.kry` child blocks and `.kry` function values remain work
-needed to move widget composition out of the backends.
+globals, or return values. Host-provided callables, initialized local aliases,
+and matching `.kry` function values are supported. Contextual function binding,
+callback adapters, and closure construction are shared compiler work; backend
+resolvers supply symbol spelling and hidden state/host arguments. Captured `.kry`
+child blocks still need lifting into these slots to move widget composition out
+of the backends.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

@@ -1597,6 +1597,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         }
         fprintf(c, "\n");
         emit_guard_open(c, fn->guard);
+        BodySymbols symbols = {m, restab, restab_count};
+        KirEmitSlotWrappers(c, m, fn, KIR_C, resolve_body_symbol, &symbols);
         if(fn->is_public)
             fprintf(c, "%s\n%s(%s)\n{\n", cret[0] ? cret : "void",
                     cname, cargs);

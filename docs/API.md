@@ -309,9 +309,12 @@ its body.
 A generated declaration can accept typed child-content parameters declared with
 `Content :: (bounds: Rectangle) #slot`. The native caller supplies a synchronous
 callback and context in C/C++, or a Go function in native Go. The declaration
-invokes or forwards it with signature checking and value-copy arguments. This currently
-covers callable parameters only; `.kry` child-block capture and passing `.kry`
-functions as slot values are not implemented yet.
+invokes or forwards it with signature checking and value-copy arguments.
+A matching `.kry` function can also supply the content: pass `DrawChild` as a slot
+argument, initialize `child: Content = DrawChild`, or assign it to an existing
+slot binding. Local, private, and imported functions keep their module state and
+runtime receiver. The parameter types and void return must match the slot exactly.
+Captured child blocks are not implemented yet.
 
 A portable body can bind a typed retained record to an explicit integer key:
 

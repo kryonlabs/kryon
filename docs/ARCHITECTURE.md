@@ -137,8 +137,13 @@ Named child-content signatures now have a KIR type: `Content :: (bounds:
 Rectangle) #slot`. A declaration may accept `content: Content`, invoke it, and
 forward it to another declaration. Calls check slot arity and argument types;
 record arguments retain value semantics across C, C++, Go, and JavaScript.
-Slots currently accept host-provided callable values. Creating callable values
-from `.kry` functions and lifting captured child blocks still need implementation;
+Slots accept host-provided callables and matching `.kry` functions. KIR checks
+function values against the expected slot signature, including imported record
+identity and private visibility; lexical values shadow function declarations.
+C/C++ adapters implement the borrowed-context callback ABI. Go and JavaScript
+closures preserve the resolved function's hidden module state and host arguments.
+Host use propagates through function references so native Go binds the originating
+runtime receiver. Captured child blocks still need lifting into these callables;
 this foundation does not remove the parser's child-block restriction.
 Unknown, duplicate, and incorrectly typed props are errors even without strict
 mode. Tests execute local and imported declarations in both source orders in

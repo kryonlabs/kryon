@@ -165,6 +165,66 @@ assignable(Checker *c, int index)
            e->kind == KIR_EXPR_POINTER_MEMBER || (e->kind == KIR_EXPR_UNARY && !strcmp(e->op, "*"));
 }
 
+/* Function values require a slot context; ordinary names retain lexical lookup.
+ * Annotate before recursively checking expressions so a declaration identifier
+ * is not mistaken for an unresolved variable. */
+static void
+contextual_slot(Checker *c, int index, const char *expected)
+{
+    const KirModule *slot_owner = NULL;
+    const KirType *slot = KirFindType(c->module, expected, &slot_owner);
+    if(index < 0 || slot == NULL || !slot->is_slot)
+        return;
+    KirExpr *value = &c->fn->exprs[index];
+    if(value->kind == KIR_EXPR_CONDITIONAL) {
+        contextual_slot(c, value->right, expected);
+        contextual_slot(c, value->third, expected);
+        return;
+    }
+    if(value->kind != KIR_EXPR_IDENT || *lookup(c, value->name))
+        return;
+    const KirModule *owner = NULL;
+    const KirFunction *declaration = NULL;
+    int resolved = KirResolveFunction(c->module, value->name, &owner, &declaration);
+    int matches = resolved == 1 && !declaration->is_extern &&
+                  !strcmp(declaration->return_type, "void");
+    char actual[64][KIR_TEXT_MAX], wanted[64][KIR_TEXT_MAX];
+    int actual_count = matches && *kir_skip_ws(declaration->args) ?
+        kir_split_top(declaration->args, actual[0], 64, sizeof(actual[0])) : 0;
+    int wanted_count = *kir_skip_ws(slot->body) ?
+        kir_split_top(slot->body, wanted[0], 64, sizeof(wanted[0])) : 0;
+    matches &= actual_count == wanted_count;
+    for(int i = 0; matches && i < wanted_count; i++) {
+        const char *actual_type = strchr(actual[i], ':');
+        const char *wanted_type = strchr(wanted[i], ':');
+        if(actual_type == NULL || wanted_type == NULL) {
+            matches = 0;
+            break;
+        }
+        actual_type = kir_skip_ws(actual_type + 1);
+        wanted_type = kir_skip_ws(wanted_type + 1);
+        const char *actual_scalar = KirScalarType(actual_type);
+        const char *wanted_scalar = KirScalarType(wanted_type);
+        if(*actual_scalar || *wanted_scalar) {
+            matches = !strcmp(actual_scalar, wanted_scalar);
+        } else {
+            const KirType *actual_record = KirFindType(owner, actual_type, NULL);
+            const KirType *wanted_record = KirFindType(slot_owner, wanted_type, NULL);
+            matches = actual_record || wanted_record ? actual_record == wanted_record :
+                !strcmp(actual_type, wanted_type);
+        }
+    }
+    if(!matches) {
+        fprintf(stderr, "%s:%d: function does not match slot signature %s: %s\n",
+                value->span.path, value->span.line, expected, value->name);
+        c->errors++;
+        c->failed = 1;
+        return;
+    }
+    value->is_function_value = 1;
+    kir_copy(value->type, sizeof(value->type), expected);
+}
+
 static const char *
 expression_type(Checker *c, int index)
 {
@@ -173,6 +233,8 @@ expression_type(Checker *c, int index)
     char member_type[KIR_NAME_MAX] = "";
     if(index < 0 || index >= c->fn->expr_count) return "";
     e = &c->fn->exprs[index];
+    if(e->is_function_value)
+        return e->type;
     if(e->left >= 0) left = expression_type(c, e->left);
     if(e->right >= 0) right = expression_type(c, e->right);
     switch(e->kind) {
@@ -290,6 +352,9 @@ expression_type(Checker *c, int index)
         if(slot_contract)
             c->strict = 1;
         for(int child = e->first_child; child >= 0; child = c->fn->exprs[child].next_sibling) {
+            const char *expected_type = actual < expected ? strchr(parts[actual], ':') : NULL;
+            if(expected_type != NULL)
+                contextual_slot(c, child, kir_skip_ws(expected_type + 1));
             const char *arg_type = expression_type(c, child);
             if(args && actual < expected) {
                 char *colon = strchr(parts[actual], ':');
@@ -676,6 +741,11 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                 int errors_before_expression = c.errors;
                 if(st->declared_widget || st->is_instance)
                     c.strict = 1;
+                if(st->kind == KIR_STMT_DECL && !st->is_instance)
+                    contextual_slot(&c, st->expr_root, st->type);
+                if(st->kind == KIR_STMT_ASSIGN && st->lhs_root >= 0 &&
+                   c.fn->exprs[st->lhs_root].kind == KIR_EXPR_IDENT)
+                    contextual_slot(&c, st->expr_root, lookup(&c, c.fn->exprs[st->lhs_root].name));
                 type = expression_type(&c, st->expr_root);
                 if(st->kind == KIR_STMT_DECL) {
                     if(st->is_instance) {
@@ -730,6 +800,8 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                     c.failed = 1;
             }
             c.fn->checked = c.errors == errors_before;
+            for(int expression = 0; expression < c.fn->expr_count; expression++)
+                has_slots |= c.fn->exprs[expression].is_function_value;
             int has_instances = 0;
             for(int i = 0; i < c.fn->stmt_count; i++)
                 has_instances |= c.fn->stmts[i].is_instance;
@@ -766,7 +838,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                     for(int x = 0; x < fn->expr_count; x++) {
                         const KirFunction *callee = NULL;
                         const KirModule *owner = NULL;
-                        if(fn->exprs[x].kind == KIR_EXPR_CALL &&
+                        if((fn->exprs[x].kind == KIR_EXPR_CALL || fn->exprs[x].is_function_value) &&
                            KirResolveFunction(module, fn->exprs[x].name, &owner, &callee) == 1 &&
                            callee->uses_host) {
                             fn->uses_host = 1;

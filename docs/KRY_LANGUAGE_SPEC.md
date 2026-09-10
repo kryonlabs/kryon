@@ -159,6 +159,31 @@ raw-c-statement = "c" , raw-c-text ;
 unused-statement= "unused" , expr-text ;
 ```
 
+A named synchronous child-content signature uses `#slot`:
+
+```kry
+Content :: (bounds: Rectangle) #slot
+DrawChild :: (bounds: Rectangle) {
+    // Draw the child inside these bounds.
+}
+Compose :: (bounds: Rectangle, content: Content) {
+    content(bounds)
+}
+Draw :: (bounds: Rectangle) {
+    Compose(bounds, DrawChild)
+}
+```
+
+A slot returns `void` and accepts typed scalar or record arguments. A matching
+local or imported `.kry` function can initialize, replace, or supply a slot value;
+conditional selection uses the same expected signature. Parameters must match
+exactly, including the declaration identity of record types. A lexical binding
+shadows a function with the same name. Each invocation evaluates the callable
+before its arguments, and record arguments are copied by value. Function values
+preserve their source module state and runtime receiver. Slots cannot be stored
+in records, module state, globals, or returned from functions; local bindings
+require an initializer. Captured child blocks are not implemented yet.
+
 Plain call statements are UI declarations when they call Kryon widget/runtime
 functions. Leaf property-block widgets lower to the existing `WidgetProps`
 C-style call shape. Layout nodes (`Screen`, `Column`, `Row`, `Stack`) open
