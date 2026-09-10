@@ -327,6 +327,7 @@ typedef struct {
 
 void Background(Color color);
 void Surface(Rectangle bounds, Style style);
+void Card(Rectangle bounds);
 void Text(TextProps props);
 void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);

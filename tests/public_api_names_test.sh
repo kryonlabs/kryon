@@ -150,6 +150,20 @@ if [ -n "$text_size_matches" ]; then
     exit 1
 fi
 
+cursor_api_matches="$(
+    rg -n '\b(MarkUI[A-Za-z0-9_]*|SetUICursor[A-Za-z0-9_]*|GetUIMouseCursor|MarkUITextCursor)\b' \
+        include src docs examples tests \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$cursor_api_matches" ]; then
+    echo "Cursor intent APIs must use clean Mark*/SetCursor*/GetMouseCursorIntent names without stale UI prefixes:"
+    echo "$cursor_api_matches"
+    exit 1
+fi
+
 if [ -d go/kryui ]; then
     echo "The removed go/kryui cgo bridge package must not exist; generated Go uses go/kryon." >&2
     exit 1

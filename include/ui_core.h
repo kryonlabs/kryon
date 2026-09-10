@@ -66,13 +66,13 @@ void PopUIInputClip(void);
 void SetUIModalCapture(Rectangle bounds);
 
 void SetTextInputPlatformCallback(TextInputPlatformCallback callback);
-void SetUICursorClickable(int *cursor_clickable);
-void SetUICursorDisabled(int *cursor_disabled);
+void SetCursorClickable(int *cursor_clickable);
+void SetCursorDisabled(int *cursor_disabled);
 void MarkCursor(int cursor);
 void MarkClickable(void);
 void MarkDisabled(void);
 /* The cursor the intents marked so far this frame (test/diagnostic aid). */
-int GetUIMouseCursor(void);
+int GetMouseCursorIntent(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);
 
 int UIHandleClick(Rectangle bounds, int disabled, int *hover);

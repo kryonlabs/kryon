@@ -1426,9 +1426,9 @@ include/ui_core.h function ClearUIFocus
 include/ui_core.h function ClearUIInputCaptures
 include/ui_core.h function EndUIFocus
 include/ui_core.h function EndUIFrame
+include/ui_core.h function GetMouseCursorIntent
 include/ui_core.h function GetUIDefaultCamera
 include/ui_core.h function GetUIFocus
-include/ui_core.h function GetUIMouseCursor
 include/ui_core.h function InitUI
 include/ui_core.h function IsUIDesktopMode
 include/ui_core.h function IsUIFocusActivatePressed
@@ -1444,9 +1444,9 @@ include/ui_core.h function RegisterUIFocus
 include/ui_core.h function ResolveUIFocusID
 include/ui_core.h function RestoreUIFrameState
 include/ui_core.h function SaveUIFrameState
+include/ui_core.h function SetCursorClickable
+include/ui_core.h function SetCursorDisabled
 include/ui_core.h function SetTextInputPlatformCallback
-include/ui_core.h function SetUICursorClickable
-include/ui_core.h function SetUICursorDisabled
 include/ui_core.h function SetUIDefaultFontAutoLoad
 include/ui_core.h function SetUIFocus
 include/ui_core.h function SetUIFocusTextInputActive
@@ -1968,6 +1968,7 @@ include/ui_tree.h function Button
 include/ui_tree.h function ButtonNode
 include/ui_tree.h function ButtonRow
 include/ui_tree.h function CanvasGrid
+include/ui_tree.h function Card
 include/ui_tree.h function CascadingTreeView
 include/ui_tree.h function Checkbox
 include/ui_tree.h function CheckboxFlags

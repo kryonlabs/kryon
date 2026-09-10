@@ -2561,6 +2561,21 @@ Surface(Rectangle bounds, Style style)
         ui_paint_surface(bounds, style);
 }
 
+void
+Card(Rectangle bounds)
+{
+    ThemeMetrics metrics = GetThemeMetrics();
+    Style style = {0};
+    style.fields = StyleBackground | StyleBorder | StyleRadius | StyleBorderWidth | StyleOpacity | StyleMaterial;
+    style.material = MaterialFlat;
+    style.background = GetThemeSurface();
+    style.border = GetThemeBorder();
+    style.radius = metrics.radius_large;
+    style.border_width = metrics.border_width;
+    style.opacity = 1.0f;
+    Surface(bounds, style);
+}
+
 static void
 rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
 {

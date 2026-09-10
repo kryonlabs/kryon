@@ -399,7 +399,7 @@ MarkDisabled(void)
 }
 
 int
-GetUIMouseCursor(void)
+GetMouseCursorIntent(void)
 {
     return g_ui_cursor_current;
 }
@@ -5441,13 +5441,13 @@ SetTextInputPlatformCallback(TextInputPlatformCallback callback)
 }
 
 void
-SetUICursorClickable(int *cursor_clickable)
+SetCursorClickable(int *cursor_clickable)
 {
     g_ui_cursor_clickable = cursor_clickable;
 }
 
 void
-SetUICursorDisabled(int *cursor_disabled)
+SetCursorDisabled(int *cursor_disabled)
 {
     g_ui_cursor_disabled = cursor_disabled;
 }

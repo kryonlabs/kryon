@@ -31,16 +31,16 @@ main(void)
     /* Draw order = stacking order: a disabled card first, then a button
      * on top of it. The button's hand must win. */
     MarkDisabled();
-    check(GetUIMouseCursor() == MOUSE_CURSOR_NOT_ALLOWED,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_NOT_ALLOWED,
           "disabled control shows the not-allowed cursor");
     MarkClickable();
-    check(GetUIMouseCursor() == MOUSE_CURSOR_POINTING_HAND,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_POINTING_HAND,
           "clickable foreground overrides disabled background");
     MarkCursor(MOUSE_CURSOR_IBEAM);
-    check(GetUIMouseCursor() == MOUSE_CURSOR_IBEAM,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_IBEAM,
           "text foreground overrides disabled background");
     MarkCursor(MOUSE_CURSOR_RESIZE_EW);
-    check(GetUIMouseCursor() == MOUSE_CURSOR_RESIZE_EW,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_RESIZE_EW,
           "resize foreground overrides disabled background");
 
     EndUIFrame();
@@ -49,12 +49,12 @@ main(void)
      * 16ms frame of stale cursor — invisible, asserted as designed. */
     BeginUIFrame(640, 480, 1.0f);
     BeginUIFrame(640, 480, 1.0f);
-    check(GetUIMouseCursor() == MOUSE_CURSOR_DEFAULT,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_DEFAULT,
           "no intents resets to the default cursor");
 
     /* Disabled alone still shows not-allowed. */
     MarkDisabled();
-    check(GetUIMouseCursor() == MOUSE_CURSOR_NOT_ALLOWED,
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_NOT_ALLOWED,
           "lone disabled control keeps the not-allowed cursor");
 
     EndUIFrame();
