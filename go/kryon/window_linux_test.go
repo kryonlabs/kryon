@@ -13,6 +13,25 @@ import (
 	"testing"
 )
 
+func TestFrameOpsEqualIgnoresIdleButtonElapsed(t *testing.T) {
+	a := FrameOp{Kind: FrameOpButton, ID: 7, Text: "Idle", ElapsedMS: 10,
+		Button: ButtonFrame{Props: ButtonProps{ID: 7, Label: "Idle"}}}
+	b := a
+	b.ElapsedMS = 250
+	if !frameOpsEqual([]FrameOp{a}, []FrameOp{b}) {
+		t.Fatal("idle button elapsed time should not force repaint")
+	}
+	b.Button.Repaint = true
+	if frameOpsEqual([]FrameOp{a}, []FrameOp{b}) {
+		t.Fatal("animated button repaint state must still force repaint")
+	}
+	b = a
+	b.Button.Props.Loading = true
+	if frameOpsEqual([]FrameOp{a}, []FrameOp{b}) {
+		t.Fatal("loading button must still repaint over time")
+	}
+}
+
 func TestOpenFallsBackWithoutDisplay(t *testing.T) {
 	t.Setenv("DISPLAY", "")
 	defer SetRuntime(nil)

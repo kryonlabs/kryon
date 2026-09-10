@@ -1286,9 +1286,22 @@ func frameOpsEqual(a, b []FrameOp) bool {
 		return false
 	}
 	for i := range a {
-		if a[i] != b[i] {
+		if !frameOpPaintEqual(a[i], b[i]) {
 			return false
 		}
 	}
 	return true
+}
+
+func frameOpPaintEqual(a, b FrameOp) bool {
+	a = normalizeFrameOpForPaintCompare(a)
+	b = normalizeFrameOpForPaintCompare(b)
+	return a == b
+}
+
+func normalizeFrameOpForPaintCompare(op FrameOp) FrameOp {
+	if op.Kind != FrameOpButton || (!op.Button.Repaint && !op.Button.Props.Loading) {
+		op.ElapsedMS = 0
+	}
+	return op
 }
