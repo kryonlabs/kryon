@@ -52,7 +52,7 @@ int main(void)
     assert(FitHeight(0, 40, 60, -10) == 60);
     assert(FitHeight(24, 40, 27, 20) == 24);
     assert(FitHeight(0, 0, -1, -1) == 0);
-    ContentBox content = ContentBounds(20, 10, 30, 40);
+    Rectangle content = ContentBounds(20, 10, 30, 40);
     assert(content.x == 30 && content.y == 40 && content.width == 0 && content.height == 0);
     content = ContentBounds(20, 10, -1, -2);
     assert(content.x == 0 && content.y == 0 && content.width == 20 && content.height == 10);

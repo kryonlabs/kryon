@@ -263,6 +263,15 @@ static void check_button_content_drawing(void)
 
 int main(void)
 {
+    Rectangle owner = {10, 20, 100, 80};
+    Rectangle content = InsetBounds(owner, 8, 6, 2);
+    assert(content.x == 26 && content.y == 32 && content.width == 68 && content.height == 56);
+    Rectangle child = CenterChild((Rectangle){0}, (Rectangle){0, 0, 20, 10}, content);
+    assert(child.x == 50 && child.y == 55 && child.width == 20 && child.height == 10);
+    child = CenterChild((Rectangle){0, 1, 0, 0}, (Rectangle){123, 456, 20, 10}, content);
+    assert(child.x == 123 && child.y == 456);
+    child = InsetBounds(owner, -4, -8, 0);
+    assert(child.x == owner.x && child.y == owner.y && child.width == owner.width && child.height == owner.height);
     MaterialPaint material = PrepareMaterial((MaterialPaint){
         .bounds = {50, 20, 80, 40}, .surface = {10, 20, 160, 40}, .scale = 2,
         .value = {.material = MaterialFlat, .radius = 4, .opacity = 1,
@@ -438,7 +447,7 @@ int main(void)
     for (int i = 0; i < 4; i++) {
         float padding = padding_cases[i];
         ContentSize measured = MeasureContent(40, 24, 18, 8, padding, true, false);
-        ContentBox content = ContentBounds(measured.width, 40, padding, 0);
+        Rectangle content = ContentBounds(measured.width, 40, padding, 0);
         assert(content.width == 50);
     }
     assert(ResolveFont(13, 27, 18) == 13);

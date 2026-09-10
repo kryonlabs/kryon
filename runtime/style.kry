@@ -101,17 +101,10 @@ FitHeight :: (requested: float, minimum: float, content: float, padding: float) 
     return height
 }
 
-ContentBox :: struct {
-    x: float
-    y: float
-    width: float
-    height: float
-}
-
 # Padding defines the child layout area independently of the painted face.
 # Explicit zero removes an inset; oversized padding leaves an empty area.
-ContentBounds :: (width: float, height: float, padding_x: float, padding_y: float) -> ContentBox #export {
-    box: ContentBox
+ContentBounds :: (width: float, height: float, padding_x: float, padding_y: float) -> Rectangle #export {
+    box: Rectangle
     if padding_x < 0.0 { padding_x = 0.0 }
     if padding_y < 0.0 { padding_y = 0.0 }
     box.x = padding_x
@@ -125,6 +118,32 @@ ContentBounds :: (width: float, height: float, padding_x: float, padding_y: floa
 
 # Packed colors and scalar values keep style policy independent of host types.
 # A present field may contain zero or transparent; absence is only a mask bit.
+# Physical child bounds from logical style insets. All hosts use the same
+# empty-area clamp and scale fallback.
+InsetBounds :: (bounds: Rectangle, padding_x: float, padding_y: float,
+    scale: float) -> Rectangle #export {
+    if scale <= 0.0 { scale = 1.0 }
+    content: Rectangle = ContentBounds(bounds.width / scale, bounds.height / scale,
+        padding_x, padding_y)
+    result: Rectangle
+    result.x = bounds.x + content.x * scale
+    result.y = bounds.y + content.y * scale
+    result.width = content.width * scale
+    result.height = content.height * scale
+    return result
+}
+
+# Explicitly positioned children keep their measured placement. Unpositioned
+# children fill missing dimensions and center without consuming a layout cursor.
+CenterChild :: (declared: Rectangle, measured: Rectangle, content: Rectangle) -> Rectangle #export {
+    if declared.x != 0.0 || declared.y != 0.0 { return measured }
+    if measured.width <= 0.0 { measured.width = content.width }
+    if measured.height <= 0.0 { measured.height = content.height }
+    measured.x = content.x + (content.width - measured.width) * 0.5
+    measured.y = content.y + (content.height - measured.height) * 0.5
+    return measured
+}
+
 StyleData :: struct {
     fields: u32
     background: u32

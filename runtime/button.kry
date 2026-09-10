@@ -346,13 +346,8 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     result.material.fill_valid = true
     result.material.scale = scale
     result.material = PrepareMaterial(result.material)
-    scale = result.material.scale
-    content: ContentBox = ContentBounds(props.bounds.width / scale,
-        props.bounds.height / scale, appearance.value.padding_x, appearance.value.padding_y)
-    result.content_bounds.x = props.bounds.x + content.x * scale
-    result.content_bounds.y = props.bounds.y + content.y * scale
-    result.content_bounds.width = content.width * scale
-    result.content_bounds.height = content.height * scale
+    result.content_bounds = InsetBounds(props.bounds, appearance.value.padding_x,
+        appearance.value.padding_y, result.material.scale)
     result.font = ResolveFont(props.font, style_font, fallback_font)
     result.foreground = Opacity(appearance.value.foreground, appearance.value.opacity)
     result.repaint = motion.active || (props.loading && !props.disabled)

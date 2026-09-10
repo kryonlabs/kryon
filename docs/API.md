@@ -1342,6 +1342,11 @@ is needed.
 
 **Returns:** 1 if clicked, 0 otherwise
 
+`BeginButton(props)` opens a centered content area until `End()`. Logical style
+padding is scaled into that area. Unpositioned children fill missing dimensions
+and are centered; explicitly positioned children retain their placement.
+Oversized padding leaves an empty area, and negative padding acts as zero.
+
 #### `IconButton`
 
 ```c

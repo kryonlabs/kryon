@@ -16,13 +16,6 @@ type InteractionState struct {
 	Focused bool
 }
 
-type ContentBox struct {
-	X      float32
-	Y      float32
-	Width  float32
-	Height float32
-}
-
 type StyleData struct {
 	Fields        uint32
 	Background    uint32
@@ -304,8 +297,8 @@ func Style_FitHeight(requested float32, minimum float32, content float32, paddin
 	return value_21
 }
 
-func Style_ContentBounds(width float32, height float32, padding_x float32, padding_y float32) ContentBox {
-	var box ContentBox = ContentBox{}
+func Style_ContentBounds(width float32, height float32, padding_x float32, padding_y float32) Rectangle {
+	var box Rectangle = Rectangle{}
 	var value_0 float32 = padding_x
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 < value_1
@@ -350,8 +343,100 @@ func Style_ContentBounds(width float32, height float32, padding_x float32, paddi
 		var value_27 float32 = 0.0
 		box.Height = value_27
 	}
-	var value_28 ContentBox = box
+	var value_28 Rectangle = box
 	return value_28
+}
+
+func Style_InsetBounds(bounds Rectangle, padding_x float32, padding_y float32, scale float32) Rectangle {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = bounds.Width
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 / value_5
+	var value_7 float32 = bounds.Height
+	var value_8 float32 = scale
+	var value_9 float32 = value_7 / value_8
+	var value_10 float32 = padding_x
+	var value_11 float32 = padding_y
+	var value_12 Rectangle = Style_ContentBounds(value_6, value_9, value_10, value_11)
+	var content Rectangle = value_12
+	var result Rectangle = Rectangle{}
+	var value_13 float32 = bounds.X
+	var value_14 float32 = content.X
+	var value_15 float32 = scale
+	var value_16 float32 = value_14 * value_15
+	var value_17 float32 = value_13 + value_16
+	result.X = value_17
+	var value_18 float32 = bounds.Y
+	var value_19 float32 = content.Y
+	var value_20 float32 = scale
+	var value_21 float32 = value_19 * value_20
+	var value_22 float32 = value_18 + value_21
+	result.Y = value_22
+	var value_23 float32 = content.Width
+	var value_24 float32 = scale
+	var value_25 float32 = value_23 * value_24
+	result.Width = value_25
+	var value_26 float32 = content.Height
+	var value_27 float32 = scale
+	var value_28 float32 = value_26 * value_27
+	result.Height = value_28
+	var value_29 Rectangle = result
+	return value_29
+}
+
+func Style_CenterChild(declared Rectangle, measured Rectangle, content Rectangle) Rectangle {
+	var value_0 float32 = declared.X
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 != value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 float32 = declared.Y
+		var value_5 float32 = 0.0
+		var value_6 bool = value_4 != value_5
+		value_3 = value_6
+	}
+	if value_3 {
+		var value_7 Rectangle = measured
+		return value_7
+	}
+	var value_8 float32 = measured.Width
+	var value_9 float32 = 0.0
+	var value_10 bool = value_8 <= value_9
+	if value_10 {
+		var value_11 float32 = content.Width
+		measured.Width = value_11
+	}
+	var value_12 float32 = measured.Height
+	var value_13 float32 = 0.0
+	var value_14 bool = value_12 <= value_13
+	if value_14 {
+		var value_15 float32 = content.Height
+		measured.Height = value_15
+	}
+	var value_16 float32 = content.X
+	var value_17 float32 = content.Width
+	var value_18 float32 = measured.Width
+	var value_19 float32 = value_17 - value_18
+	var value_20 float32 = 0.5
+	var value_21 float32 = value_19 * value_20
+	var value_22 float32 = value_16 + value_21
+	measured.X = value_22
+	var value_23 float32 = content.Y
+	var value_24 float32 = content.Height
+	var value_25 float32 = measured.Height
+	var value_26 float32 = value_24 - value_25
+	var value_27 float32 = 0.5
+	var value_28 float32 = value_26 * value_27
+	var value_29 float32 = value_23 + value_28
+	measured.Y = value_29
+	var value_30 Rectangle = measured
+	return value_30
 }
 
 func Style_TransitionValues(resolved StyleData, normal StyleData, hover StyleData, press StyleData, focus StyleData, h float32, p float32, f float32) StyleData {

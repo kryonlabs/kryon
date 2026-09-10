@@ -101,6 +101,11 @@ resolved appearance, sampled motion, physical font size, and scale; BuildFrame
 owns normalized content flags, font fallback, opacity, content bounds, and
 repaint eligibility. Content drawing consumes the same resolved StyleData,
 without converting it back to public Style solely for drawing.
+Inset scaling and child centering also belong to the shared declaration code.
+Tree traversal and layout-scope storage remain host responsibilities, while
+explicit-position bypass and missing-size behavior use the same functions.
+ContentBounds now returns the shared Rectangle contract; the duplicate
+ContentBox record has been removed.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

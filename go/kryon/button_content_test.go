@@ -98,6 +98,31 @@ func TestButtonMeasurementContract(t *testing.T) {
 	}
 }
 
+func TestButtonChildPlacement(t *testing.T) {
+	owner := Rectangle{X: 10, Y: 20, Width: 100, Height: 80}
+	content := Style_InsetBounds(owner, 8, 6, 2)
+	if content != (Rectangle{X: 26, Y: 32, Width: 68, Height: 56}) {
+		t.Fatalf("scaled content: %+v", content)
+	}
+	for _, child := range []Rectangle{{}, {Width: 20, Height: 10}, {Width: -1, Height: 10}} {
+		result := Style_CenterChild(Rectangle{}, child, content)
+		if result.Width <= 0 || result.Height <= 0 ||
+			result.X+result.Width/2 != 60 || result.Y+result.Height/2 != 60 {
+			t.Fatalf("child is not centered: %+v", result)
+		}
+	}
+	measured := Rectangle{X: 123, Y: 456, Width: 20, Height: 10}
+	if Style_CenterChild(Rectangle{Y: 1}, measured, content) != measured {
+		t.Fatal("explicit placement changed")
+	}
+	if Style_InsetBounds(owner, -4, -8, 0) != owner {
+		t.Fatal("negative insets or invalid scale changed the owner")
+	}
+	if result := Style_InsetBounds(owner, 100, 100, 1); result.Width != 0 || result.Height != 0 {
+		t.Fatalf("oversized insets leave negative space: %+v", result)
+	}
+}
+
 func TestButtonChildrenUseResolvedStylePadding(t *testing.T) {
 	r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStateNormal} {
@@ -131,10 +156,10 @@ func TestButtonChildrenUseResolvedStylePadding(t *testing.T) {
 }
 
 func TestSharedStyleContentBoundsClampEmptyArea(t *testing.T) {
-	if got := Style_ContentBounds(20, 10, 30, 40); got != (ContentBox{X: 30, Y: 40}) {
+	if got := Style_ContentBounds(20, 10, 30, 40); got != (Rectangle{X: 30, Y: 40}) {
 		t.Fatalf("oversized insets must leave an empty content area: %+v", got)
 	}
-	if got := Style_ContentBounds(20, 10, -1, -2); got != (ContentBox{Width: 20, Height: 10}) {
+	if got := Style_ContentBounds(20, 10, -1, -2); got != (Rectangle{Width: 20, Height: 10}) {
 		t.Fatalf("negative padding must not expand the face: %+v", got)
 	}
 }

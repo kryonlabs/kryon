@@ -1131,17 +1131,14 @@ LayoutTree(void)
         if(parent->kind == UI_WIDGET_BUTTON_NODE) {
             ButtonSpec *button = &parent->data.button.spec;
             float scale = (float)Scale(1000) / 1000.0f;
-            if(scale <= 0.0f)
-                scale = 1.0f;
             Style style = {.padding_x = 8, .padding_y = 8};
             if(button->style_resolved)
                 style = ResolveButtonStyle(ui_button_style_props(*button), button->state);
-            ContentBox content = ContentBounds(parent->bounds.width / scale,
-                parent->bounds.height / scale, style.padding_x, style.padding_y);
-            content_x = parent->bounds.x + content.x * scale;
-            content_y = parent->bounds.y + content.y * scale;
-            content_w = content.width * scale;
-            content_h = content.height * scale;
+            Rectangle content = InsetBounds(parent->bounds, style.padding_x, style.padding_y, scale);
+            content_x = content.x;
+            content_y = content.y;
+            content_w = content.width;
+            content_h = content.height;
         } else {
             content_x = parent->bounds.x + parent->data.layout.padding;
             content_y = parent->bounds.y + parent->data.layout.padding;
@@ -1162,17 +1159,8 @@ LayoutTree(void)
                 child = ui_committed_nodes[child].next_sibling) {
                 UIWidgetNode *node = &ui_committed_nodes[child];
 
-                if(node->declared_bounds.x != 0 ||
-                   node->declared_bounds.y != 0)
-                    continue;
-                if(node->bounds.width <= 0)
-                    node->bounds.width = content_w;
-                if(node->bounds.height <= 0)
-                    node->bounds.height = content_h;
-                node->bounds.x = content_x +
-                    (content_w - node->bounds.width) * 0.5f;
-                node->bounds.y = content_y +
-                    (content_h - node->bounds.height) * 0.5f;
+                Rectangle content = {content_x, content_y, content_w, content_h};
+                node->bounds = CenterChild(node->declared_bounds, node->bounds, content);
             }
             continue;
         }

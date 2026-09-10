@@ -58,6 +58,16 @@ try {
 // Load actual generated modules, including their runtime and policy imports.
 // No source rewriting or injected cross-module bindings are permitted here.
 const style = await import(pathToFileURL(process.argv[2]).href);
+const childOwner = { x: 10, y: 20, width: 100, height: 80 };
+const childContent = style.Style_InsetBounds(null, undefined, undefined, childOwner, 8, 6, 2);
+assert.deepEqual(childContent, { x: 26, y: 32, width: 68, height: 56 });
+assert.deepEqual(style.Style_CenterChild(null, undefined, undefined,
+  { x: 0, y: 0, width: 0, height: 0 }, { x: 0, y: 0, width: 20, height: 10 }, childContent),
+  { x: 50, y: 55, width: 20, height: 10 });
+assert.deepEqual(style.Style_CenterChild(null, undefined, undefined,
+  { x: 0, y: 1, width: 0, height: 0 }, { x: 123, y: 456, width: 20, height: 10 }, childContent),
+  { x: 123, y: 456, width: 20, height: 10 });
+assert.deepEqual(style.Style_InsetBounds(null, undefined, undefined, childOwner, -4, -8, 0), childOwner);
 const namedStyle = { fields: host.StyleTypeface, typeface: "semibold" };
 assert.equal(style.Style_MergeValues(null, undefined, undefined,
   namedStyle, { fields: 0, typeface: "ignored" }).typeface, "semibold");

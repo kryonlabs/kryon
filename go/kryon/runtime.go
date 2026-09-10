@@ -7066,7 +7066,7 @@ func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
 }
 
 func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
-	if len(r.layout) == 0 || bounds.X != 0 || bounds.Y != 0 {
+	if len(r.layout) == 0 {
 		return bounds
 	}
 	frame := &r.layout[len(r.layout)-1]
@@ -7074,16 +7074,10 @@ func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 		return bounds
 	}
 	if frame.center {
-		out := bounds
-		if out.Width <= 0 {
-			out.Width = frame.bounds.Width
-		}
-		if out.Height <= 0 {
-			out.Height = frame.bounds.Height
-		}
-		out.X = frame.bounds.X + (frame.bounds.Width-out.Width)/2
-		out.Y = frame.bounds.Y + (frame.bounds.Height-out.Height)/2
-		return out
+		return Style_CenterChild(bounds, bounds, frame.bounds)
+	}
+	if bounds.X != 0 || bounds.Y != 0 {
+		return bounds
 	}
 	if frame.columns > 0 {
 		out := bounds

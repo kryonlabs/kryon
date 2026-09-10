@@ -309,6 +309,10 @@ content insets, physical font fallback, foreground opacity, and repaint state.
 The C styled paint path consumes that frame directly; native Go adapts it to
 its operation stream. Style/theme acquisition, legacy C appearances, and child
 lifecycle still need migration to complete the widget body.
+Its content geometry uses shared InsetBounds and CenterChild functions: the C
+retained child layout and Go layout scope no longer implement separate inset,
+missing-dimension, or centering rules. This does not add typed child slots;
+the declaration parser still rejects child content in user-defined widgets.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native
