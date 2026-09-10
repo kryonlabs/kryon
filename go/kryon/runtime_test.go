@@ -1969,6 +1969,36 @@ func TestTextInputFrameOpsCarryModernThemeStyle(t *testing.T) {
 	}
 }
 
+func TestRenderTextAreaCaretUsesLineHeight(t *testing.T) {
+	cursor := Color{R: 255, A: 255}
+	img := RenderFrame(220, 260, []FrameOp{{
+		Kind:          FrameOpTextArea,
+		Bounds:        Rectangle{X: 10, Y: 10, Width: 180, Height: 220},
+		Text:          "first\nsecond",
+		FontSize:      Text14,
+		Cursor:        5,
+		Focused:       true,
+		TextColor:     BLACK,
+		CursorColor:   cursor,
+		FocusColor:    BLACK,
+		Color:         WHITE,
+		BorderColor:   BLACK,
+		ContentOffset: Vector2{X: 8, Y: 8},
+		Gap:           4,
+	}})
+	pixels := 0
+	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+			if got := img.RGBAAt(x, y); got.R == cursor.R && got.G == cursor.G && got.B == cursor.B && got.A == cursor.A {
+				pixels++
+			}
+		}
+	}
+	if pixels == 0 || pixels > int(textHeight(Text14, 0))*3 {
+		t.Fatalf("textarea cursor painted %d pixels, want a line-height caret", pixels)
+	}
+}
+
 func TestAppThemeCatalogHonorsThemeID(t *testing.T) {
 	resetSystemThemeForTest()
 	defer resetSystemThemeForTest()

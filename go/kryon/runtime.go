@@ -677,6 +677,7 @@ type TextAreaProps struct {
 	Style          TextInputStyle
 	ContentVersion int32
 	ReadOnly       bool
+	Wrap           bool
 }
 
 type TextWrap int32
@@ -5706,7 +5707,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 		readOnly:      props.ReadOnly,
 		multiline:     true,
 	})
-	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, false, props.ReadOnly)
+	r.recordTextArea(props)
 	return changed
 }
 
@@ -6915,7 +6916,7 @@ func intersectRectangles(a, b Rectangle) Rectangle {
 	return Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
 }
 
-func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool) {
+func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte, cursor *int32, focused *bool, focusID, font int32, secure, readOnly bool, options ...textInputRecordOptions) {
 	text := string(buf[:zeroIndex(buf)])
 	pos := len(text)
 	if cursor != nil {
@@ -6943,6 +6944,10 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	fieldFocused := r.focusID == focusID || focused != nil && *focused
 	disabled := r.contentDisabled()
 	paint := r.textInputStyle(fieldFocused, disabled)
+	var opt textInputRecordOptions
+	if len(options) > 0 {
+		opt = options[0]
+	}
 	op := FrameOp{
 		Kind:              kind,
 		Bounds:            bounds,
@@ -6962,6 +6967,10 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		FillStates:        styleFill(paint),
 		FillStatesValid:   true,
 		FontSize:          font,
+		Gap:               float32(opt.lineGap),
+		ContentOffset:     Vector2{X: float32(opt.paddingX), Y: float32(opt.paddingY)},
+		ScrollY:           opt.scrollY,
+		Wrap:              opt.wrap,
 		FocusID:           focusID,
 		Cursor:            int32(pos),
 		SelectionStart:    int32(selectionStart),
@@ -6977,6 +6986,44 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		op.Focused = *focused
 	}
 	r.record(op)
+}
+
+func (r *runtime) recordTextArea(props TextAreaProps) {
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	lineGap := props.LineGap
+	if lineGap < 0 {
+		lineGap = 6
+	}
+	paddingX := props.Style.PaddingX
+	if paddingX <= 0 {
+		paddingX = 10
+	}
+	paddingY := props.Style.PaddingY
+	if paddingY <= 0 {
+		paddingY = 8
+	}
+	scrollY := int32(0)
+	if props.ScrollY != nil {
+		scrollY = *props.ScrollY
+	}
+	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, font, false, props.ReadOnly, textInputRecordOptions{
+		lineGap:  lineGap,
+		paddingX: paddingX,
+		paddingY: paddingY,
+		scrollY:  scrollY,
+		wrap:     props.Wrap,
+	})
+}
+
+type textInputRecordOptions struct {
+	lineGap  int32
+	paddingX int32
+	paddingY int32
+	scrollY  int32
+	wrap     bool
 }
 
 func (r *runtime) textInputStyle(focused, disabled bool) Style {

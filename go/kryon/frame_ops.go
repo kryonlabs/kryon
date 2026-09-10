@@ -95,6 +95,8 @@ type FrameOp struct {
 	AltText           string
 	Level             int32
 	Columns           int32
+	ScrollY           int32
+	Wrap              bool
 }
 
 type frameOpController interface {
