@@ -16,6 +16,14 @@ cases = {
     "escape": (r'return "\q"', "unknown string escape", "string"),
     "utf8": (r'return "\xFF"', "not valid UTF-8", "string"),
     "surrogate": (r'return "\uD800"', "Unicode scalar value", "string"),
+    "borrowed_null": ('value: const char* = "a\\0b"\n return true', "cannot contain a null byte", "bool"),
+    "borrowed_hex_null": ('value: const char* = "a\\x00b"\n return true', "cannot contain a null byte", "bool"),
+    "borrowed_conversion": ('text: string = "label"\n value: const char* = text\n return true', "borrowed string requires", "bool"),
+    "borrowed_comparison": ('text: string = "label"\n value: const char* = "label"\n return value == text', "borrowed string requires", "bool"),
+    "borrowed_ordering": ('value: const char* = "label"\n return value < "other"', "string operation is not supported", "bool"),
+    "borrowed_cast": ('value: const char* = "label"\n return (i32)value', "string casts require", "i32"),
+    "borrowed_return_null": (r'return "a\u0000b"', "cannot contain a null byte", "const char*"),
+    "borrowed_return_view": ('value: string = "label"\n return value', "borrowed string requires", "const char*"),
 }
 with tempfile.TemporaryDirectory(prefix="kryon-string-diagnostics-") as directory:
     work = Path(directory)

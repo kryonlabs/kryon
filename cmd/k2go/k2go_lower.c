@@ -5,6 +5,7 @@
 #include "kir_text.h"
 #include "kir_emit.h"
 #include "kir_check.h"
+#include "kir_expr.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -1359,6 +1360,30 @@ k2go_translate_array_literal(const KirModule *m, const char *gt,
     return 1;
 }
 
+/* Legacy host props still accept integer flags. Expressions that already
+ * produce bool must not acquire a second integer-to-bool conversion. */
+static int
+boolean_expression(const KirModule *module, const char *source)
+{
+    KirFunction parsed = {0};
+    int root = KirParseExpr(&parsed, module, source, KirSpan(module->source_path, 1, 1));
+    int result = 0;
+    if(root >= 0) {
+        const KirExpr *expr = &parsed.exprs[root];
+        result = (expr->kind == KIR_EXPR_IDENT &&
+                  (!strcmp(expr->name, "true") || !strcmp(expr->name, "false"))) ||
+                 (expr->kind == KIR_EXPR_CAST && !strcmp(expr->name, "bool")) ||
+                 (expr->kind == KIR_EXPR_UNARY && !strcmp(expr->op, "!")) ||
+                 (expr->kind == KIR_EXPR_BINARY &&
+                  (!strcmp(expr->op, "==") || !strcmp(expr->op, "!=") ||
+                   !strcmp(expr->op, "<") || !strcmp(expr->op, ">") ||
+                   !strcmp(expr->op, "<=") || !strcmp(expr->op, ">=") ||
+                   !strcmp(expr->op, "&&") || !strcmp(expr->op, "||")));
+    }
+    free(parsed.exprs);
+    return result;
+}
+
 static const char *
 tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
 {
@@ -1491,8 +1516,7 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                       strcmp(field, "Selected") == 0)) ||
                     (strcmp(type, "MenuItem") == 0 &&
                      strcmp(field, "Checked") == 0)) &&
-                   strcmp(value, "true") != 0 &&
-                   strcmp(value, "false") != 0)
+                   !boolean_expression(m, source))
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn,
                                             "%s: (%s != 0)", field, value);
                 else

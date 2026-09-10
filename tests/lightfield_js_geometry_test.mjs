@@ -2,6 +2,10 @@
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
 
+// Hosts accept positional geometry and records emitted from shared contracts.
+const rectangle = value => Array.isArray(value) ? value : [value.x, value.y, value.width, value.height];
+const vector = value => Array.isArray(value) ? value : [value.x, value.y];
+
 const moduleURL = pathToFileURL(process.argv[2]);
 const module = await import(moduleURL.href);
 const host = await import(new URL("../kryon-runtime.js", moduleURL).href);
@@ -14,10 +18,10 @@ assert.equal(host.GetThemeMode(), host.THEME_MODE_SYSTEM, "split view must prese
 const splitButtons = split.filter(item => item.name === "Button");
 assert.equal(splitButtons.length, 172);
 assert.equal(new Set(splitButtons.map(item => item.args.id)).size, 172);
-assert.deepEqual(splitButtons.find(item => item.args.id === 1000).args.bounds, [81, 161, 72, 34]);
-assert.deepEqual(splitButtons.find(item => item.args.id === 11000).args.bounds, [849, 161, 72, 34]);
-assert.deepEqual(splitButtons.find(item => item.args.id === 5000).args.bounds, [24, 901, 720, 34]);
-assert.deepEqual(splitButtons.find(item => item.args.id === 15000).args.bounds, [792, 901, 720, 34]);
+assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 1000).args.bounds), [81, 161, 72, 34]);
+assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 11000).args.bounds), [849, 161, 72, 34]);
+assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 5000).args.bounds), [24, 901, 720, 34]);
+assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 15000).args.bounds), [792, 901, 720, 34]);
 const splitMenus = split.filter(item => item.name === "SplitButton" || item.name === "MenuButton");
 assert.equal(splitMenus.length, 8);
 const splitOpen = splitMenus.map(item => item.args.open);
@@ -31,7 +35,7 @@ function checkGeometry(dark) {
   for (const [label, y] of [["Small", 518], ["Medium", dark ? 561 : 562], ["Large", 617]]) {
     const caption = text.find(item => item.args.text === label);
     assert.ok(caption, `missing size caption ${label}`);
-    assert.deepEqual(caption.args.bounds, [24, y, 56, 24], `size caption ${label}`);
+    assert.deepEqual(rectangle(caption.args.bounds), [24, y, 56, 24], `size caption ${label}`);
     assert.equal(caption.args.font, 17);
   }
   const buttons = frame.frame.filter(item => item.name === "Button");
@@ -60,17 +64,17 @@ function checkGeometry(dark) {
     [3008, [657, 748, 88, 40], [656, 747, 88, 40]],
     [3028, [657, 801, 88, 40], [656, 801, 88, 40]],
   ]) {
-    assert.deepEqual(byID.get(id).bounds, dark ? darkBounds : lightBounds, `compound control ${id}`);
+    assert.deepEqual(rectangle(byID.get(id).bounds), dark ? darkBounds : lightBounds, `compound control ${id}`);
   }
   for (const button of buttons) {
-    assert.ok(Array.isArray(button.args.bounds), `button ${button.args.id} has opaque bounds`);
-    assert.equal(button.args.bounds.length, 4);
-    assert.ok(button.args.bounds.every(Number.isFinite), `button ${button.args.id} has non-finite bounds`);
-    assert.ok(button.args.bounds[2] > 0 && button.args.bounds[3] > 0);
+    const bounds = rectangle(button.args.bounds);
+    assert.equal(bounds.length, 4);
+    assert.ok(bounds.every(Number.isFinite), `button ${button.args.id} has non-finite bounds`);
+    assert.ok(bounds[2] > 0 && bounds[3] > 0);
   }
-  assert.deepEqual(byID.get(1000).bounds, [81, 161, 72, 34]);
-  assert.deepEqual(byID.get(5000).bounds, [24, 901, 720, 34]);
-  assert.deepEqual(byID.get(5001).bounds, [24, 945, 720, 38]);
+  assert.deepEqual(rectangle(byID.get(1000).bounds), [81, 161, 72, 34]);
+  assert.deepEqual(rectangle(byID.get(5000).bounds), [24, 901, 720, 34]);
+  assert.deepEqual(rectangle(byID.get(5001).bounds), [24, 945, 720, 38]);
   for (const [id, darkBounds, lightBounds] of [
     [1002, [250, 161, 72, 34], [251, 161, 72, 34]],
     [1010, [81, 206, 72, 38], [81, 206, 72, 39]],
@@ -78,7 +82,7 @@ function checkGeometry(dark) {
     [1013, [334, 206, 72, 36], [336, 206, 72, 36]],
     [1017, [672, 206, 70, 36], [674, 206, 72, 36]],
   ]) {
-    assert.deepEqual(byID.get(id).bounds, dark ? darkBounds : lightBounds, `state sample ${id}`);
+    assert.deepEqual(rectangle(byID.get(id).bounds), dark ? darkBounds : lightBounds, `state sample ${id}`);
   }
   for (const [id, darkBounds, lightBounds] of [
     [1030, [80, 305, 75, 38], [80, 305, 74, 38]],
@@ -86,7 +90,7 @@ function checkGeometry(dark) {
     [1032, [250, 305, 73, 38], [252, 305, 72, 38]],
     [1036, [587, 305, 73, 39], [590, 305, 74, 38]],
   ]) {
-    assert.deepEqual(byID.get(id).bounds, dark ? darkBounds : lightBounds, `focus sample ${id}`);
+    assert.deepEqual(rectangle(byID.get(id).bounds), dark ? darkBounds : lightBounds, `focus sample ${id}`);
   }
   const smallBounds = dark ? [
     [91,511,56,24], [175,511,57,25], [260,511,57,24], [343,511,56,25],
@@ -96,7 +100,7 @@ function checkGeometry(dark) {
     [430,511,56,25], [514,511,56,25], [598,511,56,25], [681,511,56,25],
   ];
   smallBounds.forEach((bounds, column) => {
-    assert.deepEqual(byID.get(2000 + column).bounds, bounds, `small sample ${column}`);
+    assert.deepEqual(rectangle(byID.get(2000 + column).bounds), bounds, `small sample ${column}`);
   });
   const mediumBounds = dark ? [
     [83, 548, 71, 38], [168, 548, 71, 39], [253, 548, 70, 38], [335, 548, 71, 39],
@@ -106,7 +110,7 @@ function checkGeometry(dark) {
     [423, 549, 70, 39], [508, 549, 70, 39], [592, 549, 71, 39], [676, 549, 70, 38],
   ];
   mediumBounds.forEach((bounds, column) => {
-    assert.deepEqual(byID.get(2010 + column).bounds, bounds, `medium sample ${column}`);
+    assert.deepEqual(rectangle(byID.get(2010 + column).bounds), bounds, `medium sample ${column}`);
   });
   const largeBounds = dark ? [
     [81, 599, 75, 49], [166, 599, 75, 49], [250, 599, 75, 49], [333, 599, 75, 49],
@@ -116,8 +120,8 @@ function checkGeometry(dark) {
     [421, 601, 74, 49], [506, 601, 74, 48], [590, 601, 74, 48], [674, 601, 74, 49],
   ];
   largeBounds.forEach((bounds, column) => {
-    assert.deepEqual(byID.get(2020 + column).bounds, bounds, `large sample ${column}`);
-    assert.deepEqual(byID.get(2020 + column).style.normal.content_offset,
+    assert.deepEqual(rectangle(byID.get(2020 + column).bounds), bounds, `large sample ${column}`);
+    assert.deepEqual(vector(byID.get(2020 + column).style.normal.content_offset),
       dark ? [0, 1] : [-1, 0], `large sample label ${column}`);
   });
   assert.equal(byID.get(1000).style.normal.font_size, dark ? 19 : 17);
@@ -126,7 +130,7 @@ function checkGeometry(dark) {
     const raised = dark && column !== 3 && column !== 7;
     assert.equal(hover.fields ?? 0, raised ? 4096 : 0, `hover label style ${column}`);
     if (raised) {
-      assert.deepEqual(hover.content_offset, [0, -1]);
+      assert.deepEqual(vector(hover.content_offset), [0, -1]);
     }
   }
   assert.equal(byID.get(2000).style.normal.font_size, 15);
@@ -146,7 +150,7 @@ function checkGeometry(dark) {
     [3005, [479, 747, 42, 42], [479, 748, 40, 40]],
     [3025, [479, 800, 43, 43], [479, 802, 40, 40]],
   ]) {
-    assert.deepEqual(byID.get(id).bounds, dark ? darkBounds : lightBounds, `icon control ${id}`);
+    assert.deepEqual(rectangle(byID.get(id).bounds), dark ? darkBounds : lightBounds, `icon control ${id}`);
   }
   for (const id of [1003, 1013, 1023, 1033, 1043, 1053, 2003, 2013, 2023]) {
     assert.equal(byID.get(id).tone, dark ? host.ButtonToneNeutral : host.ButtonToneAccent);

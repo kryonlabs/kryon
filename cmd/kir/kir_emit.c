@@ -42,7 +42,8 @@ KirTargetType(const char *type, KirTarget target)
         {"u32", "uint32_t", "uint32"}, {"u64", "uint64_t", "uint64"},
         {"f32", "float", "float32"}, {"f64", "double", "float64"},
         {"bool", "bool", "bool"}, {"void", "void", ""},
-        {"string", "String", "string"}, {NULL, NULL, NULL}
+        {"string", "String", "string"},
+        {"const char*", "const char*", "string"}, {NULL, NULL, NULL}
     };
     type = canonical(type);
     for(int i = 0; map[i].type; i++)
@@ -84,6 +85,8 @@ KirEmitStringType(FILE *out)
 static const char *
 zero_value(const char *type, KirTarget target)
 {
+    if(!strcmp(type, "const char*"))
+        return target == KIR_C || target == KIR_CPP ? "NULL" : "\"\"";
     if(!strcmp(canonical(type), "string"))
         return target == KIR_C || target == KIR_CPP ? "StringView(NULL, 0)" : "\"\"";
     if(!strcmp(canonical(type), "bool")) return "false";
@@ -440,6 +443,8 @@ declare(Emitter *e, const char *name, const char *type, const char *value)
         line(e,"let %s = %s_value(%s,%d,%s);",name,e->numbers,value,width(canonical(type)),signed_type(canonical(type))?"true":"false");
     else if(e->target == KIR_JS && !strcmp(canonical(type),"bool"))
         line(e,"let %s = %s_bool(%s);",name,e->numbers,value);
+    else if(e->target == KIR_JS && !strcmp(type, "const char*"))
+        line(e, "let %s = %s ?? \"\";", name, value);
     else if(e->target == KIR_JS && !KirTargetType(type, KIR_C)) {
         char copy[KIR_TEXT_MAX];
         js_record_copy(e, type, value, copy, sizeof(copy));
@@ -536,7 +541,7 @@ literal(Emitter *e, const KirExpr *expr, const char *type, int negative, char *o
 }
 
 static void
-string_literal(const KirExpr *expr, KirTarget target, char *out, size_t size)
+string_literal(const KirExpr *expr, KirTarget target, int terminated, char *out, size_t size)
 {
     size_t used = 0;
     int remaining = 0;
@@ -596,6 +601,8 @@ string_literal(const KirExpr *expr, KirTarget target, char *out, size_t size)
         }
         for(int index = 0; index < count; index++) {
             unsigned char byte = bytes[index];
+            if(terminated && byte == 0)
+                fatal(expr, "borrowed string literal cannot contain a null byte");
             if(remaining) {
                 if((byte & 0xc0) != 0x80) fatal(expr, "string is not valid UTF-8");
                 scalar = (scalar << 6) | (byte & 63);
@@ -621,7 +628,8 @@ string_literal(const KirExpr *expr, KirTarget target, char *out, size_t size)
                 }
             }
             if(used + 8 >= size) fatal(expr, "string literal exceeds output limit");
-            if(target == KIR_C || target == KIR_CPP)
+            if((target == KIR_C || target == KIR_CPP) &&
+               (byte < 32 || byte >= 127 || byte == '"' || byte == '\\' || byte == '?'))
                 used += (size_t)format(out + used, size - used, "\\%03o", byte);
             else if(byte < 32 || byte == '"' || byte == '\\' || byte == 127)
                 used += (size_t)format(out + used, size - used, "\\u%04x", byte);
@@ -649,10 +657,11 @@ KirScalarLiteral(const char *type, const char *text, KirTarget target,
     int index=KirParseExpr(&fn,NULL,text,span);
     if(index>=0) {
         KirExpr *expr=&fn.exprs[index];
-        if(expr->kind == KIR_EXPR_STRING && !strcmp(type, "string")) {
+        if(expr->kind == KIR_EXPR_STRING &&
+           (!strcmp(type, "string") || !strcmp(type, "const char*"))) {
             char value[KIR_TEXT_MAX];
-            string_literal(expr, target, value, sizeof(value));
-            if(target == KIR_C || target == KIR_CPP)
+            string_literal(expr, target, !strcmp(type, "const char*"), value, sizeof(value));
+            if(!strcmp(type, "string") && (target == KIR_C || target == KIR_CPP))
                 format(out, size, "{%s, sizeof(%s) - 1}", value, value);
             else
                 kir_copy(out, size, value);
@@ -748,8 +757,10 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         }
         break;
     case KIR_EXPR_STRING:
-        string_literal(expr, e->target, a, sizeof(a));
-        if(e->target == KIR_C || e->target == KIR_CPP)
+        if(!strcmp(expected, "const char*"))
+            type = expected;
+        string_literal(expr, e->target, !strcmp(type, "const char*"), a, sizeof(a));
+        if(strcmp(type, "const char*") && (e->target == KIR_C || e->target == KIR_CPP))
             format(result, sizeof(result), "StringView(%s, sizeof(%s) - 1)", a, a);
         else
             kir_copy(result, sizeof(result), a);
@@ -780,6 +791,8 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         if(!strcmp(type,"bool")) {
             operand_type=canonical(e->fn->exprs[expr->left].type);
             if(!strcmp(e->fn->exprs[expr->left].type,"integer") || !strcmp(e->fn->exprs[expr->left].type,"real")) operand_type=canonical(e->fn->exprs[expr->right].type);
+            if(!strcmp(e->fn->exprs[expr->right].type, "const char*"))
+                operand_type = "const char*";
         }
         emit_expr(e,expr->left,operand_type,a,sizeof(a));
         if(!strcmp(expr->op,"&&") || !strcmp(expr->op,"||")) {
@@ -789,7 +802,10 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
             e->indent--;line(e,"}");kir_copy(out,size,temp);return;
         }
         emit_expr(e,expr->right,(!strcmp(expr->op,"<<")||!strcmp(expr->op,">>"))?"i32":operand_type,b,sizeof(b));
-        if(!strcmp(operand_type, "string") && (e->target == KIR_C || e->target == KIR_CPP))
+        if(!strcmp(operand_type, "const char*") && (e->target == KIR_C || e->target == KIR_CPP))
+            format(result, sizeof(result), "strcmp(%s ? %s : \"\", %s ? %s : \"\") %s 0",
+                   a, a, b, b, expr->op);
+        else if(!strcmp(operand_type, "string") && (e->target == KIR_C || e->target == KIR_CPP))
             format(result, sizeof(result), "%sStringEqual(%s, %s)", !strcmp(expr->op, "!=") ? "!" : "", a, b);
         else if(width(type) && operation(expr->op)) number(e,type,a,b,operation(expr->op),result,sizeof(result));
         else format(result,sizeof(result),"%s %s %s",a,expr->op,b);
@@ -822,7 +838,7 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         if(enum_type(e->module, type))
             type = "i32";
         emit_expr(e,expr->right,e->fn->exprs[expr->right].type,a,sizeof(a));
-        if(!strcmp(type, "string")) {
+        if(!strcmp(type, "string") || !strcmp(type, "const char*")) {
             kir_copy(result, sizeof(result), a);
         } else if(!strcmp(type,"bool")) {
             format(result,sizeof(result),"%s != %s",a,!strcmp(canonical(e->fn->exprs[expr->right].type),"bool")?"false":"0");

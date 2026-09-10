@@ -317,28 +317,34 @@ int main(void)
         assert(layout.menu_offset + layout.menu_width == layout.width);
         assert(layout.divider_inset == 8);
     }
-    ButtonMeasure request = {.minimum_height = 40, .label_width = 24,
-        .label_height = 27, .padding_x = 16, .padding_y = 20,
-        .icon_size = 8.5f, .gap = 8, .has_icon = true};
-    MeasuredSize natural = MeasureSize(request);
+    ButtonProps request = {.label = "Run", .icon = {.id = 1}};
+    Style measure_style = {.padding_x = 16, .padding_y = 20, .icon_size = 8.5f, .gap = 8};
+    Rectangle natural = MeasureBounds(request, measure_style, 40, 27, 24, 0, 1, false);
     assert(natural.width == 72.5f && natural.height == 67);
-    request.width = 120;
-    request.height = 24;
-    MeasuredSize fixed = MeasureSize(request);
+    request.bounds.width = 120;
+    request.bounds.height = 24;
+    Rectangle fixed = MeasureBounds(request, measure_style, 40, 27, 24, 0, 1, false);
     assert(fixed.width == 120 && fixed.height == 24);
     request.circle = true;
-    MeasuredSize circle = MeasureSize(request);
+    Rectangle circle = MeasureBounds(request, measure_style, 40, 27, 24, 0, 1, false);
     assert(circle.width == 24 && circle.height == 24);
     request.circle = false;
-    request.width = 0;
+    request.bounds.width = 0;
     request.full_width = true;
-    request.available_width = 300;
-    assert(MeasureSize(request).width == 300);
-    request.available_width = 10;
-    assert(MeasureSize(request).width == 24);
+    assert(MeasureBounds(request, measure_style, 40, 27, 24, 300, 1, false).width == 300);
+    assert(MeasureBounds(request, measure_style, 40, 27, 24, 10, 1, false).width == 24);
     request.icon_only = true;
-    request.height = 0;
-    assert(MeasureSize(request).height == 40 && MeasureSize(request).width == 40);
+    request.bounds.height = 0;
+    Rectangle icon_only = MeasureBounds(request, measure_style, 40, 27, 24, 10, 1, false);
+    assert(icon_only.height == 40 && icon_only.width == 40);
+    request = (ButtonProps){.label = "Run", .bounds = {1.25f, 2.5f, 123.125f, 24.0625f}};
+    Rectangle physical = MeasureBounds(request, measure_style, 80, 54, 48, 0, 1.3f, false);
+    assert(physical.x == request.bounds.x && physical.y == request.bounds.y);
+    assert(physical.width == request.bounds.width && physical.height == request.bounds.height);
+    request.bounds.width = 0;
+    request.bounds.height = 0;
+    Rectangle scaled = MeasureBounds(request, measure_style, 80, 54, 48, 0, 2, true);
+    assert(scaled.x == 1.25f && scaled.y == 2.5f && scaled.width == 145 && scaled.height == 134);
     const float icon_sizes[] = {-1, 0, 0.5f, 1, 8.5f, 18};
     for(int i = 0; i < 6; i++) {
         ContentSize measured = MeasureContent(40, 24, icon_sizes[i], 8, 18, true, false);

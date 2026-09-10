@@ -382,25 +382,48 @@ for (let state = 1; state <= 7; state++) {
     state: 2, hovered: true, pressed: false, focused: true,
   });
 }
-const measurement = {
-  width: 0, height: 0, minimum_height: 40, label_width: 24, label_height: 27,
-  available_width: 0, padding_x: 16, padding_y: 20, icon_size: 8.5, gap: 8,
-  has_icon: true, icon_only: false, full_width: false, square: false, circle: false,
+const color = { r: 0, g: 0, b: 0, a: 0 };
+const measureStyle = {
+  fields: 0, background: color, foreground: color, border: color, focus: color,
+  radius: 0, border_width: 0, opacity: 0, padding_x: 16, padding_y: 20,
+  icon_size: 8.5, gap: 8, font_size: 0, content_offset: { x: 0, y: 0 },
+  background_end: color, material: 0, typeface: "",
 };
+const measurement = {
+  bounds: { x: 0, y: 0, width: 0, height: 0 }, label: "Run", font: 0, id: 0,
+  tone: 0, emphasis: 0, size: 0, disabled: false, loading: false, selected: false,
+  full_width: false, pill: false, circle: false,
+  icon: { id: 1, width: 0, height: 0, mipmaps: 0, format: 0 }, icon_type: 0,
+  icon_placement: 0, icon_only: false, square: false, state: 0,
+  style: Object.fromEntries(["normal", "hover", "pressed", "focused", "disabled", "loading", "selected"].map(state => [state, measureStyle])),
+};
+let availableWidth = 0;
 function checkMeasurement(width, height) {
-  assert.deepEqual(button.Button_MeasureSize(null, undefined, undefined, measurement), { width, height });
+  assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
+    measureStyle, 40, 27, 24, availableWidth, 1, false), { x: 0, y: 0, width, height });
 }
 checkMeasurement(72.5, 67);
-Object.assign(measurement, { width: 120, height: 24 });
+Object.assign(measurement.bounds, { width: 120, height: 24 });
 checkMeasurement(120, 24);
 measurement.circle = true;
 checkMeasurement(24, 24);
-Object.assign(measurement, { circle: false, width: 0, full_width: true, available_width: 300 });
+Object.assign(measurement, { circle: false, full_width: true });
+measurement.bounds.width = 0;
+availableWidth = 300;
 checkMeasurement(300, 24);
-measurement.available_width = 10;
+availableWidth = 10;
 checkMeasurement(24, 24);
-Object.assign(measurement, { icon_only: true, height: 0 });
+measurement.icon_only = true;
+measurement.bounds.height = 0;
 checkMeasurement(40, 40);
+Object.assign(measurement, { icon_only: false, full_width: false });
+Object.assign(measurement.bounds, { x: 1.25, y: 2.5, width: 123.125, height: 24.0625 });
+assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
+  measureStyle, 80, 54, 48, 0, 1.3, false), measurement.bounds);
+Object.assign(measurement.bounds, { width: 0, height: 0 });
+measurement.icon.id = 0;
+assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
+  measureStyle, 80, 54, 48, 0, 2, true), { x: 1.25, y: 2.5, width: 145, height: 134 });
 const theme = await import(pathToFileURL(process.argv[4]).href);
 const metrics = theme.Theme_DefaultMetrics(null);
 for (const dark of [false, true]) {

@@ -3,6 +3,7 @@
 #import "theme"
 #import "surface"
 #import "control_props"
+#import "button_props"
 
 # The declaration owns the retained shape; hosts only allocate it by identity.
 ButtonInstance :: struct {
@@ -120,44 +121,31 @@ ContentSize :: struct {
     gap: float
 }
 
-# Hosts provide glyph measurements and available space in logical pixels.
-# Widget sizing, including explicit bounds and shape precedence, lives here.
-ButtonMeasure :: struct {
-    width: float
-    height: float
-    minimum_height: float
-    label_width: float
-    label_height: float
-    available_width: float
-    padding_x: float
-    padding_y: float
-    icon_size: float
-    gap: float
-    has_icon: bool
-    icon_only: bool
-    full_width: bool
-    square: bool
-    circle: bool
-}
-
-MeasuredSize :: struct {
-    width: float
-    height: float
-}
-
-MeasureSize :: (request: ButtonMeasure) -> MeasuredSize #export {
-    result: MeasuredSize
-    text_height: float = request.label_height
-    if request.icon_only { text_height = 0.0 }
-    result.height = FitHeight(request.height, request.minimum_height,
-        text_height, request.padding_y)
-    content: ContentSize = MeasureContent(result.height, request.label_width,
-        request.icon_size, request.gap, request.padding_x,
-        request.has_icon, request.icon_only)
-    result.width = ShapeWidth(request.width, result.height, content.width,
-        request.available_width, request.full_width,
-        request.square || request.icon_only, request.circle)
-    return result
+# The host supplies physical glyph measurements, available space, and scale.
+# The declaration reads the real props and owns shape, label, and size policy.
+MeasureBounds :: (props: ButtonProps, paint: Style, minimum_height: float,
+    font: i32, label_width: float, available_width: float,
+    scale: float, disclosure: bool) -> Rectangle #export {
+    if scale <= 0.0 { scale = 1.0 }
+    bounds: Rectangle = props.bounds
+    text_height: float = 0.0
+    if props.label != "" && !props.icon_only { text_height = (float)font / scale }
+    height: float = FitHeight(bounds.height / scale, minimum_height / scale,
+        text_height, paint.padding_y)
+    has_icon: bool = disclosure || props.icon.id != (u32)0 || props.icon_type != 0
+    content: ContentSize = MeasureContent(height, label_width / scale,
+        paint.icon_size, paint.gap, paint.padding_x, has_icon, props.icon_only)
+    width: float = ShapeWidth(bounds.width / scale, height, content.width,
+        available_width / scale, props.full_width,
+        props.square || props.icon_only, props.circle)
+    # Preserve explicit physical coordinates without a lossy scale roundtrip.
+    if bounds.height <= 0.0 { bounds.height = height * scale }
+    if props.square || props.circle || props.icon_only {
+        bounds.width = bounds.height
+    } else if bounds.width <= 0.0 {
+        bounds.width = width * scale
+    }
+    return bounds
 }
 
 # Measurement and placement share the same content rules. An absent label

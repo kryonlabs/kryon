@@ -67,6 +67,10 @@ host code consumes these types. Geometry and texture fields are declared in
 `runtime/drawing_props.kry`. Its `struct #extern` contracts reuse C/C++ host
 definitions and generate native Go definitions; graphics resource ownership
 remains with the host. Control style records use their own shared declaration.
+Button's measurement consumes these actual props and style records directly;
+hosts supply font measurements and available space, while `.kry` owns bounds
+and shape decisions. Borrowed label/typeface fields retain host-owned storage;
+shared code does not turn length-aware string views into C pointers.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

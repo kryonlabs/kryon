@@ -4,6 +4,11 @@ import { pathToFileURL } from "node:url";
 const [generatedPath, runtimePath] = process.argv.slice(2);
 const generated = await import(pathToFileURL(generatedPath).href);
 const runtime = await import(pathToFileURL(runtimePath).href);
+function rectangle(value) {
+  const [x, y, width, height] = Array.isArray(value)
+    ? value : [value.x, value.y, value.width, value.height];
+  return { x, y, width, height };
+}
 
 assert.equal(generated.app.title, "JS Smoke");
 assert.equal(generated.app.width, 320);
@@ -37,7 +42,7 @@ assert.equal(snap.frame[0].name, "Screen");
 assert.equal(snap.frame[1].name, "Text");
 assert.equal(snap.frame[2].name, "Button");
 assert.equal(typeof snap.frame[2].args, "object");
-assert.deepEqual(snap.frame[2].args.bounds, [10, 50, 120, 28]);
+assert.deepEqual(rectangle(snap.frame[2].args.bounds), { x: 10, y: 50, width: 120, height: 28 });
 assert.equal(snap.frame[2].args.label, "Tap");
 assert.equal(snap.frame[2].args.style.normal.radius, 6);
 assert.equal(snap.frame[2].args.style.normal.fields, 16);
@@ -66,10 +71,11 @@ const styleRuntime = runtime.createRuntime();
 runtime.beginFrame(styleRuntime);
 generated.Valid_StyleCopies(styleRuntime, state, host);
 const styleFrame = runtime.endFrame(styleRuntime).frame;
-assert.deepEqual(styleFrame[0].args.bounds, [10, 20, 50, 40]);
+assert.deepEqual(rectangle(styleFrame[0].args.bounds), { x: 10, y: 20, width: 50, height: 40 });
 const styles = styleFrame.map(item => item.args.style.normal);
 assert.deepEqual(styles.map(style => style.font_size), [19, 24, 32]);
-assert.deepEqual(styles.map(style => style.content_offset), [[0, 1], [0, 1], [0, -1]]);
+assert.deepEqual(styles.map(({ content_offset: { x, y } }) => ({ x, y })),
+  [{ x: 0, y: 1 }, { x: 0, y: 1 }, { x: 0, y: -1 }]);
 
 for (const action of [generated.Valid_DirectAction, generated.Valid_StoredAction, generated.Valid_AssignedAction]) {
   const actionRuntime = runtime.createRuntime({ app: generated.app });
@@ -80,6 +86,6 @@ for (const action of [generated.Valid_DirectAction, generated.Valid_StoredAction
     const result = runtime.endFrame(actionRuntime);
     assert.equal(result.frame.length, 1);
     assert.equal(result.frame[0].name, "Button");
-    assert.deepEqual(result.frame[0].args.bounds, [20, 100, 80, 32]);
+    assert.deepEqual(rectangle(result.frame[0].args.bounds), { x: 20, y: 100, width: 80, height: 32 });
   }
 }

@@ -3735,15 +3735,8 @@ resolve_button_bounds(ButtonProps button, int disclosure)
     int height = Scale(SizeValue(button.size, metrics.control_height_small,
         metrics.control_height_medium, metrics.control_height_large));
     int font = ResolveFont(button.font, Scale(style.font_size), GetFontSize());
-    int has_icon = disclosure || button.icon.id != 0 || button.icon_type != UI_ICON_TYPE_NONE;
     float available_width = 0.0f;
     float scale = (float)Scale(1000) / 1000.0f;
-    if(scale <= 0.0f)
-        scale = 1.0f;
-
-    float text_height = 0.0f;
-    if(button.label != NULL && button.label[0] != '\0' && !button.icon_only)
-        text_height = (float)font;
     if(button.full_width && bounds.width <= 0) {
         float right = (float)GetUIViewWidth();
 
@@ -3758,24 +3751,8 @@ resolve_button_bounds(ButtonProps button, int disclosure)
     int typeface_token = PushUIFont(style.typeface);
     float label_width = (float)TextWidth(button.label != NULL ? button.label : "", font);
     PopUIFont(typeface_token);
-    MeasuredSize measured = MeasureSize((ButtonMeasure){
-        .width = bounds.width / scale, .height = bounds.height / scale,
-        .minimum_height = (float)height / scale,
-        .label_width = label_width / scale, .label_height = text_height / scale,
-        .available_width = available_width / scale,
-        .padding_x = style.padding_x, .padding_y = style.padding_y,
-        .icon_size = style.icon_size, .gap = style.gap,
-        .has_icon = has_icon, .icon_only = button.icon_only,
-        .full_width = button.full_width, .square = button.square, .circle = button.circle,
-    });
-    /* Explicit physical bounds must not acquire logical-roundtrip error. */
-    if(bounds.height <= 0)
-        bounds.height = measured.height * scale;
-    if(button.square || button.circle || button.icon_only)
-        bounds.width = bounds.height;
-    else if(bounds.width <= 0)
-        bounds.width = measured.width * scale;
-    return bounds;
+    return MeasureBounds(button, style, height, font, label_width,
+                         available_width, scale, disclosure);
 }
 
 static ButtonSpec

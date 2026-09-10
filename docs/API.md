@@ -1313,6 +1313,11 @@ The Rectangle, Vector2, Color, and Texture2D field contracts come from
 `runtime/drawing_props.kry`. These records support typed field access and value
 copies in shared `.kry` functions. Their C/C++ definitions remain supplied by
 the graphics host; Go definitions are generated from the contract.
+Button measurement reads the shared props directly. Explicit physical bounds
+are preserved at fractional scale; circle, square, and icon-only shapes use
+the resolved height for their width. Shared `.kry` bodies can copy and compare
+the borrowed `label` and style `typeface` fields. C callers retain ownership of
+those null-terminated strings; null labels behave as empty labels.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

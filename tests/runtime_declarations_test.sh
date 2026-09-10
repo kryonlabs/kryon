@@ -63,7 +63,7 @@ ReadZero :: () -> i32 {
     return props.font
 }
 KRY
-(cd "$work" && ./k2go --no-main --pkg props --root . -o app props.kry)
+(cd "$work" && ./k2go --strict --no-main --pkg props --root . -o app props.kry)
 cat > "$work/app/go.mod" <<MOD
 module props
 
@@ -82,7 +82,7 @@ func TestProps(t *testing.T) {
 GO
 (cd "$work/app" && GOWORK=off go test -mod=mod ./...)
 cp "$build/bin/k2js" "$work/k2js"
-(cd "$work" && ./k2js --no-main --runtime ./kryon-runtime.js --root . -o js props.kry)
+(cd "$work" && ./k2js --strict --no-main --runtime ./kryon-runtime.js --root . -o js props.kry)
 cp web/*.js "$work/js/"
 printf '{"type":"module"}\n' > "$work/js/package.json"
 cat > "$work/js/check.mjs" <<'JS'

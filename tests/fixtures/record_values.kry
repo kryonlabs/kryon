@@ -7,6 +7,38 @@ Named :: struct {
     name: string
 }
 
+Borrowed :: struct {
+    label: const char*
+}
+
+BorrowName :: (label: const char*) -> Borrowed {
+    return (Borrowed){.label=label}
+}
+
+BorrowDefault :: () -> const char* {
+    return "default"
+}
+
+CheckBorrowedStrings :: () -> i32 {
+    empty: Borrowed
+    if empty.label != "" || "" != empty.label { return 80 }
+    first: Borrowed = BorrowName("日本語 café")
+    copy: Borrowed = first
+    copy.label = "second"
+    if first.label != "日本語 café" { return 81 }
+    chosen: const char* = true ? first.label : "fallback"
+    if chosen != first.label { return 82 }
+    chosen = false ? "fallback" : copy.label
+    if chosen != "second" { return 83 }
+    other: Borrowed = BorrowName(chosen)
+    if other.label != copy.label { return 84 }
+    copy = (Borrowed){}
+    if copy.label != empty.label { return 85 }
+    copy.label = BorrowDefault()
+    if copy.label != "default" { return 86 }
+    return 0
+}
+
 Rename :: (value: Named, name: string) -> Named #export {
     value.name = name
     return value
@@ -78,6 +110,8 @@ CheckNested :: () -> i32 #export {
 }
 
 Check :: () -> i32 #export {
+    borrowed_result: i32 = CheckBorrowedStrings()
+    if borrowed_result != 0 { return borrowed_result }
     capture_result: i32 = CheckCaptures()
     if capture_result != 0 { return capture_result }
     literal_result: i32 = CheckLiterals()

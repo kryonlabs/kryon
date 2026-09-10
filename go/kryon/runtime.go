@@ -2425,10 +2425,6 @@ func (r *runtime) resolveSurfaceButtonProps(props ButtonProps, disclosure bool) 
 	}
 	height := Style_SizeValue(int32(props.Size), metrics.ControlHeightSmall,
 		metrics.ControlHeightMedium, metrics.ControlHeightLarge)
-	textHeight := float32(0)
-	if props.Label != "" && !props.IconOnly {
-		textHeight = float32(font)
-	}
 	availableWidth := float32(0)
 	if props.FullWidth && props.Bounds.Width <= 0 {
 		right := float32(r.GetScreenWidth())
@@ -2440,17 +2436,8 @@ func (r *runtime) resolveSurfaceButtonProps(props ButtonProps, disclosure bool) 
 		}
 		availableWidth = right - props.Bounds.X
 	}
-	measured := Button_MeasureSize(ButtonMeasure{
-		Width: props.Bounds.Width, Height: props.Bounds.Height, MinimumHeight: height,
-		LabelWidth: float32(runtimeTextWidthWithFont(props.Label, font, registeredTypeface(style.Typeface))), LabelHeight: textHeight,
-		AvailableWidth: availableWidth, PaddingX: style.PaddingX, PaddingY: style.PaddingY,
-		IconSize: style.IconSize, Gap: style.Gap,
-		HasIcon:  disclosure || props.Icon.ID != 0 || props.IconType != UIIconTypeNone,
-		IconOnly: props.IconOnly, FullWidth: props.FullWidth,
-		Square: props.Square, Circle: props.Circle,
-	})
-	props.Bounds.Width = measured.Width
-	props.Bounds.Height = measured.Height
+	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, registeredTypeface(style.Typeface)))
+	props.Bounds = Button_MeasureBounds(props, style, height, font, labelWidth, availableWidth, 1, disclosure)
 	return props
 }
 

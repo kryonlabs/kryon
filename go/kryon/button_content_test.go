@@ -7,25 +7,35 @@ import (
 )
 
 func TestButtonMeasurementContract(t *testing.T) {
-	request := ButtonMeasure{MinimumHeight: 40, LabelWidth: 24, LabelHeight: 27,
-		PaddingX: 16, PaddingY: 20, IconSize: 8.5, Gap: 8, HasIcon: true}
+	props := ButtonProps{Label: "Run", Icon: Texture2D{ID: 1}}
+	paint := Style{PaddingX: 16, PaddingY: 20, IconSize: 8.5, Gap: 8}
+	availableWidth := float32(0)
 	check := func(width, height float32) {
 		t.Helper()
-		if got := Button_MeasureSize(request); got.Width != width || got.Height != height {
-			t.Fatalf("measurement=%+v want %g x %g; request=%+v", got, width, height, request)
+		if got := Button_MeasureBounds(props, paint, 40, 27, 24, availableWidth, 1, false); got.Width != width || got.Height != height {
+			t.Fatalf("measurement=%+v want %g x %g; props=%+v", got, width, height, props)
 		}
 	}
 	check(72.5, 67)
-	request.Width, request.Height = 120, 24
+	props.Bounds.Width, props.Bounds.Height = 120, 24
 	check(120, 24)
-	request.Circle = true
+	props.Circle = true
 	check(24, 24)
-	request.Circle, request.Width, request.FullWidth, request.AvailableWidth = false, 0, true, 300
+	props.Circle, props.Bounds.Width, props.FullWidth, availableWidth = false, 0, true, 300
 	check(300, 24)
-	request.AvailableWidth = 10
+	availableWidth = 10
 	check(24, 24)
-	request.IconOnly, request.Height = true, 0
+	props.IconOnly, props.Bounds.Height = true, 0
 	check(40, 40)
+	props = ButtonProps{Label: "Run", Bounds: Rectangle{X: 1.25, Y: 2.5, Width: 123.125, Height: 24.0625}}
+	if got := Button_MeasureBounds(props, paint, 80, 54, 48, 0, 1.3, false); got != props.Bounds {
+		t.Fatalf("explicit physical bounds changed at fractional scale: %+v", got)
+	}
+	props.Bounds.Width, props.Bounds.Height = 0, 0
+	got := Button_MeasureBounds(props, paint, 80, 54, 48, 0, 2, true)
+	if got != (Rectangle{X: 1.25, Y: 2.5, Width: 145, Height: 134}) {
+		t.Fatalf("scaled disclosure measurement: %+v", got)
+	}
 }
 
 func TestButtonChildrenUseResolvedStylePadding(t *testing.T) {

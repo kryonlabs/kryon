@@ -139,6 +139,22 @@ compatible(const char *to, const char *from)
 }
 
 static int
+text_type(const char *type)
+{
+    return !strcmp(type, "string") || !strcmp(type, "const char*");
+}
+
+static void
+check_borrowed_string(Checker *c, const char *destination, int index)
+{
+    if(index < 0 || strcmp(destination, "const char*"))
+        return;
+    const KirExpr *value = &c->fn->exprs[index];
+    if(!strcmp(value->type, "string") && value->kind != KIR_EXPR_STRING)
+        error(c, value->span, "borrowed string requires a literal or another borrowed value", "");
+}
+
+static int
 assignable(Checker *c, int index)
 {
     const KirExpr *e;
@@ -199,6 +215,7 @@ expression_type(Checker *c, int index)
             kir_copy(entry->type, sizeof(entry->type), field.type);
             if(!compatible(field.type, value_type))
                 error(c, entry->span, "initializer field type mismatch", field.name);
+            check_borrowed_string(c, field.type, entry->right);
             ordinal++;
         }
         type = e->name;
@@ -248,10 +265,8 @@ expression_type(Checker *c, int index)
             const char *arg_type = expression_type(c, child);
             if(args && actual < expected) {
                 char *colon = strchr(parts[actual], ':');
-                if(colon && !c->fn->is_ui && !strcmp(arg_type, "string") &&
-                   !strcmp(kir_skip_ws(colon + 1), "const char*"))
-                    error(c, c->fn->exprs[child].span,
-                          "portable string requires a length-aware foreign parameter", e->name);
+                if(colon)
+                    check_borrowed_string(c, kir_skip_ws(colon + 1), child);
                 if(colon && !compatible(kir_skip_ws(colon + 1), arg_type))
                     signature_error(c, callee, c->fn->exprs[child].span,
                                     "argument type mismatch", e->name);
@@ -259,6 +274,9 @@ expression_type(Checker *c, int index)
                     const char *context = KirScalarType(kir_skip_ws(colon + 1));
                     if(*context) kir_copy(c->fn->exprs[child].type, KIR_NAME_MAX, context);
                 }
+                if(colon && c->fn->exprs[child].kind == KIR_EXPR_STRING &&
+                   !strcmp(kir_skip_ws(colon + 1), "const char*"))
+                    kir_copy(c->fn->exprs[child].type, KIR_NAME_MAX, "const char*");
             }
             actual++;
         }
@@ -271,9 +289,11 @@ expression_type(Checker *c, int index)
         break;
     }
     case KIR_EXPR_BINARY:
-        if((!strcmp(left, "string") || !strcmp(right, "string")) &&
+        if((text_type(left) || text_type(right)) &&
            strcmp(e->op, "==") && strcmp(e->op, "!="))
             error(c, e->span, "string operation is not supported", e->op);
+        check_borrowed_string(c, left, e->right);
+        check_borrowed_string(c, right, e->left);
         if((!strcmp(e->op, "&") || !strcmp(e->op, "|") || !strcmp(e->op, "^") ||
             !strcmp(e->op, "<<") || !strcmp(e->op, ">>") || !strcmp(e->op, "%")) &&
            (left[0] == 'f' || right[0] == 'f' || !strcmp(left, "real") || !strcmp(right, "real")))
@@ -311,7 +331,7 @@ expression_type(Checker *c, int index)
            !numeric(right) && strcmp(right, "bool") &&
            (source == NULL || !source->is_enum))
             error(c, e->span, "enum casts require a numeric, bool, or enum value", e->name);
-        if((!strcmp(right, "string") || !strcmp(e->name, "string")) && strcmp(right, e->name))
+        if((text_type(right) || text_type(e->name)) && strcmp(right, e->name))
             error(c, e->span, "string casts require an explicit conversion API", e->name);
         type = e->name;
         break;
@@ -322,6 +342,11 @@ expression_type(Checker *c, int index)
         if(!compatible(right, third) && !compatible(third, right))
             error(c, e->span, "conditional arms have different types", "");
         type = !strcmp(right, "integer") ? third : right;
+        if(!strcmp(right, "const char*") || !strcmp(third, "const char*")) {
+            type = "const char*";
+            check_borrowed_string(c, type, e->right);
+            check_borrowed_string(c, type, e->third);
+        }
         break;
     }
     default: error(c, e->span, "expression is not supported by strict checking", e->text); break;
@@ -583,18 +608,22 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                     } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
                         !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
                     else if(!compatible(st->type, type)) error(&c, st->span, "initializer type mismatch", st->name);
+                    if(!st->is_instance)
+                        check_borrowed_string(&c, st->type, st->expr_root);
                     bind(&c, st->name, st->type, st->span);
                 } else if(st->kind == KIR_STMT_ASSIGN) {
                     const char *lhs = expression_type(&c, st->lhs_root);
                     const KirType *destination = KirFindType(c.module, lhs, NULL);
                     if(destination != NULL && destination->is_enum && strcmp(st->assignment_op, "="))
                         error(&c, st->span, "enum compound assignment requires an explicit numeric cast", st->assignment_op);
-                    if(!strcmp(lhs, "string") && strcmp(st->assignment_op, "="))
+                    if(text_type(lhs) && strcmp(st->assignment_op, "="))
                         error(&c, st->span, "string compound assignment is not supported", st->assignment_op);
                     if(!assignable(&c, st->lhs_root)) error(&c, st->span, "assignment requires an assignable destination", "");
                     if(!compatible(lhs, type)) error(&c, st->span, "assignment type mismatch", st->text);
+                    check_borrowed_string(&c, lhs, st->expr_root);
                 } else if(st->kind == KIR_STMT_RETURN) {
                     if(!compatible(c.fn->return_type, type)) error(&c, st->span, "return type mismatch", c.fn->name);
+                    check_borrowed_string(&c, c.fn->return_type, st->expr_root);
                     if((st->expr_root < 0) != !strcmp(c.fn->return_type, "void"))
                         error(&c, st->span, "return value does not match function signature", c.fn->name);
                 } else if(st->kind == KIR_STMT_IF || st->kind == KIR_STMT_WHILE) {

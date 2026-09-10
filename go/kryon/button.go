@@ -5,6 +5,7 @@ package kryon
 // #import theme
 // #import surface
 // #import control_props
+// #import button_props
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
 	bits := w
 	if sign {
@@ -93,29 +94,6 @@ type ContentSize struct {
 	TextWidth float32
 	IconSize  float32
 	Gap       float32
-}
-
-type ButtonMeasure struct {
-	Width          float32
-	Height         float32
-	MinimumHeight  float32
-	LabelWidth     float32
-	LabelHeight    float32
-	AvailableWidth float32
-	PaddingX       float32
-	PaddingY       float32
-	IconSize       float32
-	Gap            float32
-	HasIcon        bool
-	IconOnly       bool
-	FullWidth      bool
-	Square         bool
-	Circle         bool
-}
-
-type MeasuredSize struct {
-	Width  float32
-	Height float32
 }
 
 type ButtonContent struct {
@@ -469,46 +447,126 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 	return value_93
 }
 
-func Button_MeasureSize(request ButtonMeasure) MeasuredSize {
-	var result MeasuredSize = MeasuredSize{}
-	var value_0 float32 = request.LabelHeight
-	var text_height float32 = value_0
-	var value_1 bool = request.IconOnly
-	if value_1 {
-		var value_2 float32 = 0.0
-		text_height = value_2
+func Button_MeasureBounds(props ButtonProps, paint Style, minimum_height float32, font int32, label_width float32, available_width float32, scale float32, disclosure bool) Rectangle {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
 	}
-	var value_3 float32 = request.Height
-	var value_4 float32 = request.MinimumHeight
-	var value_5 float32 = text_height
-	var value_6 float32 = request.PaddingY
-	var value_7 float32 = Style_FitHeight(value_3, value_4, value_5, value_6)
-	result.Height = value_7
-	var value_8 float32 = result.Height
-	var value_9 float32 = request.LabelWidth
-	var value_10 float32 = request.IconSize
-	var value_11 float32 = request.Gap
-	var value_12 float32 = request.PaddingX
-	var value_13 bool = request.HasIcon
-	var value_14 bool = request.IconOnly
-	var value_15 ContentSize = Button_MeasureContent(value_8, value_9, value_10, value_11, value_12, value_13, value_14)
-	var content ContentSize = value_15
-	var value_16 float32 = request.Width
-	var value_17 float32 = result.Height
-	var value_18 float32 = content.Width
-	var value_19 float32 = request.AvailableWidth
-	var value_20 bool = request.FullWidth
-	var value_21 bool = request.Square
-	var value_22 bool = value_21
-	if !value_22 {
-		var value_23 bool = request.IconOnly
-		value_22 = value_23
+	var value_4 Rectangle = props.Bounds
+	var bounds Rectangle = value_4
+	var value_5 float32 = 0.0
+	var text_height float32 = value_5
+	var value_6 string = props.Label
+	var value_7 string = ""
+	var value_8 bool = value_6 != value_7
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 bool = props.IconOnly
+		var value_11 bool = !value_10
+		value_9 = value_11
 	}
-	var value_24 bool = request.Circle
-	var value_25 float32 = Button_ShapeWidth(value_16, value_17, value_18, value_19, value_20, value_22, value_24)
-	result.Width = value_25
-	var value_26 MeasuredSize = result
-	return value_26
+	if value_9 {
+		var value_12 int32 = font
+		var value_13 float32 = float32(value_12)
+		var value_14 float32 = scale
+		var value_15 float32 = value_13 / value_14
+		text_height = value_15
+	}
+	var value_16 float32 = bounds.Height
+	var value_17 float32 = scale
+	var value_18 float32 = value_16 / value_17
+	var value_19 float32 = minimum_height
+	var value_20 float32 = scale
+	var value_21 float32 = value_19 / value_20
+	var value_22 float32 = text_height
+	var value_23 float32 = paint.PaddingY
+	var value_24 float32 = Style_FitHeight(value_18, value_21, value_22, value_23)
+	var height float32 = value_24
+	var value_25 bool = disclosure
+	var value_26 bool = value_25
+	if !value_26 {
+		var value_27 uint32 = props.Icon.ID
+		var value_28 int32 = 0
+		var value_29 uint32 = uint32(number_533abbd6_bits(uint64(value_28), uint64(0), 32, false, 0))
+		var value_30 bool = value_27 != value_29
+		value_26 = value_30
+	}
+	var value_31 bool = value_26
+	if !value_31 {
+		var value_32 int32 = props.IconType
+		var value_33 int32 = 0
+		var value_34 bool = value_32 != value_33
+		value_31 = value_34
+	}
+	var has_icon bool = value_31
+	var value_35 float32 = height
+	var value_36 float32 = label_width
+	var value_37 float32 = scale
+	var value_38 float32 = value_36 / value_37
+	var value_39 float32 = paint.IconSize
+	var value_40 float32 = paint.Gap
+	var value_41 float32 = paint.PaddingX
+	var value_42 bool = has_icon
+	var value_43 bool = props.IconOnly
+	var value_44 ContentSize = Button_MeasureContent(value_35, value_38, value_39, value_40, value_41, value_42, value_43)
+	var content ContentSize = value_44
+	var value_45 float32 = bounds.Width
+	var value_46 float32 = scale
+	var value_47 float32 = value_45 / value_46
+	var value_48 float32 = height
+	var value_49 float32 = content.Width
+	var value_50 float32 = available_width
+	var value_51 float32 = scale
+	var value_52 float32 = value_50 / value_51
+	var value_53 bool = props.FullWidth
+	var value_54 bool = props.Square
+	var value_55 bool = value_54
+	if !value_55 {
+		var value_56 bool = props.IconOnly
+		value_55 = value_56
+	}
+	var value_57 bool = props.Circle
+	var value_58 float32 = Button_ShapeWidth(value_47, value_48, value_49, value_52, value_53, value_55, value_57)
+	var width float32 = value_58
+	var value_59 float32 = bounds.Height
+	var value_60 float32 = 0.0
+	var value_61 bool = value_59 <= value_60
+	if value_61 {
+		var value_62 float32 = height
+		var value_63 float32 = scale
+		var value_64 float32 = value_62 * value_63
+		bounds.Height = value_64
+	}
+	var value_65 bool = props.Square
+	var value_66 bool = value_65
+	if !value_66 {
+		var value_67 bool = props.Circle
+		value_66 = value_67
+	}
+	var value_68 bool = value_66
+	if !value_68 {
+		var value_69 bool = props.IconOnly
+		value_68 = value_69
+	}
+	if value_68 {
+		var value_70 float32 = bounds.Height
+		bounds.Width = value_70
+	} else {
+		var value_71 float32 = bounds.Width
+		var value_72 float32 = 0.0
+		var value_73 bool = value_71 <= value_72
+		if value_73 {
+			var value_74 float32 = width
+			var value_75 float32 = scale
+			var value_76 float32 = value_74 * value_75
+			bounds.Width = value_76
+		}
+	}
+	var value_77 Rectangle = bounds
+	return value_77
 }
 
 func Button_MeasureContent(height float32, label_width float32, requested_icon_size float32, gap float32, padding_x float32, has_icon bool, icon_only bool) ContentSize {

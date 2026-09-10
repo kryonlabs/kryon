@@ -65,6 +65,15 @@ values. Portable calls do not silently convert these views to null-terminated
 foreign parameters. `runtime/style.kry` uses this support for typeface names;
 native style adapters bridge registered, null-terminated host names.
 
+Shared bodies also support existing `const char*` fields as immutable borrowed,
+null-terminated UTF-8 strings. Copies borrow the same storage; C callers must
+keep it alive. Null and empty compare equally. Literals, copies, parameters,
+returns, conditionals, and content equality work across targets. Borrowed
+literals reject embedded null bytes. Length-aware `string` values cannot be
+implicitly assigned or cast to borrowed strings; a matching Go/JS host value
+must likewise contain no embedded null. This makes public ButtonProps and
+Style usable in shared bodies without changing their native C layouts.
+
 This is the intended ownership boundary, not a claim that the migration is
 complete. The parser currently recognizes built-in widget names and props
 types in `cmd/kir/kir_parse.c`; native Go also carries a props-field mapping in
@@ -269,8 +278,12 @@ and Texture2D as `struct #extern` contracts. C and C++ reuse the graphics host's
 types; native runtime generation emits their Go structs. The shared checker can
 therefore validate field access, copies, zero values, and instance bindings for
 these records without per-type compiler tables. Style types also have their own
-shared contract. Borrowed C string fields still need portable body support. The built-in
-widget body remains to be migrated. The compiler embeds the declaration sources
+shared contract. Button measurement now reads ButtonProps and Style directly,
+including label presence, icon presence, shape precedence, and scaled bounds.
+The duplicate ButtonMeasure/MeasuredSize interface has been removed. Hosts
+provide glyph measurements, available space, and physical scale. Input, paint,
+and child orchestration still need migration to complete the widget body.
+The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native
 props lookup now reads that declaration. Explicit local or imported declarations

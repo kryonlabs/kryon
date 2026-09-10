@@ -1580,7 +1580,9 @@ frame_parameters(const KirModule *m, const KirFunction *fn)
         return -1;
     char *type = colon + 1;
     kir_trim_in_place(type);
-    if(strcmp(type, "Rectangle") == 0 && KirFindType(m, type, NULL) == NULL)
+    const KirType *record = KirFindType(m, type, NULL);
+    if(strcmp(type, "Rectangle") == 0 &&
+       (record == NULL || record == KirFindRuntimeType(type, NULL)))
         return 1;
     return -1;
 }
