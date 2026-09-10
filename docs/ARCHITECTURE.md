@@ -605,3 +605,20 @@ Downstream applications vendor Kryon as a submodule. Permanent Kryon changes
 must be made and committed in this repository first, then brought into apps by
 updating the submodule pointer. Never edit a downstream `vendor/kryon` tree as
 the source of a Kryon change.
+
+### Material raster cache
+
+The raylib host caches rasterized surface layers in a bounded LRU (128 entries,
+16 MiB, at most 1 MiB per layer). The key contains the resolved layer colors,
+geometry, scale, segment, and fractional placement. Integer translation reuses
+the raster; style, focus, animation, size, or scale changes produce a new entry.
+The shared `.kry` sampling functions still define every pixel. Other backends
+and oversized layers use direct drawing. Textures retain straight alpha and
+are drawn under the caller's current clipping and blend state. Window shutdown
+releases them before destroying the graphics context.
+
+This avoids resampling unchanged materials and submitting their individual
+scanline rectangles. It does not skip declaration, reconciliation, or whole-frame
+composition. `BeginTree` still requests paint because the host may clear its
+framebuffer each frame; removing that invalidation would erase unchanged UI.
+Retained subtree composition is a separate architectural change.

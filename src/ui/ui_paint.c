@@ -2,7 +2,7 @@
 #include "ui_paint_internal.h"
 
 void
-ui_draw_surface(SurfaceDrawing command)
+ui_draw_surface_direct(SurfaceDrawing command)
 {
     if(!command.visible)
         return;
@@ -36,6 +36,13 @@ ui_draw_surface(SurfaceDrawing command)
             }
         }
     }
+}
+
+void
+ui_draw_surface(SurfaceDrawing command)
+{
+    if(command.visible && !ui_draw_surface_cached(command))
+        ui_draw_surface_direct(command);
 }
 
 void

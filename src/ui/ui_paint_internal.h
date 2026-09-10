@@ -6,5 +6,8 @@
 
 void ui_draw(Drawing command);
 void ui_draw_surface(SurfaceDrawing command);
+void ui_draw_surface_direct(SurfaceDrawing command);
+int ui_draw_surface_cached(SurfaceDrawing command);
+void ui_surface_cache_shutdown(void);
 
 #endif

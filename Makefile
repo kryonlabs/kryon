@@ -1350,3 +1350,11 @@ dropdown-capture: $(BUILD_DIR)/tests/dropdown_capture
 $(BUILD_DIR)/tests/dropdown_capture: tests/dropdown_capture.c $(LIB) $(KRYON_BACKEND_LIBS)
 	mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: surface-cache-test
+surface-cache-test: $(BUILD_DIR)/tests/surface_cache_test
+	xvfb-run -a $(BUILD_DIR)/tests/surface_cache_test
+
+$(BUILD_DIR)/tests/surface_cache_test: tests/surface_cache_test.c $(LIB) $(KRYON_BACKEND_LIBS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@

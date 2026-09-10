@@ -42,6 +42,10 @@ extern bool KryonRaylibBackend_WindowShouldClose(void);
 __attribute__((weak))
 #endif
 extern void ui_paint_layers_shutdown(void);
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+extern void ui_surface_cache_shutdown(void);
 
 static int g_single_instance =
 #if defined(KRYON_BACKEND_TERMI)
@@ -270,6 +274,8 @@ void CloseWindow(void)
 {
     if(!g_instance_rejected && ui_paint_layers_shutdown != 0)
         ui_paint_layers_shutdown();
+    if(!g_instance_rejected && ui_surface_cache_shutdown != 0)
+        ui_surface_cache_shutdown();
     if(!g_instance_rejected && KryonRaylibBackend_CloseWindow != 0)
         KryonRaylibBackend_CloseWindow();
     release_instance();
