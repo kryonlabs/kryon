@@ -49,6 +49,44 @@ var Module = typeof Module !== "undefined" ? Module : {};
     };
   }
 
+  /* Affine matrix helpers: m = [a, b, c, d, e, f] mapping
+   * x' = a*x + c*y + e ; y' = b*x + d*y + f (canvas order). */
+  function matIdentity() {
+    return [1, 0, 0, 1, 0, 0];
+  }
+
+  function matMul(m, n) {
+    /* Return m * n (apply n first, then m). */
+    return [
+      m[0] * n[0] + m[2] * n[1],
+      m[1] * n[0] + m[3] * n[1],
+      m[0] * n[2] + m[2] * n[3],
+      m[1] * n[2] + m[3] * n[3],
+      m[0] * n[4] + m[2] * n[5] + m[4],
+      m[1] * n[4] + m[3] * n[5] + m[5]
+    ];
+  }
+
+  function matApply(m, x, y) {
+    return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  }
+
+  function matInvert(m) {
+    var det = m[0] * m[3] - m[1] * m[2];
+    if (!det || !isFinite(det)) {
+      return null;
+    }
+    var invDet = 1 / det;
+    return [
+      m[3] * invDet,
+      -m[1] * invDet,
+      -m[2] * invDet,
+      m[0] * invDet,
+      (m[2] * m[5] - m[3] * m[4]) * invDet,
+      (m[1] * m[4] - m[0] * m[5]) * invDet
+    ];
+  }
+
   function TestCanvas(w, h) {
     this.style = {};
     this.parentElement = {style: {}};
@@ -100,6 +138,8 @@ var Module = typeof Module !== "undefined" ? Module : {};
     this.imageSmoothingEnabled = true;
     this._path = null;
     this._stack = [];
+    this._m = matIdentity();
+    this._clip = null;
   }
 
   TestContext.prototype._color = function(style) {
@@ -109,31 +149,97 @@ var Module = typeof Module !== "undefined" ? Module : {};
     return c;
   };
 
-  TestContext.prototype._put = function(x, y, c) {
-    x = x | 0;
-    y = y | 0;
-    if (x < 0 || y < 0 || x >= this.canvas.width || y >= this.canvas.height) {
+  TestContext.prototype._setPixel = function(dx, dy, c) {
+    /* Write one device-space pixel honoring the active clip. Composites
+     * source-over like a real canvas instead of overwriting, so translucent
+     * surfaces and antialiased glyphs stack correctly. */
+    if (dx < 0 || dy < 0 || dx >= this.canvas.width || dy >= this.canvas.height) {
       return;
     }
-    var i = (y * this.canvas.width + x) * 4;
-    this.canvas._pixels[i + 0] = c[0];
-    this.canvas._pixels[i + 1] = c[1];
-    this.canvas._pixels[i + 2] = c[2];
-    this.canvas._pixels[i + 3] = c[3];
+    var clip = this._clip;
+    if (clip && (dx < clip[0] || dy < clip[1] || dx >= clip[2] || dy >= clip[3])) {
+      return;
+    }
+    var i = (dy * this.canvas.width + dx) * 4;
+    var pixels = this.canvas._pixels;
+    var sa = c[3];
+    if (sa >= 255) {
+      pixels[i + 0] = c[0];
+      pixels[i + 1] = c[1];
+      pixels[i + 2] = c[2];
+      pixels[i + 3] = 255;
+      return;
+    }
+    if (sa <= 0) {
+      return;
+    }
+    var da = pixels[i + 3];
+    var outA = sa + da * (255 - sa) / 255;
+    if (outA <= 0) {
+      return;
+    }
+    pixels[i + 0] = (c[0] * sa + pixels[i + 0] * da * (255 - sa) / 255) / outA;
+    pixels[i + 1] = (c[1] * sa + pixels[i + 1] * da * (255 - sa) / 255) / outA;
+    pixels[i + 2] = (c[2] * sa + pixels[i + 2] * da * (255 - sa) / 255) / outA;
+    pixels[i + 3] = outA;
+  };
+
+  TestContext.prototype._put = function(x, y, c) {
+    /* User-space put: apply the current transform to the point. */
+    var p = matApply(this._m, x + 0.5, y + 0.5);
+    this._setPixel(Math.floor(p[0]), Math.floor(p[1]), c);
+  };
+
+  /* Iterate device pixels covered by the transformed user-space rectangle
+   * [x, y, w, h]. For each device pixel, invoke cb(userX, userY) with the
+   * inverse-mapped user-space coordinates of the pixel center. */
+  TestContext.prototype._forRectPixels = function(x, y, w, h, cb) {
+    var m = this._m;
+    var corners = [
+      matApply(m, x, y),
+      matApply(m, x + w, y),
+      matApply(m, x, y + h),
+      matApply(m, x + w, y + h)
+    ];
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (var i = 0; i < 4; i++) {
+      if (corners[i][0] < minX) minX = corners[i][0];
+      if (corners[i][0] > maxX) maxX = corners[i][0];
+      if (corners[i][1] < minY) minY = corners[i][1];
+      if (corners[i][1] > maxY) maxY = corners[i][1];
+    }
+    var clip = this._clip;
+    if (clip) {
+      minX = Math.max(minX, clip[0]);
+      minY = Math.max(minY, clip[1]);
+      maxX = Math.min(maxX, clip[2]);
+      maxY = Math.min(maxY, clip[3]);
+    }
+    var inv = matInvert(m);
+    if (!inv) {
+      return;
+    }
+    var x0 = Math.max(0, Math.floor(minX));
+    var y0 = Math.max(0, Math.floor(minY));
+    var x1 = Math.min(this.canvas.width, Math.ceil(maxX));
+    var y1 = Math.min(this.canvas.height, Math.ceil(maxY));
+    for (var dy = y0; dy < y1; dy++) {
+      for (var dx = x0; dx < x1; dx++) {
+        var u = matApply(inv, dx + 0.5, dy + 0.5);
+        if (u[0] < x || u[0] > x + w || u[1] < y || u[1] > y + h) {
+          continue;
+        }
+        cb(dx, dy, u[0] - x, u[1] - y);
+      }
+    }
   };
 
   TestContext.prototype.fillRect = function(x, y, w, h) {
     bump("fillRect");
     var c = this._color(this.fillStyle);
-    var x0 = clamp(Math.floor(x), 0, this.canvas.width);
-    var y0 = clamp(Math.floor(y), 0, this.canvas.height);
-    var x1 = clamp(Math.ceil(x + w), 0, this.canvas.width);
-    var y1 = clamp(Math.ceil(y + h), 0, this.canvas.height);
-    for (var yy = y0; yy < y1; yy++) {
-      for (var xx = x0; xx < x1; xx++) {
-        this._put(xx, yy, c);
-      }
-    }
+    this._forRectPixels(x, y, w, h, function(dx, dy) {
+      this._setPixel(dx, dy, c);
+    }.bind(this));
   };
 
   TestContext.prototype.clearRect = function(x, y, w, h) {
@@ -256,20 +362,22 @@ var Module = typeof Module !== "undefined" ? Module : {};
     if (!src || !src._pixels) {
       return;
     }
-    var alpha = this.globalAlpha;
-    for (var y = 0; y < dh; y++) {
-      for (var x = 0; x < dw; x++) {
-        var tx = clamp(sx + Math.floor(x * sw / Math.max(1, dw)), 0, src.width - 1);
-        var ty = clamp(sy + Math.floor(y * sh / Math.max(1, dh)), 0, src.height - 1);
-        var si = (ty * src.width + tx) * 4;
-        this._put(dx + x, dy + y, [
-          src._pixels[si + 0],
-          src._pixels[si + 1],
-          src._pixels[si + 2],
-          clamp(src._pixels[si + 3] * alpha / 255, 0, 255)
-        ]);
-      }
+    if (dw <= 0 || dh <= 0) {
+      return;
     }
+    var alpha = this.globalAlpha;
+    var self = this;
+    this._forRectPixels(dx, dy, dw, dh, function(ddx, ddy, u, v) {
+      var tx = clamp(sx + Math.floor(u * sw / Math.max(1, dw)), 0, src.width - 1);
+      var ty = clamp(sy + Math.floor(v * sh / Math.max(1, dh)), 0, src.height - 1);
+      var si = (ty * src.width + tx) * 4;
+      self._setPixel(ddx, ddy, [
+        src._pixels[si + 0],
+        src._pixels[si + 1],
+        src._pixels[si + 2],
+        clamp(src._pixels[si + 3] * alpha / 255, 0, 255)
+      ]);
+    });
   };
 
   TestContext.prototype.createImageData = function(w, h) {
@@ -296,15 +404,19 @@ var Module = typeof Module !== "undefined" ? Module : {};
 
   TestContext.prototype.putImageData = function(img, x, y) {
     bump("putImageData");
+    /* ImageData transfer ignores the transform and clip per the canvas spec. */
     var w = img.width || Math.sqrt(img.data.length / 4) | 0;
     var h = img.height || (img.data.length / 4 / Math.max(1, w)) | 0;
     for (var yy = 0; yy < h; yy++) {
       for (var xx = 0; xx < w; xx++) {
+        var dx = x + xx, dy = y + yy;
+        if (dx < 0 || dy < 0 || dx >= this.canvas.width || dy >= this.canvas.height) continue;
         var si = (yy * w + xx) * 4;
-        this._put(x + xx, y + yy, [
-          img.data[si + 0], img.data[si + 1],
-          img.data[si + 2], img.data[si + 3]
-        ]);
+        var di = (dy * this.canvas.width + dx) * 4;
+        this.canvas._pixels[di + 0] = img.data[si + 0];
+        this.canvas._pixels[di + 1] = img.data[si + 1];
+        this.canvas._pixels[di + 2] = img.data[si + 2];
+        this.canvas._pixels[di + 3] = img.data[si + 3];
       }
     }
   };
@@ -314,7 +426,9 @@ var Module = typeof Module !== "undefined" ? Module : {};
       fillStyle: this.fillStyle,
       strokeStyle: this.strokeStyle,
       globalAlpha: this.globalAlpha,
-      lineWidth: this.lineWidth
+      lineWidth: this.lineWidth,
+      m: this._m.slice(),
+      clip: this._clip ? this._clip.slice() : null
     });
   };
 
@@ -325,30 +439,115 @@ var Module = typeof Module !== "undefined" ? Module : {};
     this.strokeStyle = s.strokeStyle;
     this.globalAlpha = s.globalAlpha;
     this.lineWidth = s.lineWidth;
+    this._m = s.m;
+    this._clip = s.clip;
   };
 
-  TestContext.prototype.clip = function() {};
-  TestContext.prototype.translate = function() {};
-  TestContext.prototype.rotate = function() {};
-  TestContext.prototype.scale = function() {};
-  TestContext.prototype.setTransform = function() {};
+  TestContext.prototype.translate = function(x, y) {
+    this._m = matMul(this._m, [1, 0, 0, 1, x, y]);
+  };
+
+  TestContext.prototype.scale = function(x, y) {
+    this._m = matMul(this._m, [x, 0, 0, y, 0, 0]);
+  };
+
+  TestContext.prototype.rotate = function(angle) {
+    var cos = Math.cos(angle), sin = Math.sin(angle);
+    this._m = matMul(this._m, [cos, sin, -sin, cos, 0, 0]);
+  };
+
+  TestContext.prototype.transform = function(a, b, c, d, e, f) {
+    this._m = matMul(this._m, [a, b, c, d, e, f]);
+  };
+
+  TestContext.prototype.setTransform = function(a, b, c, d, e, f) {
+    if (arguments.length >= 6) {
+      this._m = [a, b, c, d, e, f];
+    } else {
+      this._m = matIdentity();
+    }
+  };
+
+  TestContext.prototype.resetTransform = function() {
+    this._m = matIdentity();
+  };
+
+  TestContext.prototype.clip = function() {
+    /* Approximate the current path with its transformed device-space
+     * bounding box, intersected with the active clip. */
+    if (!this._path || !this._path.length) {
+      return;
+    }
+    var p = this._path[0];
+    var x = p.x, y = p.y, w = p.w, h = p.h;
+    if (p.type === "circle") {
+      x = p.x - p.r; y = p.y - p.r; w = p.r * 2; h = p.r * 2;
+    } else if (p.type === "line") {
+      x = Math.min(p.x0, p.x1); y = Math.min(p.y0, p.y1);
+      w = Math.abs(p.x1 - p.x0); h = Math.abs(p.y1 - p.y0);
+    }
+    var c0 = matApply(this._m, x, y);
+    var c1 = matApply(this._m, x + w, y + h);
+    var minX = Math.floor(Math.min(c0[0], c1[0]));
+    var minY = Math.floor(Math.min(c0[1], c1[1]));
+    var maxX = Math.ceil(Math.max(c0[0], c1[0]));
+    var maxY = Math.ceil(Math.max(c0[1], c1[1]));
+    if (this._clip) {
+      minX = Math.max(minX, this._clip[0]);
+      minY = Math.max(minY, this._clip[1]);
+      maxX = Math.min(maxX, this._clip[2]);
+      maxY = Math.min(maxY, this._clip[3]);
+    }
+    this._clip = [minX, minY, maxX, maxY];
+  };
+
+  TestContext.prototype._fontSize = function() {
+    var m = /(\d+(?:\.\d+)?)px/.exec(this.font || "");
+    return m ? Math.max(1, parseFloat(m[1])) : 12;
+  };
+
   TestContext.prototype.createLinearGradient = makeGradient;
   TestContext.prototype.measureText = function(text) {
-    var width = String(text || "").length * 8;
+    /* Font-size aware approximation so glyph boxes track the requested
+     * pixel size instead of a fixed 8x14 cell. */
+    var size = this._fontSize();
+    var width = String(text || "").length * size * 0.6;
     return {
       width: width,
       actualBoundingBoxLeft: 0,
       actualBoundingBoxRight: width,
-      actualBoundingBoxAscent: 12,
-      actualBoundingBoxDescent: 2
+      actualBoundingBoxAscent: size * 0.8,
+      actualBoundingBoxDescent: size * 0.2
     };
   };
   TestContext.prototype.fillText = function(text, x, y) {
-    this.fillRect(x, y - 12, String(text || "").length * 8, 14);
+    var size = this._fontSize();
+    this.fillRect(x, y - size * 0.8, String(text || "").length * size * 0.6, size);
   };
 
   globalThis.OffscreenCanvas = TestCanvas;
   globalThis.__kryTestCanvas = new TestCanvas(1, 1);
+
+  /* The wasm side probes matchMedia('(prefers-color-scheme: dark)') for the
+   * system theme. Node has no matchMedia; default to dark so captures match
+   * the dark GTK environment the raylib reference captures run under.
+   * Set KRYON_CAPTURE_PREFERS_DARK=0 to capture the light palette. */
+  if (typeof globalThis.matchMedia !== "function") {
+    globalThis.matchMedia = function(query) {
+      var dark = /\(prefers-color-scheme:\s*dark\)/.test(String(query || ""));
+      var enabled = process.env.KRYON_CAPTURE_PREFERS_DARK !== "0";
+      return {
+        matches: !!(dark && enabled),
+        media: query,
+        onchange: null,
+        addListener: function() {},
+        removeListener: function() {},
+        addEventListener: function() {},
+        removeEventListener: function() {},
+        dispatchEvent: function() { return false; }
+      };
+    };
+  }
 
   function exportCapture() {
     if (!nodeFs) {

@@ -14,6 +14,39 @@
 #include <math.h>
 
 /* ------------------------------------------------------------------ */
+/* Color math                                                         */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Pure color conversions the UI paint path resolves through the
+ * backend-neutral surface. Without strong definitions here the generated
+ * weak null backend would satisfy them with zeros, making every theme and
+ * style color fully transparent on the canvas backend. Formulas match
+ * raylib (rtextures.c) so canvas rendering stays pixel-compatible with the
+ * raylib backend.
+ */
+
+int ColorToInt(Color color)
+{
+    return (int)(((unsigned int)color.r << 24) |
+                 ((unsigned int)color.g << 16) |
+                 ((unsigned int)color.b << 8) |
+                 (unsigned int)color.a);
+}
+
+Color GetColor(unsigned int hexValue)
+{
+    Color color;
+
+    color.r = (unsigned char)(hexValue >> 24) & 0xff;
+    color.g = (unsigned char)(hexValue >> 16) & 0xff;
+    color.b = (unsigned char)(hexValue >> 8) & 0xff;
+    color.a = (unsigned char)hexValue & 0xff;
+
+    return color;
+}
+
+/* ------------------------------------------------------------------ */
 /* Drawing                                                            */
 /* ------------------------------------------------------------------ */
 

@@ -1,5 +1,5 @@
 #include "theme.h"
-#if defined(PLATFORM_WEB)
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
 #include <emscripten.h>
 #include <string.h>
 #endif
@@ -1294,9 +1294,12 @@ plan9_system_theme_refresh(void)
 bool
 RefreshSystemTheme(void)
 {
-#if defined(PLATFORM_WEB)
+#if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
     /* Browsers expose no desktop palette, but they do expose the users
-       light/dark preference; map it onto the default palettes. */
+       light/dark preference; map it onto the default palettes. Emscripten
+       builds without PLATFORM_WEB (canvas and dom backends) must take this
+       path too: the desktop GTK probe below cannot run in a browser or
+       node and would silently force the light palette. */
     {
         int prefers_dark = EM_ASM_INT_V(
             return (typeof matchMedia === 'function' &&
