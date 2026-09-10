@@ -1358,3 +1358,7 @@ surface-cache-test: $(BUILD_DIR)/tests/surface_cache_test
 $(BUILD_DIR)/tests/surface_cache_test: tests/surface_cache_test.c $(LIB) $(KRYON_BACKEND_LIBS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
+
+.PHONY: dropdown-reference-test
+dropdown-reference-test: dropdown-capture
+	python3 tests/dropdown_reference_test.py

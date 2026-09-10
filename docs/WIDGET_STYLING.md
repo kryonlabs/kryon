@@ -110,5 +110,6 @@ Verify dark and light themes, a non-blue custom accent, keyboard focus, disabled
 behavior, long labels, and selection versus hover. Compare actual rendered
 controls against Buttons at matching sizes and states. Run generated-output
 scanners and C/Go parity when runtime behavior changes. `make dropdown-capture`
-produces the current native dropdown review board; it is not an approved pixel
-baseline.
+produces the native dropdown board. Its dark panel was approved on 2026-09-10
+and is checked by `make dropdown-reference-test`; the light panel remains a
+review artifact. `examples/27_dropdowns.kry` provides the live interactive showcase.

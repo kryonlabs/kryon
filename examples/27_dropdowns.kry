@@ -1,0 +1,61 @@
+#import "kryon.h"
+
+app "Kryon Dropdowns" {
+    size 920 680
+    fps 60
+    font examples
+}
+
+state {
+    mode: int = 1
+    workflow: int = 1
+    unavailable: int = 0
+    applied: int = 0
+    modes: [3] DropdownOption = {
+        (DropdownOption){.label = "Light", .icon_type = UI_ICON_TYPE_SUN},
+        (DropdownOption){.label = "Dark", .icon_type = UI_ICON_TYPE_MOON},
+        (DropdownOption){.label = "System"}
+    }
+    workflows: [5] DropdownOption = {
+        (DropdownOption){.label = "Design"},
+        (DropdownOption){.label = "Development"},
+        (DropdownOption){.label = "Review", .separator_before = 1},
+        (DropdownOption){.label = "A long option that stays clear of the selection checkmark"},
+        (DropdownOption){.label = "Legacy (unavailable)", .disabled = 1}
+    }
+}
+
+DropdownExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        SetThemeStyle(THEME_STYLE_DEFAULT)
+        dark_mode: int = 0
+        if mode == 1 { dark_mode = 1 }
+        if mode == 2 && SystemThemePrefersDark() { dark_mode = 1 }
+        if dark_mode == 1 { SetTheme(ThemeDefaultDark()) }
+        if dark_mode == 0 { SetTheme(ThemeDefaultLight()) }
+        ClearBackground(GetThemeBackground())
+        Text((TextProps){.bounds = {32,28,840,40}, .text = "Dropdowns", .font = Text32, .color = GetThemeText()})
+        Text((TextProps){.bounds = {32,78,840,44}, .text = "Choose a value. Use Tab and arrow keys, Enter to select, or Escape to close.", .font = Text16, .color = GetThemeText()})
+        Text((TextProps){.bounds = {32,146,380,30}, .text = "Theme", .font = Text20, .color = GetThemeText()})
+        if Combobox((ComboboxProps){.bounds = {32,184,380,44}, .id = 27001,
+            .items = modes, .option_count = 3, .selected_index = &mode}) {
+            if mode == 0 { SetThemeMode(THEME_MODE_LIGHT) }
+            if mode == 1 { SetThemeMode(THEME_MODE_DARK) }
+            if mode == 2 { SetThemeMode(THEME_MODE_SYSTEM) }
+        }
+        Text((TextProps){.bounds = {476,146,380,30}, .text = "Workflow", .font = Text20, .color = GetThemeText()})
+        Combobox((ComboboxProps){.bounds = {476,184,380,44}, .id = 27002,
+            .items = workflows, .option_count = 5, .selected_index = &workflow})
+        Text((TextProps){.bounds = {32,322,380,30}, .text = "Unavailable control", .font = Text20, .color = GetThemeText()})
+        Combobox((ComboboxProps){.bounds = {32,360,380,44}, .id = 27003,
+            .items = workflows, .option_count = 5, .selected_index = &unavailable, .disabled = 1})
+        Text((TextProps){.bounds = {476,322,380,30}, .text = "Matching button", .font = Text20, .color = GetThemeText()})
+        if Button((ButtonProps){.bounds = {476,360,380,44}, .id = 27004,
+            .label = "Apply selection", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft}) {
+            applied += 1
+        }
+        Text((TextProps){.bounds = {32,482,824,60}, .text = TextFormat("Selected workflow: %s", workflows[workflow].label), .font = Text20, .color = GetThemeText()})
+        Text((TextProps){.bounds = {32,552,824,30}, .text = TextFormat("Apply count: %d", applied), .font = Text16, .color = GetThemeText()})
+    }
+}
