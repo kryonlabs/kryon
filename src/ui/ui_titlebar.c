@@ -36,7 +36,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, int height)
     int icon_size = Scale(22);
     int padding = Scale(13);
     int button_size = icon_size + padding * 2;
-    int x = 0;
+    int x = Scale(12);
     int y = (height - button_size) / 2;
     IconButtonProps button = {0};
 
@@ -97,7 +97,7 @@ RenderReturnTitleBar(Texture2D return_icon, const char *title,
 
     RenderTitleBarBackground(height);
     clicked = RenderTitleBarReturnButton(return_icon, height);
-    RenderTitleBarCenteredTitle(title, height, Scale(56));
+    RenderTitleBarCenteredTitle(title, height, Scale(68));
     return clicked;
 }
 
@@ -106,14 +106,11 @@ RenderReturnDropdownTitleBar(Texture2D return_icon,
                                    UITitleBarDropdown dropdown,
                                    int height)
 {
-    int icon_size = Scale(18);
-    int icon_padding = Scale(5);
-    int back_w = icon_size + icon_padding * 2;
     int gap = Scale(4);
-    int dropdown_x = Scale(4) + back_w + gap;
+    int dropdown_x = Scale(12) + Scale(48) + gap;
     int dropdown_h = dropdown.height > 0 ? dropdown.height : Scale(32);
     int dropdown_y = (height - dropdown_h) / 2;
-    int dropdown_w = ui_view_width - dropdown_x - Scale(4);
+    int dropdown_w = ui_view_width - dropdown_x - Scale(12);
     int clicked;
 
     if(dropdown_y < 0)
