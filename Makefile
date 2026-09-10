@@ -1337,3 +1337,12 @@ font-subsets:
 		exit 1; \
 	fi
 	sh scripts/subset-fonts.sh "$(FONT_SUBSET_OUT_DIR)" "$(FONT_SUBSET_SOURCE_DIR)" "$(FONT_SUBSET_PREFIX)" $(FONT_SUBSET_CORPUS)
+
+.PHONY: dropdown-capture
+dropdown-capture: $(BUILD_DIR)/tests/dropdown_capture
+	mkdir -p $(BUILD_DIR)/dropdown-captures
+	xvfb-run -a $< $(BUILD_DIR)/dropdown-captures
+
+$(BUILD_DIR)/tests/dropdown_capture: tests/dropdown_capture.c $(LIB) $(KRYON_BACKEND_LIBS)
+	mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@

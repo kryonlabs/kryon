@@ -98,7 +98,7 @@ func TestComboConstrainedViewport(t *testing.T) {
 		rows, found := 0, false
 		var last Rectangle
 		for _, op := range r.ops {
-			if op.ID != 25000 || op.Kind != FrameOpText || !op.HasClip {
+			if op.ID != 25000 || op.Kind != FrameOpText || !op.HasClip || op.Row < 0 {
 				continue
 			}
 			rows++

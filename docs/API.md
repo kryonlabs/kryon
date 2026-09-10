@@ -1560,6 +1560,13 @@ In native C and Go, a focused, enabled `Dropdown`/`Combobox` with a positive ID
 opens with Enter, keypad Enter, Space, or Down. The opening key does not move
 the highlight or commit a selection. Focused controls display a focus indicator;
 disabled controls neither open from the keyboard nor display that indicator.
+The default dropdown appearance uses the neutral soft button material and its
+hover, press, focus, and disabled styling. Popup panels use the same theme
+palette with the large corner radius. Selected rows use the accent soft button
+selection colors and a checkmark; pointer and keyboard highlights remain
+neutral. Row highlights use the shared flat material inside the raised panel.
+Labels are clipped before the chevron and selection indicator. Theme color
+changes apply to both dropdowns and buttons without a separate dropdown palette.
 An open `Dropdown`/`Combobox` supports Up/Down to move the
 highlight, Home/End to jump to the first/last option, and Enter to commit and
 close. Escape closes without committing the highlight. Navigation clamps to

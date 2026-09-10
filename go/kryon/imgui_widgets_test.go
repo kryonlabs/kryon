@@ -277,8 +277,14 @@ func TestComboOverlayLayerAndCapture(t *testing.T) {
 	img := RenderFrame(200, 120, r.FrameOps())
 	// Sample the unselected row, away from its text and the selection tint.
 	got := img.RGBAAt(14, 80)
-	want := r.theme().surface
-	if got.R != want.R || got.G != want.G || got.B != want.B {
+	var popup []FrameOp
+	for _, op := range r.FrameOps() {
+		if op.ID == 996 && op.Bounds.Y >= 42 {
+			popup = append(popup, op)
+		}
+	}
+	want := RenderFrame(200, 120, popup).RGBAAt(14, 80)
+	if got != want || got.R == RED.R && got.G == RED.G && got.B == RED.B {
 		t.Fatalf("popup behind later paint or clipped: %v want %v", got, want)
 	}
 	r.QueueTap(20, 80)
@@ -2070,7 +2076,9 @@ func TestComboKeyboardOpen(t *testing.T) {
 				if op.Focused != (mode == 0) {
 					t.Fatalf("opening key %d mode %d: focused paint=%v", key, mode, op.Focused)
 				}
-				if mode == 0 && op.BorderColor != r.theme().focus {
+				focus := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
+					ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, ButtonStateFocus)
+				if mode == 0 && (op.FocusColor != focus.Focus || !op.MotionValid) {
 					t.Fatalf("opening key %d: focused dropdown lacks focus border", key)
 				}
 			}

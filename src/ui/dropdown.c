@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "dropdown_store.h"
 #include "ui_popup_input_internal.h"
+#include "ui_style_internal.h"
 
 #include <limits.h>
 
@@ -148,6 +149,24 @@ dropdown_text_color(Color bg)
 
     return luma > 150000 ? (Color){24, 24, 24, 255}
                          : (Color){246, 246, 246, 255};
+}
+
+/* Dropdowns use the same neutral face and accent selection as buttons. */
+static Style
+dropdown_style(int selected, ButtonState state)
+{
+    ButtonProps props = {0};
+    props.tone = selected ? ButtonToneAccent : ButtonToneNeutral;
+    props.emphasis = ButtonEmphasisSoft;
+    return ResolveButtonStyle(props, selected ? ButtonStateSelected : state);
+}
+
+static void
+dropdown_draw_surface(Rectangle bounds, Style paint)
+{
+    ui_draw_material(bounds, (Rectangle){0}, paint.background, paint.border,
+        paint.border, paint.radius, paint.border_width, 0, 0, 0,
+        paint.focus, 0, paint.opacity, ui_style_fill(paint), paint.material);
 }
 
 static void
@@ -346,7 +365,7 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     UIWidget widget;
     int font = GetFontSize();
     int arrow_pad = Scale(24);
-    int arrow_size = Scale(6);
+    int arrow_size = Scale(10);
     int changed = 0;
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
@@ -451,13 +470,15 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
                             : (hover ? c_button_hover : dropdown_panel_color(16));
     if(can_draw) {
         if(ui_default_style()) {
-            Color surface = ui_default_surface_container();
-            Color border = state->open ? c_circle : ui_default_outline();
-
-            button_bg = surface;
-            ui_draw_control_background(btn_bounds, surface, border, 0.18f);
-            ui_default_state_layer(btn_bounds, c_text, hover || state->open,
-                                    0, 0);
+            ButtonSpec button = {0};
+            button.bounds = btn_bounds;
+            button.focus_id = id;
+            button.tone = ButtonToneNeutral;
+            button.emphasis = ButtonEmphasisSoft;
+            button.style_resolved = 1;
+            button.disabled = UIContentDisabled();
+            button_text = ui_paint_button(button, hover || state->open,
+                active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
         } else if(ui_modern_style()) {
             Color border = LightenUIColor(button_bg, 20);
             ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
@@ -470,7 +491,8 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
                                     : DarkenUIColor(button_bg, 30));
         }
     }
-    button_text = dropdown_text_color(button_bg);
+    if(!can_draw || !ui_default_style())
+        button_text = dropdown_text_color(button_bg);
 
     /* Draw current selection text, clipped before the chevron. */
     int current_index = state->selected_index;
@@ -495,7 +517,7 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
         dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
                                 state->open, button_text);
 
-    if(can_draw && focused) DrawUIFocus(btn_bounds);
+    if(can_draw && focused && !ui_default_style()) DrawUIFocus(btn_bounds);
     EndUIWidget(&widget);
     return changed;
 }
@@ -659,13 +681,11 @@ draw_dropdown_menu(int id)
     /* Draw dropdown background */
     if(can_draw) {
         if(ui_default_style()) {
-            Color border = ui_default_outline();
-
-            panel = ui_default_surface_container();
-            option_text = dropdown_text_color(panel);
-            /* Use subtle radius for dropdown panels to prevent distortion during resize */
-            ui_draw_control_background((Rectangle){x, dropdown_y, w, dropdown_h},
-                                       panel, border, 0.06f);
+            Style paint = dropdown_style(0, ButtonStateNormal);
+            paint.radius = GetThemeMetrics().radius_large;
+            panel = paint.background;
+            option_text = paint.foreground;
+            dropdown_draw_surface(menu_bounds, paint);
         } else if(ui_modern_style()) {
             ThemeMetrics tokens = GetThemeMetrics();
             Color border = dropdown_panel_color(36);
@@ -721,29 +741,24 @@ draw_dropdown_menu(int id)
         int option_hover = state->highlight_index == i ||
                            (option_active && UIHoverEffectsEnabled());
 
-        if(can_draw && ui_default_style() && state->selected_index == i) {
-            Color selected = c_circle;
-            selected.a = 28;
-            DrawRectangleRounded((Rectangle){(float)(x + Scale(4)),
-                                             (float)(visible_y + Scale(2)),
-                                             (float)(option_w - Scale(8)),
-                                             (float)(visible_h - Scale(4))},
-                                 0.50f, 12, selected);
+        Color row_text = option_text;
+        if(can_draw && ui_default_style()) {
+            int selected = state->selected_index == i;
+            Style paint = dropdown_style(selected,
+                option_hover ? ButtonStateHover : ButtonStateNormal);
+            paint.material = MaterialFlat;
+            row_text = paint.foreground;
+            if(selected || option_hover) {
+                Rectangle row = {x + Scale(4), option_y + Scale(2),
+                    option_w - Scale(8), option_h - Scale(4)};
+                if(row.width > 0 && row.height > 0)
+                    dropdown_draw_surface(row, paint);
+            }
         }
 
         {
-            if(can_draw && option_hover) {
-                if(ui_default_style()) {
-                    int inset = Scale(4);
-                    Rectangle hover_bounds = {
-                        (float)(x + inset),
-                        (float)(visible_y + Scale(2)),
-                        (float)(option_w - inset * 2),
-                        (float)(visible_h - Scale(4))
-                    };
-                    if(hover_bounds.width > 0 && hover_bounds.height > 0)
-                        ui_default_state_layer(hover_bounds, c_text, 1, 0, 0);
-                } else if(ui_modern_style()) {
+            if(can_draw && option_hover && !ui_default_style()) {
+                if(ui_modern_style()) {
                     ThemeMetrics tokens = GetThemeMetrics();
                     int inset = Scale(4);
                     Rectangle hover_bounds = {
@@ -782,10 +797,22 @@ draw_dropdown_menu(int id)
 
         if(can_draw) {
             int font_token = PushUIFont(options[i].font_name);
+            int text_w = option_w - Scale(48);
+            BeginUIClip((int)(g_ui_camera.offset.x + (x + Scale(12)) * g_ui_camera.zoom),
+                (int)(g_ui_camera.offset.y + visible_y * g_ui_camera.zoom),
+                (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
+                (int)(visible_h * g_ui_camera.zoom));
             DrawUIText(options[i].label, x + Scale(12),
                        GetUIControlTextY(options[i].label, option_y, option_h, font),
-                       font, option_text);
+                       font, row_text);
+            EndUIClip();
             PopUIFont(font_token);
+            if(state->selected_index == i) {
+                int cx = x + option_w - Scale(22);
+                int cy = option_y + option_h / 2;
+                DrawLine(cx - Scale(4), cy, cx - Scale(1), cy + Scale(3), row_text);
+                DrawLine(cx - Scale(1), cy + Scale(3), cx + Scale(5), cy - Scale(3), row_text);
+            }
         }
     }
 
@@ -799,11 +826,11 @@ draw_arrow:
 
     /* Redraw arrow on top of everything */
     int arrow_pad = Scale(24);
-    int arrow_size = Scale(6);
+    int arrow_size = Scale(10);
     int arrow_x = state->x + state->w - arrow_pad;
     int arrow_y = y + h / 2;
 
-    if(can_draw)
+    if(can_draw && !ui_default_style())
         dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
                                 state->open, option_text);
     return changed;

@@ -4395,7 +4395,7 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	if int(count) < len(labels) {
 		labels = labels[:count]
 	}
-	if selected != nil && len(labels) > 0 {
+	if !r.contentDisabled() && selected != nil && len(labels) > 0 {
 		*selected = clamp32(*selected, 0, int32(len(labels)-1))
 	}
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
@@ -4417,10 +4417,9 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	if r.contentDisabled() {
 		r.closeDropdown(id)
 	}
-	if selected != nil && len(labels) > 0 {
+	if !r.contentDisabled() && selected != nil && len(labels) > 0 {
 		*selected = clamp32(*selected, 0, int32(len(labels)-1))
 	}
-	theme := r.theme()
 	pressed := r.consumeTap(bounds)
 	if !r.contentDisabled() && id > 0 {
 		r.registerField(id)
@@ -4493,15 +4492,11 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	if !open {
 		r.closeDropdown(id)
 	}
-	border := theme.border
 	focused := !r.contentDisabled() && id > 0 && r.focusID == id
-	if focused {
-		border = theme.focus
-	}
-	r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Text: selectedLabel(labels, selected), Color: theme.surface, BorderColor: border, TextColor: theme.text, ID: id, FontSize: Text16, Pressed: pressed, Focused: focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - 24, Y: bounds.Y + 5, Width: 16, Height: bounds.Height}, Text: "x", Color: theme.text, FontSize: Text14, ID: id})
+	foreground := r.dropdownTrigger(id, bounds, open, focused)
+	textClip := Rectangle{X: bounds.X + 12, Y: bounds.Y, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}
+	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: bounds.X + 12, Y: bounds.Y + (bounds.Height-16)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: Text16, ID: id, Row: -1})
+	r.dropdownChevron(id, bounds, open, foreground)
 	if !open {
 		return pressed || changed
 	}
@@ -4512,7 +4507,10 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		r.endPopupInput(input)
 		r.endPaintLayer(layer)
 	}()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border, ID: id})
+	surface := r.dropdownSurface(panel, false, ButtonStateNormal)
+	surface.ID = id
+	surface.Radius = r.themeMetrics().RadiusLarge
+	r.record(surface)
 	if r.dropdownOffsets == nil {
 		r.dropdownOffsets = make(map[int32]*int32)
 	}
@@ -4542,8 +4540,16 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		label := labels[i]
 		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
 		selectedRow := selected != nil && int32(i) == *selected
-		if selectedRow || r.dropdownHighlight[id] == int32(i) {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: mixColor(theme.surface, theme.button, 0.35), ID: id, Row: int32(i), Selected: selectedRow, Focused: r.dropdownHighlight[id] == int32(i)})
+		highlighted := r.dropdownHighlight[id] == int32(i) || pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		state := ButtonStateNormal
+		if highlighted {
+			state = ButtonStateHover
+		}
+		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, selectedRow, state)
+		paint.ID, paint.Row, paint.Selected, paint.Focused = id, int32(i), selectedRow, highlighted
+		paint.Material = MaterialFlat
+		if selectedRow || highlighted {
+			r.record(paint)
 		}
 		if selected != nil && r.consumeTap(row) {
 			next := int32(i)
@@ -4554,7 +4560,13 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 			r.closeDropdown(id)
 			selectedRow = true
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 12, Y: row.Y + 5, Width: row.Width - 24, Height: row.Height}, Text: label, Color: theme.text, FontSize: Text16, ID: id, Row: int32(i), Selected: selectedRow})
+		textClip := Rectangle{X: row.X + 12, Y: row.Y, Width: max(float32(0), row.Width-48), Height: row.Height}
+		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: row.X + 12, Y: row.Y + (row.Height-16)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: Text16, ID: id, Row: int32(i), Selected: selectedRow})
+		if selectedRow {
+			cx, cy := row.X+row.Width-22, row.Y+row.Height/2
+			r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: paint.TextColor, Bounds: Rectangle{X: cx - 4, Y: cy, Width: 3, Height: 3}})
+			r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: paint.TextColor, Bounds: Rectangle{X: cx - 1, Y: cy + 3, Width: 6, Height: -6}})
+		}
 	}
 	return pressed || changed
 }
@@ -5788,14 +5800,8 @@ func (r *runtime) Combobox(p ComboboxProps) bool {
 		n = int32(len(p.Options))
 	}
 	opts := p.Options[:n]
-	if p.Disabled {
-		r.closeDropdown(p.ID)
-		t := r.theme()
-		r.record(FrameOp{Kind: FrameOpButton, Opacity: 1,
-			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: p.Bounds, Text: selectedLabel(opts, p.SelectedIndex), Color: t.surface, BorderColor: t.border, TextColor: t.icon, FontSize: Text16, ID: p.ID, Disabled: true})
-		return false
-	}
+	r.BeginDisabled(p.Disabled)
+	defer r.EndDisabled()
 	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex)
 }
 func (r *runtime) LabelFrame(p LabelFrameProps) {
