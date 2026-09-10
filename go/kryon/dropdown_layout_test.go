@@ -83,11 +83,11 @@ func TestComboConstrainedViewport(t *testing.T) {
 		r.QueueMouseMove(20, panel.Y+10)
 		r.QueueMouseWheel(-1)
 		draw()
-		if *r.dropdownOffsets[25000] != 42 {
+		if *r.dropdownOffsets[25000] != 28 {
 			t.Fatalf("y=%d: wheel offset=%d", y, *r.dropdownOffsets[25000])
 		}
 		draw()
-		if *r.dropdownOffsets[25000] != 42 {
+		if *r.dropdownOffsets[25000] != 28 {
 			t.Fatal("idle frame snapped wheel position back to highlight")
 		}
 		r.QueueKey(KeyEnd)

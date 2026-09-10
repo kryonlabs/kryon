@@ -113,3 +113,17 @@ scanners and C/Go parity when runtime behavior changes. `make dropdown-capture`
 produces the native dropdown board. Its dark panel was approved on 2026-09-10
 and is checked by `make dropdown-reference-test`; the light panel remains a
 review artifact. `examples/27_dropdowns.kry` provides the live interactive showcase.
+
+### Shared dropdown implementation
+
+`runtime/dropdown.kry` owns opening, dismissal, enabled-row navigation, selection
+guards, popup placement, content sizing, wheel and drag offsets, and visible rows.
+C and Go collect host input and retain popup state; both execute the generated
+policy. The trigger uses Button's shared frame and material renderer in every
+theme. No dropdown-specific Classic, Material, or bevel drawing path remains.
+
+`Combobox` uses one props-based C implementation. The positional `Dropdown` and
+`DropdownOptions` entry points are data adapters for existing callers; they do
+not retain separate interaction or painting logic. `DrawUICombobox` is removed.
+Opening and reselecting the current value do not report a selection change.
+Wheel movement advances one row per unit in both native hosts.

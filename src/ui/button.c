@@ -5,8 +5,6 @@
 #include "runtime/style.h"
 #include "runtime/surface.h"
 
-static StyleFrame resolve_button_frame(ButtonProps button, ButtonState state,
-                                      int automatic, float h, float p, float f);
 
 
 static void
@@ -149,7 +147,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
     if(default_controls && button.style_resolved) {
         props = button.props;
-        StyleFrame appearance = resolve_button_frame(props, state,
+        StyleFrame appearance = ui_button_style_frame(props, state,
             button.props.state == ButtonStateAuto, hover_amount, press_amount, focus_amount);
         ButtonFrame frame = BuildFrame(props, input, appearance, motion, button.surface_bounds,
             ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
@@ -363,11 +361,11 @@ RenderTextButton(int x, int y, const char *label, int *hover)
 Style
 ResolveButtonStyle(ButtonProps button, ButtonState state)
 {
-    return ui_unpack_style(resolve_button_frame(button, state, 0, 0, 0, 0).value);
+    return ui_unpack_style(ui_button_style_frame(button, state, 0, 0, 0, 0).value);
 }
 
-static StyleFrame
-resolve_button_frame(ButtonProps button, ButtonState state,
+StyleFrame
+ui_button_style_frame(ButtonProps button, ButtonState state,
                      int automatic, float h, float p, float f)
 {
     ThemeScheme scheme = ui_default_scheme();

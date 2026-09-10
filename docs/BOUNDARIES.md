@@ -151,3 +151,7 @@ Control style records and constants belong to `runtime/control_props.kry`. Nativ
 hosts consume generated C/Go interfaces and the web host re-exports generated
 JavaScript constants. Backends must not add independent control enum or field
 tables; the compiler reads this contract through its embedded declaration source.
+
+Dropdown interaction and layout policy belongs in `runtime/dropdown.kry`. Native
+hosts own input collection, popup storage, clipping, and painting through shared
+Button frames and materials; they must not add independent dropdown theme paths.

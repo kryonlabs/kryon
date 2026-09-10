@@ -126,9 +126,7 @@ DrawUIReturnDropdownTitleBar(Texture2D return_icon,
     DrawUITitleBarBackground(height);
     clicked = DrawUITitleBarReturnButton(return_icon, height);
     if(!dropdown.disabled)
-        draw_dropdown(dropdown.id, dropdown_x, dropdown_y,
-                       dropdown_w, dropdown_h,
-                       dropdown.options, dropdown.option_count,
-                       dropdown.selected_index);
+        Combobox((ComboboxProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+            .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
     return clicked;
 }

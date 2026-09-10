@@ -87,9 +87,8 @@ DrawUITopNav(TopNavProps nav)
         if(dropdown_w < 1)
             dropdown_w = 1;
         if(!nav.disabled)
-            draw_dropdown(nav.id, dropdown_x, dropdown_y, dropdown_w,
-                          dropdown_h, nav.options, nav.option_count,
-                          nav.selected_index);
+            Combobox((ComboboxProps){.id = nav.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+            .options = nav.options, .option_count = nav.option_count, .selected_index = nav.selected_index});
         if(*nav.selected_index != previous)
             result.selected_menu_item = *nav.selected_index;
     } else {

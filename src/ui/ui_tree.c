@@ -2713,8 +2713,8 @@ Dropdown(int id, int x, int y, int w, int h,
 {
     ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
                 selected_index);
-    return draw_dropdown(id, x, y, w, h, options, option_count,
-                         selected_index);
+    return ui_dropdown((ComboboxProps){.id = id, .bounds = {x, y, w, h},
+        .options = options, .option_count = option_count, .selected_index = selected_index});
 }
 
 int
@@ -2724,8 +2724,8 @@ DropdownOptions(int id, int x, int y, int w, int h,
 {
     ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
                 selected_index);
-    return draw_dropdown_options(id, x, y, w, h, options, option_count,
-                                 selected_index);
+    return ui_dropdown((ComboboxProps){.id = id, .bounds = {x, y, w, h},
+        .items = options, .option_count = option_count, .selected_index = selected_index});
 }
 
 int
@@ -3204,7 +3204,7 @@ int
 Combobox(ComboboxProps combo)
 {
     ui_tree_add(combo.id, UI_WIDGET_DROPDOWN_NODE, combo.bounds, &combo);
-    return DrawUICombobox(combo);
+    return ui_dropdown(combo);
 }
 
 void

@@ -12,6 +12,29 @@ type ContentMetrics struct {
 	Font    float32
 }
 
+type Navigation struct {
+	Index     int32
+	Previous  int32
+	Count     int32
+	Direction int32
+	Phase     int32
+	Searching bool
+	Result    int32
+}
+
+type VisibleRows struct {
+	First int32
+	End   int32
+}
+
+type PopupGesture struct {
+	Pressed      bool
+	Dragging     bool
+	OriginY      float32
+	OriginOffset int32
+	Offset       int32
+}
+
 func Dropdown_SelectionEmphasis(surface uint32) int32 {
 	var value_0 uint32 = surface
 	var value_1 bool = Button_LightSurface(value_0)
@@ -157,4 +180,801 @@ func Dropdown_Content(paint StyleData, scale float32) ContentMetrics {
 	var value_16 float32 = value_14 * value_15
 	value_4.Font = value_16
 	return value_4
+}
+
+func Dropdown_ClampIndex(value int32, count int32) int32 {
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 int32 = -1
+		return value_3
+	}
+	var value_4 int32 = value
+	var value_5 int32 = 0
+	var value_6 bool = value_4 < value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 int32 = value
+	var value_9 int32 = count
+	var value_10 bool = value_8 >= value_9
+	if value_10 {
+		var value_11 int32 = count
+		var value_12 int32 = 1
+		var value_13 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_12), 32, true, 2))
+		return value_13
+	}
+	var value_14 int32 = value
+	return value_14
+}
+
+func Dropdown_Trigger(open bool, disabled bool, count int32, focused bool, keyboard bool, activated bool, enter bool, space bool, down bool) bool {
+	var value_0 bool = disabled
+	var value_1 bool = value_0
+	if !value_1 {
+		var value_2 int32 = count
+		var value_3 int32 = 0
+		var value_4 bool = value_2 <= value_3
+		value_1 = value_4
+	}
+	if value_1 {
+		var value_5 bool = false
+		return value_5
+	}
+	var value_6 bool = activated
+	if value_6 {
+		var value_7 bool = open
+		var value_8 bool = !value_7
+		return value_8
+	}
+	var value_9 bool = open
+	var value_10 bool = !value_9
+	var value_11 bool = value_10
+	if value_11 {
+		var value_12 bool = focused
+		value_11 = value_12
+	}
+	var value_13 bool = value_11
+	if value_13 {
+		var value_14 bool = keyboard
+		value_13 = value_14
+	}
+	var value_15 bool = value_13
+	if value_15 {
+		var value_16 bool = enter
+		var value_17 bool = value_16
+		if !value_17 {
+			var value_18 bool = space
+			value_17 = value_18
+		}
+		var value_19 bool = value_17
+		if !value_19 {
+			var value_20 bool = down
+			value_19 = value_20
+		}
+		value_15 = value_19
+	}
+	if value_15 {
+		var value_21 bool = true
+		return value_21
+	}
+	var value_22 bool = open
+	return value_22
+}
+
+func Dropdown_Dismiss(open bool, opening bool, count int32, height float32, escape bool, lost_focus bool, outside bool) bool {
+	var value_0 bool = open
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 int32 = count
+		var value_3 int32 = 0
+		var value_4 bool = value_2 <= value_3
+		var value_5 bool = value_4
+		if !value_5 {
+			var value_6 float32 = height
+			var value_7 float32 = 0.0
+			var value_8 bool = value_6 <= value_7
+			value_5 = value_8
+		}
+		var value_9 bool = value_5
+		if !value_9 {
+			var value_10 bool = escape
+			value_9 = value_10
+		}
+		var value_11 bool = value_9
+		if !value_11 {
+			var value_12 bool = lost_focus
+			value_11 = value_12
+		}
+		var value_13 bool = value_11
+		if !value_13 {
+			var value_14 bool = opening
+			var value_15 bool = !value_14
+			var value_16 bool = value_15
+			if value_16 {
+				var value_17 bool = outside
+				value_16 = value_17
+			}
+			value_13 = value_16
+		}
+		value_1 = value_13
+	}
+	return value_1
+}
+
+func Dropdown_StartNavigation(current int32, count int32, up bool, down bool, home bool, end bool) Navigation {
+	var value_0 int32 = current
+	var value_1 int32 = count
+	var value_2 int32 = Dropdown_ClampIndex(value_0, value_1)
+	current = value_2
+	var value_3 Navigation = Navigation{}
+	var value_4 int32 = current
+	value_3.Index = value_4
+	var value_5 int32 = current
+	value_3.Previous = value_5
+	var value_6 int32 = count
+	value_3.Count = value_6
+	var value_7 int32 = 1
+	value_3.Direction = value_7
+	var value_8 int32 = count
+	var value_9 int32 = 0
+	var value_10 bool = value_8 > value_9
+	value_3.Searching = value_10
+	var value_11 int32 = -1
+	value_3.Result = value_11
+	var nav Navigation = value_3
+	var value_12 bool = up
+	if value_12 {
+		var value_13 int32 = current
+		var value_14 int32 = 1
+		var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
+		var value_16 int32 = count
+		var value_17 int32 = Dropdown_ClampIndex(value_15, value_16)
+		nav.Index = value_17
+		var value_18 int32 = -1
+		nav.Direction = value_18
+	} else {
+		var value_19 bool = down
+		if value_19 {
+			var value_20 int32 = current
+			var value_21 int32 = 1
+			var value_22 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_21), 32, true, 1))
+			var value_23 int32 = count
+			var value_24 int32 = Dropdown_ClampIndex(value_22, value_23)
+			nav.Index = value_24
+		} else {
+			var value_25 bool = home
+			if value_25 {
+				var value_26 int32 = 0
+				nav.Index = value_26
+			} else {
+				var value_27 bool = end
+				if value_27 {
+					var value_28 int32 = count
+					var value_29 int32 = 1
+					var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 2))
+					nav.Index = value_30
+					var value_31 int32 = -1
+					nav.Direction = value_31
+				}
+			}
+		}
+	}
+	var value_32 Navigation = nav
+	return value_32
+}
+
+func Dropdown_ScanNavigation(nav Navigation, enabled bool) Navigation {
+	var value_0 bool = nav.Searching
+	var value_1 bool = !value_0
+	if value_1 {
+		var value_2 Navigation = nav
+		return value_2
+	}
+	var value_3 bool = enabled
+	if value_3 {
+		var value_4 int32 = nav.Index
+		nav.Result = value_4
+		var value_5 bool = false
+		nav.Searching = value_5
+		var value_6 Navigation = nav
+		return value_6
+	}
+	var value_7 int32 = nav.Phase
+	var value_8 int32 = 1
+	var value_9 bool = value_7 == value_8
+	if value_9 {
+		var value_10 int32 = 2
+		nav.Phase = value_10
+		var value_11 int32 = nav.Direction
+		var value_12 int32 = int32(number_runtime_bits(uint64(0), uint64(value_11), 32, true, 2))
+		nav.Direction = value_12
+	}
+	var value_13 int32 = nav.Index
+	var value_14 int32 = nav.Direction
+	nav.Index = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 1))
+	var value_15 int32 = nav.Index
+	var value_16 int32 = 0
+	var value_17 bool = value_15 < value_16
+	var value_18 bool = value_17
+	if !value_18 {
+		var value_19 int32 = nav.Index
+		var value_20 int32 = nav.Count
+		var value_21 bool = value_19 >= value_20
+		value_18 = value_21
+	}
+	if value_18 {
+		var value_22 int32 = nav.Phase
+		var value_23 int32 = 0
+		var value_24 bool = value_22 == value_23
+		if value_24 {
+			var value_25 int32 = nav.Previous
+			nav.Index = value_25
+			var value_26 int32 = 1
+			nav.Phase = value_26
+		} else {
+			var value_27 bool = false
+			nav.Searching = value_27
+			var value_28 int32 = -1
+			nav.Result = value_28
+		}
+	}
+	var value_29 Navigation = nav
+	return value_29
+}
+
+func Dropdown_CanCommit(enabled bool, opening bool, keyboard bool, enter bool, pointer bool, scrollbar bool, dragging bool, returned bool) bool {
+	var value_0 bool = enabled
+	var value_1 bool = value_0
+	if value_1 {
+		var value_2 bool = opening
+		var value_3 bool = !value_2
+		value_1 = value_3
+	}
+	var value_4 bool = value_1
+	if value_4 {
+		var value_5 bool = keyboard
+		var value_6 bool = value_5
+		if value_6 {
+			var value_7 bool = enter
+			value_6 = value_7
+		}
+		var value_8 bool = value_6
+		if !value_8 {
+			var value_9 bool = pointer
+			var value_10 bool = value_9
+			if value_10 {
+				var value_11 bool = scrollbar
+				var value_12 bool = !value_11
+				value_10 = value_12
+			}
+			var value_13 bool = value_10
+			if value_13 {
+				var value_14 bool = dragging
+				var value_15 bool = !value_14
+				var value_16 bool = value_15
+				if !value_16 {
+					var value_17 bool = returned
+					value_16 = value_17
+				}
+				value_13 = value_16
+			}
+			value_8 = value_13
+		}
+		value_4 = value_8
+	}
+	return value_4
+}
+
+func Dropdown_ContentHeight(count int32, row float32, padding float32) int32 {
+	var value_0 int32 = count
+	var value_1 float64 = float64(value_0)
+	var value_2 float32 = row
+	var value_3 float64 = float64(value_2)
+	var value_4 float64 = value_1 * value_3
+	var value_5 float32 = padding
+	var value_6 float64 = float64(value_5)
+	var value_7 float64 = value_4 + value_6
+	var height float64 = value_7
+	var value_8 float64 = height
+	var value_9 float64 = 0.0
+	var value_10 bool = value_8 <= value_9
+	if value_10 {
+		var value_11 int32 = 0
+		return value_11
+	}
+	var value_12 float64 = height
+	var value_13 float64 = 2147483647.0
+	var value_14 bool = value_12 >= value_13
+	if value_14 {
+		var value_15 int32 = 2147483647
+		return value_15
+	}
+	var value_16 float64 = height
+	var value_17 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_16), 32, true)), uint64(0), 32, true, 0))
+	return value_17
+}
+
+func Dropdown_PopupBounds(button Rectangle, view Rectangle, count int32, scale float32) Rectangle {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = 4.0
+	var value_5 float32 = scale
+	var value_6 float32 = value_4 * value_5
+	var gap float32 = value_6
+	var value_7 float32 = 8.0
+	var value_8 float32 = scale
+	var value_9 float32 = value_7 * value_8
+	var padding float32 = value_9
+	var value_10 float32 = 16.0
+	var value_11 float32 = scale
+	var value_12 float32 = value_10 * value_11
+	var margin float32 = value_12
+	var value_13 float32 = view.Y
+	var value_14 float32 = view.Height
+	var value_15 float32 = value_13 + value_14
+	var bottom float32 = value_15
+	var value_16 float32 = button.Y
+	var value_17 float32 = button.Height
+	var value_18 float32 = value_16 + value_17
+	var value_19 float32 = gap
+	var value_20 float32 = value_18 + value_19
+	var below_y float32 = value_20
+	var value_21 float32 = below_y
+	var value_22 float32 = view.Y
+	var value_23 bool = value_21 < value_22
+	if value_23 {
+		var value_24 float32 = view.Y
+		below_y = value_24
+	}
+	var value_25 float32 = bottom
+	var value_26 float32 = below_y
+	var value_27 float32 = value_25 - value_26
+	var value_28 float32 = margin
+	var value_29 float32 = value_27 - value_28
+	var below float32 = value_29
+	var value_30 float32 = button.Y
+	var value_31 float32 = view.Y
+	var value_32 float32 = value_30 - value_31
+	var value_33 float32 = margin
+	var value_34 float32 = value_32 - value_33
+	var above float32 = value_34
+	var value_35 float32 = below
+	var value_36 float32 = 0.0
+	var value_37 bool = value_35 < value_36
+	if value_37 {
+		var value_38 float32 = 0.0
+		below = value_38
+	}
+	var value_39 float32 = above
+	var value_40 float32 = 0.0
+	var value_41 bool = value_39 < value_40
+	if value_41 {
+		var value_42 float32 = 0.0
+		above = value_42
+	}
+	var value_43 float32 = below
+	var available float32 = value_43
+	var value_44 float32 = above
+	var value_45 float32 = available
+	var value_46 bool = value_44 > value_45
+	if value_46 {
+		var value_47 float32 = above
+		available = value_47
+	}
+	var value_48 int32 = count
+	var value_49 float32 = button.Height
+	var value_50 float32 = padding
+	var value_51 int32 = Dropdown_ContentHeight(value_48, value_49, value_50)
+	var value_52 float32 = float32(value_51)
+	var height float32 = value_52
+	var value_53 float32 = height
+	var value_54 float32 = available
+	var value_55 bool = value_53 > value_54
+	var value_56 bool = value_55
+	if value_56 {
+		var value_57 float32 = button.Height
+		var value_58 float32 = 0.0
+		var value_59 bool = value_57 > value_58
+		value_56 = value_59
+	}
+	if value_56 {
+		var value_60 float32 = available
+		var value_61 float32 = padding
+		var value_62 float32 = value_60 - value_61
+		var value_63 float32 = button.Height
+		var value_64 float32 = value_62 / value_63
+		var value_65 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_64), 32, true)), uint64(0), 32, true, 0))
+		var rows int32 = value_65
+		var value_66 int32 = rows
+		var value_67 int32 = 1
+		var value_68 bool = value_66 < value_67
+		if value_68 {
+			var value_69 int32 = 1
+			rows = value_69
+		}
+		var value_70 int32 = rows
+		var value_71 float32 = button.Height
+		var value_72 float32 = padding
+		var value_73 int32 = Dropdown_ContentHeight(value_70, value_71, value_72)
+		var value_74 float32 = float32(value_73)
+		height = value_74
+	}
+	var value_75 float32 = below_y
+	var y float32 = value_75
+	var value_76 float32 = height
+	var value_77 float32 = below
+	var value_78 bool = value_76 > value_77
+	var value_79 bool = value_78
+	if value_79 {
+		var value_80 float32 = above
+		var value_81 float32 = below
+		var value_82 bool = value_80 > value_81
+		value_79 = value_82
+	}
+	if value_79 {
+		var value_83 float32 = button.Y
+		var value_84 float32 = gap
+		var value_85 float32 = value_83 - value_84
+		var value_86 float32 = height
+		var value_87 float32 = value_85 - value_86
+		y = value_87
+	}
+	var value_88 float32 = height
+	var value_89 float32 = view.Height
+	var value_90 bool = value_88 > value_89
+	if value_90 {
+		var value_91 float32 = view.Height
+		height = value_91
+	}
+	var value_92 float32 = height
+	var value_93 float32 = 0.0
+	var value_94 bool = value_92 < value_93
+	if value_94 {
+		var value_95 float32 = 0.0
+		height = value_95
+	}
+	var value_96 float32 = y
+	var value_97 float32 = bottom
+	var value_98 float32 = height
+	var value_99 float32 = value_97 - value_98
+	var value_100 bool = value_96 > value_99
+	if value_100 {
+		var value_101 float32 = bottom
+		var value_102 float32 = height
+		var value_103 float32 = value_101 - value_102
+		y = value_103
+	}
+	var value_104 float32 = y
+	var value_105 float32 = view.Y
+	var value_106 bool = value_104 < value_105
+	if value_106 {
+		var value_107 float32 = view.Y
+		y = value_107
+	}
+	var value_108 float32 = button.Width
+	var width float32 = value_108
+	var value_109 float32 = width
+	var value_110 float32 = view.Width
+	var value_111 bool = value_109 > value_110
+	if value_111 {
+		var value_112 float32 = view.Width
+		width = value_112
+	}
+	var value_113 float32 = width
+	var value_114 float32 = 0.0
+	var value_115 bool = value_113 < value_114
+	if value_115 {
+		var value_116 float32 = 0.0
+		width = value_116
+	}
+	var value_117 float32 = button.X
+	var x float32 = value_117
+	var value_118 float32 = x
+	var value_119 float32 = view.X
+	var value_120 float32 = view.Width
+	var value_121 float32 = value_119 + value_120
+	var value_122 float32 = width
+	var value_123 float32 = value_121 - value_122
+	var value_124 bool = value_118 > value_123
+	if value_124 {
+		var value_125 float32 = view.X
+		var value_126 float32 = view.Width
+		var value_127 float32 = value_125 + value_126
+		var value_128 float32 = width
+		var value_129 float32 = value_127 - value_128
+		x = value_129
+	}
+	var value_130 float32 = x
+	var value_131 float32 = view.X
+	var value_132 bool = value_130 < value_131
+	if value_132 {
+		var value_133 float32 = view.X
+		x = value_133
+	}
+	var value_134 Rectangle = Rectangle{}
+	var value_135 float32 = x
+	value_134.X = value_135
+	var value_136 float32 = y
+	value_134.Y = value_136
+	var value_137 float32 = width
+	value_134.Width = value_137
+	var value_138 float32 = height
+	value_134.Height = value_138
+	return value_134
+}
+
+func Dropdown_ScrollOffset(offset float64, maximum int32) int32 {
+	var value_0 int32 = maximum
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = 0
+		maximum = value_3
+	}
+	var value_4 float64 = offset
+	var value_5 float64 = 0.0
+	var value_6 bool = value_4 <= value_5
+	if value_6 {
+		var value_7 int32 = 0
+		return value_7
+	}
+	var value_8 float64 = offset
+	var value_9 int32 = maximum
+	var value_10 float64 = float64(value_9)
+	var value_11 bool = value_8 >= value_10
+	if value_11 {
+		var value_12 int32 = maximum
+		return value_12
+	}
+	var value_13 float64 = offset
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
+func Dropdown_RevealRow(offset int32, index int32, row float32, viewport float32, maximum int32) int32 {
+	var value_0 int32 = index
+	var value_1 int32 = 0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 int32 = offset
+		var value_4 float64 = float64(value_3)
+		var value_5 int32 = maximum
+		var value_6 int32 = Dropdown_ScrollOffset(value_4, value_5)
+		return value_6
+	}
+	var value_7 int32 = index
+	var value_8 float64 = float64(value_7)
+	var value_9 float32 = row
+	var value_10 float64 = float64(value_9)
+	var value_11 float64 = value_8 * value_10
+	var top float64 = value_11
+	var value_12 int32 = offset
+	var value_13 float64 = float64(value_12)
+	var next float64 = value_13
+	var value_14 float64 = top
+	var value_15 float64 = next
+	var value_16 bool = value_14 < value_15
+	if value_16 {
+		var value_17 float64 = top
+		next = value_17
+	}
+	var value_18 float64 = top
+	var value_19 float32 = row
+	var value_20 float64 = float64(value_19)
+	var value_21 float64 = value_18 + value_20
+	var value_22 float64 = next
+	var value_23 float32 = viewport
+	var value_24 float64 = float64(value_23)
+	var value_25 float64 = value_22 + value_24
+	var value_26 bool = value_21 > value_25
+	if value_26 {
+		var value_27 float64 = top
+		var value_28 float32 = row
+		var value_29 float64 = float64(value_28)
+		var value_30 float64 = value_27 + value_29
+		var value_31 float32 = viewport
+		var value_32 float64 = float64(value_31)
+		var value_33 float64 = value_30 - value_32
+		next = value_33
+	}
+	var value_34 float64 = next
+	var value_35 int32 = maximum
+	var value_36 int32 = Dropdown_ScrollOffset(value_34, value_35)
+	return value_36
+}
+
+func Dropdown_WheelOffset(offset int32, wheel float32, row float32, maximum int32) int32 {
+	var value_0 int32 = offset
+	var value_1 float64 = float64(value_0)
+	var value_2 float32 = wheel
+	var value_3 float64 = float64(value_2)
+	var value_4 float32 = row
+	var value_5 float64 = float64(value_4)
+	var value_6 float64 = value_3 * value_5
+	var value_7 float64 = value_1 - value_6
+	var value_8 int32 = maximum
+	var value_9 int32 = Dropdown_ScrollOffset(value_7, value_8)
+	return value_9
+}
+
+func Dropdown_Rows(count int32, offset int32, viewport float32, row float32) VisibleRows {
+	var result VisibleRows = VisibleRows{}
+	var value_0 int32 = count
+	var value_1 int32 = 0
+	var value_2 bool = value_0 <= value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 float32 = row
+		var value_5 float32 = 0.0
+		var value_6 bool = value_4 <= value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 float32 = viewport
+		var value_9 float32 = 0.0
+		var value_10 bool = value_8 <= value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 VisibleRows = result
+		return value_11
+	}
+	var value_12 int32 = offset
+	var value_13 float32 = float32(value_12)
+	var value_14 float32 = row
+	var value_15 float32 = value_13 / value_14
+	var value_16 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_15), 32, true)), uint64(0), 32, true, 0))
+	result.First = value_16
+	var value_17 int32 = result.First
+	var value_18 int32 = 0
+	var value_19 bool = value_17 < value_18
+	if value_19 {
+		var value_20 int32 = 0
+		result.First = value_20
+	}
+	var value_21 int32 = result.First
+	var value_22 int32 = count
+	var value_23 bool = value_21 > value_22
+	if value_23 {
+		var value_24 int32 = count
+		result.First = value_24
+	}
+	var value_25 int32 = offset
+	var value_26 float64 = float64(value_25)
+	var value_27 float32 = viewport
+	var value_28 float64 = float64(value_27)
+	var value_29 float64 = value_26 + value_28
+	var value_30 float32 = row
+	var value_31 float64 = float64(value_30)
+	var value_32 float64 = value_29 / value_31
+	var bottom float64 = value_32
+	var value_33 float64 = bottom
+	var value_34 int32 = count
+	var value_35 float64 = float64(value_34)
+	var value_36 bool = value_33 >= value_35
+	if value_36 {
+		var value_37 int32 = count
+		result.End = value_37
+	} else {
+		var value_38 float64 = bottom
+		var value_39 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_38), 32, true)), uint64(0), 32, true, 0))
+		result.End = value_39
+		var value_40 int32 = result.End
+		var value_41 float64 = float64(value_40)
+		var value_42 float64 = bottom
+		var value_43 bool = value_41 < value_42
+		if value_43 {
+			var value_44 int32 = result.End
+			var value_45 int32 = 1
+			result.End = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 1))
+		}
+	}
+	var value_46 VisibleRows = result
+	return value_46
+}
+
+func Dropdown_Drag(gesture PopupGesture, offset int32, down bool, inside bool, scrollbar bool, y float32, maximum int32, threshold float32) PopupGesture {
+	var value_0 int32 = offset
+	var value_1 float64 = float64(value_0)
+	var value_2 int32 = maximum
+	var value_3 int32 = Dropdown_ScrollOffset(value_1, value_2)
+	gesture.Offset = value_3
+	var value_4 bool = down
+	var value_5 bool = value_4
+	if value_5 {
+		var value_6 bool = scrollbar
+		var value_7 bool = !value_6
+		value_5 = value_7
+	}
+	if value_5 {
+		var value_8 bool = gesture.Pressed
+		var value_9 bool = !value_8
+		var value_10 bool = value_9
+		if value_10 {
+			var value_11 bool = inside
+			value_10 = value_11
+		}
+		if value_10 {
+			var value_12 bool = true
+			gesture.Pressed = value_12
+			var value_13 float32 = y
+			gesture.OriginY = value_13
+			var value_14 int32 = gesture.Offset
+			gesture.OriginOffset = value_14
+			var value_15 bool = false
+			gesture.Dragging = value_15
+		} else {
+			var value_16 bool = gesture.Pressed
+			var value_17 bool = value_16
+			if value_17 {
+				var value_18 bool = gesture.Dragging
+				var value_19 bool = !value_18
+				value_17 = value_19
+			}
+			if value_17 {
+				var value_20 float32 = y
+				var value_21 float32 = gesture.OriginY
+				var value_22 float32 = value_20 - value_21
+				var delta float32 = value_22
+				var value_23 int32 = maximum
+				var value_24 int32 = 0
+				var value_25 bool = value_23 > value_24
+				var value_26 bool = value_25
+				if value_26 {
+					var value_27 float32 = delta
+					var value_28 float32 = threshold
+					var value_29 bool = value_27 > value_28
+					var value_30 bool = value_29
+					if !value_30 {
+						var value_31 float32 = delta
+						var value_32 float32 = threshold
+						var value_33 float32 = -value_32
+						var value_34 bool = value_31 < value_33
+						value_30 = value_34
+					}
+					value_26 = value_30
+				}
+				if value_26 {
+					var value_35 bool = true
+					gesture.Dragging = value_35
+				}
+			}
+		}
+		var value_36 bool = gesture.Dragging
+		var value_37 bool = value_36
+		if value_37 {
+			var value_38 int32 = maximum
+			var value_39 int32 = 0
+			var value_40 bool = value_38 > value_39
+			value_37 = value_40
+		}
+		if value_37 {
+			var value_41 int32 = gesture.Offset
+			var value_42 float64 = float64(value_41)
+			var value_43 float32 = y
+			var value_44 float32 = gesture.OriginY
+			var value_45 float32 = value_43 - value_44
+			var value_46 float64 = float64(value_45)
+			var value_47 float64 = value_42 - value_46
+			var value_48 int32 = maximum
+			var value_49 int32 = Dropdown_ScrollOffset(value_47, value_48)
+			gesture.Offset = value_49
+			var value_50 float32 = y
+			gesture.OriginY = value_50
+		}
+	} else {
+		var value_51 bool = false
+		gesture.Pressed = value_51
+	}
+	var value_52 PopupGesture = gesture
+	return value_52
 }

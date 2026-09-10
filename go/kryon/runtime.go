@@ -1548,6 +1548,7 @@ type runtime struct {
 	openDropdowns     map[int32]bool
 	dropdownHighlight map[int32]int32
 	dropdownOffsets   map[int32]*int32
+	dropdownGestures  map[int32]PopupGesture
 	dropdownsSeen     map[int32]bool
 	popupPanels       map[int32]popupInputPanel
 	popupInputScopes  []popupInputToken
@@ -4406,99 +4407,70 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	if r.contentDisabled() {
 		r.closeDropdown(id)
 	}
-	if !r.contentDisabled() && selected != nil && len(labels) > 0 {
-		*selected = clamp32(*selected, 0, int32(len(labels)-1))
-	}
-	pressed := r.consumeTap(bounds)
+	pointerActivate := r.consumeTap(bounds)
 	if !r.contentDisabled() && id > 0 {
 		r.registerField(id)
-		if pressed {
+		if pointerActivate {
 			r.setFocus(id)
 		}
-		if r.focusID == id && !r.openDropdowns[id] && !r.popupKeyboardCaptures() &&
-			(r.keyDown[KeyEnter] || r.keyDown[335] || r.keyDown[KeySpace] || r.keyDown[KeyDown]) {
-			pressed = true
-		}
 	}
-	if pressed {
+	previousOpen := r.openDropdowns[id]
+	open := Dropdown_Trigger(previousOpen, r.contentDisabled(), int32(len(labels)),
+		id > 0 && r.focusID == id, !r.popupKeyboardCaptures(), pointerActivate,
+		r.keyDown[KeyEnter] || r.keyDown[335], r.keyDown[KeySpace], r.keyDown[KeyDown])
+	pressed := open != previousOpen
+	if pressed && open {
 		for other := range r.openDropdowns {
 			if other != id {
 				r.closeDropdown(other)
 			}
 		}
-		r.openDropdowns[id] = !r.openDropdowns[id]
-		if r.openDropdowns[id] {
-			if r.dropdownHighlight == nil {
-				r.dropdownHighlight = make(map[int32]int32)
-			}
-			r.dropdownHighlight[id] = 0
-			if selected != nil {
-				r.dropdownHighlight[id] = *selected
-			}
+		if r.dropdownHighlight == nil {
+			r.dropdownHighlight = make(map[int32]int32)
 		}
+		chosen := int32(0)
+		if selected != nil {
+			chosen = *selected
+		}
+		r.dropdownHighlight[id] = Dropdown_ClampIndex(chosen, int32(len(labels)))
+		if offset := r.dropdownOffsets[id]; offset != nil {
+			*offset = 0
+		}
+		delete(r.dropdownGestures, id)
 	}
-	open := r.openDropdowns[id]
+	r.openDropdowns[id] = open
 	keyboardAvailable := r.dropdownKeyboardAvailable(id)
 	panel := r.dropdownPanel(bounds, len(labels))
-	if open && !pressed {
-		if r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel) {
-			open = false
-		}
-		for _, tap := range r.taps {
-			if !pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel) {
-				open = false
-			}
-		}
+	outside := r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel)
+	for _, tap := range r.taps {
+		outside = outside || (!pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel))
 	}
-	if len(labels) == 0 || bounds.Height <= 0 ||
-		keyboardAvailable && r.keyDown[KeyEscape] {
+	if Dropdown_Dismiss(open, pressed, int32(len(labels)), bounds.Height,
+		keyboardAvailable && r.keyDown[KeyEscape], false, outside) {
 		open = false
 	}
 	changed := false
-	if open && !pressed && keyboardAvailable {
-		highlight := clamp32(r.dropdownHighlight[id], 0, int32(len(labels)-1))
-		previousHighlight := highlight
-		if r.keyDown[KeyUp] {
-			highlight = max32(0, highlight-1)
-		} else if r.keyDown[KeyDown] {
-			highlight = min32(int32(len(labels)-1), highlight+1)
-		} else if r.keyDown[KeyHome] {
-			highlight = 0
-		} else if r.keyDown[KeyEnd] {
-			highlight = int32(len(labels) - 1)
-		}
-		direction := int32(1)
-		if r.keyDown[KeyUp] || r.keyDown[KeyEnd] {
-			direction = -1
-		}
-		candidate := highlight
-		for candidate >= 0 && int(candidate) < len(labels) && disabledRow(candidate) {
-			candidate += direction
-		}
-		if candidate >= 0 && int(candidate) < len(labels) {
-			highlight = candidate
-		} else if !disabledRow(previousHighlight) {
-			highlight = previousHighlight
-		} else {
-			candidate = previousHighlight
-			for candidate >= 0 && int(candidate) < len(labels) && disabledRow(candidate) {
-				candidate -= direction
-			}
-			if candidate >= 0 && int(candidate) < len(labels) {
-				highlight = candidate
-			}
+	navigating := !pressed && keyboardAvailable && (r.keyDown[KeyUp] || r.keyDown[KeyDown] || r.keyDown[KeyHome] || r.keyDown[KeyEnd])
+	if open && (pressed || navigating) {
+		nav := Dropdown_StartNavigation(r.dropdownHighlight[id], int32(len(labels)),
+			navigating && r.keyDown[KeyUp], navigating && r.keyDown[KeyDown],
+			navigating && r.keyDown[KeyHome], navigating && r.keyDown[KeyEnd])
+		for nav.Searching {
+			nav = Dropdown_ScanNavigation(nav, !disabledRow(nav.Index))
 		}
 		if r.dropdownHighlight == nil {
 			r.dropdownHighlight = make(map[int32]int32)
 		}
-		r.dropdownHighlight[id] = highlight
-		if (r.keyDown[KeyEnter] || r.keyDown[335]) && !disabledRow(highlight) {
-			if selected != nil {
-				changed = *selected != highlight
-				*selected = highlight
-			}
-			open = false
+		r.dropdownHighlight[id] = nav.Result
+	}
+	highlight := r.dropdownHighlight[id]
+	if open && Dropdown_CanCommit(highlight >= 0 && int(highlight) < len(labels) && !disabledRow(highlight),
+		pressed, keyboardAvailable, r.keyDown[KeyEnter] || r.keyDown[335], false, false, false, false) {
+		if selected != nil {
+			changed = *selected != highlight
+			*selected = highlight
 		}
+		open = false
 	}
 	if !open {
 		r.closeDropdown(id)
@@ -4542,21 +4514,32 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	viewport := panel
 	viewport.Y += 4
 	viewport.Height = max(float32(0), viewport.Height-8)
-	if pressed || keyboardAvailable &&
-		(r.keyDown[KeyUp] || r.keyDown[KeyDown] ||
-			r.keyDown[KeyHome] || r.keyDown[KeyEnd]) {
-		top := float32(r.dropdownHighlight[id]) * itemH
-		if top < float32(*offset) {
-			*offset = int32(top)
-		} else if top+itemH > float32(*offset)+viewport.Height {
-			*offset = int32(top + itemH - viewport.Height)
-		}
+	contentHeight := Dropdown_ContentHeight(int32(len(labels)), itemH, 0)
+	maximum := max32(0, contentHeight-int32(viewport.Height))
+	if pressed || navigating {
+		*offset = Dropdown_RevealRow(*offset, r.dropdownHighlight[id], itemH, viewport.Height, maximum)
 	}
-	content := r.BeginScroll(viewport, int32(min(float64(itemH)*float64(len(labels)), float64(2147483647))), offset)
+	if r.dropdownGestures == nil {
+		r.dropdownGestures = make(map[int32]PopupGesture)
+	}
+	track := Rectangle{X: panel.X + panel.Width - 10, Y: panel.Y, Width: 10, Height: panel.Height}
+	scrollbar := r.scrollDragOffset == offset || maximum > 0 && pointInRect(r.mousePos.X, r.mousePos.Y, track)
+	gesture := Dropdown_Drag(r.dropdownGestures[id], *offset, r.mouseDown[MouseButtonLeft],
+		pointInRect(r.mousePos.X, r.mousePos.Y, panel) || pointInRect(r.mousePos.X, r.mousePos.Y, bounds),
+		scrollbar, r.mousePos.Y, maximum, 8)
+	*offset = gesture.Offset
+	r.dropdownGestures[id] = gesture
+	if r.pointerCanReach(viewport) && r.mouseWheel != 0 {
+		*offset = Dropdown_WheelOffset(*offset, r.mouseWheel, itemH, maximum)
+		r.mouseWheel = 0
+	}
+	// The generic scroll host owns clipping and its scrollbar. Dropdown's
+	// wheel, drag, reveal, and visible-row decisions come from shared policy.
+	content := r.BeginScroll(viewport, contentHeight, offset)
 	defer r.EndScroll()
-	first := max(0, int(float32(*offset)/itemH))
-	last := min(len(labels), int(math.Ceil(float64((float32(*offset)+viewport.Height)/itemH))))
-	for i := first; i < last; i++ {
+	rows := Dropdown_Rows(int32(len(labels)), *offset, viewport.Height, itemH)
+	for i := int(rows.First); i < int(rows.End); i++ {
+
 		label := labels[i]
 		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
 		selectedRow := selected != nil && int32(i) == *selected
@@ -4573,7 +4556,8 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		if selectedRow || highlighted {
 			r.record(paint)
 		}
-		if selected != nil && !disabledRow(int32(i)) && r.consumeTap(row) {
+		if selected != nil && Dropdown_CanCommit(!disabledRow(int32(i)), pressed, false, false,
+			r.consumeTap(row), scrollbar, gesture.Dragging, *offset == gesture.OriginOffset) {
 			next := int32(i)
 			if *selected != next {
 				*selected = next

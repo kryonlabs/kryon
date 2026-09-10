@@ -317,11 +317,8 @@ DrawUIBottomNavConfigModal(BottomNavConfigProps modal)
                                      ? modal.slot_labels[i]
                                      : "";
         DrawUIText(slot_label, frame.content_x, y, GetFontSize(), c_text);
-        if(draw_dropdown(modal.id + i, frame.content_x,
-                          y + Scale(22),
-                          frame.content_w - remove_w - Scale(8),
-                          dropdown_h, option_labels, option_count,
-                          &selected[i]) &&
+        if(Combobox((ComboboxProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
+            .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
             modal.routes[i] = modal.options[selected[i]].route;
             result.changed = 1;

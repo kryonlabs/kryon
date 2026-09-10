@@ -5,6 +5,9 @@
 #include "runtime/surface.h"
 #include "runtime/style.h"
 
+StyleFrame ui_button_style_frame(ButtonProps button, ButtonState state,
+    int automatic, float h, float p, float f);
+
 /* Representation adapters; transition and field-presence policy is .kry. */
 Style ui_unpack_style(StyleData value);
 StyleStates ui_pack_style_states(ControlStyle control);

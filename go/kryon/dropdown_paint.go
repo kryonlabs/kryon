@@ -28,7 +28,7 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 	disabled := r.contentDisabled()
 	hovered := !disabled && (open || pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !r.popupCaptures(r.mousePos.X, r.mousePos.Y))
 	held := hovered && r.mouseDown[MouseButtonLeft]
-	props := ButtonProps{ID: id, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}
+	props := ButtonProps{Bounds: bounds, ID: id, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}
 	props.Style = ControlStyle{
 		Normal:   r.dropdownStyle(0, false, ButtonStateNormal),
 		Hover:    r.dropdownStyle(0, false, ButtonStateHover),
@@ -43,18 +43,11 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 		metrics.TransitionNormalMS, metrics.TransitionFastMS)
 	appearance := resolveButtonFrame(r.theme(), r.effectiveDark(), r.activeTheme, props,
 		ButtonState(input.Interaction.State), true, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
-	paint := unpackStyle(appearance.Value)
-	frame := r.dropdownSurface(bounds, 0, false, ButtonStateNormal)
-	frame.Kind = FrameOpButton
-	frame.ID = id
-	frame.Color, frame.BorderColor, frame.TextColor = paint.Background, paint.Border, paint.Foreground
-	frame.Radius, frame.Opacity = paint.Radius, paint.Opacity
-	frame.FillStates = appearance.Fill
-	frame.Disabled, frame.Focused, frame.Hovered, frame.Pressed = disabled, focused, hovered, held
-	frame.MotionValid = true
-	frame.HoverAmount, frame.PressAmount, frame.FocusAmount = motion.Hover.Value, motion.Press.Value, motion.Focus.Value
-	r.recordButton(frame)
-	return unpackRGBA(Surface_Opacity(packRGBA(paint.Foreground), paint.Opacity))
+	resolved := Button_BuildFrame(props, input, appearance, motion, Rectangle{},
+		packRGBA(r.theme().surface), 1, int32(appearance.Value.FontSize), Text16)
+	r.record(FrameOp{Kind: FrameOpButton, Button: resolved, Bounds: bounds, ID: id,
+		Disabled: disabled, Focused: focused, Hovered: hovered, Pressed: held})
+	return unpackRGBA(resolved.Foreground)
 }
 
 func (r *runtime) dropdownChevron(id int32, bounds Rectangle, open bool, color Color) {

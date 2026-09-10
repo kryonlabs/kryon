@@ -492,7 +492,7 @@ is still process-global; this does not complete per-window input ownership.
 Dropdowns process and paint the scrollbar after the panel background but before
 emitting rows, so both use the updated offset in the drag frame. Row painting
 is clipped to the content area, excluding popup padding and the scrollbar.
-The C popup bounds helper and Go dropdown layout constrain horizontal placement
+The shared `runtime/dropdown.kry` popup policy constrains horizontal placement
 and width to the UI view. Hit testing, capture and painting share the popup
 rectangle rather than assuming that its horizontal bounds match the owner.
 
@@ -572,7 +572,7 @@ numeric editor input path are still separate; consolidation is not complete.
 
 Native Go collects deferred popup paint in `go/kryon/paint_layers.go`, using
 ordinary frame operations rather than dropdown-specific drawing records.
-Dropdown placement lives in `dropdown_layout.go`; capture and painting share
+Dropdown placement comes from `runtime/dropdown.kry`; capture and painting share
 the resulting constrained, optionally upward-facing rectangle. Popup rows use
 the ordinary scroll container, with runtime-owned stable offset storage that
 is released on dismissal or owner removal. Keyboard navigation reveals rows

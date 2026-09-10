@@ -65,7 +65,7 @@ int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
 int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 int dropdown_captures(Vector2 point);
 void dropdown_close(int id);
-void draw_dropdown_overlays(void);
+void ui_dropdown_overlays(void);
 void ui_draw_menu_overlays(void);
 void ui_tab_bar_finish_frame(void);
 void ui_tab_scope_finish_frame(void);
@@ -210,12 +210,7 @@ int DrawUIToggleSwitch(int x, int y, int w, int h, int *value,
 int DrawUICheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
-int draw_dropdown(int id, int x, int y, int w, int h,
-                  const char **options, int option_count,
-                  int *selected_index);
-int draw_dropdown_options(int id, int x, int y, int w, int h,
-                          const DropdownOption *options, int option_count,
-                          int *selected_index);
+int ui_dropdown(ComboboxProps props);
 void DrawUIInfoRows(InfoRowsProps rows);
 int DrawUILabelTextField(LabelTextFieldProps row, int x, int y, int w);
 int DrawUISectionLabel(SectionLabelProps label, int x, int y);
@@ -273,7 +268,6 @@ int DrawUIInputFloat(InputFloatProps input);
 int DrawUIInputInt(InputIntProps input);
 int DrawUIInputDouble(InputDoubleProps input);
 int DrawUISpinbox(SpinboxProps spinbox);
-int DrawUICombobox(ComboboxProps combo);
 void DrawUILabelFrame(LabelFrameProps frame);
 void DrawUIImageBox(ImageBoxProps image);
 int DrawUIListBox(ListBoxProps list);

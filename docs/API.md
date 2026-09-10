@@ -1607,6 +1607,11 @@ not introduce a second renderer; it delegates the complete header behavior to
 
 #### Dropdown
 
+`Combobox` is the props-based implementation. Positional `Dropdown` and
+`DropdownOptions` adapt their arguments to the same implementation. Opening or
+reselecting the current option returns no change. Native C and Go share popup
+placement, disabled-row navigation, dismissal, and row-based scrolling policy.
+
 ```c
 int Dropdown(int id, int x, int y, int w, int h,
                             const char **options, int option_count, int *selected_index);

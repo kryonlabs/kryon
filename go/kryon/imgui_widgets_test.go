@@ -2078,7 +2078,7 @@ func TestComboKeyboardOpen(t *testing.T) {
 				}
 				focus := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
 					ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, ButtonStateFocus)
-				if mode == 0 && (op.FocusColor != focus.Focus || !op.MotionValid) {
+				if mode == 0 && (unpackRGBA(op.Button.Appearance.Value.Focus) != focus.Focus) {
 					t.Fatalf("opening key %d: focused dropdown lacks focus border", key)
 				}
 			}

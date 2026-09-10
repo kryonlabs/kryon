@@ -2759,28 +2759,6 @@ DrawUISpinbox(SpinboxProps spinbox)
     return changed;
 }
 
-int
-DrawUICombobox(ComboboxProps combo)
-{
-    int changed;
-    if(combo.disabled)
-        MarkUIDisabled();
-    BeginDisabled(combo.disabled);
-    if(combo.items != NULL) {
-        changed = draw_dropdown_options(combo.id, (int)combo.bounds.x,
-                            (int)combo.bounds.y, (int)combo.bounds.width,
-                            (int)combo.bounds.height, combo.items,
-                            combo.option_count, combo.selected_index);
-    } else {
-        changed = draw_dropdown(combo.id, (int)combo.bounds.x,
-                            (int)combo.bounds.y, (int)combo.bounds.width,
-                            (int)combo.bounds.height, combo.options,
-                            combo.option_count, combo.selected_index);
-    }
-    EndDisabled();
-    return changed;
-}
-
 void
 DrawUILabelFrame(LabelFrameProps frame)
 {

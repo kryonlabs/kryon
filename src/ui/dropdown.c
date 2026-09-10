@@ -3,6 +3,7 @@
 #include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/dropdown.h"
+#include "ui_paint_internal.h"
 
 #include <limits.h>
 
@@ -22,10 +23,7 @@ typedef struct DropdownState {
     int highlight_index;
     int pending_changed;
     int pending_index;
-    int touch_pressed;
-    int touch_press_start_y;
-    int touch_press_scroll;
-    int touch_drag_active;
+    PopupGesture gesture;
     int scrollbar_pressed;
     int clip_top;
     int clip_bottom;
@@ -129,29 +127,6 @@ dropdown_resize_options(DropdownState *state, int count)
     state->option_count = count;
 }
 
-static int
-dropdown_content_height(int count, int row_height, int padding)
-{
-    int64_t height = (int64_t)count * row_height + padding;
-    return height > INT_MAX ? INT_MAX : (int)height;
-}
-
-static Color
-dropdown_panel_color(int amount)
-{
-    int luminance = ((int)c_bg.r + (int)c_bg.g + (int)c_bg.b) / 3;
-    return luminance < 96 ? LightenUIColor(c_bg, amount) : DarkenUIColor(c_bg, amount);
-}
-
-static Color
-dropdown_text_color(Color bg)
-{
-    int luma = (int)bg.r * 299 + (int)bg.g * 587 + (int)bg.b * 114;
-
-    return luma > 150000 ? (Color){24, 24, 24, 255}
-                         : (Color){246, 246, 246, 255};
-}
-
 /* Dropdowns use the same neutral face and accent selection as buttons. */
 static Style
 dropdown_style(int role, int selected, ButtonState state)
@@ -180,6 +155,37 @@ dropdown_trigger_style(void)
         .focused = dropdown_style(0, 0, ButtonStateFocus),
         .disabled = dropdown_style(0, 0, ButtonStateDisabled)
     };
+}
+
+static Color
+dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int focused)
+{
+    ButtonProps props = {.id = id, .bounds = bounds, .tone = ButtonToneNeutral,
+        .emphasis = ButtonEmphasisSoft, .disabled = UIContentDisabled(),
+        .style = dropdown_trigger_style()};
+    Activation sample = {.hovered = hovered, .pressed = pressed, .focused = focused};
+    if(focused && IsUIFocusActivatePressed(id))
+        sample.pressed = true;
+    ButtonInput input = ResolveButtonInput(props, sample);
+    ThemeMetrics metrics = GetThemeMetrics();
+    unsigned int key = (2166136261u ^ (unsigned int)id) * 16777619u;
+    if(id == 0) {
+        key = (key ^ (unsigned int)(int)bounds.x) * 16777619u;
+        key = (key ^ (unsigned int)(int)bounds.y) * 16777619u;
+    }
+    InteractionMotion motion = AdvanceButtonMotion(key, props, input,
+        UITransitionCuesEnabled(), GetFrameTime() * 1000.0f,
+        metrics.transition_normal_ms, metrics.transition_fast_ms);
+    StyleFrame appearance = ui_button_style_frame(props, input.interaction.state,
+        1, motion.hover.value, motion.press.value, motion.focus.value);
+    ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
+        ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
+        Scale(appearance.value.font_size), GetFontSize());
+    if(frame.repaint)
+        InvalidateTree(UI_INVALIDATE_PAINT);
+    for(int i = 0; i < MaterialLayerCount(frame.material.value.material); i++)
+        ui_draw_surface(PaintMaterialLayer(frame.material, i));
+    return GetColor(frame.foreground);
 }
 
 static void
@@ -216,83 +222,13 @@ dropdown_store_clip(int top, int bottom)
     dropdown_store->clip_bottom = bottom > 0 ? bottom : 0;
 }
 
-static void
-dropdown_menu_layout(const DropdownState *state, int *dropdown_y, int *dropdown_h,
-                     int *visible_options, int *open_up)
-{
-    int option_h;
-    int menu_gap;
-    int padding_top;
-    int padding_bottom;
-    int below_y;
-    int below_space;
-    int above_space;
-    int bottom_limit;
-    int max_visible_h;
-    int total_h;
-
-    if(state == NULL || dropdown_y == NULL || dropdown_h == NULL)
-        return;
-
-    option_h = state->h;
-    menu_gap = Scale(4);
-    padding_top = Scale(4);
-    padding_bottom = Scale(4);
-    total_h = dropdown_content_height(state->option_count, option_h, padding_top + padding_bottom);
-    below_y = state->y + state->h + menu_gap;
-    if(below_y < state->clip_top)
-        below_y = state->clip_top;
-    bottom_limit = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
-    below_space = bottom_limit - below_y - Scale(16);
-    above_space = state->y - state->clip_top - Scale(16);
-
-    if(below_space < 0)
-        below_space = 0;
-    if(above_space < 0)
-        above_space = 0;
-
-    if(open_up != NULL)
-        *open_up = (above_space > below_space);
-
-    max_visible_h = (above_space > below_space) ? above_space : below_space;
-    if(total_h > max_visible_h) {
-        int count = (max_visible_h - Scale(8)) / option_h;
-        if(count < 1)
-            count = 1;
-        total_h = count * option_h + Scale(8);
-        if(visible_options != NULL)
-            *visible_options = count;
-    } else if(visible_options != NULL) {
-        *visible_options = state->option_count;
-    }
-
-    /* Flip the popup above the button when it does not fit below and
-     * there is more room above. Callers used to have to request this via
-     * the open_up out-param, but none did - so a tall popup near the
-     * bottom of the view was sized for the space above yet placed below,
-     * running off-screen with its tail options unclickable. */
-    {
-        int open_up_local = (below_space < total_h && above_space > below_space);
-
-        if(open_up != NULL)
-            *open_up = open_up_local;
-        if(open_up_local)
-            *dropdown_y = state->y - menu_gap - total_h;
-        else
-            *dropdown_y = below_y;
-    }
-
-    *dropdown_h = total_h;
-}
-
 static Rectangle
 dropdown_menu_bounds(const DropdownState *state)
 {
-    int y = 0, height = 0;
-    dropdown_menu_layout(state, &y, &height, NULL, NULL);
-    int width = ui_clampi(state->w, 0, ui_view_width);
-    int x = ui_clampi(state->x, 0, ui_view_width - width);
-    return (Rectangle){x, y, width, height};
+    int bottom = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
+    Rectangle view = {0, state->clip_top, ui_view_width, bottom - state->clip_top};
+    return PopupBounds((Rectangle){state->x, state->y, state->w, state->h},
+        view, state->option_count, (float)Scale(1000) / 1000.0f);
 }
 
 int
@@ -316,8 +252,7 @@ close_dropdown_state(DropdownState *state)
     ui_scrollbar_cancel(&state->scroll_offset);
     state->open = 0;
     state->just_opened = 0;
-    state->touch_pressed = 0;
-    state->touch_drag_active = 0;
+    state->gesture = (PopupGesture){0};
     state->scrollbar_pressed = 0;
 }
 
@@ -358,29 +293,19 @@ get_or_create_dropdown_state(int id)
 }
 
 int
-draw_dropdown(int id, int x, int y, int w, int h,
-               const char **options, int option_count, int *selected_index)
+ui_dropdown(ComboboxProps props)
 {
-    if(option_count < 0)
-        option_count = 0;
-    DropdownOption *dropdown_options = dropdown_options_alloc(option_count);
-
-    for(int i = 0; i < option_count; i++) {
-        dropdown_options[i].label = options != NULL ? options[i] : NULL;
-        dropdown_options[i].font_name = NULL;
-    }
-
-    int changed = draw_dropdown_options(id, x, y, w, h, dropdown_options,
-                                        option_count, selected_index);
-    free(dropdown_options);
-    return changed;
-}
-
-int
-draw_dropdown_options(int id, int x, int y, int w, int h,
-                      const DropdownOption *options, int option_count,
-                      int *selected_index)
-{
+    int id = props.id;
+    int x = (int)props.bounds.x;
+    int y = (int)props.bounds.y;
+    int w = (int)props.bounds.width;
+    int h = (int)props.bounds.height;
+    const DropdownOption *options = props.items;
+    int option_count = props.option_count;
+    int *selected_index = props.selected_index;
+    BeginDisabled(props.disabled);
+    if(props.disabled)
+        MarkUIDisabled();
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
@@ -388,13 +313,12 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
         (float)Scale(1000) / 1000.0f);
-    int font = ui_default_style() ? (int)content.font : GetFontSize();
+    int font = (int)content.font;
     int arrow_pad = Scale(24);
     int arrow_size = Scale(10);
     int changed = 0;
     Rectangle btn_bounds = {x, y, w, h};
     Vector2 mouse = ui_mouse_world();
-    Color button_bg;
     Color button_text;
     int button_inside = CheckCollisionPointRec(mouse, btn_bounds);
     int active = button_inside &&
@@ -462,7 +386,8 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
         state->options[i].icon_type = options != NULL ? options[i].icon_type : UI_ICON_TYPE_NONE;
         state->options[i].disabled = options != NULL && options[i].disabled;
         state->options[i].separator_before = options != NULL && options[i].separator_before;
-        dropdown_copy_text(&state->options[i].label, options != NULL ? options[i].label : NULL);
+        dropdown_copy_text(&state->options[i].label, options != NULL ? options[i].label :
+            (props.options != NULL ? props.options[i] : NULL));
         const char *font_name = options != NULL ? options[i].font_name : NULL;
         if(font_name != NULL && font_name[0] != '\0')
             dropdown_copy_text(&state->options[i].font_name, font_name);
@@ -475,53 +400,30 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     if(active)
         MarkUIClickable();
 
-    /* Handle click on button */
-    int keyboard_open = focused && !state->open && !ui_popup_input_keyboard_captures() &&
-        (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
-         IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_DOWN));
-    if((active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) || keyboard_open) {
+    int pointer_activate = active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    int next_open = Trigger(state->open, UIContentDisabled(), option_count, focused,
+        !ui_popup_input_keyboard_captures(), pointer_activate,
+        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER),
+        IsKeyPressed(KEY_SPACE), IsKeyPressed(KEY_DOWN));
+    if(next_open != state->open) {
         ClearTextInputFocus();
-        if(!keyboard_open) UIConsumeRelease();
-        state->open = !state->open;
+        if(pointer_activate)
+            UIConsumeRelease();
+        state->open = next_open;
         if(state->open) {
             close_other_dropdowns(id);
             state->just_opened = 1;
             state->opened_frame = g_ui_frame_serial;
             state->scroll_offset = 0;
-            state->highlight_index = state->selected_index;
-            state->touch_drag_active = 0;
+            state->highlight_index = ClampIndex(state->selected_index, option_count);
+            state->gesture = (PopupGesture){0};
         }
     }
 
-    /* Draw button background */
-    button_bg = state->open ? dropdown_panel_color(28)
-                            : (hover ? c_button_hover : dropdown_panel_color(16));
-    if(can_draw) {
-        if(ui_default_style()) {
-            ButtonSpec button = {0};
-            button.bounds = btn_bounds;
-            button.focus_id = id;
-            button.tone = ButtonToneNeutral;
-            button.emphasis = ButtonEmphasisSoft;
-            button.style_resolved = 1;
-            button.style = dropdown_trigger_style();
-            button.disabled = UIContentDisabled();
-            button_text = ui_paint_button(button, hover || state->open,
-                active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-        } else if(ui_modern_style()) {
-            Color border = LightenUIColor(button_bg, 20);
-            ui_draw_control_background(btn_bounds, button_bg, border, 0.06f);
-        } else {
-            DrawRectangleRec(btn_bounds, button_bg);
-            DrawUIBevel(x, y, w, h,
-                        state->open ? LightenUIColor(button_bg, 34)
-                                    : LightenUIColor(button_bg, 24),
-                        state->open ? DarkenUIColor(button_bg, 38)
-                                    : DarkenUIColor(button_bg, 30));
-        }
-    }
-    if(!can_draw || !ui_default_style())
-        button_text = dropdown_text_color(button_bg);
+    button_text = content_style.foreground;
+    if(can_draw)
+        button_text = dropdown_paint_trigger(id, btn_bounds,
+            hover || state->open, active && IsMouseButtonDown(MOUSE_BUTTON_LEFT), focused);
 
     /* Draw current selection text, clipped before the chevron. */
     int current_index = state->selected_index;
@@ -552,13 +454,13 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
         dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
                                 state->open, button_text);
 
-    if(can_draw && focused && !ui_default_style()) DrawUIFocus(btn_bounds);
     EndUIWidget(&widget);
+    EndDisabled();
     return changed;
 }
 
 static int
-draw_dropdown_menu(int id)
+dropdown_paint_menu(int id)
 {
     DropdownState *state = get_or_create_dropdown_state(id);
     int changed = 0;
@@ -577,7 +479,7 @@ draw_dropdown_menu(int id)
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
         (float)Scale(1000) / 1000.0f);
-    int font = ui_default_style() ? (int)content.font : GetFontSize();
+    int font = (int)content.font;
     int x = state->x;
     int y = state->y;
     int w = state->w;
@@ -585,8 +487,6 @@ draw_dropdown_menu(int id)
     int option_h = h;
     int option_count = state->option_count;
     const DropdownOption *options = state->options;
-    Color panel = dropdown_panel_color(18);
-    Color option_text = dropdown_text_color(panel);
     int can_draw = IsWindowReady();
     int clip_started = 0;
 
@@ -594,7 +494,7 @@ draw_dropdown_menu(int id)
     int dropdown_h = 0;
     int padding_top = Scale(4);
     int padding_bottom = Scale(4);
-    int content_h = dropdown_content_height(option_count, option_h, padding_top + padding_bottom);
+    int content_h = ContentHeight(option_count, option_h, padding_top + padding_bottom);
     int max_scroll;
     int scrollbar_w = Scale(8);
     Rectangle btn_bounds = {x, y, w, h};
@@ -607,10 +507,7 @@ draw_dropdown_menu(int id)
     max_scroll = content_h - dropdown_h;
     if(max_scroll < 0)
         max_scroll = 0;
-    if(state->scroll_offset > max_scroll)
-        state->scroll_offset = max_scroll;
-    if(state->scroll_offset < 0)
-        state->scroll_offset = 0;
+    state->scroll_offset = ScrollOffset(state->scroll_offset, max_scroll);
     if(max_scroll > 0)
         option_w = w - scrollbar_w - Scale(2);
 
@@ -623,96 +520,33 @@ draw_dropdown_menu(int id)
        CheckCollisionPointRec(mouse, scrollbar_bounds))
         state->scrollbar_pressed = 1;
 
-    /* Track pointer movement to distinguish click from drag */
-    if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) && !state->scrollbar_pressed) {
-        if(!state->touch_pressed && pointer_in_dropdown) {
-            /* Pointer just went down - reset drag state */
-            state->touch_pressed = 1;
-            state->touch_press_start_y = my;
-            state->touch_press_scroll = state->scroll_offset;
-            state->touch_drag_active = 0;
-        } else if(state->touch_pressed && !state->touch_drag_active) {
-            /* Movement beyond the threshold makes it a drag - but only
-             * when the list can actually scroll, otherwise a touchpad
-             * clicks natural wobble would swallow every selection. */
-            int dy = my - state->touch_press_start_y;
-            if(abs(dy) > Scale(8) && max_scroll > 0) {
-                state->touch_drag_active = 1;
-            }
-        }
-
-        /* If dragging, scroll the dropdown */
-        if(state->touch_drag_active && max_scroll > 0) {
-            int dy = my - state->touch_press_start_y;
-            state->scroll_offset -= dy;
-            /* Update start position for continuous scrolling */
-            state->touch_press_start_y = my;
-
-            /* Clamp scroll offset */
-            if(state->scroll_offset < 0)
-                state->scroll_offset = 0;
-            if(state->scroll_offset > max_scroll)
-                state->scroll_offset = max_scroll;
-        }
-    } else if(state->touch_pressed) {
-        /* Pointer just released - only reset touch_pressed, keep touch_drag_active for selection check */
-        state->touch_pressed = 0;
-    }
-
-    /* Click outside closes dropdown */
-    if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        if(!state->just_opened &&
-            !CheckCollisionPointRec(mouse, btn_bounds) &&
-           !CheckCollisionPointRec(mouse, menu_bounds)) {
-            close_dropdown_state(state);
-        }
-    }
+    state->gesture = Drag(state->gesture, state->scroll_offset,
+        IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
+        state->scrollbar_pressed, my, max_scroll, Scale(8));
+    state->scroll_offset = state->gesture.offset;
+    if(Dismiss(state->open, state->just_opened, option_count, h, false, false,
+        IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !pointer_in_dropdown))
+        close_dropdown_state(state);
 
     if(!state->open) return 0;
-    state->highlight_index = ui_clampi(state->highlight_index, 0, option_count - 1);
-    int previous_highlight = state->highlight_index;
-    int navigating = 1;
-    if(state->opened_frame == g_ui_frame_serial)
-        navigating = 0;
-    else if(keyboard_available && IsKeyPressed(KEY_UP))
-        state->highlight_index = ui_clampi(state->highlight_index - 1, 0, option_count - 1);
-    else if(keyboard_available && IsKeyPressed(KEY_DOWN))
-        state->highlight_index = ui_clampi(state->highlight_index + 1, 0, option_count - 1);
-    else if(keyboard_available && IsKeyPressed(KEY_HOME))
-        state->highlight_index = 0;
-    else if(keyboard_available && IsKeyPressed(KEY_END))
-        state->highlight_index = option_count - 1;
-    else
-        navigating = 0;
+    int opening = state->opened_frame == g_ui_frame_serial;
+    int navigating = !opening && keyboard_available &&
+        (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+         IsKeyPressed(KEY_HOME) || IsKeyPressed(KEY_END));
     if(navigating || state->just_opened) {
-        int direction = IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_END) ? -1 : 1;
-        int candidate = state->highlight_index;
-        while(candidate >= 0 && candidate < option_count && options[candidate].disabled)
-            candidate += direction;
-        if(candidate >= 0 && candidate < option_count)
-            state->highlight_index = candidate;
-        else if(!options[previous_highlight].disabled)
-            state->highlight_index = previous_highlight;
-        else {
-            candidate = previous_highlight;
-            while(candidate >= 0 && candidate < option_count && options[candidate].disabled)
-                candidate -= direction;
-            if(candidate >= 0 && candidate < option_count)
-                state->highlight_index = candidate;
-        }
-        int64_t row_top = (int64_t)state->highlight_index * option_h;
-        int viewport = dropdown_h - padding_top - padding_bottom;
-        int64_t scroll = state->scroll_offset;
-        if(row_top < scroll) scroll = row_top;
-        if(row_top + option_h > scroll + viewport)
-            scroll = row_top + option_h - viewport;
-        if(scroll < 0) scroll = 0;
-        if(scroll > max_scroll) scroll = max_scroll;
-        state->scroll_offset = (int)scroll;
+        Navigation nav = StartNavigation(state->highlight_index, option_count,
+            navigating && IsKeyPressed(KEY_UP), navigating && IsKeyPressed(KEY_DOWN),
+            navigating && IsKeyPressed(KEY_HOME), navigating && IsKeyPressed(KEY_END));
+        while(nav.searching)
+            nav = ScanNavigation(nav, !options[nav.index].disabled);
+        state->highlight_index = nav.result;
+        state->scroll_offset = RevealRow(state->scroll_offset, nav.result, option_h,
+            dropdown_h - padding_top - padding_bottom, max_scroll);
     }
-    if(keyboard_available && state->opened_frame != g_ui_frame_serial &&
-       (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) &&
-       !options[state->highlight_index].disabled) {
+    int highlighted_enabled = state->highlight_index >= 0 &&
+        state->highlight_index < option_count && !options[state->highlight_index].disabled;
+    if(CanCommit(highlighted_enabled, opening, keyboard_available,
+        IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER), false, false, false, false)) {
         state->pending_index = state->highlight_index;
         state->pending_changed = state->selected_index != state->highlight_index;
         state->selected_index = state->highlight_index;
@@ -726,38 +560,14 @@ draw_dropdown_menu(int id)
     if(CheckCollisionPointRec(mouse, menu_bounds)) {
         float wheel = GetMouseWheelMove();
         if(wheel != 0.0f && max_scroll > 0) {
-            state->scroll_offset -= (int)(wheel * (float)option_h);
-            if(state->scroll_offset < 0)
-                state->scroll_offset = 0;
-            if(state->scroll_offset > max_scroll)
-                state->scroll_offset = max_scroll;
+            state->scroll_offset = WheelOffset(state->scroll_offset, wheel, option_h, max_scroll);
         }
     }
 
-    /* Draw dropdown background */
     if(can_draw) {
-        if(ui_default_style()) {
-            Style paint = dropdown_style(1, 0, ButtonStateNormal);
-            paint.radius = GetThemeMetrics().radius_large + 2;
-            panel = paint.background;
-            option_text = paint.foreground;
-            dropdown_draw_surface(menu_bounds, paint, 0);
-        } else if(ui_modern_style()) {
-            ThemeMetrics tokens = GetThemeMetrics();
-            Color border = dropdown_panel_color(36);
-            if(tokens.panel_alpha < panel.a)
-                panel.a = tokens.panel_alpha;
-            option_text = dropdown_text_color(panel);
-            ui_draw_control_background(
-                (Rectangle){x, dropdown_y, w, dropdown_h}, panel, border,
-                ui_radius_px((Rectangle){x, dropdown_y, w, dropdown_h},
-                             tokens.panel_radius));
-        } else {
-            DrawRectangle(x, dropdown_y, w, dropdown_h, panel);
-            DrawUIBevel(x, dropdown_y, w, dropdown_h,
-                        dropdown_panel_color(32),
-                        dropdown_panel_color(8));
-        }
+        Style paint = dropdown_style(1, 0, ButtonStateNormal);
+        paint.radius = GetThemeMetrics().radius_large + 2;
+        dropdown_draw_surface(menu_bounds, paint, 0);
     }
 
     /* Resolve thumb input before rows use the offset, so thumb and content
@@ -776,10 +586,9 @@ draw_dropdown_menu(int id)
     }
 
     /* Draw options */
-    int first = state->scroll_offset / option_h;
-    int64_t last = ((int64_t)state->scroll_offset + dropdown_h - padding_top - padding_bottom + option_h - 1) / option_h;
-    if(last > option_count) last = option_count;
-    for(int i = first; i < last; i++) {
+    VisibleRows rows = Rows(option_count, state->scroll_offset,
+        dropdown_h - padding_top - padding_bottom, option_h);
+    for(int i = rows.first; i < rows.end; i++) {
         int option_y = (int)((int64_t)dropdown_y + padding_top + (int64_t)i * option_h - state->scroll_offset);
         int content_top = dropdown_y + padding_top;
         int content_bottom = dropdown_y + dropdown_h - padding_bottom;
@@ -797,8 +606,8 @@ draw_dropdown_menu(int id)
         int option_hover = !options[i].disabled && (state->highlight_index == i ||
                            (option_active && UIHoverEffectsEnabled()));
 
-        Color row_text = option_text;
-        if(can_draw && ui_default_style()) {
+        Color row_text = content_style.foreground;
+        if(can_draw) {
             int selected = state->selected_index == i;
             Style paint = dropdown_style(2, selected,
                 options[i].disabled ? ButtonStateDisabled :
@@ -813,41 +622,23 @@ draw_dropdown_menu(int id)
         }
 
         {
-            if(can_draw && option_hover && !ui_default_style()) {
-                if(ui_modern_style()) {
-                    ThemeMetrics tokens = GetThemeMetrics();
-                    int inset = Scale(4);
-                    Rectangle hover_bounds = {
-                        (float)(x + inset),
-                        (float)(visible_y + Scale(2)),
-                        (float)(option_w - inset * 2),
-                        (float)(visible_h - Scale(4))
-                    };
-                    if(hover_bounds.width > 0 && hover_bounds.height > 0)
-                        DrawRectangleRounded(hover_bounds,
-                                             ui_radius_px(hover_bounds,
-                                                          tokens.control_radius),
-                                             12, c_button_hover);
-                } else {
-                    DrawRectangle(x, visible_y, option_w, visible_h, c_button_hover);
-                }
-            }
             if(option_active) MarkUIClickable();
 
-            if(option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !state->just_opened && !state->scrollbar_pressed &&
-               (!state->touch_drag_active ||
-                state->scroll_offset == state->touch_press_scroll)) {
+            if(CanCommit(!options[i].disabled, state->just_opened, false, false,
+                option_active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT),
+                state->scrollbar_pressed, state->gesture.dragging,
+                state->scroll_offset == state->gesture.origin_offset)) {
                 ClearTextInputFocus();
                 UIConsumeRelease();
+                state->pending_changed = state->selected_index != i;
                 state->selected_index = i;
                 state->pending_index = i;
-                state->pending_changed = 1;
                 close_dropdown_state(state);
                 state->scroll_offset = 0;
-                changed = 1;
+                changed = state->pending_changed;
                 if(clip_started)
                     EndUIClip();
-                goto draw_arrow;
+                return changed;
             }
         }
 
@@ -886,23 +677,12 @@ draw_dropdown_menu(int id)
 
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) state->scrollbar_pressed = 0;
 
-draw_arrow:
-    ;
 
-    /* Redraw arrow on top of everything */
-    int arrow_pad = Scale(24);
-    int arrow_size = Scale(10);
-    int arrow_x = state->x + state->w - arrow_pad;
-    int arrow_y = y + h / 2;
-
-    if(can_draw && !ui_default_style())
-        dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
-                                state->open, option_text);
     return changed;
 }
 
 void
-draw_dropdown_overlays(void)
+ui_dropdown_overlays(void)
 {
     /* Escape and losing the window focus dismiss open popups, so a
      * dropdown can never trap the pointer state. */
@@ -918,7 +698,9 @@ draw_dropdown_overlays(void)
                ui_popup_input_snapshot_keyboard_captures(
                    state->input_snapshot))
                 continue;
-            close_dropdown_state(state);
+            if(Dismiss(state->open, false, state->option_count, state->h,
+                escape_pressed, lost_focus, false))
+                close_dropdown_state(state);
         }
     }
     DropdownState **link = &dropdown_store->states;
@@ -932,11 +714,7 @@ draw_dropdown_overlays(void)
             continue;
         }
         if(state->open)
-            draw_dropdown_menu(state->id);
+            dropdown_paint_menu(state->id);
         link = &state->next;
     }
 }
-
-/* ================================================================
- * TUTORIAL HELPERS
- * ================================================================ */

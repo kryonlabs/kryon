@@ -184,6 +184,7 @@ func (r *runtime) popupCaptures(x, y float32) bool {
 }
 
 func (r *runtime) closeDropdown(owner int32) {
+	delete(r.dropdownGestures, owner)
 	if offset := r.dropdownOffsets[owner]; offset != nil && r.scrollDragOffset == offset {
 		r.scrollDragOffset = nil
 	}

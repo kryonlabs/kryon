@@ -56,7 +56,7 @@ func TestDropdownUsesButtonPaletteAndKeepsSelectionDistinct(t *testing.T) {
 		for _, op := range r.ops {
 			if op.ID == 29000 && op.Kind == FrameOpButton {
 				want := r.dropdownStyle(0, false, ButtonStateDisabled)
-				if !op.Disabled || op.Focused || op.Color != want.Background || op.TextColor != want.Foreground {
+				if !op.Disabled || op.Focused || unpackRGBA(op.Button.Appearance.Value.Background) != want.Background || unpackRGBA(op.Button.Appearance.Value.Foreground) != want.Foreground {
 					t.Fatal("disabled dropdown differs from the disabled neutral button")
 				}
 			}

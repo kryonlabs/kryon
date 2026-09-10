@@ -62,3 +62,270 @@ Content :: (paint: StyleData, scale: float) -> ContentMetrics #export {
         .gap = paint.gap * scale, .icon = paint.icon_size * scale,
         .font = paint.font_size * scale}
 }
+
+# Portable input and popup policy. Hosts supply input samples and option
+# availability; no host reimplements navigation, dismissal, or geometry.
+ClampIndex :: (value: i32, count: i32) -> i32 #export {
+    if count <= 0 {
+        return -1
+    }
+    if value < 0 {
+        return 0
+    }
+    if value >= count {
+        return count - 1
+    }
+    return value
+}
+
+Trigger :: (open: bool, disabled: bool, count: i32, focused: bool,
+    keyboard: bool, activated: bool, enter: bool, space: bool, down: bool) -> bool #export {
+    if disabled || count <= 0 {
+        return false
+    }
+    if activated {
+        return !open
+    }
+    if !open && focused && keyboard && (enter || space || down) {
+        return true
+    }
+    return open
+}
+
+Dismiss :: (open: bool, opening: bool, count: i32, height: float,
+    escape: bool, lost_focus: bool, outside: bool) -> bool #export {
+    return open && (count <= 0 || height <= 0.0 || escape || lost_focus || (!opening && outside))
+}
+
+Navigation :: struct {
+    index: i32
+    previous: i32
+    count: i32
+    direction: i32
+    phase: i32
+    searching: bool
+    result: i32
+}
+
+StartNavigation :: (current: i32, count: i32, up: bool, down: bool,
+    home: bool, end: bool) -> Navigation #export {
+    current = ClampIndex(current, count)
+    nav: Navigation = (Navigation){.index = current, .previous = current,
+        .count = count, .direction = 1, .searching = count > 0, .result = -1}
+    if up {
+        nav.index = ClampIndex(current - 1, count)
+        nav.direction = -1
+    } else if down {
+        nav.index = ClampIndex(current + 1, count)
+    } else if home {
+        nav.index = 0
+    } else if end {
+        nav.index = count - 1
+        nav.direction = -1
+    }
+    return nav
+}
+
+# The host only looks up the availability of nav.index. This bounded scan
+# includes boundary fallback and handles all-disabled lists without activation.
+ScanNavigation :: (nav: Navigation, enabled: bool) -> Navigation #export {
+    if !nav.searching {
+        return nav
+    }
+    if enabled {
+        nav.result = nav.index
+        nav.searching = false
+        return nav
+    }
+    if nav.phase == 1 {
+        nav.phase = 2
+        nav.direction = -nav.direction
+    }
+    nav.index += nav.direction
+    if nav.index < 0 || nav.index >= nav.count {
+        if nav.phase == 0 {
+            nav.index = nav.previous
+            nav.phase = 1
+        } else {
+            nav.searching = false
+            nav.result = -1
+        }
+    }
+    return nav
+}
+
+CanCommit :: (enabled: bool, opening: bool, keyboard: bool, enter: bool,
+    pointer: bool, scrollbar: bool, dragging: bool, returned: bool) -> bool #export {
+    return enabled && !opening && ((keyboard && enter) ||
+        (pointer && !scrollbar && (!dragging || returned)))
+}
+
+ContentHeight :: (count: i32, row: float, padding: float) -> i32 #export {
+    height: f64 = (f64)count * (f64)row + (f64)padding
+    if height <= 0.0 {
+        return 0
+    }
+    if height >= 2147483647.0 {
+        return 2147483647
+    }
+    return (i32)height
+}
+
+PopupBounds :: (button: Rectangle, view: Rectangle, count: i32, scale: float) -> Rectangle #export {
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+    gap: float = 4.0 * scale
+    padding: float = 8.0 * scale
+    margin: float = 16.0 * scale
+    bottom: float = view.y + view.height
+    below_y: float = button.y + button.height + gap
+    if below_y < view.y {
+        below_y = view.y
+    }
+    below: float = bottom - below_y - margin
+    above: float = button.y - view.y - margin
+    if below < 0.0 {
+        below = 0.0
+    }
+    if above < 0.0 {
+        above = 0.0
+    }
+    available: float = below
+    if above > available {
+        available = above
+    }
+    height: float = (float)ContentHeight(count, button.height, padding)
+    if height > available && button.height > 0.0 {
+        rows: i32 = (i32)((available - padding) / button.height)
+        if rows < 1 {
+            rows = 1
+        }
+        height = (float)ContentHeight(rows, button.height, padding)
+    }
+    y: float = below_y
+    if height > below && above > below {
+        y = button.y - gap - height
+    }
+    if height > view.height {
+        height = view.height
+    }
+    if height < 0.0 {
+        height = 0.0
+    }
+    if y > bottom - height {
+        y = bottom - height
+    }
+    if y < view.y {
+        y = view.y
+    }
+    width: float = button.width
+    if width > view.width {
+        width = view.width
+    }
+    if width < 0.0 {
+        width = 0.0
+    }
+    x: float = button.x
+    if x > view.x + view.width - width {
+        x = view.x + view.width - width
+    }
+    if x < view.x {
+        x = view.x
+    }
+    return (Rectangle){.x = x, .y = y, .width = width, .height = height}
+}
+
+ScrollOffset :: (offset: f64, maximum: i32) -> i32 #export {
+    if maximum < 0 {
+        maximum = 0
+    }
+    if offset <= 0.0 {
+        return 0
+    }
+    if offset >= (f64)maximum {
+        return maximum
+    }
+    return (i32)offset
+}
+
+RevealRow :: (offset: i32, index: i32, row: float, viewport: float, maximum: i32) -> i32 #export {
+    if index < 0 {
+        return ScrollOffset((f64)offset, maximum)
+    }
+    top: f64 = (f64)index * (f64)row
+    next: f64 = (f64)offset
+    if top < next {
+        next = top
+    }
+    if top + (f64)row > next + (f64)viewport {
+        next = top + (f64)row - (f64)viewport
+    }
+    return ScrollOffset(next, maximum)
+}
+
+WheelOffset :: (offset: i32, wheel: float, row: float, maximum: i32) -> i32 #export {
+    return ScrollOffset((f64)offset - (f64)wheel * (f64)row, maximum)
+}
+
+VisibleRows :: struct {
+    first: i32
+    end: i32
+}
+
+Rows :: (count: i32, offset: i32, viewport: float, row: float) -> VisibleRows #export {
+    result: VisibleRows
+    if count <= 0 || row <= 0.0 || viewport <= 0.0 {
+        return result
+    }
+    result.first = (i32)((float)offset / row)
+    if result.first < 0 {
+        result.first = 0
+    }
+    if result.first > count {
+        result.first = count
+    }
+    bottom: f64 = ((f64)offset + (f64)viewport) / (f64)row
+    if bottom >= (f64)count {
+        result.end = count
+    } else {
+        result.end = (i32)bottom
+        if (f64)result.end < bottom {
+            result.end += 1
+        }
+    }
+    return result
+}
+
+PopupGesture :: struct {
+    pressed: bool
+    dragging: bool
+    origin_y: float
+    origin_offset: i32
+    offset: i32
+}
+
+Drag :: (gesture: PopupGesture, offset: i32, down: bool, inside: bool,
+    scrollbar: bool, y: float, maximum: i32, threshold: float) -> PopupGesture #export {
+    gesture.offset = ScrollOffset((f64)offset, maximum)
+    if down && !scrollbar {
+        if !gesture.pressed && inside {
+            gesture.pressed = true
+            gesture.origin_y = y
+            gesture.origin_offset = gesture.offset
+            gesture.dragging = false
+        } else if gesture.pressed && !gesture.dragging {
+            delta: float = y - gesture.origin_y
+            if maximum > 0 && (delta > threshold || delta < -threshold) {
+                gesture.dragging = true
+            }
+        }
+        if gesture.dragging && maximum > 0 {
+            gesture.offset = ScrollOffset((f64)gesture.offset - (f64)(y - gesture.origin_y), maximum)
+            gesture.origin_y = y
+        }
+    } else {
+        gesture.pressed = false
+    }
+    return gesture
+}

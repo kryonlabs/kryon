@@ -5315,7 +5315,7 @@ DrawUIFrameOverlays(void)
         return;
     g_ui_overlays_drawn_frame = g_ui_frame_serial;
     ResetUIClip();
-    draw_dropdown_overlays();
+    ui_dropdown_overlays();
     ui_draw_menu_overlays();
     ui_tab_bar_finish_frame();
     ui_text_draw_context_overlay();

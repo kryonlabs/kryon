@@ -1291,8 +1291,9 @@ test_dropdown_store_isolation(void)
         InjectPump();
         BeginUIFrame(240,240,1.0f);
         frame_store = dropdown_store_swap(first);
-        draw_dropdown(9961,10,10,160,28,options,2,&selected);
-        draw_dropdown_overlays();
+        Combobox((ComboboxProps){.id = 9961, .bounds = {10, 10, 160, 28},
+            .options = options, .option_count = 2, .selected_index = &selected});
+        ui_dropdown_overlays();
         dropdown_store_swap(frame_store);
         EndUIFrame();
     }
@@ -1303,7 +1304,8 @@ test_dropdown_store_isolation(void)
     dropdown_store_swap(second);
     check_int("second dropdown store does not inherit popup",
               dropdown_captures((Vector2){20,70}),0);
-    draw_dropdown(9961,10,10,160,28,options,2,&selected);
+    Combobox((ComboboxProps){.id = 9961, .bounds = {10, 10, 160, 28},
+            .options = options, .option_count = 2, .selected_index = &selected});
     check_int("same ID remains closed in second store",
               dropdown_captures((Vector2){20,70}),0);
 
