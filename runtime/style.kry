@@ -64,6 +64,32 @@ ResolveInteraction :: (explicit_state: i32, disabled: bool, loading: bool,
 
 # Presence is separate from value: zero and transparent are valid overrides.
 
+ControlStyleNone :: () -> ControlStyle #export {
+    blank: Style
+    blank.fields = StyleBackground | StyleBorder | StyleFocus |
+                   StyleRadius | StyleBorderWidth | StylePaddingX |
+                   StylePaddingY | StyleOpacity | StyleMaterial
+    blank.background = (Color){0, 0, 0, 0}
+    blank.border = (Color){0, 0, 0, 0}
+    blank.focus = (Color){0, 0, 0, 0}
+    blank.radius = 0.0
+    blank.border_width = 0.0
+    blank.padding_x = 0.0
+    blank.padding_y = 0.0
+    blank.opacity = 1.0
+    blank.material = (MaterialKind)MaterialFlat
+
+    style: ControlStyle
+    style.normal = blank
+    style.hover = blank
+    style.pressed = blank
+    style.focused = blank
+    style.disabled = blank
+    style.loading = blank
+    style.selected = blank
+    return style
+}
+
 # Default styles initialize all basic properties, without a gradient endpoint.
 DefaultFields :: () -> u32 #export {
     return (u32)StyleBackground | (u32)StyleForeground | (u32)StyleBorder |
