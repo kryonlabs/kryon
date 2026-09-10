@@ -907,6 +907,16 @@ split_top(const char *s, char parts[][K2GO_TEXT_MAX], int max)
 /* C field order for the Props/Spec types .kry writes positionally, e.g.
  * Picture((PictureProps){"path", ...}). Designated initializers do not need
  * this table; positional parts index into it. Names are the Go field names. */
+static void
+resolve_slot_type(void *context, const char *source, char *out, size_t size)
+{
+    (void)context;
+    if(!go_type(source, out, size)) {
+        fprintf(stderr, "unsupported slot parameter type: %s\n", source);
+        exit(1);
+    }
+}
+
 static int
 source_record(const KirModule *module, const char *name)
 {
@@ -2900,6 +2910,10 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                 if(t->is_extern && !runtime_output)
                     continue;
 
+                if(t->is_slot) {
+                    KirEmitSlotType(f, t, KIR_GO, resolve_slot_type, NULL);
+                    continue;
+                }
                 if(t->is_enum) {
                     /* enums: typed constants with C counter semantics
                          * (g_enums was built in the same order as m->types) */

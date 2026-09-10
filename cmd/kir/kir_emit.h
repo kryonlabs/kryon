@@ -16,6 +16,8 @@ int KirEmitJsRecordValue(FILE *out, const KirModule *module, const char *type,
 void KirEmitNumbers(FILE *out, const KirModule *module, KirTarget target);
 void KirEmitNumberSupport(FILE *out, KirTarget target, const char *prefix);
 void KirEmitStringType(FILE *out);
+void KirEmitSlotType(FILE *out, const KirType *slot, KirTarget target,
+                     KirResolveTarget resolve_type, void *context);
 /* instance_host is the native Go implementation receiver, or an empty string
  * for application functions and the other targets. number_support overrides
  * the module-local numeric helper prefix when a package shares one definition. */

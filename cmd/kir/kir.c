@@ -12,7 +12,7 @@ KirTypeNextField(const KirType *record, size_t *offset, KirTypeField *field)
     size_t length = strlen(record->body);
 
     memset(field, 0, sizeof(*field));
-    if(record->is_enum)
+    if(record->is_enum || record->is_slot)
         return -1;
     while(*offset < length) {
         const char *start = record->body + *offset;

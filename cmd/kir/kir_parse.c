@@ -2302,7 +2302,14 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
             parse_function_header(name, sizeof(name), args, sizeof(args),
                                   ret, sizeof(ret), t);
-            if(name[0] != '\0') {
+            if(strstr(t, "#slot") != NULL) {
+                if(has_body || is_extern || is_ui || strcmp(ret, "void") != 0)
+                    die("%s:%d: slot declarations require a bodyless void signature", rel, line_no);
+                KirType *slot = KirModuleAddType(module, name, KirSpan(rel, line_no, 1));
+                slot->is_slot = 1;
+                kir_copy(slot->body, sizeof(slot->body), args);
+                kir_copy(slot->guard, sizeof(slot->guard), cur_guard);
+            } else if(name[0] != '\0') {
                 fn = KirModuleAddFunction(module, name, args, ret, 0,
                                           KirSpan(rel, line_no, 1));
                 snprintf(fn->guard, sizeof(fn->guard), "%s", cur_guard);

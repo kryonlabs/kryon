@@ -180,7 +180,7 @@ expression_type(Checker *c, int index)
         const KirType *record = KirFindType(c->module, e->name, NULL);
         int ordinal = 0;
         int mode = -1;
-        if(record == NULL || record->is_enum) {
+        if(record == NULL || record->is_enum || record->is_slot) {
             error(c, e->span, "initializer requires a declared record type", e->name);
             break;
         }
@@ -247,16 +247,27 @@ expression_type(Checker *c, int index)
         if(!*type) error(c, e->span, "unresolved name", e->name);
         break;
     case KIR_EXPR_CALL: {
-        const KirFunction *callee = function(c, e->name, e->span);
+        const char *binding = lookup(c, e->name);
+        const KirType *slot = KirFindType(c->module, binding, NULL);
+        if(slot != NULL && !slot->is_slot)
+            slot = NULL;
+        kir_copy(e->slot_type, sizeof(e->slot_type), slot ? binding : "");
+        const KirFunction *callee = *binding ? NULL : function(c, e->name, e->span);
         if(callee != NULL && callee->is_extern && callee->extern_kind == KIR_EXTERN_HOST)
             c->fn->uses_host = 1;
-        const char *args = callee ? callee->args : NULL;
-        const char *return_type = callee ? callee->return_type : "";
+        const char *args = slot ? slot->body : callee ? callee->args : NULL;
+        const char *return_type = slot ? "void" : callee ? callee->return_type : "";
         char (*parts)[KIR_TEXT_MAX] = calloc(64, sizeof(*parts));
         int actual = 0, expected;
+        int strict_before_slot = c->strict;
+        int errors_before_slot = c->errors;
+        int slot_contract = slot != NULL;
+        if(slot_contract)
+            c->strict = 1;
         if(!parts) { c->errors++; c->failed=1; break; }
-        if(*lookup(c, e->name)) error(c, e->span, "binding is not a callable function", e->name);
-        if(!callee) for(int i = 0; i < c->module->import_count; i++) {
+        if(*binding && slot == NULL)
+            error(c, e->span, "binding is not a callable function", e->name);
+        if(!callee && slot == NULL) for(int i = 0; i < c->module->import_count; i++) {
             const KirImport *imp = &c->module->imports[i];
             if(imp->kind == KIR_IMPORT_EXTERN && !strcmp(imp->name, e->name)) {
                 if(imp->extern_kind == KIR_EXTERN_HOST)
@@ -265,6 +276,19 @@ expression_type(Checker *c, int index)
             }
         }
         expected = args && *kir_skip_ws(args) ? kir_split_top(args, parts[0], 64, sizeof(parts[0])) : 0;
+        const KirModule *signature_owner = c->module;
+        if(callee != NULL) {
+            const KirFunction *resolved = NULL;
+            KirResolveFunction(c->module, e->name, &signature_owner, &resolved);
+        }
+        for(int parameter = 0; parameter < expected; parameter++) {
+            const char *colon = strchr(parts[parameter], ':');
+            const KirType *parameter_type = colon ?
+                KirFindType(signature_owner, kir_skip_ws(colon + 1), NULL) : NULL;
+            slot_contract |= parameter_type != NULL && parameter_type->is_slot;
+        }
+        if(slot_contract)
+            c->strict = 1;
         for(int child = e->first_child; child >= 0; child = c->fn->exprs[child].next_sibling) {
             const char *arg_type = expression_type(c, child);
             if(args && actual < expected) {
@@ -289,10 +313,17 @@ expression_type(Checker *c, int index)
             if(actual != expected)
                 signature_error(c, callee, e->span, "argument count mismatch", e->name);
         } else error(c, e->span, "unresolved function", e->name);
+        if(slot_contract && c->errors != errors_before_slot)
+            c->failed = 1;
+        c->strict = strict_before_slot;
         free(parts);
         break;
     }
-    case KIR_EXPR_BINARY:
+    case KIR_EXPR_BINARY: {
+        const KirType *left_slot = KirFindType(c->module, left, NULL);
+        const KirType *right_slot = KirFindType(c->module, right, NULL);
+        if((left_slot && left_slot->is_slot) || (right_slot && right_slot->is_slot))
+            error(c, e->span, "slot values do not support binary operations", e->op);
         if((text_type(left) || text_type(right)) &&
            strcmp(e->op, "==") && strcmp(e->op, "!="))
             error(c, e->span, "string operation is not supported", e->op);
@@ -314,6 +345,7 @@ expression_type(Checker *c, int index)
             type = (!strcmp(left, "integer") || !strcmp(left, "real")) ? right : left;
         else if(*left && *right) error(c, e->span, "numeric operands required", e->op);
         break;
+    }
     case KIR_EXPR_UNARY:
         if(!strcmp(e->op, "!") && strcmp(right, "bool"))
             error(c, e->span, "logical operand requires bool", e->op);
@@ -393,12 +425,36 @@ check_type_declarations(const KirModule *module)
         }
         if(record->is_enum)
             continue;
+        if(record->is_slot) {
+            char parameters[64][KIR_TEXT_MAX];
+            int count = *kir_skip_ws(record->body) ?
+                kir_split_top(record->body, parameters[0], 64, sizeof(parameters[0])) : 0;
+            for(int parameter = 0; parameter < count; parameter++) {
+                char *colon = strchr(parameters[parameter], ':');
+                if(colon == NULL)
+                    return record_declaration_error(record, "slot parameters require name: type", NULL);
+                *colon++ = '\0';
+                kir_trim_in_place(parameters[parameter]);
+                kir_trim_in_place(colon);
+                const KirType *type = KirFindType(module, colon, NULL);
+                if(!*parameters[parameter] || !strcmp(colon, "void") ||
+                   (KirTargetType(colon, KIR_C) == NULL && type == NULL) || (type && type->is_slot))
+                    return record_declaration_error(record, "invalid slot parameter", parameters[parameter]);
+                for(int previous = 0; previous < parameter; previous++)
+                    if(!strcmp(parameters[previous], parameters[parameter]))
+                        return record_declaration_error(record, "duplicate slot parameter", parameters[parameter]);
+            }
+            continue;
+        }
         while((status = KirTypeNextField(record, &offset, &field)) == 1) {
             size_t previous_offset = 0;
             KirTypeField previous;
 
             if(strcmp(field.type, "void") == 0)
                 return record_declaration_error(record, "record field cannot have void type", field.name);
+            const KirType *field_type = KirFindType(module, field.type, NULL);
+            if(field_type != NULL && field_type->is_slot)
+                return record_declaration_error(record, "slot values cannot be stored in records", field.name);
             while(KirTypeNextField(record, &previous_offset, &previous) == 1 &&
                   previous_offset < offset) {
                 if(strcmp(previous.name, field.name) == 0)
@@ -442,7 +498,7 @@ resolve_widget_blocks(Checker *c)
             diagnostic = "unknown widget declaration";
         else if(!declaration->is_ui || declaration->is_extern)
             diagnostic = "widget block requires a #ui declaration";
-        else if(count != 1 || props == NULL || props->is_enum)
+        else if(count != 1 || props == NULL || props->is_enum || props->is_slot)
             diagnostic = "widget declaration requires one typed record parameter";
         if(diagnostic != NULL) {
             fprintf(stderr, "%s:%d:%d: %s: %s\n", statement->span.path,
@@ -569,12 +625,30 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             free(c.bindings);
             return 0;
         }
+        for(int i = 0; i < c.module->global_count + c.module->state_count; i++) {
+            const char *type = i < c.module->global_count ? c.module->globals[i].type :
+                c.module->state_fields[i - c.module->global_count].type;
+            const KirType *slot = KirFindType(c.module, type, NULL);
+            if(slot != NULL && slot->is_slot) {
+                fprintf(stderr, "%s: slot values cannot be stored in globals or state\n", c.module->source_path);
+                free(c.bindings);
+                return 0;
+            }
+        }
         for(int f = 0; f < c.module->function_count; f++) {
             int errors_before = c.errors;
+            int has_slots = 0;
             char params[64][KIR_TEXT_MAX];
             int n;
             c.fn = &c.module->functions[f]; c.count = 0; c.depth = 0;
             c.fn->uses_host = c.fn->is_extern && c.fn->extern_kind == KIR_EXTERN_HOST;
+            const KirType *return_slot = KirFindType(c.module, c.fn->return_type, NULL);
+            if(return_slot != NULL && return_slot->is_slot) {
+                fprintf(stderr, "%s:%d: slot values cannot escape through returns\n",
+                        c.fn->span.path, c.fn->span.line);
+                free(c.bindings);
+                return 0;
+            }
             /* Imports are linked now. Rebuild expressions so imported types
              * participate in cast/grouping decisions before type checking. */
             KirStructureFunction(c.fn, c.module);
@@ -587,6 +661,8 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                 char *colon = strchr(params[a], ':');
                 if(colon) {
                     *colon++ = 0; kir_trim_in_place(params[a]); kir_trim_in_place(colon);
+                    const KirType *parameter_type = KirFindType(c.module, colon, NULL);
+                    has_slots |= parameter_type != NULL && parameter_type->is_slot;
                     bind(&c, params[a], colon, c.fn->span);
                 } else error(&c, c.fn->span, "strict parameters require name: type", params[a]);
             }
@@ -604,7 +680,7 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                 if(st->kind == KIR_STMT_DECL) {
                     if(st->is_instance) {
                         const KirType *record = KirFindType(c.module, st->type, NULL);
-                        if(record == NULL || record->is_enum)
+                        if(record == NULL || record->is_enum || record->is_slot)
                             error(&c, st->span, "instance state requires a declared record type", st->type);
                         const char *key_type = KirScalarType(type);
                         if(st->expr_root < 0 || (strcmp(type, "integer") &&
@@ -613,6 +689,15 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
                     } else if(!*st->type) kir_copy(st->type, sizeof(st->type),
                         !strcmp(type, "integer") ? "int" : !strcmp(type, "real") ? "double" : type);
                     else if(!compatible(st->type, type)) error(&c, st->span, "initializer type mismatch", st->name);
+                    const KirType *local_type = KirFindType(c.module, st->type, NULL);
+                    if(local_type != NULL && local_type->is_slot) {
+                        has_slots = 1;
+                        if(st->expr_root < 0) {
+                            fprintf(stderr, "%s:%d: slot bindings require an initializer\n",
+                                    st->span.path, st->span.line);
+                            c.failed = 1;
+                        }
+                    }
                     if(!st->is_instance)
                         check_borrowed_string(&c, st->type, st->expr_root);
                     bind(&c, st->name, st->type, st->span);
@@ -651,6 +736,12 @@ KirCheckPrograms(KirProgram **programs, int count, int strict)
             c.fn->uses_host |= has_instances;
             if(has_instances && (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
                 fprintf(stderr, "%s:%d: instance state requires a fully checked portable body: %s\n",
+                        c.fn->span.path, c.fn->span.line, c.fn->name);
+                c.failed = 1;
+            }
+            if(has_slots && !c.fn->is_extern &&
+               (!c.fn->checked || !KirCanEmitBody(c.module, c.fn))) {
+                fprintf(stderr, "%s:%d: slot parameters require a fully checked portable body: %s\n",
                         c.fn->span.path, c.fn->span.line, c.fn->name);
                 c.failed = 1;
             }

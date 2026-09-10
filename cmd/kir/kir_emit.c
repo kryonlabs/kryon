@@ -51,6 +51,35 @@ KirTargetType(const char *type, KirTarget target)
     return NULL;
 }
 
+void
+KirEmitSlotType(FILE *out, const KirType *slot, KirTarget target,
+                KirResolveTarget resolve_type, void *context)
+{
+    char parameters[64][KIR_TEXT_MAX];
+    int count = *kir_skip_ws(slot->body) ?
+        kir_split_top(slot->body, parameters[0], 64, sizeof(parameters[0])) : 0;
+    if(target == KIR_JS)
+        return;
+    if(target == KIR_GO)
+        fprintf(out, "type %s func(", slot->name);
+    else
+        fprintf(out, "typedef struct %s {\n    void *context;\n    void (*call)(void *", slot->name);
+    for(int i = 0; i < count; i++) {
+        char *colon = strchr(parameters[i], ':');
+        char type[KIR_NAME_MAX];
+        const char *source = kir_skip_ws(colon + 1);
+        const char *scalar = KirTargetType(source, target);
+        kir_copy(type, sizeof(type), scalar ? scalar : source);
+        if(resolve_type)
+            resolve_type(context, source, type, sizeof(type));
+        fprintf(out, "%s%s", i || target != KIR_GO ? ", " : "", type);
+    }
+    if(target == KIR_GO)
+        fputs(")\n\n", out);
+    else
+        fprintf(out, ");\n} %s;\n", slot->name);
+}
+
 static int width(const char *type) { return (*type == 'i' || *type == 'u') ? atoi(type + 1) : 0; }
 static int signed_type(const char *type) { return *type == 'i'; }
 
@@ -65,7 +94,7 @@ static int
 record_type(const KirModule *module, const char *type)
 {
     const KirType *declared = KirFindType(module, type, NULL);
-    return declared != NULL && !declared->is_enum;
+    return declared != NULL && !declared->is_enum && !declared->is_slot;
 }
 
 void
@@ -114,6 +143,17 @@ portable_type_path(const KirModule *module, const char *type, const TypePath *pa
         return 0;
     if(record->is_enum)
         return 1;
+    if(record->is_slot) {
+        char parameters[64][KIR_TEXT_MAX];
+        int count = *kir_skip_ws(record->body) ?
+            kir_split_top(record->body, parameters[0], 64, sizeof(parameters[0])) : 0;
+        for(int i = 0; i < count; i++) {
+            char *colon = strchr(parameters[i], ':');
+            if(colon == NULL || !portable_type_path(owner, kir_skip_ws(colon + 1), path))
+                return 0;
+        }
+        return 1;
+    }
     for(const TypePath *ancestor = path; ancestor; ancestor = ancestor->parent) {
         if(ancestor->record == record)
             return 0;
@@ -451,7 +491,7 @@ declare(Emitter *e, const char *name, const char *type, const char *value)
         line(e,"let %s = %s_bool(%s);",name,e->numbers,value);
     else if(e->target == KIR_JS && !strcmp(type, "const char*"))
         line(e, "let %s = %s ?? \"\";", name, value);
-    else if(e->target == KIR_JS && !KirTargetType(type, KIR_C)) {
+    else if(e->target == KIR_JS && record_type(e->module, type)) {
         char copy[KIR_TEXT_MAX];
         js_record_copy(e, type, value, copy, sizeof(copy));
         line(e, "let %s = %s;", name, copy);
@@ -691,7 +731,20 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
 {
     char text[KIR_TEXT_MAX];
     int count=0;
-    size_t n=(size_t)format(text,sizeof(text),"%s(",expr->name);
+    size_t n;
+    if(*expr->slot_type) {
+        char callable[KIR_NAME_MAX];
+        fresh(e, callable);
+        declare(e, callable, expr->slot_type, expr->name);
+        if(e->target == KIR_C || e->target == KIR_CPP) {
+            n = (size_t)format(text, sizeof(text), "%s.call(%s.context", callable, callable);
+            count = 1;
+        } else {
+            n = (size_t)format(text, sizeof(text), "%s(", callable);
+        }
+    } else {
+        n = (size_t)format(text, sizeof(text), "%s(", expr->name);
+    }
     for(int child=expr->first_child;child>=0;child=e->fn->exprs[child].next_sibling) {
         char argument[KIR_TEXT_MAX];
         emit_expr(e,child,e->fn->exprs[child].type,argument,sizeof(argument));
@@ -701,7 +754,10 @@ emit_call(Emitter *e, const KirExpr *expr, char *out, size_t size)
         count++;
     }
     format(text+n,sizeof(text)-n,")");
-    e->resolve(e->context,text,out,size);
+    if(*expr->slot_type)
+        kir_copy(out, size, text);
+    else
+        e->resolve(e->context,text,out,size);
 }
 
 static int
@@ -783,7 +839,13 @@ emit_expr(Emitter *e, int index, const char *expected, char *out, size_t size)
         break;
     case KIR_EXPR_CONDITIONAL:
         emit_expr(e,expr->left,"bool",a,sizeof(a));fresh(e,temp);
-        if(record_type(e->module, type))
+        const KirType *declared = KirFindType(e->module, type, NULL);
+        if(declared != NULL && declared->is_slot) {
+            if(e->target == KIR_C || e->target == KIR_CPP)
+                format(b, sizeof(b), "(%s){0}", type);
+            else
+                kir_copy(b, sizeof(b), e->target == KIR_GO ? "nil" : "null");
+        } else if(record_type(e->module, type))
             zero_record(e, type, b, sizeof(b));
         else
             kir_copy(b, sizeof(b), zero_value(type, e->target));

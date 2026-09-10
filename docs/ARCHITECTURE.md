@@ -133,6 +133,13 @@ local or imported `Button` or `Text` declaration owns its props type. Host
 props are a fallback only when no declaration resolves; an invalid declaration
 is an error, not a reason to silently select the host widget. Composed scope
 blocks still use the built-in parser path and need migration with child slots.
+Named child-content signatures now have a KIR type: `Content :: (bounds:
+Rectangle) #slot`. A declaration may accept `content: Content`, invoke it, and
+forward it to another declaration. Calls check slot arity and argument types;
+record arguments retain value semantics across C, C++, Go, and JavaScript.
+Slots currently accept host-provided callable values. Creating callable values
+from `.kry` functions and lifting captured child blocks still need implementation;
+this foundation does not remove the parser's child-block restriction.
 Unknown, duplicate, and incorrectly typed props are errors even without strict
 mode. Tests execute local and imported declarations in both source orders in
 C, C++, Go, and JavaScript, including ordinary calls and record value semantics.

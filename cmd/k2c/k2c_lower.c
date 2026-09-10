@@ -1317,6 +1317,8 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         if(ty->is_extern || strcmp(ty->name, "#enum") == 0 ||
            strcmp(ty->name, "#typedef") == 0)
             continue;
+        if(ty->is_slot)
+            continue;
         emit_guard_open(h, ty->guard);
         if(ty->is_enum) {
             /* Native contracts retain their public C enum tags. */
@@ -1400,6 +1402,14 @@ lower_module(const KirModule *m, const K2cModuleSyms *restab, int restab_count, 
         }
         fprintf(h, "} %s;\n", ty->name);
         emit_guard_close(h, ty->guard);
+    }
+    for(i = 0; i < m->type_count; i++) {
+        const KirType *slot = &m->types[i];
+        if(!slot->is_slot)
+            continue;
+        emit_guard_open(h, slot->guard);
+        KirEmitSlotType(h, slot, KIR_C, NULL, NULL);
+        emit_guard_close(h, slot->guard);
     }
     /* #global variables have external linkage: declare extern in the header,
      * after every named type they reference. 'static'/#private globals stay

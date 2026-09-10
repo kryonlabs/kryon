@@ -469,6 +469,7 @@ language-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS)
 	python3 tests/language_semantics_test.py $(BUILD_DIR)
 	python3 tests/runtime_numbers_test.py $(BUILD_DIR)
 	python3 tests/widget_declarations_test.py $(BUILD_DIR)
+	python3 tests/widget_slots_test.py $(BUILD_DIR)
 	python3 tests/imported_cast_test.py $(BUILD_DIR)
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 

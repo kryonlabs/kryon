@@ -300,11 +300,18 @@ passed by value, and unknown, duplicate, or incorrectly typed properties are
 errors. Declarations can appear later in the file or in an explicitly imported
 module; imported declarations must be public and their props record must be
 directly visible without a conflicting local type. Custom blocks currently
-accept properties only: child slots are not implemented. Their block names do
-not yet allocate persistent widget identity.
+accept properties only: captured child blocks are not implemented. Their block
+names do not yet allocate persistent widget identity.
 Interactive compositions must therefore receive distinct stable control IDs
 from their caller; reusing a declaration does not automatically scope IDs in
 its body.
+
+A generated declaration can accept typed child-content parameters declared with
+`Content :: (bounds: Rectangle) #slot`. The native caller supplies a synchronous
+callback and context in C/C++, or a Go function in native Go. The declaration
+invokes or forwards it with signature checking and value-copy arguments. This currently
+covers callable parameters only; `.kry` child-block capture and passing `.kry`
+functions as slot values are not implemented yet.
 
 A portable body can bind a typed retained record to an explicit integer key:
 

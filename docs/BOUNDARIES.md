@@ -107,6 +107,16 @@ explicit-position bypass and missing-size behavior use the same functions.
 ContentBounds now returns the shared Rectangle contract; the duplicate
 ContentBox record has been removed.
 
+Typed child-content parameters belong to KIR. `#slot` declares a synchronous,
+void-returning callable signature; generated C/C++ uses a typed callback plus its borrowed context,
+native Go uses a function type, and JavaScript passes the callable unchanged.
+The shared emitter performs argument evaluation and record copies before invoking
+it. A slot call is a lexical binding, so backends must not reinterpret its name
+as a widget or host function. Slots cannot escape through records, module state,
+globals, or return values. Host-provided callables and initialized local aliases
+are supported; captured `.kry` child blocks and `.kry` function values remain work
+needed to move widget composition out of the backends.
+
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources
 through the same frontend. Runtime types are a fallback after lexical and
