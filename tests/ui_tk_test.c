@@ -1007,6 +1007,28 @@ test_circle_click_uses_ui_release_path(void)
 }
 
 static void
+test_icon_button_activation(void)
+{
+    IconButtonProps button = {.bounds = {10, 10, 44, 44}, .icon_size = 24};
+
+    for(int disabled = 0; disabled <= 1; disabled++) {
+        button.disabled = disabled;
+        InjectReset();
+        InjectTap(30, 30);
+        InjectPump();
+        BeginUIFrame(220, 100, 1.0f);
+        check_int("icon button press", DrawUIIconButton(button), 0);
+        EndUIFrame();
+        InjectPump();
+        BeginUIFrame(220, 100, 1.0f);
+        check_int("icon button release", DrawUIIconButton(button), !disabled);
+        check_int("icon button release consumed", DrawUIIconButton(button), 0);
+        EndUIFrame();
+    }
+    InjectReset();
+}
+
+static void
 test_nested_disabled_scope(void)
 {
     ButtonProps button = {.bounds={10,10,80,28},.label="Blocked",
@@ -3797,6 +3819,7 @@ main(void)
     test_menu_keyboard_navigation();
     test_popup_menu_keyboard_navigation();
     test_popup_menu_keyboard_ownership();
+    test_icon_button_activation();
     test_nested_disabled_scope();
     test_disabled_scalar_cancels_gesture();
     test_focusable_choice_keyboard_navigation();

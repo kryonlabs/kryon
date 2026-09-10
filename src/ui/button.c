@@ -346,126 +346,60 @@ ui_paint_button(ButtonSpec button, int hovered, int pressed)
 int
 DrawUIIconButton(IconButtonProps button)
 {
-    char editor_id[96];
-    UIWidget widget;
-    int hovered;
-    int focused;
-    int clicked = 0;
-    int icon_padding = button.icon_padding > 0 ? button.icon_padding : Scale(3);
-    int draw_size = button.icon_size;
-    Color background = button.background.a != 0 ? button.background : c_button;
-    Color hover_background = button.hover_background.a != 0 ? button.hover_background : c_button_hover;
-    Color icon_tint = WHITE;
-    Color border = button.border.a != 0 ? button.border : DarkenUIColor(background, 35);
-    float radius = button.radius > 0.0f ? button.radius : 0.06f;
-    int cues = UITransitionCuesEnabled();
-    Color draw_background;
-    Color draw_border;
-    int termi_button = ui_termi_backend();
-    int default_controls = ui_default_style() && !termi_button;
+    ButtonSpec spec = {0};
+    float scale = (float)Scale(1000) / 1000.0f;
+    int padding = button.icon_padding > 0 ? button.icon_padding : Scale(3);
+    int icon_size = button.icon_size;
 
-    widget = BeginUIWidget("icon_button",
-                           ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "icon_button",
-                                                 button.focus_id, NULL),
-                           button.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
-    button.bounds = widget.bounds;
-
-    clicked = UIHandleClick(button.bounds, button.disabled, &hovered);
-    focused = !button.disabled && button.focus_id > 0 &&
-              RegisterUIFocus(button.focus_id, button.bounds);
-
-    if(draw_size <= 0) {
-        int available_w = (int)button.bounds.width - icon_padding * 2;
-        int available_h = (int)button.bounds.height - icon_padding * 2;
-        draw_size = available_w < available_h ? available_w : available_h;
+    if(scale <= 0.0f)
+        scale = 1.0f;
+    if(icon_size <= 0) {
+        float available = fminf(button.bounds.width, button.bounds.height);
+        icon_size = (int)available - padding * 2;
     }
-    if(draw_size < 1)
-        draw_size = 1;
+    if(icon_size < 1)
+        icon_size = 1;
 
-    if(default_controls) {
-        int pressed = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        ThemeScheme scheme = ui_default_scheme();
-
-        if(button.background.a == 0) {
-            background = BLANK;
-            border = BLANK;
-        } else {
-            border = scheme.outline;
-            border.a = GetThemeMetrics().border_alpha;
-        }
-        if(button.icon_color.a != 0)
-            icon_tint = button.icon_color;
-        else
-            icon_tint = scheme.on_surface_variant;
-        if(button.disabled) {
-            background = BLANK;
-            icon_tint = scheme.disabled_content;
-        }
-        if(background.a != 0) {
-            radius = ui_radius_px(button.bounds,
-                                  GetThemeMetrics().control_radius);
-            ui_draw_control_background(button.bounds, background, border, radius);
-        }
-        if(!button.disabled) {
-            Rectangle state = ui_centered_min_hit_rect((int)button.bounds.x,
-                                                       (int)button.bounds.y,
-                                                       (int)button.bounds.width,
-                                                       (int)button.bounds.height,
-                                                       ui_touch_target_min(),
-                                                       ui_touch_target_min());
-            ui_default_state_layer(state, icon_tint, hovered, focused, pressed);
-        }
-        if(focused) {
-            SetUIFocusTextInputActive(0);
-            ui_default_focus(button.bounds);
-        }
-    } else {
-        if(button.disabled) {
-            background.a = background.a > 120 ? 120 : background.a;
-            icon_tint.a = 150;
-        }
-        draw_background = hovered ? hover_background : background;
-        draw_border = hovered ? LightenUIColor(hover_background, cues ? 54 : 40) : border;
-        if(termi_button && !button.disabled &&
-           hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-            draw_background = DarkenUIColor(draw_background, 18);
-        if(cues && hovered)
-            draw_background = LightenUIColor(draw_background, 6);
-        if(termi_button)
-            draw_border = hovered ? LightenUIColor(hover_background, 78)
-                                  : LightenUIColor(background, 58);
-        ui_draw_control_background(button.bounds, draw_background, draw_border, radius);
-        if(termi_button)
-            ui_draw_termi_button_outline(button.bounds, draw_border, hovered,
-                                         hovered &&
-                                             IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-                                         button.disabled);
-        if(focused) {
-            SetUIFocusTextInputActive(0);
-            DrawUIFocus(button.bounds);
-        }
+    spec.bounds = button.bounds;
+    spec.focus_id = button.focus_id;
+    spec.disabled = button.disabled;
+    spec.icon = button.icon;
+    spec.icon_type = button.icon_type;
+    spec.icon_only = 1;
+    spec.icon_size = (float)icon_size / scale;
+    spec.tone = ButtonToneNeutral;
+    spec.emphasis = button.background.a != 0
+        ? ButtonEmphasisSoft : ButtonEmphasisGhost;
+    spec.style_resolved = 1;
+    spec.style.normal.fields = StyleIconSize;
+    spec.style.normal.icon_size = spec.icon_size;
+    if(button.background.a != 0) {
+        spec.style.normal.fields |= StyleBackground;
+        spec.style.normal.background = button.background;
     }
-
-    {
-        int icon_x = (int)(button.bounds.x + (button.bounds.width - (float)draw_size) * 0.5f);
-        int icon_y = (int)(button.bounds.y + (button.bounds.height - (float)draw_size) * 0.5f);
-
-        if(button.icon.id != 0) {
-            Rectangle src = {0, 0, (float)button.icon.width, (float)button.icon.height};
-            Rectangle dst = {(float)icon_x, (float)icon_y, (float)draw_size, (float)draw_size};
-            DrawTexturePro(button.icon, src, dst, kryon_zero_vector2, 0, icon_tint);
-        } else if(button.icon_type > UI_ICON_TYPE_NONE &&
-                  button.icon_type < UI_ICON_TYPE_COUNT)
-            DrawIcon(button.icon_type,
-                     (Rectangle){(float)icon_x, (float)icon_y,
-                                 (float)draw_size, (float)draw_size},
-                     icon_tint);
+    if(button.hover_background.a != 0) {
+        spec.style.hover.fields |= StyleBackground;
+        spec.style.hover.background = button.hover_background;
     }
-    EndUIWidget(&widget);
-    return clicked || IsUIFocusActivatePressed(button.focus_id);
+    if(button.icon_color.a != 0) {
+        spec.style.normal.fields |= StyleForeground;
+        spec.style.normal.foreground = button.icon_color;
+    }
+    if(button.border.a != 0) {
+        spec.style.normal.fields |= StyleBorder;
+        spec.style.normal.border = button.border;
+    }
+    if(button.radius > 0.0f) {
+        spec.style.normal.fields |= StyleRadius;
+        spec.style.normal.radius = button.radius *
+            fminf(button.bounds.width, button.bounds.height) / (2.0f * scale);
+    }
+    spec.background = button.background;
+    spec.hover_background = button.hover_background;
+    spec.text = button.icon_color;
+    spec.border = button.border;
+    spec.radius = button.radius;
+    return RenderButton(spec);
 }
 
 int
@@ -491,9 +425,6 @@ DrawUIIconBtn(int x, int y, UIIconSize size, Texture2D icon, int *hover)
     props.icon_padding = padding;
     props.background = c_button;
     props.hover_background = c_button_hover;
-    props.icon_color = WHITE;
-    props.border = DarkenUIColor(c_button, 35);
-    props.radius = 0.12f;
     return DrawUIIconButton(props);
 }
 
@@ -518,9 +449,6 @@ DrawUIPaddedIconBtn(int x, int y, int size, int padding, Texture2D icon, int *ho
     props.icon_padding = padding;
     props.background = c_button;
     props.hover_background = c_button_hover;
-    props.icon_color = WHITE;
-    props.border = DarkenUIColor(c_button, 35);
-    props.radius = 0.12f;
     return DrawUIIconButton(props);
 }
 
