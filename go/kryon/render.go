@@ -122,6 +122,17 @@ func frameMaterial(op FrameOp) MaterialPaint {
 }
 
 func renderMaterial(img *image.RGBA, op FrameOp) Rectangle {
+	if op.Material == MaterialFlat && op.Radius <= 0 && op.Opacity >= 1 {
+		fill := op.Color
+		if fill.A == 0 {
+			fill = Color{255, 255, 255, 255}
+		}
+		fillRect(img, op.Bounds, fill)
+		if op.BorderWidth > 0 && op.BorderColor.A != 0 {
+			strokeRect(img, op.Bounds, op.BorderColor)
+		}
+		return op.Bounds
+	}
 	paint := frameMaterial(op)
 	for i := int32(0); i < Surface_MaterialLayerCount(int32(op.Material)); i++ {
 		renderSurfaceDrawing(img, Material_PaintMaterialLayer(paint, i))
