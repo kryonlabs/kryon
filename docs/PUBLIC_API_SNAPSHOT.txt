@@ -92,6 +92,9 @@ include/audio_library.h function KryAudioEnsureLibraryDir
 include/audio_library.h function KryAudioFileValid
 include/audio_library.h function KryAudioImportItem
 include/audio_library.h function KryAudioTitleFromPath
+include/automation.h function AutomationGetInt
+include/automation.h function AutomationGetOption
+include/automation.h function AutomationGetSeed
 include/desktop.h enum DESKTOP_OPEN_FILE
 include/desktop.h enum DESKTOP_OPEN_NONE
 include/desktop.h enum DESKTOP_OPEN_URL
@@ -280,9 +283,6 @@ include/kry_archive.h function ArchiveReadNamedEntryHeap
 include/kry_archive.h function KryArchiveEntryNameSafe
 include/kry_archive.h function KryArchiveExtractZip
 include/kry_archive.h function KryArchiveMkdirP
-include/kry_automation.h function KryAutomationGetInt
-include/kry_automation.h function KryAutomationGetOption
-include/kry_automation.h function KryAutomationGetSeed
 include/kry_backend.h enum KRY_MOUSE_LEFT
 include/kry_backend.h enum KRY_MOUSE_MIDDLE
 include/kry_backend.h enum KRY_MOUSE_RIGHT
@@ -1898,6 +1898,7 @@ include/ui_transition.h function GetUITransitionAlpha
 include/ui_transition.h function ResetUITransition
 include/ui_transition.h function ReverseUITransitionToOut
 include/ui_transition.h function StepUITransition
+include/ui_tree.h enum ROUTER_NO_ROUTE
 include/ui_tree.h enum UI_EVENT_BLUR
 include/ui_tree.h enum UI_EVENT_CLICK
 include/ui_tree.h enum UI_EVENT_COMPOSITION_CHANGED
@@ -1934,6 +1935,7 @@ include/ui_tree.h enum UI_WIDGET_PARAGRAPH_NODE
 include/ui_tree.h enum UI_WIDGET_PICTURE_NODE
 include/ui_tree.h enum UI_WIDGET_READONLY_TEXT_BOX_NODE
 include/ui_tree.h enum UI_WIDGET_RECT_NODE
+include/ui_tree.h enum UI_WIDGET_ROUTER_NODE
 include/ui_tree.h enum UI_WIDGET_ROW_NODE
 include/ui_tree.h enum UI_WIDGET_SCREEN_NODE
 include/ui_tree.h enum UI_WIDGET_SECTION_LABEL_NODE
@@ -2090,6 +2092,11 @@ include/ui_tree.h function ReturnDropdownTitleBar
 include/ui_tree.h function ReturnTitleBar
 include/ui_tree.h function RichTextEditor
 include/ui_tree.h function RouteInput
+include/ui_tree.h function Router
+include/ui_tree.h function RouterFindRoute
+include/ui_tree.h function RouterNavigate
+include/ui_tree.h function RouterSetRoute
+include/ui_tree.h function RouterStateInit
 include/ui_tree.h function Row
 include/ui_tree.h function Screen
 include/ui_tree.h function SectionLabel

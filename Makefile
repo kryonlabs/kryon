@@ -310,7 +310,7 @@ UI_WINDOW_TEST = $(BUILD_DIR)/tests/ui_window_test
 SPRITESHEET_TEST = $(BUILD_DIR)/tests/spritesheet_test
 APP_FRAMEWORK_TEST = $(BUILD_DIR)/tests/app_framework_test
 APP_STORAGE_TEST = $(BUILD_DIR)/tests/app_storage_test
-KRY_AUTOMATION_TEST = $(BUILD_DIR)/tests/kry_automation_test
+AUTOMATION_TEST = $(BUILD_DIR)/tests/automation_test
 SYSTEM_THEME_TEST = $(BUILD_DIR)/tests/system_theme_test
 CURSOR_INTENT_TEST = $(BUILD_DIR)/tests/cursor_intent_test
 TEXT_INPUT_PLATFORM_TEST = $(BUILD_DIR)/tests/text_input_platform_test
@@ -593,7 +593,7 @@ clean-text-api-check:
 	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(KRY_AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -1127,10 +1127,10 @@ $(APP_STORAGE_TEST): tests/app_storage_test.c src/core/app_storage.c src/kry_std
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_storage_test.c \
 		src/core/app_storage.c src/kry_std/kry_filesystem.c -o $@
 
-$(KRY_AUTOMATION_TEST): tests/kry_automation_test.c src/core/kry_automation.c include/kry_automation.h | $(BUILD_DIR)
+$(AUTOMATION_TEST): tests/automation_test.c src/core/automation.c include/automation.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/kry_automation_test.c \
-		src/core/kry_automation.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/automation_test.c \
+		src/core/automation.c -o $@
 
 $(UI_WINDOW_TEST): tests/ui_window_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)

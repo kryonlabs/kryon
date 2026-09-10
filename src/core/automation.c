@@ -1,4 +1,4 @@
-#include "kry_automation.h"
+#include "automation.h"
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -11,13 +11,13 @@
 #define AUTOMATION_CACHE_KEY_SIZE 64
 #define AUTOMATION_CACHE_VALUE_SIZE 128
 
-typedef struct KryAutomationCacheEntry {
+typedef struct AutomationCacheEntry {
     int used;
     char key[AUTOMATION_CACHE_KEY_SIZE];
     char value[AUTOMATION_CACHE_VALUE_SIZE];
-} KryAutomationCacheEntry;
+} AutomationCacheEntry;
 
-static KryAutomationCacheEntry automation_cache[AUTOMATION_CACHE_SLOTS];
+static AutomationCacheEntry automation_cache[AUTOMATION_CACHE_SLOTS];
 #endif
 
 static void
@@ -39,7 +39,7 @@ copy_option(char *dst, int dst_size, const char *src)
 static void
 make_env_key(char *dst, size_t dst_size, const char *key)
 {
-    const char prefix[] = "KRYON_AUTOMATION_";
+    const char prefix[] = "AUTOMATION_";
     size_t i = 0;
 
     if(dst == NULL || dst_size == 0)
@@ -101,11 +101,11 @@ automation_cache_put(const char *key, const char *value)
     copy_option(automation_cache[target].value, sizeof(automation_cache[target].value), value);
 }
 
-EM_JS(int, js_kry_automation_query_option,
+EM_JS(int, js_automation_query_option,
       (const char *key_ptr, char *out, int out_size), {
     if (!key_ptr || !out || out_size <= 0) return 0;
     var key = UTF8ToString(key_ptr);
-    var candidates = [key, 'kryon_' + key, 'kryon-' + key];
+    var candidates = [key, 'automation_' + key, 'automation-' + key];
     var sources = [];
 
     if (typeof location !== 'undefined') {
@@ -131,8 +131,8 @@ EM_JS(int, js_kry_automation_query_option,
 #endif
 
 int
-KryAutomationGetOption(const char *key, const char *fallback,
-                       char *out, int out_size)
+AutomationGetOption(const char *key, const char *fallback,
+                    char *out, int out_size)
 {
     char env_key[128];
     const char *value;
@@ -149,7 +149,7 @@ KryAutomationGetOption(const char *key, const char *fallback,
     }
 
 #if defined(PLATFORM_WEB) || defined(__EMSCRIPTEN__)
-    if(js_kry_automation_query_option(key, out, out_size)) {
+    if(js_automation_query_option(key, out, out_size)) {
         automation_cache_put(key, out);
         return 1;
     }
@@ -161,7 +161,7 @@ KryAutomationGetOption(const char *key, const char *fallback,
 }
 
 int
-KryAutomationGetInt(const char *key, int fallback, int *out)
+AutomationGetInt(const char *key, int fallback, int *out)
 {
     char text[64];
     char *end;
@@ -170,7 +170,7 @@ KryAutomationGetInt(const char *key, int fallback, int *out)
     if(out == NULL)
         return 0;
     *out = fallback;
-    if(!KryAutomationGetOption(key, "", text, sizeof(text)) || text[0] == '\0')
+    if(!AutomationGetOption(key, "", text, sizeof(text)) || text[0] == '\0')
         return 0;
     value = strtol(text, &end, 10);
     if(end == text || *end != '\0')
@@ -180,11 +180,11 @@ KryAutomationGetInt(const char *key, int fallback, int *out)
 }
 
 unsigned int
-KryAutomationGetSeed(unsigned int fallback)
+AutomationGetSeed(unsigned int fallback)
 {
     int value;
 
-    if(!KryAutomationGetInt("seed", (int)fallback, &value))
+    if(!AutomationGetInt("seed", (int)fallback, &value))
         return fallback;
     return value < 0 ? fallback : (unsigned int)value;
 }

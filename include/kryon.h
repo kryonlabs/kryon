@@ -68,7 +68,7 @@
 #include "app_shell.h"
 #include "app_storage.h"
 #include "app_instance.h"
-#include "kry_automation.h"
+#include "automation.h"
 #include "kry_capabilities.h"
 #include "kry_settings.h"
 #include "kryon_mem.h"
