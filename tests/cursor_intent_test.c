@@ -1,12 +1,14 @@
 /* Cursor-intent priority regression test.
  *
  * Widgets mark the mouse cursor as they draw: disabled controls mark
- * NOT_ALLOWED, clickable ones POINTING_HAND, text IBEAM. UI drawn on top of
+ * NOT_ALLOWED, text marks IBEAM, clickable controls POINTING_HAND. UI drawn on top of
  * disabled background content (a modal over a dimmed, interaction-disabled
  * board) must win the cursor: a ⃠ from the background used to override the
  * hand/ibeam of the foreground because DISABLED had the highest priority,
  * banning the cursor for the whole frame. Disabled keeps the lowest
- * non-default priority: it shows only when nothing interactive is on top. */
+ * non-default priority: it shows only when nothing interactive is on top.
+ * Clickable controls outrank selectable text so labels inside buttons and links
+ * keep the pointer cursor instead of flickering to text selection. */
 
 #include "kryon.h"
 
@@ -37,8 +39,8 @@ main(void)
     check(GetMouseCursorIntent() == MOUSE_CURSOR_POINTING_HAND,
           "clickable foreground overrides disabled background");
     MarkCursor(MOUSE_CURSOR_IBEAM);
-    check(GetMouseCursorIntent() == MOUSE_CURSOR_IBEAM,
-          "text foreground overrides disabled background");
+    check(GetMouseCursorIntent() == MOUSE_CURSOR_POINTING_HAND,
+          "clickable foreground keeps pointer over selectable label text");
     MarkCursor(MOUSE_CURSOR_RESIZE_EW);
     check(GetMouseCursorIntent() == MOUSE_CURSOR_RESIZE_EW,
           "resize foreground overrides disabled background");

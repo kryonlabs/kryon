@@ -219,8 +219,8 @@ enum {
      * that disables its cards behind a modal banned the cursor for the
      * whole frame — the modals own buttons and text never got a say. */
     UI_CURSOR_PRIORITY_DISABLED = 1,
-    UI_CURSOR_PRIORITY_CLICKABLE = 2,
-    UI_CURSOR_PRIORITY_TEXT = 3,
+    UI_CURSOR_PRIORITY_TEXT = 2,
+    UI_CURSOR_PRIORITY_CLICKABLE = 3,
     UI_CURSOR_PRIORITY_RESIZE = 4
 };
 
