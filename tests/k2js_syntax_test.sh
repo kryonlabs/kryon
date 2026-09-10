@@ -184,7 +184,7 @@ assert.equal(module.createState().counters[0].value, 0);
 EOF
 
 "$k2js" --strict --root "$root" -o "$work/out" \
-    runtime/button.kry runtime/style.kry runtime/control_props.kry runtime/surface.kry runtime/theme.kry runtime/split_button.kry runtime/text.kry
+    runtime/*.kry
 node "$root/tests/style_policy_test.mjs" "$work/out/runtime/style.js" \
     "$work/out/runtime/button.js" "$work/out/runtime/theme.js"
 

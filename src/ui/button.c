@@ -1,13 +1,9 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "ui_paint_internal.h"
 #include "runtime/button.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
-
-/* zero constants: the native Plan 9 compiler rejects short
- * compound literals like (Type){0}, and a copy of a zero
- * object is equivalent on every platform. */
-static const Vector2 kryon_zero_vector2;
 
 static StyleFrame resolve_button_frame(ButtonProps button, ButtonState state,
                                       int automatic, float h, float p, float f);
@@ -17,73 +13,21 @@ static void
 ui_draw_button_content(const ButtonSpec *button, Rectangle bounds,
                        int font, Color color)
 {
-    const char *label = button->label != NULL ? button->label : "";
-    int has_icon = button->disclosure || button->icon.id != 0 ||
-                   (button->icon_type > UI_ICON_TYPE_NONE &&
-                    button->icon_type < UI_ICON_TYPE_COUNT);
-    float scale = (float)Scale(1000) / 1000.0f;
-    if(scale <= 0.0f) scale = 1.0f;
-    ButtonContent content = ContentLayout(bounds.width / scale,
-        bounds.height / scale, TextWidth(label, font) / scale,
-        button->icon_size, button->gap, has_icon, button->icon_only,
-        button->icon_placement == IconPlacementTrailing,
-        button->content_offset.x, button->content_offset.y);
-    float icon_size = content.icon_size * scale;
-    if(button->loading) {
-        Ring ring = LoadingRing(bounds.width / scale, bounds.height / scale,
-            content.icon_size, GetTime() * 1000.0, ColorToInt(color), ColorToInt(GetThemeSurface()));
-        Vector2 center = {bounds.x + ring.x * scale, bounds.y + ring.y * scale};
-        ring.inner_radius *= scale;
-        ring.outer_radius *= scale;
-        ring.glow_blur *= scale;
-        float paint_radius = LoadingPaintRadius(ring);
-        for(int y = (int)floorf(center.y - paint_radius); y < (int)ceilf(center.y + paint_radius); y++) {
-            for(int x = (int)floorf(center.x - paint_radius); x < (int)ceilf(center.x + paint_radius); x++) {
-                RingSample sample = LoadingSample(ring, x - center.x, y - center.y);
-                if((sample.glow & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.glow));
-                if((sample.track & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.track));
-                if((sample.arc & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.arc));
-                if((sample.tip & 255) != 0)
-                    DrawRectangle(x, y, 1, 1, GetColor(sample.tip));
-            }
-        }
-        return;
-    }
-    if(has_icon) {
-        Rectangle icon_bounds = {bounds.x + content.icon_x * scale,
-                                 bounds.y + content.icon_y * scale,
-                                 icon_size, icon_size};
-        if(button->disclosure) {
-            for(int y = (int)floorf(icon_bounds.y); y < (int)ceilf(icon_bounds.y + icon_size); y++) {
-                for(int x = (int)floorf(icon_bounds.x); x < (int)ceilf(icon_bounds.x + icon_size); x++) {
-                    float coverage = ChevronCoverage((float)x - icon_bounds.x,
-                        (float)y - icon_bounds.y, icon_size);
-                    if(coverage > 0.0f)
-                        DrawRectangle(x, y, 1, 1, GetColor(Opacity(ColorToInt(color), coverage)));
-                }
-            }
-        } else if(button->icon.id != 0) {
-            Rectangle source = {0, 0, (float)button->icon.width,
-                                (float)button->icon.height};
-            DrawTexturePro(button->icon, source, icon_bounds,
-                           kryon_zero_vector2, 0.0f, color);
-        } else {
-            DrawIcon(button->icon_type, icon_bounds, color);
-        }
-    }
-    if(!button->icon_only && label[0] != '\0') {
-        Rectangle label_bounds = bounds;
-        label_bounds.x += content.text_x * scale;
-        label_bounds.y += content.text_y * scale;
-        label_bounds.width = content.text_width * scale;
-        label_bounds.height = content.text_height * scale;
-        int baseline = TextBaselineY(label, (int)label_bounds.y,
-            (int)label_bounds.height, font);
-        DrawUIText(label, (int)label_bounds.x, baseline, font, color);
-    }
+    ButtonProps props = ui_button_style_props(*button);
+    props.label = button->label;
+    props.icon = button->icon;
+    props.icon_type = button->icon_type > UI_ICON_TYPE_NONE &&
+        button->icon_type < UI_ICON_TYPE_COUNT ? button->icon_type : UI_ICON_TYPE_NONE;
+    props.icon_only = button->icon_only;
+    props.icon_placement = button->icon_placement;
+    Style paint = {.icon_size = button->icon_size, .gap = button->gap,
+                   .content_offset = button->content_offset};
+    ContentDrawing content = PaintContent(props, bounds, paint, font,
+        TextWidth(props.label != NULL ? props.label : "", font), ColorToInt(color),
+        ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
+        GetTime() * 1000.0, button->disclosure);
+    ui_draw(content.mark);
+    ui_draw(content.label);
 }
 
 static int

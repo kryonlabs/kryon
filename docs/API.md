@@ -1327,6 +1327,9 @@ activated, pressed, hovered, and focused flags. Native Go binds this service
 to the owning Runtime. Button's shared declaration applies its disabled,
 loading, and explicit-state rules to the sample. Retained painting resolves
 the stored sample without calling this input service again.
+Button content uses the shared `.kry` drawing path. Loading replaces both label
+and icon; disclosure takes precedence over a texture or built-in icon. Content
+offsets and icon sizing use logical pixels, scaled into physical drawing bounds.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

@@ -738,6 +738,7 @@ $(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATED_SRC_DIR)/runtime/split_button.h
 
 .PHONY: generate-runtime generate-button-policy

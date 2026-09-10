@@ -153,43 +153,35 @@ func renderButton(img *image.RGBA, op FrameOp) {
 	face := renderMaterial(img, op)
 	text := op.TextColor
 	text = unpackRGBA(Surface_Opacity(packRGBA(text), op.Opacity))
-	if op.Loading {
-		content := Button_ContentLayout(face.Width, face.Height, 0,
-			op.IconSize, 0, false, true, false, 0, 0)
-		ring := Surface_LoadingRing(face.Width, face.Height, content.IconSize,
-			op.ElapsedMS, packRGBA(text), packRGBA(op.AmbientColor))
-		renderLoadingRing(img, face.X+ring.X, face.Y+ring.Y, ring)
-		return
-	}
-	hasIcon := op.Disclosure || op.IconType != UIIconTypeNone
-	labelWidth := runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)
-	content := Button_ContentLayout(face.Width, face.Height, float32(labelWidth),
-		op.IconSize, op.Gap, hasIcon, op.IconOnly,
-		op.IconPlacement == int32(IconPlacementTrailing), op.ContentOffset.X, op.ContentOffset.Y)
-	if op.Disclosure {
-		bounds := Rectangle{X: face.X + content.IconX, Y: face.Y + content.IconY,
-			Width: content.IconSize, Height: content.IconSize}
+	props := ButtonProps{Label: op.Text, Loading: op.Loading, IconType: op.IconType,
+		IconOnly: op.IconOnly, IconPlacement: IconPlacement(op.IconPlacement)}
+	paint := Style{IconSize: op.IconSize, Gap: op.Gap, ContentOffset: op.ContentOffset}
+	content := Button_PaintContent(props, face, paint, op.FontSize,
+		float32(runtimeTextWidthWithFont(op.Text, op.FontSize, op.FontID)),
+		packRGBA(text), packRGBA(op.AmbientColor), 1, op.ElapsedMS, op.Disclosure)
+	renderDrawing(img, content.Mark, op.FontID)
+	renderDrawing(img, content.Label, op.FontID)
+}
+
+func renderDrawing(img *image.RGBA, command Drawing, fontID uint32) {
+	bounds := command.Bounds
+	color := unpackRGBA(command.Color)
+	switch command.Kind {
+	case DrawingKindDrawingText:
+		baseline := fontTextBaseline(command.Text, int(bounds.Y), int(bounds.Height), command.Font, fontID)
+		drawText(img, command.Text, int(bounds.X), baseline, command.Font, color, fontID)
+	case DrawingKindDrawingIcon:
+		renderIcon(img, FrameOp{Bounds: bounds, Color: color, IconType: command.Icon, IconSize: bounds.Width})
+	case DrawingKindDrawingChevron:
 		pixels := clipRect(img, bounds)
 		for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
 			for x := pixels.Min.X; x < pixels.Max.X; x++ {
-				coverage := Surface_ChevronCoverage(float32(x)-bounds.X, float32(y)-bounds.Y, content.IconSize)
-				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(packRGBA(text), coverage)))
+				coverage := Surface_ChevronCoverage(float32(x)-bounds.X, float32(y)-bounds.Y, bounds.Width)
+				blendPixel(img, x, y, unpackRGBA(Surface_Opacity(command.Color, coverage)))
 			}
 		}
-	} else if hasIcon {
-		renderIcon(img, FrameOp{Bounds: Rectangle{X: face.X + content.IconX,
-			Y: face.Y + content.IconY, Width: content.IconSize, Height: content.IconSize},
-			Color: text, IconType: op.IconType, IconSize: content.IconSize})
-	}
-	if !op.IconOnly && op.Text != "" {
-		textBounds := face
-		textBounds.X += content.TextX
-		textBounds.Y += content.TextY
-		textBounds.Width = content.TextWidth
-		textBounds.Height = content.TextHeight
-		baseline := fontTextBaseline(op.Text, int(textBounds.Y),
-			int(textBounds.Height), op.FontSize, op.FontID)
-		drawText(img, op.Text, int(textBounds.X), baseline, op.FontSize, text, op.FontID)
+	case DrawingKindDrawingRing:
+		renderLoadingRing(img, command.Ring.X, command.Ring.Y, command.Ring)
 	}
 }
 

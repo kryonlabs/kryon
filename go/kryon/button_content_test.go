@@ -6,6 +6,41 @@ import (
 	"testing"
 )
 
+func TestButtonContentDrawing(t *testing.T) {
+	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus}
+	bounds := Rectangle{X: 10, Y: 20, Width: 200, Height: 80}
+	paint := Style{IconSize: 18, Gap: 8, ContentOffset: Vector2{X: 2, Y: -3}}
+	draw := func(disclosure bool) ContentDrawing {
+		return Button_PaintContent(props, bounds, paint, 32, 48, 0x12345680, 0xffffffff, 2, 375, disclosure)
+	}
+	content := draw(false)
+	if content.Mark.Kind != DrawingKindDrawingIcon || content.Mark.Icon != UIIconTypePlus ||
+		content.Mark.Bounds != (Rectangle{X: 64, Y: 36, Width: 36, Height: 36}) {
+		t.Fatalf("scaled icon command: %+v", content.Mark)
+	}
+	if content.Label.Kind != DrawingKindDrawingText || content.Label.Text != "Run" ||
+		content.Label.Font != 32 || content.Label.Color != 0x12345680 ||
+		content.Label.Bounds != (Rectangle{X: 116, Y: 14, Width: 48, Height: 80}) {
+		t.Fatalf("scaled label command: %+v", content.Label)
+	}
+	props.Icon = Texture2D{ID: 7, Width: 16, Height: 24}
+	if content = draw(false); content.Mark.Kind != DrawingKindDrawingTexture || content.Mark.Texture != props.Icon {
+		t.Fatalf("texture must precede the built-in icon: %+v", content.Mark)
+	}
+	if content = draw(true); content.Mark.Kind != DrawingKindDrawingChevron {
+		t.Fatalf("disclosure must precede texture: %+v", content.Mark)
+	}
+	props.Loading = true
+	if content = draw(true); content.Mark.Kind != DrawingKindDrawingRing || content.Label.Kind != DrawingKindDrawingNone ||
+		content.Mark.Ring.X != 110 || content.Mark.Ring.Y != 60 || content.Mark.Ring.OuterRadius != 18 {
+		t.Fatalf("loading replaces icon and label with a scaled ring: %+v", content)
+	}
+	props.Loading, props.IconOnly = false, true
+	if content = draw(false); content.Label.Kind != DrawingKindDrawingNone {
+		t.Fatal("icon-only drawing retained a label")
+	}
+}
+
 func TestButtonMeasurementContract(t *testing.T) {
 	props := ButtonProps{Label: "Run", Icon: Texture2D{ID: 1}}
 	paint := Style{PaddingX: 16, PaddingY: 20, IconSize: 8.5, Gap: 8}

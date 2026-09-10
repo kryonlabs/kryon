@@ -292,8 +292,11 @@ C and Go do not perform that request separately before calling the declaration.
 Button input interpretation and motion inputs now live in the declaration.
 ReadActivation acquires the host's pointer/focus sample; ResolveButtonInput
 applies widget flags and explicit states. Deferred C painting supplies its
-stored sample to the same resolver without consuming input again. Paint and
-child orchestration still need migration to complete the widget body.
+stored sample to the same resolver without consuming input again. Content
+painting now emits shared Drawing commands: `.kry` selects the loading ring,
+disclosure, texture or icon, and label, and positions them in physical space.
+C and Go execute these commands with their text and pixel rasterizers. Material
+orchestration and child lifecycle still need migration to complete the widget body.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

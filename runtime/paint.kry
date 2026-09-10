@@ -1,0 +1,24 @@
+#module "paint"
+#import "drawing_props"
+#import "surface"
+
+# Device-independent drawing commands. Hosts rasterize; widgets choose commands.
+DrawingKind :: enum {
+    DrawingNone = 0
+    DrawingText = 1
+    DrawingIcon = 2
+    DrawingTexture = 3
+    DrawingRing = 4
+    DrawingChevron = 5
+}
+
+Drawing :: struct {
+    kind: i32
+    bounds: Rectangle
+    color: u32
+    text: const char*
+    font: i32
+    icon: i32
+    texture: Texture2D
+    ring: Ring
+}

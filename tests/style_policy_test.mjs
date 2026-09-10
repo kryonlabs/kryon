@@ -398,6 +398,27 @@ const measurement = {
   style: Object.fromEntries(["normal", "hover", "pressed", "focused", "disabled", "loading", "selected"].map(state => [state, measureStyle])),
 };
 let availableWidth = 0;
+const drawingProps = { ...measurement, icon_type: 1, icon: { ...measurement.icon, id: 0 } };
+const drawingStyle = { ...measureStyle, icon_size: 18, gap: 8, content_offset: { x: 2, y: -3 } };
+const contentDrawing = disclosure => button.Button_PaintContent(null, undefined, undefined,
+  drawingProps, { x: 10, y: 20, width: 200, height: 80 }, drawingStyle,
+  32, 48, 0x12345680, 0xffffffff, 2, 375, disclosure);
+let drawing = contentDrawing(false);
+assert.equal(drawing.mark.kind, 2);
+assert.deepEqual(drawing.mark.bounds, { x: 64, y: 36, width: 36, height: 36 });
+assert.equal(drawing.label.kind, 1);
+assert.equal(drawing.label.text, "Run");
+assert.deepEqual(drawing.label.bounds, { x: 116, y: 14, width: 48, height: 80 });
+drawingProps.icon.id = 7;
+assert.equal(contentDrawing(false).mark.kind, 3);
+assert.equal(contentDrawing(true).mark.kind, 5);
+drawingProps.loading = true;
+drawing = contentDrawing(true);
+assert.equal(drawing.mark.kind, 4);
+assert.equal(drawing.label.kind, 0);
+assert.equal(drawing.mark.ring.x, 110);
+assert.equal(drawing.mark.ring.y, 60);
+assert.equal(drawing.mark.ring.outer_radius, 18);
 function checkMeasurement(width, height) {
   assert.deepEqual(button.Button_MeasureBounds(null, undefined, undefined, measurement,
     measureStyle, 40, 27, 24, availableWidth, 1, false), { x: 0, y: 0, width, height });

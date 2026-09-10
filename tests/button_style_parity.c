@@ -228,8 +228,31 @@ static void check_button_input(void)
     }
 }
 
+static void check_button_content_drawing(void)
+{
+    ButtonProps props = {.label = "Run", .icon_type = UI_ICON_TYPE_PLUS};
+    Rectangle bounds = {10, 20, 200, 80};
+    Style paint = {.icon_size = 18, .gap = 8, .content_offset = {2, -3}};
+    ContentDrawing content = PaintContent(props, bounds, paint, 32, 48,
+        0x12345680, 0xffffffff, 2, 375, false);
+    assert(content.mark.kind == DrawingIcon && content.mark.icon == UI_ICON_TYPE_PLUS);
+    assert(content.mark.bounds.x == 64 && content.mark.bounds.y == 36);
+    assert(content.mark.bounds.width == 36 && content.mark.bounds.height == 36);
+    assert(content.label.kind == DrawingText && content.label.font == 32);
+    assert(content.label.color == 0x12345680 && strcmp(content.label.text, "Run") == 0);
+    assert(content.label.bounds.x == 116 && content.label.bounds.y == 14);
+    assert(content.label.bounds.width == 48 && content.label.bounds.height == 80);
+    props.loading = true;
+    content = PaintContent(props, bounds, paint, 32, 48,
+        0x12345680, 0xffffffff, 2, 375, true);
+    assert(content.mark.kind == DrawingRing && content.label.kind == DrawingNone);
+    assert(content.mark.ring.x == 110 && content.mark.ring.y == 60);
+    assert(content.mark.ring.outer_radius == 18);
+}
+
 int main(void)
 {
+    check_button_content_drawing();
     check_button_input();
     const int enum_pairs[][2] = {
         {StyleBackground, 1},

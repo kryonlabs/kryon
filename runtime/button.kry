@@ -5,6 +5,7 @@
 #import "control_props"
 #import "button_props"
 #import "input_props"
+#import "paint"
 #import "ui_text.h"
 #import "ui_core.h"
 
@@ -249,6 +250,64 @@ ContentLayout :: (
 
 
 
+
+# Content selection, geometry, and ordering belong to the widget, not its host.
+# Bounds and glyph measurements are physical; style lengths are logical.
+ContentDrawing :: struct {
+    mark: Drawing
+    label: Drawing
+}
+
+PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: Style,
+    font: i32, label_width: float, foreground: u32, ambient: u32,
+    scale: float, elapsed_ms: f64, disclosure: bool) -> ContentDrawing #export {
+    result: ContentDrawing
+    if scale <= 0.0 { scale = 1.0 }
+    has_icon: bool = disclosure || props.icon.id != (u32)0 || props.icon_type != 0
+    content: ButtonContent = ContentLayout(bounds.width / scale, bounds.height / scale,
+        label_width / scale, paint.icon_size, paint.gap, has_icon, props.icon_only,
+        (i32)props.icon_placement == IconPlacementTrailing,
+        paint.content_offset.x, paint.content_offset.y)
+    result.mark.color = foreground
+    if props.loading {
+        result.mark.kind = DrawingRing
+        ring: Ring = LoadingRing(bounds.width / scale, bounds.height / scale,
+            content.icon_size, elapsed_ms, foreground, ambient)
+        ring.x = bounds.x + ring.x * scale
+        ring.y = bounds.y + ring.y * scale
+        ring.inner_radius *= scale
+        ring.outer_radius *= scale
+        ring.glow_blur *= scale
+        result.mark.ring = ring
+        return result
+    }
+    if has_icon {
+        result.mark.bounds.x = bounds.x + content.icon_x * scale
+        result.mark.bounds.y = bounds.y + content.icon_y * scale
+        result.mark.bounds.width = content.icon_size * scale
+        result.mark.bounds.height = content.icon_size * scale
+        if disclosure {
+            result.mark.kind = DrawingChevron
+        } else if props.icon.id != (u32)0 {
+            result.mark.kind = DrawingTexture
+            result.mark.texture = props.icon
+        } else {
+            result.mark.kind = DrawingIcon
+            result.mark.icon = props.icon_type
+        }
+    }
+    if !props.icon_only && props.label != "" {
+        result.label.kind = DrawingText
+        result.label.bounds.x = bounds.x + content.text_x * scale
+        result.label.bounds.y = bounds.y + content.text_y * scale
+        result.label.bounds.width = content.text_width * scale
+        result.label.bounds.height = content.text_height * scale
+        result.label.text = props.label
+        result.label.font = font
+        result.label.color = foreground
+    }
+    return result
+}
 
 ShapeWidth :: (
     width: float,

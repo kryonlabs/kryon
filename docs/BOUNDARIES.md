@@ -82,6 +82,12 @@ popup ownership rules. `runtime/input_props.kry` owns the sample contract.
 Button interprets that sample in `.kry`, including disabled/loading gating and
 explicit visual states. Deferred painting resolves its stored sample without
 polling the host again. Its retained motion consumes that same resolved input.
+Button content selection and placement also belong to `.kry`. The paint module
+defines Drawing commands for text, icons, textures, rings, and chevrons. Native
+hosts rasterize commands; they do not choose which content a Button displays.
+Font measurement, font resource lookup, clipping, and pixel blending remain
+device services. C supports texture commands; the Go frame stream still lacks
+texture resource rendering.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

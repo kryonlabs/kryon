@@ -7,6 +7,7 @@ package kryon
 // #import control_props
 // #import button_props
 // #import input_props
+// #import paint
 // #import ui_text.h
 // #import ui_core.h
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
@@ -113,6 +114,11 @@ type ButtonContent struct {
 	TextY      float32
 	TextWidth  float32
 	TextHeight float32
+}
+
+type ContentDrawing struct {
+	Mark  Drawing
+	Label Drawing
 }
 
 func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput {
@@ -817,6 +823,184 @@ func Button_ContentLayout(width float32, height float32, label_width float32, re
 	}
 	var value_41 ButtonContent = result
 	return value_41
+}
+
+func Button_PaintContent(props ButtonProps, bounds Rectangle, paint Style, font int32, label_width float32, foreground uint32, ambient uint32, scale float32, elapsed_ms float64, disclosure bool) ContentDrawing {
+	var result ContentDrawing = ContentDrawing{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 bool = disclosure
+	var value_5 bool = value_4
+	if !value_5 {
+		var value_6 uint32 = props.Icon.ID
+		var value_7 int32 = 0
+		var value_8 uint32 = uint32(number_533abbd6_bits(uint64(value_7), uint64(0), 32, false, 0))
+		var value_9 bool = value_6 != value_8
+		value_5 = value_9
+	}
+	var value_10 bool = value_5
+	if !value_10 {
+		var value_11 int32 = props.IconType
+		var value_12 int32 = 0
+		var value_13 bool = value_11 != value_12
+		value_10 = value_13
+	}
+	var has_icon bool = value_10
+	var value_14 float32 = bounds.Width
+	var value_15 float32 = scale
+	var value_16 float32 = value_14 / value_15
+	var value_17 float32 = bounds.Height
+	var value_18 float32 = scale
+	var value_19 float32 = value_17 / value_18
+	var value_20 float32 = label_width
+	var value_21 float32 = scale
+	var value_22 float32 = value_20 / value_21
+	var value_23 float32 = paint.IconSize
+	var value_24 float32 = paint.Gap
+	var value_25 bool = has_icon
+	var value_26 bool = props.IconOnly
+	var value_27 IconPlacement = IconPlacement(props.IconPlacement)
+	var value_28 int32 = int32(number_533abbd6_bits(uint64(value_27), uint64(0), 32, true, 0))
+	var value_29 int32 = int32(IconPlacementTrailing)
+	var value_30 bool = value_28 == value_29
+	var value_31 float32 = paint.ContentOffset.X
+	var value_32 float32 = paint.ContentOffset.Y
+	var value_33 ButtonContent = Button_ContentLayout(value_16, value_19, value_22, value_23, value_24, value_25, value_26, value_30, value_31, value_32)
+	var content ButtonContent = value_33
+	var value_34 uint32 = foreground
+	result.Mark.Color = value_34
+	var value_35 bool = props.Loading
+	if value_35 {
+		var value_36 int32 = DrawingKindDrawingRing
+		result.Mark.Kind = value_36
+		var value_37 float32 = bounds.Width
+		var value_38 float32 = scale
+		var value_39 float32 = value_37 / value_38
+		var value_40 float32 = bounds.Height
+		var value_41 float32 = scale
+		var value_42 float32 = value_40 / value_41
+		var value_43 float32 = content.IconSize
+		var value_44 float64 = elapsed_ms
+		var value_45 uint32 = foreground
+		var value_46 uint32 = ambient
+		var value_47 Ring = Surface_LoadingRing(value_39, value_42, value_43, value_44, value_45, value_46)
+		var ring Ring = value_47
+		var value_48 float32 = bounds.X
+		var value_49 float32 = ring.X
+		var value_50 float32 = scale
+		var value_51 float32 = value_49 * value_50
+		var value_52 float32 = value_48 + value_51
+		ring.X = value_52
+		var value_53 float32 = bounds.Y
+		var value_54 float32 = ring.Y
+		var value_55 float32 = scale
+		var value_56 float32 = value_54 * value_55
+		var value_57 float32 = value_53 + value_56
+		ring.Y = value_57
+		var value_58 float32 = ring.InnerRadius
+		var value_59 float32 = scale
+		ring.InnerRadius = value_58 * value_59
+		var value_60 float32 = ring.OuterRadius
+		var value_61 float32 = scale
+		ring.OuterRadius = value_60 * value_61
+		var value_62 float32 = ring.GlowBlur
+		var value_63 float32 = scale
+		ring.GlowBlur = value_62 * value_63
+		var value_64 Ring = ring
+		result.Mark.Ring = value_64
+		var value_65 ContentDrawing = result
+		return value_65
+	}
+	var value_66 bool = has_icon
+	if value_66 {
+		var value_67 float32 = bounds.X
+		var value_68 float32 = content.IconX
+		var value_69 float32 = scale
+		var value_70 float32 = value_68 * value_69
+		var value_71 float32 = value_67 + value_70
+		result.Mark.Bounds.X = value_71
+		var value_72 float32 = bounds.Y
+		var value_73 float32 = content.IconY
+		var value_74 float32 = scale
+		var value_75 float32 = value_73 * value_74
+		var value_76 float32 = value_72 + value_75
+		result.Mark.Bounds.Y = value_76
+		var value_77 float32 = content.IconSize
+		var value_78 float32 = scale
+		var value_79 float32 = value_77 * value_78
+		result.Mark.Bounds.Width = value_79
+		var value_80 float32 = content.IconSize
+		var value_81 float32 = scale
+		var value_82 float32 = value_80 * value_81
+		result.Mark.Bounds.Height = value_82
+		var value_83 bool = disclosure
+		if value_83 {
+			var value_84 int32 = DrawingKindDrawingChevron
+			result.Mark.Kind = value_84
+		} else {
+			var value_85 uint32 = props.Icon.ID
+			var value_86 int32 = 0
+			var value_87 uint32 = uint32(number_533abbd6_bits(uint64(value_86), uint64(0), 32, false, 0))
+			var value_88 bool = value_85 != value_87
+			if value_88 {
+				var value_89 int32 = DrawingKindDrawingTexture
+				result.Mark.Kind = value_89
+				var value_90 Texture2D = props.Icon
+				result.Mark.Texture = value_90
+			} else {
+				var value_91 int32 = DrawingKindDrawingIcon
+				result.Mark.Kind = value_91
+				var value_92 int32 = props.IconType
+				result.Mark.Icon = value_92
+			}
+		}
+	}
+	var value_93 bool = props.IconOnly
+	var value_94 bool = !value_93
+	var value_95 bool = value_94
+	if value_95 {
+		var value_96 string = props.Label
+		var value_97 string = ""
+		var value_98 bool = value_96 != value_97
+		value_95 = value_98
+	}
+	if value_95 {
+		var value_99 int32 = DrawingKindDrawingText
+		result.Label.Kind = value_99
+		var value_100 float32 = bounds.X
+		var value_101 float32 = content.TextX
+		var value_102 float32 = scale
+		var value_103 float32 = value_101 * value_102
+		var value_104 float32 = value_100 + value_103
+		result.Label.Bounds.X = value_104
+		var value_105 float32 = bounds.Y
+		var value_106 float32 = content.TextY
+		var value_107 float32 = scale
+		var value_108 float32 = value_106 * value_107
+		var value_109 float32 = value_105 + value_108
+		result.Label.Bounds.Y = value_109
+		var value_110 float32 = content.TextWidth
+		var value_111 float32 = scale
+		var value_112 float32 = value_110 * value_111
+		result.Label.Bounds.Width = value_112
+		var value_113 float32 = content.TextHeight
+		var value_114 float32 = scale
+		var value_115 float32 = value_113 * value_114
+		result.Label.Bounds.Height = value_115
+		var value_116 string = props.Label
+		result.Label.Text = value_116
+		var value_117 int32 = font
+		result.Label.Font = value_117
+		var value_118 uint32 = foreground
+		result.Label.Color = value_118
+	}
+	var value_119 ContentDrawing = result
+	return value_119
 }
 
 func Button_ShapeWidth(width float32, height float32, measured_width float32, available_width float32, full_width bool, square bool, circle bool) float32 {
