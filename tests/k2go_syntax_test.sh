@@ -191,7 +191,7 @@ App :: () #ui {
     Flow((FlowProps){.bounds = {Scale(4), Scale(176), Scale(180), Scale(24)}, .gap = Scale(4)})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="flow", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
-    PageGrid((GridProps){.bounds = {Scale(4), Scale(204), Scale(180), Scale(40)}, .columns = 2, .gap = Scale(4), .padding = Scale(4)})
+    Grid((GridProps){.bounds = {Scale(4), Scale(204), Scale(180), Scale(40)}, .columns = 2, .gap = Scale(4), .padding = Scale(4)})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="g1", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     End()
@@ -226,7 +226,7 @@ App :: () #ui {
     Dropdown(22, Scale(150), Scale(70), Scale(90), Scale(24), choices, 3, &pick)
     frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
     packed: Rectangle = FramePack(&frame_box, SideTop, Scale(24))
-    layout_grid: Grid = {frame_box.bounds, 2, 2, Scale(4), Scale(4), Scale(0), Scale(0)}
+    layout_grid: GridFrame = {frame_box.bounds, 2, 2, Scale(4), Scale(4), Scale(0), Scale(0)}
     grid_cell: Rectangle = GridCell(layout_grid, 1, 1, 1, 1)
     placed: Rectangle = Place(packed, Scale(4), Scale(4), Scale(24), Scale(12))
     CanvasGrid(grid_cell, 8, GetThemeIcon())
@@ -492,7 +492,7 @@ grep -q 'kryon.Link(kryon.LinkProps{' "$out"
 grep -q 'kryon.PagePicture(kryon.PictureProps{AssetPath: "hero.png"' "$out"
 grep -q 'kryon.Section(kryon.SectionProps{' "$out"
 grep -q 'kryon.Flow(kryon.FlowProps{' "$out"
-grep -q 'kryon.PageGrid(kryon.GridProps{' "$out"
+grep -q 'kryon.Grid(kryon.GridProps{' "$out"
 grep -q 'Slider(9,' "$out"
 grep -q 'Toggle(10,' "$out"
 grep -q 'kryon.Stack(kryon.ColumnProps{' "$out"

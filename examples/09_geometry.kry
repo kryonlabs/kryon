@@ -17,7 +17,7 @@ GeometryExample :: (viewport: Rectangle) #ui {
         footer: Rectangle = FramePack(&frame,SideBottom,46)
         rail: Rectangle = FramePack(&frame,SideLeft,150)
         body: Rectangle = frame.bounds
-        grid: Grid = {body,2,3,10,10,16,16}
+        grid: GridFrame = {body,2,3,10,10,16,16}
         card0: Rectangle = GridCell(grid,0,0,1,2)
         card1: Rectangle = GridCell(grid,0,2,1,1)
         card2: Rectangle = GridCell(grid,1,0,1,1)

@@ -285,7 +285,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             Rect(x + Scale(214), y + Scale(38), Scale(160), Scale(92), GetThemeSurface(), GetThemeButton())
             Text((TextProps){.bounds={x + Scale(258), y + Scale(70), 0, 0}, .text="Stack", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
-        GridLayout((GridLayoutProps){.bounds = {x, y + Scale(148), Scale(374), Scale(48)}, .columns = 2, .gap = Scale(6)})
+        Grid((GridProps){.bounds = {x, y + Scale(148), Scale(374), Scale(48)}, .columns = 2, .gap = Scale(6)})
         if Button((ButtonProps){.bounds = {0,0,Scale(150),Scale(32)}, .label = "Grid A", .id = 124}) {
             action_count += 1
         }

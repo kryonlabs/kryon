@@ -3712,7 +3712,7 @@ main(void)
     test_drag_drop_accepts_dragged_release();
     Rectangle parent = {10, 20, 200, 120};
     FrameBox frame;
-    Grid grid;
+    GridFrame grid;
     Rectangle r;
     Rectangle hits[3] = {
         {0, 0, 20, 20},
@@ -3807,7 +3807,7 @@ main(void)
     check_int("pack width", (int)r.width, 180);
     check_int("pack height", (int)r.height, 30);
 
-    grid = (Grid){parent, 2, 2, 10, 10, 0, 0};
+    grid = (GridFrame){parent, 2, 2, 10, 10, 0, 0};
     r = GridCell(grid, 1, 1, 1, 1);
     check_int("grid x", (int)r.x, 115);
     check_int("grid y", (int)r.y, 85);

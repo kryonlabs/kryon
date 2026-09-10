@@ -30,7 +30,7 @@ typedef struct {
     int gap_y;
     int pad_x;
     int pad_y;
-} Grid;
+} GridFrame;
 
 typedef enum {
     MenuCommand,
@@ -628,7 +628,7 @@ typedef struct {
 
 FrameBox BeginFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap);
 Rectangle FramePack(FrameBox *frame, Side side, int size);
-Rectangle GridCell(Grid grid, int row, int col, int row_span, int col_span);
+Rectangle GridCell(GridFrame grid, int row, int col, int row_span, int col_span);
 Rectangle Place(Rectangle parent, int x, int y, int w, int h);
 CanvasResult BeginCanvas(Canvas canvas);
 void EndCanvas(Canvas canvas);

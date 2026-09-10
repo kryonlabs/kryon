@@ -6,6 +6,7 @@
 #include "runtime/style.h"
 #include "runtime/surface.h"
 #include "runtime/text.h"
+#include "runtime/grid.h"
 #include "ui_picture_internal.h"
 #include "ui_clip_internal.h"
 #include "ui_blend_internal.h"
@@ -447,42 +448,32 @@ static void
 ui_layout_grid_children(UIWidgetNode *nodes, UIWidgetNode *parent)
 {
     NodeId child;
-    float content_x = parent->bounds.x + parent->data.layout.padding;
-    float content_y = parent->bounds.y + parent->data.layout.padding;
-    float content_w = parent->bounds.width - parent->data.layout.padding * 2;
-    if(content_w < 0) content_w = 0;
-    int columns = parent->data.layout.columns > 0
-        ? parent->data.layout.columns : 1;
-    int index = 0;
-    float row_y = content_y;
-    float row_h = 0;
-    float cell_w = columns > 0
-        ? (content_w - parent->data.layout.gap * (columns - 1)) /
-            columns
-        : content_w;
+    GridProps props = {0};
+    GridCursor cursor;
 
-    if(cell_w < 0)
-        cell_w = 0;
+    props.bounds = parent->bounds;
+    props.columns = parent->data.layout.columns;
+    props.min_item_width = parent->data.layout.min_item_width;
+    props.max_columns = parent->data.layout.max_columns;
+    props.gap = parent->data.layout.gap;
+    props.padding = parent->data.layout.padding;
+    cursor = BeginGridCursor(props);
+
     for(child = parent->first_child; child >= 0;
         child = nodes[child].next_sibling) {
         UIWidgetNode *node = &nodes[child];
-        if(node->declared_bounds.x != 0 || node->declared_bounds.y != 0) continue;
-        int col = index % columns;
+        int height;
 
-        if(index > 0 && col == 0) {
-            row_y += row_h + parent->data.layout.gap;
-            row_h = 0;
-        }
-        node->bounds.x = content_x + col *
-            (cell_w + parent->data.layout.gap);
-        node->bounds.y = row_y;
-        if(node->bounds.width <= 0 || node->bounds.width > cell_w)
-            node->bounds.width = cell_w;
-        if(node->bounds.height > row_h)
-            row_h = node->bounds.height;
-        index++;
+        if(node->declared_bounds.x != 0 || node->declared_bounds.y != 0)
+            continue;
+        height = (int)ceilf(node->bounds.height);
+        if(height <= 0)
+            height = GetNodeHeight(*node);
+        cursor = GridStep(cursor, height, 1);
+        node->bounds = cursor.item;
     }
 }
+
 
 static NodeId
 ui_tree_add(int id, UIWidgetKind kind, Rectangle bounds, const void *props)
@@ -4097,15 +4088,17 @@ Row(RowProps props)
 }
 
 NodeId
-GridLayout(GridLayoutProps props)
+Grid(GridProps props)
 {
     NodeId node = ui_begin_layout_node(UI_WIDGET_GRID_NODE, props.key,
                                        props.bounds, props.gap,
                                        props.padding);
 
-    if(node >= 0)
-        ui_tree_nodes[node].data.layout.columns =
-            props.columns > 0 ? props.columns : 1;
+    if(node >= 0) {
+        ui_tree_nodes[node].data.layout.columns = props.columns;
+        ui_tree_nodes[node].data.layout.min_item_width = props.min_item_width;
+        ui_tree_nodes[node].data.layout.max_columns = props.max_columns;
+    }
     return node;
 }
 

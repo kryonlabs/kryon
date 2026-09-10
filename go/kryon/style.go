@@ -168,6 +168,88 @@ func Style_ResolveInteraction(explicit_state int32, disabled bool, loading bool,
 	return value_25
 }
 
+func Style_ControlStyleNone() ControlStyle {
+	var blank Style = Style{}
+	var value_0 uint32 = uint32(StyleBackground)
+	var value_1 uint32 = uint32(StyleBorder)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 9))
+	var value_3 uint32 = uint32(StyleFocus)
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, false, 9))
+	var value_5 uint32 = uint32(StyleRadius)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 9))
+	var value_7 uint32 = uint32(StyleBorderWidth)
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, false, 9))
+	var value_9 uint32 = uint32(StylePaddingX)
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_9), 32, false, 9))
+	var value_11 uint32 = uint32(StylePaddingY)
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, false, 9))
+	var value_13 uint32 = uint32(StyleOpacity)
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, false, 9))
+	var value_15 uint32 = uint32(StyleMaterial)
+	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, false, 9))
+	blank.Fields = value_16
+	var value_17 Color = Color{}
+	var value_18 uint8 = 0
+	value_17.R = value_18
+	var value_19 uint8 = 0
+	value_17.G = value_19
+	var value_20 uint8 = 0
+	value_17.B = value_20
+	var value_21 uint8 = 0
+	value_17.A = value_21
+	blank.Background = value_17
+	var value_22 Color = Color{}
+	var value_23 uint8 = 0
+	value_22.R = value_23
+	var value_24 uint8 = 0
+	value_22.G = value_24
+	var value_25 uint8 = 0
+	value_22.B = value_25
+	var value_26 uint8 = 0
+	value_22.A = value_26
+	blank.Border = value_22
+	var value_27 Color = Color{}
+	var value_28 uint8 = 0
+	value_27.R = value_28
+	var value_29 uint8 = 0
+	value_27.G = value_29
+	var value_30 uint8 = 0
+	value_27.B = value_30
+	var value_31 uint8 = 0
+	value_27.A = value_31
+	blank.Focus = value_27
+	var value_32 float32 = 0.0
+	blank.Radius = value_32
+	var value_33 float32 = 0.0
+	blank.BorderWidth = value_33
+	var value_34 float32 = 0.0
+	blank.PaddingX = value_34
+	var value_35 float32 = 0.0
+	blank.PaddingY = value_35
+	var value_36 float32 = 1.0
+	blank.Opacity = value_36
+	var value_37 int32 = int32(MaterialFlat)
+	var value_38 MaterialKind = MaterialKind(int32(number_runtime_bits(uint64(value_37), uint64(0), 32, true, 0)))
+	blank.Material = value_38
+	var style ControlStyle = ControlStyle{}
+	var value_39 Style = blank
+	style.Normal = value_39
+	var value_40 Style = blank
+	style.Hover = value_40
+	var value_41 Style = blank
+	style.Pressed = value_41
+	var value_42 Style = blank
+	style.Focused = value_42
+	var value_43 Style = blank
+	style.Disabled = value_43
+	var value_44 Style = blank
+	style.Loading = value_44
+	var value_45 Style = blank
+	style.Selected = value_45
+	var value_46 ControlStyle = style
+	return value_46
+}
+
 func Style_DefaultFields() uint32 {
 	var value_0 int32 = int32(StyleBackground)
 	var value_1 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(0), 32, false, 0))

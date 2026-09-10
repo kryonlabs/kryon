@@ -1490,6 +1490,7 @@ include/ui_draw.h function GetSmallFontSize
 include/ui_draw.h function GetTitleFontSize
 include/ui_draw.h function GetUIControlTextY
 include/ui_drawing_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_grid_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_icon_types.h enum UI_ICON_TYPE_ACTIVITY
 include/ui_icon_types.h enum UI_ICON_TYPE_AMEN
 include/ui_icon_types.h enum UI_ICON_TYPE_BACKWARD
@@ -1690,7 +1691,6 @@ include/ui_page.h function GetRouteVersion
 include/ui_page.h function Heading
 include/ui_page.h function Link
 include/ui_page.h function Page
-include/ui_page.h function PageGrid
 include/ui_page.h function PagePicture
 include/ui_page.h function ParagraphText
 include/ui_page.h function PushRoute
@@ -1951,6 +1951,7 @@ include/ui_tree.h function Background
 include/ui_tree.h function BeginButton
 include/ui_tree.h function BeginCombo
 include/ui_tree.h function BeginDisabled
+include/ui_tree.h function BeginGridCursor
 include/ui_tree.h function BeginListBox
 include/ui_tree.h function BeginPopup
 include/ui_tree.h function BeginScroll
@@ -2012,7 +2013,9 @@ include/ui_tree.h function GetNode
 include/ui_tree.h function GetNodeHeight
 include/ui_tree.h function GetNodeHeightById
 include/ui_tree.h function GetTreeNodes
-include/ui_tree.h function GridLayout
+include/ui_tree.h function Grid
+include/ui_tree.h function GridCursorHeight
+include/ui_tree.h function GridStep
 include/ui_tree.h function GuideOverlay
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Href
@@ -2037,6 +2040,7 @@ include/ui_tree.h function LabelTextField
 include/ui_tree.h function LayoutTree
 include/ui_tree.h function Line
 include/ui_tree.h function ListBox
+include/ui_tree.h function MeasureGrid
 include/ui_tree.h function MenuBar
 include/ui_tree.h function MenuButton
 include/ui_tree.h function MessageDialog

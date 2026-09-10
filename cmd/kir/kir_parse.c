@@ -555,7 +555,7 @@ ui_block_prop_type(const char *widget)
         return "LinkProps";
     if(strcmp(widget, "Flow") == 0)
         return "FlowProps";
-    if(strcmp(widget, "PageGrid") == 0)
+    if(strcmp(widget, "Grid") == 0)
         return "GridProps";
     return NULL;
 }

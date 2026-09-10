@@ -73,6 +73,9 @@ main(void)
     ButtonRowProps row = {.width = 240, .height = 40};
     Form form;
     Rectangle taken;
+    GridMetrics grid_metrics;
+    GridCursor grid_cursor;
+    Rectangle grid_item;
     UIScreenScaffold scaffold;
     BottomNavProps nav = {0};
     TabBarProps tabs = {0};
@@ -320,7 +323,7 @@ main(void)
     Stack((ColumnProps){.bounds = {0, 0, 20, 12}, .key = 385}); End();
     End();
     End();
-    page_grid = PageGrid((GridProps){.bounds = {0, 0, 100, 40},
+    page_grid = Grid((GridProps){.bounds = {0, 0, 100, 40},
                                      .columns = 2,
                                      .gap = 4,
                                      .padding = 4,
@@ -348,6 +351,29 @@ main(void)
     check_int("page grid second y", (int)nodes[grid_second].bounds.y,
               (int)nodes[page_grid].bounds.y + 4);
 
+    grid_metrics = MeasureGrid((GridProps){.bounds = {0, 0, 660, 0},
+                                           .min_item_width = 200,
+                                           .gap = 12});
+    check_int("responsive grid columns", grid_metrics.columns, 3);
+    check_int("responsive grid cell width", grid_metrics.cell_width, 212);
+    grid_cursor = BeginGridCursor((GridProps){.bounds = {10, 20, 660, 0},
+                                           .min_item_width = 200,
+                                           .gap = 12});
+    grid_cursor = GridStep(grid_cursor, 40, 1);
+    grid_item = grid_cursor.item;
+    check_int("responsive grid item 0 x", (int)grid_item.x, 10);
+    check_int("responsive grid item 0 width", (int)grid_item.width, 212);
+    grid_cursor = GridStep(grid_cursor, 50, 2);
+    grid_item = grid_cursor.item;
+    check_int("responsive grid span x", (int)grid_item.x, 234);
+    check_int("responsive grid span width", (int)grid_item.width, 436);
+    grid_cursor = GridStep(grid_cursor, 30, 3);
+    grid_item = grid_cursor.item;
+    check_int("responsive grid full span x", (int)grid_item.x, 10);
+    check_int("responsive grid full span y", (int)grid_item.y, 82);
+    check_int("responsive grid full span width", (int)grid_item.width, 660);
+    check_int("responsive grid cursor height", GridCursorHeight(grid_cursor), 92);
+
     /* Grid buttons must hit their visible cells during construction, before
        EndTree performs retained layout. Exercise both columns independently. */
     for(int column = 0; column < 2; column++) {
@@ -359,8 +385,8 @@ main(void)
             InjectPump();
             BeginUIFrame(640, 480, 1.0f);
             BeginTree(390 + column);
-            GridLayout((GridLayoutProps){.bounds = {100, 100, 200, 60},
-                                         .columns = 2});
+            Grid((GridProps){.bounds = {100, 100, 200, 60},
+                              .columns = 2});
             check_int("grid first cell immediate click",
                       Button((ButtonProps){.bounds = {0, 0, 90, 40},
                                            .label = "A", .id = 3901}),

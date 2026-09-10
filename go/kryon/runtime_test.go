@@ -907,7 +907,7 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	rt.Link(LinkProps{Text: "Read more", Href: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
 	rt.PagePicture(PictureProps{AssetPath: "hero.png", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE}, "Hero")
 	rt.End()
-	rt.PageGrid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
+	rt.Grid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
 	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "A", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
 	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "B", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
 	rt.End()

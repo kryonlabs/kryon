@@ -30,7 +30,7 @@ typedef struct {
     int row_step;
     int row_count;
     int height;
-} UIThemeGridLayout;
+} ThemeGrid;
 
 static const char *
 ui_theme_label(ThemeId theme)
@@ -340,10 +340,10 @@ DrawThemeSettingsMenus(ThemeSettingsProps settings, ThemeSettingsState *state)
     return result;
 }
 
-static UIThemeGridLayout
-ui_theme_grid_layout(int w)
+static ThemeGrid
+theme_grid(int w)
 {
-    UIThemeGridLayout layout = {0};
+    ThemeGrid layout = {0};
     int small_font = Text12;
 
     int row_gap = Scale(14);
@@ -381,7 +381,7 @@ ui_draw_theme_grid(int x, int circle_y, int w, int dark, int *theme_id)
     int changed = 0;
     int small_font = Text12;
     int selected = theme_id != NULL ? *theme_id : THEME_SUNSET;
-    UIThemeGridLayout layout = ui_theme_grid_layout(w);
+    ThemeGrid layout = theme_grid(w);
     int start_x = x + (w - layout.row_width) / 2;
     Vector2 mouse_world = ui_mouse_world();
 
@@ -491,5 +491,5 @@ RenderThemePicker(int x, int y, int w, int dark_mode,
 int
 ui_theme_picker_height(int w)
 {
-    return Scale(12) + ui_theme_grid_layout(w).height;
+    return Scale(12) + theme_grid(w).height;
 }

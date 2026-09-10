@@ -1,0 +1,94 @@
+#module "grid"
+#import "grid_props"
+
+MeasureGrid :: (props: GridProps) -> GridMetrics #export {
+    grid: GridMetrics
+    gap: i32 = props.gap >= 0 ? props.gap : 0
+    padding: i32 = props.padding >= 0 ? props.padding : 0
+    available: i32
+    columns: i32 = props.columns
+    min_width: i32
+
+    grid.bounds = props.bounds
+    grid.gap = gap
+    grid.padding = padding
+    grid.content = (Rectangle){
+        props.bounds.x + (float)padding,
+        props.bounds.y + (float)padding,
+        props.bounds.width - (float)(padding * 2),
+        props.bounds.height - (float)(padding * 2)
+    }
+    if grid.content.width < 0.0 { grid.content.width = 0.0 }
+    if grid.content.height < 0.0 { grid.content.height = 0.0 }
+
+    available = (i32)grid.content.width
+    if columns <= 0 {
+        min_width = props.min_item_width > 0 ? props.min_item_width : available
+        if min_width <= 0 { min_width = 1 }
+        columns = (available + gap) / (min_width + gap)
+    }
+    if columns < 1 { columns = 1 }
+    if props.max_columns > 0 && columns > props.max_columns {
+        columns = props.max_columns
+    }
+
+    grid.columns = columns
+    grid.cell_width = columns > 0
+        ? (available - gap * (columns - 1)) / columns
+        : available
+    if grid.cell_width < 0 { grid.cell_width = 0 }
+    return grid
+}
+
+BeginGridCursor :: (props: GridProps) -> GridCursor #export {
+    cursor: GridCursor
+    cursor.metrics = MeasureGrid(props)
+    cursor.x = (i32)cursor.metrics.content.x
+    cursor.y = (i32)cursor.metrics.content.y
+    return cursor
+}
+
+GridStep :: (cursor: GridCursor, height: i32, column_span: i32) -> GridCursor #export {
+    columns: i32 = cursor.metrics.columns > 0 ? cursor.metrics.columns : 1
+    span: i32
+    width: i32
+
+    if height < 0 { height = 0 }
+    span = column_span > 0 ? column_span : 1
+    if span > columns { span = columns }
+    if cursor.col > 0 && cursor.col + span > columns {
+        cursor.y += cursor.row_height + cursor.metrics.gap
+        cursor.used_height += cursor.row_height + cursor.metrics.gap
+        cursor.col = 0
+        cursor.row_height = 0
+    }
+
+    width = cursor.metrics.cell_width * span + cursor.metrics.gap * (span - 1)
+    cursor.item = (Rectangle){
+        (float)(cursor.x + cursor.col * (cursor.metrics.cell_width + cursor.metrics.gap)),
+        (float)cursor.y,
+        (float)width,
+        (float)height
+    }
+    if height > cursor.row_height { cursor.row_height = height }
+    cursor.col += span
+    if cursor.col >= columns {
+        cursor.y += cursor.row_height + cursor.metrics.gap
+        cursor.used_height += cursor.row_height + cursor.metrics.gap
+        cursor.col = 0
+        cursor.row_height = 0
+    }
+    return cursor
+}
+
+
+GridCursorHeight :: (cursor: GridCursor) -> i32 #export {
+    height: i32 = cursor.used_height
+    if cursor.row_height > 0 {
+        height += cursor.row_height
+    } else if height > 0 {
+        height -= cursor.metrics.gap
+    }
+    if height < 0 { height = 0 }
+    return height
+}

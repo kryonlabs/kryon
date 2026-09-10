@@ -431,11 +431,11 @@ End();
 ```
 
 Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `PagePicture`,
-`Flow`, and `PageGrid` for Kryon-authored website surfaces. `PagePicture` is
-named separately because `Image` is already the decoded-image type in the
-raylib compatibility surface; `PageGrid` avoids the existing `Grid` type name.
-The Go runtime mirrors these helpers and records semantic `FrameOp` metadata,
-so `.kry` files lowered through `k2go` can use the same page API.
+`Flow`, and `Grid` for Kryon-authored website surfaces. `PagePicture` is named
+separately because `Image` is already the decoded-image type in the raylib
+compatibility surface. The Go runtime mirrors these helpers and records
+semantic `FrameOp` metadata, so `.kry` files lowered through `k2go` can use the
+same page API.
 `GetRouteVersion()` increments when the browser route changes through
 `PushRoute`, `ReplaceRoute`, `popstate`, or `hashchange`; non-DOM backends
 return `0`.

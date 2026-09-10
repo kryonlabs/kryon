@@ -732,7 +732,7 @@ $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
 $(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/instance.h
 
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h
 
 $(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h

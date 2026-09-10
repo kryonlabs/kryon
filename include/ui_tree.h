@@ -4,6 +4,7 @@
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
 #include "ui_button_props.generated.h"
+#include "ui_grid_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_overlay.h"
@@ -131,6 +132,8 @@ typedef union UIWidgetData {
         int gap;
         int padding;
         int columns;
+        int min_item_width;
+        int max_columns;
     } layout;
     ParagraphSpec paragraph;
     ReadonlyTextBoxProps readonly_text_box;
@@ -521,17 +524,14 @@ typedef struct {
     KeyID key;
 } RowProps;
 
-typedef struct {
-    Rectangle bounds;
-    int columns;
-    int gap;
-    int padding;
-    KeyID key;
-} GridLayoutProps;
+GridMetrics MeasureGrid(GridProps props);
+GridCursor BeginGridCursor(GridProps props);
+GridCursor GridStep(GridCursor cursor, int32_t height, int32_t column_span);
+int32_t GridCursorHeight(GridCursor cursor);
 
 NodeId Column(ColumnProps props);
 NodeId Row(RowProps props);
-NodeId GridLayout(GridLayoutProps props);
+NodeId Grid(GridProps props);
 NodeId Stack(ColumnProps props);
 NodeId Screen(ColumnProps props);
 

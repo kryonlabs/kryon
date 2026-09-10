@@ -268,10 +268,3 @@ Flow(FlowProps props)
 {
     return Row((RowProps){props.bounds, props.gap, props.padding, props.key});
 }
-
-NodeId
-PageGrid(GridProps props)
-{
-    return GridLayout((GridLayoutProps){props.bounds, props.columns,
-                                        props.gap, props.padding, props.key});
-}

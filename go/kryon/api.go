@@ -342,7 +342,7 @@ func Column(props ColumnProps)   { active().Column(props) }
 func Row(props ColumnProps)      { active().Row(props) }
 func Stack(props ColumnProps)    { active().Stack(props) }
 func Screen(props ColumnProps)   { active().Screen(props) }
-func GridLayout(props GridProps) { active().GridLayout(props) }
+func Grid(props GridProps)       { active().Grid(props) }
 func End()                       { active().End() }
 func SetPageTitle(title string)  { active().SetPageTitle(title) }
 func SetPageDescription(description string) {
@@ -364,7 +364,6 @@ func ParagraphText(props ParagraphTextProps) {
 func Link(props LinkProps) bool                      { return active().Link(props) }
 func PagePicture(props PictureProps, altText string) { active().PagePicture(props, altText) }
 func Flow(props FlowProps)                           { active().Flow(props) }
-func PageGrid(props GridProps)                       { active().PageGrid(props) }
 func Fade(c Color, alpha float32) Color              { return active().Fade(c, alpha) }
 func GetThemeSurface() Color                         { return active().GetThemeSurface() }
 func GetThemeBorder() Color                          { return active().GetThemeBorder() }
@@ -446,7 +445,7 @@ func BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox {
 func FramePack(frame *FrameBox, side Side, size int32) Rectangle {
 	return active().FramePack(frame, side, size)
 }
-func GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle {
+func GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle {
 	return active().GridCell(grid, row, col, rowSpan, colSpan)
 }
 func Place(parent Rectangle, x, y, w, h int32) Rectangle {

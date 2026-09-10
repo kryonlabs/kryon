@@ -1,0 +1,31 @@
+#module "grid_props"
+#import "kryon_compat.generated.h"
+
+GridProps :: struct {
+    bounds: Rectangle
+    columns: i32
+    min_item_width: i32
+    max_columns: i32
+    gap: i32
+    padding: i32
+    key: u64
+}
+
+GridMetrics :: struct {
+    bounds: Rectangle
+    content: Rectangle
+    columns: i32
+    gap: i32
+    padding: i32
+    cell_width: i32
+}
+
+GridCursor :: struct {
+    metrics: GridMetrics
+    item: Rectangle
+    x: i32
+    y: i32
+    col: i32
+    row_height: i32
+    used_height: i32
+}

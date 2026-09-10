@@ -72,14 +72,6 @@ typedef struct FlowProps {
     KeyID key;
 } FlowProps;
 
-typedef struct GridProps {
-    Rectangle bounds;
-    int columns;
-    int gap;
-    int padding;
-    KeyID key;
-} GridProps;
-
 void SetPageTitle(const char *title);
 void SetPageDescription(const char *description);
 void SetPageCanonicalURL(const char *url);
@@ -97,6 +89,5 @@ void ParagraphText(ParagraphTextProps props);
 int Link(LinkProps props);
 void PagePicture(PictureProps picture, const char *alt_text);
 NodeId Flow(FlowProps props);
-NodeId PageGrid(GridProps props);
 
 #endif

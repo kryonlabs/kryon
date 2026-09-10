@@ -462,7 +462,7 @@ FramePack(FrameBox *frame, Side side, int size)
 }
 
 Rectangle
-GridCell(Grid grid, int row, int col, int row_span, int col_span)
+GridCell(GridFrame grid, int row, int col, int row_span, int col_span)
 {
     float gx = (float)Scale(grid.gap_x);
     float gy = (float)Scale(grid.gap_y);

@@ -768,7 +768,7 @@ type FrameBox struct {
 	CursorY int32
 }
 
-type Grid struct {
+type GridFrame struct {
 	Bounds Rectangle
 	Rows   int32
 	Cols   int32
@@ -849,14 +849,6 @@ type LinkProps struct {
 }
 
 type FlowProps = ColumnProps
-
-type GridProps struct {
-	Bounds  Rectangle
-	Columns int32
-	Gap     int32
-	Padding int32
-	Key     KeyID
-}
 
 type BottomNavItem struct {
 	Route    int32
@@ -1397,7 +1389,7 @@ type Runtime interface {
 	Row(ColumnProps)
 	Stack(ColumnProps)
 	Screen(ColumnProps)
-	GridLayout(GridProps)
+	Grid(GridProps)
 	End()
 	SetPageTitle(string)
 	SetPageDescription(string)
@@ -1415,7 +1407,6 @@ type Runtime interface {
 	Link(LinkProps) bool
 	PagePicture(PictureProps, string)
 	Flow(FlowProps)
-	PageGrid(GridProps)
 	TextField(TextFieldProps)
 	Key(text string) KeyID
 	Fade(Color, float32) Color
@@ -1483,7 +1474,7 @@ type Runtime interface {
 	EndCanvas(canvas Canvas)
 	BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox
 	FramePack(frame *FrameBox, side Side, size int32) Rectangle
-	GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle
+	GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle
 	Place(parent Rectangle, x, y, w, h int32) Rectangle
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeDarkMode(dark int32)
@@ -4599,7 +4590,7 @@ func (r *runtime) Stack(props ColumnProps) {
 func (r *runtime) Screen(props ColumnProps) {
 	r.pushGroup(props, FrameOpScreen)
 }
-func (r *runtime) GridLayout(props GridProps) {
+func (r *runtime) Grid(props GridProps) {
 	r.pushGrid(props)
 }
 func (r *runtime) SetPageTitle(title string) {
@@ -4724,9 +4715,6 @@ func (r *runtime) PagePicture(props PictureProps, altText string) {
 }
 func (r *runtime) Flow(props FlowProps) {
 	r.Row(ColumnProps(props))
-}
-func (r *runtime) PageGrid(props GridProps) {
-	r.GridLayout(props)
 }
 func (r *runtime) End() {
 	if len(r.layout) > 0 {
@@ -6566,7 +6554,7 @@ func (r *runtime) FramePack(frame *FrameBox, side Side, size int32) Rectangle {
 	}
 	return out
 }
-func (r *runtime) GridCell(grid Grid, row, col, rowSpan, colSpan int32) Rectangle {
+func (r *runtime) GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle {
 	if grid.Rows <= 0 || grid.Cols <= 0 {
 		return Rectangle{}
 	}
@@ -7020,15 +7008,33 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKin
 func (r *runtime) pushGrid(props GridProps) {
 	bounds := r.layoutRect(props.Bounds)
 	padding := float32(props.Padding)
+	gap := float32(props.Gap)
+	available := int32(bounds.Width - padding*2)
 	columns := props.Columns
+	if available < 0 {
+		available = 0
+	}
+	if columns < 1 {
+		minWidth := props.MinItemWidth
+		if minWidth < 1 {
+			minWidth = available
+		}
+		if minWidth < 1 {
+			minWidth = 1
+		}
+		columns = (available + props.Gap) / (minWidth + props.Gap)
+	}
 	if columns < 1 {
 		columns = 1
+	}
+	if props.MaxColumns > 0 && columns > props.MaxColumns {
+		columns = props.MaxColumns
 	}
 	r.layout = append(r.layout, layoutFrame{
 		bounds:  bounds,
 		cursorX: bounds.X + padding,
 		cursorY: bounds.Y + padding,
-		gap:     float32(props.Gap),
+		gap:     gap,
 		padding: padding,
 		columns: columns,
 	})
@@ -7888,11 +7894,11 @@ func textMoveSelection(current selection, cursor, target int, extend bool) (int,
 	return target, selection{Anchor: target, Cursor: target}
 }
 
-func cellW(grid Grid) float32 {
+func cellW(grid GridFrame) float32 {
 	return (grid.Bounds.Width - float32(grid.PadX*2) - float32(max32(0, grid.Cols-1)*grid.GapX)) / float32(grid.Cols)
 }
 
-func cellH(grid Grid) float32 {
+func cellH(grid GridFrame) float32 {
 	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
 }
 
