@@ -324,6 +324,6 @@ $(RAYLIB_BUILD_DIR): | build
 	mkdir -p $@
 
 $(KRYON_ICON_ASSETS_C) $(KRYON_ICON_NAMES_C) $(KRYON_ICON_TYPES_H): $(KRYON_ICON_FILES) $(KRYON_DIR)/scripts/embed-icon-sheets.py $(KRYON_DIR)/include/ui_icons.h | $(NATIVE_OBJ_DIR)
-	python3 $(KRYON_DIR)/scripts/embed-icon-sheets.py "$(KRYON_DIR)/icons" "$(KRYON_ICON_ASSETS_C)" \
-		--types-output "$(KRYON_ICON_TYPES_H)" \
-		--names-output "$(KRYON_ICON_NAMES_C)"
+	python3 $(KRYON_DIR)/scripts/embed-icon-sheets.py "$(abspath $(KRYON_DIR)/icons)" "$(abspath $(KRYON_ICON_ASSETS_C))" \
+		--types-output "$(abspath $(KRYON_ICON_TYPES_H))" \
+		--names-output "$(abspath $(KRYON_ICON_NAMES_C))"
