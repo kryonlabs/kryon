@@ -16,7 +16,6 @@ int CarouselControls(CarouselControlsProps p)
 
     int hit = Scale(56);
     int inset = Scale(12);
-    int icon = Scale(14);
     if(p.bounds.width >= hit * 2 && p.bounds.height >= hit) {
         for(int i = 0; i < 2; i++) {
             Rectangle bounds = {
@@ -26,25 +25,16 @@ int CarouselControls(CarouselControlsProps p)
                 hit,
                 hit
             };
-            Vector2 center = {bounds.x + hit / 2, bounds.y + hit / 2};
-            Color foreground = Fade(WHITE, p.disabled ? 0.35f : 1.0f);
             int d = i ? 1 : -1;
-            Vector2 tip = {center.x + d * icon / 2, center.y};
-
-            if(IsWindowReady()) {
-                DrawCircleV(center, hit / 2, Fade(BLACK, 0.46f));
-                DrawLineEx((Vector2){center.x - d * icon / 2,
-                                     center.y - icon},
-                           tip, Scale(3), foreground);
-                DrawLineEx(tip,
-                           (Vector2){center.x - d * icon / 2,
-                                     center.y + icon},
-                           Scale(3), foreground);
-            }
-            if(InvisibleButton((InvisibleButtonProps){
+            if(Button((ButtonProps){
                    .bounds = bounds,
                    .id = p.id + i,
-                   .disabled = p.disabled
+                   .disabled = p.disabled,
+                   .circle = true,
+                   .icon_only = true,
+                   .icon_type = i ? UI_ICON_TYPE_RIGHT : UI_ICON_TYPE_LEFT,
+                   .tone = ButtonToneNeutral,
+                   .emphasis = ButtonEmphasisSoft
                })) {
                 selected = (selected + d + p.count) % p.count;
             }
