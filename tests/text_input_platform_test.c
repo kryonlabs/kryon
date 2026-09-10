@@ -37,12 +37,25 @@ main(void)
 
     SetTextInputPlatformCallback(text_input_callback);
 
+    ok &= TextInputActive() == 0;
+    if(TextInputActive() != 0)
+        fprintf(stderr, "FAIL: text input active initially got %d want 0\n",
+                TextInputActive());
+
     BeginUIFrame(640, 480, 1.0f);
     SetUIFocusTextInputActive(1);
+    ok &= TextInputActive() == 1;
+    if(TextInputActive() != 1)
+        fprintf(stderr, "FAIL: text input active after focus got %d want 1\n",
+                TextInputActive());
     EndUIFrame();
 
     BeginUIFrame(640, 480, 1.0f);
     SetUIFocusTextInputActive(0);
+    ok &= TextInputActive() == 0;
+    if(TextInputActive() != 0)
+        fprintf(stderr, "FAIL: text input active after clear got %d want 0\n",
+                TextInputActive());
     EndUIFrame();
 
     BeginUIFrame(640, 480, 1.0f);

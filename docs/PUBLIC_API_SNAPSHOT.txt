@@ -1457,6 +1457,7 @@ include/ui_core.h function SetUILinkColor
 include/ui_core.h function SetUIModalCapture
 include/ui_core.h function SetUIMouseWorldOverride
 include/ui_core.h function SetUITransitionCuesEnabled
+include/ui_core.h function TextInputActive
 include/ui_core.h function UIConsumePointerRelease
 include/ui_core.h function UIConsumeRelease
 include/ui_core.h function UIFocusFrameOpen

@@ -99,6 +99,7 @@ void SetUIFocus(int id);
 int GetUIFocus(void);
 void ClearUIFocus(void);
 void SetUIFocusTextInputActive(int active);
+int TextInputActive(void);
 
 extern int ui_view_height;
 extern int ui_view_width;

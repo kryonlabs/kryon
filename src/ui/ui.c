@@ -1756,6 +1756,12 @@ SetUIFocusTextInputActive(int active)
     }
 }
 
+int
+TextInputActive(void)
+{
+    return g_ui_focus_text_input_active != 0;
+}
+
 void
 RenderFocus(Rectangle bounds)
 {
