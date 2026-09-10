@@ -42,6 +42,7 @@ ButtonState :: enum {
 MaterialKind :: enum {
     MaterialLightfield = 0
     MaterialFlat = 1
+    MaterialGlass = 2
 }
 
 StyleField :: enum {

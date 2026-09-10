@@ -62,6 +62,7 @@ typedef enum ButtonState {
 typedef enum MaterialKind {
     MaterialLightfield = 0,
     MaterialFlat = 1,
+    MaterialGlass = 2,
 } MaterialKind;
 
 typedef enum StyleField {

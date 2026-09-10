@@ -1124,7 +1124,16 @@ type SpinboxProps struct {
 	Wrap      bool
 }
 
+type DropdownOption struct {
+	Label           string
+	FontName        string
+	IconType        int32
+	Disabled        bool
+	SeparatorBefore bool
+}
+
 type ComboboxProps struct {
+	Items         []DropdownOption
 	Bounds        Rectangle
 	ID            int32
 	Options       []string
@@ -4405,6 +4414,14 @@ func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
 }
 
 func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32) bool {
+	return r.dropdownOptionsAt(id, bounds, labels, nil, selected)
+}
+
+func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string, items []DropdownOption, selected *int32) bool {
+	contentMetrics := Dropdown_Content(packStyle(r.dropdownStyle(0, false, ButtonStateNormal)), 1)
+	disabledRow := func(index int32) bool {
+		return index >= 0 && int(index) < len(items) && items[index].Disabled
+	}
 	if r.dropdownsSeen == nil {
 		r.dropdownsSeen = make(map[int32]bool)
 	}
@@ -4463,6 +4480,7 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	changed := false
 	if open && !pressed && keyboardAvailable {
 		highlight := clamp32(r.dropdownHighlight[id], 0, int32(len(labels)-1))
+		previousHighlight := highlight
 		if r.keyDown[KeyUp] {
 			highlight = max32(0, highlight-1)
 		} else if r.keyDown[KeyDown] {
@@ -4472,11 +4490,32 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		} else if r.keyDown[KeyEnd] {
 			highlight = int32(len(labels) - 1)
 		}
+		direction := int32(1)
+		if r.keyDown[KeyUp] || r.keyDown[KeyEnd] {
+			direction = -1
+		}
+		candidate := highlight
+		for candidate >= 0 && int(candidate) < len(labels) && disabledRow(candidate) {
+			candidate += direction
+		}
+		if candidate >= 0 && int(candidate) < len(labels) {
+			highlight = candidate
+		} else if !disabledRow(previousHighlight) {
+			highlight = previousHighlight
+		} else {
+			candidate = previousHighlight
+			for candidate >= 0 && int(candidate) < len(labels) && disabledRow(candidate) {
+				candidate -= direction
+			}
+			if candidate >= 0 && int(candidate) < len(labels) {
+				highlight = candidate
+			}
+		}
 		if r.dropdownHighlight == nil {
 			r.dropdownHighlight = make(map[int32]int32)
 		}
 		r.dropdownHighlight[id] = highlight
-		if r.keyDown[KeyEnter] || r.keyDown[335] {
+		if (r.keyDown[KeyEnter] || r.keyDown[335]) && !disabledRow(highlight) {
 			if selected != nil {
 				changed = *selected != highlight
 				*selected = highlight
@@ -4489,8 +4528,17 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 	}
 	focused := !r.contentDisabled() && id > 0 && r.focusID == id
 	foreground := r.dropdownTrigger(id, bounds, open, focused)
-	textClip := Rectangle{X: bounds.X + 12, Y: bounds.Y, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}
-	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: bounds.X + 12, Y: bounds.Y + (bounds.Height-16)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: Text16, ID: id, Row: -1})
+	selectedFontID := uint32(0)
+	if selected != nil && *selected >= 0 && int(*selected) < len(items) {
+		selectedFontID = registeredTypeface(items[*selected].FontName)
+	}
+	textX := bounds.X + contentMetrics.Padding
+	if selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != UIIconTypeNone {
+		r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: items[*selected].IconType, Color: foreground, ID: id})
+		textX += contentMetrics.Icon + contentMetrics.Gap
+	}
+	textClip := Rectangle{X: textX, Y: bounds.Y, Width: max(float32(0), bounds.X+bounds.Width-36-textX), Height: bounds.Height}
+	r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Font)/2, Width: max(float32(0), bounds.Width-48), Height: bounds.Height}, Text: selectedLabel(labels, selected), Color: foreground, FontSize: int32(contentMetrics.Font), FontID: selectedFontID, ID: id, Row: -1})
 	r.dropdownChevron(id, bounds, open, foreground)
 	if !open {
 		return pressed || changed
@@ -4502,9 +4550,9 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		r.endPopupInput(input)
 		r.endPaintLayer(layer)
 	}()
-	surface := r.dropdownSurface(panel, false, ButtonStateNormal)
+	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal)
 	surface.ID = id
-	surface.Radius = r.themeMetrics().RadiusLarge
+	surface.Radius = r.themeMetrics().RadiusLarge + 2
 	r.record(surface)
 	if r.dropdownOffsets == nil {
 		r.dropdownOffsets = make(map[int32]*int32)
@@ -4535,18 +4583,20 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 		label := labels[i]
 		row := Rectangle{X: content.X, Y: content.Y + float32(i)*itemH, Width: content.Width, Height: itemH}
 		selectedRow := selected != nil && int32(i) == *selected
-		highlighted := r.dropdownHighlight[id] == int32(i) || pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		highlighted := !disabledRow(int32(i)) && (r.dropdownHighlight[id] == int32(i) || pointInRect(r.mousePos.X, r.mousePos.Y, row))
 		state := ButtonStateNormal
 		if highlighted {
 			state = ButtonStateHover
 		}
-		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, selectedRow, state)
+		if disabledRow(int32(i)) {
+			state = ButtonStateDisabled
+		}
+		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, 2, selectedRow, state)
 		paint.ID, paint.Row, paint.Selected, paint.Focused = id, int32(i), selectedRow, highlighted
-		paint.Material = MaterialFlat
 		if selectedRow || highlighted {
 			r.record(paint)
 		}
-		if selected != nil && r.consumeTap(row) {
+		if selected != nil && !disabledRow(int32(i)) && r.consumeTap(row) {
 			next := int32(i)
 			if *selected != next {
 				*selected = next
@@ -4555,12 +4605,25 @@ func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, select
 			r.closeDropdown(id)
 			selectedRow = true
 		}
-		textClip := Rectangle{X: row.X + 12, Y: row.Y, Width: max(float32(0), row.Width-48), Height: row.Height}
-		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: row.X + 12, Y: row.Y + (row.Height-16)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: Text16, ID: id, Row: int32(i), Selected: selectedRow})
+		paint.TextColor = unpackRGBA(Surface_Opacity(packRGBA(paint.TextColor), paint.Opacity))
+		textX := row.X + contentMetrics.Padding
+		fontID := uint32(0)
+		if i < len(items) {
+			item := items[i]
+			fontID = registeredTypeface(item.FontName)
+			if item.SeparatorBefore {
+				r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 16, Y: row.Y, Width: row.Width - 32}, Color: r.Fade(paint.TextColor, 0.18), ID: id})
+			}
+			if item.IconType != UIIconTypeNone {
+				r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: item.IconType, Color: paint.TextColor, ID: id})
+				textX += contentMetrics.Icon + contentMetrics.Gap
+			}
+		}
+		textClip := Rectangle{X: textX, Y: row.Y, Width: max(float32(0), row.X+row.Width-contentMetrics.Padding-contentMetrics.Icon-contentMetrics.Gap-textX), Height: row.Height}
+		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), FontID: fontID, ID: id, Row: int32(i), Selected: selectedRow})
 		if selectedRow {
-			cx, cy := row.X+row.Width-22, row.Y+row.Height/2
-			r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: paint.TextColor, Bounds: Rectangle{X: cx - 4, Y: cy, Width: 3, Height: 3}})
-			r.record(FrameOp{Kind: FrameOpLine, ID: id, Color: paint.TextColor, Bounds: Rectangle{X: cx - 1, Y: cy + 3, Width: 6, Height: -6}})
+			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: UIIconTypeCheck,
+				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}})
 		}
 	}
 	return pressed || changed
@@ -5790,6 +5853,19 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 }
 func (r *runtime) Combobox(p ComboboxProps) bool {
 	p.Bounds = r.layoutRect(p.Bounds)
+	if len(p.Items) > 0 {
+		count := len(p.Items)
+		if p.OptionCount > 0 && int(p.OptionCount) < count {
+			count = int(p.OptionCount)
+		}
+		labels := make([]string, count)
+		for i := range labels {
+			labels[i] = p.Items[i].Label
+		}
+		r.BeginDisabled(p.Disabled)
+		defer r.EndDisabled()
+		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex)
+	}
 	n := p.OptionCount
 	if n <= 0 || n > int32(len(p.Options)) {
 		n = int32(len(p.Options))

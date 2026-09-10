@@ -1,17 +1,15 @@
 # Dropdown appearance
 
-Proposal 2 (Frosted Glass) is the visual direction for the standard Dropdown
-and Combobox. The native implementation uses the existing button materials:
-neutral soft triggers, a raised panel with the theme's large radius, and flat
-inset rows. Selection uses accent soft selected colors plus a checkmark, while
-hover and keyboard navigation use neutral hover colors.
+Button is the styling source of truth. The dropdown trigger uses the neutral
+soft Button style unchanged. The floating panel uses the shared glass material;
+dark selection uses accent filled Button styling, light selection uses accent
+soft styling, and navigation hover uses neutral soft styling. Typography,
+icons, padding, and gaps come from the resolved Button metrics.
 
-The appearance follows the active palette rather than hardcoding blue. Button
-style resolution remains in runtime/button.kry and surface drawing policy in
-runtime/surface.kry. The C and Go dropdown adapters reuse those policies.
+The full contract, state rules, and allowed adaptations are documented in
+[Widget styling](../../docs/WIDGET_STYLING.md).
 
-Run `make dropdown-capture` to render actual native dropdowns beside buttons in
-dark and light themes. Images are written to the build directory under
-`dropdown-captures/`. These captures are review artifacts, not approved pixel
-baselines. The reference image also illustrates searchable and multiple-selection
-compositions; this styling change does not add those to the single-select API.
+Run `make dropdown-capture` to render the actual native controls in both themes.
+The output is under `build/linux-x86_64/dropdown-captures/`. Captures are review
+artifacts, not approved pixel baselines. Searchable and multiple-selection
+menus in the reference are compositions, not implicit single-select behavior.

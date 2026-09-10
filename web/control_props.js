@@ -26,6 +26,7 @@ export const ButtonStateLoading = 6;
 export const ButtonStateSelected = 7;
 export const MaterialLightfield = 0;
 export const MaterialFlat = 1;
+export const MaterialGlass = 2;
 export const StyleBackground = 1;
 export const StyleForeground = 2;
 export const StyleBorder = 4;

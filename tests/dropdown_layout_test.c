@@ -49,6 +49,23 @@ step(void)
     EndUIFrame();
 }
 
+static void
+rich_step(int *selected, int all_disabled)
+{
+    DropdownOption items[] = {
+        {.label = "First", .icon_type = UI_ICON_TYPE_SUN, .disabled = all_disabled},
+        {.label = "Unavailable", .disabled = 1, .separator_before = 1},
+        {.label = "Last", .icon_type = UI_ICON_TYPE_MOON, .disabled = all_disabled},
+        {.label = "Unavailable end", .disabled = 1}
+    };
+    InjectPump();
+    BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
+    SetUIFocus(7901);
+    Combobox((ComboboxProps){.bounds = {100, 100, 300, 40}, .id = 7901,
+        .items = items, .option_count = 4, .selected_index = selected});
+    EndUIFrame();
+}
+
 /* UIInputCapturesClick answers open popups; the band above the button
  * (y 20..556, button at 560..604) is popup-only territory. */
 static int
@@ -259,6 +276,36 @@ main(void)
     tap(582);
     check_int("clipped: button toggles closed", popup_open(), 0);
     dropdown_store_clip(0,0);
+
+    /* Rich options retain their disabled semantics through the public props. */
+    reset_state();
+    int rich_selected = 0;
+    InjectKeyTap(KEY_SPACE);
+    rich_step(&rich_selected, 0);
+    InjectKeyTap(KEY_END);
+    rich_step(&rich_selected, 0);
+    InjectKeyTap(KEY_DOWN);
+    rich_step(&rich_selected, 0);
+    InjectKeyTap(KEY_ENTER);
+    rich_step(&rich_selected, 0);
+    rich_step(&rich_selected, 0);
+    check_int("rich options skip disabled final row", rich_selected, 2);
+    rich_selected = 3;
+    InjectKeyTap(KEY_SPACE);
+    rich_step(&rich_selected, 0);
+    rich_step(&rich_selected, 0);
+    InjectKeyTap(KEY_ENTER);
+    rich_step(&rich_selected, 0);
+    rich_step(&rich_selected, 0);
+    check_int("opening disabled selection finds enabled row", rich_selected, 2);
+    InjectKeyTap(KEY_SPACE);
+    rich_step(&rich_selected, 1);
+    InjectKeyTap(KEY_HOME);
+    rich_step(&rich_selected, 1);
+    InjectKeyTap(KEY_ENTER);
+    rich_step(&rich_selected, 1);
+    rich_step(&rich_selected, 1);
+    check_int("all disabled options cannot commit", rich_selected, 2);
 
     printf("dropdown layout test ok\n");
     return 0;

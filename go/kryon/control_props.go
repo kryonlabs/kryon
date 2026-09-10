@@ -55,6 +55,7 @@ type MaterialKind int32
 const (
 	MaterialLightfield MaterialKind = 0
 	MaterialFlat       MaterialKind = 1
+	MaterialGlass      MaterialKind = 2
 )
 
 type StyleField int32

@@ -277,7 +277,7 @@ func TestComboOverlayLayerAndCapture(t *testing.T) {
 	img := RenderFrame(200, 120, r.FrameOps())
 	// Sample the unselected row, away from its text and the selection tint.
 	got := img.RGBAAt(14, 80)
-	var popup []FrameOp
+	popup := []FrameOp{{Kind: FrameOpRect, Bounds: NewRectangle(10, 42, 160, 56), Color: RED}}
 	for _, op := range r.FrameOps() {
 		if op.ID == 996 && op.Bounds.Y >= 42 {
 			popup = append(popup, op)

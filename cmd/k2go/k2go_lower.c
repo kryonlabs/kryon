@@ -90,7 +90,7 @@ is_runtime_go_type(const char *type)
 		"InvisibleButtonProps", "TextProps", "SeparatorTextProps", "DragDropSourceProps",
 		"DragDropTargetProps", "MultiSelectListProps", "ArrowButtonProps",
 		"ColorEditProps", "ColorButtonProps",
-		"SpinboxProps", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
+		"SpinboxProps", "DropdownOption", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
 		"LabelFrameProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
         "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
@@ -1025,8 +1025,10 @@ props_field_at(const KirModule *module, const char *type, int index,
 		                        "X", "Y"}},
         {"SpinboxProps", {"Bounds", "ID", "Min", "Max", "Step", "Value",
                           "Disabled", "ValueText", "Wrap"}},
+        {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
+                            "SeparatorBefore"}},
         {"ComboboxProps", {"Bounds", "ID", "Options", "OptionCount",
-                           "SelectedIndex", "Disabled"}},
+                           "SelectedIndex", "Disabled", "Items"}},
         {"ComboProps", {"Bounds", "PopupSize", "Preview", "ID", "Open",
                          "Flags", "Disabled"}},
         {"PopupProps", {"Bounds", "ID", "Open", "Disabled", "Trigger", "Flags"}},
@@ -1208,7 +1210,7 @@ bool_prop_field(const char *field)
 {
     static const char *names[] = {"Disabled", "DrawMenu", "Active",
                                   "Secure", "Closeable", "Italic",
-                                  "FocusSelected", "Resizable", NULL};
+                                  "FocusSelected", "Resizable", "SeparatorBefore", NULL};
     int i;
 
     for(i = 0; names[i] != NULL; i++)
@@ -1220,7 +1222,8 @@ bool_prop_field(const char *field)
 static int
 slice_prop_field(const char *type, const char *field)
 {
-    if(strcmp(type, "ComboboxProps") == 0 && strcmp(field, "Options") == 0)
+    if(strcmp(type, "ComboboxProps") == 0 &&
+       (strcmp(field, "Options") == 0 || strcmp(field, "Items") == 0))
         return 1;
     if((strcmp(type, "ListBoxProps") == 0 ||
         strcmp(type, "TreeViewProps") == 0) && strcmp(field, "Items") == 0)
@@ -1961,6 +1964,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"TextAlignStart", "TextAlignStart"},
 					{"TextAlignCenter", "TextAlignCenter"},
 					{"TextAlignEnd", "TextAlignEnd"},
+                    {"UI_ICON_TYPE_SUN", "UIIconTypeSun"},
+                    {"UI_ICON_TYPE_MOON", "UIIconTypeMoon"},
                     {"UI_ICON_TYPE_PLAY", "UIIconTypePlay"},
                     {"UI_ICON_TYPE_PLUS", "UIIconTypePlus"},
                     {"UI_ICON_TYPE_SAVE", "UIIconTypeSave"},

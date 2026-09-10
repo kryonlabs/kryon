@@ -749,6 +749,7 @@ FaceOffset :: (hover: float, press: float, disabled: bool) -> float #export {
 
 MaterialLayerCount :: (material: i32) -> i32 #export {
     if material == 1 { return 3 }
+    if material == 2 { return 8 }
     return 12
 }
 
@@ -764,7 +765,7 @@ SegmentCoverage :: (pixel_x: float, segment_x: float, segment_width: float, surf
 }
 
 MaterialOffset :: (material: i32, hover: float, press: float, disabled: bool) -> float #export {
-    if material == 1 { return 0.0 }
+    if material == 1 || material == 2 { return 0.0 }
     return FaceOffset(hover, press, disabled)
 }
 
@@ -774,6 +775,10 @@ MaterialLayer :: (
     focus_color: u32, hover: float, press: float, focused: float,
     disabled: bool, opacity: float, ambient: u32
 ) -> SurfaceLayer #export {
+    if material == 2 {
+        return GlassLayer(index, width, height, radius, border_width,
+            background, border, focus_color, hover, press, focused, disabled, opacity, ambient)
+    }
     if material != 1 {
         return LightfieldLayer(index, width, height, radius, border_width,
             background, border, light, focus_color, hover, press, focused,
@@ -788,6 +793,73 @@ MaterialLayer :: (
     if index == 2 && !disabled {
         layer = FlatLayer(1, width, height, radius, 1.0, background,
             focus_color, opacity * Unit(focused))
+    }
+    return layer
+}
+
+GlassLayer :: (index: i32, width: float, height: float, radius: float,
+    border_width: float, background: u32, border: u32, focus: u32,
+    hover: float, press: float, focused: float, disabled: bool,
+    opacity: float, ambient: u32) -> SurfaceLayer #export {
+    layer: SurfaceLayer
+    layer.width = width
+    layer.height = height
+    layer.radius = radius
+    light: bool = ((ambient >> (u32)24) & (u32)255) +
+        ((ambient >> (u32)16) & (u32)255) + ((ambient >> (u32)8) & (u32)255) > (u32)450
+    h: float = Unit(hover)
+    p: float = Unit(press)
+    f: float = Unit(focused)
+    if disabled {
+        h = 0.0
+        p = 0.0
+        f = 0.0
+    }
+    if index == 0 {
+        layer.y = 5.0 * (1.0 - p)
+        layer.blur = 12.0
+        shadow: u32 = (u32)24
+        if light { shadow = Opacity(GradientColor(ambient, border, 0.65), 0.20) }
+        layer.color = Opacity(shadow, opacity)
+        if disabled { layer.color = (u32)0 }
+    }
+    if index == 1 {
+        layer.blur = 5.0 + h * 3.0
+        layer.color = Opacity(border, (0.12 + 0.30 * h) * (1.0 - p) * opacity)
+        if disabled { layer.color = (u32)0 }
+    }
+    if index == 2 {
+        layer.is_face = true
+        layer.color = Opacity(background, opacity)
+    }
+    if index == 3 {
+        layer.stroke = border_width
+        layer.gradient = true
+        white: u32 = (~(u32)0)
+        layer.color = Opacity(GradientColor(border, white, 0.34), opacity)
+        layer.end_color = Opacity(border, 0.72 * opacity)
+        if light { layer.color = Opacity(border, opacity) }
+    }
+    if index == 4 && !light && !disabled {
+        layer.stroke = 1.0
+        layer.inner_blur = 9.0
+        layer.gradient = true
+        layer.color = Opacity(border, 0.16 * opacity)
+        layer.end_color = Opacity(border, 0.54 * opacity)
+    }
+    if index == 5 && !disabled {
+        layer.stroke = 1.0
+        layer.blur = 4.0
+        layer.color = Opacity(focus, f * 0.85 * opacity)
+    }
+    if index == 6 && !disabled {
+        layer.stroke = 1.5
+        layer.color = Opacity(focus, f * opacity)
+    }
+    if index == 7 && !light && !disabled {
+        layer.stroke = 1.0
+        layer.inner_blur = 2.0
+        layer.color = Opacity((~(u32)0), f * 0.8 * opacity)
     }
     return layer
 }

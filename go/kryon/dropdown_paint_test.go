@@ -46,10 +46,8 @@ func TestDropdownUsesButtonPaletteAndKeepsSelectionDistinct(t *testing.T) {
 		if selection == nil || highlight == nil || selection.Color == highlight.Color {
 			t.Fatal("selection and navigation highlight must remain distinct")
 		}
-		want := resolveButtonStyle(r.theme(), dark, r.activeTheme,
-			ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisSoft}, ButtonStateSelected)
-		if selection.Color != want.Background || selection.TextColor != want.Foreground {
-			t.Fatal("selection does not inherit the accent button palette")
+		if selection.Color.R <= selection.Color.B || selection.Color.R <= selection.Color.G {
+			t.Fatal("selection did not follow the custom rose accent")
 		}
 		draw(true)
 		if r.openDropdowns[29000] {
@@ -57,12 +55,95 @@ func TestDropdownUsesButtonPaletteAndKeepsSelectionDistinct(t *testing.T) {
 		}
 		for _, op := range r.ops {
 			if op.ID == 29000 && op.Kind == FrameOpButton {
-				want := resolveButtonStyle(r.theme(), dark, r.activeTheme,
-					ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: true}, ButtonStateDisabled)
+				want := r.dropdownStyle(0, false, ButtonStateDisabled)
 				if !op.Disabled || op.Focused || op.Color != want.Background || op.TextColor != want.Foreground {
 					t.Fatal("disabled dropdown differs from the disabled neutral button")
 				}
 			}
+		}
+	}
+}
+
+func TestDropdownRichOptionsSkipDisabledRows(t *testing.T) {
+	r := New(AppConfig{Width: 400, Height: 400}).(*runtime)
+	selected := int32(0)
+	items := []DropdownOption{
+		{Label: "First", IconType: UIIconTypeSun},
+		{Label: "Unavailable", Disabled: true, SeparatorBefore: true},
+		{Label: "Last", IconType: UIIconTypeMoon},
+		{Label: "Unavailable end", Disabled: true},
+	}
+	draw := func() {
+		r.BeginFrame()
+		r.Combobox(ComboboxProps{ID: 29001, Bounds: NewRectangle(20, 20, 280, 40),
+			Items: items, SelectedIndex: &selected})
+		r.EndFrame()
+	}
+	r.SetFocus(29001)
+	r.QueueKey(KeySpace)
+	draw()
+	icons, separators := 0, 0
+	for _, op := range r.ops {
+		if op.ID == 29001 && op.Kind == FrameOpIcon {
+			icons++
+		}
+		if op.ID == 29001 && op.Kind == FrameOpLine {
+			separators++
+		}
+	}
+	if icons < 3 || separators == 0 {
+		t.Fatal("rich dropdown omitted its icons or separator")
+	}
+	for _, key := range []int32{KeyDown, KeyEnd, KeyDown} {
+		r.QueueKey(key)
+		draw()
+		if r.dropdownHighlight[29001] != 2 {
+			t.Fatalf("key %d highlighted disabled row %d", key, r.dropdownHighlight[29001])
+		}
+	}
+	r.QueueKey(KeyEnter)
+	draw()
+	if selected != 2 || r.openDropdowns[29001] {
+		t.Fatal("enabled selection did not commit and close")
+	}
+	selected = 3
+	r.QueueKey(KeySpace)
+	draw()
+	draw()
+	if r.dropdownHighlight[29001] != 2 {
+		t.Fatal("opening a disabled final selection did not find an enabled row")
+	}
+	for i := range items {
+		items[i].Disabled = true
+	}
+	r.QueueKey(KeyEnter)
+	draw()
+	if selected != 3 {
+		t.Fatal("all-disabled menu committed a selection")
+	}
+}
+
+func TestDropdownInheritsCompleteButtonStyle(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		r := New(AppConfig{Width: 400, Height: 400}).(*runtime)
+		if dark {
+			r.SetTheme(ThemeDefaultDark())
+		} else {
+			r.SetTheme(ThemeDefaultLight())
+		}
+		for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover,
+			ButtonStatePressed, ButtonStateFocus, ButtonStateDisabled} {
+			button := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
+				ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, state)
+			if got := r.dropdownStyle(0, false, state); got != button {
+				t.Fatalf("dark=%v state=%v: dropdown trigger changed the Button style", dark, state)
+			}
+		}
+		button := r.dropdownStyle(0, false, ButtonStateNormal)
+		metrics := Dropdown_Content(packStyle(button), 1.5)
+		if metrics.Font != button.FontSize*1.5 || metrics.Icon != button.IconSize*1.5 ||
+			metrics.Padding != button.PaddingX*1.5 || metrics.Gap != button.Gap*1.5 {
+			t.Fatal("dropdown content did not inherit scaled Button metrics")
 		}
 	}
 }

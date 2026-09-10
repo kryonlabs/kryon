@@ -2,6 +2,7 @@
 #include "dropdown_store.h"
 #include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/dropdown.h"
 
 #include <limits.h>
 
@@ -153,19 +154,39 @@ dropdown_text_color(Color bg)
 
 /* Dropdowns use the same neutral face and accent selection as buttons. */
 static Style
-dropdown_style(int selected, ButtonState state)
+dropdown_style(int role, int selected, ButtonState state)
 {
     ButtonProps props = {0};
-    props.tone = selected ? ButtonToneAccent : ButtonToneNeutral;
+    props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
-    return ResolveButtonStyle(props, selected ? ButtonStateSelected : state);
+    Style base = ResolveButtonStyle(props, state);
+    props.tone = ButtonToneAccent;
+    props.emphasis = role == 2
+        ? SelectionEmphasis(ColorToInt(GetThemeSurface())) : ButtonEmphasisFilled;
+    Style accent = ResolveButtonStyle(props, ButtonStateNormal);
+    return ui_unpack_style(Appearance(
+        ui_pack_style_states((ControlStyle){.normal = base}).normal,
+        ui_pack_style_states((ControlStyle){.normal = accent}).normal,
+        ColorToInt(GetThemeSurface()), role, state, selected));
+}
+
+static ControlStyle
+dropdown_trigger_style(void)
+{
+    return (ControlStyle){
+        .normal = dropdown_style(0, 0, ButtonStateNormal),
+        .hover = dropdown_style(0, 0, ButtonStateHover),
+        .pressed = dropdown_style(0, 0, ButtonStatePressed),
+        .focused = dropdown_style(0, 0, ButtonStateFocus),
+        .disabled = dropdown_style(0, 0, ButtonStateDisabled)
+    };
 }
 
 static void
-dropdown_draw_surface(Rectangle bounds, Style paint)
+dropdown_draw_surface(Rectangle bounds, Style paint, int highlighted)
 {
     ui_draw_material(bounds, (Rectangle){0}, paint.background, paint.border,
-        paint.border, paint.radius, paint.border_width, 0, 0, 0,
+        paint.border, paint.radius, paint.border_width, highlighted, 0, 0,
         paint.focus, 0, paint.opacity, ui_style_fill(paint), paint.material);
 }
 
@@ -363,7 +384,11 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
     UIWidget widget;
-    int font = GetFontSize();
+    Style content_style = dropdown_style(0, 0, ButtonStateNormal);
+    ContentMetrics content = Content(
+        ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
+        (float)Scale(1000) / 1000.0f);
+    int font = ui_default_style() ? (int)content.font : GetFontSize();
     int arrow_pad = Scale(24);
     int arrow_size = Scale(10);
     int changed = 0;
@@ -434,6 +459,9 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
         option_count = 0;
     dropdown_resize_options(state, option_count);
     for(int i = 0; i < option_count; i++) {
+        state->options[i].icon_type = options != NULL ? options[i].icon_type : UI_ICON_TYPE_NONE;
+        state->options[i].disabled = options != NULL && options[i].disabled;
+        state->options[i].separator_before = options != NULL && options[i].separator_before;
         dropdown_copy_text(&state->options[i].label, options != NULL ? options[i].label : NULL);
         const char *font_name = options != NULL ? options[i].font_name : NULL;
         if(font_name != NULL && font_name[0] != '\0')
@@ -476,6 +504,7 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
             button.tone = ButtonToneNeutral;
             button.emphasis = ButtonEmphasisSoft;
             button.style_resolved = 1;
+            button.style = dropdown_trigger_style();
             button.disabled = UIContentDisabled();
             button_text = ui_paint_button(button, hover || state->open,
                 active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
@@ -500,7 +529,13 @@ draw_dropdown_options(int id, int x, int y, int w, int h,
         current_index = 0;
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
     const char *current_font = option_count > 0 ? state->options[current_index].font_name : NULL;
-    int text_x = x + Scale(12);
+    int text_x = x + (int)content.padding;
+    if(option_count > 0 && state->options[current_index].icon_type != UI_ICON_TYPE_NONE) {
+        if(can_draw)
+            DrawIcon(state->options[current_index].icon_type,
+                (Rectangle){text_x, y + (h - content.icon) / 2, content.icon, content.icon}, button_text);
+        text_x += (int)(content.icon + content.gap);
+    }
     int text_w = arrow_x - arrow_size - Scale(8) - text_x;
     if(can_draw && text_w > 0) {
         int font_token = PushUIFont(current_font);
@@ -538,7 +573,11 @@ draw_dropdown_menu(int id)
     keyboard_available =
         !ui_popup_input_snapshot_keyboard_captures(state->input_snapshot);
 
-    int font = GetFontSize();
+    Style content_style = dropdown_style(0, 0, ButtonStateNormal);
+    ContentMetrics content = Content(
+        ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
+        (float)Scale(1000) / 1000.0f);
+    int font = ui_default_style() ? (int)content.font : GetFontSize();
     int x = state->x;
     int y = state->y;
     int w = state->w;
@@ -631,6 +670,7 @@ draw_dropdown_menu(int id)
 
     if(!state->open) return 0;
     state->highlight_index = ui_clampi(state->highlight_index, 0, option_count - 1);
+    int previous_highlight = state->highlight_index;
     int navigating = 1;
     if(state->opened_frame == g_ui_frame_serial)
         navigating = 0;
@@ -645,6 +685,21 @@ draw_dropdown_menu(int id)
     else
         navigating = 0;
     if(navigating || state->just_opened) {
+        int direction = IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_END) ? -1 : 1;
+        int candidate = state->highlight_index;
+        while(candidate >= 0 && candidate < option_count && options[candidate].disabled)
+            candidate += direction;
+        if(candidate >= 0 && candidate < option_count)
+            state->highlight_index = candidate;
+        else if(!options[previous_highlight].disabled)
+            state->highlight_index = previous_highlight;
+        else {
+            candidate = previous_highlight;
+            while(candidate >= 0 && candidate < option_count && options[candidate].disabled)
+                candidate -= direction;
+            if(candidate >= 0 && candidate < option_count)
+                state->highlight_index = candidate;
+        }
         int64_t row_top = (int64_t)state->highlight_index * option_h;
         int viewport = dropdown_h - padding_top - padding_bottom;
         int64_t scroll = state->scroll_offset;
@@ -656,7 +711,8 @@ draw_dropdown_menu(int id)
         state->scroll_offset = (int)scroll;
     }
     if(keyboard_available && state->opened_frame != g_ui_frame_serial &&
-       (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER))) {
+       (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) &&
+       !options[state->highlight_index].disabled) {
         state->pending_index = state->highlight_index;
         state->pending_changed = state->selected_index != state->highlight_index;
         state->selected_index = state->highlight_index;
@@ -681,11 +737,11 @@ draw_dropdown_menu(int id)
     /* Draw dropdown background */
     if(can_draw) {
         if(ui_default_style()) {
-            Style paint = dropdown_style(0, ButtonStateNormal);
-            paint.radius = GetThemeMetrics().radius_large;
+            Style paint = dropdown_style(1, 0, ButtonStateNormal);
+            paint.radius = GetThemeMetrics().radius_large + 2;
             panel = paint.background;
             option_text = paint.foreground;
-            dropdown_draw_surface(menu_bounds, paint);
+            dropdown_draw_surface(menu_bounds, paint, 0);
         } else if(ui_modern_style()) {
             ThemeMetrics tokens = GetThemeMetrics();
             Color border = dropdown_panel_color(36);
@@ -737,22 +793,22 @@ draw_dropdown_menu(int id)
         if(visible_h <= 0)
             continue;
 
-        int option_active = CheckCollisionPointRec(mouse, visible_bounds);
-        int option_hover = state->highlight_index == i ||
-                           (option_active && UIHoverEffectsEnabled());
+        int option_active = !options[i].disabled && CheckCollisionPointRec(mouse, visible_bounds);
+        int option_hover = !options[i].disabled && (state->highlight_index == i ||
+                           (option_active && UIHoverEffectsEnabled()));
 
         Color row_text = option_text;
         if(can_draw && ui_default_style()) {
             int selected = state->selected_index == i;
-            Style paint = dropdown_style(selected,
-                option_hover ? ButtonStateHover : ButtonStateNormal);
-            paint.material = MaterialFlat;
-            row_text = paint.foreground;
+            Style paint = dropdown_style(2, selected,
+                options[i].disabled ? ButtonStateDisabled :
+                (option_hover ? ButtonStateHover : ButtonStateNormal));
+            row_text = GetColor(Opacity(ColorToInt(paint.foreground), paint.opacity));
             if(selected || option_hover) {
                 Rectangle row = {x + Scale(4), option_y + Scale(2),
                     option_w - Scale(8), option_h - Scale(4)};
                 if(row.width > 0 && row.height > 0)
-                    dropdown_draw_surface(row, paint);
+                    dropdown_draw_surface(row, paint, option_hover && !selected);
             }
         }
 
@@ -797,21 +853,30 @@ draw_dropdown_menu(int id)
 
         if(can_draw) {
             int font_token = PushUIFont(options[i].font_name);
-            int text_w = option_w - Scale(48);
-            BeginUIClip((int)(g_ui_camera.offset.x + (x + Scale(12)) * g_ui_camera.zoom),
+            int text_x = x + (int)content.padding;
+            if(options[i].separator_before)
+                DrawLine(x + Scale(16), option_y, x + option_w - Scale(16), option_y,
+                    Fade(row_text, 0.18f));
+            if(options[i].icon_type != UI_ICON_TYPE_NONE) {
+                DrawIcon(options[i].icon_type,
+                    (Rectangle){text_x, option_y + (option_h - content.icon) / 2, content.icon, content.icon}, row_text);
+                text_x += (int)(content.icon + content.gap);
+            }
+            int text_w = x + option_w - (int)(content.padding + content.icon + content.gap) - text_x;
+            BeginUIClip((int)(g_ui_camera.offset.x + text_x * g_ui_camera.zoom),
                 (int)(g_ui_camera.offset.y + visible_y * g_ui_camera.zoom),
                 (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
                 (int)(visible_h * g_ui_camera.zoom));
-            DrawUIText(options[i].label, x + Scale(12),
+            DrawUIText(options[i].label, text_x,
                        GetUIControlTextY(options[i].label, option_y, option_h, font),
                        font, row_text);
             EndUIClip();
             PopUIFont(font_token);
             if(state->selected_index == i) {
-                int cx = x + option_w - Scale(22);
+                int cx = x + option_w - (int)(content.padding + content.icon / 2);
                 int cy = option_y + option_h / 2;
-                DrawLine(cx - Scale(4), cy, cx - Scale(1), cy + Scale(3), row_text);
-                DrawLine(cx - Scale(1), cy + Scale(3), cx + Scale(5), cy - Scale(3), row_text);
+                DrawIcon(UI_ICON_TYPE_CHECK,
+                    (Rectangle){cx - content.icon / 2, cy - content.icon / 2, content.icon, content.icon}, row_text);
             }
         }
     }

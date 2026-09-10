@@ -359,6 +359,7 @@ typedef struct {
     int option_count;
     int *selected_index;
     int disabled;
+    const DropdownOption *items;
 } ComboboxProps;
 
 typedef enum {

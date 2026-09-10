@@ -276,6 +276,9 @@ typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
 typedef struct {
     const char *label;
     const char *font_name;
+    UIIconType icon_type;
+    int disabled;
+    int separator_before;
 } DropdownOption;
 
 typedef struct {

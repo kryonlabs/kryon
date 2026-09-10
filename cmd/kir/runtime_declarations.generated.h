@@ -73,6 +73,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "MaterialKind :: enum {\n"
         "    MaterialLightfield = 0\n"
         "    MaterialFlat = 1\n"
+        "    MaterialGlass = 2\n"
         "}\n"
         "\n"
         "StyleField :: enum {\n"

@@ -17,6 +17,11 @@ state {
     overlay_actions: int = 0
     overlay_background_offset: int = 0
     overlay_options: [2] const char * = {"One","Two"}
+    overlay_items: [3] DropdownOption = {
+        (DropdownOption){.label = "One", .icon_type = UI_ICON_TYPE_SUN},
+        (DropdownOption){.label = "Two", .icon_type = UI_ICON_TYPE_MOON, .separator_before = 1},
+        (DropdownOption){.label = "Unavailable", .disabled = 1}
+    }
     edge_combo_visible: bool = false
     edge_combo_selected: int = 0
 	long_combo_selected: int = 0
@@ -97,7 +102,7 @@ scroll_content_frame :: () #ui {
     Scroll {
         bounds = {240,180,180,28}
         content_height = 28
-        Combobox((ComboboxProps){.bounds = {240,180,160,28}, .id = 996, .options = overlay_options, .option_count = 2, .selected_index = &overlay_selected})
+        Combobox((ComboboxProps){.bounds = {240,180,160,28}, .id = 996, .items = overlay_items, .option_count = 3, .selected_index = &overlay_selected})
     }
     Rect(240,212,160,56,RED,BLANK)
     if edge_combo_visible {
