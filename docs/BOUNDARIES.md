@@ -77,6 +77,11 @@ direct Go package imports stay stateless. Application host bridges remain
 separate from runtime implementation; no runtime-wide mutable service setter is
 generated. MeasureTextWidth supplies font-specific measurement without making
 widget size decisions and restores the C host's previous typeface after use.
+ReadActivation supplies pointer and keyboard samples using the host's focus and
+popup ownership rules. `runtime/input_props.kry` owns the sample contract.
+Button interprets that sample in `.kry`, including disabled/loading gating and
+explicit visual states. Deferred painting resolves its stored sample without
+polling the host again. Its retained motion consumes that same resolved input.
 
 The compiler's embedded runtime contracts contain `.kry` source text, not a second
 parsed schema or handwritten field table. KIR parses embedded and file sources

@@ -1,0 +1,9 @@
+#module "input_props"
+
+# A host reports one control's pointer/focus sample; widgets decide its meaning.
+Activation :: struct {
+    activated: bool
+    pressed: bool
+    hovered: bool
+    focused: bool
+}

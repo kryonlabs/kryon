@@ -436,6 +436,29 @@ assert.equal(button.Button_MeasureButton(null, undefined, measureHost(48), measu
 assert.equal(button.Button_MeasureButton(null, undefined, measureHost(68), measurement,
   measureStyle, 80, 54, 0, 2, true).width, 165);
 assert.deepEqual(measurements, [["Run", 54, ""], ["Run", 54, ""]]);
+let inputPolls = 0;
+for (let state = 0; state <= 7; state++) {
+  measurement.state = state;
+  const enabled = state !== 5 && state !== 6;
+  const input = button.Button_ReadButtonInput(null, undefined, {
+    ReadActivation(bounds, id, allowed) {
+      inputPolls++;
+      assert.deepEqual(bounds, measurement.bounds);
+      assert.equal(id, measurement.id);
+      assert.equal(allowed, enabled);
+      return { activated: true, pressed: true, hovered: true, focused: true };
+    }
+  }, measurement);
+  assert.equal(input.activated, enabled);
+  assert.equal(input.interaction.state, state || 3);
+  assert.deepEqual(input.interaction, {
+    state: state || 3,
+    pressed: state === 0 || state === 3,
+    hovered: state === 0 || state === 2,
+    focused: state === 0 || state === 4,
+  });
+}
+assert.equal(inputPolls, 8, "each Button input phase must poll exactly once");
 const theme = await import(pathToFileURL(process.argv[4]).href);
 const metrics = theme.Theme_DefaultMetrics(null);
 for (const dark of [false, true]) {

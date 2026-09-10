@@ -156,4 +156,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    format: i32\n"
         "}\n"
     },
+    {"runtime/input_props.kry",
+        "#module \"input_props\"\n"
+        "\n"
+        "# A host reports one control's pointer/focus sample; widgets decide its meaning.\n"
+        "Activation :: struct {\n"
+        "    activated: bool\n"
+        "    pressed: bool\n"
+        "    hovered: bool\n"
+        "    focused: bool\n"
+        "}\n"
+    },
 };

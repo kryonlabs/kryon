@@ -199,8 +199,38 @@ static void check_child_style_padding(void)
     }
 }
 
+static void check_button_input(void)
+{
+    for(int state = 0; state <= 7; state++) {
+        for(int flags = 0; flags < 8; flags++) {
+            ButtonProps props = {.state = state, .disabled = flags & 1,
+                .loading = flags & 2, .selected = flags & 4};
+            int disabled = props.disabled || state == ButtonStateDisabled;
+            int loading = props.loading || state == ButtonStateLoading;
+            int selected = props.selected || state == ButtonStateSelected;
+            int enabled = !disabled && !loading;
+            for(int bits = 0; bits < 16; bits++) {
+                Activation sample = {.activated = bits & 1, .pressed = bits & 2,
+                    .hovered = bits & 4, .focused = bits & 8};
+                ButtonInput input = ResolveButtonInput(props, sample);
+                int expected = disabled ? ButtonStateDisabled : loading ? ButtonStateLoading :
+                    state ? state : sample.pressed ? ButtonStatePressed :
+                    sample.hovered ? ButtonStateHover : sample.focused ? ButtonStateFocus :
+                    selected ? ButtonStateSelected : ButtonStateNormal;
+                assert(input.flags.disabled == disabled && input.flags.loading == loading);
+                assert(input.flags.selected == selected && input.interaction.state == expected);
+                assert(input.activated == (enabled && sample.activated));
+                assert(input.interaction.pressed == (state ? expected == ButtonStatePressed : enabled && sample.pressed));
+                assert(input.interaction.hovered == (state ? expected == ButtonStateHover : enabled && sample.hovered));
+                assert(input.interaction.focused == (state ? expected == ButtonStateFocus : enabled && sample.focused));
+            }
+        }
+    }
+}
+
 int main(void)
 {
+    check_button_input();
     const int enum_pairs[][2] = {
         {StyleBackground, 1},
         {StyleForeground, 2},

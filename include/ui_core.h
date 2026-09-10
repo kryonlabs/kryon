@@ -2,6 +2,7 @@
 #define UI_CORE_H
 
 #include "kryon_compat.generated.h"
+#include "ui_input_props.generated.h"
 
 typedef void (*TextInputPlatformCallback)(int active);
 
@@ -75,6 +76,7 @@ int GetUIMouseCursor(void);
 void SetUIIcons(Texture2D gear_icon, Texture2D x_icon);
 
 int UIHandleClick(Rectangle bounds, int disabled, int *hover);
+Activation ReadActivation(Rectangle bounds, int id, bool enabled);
 int UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int UIInputCapturesClick(Vector2 point);
 int UIReleaseConsumed(void);

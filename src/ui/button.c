@@ -120,6 +120,7 @@ ButtonProps
 ui_button_style_props(ButtonSpec button)
 {
     return (ButtonProps){
+        .bounds = button.bounds, .id = button.focus_id,
         .state = button.state, .size = button.size,
         .tone = button.tone, .emphasis = button.emphasis, .style = button.style,
         .disabled = button.disabled, .loading = button.loading,
@@ -135,7 +136,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     UIWidget widget;
     int hovered;
     int focused;
-    int clicked = 0;
     int font = button.font > 0 ? button.font : GetFontSize();
     const char *typeface = NULL;
     Color background = button.background.a != 0 ? button.background : c_button;
@@ -153,12 +153,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     int termi_button = ui_termi_backend();
     int default_controls = ui_default_style() && !termi_button;
 
-    StateFlags flags = ResolveFlags(button.state, button.disabled, button.loading, button.selected);
-    button.disabled = flags.disabled;
-    button.loading = flags.loading;
-    button.selected = flags.selected;
-    int interactive = CanActivate(button.disabled, button.loading);
-
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {
         widget = BeginUIWidget("button",
@@ -172,24 +166,28 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                                UI_WIDGET_RESIZABLE);
         button.bounds = widget.bounds;
         UIWidgetSetAction(&widget, button.label);
-        clicked = UIHandleClick(button.bounds, !interactive, &hovered);
-        focused = interactive && button.focus_id > 0 &&
-                  RegisterUIFocus(button.focus_id, button.bounds);
-        retained_pressed = hovered &&
-                           IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-    } else {
-        hovered = interactive && retained_hovered;
-        focused = interactive && button.focus_id > 0 &&
-                  IsUIFocusActive(button.focus_id);
     }
-    if(focused && IsUIFocusActivatePressed(button.focus_id))
-        retained_pressed = 1;
-    InteractionState interaction = ResolveInteraction(button.state, button.disabled,
-        button.loading, retained_pressed, hovered, focused, button.selected);
-    ButtonState state = (ButtonState)interaction.state;
-    hovered = interaction.hovered;
-    retained_pressed = interaction.pressed;
-    focused = interaction.focused;
+    ButtonProps props = ui_button_style_props(button);
+    ButtonInput input;
+    if(handle_input) {
+        input = ReadButtonInput(props);
+    } else {
+        Activation sample = {
+            .hovered = retained_hovered,
+            .pressed = retained_pressed,
+            .focused = button.focus_id > 0 && IsUIFocusActive(button.focus_id)
+        };
+        if(sample.focused && IsUIFocusActivatePressed(button.focus_id))
+            sample.pressed = true;
+        input = ResolveButtonInput(props, sample);
+    }
+    button.disabled = input.flags.disabled;
+    button.loading = input.flags.loading;
+    button.selected = input.flags.selected;
+    ButtonState state = (ButtonState)input.interaction.state;
+    hovered = input.interaction.hovered;
+    retained_pressed = input.interaction.pressed;
+    focused = input.interaction.focused;
     draw_bounds = button.bounds;
     if(!paint || !IsWindowReady()) {
         if(focused)
@@ -197,7 +195,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         if(handle_input)
             EndUIWidget(&widget);
         return handle_input
-            ? interactive && (clicked || IsUIFocusActivatePressed(button.focus_id)) : 0;
+            ? input.activated : 0;
     }
 
     if(default_controls) {
@@ -212,8 +210,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                 key = (key ^ (unsigned char)*label++) * 16777619u;
         }
         ThemeMetrics metrics = GetThemeMetrics();
-        InteractionMotion motion = AdvanceButtonMotion(key, hovered, retained_pressed, focused,
-            cues, button.state != ButtonStateAuto, button.disabled, button.loading,
+        InteractionMotion motion = AdvanceButtonMotion(key, props, input, cues,
             GetFrameTime() * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
         hover_amount = motion.hover.value;
         press_amount = motion.press.value;
@@ -286,7 +283,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         if(handle_input)
             EndUIWidget(&widget);
         return handle_input
-            ? interactive && (clicked || IsUIFocusActivatePressed(button.focus_id)) : 0;
+            ? input.activated : 0;
     }
 
     if(button.disabled) {
@@ -320,7 +317,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     if(handle_input)
         EndUIWidget(&widget);
     return handle_input
-        ? interactive && (clicked || IsUIFocusActivatePressed(button.focus_id)) : 0;
+        ? input.activated : 0;
 }
 
 int

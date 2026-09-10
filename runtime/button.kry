@@ -4,21 +4,50 @@
 #import "surface"
 #import "control_props"
 #import "button_props"
+#import "input_props"
 #import "ui_text.h"
+#import "ui_core.h"
 
 MeasureTextWidth :: (text: const char*, font: i32, typeface: const char*) -> i32 #extern
+ReadActivation :: (bounds: Rectangle, id: i32, enabled: bool) -> Activation #extern
+
+ButtonInput :: struct {
+    flags: StateFlags
+    interaction: InteractionState
+    activated: bool
+}
+
+# Both immediate input and retained painting use this interpretation. Painting
+# supplies its stored sample and must not poll or consume activation again.
+ResolveButtonInput :: (props: ButtonProps, sample: Activation) -> ButtonInput #export {
+    result: ButtonInput
+    result.flags = ResolveFlags((i32)props.state, props.disabled, props.loading, props.selected)
+    enabled: bool = CanActivate(result.flags.disabled, result.flags.loading)
+    result.activated = enabled && sample.activated
+    result.interaction = ResolveInteraction((i32)props.state, result.flags.disabled,
+        result.flags.loading, enabled && sample.pressed, enabled && sample.hovered,
+        enabled && sample.focused, result.flags.selected)
+    return result
+}
+
+ReadButtonInput :: (props: ButtonProps) -> ButtonInput #export {
+    flags: StateFlags = ResolveFlags((i32)props.state, props.disabled, props.loading, props.selected)
+    sample: Activation = ReadActivation(props.bounds, props.id, CanActivate(flags.disabled, flags.loading))
+    return ResolveButtonInput(props, sample)
+}
 
 # The declaration owns the retained shape; hosts only allocate it by identity.
 ButtonInstance :: struct {
     motion: InteractionMotion
 }
 
-AdvanceButtonMotion :: (key: u64, hovered: bool, pressed: bool, focused: bool,
-    enabled: bool, explicit_state: bool, disabled: bool, loading: bool,
+AdvanceButtonMotion :: (key: u64, props: ButtonProps, input: ButtonInput, enabled: bool,
     delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
     retained: ButtonInstance #instance(key)
-    retained.motion = AdvanceInteractionMotion(retained.motion, hovered, pressed, focused,
-        enabled, explicit_state, disabled, loading, delta_ms, normal_ms, fast_ms)
+    retained.motion = AdvanceInteractionMotion(retained.motion, input.interaction.hovered,
+        input.interaction.pressed, input.interaction.focused, enabled,
+        (i32)props.state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
+        delta_ms, normal_ms, fast_ms)
     return retained.motion
 }
 

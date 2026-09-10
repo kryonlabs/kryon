@@ -289,8 +289,11 @@ The duplicate ButtonMeasure/MeasuredSize interface has been removed. Hosts
 provide font measurement, available space, and physical scale. The declaration
 now requests its label width through the MeasureTextWidth host service; native
 C and Go do not perform that request separately before calling the declaration.
-Input, paint,
-and child orchestration still need migration to complete the widget body.
+Button input interpretation and motion inputs now live in the declaration.
+ReadActivation acquires the host's pointer/focus sample; ResolveButtonInput
+applies widget flags and explicit states. Deferred C painting supplies its
+stored sample to the same resolver without consuming input again. Paint and
+child orchestration still need migration to complete the widget body.
 The compiler embeds the declaration sources
 from `runtime/*_props.kry` and parses them with the same KIR frontend as application
 files. Button's Go field-order entry and type-name entry have been removed; native

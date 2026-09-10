@@ -1322,6 +1322,11 @@ those null-terminated strings; null labels behave as empty labels.
 the requested typeface. C restores the previous typeface after the call; native
 Go exposes the same service on Runtime and as a package function. Button's
 shared declaration invokes this service when measuring its label.
+`ReadActivation(bounds, id, enabled)` returns an `Activation` sample containing
+activated, pressed, hovered, and focused flags. Native Go binds this service
+to the owning Runtime. Button's shared declaration applies its disabled,
+loading, and explicit-state rules to the sample. Retained painting resolves
+the stored sample without calling this input service again.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
 measurement and font defaults. There is no string overload, fixed-size
 shorthand, or label-derived identity; supply `ID` when stable explicit identity

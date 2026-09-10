@@ -178,6 +178,43 @@ func TestDarkPressedOutlineKeepsRestrainedTintAndOverrides(t *testing.T) {
 	}
 }
 
+func TestButtonInputConsumesOnlyItsOwnActivation(t *testing.T) {
+	first := New(AppConfig{Width: 100, Height: 100}).(*runtime)
+	second := New(AppConfig{Width: 100, Height: 100}).(*runtime)
+	defer first.Close()
+	defer second.Close()
+	previous := activeRuntime
+	SetRuntime(second)
+	defer SetRuntime(previous)
+	props := ButtonProps{ID: 7, Bounds: Rectangle{Width: 80, Height: 40}}
+	first.QueueTap(20, 20)
+	first.BeginFrame()
+	defer first.EndFrame()
+	for _, state := range []ButtonState{ButtonStateDisabled, ButtonStateLoading} {
+		props.State = state
+		if input := first.Button_ReadButtonInput(props); input.Activated {
+			t.Fatalf("state %v accepted activation", state)
+		}
+	}
+	props.State = ButtonStateAuto
+	input := first.Button_ReadButtonInput(props)
+	if !input.Activated || !input.Interaction.Pressed {
+		t.Fatalf("disabled previews consumed the enabled button's event: %+v", input)
+	}
+	if next := first.Button_ReadButtonInput(props); next.Activated {
+		t.Fatal("activation was consumed twice")
+	}
+	if other := second.Button_ReadButtonInput(props); other.Activated {
+		t.Fatal("activation leaked to the active runtime")
+	}
+	// Resolving a retained paint sample cannot poll the host or consume input.
+	first.QueueTap(20, 20)
+	Button_ResolveButtonInput(props, Activation{Hovered: true})
+	if !first.Button_ReadButtonInput(props).Activated {
+		t.Fatal("retained paint resolution consumed an activation")
+	}
+}
+
 func TestExplicitDisabledButtonOverridesLoadingAppearance(t *testing.T) {
 	rt := New(AppConfig{Width: 100, Height: 100}).(*runtime)
 	frame, activated := rt.surfaceButtonFrame(ButtonProps{

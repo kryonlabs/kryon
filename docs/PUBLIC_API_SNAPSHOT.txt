@@ -1442,6 +1442,7 @@ include/ui_core.h function MarkUIDisabled
 include/ui_core.h function PopUIInputClip
 include/ui_core.h function PushUIInputCapture
 include/ui_core.h function PushUIInputClip
+include/ui_core.h function ReadActivation
 include/ui_core.h function RegisterUIFocus
 include/ui_core.h function ResolveUIFocusID
 include/ui_core.h function RestoreUIFrameState
@@ -1632,6 +1633,7 @@ include/ui_icons.h function LoadUIIconTexture
 include/ui_icons.h function LoadUIIconTextureByName
 include/ui_icons.h function UnloadAllUIIconTextures
 include/ui_icons.h function UnloadIconSheets
+include/ui_input_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_inspect.h function BeginUIInspectFrame
 include/ui_inspect.h function EndUIInspectFrame
 include/ui_inspect.h function PopUIInspectChrome

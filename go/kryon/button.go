@@ -6,7 +6,9 @@ package kryon
 // #import surface
 // #import control_props
 // #import button_props
+// #import input_props
 // #import ui_text.h
+// #import ui_core.h
 func number_533abbd6_float(x float64, w uint, sign bool) uint64 {
 	bits := w
 	if sign {
@@ -86,6 +88,12 @@ func number_533abbd6_bits(a, b uint64, w uint, sign bool, op int) uint64 {
 	panic("invalid numeric operation")
 }
 
+type ButtonInput struct {
+	Flags       StateFlags
+	Interaction InteractionState
+	Activated   bool
+}
+
 type ButtonInstance struct {
 	Motion InteractionMotion
 }
@@ -107,24 +115,97 @@ type ButtonContent struct {
 	TextHeight float32
 }
 
-func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, hovered bool, pressed bool, focused bool, enabled bool, explicit_state bool, disabled bool, loading bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
+func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput {
+	var result ButtonInput = ButtonInput{}
+	var value_0 ButtonState = ButtonState(props.State)
+	var value_1 int32 = int32(number_533abbd6_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 bool = props.Disabled
+	var value_3 bool = props.Loading
+	var value_4 bool = props.Selected
+	var value_5 StateFlags = Style_ResolveFlags(value_1, value_2, value_3, value_4)
+	result.Flags = value_5
+	var value_6 bool = result.Flags.Disabled
+	var value_7 bool = result.Flags.Loading
+	var value_8 bool = Button_CanActivate(value_6, value_7)
+	var enabled bool = value_8
+	var value_9 bool = enabled
+	var value_10 bool = value_9
+	if value_10 {
+		var value_11 bool = sample.Activated
+		value_10 = value_11
+	}
+	result.Activated = value_10
+	var value_12 ButtonState = ButtonState(props.State)
+	var value_13 int32 = int32(number_533abbd6_bits(uint64(value_12), uint64(0), 32, true, 0))
+	var value_14 bool = result.Flags.Disabled
+	var value_15 bool = result.Flags.Loading
+	var value_16 bool = enabled
+	var value_17 bool = value_16
+	if value_17 {
+		var value_18 bool = sample.Pressed
+		value_17 = value_18
+	}
+	var value_19 bool = enabled
+	var value_20 bool = value_19
+	if value_20 {
+		var value_21 bool = sample.Hovered
+		value_20 = value_21
+	}
+	var value_22 bool = enabled
+	var value_23 bool = value_22
+	if value_23 {
+		var value_24 bool = sample.Focused
+		value_23 = value_24
+	}
+	var value_25 bool = result.Flags.Selected
+	var value_26 InteractionState = Style_ResolveInteraction(value_13, value_14, value_15, value_17, value_20, value_23, value_25)
+	result.Interaction = value_26
+	var value_27 ButtonInput = result
+	return value_27
+}
+
+func (instance_host_0 *runtime) Button_ReadButtonInput(props ButtonProps) ButtonInput {
+	var value_0 ButtonState = ButtonState(props.State)
+	var value_1 int32 = int32(number_533abbd6_bits(uint64(value_0), uint64(0), 32, true, 0))
+	var value_2 bool = props.Disabled
+	var value_3 bool = props.Loading
+	var value_4 bool = props.Selected
+	var value_5 StateFlags = Style_ResolveFlags(value_1, value_2, value_3, value_4)
+	var flags StateFlags = value_5
+	var value_6 Rectangle = props.Bounds
+	var value_7 int32 = props.ID
+	var value_8 bool = flags.Disabled
+	var value_9 bool = flags.Loading
+	var value_10 bool = Button_CanActivate(value_8, value_9)
+	var value_11 Activation = instance_host_0.ReadActivation(value_6, value_7, value_10)
+	var sample Activation = value_11
+	var value_12 ButtonProps = props
+	var value_13 Activation = sample
+	var value_14 ButtonInput = Button_ResolveButtonInput(value_12, value_13)
+	return value_14
+}
+
+func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, props ButtonProps, input ButtonInput, enabled bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
 	var value_0 uint64 = key
 	retained := instanceState[ButtonInstance](instance_host_0, uint64(value_0))
 	var value_1 InteractionMotion = (*retained).Motion
-	var value_2 bool = hovered
-	var value_3 bool = pressed
-	var value_4 bool = focused
+	var value_2 bool = input.Interaction.Hovered
+	var value_3 bool = input.Interaction.Pressed
+	var value_4 bool = input.Interaction.Focused
 	var value_5 bool = enabled
-	var value_6 bool = explicit_state
-	var value_7 bool = disabled
-	var value_8 bool = loading
-	var value_9 float32 = delta_ms
-	var value_10 float32 = normal_ms
-	var value_11 float32 = fast_ms
-	var value_12 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_6, value_7, value_8, value_9, value_10, value_11)
-	(*retained).Motion = value_12
-	var value_13 InteractionMotion = (*retained).Motion
-	return value_13
+	var value_6 ButtonState = ButtonState(props.State)
+	var value_7 int32 = int32(number_533abbd6_bits(uint64(value_6), uint64(0), 32, true, 0))
+	var value_8 int32 = int32(ButtonStateAuto)
+	var value_9 bool = value_7 != value_8
+	var value_10 bool = input.Flags.Disabled
+	var value_11 bool = input.Flags.Loading
+	var value_12 float32 = delta_ms
+	var value_13 float32 = normal_ms
+	var value_14 float32 = fast_ms
+	var value_15 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_9, value_10, value_11, value_12, value_13, value_14)
+	(*retained).Motion = value_15
+	var value_16 InteractionMotion = (*retained).Motion
+	return value_16
 }
 
 func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, palette Palette, metrics Metrics) StyleData {

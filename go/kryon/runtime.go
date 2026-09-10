@@ -1343,6 +1343,7 @@ type Runtime interface {
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Button(ButtonProps) bool
+	ReadActivation(bounds Rectangle, id int32, enabled bool) Activation
 	BeginButton(ButtonProps)
 	MenuButton(MenuButtonProps) int32
 	SplitButton(SplitButtonProps) SplitButtonResult
@@ -2345,23 +2346,16 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 	props = r.resolveSurfaceButtonProps(props, disclosure)
 	props.ID = r.resolveFocusID(props.ID)
 	theme := r.theme()
-	flags := Style_ResolveFlags(int32(props.State), props.Disabled, props.Loading, props.Selected)
-	props.Disabled, props.Loading, props.Selected = flags.Disabled, flags.Loading, flags.Selected
+	input := r.Button_ReadButtonInput(props)
+	props.Disabled, props.Loading, props.Selected = input.Flags.Disabled, input.Flags.Loading, input.Flags.Selected
 	loading := props.Loading
-	pressed, focused := r.focusablePress(props.Bounds, props.ID,
-		!Button_CanActivate(props.Disabled, loading))
-	hovered := !props.Disabled && !loading && r.pointerCanReach(props.Bounds)
-	held := hovered && r.mouseDown[MouseButtonLeft]
-	interaction := Style_ResolveInteraction(int32(props.State), props.Disabled,
-		loading, held || pressed, hovered, focused, props.Selected)
-	state := ButtonState(interaction.State)
-	hovered, held, focused = interaction.Hovered, interaction.Pressed, interaction.Focused
+	state := ButtonState(input.Interaction.State)
+	hovered, held, focused := input.Interaction.Hovered, input.Interaction.Pressed, input.Interaction.Focused
 	metrics := defaultThemeMetrics()
 	if r.activeTheme != nil {
 		metrics = r.activeTheme.Metrics
 	}
-	motion := r.Button_AdvanceButtonMotion(uint64(uint32(props.ID)), hovered, held, focused,
-		Surface_DefaultMotionEnabled(), props.State != ButtonStateAuto, props.Disabled, loading,
+	motion := r.Button_AdvanceButtonMotion(uint64(uint32(props.ID)), props, input, Surface_DefaultMotionEnabled(),
 		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
 	appearance := resolveButtonFrame(theme, r.effectiveDark(), r.activeTheme, props, state,
 		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value, motion.Focus.Value)
@@ -2399,7 +2393,7 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 		IconOnly: props.IconOnly, IconType: props.IconType,
 		IconSize:      paint.IconSize,
 		IconPlacement: int32(props.IconPlacement)}
-	return frame, pressed
+	return frame, input.Activated
 }
 
 func (r *runtime) resolveFocusID(id int32) int32 {
@@ -2509,9 +2503,17 @@ func unpackRGBA(c uint32) Color {
 	return Color{uint8(c >> 24), uint8(c >> 16), uint8(c >> 8), uint8(c)}
 }
 
-// focusablePress is the common interaction contract for button-like widgets:
-// pointer focus, Enter/Space activation, Tab traversal, disabled scopes and
-// popup keyboard ownership all stay identical across their different paints.
+// ReadActivation samples host input for a shared widget declaration.
+func (r *runtime) ReadActivation(bounds Rectangle, id int32, enabled bool) Activation {
+	enabled = enabled && !r.contentDisabled()
+	activated, focused := r.focusablePress(bounds, id, !enabled)
+	hovered := enabled && r.pointerCanReach(bounds)
+	return Activation{Activated: activated, Focused: focused, Hovered: hovered,
+		Pressed: hovered && r.mouseDown[MouseButtonLeft] || activated}
+}
+
+// focusablePress keeps pointer focus, Enter/Space activation, Tab traversal,
+// disabled scopes, and popup keyboard ownership consistent across controls.
 func (r *runtime) focusablePress(bounds Rectangle, id int32, disabled bool) (pressed, focused bool) {
 	enabled := !disabled && !r.contentDisabled()
 	if enabled {

@@ -842,6 +842,21 @@ UIHandleClick(Rectangle bounds, int disabled, int *hover)
     return 0;
 }
 
+Activation
+ReadActivation(Rectangle bounds, int id, bool enabled)
+{
+    Activation input = {0};
+    int hovered = 0;
+    input.activated = UIHandleClick(bounds, !enabled, &hovered);
+    input.hovered = hovered;
+    input.focused = enabled && id > 0 && RegisterUIFocus(id, bounds);
+    int keyboard = IsUIFocusActivatePressed(id);
+    input.pressed = (hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ||
+                    (input.focused && keyboard);
+    input.activated = input.activated || keyboard;
+    return input;
+}
+
 int
 UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
 {

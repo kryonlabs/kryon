@@ -169,6 +169,9 @@ func Text(props TextProps)    { active().Text(props) }
 func MeasureTextWidth(text string, font int32, typeface string) int32 {
 	return active().MeasureTextWidth(text, font, typeface)
 }
+func ReadActivation(bounds Rectangle, id int32, enabled bool) Activation {
+	return active().ReadActivation(bounds, id, enabled)
+}
 func LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
 	active().LabelText(label, value, bounds, fontSize, color)
 }
