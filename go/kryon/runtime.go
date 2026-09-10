@@ -6952,20 +6952,27 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
 	theme := r.theme()
-	border := theme.border
-	if r.focusID == focusID || focused != nil && *focused {
-		border = theme.focus
-	}
+	fieldFocused := r.focusID == focusID || focused != nil && *focused
+	disabled := r.contentDisabled()
+	paint := r.textInputStyle(fieldFocused, disabled)
 	op := FrameOp{
 		Kind:              kind,
 		Bounds:            bounds,
 		Text:              text,
-		Color:             theme.background,
-		BorderColor:       border,
-		TextColor:         theme.text,
+		Color:             paint.Background,
+		BorderColor:       paint.Border,
+		FocusColor:        paint.Focus,
+		AmbientColor:      theme.surface,
+		TextColor:         paint.Foreground,
 		SelectionColor:    theme.selectedHot,
 		SelectedTextColor: theme.selectedText,
 		CursorColor:       theme.focus,
+		Radius:            paint.Radius,
+		BorderWidth:       paint.BorderWidth,
+		Opacity:           paint.Opacity,
+		Material:          paint.Material,
+		FillStates:        styleFill(paint),
+		FillStatesValid:   true,
 		FontSize:          font,
 		FocusID:           focusID,
 		Cursor:            int32(pos),
@@ -6974,6 +6981,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		CompositionStart:  int32(compositionStart),
 		CompositionEnd:    int32(compositionEnd),
 		Focused:           r.focusID == focusID,
+		Disabled:          disabled,
 		Secure:            secure,
 		ReadOnly:          readOnly,
 	}
@@ -6981,6 +6989,18 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		op.Focused = *focused
 	}
 	r.record(op)
+}
+
+func (r *runtime) textInputStyle(focused, disabled bool) Style {
+	state := ButtonStateNormal
+	if focused {
+		state = ButtonStateFocus
+	}
+	if disabled {
+		state = ButtonStateDisabled
+	}
+	return resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
+		ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state)
 }
 
 func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {

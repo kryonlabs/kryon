@@ -180,7 +180,7 @@ int RenderHref(HrefProps link);
 int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
-                     TextInputStyle style);
+                     TextInputStyle style, int focus_id);
 int ui_text_field_render(TextFieldProps field);
 int ui_text_area_render(TextAreaProps area);
 int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);

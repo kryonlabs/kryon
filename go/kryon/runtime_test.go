@@ -1880,7 +1880,7 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 	}
 }
 
-func TestTextFieldFrameOpsCarryThemeSelectionColors(t *testing.T) {
+func TestTextInputFrameOpsCarryModernThemeStyle(t *testing.T) {
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
 	rt.SetThemeSource(ThemeSourceApp)
 	rt.SetCurrentTheme(int32(ThemeCobalt), 1)
@@ -1891,7 +1891,9 @@ func TestTextFieldFrameOpsCarryThemeSelectionColors(t *testing.T) {
 	copy(text, "abcde")
 	cursor := int32(4)
 	focused := true
+	areaFocused := false
 	rt.SetSelection(77, 1, 4)
+	rt.SetSelection(78, 1, 4)
 
 	BeginFrame()
 	TextField(TextFieldProps{
@@ -1902,15 +1904,49 @@ func TestTextFieldFrameOpsCarryThemeSelectionColors(t *testing.T) {
 		FocusID:        77,
 		Font:           Text16,
 	})
+	TextArea(TextAreaProps{
+		Bounds:         Rectangle{X: 10, Y: 54, Width: 160, Height: 64},
+		Text:           text,
+		CursorPosition: &cursor,
+		Focused:        &areaFocused,
+		FocusID:        78,
+		Font:           Text16,
+	})
 	EndFrame()
 
+	wantFocused := rt.textInputStyle(true, false)
+	wantIdle := rt.textInputStyle(false, false)
+	foundField := false
+	foundArea := false
 	ops := FrameOps()
 	for _, op := range ops {
-		if op.Kind != FrameOpTextField {
+		if op.Kind != FrameOpTextField && op.Kind != FrameOpTextArea {
 			continue
 		}
-		if got, want := op.BorderColor, rt.theme().focus; got != want {
-			t.Fatalf("focused field border = %#v, want focus %#v", got, want)
+		want := wantFocused
+		if op.Kind == FrameOpTextArea {
+			want = wantIdle
+		}
+		if got := op.Color; got != want.Background {
+			t.Fatalf("%s background = %#v, want %#v", op.Kind, got, want.Background)
+		}
+		if got := op.BorderColor; got != want.Border {
+			t.Fatalf("%s border = %#v, want %#v", op.Kind, got, want.Border)
+		}
+		if got := op.FocusColor; got != want.Focus {
+			t.Fatalf("%s focus = %#v, want %#v", op.Kind, got, want.Focus)
+		}
+		if got := op.TextColor; got != want.Foreground {
+			t.Fatalf("%s text = %#v, want %#v", op.Kind, got, want.Foreground)
+		}
+		if got := op.Material; got != want.Material {
+			t.Fatalf("%s material = %#v, want %#v", op.Kind, got, want.Material)
+		}
+		if got := op.Radius; got != want.Radius {
+			t.Fatalf("%s radius = %#v, want %#v", op.Kind, got, want.Radius)
+		}
+		if got := op.BorderWidth; got != want.BorderWidth {
+			t.Fatalf("%s border width = %#v, want %#v", op.Kind, got, want.BorderWidth)
 		}
 		if got, want := op.SelectionColor, rt.theme().selectedHot; got != want {
 			t.Fatalf("selection color = %#v, want %#v", got, want)
@@ -1921,9 +1957,16 @@ func TestTextFieldFrameOpsCarryThemeSelectionColors(t *testing.T) {
 		if op.SelectionStart != 1 || op.SelectionEnd != 4 {
 			t.Fatalf("selection range = %d..%d, want 1..4", op.SelectionStart, op.SelectionEnd)
 		}
-		return
+		if op.Kind == FrameOpTextField {
+			foundField = true
+		} else {
+			foundArea = true
+		}
 	}
-	t.Fatalf("text field op not found: %#v", ops)
+	if !foundField || !foundArea {
+		t.Fatalf("text input ops not found: field=%v area=%v ops=%#v",
+			foundField, foundArea, ops)
+	}
 }
 
 func TestAppThemeCatalogHonorsThemeID(t *testing.T) {

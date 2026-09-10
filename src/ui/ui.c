@@ -5,8 +5,10 @@
 #include "ui_popup_input_internal.h"
 #include "ui_text.h"
 #include "ui_tk.h"
+#include "ui_style_internal.h"
 #include "platform.h"
 #include "theme.h"
+#include "runtime/button.h"
 #include "runtime/surface.h"
 #include "kry_uri.h"
 #include <ctype.h>
@@ -15,6 +17,7 @@
 #include <string.h>
 #include <math.h>
 #include <limits.h>
+#include <stdint.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -1802,14 +1805,21 @@ ui_resolve_text_input_style(TextInputStyle style)
 
     if(ui_default_style()) {
         ThemeScheme scheme = ui_default_scheme();
+        ButtonProps props = {.tone = ButtonToneNeutral,
+                             .emphasis = ButtonEmphasisSoft};
+        Style control = ResolveButtonStyle(props, ButtonStateNormal);
 
-        background = scheme.surface_container;
+        background = control.background.a != 0 ? control.background
+                                               : scheme.surface_variant;
         if(style.border.a == 0)
-            style.border = scheme.outline;
+            style.border = control.border.a != 0 ? control.border
+                                                 : scheme.outline;
         if(style.focus_border.a == 0)
-            style.focus_border = scheme.primary;
+            style.focus_border = control.focus.a != 0 ? control.focus
+                                                      : scheme.primary;
         if(style.text.a == 0)
-            style.text = scheme.on_surface;
+            style.text = control.foreground.a != 0 ? control.foreground
+                                                   : scheme.on_surface;
         if(style.cursor.a == 0)
             style.cursor = scheme.primary;
     } else {
@@ -1827,6 +1837,116 @@ ui_resolve_text_input_style(TextInputStyle style)
     return style;
 }
 
+static uint64_t
+ui_text_input_motion_key(Rectangle bounds, int focus_id, const char *kind)
+{
+    uint64_t key = UINT64_C(1469598103934665603);
+
+    while(kind != NULL && *kind != '\0') {
+        key ^= (unsigned char)*kind++;
+        key *= UINT64_C(1099511628211);
+    }
+    key ^= (uint64_t)(uint32_t)focus_id;
+    key *= UINT64_C(1099511628211);
+    key ^= (uint64_t)(int)bounds.x;
+    key *= UINT64_C(1099511628211);
+    key ^= (uint64_t)(int)bounds.y;
+    key *= UINT64_C(1099511628211);
+    key ^= (uint64_t)(int)bounds.width;
+    key *= UINT64_C(1099511628211);
+    key ^= (uint64_t)(int)bounds.height;
+    key *= UINT64_C(1099511628211);
+    return key != 0 ? key : 1;
+}
+
+static Rectangle
+ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
+                      int editable, int focus_id, const char *kind,
+                      TextInputStyle requested)
+{
+    int disabled = UIContentDisabled();
+    int hovered = 0;
+
+    if(ui_default_style()) {
+        ThemeMetrics metrics = GetThemeMetrics();
+        ButtonProps props = {.bounds = bounds, .id = focus_id,
+                             .tone = ButtonToneNeutral,
+                             .emphasis = ButtonEmphasisSoft,
+                             .disabled = disabled};
+        Style paint = ResolveButtonStyle(
+            props, disabled ? ButtonStateDisabled
+                            : (focused ? ButtonStateFocus
+                                       : ButtonStateNormal));
+        FillStates fill_states;
+        Vector2 mouse = ui_mouse_world();
+        Color border = focused ? style.focus_border : style.border;
+        Activation sample;
+        ButtonInput input;
+        InteractionMotion motion;
+
+        if(requested.background.a != 0)
+            paint.background = style.background;
+        if(requested.border.a != 0 ||
+           (focused && requested.focus_border.a != 0))
+            paint.border = border;
+        if(requested.focus_border.a != 0)
+            paint.focus = style.focus_border;
+        if(requested.text.a != 0)
+            paint.foreground = style.text;
+        paint.radius = metrics.control_radius;
+        paint.border_width = metrics.border_width;
+        paint.opacity = 1.0f;
+
+        hovered = editable &&
+                  CheckCollisionPointRec(mouse, bounds) &&
+                  !UIInputCapturesClick(mouse) &&
+                  UIHoverEffectsEnabled();
+        sample.hovered = hovered;
+        sample.pressed = 0;
+        sample.focused = focused;
+        sample.activated = 0;
+        input = ResolveButtonInput(props, sample);
+        motion = AdvanceButtonMotion(
+            ui_text_input_motion_key(bounds, focus_id, kind), props, input,
+            UITransitionCuesEnabled(), GetFrameTime() * 1000.0f,
+            metrics.transition_normal_ms, metrics.transition_fast_ms);
+        if(motion.active)
+            InvalidateTree(UI_INVALIDATE_PAINT);
+        paint = ui_style_transition(
+            paint,
+            ResolveButtonStyle(props, ButtonStateNormal),
+            ResolveButtonStyle(props, ButtonStateHover),
+            ResolveButtonStyle(props, ButtonStatePressed),
+            ResolveButtonStyle(props, ButtonStateFocus),
+            motion.hover.value, motion.press.value, motion.focus.value,
+            &fill_states);
+        if(requested.background.a != 0)
+            paint.background = style.background;
+        if(requested.border.a != 0 ||
+           (focused && requested.focus_border.a != 0))
+            paint.border = border;
+        if(requested.focus_border.a != 0)
+            paint.focus = style.focus_border;
+        if(requested.text.a != 0)
+            paint.foreground = style.text;
+        paint.radius = metrics.control_radius;
+        paint.border_width = metrics.border_width;
+        paint.opacity = 1.0f;
+        fill_states = ui_style_fill(paint);
+        return ui_draw_material(
+            bounds, (Rectangle){0}, paint.background, paint.border,
+            paint.border, paint.radius, paint.border_width,
+            motion.hover.value, motion.press.value, disabled, paint.focus,
+            motion.focus.value, paint.opacity, fill_states, paint.material);
+    }
+
+    ui_draw_box_background(bounds,
+                           style.radius >= 0.0f ? style.radius : 0.12f,
+                           style.background,
+                           focused ? style.focus_border : style.border);
+    return bounds;
+}
+
 static int ui_text_width_before_cursor(const char *text, int font,
                                        int cursor_position);
 
@@ -1835,8 +1955,10 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
                   int selection_end, int composition_start,
-                  int composition_end, int scroll_x)
+                  int composition_end, int scroll_x, int focus_id)
 {
+    TextInputStyle requested_style = style;
+
     style = ui_resolve_text_input_style(style);
     const char *value = text ? text : "";
     int x = (int)bounds.x;
@@ -1850,29 +1972,14 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     int text_y = GetUIControlTextY(value, y, h, font);
     int cursor_h = ui_control_cursor_height(font, h);
     int cursor_y = y + (h - cursor_h) / 2;
-    Color border = focused ? style.focus_border : style.border;
     Color text_color = style.text.a != 0 ? style.text : c_text;
     Color cursor_color = style.cursor.a != 0 ? style.cursor : c_circle;
-    float radius = style.radius >= 0.0f ? style.radius : 0.12f;
 
     if(focused && text_input_active)
         SetUIFocusTextInputActive(1);
 
-    if(ui_default_style()) {
-        Color background = ui_default_surface_container();
-        Color outline = focused ? c_circle : Fade(c_text, 0.36f);
-
-        DrawRectangleRounded(bounds, 0.18f, 12, background);
-        DrawRectangleRoundedLinesEx(bounds, 0.18f, 12,
-                                    Scale(focused ? 2 : 1), outline);
-        DrawRectangle((int)bounds.x + Scale(8),
-                      (int)(bounds.y + bounds.height) -
-                          Scale(focused ? 2 : 1),
-                      (int)bounds.width - Scale(16),
-                      Scale(focused ? 2 : 1), outline);
-    } else {
-        ui_draw_box_background(bounds, radius, style.background, border);
-    }
+    (void)ui_text_input_surface(bounds, style, focused, text_input_active,
+                                focus_id, "text_input", requested_style);
 
     if(clip_w < 0)
         clip_w = 0;
@@ -1956,10 +2063,10 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 void
 DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
-                         TextInputStyle style)
+                         TextInputStyle style, int focus_id)
 {
     RenderTextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0, 0, 0, 0);
+                      cursor_visible, font, style, 0, 0, 0, 0, 0, focus_id);
 }
 
 static int
@@ -2018,7 +2125,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int selection_start, int selection_end)
 {
     RenderTextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
-                      selection_start, selection_end, 0, 0, 0);
+                      selection_start, selection_end, 0, 0, 0, 0);
 }
 
 int
@@ -2135,7 +2242,7 @@ ui_text_input_control_render(TextInputProps input)
     DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetFontSize(),
-                             input.style);
+                             input.style, input.focus_id);
     EndUIWidget(&widget);
     return focused;
 }
@@ -3095,6 +3202,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
                             int selection_start, int selection_end,
                             int composition_start, int composition_end)
 {
+    TextInputStyle requested_style = area.style;
     int font;
     int line_gap;
     int padding_x;
@@ -3103,8 +3211,6 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     int scroll_y;
     int line_h;
     int first_line_y;
-    Color border;
-    float radius;
 
     if(area.text == NULL)
         return;
@@ -3135,9 +3241,9 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     }
     first_line_y = GetUIControlTextY(
         "Hg", (int)area.bounds.y + padding_y, line_h, font);
-    border = focused ? area.style.focus_border : area.style.border;
-    radius = area.style.radius >= 0.0f ? area.style.radius : 0.12f;
-    ui_draw_box_background(area.bounds, radius, area.style.background, border);
+    (void)ui_text_input_surface(area.bounds, area.style, focused,
+                                !area.read_only, area.focus_id, "text_area",
+                                requested_style);
     ui_begin_world_clip((Rectangle){
         area.bounds.x + padding_x, area.bounds.y + padding_y,
         area.bounds.width - padding_x * 2,
@@ -4935,7 +5041,7 @@ ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint p
                       paint.caret, paint.font, paint.style,
                       paint.selection_start, paint.selection_end,
                       paint.composition_start, paint.composition_end,
-                      paint.scroll_x);
+                      paint.scroll_x, 0);
     PopUIFont(previous_font);
 }
 
@@ -4987,6 +5093,7 @@ ui_readonly_text_box_height(const char *text, int font, int width,
 int
 RenderReadonlyTextBox(ReadonlyTextBoxProps box)
 {
+    TextInputStyle requested_style = box.style;
     char editor_id[96];
     UIWidget widget;
     char line[1024];
@@ -5000,7 +5107,6 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
     int offset = 0;
     int len = (int)strlen(text);
     int draw_y = (int)box.bounds.y + padding_y;
-    float radius = box.style.radius >= 0.0f ? box.style.radius : 0.12f;
     Vector2 mouse_world = ui_mouse_world();
     int active;
 
@@ -5012,6 +5118,7 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
                            UI_WIDGET_MOVABLE |
                            UI_WIDGET_RESIZABLE);
     box.bounds = widget.bounds;
+    box.style = ui_resolve_text_input_style(box.style);
 
     active = CheckCollisionPointRec(mouse_world, box.bounds) &&
              !UIInputCapturesClick(mouse_world);
@@ -5019,7 +5126,8 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
     if(content_w < Scale(24))
         content_w = Scale(24);
 
-    ui_draw_box_background(box.bounds, radius, box.style.background, box.style.border);
+    (void)ui_text_input_surface(box.bounds, box.style, 0, active, 0,
+                                "readonly_text_box", requested_style);
 
     ui_begin_world_clip((Rectangle){box.bounds.x + (float)padding_x, box.bounds.y,
                                     (float)content_w, box.bounds.height});

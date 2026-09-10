@@ -344,21 +344,35 @@ func iconPattern(iconType int32) []string {
 }
 
 func renderTextInput(img *image.RGBA, op FrameOp) {
-	fill := WHITE
-	if op.Color.A != 0 {
-		fill = op.Color
-	}
-	fillRect(img, op.Bounds, fill)
-	border := Color{144, 152, 164, 255}
-	if op.BorderColor.A != 0 {
-		border = op.BorderColor
-	}
-	if op.Focused {
-		if op.BorderColor.A == 0 {
-			border = Color{29, 96, 196, 255}
+	if op.Material == 0 && op.Opacity == 0 && op.Radius == 0 && op.BorderWidth == 0 {
+		fill := WHITE
+		if op.Color.A != 0 {
+			fill = op.Color
 		}
+		fillRect(img, op.Bounds, fill)
+		border := Color{144, 152, 164, 255}
+		if op.BorderColor.A != 0 {
+			border = op.BorderColor
+		}
+		if op.Focused {
+			if op.BorderColor.A == 0 {
+				border = Color{29, 96, 196, 255}
+			}
+		}
+		strokeRect(img, op.Bounds, border)
+	} else {
+		if op.Opacity == 0 {
+			op.Opacity = 1
+		}
+		if op.BorderWidth == 0 {
+			op.BorderWidth = 1
+		}
+		if op.FocusColor.A == 0 {
+			op.FocusColor = op.CursorColor
+		}
+		op.Kind = FrameOpSurface
+		renderMaterial(img, op)
 	}
-	strokeRect(img, op.Bounds, border)
 	x := int(round(op.Bounds.X)) + 8
 	y := int(round(op.Bounds.Y)) + maxInt(3, (int(round(op.Bounds.Height))-int(textHeight(op.FontSize, op.FontID)))/2)
 	text := BLACK
@@ -389,7 +403,10 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		start, end := orderedInt32(op.CompositionStart, op.CompositionEnd)
 		sx := x + textAdvance(op.Text, start, op.FontSize, op.FontID)
 		ex := x + textAdvance(op.Text, end, op.FontSize, op.FontID)
-		composition := border
+		composition := op.BorderColor
+		if composition.A == 0 {
+			composition = Color{144, 152, 164, 255}
+		}
 		if op.CursorColor.A != 0 {
 			composition = op.CursorColor
 		}
@@ -400,7 +417,10 @@ func renderTextInput(img *image.RGBA, op FrameOp) {
 		cursorX := x + textAdvance(op.Text, op.Cursor, op.FontSize, op.FontID)
 		top := int(round(op.Bounds.Y)) + 5
 		bottom := int(round(op.Bounds.Y+op.Bounds.Height)) - 5
-		cursor := border
+		cursor := op.BorderColor
+		if cursor.A == 0 {
+			cursor = Color{144, 152, 164, 255}
+		}
 		if op.CursorColor.A != 0 {
 			cursor = op.CursorColor
 		}

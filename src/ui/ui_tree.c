@@ -977,7 +977,9 @@ ReconcileTree(void)
     unsigned invalid_before = ui_tree_invalid;
     int i;
 
-    if(ui_tree_build_activation && ui_committed_node_count > 0) {
+    if(ui_tree_build_activation && ui_committed_node_count > 0 &&
+       ui_committed_nodes[0].key == ui_tree_screen_key &&
+       ui_tree_node_count < ui_committed_node_count) {
         ui_tree_clear_pending();
         ui_tree_node_count = 0;
         ui_tree_build_activation = 0;
