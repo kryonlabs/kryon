@@ -240,6 +240,69 @@ ui_style_apply_effects_fill(FillStates fill)
     return fill;
 }
 
+void
+ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
+{
+    ThemeScheme scheme = ui_default_scheme();
+    const Theme *theme = GetThemeRef();
+    Palette defaults = DefaultPalette(GetEffectiveThemeDarkMode());
+    Color surface = theme != NULL ? theme->colors.surface : scheme.surface;
+    Color neutral = theme != NULL ? theme->colors.surface_raised : scheme.surface_variant;
+    Color accent = theme != NULL ? theme->colors.accent : scheme.primary;
+    Color accent_hover = theme != NULL ? theme->colors.accent_hover
+                                        : GetThemeButtonHover();
+    Color accent_pressed = theme != NULL ? theme->colors.accent_pressed
+                                          : DarkenUIColor(accent, 14);
+    Color danger = theme != NULL ? theme->colors.danger : GetColor(defaults.danger);
+    Color success = theme != NULL ? theme->colors.success : GetColor(defaults.success);
+    Color warning = theme != NULL ? theme->colors.warning : GetColor(defaults.warning);
+    Color disabled_text = theme != NULL
+        ? theme->colors.text_disabled
+        : GetColor(defaults.text_disabled);
+
+    Palette palette = {
+        .surface = ColorToInt(surface),
+        .surface_raised = ColorToInt(neutral),
+        .accent = ColorToInt(accent),
+        .accent_hover = ColorToInt(accent_hover),
+        .accent_pressed = ColorToInt(accent_pressed),
+        .on_accent = ColorToInt(theme != NULL ? theme->colors.on_accent : scheme.on_primary),
+        .text = ColorToInt(theme != NULL ? theme->colors.text : scheme.on_surface),
+        .text_disabled = ColorToInt(disabled_text),
+        .danger = ColorToInt(danger),
+        .on_danger = ColorToInt(theme != NULL ? theme->colors.on_danger : GetColor(defaults.on_danger)),
+        .success = ColorToInt(success),
+        .on_success = ColorToInt(theme != NULL ? theme->colors.on_success : GetColor(defaults.on_success)),
+        .warning = ColorToInt(warning),
+        .on_warning = ColorToInt(theme != NULL ? theme->colors.on_warning : GetColor(defaults.on_warning)),
+        .link = ColorToInt(theme != NULL ? theme->colors.link : GetThemeLink()),
+        .focus = ColorToInt(theme != NULL ? theme->colors.focus : GetThemeLink()),
+        .shadow = ColorToInt(theme != NULL ? theme->colors.shadow : GetColor(defaults.shadow))
+    };
+    ThemeMetrics metrics = GetThemeMetrics();
+    Metrics tokens = {
+        .transition_normal_ms = metrics.transition_normal_ms,
+        .transition_fast_ms = metrics.transition_fast_ms,
+        .radius_medium = metrics.radius_medium,
+        .radius_large = metrics.radius_large,
+        .radius_pill = metrics.radius_pill,
+        .border_width = metrics.border_width,
+        .control_padding_small = metrics.control_padding_small,
+        .control_padding_medium = metrics.control_padding_medium,
+        .control_padding_large = metrics.control_padding_large,
+        .control_gap = metrics.control_gap,
+        .font_size_small = metrics.font_size_small,
+        .font_size_medium = metrics.font_size_medium,
+        .font_size_large = metrics.font_size_large,
+        .icon_size_small = metrics.icon_size_small,
+        .icon_size_medium = metrics.icon_size_medium,
+        .icon_size_large = metrics.icon_size_large
+    };
+
+    *palette_out = palette;
+    *metrics_out = tokens;
+}
+
 Style
 ui_unpack_style(StyleData value)
 {

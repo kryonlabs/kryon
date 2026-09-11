@@ -1,0 +1,171 @@
+#module "toggle"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "material"
+#import "style"
+#import "surface"
+#import "theme"
+
+ToggleSpec :: struct {
+    bounds: Rectangle
+    checked: bool
+    enabled: bool
+    hovered: bool
+    pressed: bool
+    focused: bool
+    has_labels: bool
+    off_width: i32
+    on_width: i32
+    font: i32
+    scale: float
+    palette: Palette
+    metrics: Metrics
+}
+
+TogglePaint :: struct {
+    bounds: Rectangle
+    track_bounds: Rectangle
+    focus_bounds: Rectangle
+    active_bounds: Rectangle
+    off_label_bounds: Rectangle
+    on_label_bounds: Rectangle
+    track: StyleFrame
+    active: StyleFrame
+    show_focus: bool
+    has_labels: bool
+    off_label_color: u32
+    on_label_color: u32
+    thumb_x: float
+    thumb_y: float
+    thumb_radius: float
+    thumb_shadow_color: u32
+    thumb_fill_color: u32
+    thumb_edge_color: u32
+    thumb_highlight_color: u32
+    thumb_glow_color: u32
+}
+
+ToggleMinimumWidth :: (has_labels: bool, off_width: i32, on_width: i32,
+                       scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if !has_labels { return (i32)(54.0 * scale) }
+    widest: i32 = off_width
+    if on_width > widest { widest = on_width }
+    return (widest + (i32)(16.0 * scale)) * 2 + (i32)(6.0 * scale)
+}
+
+ToggleMinimumHeight :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(34.0 * scale)
+}
+
+TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
+    paint: TogglePaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+    bounds: Rectangle = spec.bounds
+    min_w: float = (float)ToggleMinimumWidth(spec.has_labels, spec.off_width,
+        spec.on_width, scale)
+    min_h: float = (float)ToggleMinimumHeight(scale)
+    if bounds.width < min_w { bounds.width = min_w }
+    if bounds.height < min_h { bounds.height = min_h }
+
+    track_w: float = 54.0 * scale
+    track_h: float = 32.0 * scale
+    if spec.has_labels {
+        track_w = bounds.width
+        track_h = bounds.height
+    }
+    if track_w > bounds.width { track_w = bounds.width }
+    if track_h > bounds.height { track_h = bounds.height }
+    track: Rectangle
+    track.x = bounds.x + (bounds.width - track_w) * 0.5
+    track.y = bounds.y + (bounds.height - track_h) * 0.5
+    track.width = track_w
+    track.height = track_h
+
+    state: i32 = ButtonStateNormal
+    if spec.pressed { state = ButtonStatePressed }
+    else if spec.hovered { state = ButtonStateHover }
+
+    styles: StyleStates
+    track_tone: i32 = ButtonToneNeutral
+    track_emphasis: i32 = ButtonEmphasisSoft
+    if spec.checked {
+        track_tone = ButtonToneAccent
+        track_emphasis = ButtonEmphasisFilled
+    }
+    paint.track = ResolveFrame(track_tone, track_emphasis, state,
+        ControlSizeMedium, true, false, !spec.enabled, false, false,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+    paint.active = ResolveFrame(ButtonToneAccent, ButtonEmphasisFilled, state,
+        ControlSizeMedium, true, false, !spec.enabled, false, false,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+
+    focus_gap: float = 4.0 * scale
+    paint.focus_bounds.x = track.x - focus_gap
+    paint.focus_bounds.y = track.y - focus_gap
+    paint.focus_bounds.width = track.width + focus_gap * 2.0
+    paint.focus_bounds.height = track.height + focus_gap * 2.0
+    paint.show_focus = spec.focused
+
+    paint.bounds = bounds
+    paint.track_bounds = track
+    paint.has_labels = spec.has_labels
+    paint.off_label_color = spec.palette.text
+    paint.on_label_color = spec.palette.text
+    if !spec.enabled {
+        paint.off_label_color = spec.palette.text_disabled
+        paint.on_label_color = spec.palette.text_disabled
+    }
+    if spec.has_labels {
+        active_w: float = (track.width - 6.0 * scale) * 0.5
+        active_x: float = track.x + 3.0 * scale
+        if spec.checked { active_x = track.x + track.width - active_w - 3.0 * scale }
+        paint.active_bounds.x = active_x
+        paint.active_bounds.y = track.y + 3.0 * scale
+        paint.active_bounds.width = active_w
+        paint.active_bounds.height = track.height - 6.0 * scale
+        text_y: float = bounds.y + (bounds.height - (float)spec.font) * 0.5
+        paint.off_label_bounds.x = bounds.x + bounds.width * 0.25 - (float)spec.off_width * 0.5
+        paint.off_label_bounds.y = text_y
+        paint.off_label_bounds.width = (float)spec.off_width
+        paint.off_label_bounds.height = (float)spec.font
+        paint.on_label_bounds.x = bounds.x + bounds.width * 0.75 - (float)spec.on_width * 0.5
+        paint.on_label_bounds.y = text_y
+        paint.on_label_bounds.width = (float)spec.on_width
+        paint.on_label_bounds.height = (float)spec.font
+        if spec.checked { paint.on_label_color = paint.active.value.foreground }
+        else { paint.off_label_color = paint.active.value.foreground }
+    } else {
+        thumb_size: float = 20.0 * scale
+        if spec.checked { thumb_size = 24.0 * scale }
+        if spec.pressed { thumb_size += 2.0 * scale }
+        max_thumb: float = track.height - 6.0 * scale
+        if thumb_size > max_thumb { thumb_size = max_thumb }
+        thumb_x: float = track.x + 4.0 * scale
+        if spec.checked { thumb_x = track.x + track.width - thumb_size - 4.0 * scale }
+        thumb_y: float = track.y + (track.height - thumb_size) * 0.5
+        paint.thumb_radius = thumb_size * 0.5
+        paint.thumb_x = thumb_x + paint.thumb_radius
+        paint.thumb_y = thumb_y + paint.thumb_radius
+        white: u32 = PackedColor((u32)0xFFFFFF, (u32)255)
+        if spec.checked {
+            paint.thumb_fill_color = paint.track.value.foreground
+            paint.thumb_edge_color = GradientColor(paint.track.value.background, white, 0.65)
+            paint.thumb_glow_color = Opacity(paint.track.value.background, 0.36)
+        } else {
+            paint.thumb_fill_color = GradientColor(paint.track.value.background, white, 0.90)
+            paint.thumb_edge_color = GradientColor(paint.track.value.border, white, 0.80)
+            paint.thumb_glow_color = Opacity(paint.track.value.border, 0.36)
+        }
+        paint.thumb_shadow_color = Opacity(spec.palette.shadow, spec.enabled ? 0.72 : 0.36)
+        paint.thumb_highlight_color = Opacity(white, spec.enabled ? 0.23 : 0.09)
+        if !spec.enabled {
+            paint.thumb_fill_color = Opacity(paint.thumb_fill_color, 0.43)
+            paint.thumb_edge_color = Opacity(paint.thumb_edge_color, 0.35)
+        }
+    }
+    return paint
+}

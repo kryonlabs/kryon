@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/toggle.h"
 
 int
 ui_render_slider(int id, int x, int y, int w, const char *label,
@@ -457,8 +458,9 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
     int off_w = has_labels ? TextWidth(off_text, font) : 0;
     int on_w = has_labels ? TextWidth(on_text, font) : 0;
-    int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
-    int min_w = has_labels ? min_half_w * 2 + Scale(6) : Scale(54);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    int min_w = ToggleMinimumWidth(has_labels, off_w, on_w, runtime_scale);
+    int min_h = ToggleMinimumHeight(runtime_scale);
     Rectangle bounds;
     int enabled;
     int pressed;
@@ -466,8 +468,8 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     int down;
     if(w < min_w)
         w = min_w;
-    if(h < Scale(34))
-        h = Scale(34);
+    if(h < min_h)
+        h = min_h;
 
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     widget = BeginUIWidget("toggle",
@@ -483,8 +485,8 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     h = (int)editor_bounds.height;
     if(w < min_w)
         w = min_w;
-    if(h < Scale(34))
-        h = Scale(34);
+    if(h < min_h)
+        h = min_h;
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     UIWidgetSetBounds(&widget, editor_bounds);
 
@@ -513,121 +515,90 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     }
 
     {
-        int checked = value != NULL && *value;
-        ButtonProps track_props = {.tone = checked ? ButtonToneAccent
-                                                   : ButtonToneNeutral,
-            .emphasis = checked ? ButtonEmphasisFilled : ButtonEmphasisSoft,
-            .disabled = !enabled, .pill = 1};
-        ButtonState visual_state = down ? ButtonStatePressed
-            : hovered ? ButtonStateHover : ButtonStateNormal;
-        Style track_style = ui_style_apply_effects(ResolveButtonStyle(
-            track_props, visual_state));
-        Rectangle track_bounds;
-        int track_w = has_labels ? w : Scale(54);
-        int track_h = has_labels ? h : Scale(32);
-        int track_x;
-        int track_y;
+        Palette palette;
+        Metrics tokens;
+        ToggleSpec spec;
+        TogglePaint paint;
+        StyleFrame track_frame;
+        Style track_style;
+        StyleFrame active_frame;
+        Style active_style;
 
-        if(track_w > w)
-            track_w = w;
-        if(track_h > h)
-            track_h = h;
-        track_x = x + (w - track_w) / 2;
-        track_y = y + (h - track_h) / 2;
-        track_bounds = (Rectangle){track_x, track_y, track_w, track_h};
-        if(focused) {
-            Color focus = GetTheme().colors.focus;
-            Color glow = focus;
-            Rectangle focus_bounds = {
-                track_bounds.x - Scale(4), track_bounds.y - Scale(4),
-                track_bounds.width + Scale(8), track_bounds.height + Scale(8)
-            };
+        ui_runtime_theme_values(&palette, &tokens);
+        spec = (ToggleSpec){
+            .bounds = editor_bounds,
+            .checked = value != NULL && *value,
+            .enabled = enabled,
+            .hovered = hovered,
+            .pressed = down,
+            .focused = focused,
+            .has_labels = has_labels,
+            .off_width = off_w,
+            .on_width = on_w,
+            .font = font,
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        };
+        paint = TogglePaintFor(spec);
+        track_frame = ui_style_apply_effects_frame(paint.track);
+        track_style = ui_unpack_style(track_frame.value);
 
-            glow.a = glow.a > 54 ? 54 : glow.a;
-            focus.a = focus.a > 220 ? 220 : focus.a;
-            DrawRectangleRounded(focus_bounds, 0.5f, 16, glow);
-            DrawRectangleRoundedLinesEx(focus_bounds, 0.5f, 16,
+        if(paint.show_focus) {
+            Color focus = GetColor(track_frame.value.focus);
+            Color glow = GetColor(Opacity(track_frame.value.focus, 0.24f));
+
+            DrawRectangleRounded(paint.focus_bounds, 0.5f, 16, glow);
+            DrawRectangleRoundedLinesEx(paint.focus_bounds, 0.5f, 16,
                                         (float)Scale(2), focus);
         }
-        ui_draw_material(track_bounds, (Rectangle){0}, track_style.background,
-                         track_style.border, track_style.border,
-                         track_style.radius, track_style.border_width,
+        ui_draw_material(paint.track_bounds, (Rectangle){0},
+                         track_style.background, track_style.border,
+                         track_style.border, track_style.radius,
+                         track_style.border_width,
                          hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
                          !enabled, track_style.focus, 0.0f,
-                         track_style.opacity, ui_style_fill(track_style),
+                         track_style.opacity,
+                         ui_style_apply_effects_fill(track_frame.fill),
                          track_style.material);
 
-        if(has_labels) {
-            ButtonProps active_props = {.tone = ButtonToneAccent,
-                .emphasis = ButtonEmphasisFilled, .disabled = !enabled,
-                .pill = 1};
-            Style active_style = ui_style_apply_effects(
-                ResolveButtonStyle(active_props, visual_state));
-            int active_w = (track_w - Scale(6)) / 2;
-            int active_x = checked ? track_x + track_w - active_w - Scale(3)
-                                   : track_x + Scale(3);
-            Color inactive_label = enabled ? c_text : DarkenUIColor(c_text, 42);
-            Color active_label = ui_default_on_color(active_style.background);
-            int text_y = GetUIControlTextY(off_text, y, h, font);
-
-            ui_draw_material((Rectangle){active_x, track_y + Scale(3),
-                                         active_w, track_h - Scale(6)},
-                             track_bounds, active_style.background,
-                             active_style.border, active_style.border,
-                             active_style.radius, active_style.border_width,
+        if(paint.has_labels) {
+            active_frame = ui_style_apply_effects_frame(paint.active);
+            active_style = ui_unpack_style(active_frame.value);
+            ui_draw_material(paint.active_bounds, paint.track_bounds,
+                             active_style.background, active_style.border,
+                             active_style.border, active_style.radius,
+                             active_style.border_width,
                              hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
                              !enabled, active_style.focus, 0.0f,
-                             active_style.opacity, ui_style_fill(active_style),
+                             active_style.opacity,
+                             ui_style_apply_effects_fill(active_frame.fill),
                              active_style.material);
-            RenderNonSelectableText(off_text, x + w / 4 - off_w / 2,
-                                    text_y, font,
-                                    checked ? inactive_label : active_label);
-            RenderNonSelectableText(on_text, x + w * 3 / 4 - on_w / 2,
-                                    text_y, font,
-                                    checked ? active_label : inactive_label);
+            RenderNonSelectableText(off_text, (int)paint.off_label_bounds.x,
+                                    (int)paint.off_label_bounds.y, font,
+                                    GetColor(paint.off_label_color));
+            RenderNonSelectableText(on_text, (int)paint.on_label_bounds.x,
+                                    (int)paint.on_label_bounds.y, font,
+                                    GetColor(paint.on_label_color));
         } else {
-            int thumb_size = checked ? Scale(24) : Scale(20);
-            int thumb_x;
-            int thumb_y;
-            int thumb_cx;
-            int thumb_cy;
-            int thumb_r;
-            Color thumb_fill = checked ? ui_default_on_color(track_style.background)
-                                       : LightenUIColor(track_style.background, 90);
-            Color thumb_edge = checked ? LightenUIColor(track_style.background, 65)
-                                       : LightenUIColor(track_style.border, 80);
-            Color thumb_shadow = DarkenUIColor(GetThemeBackground(), 55);
-            Color thumb_highlight = WHITE;
-
-            if(down)
-                thumb_size += Scale(2);
-            if(thumb_size > track_h - Scale(6))
-                thumb_size = track_h - Scale(6);
-            thumb_x = checked ? track_x + track_w - thumb_size - Scale(4)
-                              : track_x + Scale(4);
-            thumb_y = track_y + (track_h - thumb_size) / 2;
-            thumb_cx = thumb_x + thumb_size / 2;
-            thumb_cy = thumb_y + thumb_size / 2;
-            thumb_r = thumb_size / 2;
+            int thumb_cx = (int)paint.thumb_x;
+            int thumb_cy = (int)paint.thumb_y;
+            int thumb_r = (int)paint.thumb_radius;
             if(hovered && enabled) {
-                Color glow = checked ? track_style.background
-                                     : track_style.border;
-                glow.a = glow.a > 92 ? 92 : glow.a;
                 DrawCircle(thumb_cx, thumb_cy,
-                           (float)(thumb_r + Scale(5)), glow);
+                           paint.thumb_radius + (float)Scale(5),
+                           GetColor(paint.thumb_glow_color));
             }
-            thumb_shadow.a = enabled ? 92 : 46;
             DrawCircle(thumb_cx, thumb_cy + Scale(2),
-                       (float)(thumb_r + Scale(1)), thumb_shadow);
-            if(!enabled) {
-                thumb_fill.a = thumb_fill.a > 110 ? 110 : thumb_fill.a;
-                thumb_edge.a = thumb_edge.a > 90 ? 90 : thumb_edge.a;
-            }
-            DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb_fill);
-            thumb_highlight.a = enabled ? 58 : 24;
+                       paint.thumb_radius + (float)Scale(1),
+                       GetColor(paint.thumb_shadow_color));
+            DrawCircle(thumb_cx, thumb_cy, paint.thumb_radius,
+                       GetColor(paint.thumb_fill_color));
             DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
-                       (float)(thumb_r / 2), thumb_highlight);
-            DrawCircleLines(thumb_cx, thumb_cy, (float)thumb_r, thumb_edge);
+                       paint.thumb_radius * 0.5f,
+                       GetColor(paint.thumb_highlight_color));
+            DrawCircleLines(thumb_cx, thumb_cy, (float)thumb_r,
+                            GetColor(paint.thumb_edge_color));
         }
     }
 
