@@ -544,19 +544,18 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
                        GetUIControlTextY(on_text, y, h, font),
                        font, label_color);
         } else {
-            ButtonProps thumb_props = {.tone = checked ? ButtonToneAccent
-                                                       : ButtonToneNeutral,
-                .emphasis = checked ? ButtonEmphasisFilled
-                                    : ButtonEmphasisSoft,
-                .disabled = !enabled, .circle = 1};
-            Style thumb_style = ui_style_apply_effects(ResolveButtonStyle(
-                thumb_props,
-                down ? ButtonStatePressed
-                     : hovered ? ButtonStateHover : ButtonStateNormal));
             int thumb_size = checked ? Scale(24) : Scale(20);
             int thumb_x;
             int thumb_y;
-            Rectangle thumb_bounds;
+            int thumb_cx;
+            int thumb_cy;
+            int thumb_r;
+            Color thumb_fill = checked ? ui_default_on_color(track_style.background)
+                                       : LightenUIColor(track_style.background, 90);
+            Color thumb_edge = checked ? LightenUIColor(track_style.background, 65)
+                                       : LightenUIColor(track_style.border, 80);
+            Color thumb_shadow = DarkenUIColor(GetThemeBackground(), 55);
+            Color thumb_highlight = WHITE;
 
             if(down)
                 thumb_size += Scale(2);
@@ -565,26 +564,28 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
             thumb_x = checked ? track_x + track_w - thumb_size - Scale(4)
                               : track_x + Scale(4);
             thumb_y = track_y + (track_h - thumb_size) / 2;
-            thumb_bounds = (Rectangle){thumb_x, thumb_y,
-                                       thumb_size, thumb_size};
+            thumb_cx = thumb_x + thumb_size / 2;
+            thumb_cy = thumb_y + thumb_size / 2;
+            thumb_r = thumb_size / 2;
             if(hovered && enabled) {
                 Color glow = checked ? track_style.background
                                      : track_style.border;
                 glow.a = glow.a > 92 ? 92 : glow.a;
-                DrawCircle(thumb_x + thumb_size / 2,
-                           thumb_y + thumb_size / 2,
-                           (float)(thumb_size / 2 + Scale(5)), glow);
+                DrawCircle(thumb_cx, thumb_cy,
+                           (float)(thumb_r + Scale(5)), glow);
             }
-            ui_draw_material(thumb_bounds, track_bounds,
-                             checked ? ui_default_on_color(track_style.background)
-                                     : thumb_style.background,
-                             thumb_style.border, thumb_style.border,
-                             1.0f, thumb_style.border_width,
-                             hovered ? 1.0f : 0.0f,
-                             down ? 1.0f : 0.0f,
-                             !enabled, thumb_style.focus, 0.0f,
-                             thumb_style.opacity, ui_style_fill(thumb_style),
-                             thumb_style.material);
+            thumb_shadow.a = enabled ? 92 : 46;
+            DrawCircle(thumb_cx, thumb_cy + Scale(2),
+                       (float)(thumb_r + Scale(1)), thumb_shadow);
+            if(!enabled) {
+                thumb_fill.a = thumb_fill.a > 110 ? 110 : thumb_fill.a;
+                thumb_edge.a = thumb_edge.a > 90 ? 90 : thumb_edge.a;
+            }
+            DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb_fill);
+            thumb_highlight.a = enabled ? 58 : 24;
+            DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
+                       (float)(thumb_r / 2), thumb_highlight);
+            DrawCircleLines(thumb_cx, thumb_cy, (float)thumb_r, thumb_edge);
         }
     }
 
