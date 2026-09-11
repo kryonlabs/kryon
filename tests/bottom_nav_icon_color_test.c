@@ -189,6 +189,14 @@ main(void)
                    item_paint.state_bounds.x > item_paint.bounds.x &&
                    item_paint.state_bounds.x + item_paint.state_bounds.width <
                        item_paint.bounds.x + item_paint.bounds.width);
+        check_true("compact navigation bar active badge stays above label",
+                   item_paint.state_bounds.y + item_paint.state_bounds.height <=
+                       item_paint.label_bounds.y);
+        check_true("compact navigation bar icon is centered in badge",
+                   (int)item_paint.icon_bounds.y ==
+                       (int)(item_paint.state_bounds.y +
+                             (item_paint.state_bounds.height -
+                              item_paint.icon_bounds.height) / 2.0f));
         check_true("compact navigation bar active badge is pill-shaped",
                    item_paint.face.value.radius >= metrics.radius_pill);
     }

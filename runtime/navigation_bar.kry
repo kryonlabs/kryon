@@ -121,13 +121,6 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     w: i32 = spec.bar.tab_width
     if index == spec.bar.count - 1 { w = spec.bar.start_x + spec.bar.group_width - x }
     if w < 0 { w = 0 }
-    label_gap: i32 = (i32)(6.0 * scale)
-    content_h: i32 = spec.bar.icon_size + label_gap + spec.label_height
-    content_y: i32 = spec.bar.y + (spec.bar.height - content_h) / 2 - (i32)(1.0 * scale)
-    if content_y < spec.bar.y + (i32)(8.0 * scale) {
-        content_y = spec.bar.y + (i32)(8.0 * scale)
-    }
-
     state_w: i32 = (i32)(58.0 * scale)
     state_h: i32 = (i32)(58.0 * scale)
     if state_w < spec.bar.icon_size + (i32)(16.0 * scale) {
@@ -136,21 +129,36 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     if state_h < spec.bar.icon_size + (i32)(16.0 * scale) {
         state_h = spec.bar.icon_size + (i32)(16.0 * scale)
     }
+    label_gap: i32 = (i32)(4.0 * scale)
+    stack_h: i32 = state_h + label_gap + spec.label_height
+    state_y: i32 = spec.bar.y + (spec.bar.height - stack_h) / 2
+    if state_y < spec.bar.y + (i32)(2.0 * scale) {
+        state_y = spec.bar.y + (i32)(2.0 * scale)
+    }
+    label_y: i32 = state_y + state_h + label_gap
+    if label_y + spec.label_height > spec.bar.y + spec.bar.height - (i32)(2.0 * scale) {
+        label_y = spec.bar.y + spec.bar.height - spec.label_height - (i32)(2.0 * scale)
+        state_y = label_y - label_gap - state_h
+        if state_y < spec.bar.y + (i32)(2.0 * scale) {
+            state_y = spec.bar.y + (i32)(2.0 * scale)
+        }
+    }
+    icon_y: i32 = state_y + (state_h - spec.bar.icon_size) / 2
 
     paint.bounds.x = (float)x
     paint.bounds.y = (float)spec.bar.y
     paint.bounds.width = (float)w
     paint.bounds.height = (float)spec.bar.height
     paint.state_bounds.x = (float)(x + (w - state_w) / 2)
-    paint.state_bounds.y = (float)(content_y - (state_h - spec.bar.icon_size) / 2)
+    paint.state_bounds.y = (float)state_y
     paint.state_bounds.width = (float)state_w
     paint.state_bounds.height = (float)state_h
     paint.icon_bounds.x = (float)(x + (w - spec.bar.icon_size) / 2)
-    paint.icon_bounds.y = (float)content_y
+    paint.icon_bounds.y = (float)icon_y
     paint.icon_bounds.width = (float)spec.bar.icon_size
     paint.icon_bounds.height = (float)spec.bar.icon_size
     paint.label_bounds.x = (float)(x + (i32)(3.0 * scale))
-    paint.label_bounds.y = (float)(content_y + spec.bar.icon_size + label_gap)
+    paint.label_bounds.y = (float)label_y
     paint.label_bounds.width = (float)(w - (i32)(6.0 * scale))
     paint.label_bounds.height = (float)spec.label_height
 
