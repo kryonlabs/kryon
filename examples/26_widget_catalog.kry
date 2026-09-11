@@ -443,7 +443,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         canvas_result: CanvasResult = BeginCanvas((Canvas){{x, y + Scale(38), Scale(360), Scale(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
         CanvasGrid((Rectangle){x, y + Scale(38), Scale(360), Scale(120)}, 12, GetThemeIcon())
-        DrawCircle(x + Scale(180), y + Scale(98), Scale(16), GetThemeLink())
+        Circle(x + Scale(180), y + Scale(98), Scale(16), GetThemeLink())
         unused canvas_result
         EndCanvas((Canvas){{x, y + Scale(38), Scale(360), Scale(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
         Text((TextProps){.bounds={right, y + Scale(56), 0, 0}, .text="Wheel to zoom; drag the canvas to pan.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})

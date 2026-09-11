@@ -753,6 +753,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_BACKGROUND_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_RECT_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_CIRCLE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_LINE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_BUTTON_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_FIELD_NODE] = {ui_measure_bounds_height},
@@ -1827,6 +1828,12 @@ DrawTree(void)
                 DrawRectangleLinesEx(node->bounds, 1.0f,
                                      node->data.primitive.border);
             break;
+        case UI_WIDGET_CIRCLE_NODE:
+            DrawCircle((int)(node->bounds.x + node->bounds.width / 2.0f),
+                       (int)(node->bounds.y + node->bounds.height / 2.0f),
+                       node->bounds.width / 2.0f,
+                       node->data.primitive.color);
+            break;
         case UI_WIDGET_LINE_NODE:
             DrawLine((int)node->bounds.x, (int)node->bounds.y,
                      node->data.primitive.x2, node->data.primitive.y2,
@@ -2654,6 +2661,31 @@ Rect(int x, int y, int w, int h, Color fill, Color border)
 #endif
 {
     rect_shape_impl(x, y, w, h, fill, border);
+}
+
+void
+Box(Rectangle bounds, Color fill, Color border)
+{
+    rect_shape_impl((int)bounds.x, (int)bounds.y,
+                    (int)bounds.width, (int)bounds.height,
+                    fill, border);
+}
+
+void
+Circle(int center_x, int center_y, int radius, Color color)
+{
+    int diameter = radius * 2;
+    NodeId node = ui_tree_add(0, UI_WIDGET_CIRCLE_NODE,
+                              (Rectangle){center_x - radius,
+                                          center_y - radius,
+                                          diameter, diameter},
+                              NULL);
+
+    if(node >= 0)
+        ui_tree_nodes[node].data.primitive.color = color;
+    if(ui_tree_building)
+        return;
+    DrawCircle(center_x, center_y, (float)radius, color);
 }
 
 void

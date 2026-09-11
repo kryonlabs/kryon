@@ -21,8 +21,7 @@ CanvasExample :: (viewport: Rectangle) #ui {
         canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
         CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
         for int i = 0; i < 2; i++ {
-            DrawRectangleRec(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface())
-            DrawRectangleLinesEx(shapes[i],2.0f,GetThemeIcon())
+            Box(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface(),GetThemeIcon())
         }
         if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
             selected = CanvasHitTest(canvas.world,shapes,2)

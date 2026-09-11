@@ -54,6 +54,7 @@ typedef enum UIWidgetKind {
     UI_WIDGET_BACKGROUND_NODE,
     UI_WIDGET_TEXT_NODE,
     UI_WIDGET_RECT_NODE,
+    UI_WIDGET_CIRCLE_NODE,
     UI_WIDGET_LINE_NODE,
     UI_WIDGET_BUTTON_NODE,
     UI_WIDGET_TEXT_FIELD_NODE,
@@ -357,6 +358,8 @@ void kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border);
 #else
 void Rect(int x, int y, int w, int h, Color fill, Color border);
 #endif
+void Box(Rectangle bounds, Color fill, Color border);
+void Circle(int center_x, int center_y, int radius, Color color);
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
 void Icon(int id, int x, int y, int size, UIIconType icon, Color tint);
