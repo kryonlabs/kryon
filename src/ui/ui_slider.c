@@ -32,18 +32,22 @@ ui_draw_slider_paint(SliderPaint paint, int hovered, int active,
                          ui_style_apply_effects_fill(active_frame.fill),
                          active_style.material);
     }
-    if((active || hovered) && paint.glow_radius > 0.0f)
+    if(FancyEffectsEnabled() && (active || hovered) && paint.glow_radius > 0.0f)
         DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                    paint.glow_radius, GetColor(paint.glow_color));
-    DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
-               paint.thumb_radius + (float)Scale(1),
-               GetColor(paint.thumb_shadow_color));
+    if(FancyEffectsEnabled()) {
+        DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
+                   paint.thumb_radius + (float)Scale(1),
+                   GetColor(paint.thumb_shadow_color));
+    }
     DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                paint.thumb_radius, GetColor(paint.thumb_fill_color));
-    DrawCircle((int)(paint.thumb_x - Scale(3)),
-               (int)(paint.thumb_y - Scale(4)),
-               paint.thumb_radius * 0.45f,
-               GetColor(paint.thumb_highlight_color));
+    if(FancyEffectsEnabled()) {
+        DrawCircle((int)(paint.thumb_x - Scale(3)),
+                   (int)(paint.thumb_y - Scale(4)),
+                   paint.thumb_radius * 0.45f,
+                   GetColor(paint.thumb_highlight_color));
+    }
     DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
                     paint.thumb_radius, GetColor(paint.thumb_edge_color));
 }
@@ -523,19 +527,23 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
             int thumb_cx = (int)paint.thumb_x;
             int thumb_cy = (int)paint.thumb_y;
             int thumb_r = (int)paint.thumb_radius;
-            if(hovered && enabled) {
+            if(FancyEffectsEnabled() && hovered && enabled) {
                 DrawCircle(thumb_cx, thumb_cy,
                            paint.thumb_radius + (float)Scale(5),
                            GetColor(paint.thumb_glow_color));
             }
-            DrawCircle(thumb_cx, thumb_cy + Scale(2),
-                       paint.thumb_radius + (float)Scale(1),
-                       GetColor(paint.thumb_shadow_color));
+            if(FancyEffectsEnabled()) {
+                DrawCircle(thumb_cx, thumb_cy + Scale(2),
+                           paint.thumb_radius + (float)Scale(1),
+                           GetColor(paint.thumb_shadow_color));
+            }
             DrawCircle(thumb_cx, thumb_cy, paint.thumb_radius,
                        GetColor(paint.thumb_fill_color));
-            DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
-                       paint.thumb_radius * 0.5f,
-                       GetColor(paint.thumb_highlight_color));
+            if(FancyEffectsEnabled()) {
+                DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
+                           paint.thumb_radius * 0.5f,
+                           GetColor(paint.thumb_highlight_color));
+            }
             DrawCircleLines(thumb_cx, thumb_cy, (float)thumb_r,
                             GetColor(paint.thumb_edge_color));
         }
@@ -634,12 +642,17 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     }
 
     if(*value) {
-        int padding = Scale(4);
+        int inset = Scale(5);
+        float stroke = (float)Scale(2);
         int box_y = y + (row_h - box_size) / 2;
-        DrawLine(x + padding, box_y + padding, x + box_size / 2,
-                 box_y + box_size - padding, mark_color);
-        DrawLine(x + box_size / 2, box_y + box_size - padding,
-                 x + box_size - padding, box_y + padding, mark_color);
+        Vector2 start = {(float)(x + inset), (float)(box_y + box_size / 2)};
+        Vector2 middle = {(float)(x + box_size / 2 - Scale(1)),
+                          (float)(box_y + box_size - inset)};
+        Vector2 end = {(float)(x + box_size - inset),
+                       (float)(box_y + inset)};
+
+        DrawLineEx(start, middle, stroke, mark_color);
+        DrawLineEx(middle, end, stroke, mark_color);
     }
 
     RenderText(label, x + box_size + label_gap,

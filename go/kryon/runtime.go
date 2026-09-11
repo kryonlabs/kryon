@@ -2126,6 +2126,7 @@ func (r *runtime) GetScreenHeight() int32                             { return i
 func (r *runtime) GetThemeBackground() Color                          { return r.theme().background }
 func (r *runtime) GetThemeText() Color                                { return r.theme().text }
 func (r *runtime) GetThemeIcon() Color                                { return r.theme().icon }
+func (r *runtime) FancyEffectsEnabled() int32                         { return 1 }
 func (r *runtime) NewVector2(x, y any) Vector2                        { return NewVector2(number32(x), number32(y)) }
 func (r *runtime) DrawCircleV(Vector2, any, Color)                    {}
 func (r *runtime) DrawRing(Vector2, any, any, any, any, int32, Color) {}
