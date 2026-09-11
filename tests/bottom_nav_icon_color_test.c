@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "runtime/navigation_bar.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -154,6 +155,43 @@ main(void)
     SetThemeSource(THEME_SOURCE_APP);
     SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
+
+    check_int("compact navigation bar default height",
+              NavigationBarDefaultHeight(1.0f), 76);
+    {
+        Palette palette = DefaultPalette(false);
+        Metrics metrics = DefaultMetrics();
+        NavigationBarPaint paint = NavigationBarPaintFor((NavigationBarSpec){
+            .view_width = 900,
+            .view_height = 720,
+            .count = 4,
+            .scale = 1.0f,
+            .palette = palette,
+            .metrics = metrics,
+        });
+        NavigationBarItemPaint item_paint =
+            NavigationBarItemPaintFor((NavigationBarItemSpec){
+                .bar = paint,
+                .index = 1,
+                .active = true,
+                .label_height = TextLineHeight(GetSmallFontSize()),
+                .palette = palette,
+                .metrics = metrics,
+            });
+
+        check_int("compact navigation bar hit target width",
+                  (int)item_paint.bounds.width, 225);
+        check_int("compact navigation bar active badge width",
+                  (int)item_paint.state_bounds.width, 44);
+        check_int("compact navigation bar active badge height",
+                  (int)item_paint.state_bounds.height, 44);
+        check_true("compact navigation bar badge stays within tab",
+                   item_paint.state_bounds.x > item_paint.bounds.x &&
+                   item_paint.state_bounds.x + item_paint.state_bounds.width <
+                       item_paint.bounds.x + item_paint.bounds.width);
+        check_true("compact navigation bar active badge is pill-shaped",
+                   item_paint.face.value.radius >= metrics.radius_pill);
+    }
 
     BeginUIFrame(900, 720, 1.0f);
     result = NavigationBar((NavigationBarProps){
