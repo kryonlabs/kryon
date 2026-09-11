@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 
 int
 ui_render_slider(int id, int x, int y, int w, const char *label,
@@ -425,15 +426,19 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ui_touch_target_min();
     int font = GetFontSize();
-    int default_style = ui_default_style();
     int can_draw = IsWindowReady();
-    int off_w = default_style ? 0 : TextWidth(off_label, font);
-    int on_w = default_style ? 0 : TextWidth(on_label, font);
+    const char *off_text = off_label != NULL ? off_label : "";
+    const char *on_text = on_label != NULL ? on_label : "";
+    int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
+    int off_w = has_labels ? TextWidth(off_text, font) : 0;
+    int on_w = has_labels ? TextWidth(on_text, font) : 0;
     int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
-    int min_w = default_style ? Scale(52) : min_half_w * 2 + Scale(6);
+    int min_w = has_labels ? min_half_w * 2 + Scale(6) : Scale(54);
     Rectangle bounds;
     int enabled;
     int pressed;
+    int hovered;
+    int down;
     if(w < min_w)
         w = min_w;
     if(h < Scale(34))
@@ -442,7 +447,7 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     widget = BeginUIWidget("toggle",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
-                                                 "toggle", 0, off_label),
+                                                 "toggle", 0, off_text),
                            editor_bounds,
                            UI_WIDGET_MOVABLE |
                            UI_WIDGET_RESIZABLE);
@@ -460,17 +465,18 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
 
     bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
     enabled = value != NULL && !UIContentDisabled();
+    hovered = CheckCollisionPointRec(mouse_world, bounds) &&
+              !UIInputCapturesClick(mouse_world);
+    down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
-    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
+    if(hovered) {
         if(enabled)
             MarkClickable();
         else
             MarkDisabled();
     }
 
-    pressed = enabled && CheckCollisionPointRec(mouse_world, bounds) &&
-              !UIInputCapturesClick(mouse_world) &&
-              IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
+    pressed = enabled && hovered && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
 
     if(pressed) {
         *value = !*value;
@@ -481,66 +487,105 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
         return pressed;
     }
 
-    if(default_style) {
-        int track_w = Scale(52);
-        int track_h = Scale(32);
-        int track_x = x + (w - track_w) / 2;
-        int track_y = y + (h - track_h) / 2;
-        int checked = value != NULL && *value;
-        int thumb_r = Scale(checked ? 12 : 8);
-        int thumb_cx = checked ? track_x + track_w - Scale(16)
-                              : track_x + Scale(16);
-        int thumb_cy = track_y + track_h / 2;
-        Color track = checked ? c_circle : ui_default_surface_container();
-        Color thumb = checked ? ui_default_on_color(c_circle) : ui_default_outline();
-        Color outline = checked ? c_circle : ui_default_outline();
-
-        DrawRectangleRounded((Rectangle){track_x, track_y, track_w, track_h},
-                             0.50f, 12, track);
-        DrawRectangleRoundedLines((Rectangle){track_x, track_y, track_w, track_h},
-                                  0.50f, 12, outline);
-        if(CheckCollisionPointRec(mouse_world, bounds))
-            ui_default_state_layer((Rectangle){track_x - Scale(8),
-                                                track_y - Scale(8),
-                                                track_w + Scale(16),
-                                                track_h + Scale(16)},
-                                    c_circle, UIHoverEffectsEnabled(), 0,
-                                    IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-        DrawCircle(thumb_cx, thumb_cy, (float)thumb_r, thumb);
-        if(checked) {
-            int dot_r = Scale(4);
-            Color dot = DarkenUIColor(thumb, 110);
-            if(dot_r < 2)
-                dot_r = 2;
-            DrawCircle(thumb_cx, thumb_cy, (float)dot_r, dot);
-        }
-        EndUIWidget(&widget);
-        return pressed;
-    }
-
     {
-        Color bg = DarkenUIColor(c_bg, 8);
-        int track_h = h - 6;
-        int track_y = y + 3;
-        int active_w = (w - 6) / 2;
-        int active_x = value != NULL && *value ? x + w - active_w - 3 : x + 3;
-        Color label_color = c_text;
-        int off_x = x + w / 4 - off_w / 2;
-        int on_x = x + w * 3 / 4 - on_w / 2;
+        int checked = value != NULL && *value;
+        ButtonProps track_props = {.tone = checked ? ButtonToneAccent
+                                                   : ButtonToneNeutral,
+            .emphasis = checked ? ButtonEmphasisFilled : ButtonEmphasisSoft,
+            .disabled = !enabled, .pill = 1};
+        Style track_style = ui_style_apply_effects(ResolveButtonStyle(
+            track_props,
+            down ? ButtonStatePressed
+                 : hovered ? ButtonStateHover : ButtonStateNormal));
+        Rectangle track_bounds;
+        int track_w = has_labels ? w : Scale(54);
+        int track_h = has_labels ? h : Scale(32);
+        int track_x;
+        int track_y;
 
-        if(ui_modern_style())
-            DrawRectangleRounded((Rectangle){x, y, w, h}, 0.5f, 8, bg);
-        else
-            DrawRectangle(x, y, w, h, bg);
+        if(track_w > w)
+            track_w = w;
+        if(track_h > h)
+            track_h = h;
+        track_x = x + (w - track_w) / 2;
+        track_y = y + (h - track_h) / 2;
+        track_bounds = (Rectangle){track_x, track_y, track_w, track_h};
+        ui_draw_material(track_bounds, (Rectangle){0}, track_style.background,
+                         track_style.border, track_style.border,
+                         track_style.radius, track_style.border_width,
+                         hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
+                         !enabled, track_style.focus, 0.0f,
+                         track_style.opacity, ui_style_fill(track_style),
+                         track_style.material);
 
-        DrawRectangleRounded((Rectangle){x + 3, track_y, w - 6, track_h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
-        DrawRectangleRounded((Rectangle){active_x, track_y, active_w, track_h},
-                             0.5f, 8, c_button);
-        RenderText(off_label, off_x, GetUIControlTextY(off_label, y, h, font),
-                   font, label_color);
-        RenderText(on_label, on_x, GetUIControlTextY(on_label, y, h, font),
-                   font, label_color);
+        if(has_labels) {
+            ButtonProps active_props = {.tone = ButtonToneAccent,
+                .emphasis = ButtonEmphasisFilled, .disabled = !enabled,
+                .pill = 1};
+            Style active_style = ui_style_apply_effects(
+                ResolveButtonStyle(active_props, ButtonStateNormal));
+            int active_w = (track_w - Scale(6)) / 2;
+            int active_x = checked ? track_x + track_w - active_w - Scale(3)
+                                   : track_x + Scale(3);
+            Color label_color = enabled ? c_text : DarkenUIColor(c_text, 42);
+
+            ui_draw_material((Rectangle){active_x, track_y + Scale(3),
+                                         active_w, track_h - Scale(6)},
+                             track_bounds, active_style.background,
+                             active_style.border, active_style.border,
+                             active_style.radius, active_style.border_width,
+                             0.0f, 0.0f, !enabled, active_style.focus, 0.0f,
+                             active_style.opacity, ui_style_fill(active_style),
+                             active_style.material);
+            RenderText(off_text, x + w / 4 - off_w / 2,
+                       GetUIControlTextY(off_text, y, h, font),
+                       font, label_color);
+            RenderText(on_text, x + w * 3 / 4 - on_w / 2,
+                       GetUIControlTextY(on_text, y, h, font),
+                       font, label_color);
+        } else {
+            ButtonProps thumb_props = {.tone = checked ? ButtonToneAccent
+                                                       : ButtonToneNeutral,
+                .emphasis = checked ? ButtonEmphasisFilled
+                                    : ButtonEmphasisSoft,
+                .disabled = !enabled, .circle = 1};
+            Style thumb_style = ui_style_apply_effects(ResolveButtonStyle(
+                thumb_props,
+                down ? ButtonStatePressed
+                     : hovered ? ButtonStateHover : ButtonStateNormal));
+            int thumb_size = checked ? Scale(24) : Scale(20);
+            int thumb_x;
+            int thumb_y;
+            Rectangle thumb_bounds;
+
+            if(down)
+                thumb_size += Scale(2);
+            if(thumb_size > track_h - Scale(6))
+                thumb_size = track_h - Scale(6);
+            thumb_x = checked ? track_x + track_w - thumb_size - Scale(4)
+                              : track_x + Scale(4);
+            thumb_y = track_y + (track_h - thumb_size) / 2;
+            thumb_bounds = (Rectangle){thumb_x, thumb_y,
+                                       thumb_size, thumb_size};
+            if(hovered && enabled) {
+                Color glow = checked ? track_style.background
+                                     : track_style.border;
+                glow.a = glow.a > 92 ? 92 : glow.a;
+                DrawCircle(thumb_x + thumb_size / 2,
+                           thumb_y + thumb_size / 2,
+                           (float)(thumb_size / 2 + Scale(5)), glow);
+            }
+            ui_draw_material(thumb_bounds, track_bounds,
+                             checked ? ui_default_on_color(track_style.background)
+                                     : thumb_style.background,
+                             thumb_style.border, thumb_style.border,
+                             1.0f, thumb_style.border_width,
+                             hovered ? 1.0f : 0.0f,
+                             down ? 1.0f : 0.0f,
+                             !enabled, thumb_style.focus, 0.0f,
+                             thumb_style.opacity, ui_style_fill(thumb_style),
+                             thumb_style.material);
+        }
     }
 
     EndUIWidget(&widget);
