@@ -8,11 +8,13 @@ see `docs/FEATURE_MATRIX.md`.
 
 ## The surface and how selection works
 
-Kryon's public graphics/input API is `include/kryon_compat.generated.h`:
-kryon owns the surface, and it currently tracks raylib's header verbatim so
-raylib-style code compiles unchanged. A backend is a translation unit (or set
-of them) that defines the surface's functions. No `raylib.h` include and no
-raylib build path may appear in `include/`, `src/`, `examples/`, or `tests/`
+Kryon's app-facing API is the owned widget and primitive surface documented in
+`docs/API.md`: `Button`, `Card`, `Router`, `Rect`, `Box`, `Circle`, `Line`, and
+the rest of the Kryon vocabulary. `include/kryon_compat.generated.h` is the
+legacy backend/migration contract. It still carries raylib-shaped drawing,
+input, asset, and window names so existing code and backends can link while the
+public API moves to Kryon-owned names. No `raylib.h` include and no raylib build
+path may appear in `include/`, `src/`, `examples/`, or `tests/`
 (`make kryon-boundary-check`).
 
 Backend selection is link-time, via the `KRYON_BACKEND` make variable:
@@ -71,10 +73,11 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   route helpers, and an injected widget click in Node against a minimal DOM
   shim.
 - `libdraw` - plan9port libdraw/devdraw backend, no raylib
-  (`src/backend/libdraw_*.c`). It keeps the same public surface as the other
-  backends: C apps still include `kryon.h` and call `InitWindow`,
-  `BeginDrawing`, `DrawRectangle`, `Button`, `TextField`, and the rest of
-  Kryon's normal API. Internally, the backend renders through `kry_sw` into an
+  (`src/backend/libdraw_*.c`). It supports Kryon's owned UI API and the legacy
+  compatibility contract used by migrated code: apps include `kryon.h`, declare
+  widgets such as `Button` and `TextField`, and can still link older
+  `InitWindow`/`BeginDrawing`/`DrawRectangle` callers during migration.
+  Internally, the backend renders through `kry_sw` into an
   RGBA buffer and presents it with libdraw, so the widget catalog shares the
   same software drawing behavior as the KRB hosts. TTF/TrueType-outline font
   data is rasterized into Kryon `Texture2D` atlases with `stb_truetype`
@@ -89,9 +92,8 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   coverage, and screenshot export, and compiles/links a clean-surface C app
   through plan9port `9c`/`9l`.
 - `termi` - terminal-cell backend, no raylib (`src/backend/termi_*.c`). It
-  keeps the normal Kryon surface and widget API: apps still call
-  `InitWindow`, `BeginDrawing`, `DrawRectangle`, `Button`, `TextField`, and
-  `RenderText`-using widgets. The backend maps Kryon's pixel layout units onto
+  supports the normal Kryon widget API plus the legacy compatibility calls
+  needed by older drawing code. The backend maps Kryon's pixel layout units onto
   terminal cells (`TERMI_CELL_WIDTH` x `TERMI_CELL_HEIGHT`) and renders native
   terminal primitives: rectangles become colored cell regions, rectangle
   outlines become terminal line cells, and UI text goes through the native text

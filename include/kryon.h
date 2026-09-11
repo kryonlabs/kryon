@@ -2,8 +2,10 @@
 #define KRYON_H
 
 #include "kryon_version.h"
-/* Owned raylib-style graphics/input surface. The concrete backend is
- * selected at link time via KRYON_BACKEND. */
+/* Legacy graphics/input compatibility surface. New Kryon-facing code should
+ * use owned widgets and primitives (Button, Card, Router, Rect, Box, Circle,
+ * Line, ...); the concrete backend is selected at link time via
+ * KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
 /* Math3d surface (Vector3/Matrix/Quaternion arithmetic): must come after
  * the compat surface so raymath reuses its type definitions. */

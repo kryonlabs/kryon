@@ -232,17 +232,24 @@ of the surface through raylib, but application and generated code should include
 Kryon headers and call Kryon-owned names directly. That keeps apps portable to
 future backends.
 
-Use the raylib-style drawing, input, texture, window, and math names provided by
-Kryon, such as:
+Use canonical widgets and retained primitives for normal UI:
 
-```c
-DrawRectangle(0, 0, view_width, view_height, GetThemeBackground());
-Vector2 mouse = GetMousePosition();
-if(IsKeyPressed(KEY_ESCAPE))
-    CloseWindow();
+```kry
+Box(panel, GetThemeSurface(), GetThemeButton())
+Circle(cx, cy, Scale(12), GetThemeLink())
+Line(x1, y1, x2, y2, GetThemeBorder())
+Button {
+    label = "Save"
+    bounds = {20, 20, 120, 34}
+}
 ```
 
-Use canonical widget names when declaring controls:
+The generated `Draw*`, `BeginDrawing`, and raylib-shaped input/asset names are
+legacy compatibility and backend migration surface. They remain available while
+existing code is moved over, but they are not the product API for new Kryon
+code.
+
+Use canonical widget names when declaring controls from C:
 
 ```c
 Button(button);
