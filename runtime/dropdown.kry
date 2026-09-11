@@ -13,15 +13,29 @@ SelectionEmphasis :: (surface: u32) -> i32 #export {
 
 Appearance :: (base: StyleData, accent: StyleData, surface: u32,
     role: i32, state: i32, selected: bool) -> StyleData #export {
-    # The trigger is exactly a neutral soft Button, including all states,
-    # typography, geometry, material, and motion. Content is supplied by Dropdown.
-    if role == 0 { return base }
     light: bool = LightSurface(surface)
+    if role == 0 {
+        if state == ButtonStateHover || state == ButtonStatePressed ||
+           state == ButtonStateFocus || state == ButtonStateSelected {
+            base.material = (i32)MaterialGlass
+            base.fields = base.fields | (u32)StyleBackgroundEnd | (u32)StyleMaterial
+            base.background_end = GradientColor(base.background, accent.background,
+                light ? 0.10 : 0.24)
+            base.border = GradientColor(base.border, accent.background,
+                light ? 0.36 : 0.58)
+        }
+        return base
+    }
     if role == 2 {
         if selected && state != ButtonStateDisabled { base = accent }
-        # Light menu rows are flush with the popup instead of separate raised
-        # buttons. All their colors, typography, and dimensions remain shared.
-        if light {
+        if selected || state == ButtonStateHover || state == ButtonStateFocus {
+            base.material = (i32)MaterialGlass
+            base.fields = base.fields | (u32)StyleBackgroundEnd | (u32)StyleMaterial
+            base.background_end = GradientColor(base.background, accent.background,
+                light ? 0.14 : 0.26)
+            base.border = GradientColor(base.border, accent.background,
+                light ? 0.36 : 0.52)
+        } else if light {
             base.material = (i32)MaterialFlat
             base.border = (u32)0
             base.border_width = 0.0
@@ -32,18 +46,18 @@ Appearance :: (base: StyleData, accent: StyleData, surface: u32,
     # Button typography, padding, opacity, border width, and disabled policy.
     base.material = (i32)MaterialGlass
     base.fields = base.fields | (u32)StyleBackgroundEnd | (u32)StyleMaterial
-    base.radius = base.radius + 2.0
+    base.radius = base.radius + 4.0
     if light {
-        base.background = GradientColor(surface, (~(u32)0), 0.85)
-        base.background_end = GradientColor(surface, (~(u32)0), 0.40)
-        base.border = GradientColor(surface, accent.background, 0.18)
+        base.background = GradientColor(surface, (~(u32)0), 0.88)
+        base.background_end = GradientColor(surface, accent.background, 0.08)
+        base.border = GradientColor(surface, accent.background, 0.34)
     } else {
-        base.background = GradientColor(surface, base.background, 0.80)
-        base.background_end = GradientColor(surface, base.border, 0.38)
-        base.border = GradientColor(base.border, (~(u32)0), 0.18)
+        base.background = GradientColor(surface, base.background, 0.72)
+        base.background_end = GradientColor(surface, accent.background, 0.20)
+        base.border = GradientColor(base.border, accent.background, 0.58)
     }
-    base.background = Opacity(base.background, 0.97)
-    base.background_end = Opacity(base.background_end, 0.92)
+    base.background = Opacity(base.background, 0.98)
+    base.background_end = Opacity(base.background_end, 0.95)
     return base
 }
 
