@@ -25,6 +25,55 @@ ui_paint_surface(Rectangle bounds, Style style)
         style.focus, 0, style.opacity, ui_style_fill(style), style.material);
 }
 
+static Rectangle
+ui_toggle_track_bounds(int x, int y, int w, int h,
+                       const char *off_label, const char *on_label)
+{
+    int font = GetFontSize();
+    const char *off_text = off_label != NULL ? off_label : "";
+    const char *on_text = on_label != NULL ? on_label : "";
+    int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
+    int off_w = has_labels ? TextWidth(off_text, font) : 0;
+    int on_w = has_labels ? TextWidth(on_text, font) : 0;
+    int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
+    int min_w = has_labels ? min_half_w * 2 + Scale(6) : Scale(54);
+    int track_w;
+    int track_h;
+
+    if(w < min_w)
+        w = min_w;
+    if(h < Scale(34))
+        h = Scale(34);
+    track_w = has_labels ? w : Scale(54);
+    track_h = has_labels ? h : Scale(32);
+    if(track_w > w)
+        track_w = w;
+    if(track_h > h)
+        track_h = h;
+    return (Rectangle){(float)(x + (w - track_w) / 2),
+                       (float)(y + (h - track_h) / 2),
+                       (float)track_w, (float)track_h};
+}
+
+static void
+ui_render_toggle_focus(int x, int y, int w, int h,
+                       const char *off_label, const char *on_label)
+{
+    Rectangle track = ui_toggle_track_bounds(x, y, w, h, off_label, on_label);
+    Rectangle outer = {track.x - Scale(4), track.y - Scale(4),
+                       track.width + Scale(8), track.height + Scale(8)};
+    Rectangle inner = {track.x - Scale(2), track.y - Scale(2),
+                       track.width + Scale(4), track.height + Scale(4)};
+    Color focus = GetThemeButtonHover();
+    Color glow = focus;
+    Color line = LightenUIColor(focus, 42);
+
+    glow.a = glow.a > 50 ? 50 : glow.a;
+    line.a = line.a > 185 ? 185 : line.a;
+    DrawRectangleRounded(outer, 0.5f, 16, glow);
+    DrawRectangleRoundedLinesEx(inner, 0.5f, 16, (float)Scale(2), line);
+}
+
 #define UI_TREE_MAX_DEPTH UI_TREE_LAYOUT_DEPTH
 #define UI_NODE_HOVERED (1U << 28)
 #define UI_NODE_PRESSED (1U << 29)
@@ -2001,7 +2050,11 @@ DrawTree(void)
                 if(IsUIFocusActive(node->id) &&
                    !ui_popup_input_snapshot_keyboard_captures(
                        ui_tree_input_snapshot(node)) && IsWindowReady())
-                    RenderFocus(node->bounds);
+                    ui_render_toggle_focus(
+                        (int)node->bounds.x, (int)node->bounds.y,
+                        (int)node->bounds.width, (int)node->bounds.height,
+                        node->data.toggle.off_label,
+                        node->data.toggle.on_label);
             } else {
                 changed = RenderCheckboxToggle(
                     (int)node->bounds.x, (int)node->bounds.y,
@@ -2607,16 +2660,50 @@ ui_card_button_props(CardProps card)
 {
     ThemeMetrics metrics = GetThemeMetrics();
     Style defaults = {0};
+    Style hover_defaults = {0};
+    Style pressed_defaults = {0};
+    Style focused_defaults = {0};
+    Style selected_defaults = {0};
+    Color surface = GetThemeSurface();
+    Color accent = GetThemeButtonHover();
+    Color border = accent;
     ButtonProps button = {0};
 
     defaults.fields = StyleRadius | StyleBorderWidth | StyleOpacity |
-        StylePaddingX | StylePaddingY | StyleMaterial;
+        StylePaddingX | StylePaddingY | StyleMaterial | StyleBackground |
+        StyleBorder | StyleFocus;
     defaults.radius = metrics.radius_large;
     defaults.border_width = metrics.border_width;
     defaults.opacity = 1.0f;
     defaults.padding_x = metrics.control_padding_large;
     defaults.padding_y = metrics.control_padding_medium;
-    defaults.material = MaterialFlat;
+    defaults.material = MaterialLightfield;
+    defaults.background = surface;
+    border.a = border.a > 92 ? 92 : border.a;
+    defaults.border = border;
+    defaults.focus = accent;
+
+    hover_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
+    hover_defaults.background = LightenUIColor(surface, 5);
+    hover_defaults.border = LightenUIColor(accent, 18);
+    hover_defaults.border.a = hover_defaults.border.a > 150
+        ? 150 : hover_defaults.border.a;
+    hover_defaults.material = MaterialLightfield;
+
+    pressed_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
+    pressed_defaults.background = DarkenUIColor(surface, 4);
+    pressed_defaults.border = accent;
+    pressed_defaults.material = MaterialLightfield;
+
+    focused_defaults.fields = StyleBorder | StyleFocus | StyleMaterial;
+    focused_defaults.border = LightenUIColor(accent, 24);
+    focused_defaults.focus = accent;
+    focused_defaults.material = MaterialLightfield;
+
+    selected_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
+    selected_defaults.background = DarkenUIColor(accent, 10);
+    selected_defaults.border = LightenUIColor(accent, 36);
+    selected_defaults.material = MaterialLightfield;
 
     button.bounds = card.bounds;
     button.id = card.clickable ? card.id : 0;
@@ -2628,6 +2715,10 @@ ui_card_button_props(CardProps card)
     button.state = card.state;
     button.style = card.style;
     button.style.normal = MergeStyle(defaults, card.style.normal);
+    button.style.hover = MergeStyle(hover_defaults, card.style.hover);
+    button.style.pressed = MergeStyle(pressed_defaults, card.style.pressed);
+    button.style.focused = MergeStyle(focused_defaults, card.style.focused);
+    button.style.selected = MergeStyle(selected_defaults, card.style.selected);
     if(button.tone == ButtonToneNeutral &&
        button.emphasis == ButtonEmphasisFilled &&
        ui_card_style_empty(card.style))
@@ -2900,7 +2991,7 @@ Toggle(int id, int x, int y, int w, int h, int *value,
                              value != NULL ? &paint_value : NULL,
                              off_label, on_label);
     if(focused && IsWindowReady())
-        RenderFocus((Rectangle){x,y,w,h});
+        ui_render_toggle_focus(x, y, w, h, off_label, on_label);
     return changed;
 }
 
