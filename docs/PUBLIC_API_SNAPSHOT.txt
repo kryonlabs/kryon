@@ -1376,6 +1376,7 @@ include/theme_style.h enum THEME_STYLE_CLASSIC
 include/theme_style.h enum THEME_STYLE_DEFAULT
 include/theme_style.h enum THEME_STYLE_SYSTEM
 include/ui_button_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_card_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_clip.h function BeginUIClip
 include/ui_clip.h function EndUIClip
 include/ui_clip.h function GetUIClipEffective
@@ -1917,6 +1918,7 @@ include/ui_tree.h enum UI_WIDGET_BACKGROUND_NODE
 include/ui_tree.h enum UI_WIDGET_BOTTOM_NAV_NODE
 include/ui_tree.h enum UI_WIDGET_BUTTON_NODE
 include/ui_tree.h enum UI_WIDGET_BUTTON_ROW_NODE
+include/ui_tree.h enum UI_WIDGET_CARD_NODE
 include/ui_tree.h enum UI_WIDGET_CHECKBOX_NODE
 include/ui_tree.h enum UI_WIDGET_CHECKBOX_ROW_NODE
 include/ui_tree.h enum UI_WIDGET_COLUMN_NODE
@@ -1954,6 +1956,7 @@ include/ui_tree.h function ActionModal
 include/ui_tree.h function ArrowButton
 include/ui_tree.h function Background
 include/ui_tree.h function BeginButton
+include/ui_tree.h function BeginCard
 include/ui_tree.h function BeginCombo
 include/ui_tree.h function BeginDisabled
 include/ui_tree.h function BeginGridCursor

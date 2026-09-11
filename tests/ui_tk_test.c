@@ -2751,6 +2751,65 @@ test_retained_popup_pointer_focus(void)
 }
 
 static void
+test_card_props_retained_input(void)
+{
+    UIEvent event;
+    int clicks;
+    int count;
+    const UIWidgetNode *nodes;
+    NodeId card;
+
+    InjectReset();
+    InjectTap(30,30);
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("passive-card-does-not-activate"));
+    check_int("passive card ignores click",
+        Card((CardProps){.bounds={10,10,80,60},.id=27601}),0);
+    EndTree();
+    clicks = 0;
+    while(NextEvent(&event)) if(event.kind == UI_EVENT_CLICK) clicks++;
+    check_int("passive card posts no click events",clicks,0);
+    EndUIFrame();
+
+    InjectReset();
+    InjectTap(30,30);
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("clickable-card-activates"));
+    check_int("clickable card press waits for release",
+        Card((CardProps){.bounds={10,10,80,60},.id=27602,.clickable=true}),0);
+    EndTree();
+    EndUIFrame();
+    InjectPump();
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("clickable-card-activates"));
+    check_int("clickable card activates on single click release",
+        Card((CardProps){.bounds={10,10,80,60},.id=27602,.clickable=true}),1);
+    EndTree();
+    clicks = 0;
+    while(NextEvent(&event)) {
+        if(event.kind != UI_EVENT_CLICK) continue;
+        check_int("clickable card event key",(int)event.key,27602);
+        clicks++;
+    }
+    check_int("clickable card posts one event",clicks,1);
+    EndUIFrame();
+
+    BeginUIFrame(240,180,1);
+    BeginTree(Key("card-content-scope"));
+    card = BeginCard((CardProps){.bounds={10,10,120,80}});
+    Text((TextProps){.text="Inside",.font=Text16});
+    End();
+    EndTree();
+    nodes = GetTreeNodes(&count);
+    check_int("card tree node count",count,3);
+    check_int("card node kind",nodes[1].kind,UI_WIDGET_CARD_NODE);
+    check_int("card child parent",nodes[2].parent,card);
+    EndUIFrame();
+}
+
+static void
 test_retained_popup_input_ownership(void)
 {
     InjectReset();
@@ -3857,6 +3916,7 @@ main(void)
     test_composed_context_popup_scope();
     test_composed_popup_focus_lifecycle();
     test_popup_active_drag_ownership();
+    test_card_props_retained_input();
     test_popup_text_keyboard_ownership();
     test_text_area_page_navigation();
     test_text_area_wheel_scroll();

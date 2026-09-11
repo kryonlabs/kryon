@@ -400,6 +400,23 @@ ui_tree_owned_text_size(const UIWidgetNode *node)
 }
 
 static int
+ui_tree_button_like_kind(UIWidgetKind kind)
+{
+    return kind == UI_WIDGET_BUTTON_NODE || kind == UI_WIDGET_CARD_NODE;
+}
+
+static int
+ui_tree_interactive_button_like(const UIWidgetNode *node)
+{
+    if(node == NULL || !ui_tree_button_like_kind(node->kind))
+        return 0;
+    if(node->kind == UI_WIDGET_CARD_NODE && node->data.button.props.id <= 0)
+        return 0;
+    return CanActivate(node->data.button.props.disabled,
+                       node->data.button.props.loading);
+}
+
+static int
 ui_reconcile_node_changed(const UIWidgetNode *old_node,
                           const UIWidgetNode *new_node)
 {
@@ -431,7 +448,7 @@ ui_reconcile_node_changed(const UIWidgetNode *old_node,
        (new_node->has_input_clip && memcmp(&old_node->input_clip,&new_node->input_clip,sizeof(new_node->input_clip)) != 0))
         return 1;
     new_data = new_node->data;
-    if(old_node->kind == UI_WIDGET_BUTTON_NODE) {
+    if(ui_tree_button_like_kind(old_node->kind)) {
         old_data.button.props.label = NULL;
         new_data.button.props.label = NULL;
     }
@@ -625,7 +642,7 @@ ui_tree_node_uses_retained_layout(NodeId id)
            parent->kind == UI_WIDGET_GRID_NODE ||
            parent->kind == UI_WIDGET_STACK_NODE ||
            parent->kind == UI_WIDGET_ROUTER_NODE ||
-           parent->kind == UI_WIDGET_BUTTON_NODE;
+           ui_tree_button_like_kind(parent->kind);
 }
 
 static int
@@ -770,6 +787,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_INT_DRAG_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_INPUT_PAINT_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_ROUTER_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_CARD_NODE] = {ui_measure_bounds_height},
 };
 
 KeyID
@@ -1139,9 +1157,9 @@ LayoutTree(void)
            parent->kind != UI_WIDGET_ROW_NODE &&
            parent->kind != UI_WIDGET_STACK_NODE &&
            parent->kind != UI_WIDGET_GRID_NODE &&
-           parent->kind != UI_WIDGET_BUTTON_NODE)
+           !ui_tree_button_like_kind(parent->kind))
             continue;
-        if(parent->kind == UI_WIDGET_BUTTON_NODE) {
+        if(ui_tree_button_like_kind(parent->kind)) {
             ButtonSpec *button = &parent->data.button;
             float scale = (float)Scale(1000) / 1000.0f;
             Style style = {.padding_x = 8, .padding_y = 8};
@@ -1167,7 +1185,7 @@ LayoutTree(void)
             ui_layout_grid_children(ui_committed_nodes, parent);
             continue;
         }
-        if(parent->kind == UI_WIDGET_BUTTON_NODE) {
+        if(ui_tree_button_like_kind(parent->kind)) {
             for(child = parent->first_child; child >= 0;
                 child = ui_committed_nodes[child].next_sibling) {
                 UIWidgetNode *node = &ui_committed_nodes[child];
@@ -1238,8 +1256,7 @@ RouteInput(void)
             focus_id = node->data.text_field.focus_id;
         else if(node->kind == UI_WIDGET_TEXT_AREA_NODE)
             focus_id = node->data.text_area.focus_id;
-        else if(node->kind == UI_WIDGET_BUTTON_NODE &&
-                CanActivate(node->data.button.props.disabled, node->data.button.props.loading))
+        else if(ui_tree_interactive_button_like(node))
             focus_id = node->data.button.props.id;
         if(node->has_input_clip) PushUIInputClip(node->input_clip);
         if(UIFocusFrameOpen() && focus_id > 0)
@@ -1255,12 +1272,11 @@ RouteInput(void)
         UIWidgetNode *node = &ui_committed_nodes[i];
         unsigned before;
 
-        if(node->kind != UI_WIDGET_BUTTON_NODE)
+        if(!ui_tree_interactive_button_like(node))
             continue;
         before = node->flags;
         node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
-        if(CanActivate(node->data.button.props.disabled, node->data.button.props.loading) &&
-           (node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
+        if((node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
            !ui_tree_input_blocked(node,mouse) &&
            (!node->has_input_clip || CheckCollisionPointRec(mouse,node->input_clip)) &&
            CheckCollisionPointRec(mouse, node->bounds)) {
@@ -1272,9 +1288,8 @@ RouteInput(void)
             ui_tree_invalid |= UI_INVALIDATE_PAINT;
     }
     target = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ? hit : -1;
-    if(target >= 0 && ui_committed_nodes[target].kind == UI_WIDGET_BUTTON_NODE &&
-       CanActivate(ui_committed_nodes[target].data.button.props.disabled,
-                   ui_committed_nodes[target].data.button.props.loading)) {
+    if(target >= 0 &&
+       ui_tree_interactive_button_like(&ui_committed_nodes[target])) {
         UIEvent event;
 
         memset(&event, 0, sizeof(event));
@@ -1289,8 +1304,7 @@ RouteInput(void)
         UIEvent event;
 
         if(!UIFocusFrameOpen() ||
-           node->kind != UI_WIDGET_BUTTON_NODE ||
-           !CanActivate(node->data.button.props.disabled, node->data.button.props.loading) ||
+           !ui_tree_interactive_button_like(node) ||
            !IsUIFocusActivatePressed(node->data.button.props.id))
             continue;
         memset(&event, 0, sizeof(event));
@@ -1679,7 +1693,7 @@ ui_tree_inherit_foreground(int parent, Color foreground, bool disabled)
         child = ui_committed_nodes[child].next_sibling) {
         UIWidgetNode *node = &ui_committed_nodes[child];
         /* Nested buttons establish their own style when they are painted. */
-        if(node->kind == UI_WIDGET_BUTTON_NODE)
+        if(ui_tree_button_like_kind(node->kind))
             continue;
         if(node->kind == UI_WIDGET_TEXT_NODE &&
            (node->flags & UI_NODE_INHERIT_FOREGROUND) != 0) {
@@ -1818,7 +1832,8 @@ DrawTree(void)
                      node->data.primitive.x2, node->data.primitive.y2,
                      node->data.primitive.color);
             break;
-        case UI_WIDGET_BUTTON_NODE: {
+        case UI_WIDGET_BUTTON_NODE:
+        case UI_WIDGET_CARD_NODE: {
             ButtonSpec spec = node->data.button;
             int hovered;
             int pressed;
@@ -2073,6 +2088,7 @@ ui_accessibility_role(UIWidgetKind kind)
     case UI_WIDGET_PARAGRAPH_NODE:
     case UI_WIDGET_READONLY_TEXT_BOX_NODE: return "text";
     case UI_WIDGET_BUTTON_NODE: return "button";
+    case UI_WIDGET_CARD_NODE: return "group";
     case UI_WIDGET_TEXT_INPUT_PAINT_NODE:
     case UI_WIDGET_TEXT_FIELD_NODE:
     case UI_WIDGET_TEXT_AREA_NODE: return "textbox";
@@ -2129,11 +2145,13 @@ GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
         const char *label = node->owned_text;
 
         if(node->kind == UI_WIDGET_TEXT_NODE && node->parent >= 0 &&
-           ui_committed_nodes[node->parent].kind == UI_WIDGET_BUTTON_NODE)
+           ui_tree_button_like_kind(ui_committed_nodes[node->parent].kind))
             continue;
+        if(node->kind == UI_WIDGET_CARD_NODE && node->data.button.props.id > 0)
+            role = "button";
         if(role == NULL)
             continue;
-        if(node->kind == UI_WIDGET_BUTTON_NODE) {
+        if(ui_tree_button_like_kind(node->kind)) {
             if(label == NULL || label[0] == '\0')
                 label = ui_tree_first_text(ui_committed_nodes,
                                            ui_committed_node_count, i);
@@ -2150,7 +2168,7 @@ GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity)
             nodes[count].focused = node->kind == UI_WIDGET_TEXT_FIELD_NODE &&
                 node->state != NULL &&
                 ((TextFieldState *)node->state)->focused;
-            nodes[count].disabled = node->kind == UI_WIDGET_BUTTON_NODE &&
+            nodes[count].disabled = ui_tree_button_like_kind(node->kind) &&
                 !CanActivate(node->data.button.props.disabled, node->data.button.props.loading);
             nodes[count].checked = node->kind == UI_WIDGET_CHECKBOX_NODE &&
                 node->data.checkbox.value != NULL &&
@@ -2379,7 +2397,7 @@ Text(TextProps props)
         for(int i = ui_tree_stack_depth - 1; i >= 0; i--) {
             UIWidgetNode *parent = ui_tree_node(ui_tree_stack[i]);
 
-            if(parent != NULL && parent->kind == UI_WIDGET_BUTTON_NODE) {
+            if(parent != NULL && ui_tree_button_like_kind(parent->kind)) {
                 ButtonSpec *button = &parent->data.button;
 
                 inherited_font = button->props.font;
@@ -2565,19 +2583,49 @@ Surface(Rectangle bounds, Style style)
         ui_paint_surface(bounds, style);
 }
 
-void
-Card(Rectangle bounds)
+static int
+ui_card_style_empty(ControlStyle style)
+{
+    return style.normal.fields == 0 &&
+           style.hover.fields == 0 &&
+           style.pressed.fields == 0 &&
+           style.focused.fields == 0 &&
+           style.disabled.fields == 0 &&
+           style.loading.fields == 0 &&
+           style.selected.fields == 0;
+}
+
+static ButtonProps
+ui_card_button_props(CardProps card)
 {
     ThemeMetrics metrics = GetThemeMetrics();
-    Style style = {0};
-    style.fields = StyleBackground | StyleBorder | StyleRadius | StyleBorderWidth | StyleOpacity | StyleMaterial;
-    style.material = MaterialFlat;
-    style.background = GetThemeSurface();
-    style.border = GetThemeBorder();
-    style.radius = metrics.radius_large;
-    style.border_width = metrics.border_width;
-    style.opacity = 1.0f;
-    Surface(bounds, style);
+    Style defaults = {0};
+    ButtonProps button = {0};
+
+    defaults.fields = StyleRadius | StyleBorderWidth | StyleOpacity |
+        StylePaddingX | StylePaddingY | StyleMaterial;
+    defaults.radius = metrics.radius_large;
+    defaults.border_width = metrics.border_width;
+    defaults.opacity = 1.0f;
+    defaults.padding_x = metrics.control_padding_large;
+    defaults.padding_y = metrics.control_padding_medium;
+    defaults.material = MaterialFlat;
+
+    button.bounds = card.bounds;
+    button.id = card.clickable ? card.id : 0;
+    button.tone = card.tone;
+    button.emphasis = card.emphasis;
+    button.size = ControlSizeLarge;
+    button.disabled = card.disabled;
+    button.selected = card.selected;
+    button.state = card.state;
+    button.style = card.style;
+    button.style.normal = MergeStyle(defaults, card.style.normal);
+    if(button.tone == ButtonToneNeutral &&
+       button.emphasis == ButtonEmphasisFilled &&
+       ui_card_style_empty(card.style))
+        button.emphasis = ButtonEmphasisSoft;
+    return button;
 }
 
 static void
@@ -3829,6 +3877,62 @@ BeginButton(ButtonProps button)
         ui_tree_stack[ui_tree_stack_depth++] = node;
     if(button.label != NULL && button.label[0] != '\0')
         Text((TextProps){.text = button.label, .wrap = TextWrapNone});
+    return node;
+}
+
+int
+Card(CardProps card)
+{
+    ButtonProps button = ui_card_button_props(card);
+    ButtonSpec spec;
+    NodeId node;
+    int clicked = 0;
+
+    button.bounds = resolve_button_bounds(button, 0);
+    if(card.clickable)
+        button.id = ResolveUIFocusID(button.id);
+    spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
+    spec.props.label = "";
+
+    node = ui_tree_add(button.id, UI_WIDGET_CARD_NODE, button.bounds, NULL);
+    if(node >= 0) {
+        spec.props.bounds = ui_tree_nodes[node].bounds;
+        ui_tree_nodes[node].data.button = spec;
+    }
+    if(card.clickable) {
+        clicked = ui_tree_building ? HandleButton(spec) : ui_button_render(spec);
+        ui_tree_note_build_activation(clicked);
+    } else if(!ui_tree_building) {
+        ui_paint_button(spec, 0, 0);
+    }
+    return clicked;
+}
+
+NodeId
+BeginCard(CardProps card)
+{
+    ButtonProps button = ui_card_button_props(card);
+    ButtonSpec spec;
+    NodeId node;
+
+    button.bounds = resolve_button_bounds(button, 0);
+    if(card.clickable)
+        button.id = ResolveUIFocusID(button.id);
+    spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
+    spec.props.label = "";
+
+    node = ui_tree_add(button.id, UI_WIDGET_CARD_NODE, button.bounds, NULL);
+    if(node < 0)
+        return node;
+    spec.props.bounds = ui_tree_nodes[node].bounds;
+    ui_tree_nodes[node].data.button = spec;
+    if(card.clickable)
+        ui_tree_note_build_activation(ui_tree_building ? HandleButton(spec)
+                                                       : ui_button_render(spec));
+    else if(!ui_tree_building)
+        ui_paint_button(spec, 0, 0);
+    if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
+        ui_tree_stack[ui_tree_stack_depth++] = node;
     return node;
 }
 

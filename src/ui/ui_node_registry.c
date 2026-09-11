@@ -20,6 +20,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Icon", "Icon", "UI/Display", "Control", "Icon", EDITABLE},
     {"Image", "Image", "UI/Display", "Control", "Image", INSERT_EDITABLE},
 
+    {"Card", "Card", "UI/Input", "Control", "Surface action", INSERT_EDITABLE},
     {"Button", "Button", "UI/Input", "Control", "Action", INSERT_EDITABLE},
     {"IconButton", "Icon Button", "UI/Input", "Control", "Icon action", EDITABLE},
     {"Href", "Href", "UI/Input", "Control", "Link", EDITABLE},
@@ -128,6 +129,7 @@ kryon_node_type_has_snippet(const char *name)
         "Rect",
         "Line",
         "Image",
+        "Card",
         "Button",
         "TextField",
         "Toggle",
@@ -246,6 +248,15 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .fit = PICTURE_FIT_CONTAIN,\n"
                  "    })\n",
                  x, y);
+    } else if(strcmp(type->name, "Card") == 0) {
+        snprintf(dst, (size_t)cap,
+                 "\n    if Card((CardProps){\n"
+                 "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(96)},\n"
+                 "        .clickable = true,\n"
+                 "        .id = %d,\n"
+                 "    }) {\n"
+                 "    }\n",
+                 x, y, 5200 + (id % 1000));
     } else if(strcmp(type->name, "Button") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    if Button((ButtonProps){\n"

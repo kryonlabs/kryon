@@ -1,0 +1,14 @@
+#module "card_props"
+#import "ui_control_props.generated.h"
+
+CardProps :: struct {
+    bounds: Rectangle
+    id: i32
+    clickable: bool
+    disabled: bool
+    selected: bool
+    tone: ButtonTone
+    emphasis: ButtonEmphasis
+    state: ButtonState
+    style: ControlStyle
+}

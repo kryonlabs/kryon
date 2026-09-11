@@ -28,6 +28,22 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    style: ControlStyle\n"
         "}\n"
     },
+    {"runtime/card_props.kry",
+        "#module \"card_props\"\n"
+        "#import \"ui_control_props.generated.h\"\n"
+        "\n"
+        "CardProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    clickable: bool\n"
+        "    disabled: bool\n"
+        "    selected: bool\n"
+        "    tone: ButtonTone\n"
+        "    emphasis: ButtonEmphasis\n"
+        "    state: ButtonState\n"
+        "    style: ControlStyle\n"
+        "}\n"
+    },
     {"runtime/control_props.kry",
         "#module \"control_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

@@ -4,6 +4,7 @@
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
 #include "ui_button_props.generated.h"
+#include "ui_card_props.generated.h"
 #include "ui_grid_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
@@ -86,7 +87,8 @@ typedef enum UIWidgetKind {
     UI_WIDGET_FLOAT_DRAG_NODE,
     UI_WIDGET_INT_DRAG_NODE,
     UI_WIDGET_TEXT_INPUT_PAINT_NODE,
-    UI_WIDGET_ROUTER_NODE
+    UI_WIDGET_ROUTER_NODE,
+    UI_WIDGET_CARD_NODE
 } UIWidgetKind;
 
 /* Prepared painting only: no editing-state pointers survive submission. */
@@ -331,7 +333,8 @@ typedef struct {
 
 void Background(Color color);
 void Surface(Rectangle bounds, Style style);
-void Card(Rectangle bounds);
+int Card(CardProps card);
+NodeId BeginCard(CardProps card);
 void Text(TextProps props);
 void LabelText(const char *label, const char *value, Rectangle bounds,
                int font_size, Color color);

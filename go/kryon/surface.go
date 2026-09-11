@@ -3570,6 +3570,54 @@ func Surface_GlassLayer(index int32, width float32, height float32, radius float
 	return value_186
 }
 
+func Surface_FinishLightfieldLayer(layer SurfaceLayer, index int32, background uint32, opacity float32) SurfaceLayer {
+	var value_0 int32 = index
+	var value_1 int32 = 0
+	var value_2 bool = value_0 == value_1
+	var value_3 bool = value_2
+	if !value_3 {
+		var value_4 int32 = index
+		var value_5 int32 = 1
+		var value_6 bool = value_4 == value_5
+		value_3 = value_6
+	}
+	var value_7 bool = value_3
+	if !value_7 {
+		var value_8 int32 = index
+		var value_9 int32 = 4
+		var value_10 bool = value_8 == value_9
+		value_7 = value_10
+	}
+	if value_7 {
+		var value_11 uint32 = background
+		var value_12 int32 = 255
+		var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+		var value_14 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(value_13), 32, false, 8))
+		var value_15 float32 = float32(value_14)
+		var value_16 float32 = 255.0
+		var value_17 float32 = value_15 / value_16
+		var face_opacity float32 = value_17
+		var value_18 uint32 = layer.Color
+		var value_19 float32 = face_opacity
+		var value_20 uint32 = Surface_Opacity(value_18, value_19)
+		layer.Color = value_20
+		var value_21 uint32 = layer.EndColor
+		var value_22 float32 = face_opacity
+		var value_23 uint32 = Surface_Opacity(value_21, value_22)
+		layer.EndColor = value_23
+	}
+	var value_24 uint32 = layer.Color
+	var value_25 float32 = opacity
+	var value_26 uint32 = Surface_Opacity(value_24, value_25)
+	layer.Color = value_26
+	var value_27 uint32 = layer.EndColor
+	var value_28 float32 = opacity
+	var value_29 uint32 = Surface_Opacity(value_27, value_28)
+	layer.EndColor = value_29
+	var value_30 SurfaceLayer = layer
+	return value_30
+}
+
 func Surface_LightfieldLayer(index int32, width float32, height float32, radius float32, border_width float32, background uint32, border uint32, light uint32, focus_color uint32, hover float32, press float32, focused float32, disabled bool, opacity float32, ambient uint32) SurfaceLayer {
 	var value_0 uint32 = light
 	var value_1 int32 = 255
@@ -3888,2144 +3936,2165 @@ func Surface_LightfieldLayer(index int32, width float32, height float32, radius 
 		var value_251 float32 = alpha
 		var value_252 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64(value_251), 32, false)), uint64(0), 32, false, 0))
 		layer.Color = value_252
+		var value_253 SurfaceLayer = layer
+		var value_254 int32 = index
+		var value_255 uint32 = background
+		var value_256 float32 = opacity
+		var value_257 SurfaceLayer = Surface_FinishLightfieldLayer(value_253, value_254, value_255, value_256)
+		return value_257
 	}
-	var value_253 int32 = index
-	var value_254 int32 = 1
-	var value_255 bool = value_253 == value_254
-	if value_255 {
-		var value_256 float32 = 1.0
-		layer.X = value_256
-		var value_257 float32 = layer.Y
-		var value_258 float32 = 2.0
-		var value_259 float32 = h
-		var value_260 float32 = value_258 - value_259
-		var value_261 float32 = 2.0
-		var value_262 float32 = p
-		var value_263 float32 = value_261 * value_262
-		var value_264 float32 = value_260 - value_263
-		layer.Y = value_257 + value_264
-		var value_265 float32 = width
+	var value_258 int32 = index
+	var value_259 int32 = 1
+	var value_260 bool = value_258 == value_259
+	if value_260 {
+		var value_261 float32 = 1.0
+		layer.X = value_261
+		var value_262 float32 = layer.Y
+		var value_263 float32 = 2.0
+		var value_264 float32 = h
+		var value_265 float32 = value_263 - value_264
 		var value_266 float32 = 2.0
-		var value_267 float32 = value_265 - value_266
-		layer.Width = value_267
-		var value_268 float32 = 2.0
-		var value_269 float32 = 5.0
-		var value_270 float32 = h
-		var value_271 float32 = value_269 * value_270
-		var value_272 float32 = value_268 + value_271
-		layer.Blur = value_272
-		var value_273 bool = light_surroundings
-		var value_274 bool = !value_273
-		var value_275 bool = value_274
-		if value_275 {
-			var value_276 bool = disabled
-			var value_277 bool = !value_276
-			value_275 = value_277
+		var value_267 float32 = p
+		var value_268 float32 = value_266 * value_267
+		var value_269 float32 = value_265 - value_268
+		layer.Y = value_262 + value_269
+		var value_270 float32 = width
+		var value_271 float32 = 2.0
+		var value_272 float32 = value_270 - value_271
+		layer.Width = value_272
+		var value_273 float32 = 2.0
+		var value_274 float32 = 5.0
+		var value_275 float32 = h
+		var value_276 float32 = value_274 * value_275
+		var value_277 float32 = value_273 + value_276
+		layer.Blur = value_277
+		var value_278 bool = light_surroundings
+		var value_279 bool = !value_278
+		var value_280 bool = value_279
+		if value_280 {
+			var value_281 bool = disabled
+			var value_282 bool = !value_281
+			value_280 = value_282
 		}
-		var value_278 bool = value_275
-		if value_278 {
-			var value_279 uint32 = border
-			var value_280 int32 = 255
-			var value_281 uint32 = uint32(number_runtime_bits(uint64(value_280), uint64(0), 32, false, 0))
-			var value_282 uint32 = uint32(number_runtime_bits(uint64(value_279), uint64(value_281), 32, false, 8))
-			var value_283 int32 = 0
-			var value_284 uint32 = uint32(number_runtime_bits(uint64(value_283), uint64(0), 32, false, 0))
-			var value_285 bool = value_282 != value_284
-			value_278 = value_285
+		var value_283 bool = value_280
+		if value_283 {
+			var value_284 uint32 = border
+			var value_285 int32 = 255
+			var value_286 uint32 = uint32(number_runtime_bits(uint64(value_285), uint64(0), 32, false, 0))
+			var value_287 uint32 = uint32(number_runtime_bits(uint64(value_284), uint64(value_286), 32, false, 8))
+			var value_288 int32 = 0
+			var value_289 uint32 = uint32(number_runtime_bits(uint64(value_288), uint64(0), 32, false, 0))
+			var value_290 bool = value_287 != value_289
+			value_283 = value_290
 		}
-		if value_278 {
-			var value_286 float32 = 2.0
-			var value_287 float32 = 3.0
-			var value_288 float32 = 2.0
-			var value_289 float32 = h
-			var value_290 float32 = value_288 * value_289
-			var value_291 float32 = value_287 + value_290
-			var value_292 float32 = 1.0
-			var value_293 float32 = p
-			var value_294 float32 = value_292 - value_293
-			var value_295 float32 = value_291 * value_294
-			var value_296 float32 = value_286 + value_295
-			layer.Blur = value_296
+		if value_283 {
+			var value_291 float32 = 2.0
+			var value_292 float32 = 3.0
+			var value_293 float32 = 2.0
+			var value_294 float32 = h
+			var value_295 float32 = value_293 * value_294
+			var value_296 float32 = value_292 + value_295
+			var value_297 float32 = 1.0
+			var value_298 float32 = p
+			var value_299 float32 = value_297 - value_298
+			var value_300 float32 = value_296 * value_299
+			var value_301 float32 = value_291 + value_300
+			layer.Blur = value_301
 		}
-		var value_297 float32 = 34.0
-		var value_298 float32 = 90.0
-		var value_299 float32 = h
-		var value_300 float32 = value_298 * value_299
-		var value_301 float32 = value_297 + value_300
-		var value_302 float32 = 26.0
-		var value_303 float32 = p
-		var value_304 float32 = value_302 * value_303
-		var value_305 float32 = value_301 - value_304
-		var alpha float32 = value_305
-		var value_306 bool = light_surroundings
-		var value_307 bool = !value_306
-		var value_308 bool = value_307
-		if value_308 {
-			var value_309 bool = disabled
-			var value_310 bool = !value_309
-			value_308 = value_310
+		var value_302 float32 = 34.0
+		var value_303 float32 = 90.0
+		var value_304 float32 = h
+		var value_305 float32 = value_303 * value_304
+		var value_306 float32 = value_302 + value_305
+		var value_307 float32 = 26.0
+		var value_308 float32 = p
+		var value_309 float32 = value_307 * value_308
+		var value_310 float32 = value_306 - value_309
+		var alpha float32 = value_310
+		var value_311 bool = light_surroundings
+		var value_312 bool = !value_311
+		var value_313 bool = value_312
+		if value_313 {
+			var value_314 bool = disabled
+			var value_315 bool = !value_314
+			value_313 = value_315
 		}
-		var value_311 bool = value_308
-		if value_311 {
-			var value_312 uint32 = border
-			var value_313 int32 = 255
-			var value_314 uint32 = uint32(number_runtime_bits(uint64(value_313), uint64(0), 32, false, 0))
-			var value_315 uint32 = uint32(number_runtime_bits(uint64(value_312), uint64(value_314), 32, false, 8))
-			var value_316 int32 = 0
-			var value_317 uint32 = uint32(number_runtime_bits(uint64(value_316), uint64(0), 32, false, 0))
-			var value_318 bool = value_315 != value_317
-			value_311 = value_318
+		var value_316 bool = value_313
+		if value_316 {
+			var value_317 uint32 = border
+			var value_318 int32 = 255
+			var value_319 uint32 = uint32(number_runtime_bits(uint64(value_318), uint64(0), 32, false, 0))
+			var value_320 uint32 = uint32(number_runtime_bits(uint64(value_317), uint64(value_319), 32, false, 8))
+			var value_321 int32 = 0
+			var value_322 uint32 = uint32(number_runtime_bits(uint64(value_321), uint64(0), 32, false, 0))
+			var value_323 bool = value_320 != value_322
+			value_316 = value_323
 		}
-		if value_311 {
-			var value_319 float32 = height
-			var value_320 float32 = 40.0
-			var value_321 float32 = value_319 - value_320
-			var value_322 float32 = 8.0
-			var value_323 float32 = value_321 / value_322
-			var value_324 float32 = Surface_Unit(value_323)
-			var raised float32 = value_324
-			var value_325 float32 = raised
-			var value_326 float32 = raised
-			var value_327 float32 = 1.0
-			var value_328 float32 = p
-			var value_329 float32 = value_327 - value_328
-			var value_330 float32 = value_326 * value_329
-			raised = value_325 * value_330
-			var value_331 float32 = alpha
-			var value_332 float32 = 70.0
-			var value_333 float32 = raised
-			var value_334 float32 = value_332 * value_333
-			alpha = value_331 + value_334
-			var value_335 float32 = layer.Blur
-			var value_336 float32 = 3.0
-			var value_337 float32 = raised
-			var value_338 float32 = value_336 * value_337
-			layer.Blur = value_335 + value_338
+		if value_316 {
+			var value_324 float32 = height
+			var value_325 float32 = 40.0
+			var value_326 float32 = value_324 - value_325
+			var value_327 float32 = 8.0
+			var value_328 float32 = value_326 / value_327
+			var value_329 float32 = Surface_Unit(value_328)
+			var raised float32 = value_329
+			var value_330 float32 = raised
+			var value_331 float32 = raised
+			var value_332 float32 = 1.0
+			var value_333 float32 = p
+			var value_334 float32 = value_332 - value_333
+			var value_335 float32 = value_331 * value_334
+			raised = value_330 * value_335
+			var value_336 float32 = alpha
+			var value_337 float32 = 70.0
+			var value_338 float32 = raised
+			var value_339 float32 = value_337 * value_338
+			alpha = value_336 + value_339
+			var value_340 float32 = layer.Blur
+			var value_341 float32 = 3.0
+			var value_342 float32 = raised
+			var value_343 float32 = value_341 * value_342
+			layer.Blur = value_340 + value_343
 		}
-		var value_339 bool = disabled
-		if value_339 {
-			var value_340 float32 = 8.0
-			alpha = value_340
+		var value_344 bool = disabled
+		if value_344 {
+			var value_345 float32 = 8.0
+			alpha = value_345
 		}
-		var value_341 uint32 = light
-		var rim_light uint32 = value_341
-		var value_342 bool = light_surroundings
-		if value_342 {
-			var value_343 float32 = hover
-			var value_344 float32 = press
-			var value_345 bool = disabled
-			var value_346 float32 = Surface_FaceOffset(value_343, value_344, value_345)
-			var value_347 float32 = 1.0
-			var value_348 float32 = value_346 + value_347
-			layer.Y = value_348
-			var value_349 float32 = 8.0
-			var value_350 float32 = 4.0
-			var value_351 float32 = h
-			var value_352 float32 = focused
+		var value_346 uint32 = light
+		var rim_light uint32 = value_346
+		var value_347 bool = light_surroundings
+		if value_347 {
+			var value_348 float32 = hover
+			var value_349 float32 = press
+			var value_350 bool = disabled
+			var value_351 float32 = Surface_FaceOffset(value_348, value_349, value_350)
+			var value_352 float32 = 1.0
 			var value_353 float32 = value_351 + value_352
-			var value_354 float32 = Surface_Unit(value_353)
-			var value_355 float32 = value_350 * value_354
-			var value_356 float32 = value_349 + value_355
-			layer.Blur = value_356
-			var value_357 float32 = height
-			var value_358 float32 = 40.0
-			var value_359 float32 = value_357 - value_358
-			var value_360 float32 = 8.0
-			var value_361 float32 = value_359 / value_360
-			var value_362 float32 = Surface_Unit(value_361)
-			var raised float32 = value_362
-			var value_363 float32 = 110.0
-			var value_364 float32 = 40.0
-			var value_365 float32 = raised
-			var value_366 float32 = value_364 * value_365
-			var value_367 float32 = value_363 + value_366
-			var value_368 float32 = 10.0
-			var value_369 float32 = h
-			var value_370 float32 = value_368 * value_369
-			var value_371 float32 = value_367 - value_370
-			var value_372 float32 = 40.0
-			var value_373 float32 = focused
-			var value_374 float32 = Surface_Unit(value_373)
-			var value_375 float32 = value_372 * value_374
-			var value_376 float32 = value_371 - value_375
-			var value_377 float32 = 1.0
-			var value_378 float32 = 0.85
-			var value_379 float32 = p
-			var value_380 float32 = value_378 * value_379
-			var value_381 float32 = value_377 - value_380
-			var value_382 float32 = value_376 * value_381
-			var value_383 float32 = 1.0
-			var value_384 float32 = 0.85
-			var value_385 float32 = broad
-			var value_386 float32 = value_384 * value_385
-			var value_387 float32 = value_383 - value_386
-			var value_388 float32 = value_382 * value_387
-			alpha = value_388
-			var value_389 uint32 = border
-			var value_390 int32 = 255
-			var value_391 uint32 = uint32(number_runtime_bits(uint64(value_390), uint64(0), 32, false, 0))
-			var value_392 uint32 = uint32(number_runtime_bits(uint64(value_389), uint64(value_391), 32, false, 8))
-			var value_393 int32 = 0
-			var value_394 uint32 = uint32(number_runtime_bits(uint64(value_393), uint64(0), 32, false, 0))
-			var value_395 bool = value_392 == value_394
-			if value_395 {
-				var value_396 float32 = alpha
-				var value_397 float32 = 0.30
-				alpha = value_396 * value_397
+			layer.Y = value_353
+			var value_354 float32 = 8.0
+			var value_355 float32 = 4.0
+			var value_356 float32 = h
+			var value_357 float32 = focused
+			var value_358 float32 = value_356 + value_357
+			var value_359 float32 = Surface_Unit(value_358)
+			var value_360 float32 = value_355 * value_359
+			var value_361 float32 = value_354 + value_360
+			layer.Blur = value_361
+			var value_362 float32 = height
+			var value_363 float32 = 40.0
+			var value_364 float32 = value_362 - value_363
+			var value_365 float32 = 8.0
+			var value_366 float32 = value_364 / value_365
+			var value_367 float32 = Surface_Unit(value_366)
+			var raised float32 = value_367
+			var value_368 float32 = 110.0
+			var value_369 float32 = 40.0
+			var value_370 float32 = raised
+			var value_371 float32 = value_369 * value_370
+			var value_372 float32 = value_368 + value_371
+			var value_373 float32 = 10.0
+			var value_374 float32 = h
+			var value_375 float32 = value_373 * value_374
+			var value_376 float32 = value_372 - value_375
+			var value_377 float32 = 40.0
+			var value_378 float32 = focused
+			var value_379 float32 = Surface_Unit(value_378)
+			var value_380 float32 = value_377 * value_379
+			var value_381 float32 = value_376 - value_380
+			var value_382 float32 = 1.0
+			var value_383 float32 = 0.85
+			var value_384 float32 = p
+			var value_385 float32 = value_383 * value_384
+			var value_386 float32 = value_382 - value_385
+			var value_387 float32 = value_381 * value_386
+			var value_388 float32 = 1.0
+			var value_389 float32 = 0.85
+			var value_390 float32 = broad
+			var value_391 float32 = value_389 * value_390
+			var value_392 float32 = value_388 - value_391
+			var value_393 float32 = value_387 * value_392
+			alpha = value_393
+			var value_394 uint32 = border
+			var value_395 int32 = 255
+			var value_396 uint32 = uint32(number_runtime_bits(uint64(value_395), uint64(0), 32, false, 0))
+			var value_397 uint32 = uint32(number_runtime_bits(uint64(value_394), uint64(value_396), 32, false, 8))
+			var value_398 int32 = 0
+			var value_399 uint32 = uint32(number_runtime_bits(uint64(value_398), uint64(0), 32, false, 0))
+			var value_400 bool = value_397 == value_399
+			if value_400 {
+				var value_401 float32 = alpha
+				var value_402 float32 = 0.30
+				alpha = value_401 * value_402
 			}
-			var value_398 bool = disabled
-			if value_398 {
-				var value_399 float32 = 8.0
-				alpha = value_399
+			var value_403 bool = disabled
+			if value_403 {
+				var value_404 float32 = 8.0
+				alpha = value_404
 			}
-			var value_400 uint32 = light
-			var value_401 float32 = 0.65
-			var value_402 float32 = 0.30
-			var value_403 float32 = h
-			var value_404 float32 = focused
-			var value_405 float32 = value_403 + value_404
-			var value_406 float32 = Surface_Unit(value_405)
-			var value_407 float32 = value_402 * value_406
-			var value_408 float32 = value_401 - value_407
-			var value_409 uint32 = Surface_DepthColor(value_400, value_408)
-			rim_light = value_409
+			var value_405 uint32 = light
+			var value_406 float32 = 0.65
+			var value_407 float32 = 0.30
+			var value_408 float32 = h
+			var value_409 float32 = focused
+			var value_410 float32 = value_408 + value_409
+			var value_411 float32 = Surface_Unit(value_410)
+			var value_412 float32 = value_407 * value_411
+			var value_413 float32 = value_406 - value_412
+			var value_414 uint32 = Surface_DepthColor(value_405, value_413)
+			rim_light = value_414
 		}
-		var value_410 uint32 = rim_light
-		var value_411 int32 = 8
-		var value_412 uint32 = uint32(number_runtime_bits(uint64(value_411), uint64(0), 32, false, 0))
-		var value_413 uint32 = uint32(number_runtime_bits(uint64(value_410), uint64(value_412), 32, false, 7))
-		var value_414 int32 = 8
-		var value_415 uint32 = uint32(number_runtime_bits(uint64(value_414), uint64(0), 32, false, 0))
-		var value_416 uint32 = uint32(number_runtime_bits(uint64(value_413), uint64(value_415), 32, false, 6))
-		var value_417 float32 = alpha
-		var value_418 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64(value_417), 32, false)), uint64(0), 32, false, 0))
-		var value_419 uint32 = uint32(number_runtime_bits(uint64(value_416), uint64(value_418), 32, false, 9))
-		layer.Color = value_419
-		var value_420 bool = light_surroundings
-		if value_420 {
-			var value_421 uint32 = layer.Color
-			layer.EndColor = value_421
-			var value_422 uint32 = layer.Color
-			var value_423 float32 = 0.0
-			var value_424 uint32 = Surface_Opacity(value_422, value_423)
-			layer.Color = value_424
-			var value_425 bool = true
-			layer.Gradient = value_425
+		var value_415 uint32 = rim_light
+		var value_416 int32 = 8
+		var value_417 uint32 = uint32(number_runtime_bits(uint64(value_416), uint64(0), 32, false, 0))
+		var value_418 uint32 = uint32(number_runtime_bits(uint64(value_415), uint64(value_417), 32, false, 7))
+		var value_419 int32 = 8
+		var value_420 uint32 = uint32(number_runtime_bits(uint64(value_419), uint64(0), 32, false, 0))
+		var value_421 uint32 = uint32(number_runtime_bits(uint64(value_418), uint64(value_420), 32, false, 6))
+		var value_422 float32 = alpha
+		var value_423 uint32 = uint32(number_runtime_bits(uint64(number_runtime_float(float64(value_422), 32, false)), uint64(0), 32, false, 0))
+		var value_424 uint32 = uint32(number_runtime_bits(uint64(value_421), uint64(value_423), 32, false, 9))
+		layer.Color = value_424
+		var value_425 bool = light_surroundings
+		if value_425 {
+			var value_426 uint32 = layer.Color
+			layer.EndColor = value_426
+			var value_427 uint32 = layer.Color
+			var value_428 float32 = 0.0
+			var value_429 uint32 = Surface_Opacity(value_427, value_428)
+			layer.Color = value_429
+			var value_430 bool = true
+			layer.Gradient = value_430
 		}
+		var value_431 SurfaceLayer = layer
+		var value_432 int32 = index
+		var value_433 uint32 = background
+		var value_434 float32 = opacity
+		var value_435 SurfaceLayer = Surface_FinishLightfieldLayer(value_431, value_432, value_433, value_434)
+		return value_435
 	}
-	var value_426 int32 = index
-	var value_427 int32 = 2
-	var value_428 bool = value_426 == value_427
-	if value_428 {
-		var value_429 bool = true
-		layer.IsFace = value_429
-		var value_430 float32 = focused
-		var value_431 float32 = Surface_Unit(value_430)
-		var value_432 float32 = 1.0
-		var value_433 float32 = h
-		var value_434 float32 = value_432 - value_433
-		var value_435 float32 = value_431 * value_434
-		var value_436 float32 = 1.0
-		var value_437 float32 = p
-		var value_438 float32 = value_436 - value_437
-		var value_439 float32 = value_435 * value_438
-		var focus_depth float32 = value_439
-		var value_440 bool = disabled
-		if value_440 {
-			var value_441 float32 = 0.0
-			focus_depth = value_441
+	var value_436 int32 = index
+	var value_437 int32 = 2
+	var value_438 bool = value_436 == value_437
+	if value_438 {
+		var value_439 bool = true
+		layer.IsFace = value_439
+		var value_440 float32 = focused
+		var value_441 float32 = Surface_Unit(value_440)
+		var value_442 float32 = 1.0
+		var value_443 float32 = h
+		var value_444 float32 = value_442 - value_443
+		var value_445 float32 = value_441 * value_444
+		var value_446 float32 = 1.0
+		var value_447 float32 = p
+		var value_448 float32 = value_446 - value_447
+		var value_449 float32 = value_445 * value_448
+		var focus_depth float32 = value_449
+		var value_450 bool = disabled
+		if value_450 {
+			var value_451 float32 = 0.0
+			focus_depth = value_451
 		}
-		var value_442 bool = light_surroundings
-		var value_443 bool = !value_442
-		if value_443 {
-			var value_444 bool = disabled
-			var value_445 bool = !value_444
-			if value_445 {
-				var value_446 uint32 = background
-				var value_447 uint32 = focus_color
-				var value_448 float32 = broad
-				var value_449 float32 = 0.11
-				var value_450 float32 = value_448 * value_449
-				var value_451 float32 = 1.0
-				var value_452 uint32 = background
-				var value_453 uint32 = Surface_ColorChroma(value_452)
-				var value_454 float32 = float32(value_453)
-				var value_455 float32 = 255.0
-				var value_456 float32 = value_454 / value_455
-				var value_457 float32 = value_451 - value_456
-				var value_458 float32 = value_450 * value_457
-				var value_459 float32 = 1.0
-				var value_460 float32 = p
-				var value_461 float32 = value_459 - value_460
-				var value_462 float32 = value_458 * value_461
-				var value_463 float32 = 1.0
-				var value_464 float32 = focused
-				var value_465 float32 = Surface_Unit(value_464)
-				var value_466 float32 = value_463 - value_465
-				var value_467 float32 = value_462 * value_466
-				var value_468 uint32 = focus_color
-				var value_469 int32 = 255
-				var value_470 uint32 = uint32(number_runtime_bits(uint64(value_469), uint64(0), 32, false, 0))
-				var value_471 uint32 = uint32(number_runtime_bits(uint64(value_468), uint64(value_470), 32, false, 8))
-				var value_472 float32 = float32(value_471)
-				var value_473 float32 = value_467 * value_472
-				var value_474 float32 = 255.0
-				var value_475 float32 = value_473 / value_474
-				var value_476 uint32 = Surface_GradientColor(value_446, value_447, value_475)
-				var reflected uint32 = value_476
-				var value_477 uint32 = reflected
-				var value_478 int32 = 8
-				var value_479 uint32 = uint32(number_runtime_bits(uint64(value_478), uint64(0), 32, false, 0))
-				var value_480 uint32 = uint32(number_runtime_bits(uint64(value_477), uint64(value_479), 32, false, 7))
-				var value_481 int32 = 8
-				var value_482 uint32 = uint32(number_runtime_bits(uint64(value_481), uint64(0), 32, false, 0))
-				var value_483 uint32 = uint32(number_runtime_bits(uint64(value_480), uint64(value_482), 32, false, 6))
-				var value_484 uint32 = background
-				var value_485 int32 = 255
-				var value_486 uint32 = uint32(number_runtime_bits(uint64(value_485), uint64(0), 32, false, 0))
-				var value_487 uint32 = uint32(number_runtime_bits(uint64(value_484), uint64(value_486), 32, false, 8))
-				var value_488 uint32 = uint32(number_runtime_bits(uint64(value_483), uint64(value_487), 32, false, 9))
-				background = value_488
+		var value_452 bool = light_surroundings
+		var value_453 bool = !value_452
+		if value_453 {
+			var value_454 bool = disabled
+			var value_455 bool = !value_454
+			if value_455 {
+				var value_456 uint32 = background
+				var value_457 uint32 = focus_color
+				var value_458 float32 = broad
+				var value_459 float32 = 0.11
+				var value_460 float32 = value_458 * value_459
+				var value_461 float32 = 1.0
+				var value_462 uint32 = background
+				var value_463 uint32 = Surface_ColorChroma(value_462)
+				var value_464 float32 = float32(value_463)
+				var value_465 float32 = 255.0
+				var value_466 float32 = value_464 / value_465
+				var value_467 float32 = value_461 - value_466
+				var value_468 float32 = value_460 * value_467
+				var value_469 float32 = 1.0
+				var value_470 float32 = p
+				var value_471 float32 = value_469 - value_470
+				var value_472 float32 = value_468 * value_471
+				var value_473 float32 = 1.0
+				var value_474 float32 = focused
+				var value_475 float32 = Surface_Unit(value_474)
+				var value_476 float32 = value_473 - value_475
+				var value_477 float32 = value_472 * value_476
+				var value_478 uint32 = focus_color
+				var value_479 int32 = 255
+				var value_480 uint32 = uint32(number_runtime_bits(uint64(value_479), uint64(0), 32, false, 0))
+				var value_481 uint32 = uint32(number_runtime_bits(uint64(value_478), uint64(value_480), 32, false, 8))
+				var value_482 float32 = float32(value_481)
+				var value_483 float32 = value_477 * value_482
+				var value_484 float32 = 255.0
+				var value_485 float32 = value_483 / value_484
+				var value_486 uint32 = Surface_GradientColor(value_456, value_457, value_485)
+				var reflected uint32 = value_486
+				var value_487 uint32 = reflected
+				var value_488 int32 = 8
+				var value_489 uint32 = uint32(number_runtime_bits(uint64(value_488), uint64(0), 32, false, 0))
+				var value_490 uint32 = uint32(number_runtime_bits(uint64(value_487), uint64(value_489), 32, false, 7))
+				var value_491 int32 = 8
+				var value_492 uint32 = uint32(number_runtime_bits(uint64(value_491), uint64(0), 32, false, 0))
+				var value_493 uint32 = uint32(number_runtime_bits(uint64(value_490), uint64(value_492), 32, false, 6))
+				var value_494 uint32 = background
+				var value_495 int32 = 255
+				var value_496 uint32 = uint32(number_runtime_bits(uint64(value_495), uint64(0), 32, false, 0))
+				var value_497 uint32 = uint32(number_runtime_bits(uint64(value_494), uint64(value_496), 32, false, 8))
+				var value_498 uint32 = uint32(number_runtime_bits(uint64(value_493), uint64(value_497), 32, false, 9))
+				background = value_498
 			}
-			var value_489 uint32 = border
-			var value_490 int32 = 255
-			var value_491 uint32 = uint32(number_runtime_bits(uint64(value_490), uint64(0), 32, false, 0))
-			var value_492 uint32 = uint32(number_runtime_bits(uint64(value_489), uint64(value_491), 32, false, 8))
-			var value_493 int32 = 0
-			var value_494 uint32 = uint32(number_runtime_bits(uint64(value_493), uint64(0), 32, false, 0))
-			var value_495 bool = value_492 != value_494
-			if value_495 {
-				var value_496 uint32 = background
-				var value_497 float32 = 0.30
-				var value_498 float32 = focus_depth
-				var value_499 float32 = value_497 * value_498
-				var value_500 uint32 = Surface_DepthColor(value_496, value_499)
-				background = value_500
+			var value_499 uint32 = border
+			var value_500 int32 = 255
+			var value_501 uint32 = uint32(number_runtime_bits(uint64(value_500), uint64(0), 32, false, 0))
+			var value_502 uint32 = uint32(number_runtime_bits(uint64(value_499), uint64(value_501), 32, false, 8))
+			var value_503 int32 = 0
+			var value_504 uint32 = uint32(number_runtime_bits(uint64(value_503), uint64(0), 32, false, 0))
+			var value_505 bool = value_502 != value_504
+			if value_505 {
+				var value_506 uint32 = background
+				var value_507 float32 = 0.30
+				var value_508 float32 = focus_depth
+				var value_509 float32 = value_507 * value_508
+				var value_510 uint32 = Surface_DepthColor(value_506, value_509)
+				background = value_510
 			}
 		}
-		var value_501 int32 = 16777215
-		var value_502 uint32 = uint32(number_runtime_bits(uint64(value_501), uint64(0), 32, false, 0))
-		var value_503 int32 = 8
-		var value_504 uint32 = uint32(number_runtime_bits(uint64(value_503), uint64(0), 32, false, 0))
-		var value_505 uint32 = uint32(number_runtime_bits(uint64(value_502), uint64(value_504), 32, false, 6))
-		var value_506 uint32 = background
-		var value_507 int32 = 255
-		var value_508 uint32 = uint32(number_runtime_bits(uint64(value_507), uint64(0), 32, false, 0))
-		var value_509 uint32 = uint32(number_runtime_bits(uint64(value_506), uint64(value_508), 32, false, 8))
-		var value_510 uint32 = uint32(number_runtime_bits(uint64(value_505), uint64(value_509), 32, false, 9))
-		var white uint32 = value_510
-		var value_511 uint32 = background
-		var value_512 int32 = 255
-		var value_513 uint32 = uint32(number_runtime_bits(uint64(value_512), uint64(0), 32, false, 0))
-		var value_514 uint32 = uint32(number_runtime_bits(uint64(value_511), uint64(value_513), 32, false, 8))
-		var black uint32 = value_514
-		var value_515 float32 = 0.38
-		var value_516 float32 = h
-		var value_517 float32 = 0.06
-		var value_518 float32 = value_516 * value_517
-		var value_519 float32 = value_515 - value_518
-		var highlight float32 = value_519
-		var value_520 bool = light_surroundings
-		if value_520 {
-			var value_521 float32 = 0.50
-			var value_522 float32 = h
-			var value_523 float32 = 0.40
-			var value_524 float32 = value_522 * value_523
-			var value_525 float32 = value_521 - value_524
-			highlight = value_525
-			var value_526 uint32 = background
-			var value_527 uint32 = Surface_ColorChroma(value_526)
-			var value_528 float32 = float32(value_527)
-			var value_529 float32 = 128.0
-			var value_530 float32 = value_528 - value_529
-			var value_531 float32 = 64.0
-			var value_532 float32 = value_530 / value_531
-			var value_533 float32 = Surface_Unit(value_532)
-			var saturation float32 = value_533
-			var value_534 float32 = highlight
-			var value_535 float32 = 0.50
-			var value_536 float32 = broad
-			var value_537 float32 = value_535 * value_536
-			var value_538 float32 = saturation
-			var value_539 float32 = value_537 * value_538
-			var value_540 float32 = 1.0
-			var value_541 float32 = h
-			var value_542 float32 = value_540 - value_541
-			var value_543 float32 = value_539 * value_542
-			highlight = value_534 - value_543
+		var value_511 int32 = 16777215
+		var value_512 uint32 = uint32(number_runtime_bits(uint64(value_511), uint64(0), 32, false, 0))
+		var value_513 int32 = 8
+		var value_514 uint32 = uint32(number_runtime_bits(uint64(value_513), uint64(0), 32, false, 0))
+		var value_515 uint32 = uint32(number_runtime_bits(uint64(value_512), uint64(value_514), 32, false, 6))
+		var value_516 uint32 = background
+		var value_517 int32 = 255
+		var value_518 uint32 = uint32(number_runtime_bits(uint64(value_517), uint64(0), 32, false, 0))
+		var value_519 uint32 = uint32(number_runtime_bits(uint64(value_516), uint64(value_518), 32, false, 8))
+		var value_520 uint32 = uint32(number_runtime_bits(uint64(value_515), uint64(value_519), 32, false, 9))
+		var white uint32 = value_520
+		var value_521 uint32 = background
+		var value_522 int32 = 255
+		var value_523 uint32 = uint32(number_runtime_bits(uint64(value_522), uint64(0), 32, false, 0))
+		var value_524 uint32 = uint32(number_runtime_bits(uint64(value_521), uint64(value_523), 32, false, 8))
+		var black uint32 = value_524
+		var value_525 float32 = 0.38
+		var value_526 float32 = h
+		var value_527 float32 = 0.06
+		var value_528 float32 = value_526 * value_527
+		var value_529 float32 = value_525 - value_528
+		var highlight float32 = value_529
+		var value_530 bool = light_surroundings
+		if value_530 {
+			var value_531 float32 = 0.50
+			var value_532 float32 = h
+			var value_533 float32 = 0.40
+			var value_534 float32 = value_532 * value_533
+			var value_535 float32 = value_531 - value_534
+			highlight = value_535
+			var value_536 uint32 = background
+			var value_537 uint32 = Surface_ColorChroma(value_536)
+			var value_538 float32 = float32(value_537)
+			var value_539 float32 = 128.0
+			var value_540 float32 = value_538 - value_539
+			var value_541 float32 = 64.0
+			var value_542 float32 = value_540 / value_541
+			var value_543 float32 = Surface_Unit(value_542)
+			var saturation float32 = value_543
+			var value_544 float32 = highlight
+			var value_545 float32 = 0.50
+			var value_546 float32 = broad
+			var value_547 float32 = value_545 * value_546
+			var value_548 float32 = saturation
+			var value_549 float32 = value_547 * value_548
+			var value_550 float32 = 1.0
+			var value_551 float32 = h
+			var value_552 float32 = value_550 - value_551
+			var value_553 float32 = value_549 * value_552
+			highlight = value_544 - value_553
 		}
-		var value_544 uint32 = background
-		var value_545 uint32 = white
-		var value_546 float32 = 0.30
-		var value_547 uint32 = Surface_GradientColor(value_544, value_545, value_546)
-		var face_light uint32 = value_547
-		var value_548 bool = light_surroundings
-		var value_549 bool = !value_548
-		if value_549 {
-			var value_550 uint32 = light
-			var value_551 uint32 = white
-			var value_552 float32 = 0.06
-			var value_553 uint32 = Surface_GradientColor(value_550, value_551, value_552)
-			face_light = value_553
-			var value_554 uint32 = face_light
-			var value_555 int32 = 8
-			var value_556 uint32 = uint32(number_runtime_bits(uint64(value_555), uint64(0), 32, false, 0))
-			var value_557 uint32 = uint32(number_runtime_bits(uint64(value_554), uint64(value_556), 32, false, 7))
-			var value_558 int32 = 8
-			var value_559 uint32 = uint32(number_runtime_bits(uint64(value_558), uint64(0), 32, false, 0))
-			var value_560 uint32 = uint32(number_runtime_bits(uint64(value_557), uint64(value_559), 32, false, 6))
-			var value_561 uint32 = background
-			var value_562 int32 = 255
-			var value_563 uint32 = uint32(number_runtime_bits(uint64(value_562), uint64(0), 32, false, 0))
-			var value_564 uint32 = uint32(number_runtime_bits(uint64(value_561), uint64(value_563), 32, false, 8))
-			var value_565 uint32 = uint32(number_runtime_bits(uint64(value_560), uint64(value_564), 32, false, 9))
-			face_light = value_565
+		var value_554 uint32 = background
+		var value_555 uint32 = white
+		var value_556 float32 = 0.30
+		var value_557 uint32 = Surface_GradientColor(value_554, value_555, value_556)
+		var face_light uint32 = value_557
+		var value_558 bool = light_surroundings
+		var value_559 bool = !value_558
+		if value_559 {
+			var value_560 uint32 = light
+			var value_561 uint32 = white
+			var value_562 float32 = 0.06
+			var value_563 uint32 = Surface_GradientColor(value_560, value_561, value_562)
+			face_light = value_563
+			var value_564 uint32 = face_light
+			var value_565 int32 = 8
+			var value_566 uint32 = uint32(number_runtime_bits(uint64(value_565), uint64(0), 32, false, 0))
+			var value_567 uint32 = uint32(number_runtime_bits(uint64(value_564), uint64(value_566), 32, false, 7))
+			var value_568 int32 = 8
+			var value_569 uint32 = uint32(number_runtime_bits(uint64(value_568), uint64(0), 32, false, 0))
+			var value_570 uint32 = uint32(number_runtime_bits(uint64(value_567), uint64(value_569), 32, false, 6))
+			var value_571 uint32 = background
+			var value_572 int32 = 255
+			var value_573 uint32 = uint32(number_runtime_bits(uint64(value_572), uint64(0), 32, false, 0))
+			var value_574 uint32 = uint32(number_runtime_bits(uint64(value_571), uint64(value_573), 32, false, 8))
+			var value_575 uint32 = uint32(number_runtime_bits(uint64(value_570), uint64(value_574), 32, false, 9))
+			face_light = value_575
 		}
-		var value_566 float32 = 0.12
-		var value_567 float32 = p
-		var value_568 float32 = 0.22
-		var value_569 float32 = value_567 * value_568
-		var value_570 float32 = value_566 + value_569
-		var shade float32 = value_570
-		var value_571 uint32 = background
-		var value_572 int32 = 24
-		var value_573 uint32 = uint32(number_runtime_bits(uint64(value_572), uint64(0), 32, false, 0))
-		var value_574 uint32 = uint32(number_runtime_bits(uint64(value_571), uint64(value_573), 32, false, 7))
-		var value_575 int32 = 255
-		var value_576 uint32 = uint32(number_runtime_bits(uint64(value_575), uint64(0), 32, false, 0))
-		var value_577 uint32 = uint32(number_runtime_bits(uint64(value_574), uint64(value_576), 32, false, 8))
-		var value_578 uint32 = background
-		var value_579 int32 = 16
-		var value_580 uint32 = uint32(number_runtime_bits(uint64(value_579), uint64(0), 32, false, 0))
-		var value_581 uint32 = uint32(number_runtime_bits(uint64(value_578), uint64(value_580), 32, false, 7))
-		var value_582 int32 = 255
+		var value_576 float32 = 0.12
+		var value_577 float32 = p
+		var value_578 float32 = 0.22
+		var value_579 float32 = value_577 * value_578
+		var value_580 float32 = value_576 + value_579
+		var shade float32 = value_580
+		var value_581 uint32 = background
+		var value_582 int32 = 24
 		var value_583 uint32 = uint32(number_runtime_bits(uint64(value_582), uint64(0), 32, false, 0))
-		var value_584 uint32 = uint32(number_runtime_bits(uint64(value_581), uint64(value_583), 32, false, 8))
-		var value_585 uint32 = uint32(number_runtime_bits(uint64(value_577), uint64(value_584), 32, false, 1))
-		var value_586 uint32 = background
-		var value_587 int32 = 8
-		var value_588 uint32 = uint32(number_runtime_bits(uint64(value_587), uint64(0), 32, false, 0))
-		var value_589 uint32 = uint32(number_runtime_bits(uint64(value_586), uint64(value_588), 32, false, 7))
-		var value_590 int32 = 255
-		var value_591 uint32 = uint32(number_runtime_bits(uint64(value_590), uint64(0), 32, false, 0))
-		var value_592 uint32 = uint32(number_runtime_bits(uint64(value_589), uint64(value_591), 32, false, 8))
-		var value_593 uint32 = uint32(number_runtime_bits(uint64(value_585), uint64(value_592), 32, false, 1))
-		var brightness uint32 = value_593
-		var value_594 bool = light_surroundings
-		var value_595 bool = !value_594
-		if value_595 {
-			var value_596 float32 = highlight
-			var value_597 uint32 = brightness
-			var value_598 float32 = float32(value_597)
-			var value_599 float32 = 90.0
-			var value_600 float32 = value_598 - value_599
-			var value_601 float32 = 80.0
-			var value_602 float32 = value_600 / value_601
-			var value_603 float32 = Surface_Unit(value_602)
-			highlight = value_596 * value_603
-			var value_604 float32 = highlight
-			var value_605 float32 = 1.0
-			var value_606 float32 = 0.70
-			var value_607 float32 = focus_depth
-			var value_608 float32 = value_606 * value_607
-			var value_609 float32 = value_605 - value_608
-			highlight = value_604 * value_609
+		var value_584 uint32 = uint32(number_runtime_bits(uint64(value_581), uint64(value_583), 32, false, 7))
+		var value_585 int32 = 255
+		var value_586 uint32 = uint32(number_runtime_bits(uint64(value_585), uint64(0), 32, false, 0))
+		var value_587 uint32 = uint32(number_runtime_bits(uint64(value_584), uint64(value_586), 32, false, 8))
+		var value_588 uint32 = background
+		var value_589 int32 = 16
+		var value_590 uint32 = uint32(number_runtime_bits(uint64(value_589), uint64(0), 32, false, 0))
+		var value_591 uint32 = uint32(number_runtime_bits(uint64(value_588), uint64(value_590), 32, false, 7))
+		var value_592 int32 = 255
+		var value_593 uint32 = uint32(number_runtime_bits(uint64(value_592), uint64(0), 32, false, 0))
+		var value_594 uint32 = uint32(number_runtime_bits(uint64(value_591), uint64(value_593), 32, false, 8))
+		var value_595 uint32 = uint32(number_runtime_bits(uint64(value_587), uint64(value_594), 32, false, 1))
+		var value_596 uint32 = background
+		var value_597 int32 = 8
+		var value_598 uint32 = uint32(number_runtime_bits(uint64(value_597), uint64(0), 32, false, 0))
+		var value_599 uint32 = uint32(number_runtime_bits(uint64(value_596), uint64(value_598), 32, false, 7))
+		var value_600 int32 = 255
+		var value_601 uint32 = uint32(number_runtime_bits(uint64(value_600), uint64(0), 32, false, 0))
+		var value_602 uint32 = uint32(number_runtime_bits(uint64(value_599), uint64(value_601), 32, false, 8))
+		var value_603 uint32 = uint32(number_runtime_bits(uint64(value_595), uint64(value_602), 32, false, 1))
+		var brightness uint32 = value_603
+		var value_604 bool = light_surroundings
+		var value_605 bool = !value_604
+		if value_605 {
+			var value_606 float32 = highlight
+			var value_607 uint32 = brightness
+			var value_608 float32 = float32(value_607)
+			var value_609 float32 = 90.0
+			var value_610 float32 = value_608 - value_609
+			var value_611 float32 = 80.0
+			var value_612 float32 = value_610 / value_611
+			var value_613 float32 = Surface_Unit(value_612)
+			highlight = value_606 * value_613
+			var value_614 float32 = highlight
+			var value_615 float32 = 1.0
+			var value_616 float32 = 0.70
+			var value_617 float32 = focus_depth
+			var value_618 float32 = value_616 * value_617
+			var value_619 float32 = value_615 - value_618
+			highlight = value_614 * value_619
 		}
-		var value_610 uint32 = brightness
-		var value_611 int32 = 600
-		var value_612 uint32 = uint32(number_runtime_bits(uint64(value_611), uint64(0), 32, false, 0))
-		var value_613 bool = value_610 > value_612
-		if value_613 {
-			var value_614 float32 = 0.35
-			var tint float32 = value_614
-			var value_615 bool = light_surroundings
-			var value_616 bool = value_615
-			if value_616 {
-				var value_617 uint32 = border
-				var value_618 int32 = 255
-				var value_619 uint32 = uint32(number_runtime_bits(uint64(value_618), uint64(0), 32, false, 0))
-				var value_620 uint32 = uint32(number_runtime_bits(uint64(value_617), uint64(value_619), 32, false, 8))
-				var value_621 int32 = 0
-				var value_622 uint32 = uint32(number_runtime_bits(uint64(value_621), uint64(0), 32, false, 0))
-				var value_623 bool = value_620 == value_622
-				value_616 = value_623
+		var value_620 uint32 = brightness
+		var value_621 int32 = 600
+		var value_622 uint32 = uint32(number_runtime_bits(uint64(value_621), uint64(0), 32, false, 0))
+		var value_623 bool = value_620 > value_622
+		if value_623 {
+			var value_624 float32 = 0.35
+			var tint float32 = value_624
+			var value_625 bool = light_surroundings
+			var value_626 bool = value_625
+			if value_626 {
+				var value_627 uint32 = border
+				var value_628 int32 = 255
+				var value_629 uint32 = uint32(number_runtime_bits(uint64(value_628), uint64(0), 32, false, 0))
+				var value_630 uint32 = uint32(number_runtime_bits(uint64(value_627), uint64(value_629), 32, false, 8))
+				var value_631 int32 = 0
+				var value_632 uint32 = uint32(number_runtime_bits(uint64(value_631), uint64(0), 32, false, 0))
+				var value_633 bool = value_630 == value_632
+				value_626 = value_633
 			}
-			if value_616 {
-				var value_624 float32 = tint
-				var value_625 float32 = 0.10
-				var value_626 float32 = p
-				var value_627 float32 = value_625 * value_626
-				tint = value_624 - value_627
+			if value_626 {
+				var value_634 float32 = tint
+				var value_635 float32 = 0.10
+				var value_636 float32 = p
+				var value_637 float32 = value_635 * value_636
+				tint = value_634 - value_637
 			}
-			var value_628 uint32 = background
-			var value_629 uint32 = light
-			var value_630 float32 = tint
-			var value_631 uint32 = Surface_GradientColor(value_628, value_629, value_630)
-			black = value_631
-			var value_632 uint32 = black
-			var value_633 int32 = 8
-			var value_634 uint32 = uint32(number_runtime_bits(uint64(value_633), uint64(0), 32, false, 0))
-			var value_635 uint32 = uint32(number_runtime_bits(uint64(value_632), uint64(value_634), 32, false, 7))
-			var value_636 int32 = 8
-			var value_637 uint32 = uint32(number_runtime_bits(uint64(value_636), uint64(0), 32, false, 0))
-			var value_638 uint32 = uint32(number_runtime_bits(uint64(value_635), uint64(value_637), 32, false, 6))
-			var value_639 uint32 = background
-			var value_640 int32 = 255
-			var value_641 uint32 = uint32(number_runtime_bits(uint64(value_640), uint64(0), 32, false, 0))
-			var value_642 uint32 = uint32(number_runtime_bits(uint64(value_639), uint64(value_641), 32, false, 8))
-			var value_643 uint32 = uint32(number_runtime_bits(uint64(value_638), uint64(value_642), 32, false, 9))
-			black = value_643
-			var value_644 float32 = 0.22
-			var value_645 float32 = p
-			var value_646 float32 = 0.10
-			var value_647 float32 = value_645 * value_646
-			var value_648 float32 = value_644 + value_647
-			shade = value_648
+			var value_638 uint32 = background
+			var value_639 uint32 = light
+			var value_640 float32 = tint
+			var value_641 uint32 = Surface_GradientColor(value_638, value_639, value_640)
+			black = value_641
+			var value_642 uint32 = black
+			var value_643 int32 = 8
+			var value_644 uint32 = uint32(number_runtime_bits(uint64(value_643), uint64(0), 32, false, 0))
+			var value_645 uint32 = uint32(number_runtime_bits(uint64(value_642), uint64(value_644), 32, false, 7))
+			var value_646 int32 = 8
+			var value_647 uint32 = uint32(number_runtime_bits(uint64(value_646), uint64(0), 32, false, 0))
+			var value_648 uint32 = uint32(number_runtime_bits(uint64(value_645), uint64(value_647), 32, false, 6))
+			var value_649 uint32 = background
+			var value_650 int32 = 255
+			var value_651 uint32 = uint32(number_runtime_bits(uint64(value_650), uint64(0), 32, false, 0))
+			var value_652 uint32 = uint32(number_runtime_bits(uint64(value_649), uint64(value_651), 32, false, 8))
+			var value_653 uint32 = uint32(number_runtime_bits(uint64(value_648), uint64(value_652), 32, false, 9))
+			black = value_653
+			var value_654 float32 = 0.22
+			var value_655 float32 = p
+			var value_656 float32 = 0.10
+			var value_657 float32 = value_655 * value_656
+			var value_658 float32 = value_654 + value_657
+			shade = value_658
 		}
-		var value_649 bool = disabled
-		if value_649 {
-			var value_650 float32 = 0.02
-			highlight = value_650
-			var value_651 float32 = 0.02
-			shade = value_651
+		var value_659 bool = disabled
+		if value_659 {
+			var value_660 float32 = 0.02
+			highlight = value_660
+			var value_661 float32 = 0.02
+			shade = value_661
 		}
-		var value_652 uint32 = background
-		var value_653 uint32 = face_light
-		var value_654 float32 = highlight
-		var value_655 float32 = 1.0
-		var value_656 float32 = p
-		var value_657 float32 = value_655 - value_656
-		var value_658 float32 = value_654 * value_657
-		var value_659 uint32 = Surface_GradientColor(value_652, value_653, value_658)
-		layer.Color = value_659
-		var value_660 float32 = 0.48
-		var depth float32 = value_660
-		var value_661 bool = light_surroundings
-		if value_661 {
-			var value_662 float32 = 0.35
-			var value_663 float32 = 0.13
-			var value_664 float32 = broad
-			var value_665 float32 = value_663 * value_664
-			var value_666 float32 = value_662 + value_665
-			depth = value_666
+		var value_662 uint32 = background
+		var value_663 uint32 = face_light
+		var value_664 float32 = highlight
+		var value_665 float32 = 1.0
+		var value_666 float32 = p
+		var value_667 float32 = value_665 - value_666
+		var value_668 float32 = value_664 * value_667
+		var value_669 uint32 = Surface_GradientColor(value_662, value_663, value_668)
+		layer.Color = value_669
+		var value_670 float32 = 0.48
+		var depth float32 = value_670
+		var value_671 bool = light_surroundings
+		if value_671 {
+			var value_672 float32 = 0.35
+			var value_673 float32 = 0.13
+			var value_674 float32 = broad
+			var value_675 float32 = value_673 * value_674
+			var value_676 float32 = value_672 + value_675
+			depth = value_676
 		}
-		var value_667 uint32 = background
-		var value_668 float32 = depth
-		var value_669 float32 = p
-		var value_670 float32 = 0.24
-		var value_671 float32 = value_669 * value_670
-		var value_672 float32 = value_668 + value_671
-		var value_673 uint32 = Surface_DepthColor(value_667, value_672)
-		var value_674 uint32 = black
-		var value_675 float32 = p
-		var value_676 float32 = 0.18
-		var value_677 float32 = value_675 * value_676
-		var value_678 uint32 = Surface_GradientColor(value_673, value_674, value_677)
-		layer.EndColor = value_678
-		var value_679 bool = light_surroundings
-		var value_680 bool = !value_679
-		var value_681 bool = value_680
-		if value_681 {
-			var value_682 bool = disabled
-			var value_683 bool = !value_682
-			value_681 = value_683
+		var value_677 uint32 = background
+		var value_678 float32 = depth
+		var value_679 float32 = p
+		var value_680 float32 = 0.24
+		var value_681 float32 = value_679 * value_680
+		var value_682 float32 = value_678 + value_681
+		var value_683 uint32 = Surface_DepthColor(value_677, value_682)
+		var value_684 uint32 = black
+		var value_685 float32 = p
+		var value_686 float32 = 0.18
+		var value_687 float32 = value_685 * value_686
+		var value_688 uint32 = Surface_GradientColor(value_683, value_684, value_687)
+		layer.EndColor = value_688
+		var value_689 bool = light_surroundings
+		var value_690 bool = !value_689
+		var value_691 bool = value_690
+		if value_691 {
+			var value_692 bool = disabled
+			var value_693 bool = !value_692
+			value_691 = value_693
 		}
-		if value_681 {
-			var value_684 uint32 = layer.EndColor
-			var value_685 uint32 = face_light
-			var value_686 float32 = h
-			var value_687 float32 = 0.65
-			var value_688 float32 = value_686 * value_687
-			var value_689 uint32 = brightness
-			var value_690 float32 = float32(value_689)
-			var value_691 float32 = 90.0
-			var value_692 float32 = value_690 - value_691
-			var value_693 float32 = 80.0
-			var value_694 float32 = value_692 / value_693
-			var value_695 float32 = Surface_Unit(value_694)
-			var value_696 float32 = value_688 * value_695
-			var value_697 float32 = 1.0
-			var value_698 float32 = p
-			var value_699 float32 = value_697 - value_698
-			var value_700 float32 = value_696 * value_699
-			var value_701 uint32 = Surface_GradientColor(value_684, value_685, value_700)
-			layer.EndColor = value_701
-			var value_702 float32 = h
-			var value_703 float32 = 1.0
-			var value_704 float32 = p
-			var value_705 float32 = value_703 - value_704
-			var value_706 float32 = value_702 * value_705
-			layer.GradientBias = value_706
+		if value_691 {
+			var value_694 uint32 = layer.EndColor
+			var value_695 uint32 = face_light
+			var value_696 float32 = h
+			var value_697 float32 = 0.65
+			var value_698 float32 = value_696 * value_697
+			var value_699 uint32 = brightness
+			var value_700 float32 = float32(value_699)
+			var value_701 float32 = 90.0
+			var value_702 float32 = value_700 - value_701
+			var value_703 float32 = 80.0
+			var value_704 float32 = value_702 / value_703
+			var value_705 float32 = Surface_Unit(value_704)
+			var value_706 float32 = value_698 * value_705
+			var value_707 float32 = 1.0
+			var value_708 float32 = p
+			var value_709 float32 = value_707 - value_708
+			var value_710 float32 = value_706 * value_709
+			var value_711 uint32 = Surface_GradientColor(value_694, value_695, value_710)
+			layer.EndColor = value_711
+			var value_712 float32 = h
+			var value_713 float32 = 1.0
+			var value_714 float32 = p
+			var value_715 float32 = value_713 - value_714
+			var value_716 float32 = value_712 * value_715
+			layer.GradientBias = value_716
 		}
-		var value_707 uint32 = brightness
-		var value_708 int32 = 600
-		var value_709 uint32 = uint32(number_runtime_bits(uint64(value_708), uint64(0), 32, false, 0))
-		var value_710 bool = value_707 > value_709
-		var value_711 bool = value_710
-		if !value_711 {
-			var value_712 bool = disabled
-			value_711 = value_712
+		var value_717 uint32 = brightness
+		var value_718 int32 = 600
+		var value_719 uint32 = uint32(number_runtime_bits(uint64(value_718), uint64(0), 32, false, 0))
+		var value_720 bool = value_717 > value_719
+		var value_721 bool = value_720
+		if !value_721 {
+			var value_722 bool = disabled
+			value_721 = value_722
 		}
-		if value_711 {
-			var value_713 uint32 = background
-			var value_714 uint32 = black
-			var value_715 float32 = shade
-			var value_716 uint32 = Surface_GradientColor(value_713, value_714, value_715)
-			layer.EndColor = value_716
-		}
-		var value_717 bool = disabled
-		var value_718 bool = value_717
-		if value_718 {
-			var value_719 bool = light_surroundings
-			var value_720 bool = !value_719
-			value_718 = value_720
-		}
-		var value_721 bool = value_718
 		if value_721 {
-			var value_722 uint32 = background
-			var value_723 uint32 = Surface_ColorChroma(value_722)
-			var value_724 int32 = 64
-			var value_725 uint32 = uint32(number_runtime_bits(uint64(value_724), uint64(0), 32, false, 0))
-			var value_726 bool = value_723 > value_725
-			value_721 = value_726
+			var value_723 uint32 = background
+			var value_724 uint32 = black
+			var value_725 float32 = shade
+			var value_726 uint32 = Surface_GradientColor(value_723, value_724, value_725)
+			layer.EndColor = value_726
 		}
-		var value_727 bool = value_721
-		if value_727 {
-			var value_728 uint32 = background
-			var value_729 int32 = 8
-			var value_730 uint32 = uint32(number_runtime_bits(uint64(value_729), uint64(0), 32, false, 0))
-			var value_731 uint32 = uint32(number_runtime_bits(uint64(value_728), uint64(value_730), 32, false, 7))
-			var value_732 int32 = 255
-			var value_733 uint32 = uint32(number_runtime_bits(uint64(value_732), uint64(0), 32, false, 0))
-			var value_734 uint32 = uint32(number_runtime_bits(uint64(value_731), uint64(value_733), 32, false, 8))
-			var value_735 uint32 = background
-			var value_736 int32 = 24
-			var value_737 uint32 = uint32(number_runtime_bits(uint64(value_736), uint64(0), 32, false, 0))
-			var value_738 uint32 = uint32(number_runtime_bits(uint64(value_735), uint64(value_737), 32, false, 7))
-			var value_739 int32 = 255
+		var value_727 bool = disabled
+		var value_728 bool = value_727
+		if value_728 {
+			var value_729 bool = light_surroundings
+			var value_730 bool = !value_729
+			value_728 = value_730
+		}
+		var value_731 bool = value_728
+		if value_731 {
+			var value_732 uint32 = background
+			var value_733 uint32 = Surface_ColorChroma(value_732)
+			var value_734 int32 = 64
+			var value_735 uint32 = uint32(number_runtime_bits(uint64(value_734), uint64(0), 32, false, 0))
+			var value_736 bool = value_733 > value_735
+			value_731 = value_736
+		}
+		var value_737 bool = value_731
+		if value_737 {
+			var value_738 uint32 = background
+			var value_739 int32 = 8
 			var value_740 uint32 = uint32(number_runtime_bits(uint64(value_739), uint64(0), 32, false, 0))
-			var value_741 uint32 = uint32(number_runtime_bits(uint64(value_738), uint64(value_740), 32, false, 8))
-			var value_742 bool = value_734 > value_741
-			value_727 = value_742
+			var value_741 uint32 = uint32(number_runtime_bits(uint64(value_738), uint64(value_740), 32, false, 7))
+			var value_742 int32 = 255
+			var value_743 uint32 = uint32(number_runtime_bits(uint64(value_742), uint64(0), 32, false, 0))
+			var value_744 uint32 = uint32(number_runtime_bits(uint64(value_741), uint64(value_743), 32, false, 8))
+			var value_745 uint32 = background
+			var value_746 int32 = 24
+			var value_747 uint32 = uint32(number_runtime_bits(uint64(value_746), uint64(0), 32, false, 0))
+			var value_748 uint32 = uint32(number_runtime_bits(uint64(value_745), uint64(value_747), 32, false, 7))
+			var value_749 int32 = 255
+			var value_750 uint32 = uint32(number_runtime_bits(uint64(value_749), uint64(0), 32, false, 0))
+			var value_751 uint32 = uint32(number_runtime_bits(uint64(value_748), uint64(value_750), 32, false, 8))
+			var value_752 bool = value_744 > value_751
+			value_737 = value_752
 		}
-		var value_743 bool = value_727
-		if value_743 {
-			var value_744 uint32 = background
-			var value_745 int32 = 8
-			var value_746 uint32 = uint32(number_runtime_bits(uint64(value_745), uint64(0), 32, false, 0))
-			var value_747 uint32 = uint32(number_runtime_bits(uint64(value_744), uint64(value_746), 32, false, 7))
-			var value_748 int32 = 255
-			var value_749 uint32 = uint32(number_runtime_bits(uint64(value_748), uint64(0), 32, false, 0))
-			var value_750 uint32 = uint32(number_runtime_bits(uint64(value_747), uint64(value_749), 32, false, 8))
-			var value_751 uint32 = background
-			var value_752 int32 = 16
-			var value_753 uint32 = uint32(number_runtime_bits(uint64(value_752), uint64(0), 32, false, 0))
-			var value_754 uint32 = uint32(number_runtime_bits(uint64(value_751), uint64(value_753), 32, false, 7))
-			var value_755 int32 = 255
+		var value_753 bool = value_737
+		if value_753 {
+			var value_754 uint32 = background
+			var value_755 int32 = 8
 			var value_756 uint32 = uint32(number_runtime_bits(uint64(value_755), uint64(0), 32, false, 0))
-			var value_757 uint32 = uint32(number_runtime_bits(uint64(value_754), uint64(value_756), 32, false, 8))
-			var value_758 bool = value_750 > value_757
-			value_743 = value_758
+			var value_757 uint32 = uint32(number_runtime_bits(uint64(value_754), uint64(value_756), 32, false, 7))
+			var value_758 int32 = 255
+			var value_759 uint32 = uint32(number_runtime_bits(uint64(value_758), uint64(0), 32, false, 0))
+			var value_760 uint32 = uint32(number_runtime_bits(uint64(value_757), uint64(value_759), 32, false, 8))
+			var value_761 uint32 = background
+			var value_762 int32 = 16
+			var value_763 uint32 = uint32(number_runtime_bits(uint64(value_762), uint64(0), 32, false, 0))
+			var value_764 uint32 = uint32(number_runtime_bits(uint64(value_761), uint64(value_763), 32, false, 7))
+			var value_765 int32 = 255
+			var value_766 uint32 = uint32(number_runtime_bits(uint64(value_765), uint64(0), 32, false, 0))
+			var value_767 uint32 = uint32(number_runtime_bits(uint64(value_764), uint64(value_766), 32, false, 8))
+			var value_768 bool = value_760 > value_767
+			value_753 = value_768
 		}
-		if value_743 {
-			var value_759 uint32 = background
-			var value_760 uint32 = black
-			var value_761 float32 = 0.15
-			var value_762 uint32 = Surface_GradientColor(value_759, value_760, value_761)
-			layer.Color = value_762
-			var value_763 uint32 = background
-			var value_764 uint32 = light
-			var value_765 float32 = 0.30
-			var value_766 uint32 = Surface_GradientColor(value_763, value_764, value_765)
-			layer.EndColor = value_766
-			var value_767 uint32 = layer.EndColor
-			var value_768 int32 = 8
-			var value_769 uint32 = uint32(number_runtime_bits(uint64(value_768), uint64(0), 32, false, 0))
-			var value_770 uint32 = uint32(number_runtime_bits(uint64(value_767), uint64(value_769), 32, false, 7))
-			var value_771 int32 = 8
-			var value_772 uint32 = uint32(number_runtime_bits(uint64(value_771), uint64(0), 32, false, 0))
-			var value_773 uint32 = uint32(number_runtime_bits(uint64(value_770), uint64(value_772), 32, false, 6))
-			var value_774 uint32 = background
-			var value_775 int32 = 255
-			var value_776 uint32 = uint32(number_runtime_bits(uint64(value_775), uint64(0), 32, false, 0))
-			var value_777 uint32 = uint32(number_runtime_bits(uint64(value_774), uint64(value_776), 32, false, 8))
-			var value_778 uint32 = uint32(number_runtime_bits(uint64(value_773), uint64(value_777), 32, false, 9))
-			layer.EndColor = value_778
-		}
-		var value_779 bool = light_surroundings
-		var value_780 bool = value_779
-		if value_780 {
-			var value_781 bool = disabled
-			var value_782 bool = !value_781
-			value_780 = value_782
-		}
-		if value_780 {
-			var value_783 uint32 = layer.EndColor
+		if value_753 {
+			var value_769 uint32 = background
+			var value_770 uint32 = black
+			var value_771 float32 = 0.15
+			var value_772 uint32 = Surface_GradientColor(value_769, value_770, value_771)
+			layer.Color = value_772
+			var value_773 uint32 = background
+			var value_774 uint32 = light
+			var value_775 float32 = 0.30
+			var value_776 uint32 = Surface_GradientColor(value_773, value_774, value_775)
+			layer.EndColor = value_776
+			var value_777 uint32 = layer.EndColor
+			var value_778 int32 = 8
+			var value_779 uint32 = uint32(number_runtime_bits(uint64(value_778), uint64(0), 32, false, 0))
+			var value_780 uint32 = uint32(number_runtime_bits(uint64(value_777), uint64(value_779), 32, false, 7))
+			var value_781 int32 = 8
+			var value_782 uint32 = uint32(number_runtime_bits(uint64(value_781), uint64(0), 32, false, 0))
+			var value_783 uint32 = uint32(number_runtime_bits(uint64(value_780), uint64(value_782), 32, false, 6))
 			var value_784 uint32 = background
-			var value_785 uint32 = white
-			var value_786 float32 = 0.12
-			var value_787 uint32 = Surface_GradientColor(value_784, value_785, value_786)
-			var value_788 float32 = h
-			var value_789 float32 = 1.0
-			var value_790 float32 = p
-			var value_791 float32 = value_789 - value_790
-			var value_792 float32 = value_788 * value_791
-			var value_793 uint32 = Surface_GradientColor(value_783, value_787, value_792)
-			layer.EndColor = value_793
-			var value_794 uint32 = brightness
-			var value_795 int32 = 600
-			var value_796 uint32 = uint32(number_runtime_bits(uint64(value_795), uint64(0), 32, false, 0))
-			var value_797 bool = value_794 > value_796
-			if value_797 {
-				var value_798 uint32 = layer.Color
-				var value_799 uint32 = layer.EndColor
-				var value_800 float32 = 0.5
-				var value_801 uint32 = Surface_GradientColor(value_798, value_799, value_800)
-				var middle uint32 = value_801
-				var value_802 float32 = 0.75
-				var value_803 float32 = focus_depth
-				var value_804 float32 = value_802 * value_803
-				var balance float32 = value_804
-				var value_805 uint32 = layer.Color
-				var value_806 uint32 = middle
-				var value_807 float32 = balance
-				var value_808 uint32 = Surface_GradientColor(value_805, value_806, value_807)
-				layer.Color = value_808
+			var value_785 int32 = 255
+			var value_786 uint32 = uint32(number_runtime_bits(uint64(value_785), uint64(0), 32, false, 0))
+			var value_787 uint32 = uint32(number_runtime_bits(uint64(value_784), uint64(value_786), 32, false, 8))
+			var value_788 uint32 = uint32(number_runtime_bits(uint64(value_783), uint64(value_787), 32, false, 9))
+			layer.EndColor = value_788
+		}
+		var value_789 bool = light_surroundings
+		var value_790 bool = value_789
+		if value_790 {
+			var value_791 bool = disabled
+			var value_792 bool = !value_791
+			value_790 = value_792
+		}
+		if value_790 {
+			var value_793 uint32 = layer.EndColor
+			var value_794 uint32 = background
+			var value_795 uint32 = white
+			var value_796 float32 = 0.12
+			var value_797 uint32 = Surface_GradientColor(value_794, value_795, value_796)
+			var value_798 float32 = h
+			var value_799 float32 = 1.0
+			var value_800 float32 = p
+			var value_801 float32 = value_799 - value_800
+			var value_802 float32 = value_798 * value_801
+			var value_803 uint32 = Surface_GradientColor(value_793, value_797, value_802)
+			layer.EndColor = value_803
+			var value_804 uint32 = brightness
+			var value_805 int32 = 600
+			var value_806 uint32 = uint32(number_runtime_bits(uint64(value_805), uint64(0), 32, false, 0))
+			var value_807 bool = value_804 > value_806
+			if value_807 {
+				var value_808 uint32 = layer.Color
 				var value_809 uint32 = layer.EndColor
-				var value_810 uint32 = middle
-				var value_811 float32 = balance
-				var value_812 uint32 = Surface_GradientColor(value_809, value_810, value_811)
-				layer.EndColor = value_812
+				var value_810 float32 = 0.5
+				var value_811 uint32 = Surface_GradientColor(value_808, value_809, value_810)
+				var middle uint32 = value_811
+				var value_812 float32 = 0.75
+				var value_813 float32 = focus_depth
+				var value_814 float32 = value_812 * value_813
+				var balance float32 = value_814
+				var value_815 uint32 = layer.Color
+				var value_816 uint32 = middle
+				var value_817 float32 = balance
+				var value_818 uint32 = Surface_GradientColor(value_815, value_816, value_817)
+				layer.Color = value_818
+				var value_819 uint32 = layer.EndColor
+				var value_820 uint32 = middle
+				var value_821 float32 = balance
+				var value_822 uint32 = Surface_GradientColor(value_819, value_820, value_821)
+				layer.EndColor = value_822
 			}
 		}
-		var value_813 bool = true
-		layer.Gradient = value_813
+		var value_823 bool = true
+		layer.Gradient = value_823
+		var value_824 SurfaceLayer = layer
+		var value_825 int32 = index
+		var value_826 uint32 = background
+		var value_827 float32 = opacity
+		var value_828 SurfaceLayer = Surface_FinishLightfieldLayer(value_824, value_825, value_826, value_827)
+		return value_828
 	}
-	var value_814 int32 = index
-	var value_815 int32 = 3
-	var value_816 bool = value_814 == value_815
-	if value_816 {
-		var value_817 float32 = border_width
-		layer.Stroke = value_817
-		var value_818 float32 = border_width
-		var value_819 float32 = 0.0
-		var value_820 bool = value_818 > value_819
-		if value_820 {
-			var value_821 uint32 = border
-			layer.Color = value_821
-			var value_822 bool = light_surroundings
-			var value_823 bool = value_822
-			if value_823 {
-				var value_824 bool = disabled
-				var value_825 bool = !value_824
-				value_823 = value_825
+	var value_829 int32 = index
+	var value_830 int32 = 3
+	var value_831 bool = value_829 == value_830
+	if value_831 {
+		var value_832 float32 = border_width
+		layer.Stroke = value_832
+		var value_833 float32 = border_width
+		var value_834 float32 = 0.0
+		var value_835 bool = value_833 > value_834
+		if value_835 {
+			var value_836 uint32 = border
+			layer.Color = value_836
+			var value_837 bool = light_surroundings
+			var value_838 bool = value_837
+			if value_838 {
+				var value_839 bool = disabled
+				var value_840 bool = !value_839
+				value_838 = value_840
 			}
-			if value_823 {
-				var value_826 float32 = focused
-				var value_827 float32 = Surface_Unit(value_826)
-				var value_828 uint32 = focus_color
-				var value_829 int32 = 255
-				var value_830 uint32 = uint32(number_runtime_bits(uint64(value_829), uint64(0), 32, false, 0))
-				var value_831 uint32 = uint32(number_runtime_bits(uint64(value_828), uint64(value_830), 32, false, 8))
-				var value_832 float32 = float32(value_831)
-				var value_833 float32 = value_827 * value_832
-				var value_834 float32 = 255.0
-				var value_835 float32 = value_833 / value_834
-				var focus_edge float32 = value_835
-				var value_836 float32 = h
-				var value_837 float32 = 1.0
-				var value_838 float32 = p
-				var value_839 float32 = value_837 - value_838
-				var value_840 float32 = value_836 * value_839
-				var edge_hover float32 = value_840
-				var value_841 uint32 = background
-				var value_842 int32 = 8
-				var value_843 uint32 = uint32(number_runtime_bits(uint64(value_842), uint64(0), 32, false, 0))
-				var value_844 uint32 = uint32(number_runtime_bits(uint64(value_841), uint64(value_843), 32, false, 7))
-				var value_845 int32 = 8
-				var value_846 uint32 = uint32(number_runtime_bits(uint64(value_845), uint64(0), 32, false, 0))
-				var value_847 uint32 = uint32(number_runtime_bits(uint64(value_844), uint64(value_846), 32, false, 6))
-				var value_848 uint32 = border
-				var value_849 int32 = 255
-				var value_850 uint32 = uint32(number_runtime_bits(uint64(value_849), uint64(0), 32, false, 0))
-				var value_851 uint32 = uint32(number_runtime_bits(uint64(value_848), uint64(value_850), 32, false, 8))
-				var value_852 uint32 = uint32(number_runtime_bits(uint64(value_847), uint64(value_851), 32, false, 9))
-				var face_tint uint32 = value_852
-				var value_853 int32 = 16777215
-				var value_854 uint32 = uint32(number_runtime_bits(uint64(value_853), uint64(0), 32, false, 0))
-				var value_855 int32 = 8
-				var value_856 uint32 = uint32(number_runtime_bits(uint64(value_855), uint64(0), 32, false, 0))
-				var value_857 uint32 = uint32(number_runtime_bits(uint64(value_854), uint64(value_856), 32, false, 6))
-				var value_858 uint32 = border
-				var value_859 int32 = 255
-				var value_860 uint32 = uint32(number_runtime_bits(uint64(value_859), uint64(0), 32, false, 0))
-				var value_861 uint32 = uint32(number_runtime_bits(uint64(value_858), uint64(value_860), 32, false, 8))
-				var value_862 uint32 = uint32(number_runtime_bits(uint64(value_857), uint64(value_861), 32, false, 9))
-				var white uint32 = value_862
+			if value_838 {
+				var value_841 float32 = focused
+				var value_842 float32 = Surface_Unit(value_841)
+				var value_843 uint32 = focus_color
+				var value_844 int32 = 255
+				var value_845 uint32 = uint32(number_runtime_bits(uint64(value_844), uint64(0), 32, false, 0))
+				var value_846 uint32 = uint32(number_runtime_bits(uint64(value_843), uint64(value_845), 32, false, 8))
+				var value_847 float32 = float32(value_846)
+				var value_848 float32 = value_842 * value_847
+				var value_849 float32 = 255.0
+				var value_850 float32 = value_848 / value_849
+				var focus_edge float32 = value_850
+				var value_851 float32 = h
+				var value_852 float32 = 1.0
+				var value_853 float32 = p
+				var value_854 float32 = value_852 - value_853
+				var value_855 float32 = value_851 * value_854
+				var edge_hover float32 = value_855
+				var value_856 uint32 = background
+				var value_857 int32 = 8
+				var value_858 uint32 = uint32(number_runtime_bits(uint64(value_857), uint64(0), 32, false, 0))
+				var value_859 uint32 = uint32(number_runtime_bits(uint64(value_856), uint64(value_858), 32, false, 7))
+				var value_860 int32 = 8
+				var value_861 uint32 = uint32(number_runtime_bits(uint64(value_860), uint64(0), 32, false, 0))
+				var value_862 uint32 = uint32(number_runtime_bits(uint64(value_859), uint64(value_861), 32, false, 6))
 				var value_863 uint32 = border
-				var value_864 uint32 = face_tint
-				var value_865 float32 = 0.65
-				var value_866 float32 = edge_hover
-				var value_867 float32 = value_865 * value_866
-				var value_868 uint32 = Surface_GradientColor(value_863, value_864, value_867)
-				var value_869 float32 = 1.0
-				var value_870 float32 = 0.5
-				var value_871 float32 = focus_edge
-				var value_872 float32 = value_870 * value_871
-				var value_873 float32 = value_869 - value_872
-				var value_874 uint32 = Surface_Opacity(value_868, value_873)
-				layer.Color = value_874
-				var value_875 uint32 = border
-				var value_876 uint32 = white
-				var value_877 float32 = 0.30
-				var value_878 float32 = edge_hover
-				var value_879 float32 = value_877 * value_878
-				var value_880 uint32 = Surface_GradientColor(value_875, value_876, value_879)
-				var value_881 float32 = 1.0
-				var value_882 float32 = 0.5
-				var value_883 float32 = focus_edge
-				var value_884 float32 = value_882 * value_883
-				var value_885 float32 = value_881 - value_884
-				var value_886 uint32 = Surface_Opacity(value_880, value_885)
-				layer.EndColor = value_886
-				var value_887 bool = true
-				layer.Gradient = value_887
+				var value_864 int32 = 255
+				var value_865 uint32 = uint32(number_runtime_bits(uint64(value_864), uint64(0), 32, false, 0))
+				var value_866 uint32 = uint32(number_runtime_bits(uint64(value_863), uint64(value_865), 32, false, 8))
+				var value_867 uint32 = uint32(number_runtime_bits(uint64(value_862), uint64(value_866), 32, false, 9))
+				var face_tint uint32 = value_867
+				var value_868 int32 = 16777215
+				var value_869 uint32 = uint32(number_runtime_bits(uint64(value_868), uint64(0), 32, false, 0))
+				var value_870 int32 = 8
+				var value_871 uint32 = uint32(number_runtime_bits(uint64(value_870), uint64(0), 32, false, 0))
+				var value_872 uint32 = uint32(number_runtime_bits(uint64(value_869), uint64(value_871), 32, false, 6))
+				var value_873 uint32 = border
+				var value_874 int32 = 255
+				var value_875 uint32 = uint32(number_runtime_bits(uint64(value_874), uint64(0), 32, false, 0))
+				var value_876 uint32 = uint32(number_runtime_bits(uint64(value_873), uint64(value_875), 32, false, 8))
+				var value_877 uint32 = uint32(number_runtime_bits(uint64(value_872), uint64(value_876), 32, false, 9))
+				var white uint32 = value_877
+				var value_878 uint32 = border
+				var value_879 uint32 = face_tint
+				var value_880 float32 = 0.65
+				var value_881 float32 = edge_hover
+				var value_882 float32 = value_880 * value_881
+				var value_883 uint32 = Surface_GradientColor(value_878, value_879, value_882)
+				var value_884 float32 = 1.0
+				var value_885 float32 = 0.5
+				var value_886 float32 = focus_edge
+				var value_887 float32 = value_885 * value_886
+				var value_888 float32 = value_884 - value_887
+				var value_889 uint32 = Surface_Opacity(value_883, value_888)
+				layer.Color = value_889
+				var value_890 uint32 = border
+				var value_891 uint32 = white
+				var value_892 float32 = 0.30
+				var value_893 float32 = edge_hover
+				var value_894 float32 = value_892 * value_893
+				var value_895 uint32 = Surface_GradientColor(value_890, value_891, value_894)
+				var value_896 float32 = 1.0
+				var value_897 float32 = 0.5
+				var value_898 float32 = focus_edge
+				var value_899 float32 = value_897 * value_898
+				var value_900 float32 = value_896 - value_899
+				var value_901 uint32 = Surface_Opacity(value_895, value_900)
+				layer.EndColor = value_901
+				var value_902 bool = true
+				layer.Gradient = value_902
 			}
-			var value_888 bool = light_surroundings
-			var value_889 bool = !value_888
-			var value_890 bool = value_889
-			if value_890 {
-				var value_891 bool = disabled
-				var value_892 bool = !value_891
-				value_890 = value_892
+			var value_903 bool = light_surroundings
+			var value_904 bool = !value_903
+			var value_905 bool = value_904
+			if value_905 {
+				var value_906 bool = disabled
+				var value_907 bool = !value_906
+				value_905 = value_907
 			}
-			if value_890 {
-				var value_893 int32 = 16777215
-				var value_894 uint32 = uint32(number_runtime_bits(uint64(value_893), uint64(0), 32, false, 0))
-				var value_895 int32 = 8
-				var value_896 uint32 = uint32(number_runtime_bits(uint64(value_895), uint64(0), 32, false, 0))
-				var value_897 uint32 = uint32(number_runtime_bits(uint64(value_894), uint64(value_896), 32, false, 6))
-				var value_898 uint32 = border
-				var value_899 int32 = 255
-				var value_900 uint32 = uint32(number_runtime_bits(uint64(value_899), uint64(0), 32, false, 0))
-				var value_901 uint32 = uint32(number_runtime_bits(uint64(value_898), uint64(value_900), 32, false, 8))
-				var value_902 uint32 = uint32(number_runtime_bits(uint64(value_897), uint64(value_901), 32, false, 9))
-				var white uint32 = value_902
-				var value_903 uint32 = border
-				var value_904 uint32 = white
-				var value_905 float32 = h
-				var value_906 float32 = 0.30
-				var value_907 float32 = value_905 * value_906
-				var value_908 float32 = 1.0
-				var value_909 float32 = p
-				var value_910 float32 = value_908 - value_909
-				var value_911 float32 = value_907 * value_910
-				var value_912 uint32 = Surface_GradientColor(value_903, value_904, value_911)
-				layer.EndColor = value_912
-				var value_913 bool = true
-				layer.Gradient = value_913
+			if value_905 {
+				var value_908 int32 = 16777215
+				var value_909 uint32 = uint32(number_runtime_bits(uint64(value_908), uint64(0), 32, false, 0))
+				var value_910 int32 = 8
+				var value_911 uint32 = uint32(number_runtime_bits(uint64(value_910), uint64(0), 32, false, 0))
+				var value_912 uint32 = uint32(number_runtime_bits(uint64(value_909), uint64(value_911), 32, false, 6))
+				var value_913 uint32 = border
+				var value_914 int32 = 255
+				var value_915 uint32 = uint32(number_runtime_bits(uint64(value_914), uint64(0), 32, false, 0))
+				var value_916 uint32 = uint32(number_runtime_bits(uint64(value_913), uint64(value_915), 32, false, 8))
+				var value_917 uint32 = uint32(number_runtime_bits(uint64(value_912), uint64(value_916), 32, false, 9))
+				var white uint32 = value_917
+				var value_918 uint32 = border
+				var value_919 uint32 = white
+				var value_920 float32 = h
+				var value_921 float32 = 0.30
+				var value_922 float32 = value_920 * value_921
+				var value_923 float32 = 1.0
+				var value_924 float32 = p
+				var value_925 float32 = value_923 - value_924
+				var value_926 float32 = value_922 * value_925
+				var value_927 uint32 = Surface_GradientColor(value_918, value_919, value_926)
+				layer.EndColor = value_927
+				var value_928 bool = true
+				layer.Gradient = value_928
 			}
 		}
+		var value_929 SurfaceLayer = layer
+		var value_930 int32 = index
+		var value_931 uint32 = background
+		var value_932 float32 = opacity
+		var value_933 SurfaceLayer = Surface_FinishLightfieldLayer(value_929, value_930, value_931, value_932)
+		return value_933
 	}
-	var value_914 int32 = index
-	var value_915 int32 = 4
-	var value_916 bool = value_914 == value_915
-	if value_916 {
-		var value_917 float32 = 0.0
-		var edge_hover float32 = value_917
-		var value_918 bool = light_surroundings
-		var value_919 bool = !value_918
-		var value_920 bool = value_919
-		if value_920 {
-			var value_921 bool = disabled
-			var value_922 bool = !value_921
-			value_920 = value_922
+	var value_934 int32 = index
+	var value_935 int32 = 4
+	var value_936 bool = value_934 == value_935
+	if value_936 {
+		var value_937 float32 = 0.0
+		var edge_hover float32 = value_937
+		var value_938 bool = light_surroundings
+		var value_939 bool = !value_938
+		var value_940 bool = value_939
+		if value_940 {
+			var value_941 bool = disabled
+			var value_942 bool = !value_941
+			value_940 = value_942
 		}
-		var value_923 bool = value_920
-		if value_923 {
-			var value_924 uint32 = border
-			var value_925 int32 = 255
-			var value_926 uint32 = uint32(number_runtime_bits(uint64(value_925), uint64(0), 32, false, 0))
-			var value_927 uint32 = uint32(number_runtime_bits(uint64(value_924), uint64(value_926), 32, false, 8))
-			var value_928 int32 = 0
-			var value_929 uint32 = uint32(number_runtime_bits(uint64(value_928), uint64(0), 32, false, 0))
-			var value_930 bool = value_927 != value_929
-			value_923 = value_930
+		var value_943 bool = value_940
+		if value_943 {
+			var value_944 uint32 = border
+			var value_945 int32 = 255
+			var value_946 uint32 = uint32(number_runtime_bits(uint64(value_945), uint64(0), 32, false, 0))
+			var value_947 uint32 = uint32(number_runtime_bits(uint64(value_944), uint64(value_946), 32, false, 8))
+			var value_948 int32 = 0
+			var value_949 uint32 = uint32(number_runtime_bits(uint64(value_948), uint64(0), 32, false, 0))
+			var value_950 bool = value_947 != value_949
+			value_943 = value_950
 		}
-		if value_923 {
-			var value_931 float32 = h
-			edge_hover = value_931
+		if value_943 {
+			var value_951 float32 = h
+			edge_hover = value_951
 		}
-		var value_932 float32 = 1.0
-		layer.X = value_932
-		var value_933 float32 = layer.Y
-		var value_934 float32 = 1.0
-		var value_935 float32 = edge_hover
-		var value_936 float32 = 1.0
-		var value_937 float32 = p
-		var value_938 float32 = value_936 - value_937
-		var value_939 float32 = value_935 * value_938
-		var value_940 float32 = value_934 - value_939
-		layer.Y = value_933 + value_940
-		var value_941 float32 = layer.Width
-		var value_942 float32 = 2.0
-		layer.Width = value_941 - value_942
-		var value_943 float32 = layer.Height
-		var value_944 float32 = 2.0
-		var value_945 float32 = edge_hover
-		var value_946 float32 = 1.0
-		var value_947 float32 = p
-		var value_948 float32 = value_946 - value_947
-		var value_949 float32 = value_945 * value_948
-		var value_950 float32 = value_944 - value_949
-		layer.Height = value_943 - value_950
-		var value_951 float32 = radius
 		var value_952 float32 = 1.0
-		var value_953 float32 = value_951 - value_952
-		layer.Radius = value_953
-		var value_954 float32 = layer.Radius
-		var value_955 float32 = 0.0
-		var value_956 bool = value_954 < value_955
-		if value_956 {
-			var value_957 float32 = 0.0
-			layer.Radius = value_957
-		}
-		var value_958 float32 = 1.0
-		layer.Stroke = value_958
-		var value_959 int32 = 16777215
-		var value_960 uint32 = uint32(number_runtime_bits(uint64(value_959), uint64(0), 32, false, 0))
-		var value_961 int32 = 8
-		var value_962 uint32 = uint32(number_runtime_bits(uint64(value_961), uint64(0), 32, false, 0))
-		var value_963 uint32 = uint32(number_runtime_bits(uint64(value_960), uint64(value_962), 32, false, 6))
-		var value_964 int32 = 255
-		var value_965 uint32 = uint32(number_runtime_bits(uint64(value_964), uint64(0), 32, false, 0))
-		var value_966 uint32 = uint32(number_runtime_bits(uint64(value_963), uint64(value_965), 32, false, 9))
-		var white uint32 = value_966
-		var value_967 float32 = 0.12
-		var value_968 float32 = 0.12
-		var value_969 float32 = h
-		var value_970 float32 = value_968 * value_969
-		var value_971 float32 = value_967 + value_970
+		layer.X = value_952
+		var value_953 float32 = layer.Y
+		var value_954 float32 = 1.0
+		var value_955 float32 = edge_hover
+		var value_956 float32 = 1.0
+		var value_957 float32 = p
+		var value_958 float32 = value_956 - value_957
+		var value_959 float32 = value_955 * value_958
+		var value_960 float32 = value_954 - value_959
+		layer.Y = value_953 + value_960
+		var value_961 float32 = layer.Width
+		var value_962 float32 = 2.0
+		layer.Width = value_961 - value_962
+		var value_963 float32 = layer.Height
+		var value_964 float32 = 2.0
+		var value_965 float32 = edge_hover
+		var value_966 float32 = 1.0
+		var value_967 float32 = p
+		var value_968 float32 = value_966 - value_967
+		var value_969 float32 = value_965 * value_968
+		var value_970 float32 = value_964 - value_969
+		layer.Height = value_963 - value_970
+		var value_971 float32 = radius
 		var value_972 float32 = 1.0
-		var value_973 float32 = p
-		var value_974 float32 = 0.8
-		var value_975 float32 = value_973 * value_974
-		var value_976 float32 = value_972 - value_975
-		var value_977 float32 = value_971 * value_976
-		var top float32 = value_977
-		var value_978 float32 = height
-		var value_979 float32 = 40.0
-		var value_980 float32 = value_978 - value_979
-		var value_981 float32 = 8.0
-		var value_982 float32 = value_980 / value_981
-		var value_983 float32 = Surface_Unit(value_982)
-		var raised float32 = value_983
-		var value_984 float32 = raised
-		var value_985 float32 = raised
-		raised = value_984 * value_985
-		var value_986 uint32 = light
-		var value_987 int32 = 24
-		var value_988 uint32 = uint32(number_runtime_bits(uint64(value_987), uint64(0), 32, false, 0))
-		var value_989 uint32 = uint32(number_runtime_bits(uint64(value_986), uint64(value_988), 32, false, 7))
-		var value_990 int32 = 255
-		var value_991 uint32 = uint32(number_runtime_bits(uint64(value_990), uint64(0), 32, false, 0))
-		var value_992 uint32 = uint32(number_runtime_bits(uint64(value_989), uint64(value_991), 32, false, 8))
-		var value_993 float32 = float32(value_992)
-		var value_994 float32 = 0.2126
+		var value_973 float32 = value_971 - value_972
+		layer.Radius = value_973
+		var value_974 float32 = layer.Radius
+		var value_975 float32 = 0.0
+		var value_976 bool = value_974 < value_975
+		if value_976 {
+			var value_977 float32 = 0.0
+			layer.Radius = value_977
+		}
+		var value_978 float32 = 1.0
+		layer.Stroke = value_978
+		var value_979 int32 = 16777215
+		var value_980 uint32 = uint32(number_runtime_bits(uint64(value_979), uint64(0), 32, false, 0))
+		var value_981 int32 = 8
+		var value_982 uint32 = uint32(number_runtime_bits(uint64(value_981), uint64(0), 32, false, 0))
+		var value_983 uint32 = uint32(number_runtime_bits(uint64(value_980), uint64(value_982), 32, false, 6))
+		var value_984 int32 = 255
+		var value_985 uint32 = uint32(number_runtime_bits(uint64(value_984), uint64(0), 32, false, 0))
+		var value_986 uint32 = uint32(number_runtime_bits(uint64(value_983), uint64(value_985), 32, false, 9))
+		var white uint32 = value_986
+		var value_987 float32 = 0.12
+		var value_988 float32 = 0.12
+		var value_989 float32 = h
+		var value_990 float32 = value_988 * value_989
+		var value_991 float32 = value_987 + value_990
+		var value_992 float32 = 1.0
+		var value_993 float32 = p
+		var value_994 float32 = 0.8
 		var value_995 float32 = value_993 * value_994
-		var value_996 uint32 = light
-		var value_997 int32 = 16
-		var value_998 uint32 = uint32(number_runtime_bits(uint64(value_997), uint64(0), 32, false, 0))
-		var value_999 uint32 = uint32(number_runtime_bits(uint64(value_996), uint64(value_998), 32, false, 7))
-		var value_1000 int32 = 255
-		var value_1001 uint32 = uint32(number_runtime_bits(uint64(value_1000), uint64(0), 32, false, 0))
-		var value_1002 uint32 = uint32(number_runtime_bits(uint64(value_999), uint64(value_1001), 32, false, 8))
-		var value_1003 float32 = float32(value_1002)
-		var value_1004 float32 = 0.7152
-		var value_1005 float32 = value_1003 * value_1004
-		var value_1006 float32 = value_995 + value_1005
-		var value_1007 uint32 = light
-		var value_1008 int32 = 8
-		var value_1009 uint32 = uint32(number_runtime_bits(uint64(value_1008), uint64(0), 32, false, 0))
-		var value_1010 uint32 = uint32(number_runtime_bits(uint64(value_1007), uint64(value_1009), 32, false, 7))
-		var value_1011 int32 = 255
-		var value_1012 uint32 = uint32(number_runtime_bits(uint64(value_1011), uint64(0), 32, false, 0))
-		var value_1013 uint32 = uint32(number_runtime_bits(uint64(value_1010), uint64(value_1012), 32, false, 8))
-		var value_1014 float32 = float32(value_1013)
-		var value_1015 float32 = 0.0722
-		var value_1016 float32 = value_1014 * value_1015
-		var value_1017 float32 = value_1006 + value_1016
-		var luminance float32 = value_1017
-		var value_1018 uint32 = light
-		var value_1019 uint32 = Surface_ColorChroma(value_1018)
-		var value_1020 float32 = float32(value_1019)
-		var value_1021 float32 = 128.0
-		var value_1022 float32 = value_1020 - value_1021
-		var value_1023 float32 = 64.0
-		var value_1024 float32 = value_1022 / value_1023
-		var value_1025 float32 = Surface_Unit(value_1024)
-		var value_1026 float32 = 160.0
-		var value_1027 float32 = luminance
-		var value_1028 float32 = value_1026 - value_1027
-		var value_1029 float32 = 96.0
-		var value_1030 float32 = value_1028 / value_1029
-		var value_1031 float32 = Surface_Unit(value_1030)
-		var value_1032 float32 = value_1025 * value_1031
-		var reflection float32 = value_1032
-		var value_1033 float32 = 0.20
-		var value_1034 float32 = 0.28
-		var value_1035 float32 = tall
+		var value_996 float32 = value_992 - value_995
+		var value_997 float32 = value_991 * value_996
+		var top float32 = value_997
+		var value_998 float32 = height
+		var value_999 float32 = 40.0
+		var value_1000 float32 = value_998 - value_999
+		var value_1001 float32 = 8.0
+		var value_1002 float32 = value_1000 / value_1001
+		var value_1003 float32 = Surface_Unit(value_1002)
+		var raised float32 = value_1003
+		var value_1004 float32 = raised
+		var value_1005 float32 = raised
+		raised = value_1004 * value_1005
+		var value_1006 uint32 = light
+		var value_1007 int32 = 24
+		var value_1008 uint32 = uint32(number_runtime_bits(uint64(value_1007), uint64(0), 32, false, 0))
+		var value_1009 uint32 = uint32(number_runtime_bits(uint64(value_1006), uint64(value_1008), 32, false, 7))
+		var value_1010 int32 = 255
+		var value_1011 uint32 = uint32(number_runtime_bits(uint64(value_1010), uint64(0), 32, false, 0))
+		var value_1012 uint32 = uint32(number_runtime_bits(uint64(value_1009), uint64(value_1011), 32, false, 8))
+		var value_1013 float32 = float32(value_1012)
+		var value_1014 float32 = 0.2126
+		var value_1015 float32 = value_1013 * value_1014
+		var value_1016 uint32 = light
+		var value_1017 int32 = 16
+		var value_1018 uint32 = uint32(number_runtime_bits(uint64(value_1017), uint64(0), 32, false, 0))
+		var value_1019 uint32 = uint32(number_runtime_bits(uint64(value_1016), uint64(value_1018), 32, false, 7))
+		var value_1020 int32 = 255
+		var value_1021 uint32 = uint32(number_runtime_bits(uint64(value_1020), uint64(0), 32, false, 0))
+		var value_1022 uint32 = uint32(number_runtime_bits(uint64(value_1019), uint64(value_1021), 32, false, 8))
+		var value_1023 float32 = float32(value_1022)
+		var value_1024 float32 = 0.7152
+		var value_1025 float32 = value_1023 * value_1024
+		var value_1026 float32 = value_1015 + value_1025
+		var value_1027 uint32 = light
+		var value_1028 int32 = 8
+		var value_1029 uint32 = uint32(number_runtime_bits(uint64(value_1028), uint64(0), 32, false, 0))
+		var value_1030 uint32 = uint32(number_runtime_bits(uint64(value_1027), uint64(value_1029), 32, false, 7))
+		var value_1031 int32 = 255
+		var value_1032 uint32 = uint32(number_runtime_bits(uint64(value_1031), uint64(0), 32, false, 0))
+		var value_1033 uint32 = uint32(number_runtime_bits(uint64(value_1030), uint64(value_1032), 32, false, 8))
+		var value_1034 float32 = float32(value_1033)
+		var value_1035 float32 = 0.0722
 		var value_1036 float32 = value_1034 * value_1035
-		var value_1037 float32 = value_1033 + value_1036
-		var value_1038 float32 = 0.17
-		var value_1039 float32 = 0.33
-		var value_1040 float32 = reflection
-		var value_1041 float32 = value_1039 * value_1040
-		var value_1042 float32 = value_1038 + value_1041
-		var value_1043 float32 = raised
-		var value_1044 float32 = value_1042 * value_1043
-		var value_1045 float32 = value_1037 + value_1044
-		var value_1046 float32 = 0.30
-		var value_1047 float32 = broad
-		var value_1048 float32 = value_1046 * value_1047
-		var value_1049 float32 = value_1045 + value_1048
-		var value_1050 float32 = 0.50
-		var value_1051 float32 = h
-		var value_1052 float32 = value_1050 * value_1051
-		var value_1053 float32 = value_1049 + value_1052
-		var value_1054 float32 = 0.25
-		var value_1055 float32 = edge_hover
+		var value_1037 float32 = value_1026 + value_1036
+		var luminance float32 = value_1037
+		var value_1038 uint32 = light
+		var value_1039 uint32 = Surface_ColorChroma(value_1038)
+		var value_1040 float32 = float32(value_1039)
+		var value_1041 float32 = 128.0
+		var value_1042 float32 = value_1040 - value_1041
+		var value_1043 float32 = 64.0
+		var value_1044 float32 = value_1042 / value_1043
+		var value_1045 float32 = Surface_Unit(value_1044)
+		var value_1046 float32 = 160.0
+		var value_1047 float32 = luminance
+		var value_1048 float32 = value_1046 - value_1047
+		var value_1049 float32 = 96.0
+		var value_1050 float32 = value_1048 / value_1049
+		var value_1051 float32 = Surface_Unit(value_1050)
+		var value_1052 float32 = value_1045 * value_1051
+		var reflection float32 = value_1052
+		var value_1053 float32 = 0.20
+		var value_1054 float32 = 0.28
+		var value_1055 float32 = tall
 		var value_1056 float32 = value_1054 * value_1055
 		var value_1057 float32 = value_1053 + value_1056
-		var value_1058 float32 = 0.40
-		var value_1059 float32 = focused
-		var value_1060 float32 = Surface_Unit(value_1059)
-		var value_1061 float32 = value_1058 * value_1060
-		var value_1062 float32 = value_1057 + value_1061
-		var value_1063 float32 = 1.0
-		var value_1064 float32 = p
-		var value_1065 float32 = value_1063 - value_1064
-		var value_1066 float32 = value_1062 * value_1065
-		var bottom float32 = value_1066
-		var value_1067 bool = light_surroundings
-		if value_1067 {
-			var value_1068 float32 = 0.08
-			var value_1069 float32 = 0.28
-			var value_1070 float32 = tall
-			var value_1071 float32 = value_1069 * value_1070
-			var value_1072 float32 = value_1068 + value_1071
-			var value_1073 float32 = 0.20
-			var value_1074 float32 = h
-			var value_1075 float32 = value_1073 * value_1074
-			var value_1076 float32 = value_1072 + value_1075
-			var value_1077 float32 = 1.0
-			var value_1078 float32 = p
-			var value_1079 float32 = value_1077 - value_1078
-			var value_1080 float32 = value_1076 * value_1079
-			bottom = value_1080
+		var value_1058 float32 = 0.17
+		var value_1059 float32 = 0.33
+		var value_1060 float32 = reflection
+		var value_1061 float32 = value_1059 * value_1060
+		var value_1062 float32 = value_1058 + value_1061
+		var value_1063 float32 = raised
+		var value_1064 float32 = value_1062 * value_1063
+		var value_1065 float32 = value_1057 + value_1064
+		var value_1066 float32 = 0.30
+		var value_1067 float32 = broad
+		var value_1068 float32 = value_1066 * value_1067
+		var value_1069 float32 = value_1065 + value_1068
+		var value_1070 float32 = 0.50
+		var value_1071 float32 = h
+		var value_1072 float32 = value_1070 * value_1071
+		var value_1073 float32 = value_1069 + value_1072
+		var value_1074 float32 = 0.25
+		var value_1075 float32 = edge_hover
+		var value_1076 float32 = value_1074 * value_1075
+		var value_1077 float32 = value_1073 + value_1076
+		var value_1078 float32 = 0.40
+		var value_1079 float32 = focused
+		var value_1080 float32 = Surface_Unit(value_1079)
+		var value_1081 float32 = value_1078 * value_1080
+		var value_1082 float32 = value_1077 + value_1081
+		var value_1083 float32 = 1.0
+		var value_1084 float32 = p
+		var value_1085 float32 = value_1083 - value_1084
+		var value_1086 float32 = value_1082 * value_1085
+		var bottom float32 = value_1086
+		var value_1087 bool = light_surroundings
+		if value_1087 {
+			var value_1088 float32 = 0.08
+			var value_1089 float32 = 0.28
+			var value_1090 float32 = tall
+			var value_1091 float32 = value_1089 * value_1090
+			var value_1092 float32 = value_1088 + value_1091
+			var value_1093 float32 = 0.20
+			var value_1094 float32 = h
+			var value_1095 float32 = value_1093 * value_1094
+			var value_1096 float32 = value_1092 + value_1095
+			var value_1097 float32 = 1.0
+			var value_1098 float32 = p
+			var value_1099 float32 = value_1097 - value_1098
+			var value_1100 float32 = value_1096 * value_1099
+			bottom = value_1100
 		}
-		var value_1081 bool = light_surroundings
-		var value_1082 bool = !value_1081
-		var value_1083 bool = value_1082
-		if value_1083 {
-			var value_1084 uint32 = border
-			var value_1085 int32 = 255
-			var value_1086 uint32 = uint32(number_runtime_bits(uint64(value_1085), uint64(0), 32, false, 0))
-			var value_1087 uint32 = uint32(number_runtime_bits(uint64(value_1084), uint64(value_1086), 32, false, 8))
-			var value_1088 int32 = 0
-			var value_1089 uint32 = uint32(number_runtime_bits(uint64(value_1088), uint64(0), 32, false, 0))
-			var value_1090 bool = value_1087 == value_1089
-			value_1083 = value_1090
+		var value_1101 bool = light_surroundings
+		var value_1102 bool = !value_1101
+		var value_1103 bool = value_1102
+		if value_1103 {
+			var value_1104 uint32 = border
+			var value_1105 int32 = 255
+			var value_1106 uint32 = uint32(number_runtime_bits(uint64(value_1105), uint64(0), 32, false, 0))
+			var value_1107 uint32 = uint32(number_runtime_bits(uint64(value_1104), uint64(value_1106), 32, false, 8))
+			var value_1108 int32 = 0
+			var value_1109 uint32 = uint32(number_runtime_bits(uint64(value_1108), uint64(0), 32, false, 0))
+			var value_1110 bool = value_1107 == value_1109
+			value_1103 = value_1110
 		}
-		if value_1083 {
-			var value_1091 float32 = top
-			var value_1092 float32 = 0.25
-			top = value_1091 * value_1092
-			var value_1093 float32 = bottom
-			var value_1094 float32 = 0.25
-			var value_1095 float32 = 0.50
-			var value_1096 float32 = h
-			var value_1097 float32 = value_1095 * value_1096
-			var value_1098 float32 = value_1094 + value_1097
-			bottom = value_1093 * value_1098
+		if value_1103 {
+			var value_1111 float32 = top
+			var value_1112 float32 = 0.25
+			top = value_1111 * value_1112
+			var value_1113 float32 = bottom
+			var value_1114 float32 = 0.25
+			var value_1115 float32 = 0.50
+			var value_1116 float32 = h
+			var value_1117 float32 = value_1115 * value_1116
+			var value_1118 float32 = value_1114 + value_1117
+			bottom = value_1113 * value_1118
 		}
-		var value_1099 bool = disabled
-		if value_1099 {
-			var value_1100 float32 = 0.02
-			top = value_1100
-			var value_1101 float32 = 0.02
-			bottom = value_1101
+		var value_1119 bool = disabled
+		if value_1119 {
+			var value_1120 float32 = 0.02
+			top = value_1120
+			var value_1121 float32 = 0.02
+			bottom = value_1121
 		}
-		var value_1102 uint32 = white
-		var value_1103 float32 = top
-		var value_1104 uint32 = Surface_Opacity(value_1102, value_1103)
-		layer.Color = value_1104
-		var value_1105 uint32 = light
-		var rim_light uint32 = value_1105
-		var value_1106 float32 = 0.72
-		var whitening float32 = value_1106
-		var value_1107 bool = light_surroundings
-		var value_1108 bool = !value_1107
-		var value_1109 bool = value_1108
-		if value_1109 {
-			var value_1110 bool = disabled
-			var value_1111 bool = !value_1110
-			value_1109 = value_1111
+		var value_1122 uint32 = white
+		var value_1123 float32 = top
+		var value_1124 uint32 = Surface_Opacity(value_1122, value_1123)
+		layer.Color = value_1124
+		var value_1125 uint32 = light
+		var rim_light uint32 = value_1125
+		var value_1126 float32 = 0.72
+		var whitening float32 = value_1126
+		var value_1127 bool = light_surroundings
+		var value_1128 bool = !value_1127
+		var value_1129 bool = value_1128
+		if value_1129 {
+			var value_1130 bool = disabled
+			var value_1131 bool = !value_1130
+			value_1129 = value_1131
 		}
-		if value_1109 {
-			var value_1112 float32 = edge_hover
-			var value_1113 float32 = 1.0
-			var value_1114 float32 = p
-			var value_1115 float32 = value_1113 - value_1114
-			var value_1116 float32 = value_1112 * value_1115
-			var hover_light float32 = value_1116
-			var value_1117 uint32 = light
-			var value_1118 uint32 = light
-			var value_1119 int32 = 255
-			var value_1120 uint32 = uint32(number_runtime_bits(uint64(value_1119), uint64(0), 32, false, 0))
-			var value_1121 uint32 = Surface_ChromaColor(value_1118, value_1120)
-			var value_1122 float32 = hover_light
-			var value_1123 uint32 = Surface_GradientColor(value_1117, value_1121, value_1122)
-			rim_light = value_1123
-			var value_1124 uint32 = rim_light
-			var value_1125 float32 = hover_light
-			var value_1126 uint32 = Surface_LiftColor(value_1124, value_1125)
-			rim_light = value_1126
-			var value_1127 uint32 = rim_light
-			var value_1128 float32 = broad_light
-			var value_1129 uint32 = Surface_LiftColor(value_1127, value_1128)
-			var value_1130 float32 = broad_light
-			var value_1131 uint32 = Surface_LiftColor(value_1129, value_1130)
-			rim_light = value_1131
-			var value_1132 float32 = whitening
-			var value_1133 float32 = 0.40
-			var value_1134 float32 = broad_light
-			var value_1135 float32 = value_1133 * value_1134
-			whitening = value_1132 - value_1135
-			var value_1136 float32 = bottom
-			var value_1137 float32 = 0.40
-			var value_1138 float32 = broad_light
-			var value_1139 float32 = value_1137 * value_1138
-			bottom = value_1136 + value_1139
-			var value_1140 uint32 = border
-			var value_1141 int32 = 255
-			var value_1142 uint32 = uint32(number_runtime_bits(uint64(value_1141), uint64(0), 32, false, 0))
-			var value_1143 uint32 = uint32(number_runtime_bits(uint64(value_1140), uint64(value_1142), 32, false, 8))
-			var value_1144 int32 = 0
-			var value_1145 uint32 = uint32(number_runtime_bits(uint64(value_1144), uint64(0), 32, false, 0))
-			var value_1146 bool = value_1143 == value_1145
-			if value_1146 {
-				var value_1147 float32 = h
-				var value_1148 float32 = 1.0
-				var value_1149 float32 = p
-				var value_1150 float32 = value_1148 - value_1149
-				var value_1151 float32 = value_1147 * value_1150
-				var borderless_hover float32 = value_1151
-				var value_1152 uint32 = rim_light
-				var value_1153 uint32 = light
-				var value_1154 int32 = 255
-				var value_1155 uint32 = uint32(number_runtime_bits(uint64(value_1154), uint64(0), 32, false, 0))
-				var value_1156 uint32 = Surface_ChromaColor(value_1153, value_1155)
-				var value_1157 float32 = borderless_hover
-				var value_1158 uint32 = Surface_GradientColor(value_1152, value_1156, value_1157)
-				rim_light = value_1158
-				var value_1159 float32 = whitening
-				var value_1160 float32 = 1.0
-				var value_1161 float32 = borderless_hover
-				var value_1162 float32 = value_1160 - value_1161
-				whitening = value_1159 * value_1162
+		if value_1129 {
+			var value_1132 float32 = edge_hover
+			var value_1133 float32 = 1.0
+			var value_1134 float32 = p
+			var value_1135 float32 = value_1133 - value_1134
+			var value_1136 float32 = value_1132 * value_1135
+			var hover_light float32 = value_1136
+			var value_1137 uint32 = light
+			var value_1138 uint32 = light
+			var value_1139 int32 = 255
+			var value_1140 uint32 = uint32(number_runtime_bits(uint64(value_1139), uint64(0), 32, false, 0))
+			var value_1141 uint32 = Surface_ChromaColor(value_1138, value_1140)
+			var value_1142 float32 = hover_light
+			var value_1143 uint32 = Surface_GradientColor(value_1137, value_1141, value_1142)
+			rim_light = value_1143
+			var value_1144 uint32 = rim_light
+			var value_1145 float32 = hover_light
+			var value_1146 uint32 = Surface_LiftColor(value_1144, value_1145)
+			rim_light = value_1146
+			var value_1147 uint32 = rim_light
+			var value_1148 float32 = broad_light
+			var value_1149 uint32 = Surface_LiftColor(value_1147, value_1148)
+			var value_1150 float32 = broad_light
+			var value_1151 uint32 = Surface_LiftColor(value_1149, value_1150)
+			rim_light = value_1151
+			var value_1152 float32 = whitening
+			var value_1153 float32 = 0.40
+			var value_1154 float32 = broad_light
+			var value_1155 float32 = value_1153 * value_1154
+			whitening = value_1152 - value_1155
+			var value_1156 float32 = bottom
+			var value_1157 float32 = 0.40
+			var value_1158 float32 = broad_light
+			var value_1159 float32 = value_1157 * value_1158
+			bottom = value_1156 + value_1159
+			var value_1160 uint32 = border
+			var value_1161 int32 = 255
+			var value_1162 uint32 = uint32(number_runtime_bits(uint64(value_1161), uint64(0), 32, false, 0))
+			var value_1163 uint32 = uint32(number_runtime_bits(uint64(value_1160), uint64(value_1162), 32, false, 8))
+			var value_1164 int32 = 0
+			var value_1165 uint32 = uint32(number_runtime_bits(uint64(value_1164), uint64(0), 32, false, 0))
+			var value_1166 bool = value_1163 == value_1165
+			if value_1166 {
+				var value_1167 float32 = h
+				var value_1168 float32 = 1.0
+				var value_1169 float32 = p
+				var value_1170 float32 = value_1168 - value_1169
+				var value_1171 float32 = value_1167 * value_1170
+				var borderless_hover float32 = value_1171
+				var value_1172 uint32 = rim_light
+				var value_1173 uint32 = light
+				var value_1174 int32 = 255
+				var value_1175 uint32 = uint32(number_runtime_bits(uint64(value_1174), uint64(0), 32, false, 0))
+				var value_1176 uint32 = Surface_ChromaColor(value_1173, value_1175)
+				var value_1177 float32 = borderless_hover
+				var value_1178 uint32 = Surface_GradientColor(value_1172, value_1176, value_1177)
+				rim_light = value_1178
+				var value_1179 float32 = whitening
+				var value_1180 float32 = 1.0
+				var value_1181 float32 = borderless_hover
+				var value_1182 float32 = value_1180 - value_1181
+				whitening = value_1179 * value_1182
 			}
 		}
-		var value_1163 uint32 = rim_light
-		var value_1164 uint32 = white
-		var value_1165 float32 = whitening
-		var value_1166 uint32 = Surface_GradientColor(value_1163, value_1164, value_1165)
-		var value_1167 float32 = bottom
-		var value_1168 uint32 = Surface_Opacity(value_1166, value_1167)
-		layer.EndColor = value_1168
-		var value_1169 bool = true
-		layer.Gradient = value_1169
+		var value_1183 uint32 = rim_light
+		var value_1184 uint32 = white
+		var value_1185 float32 = whitening
+		var value_1186 uint32 = Surface_GradientColor(value_1183, value_1184, value_1185)
+		var value_1187 float32 = bottom
+		var value_1188 uint32 = Surface_Opacity(value_1186, value_1187)
+		layer.EndColor = value_1188
+		var value_1189 bool = true
+		layer.Gradient = value_1189
+		var value_1190 SurfaceLayer = layer
+		var value_1191 int32 = index
+		var value_1192 uint32 = background
+		var value_1193 float32 = opacity
+		var value_1194 SurfaceLayer = Surface_FinishLightfieldLayer(value_1190, value_1191, value_1192, value_1193)
+		return value_1194
 	}
-	var value_1170 int32 = index
-	var value_1171 int32 = 5
-	var value_1172 bool = value_1170 == value_1171
-	var value_1173 bool = value_1172
-	if !value_1173 {
-		var value_1174 int32 = index
-		var value_1175 int32 = 6
-		var value_1176 bool = value_1174 == value_1175
-		value_1173 = value_1176
+	var value_1195 int32 = index
+	var value_1196 int32 = 5
+	var value_1197 bool = value_1195 == value_1196
+	var value_1198 bool = value_1197
+	if !value_1198 {
+		var value_1199 int32 = index
+		var value_1200 int32 = 6
+		var value_1201 bool = value_1199 == value_1200
+		value_1198 = value_1201
 	}
-	if value_1173 {
-		var value_1177 float32 = 1.0
-		var gap float32 = value_1177
-		var value_1178 int32 = index
-		var value_1179 int32 = 5
-		var value_1180 bool = value_1178 == value_1179
-		if value_1180 {
-			var value_1181 float32 = 2.0
-			gap = value_1181
+	if value_1198 {
+		var value_1202 float32 = 1.0
+		var gap float32 = value_1202
+		var value_1203 int32 = index
+		var value_1204 int32 = 5
+		var value_1205 bool = value_1203 == value_1204
+		if value_1205 {
+			var value_1206 float32 = 2.0
+			gap = value_1206
 		}
-		var value_1182 int32 = index
-		var value_1183 int32 = 5
-		var value_1184 bool = value_1182 == value_1183
-		var value_1185 bool = value_1184
-		if value_1185 {
-			var value_1186 bool = light_surroundings
-			var value_1187 bool = !value_1186
-			value_1185 = value_1187
-		}
-		if value_1185 {
-			var value_1188 float32 = 0.0
-			gap = value_1188
-		}
-		var value_1189 float32 = layer.X
-		var value_1190 float32 = gap
-		layer.X = value_1189 - value_1190
-		var value_1191 float32 = layer.Y
-		var value_1192 float32 = gap
-		layer.Y = value_1191 - value_1192
-		var value_1193 float32 = layer.Width
-		var value_1194 float32 = 2.0
-		var value_1195 float32 = gap
-		var value_1196 float32 = value_1194 * value_1195
-		layer.Width = value_1193 + value_1196
-		var value_1197 float32 = layer.Height
-		var value_1198 float32 = 2.0
-		var value_1199 float32 = gap
-		var value_1200 float32 = value_1198 * value_1199
-		layer.Height = value_1197 + value_1200
-		var value_1201 float32 = layer.Radius
-		var value_1202 float32 = gap
-		layer.Radius = value_1201 + value_1202
-		var value_1203 float32 = 1.0
-		layer.Stroke = value_1203
-		var value_1204 float32 = focused
-		var value_1205 float32 = Surface_Unit(value_1204)
-		var strength float32 = value_1205
-		var value_1206 bool = disabled
-		if value_1206 {
-			var value_1207 float32 = 0.0
-			strength = value_1207
-		}
-		var value_1208 int32 = index
-		var value_1209 int32 = 5
-		var value_1210 bool = value_1208 == value_1209
+		var value_1207 int32 = index
+		var value_1208 int32 = 5
+		var value_1209 bool = value_1207 == value_1208
+		var value_1210 bool = value_1209
 		if value_1210 {
-			var value_1211 float32 = strength
-			var value_1212 float32 = 0.28235294
-			strength = value_1211 * value_1212
+			var value_1211 bool = light_surroundings
+			var value_1212 bool = !value_1211
+			value_1210 = value_1212
 		}
-		var value_1213 bool = light_surroundings
-		if value_1213 {
-			var value_1214 int32 = index
-			var value_1215 int32 = 5
-			var value_1216 bool = value_1214 == value_1215
-			if value_1216 {
-				var value_1217 float32 = 0.0
-				strength = value_1217
+		if value_1210 {
+			var value_1213 float32 = 0.0
+			gap = value_1213
+		}
+		var value_1214 float32 = layer.X
+		var value_1215 float32 = gap
+		layer.X = value_1214 - value_1215
+		var value_1216 float32 = layer.Y
+		var value_1217 float32 = gap
+		layer.Y = value_1216 - value_1217
+		var value_1218 float32 = layer.Width
+		var value_1219 float32 = 2.0
+		var value_1220 float32 = gap
+		var value_1221 float32 = value_1219 * value_1220
+		layer.Width = value_1218 + value_1221
+		var value_1222 float32 = layer.Height
+		var value_1223 float32 = 2.0
+		var value_1224 float32 = gap
+		var value_1225 float32 = value_1223 * value_1224
+		layer.Height = value_1222 + value_1225
+		var value_1226 float32 = layer.Radius
+		var value_1227 float32 = gap
+		layer.Radius = value_1226 + value_1227
+		var value_1228 float32 = 1.0
+		layer.Stroke = value_1228
+		var value_1229 float32 = focused
+		var value_1230 float32 = Surface_Unit(value_1229)
+		var strength float32 = value_1230
+		var value_1231 bool = disabled
+		if value_1231 {
+			var value_1232 float32 = 0.0
+			strength = value_1232
+		}
+		var value_1233 int32 = index
+		var value_1234 int32 = 5
+		var value_1235 bool = value_1233 == value_1234
+		if value_1235 {
+			var value_1236 float32 = strength
+			var value_1237 float32 = 0.28235294
+			strength = value_1236 * value_1237
+		}
+		var value_1238 bool = light_surroundings
+		if value_1238 {
+			var value_1239 int32 = index
+			var value_1240 int32 = 5
+			var value_1241 bool = value_1239 == value_1240
+			if value_1241 {
+				var value_1242 float32 = 0.0
+				strength = value_1242
 			}
 		}
-		var value_1218 int32 = index
-		var value_1219 int32 = 5
-		var value_1220 bool = value_1218 == value_1219
-		var value_1221 bool = value_1220
-		if value_1221 {
-			var value_1222 bool = light_surroundings
-			var value_1223 bool = !value_1222
-			value_1221 = value_1223
+		var value_1243 int32 = index
+		var value_1244 int32 = 5
+		var value_1245 bool = value_1243 == value_1244
+		var value_1246 bool = value_1245
+		if value_1246 {
+			var value_1247 bool = light_surroundings
+			var value_1248 bool = !value_1247
+			value_1246 = value_1248
 		}
-		if value_1221 {
-			var value_1224 uint32 = background
-			var value_1225 int32 = 24
-			var value_1226 uint32 = uint32(number_runtime_bits(uint64(value_1225), uint64(0), 32, false, 0))
-			var value_1227 uint32 = uint32(number_runtime_bits(uint64(value_1224), uint64(value_1226), 32, false, 7))
-			var value_1228 int32 = 255
-			var value_1229 uint32 = uint32(number_runtime_bits(uint64(value_1228), uint64(0), 32, false, 0))
-			var value_1230 uint32 = uint32(number_runtime_bits(uint64(value_1227), uint64(value_1229), 32, false, 8))
-			var value_1231 uint32 = background
-			var value_1232 int32 = 16
-			var value_1233 uint32 = uint32(number_runtime_bits(uint64(value_1232), uint64(0), 32, false, 0))
-			var value_1234 uint32 = uint32(number_runtime_bits(uint64(value_1231), uint64(value_1233), 32, false, 7))
-			var value_1235 int32 = 255
-			var value_1236 uint32 = uint32(number_runtime_bits(uint64(value_1235), uint64(0), 32, false, 0))
-			var value_1237 uint32 = uint32(number_runtime_bits(uint64(value_1234), uint64(value_1236), 32, false, 8))
-			var value_1238 uint32 = uint32(number_runtime_bits(uint64(value_1230), uint64(value_1237), 32, false, 1))
-			var value_1239 uint32 = background
-			var value_1240 int32 = 8
-			var value_1241 uint32 = uint32(number_runtime_bits(uint64(value_1240), uint64(0), 32, false, 0))
-			var value_1242 uint32 = uint32(number_runtime_bits(uint64(value_1239), uint64(value_1241), 32, false, 7))
-			var value_1243 int32 = 255
-			var value_1244 uint32 = uint32(number_runtime_bits(uint64(value_1243), uint64(0), 32, false, 0))
-			var value_1245 uint32 = uint32(number_runtime_bits(uint64(value_1242), uint64(value_1244), 32, false, 8))
-			var value_1246 uint32 = uint32(number_runtime_bits(uint64(value_1238), uint64(value_1245), 32, false, 1))
-			var brightness uint32 = value_1246
-			var value_1247 float32 = focused
-			var value_1248 float32 = Surface_Unit(value_1247)
-			var value_1249 float32 = 0.35
-			var value_1250 float32 = 0.65
-			var value_1251 uint32 = brightness
-			var value_1252 float32 = float32(value_1251)
-			var value_1253 float32 = 140.0
-			var value_1254 float32 = value_1252 - value_1253
-			var value_1255 float32 = 140.0
-			var value_1256 float32 = value_1254 / value_1255
-			var value_1257 float32 = Surface_Unit(value_1256)
-			var value_1258 float32 = value_1250 * value_1257
-			var value_1259 float32 = value_1249 + value_1258
-			var value_1260 float32 = value_1248 * value_1259
-			strength = value_1260
-			var value_1261 uint32 = border
-			var value_1262 int32 = 255
-			var value_1263 uint32 = uint32(number_runtime_bits(uint64(value_1262), uint64(0), 32, false, 0))
-			var value_1264 uint32 = uint32(number_runtime_bits(uint64(value_1261), uint64(value_1263), 32, false, 8))
-			var value_1265 int32 = 0
+		if value_1246 {
+			var value_1249 uint32 = background
+			var value_1250 int32 = 24
+			var value_1251 uint32 = uint32(number_runtime_bits(uint64(value_1250), uint64(0), 32, false, 0))
+			var value_1252 uint32 = uint32(number_runtime_bits(uint64(value_1249), uint64(value_1251), 32, false, 7))
+			var value_1253 int32 = 255
+			var value_1254 uint32 = uint32(number_runtime_bits(uint64(value_1253), uint64(0), 32, false, 0))
+			var value_1255 uint32 = uint32(number_runtime_bits(uint64(value_1252), uint64(value_1254), 32, false, 8))
+			var value_1256 uint32 = background
+			var value_1257 int32 = 16
+			var value_1258 uint32 = uint32(number_runtime_bits(uint64(value_1257), uint64(0), 32, false, 0))
+			var value_1259 uint32 = uint32(number_runtime_bits(uint64(value_1256), uint64(value_1258), 32, false, 7))
+			var value_1260 int32 = 255
+			var value_1261 uint32 = uint32(number_runtime_bits(uint64(value_1260), uint64(0), 32, false, 0))
+			var value_1262 uint32 = uint32(number_runtime_bits(uint64(value_1259), uint64(value_1261), 32, false, 8))
+			var value_1263 uint32 = uint32(number_runtime_bits(uint64(value_1255), uint64(value_1262), 32, false, 1))
+			var value_1264 uint32 = background
+			var value_1265 int32 = 8
 			var value_1266 uint32 = uint32(number_runtime_bits(uint64(value_1265), uint64(0), 32, false, 0))
-			var value_1267 bool = value_1264 == value_1266
-			if value_1267 {
-				var value_1268 float32 = strength
-				var value_1269 float32 = 0.35
-				strength = value_1268 * value_1269
+			var value_1267 uint32 = uint32(number_runtime_bits(uint64(value_1264), uint64(value_1266), 32, false, 7))
+			var value_1268 int32 = 255
+			var value_1269 uint32 = uint32(number_runtime_bits(uint64(value_1268), uint64(0), 32, false, 0))
+			var value_1270 uint32 = uint32(number_runtime_bits(uint64(value_1267), uint64(value_1269), 32, false, 8))
+			var value_1271 uint32 = uint32(number_runtime_bits(uint64(value_1263), uint64(value_1270), 32, false, 1))
+			var brightness uint32 = value_1271
+			var value_1272 float32 = focused
+			var value_1273 float32 = Surface_Unit(value_1272)
+			var value_1274 float32 = 0.35
+			var value_1275 float32 = 0.65
+			var value_1276 uint32 = brightness
+			var value_1277 float32 = float32(value_1276)
+			var value_1278 float32 = 140.0
+			var value_1279 float32 = value_1277 - value_1278
+			var value_1280 float32 = 140.0
+			var value_1281 float32 = value_1279 / value_1280
+			var value_1282 float32 = Surface_Unit(value_1281)
+			var value_1283 float32 = value_1275 * value_1282
+			var value_1284 float32 = value_1274 + value_1283
+			var value_1285 float32 = value_1273 * value_1284
+			strength = value_1285
+			var value_1286 uint32 = border
+			var value_1287 int32 = 255
+			var value_1288 uint32 = uint32(number_runtime_bits(uint64(value_1287), uint64(0), 32, false, 0))
+			var value_1289 uint32 = uint32(number_runtime_bits(uint64(value_1286), uint64(value_1288), 32, false, 8))
+			var value_1290 int32 = 0
+			var value_1291 uint32 = uint32(number_runtime_bits(uint64(value_1290), uint64(0), 32, false, 0))
+			var value_1292 bool = value_1289 == value_1291
+			if value_1292 {
+				var value_1293 float32 = strength
+				var value_1294 float32 = 0.35
+				strength = value_1293 * value_1294
 			}
-			var value_1270 bool = disabled
-			if value_1270 {
-				var value_1271 float32 = 0.0
-				strength = value_1271
+			var value_1295 bool = disabled
+			if value_1295 {
+				var value_1296 float32 = 0.0
+				strength = value_1296
 			}
-			var value_1272 float32 = 0.0
-			layer.Stroke = value_1272
-			var value_1273 float32 = 12.0
-			layer.InnerBlur = value_1273
+			var value_1297 float32 = 0.0
+			layer.Stroke = value_1297
+			var value_1298 float32 = 12.0
+			layer.InnerBlur = value_1298
 		}
-		var value_1274 uint32 = focus_color
-		var rim_color uint32 = value_1274
-		var value_1275 int32 = index
-		var value_1276 int32 = 5
-		var value_1277 bool = value_1275 == value_1276
-		var value_1278 bool = value_1277
-		if value_1278 {
-			var value_1279 bool = light_surroundings
-			var value_1280 bool = !value_1279
-			value_1278 = value_1280
+		var value_1299 uint32 = focus_color
+		var rim_color uint32 = value_1299
+		var value_1300 int32 = index
+		var value_1301 int32 = 5
+		var value_1302 bool = value_1300 == value_1301
+		var value_1303 bool = value_1302
+		if value_1303 {
+			var value_1304 bool = light_surroundings
+			var value_1305 bool = !value_1304
+			value_1303 = value_1305
 		}
-		if value_1278 {
-			var value_1281 uint32 = light
-			var value_1282 uint32 = Surface_ColorChroma(value_1281)
-			var value_1283 int32 = 64
-			var value_1284 uint32 = uint32(number_runtime_bits(uint64(value_1283), uint64(0), 32, false, 0))
-			var value_1285 bool = value_1282 > value_1284
-			var value_1286 bool = value_1285
-			if value_1286 {
-				var value_1287 uint32 = light
-				var value_1288 int32 = 24
-				var value_1289 uint32 = uint32(number_runtime_bits(uint64(value_1288), uint64(0), 32, false, 0))
-				var value_1290 uint32 = uint32(number_runtime_bits(uint64(value_1287), uint64(value_1289), 32, false, 7))
-				var value_1291 int32 = 255
-				var value_1292 uint32 = uint32(number_runtime_bits(uint64(value_1291), uint64(0), 32, false, 0))
-				var value_1293 uint32 = uint32(number_runtime_bits(uint64(value_1290), uint64(value_1292), 32, false, 8))
-				var value_1294 uint32 = light
-				var value_1295 int32 = 8
-				var value_1296 uint32 = uint32(number_runtime_bits(uint64(value_1295), uint64(0), 32, false, 0))
-				var value_1297 uint32 = uint32(number_runtime_bits(uint64(value_1294), uint64(value_1296), 32, false, 7))
-				var value_1298 int32 = 255
-				var value_1299 uint32 = uint32(number_runtime_bits(uint64(value_1298), uint64(0), 32, false, 0))
-				var value_1300 uint32 = uint32(number_runtime_bits(uint64(value_1297), uint64(value_1299), 32, false, 8))
-				var value_1301 bool = value_1293 > value_1300
-				var value_1302 bool = value_1301
-				if !value_1302 {
-					var value_1303 uint32 = light
-					var value_1304 int32 = 16
-					var value_1305 uint32 = uint32(number_runtime_bits(uint64(value_1304), uint64(0), 32, false, 0))
-					var value_1306 uint32 = uint32(number_runtime_bits(uint64(value_1303), uint64(value_1305), 32, false, 7))
-					var value_1307 int32 = 255
-					var value_1308 uint32 = uint32(number_runtime_bits(uint64(value_1307), uint64(0), 32, false, 0))
-					var value_1309 uint32 = uint32(number_runtime_bits(uint64(value_1306), uint64(value_1308), 32, false, 8))
-					var value_1310 uint32 = light
-					var value_1311 int32 = 8
-					var value_1312 uint32 = uint32(number_runtime_bits(uint64(value_1311), uint64(0), 32, false, 0))
-					var value_1313 uint32 = uint32(number_runtime_bits(uint64(value_1310), uint64(value_1312), 32, false, 7))
-					var value_1314 int32 = 255
-					var value_1315 uint32 = uint32(number_runtime_bits(uint64(value_1314), uint64(0), 32, false, 0))
-					var value_1316 uint32 = uint32(number_runtime_bits(uint64(value_1313), uint64(value_1315), 32, false, 8))
-					var value_1317 bool = value_1309 > value_1316
-					value_1302 = value_1317
-				}
-				value_1286 = value_1302
-			}
-			if value_1286 {
-				var value_1318 uint32 = light
-				var value_1319 int32 = 255
-				var value_1320 uint32 = uint32(number_runtime_bits(uint64(value_1319), uint64(0), 32, false, 0))
-				var value_1321 uint32 = Surface_ChromaColor(value_1318, value_1320)
-				var material uint32 = value_1321
-				var value_1322 uint32 = material
-				var value_1323 int32 = 8
+		if value_1303 {
+			var value_1306 uint32 = light
+			var value_1307 uint32 = Surface_ColorChroma(value_1306)
+			var value_1308 int32 = 64
+			var value_1309 uint32 = uint32(number_runtime_bits(uint64(value_1308), uint64(0), 32, false, 0))
+			var value_1310 bool = value_1307 > value_1309
+			var value_1311 bool = value_1310
+			if value_1311 {
+				var value_1312 uint32 = light
+				var value_1313 int32 = 24
+				var value_1314 uint32 = uint32(number_runtime_bits(uint64(value_1313), uint64(0), 32, false, 0))
+				var value_1315 uint32 = uint32(number_runtime_bits(uint64(value_1312), uint64(value_1314), 32, false, 7))
+				var value_1316 int32 = 255
+				var value_1317 uint32 = uint32(number_runtime_bits(uint64(value_1316), uint64(0), 32, false, 0))
+				var value_1318 uint32 = uint32(number_runtime_bits(uint64(value_1315), uint64(value_1317), 32, false, 8))
+				var value_1319 uint32 = light
+				var value_1320 int32 = 8
+				var value_1321 uint32 = uint32(number_runtime_bits(uint64(value_1320), uint64(0), 32, false, 0))
+				var value_1322 uint32 = uint32(number_runtime_bits(uint64(value_1319), uint64(value_1321), 32, false, 7))
+				var value_1323 int32 = 255
 				var value_1324 uint32 = uint32(number_runtime_bits(uint64(value_1323), uint64(0), 32, false, 0))
-				var value_1325 uint32 = uint32(number_runtime_bits(uint64(value_1322), uint64(value_1324), 32, false, 7))
-				var value_1326 int32 = 8
-				var value_1327 uint32 = uint32(number_runtime_bits(uint64(value_1326), uint64(0), 32, false, 0))
-				var value_1328 uint32 = uint32(number_runtime_bits(uint64(value_1325), uint64(value_1327), 32, false, 6))
-				var value_1329 uint32 = focus_color
-				var value_1330 int32 = 255
-				var value_1331 uint32 = uint32(number_runtime_bits(uint64(value_1330), uint64(0), 32, false, 0))
-				var value_1332 uint32 = uint32(number_runtime_bits(uint64(value_1329), uint64(value_1331), 32, false, 8))
-				var value_1333 uint32 = uint32(number_runtime_bits(uint64(value_1328), uint64(value_1332), 32, false, 9))
-				rim_color = value_1333
+				var value_1325 uint32 = uint32(number_runtime_bits(uint64(value_1322), uint64(value_1324), 32, false, 8))
+				var value_1326 bool = value_1318 > value_1325
+				var value_1327 bool = value_1326
+				if !value_1327 {
+					var value_1328 uint32 = light
+					var value_1329 int32 = 16
+					var value_1330 uint32 = uint32(number_runtime_bits(uint64(value_1329), uint64(0), 32, false, 0))
+					var value_1331 uint32 = uint32(number_runtime_bits(uint64(value_1328), uint64(value_1330), 32, false, 7))
+					var value_1332 int32 = 255
+					var value_1333 uint32 = uint32(number_runtime_bits(uint64(value_1332), uint64(0), 32, false, 0))
+					var value_1334 uint32 = uint32(number_runtime_bits(uint64(value_1331), uint64(value_1333), 32, false, 8))
+					var value_1335 uint32 = light
+					var value_1336 int32 = 8
+					var value_1337 uint32 = uint32(number_runtime_bits(uint64(value_1336), uint64(0), 32, false, 0))
+					var value_1338 uint32 = uint32(number_runtime_bits(uint64(value_1335), uint64(value_1337), 32, false, 7))
+					var value_1339 int32 = 255
+					var value_1340 uint32 = uint32(number_runtime_bits(uint64(value_1339), uint64(0), 32, false, 0))
+					var value_1341 uint32 = uint32(number_runtime_bits(uint64(value_1338), uint64(value_1340), 32, false, 8))
+					var value_1342 bool = value_1334 > value_1341
+					value_1327 = value_1342
+				}
+				value_1311 = value_1327
 			}
-			var value_1334 uint32 = rim_color
-			var value_1335 float32 = 1.0
-			var value_1336 uint32 = Surface_DepthColor(value_1334, value_1335)
-			var value_1337 float32 = 0.4
-			var value_1338 uint32 = Surface_DepthColor(value_1336, value_1337)
-			rim_color = value_1338
+			if value_1311 {
+				var value_1343 uint32 = light
+				var value_1344 int32 = 255
+				var value_1345 uint32 = uint32(number_runtime_bits(uint64(value_1344), uint64(0), 32, false, 0))
+				var value_1346 uint32 = Surface_ChromaColor(value_1343, value_1345)
+				var material uint32 = value_1346
+				var value_1347 uint32 = material
+				var value_1348 int32 = 8
+				var value_1349 uint32 = uint32(number_runtime_bits(uint64(value_1348), uint64(0), 32, false, 0))
+				var value_1350 uint32 = uint32(number_runtime_bits(uint64(value_1347), uint64(value_1349), 32, false, 7))
+				var value_1351 int32 = 8
+				var value_1352 uint32 = uint32(number_runtime_bits(uint64(value_1351), uint64(0), 32, false, 0))
+				var value_1353 uint32 = uint32(number_runtime_bits(uint64(value_1350), uint64(value_1352), 32, false, 6))
+				var value_1354 uint32 = focus_color
+				var value_1355 int32 = 255
+				var value_1356 uint32 = uint32(number_runtime_bits(uint64(value_1355), uint64(0), 32, false, 0))
+				var value_1357 uint32 = uint32(number_runtime_bits(uint64(value_1354), uint64(value_1356), 32, false, 8))
+				var value_1358 uint32 = uint32(number_runtime_bits(uint64(value_1353), uint64(value_1357), 32, false, 9))
+				rim_color = value_1358
+			}
+			var value_1359 uint32 = rim_color
+			var value_1360 float32 = 1.0
+			var value_1361 uint32 = Surface_DepthColor(value_1359, value_1360)
+			var value_1362 float32 = 0.4
+			var value_1363 uint32 = Surface_DepthColor(value_1361, value_1362)
+			rim_color = value_1363
 		}
-		var value_1339 int32 = index
-		var value_1340 int32 = 6
-		var value_1341 bool = value_1339 == value_1340
-		var value_1342 bool = value_1341
-		if value_1342 {
-			var value_1343 bool = light_surroundings
-			var value_1344 bool = !value_1343
-			value_1342 = value_1344
+		var value_1364 int32 = index
+		var value_1365 int32 = 6
+		var value_1366 bool = value_1364 == value_1365
+		var value_1367 bool = value_1366
+		if value_1367 {
+			var value_1368 bool = light_surroundings
+			var value_1369 bool = !value_1368
+			value_1367 = value_1369
 		}
-		var value_1345 bool = value_1342
-		if value_1345 {
-			var value_1346 uint32 = border
-			var value_1347 int32 = 255
-			var value_1348 uint32 = uint32(number_runtime_bits(uint64(value_1347), uint64(0), 32, false, 0))
-			var value_1349 uint32 = uint32(number_runtime_bits(uint64(value_1346), uint64(value_1348), 32, false, 8))
-			var value_1350 int32 = 0
-			var value_1351 uint32 = uint32(number_runtime_bits(uint64(value_1350), uint64(0), 32, false, 0))
-			var value_1352 bool = value_1349 != value_1351
-			value_1345 = value_1352
+		var value_1370 bool = value_1367
+		if value_1370 {
+			var value_1371 uint32 = border
+			var value_1372 int32 = 255
+			var value_1373 uint32 = uint32(number_runtime_bits(uint64(value_1372), uint64(0), 32, false, 0))
+			var value_1374 uint32 = uint32(number_runtime_bits(uint64(value_1371), uint64(value_1373), 32, false, 8))
+			var value_1375 int32 = 0
+			var value_1376 uint32 = uint32(number_runtime_bits(uint64(value_1375), uint64(0), 32, false, 0))
+			var value_1377 bool = value_1374 != value_1376
+			value_1370 = value_1377
 		}
-		var value_1353 bool = value_1345
-		if value_1353 {
-			var value_1354 uint32 = border
-			var value_1355 uint32 = Surface_ColorChroma(value_1354)
-			var value_1356 int32 = 64
-			var value_1357 uint32 = uint32(number_runtime_bits(uint64(value_1356), uint64(0), 32, false, 0))
-			var value_1358 bool = value_1355 > value_1357
-			value_1353 = value_1358
+		var value_1378 bool = value_1370
+		if value_1378 {
+			var value_1379 uint32 = border
+			var value_1380 uint32 = Surface_ColorChroma(value_1379)
+			var value_1381 int32 = 64
+			var value_1382 uint32 = uint32(number_runtime_bits(uint64(value_1381), uint64(0), 32, false, 0))
+			var value_1383 bool = value_1380 > value_1382
+			value_1378 = value_1383
 		}
-		if value_1353 {
-			var value_1359 int32 = 16777215
-			var value_1360 uint32 = uint32(number_runtime_bits(uint64(value_1359), uint64(0), 32, false, 0))
-			var value_1361 int32 = 8
-			var value_1362 uint32 = uint32(number_runtime_bits(uint64(value_1361), uint64(0), 32, false, 0))
-			var value_1363 uint32 = uint32(number_runtime_bits(uint64(value_1360), uint64(value_1362), 32, false, 6))
-			var value_1364 uint32 = focus_color
-			var value_1365 int32 = 255
-			var value_1366 uint32 = uint32(number_runtime_bits(uint64(value_1365), uint64(0), 32, false, 0))
-			var value_1367 uint32 = uint32(number_runtime_bits(uint64(value_1364), uint64(value_1366), 32, false, 8))
-			var value_1368 uint32 = uint32(number_runtime_bits(uint64(value_1363), uint64(value_1367), 32, false, 9))
-			var white uint32 = value_1368
-			var value_1369 float32 = 0.50
-			var value_1370 float32 = 0.22
-			var value_1371 uint32 = background
-			var value_1372 uint32 = Surface_ColorChroma(value_1371)
-			var value_1373 float32 = float32(value_1372)
-			var value_1374 float32 = 128.0
-			var value_1375 float32 = value_1373 - value_1374
-			var value_1376 float32 = 64.0
-			var value_1377 float32 = value_1375 / value_1376
-			var value_1378 float32 = Surface_Unit(value_1377)
-			var value_1379 float32 = value_1370 * value_1378
-			var value_1380 float32 = value_1369 + value_1379
-			var edge_white float32 = value_1380
-			var value_1381 uint32 = focus_color
-			var value_1382 uint32 = white
-			var value_1383 float32 = edge_white
-			var value_1384 uint32 = Surface_GradientColor(value_1381, value_1382, value_1383)
-			rim_color = value_1384
-			var value_1385 float32 = 1.5
-			layer.Stroke = value_1385
+		if value_1378 {
+			var value_1384 int32 = 16777215
+			var value_1385 uint32 = uint32(number_runtime_bits(uint64(value_1384), uint64(0), 32, false, 0))
+			var value_1386 int32 = 8
+			var value_1387 uint32 = uint32(number_runtime_bits(uint64(value_1386), uint64(0), 32, false, 0))
+			var value_1388 uint32 = uint32(number_runtime_bits(uint64(value_1385), uint64(value_1387), 32, false, 6))
+			var value_1389 uint32 = focus_color
+			var value_1390 int32 = 255
+			var value_1391 uint32 = uint32(number_runtime_bits(uint64(value_1390), uint64(0), 32, false, 0))
+			var value_1392 uint32 = uint32(number_runtime_bits(uint64(value_1389), uint64(value_1391), 32, false, 8))
+			var value_1393 uint32 = uint32(number_runtime_bits(uint64(value_1388), uint64(value_1392), 32, false, 9))
+			var white uint32 = value_1393
+			var value_1394 float32 = 0.50
+			var value_1395 float32 = 0.22
+			var value_1396 uint32 = background
+			var value_1397 uint32 = Surface_ColorChroma(value_1396)
+			var value_1398 float32 = float32(value_1397)
+			var value_1399 float32 = 128.0
+			var value_1400 float32 = value_1398 - value_1399
+			var value_1401 float32 = 64.0
+			var value_1402 float32 = value_1400 / value_1401
+			var value_1403 float32 = Surface_Unit(value_1402)
+			var value_1404 float32 = value_1395 * value_1403
+			var value_1405 float32 = value_1394 + value_1404
+			var edge_white float32 = value_1405
+			var value_1406 uint32 = focus_color
+			var value_1407 uint32 = white
+			var value_1408 float32 = edge_white
+			var value_1409 uint32 = Surface_GradientColor(value_1406, value_1407, value_1408)
+			rim_color = value_1409
+			var value_1410 float32 = 1.5
+			layer.Stroke = value_1410
 		}
-		var value_1386 uint32 = rim_color
-		var value_1387 float32 = strength
-		var value_1388 uint32 = Surface_Opacity(value_1386, value_1387)
-		layer.Color = value_1388
+		var value_1411 uint32 = rim_color
+		var value_1412 float32 = strength
+		var value_1413 uint32 = Surface_Opacity(value_1411, value_1412)
+		layer.Color = value_1413
+		var value_1414 SurfaceLayer = layer
+		var value_1415 int32 = index
+		var value_1416 uint32 = background
+		var value_1417 float32 = opacity
+		var value_1418 SurfaceLayer = Surface_FinishLightfieldLayer(value_1414, value_1415, value_1416, value_1417)
+		return value_1418
 	}
-	var value_1389 int32 = index
-	var value_1390 int32 = 7
-	var value_1391 bool = value_1389 == value_1390
-	if value_1391 {
-		var value_1392 float32 = h
-		var value_1393 float32 = 1.0
-		var value_1394 float32 = p
-		var value_1395 float32 = value_1393 - value_1394
-		var value_1396 float32 = value_1392 * value_1395
-		var value_1397 float32 = 64.0
-		var value_1398 uint32 = background
-		var value_1399 uint32 = Surface_ColorChroma(value_1398)
-		var value_1400 float32 = float32(value_1399)
-		var value_1401 float32 = value_1397 - value_1400
-		var value_1402 float32 = 16.0
-		var value_1403 float32 = value_1401 / value_1402
-		var value_1404 float32 = Surface_Unit(value_1403)
-		var value_1405 float32 = value_1396 * value_1404
-		var borderless_hover float32 = value_1405
-		var value_1406 float32 = 1.5
-		var inset float32 = value_1406
-		var value_1407 bool = light_surroundings
-		var value_1408 bool = !value_1407
-		if value_1408 {
-			var value_1409 float32 = inset
-			var value_1410 float32 = 0.5
-			var value_1411 float32 = h
-			var value_1412 float32 = value_1410 * value_1411
-			inset = value_1409 + value_1412
+	var value_1419 int32 = index
+	var value_1420 int32 = 7
+	var value_1421 bool = value_1419 == value_1420
+	if value_1421 {
+		var value_1422 float32 = h
+		var value_1423 float32 = 1.0
+		var value_1424 float32 = p
+		var value_1425 float32 = value_1423 - value_1424
+		var value_1426 float32 = value_1422 * value_1425
+		var value_1427 float32 = 64.0
+		var value_1428 uint32 = background
+		var value_1429 uint32 = Surface_ColorChroma(value_1428)
+		var value_1430 float32 = float32(value_1429)
+		var value_1431 float32 = value_1427 - value_1430
+		var value_1432 float32 = 16.0
+		var value_1433 float32 = value_1431 / value_1432
+		var value_1434 float32 = Surface_Unit(value_1433)
+		var value_1435 float32 = value_1426 * value_1434
+		var borderless_hover float32 = value_1435
+		var value_1436 float32 = 1.5
+		var inset float32 = value_1436
+		var value_1437 bool = light_surroundings
+		var value_1438 bool = !value_1437
+		if value_1438 {
+			var value_1439 float32 = inset
+			var value_1440 float32 = 0.5
+			var value_1441 float32 = h
+			var value_1442 float32 = value_1440 * value_1441
+			inset = value_1439 + value_1442
 		}
-		var value_1413 float32 = inset
-		layer.X = value_1413
-		var value_1414 float32 = layer.Y
-		var value_1415 float32 = inset
-		layer.Y = value_1414 + value_1415
-		var value_1416 float32 = layer.Width
-		var value_1417 float32 = 2.0
-		var value_1418 float32 = inset
-		var value_1419 float32 = value_1417 * value_1418
-		layer.Width = value_1416 - value_1419
-		var value_1420 float32 = layer.Height
-		var value_1421 float32 = 2.0
-		var value_1422 float32 = inset
-		var value_1423 float32 = value_1421 * value_1422
-		layer.Height = value_1420 - value_1423
-		var value_1424 float32 = radius
-		var value_1425 float32 = inset
-		var value_1426 float32 = value_1424 - value_1425
-		layer.Radius = value_1426
-		var value_1427 float32 = layer.Radius
-		var value_1428 float32 = 0.0
-		var value_1429 bool = value_1427 < value_1428
-		if value_1429 {
-			var value_1430 float32 = 0.0
-			layer.Radius = value_1430
+		var value_1443 float32 = inset
+		layer.X = value_1443
+		var value_1444 float32 = layer.Y
+		var value_1445 float32 = inset
+		layer.Y = value_1444 + value_1445
+		var value_1446 float32 = layer.Width
+		var value_1447 float32 = 2.0
+		var value_1448 float32 = inset
+		var value_1449 float32 = value_1447 * value_1448
+		layer.Width = value_1446 - value_1449
+		var value_1450 float32 = layer.Height
+		var value_1451 float32 = 2.0
+		var value_1452 float32 = inset
+		var value_1453 float32 = value_1451 * value_1452
+		layer.Height = value_1450 - value_1453
+		var value_1454 float32 = radius
+		var value_1455 float32 = inset
+		var value_1456 float32 = value_1454 - value_1455
+		layer.Radius = value_1456
+		var value_1457 float32 = layer.Radius
+		var value_1458 float32 = 0.0
+		var value_1459 bool = value_1457 < value_1458
+		if value_1459 {
+			var value_1460 float32 = 0.0
+			layer.Radius = value_1460
 		}
-		var value_1431 float32 = 18.0
-		var value_1432 float32 = 6.0
-		var value_1433 float32 = h
-		var value_1434 float32 = value_1432 * value_1433
-		var value_1435 float32 = value_1431 + value_1434
-		var value_1436 float32 = 4.0
-		var value_1437 float32 = tall
-		var value_1438 float32 = value_1436 * value_1437
-		var value_1439 float32 = value_1435 + value_1438
-		layer.InnerBlur = value_1439
-		var value_1440 bool = light_surroundings
-		var value_1441 bool = !value_1440
-		if value_1441 {
-			var value_1442 float32 = layer.InnerBlur
-			var value_1443 float32 = 12.0
-			var value_1444 float32 = p
-			var value_1445 float32 = focused
-			var value_1446 float32 = value_1444 + value_1445
-			var value_1447 float32 = height
-			var value_1448 float32 = 40.0
-			var value_1449 float32 = value_1447 - value_1448
-			var value_1450 float32 = 8.0
-			var value_1451 float32 = value_1449 / value_1450
-			var value_1452 float32 = Surface_Unit(value_1451)
-			var value_1453 float32 = value_1446 + value_1452
-			var value_1454 float32 = Surface_Unit(value_1453)
-			var value_1455 float32 = value_1443 * value_1454
-			layer.InnerBlur = value_1442 + value_1455
+		var value_1461 float32 = 18.0
+		var value_1462 float32 = 6.0
+		var value_1463 float32 = h
+		var value_1464 float32 = value_1462 * value_1463
+		var value_1465 float32 = value_1461 + value_1464
+		var value_1466 float32 = 4.0
+		var value_1467 float32 = tall
+		var value_1468 float32 = value_1466 * value_1467
+		var value_1469 float32 = value_1465 + value_1468
+		layer.InnerBlur = value_1469
+		var value_1470 bool = light_surroundings
+		var value_1471 bool = !value_1470
+		if value_1471 {
+			var value_1472 float32 = layer.InnerBlur
+			var value_1473 float32 = 12.0
+			var value_1474 float32 = p
+			var value_1475 float32 = focused
+			var value_1476 float32 = value_1474 + value_1475
+			var value_1477 float32 = height
+			var value_1478 float32 = 40.0
+			var value_1479 float32 = value_1477 - value_1478
+			var value_1480 float32 = 8.0
+			var value_1481 float32 = value_1479 / value_1480
+			var value_1482 float32 = Surface_Unit(value_1481)
+			var value_1483 float32 = value_1476 + value_1482
+			var value_1484 float32 = Surface_Unit(value_1483)
+			var value_1485 float32 = value_1473 * value_1484
+			layer.InnerBlur = value_1472 + value_1485
 		}
-		var value_1456 float32 = 0.38
-		var value_1457 float32 = 0.32
-		var value_1458 float32 = h
-		var value_1459 float32 = value_1457 * value_1458
-		var value_1460 float32 = value_1456 + value_1459
-		var value_1461 float32 = 0.05
-		var value_1462 float32 = focused
-		var value_1463 float32 = Surface_Unit(value_1462)
-		var value_1464 float32 = value_1461 * value_1463
-		var value_1465 float32 = value_1460 + value_1464
-		var value_1466 float32 = 1.0
-		var value_1467 float32 = p
-		var value_1468 float32 = 0.85
-		var value_1469 float32 = value_1467 * value_1468
-		var value_1470 float32 = value_1466 - value_1469
-		var value_1471 float32 = value_1465 * value_1470
-		var strength float32 = value_1471
-		var value_1472 bool = light_surroundings
-		var value_1473 bool = !value_1472
-		if value_1473 {
-			var value_1474 float32 = strength
-			var value_1475 float32 = 1.0
-			var value_1476 float32 = 0.55
-			var value_1477 float32 = focused
-			var value_1478 float32 = Surface_Unit(value_1477)
-			var value_1479 float32 = value_1476 * value_1478
-			var value_1480 float32 = 1.0
-			var value_1481 float32 = h
-			var value_1482 float32 = value_1480 - value_1481
-			var value_1483 float32 = value_1479 * value_1482
-			var value_1484 float32 = value_1475 - value_1483
-			strength = value_1474 * value_1484
-		}
-		var value_1485 uint32 = border
-		var value_1486 int32 = 255
-		var value_1487 uint32 = uint32(number_runtime_bits(uint64(value_1486), uint64(0), 32, false, 0))
-		var value_1488 uint32 = uint32(number_runtime_bits(uint64(value_1485), uint64(value_1487), 32, false, 8))
-		var value_1489 int32 = 0
-		var value_1490 uint32 = uint32(number_runtime_bits(uint64(value_1489), uint64(0), 32, false, 0))
-		var value_1491 bool = value_1488 == value_1490
-		if value_1491 {
-			var value_1492 float32 = 0.15
-			var borderless_light float32 = value_1492
-			var value_1493 bool = light_surroundings
-			var value_1494 bool = !value_1493
-			if value_1494 {
-				var value_1495 float32 = borderless_light
-				var value_1496 float32 = 0.45
-				var value_1497 float32 = borderless_hover
-				var value_1498 float32 = value_1496 * value_1497
-				borderless_light = value_1495 + value_1498
-			}
-			var value_1499 float32 = strength
-			var value_1500 float32 = borderless_light
-			strength = value_1499 * value_1500
-		}
-		var value_1501 float32 = 0.0
-		var raised_light float32 = value_1501
+		var value_1486 float32 = 0.38
+		var value_1487 float32 = 0.32
+		var value_1488 float32 = h
+		var value_1489 float32 = value_1487 * value_1488
+		var value_1490 float32 = value_1486 + value_1489
+		var value_1491 float32 = 0.05
+		var value_1492 float32 = focused
+		var value_1493 float32 = Surface_Unit(value_1492)
+		var value_1494 float32 = value_1491 * value_1493
+		var value_1495 float32 = value_1490 + value_1494
+		var value_1496 float32 = 1.0
+		var value_1497 float32 = p
+		var value_1498 float32 = 0.85
+		var value_1499 float32 = value_1497 * value_1498
+		var value_1500 float32 = value_1496 - value_1499
+		var value_1501 float32 = value_1495 * value_1500
+		var strength float32 = value_1501
 		var value_1502 bool = light_surroundings
-		var value_1503 bool = value_1502
+		var value_1503 bool = !value_1502
 		if value_1503 {
-			var value_1504 uint32 = border
-			var value_1505 int32 = 255
-			var value_1506 uint32 = uint32(number_runtime_bits(uint64(value_1505), uint64(0), 32, false, 0))
-			var value_1507 uint32 = uint32(number_runtime_bits(uint64(value_1504), uint64(value_1506), 32, false, 8))
-			var value_1508 int32 = 0
-			var value_1509 uint32 = uint32(number_runtime_bits(uint64(value_1508), uint64(0), 32, false, 0))
-			var value_1510 bool = value_1507 != value_1509
-			value_1503 = value_1510
+			var value_1504 float32 = strength
+			var value_1505 float32 = 1.0
+			var value_1506 float32 = 0.55
+			var value_1507 float32 = focused
+			var value_1508 float32 = Surface_Unit(value_1507)
+			var value_1509 float32 = value_1506 * value_1508
+			var value_1510 float32 = 1.0
+			var value_1511 float32 = h
+			var value_1512 float32 = value_1510 - value_1511
+			var value_1513 float32 = value_1509 * value_1512
+			var value_1514 float32 = value_1505 - value_1513
+			strength = value_1504 * value_1514
 		}
-		if value_1503 {
-			var value_1511 float32 = height
-			var value_1512 float32 = 40.0
-			var value_1513 float32 = value_1511 - value_1512
-			var value_1514 float32 = 8.0
-			var value_1515 float32 = value_1513 / value_1514
-			var value_1516 float32 = Surface_Unit(value_1515)
-			raised_light = value_1516
-			var value_1517 float32 = raised_light
-			var value_1518 float32 = raised_light
-			var value_1519 uint32 = background
-			var value_1520 uint32 = Surface_ColorChroma(value_1519)
-			var value_1521 float32 = float32(value_1520)
-			var value_1522 float32 = 128.0
-			var value_1523 float32 = value_1521 - value_1522
-			var value_1524 float32 = 64.0
-			var value_1525 float32 = value_1523 / value_1524
-			var value_1526 float32 = Surface_Unit(value_1525)
-			var value_1527 float32 = value_1518 * value_1526
-			raised_light = value_1517 * value_1527
-		}
-		var value_1528 bool = light_surroundings
-		if value_1528 {
+		var value_1515 uint32 = border
+		var value_1516 int32 = 255
+		var value_1517 uint32 = uint32(number_runtime_bits(uint64(value_1516), uint64(0), 32, false, 0))
+		var value_1518 uint32 = uint32(number_runtime_bits(uint64(value_1515), uint64(value_1517), 32, false, 8))
+		var value_1519 int32 = 0
+		var value_1520 uint32 = uint32(number_runtime_bits(uint64(value_1519), uint64(0), 32, false, 0))
+		var value_1521 bool = value_1518 == value_1520
+		if value_1521 {
+			var value_1522 float32 = 0.15
+			var borderless_light float32 = value_1522
+			var value_1523 bool = light_surroundings
+			var value_1524 bool = !value_1523
+			if value_1524 {
+				var value_1525 float32 = borderless_light
+				var value_1526 float32 = 0.45
+				var value_1527 float32 = borderless_hover
+				var value_1528 float32 = value_1526 * value_1527
+				borderless_light = value_1525 + value_1528
+			}
 			var value_1529 float32 = strength
-			var value_1530 float32 = 0.12
-			var value_1531 float32 = 1.88
-			var value_1532 float32 = raised_light
-			var value_1533 float32 = value_1531 * value_1532
-			var value_1534 float32 = value_1530 + value_1533
-			strength = value_1529 * value_1534
+			var value_1530 float32 = borderless_light
+			strength = value_1529 * value_1530
 		}
-		var value_1535 bool = disabled
-		if value_1535 {
-			var value_1536 float32 = 0.0
-			strength = value_1536
+		var value_1531 float32 = 0.0
+		var raised_light float32 = value_1531
+		var value_1532 bool = light_surroundings
+		var value_1533 bool = value_1532
+		if value_1533 {
+			var value_1534 uint32 = border
+			var value_1535 int32 = 255
+			var value_1536 uint32 = uint32(number_runtime_bits(uint64(value_1535), uint64(0), 32, false, 0))
+			var value_1537 uint32 = uint32(number_runtime_bits(uint64(value_1534), uint64(value_1536), 32, false, 8))
+			var value_1538 int32 = 0
+			var value_1539 uint32 = uint32(number_runtime_bits(uint64(value_1538), uint64(0), 32, false, 0))
+			var value_1540 bool = value_1537 != value_1539
+			value_1533 = value_1540
 		}
-		var value_1537 float32 = strength
-		var value_1538 uint32 = background
-		var value_1539 int32 = 255
-		var value_1540 uint32 = uint32(number_runtime_bits(uint64(value_1539), uint64(0), 32, false, 0))
-		var value_1541 uint32 = uint32(number_runtime_bits(uint64(value_1538), uint64(value_1540), 32, false, 8))
-		var value_1542 float32 = float32(value_1541)
-		var value_1543 float32 = 255.0
-		var value_1544 float32 = value_1542 / value_1543
-		strength = value_1537 * value_1544
-		var value_1545 uint32 = light
-		var value_1546 float32 = 0.0
-		var value_1547 uint32 = Surface_Opacity(value_1545, value_1546)
-		layer.Color = value_1547
-		var value_1548 int32 = 16777215
-		var value_1549 uint32 = uint32(number_runtime_bits(uint64(value_1548), uint64(0), 32, false, 0))
-		var value_1550 int32 = 8
-		var value_1551 uint32 = uint32(number_runtime_bits(uint64(value_1550), uint64(0), 32, false, 0))
-		var value_1552 uint32 = uint32(number_runtime_bits(uint64(value_1549), uint64(value_1551), 32, false, 6))
-		var value_1553 uint32 = light
-		var value_1554 int32 = 255
-		var value_1555 uint32 = uint32(number_runtime_bits(uint64(value_1554), uint64(0), 32, false, 0))
-		var value_1556 uint32 = uint32(number_runtime_bits(uint64(value_1553), uint64(value_1555), 32, false, 8))
-		var value_1557 uint32 = uint32(number_runtime_bits(uint64(value_1552), uint64(value_1556), 32, false, 9))
-		var white uint32 = value_1557
-		var value_1558 float32 = 0.22
-		var whitening float32 = value_1558
-		var value_1559 bool = light_surroundings
-		var value_1560 bool = !value_1559
-		var value_1561 bool = value_1560
-		if value_1561 {
-			var value_1562 uint32 = border
-			var value_1563 int32 = 255
-			var value_1564 uint32 = uint32(number_runtime_bits(uint64(value_1563), uint64(0), 32, false, 0))
-			var value_1565 uint32 = uint32(number_runtime_bits(uint64(value_1562), uint64(value_1564), 32, false, 8))
-			var value_1566 int32 = 0
-			var value_1567 uint32 = uint32(number_runtime_bits(uint64(value_1566), uint64(0), 32, false, 0))
-			var value_1568 bool = value_1565 != value_1567
-			value_1561 = value_1568
+		if value_1533 {
+			var value_1541 float32 = height
+			var value_1542 float32 = 40.0
+			var value_1543 float32 = value_1541 - value_1542
+			var value_1544 float32 = 8.0
+			var value_1545 float32 = value_1543 / value_1544
+			var value_1546 float32 = Surface_Unit(value_1545)
+			raised_light = value_1546
+			var value_1547 float32 = raised_light
+			var value_1548 float32 = raised_light
+			var value_1549 uint32 = background
+			var value_1550 uint32 = Surface_ColorChroma(value_1549)
+			var value_1551 float32 = float32(value_1550)
+			var value_1552 float32 = 128.0
+			var value_1553 float32 = value_1551 - value_1552
+			var value_1554 float32 = 64.0
+			var value_1555 float32 = value_1553 / value_1554
+			var value_1556 float32 = Surface_Unit(value_1555)
+			var value_1557 float32 = value_1548 * value_1556
+			raised_light = value_1547 * value_1557
 		}
-		if value_1561 {
-			var value_1569 float32 = whitening
-			var value_1570 float32 = 1.0
-			var value_1571 float32 = 0.64
-			var value_1572 uint32 = light
-			var value_1573 uint32 = Surface_ColorChroma(value_1572)
-			var value_1574 float32 = float32(value_1573)
-			var value_1575 float32 = 64.0
-			var value_1576 float32 = value_1574 - value_1575
-			var value_1577 float32 = 64.0
-			var value_1578 float32 = value_1576 / value_1577
-			var value_1579 float32 = Surface_Unit(value_1578)
-			var value_1580 float32 = value_1571 * value_1579
-			var value_1581 float32 = 1.0
-			var value_1582 float32 = h
-			var value_1583 float32 = value_1581 - value_1582
-			var value_1584 float32 = value_1580 * value_1583
-			var value_1585 float32 = 1.0
-			var value_1586 float32 = p
-			var value_1587 float32 = value_1585 - value_1586
-			var value_1588 float32 = value_1584 * value_1587
-			var value_1589 float32 = 1.0
-			var value_1590 float32 = broad
-			var value_1591 float32 = value_1589 - value_1590
-			var value_1592 float32 = value_1588 * value_1591
-			var value_1593 float32 = value_1570 - value_1592
-			whitening = value_1569 * value_1593
+		var value_1558 bool = light_surroundings
+		if value_1558 {
+			var value_1559 float32 = strength
+			var value_1560 float32 = 0.12
+			var value_1561 float32 = 1.88
+			var value_1562 float32 = raised_light
+			var value_1563 float32 = value_1561 * value_1562
+			var value_1564 float32 = value_1560 + value_1563
+			strength = value_1559 * value_1564
 		}
-		var value_1594 uint32 = light
-		var reflected_light uint32 = value_1594
-		var value_1595 bool = light_surroundings
-		if value_1595 {
-			var value_1596 uint32 = reflected_light
-			var value_1597 float32 = raised_light
-			var value_1598 uint32 = Surface_LiftColor(value_1596, value_1597)
-			var value_1599 float32 = raised_light
-			var value_1600 uint32 = Surface_LiftColor(value_1598, value_1599)
-			reflected_light = value_1600
+		var value_1565 bool = disabled
+		if value_1565 {
+			var value_1566 float32 = 0.0
+			strength = value_1566
 		}
-		var value_1601 bool = light_surroundings
-		var value_1602 bool = !value_1601
-		var value_1603 bool = value_1602
-		if value_1603 {
-			var value_1604 uint32 = border
-			var value_1605 int32 = 255
-			var value_1606 uint32 = uint32(number_runtime_bits(uint64(value_1605), uint64(0), 32, false, 0))
-			var value_1607 uint32 = uint32(number_runtime_bits(uint64(value_1604), uint64(value_1606), 32, false, 8))
-			var value_1608 int32 = 0
-			var value_1609 uint32 = uint32(number_runtime_bits(uint64(value_1608), uint64(0), 32, false, 0))
-			var value_1610 bool = value_1607 == value_1609
-			value_1603 = value_1610
+		var value_1567 float32 = strength
+		var value_1568 uint32 = background
+		var value_1569 int32 = 255
+		var value_1570 uint32 = uint32(number_runtime_bits(uint64(value_1569), uint64(0), 32, false, 0))
+		var value_1571 uint32 = uint32(number_runtime_bits(uint64(value_1568), uint64(value_1570), 32, false, 8))
+		var value_1572 float32 = float32(value_1571)
+		var value_1573 float32 = 255.0
+		var value_1574 float32 = value_1572 / value_1573
+		strength = value_1567 * value_1574
+		var value_1575 uint32 = light
+		var value_1576 float32 = 0.0
+		var value_1577 uint32 = Surface_Opacity(value_1575, value_1576)
+		layer.Color = value_1577
+		var value_1578 int32 = 16777215
+		var value_1579 uint32 = uint32(number_runtime_bits(uint64(value_1578), uint64(0), 32, false, 0))
+		var value_1580 int32 = 8
+		var value_1581 uint32 = uint32(number_runtime_bits(uint64(value_1580), uint64(0), 32, false, 0))
+		var value_1582 uint32 = uint32(number_runtime_bits(uint64(value_1579), uint64(value_1581), 32, false, 6))
+		var value_1583 uint32 = light
+		var value_1584 int32 = 255
+		var value_1585 uint32 = uint32(number_runtime_bits(uint64(value_1584), uint64(0), 32, false, 0))
+		var value_1586 uint32 = uint32(number_runtime_bits(uint64(value_1583), uint64(value_1585), 32, false, 8))
+		var value_1587 uint32 = uint32(number_runtime_bits(uint64(value_1582), uint64(value_1586), 32, false, 9))
+		var white uint32 = value_1587
+		var value_1588 float32 = 0.22
+		var whitening float32 = value_1588
+		var value_1589 bool = light_surroundings
+		var value_1590 bool = !value_1589
+		var value_1591 bool = value_1590
+		if value_1591 {
+			var value_1592 uint32 = border
+			var value_1593 int32 = 255
+			var value_1594 uint32 = uint32(number_runtime_bits(uint64(value_1593), uint64(0), 32, false, 0))
+			var value_1595 uint32 = uint32(number_runtime_bits(uint64(value_1592), uint64(value_1594), 32, false, 8))
+			var value_1596 int32 = 0
+			var value_1597 uint32 = uint32(number_runtime_bits(uint64(value_1596), uint64(0), 32, false, 0))
+			var value_1598 bool = value_1595 != value_1597
+			value_1591 = value_1598
 		}
-		if value_1603 {
-			var value_1611 float32 = whitening
-			var value_1612 float32 = 1.0
-			var value_1613 float32 = borderless_hover
-			var value_1614 float32 = value_1612 - value_1613
-			whitening = value_1611 * value_1614
-			var value_1615 uint32 = light
-			var value_1616 uint32 = light
-			var value_1617 int32 = 255
-			var value_1618 uint32 = uint32(number_runtime_bits(uint64(value_1617), uint64(0), 32, false, 0))
-			var value_1619 uint32 = Surface_ChromaColor(value_1616, value_1618)
-			var value_1620 float32 = borderless_hover
-			var value_1621 uint32 = Surface_GradientColor(value_1615, value_1619, value_1620)
-			reflected_light = value_1621
+		if value_1591 {
+			var value_1599 float32 = whitening
+			var value_1600 float32 = 1.0
+			var value_1601 float32 = 0.64
+			var value_1602 uint32 = light
+			var value_1603 uint32 = Surface_ColorChroma(value_1602)
+			var value_1604 float32 = float32(value_1603)
+			var value_1605 float32 = 64.0
+			var value_1606 float32 = value_1604 - value_1605
+			var value_1607 float32 = 64.0
+			var value_1608 float32 = value_1606 / value_1607
+			var value_1609 float32 = Surface_Unit(value_1608)
+			var value_1610 float32 = value_1601 * value_1609
+			var value_1611 float32 = 1.0
+			var value_1612 float32 = h
+			var value_1613 float32 = value_1611 - value_1612
+			var value_1614 float32 = value_1610 * value_1613
+			var value_1615 float32 = 1.0
+			var value_1616 float32 = p
+			var value_1617 float32 = value_1615 - value_1616
+			var value_1618 float32 = value_1614 * value_1617
+			var value_1619 float32 = 1.0
+			var value_1620 float32 = broad
+			var value_1621 float32 = value_1619 - value_1620
+			var value_1622 float32 = value_1618 * value_1621
+			var value_1623 float32 = value_1600 - value_1622
+			whitening = value_1599 * value_1623
 		}
-		var value_1622 bool = light_surroundings
-		var value_1623 bool = !value_1622
-		var value_1624 bool = value_1623
-		if value_1624 {
-			var value_1625 uint32 = border
-			var value_1626 int32 = 255
-			var value_1627 uint32 = uint32(number_runtime_bits(uint64(value_1626), uint64(0), 32, false, 0))
-			var value_1628 uint32 = uint32(number_runtime_bits(uint64(value_1625), uint64(value_1627), 32, false, 8))
-			var value_1629 int32 = 0
-			var value_1630 uint32 = uint32(number_runtime_bits(uint64(value_1629), uint64(0), 32, false, 0))
-			var value_1631 bool = value_1628 != value_1630
-			value_1624 = value_1631
+		var value_1624 uint32 = light
+		var reflected_light uint32 = value_1624
+		var value_1625 bool = light_surroundings
+		if value_1625 {
+			var value_1626 uint32 = reflected_light
+			var value_1627 float32 = raised_light
+			var value_1628 uint32 = Surface_LiftColor(value_1626, value_1627)
+			var value_1629 float32 = raised_light
+			var value_1630 uint32 = Surface_LiftColor(value_1628, value_1629)
+			reflected_light = value_1630
 		}
-		if value_1624 {
-			var value_1632 uint32 = reflected_light
-			var value_1633 float32 = broad_light
-			var value_1634 uint32 = Surface_LiftColor(value_1632, value_1633)
-			var value_1635 float32 = broad_light
-			var value_1636 uint32 = Surface_LiftColor(value_1634, value_1635)
-			reflected_light = value_1636
-			var value_1637 float32 = whitening
-			var value_1638 float32 = 1.0
-			var value_1639 float32 = 0.5
-			var value_1640 float32 = broad_light
-			var value_1641 float32 = value_1639 * value_1640
-			var value_1642 float32 = value_1638 - value_1641
-			whitening = value_1637 * value_1642
+		var value_1631 bool = light_surroundings
+		var value_1632 bool = !value_1631
+		var value_1633 bool = value_1632
+		if value_1633 {
+			var value_1634 uint32 = border
+			var value_1635 int32 = 255
+			var value_1636 uint32 = uint32(number_runtime_bits(uint64(value_1635), uint64(0), 32, false, 0))
+			var value_1637 uint32 = uint32(number_runtime_bits(uint64(value_1634), uint64(value_1636), 32, false, 8))
+			var value_1638 int32 = 0
+			var value_1639 uint32 = uint32(number_runtime_bits(uint64(value_1638), uint64(0), 32, false, 0))
+			var value_1640 bool = value_1637 == value_1639
+			value_1633 = value_1640
 		}
-		var value_1643 uint32 = reflected_light
-		var value_1644 uint32 = white
-		var value_1645 float32 = whitening
-		var value_1646 uint32 = Surface_GradientColor(value_1643, value_1644, value_1645)
-		var value_1647 float32 = strength
-		var value_1648 uint32 = Surface_Opacity(value_1646, value_1647)
-		layer.EndColor = value_1648
-		var value_1649 bool = true
-		layer.Gradient = value_1649
-		var value_1650 bool = light_surroundings
-		var value_1651 bool = !value_1650
-		var value_1652 bool = value_1651
-		if value_1652 {
-			var value_1653 uint32 = border
-			var value_1654 int32 = 255
-			var value_1655 uint32 = uint32(number_runtime_bits(uint64(value_1654), uint64(0), 32, false, 0))
-			var value_1656 uint32 = uint32(number_runtime_bits(uint64(value_1653), uint64(value_1655), 32, false, 8))
-			var value_1657 int32 = 0
-			var value_1658 uint32 = uint32(number_runtime_bits(uint64(value_1657), uint64(0), 32, false, 0))
-			var value_1659 bool = value_1656 != value_1658
-			value_1652 = value_1659
+		if value_1633 {
+			var value_1641 float32 = whitening
+			var value_1642 float32 = 1.0
+			var value_1643 float32 = borderless_hover
+			var value_1644 float32 = value_1642 - value_1643
+			whitening = value_1641 * value_1644
+			var value_1645 uint32 = light
+			var value_1646 uint32 = light
+			var value_1647 int32 = 255
+			var value_1648 uint32 = uint32(number_runtime_bits(uint64(value_1647), uint64(0), 32, false, 0))
+			var value_1649 uint32 = Surface_ChromaColor(value_1646, value_1648)
+			var value_1650 float32 = borderless_hover
+			var value_1651 uint32 = Surface_GradientColor(value_1645, value_1649, value_1650)
+			reflected_light = value_1651
 		}
-		if value_1652 {
-			var value_1660 uint32 = background
-			var value_1661 uint32 = Surface_ColorChroma(value_1660)
-			var value_1662 float32 = float32(value_1661)
-			var body_chroma float32 = value_1662
-			var value_1663 uint32 = border
-			var value_1664 uint32 = Surface_ColorChroma(value_1663)
-			var value_1665 float32 = float32(value_1664)
-			var value_1666 float32 = body_chroma
-			var value_1667 float32 = value_1665 - value_1666
-			var value_1668 float32 = 64.0
-			var value_1669 float32 = value_1667 - value_1668
-			var value_1670 float32 = 64.0
-			var value_1671 float32 = value_1669 / value_1670
-			var value_1672 float32 = Surface_Unit(value_1671)
-			var edge_contrast float32 = value_1672
-			var value_1673 float32 = edge_contrast
-			var value_1674 float32 = 96.0
-			var value_1675 float32 = body_chroma
-			var value_1676 float32 = value_1674 - value_1675
-			var value_1677 float32 = 32.0
-			var value_1678 float32 = value_1676 / value_1677
-			var value_1679 float32 = Surface_Unit(value_1678)
-			var value_1680 float32 = value_1673 * value_1679
-			var value_1681 float32 = 1.0
-			var value_1682 float32 = p
-			var value_1683 float32 = value_1681 - value_1682
-			var value_1684 float32 = value_1680 * value_1683
-			layer.GradientBias = value_1684
+		var value_1652 bool = light_surroundings
+		var value_1653 bool = !value_1652
+		var value_1654 bool = value_1653
+		if value_1654 {
+			var value_1655 uint32 = border
+			var value_1656 int32 = 255
+			var value_1657 uint32 = uint32(number_runtime_bits(uint64(value_1656), uint64(0), 32, false, 0))
+			var value_1658 uint32 = uint32(number_runtime_bits(uint64(value_1655), uint64(value_1657), 32, false, 8))
+			var value_1659 int32 = 0
+			var value_1660 uint32 = uint32(number_runtime_bits(uint64(value_1659), uint64(0), 32, false, 0))
+			var value_1661 bool = value_1658 != value_1660
+			value_1654 = value_1661
 		}
+		if value_1654 {
+			var value_1662 uint32 = reflected_light
+			var value_1663 float32 = broad_light
+			var value_1664 uint32 = Surface_LiftColor(value_1662, value_1663)
+			var value_1665 float32 = broad_light
+			var value_1666 uint32 = Surface_LiftColor(value_1664, value_1665)
+			reflected_light = value_1666
+			var value_1667 float32 = whitening
+			var value_1668 float32 = 1.0
+			var value_1669 float32 = 0.5
+			var value_1670 float32 = broad_light
+			var value_1671 float32 = value_1669 * value_1670
+			var value_1672 float32 = value_1668 - value_1671
+			whitening = value_1667 * value_1672
+		}
+		var value_1673 uint32 = reflected_light
+		var value_1674 uint32 = white
+		var value_1675 float32 = whitening
+		var value_1676 uint32 = Surface_GradientColor(value_1673, value_1674, value_1675)
+		var value_1677 float32 = strength
+		var value_1678 uint32 = Surface_Opacity(value_1676, value_1677)
+		layer.EndColor = value_1678
+		var value_1679 bool = true
+		layer.Gradient = value_1679
+		var value_1680 bool = light_surroundings
+		var value_1681 bool = !value_1680
+		var value_1682 bool = value_1681
+		if value_1682 {
+			var value_1683 uint32 = border
+			var value_1684 int32 = 255
+			var value_1685 uint32 = uint32(number_runtime_bits(uint64(value_1684), uint64(0), 32, false, 0))
+			var value_1686 uint32 = uint32(number_runtime_bits(uint64(value_1683), uint64(value_1685), 32, false, 8))
+			var value_1687 int32 = 0
+			var value_1688 uint32 = uint32(number_runtime_bits(uint64(value_1687), uint64(0), 32, false, 0))
+			var value_1689 bool = value_1686 != value_1688
+			value_1682 = value_1689
+		}
+		if value_1682 {
+			var value_1690 uint32 = background
+			var value_1691 uint32 = Surface_ColorChroma(value_1690)
+			var value_1692 float32 = float32(value_1691)
+			var body_chroma float32 = value_1692
+			var value_1693 uint32 = border
+			var value_1694 uint32 = Surface_ColorChroma(value_1693)
+			var value_1695 float32 = float32(value_1694)
+			var value_1696 float32 = body_chroma
+			var value_1697 float32 = value_1695 - value_1696
+			var value_1698 float32 = 64.0
+			var value_1699 float32 = value_1697 - value_1698
+			var value_1700 float32 = 64.0
+			var value_1701 float32 = value_1699 / value_1700
+			var value_1702 float32 = Surface_Unit(value_1701)
+			var edge_contrast float32 = value_1702
+			var value_1703 float32 = edge_contrast
+			var value_1704 float32 = 96.0
+			var value_1705 float32 = body_chroma
+			var value_1706 float32 = value_1704 - value_1705
+			var value_1707 float32 = 32.0
+			var value_1708 float32 = value_1706 / value_1707
+			var value_1709 float32 = Surface_Unit(value_1708)
+			var value_1710 float32 = value_1703 * value_1709
+			var value_1711 float32 = 1.0
+			var value_1712 float32 = p
+			var value_1713 float32 = value_1711 - value_1712
+			var value_1714 float32 = value_1710 * value_1713
+			layer.GradientBias = value_1714
+		}
+		var value_1715 SurfaceLayer = layer
+		var value_1716 int32 = index
+		var value_1717 uint32 = background
+		var value_1718 float32 = opacity
+		var value_1719 SurfaceLayer = Surface_FinishLightfieldLayer(value_1715, value_1716, value_1717, value_1718)
+		return value_1719
 	}
-	var value_1685 int32 = index
-	var value_1686 int32 = 8
-	var value_1687 bool = value_1685 == value_1686
-	if value_1687 {
-		var value_1688 float32 = 1.5
-		layer.X = value_1688
-		var value_1689 float32 = layer.Y
-		var value_1690 float32 = 1.5
-		layer.Y = value_1689 + value_1690
-		var value_1691 float32 = layer.Width
-		var value_1692 float32 = 3.0
-		layer.Width = value_1691 - value_1692
-		var value_1693 float32 = layer.Height
-		var value_1694 float32 = 3.0
-		layer.Height = value_1693 - value_1694
-		var value_1695 float32 = radius
-		var value_1696 float32 = 1.5
-		var value_1697 float32 = value_1695 - value_1696
-		layer.Radius = value_1697
-		var value_1698 float32 = layer.Radius
-		var value_1699 float32 = 0.0
-		var value_1700 bool = value_1698 < value_1699
-		if value_1700 {
-			var value_1701 float32 = 0.0
-			layer.Radius = value_1701
+	var value_1720 int32 = index
+	var value_1721 int32 = 8
+	var value_1722 bool = value_1720 == value_1721
+	if value_1722 {
+		var value_1723 float32 = 1.5
+		layer.X = value_1723
+		var value_1724 float32 = layer.Y
+		var value_1725 float32 = 1.5
+		layer.Y = value_1724 + value_1725
+		var value_1726 float32 = layer.Width
+		var value_1727 float32 = 3.0
+		layer.Width = value_1726 - value_1727
+		var value_1728 float32 = layer.Height
+		var value_1729 float32 = 3.0
+		layer.Height = value_1728 - value_1729
+		var value_1730 float32 = radius
+		var value_1731 float32 = 1.5
+		var value_1732 float32 = value_1730 - value_1731
+		layer.Radius = value_1732
+		var value_1733 float32 = layer.Radius
+		var value_1734 float32 = 0.0
+		var value_1735 bool = value_1733 < value_1734
+		if value_1735 {
+			var value_1736 float32 = 0.0
+			layer.Radius = value_1736
 		}
-		var value_1702 float32 = 18.0
-		var value_1703 float32 = 4.0
-		var value_1704 float32 = h
-		var value_1705 float32 = value_1703 * value_1704
-		var value_1706 float32 = value_1702 + value_1705
-		layer.InnerBlur = value_1706
-		var value_1707 float32 = 0.14
-		var value_1708 float32 = 0.04
-		var value_1709 float32 = h
-		var value_1710 float32 = value_1708 * value_1709
-		var value_1711 float32 = value_1707 + value_1710
-		var value_1712 float32 = 1.0
-		var value_1713 float32 = p
-		var value_1714 float32 = value_1712 - value_1713
-		var value_1715 float32 = value_1711 * value_1714
-		var strength float32 = value_1715
-		var value_1716 bool = light_surroundings
-		var value_1717 bool = !value_1716
-		if value_1717 {
-			var value_1718 float32 = strength
-			var value_1719 float32 = 0.30
-			strength = value_1718 * value_1719
-			var value_1720 float32 = strength
-			var value_1721 float32 = 1.0
-			var value_1722 float32 = 0.65
-			var value_1723 float32 = focused
-			var value_1724 float32 = Surface_Unit(value_1723)
-			var value_1725 float32 = value_1722 * value_1724
-			var value_1726 float32 = 1.0
-			var value_1727 float32 = h
-			var value_1728 float32 = value_1726 - value_1727
-			var value_1729 float32 = value_1725 * value_1728
-			var value_1730 float32 = value_1721 - value_1729
-			strength = value_1720 * value_1730
+		var value_1737 float32 = 18.0
+		var value_1738 float32 = 4.0
+		var value_1739 float32 = h
+		var value_1740 float32 = value_1738 * value_1739
+		var value_1741 float32 = value_1737 + value_1740
+		layer.InnerBlur = value_1741
+		var value_1742 float32 = 0.14
+		var value_1743 float32 = 0.04
+		var value_1744 float32 = h
+		var value_1745 float32 = value_1743 * value_1744
+		var value_1746 float32 = value_1742 + value_1745
+		var value_1747 float32 = 1.0
+		var value_1748 float32 = p
+		var value_1749 float32 = value_1747 - value_1748
+		var value_1750 float32 = value_1746 * value_1749
+		var strength float32 = value_1750
+		var value_1751 bool = light_surroundings
+		var value_1752 bool = !value_1751
+		if value_1752 {
+			var value_1753 float32 = strength
+			var value_1754 float32 = 0.30
+			strength = value_1753 * value_1754
+			var value_1755 float32 = strength
+			var value_1756 float32 = 1.0
+			var value_1757 float32 = 0.65
+			var value_1758 float32 = focused
+			var value_1759 float32 = Surface_Unit(value_1758)
+			var value_1760 float32 = value_1757 * value_1759
+			var value_1761 float32 = 1.0
+			var value_1762 float32 = h
+			var value_1763 float32 = value_1761 - value_1762
+			var value_1764 float32 = value_1760 * value_1763
+			var value_1765 float32 = value_1756 - value_1764
+			strength = value_1755 * value_1765
 		}
-		var value_1731 bool = light_surroundings
-		if value_1731 {
-			var value_1732 float32 = strength
-			var value_1733 float32 = 0.65
-			strength = value_1732 * value_1733
+		var value_1766 bool = light_surroundings
+		if value_1766 {
+			var value_1767 float32 = strength
+			var value_1768 float32 = 0.65
+			strength = value_1767 * value_1768
 		}
-		var value_1734 uint32 = border
-		var value_1735 int32 = 255
-		var value_1736 uint32 = uint32(number_runtime_bits(uint64(value_1735), uint64(0), 32, false, 0))
-		var value_1737 uint32 = uint32(number_runtime_bits(uint64(value_1734), uint64(value_1736), 32, false, 8))
-		var value_1738 int32 = 0
-		var value_1739 uint32 = uint32(number_runtime_bits(uint64(value_1738), uint64(0), 32, false, 0))
-		var value_1740 bool = value_1737 == value_1739
-		if value_1740 {
-			var value_1741 float32 = strength
-			var value_1742 float32 = 0.25
-			strength = value_1741 * value_1742
+		var value_1769 uint32 = border
+		var value_1770 int32 = 255
+		var value_1771 uint32 = uint32(number_runtime_bits(uint64(value_1770), uint64(0), 32, false, 0))
+		var value_1772 uint32 = uint32(number_runtime_bits(uint64(value_1769), uint64(value_1771), 32, false, 8))
+		var value_1773 int32 = 0
+		var value_1774 uint32 = uint32(number_runtime_bits(uint64(value_1773), uint64(0), 32, false, 0))
+		var value_1775 bool = value_1772 == value_1774
+		if value_1775 {
+			var value_1776 float32 = strength
+			var value_1777 float32 = 0.25
+			strength = value_1776 * value_1777
 		}
-		var value_1743 bool = disabled
-		if value_1743 {
-			var value_1744 float32 = 0.0
-			strength = value_1744
+		var value_1778 bool = disabled
+		if value_1778 {
+			var value_1779 float32 = 0.0
+			strength = value_1779
 		}
-		var value_1745 int32 = 16777215
-		var value_1746 uint32 = uint32(number_runtime_bits(uint64(value_1745), uint64(0), 32, false, 0))
-		var value_1747 int32 = 8
-		var value_1748 uint32 = uint32(number_runtime_bits(uint64(value_1747), uint64(0), 32, false, 0))
-		var value_1749 uint32 = uint32(number_runtime_bits(uint64(value_1746), uint64(value_1748), 32, false, 6))
-		var value_1750 uint32 = background
-		var value_1751 int32 = 255
-		var value_1752 uint32 = uint32(number_runtime_bits(uint64(value_1751), uint64(0), 32, false, 0))
-		var value_1753 uint32 = uint32(number_runtime_bits(uint64(value_1750), uint64(value_1752), 32, false, 8))
-		var value_1754 uint32 = uint32(number_runtime_bits(uint64(value_1749), uint64(value_1753), 32, false, 9))
-		var white uint32 = value_1754
-		var value_1755 uint32 = white
-		var value_1756 float32 = strength
-		var value_1757 uint32 = Surface_Opacity(value_1755, value_1756)
-		layer.Color = value_1757
-		var value_1758 uint32 = white
-		var value_1759 float32 = 0.0
-		var value_1760 uint32 = Surface_Opacity(value_1758, value_1759)
-		layer.EndColor = value_1760
-		var value_1761 bool = true
-		layer.Gradient = value_1761
+		var value_1780 int32 = 16777215
+		var value_1781 uint32 = uint32(number_runtime_bits(uint64(value_1780), uint64(0), 32, false, 0))
+		var value_1782 int32 = 8
+		var value_1783 uint32 = uint32(number_runtime_bits(uint64(value_1782), uint64(0), 32, false, 0))
+		var value_1784 uint32 = uint32(number_runtime_bits(uint64(value_1781), uint64(value_1783), 32, false, 6))
+		var value_1785 uint32 = background
+		var value_1786 int32 = 255
+		var value_1787 uint32 = uint32(number_runtime_bits(uint64(value_1786), uint64(0), 32, false, 0))
+		var value_1788 uint32 = uint32(number_runtime_bits(uint64(value_1785), uint64(value_1787), 32, false, 8))
+		var value_1789 uint32 = uint32(number_runtime_bits(uint64(value_1784), uint64(value_1788), 32, false, 9))
+		var white uint32 = value_1789
+		var value_1790 uint32 = white
+		var value_1791 float32 = strength
+		var value_1792 uint32 = Surface_Opacity(value_1790, value_1791)
+		layer.Color = value_1792
+		var value_1793 uint32 = white
+		var value_1794 float32 = 0.0
+		var value_1795 uint32 = Surface_Opacity(value_1793, value_1794)
+		layer.EndColor = value_1795
+		var value_1796 bool = true
+		layer.Gradient = value_1796
+		var value_1797 SurfaceLayer = layer
+		var value_1798 int32 = index
+		var value_1799 uint32 = background
+		var value_1800 float32 = opacity
+		var value_1801 SurfaceLayer = Surface_FinishLightfieldLayer(value_1797, value_1798, value_1799, value_1800)
+		return value_1801
 	}
-	var value_1762 int32 = index
-	var value_1763 int32 = 9
-	var value_1764 bool = value_1762 == value_1763
-	if value_1764 {
-		var value_1765 float32 = 1.0
-		layer.X = value_1765
-		var value_1766 float32 = layer.Y
-		var value_1767 float32 = 1.0
-		layer.Y = value_1766 + value_1767
-		var value_1768 float32 = layer.Width
-		var value_1769 float32 = 2.0
-		layer.Width = value_1768 - value_1769
-		var value_1770 float32 = layer.Height
-		var value_1771 float32 = 2.0
-		layer.Height = value_1770 - value_1771
-		var value_1772 float32 = radius
-		var value_1773 float32 = 1.0
-		var value_1774 float32 = value_1772 - value_1773
-		layer.Radius = value_1774
-		var value_1775 float32 = layer.Radius
-		var value_1776 float32 = 0.0
-		var value_1777 bool = value_1775 < value_1776
-		if value_1777 {
-			var value_1778 float32 = 0.0
-			layer.Radius = value_1778
+	var value_1802 int32 = index
+	var value_1803 int32 = 9
+	var value_1804 bool = value_1802 == value_1803
+	if value_1804 {
+		var value_1805 float32 = 1.0
+		layer.X = value_1805
+		var value_1806 float32 = layer.Y
+		var value_1807 float32 = 1.0
+		layer.Y = value_1806 + value_1807
+		var value_1808 float32 = layer.Width
+		var value_1809 float32 = 2.0
+		layer.Width = value_1808 - value_1809
+		var value_1810 float32 = layer.Height
+		var value_1811 float32 = 2.0
+		layer.Height = value_1810 - value_1811
+		var value_1812 float32 = radius
+		var value_1813 float32 = 1.0
+		var value_1814 float32 = value_1812 - value_1813
+		layer.Radius = value_1814
+		var value_1815 float32 = layer.Radius
+		var value_1816 float32 = 0.0
+		var value_1817 bool = value_1815 < value_1816
+		if value_1817 {
+			var value_1818 float32 = 0.0
+			layer.Radius = value_1818
 		}
-		var value_1779 float32 = 8.0
-		layer.InnerBlur = value_1779
-		var value_1780 float32 = 0.20
-		var value_1781 float32 = p
-		var value_1782 float32 = value_1780 * value_1781
-		var strength float32 = value_1782
-		var value_1783 bool = light_surroundings
-		if value_1783 {
-			var value_1784 float32 = 0.08
-			var value_1785 float32 = p
-			var value_1786 float32 = value_1784 * value_1785
-			strength = value_1786
+		var value_1819 float32 = 8.0
+		layer.InnerBlur = value_1819
+		var value_1820 float32 = 0.20
+		var value_1821 float32 = p
+		var value_1822 float32 = value_1820 * value_1821
+		var strength float32 = value_1822
+		var value_1823 bool = light_surroundings
+		if value_1823 {
+			var value_1824 float32 = 0.08
+			var value_1825 float32 = p
+			var value_1826 float32 = value_1824 * value_1825
+			strength = value_1826
 		}
-		var value_1787 uint32 = border
-		var value_1788 int32 = 255
-		var value_1789 uint32 = uint32(number_runtime_bits(uint64(value_1788), uint64(0), 32, false, 0))
-		var value_1790 uint32 = uint32(number_runtime_bits(uint64(value_1787), uint64(value_1789), 32, false, 8))
-		var value_1791 int32 = 0
-		var value_1792 uint32 = uint32(number_runtime_bits(uint64(value_1791), uint64(0), 32, false, 0))
-		var value_1793 bool = value_1790 == value_1792
-		if value_1793 {
-			var value_1794 float32 = strength
-			var value_1795 float32 = 0.35
-			strength = value_1794 * value_1795
-		}
-		var value_1796 bool = disabled
-		if value_1796 {
-			var value_1797 float32 = 0.0
-			strength = value_1797
-		}
-		var value_1798 uint32 = background
-		var value_1799 int32 = 255
-		var value_1800 uint32 = uint32(number_runtime_bits(uint64(value_1799), uint64(0), 32, false, 0))
-		var value_1801 uint32 = uint32(number_runtime_bits(uint64(value_1798), uint64(value_1800), 32, false, 8))
-		var value_1802 float32 = strength
-		var value_1803 uint32 = Surface_Opacity(value_1801, value_1802)
-		layer.Color = value_1803
-		var value_1804 int32 = 0
-		var value_1805 uint32 = uint32(number_runtime_bits(uint64(value_1804), uint64(0), 32, false, 0))
-		layer.EndColor = value_1805
-		var value_1806 bool = true
-		layer.Gradient = value_1806
-	}
-	var value_1807 int32 = index
-	var value_1808 int32 = 10
-	var value_1809 bool = value_1807 == value_1808
-	var value_1810 bool = value_1809
-	if value_1810 {
-		var value_1811 bool = light_surroundings
-		var value_1812 bool = !value_1811
-		value_1810 = value_1812
-	}
-	var value_1813 bool = value_1810
-	if value_1813 {
-		var value_1814 bool = disabled
-		var value_1815 bool = !value_1814
-		value_1813 = value_1815
-	}
-	if value_1813 {
-		var value_1816 float32 = layer.X
-		var value_1817 float32 = 1.0
-		layer.X = value_1816 - value_1817
-		var value_1818 float32 = layer.Y
-		var value_1819 float32 = 1.0
-		layer.Y = value_1818 - value_1819
-		var value_1820 float32 = layer.Width
-		var value_1821 float32 = 2.0
-		layer.Width = value_1820 + value_1821
-		var value_1822 float32 = layer.Height
-		var value_1823 float32 = 2.0
-		layer.Height = value_1822 + value_1823
-		var value_1824 float32 = layer.Radius
-		var value_1825 float32 = 1.0
-		layer.Radius = value_1824 + value_1825
-		var value_1826 float32 = 2.0
-		layer.Stroke = value_1826
-		var value_1827 float32 = 8.0
-		layer.Blur = value_1827
-		var value_1828 bool = true
-		layer.OutsideOnly = value_1828
-		var value_1829 float32 = 0.15
-		var edge_light float32 = value_1829
-		var value_1830 uint32 = border
-		var value_1831 int32 = 255
+		var value_1827 uint32 = border
+		var value_1828 int32 = 255
+		var value_1829 uint32 = uint32(number_runtime_bits(uint64(value_1828), uint64(0), 32, false, 0))
+		var value_1830 uint32 = uint32(number_runtime_bits(uint64(value_1827), uint64(value_1829), 32, false, 8))
+		var value_1831 int32 = 0
 		var value_1832 uint32 = uint32(number_runtime_bits(uint64(value_1831), uint64(0), 32, false, 0))
-		var value_1833 uint32 = uint32(number_runtime_bits(uint64(value_1830), uint64(value_1832), 32, false, 8))
-		var value_1834 int32 = 0
-		var value_1835 uint32 = uint32(number_runtime_bits(uint64(value_1834), uint64(0), 32, false, 0))
-		var value_1836 bool = value_1833 != value_1835
+		var value_1833 bool = value_1830 == value_1832
+		if value_1833 {
+			var value_1834 float32 = strength
+			var value_1835 float32 = 0.35
+			strength = value_1834 * value_1835
+		}
+		var value_1836 bool = disabled
 		if value_1836 {
-			var value_1837 float32 = edge_light
-			var value_1838 float32 = 0.15
-			var value_1839 uint32 = border
-			var value_1840 uint32 = Surface_ColorChroma(value_1839)
-			var value_1841 float32 = float32(value_1840)
-			var value_1842 float32 = 128.0
-			var value_1843 float32 = value_1841 - value_1842
-			var value_1844 float32 = 64.0
-			var value_1845 float32 = value_1843 / value_1844
-			var value_1846 float32 = Surface_Unit(value_1845)
-			var value_1847 float32 = value_1838 * value_1846
-			edge_light = value_1837 + value_1847
+			var value_1837 float32 = 0.0
+			strength = value_1837
 		}
-		var value_1848 float32 = focused
-		var value_1849 float32 = Surface_Unit(value_1848)
-		var value_1850 float32 = edge_light
-		var value_1851 float32 = value_1849 * value_1850
-		var strength float32 = value_1851
-		var value_1852 uint32 = border
-		var value_1853 int32 = 255
-		var value_1854 uint32 = uint32(number_runtime_bits(uint64(value_1853), uint64(0), 32, false, 0))
-		var value_1855 uint32 = uint32(number_runtime_bits(uint64(value_1852), uint64(value_1854), 32, false, 8))
-		var value_1856 int32 = 0
-		var value_1857 uint32 = uint32(number_runtime_bits(uint64(value_1856), uint64(0), 32, false, 0))
-		var value_1858 bool = value_1855 == value_1857
-		if value_1858 {
-			var value_1859 float32 = strength
-			var value_1860 float32 = 0.35
-			strength = value_1859 * value_1860
-		}
-		var value_1861 uint32 = focus_color
+		var value_1838 uint32 = background
+		var value_1839 int32 = 255
+		var value_1840 uint32 = uint32(number_runtime_bits(uint64(value_1839), uint64(0), 32, false, 0))
+		var value_1841 uint32 = uint32(number_runtime_bits(uint64(value_1838), uint64(value_1840), 32, false, 8))
+		var value_1842 float32 = strength
+		var value_1843 uint32 = Surface_Opacity(value_1841, value_1842)
+		layer.Color = value_1843
+		var value_1844 int32 = 0
+		var value_1845 uint32 = uint32(number_runtime_bits(uint64(value_1844), uint64(0), 32, false, 0))
+		layer.EndColor = value_1845
+		var value_1846 bool = true
+		layer.Gradient = value_1846
+		var value_1847 SurfaceLayer = layer
+		var value_1848 int32 = index
+		var value_1849 uint32 = background
+		var value_1850 float32 = opacity
+		var value_1851 SurfaceLayer = Surface_FinishLightfieldLayer(value_1847, value_1848, value_1849, value_1850)
+		return value_1851
+	}
+	var value_1852 int32 = index
+	var value_1853 int32 = 10
+	var value_1854 bool = value_1852 == value_1853
+	var value_1855 bool = value_1854
+	if value_1855 {
+		var value_1856 bool = light_surroundings
+		var value_1857 bool = !value_1856
+		value_1855 = value_1857
+	}
+	var value_1858 bool = value_1855
+	if value_1858 {
+		var value_1859 bool = disabled
+		var value_1860 bool = !value_1859
+		value_1858 = value_1860
+	}
+	if value_1858 {
+		var value_1861 float32 = layer.X
 		var value_1862 float32 = 1.0
-		var value_1863 uint32 = Surface_DepthColor(value_1861, value_1862)
-		var value_1864 float32 = strength
-		var value_1865 uint32 = Surface_Opacity(value_1863, value_1864)
-		layer.Color = value_1865
+		layer.X = value_1861 - value_1862
+		var value_1863 float32 = layer.Y
+		var value_1864 float32 = 1.0
+		layer.Y = value_1863 - value_1864
+		var value_1865 float32 = layer.Width
+		var value_1866 float32 = 2.0
+		layer.Width = value_1865 + value_1866
+		var value_1867 float32 = layer.Height
+		var value_1868 float32 = 2.0
+		layer.Height = value_1867 + value_1868
+		var value_1869 float32 = layer.Radius
+		var value_1870 float32 = 1.0
+		layer.Radius = value_1869 + value_1870
+		var value_1871 float32 = 2.0
+		layer.Stroke = value_1871
+		var value_1872 float32 = 8.0
+		layer.Blur = value_1872
+		var value_1873 bool = true
+		layer.OutsideOnly = value_1873
+		var value_1874 float32 = 0.15
+		var edge_light float32 = value_1874
+		var value_1875 uint32 = border
+		var value_1876 int32 = 255
+		var value_1877 uint32 = uint32(number_runtime_bits(uint64(value_1876), uint64(0), 32, false, 0))
+		var value_1878 uint32 = uint32(number_runtime_bits(uint64(value_1875), uint64(value_1877), 32, false, 8))
+		var value_1879 int32 = 0
+		var value_1880 uint32 = uint32(number_runtime_bits(uint64(value_1879), uint64(0), 32, false, 0))
+		var value_1881 bool = value_1878 != value_1880
+		if value_1881 {
+			var value_1882 float32 = edge_light
+			var value_1883 float32 = 0.15
+			var value_1884 uint32 = border
+			var value_1885 uint32 = Surface_ColorChroma(value_1884)
+			var value_1886 float32 = float32(value_1885)
+			var value_1887 float32 = 128.0
+			var value_1888 float32 = value_1886 - value_1887
+			var value_1889 float32 = 64.0
+			var value_1890 float32 = value_1888 / value_1889
+			var value_1891 float32 = Surface_Unit(value_1890)
+			var value_1892 float32 = value_1883 * value_1891
+			edge_light = value_1882 + value_1892
+		}
+		var value_1893 float32 = focused
+		var value_1894 float32 = Surface_Unit(value_1893)
+		var value_1895 float32 = edge_light
+		var value_1896 float32 = value_1894 * value_1895
+		var strength float32 = value_1896
+		var value_1897 uint32 = border
+		var value_1898 int32 = 255
+		var value_1899 uint32 = uint32(number_runtime_bits(uint64(value_1898), uint64(0), 32, false, 0))
+		var value_1900 uint32 = uint32(number_runtime_bits(uint64(value_1897), uint64(value_1899), 32, false, 8))
+		var value_1901 int32 = 0
+		var value_1902 uint32 = uint32(number_runtime_bits(uint64(value_1901), uint64(0), 32, false, 0))
+		var value_1903 bool = value_1900 == value_1902
+		if value_1903 {
+			var value_1904 float32 = strength
+			var value_1905 float32 = 0.35
+			strength = value_1904 * value_1905
+		}
+		var value_1906 uint32 = focus_color
+		var value_1907 float32 = 1.0
+		var value_1908 uint32 = Surface_DepthColor(value_1906, value_1907)
+		var value_1909 float32 = strength
+		var value_1910 uint32 = Surface_Opacity(value_1908, value_1909)
+		layer.Color = value_1910
+		var value_1911 SurfaceLayer = layer
+		var value_1912 int32 = index
+		var value_1913 uint32 = background
+		var value_1914 float32 = opacity
+		var value_1915 SurfaceLayer = Surface_FinishLightfieldLayer(value_1911, value_1912, value_1913, value_1914)
+		return value_1915
 	}
-	var value_1866 int32 = index
-	var value_1867 int32 = 0
-	var value_1868 bool = value_1866 == value_1867
-	var value_1869 bool = value_1868
-	if !value_1869 {
-		var value_1870 int32 = index
-		var value_1871 int32 = 1
-		var value_1872 bool = value_1870 == value_1871
-		value_1869 = value_1872
-	}
-	var value_1873 bool = value_1869
-	if !value_1873 {
-		var value_1874 int32 = index
-		var value_1875 int32 = 4
-		var value_1876 bool = value_1874 == value_1875
-		value_1873 = value_1876
-	}
-	if value_1873 {
-		var value_1877 uint32 = background
-		var value_1878 int32 = 255
-		var value_1879 uint32 = uint32(number_runtime_bits(uint64(value_1878), uint64(0), 32, false, 0))
-		var value_1880 uint32 = uint32(number_runtime_bits(uint64(value_1877), uint64(value_1879), 32, false, 8))
-		var value_1881 float32 = float32(value_1880)
-		var value_1882 float32 = 255.0
-		var value_1883 float32 = value_1881 / value_1882
-		var face_opacity float32 = value_1883
-		var value_1884 uint32 = layer.Color
-		var value_1885 float32 = face_opacity
-		var value_1886 uint32 = Surface_Opacity(value_1884, value_1885)
-		layer.Color = value_1886
-		var value_1887 uint32 = layer.EndColor
-		var value_1888 float32 = face_opacity
-		var value_1889 uint32 = Surface_Opacity(value_1887, value_1888)
-		layer.EndColor = value_1889
-	}
-	var value_1890 uint32 = layer.Color
-	var value_1891 float32 = opacity
-	var value_1892 uint32 = Surface_Opacity(value_1890, value_1891)
-	layer.Color = value_1892
-	var value_1893 uint32 = layer.EndColor
-	var value_1894 float32 = opacity
-	var value_1895 uint32 = Surface_Opacity(value_1893, value_1894)
-	layer.EndColor = value_1895
-	var value_1896 SurfaceLayer = layer
-	return value_1896
+	var value_1916 SurfaceLayer = layer
+	var value_1917 int32 = index
+	var value_1918 uint32 = background
+	var value_1919 float32 = opacity
+	var value_1920 SurfaceLayer = Surface_FinishLightfieldLayer(value_1916, value_1917, value_1918, value_1919)
+	return value_1920
 }

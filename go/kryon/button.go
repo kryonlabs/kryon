@@ -396,75 +396,124 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 		value_29 = value_31
 	}
 	if value_29 {
-		var value_32 int32 = tone
-		var value_33 int32 = emphasis
-		var value_34 int32 = int32(ButtonStateNormal)
-		var value_35 int32 = size
-		var value_36 bool = pill
-		var value_37 bool = circle
-		var value_38 bool = false
-		var value_39 bool = false
-		var value_40 bool = false
-		var value_41 Palette = palette
-		var value_42 Metrics = metrics
-		var value_43 StyleStates = styles
-		var value_44 StyleData = Button_ResolveAppearance(value_32, value_33, value_34, value_35, value_36, value_37, value_38, value_39, value_40, value_41, value_42, value_43)
+		var value_32 float32 = h
+		var value_33 float32 = 0.0
+		var value_34 bool = value_32 <= value_33
+		var value_35 bool = value_34
+		if value_35 {
+			var value_36 float32 = p
+			var value_37 float32 = 0.0
+			var value_38 bool = value_36 <= value_37
+			value_35 = value_38
+		}
+		var value_39 bool = value_35
+		if value_39 {
+			var value_40 float32 = f
+			var value_41 float32 = 0.0
+			var value_42 bool = value_40 <= value_41
+			value_39 = value_42
+		}
+		if value_39 {
+			var value_43 StyleFrame = frame
+			return value_43
+		}
+		var value_44 StyleData = frame.Value
 		var normal StyleData = value_44
-		var value_45 int32 = tone
-		var value_46 int32 = emphasis
-		var value_47 int32 = int32(ButtonStateHover)
-		var value_48 int32 = size
-		var value_49 bool = pill
-		var value_50 bool = circle
-		var value_51 bool = false
-		var value_52 bool = false
-		var value_53 bool = false
-		var value_54 Palette = palette
-		var value_55 Metrics = metrics
-		var value_56 StyleStates = styles
-		var value_57 StyleData = Button_ResolveAppearance(value_45, value_46, value_47, value_48, value_49, value_50, value_51, value_52, value_53, value_54, value_55, value_56)
-		var hover StyleData = value_57
-		var value_58 int32 = tone
-		var value_59 int32 = emphasis
-		var value_60 int32 = int32(ButtonStatePressed)
-		var value_61 int32 = size
-		var value_62 bool = pill
-		var value_63 bool = circle
-		var value_64 bool = false
-		var value_65 bool = false
-		var value_66 bool = false
-		var value_67 Palette = palette
-		var value_68 Metrics = metrics
-		var value_69 StyleStates = styles
-		var value_70 StyleData = Button_ResolveAppearance(value_58, value_59, value_60, value_61, value_62, value_63, value_64, value_65, value_66, value_67, value_68, value_69)
-		var press StyleData = value_70
-		var value_71 int32 = tone
-		var value_72 int32 = emphasis
-		var value_73 int32 = int32(ButtonStateFocus)
-		var value_74 int32 = size
-		var value_75 bool = pill
-		var value_76 bool = circle
-		var value_77 bool = false
-		var value_78 bool = false
-		var value_79 bool = false
-		var value_80 Palette = palette
-		var value_81 Metrics = metrics
-		var value_82 StyleStates = styles
-		var value_83 StyleData = Button_ResolveAppearance(value_71, value_72, value_73, value_74, value_75, value_76, value_77, value_78, value_79, value_80, value_81, value_82)
-		var focus StyleData = value_83
-		var value_84 StyleData = frame.Value
-		var value_85 StyleData = normal
-		var value_86 StyleData = hover
-		var value_87 StyleData = press
-		var value_88 StyleData = focus
-		var value_89 float32 = h
-		var value_90 float32 = p
-		var value_91 float32 = f
-		var value_92 StyleFrame = Style_TransitionFrame(value_84, value_85, value_86, value_87, value_88, value_89, value_90, value_91)
-		frame = value_92
+		var value_45 int32 = state
+		var value_46 int32 = int32(ButtonStateNormal)
+		var value_47 bool = value_45 != value_46
+		if value_47 {
+			var value_48 int32 = tone
+			var value_49 int32 = emphasis
+			var value_50 int32 = int32(ButtonStateNormal)
+			var value_51 int32 = size
+			var value_52 bool = pill
+			var value_53 bool = circle
+			var value_54 bool = false
+			var value_55 bool = false
+			var value_56 bool = false
+			var value_57 Palette = palette
+			var value_58 Metrics = metrics
+			var value_59 StyleStates = styles
+			var value_60 StyleData = Button_ResolveAppearance(value_48, value_49, value_50, value_51, value_52, value_53, value_54, value_55, value_56, value_57, value_58, value_59)
+			normal = value_60
+		}
+		var value_61 StyleData = normal
+		var hover StyleData = value_61
+		var value_62 StyleData = normal
+		var press StyleData = value_62
+		var value_63 StyleData = normal
+		var focus StyleData = value_63
+		var value_64 float32 = h
+		var value_65 float32 = 0.0
+		var value_66 bool = value_64 > value_65
+		if value_66 {
+			var value_67 int32 = tone
+			var value_68 int32 = emphasis
+			var value_69 int32 = int32(ButtonStateHover)
+			var value_70 int32 = size
+			var value_71 bool = pill
+			var value_72 bool = circle
+			var value_73 bool = false
+			var value_74 bool = false
+			var value_75 bool = false
+			var value_76 Palette = palette
+			var value_77 Metrics = metrics
+			var value_78 StyleStates = styles
+			var value_79 StyleData = Button_ResolveAppearance(value_67, value_68, value_69, value_70, value_71, value_72, value_73, value_74, value_75, value_76, value_77, value_78)
+			hover = value_79
+		}
+		var value_80 float32 = p
+		var value_81 float32 = 0.0
+		var value_82 bool = value_80 > value_81
+		if value_82 {
+			var value_83 int32 = tone
+			var value_84 int32 = emphasis
+			var value_85 int32 = int32(ButtonStatePressed)
+			var value_86 int32 = size
+			var value_87 bool = pill
+			var value_88 bool = circle
+			var value_89 bool = false
+			var value_90 bool = false
+			var value_91 bool = false
+			var value_92 Palette = palette
+			var value_93 Metrics = metrics
+			var value_94 StyleStates = styles
+			var value_95 StyleData = Button_ResolveAppearance(value_83, value_84, value_85, value_86, value_87, value_88, value_89, value_90, value_91, value_92, value_93, value_94)
+			press = value_95
+		}
+		var value_96 float32 = f
+		var value_97 float32 = 0.0
+		var value_98 bool = value_96 > value_97
+		if value_98 {
+			var value_99 int32 = tone
+			var value_100 int32 = emphasis
+			var value_101 int32 = int32(ButtonStateFocus)
+			var value_102 int32 = size
+			var value_103 bool = pill
+			var value_104 bool = circle
+			var value_105 bool = false
+			var value_106 bool = false
+			var value_107 bool = false
+			var value_108 Palette = palette
+			var value_109 Metrics = metrics
+			var value_110 StyleStates = styles
+			var value_111 StyleData = Button_ResolveAppearance(value_99, value_100, value_101, value_102, value_103, value_104, value_105, value_106, value_107, value_108, value_109, value_110)
+			focus = value_111
+		}
+		var value_112 StyleData = frame.Value
+		var value_113 StyleData = normal
+		var value_114 StyleData = hover
+		var value_115 StyleData = press
+		var value_116 StyleData = focus
+		var value_117 float32 = h
+		var value_118 float32 = p
+		var value_119 float32 = f
+		var value_120 StyleFrame = Style_TransitionFrame(value_112, value_113, value_114, value_115, value_116, value_117, value_118, value_119)
+		frame = value_120
 	}
-	var value_93 StyleFrame = frame
-	return value_93
+	var value_121 StyleFrame = frame
+	return value_121
 }
 
 func (instance_host_0 *runtime) Button_MeasureButton(props ButtonProps, paint Style, minimum_height float32, font int32, available_width float32, scale float32, disclosure bool) Rectangle {
