@@ -1651,9 +1651,22 @@ RenderProgressBar(ProgressBarProps progress)
     if(!IsWindowReady())
         return;
     fill.width *= t;
-    DrawRectangleRec(progress.bounds, ui_panel_color(10));
-    DrawRectangleRec(fill, fill_color);
-    DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
+    if(ui_modern_style() || ui_default_style()) {
+        Color track = ui_default_style()
+            ? ui_default_surface_container()
+            : DarkenUIColor(c_bg, 16);
+        Color border = ui_default_style()
+            ? ui_default_outline()
+            : Fade(GetThemeButtonHover(), 0.46f);
+        DrawRectangleRounded(progress.bounds, 0.5f, 12, track);
+        if(fill.width > 0.0f)
+            DrawRectangleRounded(fill, 0.5f, 12, fill_color);
+        DrawRectangleRoundedLinesEx(progress.bounds, 0.5f, 12, 1.0f, border);
+    } else {
+        DrawRectangleRec(progress.bounds, ui_panel_color(10));
+        DrawRectangleRec(fill, fill_color);
+        DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
+    }
     if(label != NULL) {
         int pad = Scale(6);
         int text_w = TextWidth(label, font);

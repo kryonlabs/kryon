@@ -572,10 +572,20 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
 
     if(IsWindowReady()) {
         thumb_bounds.y = y + (int)((float)*scroll_offset / max_scroll * track_span);
-        DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
-        DrawRectangleRec(thumb_bounds, thumb_color);
-        DrawRectangleLinesEx(thumb_bounds, (float)Scale(1),
-                             ui_scrollbar_contrast_from(thumb_color, 34));
+        if(ui_modern_style() || ui_default_style()) {
+            Rectangle track = {(float)x, (float)y,
+                               (float)scrollbar_width, (float)viewport_h};
+            Color outline = ui_scrollbar_contrast_from(thumb_color, 34);
+            DrawRectangleRounded(track, 0.5f, 10, track_color);
+            DrawRectangleRounded(thumb_bounds, 0.5f, 10, thumb_color);
+            DrawRectangleRoundedLinesEx(thumb_bounds, 0.5f, 10,
+                                        (float)Scale(1), outline);
+        } else {
+            DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
+            DrawRectangleRec(thumb_bounds, thumb_color);
+            DrawRectangleLinesEx(thumb_bounds, (float)Scale(1),
+                                 ui_scrollbar_contrast_from(thumb_color, 34));
+        }
     }
 
     return 1;
