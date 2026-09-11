@@ -310,7 +310,7 @@ GENERATED_C_COMPILE_GAPS = {
     "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
-    "tests/parity/widget_catalog.kry": "Generated C still misses several advanced widget prop shapes.",
+    "tests/parity/widget_catalog.kry": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and TextLines, SelectableText, and ColorPickerProps have no host widget yet.",
 }
 
 RAYLIB_C_RENDER_GAPS = {
@@ -327,7 +327,6 @@ LIBDRAW_C_RENDER_GAPS = {
 }
 
 WEB_CANVAS_C_RENDER_GAPS = {
-    "examples/03_theme.kry": "Web Canvas generated-C capture traps in wasm.",
     "tests/parity/drag_drop.kry": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
 }
 

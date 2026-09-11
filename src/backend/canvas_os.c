@@ -285,11 +285,16 @@ const char *TextFormat(const char *text, ...)
     static char buffers[16][256];
     static int next;
     va_list args;
+    /* Bound the slot before use: writing through buffers[next] with an
+     * unrotated counter ran past the array once a frame exceeded sixteen
+     * formatted strings, trapping in wasm after vsnprintf's first writes. */
+    int slot = next++ % 16;
 
     va_start(args, text);
-    vsnprintf(buffers[next], sizeof(buffers[0]), text, args);
+    vsnprintf(buffers[slot], sizeof(buffers[slot]), text != NULL ? text : "",
+              args);
     va_end(args);
-    return buffers[next++ % 16];
+    return buffers[slot];
 }
 
 void TraceLog(int logLevel, const char *text, ...)
