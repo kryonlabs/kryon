@@ -3,10 +3,12 @@
 
 #include "kryon.h"
 
-// Lighten a color by adding to each RGB component
+// Lighten a color by increasing HSL lightness.
+Color LightenColor(Color c, int amount);
 Color LightenUIColor(Color c, int amount);
 
-// Darken a color by subtracting from each RGB component
+// Darken a color by decreasing HSL lightness.
+Color DarkenColor(Color c, int amount);
 Color DarkenUIColor(Color c, int amount);
 
 #endif // UI_COLOR_H

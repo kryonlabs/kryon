@@ -2796,6 +2796,15 @@ Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
 }
 
 void
+Texture(Texture2D texture, Rectangle source, Rectangle bounds, Color tint)
+{
+    ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, bounds, NULL);
+    if(ui_tree_building)
+        return;
+    DrawTexturePro(texture, source, bounds, (Vector2){0.0f, 0.0f}, 0.0f, tint);
+}
+
+void
 Bevel(int x, int y, int w, int h, Color light, Color dark)
 {
     ui_tree_add(0, UI_WIDGET_RECT_NODE, (Rectangle){x, y, w, h}, NULL);

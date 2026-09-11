@@ -1382,7 +1382,9 @@ include/ui_clip.h function EndUIClip
 include/ui_clip.h function GetUIClipEffective
 include/ui_clip.h function GetUIClipIntersection
 include/ui_clip.h function ResetUIClip
+include/ui_color.h function DarkenColor
 include/ui_color.h function DarkenUIColor
+include/ui_color.h function LightenColor
 include/ui_color.h function LightenUIColor
 include/ui_composed.h function CarouselControls
 include/ui_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
@@ -2129,6 +2131,7 @@ include/ui_tree.h function TextArea
 include/ui_tree.h function TextField
 include/ui_tree.h function TextLines
 include/ui_tree.h function TextPopover
+include/ui_tree.h function Texture
 include/ui_tree.h function ThemePicker
 include/ui_tree.h function ThemeSettings
 include/ui_tree.h function ThemeSwitcher

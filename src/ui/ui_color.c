@@ -118,13 +118,25 @@ AdjustUIColorLightness(Color c, int amount)
 }
 
 Color
-LightenUIColor(Color c, int amount)
+LightenColor(Color c, int amount)
 {
     return AdjustUIColorLightness(c, amount < 0 ? 0 : amount);
 }
 
 Color
-DarkenUIColor(Color c, int amount)
+DarkenColor(Color c, int amount)
 {
     return AdjustUIColorLightness(c, amount < 0 ? 0 : -amount);
+}
+
+Color
+LightenUIColor(Color c, int amount)
+{
+    return LightenColor(c, amount);
+}
+
+Color
+DarkenUIColor(Color c, int amount)
+{
+    return DarkenColor(c, amount);
 }
