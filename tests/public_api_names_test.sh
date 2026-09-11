@@ -464,6 +464,20 @@ if [ -n "$frame_alias_matches" ]; then
     exit 1
 fi
 
+kry_source_draw_matches="$(
+    rg -n '\bDraw[A-Z][A-Za-z0-9_]*\s*\(|\bRenderToggleSwitch\b|\bRender[A-Z][A-Za-z0-9_]*\s*\(' \
+        examples runtime tests src \
+        --glob '*.kry' \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$kry_source_draw_matches" ]; then
+    echo "Kry source must use clean declarative names such as Circle, Line, Triangle, Button, and Toggle:"
+    echo "$kry_source_draw_matches"
+    exit 1
+fi
+
 kryc_name='kry''c'
 kryc_tool_matches="$(
     find . \

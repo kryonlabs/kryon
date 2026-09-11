@@ -25,55 +25,6 @@ ui_paint_surface(Rectangle bounds, Style style)
         style.focus, 0, style.opacity, ui_style_fill(style), style.material);
 }
 
-static Rectangle
-ui_toggle_track_bounds(int x, int y, int w, int h,
-                       const char *off_label, const char *on_label)
-{
-    int font = GetFontSize();
-    const char *off_text = off_label != NULL ? off_label : "";
-    const char *on_text = on_label != NULL ? on_label : "";
-    int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
-    int off_w = has_labels ? TextWidth(off_text, font) : 0;
-    int on_w = has_labels ? TextWidth(on_text, font) : 0;
-    int min_half_w = (off_w > on_w ? off_w : on_w) + Scale(16);
-    int min_w = has_labels ? min_half_w * 2 + Scale(6) : Scale(54);
-    int track_w;
-    int track_h;
-
-    if(w < min_w)
-        w = min_w;
-    if(h < Scale(34))
-        h = Scale(34);
-    track_w = has_labels ? w : Scale(54);
-    track_h = has_labels ? h : Scale(32);
-    if(track_w > w)
-        track_w = w;
-    if(track_h > h)
-        track_h = h;
-    return (Rectangle){(float)(x + (w - track_w) / 2),
-                       (float)(y + (h - track_h) / 2),
-                       (float)track_w, (float)track_h};
-}
-
-static void
-ui_render_toggle_focus(int x, int y, int w, int h,
-                       const char *off_label, const char *on_label)
-{
-    Rectangle track = ui_toggle_track_bounds(x, y, w, h, off_label, on_label);
-    Rectangle outer = {track.x - Scale(4), track.y - Scale(4),
-                       track.width + Scale(8), track.height + Scale(8)};
-    Rectangle inner = {track.x - Scale(2), track.y - Scale(2),
-                       track.width + Scale(4), track.height + Scale(4)};
-    Color focus = GetThemeButtonHover();
-    Color glow = focus;
-    Color line = LightenUIColor(focus, 42);
-
-    glow.a = glow.a > 50 ? 50 : glow.a;
-    line.a = line.a > 185 ? 185 : line.a;
-    DrawRectangleRounded(outer, 0.5f, 16, glow);
-    DrawRectangleRoundedLinesEx(inner, 0.5f, 16, (float)Scale(2), line);
-}
-
 #define UI_TREE_MAX_DEPTH UI_TREE_LAYOUT_DEPTH
 #define UI_NODE_HOVERED (1U << 28)
 #define UI_NODE_PRESSED (1U << 29)
@@ -804,6 +755,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_RECT_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_CIRCLE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_LINE_NODE] = {ui_measure_bounds_height},
+    [UI_WIDGET_TRIANGLE_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_BUTTON_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_FIELD_NODE] = {ui_measure_bounds_height},
     [UI_WIDGET_TEXT_AREA_NODE] = {ui_measure_bounds_height},
@@ -1888,6 +1840,15 @@ DrawTree(void)
                      node->data.primitive.x2, node->data.primitive.y2,
                      node->data.primitive.color);
             break;
+        case UI_WIDGET_TRIANGLE_NODE:
+            DrawTriangle((Vector2){(float)node->data.primitive.x1,
+                                   (float)node->data.primitive.y1},
+                         (Vector2){(float)node->data.primitive.x2,
+                                   (float)node->data.primitive.y2},
+                         (Vector2){(float)node->data.primitive.x3,
+                                   (float)node->data.primitive.y3},
+                         node->data.primitive.color);
+            break;
         case UI_WIDGET_BUTTON_NODE:
         case UI_WIDGET_CARD_NODE: {
             ButtonSpec spec = node->data.button;
@@ -2042,19 +2003,14 @@ DrawTree(void)
             int changed;
 
             if(node->kind == UI_WIDGET_TOGGLE_NODE) {
-                changed = RenderToggleSwitch(
+                changed = ToggleSwitch(
                     (int)node->bounds.x, (int)node->bounds.y,
                     (int)node->bounds.width, (int)node->bounds.height,
                     value, node->data.toggle.off_label,
-                    node->data.toggle.on_label);
-                if(IsUIFocusActive(node->id) &&
-                   !ui_popup_input_snapshot_keyboard_captures(
-                       ui_tree_input_snapshot(node)) && IsWindowReady())
-                    ui_render_toggle_focus(
-                        (int)node->bounds.x, (int)node->bounds.y,
-                        (int)node->bounds.width, (int)node->bounds.height,
-                        node->data.toggle.off_label,
-                        node->data.toggle.on_label);
+                    node->data.toggle.on_label,
+                    IsUIFocusActive(node->id) &&
+                    !ui_popup_input_snapshot_keyboard_captures(
+                        ui_tree_input_snapshot(node)));
             } else {
                 changed = RenderCheckboxToggle(
                     (int)node->bounds.x, (int)node->bounds.y,
@@ -2791,6 +2747,8 @@ Line(int x1, int y1, int x2, int y2, Color color)
                                 (Rectangle){x, y, w, h}, NULL);
 
     if(node >= 0) {
+        ui_tree_nodes[node].data.primitive.x1 = x1;
+        ui_tree_nodes[node].data.primitive.y1 = y1;
         ui_tree_nodes[node].data.primitive.x2 = x2;
         ui_tree_nodes[node].data.primitive.y2 = y2;
         ui_tree_nodes[node].data.primitive.color = color;
@@ -2798,6 +2756,43 @@ Line(int x1, int y1, int x2, int y2, Color color)
     if(ui_tree_building)
         return;
     DrawLine(x1, y1, x2, y2, color);
+}
+
+void
+Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
+{
+    int min_x = x1 < x2 ? x1 : x2;
+    int min_y = y1 < y2 ? y1 : y2;
+    int max_x = x1 > x2 ? x1 : x2;
+    int max_y = y1 > y2 ? y1 : y2;
+    NodeId node;
+
+    if(x3 < min_x)
+        min_x = x3;
+    if(y3 < min_y)
+        min_y = y3;
+    if(x3 > max_x)
+        max_x = x3;
+    if(y3 > max_y)
+        max_y = y3;
+
+    node = ui_tree_add(0, UI_WIDGET_TRIANGLE_NODE,
+                       (Rectangle){min_x, min_y, max_x - min_x,
+                                   max_y - min_y}, NULL);
+    if(node >= 0) {
+        ui_tree_nodes[node].data.primitive.x1 = x1;
+        ui_tree_nodes[node].data.primitive.y1 = y1;
+        ui_tree_nodes[node].data.primitive.x2 = x2;
+        ui_tree_nodes[node].data.primitive.y2 = y2;
+        ui_tree_nodes[node].data.primitive.x3 = x3;
+        ui_tree_nodes[node].data.primitive.y3 = y3;
+        ui_tree_nodes[node].data.primitive.color = color;
+    }
+    if(ui_tree_building)
+        return;
+    DrawTriangle((Vector2){(float)x1, (float)y1},
+                 (Vector2){(float)x2, (float)y2},
+                 (Vector2){(float)x3, (float)y3}, color);
 }
 
 void
@@ -2975,11 +2970,8 @@ Toggle(int id, int x, int y, int w, int h, int *value,
     if(ui_tree_building)
         return changed;
     paint_value = value != NULL ? *value : 0;
-    (void)RenderToggleSwitch(x, y, w, h,
-                             value != NULL ? &paint_value : NULL,
-                             off_label, on_label);
-    if(focused && IsWindowReady())
-        ui_render_toggle_focus(x, y, w, h, off_label, on_label);
+    (void)ToggleSwitch(x, y, w, h, value != NULL ? &paint_value : NULL,
+                       off_label, on_label, focused);
     return changed;
 }
 

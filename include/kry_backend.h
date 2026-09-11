@@ -4,7 +4,7 @@
 /*
  * Small draw/input table for cartridges and non-raylib hosts.
  * Public Kryon-facing code should use the owned widget and primitive API
- * (Button, Card, Router, Rect, Box, Circle, Line, ...). This low-level table
+ * (Button, Card, Router, Rect, Box, Circle, Line, Triangle, ...). This low-level table
  * is the backend boundary: a .krb walker only calls it so raylib, the null
  * backend, a framebuffer, or /dev/draw can host the same image.
  */

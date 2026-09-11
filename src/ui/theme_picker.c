@@ -450,7 +450,7 @@ RenderThemeSwitcher(int x, int y, int w, const char *label,
     int light_w = TextWidth(light_label ? light_label : "Light", font);
     int dark_w = TextWidth(dark_label ? dark_label : "Dark", font);
     int max_label_w = light_w > dark_w ? light_w : dark_w;
-        /* Match RenderToggleSwitchs classic content minimum so the switch does
+        /* Match ToggleSwitchs classic content minimum so the switch does
      * not silently grow past the computed rect */
     int toggle_w = (max_label_w + Scale(16)) * 2 + Scale(6);
     int min_toggle_w = Scale(100);
@@ -462,9 +462,9 @@ RenderThemeSwitcher(int x, int y, int w, const char *label,
     int toggle_h = Scale(28);
     int toggle_x = x + w - toggle_w - Scale(8);
     int toggle_y = y - Scale(2);
-    if(RenderToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
-                             light_label ? light_label : "Light",
-                             dark_label ? dark_label : "Dark")) {
+    if(ToggleSwitch(toggle_x, toggle_y, toggle_w, toggle_h, &dark,
+                    light_label ? light_label : "Light",
+                    dark_label ? dark_label : "Dark", 0)) {
         if(dark_mode != NULL)
             *dark_mode = dark;
         changed = 1;

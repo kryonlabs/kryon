@@ -442,8 +442,8 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
 }
 
 int
-RenderToggleSwitch(int x, int y, int w, int h, int *value,
-                   const char *off_label, const char *on_label)
+ToggleSwitch(int x, int y, int w, int h, int *value,
+             const char *off_label, const char *on_label, int focused)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)h};
@@ -518,10 +518,11 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
                                                    : ButtonToneNeutral,
             .emphasis = checked ? ButtonEmphasisFilled : ButtonEmphasisSoft,
             .disabled = !enabled, .pill = 1};
+        ButtonState visual_state = down ? ButtonStatePressed
+            : hovered ? ButtonStateHover
+            : focused ? ButtonStateFocus : ButtonStateNormal;
         Style track_style = ui_style_apply_effects(ResolveButtonStyle(
-            track_props,
-            down ? ButtonStatePressed
-                 : hovered ? ButtonStateHover : ButtonStateNormal));
+            track_props, visual_state));
         Rectangle track_bounds;
         int track_w = has_labels ? w : Scale(54);
         int track_h = has_labels ? h : Scale(32);
@@ -539,7 +540,8 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
                          track_style.border, track_style.border,
                          track_style.radius, track_style.border_width,
                          hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
-                         !enabled, track_style.focus, 0.0f,
+                         !enabled, track_style.focus,
+                         focused ? 1.0f : 0.0f,
                          track_style.opacity, ui_style_fill(track_style),
                          track_style.material);
 
@@ -548,26 +550,30 @@ RenderToggleSwitch(int x, int y, int w, int h, int *value,
                 .emphasis = ButtonEmphasisFilled, .disabled = !enabled,
                 .pill = 1};
             Style active_style = ui_style_apply_effects(
-                ResolveButtonStyle(active_props, ButtonStateNormal));
+                ResolveButtonStyle(active_props, visual_state));
             int active_w = (track_w - Scale(6)) / 2;
             int active_x = checked ? track_x + track_w - active_w - Scale(3)
                                    : track_x + Scale(3);
-            Color label_color = enabled ? c_text : DarkenUIColor(c_text, 42);
+            Color inactive_label = enabled ? c_text : DarkenUIColor(c_text, 42);
+            Color active_label = ui_default_on_color(active_style.background);
+            int text_y = GetUIControlTextY(off_text, y, h, font);
 
             ui_draw_material((Rectangle){active_x, track_y + Scale(3),
                                          active_w, track_h - Scale(6)},
                              track_bounds, active_style.background,
                              active_style.border, active_style.border,
                              active_style.radius, active_style.border_width,
-                             0.0f, 0.0f, !enabled, active_style.focus, 0.0f,
+                             hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
+                             !enabled, active_style.focus,
+                             focused ? 1.0f : 0.0f,
                              active_style.opacity, ui_style_fill(active_style),
                              active_style.material);
-            RenderText(off_text, x + w / 4 - off_w / 2,
-                       GetUIControlTextY(off_text, y, h, font),
-                       font, label_color);
-            RenderText(on_text, x + w * 3 / 4 - on_w / 2,
-                       GetUIControlTextY(on_text, y, h, font),
-                       font, label_color);
+            RenderNonSelectableText(off_text, x + w / 4 - off_w / 2,
+                                    text_y, font,
+                                    checked ? inactive_label : active_label);
+            RenderNonSelectableText(on_text, x + w * 3 / 4 - on_w / 2,
+                                    text_y, font,
+                                    checked ? active_label : inactive_label);
         } else {
             int thumb_size = checked ? Scale(24) : Scale(20);
             int thumb_x;

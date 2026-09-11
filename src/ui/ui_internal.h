@@ -220,8 +220,8 @@ int ui_render_vertical_slider_active(int id, int x, int y, int h, int min,
 int ui_render_vertical_slider_with_marks(
     int id, int x, int y, int h, int min, int max, int *value,
     UIVerticalSliderMarkCallback callback, void *callback_user_data);
-int RenderToggleSwitch(int x, int y, int w, int h, int *value,
-                       const char *off_label, const char *on_label);
+int ToggleSwitch(int x, int y, int w, int h, int *value,
+                 const char *off_label, const char *on_label, int focused);
 int RenderCheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);

@@ -4,7 +4,7 @@
 #include "kryon_version.h"
 /* Legacy graphics/input compatibility surface. New Kryon-facing code should
  * use owned widgets and primitives (Button, Card, Router, Rect, Box, Circle,
- * Line, ...); the concrete backend is selected at link time via
+ * Line, Triangle, ...); the concrete backend is selected at link time via
  * KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
 /* Math3d surface (Vector3/Matrix/Quaternion arithmetic): must come after

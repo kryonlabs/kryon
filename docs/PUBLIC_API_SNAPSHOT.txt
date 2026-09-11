@@ -1883,6 +1883,7 @@ include/ui_tk.h function WriteUIClipboardPaste
 include/ui_tk.h function WriteUIClipboardSourcePaste
 include/ui_tk.h function WriteUIClipboardTextPaste
 include/ui_tk.h macro UI_CLIPBOARD_BUFFER_SIZE
+include/ui_tk.h typedef ComboboxProps
 include/ui_tk.h typedef UIClipboardOSC52WriteFn
 include/ui_tk.h typedef UIClipboardPasteWriteFn
 include/ui_toast.h function ClearToast
@@ -1919,6 +1920,7 @@ include/ui_tree.h enum UI_WIDGET_BUTTON_ROW_NODE
 include/ui_tree.h enum UI_WIDGET_CARD_NODE
 include/ui_tree.h enum UI_WIDGET_CHECKBOX_NODE
 include/ui_tree.h enum UI_WIDGET_CHECKBOX_ROW_NODE
+include/ui_tree.h enum UI_WIDGET_CIRCLE_NODE
 include/ui_tree.h enum UI_WIDGET_COLUMN_NODE
 include/ui_tree.h enum UI_WIDGET_CUSTOM_NODE
 include/ui_tree.h enum UI_WIDGET_DROPDOWN_NODE
@@ -1950,6 +1952,7 @@ include/ui_tree.h enum UI_WIDGET_THEME_PICKER_NODE
 include/ui_tree.h enum UI_WIDGET_THEME_SETTINGS_NODE
 include/ui_tree.h enum UI_WIDGET_TITLE_BAR_NODE
 include/ui_tree.h enum UI_WIDGET_TOGGLE_NODE
+include/ui_tree.h enum UI_WIDGET_TRIANGLE_NODE
 include/ui_tree.h function ActionModal
 include/ui_tree.h function ArrowButton
 include/ui_tree.h function Background
@@ -1969,6 +1972,7 @@ include/ui_tree.h function Bevel
 include/ui_tree.h function BottomIconRow
 include/ui_tree.h function BottomNav
 include/ui_tree.h function BottomNavConfig
+include/ui_tree.h function Box
 include/ui_tree.h function Bullet
 include/ui_tree.h function BulletText
 include/ui_tree.h function Button
@@ -1980,6 +1984,7 @@ include/ui_tree.h function CascadingTreeView
 include/ui_tree.h function Checkbox
 include/ui_tree.h function CheckboxFlags
 include/ui_tree.h function CheckboxRow
+include/ui_tree.h function Circle
 include/ui_tree.h function ClosableTabBar
 include/ui_tree.h function CloseCombo
 include/ui_tree.h function ClosePopup
@@ -2001,6 +2006,7 @@ include/ui_tree.h function DragFloatRange2
 include/ui_tree.h function DragInt
 include/ui_tree.h function DragIntRange2
 include/ui_tree.h function Dropdown
+include/ui_tree.h function DropdownLegacy
 include/ui_tree.h function DropdownOptions
 include/ui_tree.h function End
 include/ui_tree.h function EndCombo
@@ -2026,7 +2032,6 @@ include/ui_tree.h function GuideOverlay
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Href
 include/ui_tree.h function Icon
-include/ui_tree.h function IconLink
 include/ui_tree.h function IconSliderPopup
 include/ui_tree.h function ImageBox
 include/ui_tree.h function ImageButton
@@ -2134,6 +2139,7 @@ include/ui_tree.h function ToolbarHeader
 include/ui_tree.h function TopNav
 include/ui_tree.h function TransitionFade
 include/ui_tree.h function TreeView
+include/ui_tree.h function Triangle
 include/ui_tree.h function TutorialImage
 include/ui_tree.h function TutorialImagePlaceholder
 include/ui_tree.h function UpdateTree
