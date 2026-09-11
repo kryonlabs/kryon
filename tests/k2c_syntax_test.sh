@@ -75,7 +75,7 @@ Valid :: (viewport: Rectangle) #ui {
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
             count = 302
         }
-        nav_items: [1] NavigationBarItem = {{1,"Home",(Texture2D){0},1,0}}
+        nav_items: [1] NavigationBarItem = {{1,"Home",(Texture2D){0},UI_ICON_TYPE_NONE,1,0}}
         nav_result: NavigationBarResult = NavigationBar((NavigationBarProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
         if nav_result.clicked_route != -1 {
             count = nav_result.clicked_route

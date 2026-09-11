@@ -56,7 +56,7 @@ NavigationBarItemPaint :: struct {
 
 NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(76.0 * scale)
+    return (i32)(86.0 * scale)
 }
 
 NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export {
@@ -73,7 +73,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     side_margin: i32 = spec.side_margin
     if side_margin < 0 { side_margin = 0 }
     icon_size: i32 = spec.icon_size
-    if icon_size <= 0 { icon_size = (i32)(23.0 * scale) }
+    if icon_size <= 0 { icon_size = (i32)(32.0 * scale) }
 
     y: i32 = spec.view_height - bottom_margin - height
     available_w: i32 = spec.view_width - side_margin * 2
@@ -114,22 +114,22 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
 NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemPaint #export {
     paint: NavigationBarItemPaint
     scale: float = 1.0
-    if spec.bar.height > 0 { scale = (float)spec.bar.height / 76.0 }
+    if spec.bar.height > 0 { scale = (float)spec.bar.height / 86.0 }
     index: i32 = spec.index
     if index < 0 { index = 0 }
     x: i32 = spec.bar.start_x + index * spec.bar.tab_width
     w: i32 = spec.bar.tab_width
     if index == spec.bar.count - 1 { w = spec.bar.start_x + spec.bar.group_width - x }
     if w < 0 { w = 0 }
-    label_gap: i32 = (i32)(4.0 * scale)
+    label_gap: i32 = (i32)(6.0 * scale)
     content_h: i32 = spec.bar.icon_size + label_gap + spec.label_height
     content_y: i32 = spec.bar.y + (spec.bar.height - content_h) / 2 - (i32)(1.0 * scale)
     if content_y < spec.bar.y + (i32)(8.0 * scale) {
         content_y = spec.bar.y + (i32)(8.0 * scale)
     }
 
-    state_w: i32 = (i32)(44.0 * scale)
-    state_h: i32 = (i32)(44.0 * scale)
+    state_w: i32 = (i32)(58.0 * scale)
+    state_h: i32 = (i32)(58.0 * scale)
     if state_w < spec.bar.icon_size + (i32)(16.0 * scale) {
         state_w = spec.bar.icon_size + (i32)(16.0 * scale)
     }
@@ -159,7 +159,6 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     emphasis: i32 = spec.active ? ButtonEmphasisFilled : ButtonEmphasisGhost
     state: i32 = ButtonStateNormal
     if spec.hovered { state = ButtonStateHover }
-    if spec.active { state = ButtonStateFocus }
     paint.face = ResolveFrame(tone, emphasis, state, ControlSizeMedium,
         true, false, spec.disabled, false, spec.active,
         spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)

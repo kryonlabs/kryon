@@ -43,15 +43,20 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_navigation_bar_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char alpha)
+ui_draw_navigation_bar_icon(Texture2D icon, UIIconType icon_type, Rectangle dst,
+                            Color tint, unsigned char alpha)
 {
     Rectangle src;
 
+    tint.a = (unsigned char)((int)tint.a * alpha / 255);
+    if(icon_type != UI_ICON_TYPE_NONE) {
+        DrawIcon(icon_type, dst, tint);
+        return;
+    }
     if(icon.id == 0)
         return;
     if(tint.a == 0)
         tint = WHITE;
-    tint.a = (unsigned char)((int)tint.a * alpha / 255);
     src.x = 0;
     src.y = 0;
     src.width = (float)icon.width;
@@ -150,13 +155,13 @@ RenderNavigationBar(NavigationBarProps nav)
                              face_style.border, face_style.radius,
                              face_style.border_width,
                              hover ? 1.0f : 0.0f, 0.0f, item->disabled,
-                             face_style.focus, item->active ? 1.0f : 0.0f,
+                             face_style.focus, 0.0f,
                              face_style.opacity,
                              ui_style_apply_effects_fill(face_frame.fill),
                              face_style.material);
         }
         dst = item_paint.icon_bounds;
-        ui_draw_navigation_bar_icon(item->icon, dst,
+        ui_draw_navigation_bar_icon(item->icon, item->icon_type, dst,
                                 nav.icon_color.a == 0 ? GetColor(item_paint.icon_color)
                                                       : nav.icon_color,
                                 (unsigned char)item_paint.icon_alpha);

@@ -840,6 +840,7 @@ type NavigationBarItem struct {
 	Route    int32
 	Label    string
 	Icon     Texture2D
+	IconType int32
 	Active   bool
 	Disabled bool
 }

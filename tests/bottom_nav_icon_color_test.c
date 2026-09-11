@@ -146,9 +146,9 @@ main(void)
     color_icon.id = 42;
     color_icon.width = 16;
     color_icon.height = 16;
-    items[0] = (NavigationBarItem){1, "", color_icon, 0, 0};
-    items[1] = (NavigationBarItem){2, "", color_icon, 1, 0};
-    items[2] = (NavigationBarItem){3, "", color_icon, 0, 1};
+    items[0] = (NavigationBarItem){1, "", color_icon, UI_ICON_TYPE_NONE, 0, 0};
+    items[1] = (NavigationBarItem){2, "", color_icon, UI_ICON_TYPE_NONE, 1, 0};
+    items[2] = (NavigationBarItem){3, "", color_icon, UI_ICON_TYPE_NONE, 0, 1};
 
     SetUIScale(1.0f);
     SetUIDefaultFontAutoLoad(0);
@@ -157,7 +157,7 @@ main(void)
     SetCurrentTheme(THEME_SKY, 0);
 
     check_int("compact navigation bar default height",
-              NavigationBarDefaultHeight(1.0f), 76);
+              NavigationBarDefaultHeight(1.0f), 86);
     {
         Palette palette = DefaultPalette(false);
         Metrics metrics = DefaultMetrics();
@@ -182,9 +182,9 @@ main(void)
         check_int("compact navigation bar hit target width",
                   (int)item_paint.bounds.width, 225);
         check_int("compact navigation bar active badge width",
-                  (int)item_paint.state_bounds.width, 44);
+                  (int)item_paint.state_bounds.width, 58);
         check_int("compact navigation bar active badge height",
-                  (int)item_paint.state_bounds.height, 44);
+                  (int)item_paint.state_bounds.height, 58);
         check_true("compact navigation bar badge stays within tab",
                    item_paint.state_bounds.x > item_paint.bounds.x &&
                    item_paint.state_bounds.x + item_paint.state_bounds.width <
