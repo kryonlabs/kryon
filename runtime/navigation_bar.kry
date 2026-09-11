@@ -1,0 +1,178 @@
+#module "navigation_bar"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "style"
+#import "theme"
+
+NavigationBarSpec :: struct {
+    view_width: i32
+    view_height: i32
+    count: i32
+    height: i32
+    side_margin: i32
+    bottom_margin: i32
+    icon_size: i32
+    scale: float
+    palette: Palette
+    metrics: Metrics
+}
+
+NavigationBarPaint :: struct {
+    bounds: Rectangle
+    bar_bounds: Rectangle
+    start_x: i32
+    tab_width: i32
+    group_width: i32
+    count: i32
+    icon_size: i32
+    height: i32
+    y: i32
+    bar: StyleFrame
+}
+
+NavigationBarItemSpec :: struct {
+    bar: NavigationBarPaint
+    index: i32
+    active: bool
+    disabled: bool
+    hovered: bool
+    label_height: i32
+    palette: Palette
+    metrics: Metrics
+}
+
+NavigationBarItemPaint :: struct {
+    bounds: Rectangle
+    state_bounds: Rectangle
+    icon_bounds: Rectangle
+    label_bounds: Rectangle
+    face: StyleFrame
+    draw_face: bool
+    icon_color: u32
+    text_color: u32
+    icon_alpha: i32
+}
+
+NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(88.0 * scale)
+}
+
+NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export {
+    paint: NavigationBarPaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+    count: i32 = spec.count
+    if count < 0 { count = 0 }
+    if count > 8 { count = 8 }
+    height: i32 = spec.height
+    if height <= 0 { height = NavigationBarDefaultHeight(scale) }
+    bottom_margin: i32 = spec.bottom_margin
+    if bottom_margin <= 0 { bottom_margin = (i32)(10.0 * scale) }
+    side_margin: i32 = spec.side_margin
+    if side_margin <= 0 { side_margin = (i32)(14.0 * scale) }
+    icon_size: i32 = spec.icon_size
+    if icon_size <= 0 { icon_size = (i32)(24.0 * scale) }
+
+    y: i32 = spec.view_height - bottom_margin - height
+    available_w: i32 = spec.view_width - side_margin * 2
+    if available_w < (i32)(96.0 * scale) { available_w = (i32)(96.0 * scale) }
+    tab_w: i32 = available_w
+    if count > 0 { tab_w = available_w / count }
+    min_tab: i32 = (i32)(56.0 * scale)
+    if tab_w < min_tab { tab_w = min_tab }
+    group_w: i32 = tab_w * count
+    if group_w > available_w { group_w = available_w }
+    if count > 0 { tab_w = group_w / count }
+
+    paint.bounds.x = 0.0
+    paint.bounds.y = (float)y
+    paint.bounds.width = (float)spec.view_width
+    paint.bounds.height = (float)height
+    paint.bar_bounds.x = (float)side_margin
+    paint.bar_bounds.y = (float)(y + (i32)(8.0 * scale))
+    paint.bar_bounds.width = (float)available_w
+    paint.bar_bounds.height = (float)(height - (i32)(16.0 * scale))
+    paint.start_x = side_margin + (available_w - group_w) / 2
+    paint.tab_width = tab_w
+    paint.group_width = group_w
+    paint.count = count
+    paint.icon_size = icon_size
+    paint.height = height
+    paint.y = y
+
+    styles: StyleStates
+    paint.bar = ResolveFrame(ButtonToneNeutral, ButtonEmphasisSoft,
+        ButtonStateNormal, ControlSizeLarge, true, false, false, false, false,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+    return paint
+}
+
+NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemPaint #export {
+    paint: NavigationBarItemPaint
+    scale: float = 1.0
+    if spec.bar.height > 0 { scale = (float)spec.bar.height / 88.0 }
+    index: i32 = spec.index
+    if index < 0 { index = 0 }
+    x: i32 = spec.bar.start_x + index * spec.bar.tab_width
+    w: i32 = spec.bar.tab_width
+    if index == spec.bar.count - 1 { w = spec.bar.start_x + spec.bar.group_width - x }
+    if w < 0 { w = 0 }
+    label_gap: i32 = (i32)(5.0 * scale)
+    content_h: i32 = spec.bar.icon_size + label_gap + spec.label_height
+    content_y: i32 = spec.bar.y + (spec.bar.height - content_h) / 2
+    if content_y < spec.bar.y + (i32)(12.0 * scale) {
+        content_y = spec.bar.y + (i32)(12.0 * scale)
+    }
+
+    state_w: i32 = w - (i32)(10.0 * scale)
+    max_state_w: i32 = (i32)(112.0 * scale)
+    if state_w > max_state_w { state_w = max_state_w }
+    if state_w < (i32)(48.0 * scale) { state_w = (i32)(48.0 * scale) }
+    state_h: i32 = spec.bar.height - (i32)(24.0 * scale)
+    if state_h < (i32)(52.0 * scale) { state_h = (i32)(52.0 * scale) }
+
+    paint.bounds.x = (float)x
+    paint.bounds.y = (float)spec.bar.y
+    paint.bounds.width = (float)w
+    paint.bounds.height = (float)spec.bar.height
+    paint.state_bounds.x = (float)(x + (w - state_w) / 2)
+    paint.state_bounds.y = (float)(spec.bar.y + (spec.bar.height - state_h) / 2)
+    paint.state_bounds.width = (float)state_w
+    paint.state_bounds.height = (float)state_h
+    paint.icon_bounds.x = (float)(x + (w - spec.bar.icon_size) / 2)
+    paint.icon_bounds.y = (float)content_y
+    paint.icon_bounds.width = (float)spec.bar.icon_size
+    paint.icon_bounds.height = (float)spec.bar.icon_size
+    paint.label_bounds.x = (float)(x + (i32)(3.0 * scale))
+    paint.label_bounds.y = (float)(content_y + spec.bar.icon_size + label_gap)
+    paint.label_bounds.width = (float)(w - (i32)(6.0 * scale))
+    paint.label_bounds.height = (float)spec.label_height
+
+    styles: StyleStates
+    tone: i32 = spec.active ? ButtonToneAccent : ButtonToneNeutral
+    emphasis: i32 = spec.active ? ButtonEmphasisSoft : ButtonEmphasisGhost
+    state: i32 = ButtonStateNormal
+    if spec.hovered { state = ButtonStateHover }
+    if spec.active { state = ButtonStateSelected }
+    paint.face = ResolveFrame(tone, emphasis, state, ControlSizeMedium,
+        true, false, spec.disabled, false, spec.active,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+    paint.draw_face = spec.active || spec.hovered
+    paint.icon_color = spec.palette.text_muted
+    paint.text_color = spec.palette.text_muted
+    if spec.active {
+        paint.icon_color = paint.face.value.foreground
+        paint.text_color = paint.face.value.foreground
+    }
+    if spec.disabled {
+        paint.icon_color = spec.palette.text_disabled
+        paint.text_color = spec.palette.text_disabled
+    }
+    if !spec.active {
+        paint.face.value.opacity = 0.45
+    }
+    paint.icon_alpha = spec.disabled ? 150 : 255
+    return paint
+}

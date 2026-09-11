@@ -261,14 +261,23 @@ ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
         : GetColor(defaults.text_disabled);
 
     Palette palette = {
+        .background = ColorToInt(theme != NULL ? theme->colors.background : GetThemeBackground()),
         .surface = ColorToInt(surface),
         .surface_raised = ColorToInt(neutral),
+        .surface_sunken = ColorToInt(theme != NULL ? theme->colors.surface_sunken : scheme.surface_container),
+        .overlay = ColorToInt(theme != NULL ? theme->colors.overlay : GetColor(defaults.overlay)),
         .accent = ColorToInt(accent),
         .accent_hover = ColorToInt(accent_hover),
         .accent_pressed = ColorToInt(accent_pressed),
         .on_accent = ColorToInt(theme != NULL ? theme->colors.on_accent : scheme.on_primary),
         .text = ColorToInt(theme != NULL ? theme->colors.text : scheme.on_surface),
+        .text_muted = ColorToInt(theme != NULL ? theme->colors.text_muted : scheme.on_surface_variant),
         .text_disabled = ColorToInt(disabled_text),
+        .icon = ColorToInt(theme != NULL ? theme->colors.icon : scheme.on_surface),
+        .icon_muted = ColorToInt(theme != NULL ? theme->colors.icon_muted : scheme.on_surface_variant),
+        .border = ColorToInt(theme != NULL ? theme->colors.border : scheme.outline),
+        .border_strong = ColorToInt(theme != NULL ? theme->colors.border_strong : scheme.outline),
+        .divider = ColorToInt(theme != NULL ? theme->colors.divider : scheme.outline),
         .danger = ColorToInt(danger),
         .on_danger = ColorToInt(theme != NULL ? theme->colors.on_danger : GetColor(defaults.on_danger)),
         .success = ColorToInt(success),
