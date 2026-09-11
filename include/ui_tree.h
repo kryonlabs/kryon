@@ -362,7 +362,6 @@ void Bevel(int x, int y, int w, int h, Color light, Color dark);
 void Icon(int id, int x, int y, int size, UIIconType icon, Color tint);
 void Picture(PictureProps picture);
 int ButtonNode(ButtonSpec button);
-int IconButton(IconButtonProps button);
 int Href(HrefProps link);
 int TextField(TextFieldProps field);
 int InfoButton(int id, int center_x, int center_y, int diameter);

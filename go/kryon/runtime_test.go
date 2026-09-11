@@ -108,7 +108,7 @@ func TestTextFieldCursorNavigationAndUnicodeInput(t *testing.T) {
 	}
 }
 
-func TestIconButtonToolbarAndMenuBar(t *testing.T) {
+func TestIconActionToolbarAndMenuBar(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 180}).(*runtime)
 	open := int32(-1)
 	menus := []Menu{{

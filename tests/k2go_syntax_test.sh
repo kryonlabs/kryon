@@ -170,7 +170,7 @@ App :: () #ui {
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
     Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
-    IconButton((IconButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .focus_id = 3})
+    Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Href((HrefProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .href = "https://example.com", .font = Text16, .color = GetThemeLink()})
     SetPageTitle("Kryon Page")
     SetPageDescription("Generated page")
@@ -217,11 +217,7 @@ App :: () #ui {
     edit_color: [4] float = {0.2f, 0.4f, 0.6f, 0.8f}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
     tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
-    BeginDisabled(1)
-    BeginScroll((Rectangle){0,0,320,240}, 400, &scroll_off)
     Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
-    EndDisabled()
-    EndScroll()
     Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
     Dropdown(22, Scale(150), Scale(70), Scale(90), Scale(24), choices, 3, &pick)
     frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
@@ -317,6 +313,12 @@ retry:
     if attempts < 3 {
         goto retry
     }
+    }
+}
+
+DisabledSmoke :: () #ui {
+    Disabled scoped_disabled: {
+        Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 120})
     }
 }
 EOF
@@ -478,7 +480,7 @@ grep -q 'Icon(' "$out"
 grep -q 'kryon.Picture(kryon.PictureProps{AssetPath: "tiles/tile.png"' "$out"
 grep -q 'kryon.Paragraph(kryon.ParagraphSpec{Text: "Rich text"' "$out"
 grep -q 'Align: kryon.TextAlignCenter' "$out"
-grep -q 'kryon.IconButton(kryon.IconButtonProps{' "$out"
+grep -q 'kryon.Button(kryon.ButtonProps{' "$out"
 grep -q 'FocusID: 3' "$out"
 grep -q 'kryon.Href(kryon.HrefProps{' "$out"
 grep -q 'kryon.SetPageTitle("Kryon Page")' "$out"
@@ -508,7 +510,7 @@ grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "GB"' "$out"
-grep -q 'kryon.BeginDisabled((1) != 0)' "$out"
+grep -q 'kryon.BeginDisabled(true)' "$out"
 grep -q 'kryon.EndDisabled()' "$out"
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "TB"' "$out"
 grep -q 'Dropdown(22,' "$out"

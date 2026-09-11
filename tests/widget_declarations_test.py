@@ -319,7 +319,9 @@ if (actual !== 17) throw new Error(`block and function invocations disagree: ${a
             "type": (CALLER.replace("value = 3", "value = true"), "type mismatch"),
             "duplicate": (CALLER.replace("value = 3", "value = 3\n        value = 4"), "duplicate widget property or slot"),
             "not_ui": (CALLER.replace("Card first:", "Read first:"), "requires a #ui declaration"),
-            "children": (CALLER.replace("value = 3", "value = 3\n        Read()"), "do not yet accept child content"),
+            "children": (CALLER.replace("Card first:", "Local first:")
+                         .replace("value = 3", "value = 3\n        Read()") + LOCAL,
+                         "do not yet accept child content"),
             "call_type": (CALLER.replace("Card(props)", "Card(3)"), "argument type mismatch"),
             "call_missing": (CALLER.replace("Card(props)", "Card()"), "argument count mismatch"),
             "call_extra": (CALLER.replace("Card(props)", "Card(props, props)"), "argument count mismatch"),
@@ -431,6 +433,13 @@ Layout :: (settings: Settings) #ui {
         bounds = {0, 0, 100, 40}
         Text((TextProps){.text="Child"})
     }
+    Card panel: {
+        bounds = {0, 48, 100, 40}
+    }
+    Card composed_panel: {
+        bounds = {0, 96, 100, 40}
+        Text((TextProps){.text="Panel child"})
+    }
 }
 ''')
         run(*command, str(identity))
@@ -443,8 +452,12 @@ Layout :: (settings: Settings) #ui {
         if target == "js":
             assert generated.count('"Button"') == 1, (target, "leaf button opened a content scope")
             assert generated.count('"BeginButton"') == 1, (target, "composed button lost its content scope")
+            assert generated.count('"Card"') == 1, (target, "leaf card opened a content scope")
+            assert generated.count('"BeginCard"') == 1, (target, "composed card lost its content scope")
         else:
             assert len(re.findall(r"(?<![A-Za-z])Button\(", generated)) == 1, (target, "leaf button opened a content scope")
             assert generated.count("BeginButton(") == 1, (target, "composed button lost its content scope")
+            assert len(re.findall(r"(?<![A-Za-z])Card\(", generated)) == 1, (target, "leaf card opened a content scope")
+            assert generated.count("BeginCard(") == 1, (target, "composed card lost its content scope")
 
 print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go, JavaScript")

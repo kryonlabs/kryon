@@ -145,7 +145,7 @@ omitting it means `true`. Nested blocks inherit an outer disabled state even
 when their own condition is false. Only `when` is accepted as a scope property.
 The shared compiler cleanup pass restores the previous state at the closing
 brace and on `return`, `break`, or `continue` leaving the block. This is authoring
-syntax over the existing `BeginDisabled`/`EndDisabled` runtime operations, not a
+syntax over Kryon's disabled-scope runtime operations, not a
 new public widget or props type. As with explicit `defer`, functions containing
 this scope currently reject raw C/preprocessor regions, `goto`/labels, and
 `guard` exits; use structured control flow and explicit `if`/`return` instead.
@@ -245,7 +245,7 @@ if(IsKeyPressed(KEY_ESCAPE))
 Use canonical widget names when declaring controls:
 
 ```c
-IconButton(button);
+Button(button);
 TextField(field);
 Slider(id, x, y, w, "Volume", 0, 100, &volume, "%", NULL);
 Overlays();
@@ -1399,31 +1399,6 @@ padding is scaled into that area. Unpositioned children fill missing dimensions
 and are centered; explicitly positioned children retain their placement.
 Oversized padding leaves an empty area, and negative padding acts as zero.
 
-#### `IconButton`
-
-```c
-typedef struct {
-    Rectangle bounds;
-    Texture2D icon;
-    UIIconType icon_type;
-    int icon_size;
-    int icon_padding;
-    int focus_id;
-    int disabled;
-    Color background;
-    Color hover_background;
-    Color icon_color;
-    Color border;
-    float radius;
-} IconButton;
-```
-
-#### `UIIconButtonNode`
-
-```c
-int UIIconButtonNode(IconButton button);
-```
-
 #### `Href`
 
 ```c
@@ -2285,13 +2260,6 @@ breakdown to stderr. `UIFontMemoryReport` (Text section) reports per-font
 rasterization stats under the same switch.
 
 ## Utility Functions
-
-### Icon Buttons
-
-```c
-int GetUIIconButtonSize(UIIconSize size);
-int GetUIIconButtonPadding(UIIconSize size);
-```
 
 ### Styled Surfaces
 

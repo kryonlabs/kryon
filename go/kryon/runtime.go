@@ -622,21 +622,6 @@ type ColorButtonProps struct {
 	Disabled bool
 }
 
-type IconButtonProps struct {
-	Bounds          Rectangle
-	Icon            Texture2D
-	IconType        int32
-	IconSize        int32
-	IconPadding     int32
-	FocusID         int32
-	Disabled        bool
-	Background      Color
-	HoverBackground Color
-	IconColor       Color
-	Border          Color
-	Radius          float32
-}
-
 type HrefProps struct {
 	Bounds     Rectangle
 	Text       string
@@ -1344,6 +1329,8 @@ type Runtime interface {
 	Scroll(int32, int32, int32, int32, int32, *int32)
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
+	Card(CardProps) bool
+	BeginCard(CardProps)
 	Button(ButtonProps) bool
 	ReadActivation(bounds Rectangle, id int32, enabled bool) Activation
 	BeginButton(ButtonProps)
@@ -1435,7 +1422,6 @@ type Runtime interface {
 	Icon(id, x, y, size int32, iconType int32, tint Color)
 	Picture(props PictureProps)
 	Paragraph(spec ParagraphSpec, x int32, y *int32)
-	IconButton(props IconButtonProps) bool
 	Href(props HrefProps) bool
 	Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool
 	Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool
@@ -2244,6 +2230,45 @@ func (r *runtime) Button(props ButtonProps) bool {
 	props = r.resolveButtonProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	return r.buttonAt(props)
+}
+
+func cardButtonProps(props CardProps) ButtonProps {
+	return ButtonProps{
+		Bounds:   props.Bounds,
+		ID:       props.ID,
+		Tone:     props.Tone,
+		Emphasis: props.Emphasis,
+		Disabled: props.Disabled,
+		Selected: props.Selected,
+		State:    props.State,
+		Style:    props.Style,
+	}
+}
+
+func (r *runtime) Card(props CardProps) bool {
+	button := r.resolveButtonProps(cardButtonProps(props))
+	button.Bounds = r.layoutRect(button.Bounds)
+	button.Label = ""
+	if !props.Clickable {
+		frame, _ := r.surfaceButtonFrame(button, Rectangle{}, false)
+		r.record(frame)
+		return false
+	}
+	return r.buttonAt(button)
+}
+
+func (r *runtime) BeginCard(props CardProps) {
+	button := r.resolveButtonProps(cardButtonProps(props))
+	button.Bounds = r.layoutRect(button.Bounds)
+	button.Label = ""
+	frame, _ := r.surfaceButtonFrame(button, Rectangle{}, false)
+	r.record(frame)
+	r.layout = append(r.layout, layoutFrame{
+		bounds: frame.Button.ContentBounds,
+		center: true, textFont: frame.Button.Font,
+		textColor: unpackRGBA(frame.Button.Foreground), textColorSet: true,
+		textDisabled: frame.Disabled,
+	})
 }
 
 func (r *runtime) BeginButton(props ButtonProps) {
@@ -4877,7 +4902,22 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 		*y += font + lineGap
 	}
 }
-func (r *runtime) IconButton(props IconButtonProps) bool {
+
+type iconActionProps struct {
+	Bounds          Rectangle
+	Icon            Texture2D
+	IconType        int32
+	IconSize        int32
+	IconPadding     int32
+	FocusID         int32
+	Disabled        bool
+	Background      Color
+	HoverBackground Color
+	IconColor       Color
+	Border          Color
+}
+
+func (r *runtime) iconAction(props iconActionProps) bool {
 	theme := r.theme()
 	props.Bounds = r.layoutRect(props.Bounds)
 	padding := props.IconPadding
@@ -5254,7 +5294,7 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	y := props.Y + (props.Height-actionW)/2
 	for i := 0; i < actionCount; i++ {
 		action := props.Actions[i]
-		if r.IconButton(IconButtonProps{
+		if r.iconAction(iconActionProps{
 			Bounds:          Rectangle{X: float32(x), Y: float32(y), Width: float32(actionW), Height: float32(actionW)},
 			Icon:            action.Icon,
 			IconType:        action.IconType,

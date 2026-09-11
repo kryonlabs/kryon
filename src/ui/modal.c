@@ -3,7 +3,7 @@
 static int
 ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *hover)
 {
-    IconButtonProps props;
+    IconActionSpec props;
     memset(&props, 0, sizeof(props));
     props.bounds = (Rectangle){(float)x, (float)y,
                                (float)(size + padding * 2),
@@ -18,7 +18,7 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
     props.radius = 0.12f;
     if(hover != NULL)
         *hover = 0;
-    return RenderIconButton(props);
+    return RenderIconAction(props);
 }
 
 static int

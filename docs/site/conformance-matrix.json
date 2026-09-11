@@ -2630,7 +2630,6 @@
         "Dropdown",
         "Href",
         "Icon",
-        "IconButton",
         "ImageBox",
         "LabelFrame",
         "Line",
@@ -4785,7 +4784,6 @@
         "Dropdown",
         "Href",
         "Icon",
-        "IconButton",
         "IconLink",
         "ImageBox",
         "LabelFrame",
@@ -5197,7 +5195,6 @@
     "Dropdown": 4,
     "Href": 2,
     "Icon": 2,
-    "IconButton": 2,
     "IconLink": 1,
     "ImageBox": 2,
     "LabelFrame": 2,
@@ -5482,17 +5479,6 @@
     },
     {
       "id": "Icon",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "IconButton",
       "semantic_sources": [],
       "source_count": 2,
       "sources": [

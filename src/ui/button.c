@@ -263,7 +263,7 @@ ui_paint_button(ButtonSpec button, int hovered, int pressed)
 }
 
 int
-RenderIconButton(IconButtonProps button)
+RenderIconAction(IconActionSpec button)
 {
     ButtonSpec spec = {0};
     float scale = (float)Scale(1000) / 1000.0f;

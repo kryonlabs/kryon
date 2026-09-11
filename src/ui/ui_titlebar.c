@@ -38,7 +38,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, int height)
     int button_size = icon_size + padding * 2;
     int x = Scale(12);
     int y = (height - button_size) / 2;
-    IconButtonProps button = {0};
+    IconActionSpec button = {0};
 
     if(y < 0)
         y = 0;
@@ -50,7 +50,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, int height)
     button.icon_color = GetThemeText();
     button.hover_background = Fade(GetThemeText(), 0.12f);
     button.radius = 0.50f;
-    return RenderIconButton(button);
+    return RenderIconAction(button);
 }
 
 static void

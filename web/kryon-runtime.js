@@ -590,6 +590,19 @@ function handleButton(rt, args) {
   return !!consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
 }
 
+function isTruthyProp(args, name) {
+  if (args && typeof args === "object" && !Array.isArray(args))
+    return !!args[name];
+  const text = String(args || "");
+  return new RegExp(`\\b\\.?${name}\\s*(?:=|:)\\s*(?:true|1)\\b`, "i").test(text);
+}
+
+function handleCard(rt, args) {
+  if (!isTruthyProp(args, "clickable") && !isTruthyProp(args, "Clickable"))
+    return false;
+  return handleButton(rt, args);
+}
+
 function handleSlider(rt, state, args) {
   const p = splitTopLevel(String(args || ""));
   const ref = firstRef(args);
@@ -792,8 +805,11 @@ function handleWidget(rt, name, args, state) {
     return false;
   switch (name) {
   case "Button":
-  case "IconButton":
     return handleButton(rt, args);
+  case "Card":
+    return handleCard(rt, args);
+  case "BeginCard":
+    return false;
   case "TextField":
   case "TextArea":
     return handleTextInput(rt, state, args);
@@ -972,9 +988,9 @@ export function CanvasHitTest(canvas, screen) {
 }
 
 const runtimeCallNames = [
-  "Background", "BeginDisabled", "Bevel", "BottomNav", "Button", "CanvasGrid", "Checkbox",
+  "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "Combobox", "Dropdown", "EndCanvas",
-  "EndDisabled", "EndScroll", "Href", "Icon", "IconButton", "LabelFrame", "ListBox",
+  "EndScroll", "Href", "Icon", "LabelFrame", "ListBox",
   "MenuButton", "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
@@ -990,10 +1006,10 @@ for (const name of runtimeCallNames) {
 globalThis.__kryonRuntimeInit = true;
 
 export function Background(...args) { return struct("Background", args); }
-export function BeginDisabled(...args) { return struct("BeginDisabled", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function BottomNav(...args) { return struct("BottomNav", args); }
 export function Button(...args) { return struct("Button", args); }
+export function Card(...args) { return struct("Card", args); }
 export function BeginButton(...args) { return struct("BeginButton", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
@@ -1003,10 +1019,8 @@ export function Column(...args) { return struct("Column", args); }
 export function Combobox(...args) { return struct("Combobox", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
 export function EndCanvas(...args) { return struct("EndCanvas", args); }
-export function EndDisabled(...args) { return struct("EndDisabled", args); }
 export function EndScroll(...args) { return struct("EndScroll", args); }
 export function Href(...args) { return struct("Href", args); }
-export function IconButton(...args) { return struct("IconButton", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function LabelFrame(...args) { return struct("LabelFrame", args); }
 export function ListBox(...args) { return struct("ListBox", args); }

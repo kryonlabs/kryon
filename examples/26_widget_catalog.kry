@@ -214,7 +214,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {x, y + Scale(38), Scale(140), Scale(34)}, .label = "Button", .font = Text16, .id = 101}) {
             action_count += 1
         }
-        if IconButton((IconButtonProps){.bounds = {x + Scale(154), y + Scale(38), Scale(34), Scale(34)}, .icon_type = 1, .focus_id = 102}) {
+        if Button((ButtonProps){.bounds = {x + Scale(154), y + Scale(38), Scale(34), Scale(34)}, .icon_type = 1, .icon_only = true, .id = 102}) {
             action_count += 1
         }
         Href((HrefProps){.bounds = {x + Scale(204), y + Scale(40), Scale(100), Scale(30)}, .text = "Kryon Labs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 103, .color = GetThemeLink(), .hover_color = GetThemeLink()})
@@ -247,11 +247,11 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             action_count += 1
             ShowToast("InvisibleButton clicked")
         }
-        BeginDisabled(1)
-        if Button((ButtonProps){.bounds = {x,y + Scale(310),Scale(180),Scale(34)}, .label = "Disabled button", .id = 205}) {
-            action_count += 1
+        Disabled disabled_action: {
+            if Button((ButtonProps){.bounds = {x,y + Scale(310),Scale(180),Scale(34)}, .label = "Disabled button", .id = 205}) {
+                action_count += 1
+            }
         }
-        EndDisabled()
         Popup disabled_help: {
             bounds = {x + Scale(188),y + Scale(304),Scale(256),Scale(48)}
             id = 206

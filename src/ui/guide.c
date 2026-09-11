@@ -171,7 +171,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     Color scrim;
     Color panel;
     Color panel_border;
-    IconButtonProps icon_props;
+    IconActionSpec icon_props;
 
     g_ui_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
@@ -259,7 +259,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     icon_props.icon = guide.close_icon;
     icon_props.icon_size = Scale(16);
     icon_props.icon_padding = Scale(6);
-    if(RenderIconButton(icon_props)) {
+    if(RenderIconAction(icon_props)) {
         result.closed = 1;
         return result;
     }
@@ -306,7 +306,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
         icon_props.icon = guide.back_icon;
         icon_props.icon_size = Scale(19);
         icon_props.icon_padding = Scale(7);
-        if(RenderIconButton(icon_props)) {
+        if(RenderIconAction(icon_props)) {
             *guide.step = step - 1;
             result.changed = 1;
             result.step = *guide.step;
@@ -322,7 +322,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     icon_props.icon = finish ? guide.done_icon : guide.next_icon;
     icon_props.icon_size = Scale(19);
     icon_props.icon_padding = Scale(7);
-    if(RenderIconButton(icon_props)) {
+    if(RenderIconAction(icon_props)) {
         if(finish) {
             result.finished = 1;
         } else {

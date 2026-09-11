@@ -57,7 +57,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
                 bounds = {0, 0, Scale(280), Scale(40)}
                 gap = Scale(6)
                 Button((ButtonProps){.bounds = {Scale(32), Scale(128), Scale(96), Scale(32)}, .label = "Button",  .font = Text16, .id = 20})
-                IconButton((IconButtonProps){.bounds = {Scale(136), Scale(128), Scale(32), Scale(32)}, .icon_type = 1, .focus_id = 21})
+                Button((ButtonProps){.bounds = {Scale(136), Scale(128), Scale(32), Scale(32)}, .icon_type = 1, .icon_only = true, .id = 21})
                 Href((HrefProps){.bounds = {Scale(176), Scale(130), Scale(80), Scale(28)}, .text = "Docs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 22, .color = GetThemeLink(), .hover_color = GetThemeLink()})
             }
             Stack surface_stack: {

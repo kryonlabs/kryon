@@ -366,11 +366,11 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     static const char *const widgets[] = {
         "Background", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt",
         "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "MenuButton", "SplitButton", "Selectable",
+        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Card", "MenuButton", "SplitButton", "Selectable",
         "CheckboxFlags", "ImageWithBg", "ImageButton",
         "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
         "ColorEdit3",
-        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "IconButton",
+        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton",
         "Href", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
         "PopupMenu", "ContextMenu",
         "Toggle", "Checkbox", "Radio", "Progress", "PlotLines",
@@ -380,7 +380,6 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "InputDouble", "Spinbox", "Combobox",
         "DragDropSource", "DragDropTarget", "MultiSelectList",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
-        "BeginDisabled", "EndDisabled",
         "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
         "PromptDialog", "TitleBar", "TabBar", "TabItemButton",
         "ClosableTabBar", "BottomNav", "TopNav",
@@ -477,7 +476,7 @@ is_layout_widget(const char *name)
 {
     return strcmp(name, "Screen") == 0 || strcmp(name, "Column") == 0 ||
            strcmp(name, "Row") == 0 || strcmp(name, "Stack") == 0 ||
-           strcmp(name, "Button") == 0;
+           strcmp(name, "Button") == 0 || strcmp(name, "Card") == 0;
 }
 
 static const char *
@@ -499,12 +498,12 @@ ui_block_prop_type(const char *widget)
         return "ColumnProps";
     if(strcmp(widget, "Button") == 0)
         return "ButtonProps";
+    if(strcmp(widget, "Card") == 0)
+        return "CardProps";
     if(strcmp(widget, "MenuButton") == 0)
         return "MenuButtonProps";
     if(strcmp(widget, "SplitButton") == 0)
         return "SplitButtonProps";
-    if(strcmp(widget, "IconButton") == 0)
-        return "IconButtonProps";
     if(strcmp(widget, "Href") == 0)
         return "HrefProps";
     if(strcmp(widget, "TextField") == 0)
@@ -723,13 +722,18 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         block->opened = 1;
         return;
     }
-    if(strcmp(block->widget, "Button") == 0) {
-        const char *constructor = closing ? "Button" : "BeginButton";
-        ui_block_format(args, sizeof(args), span, "(ButtonProps){%s}", block->props);
+    if(strcmp(block->widget, "Button") == 0 ||
+       strcmp(block->widget, "Card") == 0) {
+        int is_card = strcmp(block->widget, "Card") == 0;
+        const char *constructor = closing
+            ? block->widget
+            : (is_card ? "BeginCard" : "BeginButton");
+        const char *props_type = is_card ? "CardProps" : "ButtonProps";
+        ui_block_format(args, sizeof(args), span, "(%s){%s}", props_type, block->props);
         ui_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);
         KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call, span);
         if(statement == NULL)
-            die("out of memory parsing Button block");
+            die("out of memory parsing widget block");
         if(closing) {
             statement->declared_widget = 1;
             statement->widget_fallback = 1;

@@ -777,7 +777,7 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
                          char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Button", "IconButton", "Checkbox", "Dropdown", "ListBox",
+        "Button", "Card", "Checkbox", "Dropdown", "ListBox",
         "Radio", "Slider", "TableView", "TextField", "Toggle",
         "BeginTabBar", "BeginTabItem"
     };
@@ -1008,6 +1008,7 @@ static void
 emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const char *args)
 {
     if(strcmp(widget, "Text") == 0 || strcmp(widget, "Button") == 0 ||
+       strcmp(widget, "Card") == 0 ||
        strcmp(widget, "MenuButton") == 0 || strcmp(widget, "SplitButton") == 0)
         emit_initializer_value(f, m, args);
     else

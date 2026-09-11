@@ -175,7 +175,22 @@ int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
-int RenderIconButton(IconButtonProps button);
+typedef struct {
+    Rectangle bounds;
+    Texture2D icon;
+    UIIconType icon_type;
+    int icon_size;
+    int icon_padding;
+    int focus_id;
+    int disabled;
+    Color background;
+    Color hover_background;
+    Color icon_color;
+    Color border;
+    float radius;
+} IconActionSpec;
+
+int RenderIconAction(IconActionSpec action);
 int RenderHref(HrefProps link);
 int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,

@@ -1009,7 +1009,7 @@ test_circle_click_uses_ui_release_path(void)
 static void
 test_icon_button_activation(void)
 {
-    IconButtonProps button = {.bounds = {10, 10, 44, 44}, .icon_size = 24};
+    IconActionSpec button = {.bounds = {10, 10, 44, 44}, .icon_size = 24};
 
     for(int disabled = 0; disabled <= 1; disabled++) {
         button.disabled = disabled;
@@ -1017,12 +1017,12 @@ test_icon_button_activation(void)
         InjectTap(30, 30);
         InjectPump();
         BeginUIFrame(220, 100, 1.0f);
-        check_int("icon button press", RenderIconButton(button), 0);
+        check_int("icon action press", RenderIconAction(button), 0);
         EndUIFrame();
         InjectPump();
         BeginUIFrame(220, 100, 1.0f);
-        check_int("icon button release", RenderIconButton(button), !disabled);
-        check_int("icon button release consumed", RenderIconButton(button), 0);
+        check_int("icon action release", RenderIconAction(button), !disabled);
+        check_int("icon action release consumed", RenderIconAction(button), 0);
         EndUIFrame();
     }
     InjectReset();

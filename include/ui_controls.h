@@ -50,21 +50,6 @@ Style ResolveControlStyle(Style base, ControlStyle control,
 
 typedef struct {
     Rectangle bounds;
-    Texture2D icon;
-    UIIconType icon_type;
-    int icon_size;
-    int icon_padding;
-    int focus_id;
-    int disabled;
-    Color background;
-    Color hover_background;
-    Color icon_color;
-    Color border;
-    float radius;
-} IconButtonProps;
-
-typedef struct {
-    Rectangle bounds;
     const char *text;
     const char *href;
     int font;
@@ -325,9 +310,6 @@ int TextBufferBracketMatch(const char *text, int cursor);
 Rectangle TextAreaGutter(TextAreaProps area, int gutter_width);
 int GetTextAreaSelection(int focus_id, int *start, int *end);
 void SetTextAreaSelection(int focus_id, int anchor, int cursor);
-
-int GetUIIconButtonSize(UIIconSize size);
-int GetUIIconButtonPadding(UIIconSize size);
 
 int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);

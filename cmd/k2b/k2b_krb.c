@@ -2941,7 +2941,7 @@ is_kry_widget_call(const char *name)
     static const char *const names[] = {
         "Background", "Text", "Paragraph", "TextLines",
         "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
-        "IconButton", "Href", "TextField", "TextArea", "Dropdown",
+        "Href", "TextField", "TextArea", "Dropdown",
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
         "Combobox", "Screen", "Column", "Row", "Stack", "End", "Scroll",
         "Canvas", "Modal", "ActionModal", "MessageDialog",

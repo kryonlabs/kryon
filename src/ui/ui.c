@@ -5573,22 +5573,6 @@ SetUIIcons(Texture2D gear_icon, Texture2D x_icon)
     g_ui_x_icon = x_icon;
 }
 
-/* ================================================================
- * ICON BUTTONS
- * ================================================================ */
-
-int
-GetUIIconButtonSize(UIIconSize size)
-{
-    return GetUIIconBtnSize((int)size);
-}
-
-int
-GetUIIconButtonPadding(UIIconSize size)
-{
-    return GetUIIconBtnPadding((int)size);
-}
-
 void
 DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint)
 {

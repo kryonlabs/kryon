@@ -2704,20 +2704,6 @@ ButtonNode(ButtonSpec button)
 }
 
 int
-IconButton(IconButtonProps button)
-{
-    NodeId node;
-    int clicked;
-
-    node = ui_tree_add(button.focus_id, UI_WIDGET_BUTTON_NODE, button.bounds,
-                       &button);
-    clicked = RenderIconButton(button);
-    ui_tree_note_build_activation(clicked);
-    ui_tree_mark_painted_immediate(node);
-    return clicked;
-}
-
-int
 Href(HrefProps link)
 {
     if(link.bounds.height <= 0)

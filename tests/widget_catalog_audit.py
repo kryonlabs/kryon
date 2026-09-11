@@ -138,7 +138,7 @@ def run_actions():
 
 def run_buttons():
     category(1)
-    for name,x,y in [('Button',320,137),('IconButton',421,137),('Small Button',310,490),('ArrowButton',408,490),('InvisibleButton',760,538)]:
+    for name,x,y in [('Button',320,137),('Icon Button',421,137),('Small Button',310,490),('ArrowButton',408,490),('InvisibleButton',760,538)]:
      check(name,'clicks',lambda x=x,y=y:click(x,y))
     before=state()['clicks'];check('Disabled button','clicks',lambda:click(320,599),before)
     category(2)

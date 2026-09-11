@@ -338,13 +338,13 @@ func Checkbox(id, x, y int32, label string, value *int32) bool {
 func Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
 	return active().Dropdown(id, x, y, w, h, options, rest...)
 }
-func Column(props ColumnProps)   { active().Column(props) }
-func Row(props ColumnProps)      { active().Row(props) }
-func Stack(props ColumnProps)    { active().Stack(props) }
-func Screen(props ColumnProps)   { active().Screen(props) }
-func Grid(props GridProps)       { active().Grid(props) }
-func End()                       { active().End() }
-func SetPageTitle(title string)  { active().SetPageTitle(title) }
+func Column(props ColumnProps)  { active().Column(props) }
+func Row(props ColumnProps)     { active().Row(props) }
+func Stack(props ColumnProps)   { active().Stack(props) }
+func Screen(props ColumnProps)  { active().Screen(props) }
+func Grid(props GridProps)      { active().Grid(props) }
+func End()                      { active().End() }
+func SetPageTitle(title string) { active().SetPageTitle(title) }
 func SetPageDescription(description string) {
 	active().SetPageDescription(description)
 }
@@ -384,8 +384,9 @@ func Picture(props PictureProps) { active().Picture(props) }
 func Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	active().Paragraph(spec, x, y)
 }
-func IconButton(props IconButtonProps) bool { return active().IconButton(props) }
-func Href(props HrefProps) bool             { return active().Href(props) }
+func Card(props CardProps) bool { return active().Card(props) }
+func BeginCard(props CardProps) { active().BeginCard(props) }
+func Href(props HrefProps) bool { return active().Href(props) }
 func Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool {
 	return active().Slider(id, x, y, w, label, min, max, value, rest...)
 }

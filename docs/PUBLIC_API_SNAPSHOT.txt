@@ -1399,8 +1399,6 @@ include/ui_controls.h function GetTextAreaSelection
 include/ui_controls.h function GetThemeMetrics
 include/ui_controls.h function GetThemeMetricsForThemeStyle
 include/ui_controls.h function GetThemeScheme
-include/ui_controls.h function GetUIIconButtonPadding
-include/ui_controls.h function GetUIIconButtonSize
 include/ui_controls.h function MergeStyle
 include/ui_controls.h function QueueTextInputBackspace
 include/ui_controls.h function QueueTextInputCodepoint
@@ -2028,7 +2026,6 @@ include/ui_tree.h function GuideOverlay
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Href
 include/ui_tree.h function Icon
-include/ui_tree.h function IconButton
 include/ui_tree.h function IconLink
 include/ui_tree.h function IconSliderPopup
 include/ui_tree.h function ImageBox
