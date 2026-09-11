@@ -54,7 +54,7 @@ render_column(int x, int fancy)
 
     Text((TextProps){.bounds = {x, 628, 260, 24}, .text = "Dropdown",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
-    Dropdown(8300 + fancy, x, 660, 260, 44, items, 3, &selected);
+    DropdownLegacy(8300 + fancy, x, 660, 260, 44, items, 3, &selected);
 }
 
 int

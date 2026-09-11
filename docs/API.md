@@ -1590,18 +1590,19 @@ not introduce a second renderer; it delegates the complete header behavior to
 
 #### Dropdown
 
-`Combobox` is the props-based implementation. Positional `Dropdown` and
+`Dropdown` is the props-based implementation. `Combobox`, `DropdownLegacy`, and
 `DropdownOptions` adapt their arguments to the same implementation. Opening or
 reselecting the current option returns no change. Native C and Go share popup
 placement, disabled-row navigation, dismissal, and row-based scrolling policy.
 
 ```c
-int Dropdown(int id, int x, int y, int w, int h,
-                            const char **options, int option_count, int *selected_index);
+int Dropdown(DropdownProps dropdown);
+int DropdownLegacy(int id, int x, int y, int w, int h,
+                   const char **options, int option_count, int *selected_index);
 void Overlays(void);
 ```
 
-In native C and Go, a focused, enabled `Dropdown`/`Combobox` with a positive ID
+In native C and Go, a focused, enabled `Dropdown` with a positive ID
 opens with Enter, keypad Enter, Space, or Down. The opening key does not move
 the highlight or commit a selection. Focused controls display a focus indicator;
 disabled controls neither open from the keyboard nor display that indicator.
@@ -1613,12 +1614,12 @@ from selection. Text, icons, padding, and gaps use resolved Button metrics.
 See [Widget styling](WIDGET_STYLING.md) for the complete role mapping.
 Labels are clipped before the chevron and selection indicator. Theme color
 changes apply to both dropdowns and buttons without a separate dropdown palette.
-`DropdownOptions` accepts `DropdownOption` records with `label`, optional
-`font_name`, `icon_type`, `disabled`, and `separator_before`. `ComboboxProps.items`
-accepts the same records (with `option_count` in C); Go uses `Items`. When supplied,
-these replace the plain string options. Disabled rows cannot be clicked or
+`DropdownProps.items` accepts `DropdownOption` records with `label`, optional
+`font_name`, `icon_type`, `disabled`, and `separator_before` (with
+`option_count` in C); Go uses `Items`. When supplied, these replace the plain
+string options. Disabled rows cannot be clicked or
 committed and keyboard navigation skips them; separators precede their row.
-An open `Dropdown`/`Combobox` supports Up/Down to move the
+An open `Dropdown` supports Up/Down to move the
 highlight, Home/End to jump to the first/last option, and Enter to commit and
 close. Escape closes without committing the highlight. Navigation clamps to
 the current option list. Both native runtimes constrain the popup vertically,

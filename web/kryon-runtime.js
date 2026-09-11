@@ -640,6 +640,30 @@ function handleCheckbox(rt, state, args) {
 }
 
 function handleDropdown(rt, state, args) {
+  if (String(args || "").includes("DropdownProps") ||
+      String(args || "").includes("ComboboxProps")) {
+    const id = propNumber(args, "id", 0);
+    const ref = propRef(args, "selected_index");
+    const bounds = parseBounds(args);
+    const count = propNumber(args, "option_count", 0);
+    const tap = consumeFirstEvent(rt, (ev) =>
+      ev.type === "tap" &&
+      (hit(bounds, ev.x, ev.y) ||
+       (rt.input.dropdownOpen === id && hit({ x: bounds.x, y: bounds.y + bounds.height, width: bounds.width, height: bounds.height * count }, ev.x, ev.y))));
+    if (!tap || !state || !ref)
+      return false;
+    if (hit(bounds, tap.x, tap.y)) {
+      rt.input.dropdownOpen = rt.input.dropdownOpen === id ? null : id;
+      return true;
+    }
+    if (rt.input.dropdownOpen === id) {
+      const index = Math.max(0, Math.floor((tap.y - (bounds.y + bounds.height)) / Math.max(1, bounds.height)));
+      state[ref] = Math.min(index, Math.max(0, count - 1));
+      rt.input.dropdownOpen = null;
+      return true;
+    }
+    return false;
+  }
   const p = splitTopLevel(String(args || ""));
   const id = numberValue(p[0]);
   const ref = firstRef(args);
@@ -961,6 +985,16 @@ export function GetThemeMetrics() {
     shadowOffsetY: 2, shadowBlur: 8, disabledOpacity: 0.58,
     transitionFastMS: 80, transitionNormalMS: 140,
   };
+}
+
+let fancyEffectsEnabled = true;
+
+export function SetFancyEffectsEnabled(enabled) {
+  fancyEffectsEnabled = !!enabled;
+}
+
+export function FancyEffectsEnabled() {
+  return fancyEffectsEnabled ? 1 : 0;
 }
 
 export function BeginFrameBox(bounds) {

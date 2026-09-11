@@ -38,17 +38,17 @@ DropdownExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds = {32,28,840,40}, .text = "Dropdowns", .font = Text32, .color = GetThemeText()})
         Text((TextProps){.bounds = {32,78,840,44}, .text = "Choose a value. Use Tab and arrow keys, Enter to select, or Escape to close.", .font = Text16, .color = GetThemeText()})
         Text((TextProps){.bounds = {32,146,380,30}, .text = "Theme", .font = Text20, .color = GetThemeText()})
-        if Combobox((ComboboxProps){.bounds = {32,184,380,44}, .id = 27001,
+        if Dropdown((DropdownProps){.bounds = {32,184,380,44}, .id = 27001,
             .items = modes, .option_count = 3, .selected_index = &mode}) {
             if mode == 0 { SetThemeMode(THEME_MODE_LIGHT) }
             if mode == 1 { SetThemeMode(THEME_MODE_DARK) }
             if mode == 2 { SetThemeMode(THEME_MODE_SYSTEM) }
         }
         Text((TextProps){.bounds = {476,146,380,30}, .text = "Workflow", .font = Text20, .color = GetThemeText()})
-        Combobox((ComboboxProps){.bounds = {476,184,380,44}, .id = 27002,
+        Dropdown((DropdownProps){.bounds = {476,184,380,44}, .id = 27002,
             .items = workflows, .option_count = 5, .selected_index = &workflow})
         Text((TextProps){.bounds = {32,322,380,30}, .text = "Unavailable control", .font = Text20, .color = GetThemeText()})
-        Combobox((ComboboxProps){.bounds = {32,360,380,44}, .id = 27003,
+        Dropdown((DropdownProps){.bounds = {32,360,380,44}, .id = 27003,
             .items = workflows, .option_count = 5, .selected_index = &unavailable, .disabled = 1})
         Text((TextProps){.bounds = {476,322,380,30}, .text = "Matching button", .font = Text20, .color = GetThemeText()})
         if Button((ButtonProps){.bounds = {476,360,380,44}, .id = 27004,

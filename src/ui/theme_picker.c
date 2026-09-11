@@ -182,7 +182,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
     if(show_mode) {
         RenderText(ui_theme_settings_text(settings.mode_label, "theme_mode_label", "Mode"),
                    settings.x, y, font, c_text);
-        if(Combobox((ComboboxProps){.id = settings.id_base + 1, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
+        if(Dropdown((DropdownProps){.id = settings.id_base + 1, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = mode_options, .option_count = mode_count, .selected_index = &mode_index})) {
             *settings.theme_mode = mode_values[ui_clampi(mode_index, 0, mode_count - 1)];
             if(state != NULL)
@@ -212,7 +212,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
     }
     RenderText(ui_theme_settings_text(settings.palette_label, "theme_color_label", "Color"),
                settings.x, y, font, c_text);
-    if(Combobox((ComboboxProps){.id = settings.id_base + 2, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
+    if(Dropdown((DropdownProps){.id = settings.id_base + 2, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = theme_options, .option_count = palette_count, .selected_index = state != NULL ? &state->palette_index : &palette_index})) {
         if(state != NULL)
             state->draw_palette_menu = 2;
@@ -243,7 +243,7 @@ DrawThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state)
         }
         RenderText(ui_theme_settings_text(settings.style_label, "theme_style_label", "Style"),
                    settings.x, y, font, c_text);
-        if(Combobox((ComboboxProps){.id = settings.id_base + 3, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
+        if(Dropdown((DropdownProps){.id = settings.id_base + 3, .bounds = {settings.x, y + font + label_gap, settings.w, row_h},
             .options = style_options, .option_count = 3, .selected_index = &style_index})) {
             *settings.theme_style = style_values[ui_clampi(style_index, 0, 2)];
             if(state != NULL)

@@ -2782,12 +2782,18 @@ Icon(int id, int x, int y, int size, UIIconType icon, Color tint)
 }
 
 int
-Dropdown(int id, int x, int y, int w, int h,
+Dropdown(DropdownProps dropdown)
+{
+    ui_tree_add(dropdown.id, UI_WIDGET_DROPDOWN_NODE, dropdown.bounds,
+                dropdown.selected_index);
+    return ui_dropdown(dropdown);
+}
+
+int
+DropdownLegacy(int id, int x, int y, int w, int h,
                const char **options, int option_count, int *selected_index)
 {
-    ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
-                selected_index);
-    return ui_dropdown((ComboboxProps){.id = id, .bounds = {x, y, w, h},
+    return Dropdown((DropdownProps){.id = id, .bounds = {x, y, w, h},
         .options = options, .option_count = option_count, .selected_index = selected_index});
 }
 
@@ -2796,9 +2802,7 @@ DropdownOptions(int id, int x, int y, int w, int h,
                 const DropdownOption *options, int option_count,
                 int *selected_index)
 {
-    ui_tree_add(id, UI_WIDGET_DROPDOWN_NODE, (Rectangle){x, y, w, h},
-                selected_index);
-    return ui_dropdown((ComboboxProps){.id = id, .bounds = {x, y, w, h},
+    return Dropdown((DropdownProps){.id = id, .bounds = {x, y, w, h},
         .items = options, .option_count = option_count, .selected_index = selected_index});
 }
 
@@ -3277,8 +3281,7 @@ Spinbox(SpinboxProps spinbox)
 int
 Combobox(ComboboxProps combo)
 {
-    ui_tree_add(combo.id, UI_WIDGET_DROPDOWN_NODE, combo.bounds, &combo);
-    return ui_dropdown(combo);
+    return Dropdown(combo);
 }
 
 void

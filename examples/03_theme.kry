@@ -88,7 +88,8 @@ ControlDemo :: (x: int, y: int, w: int) {
                                   &text_cursor, &text_focused, 80, Text16, 303,
                                   field_style, NULL, NULL, NULL})
     y += Scale(70)
-    Dropdown(304, x, y, w, Scale(44), options, 3, &combo_index)
+    Dropdown((DropdownProps){.bounds = {x, y, w, Scale(44)}, .id = 304,
+        .options = options, .option_count = 3, .selected_index = &combo_index})
     y += Scale(72)
     Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "", nil)
     y += Scale(72)

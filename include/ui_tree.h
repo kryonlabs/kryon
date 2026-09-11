@@ -367,7 +367,8 @@ int TextField(TextFieldProps field);
 int InfoButton(int id, int center_x, int center_y, int diameter);
 void IconLink(int id, int x, int y, int icon_size, Texture2D icon,
                     const char *url);
-int Dropdown(int id, int x, int y, int w, int h,
+int Dropdown(DropdownProps dropdown);
+int DropdownLegacy(int id, int x, int y, int w, int h,
                    const char **options, int option_count,
                    int *selected_index);
 int DropdownOptions(int id, int x, int y, int w, int h,

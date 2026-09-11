@@ -222,7 +222,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         TextArea((TextAreaProps){.bounds = {right, y + Scale(86), Scale(300), Scale(76)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = &area_focused, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 105, .placeholder = "Notes", .syntax = SyntaxNone})
 
         y += Scale(190)
-        Dropdown(106, x, y, Scale(180), Scale(32), choices, 3, &picked)
+        Dropdown((DropdownProps){.bounds = {x, y, Scale(180), Scale(32)}, .id = 106,
+            .options = choices, .option_count = 3, .selected_index = &picked})
         Slider(107, x, y + Scale(46), Scale(250), "Slider", 0, 100, &slider_value, "%", nil)
         Toggle(108, x, y + Scale(92), Scale(130), Scale(30), &toggle_value, "Off", "On")
         Checkbox(109, x, y + Scale(140), "Checkbox", &checkbox_value)
@@ -230,7 +231,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             picked = 1
         }
         Spinbox((SpinboxProps){.bounds = {right, y + Scale(44), Scale(140), Scale(32)}, .id = 110, .min = 0, .max = 100, .step = 1, .value = &slider_value, .value_text = nil, .wrap = 0})
-        Combobox((ComboboxProps){{right, y + Scale(92), Scale(180), Scale(32)}, 111, choices, 3, &picked, 0})
+        Dropdown((DropdownProps){.bounds = {right, y + Scale(92), Scale(180), Scale(32)}, .id = 111,
+            .options = choices, .option_count = 3, .selected_index = &picked})
         Progress((ProgressBarProps){{right, y + Scale(140), Scale(220), Scale(24)}, 0, 100, slider_value, "Progress"})
         ColorPicker((Rectangle){right + Scale(240), y, Scale(120), Scale(120)}, &color_value)
 

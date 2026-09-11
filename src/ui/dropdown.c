@@ -298,7 +298,7 @@ get_or_create_dropdown_state(int id)
 }
 
 int
-ui_dropdown(ComboboxProps props)
+ui_dropdown(DropdownProps props)
 {
     int id = props.id;
     int x = (int)props.bounds.x;

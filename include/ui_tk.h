@@ -360,7 +360,9 @@ typedef struct {
     int *selected_index;
     int disabled;
     const DropdownOption *items;
-} ComboboxProps;
+} DropdownProps;
+
+typedef DropdownProps ComboboxProps;
 
 typedef enum {
     ComboFlagsNone = 0,

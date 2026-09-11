@@ -44,7 +44,7 @@ step(void)
 {
     InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    Dropdown(DD_ID, 100, 560, 400, 44,
+    DropdownLegacy(DD_ID, 100, 560, 400, 44,
              g_options, OPT_COUNT, &g_selected);
     EndUIFrame();
 }

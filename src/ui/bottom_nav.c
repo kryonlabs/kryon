@@ -318,7 +318,7 @@ RenderBottomNavConfigModal(BottomNavConfigProps modal)
                                      ? modal.slot_labels[i]
                                      : "";
         RenderText(slot_label, frame.content_x, y, GetFontSize(), c_text);
-        if(Combobox((ComboboxProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
+        if(Dropdown((DropdownProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
             .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
             modal.routes[i] = modal.options[selected[i]].route;

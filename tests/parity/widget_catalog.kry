@@ -78,13 +78,15 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
 
         TextField((TextFieldProps){.bounds = {Scale(350), Scale(92), Scale(160), Scale(28)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
         TextArea((TextAreaProps){.bounds = {Scale(350), Scale(128), Scale(180), Scale(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
-        Dropdown(32, Scale(350), Scale(198), Scale(160), Scale(28), choices[:], 3, &pick)
+        Dropdown((DropdownProps){.bounds = {Scale(350), Scale(198), Scale(160), Scale(28)}, .id = 32,
+            .options = choices[:], .option_count = 3, .selected_index = &pick})
         Slider(33, Scale(350), Scale(238), Scale(160), "Slider", 0, 100, &slider_value, "%", nil)
         Toggle(34, Scale(350), Scale(274), Scale(120), Scale(28), &toggle_value, "Off", "On")
         Checkbox(35, Scale(350), Scale(314), "Check", &checkbox_value)
         Radio((RadioButtonProps){{Scale(350), Scale(350), Scale(120), Scale(24)}, "Radio", 1, pick == 1, 0})
         Spinbox((SpinboxProps){{Scale(350), Scale(382), Scale(120), Scale(28)}, 36, 0, 100, 1, &slider_value, 0, ""})
-        Combobox((ComboboxProps){{Scale(350), Scale(418), Scale(160), Scale(28)}, 37, choices[:], 3, &pick, 0})
+        Dropdown((DropdownProps){.bounds = {Scale(350), Scale(418), Scale(160), Scale(28)}, .id = 37,
+            .options = choices[:], .option_count = 3, .selected_index = &pick})
         Progress((ProgressBarProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})
 
         ColorPicker((ColorPickerProps){{Scale(540), Scale(92), Scale(42), Scale(42)}, 38, &pick, 0})

@@ -75,7 +75,7 @@ RenderToolbar(ToolbarProps toolbar)
             dropdown_w = dropdown_available_w;
         if(dropdown_w < 0)
             dropdown_w = 0;
-        if(Combobox((ComboboxProps){.id = toolbar.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+        if(Dropdown((DropdownProps){.id = toolbar.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
             .options = toolbar.options, .option_count = toolbar.option_count, .selected_index = toolbar.selected_index}))
             result.selected_menu_item = toolbar.selected_index != NULL
                                             ? *toolbar.selected_index

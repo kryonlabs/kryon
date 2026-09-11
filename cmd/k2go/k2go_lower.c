@@ -91,7 +91,7 @@ is_runtime_go_type(const char *type)
 		"InvisibleButtonProps", "TextProps", "SeparatorTextProps", "DragDropSourceProps",
 		"DragDropTargetProps", "MultiSelectListProps", "ArrowButtonProps",
 		"ColorEditProps", "ColorButtonProps",
-		"SpinboxProps", "DropdownOption", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
+		"SpinboxProps", "DropdownOption", "DropdownProps", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
 		"LabelFrameProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
         "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
@@ -1066,6 +1066,8 @@ props_field_at(const KirModule *module, const char *type, int index,
                           "Disabled", "ValueText", "Wrap"}},
         {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
                             "SeparatorBefore"}},
+        {"DropdownProps", {"Bounds", "ID", "Options", "OptionCount",
+                           "SelectedIndex", "Disabled", "Items"}},
         {"ComboboxProps", {"Bounds", "ID", "Options", "OptionCount",
                            "SelectedIndex", "Disabled", "Items"}},
         {"ComboProps", {"Bounds", "PopupSize", "Preview", "ID", "Open",
@@ -1261,7 +1263,8 @@ bool_prop_field(const char *field)
 static int
 slice_prop_field(const char *type, const char *field)
 {
-    if(strcmp(type, "ComboboxProps") == 0 &&
+    if((strcmp(type, "DropdownProps") == 0 ||
+        strcmp(type, "ComboboxProps") == 0) &&
        (strcmp(field, "Options") == 0 || strcmp(field, "Items") == 0))
         return 1;
     if((strcmp(type, "ListBoxProps") == 0 ||

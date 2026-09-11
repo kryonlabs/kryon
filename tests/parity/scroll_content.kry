@@ -102,13 +102,13 @@ scroll_content_frame :: () #ui {
     Scroll {
         bounds = {240,180,180,28}
         content_height = 28
-        Combobox((ComboboxProps){.bounds = {240,180,160,28}, .id = 996, .items = overlay_items, .option_count = 3, .selected_index = &overlay_selected})
+        Dropdown((DropdownProps){.bounds = {240,180,160,28}, .id = 996, .items = overlay_items, .option_count = 3, .selected_index = &overlay_selected})
     }
     Rect(240,212,160,56,RED,BLANK)
     if edge_combo_visible {
-        Combobox((ComboboxProps){.bounds = {620,410,160,28}, .id = 24002, .options = overlay_options, .option_count = 2, .selected_index = &edge_combo_selected})
+        Dropdown((DropdownProps){.bounds = {620,410,160,28}, .id = 24002, .options = overlay_options, .option_count = 2, .selected_index = &edge_combo_selected})
     }
-    Combobox((ComboboxProps){.bounds = {10,440,160,28}, .id = 24001, .options = long_combo_options, .option_count = 20, .selected_index = &long_combo_selected})
+    Dropdown((DropdownProps){.bounds = {10,440,160,28}, .id = 24001, .options = long_combo_options, .option_count = 20, .selected_index = &long_combo_selected})
     rotated_columns: [2] const char * = {"Angled label","Second"}
     rotated_cells: [2] const char * = {"Cell","Cell"}
     rotated_rows: [1] TableRow = {{.cells = rotated_cells, .cell_count = 2}}

@@ -232,7 +232,7 @@ main(void)
                                    .max_codepoints = 63,
                                    .font = Text16,
                                    .focus_id = 1002});
-        Dropdown(1003, 18, 140, 150, 34, options, 3, &selected);
+        DropdownLegacy(1003, 18, 140, 150, 34, options, 3, &selected);
         Slider(1004, 18, 188, 160, "Value", 0, 100, &slider, "%", NULL);
         Checkbox(1005, 198, 188, "Checked", &checked);
         EndTree();

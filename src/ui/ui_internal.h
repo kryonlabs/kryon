@@ -225,7 +225,7 @@ int RenderToggleSwitch(int x, int y, int w, int h, int *value,
 int RenderCheckboxToggle(int x, int y, const char *label, int *value);
 int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
-int ui_dropdown(ComboboxProps props);
+int ui_dropdown(DropdownProps props);
 void RenderInfoRows(InfoRowsProps rows);
 int RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w);
 int RenderSectionLabel(SectionLabelProps label, int x, int y);

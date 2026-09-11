@@ -306,8 +306,8 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
         snprintf(dst, (size_t)cap,
                  "\n    options_%d: [3] const char* = {\"One\", \"Two\", \"Three\"}\n"
                  "    selected_%d: int = 0\n"
-                 "    Dropdown(%d, Scale(%d), Scale(%d), Scale(180), Scale(34), options_%d, 3, &selected_%d)\n",
-                 id, id, 9200 + (id % 1000), x, y, id, id);
+                 "    Dropdown((DropdownProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(34)}, .id = %d, .options = options_%d, .option_count = 3, .selected_index = &selected_%d})\n",
+                 id, id, x, y, 9200 + (id % 1000), id, id);
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Stack((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"

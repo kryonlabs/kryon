@@ -251,6 +251,8 @@ export const THEME_SOURCE_SYSTEM: number;
 export const THEME_SOURCE_APP: number;
 export const THEME_STYLE_SYSTEM: number;
 export const THEME_STYLE_DEFAULT: number;
+export function SetFancyEffectsEnabled(enabled: unknown): void;
+export function FancyEffectsEnabled(): number;
 
 export function Background(...args: unknown[]): unknown;
 export function Bevel(...args: unknown[]): unknown;

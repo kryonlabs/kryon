@@ -158,7 +158,8 @@ App :: () #ui {
     }
     tab = TabBar((TabBarProps){.bounds = {Scale(4), Scale(4), Scale(200), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .id = 140})
     Checkbox(0, Scale(4), Scale(60), "Check", &check)
-    Dropdown(1, Scale(4), Scale(80), Scale(120), Scale(30), "a;b;c", &pick)
+    dropdown_options: [3] const char * = {"a","b","c"}
+    Dropdown((DropdownProps){.bounds = {Scale(4), Scale(80), Scale(120), Scale(30)}, .id = 1, .options = dropdown_options, .option_count = 3, .selected_index = &pick})
     Progress((ProgressBarProps){{Scale(4), Scale(120), Scale(100), Scale(10)}, 0, 100, query_jobs(0, 10), ""})
     Scroll(Scale(4), Scale(8), Scale(200), Scale(100), Scale(400), &scroll_off)
     DrawCircleV((Vector2){Scale(120), Scale(120)}, Scale(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
@@ -219,7 +220,7 @@ App :: () #ui {
     tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
-    Dropdown(22, Scale(150), Scale(70), Scale(90), Scale(24), choices, 3, &pick)
+    Dropdown((DropdownProps){.bounds = {Scale(150), Scale(70), Scale(90), Scale(24)}, .id = 22, .options = choices, .option_count = 3, .selected_index = &pick})
     frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
     packed: Rectangle = FramePack(&frame_box, SideTop, Scale(24))
     layout_grid: GridFrame = {frame_box.bounds, 2, 2, Scale(4), Scale(4), Scale(0), Scale(0)}
@@ -240,7 +241,7 @@ App :: () #ui {
     Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Radio((RadioButtonProps){{Scale(4), Scale(270), Scale(120), Scale(24)}, "one", 1, pick == 1, 0})
     Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
-    Combobox((ComboboxProps){{Scale(240), Scale(270), Scale(70), Scale(28)}, 25, choices, 3, &pick, 0})
+    Dropdown((DropdownProps){.bounds = {Scale(240), Scale(270), Scale(70), Scale(28)}, .id = 25, .options = choices, .option_count = 3, .selected_index = &pick})
     LabelFrame((LabelFrameProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
     Notebook((NotebookProps){.bounds = {Scale(140), Scale(300), Scale(120), Scale(50)}, .tabs = choices[:], .selected_index = &pick})
     ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
@@ -248,7 +249,7 @@ App :: () #ui {
     Collapsible((CollapsibleProps){.bounds = {Scale(4), Scale(360), Scale(120), Scale(30)}, .label = "sect", .open = NULL})
     SetThemeDarkMode(1)
     SetCurrentTheme(0, 1)
-    Dropdown(11, Scale(4), Scale(210), Scale(120), Scale(24), choices, 3, &pick)
+    Dropdown((DropdownProps){.bounds = {Scale(4), Scale(210), Scale(120), Scale(24)}, .id = 11, .options = choices, .option_count = 3, .selected_index = &pick})
     Progress((ProgressBarProps){{Scale(140), Scale(210), Scale(100), Scale(10)}, 0, 100, nums[0] + scalar, ""})
     PlotLines((PlotProps){.bounds = {Scale(250), Scale(210), Scale(100), Scale(40)}, .label = "Lines", .values = plot_values, .value_count = 4, .scale_min = 0.0f, .scale_max = 1.0f})
     PlotHistogram((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1})
@@ -513,7 +514,7 @@ grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "GB"' "
 grep -q 'kryon.BeginDisabled(true)' "$out"
 grep -q 'kryon.EndDisabled()' "$out"
 grep -q 'kryon.Button(kryon.ButtonProps{Bounds: kryon.Rectangle{.*Label: "TB"' "$out"
-grep -q 'Dropdown(22,' "$out"
+grep -q 'kryon.Dropdown(kryon.DropdownProps{.*ID: 22.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kryon.BeginFrameBox(kryon.Rectangle{' "$out"
 grep -q 'kryon.FramePack(&frame_box, kryon.SideTop' "$out"
 grep -q 'kryon.GridCell(layout_grid, 1, 1, 1, 1)' "$out"
@@ -527,7 +528,7 @@ grep -q 'kryon.TextField(kryon.TextFieldProps{' "$out"
 grep -q 'kryon.TextArea(kryon.TextAreaProps{.*Syntax: kryon.SyntaxNone' "$out"
 grep -q 'kryon.Radio(kryon.RadioButtonProps{.*Label: "one".*Checked: st.Pick == 1' "$out"
 grep -q 'kryon.Spinbox(kryon.SpinboxProps{.*Value: &st.SliderVal' "$out"
-grep -q 'kryon.Combobox(kryon.ComboboxProps{.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
+grep -q 'kryon.Dropdown(kryon.DropdownProps{.*ID: 25.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kryon.LabelFrame(kryon.LabelFrameProps{' "$out"
 grep -q 'kryon.Notebook(kryon.NotebookProps{' "$out"
 grep -q 'kryon.ListBox(kryon.ListBoxProps{' "$out"
@@ -588,7 +589,7 @@ grep -q 'SetCurrentTheme(0, 1)' "$out"
 grep -q 'var scalar int32 = 5' "$out"
 grep -q 'var nums = \[4\]int32{1,2,3,4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'kryon.Dropdown(11, kryon.Scale(4), kryon.Scale(210), kryon.Scale(120), kryon.Scale(24), choices\[:\], 3, &st.Pick)' "$out"
+grep -q 'kryon.Dropdown(kryon.DropdownProps{.*ID: 11.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'retry:$' "$out"
 grep -q 'goto retry' "$out"
 

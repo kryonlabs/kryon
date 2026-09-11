@@ -123,7 +123,7 @@ RenderReturnDropdownTitleBar(Texture2D return_icon,
     RenderTitleBarBackground(height);
     clicked = RenderTitleBarReturnButton(return_icon, height);
     if(!dropdown.disabled)
-        Combobox((ComboboxProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+        Dropdown((DropdownProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
             .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
     return clicked;
 }

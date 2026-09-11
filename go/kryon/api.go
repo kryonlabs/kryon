@@ -335,9 +335,7 @@ func InputDouble(props InputDoubleProps) bool     { return active().InputDouble(
 func Checkbox(id, x, y int32, label string, value *int32) bool {
 	return active().Checkbox(id, x, y, label, value)
 }
-func Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
-	return active().Dropdown(id, x, y, w, h, options, rest...)
-}
+func Dropdown(args ...any) bool { return active().Dropdown(args...) }
 func Column(props ColumnProps)  { active().Column(props) }
 func Row(props ColumnProps)     { active().Row(props) }
 func Stack(props ColumnProps)   { active().Stack(props) }

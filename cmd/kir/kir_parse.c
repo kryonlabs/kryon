@@ -518,6 +518,8 @@ ui_block_prop_type(const char *widget)
         return "ProgressBarProps";
     if(strcmp(widget, "Spinbox") == 0)
         return "SpinboxProps";
+    if(strcmp(widget, "Dropdown") == 0)
+        return "DropdownProps";
     if(strcmp(widget, "Combobox") == 0)
         return "ComboboxProps";
     if(strcmp(widget, "LabelFrame") == 0)

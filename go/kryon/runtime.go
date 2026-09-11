@@ -1120,6 +1120,8 @@ type ComboboxProps struct {
 	Disabled      bool
 }
 
+type DropdownProps = ComboboxProps
+
 type LabelFrameProps struct {
 	Bounds Rectangle
 	Title  string
@@ -1372,7 +1374,7 @@ type Runtime interface {
 	InputInt(InputIntProps) bool
 	InputDouble(InputDoubleProps) bool
 	Checkbox(int32, int32, int32, string, *int32) bool
-	Dropdown(id, x, y, w, h int32, options any, rest ...any) bool
+	Dropdown(args ...any) bool
 	Column(ColumnProps)
 	Row(ColumnProps)
 	Stack(ColumnProps)
@@ -4380,7 +4382,43 @@ func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) boo
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + box + gap, Y: bounds.Y + 3, Width: labelW, Height: bounds.Height}, Text: label, Color: theme.text, FontSize: font, ID: id})
 	return pressed
 }
-func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool {
+func (r *runtime) Dropdown(args ...any) bool {
+	if len(args) == 1 {
+		switch p := args[0].(type) {
+		case DropdownProps:
+			return r.dropdownFromProps(p)
+		case *DropdownProps:
+			if p == nil {
+				return false
+			}
+			return r.dropdownFromProps(*p)
+		}
+	}
+	if len(args) < 6 {
+		return false
+	}
+	id, ok := anyInt32(args[0])
+	if !ok {
+		return false
+	}
+	x, ok := anyInt32(args[1])
+	if !ok {
+		return false
+	}
+	y, ok := anyInt32(args[2])
+	if !ok {
+		return false
+	}
+	w, ok := anyInt32(args[3])
+	if !ok {
+		return false
+	}
+	h, ok := anyInt32(args[4])
+	if !ok {
+		return false
+	}
+	options := args[5]
+	rest := args[6:]
 	labels := labelsOf(options)
 	count := int32(len(labels))
 	selected := dropdownSelected(rest...)
@@ -4397,6 +4435,31 @@ func (r *runtime) Dropdown(id, x, y, w, h int32, options any, rest ...any) bool 
 	}
 	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
 	return r.dropdownAt(id, bounds, labels, selected)
+}
+
+func (r *runtime) dropdownFromProps(p DropdownProps) bool {
+	p.Bounds = r.layoutRect(p.Bounds)
+	if len(p.Items) > 0 {
+		count := len(p.Items)
+		if p.OptionCount > 0 && int(p.OptionCount) < count {
+			count = int(p.OptionCount)
+		}
+		labels := make([]string, count)
+		for i := range labels {
+			labels[i] = p.Items[i].Label
+		}
+		r.BeginDisabled(p.Disabled)
+		defer r.EndDisabled()
+		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex)
+	}
+	n := p.OptionCount
+	if n <= 0 || n > int32(len(p.Options)) {
+		n = int32(len(p.Options))
+	}
+	opts := p.Options[:n]
+	r.BeginDisabled(p.Disabled)
+	defer r.EndDisabled()
+	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex)
 }
 
 func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
@@ -5840,28 +5903,7 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	return changed
 }
 func (r *runtime) Combobox(p ComboboxProps) bool {
-	p.Bounds = r.layoutRect(p.Bounds)
-	if len(p.Items) > 0 {
-		count := len(p.Items)
-		if p.OptionCount > 0 && int(p.OptionCount) < count {
-			count = int(p.OptionCount)
-		}
-		labels := make([]string, count)
-		for i := range labels {
-			labels[i] = p.Items[i].Label
-		}
-		r.BeginDisabled(p.Disabled)
-		defer r.EndDisabled()
-		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex)
-	}
-	n := p.OptionCount
-	if n <= 0 || n > int32(len(p.Options)) {
-		n = int32(len(p.Options))
-	}
-	opts := p.Options[:n]
-	r.BeginDisabled(p.Disabled)
-	defer r.EndDisabled()
-	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex)
+	return r.dropdownFromProps(p)
 }
 func (r *runtime) LabelFrame(p LabelFrameProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
