@@ -1,6 +1,7 @@
 #include "kryon.h"
 #include "kry_inject.h"
 #include "kryon_test.h"
+#include "runtime/checkbox.h"
 #include "theme.h"
 #include "ui_inspect.h"
 #include "../src/ui/ui_internal.h"
@@ -64,6 +65,44 @@ test_theme_surface_helpers(void)
     check_int("selection alpha", GetThemeSelection().a, 255);
     check_color("button text", GetThemeButtonText(),
                 GetThemeReadableText(GetThemeButton()));
+}
+
+static void
+test_checkbox_paint_geometry_is_stable(void)
+{
+    Palette palette = DefaultPalette(1);
+    Metrics metrics = DefaultMetrics();
+    CheckboxSpec spec = {
+        .bounds = {10, 20, 160, 30},
+        .checked = 0,
+        .enabled = 1,
+        .hovered = 0,
+        .pressed = 0,
+        .focused = 0,
+        .scale = 1.0f,
+        .palette = palette,
+        .metrics = metrics
+    };
+    CheckboxPaint unchecked = CheckboxPaintFor(spec);
+    CheckboxPaint checked;
+
+    spec.checked = 1;
+    checked = CheckboxPaintFor(spec);
+
+    check_int("checkbox slot size", CheckboxSlotSize(1.0f), 22);
+    check_int("checkbox box size", CheckboxBoxSize(1.0f), 20);
+    check_int("checkbox checked keeps box x", (int)checked.box_bounds.x,
+              (int)unchecked.box_bounds.x);
+    check_int("checkbox checked keeps box y", (int)checked.box_bounds.y,
+              (int)unchecked.box_bounds.y);
+    check_int("checkbox checked keeps box w", (int)checked.box_bounds.width,
+              (int)unchecked.box_bounds.width);
+    check_int("checkbox checked keeps box h", (int)checked.box_bounds.height,
+              (int)unchecked.box_bounds.height);
+    check_int("checkbox state is compact",
+              (int)(checked.state_bounds.width - checked.box_bounds.width), 8);
+    check_int("checkbox unchecked has no mark", unchecked.show_mark, 0);
+    check_int("checkbox checked has mark", checked.show_mark, 1);
 }
 
 static void
@@ -3989,6 +4028,7 @@ main(void)
     }
 
     test_reorder_uses_item_center_and_header_handle();
+    test_checkbox_paint_geometry_is_stable();
     test_slider_keyboard_navigation();
     test_drag_keyboard_navigation();
     test_tab_bar_keyboard_navigation();

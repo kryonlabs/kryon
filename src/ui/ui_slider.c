@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/checkbox.h"
 #include "runtime/slider.h"
 #include "runtime/toggle.h"
 
@@ -560,16 +561,14 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     char editor_id[96];
     UIWidget widget;
     int font = GetFontSize();
-    int box_size = Scale(22);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    int slot_size = CheckboxSlotSize(runtime_scale);
     int label_gap = Scale(10);
     int label_w = TextWidth(label, font);
     int label_h = TextLineHeight(font);
-    int row_h = box_size > label_h ? box_size : label_h;
-    Rectangle bounds = {x, y, box_size + label_gap + label_w, row_h};
+    int row_h = slot_size > label_h ? slot_size : label_h;
+    Rectangle bounds = {x, y, slot_size + label_gap + label_w, row_h};
     Vector2 mouse_world = ui_mouse_world();
-    Color box_color = disabled ? DarkenUIColor(c_button, 18) : c_button;
-    Color mark_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
-    Color label_color = disabled ? DarkenUIColor(c_text, 35) : c_text;
     int pressed;
     int can_draw = IsWindowReady();
 
@@ -602,62 +601,52 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         return pressed;
     }
 
-    if(ui_default_style()) {
-        Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
+    {
+        Palette palette;
+        Metrics tokens;
         int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
                       !UIInputCapturesClick(mouse_world) &&
                       UIHoverEffectsEnabled();
-        ThemeScheme scheme = ui_default_scheme();
-        Color fill = *value ? scheme.primary : BLANK;
-        Color border = *value ? scheme.primary : scheme.on_surface_variant;
-        Color state_color = *value ? scheme.primary : scheme.on_surface_variant;
+        int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        CheckboxPaint paint;
 
-        mark_color = *value ? scheme.on_primary : mark_color;
-        if(disabled) {
-            fill = *value ? scheme.disabled_content : BLANK;
-            border = scheme.disabled_content;
-            mark_color = scheme.disabled_container;
-            label_color = scheme.disabled_content;
+        ui_runtime_theme_values(&palette, &tokens);
+        paint = CheckboxPaintFor((CheckboxSpec){
+            .bounds = bounds,
+            .checked = value != NULL && *value,
+            .enabled = !disabled,
+            .hovered = hovered,
+            .pressed = down,
+            .focused = 0,
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        });
+
+        if(paint.show_state)
+            DrawRectangleRounded(paint.state_bounds, paint.state_radius, 8,
+                                 GetColor(paint.state_color));
+        if(paint.show_focus)
+            DrawRectangleRoundedLinesEx(paint.focus_bounds, paint.focus_radius, 8,
+                                        paint.border_width,
+                                        GetColor(paint.focus_color));
+        if(paint.show_fill)
+            DrawRectangleRounded(paint.box_bounds, paint.radius, 8,
+                                 GetColor(paint.fill_color));
+        DrawRectangleRoundedLinesEx(paint.box_bounds, paint.radius, 8,
+                                    paint.border_width,
+                                    GetColor(paint.border_color));
+        if(paint.show_mark) {
+            DrawLineEx(paint.check_start, paint.check_middle, paint.mark_width,
+                       GetColor(paint.mark_color));
+            DrawLineEx(paint.check_middle, paint.check_end, paint.mark_width,
+                       GetColor(paint.mark_color));
         }
-        ui_default_state_layer((Rectangle){box.x - Scale(12),
-                                            box.y - Scale(12),
-                                            box.width + Scale(24),
-                                            box.height + Scale(24)},
-                                state_color, hovered, 0,
-                                hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-        if(fill.a != 0)
-            DrawRectangleRounded(box, 0.12f, 8, fill);
-        DrawRectangleRoundedLinesEx(box, 0.12f, 8, Scale(2), border);
-    } else if(ui_modern_style()) {
-        Rectangle box = {x, y + (row_h - box_size) / 2, box_size, box_size};
-        Color border = LightenUIColor(box_color, 22);
-        border.a = border.a > 150 ? 150 : border.a;
-        float radius = ui_radius_px(box, GetThemeMetrics().control_radius);
-        DrawRectangleRounded(box, radius, 8, box_color);
-        DrawRectangleRoundedLines(box, radius, 8, border);
-    } else {
-        DrawRectangle(x, y + (row_h - box_size) / 2, box_size, box_size, box_color);
-        RenderBevel(x, y + (row_h - box_size) / 2, box_size, box_size,
-                    DarkenUIColor(c_bg, 30), LightenUIColor(c_bg, 20));
+
+        RenderText(label, x + slot_size + label_gap,
+                   GetUIControlTextY(label, y, row_h, font),
+                   font, GetColor(paint.label_color));
     }
-
-    if(*value) {
-        int inset = Scale(5);
-        float stroke = (float)Scale(2);
-        int box_y = y + (row_h - box_size) / 2;
-        Vector2 start = {(float)(x + inset), (float)(box_y + box_size / 2)};
-        Vector2 middle = {(float)(x + box_size / 2 - Scale(1)),
-                          (float)(box_y + box_size - inset)};
-        Vector2 end = {(float)(x + box_size - inset),
-                       (float)(box_y + inset)};
-
-        DrawLineEx(start, middle, stroke, mark_color);
-        DrawLineEx(middle, end, stroke, mark_color);
-    }
-
-    RenderText(label, x + box_size + label_gap,
-               GetUIControlTextY(label, y, row_h, font),
-               font, label_color);
 
     EndUIWidget(&widget);
     return pressed;

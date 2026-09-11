@@ -1,0 +1,125 @@
+#module "checkbox"
+#import "drawing_props"
+#import "surface"
+#import "theme"
+
+CheckboxSpec :: struct {
+    bounds: Rectangle
+    checked: bool
+    enabled: bool
+    hovered: bool
+    pressed: bool
+    focused: bool
+    scale: float
+    palette: Palette
+    metrics: Metrics
+}
+
+CheckboxPaint :: struct {
+    bounds: Rectangle
+    slot_bounds: Rectangle
+    box_bounds: Rectangle
+    state_bounds: Rectangle
+    focus_bounds: Rectangle
+    check_start: Vector2
+    check_middle: Vector2
+    check_end: Vector2
+    fill_color: u32
+    border_color: u32
+    mark_color: u32
+    state_color: u32
+    focus_color: u32
+    label_color: u32
+    radius: float
+    border_width: float
+    mark_width: float
+    state_radius: float
+    focus_radius: float
+    show_fill: bool
+    show_mark: bool
+    show_state: bool
+    show_focus: bool
+}
+
+CheckboxSlotSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(22.0 * scale)
+}
+
+CheckboxBoxSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(20.0 * scale)
+}
+
+CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
+    paint: CheckboxPaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+
+    slot_size: float = (float)CheckboxSlotSize(scale)
+    box_size: float = (float)CheckboxBoxSize(scale)
+    state_outset: float = 4.0 * scale
+    focus_outset: float = 3.0 * scale
+    border_width: float = spec.metrics.border_width * scale
+    focus_width: float = spec.metrics.focus_width * scale
+    if border_width < 1.0 { border_width = 1.0 }
+    if focus_width < 1.0 { focus_width = 1.0 }
+
+    paint.bounds = spec.bounds
+    paint.slot_bounds.x = spec.bounds.x
+    paint.slot_bounds.y = spec.bounds.y + (spec.bounds.height - slot_size) * 0.5
+    paint.slot_bounds.width = slot_size
+    paint.slot_bounds.height = slot_size
+
+    paint.box_bounds.x = paint.slot_bounds.x + (slot_size - box_size) * 0.5
+    paint.box_bounds.y = paint.slot_bounds.y + (slot_size - box_size) * 0.5
+    paint.box_bounds.width = box_size
+    paint.box_bounds.height = box_size
+
+    paint.state_bounds.x = paint.box_bounds.x - state_outset
+    paint.state_bounds.y = paint.box_bounds.y - state_outset
+    paint.state_bounds.width = paint.box_bounds.width + state_outset * 2.0
+    paint.state_bounds.height = paint.box_bounds.height + state_outset * 2.0
+
+    paint.focus_bounds.x = paint.box_bounds.x - focus_outset
+    paint.focus_bounds.y = paint.box_bounds.y - focus_outset
+    paint.focus_bounds.width = paint.box_bounds.width + focus_outset * 2.0
+    paint.focus_bounds.height = paint.box_bounds.height + focus_outset * 2.0
+
+    paint.check_start.x = paint.box_bounds.x + 5.0 * scale
+    paint.check_start.y = paint.box_bounds.y + paint.box_bounds.height * 0.53
+    paint.check_middle.x = paint.box_bounds.x + paint.box_bounds.width * 0.42
+    paint.check_middle.y = paint.box_bounds.y + paint.box_bounds.height - 5.0 * scale
+    paint.check_end.x = paint.box_bounds.x + paint.box_bounds.width - 5.0 * scale
+    paint.check_end.y = paint.box_bounds.y + 5.0 * scale
+
+    paint.fill_color = spec.checked ? spec.palette.accent : spec.palette.surface
+    paint.border_color = spec.checked ? spec.palette.accent : spec.palette.border_strong
+    paint.mark_color = spec.palette.on_accent
+    paint.state_color = Opacity(spec.checked ? spec.palette.accent : spec.palette.text,
+        spec.pressed ? 0.14 : (spec.hovered ? 0.08 : 0.10))
+    paint.focus_color = spec.palette.focus
+    paint.label_color = spec.palette.text
+
+    paint.radius = 0.18
+    paint.state_radius = 0.28
+    paint.focus_radius = 0.26
+    paint.border_width = border_width
+    paint.mark_width = 2.4 * scale
+
+    paint.show_fill = spec.checked
+    paint.show_mark = spec.checked
+    paint.show_state = spec.enabled && (spec.hovered || spec.pressed || spec.focused)
+    paint.show_focus = spec.enabled && spec.focused
+
+    if !spec.enabled {
+        paint.fill_color = spec.checked ? Opacity(spec.palette.text_disabled, 0.42) : spec.palette.surface
+        paint.border_color = Opacity(spec.palette.text_disabled, 0.62)
+        paint.mark_color = Opacity(spec.palette.surface, 0.70)
+        paint.label_color = spec.palette.text_disabled
+        paint.show_state = false
+        paint.show_focus = false
+    }
+
+    return paint
+}
