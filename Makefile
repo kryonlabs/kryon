@@ -746,7 +746,7 @@ $(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
 $(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATED_SRC_DIR)/runtime/split_button.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATED_SRC_DIR)/runtime/split_button.h $(GENERATED_SRC_DIR)/runtime/card.h
 
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime

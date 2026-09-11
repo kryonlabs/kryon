@@ -1,0 +1,93 @@
+#module "card"
+#import "card_props"
+#import "button_props"
+#import "control_props"
+
+LightenColor :: (c: Color, amount: i32) -> Color #extern
+DarkenColor :: (c: Color, amount: i32) -> Color #extern
+MergeStyle :: (base: Style, overrides: Style) -> Style #extern
+
+CardStyleEmpty :: (style: ControlStyle) -> bool #export {
+    return style.normal.fields == (u32)0 &&
+           style.hover.fields == (u32)0 &&
+           style.pressed.fields == (u32)0 &&
+           style.focused.fields == (u32)0 &&
+           style.disabled.fields == (u32)0 &&
+           style.loading.fields == (u32)0 &&
+           style.selected.fields == (u32)0
+}
+
+CardButtonProps :: (card: CardProps, radius_large: float,
+    border_width: float, padding_large: float, padding_medium: float,
+    surface: Color, accent: Color) -> ButtonProps #export {
+    defaults: Style
+    hover_defaults: Style
+    pressed_defaults: Style
+    focused_defaults: Style
+    selected_defaults: Style
+    border: Color = accent
+    button: ButtonProps
+
+    defaults.fields = (u32)StyleRadius | (u32)StyleBorderWidth |
+        (u32)StyleOpacity | (u32)StylePaddingX | (u32)StylePaddingY |
+        (u32)StyleMaterial | (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleFocus
+    defaults.radius = radius_large
+    defaults.border_width = border_width
+    defaults.opacity = 1.0
+    defaults.padding_x = padding_large
+    defaults.padding_y = padding_medium
+    defaults.material = (MaterialKind)MaterialLightfield
+    defaults.background = surface
+    if border.a > (u8)92 { border.a = (u8)92 }
+    defaults.border = border
+    defaults.focus = accent
+
+    hover_defaults.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleMaterial
+    hover_defaults.background = LightenColor(surface, 5)
+    hover_defaults.border = LightenColor(accent, 18)
+    if hover_defaults.border.a > (u8)150 {
+        hover_defaults.border.a = (u8)150
+    }
+    hover_defaults.material = (MaterialKind)MaterialLightfield
+
+    pressed_defaults.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleMaterial
+    pressed_defaults.background = DarkenColor(surface, 4)
+    pressed_defaults.border = accent
+    pressed_defaults.material = (MaterialKind)MaterialLightfield
+
+    focused_defaults.fields = (u32)StyleBorder | (u32)StyleFocus |
+        (u32)StyleMaterial
+    focused_defaults.border = LightenColor(accent, 24)
+    focused_defaults.focus = accent
+    focused_defaults.material = (MaterialKind)MaterialLightfield
+
+    selected_defaults.fields = (u32)StyleBackground | (u32)StyleBorder |
+        (u32)StyleMaterial
+    selected_defaults.background = DarkenColor(accent, 10)
+    selected_defaults.border = LightenColor(accent, 36)
+    selected_defaults.material = (MaterialKind)MaterialLightfield
+
+    button.bounds = card.bounds
+    if card.clickable { button.id = card.id }
+    button.tone = card.tone
+    button.emphasis = card.emphasis
+    button.size = (ControlSize)ControlSizeLarge
+    button.disabled = card.disabled
+    button.selected = card.selected
+    button.state = card.state
+    button.style = card.style
+    button.style.normal = MergeStyle(defaults, card.style.normal)
+    button.style.hover = MergeStyle(hover_defaults, card.style.hover)
+    button.style.pressed = MergeStyle(pressed_defaults, card.style.pressed)
+    button.style.focused = MergeStyle(focused_defaults, card.style.focused)
+    button.style.selected = MergeStyle(selected_defaults, card.style.selected)
+    if (i32)button.tone == ButtonToneNeutral &&
+       (i32)button.emphasis == ButtonEmphasisFilled &&
+       CardStyleEmpty(card.style) {
+        button.emphasis = (ButtonEmphasis)ButtonEmphasisSoft
+    }
+    return button
+}

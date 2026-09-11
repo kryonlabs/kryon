@@ -135,8 +135,24 @@ func TestDropdownInheritsCompleteButtonStyle(t *testing.T) {
 			ButtonStatePressed, ButtonStateFocus, ButtonStateDisabled} {
 			button := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
 				ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, state)
-			if got := r.dropdownStyle(0, false, state); got != button {
-				t.Fatalf("dark=%v state=%v: dropdown trigger changed the Button style", dark, state)
+			got := r.dropdownStyle(0, false, state)
+			if state == ButtonStateNormal || state == ButtonStateDisabled {
+				if got != button {
+					t.Fatalf("dark=%v state=%v: dropdown trigger changed the base Button style", dark, state)
+				}
+				continue
+			}
+			if got.FontSize != button.FontSize || got.PaddingX != button.PaddingX ||
+				got.PaddingY != button.PaddingY || got.IconSize != button.IconSize ||
+				got.Opacity != button.Opacity {
+				t.Fatalf("dark=%v state=%v: dropdown trigger changed Button metrics", dark, state)
+			}
+			if got.Material != MaterialGlass ||
+				got.Fields&(StyleBackgroundEnd|StyleMaterial) != StyleBackgroundEnd|StyleMaterial {
+				t.Fatalf("dark=%v state=%v: dropdown trigger missed interactive glass treatment", dark, state)
+			}
+			if got.BackgroundEnd == button.BackgroundEnd || got.Border == button.Border {
+				t.Fatalf("dark=%v state=%v: dropdown trigger missed accent response", dark, state)
 			}
 		}
 		button := r.dropdownStyle(0, false, ButtonStateNormal)

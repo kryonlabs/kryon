@@ -47,111 +47,225 @@ func Dropdown_SelectionEmphasis(surface uint32) int32 {
 }
 
 func Dropdown_Appearance(base StyleData, accent StyleData, surface uint32, role int32, state int32, selected bool) StyleData {
-	var value_0 int32 = role
-	var value_1 int32 = 0
-	var value_2 bool = value_0 == value_1
-	if value_2 {
-		var value_3 StyleData = base
-		return value_3
+	var value_0 uint32 = surface
+	var value_1 bool = Button_LightSurface(value_0)
+	var light bool = value_1
+	var value_2 int32 = role
+	var value_3 int32 = 0
+	var value_4 bool = value_2 == value_3
+	if value_4 {
+		var value_5 int32 = state
+		var value_6 int32 = int32(ButtonStateHover)
+		var value_7 bool = value_5 == value_6
+		var value_8 bool = value_7
+		if !value_8 {
+			var value_9 int32 = state
+			var value_10 int32 = int32(ButtonStatePressed)
+			var value_11 bool = value_9 == value_10
+			value_8 = value_11
+		}
+		var value_12 bool = value_8
+		if !value_12 {
+			var value_13 int32 = state
+			var value_14 int32 = int32(ButtonStateFocus)
+			var value_15 bool = value_13 == value_14
+			value_12 = value_15
+		}
+		var value_16 bool = value_12
+		if !value_16 {
+			var value_17 int32 = state
+			var value_18 int32 = int32(ButtonStateSelected)
+			var value_19 bool = value_17 == value_18
+			value_16 = value_19
+		}
+		if value_16 {
+			var value_20 int32 = int32(MaterialGlass)
+			var value_21 int32 = int32(number_runtime_bits(uint64(value_20), uint64(0), 32, true, 0))
+			base.Material = value_21
+			var value_22 uint32 = base.Fields
+			var value_23 int32 = int32(StyleBackgroundEnd)
+			var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
+			var value_25 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(value_24), 32, false, 9))
+			var value_26 int32 = int32(StyleMaterial)
+			var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+			var value_28 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(value_27), 32, false, 9))
+			base.Fields = value_28
+			var value_29 uint32 = base.Background
+			var value_30 uint32 = accent.Background
+			var value_31 bool = light
+			var value_32 float32 = 0
+			if value_31 {
+				var value_33 float32 = 0.10
+				value_32 = value_33
+			} else {
+				var value_34 float32 = 0.24
+				value_32 = value_34
+			}
+			var value_35 uint32 = Surface_GradientColor(value_29, value_30, value_32)
+			base.BackgroundEnd = value_35
+			var value_36 uint32 = base.Border
+			var value_37 uint32 = accent.Background
+			var value_38 bool = light
+			var value_39 float32 = 0
+			if value_38 {
+				var value_40 float32 = 0.36
+				value_39 = value_40
+			} else {
+				var value_41 float32 = 0.58
+				value_39 = value_41
+			}
+			var value_42 uint32 = Surface_GradientColor(value_36, value_37, value_39)
+			base.Border = value_42
+		}
+		var value_43 StyleData = base
+		return value_43
 	}
-	var value_4 uint32 = surface
-	var value_5 bool = Button_LightSurface(value_4)
-	var light bool = value_5
-	var value_6 int32 = role
-	var value_7 int32 = 2
-	var value_8 bool = value_6 == value_7
-	if value_8 {
-		var value_9 bool = selected
-		var value_10 bool = value_9
-		if value_10 {
-			var value_11 int32 = state
-			var value_12 int32 = int32(ButtonStateDisabled)
-			var value_13 bool = value_11 != value_12
-			value_10 = value_13
+	var value_44 int32 = role
+	var value_45 int32 = 2
+	var value_46 bool = value_44 == value_45
+	if value_46 {
+		var value_47 bool = selected
+		var value_48 bool = value_47
+		if value_48 {
+			var value_49 int32 = state
+			var value_50 int32 = int32(ButtonStateDisabled)
+			var value_51 bool = value_49 != value_50
+			value_48 = value_51
 		}
-		if value_10 {
-			var value_14 StyleData = accent
-			base = value_14
+		if value_48 {
+			var value_52 StyleData = accent
+			base = value_52
 		}
-		var value_15 bool = light
-		if value_15 {
-			var value_16 int32 = int32(MaterialFlat)
-			var value_17 int32 = int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0))
-			base.Material = value_17
-			var value_18 int32 = 0
-			var value_19 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(0), 32, false, 0))
-			base.Border = value_19
-			var value_20 float32 = 0.0
-			base.BorderWidth = value_20
+		var value_53 bool = selected
+		var value_54 bool = value_53
+		if !value_54 {
+			var value_55 int32 = state
+			var value_56 int32 = int32(ButtonStateHover)
+			var value_57 bool = value_55 == value_56
+			value_54 = value_57
 		}
-		var value_21 StyleData = base
-		return value_21
+		var value_58 bool = value_54
+		if !value_58 {
+			var value_59 int32 = state
+			var value_60 int32 = int32(ButtonStateFocus)
+			var value_61 bool = value_59 == value_60
+			value_58 = value_61
+		}
+		if value_58 {
+			var value_62 int32 = int32(MaterialGlass)
+			var value_63 int32 = int32(number_runtime_bits(uint64(value_62), uint64(0), 32, true, 0))
+			base.Material = value_63
+			var value_64 uint32 = base.Fields
+			var value_65 int32 = int32(StyleBackgroundEnd)
+			var value_66 uint32 = uint32(number_runtime_bits(uint64(value_65), uint64(0), 32, false, 0))
+			var value_67 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(value_66), 32, false, 9))
+			var value_68 int32 = int32(StyleMaterial)
+			var value_69 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(0), 32, false, 0))
+			var value_70 uint32 = uint32(number_runtime_bits(uint64(value_67), uint64(value_69), 32, false, 9))
+			base.Fields = value_70
+			var value_71 uint32 = base.Background
+			var value_72 uint32 = accent.Background
+			var value_73 bool = light
+			var value_74 float32 = 0
+			if value_73 {
+				var value_75 float32 = 0.14
+				value_74 = value_75
+			} else {
+				var value_76 float32 = 0.26
+				value_74 = value_76
+			}
+			var value_77 uint32 = Surface_GradientColor(value_71, value_72, value_74)
+			base.BackgroundEnd = value_77
+			var value_78 uint32 = base.Border
+			var value_79 uint32 = accent.Background
+			var value_80 bool = light
+			var value_81 float32 = 0
+			if value_80 {
+				var value_82 float32 = 0.36
+				value_81 = value_82
+			} else {
+				var value_83 float32 = 0.52
+				value_81 = value_83
+			}
+			var value_84 uint32 = Surface_GradientColor(value_78, value_79, value_81)
+			base.Border = value_84
+		} else {
+			var value_85 bool = light
+			if value_85 {
+				var value_86 int32 = int32(MaterialFlat)
+				var value_87 int32 = int32(number_runtime_bits(uint64(value_86), uint64(0), 32, true, 0))
+				base.Material = value_87
+				var value_88 int32 = 0
+				var value_89 uint32 = uint32(number_runtime_bits(uint64(value_88), uint64(0), 32, false, 0))
+				base.Border = value_89
+				var value_90 float32 = 0.0
+				base.BorderWidth = value_90
+			}
+		}
+		var value_91 StyleData = base
+		return value_91
 	}
-	var value_22 int32 = int32(MaterialGlass)
-	var value_23 int32 = int32(number_runtime_bits(uint64(value_22), uint64(0), 32, true, 0))
-	base.Material = value_23
-	var value_24 uint32 = base.Fields
-	var value_25 int32 = int32(StyleBackgroundEnd)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_26), 32, false, 9))
-	var value_28 int32 = int32(StyleMaterial)
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(value_29), 32, false, 9))
-	base.Fields = value_30
-	var value_31 float32 = base.Radius
-	var value_32 float32 = 2.0
-	var value_33 float32 = value_31 + value_32
-	base.Radius = value_33
-	var value_34 bool = light
-	if value_34 {
-		var value_35 uint32 = surface
-		var value_36 int32 = 0
-		var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
-		var value_38 uint32 = uint32(number_runtime_bits(uint64(value_37), uint64(^uint64(0)), 32, false, 10))
-		var value_39 float32 = 0.85
-		var value_40 uint32 = Surface_GradientColor(value_35, value_38, value_39)
-		base.Background = value_40
-		var value_41 uint32 = surface
-		var value_42 int32 = 0
-		var value_43 uint32 = uint32(number_runtime_bits(uint64(value_42), uint64(0), 32, false, 0))
-		var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(^uint64(0)), 32, false, 10))
-		var value_45 float32 = 0.40
-		var value_46 uint32 = Surface_GradientColor(value_41, value_44, value_45)
-		base.BackgroundEnd = value_46
-		var value_47 uint32 = surface
-		var value_48 uint32 = accent.Background
-		var value_49 float32 = 0.18
-		var value_50 uint32 = Surface_GradientColor(value_47, value_48, value_49)
-		base.Border = value_50
+	var value_92 int32 = int32(MaterialGlass)
+	var value_93 int32 = int32(number_runtime_bits(uint64(value_92), uint64(0), 32, true, 0))
+	base.Material = value_93
+	var value_94 uint32 = base.Fields
+	var value_95 int32 = int32(StyleBackgroundEnd)
+	var value_96 uint32 = uint32(number_runtime_bits(uint64(value_95), uint64(0), 32, false, 0))
+	var value_97 uint32 = uint32(number_runtime_bits(uint64(value_94), uint64(value_96), 32, false, 9))
+	var value_98 int32 = int32(StyleMaterial)
+	var value_99 uint32 = uint32(number_runtime_bits(uint64(value_98), uint64(0), 32, false, 0))
+	var value_100 uint32 = uint32(number_runtime_bits(uint64(value_97), uint64(value_99), 32, false, 9))
+	base.Fields = value_100
+	var value_101 float32 = base.Radius
+	var value_102 float32 = 4.0
+	var value_103 float32 = value_101 + value_102
+	base.Radius = value_103
+	var value_104 bool = light
+	if value_104 {
+		var value_105 uint32 = surface
+		var value_106 int32 = 0
+		var value_107 uint32 = uint32(number_runtime_bits(uint64(value_106), uint64(0), 32, false, 0))
+		var value_108 uint32 = uint32(number_runtime_bits(uint64(value_107), uint64(^uint64(0)), 32, false, 10))
+		var value_109 float32 = 0.88
+		var value_110 uint32 = Surface_GradientColor(value_105, value_108, value_109)
+		base.Background = value_110
+		var value_111 uint32 = surface
+		var value_112 uint32 = accent.Background
+		var value_113 float32 = 0.08
+		var value_114 uint32 = Surface_GradientColor(value_111, value_112, value_113)
+		base.BackgroundEnd = value_114
+		var value_115 uint32 = surface
+		var value_116 uint32 = accent.Background
+		var value_117 float32 = 0.34
+		var value_118 uint32 = Surface_GradientColor(value_115, value_116, value_117)
+		base.Border = value_118
 	} else {
-		var value_51 uint32 = surface
-		var value_52 uint32 = base.Background
-		var value_53 float32 = 0.80
-		var value_54 uint32 = Surface_GradientColor(value_51, value_52, value_53)
-		base.Background = value_54
-		var value_55 uint32 = surface
-		var value_56 uint32 = base.Border
-		var value_57 float32 = 0.38
-		var value_58 uint32 = Surface_GradientColor(value_55, value_56, value_57)
-		base.BackgroundEnd = value_58
-		var value_59 uint32 = base.Border
-		var value_60 int32 = 0
-		var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
-		var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(^uint64(0)), 32, false, 10))
-		var value_63 float32 = 0.18
-		var value_64 uint32 = Surface_GradientColor(value_59, value_62, value_63)
-		base.Border = value_64
+		var value_119 uint32 = surface
+		var value_120 uint32 = base.Background
+		var value_121 float32 = 0.72
+		var value_122 uint32 = Surface_GradientColor(value_119, value_120, value_121)
+		base.Background = value_122
+		var value_123 uint32 = surface
+		var value_124 uint32 = accent.Background
+		var value_125 float32 = 0.20
+		var value_126 uint32 = Surface_GradientColor(value_123, value_124, value_125)
+		base.BackgroundEnd = value_126
+		var value_127 uint32 = base.Border
+		var value_128 uint32 = accent.Background
+		var value_129 float32 = 0.58
+		var value_130 uint32 = Surface_GradientColor(value_127, value_128, value_129)
+		base.Border = value_130
 	}
-	var value_65 uint32 = base.Background
-	var value_66 float32 = 0.97
-	var value_67 uint32 = Surface_Opacity(value_65, value_66)
-	base.Background = value_67
-	var value_68 uint32 = base.BackgroundEnd
-	var value_69 float32 = 0.92
-	var value_70 uint32 = Surface_Opacity(value_68, value_69)
-	base.BackgroundEnd = value_70
-	var value_71 StyleData = base
-	return value_71
+	var value_131 uint32 = base.Background
+	var value_132 float32 = 0.98
+	var value_133 uint32 = Surface_Opacity(value_131, value_132)
+	base.Background = value_133
+	var value_134 uint32 = base.BackgroundEnd
+	var value_135 float32 = 0.95
+	var value_136 uint32 = Surface_Opacity(value_134, value_135)
+	base.BackgroundEnd = value_136
+	var value_137 StyleData = base
+	return value_137
 }
 
 func Dropdown_Content(paint StyleData, scale float32) ContentMetrics {

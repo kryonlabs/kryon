@@ -55,6 +55,9 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			} else if op.SecondaryColor.A != 0 {
 				fillGradientH(img, op.Bounds, opaque(op.Color, LIGHTGRAY), opaque(op.SecondaryColor, LIGHTGRAY))
 			} else {
+				if op.Color.A == 0 && op.BorderColor.A == 0 && op.FocusColor.A == 0 {
+					continue
+				}
 				op.Opacity = 1
 				op.BorderWidth = 1
 				op.Material = MaterialFlat

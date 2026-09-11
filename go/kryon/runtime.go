@@ -1322,6 +1322,9 @@ type Runtime interface {
 	GetThemeBackground() Color
 	GetThemeText() Color
 	GetThemeIcon() Color
+	LightenColor(Color, int32) Color
+	DarkenColor(Color, int32) Color
+	MergeStyle(Style, Style) Style
 	NewVector2(any, any) Vector2
 	DrawCircleV(Vector2, any, Color)
 	DrawRing(Vector2, any, any, any, any, int32, Color)

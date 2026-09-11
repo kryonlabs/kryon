@@ -3,6 +3,7 @@
 #include "runtime/menu_button.h"
 #include "runtime/split_button.h"
 #include "runtime/button.h"
+#include "runtime/card.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
 #include "runtime/text.h"
@@ -2599,87 +2600,14 @@ Surface(Rectangle bounds, Style style)
         ui_paint_surface(bounds, style);
 }
 
-static int
-ui_card_style_empty(ControlStyle style)
-{
-    return style.normal.fields == 0 &&
-           style.hover.fields == 0 &&
-           style.pressed.fields == 0 &&
-           style.focused.fields == 0 &&
-           style.disabled.fields == 0 &&
-           style.loading.fields == 0 &&
-           style.selected.fields == 0;
-}
-
 static ButtonProps
 ui_card_button_props(CardProps card)
 {
     ThemeMetrics metrics = GetThemeMetrics();
-    Style defaults = {0};
-    Style hover_defaults = {0};
-    Style pressed_defaults = {0};
-    Style focused_defaults = {0};
-    Style selected_defaults = {0};
-    Color surface = GetThemeSurface();
-    Color accent = GetThemeButtonHover();
-    Color border = accent;
-    ButtonProps button = {0};
-
-    defaults.fields = StyleRadius | StyleBorderWidth | StyleOpacity |
-        StylePaddingX | StylePaddingY | StyleMaterial | StyleBackground |
-        StyleBorder | StyleFocus;
-    defaults.radius = metrics.radius_large;
-    defaults.border_width = metrics.border_width;
-    defaults.opacity = 1.0f;
-    defaults.padding_x = metrics.control_padding_large;
-    defaults.padding_y = metrics.control_padding_medium;
-    defaults.material = MaterialLightfield;
-    defaults.background = surface;
-    border.a = border.a > 92 ? 92 : border.a;
-    defaults.border = border;
-    defaults.focus = accent;
-
-    hover_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
-    hover_defaults.background = LightenUIColor(surface, 5);
-    hover_defaults.border = LightenUIColor(accent, 18);
-    hover_defaults.border.a = hover_defaults.border.a > 150
-        ? 150 : hover_defaults.border.a;
-    hover_defaults.material = MaterialLightfield;
-
-    pressed_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
-    pressed_defaults.background = DarkenUIColor(surface, 4);
-    pressed_defaults.border = accent;
-    pressed_defaults.material = MaterialLightfield;
-
-    focused_defaults.fields = StyleBorder | StyleFocus | StyleMaterial;
-    focused_defaults.border = LightenUIColor(accent, 24);
-    focused_defaults.focus = accent;
-    focused_defaults.material = MaterialLightfield;
-
-    selected_defaults.fields = StyleBackground | StyleBorder | StyleMaterial;
-    selected_defaults.background = DarkenUIColor(accent, 10);
-    selected_defaults.border = LightenUIColor(accent, 36);
-    selected_defaults.material = MaterialLightfield;
-
-    button.bounds = card.bounds;
-    button.id = card.clickable ? card.id : 0;
-    button.tone = card.tone;
-    button.emphasis = card.emphasis;
-    button.size = ControlSizeLarge;
-    button.disabled = card.disabled;
-    button.selected = card.selected;
-    button.state = card.state;
-    button.style = card.style;
-    button.style.normal = MergeStyle(defaults, card.style.normal);
-    button.style.hover = MergeStyle(hover_defaults, card.style.hover);
-    button.style.pressed = MergeStyle(pressed_defaults, card.style.pressed);
-    button.style.focused = MergeStyle(focused_defaults, card.style.focused);
-    button.style.selected = MergeStyle(selected_defaults, card.style.selected);
-    if(button.tone == ButtonToneNeutral &&
-       button.emphasis == ButtonEmphasisFilled &&
-       ui_card_style_empty(card.style))
-        button.emphasis = ButtonEmphasisSoft;
-    return button;
+    return CardButtonProps(card, metrics.radius_large, metrics.border_width,
+                           metrics.control_padding_large,
+                           metrics.control_padding_medium, GetThemeSurface(),
+                           GetThemeButtonHover());
 }
 
 static void
