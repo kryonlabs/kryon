@@ -1,6 +1,52 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/slider.h"
 #include "runtime/toggle.h"
+
+static void
+ui_draw_slider_paint(SliderPaint paint, int hovered, int active,
+                     int disabled)
+{
+    StyleFrame track_frame = ui_style_apply_effects_frame(paint.track);
+    Style track_style = ui_unpack_style(track_frame.value);
+    StyleFrame active_frame = ui_style_apply_effects_frame(paint.active_track);
+    Style active_style = ui_unpack_style(active_frame.value);
+
+    ui_draw_material(paint.track_bounds, (Rectangle){0},
+                     track_style.background, track_style.border,
+                     track_style.border, track_style.radius,
+                     track_style.border_width,
+                     hovered ? 1.0f : 0.0f, active ? 1.0f : 0.0f,
+                     disabled, track_style.focus, 0.0f,
+                     track_style.opacity,
+                     ui_style_apply_effects_fill(track_frame.fill),
+                     track_style.material);
+    if(paint.active_bounds.width > 0.0f && paint.active_bounds.height > 0.0f) {
+        ui_draw_material(paint.active_bounds, paint.track_bounds,
+                         active_style.background, active_style.border,
+                         active_style.border, active_style.radius,
+                         active_style.border_width,
+                         hovered ? 1.0f : 0.0f, active ? 1.0f : 0.0f,
+                         disabled, active_style.focus, 0.0f,
+                         active_style.opacity,
+                         ui_style_apply_effects_fill(active_frame.fill),
+                         active_style.material);
+    }
+    if((active || hovered) && paint.glow_radius > 0.0f)
+        DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+                   paint.glow_radius, GetColor(paint.glow_color));
+    DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
+               paint.thumb_radius + (float)Scale(1),
+               GetColor(paint.thumb_shadow_color));
+    DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+               paint.thumb_radius, GetColor(paint.thumb_fill_color));
+    DrawCircle((int)(paint.thumb_x - Scale(3)),
+               (int)(paint.thumb_y - Scale(4)),
+               paint.thumb_radius * 0.45f,
+               GetColor(paint.thumb_highlight_color));
+    DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
+                    paint.thumb_radius, GetColor(paint.thumb_edge_color));
+}
 
 int
 ui_render_slider(int id, int x, int y, int w, const char *label,
@@ -14,18 +60,16 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     int mx = (int)mouse_world.x;
     int label_font = GetFontSize();
     int value_font = GetFontSize();
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
     int track_y = y + Scale(28);
-    int track_h = Scale(6);
-    int knob_w = Scale(22);
-    int knob_h = Scale(22);
-    int knob_y = track_y - (knob_h - track_h) / 2;
+    int knob_h = SliderThumbSize(runtime_scale);
+    int knob_y = track_y - (knob_h - SliderTrackSize(0, runtime_scale)) / 2;
     int min_touch_h = ui_touch_target_min();
     int changed = 0;
     int can_draw = IsWindowReady();
     char value_text[48];
     Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     float t;
-    int knob_x;
 
     widget = BeginUIWidget("slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -37,10 +81,10 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
-    if(w < Scale(32))
-        w = Scale(32);
+    if(w < SliderMinimumLength(runtime_scale))
+        w = SliderMinimumLength(runtime_scale);
     track_y = y + Scale(28);
-    knob_y = track_y - (knob_h - track_h) / 2;
+    knob_y = track_y - (knob_h - SliderTrackSize(0, runtime_scale)) / 2;
     hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)Scale(56)};
     UIWidgetSetBounds(&widget, editor_bounds);
@@ -60,16 +104,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
                    y, value_font, c_text);
     }
 
-    t = (float)(*value - min) / (float)(max - min);
-    knob_x = x + (int)(t * (float)w) - knob_w / 2;
-
-    if(can_draw) {
-        if(!ui_default_style() && !ui_modern_style()) {
-            DrawRectangle(x, track_y, w, track_h, DarkenUIColor(c_bg, 28));
-            RenderBevel(x, track_y, w, track_h,
-                        DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-        }
-    }
+    t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
         MarkClickable();
@@ -105,49 +140,26 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         g_ui_slider_active_id = 0;
     }
 
-    t = (float)(*value - min) / (float)(max - min);
-    knob_x = x + (int)(t * (float)w) - knob_w / 2;
-
+    t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
     if(can_draw) {
-        if(ui_default_style() || ui_modern_style()) {
-            int active_w = (int)(t * (float)w);
-            int thumb_cx = knob_x + knob_w / 2;
-            int thumb_cy = knob_y + knob_h / 2;
-            int active = g_ui_slider_active_id == id;
-            int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                          !UIInputCapturesClick(mouse_world);
-            Color inactive = ui_default_style()
-                ? ui_default_surface_container()
-                : DarkenUIColor(c_bg, 16);
-            Color accent = ui_default_style() ? c_circle : c_button_hover;
-            Color thumb = ui_default_style() ? c_circle : c_button;
-            Color outline = ui_default_style()
-                ? ui_default_outline()
-                : LightenUIColor(thumb, 32);
-            Color shadow = Fade(BLACK, 0.20f);
+        Palette palette;
+        Metrics tokens;
+        int active = g_ui_slider_active_id == id;
+        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
+                      !UIInputCapturesClick(mouse_world);
 
-            DrawRectangleRounded((Rectangle){x, track_y, w, track_h},
-                                 0.5f, 12, inactive);
-            if(active_w > 0)
-                DrawRectangleRounded((Rectangle){x, track_y, active_w, track_h},
-                                     0.5f, 12, accent);
-            if(active || hovered) {
-                Color glow = accent;
-                glow.a = active ? 78 : 42;
-                DrawCircle(thumb_cx, thumb_cy, (float)(knob_w / 2 + Scale(8)),
-                           glow);
-            }
-            DrawCircle(thumb_cx, thumb_cy + Scale(2),
-                       (float)(knob_w / 2 + Scale(1)), shadow);
-            DrawCircle(thumb_cx, thumb_cy, (float)(knob_w / 2), thumb);
-            DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
-                       (float)Scale(5), Fade(WHITE, 0.18f));
-            DrawCircleLines(thumb_cx, thumb_cy, (float)(knob_w / 2), outline);
-        } else {
-            DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            RenderBevel(knob_x, knob_y, knob_w, knob_h,
-                        LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-        }
+        ui_runtime_theme_values(&palette, &tokens);
+        ui_draw_slider_paint(SliderPaintFor((SliderSpec){
+            .bounds = {(float)x, (float)knob_y, (float)w, (float)knob_h},
+            .ratio = t,
+            .vertical = false,
+            .active = active,
+            .hovered = hovered,
+            .disabled = UIContentDisabled(),
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        }), hovered, active, UIContentDisabled());
     }
 
     EndUIWidget(&widget);
@@ -165,9 +177,10 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    int track_w = Scale(8);
-    int knob_w = Scale(22);
-    int knob_h = Scale(22);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    int track_w = SliderTrackSize(1, runtime_scale);
+    int knob_w = SliderThumbSize(runtime_scale);
+    int knob_h = SliderThumbSize(runtime_scale);
     int track_x = x - track_w / 2;
     int min_touch_w = ui_touch_target_min();
     int changed = 0;
@@ -184,8 +197,8 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < Scale(32))
-        h = Scale(32);
+    if(h < SliderMinimumLength(runtime_scale))
+        h = SliderMinimumLength(runtime_scale);
     track_x = x - track_w / 2;
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                    min_touch_w, h);
@@ -197,24 +210,6 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
-
-    if(ui_modern_style() || ui_default_style()) {
-        Color track = ui_default_style()
-            ? ui_default_surface_container()
-            : (active_visual ? DarkenUIColor(c_button, 72)
-                             : DarkenUIColor(c_bg, 16));
-        if(active_visual) {
-            DrawRectangleRounded((Rectangle){track_x - Scale(5), y - Scale(5),
-                                             track_w + Scale(10), h + Scale(10)},
-                                 0.5f, 12, ui_alpha(c_button, 34));
-        }
-        DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
-                             0.5f, 8, track);
-    } else {
-        DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        RenderBevel(track_x, y, track_w, h,
-                    DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-    }
 
     if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
         MarkClickable();
@@ -243,53 +238,26 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     }
 
     {
-        float t = (float)(*value - min) / (float)(max - min);
-        int position_y = y + h - (int)(t * (float)h);
-        int knob_y;
-        int knob_x = track_x - (knob_w - track_w) / 2;
+        float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
+        Palette palette;
+        Metrics tokens;
+        int active = active_visual || g_ui_slider_active_id == id;
+        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
+                      !UIInputCapturesClick(mouse_world);
 
-        if(position_y < y)
-            position_y = y;
-        if(position_y > y + h)
-            position_y = y + h;
-        knob_y = position_y - knob_h / 2;
-        if(knob_y < y)
-            knob_y = y;
-        if(knob_y + knob_h > y + h)
-            knob_y = y + h - knob_h;
-
-        if(ui_modern_style() || ui_default_style()) {
-            Color active = ui_default_style()
-                ? c_circle
-                : (active_visual ? c_button : c_button_hover);
-            Color thumb = ui_default_style()
-                ? c_circle
-                : (active_visual ? c_button_hover : c_button);
-            Color outline = ui_default_style()
-                ? ui_default_outline()
-                : LightenUIColor(thumb, 36);
-            DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
-                                             y + h - position_y},
-                                 0.5f, 8, active);
-            if(active_visual) {
-                DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                           (float)(knob_w / 2 + Scale(7)),
-                           ui_alpha(active, 54));
-            }
-            DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                       (float)(knob_w / 2), thumb);
-            DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                            (float)(knob_w / 2), outline);
-        } else {
-            DrawRectangle(track_x, position_y, track_w, y + h - position_y,
-                          c_button_hover);
-            RenderBevel(track_x, position_y, track_w, y + h - position_y,
-                        LightenUIColor(c_button_hover, 35),
-                        DarkenUIColor(c_button_hover, 35));
-            DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            RenderBevel(knob_x, knob_y, knob_w, knob_h,
-                        LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-        }
+        ui_runtime_theme_values(&palette, &tokens);
+        ui_draw_slider_paint(SliderPaintFor((SliderSpec){
+            .bounds = {(float)(x - knob_w / 2), (float)y,
+                       (float)knob_w, (float)h},
+            .ratio = t,
+            .vertical = true,
+            .active = active,
+            .hovered = hovered,
+            .disabled = UIContentDisabled(),
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        }), hovered, active, UIContentDisabled());
     }
 
     EndUIWidget(&widget);
@@ -322,9 +290,10 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     UIWidget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
-    int track_w = Scale(8);
-    int knob_w = Scale(22);
-    int knob_h = Scale(22);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    int track_w = SliderTrackSize(1, runtime_scale);
+    int knob_w = SliderThumbSize(runtime_scale);
+    int knob_h = SliderThumbSize(runtime_scale);
     int track_x = x - track_w / 2;
     int min_touch_w = ui_touch_target_min();
     int changed = 0;
@@ -342,8 +311,8 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
-    if(h < Scale(32))
-        h = Scale(32);
+    if(h < SliderMinimumLength(runtime_scale))
+        h = SliderMinimumLength(runtime_scale);
     track_x = x - track_w / 2;
     hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                    min_touch_w, h);
@@ -355,18 +324,6 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
-
-    if(ui_modern_style() || ui_default_style()) {
-        Color track = ui_default_style()
-            ? ui_default_surface_container()
-            : DarkenUIColor(c_bg, 16);
-        DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
-                             0.5f, 8, track);
-    } else {
-        DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
-        RenderBevel(track_x, y, track_w, h,
-                    DarkenUIColor(c_bg, 55), LightenUIColor(c_bg, 35));
-    }
 
     if(callback != NULL)
         callback(callback_user_data, x, y, h, min, max, *value);
@@ -398,44 +355,26 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     }
 
     {
-        float t = (float)(*value - min) / (float)(max - min);
-        int position_y = y + h - (int)(t * (float)h);
-        int knob_y;
-        int knob_x = track_x - (knob_w - track_w) / 2;
+        float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
+        Palette palette;
+        Metrics tokens;
+        int active = g_ui_slider_active_id == id;
+        int hovered = CheckCollisionPointRec(mouse_world, hit) &&
+                      !UIInputCapturesClick(mouse_world);
 
-        if(position_y < y)
-            position_y = y;
-        if(position_y > y + h)
-            position_y = y + h;
-        knob_y = position_y - knob_h / 2;
-        if(knob_y < y)
-            knob_y = y;
-        if(knob_y + knob_h > y + h)
-            knob_y = y + h - knob_h;
-
-        if(ui_modern_style() || ui_default_style()) {
-            Color active = ui_default_style() ? c_circle : c_button_hover;
-            Color thumb = ui_default_style() ? c_circle : c_button;
-            Color outline = ui_default_style()
-                ? ui_default_outline()
-                : LightenUIColor(thumb, 32);
-            DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
-                                             y + h - position_y},
-                                 0.5f, 8, active);
-            DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                       (float)(knob_w / 2), thumb);
-            DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                            (float)(knob_w / 2), outline);
-        } else {
-            DrawRectangle(track_x, position_y, track_w, y + h - position_y,
-                          c_button_hover);
-            RenderBevel(track_x, position_y, track_w, y + h - position_y,
-                        LightenUIColor(c_button_hover, 35),
-                        DarkenUIColor(c_button_hover, 35));
-            DrawRectangle(knob_x, knob_y, knob_w, knob_h, c_button);
-            RenderBevel(knob_x, knob_y, knob_w, knob_h,
-                        LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-        }
+        ui_runtime_theme_values(&palette, &tokens);
+        ui_draw_slider_paint(SliderPaintFor((SliderSpec){
+            .bounds = {(float)(x - knob_w / 2), (float)y,
+                       (float)knob_w, (float)h},
+            .ratio = t,
+            .vertical = true,
+            .active = active,
+            .hovered = hovered,
+            .disabled = UIContentDisabled(),
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        }), hovered, active, UIContentDisabled());
     }
 
     EndUIWidget(&widget);

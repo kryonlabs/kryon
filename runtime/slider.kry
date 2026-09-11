@@ -1,0 +1,120 @@
+#module "slider"
+#import "button"
+#import "control_props"
+#import "drawing_props"
+#import "style"
+#import "surface"
+#import "theme"
+
+SliderSpec :: struct {
+    bounds: Rectangle
+    ratio: float
+    vertical: bool
+    active: bool
+    hovered: bool
+    disabled: bool
+    scale: float
+    palette: Palette
+    metrics: Metrics
+}
+
+SliderPaint :: struct {
+    bounds: Rectangle
+    track_bounds: Rectangle
+    active_bounds: Rectangle
+    thumb_x: float
+    thumb_y: float
+    thumb_radius: float
+    glow_radius: float
+    glow_color: u32
+    thumb_fill_color: u32
+    thumb_edge_color: u32
+    thumb_shadow_color: u32
+    thumb_highlight_color: u32
+    track: StyleFrame
+    active_track: StyleFrame
+}
+
+SliderMinimumLength :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(32.0 * scale)
+}
+
+SliderThumbSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(22.0 * scale)
+}
+
+SliderTrackSize :: (vertical: bool, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if vertical { return (i32)(8.0 * scale) }
+    return (i32)(6.0 * scale)
+}
+
+SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
+    paint: SliderPaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+    ratio: float = spec.ratio
+    if ratio < 0.0 { ratio = 0.0 }
+    if ratio > 1.0 { ratio = 1.0 }
+    bounds: Rectangle = spec.bounds
+    min_length: float = (float)SliderMinimumLength(scale)
+    thumb_size: float = (float)SliderThumbSize(scale)
+    track_size: float = (float)SliderTrackSize(spec.vertical, scale)
+    if spec.vertical {
+        if bounds.height < min_length { bounds.height = min_length }
+        if bounds.width < thumb_size { bounds.width = thumb_size }
+        paint.track_bounds.x = bounds.x + (bounds.width - track_size) * 0.5
+        paint.track_bounds.y = bounds.y
+        paint.track_bounds.width = track_size
+        paint.track_bounds.height = bounds.height
+        position_y: float = paint.track_bounds.y + paint.track_bounds.height * (1.0 - ratio)
+        paint.active_bounds.x = paint.track_bounds.x
+        paint.active_bounds.y = position_y
+        paint.active_bounds.width = paint.track_bounds.width
+        paint.active_bounds.height = paint.track_bounds.y + paint.track_bounds.height - position_y
+        paint.thumb_x = paint.track_bounds.x + paint.track_bounds.width * 0.5
+        paint.thumb_y = position_y
+    } else {
+        if bounds.width < min_length { bounds.width = min_length }
+        if bounds.height < thumb_size { bounds.height = thumb_size }
+        paint.track_bounds.x = bounds.x
+        paint.track_bounds.y = bounds.y + (bounds.height - track_size) * 0.5
+        paint.track_bounds.width = bounds.width
+        paint.track_bounds.height = track_size
+        paint.active_bounds.x = paint.track_bounds.x
+        paint.active_bounds.y = paint.track_bounds.y
+        paint.active_bounds.width = paint.track_bounds.width * ratio
+        paint.active_bounds.height = paint.track_bounds.height
+        paint.thumb_x = paint.track_bounds.x + paint.track_bounds.width * ratio
+        paint.thumb_y = paint.track_bounds.y + paint.track_bounds.height * 0.5
+    }
+    paint.bounds = bounds
+    paint.thumb_radius = thumb_size * 0.5
+    paint.glow_radius = paint.thumb_radius + 8.0 * scale
+
+    state: i32 = ButtonStateNormal
+    if spec.hovered { state = ButtonStateHover }
+    if spec.active { state = ButtonStatePressed }
+    styles: StyleStates
+    paint.track = ResolveFrame(ButtonToneNeutral, ButtonEmphasisSoft, state,
+        ControlSizeMedium, true, false, spec.disabled, false, false,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+    paint.active_track = ResolveFrame(ButtonToneAccent, ButtonEmphasisFilled,
+        state, ControlSizeMedium, true, false, spec.disabled, false, false,
+        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+
+    white: u32 = PackedColor((u32)0xFFFFFF, (u32)255)
+    paint.thumb_fill_color = paint.active_track.value.background
+    paint.thumb_edge_color = GradientColor(paint.active_track.value.background, white, 0.50)
+    paint.thumb_shadow_color = Opacity(spec.palette.shadow, spec.disabled ? 0.28 : 0.60)
+    paint.thumb_highlight_color = Opacity(white, spec.disabled ? 0.08 : 0.20)
+    paint.glow_color = Opacity(paint.active_track.value.background,
+        spec.active ? 0.32 : (spec.hovered ? 0.18 : 0.0))
+    if spec.disabled {
+        paint.thumb_fill_color = Opacity(paint.thumb_fill_color, 0.45)
+        paint.thumb_edge_color = Opacity(paint.thumb_edge_color, 0.38)
+    }
+    return paint
+}

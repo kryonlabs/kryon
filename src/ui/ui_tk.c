@@ -1,9 +1,11 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "ui_tk.h"
 #include "ui_numeric_input_internal.h"
 #include "ui_popup_input_internal.h"
 #include "toolkit_store.h"
 #include "runtime/instance.h"
+#include "runtime/slider.h"
 #include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -11,6 +13,51 @@
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
 static const TextInputStyle kryon_zero_text_input_style;
+
+static void
+ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
+                        int disabled)
+{
+    StyleFrame track_frame = ui_style_apply_effects_frame(paint.track);
+    Style track_style = ui_unpack_style(track_frame.value);
+    StyleFrame active_frame = ui_style_apply_effects_frame(paint.active_track);
+    Style active_style = ui_unpack_style(active_frame.value);
+
+    ui_draw_material(paint.track_bounds, (Rectangle){0},
+                     track_style.background, track_style.border,
+                     track_style.border, track_style.radius,
+                     track_style.border_width,
+                     hovered ? 1.0f : 0.0f, active ? 1.0f : 0.0f,
+                     disabled, track_style.focus, 0.0f,
+                     track_style.opacity,
+                     ui_style_apply_effects_fill(track_frame.fill),
+                     track_style.material);
+    if(paint.active_bounds.width > 0.0f && paint.active_bounds.height > 0.0f) {
+        ui_draw_material(paint.active_bounds, paint.track_bounds,
+                         active_style.background, active_style.border,
+                         active_style.border, active_style.radius,
+                         active_style.border_width,
+                         hovered ? 1.0f : 0.0f, active ? 1.0f : 0.0f,
+                         disabled, active_style.focus, 0.0f,
+                         active_style.opacity,
+                         ui_style_apply_effects_fill(active_frame.fill),
+                         active_style.material);
+    }
+    if((active || hovered) && paint.glow_radius > 0.0f)
+        DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+                   paint.glow_radius, GetColor(paint.glow_color));
+    DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
+               paint.thumb_radius + (float)Scale(1),
+               GetColor(paint.thumb_shadow_color));
+    DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
+               paint.thumb_radius, GetColor(paint.thumb_fill_color));
+    DrawCircle((int)(paint.thumb_x - Scale(3)),
+               (int)(paint.thumb_y - Scale(4)),
+               paint.thumb_radius * 0.45f,
+               GetColor(paint.thumb_highlight_color));
+    DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
+                    paint.thumb_radius, GetColor(paint.thumb_edge_color));
+}
 
 
 #define UI_TK_MENU_MAX 8
@@ -2295,24 +2342,25 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
 {
     if(!IsWindowReady())
         return;
-    Color fill = disabled ? c_surface : c_button;
-    Color accent = disabled ? c_icon : c_button_hover;
-    DrawRectangleRec(cell, fill);
-    if(vertical) {
-        Rectangle progress = {cell.x, cell.y + cell.height * (1.0f - ratio),
-                              cell.width, cell.height * ratio};
-        DrawRectangleRec(progress, accent);
-        float knob_y = cell.y + cell.height * (1.0f - ratio);
-        DrawRectangle((int)cell.x, (int)(knob_y - Scale(2)),
-                      (int)cell.width, Scale(4), c_text);
-    } else {
-        Rectangle progress = {cell.x, cell.y, cell.width * ratio, cell.height};
-        DrawRectangleRec(progress, accent);
-        float knob_x = cell.x + cell.width * ratio;
-        DrawRectangle((int)(knob_x - Scale(2)), (int)cell.y,
-                      Scale(4), (int)cell.height, c_text);
-    }
-    DrawRectangleLinesEx(cell, 1.0f, c_button_hover);
+    Palette palette;
+    Metrics tokens;
+    Vector2 mouse = ui_mouse_world();
+    int hovered = CheckCollisionPointRec(mouse, cell) &&
+                  !disabled &&
+                  !UIInputCapturesClick(mouse);
+
+    ui_runtime_theme_values(&palette, &tokens);
+    ui_tk_draw_slider_paint(SliderPaintFor((SliderSpec){
+        .bounds = cell,
+        .ratio = ratio,
+        .vertical = vertical != 0,
+        .active = focused,
+        .hovered = hovered,
+        .disabled = disabled,
+        .scale = (float)Scale(1000) / 1000.0f,
+        .palette = palette,
+        .metrics = tokens
+    }), hovered, focused, disabled);
     RenderText(text, (int)cell.x + Scale(6),
                ui_row_text_y(cell, GetSmallFontSize()),
                GetSmallFontSize(), disabled ? c_icon : c_text);
