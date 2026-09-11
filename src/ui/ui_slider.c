@@ -145,9 +145,10 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     return changed;
 }
 
-int
-ui_render_vertical_slider(int id, int x, int y, int h,
-                          int min, int max, int *value)
+static int
+ui_render_vertical_slider_visual(int id, int x, int y, int h,
+                                 int min, int max, int *value,
+                                 int active_visual)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
@@ -189,8 +190,15 @@ ui_render_vertical_slider(int id, int x, int y, int h,
         g_ui_slider_active_id = 0;
 
     if(ui_modern_style()) {
+        Color track = active_visual ? DarkenUIColor(c_button, 72)
+                                    : DarkenUIColor(c_bg, 20);
+        if(active_visual) {
+            DrawRectangleRounded((Rectangle){track_x - Scale(5), y - Scale(5),
+                                             track_w + Scale(10), h + Scale(10)},
+                                 0.5f, 12, ui_alpha(c_button, 34));
+        }
         DrawRectangleRounded((Rectangle){track_x, y, track_w, h},
-                             0.5f, 8, DarkenUIColor(c_bg, 20));
+                             0.5f, 8, track);
     } else {
         DrawRectangle(track_x, y, track_w, h, DarkenUIColor(c_bg, 28));
         RenderBevel(track_x, y, track_w, h,
@@ -240,13 +248,19 @@ ui_render_vertical_slider(int id, int x, int y, int h,
             knob_y = y + h - knob_h;
 
         if(ui_modern_style()) {
+            Color active = active_visual ? c_button : c_button_hover;
+            Color thumb = active_visual ? c_button_hover : c_button;
             DrawRectangleRounded((Rectangle){track_x, position_y, track_w,
                                              y + h - position_y},
-                                 0.5f, 8, c_button_hover);
+                                 0.5f, 8, active);
+            if(active_visual) {
+                DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
+                           (float)(knob_w / 2 + Scale(7)), ui_alpha(c_button, 54));
+            }
             DrawCircle(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                       (float)(knob_w / 2), c_button);
+                       (float)(knob_w / 2), thumb);
             DrawCircleLines(knob_x + knob_w / 2, knob_y + knob_h / 2,
-                            (float)(knob_w / 2), LightenUIColor(c_button, 24));
+                            (float)(knob_w / 2), LightenUIColor(thumb, 36));
         } else {
             DrawRectangle(track_x, position_y, track_w, y + h - position_y,
                           c_button_hover);
@@ -261,6 +275,20 @@ ui_render_vertical_slider(int id, int x, int y, int h,
 
     EndUIWidget(&widget);
     return changed;
+}
+
+int
+ui_render_vertical_slider(int id, int x, int y, int h,
+                          int min, int max, int *value)
+{
+    return ui_render_vertical_slider_visual(id, x, y, h, min, max, value, 0);
+}
+
+int
+ui_render_vertical_slider_active(int id, int x, int y, int h,
+                                 int min, int max, int *value)
+{
+    return ui_render_vertical_slider_visual(id, x, y, h, min, max, value, 1);
 }
 
 int

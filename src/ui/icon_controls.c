@@ -79,10 +79,10 @@ RenderIconSliderPopup(IconSliderPopupProps popup)
 
     draw_icon_popup_surface((Rectangle){popup_x, popup_y, popup_w, popup_h});
 
-    return ui_render_vertical_slider(popup.id, popup_x + popup_w / 2,
-                                     popup_y + Scale(14),
-                                     popup_h - Scale(24),
-                                     popup.min, popup.max, popup.value);
+    return ui_render_vertical_slider_active(popup.id, popup_x + popup_w / 2,
+                                            popup_y + Scale(14),
+                                            popup_h - Scale(24),
+                                            popup.min, popup.max, popup.value);
 }
 
 IconRowResult

@@ -217,6 +217,8 @@ int ui_render_slider(int id, int x, int y, int w, const char *label, int min,
                      const char *value_text_override);
 int ui_render_vertical_slider(int id, int x, int y, int h, int min, int max,
                               int *value);
+int ui_render_vertical_slider_active(int id, int x, int y, int h, int min,
+                                     int max, int *value);
 int ui_render_vertical_slider_with_marks(
     int id, int x, int y, int h, int min, int max, int *value,
     UIVerticalSliderMarkCallback callback, void *callback_user_data);
