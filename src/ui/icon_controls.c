@@ -8,17 +8,15 @@ icon_popup_style(void)
     ButtonProps props = {0};
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
-    Style base = ResolveButtonStyle(props, ButtonStateNormal);
+    Style base = ResolveButtonStyle(props, ButtonStateHover);
     props.tone = ButtonToneAccent;
     props.emphasis = ButtonEmphasisFilled;
     Style accent = ResolveButtonStyle(props, ButtonStateNormal);
     Style panel = ui_unpack_style(Appearance(
         ui_pack_style_states((ControlStyle){.normal = base}).normal,
         ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        ColorToInt(GetThemeSurface()), 1, ButtonStateNormal, 0));
-    panel = ui_style_apply_effects(panel);
-    panel.radius = GetThemeMetrics().radius_large + 4.0f;
-    return panel;
+        ColorToInt(GetThemeSurface()), 0, ButtonStateHover, 0));
+    return ui_style_apply_effects(panel);
 }
 
 static void
@@ -26,7 +24,7 @@ draw_icon_popup_surface(Rectangle bounds)
 {
     Style paint = icon_popup_style();
     ui_draw_material(bounds, (Rectangle){0}, paint.background, paint.border,
-        paint.border, paint.radius, paint.border_width, 0, 0, 0,
+        paint.border, paint.radius, paint.border_width, 1, 0, 0,
         paint.focus, 0, paint.opacity, ui_style_fill(paint), paint.material);
 }
 
