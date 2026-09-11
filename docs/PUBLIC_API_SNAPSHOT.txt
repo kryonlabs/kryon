@@ -1526,6 +1526,10 @@ include/ui_icon_types.h enum UI_ICON_TYPE_MERCURY
 include/ui_icon_types.h enum UI_ICON_TYPE_MOON
 include/ui_icon_types.h enum UI_ICON_TYPE_MUSIC
 include/ui_icon_types.h enum UI_ICON_TYPE_MUTE
+include/ui_icon_types.h enum UI_ICON_TYPE_NAV_HABITS
+include/ui_icon_types.h enum UI_ICON_TYPE_NAV_LIST
+include/ui_icon_types.h enum UI_ICON_TYPE_NAV_PRACTICE
+include/ui_icon_types.h enum UI_ICON_TYPE_NAV_SETTINGS
 include/ui_icon_types.h enum UI_ICON_TYPE_NONE
 include/ui_icon_types.h enum UI_ICON_TYPE_PAUSE
 include/ui_icon_types.h enum UI_ICON_TYPE_PAYMENTS_BTC

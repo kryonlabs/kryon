@@ -1,7 +1,7 @@
 {
   "version": 1,
   "sheet": "ui",
-  "icon_count": 57,
+  "icon_count": 61,
   "image": "ui.png",
   "cell_size": 64,
   "content_size": 48,
@@ -522,6 +522,42 @@
       "width": 64,
       "height": 64,
       "upstream": "core/regular/system/alert.svg"
+    },
+    {
+      "index": 57,
+      "name": "nav_list",
+      "x": 64,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "generated/nav/nav_list.svg"
+    },
+    {
+      "index": 58,
+      "name": "nav_habits",
+      "x": 128,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "generated/nav/nav_habits.svg"
+    },
+    {
+      "index": 59,
+      "name": "nav_practice",
+      "x": 192,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "generated/nav/nav_practice.svg"
+    },
+    {
+      "index": 60,
+      "name": "nav_settings",
+      "x": 256,
+      "y": 448,
+      "width": 64,
+      "height": 64,
+      "upstream": "generated/nav/nav_settings.svg"
     }
   ],
   "style": "mingcute-core",
