@@ -145,12 +145,12 @@ RenderNavigationBar(NavigationBarProps nav)
         if(item_paint.draw_face) {
             StyleFrame face_frame = ui_style_apply_effects_frame(item_paint.face);
             Style face_style = ui_unpack_style(face_frame.value);
-            ui_draw_material(item_paint.state_bounds, paint.bar_bounds,
+            ui_draw_material(item_paint.state_bounds, (Rectangle){0},
                              face_style.background, face_style.border,
                              face_style.border, face_style.radius,
                              face_style.border_width,
                              hover ? 1.0f : 0.0f, 0.0f, item->disabled,
-                             face_style.focus, 0.0f,
+                             face_style.focus, item->active ? 1.0f : 0.0f,
                              face_style.opacity,
                              ui_style_apply_effects_fill(face_frame.fill),
                              face_style.material);
