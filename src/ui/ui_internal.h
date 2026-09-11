@@ -210,8 +210,6 @@ int RenderReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
 int RenderInfoButton(int center_x, int center_y, int diameter);
 int ui_text_button_render(int x, int y, const char *label, int *hover);
-void RenderIconLink(int x, int y, int icon_size, Texture2D icon,
-                    const char *url);
 int ui_render_slider(int id, int x, int y, int w, const char *label, int min,
                      int max, int *value, const char *suffix,
                      const char *value_text_override);

@@ -5692,42 +5692,6 @@ RenderSubtabBar(SubtabBarProps bar)
     return clicked_tab;
 }
 
-void
-RenderIconLink(int x, int y, int icon_size, Texture2D icon, const char *url)
-{
-    Vector2 mouse_world = ui_mouse_world();
-    int mx = (int)mouse_world.x;
-    int my = (int)mouse_world.y;
-    int hover = 0;
-    int padding = Scale(4);
-    int btn_w = icon_size + padding * 2;
-    int btn_h = icon_size + padding * 2;
-    int btn_x = x - padding;
-    int btn_y = y - padding;
-
-    if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
-       !UIInputCapturesClick(mouse_world)) {
-        hover = UIHoverEffectsEnabled();
-        MarkClickable();
-    }
-
-    if(hover) {
-        DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button_hover);
-        RenderBevel(btn_x, btn_y, btn_w, btn_h, DarkenUIColor(c_button_hover, 40), LightenUIColor(c_button_hover, 40));
-    } else {
-        DrawRectangle(btn_x, btn_y, btn_w, btn_h, c_button);
-        RenderBevel(btn_x, btn_y, btn_w, btn_h, LightenUIColor(c_button, 40), DarkenUIColor(c_button, 40));
-    }
-
-    DrawCustomIcon(x, y, icon_size, icon, WHITE);
-
-    if(mx > btn_x && mx < btn_x + btn_w && my > btn_y && my < btn_y + btn_h &&
-       !UIInputCapturesClick(mouse_world) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UIConsumeRelease();
-        ui_open_url(url);
-    }
-}
-
 /* ================================================================
  * CONTROLS
  * ================================================================ */

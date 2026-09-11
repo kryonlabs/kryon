@@ -25,7 +25,6 @@ static const KryonNodeType kryon_node_types[] = {
     {"Href", "Href", "UI/Input", "Control", "Link", EDITABLE},
     {"TextField", "Text Field", "UI/Input", "Control", "Input", INSERT_EDITABLE},
     {"InfoButton", "Info Button", "UI/Input", "Control", "Help action", EDITABLE},
-    {"IconLink", "Icon Link", "UI/Input", "Control", "Icon link", EDITABLE},
     {"Dropdown", "Dropdown", "UI/Input", "Control", "Selection", INSERT_EDITABLE},
     {"DropdownOptions", "Dropdown Options", "UI/Input", "Control", "Rich selection", EDITABLE},
     {"Slider", "Slider", "UI/Input", "Control", "Value", INSERT_EDITABLE},

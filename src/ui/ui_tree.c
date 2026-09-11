@@ -2885,18 +2885,6 @@ InfoButton(int id, int center_x, int center_y, int diameter)
 }
 
 void
-IconLink(int id, int x, int y, int icon_size, Texture2D icon,
-               const char *url)
-{
-    NodeId node;
-
-    node = ui_tree_add(id, UI_WIDGET_BUTTON_NODE,
-                       (Rectangle){x, y, icon_size, icon_size}, url);
-    RenderIconLink(x, y, icon_size, icon, url);
-    ui_tree_mark_painted_immediate(node);
-}
-
-void
 Icon(int id, int x, int y, int size, UIIconType icon, Color tint)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, size, size},

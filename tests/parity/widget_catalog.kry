@@ -93,7 +93,10 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         LabelFrame((LabelFrameProps){.bounds = {Scale(540), Scale(148), Scale(140), Scale(48)}, .title = "Frame"})
         ImageBox((ImageBoxProps){.bounds = {Scale(690), Scale(148), Scale(48), Scale(48)}, .texture = (Texture2D){0}, .tint = WHITE})
         Icon(39, Scale(540), Scale(210), Scale(24), 1, WHITE)
-        IconLink(40, Scale(580), Scale(210), Scale(24), (Texture2D){0}, "https://kryonlabs.com")
+        if Button((ButtonProps){.bounds = {Scale(580), Scale(206), Scale(32), Scale(32)}, .id = 40,
+            .icon_type = 1, .icon_only = 1, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft}) {
+            OpenURL("https://kryonlabs.com")
+        }
         Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(620), Scale(206), Scale(72), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
 
         Notebook((NotebookProps){.bounds = {Scale(540), Scale(270), Scale(160), Scale(54)}, .tabs = tabs[:], .selected_index = &pick})
@@ -112,7 +115,8 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
 
         canvas_result: CanvasResult = BeginCanvas((Canvas){{Scale(520), Scale(510), Scale(92), Scale(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
         CanvasGrid((Rectangle){Scale(520), Scale(510), Scale(92), Scale(58)}, 8, GetThemeIcon())
-        DrawCircleV(canvas_result.world, Scale(4), GetThemeSurface())
+        Circle((int)canvas_result.world.x, (int)canvas_result.world.y,
+               Scale(4), GetThemeSurface())
         EndCanvas((Canvas){{Scale(520), Scale(510), Scale(92), Scale(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
     }
 }
