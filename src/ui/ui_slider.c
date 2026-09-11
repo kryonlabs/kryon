@@ -519,8 +519,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
             .emphasis = checked ? ButtonEmphasisFilled : ButtonEmphasisSoft,
             .disabled = !enabled, .pill = 1};
         ButtonState visual_state = down ? ButtonStatePressed
-            : hovered ? ButtonStateHover
-            : focused ? ButtonStateFocus : ButtonStateNormal;
+            : hovered ? ButtonStateHover : ButtonStateNormal;
         Style track_style = ui_style_apply_effects(ResolveButtonStyle(
             track_props, visual_state));
         Rectangle track_bounds;
@@ -536,12 +535,25 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         track_x = x + (w - track_w) / 2;
         track_y = y + (h - track_h) / 2;
         track_bounds = (Rectangle){track_x, track_y, track_w, track_h};
+        if(focused) {
+            Color focus = GetTheme().colors.focus;
+            Color glow = focus;
+            Rectangle focus_bounds = {
+                track_bounds.x - Scale(4), track_bounds.y - Scale(4),
+                track_bounds.width + Scale(8), track_bounds.height + Scale(8)
+            };
+
+            glow.a = glow.a > 54 ? 54 : glow.a;
+            focus.a = focus.a > 220 ? 220 : focus.a;
+            DrawRectangleRounded(focus_bounds, 0.5f, 16, glow);
+            DrawRectangleRoundedLinesEx(focus_bounds, 0.5f, 16,
+                                        (float)Scale(2), focus);
+        }
         ui_draw_material(track_bounds, (Rectangle){0}, track_style.background,
                          track_style.border, track_style.border,
                          track_style.radius, track_style.border_width,
                          hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
-                         !enabled, track_style.focus,
-                         focused ? 1.0f : 0.0f,
+                         !enabled, track_style.focus, 0.0f,
                          track_style.opacity, ui_style_fill(track_style),
                          track_style.material);
 
@@ -564,8 +576,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
                              active_style.border, active_style.border,
                              active_style.radius, active_style.border_width,
                              hovered ? 1.0f : 0.0f, down ? 1.0f : 0.0f,
-                             !enabled, active_style.focus,
-                             focused ? 1.0f : 0.0f,
+                             !enabled, active_style.focus, 0.0f,
                              active_style.opacity, ui_style_fill(active_style),
                              active_style.material);
             RenderNonSelectableText(off_text, x + w / 4 - off_w / 2,
