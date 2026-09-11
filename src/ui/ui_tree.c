@@ -703,11 +703,11 @@ ui_measure_button_row(UIWidgetNode node)
 }
 
 static int
-ui_measure_bottom_nav(UIWidgetNode node)
+ui_measure_navigation_bar(UIWidgetNode node)
 {
     if(node.bounds.height > 0)
         return (int)ceilf(node.bounds.height);
-    return ui_bottom_nav_height();
+    return ui_navigation_bar_height();
 }
 
 static int
@@ -770,7 +770,7 @@ static const UIWidgetOps ui_widget_ops[] = {
     [UI_WIDGET_SECTION_LABEL_NODE] = {ui_measure_section_label},
     [UI_WIDGET_CHECKBOX_ROW_NODE] = {ui_measure_checkbox_row},
     [UI_WIDGET_BUTTON_ROW_NODE] = {ui_measure_button_row},
-    [UI_WIDGET_BOTTOM_NAV_NODE] = {ui_measure_bottom_nav},
+    [UI_WIDGET_NAVIGATION_BAR_NODE] = {ui_measure_navigation_bar},
     [UI_WIDGET_TAB_BAR_NODE] = {ui_measure_tab_bar},
     [UI_WIDGET_THEME_PICKER_NODE] = {ui_measure_theme_picker},
     [UI_WIDGET_PARAGRAPH_MODAL_NODE] = {ui_measure_paragraph_modal},
@@ -2292,13 +2292,13 @@ NodeButtonRow(ButtonRowProps row)
 }
 
 UIWidgetNode
-NodeBottomNav(BottomNavProps nav)
+NodeNavigationBar(NavigationBarProps nav)
 {
     UIWidgetNode node;
     int height;
 
     height = nav.height > 0 ? nav.height : 0;
-    node = ui_node(0, UI_WIDGET_BOTTOM_NAV_NODE,
+    node = ui_node(0, UI_WIDGET_NAVIGATION_BAR_NODE,
                    (Rectangle){0, 0, nav.view_width, height});
     return node;
 }
@@ -3714,19 +3714,19 @@ BottomIconRow(BottomIconRowProps row)
     return RenderBottomIconRow(row);
 }
 
-BottomNavResult
-BottomNav(BottomNavProps nav)
+NavigationBarResult
+NavigationBar(NavigationBarProps nav)
 {
-    ui_tree_add(0, UI_WIDGET_BOTTOM_NAV_NODE,
+    ui_tree_add(0, UI_WIDGET_NAVIGATION_BAR_NODE,
                 (Rectangle){0, 0, nav.view_width, nav.view_height}, &nav);
-    return RenderBottomNav(nav);
+    return RenderNavigationBar(nav);
 }
 
-BottomNavConfigResult
-BottomNavConfig(BottomNavConfigProps modal)
+NavigationBarConfigResult
+NavigationBarConfig(NavigationBarConfigProps modal)
 {
     ui_tree_add(modal.id, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, 0, 0}, &modal);
-    return RenderBottomNavConfigModal(modal);
+    return RenderNavigationBarConfigModal(modal);
 }
 
 TopNavResult

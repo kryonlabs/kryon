@@ -6,7 +6,7 @@ host=build/$(uname -s | tr [:upper:] [:lower:])-$(uname -m)
 if [ $# -gt 0 ]; then
     k2cpp=$1
 elif [ -f "$host/bin/k2cpp" ]; then
-    k2c=$host/bin/k2cpp
+    k2cpp=$host/bin/k2cpp
 else
     k2cpp=$(ls build/*/bin/k2cpppp 2>/dev/null | head -1)
 fi
@@ -17,7 +17,7 @@ cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM
 
 if [ ! -f "$k2cpp" ]; then
-    echo "k2cpp not found: $k2c" >&2
+    echo "k2cpp not found: $k2cpp" >&2
     exit 1
 fi
 
@@ -75,8 +75,8 @@ Valid :: (viewport: Rectangle) #ui {
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
             count = 302
         }
-        nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
-        nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
+        nav_items: [1] NavigationBarItem = {{1,"Home",(Texture2D){0},1,0}}
+        nav_result: NavigationBarResult = NavigationBar((NavigationBarProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
         if nav_result.clicked_route != -1 {
             count = nav_result.clicked_route
         }
@@ -251,8 +251,8 @@ grep -Fq 'MenuSeparator' "$c"
 grep -Fq 'Menu menus[1]' "$c"
 grep -Fq 'MenuBarResult menu_result = MenuBar' "$c"
 grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
-grep -Fq 'BottomNavItem nav_items[1]' "$c"
-grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
+grep -Fq 'NavigationBarItem nav_items[1]' "$c"
+grep -Fq 'NavigationBarResult nav_result = NavigationBar' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar(([&]() { TabBarProps record_value_0{};' "$c"
 grep -Fq 'count = c_abs(-3);' "$c"

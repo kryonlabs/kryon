@@ -75,8 +75,8 @@ Valid :: (viewport: Rectangle) #ui {
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,302}) {
             count = 302
         }
-        nav_items: [1] BottomNavItem = {{1,"Home",(Texture2D){0},1,0}}
-        nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
+        nav_items: [1] NavigationBarItem = {{1,"Home",(Texture2D){0},1,0}}
+        nav_result: NavigationBarResult = NavigationBar((NavigationBarProps){.view_width = Scale(200), .view_height = Scale(120), .count = 1, .items = nav_items, .height = Scale(40)})
         if nav_result.clicked_route != -1 {
             count = nav_result.clicked_route
         }
@@ -251,8 +251,8 @@ grep -Fq 'MenuSeparator' "$c"
 grep -Fq 'Menu menus[1]' "$c"
 grep -Fq 'MenuBarResult menu_result = MenuBar' "$c"
 grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
-grep -Fq 'BottomNavItem nav_items[1]' "$c"
-grep -Fq 'BottomNavResult nav_result = BottomNav' "$c"
+grep -Fq 'NavigationBarItem nav_items[1]' "$c"
+grep -Fq 'NavigationBarResult nav_result = NavigationBar' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar((TabBarProps)' "$c"
 grep -Fq 'count = c_abs(-3);' "$c"

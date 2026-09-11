@@ -1491,7 +1491,7 @@ int TextField(TextField field);
 
 ### Navigation
 
-#### Bottom Navigation
+#### Navigation Barigation
 
 ```c
 typedef struct {
@@ -1500,22 +1500,22 @@ typedef struct {
     Texture2D icon;
     int active;
     int disabled;
-} BottomNavItem;
+} NavigationBarItem;
 
 typedef struct {
     int view_width;
     int view_height;
     int count;
-    const BottomNavItem *items;
+    const NavigationBarItem *items;
     int height;
     int icon_size;
     int icon_padding;
     int side_margin;
     int bottom_margin;
     int max_button_width;
-} BottomNavProps;
+} NavigationBarProps;
 
-BottomNavResult BottomNav(BottomNavProps nav);
+NavigationBarResult NavigationBar(NavigationBarProps nav);
 ```
 
 #### Toolbar
@@ -2092,7 +2092,7 @@ KryAppShellLayout KryAppShellMeasure(KryAppShellLayoutSpec spec);
 ```
 
 These helpers cover app-neutral navigation state: a bounded route history and
-a safe-area-aware shell measurement for bottom navigation plus optional
+a safe-area-aware shell measurement for navigation barigation plus optional
 wide-screen sidebars.
 
 ### Capabilities And Settings

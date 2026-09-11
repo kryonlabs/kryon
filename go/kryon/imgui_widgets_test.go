@@ -923,7 +923,7 @@ func TestNativeNavigationAndFeedback(t *testing.T) {
 	r.BeginFrame()
 	r.TitleBar("Workspace", 44)
 	r.TopNav(TopNavProps{ID: 10, Y: 44, Width: 300, Height: 40, Title: "Project"})
-	r.BottomNav(BottomNavProps{ViewWidth: 640, ViewHeight: 480, Height: 60, Count: 2, Items: []BottomNavItem{{Route: 1, Label: "Home", Active: true}, {Route: 2, Label: "Settings"}}})
+	r.NavigationBar(NavigationBarProps{ViewWidth: 640, ViewHeight: 480, Height: 60, Count: 2, Items: []NavigationBarItem{{Route: 1, Label: "Home", Active: true}, {Route: 2, Label: "Settings"}}})
 	r.ShowToastFor("Updated", 1)
 	r.EndFrame()
 

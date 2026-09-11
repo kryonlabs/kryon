@@ -1045,9 +1045,12 @@ $(BOTTOM_NAV_ICON_COLOR_TEST): tests/bottom_nav_icon_color_test.c $(LIB) $(KRYON
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/bottom_nav_icon_color_test.c \
 		-Wl,--wrap=DrawTexturePro \
+		-Wl,--wrap=DrawRectangle \
 		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleLinesEx \
 		-Wl,--wrap=DrawRectangleRounded \
 		-Wl,--wrap=DrawRectangleGradientV \
+		-Wl,--wrap=DrawRectangleRoundedLines \
 		-Wl,--wrap=DrawRectangleRoundedLinesEx \
 		-Wl,--wrap=SetMouseCursor \
 		-Wl,--wrap=GetMousePosition \

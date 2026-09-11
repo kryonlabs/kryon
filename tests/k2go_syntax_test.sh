@@ -210,7 +210,7 @@ App :: () #ui {
     TitleBar("Smoke", Scale(32))
     TopNav((TopNavProps){.id = 2, .x = 0, .y = 0, .width = Scale(320), .height = Scale(36), .title = "Top", .options = "x;y", .option_count = 2, .selected_index = &pick})
     Toolbar((ToolbarProps){.id = 1, .x = 0, .y = Scale(40), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
-    BottomNav((BottomNavProps){.view_width = Scale(320), .view_height = Scale(240), .count = 0, .height = Scale(56)})
+    NavigationBar((NavigationBarProps){.view_width = Scale(320), .view_height = Scale(240), .count = 0, .height = Scale(56)})
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
     plot_values: [4] float = {0.0f, 0.25f, 1.0f, 0.5f}
@@ -505,7 +505,7 @@ grep -q 'Modal("Title"' "$out"
 grep -q 'TitleBar("Smoke"' "$out"
 grep -q 'kryon.TopNav(kryon.TopNavProps{' "$out"
 grep -q 'kryon.Toolbar(kryon.ToolbarProps{' "$out"
-grep -q 'kryon.BottomNav(kryon.BottomNavProps{' "$out"
+grep -q 'kryon.NavigationBar(kryon.NavigationBarProps{' "$out"
 grep -q 'Fade(' "$out"
 grep -q 'GetThemeSurface()' "$out"
 

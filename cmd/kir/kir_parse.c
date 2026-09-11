@@ -382,7 +382,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
         "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
         "PromptDialog", "TitleBar", "TabBar", "TabItemButton",
-        "ClosableTabBar", "BottomNav", "TopNav",
+        "ClosableTabBar", "NavigationBar", "TopNav",
         "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
 		"PanedView", "Collapsible", "ListBox", "TreeView", "SourceView", "TableView",
 		"ColorPicker", "CanvasGrid", "SelectableText"
@@ -536,8 +536,8 @@ ui_block_prop_type(const char *widget)
         return "SourceViewProps";
     if(strcmp(widget, "TableView") == 0)
         return "TableViewProps";
-    if(strcmp(widget, "BottomNav") == 0)
-        return "BottomNavProps";
+    if(strcmp(widget, "NavigationBar") == 0)
+        return "NavigationBarProps";
     if(strcmp(widget, "TopNav") == 0)
         return "TopNavProps";
     if(strcmp(widget, "Toolbar") == 0)

@@ -77,7 +77,7 @@ main(void)
     GridCursor grid_cursor;
     Rectangle grid_item;
     UIScreenScaffold scaffold;
-    BottomNavProps nav = {0};
+    NavigationBarProps nav = {0};
     TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
     const UIWidgetNode *node;
@@ -174,13 +174,13 @@ main(void)
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
               Scale(54));
-    check_int("bottom nav",
-              GetNodeHeight(NodeBottomNav(nav)),
+    check_int("navigation bar",
+              GetNodeHeight(NodeNavigationBar(nav)),
               Scale(40));
     SetThemeStyle(THEME_STYLE_DEFAULT);
-    check_int("material bottom nav",
-              GetNodeHeight(NodeBottomNav(nav)),
-              Scale(106));
+    check_int("material navigation bar",
+              GetNodeHeight(NodeNavigationBar(nav)),
+              Scale(92));
     SetThemeStyle(THEME_STYLE_CLASSIC);
     check_int("retro tab bar",
               GetNodeHeight(NodeTabBar(tabs)),

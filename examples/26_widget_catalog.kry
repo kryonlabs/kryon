@@ -47,7 +47,7 @@ state {
     cascade_scroll: int = 0
     page_preview: int = 0
     page_route: int = 0
-    nav_items: [3] BottomNavItem = {{.route = 0,.label = "Home"},{.route = 1,.label = "Explore"},{.route = 2,.label = "Settings"}}
+    nav_items: [3] NavigationBarItem = {{.route = 0,.label = "Home"},{.route = 1,.label = "Explore"},{.route = 2,.label = "Settings"}}
     theme_source: int = 0
     theme_mode: int = 2
     theme_style: int = 1
@@ -131,7 +131,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Screen preview: {
             bounds = viewport
             ClearBackground(GetThemeBackground())
-            TitleBar("TitleBar / BottomNav preview", Scale(54))
+            TitleBar("TitleBar / NavigationBar preview", Scale(54))
             if Button((ButtonProps){.bounds = {Scale(20),Scale(72),Scale(180),Scale(36)}, .label = "Back to catalog", .id = 950}) {
                 page_preview = 0
             }
@@ -140,7 +140,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             for nav_index = 0; nav_index < 3; nav_index++ {
                 nav_items[nav_index].active = page_route == nav_index
             }
-            nav_result: BottomNavResult = BottomNav((BottomNavProps){.view_width = (int)viewport.width,.view_height = (int)viewport.height,.count = 3,.items = nav_items,.height = Scale(64)})
+            nav_result: NavigationBarResult = NavigationBar((NavigationBarProps){.view_width = (int)viewport.width,.view_height = (int)viewport.height,.count = 3,.items = nav_items,.height = Scale(64)})
             if nav_result.clicked_index >= 0 {
                 page_route = nav_result.clicked_route
             }
@@ -509,7 +509,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         if category == 9 {
             Text((TextProps){.bounds={x, y, 0, 0}, .text="PAGES AND SETTINGS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
-            if Button((ButtonProps){.bounds = {x,y + Scale(42),Scale(350),Scale(36)},.label = "Preview TitleBar and BottomNav",.id = 965}) { page_preview = 1 }
+            if Button((ButtonProps){.bounds = {x,y + Scale(42),Scale(350),Scale(36)},.label = "Preview TitleBar and NavigationBar",.id = 965}) { page_preview = 1 }
             Page((PageProps){.bounds = {x,y + Scale(110),Scale(360),Scale(210)},.title = "Page",.gap = Scale(12),.padding = Scale(12),.key = 966})
             Section((SectionProps){.bounds = {0,0,Scale(336),Scale(180)},.label = "Section",.gap = Scale(12),.key = 967})
             Heading((HeadingProps){.bounds = {x + Scale(12),y + Scale(122),Scale(312),Scale(40)},.text = "Page / Section",.level = 2,.font = Text20,.color = GetThemeText(),.key = 968})

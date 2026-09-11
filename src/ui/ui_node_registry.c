@@ -53,7 +53,7 @@ static const KryonNodeType kryon_node_types[] = {
 
     {"MenuBar", "Menu Bar", "UI/Navigation", "Control", "Menu", EDITABLE},
     {"PopupMenu", "Popup Menu", "UI/Navigation", "Control", "Menu", EDITABLE},
-    {"BottomNav", "Bottom Nav", "UI/Navigation", "Control", "Tabs", EDITABLE},
+    {"NavigationBar", "Navigation Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"TopNav", "Top Nav", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"Toolbar", "Toolbar", "UI/Navigation", "Control", "Tools", EDITABLE},
     {"ToolbarHeader", "Toolbar Header", "UI/Navigation", "Control", "Header tools", EDITABLE},
@@ -88,7 +88,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"CheckboxRow", "Checkbox Row", "UI/Composite", "Control", "Boolean row", EDITABLE},
     {"ButtonRow", "Button Row", "UI/Composite", "Control", "Action row", EDITABLE},
     {"BottomIconRow", "Bottom Icon Row", "UI/Composite", "Control", "Icon row", EDITABLE},
-    {"BottomNavConfig", "Bottom Nav Config", "UI/Composite", "Control", "Nav editor", EDITABLE},
+    {"NavigationBarConfig", "Navigation Bar Config", "UI/Composite", "Control", "Nav editor", EDITABLE},
     {"SidebarAccountHeader", "Sidebar Account Header", "UI/Composite", "Control", "Account", EDITABLE},
     {"ProfilePicturePicker", "Profile Picture Picker", "UI/Composite", "Control", "Avatar picker", EDITABLE},
     {"ReorderHandle", "Reorder Handle", "UI/Composite", "Control", "Drag handle", EDITABLE},

@@ -198,7 +198,7 @@ def run_extended():
     capture('canvas-interactive')
     category(9);capture('pages-settings')
     check('Page preview','preview',lambda:click(400,140),1);capture('page-preview')
-    check('BottomNav route','route',lambda:click(600,765),1)
+    check('NavigationBar route','route',lambda:click(600,765),1)
     check('Return to catalog','preview',lambda:click(100,90),0)
 
 def run_new_dialogs():

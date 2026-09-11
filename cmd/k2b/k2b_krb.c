@@ -2945,7 +2945,7 @@ is_kry_widget_call(const char *name)
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
         "Combobox", "Screen", "Column", "Row", "Stack", "End", "Scroll",
         "Canvas", "Modal", "ActionModal", "MessageDialog",
-        "ConfirmDialog", "PromptDialog", "TitleBar", "TabBar", "BottomNav",
+        "ConfirmDialog", "PromptDialog", "TitleBar", "TabBar", "NavigationBar",
         "TopNav", "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
         "Notebook", "PanedView", "Collapsible", "ListBox", "SourceView",
         "TableView", "CanvasGrid", "SelectableText", "InfoButton", NULL

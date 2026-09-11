@@ -395,7 +395,7 @@ func Modal(title, message, cancelBtn, confirmBtn string) int {
 	return active().Modal(title, message, cancelBtn, confirmBtn)
 }
 func TitleBar(title string, height int32)      { active().TitleBar(title, height) }
-func BottomNav(props BottomNavProps)           { active().BottomNav(props) }
+func NavigationBar(props NavigationBarProps)           { active().NavigationBar(props) }
 func TopNav(props TopNavProps)                 { active().TopNav(props) }
 func Toolbar(props ToolbarProps) ToolbarResult { return active().Toolbar(props) }
 func MenuBar(id int32, bounds Rectangle, menus []Menu, args ...any) MenuBarResult {

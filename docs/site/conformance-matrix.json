@@ -2617,7 +2617,7 @@
       "widgets": [
         "ActionModal",
         "Bevel",
-        "BottomNav",
+        "NavigationBar",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -4771,7 +4771,7 @@
         "ActionModal",
         "Background",
         "Bevel",
-        "BottomNav",
+        "NavigationBar",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -5182,7 +5182,7 @@
     "ActionModal": 3,
     "Background": 20,
     "Bevel": 2,
-    "BottomNav": 2,
+    "NavigationBar": 2,
     "Button": 17,
     "Canvas": 3,
     "CanvasGrid": 3,
@@ -5287,7 +5287,7 @@
       "status_class": "ok"
     },
     {
-      "id": "BottomNav",
+      "id": "NavigationBar",
       "semantic_sources": [],
       "source_count": 2,
       "sources": [

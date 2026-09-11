@@ -59,7 +59,7 @@ Picture ImageWithBg ImageButton Button Selectable CheckboxFlags InvisibleButton 
 Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
 PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
 Canvas Disabled Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
-TabBar BottomNav TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
+TabBar NavigationBar TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
 PanedView Collapsible ListBox TreeView SourceView TableView ColorPicker TabItemButton ClosableTabBar DragDropSource DragDropTarget MultiSelectList
 CanvasGrid SelectableText`
 
@@ -174,7 +174,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | TabItemButton / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Typed drag-and-drop source / target | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| BottomNav (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `BottomNav` | ◐ `NavButton` lowers to a BUTTON |
+| NavigationBar (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `NavigationBar` | ◐ `NavButton` lowers to a BUTTON |
 | TopNav / Toolbar / ToolbarHeader | ✅ | ✅ | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |
 | TitleBar family | ✅ | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
 
@@ -197,7 +197,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | LabelTextField / SectionLabel | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| BottomNavConfig | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| NavigationBarConfig | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | SidebarAccountHeader / ProfilePicturePicker | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Reorder (drag handle + placeholder) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | ImageBox | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |

@@ -54,13 +54,13 @@ typedef struct {
     Texture2D icon;
     int active;
     int disabled;
-} BottomNavItem;
+} NavigationBarItem;
 
 typedef struct {
     int view_width;
     int view_height;
     int count;
-    const BottomNavItem *items;
+    const NavigationBarItem *items;
     int height;
     int icon_size;
     int icon_padding;
@@ -68,20 +68,20 @@ typedef struct {
     int bottom_margin;
     int max_button_width;
     Color icon_color; /* Transparent keeps the original texture colors. */
-} BottomNavProps;
+} NavigationBarProps;
 
 typedef struct {
     int clicked_index;
     int clicked_route;
     int y;
     int height;
-} BottomNavResult;
+} NavigationBarResult;
 
 typedef struct {
     int route;
     const char *label;
     Texture2D icon;
-} BottomNavOption;
+} NavigationBarOption;
 
 typedef struct {
     int id;
@@ -90,19 +90,19 @@ typedef struct {
     int *route_count;
     int max_route_count;
     const char **slot_labels;
-    const BottomNavOption *options;
+    const NavigationBarOption *options;
     int option_count;
     const char *add_label;
     const char *cancel_label;
     const char *save_label;
     const char *reset_label;
     Texture2D close_icon;
-} BottomNavConfigProps;
+} NavigationBarConfigProps;
 
 typedef struct {
     int action;
     int changed;
-} BottomNavConfigResult;
+} NavigationBarConfigResult;
 
 typedef struct {
     Texture2D icon;

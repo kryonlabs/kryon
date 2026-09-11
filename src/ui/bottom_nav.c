@@ -12,7 +12,7 @@ static const Vector2 kryon_zero_vector2;
 
 
 int
-ui_bottom_nav_height(void)
+ui_navigation_bar_height(void)
 {
     if(ui_classic_style())
         return Scale(40);
@@ -20,7 +20,7 @@ ui_bottom_nav_height(void)
 }
 
 static int
-ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
+ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
 {
     Vector2 mouse = ui_mouse_world();
     int inside = CheckCollisionPointRec(mouse, bounds);
@@ -43,7 +43,7 @@ ui_bottom_nav_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char alpha)
+ui_draw_navigation_bar_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char alpha)
 {
     Rectangle src;
 
@@ -59,13 +59,13 @@ ui_draw_bottom_nav_icon(Texture2D icon, Rectangle dst, Color tint, unsigned char
     DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, tint);
 }
 
-BottomNavResult
-RenderBottomNav(BottomNavProps nav)
+NavigationBarResult
+RenderNavigationBar(NavigationBarProps nav)
 {
-    BottomNavResult result = {-1, -1, 0, 0};
+    NavigationBarResult result = {-1, -1, 0, 0};
     int count = nav.count;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int height = nav.height > 0 ? nav.height : ui_bottom_nav_height();
+    int height = nav.height > 0 ? nav.height : ui_navigation_bar_height();
     UIWidget widget;
     Rectangle bounds;
     Palette palette;
@@ -95,9 +95,9 @@ RenderBottomNav(BottomNavProps nav)
     result.y = paint.y;
     result.height = paint.height;
     bounds = paint.bounds;
-    widget = BeginUIWidget("bottom_nav", "tmp:bottom-nav", bounds,
+    widget = BeginUIWidget("navigation_bar", "tmp:bottom-nav", bounds,
                            UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "RenderBottomNav");
+    UIWidgetSetAction(&widget, "RenderNavigationBar");
 
     bar_frame = ui_style_apply_effects_frame(paint.bar);
     bar_style = ui_unpack_style(bar_frame.value);
@@ -110,7 +110,7 @@ RenderBottomNav(BottomNavProps nav)
                      bar_style.material);
 
     for(i = 0; i < count; i++) {
-        const BottomNavItem *item = &nav.items[i];
+        const NavigationBarItem *item = &nav.items[i];
         int hover = 0;
         int label_font = GetSmallFontSize();
         int label_h = TextLineHeight(label_font);
@@ -126,7 +126,7 @@ RenderBottomNav(BottomNavProps nav)
             .palette = palette,
             .metrics = tokens
         });
-        if(ui_bottom_nav_hit(item_paint.bounds, item->disabled, &hover)) {
+        if(ui_navigation_bar_hit(item_paint.bounds, item->disabled, &hover)) {
             result.clicked_index = i;
             result.clicked_route = item->route;
         }
@@ -156,7 +156,7 @@ RenderBottomNav(BottomNavProps nav)
                              face_style.material);
         }
         dst = item_paint.icon_bounds;
-        ui_draw_bottom_nav_icon(item->icon, dst,
+        ui_draw_navigation_bar_icon(item->icon, dst,
                                 nav.icon_color.a == 0 ? GetColor(item_paint.icon_color)
                                                       : nav.icon_color,
                                 (unsigned char)item_paint.icon_alpha);
@@ -172,7 +172,7 @@ RenderBottomNav(BottomNavProps nav)
 }
 
 static int
-bottom_nav_option_index(const BottomNavOption *options, int option_count,
+navigation_bar_option_index(const NavigationBarOption *options, int option_count,
                         int route)
 {
     int i;
@@ -186,11 +186,11 @@ bottom_nav_option_index(const BottomNavOption *options, int option_count,
     return 0;
 }
 
-BottomNavConfigResult
-RenderBottomNavConfigModal(BottomNavConfigProps modal)
+NavigationBarConfigResult
+RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
 {
     static int route_scroll_offset = 0;
-    BottomNavConfigResult result = {0, 0};
+    NavigationBarConfigResult result = {0, 0};
     UIPanelFrame frame;
     UIScrollArea route_area;
     UIScrollView route_view;
@@ -231,7 +231,7 @@ RenderBottomNavConfigModal(BottomNavConfigProps modal)
     for(i = 0; i < option_count; i++)
         option_labels[i] = modal.options[i].label;
     for(i = 0; i < route_count; i++)
-        selected[i] = bottom_nav_option_index(modal.options, option_count,
+        selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
 
     frame = RenderModalFrame(Scale(340),

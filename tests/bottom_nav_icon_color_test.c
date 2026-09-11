@@ -25,6 +25,16 @@ check_true(const char *name, int value)
 }
 
 void
+__wrap_DrawRectangle(int pos_x, int pos_y, int width, int height, Color color)
+{
+    (void)pos_x;
+    (void)pos_y;
+    (void)width;
+    (void)height;
+    (void)color;
+}
+
+void
 __wrap_DrawRectangleRec(Rectangle rec, Color color)
 {
     (void)rec;
@@ -51,6 +61,24 @@ __wrap_DrawRectangleGradientV(int pos_x, int pos_y, int width, int height,
     (void)height;
     (void)top;
     (void)bottom;
+}
+
+void
+__wrap_DrawRectangleLinesEx(Rectangle rec, float line_thick, Color color)
+{
+    (void)rec;
+    (void)line_thick;
+    (void)color;
+}
+
+void
+__wrap_DrawRectangleRoundedLines(Rectangle rec, float roundness, int segments,
+                                 Color color)
+{
+    (void)rec;
+    (void)roundness;
+    (void)segments;
+    (void)color;
 }
 
 void
@@ -111,15 +139,15 @@ int
 main(void)
 {
     Texture2D color_icon = {0};
-    BottomNavItem items[3];
-    BottomNavResult result;
+    NavigationBarItem items[3];
+    NavigationBarResult result;
 
     color_icon.id = 42;
     color_icon.width = 16;
     color_icon.height = 16;
-    items[0] = (BottomNavItem){1, "", color_icon, 0, 0};
-    items[1] = (BottomNavItem){2, "", color_icon, 1, 0};
-    items[2] = (BottomNavItem){3, "", color_icon, 0, 1};
+    items[0] = (NavigationBarItem){1, "", color_icon, 0, 0};
+    items[1] = (NavigationBarItem){2, "", color_icon, 1, 0};
+    items[2] = (NavigationBarItem){3, "", color_icon, 0, 1};
 
     SetUIScale(1.0f);
     SetUIDefaultFontAutoLoad(0);
@@ -128,7 +156,7 @@ main(void)
     SetCurrentTheme(THEME_SKY, 0);
 
     BeginUIFrame(900, 720, 1.0f);
-    result = BottomNav((BottomNavProps){
+    result = NavigationBar((NavigationBarProps){
         .view_width = 900,
         .view_height = 720,
         .count = 3,
@@ -138,31 +166,29 @@ main(void)
     });
     EndUIFrame();
 
-    check_int("bottom nav drew all icons", icon_calls, 3);
-    check_int("bottom nav y honors bottom margin", result.y, 606);
-    check_int("bottom nav lower edge anchors to usable bottom",
+    check_int("navigation bar drew all icons", icon_calls, 3);
+    check_int("navigation bar y honors bottom margin", result.y, 606);
+    check_int("navigation bar lower edge anchors to usable bottom",
               result.y + result.height + 48, 720);
     {
-        check_int("inactive bottom nav icon alpha", icon_tints[0].a, 255);
-        check_int("active bottom nav icon alpha", icon_tints[1].a, 255);
-        check_true("active bottom nav icon has distinct theme color",
+        check_int("inactive navigation bar icon alpha", icon_tints[0].a, 255);
+        check_int("active navigation bar icon alpha", icon_tints[1].a, 255);
+        check_true("active navigation bar icon has distinct theme color",
                    icon_tints[0].r != icon_tints[1].r ||
                    icon_tints[0].g != icon_tints[1].g ||
                    icon_tints[0].b != icon_tints[1].b);
-        check_int("disabled bottom nav icon red", icon_tints[2].r,
-                  icon_tints[0].r);
-        check_int("disabled bottom nav icon green", icon_tints[2].g,
-                  icon_tints[0].g);
-        check_int("disabled bottom nav icon blue", icon_tints[2].b,
-                  icon_tints[0].b);
-        check_int("disabled bottom nav icon alpha", icon_tints[2].a, 150);
+        check_true("disabled navigation bar icon is not active accent",
+                   icon_tints[2].r != icon_tints[1].r ||
+                   icon_tints[2].g != icon_tints[1].g ||
+                   icon_tints[2].b != icon_tints[1].b);
+        check_int("disabled navigation bar icon alpha", icon_tints[2].a, 150);
     }
     for(int dark = 0; dark <= 1; dark++) {
         SetCurrentTheme(THEME_SKY, dark);
         Color tint = GetThemeText();
         icon_calls = 0;
         BeginUIFrame(900, 720, 1.0f);
-        BottomNav((BottomNavProps){
+        NavigationBar((NavigationBarProps){
             .view_width = 900, .view_height = 720,
             .count = 3, .items = items, .height = 66,
             .icon_color = tint,

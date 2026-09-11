@@ -836,7 +836,7 @@ type LinkProps struct {
 
 type FlowProps = ColumnProps
 
-type BottomNavItem struct {
+type NavigationBarItem struct {
 	Route    int32
 	Label    string
 	Icon     Texture2D
@@ -844,11 +844,11 @@ type BottomNavItem struct {
 	Disabled bool
 }
 
-type BottomNavProps struct {
+type NavigationBarProps struct {
 	ViewWidth      int32
 	ViewHeight     int32
 	Count          int32
-	Items          []BottomNavItem
+	Items          []NavigationBarItem
 	Height         int32
 	IconSize       int32
 	IconPadding    int32
@@ -1429,7 +1429,7 @@ type Runtime interface {
 	Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool
 	Modal(title, message, cancelBtn, confirmBtn string) int
 	TitleBar(title string, height int32)
-	BottomNav(props BottomNavProps)
+	NavigationBar(props NavigationBarProps)
 	TopNav(props TopNavProps)
 	Toolbar(props ToolbarProps) ToolbarResult
 	MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult
@@ -5227,7 +5227,7 @@ func (r *runtime) TitleBar(title string, height int32) {
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: 12, Y: float32(height-Text20) / 2, Width: b.Width - 24, Height: float32(Text20 + 4)}, Text: title, Color: t.text, FontSize: Text20})
 }
-func (r *runtime) BottomNav(props BottomNavProps) {
+func (r *runtime) NavigationBar(props NavigationBarProps) {
 	count := int(props.Count)
 	if count <= 0 || count > len(props.Items) {
 		count = len(props.Items)

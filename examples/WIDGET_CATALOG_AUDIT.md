@@ -33,7 +33,7 @@ per widget and are not a count of distinct widget families.
 | Canvas | Clipped grid and circle, wheel zoom, pointer pan, displayed transform values and Reset. |
 | Numbers & plots | Float/int drags and sliders, float/int ranges, angle slider, float/int/double inputs, vertical sliders, line plot and histogram. The audit exercises all three vector components and keyboard entry, as well as scalar changes. |
 | Colors | RGB/RGBA editors and pickers, alpha adjustment, and a clickable color button. |
-| Pages & settings | Page, Section, Heading, ParagraphText and ThemeSettings. A full-window preview demonstrates TitleBar and BottomNav with three working routes and a return button. Settings menus apply mode and style changes. |
+| Pages & settings | Page, Section, Heading, ParagraphText and ThemeSettings. A full-window preview demonstrates TitleBar and NavigationBar with three working routes and a return button. Settings menus apply mode and style changes. |
 
 ## Corrections made
 

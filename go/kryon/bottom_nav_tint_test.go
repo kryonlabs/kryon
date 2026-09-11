@@ -2,11 +2,11 @@ package kryon
 
 import "testing"
 
-func TestBottomNavIconTint(t *testing.T) {
+func TestNavigationBarIconTint(t *testing.T) {
 	for _, tint := range []Color{{R: 32, G: 36, B: 40, A: 255}, {R: 240, G: 242, B: 244, A: 255}, {}} {
 		r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 		r.BeginFrame()
-		r.BottomNav(BottomNavProps{ViewWidth: 640, ViewHeight: 480, IconColor: tint, Items: []BottomNavItem{{Route: 1, Icon: Texture2D{ID: 42}}, {Route: 2, Icon: Texture2D{ID: 42}, Disabled: true}}})
+		r.NavigationBar(NavigationBarProps{ViewWidth: 640, ViewHeight: 480, IconColor: tint, Items: []NavigationBarItem{{Route: 1, Icon: Texture2D{ID: 42}}, {Route: 2, Icon: Texture2D{ID: 42}, Disabled: true}}})
 		r.EndFrame()
 		want := tint
 		if want.A == 0 {

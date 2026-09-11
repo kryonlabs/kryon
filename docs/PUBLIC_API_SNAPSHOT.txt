@@ -1914,7 +1914,6 @@ include/ui_tree.h enum UI_INVALIDATE_PAINT
 include/ui_tree.h enum UI_INVALIDATE_TREE
 include/ui_tree.h enum UI_WIDGET_ANGLE_SLIDER_NODE
 include/ui_tree.h enum UI_WIDGET_BACKGROUND_NODE
-include/ui_tree.h enum UI_WIDGET_BOTTOM_NAV_NODE
 include/ui_tree.h enum UI_WIDGET_BUTTON_NODE
 include/ui_tree.h enum UI_WIDGET_BUTTON_ROW_NODE
 include/ui_tree.h enum UI_WIDGET_CARD_NODE
@@ -1932,6 +1931,7 @@ include/ui_tree.h enum UI_WIDGET_INT_DRAG_NODE
 include/ui_tree.h enum UI_WIDGET_INT_SLIDER_NODE
 include/ui_tree.h enum UI_WIDGET_LABEL_TEXT_FIELD_NODE
 include/ui_tree.h enum UI_WIDGET_LINE_NODE
+include/ui_tree.h enum UI_WIDGET_NAVIGATION_BAR_NODE
 include/ui_tree.h enum UI_WIDGET_PARAGRAPH_MODAL_NODE
 include/ui_tree.h enum UI_WIDGET_PARAGRAPH_NODE
 include/ui_tree.h enum UI_WIDGET_PICTURE_NODE
@@ -1970,8 +1970,6 @@ include/ui_tree.h function BeginTableCell
 include/ui_tree.h function BeginTree
 include/ui_tree.h function Bevel
 include/ui_tree.h function BottomIconRow
-include/ui_tree.h function BottomNav
-include/ui_tree.h function BottomNavConfig
 include/ui_tree.h function Box
 include/ui_tree.h function Bullet
 include/ui_tree.h function BulletText
@@ -2058,11 +2056,13 @@ include/ui_tree.h function Modal
 include/ui_tree.h function Modal3Button
 include/ui_tree.h function ModalFrame
 include/ui_tree.h function MultiSelectList
+include/ui_tree.h function NavigationBar
+include/ui_tree.h function NavigationBarConfig
 include/ui_tree.h function NextEvent
-include/ui_tree.h function NodeBottomNav
 include/ui_tree.h function NodeButtonRow
 include/ui_tree.h function NodeCheckboxRow
 include/ui_tree.h function NodeLabelTextField
+include/ui_tree.h function NodeNavigationBar
 include/ui_tree.h function NodeParagraph
 include/ui_tree.h function NodeParagraphModal
 include/ui_tree.h function NodeReadonlyTextBox

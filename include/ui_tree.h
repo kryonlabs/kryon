@@ -71,7 +71,7 @@ typedef enum UIWidgetKind {
     UI_WIDGET_SECTION_LABEL_NODE,
     UI_WIDGET_CHECKBOX_ROW_NODE,
     UI_WIDGET_BUTTON_ROW_NODE,
-    UI_WIDGET_BOTTOM_NAV_NODE,
+    UI_WIDGET_NAVIGATION_BAR_NODE,
     UI_WIDGET_TAB_BAR_NODE,
     UI_WIDGET_THEME_PICKER_NODE,
     UI_WIDGET_PARAGRAPH_MODAL_NODE,
@@ -253,7 +253,7 @@ UIWidgetNode NodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
 UIWidgetNode NodeSectionLabel(SectionLabelProps label, int x, int y);
 UIWidgetNode NodeCheckboxRow(CheckboxRowProps row, int x, int y);
 UIWidgetNode NodeButtonRow(ButtonRowProps row);
-UIWidgetNode NodeBottomNav(BottomNavProps nav);
+UIWidgetNode NodeNavigationBar(NavigationBarProps nav);
 UIWidgetNode NodeTopNav(TopNavProps nav);
 UIWidgetNode NodeTabBar(TabBarProps bar);
 UIWidgetNode NodeThemeSettings(ThemeSettingsProps settings);
@@ -468,8 +468,8 @@ int OverlayButton(OverlayButtonProps button);
 int ButtonRow(ButtonRowProps row);
 int IconSliderPopup(IconSliderPopupProps popup);
 IconRowResult BottomIconRow(BottomIconRowProps row);
-BottomNavResult BottomNav(BottomNavProps nav);
-BottomNavConfigResult BottomNavConfig(BottomNavConfigProps modal);
+NavigationBarResult NavigationBar(NavigationBarProps nav);
+NavigationBarConfigResult NavigationBarConfig(NavigationBarConfigProps modal);
 TopNavResult TopNav(TopNavProps nav);
 ToolbarResult Toolbar(ToolbarProps toolbar);
 ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);

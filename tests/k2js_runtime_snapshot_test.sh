@@ -121,7 +121,7 @@ const expected = new Map([
   ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
   ["tests/parity/selection_images.js", ["Screen", "Selectable", "CheckboxFlags", "ImageWithBg", "ImageButton", "SeparatorText", "TabItemButton", "ClosableTabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
-  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "BottomNav", "Column", "Text", "Row", "Button", "Href", "Stack", "Rect", "Line", "Bevel", "Text", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
+  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "NavigationBar", "Column", "Text", "Row", "Button", "Href", "Stack", "Rect", "Line", "Bevel", "Text", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
 ]);
 
 for (const [relPath, widgets] of expected) {
