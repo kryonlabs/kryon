@@ -74,6 +74,7 @@ export interface WebDocumentNode {
   tag: string;
   key: string;
   name: string;
+  webRef: string;
   path: string;
   parentPath: string;
   sourcePath: string;
@@ -218,6 +219,8 @@ export interface WebNodeStyleFacts {
   name: string;
   path: string;
   parentPath: string;
+  ref: string;
+  webRef: string;
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
@@ -326,6 +329,7 @@ export interface WebDOMSnapshot {
   kind: string;
   tag: string;
   path: string;
+  webRef: string;
   parentPath: string;
   parentRef: string;
   childRefs: string[];

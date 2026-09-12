@@ -135,6 +135,7 @@ assert.equal(webDoc.nodes[2].key, "tap");
 assert.equal(webDoc.nodes[2].name, "tap");
 assert.equal(webDoc.nodes[2].path, "Scene/root/tap");
 assert.equal(webDoc.nodes[2].parentPath, "Scene/root");
+assert.equal(webDoc.nodes[2].webRef, "primary-action");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -142,6 +143,7 @@ const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine
 const tapSourceColumnRef = `${tapSourceRef}:${webDoc.nodes[2].sourceColumn}`;
 assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
+assert.equal(runtime.findWebNode(rt, "primary-action").path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");
 assert.deepEqual(webDoc.nodes[2].dataAttrs, { "tracking-id": "tap-1" });
@@ -167,6 +169,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   name: "tap",
   path: "Scene/root/tap",
   parentPath: "Scene/root",
+  ref: "primary-action",
+  webRef: "primary-action",
   sourcePath: webDoc.nodes[2].sourcePath,
   sourceLine: webDoc.nodes[2].sourceLine,
   sourceColumn: webDoc.nodes[2].sourceColumn,
@@ -280,6 +284,9 @@ assert.equal(runtime.webNodeQuery(rt,
 assert.equal(runtime.webNodeQuery(rt, `[sourceRef="${tapSourceRef}"]`).path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, `[sourceColumnRef="${tapSourceColumnRef}"]`).path,
   "Scene/root/tap");
+assert.equal(runtime.webNodeMatches(rt, "primary-action", "Button.primary"), true);
+assert.equal(runtime.webNodeQuery(rt, "[ref=\"primary-action\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[webRef=\"primary-action\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), true);
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
@@ -955,12 +962,13 @@ function fakeDocument() {
     assert.equal(firstButton.id, "tap-button");
     assert.equal(firstButton.attributes.value, "tap-value");
     assert.equal(firstButton.dataset.kryIndex, "2");
-    assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
+    assert.equal(firstButton.dataset.kryRef, "primary-action");
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
-    assert.equal(firstButton.kryRef, "Scene/root/tap");
+    assert.equal(firstButton.kryRef, "primary-action");
     assert.equal(firstButton.kryNode.path, "Scene/root/tap");
-    assert.equal(firstButton.kryObject.ref, "Scene/root/tap");
+    assert.equal(firstButton.kryNode.webRef, "primary-action");
+    assert.equal(firstButton.kryObject.ref, "primary-action");
     assert.equal(firstButton.kryObject.element, firstButton);
     assert.equal(Object.keys(firstButton).includes("kryObject"), false);
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
@@ -1016,7 +1024,8 @@ function fakeDocument() {
     firstButton.appendChild(nestedSpan);
     assert.equal(runtime.webDOMObjectFromElement(nestedSpan).node.path, "Scene/root/tap");
     const buttonSnapshot = runtime.webDOMSnapshot(target, "tap-button");
-    assert.equal(buttonSnapshot.ref, "Scene/root/tap");
+    assert.equal(buttonSnapshot.ref, "primary-action");
+    assert.equal(buttonSnapshot.webRef, "primary-action");
     assert.equal(buttonSnapshot.element, undefined);
     assert.equal(buttonSnapshot.parentRef, "Scene/root");
     assert.equal(buttonSnapshot.attrs.id, "tap-button");
@@ -1033,7 +1042,7 @@ function fakeDocument() {
       bottom: 78
     });
     assert.deepEqual(runtime.webDOMSnapshots(target, "Button.primary").map((snapshot) => snapshot.ref),
-      ["Scene/root/tap"]);
+      ["primary-action"]);
     assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);
@@ -1079,6 +1088,8 @@ function fakeDocument() {
       bottom: 78
     });
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[ref=\"primary-action\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[webRef=\"primary-action\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);
@@ -1182,14 +1193,14 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[for=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
-    assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"search-menu\"]").ref, "Scene/root/tap");
-    assert.equal(runtime.webDOMQuery(target, "[fetchpriority=high]").ref, "Scene/root/tap");
-    assert.equal(runtime.webDOMQuery(target, "[part=\"primary-action\"]").ref, "Scene/root/tap");
+    assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"search-menu\"]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[fetchpriority=high]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[part=\"primary-action\"]").ref, "primary-action");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
     assert.deepEqual(domRefs.slice(2), [
-      "Scene/root/tap",
+      "primary-action",
       "Scene/root/search",
       "Scene/root/search_label"
     ]);

@@ -95,6 +95,7 @@ Supported metadata fields:
 | named block | `nodeName`, `key`, `name`, `path`, `parentPath` |
 | source span | `sourcePath`, `sourceLine`, `sourceColumn` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
+| `dom_ref`, `web_ref`, `kry_ref` | `webRef` |
 | `dom_id`, `html_id` | `domId` |
 | `dom_name`, `html_name`, `name_attr` | `domName` |
 | `class`, `classes`, `class_name` | `classes` |
@@ -276,7 +277,7 @@ contract.
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
-`name`, `path`, `parentPath`, `sourcePath`, `sourceLine`, `sourceColumn`,
+`name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
 `sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`,
 `inputType`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
@@ -294,7 +295,8 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `app.styles[].source` when a `#style` import resolves on disk, and
 `createRuntime({ app })` installs those embedded sheets automatically. The web
-resolver supports kind selectors, `[index=...]`, `#id`, `.class`, source identity selectors
+resolver supports kind selectors, `[index=...]`, `#id`, `.class`, `[ref=...]`,
+`[webRef=...]`, source identity selectors
 such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
 and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,

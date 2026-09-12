@@ -152,6 +152,7 @@ Scene :: (viewport: Rectangle) #ui {
             label = "Tap"
             style = (ControlStyle){.normal = (Style){.fields = StyleRadius, .radius = (float)6}}
             dom = "button"
+            dom_ref = "primary-action"
             dom_id = "tap-button"
             dom_value = "tap-value"
             data_tracking_id = "tap-1"

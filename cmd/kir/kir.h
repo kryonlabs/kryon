@@ -127,6 +127,7 @@ typedef struct KirStmt {
     char node_path[KIR_TEXT_MAX];       /* stable source-level UI tree path */
     char node_parent_path[KIR_TEXT_MAX];/* parent UI tree path, empty at root */
     char dom_tag[KIR_NAME_MAX];         /* requested browser element tag */
+    char dom_ref[KIR_NAME_MAX];         /* requested Kry DOM object ref */
     char dom_id[KIR_NAME_MAX];          /* requested browser id */
     char dom_name_attr[KIR_NAME_MAX];   /* requested browser name attribute */
     char dom_value_attr[KIR_TEXT_MAX];  /* requested browser value attribute */

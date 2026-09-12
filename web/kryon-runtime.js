@@ -1142,6 +1142,7 @@ function webNodeFromWidget(item, index) {
     tag: widgetTag(item),
     key: meta.nodeName || propString(args, "key", propString(args, "id", String(index))),
     name: meta.nodeName || propString(args, "name", ""),
+    webRef: meta.ref === undefined || meta.ref === null ? "" : String(meta.ref),
     path: meta.path === undefined || meta.path === null ? "" : String(meta.path),
     parentPath: meta.parentPath === undefined || meta.parentPath === null ? "" : String(meta.parentPath),
     sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
@@ -1278,6 +1279,8 @@ export function webNodeStyleFacts(node) {
     name: node?.name || "",
     path: node?.path || "",
     parentPath: node?.parentPath || "",
+    ref: webNodeRef(node),
+    webRef: node?.webRef || "",
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
     sourceColumn: node?.sourceColumn || 0,
@@ -2151,7 +2154,8 @@ function recordFormValue(root, docNode, value) {
     return;
   if (!root.__kryFormValues)
     root.__kryFormValues = new Map();
-  for (const key of [docNode.path, docNode.name, docNode.key, docNode.domId, docNode.domName]) {
+  for (const key of [webNodeRef(docNode), docNode.path, docNode.name,
+                     docNode.key, docNode.domId, docNode.domName]) {
     if (key)
       root.__kryFormValues.set(key, value);
   }
@@ -2180,7 +2184,8 @@ function webDragValue(el, docNode = el?.__kryDocNode) {
 }
 
 function webNodeRef(docNode) {
-  return docNode?.path || docNode?.name || docNode?.key || docNode?.domId || "";
+  return docNode?.webRef || docNode?.path || docNode?.name || docNode?.key ||
+    docNode?.domId || "";
 }
 
 function webNodeSourceRef(docNode) {
@@ -2675,7 +2680,8 @@ export function findWebNode(rt, query) {
   const frame = webDocumentFrame(rt);
   return frame.nodes.find((node) =>
     node.path === text || node.name === text || node.key === text ||
-    node.domId === text || sourceRefMatches(node, text)) || null;
+    node.webRef === text || node.domId === text || sourceRefMatches(node, text)) ||
+    null;
 }
 
 export function webNodeQueryAll(rt, selector) {
@@ -2685,7 +2691,7 @@ export function webNodeQueryAll(rt, selector) {
   const frame = webDocumentFrame(rt);
   const exact = frame.nodes.filter((node) =>
     node.path === text || node.name === text || node.key === text ||
-    node.domId === text || sourceRefMatches(node, text));
+    node.webRef === text || node.domId === text || sourceRefMatches(node, text));
   if (exact.length)
     return exact;
   const parsed = parseSelector(text);
@@ -2763,7 +2769,7 @@ export function findWebElement(target, query) {
     return root.__kryElementsBySource.get(text)[0] || null;
   for (const el of root.__kryChildren?.values?.() || []) {
     const node = el.__kryDocNode;
-    if (node && (node.path === text || node.key === text ||
+    if (node && (node.path === text || node.webRef === text || node.key === text ||
                  sourceRefMatches(node, text)))
       return el;
   }
@@ -2853,6 +2859,7 @@ function webDOMObjectSnapshot(target, object) {
     kind: node.kind || "",
     tag: node.tag || String(el.tagName || "").toLowerCase(),
     path: node.path || "",
+    webRef: node.webRef || "",
     parentPath: node.parentPath || "",
     parentRef: webDOMParent(target, node.path)?.ref || "",
     childRefs: webDOMChildren(target, node.path).map((child) => child.ref),
