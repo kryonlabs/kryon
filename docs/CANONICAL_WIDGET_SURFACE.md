@@ -443,7 +443,7 @@ No web runtime widget entries are accepted as public compatibility names.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `NavigationBar` | `.kry canonical` | Already has `.kry` module. |
+| `NavigationBar` | `.kry canonical` | Paint and sizing policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; host handles input sampling, drag state, and drawing. |

@@ -264,6 +264,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     int i;
     int j;
     Style label_style;
+    int label_font;
 
     if(max_route_count > 16)
         max_route_count = 16;
@@ -278,7 +279,10 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     label_style = ui_unpack_style(ui_style_apply_effects_frame(
         ui_control_style_frame_kind((ButtonProps){0}, ButtonStateNormal, 0,
                                     0.0f, 0.0f, 0.0f,
-                                    StyleKindText())).value);
+                                    StyleKindNavigationBarItem())).value);
+    label_font = label_style.font_size > 0.0f
+        ? (int)(label_style.font_size + 0.5f)
+        : GetSmallFontSize();
     for(i = 0; i < route_count; i++)
         selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
@@ -325,8 +329,11 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
-        RenderText(slot_label, frame.content_x, y, GetFontSize(),
-                   label_style.foreground);
+        RenderTextStyled(slot_label, frame.content_x, y,
+                         (TextStyle){label_font,
+                                     Fade(label_style.foreground,
+                                          label_style.opacity),
+                                     1, 0});
         if(Dropdown((DropdownProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
             .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {
