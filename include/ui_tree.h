@@ -381,6 +381,7 @@ RouterResult Router(RouterProps props);
 NodeId Column(ColumnProps props);
 NodeId Row(RowProps props);
 NodeId Grid(GridProps props);
+NodeId Group(ColumnProps props);
 NodeId Stack(ColumnProps props);
 NodeId Screen(ColumnProps props);
 

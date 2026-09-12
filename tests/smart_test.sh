@@ -41,6 +41,7 @@ needs_tree_view=0
 needs_table_view=0
 needs_primitive=0
 needs_layout=0
+needs_group=0
 needs_grid=0
 needs_toast=0
 needs_canvas=0
@@ -140,6 +141,13 @@ while IFS= read -r path; do
     case "$path" in
         runtime/layout.kry|src/ui/ui_tree.c|go/kryon/layout.go|tests/layout_policy_test.c|include/ui_tree.h)
             needs_layout=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/group.kry|go/kryon/group.go|tests/group_policy_test.c)
+            needs_group=1
             interesting=1
             ;;
     esac
@@ -482,6 +490,9 @@ if [ "$needs_primitive" -eq 1 ]; then
 fi
 if [ "$needs_layout" -eq 1 ]; then
     targets="$targets layout-policy-test"
+fi
+if [ "$needs_group" -eq 1 ]; then
+    targets="$targets group-policy-test"
 fi
 if [ "$needs_grid" -eq 1 ]; then
     targets="$targets grid-policy-test"

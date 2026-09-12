@@ -50,6 +50,7 @@ surface review:
 | `runtime/drag.kry` | Drag value/keyboard policy | `.kry canonical` |
 | `runtime/grid.kry` | Grid composition | `.kry canonical` |
 | `runtime/grid_props.kry` | Grid props | `.kry canonical` |
+| `runtime/group.kry` | Group bounds/content policy | `.kry canonical` |
 | `runtime/guide.kry` | Guide overlay layout and step policy | `.kry canonical` |
 | `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | Native support |
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
@@ -105,7 +106,7 @@ text measurement, painting, storage, or platform services.
 | Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Rect`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options, `InvisibleButton` disabled policy | helper button variants belong in `ButtonProps` or composition |
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
-| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | `Group`, scroll/list/table begin-end wrappers |
+| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation policy, `MultiSelectList` row/navigation/selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, menu geometry policy | `MenuBar`, `PopupMenu`, `ContextMenu` retained state/input, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, `TransitionFade` alpha/easing policy | theme pickers |
@@ -143,7 +144,7 @@ has a single place to land.
 | `Progress` | `UI/Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
 | `Spinbox` | `UI/Input` | Number | `runtime/spinbox.kry` | `.kry-backed` | Layout/step policy is `.kry`; host keeps text/button input. |
 | `ColorPicker` | `UI/Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
-| `Group` | `UI/Layout` | Container | missing | Native support | Low-level grouping; review public need after layout migration. |
+| `Group` | `UI/Layout` | Container | `runtime/group.kry` | `.kry-backed` | Canonical non-layout grouping scope; bounds/content policy is `.kry`, host keeps retained tree scope ownership. |
 | `Separator` | `UI/Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
 | `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Canonical titled group; old `LabelFrame` stays removed. |
 | `PanedView` | `UI/Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp and handle geometry are `.kry`; host keeps drag/input ownership. |
@@ -242,7 +243,7 @@ been removed from the public surface. Existing generated fixtures use
 | `Grid` | `.kry canonical` | Metrics, columns, and cursor placement policy are in `.kry`; host keeps retained tree scope ownership. |
 | `Stack` | `.kry canonical` | Content/child fill policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Screen` | `.kry canonical` | Top-level screen container; viewport fallback bounds policy is in `.kry`. |
-| `Group` | Native support | Low-level grouping; scope ownership remains native, but shared bounds fallback policy is in `.kry` where used by `Screen`. |
+| `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Separator` | `.kry canonical` | Line, label, and bullet layout/paint policy are in `.kry`; host handles text measurement and drawing. |
 | `Fieldset` | `.kry canonical` | Canonical titled border group; replaces old `LabelFrame` spelling. |
 | `LabelFrame` | Removed | Old spelling for `Fieldset`; no longer accepted as a public widget name. |

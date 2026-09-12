@@ -18,6 +18,7 @@ const (
 	FrameOpColumn     FrameOpKind = "column"
 	FrameOpRow        FrameOpKind = "row"
 	FrameOpStack      FrameOpKind = "stack"
+	FrameOpGroup      FrameOpKind = "group"
 	FrameOpScreen     FrameOpKind = "screen"
 	FrameOpGrid       FrameOpKind = "grid"
 	FrameOpPage       FrameOpKind = "page"

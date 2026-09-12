@@ -276,7 +276,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  id, id, x, y, 9200 + (id % 1000), id, id);
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Stack((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"
+                 "\n    Group((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"
                  "    Rect(Scale(%d), Scale(%d), Scale(180), Scale(110), Fade(GetThemeButton(), 0.45), GetThemeButtonHover())\n"
                  "    End()\n",
                  x, y, 10200 + (id % 1000), x, y);

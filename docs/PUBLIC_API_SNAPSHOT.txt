@@ -1773,6 +1773,7 @@ include/ui_style_sheet.h function ResolveActiveStyle
 include/ui_style_sheet.h function ResolveStyle
 include/ui_style_sheet.h function SetActiveStylePack
 include/ui_style_sheet.h function StylePackVersion
+include/ui_style_sheet.h function StylePicker
 include/ui_style_sheet.h macro STYLE_PACK_MAX
 include/ui_swipe.h enum SWIPE_ALL
 include/ui_swipe.h enum SWIPE_DOWN
@@ -1986,6 +1987,7 @@ include/ui_tree.h function GetTreeNodes
 include/ui_tree.h function Grid
 include/ui_tree.h function GridCursorHeight
 include/ui_tree.h function GridStep
+include/ui_tree.h function Group
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Icon
 include/ui_tree.h function Input

@@ -1252,6 +1252,7 @@ type Runtime interface {
 	StylePicker(StylePickerProps) bool
 	Column(ColumnProps)
 	Row(ColumnProps)
+	Group(ColumnProps)
 	Stack(ColumnProps)
 	Screen(ColumnProps)
 	Grid(GridProps)
@@ -4423,6 +4424,9 @@ func (r *runtime) Column(props ColumnProps) {
 func (r *runtime) Row(props ColumnProps) {
 	r.pushLayout(props, true, FrameOpRow)
 }
+func (r *runtime) Group(props ColumnProps) {
+	r.pushGroup(props, FrameOpGroup)
+}
 func (r *runtime) Stack(props ColumnProps) {
 	r.pushLayout(props, false, FrameOpStack)
 }
@@ -6456,12 +6460,20 @@ func (r *runtime) pushGrid(props GridProps) {
 }
 
 func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
-	bounds := props.Bounds
+	policy := Group_GroupPolicyFor(props.Bounds, props.Gap, props.Padding)
+	bounds := policy.Bounds
+	gap := policy.Gap
+	padding := policy.Padding
 	if kind == FrameOpScreen {
-		bounds = Layout_LayoutScopeBounds(bounds, r.GetScreenWidth(), r.GetScreenHeight())
+		policy = Group_ScreenGroupPolicyFor(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight(), props.Gap, props.Padding)
+		bounds = policy.Bounds
+		gap = policy.Gap
+		padding = policy.Padding
 	}
 	r.layout = append(r.layout, layoutFrame{
-		bounds:   bounds,
+		bounds:  bounds,
+		gap:     float32(gap),
+		padding: float32(padding),
 		noLayout: true,
 	})
 	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})

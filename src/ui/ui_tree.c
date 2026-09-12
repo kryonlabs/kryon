@@ -5,6 +5,7 @@
 #include "runtime/card.h"
 #include "runtime/primitive.h"
 #include "runtime/layout.h"
+#include "runtime/group.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
 #include "runtime/text.h"
@@ -3638,12 +3639,22 @@ Stack(ColumnProps props)
 }
 
 NodeId
+Group(ColumnProps props)
+{
+    GroupPolicy policy = GroupPolicyFor(props.bounds, props.gap,
+                                        props.padding);
+    return ui_begin_layout_node(WIDGET_GROUP, props.key, policy.bounds,
+                                policy.gap, policy.padding);
+}
+
+NodeId
 Screen(ColumnProps props)
 {
-    Rectangle bounds = LayoutScopeBounds(props.bounds, ui_view_width,
-                                         ui_view_height);
-    return ui_begin_layout_node(WIDGET_GROUP, props.key, bounds, props.gap,
-                                props.padding);
+    GroupPolicy policy = ScreenGroupPolicyFor(props.bounds, ui_view_width,
+                                              ui_view_height, props.gap,
+                                              props.padding);
+    return ui_begin_layout_node(WIDGET_GROUP, props.key, policy.bounds,
+                                policy.gap, policy.padding);
 }
 
 static const RouterRoute *

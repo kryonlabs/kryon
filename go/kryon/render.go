@@ -86,7 +86,7 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			strokeRect(img, op.Bounds, Color{136, 146, 160, 255})
 		case FrameOpTextField, FrameOpTextArea:
 			renderTextInput(img, op)
-		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGrid, FrameOpPage, FrameOpSection:
+		case FrameOpColumn, FrameOpRow, FrameOpStack, FrameOpGroup, FrameOpGrid, FrameOpPage, FrameOpSection:
 			strokeRect(img, op.Bounds, Color{220, 224, 229, 255})
 		case FrameOpScreen:
 			// A screen establishes a coordinate/layout scope, not a surface.

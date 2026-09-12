@@ -283,6 +283,7 @@ func StylePicker(props StylePickerProps) bool {
 }
 func Column(props ColumnProps)  { active().Column(props) }
 func Row(props ColumnProps)     { active().Row(props) }
+func Group(props ColumnProps)   { active().Group(props) }
 func Stack(props ColumnProps)   { active().Stack(props) }
 func Screen(props ColumnProps)  { active().Screen(props) }
 func Grid(props GridProps)      { active().Grid(props) }
