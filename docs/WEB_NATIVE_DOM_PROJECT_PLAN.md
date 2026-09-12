@@ -28,6 +28,8 @@ the browser receives normal elements, attributes, CSS, and events.
   compiler source spans.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
+- Native tags and fallback ARIA roles for widgets with clear browser
+  equivalents or accessibility semantics.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
