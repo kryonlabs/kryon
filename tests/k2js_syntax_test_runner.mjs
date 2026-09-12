@@ -279,6 +279,8 @@ assert.equal(runtime.webNodeQuery(rt,
 assert.equal(runtime.webNodeQuery(rt, `[sourceRef="${tapSourceRef}"]`).path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, `[sourceColumnRef="${tapSourceColumnRef}"]`).path,
   "Scene/root/tap");
+assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), true);
+assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -980,6 +982,9 @@ function fakeDocument() {
     const nestedSpan = document.createElement("span");
     firstButton.appendChild(nestedSpan);
     assert.equal(runtime.webDOMObjectFromElement(nestedSpan).node.path, "Scene/root/tap");
+    assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
+    assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
+    assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);
     assert.equal(runtime.webDOMParent(target, "tap-button").node.path, "Scene/root");
     assert.deepEqual(runtime.webDOMChildren(target, "Scene/root")
       .map((object) => object.node.path), [

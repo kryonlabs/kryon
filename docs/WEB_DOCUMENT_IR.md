@@ -324,6 +324,9 @@ path, node name, key, or DOM id matches `query`.
 unmounted Web Document nodes by the same KSS-style selector facts used for
 style resolution.
 
+`webNodeMatches(rt, query, selector)` tests an unmounted node against the same
+selector facts without requiring callers to repeat query/filter logic.
+
 `webNodeParent(rt, query)`, `webNodeChildren(rt, query)`, and
 `webNodeClosest(rt, query, selector)` expose the same `.kry` tree relationships
 before a frame has been mounted into browser DOM.
@@ -339,6 +342,10 @@ resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `webDOMObjectFromElement(element)` walks from a native element or event target
 to the nearest mounted Kry DOM object, which gives delegated browser handlers
 and inspectors a reverse bridge back to `.kry` identity.
+
+`webDOMMatches(target, query, selector)` and
+`webDOMElementMatches(element, selector)` test mounted DOM objects against the
+same selector facts used by KSS and query helpers.
 
 `webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
 `webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as

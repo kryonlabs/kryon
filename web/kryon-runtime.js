@@ -2663,6 +2663,11 @@ export function webNodeQuery(rt, selector) {
   return webNodeQueryAll(rt, selector)[0] || null;
 }
 
+export function webNodeMatches(rt, query, selector) {
+  const node = webNodeQuery(rt, query);
+  return !!node && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), node);
+}
+
 function webFrameNodeMap(frame) {
   const nodes = new Map();
   for (const node of frame?.nodes || [])
@@ -2768,6 +2773,11 @@ export function webDOMObjectFromElement(element) {
   return null;
 }
 
+export function webDOMElementMatches(element, selector) {
+  const object = webDOMObjectFromElement(element);
+  return !!object && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), object.node);
+}
+
 export function webDOMObjects(target) {
   const root = mountedRoot(target);
   if (!root)
@@ -2834,6 +2844,11 @@ export function webDOMQueryAll(target, selector) {
 
 export function webDOMQuery(target, selector) {
   return webDOMQueryAll(target, selector)[0] || null;
+}
+
+export function webDOMMatches(target, query, selector) {
+  const object = webDOMObject(target, query);
+  return !!object && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), object.node);
 }
 
 function cleanDOMClassName(name) {
