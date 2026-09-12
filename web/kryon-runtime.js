@@ -1146,6 +1146,7 @@ function webNodeFromWidget(item, index) {
     parentPath: meta.parentPath === undefined || meta.parentPath === null ? "" : String(meta.parentPath),
     sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
     sourceLine: Number.isFinite(Number(meta.sourceLine)) ? Math.trunc(Number(meta.sourceLine)) : 0,
+    sourceColumn: Number.isFinite(Number(meta.sourceColumn)) ? Math.trunc(Number(meta.sourceColumn)) : 0,
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     domName: meta.domName === undefined || meta.domName === null ? "" : String(meta.domName),
     classes: [...new Set(classes)],
@@ -1278,6 +1279,7 @@ export function webNodeStyleFacts(node) {
     parentPath: node?.parentPath || "",
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
+    sourceColumn: node?.sourceColumn || 0,
     id: node?.domId || "",
     domName: node?.domName || "",
     domValue: node?.domValue || "",
@@ -1333,6 +1335,7 @@ export function webAccessibilitySnapshot(source) {
       path: node.path,
       sourcePath: node.sourcePath,
       sourceLine: node.sourceLine,
+      sourceColumn: node.sourceColumn,
       name: node.name,
       kind: node.kind,
       tag: node.tag,
@@ -1585,6 +1588,9 @@ function selectorNativeAttrValue(key, facts) {
   if (facts.extraAttrs && Object.prototype.hasOwnProperty.call(facts.extraAttrs, key))
     return facts.extraAttrs[key];
   switch (key) {
+    case "source": return facts.sourcePath;
+    case "line": return facts.sourceLine;
+    case "column": return facts.sourceColumn;
     case "name": return facts.domName;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
@@ -2178,8 +2184,15 @@ function webNodeSourceRef(docNode) {
     : "";
 }
 
+function webNodeSourceColumnRef(docNode) {
+  return docNode?.sourcePath && docNode?.sourceLine && docNode?.sourceColumn
+    ? `${docNode.sourcePath}:${docNode.sourceLine}:${docNode.sourceColumn}`
+    : "";
+}
+
 function sourceRefMatches(docNode, query) {
-  return webNodeSourceRef(docNode) === String(query || "");
+  const text = String(query || "");
+  return webNodeSourceRef(docNode) === text || webNodeSourceColumnRef(docNode) === text;
 }
 
 function pushIndex(map, key, value) {
@@ -2265,6 +2278,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryLine = String(docNode.sourceLine);
   else
     delete el.dataset.kryLine;
+  if (docNode.sourceColumn)
+    el.dataset.kryColumn = String(docNode.sourceColumn);
+  else
+    delete el.dataset.kryColumn;
   if (docNode.name)
     el.dataset.kryName = docNode.name;
   else
@@ -2561,6 +2578,13 @@ export function renderWebDocument(rt, target) {
         root.__kryDomObjects.set(sourceRef, sourceObject);
       pushIndex(root.__kryDomObjectsBySource, sourceRef, sourceObject);
     }
+    const sourceColumnRef = webNodeSourceColumnRef(docNode);
+    if (sourceColumnRef) {
+      const sourceColumnObject = { ref: sourceColumnRef, node: docNode, element: el };
+      if (!root.__kryDomObjects.has(sourceColumnRef))
+        root.__kryDomObjects.set(sourceColumnRef, sourceColumnObject);
+      pushIndex(root.__kryDomObjectsBySource, sourceColumnRef, sourceColumnObject);
+    }
     if (docNode.path)
       root.__kryElementsByPath.set(docNode.path, el);
     if (docNode.name)
@@ -2571,6 +2595,8 @@ export function renderWebDocument(rt, target) {
       root.__kryElementsByDomName.set(docNode.domName, el);
     if (sourceRef)
       pushIndex(root.__kryElementsBySource, sourceRef, el);
+    if (sourceColumnRef)
+      pushIndex(root.__kryElementsBySource, sourceColumnRef, el);
     const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
       ? elementsByPath.get(docNode.parentPath)
       : root;

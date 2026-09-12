@@ -69,14 +69,17 @@ the Web Document frame supplies the node facts it resolves against.
 
 Rendered DOM elements carry source identity as native attributes:
 `data-kry-ref`, `data-kry-path`, `data-kry-parent-path`, `data-kry-name`,
-`data-kry-key`, `data-kry-kind`, `data-kry-source`, and `data-kry-line`.
+`data-kry-key`, `data-kry-kind`, `data-kry-source`, `data-kry-line`, and
+`data-kry-column`.
 The runtime exposes
 `webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
 path, node name, key, or DOM id without making generated JavaScript the source
-of structure. `sourcePath` and `sourceLine` identify the `.kry` source location
-that produced each node. Anonymous widget expressions receive source-derived
-path components such as `Text@42`; repeated anonymous widgets under the same
+of structure. `sourcePath`, `sourceLine`, and `sourceColumn` identify the
+`.kry` source location that produced each node. Source references support both
+`path:line` and `path:line:column` lookup forms. Anonymous widget expressions
+receive source-derived path components such as `Text@42`; repeated anonymous
+widgets under the same
 parent receive deterministic occurrence suffixes such as `Text@42-2` so every
 DOM object remains individually addressable.
 
@@ -85,7 +88,7 @@ Supported metadata fields:
 | `.kry` field | Web frame field |
 |---|---|
 | named block | `nodeName`, `key`, `name`, `path`, `parentPath` |
-| source span | `sourcePath`, `sourceLine` |
+| source span | `sourcePath`, `sourceLine`, `sourceColumn` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_id`, `html_id` | `domId` |
 | `dom_name`, `html_name`, `name_attr` | `domName` |
@@ -231,6 +234,7 @@ Supported metadata fields:
       pageThemeColor,
       sourcePath,
       sourceLine,
+      sourceColumn,
       bounds,
       hasBounds,
       state,
@@ -267,8 +271,8 @@ contract.
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
-`name`, `path`, `parentPath`, `sourcePath`, `sourceLine`, `id`, `domName`,
-`href`, `target`, `rel`, `inputType`, `formAction`, `formMethod`,
+`name`, `path`, `parentPath`, `sourcePath`, `sourceLine`, `sourceColumn`,
+`id`, `domName`, `href`, `target`, `rel`, `inputType`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `download`, `formNoValidate`, `noValidate`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
@@ -285,7 +289,7 @@ same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `app.styles[].source` when a `#style` import resolves on disk, and
 `createRuntime({ app })` installs those embedded sheets automatically. The web
 resolver supports kind selectors, `#id`, `.class`, source identity selectors
-such as `[source=...]` and `[line=...]`, `[role=...]`, `[state=...]`,
+such as `[source=...]`, `[line=...]`, and `[column=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[target=...]`, `[rel=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,

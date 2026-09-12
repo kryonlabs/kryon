@@ -1401,6 +1401,7 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
     emit_metadata_string_field(f, "sourcePath", st->span.path, &emitted);
     emit_metadata_int_field(f, "sourceLine", st->span.line, &emitted);
+    emit_metadata_int_field(f, "sourceColumn", st->span.column, &emitted);
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
     emit_metadata_expr_field(f, m, "domName", st->dom_name_attr, &emitted);

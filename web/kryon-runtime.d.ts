@@ -78,6 +78,7 @@ export interface WebDocumentNode {
   parentPath: string;
   sourcePath: string;
   sourceLine: number;
+  sourceColumn: number;
   domId: string;
   domName: string;
   domValue: string;
@@ -218,6 +219,7 @@ export interface WebNodeStyleFacts {
   parentPath: string;
   sourcePath: string;
   sourceLine: number;
+  sourceColumn: number;
   id: string;
   domName: string;
   domValue: string;
@@ -278,6 +280,7 @@ export interface WebAccessibilityNode {
   path: string;
   sourcePath: string;
   sourceLine: number;
+  sourceColumn: number;
   name: string;
   kind: string;
   tag: string;

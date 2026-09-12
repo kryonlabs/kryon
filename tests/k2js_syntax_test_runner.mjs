@@ -137,8 +137,11 @@ assert.equal(webDoc.nodes[2].path, "Scene/root/tap");
 assert.equal(webDoc.nodes[2].parentPath, "Scene/root");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
+assert.ok(webDoc.nodes[2].sourceColumn > 0);
 const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine}`;
+const tapSourceColumnRef = `${tapSourceRef}:${webDoc.nodes[2].sourceColumn}`;
 assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
+assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");
 assert.deepEqual(webDoc.nodes[2].dataAttrs, { "tracking-id": "tap-1" });
@@ -165,6 +168,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   parentPath: "Scene/root",
   sourcePath: webDoc.nodes[2].sourcePath,
   sourceLine: webDoc.nodes[2].sourceLine,
+  sourceColumn: webDoc.nodes[2].sourceColumn,
   id: "tap-button",
   domName: "",
   domValue: "tap-value",
@@ -267,6 +271,9 @@ assert.equal(runtime.webNodeQuery(rt, "[popover=manual]").path, "Scene/root/sear
 assert.equal(runtime.webNodeQuery(rt, "[popoverTarget=\"search-menu\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "[fetchpriority=high]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "[part=\"primary-action\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt,
+  `[source="src/valid.kry"][line=${webDoc.nodes[2].sourceLine}][column=${webDoc.nodes[2].sourceColumn}]`).path,
+  "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -918,6 +925,7 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryKey, "tap");
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
     assert.ok(Number(firstButton.dataset.kryLine) > 0);
+    assert.ok(Number(firstButton.dataset.kryColumn) > 0);
     assert.equal(firstButton.dataset.kryName, "tap");
     assert.equal(firstButton.attributes["data-tracking-id"], "tap-1");
     assert.equal(firstButton.attributes.title, "Tap details");
@@ -955,10 +963,12 @@ function fakeDocument() {
     assert.equal(runtime.findWebElement(target, "tap"), firstButton);
     assert.equal(runtime.findWebElement(target, "tap-button"), firstButton);
     assert.equal(runtime.findWebElement(target, tapSourceRef), firstButton);
+    assert.equal(runtime.findWebElement(target, tapSourceColumnRef), firstButton);
     assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMObject(target, tapSourceRef).element, firstButton);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).ref, tapSourceRef);
+    assert.equal(runtime.webDOMObject(target, tapSourceColumnRef).ref, tapSourceColumnRef);
     assert.equal(runtime.webDOMObjectFromElement(firstButton).node.path, "Scene/root/tap");
     const nestedSpan = document.createElement("span");
     firstButton.appendChild(nestedSpan);
@@ -1040,6 +1050,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
     assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
+    assert.equal(runtime.webDOMQuery(target,
+      `[source="src/valid.kry"][line=${webDoc.nodes[2].sourceLine}][column=${webDoc.nodes[2].sourceColumn}]`).element,
+      firstButton);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "Scene/root/search"
     ]);
@@ -1319,6 +1332,7 @@ for (const [actionName, action] of [
     assert.match(result.frame[0].meta.path, new RegExp(`^${actionName}/Button@\\d+$`));
     assert.equal(result.frame[0].meta.sourcePath, "src/valid.kry");
     assert.ok(result.frame[0].meta.sourceLine > 0);
+    assert.ok(result.frame[0].meta.sourceColumn > 0);
     assert.deepEqual(rectangle(result.frame[0].args.bounds), { x: 20, y: 100, width: 80, height: 32 });
   }
 }
