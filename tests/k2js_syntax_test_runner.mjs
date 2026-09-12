@@ -550,6 +550,32 @@ function fakeDocument() {
     assert.equal(manual.draggable, false);
     assert.equal(manual.attributes.contenteditable, "false");
     assert.equal(manual.contentEditable, "false");
+
+    const sharedRt = runtime.createRuntime();
+    runtime.beginFrame(sharedRt);
+    runtime.widget(sharedRt, "Text", { text: "Alpha" }, null,
+      {
+        nodeName: "alpha",
+        path: "Shared/alpha",
+        sourcePath: "shared.kry",
+        sourceLine: 7
+      });
+    runtime.widget(sharedRt, "Text", { text: "Beta" }, null,
+      {
+        nodeName: "beta",
+        path: "Shared/beta",
+        sourcePath: "shared.kry",
+        sourceLine: 7
+      });
+    runtime.endFrame(sharedRt);
+    assert.deepEqual(runtime.webNodeQueryAll(sharedRt, "shared.kry:7")
+      .map((node) => node.path), ["Shared/alpha", "Shared/beta"]);
+    const sharedTarget = document.createElement("div");
+    runtime.renderWebDocument(sharedRt, sharedTarget);
+    assert.equal(runtime.findWebElement(sharedTarget, "shared.kry:7").textContent,
+      "Alpha");
+    assert.deepEqual(runtime.webDOMQueryAll(sharedTarget, "shared.kry:7")
+      .map((object) => object.node.path), ["Shared/alpha", "Shared/beta"]);
   } finally {
     globalThis.document = previousDocument;
   }
