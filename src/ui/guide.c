@@ -15,7 +15,7 @@ guide_draw_scrim(GuideScrim scrim, Color color)
 }
 
 static void
-guide_draw_arrow(Rectangle tip, Rectangle anchor)
+guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color)
 {
     int anchor_cx = (int)(anchor.x + anchor.width / 2);
     int anchor_cy = (int)(anchor.y + anchor.height / 2);
@@ -26,11 +26,6 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     int arrow_size = Scale(10);
     Vector2 start, end;
     Vector2 tip0, tip1, tip2;
-    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
-                                                    ButtonStateNormal,
-                                                    StyleKindText());
-    Color color = text_style.foreground;
-
     if(anchor_cy < tip_top) {
         start.x = (float)anchor_cx;
         start.y = (float)(anchor_cy + anchor.height / 2);
@@ -105,15 +100,46 @@ RenderGuideOverlay(GuideOverlayProps guide)
     int tip_h;
     Rectangle tip;
     int y;
-    Color scrim;
     IconActionSpec icon_props;
     int previous_requested = 0;
     int next_requested = 0;
     int close_requested = 0;
-    Style surface_style = ui_surface_style();
-    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
-                                                    ButtonStateNormal,
-                                                    StyleKindText());
+    Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 2).value);
+    Style label_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 6).value);
+    Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 19).value);
+    Style anchor_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 24).value);
+    Style close_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 15).value);
+    Style close_hover_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 15).value);
+    Style action_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 17).value);
+    Style action_hover_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), 17).value);
 
     g_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
@@ -145,7 +171,11 @@ RenderGuideOverlay(GuideOverlayProps guide)
     paragraph.text = guide.steps[step].text;
     paragraph.width = tip_w - metrics.pad * 2;
     paragraph.font = guide.paragraph_font > 0 ? guide.paragraph_font : Text16;
+    if((label_style.fields & (uint32_t)StyleFontSize) != 0 &&
+       label_style.font_size > 0.0f)
+        paragraph.font = Scale((int)label_style.font_size);
     paragraph.line_gap = line_gap;
+    paragraph.color = label_style.foreground;
     paragraph_h = ui_paragraph_height(paragraph);
     while(paragraph.font > Text12 &&
           paragraph_h > max_tip_h - GuideChromeHeight(metrics)) {
@@ -161,29 +191,32 @@ RenderGuideOverlay(GuideOverlayProps guide)
                             guide.count, metrics);
     SetModalCapture(tip);
 
-    scrim.r = 0;
-    scrim.g = 0;
-    scrim.b = 0;
-    scrim.a = 86;
     guide_draw_scrim(GuideScrimFor(view_w, view_h, guide.steps[step].anchor,
-                                   metrics), scrim);
+                                   metrics),
+                     GetColor(Opacity(ColorToInt(scrim_style.background),
+                                      scrim_style.opacity)));
     DrawRectangleLinesEx(guide.steps[step].anchor,
                          (float)metrics.anchor_stroke,
-                         text_style.foreground);
-    guide_draw_arrow(tip, guide.steps[step].anchor);
+                         anchor_style.border);
+    guide_draw_arrow(tip, guide.steps[step].anchor, anchor_style.foreground);
 
-    ui_draw_material(tip, (Rectangle){0}, surface_style.background,
-                     surface_style.border, surface_style.border,
-                     surface_style.radius, surface_style.border_width,
-                     0.0f, 0.0f, 0, surface_style.focus, 0.0f,
-                     surface_style.opacity, ui_style_fill(surface_style),
-                     surface_style.material);
+    ui_draw_material(tip, (Rectangle){0}, panel_style.background,
+                     panel_style.border, panel_style.border,
+                     panel_style.radius, panel_style.border_width,
+                     0.0f, 0.0f, 0, panel_style.focus, 0.0f,
+                     panel_style.opacity, ui_style_fill(panel_style),
+                     panel_style.material);
 
     memset(&icon_props, 0, sizeof(icon_props));
     icon_props.bounds = layout.close_button;
     icon_props.icon = guide.close_icon;
     icon_props.icon_size = metrics.close_icon_size;
     icon_props.icon_padding = metrics.close_icon_padding;
+    icon_props.background = close_style.background;
+    icon_props.hover_background = close_hover_style.background;
+    icon_props.icon_color = close_style.foreground;
+    icon_props.border = close_style.border;
+    icon_props.radius = close_style.radius;
     if(RenderIconAction(icon_props)) {
         result.closed = 1;
         return result;
@@ -215,7 +248,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     RenderText(page_text, (int)tip.x + metrics.pad,
                     layout.controls_y +
                         (metrics.button_size - metrics.page_font) / 2,
-                    metrics.page_font, text_style.foreground);
+                    metrics.page_font, label_style.foreground);
 
     if(step > 0) {
         memset(&icon_props, 0, sizeof(icon_props));
@@ -224,6 +257,11 @@ RenderGuideOverlay(GuideOverlayProps guide)
         icon_props.icon = guide.back_icon;
         icon_props.icon_size = metrics.nav_icon_size;
         icon_props.icon_padding = metrics.nav_icon_padding;
+        icon_props.background = action_style.background;
+        icon_props.hover_background = action_hover_style.background;
+        icon_props.icon_color = action_style.foreground;
+        icon_props.border = action_style.border;
+        icon_props.radius = action_style.radius;
         if(RenderIconAction(icon_props)) {
             previous_requested = 1;
         }
@@ -234,6 +272,11 @@ RenderGuideOverlay(GuideOverlayProps guide)
     icon_props.icon = layout.finish ? guide.done_icon : guide.next_icon;
     icon_props.icon_size = metrics.nav_icon_size;
     icon_props.icon_padding = metrics.nav_icon_padding;
+    icon_props.background = action_style.background;
+    icon_props.hover_background = action_hover_style.background;
+    icon_props.icon_color = action_style.foreground;
+    icon_props.border = action_style.border;
+    icon_props.radius = action_style.radius;
     if(RenderIconAction(icon_props)) {
         next_requested = 1;
     }
