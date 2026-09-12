@@ -2161,8 +2161,8 @@ through the existing codepoint filter.
 Feature families:
 
 - Geometry: `Rectangle`, `Grid`, `Column`, `Row`, `Stack`, `Separator`
-- Menus: `Menu` with bar, popup, or context behavior; legacy
-  `MenuBar`/`PopupMenu` entry points remain migration support.
+- Menus: `Menu` with bar, popup, or context behavior; legacy command-menu
+  entry points remain migration support.
 - Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `Fieldset`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
 

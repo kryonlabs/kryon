@@ -162,7 +162,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| Menu (bar, popup, and context modes) | ✅ | ✅ | ✅ | ✅ | ✅ (legacy `MenuBar`/`PopupMenu`/`ContextMenu` entry points during migration) | ✗ |
+| Menu (bar, popup, and context modes) | ✅ | ✅ | ✅ | ✅ | ✅ (legacy command-menu entry points during migration) | ✗ |
 | Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | Button add-tab actions / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
