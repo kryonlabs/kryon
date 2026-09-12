@@ -1262,7 +1262,9 @@ function webNodeFromWidget(item, index) {
     index,
     kind: item.name,
     tag: widgetTag(item),
-    key: meta.nodeName || propString(args, "key", propString(args, "id", String(index))),
+    key: meta.key === undefined || meta.key === null
+      ? meta.nodeName || propString(args, "key", propString(args, "id", String(index)))
+      : String(meta.key),
     name: meta.nodeName || propString(args, "name", ""),
     webRef: meta.ref === undefined || meta.ref === null ? "" : String(meta.ref),
     path: meta.path === undefined || meta.path === null ? "" : String(meta.path),

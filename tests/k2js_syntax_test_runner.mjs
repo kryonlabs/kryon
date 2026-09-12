@@ -166,6 +166,8 @@ assert.equal(webDoc.nodes[2].webRef, "primary-action");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
+assert.equal(webDoc.nodes[6].key, webDoc.nodes[6].path);
+assert.equal(webDoc.nodes[7].key, webDoc.nodes[7].path);
 const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine}`;
 const tapSourceColumnRef = `${tapSourceRef}:${webDoc.nodes[2].sourceColumn}`;
 assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine), tapSourceRef);
@@ -2306,6 +2308,7 @@ for (const [actionName, action] of [
     assert.equal(result.frame.length, 1);
     assert.equal(result.frame[0].name, "Button");
     assert.match(result.frame[0].meta.path, new RegExp(`^${actionName}/Button@\\d+$`));
+    assert.equal(result.frame[0].meta.key, result.frame[0].meta.path);
     assert.equal(result.frame[0].meta.sourcePath, "src/valid.kry");
     assert.ok(result.frame[0].meta.sourceLine > 0);
     assert.ok(result.frame[0].meta.sourceColumn > 0);

@@ -1270,7 +1270,8 @@ stmt_has_web_metadata(const KirStmt *st)
 {
     if(st->span.path[0] || st->span.line > 0 || st->span.column > 0)
         return 1;
-    return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
+    return st->node_name[0] || st->node_key[0] ||
+           st->dom_tag[0] || st->dom_id[0] ||
            st->node_path[0] || st->node_parent_path[0] ||
            st->dom_ref[0] ||
            st->dom_name_attr[0] || st->dom_value_attr[0] ||
@@ -1469,6 +1470,7 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     }
     fputc('{', f);
     emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
+    emit_metadata_string_field(f, "key", st->node_key, &emitted);
     emit_metadata_string_field(f, "path", st->node_path, &emitted);
     emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
     emit_metadata_string_field(f, "sourcePath", st->span.path, &emitted);

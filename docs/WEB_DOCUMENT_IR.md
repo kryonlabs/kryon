@@ -41,6 +41,9 @@ Button save: {
 The block name, `save`, is the stable Kry node name. The web metadata fields
 are stored on the KIR statement and are not native widget props, so C and Go
 widget APIs do not need browser-only fields.
+Named blocks use their source name as the compiler-provided key. Anonymous
+widget expressions use their generated Kry path as the compiler-provided key,
+so native DOM identity does not have to fall back to frame indexes.
 
 Route blocks identify pages:
 

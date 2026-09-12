@@ -1221,6 +1221,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
         return;
     snprintf(statement->node_name, sizeof(statement->node_name), "%s",
              block->name);
+    snprintf(statement->node_key, sizeof(statement->node_key), "%s",
+             block->name[0] != '\0' ? block->name : block->path);
     snprintf(statement->node_path, sizeof(statement->node_path), "%s",
              block->path);
     snprintf(statement->node_parent_path, sizeof(statement->node_parent_path),
@@ -1422,6 +1424,9 @@ ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
         snprintf(statement->node_path, sizeof(statement->node_path),
                  "%.3000s/%.700s@%d-%d", parent_path, widget, span.line,
                  ordinal);
+    if(statement->node_key[0] == '\0')
+        snprintf(statement->node_key, sizeof(statement->node_key), "%s",
+                 statement->node_path);
 }
 
 static void

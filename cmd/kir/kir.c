@@ -827,6 +827,14 @@ KirProgramDump(const KirProgram *program, FILE *out)
                         KirStmtKindName(st->kind), st->widget, st->args,
                         st->text);
                 kir_dump_span(out, st->span);
+                if(st->node_name[0])
+                    fprintf(out, " node %s", st->node_name);
+                if(st->node_key[0])
+                    fprintf(out, " key %s", st->node_key);
+                if(st->node_path[0])
+                    fprintf(out, " path %s", st->node_path);
+                if(st->node_parent_path[0])
+                    fprintf(out, " parent %s", st->node_parent_path);
                 fprintf(out, "\n");
                 if(st->expr_root >= 0)
                     kir_dump_expr(fn, st->expr_root, out, 3);

@@ -69,6 +69,7 @@ grep -Fq 'assert condition (1) known 1 value 1 message "fixture assertion should
 grep -Fq 'state click_count type int init 0' "$kir"
 grep -Fq 'function Counter args app: App* return void' "$kir"
 grep -Fq 'stmt widget widget Text args (TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone} text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone})' "$kir"
+grep -Eq 'stmt widget widget Text .* key Counter/Text@[0-9]+ path Counter/Text@[0-9]+' "$kir"
 grep -Fq 'expr call text Text((TextProps){.text="Count",.font=Text16,.wrap=TextWrapNone}) name Text op' "$kir"
 grep -Fq 'stmt if widget  args  text if Button((ButtonProps){.label="Increment"}) {' "$kir"
 grep -Fq 'expr call text Button((ButtonProps){.label="Increment"}) name Button op' "$kir"
