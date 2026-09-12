@@ -38,6 +38,7 @@ ui_paint_surface(Rectangle bounds, Style style)
 #define UI_NODE_INHERIT_FOREGROUND (1U << 25)
 #define UI_NODE_TEXT_DISABLED (1U << 24)
 #define UI_NODE_TEXT_INPUT_PAINT (1U << 23)
+#define UI_NODE_BUILD_ACTIVATED (1U << 22)
 
 typedef struct TextFieldState {
     int cursor;
@@ -636,6 +637,14 @@ ui_tree_note_build_activation(int activated)
         ui_tree_build_activation = 1;
 }
 
+static void
+ui_tree_mark_build_activation(NodeId node, int activated)
+{
+    if(ui_tree_building && activated && node >= 0)
+        ui_tree_nodes[node].flags |= UI_NODE_BUILD_ACTIVATED;
+    ui_tree_note_build_activation(activated);
+}
+
 static int
 ui_tree_node_uses_retained_layout(NodeId id)
 {
@@ -943,15 +952,6 @@ ReconcileTree(void)
     unsigned invalid_before = ui_tree_invalid;
     int i;
 
-    if(ui_tree_build_activation && ui_committed_node_count > 0 &&
-       ui_committed_nodes[0].key == ui_tree_screen_key &&
-       ui_tree_node_count < ui_committed_node_count) {
-        ui_tree_clear_pending();
-        ui_tree_node_count = 0;
-        ui_tree_build_activation = 0;
-        ui_tree_invalid |= INVALIDATE_PAINT;
-        return;
-    }
     ui_tree_build_activation = 0;
     if(!ui_tree_reserve(&ui_committed_nodes, &ui_committed_node_capacity,
                         ui_tree_node_count))
@@ -1259,15 +1259,21 @@ RouteInput(void)
         WidgetNode *node = &ui_committed_nodes[i];
         Event event;
 
-        if(!FocusFrameOpen() ||
-           !ui_tree_interactive_button_like(node) ||
-           !IsFocusActivatePressed(node->data.button.props.id))
+        int build_activated = (node->flags & UI_NODE_BUILD_ACTIVATED) != 0;
+
+        if(!ui_tree_interactive_button_like(node) ||
+           (!build_activated &&
+            (!FocusFrameOpen() ||
+             !IsFocusActivatePressed(node->data.button.props.id))) ||
+           ui_popup_input_snapshot_keyboard_captures(
+               ui_tree_input_snapshot(node)))
             continue;
         memset(&event, 0, sizeof(event));
         event.key = node->key;
         event.kind = EVENT_CLICK;
         event.timestamp = GetTime();
         ui_event_push(event);
+        node->flags &= ~UI_NODE_BUILD_ACTIVATED;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     for(i = 0; i < ui_committed_node_count; i++) {
@@ -2562,7 +2568,7 @@ ButtonNode(ButtonSpec button)
             ui_tree_nodes[node].owned_text;
     }
     clicked = ui_tree_building ? HandleButton(button) : ui_button_render(button);
-    ui_tree_note_build_activation(clicked);
+    ui_tree_mark_build_activation(node, clicked);
     return clicked;
 }
 
@@ -3304,7 +3310,7 @@ ui_tree_surface_button(ButtonProps button, Rectangle surface_bounds, int disclos
             ui_tree_nodes[node].owned_text;
     }
     clicked = ui_tree_building ? HandleButton(spec) : ui_button_render(spec);
-    ui_tree_note_build_activation(clicked);
+    ui_tree_mark_build_activation(node, clicked);
     return clicked;
 }
 
@@ -3342,7 +3348,7 @@ Button(ButtonProps button)
         int clicked = RenderButtonInfoIndicator((int)(bounds.x + bounds.width / 2),
                                        (int)(bounds.y + bounds.height / 2),
                                        diameter);
-        ui_tree_note_build_activation(clicked);
+        ui_tree_mark_build_activation(node, clicked);
         ui_tree_mark_painted_immediate(node);
         return clicked;
     }
@@ -3508,8 +3514,9 @@ BeginCard(CardProps card)
     spec.props.bounds = ui_tree_nodes[node].bounds;
     ui_tree_nodes[node].data.button = spec;
     if(card.clickable)
-        ui_tree_note_build_activation(ui_tree_building ? HandleButton(spec)
-                                                       : ui_button_render(spec));
+        ui_tree_mark_build_activation(node, ui_tree_building
+                                            ? HandleButton(spec)
+                                            : ui_button_render(spec));
     else if(!ui_tree_building)
         ui_paint_button(spec, 0, 0);
     if(ui_tree_stack_depth < UI_TREE_MAX_DEPTH)
