@@ -175,8 +175,8 @@ def run_numbers():
      check(name,key,act)
     # Scroll exposes the vertical sliders, with their positions shifted by max_scroll.
     xd('mousemove','--window',window,1100,620);xd('click','--repeat',18,'--delay',25,5);off=state()['scroll']
-    check('VSlider float','number',lambda:click(275,82+666-off+25))
-    check('VSlider int','integer',lambda:click(350,82+666-off+25))
+    check('vertical Slider float','number',lambda:click(275,82+666-off+25))
+    check('vertical Slider int','integer',lambda:click(350,82+666-off+25))
     category(8)
     check('ColorPicker RGB edit','red',lambda:click(345,190))
     check('ColorPicker RGBA edit alpha','alpha',lambda:click(949,190))

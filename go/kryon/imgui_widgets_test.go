@@ -1209,7 +1209,7 @@ func TestNativeSliders(t *testing.T) {
 	r.QueueMouseButtonDown(MouseButtonLeft, 130, 25)
 	r.BeginFrame()
 	if !r.sliderInt(sliderIntProps{Bounds: NewRectangle(120, 10, 30, 100), ID: 61, Values: ints, Min: 0, Max: 10}, true) || ints[0] != 9 {
-		t.Fatalf("VSlider int value=%d, want 9", ints[0])
+		t.Fatalf("vertical Slider int value=%d, want 9", ints[0])
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 130, 25)
