@@ -48,20 +48,19 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 102 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 56 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
 `Background Text Paragraph Rect Line Bevel Icon
-Image Button Selectable InvisibleButton Bullet Separator ColorPicker Tooltip Link TextField TextArea Dropdown Slider Toggle
-Checkbox Radio Progress Spinbox Screen Column Row Stack End Scroll
-Plot Drag Slider Input
-Canvas Disabled Modal TitleBar MenuBar PopupMenu ContextMenu
-TabBar NavigationBar Toolbar ShowToast ShowToastFor Fieldset
-PanedView Collapsible ListBox TreeView TableView ColorPicker TabBar DragDropSource DragDropTarget MultiSelectList
-CanvasGrid SelectableText`
+Image Button Card Selectable InvisibleButton Bullet Separator Link TextField TextArea Dropdown Slider
+MenuBar PopupMenu ContextMenu Toggle Checkbox Radio Progress Plot
+Drag Input Spinbox DragDropSource DragDropTarget MultiSelectList
+Screen Column Row Stack End Scroll Canvas Modal TitleBar TabBar
+NavigationBar Toolbar ShowToast ShowToastFor Fieldset PanedView Collapsible
+ListBox TreeView TableView ColorPicker CanvasGrid SelectableText`
 
 `Canvas`, `Scroll`, and `TableCell` are lexical `.kry` blocks rather than
 ordinary one-call widgets; the compiler lowers them to host begin/end support.

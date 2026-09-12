@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "src/ui/ui_node_registry.c"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
+FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
 
 PUBLIC_WIDGET_NAMES = {
     "BeginButton",
@@ -93,12 +94,34 @@ def parser_rows() -> dict[str, list[str]]:
     return rows
 
 
+def feature_matrix_parser_names() -> tuple[int, list[str]]:
+    text = FEATURE_MATRIX.read_text(encoding="utf-8")
+    count_match = re.search(
+        r"parse_widget_statement`\s*\(`cmd/kir/kir_parse\.c`\) recognizes (\d+) widget names\.",
+        text,
+    )
+    if not count_match:
+        raise AssertionError("missing feature matrix parser widget count")
+    list_match = re.search(
+        r"operations; and `k2b` lowers a subset of it:\n\n`(?P<body>.*?)`",
+        text,
+        flags=re.S,
+    )
+    if not list_match:
+        raise AssertionError("missing feature matrix parser widget list")
+    names = list_match.group("body").split()
+    if not names:
+        raise AssertionError("empty feature matrix parser widget list")
+    return int(count_match.group(1)), names
+
+
 def main() -> int:
     errors: list[str] = []
     expected = registry_names()
     rows = audit_rows()
     parser_expected = parser_widget_names()
     parser_doc_rows = parser_rows()
+    feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
 
     for name in expected:
@@ -114,6 +137,13 @@ def main() -> int:
             errors.append(f"missing parser statement surface row: {name}")
     for name in sorted(set(parser_doc_rows) - set(parser_expected)):
         errors.append(f"parser statement row is not in parse_widget_statement: {name}")
+    if feature_count != len(parser_expected):
+        errors.append(
+            "feature matrix parser widget count is "
+            f"{feature_count}, expected {len(parser_expected)}"
+        )
+    if feature_names != parser_expected:
+        errors.append("feature matrix parser widget list does not match parse_widget_statement")
 
     for name, cells in rows.items():
         runtime_source = cells[3]
