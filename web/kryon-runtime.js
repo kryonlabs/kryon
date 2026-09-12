@@ -2479,10 +2479,6 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function BeginScrollContainer(...args) {
-  return struct("BeginScrollContainer", args);
-}
-
 export function BeginCanvas(canvas) {
   return {
     active: false,

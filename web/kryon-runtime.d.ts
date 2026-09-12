@@ -402,7 +402,6 @@ export function IsKeyPressed(key: number): boolean;
 export function IsKeyDown(key: number): boolean;
 export function IsMouseButtonReleased(button: number): boolean;
 export function GetThemeMetrics(): Record<string, unknown>;
-export function BeginScrollContainer(...args: unknown[]): unknown;
 export function CanvasHitTest(canvas: unknown, screen: unknown): Record<string, unknown>;
 
 export const Text8: number;
