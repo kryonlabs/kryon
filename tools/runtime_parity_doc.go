@@ -192,7 +192,6 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Image",
 		"Button",
 		"Selectable",
-		"InvisibleButton",
 		"Bullet",
 		"Separator",
 		"DragDrop",

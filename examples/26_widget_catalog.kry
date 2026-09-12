@@ -232,10 +232,10 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         Selectable((SelectableProps){.bounds = {x,y + Scale(250),Scale(300),Scale(32)}, .id = 202, .label = "Selectable", .selected = &selected})
         Checkbox((CheckboxProps){.bounds = {right,y + Scale(204),Scale(300),Scale(32)}, .id = 203, .label = "Checkbox flags", .flags = &flags, .flags_value = 1})
-        Text((TextProps){.bounds={right, y + Scale(258), 0, 0}, .text="InvisibleButton (click this area)", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        if InvisibleButton((InvisibleButtonProps){.bounds = {right,y + Scale(250),Scale(300),Scale(32)}, .id = 204}) {
+        Text((TextProps){.bounds={right, y + Scale(258), 0, 0}, .text="Invisible Button", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        if Button((ButtonProps){.bounds = {right,y + Scale(250),Scale(300),Scale(32)}, .id = 204, .invisible = true}) {
             action_count += 1
-            ShowToast("InvisibleButton clicked")
+            ShowToast("Invisible button clicked")
         }
         Disabled disabled_action: {
             if Button((ButtonProps){.bounds = {x,y + Scale(310),Scale(180),Scale(34)}, .label = "Disabled button", .id = 205}) {
