@@ -418,6 +418,7 @@ declare global {
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];
+    readonly kryObjectMap?: Map<string, WebDOMObject>;
     kryMatches?(selector: string): boolean;
     kryClosest?(selector: string): WebDOMObject | null;
     kryElement?(query: string): Element | null;
@@ -656,6 +657,7 @@ export function webDOMObjectFromEvent(eventOrTarget: Event | EventTarget | null)
 export function webDOMIdentityFromEvent(eventOrTarget: Event | EventTarget | null): WebNodeIdentity | null;
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
+export function webDOMObjectMap(target: Element | string | null): Map<string, WebDOMObject>;
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
 export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
 export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;
@@ -899,7 +901,7 @@ export function Screen(...args: unknown[]): unknown;
 export function Scroll(...args: unknown[]): unknown;
 export function SetCurrentTheme(...args: unknown[]): unknown;
 export function SetThemeDarkMode(...args: unknown[]): unknown;
-export function ShowToast(...args: unknown[]): unknown;
+export function Toast(...args: unknown[]): unknown;
 export function Slider(...args: unknown[]): unknown;
 export function Spinbox(...args: unknown[]): unknown;
 export function Stack(...args: unknown[]): unknown;

@@ -514,7 +514,7 @@ function parseBounds(args) {
       height: numberValue(p[3])
     };
   }
-  const rect = String(args || "").match(/\((?:Rectangle|Rect)\)\s*\{([^{}]+)\}/);
+  const rect = String(args || "").match(/\(Rectangle\)\s*\{([^{}]+)\}/);
   if (rect) {
     const p = splitTopLevel(rect[1]);
     return {
@@ -3457,6 +3457,13 @@ function bindWebRootProperties(root) {
         return webDOMObjectsFromRoot(this);
       }
     },
+    kryObjectMap: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webDOMObjectMap(this);
+      }
+    },
     kryElement: {
       configurable: true,
       enumerable: false,
@@ -4202,6 +4209,17 @@ export function webDOMElementMatches(element, selector) {
 export function webDOMObjects(target) {
   const root = mountedRoot(target);
   return webDOMObjectsFromRoot(root);
+}
+
+export function webDOMObjectMap(target) {
+  const map = new Map();
+  for (const object of webDOMObjects(target)) {
+    for (const alias of webNodeIdentity(object.node).aliases) {
+      if (alias && !map.has(alias))
+        map.set(alias, object);
+    }
+  }
+  return map;
 }
 
 function plainElementMap(source) {
@@ -5229,7 +5247,7 @@ const runtimeCallNames = [
   "Icon", "Fieldset", "Link", "ListBox", "Menu",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SetCurrentTheme",
-  "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
+  "SetThemeDarkMode", "Toast", "Slider", "Spinbox", "Stack", "TabBar",
   "Text", "TextArea", "TextField", "TitleBar",
   "Toggle", "Toolbar"
 ];
@@ -5276,7 +5294,7 @@ export function SetThemeDarkMode(dark) {
   }
   return struct("SetThemeDarkMode", [dark]);
 }
-export function ShowToast(...args) { return struct("ShowToast", args); }
+export function Toast(...args) { return struct("Toast", args); }
 export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }
 export function Stack(...args) { return struct("Stack", args); }

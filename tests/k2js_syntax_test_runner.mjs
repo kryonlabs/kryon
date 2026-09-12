@@ -1032,7 +1032,13 @@ function fakeDocument() {
     assert.equal(root.kryRuntime, domRt);
     assert.equal(root.kryFrame.nodes.length, runtime.webDocumentFrame(domRt).nodes.length);
     assert.ok(root.kryObjects.some((object) => object.ref === "primary-action"));
+    assert.equal(root.kryObjectMap.get("primary-action").element.dataset.kryRef, "primary-action");
+    assert.equal(root.kryObjectMap.get("Scene/root/tap").element.dataset.kryRef, "primary-action");
+    assert.equal(root.kryObjectMap.get("tap-button").element.dataset.kryRef, "primary-action");
+    assert.equal(root.kryObjectMap.get(tapSourceRef).element.dataset.kryRef, "primary-action");
+    assert.equal(root.kryObjectMap.get(tapSourceColumnRef).element.dataset.kryRef, "primary-action");
     assert.equal(Object.keys(root).includes("kryObjects"), false);
+    assert.equal(Object.keys(root).includes("kryObjectMap"), false);
     assert.equal(lifecycleEvents.length, 5);
     assert.deepEqual(lifecycleEvents.map((event) => event.type), [
       "kry-mount",
@@ -1609,6 +1615,13 @@ function fakeDocument() {
       "search-box",
       "Scene/root/search_label"
     ]);
+    const domObjectMap = runtime.webDOMObjectMap(target);
+    assert.equal(domObjectMap.get("primary-action").element, firstButton);
+    assert.equal(domObjectMap.get("Scene/root/tap").element, firstButton);
+    assert.equal(domObjectMap.get("tap").element, firstButton);
+    assert.equal(domObjectMap.get("tap-button").element, firstButton);
+    assert.equal(domObjectMap.get(tapSourceRef).element, firstButton);
+    assert.equal(domObjectMap.get(tapSourceColumnRef).element, firstButton);
     const firstField = screen.children[2];
     assert.equal(firstField.__kryDocNode.scrollLeft, 7);
     assert.equal(firstField.__kryDocNode.scrollTop, 19);

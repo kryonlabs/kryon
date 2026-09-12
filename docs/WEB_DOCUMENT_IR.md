@@ -333,6 +333,9 @@ native DOM object through ordinary browser event listeners.
 the root itself. `webDOMFrame(target)` returns the last rendered Web Document
 frame. The mount root also exposes non-enumerable `kryRuntime`, `kryFrame`, and
 `kryObjects` getters for browser inspectors and host integrations.
+`webDOMObjectMap(target)` and `root.kryObjectMap` return a `Map` from every
+stable alias, including `web_ref`, Kry path/name/key, DOM id/name, and source
+refs, to the current live Kry DOM object.
 Mount roots also provide non-enumerable `kryElement(query)`,
 `kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
 `kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser
