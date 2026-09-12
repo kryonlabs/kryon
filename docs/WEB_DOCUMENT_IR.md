@@ -201,7 +201,8 @@ The initial tag mapping is intentionally conservative:
 | `Heading` | `h1`-`h6` |
 | `Paragraph`, `ParagraphText` | `p` |
 | `Link` | `a` |
-| `Button`, `InvisibleButton` | `button` |
+| `Button` | `button` |
+| invisible hit-test support | `button` |
 | `TextField` | `input type=text` |
 | `TextArea` | `textarea` |
 | `Image` with `alt_text` | `img` |

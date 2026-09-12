@@ -152,7 +152,7 @@ fi
 
 legacy_button_variant_doc_matches="$(
     rg -n 'Small-sized Button / InvisibleButton|`Button`[^|\n]*`InvisibleButton`|InvisibleButton`, image' \
-        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/WEB_DOCUMENT_IR.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
