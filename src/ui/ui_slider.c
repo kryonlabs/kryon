@@ -149,8 +149,22 @@ ui_checkbox_style_frame(ButtonTone tone, ButtonState state, int disabled,
     props.size = ControlSizeMedium;
     props.disabled = disabled;
     props.selected = selected;
-    return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
-                                       StyleKindCheckbox());
+    return ui_control_style_frame_role_kind(
+        props, state, 0, 0.0f, 0.0f, 0.0f, StyleKindCheckbox(),
+        tone == ButtonToneAccent ? 10 : 9);
+}
+
+static StyleFrame
+ui_checkbox_label_style_frame(ButtonState state, int disabled, int selected)
+{
+    ButtonProps props = {0};
+    props.tone = ButtonToneNeutral;
+    props.emphasis = ButtonEmphasisOutline;
+    props.size = ControlSizeMedium;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
+                                            0.0f, StyleKindCheckbox(), 6);
 }
 
 static ButtonState
@@ -715,10 +729,17 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 {
     char editor_id[96];
     Widget widget;
-    int font = GetFontSize();
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int slot_size = CheckboxSlotSize(runtime_scale);
     int label_gap = Scale(10);
+    int checked = value != NULL && *value;
+    StyleFrame label_frame = ui_checkbox_label_style_frame(
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, checked);
+    Style label_style = ui_unpack_style(
+        ui_style_apply_effects_frame(label_frame).value);
+    int font = label_style.font_size > 0.0f
+        ? (int)(label_style.font_size + 0.5f)
+        : GetFontSize();
     int label_w = TextWidth(label, font);
     int label_h = TextLineHeight(font);
     int row_h = slot_size > label_h ? slot_size : label_h;
@@ -761,11 +782,15 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                       !InputCapturesClick(mouse_world) &&
                       HoverEffectsEnabled();
         int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        int checked = value != NULL && *value;
         ButtonState state = ui_checkbox_button_state(hovered, down, 0,
                                                      disabled);
         CheckboxPaint paint;
 
+        label_frame = ui_checkbox_label_style_frame(state, disabled, checked);
+        label_style = ui_unpack_style(
+            ui_style_apply_effects_frame(label_frame).value);
+        if(label_style.font_size > 0.0f)
+            font = (int)(label_style.font_size + 0.5f);
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = bounds,
             .checked = checked,
@@ -779,6 +804,8 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
             .active = ui_checkbox_style_frame(ButtonToneAccent, state,
                                               disabled, checked)
         });
+        paint.label_color = Opacity(ColorToInt(label_style.foreground),
+                                    label_style.opacity);
 
         if(paint.show_state)
             DrawRectangleRounded(paint.state_bounds, paint.state_radius, 8,
