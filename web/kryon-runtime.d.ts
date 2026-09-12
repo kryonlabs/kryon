@@ -671,6 +671,9 @@ export function webStyleSelectorToCSS(selector: Record<string, unknown>): string
 export function webStyleSheetToCSS(sheet: string | WebStyleSheet): string;
 export function installWebStyleSheet(sheet: string | WebStyleSheet,
   target?: Element | null, id?: string): (() => void) | null;
+export function loadAppWebStyleSheets(app: AppMeta | null): WebStyleSheet[];
+export function installAppWebStyleSheets(app: AppMeta | null,
+  target?: Element | null, id?: string): (() => void) | null;
 export function setWebStyleSheets(rt: Runtime, sheets: string | WebStyleSheet | Array<string | WebStyleSheet>): Runtime;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function webDOMRoot(target: Element | string | null): Element | null;

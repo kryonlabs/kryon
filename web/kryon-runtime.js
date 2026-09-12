@@ -1759,6 +1759,23 @@ export function installWebStyleSheet(sheet, target = null, id = "kryon") {
   };
 }
 
+export function loadAppWebStyleSheets(app) {
+  return (app?.styles || [])
+    .map((style) => style?.source)
+    .filter((source) => typeof source === "string" && source.length > 0)
+    .map((source) => parseWebStyleSheet(source));
+}
+
+export function installAppWebStyleSheets(app, target = null, id = "kryon-app") {
+  const sheets = loadAppWebStyleSheets(app);
+  if (!sheets.length)
+    return null;
+  return installWebStyleSheet({
+    pack: app?.title || id || "kryon-app",
+    rules: sheets.flatMap((sheet) => sheet.rules || [])
+  }, target, id);
+}
+
 function styleStateMatches(name, state) {
   if (!name || name === "any")
     return true;

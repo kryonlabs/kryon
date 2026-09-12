@@ -700,6 +700,16 @@ function fakeDocument() {
     assert.equal(document.head.children.length, 0);
     removeInstalledStyle();
     assert.equal(document.head.children.length, 0);
+    const appSheets = runtime.loadAppWebStyleSheets(generated.app);
+    assert.equal(appSheets.length, 2);
+    assert.deepEqual(appSheets.map((sheet) => sheet.pack), ["kryon.material", "brand"]);
+    const removeAppStyles = runtime.installAppWebStyleSheets(generated.app, null, "valid-app");
+    assert.equal(typeof removeAppStyles, "function");
+    assert.equal(document.head.children.length, 1);
+    assert.equal(document.head.children[0].attributes["data-kry-style"], "valid-app");
+    assert.match(document.head.children[0].textContent, /\[data-kry-kind="Button"\]\.primary/);
+    removeAppStyles();
+    assert.equal(document.head.children.length, 0);
 
     const ariaRt = runtime.createRuntime();
     runtime.beginFrame(ariaRt);
