@@ -271,8 +271,6 @@ int ui_caret_blink_visible(void);
 void ui_open_url(const char *url);
 void RenderFrameOverlays(void);
 void RenderFocus(Rectangle bounds);
-int ui_readonly_text_box_height(const char *text, int font, int width,
-                               TextInputStyle style, int line_gap);
 int ui_label_text_field_height(LabelTextFieldProps row);
 int ui_section_label_height(SectionLabelProps label);
 int ui_checkbox_row_height(CheckboxRowProps row);
@@ -368,7 +366,6 @@ void ui_paint_text_area_composition(TextAreaProps area, int cursor, int focused,
                                     int selection_start, int selection_end,
                                     int composition_start,
                                     int composition_end);
-int RenderReadonlyTextBox(ReadonlyTextBoxProps box);
 void DrawCustomIcon(int x, int y, int size, Texture2D icon, Color tint);
 int RenderButtonInfoIndicator(int center_x, int center_y, int diameter);
 int ui_text_button_render(int x, int y, const char *label, int *hover);

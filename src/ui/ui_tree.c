@@ -668,17 +668,6 @@ ui_measure_paragraph(WidgetNode node)
 }
 
 static int
-ui_measure_readonly_text_box(WidgetNode node)
-{
-    const ReadonlyTextBoxProps *box;
-
-    box = node.props != NULL ? node.props : &node.data.readonly_text_box;
-    return ui_readonly_text_box_height(box->text, box->font,
-                                       (int)box->bounds.width,
-                                       box->style, box->line_gap);
-}
-
-static int
 ui_measure_navigation_bar(WidgetNode node)
 {
     if(node.bounds.height > 0)
@@ -726,7 +715,6 @@ static const WidgetOps ui_widget_ops[] = {
     [WIDGET_TOGGLE] = {ui_measure_bounds_height},
     [WIDGET_CHECKBOX] = {ui_measure_bounds_height},
     [WIDGET_PARAGRAPH] = {ui_measure_paragraph},
-    [WIDGET_READONLY_TEXT_BOX] = {ui_measure_readonly_text_box},
     [WIDGET_NAVIGATION_BAR] = {ui_measure_navigation_bar},
     [WIDGET_TAB_BAR] = {ui_measure_tab_bar},
     [WIDGET_PARAGRAPH_MODAL] = {ui_measure_paragraph_modal},
@@ -2045,8 +2033,7 @@ ui_accessibility_role(WidgetKind kind)
     switch(kind) {
     case WIDGET_SCREEN: return "main";
     case WIDGET_TEXT:
-    case WIDGET_PARAGRAPH:
-    case WIDGET_READONLY_TEXT_BOX: return "text";
+    case WIDGET_PARAGRAPH: return "text";
     case WIDGET_BUTTON: return "button";
     case WIDGET_CARD: return "group";
     case WIDGET_TEXT_INPUT_PAINT:
@@ -2177,16 +2164,6 @@ NodeParagraph(ParagraphSpec paragraph, int x, int y)
     node = ui_node(0, WIDGET_PARAGRAPH,
                    (Rectangle){x, y, paragraph.width, 0});
     node.data.paragraph = paragraph;
-    return node;
-}
-
-WidgetNode
-NodeReadonlyTextBox(ReadonlyTextBoxProps box)
-{
-    WidgetNode node;
-
-    node = ui_node(0, WIDGET_READONLY_TEXT_BOX, box.bounds);
-    node.data.readonly_text_box = box;
     return node;
 }
 

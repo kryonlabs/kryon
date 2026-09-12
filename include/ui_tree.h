@@ -66,7 +66,6 @@ typedef enum WidgetKind {
     WIDGET_TOGGLE,
     WIDGET_CHECKBOX,
     WIDGET_PARAGRAPH,
-    WIDGET_READONLY_TEXT_BOX,
     WIDGET_NAVIGATION_BAR,
     WIDGET_TAB_BAR,
     WIDGET_PARAGRAPH_MODAL,
@@ -118,7 +117,6 @@ typedef union WidgetData {
         int max_columns;
     } layout;
     ParagraphSpec paragraph;
-    ReadonlyTextBoxProps readonly_text_box;
     ParagraphModalMeasureProps paragraph_modal;
     ImageProps image;
     struct {
@@ -209,7 +207,6 @@ int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 
 WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
-WidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
 WidgetNode NodeNavigationBar(NavigationBarProps nav);
 WidgetNode NodeTabBar(TabBarProps bar);
 WidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);

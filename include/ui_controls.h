@@ -109,14 +109,6 @@ typedef struct {
     int wrap;
 } TextAreaProps;
 
-typedef struct {
-    Rectangle bounds;
-    const char *text;
-    int font;
-    TextInputStyle style;
-    int line_gap;
-} ReadonlyTextBoxProps;
-
 /* Public control style ABI. Apps can select a named ThemeStyle or override
  * these tokens directly when they need full control. */
 typedef struct ThemeMetrics {

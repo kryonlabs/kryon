@@ -355,7 +355,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_TOGGLE` | `Toggle` | `.kry canonical` |
 | `WIDGET_CHECKBOX` | `Checkbox` | `.kry canonical` |
 | `WIDGET_PARAGRAPH` | `Paragraph` | Rename review; may become `Text` props |
-| `WIDGET_READONLY_TEXT_BOX` | `ReadonlyTextBox` | Rename review; likely `TextArea` props |
+| `WIDGET_READONLY_TEXT_BOX` | Removed | Old retained node/helper deleted; use `TextArea` with read-only props. |
 | `WIDGET_NAVIGATION_BAR` | `NavigationBar` | `.kry canonical` |
 | `WIDGET_TAB_BAR` | `TabBar` | `.kry canonical` |
 | `WIDGET_PARAGRAPH_MODAL` | `ParagraphModal` | Composite candidate |
