@@ -96,6 +96,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[formnovalidate] {
     content-offset-y: 7;
   }
+  TextField[pattern="needle.*"] {
+    icon-size: 14;
+  }
   TextField[scrolltop=22] {
     font-size: 18;
   }
@@ -108,6 +111,10 @@ assert.match(webStyleCSS, /color: #f0f0f0;/);
 assert.match(webStyleCSS, /border-radius: 9px;/);
 assert.match(webStyleCSS, /padding-left: 13px;/);
 assert.match(webStyleCSS, /padding-right: 13px;/);
+assert.match(webStyleCSS, /--kry-offset-y: 8px;/);
+assert.match(webStyleCSS, /transform: translate\(var\(--kry-offset-x, 0px\), var\(--kry-offset-y, 0px\)\);/);
+assert.match(webStyleCSS, /--kry-content-offset-y: 7px;/);
+assert.match(webStyleCSS, /--kry-icon-size: 14px;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
@@ -1310,6 +1317,9 @@ function fakeDocument() {
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
     assert.equal(firstButton.style.paddingLeft, "13px");
+    assert.equal(firstButton.style["--kry-offset-y"], "8px");
+    assert.equal(firstButton.style.transform,
+      "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))");
     assert.equal(firstButton.dataset.kryState, undefined);
     firstButton.mouseenter();
     assert.equal(firstButton.style.background, "#304050");
@@ -1979,6 +1989,8 @@ function fakeDocument() {
     assert.equal(searchLabel.textContent, "Search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
+    assert.equal(firstField.style["--kry-content-offset-y"], "7px");
+    assert.equal(firstField.style["--kry-icon-size"], "14px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
     assert.equal(runtime.webFormValue(target, "search-box"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");

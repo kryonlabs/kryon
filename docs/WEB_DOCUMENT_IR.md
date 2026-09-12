@@ -318,7 +318,7 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[max=...]`, `[step=...]`, `[minlength=...]`, `[maxlength=...]`,
 `[pattern=...]`, `[accept=...]`, `[multiple=true]`, `[inputmode=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, spacing,
-radius, border width, opacity, font size, and local
+radius, border width, opacity, font size, offsets, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,

@@ -1792,8 +1792,15 @@ const webCSSPropertyNames = new Map([
   ["padding_y", "padding-top"],
   ["gap", "gap"],
   ["font-size", "font-size"],
-  ["font_size", "font-size"]
+  ["font_size", "font-size"],
+  ["focus", "outline-color"],
+  ["focus-color", "outline-color"],
+  ["focus_color", "outline-color"]
 ]);
+
+function webStyleCSSValue(name, value) {
+  return typeof value === "number" && name !== "opacity" ? value + "px" : String(value);
+}
 
 function webStyleValueToCSS(name, value) {
   if (value === undefined || value === null || value === "")
@@ -1801,30 +1808,51 @@ function webStyleValueToCSS(name, value) {
   const prop = webCSSPropertyNames.get(name) || (name.startsWith("--") ? name : "");
   if (!prop)
     return "";
-  const cssValue = typeof value === "number" && prop !== "opacity" ? value + "px" : String(value);
+  const cssValue = webStyleCSSValue(prop, value);
   return `  ${prop}: ${cssValue};`;
 }
 
 function webStyleRuleToCSS(rule) {
   const selector = webStyleSelectorToCSS(rule.selector);
   const lines = [];
+  const style = rule.style || {};
+  const offsetX = style["offset-x"] ?? style.offset_x;
+  const offsetY = style["offset-y"] ?? style.offset_y;
   for (const [name, value] of Object.entries(rule.style || {})) {
     if (name === "padding-x" || name === "padding_x") {
-      const cssValue = typeof value === "number" ? value + "px" : String(value);
+      const cssValue = webStyleCSSValue("padding-left", value);
       lines.push(`  padding-left: ${cssValue};`);
       lines.push(`  padding-right: ${cssValue};`);
       continue;
     }
     if (name === "padding-y" || name === "padding_y") {
-      const cssValue = typeof value === "number" ? value + "px" : String(value);
+      const cssValue = webStyleCSSValue("padding-top", value);
       lines.push(`  padding-top: ${cssValue};`);
       lines.push(`  padding-bottom: ${cssValue};`);
+      continue;
+    }
+    if (name === "offset-x" || name === "offset_x" ||
+        name === "offset-y" || name === "offset_y")
+      continue;
+    if (name === "content-offset-y" || name === "content_offset_y") {
+      lines.push(`  --kry-content-offset-y: ${webStyleCSSValue("--kry-content-offset-y", value)};`);
+      continue;
+    }
+    if (name === "icon-size" || name === "icon_size") {
+      lines.push(`  --kry-icon-size: ${webStyleCSSValue("--kry-icon-size", value)};`);
       continue;
     }
     const line = webStyleValueToCSS(name, value);
     if (line)
       lines.push(line);
   }
+  if (offsetX !== undefined && offsetX !== null && offsetX !== "")
+    lines.push(`  --kry-offset-x: ${webStyleCSSValue("--kry-offset-x", offsetX)};`);
+  if (offsetY !== undefined && offsetY !== null && offsetY !== "")
+    lines.push(`  --kry-offset-y: ${webStyleCSSValue("--kry-offset-y", offsetY)};`);
+  if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
+      (offsetY !== undefined && offsetY !== null && offsetY !== ""))
+    lines.push("  transform: translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px));");
   if (!lines.length)
     return "";
   return `${selector} {\n${lines.join("\n")}\n}`;
@@ -2053,7 +2081,7 @@ function applyResolvedWebStyle(el, style) {
   const set = (name, value) => {
     if (value === undefined || value === null || value === "")
       return;
-    el.style[name] = typeof value === "number" && name !== "opacity" ? value + "px" : String(value);
+    el.style[name] = webStyleCSSValue(name, value);
     applied.add(name);
   };
   style = style || {};
@@ -2069,6 +2097,17 @@ function applyResolvedWebStyle(el, style) {
   set("paddingBottom", style["padding-y"] ?? style.padding_y);
   set("gap", style.gap);
   set("fontSize", style["font-size"] ?? style.font_size);
+  set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
+  set("--kry-icon-size", style["icon-size"] ?? style.icon_size);
+  const offsetX = style["offset-x"] ?? style.offset_x;
+  const offsetY = style["offset-y"] ?? style.offset_y;
+  if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
+      (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
+    set("--kry-offset-x", offsetX ?? "0px");
+    set("--kry-offset-y", offsetY ?? "0px");
+    set("transform", "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))");
+  }
+  set("outlineColor", style.focus ?? style["focus-color"] ?? style.focus_color);
   if (style.border || style["border-color"] || style["border-width"] || style.border_width) {
     el.style.borderStyle = el.style.borderStyle || "solid";
     applied.add("borderStyle");
