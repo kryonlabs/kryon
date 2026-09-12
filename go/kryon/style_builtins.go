@@ -446,6 +446,7 @@ ColorPickerSwatch {
   radius: radius.sm;
   border-width: border;
   padding-x: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -2117,6 +2118,7 @@ ColorPickerSwatch {
   radius: radius;
   border-width: border;
   padding-x: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3764,6 +3766,7 @@ ColorPickerSwatch {
   radius: radius.sm;
   border-width: border;
   padding-x: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -5474,6 +5477,7 @@ ColorPickerSwatch {
   radius: radius.sm;
   border-width: border;
   padding-x: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -7237,6 +7241,7 @@ ColorPickerSwatch {
   radius: radius;
   border-width: 1;
   padding-x: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
