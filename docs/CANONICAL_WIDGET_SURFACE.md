@@ -507,7 +507,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_RECT` | `Box` | `.kry-backed`; public code uses `Box` |
 | `WIDGET_CIRCLE` | `Circle` | `.kry-backed`; public code uses `Circle` |
 | `WIDGET_RING` | `Ring` | `.kry-backed`; public code uses `Ring` |
-| `WIDGET_LINE` | `Line` | Partly `.kry-backed` |
+| `WIDGET_LINE` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |
 | `WIDGET_TRIANGLE` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
 | `WIDGET_BUTTON` | `Button` | `.kry canonical` |
 | `WIDGET_TEXT_FIELD` | `TextField` | `.kry canonical`; editing policy still migrating |

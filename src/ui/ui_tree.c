@@ -1812,7 +1812,7 @@ DrawTree(void)
                      node->data.primitive.color);
             break;
         case WIDGET_LINE:
-            DrawLine((int)node->bounds.x, (int)node->bounds.y,
+            DrawLine(node->data.primitive.x1, node->data.primitive.y1,
                      node->data.primitive.x2, node->data.primitive.y2,
                      node->data.primitive.color);
             break;
