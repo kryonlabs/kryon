@@ -329,8 +329,9 @@ assert.equal(runtime.webNodeQuery(rt, "[webRef=\"primary-action\"]").path, "Scen
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), true);
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
 assert.equal(webDoc.nodes.every((node) => !!node.path), true);
-assert.equal(webDoc.nodes[5].path, "Scene/root/Selectable_5");
-assert.equal(runtime.webNodeQuery(rt, "Scene/root/Selectable_5").kind, "Selectable");
+const selectablePath = webDoc.nodes[5].path;
+assert.match(selectablePath, /^Scene\/root\/Selectable_\d+-5$/);
+assert.equal(runtime.webNodeQuery(rt, selectablePath).kind, "Selectable");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -340,7 +341,7 @@ assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.pa
   "Scene/root/tap",
   "Scene/root/search",
   "Scene/root/search_label",
-  "Scene/root/Selectable_5",
+  selectablePath,
   "Scene/root/Input@207-2",
   "Scene/root/Input@208-3"
 ]);
@@ -350,7 +351,7 @@ assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node
   "Scene/root/tap",
   "Scene/root/search",
   "Scene/root/search_label",
-  "Scene/root/Selectable_5",
+  selectablePath,
   "Scene/root/Input@207-2",
   "Scene/root/Input@208-3"
 ]);
@@ -1437,7 +1438,7 @@ function fakeDocument() {
         "Scene/root/tap",
         "Scene/root/search",
         "Scene/root/search_label",
-        "Scene/root/Selectable_5",
+        selectablePath,
         "Scene/root/Input@207-2",
         "Scene/root/Input@208-3"
       ]);
@@ -1449,7 +1450,7 @@ function fakeDocument() {
         "Scene/root/tap",
         "Scene/root/search",
         "Scene/root/search_label",
-        "Scene/root/Selectable_5",
+        selectablePath,
         "Scene/root/Input@207-2",
         "Scene/root/Input@208-3"
       ]);
@@ -1474,7 +1475,7 @@ function fakeDocument() {
         "Scene/root/tap",
         "Scene/root/search",
         "Scene/root/search_label",
-        "Scene/root/Selectable_5",
+        selectablePath,
         "Scene/root/Input@207-2",
         "Scene/root/Input@208-3"
       ]);
@@ -1483,7 +1484,7 @@ function fakeDocument() {
       "Scene/root/tap",
       "Scene/root/search",
       "Scene/root/search_label",
-      "Scene/root/Selectable_5",
+      selectablePath,
       "Scene/root/Input@207-2",
       "Scene/root/Input@208-3"
     ]);
@@ -1782,7 +1783,7 @@ function fakeDocument() {
       "primary-action",
       "search-box",
       "Scene/root/search_label",
-      "Scene/root/Selectable_5",
+      selectablePath,
       "Scene/root/Input@207-2",
       "Scene/root/Input@208-3"
     ]);
@@ -1793,7 +1794,7 @@ function fakeDocument() {
     assert.equal(domObjectMap.get("tap-button").element, firstButton);
     assert.equal(domObjectMap.get(tapSourceRef).element, firstButton);
     assert.equal(domObjectMap.get(tapSourceColumnRef).element, firstButton);
-    assert.equal(domObjectMap.get("Scene/root/Selectable_5").node.kind, "Selectable");
+    assert.equal(domObjectMap.get(selectablePath).node.kind, "Selectable");
     const firstField = screen.children[2];
     assert.equal(firstField.__kryDocNode.scrollLeft, 7);
     assert.equal(firstField.__kryDocNode.scrollTop, 19);

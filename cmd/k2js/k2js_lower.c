@@ -1213,6 +1213,8 @@ emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const cha
 static int
 stmt_has_web_metadata(const KirStmt *st)
 {
+    if(st->span.path[0] || st->span.line > 0 || st->span.column > 0)
+        return 1;
     return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
            st->node_path[0] || st->node_parent_path[0] ||
            st->dom_ref[0] ||
