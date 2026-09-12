@@ -475,6 +475,10 @@ void RenderInspectOverlay(void);
  * separately captures immediate drawing and owns the texture lifetime. */
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
 void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
+WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
+WidgetNode NodeNavigationBar(NavigationBarProps nav);
+WidgetNode NodeTabBar(TabBarProps bar);
+WidgetNode NodeTitleBar(int height);
 void ui_tree_submit_text_input(Rectangle bounds, const char *text,
                                TextInputPaint paint, int id);
 void ui_paint_text_input(Rectangle bounds, const char *text,

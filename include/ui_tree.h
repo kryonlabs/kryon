@@ -189,11 +189,6 @@ NodeId HitTestNode(Vector2 point);
 int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 
-WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
-WidgetNode NodeNavigationBar(NavigationBarProps nav);
-WidgetNode NodeTabBar(TabBarProps bar);
-WidgetNode NodeTitleBar(int height);
-
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 
 void BeginDisabled(int disabled);

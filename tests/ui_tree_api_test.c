@@ -1,4 +1,4 @@
-#include "kryon.h"
+#include "../src/ui/ui_internal.h"
 #include "kry_inject.h"
 #include "runtime/navigation_bar.h"
 #include "theme.h"

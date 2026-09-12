@@ -1999,10 +1999,6 @@ include/ui_tree.h function Modal
 include/ui_tree.h function MultiSelectList
 include/ui_tree.h function NavigationBar
 include/ui_tree.h function NextEvent
-include/ui_tree.h function NodeNavigationBar
-include/ui_tree.h function NodeParagraph
-include/ui_tree.h function NodeTabBar
-include/ui_tree.h function NodeTitleBar
 include/ui_tree.h function Overlays
 include/ui_tree.h function PanedView
 include/ui_tree.h function Paragraph

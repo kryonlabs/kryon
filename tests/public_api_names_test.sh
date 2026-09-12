@@ -128,7 +128,7 @@ stale_tree_api_matches="$(
 )"
 
 if [ -n "$stale_tree_api_matches" ]; then
-    echo "Tree APIs must use clean names such as BeginTree, GetTreeNodes, and NodeParagraph:"
+    echo "Tree APIs must use clean names such as BeginTree and GetTreeNodes:"
     echo "$stale_tree_api_matches"
     exit 1
 fi
