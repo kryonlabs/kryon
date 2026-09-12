@@ -463,6 +463,14 @@ typedef struct UiBlock {
     char dom_form_method[KIR_NAME_MAX];
     char dom_form_enctype[KIR_NAME_MAX];
     char dom_autocomplete[KIR_NAME_MAX];
+    char dom_hidden[KIR_NAME_MAX];
+    char dom_draggable[KIR_NAME_MAX];
+    char dom_spellcheck[KIR_NAME_MAX];
+    char dom_contenteditable[KIR_NAME_MAX];
+    char dom_autofocus[KIR_NAME_MAX];
+    char dom_download[KIR_TEXT_MAX];
+    char dom_formnovalidate[KIR_NAME_MAX];
+    char dom_novalidate[KIR_NAME_MAX];
     char dom_readonly[KIR_NAME_MAX];
     char dom_required[KIR_NAME_MAX];
     char dom_min[KIR_NAME_MAX];
@@ -802,6 +810,64 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  "%s", value);
         return 1;
     }
+    if(strcmp(field, "hidden") == 0 || strcmp(field, "dom_hidden") == 0 ||
+       strcmp(field, "html_hidden") == 0) {
+        snprintf(block->dom_hidden, sizeof(block->dom_hidden), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "draggable") == 0 ||
+       strcmp(field, "dom_draggable") == 0 ||
+       strcmp(field, "html_draggable") == 0) {
+        snprintf(block->dom_draggable, sizeof(block->dom_draggable), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "spellcheck") == 0 ||
+       strcmp(field, "spell_check") == 0 ||
+       strcmp(field, "dom_spellcheck") == 0 ||
+       strcmp(field, "html_spellcheck") == 0) {
+        snprintf(block->dom_spellcheck, sizeof(block->dom_spellcheck), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "contenteditable") == 0 ||
+       strcmp(field, "content_editable") == 0 ||
+       strcmp(field, "dom_contenteditable") == 0 ||
+       strcmp(field, "html_contenteditable") == 0) {
+        snprintf(block->dom_contenteditable,
+                 sizeof(block->dom_contenteditable), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "autofocus") == 0 ||
+       strcmp(field, "auto_focus") == 0 ||
+       strcmp(field, "dom_autofocus") == 0 ||
+       strcmp(field, "html_autofocus") == 0) {
+        snprintf(block->dom_autofocus, sizeof(block->dom_autofocus), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "download") == 0 ||
+       strcmp(field, "dom_download") == 0 ||
+       strcmp(field, "html_download") == 0) {
+        snprintf(block->dom_download, sizeof(block->dom_download), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "form_no_validate") == 0 ||
+       strcmp(field, "formnovalidate") == 0 ||
+       strcmp(field, "dom_formnovalidate") == 0 ||
+       strcmp(field, "html_formnovalidate") == 0) {
+        snprintf(block->dom_formnovalidate,
+                 sizeof(block->dom_formnovalidate), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "no_validate") == 0 || strcmp(field, "novalidate") == 0 ||
+       strcmp(field, "dom_novalidate") == 0 ||
+       strcmp(field, "html_novalidate") == 0) {
+        snprintf(block->dom_novalidate, sizeof(block->dom_novalidate), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "readonly") == 0 || strcmp(field, "read_only") == 0 ||
        strcmp(field, "dom_readonly") == 0 || strcmp(field, "html_readonly") == 0) {
         snprintf(block->dom_readonly, sizeof(block->dom_readonly), "%s",
@@ -1016,6 +1082,24 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_form_enctype);
     snprintf(statement->dom_autocomplete, sizeof(statement->dom_autocomplete),
              "%s", block->dom_autocomplete);
+    snprintf(statement->dom_hidden, sizeof(statement->dom_hidden), "%s",
+             block->dom_hidden);
+    snprintf(statement->dom_draggable, sizeof(statement->dom_draggable), "%s",
+             block->dom_draggable);
+    snprintf(statement->dom_spellcheck, sizeof(statement->dom_spellcheck),
+             "%s", block->dom_spellcheck);
+    snprintf(statement->dom_contenteditable,
+             sizeof(statement->dom_contenteditable), "%s",
+             block->dom_contenteditable);
+    snprintf(statement->dom_autofocus, sizeof(statement->dom_autofocus), "%s",
+             block->dom_autofocus);
+    snprintf(statement->dom_download, sizeof(statement->dom_download), "%s",
+             block->dom_download);
+    snprintf(statement->dom_formnovalidate,
+             sizeof(statement->dom_formnovalidate), "%s",
+             block->dom_formnovalidate);
+    snprintf(statement->dom_novalidate, sizeof(statement->dom_novalidate),
+             "%s", block->dom_novalidate);
     snprintf(statement->dom_readonly, sizeof(statement->dom_readonly), "%s",
              block->dom_readonly);
     snprintf(statement->dom_required, sizeof(statement->dom_required), "%s",

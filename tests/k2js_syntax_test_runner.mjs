@@ -78,6 +78,12 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[maxlength=64] {
     offset-x: 4;
   }
+  TextField[spellcheck=false] {
+    offset-y: 6;
+  }
+  TextField[formnovalidate] {
+    content-offset-y: 7;
+  }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 runtime.setWebStyleSheets(rt, webStyleSheet);
@@ -148,6 +154,14 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   formMethod: "",
   formEncType: "",
   autoComplete: "",
+  hidden: false,
+  draggable: "",
+  spellCheck: "",
+  contentEditable: "",
+  autoFocus: false,
+  download: "",
+  formNoValidate: false,
+  noValidate: false,
   readOnly: false,
   required: false,
   min: "",
@@ -238,8 +252,15 @@ assert.equal(webDoc.nodes[3].pattern, "needle.*");
 assert.equal(webDoc.nodes[3].accept, ".txt");
 assert.equal(webDoc.nodes[3].multiple, true);
 assert.equal(webDoc.nodes[3].inputMode, "search");
+assert.equal(webDoc.nodes[3].draggable, "true");
+assert.equal(webDoc.nodes[3].spellCheck, "false");
+assert.equal(webDoc.nodes[3].contentEditable, "plaintext-only");
+assert.equal(webDoc.nodes[3].autoFocus, true);
+assert.equal(webDoc.nodes[3].formNoValidate, true);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-x"], 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-y"], 6);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-y"], 7);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"], 11);
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
@@ -271,6 +292,8 @@ function fakeDocument() {
       className: "",
       textContent: "",
       checked: false,
+      formNoValidate: false,
+      noValidate: false,
       value: "",
       setAttribute(name, value) {
         this.attributes[name] = String(value);
@@ -418,6 +441,7 @@ function fakeDocument() {
         formMethod: "post",
         formEncType: "multipart/form-data",
         autoComplete: "off",
+        noValidate: true,
         onReset: "clear_contact",
         submitAction(values) { submitValues = values; },
         resetAction(values) { resetValues = values; }
@@ -429,6 +453,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(submitRt, "[method=post]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[enctype=\"multipart/form-data\"]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[autocomplete=off]").path, "Page/contact");
+    assert.equal(runtime.webNodeQuery(submitRt, "[novalidate]").path, "Page/contact");
     const submitTarget = document.createElement("div");
     runtime.renderWebDocument(submitRt, submitTarget);
     const submitForm = runtime.findWebElement(submitTarget, "contact");
@@ -436,10 +461,13 @@ function fakeDocument() {
     assert.equal(submitForm.attributes.method, "post");
     assert.equal(submitForm.attributes.enctype, "multipart/form-data");
     assert.equal(submitForm.attributes.autocomplete, "off");
+    assert.equal(submitForm.attributes.novalidate, "");
+    assert.equal(submitForm.noValidate, true);
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[method=post]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[enctype=\"multipart/form-data\"]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[autocomplete=off]").element, submitForm);
+    assert.equal(runtime.webDOMQuery(submitTarget, "[novalidate]").element, submitForm);
     assert.equal(submitForm.dataset.kryOnReset, "clear_contact");
     submitForm.submit();
     assert.equal(submitValues.email, "hello@example.test");
@@ -477,6 +505,37 @@ function fakeDocument() {
     pointerButton.mouseup();
     pointerButton.mouseleave();
     assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave"]);
+
+    const linkRt = runtime.createRuntime();
+    runtime.beginFrame(linkRt);
+    runtime.widget(linkRt, "Link", { text: "Manual" }, null,
+      {
+        nodeName: "manual",
+        path: "Page/manual",
+        href: "/manual.pdf",
+        download: "manual.pdf",
+        hidden: true,
+        draggable: "false",
+        contentEditable: "false"
+      });
+    runtime.endFrame(linkRt);
+    assert.equal(runtime.webNodeQuery(linkRt, "[download=\"manual.pdf\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[hidden]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[draggable=false]").path,
+      "Page/manual");
+    const linkTarget = document.createElement("div");
+    runtime.renderWebDocument(linkRt, linkTarget);
+    const manual = runtime.findWebElement(linkTarget, "manual");
+    assert.equal(manual.attributes.href, "/manual.pdf");
+    assert.equal(manual.attributes.download, "manual.pdf");
+    assert.equal(manual.attributes.hidden, "");
+    assert.equal(manual.hidden, true);
+    assert.equal(manual.attributes.draggable, "false");
+    assert.equal(manual.draggable, false);
+    assert.equal(manual.attributes.contenteditable, "false");
+    assert.equal(manual.contentEditable, "false");
   } finally {
     globalThis.document = previousDocument;
   }
@@ -597,6 +656,11 @@ function fakeDocument() {
     assert.equal(firstField.attributes.name, "q");
     assert.equal(firstField.attributes["data-role"], "search");
     assert.equal(firstField.attributes.type, "search");
+    assert.equal(firstField.attributes.draggable, "true");
+    assert.equal(firstField.attributes.spellcheck, "false");
+    assert.equal(firstField.attributes.contenteditable, "plaintext-only");
+    assert.equal(firstField.attributes.autofocus, "");
+    assert.equal(firstField.attributes.formnovalidate, "");
     assert.equal(firstField.attributes.readonly, "");
     assert.equal(firstField.attributes.required, "");
     assert.equal(firstField.attributes.min, "1");

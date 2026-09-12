@@ -143,6 +143,14 @@ typedef struct KirStmt {
     char dom_form_method[KIR_NAME_MAX]; /* requested form method */
     char dom_form_enctype[KIR_NAME_MAX];/* requested form encoding */
     char dom_autocomplete[KIR_NAME_MAX];/* requested autocomplete policy */
+    char dom_hidden[KIR_NAME_MAX];      /* requested hidden expression */
+    char dom_draggable[KIR_NAME_MAX];   /* requested draggable policy */
+    char dom_spellcheck[KIR_NAME_MAX];  /* requested spellcheck policy */
+    char dom_contenteditable[KIR_NAME_MAX]; /* requested editing policy */
+    char dom_autofocus[KIR_NAME_MAX];   /* requested autofocus expression */
+    char dom_download[KIR_TEXT_MAX];    /* requested download filename */
+    char dom_formnovalidate[KIR_NAME_MAX]; /* requested formnovalidate expression */
+    char dom_novalidate[KIR_NAME_MAX];  /* requested novalidate expression */
     char dom_readonly[KIR_NAME_MAX];    /* requested readonly expression */
     char dom_required[KIR_NAME_MAX];    /* requested required expression */
     char dom_min[KIR_NAME_MAX];         /* requested form min expression */

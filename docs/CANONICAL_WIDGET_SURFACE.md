@@ -228,7 +228,7 @@ has a single place to land.
 | `SpinboxRow` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `.kry` composition of `Text`/`Spinbox`. |
 | `ButtonRow` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `Row` with `Button` children. |
 | `SectionLabel` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `Text`/`Heading` props or `.kry` composition. |
-| `InfoRows` | Composite candidate | Native repeated label/value row helper; keep only if it becomes `.kry` composition backed by `Row`/`Text`. |
+| `InfoRows` | Native support | Internal repeated label/value row helper; public forms should use `.kry` layout with `Row`/`Text`. |
 | `Form` | Native support | Cursor/layout helper for legacy native row APIs; not a public widget concept. Prefer `.kry` layout blocks. |
 
 ## Layout And Containers

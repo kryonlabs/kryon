@@ -146,6 +146,11 @@ Scene :: (viewport: Rectangle) #ui {
             dom_name = "q"
             dom_data_role = "search"
             dom_type = "search"
+            draggable = "true"
+            spellcheck = false
+            content_editable = "plaintext-only"
+            autofocus = true
+            form_no_validate = true
             readonly = true
             required = true
             dom_min = 1
@@ -173,6 +178,7 @@ Scene :: (viewport: Rectangle) #ui {
             text = "Search"
             dom = "label"
             dom_for = "search-field"
+            hidden = true
         }
         count += 1
     }
@@ -254,6 +260,11 @@ grep -q '"onBlur": "blur_search"' "$out"
 grep -q '"domName": "q"' "$out"
 grep -q '"data": {"role": "search"}' "$out"
 grep -q '"inputType": "search"' "$out"
+grep -q '"draggable": "true"' "$out"
+grep -q '"spellCheck": false' "$out"
+grep -q '"contentEditable": "plaintext-only"' "$out"
+grep -q '"autoFocus": true' "$out"
+grep -q '"formNoValidate": true' "$out"
 grep -q '"readOnly": true' "$out"
 grep -q '"required": true' "$out"
 grep -q '"min": 1' "$out"
@@ -268,6 +279,7 @@ grep -q '"inputMode": "search"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
 grep -q '"htmlFor": "search-field"' "$out"
+grep -q '"hidden": true' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1
@@ -307,6 +319,7 @@ Anon :: () #ui {
             dom_href = "/docs"
             dom_target = "_blank"
             dom_rel = "noopener"
+            download = "docs.html"
             on_pointer_enter = pointer_enter
             on_pointer_leave = pointer_leave
             on_pointer_down = pointer_down
@@ -318,6 +331,7 @@ Anon :: () #ui {
             dom_method = "post"
             dom_enctype = "multipart/form-data"
             autocomplete = "off"
+            no_validate = true
             on_reset = pointer_leave
         }
     }
@@ -330,6 +344,7 @@ grep -Eq '"path": "Anon/root/Text@[0-9]+-2"' "$anon_out"
 grep -q '"href": "/docs"' "$anon_out"
 grep -q '"target": "_blank"' "$anon_out"
 grep -q '"rel": "noopener"' "$anon_out"
+grep -q '"download": "docs.html"' "$anon_out"
 grep -q '"onMouseEnter": "pointer_enter"' "$anon_out"
 grep -q '"onMouseLeave": "pointer_leave"' "$anon_out"
 grep -q '"onMouseDown": "pointer_down"' "$anon_out"
@@ -338,6 +353,7 @@ grep -q '"formAction": "/contact"' "$anon_out"
 grep -q '"formMethod": "post"' "$anon_out"
 grep -q '"formEncType": "multipart/form-data"' "$anon_out"
 grep -q '"autoComplete": "off"' "$anon_out"
+grep -q '"noValidate": true' "$anon_out"
 grep -q '"onReset": "pointer_leave"' "$anon_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'

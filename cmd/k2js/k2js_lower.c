@@ -1209,6 +1209,10 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_placeholder[0] || st->dom_input_type[0] ||
            st->dom_form_action[0] || st->dom_form_method[0] ||
            st->dom_form_enctype[0] || st->dom_autocomplete[0] ||
+           st->dom_hidden[0] || st->dom_draggable[0] ||
+           st->dom_spellcheck[0] || st->dom_contenteditable[0] ||
+           st->dom_autofocus[0] || st->dom_download[0] ||
+           st->dom_formnovalidate[0] || st->dom_novalidate[0] ||
            st->dom_readonly[0] || st->dom_required[0] ||
            st->dom_min[0] || st->dom_max[0] || st->dom_step[0] ||
            st->dom_minlength[0] || st->dom_maxlength[0] ||
@@ -1399,6 +1403,18 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "formEncType", st->dom_form_enctype,
                              &emitted);
     emit_metadata_expr_field(f, m, "autoComplete", st->dom_autocomplete,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "hidden", st->dom_hidden, &emitted);
+    emit_metadata_expr_field(f, m, "draggable", st->dom_draggable, &emitted);
+    emit_metadata_expr_field(f, m, "spellCheck", st->dom_spellcheck,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "contentEditable",
+                             st->dom_contenteditable, &emitted);
+    emit_metadata_expr_field(f, m, "autoFocus", st->dom_autofocus, &emitted);
+    emit_metadata_expr_field(f, m, "download", st->dom_download, &emitted);
+    emit_metadata_expr_field(f, m, "formNoValidate",
+                             st->dom_formnovalidate, &emitted);
+    emit_metadata_expr_field(f, m, "noValidate", st->dom_novalidate,
                              &emitted);
     emit_metadata_expr_field(f, m, "readOnly", st->dom_readonly, &emitted);
     emit_metadata_expr_field(f, m, "required", st->dom_required, &emitted);

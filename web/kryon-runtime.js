@@ -1137,6 +1137,14 @@ function webNodeFromWidget(item, index) {
     formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
     formEncType: meta.formEncType === undefined || meta.formEncType === null ? "" : String(meta.formEncType),
     autoComplete: meta.autoComplete === undefined || meta.autoComplete === null ? "" : String(meta.autoComplete),
+    hidden: metaBool(meta, "hidden"),
+    draggable: metaString(meta, "draggable"),
+    spellCheck: metaString(meta, "spellCheck"),
+    contentEditable: metaString(meta, "contentEditable"),
+    autoFocus: metaBool(meta, "autoFocus"),
+    download: metaString(meta, "download"),
+    formNoValidate: metaBool(meta, "formNoValidate"),
+    noValidate: metaBool(meta, "noValidate"),
     readOnly: metaBool(meta, "readOnly"),
     required: metaBool(meta, "required"),
     min: metaString(meta, "min"),
@@ -1216,6 +1224,14 @@ export function webNodeStyleFacts(node) {
     formMethod: node?.formMethod || "",
     formEncType: node?.formEncType || "",
     autoComplete: node?.autoComplete || "",
+    hidden: !!node?.hidden,
+    draggable: node?.draggable || "",
+    spellCheck: node?.spellCheck || "",
+    contentEditable: node?.contentEditable || "",
+    autoFocus: !!node?.autoFocus,
+    download: node?.download || "",
+    formNoValidate: !!node?.formNoValidate,
+    noValidate: !!node?.noValidate,
     readOnly: !!node?.readOnly,
     required: !!node?.required,
     min: node?.min || "",
@@ -1499,6 +1515,14 @@ function selectorNativeAttrValue(key, facts) {
     case "method": return facts.formMethod;
     case "enctype": return facts.formEncType;
     case "autocomplete": return facts.autoComplete;
+    case "hidden": return facts.hidden;
+    case "draggable": return facts.draggable;
+    case "spellcheck": return facts.spellCheck;
+    case "contenteditable": return facts.contentEditable;
+    case "autofocus": return facts.autoFocus;
+    case "download": return facts.download;
+    case "formnovalidate": return facts.formNoValidate;
+    case "novalidate": return facts.noValidate;
     case "readonly": return facts.readOnly;
     case "required": return facts.required;
     case "minlength": return facts.minLength;
@@ -1987,6 +2011,26 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "method", docNode.formMethod);
   setAttr(el, "enctype", docNode.formEncType);
   setAttr(el, "autocomplete", docNode.autoComplete);
+  setAttr(el, "hidden", docNode.hidden);
+  setAttr(el, "draggable", docNode.draggable);
+  setAttr(el, "spellcheck", docNode.spellCheck);
+  setAttr(el, "contenteditable", docNode.contentEditable);
+  setAttr(el, "autofocus", docNode.autoFocus);
+  setAttr(el, "download", docNode.download);
+  setAttr(el, "formnovalidate", docNode.formNoValidate);
+  setAttr(el, "novalidate", docNode.noValidate);
+  el.hidden = !!docNode.hidden;
+  if (docNode.draggable === "true" || docNode.draggable === "false")
+    el.draggable = docNode.draggable === "true";
+  if (docNode.spellCheck)
+    el.spellcheck = docNode.spellCheck === "true";
+  if (docNode.contentEditable)
+    el.contentEditable = docNode.contentEditable;
+  el.autofocus = !!docNode.autoFocus;
+  if ("formNoValidate" in el)
+    el.formNoValidate = !!docNode.formNoValidate;
+  if ("noValidate" in el)
+    el.noValidate = !!docNode.noValidate;
   setAttr(el, "readonly", docNode.readOnly);
   setAttr(el, "required", docNode.required);
   setAttr(el, "min", docNode.min);
