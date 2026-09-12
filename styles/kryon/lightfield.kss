@@ -461,6 +461,14 @@ DragValue {
   material: premium;
 }
 
+DragValue:disabled {
+  background: surface;
+  background-end: surface-end;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;

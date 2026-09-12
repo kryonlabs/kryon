@@ -431,6 +431,13 @@ DragValue {
   material: default;
 }
 
+DragValue:disabled {
+  background: surface;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;
@@ -2081,6 +2088,13 @@ DragValue {
   material: default;
 }
 
+DragValue:disabled {
+  background: button-disabled;
+  foreground: muted;
+  border: border-disabled;
+  opacity: 0.55;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;
@@ -3707,6 +3721,13 @@ DragValue {
   padding-x: space.3;
   opacity: 1;
   material: default;
+}
+
+DragValue:disabled {
+  background: panel;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
 }
 
 ColorPickerSwatch {
@@ -5395,6 +5416,14 @@ DragValue {
   padding-x: space.3;
   opacity: 1;
   material: glow;
+}
+
+DragValue:disabled {
+  background: surface;
+  background-end: surface-end;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
 }
 
 ColorPickerSwatch {
@@ -7136,6 +7165,14 @@ DragValue {
   padding-x: space.3;
   opacity: 1;
   material: premium;
+}
+
+DragValue:disabled {
+  background: surface;
+  background-end: surface-end;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
 }
 
 ColorPickerSwatch {

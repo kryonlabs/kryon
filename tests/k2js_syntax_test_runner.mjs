@@ -505,6 +505,13 @@ function fakeDocument() {
           listeners.splice(index, 1);
         this["on" + type] = listeners[listeners.length - 1] || null;
       },
+      querySelector(selector) {
+        const styleMatch = String(selector || "").match(/^style\[data-kry-style="([^"]+)"\]$/);
+        if (styleMatch)
+          return this.children.find((child) =>
+            child.tagName === "STYLE" && child.attributes["data-kry-style"] === styleMatch[1]) || null;
+        return null;
+      },
       dispatchEvent(event) {
         if (!event)
           return false;
@@ -664,6 +671,10 @@ function fakeDocument() {
         return head.children.find((child) => child.tagName === "META" && child.attributes.name === "theme-color") || null;
       if (selector === 'link[rel="canonical"]')
         return head.children.find((child) => child.tagName === "LINK" && child.attributes.rel === "canonical") || null;
+      const styleMatch = String(selector || "").match(/^style\[data-kry-style="([^"]+)"\]$/);
+      if (styleMatch)
+        return head.children.find((child) =>
+          child.tagName === "STYLE" && child.attributes["data-kry-style"] === styleMatch[1]) || null;
       return null;
     }
   };
@@ -673,6 +684,23 @@ function fakeDocument() {
   const previousDocument = globalThis.document;
   globalThis.document = fakeDocument();
   try {
+    const removeInstalledStyle = runtime.installWebStyleSheet(webStyleSheet, null, "smoke");
+    assert.equal(typeof removeInstalledStyle, "function");
+    assert.equal(document.head.children.length, 1);
+    assert.equal(document.head.children[0].tagName, "STYLE");
+    assert.equal(document.head.children[0].attributes["data-kry-style"], "smoke");
+    assert.match(document.head.children[0].textContent, /background: #102030;/);
+    const replaceInstalledStyle = runtime.installWebStyleSheet(`
+      Button.primary { foreground: #abcdef; }
+    `, null, "smoke");
+    assert.equal(typeof replaceInstalledStyle, "function");
+    assert.equal(document.head.children.length, 1);
+    assert.match(document.head.children[0].textContent, /color: #abcdef;/);
+    replaceInstalledStyle();
+    assert.equal(document.head.children.length, 0);
+    removeInstalledStyle();
+    assert.equal(document.head.children.length, 0);
+
     const ariaRt = runtime.createRuntime();
     runtime.beginFrame(ariaRt);
     runtime.widget(ariaRt, "Heading", { level: 2, text: "Welcome" }, null,

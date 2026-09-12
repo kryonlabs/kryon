@@ -35,14 +35,6 @@ ui_resolve_minimal_control_role_state(ButtonProps button, ButtonState state,
     return ResolveValues(value, ui_pack_style_states(button.style), state);
 }
 
-static StyleData
-ui_resolve_minimal_control_state(ButtonProps button, ButtonState state,
-                                 int style_kind)
-{
-    return ui_resolve_minimal_control_role_state(button, state, style_kind,
-                                                StyleAny());
-}
-
 static StyleFrame
 ui_resolve_minimal_control_role_frame(ButtonProps button, ButtonState state,
                                       int automatic, float h, float p, float f,

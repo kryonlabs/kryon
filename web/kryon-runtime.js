@@ -1733,6 +1733,32 @@ export function webStyleSheetToCSS(sheet) {
     .join("\n\n");
 }
 
+export function installWebStyleSheet(sheet, target = null, id = "kryon") {
+  if (typeof document === "undefined")
+    return null;
+  const css = webStyleSheetToCSS(sheet);
+  if (!css)
+    return null;
+  const owner = target || document.head || document.documentElement || document.body;
+  if (!owner || typeof owner.appendChild !== "function")
+    return null;
+  const key = String(id || "kryon");
+  const selector = `style[data-kry-style="${cssEscapeString(key)}"]`;
+  let el = typeof owner.querySelector === "function" ? owner.querySelector(selector) : null;
+  if (!el && typeof document.querySelector === "function")
+    el = document.querySelector(selector);
+  if (!el) {
+    el = document.createElement("style");
+    el.setAttribute("data-kry-style", key);
+    owner.appendChild(el);
+  }
+  el.textContent = css;
+  return () => {
+    if (el?.parentNode && typeof el.parentNode.removeChild === "function")
+      el.parentNode.removeChild(el);
+  };
+}
+
 function styleStateMatches(name, state) {
   if (!name || name === "any")
     return true;

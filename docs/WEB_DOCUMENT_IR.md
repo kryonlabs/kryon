@@ -292,11 +292,12 @@ attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
 
 The JavaScript runtime exposes `parseWebStyleSheet(source)`,
-`resolveWebStyle(node, sheets)`, `webStyleSheetToCSS(sheet)`, and
-`setWebStyleSheets(rt, sheets)` for the same bridge in browser-hosted k2js
-apps. k2js embeds KSS source text in `app.styles[].source` when a `#style`
-import resolves on disk, and `createRuntime({ app })` installs those embedded
-sheets automatically. CSS export targets Kry's native DOM annotations,
+`resolveWebStyle(node, sheets)`, `webStyleSheetToCSS(sheet)`,
+`installWebStyleSheet(sheet, target?, id?)`, and `setWebStyleSheets(rt, sheets)`
+for the same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
+`app.styles[].source` when a `#style` import resolves on disk, and
+`createRuntime({ app })` installs those embedded sheets automatically. CSS
+export and installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. The web
 resolver supports kind selectors, `[index=...]`, `#id`, `.class`, `[ref=...]`,

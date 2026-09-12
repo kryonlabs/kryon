@@ -430,6 +430,13 @@ DragValue {
   material: default;
 }
 
+DragValue:disabled {
+  background: button-disabled;
+  foreground: muted;
+  border: border-disabled;
+  opacity: 0.55;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;

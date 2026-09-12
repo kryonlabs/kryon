@@ -200,6 +200,7 @@ main(void)
         {"ListBoxMultiItem:focus", StyleKindListBoxMultiItem(), ButtonStateFocus},
         {"ListBoxMultiItem:disabled", StyleKindListBoxMultiItem(), ButtonStateDisabled},
         {"DragDropTarget:hover", StyleKindDragDropTarget(), ButtonStateHover},
+        {"DragValue:disabled", StyleKindDragValue(), ButtonStateDisabled},
         {"Link:hover", StyleKindLink(), ButtonStateHover},
         {"Link:disabled", StyleKindLink(), ButtonStateDisabled},
         {"Focus:focus", StyleKindFocus(), ButtonStateFocus},
