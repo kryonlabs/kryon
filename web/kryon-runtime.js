@@ -1396,6 +1396,10 @@ function selectorMatchesFacts(selector, facts) {
   return styleStateMatches(selector.state, facts.state);
 }
 
+function selectorMatchesWebNode(selector, node) {
+  return selectorMatchesFacts(selector, webNodeStyleFacts(node));
+}
+
 export function resolveWebStyle(node, sheets = []) {
   const facts = node?.styleFacts || webNodeStyleFacts(node);
   const resolved = {};
@@ -1835,6 +1839,22 @@ export function webDOMObjects(target) {
       return node ? { ref: webNodeRef(node), node, element } : null;
     })
     .filter(Boolean);
+}
+
+export function webDOMQueryAll(target, selector) {
+  const text = String(selector || "").trim();
+  if (!text)
+    return [];
+  const exact = webDOMObject(target, text);
+  if (exact)
+    return [exact];
+  const parsed = parseSelector(text);
+  return webDOMObjects(target)
+    .filter((object) => selectorMatchesWebNode(parsed, object.node));
+}
+
+export function webDOMQuery(target, selector) {
+  return webDOMQueryAll(target, selector)[0] || null;
 }
 
 export function webFormValue(target, query) {

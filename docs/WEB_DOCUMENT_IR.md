@@ -202,6 +202,11 @@ path, node name, key, or DOM id matches `query`.
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, or DOM id matches `query`.
 
+`webDOMQuery(target, selector)` and `webDOMQueryAll(target, selector)` return
+native DOM objects by the same KSS-style selector facts used for style
+resolution: kind selectors, `#id`, `.class`, `[role=...]`, source fields, and
+state pseudos.
+
 `webFormValue(target, query)` and `webFormValues(target)` expose current mounted
 native form values by Kry path, node name, key, and DOM id. Values are refreshed
 on render and after native `input`/`change` events.

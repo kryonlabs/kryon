@@ -296,6 +296,13 @@ function fakeDocument() {
     assert.equal(runtime.findWebElement(target, "tap-button"), firstButton);
     assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
+    assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[role=button]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
+    assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
+      "Scene/root/search"
+    ]);
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
