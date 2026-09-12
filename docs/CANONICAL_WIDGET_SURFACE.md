@@ -356,7 +356,6 @@ code should prefer canonical `.kry` names and blocks.
 
 | Entry | Replacement concept | Removal note |
 |---|---|---|
-| `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
 | `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
 | `InvisibleButton` | host hit-test support | Not a design widget; should stay internal to composed controls. |
 

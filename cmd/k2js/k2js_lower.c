@@ -1802,7 +1802,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 emit_indent(f, indent);
                 if(strcmp(name, "BeginDisabled") == 0) {
                     tx_expr(m, args, out, sizeof(out));
-                    fprintf(f, "kryon.widget($rt, \"BeginDisabled\", (%s) ? 1 : 0, $state);\n", out);
+                    fprintf(f, "kryon.widget($rt, \"Disabled\", (%s) ? 1 : 0, $state);\n", out);
                 } else {
                     fprintf(f, "kryon.widget($rt, \"EndDisabled\", \"\", $state);\n");
                 }
