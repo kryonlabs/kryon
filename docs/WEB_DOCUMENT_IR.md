@@ -376,13 +376,14 @@ a native browser event, event target, or element and resolve the nearest Kry DOM
 object/identity through the same event-target walk.
 `webDOMDecorateEvent(eventOrTarget)` performs the same lookup and, for native
 event objects, adds non-enumerable `kryRef`, `kryObject`, `kryIdentity`, and
-`krySnapshot` getters so ordinary browser handlers can inspect `.kry` identity
-without generated JS owning DOM structure.
+`krySnapshot` getters, plus `kryRoot` for the mount root, so ordinary browser
+handlers can inspect `.kry` identity without generated JS owning DOM structure.
 
 `webDOMIdentity(target, query)` returns the same plain identity projection for
 a mounted Kry DOM object. Rendered elements expose the native bridge directly
 as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
-`element.kryIdentity`, `element.krySnapshot`, `element.kryParent`, and
+`element.kryRoot`, `element.kryIdentity`, `element.krySnapshot`,
+`element.kryParent`, and
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 

@@ -1020,6 +1020,7 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryKey, "tap");
     assert.equal(firstButton.kryRef, "primary-action");
     assert.equal(firstButton.kryNode.path, "Scene/root/tap");
+    assert.equal(firstButton.kryRoot, root);
     assert.equal(firstButton.kryNode.webRef, "primary-action");
     assert.equal(firstButton.kryObject.ref, "primary-action");
     assert.equal(firstButton.kryObject.element, firstButton);
@@ -1106,6 +1107,7 @@ function fakeDocument() {
     const targetEvent = { target: nestedSpan };
     assert.equal(runtime.webDOMDecorateEvent(targetEvent).ref, "primary-action");
     assert.equal(targetEvent.kryRef, "primary-action");
+    assert.equal(targetEvent.kryRoot, root);
     assert.equal(targetEvent.kryObject.node.path, "Scene/root/tap");
     assert.equal(targetEvent.kryIdentity.ref, "primary-action");
     assert.equal(targetEvent.krySnapshot.parentRef, "Scene/root");
@@ -1145,6 +1147,7 @@ function fakeDocument() {
         event.type,
         object?.node.path,
         event.kryRef,
+        event.kryRoot === root,
         event.kryObject?.ref,
         event.kryIdentity?.ref,
         event.krySnapshot?.ref
@@ -1155,6 +1158,7 @@ function fakeDocument() {
       "kry-test",
       "Scene/root/tap",
       "primary-action",
+      true,
       "primary-action",
       "primary-action",
       "primary-action"
@@ -1165,6 +1169,7 @@ function fakeDocument() {
       "kry-test",
       "Scene/root/tap",
       "primary-action",
+      true,
       "primary-action",
       "primary-action",
       "primary-action"

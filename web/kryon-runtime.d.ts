@@ -345,6 +345,7 @@ declare global {
   interface Element {
     readonly kryRef?: string;
     readonly kryNode?: WebDocumentNode | null;
+    readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
@@ -364,6 +365,7 @@ declare global {
 
   interface Event {
     readonly kryRef?: string;
+    readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;

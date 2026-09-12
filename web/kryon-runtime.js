@@ -2320,6 +2320,13 @@ function bindWebDOMObjectProperties(el) {
         return this.__kryDocNode || null;
       }
     },
+    kryRoot: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryMountRoot || mountedRoot(this);
+      }
+    },
     kryObject: {
       configurable: true,
       enumerable: false,
@@ -3047,6 +3054,15 @@ function bindWebDOMEventProperties(event) {
         enumerable: false,
         get() {
           return rawWebDOMObjectFromEvent(this);
+        }
+      },
+      kryRoot: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          return object?.element?.__kryMountRoot ||
+            mountedRoot(this.currentTarget || this.target || null);
         }
       },
       kryIdentity: {
