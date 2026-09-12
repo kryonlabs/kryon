@@ -496,8 +496,10 @@ function fakeDocument() {
       },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
       mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
+      mousemove() { if (this.onmousemove) this.onmousemove(); },
       mousedown() { if (this.onmousedown) this.onmousedown(); },
       mouseup() { if (this.onmouseup) this.onmouseup(); },
+      wheel(deltaY) { if (this.onwheel) this.onwheel({ deltaY }); },
       focus() { if (this.onfocus) this.onfocus(); },
       blur() { if (this.onblur) this.onblur(); }
     };
@@ -710,12 +712,16 @@ function fakeDocument() {
         path: "Page/hover",
         onMouseEnter: "enter",
         onMouseLeave: "leave",
+        onMouseMove: "move",
         onMouseDown: "down",
         onMouseUp: "up",
+        onWheel: "wheel",
         mouseEnterAction() { pointerEvents.push("enter"); },
         mouseLeaveAction() { pointerEvents.push("leave"); },
+        mouseMoveAction() { pointerEvents.push("move"); },
         mouseDownAction() { pointerEvents.push("down"); },
-        mouseUpAction() { pointerEvents.push("up"); }
+        mouseUpAction() { pointerEvents.push("up"); },
+        wheelAction(value) { pointerEvents.push("wheel:" + value); }
       });
     runtime.endFrame(pointerRt);
     const pointerTarget = document.createElement("div");
@@ -723,13 +729,17 @@ function fakeDocument() {
     const pointerButton = runtime.findWebElement(pointerTarget, "hover");
     assert.equal(pointerButton.dataset.kryOnMouseEnter, "enter");
     assert.equal(pointerButton.dataset.kryOnMouseLeave, "leave");
+    assert.equal(pointerButton.dataset.kryOnMouseMove, "move");
     assert.equal(pointerButton.dataset.kryOnMouseDown, "down");
     assert.equal(pointerButton.dataset.kryOnMouseUp, "up");
+    assert.equal(pointerButton.dataset.kryOnWheel, "wheel");
     pointerButton.mouseenter();
     pointerButton.mousedown();
     pointerButton.mouseup();
     pointerButton.mouseleave();
-    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave"]);
+    pointerButton.mousemove();
+    pointerButton.wheel(12);
+    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave", "move", "wheel:12"]);
 
     const dragEvents = [];
     const dragRt = runtime.createRuntime();

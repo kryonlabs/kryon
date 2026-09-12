@@ -191,8 +191,10 @@ typedef struct KirStmt {
     char dom_on_scroll[KIR_NAME_MAX];   /* logic function bound to scroll(value) */
     char dom_on_mouse_enter[KIR_NAME_MAX]; /* logic function bound to mouseenter */
     char dom_on_mouse_leave[KIR_NAME_MAX]; /* logic function bound to mouseleave */
+    char dom_on_mouse_move[KIR_NAME_MAX];  /* logic function bound to mousemove */
     char dom_on_mouse_down[KIR_NAME_MAX];  /* logic function bound to mousedown */
     char dom_on_mouse_up[KIR_NAME_MAX];    /* logic function bound to mouseup */
+    char dom_on_wheel[KIR_NAME_MAX];       /* logic function bound to wheel(value) */
     char dom_on_drag_start[KIR_NAME_MAX];  /* logic function bound to dragstart(value) */
     char dom_on_drag_end[KIR_NAME_MAX];    /* logic function bound to dragend(value) */
     char dom_on_drag_over[KIR_NAME_MAX];   /* logic function bound to dragover */

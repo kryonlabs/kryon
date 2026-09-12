@@ -511,8 +511,10 @@ typedef struct UiBlock {
     char dom_on_scroll[KIR_NAME_MAX];
     char dom_on_mouse_enter[KIR_NAME_MAX];
     char dom_on_mouse_leave[KIR_NAME_MAX];
+    char dom_on_mouse_move[KIR_NAME_MAX];
     char dom_on_mouse_down[KIR_NAME_MAX];
     char dom_on_mouse_up[KIR_NAME_MAX];
+    char dom_on_wheel[KIR_NAME_MAX];
     char dom_on_drag_start[KIR_NAME_MAX];
     char dom_on_drag_end[KIR_NAME_MAX];
     char dom_on_drag_over[KIR_NAME_MAX];
@@ -1143,6 +1145,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  "%s", value);
         return 1;
     }
+    if(strcmp(field, "on_mouse_move") == 0 ||
+       strcmp(field, "on_pointer_move") == 0) {
+        snprintf(block->dom_on_mouse_move, sizeof(block->dom_on_mouse_move),
+                 "%s", value);
+        return 1;
+    }
     if(strcmp(field, "on_mouse_down") == 0 ||
        strcmp(field, "on_pointer_down") == 0) {
         snprintf(block->dom_on_mouse_down, sizeof(block->dom_on_mouse_down),
@@ -1152,6 +1160,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     if(strcmp(field, "on_mouse_up") == 0 ||
        strcmp(field, "on_pointer_up") == 0) {
         snprintf(block->dom_on_mouse_up, sizeof(block->dom_on_mouse_up), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_wheel") == 0) {
+        snprintf(block->dom_on_wheel, sizeof(block->dom_on_wheel), "%s",
                  value);
         return 1;
     }
@@ -1343,10 +1356,15 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
     snprintf(statement->dom_on_mouse_leave,
              sizeof(statement->dom_on_mouse_leave), "%s",
              block->dom_on_mouse_leave);
+    snprintf(statement->dom_on_mouse_move,
+             sizeof(statement->dom_on_mouse_move), "%s",
+             block->dom_on_mouse_move);
     snprintf(statement->dom_on_mouse_down, sizeof(statement->dom_on_mouse_down),
              "%s", block->dom_on_mouse_down);
     snprintf(statement->dom_on_mouse_up, sizeof(statement->dom_on_mouse_up),
              "%s", block->dom_on_mouse_up);
+    snprintf(statement->dom_on_wheel, sizeof(statement->dom_on_wheel), "%s",
+             block->dom_on_wheel);
     snprintf(statement->dom_on_drag_start,
              sizeof(statement->dom_on_drag_start), "%s",
              block->dom_on_drag_start);

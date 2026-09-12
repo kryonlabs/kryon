@@ -346,11 +346,17 @@ pointer_enter :: () -> int {
 pointer_leave :: () -> int {
     return 2
 }
+pointer_move :: () -> int {
+    return 20
+}
 pointer_down :: () -> int {
     return 3
 }
 pointer_up :: () -> int {
     return 4
+}
+pointer_wheel :: (value: i32) -> int {
+    return value
 }
 drag_value :: (value: string) -> int {
     unused value
@@ -372,8 +378,10 @@ Anon :: () #ui {
             download = "docs.html"
             on_pointer_enter = pointer_enter
             on_pointer_leave = pointer_leave
+            on_pointer_move = pointer_move
             on_pointer_down = pointer_down
             on_pointer_up = pointer_up
+            on_wheel = pointer_wheel
             on_drag_start = drag_value
             on_drag_end = drag_value
             on_drag_over = drag_marker
@@ -404,8 +412,10 @@ grep -q '"rel": "noopener"' "$anon_out"
 grep -q '"download": "docs.html"' "$anon_out"
 grep -q '"onMouseEnter": "pointer_enter"' "$anon_out"
 grep -q '"onMouseLeave": "pointer_leave"' "$anon_out"
+grep -q '"onMouseMove": "pointer_move"' "$anon_out"
 grep -q '"onMouseDown": "pointer_down"' "$anon_out"
 grep -q '"onMouseUp": "pointer_up"' "$anon_out"
+grep -q '"onWheel": "pointer_wheel"' "$anon_out"
 grep -q '"onDragStart": "drag_value"' "$anon_out"
 grep -q '"onDragEnd": "drag_value"' "$anon_out"
 grep -q '"onDragOver": "drag_marker"' "$anon_out"

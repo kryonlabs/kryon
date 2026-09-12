@@ -147,8 +147,10 @@ export interface WebDocumentNode {
   onScroll: string;
   onMouseEnter: string;
   onMouseLeave: string;
+  onMouseMove: string;
   onMouseDown: string;
   onMouseUp: string;
+  onWheel: string;
   onDragStart: string;
   onDragEnd: string;
   onDragOver: string;
@@ -173,8 +175,10 @@ export interface WebDocumentNode {
   scrollAction: ((value: number) => unknown) | null;
   mouseEnterAction: (() => unknown) | null;
   mouseLeaveAction: (() => unknown) | null;
+  mouseMoveAction: (() => unknown) | null;
   mouseDownAction: (() => unknown) | null;
   mouseUpAction: (() => unknown) | null;
+  wheelAction: ((value: number) => unknown) | null;
   dragStartAction: ((value: unknown) => unknown) | null;
   dragEndAction: ((value: unknown) => unknown) | null;
   dragOverAction: (() => unknown) | null;
