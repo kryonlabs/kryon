@@ -1664,7 +1664,7 @@ function recordFormValue(root, docNode, value) {
     return;
   if (!root.__kryFormValues)
     root.__kryFormValues = new Map();
-  for (const key of [docNode.path, docNode.name, docNode.key, docNode.domId]) {
+  for (const key of [docNode.path, docNode.name, docNode.key, docNode.domId, docNode.domName]) {
     if (key)
       root.__kryFormValues.set(key, value);
   }
@@ -1846,6 +1846,7 @@ export function renderWebDocument(rt, target) {
   root.__kryDomObjects = new Map();
   root.__kryElementsByName = new Map();
   root.__kryElementsByDomId = new Map();
+  root.__kryElementsByDomName = new Map();
   root.__kryFormValues = new Map();
   for (const docNode of frame.nodes) {
     const identity = docNode.tag + ":" + (docNode.path || docNode.key);
@@ -1871,6 +1872,8 @@ export function renderWebDocument(rt, target) {
       root.__kryElementsByName.set(docNode.name, el);
     if (docNode.domId)
       root.__kryElementsByDomId.set(docNode.domId, el);
+    if (docNode.domName)
+      root.__kryElementsByDomName.set(docNode.domName, el);
     const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
       ? elementsByPath.get(docNode.parentPath)
       : root;
@@ -1934,6 +1937,8 @@ export function findWebElement(target, query) {
     return root.__kryElementsByName.get(text);
   if (root.__kryElementsByDomId?.has(text))
     return root.__kryElementsByDomId.get(text);
+  if (root.__kryElementsByDomName?.has(text))
+    return root.__kryElementsByDomName.get(text);
   for (const el of root.__kryChildren?.values?.() || []) {
     const node = el.__kryDocNode;
     if (node && (node.path === text || node.key === text))

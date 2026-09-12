@@ -399,9 +399,12 @@ function fakeDocument() {
     assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
+    assert.equal(runtime.webFormValue(target, "q"), "label");
+    assert.equal(runtime.findWebElement(target, "q"), firstField);
     firstField.input("needle");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "needle");
     assert.equal(runtime.webFormValue(target, "search"), "needle");
+    assert.equal(runtime.webFormValue(target, "q"), "needle");
     assert.equal(runtime.webFormValues(target)["search-field"], "needle");
     assert.equal(domState.count, 11);
     firstField.change("needle");

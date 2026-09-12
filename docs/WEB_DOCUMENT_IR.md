@@ -226,7 +226,7 @@ unmounted Web Document nodes by the same KSS-style selector facts used for
 style resolution.
 
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
-node name, key, or DOM id matches `query`.
+node name, key, DOM id, or DOM name matches `query`.
 
 `webDOMQuery(target, selector)` and `webDOMQueryAll(target, selector)` return
 native DOM objects by the same KSS-style selector facts used for style
@@ -240,8 +240,8 @@ state and reapply resolved KSS without requiring app logic to mirror browser
 pseudo-state.
 
 `webFormValue(target, query)` and `webFormValues(target)` expose current mounted
-native form values by Kry path, node name, key, and DOM id. Values are refreshed
-on render and after native `input`/`change` events.
+native form values by Kry path, node name, key, DOM id, and DOM name. Values are
+refreshed on render and after native `input`/`change` events.
 
 `webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing
 projection of the Web Document frame: document title/description plus each
