@@ -120,8 +120,14 @@ main(void)
         "}\n"
         "Image[role=Label] {\n"
         "  foreground: accent;\n"
+        "}\n"
+        "Popup[role=Panel] {\n"
+        "  border: accent;\n"
+        "}\n"
+        "Focus[role=Box]:focus {\n"
+        "  border: accent;\n"
         "}\n";
-    StyleRule rules[21] = {0};
+    StyleRule rules[23] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -134,10 +140,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 21, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 23, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 21);
+    assert(result.rule_count == 23);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -200,6 +206,13 @@ main(void)
     assert(rules[20].selector.kind == StyleKindImage());
     assert(rules[20].selector.role == 6);
     assert(rules[20].style.foreground == 0x2f6bffffu);
+    assert(rules[21].selector.kind == StyleKindPopup());
+    assert(rules[21].selector.role == 2);
+    assert(rules[21].style.border == 0x2f6bffffu);
+    assert(rules[22].selector.kind == StyleKindFocus());
+    assert(rules[22].selector.role == 9);
+    assert(rules[22].state == ButtonStateFocus);
+    assert(rules[22].style.border == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;

@@ -66,6 +66,25 @@ Surface {
   material: default;
 }
 
+Popup {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Popup[role=Panel] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Card {
   background: card;
   foreground: text;
@@ -94,6 +113,44 @@ Image[role=Label] {
   font-size: font.md;
   opacity: 1;
   material: default;
+}
+
+Focus {
+  foreground: focus;
+  border: focus;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Focus:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Box] {
+  foreground: muted;
+  border: border-hover;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Box]:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Label] {
+  foreground: muted;
+  font-size: font.sm;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Label]:focus {
+  foreground: focus;
 }
 
 NavigationBar {
@@ -1618,6 +1675,24 @@ Surface {
   material: default;
 }
 
+Popup {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Popup[role=Panel] {
+  background: card;
+  foreground: text;
+  border: border;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Card {
   background: card;
   foreground: text;
@@ -1646,6 +1721,44 @@ Image[role=Label] {
   font-size: font;
   opacity: 1;
   material: default;
+}
+
+Focus {
+  foreground: accent;
+  border: accent-border;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Focus:focus {
+  foreground: accent;
+  border: accent-border;
+}
+
+Focus[role=Box] {
+  foreground: muted;
+  border: outline-border;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Box]:focus {
+  foreground: accent;
+  border: accent-border;
+}
+
+Focus[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Label]:focus {
+  foreground: accent;
 }
 
 NavigationBar {
@@ -3161,6 +3274,25 @@ Surface {
   material: default;
 }
 
+Popup {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Popup[role=Panel] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Card {
   background: card;
   foreground: text;
@@ -3189,6 +3321,44 @@ Image[role=Label] {
   font-size: font.md;
   opacity: 1;
   material: default;
+}
+
+Focus {
+  foreground: focus;
+  border: focus;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Focus:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Box] {
+  foreground: muted;
+  border: border-hover;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Box]:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Label] {
+  foreground: muted;
+  font-size: font.sm;
+  opacity: 1;
+  material: default;
+}
+
+Focus[role=Label]:focus {
+  foreground: focus;
 }
 
 NavigationBar {
@@ -4733,6 +4903,26 @@ Surface {
   material: glow;
 }
 
+Popup {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: glow;
+}
+
+Popup[role=Panel] {
+  background: panel;
+  background-end: panel-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
 Card {
   background: card;
   background-end: card-end;
@@ -4764,6 +4954,44 @@ Image[role=Label] {
   font-size: font.md;
   opacity: 1;
   material: app;
+}
+
+Focus {
+  foreground: focus;
+  border: focus;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: app;
+}
+
+Focus:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Box] {
+  foreground: muted;
+  border: border;
+  opacity: 1;
+  material: app;
+}
+
+Focus[role=Box]:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Label] {
+  foreground: muted;
+  font-size: font.sm;
+  opacity: 1;
+  material: app;
+}
+
+Focus[role=Label]:focus {
+  foreground: focus;
 }
 
 NavigationBar {
@@ -6380,6 +6608,26 @@ Surface {
   material: premium;
 }
 
+Popup {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: premium;
+}
+
+Popup[role=Panel] {
+  background: button;
+  background-end: dropdown-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: premium;
+}
+
 Card {
   background: card;
   background-end: card-end;
@@ -6410,6 +6658,44 @@ Image[role=Label] {
   font-size: font;
   opacity: 1;
   material: app;
+}
+
+Focus {
+  foreground: focus;
+  border: focus;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: app;
+}
+
+Focus:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Box] {
+  foreground: muted;
+  border: border;
+  opacity: 1;
+  material: app;
+}
+
+Focus[role=Box]:focus {
+  foreground: focus;
+  border: focus;
+}
+
+Focus[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: app;
+}
+
+Focus[role=Label]:focus {
+  foreground: focus;
 }
 
 NavigationBar {

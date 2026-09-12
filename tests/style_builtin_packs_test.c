@@ -140,6 +140,8 @@ main(void)
         {"TableView", StyleKindTableView()},
         {"Guide", StyleKindGuide()},
         {"Image", StyleKindImage()},
+        {"Focus", StyleKindFocus()},
+        {"Popup", StyleKindPopup()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},
@@ -197,6 +199,7 @@ main(void)
         {"DragDropTarget:hover", StyleKindDragDropTarget(), ButtonStateHover},
         {"Link:hover", StyleKindLink(), ButtonStateHover},
         {"Link:disabled", StyleKindLink(), ButtonStateDisabled},
+        {"Focus:focus", StyleKindFocus(), ButtonStateFocus},
     };
     StyleRoleCase role_kinds[] = {
         {"Menu[role=Bar]", StyleKindMenu(), 1},
@@ -252,6 +255,9 @@ main(void)
         {"Guide[role=Scrim]", StyleKindGuide(), 19},
         {"Guide[role=Anchor]", StyleKindGuide(), 24},
         {"Image[role=Label]", StyleKindImage(), 6},
+        {"Focus[role=Box]", StyleKindFocus(), 9},
+        {"Focus[role=Label]", StyleKindFocus(), 6},
+        {"Popup[role=Panel]", StyleKindPopup(), 2},
     };
     const char *pack_ids[] = {
         "kryon.material",

@@ -388,7 +388,7 @@ test_fieldset_policy(void)
     FieldsetPaint no_title = FieldsetPaintFor(bounds, 40, 0, 1.0f, frame);
 
     check_int("fieldset face border",
-              (int)paint.face.value.border, 0x090A0B0C);
+              (int)paint.face.value.border, 0x01020304);
     check_int("fieldset title bg x", (int)paint.title_background.x, 18);
     check_int("fieldset title bg y", (int)paint.title_background.y, 12);
     check_int("fieldset title bg width", (int)paint.title_background.width, 56);

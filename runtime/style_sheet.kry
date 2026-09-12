@@ -225,6 +225,14 @@ StyleKindImage :: () -> i32 #export {
     return 52
 }
 
+StyleKindFocus :: () -> i32 #export {
+    return 53
+}
+
+StyleKindPopup :: () -> i32 #export {
+    return 54
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

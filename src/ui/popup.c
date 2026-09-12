@@ -68,7 +68,11 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
     PushInputClip(popup);
     if(IsWindowReady()) {
         BeginClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
-        Style panel = ui_surface_style();
+        Style panel = ui_unpack_style(ui_control_style_frame_role_kind(
+            (ButtonProps){.tone = ButtonToneNeutral,
+                          .emphasis = ButtonEmphasisSoft},
+            ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindPopup(), 2).value);
         ui_draw_material(popup, (Rectangle){0}, panel.background, panel.border,
                          panel.border, panel.radius, panel.border_width,
                          0, 0, 0, panel.focus, 0, panel.opacity,

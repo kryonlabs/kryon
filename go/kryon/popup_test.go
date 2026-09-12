@@ -273,7 +273,8 @@ tokens {
   length { radius: 8; border: 2; }
   material { flat: Flat; }
 }
-Surface { background: panel; border: rule; radius: radius; border-width: border; material: flat; }
+Surface { background: #101010; border: #202020; radius: 3; border-width: 1; material: flat; }
+Popup[role=Panel] { background: panel; border: rule; radius: radius; border-width: border; material: flat; }
 `, "Test Popup", "") || !SetActiveStylePack("test.popup") {
 		t.Fatal("test popup style did not activate")
 	}

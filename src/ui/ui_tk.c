@@ -4161,19 +4161,21 @@ RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
     if(nodes == NULL)
         return;
     for(int i = 0; i < count; i++) {
-        StyleFrame frame = ui_tk_simple_style_frame(
-            nodes[i].focused ? ButtonToneAccent : ButtonToneNeutral,
-            nodes[i].focused ? ButtonStateFocus : ButtonStateNormal,
-            0, nodes[i].focused, nodes[i].focused ? StyleKindLink()
-                                                  : StyleKindText());
-        Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-        Color color = style.foreground;
+        ButtonState state = nodes[i].focused ? ButtonStateFocus
+                                             : ButtonStateNormal;
+        Style box = ui_unpack_style(ui_control_style_frame_role_kind(
+            (ButtonProps){0}, state, 0, 0.0f, 0.0f,
+            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 9).value);
+        Style label = ui_unpack_style(ui_control_style_frame_role_kind(
+            (ButtonProps){0}, state, 0, 0.0f, 0.0f,
+            nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 6).value);
         FocusDebugOverlayPaint paint =
             FocusDebugOverlayPaintFor(nodes[i].bounds, TextLineHeight(font),
                                       nodes[i].label != NULL);
-        DrawRectangleLinesEx(paint.outline, (float)paint.stroke_width, color);
+        DrawRectangleLinesEx(paint.outline, (float)paint.stroke_width,
+                             box.border);
         if(paint.label_visible)
             RenderText(nodes[i].label, (int)paint.label_position.x,
-                       (int)paint.label_position.y, font, color);
+                       (int)paint.label_position.y, font, label.foreground);
     }
 }

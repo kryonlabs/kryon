@@ -339,6 +339,16 @@ func StyleSheet_StyleKindImage() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindFocus() int32 {
+	var value_0 int32 = 53
+	return value_0
+}
+
+func StyleSheet_StyleKindPopup() int32 {
+	var value_0 int32 = 54
+	return value_0
+}
+
 func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	var facts StyleFacts = StyleFacts{}
 	var value_0 int32 = kind

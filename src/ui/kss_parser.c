@@ -241,6 +241,10 @@ kss_style_kind(const char *name)
         return StyleKindGuide();
     if(kss_ieq(name, "Image"))
         return StyleKindImage();
+    if(kss_ieq(name, "Focus"))
+        return StyleKindFocus();
+    if(kss_ieq(name, "Popup"))
+        return StyleKindPopup();
     return -999999;
 }
 

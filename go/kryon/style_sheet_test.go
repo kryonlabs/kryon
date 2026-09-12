@@ -228,11 +228,17 @@ Guide[role=Anchor] {
 Image[role=Label] {
   foreground: accent;
 }
+Popup[role=Panel] {
+  border: accent;
+}
+Focus[role=Box]:focus {
+  border: accent;
+}
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 27 {
+	if id != "smoke" || len(rules) != 29 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -368,6 +374,17 @@ Image[role=Label] {
 		rules[26].Style.Foreground != 0x2f6bffff {
 		t.Fatalf("bad image role rule: %#v", rules[26])
 	}
+	if rules[27].Selector.Kind != StyleSheet_StyleKindPopup() ||
+		rules[27].Selector.Role != 2 ||
+		rules[27].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad popup role rule: %#v", rules[27])
+	}
+	if rules[28].Selector.Kind != StyleSheet_StyleKindFocus() ||
+		rules[28].Selector.Role != 9 ||
+		rules[28].State != int32(ButtonStateFocus) ||
+		rules[28].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad focus role rule: %#v", rules[28])
+	}
 }
 
 func TestRegisterStylePackSourceInGo(t *testing.T) {
@@ -467,6 +484,8 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"TableView", StyleSheet_StyleKindTableView()},
 		{"Guide", StyleSheet_StyleKindGuide()},
 		{"Image", StyleSheet_StyleKindImage()},
+		{"Focus", StyleSheet_StyleKindFocus()},
+		{"Popup", StyleSheet_StyleKindPopup()},
 	}
 	stateKinds := []struct {
 		name  string
@@ -528,6 +547,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"DragDropTarget:hover", StyleSheet_StyleKindDragDropTarget(), ButtonStateHover},
 		{"Link:hover", StyleSheet_StyleKindLink(), ButtonStateHover},
 		{"Link:disabled", StyleSheet_StyleKindLink(), ButtonStateDisabled},
+		{"Focus:focus", StyleSheet_StyleKindFocus(), ButtonStateFocus},
 	}
 	roleKinds := []struct {
 		name string
@@ -587,6 +607,9 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Guide[role=Scrim]", StyleSheet_StyleKindGuide(), 19},
 		{"Guide[role=Anchor]", StyleSheet_StyleKindGuide(), 24},
 		{"Image[role=Label]", StyleSheet_StyleKindImage(), 6},
+		{"Focus[role=Box]", StyleSheet_StyleKindFocus(), 9},
+		{"Focus[role=Label]", StyleSheet_StyleKindFocus(), 6},
+		{"Popup[role=Panel]", StyleSheet_StyleKindPopup(), 2},
 	}
 	packIDs := []string{
 		"kryon.material",

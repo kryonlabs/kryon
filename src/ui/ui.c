@@ -1797,7 +1797,7 @@ RenderFocus(Rectangle bounds)
     Style style = ui_resolve_button_style_kind(
         (ButtonProps){.tone = ButtonToneAccent,
                       .emphasis = ButtonEmphasisOutline},
-        ButtonStateFocus, StyleKindButton());
+        ButtonStateFocus, StyleKindFocus());
     Color focus = style.focus.a != 0 ? style.focus : style.border;
 
     DrawRectangleLinesEx(paint.bounds, (float)paint.stroke_width,
