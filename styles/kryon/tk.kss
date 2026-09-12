@@ -1322,6 +1322,7 @@ Dropdown {
   padding-x: space.2;
   padding-y: space.1;
   gap: gap;
+  font-size: font;
   material: default;
 }
 

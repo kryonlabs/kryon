@@ -1425,6 +1425,7 @@ Dropdown {
   padding-x: 14;
   padding-y: pad.field-y;
   gap: gap;
+  font-size: font.md;
   material: glow;
 }
 

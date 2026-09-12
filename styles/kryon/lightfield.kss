@@ -1383,6 +1383,7 @@ Dropdown {
   padding-x: 14;
   padding-y: pad.dropdown-y;
   gap: gap;
+  font-size: font;
   material: premium;
 }
 
