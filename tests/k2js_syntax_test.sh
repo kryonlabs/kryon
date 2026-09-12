@@ -57,6 +57,16 @@ FractionalPreviewMode :: (value: float) -> int {
 call_host :: () -> int {
     return host_value(count)
 }
+note_input :: (value: string) -> int {
+    unused value
+    count += 10
+    return count
+}
+note_change :: (value: string) -> int {
+    unused value
+    count += 100
+    return count
+}
 
 DirectAction :: (x: float) -> bool {
     return Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
@@ -97,6 +107,16 @@ Scene :: (viewport: Rectangle) #ui {
             role = "button"
             aria_label = "Tap the action"
             on_click = call_host
+        }
+        TextField search: {
+            bounds = {10, 90, 180, 32}
+            text = label
+            dom = "input"
+            dom_id = "search-field"
+            class = "field"
+            aria_label = "Search"
+            on_input = note_input
+            on_change = note_change
         }
         count += 1
     }
@@ -141,9 +161,13 @@ grep -q 'export function main' "$out"
 grep -q 'kryon.widget(\$rt, "Text"' "$out"
 grep -q 'kryon.widget(\$rt, "Button"' "$out"
 grep -q '"nodeName": "tap"' "$out"
+grep -q '"path": "Scene/root/tap"' "$out"
+grep -q '"parentPath": "Scene/root"' "$out"
 grep -q '"tag": "button"' "$out"
 grep -q '"class": "primary action"' "$out"
 grep -q '"onClick": "call_host"' "$out"
+grep -q '"onInput": "note_input"' "$out"
+grep -q '"onChange": "note_change"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1

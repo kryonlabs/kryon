@@ -278,13 +278,16 @@ func Drag(props DragProps) bool     { return active().Drag(props) }
 func Slider(props SliderProps) bool { return active().Slider(props) }
 func Input(props InputProps) bool   { return active().Input(props) }
 func Dropdown(args ...any) bool     { return active().Dropdown(args...) }
-func Column(props ColumnProps)      { active().Column(props) }
-func Row(props ColumnProps)         { active().Row(props) }
-func Stack(props ColumnProps)       { active().Stack(props) }
-func Screen(props ColumnProps)      { active().Screen(props) }
-func Grid(props GridProps)          { active().Grid(props) }
-func End()                          { active().End() }
-func SetPageTitle(title string)     { active().SetPageTitle(title) }
+func StylePicker(props StylePickerProps) bool {
+	return active().StylePicker(props)
+}
+func Column(props ColumnProps)  { active().Column(props) }
+func Row(props ColumnProps)     { active().Row(props) }
+func Stack(props ColumnProps)   { active().Stack(props) }
+func Screen(props ColumnProps)  { active().Screen(props) }
+func Grid(props GridProps)      { active().Grid(props) }
+func End()                      { active().End() }
+func SetPageTitle(title string) { active().SetPageTitle(title) }
 func SetPageDescription(description string) {
 	active().SetPageDescription(description)
 }

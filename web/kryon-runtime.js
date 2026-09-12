@@ -58,6 +58,68 @@ export const MOUSE_BUTTON_LEFT = MouseButtonLeft;
 let activeTheme = null;
 let activeThemeFamily = null;
 let activeThemeMode = 1;
+const pageMeta = {
+  title: "",
+  description: "",
+  canonicalURL: "",
+  themeColor: ""
+};
+const routeState = {
+  path: "/",
+  hash: "",
+  version: 0
+};
+let routeListenersInstalled = false;
+
+function normalizeRoute(path) {
+  let text = String(path || "/");
+  const hashIndex = text.indexOf("#");
+  const hash = hashIndex >= 0 ? text.slice(hashIndex) : "";
+  text = hashIndex >= 0 ? text.slice(0, hashIndex) : text;
+  if (!text)
+    text = "/";
+  return { path: text, hash };
+}
+
+function browserRoute() {
+  const location = globalThis.location;
+  if (!location)
+    return null;
+  return normalizeRoute(String(location.pathname || "/") + String(location.hash || ""));
+}
+
+function setRouteState(next) {
+  if (routeState.path === next.path && routeState.hash === next.hash)
+    return false;
+  routeState.path = next.path;
+  routeState.hash = next.hash;
+  routeState.version++;
+  return true;
+}
+
+function syncRouteFromBrowser() {
+  const next = browserRoute();
+  if (next)
+    setRouteState(next);
+}
+
+function ensureRouteListeners() {
+  if (routeListenersInstalled || typeof globalThis.addEventListener !== "function")
+    return;
+  routeListenersInstalled = true;
+  globalThis.addEventListener("popstate", syncRouteFromBrowser);
+  globalThis.addEventListener("hashchange", syncRouteFromBrowser);
+}
+
+function updateBrowserRoute(path, replace) {
+  const next = normalizeRoute(path);
+  const url = next.path + next.hash;
+  const history = globalThis.history;
+  if (history && typeof history[replace ? "replaceState" : "pushState"] === "function")
+    history[replace ? "replaceState" : "pushState"](null, "", url);
+  setRouteState(next);
+  return url;
+}
 
 export function ThemeDefaultLight() {
   return {
@@ -143,6 +205,8 @@ export const IMAGE_FIT_CONTAIN = 1;
 export const IMAGE_FIT_COVER = 2;
 
 export function createRuntime(options = {}) {
+  ensureRouteListeners();
+  syncRouteFromBrowser();
   const rt = {
     app: options.app || null,
     target: options.target || null,
@@ -994,6 +1058,8 @@ function webNodeFromWidget(item, index) {
     tag: widgetTag(item),
     key: meta.nodeName || propString(args, "key", propString(args, "id", String(index))),
     name: meta.nodeName || propString(args, "name", ""),
+    path: meta.path === undefined || meta.path === null ? "" : String(meta.path),
+    parentPath: meta.parentPath === undefined || meta.parentPath === null ? "" : String(meta.parentPath),
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     classes: [...new Set(classes)],
     text: widgetText(item),
@@ -1004,7 +1070,15 @@ function webNodeFromWidget(item, index) {
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
     ariaLabel: meta.ariaLabel === undefined || meta.ariaLabel === null ? "" : String(meta.ariaLabel),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
+    onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
+    onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
     action: typeof meta.action === "function" ? meta.action : null,
+    inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
+    changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
+    pageTitle: propString(args, "title", ""),
+    pageDescription: propString(args, "description", ""),
+    pageCanonicalURL: propString(args, "canonical_url", ""),
+    pageThemeColor: colorToCss(args?.theme_color || args?.themeColor || ""),
     bounds,
     hasBounds: bounds.width > 0 || bounds.height > 0,
     state: {
@@ -1020,88 +1094,316 @@ function webNodeFromWidget(item, index) {
 }
 
 export function webDocumentFrame(rt) {
-  return {
+  const frame = {
     app: rt?.app || null,
     nodes: (rt?.frame || []).map(webNodeFromWidget)
   };
+  frame.metadata = webDocumentMetadata(frame);
+  return frame;
 }
 
-export function mount(rt, target) {
-  const node = typeof target === "string" && typeof document !== "undefined"
-    ? document.querySelector(target)
-    : target;
-  if (!node || typeof document === "undefined") {
-    rt.mounted = !!node;
-    return rt;
+function webDocumentMetadata(frame) {
+  const page = (frame.nodes || []).find((node) => node.kind === "Page");
+  return {
+    title: pageMeta.title || page?.pageTitle || frame.app?.title || "",
+    description: pageMeta.description || page?.pageDescription || "",
+    canonicalURL: pageMeta.canonicalURL || page?.pageCanonicalURL || "",
+    themeColor: pageMeta.themeColor || page?.pageThemeColor || ""
+  };
+}
+
+function removeAttr(el, name) {
+  if (el && typeof el.removeAttribute === "function")
+    el.removeAttribute(name);
+}
+
+function setAttr(el, name, value) {
+  if (value === undefined || value === null || value === false || value === "") {
+    removeAttr(el, name);
+    return;
   }
-  node.innerHTML = "";
-  const root = document.createElement("div");
+  el.setAttribute(name, value === true ? "" : String(value));
+}
+
+function documentHead() {
+  if (typeof document === "undefined")
+    return null;
+  return document.head || document.documentElement || document.body || null;
+}
+
+function ensureDocumentMeta(name) {
+  if (typeof document === "undefined")
+    return null;
+  const selector = name === "canonical"
+    ? 'link[rel="canonical"]'
+    : `meta[name="${name}"]`;
+  let el = typeof document.querySelector === "function"
+    ? document.querySelector(selector)
+    : null;
+  if (!el) {
+    el = document.createElement(name === "canonical" ? "link" : "meta");
+    if (name === "canonical")
+      el.setAttribute("rel", "canonical");
+    else
+      el.setAttribute("name", name);
+    const head = documentHead();
+    if (head)
+      head.appendChild(el);
+  }
+  return el;
+}
+
+function applyDocumentMetadata(metadata) {
+  if (typeof document === "undefined" || !metadata)
+    return;
+  if (metadata.title && document.title !== undefined)
+    document.title = metadata.title;
+  const description = ensureDocumentMeta("description");
+  if (description)
+    setAttr(description, "content", metadata.description);
+  const canonical = ensureDocumentMeta("canonical");
+  if (canonical)
+    setAttr(canonical, "href", metadata.canonicalURL);
+  const themeColor = ensureDocumentMeta("theme-color");
+  if (themeColor)
+    setAttr(themeColor, "content", metadata.themeColor);
+}
+
+function bindNodeEvents(el) {
+  if (el.__kryClickBound)
+    return;
+  el.__kryClickBound = true;
+  el.addEventListener("click", () => {
+    const docNode = el.__kryDocNode;
+    const rt = el.__kryRuntime;
+    if (!docNode)
+      return;
+    if (rt?.QueueTap) {
+      const x = docNode.bounds.x + Math.max(1, docNode.bounds.width) * 0.5;
+      const y = docNode.bounds.y + Math.max(1, docNode.bounds.height) * 0.5;
+      rt.QueueTap(x, y);
+    }
+    if (docNode.action)
+      docNode.action();
+  });
+  el.addEventListener("input", () => {
+    const docNode = el.__kryDocNode;
+    if (docNode?.inputAction)
+      docNode.inputAction(el.value ?? "");
+  });
+  el.addEventListener("change", () => {
+    const docNode = el.__kryDocNode;
+    const value = el.type === "checkbox" || el.type === "radio"
+      ? !!el.checked
+      : (el.value ?? "");
+    if (docNode?.changeAction)
+      docNode.changeAction(value);
+  });
+}
+
+function applyWebNode(el, docNode, rt) {
+  el.__kryDocNode = docNode;
+  el.__kryRuntime = rt;
+  bindNodeEvents(el);
+  el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
+  el.dataset.kryKind = docNode.kind;
+  el.dataset.kryKey = docNode.key;
+  if (docNode.path)
+    el.dataset.kryPath = docNode.path;
+  else
+    delete el.dataset.kryPath;
+  if (docNode.parentPath)
+    el.dataset.kryParentPath = docNode.parentPath;
+  else
+    delete el.dataset.kryParentPath;
+  if (docNode.name)
+    el.dataset.kryName = docNode.name;
+  else
+    delete el.dataset.kryName;
+  setAttr(el, "id", docNode.domId);
+  setAttr(el, "role", docNode.role);
+  setAttr(el, "aria-label", docNode.ariaLabel);
+  if (docNode.onClick)
+    el.dataset.kryOnClick = docNode.onClick;
+  else
+    delete el.dataset.kryOnClick;
+  if (docNode.onInput)
+    el.dataset.kryOnInput = docNode.onInput;
+  else
+    delete el.dataset.kryOnInput;
+  if (docNode.onChange)
+    el.dataset.kryOnChange = docNode.onChange;
+  else
+    delete el.dataset.kryOnChange;
+  if (docNode.hasBounds) {
+    el.style.position = "absolute";
+    el.style.left = docNode.bounds.x + "px";
+    el.style.top = docNode.bounds.y + "px";
+    el.style.width = Math.max(0, docNode.bounds.width) + "px";
+    el.style.height = Math.max(0, docNode.bounds.height) + "px";
+    el.style.boxSizing = "border-box";
+  } else {
+    el.style.position = "";
+    el.style.left = "";
+    el.style.top = "";
+    el.style.width = "";
+    el.style.height = "";
+  }
+  setAttr(el, "disabled", docNode.state.disabled);
+  setAttr(el, "aria-selected", docNode.state.selected ? "true" : "");
+  setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : "");
+  setAttr(el, "aria-expanded", docNode.state.expanded ? "true" : "");
+  setAttr(el, "href", docNode.href);
+  setAttr(el, "type", docNode.inputType);
+  if (docNode.tag === "img") {
+    setAttr(el, "src", docNode.asset);
+    setAttr(el, "alt", docNode.alt);
+  } else if (docNode.tag === "input") {
+    if (docNode.text)
+      el.setAttribute("value", docNode.text);
+    else
+      removeAttr(el, "value");
+    el.checked = !!docNode.state.checked;
+  } else if (docNode.tag === "textarea") {
+    el.value = docNode.text;
+  } else {
+    el.textContent = docNode.text;
+  }
+}
+
+function ensureMountRoot(node) {
+  let root = node.__kryRuntimeRoot || null;
+  if (root && root.parentNode === node)
+    return root;
+  root = document.createElement("div");
   root.className = "kryon-runtime";
   root.dataset.kryRuntime = "web-document";
   root.style.position = "relative";
   root.style.minHeight = "100%";
   root.style.fontFamily = "system-ui, sans-serif";
-  for (const docNode of webDocumentFrame(rt).nodes) {
-    const el = document.createElement(docNode.tag);
-    el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
-    el.dataset.kryKind = docNode.kind;
-    el.dataset.kryKey = docNode.key;
-    if (docNode.name)
-      el.dataset.kryName = docNode.name;
-    if (docNode.domId)
-      el.id = docNode.domId;
-    if (docNode.role)
-      el.setAttribute("role", docNode.role);
-    if (docNode.ariaLabel)
-      el.setAttribute("aria-label", docNode.ariaLabel);
-    if (docNode.onClick)
-      el.dataset.kryOnClick = docNode.onClick;
-    if (docNode.hasBounds) {
-      el.style.position = "absolute";
-      el.style.left = docNode.bounds.x + "px";
-      el.style.top = docNode.bounds.y + "px";
-      el.style.width = Math.max(0, docNode.bounds.width) + "px";
-      el.style.height = Math.max(0, docNode.bounds.height) + "px";
-      el.style.boxSizing = "border-box";
-    }
-    if (docNode.state.disabled)
-      el.setAttribute("disabled", "");
-    if (docNode.state.selected)
-      el.setAttribute("aria-selected", "true");
-    if (docNode.state.invalid)
-      el.setAttribute("aria-invalid", "true");
-    if (docNode.state.expanded)
-      el.setAttribute("aria-expanded", "true");
-    if (docNode.href)
-      el.setAttribute("href", docNode.href);
-    if (docNode.inputType)
-      el.setAttribute("type", docNode.inputType);
-    if (docNode.tag === "img") {
-      if (docNode.asset)
-        el.setAttribute("src", docNode.asset);
-      el.setAttribute("alt", docNode.alt);
-    } else if (docNode.tag === "input") {
-      if (docNode.text)
-        el.setAttribute("value", docNode.text);
-      if (docNode.state.checked)
-        el.checked = true;
-    } else {
-      el.textContent = docNode.text;
-    }
-    el.addEventListener("click", () => {
-      if (rt?.QueueTap) {
-        const x = docNode.bounds.x + Math.max(1, docNode.bounds.width) * 0.5;
-        const y = docNode.bounds.y + Math.max(1, docNode.bounds.height) * 0.5;
-        rt.QueueTap(x, y);
-      }
-      if (docNode.action)
-        docNode.action();
-    });
-    root.appendChild(el);
-  }
+  root.__kryChildren = new Map();
+  node.__kryRuntimeRoot = root;
   node.appendChild(root);
-  rt.mounted = true;
+  return root;
+}
+
+export function renderWebDocument(rt, target) {
+  const node = typeof target === "string" && typeof document !== "undefined"
+    ? document.querySelector(target)
+    : target;
+  if (!node || typeof document === "undefined") {
+    if (rt)
+      rt.mounted = !!node;
+    return rt;
+  }
+  const frame = webDocumentFrame(rt);
+  applyDocumentMetadata(frame.metadata);
+  const root = ensureMountRoot(node);
+  const children = root.__kryChildren || new Map();
+  const elementsByPath = new Map();
+  const live = new Set();
+  root.__kryNodes = new Map();
+  root.__kryElementsByName = new Map();
+  root.__kryElementsByDomId = new Map();
+  for (const docNode of frame.nodes) {
+    const identity = docNode.tag + ":" + (docNode.path || docNode.key);
+    let el = children.get(identity);
+    if (!el || el.tagName?.toLowerCase() !== docNode.tag) {
+      el = document.createElement(docNode.tag);
+      children.set(identity, el);
+    }
+    applyWebNode(el, docNode, rt);
+    if (docNode.path && docNode.path !== docNode.parentPath)
+      elementsByPath.set(docNode.path, el);
+    if (docNode.path)
+      root.__kryNodes.set(docNode.path, docNode);
+    if (docNode.name)
+      root.__kryElementsByName.set(docNode.name, el);
+    if (docNode.domId)
+      root.__kryElementsByDomId.set(docNode.domId, el);
+    const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
+      ? elementsByPath.get(docNode.parentPath)
+      : root;
+    parent.appendChild(el);
+    live.add(identity);
+  }
+  for (const [identity, el] of Array.from(children.entries())) {
+    if (!live.has(identity)) {
+      if (el.parentNode && typeof el.parentNode.removeChild === "function")
+        el.parentNode.removeChild(el);
+      children.delete(identity);
+    }
+  }
+  root.__kryChildren = children;
+  if (rt)
+    rt.mounted = true;
   return rt;
+}
+
+function mountedRoot(target) {
+  const node = typeof target === "string" && typeof document !== "undefined"
+    ? document.querySelector(target)
+    : target;
+  return node?.__kryRuntimeRoot || null;
+}
+
+export function findWebNode(rt, query) {
+  const text = String(query || "");
+  const frame = webDocumentFrame(rt);
+  return frame.nodes.find((node) =>
+    node.path === text || node.name === text || node.key === text ||
+    node.domId === text) || null;
+}
+
+export function findWebElement(target, query) {
+  const root = mountedRoot(target);
+  if (!root)
+    return null;
+  const text = String(query || "");
+  if (root.__kryChildren?.has(text))
+    return root.__kryChildren.get(text);
+  if (root.__kryElementsByName?.has(text))
+    return root.__kryElementsByName.get(text);
+  if (root.__kryElementsByDomId?.has(text))
+    return root.__kryElementsByDomId.get(text);
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const node = el.__kryDocNode;
+    if (node && (node.path === text || node.key === text))
+      return el;
+  }
+  return null;
+}
+
+export function mount(rt, target) {
+  return renderWebDocument(rt, target);
+}
+
+export function GetRoutePath() {
+  ensureRouteListeners();
+  syncRouteFromBrowser();
+  return routeState.path;
+}
+
+export function GetRouteHash() {
+  ensureRouteListeners();
+  syncRouteFromBrowser();
+  return routeState.hash;
+}
+
+export function GetRouteVersion() {
+  ensureRouteListeners();
+  syncRouteFromBrowser();
+  return routeState.version;
+}
+
+export function PushRoute(path) {
+  ensureRouteListeners();
+  return updateBrowserRoute(path, false);
+}
+
+export function ReplaceRoute(path) {
+  ensureRouteListeners();
+  return updateBrowserRoute(path, true);
 }
 
 export function Color(r = 0, g = 0, b = 0, a = 255) {
@@ -1154,6 +1456,33 @@ export function GetThemeIcon() { return GetTheme().colors.icon; }
 export function GetThemeLink() { return GetTheme().colors.link; }
 
 export function SystemThemePrefersDark() { return false; }
+
+function colorToCss(value) {
+  if (typeof value === "string")
+    return value;
+  if (!value || typeof value !== "object")
+    return "";
+  const a = value.a === undefined ? 255 : value.a;
+  if (a >= 255)
+    return `rgb(${value.r || 0}, ${value.g || 0}, ${value.b || 0})`;
+  return `rgba(${value.r || 0}, ${value.g || 0}, ${value.b || 0}, ${a / 255})`;
+}
+
+export function SetPageTitle(title) {
+  pageMeta.title = String(title || "");
+}
+
+export function SetPageDescription(description) {
+  pageMeta.description = String(description || "");
+}
+
+export function SetPageCanonicalURL(url) {
+  pageMeta.canonicalURL = String(url || "");
+}
+
+export function SetPageThemeColor(color) {
+  pageMeta.themeColor = colorToCss(color);
+}
 
 export function Fade(color, alpha) {
   return Object.assign({}, color, { a: Math.round((alpha || 0) * 255) });

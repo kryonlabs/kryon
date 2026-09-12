@@ -1087,8 +1087,10 @@ static int
 stmt_has_web_metadata(const KirStmt *st)
 {
     return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
+           st->node_path[0] || st->node_parent_path[0] ||
            st->dom_class[0] || st->dom_role[0] || st->dom_aria_label[0] ||
-           st->dom_on_click[0];
+           st->dom_on_click[0] || st->dom_on_input[0] ||
+           st->dom_on_change[0];
 }
 
 static void
@@ -1148,6 +1150,26 @@ emit_action_target(FILE *f, const KirModule *m, const char *name)
 }
 
 static void
+emit_web_action(FILE *f, const KirModule *m, const char *name_field,
+                const char *action_field, const char *target,
+                const char *args, int *emitted)
+{
+    if(target[0] == '\0')
+        return;
+    emit_metadata_string_field(f, name_field, target, emitted);
+    if((*emitted)++)
+        fputs(", ", f);
+    js_string(f, action_field);
+    fputs(": ", f);
+    if(args[0] != '\0')
+        fprintf(f, "(%s) => ", args);
+    else
+        fputs("() => ", f);
+    emit_action_target(f, m, target);
+    fprintf(f, "($rt, $state, $host%s%s)", args[0] ? ", " : "", args);
+}
+
+static void
 emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
 {
     int emitted = 0;
@@ -1158,20 +1180,18 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     }
     fputc('{', f);
     emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
+    emit_metadata_string_field(f, "path", st->node_path, &emitted);
+    emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
     emit_metadata_expr_field(f, m, "class", st->dom_class, &emitted);
     emit_metadata_expr_field(f, m, "role", st->dom_role, &emitted);
     emit_metadata_expr_field(f, m, "ariaLabel", st->dom_aria_label, &emitted);
-    if(st->dom_on_click[0] != '\0') {
-        emit_metadata_string_field(f, "onClick", st->dom_on_click, &emitted);
-        if(emitted++)
-            fputs(", ", f);
-        js_string(f, "action");
-        fputs(": () => ", f);
-        emit_action_target(f, m, st->dom_on_click);
-        fputs("($rt, $state, $host)", f);
-    }
+    emit_web_action(f, m, "onClick", "action", st->dom_on_click, "", &emitted);
+    emit_web_action(f, m, "onInput", "inputAction", st->dom_on_input,
+                    "value", &emitted);
+    emit_web_action(f, m, "onChange", "changeAction", st->dom_on_change,
+                    "value", &emitted);
     fputc('}', f);
 }
 

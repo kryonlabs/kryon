@@ -15,6 +15,20 @@ a deterministic style sheet system for Kryon. KSS is the file syntax name;
 the canonical runtime API uses clean domain names such as `StyleSheet`,
 `StylePack`, `StyleRule`, `StyleToken`, and `ResolveStyle`.
 
+The split is deliberate:
+
+- `.kry` remains the language for UI structure, widget facts, state, layout,
+  and reusable runtime logic;
+- `.kss` becomes the language for visual styling, tokens, selectors, layers,
+  themes, and style packs;
+- the shared style data model and resolver are implemented in `.kry` so every
+  backend consumes the same compiled rule tables;
+- only the text parser, diagnostics, formatter, and import loader need
+  `kss_` names internally.
+
+That gives Kryon a clean canonical API: apps talk about styles, packs, rules,
+tokens, selectors, and resolved frames. They do not talk about parser prefixes.
+
 ## 1. North star
 
 Kryon UI should feel like this:
@@ -391,6 +405,63 @@ plain style names:
 Use `kss_` only for internal parser/tooling code that specifically handles
 the `.kss` text syntax, such as `kss_parse_file`. Do not expose `KssRuleTable`,
 `KssStylePack`, or similar names in app-facing APIs.
+
+### Implementation boundary
+
+The style system has two layers with different naming rules.
+
+The canonical runtime layer is written in `.kry` and exports plain names:
+
+```kry
+StyleToken
+StyleSelector
+StyleRule
+StyleSheet
+StylePack
+StyleFacts
+StyleCascade
+ResolveStyle
+StylePicker
+```
+
+This layer is what widgets, backends, tests, generated C, generated Go,
+generated JS, KRB, and inspectors use. It must not be named after the file
+format, because it is the durable styling model, not merely a parser product.
+
+The parser/tooling layer may use `kss_` because it is specifically about
+reading and writing `.kss` text:
+
+```c
+kss_parse_file
+kss_format_document
+kss_emit_diagnostics
+kss_load_import_graph
+```
+
+Those names should stop at the compiler/tooling boundary. Once parsing
+succeeds, the result is a `StyleSheet` or `StylePack`.
+
+The practical architecture is:
+
+```text
+.kss text
+    |
+    v
+internal kss_parse_* tooling
+    |
+    v
+StyleSheet / StylePack typed data
+    |
+    v
+.kry ResolveStyle runtime
+    |
+    v
+backend resolved frame
+```
+
+This makes `.kss` optional as a source format. A tool, generated file, embedded
+KRB cartridge, or host application can build `StyleSheet` data directly and
+still use the same resolver.
 
 ## 8. KSS grammar
 

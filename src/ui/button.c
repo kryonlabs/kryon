@@ -4,6 +4,7 @@
 #include "ui_paint_internal.h"
 #include "theme.h"
 #include "ui_color.h"
+#include "ui_style_sheet.h"
 #include "runtime/button.h"
 #include "runtime/segmented_control.h"
 #include "runtime/style.h"
@@ -202,10 +203,33 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             props = button.props;
             Palette palette;
             Metrics tokens;
+            StyleFrame appearance;
+            StyleFacts facts;
+            int style_font;
             ui_runtime_theme_values(&palette, &tokens);
-            ButtonFrame frame = AdvanceFrame(key, props, input, palette, tokens,
-                ui_pack_style_states(props.style), cues, GetFrameTime() * 1000.0f,
-                button.surface_bounds, ColorToInt(GetThemeSurface()), GetScale(), GetFontSize());
+            props.disabled = input.flags.disabled;
+            props.loading = input.flags.loading;
+            props.selected = input.flags.selected;
+            motion = AdvanceButtonMotion(key, (int)props.state, input, cues,
+                GetFrameTime() * 1000.0f, tokens.transition_normal_ms,
+                tokens.transition_fast_ms);
+            appearance = ResolveFrame((int)props.tone, (int)props.emphasis,
+                input.interaction.state, (int)props.size, props.pill,
+                props.circle, props.disabled, props.loading, props.selected,
+                palette, tokens, ui_pack_style_states(props.style),
+                (int)props.state == ButtonStateAuto, motion.hover.value,
+                motion.press.value, motion.focus.value);
+            facts = StyleControlFacts(StyleKindButton(), props.id, 0,
+                (int)props.tone, (int)props.emphasis, (int)props.size,
+                input.interaction.state);
+            appearance.value = ResolveActiveStyle(appearance.value, facts,
+                input.interaction.state);
+            appearance.fill = FillState(appearance.value.fields,
+                appearance.value.background, appearance.value.background_end);
+            style_font = (int)(appearance.value.font_size * GetScale() + 0.5f);
+            ButtonFrame frame = BuildFrame(props, input, appearance, motion,
+                button.surface_bounds, ColorToInt(GetThemeSurface()), GetScale(),
+                style_font, GetFontSize());
             frame.appearance = ui_style_apply_effects_frame(frame.appearance);
             frame.material.value = frame.appearance.value;
             frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);

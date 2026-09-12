@@ -173,6 +173,42 @@ func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	return value_9
 }
 
+func StyleSheet_StyleControlFacts(kind int32, name int32, class_name int32, tone int32, emphasis int32, size int32, state int32) StyleFacts {
+	var value_0 int32 = kind
+	var value_1 StyleFacts = StyleSheet_StyleDefaultFacts(value_0)
+	var facts StyleFacts = value_1
+	var value_2 int32 = name
+	facts.Name = value_2
+	var value_3 int32 = class_name
+	facts.ClassName = value_3
+	var value_4 int32 = tone
+	facts.Tone = value_4
+	var value_5 int32 = emphasis
+	facts.Emphasis = value_5
+	var value_6 int32 = size
+	facts.Size = value_6
+	var value_7 int32 = state
+	facts.State = value_7
+	var value_8 StyleFacts = facts
+	return value_8
+}
+
+func StyleSheet_StyleTextFacts(name int32, class_name int32, role int32, state int32) StyleFacts {
+	var value_0 int32 = StyleSheet_StyleKindText()
+	var value_1 StyleFacts = StyleSheet_StyleDefaultFacts(value_0)
+	var facts StyleFacts = value_1
+	var value_2 int32 = name
+	facts.Name = value_2
+	var value_3 int32 = class_name
+	facts.ClassName = value_3
+	var value_4 int32 = role
+	facts.Role = value_4
+	var value_5 int32 = state
+	facts.State = value_5
+	var value_6 StyleFacts = facts
+	return value_6
+}
+
 func StyleSheet_StyleDefaultSelector() StyleSelector {
 	var selector StyleSelector = StyleSelector{}
 	var value_0 int32 = StyleSheet_StyleKindAny()

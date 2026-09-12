@@ -148,6 +148,28 @@ StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
     return facts
 }
 
+StyleControlFacts :: (kind: i32, name: i32, class_name: i32, tone: i32,
+    emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
+    facts: StyleFacts = StyleDefaultFacts(kind)
+    facts.name = name
+    facts.class_name = class_name
+    facts.tone = tone
+    facts.emphasis = emphasis
+    facts.size = size
+    facts.state = state
+    return facts
+}
+
+StyleTextFacts :: (name: i32, class_name: i32, role: i32,
+    state: i32) -> StyleFacts #export {
+    facts: StyleFacts = StyleDefaultFacts(StyleKindText())
+    facts.name = name
+    facts.class_name = class_name
+    facts.role = role
+    facts.state = state
+    return facts
+}
+
 StyleDefaultSelector :: () -> StyleSelector #export {
     selector: StyleSelector
     selector.kind = StyleKindAny()

@@ -1,20 +1,49 @@
 #include "ui_style_sheet.h"
 #include <assert.h>
 
+static StyleRule
+background_rule(int kind, unsigned int color)
+{
+    StyleRule rule = {0};
+
+    rule.selector = StyleDefaultSelector();
+    rule.selector.kind = kind;
+    rule.state = StyleStateAny();
+    rule.style.fields = StyleBackground;
+    rule.style.background = color;
+    return rule;
+}
+
 int
 main(void)
 {
-    StyleRule vanilla_rules[1] = {0};
-    StyleRule glow_rules[1] = {0};
+    StyleRule vanilla_rules[1] = {
+        background_rule(StyleKindButton(), 0x111111ffu),
+    };
+    StyleRule glow_rules[1] = {
+        background_rule(StyleKindButton(), 0x222222ffu),
+    };
     StyleSheet vanilla_sheet = {.rules = vanilla_rules, .rule_count = 1};
     StyleSheet glow_sheet = {.rules = glow_rules, .rule_count = 1};
     StylePackOption options[4] = {0};
+    StyleFacts button_facts = StyleControlFacts(StyleKindButton(), 0, 0,
+        ButtonToneNeutral, ButtonEmphasisSoft, ControlSizeMedium,
+        ButtonStateNormal);
+    StyleFacts text_facts = StyleTextFacts(0, 0, 0, ButtonStateNormal);
+    StyleData base = {0};
+    StyleData resolved;
     uint64_t version;
+
+    base.fields = StyleOpacity;
+    base.opacity = 1.0f;
 
     ClearStylePacks();
     version = StylePackVersion();
     assert(GetStylePackCount() == 0);
     assert(GetActiveStylePack() == NULL);
+    resolved = ResolveActiveStyle(base, button_facts, ButtonStateNormal);
+    assert(resolved.background == 0);
+    assert(resolved.opacity == 1.0f);
     assert(!RegisterStylePack((StylePack){0}));
     assert(StylePackVersion() == version);
 
@@ -29,6 +58,11 @@ main(void)
     assert(GetActiveStylePack()->sheet == &vanilla_sheet);
     assert(GetActiveStylePackId() != NULL);
     assert(StylePackVersion() == version + 1);
+    resolved = ResolveActiveStyle(base, button_facts, ButtonStateNormal);
+    assert(resolved.background == 0x111111ffu);
+    assert(resolved.opacity == 1.0f);
+    resolved = ResolveActiveStyle(base, text_facts, ButtonStateNormal);
+    assert(resolved.background == 0);
 
     assert(RegisterStylePack((StylePack){
         .id = "glow",
@@ -44,6 +78,8 @@ main(void)
     assert(SetActiveStylePack("glow"));
     assert(StylePackVersion() == version + 1);
     assert(GetActiveStylePack()->sheet == &glow_sheet);
+    resolved = ResolveActiveStyle(base, button_facts, ButtonStateNormal);
+    assert(resolved.background == 0x222222ffu);
     assert(!SetActiveStylePack("missing"));
     assert(StylePackVersion() == version + 1);
     assert(SetActiveStylePack("glow"));
@@ -62,6 +98,11 @@ main(void)
     assert(GetStylePackCount() == 2);
     assert(GetActiveStylePack()->sheet == &vanilla_sheet);
     assert(GetActiveStylePack()->label[5] == 'U');
+    resolved = ResolveStyle(&glow_sheet, base, button_facts,
+                            ButtonStateNormal);
+    assert(resolved.background == 0x222222ffu);
+    resolved = ResolveActiveStyle(base, button_facts, ButtonStateNormal);
+    assert(resolved.background == 0x111111ffu);
 
     ClearStylePacks();
     assert(GetStylePackCount() == 0);

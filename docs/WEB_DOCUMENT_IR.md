@@ -13,14 +13,14 @@ The existing JavaScript runtime records generated widget calls and can simulate
 logic. The Web Document frame gives that stream a stable semantic shape:
 
 - named `.kry` UI blocks as source-level node identities;
-- widget kind, key, name, classes, state, and bounds;
+- widget kind, key, name, source path, parent path, classes, state, and bounds;
 - native element tag selection for common web-capable widgets;
 - text, links, image sources, input type, and accessibility-facing state;
 - one frame format that can be consumed by DOM reconciliation, tests, and KSS.
 
 JavaScript remains responsible for generated logic, event glue, host calls, and
-browser bootstrapping. Widget structure stays in `.kry`; visual styling belongs
-to KSS.
+browser bootstrapping. Widget structure stays in `.kry`; route state is exposed
+as logic input; visual styling belongs to KSS.
 
 ## Source Metadata
 
@@ -46,13 +46,15 @@ Supported metadata fields in this first slice:
 
 | `.kry` field | Web frame field |
 |---|---|
-| named block | `nodeName`, `key`, `name` |
+| named block | `nodeName`, `key`, `name`, `path`, `parentPath` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_id`, `html_id` | `domId` |
 | `class`, `classes`, `class_name` | `classes` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
 | `on_click` | `onClick`, `action` |
+| `on_input` | `onInput`, `inputAction(value)` |
+| `on_change` | `onChange`, `changeAction(value)` |
 
 ## Runtime Contract
 
@@ -61,6 +63,12 @@ Supported metadata fields in this first slice:
 ```js
 {
   app: rt.app,
+  metadata: {
+    title,
+    description,
+    canonicalURL,
+    themeColor
+  },
   nodes: [
     {
       index,
@@ -68,6 +76,8 @@ Supported metadata fields in this first slice:
       tag,
       key,
       name,
+      path,
+      parentPath,
       domId,
       classes,
       text,
@@ -78,7 +88,15 @@ Supported metadata fields in this first slice:
       role,
       ariaLabel,
       onClick,
+      onInput,
+      onChange,
       action,
+      inputAction,
+      changeAction,
+      pageTitle,
+      pageDescription,
+      pageCanonicalURL,
+      pageThemeColor,
       bounds,
       hasBounds,
       state
@@ -117,10 +135,31 @@ The frame is also the right place for inspector data: matched KSS rules,
 winning declarations, token origins, state slice, and backend degradation can
 attach to nodes without changing app logic.
 
+## Runtime DOM APIs
+
+`renderWebDocument(rt, target)` reconciles the Web Document frame into browser
+elements. It also applies document metadata from `SetPageTitle`,
+`SetPageDescription`, `SetPageCanonicalURL`, `SetPageThemeColor`, app metadata,
+and `Page` nodes.
+
+`findWebNode(rt, query)` returns the normalized Web Document node whose Kry
+path, node name, key, or DOM id matches `query`.
+
+`findWebElement(target, query)` returns the mounted DOM element whose Kry path,
+node name, key, or DOM id matches `query`.
+
+`GetRoutePath()`, `GetRouteHash()`, and `GetRouteVersion()` expose browser route
+state to generated logic. `PushRoute(path)` and `ReplaceRoute(path)` update
+native browser history when available and use the same in-memory route state in
+non-browser tests.
+
 ## Current Limits
 
-- `mount()` currently rebuilds the DOM from the frame; keyed reconciliation is
-  the next step.
-- Event handling is click-to-`QueueTap` only in this first slice.
+- `renderWebDocument()` reuses DOM nodes by tag and Kry path, and nests nodes
+  beneath their Kry parent when the parent is present in the frame.
+- Route helpers expose path/hash changes, but there is not yet a declarative
+  `.kry` route-to-node mapping.
+- Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
+  and `on_change(value)` actions in this slice.
 - KSS parsing and compiled style tables are not implemented yet.
 - Full form value synchronization and ARIA snapshots remain pending.

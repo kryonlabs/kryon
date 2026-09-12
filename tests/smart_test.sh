@@ -51,7 +51,9 @@ needs_scroll=0
 needs_focus=0
 needs_surface=0
 needs_style=0
+needs_style_sheet=0
 needs_text_policy=0
+needs_text_input_policy=0
 needs_examples_syntax=0
 needs_go_runtime=0
 needs_k2c_syntax=0
@@ -290,8 +292,22 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
+        runtime/style_sheet.kry|include/ui_style_sheet.h|src/ui/style_sheet.c|src/ui/style_picker.c|tests/style_sheet_policy_test.c|tests/style_pack_registry_test.c|tests/style_picker_test.c)
+            needs_style_sheet=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
         runtime/text.kry|runtime/style.kry|runtime/surface.kry|tests/text_policy_test.c)
             needs_text_policy=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
+        runtime/text_input.kry|src/ui/ui.c|tests/text_input_policy_test.c)
+            needs_text_input_policy=1
             interesting=1
             ;;
     esac
@@ -500,8 +516,14 @@ fi
 if [ "$needs_style" -eq 1 ]; then
     targets="$targets style-policy-test"
 fi
+if [ "$needs_style_sheet" -eq 1 ]; then
+    targets="$targets style-sheet-policy-test style-pack-registry-test style-picker-test"
+fi
 if [ "$needs_text_policy" -eq 1 ]; then
     targets="$targets text-policy-test"
+fi
+if [ "$needs_text_input_policy" -eq 1 ]; then
+    targets="$targets text-input-policy-test"
 fi
 if [ "$needs_examples_syntax" -eq 1 ]; then
     targets="$targets examples-syntax-test examples-manifest-check"

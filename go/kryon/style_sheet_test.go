@@ -59,3 +59,81 @@ func TestStyleSheetCascadeInGo(t *testing.T) {
 		t.Fatalf("base opacity was not retained: %v", result.Opacity)
 	}
 }
+
+func TestStylePackRegistryInGo(t *testing.T) {
+	button := StyleSheet_StyleDefaultSelector()
+	button.Kind = StyleSheet_StyleKindButton()
+
+	vanilla := []StyleRule{{
+		Selector: button,
+		State:    StyleSheet_StyleStateAny(),
+		Style: StyleData{
+			Fields:     uint32(StyleBackground),
+			Background: 0x111111ff,
+		},
+	}}
+	glow := []StyleRule{{
+		Selector: button,
+		State:    StyleSheet_StyleStateAny(),
+		Style: StyleData{
+			Fields:     uint32(StyleBackground),
+			Background: 0x222222ff,
+		},
+	}}
+
+	ClearStylePacks()
+	defer ClearStylePacks()
+	version := StylePackVersion()
+	base := StyleData{Fields: uint32(StyleOpacity), Opacity: 1}
+	facts := StyleSheet_StyleControlFacts(StyleSheet_StyleKindButton(), 0, 0,
+		int32(ButtonToneNeutral), int32(ButtonEmphasisSoft),
+		int32(ControlSizeMedium), int32(ButtonStateNormal))
+
+	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0 || resolved.Opacity != 1 {
+		t.Fatalf("unstyled active resolution changed base: %#v", resolved)
+	}
+	if RegisterStylePack(StylePack{}) {
+		t.Fatal("empty style pack registered")
+	}
+	if StylePackVersion() != version {
+		t.Fatal("failed registration changed version")
+	}
+	if !RegisterStylePack(StylePack{ID: "vanilla", Label: "Vanilla", Sheet: vanilla}) {
+		t.Fatal("vanilla pack did not register")
+	}
+	if GetActiveStylePackID() != "vanilla" {
+		t.Fatalf("first pack was not active: %q", GetActiveStylePackID())
+	}
+	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
+		t.Fatalf("vanilla did not resolve: 0x%08x", resolved.Background)
+	}
+	if !RegisterStylePack(StylePack{ID: "glow", Label: "Glow", Sheet: glow}) {
+		t.Fatal("glow pack did not register")
+	}
+	if !SetActiveStylePack("glow") {
+		t.Fatal("glow pack did not activate")
+	}
+	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x222222ff {
+		t.Fatalf("glow did not resolve: 0x%08x", resolved.Background)
+	}
+	options := GetStylePackOptions()
+	if len(options) != 2 || options[0].Active || !options[1].Active {
+		t.Fatalf("bad options: %#v", options)
+	}
+	if !RegisterStylePack(StylePack{ID: "glow", Label: "Glow Updated", Sheet: vanilla}) {
+		t.Fatal("replacement glow pack did not register")
+	}
+	if resolved := ResolveActiveStyle(base, facts, int32(ButtonStateNormal)); resolved.Background != 0x111111ff {
+		t.Fatalf("replacement active pack did not resolve: 0x%08x", resolved.Background)
+	}
+}
+
+func TestStylePickerEmptyRegistryInGo(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+
+	r := New(AppConfig{}).(*runtime)
+	if r.StylePicker(StylePickerProps{Bounds: NewRectangle(0, 0, 120, 28), ID: 42}) {
+		t.Fatal("empty style picker reported a change")
+	}
+}

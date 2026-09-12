@@ -1249,6 +1249,7 @@ type Runtime interface {
 	Slider(SliderProps) bool
 	Input(InputProps) bool
 	Dropdown(args ...any) bool
+	StylePicker(StylePickerProps) bool
 	Column(ColumnProps)
 	Row(ColumnProps)
 	Stack(ColumnProps)

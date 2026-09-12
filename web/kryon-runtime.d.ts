@@ -55,6 +55,8 @@ export interface WebDocumentNode {
   tag: string;
   key: string;
   name: string;
+  path: string;
+  parentPath: string;
   domId: string;
   classes: string[];
   text: string;
@@ -65,7 +67,15 @@ export interface WebDocumentNode {
   role: string;
   ariaLabel: string;
   onClick: string;
+  onInput: string;
+  onChange: string;
   action: (() => unknown) | null;
+  inputAction: ((value: unknown) => unknown) | null;
+  changeAction: ((value: unknown) => unknown) | null;
+  pageTitle: string;
+  pageDescription: string;
+  pageCanonicalURL: string;
+  pageThemeColor: string;
   bounds: { x: number; y: number; width: number; height: number };
   hasBounds: boolean;
   state: {
@@ -82,6 +92,12 @@ export interface WebDocumentNode {
 export interface WebDocumentFrame {
   app: AppMeta | null;
   nodes: WebDocumentNode[];
+  metadata: {
+    title: string;
+    description: string;
+    canonicalURL: string;
+    themeColor: string;
+  };
 }
 
 export interface Ref<T = unknown> {
@@ -138,6 +154,9 @@ export function ref<T>(object: Record<string, T>, key: string): Ref<T>;
 export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
+export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
+export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
+export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
 export function Color(r?: number, g?: number, b?: number, a?: number): ColorValue;
 export function NewVector2(x?: number, y?: number): { x: number; y: number };
@@ -171,6 +190,15 @@ export function GetThemeCircle(): ColorValue;
 export function GetThemeIcon(): ColorValue;
 export function GetThemeLink(): ColorValue;
 export function SystemThemePrefersDark(): boolean;
+export function SetPageTitle(title: string): void;
+export function SetPageDescription(description: string): void;
+export function SetPageCanonicalURL(url: string): void;
+export function SetPageThemeColor(color: ColorValue | string): void;
+export function GetRoutePath(): string;
+export function GetRouteHash(): string;
+export function GetRouteVersion(): number;
+export function PushRoute(path: string): string;
+export function ReplaceRoute(path: string): string;
 export function Fade(color: ColorValue, alpha: number): ColorValue;
 export function DarkenColor(color: ColorValue, amount: number): ColorValue;
 export function LightenColor(color: ColorValue, amount: number): ColorValue;

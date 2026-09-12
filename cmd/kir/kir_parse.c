@@ -444,6 +444,7 @@ typedef struct UiBlock {
     char widget[KIR_NAME_MAX];
     char name[KIR_NAME_MAX];
     char path[KIR_TEXT_MAX];
+    char parent_path[KIR_TEXT_MAX];
     char props[KIR_TEXT_MAX];
     char dom_tag[KIR_NAME_MAX];
     char dom_id[KIR_NAME_MAX];
@@ -451,6 +452,8 @@ typedef struct UiBlock {
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
+    char dom_on_input[KIR_NAME_MAX];
+    char dom_on_change[KIR_NAME_MAX];
     int close_depth;
     int opened;
     int emits_end;
@@ -674,6 +677,16 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "on_input") == 0) {
+        snprintf(block->dom_on_input, sizeof(block->dom_on_input), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_change") == 0) {
+        snprintf(block->dom_on_change, sizeof(block->dom_on_change), "%s",
+                 value);
+        return 1;
+    }
     return 0;
 }
 
@@ -684,6 +697,10 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
         return;
     snprintf(statement->node_name, sizeof(statement->node_name), "%s",
              block->name);
+    snprintf(statement->node_path, sizeof(statement->node_path), "%s",
+             block->path);
+    snprintf(statement->node_parent_path, sizeof(statement->node_parent_path),
+             "%s", block->parent_path);
     snprintf(statement->dom_tag, sizeof(statement->dom_tag), "%s",
              block->dom_tag);
     snprintf(statement->dom_id, sizeof(statement->dom_id), "%s",
@@ -696,6 +713,10 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_aria_label);
     snprintf(statement->dom_on_click, sizeof(statement->dom_on_click), "%s",
              block->dom_on_click);
+    snprintf(statement->dom_on_input, sizeof(statement->dom_on_input), "%s",
+             block->dom_on_input);
+    snprintf(statement->dom_on_change, sizeof(statement->dom_on_change), "%s",
+             block->dom_on_change);
 }
 
 static void
@@ -2926,14 +2947,18 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
                         snprintf(parent_path, sizeof(parent_path), "%s",
                                  ui_blocks[ui_block_count - 2].path);
+                        snprintf(block->parent_path, sizeof(block->parent_path),
+                                 "%s", parent_path);
                         snprintf(block->path, sizeof(block->path), "%.3000s/%.900s",
                                  parent_path,
                                  block_name[0] != '\0' ? block_name : block_widget);
                     }
-                    else
+                    else {
+                        block->parent_path[0] = '\0';
                         snprintf(block->path, sizeof(block->path), "%.3000s/%.900s",
                                  fn != NULL ? fn->name : "ui",
                                  block_name[0] != '\0' ? block_name : block_widget);
+                    }
                     block->close_depth = depth + 1;
                     depth++;
                     continue;

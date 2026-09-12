@@ -2482,21 +2482,21 @@ int
 ui_text_navigation_key(int multiline)
 {
     if(IsKeyPressed(KEY_LEFT))
-        return KEY_LEFT;
+        return TextNavLeft();
     if(IsKeyPressed(KEY_RIGHT))
-        return KEY_RIGHT;
+        return TextNavRight();
     if(IsKeyPressed(KEY_HOME))
-        return KEY_HOME;
+        return TextNavHome();
     if(IsKeyPressed(KEY_END))
-        return KEY_END;
+        return TextNavEnd();
     if(multiline && IsKeyPressed(KEY_UP))
-        return KEY_UP;
+        return TextNavUp();
     if(multiline && IsKeyPressed(KEY_DOWN))
-        return KEY_DOWN;
+        return TextNavDown();
     if(multiline && IsKeyPressed(KEY_PAGE_UP))
-        return KEY_PAGE_UP;
+        return TextNavPageUp();
     if(multiline && IsKeyPressed(KEY_PAGE_DOWN))
-        return KEY_PAGE_DOWN;
+        return TextNavPageDown();
     return 0;
 }
 
@@ -2506,65 +2506,57 @@ ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor)
     int start;
     int end;
     int target;
+    TextNavigationDecision decision;
 
     if(input.text == NULL || anchor == NULL || cursor == NULL)
         return 0;
     start = *anchor < *cursor ? *anchor : *cursor;
     end = *anchor > *cursor ? *anchor : *cursor;
     target = *cursor;
+    decision = TextNavigationDecisionFor(
+        input.key, input.area != NULL, input.shift != 0, input.modifier != 0,
+        input.secure != 0, end > start);
+    if(!decision.consumed)
+        return 0;
 
-    switch(input.key) {
-    case KEY_LEFT:
-        if(!input.shift && end > start)
-            target = start;
-        else if(input.modifier)
-            target = input.secure ? 0 : ui_text_word_left(input.text, target);
-        else
-            target = ui_utf8_prev_offset(input.text, target);
-        break;
-    case KEY_RIGHT:
-        if(!input.shift && end > start)
-            target = end;
-        else if(input.modifier)
-            target = input.secure
-                ? (int)strlen(input.text)
-                : ui_text_word_right(input.text, target);
-        else
-            target = ui_utf8_next_offset(input.text, target);
-        break;
-    case KEY_HOME:
-        target = input.area != NULL && !input.modifier
-            ? ui_text_line_start(input.text, target) : 0;
-        break;
-    case KEY_END:
-        target = input.area != NULL && !input.modifier
-            ? ui_text_line_end(input.text, target)
-            : (int)strlen(input.text);
-        break;
-    case KEY_UP:
-    case KEY_DOWN:
+    if(decision.collapse_selection_start) {
+        target = start;
+    } else if(decision.collapse_selection_end) {
+        target = end;
+    } else if(decision.document_edge < 0) {
+        target = 0;
+    } else if(decision.document_edge > 0) {
+        target = (int)strlen(input.text);
+    } else if(decision.line_edge < 0) {
+        target = ui_text_line_start(input.text, target);
+    } else if(decision.line_edge > 0) {
+        target = ui_text_line_end(input.text, target);
+    } else if(decision.word_direction < 0) {
+        target = ui_text_word_left(input.text, target);
+    } else if(decision.word_direction > 0) {
+        target = ui_text_word_right(input.text, target);
+    } else if(decision.char_direction < 0) {
+        target = ui_utf8_prev_offset(input.text, target);
+    } else if(decision.char_direction > 0) {
+        target = ui_utf8_next_offset(input.text, target);
+    } else if(decision.vertical_direction != 0) {
         if(input.area == NULL)
             return 0;
-        target = ui_text_move_vertical(
-            input.text, target, input.font,
-            input.key == KEY_UP ? -1 : 1);
-        break;
-    case KEY_PAGE_UP:
-    case KEY_PAGE_DOWN:
+        target = ui_text_move_vertical(input.text, target, input.font,
+                                       decision.vertical_direction);
+    } else if(decision.page_direction != 0) {
         if(input.area == NULL)
             return 0;
-        target = ui_text_area_move_page(
-            *input.area, target, input.key == KEY_PAGE_UP ? -1 : 1);
-        break;
-    default:
+        target = ui_text_area_move_page(*input.area, target,
+                                        decision.page_direction);
+    } else {
         return 0;
     }
     *cursor = target;
-    if(!input.shift)
+    if(!decision.extend_selection)
         *anchor = target;
     return 1;
 }
-
 static int
 ui_text_area_line_font(const char *text, int start, int end, int base_font)
 {

@@ -124,3 +124,27 @@ StylePackVersion(void)
 {
     return style_pack_version;
 }
+
+StyleData
+ResolveStyle(const StyleSheet *sheet, StyleData base, StyleFacts facts,
+             int active_state)
+{
+    StyleCascade cascade;
+
+    if(sheet == NULL || sheet->rules == NULL || sheet->rule_count <= 0)
+        return base;
+
+    cascade = BeginStyleCascade(base);
+    for(int i = 0; i < sheet->rule_count; i++)
+        cascade = ApplyStyleRule(cascade, sheet->rules[i], facts, active_state);
+    return FinishStyleCascade(cascade);
+}
+
+StyleData
+ResolveActiveStyle(StyleData base, StyleFacts facts, int active_state)
+{
+    const StylePack *pack = GetActiveStylePack();
+
+    return ResolveStyle(pack != NULL ? pack->sheet : NULL, base, facts,
+                        active_state);
+}

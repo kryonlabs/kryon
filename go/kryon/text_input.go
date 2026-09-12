@@ -17,6 +17,64 @@ type TextFieldScroll struct {
 	TextOriginX int32
 }
 
+type TextNavigationDecision struct {
+	Consumed               bool
+	CollapseSelectionStart bool
+	CollapseSelectionEnd   bool
+	CharDirection          int32
+	WordDirection          int32
+	DocumentEdge           int32
+	LineEdge               int32
+	VerticalDirection      int32
+	PageDirection          int32
+	ExtendSelection        bool
+}
+
+func TextInput_TextNavNone() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func TextInput_TextNavLeft() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func TextInput_TextNavRight() int32 {
+	var value_0 int32 = 2
+	return value_0
+}
+
+func TextInput_TextNavHome() int32 {
+	var value_0 int32 = 3
+	return value_0
+}
+
+func TextInput_TextNavEnd() int32 {
+	var value_0 int32 = 4
+	return value_0
+}
+
+func TextInput_TextNavUp() int32 {
+	var value_0 int32 = 5
+	return value_0
+}
+
+func TextInput_TextNavDown() int32 {
+	var value_0 int32 = 6
+	return value_0
+}
+
+func TextInput_TextNavPageUp() int32 {
+	var value_0 int32 = 7
+	return value_0
+}
+
+func TextInput_TextNavPageDown() int32 {
+	var value_0 int32 = 8
+	return value_0
+}
+
 func TextInput_TextInputMetricsFor(font int32, padding_x int32, padding_y int32, line_gap int32, default_font int32, default_padding_x int32, default_padding_y int32, default_line_gap int32) TextInputMetrics {
 	var metrics TextInputMetrics = TextInputMetrics{}
 	var value_0 int32 = font
@@ -226,4 +284,202 @@ func TextInput_TextFieldRevealScroll(scroll int32, max_scroll int32, clip_width 
 	}
 	var value_32 int32 = scroll
 	return value_32
+}
+
+func TextInput_TextNavigationDecisionFor(key int32, multiline bool, shift bool, modifier bool, secure bool, has_selection bool) TextNavigationDecision {
+	var decision TextNavigationDecision = TextNavigationDecision{}
+	var value_0 bool = shift
+	decision.ExtendSelection = value_0
+	var value_1 int32 = key
+	var value_2 int32 = TextInput_TextNavLeft()
+	var value_3 bool = value_1 == value_2
+	if value_3 {
+		var value_4 bool = true
+		decision.Consumed = value_4
+		var value_5 bool = shift
+		var value_6 bool = !value_5
+		var value_7 bool = value_6
+		if value_7 {
+			var value_8 bool = has_selection
+			value_7 = value_8
+		}
+		if value_7 {
+			var value_9 bool = true
+			decision.CollapseSelectionStart = value_9
+		} else {
+			var value_10 bool = modifier
+			var value_11 bool = value_10
+			if value_11 {
+				var value_12 bool = secure
+				value_11 = value_12
+			}
+			if value_11 {
+				var value_13 int32 = -1
+				decision.DocumentEdge = value_13
+			} else {
+				var value_14 bool = modifier
+				if value_14 {
+					var value_15 int32 = -1
+					decision.WordDirection = value_15
+				} else {
+					var value_16 int32 = -1
+					decision.CharDirection = value_16
+				}
+			}
+		}
+		var value_17 TextNavigationDecision = decision
+		return value_17
+	}
+	var value_18 int32 = key
+	var value_19 int32 = TextInput_TextNavRight()
+	var value_20 bool = value_18 == value_19
+	if value_20 {
+		var value_21 bool = true
+		decision.Consumed = value_21
+		var value_22 bool = shift
+		var value_23 bool = !value_22
+		var value_24 bool = value_23
+		if value_24 {
+			var value_25 bool = has_selection
+			value_24 = value_25
+		}
+		if value_24 {
+			var value_26 bool = true
+			decision.CollapseSelectionEnd = value_26
+		} else {
+			var value_27 bool = modifier
+			var value_28 bool = value_27
+			if value_28 {
+				var value_29 bool = secure
+				value_28 = value_29
+			}
+			if value_28 {
+				var value_30 int32 = 1
+				decision.DocumentEdge = value_30
+			} else {
+				var value_31 bool = modifier
+				if value_31 {
+					var value_32 int32 = 1
+					decision.WordDirection = value_32
+				} else {
+					var value_33 int32 = 1
+					decision.CharDirection = value_33
+				}
+			}
+		}
+		var value_34 TextNavigationDecision = decision
+		return value_34
+	}
+	var value_35 int32 = key
+	var value_36 int32 = TextInput_TextNavHome()
+	var value_37 bool = value_35 == value_36
+	if value_37 {
+		var value_38 bool = true
+		decision.Consumed = value_38
+		var value_39 bool = multiline
+		var value_40 bool = value_39
+		if value_40 {
+			var value_41 bool = modifier
+			var value_42 bool = !value_41
+			value_40 = value_42
+		}
+		if value_40 {
+			var value_43 int32 = -1
+			decision.LineEdge = value_43
+		} else {
+			var value_44 int32 = -1
+			decision.DocumentEdge = value_44
+		}
+		var value_45 TextNavigationDecision = decision
+		return value_45
+	}
+	var value_46 int32 = key
+	var value_47 int32 = TextInput_TextNavEnd()
+	var value_48 bool = value_46 == value_47
+	if value_48 {
+		var value_49 bool = true
+		decision.Consumed = value_49
+		var value_50 bool = multiline
+		var value_51 bool = value_50
+		if value_51 {
+			var value_52 bool = modifier
+			var value_53 bool = !value_52
+			value_51 = value_53
+		}
+		if value_51 {
+			var value_54 int32 = 1
+			decision.LineEdge = value_54
+		} else {
+			var value_55 int32 = 1
+			decision.DocumentEdge = value_55
+		}
+		var value_56 TextNavigationDecision = decision
+		return value_56
+	}
+	var value_57 int32 = key
+	var value_58 int32 = TextInput_TextNavUp()
+	var value_59 bool = value_57 == value_58
+	var value_60 bool = value_59
+	if value_60 {
+		var value_61 bool = multiline
+		value_60 = value_61
+	}
+	if value_60 {
+		var value_62 bool = true
+		decision.Consumed = value_62
+		var value_63 int32 = -1
+		decision.VerticalDirection = value_63
+		var value_64 TextNavigationDecision = decision
+		return value_64
+	}
+	var value_65 int32 = key
+	var value_66 int32 = TextInput_TextNavDown()
+	var value_67 bool = value_65 == value_66
+	var value_68 bool = value_67
+	if value_68 {
+		var value_69 bool = multiline
+		value_68 = value_69
+	}
+	if value_68 {
+		var value_70 bool = true
+		decision.Consumed = value_70
+		var value_71 int32 = 1
+		decision.VerticalDirection = value_71
+		var value_72 TextNavigationDecision = decision
+		return value_72
+	}
+	var value_73 int32 = key
+	var value_74 int32 = TextInput_TextNavPageUp()
+	var value_75 bool = value_73 == value_74
+	var value_76 bool = value_75
+	if value_76 {
+		var value_77 bool = multiline
+		value_76 = value_77
+	}
+	if value_76 {
+		var value_78 bool = true
+		decision.Consumed = value_78
+		var value_79 int32 = -1
+		decision.PageDirection = value_79
+		var value_80 TextNavigationDecision = decision
+		return value_80
+	}
+	var value_81 int32 = key
+	var value_82 int32 = TextInput_TextNavPageDown()
+	var value_83 bool = value_81 == value_82
+	var value_84 bool = value_83
+	if value_84 {
+		var value_85 bool = multiline
+		value_84 = value_85
+	}
+	if value_84 {
+		var value_86 bool = true
+		decision.Consumed = value_86
+		var value_87 int32 = 1
+		decision.PageDirection = value_87
+		var value_88 TextNavigationDecision = decision
+		return value_88
+	}
+	var value_89 TextNavigationDecision = decision
+	return value_89
 }

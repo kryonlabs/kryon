@@ -16,6 +16,55 @@ TextFieldScroll :: struct {
     text_origin_x: i32
 }
 
+TextNavigationDecision :: struct {
+    consumed: bool
+    collapse_selection_start: bool
+    collapse_selection_end: bool
+    char_direction: i32
+    word_direction: i32
+    document_edge: i32
+    line_edge: i32
+    vertical_direction: i32
+    page_direction: i32
+    extend_selection: bool
+}
+
+TextNavNone :: () -> i32 #export {
+    return 0
+}
+
+TextNavLeft :: () -> i32 #export {
+    return 1
+}
+
+TextNavRight :: () -> i32 #export {
+    return 2
+}
+
+TextNavHome :: () -> i32 #export {
+    return 3
+}
+
+TextNavEnd :: () -> i32 #export {
+    return 4
+}
+
+TextNavUp :: () -> i32 #export {
+    return 5
+}
+
+TextNavDown :: () -> i32 #export {
+    return 6
+}
+
+TextNavPageUp :: () -> i32 #export {
+    return 7
+}
+
+TextNavPageDown :: () -> i32 #export {
+    return 8
+}
+
 TextInputMetricsFor :: (font: i32, padding_x: i32, padding_y: i32,
     line_gap: i32, default_font: i32, default_padding_x: i32,
     default_padding_y: i32, default_line_gap: i32) -> TextInputMetrics #export {
@@ -102,4 +151,84 @@ TextFieldRevealScroll :: (scroll: i32, max_scroll: i32, clip_width: i32,
         return max_scroll
     }
     return scroll
+}
+
+TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
+    modifier: bool, secure: bool, has_selection: bool) -> TextNavigationDecision #export {
+    decision: TextNavigationDecision
+    decision.extend_selection = shift
+
+    if key == TextNavLeft() {
+        decision.consumed = true
+        if !shift && has_selection {
+            decision.collapse_selection_start = true
+        } else if modifier && secure {
+            decision.document_edge = -1
+        } else if modifier {
+            decision.word_direction = -1
+        } else {
+            decision.char_direction = -1
+        }
+        return decision
+    }
+
+    if key == TextNavRight() {
+        decision.consumed = true
+        if !shift && has_selection {
+            decision.collapse_selection_end = true
+        } else if modifier && secure {
+            decision.document_edge = 1
+        } else if modifier {
+            decision.word_direction = 1
+        } else {
+            decision.char_direction = 1
+        }
+        return decision
+    }
+
+    if key == TextNavHome() {
+        decision.consumed = true
+        if multiline && !modifier {
+            decision.line_edge = -1
+        } else {
+            decision.document_edge = -1
+        }
+        return decision
+    }
+
+    if key == TextNavEnd() {
+        decision.consumed = true
+        if multiline && !modifier {
+            decision.line_edge = 1
+        } else {
+            decision.document_edge = 1
+        }
+        return decision
+    }
+
+    if key == TextNavUp() && multiline {
+        decision.consumed = true
+        decision.vertical_direction = -1
+        return decision
+    }
+
+    if key == TextNavDown() && multiline {
+        decision.consumed = true
+        decision.vertical_direction = 1
+        return decision
+    }
+
+    if key == TextNavPageUp() && multiline {
+        decision.consumed = true
+        decision.page_direction = -1
+        return decision
+    }
+
+    if key == TextNavPageDown() && multiline {
+        decision.consumed = true
+        decision.page_direction = 1
+        return decision
+    }
+
+    return decision
 }
