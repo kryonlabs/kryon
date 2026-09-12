@@ -77,6 +77,14 @@ done
 cp "$root"/web/*.js "$work/out/"
 printf '%s\n' '{"type":"module"}' > "$work/out/package.json"
 
+if rg -n '\b(BeginCanvas|EndCanvas)\b' "$work/out" >/tmp/kryon-k2js-canvas-lowered.$$ 2>/dev/null; then
+    cat /tmp/kryon-k2js-canvas-lowered.$$ >&2
+    rm -f /tmp/kryon-k2js-canvas-lowered.$$
+    echo "k2js output must use canonical Canvas, not lowered canvas scope names" >&2
+    exit 1
+fi
+rm -f /tmp/kryon-k2js-canvas-lowered.$$
+
 cat > "$work/runner.mjs" <<'EOF'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
