@@ -1207,6 +1207,9 @@ function webNodeFromWidget(item, index) {
     onInvalid: meta.onInvalid === undefined || meta.onInvalid === null ? "" : String(meta.onInvalid),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
     onReset: meta.onReset === undefined || meta.onReset === null ? "" : String(meta.onReset),
+    onToggle: meta.onToggle === undefined || meta.onToggle === null ? "" : String(meta.onToggle),
+    onClose: meta.onClose === undefined || meta.onClose === null ? "" : String(meta.onClose),
+    onCancel: meta.onCancel === undefined || meta.onCancel === null ? "" : String(meta.onCancel),
     onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
     onBlur: meta.onBlur === undefined || meta.onBlur === null ? "" : String(meta.onBlur),
     onScroll: meta.onScroll === undefined || meta.onScroll === null ? "" : String(meta.onScroll),
@@ -1230,6 +1233,9 @@ function webNodeFromWidget(item, index) {
     invalidAction: typeof meta.invalidAction === "function" ? meta.invalidAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
     resetAction: typeof meta.resetAction === "function" ? meta.resetAction : null,
+    toggleAction: typeof meta.toggleAction === "function" ? meta.toggleAction : null,
+    closeAction: typeof meta.closeAction === "function" ? meta.closeAction : null,
+    cancelAction: typeof meta.cancelAction === "function" ? meta.cancelAction : null,
     focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
     blurAction: typeof meta.blurAction === "function" ? meta.blurAction : null,
     scrollAction: typeof meta.scrollAction === "function" ? meta.scrollAction : null,
@@ -2024,6 +2030,29 @@ function bindNodeEvents(el) {
     if (docNode?.resetAction)
       docNode.resetAction(webFormValuesFromRoot(el.__kryMountRoot));
   });
+  el.addEventListener("toggle", () => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    interactiveState({ open: !!el.open || !!el.popoverOpen });
+    if (docNode.toggleAction)
+      docNode.toggleAction();
+  });
+  el.addEventListener("close", () => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    interactiveState({ open: false });
+    if (docNode.closeAction)
+      docNode.closeAction();
+  });
+  el.addEventListener("cancel", () => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    if (docNode.cancelAction)
+      docNode.cancelAction();
+  });
 }
 
 function webElementValue(el, docNode = el?.__kryDocNode) {
@@ -2233,6 +2262,18 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnReset = docNode.onReset;
   else
     delete el.dataset.kryOnReset;
+  if (docNode.onToggle)
+    el.dataset.kryOnToggle = docNode.onToggle;
+  else
+    delete el.dataset.kryOnToggle;
+  if (docNode.onClose)
+    el.dataset.kryOnClose = docNode.onClose;
+  else
+    delete el.dataset.kryOnClose;
+  if (docNode.onCancel)
+    el.dataset.kryOnCancel = docNode.onCancel;
+  else
+    delete el.dataset.kryOnCancel;
   if (docNode.onFocus)
     el.dataset.kryOnFocus = docNode.onFocus;
   else

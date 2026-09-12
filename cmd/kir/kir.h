@@ -183,6 +183,9 @@ typedef struct KirStmt {
     char dom_on_invalid[KIR_NAME_MAX];  /* logic function bound to invalid(value) */
     char dom_on_submit[KIR_NAME_MAX];   /* logic function bound to submit */
     char dom_on_reset[KIR_NAME_MAX];    /* logic function bound to reset */
+    char dom_on_toggle[KIR_NAME_MAX];   /* logic function bound to toggle */
+    char dom_on_close[KIR_NAME_MAX];    /* logic function bound to close */
+    char dom_on_cancel[KIR_NAME_MAX];   /* logic function bound to cancel */
     char dom_on_focus[KIR_NAME_MAX];    /* logic function bound to focus */
     char dom_on_blur[KIR_NAME_MAX];     /* logic function bound to blur */
     char dom_on_scroll[KIR_NAME_MAX];   /* logic function bound to scroll(value) */

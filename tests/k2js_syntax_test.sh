@@ -105,6 +105,18 @@ blur_search :: () -> int {
     count += 1000000
     return count
 }
+toggle_search :: () -> int {
+    count += 3000000
+    return count
+}
+close_search :: () -> int {
+    count += 4000000
+    return count
+}
+cancel_search :: () -> int {
+    count += 5000000
+    return count
+}
 
 DirectAction :: (x: float) -> bool {
     return Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
@@ -203,6 +215,9 @@ Scene :: (viewport: Rectangle) #ui {
             dom_for = "search-field"
             popover = "manual"
             hidden = true
+            on_toggle = toggle_search
+            on_close = close_search
+            on_cancel = cancel_search
         }
         count += 1
     }

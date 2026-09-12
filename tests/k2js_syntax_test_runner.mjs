@@ -313,6 +313,9 @@ assert.equal(webDoc.nodes[3].onSubmit, "submit_search");
 assert.equal(webDoc.nodes[3].onFocus, "focus_search");
 assert.equal(webDoc.nodes[3].onBlur, "blur_search");
 assert.equal(webDoc.nodes[3].value, "label");
+assert.equal(webDoc.nodes[4].onToggle, "toggle_search");
+assert.equal(webDoc.nodes[4].onClose, "close_search");
+assert.equal(webDoc.nodes[4].onCancel, "cancel_search");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].role, "button");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].description, "Runs the host action");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[3].role, "textbox");
@@ -443,19 +446,41 @@ function fakeDocument() {
       },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       reset() { if (this.onreset) this.onreset({ preventDefault() {} }); },
-      showModal() {
-        this.open = true;
-        this.setAttribute("open", "");
-      },
+      showModal() { this.toggle(true); },
       close(returnValue = "") {
         this.returnValue = returnValue;
         this.open = false;
         this.removeAttribute("open");
+        if (this.onclose)
+          this.onclose();
       },
-      showPopover() { this.popoverOpen = true; },
-      hidePopover() { this.popoverOpen = false; },
+      toggle(open = !this.open) {
+        this.open = !!open;
+        if (this.open)
+          this.setAttribute("open", "");
+        else
+          this.removeAttribute("open");
+        if (this.ontoggle)
+          this.ontoggle();
+      },
+      cancel() {
+        if (this.oncancel)
+          this.oncancel({ preventDefault() {} });
+      },
+      showPopover() {
+        this.popoverOpen = true;
+        if (this.ontoggle)
+          this.ontoggle();
+      },
+      hidePopover() {
+        this.popoverOpen = false;
+        if (this.ontoggle)
+          this.ontoggle();
+      },
       togglePopover(force) {
         this.popoverOpen = force === undefined ? !this.popoverOpen : !!force;
+        if (this.ontoggle)
+          this.ontoggle();
       },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
       mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
@@ -595,12 +620,31 @@ function fakeDocument() {
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);
+    const nativeEvents = [];
     runtime.widget(nativeRt, "Section", { open: true }, null,
-      { nodeName: "details", path: "Page/details", tag: "details" });
+      {
+        nodeName: "details",
+        path: "Page/details",
+        tag: "details",
+        toggleAction() { nativeEvents.push("details-toggle"); }
+      });
     runtime.widget(nativeRt, "Section", {}, null,
-      { nodeName: "dialog", path: "Page/dialog", tag: "dialog" });
+      {
+        nodeName: "dialog",
+        path: "Page/dialog",
+        tag: "dialog",
+        closeAction() { nativeEvents.push("dialog-close"); },
+        cancelAction() { nativeEvents.push("dialog-cancel"); }
+      });
     runtime.widget(nativeRt, "Section", {}, null,
-      { nodeName: "popover", path: "Page/popover", tag: "div", popover: "auto", data: { menu: "main" } });
+      {
+        nodeName: "popover",
+        path: "Page/popover",
+        tag: "div",
+        popover: "auto",
+        data: { menu: "main" },
+        toggleAction() { nativeEvents.push("popover-toggle"); }
+      });
     runtime.widget(nativeRt, "Button", { label: "Menu" }, null,
       {
         nodeName: "popoverButton",
@@ -624,15 +668,18 @@ function fakeDocument() {
     assert.equal(popoverButton.attributes.popovertargetaction, "toggle");
     assert.equal(runtime.webDOMQuery(nativeTarget, "[popover=auto]").element, popover);
     assert.equal(runtime.webDOMQuery(nativeTarget, "[popoverTarget=popover]").element, popoverButton);
-    assert.equal(runtime.webDOMClose(nativeTarget, "details"), true);
+    details.toggle(false);
     assert.equal(details.open, false);
     assert.equal(runtime.webDOMGetState(nativeTarget, "details", "open"), false);
+    assert.deepEqual(nativeEvents, ["details-toggle"]);
     assert.equal(runtime.webDOMShowModal(nativeTarget, "dialog"), true);
     assert.equal(dialog.open, true);
     assert.equal(runtime.webDOMQuery(nativeTarget, "Section[open=true]").element, dialog);
+    dialog.cancel();
     assert.equal(runtime.webDOMClose(nativeTarget, "dialog", "accepted"), true);
     assert.equal(dialog.open, false);
     assert.equal(dialog.returnValue, "accepted");
+    assert.deepEqual(nativeEvents.slice(1), ["dialog-cancel", "dialog-close"]);
     assert.equal(runtime.webDOMShowPopover(nativeTarget, "[data-menu=main]"), true);
     assert.equal(popover.popoverOpen, true);
     assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), true);
@@ -640,6 +687,7 @@ function fakeDocument() {
     assert.equal(popover.popoverOpen, false);
     assert.equal(runtime.webDOMHidePopover(nativeTarget, "popover"), true);
     assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), false);
+    assert.deepEqual(nativeEvents.slice(3), ["popover-toggle", "popover-toggle", "popover-toggle"]);
 
     const pointerEvents = [];
     const pointerRt = runtime.createRuntime();
@@ -986,6 +1034,9 @@ function fakeDocument() {
     assert.equal(searchLabel.tagName, "LABEL");
     assert.equal(searchLabel.attributes.for, "search-field");
     assert.equal(searchLabel.attributes.popover, "manual");
+    assert.equal(searchLabel.dataset.kryOnToggle, "toggle_search");
+    assert.equal(searchLabel.dataset.kryOnClose, "close_search");
+    assert.equal(searchLabel.dataset.kryOnCancel, "cancel_search");
     assert.equal(searchLabel.textContent, "Search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");

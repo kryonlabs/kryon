@@ -503,6 +503,9 @@ typedef struct UiBlock {
     char dom_on_invalid[KIR_NAME_MAX];
     char dom_on_submit[KIR_NAME_MAX];
     char dom_on_reset[KIR_NAME_MAX];
+    char dom_on_toggle[KIR_NAME_MAX];
+    char dom_on_close[KIR_NAME_MAX];
+    char dom_on_cancel[KIR_NAME_MAX];
     char dom_on_focus[KIR_NAME_MAX];
     char dom_on_blur[KIR_NAME_MAX];
     char dom_on_scroll[KIR_NAME_MAX];
@@ -1099,6 +1102,21 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "on_toggle") == 0) {
+        snprintf(block->dom_on_toggle, sizeof(block->dom_on_toggle), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_close") == 0) {
+        snprintf(block->dom_on_close, sizeof(block->dom_on_close), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_cancel") == 0) {
+        snprintf(block->dom_on_cancel, sizeof(block->dom_on_cancel), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "on_focus") == 0) {
         snprintf(block->dom_on_focus, sizeof(block->dom_on_focus), "%s",
                  value);
@@ -1307,6 +1325,12 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_submit);
     snprintf(statement->dom_on_reset, sizeof(statement->dom_on_reset), "%s",
              block->dom_on_reset);
+    snprintf(statement->dom_on_toggle, sizeof(statement->dom_on_toggle), "%s",
+             block->dom_on_toggle);
+    snprintf(statement->dom_on_close, sizeof(statement->dom_on_close), "%s",
+             block->dom_on_close);
+    snprintf(statement->dom_on_cancel, sizeof(statement->dom_on_cancel), "%s",
+             block->dom_on_cancel);
     snprintf(statement->dom_on_focus, sizeof(statement->dom_on_focus), "%s",
              block->dom_on_focus);
     snprintf(statement->dom_on_blur, sizeof(statement->dom_on_blur), "%s",

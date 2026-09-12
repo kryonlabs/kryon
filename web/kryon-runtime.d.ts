@@ -139,6 +139,9 @@ export interface WebDocumentNode {
   onInvalid: string;
   onSubmit: string;
   onReset: string;
+  onToggle: string;
+  onClose: string;
+  onCancel: string;
   onFocus: string;
   onBlur: string;
   onScroll: string;
@@ -162,6 +165,9 @@ export interface WebDocumentNode {
   invalidAction: ((value: unknown) => unknown) | null;
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
   resetAction: ((values: Record<string, unknown>) => unknown) | null;
+  toggleAction: (() => unknown) | null;
+  closeAction: (() => unknown) | null;
+  cancelAction: (() => unknown) | null;
   focusAction: (() => unknown) | null;
   blurAction: (() => unknown) | null;
   scrollAction: ((value: number) => unknown) | null;

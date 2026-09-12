@@ -1231,6 +1231,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_on_key[0] ||
            st->dom_on_invalid[0] ||
            st->dom_on_submit[0] || st->dom_on_reset[0] ||
+           st->dom_on_toggle[0] || st->dom_on_close[0] ||
+           st->dom_on_cancel[0] ||
            st->dom_on_focus[0] ||
            st->dom_on_blur[0] || st->dom_on_scroll[0] ||
            st->dom_on_mouse_enter[0] ||
@@ -1478,6 +1480,12 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_web_action(f, m, "onSubmit", "submitAction", st->dom_on_submit, "",
                     &emitted);
     emit_web_action(f, m, "onReset", "resetAction", st->dom_on_reset, "",
+                    &emitted);
+    emit_web_action(f, m, "onToggle", "toggleAction", st->dom_on_toggle, "",
+                    &emitted);
+    emit_web_action(f, m, "onClose", "closeAction", st->dom_on_close, "",
+                    &emitted);
+    emit_web_action(f, m, "onCancel", "cancelAction", st->dom_on_cancel, "",
                     &emitted);
     emit_web_action(f, m, "onFocus", "focusAction", st->dom_on_focus, "",
                     &emitted);
