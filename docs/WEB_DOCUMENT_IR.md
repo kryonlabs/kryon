@@ -267,6 +267,10 @@ The initial tag mapping is intentionally conservative:
 |---|---|
 | `Screen`, `Page` | `main` |
 | `Section` | `section` |
+| `NavigationBar` | `nav` |
+| `Fieldset` | `fieldset` |
+| `Collapsible` | `details` |
+| `Modal` | `dialog` |
 | `Text` | `span` |
 | `Heading` | `h1`-`h6` |
 | `Paragraph`, `ParagraphText` | `p` |
@@ -609,9 +613,9 @@ same in-memory route state in non-browser tests.
   events. Native hover/pressed/focus/open facts are maintained for KSS state
   selectors.
 - KSS parsing exists in C for style-rule tables and in the JS runtime for web
-  DOM style application; k2js embeds resolvable style imports, but package
-  discovery beyond `styles/kryon/<pack>.kss` and every style property are still
-  incremental.
+  DOM style application; k2js embeds resolvable style imports from local files,
+  built-in Kryon packs, and project-local style packages. Package
+  registry/config discovery and every style property are still incremental.
 - Query-based DOM lookup, mutation, commands, event dispatch, geometry, scroll,
   form value lookup, relation lookup, and accessibility snapshots are
   available. Additional per-widget semantic relationships beyond controls,

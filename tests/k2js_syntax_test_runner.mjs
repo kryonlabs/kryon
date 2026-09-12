@@ -853,6 +853,14 @@ function fakeDocument() {
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);
     const nativeEvents = [];
+    runtime.widget(nativeRt, "NavigationBar", {}, null,
+      { nodeName: "nav", path: "Page/nav" });
+    runtime.widget(nativeRt, "Fieldset", {}, null,
+      { nodeName: "fieldset", path: "Page/fieldset" });
+    runtime.widget(nativeRt, "Collapsible", {}, null,
+      { nodeName: "autoDetails", path: "Page/autoDetails" });
+    runtime.widget(nativeRt, "Modal", {}, null,
+      { nodeName: "autoDialog", path: "Page/autoDialog" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -885,14 +893,30 @@ function fakeDocument() {
         popoverTargetAction: "toggle"
       });
     runtime.endFrame(nativeRt);
+    assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").tag, "nav");
+    assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").role, "");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[0].role, "navigation");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[1].role, "group");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
     runtime.renderWebDocument(nativeRt, nativeTarget);
+    const nav = runtime.findWebElement(nativeTarget, "nav");
+    const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
+    const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
+    const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
     const popoverButton = runtime.findWebElement(nativeTarget, "popoverButton");
+    assert.equal(nav.tagName, "NAV");
+    assert.equal(fieldset.tagName, "FIELDSET");
+    assert.equal(autoDetails.tagName, "DETAILS");
+    assert.equal(autoDetails.open, false);
+    assert.equal(autoDialog.tagName, "DIALOG");
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");
     assert.equal(popover.attributes.popover, "auto");

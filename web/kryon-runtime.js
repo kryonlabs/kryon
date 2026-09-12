@@ -1045,6 +1045,14 @@ function widgetTag(item) {
     return "main";
   case "Section":
     return "section";
+  case "NavigationBar":
+    return "nav";
+  case "Fieldset":
+    return "fieldset";
+  case "Collapsible":
+    return "details";
+  case "Modal":
+    return "dialog";
   case "Heading":
     return "h" + Math.max(1, Math.min(6, propNumber(args, "level", 2)));
   case "Paragraph":
@@ -1516,6 +1524,12 @@ function implicitRole(node) {
     return "heading";
   if (node.tag === "main")
     return "main";
+  if (node.tag === "nav")
+    return "navigation";
+  if (node.tag === "fieldset" || node.tag === "details")
+    return "group";
+  if (node.tag === "dialog")
+    return "dialog";
   return "";
 }
 
