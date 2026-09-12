@@ -3430,6 +3430,73 @@ function updateWebElementStateDataset(el, state) {
     delete el.dataset.kryState;
 }
 
+function webDOMGeneratedId(object) {
+  const raw = object?.ref || object?.node?.path || object?.node?.name || object?.node?.key || "node";
+  const text = String(raw).replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "");
+  return "kry-" + (text || "node");
+}
+
+function ensureWebDOMElementId(root, object) {
+  const el = object?.element || null;
+  if (!root || !el)
+    return "";
+  const current = el.id || el.attributes?.id || "";
+  if (current) {
+    if (el.__kryDocNode)
+      el.__kryDocNode.domId = String(current);
+    root.__kryElementsByDomId?.set(String(current), el);
+    return String(current);
+  }
+  const base = webDOMGeneratedId(object);
+  let id = base;
+  let index = 2;
+  while (root.__kryElementsByDomId?.has(id) && root.__kryElementsByDomId.get(id) !== el)
+    id = `${base}-${index++}`;
+  setAttr(el, "id", id);
+  if (el.__kryDocNode)
+    el.__kryDocNode.domId = id;
+  root.__kryElementsByDomId?.set(id, el);
+  return id;
+}
+
+function resolveWebDOMRelationToken(root, token) {
+  const text = String(token || "").trim();
+  if (!text)
+    return "";
+  const object = webDOMObject(root, text);
+  if (object)
+    return ensureWebDOMElementId(root, object);
+  for (const el of root?.__kryChildren?.values?.() || []) {
+    const node = el.__kryDocNode || null;
+    if (node && webNodeIdentity(node).aliases.includes(text))
+      return ensureWebDOMElementId(root, makeWebDOMObject(root, node, el, text));
+  }
+  return text;
+}
+
+function resolveWebDOMRelationList(root, value) {
+  return String(value || "")
+    .split(/\s+/)
+    .map((token) => resolveWebDOMRelationToken(root, token))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function resolveWebDOMRelations(root) {
+  if (!root)
+    return;
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const docNode = el.__kryDocNode || null;
+    if (!docNode)
+      continue;
+    setAttr(el, "aria-describedby", resolveWebDOMRelationList(root, docNode.ariaDescribedBy));
+    setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
+    setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
+    setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
+  }
+  syncWebDOMRootIndexes(root);
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
@@ -4208,6 +4275,8 @@ export function renderWebDocument(rt, target) {
       children.delete(identity);
   }
   root.__kryChildren = children;
+  syncWebDOMRootIndexes(root);
+  resolveWebDOMRelations(root);
   if (rt)
     rt.mounted = true;
   if (typeof root.dispatchEvent === "function") {

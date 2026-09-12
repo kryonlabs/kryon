@@ -165,10 +165,10 @@ Scene :: (viewport: Rectangle) #ui {
             role = "button"
             aria_label = "Tap the action"
             aria_description = "Runs the host action"
-            aria_controls = "search-field"
+            aria_controls = "search-box"
             aria_current = "page"
             aria_pressed = false
-            popover_target = "search-menu"
+            popover_target = "Scene/root/search_label"
             popover_target_action = "toggle"
             attr_fetchpriority = "high"
             html_attr_part = "primary-action"
@@ -202,7 +202,7 @@ Scene :: (viewport: Rectangle) #ui {
             class = "field"
             placeholder = "Search terms"
             aria_label = "Search"
-            aria_describedby = "tap-button"
+            aria_describedby = "primary-action"
             on_input = note_input
             on_before_input = note_before_input
             on_change = note_change
@@ -217,7 +217,7 @@ Scene :: (viewport: Rectangle) #ui {
         Text search_label: {
             text = "Search"
             dom = "label"
-            dom_for = "search-field"
+            dom_for = "search-box"
             popover = "manual"
             hidden = true
             on_toggle = toggle_search
@@ -305,7 +305,8 @@ grep -q '"title": "Tap details"' "$out"
 grep -q '"tabIndex": 3' "$out"
 grep -q '"onClick": "call_host"' "$out"
 grep -q '"ariaDescription": "Runs the host action"' "$out"
-grep -q '"ariaControls": "search-field"' "$out"
+grep -q '"ariaControls": "search-box"' "$out"
+grep -q '"popoverTarget": "Scene/root/search_label"' "$out"
 grep -q '"aria": {"current": "page", "pressed": false}' "$out"
 grep -q '"onInput": "note_input"' "$out"
 grep -q '"onBeforeInput": "note_before_input"' "$out"
@@ -337,8 +338,8 @@ grep -q '"accept": ".txt"' "$out"
 grep -q '"multiple": true' "$out"
 grep -q '"inputMode": "search"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
-grep -q '"ariaDescribedBy": "tap-button"' "$out"
-grep -q '"htmlFor": "search-field"' "$out"
+grep -q '"ariaDescribedBy": "primary-action"' "$out"
+grep -q '"htmlFor": "search-box"' "$out"
 grep -q '"hidden": true' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2

@@ -176,8 +176,8 @@ assert.equal(webDoc.nodes[2].tabIndex, 3);
 assert.equal(webDoc.nodes[2].role, "button");
 assert.equal(webDoc.nodes[2].ariaLabel, "Tap the action");
 assert.equal(webDoc.nodes[2].ariaDescription, "Runs the host action");
-assert.equal(webDoc.nodes[2].ariaControls, "search-field");
-assert.equal(webDoc.nodes[2].popoverTarget, "search-menu");
+assert.equal(webDoc.nodes[2].ariaControls, "search-box");
+assert.equal(webDoc.nodes[2].popoverTarget, "Scene/root/search_label");
 assert.equal(webDoc.nodes[2].popoverTargetAction, "toggle");
 assert.deepEqual(webDoc.nodes[2].extraAttrs, {
   fetchpriority: "high",
@@ -220,7 +220,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   formNoValidate: false,
   noValidate: false,
   popover: "",
-  popoverTarget: "search-menu",
+  popoverTarget: "Scene/root/search_label",
   popoverTargetAction: "toggle",
   open: false,
   scrollLeft: 0,
@@ -321,10 +321,10 @@ assert.equal(runtime.webNodeQuery(rt, "[multiple=true]").path, "Scene/root/searc
 assert.equal(runtime.webNodeQuery(rt, "[multiple]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[data-role]").path, "Scene/root/search");
-assert.equal(runtime.webNodeQuery(rt, "[for=\"search-field\"]").path, "Scene/root/search_label");
-assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-field\"]").path, "Scene/root/search_label");
+assert.equal(runtime.webNodeQuery(rt, "[for=\"search-box\"]").path, "Scene/root/search_label");
+assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-box\"]").path, "Scene/root/search_label");
 assert.equal(runtime.webNodeQuery(rt, "[popover=manual]").path, "Scene/root/search_label");
-assert.equal(runtime.webNodeQuery(rt, "[popoverTarget=\"search-menu\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[popoverTarget=\"Scene/root/search_label\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "[fetchpriority=high]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, "[part=\"primary-action\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt,
@@ -406,7 +406,7 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
-assert.equal(webDoc.nodes[3].ariaDescribedBy, "tap-button");
+assert.equal(webDoc.nodes[3].ariaDescribedBy, "primary-action");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onBeforeInput, "note_before_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
@@ -867,7 +867,8 @@ function fakeDocument() {
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");
     assert.equal(popover.attributes.popover, "auto");
-    assert.equal(popoverButton.attributes.popovertarget, "popover");
+    assert.equal(popover.id, "kry-Page-popover");
+    assert.equal(popoverButton.attributes.popovertarget, popover.id);
     assert.equal(popoverButton.attributes.popovertargetaction, "toggle");
     assert.equal(runtime.webDOMQuery(nativeTarget, "[popover=auto]").element, popover);
     assert.equal(runtime.webDOMQuery(nativeTarget, "[popoverTarget=popover]").element, popoverButton);
@@ -1283,7 +1284,7 @@ function fakeDocument() {
     assert.equal(firstButton.attributes["aria-label"], "Tap the action");
     assert.equal(firstButton.attributes["aria-description"], "Runs the host action");
     assert.equal(firstButton.attributes["aria-controls"], "search-field");
-    assert.equal(firstButton.attributes.popovertarget, "search-menu");
+    assert.equal(firstButton.attributes.popovertarget, "kry-Scene-root-search_label");
     assert.equal(firstButton.attributes.popovertargetaction, "toggle");
     assert.equal(firstButton.attributes.fetchpriority, "high");
     assert.equal(firstButton.attributes.part, "primary-action");
@@ -1822,10 +1823,14 @@ function fakeDocument() {
       width: 0,
       height: 0
     });
-    assert.equal(runtime.webDOMQuery(target, "[for=\"search-field\"]").ref, "Scene/root/search_label");
-    assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "[for=\"search-box\"]").ref, "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-box\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
-    assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"search-menu\"]").ref, "primary-action");
+    assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"Scene/root/search_label\"]").ref, "primary-action");
+    const resolvedSearchLabel = runtime.findWebElement(target, "Scene/root/search_label");
+    assert.equal(resolvedSearchLabel.id, "kry-Scene-root-search_label");
+    assert.equal(resolvedSearchLabel.attributes.for, "search-field");
+    assert.equal(firstButton.attributes.popovertarget, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[fetchpriority=high]").ref, "primary-action");
     assert.equal(runtime.webDOMQuery(target, "[part=\"primary-action\"]").ref, "primary-action");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
