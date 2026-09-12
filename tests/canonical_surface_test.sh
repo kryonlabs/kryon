@@ -118,6 +118,13 @@ check_absent "typed numeric helper legacy names" \
     '\bUI(Float|Int|Double|Angle)(Drag|Slider|Input)[A-Za-z0-9_]*\b|\bDragFloats\b|\bDragInts\b|\bSliderFloats\b|\bSliderInts\b|\bInputInts\b|\bInputFloats\b|\bdrag_floats\b|\bdrag_ints\b|\bslider_floats\b|\bslider_ints\b|\binput_floats\b|\binput_ints\b|\binput_doubles\b' \
     $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts
 
+check_absent "button variant legacy names" \
+    '\b(MenuButton|SplitButton|InfoButton|ArrowButton)\b' \
+    include src cmd go web docs examples tests tools scripts \
+    --glob '!docs/CANONICAL_WIDGET_SURFACE.md' \
+    --glob '!tests/public_api_names_test.sh' \
+    --glob '!tests/canonical_surface_test.sh'
+
 check_absent "tab scope compatibility names" \
     '\bBeginTabBar\b|\bBeginTabItem\b|\bEndTabItem\b|\bEndTabBar\b' \
     $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts

@@ -30,16 +30,17 @@ if [ -n "$matches" ]; then
 fi
 
 removed_widget_matches="$(
-    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags|SelectableText|ShowToast|ShowToastFor)\b' \
+    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags|MenuButton|SplitButton|InfoButton|ArrowButton|SelectableText|ShowToast|ShowToastFor)\b' \
         include src cmd go web docs examples tests tools scripts \
         --glob '!vendor/**' \
         --glob '!build/**' \
         --glob '!docs/CANONICAL_WIDGET_SURFACE.md' \
+        --glob '!tests/canonical_surface_test.sh' \
         --glob '!tests/public_api_names_test.sh' || true
 )"
 
 if [ -n "$removed_widget_matches" ]; then
-    echo "Removed widget names must stay out of public/runtime/codegen surfaces; use Link, Image, Dropdown, Popup, or Menu:"
+    echo "Removed widget names must stay out of public/runtime/codegen surfaces; use Link, Image, Dropdown, Popup, Menu, or Button props/composition:"
     echo "$removed_widget_matches"
     exit 1
 fi
