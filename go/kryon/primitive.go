@@ -36,6 +36,19 @@ func Primitive_PrimitiveBackgroundBounds(width int32, height int32) Rectangle {
 	return value_6
 }
 
+func Primitive_PrimitiveAppBackgroundColor(styled Color, fallback Color) Color {
+	var value_0 uint8 = styled.A
+	var value_1 int32 = 0
+	var value_2 uint8 = uint8(number_runtime_bits(uint64(value_1), uint64(0), 8, false, 0))
+	var value_3 bool = value_0 != value_2
+	if value_3 {
+		var value_4 Color = styled
+		return value_4
+	}
+	var value_5 Color = fallback
+	return value_5
+}
+
 func Primitive_PrimitiveRectBounds(x int32, y int32, width int32, height int32) Rectangle {
 	var bounds Rectangle = Rectangle{}
 	var value_0 int32 = x

@@ -502,7 +502,7 @@ this table for naming feedback before we lock the clean surface.
 | Current node kind | Public widget/concept | Decision |
 |---|---|---|
 | `WIDGET_SCREEN` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
-| `WIDGET_BACKGROUND` | `Background` | Partly `.kry-backed` |
+| `WIDGET_BACKGROUND` | `Background` | `.kry-backed`; bounds and app fallback policy live in runtime primitive policy |
 | `WIDGET_TEXT` | `Text` | `.kry canonical` |
 | `WIDGET_RECT` | `Box` | `.kry-backed`; public code uses `Box` |
 | `WIDGET_CIRCLE` | `Circle` | `.kry-backed`; public code uses `Circle` |

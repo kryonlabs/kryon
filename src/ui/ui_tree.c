@@ -2258,7 +2258,7 @@ AppBackground(void)
         StyleDefaultFacts(StyleKindApp()),
         ButtonStateNormal));
 
-    Background(app.background);
+    Background(PrimitiveAppBackgroundColor(app.background, GetThemeBackground()));
 }
 
 void

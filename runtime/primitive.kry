@@ -28,6 +28,13 @@ PrimitiveBackgroundBounds :: (width: i32, height: i32) -> Rectangle #export {
     return bounds
 }
 
+PrimitiveAppBackgroundColor :: (styled: Color, fallback: Color) -> Color #export {
+    if styled.a != (u8)0 {
+        return styled
+    }
+    return fallback
+}
+
 PrimitiveRectBounds :: (x: i32, y: i32, width: i32, height: i32) -> Rectangle #export {
     bounds: Rectangle
     bounds.x = (float)x

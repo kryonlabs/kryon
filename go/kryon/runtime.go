@@ -1900,11 +1900,7 @@ func (r *runtime) ClearBackground(c Color) {
 }
 func (r *runtime) AppBackground() {
 	style := r.appStyle()
-	color := style.Background
-	if color.A == 0 {
-		color = r.GetThemeBackground()
-	}
-	r.Background(color)
+	r.Background(Primitive_PrimitiveAppBackgroundColor(style.Background, r.GetThemeBackground()))
 }
 func (r *runtime) appStyle() Style {
 	return unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
@@ -1912,11 +1908,7 @@ func (r *runtime) appStyle() Style {
 		int32(ButtonStateNormal)))
 }
 func (r *runtime) appAmbientColor() Color {
-	color := r.appStyle().Background
-	if color.A == 0 {
-		color = r.GetThemeBackground()
-	}
-	return color
+	return Primitive_PrimitiveAppBackgroundColor(r.appStyle().Background, r.GetThemeBackground())
 }
 func (r *runtime) Background(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground,

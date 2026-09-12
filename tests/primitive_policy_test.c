@@ -17,8 +17,18 @@ main(void)
 {
     LinePrimitive line;
     TrianglePrimitive triangle;
+    Color styled = {0x12, 0x34, 0x56, 0xff};
+    Color fallback = {0xaa, 0xbb, 0xcc, 0xff};
+    Color transparent = {0};
+    Color picked;
 
     check_rect(PrimitiveBackgroundBounds(640, 480), 0, 0, 640, 480);
+    picked = PrimitiveAppBackgroundColor(styled, fallback);
+    assert(picked.r == 0x12 && picked.g == 0x34 && picked.b == 0x56 &&
+           picked.a == 0xff);
+    picked = PrimitiveAppBackgroundColor(transparent, fallback);
+    assert(picked.r == 0xaa && picked.g == 0xbb && picked.b == 0xcc &&
+           picked.a == 0xff);
     check_rect(PrimitiveRectBounds(10, 20, 30, 40), 10, 20, 30, 40);
     check_rect(PrimitiveCircleBounds(40, 50, 8), 32, 42, 16, 16);
     check_rect(PrimitiveRingBounds(40, 50, 12), 28, 38, 24, 24);

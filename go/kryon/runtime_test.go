@@ -2410,6 +2410,17 @@ App { background: #123456; }
 	}
 }
 
+func TestPrimitiveAppBackgroundColorFallsBack(t *testing.T) {
+	styled := Color{R: 0x12, G: 0x34, B: 0x56, A: 0xff}
+	fallback := Color{R: 0xaa, G: 0xbb, B: 0xcc, A: 0xff}
+	if got := Primitive_PrimitiveAppBackgroundColor(styled, fallback); got != styled {
+		t.Fatalf("styled app background = %#v, want %#v", got, styled)
+	}
+	if got := Primitive_PrimitiveAppBackgroundColor(Color{}, fallback); got != fallback {
+		t.Fatalf("fallback app background = %#v, want %#v", got, fallback)
+	}
+}
+
 func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 
