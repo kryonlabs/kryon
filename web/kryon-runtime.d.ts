@@ -338,6 +338,7 @@ export interface WebDOMObject {
   readonly snapshot: WebDOMSnapshot | null;
   readonly parent: WebDOMObject | null;
   readonly children: WebDOMObject[];
+  readonly relations: WebDOMRelations | null;
   readonly descendants: WebDOMObject[];
   query(selector: string): WebDOMObject | null;
   queryAll(selector: string): WebDOMObject[];
@@ -407,6 +408,13 @@ export interface WebDOMObserveOptions {
   immediate?: boolean;
 }
 
+export interface WebDOMRelations {
+  describedBy: WebDOMObject[];
+  controls: WebDOMObject[];
+  labelFor: WebDOMObject | null;
+  popoverTarget: WebDOMObject | null;
+}
+
 export interface WebDOMBindHandlers {
   mount?: (object: WebDOMObject, detail: WebDOMObserveDetail) =>
     unknown | ((object: WebDOMObject, detail: WebDOMObserveDetail) => unknown);
@@ -437,6 +445,7 @@ declare global {
     readonly krySnapshot?: WebDOMSnapshot | null;
     readonly kryParent?: WebDOMObject | null;
     readonly kryChildren?: WebDOMObject[];
+    readonly kryRelations?: WebDOMRelations | null;
     kryDescendants?(): WebDOMObject[];
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
@@ -574,6 +583,12 @@ export interface WebDOMSnapshot {
   parentPath: string;
   parentRef: string;
   childRefs: string[];
+  relationRefs: {
+    describedBy: string[];
+    controls: string[];
+    labelFor: string;
+    popoverTarget: string;
+  };
   name: string;
   key: string;
   id: string;
@@ -693,6 +708,7 @@ export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: nu
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
+export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
 export function webDOMDecorateEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;
 export function webDOMObjectFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;

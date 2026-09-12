@@ -1342,8 +1342,13 @@ function fakeDocument() {
     assert.equal(buttonObject.root, root);
     assert.equal(buttonObject.identity.ref, "primary-action");
     assert.equal(buttonObject.snapshot.parentRef, "Scene/root");
+    assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
+    assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
+    assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);
+    assert.equal(buttonObject.relations.popoverTarget.ref, "Scene/root/search_label");
+    assert.equal(firstButton.kryRelations.controls[0].ref, "search-box");
     assert.equal(buttonObject.matches("Button.primary"), true);
     assert.equal(buttonObject.closest("Screen").node.path, "Scene/root");
     assert.equal(Object.keys(buttonObject).includes("root"), false);
@@ -1923,6 +1928,10 @@ function fakeDocument() {
     assert.equal(firstField.attributes.inputmode, "search");
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
+    assert.deepEqual(runtime.webDOMRelations(target, "search-box").describedBy
+      .map((object) => object.ref), ["primary-action"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.describedBy,
+      ["primary-action"]);
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnBeforeInput, "note_before_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");

@@ -2668,6 +2668,15 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMChildren(root, node.path) : [];
       }
     },
+    kryRelations: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMRelationsForNode(root, node) : null;
+      }
+    },
     kryDescendants: {
       configurable: true,
       enumerable: false,
@@ -3094,6 +3103,14 @@ function makeWebDOMObject(root, node, element, ref = "") {
         return target ? webDOMChildren(target, webDOMObjectQuery(this)) : [];
       }
     },
+    relations: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMRelationsForNode(target, this.node) : null;
+      }
+    },
     descendants: {
       configurable: true,
       enumerable: false,
@@ -3495,6 +3512,27 @@ function resolveWebDOMRelations(root) {
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
   }
   syncWebDOMRootIndexes(root);
+}
+
+function webDOMRelationList(target, value) {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  return String(value || "")
+    .split(/\s+/)
+    .map((token) => webDOMObject(root, token))
+    .filter(Boolean);
+}
+
+function webDOMRelationsForNode(target, node) {
+  if (!node)
+    return null;
+  return {
+    describedBy: webDOMRelationList(target, node.ariaDescribedBy),
+    controls: webDOMRelationList(target, node.ariaControls),
+    labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
+    popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
+  };
 }
 
 function applyWebNode(el, docNode, rt) {
@@ -4464,6 +4502,11 @@ export function webDOMIdentity(target, query) {
   return object ? webNodeIdentity(object.node) : null;
 }
 
+export function webDOMRelations(target, query) {
+  const object = webDOMObject(target, query);
+  return object ? webDOMRelationsForNode(target, object.node) : null;
+}
+
 function webDOMObjectForNode(root, node) {
   if (!root || !node)
     return null;
@@ -4908,6 +4951,7 @@ function webDOMObjectSnapshot(target, object) {
     return null;
   const node = object.node || {};
   const el = object.element || {};
+  const relations = webDOMRelationsForNode(target, node);
   return {
     ref: object.ref || "",
     index: node.index || 0,
@@ -4918,6 +4962,12 @@ function webDOMObjectSnapshot(target, object) {
     parentPath: node.parentPath || "",
     parentRef: webDOMParent(target, node.path)?.ref || "",
     childRefs: webDOMChildren(target, node.path).map((child) => child.ref),
+    relationRefs: {
+      describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
+      controls: (relations?.controls || []).map((relation) => relation.ref),
+      labelFor: relations?.labelFor?.ref || "",
+      popoverTarget: relations?.popoverTarget?.ref || ""
+    },
     name: node.name || "",
     key: node.key || "",
     id: node.domId || el.id || "",
