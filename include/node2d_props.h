@@ -32,8 +32,8 @@ typedef struct Sprite2DProps {
  * NULL on allocation failure. The caller transfers the pointer to the node;
  * the kinds destroy hook frees it.
  */
-Camera2DProps *KryCamera2DPropsAlloc(float zoom, int active);
-Sprite2DProps *KrySprite2DPropsAlloc(const char *asset_path, float w, float h);
+Camera2DProps *Camera2DPropsAlloc(float zoom, int active);
+Sprite2DProps *Sprite2DPropsAlloc(const char *asset_path, float w, float h);
 
 /* Light2D: a soft, additive point light rendered in world space. */
 typedef struct Light2DProps {
@@ -43,7 +43,7 @@ typedef struct Light2DProps {
     int enabled;
 } Light2DProps;
 
-Light2DProps *KryLight2DPropsAlloc(float radius, Color color, float energy);
+Light2DProps *Light2DPropsAlloc(float radius, Color color, float energy);
 
 typedef enum KryBody2DType {
     KRY_BODY2D_STATIC,
@@ -80,9 +80,9 @@ typedef struct Area2DProps {
     int last_exit_body;
 } Area2DProps;
 
-Body2DProps *KryBody2DPropsAlloc(KryBody2DType type);
-CollisionShape2DProps *KryCollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h);
-Area2DProps *KryArea2DPropsAlloc(void);
+Body2DProps *Body2DPropsAlloc(KryBody2DType type);
+CollisionShape2DProps *CollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h);
+Area2DProps *Area2DPropsAlloc(void);
 
 /* AnimationPlayer: holds up to N animations and the current play state. */
 #define KRY_PLAYER_ANIMS_MAX 4
@@ -95,7 +95,7 @@ typedef struct AnimationPlayerProps {
     int playing;       /* nonzero = advancing each tick */
 } AnimationPlayerProps;
 
-AnimationPlayerProps *KryAnimationPlayerPropsAlloc(void);
+AnimationPlayerProps *AnimationPlayerPropsAlloc(void);
 
 /* AnimatedSprite2D: cycles through frames of a grid sprite sheet. */
 typedef struct AnimatedSprite2DProps {
@@ -110,7 +110,7 @@ typedef struct AnimatedSprite2DProps {
     float time;              /* accumulated playhead, in seconds */
 } AnimatedSprite2DProps;
 
-AnimatedSprite2DProps *KryAnimatedSprite2DPropsAlloc(const char *asset_path,
+AnimatedSprite2DProps *AnimatedSprite2DPropsAlloc(const char *asset_path,
                                                      int frame_count,
                                                      int frames_per_row,
                                                      int frame_w, int frame_h,
@@ -133,7 +133,7 @@ typedef struct TileMapProps {
     Color tint;                /* .a == 0 -> WHITE */
 } TileMapProps;
 
-TileMapProps *KryTileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
+TileMapProps *TileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
                                    int tiles_per_row, int map_w, int map_h);
 
 /* AudioSource: plays a sound or music stream. */
@@ -156,8 +156,8 @@ typedef struct AudioSourceProps {
     void *handle;       /* points to a Sound or Music depending on `kind` */
 } AudioSourceProps;
 
-AudioSourceProps *KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind);
-void KryAudioSourcePlay(Scene *scene, NodeId node);
-void KryAudioSourceStop(Scene *scene, NodeId node);
+AudioSourceProps *AudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind);
+void AudioSourcePlay(Scene *scene, NodeId node);
+void AudioSourceStop(Scene *scene, NodeId node);
 
 #endif

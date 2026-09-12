@@ -2353,14 +2353,14 @@ through the existing codepoint filter.
 
 Feature families:
 
-- Geometry: `BeginFrameBox`, `FramePack`, `GridCell`, `Place`, `UISeparatorNode`
-- Menus: `UIMenuBarNode`, `UIPopupMenuNode`
-- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `UIFieldsetNode`, `Image`
+- Geometry: `FrameBox`, `FramePack`, `GridCell`, `Place`, `Separator`
+- Menus: `MenuBar`, `PopupMenu`
+- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `Fieldset`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
 
 Use `ListBox(ListBoxProps)` for selectable string lists. For arbitrary
 scrolling child content, use the general scroll scope directly.
-- Canvas: `BeginCanvas`, `EndCanvas`, `UICanvasGridNode`, `CanvasHitTest`
+- Canvas: `Canvas`, `CanvasGrid`, `CanvasHitTest`
 - Containers: `TabBar`, `PanedView`, `Collapsible`
 
 `TableViewProps.header_height` controls header height, with a minimum/default
@@ -2418,8 +2418,8 @@ its first child; Left on a closed branch or leaf focuses its nearest ancestor.
 Depth determines that hierarchy. Leaves and disabled content never expand;
 disabled headers are skipped during directional traversal. Automatic child
 indentation is not implemented.
-- Dialogs/platform: `UIMessageDialogNode`, `UIConfirmDialogNode`, `UIPromptDialogNode`, `UIColorPickerNode`, `DispatchAccelerators`, clipboard helpers
-- Accessibility/debug: `UIFocusDebugOverlayNode`
+- Dialogs/platform: `MessageDialog`, `ConfirmDialog`, `PromptDialog`, `ColorPicker`, accelerators, clipboard helpers
+- Accessibility/debug: `FocusDebugOverlay`
 
 Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
 

@@ -72,7 +72,7 @@ kry_register_animation_player(void)
 }
 
 AnimationPlayerProps *
-KryAnimationPlayerPropsAlloc(void)
+AnimationPlayerPropsAlloc(void)
 {
     AnimationPlayerProps *p = calloc(1, sizeof(*p));
     if(p != NULL)

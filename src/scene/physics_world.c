@@ -169,7 +169,7 @@ kry_collision_shape2d_attach(Scene *scene, NodeId node,
 }
 
 Body2DProps *
-KryBody2DPropsAlloc(KryBody2DType type)
+Body2DPropsAlloc(KryBody2DType type)
 {
     Body2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -180,7 +180,7 @@ KryBody2DPropsAlloc(KryBody2DType type)
 }
 
 CollisionShape2DProps *
-KryCollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h)
+CollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h)
 {
     CollisionShape2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -191,7 +191,7 @@ KryCollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h)
 }
 
 Area2DProps *
-KryArea2DPropsAlloc(void)
+Area2DPropsAlloc(void)
 {
     Area2DProps *p = calloc(1, sizeof(*p));
     return p;

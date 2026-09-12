@@ -82,7 +82,7 @@ kry_register_audio_source(void)
 }
 
 AudioSourceProps *
-KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
+AudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
 {
     AudioSourceProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -96,7 +96,7 @@ KryAudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
 
 /* Public play/stop controls called by app code or k2c-generated builders. */
 void
-KryAudioSourcePlay(Scene *scene, NodeId node)
+AudioSourcePlay(Scene *scene, NodeId node)
 {
     Node *n = NodeGet(scene, node);
     AudioSourceProps *props;
@@ -123,7 +123,7 @@ KryAudioSourcePlay(Scene *scene, NodeId node)
 }
 
 void
-KryAudioSourceStop(Scene *scene, NodeId node)
+AudioSourceStop(Scene *scene, NodeId node)
 {
     Node *n = NodeGet(scene, node);
     AudioSourceProps *props;

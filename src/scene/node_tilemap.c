@@ -78,7 +78,7 @@ kry_register_tilemap(void)
 }
 
 TileMapProps *
-KryTileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
+TileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
                      int tiles_per_row, int map_w, int map_h)
 {
     TileMapProps *p = calloc(1, sizeof(*p));

@@ -13,9 +13,9 @@ sprite_id :: int #global #export
 
 scene main {
     camera := NodeCreate(scene, 0, NODE_CAMERA2D, "camera")
-    NodeSetProps(scene, camera, KryCamera2DPropsAlloc(1.0, 1))
+    NodeSetProps(scene, camera, Camera2DPropsAlloc(1.0, 1))
 
     sprite_id = NodeCreate(scene, 0, NODE_SPRITE2D, "player")
     NodeSetPosition(scene, sprite_id, 320.0, 210.0)
-    NodeSetProps(scene, sprite_id, KrySprite2DPropsAlloc("tiles/tile.png", 96.0, 96.0))
+    NodeSetProps(scene, sprite_id, Sprite2DPropsAlloc("tiles/tile.png", 96.0, 96.0))
 }

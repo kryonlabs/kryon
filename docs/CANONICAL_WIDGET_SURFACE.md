@@ -50,7 +50,7 @@ surface review:
 | `runtime/input_props.kry` | Input props | `.kry canonical` |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/list_box.kry` | ListBox layout/navigation policy | `.kry canonical` |
-| `runtime/material.kry` | Material helpers | Rename review |
+| `runtime/material.kry` | Material layer assembly | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
 | `runtime/multi_select_list.kry` | MultiSelectList row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |

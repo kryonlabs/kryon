@@ -44,6 +44,20 @@ if [ -n "$removed_widget_matches" ]; then
     exit 1
 fi
 
+prefixed_scene_matches="$(
+    rg -n '\b(Kry[A-Za-z0-9_]*PropsAlloc|KryAudioSourcePlay|KryAudioSourceStop)\b' \
+        include/node2d_props.h src/scene docs/PUBLIC_API_SNAPSHOT.txt examples tests \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$prefixed_scene_matches" ]; then
+    echo "Scene node public helpers must use clean names such as Sprite2DPropsAlloc and AudioSourcePlay:"
+    echo "$prefixed_scene_matches"
+    exit 1
+fi
+
 form_matches="$(
     rg -n '\bUIForm[A-Za-z0-9_]*\b' \
         include/ui_rows.h src/ui/rows.c docs/API.md docs/FEATURE_MATRIX.md \
@@ -57,7 +71,7 @@ if [ -n "$form_matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UISeparatorNode|UIMenuBarNode|UIPopupMenuNode|UIFieldsetNode|UICanvasGridNode|UIMessageDialogNode|UIConfirmDialogNode|UIPromptDialogNode|UIColorPickerNode|UIFocusDebugOverlayNode|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
         go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \

@@ -89,7 +89,7 @@ kry_register_animated_sprite2d(void)
 }
 
 AnimatedSprite2DProps *
-KryAnimatedSprite2DPropsAlloc(const char *asset_path, int frame_count,
+AnimatedSprite2DPropsAlloc(const char *asset_path, int frame_count,
                               int frames_per_row, int frame_w, int frame_h,
                               float fps)
 {

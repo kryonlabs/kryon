@@ -67,7 +67,7 @@ SceneRegisterBuiltins(void)
  * get sane defaults handled by the draw ops.
  */
 Camera2DProps *
-KryCamera2DPropsAlloc(float zoom, int active)
+Camera2DPropsAlloc(float zoom, int active)
 {
     Camera2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -78,7 +78,7 @@ KryCamera2DPropsAlloc(float zoom, int active)
 }
 
 Sprite2DProps *
-KrySprite2DPropsAlloc(const char *asset_path, float w, float h)
+Sprite2DPropsAlloc(const char *asset_path, float w, float h)
 {
     Sprite2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -89,7 +89,7 @@ KrySprite2DPropsAlloc(const char *asset_path, float w, float h)
 }
 
 Light2DProps *
-KryLight2DPropsAlloc(float radius, Color color, float energy)
+Light2DPropsAlloc(float radius, Color color, float energy)
 {
     Light2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {

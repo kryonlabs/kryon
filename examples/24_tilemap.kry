@@ -24,7 +24,7 @@ scene main {
     }
     tiles := NodeCreate(scene, 0, NODE_TILEMAP, "tiles")
     NodeSetPosition(scene, tiles, 64.0, 64.0)
-    props := KryTileMapPropsAlloc("tiles/tile.png", 32, 32, 4, MAP_W, MAP_H)
+    props := TileMapPropsAlloc("tiles/tile.png", 32, 32, 4, MAP_W, MAP_H)
     props->tiles = map_data
     NodeSetProps(scene, tiles, props)
 }

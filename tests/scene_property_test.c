@@ -88,7 +88,7 @@ main(void)
 
     /* --- property model: Sprite2D kind-specific props --- */
     sprite = NodeCreate(&scene, scene.root, NODE_SPRITE2D, "s");
-    NodeSetProps(&scene, sprite, KrySprite2DPropsAlloc("tiles/tile.png", 96.0f, 96.0f));
+    NodeSetProps(&scene, sprite, Sprite2DPropsAlloc("tiles/tile.png", 96.0f, 96.0f));
     specs = ScenePropertySpecs(NODE_SPRITE2D, &spec_count);
     check_int("Sprite2D property count", spec_count, 6);
     v = SceneNodeGetPropertyByName(&scene, sprite, "asset_path");
@@ -98,7 +98,7 @@ main(void)
     /* --- property model: Light2D rendering props --- */
     light = NodeCreate(&scene, scene.root, NODE_LIGHT2D, "lamp");
     NodeSetProps(&scene, light,
-                 KryLight2DPropsAlloc(96.0f, (Color){120, 80, 220, 180}, 0.75f));
+                 Light2DPropsAlloc(96.0f, (Color){120, 80, 220, 180}, 0.75f));
     specs = ScenePropertySpecs(NODE_LIGHT2D, &spec_count);
     check_int("Light2D property count", spec_count, 7);
     v = SceneNodeGetPropertyByName(&scene, light, "radius");
