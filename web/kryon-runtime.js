@@ -939,7 +939,7 @@ function handleTabBar(rt, state, args, interactive = true) {
 function handleWidget(rt, name, args, state) {
   if (!rt.input)
     return false;
-  if (name === "BeginDisabled") {
+  if (name === "Disabled") {
     rt.disabledStack.push(numberValue(args) !== 0);
     return false;
   }
