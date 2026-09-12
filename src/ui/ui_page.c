@@ -45,10 +45,16 @@ page_bounds_or_view(Rectangle bounds)
     return bounds;
 }
 
-static Color
-page_color_or(Color color, Color fallback)
+static Style
+page_text_style(int style_kind, int fallback_font)
 {
-    return color.a != 0 ? color : fallback;
+    StyleData base = {
+        .fields = (uint32_t)(StyleOpacity | StyleFontSize),
+        .opacity = 1.0f,
+        .font_size = (float)fallback_font
+    };
+    return ui_unpack_style(ResolveActiveStyle(base, StyleDefaultFacts(style_kind),
+                                             ButtonStateNormal));
 }
 
 static void
@@ -202,11 +208,12 @@ Heading(HeadingProps props)
     Rectangle bounds = props.bounds;
     const char *text = props.text != NULL ? props.text : "";
     int level = props.level;
-    int font = props.font > 0 ? props.font : Text24;
-    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
-                                                    ButtonStateNormal,
-                                                    StyleKindText());
-    Color color = page_color_or(props.color, text_style.foreground);
+    Style text_style = page_text_style(StyleKindHeading(), Text24);
+    int font = props.font > 0 ? props.font : (int)text_style.font_size;
+    if(font <= 0)
+        font = Text24;
+    Color color = props.color.a != 0 ? props.color : Fade(text_style.foreground,
+                                                          text_style.opacity);
 
     if(level < 1)
         level = 1;
@@ -234,12 +241,13 @@ ParagraphText(ParagraphTextProps props)
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = text;
     paragraph.width = width;
-    paragraph.font = props.font > 0 ? props.font : GetFontSize();
     paragraph.line_gap = props.line_gap;
-    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
-                                                    ButtonStateNormal,
-                                                    StyleKindText());
-    paragraph.color = page_color_or(props.color, text_style.foreground);
+    Style text_style = page_text_style(StyleKindParagraphText(), GetFontSize());
+    paragraph.font = props.font > 0 ? props.font : (int)text_style.font_size;
+    if(paragraph.font <= 0)
+        paragraph.font = GetFontSize();
+    paragraph.color = props.color.a != 0 ? props.color : Fade(text_style.foreground,
+                                                              text_style.opacity);
     ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }

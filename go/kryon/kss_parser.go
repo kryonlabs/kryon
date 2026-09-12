@@ -655,6 +655,10 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindDrag(), true
 	case "dragvalue":
 		return StyleSheet_StyleKindDragValue(), true
+	case "heading":
+		return StyleSheet_StyleKindHeading(), true
+	case "paragraphtext":
+		return StyleSheet_StyleKindParagraphText(), true
 	default:
 		return 0, false
 	}

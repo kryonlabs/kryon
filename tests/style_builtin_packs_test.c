@@ -145,6 +145,8 @@ main(void)
         {"Canvas", StyleKindCanvas()},
         {"Drag", StyleKindDrag()},
         {"DragValue", StyleKindDragValue()},
+        {"Heading", StyleKindHeading()},
+        {"ParagraphText", StyleKindParagraphText()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},

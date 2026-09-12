@@ -251,6 +251,10 @@ kss_style_kind(const char *name)
         return StyleKindDrag();
     if(kss_ieq(name, "DragValue"))
         return StyleKindDragValue();
+    if(kss_ieq(name, "Heading"))
+        return StyleKindHeading();
+    if(kss_ieq(name, "ParagraphText"))
+        return StyleKindParagraphText();
     return -999999;
 }
 

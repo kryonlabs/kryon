@@ -245,6 +245,14 @@ StyleKindDragValue :: () -> i32 #export {
     return 57
 }
 
+StyleKindHeading :: () -> i32 #export {
+    return 58
+}
+
+StyleKindParagraphText :: () -> i32 #export {
+    return 59
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

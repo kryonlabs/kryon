@@ -1475,7 +1475,7 @@ tokens {
   material { flat: Flat; }
 }
 Toast { background: panel; foreground: text; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.85; }
-Toast[role=Label] { foreground: text; }
+Toast[role=Label] { foreground: text; font-size: 18; opacity: 0.66; }
 `, "Test Toast", "") || !SetActiveStylePack("test.toast") {
 		t.Fatal("test toast style did not activate")
 	}
@@ -1498,7 +1498,8 @@ Toast[role=Label] { foreground: text; }
 			}
 		case op.Kind == FrameOpText && op.Text == "Saved":
 			sawLabel = true
-			if op.Color != (Color{R: 0xed, G: 0xf3, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xed, G: 0xf3, B: 0xff, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.66 {
 				t.Fatalf("toast label style op = %+v", op)
 			}
 		}
@@ -2471,6 +2472,45 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	}
 	if !sawPage || !sawHeading || !sawLink || !sawImage || !sawGrid {
 		t.Fatalf("missing semantic ops: page=%v heading=%v link=%v image=%v grid=%v ops=%#v", sawPage, sawHeading, sawLink, sawImage, sawGrid, rt.FrameOps())
+	}
+}
+
+func TestPageTextUsesStyleSheetKinds(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.page_text;
+Heading { foreground: #123456; font-size: 30; }
+ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
+`, "Page Text", "") || !SetActiveStylePack("test.page_text") {
+		t.Fatal("test page text style did not activate")
+	}
+
+	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	rt.BeginFrame()
+	rt.Heading(HeadingProps{Text: "Styled"})
+	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
+	rt.EndFrame()
+
+	var sawHeading, sawParagraph bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpText && op.Semantic == SemanticHeading:
+			sawHeading = true
+			if op.Color != (Color{R: 0x12, G: 0x34, B: 0x56, A: 0xff}) || op.FontSize != 30 {
+				t.Fatalf("heading style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Semantic == SemanticParagraph:
+			sawParagraph = true
+			if op.Color != (Color{R: 0xab, G: 0xcd, B: 0xef, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.72 {
+				t.Fatalf("paragraph style op = %+v", op)
+			}
+		}
+	}
+	if !sawHeading || !sawParagraph {
+		t.Fatalf("missing styled page text ops: heading=%v paragraph=%v ops=%#v",
+			sawHeading, sawParagraph, rt.FrameOps())
 	}
 }
 

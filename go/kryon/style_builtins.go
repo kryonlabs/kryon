@@ -1133,6 +1133,18 @@ Text {
   opacity: 1;
 }
 
+Heading {
+  foreground: text;
+  font-size: 24;
+  opacity: 1;
+}
+
+ParagraphText {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+}
+
 Link {
   foreground: accent;
   font-size: font.md;
@@ -2796,6 +2808,16 @@ Text {
   font-size: font;
 }
 
+Heading {
+  foreground: text;
+  font-size: 24;
+}
+
+ParagraphText {
+  foreground: text;
+  font-size: font;
+}
+
 Link {
   foreground: accent;
   font-size: font;
@@ -4426,6 +4448,18 @@ PlotMark {
 }
 
 Text {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+}
+
+Heading {
+  foreground: text;
+  font-size: 24;
+  opacity: 1;
+}
+
+ParagraphText {
   foreground: text;
   font-size: font.md;
   opacity: 1;
@@ -6172,6 +6206,18 @@ Text {
   opacity: 1;
 }
 
+Heading {
+  foreground: text;
+  font-size: 24;
+  opacity: 1;
+}
+
+ParagraphText {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+}
+
 Link {
   foreground: accent;
   font-size: font.md;
@@ -7909,6 +7955,16 @@ PlotMark {
 }
 
 Text {
+  foreground: text;
+  font-size: font;
+}
+
+Heading {
+  foreground: text;
+  font-size: 24;
+}
+
+ParagraphText {
   foreground: text;
   font-size: font;
 }

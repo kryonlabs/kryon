@@ -503,6 +503,8 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Canvas", StyleSheet_StyleKindCanvas()},
 		{"Drag", StyleSheet_StyleKindDrag()},
 		{"DragValue", StyleSheet_StyleKindDragValue()},
+		{"Heading", StyleSheet_StyleKindHeading()},
+		{"ParagraphText", StyleSheet_StyleKindParagraphText()},
 	}
 	stateKinds := []struct {
 		name  string

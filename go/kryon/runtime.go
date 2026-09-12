@@ -4929,13 +4929,17 @@ func (r *runtime) Heading(props HeadingProps) {
 	} else if level > 6 {
 		level = 6
 	}
+	style := defaultTextStyleForKind(Text24, StyleSheet_StyleKindHeading())
 	font := props.Font
 	if font <= 0 {
-		font = Text24
+		font = int32(style.FontSize)
+		if font <= 0 {
+			font = Text24
+		}
 	}
 	color := props.Color
 	if color.A == 0 {
-		color = defaultTextStyle(font).Foreground
+		color = style.Foreground
 	}
 	bounds := props.Bounds
 	if bounds.Width <= 0 {
@@ -4945,23 +4949,27 @@ func (r *runtime) Heading(props HeadingProps) {
 		bounds.Height = float32(font)
 	}
 	bounds = r.layoutRect(bounds)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
 }
 func (r *runtime) ParagraphText(props ParagraphTextProps) {
+	style := defaultTextStyleForKind(Text16, StyleSheet_StyleKindParagraphText())
 	font := props.Font
 	if font <= 0 {
-		font = Text16
+		font = int32(style.FontSize)
+		if font <= 0 {
+			font = Text16
+		}
 	}
 	color := props.Color
 	if color.A == 0 {
-		color = defaultTextStyle(font).Foreground
+		color = style.Foreground
 	}
 	width := int32(props.Bounds.Width)
 	if width <= 0 {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
 	}
 	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + props.LineGap)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: SemanticParagraph})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, ID: int32(props.Key), Semantic: SemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {
 	font := props.Font
@@ -5385,6 +5393,13 @@ func defaultStyleFrame(styleKind int32) StyleFrame {
 func defaultTextStyle(font int32) Style {
 	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
 		StyleSheet_StyleTextFacts(0, 0, StyleSheet_StyleAny(), int32(ButtonStateNormal)),
+		int32(ButtonStateNormal))
+	return unpackStyle(value)
+}
+
+func defaultTextStyleForKind(font int32, kind int32) Style {
+	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
+		StyleSheet_StyleDefaultFacts(kind),
 		int32(ButtonStateNormal))
 	return unpackStyle(value)
 }
@@ -6109,14 +6124,18 @@ func (r *runtime) recordToast() {
 		return
 	}
 	metrics := Toast_ToastMetricsFor(1)
-	textWidth := int32(runtimeTextWidth(r.toastMessage, Text14))
-	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, 18, metrics)
 	surfaceFrame := defaultStyleFrame(StyleSheet_StyleKindToast())
 	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindToast(), 6)
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
+	labelFont := int32(label.FontSize)
+	if labelFont <= 0 {
+		labelFont = Text14
+	}
+	textWidth := int32(runtimeTextWidth(r.toastMessage, labelFont))
+	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, labelFont, metrics)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: surface.Background, BorderColor: surface.Border, Radius: surface.Radius, BorderWidth: surface.BorderWidth, Material: MaterialKind(surface.Material), Opacity: surface.Opacity})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, FontSize: Text14})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, Opacity: label.Opacity, FontSize: labelFont})
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)

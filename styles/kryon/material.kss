@@ -1131,6 +1131,18 @@ Text {
   opacity: 1;
 }
 
+Heading {
+  foreground: text;
+  font-size: 24;
+  opacity: 1;
+}
+
+ParagraphText {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+}
+
 Link {
   foreground: accent;
   font-size: font.md;

@@ -1138,6 +1138,16 @@ Text {
   font-size: font;
 }
 
+Heading {
+  foreground: text;
+  font-size: 24;
+}
+
+ParagraphText {
+  foreground: text;
+  font-size: font;
+}
+
 Link {
   foreground: accent;
   font-size: font;

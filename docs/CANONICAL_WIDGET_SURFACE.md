@@ -283,8 +283,8 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `TabBar` | `.kry canonical` | Tab bar block. |
 | `Page` | `.kry canonical` | Web/page root block. |
 | `Section` | `.kry canonical` | Semantic page section block. |
-| `Heading` | `.kry canonical` | Semantic page heading block. |
-| `ParagraphText` | `.kry canonical` | Semantic page paragraph block. |
+| `Heading` | `.kry canonical` | Semantic page heading block with its own KSS style kind. |
+| `ParagraphText` | `.kry canonical` | Semantic page paragraph block with its own KSS style kind. |
 | `Link` | `.kry canonical` | Link block. |
 | `Flow` | `.kry canonical` | Page flow block. |
 | `Grid` | `.kry canonical` | Grid layout block. |
@@ -422,8 +422,8 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `Page` | `.kry canonical` | Top-level document surface for generated web/page output; lowers to layout scopes and page metadata host support. |
 | `Section` | `.kry canonical` | Page section container; lowers to layout scopes. |
-| `Heading` | `.kry canonical` | Semantic page heading backed by text policy. |
-| `ParagraphText` | `.kry canonical` | Semantic page paragraph backed by text policy. |
+| `Heading` | `.kry canonical` | Semantic page heading backed by `Heading` KSS policy. |
+| `ParagraphText` | `.kry canonical` | Semantic page paragraph backed by `ParagraphText` KSS policy. |
 | `Flow` | `.kry canonical` | Page flow layout; lowers to row/layout policy. |
 
 ## Collections And Editors

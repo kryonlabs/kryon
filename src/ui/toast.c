@@ -54,23 +54,6 @@ RenderToast(void)
         return;
     }
 
-    snprintf(display, sizeof(display), "%s", toast_message);
-    content_w = ToastContentWidth(ui_view_width, metrics);
-    while(display[0] != '\0' && TextWidth(display, font) > content_w) {
-        size_t len = strlen(display);
-        if(len <= 3)
-            break;
-        snprintf(display + len - 3, 4, "...");
-        if(TextWidth(display, font) <= content_w)
-            break;
-        display[len - 4] = '\0';
-    }
-
-    text_w = TextWidth(display, font);
-    line_h = TextLineHeight(font);
-    layout = ToastLayoutFor(ui_view_width, ui_view_height, text_w, line_h,
-                            metrics);
-
     StyleData base = {.fields = (uint32_t)(StyleOpacity | StyleFontSize |
                                            StyleMaterial),
                       .opacity = 1.0f,
@@ -89,6 +72,26 @@ RenderToast(void)
                                     ButtonStateNormal)};
     Style surface = ui_unpack_style(ui_style_apply_effects_frame(surface_frame).value);
     Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
+    if(text.font_size > 0.0f)
+        font = (int)(text.font_size + 0.5f);
+
+    snprintf(display, sizeof(display), "%s", toast_message);
+    content_w = ToastContentWidth(ui_view_width, metrics);
+    while(display[0] != '\0' && TextWidth(display, font) > content_w) {
+        size_t len = strlen(display);
+        if(len <= 3)
+            break;
+        snprintf(display + len - 3, 4, "...");
+        if(TextWidth(display, font) <= content_w)
+            break;
+        display[len - 4] = '\0';
+    }
+
+    text_w = TextWidth(display, font);
+    line_h = TextLineHeight(font);
+    layout = ToastLayoutFor(ui_view_width, ui_view_height, text_w, line_h,
+                            metrics);
+
     ui_draw_material(layout.bounds, (Rectangle){0}, surface.background,
                      surface.border, surface.border, surface.radius,
                      surface.border_width, 0.0f, 0.0f, 0,
@@ -98,5 +101,5 @@ RenderToast(void)
                (int)layout.text_bounds.x,
                GetUIControlTextY(display, (int)layout.bounds.y,
                                  (int)layout.bounds.height, font),
-               font, text.foreground);
+               font, Fade(text.foreground, text.opacity));
 }
