@@ -1702,64 +1702,9 @@ frame.
 
 ### Scrolling
 
-#### Scroll Container
-
-```c
-typedef struct {
-    Rectangle bounds;
-    int content_height;
-    int content_x;
-    int content_width;
-    int *scroll_offset;
-    int wheel_step;
-    int scrollbar_x;
-} ScrollArea;
-
-typedef struct {
-    int content_x;
-    int content_y;
-    int content_w;
-    int viewport_h;
-    int content_h;
-    int max_scroll;
-} ScrollView;
-
-ScrollView MeasureScrollContainer(ScrollArea area);
-ScrollView BeginScrollContainer(ScrollArea area);
-void EndScrollContainer(ScrollArea area, ScrollView view);
-```
-
-#### Scroll Page
-
-```c
-typedef int (*ScrollPageHeightFn)(int content_width, void *user_data);
-
-typedef struct {
-    int y;
-    int height;
-    int max_content_width;
-    int min_content_width;
-    int side_padding;
-    int *scroll_offset;
-    int wheel_step;
-    int scrollbar_x;
-    int measure_passes;
-    ScrollPageHeightFn content_height;
-    void *user_data;
-} ScrollPageSpec;
-
-typedef struct {
-    ScrollArea area;
-    ScrollView view;
-    int content_x;
-    int content_y;
-    int content_w;
-    int content_h;
-} ScrollPage;
-
-ScrollPage BeginScrollPage(ScrollPageSpec spec);
-void EndScrollPage(ScrollPage page);
-```
+Public scrolling is the canonical `.kry` `Scroll` block. Native scroll
+container, page, and scaffold helpers remain internal host support for
+generated/runtime code and are not public widget names.
 
 #### Node Measurement
 

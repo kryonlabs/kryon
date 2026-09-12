@@ -247,6 +247,9 @@ has a single place to land.
 | `Collapsible` | `.kry canonical` | Header metrics, geometry, and marker text are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
+| `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
+| `ScrollPage` | Native support | Internal host helper only; not a public widget concept. |
+| `ScreenScaffold` | Native support | Internal app-shell helper only; compose pages from `.kry` layout. |
 | `BeginScroll` | Native support | Lowered host entry for `.kry` `Scroll` blocks; not a separate public widget name. |
 | `EndScroll` | Native support | Lowered host exit for `.kry` `Scroll` blocks; not a separate public widget name. |
 | `BeginTableCell` | Native support | Lowered host entry for `.kry` `TableCell` blocks; not a separate public widget name. |

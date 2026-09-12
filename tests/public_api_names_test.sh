@@ -84,6 +84,19 @@ if [ -n "$public_form_row_matches" ]; then
     exit 1
 fi
 
+public_scroll_helper_matches="$(
+    rg -n '\b(ScrollArea|ScrollView|ScrollPageSpec|ScrollPageHeightFn|ScreenScaffoldTitleFn|ScreenScaffoldSpec|ScreenScaffold|MeasureScrollContainer|BeginScrollContainer|EndScrollContainer|EnsureScrollRectVisible|BeginScrollPage|EndScrollPage|BeginScreenScaffold|EndScreenScaffold)\b' \
+        include/ui_scroll.h docs/API.md docs/PUBLIC_API_SNAPSHOT.txt \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_scroll_helper_matches" ]; then
+    echo "Native scroll page/container/scaffold helpers are internal; public UI should use canonical .kry Scroll and layout blocks:"
+    echo "$public_scroll_helper_matches"
+    exit 1
+fi
+
 generated_matches="$(
     rg -n '\b(TextInputControl|GenericButton|TextButton|IconButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UISeparatorNode|UIMenuBarNode|UIPopupMenuNode|UIFieldsetNode|UICanvasGridNode|UIMessageDialogNode|UIConfirmDialogNode|UIPromptDialogNode|UIColorPickerNode|UIFocusDebugOverlayNode|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITitleBarDropdown|UISubtab|UITab|UITreeItem|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfileImagePickerModal|UIProfileImagePickerResult)\b' \
         go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \

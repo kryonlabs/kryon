@@ -2,7 +2,7 @@
 #define KRYON_UI_ROWS_INTERNAL_H
 
 #include "ui_controls.h"
-#include "ui_scroll.h"
+#include "ui_scroll_internal.h"
 #include "ui_tk.h"
 
 typedef struct {
