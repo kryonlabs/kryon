@@ -22,7 +22,6 @@ PUBLIC_WIDGET_NAMES = {
     "Flow",
     "Heading",
     "Page",
-    "PageImage",
     "ParagraphText",
     "Section",
     "ShowToast",

@@ -34,6 +34,7 @@ typedef struct ImageStyle {
 
 typedef struct ImageProps {
     const char *asset_path;
+    const char *alt_text;
     Rectangle bounds;
     Rectangle source;
     Vector2 origin;

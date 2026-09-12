@@ -405,10 +405,9 @@ Link((LinkProps){{40, 96, 160, 28}, "Docs", "/docs", Text16, 101, 0, GetThemeLin
 End();
 ```
 
-Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `PageImage`,
-`Flow`, and `Grid` for Kryon-authored website surfaces. `PageImage` is named
-separately because `Image` is already the decoded-image type in the raylib
-compatibility surface. The Go runtime mirrors these helpers and records
+Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `Image`, `Flow`,
+and `Grid` for Kryon-authored website surfaces. Set `ImageProps.alt_text` when
+the image is semantic content. The Go runtime mirrors these helpers and records
 semantic `FrameOp` metadata, so `.kry` files lowered through `k2go` can use the
 same page API.
 `GetRouteVersion()` increments when the browser route changes through
@@ -1242,6 +1241,7 @@ typedef enum ImageFit {
 
 typedef struct ImageProps {
     const char *asset_path;
+    const char *alt_text;
     Rectangle bounds;
     Rectangle source;
     Vector2 origin;

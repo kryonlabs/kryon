@@ -610,6 +610,7 @@ type ParagraphSpec struct {
 
 type ImageProps struct {
 	AssetPath string
+	AltText   string
 	Bounds    Rectangle
 	Source    Rectangle
 	Origin    Vector2
@@ -1271,7 +1272,6 @@ type Runtime interface {
 	Heading(HeadingProps)
 	ParagraphText(ParagraphTextProps)
 	Link(LinkProps) bool
-	PageImage(ImageProps, string)
 	Flow(FlowProps)
 	TextField(TextFieldProps)
 	Key(text string) KeyID
@@ -4562,10 +4562,6 @@ func (r *runtime) Link(props LinkProps) bool {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
 }
-func (r *runtime) PageImage(props ImageProps, altText string) {
-	props.Bounds = r.layoutRect(props.Bounds)
-	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: SemanticImage, Role: "img", AltText: altText})
-}
 func (r *runtime) Flow(props FlowProps) {
 	r.Row(ColumnProps(props))
 }
@@ -4660,7 +4656,13 @@ func (r *runtime) Image(props ImageProps) {
 	if props.Style.Enabled && props.Style.Background.A > 0 {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: props.Style.Background})
 	}
-	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint})
+	op := FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint}
+	if props.AltText != "" {
+		op.Semantic = SemanticImage
+		op.Role = "img"
+		op.AltText = props.AltText
+	}
+	r.record(op)
 }
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	color := spec.Color

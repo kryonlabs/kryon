@@ -87,7 +87,6 @@ NodeId Section(SectionProps props);
 void Heading(HeadingProps props);
 void ParagraphText(ParagraphTextProps props);
 int Link(LinkProps props);
-void PageImage(ImageProps image, const char *alt_text);
 NodeId Flow(FlowProps props);
 
 #endif

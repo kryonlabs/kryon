@@ -209,6 +209,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
         snprintf(dst, (size_t)cap,
                  "\n    Image((ImageProps){\n"
                  "        .asset_path = \"assets/image.png\",\n"
+                 "        .alt_text = \"\",\n"
                  "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n"
                  "        .tint = WHITE,\n"
                  "        .fit = IMAGE_FIT_CONTAIN,\n"

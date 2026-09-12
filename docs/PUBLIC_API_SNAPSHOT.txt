@@ -1675,7 +1675,6 @@ include/ui_page.h function GetRouteVersion
 include/ui_page.h function Heading
 include/ui_page.h function Link
 include/ui_page.h function Page
-include/ui_page.h function PageImage
 include/ui_page.h function ParagraphText
 include/ui_page.h function PushRoute
 include/ui_page.h function ReplaceRoute

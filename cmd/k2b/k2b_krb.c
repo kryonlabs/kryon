@@ -1588,7 +1588,7 @@ find_match_brace(const char *open)
     return NULL;
 }
 
-/* Image((ImageProps){asset_path, bounds, source, origin, rot, tint, fit, style})
+/* Image((ImageProps){asset_path, alt_text, bounds, source, origin, rot, tint, fit, style})
  * -> a IMAGE node; text holds the asset path, style holds the ImageFit. */
 static int
 parse_image(KrbBuild *b, const char *call)
@@ -1616,17 +1616,17 @@ parse_image(KrbBuild *b, const char *call)
         len = sizeof(body) - 1;
     memcpy(body, open + 1, len);
     body[len] = '\0';
-    count = split_args(body, parts, 8);
-    if(count < 2)
+    count = split_args(body, parts, 9);
+    if(count < 3)
         return 0;
     snprintf(name, sizeof(name), "image%d", b->node_count);
     n = add_node(b, KRB_NODE_IMAGE, name);
     if(n == NULL)
         return 0;
     extract_string(parts[0], n->text, sizeof(n->text));   /* asset_path */
-    node_rect(n, parts[1]);                                /* bounds */
-    n->color = count > 5 ? parse_color(parts[5]) : 0xffffffffu;
-    n->style = count > 6 ? fit_of(parts[6]) : 0;
+    node_rect(n, parts[2]);                                /* bounds */
+    n->color = count > 6 ? parse_color(parts[6]) : 0xffffffffu;
+    n->style = count > 7 ? fit_of(parts[7]) : 0;
     return 1;
 }
 

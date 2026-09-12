@@ -172,7 +172,7 @@ App :: () #ui {
     lines_y += Scale(54)
     Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
-    Image((ImageProps){"tiles/tile.png", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_CONTAIN, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
+    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_CONTAIN, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com", .font = Text16, .color = GetThemeLink()})
@@ -187,7 +187,7 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Welcome", .level = 1, .font = Text24, .color = GetThemeText()})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = Scale(4)})
     Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more", .font = Text16, .color = GetThemeLink()})
-    PageImage((ImageProps){"hero.png", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_COVER, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}, "Hero")
+    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_COVER, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
     End()
     Section((SectionProps){.label = "Details", .gap = Scale(4), .padding = Scale(4)})
     Heading((HeadingProps){.text = "Details", .level = 2})
@@ -302,7 +302,7 @@ App :: () #ui {
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
         EndPopup()
     }
-    choice_image: ImageProps = {"tiles/tile.png",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,IMAGE_FIT_CONTAIN,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
+    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,IMAGE_FIT_CONTAIN,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     Checkbox((CheckboxProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
     choice_image.style = (ImageStyle){.enabled = true, .background = GetThemeSurface()}
@@ -510,7 +510,7 @@ grep -q 'CanonicalURL: "https://example.com/page"' "$out"
 grep -q 'kr.Heading(kr.HeadingProps{' "$out"
 grep -q 'kr.ParagraphText(kr.ParagraphTextProps{' "$out"
 grep -q 'kr.Link(kr.LinkProps{' "$out"
-grep -q 'kr.PageImage(kr.ImageProps{AssetPath: "hero.png"' "$out"
+grep -q 'kr.Image(kr.ImageProps{AssetPath: "hero.png", AltText: "Hero"' "$out"
 grep -q 'kr.Section(kr.SectionProps{' "$out"
 grep -q 'kr.Flow(kr.FlowProps{' "$out"
 grep -q 'kr.Grid(kr.GridProps{' "$out"

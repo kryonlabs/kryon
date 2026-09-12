@@ -204,7 +204,7 @@ The initial tag mapping is intentionally conservative:
 | `Button`, `InvisibleButton` | `button` |
 | `TextField` | `input type=text` |
 | `TextArea` | `textarea` |
-| `Image`, `PageImage` | `img` |
+| `Image` with `alt_text` | `img` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |
 

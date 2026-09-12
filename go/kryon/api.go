@@ -305,19 +305,18 @@ func Heading(props HeadingProps)     { active().Heading(props) }
 func ParagraphText(props ParagraphTextProps) {
 	active().ParagraphText(props)
 }
-func Link(props LinkProps) bool                  { return active().Link(props) }
-func PageImage(props ImageProps, altText string) { active().PageImage(props, altText) }
-func Flow(props FlowProps)                       { active().Flow(props) }
-func Fade(c Color, alpha float32) Color          { return active().Fade(c, alpha) }
-func GetThemeSurface() Color                     { return active().GetThemeSurface() }
-func GetThemeBorder() Color                      { return active().GetThemeBorder() }
-func GetThemeButton() Color                      { return active().GetThemeButton() }
-func GetThemeButtonHover() Color                 { return active().GetThemeButtonHover() }
-func GetThemeLink() Color                        { return active().GetThemeLink() }
-func GetThemePrimary() Color                     { return active().GetThemePrimary() }
-func GetThemeOnPrimary() Color                   { return active().GetThemeOnPrimary() }
-func GetThemeSurfaceVariant() Color              { return active().GetThemeSurfaceVariant() }
-func Bevel(x, y, w, h int32, light, dark Color)  { active().Bevel(x, y, w, h, light, dark) }
+func Link(props LinkProps) bool                 { return active().Link(props) }
+func Flow(props FlowProps)                      { active().Flow(props) }
+func Fade(c Color, alpha float32) Color         { return active().Fade(c, alpha) }
+func GetThemeSurface() Color                    { return active().GetThemeSurface() }
+func GetThemeBorder() Color                     { return active().GetThemeBorder() }
+func GetThemeButton() Color                     { return active().GetThemeButton() }
+func GetThemeButtonHover() Color                { return active().GetThemeButtonHover() }
+func GetThemeLink() Color                       { return active().GetThemeLink() }
+func GetThemePrimary() Color                    { return active().GetThemePrimary() }
+func GetThemeOnPrimary() Color                  { return active().GetThemeOnPrimary() }
+func GetThemeSurfaceVariant() Color             { return active().GetThemeSurfaceVariant() }
+func Bevel(x, y, w, h int32, light, dark Color) { active().Bevel(x, y, w, h, light, dark) }
 func Icon(id, x, y, size int32, iconType int32, tint Color) {
 	active().Icon(id, x, y, size, iconType, tint)
 }

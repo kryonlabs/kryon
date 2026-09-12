@@ -253,7 +253,6 @@ has a single place to land.
 | `Section` | `.kry canonical` | Page section container; lowers to layout scopes. |
 | `Heading` | `.kry canonical` | Semantic page heading backed by text policy. |
 | `ParagraphText` | `.kry canonical` | Semantic page paragraph backed by text policy. |
-| `PageImage` | `.kry canonical` | Semantic page image using canonical `ImageProps` plus required alt text. |
 | `Flow` | `.kry canonical` | Page flow layout; lowers to row/layout policy. |
 
 ## Collections And Editors

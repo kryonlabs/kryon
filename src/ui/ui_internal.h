@@ -288,6 +288,9 @@ int ui_caret_blink_visible(void);
 /* Navigate to a URL: in-browser redirect on web, platform opener otherwise.
  * A no-op for a NULL/empty url. */
 void ui_open_url(const char *url);
+void ui_page_semantic_next(SemanticKind kind, const char *label,
+                           const char *href, const char *role, int level,
+                           int tab_index);
 void RenderFrameOverlays(void);
 void RenderFocus(Rectangle bounds);
 int ui_label_text_field_height(LabelTextFieldProps row);

@@ -2213,6 +2213,9 @@ RenderImage(ImageProps image)
     Texture2D texture;
     Color fallback;
 
+    if(image.alt_text != NULL && image.alt_text[0] != '\0')
+        ui_page_semantic_next(SEMANTIC_IMAGE, image.alt_text, NULL, "img", 0,
+                              -1);
     ui_tree_add(0, WIDGET_IMAGE, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);
     if(texture.id == 0) {

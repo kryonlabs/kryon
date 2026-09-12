@@ -57,9 +57,9 @@ page_semantic_box(SemanticKind kind, Rectangle bounds, const char *label)
         kry_dom_semantic_box((int)kind, bounds, label);
 }
 
-static void
-page_semantic_next(SemanticKind kind, const char *label, const char *href,
-                   const char *role, int level, int tab_index)
+void
+ui_page_semantic_next(SemanticKind kind, const char *label, const char *href,
+                      const char *role, int level, int tab_index)
 {
     if(kry_dom_semantic_next != NULL)
         kry_dom_semantic_next((int)kind, label, href, role, level, tab_index);
@@ -233,23 +233,16 @@ ParagraphText(ParagraphTextProps props)
     paragraph.font = props.font > 0 ? props.font : GetFontSize();
     paragraph.line_gap = props.line_gap;
     paragraph.color = page_color_or(props.color, GetThemeText());
-    page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
+    ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }
 
 int
 Link(LinkProps props)
 {
-    page_semantic_next(SEMANTIC_LINK, props.text, props.link, "link", 0,
-                       props.focus_id);
+    ui_page_semantic_next(SEMANTIC_LINK, props.text, props.link, "link", 0,
+                          props.focus_id);
     return RenderLink(props);
-}
-
-void
-PageImage(ImageProps image, const char *alt_text)
-{
-    page_semantic_next(SEMANTIC_IMAGE, alt_text, NULL, "img", 0, -1);
-    RenderImage(image);
 }
 
 NodeId
