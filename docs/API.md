@@ -1281,7 +1281,6 @@ typedef struct ImageProps {
 } ImageProps;
 
 Image((ImageProps){...})
-void RenderImage(ImageProps image);
 ```
 
 Images are image-backed UI widget nodes. `asset_path` is resolved first as a
@@ -1289,8 +1288,8 @@ runtime file path and then as an embedded asset path. `Image` uses the full
 image with contain fitting and exposes source rect, origin, rotation, tint, fit
 mode, and optional material-style image treatment through `style`. The
 `Sprite2D` scene node shares the same texture cache for world-space game
-sprites. The public `.kry`, Go, and JS widget is `Image`; C host support uses
-`RenderImage` because raylib already owns `Image` as a decoded-image-in-memory
+sprites. The public `.kry`, Go, and JS widget is `Image`; host drawing support
+is internal because raylib already owns `Image` as a decoded-image-in-memory
 struct type.
 
 ### Buttons

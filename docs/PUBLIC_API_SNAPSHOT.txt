@@ -2008,7 +2008,6 @@ include/ui_tree.h function Progress
 include/ui_tree.h function Radio
 include/ui_tree.h function ReconcileTree
 include/ui_tree.h function Rect
-include/ui_tree.h function RenderImage
 include/ui_tree.h function ResolveButtonStyle
 include/ui_tree.h function Ring
 include/ui_tree.h function RouteInput

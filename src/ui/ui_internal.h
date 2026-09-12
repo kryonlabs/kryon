@@ -460,6 +460,7 @@ void RenderTutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
 void RenderTutorialImage(Texture2D texture, const char *fallback,
                          int x, int y, int w, int h);
+void RenderImage(ImageProps image);
 int RenderActionModal(ModalProps modal);
 int RenderTitleBar(TitleBarProps title_bar);
 UIPanelFrame RenderModalFrame(int width, int height, const char *title,

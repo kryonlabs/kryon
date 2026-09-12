@@ -4,7 +4,7 @@
 /*
  * UI image widget + shared image texture cache.
  *
- * The public .kry widget is Image(ImageProps). C host support uses RenderImage
+ * The public widget is Image(ImageProps). Host drawing support is internal
  * because raylib already owns Image as a decoded-image-in-memory type.
  */
 
