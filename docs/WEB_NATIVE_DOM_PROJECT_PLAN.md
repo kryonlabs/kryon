@@ -31,7 +31,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
-- Native relation resolution for `aria_controls`, `aria_describedby`, `dom_for`,
+- Native relation resolution for `aria_controls`, `aria_owns`,
+  `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`,
   and `popover_target`, while preserving authored Kry refs in Web Document facts.
 - Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
   wheel, drag/drop, clipboard, dialog, and popover events.
