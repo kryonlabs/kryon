@@ -79,6 +79,10 @@ invalid_search :: (value: string) -> int {
     count += 10000000
     return count
 }
+scroll_search :: (value: i32) -> int {
+    count += value
+    return count
+}
 submit_search :: () -> int {
     count += 10000
     return count
@@ -170,6 +174,7 @@ Scene :: (viewport: Rectangle) #ui {
             on_change = note_change
             on_key = note_key
             on_invalid = invalid_search
+            on_scroll = scroll_search
             on_submit = submit_search
             on_focus = focus_search
             on_blur = blur_search
@@ -254,6 +259,7 @@ grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
 grep -q '"onKey": "note_key"' "$out"
 grep -q '"onInvalid": "invalid_search"' "$out"
+grep -q '"onScroll": "scroll_search"' "$out"
 grep -q '"onSubmit": "submit_search"' "$out"
 grep -q '"onFocus": "focus_search"' "$out"
 grep -q '"onBlur": "blur_search"' "$out"

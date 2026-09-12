@@ -134,6 +134,7 @@ export interface WebDocumentNode {
   onReset: string;
   onFocus: string;
   onBlur: string;
+  onScroll: string;
   onMouseEnter: string;
   onMouseLeave: string;
   onMouseDown: string;
@@ -147,6 +148,7 @@ export interface WebDocumentNode {
   resetAction: ((values: Record<string, unknown>) => unknown) | null;
   focusAction: (() => unknown) | null;
   blurAction: (() => unknown) | null;
+  scrollAction: ((value: number) => unknown) | null;
   mouseEnterAction: (() => unknown) | null;
   mouseLeaveAction: (() => unknown) | null;
   mouseDownAction: (() => unknown) | null;
@@ -157,6 +159,8 @@ export interface WebDocumentNode {
   pageThemeColor: string;
   bounds: { x: number; y: number; width: number; height: number };
   hasBounds: boolean;
+  scrollLeft: number;
+  scrollTop: number;
   state: {
     disabled: boolean;
     loading: boolean;
@@ -201,6 +205,8 @@ export interface WebNodeStyleFacts {
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
+  scrollLeft: number;
+  scrollTop: number;
   readOnly: boolean;
   required: boolean;
   min: string;

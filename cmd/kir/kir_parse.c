@@ -498,6 +498,7 @@ typedef struct UiBlock {
     char dom_on_reset[KIR_NAME_MAX];
     char dom_on_focus[KIR_NAME_MAX];
     char dom_on_blur[KIR_NAME_MAX];
+    char dom_on_scroll[KIR_NAME_MAX];
     char dom_on_mouse_enter[KIR_NAME_MAX];
     char dom_on_mouse_leave[KIR_NAME_MAX];
     char dom_on_mouse_down[KIR_NAME_MAX];
@@ -1010,6 +1011,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_on_blur, sizeof(block->dom_on_blur), "%s", value);
         return 1;
     }
+    if(strcmp(field, "on_scroll") == 0) {
+        snprintf(block->dom_on_scroll, sizeof(block->dom_on_scroll), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "on_mouse_enter") == 0 ||
        strcmp(field, "on_pointer_enter") == 0) {
         snprintf(block->dom_on_mouse_enter, sizeof(block->dom_on_mouse_enter),
@@ -1156,6 +1162,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_focus);
     snprintf(statement->dom_on_blur, sizeof(statement->dom_on_blur), "%s",
              block->dom_on_blur);
+    snprintf(statement->dom_on_scroll, sizeof(statement->dom_on_scroll), "%s",
+             block->dom_on_scroll);
     snprintf(statement->dom_on_mouse_enter,
              sizeof(statement->dom_on_mouse_enter), "%s",
              block->dom_on_mouse_enter);

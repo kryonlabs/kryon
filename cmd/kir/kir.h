@@ -178,6 +178,7 @@ typedef struct KirStmt {
     char dom_on_reset[KIR_NAME_MAX];    /* logic function bound to reset */
     char dom_on_focus[KIR_NAME_MAX];    /* logic function bound to focus */
     char dom_on_blur[KIR_NAME_MAX];     /* logic function bound to blur */
+    char dom_on_scroll[KIR_NAME_MAX];   /* logic function bound to scroll(value) */
     char dom_on_mouse_enter[KIR_NAME_MAX]; /* logic function bound to mouseenter */
     char dom_on_mouse_leave[KIR_NAME_MAX]; /* logic function bound to mouseleave */
     char dom_on_mouse_down[KIR_NAME_MAX];  /* logic function bound to mousedown */

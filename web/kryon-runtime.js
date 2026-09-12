@@ -1173,6 +1173,7 @@ function webNodeFromWidget(item, index) {
     onReset: meta.onReset === undefined || meta.onReset === null ? "" : String(meta.onReset),
     onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
     onBlur: meta.onBlur === undefined || meta.onBlur === null ? "" : String(meta.onBlur),
+    onScroll: meta.onScroll === undefined || meta.onScroll === null ? "" : String(meta.onScroll),
     onMouseEnter: meta.onMouseEnter === undefined || meta.onMouseEnter === null ? "" : String(meta.onMouseEnter),
     onMouseLeave: meta.onMouseLeave === undefined || meta.onMouseLeave === null ? "" : String(meta.onMouseLeave),
     onMouseDown: meta.onMouseDown === undefined || meta.onMouseDown === null ? "" : String(meta.onMouseDown),
@@ -1186,6 +1187,7 @@ function webNodeFromWidget(item, index) {
     resetAction: typeof meta.resetAction === "function" ? meta.resetAction : null,
     focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
     blurAction: typeof meta.blurAction === "function" ? meta.blurAction : null,
+    scrollAction: typeof meta.scrollAction === "function" ? meta.scrollAction : null,
     mouseEnterAction: typeof meta.mouseEnterAction === "function" ? meta.mouseEnterAction : null,
     mouseLeaveAction: typeof meta.mouseLeaveAction === "function" ? meta.mouseLeaveAction : null,
     mouseDownAction: typeof meta.mouseDownAction === "function" ? meta.mouseDownAction : null,
@@ -1196,6 +1198,8 @@ function webNodeFromWidget(item, index) {
     pageThemeColor: colorToCss(args?.theme_color || args?.themeColor || ""),
     bounds,
     hasBounds: bounds.width > 0 || bounds.height > 0,
+    scrollLeft: 0,
+    scrollTop: 0,
     state
   };
   node.styleFacts = webNodeStyleFacts(node);
@@ -1232,6 +1236,8 @@ export function webNodeStyleFacts(node) {
     download: node?.download || "",
     formNoValidate: !!node?.formNoValidate,
     noValidate: !!node?.noValidate,
+    scrollLeft: Number.isFinite(Number(node?.scrollLeft)) ? Number(node.scrollLeft) : 0,
+    scrollTop: Number.isFinite(Number(node?.scrollTop)) ? Number(node.scrollTop) : 0,
     readOnly: !!node?.readOnly,
     required: !!node?.required,
     min: node?.min || "",
@@ -1523,6 +1529,8 @@ function selectorNativeAttrValue(key, facts) {
     case "download": return facts.download;
     case "formnovalidate": return facts.formNoValidate;
     case "novalidate": return facts.noValidate;
+    case "scrollleft": return facts.scrollLeft;
+    case "scrolltop": return facts.scrollTop;
     case "readonly": return facts.readOnly;
     case "required": return facts.required;
     case "minlength": return facts.minLength;
@@ -1769,6 +1777,19 @@ function bindNodeEvents(el) {
     if (docNode?.blurAction)
       docNode.blurAction();
   });
+  el.addEventListener("scroll", () => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    docNode.scrollLeft = Number(el.scrollLeft) || 0;
+    docNode.scrollTop = Number(el.scrollTop) || 0;
+    docNode.styleFacts = webNodeStyleFacts(docNode);
+    applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+      ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+      : null);
+    if (docNode.scrollAction)
+      docNode.scrollAction(docNode.scrollTop);
+  });
   el.addEventListener("click", () => {
     const docNode = el.__kryDocNode;
     const rt = el.__kryRuntime;
@@ -1957,6 +1978,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnBlur = docNode.onBlur;
   else
     delete el.dataset.kryOnBlur;
+  if (docNode.onScroll)
+    el.dataset.kryOnScroll = docNode.onScroll;
+  else
+    delete el.dataset.kryOnScroll;
   if (docNode.onMouseEnter)
     el.dataset.kryOnMouseEnter = docNode.onMouseEnter;
   else

@@ -1227,7 +1227,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_on_invalid[0] ||
            st->dom_on_submit[0] || st->dom_on_reset[0] ||
            st->dom_on_focus[0] ||
-           st->dom_on_blur[0] || st->dom_on_mouse_enter[0] ||
+           st->dom_on_blur[0] || st->dom_on_scroll[0] ||
+           st->dom_on_mouse_enter[0] ||
            st->dom_on_mouse_leave[0] || st->dom_on_mouse_down[0] ||
            st->dom_on_mouse_up[0];
 }
@@ -1454,6 +1455,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                     &emitted);
     emit_web_action(f, m, "onBlur", "blurAction", st->dom_on_blur, "",
                     &emitted);
+    emit_web_action(f, m, "onScroll", "scrollAction", st->dom_on_scroll,
+                    "value", &emitted);
     emit_web_action(f, m, "onMouseEnter", "mouseEnterAction",
                     st->dom_on_mouse_enter, "", &emitted);
     emit_web_action(f, m, "onMouseLeave", "mouseLeaveAction",

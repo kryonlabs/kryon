@@ -84,6 +84,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[formnovalidate] {
     content-offset-y: 7;
   }
+  TextField[scrolltop=22] {
+    font-size: 18;
+  }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 runtime.setWebStyleSheets(rt, webStyleSheet);
@@ -162,6 +165,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   download: "",
   formNoValidate: false,
   noValidate: false,
+  scrollLeft: 0,
+  scrollTop: 0,
   readOnly: false,
   required: false,
   min: "",
@@ -270,6 +275,7 @@ assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
 assert.equal(webDoc.nodes[3].onKey, "note_key");
 assert.equal(webDoc.nodes[3].onInvalid, "invalid_search");
+assert.equal(webDoc.nodes[3].onScroll, "scroll_search");
 assert.equal(webDoc.nodes[3].onSubmit, "submit_search");
 assert.equal(webDoc.nodes[3].onFocus, "focus_search");
 assert.equal(webDoc.nodes[3].onBlur, "blur_search");
@@ -341,6 +347,12 @@ function fakeDocument() {
           this.onchange();
       },
       keydown(key) { if (this.onkeydown) this.onkeydown({ key }); },
+      scroll(left, top) {
+        this.scrollLeft = left;
+        this.scrollTop = top;
+        if (this.onscroll)
+          this.onscroll();
+      },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       reset() { if (this.onreset) this.onreset({ preventDefault() {} }); },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
@@ -678,6 +690,7 @@ function fakeDocument() {
     assert.equal(firstField.dataset.kryOnChange, "note_change");
     assert.equal(firstField.dataset.kryOnKey, "note_key");
     assert.equal(firstField.dataset.kryOnInvalid, "invalid_search");
+    assert.equal(firstField.dataset.kryOnScroll, "scroll_search");
     assert.equal(firstField.dataset.kryOnSubmit, "submit_search");
     assert.equal(firstField.dataset.kryOnFocus, "focus_search");
     assert.equal(firstField.dataset.kryOnBlur, "blur_search");
@@ -702,14 +715,19 @@ function fakeDocument() {
     assert.equal(domState.count, 111);
     firstField.keydown("Enter");
     assert.equal(domState.count, 1111);
+    firstField.scroll(5, 22);
+    assert.equal(domState.count, 1133);
+    assert.equal(firstField.__kryDocNode.scrollLeft, 5);
+    assert.equal(firstField.__kryDocNode.scrollTop, 22);
+    assert.equal(firstField.style.fontSize, "18px");
     firstField.invalid();
-    assert.equal(domState.count, 10001111);
+    assert.equal(domState.count, 10001133);
     firstField.submit();
-    assert.equal(domState.count, 10011111);
+    assert.equal(domState.count, 10011133);
     firstField.focus();
-    assert.equal(domState.count, 10111111);
+    assert.equal(domState.count, 10111133);
     firstField.blur();
-    assert.equal(domState.count, 11111111);
+    assert.equal(domState.count, 11111133);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);
