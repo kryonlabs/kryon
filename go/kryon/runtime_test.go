@@ -1487,9 +1487,12 @@ tokens {
     surface: #101820;
     field: #182231;
     field-focus: #22364f;
+    field-disabled: #0b1018;
     ink: #e8f1ff;
     label: #d8e4f5;
+    disabled-ink: #7c8797;
     rule: #506172;
+    disabled-rule: #2b3340;
     focus-ring: #ff9f1c;
   }
   length { radius: 5; border: 2; }
@@ -1498,8 +1501,10 @@ tokens {
 Surface { background: surface; material: flat; }
 App { background: surface; }
 Text { foreground: label; font-size: 14; }
-TextField { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
-TextField:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
+Drag { foreground: label; font-size: 14; }
+DragValue { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+DragValue:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
+DragValue:disabled { background: field-disabled; foreground: disabled-ink; border: disabled-rule; opacity: 0.55; }
 `, "Test Drag Scalar", "") || !SetActiveStylePack("test.drag_scalar") {
 		t.Fatal("test drag scalar style did not activate")
 	}
@@ -1544,6 +1549,35 @@ TextField:focus { background: field-focus; foreground: ink; border: focus-ring; 
 	if !sawCell || !sawLabel {
 		t.Fatalf("missing styled drag scalar ops: cell=%v label=%v ops=%+v", sawCell, sawLabel, rt.FrameOps())
 	}
+
+	disabledRT := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	disabledRT.BeginFrame()
+	disabledRT.dragFloat(dragFloatProps{
+		Bounds:     Rectangle{X: 10, Y: 30, Width: 120, Height: 30},
+		ID:         304,
+		Values:     values,
+		ValueCount: 1,
+		Speed:      1,
+		Min:        0,
+		Max:        10,
+		Format:     "%.1f",
+		Disabled:   true,
+	})
+	disabledRT.EndFrame()
+
+	for _, op := range disabledRT.FrameOps() {
+		if op.Kind == FrameOpButton && op.ID == 304 && op.Row == 0 {
+			if !op.Disabled ||
+				op.Color != (Color{R: 0x0b, G: 0x10, B: 0x18, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x2b, G: 0x33, B: 0x40, A: 0xff}) ||
+				op.TextColor != (Color{R: 0x7c, G: 0x87, B: 0x97, A: 0xff}) ||
+				op.Opacity != 0.55 {
+				t.Fatalf("disabled drag scalar cell style op = %+v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("missing disabled drag scalar cell op: %+v", disabledRT.FrameOps())
 }
 
 func TestIconRenderDrawsTintedPixels(t *testing.T) {

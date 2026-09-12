@@ -562,6 +562,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"ListBoxMultiItem:focus", StyleSheet_StyleKindListBoxMultiItem(), ButtonStateFocus},
 		{"ListBoxMultiItem:disabled", StyleSheet_StyleKindListBoxMultiItem(), ButtonStateDisabled},
 		{"DragDropTarget:hover", StyleSheet_StyleKindDragDropTarget(), ButtonStateHover},
+		{"DragValue:disabled", StyleSheet_StyleKindDragValue(), ButtonStateDisabled},
 		{"Link:hover", StyleSheet_StyleKindLink(), ButtonStateHover},
 		{"Link:disabled", StyleSheet_StyleKindLink(), ButtonStateDisabled},
 		{"Focus:focus", StyleSheet_StyleKindFocus(), ButtonStateFocus},
