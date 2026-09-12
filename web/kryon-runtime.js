@@ -2457,6 +2457,10 @@ export function webSourceRef(sourcePath, sourceLine, sourceColumn = 0) {
   return column > 0 ? `${path}:${line}:${column}` : `${path}:${line}`;
 }
 
+function webNodeHasSource(node) {
+  return !!(node?.sourcePath && node?.sourceLine);
+}
+
 function sourceRefMatches(docNode, query) {
   const text = String(query || "");
   return webNodeSourceRef(docNode) === text || webNodeSourceColumnRef(docNode) === text;
@@ -2718,6 +2722,13 @@ function bindWebDOMObjectProperties(el) {
         const object = webDOMObjectFromElement(this);
         const root = object?.element?.__kryMountRoot || mountedRoot(object?.element || null);
         return object && root ? webDOMClosest(root, object.node.path, selector) : null;
+      }
+    },
+    krySourceMap: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webDOMSourceMap(this);
       }
     },
     kryListen: {
@@ -4451,6 +4462,12 @@ export function webNodeAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {
   return webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn)[0] || null;
 }
 
+export function webSourceMap(rt) {
+  return webDocumentFrame(rt).nodes
+    .filter((node) => webNodeHasSource(node))
+    .map((node) => webNodeIdentity(node));
+}
+
 export function findWebElement(target, query) {
   const root = mountedRoot(target);
   if (!root)
@@ -5111,6 +5128,10 @@ export function webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColu
 
 export function webDOMObjectAtSource(target, sourcePath, sourceLine, sourceColumn = 0) {
   return webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColumn)[0] || null;
+}
+
+export function webDOMSourceMap(target) {
+  return webDOMObjects(target).filter((object) => webNodeHasSource(object.node));
 }
 
 function cleanDOMEventType(type) {
