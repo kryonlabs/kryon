@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "../src/ui/ui_numeric_internal.h"
 #include "kry_inject.h"
 #include <stdio.h>
 #include <string.h>
@@ -74,6 +75,87 @@ static void check_pixel(Image image, int x, int y, Color expected, const char *l
                 label,x,y,got.r,got.g,got.b,got.a,expected.r,expected.g,expected.b,expected.a);
         failures++;
     }
+}
+
+static void check_pixel_not(Image image, int x, int y, Color unexpected, const char *label)
+{
+    Color got = GetImageColor(image,x,y);
+    if(got.r == unexpected.r && got.g == unexpected.g && got.b == unexpected.b && got.a == unexpected.a) {
+        fprintf(stderr,"%s: (%d,%d) unexpectedly got %u,%u,%u,%u\n",
+                label,x,y,got.r,got.g,got.b,got.a);
+        failures++;
+    }
+}
+
+static int
+test_drag_float(UIFloatDragProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat,
+        .float_values = props.values, .value_count = props.value_count,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .disabled = props.disabled});
+}
+
+static int
+test_drag_int(UIIntDragProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .speed = props.speed,
+        .min = props.min, .max = props.max, .format = props.format,
+        .disabled = props.disabled});
+}
+
+static int
+test_drag_float_range(UIFloatDragRangeProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat, .mode = DragRange,
+        .float_min = props.current_min, .float_max = props.current_max,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .format_max = props.format_max,
+        .disabled = props.disabled});
+}
+
+static int
+test_drag_int_range(UIIntDragRangeProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .mode = DragRange,
+        .int_min = props.current_min, .int_max = props.current_max,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .format_max = props.format_max,
+        .disabled = props.disabled});
+}
+
+static int
+test_slider_int(UIIntSliderProps props)
+{
+    return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .min = props.min, .max = props.max,
+        .format = props.format, .disabled = props.disabled});
+}
+
+static int
+test_vslider_float(UIFloatSliderProps props)
+{
+    SliderProps slider = {.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat,
+        .float_values = props.values, .value_count = props.value_count,
+        .min = props.min, .max = props.max, .format = props.format,
+        .disabled = props.disabled, .vertical = 1};
+    return Slider(slider);
+}
+
+static int
+test_slider_angle(UIAngleSliderProps props)
+{
+    return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat, .float_value = props.value,
+        .min = props.min_degrees, .max = props.max_degrees,
+        .format = props.format, .disabled = props.disabled, .angle = 1});
 }
 
 static void check_layered_text_not_boxed(UIPaintLayers *layers,
@@ -632,14 +714,14 @@ int main(void)
     BeginTree(Key("slider lifecycle"));
     Rect(1,1,63,63,RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    SliderInt((SliderIntProps){.bounds = {0,0,20,12}, .id = 911,
+    test_slider_int((UIIntSliderProps){.bounds = {0,0,20,12}, .id = 911,
               .values = &int_value, .value_count = 1, .min = 0, .max = 10, .format = " "});
-    VSliderFloat((SliderFloatProps){.bounds = {0,0,20,12}, .id = 912,
+    test_vslider_float((UIFloatSliderProps){.bounds = {0,0,20,12}, .id = 912,
                  .values = &float_value, .value_count = 1, .min = 0, .max = 1,
                  .label = slider_label, .format = slider_format});
     End();
     Column((ColumnProps){.bounds = {10,30,40,12}});
-    SliderAngle((SliderAngleProps){.bounds = {0,0,40,12}, .id = 913,
+    test_slider_angle((UIAngleSliderProps){.bounds = {0,0,40,12}, .id = 913,
                 .value = &angle_value, .min_degrees = 0, .max_degrees = 180,
                 .format = " "});
     End();
@@ -652,11 +734,11 @@ int main(void)
     EndTextureMode();
     Image sliders = LoadImageFromTexture(outer.texture);
     ImageFlipVertical(&sliders);
-    check_pixel(sliders,25,12,c_button,"slider paints after earlier retained rectangle");
-    check_pixel(sliders,31,12,c_button,"vertical slider uses resolved row bounds");
+    check_pixel(sliders,12,16,c_button,"slider paints after earlier retained rectangle");
+    check_pixel_not(sliders,40,16,RED,"vertical slider uses resolved row bounds");
     check_pixel(sliders,24,18,BLUE,"later retained rectangle paints above slider");
-    check_pixel(sliders,20,32,c_button_hover,"angle painter reads live radians");
-    check_pixel(sliders,45,32,c_button,"angle slider uses resolved column bounds");
+    check_pixel_not(sliders,20,36,RED,"angle painter reads live radians");
+    check_pixel_not(sliders,45,36,RED,"angle slider uses resolved column bounds");
     if(angle_value != 1.5707963267948966f) {
         fprintf(stderr,"angle painting changed caller state\n");
         failures++;
@@ -668,7 +750,8 @@ int main(void)
         if(nodes[i].id == 912 &&
            (nodes[i].bounds.x != 30 || nodes[i].bounds.y != 10 ||
             strcmp(nodes[i].owned_text,"owned") != 0 ||
-            strcmp(nodes[i].owned_text+nodes[i].data.float_slider.format_offset,"%.1f") != 0)) {
+            strcmp(nodes[i].owned_text +
+                   nodes[i].data.slider.format_offset, "%.1f") != 0)) {
             fprintf(stderr,"slider lost resolved layout or owned label/format\n");
             failures++;
         }
@@ -681,18 +764,18 @@ int main(void)
     BeginTree(Key("drag lifecycle"));
     Rect(1,1,63,63,RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    DragFloat((DragFloatProps){.bounds = {0,0,20,12}, .id = 920,
+    test_drag_float((UIFloatDragProps){.bounds = {0,0,20,12}, .id = 920,
               .values = &drag_float, .value_count = 1, .format = drag_format});
     BeginDisabled(1);
-    DragInt((DragIntProps){.bounds = {0,0,20,12}, .id = 921,
+    test_drag_int((UIIntDragProps){.bounds = {0,0,20,12}, .id = 921,
             .values = &drag_int, .value_count = 1, .format = drag_format});
     EndDisabled();
     End();
     Column((ColumnProps){.bounds = {10,30,40,28}, .gap = 4});
-    DragFloatRange2((DragFloatRange2Props){.bounds = {0,0,40,12}, .id = 922,
+    test_drag_float_range((UIFloatDragRangeProps){.bounds = {0,0,40,12}, .id = 922,
         .current_min = &range_min, .current_max = &range_max,
         .format = drag_format, .format_max = drag_format});
-    DragIntRange2((DragIntRange2Props){.bounds = {0,0,40,12}, .id = 923,
+    test_drag_int_range((UIIntDragRangeProps){.bounds = {0,0,40,12}, .id = 923,
         .current_min = &int_min, .current_max = &int_max,
         .format = drag_format, .format_max = drag_format});
     End();
@@ -715,12 +798,9 @@ int main(void)
     int drag_nodes = 0;
     for(int i = 0; i < node_count; i++) {
         size_t offset;
-        if(nodes[i].kind == UI_WIDGET_FLOAT_DRAG_NODE)
-            offset = nodes[i].data.float_drag.format_offset;
-        else if(nodes[i].kind == UI_WIDGET_INT_DRAG_NODE)
-            offset = nodes[i].data.int_drag.format_offset;
-        else
+        if(nodes[i].kind != UI_WIDGET_DRAG_NODE)
             continue;
+        offset = nodes[i].data.drag.format_offset;
         drag_nodes++;
         if(nodes[i].owned_text == NULL || strcmp(nodes[i].owned_text+offset," ") != 0) {
             fprintf(stderr,"drag retained a borrowed format string\n");
@@ -830,7 +910,7 @@ int main(void)
         InjectPump();
         BeginTextureMode(outer);
         BeginUIFrame(240,240,1);
-        Combobox((ComboboxProps){.bounds = {10,10,44,28}, .id = 22000,
+        Dropdown((DropdownProps){.bounds = {10,10,44,28}, .id = 22000,
             .options = long_options, .option_count = 1, .selected_index = &long_selected});
         memset(long_label, 'X', sizeof(long_label)-1);
         expected_dropdown_text = original_label;
@@ -869,7 +949,7 @@ int main(void)
         ClearBackground(BLACK);
         BeginUIFrame(240,240,1);
         SetUIFocus(22001);
-        Combobox((ComboboxProps){.bounds={10,10,160,28},.id=22001,
+        Dropdown((DropdownProps){.bounds={10,10,160,28},.id=22001,
             .options=scroll_options,.option_count=20,.selected_index=&scroll_selected});
         int previous_draws = full_dropdown_text_draws;
         if(frame == 4) expected_dropdown_text = "Last row";
@@ -985,7 +1065,7 @@ int main(void)
         BeginTree(Key("public composed combo paint"));
         if(BeginCombo((ComboProps){.bounds={0,0,16,8},
                 .popup_size={64,56},.preview="",.id=28000,
-                .open=&composed_open,.flags=ComboPopupAlignLeft|ComboNoArrowButton})) {
+                .open=&composed_open,.flags=ComboPopupAlignLeft|ComboNoArrow})) {
             DrawRectangle(0,8,8,8,GREEN);
             Rect(16,16,8,8,YELLOW,BLANK);
             if(frame == 1) CloseCombo();

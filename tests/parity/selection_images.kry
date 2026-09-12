@@ -24,16 +24,17 @@ state {
 selection_images_frame :: () #ui {
     Screen selection_images_root: {
         bounds = {0,0,320,260}
-        picture: PictureProps = {"",(Rectangle){20,100,96,64},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,PICTURE_FIT_CONTAIN}
+        image: ImageProps = {.asset_path = "", .bounds = (Rectangle){20,100,96,64}, .source = (Rectangle){0,0,0,0}, .origin = (Vector2){0,0}, .rotation = 0.0f, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN}
         Selectable((SelectableProps){.bounds = {20,20,200,30}, .id = 950, .label = "Selectable", .selected = &selection_selected})
-        CheckboxFlags((CheckboxFlagsProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
-        ImageWithBg((ImageWithBgProps){.picture = picture, .background = (Color){40,50,60,255}})
-        picture.bounds = (Rectangle){140,100,96,64}
-        ImageButton((ImageButtonProps){.picture = picture, .background = (Color){30,40,50,255}, .id = 952})
-        SeparatorText((SeparatorTextProps){.bounds = {20,180,220,24}, .label = "Section", .font = Text14})
+        Checkbox((CheckboxProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
+        image.style = (ImageStyle){.enabled = true, .background = (Color){40,50,60,255}}
+        Image(image)
+        image.bounds = (Rectangle){140,100,96,64}
+        Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_tint = image.tint, .image_fit = image.fit, .image_background = (Color){30,40,50,255}, .id = 952})
+        Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section", .font = Text14})
         tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
-        TabItemButton((TabItemButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .font = Text14})
-        ClosableTabBar((ClosableTabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = &selected_tab, .font = Text14, .closed_index = &closed_tab})
+        Button((ButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .font = Text14, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
+        TabBar((TabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = selected_tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = 90, .max_tab_width = 90})
         DragDropSource((DragDropSourceProps){.bounds = {20,245,80,28}, .id = 955, .type = "ITEM", .data = payload, .data_size = 8})
         DragDropTarget((DragDropTargetProps){.bounds = {120,245,120,28}, .id = 956, .type = "ITEM", .output = received, .output_size = 8, .accepted_size = &accepted_size})
         multi_items: [3] const char * = {"Alpha","Beta","Gamma"}

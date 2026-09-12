@@ -98,7 +98,7 @@ func TestComposedComboPlacementFlagsAndMissingOwner(t *testing.T) {
 		x, y, w, h float32
 	}{
 		{"right", ComboHeightSmall, 90, 40, 120, 112},
-		{"left-fit", ComboPopupAlignLeft | ComboWidthFitPreview | ComboNoArrowButton | ComboNoPreview | ComboHeightLarge, 170, 0, 70, 180},
+		{"left-fit", ComboPopupAlignLeft | ComboWidthFitPreview | ComboNoArrow | ComboNoPreview | ComboHeightLarge, 170, 0, 70, 180},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			r := New(AppConfig{Width: 240, Height: 180}).(*runtime)

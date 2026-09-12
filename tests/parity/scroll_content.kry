@@ -81,7 +81,7 @@ scroll_content_frame :: () #ui {
         }
         EndTableCell()
         state_cell: Rectangle = BeginTableCell(custom_table,0,1)
-        CheckboxFlags((CheckboxFlagsProps){.bounds = state_cell, .label = "Enabled", .id = 1001, .flags = &custom_flags, .flags_value = 4})
+        Checkbox((CheckboxProps){.bounds = state_cell, .label = "Enabled", .id = 1001, .flags = &custom_flags, .flags_value = 4})
         EndTableCell()
         edit_cell: Rectangle = BeginTableCell(custom_table,1,0)
         Row cell_editor: {
@@ -133,13 +133,13 @@ scroll_content_frame :: () #ui {
     if Button((ButtonProps){.bounds = {10,80,100,28}, .label = "Outside", .id = 985}) {
         scrolling_actions += 100
     }
-    list: Rectangle = BeginListBox((ListBoxProps){.bounds = {240,10,180,90}, .id = 1008, .content_height = 240, .scroll_offset = &mixed_offset})
-    CheckboxFlags((CheckboxFlagsProps){.bounds = {list.x,list.y,160,28}, .id = 987, .label = "Enabled", .flags = &mixed_flags, .flags_value = 4})
+    list: Rectangle = BeginScroll((Rectangle){241,11,178,88}, 240, &mixed_offset)
+    Checkbox((CheckboxProps){.bounds = {list.x,list.y,160,28}, .id = 987, .label = "Enabled", .flags = &mixed_flags, .flags_value = 4})
     TextField((TextFieldProps){.bounds = {list.x,list.y + 32,160,28}, .text = mixed_text, .text_size = sizeof(mixed_text), .cursor_position = &mixed_cursor, .max_codepoints = 63, .font = Text16, .focus_id = 988})
     if Button((ButtonProps){.bounds = {list.x,list.y + 100,160,28}, .label = "Apply", .id = 989}) {
         mixed_actions += 1
     }
-    EndListBox()
+    EndScroll()
     Collapsible((CollapsibleProps){.bounds = {440,10,190,32}, .label = "Root", .open = &branch_open, .tree = true, .id = 990})
     if branch_open {
         Collapsible((CollapsibleProps){.bounds = {440,42,190,32}, .label = "Branch", .open = &nested_open, .tree = true, .depth = 1, .id = 991})

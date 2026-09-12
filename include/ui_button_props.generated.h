@@ -20,6 +20,7 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "ui_control_props.generated.h"
+#include "ui_menu_types.h"
 
 typedef struct ButtonProps {
     Rectangle bounds;
@@ -40,6 +41,26 @@ typedef struct ButtonProps {
     IconPlacement icon_placement;
     bool icon_only;
     bool square;
+    const char* image_asset_path;
+    Rectangle image_bounds;
+    Rectangle image_source;
+    Vector2 image_origin;
+    float image_rotation;
+    Color image_tint;
+    int32_t image_fit;
+    Color image_background;
+    bool swatch;
+    Color swatch_color;
+    int32_t menu_id;
+    const MenuItem* items;
+    int32_t item_count;
+    int32_t* open;
+    int32_t* activated_id;
+    bool menu;
+    bool split;
+    bool arrow;
+    bool info;
+    int32_t direction;
     ButtonState state;
     ControlStyle style;
 } ButtonProps;

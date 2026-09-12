@@ -8,7 +8,7 @@ type MotionTrack struct {
 	ElapsedMs float32
 }
 
-type Ring struct {
+type LoadingRingSpec struct {
 	X            float32
 	Y            float32
 	InnerRadius  float32
@@ -76,8 +76,8 @@ func Surface_DefaultMotionEnabled() bool {
 	return value_0
 }
 
-func Surface_LoadingRing(width float32, height float32, icon_size float32, elapsed_ms float64, color uint32, ambient uint32) Ring {
-	var ring Ring = Ring{}
+func Surface_LoadingRing(width float32, height float32, icon_size float32, elapsed_ms float64, color uint32, ambient uint32) LoadingRingSpec {
+	var ring LoadingRingSpec = LoadingRingSpec{}
 	var value_0 float32 = width
 	var value_1 float32 = 0.5
 	var value_2 float32 = value_0 * value_1
@@ -90,7 +90,7 @@ func Surface_LoadingRing(width float32, height float32, icon_size float32, elaps
 	var value_7 float32 = 0.0
 	var value_8 bool = value_6 <= value_7
 	if value_8 {
-		var value_9 Ring = ring
+		var value_9 LoadingRingSpec = ring
 		return value_9
 	}
 	var value_10 uint32 = ambient
@@ -251,11 +251,11 @@ func Surface_LoadingRing(width float32, height float32, icon_size float32, elaps
 		var value_131 float32 = value_122 * value_130
 		ring.GlowBlur = value_131
 	}
-	var value_132 Ring = ring
+	var value_132 LoadingRingSpec = ring
 	return value_132
 }
 
-func Surface_LoadingArcColor(ring Ring, x float32, y float32) uint32 {
+func Surface_LoadingArcColor(ring LoadingRingSpec, x float32, y float32) uint32 {
 	var value_0 float32 = ring.InnerRadius
 	var value_1 float32 = ring.OuterRadius
 	var value_2 float32 = value_0 + value_1
@@ -326,7 +326,7 @@ func Surface_LoadingArcColor(ring Ring, x float32, y float32) uint32 {
 	return value_56
 }
 
-func Surface_LoadingTipCoverage(ring Ring, x float32, y float32) float32 {
+func Surface_LoadingTipCoverage(ring LoadingRingSpec, x float32, y float32) float32 {
 	var value_0 float32 = ring.InnerRadius
 	var value_1 float32 = ring.OuterRadius
 	var value_2 float32 = value_0 + value_1
@@ -372,7 +372,7 @@ func Surface_LoadingTipCoverage(ring Ring, x float32, y float32) float32 {
 	return value_37
 }
 
-func Surface_LoadingPaintRadius(ring Ring) float32 {
+func Surface_LoadingPaintRadius(ring LoadingRingSpec) float32 {
 	var value_0 float32 = ring.OuterRadius
 	var value_1 float32 = ring.InnerRadius
 	var value_2 float32 = value_0 - value_1
@@ -392,7 +392,7 @@ func Surface_LoadingPaintRadius(ring Ring) float32 {
 	return value_11
 }
 
-func Surface_LoadingSample(ring Ring, x float32, y float32) RingSample {
+func Surface_LoadingSample(ring LoadingRingSpec, x float32, y float32) RingSample {
 	var sample RingSample = RingSample{}
 	var value_0 float32 = ring.GlowBlur
 	var value_1 float32 = 0.0
@@ -428,7 +428,7 @@ func Surface_LoadingSample(ring Ring, x float32, y float32) RingSample {
 		var value_29 float32 = ring.EndAngle
 		var value_30 float32 = Surface_ArcCoverage(value_22, value_23, value_24, value_27, value_28, value_29)
 		glow = value_21 * value_30
-		var value_31 Ring = ring
+		var value_31 LoadingRingSpec = ring
 		var value_32 float32 = x
 		var value_33 float32 = 0.5
 		var value_34 float32 = value_32 + value_33
@@ -458,7 +458,7 @@ func Surface_LoadingSample(ring Ring, x float32, y float32) RingSample {
 	var value_55 float32 = ring.EndAngle
 	var value_56 float32 = Surface_ArcCoverage(value_50, value_51, value_52, value_53, value_54, value_55)
 	var arc float32 = value_56
-	var value_57 Ring = ring
+	var value_57 LoadingRingSpec = ring
 	var value_58 float32 = x
 	var value_59 float32 = y
 	var value_60 float32 = Surface_LoadingTipCoverage(value_57, value_58, value_59)
@@ -467,7 +467,7 @@ func Surface_LoadingSample(ring Ring, x float32, y float32) RingSample {
 	var value_62 float32 = track
 	var value_63 uint32 = Surface_Opacity(value_61, value_62)
 	sample.Track = value_63
-	var value_64 Ring = ring
+	var value_64 LoadingRingSpec = ring
 	var value_65 float32 = x
 	var value_66 float32 = 0.5
 	var value_67 float32 = value_65 + value_66

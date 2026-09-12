@@ -6,6 +6,8 @@ const (
 	FrameOpBackground FrameOpKind = "background"
 	FrameOpText       FrameOpKind = "text"
 	FrameOpRect       FrameOpKind = "rect"
+	FrameOpCircle     FrameOpKind = "circle"
+	FrameOpRing       FrameOpKind = "ring"
 	FrameOpSurface    FrameOpKind = "surface"
 	FrameOpLine       FrameOpKind = "line"
 	FrameOpButton     FrameOpKind = "button"
@@ -20,7 +22,7 @@ const (
 	FrameOpGrid       FrameOpKind = "grid"
 	FrameOpPage       FrameOpKind = "page"
 	FrameOpSection    FrameOpKind = "section"
-	FrameOpPicture    FrameOpKind = "picture"
+	FrameOpImage      FrameOpKind = "image"
 	FrameOpEnd        FrameOpKind = "end"
 )
 
@@ -90,7 +92,7 @@ type FrameOp struct {
 	IconType          int32
 	IconSize          float32
 	Semantic          UISemanticKind
-	Href              string
+	Link              string
 	Role              string
 	AltText           string
 	Level             int32

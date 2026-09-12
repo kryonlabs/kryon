@@ -57,8 +57,8 @@ sample(int index, Rectangle bounds, const DropdownOption *items, int count,
     BeginUIFrame(WIDTH, HEIGHT, 1.0f);
     SetUIFocus(focused || open ? id : 0);
     BeginDisabled(disabled);
-    DropdownOptions(id, bounds.x, bounds.y, bounds.width, bounds.height,
-        items, count, &chosen);
+    Dropdown((DropdownProps){.id = id, .bounds = bounds,
+        .items = items, .option_count = count, .selected_index = &chosen});
     EndDisabled();
     EndUIFrame();
     dropdown_store_swap(previous);

@@ -81,8 +81,7 @@ selection, and focus tokens as `Text` and `Button`. They shall not maintain a
 parallel `TextInputStyle` theme.
 
 The end state contains no positional `Text(...)` overload, public `RenderText*`,
-`UIText*`, `TextStyle`, `TextInputStyle`, `ParagraphText`, `LabelText`,
-`BulletText`, `TextLines`, or generated compatibility shim. Maintained callers
+`UIText*`, `TextStyle`, `TextInputStyle`, `ParagraphText`, or generated compatibility shim. Maintained callers
 are migrated to canonical props and the old surface is deleted.
 
 ## 2. Goals
@@ -554,7 +553,7 @@ line boxes, baseline positions, clipping, selection ranges, and semantic paint.
 | public `TextStyle` | remove; role + tone + theme |
 | public `TextInputStyle` | remove; shared control and theme resolution |
 | `TextWidth` / `TextHeight` / baseline helpers | `MeasureText(TextProps)` |
-| `LabelText`, `BulletText`, `Value*`, `TextLines` | app composition or private composed helpers |
+| label/value text, bullet text, value text | app composition or private composed helpers |
 | `ParagraphText` | `Text` with wrapping and bounds |
 | `PushTextSelectable` / `PopTextSelectable` | `TextProps.selectable` |
 | external cursor/focus pointers in text inputs | state owned by stable widget ID |

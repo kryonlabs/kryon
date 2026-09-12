@@ -2,14 +2,14 @@
  * AnimatedSprite2D: cycles through frames of a grid sprite sheet each process
  * tick, drawing the current frame at the nodes world transform. The sheet is
  * laid out as frames_per_row frames horizontally (rows derived from
- * frame_count). Shares the picture texture cache with Sprite2D / Picture.
+ * frame_count). Shares the image texture cache with Sprite2D / Image.
  */
 
 #include "scene_tree.h"
 #include "node2d_props.h"
 #include "spritesheet.h"
-#include "ui_picture.h"
-#include "../ui/ui_picture_internal.h"
+#include "ui_image.h"
+#include "../ui/ui_image_internal.h"
 #include <stdlib.h>
 
 static void
@@ -43,7 +43,7 @@ kry_animated_sprite2d_draw(Scene *scene, NodeId node)
        props->asset_path[0] == '\0' || props->frame_count <= 0 ||
        props->frames_per_row <= 0)
         return;
-    texture = LoadPictureTexture(props->asset_path);
+    texture = LoadImageTexture(props->asset_path);
     if(texture.id == 0)
         return;
     frame = (int)(props->time * props->fps) % props->frame_count;

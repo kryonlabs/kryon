@@ -11,6 +11,6 @@ state {
 
 progress_frame :: () #ui {
     Screen root: {
-        Progress((ProgressBarProps){.bounds = {20,30,220,28}, .min = 0, .max = 100, .value = progress_value, .label = "Progress"})
+        Progress((ProgressProps){.bounds = {20,30,220,28}, .min = 0, .max = 100, .value = progress_value, .label = "Progress"})
     }
 }

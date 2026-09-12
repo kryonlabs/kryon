@@ -153,7 +153,7 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 		ActionIconSize:    16,
 		ActionIconPadding: 5,
 	})
-	if got, want := toolbar.ClickedAction, int32(0); got != want {
+	if got, want := toolbar.ClickedAction, int32(1); got != want {
 		t.Fatalf("clicked toolbar action = %d, want %d", got, want)
 	}
 
@@ -904,8 +904,8 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 		Padding:      12,
 	})
 	rt.Heading(HeadingProps{Text: "Install", Level: 2})
-	rt.Link(LinkProps{Text: "Read more", Href: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
-	rt.PagePicture(PictureProps{AssetPath: "hero.png", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE}, "Hero")
+	rt.Link(LinkProps{Text: "Read more", Link: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
+	rt.PageImage(ImageProps{AssetPath: "hero.png", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE}, "Hero")
 	rt.End()
 	rt.Grid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
 	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "A", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
@@ -934,23 +934,23 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 		t.Fatalf("changed route version = %d, want 2", rt.GetRouteVersion())
 	}
 
-	var sawPage, sawHeading, sawLink, sawPicture, sawGrid bool
+	var sawPage, sawHeading, sawLink, sawImage, sawGrid bool
 	for _, op := range rt.FrameOps() {
 		switch {
 		case op.Kind == FrameOpPage && op.Semantic == UISemanticPage && op.Bounds.Width == 320:
 			sawPage = true
 		case op.Kind == FrameOpText && op.Semantic == UISemanticHeading && op.Level == 2 && op.Text == "Install":
 			sawHeading = true
-		case op.Kind == FrameOpText && op.Semantic == UISemanticLink && op.Href == "/more":
+		case op.Kind == FrameOpText && op.Semantic == UISemanticLink && op.Link == "/more":
 			sawLink = true
-		case op.Kind == FrameOpPicture && op.Semantic == UISemanticPicture && op.AltText == "Hero":
-			sawPicture = true
+		case op.Kind == FrameOpImage && op.Semantic == UISemanticImage && op.AltText == "Hero":
+			sawImage = true
 		case op.Kind == FrameOpGrid && op.Columns == 2:
 			sawGrid = true
 		}
 	}
-	if !sawPage || !sawHeading || !sawLink || !sawPicture || !sawGrid {
-		t.Fatalf("missing semantic ops: page=%v heading=%v link=%v picture=%v grid=%v ops=%#v", sawPage, sawHeading, sawLink, sawPicture, sawGrid, rt.FrameOps())
+	if !sawPage || !sawHeading || !sawLink || !sawImage || !sawGrid {
+		t.Fatalf("missing semantic ops: page=%v heading=%v link=%v image=%v grid=%v ops=%#v", sawPage, sawHeading, sawLink, sawImage, sawGrid, rt.FrameOps())
 	}
 }
 
@@ -2217,7 +2217,7 @@ func TestCanvasSpaceInputInvariant(t *testing.T) {
 	v := int32(0)
 	draw := func() bool {
 		rt.BeginFrame()
-		pressed := rt.Checkbox(7, 16, 88, "enable", &v)
+		pressed := rt.Checkbox(CheckboxProps{Bounds: NewRectangle(16, 88, 120, 34), ID: 7, Label: "enable", Value: &v})
 		rt.EndFrame()
 		return pressed
 	}

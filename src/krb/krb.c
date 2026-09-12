@@ -964,8 +964,8 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
         }
         break;
     }
-    case KRB_NODE_PICTURE:
-        /* text_off holds the asset path; style holds the PictureFit; color
+    case KRB_NODE_IMAGE:
+        /* text_off holds the asset path; style holds the ImageFit; color
          * the tint. Embedded assets render from cartridge pixels; paths the
          * cartridge does not embed fall back to host texture loading. */
         if(text[0] != '\0') {
@@ -1171,12 +1171,6 @@ draw_node(KrbImage *img, const KryBackend *b, const KrbNode *n,
                          b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
             break;
         case KRB_CTRL_DROPDOWN:
-            ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
-                          val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
-            break;
-        case KRB_CTRL_COMBOBOX:
-            /* the C widget forwards to the dropdown renderer; so does the
-             * cartridge runtime */
             ctrl_dropdown(img, b, &c, (int)n->bind_slot, path, x, y, w, h,
                           val, b->scale_px(n->font_size > 0 ? n->font_size : 16), color);
             break;

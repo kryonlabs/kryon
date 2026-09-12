@@ -109,7 +109,7 @@ EM_JS(void, js_dom_boot, (int w, int h, const char *title), {
         case 3: return 'heading';
         case 4: return 'paragraph';
         case 5: return 'link';
-        case 6: return 'picture';
+        case 6: return 'image';
         case 7: return 'button';
         default: return "";
         }

@@ -6,21 +6,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Theme-screen dropdown interaction for a stacked settings layout:
- * stacked dropdowns (mode, palette, style) whose popups open over the
- * fields below them. Regression for "want to press Dark and nothing
- * happens": selecting from a popup that covers the other dropdown fields
- * must work. Self-calibrating: the settings widget's state flags report
- * which popup a tap opened. */
+/* Stacked dropdown interaction for settings-style layouts. Regression for
+ * "want to press Dark and nothing happens": selecting from a popup that
+ * covers the other dropdown fields must work. */
 
 #define VIEW_W 900
 #define VIEW_H 720
 
-static int source_sel = 0;
 static int mode_sel = 0;
 static int palette_sel = 10;
 static int style_sel = 2;
-static ThemeSettingsState menu_state = {0};
+
+#define MODE_Y 151
+#define PALETTE_Y 227
+#define STYLE_Y 303
 
 static void
 check_int(const char *name, int got, int want)
@@ -73,37 +72,34 @@ check_material_android_outline_neutral(void)
               4);
 }
 
-static ThemeSettingsProps
-theme_props(void)
-{
-    return (ThemeSettingsProps){
-        .id_base = 101,
-        .x = 250,
-        .y = 120,
-        .w = 400,
-        .theme_source = &source_sel,
-        .theme_mode = &mode_sel,
-        .theme_id = &palette_sel,
-        .theme_style = &style_sel,
-        .allow_system_source = 0,
-        .allow_system_mode = 1,
-        .theme_label = "Theme",
-        .mode_label = "Mode",
-        .palette_label = "Color",
-        .style_label = "Style",
-    };
-}
-
 static void
 step(void)
 {
-    ThemeSettingsResult result;
+    const char *mode_options[] = {"System", "Light", "Dark"};
+    const char *palette_options[] = {"Mono", "Sky", "Ocean", "Forest",
+                                     "Sunset", "Lavender", "Cherry", "Dawn",
+                                     "Sage", "Ink", "Mint", "Cobalt",
+                                     "Plan9", "Xfce", "Sweet"};
+    const char *style_options[] = {"System", "Classic", "Default"};
 
     InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    ThemeSettings(theme_props(), &menu_state, &result);
+    Dropdown((DropdownProps){.bounds = {250, MODE_Y, 400, 34},
+                             .id = 101,
+                             .options = mode_options,
+                             .option_count = 3,
+                             .selected_index = &mode_sel});
+    Dropdown((DropdownProps){.bounds = {250, PALETTE_Y, 400, 34},
+                             .id = 102,
+                             .options = palette_options,
+                             .option_count = 15,
+                             .selected_index = &palette_sel});
+    Dropdown((DropdownProps){.bounds = {250, STYLE_Y, 400, 34},
+                             .id = 103,
+                             .options = style_options,
+                             .option_count = 3,
+                             .selected_index = &style_sel});
     EndUIFrame();
-    (void)result;
 }
 
 static void
@@ -114,12 +110,6 @@ tap(int x, int y)
     step();
     step();
 }
-
-/* The settings rows follow the widget's fixed pitch: label, then the
- * field 20px under it, rows stepped by font+20+30+10. */
-#define MODE_Y (120 + 16 + 20 + 15)
-#define PALETTE_Y (MODE_Y + 15 + 10 + 16 + 20 + 15)
-#define STYLE_Y (PALETTE_Y + 15 + 10 + 16 + 20 + 15)
 
 /* UIInputCapturesClick answers open popups; probing the band under a
  * field (between fields) detects whether its popup is open. */
@@ -179,21 +169,21 @@ main(void)
     check_int("mode before", mode_sel, THEME_MODE_SYSTEM);
     tap(450, mode_row);
     /* Dark is the third option: field bottom + gap + padding + 2.5 rows */
-    tap(450, mode_row + 15 + 4 + 4 + 75);
+    tap(450, mode_row + 125);
     check_int("Dark selectable from mode popup", mode_sel, THEME_MODE_DARK);
     check_int("popup closed after selection", popup_covers(mode_row + 60), 0);
 
     /* The same Dark press as a wobbled human click. */
     mode_sel = THEME_MODE_SYSTEM;
     tap(450, mode_row);
-    InjectMousePosition(450, mode_row + 94);
+    InjectMousePosition(450, mode_row + 125);
     InjectMouseButton(0, 1);
     step();
-    InjectMousePosition(462, mode_row + 99);
+    InjectMousePosition(462, mode_row + 130);
     step();
-    InjectMousePosition(450, mode_row + 94);
+    InjectMousePosition(450, mode_row + 125);
     step();
-    InjectMousePosition(450, mode_row + 94);
+    InjectMousePosition(450, mode_row + 125);
     InjectMouseButton(0, 0);
     step();
     step();
@@ -204,7 +194,7 @@ main(void)
     style_sel = 0;
     tap(450, style_row);
     /* Default is the third option: field bottom + gap + padding + 2.5 rows */
-    tap(450, style_row + 15 + 4 + 4 + 75);
+    tap(450, style_row + 125);
     check_int("Default selectable from style popup", style_sel,
               THEME_STYLE_DEFAULT);
     check_int("style popup closed", popup_covers(style_row - 60) == 0 &&
@@ -212,7 +202,7 @@ main(void)
 
     /* And the palette popup over the style field. */
     tap(450, palette_row);
-    tap(450, palette_row + 15 + 4 + 4 + 75);
+    tap(450, palette_row + 125);
     check_int("palette selection works while covering style field",
               palette_sel != 10, 1);
     check_int("palette popup closed", popup_covers(palette_row + 60), 0);

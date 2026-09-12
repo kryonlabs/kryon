@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+func resolveButtonInputForTest(props ButtonProps, sample Activation) ButtonInput {
+	return Button_ResolveButtonInput(int32(props.State), props.Disabled,
+		props.Loading, props.Selected, sample)
+}
+
 func TestButtonContentDrawing(t *testing.T) {
 	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus}
 	bounds := Rectangle{X: 10, Y: 20, Width: 200, Height: 80}
@@ -46,7 +51,7 @@ func TestButtonPaintCallbacks(t *testing.T) {
 		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
 	appearance := StyleFrame{Value: StyleData{IconSize: 16, Gap: 8, Opacity: 1,
 		Foreground: 0x123456ff, Background: 0xffffffff}}
-	frame := Button_BuildFrame(props, Button_ResolveButtonInput(props, Activation{}),
+	frame := Button_BuildFrame(props, resolveButtonInputForTest(props, Activation{}),
 		appearance, InteractionMotion{}, Rectangle{}, 0xffffffff, 1, 16, 16)
 	layers := 0
 	var commands []Drawing
@@ -70,7 +75,7 @@ func TestButtonAdvanceFrame(t *testing.T) {
 	props := ButtonProps{Label: "Run", Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
 	palette, metrics := Theme_DefaultPalette(false), Theme_DefaultMetrics()
 	styles := StyleStates{Normal: StyleData{Fields: uint32(StyleFontSize), FontSize: 17}}
-	input := Button_ResolveButtonInput(props, Activation{Hovered: true})
+	input := resolveButtonInputForTest(props, Activation{Hovered: true})
 	advance := func() ButtonFrame {
 		return r.Button_AdvanceFrame(701, props, input, palette, metrics, styles,
 			true, 16, Rectangle{}, palette.Surface, 1.5, 16)
@@ -83,7 +88,7 @@ func TestButtonAdvanceFrame(t *testing.T) {
 		t.Fatal("stable identity did not retain animation progress")
 	}
 	props.State = ButtonStateLoading
-	input = Button_ResolveButtonInput(props, Activation{Activated: true, Hovered: true})
+	input = resolveButtonInputForTest(props, Activation{Activated: true, Hovered: true})
 	frame = advance()
 	if !frame.Props.Loading || frame.Props.Label != "" || input.Activated || props.Label != "Run" {
 		t.Fatalf("explicit loading state or caller isolation: %+v", frame)
@@ -93,7 +98,7 @@ func TestButtonAdvanceFrame(t *testing.T) {
 func TestButtonFrameAssembly(t *testing.T) {
 	props := ButtonProps{Label: "Run", State: ButtonStateLoading, Circle: true,
 		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 80}}
-	input := Button_ResolveButtonInput(props, Activation{})
+	input := resolveButtonInputForTest(props, Activation{})
 	appearance := StyleFrame{Value: StyleData{PaddingX: 8, PaddingY: 6,
 		Foreground: 0x12345680, Border: 0xaabbccff, Opacity: 0.5}}
 	frame := Button_BuildFrame(props, input, appearance, InteractionMotion{}, Rectangle{}, 0xffffffff, 2, 32, 16)
@@ -108,7 +113,7 @@ func TestButtonFrameAssembly(t *testing.T) {
 		t.Fatalf("material does not describe the resolved frame: %+v", frame.Material)
 	}
 	props.Disabled = true
-	input = Button_ResolveButtonInput(props, Activation{})
+	input = resolveButtonInputForTest(props, Activation{})
 	frame = Button_BuildFrame(props, input, appearance, InteractionMotion{}, Rectangle{}, 0, 1, 0, 17)
 	if !frame.Material.Disabled || frame.Repaint || frame.Font != 17 {
 		t.Fatalf("disabled loading must stop repainting and use font fallback: %+v", frame)

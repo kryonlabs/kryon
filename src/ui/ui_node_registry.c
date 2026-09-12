@@ -13,7 +13,6 @@ static const KryonNodeType kryon_node_types[] = {
     {"Background", "Background", "UI/Display", "Control", "Fill", KRYON_NODE_INSERTABLE | KRYON_NODE_SELECTABLE},
     {"Text", "Text", "UI/Display", "Control", "Label", MOVABLE_TEXT},
     {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", KRYON_NODE_SELECTABLE},
-    {"TextLines", "Text Lines", "UI/Display", "Control", "Multi-line label", KRYON_NODE_SELECTABLE},
     {"Rect", "Rect", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
@@ -22,31 +21,25 @@ static const KryonNodeType kryon_node_types[] = {
 
     {"Card", "Card", "UI/Input", "Control", "Surface action", INSERT_EDITABLE},
     {"Button", "Button", "UI/Input", "Control", "Action", INSERT_EDITABLE},
-    {"Href", "Href", "UI/Input", "Control", "Link", EDITABLE},
+    {"Link", "Link", "UI/Input", "Control", "Link", EDITABLE},
     {"TextField", "Text Field", "UI/Input", "Control", "Input", INSERT_EDITABLE},
-    {"InfoButton", "Info Button", "UI/Input", "Control", "Help action", EDITABLE},
     {"Dropdown", "Dropdown", "UI/Input", "Control", "Selection", INSERT_EDITABLE},
-    {"DropdownOptions", "Dropdown Options", "UI/Input", "Control", "Rich selection", EDITABLE},
     {"Slider", "Slider", "UI/Input", "Control", "Value", INSERT_EDITABLE},
     {"Toggle", "Toggle", "UI/Input", "Control", "On/off", INSERT_EDITABLE},
     {"Checkbox", "Checkbox", "UI/Input", "Control", "Boolean", INSERT_EDITABLE},
     {"Radio", "Radio", "UI/Input", "Control", "Choice", EDITABLE},
     {"Progress", "Progress", "UI/Input", "Control", "Progress", EDITABLE},
     {"Spinbox", "Spinbox", "UI/Input", "Control", "Number", EDITABLE},
-    {"Combobox", "Combobox", "UI/Input", "Control", "Selection", EDITABLE},
     {"ColorPicker", "Color Picker", "UI/Input", "Control", "Color", EDITABLE},
 
     {"Group", "Group", "UI/Layout", "Control", "Container", INSERT_EDITABLE},
     {"Separator", "Separator", "UI/Layout", "Control", "Divider", EDITABLE},
     {"LabelFrame", "Label Frame", "UI/Layout", "Control", "Frame", EDITABLE},
-    {"Notebook", "Notebook", "UI/Layout", "Control", "Pages", EDITABLE},
     {"PanedView", "Paned View", "UI/Layout", "Control", "Split panes", EDITABLE},
     {"Collapsible", "Collapsible", "UI/Layout", "Control", "Section", EDITABLE},
 
     {"ListBox", "List Box", "UI/Collections", "Control", "List", EDITABLE},
     {"TreeView", "Tree View", "UI/Collections", "Control", "Tree", EDITABLE},
-    {"CascadingTreeView", "Cascading Tree View", "UI/Collections", "Control", "Tree", EDITABLE},
-    {"SourceView", "Source View", "UI/Collections", "Control", "Source", EDITABLE},
     {"TableView", "Table View", "UI/Collections", "Control", "Table", EDITABLE},
     {"TextArea", "Text Area", "UI/Collections", "Control", "Text area", EDITABLE},
     {"CanvasGrid", "Canvas Grid", "UI/Collections", "Control", "Grid", EDITABLE},
@@ -54,46 +47,15 @@ static const KryonNodeType kryon_node_types[] = {
     {"MenuBar", "Menu Bar", "UI/Navigation", "Control", "Menu", EDITABLE},
     {"PopupMenu", "Popup Menu", "UI/Navigation", "Control", "Menu", EDITABLE},
     {"NavigationBar", "Navigation Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
-    {"TopNav", "Top Nav", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"Toolbar", "Toolbar", "UI/Navigation", "Control", "Tools", EDITABLE},
-    {"ToolbarHeader", "Toolbar Header", "UI/Navigation", "Control", "Header tools", EDITABLE},
-    {"SubtabBar", "Subtab Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"TabBar", "Tab Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"TitleBar", "Title Bar", "UI/Navigation", "Control", "Title", EDITABLE},
-    {"ReturnTitleBar", "Return Title Bar", "UI/Navigation", "Control", "Title", EDITABLE},
-    {"ReturnDropdownTitleBar", "Return Dropdown Title Bar", "UI/Navigation", "Control", "Title menu", EDITABLE},
 
-    {"ThemeSettings", "Theme Settings", "UI/Overlays", "Control", "Theme", EDITABLE},
-    {"ThemeSwitcher", "Theme Switcher", "UI/Overlays", "Control", "Theme", EDITABLE},
-    {"ThemePicker", "Theme Picker", "UI/Overlays", "Control", "Theme", EDITABLE},
-    {"ActionModal", "Action Modal", "UI/Overlays", "Control", "Dialog", EDITABLE},
-    {"MessageDialog", "Message Dialog", "UI/Overlays", "Control", "Dialog", EDITABLE},
-    {"ConfirmDialog", "Confirm Dialog", "UI/Overlays", "Control", "Dialog", EDITABLE},
-    {"PromptDialog", "Prompt Dialog", "UI/Overlays", "Control", "Dialog", EDITABLE},
     {"Focus", "Focus", "UI/Overlays", "Control", "Focus", EDITABLE},
     {"FocusDebugOverlay", "Focus Debug Overlay", "UI/Overlays", "Control", "Debug", KRYON_NODE_SELECTABLE},
-    {"GuideOverlay", "Guide Overlay", "UI/Overlays", "Control", "Guide", EDITABLE},
-    {"TutorialImagePlaceholder", "Tutorial Image Placeholder", "UI/Overlays", "Control", "Image placeholder", EDITABLE},
-    {"TutorialImage", "Tutorial Image", "UI/Overlays", "Control", "Image", EDITABLE},
     {"TransitionFade", "Transition Fade", "UI/Overlays", "Control", "Transition", EDITABLE},
-    {"InfoRows", "Info Rows", "UI/Overlays", "Control", "Rows", EDITABLE},
-    {"OverlayButton", "Overlay Button", "UI/Overlays", "Control", "Action", EDITABLE},
-    {"IconSliderPopup", "Icon Slider Popup", "UI/Overlays", "Control", "Popup", EDITABLE},
     {"Modal", "Modal", "UI/Overlays", "Control", "Dialog", EDITABLE},
-    {"Modal3Button", "Modal 3 Button", "UI/Overlays", "Control", "Dialog", EDITABLE},
-    {"ModalFrame", "Modal Frame", "UI/Overlays", "Control", "Dialog frame", EDITABLE},
 
-    {"LabelTextField", "Label Text Field", "UI/Composite", "Control", "Labeled input", EDITABLE},
-    {"SectionLabel", "Section Label", "UI/Composite", "Control", "Heading", MOVABLE_TEXT},
-    {"CheckboxRow", "Checkbox Row", "UI/Composite", "Control", "Boolean row", EDITABLE},
-    {"ButtonRow", "Button Row", "UI/Composite", "Control", "Action row", EDITABLE},
-    {"BottomIconRow", "Bottom Icon Row", "UI/Composite", "Control", "Icon row", EDITABLE},
-    {"NavigationBarConfig", "Navigation Bar Config", "UI/Composite", "Control", "Nav editor", EDITABLE},
-    {"SidebarAccountHeader", "Sidebar Account Header", "UI/Composite", "Control", "Account", EDITABLE},
-    {"ProfilePicturePicker", "Profile Picture Picker", "UI/Composite", "Control", "Avatar picker", EDITABLE},
-    {"ReorderHandle", "Reorder Handle", "UI/Composite", "Control", "Drag handle", EDITABLE},
-    {"ReorderPlaceholder", "Reorder Placeholder", "UI/Composite", "Control", "Drop target", EDITABLE},
-    {"ImageBox", "Image Box", "UI/Composite", "Control", "Image", EDITABLE},
 
     {"Scene", "Scene", "Game2D/Core", "Node", "Scene root", 0},
     {"Node2D", "Node2D", "Game2D/Core", "Node", "Transform", 0},
@@ -239,11 +201,11 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  x, y, x + 160, y + 40);
     } else if(strcmp(type->name, "Image") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Image((PictureProps){\n"
+                 "\n    Image((ImageProps){\n"
                  "        .asset_path = \"assets/image.png\",\n"
                  "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n"
                  "        .tint = WHITE,\n"
-                 "        .fit = PICTURE_FIT_CONTAIN,\n"
+                 "        .fit = IMAGE_FIT_CONTAIN,\n"
                  "    })\n",
                  x, y);
     } else if(strcmp(type->name, "Card") == 0) {
@@ -289,13 +251,13 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Toggle") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    toggle_%d: int = 0\n"
-                 "    Toggle(%d, Scale(%d), Scale(%d), Scale(120), Scale(28), &toggle_%d, \"Off\", \"On\")\n",
-                 id, 6200 + (id % 1000), x, y, id);
+                 "    Toggle((ToggleProps){.bounds = {Scale(%d), Scale(%d), Scale(120), Scale(34)}, .id = %d, .value = &toggle_%d, .off_label = \"Off\", .on_label = \"On\"})\n",
+                 id, x, y, 6200 + (id % 1000), id);
     } else if(strcmp(type->name, "Slider") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    slider_%d: int = 50\n"
-                 "    Slider(%d, Scale(%d), Scale(%d), Scale(180), \"Value\", 0, 100, &slider_%d, \"\", nil)\n",
-                 id, 7200 + (id % 1000), x, y, id);
+                 "\n    slider_%d: [1] int = {50}\n"
+                 "    Slider((SliderProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(56)}, .id = %d, .label = \"Value\", .kind = 1, .int_values = slider_%d, .value_count = 1, .min = 0.0, .max = 100.0})\n",
+                 id, x, y, 7200 + (id % 1000), id);
     } else if(strcmp(type->name, "Checkbox") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    check_%d: int = 0\n"

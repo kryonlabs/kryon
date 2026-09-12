@@ -122,8 +122,8 @@ C and Go collect host input and retain popup state; both execute the generated
 policy. The trigger uses Button's shared frame and material renderer in every
 theme. No dropdown-specific Classic, Material, or bevel drawing path remains.
 
-`Dropdown` uses one props-based C implementation. `Combobox`,
-`DropdownLegacy`, and `DropdownOptions` are data adapters for existing callers;
-they do not retain separate interaction or painting logic. `RenderCombobox` is removed.
+`Dropdown` uses one props-based C implementation and is the only public option
+selection widget. It accepts plain `options` and rich `items` in
+`DropdownProps`; old alternate public dropdown wrappers are removed.
 Opening and reselecting the current value do not report a selection change.
 Wheel movement advances one row per unit in both native hosts.

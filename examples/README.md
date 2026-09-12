@@ -15,11 +15,11 @@ components. The C files used for native and web builds are generated into
 7. **07_layout** - Existing layout helpers
 8. **09_geometry** - Packed frames, grid cells, placement, separators
 9. **10_menus** - Menubar and menu items
-10. **11_basic_controls** - Radio, progress, spinbox, combobox, label frame
+10. **11_basic_controls** - Radio, progress, spinbox, dropdown, label frame
 11. **12_collections** - Listbox, tree view, table view
 12. **13_text_editor** - Text area plus clipboard helpers
 13. **14_canvas** - Canvas clipping, grid, and hit testing
-14. **15_containers** - Notebook, paned view, collapsible section
+14. **15_containers** - TabBar, paned view, collapsible section
 15. **16_dialogs** - Message, confirm, prompt, and color picker
 16. **17_keyboard_platform** - Accelerators and clipboard
 17. **18_accessibility** - Accessibility/debug node overlay

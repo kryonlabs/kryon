@@ -8,8 +8,10 @@ app "Widget Catalog Coverage" {
 
 state {
     pick: int = 0
+    pick_color: [4] float = {0.2f,0.4f,0.6f,1.0f}
     open: bool = true
     slider_value: int = 42
+    slider_values: [1] int = {42}
     toggle_value: int = 0
     checkbox_value: int = 1
     text_cursor: int = 5
@@ -43,8 +45,8 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         bounds = viewport
         Background(GetThemeBackground())
 
-        TitleBar("Widget Catalog", Scale(32))
-        TopNav((TopNavProps){.id = 10, .x = 0, .y = Scale(34), .width = Scale(360), .height = Scale(36), .title = "Top", .options = choices[:], .option_count = 3, .selected_index = &pick})
+        TitleBar((TitleBarProps){.title = "Widget Catalog", .height = Scale(32)})
+        Toolbar((ToolbarProps){.id = 10, .x = 0, .y = Scale(34), .width = Scale(360), .height = Scale(36), .draw_menu = 1, .options = choices[:], .option_count = 3, .selected_index = &pick})
         Toolbar((ToolbarProps){.id = 11, .x = Scale(370), .y = Scale(34), .width = Scale(240), .height = Scale(36), .draw_menu = 1, .options = choices[:], .option_count = 3, .selected_index = &pick})
         NavigationBar((NavigationBarProps){.view_width = Scale(640), .view_height = Scale(480), .count = 0, .height = Scale(56), .icon_color = GetThemeText()})
 
@@ -58,7 +60,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
                 gap = Scale(6)
                 Button((ButtonProps){.bounds = {Scale(32), Scale(128), Scale(96), Scale(32)}, .label = "Button",  .font = Text16, .id = 20})
                 Button((ButtonProps){.bounds = {Scale(136), Scale(128), Scale(32), Scale(32)}, .icon_type = 1, .icon_only = true, .id = 21})
-                Href((HrefProps){.bounds = {Scale(176), Scale(130), Scale(80), Scale(28)}, .text = "Docs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 22, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+                Link((LinkProps){.bounds = {Scale(176), Scale(130), Scale(80), Scale(28)}, .text = "Docs", .link = "https://kryonlabs.com", .font = Text16, .focus_id = 22, .color = GetThemeLink(), .hover_color = GetThemeLink()})
             }
             Stack surface_stack: {
                 bounds = {Scale(32), Scale(170), Scale(230), Scale(60)}
@@ -71,7 +73,10 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
 
         y: int = Scale(320)
         Text((TextProps){.bounds=(Rectangle){Scale(24), y, Scale(120), Scale(24)}, .text="Text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter})
-        TextLines("one;two;three", 3, Scale(24), &y, Text16, Scale(18), GetThemeText())
+        Text((TextProps){.bounds={Scale(24), y, 0, 0}, .text="one", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(24), y + Scale(18), 0, 0}, .text="two", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(24), y + Scale(36), 0, 0}, .text="three", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        y += Scale(54)
         Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = Scale(16), .width = Scale(180), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(24), &y)
         SelectableText("Selectable", Scale(24), y + Scale(18), Text16, GetThemeText())
         ShowToast("Catalog toast")
@@ -80,38 +85,46 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         TextArea((TextAreaProps){.bounds = {Scale(350), Scale(128), Scale(180), Scale(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
         Dropdown((DropdownProps){.bounds = {Scale(350), Scale(198), Scale(160), Scale(28)}, .id = 32,
             .options = choices[:], .option_count = 3, .selected_index = &pick})
-        Slider(33, Scale(350), Scale(238), Scale(160), "Slider", 0, 100, &slider_value, "%", nil)
-        Toggle(34, Scale(350), Scale(274), Scale(120), Scale(28), &toggle_value, "Off", "On")
-        Checkbox(35, Scale(350), Scale(314), "Check", &checkbox_value)
-        Radio((RadioButtonProps){{Scale(350), Scale(350), Scale(120), Scale(24)}, "Radio", 1, pick == 1, 0})
+        Slider((SliderProps){.bounds = {Scale(350), Scale(238), Scale(160), Scale(56)}, .id = 33, .label = "Slider", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0, .format = "%"})
+        slider_value = slider_values[0]
+        Toggle((ToggleProps){.bounds = {Scale(350), Scale(274), Scale(120), Scale(34)}, .id = 34, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
+        Checkbox((CheckboxProps){.bounds = {Scale(350), Scale(314), Scale(110), Scale(34)}, .id = 35, .label = "Check", .value = &checkbox_value})
+        Radio((RadioProps){.bounds = {Scale(350), Scale(350), Scale(120), Scale(24)}, .label = "Radio", .id = 1, .checked = pick == 1})
         Spinbox((SpinboxProps){{Scale(350), Scale(382), Scale(120), Scale(28)}, 36, 0, 100, 1, &slider_value, 0, ""})
         Dropdown((DropdownProps){.bounds = {Scale(350), Scale(418), Scale(160), Scale(28)}, .id = 37,
             .options = choices[:], .option_count = 3, .selected_index = &pick})
-        Progress((ProgressBarProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})
+        Progress((ProgressProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})
 
-        ColorPicker((ColorPickerProps){{Scale(540), Scale(92), Scale(42), Scale(42)}, 38, &pick, 0})
+        ColorPicker((ColorPickerProps){.bounds = {Scale(540), Scale(92), Scale(96), Scale(120)}, .id = 38, .values = pick_color, .value_count = 4, .picker = true})
         LabelFrame((LabelFrameProps){.bounds = {Scale(540), Scale(148), Scale(140), Scale(48)}, .title = "Frame"})
-        ImageBox((ImageBoxProps){.bounds = {Scale(690), Scale(148), Scale(48), Scale(48)}, .texture = (Texture2D){0}, .tint = WHITE})
+        Image((ImageProps){.asset_path = "tiles/tile.png", .bounds = (Rectangle){Scale(690), Scale(148), Scale(48), Scale(48)}, .source = (Rectangle){0, 0, 0, 0}, .origin = (Vector2){0, 0}, .rotation = 0.0f, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
         Icon(39, Scale(540), Scale(210), Scale(24), 1, WHITE)
         if Button((ButtonProps){.bounds = {Scale(580), Scale(206), Scale(32), Scale(32)}, .id = 40,
             .icon_type = 1, .icon_only = 1, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft}) {
             OpenURL("https://kryonlabs.com")
         }
-        Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(620), Scale(206), Scale(72), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
+        Image((ImageProps){.asset_path = "tiles/tile.png", .bounds = (Rectangle){Scale(620), Scale(206), Scale(72), Scale(48)}, .source = (Rectangle){0, 0, 0, 0}, .origin = (Vector2){0, 0}, .rotation = 0.0f, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
 
-        Notebook((NotebookProps){.bounds = {Scale(540), Scale(270), Scale(160), Scale(54)}, .tabs = tabs[:], .selected_index = &pick})
+        TabBar((TabBarProps){.bounds = {Scale(540), Scale(270), Scale(160), Scale(36)}, .tabs = tabs[:], .count = 2, .selected_index = pick, .id = 108})
         ListBox((ListBoxProps){.bounds = {Scale(540), Scale(336), Scale(160), Scale(70)}, .id = 41, .items = choices[:], .selected_index = &pick, .scroll_offset = &list_scroll, .row_height = Scale(22)})
         TreeView((TreeViewProps){.bounds = {Scale(540), Scale(418), Scale(160), Scale(70)}, .id = 42, .items = tree_items[:], .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = Scale(22)})
-        SourceView((SourceViewProps){.bounds = {Scale(24), Scale(470), Scale(240), Scale(72)}, .text = "fn main()\\n  Text()", .scroll_x = &canvas_scroll_x, .scroll_y = &canvas_scroll_y, .font_size = Text14, .line_height = Scale(18), .show_line_numbers = 1})
+        Rect(Scale(24), Scale(470), Scale(240), Scale(72), GetThemeSurface(), GetThemeBorder())
+        Text((TextProps){.bounds = {Scale(36), Scale(484), 0, 0}, .text = "1  fn main()", .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
+        Text((TextProps){.bounds = {Scale(36), Scale(502), 0, 0}, .text = "2    Text()", .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
         TableView((TableViewProps){.bounds = {Scale(276), Scale(470), Scale(240), Scale(72)}, .id = 43, .columns = columns[:], .column_count = 2, .rows = rows[:], .row_count = 2, .column_widths = widths[:], .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
 
-        PanedView((PanedViewProps){{Scale(24), Scale(552), Scale(220), Scale(36)}, 44, 1, &slider_value, 80, 120})
-        Collapsible((CollapsibleProps){{Scale(260), Scale(552), Scale(160), Scale(36)}, "Collapsible", &open})
-        Modal("Catalog", "Modal coverage", "Cancel", "OK")
-        MessageDialog((MessageDialogProps){"Message", "Dialog", "OK"})
-        ConfirmDialog((ConfirmDialogProps){"Confirm", "Dialog", "Cancel", "OK"})
-        PromptDialog((PromptDialogProps){"Prompt", "Dialog", "Cancel", "OK", text_value, sizeof(text_value)})
-        ActionModal((ActionModalProps){"Action", "Dialog", "Run", "Cancel"})
+        PanedView((PanedViewProps){.bounds = {Scale(24), Scale(552), Scale(220), Scale(36)}, .id = 44, .vertical = 1, .split = &slider_value, .min_first = 80, .min_second = 120})
+        Collapsible((CollapsibleProps){.bounds = {Scale(260), Scale(552), Scale(160), Scale(36)}, .label = "Collapsible", .open = &open})
+        modal_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+        Modal((ModalProps){.title = "Catalog", .message = "Modal coverage", .actions = modal_actions, .action_count = 2, .max_width = 360})
+        message_actions: [1] ModalAction = {{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+        Modal((ModalProps){.title = "Message", .message = "Dialog", .actions = message_actions, .action_count = 1, .max_width = 420})
+        confirm_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+        Modal((ModalProps){.title = "Confirm", .message = "Dialog", .actions = confirm_actions, .action_count = 2, .max_width = 460})
+        prompt_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+        Modal((ModalProps){.title = "Prompt", .actions = prompt_actions, .action_count = 2, .max_width = 460, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = &open})
+        action_modal_actions: [2] ModalAction = {{"Run",ButtonToneAccent,ButtonEmphasisFilled,0},{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0}}
+        Modal((ModalProps){.title = "Action", .message = "Dialog", .actions = action_modal_actions, .action_count = 2, .max_width = 360})
 
         canvas_result: CanvasResult = BeginCanvas((Canvas){{Scale(520), Scale(510), Scale(92), Scale(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
         CanvasGrid((Rectangle){Scale(520), Scale(510), Scale(92), Scale(58)}, 8, GetThemeIcon())

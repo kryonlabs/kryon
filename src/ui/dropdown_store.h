@@ -1,7 +1,7 @@
 #ifndef KRYON_DROPDOWN_STORE_H
 #define KRYON_DROPDOWN_STORE_H
 
-/* Private retained state for the canonical Dropdown/Combobox implementation.
+/* Private retained state for the canonical Dropdown implementation.
  * Each render host owns one store, so equal widget IDs in different windows
  * cannot collide. */
 typedef struct DropdownStore DropdownStore;

@@ -1,5 +1,5 @@
 #include "ui_internal.h"
-#include "ui_picture_internal.h"
+#include "ui_image_internal.h"
 
 void
 RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
@@ -14,18 +14,18 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 void
 RenderTutorialImage(Texture2D texture, const char *fallback, int x, int y, int w, int h)
 {
-    PictureProps picture = {0};
+    ImageProps image = {0};
 
     if(texture.id == 0) {
         RenderTutorialImagePlaceholder(fallback, x, y, w, h);
         return;
     }
 
-    picture.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    picture.fit = PICTURE_FIT_COVER;
-    picture.tint = WHITE;
-    picture.style.enabled = 1;
-    PictureTexture(texture, picture);
+    image.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    image.fit = IMAGE_FIT_COVER;
+    image.tint = WHITE;
+    image.style.enabled = 1;
+    ImageTexture(texture, image);
 }
 
 /* ================================================================

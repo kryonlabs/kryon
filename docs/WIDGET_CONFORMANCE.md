@@ -3,6 +3,10 @@
 Kryon widgets must be tested at the runtime boundary, not only inside downstream
 apps. Each widget family should have the same coverage shape:
 
+The canonical public naming and migration review lives in
+`docs/CANONICAL_WIDGET_SURFACE.md`. Any registry name added to
+`src/ui/ui_node_registry.c` must appear there before the public API gate passes.
+
 1. Direct Go runtime tests in `go/kryon/*_test.go`.
    These drive public widget APIs with `QueueTap`, `QueueText`, `QueueKey`,
    focus, selection, and frame rendering. They catch native Go runtime bugs.

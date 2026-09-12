@@ -380,7 +380,7 @@ parent removes descendants; a missing owner is pruned at frame end. Ordinary
 button tests cover nested overlap, child closure, background controls before
 and after the owner, sibling reordering, owner removal, and runtime isolation.
 Existing dropdown click consumers use this registry. Scroll scopes, list boxes,
-trees, source views and tables also use its ownership check for wheel input,
+trees and tables also use its ownership check for wheel input,
 alongside disabled-state and clip checks. Unit tests verify that each family
 rejects covered background scrolling while allowing its popup-owned counterpart
 to scroll. Generated native C/Go regression coverage opens a combo over an

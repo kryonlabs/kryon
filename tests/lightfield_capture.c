@@ -323,7 +323,7 @@ static void check_flat_button_material(void)
     UnloadRenderTexture(target);
 }
 
-static void check_automatic_split_button_ids(void)
+static void check_automatic_button_split_ids(void)
 {
     InjectReset();
     SetUIFocus(0);
@@ -333,8 +333,8 @@ static void check_automatic_split_button_ids(void)
         BeginUIFrame(768, 1024, 1.0f);
         BeginTree(Key("automatic-split-button-ids"));
         for(int index = 0; index < 2; index++) {
-            SplitButton((SplitButtonProps){.button = {
-                .bounds = {10 + index * 150, 10, 120, 40}, .label = "Add"}});
+            Button((ButtonProps){.bounds = {10 + index * 150, 10, 120, 40},
+                .label = "Add", .split = 1});
         }
         Button((ButtonProps){.bounds = {310, 10, 120, 40}, .id = 1, .label = "Explicit"});
         Button((ButtonProps){.bounds = {460, 10, 120, 40}, .label = "Automatic"});
@@ -509,7 +509,7 @@ int main(int argc, char **argv)
     InitUI(768, 1024, GetUIScale());
     check_transparent_icon();
     check_button_font_measurement();
-    check_automatic_split_button_ids();
+    check_automatic_button_split_ids();
     check_flat_button_material();
     check_surface_material_parity();
     check_scoped_button_style();

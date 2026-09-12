@@ -1,0 +1,53 @@
+#module "label_frame"
+#import "drawing_props"
+
+LabelFramePaint :: struct {
+    frame: Rectangle
+    title_background: Rectangle
+    title_text: Rectangle
+    border_color: u32
+    background_color: u32
+    text_color: u32
+    border_width: float
+    show_title: bool
+}
+
+LabelFramePaintFor :: (bounds: Rectangle, title_width: float,
+    has_title: bool, scale: float, border_color: u32, background_color: u32,
+    text_color: u32) -> LabelFramePaint #export {
+    paint: LabelFramePaint
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+
+    pad: float = 8.0 * scale
+    title_height: float = 18.0 * scale
+    title_offset_y: float = 8.0 * scale
+    text_offset_y: float = 9.0 * scale
+
+    paint.frame = bounds
+    paint.border_color = border_color
+    paint.background_color = background_color
+    paint.text_color = text_color
+    paint.border_width = 1.0 * scale
+    paint.show_title = has_title
+
+    paint.title_background.x = bounds.x + pad
+    paint.title_background.y = bounds.y - title_offset_y
+    paint.title_background.width = title_width + pad * 2.0
+    paint.title_background.height = title_height
+
+    paint.title_text.x = bounds.x + pad * 2.0
+    paint.title_text.y = bounds.y - text_offset_y
+    paint.title_text.width = title_width
+    paint.title_text.height = title_height
+
+    if !has_title {
+        paint.title_background.width = 0.0
+        paint.title_background.height = 0.0
+        paint.title_text.width = 0.0
+        paint.title_text.height = 0.0
+    }
+
+    return paint
+}

@@ -1,23 +1,25 @@
 #include "ui_internal.h"
+#include "runtime/toolbar.h"
 
 ToolbarResult
 RenderToolbar(ToolbarProps toolbar)
 {
     ToolbarResult result = {-1, -1};
-    int side_padding = toolbar.side_padding < 0
-                           ? 0
-                           : (toolbar.side_padding > 0 ? toolbar.side_padding
-                                                       : Scale(12));
-    int action_icon_size = toolbar.action_icon_size > 0
-                               ? toolbar.action_icon_size
-                               : Scale(20);
-    int action_icon_padding = toolbar.action_icon_padding > 0
-                                  ? toolbar.action_icon_padding
-                                  : Scale(8);
-    int action_gap = toolbar.action_gap > 0 ? toolbar.action_gap : Scale(6);
-    int action_w = action_icon_size + action_icon_padding * 2;
-    int action_y = toolbar.y + (toolbar.height - action_w) / 2;
-    int controls_x = toolbar.x + toolbar.width - side_padding;
+    ToolbarLayout layout = ToolbarLayoutFor((ToolbarSpec){
+        .x = toolbar.x,
+        .y = toolbar.y,
+        .width = toolbar.width,
+        .height = toolbar.height,
+        .action_count = toolbar.action_count,
+        .action_icon_size = toolbar.action_icon_size,
+        .action_icon_padding = toolbar.action_icon_padding,
+        .action_gap = toolbar.action_gap,
+        .side_padding = toolbar.side_padding,
+        .dropdown_min_width = toolbar.dropdown_min_width,
+        .dropdown_max_width = toolbar.dropdown_max_width,
+        .dropdown_height = toolbar.dropdown_height,
+        .scale = (float)Scale(1000) / 1000.0f
+    });
 
     Color bar = DarkenUIColor(c_bg, 14);
     if(ui_modern_style()) {
@@ -37,101 +39,28 @@ RenderToolbar(ToolbarProps toolbar)
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {
         for(int i = toolbar.action_count - 1; i >= 0; i--) {
-            int action_x;
-
-            controls_x -= action_w;
-            action_x = controls_x;
+            Rectangle action_bounds = ToolbarActionBoundsFor(layout, i,
+                                                             toolbar.action_count);
             if(!toolbar.actions[i].disabled &&
                Button((ButtonProps){
-                   .bounds = {action_x, action_y, action_w, action_w},
+                   .bounds = action_bounds,
                    .icon = toolbar.actions[i].icon, .icon_only = true,
                    .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                    .style = {.normal = {.fields = StyleIconSize,
-                       .icon_size = (float)action_icon_size * 1000.0f / Scale(1000)}}
+                       .icon_size = (float)layout.action_icon_size * 1000.0f / Scale(1000)}}
                }))
                 result.clicked_action = i;
-            controls_x -= action_gap;
         }
     }
 
     if(toolbar.options != NULL && toolbar.option_count > 0 &&
        toolbar.selected_index != NULL) {
-        int dropdown_h = toolbar.dropdown_height > 0
-                             ? toolbar.dropdown_height
-                             : Scale(36);
-        int dropdown_x = toolbar.x;
-        int dropdown_y = toolbar.y;
-        int dropdown_w = controls_x - dropdown_x;
-        int dropdown_available_w;
-
-        if(toolbar.action_count > 0)
-            dropdown_w -= side_padding - action_gap;
-        dropdown_available_w = dropdown_w;
-        if(toolbar.dropdown_min_width > 0 && dropdown_w < toolbar.dropdown_min_width)
-            dropdown_w = toolbar.dropdown_min_width;
-        if(toolbar.dropdown_max_width > 0 && dropdown_w > toolbar.dropdown_max_width)
-            dropdown_w = toolbar.dropdown_max_width;
-        if(dropdown_available_w > 0 && dropdown_w > dropdown_available_w)
-            dropdown_w = dropdown_available_w;
-        if(dropdown_w < 0)
-            dropdown_w = 0;
-        if(Dropdown((DropdownProps){.id = toolbar.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+        if(Dropdown((DropdownProps){.id = toolbar.id, .bounds = layout.dropdown_bounds,
             .options = toolbar.options, .option_count = toolbar.option_count, .selected_index = toolbar.selected_index}))
             result.selected_menu_item = toolbar.selected_index != NULL
                                             ? *toolbar.selected_index
                                             : -1;
     }
 
-    return result;
-}
-
-ToolbarHeaderResult
-RenderToolbarHeader(ToolbarHeaderProps header)
-{
-    ToolbarHeaderResult result;
-    ToolbarProps toolbar = header.toolbar;
-    int height = toolbar.height > 0 ? toolbar.height : Scale(58);
-    int icon_size = header.leading_icon_size > 0 ? header.leading_icon_size : Scale(20);
-    int icon_padding = header.leading_icon_padding > 0 ? header.leading_icon_padding : Scale(8);
-    int leading_w = header.leading_width;
-
-    memset(&result, 0, sizeof(result));
-    if(leading_w <= 0 && header.leading_icon.id != 0)
-        leading_w = icon_size + icon_padding * 2 + Scale(24);
-
-    if(!toolbar.draw_menu) {
-        Color bar = DarkenUIColor(c_bg, 14);
-        if(ui_modern_style()) {
-            ThemeMetrics tokens = GetThemeMetrics();
-            if(tokens.panel_alpha < bar.a)
-                bar.a = tokens.panel_alpha;
-        }
-        DrawRectangle(0, 0, ui_view_width, height, bar);
-        if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
-            Color shine = WHITE;
-            shine.a = GetThemeMetrics().shine_alpha;
-            DrawRectangle(0, 0, ui_view_width, Scale(1), shine);
-        }
-        DrawLine(0, height - 1, ui_view_width, height - 1,
-                 DarkenUIColor(c_bg, 42));
-        if(header.leading_icon.id != 0) {
-            result.leading_clicked = Button((ButtonProps){
-                .bounds = {Scale(12), Scale(12), icon_size + icon_padding * 2,
-                           icon_size + icon_padding * 2},
-                .icon = header.leading_icon, .icon_only = true,
-                .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                .style = {.normal = {.fields = StyleIconSize,
-                    .icon_size = (float)icon_size * 1000.0f / Scale(1000)}}
-            });
-        }
-        toolbar.x = leading_w;
-        toolbar.y = 0;
-        toolbar.width = ui_view_width - leading_w;
-        toolbar.height = height;
-        if(toolbar.width < 0)
-            toolbar.width = 0;
-    }
-
-    result.toolbar = RenderToolbar(toolbar);
     return result;
 }

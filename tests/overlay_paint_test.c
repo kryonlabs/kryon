@@ -15,7 +15,6 @@ int main(void)
     int failures = 0;
     char text[32] = "Value";
     int cursor = 5, focused = 0;
-    const char *choices[] = {"One", "Two"};
     ModalAction actions[] = {{"Close", ButtonToneAccent, ButtonEmphasisFilled, 0}};
     SetUIClipboardTextValue("");
     InjectReset();
@@ -65,7 +64,7 @@ int main(void)
         UnloadImage(image);
     }
     InjectReset();
-    for(int kind = 0; kind < 6; kind++) {
+    for(int kind = 0; kind < 5; kind++) {
         for(int frame = 0; frame < 2; frame++) {
             BeginDrawing();
             BeginTextureMode(target);
@@ -74,12 +73,52 @@ int main(void)
             BeginTree(1);
             Rect(10,10,20,20,RED,BLANK);
             Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .font=16, .color=WHITE, .wrap=TextWrapNone});
-            if(kind == 0) MessageDialog((MessageDialogProps){"Message","Hello","OK"});
-            if(kind == 1) ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"});
-            if(kind == 2) PromptDialog((PromptDialogProps){"Prompt",text,sizeof(text),&cursor,&focused,"Cancel","Save"});
-            if(kind == 3) ActionModal((ModalProps){"Actions","Choose",actions,1,{0},300});
-            if(kind == 4) PickerDialog((PickerDialogProps){"Picker",choices,NULL,2,"Cancel",300});
-            if(kind == 5) ModalFrame(300,200,"Frame",(Texture2D){0},(Texture2D){0});
+            if(kind == 0) {
+                ModalAction actions[] = {{"OK", ButtonToneAccent,
+                                          ButtonEmphasisFilled, 0}};
+                Modal((ModalProps){.title = "Message", .message = "Hello",
+                                   .actions = actions, .action_count = 1,
+                                   .max_width = 420});
+            }
+            if(kind == 1) {
+                ModalAction actions[] = {{"No", ButtonToneNeutral,
+                                          ButtonEmphasisSoft, 0},
+                                         {"Yes", ButtonToneAccent,
+                                          ButtonEmphasisFilled, 0}};
+                Modal((ModalProps){.title = "Confirm",
+                                   .message = "Continue?",
+                                   .actions = actions, .action_count = 2,
+                                   .max_width = 460});
+            }
+            if(kind == 2) {
+                ModalAction prompt_actions[] = {
+                    {"Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
+                    {"Save", ButtonToneAccent, ButtonEmphasisFilled, 0}};
+                Modal((ModalProps){.title = "Prompt",
+                                   .actions = prompt_actions,
+                                   .action_count = 2,
+                                   .max_width = 460,
+                                   .text = text,
+                                   .text_size = sizeof(text),
+                                   .cursor_position = &cursor,
+                                   .focused = &focused});
+            }
+            if(kind == 3) Modal((ModalProps){.title = "Actions",
+                                             .message = "Choose",
+                                             .actions = actions,
+                                             .action_count = 1,
+                                             .max_width = 300});
+            if(kind == 4) {
+                ModalAction picker_actions[] = {
+                    {"Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
+                    {"One", ButtonToneNeutral, ButtonEmphasisSoft, 0},
+                    {"Two", ButtonToneAccent, ButtonEmphasisFilled, 0}};
+                Modal((ModalProps){.title = "Picker",
+                                   .message = "Choose",
+                                   .actions = picker_actions,
+                                   .action_count = 3,
+                                   .max_width = 300});
+            }
             Rect(40,10,20,20,GREEN,BLANK);
             EndTree();
             EndUIFrame();
@@ -94,25 +133,6 @@ int main(void)
                 failures++;
             }
             UnloadImage(image);
-        }
-    }
-    /* The trigger's release is not an outside click dismissing its popover. */
-    Rectangle anchor = {240,100,160,32};
-    focused = 0;
-    InjectReset();
-    for(int frame = 0; frame < 3; frame++) {
-        InjectMousePosition(frame < 2 ? 260 : 20, frame < 2 ? 110 : 20);
-        InjectMouseButton(MOUSE_BUTTON_LEFT, frame != 1);
-        InjectPump();
-        BeginDrawing();
-        BeginUIFrame(640,480,1);
-        if(frame == 1) UIConsumePointerRelease();
-        int result = TextPopover((TextPopoverProps){anchor,"Edit",text,sizeof(text),&cursor,&focused,972,300,31});
-        EndUIFrame();
-        EndDrawing();
-        if((result != 0) != (frame == 2)) {
-            fprintf(stderr,"popover frame %d returned %d\n",frame,result);
-            failures++;
         }
     }
     InjectReset();

@@ -17,7 +17,7 @@
 #define K2GO_NAME_MAX 256
 #define K2GO_EXTERN_PARAM_MAX 16
 #define K2GO_RUNTIME_IMPORT "github.com/waozixyz/kryon/go/kryon"
-#define K2GO_RUNTIME_PKG "kryon"
+#define K2GO_RUNTIME_PKG "kr"
 
 static int runtime_output;
 static const KirModule *type_scope;
@@ -71,32 +71,27 @@ is_runtime_go_type(const char *type)
 		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
         "TextAlign", "TextWrap",
         "Theme", "ThemeFamily", "ThemeColors", "ThemeMetrics",
-        "MenuButtonProps", "SplitButtonProps", "SplitButtonResult",
         "SyntaxMode", "ThemeStyle", "ThemeSource",
-        "ThemeMode", "ThemeSettingsState", "ThemeSettingsProps",
-        "ThemeSettingsResult", "PictureFit", "UISemanticKind",
-        "TextInputStyle", "SelectableProps", "CheckboxFlagsProps",
-		"ImageWithBgProps", "ImageButtonProps", "HrefProps",
-		"TabItemButtonProps", "Tab", "TabBarProps", "ClosableTabBarProps",
+        "ThemeMode", "ImageFit", "ImageStyle", "UISemanticKind",
+        "TextInputStyle", "SelectableProps", "CheckboxProps", "ToggleProps",
+		"Tab", "TabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
-        "FrameBox", "GridFrame", "ParagraphSpec", "PictureProps", "PageProps",
+        "FrameBox", "GridFrame", "ParagraphSpec", "ImageProps", "PageProps",
         "CarouselControlsProps",
         "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
-        "FlowProps", "GridProps", "NavigationBarItem", "NavigationBarProps", "TopNavProps",
-		"ToolbarProps", "CardProps", "RadioButtonProps", "ProgressBarProps", "PlotProps",
-		"DragFloatProps", "DragIntProps", "DragFloatRange2Props",
-		"DragIntRange2Props", "SliderFloatProps", "SliderIntProps",
-		"SliderAngleProps",
-		"InputFloatProps", "InputIntProps", "InputDoubleProps",
-		"InvisibleButtonProps", "TextProps", "SeparatorTextProps", "DragDropSourceProps",
-		"DragDropTargetProps", "MultiSelectListProps", "ArrowButtonProps",
-		"ColorEditProps", "ColorButtonProps",
-		"SpinboxProps", "DropdownOption", "DropdownProps", "ComboboxProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
+        "FlowProps", "GridProps", "TitleBarDropdown", "TitleBarProps",
+        "NavigationBarItem", "NavigationBarProps",
+		"ToolbarProps", "CardProps", "RadioProps", "ProgressProps", "PlotProps",
+		"NumericValueKind", "DragMode", "DragProps", "SliderProps", "InputProps",
+		"InvisibleButtonProps", "TextProps", "SeparatorProps", "DragDropSourceProps",
+		"DragDropTargetProps", "MultiSelectListProps",
+		"ColorPickerProps",
+		"SpinboxProps", "DropdownOption", "DropdownProps", "ComboFlags", "ComboProps", "PopupFlags", "PopupProps",
 		"LabelFrameProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
-        "SourceViewProps", "TableRow", "TableViewProps", "NotebookProps",
-        "PanedViewProps", "CollapsibleProps", "MessageDialogProps",
-        "ConfirmDialogProps", "PromptDialogProps", "Canvas",
+        "TableRow", "TableViewProps",
+        "PanedViewProps", "CollapsibleProps", "ModalAction", "ModalProps",
+        "Canvas",
         "CanvasResult", NULL
     };
 
@@ -207,6 +202,15 @@ go_type(const char *type, char *dst, size_t dst_size)
                     return 1;
                 }
             }
+        }
+        return 0;
+    }
+    if(t[0] == '*' && t[1] != '\0') {
+        char gt[K2GO_NAME_MAX];
+
+        if(go_type(t + 1, gt, sizeof(gt)) && strcmp(gt, "string") != 0) {
+            snprintf(dst, dst_size, "*%s", gt);
+            return 1;
         }
         return 0;
     }
@@ -543,6 +547,10 @@ add_extern(const char *kry, const char *args, const char *ret,
                                             sizeof(ex->go_import_path),
                                             ex->go_import_alias,
                                             sizeof(ex->go_import_alias));
+    if(ex->direct_go &&
+       strcmp(ex->go_import_path, K2GO_RUNTIME_IMPORT) == 0)
+        snprintf(ex->go_import_alias, sizeof(ex->go_import_alias), "%s",
+                 K2GO_RUNTIME_PKG);
     /* guard "KryApp" -> host var "kryAppHost" */
     snprintf(ex->host_var, sizeof(ex->host_var), "%c%sHost",
              (char)tolower((unsigned char)g_guard[0]), g_guard + 1);
@@ -940,7 +948,7 @@ split_top(const char *s, char parts[][K2GO_TEXT_MAX], int max)
 
 /* "(Vector2){a,b}" style compound literal: p points after "(". */
 /* C field order for the Props/Spec types .kry writes positionally, e.g.
- * Picture((PictureProps){"path", ...}). Designated initializers do not need
+ * Image((ImageProps){"path", ...}). Designated initializers do not need
  * this table; positional parts index into it. Names are the Go field names. */
 static void
 resolve_slot_type(void *context, const char *source, char *out, size_t size)
@@ -992,23 +1000,29 @@ props_field_at(const KirModule *module, const char *type, int index,
         {"HeadingProps", {"Bounds", "Text", "Level", "Font", "Color", "Key"}},
         {"ParagraphTextProps", {"Bounds", "Text", "Font", "Color",
                                 "LineGap", "Key"}},
-        {"LinkProps", {"Bounds", "Text", "Href", "Font", "FocusID",
+        {"LinkProps", {"Bounds", "Text", "Link", "Font", "FocusID",
                        "Disabled", "Color", "HoverColor"}},
+        {"TitleBarDropdown", {"ID", "Options", "OptionCount",
+                              "SelectedIndex", "Disabled", "MinWidth",
+                              "Height"}},
+        {"TitleBarProps", {"Title", "Height", "LeadingIcon",
+                           "HasLeadingAction", "Dropdown", "HasDropdown"}},
         {"CardProps", {"Bounds", "ID", "Clickable", "Disabled", "Selected",
                        "Tone", "Emphasis", "State", "Style"}},
-        {"PictureProps", {"AssetPath", "Bounds", "Source", "Origin",
+        {"ImageProps", {"AssetPath", "Bounds", "Source", "Origin",
                           "Rotation", "Tint", "Fit", "Style"}},
-        {"HrefProps", {"Bounds", "Text", "Href", "Font", "FocusID",
-                       "Disabled", "Color", "HoverColor"}},
+        {"ImageStyle", {"Enabled", "Background", "TonalOverlay",
+                          "SurfaceOverlay", "ScrimTop", "ScrimBottom",
+                          "Outline", "Roundness", "RadiusPx", "Segments",
+                          "OutlinePx"}},
         {"ParagraphSpec", {"Text", "IconType", "IconSize", "Width",
                              "Font", "LineGap", "Color", "Align"}},
         {"ThemeFamily", {"Name", "Light", "Dark"}},
         {"SelectableProps", {"Bounds", "ID", "Label", "Selected", "Disabled"}},
-        {"CheckboxFlagsProps", {"Bounds", "ID", "Label", "Flags",
+        {"CheckboxProps", {"Bounds", "ID", "Label", "Value", "Flags",
                                 "FlagsValue", "Disabled"}},
-        {"ImageWithBgProps", {"Picture", "Background"}},
-        {"ImageButtonProps", {"Picture", "Background", "ID", "Disabled"}},
-		{"TabItemButtonProps", {"Bounds", "ID", "Label", "Font", "Disabled"}},
+        {"ToggleProps", {"Bounds", "ID", "Value", "OffLabel", "OnLabel",
+                         "Disabled"}},
 		{"Tab", {"Label", "Icon", "IconSize", "Disabled", "Accent", "Italic",
 		         "Closeable"}},
 		{"TabBarProps", {"Bounds", "Tabs", "Count", "SelectedIndex", "Font",
@@ -1017,38 +1031,26 @@ props_field_at(const KirModule *module, const char *type, int index,
 		                 "ReorderedFromIndex", "ReorderedToIndex",
 		                 "SelectedTabBounds", "MiddleClickedIndex", "ID",
 		                 "Disabled"}},
-		{"ClosableTabBarProps", {"Bounds", "Tabs", "Count", "SelectedIndex",
-		                            "Font", "ClosedIndex", "ID", "Disabled"}},
-        {"RadioButtonProps", {"Bounds", "Label", "ID", "Checked",
+        {"RadioProps", {"Bounds", "Label", "ID", "Checked",
                               "Disabled"}},
-        {"ProgressBarProps", {"Bounds", "Min", "Max", "Value", "Label"}},
+		{"ProgressProps", {"Bounds", "Min", "Max", "Value", "Label"}},
 		{"PlotProps", {"Bounds", "Label", "Values", "ValueCount", "Offset",
-		               "Overlay", "ScaleMin", "ScaleMax"}},
-		{"DragFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                      "Speed", "Min", "Max", "Format", "Disabled"}},
-		{"DragIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                    "Speed", "Min", "Max", "Format", "Disabled"}},
-		{"DragFloatRange2Props", {"Bounds", "ID", "Label", "CurrentMin",
-		                             "CurrentMax", "Speed", "Min", "Max",
-		                             "Format", "FormatMax", "Disabled"}},
-		{"DragIntRange2Props", {"Bounds", "ID", "Label", "CurrentMin",
-		                           "CurrentMax", "Speed", "Min", "Max",
-		                           "Format", "FormatMax", "Disabled"}},
-		{"SliderFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                        "Min", "Max", "Format", "Disabled"}},
-		{"SliderIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                      "Min", "Max", "Format", "Disabled"}},
-		{"SliderAngleProps", {"Bounds", "ID", "Label", "Value", "MinDegrees",
-		                        "MaxDegrees", "Format", "Disabled"}},
-		{"InputFloatProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                       "Step", "StepFast", "Format", "Disabled"}},
-		{"InputIntProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                     "Step", "StepFast", "Format", "Disabled"}},
-		{"InputDoubleProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                        "Step", "StepFast", "Format", "Disabled"}},
+		               "Overlay", "ScaleMin", "ScaleMax", "Mode"}},
+		{"DragProps", {"Bounds", "ID", "Label", "Kind", "Mode",
+		                  "FloatValues", "IntValues", "ValueCount",
+		                  "FloatMin", "FloatMax", "IntMin", "IntMax",
+		                  "Speed", "Min", "Max", "Format", "FormatMax",
+		                  "Disabled"}},
+		{"SliderProps", {"Bounds", "ID", "Label", "Kind", "FloatValues",
+		                    "IntValues", "ValueCount", "FloatValue", "Min",
+		                    "Max", "Format", "Disabled", "Vertical",
+		                    "Angle"}},
+		{"InputProps", {"Bounds", "ID", "Label", "Kind", "FloatValues",
+		                   "IntValues", "DoubleValues", "ValueCount",
+		                   "Step", "StepFast", "Format", "Disabled"}},
 		{"InvisibleButtonProps", {"Bounds", "ID", "Disabled"}},
 		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled", "LetterSpacing", "Typeface", "Style"}},
-		{"SeparatorTextProps", {"Bounds", "Label", "Font", "Disabled"}},
+		{"SeparatorProps", {"Bounds", "Vertical", "Label", "Font", "Disabled"}},
 		{"DragDropSourceProps", {"Bounds", "ID", "Type", "Data", "DataSize",
 		                           "Disabled"}},
 		{"DragDropTargetProps", {"Bounds", "ID", "Type", "Output",
@@ -1056,10 +1058,12 @@ props_field_at(const KirModule *module, const char *type, int index,
 		{"MultiSelectListProps", {"Bounds", "ID", "Items", "ItemCount",
 		                            "Selected", "SelectedCount", "Anchor",
 		                            "RowHeight", "Disabled"}},
-		{"ArrowButtonProps", {"Bounds", "ID", "Direction", "Disabled"}},
-		{"ColorEditProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
-		                     "Disabled"}},
-		{"ColorButtonProps", {"Bounds", "ID", "Label", "Color", "Disabled"}},
+		{"ColorPickerProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
+		                       "Disabled", "Picker"}},
+		{"ModalAction", {"Label", "Tone", "Emphasis", "Disabled"}},
+		{"ModalProps", {"Title", "Message", "Actions", "ActionCount",
+		                 "CloseIcon", "MaxWidth", "Text", "TextSize",
+		                 "CursorPosition", "Focused", "FocusID"}},
 		{"MenuItem", {"Kind", "Label", "Accelerator", "ID", "Disabled",
 		                 "Checked", "Submenu", "SubmenuCount"}},
 		{"Menu", {"Bounds", "Label", "Items", "ItemCount"}},
@@ -1071,8 +1075,6 @@ props_field_at(const KirModule *module, const char *type, int index,
         {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
                             "SeparatorBefore"}},
         {"DropdownProps", {"Bounds", "ID", "Options", "OptionCount",
-                           "SelectedIndex", "Disabled", "Items"}},
-        {"ComboboxProps", {"Bounds", "ID", "Options", "OptionCount",
                            "SelectedIndex", "Disabled", "Items"}},
         {"ComboProps", {"Bounds", "PopupSize", "Preview", "ID", "Open",
                          "Flags", "Disabled"}},
@@ -1255,7 +1257,9 @@ bool_prop_field(const char *field)
 {
     static const char *names[] = {"Disabled", "DrawMenu", "Active",
                                   "Secure", "Closeable", "Italic",
-                                  "FocusSelected", "Resizable", "SeparatorBefore", NULL};
+                                  "FocusSelected", "Resizable",
+                                  "SeparatorBefore", "HasLeadingAction",
+                                  "HasDropdown", "Vertical", "Angle", NULL};
     int i;
 
     for(i = 0; names[i] != NULL; i++)
@@ -1267,17 +1271,15 @@ bool_prop_field(const char *field)
 static int
 slice_prop_field(const char *type, const char *field)
 {
-    if((strcmp(type, "DropdownProps") == 0 ||
-        strcmp(type, "ComboboxProps") == 0) &&
+    if(strcmp(type, "DropdownProps") == 0 &&
        (strcmp(field, "Options") == 0 || strcmp(field, "Items") == 0))
+        return 1;
+    if(strcmp(type, "ButtonProps") == 0 && strcmp(field, "Items") == 0)
         return 1;
     if((strcmp(type, "ListBoxProps") == 0 ||
         strcmp(type, "TreeViewProps") == 0) && strcmp(field, "Items") == 0)
         return 1;
-    if(strcmp(type, "NotebookProps") == 0 && strcmp(field, "Tabs") == 0)
-        return 1;
-    if((strcmp(type, "TabBarProps") == 0 ||
-        strcmp(type, "ClosableTabBarProps") == 0) && strcmp(field, "Tabs") == 0)
+    if(strcmp(type, "TabBarProps") == 0 && strcmp(field, "Tabs") == 0)
         return 1;
     if(strcmp(type, "DragDropSourceProps") == 0 && strcmp(field, "Data") == 0)
         return 1;
@@ -1288,15 +1290,17 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "PlotProps") == 0 && strcmp(field, "Values") == 0)
         return 1;
-    if((strcmp(type, "DragFloatProps") == 0 ||
-        strcmp(type, "DragIntProps") == 0 ||
-        strcmp(type, "SliderFloatProps") == 0 ||
-        strcmp(type, "SliderIntProps") == 0 ||
-        strcmp(type, "InputFloatProps") == 0 ||
-        strcmp(type, "InputIntProps") == 0 ||
-        strcmp(type, "InputDoubleProps") == 0) && strcmp(field, "Values") == 0)
+    if(strcmp(type, "DragProps") == 0 &&
+       (strcmp(field, "FloatValues") == 0 || strcmp(field, "IntValues") == 0))
         return 1;
-    if(strcmp(type, "ColorEditProps") == 0 && strcmp(field, "Values") == 0)
+    if(strcmp(type, "SliderProps") == 0 &&
+       (strcmp(field, "FloatValues") == 0 || strcmp(field, "IntValues") == 0))
+        return 1;
+    if(strcmp(type, "InputProps") == 0 &&
+       (strcmp(field, "FloatValues") == 0 || strcmp(field, "IntValues") == 0 ||
+        strcmp(field, "DoubleValues") == 0))
+        return 1;
+    if(strcmp(type, "ColorPickerProps") == 0 && strcmp(field, "Values") == 0)
         return 1;
     if(strcmp(type, "Menu") == 0 && strcmp(field, "Items") == 0)
         return 1;
@@ -1457,14 +1461,15 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
         p++;
         /* Props/Spec use C designated initializers. Translate them to named
          * Go fields and give the untyped bounds literal its Rectangle type. */
-        if(strstr(type, "Props") != NULL || strstr(type, "Spec") != NULL ||
+        int declared_record = source_record(m, type);
+        if(declared_record || strstr(type, "Props") != NULL ||
+           strstr(type, "Spec") != NULL ||
            props_field_at(m, type, 0, first_field, sizeof(first_field))) {
             char raw[K2GO_TEXT_MAX], parts[32][K2GO_TEXT_MAX];
             size_t rn = 0;
             int depth = 1;
             const char *q = p;
             int count;
-            int declared_record = source_record(m, type);
 
             while(*q != '\0' && depth > 0 && rn + 1 < sizeof(raw)) {
                 if(*q == '{')
@@ -1957,6 +1962,41 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     p = q;
                     continue;
                 }
+                if(strlen("NumericFloat") == il &&
+                   strncmp("NumericFloat", ident, il) == 0) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                        "%sNumericFloat", runtime_output ? "" : K2GO_RUNTIME_PKG ".");
+                    p = q;
+                    continue;
+                }
+                if(strlen("NumericInt") == il &&
+                   strncmp("NumericInt", ident, il) == 0) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                        "%sNumericInt", runtime_output ? "" : K2GO_RUNTIME_PKG ".");
+                    p = q;
+                    continue;
+                }
+                if(strlen("NumericDouble") == il &&
+                   strncmp("NumericDouble", ident, il) == 0) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                        "%sNumericDouble", runtime_output ? "" : K2GO_RUNTIME_PKG ".");
+                    p = q;
+                    continue;
+                }
+                if(strlen("DragSingle") == il &&
+                   strncmp("DragSingle", ident, il) == 0) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                        "%sDragSingle", runtime_output ? "" : K2GO_RUNTIME_PKG ".");
+                    p = q;
+                    continue;
+                }
+                if(strlen("DragRange") == il &&
+                   strncmp("DragRange", ident, il) == 0) {
+                    dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                        "%sDragRange", runtime_output ? "" : K2GO_RUNTIME_PKG ".");
+                    p = q;
+                    continue;
+                }
                 K2goEnumMember *mem = k2go_const_entry(ident, il);
 
                 if(mem != NULL) {
@@ -2005,7 +2045,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"ComboHeightRegular", "ComboHeightRegular"},
 					{"ComboHeightLarge", "ComboHeightLarge"},
 					{"ComboHeightLargest", "ComboHeightLargest"},
-					{"ComboNoArrowButton", "ComboNoArrowButton"},
+					{"ComboNoArrow", "ComboNoArrow"},
 					{"ComboNoPreview", "ComboNoPreview"},
 					{"ComboWidthFitPreview", "ComboWidthFitPreview"},
 					{"PopupFlagsNone", "PopupFlagsNone"},
@@ -2050,9 +2090,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"THEME_XFCE", "THEME_XFCE"},
                     {"THEME_SWEET", "THEME_SWEET"},
                     {"THEME_COUNT", "THEME_COUNT"},
-                    {"PICTURE_FIT_STRETCH", "PICTURE_FIT_STRETCH"},
-                    {"PICTURE_FIT_CONTAIN", "PICTURE_FIT_CONTAIN"},
-                    {"PICTURE_FIT_COVER", "PICTURE_FIT_COVER"},
+                    {"IMAGE_FIT_STRETCH", "IMAGE_FIT_STRETCH"},
+                    {"IMAGE_FIT_CONTAIN", "IMAGE_FIT_CONTAIN"},
+                    {"IMAGE_FIT_COVER", "IMAGE_FIT_COVER"},
                     {"WHITE", "WHITE"},
                     {"BLACK", "BLACK"},
                     {"RAYWHITE", "RAYWHITE"},
@@ -2627,17 +2667,20 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     const char *source_assign = strstr(st->text, "= ");
                     char translated[K2GO_TEXT_MAX];
 
-                    /* Go composite literals carry their type: 'var x = T{...}' */
+                    /* Go composite literals carry their type: 'var x = T{...}'.
+                     * Re-enter the source compound-literal path so designated
+                     * fields on props records become Go field names. */
                     if(*init == '{' && source_assign != NULL &&
-                       (strcmp(gt, K2GO_RUNTIME_PKG ".Rectangle") == 0 ||
-                        strcmp(gt, K2GO_RUNTIME_PKG ".Vector2") == 0)) {
+                       strstr(gt, "TODO") == NULL && gt[0] != '[') {
                         char typed[K2GO_TEXT_MAX];
-                        const char *type = strrchr(gt, '.') + 1;
+                        char source_type[K2GO_TEXT_MAX];
 
                         /* Use the same conversions as an explicit compound
                          * literal, starting from source rather than already
                          * translated Go expressions. */
-                        snprintf(typed, sizeof(typed), "(%s)%s", type,
+                        snprintf(source_type, sizeof(source_type), "%s", tbuf);
+                        k2go_trim_ws(source_type);
+                        snprintf(typed, sizeof(typed), "(%s)%s", source_type,
                                  kir_skip_ws(source_assign + 2));
                         tx_expr(m, typed, translated, sizeof(translated));
                         fprintf(f, "var %s = %s\n", aname, translated);
@@ -2852,6 +2895,9 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         break;
                     }
                 }
+                if(strcmp(g_externs[i].go_import_path,
+                          K2GO_RUNTIME_IMPORT) == 0)
+                    duplicate = 1;
                 if(!duplicate)
                     fprintf(f, "import %s \"%s\"\n",
                             g_externs[i].go_import_alias,
@@ -2986,6 +3032,11 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                             kir_go_field_ident(field.name, fname, sizeof(fname));
                             if(!go_type(field.type, gt, sizeof(gt)))
                                 snprintf(gt, sizeof(gt), "/* TODO %s */ any", field.type);
+                            if(slice_prop_field(t->name, fname) && gt[0] == '*') {
+                                char elem[K2GO_NAME_MAX];
+                                snprintf(elem, sizeof(elem), "%s", gt + 1);
+                                snprintf(gt, sizeof(gt), "[]%s", elem);
+                            }
                             fprintf(f, "\t%s %s\n", fname, gt);
                         }
                         if(status < 0) {

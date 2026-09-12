@@ -60,7 +60,7 @@ Backend selection is link-time, via the `KRYON_BACKEND` make variable:
   backend presents UI-oriented draw calls as absolutely positioned DOM nodes
   with CSS colors, gradients, borders, rounded corners, clipping, transforms,
   cursor state, and browser text. Page helpers attach semantic metadata so
-  headings can become `h1`-`h6`, links can become `a[href]`, pictures can
+  headings can become `h1`-`h6`, links can become `a[href]`, images can
   carry `alt`, page/section regions can become `main`/`section`, and document
   title/description/canonical/theme-color plus browser routes can be controlled
   from Kryon. Browser `popstate`/`hashchange` changes increment the route

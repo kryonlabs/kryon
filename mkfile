@@ -86,10 +86,8 @@ OFILES=\
 	src/ui/terminal_pane_sgr.$O\
 	src/ui/terminal_pane_sixel.$O\
 	src/ui/terminal_pane_text.$O\
-	src/ui/theme_picker.$O\
 	src/ui/toast.$O\
 	src/ui/toolbar.$O\
-	src/ui/top_nav.$O\
 	src/ui/tutorial.$O\
 	src/ui/ui.$O\
 	src/ui/ui_clip.$O\
@@ -103,7 +101,7 @@ OFILES=\
 	src/ui/ui_layout.$O\
 	src/ui/ui_page.$O\
 	src/ui/ui_node_registry.$O\
-	src/ui/ui_picture_cache.$O\
+	src/ui/ui_image_cache.$O\
 	src/ui/ui_scaling.$O\
 	src/ui/ui_slider.$O\
 	src/ui/ui_style.$O\

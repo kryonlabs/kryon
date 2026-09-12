@@ -16,13 +16,13 @@ host.SetThemeMode(host.THEME_MODE_SYSTEM);
 const split = module.frame(splitRuntime).frame;
 assert.equal(host.GetThemeMode(), host.THEME_MODE_SYSTEM, "split view must preserve follow-system mode");
 const splitButtons = split.filter(item => item.name === "Button");
-assert.equal(splitButtons.length, 172);
-assert.equal(new Set(splitButtons.map(item => item.args.id)).size, 172);
+assert.equal(splitButtons.length, 181);
+assert.equal(new Set(splitButtons.map(item => item.args.id)).size, 181);
 assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 1000).args.bounds), [81, 161, 72, 34]);
 assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 11000).args.bounds), [849, 161, 72, 34]);
 assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 5000).args.bounds), [24, 901, 720, 34]);
 assert.deepEqual(rectangle(splitButtons.find(item => item.args.id === 15000).args.bounds), [792, 901, 720, 34]);
-const splitMenus = split.filter(item => item.name === "SplitButton" || item.name === "MenuButton");
+const splitMenus = splitButtons.filter(item => item.args.split || item.args.menu);
 assert.equal(splitMenus.length, 8);
 const splitOpen = splitMenus.map(item => item.args.open);
 splitOpen[0].value = 1;
@@ -39,16 +39,15 @@ function checkGeometry(dark) {
     assert.equal(caption.args.font, 17);
   }
   const buttons = frame.frame.filter(item => item.name === "Button");
-  assert.equal(buttons.length, 88);
+  assert.equal(buttons.length, 93);
   const byID = new Map(buttons.map(item => [item.args.id, item.args]));
   assert.equal(byID.size, buttons.length);
-  const compound = frame.frame.filter(item => item.name === "SplitButton" || item.name === "MenuButton");
+  const compound = buttons.filter(item => item.args.split || item.args.menu);
   assert.equal(compound.length, 4);
   for (const item of compound) {
-    const props = item.args.button;
+    const props = item.args;
     assert.ok(props && typeof props === "object", `${item.name} has unevaluated button props`);
-    assert.ok(!byID.has(props.id), `duplicate button ID ${props.id}`);
-    byID.set(props.id, props);
+    assert.equal(byID.get(props.id), props, `compound button ID ${props.id} is not canonical Button props`);
     assert.equal(item.args.item_count, 2);
     assert.equal(item.args.items.length, 2);
     assert.ok(item.args.open && "value" in item.args.open, `${item.name} lost its open-state reference`);

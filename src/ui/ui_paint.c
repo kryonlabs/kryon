@@ -78,7 +78,7 @@ ui_draw(Drawing command)
         }
         break;
     case DrawingRing: {
-        Ring ring = command.ring;
+        LoadingRingSpec ring = command.ring;
         if(!FancyEffectsEnabled())
             ring.glow_blur = 0.0f;
         float radius = LoadingPaintRadius(ring);

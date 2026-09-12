@@ -372,8 +372,53 @@ contains_top_level_compound(const char *s)
     return 0;
 }
 
+static int
+js_numeric_cast_type(const KirModule *m, const char *type)
+{
+    const KirModule *owner = NULL;
+    const KirType *declared = KirFindType(m, type, &owner);
+
+    if(declared != NULL)
+        return declared->is_enum;
+    return strcmp(type, "ThemeSource") == 0 ||
+           strcmp(type, "ThemeMode") == 0 ||
+           strcmp(type, "ThemeStyle") == 0;
+}
+
 static void tx_expr(const KirModule *m, const char *src,
                     char *dst, size_t dst_size);
+
+static int
+try_imported_numeric_cast(const KirModule *m, const char *src,
+                          char *dst, size_t dst_size)
+{
+    const char *p = kir_skip_ws(src);
+    const char *type_begin;
+    const char *type_end;
+    char type[KIR_NAME_MAX];
+    char operand[K2JS_TEXT_MAX];
+    size_t length;
+
+    if(*p != '(')
+        return 0;
+    type_begin = kir_skip_ws(p + 1);
+    type_end = type_begin;
+    if(!(isalpha((unsigned char)*type_end) || *type_end == '_'))
+        return 0;
+    while(kir_is_ident_char((unsigned char)*type_end))
+        type_end++;
+    length = (size_t)(type_end - type_begin);
+    if(length == 0 || length >= sizeof(type))
+        return 0;
+    memcpy(type, type_begin, length);
+    type[length] = '\0';
+    type_end = kir_skip_ws(type_end);
+    if(*type_end != ')' || !js_numeric_cast_type(m, type))
+        return 0;
+    tx_expr(m, type_end + 1, operand, sizeof(operand));
+    snprintf(dst, dst_size, "Math.trunc(Number(%s))", operand);
+    return 1;
+}
 
 static void
 tx_args(const KirModule *m, const char *raw, char *dst, size_t dst_size)
@@ -438,6 +483,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
     const char *p = src;
 
     dst[0] = '\0';
+    if(try_imported_numeric_cast(m, src, dst, dst_size))
+        return;
     if(*kir_skip_ws(src) == '(') {
         KirFunction parsed = {0};
         int root = KirParseExpr(&parsed, m, src, (KirSourceSpan){0});
@@ -450,9 +497,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                 free(parsed.exprs);
                 return;
             }
-            const KirModule *owner = NULL;
-            const KirType *type = KirFindType(m, cast->name, &owner);
-            if(type != NULL && type->is_enum) {
+            if(js_numeric_cast_type(m, cast->name)) {
                 char operand[K2JS_TEXT_MAX];
                 tx_expr(m, parsed.exprs[cast->right].text, operand, sizeof(operand));
                 snprintf(dst, dst_size, "Math.trunc(Number(%s))", operand);
@@ -891,6 +936,13 @@ emit_initializer_value(FILE *f, const KirModule *m, const char *source)
         if(root >= 0 && parsed.exprs[root].kind == KIR_EXPR_CAST) {
             const KirExpr *cast = &parsed.exprs[root];
             const char *target = KirTargetType(cast->name, KIR_JS);
+            if(js_numeric_cast_type(m, cast->name)) {
+                fputs("Math.trunc(Number(", f);
+                emit_initializer_value(f, m, parsed.exprs[cast->right].text);
+                fputs("))", f);
+                free(parsed.exprs);
+                return;
+            }
             if(target != NULL && (strcmp(cast->name, "float") == 0 ||
                strcmp(cast->name, "f32") == 0 || strcmp(cast->name, "double") == 0 ||
                strcmp(cast->name, "f64") == 0)) {
@@ -1008,8 +1060,7 @@ static void
 emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const char *args)
 {
     if(strcmp(widget, "Text") == 0 || strcmp(widget, "Button") == 0 ||
-       strcmp(widget, "Card") == 0 ||
-       strcmp(widget, "MenuButton") == 0 || strcmp(widget, "SplitButton") == 0)
+       strcmp(widget, "Card") == 0)
         emit_initializer_value(f, m, args);
     else
         js_string(f, args);

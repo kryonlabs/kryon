@@ -54,13 +54,13 @@ the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text LabelText BulletText ValueBool ValueInt ValueUInt ValueFloat Paragraph TextLines Rect Line Bevel Icon
-Picture ImageWithBg ImageButton Button Selectable CheckboxFlags InvisibleButton ArrowButton Bullet Separator SeparatorText ColorEdit3 ColorEdit4 ColorPicker3 ColorPicker4 ColorButton Tooltip Href TextField TextArea Dropdown Slider Toggle
-Checkbox Radio Progress Spinbox Combobox Screen Column Row Stack End Scroll
-PlotLines PlotHistogram DragFloat DragInt DragFloatRange2 DragIntRange2 SliderFloat SliderInt VSliderFloat VSliderInt SliderAngle InputFloat InputInt InputDouble
-Canvas Disabled Modal ActionModal MessageDialog ConfirmDialog PromptDialog TitleBar MenuBar PopupMenu ContextMenu
-TabBar NavigationBar TopNav Toolbar ShowToast ShowToastFor LabelFrame Notebook
-PanedView Collapsible ListBox TreeView SourceView TableView ColorPicker TabItemButton ClosableTabBar DragDropSource DragDropTarget MultiSelectList
+`Background Text Paragraph Rect Line Bevel Icon
+Image Button Selectable InvisibleButton Bullet Separator ColorPicker Tooltip Link TextField TextArea Dropdown Slider Toggle
+Checkbox Radio Progress Spinbox Screen Column Row Stack End Scroll
+Plot Drag Slider Input
+Canvas Disabled Modal TitleBar MenuBar PopupMenu ContextMenu
+TabBar NavigationBar Toolbar ShowToast ShowToastFor LabelFrame
+PanedView Collapsible ListBox TreeView TableView ColorPicker TabBar DragDropSource DragDropTarget MultiSelectList
 CanvasGrid SelectableText`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
@@ -92,48 +92,43 @@ declaration pass (`src/ui/ui_tree.c`).
 | Background | ✅ | ✅ | ✅ | ✅ | ✅ `Background` | ✅ node |
 | Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
 | Text properties (bounds, wrap, clip, color, alignment, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Text(TextProps)` | ✅ |
-| Label/value and bullet text | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Value helpers (bool, int, unsigned, float) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
-| TextLines | ✅ | ✅ | ✅ | ✅ | ✅ `TextLines` | ✗ |
 | Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | Icon sheets (MingCute UI plus 6 full-color families) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `Icon` | ✗ |
-| Image/Picture | ✅ | ✅ | ✅ | ✅ `kryon.Picture(kryon.PictureProps)` | ✅ `kryon.Picture` | ✅ node (embedded asset or PNG) |
-| ImageWithBg / ImageButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| PlotLines / PlotHistogram | ✅ | ✅ | ✅ | ✅ | ✅ `PlotLines` / `PlotHistogram` | ✗ |
+| Image | ✅ | ✅ | ✅ | ✅ `kryon.Image(kryon.ImageProps)` | ✅ `kryon.Image` | ✅ node (embedded asset or PNG) |
+| Image style / image Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Plot | ✅ | ✅ | ✅ | ✅ | ✅ `Plot` | ✗ |
 
 ### UI/Input
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` | ✅ node |
-| Selectable / CheckboxFlags | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Selectable / Checkbox | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
-| InfoButton | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Href (TextLink / TextLinkOpenURL) | ✅ | ✅ | ✅ | ✅ | ✅ `Href` | ✗ |
+| Button options (small, arrow, info/help, menu, split) | ✅ | ✅ | ✅ | ✅ | ✅ `Button(ButtonProps)` | ◐ BUTTON style byte |
+| Link (TextLink / open URL) | ✅ | ✅ | ✅ | ✅ | ✅ `Link` | ✗ |
 | IconLink | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ | ✅ via `Text` | ✅ `Text(TextProps)` | ✗ |
 | TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
-| Dropdown / DropdownOptions | ✅ | ✅ | ✅ | ✅ `Dropdown` (rich option arrays are native C only) | ✅ `Dropdown` | ✅ DROPDOWN control |
+| Dropdown | ✅ | ✅ | ✅ | ✅ `Dropdown` | ✅ `Dropdown` | ✅ DROPDOWN control |
 | Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| Vertical sliders | ✅ | ✅ | ✅ | ✅ `VSliderFloat` / `VSliderInt` | ✅ | ✅ VSLIDER control |
+| Vertical sliders | ✅ | ✅ | ✅ | ✅ `Slider(SliderProps{Vertical: true})` | ✅ | ✅ VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
 | Radio | ✅ | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
 | Progress | ✅ | ✅ | ✅ | ✅ | ✅ `Progress` | ✅ `KRB_CTRL_PROGRESS` |
 | Spinbox | ✅ | ✅ | ✅ | ✅ | ✅ `Spinbox` | ✅ SPINBOX control |
-| Combobox | ✅ | ✅ | ✅ | ✅ | ✅ `Combobox` | ✅ COMBOBOX control (renders like the dropdown, mirroring the C widget) |
 | ColorPicker (RGB sliders) | ✅ | ✅ | ✅ | ✅ | ✅ `ColorPicker` | ✗ |
-| DragFloat / DragInt (scalar and N-component) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| DragFloatRange2 / DragIntRange2 (ordered endpoints) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| SliderFloat / SliderInt / VSliderFloat / VSliderInt / SliderAngle | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| InputFloat / InputInt / InputDouble (scalar and N-component) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Small-sized Button / InvisibleButton / ArrowButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| SeparatorText | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| ColorEdit3 / ColorEdit4 / ColorPicker3 / ColorPicker4 / ColorButton | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Drag values and ranges | ✅ | ✅ | ✅ | ✅ | ✅ `Drag(DragProps)` | ✗ |
+| Slider values, vertical sliders, and angle sliders | ✅ | ✅ | ✅ | ✅ | ✅ `Slider(SliderProps)` | ✗ |
+| Numeric keyboard inputs | ✅ | ✅ | ✅ | ✅ | ✅ `Input(InputProps)` | ✗ |
+| Small-sized Button / InvisibleButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Separator labels | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| ColorPicker / swatch Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 
 ### UI/Layout
 
@@ -144,7 +139,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Scroll container | ✅ `BeginScroll`/`EndScroll` | ✅ C API | ✅ C API | ✅ generated wheel/drag/nested-child tests | ✅ wheel scrolling, scrollbar dragging, and nested clipping via `BeginScroll`/`EndScroll` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | LabelFrame | ✅ | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
-| Notebook (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `Notebook` | ✗ |
+| TabBar (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
 | Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
@@ -156,8 +151,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | ListBox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `ListBox` | ✗ |
-| TreeView (+ disabled) / CascadingTreeView | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
-| SourceView (code + line numbers) | ✅ | ✅ | ✅ | ✅ | ✅ `SourceView` | ✗ |
+| TreeView (+ disabled) | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
 | TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard/clipboard, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
 | SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
@@ -171,36 +165,26 @@ declaration pass (`src/ui/ui_tree.c`).
 | MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✅ | ✅ (`MenuBar`, nested items, retained right-click context state) | ✗ |
 | Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
-| TabItemButton / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Button add-tab actions / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Typed drag-and-drop source / target | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| SubtabBar / PaneTabBar (dock zones) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | NavigationBar (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `NavigationBar` | ◐ `NavButton` lowers to a BUTTON |
-| TopNav / Toolbar / ToolbarHeader | ✅ | ✅ | ✅ | ◐ `TopNav`/`Toolbar` only | ✅ `TopNav`/`Toolbar` | ✗ |
+| Toolbar | ✅ | ✅ | ✅ | ◐ `Toolbar` only | ✅ `Toolbar` | ✗ |
 | TitleBar family | ✅ | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
 
 ### UI/Overlays
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| ActionModal / Modal / Modal3Button / ModalFrame | ✅ | ✅ | ✅ | ◐ `Modal` only | ◐ `Modal` only | ✗ |
-| MessageDialog / ConfirmDialog / PromptDialog | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Modal | ✅ | ✅ | ✅ | ✅ `Modal` | ✅ `Modal` | ✗ |
 | Toast | ✅ | ✅ | ✅ | ✅ `ShowToast(For)` | ✅ `ShowToast(For)` | ✗ |
-| GuideOverlay / TutorialImage(Placeholder) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | TransitionFade / Focus ring | ✅ | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
-| ThemeSettings / ThemeSwitcher / ThemePicker | ✅ | ✅ | ✅ | ◐ theme-control methods only | ◐ `SetCurrentTheme`/`SetThemeStyle` (control only) | ✗ |
 | FocusDebugOverlay | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| InfoRows / OverlayButton / IconSliderPopup | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 
 ### UI/Composite And App Framework
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| LabelTextField / SectionLabel | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| CheckboxRow / SpinboxRow / ButtonRow / BottomIconRow | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| NavigationBarConfig | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| SidebarAccountHeader / ProfilePicturePicker | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Reorder (drag handle + placeholder) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| ImageBox | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Route stack / shell measurement | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Capabilities / safe content rect | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Setting normalization helpers | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
@@ -287,7 +271,7 @@ declaration pass (`src/ui/ui_tree.c`).
 - The `libdraw` Tier A backend passes the plan9port devdraw widget smoke and a
   `9c`/`9l` clean-surface compile/link check. It is intended for C UI apps:
   windowing, input, resize, software drawing, widgets, rounded controls, thick
-  lines, image loading, alpha/tint and source-rectangle texture blits, picture
+  lines, image loading, alpha/tint and source-rectangle texture blits, image
   rotation, render textures, TTF/TrueType-outline glyph-atlas text,
   screenshots, files, and clipboard mirror are covered. Advanced raylib areas
   outside UI apps (3D, shaders, gestures, audio) are null-grade fallback.
@@ -296,8 +280,7 @@ declaration pass (`src/ui/ui_tree.c`).
   Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control),
   with `.kry` array declarations lowering to Go slices at the use site.
   Remaining boundaries: a forward `goto` over declarations is a loud Go
-  compile error, `DropdownOptions`' rich option arrays are not expressible from
-  `.kry`, and C pointer/`Texture2D` values cannot be written (icons pass by
+  compile error, and C pointer/`Texture2D` values cannot be written (icons pass by
   `UIIconType`, option lists as joined strings or `[N]string`).
 - `k2js` emits ESM for the web recorder runtime. `make
   k2js-runtime-snapshot-test` lowers every conformance source, imports the
@@ -308,8 +291,7 @@ declaration pass (`src/ui/ui_tree.c`).
   browser pixel comparison.
 - `k2b` drops unsupported widget calls and reports them per file; the
   cartridge widget set remains smaller than the C catalog (see matrix).
-  `Combobox` lowers to a `KRB_CTRL_COMBOBOX` control that renders like the
-  dropdown, matching the C widget. `Progress` lowers to a read-only
+  `Dropdown` lowers to a dropdown-style control. `Progress` lowers to a read-only
   `KRB_CTRL_PROGRESS` control bound to an integer state field. `Radio` lowers
   to `KRB_CTRL_RADIO` for the common `selected == id` pattern and writes `id`
   into the mounted selection field on click. `LabelFrame` lowers to border
@@ -320,7 +302,7 @@ declaration pass (`src/ui/ui_tree.c`).
   and DOM text controls do have backend-neutral IME preedit/commit; gamepad UI
   navigation remains absent.
 - Theme styles beyond RETRO/MATERIAL/SYSTEM (fluent/adwaita/liquid-glass
-  labels in `ThemeSettingsProps`) fall back to SYSTEM tokens.
+  labels in app-composed theme controls) fall back to SYSTEM tokens.
 - `kry_sw` tracks the dirty rectangle per call (`KrySwDirty` is one-shot);
   hosts that present full frames (`krb-sdl`, `krb-web`) do not use it yet.
 - Plan 11 engines still to come: native Canvas2D fast path, Android EGL

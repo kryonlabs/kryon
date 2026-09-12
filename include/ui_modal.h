@@ -26,6 +26,15 @@ typedef struct {
 } UITitleBarDropdown;
 
 typedef struct {
+    const char *title;
+    int height;
+    Texture2D leading_icon;
+    int has_leading_action;
+    UITitleBarDropdown dropdown;
+    int has_dropdown;
+} TitleBarProps;
+
+typedef struct {
     const char *label;
     ButtonTone tone;
     ButtonEmphasis emphasis;
@@ -39,19 +48,11 @@ typedef struct {
     int action_count;
     Texture2D close_icon;
     int max_width;
+    char *text;
+    int text_size;
+    int *cursor_position;
+    int *focused;
+    int focus_id;
 } ModalProps;
-
-typedef struct {
-    int x;
-    int y;
-    int w;
-    int h;
-    int content_x;
-    int content_y;
-    int content_w;
-    int content_h;
-    int left_clicked;
-    int right_clicked;
-} UIPanelFrame;
 
 #endif

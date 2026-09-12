@@ -36,7 +36,7 @@ void write_krb(const KirModule *m, const char *root, const char *out_dir,
 #define KRB_OUT_MAX 16777216
 
 typedef struct KrbAsset {
-    char path[256];  /* cartridge path (also the PICTURE text) */
+    char path[256];  /* cartridge path (also the IMAGE text) */
     char file[1024]; /* host file read at emit time */
     unsigned char *mem; /* decoded RGBA8 pixels (kind 0), malloc'd */
     unsigned mem_len;
@@ -181,7 +181,7 @@ typedef struct KrbBuild {
     KrbItem items[512];
     int item_count;
     /* .kry string-array variables ('name: [N] const char* = {...}') usable
-     * as control option lists when lowering Dropdown/Combobox calls */
+     * as control option lists when lowering Dropdown calls */
     char array_name[8][KIR_NAME_MAX];
     char array_joined[8][KIR_TEXT_MAX];
     int array_count;
@@ -744,16 +744,12 @@ parse_color_ctor(const char *expr, unsigned *out)
     return 1;
 }
 
-/* DrawCircleV((Vector2){X, Y}, R, COLOR) -> CIRCLE node (center + radius). */
+/* Circle(X, Y, R, COLOR) -> CIRCLE node (center + radius). */
 static int
 parse_circle(KrbBuild *b, const char *call)
 {
     char parts[10][KIR_TEXT_MAX];
     const char *args = strchr(call, '(');
-    const char *inner;
-    char *comma;
-    char center[KIR_TEXT_MAX];
-    size_t ilen;
     int scaled;
     KrbBuildNode *n;
     char name[32];
@@ -761,43 +757,26 @@ parse_circle(KrbBuild *b, const char *call)
 
     if(args == NULL)
         return 0;
-    if(split_args(args + 1, parts, 10) < 3)
+    if(split_args(args + 1, parts, 10) < 4)
         return 0;
-    inner = kir_skip_inline_ws(parts[0]);
-    if(strncmp(inner, "(Vector2){", 10) != 0)
-        return 0;
-    inner += 10;
-    ilen = strlen(inner);
-    while(ilen > 0 && (inner[ilen - 1] == '}' || inner[ilen - 1] == ' '))
-        ilen--;
-    if(ilen >= sizeof(center))
-        ilen = sizeof(center) - 1;
-    memcpy(center, inner, ilen);
-    center[ilen] = '\0';
-    comma = strchr(center, ',');
-    if(comma == NULL)
-        return 0;
-    *comma = '\0';
     snprintf(name, sizeof(name), "circle%d", b->node_count);
     n = add_node(b, KRB_NODE_CIRCLE, name);
     if(n == NULL)
         return 0;
-    if(parse_coord(center, &n->x, &scaled) && scaled)
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_X;
-    if(parse_coord(comma + 1, &n->y, &scaled) && scaled)
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_Y;
-    if(parse_coord(parts[1], &n->w, &scaled) && scaled)
+    if(parse_coord(parts[2], &n->w, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_W;
-    if(parse_color_ctor(parts[2], &color))
+    if(parse_color_ctor(parts[3], &color))
         n->color = color;
     else
-        n->color = parse_color(parts[2]);
+        n->color = parse_color(parts[3]);
     return 1;
 }
 
-/* DrawRing((Vector2){X, Y}, INNER, OUTER, start, end, seg, COLOR) -> RING
- * node: w = outer radius, h = inner. Angles/segments are ignored; the
- * cartridge ring is a full annulus. */
+/* Ring(X, Y, INNER, OUTER, COLOR) -> RING node. */
 static int
 parse_ring(KrbBuild *b, const char *call)
 {
@@ -810,45 +789,24 @@ parse_ring(KrbBuild *b, const char *call)
 
     if(args == NULL)
         return 0;
-    if(split_args(args + 1, parts, 10) < 7)
+    if(split_args(args + 1, parts, 10) < 5)
         return 0;
     snprintf(name, sizeof(name), "ring%d", b->node_count);
     n = add_node(b, KRB_NODE_RING, name);
     if(n == NULL)
         return 0;
-    {
-        const char *inner = kir_skip_inline_ws(parts[0]);
-        char center[KIR_TEXT_MAX];
-        char *comma;
-        size_t ilen;
-
-        if(strncmp(inner, "(Vector2){", 10) != 0)
-            return 0;
-        inner += 10;
-        ilen = strlen(inner);
-        while(ilen > 0 && (inner[ilen - 1] == '}' || inner[ilen - 1] == ' '))
-            ilen--;
-        if(ilen >= sizeof(center))
-            ilen = sizeof(center) - 1;
-        memcpy(center, inner, ilen);
-        center[ilen] = '\0';
-        comma = strchr(center, ',');
-        if(comma == NULL)
-            return 0;
-        *comma = '\0';
-        if(parse_coord(center, &n->x, &scaled) && scaled)
-            n->flags |= KRB_FLAG_SCALE_X;
-        if(parse_coord(comma + 1, &n->y, &scaled) && scaled)
-            n->flags |= KRB_FLAG_SCALE_Y;
-    }
-    if(parse_coord(parts[1], &n->h, &scaled) && scaled)
+    if(parse_coord(parts[0], &n->x, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_X;
+    if(parse_coord(parts[1], &n->y, &scaled) && scaled)
+        n->flags |= KRB_FLAG_SCALE_Y;
+    if(parse_coord(parts[2], &n->h, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_H; /* inner */
-    if(parse_coord(parts[2], &n->w, &scaled) && scaled)
+    if(parse_coord(parts[3], &n->w, &scaled) && scaled)
         n->flags |= KRB_FLAG_SCALE_W; /* outer */
-    if(parse_color_ctor(parts[6], &color))
+    if(parse_color_ctor(parts[4], &color))
         n->color = color;
     else
-        n->color = parse_color(parts[6]);
+        n->color = parse_color(parts[4]);
     return 1;
 }
 
@@ -1240,7 +1198,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                     st->kind == KIR_STMT_FOR || st->kind == KIR_STMT_SWITCH;
 
         /* string-array locals ('opts: [3] const char* = {...}') become
-         * option-list sources for Dropdown/Combobox lowering */
+         * option-list sources for Dropdown lowering */
         {
             const char *t = kir_skip_inline_ws(st->text);
             const char *colon = t != NULL ? strchr(t, ':') : NULL;
@@ -1386,7 +1344,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                         b->items[b->item_count++] = (KrbItem){1, k2};
             }
             if(b->node_count > before &&
-               b->nodes[b->node_count - 1].type == KRB_NODE_PICTURE)
+               b->nodes[b->node_count - 1].type == KRB_NODE_IMAGE)
                 embed_asset(b, b->nodes[b->node_count - 1].text);
             /* In raw .kry the button call and its 'if' are one statement
              * ('if Button(...) {'); capture the handler body that follows. */
@@ -1525,7 +1483,7 @@ node_rect(KrbBuildNode *n, const char *expr)
     return 1;
 }
 
-/* Separator((Rectangle){x,y,w,h}, vertical) -> a thin themed RECT rail. */
+/* Separator((SeparatorProps){bounds,...}) -> a thin themed RECT rail. */
 static int
 parse_separator(KrbBuild *b, const char *call)
 {
@@ -1611,7 +1569,7 @@ fit_of(const char *expr)
 }
 
 /* Given a pointer to '{', return the matching '}' (depth-aware). Compound
- * literals nest braces (PictureProps holds Rectangle/Vector2), so strchr would
+ * literals nest braces (ImageProps holds Rectangle/Vector2), so strchr would
  * stop at the first inner '}'. */
 static const char *
 find_match_brace(const char *open)
@@ -1630,12 +1588,12 @@ find_match_brace(const char *open)
     return NULL;
 }
 
-/* Picture((PictureProps){asset_path, bounds, source, origin, rot, tint, fit, style})
- * -> a PICTURE node; text holds the asset path, style holds the PictureFit. */
+/* Image((ImageProps){asset_path, bounds, source, origin, rot, tint, fit, style})
+ * -> a IMAGE node; text holds the asset path, style holds the ImageFit. */
 static int
-parse_picture(KrbBuild *b, const char *call)
+parse_image(KrbBuild *b, const char *call)
 {
-    const char *p = strstr(call, "PictureProps");
+    const char *p = strstr(call, "ImageProps");
     const char *open;
     const char *close;
     char body[KIR_TEXT_MAX];
@@ -1661,8 +1619,8 @@ parse_picture(KrbBuild *b, const char *call)
     count = split_args(body, parts, 8);
     if(count < 2)
         return 0;
-    snprintf(name, sizeof(name), "pic%d", b->node_count);
-    n = add_node(b, KRB_NODE_PICTURE, name);
+    snprintf(name, sizeof(name), "image%d", b->node_count);
+    n = add_node(b, KRB_NODE_IMAGE, name);
     if(n == NULL)
         return 0;
     extract_string(parts[0], n->text, sizeof(n->text));   /* asset_path */
@@ -1692,7 +1650,11 @@ strip_amp(const char *expr, char *dst, size_t dst_size)
     dst[n] = '\0';
 }
 
-/* Checkbox(id,x,y,label,&val) -> a CHECKBOX node bound to the state field in
+static int parse_rect_fields(const char *expr, int *x, int *y, int *w, int *h,
+                             unsigned *flags);
+static int copy_text(char *dst, size_t dst_size, const char *src);
+
+/* Checkbox((CheckboxProps){...}) -> a CHECKBOX node bound to the state field in
  * &val (name = path), label in text, id in bind_slot. */
 static int
 parse_checkbox(KrbBuild *b, const char *call)
@@ -1725,34 +1687,82 @@ parse_checkbox(KrbBuild *b, const char *call)
     return 1;
 }
 
-/* Toggle(id,x,y,w,h,&val,off,on) -> a TOGGLE node bound to &val. */
+/* Toggle((ToggleProps){...}) -> a TOGGLE node bound to .value. */
 static int
 parse_toggle(KrbBuild *b, const char *call)
 {
-    const char *args = strchr(call, '(');
+    const char *p = strstr(call, "ToggleProps");
+    const char *open;
+    const char *close;
+    char body[KIR_TEXT_MAX];
     char parts[8][KIR_TEXT_MAX];
+    char f_bounds[KIR_TEXT_MAX] = "";
+    char f_id[KIR_TEXT_MAX] = "";
+    char f_value[KIR_TEXT_MAX] = "";
+    char f_off_label[KIR_TEXT_MAX] = "";
     char path[KIR_NAME_MAX];
     KrbBuildNode *n;
-    int count, scaled;
+    int count;
+    unsigned flags = 0;
+    size_t len;
+    int i;
+    int x = 0, y = 0, w = 0, h = 0;
 
-    if(args == NULL)
+    if(p == NULL)
         return 0;
-    count = split_args(args + 1, parts, 8);
-    if(count < 6)
+    open = strchr(p, '{');
+    if(open == NULL)
         return 0;
-    strip_amp(parts[5], path, sizeof(path));
-    if(path[0] == '\0')
+    close = find_match_brace(open);
+    if(close == NULL || close <= open)
+        return 0;
+    len = (size_t)(close - open - 1);
+    if(len >= sizeof(body))
+        len = sizeof(body) - 1;
+    memcpy(body, open + 1, len);
+    body[len] = '\0';
+    count = split_args(body, parts, 8);
+    if(count < 3)
+        return 0;
+    for(i = 0; i < count && i < 6; i++) {
+        const char *part = kir_skip_inline_ws(parts[i]);
+
+        if(*part == '.') {
+            const char *eq = strchr(part, '=');
+
+            if(eq == NULL)
+                continue;
+            if(strncmp(part, ".bounds", 7) == 0)
+                copy_text(f_bounds, sizeof(f_bounds), kir_skip_inline_ws(eq + 1));
+            else if(strncmp(part, ".id", 3) == 0)
+                copy_text(f_id, sizeof(f_id), kir_skip_inline_ws(eq + 1));
+            else if(strncmp(part, ".value", 6) == 0)
+                copy_text(f_value, sizeof(f_value), kir_skip_inline_ws(eq + 1));
+            else if(strncmp(part, ".off_label", 10) == 0)
+                copy_text(f_off_label, sizeof(f_off_label), kir_skip_inline_ws(eq + 1));
+        } else {
+            switch(i) {
+            case 0: copy_text(f_bounds, sizeof(f_bounds), part); break;
+            case 1: copy_text(f_id, sizeof(f_id), part); break;
+            case 2: copy_text(f_value, sizeof(f_value), part); break;
+            case 3: copy_text(f_off_label, sizeof(f_off_label), part); break;
+            default: break;
+            }
+        }
+    }
+    strip_amp(f_value, path, sizeof(path));
+    if(path[0] == '\0' || !parse_rect_fields(f_bounds, &x, &y, &w, &h, &flags))
         return 0;
     n = add_node(b, KRB_NODE_TOGGLE, path);
     if(n == NULL)
         return 0;
-    if(parse_coord(parts[1], &n->x, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_X;
-    if(parse_coord(parts[2], &n->y, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_Y;
-    if(parse_coord(parts[3], &n->w, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_W;
-    if(parse_coord(parts[4], &n->h, &scaled) && scaled) n->flags |= KRB_FLAG_SCALE_H;
-    if(count > 6)
-        extract_string(parts[6], n->text, sizeof(n->text));
-    n->bind_slot = atoi(kir_skip_inline_ws(parts[0]));
+    n->x = x;
+    n->y = y;
+    n->w = w;
+    n->h = h;
+    n->flags |= flags;
+    extract_string(f_off_label, n->text, sizeof(n->text));
+    n->bind_slot = atoi(kir_skip_inline_ws(f_id));
     n->color = KRB_COLOR_THEME | KRY_THEME_SURFACE;
     return 1;
 }
@@ -1982,34 +1992,6 @@ add_control_node(KrbBuild *b, int kind, const char *path, int x, int y,
     return 1;
 }
 
-/* Slider(id,x,y,w,label,min,max,&val,...) -> horizontal range control. */
-static int
-parse_slider(KrbBuild *b, const char *call)
-{
-    char parts[12][KIR_TEXT_MAX];
-    char path[KIR_NAME_MAX];
-    char label[KIR_TEXT_MAX];
-    const char *args = strchr(call, '(');
-    int count, x = 0, y = 0, w = 0;
-    unsigned flags = 0;
-
-    if(args == NULL)
-        return 0;
-    count = split_args(args + 1, parts, 12);
-    if(count < 8)
-        return 0;
-    strip_amp(parts[7], path, sizeof(path));
-    if(path[0] == '\0')
-        return 0;
-    extract_string(parts[4], label, sizeof(label));
-    coord_flag(parts[1], &x, &flags, KRB_FLAG_SCALE_X);
-    coord_flag(parts[2], &y, &flags, KRB_FLAG_SCALE_Y);
-    coord_flag(parts[3], &w, &flags, KRB_FLAG_SCALE_W);
-    return add_control_node(b, KRB_CTRL_SLIDER, path, x, y, w, 16, flags,
-                            atoi(kir_skip_inline_ws(parts[0])), atoi(kir_skip_inline_ws(parts[5])),
-                            atoi(kir_skip_inline_ws(parts[6])), 1, label);
-}
-
 /* Spinbox((SpinboxProps){bounds,id,min,max,step,&val,disabled}) -> step control. */
 static int
 parse_spinbox(KrbBuild *b, const char *call)
@@ -2132,13 +2114,13 @@ path_from_eq_value(const char *expr, int value, char *dst, size_t dst_size)
     return 0;
 }
 
-/* Radio((RadioButtonProps){bounds,label,id,selected == id,disabled}) ->
+/* Radio((RadioProps){bounds,label,id,selected == id,disabled}) ->
  * read/write CONTROL node. On click the runtime writes id into the selected
  * state path recovered from the checked expression. */
 static int
 parse_radio(KrbBuild *b, const char *call)
 {
-    const char *p = strstr(call, "RadioButtonProps");
+    const char *p = strstr(call, "RadioProps");
     const char *open;
     const char *close;
     char body[KIR_TEXT_MAX];
@@ -2210,13 +2192,13 @@ parse_radio(KrbBuild *b, const char *call)
                             0, 0, 1, label);
 }
 
-/* Progress((ProgressBarProps){bounds,min,max,value,label}) -> read-only
+/* Progress((ProgressProps){bounds,min,max,value,label}) -> read-only
  * CONTROL node. The value field is a mounted state path, matching the KRB
  * control table used by sliders and spinboxes. */
 static int
 parse_progress(KrbBuild *b, const char *call)
 {
-    const char *p = strstr(call, "ProgressBarProps");
+    const char *p = strstr(call, "ProgressProps");
     const char *open;
     const char *close;
     char body[KIR_TEXT_MAX];
@@ -2471,6 +2453,8 @@ static int
 resolve_options(KrbBuild *b, const char *expr, char *dst, size_t dst_size)
 {
     const char *p = kir_skip_inline_ws(expr);
+    char name[KIR_NAME_MAX];
+    size_t n = 0;
     int i;
 
     if(p == NULL)
@@ -2479,8 +2463,16 @@ resolve_options(KrbBuild *b, const char *expr, char *dst, size_t dst_size)
         extract_string(expr, dst, dst_size);
         return dst[0] != '\0';
     }
+    while((isalnum((unsigned char)p[n]) || p[n] == '_') &&
+          n + 1 < sizeof(name)) {
+        name[n] = p[n];
+        n++;
+    }
+    name[n] = '\0';
+    if(name[0] == '\0')
+        return 0;
     for(i = 0; i < b->array_count; i++) {
-        if(strcmp(b->array_name[i], p) == 0) {
+        if(strcmp(b->array_name[i], name) == 0) {
             snprintf(dst, dst_size, "%s", b->array_joined[i]);
             return dst[0] != '\0';
         }
@@ -2488,15 +2480,14 @@ resolve_options(KrbBuild *b, const char *expr, char *dst, size_t dst_size)
     return 0;
 }
 
-/* Combobox((ComboboxProps){...}) -> COMBOBOX control. The C widget forwards
- * to the dropdown renderer, so the cartridge runtime does the same; options
- * come from a joined literal or a string-array variable. */
+/* Dropdown((DropdownProps){...}) -> dropdown control. Options come from a
+ * joined literal or a string-array variable. */
 static int
-parse_combobox(KrbBuild *b, const char *call)
+parse_dropdown_props(KrbBuild *b, const char *call)
 {
     char parts[8][KIR_TEXT_MAX];
     char coords[4][KIR_TEXT_MAX];
-    const char *props = strstr(call, "ComboboxProps");
+    const char *props = strstr(call, "DropdownProps");
     const char *brace;
     char inner[KIR_TEXT_MAX];
     char f_bounds[KIR_TEXT_MAX] = "";
@@ -2557,7 +2548,7 @@ parse_combobox(KrbBuild *b, const char *call)
                 snprintf(f_opts, sizeof(f_opts), "%s", kir_skip_inline_ws(eq + 1));
             else if(strncmp(part, ".option_count", 13) == 0)
                 snprintf(f_count, sizeof(f_count), "%s", kir_skip_inline_ws(eq + 1));
-            else if(strncmp(part, ".selected_index", 16) == 0)
+            else if(strncmp(part, ".selected_index", 15) == 0)
                 snprintf(f_sel, sizeof(f_sel), "%s", kir_skip_inline_ws(eq + 1));
         } else {
             switch(i) {
@@ -2630,93 +2621,11 @@ parse_combobox(KrbBuild *b, const char *call)
         if(b->control_count >= KRB_BUILD_CTRL_MAX)
             return 1;
         memset(c, 0, sizeof(*c));
-        c->kind = KRB_CTRL_COMBOBOX;
+        c->kind = KRB_CTRL_DROPDOWN;
         c->id = (unsigned short)b->control_count;
         snprintf(c->value, sizeof(c->value), "%s", path);
         snprintf(c->options, sizeof(c->options), "%s", opts);
         c->option_count = option_count;
-        b->control_count++;
-    }
-    return 1;
-}
-
-/* Dropdown(id, x, y, w, "opt;opt;opt", &val) -> DROPDOWN control. */
-static int
-parse_dropdown(KrbBuild *b, const char *call)
-{
-    char parts[8][KIR_TEXT_MAX];
-    const char *args = strchr(call, '(');
-    char path[KIR_NAME_MAX];
-    char opts[KIR_TEXT_MAX];
-    KrbBuildNode *n;
-    char name[32];
-    int scaled;
-    int count;
-    int dd_h = 0;
-
-    if(args == NULL)
-        return 0;
-    count = split_args(args + 1, parts, 8);
-    if(count < 6)
-        return 0;
-    if(count >= 7) {
-        /* Dropdown(id, x, y, w, h, "opts", &val) */
-        strip_amp(parts[6], path, sizeof(path));
-        if(path[0] == '\0')
-            return 0;
-        if(!resolve_options(b, parts[5], opts, sizeof(opts)))
-            return 0;
-        {
-            KrbBuildNode dummy;
-            int sc2;
-
-            (void)parse_coord(parts[4], &dummy.x, &sc2);
-            dd_h = dummy.x;
-        }
-    } else {
-        strip_amp(parts[5], path, sizeof(path));
-        if(path[0] == '\0')
-            return 0;
-        if(!resolve_options(b, parts[4], opts, sizeof(opts)))
-            return 0;
-    }
-    if(opts[0] == '\0')
-        return 0;
-    snprintf(name, sizeof(name), "dd%d", b->node_count);
-    n = add_node(b, KRB_NODE_CONTROL, name);
-    if(n == NULL)
-        return 0;
-    n->bind_slot = b->control_count;
-    if(parse_coord(parts[1], &n->x, &scaled) && scaled)
-        n->flags |= KRB_FLAG_SCALE_X;
-    if(parse_coord(parts[2], &n->y, &scaled) && scaled)
-        n->flags |= KRB_FLAG_SCALE_Y;
-    if(parse_coord(parts[3], &n->w, &scaled) && scaled)
-        n->flags |= KRB_FLAG_SCALE_W;
-    n->h = dd_h > 0 ? dd_h : 24;
-    n->font_size = 16;
-    {
-        KrbBuildControl *c = &b->controls[b->control_count];
-
-        if(b->control_count >= KRB_BUILD_CTRL_MAX)
-            return 1;
-        memset(c, 0, sizeof(*c));
-        c->kind = KRB_CTRL_DROPDOWN;
-        c->id = (unsigned short)b->control_count;
-        c->min = 0;
-        c->max = 0;
-        c->step = 1;
-        snprintf(c->value, sizeof(c->value), "%s", path);
-        snprintf(c->options, sizeof(c->options), "%s", opts);
-        {
-            const char *p = c->options;
-
-            c->option_count = 1;
-            while((p = strchr(p, ';')) != NULL) {
-                c->option_count++;
-                p++;
-            }
-        }
         b->control_count++;
     }
     return 1;
@@ -2939,16 +2848,15 @@ static int
 is_kry_widget_call(const char *name)
 {
     static const char *const names[] = {
-        "Background", "Text", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "Icon", "Picture", "Button",
-        "Href", "TextField", "TextArea", "Dropdown",
+        "Background", "Text", "Paragraph",
+        "Rect", "Line", "Bevel", "Icon", "Image", "Button",
+        "Link", "TextField", "TextArea", "Dropdown",
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
-        "Combobox", "Screen", "Column", "Row", "Stack", "End", "Scroll",
-        "Canvas", "Modal", "ActionModal", "MessageDialog",
-        "ConfirmDialog", "PromptDialog", "TitleBar", "TabBar", "NavigationBar",
-        "TopNav", "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
-        "Notebook", "PanedView", "Collapsible", "ListBox", "SourceView",
-        "TableView", "CanvasGrid", "SelectableText", "InfoButton", NULL
+        "Screen", "Column", "Row", "Stack", "End", "Scroll",
+        "Canvas", "Modal", "TitleBar", "TabBar", "NavigationBar",
+        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
+        "PanedView", "Collapsible", "ListBox",
+        "TableView", "CanvasGrid", "SelectableText", NULL
     };
 
     for(int i = 0; names[i] != NULL; i++)
@@ -2965,21 +2873,19 @@ parse_widget_from_table(KrbBuild *b, const char *call)
         { "Rect", parse_rect },
         { "Scroll", parse_scroll },
         { "TextField", parse_textfield },
-        { "Dropdown", parse_dropdown },
-        { "Combobox", parse_combobox },
+        { "Dropdown", parse_dropdown_props },
         { "NavButton", parse_navbutton },
         { "TextFormat", parse_text },
         { "AnimNode", parse_animnode },
-        { "DrawCircleV", parse_circle },
-        { "DrawRing", parse_ring },
+        { "Circle", parse_circle },
+        { "Ring", parse_ring },
         { "Separator", parse_separator },
         { "Line", parse_line },
         { "Bevel", parse_bevel },
-        { "Picture", parse_picture },
+        { "Image", parse_image },
         { "Checkbox", parse_checkbox },
         { "Radio", parse_radio },
         { "Toggle", parse_toggle },
-        { "Slider", parse_slider },
         { "Spinbox", parse_spinbox },
         { "Progress", parse_progress },
         { "LabelFrame", parse_labelframe },
@@ -3019,7 +2925,6 @@ try_widget(KrbBuild *b, const char *raw)
     if(is_krb_layout_call(call))
         return 1;
     if(starts_ident(call, "Text") && !starts_ident(call, "TextFormat") &&
-       !starts_ident(call, "TextLines") &&
        !starts_ident(call, "TextField") &&
        !starts_ident(call, "TextArea"))
         return parse_text(b, call);

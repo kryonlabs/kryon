@@ -1,10 +1,29 @@
 #include "kryon.h"
 #include "kry_inject.h"
 #include "kryon_test.h"
+#include "runtime/list_box.h"
+#include "runtime/plot.h"
+#include "runtime/canvas_grid.h"
 #include "runtime/checkbox.h"
+#include "runtime/color_picker.h"
+#include "runtime/drag.h"
+#include "runtime/input.h"
+#include "runtime/label_frame.h"
+#include "runtime/multi_select_list.h"
+#include "runtime/popup_policy.h"
+#include "runtime/progress.h"
+#include "runtime/radio.h"
+#include "runtime/segmented_control.h"
+#include "runtime/selectable.h"
+#include "runtime/separator.h"
+#include "runtime/slider.h"
+#include "runtime/spinbox.h"
+#include "runtime/tab_bar.h"
+#include "runtime/text_input.h"
 #include "theme.h"
 #include "ui_inspect.h"
 #include "../src/ui/ui_internal.h"
+#include "../src/ui/ui_numeric_internal.h"
 #include "../src/ui/ui_numeric_input_internal.h"
 #include "../src/ui/ui_tree_layout_internal.h"
 #include "../src/ui/ui_disabled_internal.h"
@@ -26,6 +45,18 @@ check_int(const char *name, int got, int want)
 }
 
 static void
+check_float(const char *name, float got, float want)
+{
+    float diff = got - want;
+    if(diff < 0.0f)
+        diff = -diff;
+    if(diff <= 0.001f)
+        return;
+    fprintf(stderr, "%s: got %.3f want %.3f\n", name, got, want);
+    exit(1);
+}
+
+static void
 check_color(const char *name, Color got, Color want)
 {
     if(got.r == want.r && got.g == want.g && got.b == want.b &&
@@ -35,6 +66,87 @@ check_color(const char *name, Color got, Color want)
             name, got.r, got.g, got.b, got.a,
             want.r, want.g, want.b, want.a);
     exit(1);
+}
+
+static int
+test_drag_float(UIFloatDragProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat,
+        .float_values = props.values, .value_count = props.value_count,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .disabled = props.disabled});
+}
+
+static int
+test_drag_int(UIIntDragProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .speed = props.speed,
+        .min = props.min, .max = props.max, .format = props.format,
+        .disabled = props.disabled});
+}
+
+static int
+test_drag_float_range(UIFloatDragRangeProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat, .mode = DragRange,
+        .float_min = props.current_min, .float_max = props.current_max,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .format_max = props.format_max,
+        .disabled = props.disabled});
+}
+
+static int
+test_drag_int_range(UIIntDragRangeProps props)
+{
+    return Drag((DragProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .mode = DragRange,
+        .int_min = props.current_min, .int_max = props.current_max,
+        .speed = props.speed, .min = props.min, .max = props.max,
+        .format = props.format, .format_max = props.format_max,
+        .disabled = props.disabled});
+}
+
+static int
+test_slider_float(UIFloatSliderProps props)
+{
+    return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericFloat,
+        .float_values = props.values, .value_count = props.value_count,
+        .min = props.min, .max = props.max, .format = props.format,
+        .disabled = props.disabled});
+}
+
+static int
+test_slider_int(UIIntSliderProps props)
+{
+    return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .min = props.min, .max = props.max,
+        .format = props.format, .disabled = props.disabled});
+}
+
+static int
+test_vslider_int(UIIntSliderProps props)
+{
+    SliderProps slider = {.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .min = props.min, .max = props.max,
+        .format = props.format, .disabled = props.disabled, .vertical = 1};
+    return Slider(slider);
+}
+
+static int
+test_input_int(UIIntInputProps props)
+{
+    return Input((InputProps){.bounds = props.bounds, .id = props.id,
+        .label = props.label, .kind = NumericInt, .int_values = props.values,
+        .value_count = props.value_count, .step = props.step,
+        .step_fast = props.step_fast, .format = props.format,
+        .disabled = props.disabled});
 }
 
 static void
@@ -85,12 +197,18 @@ test_checkbox_paint_geometry_is_stable(void)
     };
     CheckboxPaint unchecked = CheckboxPaintFor(spec);
     CheckboxPaint checked;
+    CheckboxLayout layout = CheckboxLayoutFor(10, 20, 64, 1.0f);
+    CheckboxFlagResult flags_on = CheckboxFlagApply(1, 4, true);
+    CheckboxFlagResult flags_off = CheckboxFlagApply(5, 4, true);
+    CheckboxFlagResult flags_idle = CheckboxFlagApply(5, 4, false);
 
     spec.checked = 1;
     checked = CheckboxPaintFor(spec);
 
     check_int("checkbox slot size", CheckboxSlotSize(1.0f), 22);
     check_int("checkbox box size", CheckboxBoxSize(1.0f), 20);
+    check_int("checkbox layout width", (int)layout.bounds.width, 96);
+    check_int("checkbox layout label x", (int)layout.label_x, 42);
     check_int("checkbox checked keeps box x", (int)checked.box_bounds.x,
               (int)unchecked.box_bounds.x);
     check_int("checkbox checked keeps box y", (int)checked.box_bounds.y,
@@ -103,6 +221,520 @@ test_checkbox_paint_geometry_is_stable(void)
               (int)(checked.state_bounds.width - checked.box_bounds.width), 8);
     check_int("checkbox unchecked has no mark", unchecked.show_mark, 0);
     check_int("checkbox checked has mark", checked.show_mark, 1);
+    check_int("checkbox flags turns on", (int)flags_on.flags, 5);
+    check_int("checkbox flags on checked", flags_on.checked, 1);
+    check_int("checkbox flags turns off", (int)flags_off.flags, 1);
+    check_int("checkbox flags off unchecked", flags_off.checked, 0);
+    check_int("checkbox idle unchanged", (int)flags_idle.flags, 5);
+    check_int("checkbox idle no change", flags_idle.changed, 0);
+}
+
+static void
+test_swatch_policy(void)
+{
+    Palette palette = DefaultPalette(0);
+    Metrics metrics = DefaultMetrics();
+    SwatchPaint paint = SwatchPaintFor((SwatchSpec){
+        .bounds = {10, 20, 80, 30},
+        .color = {20, 40, 60, 128},
+        .disabled = 0,
+        .hovered = 1,
+        .focused = 1,
+        .scale = 1.0f,
+        .palette = palette,
+        .metrics = metrics
+    });
+    SwatchPaint disabled = SwatchPaintFor((SwatchSpec){
+        .bounds = {10, 20, 80, 30},
+        .color = {20, 40, 60, 255},
+        .disabled = 1,
+        .hovered = 1,
+        .focused = 1,
+        .scale = 1.0f,
+        .palette = palette,
+        .metrics = metrics
+    });
+
+    check_int("color button checker a width", (int)paint.checker_a.width, 40);
+    check_int("color button checker b x", (int)paint.checker_b.x, 50);
+    check_int("color button label x", (int)paint.label_x, 16);
+    check_int("color button swatch alpha", paint.swatch_color.a, 128);
+    check_int("color button focus visible", paint.show_focus, 1);
+    check_int("color button disabled alpha", disabled.swatch_color.a, 128);
+    check_int("color button disabled focus hidden", disabled.show_focus, 0);
+}
+
+static void
+test_color_picker_policy(void)
+{
+    Rectangle bounds = {10, 20, 120, 160};
+    ColorPickerLayout layout = ColorPickerLayoutFor(bounds, 4, 1.0f);
+    Rectangle row = ColorPickerChannelBounds(bounds, 2, 4, 1.0f);
+    Color rgba = ColorPickerColorFor(-0.5f, 0.5f, 2.0f, 0.25f, 4);
+    Color rgb = ColorPickerColorFor(1.0f, 0.0f, 0.5f, 0.0f, 3);
+
+    check_float("color picker row height", layout.row_height, 30.0f);
+    check_float("color picker swatch y", layout.swatch_bounds.y, 144.0f);
+    check_float("color picker swatch height", layout.swatch_bounds.height, 36.0f);
+    check_float("color picker channel y", row.y, 80.0f);
+    check_float("color picker channel height", row.height, 28.0f);
+    check_int("color picker clamp low", ColorPickerChannelByte(-1.0f), 0);
+    check_int("color picker clamp high", ColorPickerChannelByte(2.0f), 255);
+    check_color("color picker rgba", rgba, (Color){0, 128, 255, 64});
+    check_color("color picker rgb alpha", rgb, (Color){255, 0, 128, 255});
+}
+
+static void
+test_button_policy(void)
+{
+    check_int("action enabled", ButtonActionEnabled(false, false) ? 1 : 0, 1);
+    check_int("action own disabled", ButtonActionEnabled(true, false) ? 1 : 0, 0);
+    check_int("action parent disabled", ButtonActionEnabled(false, true) ? 1 : 0, 0);
+    check_int("arrow left glyph", ButtonArrowGlyph(ARROW_LEFT), '<');
+    check_int("arrow right glyph", ButtonArrowGlyph(ARROW_RIGHT), '>');
+    check_int("arrow up glyph", ButtonArrowGlyph(ARROW_UP), '^');
+    check_int("arrow down glyph", ButtonArrowGlyph(ARROW_DOWN), 'v');
+}
+
+static void
+test_separator_policy(void)
+{
+    Rectangle bounds = {10, 20, 100, 30};
+    SeparatorLine horizontal = SeparatorLineFor(bounds, 0, 0x11223344);
+    SeparatorLine vertical = SeparatorLineFor(bounds, 1, 0x55667788);
+    SeparatorLabelPaint text = SeparatorLabelPaintFor(bounds, 40, 1, 14, 1.0f,
+                                                      0x01020304, 0x05060708);
+    SeparatorLabelPaint no_text = SeparatorLabelPaintFor(bounds, 0, 0, 14,
+                                                         1.0f, 0x01020304,
+                                                         0x05060708);
+    BulletPaint bullet = BulletPaintFor((Rectangle){10, 20, 20, 12},
+                                        0xAABBCCDD);
+
+    check_int("separator horizontal y", (int)horizontal.line.y, 35);
+    check_int("separator horizontal width", (int)horizontal.line.width, 100);
+    check_int("separator vertical x", (int)vertical.line.x, 60);
+    check_int("separator vertical height", (int)vertical.line.height, 30);
+    check_int("separator text line x", (int)text.line.x, 62);
+    check_int("separator text line width", (int)text.line.width, 48);
+    check_int("separator text visible", text.show_text, 1);
+    check_int("separator no-text line x", (int)no_text.line.x, 10);
+    check_int("separator no-text hidden", no_text.show_text, 0);
+    check_int("bullet bounds x", (int)bullet.bounds.x, 17);
+    check_int("bullet bounds y", (int)bullet.bounds.y, 23);
+    check_int("bullet radius", (int)bullet.radius, 3);
+}
+
+static void
+test_canvas_grid_policy(void)
+{
+    Rectangle bounds = {10, 20, 25, 25};
+    int spacing = CanvasGridSpacing(2, 4);
+    CanvasGridLine vertical = CanvasGridVerticalLine(bounds, 2, spacing,
+                                                     0x01020304);
+    CanvasGridLine horizontal = CanvasGridHorizontalLine(bounds, 1, spacing,
+                                                         0x05060708);
+
+    check_int("canvas grid spacing minimum", spacing, 4);
+    check_int("canvas grid vertical count",
+              CanvasGridLineCount(bounds.width, spacing), 7);
+    check_int("canvas grid horizontal count",
+              CanvasGridLineCount(bounds.height, spacing), 7);
+    check_int("canvas grid vertical x", (int)vertical.bounds.x, 18);
+    check_int("canvas grid vertical height", (int)vertical.bounds.height, 25);
+    check_int("canvas grid horizontal y", (int)horizontal.bounds.y, 24);
+    check_int("canvas grid horizontal width", (int)horizontal.bounds.width, 25);
+}
+
+static void
+test_label_frame_policy(void)
+{
+    Rectangle bounds = {10, 20, 120, 80};
+    LabelFramePaint paint = LabelFramePaintFor(bounds, 40, 1, 1.0f,
+                                               0x01020304, 0x05060708,
+                                               0x090A0B0C);
+    LabelFramePaint no_title = LabelFramePaintFor(bounds, 40, 0, 1.0f,
+                                                  0x01020304, 0x05060708,
+                                                  0x090A0B0C);
+
+    check_int("label frame title bg x", (int)paint.title_background.x, 18);
+    check_int("label frame title bg y", (int)paint.title_background.y, 12);
+    check_int("label frame title bg width", (int)paint.title_background.width, 56);
+    check_int("label frame title text x", (int)paint.title_text.x, 26);
+    check_int("label frame title text y", (int)paint.title_text.y, 11);
+    check_int("label frame show title", paint.show_title, 1);
+    check_int("label frame no title hidden", no_title.show_title, 0);
+    check_int("label frame no title width",
+              (int)no_title.title_background.width, 0);
+}
+
+static void
+test_plot_policy(void)
+{
+    Rectangle bounds = {10, 20, 120, 60};
+    PlotRange range = PlotRangeFor(0.0f, 0.0f, 0.0f, 1.0f);
+    PlotMark bar;
+    PlotMark line;
+    PlotTextPaint text;
+
+    check_int("plot negative offset", PlotOffset(4, -1), 3);
+    check_int("plot wrapped offset", PlotOffset(4, 5), 1);
+    check_float("plot range min", range.min_value, 0.0f);
+    check_float("plot range max", range.max_value, 1.0f);
+    check_float("plot normalize clamp", PlotNormalize(2.0f, range), 1.0f);
+
+    bar = PlotHistogramBar(bounds, 2, 4, 0.75f, range, 0x11223344u);
+    check_float("plot bar x", bar.bounds.x, 71.0f);
+    check_float("plot bar y", bar.bounds.y, 35.0f);
+    check_float("plot bar width", bar.bounds.width, 28.0f);
+    check_float("plot bar height", bar.bounds.height, 45.0f);
+    check_int("plot bar color", (int)bar.color, (int)0x11223344u);
+
+    line = PlotLineSegment(bounds, 2, 4, 0.25f, 0.75f, range, 0x55667788u);
+    check_float("plot line x", line.bounds.x, 50.0f);
+    check_float("plot line y", line.bounds.y, 65.0f);
+    check_float("plot line width", line.bounds.width, 40.0f);
+    check_float("plot line height", line.bounds.height, -30.0f);
+    check_int("plot line color", (int)line.color, (int)0x55667788u);
+
+    text = PlotTextPaintFor(bounds, 20.0f, 30.0f, 1.0f, 0xaabbccddu,
+                            true, true);
+    check_float("plot label x", text.label_bounds.x, 16.0f);
+    check_float("plot label y", text.label_bounds.y, 24.0f);
+    check_float("plot overlay x", text.overlay_bounds.x, 94.0f);
+    check_float("plot overlay y", text.overlay_bounds.y, 24.0f);
+    check_int("plot label shown", text.show_label ? 1 : 0, 1);
+    check_int("plot overlay shown", text.show_overlay ? 1 : 0, 1);
+}
+
+static void
+test_progress_layout_policy(void)
+{
+    Rectangle bounds = {10, 20, 100, 10};
+    ProgressLayout low = ProgressLayoutFor(bounds, 0, 100, 25, 20.0f, 6.0f);
+    ProgressLayout high = ProgressLayoutFor(bounds, 0, 100, 80, 20.0f, 6.0f);
+    ProgressLayout clamped = ProgressLayoutFor(bounds, 10, 10, 99, 20.0f, 6.0f);
+
+    check_int("progress low ratio", (int)(low.ratio * 100.0f + 0.5f), 25);
+    check_int("progress low fill", (int)low.fill_bounds.width, 25);
+    check_int("progress low label after fill", (int)low.label_x, 41);
+    check_int("progress low label color", low.label_on_fill, 0);
+    check_int("progress high fill", (int)high.fill_bounds.width, 80);
+    check_int("progress high label inside fill", (int)high.label_x, 64);
+    check_int("progress high label color", high.label_on_fill, 1);
+    check_int("progress clamped ratio",
+              (int)(clamped.ratio * 100.0f + 0.5f), 100);
+    check_int("progress clamped fill", (int)clamped.fill_bounds.width, 100);
+}
+
+static void
+test_selectable_paint_policy(void)
+{
+    Rectangle bounds = {10, 20, 120, 28};
+    SelectablePaint idle = SelectablePaintFor((SelectableSpec){
+        .bounds = bounds,
+        .selected = 0,
+        .hovered = 0,
+        .pressed = 0,
+        .disabled = 0,
+        .fill_color = 0x11223344,
+        .hover_color = 0x55667788,
+        .text_color = 0x99AABBCC,
+        .disabled_text_color = 0x01020304,
+        .label_inset = 8.0f
+    });
+    SelectablePaint selected = SelectablePaintFor((SelectableSpec){
+        .bounds = bounds,
+        .selected = 1,
+        .hovered = 0,
+        .pressed = 0,
+        .disabled = 0,
+        .fill_color = 0x11223344,
+        .hover_color = 0x55667788,
+        .text_color = 0x99AABBCC,
+        .disabled_text_color = 0x01020304,
+        .label_inset = 8.0f
+    });
+    SelectablePaint hovered = SelectablePaintFor((SelectableSpec){
+        .bounds = bounds,
+        .selected = 1,
+        .hovered = 1,
+        .pressed = 0,
+        .disabled = 0,
+        .fill_color = 0x11223344,
+        .hover_color = 0x55667788,
+        .text_color = 0x99AABBCC,
+        .disabled_text_color = 0x01020304,
+        .label_inset = 8.0f
+    });
+    SelectablePaint disabled = SelectablePaintFor((SelectableSpec){
+        .bounds = bounds,
+        .selected = 1,
+        .hovered = 1,
+        .pressed = 0,
+        .disabled = 1,
+        .fill_color = 0x11223344,
+        .hover_color = 0x55667788,
+        .text_color = 0x99AABBCC,
+        .disabled_text_color = 0x01020304,
+        .label_inset = 8.0f
+    });
+
+    check_int("selectable idle fill", idle.draw_fill, 0);
+    check_int("selectable label inset", (int)idle.label_x, 18);
+    check_int("selectable selected fill", selected.draw_fill, 1);
+    check_int("selectable selected color", (int)selected.fill_color, 0x11223344);
+    check_int("selectable hovered color", (int)hovered.fill_color, 0x55667788);
+    check_int("selectable disabled fill", disabled.draw_fill, 0);
+    check_int("selectable disabled text", (int)disabled.text_color, 0x01020304);
+}
+
+static void
+test_radio_paint_policy(void)
+{
+    Rectangle bounds = {10, 20, 140, 28};
+    RadioPaint unchecked = RadioPaintFor((RadioSpec){
+        .bounds = bounds,
+        .checked = 0,
+        .disabled = 0,
+        .default_style = 0,
+        .selected_amount = 0.0f,
+        .scale = 1.0f,
+        .text_color = 0x111111FF,
+        .icon_color = 0x222222FF,
+        .button_color = 0x333333FF,
+        .primary_color = 0x444444FF,
+        .surface_variant_color = 0x555555FF,
+        .disabled_color = 0x666666FF
+    });
+    RadioPaint checked = RadioPaintFor((RadioSpec){
+        .bounds = bounds,
+        .checked = 1,
+        .disabled = 0,
+        .default_style = 0,
+        .selected_amount = 1.0f,
+        .scale = 1.0f,
+        .text_color = 0x111111FF,
+        .icon_color = 0x222222FF,
+        .button_color = 0x333333FF,
+        .primary_color = 0x444444FF,
+        .surface_variant_color = 0x555555FF,
+        .disabled_color = 0x666666FF
+    });
+    RadioPaint disabled = RadioPaintFor((RadioSpec){
+        .bounds = bounds,
+        .checked = 1,
+        .disabled = 1,
+        .default_style = 0,
+        .selected_amount = 1.0f,
+        .scale = 1.0f,
+        .text_color = 0x111111FF,
+        .icon_color = 0x222222FF,
+        .button_color = 0x333333FF,
+        .primary_color = 0x444444FF,
+        .surface_variant_color = 0x555555FF,
+        .disabled_color = 0x666666FF
+    });
+
+    check_int("radio size", RadioSize(1.0f), 20);
+    check_int("radio touch size", RadioTouchSize(1.0f), 40);
+    check_int("radio label x", (int)unchecked.label_x, 38);
+    check_int("radio unchecked fill", (int)unchecked.fill_radius, 0);
+    check_int("radio unchecked ring", (int)unchecked.ring_color, 0x222222FF);
+    check_int("radio checked fill", (int)checked.fill_radius, 8);
+    check_int("radio disabled ring", (int)disabled.ring_color, 0x333333FF);
+    check_int("radio disabled label", (int)disabled.label_color, 0x333333FF);
+}
+
+static void
+test_list_box_layout_policy(void)
+{
+    Rectangle bounds = {10, 20, 100, 95};
+    ListBoxLayout layout = ListBoxLayoutFor(bounds, 10, 24, 0, 50);
+    Rectangle row = ListBoxRowBounds(bounds, 1, layout);
+    ListBoxNavigation down = ListBoxNavigate(2, 10, 4, 0, 24,
+                                             bounds.height, layout.max_scroll);
+    ListBoxNavigation end = ListBoxNavigate(2, 10, 2, 0, 24,
+                                            bounds.height, layout.max_scroll);
+
+    check_int("list row height", layout.row_height, 24);
+    check_int("list content height", layout.content_height, 240);
+    check_int("list max scroll", layout.max_scroll, 145);
+    check_int("list first row", layout.first_row, 2);
+    check_int("list y offset", layout.y_offset, 2);
+    check_int("list visible rows", layout.visible_rows, 3);
+    check_int("list row y", (int)row.y, 42);
+    check_int("list down selected", down.selected, 3);
+    check_int("list down changed", down.changed, 1);
+    check_int("list end selected", end.selected, 9);
+    check_int("list end scroll", end.scroll, 145);
+}
+
+static void
+test_multi_select_policy(void)
+{
+    Rectangle bounds = {10, 20, 120, 90};
+    Rectangle row = MultiSelectRowBounds(bounds, 2, 28);
+    MultiSelectNavResult down = MultiSelectNavigate(3, 0, 0, 0,
+        0, 0, 0, 1, 0, 0);
+    MultiSelectNavResult shift_down = MultiSelectNavigate(3, 1, 0, 1,
+        0, 0, 0, 1, 0, 0);
+    MultiSelectNavResult space = MultiSelectNavigate(3, 2, 0, 0,
+        0, 0, 0, 0, 1, 0);
+
+    check_int("multi row default height", MultiSelectRowHeight(0, 1.0f), 28);
+    check_float("multi row y", row.y, 76.0f);
+    check_float("multi row height", row.height, 28.0f);
+    check_int("multi focused fallback", MultiSelectFocusedRow(-1, 2, 3), 2);
+
+    check_int("multi nav down clicked", down.clicked, 1);
+    check_int("multi nav down anchor", down.anchor, 1);
+    check_int("multi nav down anchor changed", down.anchor_changed ? 1 : 0, 1);
+    check_int("multi shift range anchor", shift_down.range_anchor, 1);
+    check_int("multi shift clicked", shift_down.clicked, 2);
+    check_int("multi shift control forced", shift_down.control ? 1 : 0, 1);
+    check_int("multi space clicked", space.clicked, 2);
+    check_int("multi space control", space.control ? 1 : 0, 1);
+
+    check_int("multi plain clears other",
+        MultiSelectSelectionForRow(0, 1, 1, 3, 0, 0, 0, -1) ? 1 : 0, 0);
+    check_int("multi plain selects clicked",
+        MultiSelectSelectionForRow(1, 0, 1, 3, 0, 0, 0, -1) ? 1 : 0, 1);
+    check_int("multi control toggles",
+        MultiSelectSelectionForRow(1, 1, 1, 3, 0, 1, 0, -1) ? 1 : 0, 0);
+    check_int("multi shift range keeps row",
+        MultiSelectSelectionForRow(2, 0, 2, 3, 0, 0, 1, -1) ? 1 : 0, 1);
+    check_int("multi anchor after plain",
+              MultiSelectAnchorAfterClick(0, 2, 3, 0, 0, -1), 2);
+    check_int("multi anchor after shift",
+              MultiSelectAnchorAfterClick(0, 2, 3, 0, 1, -1), 0);
+}
+
+static void
+test_tab_bar_policy(void)
+{
+    Rectangle bounds = {10, 20, 240, 32};
+    TabBarMetrics metrics = TabBarDefaultMetrics(80, 160, 1.0f);
+    int label_width = TabBarTabWidth(42, 1, 0, 0, metrics);
+    int close_width = TabBarTabWidth(42, 1, 0, 1, metrics);
+    int icon_width = TabBarTabWidth(0, 0, 1, 0, metrics);
+    int total = TabBarTotalWidth(label_width + close_width + icon_width,
+                                 3, metrics.gap);
+    TabBarScroll scroll = TabBarScrollFor(bounds.width, total, 999);
+    Rectangle equal_last = TabBarEqualTabBounds(bounds, 3, 2);
+
+    check_int("tab bar height", TabBarPolicyHeight(1.0f), 32);
+    check_int("tab label width min", label_width, 80);
+    check_int("tab close width", close_width, 82);
+    check_int("tab icon width", icon_width, 44);
+    check_int("tab total width", total, 214);
+    check_int("tab equal tabs", scroll.equal_tabs, 1);
+    check_int("tab equal scroll", scroll.scroll, 0);
+    check_int("tab equal last x", (int)equal_last.x, 170);
+    check_int("tab equal last w", (int)equal_last.width, 80);
+}
+
+static void
+test_popup_policy(void)
+{
+    Rectangle bounds = {20, 30, 120, 80};
+    Rectangle trigger = {5, 6, 40, 24};
+    PopupDecision plain = PopupDecisionFor(0, 0);
+    PopupDecision tooltip = PopupDecisionFor(PopupTooltip, 0);
+    PopupDecision modal = PopupDecisionFor(PopupModal, 0);
+    PopupDecision context = PopupDecisionFor(PopupContext, 0);
+    PopupDecision invalid = PopupDecisionFor(PopupTooltip | PopupModal, 0);
+    Rectangle modal_input = PopupInputBounds(modal, bounds, 640.0f, 480.0f);
+
+    check_int("popup plain valid", plain.valid, 1);
+    check_int("popup plain captures", plain.captures_input, 1);
+    check_int("popup plain requires open", plain.requires_open, 1);
+    check_int("popup tooltip trigger", tooltip.requires_trigger, 1);
+    check_int("popup tooltip captures", tooltip.captures_input, 0);
+    check_int("popup modal backdrop", PopupBackdropAlpha(modal), 180);
+    check_int("popup context trigger", context.requires_trigger, 1);
+    check_int("popup invalid combination", invalid.valid, 0);
+    check_int("popup missing open",
+              PopupCanBegin(plain, 7, bounds, trigger, 0), 0);
+    check_int("popup can begin",
+              PopupCanBegin(context, 7, bounds, trigger, 1), 1);
+    check_int("popup disabled closes",
+              PopupOpenAfterDisabled(plain, 1, 1), 0);
+    check_int("popup tooltip ignores open",
+              PopupOpenAfterDisabled(tooltip, 1, 1), 1);
+    check_int("popup modal input x", (int)modal_input.x, 0);
+    check_int("popup modal input w", (int)modal_input.width, 640);
+}
+
+static void
+test_text_input_policy(void)
+{
+    TextInputMetrics metrics = TextInputMetricsFor(0, 0, 0, -1,
+                                                   16, 10, 8, 6);
+    TextFieldScroll scroll = TextFieldScrollFor(20.0f, 100.0f,
+                                                metrics.padding_x, 180, 999);
+
+    check_int("text input font default", metrics.font, 16);
+    check_int("text input padding x default", metrics.padding_x, 10);
+    check_int("text input padding y default", metrics.padding_y, 8);
+    check_int("text input line gap default", metrics.line_gap, 6);
+    check_int("text input content width",
+              TextInputContentWidth(100.0f, metrics.padding_x), 80);
+    check_int("text area page rows",
+              TextAreaPageRows(72.0f, metrics.font, metrics.line_gap,
+                               metrics.padding_y), 2);
+    check_int("text field max scroll", scroll.max_scroll, 100);
+    check_int("text field scroll clamp", scroll.scroll, 100);
+    check_int("text field origin", scroll.text_origin_x, -70);
+    check_int("text field reveal left",
+              TextFieldRevealScroll(50, 100, 80, 4, 8), 0);
+    check_int("text field reveal right",
+              TextFieldRevealScroll(0, 100, 80, 120, 8), 48);
+}
+
+static void
+test_segmented_control_policy(void)
+{
+    SegmentedMetrics metrics = SegmentedDefaultMetrics(0, 0, 0, 0,
+                                                       6, 30, 72, 180);
+    int first = SegmentedItemWidth(40, metrics, 20);
+    int second = SegmentedItemWidth(100, metrics, 20);
+    int next = SegmentedNextRowWidth(first, second, metrics.gap);
+    SegmentedRow row = SegmentedRowFor(10.0f, 240.0f, 20, 0, 2, next,
+                                       1, metrics);
+
+    check_int("segmented gap default", metrics.gap, 6);
+    check_int("segmented row height default", metrics.row_height, 30);
+    check_int("segmented item min", first, 72);
+    check_int("segmented item measured", second, 120);
+    check_int("segmented next width", next, 198);
+    check_int("segmented should wrap",
+              SegmentedShouldWrap(1, next, next + metrics.gap + second,
+                                  240), 1);
+    check_int("segmented height", SegmentedHeightForRows(2, 30, 6), 66);
+    check_int("segmented row button width", row.button_width, 117);
+    check_int("segmented row x", row.x, 10);
+}
+
+static void
+test_spinbox_policy(void)
+{
+    Rectangle bounds = {10, 20, 100, 30};
+    SpinboxLayout layout = SpinboxLayoutFor(bounds, 28);
+    SpinboxStepResult inc = SpinboxStepValue(4, 0, 5, 2, 1, 0);
+    SpinboxStepResult dec = SpinboxStepValue(1, 0, 5, 2, -1, 0);
+    SpinboxStepResult wrap_inc = SpinboxStepValue(5, 0, 5, 1, 1, 1);
+    SpinboxStepResult wrap_dec = SpinboxStepValue(0, 0, 5, 1, -1, 1);
+
+    check_int("spinbox default step", SpinboxEffectiveStep(0), 1);
+    check_int("spinbox left width", (int)layout.left.width, 28);
+    check_int("spinbox text x", (int)layout.text.x, 38);
+    check_int("spinbox text width", (int)layout.text.width, 44);
+    check_int("spinbox right x", (int)layout.right.x, 82);
+    check_int("spinbox increment clamps", inc.value, 5);
+    check_int("spinbox increment changed", inc.changed, 1);
+    check_int("spinbox decrement clamps", dec.value, 0);
+    check_int("spinbox wrap increment", wrap_inc.value, 0);
+    check_int("spinbox wrap decrement", wrap_dec.value, 5);
 }
 
 static void
@@ -124,15 +756,117 @@ test_semantic_font_sizes_follow_ui_scale(void)
 }
 
 static void
+test_slider_value_policy(void)
+{
+    SliderScalarStep float_step;
+    SliderWholeStep int_step;
+
+    check_float("slider clamp low", SliderClampRatio(-0.5f), 0.0f);
+    check_float("slider clamp high", SliderClampRatio(1.5f), 1.0f);
+    check_float("slider float ratio", SliderScalarRatio(0.25f, 0.0f, 1.0f), 0.25f);
+    check_float("slider float value clamps", SliderScalarValue(0.0f, 1.0f, 1.25f), 1.0f);
+    check_float("slider int ratio", SliderWholeRatio(5, 0, 10), 0.5f);
+    check_int("slider int value rounds", SliderWholeValue(0, 10, 0.86f), 9);
+
+    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 0);
+    check_int("slider float keyboard changed", float_step.changed ? 1 : 0, 1);
+    check_float("slider float keyboard value", float_step.value, 0.26f);
+    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 1, 0);
+    check_float("slider float keyboard slow", float_step.value, 0.251f);
+    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 1);
+    check_float("slider float keyboard fast", float_step.value, 0.35f);
+    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 0, 1, 0, 0, 0);
+    check_float("slider float keyboard home", float_step.value, 0.0f);
+
+    int_step = SliderWholeKeyboardValue(5, 0, 10, 1, 0, 0, 0, 0);
+    check_int("slider int keyboard changed", int_step.changed ? 1 : 0, 1);
+    check_int("slider int keyboard value", int_step.value, 6);
+    int_step = SliderWholeKeyboardValue(50, 0, 1000, 1, 0, 0, 1, 0);
+    check_int("slider int keyboard slow", int_step.value, 51);
+    int_step = SliderWholeKeyboardValue(50, 0, 1000, 1, 0, 0, 0, 1);
+    check_int("slider int keyboard fast", int_step.value, 150);
+    int_step = SliderWholeKeyboardValue(5, 0, 10, 0, 0, 1, 0, 0);
+    check_int("slider int keyboard end", int_step.value, 10);
+}
+
+static void
+test_drag_value_policy(void)
+{
+    DragScalarStep float_step;
+    DragWholeStep int_step;
+
+    check_float("drag default speed", DragEffectiveSpeed(0.0f), 1.0f);
+    check_float("drag float clamp", DragScalarClamp(12.0f, 0.0f, 10.0f), 10.0f);
+    check_int("drag int clamp", DragWholeClamp(-2, 0, 10), 0);
+    check_int("drag int rounded positive",
+              DragWholeRoundedDelta(0.49f, 0), 0);
+    check_int("drag int forced positive",
+              DragWholeRoundedDelta(0.49f, 1), 1);
+    check_int("drag int rounded negative",
+              DragWholeRoundedDelta(-1.6f, 0), -2);
+
+    float_step = DragScalarKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
+                                        1, 0, 0, 0, 0);
+    check_int("drag float keyboard changed", float_step.changed ? 1 : 0, 1);
+    check_float("drag float keyboard value", float_step.value, 2.25f);
+    float_step = DragScalarKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
+                                        1, 0, 0, 0, 1);
+    check_float("drag float keyboard fast", float_step.value, 4.5f);
+    float_step = DragScalarDeltaValue(2.0f, 5.0f, 0.5f, 0.0f, 4.0f);
+    check_float("drag float delta clamps", float_step.value, 4.0f);
+
+    int_step = DragWholeKeyboardValue(3, 0.25f, 0, 10, 1, 0, 0, 0, 0);
+    check_int("drag int keyboard minimum step", int_step.value, 4);
+    int_step = DragWholeKeyboardValue(3, 2.0f, 0, 10, 1, 0, 0, 0, 1);
+    check_int("drag int keyboard fast", int_step.value, 10);
+    int_step = DragWholeDeltaValue(3, 0.4f, 1.0f, 0, 10);
+    check_int("drag int small delta unchanged", int_step.changed ? 1 : 0, 0);
+    int_step = DragWholeDeltaValue(3, -2.0f, 1.0f, 0, 10);
+    check_int("drag int delta value", int_step.value, 1);
+}
+
+static void
+test_input_value_policy(void)
+{
+    InputScalarStep float_step;
+    InputWholeStep int_step;
+    InputDoubleStep double_step;
+
+    check_float("input float effective step",
+                InputScalarEffectiveStep(0.1f, 1.0f, 0), 0.1f);
+    check_float("input float effective fast",
+                InputScalarEffectiveStep(0.1f, 1.0f, 1), 1.0f);
+    check_int("input int effective step",
+              InputWholeEffectiveStep(2, 10, 0), 2);
+    check_int("input int effective fast",
+              InputWholeEffectiveStep(2, 10, 1), 10);
+
+    float_step = InputScalarStepValue(2.5f, 0.5f, 4.0f, 1, 0);
+    check_int("input float step changed", float_step.changed ? 1 : 0, 1);
+    check_float("input float step value", float_step.value, 3.0f);
+    float_step = InputScalarStepValue(2.5f, 0.5f, 4.0f, -1, 1);
+    check_float("input float fast minus", float_step.value, -1.5f);
+
+    int_step = InputWholeStepValue(6, 2, 10, 1, 0);
+    check_int("input int step value", int_step.value, 8);
+    int_step = InputWholeStepValue(6, 2, 10, -1, 1);
+    check_int("input int fast minus", int_step.value, -4);
+
+    double_step = InputDoubleStepValue(2.125, 0.125, 1.0, 1, 0);
+    check_int("input double changed", double_step.changed ? 1 : 0, 1);
+    check_float("input double step value", (float)double_step.value, 2.25f);
+}
+
+static void
 test_slider_keyboard_navigation(void)
 {
     float floats[2] = {0.25f,0.75f};
     int ints[1] = {5};
-    SliderFloatProps horizontal = {
+    UIFloatSliderProps horizontal = {
         .bounds = {10,10,200,30}, .id = 600, .values = floats,
         .value_count = 2, .min = 0.0f, .max = 1.0f
     };
-    SliderIntProps vertical = {
+    UIIntSliderProps vertical = {
         .bounds = {10,60,30,120}, .id = 601, .values = ints,
         .value_count = 1, .min = 0, .max = 10
     };
@@ -140,75 +874,75 @@ test_slider_keyboard_navigation(void)
     int inspect_enabled;
 
     InjectReset();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     inspect_enabled = UIInspectEnabled();
     SetUIInspectEnabled(0);
     InjectMousePosition(35,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     check_int("click focuses slider component",GetUIFocus(),600);
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     SetUIInspectEnabled(inspect_enabled);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginUIFrame(640,480,1.0f);
-    check_int("slider Right changed",SliderFloat(horizontal),1);
+    check_int("slider Right changed",test_slider_float(horizontal),1);
     EndUIFrame();
     check_int("slider Right value",(int)(floats[0]*1000.0f+0.5f),260);
 
     InjectPump();
     InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     check_int("slider Shift fast value",(int)(floats[0]*1000.0f+0.5f),360);
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     InjectKey(KEY_LEFT_ALT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     check_int("slider Alt slow value",(int)(floats[0]*1000.0f+0.5f),361);
     InjectKey(KEY_LEFT_ALT,0); InjectPump();
 
     InjectKeyTap(KEY_TAB); InjectPump();
-    BeginUIFrame(640,480,1.0f); SliderFloat(horizontal); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
     second_focus = GetUIFocus();
     check_int("slider Tab reaches second component",second_focus != 600,1);
     InjectKeyTap(KEY_LEFT); InjectPump();
     BeginUIFrame(640,480,1.0f);
-    check_int("second slider component changed",SliderFloat(horizontal),1);
+    check_int("second slider component changed",test_slider_float(horizontal),1);
     EndUIFrame();
     check_int("second slider component value",
               (int)(floats[1]*1000.0f+0.5f),740);
 
     SetUIFocus(601); InjectKeyTap(KEY_UP); InjectPump();
     BeginUIFrame(640,480,1.0f);
-    check_int("vertical slider Up changed",VSliderInt(vertical),1);
+    check_int("vertical slider Up changed",test_vslider_int(vertical),1);
     EndUIFrame();
     check_int("vertical slider Up value",ints[0],6);
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
     check_int("vertical slider Down value",ints[0],5);
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
     check_int("vertical slider Home value",ints[0],0);
     InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(640,480,1.0f); VSliderInt(vertical); EndUIFrame();
+    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
     check_int("vertical slider End value",ints[0],10);
 
     vertical.disabled = 1;
     SetUIFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
     BeginUIFrame(640,480,1.0f);
-    check_int("disabled slider unchanged",VSliderInt(vertical),0);
+    check_int("disabled slider unchanged",test_vslider_int(vertical),0);
     EndUIFrame();
     check_int("disabled slider value",ints[0],10);
 }
 
 static void
-draw_drag_keyboard(DragFloatProps floats, DragIntProps ints)
+draw_drag_keyboard(UIFloatDragProps floats, UIIntDragProps ints)
 {
     BeginUIFrame(480,240,1);
-    (void)DragFloat(floats);
-    (void)DragInt(ints);
+    (void)test_drag_float(floats);
+    (void)test_drag_int(ints);
     EndUIFrame();
 }
 
@@ -217,9 +951,9 @@ test_drag_keyboard_navigation(void)
 {
     float floats[] = {2.0f,5.0f};
     int ints[] = {2,5};
-    DragFloatProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
+    UIFloatDragProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
         .value_count=2,.speed=0.25f,.min=0,.max=10};
-    DragIntProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
+    UIIntDragProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
         .value_count=2,.speed=2,.min=0,.max=10};
 
     InjectReset(); draw_drag_keyboard(fp,ip);
@@ -244,41 +978,41 @@ test_drag_keyboard_navigation(void)
     {
         float fmin=2.0f, fmax=8.0f;
         int imin=2, imax=8;
-        DragFloatRange2Props fr = {.bounds={240,10,200,30},.id=632,
+        UIFloatDragRangeProps fr = {.bounds={240,10,200,30},.id=632,
             .current_min=&fmin,.current_max=&fmax,.speed=1,.min=0,.max=10};
-        DragIntRange2Props ir = {.bounds={240,50,200,30},.id=633,
+        UIIntDragRangeProps ir = {.bounds={240,50,200,30},.id=633,
             .current_min=&imin,.current_max=&imax,.speed=2,.min=0,.max=10};
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag float range min",(int)fmin,3);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag float range Tab",GetUIFocus(),ui_numeric_focus_id(632,1,0));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag float range max",(int)fmax,7);
         SetUIFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag int range min",imin,4);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag int range Tab",GetUIFocus(),ui_numeric_focus_id(633,1,1));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginUIFrame(480,240,1); DragFloatRange2(fr); DragIntRange2(ir); EndUIFrame();
+        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
         check_int("drag int range max",imax,6);
         SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); BeginDisabled(1); DragFloatRange2(fr); EndDisabled(); EndUIFrame();
+        BeginUIFrame(480,240,1); BeginDisabled(1); test_drag_float_range(fr); EndDisabled(); EndUIFrame();
         check_int("disabled drag range",(int)fmin,3);
     }
 }
 
 static void
-draw_numeric_temporary_inputs(DragFloatProps drag, SliderIntProps slider)
+draw_numeric_temporary_inputs(UIFloatDragProps drag, UIIntSliderProps slider)
 {
     BeginUIFrame(320,160,1);
-    (void)DragFloat(drag);
-    (void)SliderInt(slider);
+    (void)test_drag_float(drag);
+    (void)test_slider_int(slider);
     EndUIFrame();
 }
 
@@ -287,9 +1021,9 @@ test_numeric_ctrl_click_editing(void)
 {
     float drag_value = 1.25f;
     int slider_value = 4;
-    DragFloatProps drag = {.bounds={10,10,140,30},.id=634,
+    UIFloatDragProps drag = {.bounds={10,10,140,30},.id=634,
         .values=&drag_value,.value_count=1,.speed=0.1f,.min=0,.max=10};
-    SliderIntProps slider = {.bounds={10,60,140,30},.id=635,
+    UIIntSliderProps slider = {.bounds={10,60,140,30},.id=635,
         .values=&slider_value,.value_count=1,.min=0,.max=10};
 
     InjectReset();
@@ -471,7 +1205,8 @@ test_composed_tab_bar_scope(void)
     check_int("old composed tab hidden",BeginTabItem(0),0);
     if(BeginTabItem(1)) {
         visible = 1;
-        Checkbox(639,20,60,"Second",&visible);
+        Checkbox((CheckboxProps){.bounds = {20,60,120,34}, .id = 639,
+                 .label = "Second", .value = &visible});
         EndTabItem();
     }
     EndTabBar();
@@ -522,22 +1257,22 @@ test_step_button_keyboard_navigation(void)
     int input = 4;
     SpinboxProps spin = {.bounds={10,10,120,30},.id=635,.min=0,.max=5,
         .step=1,.value=&value};
-    InputIntProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
+    UIIntInputProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
         .value_count=1,.step=2,.step_fast=10};
 
     InjectReset();
-    BeginUIFrame(240,140,1); RenderSpinbox(spin); RenderInputInt(field); EndUIFrame();
+    BeginUIFrame(240,140,1); RenderSpinbox(spin); RenderInputWhole(field); EndUIFrame();
     SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginUIFrame(240,140,1);
     check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
-    RenderInputInt(field); EndUIFrame();
+    RenderInputWhole(field); EndUIFrame();
     check_int("spinbox keyboard increment",value,3);
 
     {
         UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
         SetUIFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginUIFrame(240,140,1); RenderSpinbox(spin);
-        check_int("numeric step keyboard changed",RenderInputInt(field),1);
+        check_int("numeric step keyboard changed",RenderInputWhole(field),1);
         EndUIFrame();
         check_int("numeric step keyboard increment",input,6);
     }
@@ -558,18 +1293,21 @@ draw_focusable_choices(int *checkbox, int *selected, int *flags,
                        int *radio_activated)
 {
     BeginUIFrame(640,480,1.0f);
-    *checkbox_activated = Checkbox(609,10,130,"Check",checkbox);
+    *checkbox_activated = Checkbox((CheckboxProps){
+        .bounds = {10,130,120,34}, .id = 609, .label = "Check",
+        .value = checkbox
+    });
     *selectable_activated = Selectable((SelectableProps){
         .bounds = {10,10,140,28}, .id = 610, .label = "Choice",
         .selected = selected
     });
     BeginDisabled(disable_flags);
-    *flags_activated = CheckboxFlags((CheckboxFlagsProps){
+    *flags_activated = Checkbox((CheckboxProps){
         .bounds = {10,50,140,28}, .id = 611, .label = "Flag",
         .flags = flags, .flags_value = 4
     });
     EndDisabled();
-    *radio_activated = Radio((RadioButtonProps){
+    *radio_activated = Radio((RadioProps){
         .bounds = {10,90,140,28}, .label = "Radio", .id = 612
     });
     EndUIFrame();
@@ -640,13 +1378,13 @@ test_toggle_keyboard_navigation(void)
 
     InjectReset();
     BeginUIFrame(240,120,1);
-    (void)Toggle(613,10,10,120,34,&value,"Off","On");
+    (void)Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
     EndUIFrame();
 
     SetUIFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginUIFrame(240,120,1);
-    activated = Toggle(613,10,10,120,34,&value,"Off","On");
+    activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
     EndUIFrame();
     check_int("toggle Space activation",activated,1);
@@ -654,7 +1392,7 @@ test_toggle_keyboard_navigation(void)
 
     SetUIFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
     BeginUIFrame(240,120,1);
-    (void)Toggle(613,10,10,120,34,&value,"Off","On");
+    (void)Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
     EndUIFrame();
     check_int("toggle Tab traversal",GetUIFocus(),614);
@@ -662,7 +1400,7 @@ test_toggle_keyboard_navigation(void)
     SetUIFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginUIFrame(240,120,1);
     BeginDisabled(1);
-    activated = Toggle(613,10,10,120,34,&value,"Off","On");
+    activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     EndDisabled();
     EndUIFrame();
     check_int("disabled toggle rejects activation",activated,0);
@@ -736,17 +1474,24 @@ test_multi_select_keyboard_navigation(void)
 static void
 test_focusable_image_keyboard_navigation(void)
 {
-    PictureProps picture = {
+    ImageProps image = {
         .asset_path = "", .bounds = {10,10,40,30}, .tint = WHITE,
-        .fit = PICTURE_FIT_CONTAIN
+        .fit = IMAGE_FIT_CONTAIN
     };
 
     InjectReset();
     BeginUIFrame(240,180,1);
     RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
-    ImageButton((ImageButtonProps){picture,BLACK,621,0});
-    ColorButton((ColorButtonProps){
-        .bounds={10,90,80,30},.id=622,.label="Color",.color=RED
+    Button((ButtonProps){
+        .bounds=image.bounds,.id=621,.image_asset_path=image.asset_path,
+        .image_bounds=image.bounds,.image_source=image.source,
+        .image_origin=image.origin,.image_rotation=image.rotation,
+        .image_tint=image.tint,.image_fit=image.fit,
+        .image_background=BLACK
+    });
+    Button((ButtonProps){
+        .bounds={10,90,80,30},.id=622,.label="Color",
+        .swatch=true,.swatch_color=RED
     });
     EndUIFrame();
 
@@ -759,14 +1504,25 @@ test_focusable_image_keyboard_navigation(void)
     SetUIFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
     BeginUIFrame(240,180,1);
     check_int("image button Space activation",
-              ImageButton((ImageButtonProps){picture,BLACK,621,0}),1);
+              Button((ButtonProps){
+                  .bounds=image.bounds,.id=621,
+                  .image_asset_path=image.asset_path,
+                  .image_bounds=image.bounds,
+                  .image_source=image.source,
+                  .image_origin=image.origin,
+                  .image_rotation=image.rotation,
+                  .image_tint=image.tint,
+                  .image_fit=image.fit,
+                  .image_background=BLACK
+              }),1);
     EndUIFrame();
 
     SetUIFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginUIFrame(240,180,1);
     check_int("color button Enter activation",
-              ColorButton((ColorButtonProps){
-                  .bounds={10,90,80,30},.id=622,.label="Color",.color=RED
+              Button((ButtonProps){
+                  .bounds={10,90,80,30},.id=622,.label="Color",
+                  .swatch=true,.swatch_color=RED
               }),1);
     EndUIFrame();
 }
@@ -1106,8 +1862,8 @@ test_disabled_scalar_cancels_gesture(void)
         for(int scope = 0; scope < 2; scope++) {
             float value = 25.0f;
             float before = value;
-            DragFloatProps drag = {0};
-            SliderFloatProps slide = {0};
+            UIFloatDragProps drag = {0};
+            UIFloatSliderProps slide = {0};
             drag.bounds = slide.bounds = (Rectangle){10, 10, 100, 24};
             drag.id = 982;
             slide.id = 981;
@@ -1128,9 +1884,9 @@ test_disabled_scalar_cancels_gesture(void)
                     BeginDisabled(step == 1);
                 drag.disabled = slide.disabled = !scope && step == 1;
                 if(slider)
-                    (void)SliderFloat(slide);
+                    (void)test_slider_float(slide);
                 else
-                    (void)DragFloat(drag);
+                    (void)test_drag_float(drag);
                 if(scope)
                     EndDisabled();
                 EndUIFrame();
@@ -1280,13 +2036,13 @@ test_combo_popup_lifecycle(void)
 {
     const char *options[] = {"One", "Two"};
     int selected = 0;
-    ComboboxProps p = {.bounds = {10,10,160,28}, .id = 996, .options = options, .option_count = 2, .selected_index = &selected};
+    DropdownProps p = {.bounds = {10,10,160,28}, .id = 996, .options = options, .option_count = 2, .selected_index = &selected};
     for(int mode = 0; mode < 3; mode++) {
         InjectReset();
         p.disabled = 0;
         InjectTap(20,20);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1.0f); Combobox(p); EndUIFrame();
+            InjectPump(); BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
         }
         check_int("combo opened capture",UIInputCapturesClick((Vector2){20,70}),1);
         int background_scroll = 0;
@@ -1296,7 +2052,7 @@ test_combo_popup_lifecycle(void)
         BeginUIFrame(240,240,1.0f);
         BeginScroll((Rectangle){10,40,180,120},400,&background_scroll);
         EndScroll();
-        Combobox(p);
+        Dropdown(p);
         EndUIFrame();
         check_int("popup owns wheel before owner declaration",background_scroll,0);
         p.disabled = mode == 0;
@@ -1304,13 +2060,13 @@ test_combo_popup_lifecycle(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1.0f);
             BeginDisabled(mode == 1);
-            if(mode != 2) Combobox(p);
+            if(mode != 2) Dropdown(p);
             EndDisabled(); EndUIFrame();
         }
         check_int("combo lifecycle selection",selected,0);
         check_int("combo released capture",UIInputCapturesClick((Vector2){20,70}),0);
         p.disabled = 0;
-        BeginUIFrame(240,240,1.0f); Combobox(p); EndUIFrame();
+        BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
         check_int("combo stays closed",UIInputCapturesClick((Vector2){20,70}),0);
     }
 }
@@ -1330,7 +2086,7 @@ test_dropdown_store_isolation(void)
         InjectPump();
         BeginUIFrame(240,240,1.0f);
         frame_store = dropdown_store_swap(first);
-        Combobox((ComboboxProps){.id = 9961, .bounds = {10, 10, 160, 28},
+        Dropdown((DropdownProps){.id = 9961, .bounds = {10, 10, 160, 28},
             .options = options, .option_count = 2, .selected_index = &selected});
         ui_dropdown_overlays();
         dropdown_store_swap(frame_store);
@@ -1343,7 +2099,7 @@ test_dropdown_store_isolation(void)
     dropdown_store_swap(second);
     check_int("second dropdown store does not inherit popup",
               dropdown_captures((Vector2){20,70}),0);
-    Combobox((ComboboxProps){.id = 9961, .bounds = {10, 10, 160, 28},
+    Dropdown((DropdownProps){.id = 9961, .bounds = {10, 10, 160, 28},
             .options = options, .option_count = 2, .selected_index = &selected});
     check_int("same ID remains closed in second store",
               dropdown_captures((Vector2){20,70}),0);
@@ -1369,7 +2125,7 @@ test_many_combo_identities(void)
             InjectPump();
             BeginUIFrame(240,240,1);
             for(int i = phase == 3 ? 1 : 0; i < 41; i++) {
-                Combobox((ComboboxProps){.bounds = {i ? 300 : 10,10,160,28},
+                Dropdown((DropdownProps){.bounds = {i ? 300 : 10,10,160,28},
                     .id = 20000+i, .options = options, .option_count = 2,
                     .selected_index = &selected[i]});
             }
@@ -1402,7 +2158,7 @@ test_large_combo_options(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
             BeginUIFrame(240,6000,1);
-            Combobox((ComboboxProps){.bounds = {10,10,160,28}, .id = 21000,
+            Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 21000,
                 .options = options, .option_count = 131, .selected_index = &selected});
             EndUIFrame();
         }
@@ -1427,7 +2183,7 @@ test_combo_keyboard_navigation(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
             BeginUIFrame(240,240,1);
-            Combobox((ComboboxProps){.bounds = {10,10,160,28}, .id = 23000,
+            Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 23000,
                 .options = options, .option_count = 131, .selected_index = &selected});
             EndUIFrame();
         }
@@ -1440,7 +2196,7 @@ test_combo_keyboard_navigation(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
             BeginUIFrame(240,240,1);
-            Combobox((ComboboxProps){.bounds = {10,10,160,28}, .id = 23000,
+            Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 23000,
                 .options = options, .option_count = 131, .selected_index = &selected});
             EndUIFrame();
         }
@@ -1735,7 +2491,7 @@ test_popup_drag_keyboard_ownership(void)
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetUIFocus(25707);
-        int changed = DragFloat((DragFloatProps){
+        int changed = test_drag_float((UIFloatDragProps){
             .bounds={10,10,120,28},.id=25707,.values=&value,.value_count=1,
             .speed=1,.min=0,.max=10
         });
@@ -2087,7 +2843,7 @@ test_composed_combo_scope(void)
     check_int("composed combo reopens from caller state",
         BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
             .preview="Choose",.id=27000,.open=&open,
-            .flags=ComboNoArrowButton|ComboWidthFitPreview|ComboHeightSmall}),1);
+            .flags=ComboNoArrow|ComboWidthFitPreview|ComboHeightSmall}),1);
     CloseCombo();
     check_int("CloseCombo updates caller state",open,0);
     EndCombo();
@@ -2379,11 +3135,11 @@ test_popup_active_drag_ownership(void)
     float background_value = 10.0f;
     float slider_value = 0.0f;
     int split = 50;
-    DragFloatProps drag = {.bounds={30,30,80,24},.id=401,
+    UIFloatDragProps drag = {.bounds={30,30,80,24},.id=401,
         .values=&drag_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
-    SliderFloatProps slider = {.bounds={30,30,80,24},.id=411,
+    UIFloatSliderProps slider = {.bounds={30,30,80,24},.id=411,
         .values=&slider_value,.value_count=1,.min=0,.max=100};
-    DragFloatProps background_drag = {.bounds={30,30,80,24},.id=391,
+    UIFloatDragProps background_drag = {.bounds={30,30,80,24},.id=391,
         .values=&background_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
     const char *columns[] = {"A","B"};
     const char *cells[] = {"a","b"};
@@ -2409,7 +3165,7 @@ test_popup_active_drag_ownership(void)
     BeginUIFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)DragFloat(background_drag);
+    (void)test_drag_float(background_drag);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndUIFrame();
@@ -2421,7 +3177,7 @@ test_popup_active_drag_ownership(void)
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,390,(Rectangle){20,20,120,100});
     ui_popup_input_end(owner);
-    check_int("new popup cancels background drag",DragFloat(background_drag),0);
+    check_int("new popup cancels background drag",test_drag_float(background_drag),0);
     check_int("new popup blocks background drag mutation",(int)background_value,10);
     ui_popup_input_close(context,390);
     ui_popup_input_finish(context);
@@ -2438,7 +3194,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    (void)DragFloat(drag);
+    (void)test_drag_float(drag);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -2450,7 +3206,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    check_int("popup drag continues outside bounds",DragFloat(drag),1);
+    check_int("popup drag continues outside bounds",test_drag_float(drag),1);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -2462,7 +3218,7 @@ test_popup_active_drag_ownership(void)
     BeginUIFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    check_int("missing popup cancels active drag",DragFloat(drag),0);
+    check_int("missing popup cancels active drag",test_drag_float(drag),0);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndUIFrame();
@@ -2477,7 +3233,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)SliderFloat(slider);
+    (void)test_slider_float(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -2489,7 +3245,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)SliderFloat(slider);
+    (void)test_slider_float(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -2501,7 +3257,7 @@ test_popup_active_drag_ownership(void)
     BeginUIFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)SliderFloat(slider);
+    (void)test_slider_float(slider);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndUIFrame();
@@ -2607,7 +3363,7 @@ test_popup_combo_keyboard_ownership(void)
         check_int("keyboard capture is independent of pointer bounds",ui_popup_input_keyboard_captures(),!inside);
         int selected = 0;
         SetUIFocus(25400);
-        Combobox((ComboboxProps){.bounds={10,10,100,28},.id=25400,
+        Dropdown((DropdownProps){.bounds={10,10,100,28},.id=25400,
             .options=options,.option_count=2,.selected_index=&selected});
         check_int("only top popup may open a focused combo",dropdown_captures((Vector2){20,60}),inside);
         if(inside) ui_popup_input_end(child);
@@ -2635,7 +3391,7 @@ test_popup_combo_keyboard_ownership(void)
         InjectPump();
         BeginUIFrame(240,240,1);
         SetUIFocus(25400);
-        (void)Combobox((ComboboxProps){
+        (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
             .options=options,
@@ -2659,7 +3415,7 @@ test_popup_combo_keyboard_ownership(void)
         if(!inside)
             ui_popup_input_end(child);
         SetUIFocus(25400);
-        (void)Combobox((ComboboxProps){
+        (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
             .options=options,
@@ -3038,7 +3794,7 @@ test_combo_horizontal_viewport(void)
         InjectReset(); InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1); SetUIFocus(25002);
-            Combobox((ComboboxProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
+            Dropdown((DropdownProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
             EndUIFrame();
         }
         int x = i == 1 ? 92 : 12;
@@ -3048,7 +3804,7 @@ test_combo_horizontal_viewport(void)
         InjectTap(x,80);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1);
-            Combobox((ComboboxProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
+            Dropdown((DropdownProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
             EndUIFrame();
         }
         check_int("shifted popup selected second row",selected,1);
@@ -3068,20 +3824,20 @@ test_combo_scrollbar_dismissal(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1);
             SetUIFocus(25001);
-            Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+            Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected});
             EndUIFrame();
         }
         InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
         InjectPump(); BeginUIFrame(240,240,1);
-        Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+        Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
             .options=options,.option_count=131,.selected_index=&selected});
         EndUIFrame();
         check_int("combo scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
         if(mode == 0) InjectKeyTap(KEY_ESCAPE);
         InjectPump(); BeginUIFrame(240,240,1);
         if(mode != 2)
-            Combobox((ComboboxProps){.bounds={10,10,160,28},.id=25001,
+            Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
         EndUIFrame();
         check_int("dismissed combo scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
@@ -3105,7 +3861,7 @@ test_combo_keyboard_open(void)
                 BeginUIFrame(240,240,1);
                 SetUIFocus(24000);
                 BeginDisabled(mode == 2);
-                Combobox((ComboboxProps){.bounds = {10,10,160,28}, .id = 24000,
+                Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 24000,
                     .options = options, .option_count = 2, .selected_index = &selected,
                     .disabled = mode == 1});
                 EndDisabled();
@@ -3174,12 +3930,14 @@ test_list_box_scope(void)
         int offset = 0;
         InjectReset(); InjectMousePosition(30,30); InjectWheel(-1); InjectPump();
         BeginUIFrame(200,150,1.0f);
-        Rectangle content = BeginListBox((ListBoxProps){.bounds = {20,20,120,80}, .item_count = 4, .row_height = 25, .scroll_offset = &offset, .disabled = disabled});
+        BeginDisabled(disabled);
+        Rectangle content = BeginScroll((Rectangle){21,21,118,78}, Scale(100), &offset);
         check_int("list scope scroll",offset,disabled ? 0 : 22);
         check_int("list scope content width",(int)content.width,108);
         check_int("list scope content y",(int)content.y,21-offset);
         check_int("list scope disabled",UIContentDisabled(),disabled);
-        EndListBox();
+        EndScroll();
+        EndDisabled();
         check_int("list scope restored",UIContentDisabled(),0);
         EndUIFrame();
     }
@@ -3698,7 +4456,7 @@ main(void)
         BeginUIFrame(220,120,1);
         BeginTree(Key("numeric origin layout"));
         Row((RowProps){.bounds = {0,0,220,24}});
-        InputInt((InputIntProps){.bounds = {0,0,120,24}, .id = 872,
+        test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 872,
             .values = &value, .value_count = 1, .step = 1});
         Button((ButtonProps){.bounds = {0,0,40,24}, .id = 873, .label = "next"});
         End();
@@ -3736,7 +4494,7 @@ main(void)
             BeginTree(Key("numeric typing"));
             Row((RowProps){.bounds = {20,30,120,24}});
             BeginDisabled(frame == 2);
-            int changed = InputInt((InputIntProps){.bounds = {0,0,120,24}, .id = 871,
+            int changed = test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 871,
                 .values = &value, .value_count = 1});
             check_int("numeric typing returns during declaration", changed, frame == 1);
             EndDisabled();
@@ -3761,7 +4519,7 @@ main(void)
                 BeginTree(Key("numeric steps"));
                 Row((RowProps){.bounds = {20,30,120,24}});
                 BeginDisabled(scenario == 3);
-                InputInt((InputIntProps){.bounds = {0,0,120,24}, .id = 870,
+                test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 870,
                     .values = &value, .value_count = 1, .step = 2, .step_fast = 5});
                 EndDisabled();
                 End();
@@ -4029,6 +4787,26 @@ main(void)
 
     test_reorder_uses_item_center_and_header_handle();
     test_checkbox_paint_geometry_is_stable();
+    test_swatch_policy();
+    test_color_picker_policy();
+    test_button_policy();
+    test_separator_policy();
+    test_canvas_grid_policy();
+    test_label_frame_policy();
+    test_plot_policy();
+    test_progress_layout_policy();
+    test_selectable_paint_policy();
+    test_radio_paint_policy();
+    test_list_box_layout_policy();
+    test_multi_select_policy();
+    test_tab_bar_policy();
+    test_popup_policy();
+    test_text_input_policy();
+    test_segmented_control_policy();
+    test_spinbox_policy();
+    test_slider_value_policy();
+    test_drag_value_policy();
+    test_input_value_policy();
     test_slider_keyboard_navigation();
     test_drag_keyboard_navigation();
     test_tab_bar_keyboard_navigation();

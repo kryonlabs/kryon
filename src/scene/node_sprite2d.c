@@ -1,14 +1,14 @@
 /*
- * Sprite2D: a world-space textured sprite. Draws via the shared picture texture
+ * Sprite2D: a world-space textured sprite. Draws via the shared image texture
  * cache so it shares loaded textures with the UI
- * Picture widget. The sprite is drawn at the nodes world transform, sized by
+ * Image widget. The sprite is drawn at the nodes world transform, sized by
  * Sprite2DProps.size, with the chosen fit mode applied within that size.
  */
 
 #include "scene_tree.h"
 #include "node2d_props.h"
-#include "ui_picture.h"
-#include "../ui/ui_picture_internal.h"
+#include "ui_image.h"
+#include "../ui/ui_image_internal.h"
 #include <stdlib.h>
 
 static void
@@ -26,7 +26,7 @@ kry_sprite2d_draw(Scene *scene, NodeId node)
     if(props == NULL || props->asset_path == NULL || props->asset_path[0] == '\0')
         return;
 
-    texture = LoadPictureTexture(props->asset_path);
+    texture = LoadImageTexture(props->asset_path);
     if(texture.id == 0)
         return;
 

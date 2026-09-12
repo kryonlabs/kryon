@@ -1,0 +1,149 @@
+#module "list_box"
+#import "drawing_props"
+
+ListBoxLayout :: struct {
+    row_height: i32
+    content_height: i32
+    max_scroll: i32
+    scroll: i32
+    first_row: i32
+    y_offset: i32
+    visible_rows: i32
+}
+
+ListBoxNavigation :: struct {
+    selected: i32
+    scroll: i32
+    changed: bool
+}
+
+ListBoxRowHeight :: (row_height: i32) -> i32 #export {
+    if row_height <= 0 {
+        return 30
+    }
+    return row_height
+}
+
+ListBoxContentHeight :: (item_count: i32, row_height: i32,
+    content_height: i32) -> i32 #export {
+    if content_height > 0 {
+        return content_height
+    }
+    if item_count <= 0 {
+        return 0
+    }
+    row_height = ListBoxRowHeight(row_height)
+    height: i64 = (i64)item_count * (i64)row_height
+    if height > 2147483647 {
+        return 2147483647
+    }
+    return (i32)height
+}
+
+ListBoxMaxScroll :: (bounds_height: float, item_count: i32,
+    row_height: i32, content_height: i32) -> i32 #export {
+    height: i32 = ListBoxContentHeight(item_count, row_height, content_height)
+    max_scroll: i32 = height - (i32)bounds_height
+    if max_scroll < 0 {
+        return 0
+    }
+    return max_scroll
+}
+
+ListBoxClampScroll :: (scroll: i32, max_scroll: i32) -> i32 #export {
+    if scroll < 0 {
+        return 0
+    }
+    if scroll > max_scroll {
+        return max_scroll
+    }
+    return scroll
+}
+
+ListBoxRevealScroll :: (selected: i32, scroll: i32, row_height: i32,
+    viewport_height: float, max_scroll: i32) -> i32 #export {
+    if selected < 0 {
+        return ListBoxClampScroll(scroll, max_scroll)
+    }
+    row_height = ListBoxRowHeight(row_height)
+    top: i32 = selected * row_height
+    bottom: i32 = top + row_height
+    viewport: i32 = (i32)viewport_height
+    if top < scroll {
+        scroll = top
+    } else if bottom > scroll + viewport {
+        scroll = bottom - viewport
+    }
+    return ListBoxClampScroll(scroll, max_scroll)
+}
+
+# key: 1 home, 2 end, 3 up, 4 down.
+ListBoxNavigate :: (selected: i32, item_count: i32, key: i32,
+    scroll: i32, row_height: i32, viewport_height: float,
+    max_scroll: i32) -> ListBoxNavigation #export {
+    nav: ListBoxNavigation
+    nav.selected = selected
+    nav.scroll = ListBoxClampScroll(scroll, max_scroll)
+    if item_count <= 0 || key == 0 {
+        return nav
+    }
+    next: i32 = selected
+    if key == 1 {
+        next = 0
+    } else if key == 2 {
+        next = item_count - 1
+    } else if key == 3 {
+        if selected < 0 {
+            next = item_count - 1
+        } else {
+            next = selected - 1
+        }
+    } else if key == 4 {
+        if selected < 0 {
+            next = 0
+        } else {
+            next = selected + 1
+        }
+    } else {
+        return nav
+    }
+    if next < 0 {
+        next = 0
+    }
+    if next >= item_count {
+        next = item_count - 1
+    }
+    nav.changed = next != selected
+    nav.selected = next
+    nav.scroll = ListBoxRevealScroll(next, nav.scroll, row_height,
+        viewport_height, max_scroll)
+    return nav
+}
+
+ListBoxLayoutFor :: (bounds: Rectangle, item_count: i32, row_height: i32,
+    content_height: i32, scroll: i32) -> ListBoxLayout #export {
+    layout: ListBoxLayout
+    layout.row_height = ListBoxRowHeight(row_height)
+    layout.content_height = ListBoxContentHeight(item_count,
+        layout.row_height, content_height)
+    layout.max_scroll = ListBoxMaxScroll(bounds.height, item_count,
+        layout.row_height, content_height)
+    layout.scroll = ListBoxClampScroll(scroll, layout.max_scroll)
+    if layout.row_height > 0 {
+        layout.first_row = layout.scroll / layout.row_height
+        layout.y_offset = layout.scroll % layout.row_height
+        layout.visible_rows = (i32)bounds.height / layout.row_height
+    }
+    return layout
+}
+
+ListBoxRowBounds :: (bounds: Rectangle, row_index: i32,
+    layout: ListBoxLayout) -> Rectangle #export {
+    row: Rectangle
+    row.x = bounds.x
+    row.y = bounds.y + (float)(row_index * layout.row_height - layout.y_offset)
+    row.width = bounds.width
+    row.height = (float)layout.row_height
+    return row
+}
+

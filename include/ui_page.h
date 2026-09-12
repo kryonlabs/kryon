@@ -2,7 +2,7 @@
 #define UI_PAGE_H
 
 #include "kryon_compat.generated.h"
-#include "ui_picture.h"
+#include "ui_image.h"
 #include "ui_tree.h"
 
 typedef enum UISemanticKind {
@@ -12,7 +12,7 @@ typedef enum UISemanticKind {
     UI_SEMANTIC_HEADING,
     UI_SEMANTIC_PARAGRAPH,
     UI_SEMANTIC_LINK,
-    UI_SEMANTIC_PICTURE,
+    UI_SEMANTIC_IMAGE,
     UI_SEMANTIC_BUTTON
 } UISemanticKind;
 
@@ -57,7 +57,7 @@ typedef struct ParagraphTextProps {
 typedef struct LinkProps {
     Rectangle bounds;
     const char *text;
-    const char *href;
+    const char *link;
     int font;
     int focus_id;
     int disabled;
@@ -87,7 +87,7 @@ NodeId Section(SectionProps props);
 void Heading(HeadingProps props);
 void ParagraphText(ParagraphTextProps props);
 int Link(LinkProps props);
-void PagePicture(PictureProps picture, const char *alt_text);
+void PageImage(ImageProps image, const char *alt_text);
 NodeId Flow(FlowProps props);
 
 #endif

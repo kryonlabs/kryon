@@ -35,6 +35,16 @@ SliderPaint :: struct {
     active_track: StyleFrame
 }
 
+SliderScalarStep :: struct {
+    value: float
+    changed: bool
+}
+
+SliderWholeStep :: struct {
+    value: i32
+    changed: bool
+}
+
 SliderMinimumLength :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(32.0 * scale)
@@ -51,13 +61,95 @@ SliderTrackSize :: (vertical: bool, scale: float) -> i32 #export {
     return (i32)(6.0 * scale)
 }
 
+SliderClampRatio :: (ratio: float) -> float #export {
+    if ratio < 0.0 { return 0.0 }
+    if ratio > 1.0 { return 1.0 }
+    return ratio
+}
+
+SliderScalarRatio :: (value: float, minimum: float, maximum: float) -> float #export {
+    span: float = maximum - minimum
+    if span <= 0.0 { return 0.0 }
+    return SliderClampRatio((value - minimum) / span)
+}
+
+SliderScalarValue :: (minimum: float, maximum: float, ratio: float) -> float #export {
+    span: float = maximum - minimum
+    if span <= 0.0 { return minimum }
+    return minimum + SliderClampRatio(ratio) * span
+}
+
+SliderScalarKeyboardValue :: (value: float, minimum: float, maximum: float,
+    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderScalarStep #export {
+    result: SliderScalarStep
+    result.value = value
+    result.changed = false
+    span: float = maximum - minimum
+    if span <= 0.0 { return result }
+    next: float = value
+    if home {
+        next = minimum
+    } else if end {
+        next = maximum
+    } else if direction != 0 {
+        step: float = span * 0.01
+        if alt { step = step * 0.1 }
+        if shift { step = step * 10.0 }
+        next = next + (float)direction * step
+        if next < minimum { next = minimum }
+        if next > maximum { next = maximum }
+    }
+    result.value = next
+    result.changed = next != value
+    return result
+}
+
+SliderWholeRatio :: (value: i32, minimum: i32, maximum: i32) -> float #export {
+    span: i64 = (i64)maximum - (i64)minimum
+    if span <= 0 { return 0.0 }
+    return SliderClampRatio((float)((i64)value - (i64)minimum) / (float)span)
+}
+
+SliderWholeValue :: (minimum: i32, maximum: i32, ratio: float) -> i32 #export {
+    span: i64 = (i64)maximum - (i64)minimum
+    if span <= 0 { return minimum }
+    return (i32)((i64)minimum + (i64)(SliderClampRatio(ratio) * (float)span + 0.5))
+}
+
+SliderWholeKeyboardValue :: (value: i32, minimum: i32, maximum: i32,
+    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderWholeStep #export {
+    result: SliderWholeStep
+    result.value = value
+    result.changed = false
+    span: i64 = (i64)maximum - (i64)minimum
+    if span <= 0 { return result }
+    next: i64 = (i64)value
+    if home {
+        next = (i64)minimum
+    } else if end {
+        next = (i64)maximum
+    } else if direction != 0 {
+        step: i64 = 1
+        if span > 100 { step = (span + 50) / 100 }
+        if alt {
+            step = step / 10
+            if step < 1 { step = 1 }
+        }
+        if shift { step = step * 10 }
+        next = next + (i64)direction * step
+        if next < (i64)minimum { next = (i64)minimum }
+        if next > (i64)maximum { next = (i64)maximum }
+    }
+    result.value = (i32)next
+    result.changed = result.value != value
+    return result
+}
+
 SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     paint: SliderPaint
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
-    ratio: float = spec.ratio
-    if ratio < 0.0 { ratio = 0.0 }
-    if ratio > 1.0 { ratio = 1.0 }
+    ratio: float = SliderClampRatio(spec.ratio)
     bounds: Rectangle = spec.bounds
     min_length: float = (float)SliderMinimumLength(scale)
     thumb_size: float = (float)SliderThumbSize(scale)

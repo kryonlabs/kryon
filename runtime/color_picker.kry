@@ -1,0 +1,61 @@
+#module "color_picker"
+#import "drawing_props"
+
+ColorPickerLayout :: struct {
+    row_height: float
+    swatch_bounds: Rectangle
+}
+
+ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
+    channels: i32, scale: float) -> Rectangle #export {
+    row: Rectangle
+    layout: ColorPickerLayout = ColorPickerLayoutFor(bounds, channels, scale)
+    row.x = bounds.x
+    row.y = bounds.y + layout.row_height * (float)index
+    row.width = bounds.width
+    row.height = layout.row_height - 2.0 * scale
+    if row.height < 0.0 { row.height = 0.0 }
+    return row
+}
+
+ColorPickerLayoutFor :: (bounds: Rectangle, channels: i32,
+    scale: float) -> ColorPickerLayout #export {
+    layout: ColorPickerLayout
+    if scale <= 0.0 { scale = 1.0 }
+    if channels < 1 { channels = 1 }
+    swatch_height: float = 36.0 * scale
+    gap: float = 4.0 * scale
+    row_height: float = (bounds.height - swatch_height - gap) / (float)channels
+    minimum_row: float = 28.0 * scale
+    if row_height < 20.0 * scale { row_height = minimum_row }
+    layout.row_height = row_height
+    layout.swatch_bounds.x = bounds.x
+    layout.swatch_bounds.y = bounds.y + row_height * (float)channels + gap
+    layout.swatch_bounds.width = bounds.width
+    layout.swatch_bounds.height = swatch_height
+    return layout
+}
+
+ColorPickerClampChannel :: (value: float) -> float #export {
+    if value < 0.0 { return 0.0 }
+    if value > 1.0 { return 1.0 }
+    return value
+}
+
+ColorPickerChannelByte :: (value: float) -> u8 #export {
+    return (u8)(ColorPickerClampChannel(value) * 255.0 + 0.5)
+}
+
+ColorPickerColorFor :: (red: float, green: float, blue: float,
+    alpha: float, channels: i32) -> Color #export {
+    color: Color
+    color.r = ColorPickerChannelByte(red)
+    color.g = ColorPickerChannelByte(green)
+    color.b = ColorPickerChannelByte(blue)
+    if channels >= 4 {
+        color.a = ColorPickerChannelByte(alpha)
+    } else {
+        color.a = (u8)255
+    }
+    return color
+}

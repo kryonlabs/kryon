@@ -3,6 +3,7 @@
 #include "ui_tree_layout_internal.h"
 #include "ui_disabled_internal.h"
 #include "ui_input_clip_internal.h"
+#include "runtime/popup_policy.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -137,13 +138,13 @@ int BeginCombo(ComboProps combo)
                           (combo.preview ? combo.preview : "");
     if(combo.flags & ComboWidthFitPreview) {
         float need = (float)TextWidth(preview,GetFontSize())+20;
-        if(!(combo.flags & ComboNoArrowButton)) need += 20;
+        if(!(combo.flags & ComboNoArrow)) need += 20;
         if(need > trigger.width) trigger.width = need;
     }
     size_t n = strlen(preview);
     char *label = malloc(n+4);
     if(!label) abort();
-    if(combo.flags & ComboNoArrowButton) memcpy(label,preview,n+1);
+    if(combo.flags & ComboNoArrow) memcpy(label,preview,n+1);
     else snprintf(label,n+4,"%s v",preview);
     int pressed = Button((ButtonProps){.bounds=trigger,.label=label,
                          .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,.id=combo.id,
@@ -200,35 +201,31 @@ void EndCombo(void)
 
 int BeginPopup(PopupProps popup)
 {
-    int tooltip = (popup.flags & PopupTooltip) != 0;
-    int modal = (popup.flags & PopupModal) != 0;
-    int is_context = (popup.flags & PopupContext) != 0;
-    if(popup.flags & ~((unsigned int)(PopupTooltip|PopupModal|PopupContext))) abort();
-    if((tooltip && (modal || is_context)) || (modal && is_context)) abort();
-    if(popup.id <= 0 || popup.bounds.width <= 0 || popup.bounds.height <= 0 ||
-       (!tooltip && popup.open == NULL) ||
-       ((tooltip || is_context) &&
-        (popup.trigger.width <= 0 || popup.trigger.height <= 0)))
+    PopupDecision decision = PopupDecisionFor(popup.flags, popup.disabled != 0);
+    if(!decision.valid) abort();
+    if(!PopupCanBegin(decision, popup.id, popup.bounds, popup.trigger,
+                      popup.open != NULL))
         return 0;
     UIPaintLayers *layers = ui_frame_paint_layers();
     UIPopupInput *input_context = layers ? ui_paint_layers_input(layers) :
                                           ui_popup_input_bound();
-    if(is_context && !popup.disabled &&
+    if(decision.context && !popup.disabled &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
        CheckCollisionPointRec(ui_mouse_world(),popup.trigger) &&
        !UIInputCapturesClick(ui_mouse_world()))
         *popup.open = true;
-    if(tooltip) {
+    if(decision.tooltip) {
         if(popup.disabled ||
            !CheckCollisionPointRec(ui_mouse_world(),popup.trigger)) return 0;
     } else {
-        if(popup.disabled) *popup.open = false;
+        *popup.open = PopupOpenAfterDisabled(decision, *popup.open,
+                                             popup.disabled != 0);
         if(!*popup.open) {
             if(input_context) ui_popup_input_close(input_context,popup.id);
             return 0;
         }
     }
-    if(!tooltip && !modal &&
+    if(!decision.tooltip && !decision.modal &&
        IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !UIReleaseConsumed() &&
        !CheckCollisionPointRec(ui_mouse_world(),popup.bounds)) {
         UIConsumeRelease();
@@ -236,12 +233,13 @@ int BeginPopup(PopupProps popup)
         if(input_context) ui_popup_input_close(input_context,popup.id);
         return 0;
     }
-    Rectangle input_bounds = popup.bounds;
-    if(modal)
-        input_bounds = (Rectangle){0,0,GetUIViewWidth(),GetUIViewHeight()};
-    return enter_popup_scope(popup.id,tooltip ? NULL : popup.open,popup.bounds,
+    Rectangle input_bounds = PopupInputBounds(decision, popup.bounds,
+                                              GetUIViewWidth(),
+                                              GetUIViewHeight());
+    return enter_popup_scope(popup.id,decision.tooltip ? NULL : popup.open,popup.bounds,
                              UI_COMPOSED_POPUP,layers,
-                             (UIPopupInputToken){0},!tooltip,input_bounds,modal);
+                             (UIPopupInputToken){0},decision.captures_input,
+                             input_bounds,PopupBackdropAlpha(decision) > 0);
 }
 
 void ClosePopup(void)

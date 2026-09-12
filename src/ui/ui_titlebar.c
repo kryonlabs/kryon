@@ -82,48 +82,42 @@ ui_title_bar_height(void)
     return ui_tab_bar_height();
 }
 
-void
-RenderTitleBar(const char *title, int height)
-{
-    RenderTitleBarBackground(height);
-    RenderTitleBarCenteredTitle(title, height, Scale(12));
-}
-
 int
-RenderReturnTitleBar(Texture2D return_icon, const char *title,
-                          int height)
+RenderTitleBar(TitleBarProps title_bar)
 {
-    int clicked;
+    int height = title_bar.height;
+    int clicked = 0;
+    int side_reserved = Scale(12);
 
+    if(height <= 0)
+        height = ui_title_bar_height();
     RenderTitleBarBackground(height);
-    clicked = RenderTitleBarReturnButton(return_icon, height);
-    RenderTitleBarCenteredTitle(title, height, Scale(60));
-    return clicked;
-}
+    if(title_bar.has_leading_action) {
+        clicked = RenderTitleBarReturnButton(title_bar.leading_icon, height);
+        side_reserved = Scale(60);
+    }
+    if(title_bar.has_dropdown) {
+        UITitleBarDropdown dropdown = title_bar.dropdown;
+        int gap = Scale(4);
+        int dropdown_x = Scale(12);
+        int dropdown_h = dropdown.height > 0 ? dropdown.height : Scale(32);
+        int dropdown_y = (height - dropdown_h) / 2;
+        int dropdown_w;
 
-int
-RenderReturnDropdownTitleBar(Texture2D return_icon,
-                                   UITitleBarDropdown dropdown,
-                                   int height)
-{
-    int gap = Scale(4);
-    int dropdown_x = Scale(12) + Scale(40) + gap;
-    int dropdown_h = dropdown.height > 0 ? dropdown.height : Scale(32);
-    int dropdown_y = (height - dropdown_h) / 2;
-    int dropdown_w = ui_view_width - dropdown_x - Scale(12);
-    int clicked;
-
-    if(dropdown_y < 0)
-        dropdown_y = 0;
-    if(dropdown.min_width > 0 && dropdown_w < dropdown.min_width)
-        dropdown_w = ui_view_width - dropdown_x;
-    if(dropdown_w < 1)
-        dropdown_w = 1;
-
-    RenderTitleBarBackground(height);
-    clicked = RenderTitleBarReturnButton(return_icon, height);
-    if(!dropdown.disabled)
-        Dropdown((DropdownProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
-            .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
+        if(title_bar.has_leading_action)
+            dropdown_x += Scale(40) + gap;
+        dropdown_w = ui_view_width - dropdown_x - Scale(12);
+        if(dropdown_y < 0)
+            dropdown_y = 0;
+        if(dropdown.min_width > 0 && dropdown_w < dropdown.min_width)
+            dropdown_w = ui_view_width - dropdown_x;
+        if(dropdown_w < 1)
+            dropdown_w = 1;
+        if(!dropdown.disabled)
+            Dropdown((DropdownProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+                .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
+        return clicked;
+    }
+    RenderTitleBarCenteredTitle(title_bar.title, height, side_reserved);
     return clicked;
 }

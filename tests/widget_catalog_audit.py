@@ -115,7 +115,7 @@ def run_actions():
       click(300,538)
       if state()['selected']!=before: break
     check('Selectable','selected',selectable)
-    check('CheckboxFlags','flags',lambda:click(674,492))
+    check('Checkbox','flags',lambda:click(674,492))
     def text():
      click(730,137);xd('key','ctrl+a');xd('type','--clearmodifiers','--delay',80,'TEST')
     check('TextField','text_test',text,1)
@@ -124,10 +124,10 @@ def run_actions():
     check('TextArea','area_test',area,1)
     def dropdown(): click(320,287);capture('dropdown-open');click(300,315)
     check('Dropdown','picked',dropdown)
-    def combo(): click(730,381);capture('combobox-open');click(710,443)
-    check('Combobox','picked',combo)
+    def rich_dropdown(): click(730,381);capture('dropdown-rich-open');click(710,443)
+    check('Dropdown rich','picked',rich_dropdown)
     category(2)
-    check('Notebook','picked',lambda:click(805,137))
+    check('Layout TabBar','picked',lambda:click(805,137))
     check('Collapsible','open',lambda:click(750,205))
     category(3)
     check('ListBox','picked',lambda:click(290,160),1)
@@ -138,16 +138,16 @@ def run_actions():
 
 def run_buttons():
     category(1)
-    for name,x,y in [('Button',320,137),('Icon Button',421,137),('Small Button',310,490),('ArrowButton',408,490),('InvisibleButton',760,538)]:
+    for name,x,y in [('Button',320,137),('Icon Button',421,137),('Small Button',310,490),('Arrow button',408,490),('InvisibleButton',760,538)]:
      check(name,'clicks',lambda x=x,y=y:click(x,y))
     before=state()['clicks'];check('Disabled button','clicks',lambda:click(320,599),before)
     category(2)
     for name,x,y in [('Row A',297,167),('Row B',375,167),('Grid A',325,246),('Grid B',510,246)]:
      check(name,'clicks',lambda x=x,y=y:click(x,y))
-    category(0);check('ImageButton','clicks',lambda:click(808,620))
-    category(8);check('ColorButton','clicks',lambda:click(325,550))
-    category(5);click(1000,192);check('ActionModal open','dialog',lambda:None,4);capture('ActionModal');click(705,447)
-    results.append(dict(widget='ActionModal close',passed=state()['dialog']==0))
+    category(0);check('Image Button','clicks',lambda:click(808,620))
+    category(8);check('Color swatch','clicks',lambda:click(325,550))
+    category(5);click(1000,192);check('Modal open','dialog',lambda:None,4);capture('Modal');click(705,447)
+    results.append(dict(widget='Modal close',passed=state()['dialog']==0))
 
 def run_dialogs():
     category(4)
@@ -155,7 +155,7 @@ def run_dialogs():
     click(277,246);capture('menubar-open');click(300,278)
     click(790,240,3);capture('context-open');xd('key','Escape')
     category(5)
-    for name,x,value in [('MessageDialog',490,1),('ConfirmDialog',735,2),('PromptDialog',900,3)]:
+    for name,x,value in [('Modal message',490,1),('Modal confirm',735,2),('Prompt modal',900,3)]:
      check(name,'dialog',lambda x=x:click(x,139),value);capture(name);key_chord('Escape');time.sleep(.2)
      if state()['dialog']!=0:
       click(710,447)
@@ -167,29 +167,29 @@ def run_dialogs():
 def run_numbers():
     category(7)
     for name,key,act in [
-     ('DragFloat','number',lambda:drag(295,187,320,187)),('DragInt','integer',lambda:drag(710,187,716,187)),
-     ('DragFloatRange2','rmin',lambda:drag(300,299,312,299)),('DragIntRange2','imin',lambda:drag(710,299,714,299)),
-     ('SliderFloat','number',lambda:click(340,410)),('SliderInt','integer',lambda:click(680,410)),
-     ('SliderAngle','angle',lambda:click(520,522)),('InputFloat step','number',lambda:click(766,522)),
-     ('InputInt step','integer',lambda:click(356,635)),('InputDouble step','double',lambda:click(820,635))]:
+     ('Drag float','number',lambda:drag(295,187,320,187)),('Drag int','integer',lambda:drag(710,187,716,187)),
+     ('Drag range float','rmin',lambda:drag(300,299,312,299)),('Drag range int','imin',lambda:drag(710,299,714,299)),
+     ('Slider float','number',lambda:click(340,410)),('Slider int','integer',lambda:click(680,410)),
+     ('Slider angle','angle',lambda:click(520,522)),('Input float step','number',lambda:click(766,522)),
+     ('Input int step','integer',lambda:click(356,635)),('Input double step','double',lambda:click(820,635))]:
      check(name,key,act)
     # Scroll exposes the vertical sliders, with their positions shifted by max_scroll.
     xd('mousemove','--window',window,1100,620);xd('click','--repeat',18,'--delay',25,5);off=state()['scroll']
-    check('VSliderFloat','number',lambda:click(275,82+666-off+25))
-    check('VSliderInt','integer',lambda:click(350,82+666-off+25))
+    check('VSlider float','number',lambda:click(275,82+666-off+25))
+    check('VSlider int','integer',lambda:click(350,82+666-off+25))
     category(8)
-    check('ColorEdit3','red',lambda:click(345,190))
-    check('ColorEdit4 alpha','alpha',lambda:click(949,190))
-    check('ColorPicker3','red',lambda:click(290,310))
-    check('ColorPicker4 alpha','alpha',lambda:click(720,425))
+    check('ColorPicker RGB edit','red',lambda:click(345,190))
+    check('ColorPicker RGBA edit alpha','alpha',lambda:click(949,190))
+    check('ColorPicker RGB','red',lambda:click(290,310))
+    check('ColorPicker RGBA alpha','alpha',lambda:click(720,425))
     capture('colors-edited')
 
 def run_extended():
     category(4)
     check('New tab','tabs',lambda:click(720,410),3)
     check('Close tab','tabs',lambda:click(484,352),2)
-    check('SubtabBar','subtab',lambda:click(420,490),1)
-    check('PaneTabs','pane',lambda:click(880,490),1)
+    check('Level 2 TabBar','subtab',lambda:click(420,490),1)
+    check('Pane TabBar','pane',lambda:click(880,490),1)
     click(277,246);click(300,278);check('Menu command','command',lambda:None,1)
     category(2);check('PanedView drag','split',lambda:drag(950,150,925,150),65)
     category(6)
@@ -241,14 +241,14 @@ def run_vectors():
     for component, fk, ik in [(0,"number","integer"),(1,"n1","i1"),(2,"n2","i2")]:
         left = 295 + component * 350 / 3
         right = 710 + component * 350 / 3
-        check(f"DragFloat component {component}",fk,lambda:drag(left,187,left+15,187))
-        check(f"DragInt component {component}",ik,lambda:drag(right,187,right-2,187))
-        check(f"SliderFloat component {component}",fk,lambda:click(left-20,410))
-        check(f"SliderInt component {component}",ik,lambda:click(right-20,410))
+        check(f"Drag float component {component}",fk,lambda:drag(left,187,left+15,187))
+        check(f"Drag int component {component}",ik,lambda:drag(right,187,right-2,187))
+        check(f"Slider float component {component}",fk,lambda:click(left-20,410))
+        check(f"Slider int component {component}",ik,lambda:click(right-20,410))
     for component, key in [(0,"number"),(1,"n1"),(2,"n2")]:
         click(680+component*350/3,522)
         key_chord("ctrl+a"); xd("type","--clearmodifiers","--delay",60,"0.625"); key_chord("Return")
-        check(f"InputFloat keyboard component {component}",key,lambda:None,.625)
+        check(f"Input float keyboard component {component}",key,lambda:None,.625)
     category(3)
     click(300,435)
     xd("keydown","ctrl"); click(300,495); xd("keyup","ctrl")
@@ -257,7 +257,7 @@ def run_vectors():
     xd("keydown","shift"); click(300,495); xd("keyup","shift")
     check("Shift range selection","multi",lambda:None,3)
     category(1)
-    check("Href dispatches expected URL","href",lambda:click(500,137),1)
+    check("Link dispatches expected URL","href",lambda:click(500,137),1)
 
 def run_tab_limits():
     category(4)
@@ -297,11 +297,11 @@ def run_settings():
     click(800,300)
     capture("app-theme-settings")
     click(800,243); click(800,300)
-    check("ThemeSettings light mode","mode",lambda:None,1)
+    check("Theme controls light mode","mode",lambda:None,1)
     capture("settings-light")
     click(800,393); capture("style-menu")
     click(800,450)
-    check("ThemeSettings style","style",lambda:None,1)
+    check("Theme controls style","style",lambda:None,1)
 
 def run_sizes():
     for width,height in [(800,600),(1120,640),(1600,1000)]:

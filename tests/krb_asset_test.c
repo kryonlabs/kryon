@@ -1,5 +1,5 @@
 /* KRB v2 asset-section test: a hand-assembled cartridge carrying a 2x2
- * RGBA8 asset blob, drawn by a PICTURE node through the engine's
+ * RGBA8 asset blob, drawn by a IMAGE node through the engine's
  * texture_rgba path — no host filesystem involved. */
 
 #include "krb.h"
@@ -129,8 +129,8 @@ main(void)
     wr16(adir + 20, 2); /* h */
     wr16(adir + 22, 0);
 
-    /* node: PICTURE at (4,4) 8x8, text_off = "tex" */
-    nodes[6] = KRB_NODE_PICTURE;
+    /* node: IMAGE at (4,4) 8x8, text_off = "tex" */
+    nodes[6] = KRB_NODE_IMAGE;
     wr16(nodes + 10, 4);
     wr16(nodes + 12, 4);
     wr16(nodes + 14, 8);

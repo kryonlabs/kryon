@@ -41,6 +41,18 @@ CheckboxPaint :: struct {
     show_focus: bool
 }
 
+CheckboxLayout :: struct {
+    bounds: Rectangle
+    slot_bounds: Rectangle
+    label_x: float
+}
+
+CheckboxFlagResult :: struct {
+    flags: u32
+    checked: bool
+    changed: bool
+}
+
 CheckboxSlotSize :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(22.0 * scale)
@@ -49,6 +61,38 @@ CheckboxSlotSize :: (scale: float) -> i32 #export {
 CheckboxBoxSize :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(20.0 * scale)
+}
+
+CheckboxLayoutFor :: (x: float, y: float, label_width: float,
+    scale: float) -> CheckboxLayout #export {
+    layout: CheckboxLayout
+    slot_size: float = (float)CheckboxSlotSize(scale)
+    gap: float = 10.0 * (scale <= 0.0 ? 1.0 : scale)
+    layout.bounds.x = x
+    layout.bounds.y = y
+    layout.bounds.width = slot_size + gap + label_width
+    layout.bounds.height = slot_size
+    layout.slot_bounds = layout.bounds
+    layout.slot_bounds.width = slot_size
+    layout.label_x = x + slot_size + gap
+    return layout
+}
+
+CheckboxFlagApply :: (flags: u32, flag_value: u32, pressed: bool) -> CheckboxFlagResult #export {
+    result: CheckboxFlagResult
+    result.flags = flags
+    result.checked = (flags & flag_value) == flag_value
+    result.changed = false
+    if pressed {
+        if result.checked {
+            result.flags = flags & ~flag_value
+        } else {
+            result.flags = flags | flag_value
+        }
+        result.checked = !result.checked
+        result.changed = true
+    }
+    return result
 }
 
 CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {

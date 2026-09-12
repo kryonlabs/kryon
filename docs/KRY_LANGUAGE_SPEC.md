@@ -217,7 +217,7 @@ Button save: {
 ```
 
 Button may contain non-interactive visual/layout nodes such as `Text`, `Icon`,
-`Picture`, `Row`, `Column`, and `Spacer`. Nested interactive controls are not a
+`Image`, `Row`, `Column`, and `Spacer`. Nested interactive controls are not a
 valid Button content tree.
 
 ## Tooling

@@ -1,0 +1,93 @@
+#module "separator"
+#import "drawing_props"
+
+SeparatorLine :: struct {
+    line: Rectangle
+    color: u32
+}
+
+SeparatorLabelPaint :: struct {
+    text: Rectangle
+    line: Rectangle
+    text_color: u32
+    line_color: u32
+    show_text: bool
+    show_line: bool
+}
+
+BulletPaint :: struct {
+    bounds: Rectangle
+    center: Vector2
+    radius: float
+    color: u32
+}
+
+SeparatorLineFor :: (bounds: Rectangle, vertical: bool, color: u32) -> SeparatorLine #export {
+    paint: SeparatorLine
+    paint.color = color
+    if vertical {
+        paint.line.x = bounds.x + bounds.width * 0.5
+        paint.line.y = bounds.y
+        paint.line.width = 0.0
+        paint.line.height = bounds.height
+    } else {
+        paint.line.x = bounds.x
+        paint.line.y = bounds.y + bounds.height * 0.5
+        paint.line.width = bounds.width
+        paint.line.height = 0.0
+    }
+    return paint
+}
+
+SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
+    has_label: bool, font: i32, scale: float, text_color: u32,
+    line_color: u32) -> SeparatorLabelPaint #export {
+    paint: SeparatorLabelPaint
+    if scale <= 0.0 { scale = 1.0 }
+    if font <= 0 { font = 14 }
+
+    gap: float = 12.0 * scale
+    line_x: float = bounds.x
+    end_x: float = bounds.x + bounds.width
+
+    paint.text.x = bounds.x
+    paint.text.y = bounds.y
+    paint.text.width = label_width
+    paint.text.height = bounds.height
+    paint.text_color = text_color
+    paint.line_color = line_color
+    paint.show_text = has_label
+
+    if has_label {
+        line_x = bounds.x + label_width + gap
+    }
+
+    paint.line.x = line_x
+    paint.line.y = bounds.y + bounds.height * 0.5
+    paint.line.width = end_x - line_x
+    paint.line.height = 0.0
+    paint.show_line = line_x < end_x
+    if paint.line.width < 0.0 {
+        paint.line.width = 0.0
+        paint.show_line = false
+    }
+    return paint
+}
+
+BulletPaintFor :: (bounds: Rectangle, color: u32) -> BulletPaint #export {
+    paint: BulletPaint
+    size: float = bounds.width
+    if bounds.height < size {
+        size = bounds.height
+    }
+    size = size * 0.5
+    paint.bounds.x = bounds.x + (bounds.width - size) * 0.5
+    paint.bounds.y = bounds.y + (bounds.height - size) * 0.5
+    paint.bounds.width = size
+    paint.bounds.height = size
+    paint.center.x = bounds.x + bounds.width * 0.5
+    paint.center.y = bounds.y + bounds.height * 0.5
+    paint.radius = size * 0.5
+    paint.color = color
+    return paint
+}

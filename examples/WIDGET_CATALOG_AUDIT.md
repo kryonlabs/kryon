@@ -24,16 +24,16 @@ per widget and are not a count of distinct widget families.
 
 | Category | Preview and verification |
 | --- | --- |
-| Display & media | Text, wrapped text, labels, values, geometry, icons and four image variants. Select-and-copy text works across frames; ImageButton reports clicks. |
-| Actions & input | Buttons, arrow and invisible buttons, checkbox/flags, toggle, radio, selectable, slider, spinbox, dropdown, combobox, progress, color picker, TextField and TextArea. Disabled buttons ignore clicks. Tooltip hover is visible. The audit intercepts external link dispatch and verifies its URL. |
-| Layout & containers | Column, Row, Stack, Grid, Notebook, PanedView and Collapsible. Both row and grid buttons respond at their displayed positions. The divider follows a drag outside its original handle. |
-| Collections & editors | ListBox, TreeView, TableView, SourceView, MultiSelectList and drag/drop. Ctrl adds selections; Shift selects a range. Drag/drop copies the actual payload. CascadingTreeView expands folders and selects children. TreeView itself displays the caller-supplied flat tree; use CascadingTreeView for interactive expansion. |
-| Navigation | TopNav, Toolbar, menubar, context menu, TabBar, ClosableTabBar, SubtabBar, PaneTabs and TabItemButton. Menu actions update the displayed command. New tab adds a real tab; closing removes it and updates selection. An empty tab bar can be reopened. Add is disabled at eight tabs. Tabs stay within their bounds. |
-| Feedback & dialogs | Toast, theme switcher/picker, MessageDialog, ConfirmDialog, PromptDialog, ActionModal, PickerDialog, ModalFrame and TextPopover. Prompt/popover submissions update text; picker results are shown. Theme choices apply to the actual rendered theme. Modal backdrops cover the underlying catalog. |
+| Display & media | Text, wrapped text, labels, values, geometry, icons and four image variants. Select-and-copy text works across frames; Button image content reports clicks. |
+| Actions & input | Buttons, arrow and invisible buttons, checkbox/flags, toggle, radio, selectable, slider, spinbox, dropdown, progress, color picker, TextField and TextArea. Disabled buttons ignore clicks. Tooltip hover is visible. The audit intercepts external link dispatch and verifies its URL. |
+| Layout & containers | Column, Row, Stack, Grid, TabBar, PanedView and Collapsible. Both row and grid buttons respond at their displayed positions. The divider follows a drag outside its original handle. |
+| Collections & editors | ListBox, TreeView, TableView, MultiSelectList and drag/drop. Ctrl adds selections; Shift selects a range. Drag/drop copies the actual payload. TreeView displays the caller-supplied tree. |
+| Navigation | Toolbar, menubar, context menu, TabBar close props, level-2 TabBar, pane-style TabBar and Button-based add-tab actions. Menu actions update the displayed command. New tab adds a real tab; closing removes it and updates selection. An empty tab bar can be reopened. Add is disabled at eight tabs. Tabs stay within their bounds. |
+| Feedback & dialogs | Toast, theme settings, Modal actions and prompt Modal. Prompt submissions update text; choice modal results are shown. Theme choices apply to the actual rendered theme. Modal backdrops cover the underlying catalog. |
 | Canvas | Clipped grid and circle, wheel zoom, pointer pan, displayed transform values and Reset. |
 | Numbers & plots | Float/int drags and sliders, float/int ranges, angle slider, float/int/double inputs, vertical sliders, line plot and histogram. The audit exercises all three vector components and keyboard entry, as well as scalar changes. |
 | Colors | RGB/RGBA editors and pickers, alpha adjustment, and a clickable color button. |
-| Pages & settings | Page, Section, Heading, ParagraphText and ThemeSettings. A full-window preview demonstrates TitleBar and NavigationBar with three working routes and a return button. Settings menus apply mode and style changes. |
+| Pages & settings | Page, Section, Heading, ParagraphText and composed theme buttons. A full-window preview demonstrates TitleBar and NavigationBar with three working routes and a return button. Settings controls apply mode and style changes. |
 
 ## Corrections made
 

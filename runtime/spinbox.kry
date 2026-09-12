@@ -1,0 +1,78 @@
+#module "spinbox"
+#import "drawing_props"
+
+SpinboxLayout :: struct {
+    left: Rectangle
+    text: Rectangle
+    right: Rectangle
+    button_width: i32
+}
+
+SpinboxStepResult :: struct {
+    value: i32
+    changed: bool
+}
+
+SpinboxEffectiveStep :: (step: i32) -> i32 #export {
+    if step <= 0 {
+        return 1
+    }
+    return step
+}
+
+SpinboxClampValue :: (value: i32, min_value: i32, max_value: i32) -> i32 #export {
+    if value < min_value {
+        return min_value
+    }
+    if value > max_value {
+        return max_value
+    }
+    return value
+}
+
+SpinboxLayoutFor :: (bounds: Rectangle, requested_button_width: i32) -> SpinboxLayout #export {
+    layout: SpinboxLayout
+    layout.button_width = requested_button_width
+    if layout.button_width < 0 {
+        layout.button_width = 0
+    }
+    max_button: i32 = (i32)(bounds.width / 2.0)
+    if layout.button_width > max_button {
+        layout.button_width = max_button
+    }
+    layout.left = bounds
+    layout.left.width = (float)layout.button_width
+    layout.right = bounds
+    layout.right.x = bounds.x + bounds.width - (float)layout.button_width
+    layout.right.width = (float)layout.button_width
+    layout.text = bounds
+    layout.text.x = bounds.x + (float)layout.button_width
+    layout.text.width = bounds.width - (float)(layout.button_width * 2)
+    if layout.text.width < 0.0 {
+        layout.text.width = 0.0
+    }
+    return layout
+}
+
+SpinboxStepValue :: (value: i32, min_value: i32, max_value: i32,
+    step: i32, direction: i32, wrap: bool) -> SpinboxStepResult #export {
+    result: SpinboxStepResult
+    result.value = value
+    step = SpinboxEffectiveStep(step)
+    if direction < 0 {
+        if value > min_value {
+            result.value = value - step
+        } else if wrap && value <= min_value {
+            result.value = max_value
+        }
+    } else if direction > 0 {
+        if value < max_value {
+            result.value = value + step
+        } else if wrap && value >= max_value {
+            result.value = min_value
+        }
+    }
+    result.value = SpinboxClampValue(result.value, min_value, max_value)
+    result.changed = result.value != value
+    return result
+}

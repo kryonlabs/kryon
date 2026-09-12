@@ -1,0 +1,92 @@
+#module "menu"
+#import "drawing_props"
+
+MenuMetrics :: struct {
+    row_height: i32
+    panel_min_width: i32
+    panel_padding: i32
+    panel_margin: i32
+    accelerator_gap: i32
+    bar_item_min_width: i32
+    bar_item_padding: i32
+    bar_item_gap: i32
+    bar_item_y_padding: i32
+}
+
+MenuMetricsFor :: (scale: float) -> MenuMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: MenuMetrics
+    metrics.row_height = (i32)(30.0 * scale)
+    metrics.panel_min_width = (i32)(180.0 * scale)
+    metrics.panel_padding = (i32)(12.0 * scale)
+    metrics.panel_margin = (i32)(4.0 * scale)
+    metrics.accelerator_gap = (i32)(88.0 * scale)
+    metrics.bar_item_min_width = 0
+    metrics.bar_item_padding = (i32)(24.0 * scale)
+    metrics.bar_item_gap = (i32)(2.0 * scale)
+    metrics.bar_item_y_padding = (i32)(3.0 * scale)
+    return metrics
+}
+
+MenuBarItemWidth :: (label_width: i32, metrics: MenuMetrics) -> i32 #export {
+    width: i32 = label_width + metrics.bar_item_padding
+    if width < metrics.bar_item_min_width {
+        width = metrics.bar_item_min_width
+    }
+    return width
+}
+
+MenuPanelWidthStep :: (current_width: i32, label_width: i32,
+    accelerator_width: i32, has_accelerator: bool,
+    metrics: MenuMetrics) -> i32 #export {
+    width: i32 = current_width
+    if width <= 0 { width = metrics.panel_min_width }
+    accel: i32 = 0
+    if has_accelerator {
+        accel = accelerator_width + metrics.accelerator_gap
+    }
+    candidate: i32 = label_width + accel + metrics.panel_padding * 2
+    if candidate > width { width = candidate }
+    return width
+}
+
+MenuPanelBounds :: (x: i32, y: i32, width: i32, item_count: i32,
+    metrics: MenuMetrics) -> Rectangle #export {
+    bounds: Rectangle
+    if item_count < 0 { item_count = 0 }
+    if width < 0 { width = 0 }
+    bounds.x = (float)x
+    bounds.y = (float)y
+    bounds.width = (float)width
+    bounds.height = (float)(metrics.row_height * item_count +
+        metrics.panel_margin * 2)
+    return bounds
+}
+
+MenuRowBounds :: (panel: Rectangle, index: i32,
+    metrics: MenuMetrics) -> Rectangle #export {
+    row: Rectangle
+    if index < 0 { index = 0 }
+    row.x = panel.x + (float)metrics.panel_margin
+    row.y = panel.y + (float)(metrics.panel_margin +
+        index * metrics.row_height)
+    row.width = panel.width - (float)(metrics.panel_margin * 2)
+    row.height = (float)metrics.row_height
+    if row.width < 0.0 { row.width = 0.0 }
+    return row
+}
+
+MenuSubmenuX :: (row: Rectangle) -> i32 #export {
+    return (i32)(row.x + row.width)
+}
+
+MenuBarItemBounds :: (x: i32, bar: Rectangle, width: i32,
+    metrics: MenuMetrics) -> Rectangle #export {
+    item: Rectangle
+    item.x = (float)x
+    item.y = bar.y + (float)metrics.bar_item_y_padding
+    item.width = (float)width
+    item.height = bar.height - (float)(metrics.bar_item_y_padding * 2)
+    if item.height < 0.0 { item.height = 0.0 }
+    return item
+}

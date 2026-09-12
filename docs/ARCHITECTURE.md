@@ -175,10 +175,9 @@ the annotation does not force backend-specific arithmetic or record handling.
 Strict tests execute narrow-integer overflow inside a declared widget through
 both block and ordinary-call syntax in C, C++, Go, and JavaScript. Bodies with
 unsupported host operations still require the existing backend path.
-The built-in path also accepts `SplitButton` and `MenuButton` blocks. The
-Lightfield example uses those blocks with explicit IDs and shared Button props.
-Its display Buttons also use named blocks. Childless Button blocks lower to
-the ordinary `Button` call; only blocks with child content open a
+The built-in path accepts named `Button` blocks. The Lightfield example uses
+those blocks with explicit IDs and shared Button props. Childless Button
+blocks lower to the ordinary `Button` call; only blocks with child content open a
 `BeginButton`/`End` scope. Explicit IDs remain necessary for stable identity;
 the block name does not yet supply instance identity.
 JavaScript diagnostics record their evaluated nested props and geometry; menu
@@ -517,7 +516,7 @@ submit retained paint, while others register generic nodes and draw immediately.
 Do not treat the presence of a tree node as proof that a widget participates in
 deferred painting.
 
-`Button`, `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, and `SliderAngle` resolve
+`Button` and `Slider(SliderProps)` resolve
 their declaration bounds before handling input and submit typed paint data when
 building a tree. The slider painters do not process input. Labels and formats
 are copied into node-owned storage; value arrays remain caller-owned. Without
@@ -527,11 +526,11 @@ Angle sliders retain the caller's radians pointer and convert to degrees only
 within input or paint execution; no pointer to a temporary conversion survives
 declaration.
 
-`DragFloat` and `DragInt` follow the same split, including owned label/format
-storage and resolved bounds. `DragFloatRange2` and `DragIntRange2` compose two
-ordinary typed drag nodes inside a Row, plus retained Text for the label. Their
-children preserve the existing input IDs and borrow the caller's endpoint
-pointers; no range-specific renderer or prefixed drag draw entry point remains.
+`Drag(DragProps)` follows the same split, including owned label/format storage
+and resolved bounds. Range mode composes two ordinary typed drag nodes inside a
+Row, plus retained Text for the label. Children preserve the existing input IDs
+and borrow the caller's endpoint pointers; no range-specific renderer or
+prefixed drag draw entry point remains.
 
 `Text(TextProps)` uses one typed retained text node with owned text, captured
 font selection, and resolved bounds. Its painter measures intrinsic lines or
@@ -584,7 +583,7 @@ clip and disabled state. Existing dropdowns use this collector and the private
 `popup_input.go` registry for scoped click ownership. That registry tracks
 parent/child and sibling order, preserves capture before owner declaration in
 the following frame, and removes descendants on closure or owner removal.
-Native Go scroll scopes, lists, trees, source views and tables share a pointer
+Native Go scroll scopes, lists, trees and tables share a pointer
 reachability check for wheel input, respecting popup ownership, disabled state
 and parent clips. Generated C/Go tests verify that a background scroll scope
 declared before an open combo cannot steal its wheel input.

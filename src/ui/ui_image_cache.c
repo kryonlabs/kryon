@@ -4,23 +4,23 @@
  */
 
 #include "ui_internal.h"
-#include "ui_picture.h"
-#include "ui_picture_internal.h"
+#include "ui_image.h"
+#include "ui_image_internal.h"
 #include "embedded_assets.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-typedef struct PictureCacheEntry {
+typedef struct ImageCacheEntry {
     char path[512];
     Texture2D texture;
     int loaded;
-} PictureCacheEntry;
+} ImageCacheEntry;
 
-static PictureCacheEntry picture_cache[KRY_PICTURE_CACHE_MAX];
+static ImageCacheEntry image_cache[KRY_IMAGE_CACHE_MAX];
 
 static Rectangle
-picture_world_rect_to_screen(Rectangle rect)
+image_world_rect_to_screen(Rectangle rect)
 {
     return (Rectangle){
         g_ui_camera.offset.x + rect.x * g_ui_camera.zoom,
@@ -31,16 +31,16 @@ picture_world_rect_to_screen(Rectangle rect)
 }
 
 static void
-picture_begin_bounds_clip(Rectangle bounds)
+image_begin_bounds_clip(Rectangle bounds)
 {
-    Rectangle screen = picture_world_rect_to_screen(bounds);
+    Rectangle screen = image_world_rect_to_screen(bounds);
 
     BeginUIClip((int)screen.x, (int)screen.y,
                 (int)screen.width, (int)screen.height);
 }
 
 static const char *
-picture_file_ext(const char *path)
+image_file_ext(const char *path)
 {
     const char *dot;
     if(path == NULL)
@@ -50,7 +50,7 @@ picture_file_ext(const char *path)
 }
 
 Texture2D
-LoadPictureTexture(const char *path)
+LoadImageTexture(const char *path)
 {
     const EmbeddedAsset *asset;
     Image image;
@@ -60,11 +60,11 @@ LoadPictureTexture(const char *path)
 
     if(path == NULL || path[0] == '\0')
         return texture;
-    for(i = 0; i < KRY_PICTURE_CACHE_MAX; i++) {
-        if(picture_cache[i].loaded &&
-           strcmp(picture_cache[i].path, path) == 0)
-            return picture_cache[i].texture;
-        if(!picture_cache[i].loaded && free_slot < 0)
+    for(i = 0; i < KRY_IMAGE_CACHE_MAX; i++) {
+        if(image_cache[i].loaded &&
+           strcmp(image_cache[i].path, path) == 0)
+            return image_cache[i].texture;
+        if(!image_cache[i].loaded && free_slot < 0)
             free_slot = i;
     }
     if(FileExists(path))
@@ -73,7 +73,7 @@ LoadPictureTexture(const char *path)
         asset = GetEmbeddedAsset(path);
         if(asset == NULL)
             return texture;
-        image = LoadImageFromMemory(picture_file_ext(path), asset->data,
+        image = LoadImageFromMemory(image_file_ext(path), asset->data,
                                     (int)asset->size);
         if(image.data == NULL)
             return texture;
@@ -81,44 +81,44 @@ LoadPictureTexture(const char *path)
         UnloadImage(image);
     }
     if(texture.id != 0 && free_slot >= 0) {
-        snprintf(picture_cache[free_slot].path,
-                 sizeof(picture_cache[free_slot].path), "%s", path);
-        picture_cache[free_slot].texture = texture;
-        picture_cache[free_slot].loaded = 1;
+        snprintf(image_cache[free_slot].path,
+                 sizeof(image_cache[free_slot].path), "%s", path);
+        image_cache[free_slot].texture = texture;
+        image_cache[free_slot].loaded = 1;
     }
     return texture;
 }
 
 Rectangle
-PictureFitRect(PictureProps picture, Texture2D texture)
+ImageFitRect(ImageProps image, Texture2D texture)
 {
-    Rectangle dst = picture.bounds;
-    float src_w = picture.source.width != 0.0f ? fabsf(picture.source.width)
+    Rectangle dst = image.bounds;
+    float src_w = image.source.width != 0.0f ? fabsf(image.source.width)
                                                : (float)texture.width;
-    float src_h = picture.source.height != 0.0f ? fabsf(picture.source.height)
+    float src_h = image.source.height != 0.0f ? fabsf(image.source.height)
                                                 : (float)texture.height;
     float sx;
     float sy;
     float scale;
 
-    if(picture.fit == PICTURE_FIT_CONTAIN || picture.fit == PICTURE_FIT_COVER) {
+    if(image.fit == IMAGE_FIT_CONTAIN || image.fit == IMAGE_FIT_COVER) {
         if(src_w == 0.0f || src_h == 0.0f)
             return dst;
         sx = dst.width / src_w;
         sy = dst.height / src_h;
-        scale = picture.fit == PICTURE_FIT_COVER
+        scale = image.fit == IMAGE_FIT_COVER
                     ? (sx > sy ? sx : sy)
                     : (sx < sy ? sx : sy);
         dst.width = src_w * scale;
         dst.height = src_h * scale;
-        dst.x = picture.bounds.x + (picture.bounds.width - dst.width) * 0.5f;
-        dst.y = picture.bounds.y + (picture.bounds.height - dst.height) * 0.5f;
+        dst.x = image.bounds.x + (image.bounds.width - dst.width) * 0.5f;
+        dst.y = image.bounds.y + (image.bounds.height - dst.height) * 0.5f;
     }
     return dst;
 }
 
 static float
-picture_radius_from_roundness(Rectangle bounds, float roundness)
+image_radius_from_roundness(Rectangle bounds, float roundness)
 {
     float min_side;
 
@@ -131,20 +131,20 @@ picture_radius_from_roundness(Rectangle bounds, float roundness)
 }
 
 static float
-picture_style_radius(Rectangle bounds, PictureStyle style)
+image_style_radius(Rectangle bounds, ImageStyle style)
 {
     float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
     float radius = (float)style.radius_px;
 
     if(radius <= 0.0f && style.roundness > 0.0f)
-        radius = picture_radius_from_roundness(bounds, style.roundness);
+        radius = image_radius_from_roundness(bounds, style.roundness);
     if(min_side > 0.0f && radius > min_side * 0.5f)
         radius = min_side * 0.5f;
     return radius > 0.0f ? radius : 0.0f;
 }
 
 static float
-picture_roundness_from_radius(Rectangle bounds, float radius)
+image_roundness_from_radius(Rectangle bounds, float radius)
 {
     float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
 
@@ -156,7 +156,7 @@ picture_roundness_from_radius(Rectangle bounds, float radius)
 }
 
 static float
-picture_row_inset(Rectangle bounds, float radius, float sample_y)
+image_row_inset(Rectangle bounds, float radius, float sample_y)
 {
     float top_center;
     float bottom_center;
@@ -182,7 +182,7 @@ picture_row_inset(Rectangle bounds, float radius, float sample_y)
 }
 
 static Rectangle
-picture_default_source(Texture2D texture, Rectangle source)
+image_default_source(Texture2D texture, Rectangle source)
 {
     if(source.width == 0.0f || source.height == 0.0f)
         return (Rectangle){0.0f, 0.0f, (float)texture.width,
@@ -191,7 +191,7 @@ picture_default_source(Texture2D texture, Rectangle source)
 }
 
 static Rectangle
-picture_source_for_strip(Rectangle source_base, Rectangle dst, Rectangle strip)
+image_source_for_strip(Rectangle source_base, Rectangle dst, Rectangle strip)
 {
     Rectangle source = {0.0f, 0.0f, 0.0f, 0.0f};
 
@@ -205,20 +205,20 @@ picture_source_for_strip(Rectangle source_base, Rectangle dst, Rectangle strip)
 }
 
 static void
-picture_draw_texture_strip(Texture2D texture, Rectangle source_base,
+image_draw_texture_strip(Texture2D texture, Rectangle source_base,
                            Rectangle dst, Rectangle strip, Color tint)
 {
     Rectangle source;
 
     if(strip.width <= 0.0f || strip.height <= 0.0f)
         return;
-    source = picture_source_for_strip(source_base, dst, strip);
+    source = image_source_for_strip(source_base, dst, strip);
     DrawTexturePro(texture, source, strip, (Vector2){0.0f, 0.0f}, 0.0f,
                    tint);
 }
 
 static void
-picture_draw_rounded_texture(Texture2D texture, Rectangle source,
+image_draw_rounded_texture(Texture2D texture, Rectangle source,
                              Rectangle dst, Rectangle bounds, float radius,
                              Color tint)
 {
@@ -226,7 +226,7 @@ picture_draw_rounded_texture(Texture2D texture, Rectangle source,
     int y_end;
 
     if(radius <= 0.0f) {
-        picture_draw_texture_strip(texture, source, dst, bounds, tint);
+        image_draw_texture_strip(texture, source, dst, bounds, tint);
         return;
     }
 
@@ -239,18 +239,18 @@ picture_draw_rounded_texture(Texture2D texture, Rectangle source,
         float right;
         Rectangle strip;
 
-        inset = ceilf(picture_row_inset(bounds, radius, sample_y));
+        inset = ceilf(image_row_inset(bounds, radius, sample_y));
         left = ceilf(bounds.x + inset);
         right = floorf(bounds.x + bounds.width - inset);
         if(right <= left)
             continue;
         strip = (Rectangle){left, (float)y, right - left, 1.0f};
-        picture_draw_texture_strip(texture, source, dst, strip, tint);
+        image_draw_texture_strip(texture, source, dst, strip, tint);
     }
 }
 
 static void
-picture_draw_rounded_solid(Rectangle bounds, float radius, Color color)
+image_draw_rounded_solid(Rectangle bounds, float radius, Color color)
 {
     int y_start;
     int y_end;
@@ -277,7 +277,7 @@ picture_draw_rounded_solid(Rectangle bounds, float radius, Color color)
 
         if(strip_h <= 0.0f)
             continue;
-        inset = picture_row_inset(bounds, radius, sample_y);
+        inset = image_row_inset(bounds, radius, sample_y);
         DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
                                      bounds.width - inset * 2.0f, strip_h},
                          color);
@@ -285,7 +285,7 @@ picture_draw_rounded_solid(Rectangle bounds, float radius, Color color)
 }
 
 static Color
-picture_lerp_color(Color top, Color bottom, float t)
+image_lerp_color(Color top, Color bottom, float t)
 {
     if(t < 0.0f)
         t = 0.0f;
@@ -300,7 +300,7 @@ picture_lerp_color(Color top, Color bottom, float t)
 }
 
 static void
-picture_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
+image_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
                               Color bottom)
 {
     int y_start;
@@ -332,10 +332,10 @@ picture_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
 
         if(strip_h <= 0.0f)
             continue;
-        inset = picture_row_inset(bounds, radius, sample_y);
+        inset = image_row_inset(bounds, radius, sample_y);
         t = bounds.height > 0.0f ? (sample_y - bounds.y) / bounds.height
                                  : 0.0f;
-        color = picture_lerp_color(top, bottom, t);
+        color = image_lerp_color(top, bottom, t);
         DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
                                      bounds.width - inset * 2.0f, strip_h},
                          color);
@@ -343,7 +343,7 @@ picture_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
 }
 
 static void
-picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
+image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
                     float *roundness, int *segments, int *outline_px)
 {
     ThemeStyle theme_style = GetEffectiveThemeStyle();
@@ -370,7 +370,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
 
         if(*radius <= 0.0f)
             *radius = (float)Scale((int)tokens.panel_radius);
-        *roundness = picture_roundness_from_radius(bounds, *radius);
+        *roundness = image_roundness_from_radius(bounds, *radius);
         *segments = *segments < 12 ? 12 : *segments;
         style->background = scheme.surface_container;
         style->outline = scheme.outline;
@@ -388,7 +388,7 @@ picture_apply_style(Rectangle bounds, PictureStyle *style, float *radius,
 }
 
 void
-PictureTexture(Texture2D texture, PictureProps picture)
+ImageTexture(Texture2D texture, ImageProps image)
 {
     Rectangle source;
     Rectangle dst;
@@ -399,65 +399,65 @@ PictureTexture(Texture2D texture, PictureProps picture)
     ThemeStyle theme_style;
 
     if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
-       picture.bounds.width <= 0.0f || picture.bounds.height <= 0.0f)
+       image.bounds.width <= 0.0f || image.bounds.height <= 0.0f)
         return;
 
-    source = picture_default_source(texture, picture.source);
-    dst = PictureFitRect(picture, texture);
-    picture.tint = picture.tint.a == 0 ? WHITE : picture.tint;
+    source = image_default_source(texture, image.source);
+    dst = ImageFitRect(image, texture);
+    image.tint = image.tint.a == 0 ? WHITE : image.tint;
 
-    if(!picture.style.enabled) {
-        picture_begin_bounds_clip(picture.bounds);
-        DrawTexturePro(texture, source, dst, picture.origin, picture.rotation,
-                       picture.tint);
+    if(!image.style.enabled) {
+        image_begin_bounds_clip(image.bounds);
+        DrawTexturePro(texture, source, dst, image.origin, image.rotation,
+                       image.tint);
         EndUIClip();
         return;
     }
 
-    radius = picture_style_radius(picture.bounds, picture.style);
-    segments = picture.style.segments > 0 ? picture.style.segments : 10;
-    outline_px = picture.style.outline_px > 0 ? picture.style.outline_px : 1;
-    roundness = picture.style.roundness > 0.0f ? picture.style.roundness : 0.0f;
+    radius = image_style_radius(image.bounds, image.style);
+    segments = image.style.segments > 0 ? image.style.segments : 10;
+    outline_px = image.style.outline_px > 0 ? image.style.outline_px : 1;
+    roundness = image.style.roundness > 0.0f ? image.style.roundness : 0.0f;
     theme_style = GetEffectiveThemeStyle();
-    picture_apply_style(picture.bounds, &picture.style, &radius, &roundness, &segments,
+    image_apply_style(image.bounds, &image.style, &radius, &roundness, &segments,
                         &outline_px);
 
     if(theme_style == THEME_STYLE_DEFAULT)
-        ui_default_elevation(picture.bounds, roundness,
+        ui_default_elevation(image.bounds, roundness,
                               GetThemeMetrics().shadow_offset_y);
 
-    if(picture.style.background.a > 0) {
+    if(image.style.background.a > 0) {
         if(roundness > 0.0f)
-            DrawRectangleRounded(picture.bounds, roundness, segments,
-                                 picture.style.background);
+            DrawRectangleRounded(image.bounds, roundness, segments,
+                                 image.style.background);
         else
-            DrawRectangleRec(picture.bounds, picture.style.background);
+            DrawRectangleRec(image.bounds, image.style.background);
     }
 
-    picture_draw_rounded_texture(texture, source, dst, picture.bounds, radius,
-                                 picture.tint);
-    if(picture.style.tonal_overlay.a > 0)
-        picture_draw_rounded_solid(picture.bounds, radius,
-                                   picture.style.tonal_overlay);
-    if(picture.style.surface_overlay.a > 0)
-        picture_draw_rounded_solid(picture.bounds, radius,
-                                   picture.style.surface_overlay);
-    if(picture.style.scrim_top.a > 0 || picture.style.scrim_bottom.a > 0)
-        picture_draw_rounded_gradient(picture.bounds, radius,
-                                      picture.style.scrim_top,
-                                      picture.style.scrim_bottom);
+    image_draw_rounded_texture(texture, source, dst, image.bounds, radius,
+                                 image.tint);
+    if(image.style.tonal_overlay.a > 0)
+        image_draw_rounded_solid(image.bounds, radius,
+                                   image.style.tonal_overlay);
+    if(image.style.surface_overlay.a > 0)
+        image_draw_rounded_solid(image.bounds, radius,
+                                   image.style.surface_overlay);
+    if(image.style.scrim_top.a > 0 || image.style.scrim_bottom.a > 0)
+        image_draw_rounded_gradient(image.bounds, radius,
+                                      image.style.scrim_top,
+                                      image.style.scrim_bottom);
     if(theme_style == THEME_STYLE_CLASSIC) {
-        RenderBevel((int)picture.bounds.x, (int)picture.bounds.y,
-                    (int)picture.bounds.width, (int)picture.bounds.height,
+        RenderBevel((int)image.bounds.x, (int)image.bounds.y,
+                    (int)image.bounds.width, (int)image.bounds.height,
                     LightenUIColor(GetThemeBackground(), 52),
                     DarkenUIColor(GetThemeBackground(), 50));
-        if(picture.style.outline.a > 0)
-            DrawRectangleLinesEx(picture.bounds, (float)outline_px,
-                                 picture.style.outline);
-    } else if(roundness > 0.0f && picture.style.outline.a > 0)
-        DrawRectangleRoundedLinesEx(picture.bounds, roundness, segments,
-                                    (float)outline_px, picture.style.outline);
-    else if(picture.style.outline.a > 0)
-        DrawRectangleLinesEx(picture.bounds, (float)outline_px,
-                             picture.style.outline);
+        if(image.style.outline.a > 0)
+            DrawRectangleLinesEx(image.bounds, (float)outline_px,
+                                 image.style.outline);
+    } else if(roundness > 0.0f && image.style.outline.a > 0)
+        DrawRectangleRoundedLinesEx(image.bounds, roundness, segments,
+                                    (float)outline_px, image.style.outline);
+    else if(image.style.outline.a > 0)
+        DrawRectangleLinesEx(image.bounds, (float)outline_px,
+                             image.style.outline);
 }

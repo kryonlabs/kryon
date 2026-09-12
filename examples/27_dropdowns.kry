@@ -34,7 +34,7 @@ DropdownExample :: (viewport: Rectangle) #ui {
         if mode == 2 && SystemThemePrefersDark() { dark_mode = 1 }
         if dark_mode == 1 { SetTheme(ThemeDefaultDark()) }
         if dark_mode == 0 { SetTheme(ThemeDefaultLight()) }
-        ClearBackground(GetThemeBackground())
+        Background(GetThemeBackground())
         Text((TextProps){.bounds = {32,28,840,40}, .text = "Dropdowns", .font = Text32, .color = GetThemeText()})
         Text((TextProps){.bounds = {32,78,840,44}, .text = "Choose a value. Use Tab and arrow keys, Enter to select, or Escape to close.", .font = Text16, .color = GetThemeText()})
         Text((TextProps){.bounds = {32,146,380,30}, .text = "Theme", .font = Text20, .color = GetThemeText()})

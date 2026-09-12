@@ -19,7 +19,7 @@
     {"id": "dialogs", "path": "examples/16_dialogs.kry", "title": "Dialogs"},
     {"id": "keyboard-platform", "path": "examples/17_keyboard_platform.kry", "title": "Keyboard Platform"},
     {"id": "accessibility", "path": "examples/18_accessibility.kry", "title": "Accessibility"},
-    {"id": "pictures", "path": "examples/19_pictures.kry", "title": "Pictures"},
+    {"id": "images", "path": "examples/19_images.kry", "title": "Images"},
     {"id": "scene", "path": "examples/20_scene.kry", "title": "Scene"},
     {"id": "scroll", "path": "examples/20_scroll.kry", "title": "Scroll", "krb_exact": true},
     {"id": "signals", "path": "examples/21_signals.kry", "title": "Signals"},

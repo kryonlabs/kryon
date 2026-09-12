@@ -364,27 +364,19 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
                        char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Background", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt",
-        "ValueUInt", "ValueFloat", "Paragraph", "TextLines",
-        "Rect", "Line", "Bevel", "Icon", "Picture", "Button", "Card", "MenuButton", "SplitButton", "Selectable",
-        "CheckboxFlags", "ImageWithBg", "ImageButton",
-        "InvisibleButton", "ArrowButton", "Bullet", "Separator", "SeparatorText",
-        "ColorEdit3",
-        "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton",
-        "Href", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
+        "Background", "Text", "Paragraph",
+        "Rect", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
+        "InvisibleButton", "Bullet", "Separator",
+        "Link", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
         "PopupMenu", "ContextMenu",
-        "Toggle", "Checkbox", "Radio", "Progress", "PlotLines",
-        "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2",
-        "DragIntRange2", "SliderFloat", "SliderInt",
-        "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt",
-        "InputDouble", "Spinbox", "Combobox",
+        "Toggle", "Checkbox", "Radio", "Progress", "Plot",
+        "Drag", "Input", "Spinbox",
         "DragDropSource", "DragDropTarget", "MultiSelectList",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
-        "Modal", "ActionModal", "MessageDialog", "ConfirmDialog",
-        "PromptDialog", "TitleBar", "TabBar", "TabItemButton",
-        "ClosableTabBar", "NavigationBar", "TopNav",
-        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame", "Notebook",
-		"PanedView", "Collapsible", "ListBox", "TreeView", "SourceView", "TableView",
+        "Modal", "TitleBar", "TabBar",
+        "NavigationBar",
+        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
+		"PanedView", "Collapsible", "ListBox", "TreeView", "TableView",
 		"ColorPicker", "CanvasGrid", "SelectableText"
     };
     const char *p = text;
@@ -485,8 +477,6 @@ ui_block_prop_type(const char *widget)
     /* A lexical scope, not a runtime props type or another widget API. */
     if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0)
         return "";
-    if(strcmp(widget, "Combo") == 0)
-        return "ComboProps";
     if(strcmp(widget, "Popup") == 0)
         return "PopupProps";
     if(strcmp(widget, "Text") == 0)
@@ -500,46 +490,36 @@ ui_block_prop_type(const char *widget)
         return "ButtonProps";
     if(strcmp(widget, "Card") == 0)
         return "CardProps";
-    if(strcmp(widget, "MenuButton") == 0)
-        return "MenuButtonProps";
-    if(strcmp(widget, "SplitButton") == 0)
-        return "SplitButtonProps";
-    if(strcmp(widget, "Href") == 0)
-        return "HrefProps";
     if(strcmp(widget, "TextField") == 0)
         return "TextFieldProps";
     if(strcmp(widget, "TextArea") == 0)
         return "TextAreaProps";
-    if(strcmp(widget, "Picture") == 0)
-        return "PictureProps";
+    if(strcmp(widget, "Image") == 0)
+        return "ImageProps";
     if(strcmp(widget, "Radio") == 0)
-        return "RadioButtonProps";
+        return "RadioProps";
     if(strcmp(widget, "Progress") == 0)
-        return "ProgressBarProps";
+        return "ProgressProps";
+    if(strcmp(widget, "ColorPicker") == 0)
+        return "ColorPickerProps";
+    if(strcmp(widget, "Separator") == 0)
+        return "SeparatorProps";
     if(strcmp(widget, "Spinbox") == 0)
         return "SpinboxProps";
     if(strcmp(widget, "Dropdown") == 0)
         return "DropdownProps";
-    if(strcmp(widget, "Combobox") == 0)
-        return "ComboboxProps";
     if(strcmp(widget, "LabelFrame") == 0)
         return "LabelFrameProps";
-    if(strcmp(widget, "Notebook") == 0)
-        return "NotebookProps";
     if(strcmp(widget, "PanedView") == 0)
         return "PanedViewProps";
     if(strcmp(widget, "Collapsible") == 0)
         return "CollapsibleProps";
     if(strcmp(widget, "ListBox") == 0)
         return "ListBoxProps";
-    if(strcmp(widget, "SourceView") == 0)
-        return "SourceViewProps";
     if(strcmp(widget, "TableView") == 0)
         return "TableViewProps";
     if(strcmp(widget, "NavigationBar") == 0)
         return "NavigationBarProps";
-    if(strcmp(widget, "TopNav") == 0)
-        return "TopNavProps";
     if(strcmp(widget, "Toolbar") == 0)
         return "ToolbarProps";
     if(strcmp(widget, "TabBar") == 0)
@@ -711,11 +691,8 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         block->opened = 1;
         return;
     }
-    if(strcmp(block->widget, "Combo") == 0 ||
-       strcmp(block->widget, "Popup") == 0) {
-        const char *type = strcmp(block->widget,"Combo") == 0 ?
-                           "ComboProps" : "PopupProps";
-        ui_block_format(args, sizeof(args), span, "(%s){%s}", type, block->props);
+    if(strcmp(block->widget, "Popup") == 0) {
+        ui_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
         ui_block_format(call, sizeof(call), span, "if Begin%s(%s) {",
                         block->widget, args);
         KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", span);
@@ -2730,7 +2707,6 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 ui_block_open(fn, block, KirSpan(rel, line_no, 1), 1);
                 if(strcmp(block->widget, "Disabled") == 0 ||
                    strcmp(block->widget, "Scroll") == 0 ||
-                   strcmp(block->widget, "Combo") == 0 ||
                    strcmp(block->widget, "Popup") == 0)
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));

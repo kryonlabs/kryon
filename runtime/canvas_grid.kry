@@ -1,0 +1,53 @@
+#module "canvas_grid"
+#import "drawing_props"
+
+CanvasGridLine :: struct {
+    bounds: Rectangle
+    color: u32
+}
+
+CanvasGridSpacing :: (step: i32, minimum: i32) -> i32 #export {
+    if minimum <= 0 {
+        minimum = 1
+    }
+    if step < minimum {
+        return minimum
+    }
+    return step
+}
+
+CanvasGridLineCount :: (length: float, spacing: i32) -> i32 #export {
+    if length <= 0.0 {
+        return 0
+    }
+    spacing = CanvasGridSpacing(spacing, 1)
+    count: i32 = (i32)(length / (float)spacing)
+    if (float)count * (float)spacing < length {
+        count = count + 1
+    }
+    return count
+}
+
+CanvasGridVerticalLine :: (bounds: Rectangle, index: i32,
+    spacing: i32, color: u32) -> CanvasGridLine #export {
+    line: CanvasGridLine
+    spacing = CanvasGridSpacing(spacing, 1)
+    line.bounds.x = bounds.x + (float)(index * spacing)
+    line.bounds.y = bounds.y
+    line.bounds.width = 0.0
+    line.bounds.height = bounds.height
+    line.color = color
+    return line
+}
+
+CanvasGridHorizontalLine :: (bounds: Rectangle, index: i32,
+    spacing: i32, color: u32) -> CanvasGridLine #export {
+    line: CanvasGridLine
+    spacing = CanvasGridSpacing(spacing, 1)
+    line.bounds.x = bounds.x
+    line.bounds.y = bounds.y + (float)(index * spacing)
+    line.bounds.width = bounds.width
+    line.bounds.height = 0.0
+    line.color = color
+    return line
+}

@@ -12,6 +12,7 @@ import (
 	"math/bits"
 	"net"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1296,7 +1297,7 @@ func frameOpsEqual(a, b []FrameOp) bool {
 func frameOpPaintEqual(a, b FrameOp) bool {
 	a = normalizeFrameOpForPaintCompare(a)
 	b = normalizeFrameOpForPaintCompare(b)
-	return a == b
+	return reflect.DeepEqual(a, b)
 }
 
 func normalizeFrameOpForPaintCompare(op FrameOp) FrameOp {

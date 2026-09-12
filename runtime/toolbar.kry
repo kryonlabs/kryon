@@ -1,0 +1,106 @@
+#module "toolbar"
+#import "drawing_props"
+
+ToolbarSpec :: struct {
+    x: i32
+    y: i32
+    width: i32
+    height: i32
+    action_count: i32
+    action_icon_size: i32
+    action_icon_padding: i32
+    action_gap: i32
+    side_padding: i32
+    dropdown_min_width: i32
+    dropdown_max_width: i32
+    dropdown_height: i32
+    scale: float
+}
+
+ToolbarLayout :: struct {
+    bounds: Rectangle
+    dropdown_bounds: Rectangle
+    controls_x: i32
+    action_width: i32
+    action_y: i32
+    action_icon_size: i32
+    action_icon_padding: i32
+    action_gap: i32
+    side_padding: i32
+}
+
+ToolbarMetric :: (value: i32, fallback: float, scale: float) -> i32 {
+    if value > 0 { return value }
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(fallback * scale)
+}
+
+ToolbarSidePadding :: (value: i32, scale: float) -> i32 #export {
+    if value < 0 { return 0 }
+    return ToolbarMetric(value, 12.0, scale)
+}
+
+ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
+    layout: ToolbarLayout
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+    width: i32 = spec.width
+    if width < 0 { width = 0 }
+    height: i32 = spec.height
+    if height < 0 { height = 0 }
+    action_count: i32 = spec.action_count
+    if action_count < 0 { action_count = 0 }
+
+    layout.bounds.x = (float)spec.x
+    layout.bounds.y = (float)spec.y
+    layout.bounds.width = (float)width
+    layout.bounds.height = (float)height
+    layout.side_padding = ToolbarSidePadding(spec.side_padding, scale)
+    layout.action_icon_size = ToolbarMetric(spec.action_icon_size, 20.0, scale)
+    layout.action_icon_padding = ToolbarMetric(spec.action_icon_padding, 8.0, scale)
+    layout.action_gap = ToolbarMetric(spec.action_gap, 6.0, scale)
+    layout.action_width = layout.action_icon_size + layout.action_icon_padding * 2
+    layout.action_y = spec.y + (height - layout.action_width) / 2
+    layout.controls_x = spec.x + width - layout.side_padding
+
+    controls_after_actions: i32 = layout.controls_x
+    if action_count > 0 {
+        controls_after_actions -= action_count * (layout.action_width + layout.action_gap)
+    }
+    dropdown_width: i32 = controls_after_actions - spec.x
+    if action_count > 0 {
+        dropdown_width -= layout.side_padding - layout.action_gap
+    }
+    available_width: i32 = dropdown_width
+    if spec.dropdown_min_width > 0 && dropdown_width < spec.dropdown_min_width {
+        dropdown_width = spec.dropdown_min_width
+    }
+    if spec.dropdown_max_width > 0 && dropdown_width > spec.dropdown_max_width {
+        dropdown_width = spec.dropdown_max_width
+    }
+    if available_width > 0 && dropdown_width > available_width {
+        dropdown_width = available_width
+    }
+    if dropdown_width < 0 { dropdown_width = 0 }
+
+    layout.dropdown_bounds.x = (float)spec.x
+    layout.dropdown_bounds.y = (float)spec.y
+    layout.dropdown_bounds.width = (float)dropdown_width
+    layout.dropdown_bounds.height = (float)ToolbarMetric(spec.dropdown_height, 36.0, scale)
+    return layout
+}
+
+ToolbarActionBoundsFor :: (layout: ToolbarLayout, index: i32,
+    action_count: i32) -> Rectangle #export {
+    bounds: Rectangle
+    if action_count <= 0 { return bounds }
+    if index < 0 { index = 0 }
+    if index >= action_count { index = action_count - 1 }
+    from_right: i32 = action_count - 1 - index
+    bounds.x = (float)(layout.controls_x - layout.action_width -
+        from_right * (layout.action_width + layout.action_gap))
+    bounds.y = (float)layout.action_y
+    bounds.width = (float)layout.action_width
+    bounds.height = (float)layout.action_width
+    return bounds
+}

@@ -7,6 +7,7 @@ app "Generated Basic Controls Parity" {
 
 state {
     slider_value: int = 20
+    slider_values: [1] int = {20}
     toggle_value: int = 0
     checkbox_value: int = 0
     selected: int = 0
@@ -18,14 +19,15 @@ state {
 
 controls_frame :: () #ui {
     Screen root: {
-        Slider(801, 20, 20, 180, "Slider", 0, 100, &slider_value, "", nil)
-        Toggle(802, 20, 80, 120, 34, &toggle_value, "Off", "On")
-        Checkbox(803, 20, 128, "Check", &checkbox_value)
+        Slider((SliderProps){.bounds = {20, 20, 180, 56}, .id = 801, .label = "Slider", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0})
+        slider_value = slider_values[0]
+        Toggle((ToggleProps){.bounds = {20, 80, 120, 34}, .id = 802, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
+        Checkbox((CheckboxProps){.bounds = {20, 128, 120, 34}, .id = 803, .label = "Check", .value = &checkbox_value})
         Dropdown((DropdownProps){.bounds = {20, 168, 160, 30}, .id = 804,
             .options = options, .option_count = 3, .selected_index = &selected})
         Selectable((SelectableProps){.bounds = {220,20,160,30}, .id = 805, .label = "Choice", .selected = &choice_selected})
-        CheckboxFlags((CheckboxFlagsProps){.bounds = {220,60,160,30}, .id = 806, .label = "Feature", .flags = &choice_flags, .flags_value = 4})
-        choice_radio: int = Radio((RadioButtonProps){.bounds = {220,100,160,30}, .label = "Radio", .id = 807})
+        Checkbox((CheckboxProps){.bounds = {220,60,160,30}, .id = 806, .label = "Feature", .flags = &choice_flags, .flags_value = 4})
+        choice_radio: int = Radio((RadioProps){.bounds = {220,100,160,30}, .label = "Radio", .id = 807})
         if choice_radio != 0 {
             choice_radio_actions += 1
         }

@@ -42,6 +42,18 @@ type CheckboxPaint struct {
 	ShowFocus   bool
 }
 
+type CheckboxLayout struct {
+	Bounds     Rectangle
+	SlotBounds Rectangle
+	LabelX     float32
+}
+
+type CheckboxFlagResult struct {
+	Flags   uint32
+	Checked bool
+	Changed bool
+}
+
 func Checkbox_CheckboxSlotSize(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -70,6 +82,89 @@ func Checkbox_CheckboxBoxSize(scale float32) int32 {
 	var value_6 float32 = value_4 * value_5
 	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
 	return value_7
+}
+
+func Checkbox_CheckboxLayoutFor(x float32, y float32, label_width float32, scale float32) CheckboxLayout {
+	var layout CheckboxLayout = CheckboxLayout{}
+	var value_0 float32 = scale
+	var value_1 int32 = Checkbox_CheckboxSlotSize(value_0)
+	var value_2 float32 = float32(value_1)
+	var slot_size float32 = value_2
+	var value_3 float32 = 10.0
+	var value_4 float32 = scale
+	var value_5 float32 = 0.0
+	var value_6 bool = value_4 <= value_5
+	var value_7 float32 = 0
+	if value_6 {
+		var value_8 float32 = 1.0
+		value_7 = value_8
+	} else {
+		var value_9 float32 = scale
+		value_7 = value_9
+	}
+	var value_10 float32 = value_3 * value_7
+	var gap float32 = value_10
+	var value_11 float32 = x
+	layout.Bounds.X = value_11
+	var value_12 float32 = y
+	layout.Bounds.Y = value_12
+	var value_13 float32 = slot_size
+	var value_14 float32 = gap
+	var value_15 float32 = value_13 + value_14
+	var value_16 float32 = label_width
+	var value_17 float32 = value_15 + value_16
+	layout.Bounds.Width = value_17
+	var value_18 float32 = slot_size
+	layout.Bounds.Height = value_18
+	var value_19 Rectangle = layout.Bounds
+	layout.SlotBounds = value_19
+	var value_20 float32 = slot_size
+	layout.SlotBounds.Width = value_20
+	var value_21 float32 = x
+	var value_22 float32 = slot_size
+	var value_23 float32 = value_21 + value_22
+	var value_24 float32 = gap
+	var value_25 float32 = value_23 + value_24
+	layout.LabelX = value_25
+	var value_26 CheckboxLayout = layout
+	return value_26
+}
+
+func Checkbox_CheckboxFlagApply(flags uint32, flag_value uint32, pressed bool) CheckboxFlagResult {
+	var result CheckboxFlagResult = CheckboxFlagResult{}
+	var value_0 uint32 = flags
+	result.Flags = value_0
+	var value_1 uint32 = flags
+	var value_2 uint32 = flag_value
+	var value_3 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(value_2), 32, false, 8))
+	var value_4 uint32 = flag_value
+	var value_5 bool = value_3 == value_4
+	result.Checked = value_5
+	var value_6 bool = false
+	result.Changed = value_6
+	var value_7 bool = pressed
+	if value_7 {
+		var value_8 bool = result.Checked
+		if value_8 {
+			var value_9 uint32 = flags
+			var value_10 uint32 = flag_value
+			var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(^uint64(0)), 32, false, 10))
+			var value_12 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(value_11), 32, false, 8))
+			result.Flags = value_12
+		} else {
+			var value_13 uint32 = flags
+			var value_14 uint32 = flag_value
+			var value_15 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, false, 9))
+			result.Flags = value_15
+		}
+		var value_16 bool = result.Checked
+		var value_17 bool = !value_16
+		result.Checked = value_17
+		var value_18 bool = true
+		result.Changed = value_18
+	}
+	var value_19 CheckboxFlagResult = result
+	return value_19
 }
 
 func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {

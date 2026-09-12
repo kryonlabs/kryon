@@ -126,7 +126,7 @@ LDFLAGS += $(EXAMPLE_BACKEND_LIBS) $(EXAMPLE_SYSTEM_LDLIBS)
 EXAMPLE_NATIVE = 01_file_dialog 02_buttons 03_theme 04_modal 05_color 06_scaling 07_layout \
 	09_geometry 10_menus 11_basic_controls 12_collections 13_text_editor \
 	14_canvas 15_containers 16_dialogs 17_keyboard_platform 18_accessibility \
-	19_pictures 20_scroll 25_text_area_slider 26_widget_catalog 27_dropdowns
+	19_images 20_scroll 25_text_area_slider 26_widget_catalog 27_dropdowns
 EXAMPLE_SCENE = 20_scene 21_signals 22_physics 23_animation 24_tilemap
 EXAMPLES = $(EXAMPLE_NATIVE) $(EXAMPLE_SCENE)
 EXAMPLE_BINS := $(addprefix $(BIN_DIR)/,$(EXAMPLE_NATIVE))
@@ -237,7 +237,7 @@ run:
 	@echo "  15) dialogs"
 	@echo "  16) keyboard_platform"
 	@echo "  17) accessibility"
-	@echo "  18) pictures"
+	@echo "  18) images"
 	@echo ""
 	@read -p "Enter example number: " num; \
 	case "$$num" in \
@@ -258,7 +258,7 @@ run:
 		15) example="16_dialogs";; \
 		16) example="17_keyboard_platform";; \
 		17) example="18_accessibility";; \
-		18) example="19_pictures";; \
+		18) example="19_images";; \
 		*) example=;; \
 	esac; \
 	if [ -n "$$example" ]; then \

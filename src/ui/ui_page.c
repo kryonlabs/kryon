@@ -240,27 +240,16 @@ ParagraphText(ParagraphTextProps props)
 int
 Link(LinkProps props)
 {
-    HrefProps href;
-
-    memset(&href, 0, sizeof(href));
-    href.bounds = props.bounds;
-    href.text = props.text;
-    href.href = props.href;
-    href.font = props.font;
-    href.focus_id = props.focus_id;
-    href.disabled = props.disabled;
-    href.color = props.color;
-    href.hover_color = props.hover_color;
-    page_semantic_next(UI_SEMANTIC_LINK, props.text, props.href, "link", 0,
+    page_semantic_next(UI_SEMANTIC_LINK, props.text, props.link, "link", 0,
                        props.focus_id);
-    return Href(href);
+    return RenderLink(props);
 }
 
 void
-PagePicture(PictureProps picture, const char *alt_text)
+PageImage(ImageProps image, const char *alt_text)
 {
-    page_semantic_next(UI_SEMANTIC_PICTURE, alt_text, NULL, "img", 0, -1);
-    Picture(picture);
+    page_semantic_next(UI_SEMANTIC_IMAGE, alt_text, NULL, "img", 0, -1);
+    RenderImage(image);
 }
 
 NodeId

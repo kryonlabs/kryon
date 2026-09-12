@@ -83,10 +83,10 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
     int label_w;
 
     RenderText(text, x, y, font, color);
-    if(!label.info_button)
+    if(!label.info)
         return 0;
     label_w = TextWidth(text, font);
-    return RenderInfoButton(x + label_w + Scale(16),
+    return RenderButtonInfoIndicator(x + label_w + Scale(16),
                                y + font / 2 + Scale(1), icon_d);
 }
 
@@ -102,58 +102,6 @@ RenderCheckboxRow(CheckboxRowProps row, int x, int y)
     if(row.disabled)
         return DrawDisabledUICheckboxToggle(x, y, row.label, row.value, 1);
     return RenderCheckboxToggle(x, y, row.label, row.value);
-}
-
-int
-RenderOverlayButton(OverlayButtonProps button)
-{
-    Vector2 mouse;
-    int mouse_inside;
-    int captured;
-    int active;
-    int hovered;
-    int font;
-    int text_w;
-    Color background;
-    Color border;
-    Color text;
-
-    if(button.bounds.width <= 0 || button.bounds.height <= 0)
-        return 0;
-
-    mouse = ui_mouse_world();
-    mouse_inside = CheckCollisionPointRec(mouse, button.bounds);
-    captured = UIInputCapturesClick(mouse);
-    active = !button.disabled && !captured && mouse_inside;
-    hovered = active && UIHoverEffectsEnabled();
-    font = button.font > 0 ? button.font : GetFontSize();
-    background = hovered && button.hover_background.a != 0
-                     ? button.hover_background
-                     : button.background;
-    border = hovered && button.hover_border.a != 0
-                 ? button.hover_border
-                 : button.border;
-    text = button.text.a != 0 ? button.text : c_text;
-
-    if(background.a != 0)
-        DrawRectangleRec(button.bounds, background);
-    if(border.a != 0)
-        DrawRectangleLinesEx(button.bounds, Scale(1), border);
-    if(button.label != NULL) {
-        text_w = TextWidth(button.label, font);
-        RenderText(button.label,
-                        (int)(button.bounds.x + (button.bounds.width - text_w) / 2),
-                        GetUIControlTextY(button.label, (int)button.bounds.y,
-                                        (int)button.bounds.height, font),
-                        font, text);
-    }
-
-    if(button.disabled && !captured && mouse_inside)
-        MarkDisabled();
-    if(active)
-        MarkClickable();
-
-    return active && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 }
 
 int
@@ -281,7 +229,7 @@ FormSection(Form *form, SectionLabelProps label)
     y = form->cursor_y;
     height = ui_section_label_height(label);
     FormTakeRect(form, height);
-    return SectionLabel(label, form->x, y);
+    return RenderSectionLabel(label, form->x, y);
 }
 
 int
@@ -297,7 +245,7 @@ FormTextField(Form *form, LabelTextFieldProps row)
     y = form->cursor_y;
     height = ui_label_text_field_height(row);
     FormTakeRect(form, height);
-    result = LabelTextField(row, form->x, y, form->width);
+    result = RenderLabelTextField(row, form->x, y, form->width);
 
     field_bounds = row.field.bounds;
     if(field_bounds.width <= 0 || field_bounds.height <= 0) {
@@ -324,7 +272,7 @@ FormCheckbox(Form *form, CheckboxRowProps row)
     y = form->cursor_y;
     height = ui_checkbox_row_height(row);
     FormTakeRect(form, height);
-    return CheckboxRow(row, form->x, y);
+    return RenderCheckboxRow(row, form->x, y);
 }
 
 int
@@ -381,7 +329,7 @@ FormButtons(Form *form, ButtonRowProps row)
     row.width = form->width;
     height = GetUIButtonRowHeight(row);
     FormTakeRect(form, height);
-    return ButtonRow(row);
+    return RenderButtonRow(row);
 }
 
 int

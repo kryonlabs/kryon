@@ -319,7 +319,7 @@ PopupGesture :: struct {
     offset: i32
 }
 
-Drag :: (gesture: PopupGesture, offset: i32, down: bool, inside: bool,
+PopupDragGesture :: (gesture: PopupGesture, offset: i32, down: bool, inside: bool,
     scrollbar: bool, y: float, maximum: i32, threshold: float) -> PopupGesture #export {
     gesture.offset = ScrollOffset((f64)offset, maximum)
     if down && !scrollbar {

@@ -19,11 +19,11 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
         bounds = viewport
         Background(GetThemeBackground())
         Text((TextProps){.bounds={40, 40, 0, 0}, .text="Basic controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        picked: int = Radio((RadioButtonProps){{40,90,160,28},"Choice A",1,radio==1,0})
+        picked: int = Radio((RadioProps){.bounds = {40,90,160,28}, .label = "Choice A", .id = 1, .checked = radio == 1})
         if picked {
             radio = picked
         }
-        picked = Radio((RadioButtonProps){{40,124,160,28},"Choice B",2,radio==2,0})
+        picked = Radio((RadioProps){.bounds = {40,124,160,28}, .label = "Choice B", .id = 2, .checked = radio == 2})
         if picked {
             radio = picked
         }
@@ -31,7 +31,7 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
         Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
         Dropdown((DropdownProps){.bounds = {240,140,180,34}, .id = 202,
             .options = choices, .option_count = 3, .selected_index = &combo})
-        Progress((ProgressBarProps){{40,210,380,28},0,100,progress,"Progress"})
+        Progress((ProgressProps){{40,210,380,28},0,100,progress,"Progress"})
         if (IsKeyPressed(KEY_RIGHT)) {
             if progress < 100 {
                 progress += 5

@@ -28,6 +28,45 @@ type ContentSize struct {
 	Gap       float32
 }
 
+type ButtonSplitLayout struct {
+	Width        float32
+	ActionWidth  float32
+	MenuOffset   float32
+	MenuWidth    float32
+	DividerInset float32
+}
+
+type SwatchSpec struct {
+	Bounds   Rectangle
+	Color    Color
+	Disabled bool
+	Hovered  bool
+	Focused  bool
+	Scale    float32
+	Palette  Palette
+	Metrics  Metrics
+}
+
+type SwatchPaint struct {
+	Bounds           Rectangle
+	CheckerBase      Rectangle
+	CheckerA         Rectangle
+	CheckerB         Rectangle
+	Swatch           Rectangle
+	FocusBounds      Rectangle
+	CheckerBaseColor uint32
+	CheckerAltColor  uint32
+	SwatchColor      Color
+	BorderColor      uint32
+	FocusColor       uint32
+	TextColor        uint32
+	LabelX           float32
+	Radius           float32
+	BorderWidth      float32
+	FocusWidth       float32
+	ShowFocus        bool
+}
+
 type ButtonContent struct {
 	IconX      float32
 	IconY      float32
@@ -53,77 +92,115 @@ type ButtonFrame struct {
 	Repaint       bool
 }
 
-func Button_ResolveButtonInput(props ButtonProps, sample Activation) ButtonInput {
-	var result ButtonInput = ButtonInput{}
-	var value_0 ButtonState = ButtonState(props.State)
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 bool = props.Disabled
-	var value_3 bool = props.Loading
-	var value_4 bool = props.Selected
-	var value_5 StateFlags = Style_ResolveFlags(value_1, value_2, value_3, value_4)
-	result.Flags = value_5
-	var value_6 bool = result.Flags.Disabled
-	var value_7 bool = result.Flags.Loading
-	var value_8 bool = Button_CanActivate(value_6, value_7)
-	var enabled bool = value_8
-	var value_9 bool = enabled
-	var value_10 bool = value_9
+func Button_ButtonActionEnabled(disabled bool, content_disabled bool) bool {
+	var value_0 bool = disabled
+	var value_1 bool = !value_0
+	var value_2 bool = value_1
+	if value_2 {
+		var value_3 bool = content_disabled
+		var value_4 bool = !value_3
+		value_2 = value_4
+	}
+	return value_2
+}
+
+func Button_ButtonArrowGlyph(direction int32) int32 {
+	var value_0 int32 = direction
+	var value_1 int32 = 1
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 int32 = 62
+		return value_3
+	}
+	var value_4 int32 = direction
+	var value_5 int32 = 2
+	var value_6 bool = value_4 == value_5
+	if value_6 {
+		var value_7 int32 = 94
+		return value_7
+	}
+	var value_8 int32 = direction
+	var value_9 int32 = 3
+	var value_10 bool = value_8 == value_9
 	if value_10 {
-		var value_11 bool = sample.Activated
-		value_10 = value_11
+		var value_11 int32 = 118
+		return value_11
 	}
-	result.Activated = value_10
-	var value_12 ButtonState = ButtonState(props.State)
-	var value_13 int32 = int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0))
-	var value_14 bool = result.Flags.Disabled
-	var value_15 bool = result.Flags.Loading
-	var value_16 bool = enabled
-	var value_17 bool = value_16
-	if value_17 {
-		var value_18 bool = sample.Pressed
-		value_17 = value_18
-	}
-	var value_19 bool = enabled
-	var value_20 bool = value_19
-	if value_20 {
-		var value_21 bool = sample.Hovered
-		value_20 = value_21
-	}
-	var value_22 bool = enabled
-	var value_23 bool = value_22
-	if value_23 {
-		var value_24 bool = sample.Focused
-		value_23 = value_24
-	}
-	var value_25 bool = result.Flags.Selected
-	var value_26 InteractionState = Style_ResolveInteraction(value_13, value_14, value_15, value_17, value_20, value_23, value_25)
-	result.Interaction = value_26
-	var value_27 ButtonInput = result
-	return value_27
+	var value_12 int32 = 60
+	return value_12
 }
 
-func (instance_host_0 *runtime) Button_ReadButtonInput(props ButtonProps) ButtonInput {
-	var value_0 ButtonState = ButtonState(props.State)
-	var value_1 int32 = int32(number_runtime_bits(uint64(value_0), uint64(0), 32, true, 0))
-	var value_2 bool = props.Disabled
-	var value_3 bool = props.Loading
-	var value_4 bool = props.Selected
-	var value_5 StateFlags = Style_ResolveFlags(value_1, value_2, value_3, value_4)
-	var flags StateFlags = value_5
-	var value_6 Rectangle = props.Bounds
-	var value_7 int32 = props.ID
-	var value_8 bool = flags.Disabled
-	var value_9 bool = flags.Loading
-	var value_10 bool = Button_CanActivate(value_8, value_9)
-	var value_11 Activation = instance_host_0.ReadActivation(value_6, value_7, value_10)
-	var sample Activation = value_11
-	var value_12 ButtonProps = props
-	var value_13 Activation = sample
-	var value_14 ButtonInput = Button_ResolveButtonInput(value_12, value_13)
-	return value_14
+func Button_ResolveButtonInput(state int32, disabled bool, loading bool, selected bool, sample Activation) ButtonInput {
+	var result ButtonInput = ButtonInput{}
+	var value_0 int32 = state
+	var value_1 bool = disabled
+	var value_2 bool = loading
+	var value_3 bool = selected
+	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
+	result.Flags = value_4
+	var value_5 bool = result.Flags.Disabled
+	var value_6 bool = result.Flags.Loading
+	var value_7 bool = Button_CanActivate(value_5, value_6)
+	var enabled bool = value_7
+	var value_8 bool = enabled
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 bool = sample.Activated
+		value_9 = value_10
+	}
+	result.Activated = value_9
+	var value_11 int32 = state
+	var value_12 bool = result.Flags.Disabled
+	var value_13 bool = result.Flags.Loading
+	var value_14 bool = enabled
+	var value_15 bool = value_14
+	if value_15 {
+		var value_16 bool = sample.Pressed
+		value_15 = value_16
+	}
+	var value_17 bool = enabled
+	var value_18 bool = value_17
+	if value_18 {
+		var value_19 bool = sample.Hovered
+		value_18 = value_19
+	}
+	var value_20 bool = enabled
+	var value_21 bool = value_20
+	if value_21 {
+		var value_22 bool = sample.Focused
+		value_21 = value_22
+	}
+	var value_23 bool = result.Flags.Selected
+	var value_24 InteractionState = Style_ResolveInteraction(value_11, value_12, value_13, value_15, value_18, value_21, value_23)
+	result.Interaction = value_24
+	var value_25 ButtonInput = result
+	return value_25
 }
 
-func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, props ButtonProps, input ButtonInput, enabled bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
+func (instance_host_0 *runtime) Button_ReadButtonInput(bounds Rectangle, id int32, state int32, disabled bool, loading bool, selected bool) ButtonInput {
+	var value_0 int32 = state
+	var value_1 bool = disabled
+	var value_2 bool = loading
+	var value_3 bool = selected
+	var value_4 StateFlags = Style_ResolveFlags(value_0, value_1, value_2, value_3)
+	var flags StateFlags = value_4
+	var value_5 Rectangle = bounds
+	var value_6 int32 = id
+	var value_7 bool = flags.Disabled
+	var value_8 bool = flags.Loading
+	var value_9 bool = Button_CanActivate(value_7, value_8)
+	var value_10 Activation = instance_host_0.ReadActivation(value_5, value_6, value_9)
+	var sample Activation = value_10
+	var value_11 int32 = state
+	var value_12 bool = disabled
+	var value_13 bool = loading
+	var value_14 bool = selected
+	var value_15 Activation = sample
+	var value_16 ButtonInput = Button_ResolveButtonInput(value_11, value_12, value_13, value_14, value_15)
+	return value_16
+}
+
+func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, state int32, input ButtonInput, enabled bool, delta_ms float32, normal_ms float32, fast_ms float32) InteractionMotion {
 	var value_0 uint64 = key
 	retained := instanceState[ButtonInstance](instance_host_0, uint64(value_0))
 	var value_1 InteractionMotion = (*retained).Motion
@@ -131,19 +208,18 @@ func (instance_host_0 *runtime) Button_AdvanceButtonMotion(key uint64, props But
 	var value_3 bool = input.Interaction.Pressed
 	var value_4 bool = input.Interaction.Focused
 	var value_5 bool = enabled
-	var value_6 ButtonState = ButtonState(props.State)
-	var value_7 int32 = int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0))
-	var value_8 int32 = int32(ButtonStateAuto)
-	var value_9 bool = value_7 != value_8
-	var value_10 bool = input.Flags.Disabled
-	var value_11 bool = input.Flags.Loading
-	var value_12 float32 = delta_ms
-	var value_13 float32 = normal_ms
-	var value_14 float32 = fast_ms
-	var value_15 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_9, value_10, value_11, value_12, value_13, value_14)
-	(*retained).Motion = value_15
-	var value_16 InteractionMotion = (*retained).Motion
-	return value_16
+	var value_6 int32 = state
+	var value_7 int32 = int32(ButtonStateAuto)
+	var value_8 bool = value_6 != value_7
+	var value_9 bool = input.Flags.Disabled
+	var value_10 bool = input.Flags.Loading
+	var value_11 float32 = delta_ms
+	var value_12 float32 = normal_ms
+	var value_13 float32 = fast_ms
+	var value_14 InteractionMotion = Surface_AdvanceInteractionMotion(value_1, value_2, value_3, value_4, value_5, value_8, value_9, value_10, value_11, value_12, value_13)
+	(*retained).Motion = value_14
+	var value_15 InteractionMotion = (*retained).Motion
+	return value_15
 }
 
 func Button_DefaultButtonStyle(tone int32, emphasis int32, state int32, size int32, pill bool, circle bool, palette Palette, metrics Metrics) StyleData {
@@ -516,6 +592,193 @@ func Button_ResolveFrame(tone int32, emphasis int32, state int32, size int32, pi
 	return value_121
 }
 
+func Button_ButtonResolveSplitLayout(width float32, height float32) ButtonSplitLayout {
+	var layout ButtonSplitLayout = ButtonSplitLayout{}
+	var value_0 float32 = width
+	layout.Width = value_0
+	var value_1 float32 = layout.Width
+	var value_2 float32 = height
+	var value_3 float32 = 2.0
+	var value_4 float32 = value_2 * value_3
+	var value_5 bool = value_1 < value_4
+	if value_5 {
+		var value_6 float32 = height
+		var value_7 float32 = 2.0
+		var value_8 float32 = value_6 * value_7
+		layout.Width = value_8
+	}
+	var value_9 float32 = layout.Width
+	var value_10 float32 = height
+	var value_11 float32 = value_9 - value_10
+	layout.ActionWidth = value_11
+	var value_12 float32 = layout.ActionWidth
+	layout.MenuOffset = value_12
+	var value_13 float32 = height
+	layout.MenuWidth = value_13
+	var value_14 float32 = 8.0
+	layout.DividerInset = value_14
+	var value_15 ButtonSplitLayout = layout
+	return value_15
+}
+
+func Button_ButtonToggleMenuOpen(open bool, clicked bool) bool {
+	var value_0 bool = clicked
+	if value_0 {
+		var value_1 bool = open
+		var value_2 bool = !value_1
+		return value_2
+	}
+	var value_3 bool = open
+	return value_3
+}
+
+func Button_ButtonCloseMenuAfterActivation(open bool, activated_id int32) bool {
+	var value_0 int32 = activated_id
+	var value_1 int32 = 0
+	var value_2 bool = value_0 != value_1
+	if value_2 {
+		var value_3 bool = false
+		return value_3
+	}
+	var value_4 bool = open
+	return value_4
+}
+
+func Button_SwatchPaintFor(spec SwatchSpec) SwatchPaint {
+	var paint SwatchPaint = SwatchPaint{}
+	var value_0 float32 = spec.Scale
+	var scale float32 = value_0
+	var value_1 float32 = scale
+	var value_2 float32 = 0.0
+	var value_3 bool = value_1 <= value_2
+	if value_3 {
+		var value_4 float32 = 1.0
+		scale = value_4
+	}
+	var value_5 float32 = spec.Bounds.Width
+	var value_6 float32 = 0.5
+	var value_7 float32 = value_5 * value_6
+	var half_w float32 = value_7
+	var value_8 float32 = spec.Bounds.Height
+	var value_9 float32 = 0.5
+	var value_10 float32 = value_8 * value_9
+	var half_h float32 = value_10
+	var value_11 float32 = 6.0
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var inset float32 = value_13
+	var value_14 float32 = spec.Metrics.BorderWidth
+	var border_width float32 = value_14
+	var value_15 float32 = spec.Metrics.FocusWidth
+	var focus_width float32 = value_15
+	var value_16 float32 = border_width
+	var value_17 float32 = 0.0
+	var value_18 bool = value_16 <= value_17
+	if value_18 {
+		var value_19 float32 = 1.0
+		border_width = value_19
+	}
+	var value_20 float32 = focus_width
+	var value_21 float32 = 0.0
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 float32 = 1.0
+		focus_width = value_23
+	}
+	var value_24 Rectangle = spec.Bounds
+	paint.Bounds = value_24
+	var value_25 Rectangle = spec.Bounds
+	paint.CheckerBase = value_25
+	var value_26 float32 = spec.Bounds.X
+	paint.CheckerA.X = value_26
+	var value_27 float32 = spec.Bounds.Y
+	paint.CheckerA.Y = value_27
+	var value_28 float32 = half_w
+	paint.CheckerA.Width = value_28
+	var value_29 float32 = half_h
+	paint.CheckerA.Height = value_29
+	var value_30 float32 = spec.Bounds.X
+	var value_31 float32 = half_w
+	var value_32 float32 = value_30 + value_31
+	paint.CheckerB.X = value_32
+	var value_33 float32 = spec.Bounds.Y
+	var value_34 float32 = half_h
+	var value_35 float32 = value_33 + value_34
+	paint.CheckerB.Y = value_35
+	var value_36 float32 = half_w
+	paint.CheckerB.Width = value_36
+	var value_37 float32 = half_h
+	paint.CheckerB.Height = value_37
+	var value_38 Rectangle = spec.Bounds
+	paint.Swatch = value_38
+	var value_39 Rectangle = spec.Bounds
+	paint.FocusBounds = value_39
+	var value_40 Color = spec.Color
+	paint.SwatchColor = value_40
+	var value_41 float32 = spec.Bounds.X
+	var value_42 float32 = inset
+	var value_43 float32 = value_41 + value_42
+	paint.LabelX = value_43
+	var value_44 float32 = spec.Metrics.RadiusMedium
+	paint.Radius = value_44
+	var value_45 float32 = border_width
+	paint.BorderWidth = value_45
+	var value_46 float32 = focus_width
+	paint.FocusWidth = value_46
+	var value_47 int32 = 11842740
+	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
+	var value_49 int32 = 255
+	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
+	var value_51 uint32 = Theme_PackedColor(value_48, value_50)
+	paint.CheckerBaseColor = value_51
+	var value_52 int32 = 14474460
+	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
+	var value_54 int32 = 255
+	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 uint32 = Theme_PackedColor(value_53, value_55)
+	paint.CheckerAltColor = value_56
+	var value_57 bool = spec.Hovered
+	var value_58 uint32 = 0
+	if value_57 {
+		var value_59 uint32 = spec.Palette.AccentHover
+		value_58 = value_59
+	} else {
+		var value_60 uint32 = spec.Palette.Border
+		value_58 = value_60
+	}
+	paint.BorderColor = value_58
+	var value_61 uint32 = spec.Palette.Focus
+	paint.FocusColor = value_61
+	var value_62 bool = spec.Disabled
+	var value_63 uint32 = 0
+	if value_62 {
+		var value_64 uint32 = spec.Palette.TextDisabled
+		value_63 = value_64
+	} else {
+		var value_65 uint32 = spec.Palette.Text
+		value_63 = value_65
+	}
+	paint.TextColor = value_63
+	var value_66 bool = spec.Disabled
+	var value_67 bool = !value_66
+	var value_68 bool = value_67
+	if value_68 {
+		var value_69 bool = spec.Focused
+		value_68 = value_69
+	}
+	paint.ShowFocus = value_68
+	var value_70 bool = spec.Disabled
+	if value_70 {
+		var value_71 uint32 = spec.Palette.Border
+		paint.BorderColor = value_71
+		var value_72 int32 = 128
+		var value_73 uint8 = uint8(number_runtime_bits(uint64(value_72), uint64(0), 8, false, 0))
+		paint.SwatchColor.A = value_73
+	}
+	var value_74 SwatchPaint = paint
+	return value_74
+}
+
 func (instance_host_0 *runtime) Button_MeasureButton(props ButtonProps, paint Style, minimum_height float32, font int32, available_width float32, scale float32, disclosure bool) Rectangle {
 	var value_0 string = props.Label
 	var value_1 int32 = font
@@ -869,8 +1132,8 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, f
 		var value_44 float64 = elapsed_ms
 		var value_45 uint32 = foreground
 		var value_46 uint32 = ambient
-		var value_47 Ring = Surface_LoadingRing(value_39, value_42, value_43, value_44, value_45, value_46)
-		var ring Ring = value_47
+		var value_47 LoadingRingSpec = Surface_LoadingRing(value_39, value_42, value_43, value_44, value_45, value_46)
+		var ring LoadingRingSpec = value_47
 		var value_48 float32 = bounds.X
 		var value_49 float32 = ring.X
 		var value_50 float32 = scale
@@ -892,7 +1155,7 @@ func Button_PaintContent(props ButtonProps, bounds Rectangle, paint StyleData, f
 		var value_62 float32 = ring.GlowBlur
 		var value_63 float32 = scale
 		ring.GlowBlur = value_62 * value_63
-		var value_64 Ring = ring
+		var value_64 LoadingRingSpec = ring
 		result.Mark.Ring = value_64
 		var value_65 ContentDrawing = result
 		return value_65
@@ -1075,56 +1338,57 @@ func (instance_host_0 *runtime) Button_AdvanceFrame(key uint64, props ButtonProp
 	var value_2 bool = input.Flags.Selected
 	props.Selected = value_2
 	var value_3 uint64 = key
-	var value_4 ButtonProps = props
-	var value_5 ButtonInput = input
-	var value_6 bool = enabled
-	var value_7 float32 = delta_ms
-	var value_8 float32 = metrics.TransitionNormalMs
-	var value_9 float32 = metrics.TransitionFastMs
-	var value_10 InteractionMotion = instance_host_0.Button_AdvanceButtonMotion(value_3, value_4, value_5, value_6, value_7, value_8, value_9)
-	var motion InteractionMotion = value_10
-	var value_11 ButtonTone = ButtonTone(props.Tone)
-	var value_12 int32 = int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0))
-	var value_13 ButtonEmphasis = ButtonEmphasis(props.Emphasis)
-	var value_14 int32 = int32(number_runtime_bits(uint64(value_13), uint64(0), 32, true, 0))
-	var value_15 int32 = input.Interaction.State
-	var value_16 ControlSize = ControlSize(props.Size)
-	var value_17 int32 = int32(number_runtime_bits(uint64(value_16), uint64(0), 32, true, 0))
-	var value_18 bool = props.Pill
-	var value_19 bool = props.Circle
-	var value_20 bool = props.Disabled
-	var value_21 bool = props.Loading
-	var value_22 bool = props.Selected
-	var value_23 Palette = palette
-	var value_24 Metrics = metrics
-	var value_25 StyleStates = styles
-	var value_26 ButtonState = ButtonState(props.State)
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_26), uint64(0), 32, true, 0))
-	var value_28 int32 = int32(ButtonStateAuto)
-	var value_29 bool = value_27 == value_28
-	var value_30 float32 = motion.Hover.Value
-	var value_31 float32 = motion.Press.Value
-	var value_32 float32 = motion.Focus.Value
-	var value_33 StyleFrame = Button_ResolveFrame(value_12, value_14, value_15, value_17, value_18, value_19, value_20, value_21, value_22, value_23, value_24, value_25, value_29, value_30, value_31, value_32)
-	var appearance StyleFrame = value_33
-	var value_34 ButtonProps = props
-	var value_35 ButtonInput = input
-	var value_36 StyleFrame = appearance
-	var value_37 InteractionMotion = motion
-	var value_38 Rectangle = surface
-	var value_39 uint32 = ambient
-	var value_40 float32 = scale
-	var value_41 float32 = appearance.Value.FontSize
-	var value_42 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_41), 32, true)), uint64(0), 32, true, 0))
-	var value_43 float32 = float32(value_42)
-	var value_44 float32 = scale
-	var value_45 float32 = value_43 * value_44
-	var value_46 float32 = 0.5
-	var value_47 float32 = value_45 + value_46
-	var value_48 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_47), 32, true)), uint64(0), 32, true, 0))
-	var value_49 int32 = fallback_font
-	var value_50 ButtonFrame = Button_BuildFrame(value_34, value_35, value_36, value_37, value_38, value_39, value_40, value_48, value_49)
-	return value_50
+	var value_4 ButtonState = ButtonState(props.State)
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_4), uint64(0), 32, true, 0))
+	var value_6 ButtonInput = input
+	var value_7 bool = enabled
+	var value_8 float32 = delta_ms
+	var value_9 float32 = metrics.TransitionNormalMs
+	var value_10 float32 = metrics.TransitionFastMs
+	var value_11 InteractionMotion = instance_host_0.Button_AdvanceButtonMotion(value_3, value_5, value_6, value_7, value_8, value_9, value_10)
+	var motion InteractionMotion = value_11
+	var value_12 ButtonTone = ButtonTone(props.Tone)
+	var value_13 int32 = int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0))
+	var value_14 ButtonEmphasis = ButtonEmphasis(props.Emphasis)
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_14), uint64(0), 32, true, 0))
+	var value_16 int32 = input.Interaction.State
+	var value_17 ControlSize = ControlSize(props.Size)
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_17), uint64(0), 32, true, 0))
+	var value_19 bool = props.Pill
+	var value_20 bool = props.Circle
+	var value_21 bool = props.Disabled
+	var value_22 bool = props.Loading
+	var value_23 bool = props.Selected
+	var value_24 Palette = palette
+	var value_25 Metrics = metrics
+	var value_26 StyleStates = styles
+	var value_27 ButtonState = ButtonState(props.State)
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_27), uint64(0), 32, true, 0))
+	var value_29 int32 = int32(ButtonStateAuto)
+	var value_30 bool = value_28 == value_29
+	var value_31 float32 = motion.Hover.Value
+	var value_32 float32 = motion.Press.Value
+	var value_33 float32 = motion.Focus.Value
+	var value_34 StyleFrame = Button_ResolveFrame(value_13, value_15, value_16, value_18, value_19, value_20, value_21, value_22, value_23, value_24, value_25, value_26, value_30, value_31, value_32, value_33)
+	var appearance StyleFrame = value_34
+	var value_35 ButtonProps = props
+	var value_36 ButtonInput = input
+	var value_37 StyleFrame = appearance
+	var value_38 InteractionMotion = motion
+	var value_39 Rectangle = surface
+	var value_40 uint32 = ambient
+	var value_41 float32 = scale
+	var value_42 float32 = appearance.Value.FontSize
+	var value_43 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_42), 32, true)), uint64(0), 32, true, 0))
+	var value_44 float32 = float32(value_43)
+	var value_45 float32 = scale
+	var value_46 float32 = value_44 * value_45
+	var value_47 float32 = 0.5
+	var value_48 float32 = value_46 + value_47
+	var value_49 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_48), 32, true)), uint64(0), 32, true, 0))
+	var value_50 int32 = fallback_font
+	var value_51 ButtonFrame = Button_BuildFrame(value_35, value_36, value_37, value_38, value_39, value_40, value_41, value_49, value_50)
+	return value_51
 }
 
 func Button_PaintButton(frame ButtonFrame, label_width float32, elapsed_ms float64, disclosure bool, surface SurfacePainter, draw Painter) {

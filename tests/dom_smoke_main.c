@@ -62,7 +62,7 @@ int main(void)
         Link((LinkProps){
             .bounds = {210, 192, 84, 24},
             .text = "Docs",
-            .href = "/docs",
+            .link = "/docs",
             .font = 16,
             .focus_id = 302,
             .color = {140, 190, 255, 255}

@@ -67,7 +67,7 @@ Button download: {
 }
 ```
 
-Valid children include `Text`, `Icon`, `Picture`, `Row`, `Column`, and `Spacer`.
+Valid children include `Text`, `Icon`, `Image`, `Row`, `Column`, and `Spacer`.
 Interactive descendants such as `Button`, `TextField`, `TextArea`, `Dropdown`,
 or sliders are rejected because nested activation and focus are ambiguous.
 

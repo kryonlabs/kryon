@@ -1,7 +1,9 @@
 #include "ui_internal.h"
+#include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
 #include "ui_paint_internal.h"
 #include "runtime/button.h"
+#include "runtime/segmented_control.h"
 #include "runtime/style.h"
 #include "runtime/surface.h"
 
@@ -18,6 +20,68 @@ ui_draw_button_content(const ButtonSpec *button, Rectangle bounds,
         GetTime() * 1000.0, button->disclosure);
     ui_draw(content.mark);
     ui_draw(content.label);
+}
+
+static int
+ui_button_has_image(ButtonProps props)
+{
+    return (props.image_asset_path != NULL && props.image_asset_path[0] != '\0') ||
+           props.image_bounds.width > 0.0f ||
+           props.image_bounds.height > 0.0f;
+}
+
+static void
+ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds)
+{
+    ImageProps image;
+
+    if(!ui_button_has_image(props))
+        return;
+    memset(&image, 0, sizeof(image));
+    image.asset_path = props.image_asset_path;
+    image.bounds = props.image_bounds.width > 0.0f ||
+                         props.image_bounds.height > 0.0f
+                     ? props.image_bounds : fallback_bounds;
+    image.source = props.image_source;
+    image.origin = props.image_origin;
+    image.rotation = props.image_rotation;
+    image.tint = props.image_tint.a != 0 ? props.image_tint : WHITE;
+    image.fit = (ImageFit)props.image_fit;
+    if(props.image_background.a != 0)
+        DrawRectangleRec(image.bounds, props.image_background);
+    RenderImage(image);
+}
+
+static void
+ui_draw_button_swatch(ButtonProps props, Rectangle bounds)
+{
+    Palette palette;
+    Metrics tokens;
+    SwatchPaint paint;
+
+    if(!props.swatch || !IsWindowReady())
+        return;
+    Vector2 mouse = ui_mouse_world();
+    ui_runtime_theme_values(&palette, &tokens);
+    paint = SwatchPaintFor((SwatchSpec){
+        .bounds = bounds,
+        .color = props.swatch_color,
+        .disabled = props.disabled,
+        .hovered = CheckCollisionPointRec(mouse, bounds) &&
+                   !UIInputCapturesClick(mouse) &&
+                   UIHoverEffectsEnabled(),
+        .focused = IsUIFocusActive(props.id) &&
+                   !ui_popup_input_focus_captures(props.id),
+        .scale = (float)Scale(1000) / 1000.0f,
+        .palette = palette,
+        .metrics = tokens
+    });
+    DrawRectangleRec(paint.checker_base, GetColor(paint.checker_base_color));
+    DrawRectangleRec(paint.checker_a, GetColor(paint.checker_alt_color));
+    DrawRectangleRec(paint.checker_b, GetColor(paint.checker_alt_color));
+    DrawRectangleRec(paint.swatch, paint.swatch_color);
+    DrawRectangleLinesEx(paint.bounds, paint.border_width,
+                         GetColor(paint.border_color));
 }
 
 static int
@@ -92,7 +156,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     ButtonProps props = button.props;
     ButtonInput input;
     if(handle_input) {
-        input = ReadButtonInput(props);
+        input = ReadButtonInput(props.bounds, props.id, (int)props.state,
+            props.disabled, props.loading, props.selected);
     } else {
         Activation sample = {
             .hovered = retained_hovered,
@@ -101,12 +166,12 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         };
         if(sample.focused && IsUIFocusActivatePressed(button.props.id))
             sample.pressed = true;
-        input = ResolveButtonInput(props, sample);
+        input = ResolveButtonInput((int)props.state, props.disabled,
+            props.loading, props.selected, sample);
     }
     button.props.disabled = input.flags.disabled;
     button.props.loading = input.flags.loading;
     button.props.selected = input.flags.selected;
-    ButtonState state = (ButtonState)input.interaction.state;
     hovered = input.interaction.hovered;
     retained_pressed = input.interaction.pressed;
     focused = input.interaction.focused;
@@ -152,13 +217,15 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             int typeface_token = PushUIFont(frame.appearance.value.typeface.data);
             PaintButton(frame, TextWidth(frame.props.label != NULL ? frame.props.label : "", frame.font),
                 GetTime() * 1000.0, button.disclosure, ui_surface_painter, ui_painter);
+            ui_draw_button_swatch(frame.props, frame.props.bounds);
+            ui_draw_button_image(frame.props, frame.props.bounds);
             PopUIFont(typeface_token);
             if(handle_input)
                 EndUIWidget(&widget);
             return handle_input ? input.activated : 0;
         }
         ThemeMetrics metrics = GetThemeMetrics();
-        motion = AdvanceButtonMotion(key, props, input, cues,
+        motion = AdvanceButtonMotion(key, (int)props.state, input, cues,
             GetFrameTime() * 1000.0f, metrics.transition_normal_ms, metrics.transition_fast_ms);
         hover_amount = motion.hover.value;
         press_amount = motion.press.value;
@@ -198,7 +265,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         if(focused)
             SetUIFocusTextInputActive(0);
         int typeface_token = PushUIFont(NULL);
+        ui_draw_button_swatch(button.props, draw_bounds);
         ui_draw_button_content(&button, draw_bounds, font, text);
+        ui_draw_button_image(button.props, draw_bounds);
         PopUIFont(typeface_token);
         if(handle_input)
             EndUIWidget(&widget);
@@ -233,7 +302,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
 
     if(foreground != NULL)
         *foreground = text;
+    ui_draw_button_swatch(button.props, draw_bounds);
     ui_draw_button_content(&button, draw_bounds, font, text);
+    ui_draw_button_image(button.props, draw_bounds);
     if(handle_input)
         EndUIWidget(&widget);
     return handle_input
@@ -382,46 +453,44 @@ static int
 segmented_item_width(const SegmentOption *option, int font,
                      int min_item_width, int max_item_width)
 {
+    SegmentedMetrics metrics;
     int label_w = TextWidth(option != NULL && option->label != NULL
                                 ? option->label
                                 : "",
                             font);
-    int item_w = label_w + Scale(20);
 
-    if(min_item_width <= 0)
-        min_item_width = Scale(72);
-    if(max_item_width <= 0)
-        max_item_width = Scale(180);
-    if(item_w < min_item_width)
-        item_w = min_item_width;
-    if(max_item_width > 0 && item_w > max_item_width)
-        item_w = max_item_width;
-    return item_w;
+    metrics = SegmentedDefaultMetrics(0, 0, min_item_width, max_item_width,
+                                      Scale(6), Scale(30), Scale(72),
+                                      Scale(180));
+    return SegmentedItemWidth(label_w, metrics, Scale(20));
 }
 
 int
 GetSegmentedControlHeight(SegmentedControlProps control)
 {
     int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : Scale(6);
-    int row_h = control.height > 0 ? control.height : Scale(30);
+    SegmentedMetrics metrics = SegmentedDefaultMetrics(
+        control.gap, control.height, control.min_item_width,
+        control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));
     int row_w = 0;
     int rows = 1;
 
-    if(control.options == NULL || control.option_count <= 0 || row_h <= 0)
+    if(control.options == NULL || control.option_count <= 0 ||
+       metrics.row_height <= 0)
         return 0;
     if(control.bounds.width <= 0)
-        return row_h;
+        return metrics.row_height;
     if(!control.wrap)
-        return row_h;
+        return metrics.row_height;
 
     for(int i = 0; i < control.option_count; i++) {
         int item_w = segmented_item_width(&control.options[i], font,
                                           control.min_item_width,
                                           control.max_item_width);
-        int next_w = row_w > 0 ? row_w + gap + item_w : item_w;
+        int next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
 
-        if(row_w > 0 && next_w > (int)control.bounds.width) {
+        if(SegmentedShouldWrap(control.wrap != 0, row_w, next_w,
+                               (int)control.bounds.width)) {
             rows++;
             row_w = item_w;
         } else {
@@ -429,7 +498,7 @@ GetSegmentedControlHeight(SegmentedControlProps control)
         }
     }
 
-    return rows * row_h + (rows - 1) * gap;
+    return SegmentedHeightForRows(rows, metrics.row_height, metrics.gap);
 }
 
 SegmentedControlResult
@@ -437,8 +506,9 @@ SegmentedControl(SegmentedControlProps control)
 {
     SegmentedControlResult result;
     int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : Scale(6);
-    int row_h = control.height > 0 ? control.height : Scale(30);
+    SegmentedMetrics metrics = SegmentedDefaultMetrics(
+        control.gap, control.height, control.min_item_width,
+        control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -451,7 +521,7 @@ SegmentedControl(SegmentedControlProps control)
     result.height = GetSegmentedControlHeight(control);
 
     if(control.options == NULL || control.option_count <= 0 ||
-       control.bounds.width <= 0 || row_h <= 0)
+       control.bounds.width <= 0 || metrics.row_height <= 0)
         return result;
 
     for(int i = 0; i <= control.option_count; i++) {
@@ -463,25 +533,23 @@ SegmentedControl(SegmentedControlProps control)
             item_w = segmented_item_width(&control.options[i], font,
                                           control.min_item_width,
                                           control.max_item_width);
-        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
+        next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
 
         if(!end_row &&
-           (!control.wrap || row_w == 0 || next_w <= (int)control.bounds.width)) {
+           !SegmentedShouldWrap(control.wrap != 0, row_w, next_w,
+                                (int)control.bounds.width)) {
             row_w = next_w;
             row_count++;
             continue;
         }
 
         if(row_count > 0) {
-            int available_w = (int)control.bounds.width;
-            int button_w = control.wrap
-                               ? (available_w - gap * (row_count - 1)) / row_count
-                               : row_w / row_count;
-            int x = (int)control.bounds.x;
+            SegmentedRow row = SegmentedRowFor(
+                control.bounds.x, control.bounds.width, y, row_start,
+                row_count, row_w, control.wrap != 0, metrics);
+            int button_w = row.button_width;
+            int x = row.x;
 
-            if(control.wrap)
-                x += (available_w -
-                      (button_w * row_count + gap * (row_count - 1))) / 2;
             for(int j = 0; j < row_count; j++) {
                 int item_index = row_start + j;
                 const SegmentOption *option = &control.options[item_index];
@@ -494,7 +562,8 @@ SegmentedControl(SegmentedControlProps control)
                 memset(&button, 0, sizeof(button));
                 memset(&props, 0, sizeof(props));
                 button.props.bounds = (Rectangle){(float)x, (float)y,
-                                            (float)button_w, (float)row_h};
+                                            (float)button_w,
+                                            (float)metrics.row_height};
                 button.props.label = option->label;
                 button.props.font = font;
                 button.props.id = focus_id;
@@ -519,9 +588,9 @@ SegmentedControl(SegmentedControlProps control)
                     }
                     result.selected_index = item_index;
                 }
-                x += button_w + gap;
+                x += button_w + metrics.gap;
             }
-            y += row_h + gap;
+            y += metrics.row_height + metrics.gap;
         }
 
         row_start = i;
@@ -532,169 +601,8 @@ SegmentedControl(SegmentedControlProps control)
     return result;
 }
 
-static void
-score_label(char *buffer, size_t buffer_size, int value)
-{
-    if(buffer == NULL || buffer_size == 0)
-        return;
-    if(value > 0)
-        snprintf(buffer, buffer_size, "+%d", value);
-    else
-        snprintf(buffer, buffer_size, "%d", value);
-}
-
-static int
-score_control_count(ScoreControlProps control)
-{
-    int min_value = control.min_value;
-    int max_value = control.max_value;
-
-    if(min_value == 0 && max_value == 0) {
-        min_value = -3;
-        max_value = 3;
-    }
-    if(max_value < min_value)
-        return 0;
-    return max_value - min_value + 1;
-}
-
 int
-GetScoreControlHeight(ScoreControlProps control)
-{
-    int gap = control.gap > 0 ? control.gap : Scale(6);
-    int row_h = control.height > 0 ? control.height : Scale(34);
-    int item_w = control.min_item_width > 0
-                     ? control.min_item_width
-                     : Scale(42);
-    int count = score_control_count(control);
-    int per_row;
-    int rows;
-
-    if(count <= 0 || row_h <= 0)
-        return 0;
-    if(control.bounds.width <= 0 || !control.wrap)
-        return row_h;
-    per_row = ((int)control.bounds.width + gap) / (item_w + gap);
-    if(per_row < 1)
-        per_row = 1;
-    rows = (count + per_row - 1) / per_row;
-    return rows * row_h + (rows - 1) * gap;
-}
-
-ScoreControlResult
-ScoreControl(ScoreControlProps control)
-{
-    ScoreControlResult result;
-    int font = control.font > 0 ? control.font : GetSmallFontSize();
-    int gap = control.gap > 0 ? control.gap : Scale(6);
-    int row_h = control.height > 0 ? control.height : Scale(34);
-    int item_w = control.min_item_width > 0
-                     ? control.min_item_width
-                     : Scale(42);
-    int min_value = control.min_value;
-    int max_value = control.max_value;
-    int count;
-    int per_row;
-    int selected = control.value != NULL ? *control.value : 0;
-
-    memset(&result, 0, sizeof(result));
-    result.value = selected;
-    result.clicked_value = selected;
-    result.height = GetScoreControlHeight(control);
-
-    if(min_value == 0 && max_value == 0) {
-        min_value = -3;
-        max_value = 3;
-    }
-    count = max_value - min_value + 1;
-    if(count <= 0 || control.bounds.width <= 0 || row_h <= 0)
-        return result;
-
-    per_row = count;
-    if(control.wrap) {
-        per_row = ((int)control.bounds.width + gap) / (item_w + gap);
-        if(per_row < 1)
-            per_row = 1;
-        if(per_row > count)
-            per_row = count;
-    }
-
-    for(int row_start = 0, row_index = 0; row_start < count;
-        row_start += per_row, row_index++) {
-        int row_count = count - row_start;
-        int x;
-        int y = (int)control.bounds.y + row_index * (row_h + gap);
-        int button_w;
-
-        if(row_count > per_row)
-            row_count = per_row;
-        button_w = control.wrap
-                       ? ((int)control.bounds.width - gap * (row_count - 1)) /
-                             row_count
-                       : item_w;
-        if(button_w < 1)
-            button_w = 1;
-        x = (int)control.bounds.x;
-        if(control.wrap)
-            x += ((int)control.bounds.width -
-                  (button_w * row_count + gap * (row_count - 1))) /
-                 2;
-
-        for(int i = 0; i < row_count; i++) {
-            int value = min_value + row_start + i;
-            int focus_id = control.id > 0 ? control.id * 100 + row_start + i + 1
-                                          : 0;
-            int selected_value = value == selected;
-            char label[16];
-            ButtonSpec button;
-            ButtonProps props;
-            Style paint;
-
-            score_label(label, sizeof(label), value);
-            memset(&button, 0, sizeof(button));
-            memset(&props, 0, sizeof(props));
-            button.props.bounds = (Rectangle){(float)x, (float)y,
-                                        (float)button_w, (float)row_h};
-            button.props.label = label;
-            button.props.font = font;
-            button.props.id = focus_id;
-            props.tone = selected_value ? ButtonToneAccent : ButtonToneNeutral;
-            props.emphasis = ButtonEmphasisSoft;
-            props.selected = selected_value;
-            paint = ResolveButtonStyle(props, ButtonStateNormal);
-            button.paint.background = paint.background;
-            button.hover_background = paint.background;
-            button.paint.foreground = paint.foreground;
-            if(value < 0 && !selected_value) {
-                button.paint.background = DarkenUIColor(c_bg, 10);
-                button.hover_background = DarkenUIColor(c_bg, 4);
-                button.paint.foreground = Fade(c_text, 0.78f);
-            } else if(value > 0 && !selected_value) {
-                button.paint.background = c_surface;
-                button.hover_background = LightenUIColor(c_surface, 8);
-                button.paint.foreground = c_text;
-            }
-            button.paint.border = selected_value ? c_button : Fade(c_text, 0.30f);
-            button.paint.radius = 0.08f;
-            button.style_resolved = 1;
-            if(ui_button_render(button)) {
-                result.clicked = 1;
-                result.clicked_value = value;
-                if(control.value != NULL && *control.value != value) {
-                    *control.value = value;
-                    result.changed = 1;
-                }
-                result.value = value;
-            }
-            x += button_w + gap;
-        }
-    }
-
-    return result;
-}
-
-int
-RenderInfoButton(int center_x, int center_y, int diameter)
+RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
 {
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = Scale(32);

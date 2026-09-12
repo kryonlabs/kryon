@@ -11,7 +11,7 @@ state {
     prompt: [128] char = "value"
     cursor: int = 5
     focused: int = 0
-    color: Color = {120,160,220,255}
+    color_values: [4] float = {0.47f,0.63f,0.86f,1.0f}
 }
 
 DialogsExample :: (viewport: Rectangle) #ui {
@@ -27,15 +27,24 @@ DialogsExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt",  .font = Text16, .id = 103}) {
             dialog = 3
         }
-        ColorPicker((Rectangle){240,60,320,160},&color)
-        if dialog == 1 && MessageDialog((MessageDialogProps){"Message","Hello from Kryon.","OK"}) > 0 {
-            dialog = 0
+        ColorPicker((ColorPickerProps){.bounds = {240,60,320,160}, .id = 104, .values = color_values, .value_count = 4, .picker = true})
+        if dialog == 1 {
+            message_actions: [1] ModalAction = {{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            if Modal((ModalProps){.title = "Message", .message = "Hello from Kryon.", .actions = message_actions, .action_count = 1, .max_width = 420}) > 0 {
+                dialog = 0
+            }
         }
-        if dialog == 2 && ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","No","Yes"}) != 0 {
-            dialog = 0
+        if dialog == 2 {
+            confirm_actions: [2] ModalAction = {{"No",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Yes",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            if Modal((ModalProps){.title = "Confirm", .message = "Continue?", .actions = confirm_actions, .action_count = 2, .max_width = 460}) != 0 {
+                dialog = 0
+            }
         }
-        if dialog == 3 && PromptDialog((PromptDialogProps){"Prompt",prompt,sizeof(prompt),&cursor,&focused,"Cancel","Save"}) != 0 {
-            dialog = 0
+        if dialog == 3 {
+            prompt_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Save",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            if Modal((ModalProps){.title = "Prompt", .actions = prompt_actions, .action_count = 2, .max_width = 460, .text = prompt, .text_size = sizeof(prompt), .cursor_position = &cursor, .focused = &focused}) != 0 {
+                dialog = 0
+            }
         }
     }
 }

@@ -1065,15 +1065,15 @@ func TestTransparentButtonForegroundDoesNotResurrectIcons(t *testing.T) {
 	}
 }
 
-func TestColorButtonSuppliesVisibleSurfaceDefaults(t *testing.T) {
+func TestButtonSwatchSuppliesVisibleSurfaceDefaults(t *testing.T) {
 	r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
-	r.ColorButton(ColorButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30},
-		Color: Color{R: 200, G: 30, B: 20, A: 255}})
+	r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30},
+		Swatch: true, SwatchColor: Color{R: 200, G: 30, B: 20, A: 255}})
 	for _, op := range r.FrameOps() {
 		if op.Kind != FrameOpButton {
 			continue
 		}
-		if op.Opacity != 1 || op.BorderWidth != r.themeMetrics().BorderWidth {
+		if op.Button.Appearance.Value.Opacity != 1 || op.Button.Appearance.Value.BorderWidth != r.themeMetrics().BorderWidth {
 			t.Fatalf("control omitted resolved surface defaults: %+v", op)
 		}
 		img := image.NewRGBA(image.Rect(0, 0, 100, 50))

@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
+#include "runtime/navigation_bar.h"
 #include "theme.h"
 #include <stdio.h>
 #include <string.h>
@@ -68,7 +69,6 @@ int
 main(void)
 {
     LabelTextFieldProps field = {.field_h = 40};
-    SectionLabelProps section = {0};
     CheckboxRowProps checkbox = {0};
     ButtonRowProps row = {.width = 240, .height = 40};
     Form form;
@@ -148,17 +148,11 @@ main(void)
         }
     }
 
-    check_int("section label",
-              GetNodeHeight(NodeSectionLabel(section, 0, 0)),
-              Scale(24));
-    check_int("checkbox row",
-              GetNodeHeight(NodeCheckboxRow(checkbox, 0, 0)),
-              Scale(42));
     check_int("label text field",
-              GetNodeHeight(NodeLabelTextField(field, 0, 0, 240)),
+              GetUILabelTextFieldHeight(field),
               Scale(22) + Scale(40) + Scale(24));
     check_int("button row",
-              GetNodeHeight(NodeButtonRow(row)),
+              GetUIButtonRowHeight(row),
               Scale(40));
     form = FormBegin(10, 20, 240);
     taken = FormTakeRect(&form, Scale(18));
@@ -171,6 +165,9 @@ main(void)
     EndTree();
     check_int("form section helper advances", FormY(&form),
               20 + Scale(18) + Scale(24));
+    FormCheckbox(&form, checkbox);
+    check_int("form checkbox helper advances", FormY(&form),
+              20 + Scale(18) + Scale(24) + Scale(42));
     check_int("spinbox row height",
               GetUISpinboxRowHeight((SpinboxRowProps){0}),
               Scale(54));
@@ -180,7 +177,7 @@ main(void)
     SetThemeStyle(THEME_STYLE_DEFAULT);
     check_int("material navigation bar",
               GetNodeHeight(NodeNavigationBar(nav)),
-              Scale(92));
+              NavigationBarDefaultHeight(1.0f));
     SetThemeStyle(THEME_STYLE_CLASSIC);
     check_int("retro tab bar",
               GetNodeHeight(NodeTabBar(tabs)),

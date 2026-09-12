@@ -1,0 +1,100 @@
+#module "segmented_control"
+
+SegmentedMetrics :: struct {
+    gap: i32
+    row_height: i32
+    min_item_width: i32
+    max_item_width: i32
+}
+
+SegmentedRow :: struct {
+    start: i32
+    count: i32
+    width: i32
+    button_width: i32
+    x: i32
+    y: i32
+}
+
+SegmentedDefaultMetrics :: (gap: i32, row_height: i32, min_item_width: i32,
+    max_item_width: i32, default_gap: i32, default_row_height: i32,
+    default_min_item_width: i32, default_max_item_width: i32) -> SegmentedMetrics #export {
+    metrics: SegmentedMetrics
+    metrics.gap = gap
+    if metrics.gap <= 0 {
+        metrics.gap = default_gap
+    }
+    metrics.row_height = row_height
+    if metrics.row_height <= 0 {
+        metrics.row_height = default_row_height
+    }
+    metrics.min_item_width = min_item_width
+    if metrics.min_item_width <= 0 {
+        metrics.min_item_width = default_min_item_width
+    }
+    metrics.max_item_width = max_item_width
+    if metrics.max_item_width <= 0 {
+        metrics.max_item_width = default_max_item_width
+    }
+    if metrics.max_item_width > 0 && metrics.max_item_width < metrics.min_item_width {
+        metrics.max_item_width = metrics.min_item_width
+    }
+    return metrics
+}
+
+SegmentedItemWidth :: (label_width: i32, metrics: SegmentedMetrics,
+    horizontal_padding: i32) -> i32 #export {
+    width: i32 = label_width + horizontal_padding
+    if width < metrics.min_item_width {
+        width = metrics.min_item_width
+    }
+    if metrics.max_item_width > 0 && width > metrics.max_item_width {
+        width = metrics.max_item_width
+    }
+    return width
+}
+
+SegmentedNextRowWidth :: (row_width: i32, item_width: i32, gap: i32) -> i32 #export {
+    if row_width > 0 {
+        return row_width + gap + item_width
+    }
+    return item_width
+}
+
+SegmentedShouldWrap :: (wrap: bool, row_width: i32, next_width: i32,
+    available_width: i32) -> bool #export {
+    return wrap && row_width > 0 && next_width > available_width
+}
+
+SegmentedHeightForRows :: (rows: i32, row_height: i32, gap: i32) -> i32 #export {
+    if rows <= 0 || row_height <= 0 {
+        return 0
+    }
+    return rows * row_height + (rows - 1) * gap
+}
+
+SegmentedRowFor :: (bounds_x: float, bounds_width: float, y: i32,
+    row_start: i32, row_count: i32, row_width: i32, wrap: bool,
+    metrics: SegmentedMetrics) -> SegmentedRow #export {
+    row: SegmentedRow
+    row.start = row_start
+    row.count = row_count
+    row.width = row_width
+    row.y = y
+    available: i32 = (i32)bounds_width
+    if row_count <= 0 || available <= 0 {
+        return row
+    }
+    if wrap {
+        row.button_width = (available - metrics.gap * (row_count - 1)) / row_count
+        row.x = (i32)bounds_x + (available -
+            (row.button_width * row_count + metrics.gap * (row_count - 1))) / 2
+    } else {
+        row.button_width = row_width / row_count
+        row.x = (i32)bounds_x
+    }
+    if row.button_width < 0 {
+        row.button_width = 0
+    }
+    return row
+}

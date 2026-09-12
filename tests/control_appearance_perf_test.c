@@ -208,7 +208,8 @@ make_button_frame(ButtonProps props, ButtonState state,
 {
     Activation sample = {.hovered = hover > 0.0f, .pressed = press > 0.0f,
                          .focused = focus > 0.0f};
-    ButtonInput input = ResolveButtonInput(props, sample);
+    ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, sample);
     InteractionMotion motion = sample_motion(hover, press, focus);
     StyleFrame appearance = ui_button_style_frame(props, state, 1, hover, press, focus);
     ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
@@ -325,7 +326,8 @@ bench_dropdown(Counters *c, unsigned long long i)
         appearance.value.fields, appearance.value.background,
         appearance.value.background_end));
     Activation activation = {.hovered = sample.hover > 0.05f, .pressed = sample.press > 0.05f, .focused = sample.focus > 0.05f};
-    ButtonInput input = ResolveButtonInput(props, activation);
+    ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, activation);
     ButtonFrame frame = BuildFrame(props, input, appearance, sample_motion(sample.hover, sample.press, sample.focus),
                                    (Rectangle){0}, PackedColor(0x092039u, 255u), 1.0f,
                                    (int)appearance.value.font_size, 18);

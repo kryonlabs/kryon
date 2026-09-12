@@ -204,8 +204,8 @@ the next theme mutation.
 Each public button widget has one canonical Kry source module:
 
 - `runtime/button.kry` owns tone, emphasis, state, and color policy.
-- `runtime/menu_button.kry` owns menu-button state transitions.
-- `runtime/split_button.kry` owns split geometry.
+- `runtime/button.kry` owns Button menu-mode state transitions.
+- `runtime/button.kry` owns Button split-mode geometry.
 - `runtime/theme.kry` owns light, dark, and system mode resolution.
 
 The build runs every module through strict `k2c` and `k2go`; native C and Go

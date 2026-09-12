@@ -232,9 +232,21 @@ main(void)
                                    .max_codepoints = 63,
                                    .font = Text16,
                                    .focus_id = 1002});
-        DropdownLegacy(1003, 18, 140, 150, 34, options, 3, &selected);
-        Slider(1004, 18, 188, 160, "Value", 0, 100, &slider, "%", NULL);
-        Checkbox(1005, 198, 188, "Checked", &checked);
+        Dropdown((DropdownProps){.id = 1003, .bounds = {18, 140, 150, 34},
+                                 .options = options,
+                                 .option_count = 3,
+                                 .selected_index = &selected});
+        Slider((SliderProps){.bounds = {18, 188, 160, 56},
+                             .id = 1004,
+                             .label = "Value",
+                             .kind = NumericInt,
+                             .int_values = &slider,
+                             .value_count = 1,
+                             .min = 0.0,
+                             .max = 100.0,
+                             .format = "%"});
+        Checkbox((CheckboxProps){.bounds = {198, 188, 120, 34}, .id = 1005,
+                 .label = "Checked", .value = &checked});
         EndTree();
 
         EndDrawing();

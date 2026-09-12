@@ -13,7 +13,7 @@ MotionTrack :: struct {
     elapsed_ms: float
 }
 
-Ring :: struct {
+LoadingRingSpec :: struct {
     x: float
     y: float
     inner_radius: float
@@ -28,8 +28,8 @@ Ring :: struct {
 }
 
 LoadingRing :: (width: float, height: float, icon_size: float,
-                elapsed_ms: f64, color: u32, ambient: u32) -> Ring #export {
-    ring: Ring
+                elapsed_ms: f64, color: u32, ambient: u32) -> LoadingRingSpec #export {
+    ring: LoadingRingSpec
     ring.x = width * 0.5
     ring.y = height * 0.5
     if icon_size <= 0.0 { return ring }
@@ -68,7 +68,7 @@ LoadingRing :: (width: float, height: float, icon_size: float,
 
 # Light gathers at the leading end of the rotating arc. Distance-based
 # falloff is continuous across angle wrapping and needs no host trigonometry.
-LoadingArcColor :: (ring: Ring, x: float, y: float) -> u32 #export {
+LoadingArcColor :: (ring: LoadingRingSpec, x: float, y: float) -> u32 #export {
     radius: float = (ring.inner_radius + ring.outer_radius) * 0.5
     tip_x: float = radius * SinDegrees(ring.end_angle + 90.0)
     tip_y: float = radius * SinDegrees(ring.end_angle)
@@ -83,7 +83,7 @@ LoadingArcColor :: (ring: Ring, x: float, y: float) -> u32 #export {
         ring.trail_opacity + (1.0 - ring.trail_opacity) * near_tip)
 }
 
-LoadingTipCoverage :: (ring: Ring, x: float, y: float) -> float #export {
+LoadingTipCoverage :: (ring: LoadingRingSpec, x: float, y: float) -> float #export {
     radius: float = (ring.inner_radius + ring.outer_radius) * 0.5
     tip_radius: float = (ring.outer_radius - ring.inner_radius) * 0.625
     tip_x: float = radius * SinDegrees(ring.end_angle + 90.0)
@@ -92,7 +92,7 @@ LoadingTipCoverage :: (ring: Ring, x: float, y: float) -> float #export {
         tip_radius * 2.0, tip_radius * 2.0, tip_radius)
 }
 
-LoadingPaintRadius :: (ring: Ring) -> float #export {
+LoadingPaintRadius :: (ring: LoadingRingSpec) -> float #export {
     # Include the small specular cap beyond the nominal ring radius.
     extension: float = (ring.outer_radius - ring.inner_radius) * 0.125
     if ring.glow_blur > extension { extension = ring.glow_blur }
@@ -108,7 +108,7 @@ RingSample :: struct {
     tip: u32
 }
 
-LoadingSample :: (ring: Ring, x: float, y: float) -> RingSample #export {
+LoadingSample :: (ring: LoadingRingSpec, x: float, y: float) -> RingSample #export {
     sample: RingSample
     if ring.glow_blur > 0.0 {
         # Only the rotating arc emits light; keep the unlit gap and central

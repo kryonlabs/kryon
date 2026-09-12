@@ -54,7 +54,8 @@ render_column(int x, int fancy)
 
     Text((TextProps){.bounds = {x, 628, 260, 24}, .text = "Dropdown",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
-    DropdownLegacy(8300 + fancy, x, 660, 260, 44, items, 3, &selected);
+    Dropdown((DropdownProps){.id = 8300 + fancy, .bounds = {x, 660, 260, 44},
+        .options = items, .option_count = 3, .selected_index = &selected});
 }
 
 int

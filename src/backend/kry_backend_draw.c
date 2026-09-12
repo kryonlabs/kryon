@@ -1,9 +1,9 @@
 #include "kry_backend.h"
 #include "krb.h"
 #include "kryon.h"
-#include "ui_picture.h"
+#include "ui_image.h"
 #include "../ui/ui_internal.h"
-#include "../ui/ui_picture_internal.h"
+#include "../ui/ui_image_internal.h"
 
 static unsigned
 pack_color(Color c)
@@ -154,21 +154,21 @@ draw_texture(const char *asset_path, int x, int y, int w, int h,
              unsigned tint, int fit)
 {
     Texture2D tex;
-    PictureProps pic;
+    ImageProps image;
 
     if(asset_path == NULL || asset_path[0] == '\0' || w <= 0 || h <= 0)
         return;
-    tex = LoadPictureTexture(asset_path);
+    tex = LoadImageTexture(asset_path);
     if(tex.id == 0)
         return;
-    memset(&pic, 0, sizeof(pic));
-    pic.asset_path = asset_path;
-    pic.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    pic.tint = unpack_color(tint);
-    pic.fit = (PictureFit)fit;
+    memset(&image, 0, sizeof(image));
+    image.asset_path = asset_path;
+    image.bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    image.tint = unpack_color(tint);
+    image.fit = (ImageFit)fit;
     DrawTexturePro(tex,
                    (Rectangle){0, 0, (float)tex.width, (float)tex.height},
-                   PictureFitRect(pic, tex), (Vector2){0, 0}, 0.0f, pic.tint);
+                   ImageFitRect(image, tex), (Vector2){0, 0}, 0.0f, image.tint);
 }
 
 static unsigned

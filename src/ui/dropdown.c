@@ -168,14 +168,15 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
     Activation sample = {.hovered = hovered, .pressed = pressed, .focused = focused};
     if(focused && IsUIFocusActivatePressed(id))
         sample.pressed = true;
-    ButtonInput input = ResolveButtonInput(props, sample);
+    ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, sample);
     ThemeMetrics metrics = GetThemeMetrics();
     unsigned int key = (2166136261u ^ (unsigned int)id) * 16777619u;
     if(id == 0) {
         key = (key ^ (unsigned int)(int)bounds.x) * 16777619u;
         key = (key ^ (unsigned int)(int)bounds.y) * 16777619u;
     }
-    InteractionMotion motion = AdvanceButtonMotion(key, props, input,
+    InteractionMotion motion = AdvanceButtonMotion(key, (int)props.state, input,
         UITransitionCuesEnabled(), GetFrameTime() * 1000.0f,
         metrics.transition_normal_ms, metrics.transition_fast_ms);
     StyleFrame appearance = ui_button_style_frame(props, input.interaction.state,
@@ -525,7 +526,7 @@ dropdown_paint_menu(int id)
        CheckCollisionPointRec(mouse, scrollbar_bounds))
         state->scrollbar_pressed = 1;
 
-    state->gesture = Drag(state->gesture, state->scroll_offset,
+    state->gesture = PopupDragGesture(state->gesture, state->scroll_offset,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
         state->scrollbar_pressed, my, max_scroll, Scale(8));
     state->scroll_offset = state->gesture.offset;

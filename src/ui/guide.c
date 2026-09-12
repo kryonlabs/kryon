@@ -18,14 +18,6 @@ guide_draw_scrim(int view_w, int view_h, Rectangle anchor, Color scrim)
     DrawRectangle(right, top, view_w - right, bottom - top, scrim);
 }
 
-int
-GetUIGuideOverlayDebug(UIGuideOverlayDebug *out)
-{
-    if(out != NULL)
-        *out = g_ui_guide_debug;
-    return g_ui_guide_debug.valid;
-}
-
 static void
 guide_draw_arrow(Rectangle tip, Rectangle anchor)
 {

@@ -4,45 +4,6 @@
 #include "kryon_compat.generated.h"
 #include "ui_icon_types.h"
 
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int height;
-    const char *username;
-    const char *subtitle;
-    const char *friends_text;
-    Texture2D pfp_icon;
-    const Texture2D *icons;
-    UIIconType pfp_icon_type;
-    int content_padding_x;
-    int current_frame;
-    int block_click_frame;
-} SidebarAccountHeaderProps;
-
-typedef struct {
-    int pfp_clicked;
-    int username_clicked;
-    int friends_clicked;
-    int height;
-} SidebarAccountHeaderResult;
-
-typedef struct {
-    const char *title;
-    const Texture2D *icons;
-    UIIconType *selected_icon_type;
-    Texture2D close_icon;
-    int max_width;
-    int *scroll_offset;
-} ProfilePicturePickerProps;
-
-typedef struct {
-    int closed;
-    int changed;
-    int selected_index;
-    UIIconType selected_icon_type;
-} ProfilePicturePickerResult;
-
 typedef enum {
     UI_SYNC_PROFILE_ICON_NONE = 0,
     UI_SYNC_PROFILE_ICON_BIRD = 1,

@@ -163,7 +163,7 @@ BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
                                               ? spec.title_user_data
                                               : spec.user_data);
     else
-        TitleBar(spec.title, title_h);
+        TitleBar((TitleBarProps){.title = spec.title, .height = title_h});
 
     content_y = title_h + top_gap;
     content_h = ui_view_height - content_y - spec.bottom_reserved;

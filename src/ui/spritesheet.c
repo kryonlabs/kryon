@@ -1,5 +1,5 @@
 #include "spritesheet.h"
-#include "ui_picture_internal.h"
+#include "ui_image_internal.h"
 #include <stddef.h>
 
 SpriteSheet
@@ -89,7 +89,7 @@ DrawSpriteSheetFrameFromPathEx(SpriteSheet sheet, int frame, Rectangle bounds,
 
     if(sheet.asset_path == NULL || sheet.asset_path[0] == '\0')
         return;
-    texture = LoadPictureTexture(sheet.asset_path);
+    texture = LoadImageTexture(sheet.asset_path);
     DrawSpriteSheetFrameEx(texture, sheet, frame, bounds, origin, rotation,
                            tint, flip_x, flip_y);
 }

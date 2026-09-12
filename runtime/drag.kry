@@ -1,0 +1,105 @@
+#module "drag"
+
+DragScalarStep :: struct {
+    value: float
+    changed: bool
+}
+
+DragWholeStep :: struct {
+    value: i32
+    changed: bool
+}
+
+DragEffectiveSpeed :: (speed: float) -> float #export {
+    if speed == 0.0 { return 1.0 }
+    return speed
+}
+
+DragScalarClamp :: (value: float, minimum: float, maximum: float) -> float #export {
+    if minimum < maximum {
+        if value < minimum { return minimum }
+        if value > maximum { return maximum }
+    }
+    return value
+}
+
+DragWholeClamp :: (value: i32, minimum: i32, maximum: i32) -> i32 #export {
+    if minimum < maximum {
+        if value < minimum { return minimum }
+        if value > maximum { return maximum }
+    }
+    return value
+}
+
+DragWholeRoundedDelta :: (scaled: float, force_minimum_step: bool) -> i32 #export {
+    step: i32 = (i32)(scaled + (scaled < 0.0 ? -0.5 : 0.5))
+    if force_minimum_step && step == 0 {
+        if scaled < 0.0 { return -1 }
+        return 1
+    }
+    return step
+}
+
+DragScalarKeyboardValue :: (value: float, speed: float, minimum: float,
+    maximum: float, direction: i32, home: bool, end: bool, alt: bool,
+    shift: bool) -> DragScalarStep #export {
+    result: DragScalarStep
+    result.value = value
+    result.changed = false
+    next: float = value
+    if home && minimum < maximum {
+        next = minimum
+    } else if end && minimum < maximum {
+        next = maximum
+    } else if direction != 0 {
+        step: float = DragEffectiveSpeed(speed)
+        if alt { step = step * 0.1 }
+        if shift { step = step * 10.0 }
+        next = DragScalarClamp(next + (float)direction * step, minimum, maximum)
+    }
+    result.value = next
+    result.changed = next != value
+    return result
+}
+
+DragWholeKeyboardValue :: (value: i32, speed: float, minimum: i32,
+    maximum: i32, direction: i32, home: bool, end: bool, alt: bool,
+    shift: bool) -> DragWholeStep #export {
+    result: DragWholeStep
+    result.value = value
+    result.changed = false
+    next: i32 = value
+    if home && minimum < maximum {
+        next = minimum
+    } else if end && minimum < maximum {
+        next = maximum
+    } else if direction != 0 {
+        scaled: float = DragEffectiveSpeed(speed)
+        if alt { scaled = scaled * 0.1 }
+        if shift { scaled = scaled * 10.0 }
+        next = DragWholeClamp(next + direction * DragWholeRoundedDelta(scaled, true),
+            minimum, maximum)
+    }
+    result.value = next
+    result.changed = next != value
+    return result
+}
+
+DragScalarDeltaValue :: (value: float, delta: float, speed: float,
+    minimum: float, maximum: float) -> DragScalarStep #export {
+    result: DragScalarStep
+    result.value = DragScalarClamp(value + delta * DragEffectiveSpeed(speed),
+        minimum, maximum)
+    result.changed = result.value != value
+    return result
+}
+
+DragWholeDeltaValue :: (value: i32, delta: float, speed: float,
+    minimum: i32, maximum: i32) -> DragWholeStep #export {
+    result: DragWholeStep
+    scaled: float = delta * DragEffectiveSpeed(speed)
+    result.value = DragWholeClamp(value + DragWholeRoundedDelta(scaled, false),
+        minimum, maximum)
+    result.changed = result.value != value
+    return result
+}

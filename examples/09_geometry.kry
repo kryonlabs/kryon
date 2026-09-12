@@ -28,7 +28,7 @@ GeometryExample :: (viewport: Rectangle) #ui {
         Box(shell,GetThemeSurface(),GetThemeIcon())
         Box(header,GetThemeButton(),BLANK)
         Box(rail,DarkenUIColor(GetThemeSurface(),8),BLANK)
-        Separator((Rectangle){rail.x+rail.width+6,rail.y,1,rail.height},1)
+        Separator((SeparatorProps){.bounds = {rail.x+rail.width+6,rail.y,1,rail.height}, .vertical = true})
         Text((TextProps){.bounds={header.x+16, header.y+16, 0, 0}, .text="Packed header", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={rail.x+16, rail.y+16, 0, 0}, .text="Left rail", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Box(card0,DarkenUIColor(GetThemeSurface(),12),GetThemeButton())
@@ -41,7 +41,7 @@ GeometryExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={badge.x+18, badge.y+7, 0, 0}, .text="badge", .font=Text12, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={card2.x+14, card2.y+18, 0, 0}, .text="cell 1,0", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={card3.x+14, card3.y+18, 0, 0}, .text="wide footer cell", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Separator((Rectangle){footer.x,footer.y-7,footer.width,1},0)
+        Separator((SeparatorProps){.bounds = {footer.x,footer.y-7,footer.width,1}})
         Box(action,GetThemeButton(),BLANK)
         Text((TextProps){.bounds={action.x+14, action.y+9, 0, 0}, .text="placed action", .font=Text12, .color=GetThemeText(), .wrap=TextWrapNone})
     }

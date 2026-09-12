@@ -19,23 +19,42 @@ ButtonInput :: struct {
     activated: bool
 }
 
+ButtonActionEnabled :: (disabled: bool, content_disabled: bool) -> bool #export {
+    return !disabled && !content_disabled
+}
+
+ButtonArrowGlyph :: (direction: i32) -> i32 #export {
+    if direction == 1 {
+        return 62
+    }
+    if direction == 2 {
+        return 94
+    }
+    if direction == 3 {
+        return 118
+    }
+    return 60
+}
+
 # Both immediate input and retained painting use this interpretation. Painting
 # supplies its stored sample and must not poll or consume activation again.
-ResolveButtonInput :: (props: ButtonProps, sample: Activation) -> ButtonInput #export {
+ResolveButtonInput :: (state: i32, disabled: bool, loading: bool, selected: bool,
+    sample: Activation) -> ButtonInput #export {
     result: ButtonInput
-    result.flags = ResolveFlags((i32)props.state, props.disabled, props.loading, props.selected)
+    result.flags = ResolveFlags(state, disabled, loading, selected)
     enabled: bool = CanActivate(result.flags.disabled, result.flags.loading)
     result.activated = enabled && sample.activated
-    result.interaction = ResolveInteraction((i32)props.state, result.flags.disabled,
+    result.interaction = ResolveInteraction(state, result.flags.disabled,
         result.flags.loading, enabled && sample.pressed, enabled && sample.hovered,
         enabled && sample.focused, result.flags.selected)
     return result
 }
 
-ReadButtonInput :: (props: ButtonProps) -> ButtonInput #export {
-    flags: StateFlags = ResolveFlags((i32)props.state, props.disabled, props.loading, props.selected)
-    sample: Activation = ReadActivation(props.bounds, props.id, CanActivate(flags.disabled, flags.loading))
-    return ResolveButtonInput(props, sample)
+ReadButtonInput :: (bounds: Rectangle, id: i32, state: i32, disabled: bool,
+    loading: bool, selected: bool) -> ButtonInput #export {
+    flags: StateFlags = ResolveFlags(state, disabled, loading, selected)
+    sample: Activation = ReadActivation(bounds, id, CanActivate(flags.disabled, flags.loading))
+    return ResolveButtonInput(state, disabled, loading, selected, sample)
 }
 
 # The declaration owns the retained shape; hosts only allocate it by identity.
@@ -43,12 +62,12 @@ ButtonInstance :: struct {
     motion: InteractionMotion
 }
 
-AdvanceButtonMotion :: (key: u64, props: ButtonProps, input: ButtonInput, enabled: bool,
+AdvanceButtonMotion :: (key: u64, state: i32, input: ButtonInput, enabled: bool,
     delta_ms: float, normal_ms: float, fast_ms: float) -> InteractionMotion #export {
     retained: ButtonInstance #instance(key)
     retained.motion = AdvanceInteractionMotion(retained.motion, input.interaction.hovered,
         input.interaction.pressed, input.interaction.focused, enabled,
-        (i32)props.state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
+        state != ButtonStateAuto, input.flags.disabled, input.flags.loading,
         delta_ms, normal_ms, fast_ms)
     return retained.motion
 }
@@ -168,6 +187,114 @@ ContentSize :: struct {
     gap: float
 }
 
+ButtonSplitLayout :: struct {
+    width: float
+    action_width: float
+    menu_offset: float
+    menu_width: float
+    divider_inset: float
+}
+
+SwatchSpec :: struct {
+    bounds: Rectangle
+    color: Color
+    disabled: bool
+    hovered: bool
+    focused: bool
+    scale: float
+    palette: Palette
+    metrics: Metrics
+}
+
+SwatchPaint :: struct {
+    bounds: Rectangle
+    checker_base: Rectangle
+    checker_a: Rectangle
+    checker_b: Rectangle
+    swatch: Rectangle
+    focus_bounds: Rectangle
+    checker_base_color: u32
+    checker_alt_color: u32
+    swatch_color: Color
+    border_color: u32
+    focus_color: u32
+    text_color: u32
+    label_x: float
+    radius: float
+    border_width: float
+    focus_width: float
+    show_focus: bool
+}
+
+ButtonResolveSplitLayout :: (width: float, height: float) -> ButtonSplitLayout #export {
+    layout: ButtonSplitLayout
+    layout.width = width
+    if layout.width < height * 2.0 {
+        layout.width = height * 2.0
+    }
+    layout.action_width = layout.width - height
+    layout.menu_offset = layout.action_width
+    layout.menu_width = height
+    layout.divider_inset = 8.0
+    return layout
+}
+
+ButtonToggleMenuOpen :: (open: bool, clicked: bool) -> bool #export {
+    if clicked { return !open }
+    return open
+}
+
+ButtonCloseMenuAfterActivation :: (open: bool, activated_id: i32) -> bool #export {
+    if activated_id != 0 { return false }
+    return open
+}
+
+SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
+    paint: SwatchPaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+
+    half_w: float = spec.bounds.width * 0.5
+    half_h: float = spec.bounds.height * 0.5
+    inset: float = 6.0 * scale
+    border_width: float = spec.metrics.border_width
+    focus_width: float = spec.metrics.focus_width
+    if border_width <= 0.0 { border_width = 1.0 }
+    if focus_width <= 0.0 { focus_width = 1.0 }
+
+    paint.bounds = spec.bounds
+    paint.checker_base = spec.bounds
+    paint.checker_a.x = spec.bounds.x
+    paint.checker_a.y = spec.bounds.y
+    paint.checker_a.width = half_w
+    paint.checker_a.height = half_h
+    paint.checker_b.x = spec.bounds.x + half_w
+    paint.checker_b.y = spec.bounds.y + half_h
+    paint.checker_b.width = half_w
+    paint.checker_b.height = half_h
+    paint.swatch = spec.bounds
+    paint.focus_bounds = spec.bounds
+    paint.swatch_color = spec.color
+    paint.label_x = spec.bounds.x + inset
+    paint.radius = spec.metrics.radius_medium
+    paint.border_width = border_width
+    paint.focus_width = focus_width
+
+    paint.checker_base_color = PackedColor((u32)0xB4B4B4, (u32)255)
+    paint.checker_alt_color = PackedColor((u32)0xDCDCDC, (u32)255)
+    paint.border_color = spec.hovered ? spec.palette.accent_hover : spec.palette.border
+    paint.focus_color = spec.palette.focus
+    paint.text_color = spec.disabled ? spec.palette.text_disabled : spec.palette.text
+    paint.show_focus = !spec.disabled && spec.focused
+
+    if spec.disabled {
+        paint.border_color = spec.palette.border
+        paint.swatch_color.a = (u8)128
+    }
+
+    return paint
+}
+
 MeasureButton :: (props: ButtonProps, paint: Style, minimum_height: float,
     font: i32, available_width: float, scale: float, disclosure: bool) -> Rectangle #export {
     label_width: float = (float)MeasureTextWidth(props.label, font, paint.typeface)
@@ -285,7 +412,7 @@ PaintContent :: (props: ButtonProps, bounds: Rectangle, paint: StyleData,
     result.mark.color = foreground
     if props.loading {
         result.mark.kind = DrawingRing
-        ring: Ring = LoadingRing(bounds.width / scale, bounds.height / scale,
+        ring: LoadingRingSpec = LoadingRing(bounds.width / scale, bounds.height / scale,
             content.icon_size, elapsed_ms, foreground, ambient)
         ring.x = bounds.x + ring.x * scale
         ring.y = bounds.y + ring.y * scale
@@ -376,7 +503,7 @@ AdvanceFrame :: (key: u64, props: ButtonProps, input: ButtonInput,
     props.disabled = input.flags.disabled
     props.loading = input.flags.loading
     props.selected = input.flags.selected
-    motion: InteractionMotion = AdvanceButtonMotion(key, props, input, enabled,
+    motion: InteractionMotion = AdvanceButtonMotion(key, (i32)props.state, input, enabled,
         delta_ms, metrics.transition_normal_ms, metrics.transition_fast_ms)
     appearance: StyleFrame = ResolveFrame((i32)props.tone, (i32)props.emphasis,
         input.interaction.state, (i32)props.size, props.pill, props.circle,

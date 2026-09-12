@@ -11,7 +11,6 @@ state {
     theme_mode: int = THEME_MODE_SYSTEM
     theme_id: int = THEME_SKY
     theme_style: int = THEME_STYLE_SYSTEM
-    menu_state: ThemeSettingsState = {0}
     slider_value: int = 64
     toggle_value: int = 1
     check_value: int = 1
@@ -56,6 +55,51 @@ TokenValue :: (label: const char *, value: int, x: int, y: int) {
     Text((TextProps){.bounds={x, y, 0, 0}, .text=TextFormat("%s %d", label, value), .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
 }
 
+ThemeModeText :: () -> const char * {
+    if theme_mode == THEME_MODE_LIGHT {
+        return "Light"
+    }
+    if theme_mode == THEME_MODE_DARK {
+        return "Dark"
+    }
+    return "System"
+}
+
+ThemeStyleText :: () -> const char * {
+    if theme_style == THEME_STYLE_CLASSIC {
+        return "Classic"
+    }
+    if theme_style == THEME_STYLE_DEFAULT {
+        return "Default"
+    }
+    return "System style"
+}
+
+ThemePanel :: (x: int, y: int, w: int) -> int {
+    changed: int = 0
+    Text((TextProps){.bounds={x, y, 0, 0}, .text="Theme controls", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
+    y += Scale(42)
+    if Button((ButtonProps){.bounds={x, y, w, Scale(38)}, .label=TextFormat("Mode: %s", ThemeModeText()), .id=101, .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft}) {
+        theme_mode += 1
+        if theme_mode > THEME_MODE_DARK { theme_mode = THEME_MODE_SYSTEM }
+        changed = 1
+    }
+    y += Scale(54)
+    if Button((ButtonProps){.bounds={x, y, w, Scale(38)}, .label=TextFormat("Palette: %d", theme_id), .id=102, .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft}) {
+        theme_source = THEME_SOURCE_APP
+        theme_id += 1
+        if theme_id >= THEME_COUNT { theme_id = 0 }
+        changed = 1
+    }
+    y += Scale(54)
+    if Button((ButtonProps){.bounds={x, y, w, Scale(38)}, .label=TextFormat("Style: %s", ThemeStyleText()), .id=103, .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft}) {
+        theme_style += 1
+        if theme_style > THEME_STYLE_DEFAULT { theme_style = THEME_STYLE_SYSTEM }
+        changed = 1
+    }
+    return changed
+}
+
 ControlDemo :: (x: int, y: int, w: int) {
     options: [3] const char * = {"One", "Two", "Three"}
     field_style := (TextInputStyle){
@@ -91,10 +135,10 @@ ControlDemo :: (x: int, y: int, w: int) {
     Dropdown((DropdownProps){.bounds = {x, y, w, Scale(44)}, .id = 304,
         .options = options, .option_count = 3, .selected_index = &combo_index})
     y += Scale(72)
-    Slider(305, x, y, w, "Slider", 0, 100, &slider_value, "", nil)
+    Slider((SliderProps){.bounds={x, y, w, Scale(40)}, .id=305, .label="Slider", .kind=NumericInt, .int_values=&slider_value, .value_count=1, .min=0, .max=100})
     y += Scale(72)
-    Toggle(306, x, y, Scale(180), Scale(48), &toggle_value, "Off", "On")
-    Checkbox(307, x + Scale(230), y + Scale(12), "Checkbox", &check_value)
+    Toggle((ToggleProps){.bounds = {x, y, Scale(180), Scale(48)}, .id = 306, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
+    Checkbox((CheckboxProps){.bounds = {x + Scale(230), y + Scale(12), Scale(130), Scale(34)}, .id = 307, .label = "Checkbox", .value = &check_value})
 }
 
 ThemeExample :: (viewport: Rectangle) #ui {
@@ -106,27 +150,10 @@ ThemeExample :: (viewport: Rectangle) #ui {
         margin: int = Scale(26)
         panel_w: int = Scale(310)
         right_x: int = margin + panel_w + Scale(42)
-        settings := (ThemeSettingsProps){
-            .id_base = 101,
-            .x = margin,
-            .y = Scale(64),
-            .w = panel_w,
-            .theme_source = &theme_source,
-            .theme_mode = &theme_mode,
-            .theme_id = &theme_id,
-            .theme_style = &theme_style,
-            .allow_system_source = 1,
-            .allow_system_mode = 1,
-            .palette_label = "Color palette",
-            .source_system_label = "System colors",
-            .style_label = "Widget style",
-            .style_system_label = "System style"
-        }
     
         Text((TextProps){.bounds={margin, Scale(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right_x, Scale(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
-        result: ThemeSettingsResult = {0}
-        ThemeSettings(settings, &menu_state, &result)
+        changed: int = ThemePanel(margin, Scale(64), panel_w)
     
         ControlDemo(right_x, Scale(88), Scale(420))
     
@@ -146,7 +173,7 @@ ThemeExample :: (viewport: Rectangle) #ui {
         TokenValue("touch target", tokens.touch_target_min, right_x, token_y)
         TokenValue("shadow y", tokens.shadow_offset_y, right_x + Scale(150), token_y)
     
-        if result.changed {
+        if changed {
             ApplyThemeState()
         }
     }

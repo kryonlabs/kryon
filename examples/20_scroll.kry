@@ -11,7 +11,7 @@ state {
 
 ScrollExample :: () #ui {
     Screen root: {
-        ClearBackground(GetThemeBackground())
+        Background(GetThemeBackground())
         Background(GetThemeSurface())
         Text((TextProps){.bounds={Scale(40), Scale(28), 0, 0}, .text="Scroll", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         area: UIScrollArea = {{Scale(40), Scale(76), Scale(360), Scale(220)}, Scale(520), Scale(40), Scale(360), &scroll_off, 0, 0}

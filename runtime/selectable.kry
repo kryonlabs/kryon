@@ -1,0 +1,40 @@
+#module "selectable"
+#import "drawing_props"
+
+SelectableSpec :: struct {
+    bounds: Rectangle
+    selected: bool
+    hovered: bool
+    pressed: bool
+    disabled: bool
+    fill_color: u32
+    hover_color: u32
+    text_color: u32
+    disabled_text_color: u32
+    label_inset: float
+}
+
+SelectablePaint :: struct {
+    bounds: Rectangle
+    fill_color: u32
+    text_color: u32
+    label_x: float
+    draw_fill: bool
+}
+
+SelectablePaintFor :: (spec: SelectableSpec) -> SelectablePaint #export {
+    paint: SelectablePaint
+    paint.bounds = spec.bounds
+    paint.label_x = spec.bounds.x + spec.label_inset
+    paint.text_color = spec.text_color
+    if spec.disabled {
+        paint.text_color = spec.disabled_text_color
+    }
+    paint.draw_fill = !spec.disabled && (spec.selected || spec.hovered || spec.pressed)
+    paint.fill_color = spec.fill_color
+    if spec.hovered || spec.pressed {
+        paint.fill_color = spec.hover_color
+    }
+    return paint
+}
+

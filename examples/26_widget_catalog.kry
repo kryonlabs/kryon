@@ -7,7 +7,6 @@ app "Kryon Widget Catalog" {
 }
 
 state {
-    demo_texture: Texture2D = {0}
     image_path: const char * = "icons/tiles.png"
     menu_items: [2] MenuItem = {{MenuCommand,"Open",NULL,1,0,0,NULL,0},{MenuCommand,"Save",NULL,2,0,0,NULL,0}}
     menus: [1] Menu = {{{0},"File",menu_items,2}}
@@ -37,22 +36,13 @@ state {
     tab_selected: int = 0
     subtab_selected: int = 0
     pane_selected: int = 0
-    pane_dragged: int = -1
-    subtabs: [3] Subtab = {{.label = "Overview"},{.label = "Details"},{.label = "History"}}
-    cascade_items: [4] UICascadingTreeItem = {{"Project",0,10,1,1},{"Sources",1,11,1,1},{"main.kry",2,12,0,1},{"README",1,13,0,1}}
-    cascade_ids: [4] int = {10}
-    cascade_count: int = 1
-    cascade_selected: int = 10
-    cascade_activated: int = -1
-    cascade_scroll: int = 0
+    subtabs: [3] Tab = {{.label = "Overview"},{.label = "Details"},{.label = "History"}}
     page_preview: int = 0
     page_route: int = 0
     nav_items: [3] NavigationBarItem = {{.route = 0,.label = "Home"},{.route = 1,.label = "Explore"},{.route = 2,.label = "Settings"}}
     theme_source: int = 0
     theme_mode: int = 2
     theme_style: int = 1
-    theme_state: ThemeSettingsState = {0}
-    theme_result: ThemeSettingsResult = {0}
     theme_initialized: int = 0
     menu_command: int = 0
     picker_choice: int = -1
@@ -111,14 +101,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     if density > viewport.height / 640.0f { density = viewport.height / 640.0f }
     SetUIScale(density)
     SetExitKey(KEY_NULL)
-    if demo_texture.id == 0 {
-        if !FileExists(image_path) {
-            image_path = "../icons/tiles.png"
-        }
-        demo_image: Image = LoadImage(image_path)
-        ImageCrop(&demo_image, (Rectangle){0,0,64,64})
-        demo_texture = LoadTextureFromImage(demo_image)
-        UnloadImage(demo_image)
+    if !FileExists(image_path) {
+        image_path = "../icons/tiles.png"
     }
     if theme_initialized == 0 {
         dark_mode = GetEffectiveThemeDarkMode()
@@ -130,8 +114,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     if page_preview {
         Screen preview: {
             bounds = viewport
-            ClearBackground(GetThemeBackground())
-            TitleBar("TitleBar / NavigationBar preview", Scale(54))
+            Background(GetThemeBackground())
+            TitleBar((TitleBarProps){.title = "TitleBar / NavigationBar preview", .height = Scale(54)})
             if Button((ButtonProps){.bounds = {Scale(20),Scale(72),Scale(180),Scale(36)}, .label = "Back to catalog", .id = 950}) {
                 page_preview = 0
             }
@@ -149,7 +133,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     }
     Screen root: {
         bounds = viewport
-        ClearBackground(GetThemeBackground())
+        Background(GetThemeBackground())
         Text((TextProps){.bounds={Scale(20), Scale(22), 0, 0}, .text="Widget catalog", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={Scale(246), Scale(28), 0, 0}, .text="Standard Kryon controls. Select a category and try them.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Line(Scale(220), Scale(76), Scale(220), (int)viewport.height - Scale(24), GetThemeButton())
@@ -175,8 +159,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="DISPLAY AND MEDIA", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(38), 0, 0}, .text="Text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds=(Rectangle){x, y + Scale(70), Scale(300), Scale(52)}, .text="Text is bounded, wrapped, and clipped by default.", .font=Text16, .color=GetThemeText(), .align=TextAlignCenter, .vertical_align=TextAlignCenter})
-        lines_y: int = y + Scale(132)
-        TextLines(display_lines, 2, x, &lines_y, Text14, Scale(18), GetThemeIcon())
+        Text((TextProps){.bounds={x, y + Scale(132), 0, 0}, .text=display_lines[0], .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x, y + Scale(150), 0, 0}, .text=display_lines[1], .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         paragraph_y: int = y + Scale(176)
         Paragraph((ParagraphSpec){.text = "A short paragraph with an icon.", .icon_type = 1, .icon_size = Scale(16), .width = Scale(300), .font = Text16, .line_gap = Scale(4), .color = GetThemeText()}, x, &paragraph_y)
         Rect(right, y + Scale(38), Scale(120), Scale(54), GetThemeSurface(), GetThemeButton())
@@ -184,28 +168,30 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Bevel(right, y + Scale(132), Scale(120), Scale(34), GetThemeSurface(), GetThemeButton())
         Icon(100, right + Scale(150), y + Scale(46), Scale(28), 1, GetThemeIcon())
         LabelFrame((LabelFrameProps){.bounds = {right + Scale(200), y + Scale(36), Scale(150), Scale(58)}, .title = "Label frame"})
-        ImageBox((ImageBoxProps){.bounds = {right + Scale(200), y + Scale(112), Scale(58), Scale(58)}, .texture = demo_texture, .tint = WHITE})
-        Picture((PictureProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(278), y + Scale(112), Scale(72), Scale(58)}, .tint = WHITE, .fit = PICTURE_FIT_CONTAIN})
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(200), y + Scale(112), Scale(58), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(278), y + Scale(112), Scale(72), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
 
         Text((TextProps){.bounds={x, y + Scale(260), 0, 0}, .text="Custom color", .font=Text16, .color=GetThemeLink(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(300), 0, 0}, .text="Disabled text", .font=Text16, .wrap=TextWrapNone, .disabled=1})
         Text((TextProps){.bounds=(Rectangle){x,y + Scale(340),Scale(320),Scale(60)}, .text="Bounded text wraps and clips inside its standard bounds.", .font=Text16, .color=GetThemeText()})
-        LabelText("LabelText", "Value", (Rectangle){x,y + Scale(418),Scale(300),Scale(28)}, Text16, GetThemeText())
-        BulletText("BulletText", (Rectangle){x,y + Scale(460),Scale(300),Scale(28)}, Text16, GetThemeText())
+        Text((TextProps){.bounds={x,y + Scale(418),0,0}, .text="Label", .font=Text16, .color=Fade(GetThemeText(), 0.72f), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={x + Scale(56),y + Scale(418),0,0}, .text="Value", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Bullet((Rectangle){x,y + Scale(460),Scale(16),Scale(20)})
+        Text((TextProps){.bounds={x + Scale(20),y + Scale(460),0,0}, .text="Bullet text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         selectable_token: int = PushTextSelectable(1)
         Text((TextProps){.bounds={x, y + Scale(510), 0, 0}, .text="Select and copy this text.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         PopTextSelectable(selectable_token)
-        ValueBool("ValueBool", true, (Rectangle){right,y + Scale(260),Scale(300),Scale(28)}, Text16, GetThemeText())
-        ValueInt("ValueInt", 42, (Rectangle){right,y + Scale(300),Scale(300),Scale(28)}, Text16, GetThemeText())
-        ValueUInt("ValueUInt", 42, (Rectangle){right,y + Scale(340),Scale(300),Scale(28)}, Text16, GetThemeText())
-        ValueFloat("ValueFloat", 0.5f, "%.2f", (Rectangle){right,y + Scale(380),Scale(300),Scale(28)}, Text16, GetThemeText())
-        ImageWithBg((ImageWithBgProps){.picture = {.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = PICTURE_FIT_CONTAIN}, .background = GetThemeSurface()})
-        if ImageButton((ImageButtonProps){.picture = {.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = PICTURE_FIT_CONTAIN}, .background = GetThemeSurface(), .id = 210}) {
+        Text((TextProps){.bounds={right,y + Scale(260),0,0}, .text="Bool: true", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right,y + Scale(300),0,0}, .text=TextFormat("Int: %d", 42), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right,y + Scale(340),0,0}, .text=TextFormat("UInt: %u", 42), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right,y + Scale(380),0,0}, .text=TextFormat("Float: %.2f", 0.5f), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN, .style = {.enabled = true, .background = GetThemeSurface()}})
+        if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_asset_path = image_path, .image_source = {0,0,64,64}, .image_bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_tint = WHITE, .image_fit = IMAGE_FIT_CONTAIN, .image_background = GetThemeSurface(), .id = 210}) {
             action_count += 1
-            ShowToast("ImageButton clicked")
+            ShowToast("Image button clicked")
         }
-        Text((TextProps){.bounds={right, y + Scale(606), 0, 0}, .text="ImageWithBg / ImageButton", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        SeparatorText((SeparatorTextProps){.bounds = {x,y + Scale(570),Scale(350),Scale(30)}, .label = "SeparatorText"})
+        Text((TextProps){.bounds={right, y + Scale(606), 0, 0}, .text="Image / Button image", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        Separator((SeparatorProps){.bounds = {x,y + Scale(570),Scale(350),Scale(30)}, .label = "Separator"})
         Bullet((Rectangle){right,y + Scale(460),Scale(24),Scale(24)})
         }
 
@@ -217,33 +203,33 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {x + Scale(154), y + Scale(38), Scale(34), Scale(34)}, .icon_type = 1, .icon_only = true, .id = 102}) {
             action_count += 1
         }
-        Href((HrefProps){.bounds = {x + Scale(204), y + Scale(40), Scale(100), Scale(30)}, .text = "Kryon Labs", .href = "https://kryonlabs.com", .font = Text16, .focus_id = 103, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+        Link((LinkProps){.bounds = {x + Scale(204), y + Scale(40), Scale(100), Scale(30)}, .text = "Kryon Labs", .link = "https://kryonlabs.com", .font = Text16, .focus_id = 103, .color = GetThemeLink(), .hover_color = GetThemeLink()})
         TextField((TextFieldProps){.bounds = {right, y + Scale(38), Scale(260), Scale(34)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = &text_focused, .max_codepoints = 63, .font = Text16, .focus_id = 104})
         TextArea((TextAreaProps){.bounds = {right, y + Scale(86), Scale(300), Scale(76)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = &area_focused, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 105, .placeholder = "Notes", .syntax = SyntaxNone})
 
         y += Scale(190)
         Dropdown((DropdownProps){.bounds = {x, y, Scale(180), Scale(32)}, .id = 106,
             .options = choices, .option_count = 3, .selected_index = &picked})
-        Slider(107, x, y + Scale(46), Scale(250), "Slider", 0, 100, &slider_value, "%", nil)
-        Toggle(108, x, y + Scale(92), Scale(130), Scale(30), &toggle_value, "Off", "On")
-        Checkbox(109, x, y + Scale(140), "Checkbox", &checkbox_value)
-        if Radio((RadioButtonProps){{right, y, Scale(130), Scale(28)}, "Radio", 129, picked == 1, 0}) {
+        Slider((SliderProps){.bounds = {x, y + Scale(46), Scale(250), Scale(40)}, .id = 107, .label = "Slider", .kind = NumericInt, .int_values = &slider_value, .value_count = 1, .min = 0, .max = 100, .format = "%"})
+        Toggle((ToggleProps){.bounds = {x, y + Scale(92), Scale(130), Scale(34)}, .id = 108, .value = &toggle_value, .off_label = "Off", .on_label = "On"})
+        Checkbox((CheckboxProps){.bounds = {x, y + Scale(140), Scale(160), Scale(34)}, .id = 109, .label = "Checkbox", .value = &checkbox_value})
+        if Radio((RadioProps){.bounds = {right, y, Scale(130), Scale(28)}, .label = "Radio", .id = 129, .checked = picked == 1}) {
             picked = 1
         }
         Spinbox((SpinboxProps){.bounds = {right, y + Scale(44), Scale(140), Scale(32)}, .id = 110, .min = 0, .max = 100, .step = 1, .value = &slider_value, .value_text = nil, .wrap = 0})
         Dropdown((DropdownProps){.bounds = {right, y + Scale(92), Scale(180), Scale(32)}, .id = 111,
             .options = choices, .option_count = 3, .selected_index = &picked})
-        Progress((ProgressBarProps){{right, y + Scale(140), Scale(220), Scale(24)}, 0, 100, slider_value, "Progress"})
-        ColorPicker((Rectangle){right + Scale(240), y, Scale(120), Scale(120)}, &color_value)
+        Progress((ProgressProps){{right, y + Scale(140), Scale(220), Scale(24)}, 0, 100, slider_value, "Progress"})
+        ColorPicker((ColorPickerProps){.bounds = {right + Scale(240), y, Scale(120), Scale(120)}, .id = 112, .values = rgba, .value_count = 4, .picker = true})
 
         if Button((ButtonProps){.bounds = {x,y + Scale(204),Scale(120),Scale(28)}, .label = "Small", .size = ControlSizeSmall, .id = 200}) {
             action_count += 1
         }
-        if ArrowButton((ArrowButtonProps){.bounds = {x + Scale(140),y + Scale(204),Scale(32),Scale(28)}, .id = 201, .direction = ARROW_RIGHT}) {
+        if Button((ButtonProps){.bounds = {x + Scale(140),y + Scale(204),Scale(32),Scale(28)}, .id = 201, .arrow = true, .direction = ARROW_RIGHT}) {
             action_count += 1
         }
         Selectable((SelectableProps){.bounds = {x,y + Scale(250),Scale(300),Scale(32)}, .id = 202, .label = "Selectable", .selected = &selected})
-        CheckboxFlags((CheckboxFlagsProps){.bounds = {right,y + Scale(204),Scale(300),Scale(32)}, .id = 203, .label = "CheckboxFlags", .flags = &flags, .flags_value = 1})
+        Checkbox((CheckboxProps){.bounds = {right,y + Scale(204),Scale(300),Scale(32)}, .id = 203, .label = "Checkbox flags", .flags = &flags, .flags_value = 1})
         Text((TextProps){.bounds={right, y + Scale(258), 0, 0}, .text="InvisibleButton (click this area)", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         if InvisibleButton((InvisibleButtonProps){.bounds = {right,y + Scale(250),Scale(300),Scale(32)}, .id = 204}) {
             action_count += 1
@@ -295,8 +281,9 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             action_count += 1
         }
         End()
-        Notebook((NotebookProps){.bounds = {right, y + Scale(38), Scale(180), Scale(54)}, .tabs = choices, .tab_count = 3, .selected_index = &picked})
-        PanedView((PanedViewProps){{right + Scale(198), y + Scale(38), Scale(180), Scale(54)}, 114, 1, &split, 60, 80})
+        layout_tab_result: int = TabBar((TabBarProps){.bounds = {right, y + Scale(38), Scale(180), Scale(36)}, .tabs = tabs, .count = 2, .selected_index = picked, .id = 1140})
+        if layout_tab_result >= 0 { picked = layout_tab_result }
+        PanedView((PanedViewProps){.bounds = {right + Scale(198), y + Scale(38), Scale(180), Scale(54)}, .id = 114, .vertical = 1, .split = &split, .min_first = 60, .min_second = 80})
         Text((TextProps){.bounds={right + Scale(198), y + Scale(8), 0, 0}, .text="Drag the divider", .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         Collapsible((CollapsibleProps){.bounds = {right, y + Scale(108), Scale(260), Scale(54)}, .label = "Collapsible", .open = &open})
         if open {
@@ -309,7 +296,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="COLLECTIONS AND EDITORS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         ListBox((ListBoxProps){.bounds = {x, y + Scale(38), Scale(180), Scale(90)}, .id = 115, .items = choices, .item_count = 3, .selected_index = &picked, .scroll_offset = &list_scroll, .row_height = Scale(26)})
         TreeView((TreeViewProps){.bounds = {x + Scale(198), y + Scale(38), Scale(180), Scale(90)}, .id = 116, .items = tree_items, .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = Scale(26)})
-        SourceView((SourceViewProps){.bounds = {right, y + Scale(38), Scale(360), Scale(90)}, .text = "Text(\"Hello\")", .scroll_x = &canvas_scroll_x, .scroll_y = &canvas_scroll_y, .font_size = Text14, .line_height = Scale(18), .show_line_numbers = 1})
+        Rect(right, y + Scale(38), Scale(360), Scale(90), GetThemeSurface(), GetThemeBorder())
+        Text((TextProps){.bounds={right + Scale(12), y + Scale(52), 0, 0}, .text="1  Text(\"Hello\")", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         TableView((TableViewProps){.bounds = {x, y + Scale(148), Scale(378), Scale(100)}, .id = 117, .columns = columns, .column_count = 2, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
 
         Text((TextProps){.bounds={x, y + Scale(290), 0, 0}, .text="MultiSelectList (Ctrl / Shift to select)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
@@ -327,7 +315,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if category == 4 {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="NAVIGATION", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(22), 0, 0}, .text="Menus, tabs and navigation", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        TopNav((TopNavProps){.id = 118, .x = x, .y = y + Scale(44), .width = Scale(300), .height = Scale(36), .title = "Top navigation", .options = choices, .option_count = 3, .selected_index = &picked})
+        Toolbar((ToolbarProps){.id = 118, .x = x, .y = y + Scale(44), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = choices, .option_count = 3, .selected_index = &picked})
         Toolbar((ToolbarProps){.id = 119, .x = right, .y = y + Scale(44), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = choices, .option_count = 3, .selected_index = &picked})
         tab_result: int = TabBar((TabBarProps){.bounds = {x, y + Scale(100), Scale(360), Scale(34)}, .tabs = tabs, .count = 2, .selected_index = picked, .focus_selected = 1, .id = 2603})
         if tab_result >= 0 {
@@ -342,8 +330,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             menu_command = context_result
         }
         Text((TextProps){.bounds={right + Scale(12), y + Scale(148), 0, 0}, .text="Right-click here for a context menu", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={x, y + Scale(216), 0, 0}, .text="ClosableTabBar", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        ClosableTabBar((ClosableTabBarProps){.bounds = {x,y + Scale(252),Scale(760),Scale(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = &tab_selected, .font = Text16, .closed_index = &closed_tab, .id = 2604})
+        Text((TextProps){.bounds={x, y + Scale(216), 0, 0}, .text="TabBar close props", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        close_tab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(252),Scale(760),Scale(36)}, .tabs = open_tabs, .count = tab_count, .selected_index = tab_selected, .font = Text16, .closed_index = &closed_tab, .id = 2604})
         if closed_tab >= 0 {
             if closed_tab < tab_count {
                 tab_index: int = closed_tab
@@ -360,7 +348,10 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             }
             closed_tab = -1
         }
-        if TabItemButton((TabItemButtonProps){.bounds = {right,y + Scale(308),Scale(130),Scale(36)}, .id = 209, .label = "New tab", .font = Text16, .disabled = tab_count >= 8}) {
+        if close_tab_result >= 0 {
+            tab_selected = close_tab_result
+        }
+        if Button((ButtonProps){.bounds = {right,y + Scale(308),Scale(130),Scale(36)}, .id = 209, .label = "New tab", .font = Text16, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost, .disabled = tab_count >= 8}) {
             open_tabs[tab_count] = (Tab){.label = tab_labels[tab_count], .closeable = 1}
             tab_selected = tab_count
             tab_count += 1
@@ -370,15 +361,15 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
 
         if category == 4 {
             Text((TextProps){.bounds={x, y + Scale(308), 0, 0}, .text=TextFormat("Open tabs: %d / Menu command: %d", tab_count, menu_command), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={x, y + Scale(350), 0, 0}, .text="SubtabBar", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            subtab_result: int = SubtabBar((SubtabBarProps){.bounds = {x,y + Scale(384),Scale(350),Scale(36)},.tabs = subtabs,.count = 3,.selected_index = subtab_selected,.font = Text16})
+            Text((TextProps){.bounds={x, y + Scale(350), 0, 0}, .text="Level 2 tabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            subtab_result: int = TabBar((TabBarProps){.bounds = {x,y + Scale(384),Scale(350),Scale(36)},.tabs = subtabs,.count = 3,.selected_index = subtab_selected,.font = Text16,.min_tab_width = Scale(110),.max_tab_width = Scale(120)})
             if subtab_result >= 0 {
                 subtab_selected = subtab_result
             }
-            Text((TextProps){.bounds={right, y + Scale(350), 0, 0}, .text="PaneTabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            pane_result: PaneTabBarResult = PaneTabs((PaneTabBar){.bounds = {right,y + Scale(384),Scale(350),Scale(36)},.tabs = tabs,.count = 2,.selected_index = pane_selected,.font = Text16,.dragged_index = &pane_dragged})
-            if pane_result.clicked_index >= 0 {
-                pane_selected = pane_result.clicked_index
+            Text((TextProps){.bounds={right, y + Scale(350), 0, 0}, .text="Pane tabs", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            pane_result: int = TabBar((TabBarProps){.bounds = {right,y + Scale(384),Scale(350),Scale(36)},.tabs = tabs,.count = 2,.selected_index = pane_selected,.font = Text16,.min_tab_width = Scale(92),.max_tab_width = Scale(120)})
+            if pane_result >= 0 {
+                pane_selected = pane_result
             }
         }
         if category == 5 {
@@ -395,20 +386,6 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {right + Scale(166), y + Scale(40), Scale(150), Scale(34)}, .label = "Prompt dialog", .id = 123}) {
             dialog = 3
         }
-        if ThemeSwitcher(x, y + Scale(94), Scale(220), "Theme", "Light", "Dark", &theme_id, &dark_mode) {
-            theme_source = THEME_SOURCE_APP
-            theme_mode = dark_mode ? THEME_MODE_DARK : THEME_MODE_LIGHT
-            SetThemeSource((ThemeSource)theme_source)
-            SetThemeMode((ThemeMode)theme_mode)
-            SetCurrentTheme(theme_id, dark_mode)
-        }
-        if ThemePicker(right, y + Scale(94), Scale(260), dark_mode, &theme_id) {
-            theme_source = THEME_SOURCE_APP
-            theme_mode = dark_mode ? THEME_MODE_DARK : THEME_MODE_LIGHT
-            SetThemeSource((ThemeSource)theme_source)
-            SetThemeMode((ThemeMode)theme_mode)
-            SetCurrentTheme(theme_id, dark_mode)
-        }
         if Button((ButtonProps){.bounds = {right + Scale(276), y + Scale(94), Scale(120), Scale(34)}, .label = "Action modal", .id = 128}) {
             dialog = 4
         }
@@ -416,9 +393,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
 
         if category == 5 {
-            if Button((ButtonProps){.bounds = {x,y + Scale(430),Scale(180),Scale(36)},.label = "PickerDialog",.id = 960}) { dialog = 5 }
-            if Button((ButtonProps){.bounds = {x + Scale(200),y + Scale(430),Scale(180),Scale(36)},.label = "ModalFrame",.id = 961}) { dialog = 6 }
-            if Button((ButtonProps){.bounds = {right,y + Scale(430),Scale(180),Scale(36)},.label = "TextPopover",.id = 962}) { dialog = 7; text_focused = 0 }
+            if Button((ButtonProps){.bounds = {x,y + Scale(430),Scale(180),Scale(36)},.label = "Choice modal",.id = 960}) { dialog = 5 }
             Text((TextProps){.bounds={x, y + Scale(486), 0, 0}, .text=TextFormat("Picker: %d / Dialog result: %d", picker_choice, dialog_result), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
         if category == 6 {
@@ -460,53 +435,49 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         if category == 7 {
             Text((TextProps){.bounds={x, y, 0, 0}, .text="NUMBERS AND PLOTS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={x, y + Scale(54), 0, 0}, .text="DragFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            DragFloat((DragFloatProps){.bounds = {x,y + Scale(86),Scale(350),Scale(36)}, .id = 300, .values = numbers, .value_count = 3, .speed = 0.01f, .min = 0.0f, .max = 1.0f})
-            Text((TextProps){.bounds={right, y + Scale(54), 0, 0}, .text="DragInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            DragInt((DragIntProps){.bounds = {right,y + Scale(86),Scale(350),Scale(36)}, .id = 301, .values = integers, .value_count = 3, .speed = 1.0f, .min = 0, .max = 10})
-            Text((TextProps){.bounds={x, y + Scale(166), 0, 0}, .text="DragFloatRange2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            DragFloatRange2((DragFloatRange2Props){.bounds = {x,y + Scale(198),Scale(350),Scale(36)}, .id = 302, .current_min = &range_min, .current_max = &range_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
-            Text((TextProps){.bounds={right, y + Scale(166), 0, 0}, .text="DragIntRange2", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            DragIntRange2((DragIntRange2Props){.bounds = {right,y + Scale(198),Scale(350),Scale(36)}, .id = 303, .current_min = &int_min, .current_max = &int_max, .speed = 1.0f, .min = 0, .max = 10})
-            Text((TextProps){.bounds={x, y + Scale(278), 0, 0}, .text="SliderFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            SliderFloat((SliderFloatProps){.bounds = {x,y + Scale(310),Scale(350),Scale(36)}, .id = 304, .values = numbers, .value_count = 3, .min = 0.0f, .max = 1.0f})
-            Text((TextProps){.bounds={right, y + Scale(278), 0, 0}, .text="SliderInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            SliderInt((SliderIntProps){.bounds = {right,y + Scale(310),Scale(350),Scale(36)}, .id = 305, .values = integers, .value_count = 3, .min = 0, .max = 10})
-            Text((TextProps){.bounds={x, y + Scale(390), 0, 0}, .text="SliderAngle", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            SliderAngle((SliderAngleProps){.bounds = {x,y + Scale(422),Scale(350),Scale(36)}, .id = 306, .value = &angle, .min_degrees = -180.0f, .max_degrees = 180.0f})
-            Text((TextProps){.bounds={right, y + Scale(390), 0, 0}, .text="InputFloat", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            InputFloat((InputFloatProps){.bounds = {right,y + Scale(422),Scale(350),Scale(36)}, .id = 307, .values = numbers, .value_count = 3, .step = 0.1f, .step_fast = 1.0f})
-            Text((TextProps){.bounds={x, y + Scale(502), 0, 0}, .text="InputInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            InputInt((InputIntProps){.bounds = {x,y + Scale(534),Scale(350),Scale(36)}, .id = 308, .values = integers, .value_count = 3, .step = 1, .step_fast = 10})
-            Text((TextProps){.bounds={right, y + Scale(502), 0, 0}, .text="InputDouble", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            InputDouble((InputDoubleProps){.bounds = {right,y + Scale(534),Scale(350),Scale(36)}, .id = 309, .values = doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
-            Text((TextProps){.bounds={x, y + Scale(628), 0, 0}, .text="VSliderFloat / VSliderInt", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            VSliderFloat((SliderFloatProps){.bounds = {x,y + Scale(666),Scale(48),Scale(150)}, .id = 310, .values = numbers, .value_count = 1, .min = 0.0f, .max = 1.0f})
-            VSliderInt((SliderIntProps){.bounds = {x + Scale(72),y + Scale(666),Scale(48),Scale(150)}, .id = 311, .values = integers, .value_count = 1, .min = 0, .max = 10})
-            Text((TextProps){.bounds={right, y + Scale(628), 0, 0}, .text="PlotLines", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            PlotLines((PlotProps){.bounds = {right,y + Scale(666),Scale(350),Scale(150)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
-            Text((TextProps){.bounds={x, y + Scale(870), 0, 0}, .text="PlotHistogram", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            PlotHistogram((PlotProps){.bounds = {x,y + Scale(908),Scale(350),Scale(110)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
+            Text((TextProps){.bounds={x, y + Scale(54), 0, 0}, .text="Drag float", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Drag((DragProps){.bounds = {x,y + Scale(86),Scale(350),Scale(36)}, .id = 300, .kind = NumericFloat, .float_values = numbers, .value_count = 3, .speed = 0.01f, .min = 0.0f, .max = 1.0f})
+            Text((TextProps){.bounds={right, y + Scale(54), 0, 0}, .text="Drag int", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Drag((DragProps){.bounds = {right,y + Scale(86),Scale(350),Scale(36)}, .id = 301, .kind = NumericInt, .int_values = integers, .value_count = 3, .speed = 1.0f, .min = 0, .max = 10})
+            Text((TextProps){.bounds={x, y + Scale(166), 0, 0}, .text="Drag float range", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Drag((DragProps){.bounds = {x,y + Scale(198),Scale(350),Scale(36)}, .id = 302, .kind = NumericFloat, .mode = DragRange, .float_min = &range_min, .float_max = &range_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
+            Text((TextProps){.bounds={right, y + Scale(166), 0, 0}, .text="Drag int range", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Drag((DragProps){.bounds = {right,y + Scale(198),Scale(350),Scale(36)}, .id = 303, .kind = NumericInt, .mode = DragRange, .int_min = &int_min, .int_max = &int_max, .speed = 1.0f, .min = 0, .max = 10})
+            Text((TextProps){.bounds={x, y + Scale(278), 0, 0}, .text="Slider float", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Slider((SliderProps){.bounds = {x,y + Scale(310),Scale(350),Scale(36)}, .id = 304, .kind = NumericFloat, .float_values = numbers, .value_count = 3, .min = 0.0f, .max = 1.0f})
+            Text((TextProps){.bounds={right, y + Scale(278), 0, 0}, .text="Slider int", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Slider((SliderProps){.bounds = {right,y + Scale(310),Scale(350),Scale(36)}, .id = 305, .kind = NumericInt, .int_values = integers, .value_count = 3, .min = 0, .max = 10})
+            Text((TextProps){.bounds={x, y + Scale(390), 0, 0}, .text="Slider angle", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Slider((SliderProps){.bounds = {x,y + Scale(422),Scale(350),Scale(36)}, .id = 306, .kind = NumericFloat, .float_value = &angle, .min = -180.0f, .max = 180.0f, .angle = 1})
+            Text((TextProps){.bounds={right, y + Scale(390), 0, 0}, .text="Input float", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Input((InputProps){.bounds = {right,y + Scale(422),Scale(350),Scale(36)}, .id = 307, .kind = NumericFloat, .float_values = numbers, .value_count = 3, .step = 0.1f, .step_fast = 1.0f})
+            Text((TextProps){.bounds={x, y + Scale(502), 0, 0}, .text="Input int", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Input((InputProps){.bounds = {x,y + Scale(534),Scale(350),Scale(36)}, .id = 308, .kind = NumericInt, .int_values = integers, .value_count = 3, .step = 1, .step_fast = 10})
+            Text((TextProps){.bounds={right, y + Scale(502), 0, 0}, .text="Input double", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Input((InputProps){.bounds = {right,y + Scale(534),Scale(350),Scale(36)}, .id = 309, .kind = NumericDouble, .double_values = doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+            Text((TextProps){.bounds={x, y + Scale(628), 0, 0}, .text="Vertical sliders", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Slider((SliderProps){.bounds = {x,y + Scale(666),Scale(48),Scale(150)}, .id = 310, .kind = NumericFloat, .float_values = numbers, .value_count = 1, .min = 0.0f, .max = 1.0f, .vertical = 1})
+            Slider((SliderProps){.bounds = {x + Scale(72),y + Scale(666),Scale(48),Scale(150)}, .id = 311, .kind = NumericInt, .int_values = integers, .value_count = 1, .min = 0, .max = 10, .vertical = 1})
+            Text((TextProps){.bounds={right, y + Scale(628), 0, 0}, .text="Plot lines", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Plot((PlotProps){.bounds = {right,y + Scale(666),Scale(350),Scale(150)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f})
+            Text((TextProps){.bounds={x, y + Scale(870), 0, 0}, .text="Plot histogram", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Plot((PlotProps){.bounds = {x,y + Scale(908),Scale(350),Scale(110)}, .values = plot, .value_count = 8, .scale_min = 0.0f, .scale_max = 1.0f, .mode = 1})
         }
         if category == 8 {
             Text((TextProps){.bounds={x, y, 0, 0}, .text="COLORS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={x, y + Scale(54), 0, 0}, .text="ColorEdit3", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            ColorEdit3((ColorEditProps){.bounds = {x,y + Scale(90),Scale(350),Scale(36)}, .id = 320, .values = rgba, .value_count = 3})
-            Text((TextProps){.bounds={right, y + Scale(54), 0, 0}, .text="ColorEdit4", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            ColorEdit4((ColorEditProps){.bounds = {right,y + Scale(90),Scale(350),Scale(36)}, .id = 321, .values = rgba, .value_count = 4})
-            Text((TextProps){.bounds={x, y + Scale(170), 0, 0}, .text="ColorPicker3", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            ColorPicker3((ColorEditProps){.bounds = {x,y + Scale(208),Scale(300),Scale(160)}, .id = 322, .values = rgba, .value_count = 3})
-            Text((TextProps){.bounds={right, y + Scale(170), 0, 0}, .text="ColorPicker4", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            ColorPicker4((ColorEditProps){.bounds = {right,y + Scale(208),Scale(300),Scale(210)}, .id = 323, .values = rgba, .value_count = 4})
-            if ColorButton((ColorButtonProps){.bounds = {x,y + Scale(450),Scale(160),Scale(36)}, .id = 324, .label = "ColorButton", .color = color_value}) {
+            Text((TextProps){.bounds={x, y + Scale(54), 0, 0}, .text="ColorPicker RGB edit", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            ColorPicker((ColorPickerProps){.bounds = {x,y + Scale(90),Scale(350),Scale(36)}, .id = 320, .values = rgba, .value_count = 3})
+            Text((TextProps){.bounds={right, y + Scale(54), 0, 0}, .text="ColorPicker RGBA edit", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            ColorPicker((ColorPickerProps){.bounds = {right,y + Scale(90),Scale(350),Scale(36)}, .id = 321, .values = rgba, .value_count = 4})
+            Text((TextProps){.bounds={x, y + Scale(170), 0, 0}, .text="ColorPicker RGB", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            ColorPicker((ColorPickerProps){.bounds = {x,y + Scale(208),Scale(300),Scale(160)}, .id = 322, .values = rgba, .value_count = 3, .picker = true})
+            Text((TextProps){.bounds={right, y + Scale(170), 0, 0}, .text="ColorPicker RGBA", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            ColorPicker((ColorPickerProps){.bounds = {right,y + Scale(208),Scale(300),Scale(210)}, .id = 323, .values = rgba, .value_count = 4, .picker = true})
+            if Button((ButtonProps){.bounds = {x,y + Scale(450),Scale(160),Scale(36)}, .id = 324, .label = "Color swatch", .swatch = true, .swatch_color = color_value}) {
                 action_count += 1
             }
         }
 
-        if category == 3 {
-            Text((TextProps){.bounds={x, y + Scale(650), 0, 0}, .text="CascadingTreeView (expand folders)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            CascadingTreeView((CascadingTreeViewProps){.bounds = {x,y + Scale(688),Scale(350),Scale(210)},.id = 964,.items = cascade_items,.item_count = 4,.selected_id = &cascade_selected,.activated_id = &cascade_activated,.expanded = {cascade_ids,&cascade_count,4},.scroll_offset = &cascade_scroll,.row_height = Scale(30)})
-        }
         if category == 9 {
             Text((TextProps){.bounds={x, y, 0, 0}, .text="PAGES AND SETTINGS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
             if Button((ButtonProps){.bounds = {x,y + Scale(42),Scale(350),Scale(36)},.label = "Preview TitleBar and NavigationBar",.id = 965}) { page_preview = 1 }
@@ -516,8 +487,25 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             ParagraphText((ParagraphTextProps){.bounds = {x + Scale(12),y + Scale(174),Scale(312),Scale(72)},.text = "Semantic page content using standard headings and paragraphs.",.font = Text16,.color = GetThemeText(),.key = 969})
             End()
             End()
-            ThemeSettings((ThemeSettingsProps){.id_base = 980,.x = right,.y = y + Scale(110),.w = Scale(340),.theme_source = &theme_source,.theme_mode = &theme_mode,.theme_id = &theme_id,.theme_style = &theme_style,.allow_system_source = 1,.allow_system_mode = 1,.theme_label = "Source",.source_app_label = "App",.source_system_label = "System",.mode_label = "Mode",.mode_system_label = "System",.mode_light_label = "Light",.mode_dark_label = "Dark",.palette_label = "Palette",.style_label = "Style",.style_system_label = "System",.style_classic_label = "Classic",.style_default_label = "Default",.style_fluent_label = "Fluent",.style_adwaita_label = "Adwaita",.style_liquid_glass_label = "Liquid Glass",.system_theme_label = "System theme"}, &theme_state, &theme_result)
-            if theme_result.changed {
+            theme_changed: int = 0
+            Text((TextProps){.bounds={right, y + Scale(80), 0, 0}, .text="Theme controls", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            if Button((ButtonProps){.bounds={right,y + Scale(110),Scale(340),Scale(36)},.label=TextFormat("Mode %d", theme_mode),.id=980,.tone=ButtonToneNeutral,.emphasis=ButtonEmphasisSoft}) {
+                theme_mode += 1
+                if theme_mode > THEME_MODE_DARK { theme_mode = THEME_MODE_SYSTEM }
+                theme_changed = 1
+            }
+            if Button((ButtonProps){.bounds={right,y + Scale(158),Scale(340),Scale(36)},.label=TextFormat("Palette %d", theme_id),.id=981,.tone=ButtonToneNeutral,.emphasis=ButtonEmphasisSoft}) {
+                theme_source = THEME_SOURCE_APP
+                theme_id += 1
+                if theme_id >= THEME_COUNT { theme_id = 0 }
+                theme_changed = 1
+            }
+            if Button((ButtonProps){.bounds={right,y + Scale(206),Scale(340),Scale(36)},.label=TextFormat("Style %d", theme_style),.id=982,.tone=ButtonToneNeutral,.emphasis=ButtonEmphasisSoft}) {
+                theme_style += 1
+                if theme_style > THEME_STYLE_DEFAULT { theme_style = THEME_STYLE_SYSTEM }
+                theme_changed = 1
+            }
+            if theme_changed {
                 SetThemeSource((ThemeSource)theme_source)
                 SetThemeMode((ThemeMode)theme_mode)
                 SetThemeStyle((ThemeStyle)theme_style)
@@ -527,37 +515,33 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         }
         EndUIScrollContainer(area, view)
 
-        if dialog == 1 && MessageDialog((MessageDialogProps){"Message","A simple message dialog.","OK"}) > 0 {
-            dialog = 0
+        if dialog == 1 {
+            message_actions: [1] ModalAction = {{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            if Modal((ModalProps){.title = "Message", .message = "A simple message dialog.", .actions = message_actions, .action_count = 1, .max_width = 420}) > 0 {
+                dialog = 0
+            }
         }
         if dialog == 2 {
-            result: int = ConfirmDialog((ConfirmDialogProps){"Confirm","Continue?","Cancel","OK"})
+            confirm_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            result: int = Modal((ModalProps){.title = "Confirm", .message = "Continue?", .actions = confirm_actions, .action_count = 2, .max_width = 460})
             if result != 0 { dialog_result = result; dialog = 0 }
         }
         if dialog == 3 {
-            result: int = PromptDialog((PromptDialogProps){"Prompt",text_value,sizeof(text_value),&text_cursor,&text_focused,"Cancel","Save"})
+            prompt_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Save",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            result: int = Modal((ModalProps){.title = "Prompt",.actions = prompt_actions,.action_count = 2,.max_width = 460,.text = text_value,.text_size = sizeof(text_value),.cursor_position = &text_cursor,.focused = &text_focused})
             if result != 0 { dialog_result = result; dialog = 0 }
         }
         if dialog == 5 {
-            picker_result: int = PickerDialog((PickerDialogProps){.title = "Choose an item",.labels = choices,.option_count = 3,.cancel_label = "Cancel",.max_width = 360})
+            picker_actions: [4] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"One",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Two",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Three",ButtonToneAccent,ButtonEmphasisFilled,0}}
+            picker_result: int = Modal((ModalProps){.title = "Choose an item",.message = "Pick an item.",.actions = picker_actions,.action_count = 4,.max_width = 360})
             if picker_result != 0 {
-                if picker_result > 0 { picker_choice = picker_result - 1 }
+                if picker_result > 1 { picker_choice = picker_result - 2 }
                 dialog = 0
             }
-        }
-        if dialog == 6 {
-            frame: UIPanelFrame = ModalFrame(420,220,"ModalFrame",(Texture2D){0},(Texture2D){0})
-            Text((TextProps){.bounds={frame.content_x, frame.content_y, 0, 0}, .text="Custom modal content", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
-            if Button((ButtonProps){.bounds = {frame.content_x,frame.content_y + Scale(56),Scale(160),Scale(36)},.label = "Close",.id = 970}) || IsKeyPressed(KEY_ESCAPE) {
-                dialog = 0
-            }
-        }
-        if dialog == 7 && TextPopover((TextPopoverProps){.anchor = {Scale(662),Scale(520),Scale(180),Scale(36)},.title = "Edit",.text = text_value,.text_size = sizeof(text_value),.cursor_position = &text_cursor,.focused = &text_focused,.id = 971,.width = 360,.max_codepoints = 63}) != 0 {
-            dialog = 0
         }
         if dialog == 4 {
             actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Continue",ButtonToneAccent,ButtonEmphasisFilled,0}}
-            if ActionModal((ModalProps){"Action modal","Choose a simple action.",actions,2,{0},Scale(420)}) != 0 {
+            if Modal((ModalProps){.title = "Action modal", .message = "Choose a simple action.", .actions = actions, .action_count = 2, .max_width = 420}) != 0 {
                 dialog = 0
             }
         }

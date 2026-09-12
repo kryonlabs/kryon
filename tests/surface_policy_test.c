@@ -79,8 +79,8 @@ int main(void)
     }
     for (int step = 0; step < 4; step++) {
         double phase = 997 + step * 0.25;
-        Ring early = LoadingRing(72, 40, 18, phase, 0x006cff80, 0x092039ff);
-        Ring late = LoadingRing(72, 40, 18, 150000000000.0 + phase, 0x006cff80, 0x092039ff);
+        LoadingRingSpec early = LoadingRing(72, 40, 18, phase, 0x006cff80, 0x092039ff);
+        LoadingRingSpec late = LoadingRing(72, 40, 18, 150000000000.0 + phase, 0x006cff80, 0x092039ff);
         assert(late.start_angle == early.start_angle && late.end_angle == early.end_angle);
     }
     for (int step = 0; step <= 4; step++) {
@@ -489,7 +489,7 @@ int main(void)
     }
     for (int light = 0; light < 2; light++) {
         for (int alpha = 0; alpha <= 255; alpha += 85) {
-            Ring ring = LoadingRing(72, 40, 18, 375, 0x006cff00u | alpha,
+            LoadingRingSpec ring = LoadingRing(72, 40, 18, 375, 0x006cff00u | alpha,
                 light ? 0xffffffffu : 0x092039ffu);
             assert(ring.glow_blur == (light ? 0 : 6));
             assert((LoadingSample(ring, -0.5f, -0.5f).glow & 255) == 0);
@@ -668,7 +668,7 @@ int main(void)
         0, 0, 1, false, 1, 0xffffffffu);
     assert(focus_edge.stroke == 1.5f && light_focus_edge.stroke == 1);
     assert(focus_edge.x == light_focus_edge.x && focus_edge.width == light_focus_edge.width);
-    Ring loading = LoadingRing(72, 40, 18, 0, 0x006cff80u, 0x092039ffu);
+    LoadingRingSpec loading = LoadingRing(72, 40, 18, 0, 0x006cff80u, 0x092039ffu);
     for (int hover_step = 0; hover_step < 3; hover_step++) {
         for (int press_step = 0; press_step < 3; press_step++) {
             float hover = hover_step * 0.5f;
@@ -685,15 +685,15 @@ int main(void)
     }
     for(int light = 0; light < 2; light++) {
         unsigned int ambient = light ? 0xffffffffu : 0x092039ffu;
-        Ring reference = LoadingRing(72, 40, 18, 997, 0x006cff80u, ambient);
-        Ring elapsed = LoadingRing(72, 40, 18, 15000997, 0x006cff80u, ambient);
+        LoadingRingSpec reference = LoadingRing(72, 40, 18, 997, 0x006cff80u, ambient);
+        LoadingRingSpec elapsed = LoadingRing(72, 40, 18, 15000997, 0x006cff80u, ambient);
         assert(elapsed.start_angle == reference.start_angle);
         assert(elapsed.end_angle == reference.end_angle);
         const unsigned int alphas[] = {0, 128, 255};
         const float times[] = {0, 375, 997, 1500};
         for (int alpha = 0; alpha < 3; alpha++) {
             for (int time = 0; time < 4; time++) {
-                Ring ring = LoadingRing(72, 40, 18, times[time], 0x006cff00u | alphas[alpha], ambient);
+                LoadingRingSpec ring = LoadingRing(72, 40, 18, times[time], 0x006cff00u | alphas[alpha], ambient);
                 float radius = (ring.inner_radius + ring.outer_radius) * 0.5f;
                 float x = radius * SinDegrees(ring.end_angle + 90);
                 float y = radius * SinDegrees(ring.end_angle);
@@ -706,8 +706,8 @@ int main(void)
         }
     }
     assert(loading.tip_color == 0xffffff80u);
-    Ring neutral_loading = LoadingRing(72, 40, 18, 0, 0xf0f8ff80u, 0x092039ffu);
-    Ring subdued_loading = LoadingRing(72, 40, 18, 0, 0x00306080u, 0x092039ffu);
+    LoadingRingSpec neutral_loading = LoadingRing(72, 40, 18, 0, 0xf0f8ff80u, 0x092039ffu);
+    LoadingRingSpec subdued_loading = LoadingRing(72, 40, 18, 0, 0x00306080u, 0x092039ffu);
     assert(neutral_loading.trail_opacity == 0.55f);
     assert(subdued_loading.trail_opacity == 0.675f);
     assert(loading.start_angle == 110 && loading.end_angle == 425);

@@ -3,6 +3,7 @@
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
+#include "ui_menu_types.h"
 
 #define UI_CLIPBOARD_BUFFER_SIZE 4096
 
@@ -31,37 +32,6 @@ typedef struct {
     int pad_x;
     int pad_y;
 } GridFrame;
-
-typedef enum {
-    MenuCommand,
-    MenuCheck,
-    MenuRadio,
-    MenuSeparator,
-    MenuSubmenu
-} MenuItemKind;
-
-typedef struct MenuItem {
-    MenuItemKind kind;
-    const char *label;
-    const char *accelerator;
-    int id;
-    int disabled;
-    int checked;
-    const struct MenuItem *submenu;
-    int submenu_count;
-} MenuItem;
-
-typedef struct {
-    Rectangle bounds;
-    const char *label;
-    const MenuItem *items;
-    int item_count;
-} Menu;
-
-typedef struct {
-    int activated_id;
-    int open_index;
-} MenuBarResult;
 
 typedef struct {
     char text[UI_CLIPBOARD_BUFFER_SIZE];
@@ -94,7 +64,16 @@ typedef struct {
     int id;
     int checked;
     int disabled;
-} RadioButtonProps;
+} RadioProps;
+
+typedef struct {
+    Rectangle bounds;
+    int id;
+    int *value;
+    const char *off_label;
+    const char *on_label;
+    int disabled;
+} ToggleProps;
 
 typedef struct {
     Rectangle bounds;
@@ -102,7 +81,7 @@ typedef struct {
     int max;
     int value;
     const char *label;
-} ProgressBarProps;
+} ProgressProps;
 
 typedef struct {
     Rectangle bounds;
@@ -113,132 +92,72 @@ typedef struct {
     const char *overlay;
     float scale_min;
     float scale_max;
+    int mode;
 } PlotProps;
 
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    float *values;
-    int value_count;
-    float speed;
-    float min;
-    float max;
-    const char *format;
-    int disabled;
-} DragFloatProps;
+typedef enum {
+    NumericFloat = 0,
+    NumericInt = 1,
+    NumericDouble = 2
+} NumericValueKind;
+
+typedef enum {
+    DragValue = 0,
+    DragRange = 1
+} DragMode;
 
 typedef struct {
     Rectangle bounds;
     int id;
     const char *label;
-    int *values;
+    NumericValueKind kind;
+    DragMode mode;
+    float *float_values;
+    int *int_values;
     int value_count;
+    float *float_min;
+    float *float_max;
+    int *int_min;
+    int *int_max;
     float speed;
-    int min;
-    int max;
-    const char *format;
-    int disabled;
-} DragIntProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    float *current_min;
-    float *current_max;
-    float speed;
-    float min;
-    float max;
+    double min;
+    double max;
     const char *format;
     const char *format_max;
     int disabled;
-} DragFloatRange2Props;
+} DragProps;
 
 typedef struct {
     Rectangle bounds;
     int id;
     const char *label;
-    int *current_min;
-    int *current_max;
-    float speed;
-    int min;
-    int max;
-    const char *format;
-    const char *format_max;
-    int disabled;
-} DragIntRange2Props;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    float *values;
+    NumericValueKind kind;
+    float *float_values;
+    int *int_values;
     int value_count;
-    float min;
-    float max;
+    float *float_value;
+    double min;
+    double max;
     const char *format;
     int disabled;
-} SliderFloatProps;
+    int vertical;
+    int angle;
+} SliderProps;
 
 typedef struct {
     Rectangle bounds;
     int id;
     const char *label;
-    int *values;
-    int value_count;
-    int min;
-    int max;
-    const char *format;
-    int disabled;
-} SliderIntProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    float *value;
-    float min_degrees;
-    float max_degrees;
-    const char *format;
-    int disabled;
-} SliderAngleProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    float *values;
-    int value_count;
-    float step;
-    float step_fast;
-    const char *format;
-    int disabled;
-} InputFloatProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    int *values;
-    int value_count;
-    int step;
-    int step_fast;
-    const char *format;
-    int disabled;
-} InputIntProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    double *values;
+    NumericValueKind kind;
+    float *float_values;
+    int *int_values;
+    double *double_values;
     int value_count;
     double step;
     double step_fast;
     const char *format;
     int disabled;
-} InputDoubleProps;
+} InputProps;
 
 typedef struct {
     Rectangle bounds;
@@ -273,10 +192,11 @@ typedef struct {
 
 typedef struct {
     Rectangle bounds;
+    int vertical;
     const char *label;
     int font;
     int disabled;
-} SeparatorTextProps;
+} SeparatorProps;
 
 typedef struct {
     Rectangle bounds;
@@ -319,26 +239,12 @@ typedef enum {
 typedef struct {
     Rectangle bounds;
     int id;
-    ArrowDirection direction;
-    int disabled;
-} ArrowButtonProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
     const char *label;
     float *values;
     int value_count;
     int disabled;
-} ColorEditProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    Color color;
-    int disabled;
-} ColorButtonProps;
+    int picker;
+} ColorPickerProps;
 
 typedef struct {
     Rectangle bounds;
@@ -362,8 +268,6 @@ typedef struct {
     const DropdownOption *items;
 } DropdownProps;
 
-typedef DropdownProps ComboboxProps;
-
 typedef enum {
     ComboFlagsNone = 0,
     ComboPopupAlignLeft = 1 << 0,
@@ -371,7 +275,7 @@ typedef enum {
     ComboHeightRegular = 1 << 2,
     ComboHeightLarge = 1 << 3,
     ComboHeightLargest = 1 << 4,
-    ComboNoArrowButton = 1 << 5,
+    ComboNoArrow = 1 << 5,
     ComboNoPreview = 1 << 6,
     ComboWidthFitPreview = 1 << 7
 } ComboFlags;
@@ -409,12 +313,6 @@ typedef struct {
 
 typedef struct {
     Rectangle bounds;
-    Texture2D texture;
-    Color tint;
-} ImageBoxProps;
-
-typedef struct {
-    Rectangle bounds;
     int id;
     const char **items;
     int item_count;
@@ -443,42 +341,6 @@ typedef struct {
     int row_height;
     int disabled;
 } TreeViewProps;
-
-typedef struct {
-    const char *label;
-    int depth;
-    int id;
-    int is_dir;
-    int selectable;
-} UICascadingTreeItem;
-
-typedef struct {
-    int *ids;
-    int *count;
-    int capacity;
-} UICascadingTreeExpansion;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const UICascadingTreeItem *items;
-    int item_count;
-    int *selected_id;
-    int *activated_id;
-    UICascadingTreeExpansion expanded;
-    int *scroll_offset;
-    int row_height;
-} CascadingTreeViewProps;
-
-typedef struct {
-    Rectangle bounds;
-    const char *text;
-    int *scroll_x;
-    int *scroll_y;
-    int font_size;
-    int line_height;
-    int show_line_numbers;
-} SourceViewProps;
 
 typedef struct {
     const char **cells;
@@ -536,13 +398,6 @@ typedef struct {
 
 typedef struct {
     Rectangle bounds;
-    const char **tabs;
-    int tab_count;
-    int *selected_index;
-} NotebookProps;
-
-typedef struct {
-    Rectangle bounds;
     int id;
     int vertical;
     int *split;
@@ -566,50 +421,6 @@ typedef struct {
        activating the close affordance sets it false without toggling open. */
     bool *visible;
 } CollapsibleProps;
-
-typedef struct {
-    const char *title;
-    const char *message;
-    const char *ok_label;
-} MessageDialogProps;
-
-typedef struct {
-    const char *title;
-    const char **labels;
-    Texture2D *icons;
-    int option_count;
-    const char *cancel_label;
-    int max_width;
-} PickerDialogProps;
-
-typedef struct {
-    const char *title;
-    const char *message;
-    const char *cancel_label;
-    const char *confirm_label;
-} ConfirmDialogProps;
-
-typedef struct {
-    const char *title;
-    char *text;
-    int text_size;
-    int *cursor_position;
-    int *focused;
-    const char *cancel_label;
-    const char *confirm_label;
-} PromptDialogProps;
-
-typedef struct {
-    Rectangle anchor;
-    const char *title;
-    char *text;
-    int text_size;
-    int *cursor_position;
-    int *focused;
-    int id;
-    int width;
-    int max_codepoints;
-} TextPopoverProps;
 
 typedef struct {
     int key;

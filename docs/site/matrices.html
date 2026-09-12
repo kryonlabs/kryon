@@ -175,10 +175,10 @@
           <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
             <tr><td>Background, Text</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Nodes</td></tr>
-            <tr><td>Paragraph, TextLines</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>Paragraph</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
             <tr><td>Rect, Line, Bevel</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Nodes</td></tr>
             <tr><td>Icon</td><td class="ok">1 style + 5 tint sheets + 5 full-color sheets</td><td class="ok">Yes</td><td class="ok">By icon type</td><td class="ok">Yes</td><td class="ok">Lowered</td></tr>
-            <tr><td>Image/Picture</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Picture props</td><td class="ok">Yes</td><td class="ok">Embedded asset or PNG</td></tr>
+            <tr><td>Image</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Image props</td><td class="ok">Yes</td><td class="ok">Embedded asset or PNG</td></tr>
           </tbody>
         </table>
       </div>
@@ -189,12 +189,12 @@
           <thead><tr><th>Widget</th><th>C</th><th>k2c</th><th>k2go</th><th>Go</th><th>KRB</th></tr></thead>
           <tbody>
             <tr><td>Button</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">ButtonProps</td><td class="ok">Yes</td><td class="ok">Button control</td></tr>
-            <tr><td>Href / IconLink</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Href only</td><td class="part">Href only</td><td class="no">Not lowered</td></tr>
+            <tr><td>Link</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
             <tr><td>TextField, TextArea</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">TextField only</td></tr>
             <tr><td>Dropdown</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">No rich option arrays</td><td class="ok">Yes</td><td class="ok">Dropdown control</td></tr>
             <tr><td>Slider, Toggle, Checkbox</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Controls</td></tr>
-            <tr><td>Radio, Progress, Spinbox, Combobox</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Spinbox/combobox only</td></tr>
-            <tr><td>ColorPicker, InfoButton</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not exposed</td><td class="no">Not exposed</td><td class="no">Not lowered</td></tr>
+            <tr><td>Radio, Progress, Spinbox, Dropdown</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Spinbox/dropdown only</td></tr>
+            <tr><td>ColorPicker</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
           </tbody>
         </table>
       </div>
@@ -206,11 +206,11 @@
           <tbody>
             <tr><td>Column, Row, Stack</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Structural nodes</td></tr>
             <tr><td>Scroll container</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Scroll/EndScroll</td><td class="ok">Yes</td><td class="ok">Scroll node</td></tr>
-            <tr><td>Notebook, PanedView, Collapsible</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>TabBar, PanedView, Collapsible</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
             <tr><td>Canvas helpers</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Canvas helpers</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
-            <tr><td>ListBox, SourceView, TableView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
-            <tr><td>TreeView, CascadingTreeView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not exposed</td><td class="no">Not exposed</td><td class="no">Not lowered</td></tr>
-            <tr><td>TabBar, NavigationBar, TopNav, Toolbar</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Main controls only</td><td class="ok">Main controls</td><td class="part">NavButton as button</td></tr>
+            <tr><td>ListBox, TableView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not lowered</td></tr>
+            <tr><td>TreeView</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="no">Not exposed</td><td class="no">Not exposed</td><td class="no">Not lowered</td></tr>
+            <tr><td>TabBar, NavigationBar, Toolbar</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Main controls only</td><td class="ok">Main controls</td><td class="part">NavButton as button</td></tr>
             <tr><td>Modal, Toast, dialogs</td><td class="ok">Yes</td><td class="ok">Yes</td><td class="part">Modal/toast/dialog subset</td><td class="part">Subset</td><td class="no">Not lowered</td></tr>
           </tbody>
         </table>

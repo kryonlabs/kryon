@@ -375,7 +375,7 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
         height = max_height;
 
     frame = RenderModalFrame(width, height,
-                             modal.title != NULL ? modal.title : "Profile picture",
+                             modal.title != NULL ? modal.title : "Profile image",
                              kryon_zero_texture2d, modal.close_icon);
     if(frame.right_clicked) {
         result.closed = 1;

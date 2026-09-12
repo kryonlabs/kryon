@@ -67,23 +67,15 @@ Use these APIs by responsibility:
 
 ## Modal Rules
 
-Kryon modal helpers own backdrop capture:
-
-- `UIActionModalNode`
-- `UIModalNode`
-- `UIModal3ButtonNode`
-- `UIModalFrameNode`
-
-When an application uses one of those helpers, it should not add separate outside-click
+Kryon modal helpers own backdrop capture. When an application uses `Modal`,
+it should not add separate outside-click
 guards or duplicate backdrop blocking. The helper registers the modal bounds for the
 current frame and the next frame.
 
-Prefer `UIActionModalNode` for title, message, and action-button dialogs. It measures
-button labels, fits text inside buttons, and wraps actions into multiple rows when
-localized labels do not fit. Prefer `UIModalFrameNode` for custom modal content.
-Use manual
-`SetUIModalCapture` only for specialized overlays that cannot use the shared modal
-frame.
+Prefer `Modal` for title, message, and action-button dialogs. It measures button
+labels, fits text inside buttons, and wraps actions into multiple rows when localized
+labels do not fit. Use manual `SetUIModalCapture` only for specialized overlays that
+cannot use the shared modal frame.
 
 When an application draws a custom modal manually, it must call
 `SetUIModalCapture((Rectangle){x, y, w, h})` immediately after calculating the modal

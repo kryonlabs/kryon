@@ -13,7 +13,7 @@ state {
 
 ButtonsExample :: (viewport: Rectangle) #ui {
     chrome := ThemeDefaultDark()
-    ClearBackground(chrome.colors.background)
+    Background(chrome.colors.background)
     if viewport.width >= 1536 {
         previous_mode := GetThemeMode()
         left: Rectangle = {0, 0, 768, 1024}
@@ -468,17 +468,25 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                 icon_only = true
                 square = true
             }
-            SplitButton split: {
-                button = (ButtonProps){.bounds=split_bounds[row], .label="Add",
-                    .id=id_base + 3006 + row * 20, .tone=tone, .emphasis=emphasis}
+            Button split: {
+                bounds = split_bounds[row]
+                label = "Add"
+                id = id_base + 3006 + row * 20
+                tone = tone
+                emphasis = emphasis
+                split = true
                 menu_id = id_base + 4000 + row
                 items = menu_items
                 item_count = 2
                 open = &split_open[state_base + row]
             }
-            MenuButton dropdown: {
-                button = (ButtonProps){.bounds=menu_bounds[row], .label="More",
-                    .id=id_base + 3008 + row * 20, .tone=tone, .emphasis=emphasis}
+            Button dropdown: {
+                bounds = menu_bounds[row]
+                label = "More"
+                id = id_base + 3008 + row * 20
+                tone = tone
+                emphasis = emphasis
+                menu = true
                 menu_id = id_base + 4010 + row
                 items = menu_items
                 item_count = 2

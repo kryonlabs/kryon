@@ -1,6 +1,6 @@
 #import "kryon.h"
 
-app "Native Composed Combo Parity" {
+app "Native Composed Popup Parity" {
     size 320 220
     fps 60
 }
@@ -58,10 +58,10 @@ composed_popup_drag_frame :: () #ui {
             bounds = {20,20,120,100}
             id = 27060
             open = &popup_drag_open
-            DragFloat((DragFloatProps){.bounds={30,30,80,24},.id=27061,.values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
+            Drag((DragProps){.bounds={30,30,80,24},.id=27061,.kind=NumericFloat,.float_values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
         }
         if !popup_drag_open {
-            DragFloat((DragFloatProps){.bounds={30,30,80,24},.id=27061,.values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
+            Drag((DragProps){.bounds={30,30,80,24},.id=27061,.kind=NumericFloat,.float_values=popup_drag_values,.value_count=1,.speed=1.0f,.min=0.0f,.max=500.0f})
         }
     }
 }
@@ -128,10 +128,8 @@ composed_tooltip_frame :: () #ui {
 }
 
 composed_combo_early_exit :: (leave: bool) #ui {
-    Combo cleanup: {
-        bounds = {180,20,120,28}
-        popup_size = (Vector2){120,80}
-        preview = "Cleanup"
+    Popup cleanup: {
+        bounds = {180,48,120,80}
         id = 27010
         open = &combo_cleanup_open
         if leave {
@@ -143,13 +141,10 @@ composed_combo_early_exit :: (leave: bool) #ui {
 
 composed_combo_frame :: () #ui {
     Screen root: {
-        Combo popup: {
-            bounds = {20,20,120,28}
-            popup_size = (Vector2){150,100}
-            preview = "Tools"
+        Popup popup: {
+            bounds = {20,48,150,100}
             id = 27000
             open = &combo_open
-            flags = ComboPopupAlignLeft | ComboHeightSmall
             Row popup_row: {
                 bounds = {24,64,140,30}
                 gap = 6
@@ -157,11 +152,11 @@ composed_combo_frame :: () #ui {
                 if Button((ButtonProps){.bounds = {0,0,50,26}, .label = "Run", .id = 27001}) {
                     combo_action += 1
                 }
-                Checkbox(27003, 80, 64, "", &combo_checked)
+                Checkbox((CheckboxProps){.bounds = {80,64,Scale(34),Scale(34)}, .id = 27003, .value = &combo_checked})
                 TextField((TextFieldProps){.bounds = {0,0,50,26}, .text = combo_text, .text_size = sizeof(combo_text), .cursor_position = &combo_cursor, .focus_id = 27002})
             }
             if combo_close {
-                CloseCombo()
+                ClosePopup()
             }
         }
     }
@@ -179,7 +174,7 @@ composed_popup_frame :: () #ui {
                 if Button((ButtonProps){.bounds = {0,0,54,26}, .label = "Apply", .id = 27021}) {
                     popup_action += 1
                 }
-                Checkbox(27022, 240, 64, "", &combo_checked)
+                Checkbox((CheckboxProps){.bounds = {240,64,Scale(34),Scale(34)}, .id = 27022, .value = &combo_checked})
             }
             if popup_close {
                 ClosePopup()

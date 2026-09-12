@@ -5,7 +5,22 @@
 #include "ui_popup_input_internal.h"
 #include "toolkit_store.h"
 #include "runtime/instance.h"
+#include "runtime/canvas_grid.h"
+#include "runtime/checkbox.h"
+#include "runtime/color_picker.h"
+#include "runtime/drag.h"
+#include "runtime/input.h"
+#include "runtime/label_frame.h"
+#include "runtime/list_box.h"
+#include "runtime/menu.h"
+#include "runtime/multi_select_list.h"
+#include "runtime/plot.h"
+#include "runtime/progress.h"
+#include "runtime/radio.h"
+#include "runtime/selectable.h"
+#include "runtime/separator.h"
 #include "runtime/slider.h"
+#include "runtime/spinbox.h"
 #include <limits.h>
 
 /* zero constants: the native Plan 9 compiler rejects short
@@ -82,7 +97,7 @@ typedef struct UIDragDropState {
     unsigned char data[UI_DRAG_DROP_DATA_MAX];
     int data_size;
 } UIDragDropState;
-static int ui_slider_float(SliderFloatProps slider, int vertical);
+static int ui_slider_float(UIFloatSliderProps slider, int vertical);
 typedef struct UIMenuOverlayState {
     int active;
     int bar_id;
@@ -545,40 +560,51 @@ Place(Rectangle parent, int x, int y, int w, int h)
                        Scale(w), Scale(h)};
 }
 
-void
-RenderSeparator(Rectangle bounds, int vertical)
+static void
+ui_render_separator_line(Rectangle bounds, int vertical)
 {
+    SeparatorLine paint;
     if(!IsWindowReady())
         return;
+    paint = SeparatorLineFor(bounds, vertical != 0, ColorToInt(c_button));
     if(vertical)
-        DrawLine((int)(bounds.x + bounds.width / 2), (int)bounds.y,
-                 (int)(bounds.x + bounds.width / 2), (int)(bounds.y + bounds.height), c_button);
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+                 (int)paint.line.x,
+                 (int)(paint.line.y + paint.line.height),
+                 GetColor(paint.color));
     else
-        DrawLine((int)bounds.x, (int)(bounds.y + bounds.height / 2),
-                 (int)(bounds.x + bounds.width), (int)(bounds.y + bounds.height / 2), c_button);
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+                 (int)(paint.line.x + paint.line.width),
+                 (int)paint.line.y, GetColor(paint.color));
 }
 
 void
-RenderSeparatorText(SeparatorTextProps separator)
+RenderSeparator(SeparatorProps separator)
 {
     const char *label = separator.label != NULL ? separator.label : "";
     int font = separator.font > 0 ? separator.font : GetSmallFontSize();
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
-    int line_y = (int)(separator.bounds.y + separator.bounds.height * 0.5f);
-    int line_x = (int)separator.bounds.x;
     Color color = separator.disabled ? Fade(c_text, 0.45f) : c_text;
+    Color line_color = separator.disabled ? Fade(c_button, 0.45f) : c_button;
+    SeparatorLabelPaint paint = SeparatorLabelPaintFor(
+        separator.bounds, (float)text_width, label[0] != '\0', font,
+        (float)Scale(1000) / 1000.0f, ColorToInt(color),
+        ColorToInt(line_color));
 
+    if(label[0] == '\0') {
+        ui_render_separator_line(separator.bounds, separator.vertical);
+        return;
+    }
     if(!IsWindowReady())
         return;
-    if(label[0] != '\0') {
-        RenderText(label, (int)separator.bounds.x, text_y, font, color);
-        line_x += text_width + Scale(12);
-    }
-    if(line_x < (int)(separator.bounds.x + separator.bounds.width))
-        DrawLine(line_x, line_y,
-                 (int)(separator.bounds.x + separator.bounds.width), line_y,
-                 separator.disabled ? Fade(c_button, 0.45f) : c_button);
+    if(paint.show_text)
+        RenderText(label, (int)paint.text.x, text_y, font,
+                   GetColor(paint.text_color));
+    if(paint.show_line)
+        DrawLine((int)paint.line.x, (int)paint.line.y,
+                 (int)(paint.line.x + paint.line.width),
+                 (int)paint.line.y, GetColor(paint.line_color));
 }
 
 int
@@ -649,31 +675,23 @@ static void
 ui_multi_select_apply(MultiSelectListProps list, int index, int control,
                       int shift, int range_anchor)
 {
-    int anchor = range_anchor >= 0 ? range_anchor :
-                 list.anchor != NULL ? *list.anchor : -1;
-    if(shift && anchor >= 0 && anchor < list.item_count) {
-        int first = anchor < index ? anchor : index;
-        int last = anchor > index ? anchor : index;
-        if(!control)
-            memset(list.selected,0,
-                   (size_t)list.item_count * sizeof(*list.selected));
-        for(int j = first; j <= last; j++) list.selected[j] = 1;
-    } else if(control) {
-        list.selected[index] = !list.selected[index];
-        if(list.anchor != NULL) *list.anchor = index;
-    } else {
-        memset(list.selected,0,
-               (size_t)list.item_count * sizeof(*list.selected));
-        list.selected[index] = 1;
-        if(list.anchor != NULL) *list.anchor = index;
+    int anchor = list.anchor != NULL ? *list.anchor : -1;
+    for(int row = 0; row < list.item_count; row++) {
+        list.selected[row] = MultiSelectSelectionForRow(row,
+            list.selected[row] != 0, index, list.item_count, anchor,
+            control != 0, shift != 0, range_anchor) ? 1 : 0;
     }
+    if(list.anchor != NULL)
+        *list.anchor = MultiSelectAnchorAfterClick(anchor, index,
+            list.item_count, control != 0, shift != 0, range_anchor);
 }
 
 int
 RenderMultiSelectList(MultiSelectListProps list)
 {
     Vector2 mouse = ui_mouse_world();
-    int row_height = list.row_height > 0 ? list.row_height : Scale(28);
+    int row_height = MultiSelectRowHeight(list.row_height,
+        (float)Scale(1000) / 1000.0f);
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -689,46 +707,33 @@ RenderMultiSelectList(MultiSelectListProps list)
         SetUIFocusTextInputActive(0);
     if(focused) {
         int cursor = -1;
-        int next;
-        int navigate = 1;
+        int selected_first = -1;
+        MultiSelectNavResult nav;
         if(list.anchor != NULL && *list.anchor >= 0 &&
            *list.anchor < list.item_count)
             cursor = *list.anchor;
         else
             for(int i = 0; i < list.item_count; i++)
-                if(list.selected[i]) { cursor = i; break; }
-        if(cursor < 0) cursor = 0;
-        next = cursor;
-        if(IsKeyPressed(KEY_HOME)) next = 0;
-        else if(IsKeyPressed(KEY_END)) next = list.item_count - 1;
-        else if(IsKeyPressed(KEY_UP)) { if(next > 0) next--; }
-        else if(IsKeyPressed(KEY_DOWN)) {
-            if(next + 1 < list.item_count) next++;
-        } else if(IsKeyPressed(KEY_SPACE)) {
-            clicked = cursor;
-            control = 1;
-            shift = 0;
-            navigate = 0;
-        } else if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {
-            clicked = cursor;
-            control = 0;
-            shift = 0;
-            navigate = 0;
-        } else navigate = 0;
-        if(navigate) {
-            if(shift) {
-                range_anchor = cursor;
-                control = 1;
-            }
-            if(list.anchor != NULL) *list.anchor = next;
-            if(!control || shift) clicked = next;
+                if(list.selected[i]) { selected_first = i; break; }
+        cursor = MultiSelectFocusedRow(cursor, selected_first,
+                                       list.item_count);
+        nav = MultiSelectNavigate(list.item_count, cursor, control != 0,
+            shift != 0, IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+            IsKeyPressed(KEY_UP), IsKeyPressed(KEY_DOWN),
+            IsKeyPressed(KEY_SPACE),
+            IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER));
+        clicked = nav.clicked;
+        control = nav.control ? 1 : 0;
+        shift = nav.shift ? 1 : 0;
+        range_anchor = nav.range_anchor;
+        if(nav.anchor_changed && list.anchor != NULL) {
+            *list.anchor = nav.anchor;
         }
     }
     if(clicked >= 0)
         ui_multi_select_apply(list,clicked,control,shift,range_anchor);
     for(int i = 0; i < list.item_count; i++) {
-        Rectangle row = {list.bounds.x, list.bounds.y + i * row_height,
-                         list.bounds.width, (float)row_height};
+        Rectangle row = MultiSelectRowBounds(list.bounds, i, row_height);
         int hot = CheckCollisionPointRec(mouse, row) &&
                   !UIInputCapturesClick(mouse);
         if(IsWindowReady()) {
@@ -767,33 +772,20 @@ int
 RenderInvisibleButton(InvisibleButtonProps button)
 {
     ButtonSpec spec = {.props = {.bounds = button.bounds, .font = GetSmallFontSize(),
-                                .id = button.id, .disabled = button.disabled}};
+                                .id = button.id,
+                                .disabled = !ButtonActionEnabled(button.disabled,
+                                    UIContentDisabled())}};
     return HandleButton(spec);
-}
-
-int
-RenderArrowButton(ArrowButtonProps button)
-{
-    if(!IsWindowReady())
-        return 0;
-    const char *label = "<";
-    if(button.direction == ARROW_RIGHT) label = ">";
-    else if(button.direction == ARROW_UP) label = "^";
-    else if(button.direction == ARROW_DOWN) label = "v";
-    return ui_button_render((ButtonSpec){.props = {.bounds = button.bounds, .label = label,
-        .font = GetSmallFontSize(), .id = button.id, .disabled = button.disabled}});
 }
 
 void
 RenderBullet(Rectangle bounds)
 {
+    BulletPaint paint;
     if(!IsWindowReady())
         return;
-    float radius = bounds.width < bounds.height ? bounds.width * 0.25f
-                                                 : bounds.height * 0.25f;
-    DrawCircleV((Vector2){bounds.x + bounds.width * 0.5f,
-                          bounds.y + bounds.height * 0.5f},
-                radius, GetThemeText());
+    paint = BulletPaintFor(bounds, ColorToInt(GetThemeText()));
+    DrawCircleV(paint.center, paint.radius, GetColor(paint.color));
 }
 
 int
@@ -807,16 +799,26 @@ RenderSelectable(SelectableProps selectable)
                                        selectable.disabled, &focused);
     int hot = !disabled && ui_contains(selectable.bounds, mouse) &&
               !UIInputCapturesClick(mouse);
+    SelectablePaint paint = SelectablePaintFor((SelectableSpec){
+        .bounds = selectable.bounds,
+        .selected = selected,
+        .hovered = hot,
+        .pressed = pressed,
+        .disabled = disabled,
+        .fill_color = ColorToInt(GetThemeButton()),
+        .hover_color = ColorToInt(GetThemeButtonHover()),
+        .text_color = ColorToInt(GetThemeText()),
+        .disabled_text_color = ColorToInt(Fade(GetThemeText(), 0.45f)),
+        .label_inset = (float)Scale(8)
+    });
 
-    if(IsWindowReady() && (selected || hot))
-        DrawRectangleRec(selectable.bounds,
-                         selected ? GetThemeButton() : GetThemeButtonHover());
+    if(IsWindowReady() && paint.draw_fill)
+        DrawRectangleRec(paint.bounds, GetColor(paint.fill_color));
     if(IsWindowReady())
         RenderText(selectable.label != NULL ? selectable.label : "",
-                   (int)selectable.bounds.x + Scale(8),
+                   (int)paint.label_x,
                    ui_row_text_y(selectable.bounds, GetFontSize()),
-                   GetFontSize(), disabled
-                       ? Fade(GetThemeText(), 0.45f) : GetThemeText());
+                   GetFontSize(), GetColor(paint.text_color));
     if(focused && IsWindowReady())
         RenderFocus(selectable.bounds);
     if(pressed) {
@@ -828,51 +830,89 @@ RenderSelectable(SelectableProps selectable)
 }
 
 int
-RenderCheckboxFlags(CheckboxFlagsProps checkbox)
+RenderCheckbox(CheckboxProps checkbox)
 {
-    int checked = checkbox.flags != NULL &&
-                  ((*checkbox.flags & checkbox.flags_value) == checkbox.flags_value);
-    int disabled = checkbox.disabled || UIContentDisabled() || checkbox.flags == NULL;
+    int disabled = checkbox.disabled || UIContentDisabled() ||
+        (checkbox.value == NULL && checkbox.flags == NULL);
     int focused = 0;
     int pressed = ui_focusable_pressed(checkbox.bounds, checkbox.id,
-                                       checkbox.disabled || checkbox.flags == NULL,
-                                       &focused);
-    int box_size = Scale(20);
-    Rectangle box = {checkbox.bounds.x,
-                     checkbox.bounds.y + (checkbox.bounds.height - box_size) * 0.5f,
-                     (float)box_size, (float)box_size};
+                                       disabled, &focused);
+    int changed = 0;
+    int checked = 0;
+
+    if(checkbox.flags != NULL) {
+        CheckboxFlagResult state = CheckboxFlagApply(
+            (uint32_t)*checkbox.flags, (uint32_t)checkbox.flags_value,
+            pressed);
+        checked = state.checked;
+        changed = state.changed;
+        if(state.changed)
+            *checkbox.flags = (int)state.flags;
+    } else if(checkbox.value != NULL) {
+        checked = *checkbox.value != 0;
+        if(pressed) {
+            checked = !checked;
+            *checkbox.value = checked;
+            changed = 1;
+        }
+    }
 
     if(IsWindowReady()) {
-        DrawRectangleLinesEx(box, 1.0f, GetThemeButton());
-        if(checked)
-            DrawRectangle((int)box.x + Scale(4),
-                          (int)box.y + Scale(4),
-                          box_size - Scale(8), box_size - Scale(8),
-                          GetThemeCircle());
+        Palette palette;
+        Metrics tokens;
+        float runtime_scale = (float)Scale(1000) / 1000.0f;
+        int hovered = !disabled && ui_contains(checkbox.bounds, ui_mouse_world()) &&
+                      !UIInputCapturesClick(ui_mouse_world()) &&
+                      UIHoverEffectsEnabled();
+        int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        CheckboxPaint paint;
+
+        ui_runtime_theme_values(&palette, &tokens);
+        paint = CheckboxPaintFor((CheckboxSpec){
+            .bounds = checkbox.bounds,
+            .checked = checked,
+            .enabled = !disabled,
+            .hovered = hovered,
+            .pressed = down,
+            .focused = focused,
+            .scale = runtime_scale,
+            .palette = palette,
+            .metrics = tokens
+        });
+
+        if(paint.show_state)
+            DrawRectangleRounded(paint.state_bounds, paint.state_radius, 8,
+                                 GetColor(paint.state_color));
+        if(paint.show_focus)
+            DrawRectangleRoundedLinesEx(paint.focus_bounds, paint.focus_radius, 8,
+                                        paint.border_width,
+                                        GetColor(paint.focus_color));
+        if(paint.show_fill)
+            DrawRectangleRounded(paint.box_bounds, paint.radius, 8,
+                                 GetColor(paint.fill_color));
+        DrawRectangleRoundedLinesEx(paint.box_bounds, paint.radius, 8,
+                                    paint.border_width,
+                                    GetColor(paint.border_color));
+        if(paint.show_mark) {
+            DrawLineEx(paint.check_start, paint.check_middle, paint.mark_width,
+                       GetColor(paint.mark_color));
+            DrawLineEx(paint.check_middle, paint.check_end, paint.mark_width,
+                       GetColor(paint.mark_color));
+        }
         RenderText(checkbox.label != NULL ? checkbox.label : "",
-                   (int)box.x + box_size + Scale(8),
+                   (int)paint.slot_bounds.x + CheckboxSlotSize(runtime_scale) + Scale(10),
                    ui_row_text_y(checkbox.bounds, GetFontSize()),
-                   GetFontSize(), disabled
-                       ? Fade(GetThemeText(), 0.45f) : GetThemeText());
-        if(focused)
-            RenderFocus(box);
+                   GetFontSize(), GetColor(paint.label_color));
     }
-    if(pressed) {
-        if(checked)
-            *checkbox.flags &= ~checkbox.flags_value;
-        else
-            *checkbox.flags |= checkbox.flags_value;
-        return 1;
-    }
-    return 0;
+    return changed;
 }
 
 static int
-ui_color_edit(ColorEditProps edit, int channels)
+ui_color_edit(ColorPickerProps edit, int channels)
 {
     if(edit.values == NULL || edit.value_count < channels)
         return 0;
-    return ui_slider_float((SliderFloatProps){edit.bounds, edit.id, edit.label,
+    return ui_slider_float((UIFloatSliderProps){edit.bounds, edit.id, edit.label,
                                                edit.values, channels, 0.0f, 1.0f,
                                                "%.3f", edit.disabled}, 0);
 }
@@ -883,41 +923,34 @@ ui_float_color(const float *values, int channels)
     float component[4] = {0.0f, 0.0f, 0.0f, 1.0f};
     for(int i = 0; i < channels; i++) {
         component[i] = values[i];
-        if(component[i] < 0.0f) component[i] = 0.0f;
-        if(component[i] > 1.0f) component[i] = 1.0f;
     }
-    return (Color){(unsigned char)(component[0] * 255.0f + 0.5f),
-                   (unsigned char)(component[1] * 255.0f + 0.5f),
-                   (unsigned char)(component[2] * 255.0f + 0.5f),
-                   (unsigned char)(component[3] * 255.0f + 0.5f)};
+    return ColorPickerColorFor(component[0], component[1], component[2],
+                               component[3], channels);
 }
 
 static int
-ui_color_picker_float(ColorEditProps picker, int channels)
+ui_color_picker_float(ColorPickerProps picker, int channels)
 {
     int changed = 0;
-    float swatch_h = Scale(36);
-    float gap = Scale(4);
-    float row_h = (picker.bounds.height - swatch_h - gap) / channels;
+    float scale = (float)Scale(1000) / 1000.0f;
+    ColorPickerLayout layout;
     const char *labels[4] = {"R", "G", "B", "A"};
 
     if(picker.values == NULL || picker.value_count < channels)
         return 0;
-    if(row_h < Scale(20))
-        row_h = Scale(28);
+    layout = ColorPickerLayoutFor(picker.bounds, channels, scale);
     for(int i = 0; i < channels; i++) {
-        SliderFloatProps channel = {
-            {picker.bounds.x, picker.bounds.y + row_h * i,
-             picker.bounds.width, row_h - Scale(2)},
+        Rectangle row = ColorPickerChannelBounds(picker.bounds, i, channels,
+                                                 scale);
+        UIFloatSliderProps channel = {
+            row,
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
             0.0f, 1.0f, "%.3f", picker.disabled
         };
         changed |= ui_slider_float(channel, 0);
     }
     if(IsWindowReady()) {
-        Rectangle swatch = {picker.bounds.x,
-                            picker.bounds.y + row_h * channels + gap,
-                            picker.bounds.width, swatch_h};
+        Rectangle swatch = layout.swatch_bounds;
         DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
         DrawRectangleLinesEx(swatch, 1.0f, c_button);
         if(picker.label != NULL)
@@ -928,38 +961,14 @@ ui_color_picker_float(ColorEditProps picker, int channels)
     return changed;
 }
 
-int RenderColorEdit3(ColorEditProps edit) { return ui_color_edit(edit, 3); }
-int RenderColorEdit4(ColorEditProps edit) { return ui_color_edit(edit, 4); }
-int RenderColorPicker3(ColorEditProps picker) { return ui_color_picker_float(picker, 3); }
-int RenderColorPicker4(ColorEditProps picker) { return ui_color_picker_float(picker, 4); }
-
 int
-RenderColorButton(ColorButtonProps button)
+RenderColorPicker(ColorPickerProps picker)
 {
-    int pressed;
-    pressed = HandleButton((ButtonSpec){.props = {.bounds = button.bounds,
-        .font = GetSmallFontSize(), .id = button.id, .disabled = button.disabled}});
-    if(!IsWindowReady())
-        return pressed;
-    DrawRectangleRec(button.bounds, (Color){180, 180, 180, 255});
-    DrawRectangle((int)button.bounds.x, (int)button.bounds.y,
-                  (int)(button.bounds.width / 2), (int)(button.bounds.height / 2),
-                  (Color){220, 220, 220, 255});
-    DrawRectangle((int)(button.bounds.x + button.bounds.width / 2),
-                  (int)(button.bounds.y + button.bounds.height / 2),
-                  (int)(button.bounds.width / 2), (int)(button.bounds.height / 2),
-                  (Color){220, 220, 220, 255});
-    DrawRectangleRec(button.bounds, button.color);
-    DrawRectangleLinesEx(button.bounds, 1.0f,
-                         ui_hot(button.bounds) ? c_button_hover : c_button);
-    if(button.label != NULL)
-        RenderText(button.label, (int)button.bounds.x + Scale(6),
-                   ui_row_text_y(button.bounds, GetSmallFontSize()),
-                   GetSmallFontSize(), c_text);
-    if(!button.disabled && IsUIFocusActive(button.id) &&
-       !ui_popup_input_focus_captures(button.id))
-        RenderFocus(button.bounds);
-    return pressed;
+    int channels = picker.value_count >= 4 ? 4 : 3;
+
+    if(picker.picker)
+        return ui_color_picker_float(picker, channels);
+    return ui_color_edit(picker, channels);
 }
 
 static int
@@ -1010,10 +1019,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 {
     ToolkitStore *state = toolkit_state();
     int font = GetFontSize();
-    int row_h = Scale(30);
-    int pad = Scale(12);
-    int accel_w = Scale(88);
-    int w = Scale(180);
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
+    int w = metrics.panel_min_width;
     int activated = 0;
     Rectangle panel;
     Vector2 mouse;
@@ -1081,12 +1088,12 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 
     for(int i = 0; i < item_count; i++) {
         int text_w = items[i].label != NULL ? TextWidth(items[i].label, font) : 0;
-        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) + accel_w : 0;
-        if(text_w + accel + pad * 2 > w)
-            w = text_w + accel + pad * 2;
+        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) : 0;
+        w = MenuPanelWidthStep(w, text_w, accel,
+                               items[i].accelerator != NULL, metrics);
     }
 
-    panel = (Rectangle){(float)x, (float)y, (float)w, (float)(row_h * item_count + Scale(8))};
+    panel = MenuPanelBounds(x, y, w, item_count, metrics);
     if(can_draw)
         ui_draw_menu_panel(panel);
     ui_menu_track_panel(panel);
@@ -1096,8 +1103,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         MarkCursor(MOUSE_CURSOR_DEFAULT);
 
     for(int i = 0; i < item_count; i++) {
-        Rectangle row = {(float)x + 4, (float)y + 4 + (float)(i * row_h),
-                         (float)w - 8, (float)row_h};
+        Rectangle row = MenuRowBounds(panel, i, metrics);
         const MenuItem *item = &items[i];
         int row_hot = !UIContentDisabled() && ui_contains(row, mouse) &&
                       item->kind != MenuSeparator;
@@ -1107,7 +1113,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 
         if(item->kind == MenuSeparator) {
             if(can_draw)
-                RenderSeparator(row, 0);
+                RenderSeparator((SeparatorProps){.bounds = row});
             continue;
         }
 
@@ -1134,10 +1140,14 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                        (int)row.x + Scale(28), ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton()
                                             : GetThemeText());
-        if(can_draw && item->accelerator != NULL)
-            RenderText(item->accelerator, (int)(row.x + row.width - accel_w),
+        if(can_draw && item->accelerator != NULL) {
+            int accel_text_w = TextWidth(item->accelerator, font);
+            RenderText(item->accelerator,
+                       (int)(row.x + row.width - accel_text_w -
+                             metrics.panel_padding),
                        ui_row_text_y(row, font),
                        font, item->disabled ? GetThemeButton() : GetThemeIcon());
+        }
         if(can_draw && item->kind == MenuSubmenu)
             RenderText(">", (int)(row.x + row.width - Scale(18)),
                        ui_row_text_y(row, font),
@@ -1180,22 +1190,19 @@ static Rectangle
 menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
 {
     int font = GetFontSize();
-    int row_h = Scale(30);
-    int pad = Scale(12);
-    int accel_w = Scale(88);
-    int w = Scale(180);
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
+    int w = metrics.panel_min_width;
 
     if(items == NULL || item_count <= 0)
         return (Rectangle){(float)x, (float)y, 0.0f, 0.0f};
 
     for(int i = 0; i < item_count; i++) {
         int text_w = items[i].label != NULL ? TextWidth(items[i].label, font) : 0;
-        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) + accel_w : 0;
-        if(text_w + accel + pad * 2 > w)
-            w = text_w + accel + pad * 2;
+        int accel = items[i].accelerator != NULL ? TextWidth(items[i].accelerator, font) : 0;
+        w = MenuPanelWidthStep(w, text_w, accel,
+                               items[i].accelerator != NULL, metrics);
     }
-    return (Rectangle){(float)x, (float)y, (float)w,
-                       (float)(row_h * item_count + Scale(8))};
+    return MenuPanelBounds(x, y, w, item_count, metrics);
 }
 
 static int
@@ -1263,6 +1270,7 @@ RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     ToolkitStore *state = toolkit_state();
     MenuBarResult result = {0, -1};
     int font = GetFontSize();
+    MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
     int x = (int)bounds.x + Scale(4);
     Vector2 mouse = ui_mouse_world();
     int skip_external_open = 0;
@@ -1353,8 +1361,8 @@ RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     }
 
     for(int i = 0; i < menu_count; i++) {
-        int w = TextWidth(menus[i].label != NULL ? menus[i].label : "", font) + Scale(24);
-        Rectangle item = {(float)x, bounds.y + Scale(3), (float)w, bounds.height - Scale(6)};
+        int w = MenuBarItemWidth(TextWidth(menus[i].label != NULL ? menus[i].label : "", font), metrics);
+        Rectangle item = MenuBarItemBounds(x, bounds, w, metrics);
         int menu_id = id + 1 + i;
         int open = state->open_id == menu_id;
         int hot = !UIContentDisabled() && ui_hot(item);
@@ -1395,7 +1403,7 @@ RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
             copy_menu_items(state->overlay.items,&used,menus[i].items,
                             menus[i].item_count,&state->overlay.item_count);
         }
-        x += w + Scale(2);
+        x += w + metrics.bar_item_gap;
     }
     if(state->open_id != 0 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !ui_contains(bounds, mouse) &&
@@ -1549,30 +1557,33 @@ RenderContextMenu(ContextMenuProps menu)
 }
 
 int
-RenderRadioButton(RadioButtonProps radio)
+RenderRadio(RadioProps radio)
 {
     ToolkitStore *toolkit = toolkit_state();
     int font = GetFontSize();
-    int diameter = Scale(20);
-    int touch = Scale(40);
-    Rectangle hit_bounds = radio.bounds;
-    Vector2 center = {radio.bounds.x + touch / 2.0f,
-                      radio.bounds.y + radio.bounds.height / 2.0f};
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    RadioPaint paint = RadioPaintFor((RadioSpec){
+        .bounds = radio.bounds,
+        .checked = radio.checked,
+        .disabled = radio.disabled,
+        .default_style = ui_default_style(),
+        .selected_amount = radio.checked ? 1.0f : 0.0f,
+        .scale = runtime_scale,
+        .text_color = ColorToInt(c_text),
+        .icon_color = ColorToInt(c_icon),
+        .button_color = ColorToInt(c_button),
+        .primary_color = ColorToInt(ui_default_scheme().primary),
+        .surface_variant_color = ColorToInt(ui_default_scheme().on_surface_variant),
+        .disabled_color = ColorToInt(ui_default_scheme().disabled_content)
+    });
     int hot;
     int down;
     int focused = 0;
     int activated;
 
-    if(ui_default_style() && hit_bounds.height < touch &&
-       radio.bounds.height >= touch) {
-        hit_bounds.y -= ((float)touch - hit_bounds.height) * 0.5f;
-        hit_bounds.height = (float)touch;
-    }
-    if(ui_default_style() && hit_bounds.width < touch)
-        hit_bounds.width = (float)touch;
-    activated = ui_focusable_pressed(hit_bounds, radio.id, radio.disabled,
+    activated = ui_focusable_pressed(paint.hit_bounds, radio.id, radio.disabled,
                                      &focused);
-    hot = ui_hot(hit_bounds) && !radio.disabled && !UIContentDisabled();
+    hot = ui_hot(paint.hit_bounds) && !radio.disabled && !UIContentDisabled();
     down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
@@ -1585,22 +1596,19 @@ RenderRadioButton(RadioButtonProps radio)
         ThemeScheme scheme = ui_default_scheme();
         UIRadioAnimState *anim;
         Rectangle state_bounds = {
-            center.x - (float)touch / 2.0f,
-            center.y - (float)touch / 2.0f,
-            (float)touch,
-            (float)touch
+            paint.center.x - paint.touch / 2.0f,
+            paint.center.y - paint.touch / 2.0f,
+            paint.touch,
+            paint.touch
         };
         unsigned int key = 2166136261u;
         float target = radio.checked ? 1.0f : 0.0f;
         float dt;
         float selected;
         float press;
-        float outer = (float)diameter / 2.0f;
-        float stroke = (float)Scale(2);
-        float fill_radius;
         Color ring;
         Color fill;
-        Color label = radio.disabled ? scheme.disabled_content : scheme.on_surface;
+        Color label;
         const char *text = radio.label != NULL ? radio.label : "";
 
         key = (key ^ (unsigned int)radio.id) * 16777619u;
@@ -1632,47 +1640,56 @@ RenderRadioButton(RadioButtonProps radio)
         }
         selected = anim->selected;
         press = anim->press;
+        paint = RadioPaintFor((RadioSpec){
+            .bounds = radio.bounds,
+            .checked = radio.checked,
+            .disabled = radio.disabled,
+            .default_style = 1,
+            .selected_amount = selected,
+            .scale = runtime_scale,
+            .text_color = ColorToInt(c_text),
+            .icon_color = ColorToInt(c_icon),
+            .button_color = ColorToInt(c_button),
+            .primary_color = ColorToInt(scheme.primary),
+            .surface_variant_color = ColorToInt(scheme.on_surface_variant),
+            .disabled_color = ColorToInt(scheme.disabled_content)
+        });
 
-        ring = ColorLerp(scheme.on_surface_variant, scheme.primary, selected);
-        fill = c_text;
-        if(radio.checked)
-            ring = c_text;
+        ring = GetColor(paint.ring_color);
+        fill = GetColor(paint.fill_color);
+        label = GetColor(paint.label_color);
         if(radio.disabled) {
-            ring = scheme.disabled_content;
-            fill = scheme.disabled_content;
-            selected = target;
             press = 0.0f;
         }
-        if(stroke < 1.0f)
-            stroke = 1.0f;
         if(hot && UIHoverEffectsEnabled()) {
             Color layer = ring;
             layer.a = (unsigned char)(20 + 11 * press);
-            DrawCircleV(center, (float)touch / 2.0f, layer);
+            DrawCircleV(paint.center, paint.touch / 2.0f, layer);
         } else if(down) {
             Color layer = ring;
             layer.a = 31;
-            DrawCircleV(center, (float)touch / 2.0f, layer);
+            DrawCircleV(paint.center, paint.touch / 2.0f, layer);
         }
         ui_default_ripple(state_bounds, ring, (int)key, down);
-        fill_radius = radio.checked ? outer - stroke : (outer - stroke * 1.5f) * selected;
-        if(fill_radius > 0.2f)
-            DrawCircleV(center, fill_radius, fill);
-        DrawRing(center, outer - stroke, outer, 0.0f, 360.0f, 48, ring);
+        if(paint.fill_radius > 0.2f)
+            DrawCircleV(paint.center, paint.fill_radius, fill);
+        DrawRing(paint.center, paint.outer_radius - paint.stroke_width,
+                 paint.outer_radius, 0.0f, 360.0f, 48, ring);
         RenderText(radio.label != NULL ? radio.label : "",
-                   (int)radio.bounds.x + touch + Scale(4),
+                   (int)paint.label_x,
                    ui_row_text_y(radio.bounds, font), font, label);
     } else {
-        center.x = radio.bounds.x + diameter / 2.0f;
-        DrawCircleLines((int)center.x, (int)center.y, (float)diameter / 2.0f, radio.disabled ? c_button : c_icon);
+        DrawCircleLines((int)paint.center.x, (int)paint.center.y,
+                        paint.outer_radius, GetColor(paint.ring_color));
         if(radio.checked)
-            DrawCircleV(center, (float)diameter / 2.0f - (float)Scale(3),
-                        radio.disabled ? c_button : c_text);
-        RenderText(radio.label != NULL ? radio.label : "", (int)radio.bounds.x + diameter + Scale(8),
-                   ui_row_text_y(radio.bounds, font), font, radio.disabled ? c_button : c_text);
+            DrawCircleV(paint.center, paint.fill_radius,
+                        GetColor(paint.fill_color));
+        RenderText(radio.label != NULL ? radio.label : "", (int)paint.label_x,
+                   ui_row_text_y(radio.bounds, font), font,
+                   GetColor(paint.label_color));
     }
     if(focused && IsWindowReady())
-        RenderFocus(hit_bounds);
+        RenderFocus(paint.hit_bounds);
     if(activated) {
         return radio.id;
     }
@@ -1680,24 +1697,21 @@ RenderRadioButton(RadioButtonProps radio)
 }
 
 void
-RenderProgressBar(ProgressBarProps progress)
+RenderProgress(ProgressProps progress)
 {
-    float t;
-    Rectangle fill = progress.bounds;
+    ProgressLayout layout;
+    Rectangle fill;
     const char *label = progress.label;
     Color fill_color = c_button_hover;
     int font = GetSmallFontSize();
-    int center_x = (int)(progress.bounds.x + progress.bounds.width / 2);
-    if(progress.max <= progress.min)
-        progress.max = progress.min + 1;
-    t = (float)(progress.value - progress.min) / (float)(progress.max - progress.min);
-    if(t < 0.0f)
-        t = 0.0f;
-    if(t > 1.0f)
-        t = 1.0f;
+    int label_w = label != NULL ? TextWidth(label, font) : 0;
+    int pad = Scale(6);
+
+    layout = ProgressLayoutFor(progress.bounds, progress.min, progress.max,
+                               progress.value, (float)label_w, (float)pad);
+    fill = layout.fill_bounds;
     if(!IsWindowReady())
         return;
-    fill.width *= t;
     if(ui_modern_style() || ui_default_style()) {
         Color track = ui_default_style()
             ? ui_default_surface_container()
@@ -1715,22 +1729,10 @@ RenderProgressBar(ProgressBarProps progress)
         DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
     }
     if(label != NULL) {
-        int pad = Scale(6);
-        int text_w = TextWidth(label, font);
-        int text_x = center_x - text_w / 2;
+        int text_x = (int)layout.label_x;
         int text_y = GetUIControlTextY(label, (int)progress.bounds.y,
                                        (int)progress.bounds.height, font);
-        Color text_color = c_text;
-        float fill_end = fill.x + fill.width;
-        float empty_w = progress.bounds.width - fill.width;
-
-        if(empty_w >= (float)(text_w + pad * 2)) {
-            text_x = (int)fill_end + pad;
-            text_color = c_text;
-        } else if(fill.width >= (float)(text_w + pad * 2)) {
-            text_x = (int)fill_end - text_w - pad;
-            text_color = ui_default_on_color(fill_color);
-        }
+        Color text_color = layout.label_on_fill ? ui_default_on_color(fill_color) : c_text;
         RenderText(label, text_x, text_y, font, text_color);
     }
 }
@@ -1740,9 +1742,10 @@ ui_plot(PlotProps plot, int histogram)
 {
     float min_value;
     float max_value;
-    float range;
+    PlotRange range;
     int count = plot.value_count;
     int offset;
+    unsigned int mark_color;
 
     if(!IsWindowReady())
         return;
@@ -1750,9 +1753,7 @@ ui_plot(PlotProps plot, int histogram)
     DrawRectangleLinesEx(plot.bounds, 1.0f, c_button);
     if(plot.values == NULL || count <= 0)
         return;
-    offset = plot.offset % count;
-    if(offset < 0)
-        offset += count;
+    offset = PlotOffset(count, plot.offset);
     min_value = plot.scale_min;
     max_value = plot.scale_max;
     if(min_value >= max_value) {
@@ -1769,54 +1770,50 @@ ui_plot(PlotProps plot, int histogram)
             max_value += 0.5f;
         }
     }
-    range = max_value - min_value;
+    range = PlotRangeFor(plot.scale_min, plot.scale_max, min_value, max_value);
+    mark_color = ColorToInt(c_button_hover);
     BeginUIClip((int)plot.bounds.x, (int)plot.bounds.y,
                 (int)plot.bounds.width, (int)plot.bounds.height);
     if(histogram) {
-        float step = plot.bounds.width / (float)count;
         for(int i = 0; i < count; i++) {
             float value = plot.values[(offset + i) % count];
-            float t = (value - min_value) / range;
-            Rectangle bar;
-            if(t < 0.0f) t = 0.0f;
-            if(t > 1.0f) t = 1.0f;
-            bar.x = plot.bounds.x + i * step + 1.0f;
-            bar.width = step > 2.0f ? step - 2.0f : step;
-            bar.height = t * plot.bounds.height;
-            bar.y = plot.bounds.y + plot.bounds.height - bar.height;
-            DrawRectangleRec(bar, c_button_hover);
+            PlotMark bar = PlotHistogramBar(plot.bounds, i, count, value,
+                                             range, mark_color);
+            DrawRectangleRec(bar.bounds, GetColor(bar.color));
         }
     } else if(count == 1) {
-        float t = (plot.values[offset] - min_value) / range;
-        int y;
-        if(t < 0.0f) t = 0.0f;
-        if(t > 1.0f) t = 1.0f;
-        y = (int)(plot.bounds.y + (1.0f - t) * plot.bounds.height);
-        DrawLine((int)plot.bounds.x, y,
-                 (int)(plot.bounds.x + plot.bounds.width), y, c_button_hover);
+        PlotMark line = PlotSingleLine(plot.bounds, plot.values[offset],
+                                       range, mark_color);
+        DrawLine((int)line.bounds.x, (int)line.bounds.y,
+                 (int)(line.bounds.x + line.bounds.width),
+                 (int)line.bounds.y, GetColor(line.color));
     } else {
         for(int i = 1; i < count; i++) {
             float a = plot.values[(offset + i - 1) % count];
             float b = plot.values[(offset + i) % count];
-            float ta = (a - min_value) / range;
-            float tb = (b - min_value) / range;
-            int x1 = (int)(plot.bounds.x + (float)(i - 1) * plot.bounds.width / (float)(count - 1));
-            int x2 = (int)(plot.bounds.x + (float)i * plot.bounds.width / (float)(count - 1));
-            int y1 = (int)(plot.bounds.y + (1.0f - ta) * plot.bounds.height);
-            int y2 = (int)(plot.bounds.y + (1.0f - tb) * plot.bounds.height);
-            DrawLine(x1, y1, x2, y2, c_button_hover);
+            PlotMark line = PlotLineSegment(plot.bounds, i, count, a, b,
+                                            range, mark_color);
+            DrawLine((int)line.bounds.x, (int)line.bounds.y,
+                     (int)(line.bounds.x + line.bounds.width),
+                     (int)(line.bounds.y + line.bounds.height),
+                     GetColor(line.color));
         }
     }
     EndUIClip();
-    if(plot.label != NULL)
-        RenderText(plot.label, (int)plot.bounds.x + Scale(6),
-                   (int)plot.bounds.y + Scale(4), GetSmallFontSize(), c_text);
-    if(plot.overlay != NULL) {
+    {
         int font = GetSmallFontSize();
-        int width = TextWidth(plot.overlay, font);
-        RenderText(plot.overlay,
-                   (int)(plot.bounds.x + plot.bounds.width) - width - Scale(6),
-                   (int)plot.bounds.y + Scale(4), font, c_text);
+        float runtime_scale = (float)Scale(1000) / 1000.0f;
+        float label_width = plot.label != NULL ? (float)TextWidth(plot.label, font) : 0.0f;
+        float overlay_width = plot.overlay != NULL ? (float)TextWidth(plot.overlay, font) : 0.0f;
+        PlotTextPaint text = PlotTextPaintFor(plot.bounds, label_width,
+            overlay_width, runtime_scale, ColorToInt(c_text),
+            plot.label != NULL, plot.overlay != NULL);
+        if(text.show_label)
+            RenderText(plot.label, (int)text.label_bounds.x,
+                       (int)text.label_bounds.y, font, GetColor(text.text_color));
+        if(text.show_overlay)
+            RenderText(plot.overlay, (int)text.overlay_bounds.x,
+                       (int)text.overlay_bounds.y, font, GetColor(text.text_color));
     }
 }
 
@@ -2002,29 +1999,19 @@ static int
 ui_update_drag_float_keyboard(int focus_id, float speed, float minimum,
                               float maximum, float *value)
 {
-    float next = *value;
-    float step;
     int direction;
+    DragScalarStep step;
 
     if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
        !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
-    if(IsKeyPressed(KEY_HOME) && minimum < maximum)
-        next = minimum;
-    else if(IsKeyPressed(KEY_END) && minimum < maximum)
-        next = maximum;
-    else if((direction = ui_slider_keyboard_direction(0)) != 0) {
-        step = speed;
-        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) step *= 0.1f;
-        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) step *= 10.0f;
-        next += direction * step;
-        if(minimum < maximum) {
-            if(next < minimum) next = minimum;
-            if(next > maximum) next = maximum;
-        }
-    }
-    if(next == *value) return 0;
-    *value = next;
+    direction = ui_slider_keyboard_direction(0);
+    step = DragScalarKeyboardValue(*value, speed, minimum, maximum, direction,
+        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    if(!step.changed) return 0;
+    *value = step.value;
     return 1;
 }
 
@@ -2032,41 +2019,28 @@ static int
 ui_update_drag_int_keyboard(int focus_id, float speed, int minimum,
                             int maximum, int *value)
 {
-    long long next = *value;
-    float scaled;
-    long long step;
     int direction;
+    DragWholeStep step;
 
     if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
        !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
-    if(IsKeyPressed(KEY_HOME) && minimum < maximum)
-        next = minimum;
-    else if(IsKeyPressed(KEY_END) && minimum < maximum)
-        next = maximum;
-    else if((direction = ui_slider_keyboard_direction(0)) != 0) {
-        scaled = speed;
-        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) scaled *= 0.1f;
-        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) scaled *= 10.0f;
-        step = (long long)(scaled + (scaled < 0.0f ? -0.5f : 0.5f));
-        if(step == 0) step = scaled < 0.0f ? -1 : 1;
-        next += direction * step;
-        if(minimum < maximum) {
-            if(next < minimum) next = minimum;
-            if(next > maximum) next = maximum;
-        }
-    }
-    if(next == *value) return 0;
-    *value = (int)next;
+    direction = ui_slider_keyboard_direction(0);
+    step = DragWholeKeyboardValue(*value, speed, minimum, maximum, direction,
+        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    if(!step.changed) return 0;
+    *value = step.value;
     return 1;
 }
 
 int
-ui_update_drag_float(DragFloatProps drag)
+ui_update_drag_float(UIFloatDragProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
-    float speed = drag.speed != 0.0f ? drag.speed : 1.0f;
+    float speed = DragEffectiveSpeed(drag.speed);
 
     if(drag.values == NULL || count <= 0)
         return 0;
@@ -2090,13 +2064,11 @@ ui_update_drag_float(DragFloatProps drag)
         if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
                                (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
-            float value = drag.values[i] + delta * speed;
-            if(drag.min < drag.max) {
-                if(value < drag.min) value = drag.min;
-                if(value > drag.max) value = drag.max;
-            }
-            if(value != drag.values[i]) {
-                drag.values[i] = value;
+            DragScalarStep step = DragScalarDeltaValue(drag.values[i], delta,
+                                                     speed, drag.min,
+                                                     drag.max);
+            if(step.changed) {
+                drag.values[i] = step.value;
                 changed = 1;
             }
         }
@@ -2105,11 +2077,11 @@ ui_update_drag_float(DragFloatProps drag)
 }
 
 int
-ui_update_drag_int(DragIntProps drag)
+ui_update_drag_int(UIIntDragProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
-    float speed = drag.speed != 0.0f ? drag.speed : 1.0f;
+    float speed = DragEffectiveSpeed(drag.speed);
 
     if(drag.values == NULL || count <= 0)
         return 0;
@@ -2133,15 +2105,10 @@ ui_update_drag_int(DragIntProps drag)
         if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
                                (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
-            float scaled = delta * speed;
-            int step = (int)(scaled + (scaled < 0.0f ? -0.5f : 0.5f));
-            int value = drag.values[i] + step;
-            if(drag.min < drag.max) {
-                if(value < drag.min) value = drag.min;
-                if(value > drag.max) value = drag.max;
-            }
-            if(value != drag.values[i]) {
-                drag.values[i] = value;
+            DragWholeStep step = DragWholeDeltaValue(drag.values[i], delta,
+                                                 speed, drag.min, drag.max);
+            if(step.changed) {
+                drag.values[i] = step.value;
                 changed = 1;
             }
         }
@@ -2170,7 +2137,7 @@ ui_paint_drag_label(Rectangle bounds, const char *label)
 }
 
 void
-ui_paint_drag_float(DragFloatProps drag)
+ui_paint_drag_float(UIFloatDragProps drag)
 {
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
@@ -2195,7 +2162,7 @@ ui_paint_drag_float(DragFloatProps drag)
 }
 
 void
-ui_paint_drag_int(DragIntProps drag)
+ui_paint_drag_int(UIIntDragProps drag)
 {
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
@@ -2274,31 +2241,20 @@ static int
 ui_update_slider_float_keyboard(int focus_id, int vertical, float minimum,
                                 float maximum, float *value)
 {
-    float next = *value;
-    float range = maximum - minimum;
     int direction;
+    SliderScalarStep step;
 
     if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
-       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id) ||
-       range <= 0.0f)
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
-    if(IsKeyPressed(KEY_HOME))
-        next = minimum;
-    else if(IsKeyPressed(KEY_END))
-        next = maximum;
-    else if((direction = ui_slider_keyboard_direction(vertical)) != 0) {
-        float step = range * 0.01f;
-        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))
-            step *= 0.1f;
-        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
-            step *= 10.0f;
-        next += direction * step;
-        if(next < minimum) next = minimum;
-        if(next > maximum) next = maximum;
-    }
-    if(next == *value)
+    direction = ui_slider_keyboard_direction(vertical);
+    step = SliderScalarKeyboardValue(*value, minimum, maximum, direction,
+        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    if(!step.changed)
         return 0;
-    *value = next;
+    *value = step.value;
     return 1;
 }
 
@@ -2306,33 +2262,20 @@ static int
 ui_update_slider_int_keyboard(int focus_id, int vertical, int minimum,
                               int maximum, int *value)
 {
-    long long next = *value;
-    long long range = (long long)maximum - minimum;
     int direction;
+    SliderWholeStep step;
 
     if(focus_id <= 0 || !IsUIFocusActive(focus_id) ||
-       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id) ||
-       range <= 0)
+       !UIKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
-    if(IsKeyPressed(KEY_HOME))
-        next = minimum;
-    else if(IsKeyPressed(KEY_END))
-        next = maximum;
-    else if((direction = ui_slider_keyboard_direction(vertical)) != 0) {
-        long long step = range <= 100 ? 1 : (range + 50) / 100;
-        if(IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) {
-            step /= 10;
-            if(step < 1) step = 1;
-        }
-        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT))
-            step *= 10;
-        next += direction * step;
-        if(next < minimum) next = minimum;
-        if(next > maximum) next = maximum;
-    }
-    if(next == *value)
+    direction = ui_slider_keyboard_direction(vertical);
+    step = SliderWholeKeyboardValue(*value, minimum, maximum, direction,
+        IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
+        IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
+        IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+    if(!step.changed)
         return 0;
-    *value = (int)next;
+    *value = step.value;
     return 1;
 }
 
@@ -2378,11 +2321,10 @@ ui_draw_slider_label(Rectangle bounds, const char *label)
 }
 
 int
-ui_update_slider_float(SliderFloatProps slider, int vertical)
+ui_update_slider_float(UIFloatSliderProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
-    float range = slider.max - slider.min;
 
     if(slider.values == NULL || count <= 0)
         return 0;
@@ -2391,7 +2333,8 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
-        float ratio = range > 0.0f ? (slider.values[i] - slider.min) / range : 0.0f;
+        float ratio = SliderScalarRatio(slider.values[i], slider.min,
+                                       slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0)
@@ -2403,17 +2346,16 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
             continue;
         if(enabled && ui_update_slider_float_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
-            ratio = (slider.values[i] - slider.min) / range;
+            ratio = SliderScalarRatio(slider.values[i], slider.min,
+                                     slider.max);
             changed = 1;
         }
-        if(ratio < 0.0f) ratio = 0.0f;
-        if(ratio > 1.0f) ratio = 1.0f;
-        if(range > 0.0f && ui_slider_ratio((int)(0x40000000u ^
+        if(slider.max > slider.min && ui_slider_ratio((int)(0x40000000u ^
                                            ((unsigned int)slider.id << 4) ^
                                            (unsigned int)(i + 1)),
                                            focus_id, cell, slider.disabled,
                                            vertical, &ratio)) {
-            float value = slider.min + ratio * range;
+            float value = SliderScalarValue(slider.min, slider.max, ratio);
             if(value != slider.values[i]) {
                 slider.values[i] = value;
                 changed = 1;
@@ -2424,11 +2366,10 @@ ui_update_slider_float(SliderFloatProps slider, int vertical)
 }
 
 int
-ui_update_slider_int(SliderIntProps slider, int vertical)
+ui_update_slider_int(UIIntSliderProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
-    long long range = (long long)slider.max - slider.min;
 
     if(slider.values == NULL || count <= 0)
         return 0;
@@ -2437,8 +2378,8 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
         Rectangle cell = {slider.bounds.x + slider.bounds.width * i / count,
                           slider.bounds.y, slider.bounds.width / count,
                           slider.bounds.height};
-        float ratio = range > 0 ?
-            (float)(((long long)slider.values[i] - slider.min) / (double)range) : 0.0f;
+        float ratio = SliderWholeRatio(slider.values[i], slider.min,
+                                     slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0)
@@ -2450,19 +2391,16 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
             continue;
         if(enabled && ui_update_slider_int_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
-            ratio = (float)(((long long)slider.values[i] - slider.min) /
-                            (double)range);
+            ratio = SliderWholeRatio(slider.values[i], slider.min,
+                                   slider.max);
             changed = 1;
         }
-        if(ratio < 0.0f) ratio = 0.0f;
-        if(ratio > 1.0f) ratio = 1.0f;
-        if(range > 0 && ui_slider_ratio((int)(0x50000000u ^
+        if(slider.max > slider.min && ui_slider_ratio((int)(0x50000000u ^
                                         ((unsigned int)slider.id << 4) ^
                                         (unsigned int)(i + 1)),
                                         focus_id, cell, slider.disabled,
                                         vertical, &ratio)) {
-            int value = (int)((long long)slider.min +
-                              (long long)(ratio * (double)range + 0.5));
+            int value = SliderWholeValue(slider.min, slider.max, ratio);
             if(value != slider.values[i]) {
                 slider.values[i] = value;
                 changed = 1;
@@ -2473,7 +2411,7 @@ ui_update_slider_int(SliderIntProps slider, int vertical)
 }
 
 void
-ui_paint_slider_float(SliderFloatProps slider, int vertical)
+ui_paint_slider_float(UIFloatSliderProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
@@ -2481,10 +2419,8 @@ ui_paint_slider_float(SliderFloatProps slider, int vertical)
         Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
                           slider.bounds.y, slider.bounds.width/slider.value_count,
                           slider.bounds.height};
-        float range = slider.max-slider.min;
-        float ratio = range > 0 ? (slider.values[i]-slider.min)/range : 0;
-        if(ratio < 0) ratio = 0;
-        if(ratio > 1) ratio = 1;
+        float ratio = SliderScalarRatio(slider.values[i], slider.min,
+                                       slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
         UINumericInputState *state = ui_numeric_input_find(
@@ -2501,7 +2437,7 @@ ui_paint_slider_float(SliderFloatProps slider, int vertical)
 }
 
 void
-ui_paint_slider_int(SliderIntProps slider, int vertical)
+ui_paint_slider_int(UIIntSliderProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
@@ -2509,10 +2445,8 @@ ui_paint_slider_int(SliderIntProps slider, int vertical)
         Rectangle cell = {slider.bounds.x + slider.bounds.width*i/slider.value_count,
                           slider.bounds.y, slider.bounds.width/slider.value_count,
                           slider.bounds.height};
-        double range = (double)slider.max-slider.min;
-        float ratio = range > 0 ? (float)(((double)slider.values[i]-slider.min)/range) : 0;
-        if(ratio < 0) ratio = 0;
-        if(ratio > 1) ratio = 1;
+        float ratio = SliderWholeRatio(slider.values[i], slider.min,
+                                     slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
         UINumericInputState *state = ui_numeric_input_find(
@@ -2529,7 +2463,7 @@ ui_paint_slider_int(SliderIntProps slider, int vertical)
 }
 
 static int
-ui_slider_float(SliderFloatProps slider, int vertical)
+ui_slider_float(UIFloatSliderProps slider, int vertical)
 {
     int changed = ui_update_slider_float(slider,vertical);
     ui_paint_slider_float(slider,vertical);
@@ -2537,18 +2471,18 @@ ui_slider_float(SliderFloatProps slider, int vertical)
 }
 
 int
-ui_update_slider_angle(SliderAngleProps slider)
+ui_update_slider_angle(UIAngleSliderProps slider)
 {
     const float radians_to_degrees = 57.295779513082320876f;
     const float degrees_to_radians = 0.01745329251994329577f;
     float degrees;
-    SliderFloatProps value_slider;
+    UIFloatSliderProps value_slider;
     int changed;
 
     if(slider.value == NULL)
         return 0;
     degrees = *slider.value * radians_to_degrees;
-    value_slider = (SliderFloatProps){slider.bounds, slider.id, slider.label,
+    value_slider = (UIFloatSliderProps){slider.bounds, slider.id, slider.label,
                                       &degrees, 1, slider.min_degrees,
                                       slider.max_degrees, slider.format,
                                       slider.disabled};
@@ -2559,12 +2493,12 @@ ui_update_slider_angle(SliderAngleProps slider)
 }
 
 void
-ui_paint_slider_angle(SliderAngleProps slider)
+ui_paint_slider_angle(UIAngleSliderProps slider)
 {
     if(slider.value == NULL)
         return;
     float degrees = *slider.value * 57.295779513082320876f;
-    SliderFloatProps value_slider = {
+    UIFloatSliderProps value_slider = {
         slider.bounds, slider.id, slider.label, &degrees, 1,
         slider.min_degrees, slider.max_degrees, slider.format, slider.disabled
     };
@@ -2706,17 +2640,26 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         }
         if(step != 0.0) {
             int fast = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-            double increment = fast && step_fast != 0.0 ? step_fast : step;
             int minus_pressed = Button((ButtonProps){.bounds = minus, .label = "-",
                 .font = GetSmallFontSize(), .id = token + 1, .disabled = disabled});
             int plus_pressed = Button((ButtonProps){.bounds = plus, .label = "+",
                 .font = GetSmallFontSize(), .id = token + 2, .disabled = disabled});
             if(minus_pressed || plus_pressed) {
-                double value = ui_numeric_value(values, i, kind) +
-                               (plus_pressed ? increment : -increment);
-                if(kind == 1)
-                    value = value < 0.0 ? (double)((int)(value - 0.5))
-                                        : (double)((int)(value + 0.5));
+                int direction = plus_pressed ? 1 : -1;
+                double value = ui_numeric_value(values, i, kind);
+                if(kind == 0) {
+                    InputScalarStep result = InputScalarStepValue((float)value,
+                        (float)step, (float)step_fast, direction, fast);
+                    value = result.value;
+                } else if(kind == 1) {
+                    InputWholeStep result = InputWholeStepValue((int)value,
+                        (int)step, (int)step_fast, direction, fast);
+                    value = (double)result.value;
+                } else {
+                    InputDoubleStep result = InputDoubleStepValue(value, step,
+                        step_fast, direction, fast);
+                    value = result.value;
+                }
                 ui_numeric_set_value(values, i, kind, value);
                 ui_numeric_format(state->text, sizeof(state->text), format,
                                   kind, value);
@@ -2733,7 +2676,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
 }
 
 int
-RenderInputFloat(InputFloatProps input)
+RenderInputScalar(UIFloatInputProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2741,7 +2684,7 @@ RenderInputFloat(InputFloatProps input)
 }
 
 int
-RenderInputInt(InputIntProps input)
+RenderInputWhole(UIIntInputProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2749,7 +2692,7 @@ RenderInputInt(InputIntProps input)
 }
 
 int
-RenderInputDouble(InputDoubleProps input)
+RenderInputDouble(UIDoubleInputProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2759,20 +2702,14 @@ RenderInputDouble(InputDoubleProps input)
 int
 RenderSpinbox(SpinboxProps spinbox)
 {
-    int button_w = Scale(28);
+    SpinboxLayout layout = SpinboxLayoutFor(spinbox.bounds, Scale(28));
     int changed = 0;
     char value_text[32];
-    Rectangle left = spinbox.bounds;
-    Rectangle right = spinbox.bounds;
-    Rectangle text = spinbox.bounds;
+    Rectangle left = layout.left;
+    Rectangle right = layout.right;
+    Rectangle text = layout.text;
 
-    if(spinbox.step <= 0)
-        spinbox.step = 1;
-    left.width = button_w;
-    right.x = spinbox.bounds.x + spinbox.bounds.width - button_w;
-    right.width = button_w;
-    text.x += button_w;
-    text.width -= button_w * 2;
+    spinbox.step = SpinboxEffectiveStep(spinbox.step);
 
     if(spinbox.disabled)
         MarkDisabled();
@@ -2792,30 +2729,24 @@ RenderSpinbox(SpinboxProps spinbox)
         .paint = {.background = c_button, .foreground = c_text, .border = c_button},
         .hover_background = c_button_hover}) &&
        spinbox.value != NULL) {
-        if(*spinbox.value > spinbox.min) {
-            *spinbox.value -= spinbox.step;
-            changed = 1;
-        } else if(spinbox.wrap && *spinbox.value <= spinbox.min) {
-            *spinbox.value = spinbox.max;
-            changed = 1;
-        }
-        if(*spinbox.value < spinbox.min)
-            *spinbox.value = spinbox.min;
+        SpinboxStepResult step = SpinboxStepValue(
+            *spinbox.value, spinbox.min, spinbox.max, spinbox.step, -1,
+            spinbox.wrap != 0);
+
+        *spinbox.value = step.value;
+        changed |= step.changed;
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
         .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = spinbox.disabled},
         .paint = {.background = c_button, .foreground = c_text, .border = c_button},
         .hover_background = c_button_hover}) &&
        spinbox.value != NULL) {
-        if(*spinbox.value < spinbox.max) {
-            *spinbox.value += spinbox.step;
-            changed = 1;
-        } else if(spinbox.wrap && *spinbox.value >= spinbox.max) {
-            *spinbox.value = spinbox.min;
-            changed = 1;
-        }
-        if(*spinbox.value > spinbox.max)
-            *spinbox.value = spinbox.max;
+        SpinboxStepResult step = SpinboxStepValue(
+            *spinbox.value, spinbox.min, spinbox.max, spinbox.step, 1,
+            spinbox.wrap != 0);
+
+        *spinbox.value = step.value;
+        changed |= step.changed;
     }
     return changed;
 }
@@ -2824,52 +2755,21 @@ void
 RenderLabelFrame(LabelFrameProps frame)
 {
     int font = GetSmallFontSize();
-    DrawRectangleLinesEx(frame.bounds, 1.0f, c_button);
-    if(frame.title != NULL) {
-        int pad = Scale(8);
-        int w = TextWidth(frame.title, font) + pad * 2;
-        DrawRectangle((int)frame.bounds.x + pad, (int)frame.bounds.y - Scale(8),
-                      w, Scale(18), c_bg);
-        RenderText(frame.title, (int)frame.bounds.x + pad * 2,
-                   (int)frame.bounds.y - Scale(9), font, c_text);
-    }
-}
+    const char *title = frame.title != NULL ? frame.title : "";
+    int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
+    LabelFramePaint paint = LabelFramePaintFor(
+        frame.bounds, (float)title_width, title[0] != '\0',
+        (float)Scale(1000) / 1000.0f, ColorToInt(c_button),
+        ColorToInt(c_bg), ColorToInt(c_text));
 
-void
-RenderImageBox(ImageBoxProps image)
-{
-    DrawRectangleRec(image.bounds, c_surface);
-    if(image.texture.id != 0)
-        DrawTexturePro(image.texture,
-                       (Rectangle){0, 0, (float)image.texture.width, (float)image.texture.height},
-                       image.bounds, (Vector2){0, 0}, 0.0f,
-                       image.tint.a == 0 ? WHITE : image.tint);
-    DrawRectangleLinesEx(image.bounds, 1.0f, c_button);
-}
-
-Rectangle
-BeginListBox(ListBoxProps list)
-{
-    BeginDisabled(list.disabled);
-    if(IsWindowReady()) {
-        DrawRectangleRec(list.bounds,c_bg);
-        DrawRectangleLinesEx(list.bounds,1,c_button);
+    DrawRectangleLinesEx(paint.frame, paint.border_width,
+                         GetColor(paint.border_color));
+    if(paint.show_title) {
+        DrawRectangleRec(paint.title_background,
+                         GetColor(paint.background_color));
+        RenderText(title, (int)paint.title_text.x, (int)paint.title_text.y,
+                   font, GetColor(paint.text_color));
     }
-    Rectangle inner = {list.bounds.x+1,list.bounds.y+1,
-                       fmaxf(0,list.bounds.width-2),fmaxf(0,list.bounds.height-2)};
-    int height = list.content_height;
-    if(height <= 0) {
-        long long total = (long long)(list.item_count > 0 ? list.item_count : 0)*(list.row_height > 0 ? list.row_height : 30);
-        height = total > INT_MAX ? INT_MAX : (int)total;
-    }
-    return BeginScroll(inner,Scale(height),list.scroll_offset);
-}
-
-void
-EndListBox(void)
-{
-    EndScroll();
-    EndDisabled();
 }
 
 int
@@ -2879,53 +2779,51 @@ RenderListBox(ListBoxProps list)
     int font = GetFontSize();
     int disabled = list.disabled || UIContentDisabled();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
-    int row_h = list.row_height > 0 ? Scale(list.row_height) : Scale(30);
+    int row_h = ListBoxRowHeight(list.row_height > 0
+        ? Scale(list.row_height) : Scale(30));
+    ListBoxLayout layout;
     int scroll_y;
     int first;
-    int y_offset;
-    int visible = (int)list.bounds.height / row_h;
+    int visible;
     int max_scroll;
     int changed = 0;
 
     max_scroll = ui_update_scroll(list.bounds, list.item_count * row_h,
                                   disabled ? NULL : list.scroll_offset, row_h);
+    layout = ListBoxLayoutFor(list.bounds, list.item_count, row_h, 0,
+                              list.scroll_offset != NULL ? *list.scroll_offset : 0);
+    layout.max_scroll = max_scroll;
+    layout.scroll = ListBoxClampScroll(layout.scroll, max_scroll);
     int focused = !disabled && list.id > 0 &&
                   RegisterUIFocus(list.id, list.bounds);
     if(focused) SetUIFocusTextInputActive(0);
     if(focused && list.selected_index != NULL && list.item_count > 0 &&
        !ui_popup_input_focus_captures(list.id)) {
-        int next = selected;
-        int navigate = 1;
-        if(IsKeyPressed(KEY_HOME)) next = 0;
-        else if(IsKeyPressed(KEY_END)) next = list.item_count - 1;
-        else if(IsKeyPressed(KEY_UP))
-            next = selected < 0 ? list.item_count - 1 : selected - 1;
-        else if(IsKeyPressed(KEY_DOWN))
-            next = selected < 0 ? 0 : selected + 1;
-        else navigate = 0;
-        if(navigate) {
-            if(next < 0) next = 0;
-            if(next >= list.item_count) next = list.item_count - 1;
-            if(next != selected) {
-                *list.selected_index = next;
-                selected = next;
+        int key = 0;
+        if(IsKeyPressed(KEY_HOME)) key = 1;
+        else if(IsKeyPressed(KEY_END)) key = 2;
+        else if(IsKeyPressed(KEY_UP)) key = 3;
+        else if(IsKeyPressed(KEY_DOWN)) key = 4;
+        if(key != 0) {
+            ListBoxNavigation nav = ListBoxNavigate(selected, list.item_count,
+                                                    key, layout.scroll, row_h,
+                                                    list.bounds.height,
+                                                    max_scroll);
+            if(nav.changed) {
+                *list.selected_index = nav.selected;
+                selected = nav.selected;
                 changed = 1;
             }
             if(list.scroll_offset != NULL) {
-                int top = selected * row_h;
-                int bottom = top + row_h;
-                int viewport = (int)list.bounds.height;
-                if(top < *list.scroll_offset) *list.scroll_offset = top;
-                else if(bottom > *list.scroll_offset + viewport)
-                    *list.scroll_offset = bottom - viewport;
-                if(*list.scroll_offset < 0) *list.scroll_offset = 0;
-                if(*list.scroll_offset > max_scroll) *list.scroll_offset = max_scroll;
+                *list.scroll_offset = nav.scroll;
+                layout.scroll = nav.scroll;
             }
         }
     }
-    scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : 0;
-    first = scroll_y / row_h;
-    y_offset = scroll_y % row_h;
+    scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : layout.scroll;
+    layout = ListBoxLayoutFor(list.bounds, list.item_count, row_h, 0, scroll_y);
+    first = layout.first_row;
+    visible = layout.visible_rows;
     if(paint) {
         ui_draw_panel(list.bounds);
         BeginUIClip((int)list.bounds.x, (int)list.bounds.y,
@@ -2933,8 +2831,7 @@ RenderListBox(ListBoxProps list)
     }
     for(int i = 0; i <= visible && first + i < list.item_count; i++) {
         int index = first + i;
-        Rectangle row = {list.bounds.x, list.bounds.y + (float)(i * row_h - y_offset),
-                         list.bounds.width, (float)row_h};
+        Rectangle row = ListBoxRowBounds(list.bounds, i, layout);
         int hot = !disabled && ui_hot(row);
         if(paint && index == selected)
             DrawRectangleRec(row, disabled ? DarkenUIColor(c_button, 38) : c_button);
@@ -3023,469 +2920,6 @@ RenderTreeView(TreeViewProps tree)
                         (int)tree.bounds.y, (int)tree.bounds.height,
                         tree.item_count * row_h, tree.scroll_offset, max_scroll, 0);
     return changed;
-}
-
-static int
-ui_tree_expanded_index(UICascadingTreeExpansion expansion, int id)
-{
-    int count = expansion.count != NULL ? *expansion.count : 0;
-
-    for(int i = 0; i < count; i++) {
-        if(expansion.ids != NULL && expansion.ids[i] == id)
-            return i;
-    }
-    return -1;
-}
-
-static int
-ui_tree_is_expanded(UICascadingTreeExpansion expansion, int id)
-{
-    return ui_tree_expanded_index(expansion, id) >= 0;
-}
-
-static void
-ui_tree_toggle_expanded(UICascadingTreeExpansion *expansion, int id)
-{
-    int index;
-    int count;
-
-    if(expansion == NULL || expansion->ids == NULL ||
-       expansion->count == NULL || expansion->capacity <= 0)
-        return;
-    count = *expansion->count;
-    index = ui_tree_expanded_index(*expansion, id);
-    if(index >= 0) {
-        for(int i = index; i + 1 < count; i++)
-            expansion->ids[i] = expansion->ids[i + 1];
-        if(count > 0)
-            expansion->ids[count - 1] = 0;
-        *expansion->count = count - 1;
-        return;
-    }
-    if(count >= expansion->capacity)
-        return;
-    expansion->ids[count++] = id;
-    *expansion->count = count;
-}
-
-static void
-ui_tree_remove_expanded(UICascadingTreeExpansion *expansion, int id)
-{
-    int index;
-    int count;
-
-    if(expansion == NULL || expansion->ids == NULL || expansion->count == NULL)
-        return;
-    count = *expansion->count;
-    index = ui_tree_expanded_index(*expansion, id);
-    if(index < 0)
-        return;
-    for(int i = index; i + 1 < count; i++)
-        expansion->ids[i] = expansion->ids[i + 1];
-    if(count > 0)
-        expansion->ids[count - 1] = 0;
-    *expansion->count = count - 1;
-}
-
-static void
-ui_tree_collapse_item_and_children(const UICascadingTreeItem *items,
-                                   int item_count, int index,
-                                   UICascadingTreeExpansion *expansion)
-{
-    int depth;
-
-    if(items == NULL || index < 0 || index >= item_count || expansion == NULL)
-        return;
-    depth = items[index].depth;
-    ui_tree_remove_expanded(expansion, items[index].id);
-    for(int i = index + 1; i < item_count; i++) {
-        if(items[i].depth <= depth)
-            break;
-        if(items[i].is_dir)
-            ui_tree_remove_expanded(expansion, items[i].id);
-    }
-}
-
-static int
-ui_tree_item_visible(const UICascadingTreeItem *items, int index,
-                     UICascadingTreeExpansion expansion)
-{
-    int depth;
-
-    if(items == NULL || index < 0)
-        return 0;
-    depth = items[index].depth;
-    for(int i = index - 1; i >= 0; i--) {
-        if(items[i].depth >= depth)
-            continue;
-        if(items[i].is_dir && !ui_tree_is_expanded(expansion, items[i].id))
-            return 0;
-        depth = items[i].depth;
-        if(depth <= 0)
-            break;
-    }
-    return 1;
-}
-
-static void
-ui_draw_tree_text(const char *text, Rectangle rect, int font, Color color)
-{
-    const char *value = text != NULL ? text : "";
-    int y;
-
-    if(rect.width <= 0 || rect.height <= 0)
-        return;
-    y = TextBaselineY(value, (int)rect.y, (int)rect.height, font);
-    BeginUIClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
-    RenderText(value, (int)rect.x, y, font, color);
-    EndUIClip();
-}
-
-static void
-ui_draw_tree_disclosure(Rectangle box, int expanded, int hot)
-{
-    Color bg = hot ? GetThemeButtonHover() : GetThemeSurface();
-    Color border = hot ? GetThemeIcon() : GetThemeButton();
-    Color mark = GetThemeIcon();
-    int cx = (int)(box.x + box.width / 2.0f);
-    int cy = (int)(box.y + box.height / 2.0f);
-    int pad = Scale(4);
-
-    DrawRectangleRec(box, bg);
-    DrawRectangleLinesEx(box, 1.0f, border);
-    DrawLine((int)box.x + pad, cy, (int)(box.x + box.width) - pad, cy,
-             mark);
-    if(!expanded)
-        DrawLine(cx, (int)box.y + pad, cx, (int)(box.y + box.height) - pad,
-                 mark);
-}
-
-static void
-ui_draw_tree_file_mark(Rectangle box, int hot)
-{
-    Color border = hot ? GetThemeIcon() : GetThemeButton();
-    int inset = Scale(3);
-
-    DrawRectangleLines((int)box.x + inset, (int)box.y + inset,
-                       (int)box.width - inset * 2,
-                       (int)box.height - inset * 2, border);
-    DrawLine((int)(box.x + box.width) - inset * 2,
-             (int)box.y + inset,
-             (int)(box.x + box.width) - inset,
-             (int)box.y + inset * 2, border);
-}
-
-int
-RenderCascadingTreeView(CascadingTreeViewProps tree)
-{
-    int font = GetFontSize();
-    int row_h = tree.row_height > 0 ? Scale(tree.row_height) : Scale(28);
-    Vector2 mouse = ui_mouse_world();
-    int blocked = UIInputCapturesClick(mouse);
-    int contains;
-    int scroll_y;
-    int max_scroll;
-    int visible_count = 0;
-    int changed = 0;
-
-    if(row_h <= 0)
-        row_h = 1;
-    for(int i = 0; i < tree.item_count; i++) {
-        if(ui_tree_item_visible(tree.items, i, tree.expanded))
-            visible_count++;
-    }
-    contains = ui_contains(tree.bounds, mouse);
-    max_scroll = ui_update_scroll(tree.bounds, visible_count * row_h,
-                                  tree.scroll_offset, row_h);
-    scroll_y = tree.scroll_offset != NULL ? *tree.scroll_offset : 0;
-    if(contains && !blocked) {
-        PushUIInputCapture(tree.bounds, 1);
-    }
-
-    ui_draw_panel(tree.bounds);
-    BeginUIClip((int)tree.bounds.x, (int)tree.bounds.y,
-                (int)tree.bounds.width, (int)tree.bounds.height);
-    visible_count = 0;
-    for(int i = 0; i < tree.item_count; i++) {
-        const UICascadingTreeItem *item;
-        Rectangle row;
-        Rectangle text_rect;
-        Rectangle mark;
-        int hot;
-        int expanded;
-        int x;
-        int y;
-        int mark_size = Scale(16);
-        int gap = Scale(8);
-
-        if(!ui_tree_item_visible(tree.items, i, tree.expanded))
-            continue;
-        item = &tree.items[i];
-        y = (int)tree.bounds.y + visible_count * row_h - scroll_y;
-        visible_count++;
-        if(y + row_h < (int)tree.bounds.y ||
-           y > (int)(tree.bounds.y + tree.bounds.height))
-            continue;
-
-        row = (Rectangle){tree.bounds.x, (float)y, tree.bounds.width,
-                          (float)row_h};
-        hot = ui_contains(row, mouse) && !blocked;
-        expanded = item->is_dir && ui_tree_is_expanded(tree.expanded, item->id);
-        x = (int)row.x + Scale(8 + item->depth * 18);
-        if(tree.selected_id != NULL && *tree.selected_id == item->id)
-            DrawRectangleRec(row, GetThemeButton());
-        else if(hot)
-            DrawRectangleRec(row, GetThemeButtonHover());
-        if(hot)
-            MarkClickable();
-
-        mark = (Rectangle){
-            (float)x,
-            row.y + ((float)row_h - (float)mark_size) * 0.5f,
-            (float)mark_size,
-            (float)mark_size
-        };
-        if(item->is_dir)
-            ui_draw_tree_disclosure(mark, expanded, hot);
-        else
-            ui_draw_tree_file_mark(mark, hot);
-        text_rect = (Rectangle){
-            mark.x + mark.width + (float)gap,
-            row.y,
-            tree.bounds.x + tree.bounds.width - (float)Scale(10) -
-                (mark.x + mark.width + (float)gap),
-            row.height
-        };
-        ui_draw_tree_text(item->label != NULL ? item->label : "", text_rect,
-                          font, item->is_dir ? GetThemeText()
-                                             : Fade(GetThemeText(), 0.72f));
-
-        if(hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            if(item->is_dir) {
-                if(expanded)
-                    ui_tree_collapse_item_and_children(tree.items,
-                                                       tree.item_count, i,
-                                                       &tree.expanded);
-                else
-                    ui_tree_toggle_expanded(&tree.expanded, item->id);
-                changed = 1;
-            } else if(item->selectable && tree.selected_id != NULL) {
-                *tree.selected_id = item->id;
-                if(tree.activated_id != NULL)
-                    *tree.activated_id = item->id;
-                changed = 1;
-            }
-        }
-    }
-    EndUIClip();
-    if(tree.scroll_offset != NULL && max_scroll > 0)
-        ui_scrollbar((int)(tree.bounds.x + tree.bounds.width - Scale(8)),
-                        (int)tree.bounds.y, (int)tree.bounds.height,
-                        visible_count * row_h, tree.scroll_offset, max_scroll, 0);
-    return changed;
-}
-
-static int
-ui_source_line_count(const char *text)
-{
-    int count = 1;
-
-    if(text == NULL || text[0] == '\0')
-        return 0;
-    for(const char *p = text; *p != '\0'; p++) {
-        if(*p == '\n')
-            count++;
-    }
-    return count;
-}
-
-static int
-ui_source_expand_line(char *dst, size_t dst_size, const char *text, int len,
-                      int tab_width)
-{
-    int col = 0;
-    int out = 0;
-
-    if(dst == NULL || dst_size == 0)
-        return 0;
-    if(text == NULL || len <= 0) {
-        dst[0] = '\0';
-        return 0;
-    }
-    if(tab_width <= 0)
-        tab_width = 4;
-    for(int i = 0; i < len && out < (int)dst_size - 1; i++) {
-        unsigned char c = (unsigned char)text[i];
-
-        if(c == '\t') {
-            int spaces = tab_width - (col % tab_width);
-            while(spaces-- > 0 && out < (int)dst_size - 1) {
-                dst[out++] = ' ';
-                col++;
-            }
-        } else if(c == '\r') {
-            continue;
-        } else if(c < 32) {
-            dst[out++] = ' ';
-            col++;
-        } else {
-            dst[out++] = (char)c;
-            col++;
-        }
-    }
-    dst[out] = '\0';
-    return out;
-}
-
-static int
-ui_source_line_width(const char *text, int len, int font)
-{
-    char line[1024];
-    int n;
-
-    if(text == NULL)
-        return 0;
-    n = ui_source_expand_line(line, sizeof(line), text, len, 4);
-    line[n] = '\0';
-    return TextWidth(line, font);
-}
-
-static int
-ui_source_max_line_width(const char *text, int font)
-{
-    int max_w = 0;
-    const char *line;
-
-    if(text == NULL)
-        return 0;
-    line = text;
-    while(*line != '\0') {
-        const char *end = strchr(line, '\n');
-        int width;
-
-        if(end == NULL)
-            end = line + strlen(line);
-        width = ui_source_line_width(line, (int)(end - line), font);
-        if(width > max_w)
-            max_w = width;
-        if(*end == '\0')
-            break;
-        line = end + 1;
-    }
-    return max_w;
-}
-
-static void
-ui_draw_source_line(const char *text, int len, int x, int y, int font,
-                    Color color)
-{
-    char line[1024];
-    int n;
-
-    if(text == NULL)
-        return;
-    n = ui_source_expand_line(line, sizeof(line), text, len, 4);
-    line[n] = '\0';
-    RenderText(line, x, y, font, color);
-}
-
-int
-RenderSourceView(SourceViewProps source)
-{
-    const char *text = source.text != NULL ? source.text : "";
-    int font = source.font_size > 0 ? source.font_size : GetSmallFontSize();
-    int line_h = source.line_height > 0 ? Scale(source.line_height)
-                                        : TextLineHeight(font) + Scale(4);
-    int pad = Scale(12);
-    int gutter_w = source.show_line_numbers ? Scale(58) : 0;
-    Rectangle view;
-    int line_count = ui_source_line_count(text);
-    int content_h;
-    int content_w;
-    int max_scroll_y;
-    int max_scroll_x = 0;
-    int scroll_y = source.scroll_y != NULL ? *source.scroll_y : 0;
-    int scroll_x = source.scroll_x != NULL ? *source.scroll_x : 0;
-    int first_line;
-    int y_offset;
-    int y;
-    int line_no = 1;
-    const char *line;
-    Vector2 mouse;
-
-    if(line_h <= 0)
-        line_h = 1;
-    ui_draw_panel(source.bounds);
-    view = (Rectangle){source.bounds.x + (float)pad,
-                       source.bounds.y + (float)pad,
-                       source.bounds.width - (float)(pad * 2),
-                       source.bounds.height - (float)(pad * 2)};
-    if(view.width <= 0.0f || view.height <= 0.0f)
-        return 0;
-    mouse = ui_mouse_world();
-    if(ui_contains(view, mouse)) {
-        PushUIInputCapture(view, 1);
-        MarkClickable();
-    }
-
-    content_h = line_count * line_h;
-    content_w = gutter_w + ui_source_max_line_width(text, font) + Scale(24);
-    max_scroll_y = ui_update_scroll(view, content_h, source.scroll_y, line_h);
-    if(source.scroll_y != NULL)
-        scroll_y = *source.scroll_y;
-    if(source.scroll_x != NULL) {
-        max_scroll_x = ui_scroll_max(content_w, (int)view.width);
-        if(*source.scroll_x < 0)
-            *source.scroll_x = 0;
-        if(*source.scroll_x > max_scroll_x)
-            *source.scroll_x = max_scroll_x;
-        scroll_x = *source.scroll_x;
-    }
-
-    first_line = scroll_y / line_h;
-    y_offset = scroll_y % line_h;
-    y = (int)view.y - y_offset;
-    line = text;
-    while(*line != '\0' && line_no <= first_line) {
-        const char *next = strchr(line, '\n');
-        if(next == NULL)
-            break;
-        line = next + 1;
-        line_no++;
-    }
-
-    BeginUIClip((int)view.x, (int)view.y, (int)view.width, (int)view.height);
-    while(*line != '\0' && y < (int)(view.y + view.height)) {
-        const char *end = strchr(line, '\n');
-        int len;
-
-        if(end == NULL)
-            end = line + strlen(line);
-        len = (int)(end - line);
-        if(source.show_line_numbers) {
-            RenderText(TextFormat("%d", line_no), (int)view.x, y, font,
-                       GetThemeIcon());
-        }
-        BeginUIClip((int)view.x + gutter_w, y,
-                    (int)view.width - gutter_w - Scale(10), line_h);
-        ui_draw_source_line(line, len,
-                            (int)view.x + gutter_w - scroll_x, y, font,
-                            GetThemeText());
-        EndUIClip();
-        if(*end == '\0')
-            break;
-        line = end + 1;
-        line_no++;
-        y += line_h;
-    }
-    EndUIClip();
-
-    if(source.scroll_y != NULL && max_scroll_y > 0)
-        ui_scrollbar((int)(source.bounds.x + source.bounds.width -
-                              Scale(8)),
-                        (int)source.bounds.y, (int)source.bounds.height,
-                        content_h, source.scroll_y, max_scroll_y, 0);
-    return max_scroll_x > 0 || max_scroll_y > 0;
 }
 
 static int
@@ -4199,13 +3633,24 @@ EndCanvas(Canvas canvas)
 void
 RenderCanvasGrid(Rectangle bounds, int step, Color color)
 {
-    int scaled = Scale(step);
-    if(scaled < 4)
-        scaled = 4;
-    for(int x = (int)bounds.x; x < (int)(bounds.x + bounds.width); x += scaled)
-        DrawLine(x, (int)bounds.y, x, (int)(bounds.y + bounds.height), color);
-    for(int y = (int)bounds.y; y < (int)(bounds.y + bounds.height); y += scaled)
-        DrawLine((int)bounds.x, y, (int)(bounds.x + bounds.width), y, color);
+    int spacing = CanvasGridSpacing(Scale(step), 4);
+    int vertical_count = CanvasGridLineCount(bounds.width, spacing);
+    int horizontal_count = CanvasGridLineCount(bounds.height, spacing);
+    uint32_t packed = ColorToInt(color);
+
+    for(int i = 0; i < vertical_count; i++) {
+        CanvasGridLine line = CanvasGridVerticalLine(bounds, i, spacing, packed);
+        DrawLine((int)line.bounds.x, (int)line.bounds.y,
+                 (int)line.bounds.x,
+                 (int)(line.bounds.y + line.bounds.height),
+                 GetColor(line.color));
+    }
+    for(int i = 0; i < horizontal_count; i++) {
+        CanvasGridLine line = CanvasGridHorizontalLine(bounds, i, spacing, packed);
+        DrawLine((int)line.bounds.x, (int)line.bounds.y,
+                 (int)(line.bounds.x + line.bounds.width),
+                 (int)line.bounds.y, GetColor(line.color));
+    }
 }
 
 int
@@ -4218,39 +3663,6 @@ CanvasHitTest(Vector2 point, Rectangle *items, int item_count)
             return i;
     }
     return -1;
-}
-
-int
-RenderNotebook(NotebookProps notebook)
-{
-    int font = GetFontSize();
-    int changed = 0;
-    int x = (int)notebook.bounds.x;
-    int tab_h = Scale(34);
-
-    for(int i = 0; i < notebook.tab_count; i++) {
-        int w = TextWidth(notebook.tabs[i], font) + Scale(28);
-        Rectangle tab = {(float)x, notebook.bounds.y, (float)w, (float)tab_h};
-        int selected = notebook.selected_index != NULL && *notebook.selected_index == i;
-        int hot = ui_hot(tab);
-        DrawRectangleRec(tab, selected ? c_surface : c_button);
-        if(hot)
-            DrawRectangleRec(tab, c_button_hover);
-        DrawRectangleLinesEx(tab, 1.0f, c_button);
-        RenderText(notebook.tabs[i], x + Scale(14), ui_row_text_y(tab, font), font, c_text);
-        if(hot)
-            MarkClickable();
-        if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && notebook.selected_index != NULL) {
-            UIConsumeRelease();
-            *notebook.selected_index = i;
-            changed = 1;
-        }
-        x += w;
-    }
-    DrawRectangleLinesEx((Rectangle){notebook.bounds.x, notebook.bounds.y + tab_h,
-                                     notebook.bounds.width, notebook.bounds.height - tab_h},
-                         1.0f, c_button);
-    return changed;
 }
 
 int
@@ -4437,358 +3849,6 @@ RenderCollapsible(CollapsibleProps section)
                        close_hover ? c_link : text);
         if(focused) RenderFocus(header);
     }
-    return changed;
-}
-
-int
-RenderMessageDialog(MessageDialogProps dialog)
-{
-    const ModalAction action = {dialog.ok_label != NULL ? dialog.ok_label : "OK",
-                                  ButtonToneAccent, ButtonEmphasisFilled, 0};
-    ModalProps props;
-
-    memset(&props, 0, sizeof(props));
-    props.title = dialog.title;
-    props.message = dialog.message;
-    props.actions = &action;
-    props.action_count = 1;
-    props.close_icon = g_ui_x_icon;
-    props.max_width = Scale(420);
-    return RenderActionModal(props);
-}
-
-int
-RenderConfirmDialog(ConfirmDialogProps dialog)
-{
-    ModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonToneAccent, ButtonEmphasisFilled, 0}
-    };
-    ModalProps props;
-
-    memset(&props, 0, sizeof(props));
-    props.title = dialog.title;
-    props.message = dialog.message;
-    props.actions = actions;
-    props.action_count = 2;
-    props.close_icon = g_ui_x_icon;
-    props.max_width = Scale(460);
-    return RenderActionModal(props);
-}
-
-int
-RenderPromptDialog(PromptDialogProps dialog)
-{
-    int result;
-    int commit_pressed = 0;
-    ModalAction actions[2] = {
-        {dialog.cancel_label != NULL ? dialog.cancel_label : "Cancel", ButtonToneNeutral, ButtonEmphasisSoft, 0},
-        {dialog.confirm_label != NULL ? dialog.confirm_label : "OK", ButtonToneAccent, ButtonEmphasisFilled, 0}
-    };
-    ModalProps props;
-    TextFieldProps field_props;
-
-    memset(&props, 0, sizeof(props));
-    props.title = dialog.title;
-    props.message = "";
-    props.actions = actions;
-    props.action_count = 2;
-    props.close_icon = g_ui_x_icon;
-    props.max_width = Scale(460);
-    result = RenderActionModal(props);
-    if(dialog.text != NULL && dialog.cursor_position != NULL && dialog.focused != NULL) {
-        Rectangle field = {(float)(ui_view_width / 2 - Scale(190)),
-                           (float)(ui_view_height / 2 - Scale(4)),
-                           (float)Scale(380), (float)Scale(38)};
-        memset(&field_props, 0, sizeof(field_props));
-        field_props.bounds = field;
-        field_props.text = dialog.text;
-        field_props.text_size = (size_t)dialog.text_size;
-        field_props.cursor_position = dialog.cursor_position;
-        field_props.focused = dialog.focused;
-        field_props.max_codepoints = dialog.text_size - 1;
-        field_props.font = GetFontSize();
-        field_props.focus_id = 7301;
-        field_props.commit_pressed = &commit_pressed;
-        ui_text_field_render(field_props);
-        if(result == 0 && commit_pressed)
-            result = 2;
-        if(result == 0 && IsKeyPressed(KEY_ESCAPE))
-            result = 1;
-    }
-    return result;
-}
-
-int
-RenderTextPopover(TextPopoverProps popover)
-{
-    int result = 0;
-    int font = GetFontSize();
-    int small_font = GetSmallFontSize();
-    int pad = Scale(10);
-    int gap = Scale(8);
-    int close_size = Scale(22);
-    int field_h = Scale(34);
-    int popover_w = popover.width > 0 ? Scale(popover.width) : Scale(300);
-    int popover_h = pad * 2 + field_h;
-    int screen_pad = Scale(6);
-    int label_w;
-    int field_x;
-    int field_w;
-    int popover_x;
-    int popover_y;
-    int anchor_center;
-    int commit_pressed = 0;
-    int focused_before;
-    Rectangle panel;
-    Rectangle field_bounds;
-    Rectangle close_bounds;
-    Vector2 mouse = ui_mouse_world();
-    TextFieldProps field;
-    TextInputStyle field_style;
-    Color surface = ui_modern_style() ? c_surface : ui_panel_color(14);
-    Color border = c_link;
-    Color shadow = Fade(GetThemeText(), 0.14f);
-
-    if(popover.text == NULL || popover.text_size <= 0 ||
-       popover.cursor_position == NULL || popover.focused == NULL)
-        return 1;
-
-    if(popover_w < Scale(220))
-        popover_w = Scale(220);
-    if(popover_w > ui_view_width - screen_pad * 2)
-        popover_w = ui_view_width - screen_pad * 2;
-
-    anchor_center = (int)(popover.anchor.x + popover.anchor.width / 2.0f);
-    popover_x = anchor_center - popover_w / 2;
-    popover_x = ui_clampi(popover_x, screen_pad,
-                          ui_view_width - screen_pad - popover_w);
-    popover_y = (int)(popover.anchor.y + popover.anchor.height) + Scale(6);
-    if(popover_y + popover_h > ui_view_height - screen_pad)
-        popover_y = (int)popover.anchor.y - popover_h - Scale(6);
-    popover_y = ui_clampi(popover_y, screen_pad,
-                          ui_view_height - screen_pad - popover_h);
-
-    panel = (Rectangle){(float)popover_x, (float)popover_y,
-                        (float)popover_w, (float)popover_h};
-    SetUIModalCapture(panel);
-    if((IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ||
-        (IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !UIReleaseConsumed())) &&
-       !CheckCollisionPointRec(mouse, panel) &&
-       !CheckCollisionPointRec(mouse, popover.anchor)) {
-        if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
-            UIConsumeRelease();
-        return 1;
-    }
-
-    DrawRectangleRec((Rectangle){panel.x + 2.0f, panel.y + 2.0f,
-                                 panel.width, panel.height}, shadow);
-    DrawRectangleRec(panel, surface);
-    DrawRectangleLinesEx(panel, 1.0f, border);
-    if(anchor_center >= popover_x + Scale(8) &&
-       anchor_center <= popover_x + popover_w - Scale(8)) {
-        Vector2 tip = {(float)anchor_center, panel.y - (float)Scale(6)};
-        Vector2 left = {(float)(anchor_center - Scale(7)), panel.y};
-        Vector2 right = {(float)(anchor_center + Scale(7)), panel.y};
-
-        DrawTriangle(tip, left, right, surface);
-        DrawLine((int)tip.x, (int)tip.y, (int)left.x, (int)left.y, border);
-        DrawLine((int)tip.x, (int)tip.y, (int)right.x, (int)right.y, border);
-    }
-
-    label_w = TextWidth(popover.title != NULL ? popover.title : "", small_font);
-    if(label_w > 0) {
-        RenderText(popover.title, popover_x + pad,
-                   TextBaselineY(popover.title, popover_y + pad, field_h,
-                                 small_font),
-                   small_font, c_text);
-        label_w += gap;
-    }
-
-    close_bounds = (Rectangle){
-        (float)(popover_x + popover_w - pad - close_size),
-        (float)(popover_y + pad + (field_h - close_size) / 2),
-        (float)close_size,
-        (float)close_size
-    };
-    field_x = popover_x + pad + label_w;
-    field_w = (int)close_bounds.x - gap - field_x;
-    if(field_w < Scale(80))
-        field_w = Scale(80);
-    field_bounds = (Rectangle){(float)field_x, (float)(popover_y + pad),
-                               (float)field_w, (float)field_h};
-
-    memset(&field_style, 0, sizeof(field_style));
-    field_style.background = c_bg;
-    field_style.border = c_button_hover;
-    field_style.focus_border = c_link;
-    field_style.text = c_text;
-    field_style.cursor = c_link;
-    field_style.radius = 0.03f;
-    field_style.padding_x = Scale(8);
-    field_style.padding_y = Scale(6);
-
-    if(*popover.focused)
-        SetUIFocus(popover.id > 0 ? popover.id : 8401);
-
-    focused_before = *popover.focused;
-    memset(&field, 0, sizeof(field));
-    field.bounds = field_bounds;
-    field.text = popover.text;
-    field.text_size = (size_t)popover.text_size;
-    field.cursor_position = popover.cursor_position;
-    field.focused = popover.focused;
-    field.max_codepoints = popover.max_codepoints > 0
-                               ? popover.max_codepoints
-                               : popover.text_size - 1;
-    field.font = font;
-    field.focus_id = popover.id > 0 ? popover.id : 8401;
-    field.style = field_style;
-    field.commit_pressed = &commit_pressed;
-    ui_text_field_render(field);
-
-    if(Button((ButtonProps){
-        .bounds = close_bounds, .icon = g_ui_x_icon,
-        .icon_type = UI_ICON_TYPE_X, .icon_only = true,
-        .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-        .style = {.normal = {.fields = StyleIconSize, .icon_size = 14}}
-    }))
-        result = 1;
-
-    if(result == 0 && commit_pressed)
-        result = 2;
-    if(result == 0 && focused_before && !*popover.focused)
-        result = 1;
-    return result;
-}
-
-int
-RenderPickerDialog(PickerDialogProps picker)
-{
-    int pad = Scale(14);
-    int title_h = Scale(34);
-    int row_h = Scale(40);
-    int button_h = Scale(36);
-    int icon_size = row_h - Scale(8);
-    int max_w = picker.max_width > 0 ? Scale(picker.max_width) : Scale(300);
-    int w;
-    int panel_h;
-    int x;
-    int y;
-    int i;
-    Rectangle panel;
-    Rectangle icon_src;
-    Rectangle icon_dst;
-    Color scrim = BLACK;
-    ButtonSpec button;
-
-    if(picker.labels == NULL || picker.option_count <= 0)
-        return 0;
-
-    w = max_w;
-    if(w > ui_view_width - Scale(32))
-        w = ui_view_width - Scale(32);
-    panel_h = title_h + picker.option_count * row_h + button_h + pad * 2;
-    x = (ui_view_width - w) / 2;
-    y = (ui_view_height - panel_h) / 2;
-    panel.x = (float)x;
-    panel.y = (float)y;
-    panel.width = (float)w;
-    panel.height = (float)panel_h;
-
-    scrim.a = 130;
-    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
-    SetUIModalCapture(panel);
-    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACK) ||
-       UIPointerReleaseOutside(panel)) {
-        UIConsumeRelease();
-        return -1;
-    }
-
-    DrawRectangleRounded(panel, 0.06f, 8, c_surface);
-    DrawRectangleRoundedLines(panel, 0.06f, 8, DarkenUIColor(c_surface, 30));
-    RenderText(picker.title != NULL ? picker.title : "",
-               x + pad, y + pad, GetFontSize(), c_text);
-
-    y += title_h;
-    for(i = 0; i < picker.option_count; i++) {
-        int has_icon = picker.icons != NULL && picker.icons[i].id != 0;
-        int text_x = x + pad + Scale(12);
-
-        memset(&button, 0, sizeof(button));
-        button.props.bounds.x = (float)(x + pad);
-        button.props.bounds.y = (float)y;
-        button.props.bounds.width = (float)(w - pad * 2);
-        button.props.bounds.height = (float)row_h;
-        button.props.label = "";
-        button.props.font = GetFontSize();
-        button.paint.background = c_surface;
-        button.hover_background = c_button_hover;
-        button.paint.foreground = c_text;
-        button.paint.border = c_button;
-        button.paint.radius = 0.08f;
-        if(ui_button_render(button)) {
-            return i + 1;
-        }
-        if(has_icon) {
-            icon_src.x = 0;
-            icon_src.y = 0;
-            icon_src.width = (float)picker.icons[i].width;
-            icon_src.height = (float)picker.icons[i].height;
-            icon_dst.x = (float)text_x;
-            icon_dst.y = (float)(y + Scale(4));
-            icon_dst.width = (float)icon_size;
-            icon_dst.height = (float)icon_size;
-            DrawTexturePro(picker.icons[i], icon_src, icon_dst,
-                           kryon_zero_vector2, 0.0f, WHITE);
-            text_x += icon_size + Scale(12);
-        }
-        DrawCenteredUIText(picker.labels[i] != NULL ? picker.labels[i] : "",
-                           (text_x + x + w - pad) / 2, y + row_h / 2,
-                           GetFontSize(), c_text);
-        y += row_h;
-    }
-
-    y += pad;
-    memset(&button, 0, sizeof(button));
-    button.props.bounds.x = (float)(x + pad);
-    button.props.bounds.y = (float)y;
-    button.props.bounds.width = (float)(w - pad * 2);
-    button.props.bounds.height = (float)button_h;
-    button.props.label = picker.cancel_label != NULL ? picker.cancel_label : "Cancel";
-    button.props.font = GetFontSize();
-    button.paint.background = c_surface;
-    button.hover_background = c_button_hover;
-    button.paint.foreground = c_text;
-    button.paint.border = c_button;
-    button.paint.radius = 0.08f;
-    if(ui_button_render(button))
-        return -1;
-    return 0;
-}
-
-int
-RenderColorPicker(Rectangle bounds, Color *color)
-{
-    int changed = 0;
-    int r, g, b;
-    if(color == NULL)
-        return 0;
-    r = color->r;
-    g = color->g;
-    b = color->b;
-    changed |= ui_render_slider(8101, (int)bounds.x, (int)bounds.y,
-                            (int)bounds.width, "R", 0, 255, &r, "", NULL);
-    changed |= ui_render_slider(8102, (int)bounds.x, (int)bounds.y + Scale(36),
-                            (int)bounds.width, "G", 0, 255, &g, "", NULL);
-    changed |= ui_render_slider(8103, (int)bounds.x, (int)bounds.y + Scale(72),
-                            (int)bounds.width, "B", 0, 255, &b, "", NULL);
-    if(changed)
-        *color = (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color->a};
-    DrawRectangle((int)bounds.x, (int)bounds.y + Scale(112),
-                  Scale(80), Scale(36), *color);
-    DrawRectangleLines((int)bounds.x, (int)bounds.y + Scale(112),
-                       Scale(80), Scale(36), c_button);
     return changed;
 }
 

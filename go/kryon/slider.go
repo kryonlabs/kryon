@@ -36,6 +36,16 @@ type SliderPaint struct {
 	ActiveTrack         StyleFrame
 }
 
+type SliderScalarStep struct {
+	Value   float32
+	Changed bool
+}
+
+type SliderWholeStep struct {
+	Value   int32
+	Changed bool
+}
+
 func Slider_SliderMinimumLength(scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -89,6 +99,319 @@ func Slider_SliderTrackSize(vertical bool, scale float32) int32 {
 	return value_12
 }
 
+func Slider_SliderClampRatio(ratio float32) float32 {
+	var value_0 float32 = ratio
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 < value_1
+	if value_2 {
+		var value_3 float32 = 0.0
+		return value_3
+	}
+	var value_4 float32 = ratio
+	var value_5 float32 = 1.0
+	var value_6 bool = value_4 > value_5
+	if value_6 {
+		var value_7 float32 = 1.0
+		return value_7
+	}
+	var value_8 float32 = ratio
+	return value_8
+}
+
+func Slider_SliderScalarRatio(value float32, minimum float32, maximum float32) float32 {
+	var value_0 float32 = maximum
+	var value_1 float32 = minimum
+	var value_2 float32 = value_0 - value_1
+	var span float32 = value_2
+	var value_3 float32 = span
+	var value_4 float32 = 0.0
+	var value_5 bool = value_3 <= value_4
+	if value_5 {
+		var value_6 float32 = 0.0
+		return value_6
+	}
+	var value_7 float32 = value
+	var value_8 float32 = minimum
+	var value_9 float32 = value_7 - value_8
+	var value_10 float32 = span
+	var value_11 float32 = value_9 / value_10
+	var value_12 float32 = Slider_SliderClampRatio(value_11)
+	return value_12
+}
+
+func Slider_SliderScalarValue(minimum float32, maximum float32, ratio float32) float32 {
+	var value_0 float32 = maximum
+	var value_1 float32 = minimum
+	var value_2 float32 = value_0 - value_1
+	var span float32 = value_2
+	var value_3 float32 = span
+	var value_4 float32 = 0.0
+	var value_5 bool = value_3 <= value_4
+	if value_5 {
+		var value_6 float32 = minimum
+		return value_6
+	}
+	var value_7 float32 = minimum
+	var value_8 float32 = ratio
+	var value_9 float32 = Slider_SliderClampRatio(value_8)
+	var value_10 float32 = span
+	var value_11 float32 = value_9 * value_10
+	var value_12 float32 = value_7 + value_11
+	return value_12
+}
+
+func Slider_SliderScalarKeyboardValue(value float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) SliderScalarStep {
+	var result SliderScalarStep = SliderScalarStep{}
+	var value_0 float32 = value
+	result.Value = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 float32 = maximum
+	var value_3 float32 = minimum
+	var value_4 float32 = value_2 - value_3
+	var span float32 = value_4
+	var value_5 float32 = span
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 SliderScalarStep = result
+		return value_8
+	}
+	var value_9 float32 = value
+	var next float32 = value_9
+	var value_10 bool = home
+	if value_10 {
+		var value_11 float32 = minimum
+		next = value_11
+	} else {
+		var value_12 bool = end
+		if value_12 {
+			var value_13 float32 = maximum
+			next = value_13
+		} else {
+			var value_14 int32 = direction
+			var value_15 int32 = 0
+			var value_16 bool = value_14 != value_15
+			if value_16 {
+				var value_17 float32 = span
+				var value_18 float32 = 0.01
+				var value_19 float32 = value_17 * value_18
+				var step float32 = value_19
+				var value_20 bool = alt
+				if value_20 {
+					var value_21 float32 = step
+					var value_22 float32 = 0.1
+					var value_23 float32 = value_21 * value_22
+					step = value_23
+				}
+				var value_24 bool = shift
+				if value_24 {
+					var value_25 float32 = step
+					var value_26 float32 = 10.0
+					var value_27 float32 = value_25 * value_26
+					step = value_27
+				}
+				var value_28 float32 = next
+				var value_29 int32 = direction
+				var value_30 float32 = float32(value_29)
+				var value_31 float32 = step
+				var value_32 float32 = value_30 * value_31
+				var value_33 float32 = value_28 + value_32
+				next = value_33
+				var value_34 float32 = next
+				var value_35 float32 = minimum
+				var value_36 bool = value_34 < value_35
+				if value_36 {
+					var value_37 float32 = minimum
+					next = value_37
+				}
+				var value_38 float32 = next
+				var value_39 float32 = maximum
+				var value_40 bool = value_38 > value_39
+				if value_40 {
+					var value_41 float32 = maximum
+					next = value_41
+				}
+			}
+		}
+	}
+	var value_42 float32 = next
+	result.Value = value_42
+	var value_43 float32 = next
+	var value_44 float32 = value
+	var value_45 bool = value_43 != value_44
+	result.Changed = value_45
+	var value_46 SliderScalarStep = result
+	return value_46
+}
+
+func Slider_SliderWholeRatio(value int32, minimum int32, maximum int32) float32 {
+	var value_0 int32 = maximum
+	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
+	var value_2 int32 = minimum
+	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
+	var value_4 int64 = int64(number_runtime_bits(uint64(value_1), uint64(value_3), 64, true, 2))
+	var span int64 = value_4
+	var value_5 int64 = span
+	var value_6 int64 = 0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 float32 = 0.0
+		return value_8
+	}
+	var value_9 int32 = value
+	var value_10 int64 = int64(number_runtime_bits(uint64(value_9), uint64(0), 64, true, 0))
+	var value_11 int32 = minimum
+	var value_12 int64 = int64(number_runtime_bits(uint64(value_11), uint64(0), 64, true, 0))
+	var value_13 int64 = int64(number_runtime_bits(uint64(value_10), uint64(value_12), 64, true, 2))
+	var value_14 float32 = float32(value_13)
+	var value_15 int64 = span
+	var value_16 float32 = float32(value_15)
+	var value_17 float32 = value_14 / value_16
+	var value_18 float32 = Slider_SliderClampRatio(value_17)
+	return value_18
+}
+
+func Slider_SliderWholeValue(minimum int32, maximum int32, ratio float32) int32 {
+	var value_0 int32 = maximum
+	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
+	var value_2 int32 = minimum
+	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
+	var value_4 int64 = int64(number_runtime_bits(uint64(value_1), uint64(value_3), 64, true, 2))
+	var span int64 = value_4
+	var value_5 int64 = span
+	var value_6 int64 = 0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 int32 = minimum
+		return value_8
+	}
+	var value_9 int32 = minimum
+	var value_10 int64 = int64(number_runtime_bits(uint64(value_9), uint64(0), 64, true, 0))
+	var value_11 float32 = ratio
+	var value_12 float32 = Slider_SliderClampRatio(value_11)
+	var value_13 int64 = span
+	var value_14 float32 = float32(value_13)
+	var value_15 float32 = value_12 * value_14
+	var value_16 float32 = 0.5
+	var value_17 float32 = value_15 + value_16
+	var value_18 int64 = int64(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 64, true)), uint64(0), 64, true, 0))
+	var value_19 int64 = int64(number_runtime_bits(uint64(value_10), uint64(value_18), 64, true, 1))
+	var value_20 int32 = int32(number_runtime_bits(uint64(value_19), uint64(0), 32, true, 0))
+	return value_20
+}
+
+func Slider_SliderWholeKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderWholeStep {
+	var result SliderWholeStep = SliderWholeStep{}
+	var value_0 int32 = value
+	result.Value = value_0
+	var value_1 bool = false
+	result.Changed = value_1
+	var value_2 int32 = maximum
+	var value_3 int64 = int64(number_runtime_bits(uint64(value_2), uint64(0), 64, true, 0))
+	var value_4 int32 = minimum
+	var value_5 int64 = int64(number_runtime_bits(uint64(value_4), uint64(0), 64, true, 0))
+	var value_6 int64 = int64(number_runtime_bits(uint64(value_3), uint64(value_5), 64, true, 2))
+	var span int64 = value_6
+	var value_7 int64 = span
+	var value_8 int64 = 0
+	var value_9 bool = value_7 <= value_8
+	if value_9 {
+		var value_10 SliderWholeStep = result
+		return value_10
+	}
+	var value_11 int32 = value
+	var value_12 int64 = int64(number_runtime_bits(uint64(value_11), uint64(0), 64, true, 0))
+	var next int64 = value_12
+	var value_13 bool = home
+	if value_13 {
+		var value_14 int32 = minimum
+		var value_15 int64 = int64(number_runtime_bits(uint64(value_14), uint64(0), 64, true, 0))
+		next = value_15
+	} else {
+		var value_16 bool = end
+		if value_16 {
+			var value_17 int32 = maximum
+			var value_18 int64 = int64(number_runtime_bits(uint64(value_17), uint64(0), 64, true, 0))
+			next = value_18
+		} else {
+			var value_19 int32 = direction
+			var value_20 int32 = 0
+			var value_21 bool = value_19 != value_20
+			if value_21 {
+				var value_22 int64 = 1
+				var step int64 = value_22
+				var value_23 int64 = span
+				var value_24 int64 = 100
+				var value_25 bool = value_23 > value_24
+				if value_25 {
+					var value_26 int64 = span
+					var value_27 int64 = 50
+					var value_28 int64 = int64(number_runtime_bits(uint64(value_26), uint64(value_27), 64, true, 1))
+					var value_29 int64 = 100
+					var value_30 int64 = int64(number_runtime_bits(uint64(value_28), uint64(value_29), 64, true, 4))
+					step = value_30
+				}
+				var value_31 bool = alt
+				if value_31 {
+					var value_32 int64 = step
+					var value_33 int64 = 10
+					var value_34 int64 = int64(number_runtime_bits(uint64(value_32), uint64(value_33), 64, true, 4))
+					step = value_34
+					var value_35 int64 = step
+					var value_36 int64 = 1
+					var value_37 bool = value_35 < value_36
+					if value_37 {
+						var value_38 int64 = 1
+						step = value_38
+					}
+				}
+				var value_39 bool = shift
+				if value_39 {
+					var value_40 int64 = step
+					var value_41 int64 = 10
+					var value_42 int64 = int64(number_runtime_bits(uint64(value_40), uint64(value_41), 64, true, 3))
+					step = value_42
+				}
+				var value_43 int64 = next
+				var value_44 int32 = direction
+				var value_45 int64 = int64(number_runtime_bits(uint64(value_44), uint64(0), 64, true, 0))
+				var value_46 int64 = step
+				var value_47 int64 = int64(number_runtime_bits(uint64(value_45), uint64(value_46), 64, true, 3))
+				var value_48 int64 = int64(number_runtime_bits(uint64(value_43), uint64(value_47), 64, true, 1))
+				next = value_48
+				var value_49 int64 = next
+				var value_50 int32 = minimum
+				var value_51 int64 = int64(number_runtime_bits(uint64(value_50), uint64(0), 64, true, 0))
+				var value_52 bool = value_49 < value_51
+				if value_52 {
+					var value_53 int32 = minimum
+					var value_54 int64 = int64(number_runtime_bits(uint64(value_53), uint64(0), 64, true, 0))
+					next = value_54
+				}
+				var value_55 int64 = next
+				var value_56 int32 = maximum
+				var value_57 int64 = int64(number_runtime_bits(uint64(value_56), uint64(0), 64, true, 0))
+				var value_58 bool = value_55 > value_57
+				if value_58 {
+					var value_59 int32 = maximum
+					var value_60 int64 = int64(number_runtime_bits(uint64(value_59), uint64(0), 64, true, 0))
+					next = value_60
+				}
+			}
+		}
+	}
+	var value_61 int64 = next
+	var value_62 int32 = int32(number_runtime_bits(uint64(value_61), uint64(0), 32, true, 0))
+	result.Value = value_62
+	var value_63 int32 = result.Value
+	var value_64 int32 = value
+	var value_65 bool = value_63 != value_64
+	result.Changed = value_65
+	var value_66 SliderWholeStep = result
+	return value_66
+}
+
 func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 	var paint SliderPaint = SliderPaint{}
 	var value_0 float32 = spec.Scale
@@ -101,275 +424,262 @@ func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 		scale = value_4
 	}
 	var value_5 float32 = spec.Ratio
-	var ratio float32 = value_5
-	var value_6 float32 = ratio
-	var value_7 float32 = 0.0
-	var value_8 bool = value_6 < value_7
-	if value_8 {
-		var value_9 float32 = 0.0
-		ratio = value_9
-	}
-	var value_10 float32 = ratio
-	var value_11 float32 = 1.0
-	var value_12 bool = value_10 > value_11
-	if value_12 {
-		var value_13 float32 = 1.0
-		ratio = value_13
-	}
-	var value_14 Rectangle = spec.Bounds
-	var bounds Rectangle = value_14
+	var value_6 float32 = Slider_SliderClampRatio(value_5)
+	var ratio float32 = value_6
+	var value_7 Rectangle = spec.Bounds
+	var bounds Rectangle = value_7
+	var value_8 float32 = scale
+	var value_9 int32 = Slider_SliderMinimumLength(value_8)
+	var value_10 float32 = float32(value_9)
+	var min_length float32 = value_10
+	var value_11 float32 = scale
+	var value_12 int32 = Slider_SliderThumbSize(value_11)
+	var value_13 float32 = float32(value_12)
+	var thumb_size float32 = value_13
+	var value_14 bool = spec.Vertical
 	var value_15 float32 = scale
-	var value_16 int32 = Slider_SliderMinimumLength(value_15)
+	var value_16 int32 = Slider_SliderTrackSize(value_14, value_15)
 	var value_17 float32 = float32(value_16)
-	var min_length float32 = value_17
-	var value_18 float32 = scale
-	var value_19 int32 = Slider_SliderThumbSize(value_18)
-	var value_20 float32 = float32(value_19)
-	var thumb_size float32 = value_20
-	var value_21 bool = spec.Vertical
-	var value_22 float32 = scale
-	var value_23 int32 = Slider_SliderTrackSize(value_21, value_22)
-	var value_24 float32 = float32(value_23)
-	var track_size float32 = value_24
-	var value_25 bool = spec.Vertical
-	if value_25 {
-		var value_26 float32 = bounds.Height
-		var value_27 float32 = min_length
-		var value_28 bool = value_26 < value_27
-		if value_28 {
-			var value_29 float32 = min_length
-			bounds.Height = value_29
+	var track_size float32 = value_17
+	var value_18 bool = spec.Vertical
+	if value_18 {
+		var value_19 float32 = bounds.Height
+		var value_20 float32 = min_length
+		var value_21 bool = value_19 < value_20
+		if value_21 {
+			var value_22 float32 = min_length
+			bounds.Height = value_22
 		}
-		var value_30 float32 = bounds.Width
-		var value_31 float32 = thumb_size
-		var value_32 bool = value_30 < value_31
-		if value_32 {
-			var value_33 float32 = thumb_size
-			bounds.Width = value_33
+		var value_23 float32 = bounds.Width
+		var value_24 float32 = thumb_size
+		var value_25 bool = value_23 < value_24
+		if value_25 {
+			var value_26 float32 = thumb_size
+			bounds.Width = value_26
 		}
-		var value_34 float32 = bounds.X
-		var value_35 float32 = bounds.Width
-		var value_36 float32 = track_size
-		var value_37 float32 = value_35 - value_36
-		var value_38 float32 = 0.5
-		var value_39 float32 = value_37 * value_38
-		var value_40 float32 = value_34 + value_39
-		paint.TrackBounds.X = value_40
-		var value_41 float32 = bounds.Y
-		paint.TrackBounds.Y = value_41
-		var value_42 float32 = track_size
-		paint.TrackBounds.Width = value_42
-		var value_43 float32 = bounds.Height
-		paint.TrackBounds.Height = value_43
-		var value_44 float32 = paint.TrackBounds.Y
-		var value_45 float32 = paint.TrackBounds.Height
-		var value_46 float32 = 1.0
-		var value_47 float32 = ratio
-		var value_48 float32 = value_46 - value_47
-		var value_49 float32 = value_45 * value_48
-		var value_50 float32 = value_44 + value_49
-		var position_y float32 = value_50
-		var value_51 float32 = paint.TrackBounds.X
-		paint.ActiveBounds.X = value_51
-		var value_52 float32 = position_y
-		paint.ActiveBounds.Y = value_52
+		var value_27 float32 = bounds.X
+		var value_28 float32 = bounds.Width
+		var value_29 float32 = track_size
+		var value_30 float32 = value_28 - value_29
+		var value_31 float32 = 0.5
+		var value_32 float32 = value_30 * value_31
+		var value_33 float32 = value_27 + value_32
+		paint.TrackBounds.X = value_33
+		var value_34 float32 = bounds.Y
+		paint.TrackBounds.Y = value_34
+		var value_35 float32 = track_size
+		paint.TrackBounds.Width = value_35
+		var value_36 float32 = bounds.Height
+		paint.TrackBounds.Height = value_36
+		var value_37 float32 = paint.TrackBounds.Y
+		var value_38 float32 = paint.TrackBounds.Height
+		var value_39 float32 = 1.0
+		var value_40 float32 = ratio
+		var value_41 float32 = value_39 - value_40
+		var value_42 float32 = value_38 * value_41
+		var value_43 float32 = value_37 + value_42
+		var position_y float32 = value_43
+		var value_44 float32 = paint.TrackBounds.X
+		paint.ActiveBounds.X = value_44
+		var value_45 float32 = position_y
+		paint.ActiveBounds.Y = value_45
+		var value_46 float32 = paint.TrackBounds.Width
+		paint.ActiveBounds.Width = value_46
+		var value_47 float32 = paint.TrackBounds.Y
+		var value_48 float32 = paint.TrackBounds.Height
+		var value_49 float32 = value_47 + value_48
+		var value_50 float32 = position_y
+		var value_51 float32 = value_49 - value_50
+		paint.ActiveBounds.Height = value_51
+		var value_52 float32 = paint.TrackBounds.X
 		var value_53 float32 = paint.TrackBounds.Width
-		paint.ActiveBounds.Width = value_53
-		var value_54 float32 = paint.TrackBounds.Y
-		var value_55 float32 = paint.TrackBounds.Height
-		var value_56 float32 = value_54 + value_55
+		var value_54 float32 = 0.5
+		var value_55 float32 = value_53 * value_54
+		var value_56 float32 = value_52 + value_55
+		paint.ThumbX = value_56
 		var value_57 float32 = position_y
-		var value_58 float32 = value_56 - value_57
-		paint.ActiveBounds.Height = value_58
-		var value_59 float32 = paint.TrackBounds.X
-		var value_60 float32 = paint.TrackBounds.Width
-		var value_61 float32 = 0.5
-		var value_62 float32 = value_60 * value_61
-		var value_63 float32 = value_59 + value_62
-		paint.ThumbX = value_63
-		var value_64 float32 = position_y
-		paint.ThumbY = value_64
+		paint.ThumbY = value_57
 	} else {
-		var value_65 float32 = bounds.Width
-		var value_66 float32 = min_length
-		var value_67 bool = value_65 < value_66
-		if value_67 {
-			var value_68 float32 = min_length
-			bounds.Width = value_68
+		var value_58 float32 = bounds.Width
+		var value_59 float32 = min_length
+		var value_60 bool = value_58 < value_59
+		if value_60 {
+			var value_61 float32 = min_length
+			bounds.Width = value_61
 		}
-		var value_69 float32 = bounds.Height
-		var value_70 float32 = thumb_size
-		var value_71 bool = value_69 < value_70
-		if value_71 {
-			var value_72 float32 = thumb_size
-			bounds.Height = value_72
+		var value_62 float32 = bounds.Height
+		var value_63 float32 = thumb_size
+		var value_64 bool = value_62 < value_63
+		if value_64 {
+			var value_65 float32 = thumb_size
+			bounds.Height = value_65
 		}
-		var value_73 float32 = bounds.X
-		paint.TrackBounds.X = value_73
-		var value_74 float32 = bounds.Y
-		var value_75 float32 = bounds.Height
-		var value_76 float32 = track_size
-		var value_77 float32 = value_75 - value_76
-		var value_78 float32 = 0.5
-		var value_79 float32 = value_77 * value_78
-		var value_80 float32 = value_74 + value_79
-		paint.TrackBounds.Y = value_80
-		var value_81 float32 = bounds.Width
-		paint.TrackBounds.Width = value_81
-		var value_82 float32 = track_size
-		paint.TrackBounds.Height = value_82
-		var value_83 float32 = paint.TrackBounds.X
-		paint.ActiveBounds.X = value_83
-		var value_84 float32 = paint.TrackBounds.Y
-		paint.ActiveBounds.Y = value_84
-		var value_85 float32 = paint.TrackBounds.Width
-		var value_86 float32 = ratio
-		var value_87 float32 = value_85 * value_86
-		paint.ActiveBounds.Width = value_87
+		var value_66 float32 = bounds.X
+		paint.TrackBounds.X = value_66
+		var value_67 float32 = bounds.Y
+		var value_68 float32 = bounds.Height
+		var value_69 float32 = track_size
+		var value_70 float32 = value_68 - value_69
+		var value_71 float32 = 0.5
+		var value_72 float32 = value_70 * value_71
+		var value_73 float32 = value_67 + value_72
+		paint.TrackBounds.Y = value_73
+		var value_74 float32 = bounds.Width
+		paint.TrackBounds.Width = value_74
+		var value_75 float32 = track_size
+		paint.TrackBounds.Height = value_75
+		var value_76 float32 = paint.TrackBounds.X
+		paint.ActiveBounds.X = value_76
+		var value_77 float32 = paint.TrackBounds.Y
+		paint.ActiveBounds.Y = value_77
+		var value_78 float32 = paint.TrackBounds.Width
+		var value_79 float32 = ratio
+		var value_80 float32 = value_78 * value_79
+		paint.ActiveBounds.Width = value_80
+		var value_81 float32 = paint.TrackBounds.Height
+		paint.ActiveBounds.Height = value_81
+		var value_82 float32 = paint.TrackBounds.X
+		var value_83 float32 = paint.TrackBounds.Width
+		var value_84 float32 = ratio
+		var value_85 float32 = value_83 * value_84
+		var value_86 float32 = value_82 + value_85
+		paint.ThumbX = value_86
+		var value_87 float32 = paint.TrackBounds.Y
 		var value_88 float32 = paint.TrackBounds.Height
-		paint.ActiveBounds.Height = value_88
-		var value_89 float32 = paint.TrackBounds.X
-		var value_90 float32 = paint.TrackBounds.Width
-		var value_91 float32 = ratio
-		var value_92 float32 = value_90 * value_91
-		var value_93 float32 = value_89 + value_92
-		paint.ThumbX = value_93
-		var value_94 float32 = paint.TrackBounds.Y
-		var value_95 float32 = paint.TrackBounds.Height
-		var value_96 float32 = 0.5
-		var value_97 float32 = value_95 * value_96
-		var value_98 float32 = value_94 + value_97
-		paint.ThumbY = value_98
+		var value_89 float32 = 0.5
+		var value_90 float32 = value_88 * value_89
+		var value_91 float32 = value_87 + value_90
+		paint.ThumbY = value_91
 	}
-	var value_99 Rectangle = bounds
-	paint.Bounds = value_99
-	var value_100 float32 = thumb_size
-	var value_101 float32 = 0.5
-	var value_102 float32 = value_100 * value_101
-	paint.ThumbRadius = value_102
-	var value_103 float32 = paint.ThumbRadius
-	var value_104 float32 = 8.0
-	var value_105 float32 = scale
-	var value_106 float32 = value_104 * value_105
-	var value_107 float32 = value_103 + value_106
-	paint.GlowRadius = value_107
-	var value_108 int32 = int32(ButtonStateNormal)
-	var state int32 = value_108
-	var value_109 bool = spec.Hovered
-	if value_109 {
-		var value_110 int32 = int32(ButtonStateHover)
-		state = value_110
+	var value_92 Rectangle = bounds
+	paint.Bounds = value_92
+	var value_93 float32 = thumb_size
+	var value_94 float32 = 0.5
+	var value_95 float32 = value_93 * value_94
+	paint.ThumbRadius = value_95
+	var value_96 float32 = paint.ThumbRadius
+	var value_97 float32 = 8.0
+	var value_98 float32 = scale
+	var value_99 float32 = value_97 * value_98
+	var value_100 float32 = value_96 + value_99
+	paint.GlowRadius = value_100
+	var value_101 int32 = int32(ButtonStateNormal)
+	var state int32 = value_101
+	var value_102 bool = spec.Hovered
+	if value_102 {
+		var value_103 int32 = int32(ButtonStateHover)
+		state = value_103
 	}
-	var value_111 bool = spec.Active
-	if value_111 {
-		var value_112 int32 = int32(ButtonStatePressed)
-		state = value_112
+	var value_104 bool = spec.Active
+	if value_104 {
+		var value_105 int32 = int32(ButtonStatePressed)
+		state = value_105
 	}
 	var styles StyleStates = StyleStates{}
-	var value_113 int32 = int32(ButtonToneNeutral)
-	var value_114 int32 = int32(ButtonEmphasisSoft)
-	var value_115 int32 = state
-	var value_116 int32 = int32(ControlSizeMedium)
-	var value_117 bool = true
+	var value_106 int32 = int32(ButtonToneNeutral)
+	var value_107 int32 = int32(ButtonEmphasisSoft)
+	var value_108 int32 = state
+	var value_109 int32 = int32(ControlSizeMedium)
+	var value_110 bool = true
+	var value_111 bool = false
+	var value_112 bool = spec.Disabled
+	var value_113 bool = false
+	var value_114 bool = false
+	var value_115 Palette = spec.Palette
+	var value_116 Metrics = spec.Metrics
+	var value_117 StyleStates = styles
 	var value_118 bool = false
-	var value_119 bool = spec.Disabled
-	var value_120 bool = false
-	var value_121 bool = false
-	var value_122 Palette = spec.Palette
-	var value_123 Metrics = spec.Metrics
-	var value_124 StyleStates = styles
-	var value_125 bool = false
-	var value_126 float32 = 0.0
-	var value_127 float32 = 0.0
-	var value_128 float32 = 0.0
-	var value_129 StyleFrame = Button_ResolveFrame(value_113, value_114, value_115, value_116, value_117, value_118, value_119, value_120, value_121, value_122, value_123, value_124, value_125, value_126, value_127, value_128)
-	paint.Track = value_129
-	var value_130 int32 = int32(ButtonToneAccent)
-	var value_131 int32 = int32(ButtonEmphasisFilled)
-	var value_132 int32 = state
-	var value_133 int32 = int32(ControlSizeMedium)
-	var value_134 bool = true
+	var value_119 float32 = 0.0
+	var value_120 float32 = 0.0
+	var value_121 float32 = 0.0
+	var value_122 StyleFrame = Button_ResolveFrame(value_106, value_107, value_108, value_109, value_110, value_111, value_112, value_113, value_114, value_115, value_116, value_117, value_118, value_119, value_120, value_121)
+	paint.Track = value_122
+	var value_123 int32 = int32(ButtonToneAccent)
+	var value_124 int32 = int32(ButtonEmphasisFilled)
+	var value_125 int32 = state
+	var value_126 int32 = int32(ControlSizeMedium)
+	var value_127 bool = true
+	var value_128 bool = false
+	var value_129 bool = spec.Disabled
+	var value_130 bool = false
+	var value_131 bool = false
+	var value_132 Palette = spec.Palette
+	var value_133 Metrics = spec.Metrics
+	var value_134 StyleStates = styles
 	var value_135 bool = false
-	var value_136 bool = spec.Disabled
-	var value_137 bool = false
-	var value_138 bool = false
-	var value_139 Palette = spec.Palette
-	var value_140 Metrics = spec.Metrics
-	var value_141 StyleStates = styles
-	var value_142 bool = false
-	var value_143 float32 = 0.0
-	var value_144 float32 = 0.0
-	var value_145 float32 = 0.0
-	var value_146 StyleFrame = Button_ResolveFrame(value_130, value_131, value_132, value_133, value_134, value_135, value_136, value_137, value_138, value_139, value_140, value_141, value_142, value_143, value_144, value_145)
-	paint.ActiveTrack = value_146
-	var value_147 int32 = 16777215
-	var value_148 uint32 = uint32(number_runtime_bits(uint64(value_147), uint64(0), 32, false, 0))
-	var value_149 int32 = 255
-	var value_150 uint32 = uint32(number_runtime_bits(uint64(value_149), uint64(0), 32, false, 0))
-	var value_151 uint32 = Theme_PackedColor(value_148, value_150)
-	var white uint32 = value_151
-	var value_152 uint32 = paint.ActiveTrack.Value.Background
-	paint.ThumbFillColor = value_152
-	var value_153 uint32 = paint.ActiveTrack.Value.Background
-	var value_154 uint32 = white
-	var value_155 float32 = 0.50
-	var value_156 uint32 = Surface_GradientColor(value_153, value_154, value_155)
-	paint.ThumbEdgeColor = value_156
-	var value_157 uint32 = spec.Palette.Shadow
-	var value_158 bool = spec.Disabled
-	var value_159 float32 = 0
-	if value_158 {
-		var value_160 float32 = 0.28
-		value_159 = value_160
+	var value_136 float32 = 0.0
+	var value_137 float32 = 0.0
+	var value_138 float32 = 0.0
+	var value_139 StyleFrame = Button_ResolveFrame(value_123, value_124, value_125, value_126, value_127, value_128, value_129, value_130, value_131, value_132, value_133, value_134, value_135, value_136, value_137, value_138)
+	paint.ActiveTrack = value_139
+	var value_140 int32 = 16777215
+	var value_141 uint32 = uint32(number_runtime_bits(uint64(value_140), uint64(0), 32, false, 0))
+	var value_142 int32 = 255
+	var value_143 uint32 = uint32(number_runtime_bits(uint64(value_142), uint64(0), 32, false, 0))
+	var value_144 uint32 = Theme_PackedColor(value_141, value_143)
+	var white uint32 = value_144
+	var value_145 uint32 = paint.ActiveTrack.Value.Background
+	paint.ThumbFillColor = value_145
+	var value_146 uint32 = paint.ActiveTrack.Value.Background
+	var value_147 uint32 = white
+	var value_148 float32 = 0.50
+	var value_149 uint32 = Surface_GradientColor(value_146, value_147, value_148)
+	paint.ThumbEdgeColor = value_149
+	var value_150 uint32 = spec.Palette.Shadow
+	var value_151 bool = spec.Disabled
+	var value_152 float32 = 0
+	if value_151 {
+		var value_153 float32 = 0.28
+		value_152 = value_153
 	} else {
-		var value_161 float32 = 0.60
-		value_159 = value_161
+		var value_154 float32 = 0.60
+		value_152 = value_154
 	}
-	var value_162 uint32 = Surface_Opacity(value_157, value_159)
-	paint.ThumbShadowColor = value_162
-	var value_163 uint32 = white
-	var value_164 bool = spec.Disabled
-	var value_165 float32 = 0
-	if value_164 {
-		var value_166 float32 = 0.08
-		value_165 = value_166
+	var value_155 uint32 = Surface_Opacity(value_150, value_152)
+	paint.ThumbShadowColor = value_155
+	var value_156 uint32 = white
+	var value_157 bool = spec.Disabled
+	var value_158 float32 = 0
+	if value_157 {
+		var value_159 float32 = 0.08
+		value_158 = value_159
 	} else {
-		var value_167 float32 = 0.20
-		value_165 = value_167
+		var value_160 float32 = 0.20
+		value_158 = value_160
 	}
-	var value_168 uint32 = Surface_Opacity(value_163, value_165)
-	paint.ThumbHighlightColor = value_168
-	var value_169 uint32 = paint.ActiveTrack.Value.Background
-	var value_170 bool = spec.Active
-	var value_171 float32 = 0
-	if value_170 {
-		var value_172 float32 = 0.32
-		value_171 = value_172
+	var value_161 uint32 = Surface_Opacity(value_156, value_158)
+	paint.ThumbHighlightColor = value_161
+	var value_162 uint32 = paint.ActiveTrack.Value.Background
+	var value_163 bool = spec.Active
+	var value_164 float32 = 0
+	if value_163 {
+		var value_165 float32 = 0.32
+		value_164 = value_165
 	} else {
-		var value_173 bool = spec.Hovered
-		var value_174 float32 = 0
-		if value_173 {
-			var value_175 float32 = 0.18
-			value_174 = value_175
+		var value_166 bool = spec.Hovered
+		var value_167 float32 = 0
+		if value_166 {
+			var value_168 float32 = 0.18
+			value_167 = value_168
 		} else {
-			var value_176 float32 = 0.0
-			value_174 = value_176
+			var value_169 float32 = 0.0
+			value_167 = value_169
 		}
-		value_171 = value_174
+		value_164 = value_167
 	}
-	var value_177 uint32 = Surface_Opacity(value_169, value_171)
-	paint.GlowColor = value_177
-	var value_178 bool = spec.Disabled
-	if value_178 {
-		var value_179 uint32 = paint.ThumbFillColor
-		var value_180 float32 = 0.45
-		var value_181 uint32 = Surface_Opacity(value_179, value_180)
-		paint.ThumbFillColor = value_181
-		var value_182 uint32 = paint.ThumbEdgeColor
-		var value_183 float32 = 0.38
-		var value_184 uint32 = Surface_Opacity(value_182, value_183)
-		paint.ThumbEdgeColor = value_184
+	var value_170 uint32 = Surface_Opacity(value_162, value_164)
+	paint.GlowColor = value_170
+	var value_171 bool = spec.Disabled
+	if value_171 {
+		var value_172 uint32 = paint.ThumbFillColor
+		var value_173 float32 = 0.45
+		var value_174 uint32 = Surface_Opacity(value_172, value_173)
+		paint.ThumbFillColor = value_174
+		var value_175 uint32 = paint.ThumbEdgeColor
+		var value_176 float32 = 0.38
+		var value_177 uint32 = Surface_Opacity(value_175, value_176)
+		paint.ThumbEdgeColor = value_177
 	}
-	var value_185 SliderPaint = paint
-	return value_185
+	var value_178 SliderPaint = paint
+	return value_178
 }

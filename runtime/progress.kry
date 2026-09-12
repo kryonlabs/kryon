@@ -1,0 +1,67 @@
+#module "progress"
+#import "drawing_props"
+
+ProgressLayout :: struct {
+    ratio: float
+    fill_bounds: Rectangle
+    label_x: float
+    label_on_fill: bool
+}
+
+ProgressRatio :: (min: i32, max: i32, value: i32) -> float #export {
+    if max <= min {
+        max = min + 1
+    }
+    ratio: float = (float)(value - min) / (float)(max - min)
+    if ratio < 0.0 {
+        return 0.0
+    }
+    if ratio > 1.0 {
+        return 1.0
+    }
+    return ratio
+}
+
+ProgressFillBounds :: (bounds: Rectangle, ratio: float) -> Rectangle #export {
+    fill: Rectangle = bounds
+    if ratio < 0.0 {
+        ratio = 0.0
+    }
+    if ratio > 1.0 {
+        ratio = 1.0
+    }
+    fill.width = bounds.width * ratio
+    return fill
+}
+
+ProgressLabelX :: (bounds: Rectangle, fill_width: float,
+    label_width: float, padding: float) -> float #export {
+    x: float = bounds.x + (bounds.width - label_width) * 0.5
+    fill_end: float = bounds.x + fill_width
+    empty_width: float = bounds.width - fill_width
+    if empty_width >= label_width + padding * 2.0 {
+        return fill_end + padding
+    }
+    if fill_width >= label_width + padding * 2.0 {
+        return fill_end - label_width - padding
+    }
+    return x
+}
+
+ProgressLabelOnFill :: (fill_width: float, label_width: float,
+    padding: float) -> bool #export {
+    return fill_width >= label_width + padding * 2.0
+}
+
+ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
+    label_width: float, padding: float) -> ProgressLayout #export {
+    layout: ProgressLayout
+    layout.ratio = ProgressRatio(min, max, value)
+    layout.fill_bounds = ProgressFillBounds(bounds, layout.ratio)
+    layout.label_x = ProgressLabelX(bounds, layout.fill_bounds.width,
+        label_width, padding)
+    layout.label_on_fill = ProgressLabelOnFill(layout.fill_bounds.width,
+        label_width, padding)
+    return layout
+}
+

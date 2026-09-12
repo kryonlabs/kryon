@@ -1,0 +1,31 @@
+#module "example_images"
+#import "kryon.h"
+#import "kryon_example_font.h"
+
+app "Kryon Images" {
+    size 640 420
+    fps 60
+    font examples
+}
+
+App :: () #ui {
+    Screen root: {
+        Background(GetThemeBackground())
+        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Images are image nodes", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Stack image_card: {
+            bounds = {Scale(32), Scale(82), Scale(260), Scale(210)}
+            key = Key("image-card")
+            Rect(Scale(32), Scale(82), Scale(260), Scale(210),
+                       GetThemeSurface(), GetThemeButton())
+            Image((ImageProps){.asset_path = "tiles/tile.png",
+                     .bounds = {Scale(52), Scale(104), Scale(96), Scale(96)},
+                     .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
+                     .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
+            Image((ImageProps){.asset_path = "pfp/lotus.png",
+                     .bounds = {Scale(168), Scale(104), Scale(96), Scale(96)},
+                     .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
+                     .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
+            Text((TextProps){.bounds={Scale(52), Scale(226), 0, 0}, .text="Images keep their node bounds for editing", .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        }
+    }
+}

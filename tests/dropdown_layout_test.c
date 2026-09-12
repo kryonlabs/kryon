@@ -44,8 +44,9 @@ step(void)
 {
     InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    DropdownLegacy(DD_ID, 100, 560, 400, 44,
-             g_options, OPT_COUNT, &g_selected);
+    Dropdown((DropdownProps){.id = DD_ID, .bounds = {100, 560, 400, 44},
+        .options = g_options, .option_count = OPT_COUNT,
+        .selected_index = &g_selected});
     EndUIFrame();
 }
 
@@ -61,7 +62,7 @@ rich_step(int *selected, int all_disabled)
     InjectPump();
     BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
     SetUIFocus(7901);
-    Combobox((ComboboxProps){.bounds = {100, 100, 300, 40}, .id = 7901,
+    Dropdown((DropdownProps){.bounds = {100, 100, 300, 40}, .id = 7901,
         .items = items, .option_count = 4, .selected_index = selected});
     EndUIFrame();
 }

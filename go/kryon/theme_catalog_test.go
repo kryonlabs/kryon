@@ -36,8 +36,7 @@ func TestExplicitThemeColorsPreserveTransparency(t *testing.T) {
 	}
 }
 
-// Absolute ids matter: they match the C THEME_* enum and the THEME_* aliases,
-// and the ThemeSettings picker cycles through them.
+// Absolute ids matter: they match the C THEME_* enum and the THEME_* aliases.
 func TestThemeCatalogIncludesPlan9XfceSweet(t *testing.T) {
 	if ThemeCount != 15 || THEME_COUNT != 15 {
 		t.Fatalf("ThemeCount = %d, THEME_COUNT = %d, want 15", ThemeCount, THEME_COUNT)
@@ -172,8 +171,8 @@ func TestRuntimeAppliesSweetThemeAndScheme(t *testing.T) {
 	if scheme.Primary != (Color{0xC5, 0x0E, 0xD2, 0xFF}) {
 		t.Fatalf("scheme.Primary = %#v, want the Sweet accent", scheme.Primary)
 	}
-	if themeSettingsThemeLabel(int32(ThemeSweet)) != "Sweet" {
-		t.Fatalf("picker label for Sweet = %q", themeSettingsThemeLabel(int32(ThemeSweet)))
+	if themeLabel(int32(ThemeSweet)) != "Sweet" {
+		t.Fatalf("theme label for Sweet = %q", themeLabel(int32(ThemeSweet)))
 	}
 }
 

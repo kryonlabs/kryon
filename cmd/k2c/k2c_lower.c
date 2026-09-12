@@ -384,6 +384,12 @@ strip_alias_type(const KirModule *m, const char *type,
     if(*scalar && !strcmp(scalar,type) && KirTargetType(type,KIR_C)) {
         snprintf(dst,dst_size,"%s",KirTargetType(type,KIR_C)); return;
     }
+    if(type[0] == '*' && type[1] != '\0') {
+        char base[LOWER_NAME_MAX * 2];
+        strip_alias_type(m, type + 1, base, sizeof(base));
+        snprintf(dst, dst_size, "%s*", base);
+        return;
+    }
 
     if(dot != NULL) {
         size_t alen = (size_t)(dot - type);
@@ -588,6 +594,15 @@ emit_call_wrap(FILE *c, const KirModule *m, const K2cModuleSyms *restab,
     char rw[LOWER_TEXT_MAX];
 
     rewrite_body2(m, restab, restab_count, text, rw, sizeof(rw), shadow);
+    if(strncmp(rw, "Image(", 6) == 0) {
+        size_t suffix_len = strlen(rw + strlen("Image")) + 1;
+
+        if(strlen("RenderImage") + suffix_len < sizeof(rw)) {
+            memmove(rw + strlen("RenderImage"), rw + strlen("Image"),
+                    suffix_len);
+            memcpy(rw, "RenderImage", strlen("RenderImage"));
+        }
+    }
     if(k2c_in_array_init) {
         /* initializer items: bare expressions, no inspect wrapper */
         fprintf(c, "    %s\n", rw);

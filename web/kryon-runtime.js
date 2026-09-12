@@ -142,9 +142,9 @@ export const SyntaxNone = 0;
 export const SyntaxKry = 1;
 export const SyntaxC = 2;
 export const SyntaxMake = 3;
-export const PICTURE_FIT_STRETCH = 0;
-export const PICTURE_FIT_CONTAIN = 1;
-export const PICTURE_FIT_COVER = 2;
+export const IMAGE_FIT_STRETCH = 0;
+export const IMAGE_FIT_CONTAIN = 1;
+export const IMAGE_FIT_COVER = 2;
 
 export function createRuntime(options = {}) {
   const rt = {
@@ -640,8 +640,7 @@ function handleCheckbox(rt, state, args) {
 }
 
 function handleDropdown(rt, state, args) {
-  if (String(args || "").includes("DropdownProps") ||
-      String(args || "").includes("ComboboxProps")) {
+  if (String(args || "").includes("DropdownProps")) {
     const id = propNumber(args, "id", 0);
     const ref = propRef(args, "selected_index");
     const bounds = parseBounds(args);
@@ -844,7 +843,6 @@ function handleWidget(rt, name, args, state) {
   case "Checkbox":
     return handleCheckbox(rt, state, args);
   case "Dropdown":
-  case "Combobox":
     return handleDropdown(rt, state, args);
   case "ListBox":
     return handleListBox(rt, state, args);
@@ -919,6 +917,10 @@ export function GetUIViewWidth() {
   return GetScreenWidth();
 }
 
+export function GetUIViewHeight() {
+  return GetScreenHeight();
+}
+
 export function GetUIPageSidePadding() {
   return Scale(24);
 }
@@ -927,6 +929,8 @@ export function GetThemeBackground() { return GetTheme().colors.background; }
 export function GetThemeSurface() { return GetTheme().colors.surface; }
 export function GetThemeText() { return GetTheme().colors.text; }
 export function GetThemeButton() { return GetTheme().colors.accent; }
+export function GetThemeButtonHover() { return GetTheme().colors.accentHover || GetThemeButton(); }
+export function GetThemeCircle() { return GetTheme().colors.focus || GetThemeButton(); }
 export function GetThemeIcon() { return GetTheme().colors.icon; }
 export function GetThemeLink() { return GetTheme().colors.link; }
 
@@ -1023,13 +1027,13 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
-  "ClearBackground", "Collapsible", "Column", "Combobox", "Dropdown", "EndCanvas",
-  "EndScroll", "Href", "Icon", "LabelFrame", "ListBox",
-  "MenuButton", "Modal", "Notebook", "Paragraph", "Picture", "Progress", "Radio", "Rect",
+  "ClearBackground", "Collapsible", "Column", "Dropdown", "EndCanvas",
+  "EndScroll", "Icon", "LabelFrame", "Link", "ListBox",
+  "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
-  "Text", "TextArea", "TextField", "TextLines", "TitleBar",
-  "SplitButton", "Toggle", "Toolbar", "TopNav"
+  "Text", "TextArea", "TextField", "TitleBar",
+  "Toggle", "Toolbar"
 ];
 
 for (const name of runtimeCallNames) {
@@ -1050,19 +1054,16 @@ export function Checkbox(...args) { return struct("Checkbox", args); }
 export function ClearBackground(...args) { return struct("ClearBackground", args); }
 export function Collapsible(...args) { return struct("Collapsible", args); }
 export function Column(...args) { return struct("Column", args); }
-export function Combobox(...args) { return struct("Combobox", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
 export function EndCanvas(...args) { return struct("EndCanvas", args); }
 export function EndScroll(...args) { return struct("EndScroll", args); }
-export function Href(...args) { return struct("Href", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function LabelFrame(...args) { return struct("LabelFrame", args); }
+export function Link(...args) { return struct("Link", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
-export function MenuButton(...args) { return struct("MenuButton", args); }
 export function Modal(...args) { return struct("Modal", args); }
-export function Notebook(...args) { return struct("Notebook", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
-export function Picture(...args) { return struct("Picture", args); }
+export function Image(...args) { return struct("Image", args); }
 export function Progress(...args) { return struct("Progress", args); }
 export function Radio(...args) { return struct("Radio", args); }
 export function Rect(...args) { return struct("Rect", args); }
@@ -1081,14 +1082,11 @@ export function SetThemeDarkMode(dark) {
 export function ShowToast(...args) { return struct("ShowToast", args); }
 export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }
-export function SplitButton(...args) { return struct("SplitButton", args); }
 export function Stack(...args) { return struct("Stack", args); }
 export function TabBar(...args) { return struct("TabBar", args); }
 export function Text(...args) { return struct("Text", args); }
 export function TextArea(...args) { return struct("TextArea", args); }
 export function TextField(...args) { return struct("TextField", args); }
-export function TextLines(...args) { return struct("TextLines", args); }
 export function TitleBar(...args) { return struct("TitleBar", args); }
 export function Toggle(...args) { return struct("Toggle", args); }
 export function Toolbar(...args) { return struct("Toolbar", args); }
-export function TopNav(...args) { return struct("TopNav", args); }

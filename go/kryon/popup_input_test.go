@@ -1,9 +1,6 @@
 package kryon
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 func TestPopupComboKeyboardOwnership(t *testing.T) {
 	for _, inside := range []bool{false, true} {
@@ -20,7 +17,7 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		}
 		r.setFocus(25400)
 		var selected int32
-		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
+		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
 			Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		if r.openDropdowns[25400] != inside {
 			t.Fatalf("combo open = %v, inside top popup = %v", r.openDropdowns[25400], inside)
@@ -55,7 +52,7 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		}
 		r.setFocus(25400)
 		var selected int32
-		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
+		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
 			Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		if r.openDropdowns[25400] == inside {
 			t.Fatalf("inside=%v: obscured combo handled Escape", inside)
@@ -296,7 +293,7 @@ func TestPopupDragKeyboardOwnership(t *testing.T) {
 			r.endPopupInput(child)
 		}
 		r.setFocus(25707)
-		changed := r.DragFloat(DragFloatProps{Bounds: NewRectangle(10, 10, 120, 28), ID: 25707, Values: values, ValueCount: 1, Speed: 1, Min: 0, Max: 10})
+		changed := r.dragFloat(dragFloatProps{Bounds: NewRectangle(10, 10, 120, 28), ID: 25707, Values: values, ValueCount: 1, Speed: 1, Min: 0, Max: 10})
 		want := float32(1)
 		if inside {
 			want = 2
@@ -540,9 +537,6 @@ func TestPopupWheelOwnershipAcrossScrollableWidgets(t *testing.T) {
 		"tree": func(r *runtime, offset *int32) {
 			r.TreeView(TreeViewProps{Bounds: bounds, Items: make([]UITreeItem, 20), ScrollOffset: offset})
 		},
-		"source": func(r *runtime, offset *int32) {
-			r.SourceView(SourceViewProps{Bounds: bounds, Text: strings.Repeat("line\n", 20), ScrollY: offset})
-		},
 		"table": func(r *runtime, offset *int32) {
 			r.TableView(TableViewProps{Bounds: bounds, Columns: []string{"Value"}, Rows: make([]TableRow, 20), ScrollOffset: offset})
 		},
@@ -696,17 +690,17 @@ func TestPopupOwnsActiveScalarSliderAndTableResizeDrags(t *testing.T) {
 	t.Run("new popup preempts background drag", func(t *testing.T) {
 		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
 		values := []float32{10}
-		props := DragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 391, Values: values, Speed: 1, Min: 0, Max: 500}
+		props := dragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 391, Values: values, Speed: 1, Min: 0, Max: 500}
 		r.QueueMouseButtonDown(MouseButtonLeft, 40, 40)
 		r.BeginFrame()
-		r.DragFloat(props)
+		r.dragFloat(props)
 		r.EndFrame()
 
 		r.QueueMouseMove(80, 40)
 		r.BeginFrame()
 		owner := r.beginPopupInput(390, panel)
 		r.endPopupInput(owner)
-		if r.DragFloat(props) || values[0] != 10 || r.drag.active {
+		if r.dragFloat(props) || values[0] != 10 || r.drag.active {
 			t.Fatalf("background drag survived new popup: value=%g active=%v", values[0], r.drag.active)
 		}
 		r.EndFrame()
@@ -715,25 +709,25 @@ func TestPopupOwnsActiveScalarSliderAndTableResizeDrags(t *testing.T) {
 	t.Run("drag value", func(t *testing.T) {
 		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
 		values := []float32{10}
-		props := DragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 401, Values: values, Speed: 1, Min: 0, Max: 500}
+		props := dragFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 401, Values: values, Speed: 1, Min: 0, Max: 500}
 		r.QueueMouseButtonDown(MouseButtonLeft, 40, 40)
 		r.BeginFrame()
 		owner := r.beginPopupInput(400, panel)
-		r.DragFloat(props)
+		r.dragFloat(props)
 		r.endPopupInput(owner)
 		r.EndFrame()
 
 		r.QueueMouseMove(200, 40)
 		r.BeginFrame()
 		owner = r.beginPopupInput(400, panel)
-		if !r.DragFloat(props) || values[0] != 170 {
+		if !r.dragFloat(props) || values[0] != 170 {
 			t.Fatalf("popup drag outside bounds value=%g, want 170", values[0])
 		}
 		r.endPopupInput(owner)
 		r.closePopupInput(400)
 		before := values[0]
 		r.QueueMouseMove(230, 40)
-		if r.DragFloat(props) || values[0] != before || r.drag.active {
+		if r.dragFloat(props) || values[0] != before || r.drag.active {
 			t.Fatalf("dismissed popup drag leaked to background: value=%g active=%v", values[0], r.drag.active)
 		}
 		r.EndFrame()
@@ -742,23 +736,23 @@ func TestPopupOwnsActiveScalarSliderAndTableResizeDrags(t *testing.T) {
 	t.Run("slider", func(t *testing.T) {
 		r := New(AppConfig{Width: 260, Height: 180}).(*runtime)
 		values := []float32{0}
-		props := SliderFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 411, Values: values, Min: 0, Max: 100}
+		props := sliderFloatProps{Bounds: NewRectangle(30, 30, 80, 24), ID: 411, Values: values, Min: 0, Max: 100}
 		r.QueueMouseButtonDown(MouseButtonLeft, 50, 40)
 		r.BeginFrame()
 		owner := r.beginPopupInput(410, panel)
-		r.SliderFloat(props)
+		r.sliderFloat(props, false)
 		r.endPopupInput(owner)
 		r.EndFrame()
 
 		r.QueueMouseMove(90, 40)
 		r.BeginFrame()
 		owner = r.beginPopupInput(410, panel)
-		r.SliderFloat(props)
+		r.sliderFloat(props, false)
 		r.endPopupInput(owner)
 		before := values[0]
 		r.closePopupInput(410)
 		r.QueueMouseMove(30, 40)
-		if r.SliderFloat(props) || values[0] != before || r.slider.active {
+		if r.sliderFloat(props, false) || values[0] != before || r.slider.active {
 			t.Fatalf("dismissed popup slider leaked to background: value=%g active=%v", values[0], r.slider.active)
 		}
 		r.EndFrame()

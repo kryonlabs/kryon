@@ -1077,10 +1077,10 @@
 - Fix Go text field state handling
 - Add read-only selectable text controls
 - Fix X11 input ungrab status check
-- Clean picture fit API names
+- Clean image fit API names
 - Rename overlay hook to clean API
-- Update picture props lowering
-- Clean picture API styling
+- Update image props lowering
+- Clean image API styling
 - Fix screenshot PNG row buffer size
 - Add system locale detection
 - Use neutral path in session title test fixture
@@ -1161,8 +1161,8 @@
 - Remove Aero style
 - Stop textarea painting past viewport
 - Cache versioned textarea heights
-- Make styled pictures respect UI style
-- Add styled cover picture drawing
+- Make styled images respect UI style
+- Add styled cover image drawing
 - Fix menu bar switching with open popup capture
 - Fix runtime downloads and text decoding
 - Fix menu close state after popup activation
@@ -1270,7 +1270,7 @@
 - Compat: let apps drop the audio forwarders from the generated wrappers
 - Krb-run: --backend fb presents cartridges on the Linux framebuffer
 - Kry_sw: track the dirty rectangle per call
-- K2b: lower Combobox to a KRB_CTRL_COMBOBOX control
+- K2b: lower Dropdown to a KRB_CTRL_DROPDOWN control
 - Screenshots: fix PNG chunk CRCs in the native writer
 - K2g: cover the full widget whitelist on the Go Runtime interface
 
@@ -1592,7 +1592,7 @@
 - K2b: standalone .kry->.krb compiler, fully independent of kc
 - Krb: controls[] section + range widgets (Slider, VerticalSlider, Spinbox)
 - Krb: interactive Checkbox + Toggle widgets (value-bound, self-contained toggle)
-- Krb compiler: widen widget coverage (color literals, Line/Separator/Bevel/TextInRect, Picture)
+- Krb compiler: widen widget coverage (color literals, Line/Separator/Bevel/TextInRect, Image)
 - Kc: parse top-level 'frame NAME {}' as a hook function definition
 - Scene_property.h: refer to "an IDE inspector" instead of naming Krait
 - Build: make 2D physics (Box2D) optional via KRYON_WITH_PHYSICS
@@ -1622,7 +1622,7 @@
 - Add property model and signal bus for the scene tree
 - Add kc scene-tree language support, example, and tests
 - Implement built-in scene nodes: Node2D, Camera2D, Sprite2D
-- Add retained scene tree foundation and rename UI Sprite to Picture
+- Add retained scene tree foundation and rename UI Sprite to Image
 - Allow custom value text on Slider widget
 - Fix pane tab hit testing
 - Add UI font init control
@@ -1827,7 +1827,7 @@
   the `ide` target (freeing the bare `kryon` name for the build tool). App
   `project.kryon` target entries that call `sh vendor/kryon/scripts/kryon.sh`
   are updated in downstream apps.
-- Add a `value_text_override` parameter to the slider drawing helper, `UISliderNode`, and
+- Add a `value_text_override` parameter to the slider drawing helper and
   `Slider`. When non-NULL it replaces the default numeric value label, letting
   callers render custom value text (for example, named steps). This is a
   breaking signature change: all callers must add the new argument (NULL keeps

@@ -44,10 +44,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -62,10 +62,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -145,10 +145,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -163,10 +163,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -196,6 +196,8 @@
         }
       },
       "widgets": [
+        "Background",
+        "Button",
         "Screen",
         "Text"
       ]
@@ -262,10 +264,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture traps in wasm.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -350,10 +352,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -368,10 +370,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -401,9 +403,9 @@
         }
       },
       "widgets": [
-        "ActionModal",
         "Background",
         "Button",
+        "Modal",
         "Screen",
         "Text"
       ]
@@ -757,10 +759,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -775,10 +777,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -958,10 +960,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -976,10 +978,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1010,7 +1012,7 @@
       },
       "widgets": [
         "Background",
-        "Combobox",
+        "Dropdown",
         "Progress",
         "Radio",
         "Screen",
@@ -1261,16 +1263,16 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "Generated C still has a Canvas lowering gap.",
+          "evidence": "make libdraw-matrix-check",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "Generated C still has a Canvas lowering gap.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1285,10 +1287,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Generated C still has a Canvas lowering gap.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1312,9 +1314,9 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still has a Canvas lowering gap.",
-          "status": "compile gap",
-          "status_class": "part"
+          "evidence": "make libdraw-matrix-check",
+          "status": "captured",
+          "status_class": "ok"
         }
       },
       "widgets": [
@@ -1525,9 +1527,7 @@
         "Background",
         "Button",
         "ColorPicker",
-        "ConfirmDialog",
-        "MessageDialog",
-        "PromptDialog",
+        "Modal",
         "Screen"
       ]
     },
@@ -1575,10 +1575,10 @@
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "conformance-matrix-check",
@@ -1593,10 +1593,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -1734,9 +1734,9 @@
       ]
     },
     {
-      "id": "examples-19_pictures",
-      "label": "Kryon Pictures",
-      "path": "examples/19_pictures.kry",
+      "id": "examples-19_images",
+      "label": "Kryon Images",
+      "path": "examples/19_images.kry",
       "pipelines": {
         "k2b": {
           "evidence": "conformance-matrix-check",
@@ -1829,7 +1829,7 @@
       },
       "widgets": [
         "Background",
-        "Picture",
+        "Image",
         "Rect",
         "Screen",
         "Stack",
@@ -2615,9 +2615,8 @@
         }
       },
       "widgets": [
-        "ActionModal",
+        "Background",
         "Bevel",
-        "NavigationBar",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -2625,30 +2624,24 @@
         "Collapsible",
         "ColorPicker",
         "Column",
-        "Combobox",
-        "ConfirmDialog",
         "Dropdown",
-        "Href",
         "Icon",
-        "ImageBox",
+        "Image",
         "LabelFrame",
         "Line",
+        "Link",
         "ListBox",
         "MenuBar",
-        "MessageDialog",
-        "Notebook",
+        "Modal",
         "PanedView",
         "Paragraph",
-        "Picture",
         "Progress",
-        "PromptDialog",
         "Radio",
         "Rect",
         "Row",
         "Screen",
         "Scroll",
         "Slider",
-        "SourceView",
         "Spinbox",
         "Stack",
         "TabBar",
@@ -2656,12 +2649,10 @@
         "Text",
         "TextArea",
         "TextField",
-        "TextLines",
         "TitleBar",
         "Toast",
         "Toggle",
         "Toolbar",
-        "TopNav",
         "TreeView"
       ]
     },
@@ -2760,8 +2751,9 @@
         }
       },
       "widgets": [
+        "Background",
         "Button",
-        "Combobox",
+        "Dropdown",
         "Screen",
         "Text"
       ]
@@ -3416,10 +3408,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "make raylib-matrix-check",
+          "evidence": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3434,10 +3426,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "make web-canvas-matrix-check",
+          "evidence": "Drag/drop sources and targets are interaction-only; the fixture draws no visible content.",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "captured",
-          "status_class": "ok"
+          "status": "visual gap",
+          "status_class": "part"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3512,10 +3504,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3530,10 +3522,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3612,10 +3604,10 @@
           "status_class": "ok"
         },
         "desktop_raylib": {
-          "evidence": "Raylib generated-C capture is blank.",
+          "evidence": "make raylib-matrix-check",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "krb_native_sw": {
           "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -3630,10 +3622,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -3931,10 +3923,10 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Web Canvas generated-C capture is blank.",
+          "evidence": "make web-canvas-matrix-check",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "visual gap",
-          "status_class": "part"
+          "status": "captured",
+          "status_class": "ok"
         },
         "web_raylib_wasm": {
           "evidence": "docs-site Web IDE build",
@@ -4167,7 +4159,9 @@
       },
       "widgets": [
         "Button",
+        "ColorPicker",
         "Screen",
+        "Slider",
         "Text"
       ]
     },
@@ -4366,9 +4360,10 @@
       },
       "widgets": [
         "Button",
+        "Checkbox",
         "Collapsible",
         "Column",
-        "Combobox",
+        "Dropdown",
         "Rect",
         "Row",
         "TableView",
@@ -4471,7 +4466,10 @@
       },
       "widgets": [
         "Button",
+        "Checkbox",
+        "Image",
         "Screen",
+        "TabBar",
         "TabItem"
       ]
     },
@@ -4711,13 +4709,13 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
@@ -4735,7 +4733,7 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
@@ -4762,16 +4760,14 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Generated C still misses several advanced widget prop shapes.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
           "status": "compile gap",
           "status_class": "part"
         }
       },
       "widgets": [
-        "ActionModal",
         "Background",
         "Bevel",
-        "NavigationBar",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -4779,43 +4775,34 @@
         "Collapsible",
         "ColorPicker",
         "Column",
-        "Combobox",
-        "ConfirmDialog",
         "Dropdown",
-        "Href",
         "Icon",
-        "IconLink",
-        "ImageBox",
+        "Image",
         "LabelFrame",
         "Line",
+        "Link",
         "ListBox",
-        "MessageDialog",
         "Modal",
-        "Notebook",
         "PanedView",
         "Paragraph",
-        "Picture",
         "Progress",
-        "PromptDialog",
         "Radio",
         "Rect",
         "Row",
         "Screen",
         "SelectableText",
         "Slider",
-        "SourceView",
         "Spinbox",
         "Stack",
+        "TabBar",
         "TableView",
         "Text",
         "TextArea",
         "TextField",
-        "TextLines",
         "TitleBar",
         "Toast",
         "Toggle",
         "Toolbar",
-        "TopNav",
         "TreeView"
       ]
     }
@@ -5064,25 +5051,25 @@
     "examples": 27,
     "krb_alpha_byte_exact_cases": 23,
     "krb_rgb_visual_cases": 47,
-    "libdraw_c_visual_cases": 34,
-    "libdraw_c_visual_gaps": 13,
+    "libdraw_c_visual_cases": 35,
+    "libdraw_c_visual_gaps": 12,
     "parity_fixtures": 20,
     "pipeline_cells": 282,
-    "raylib_c_visual_cases": 32,
-    "raylib_c_visual_gaps": 15,
+    "raylib_c_visual_cases": 40,
+    "raylib_c_visual_gaps": 7,
     "renderer_source_cells": 282,
-    "renderer_source_ok_cells": 166,
-    "renderer_source_partial_cells": 116,
+    "renderer_source_ok_cells": 185,
+    "renderer_source_partial_cells": 97,
     "semantic_parity_cases": 18,
     "source_cases": 47,
     "visual_comparison_exact_rows": 2,
     "visual_comparison_pending_rows": 4,
     "visual_comparison_rows": 6,
-    "web_canvas_c_visual_cases": 30,
-    "web_canvas_c_visual_gaps": 17,
-    "widgets_declared": 54,
-    "widgets_detected": 54,
-    "widgets_missing": 0
+    "web_canvas_c_visual_cases": 40,
+    "web_canvas_c_visual_gaps": 7,
+    "widgets_declared": 43,
+    "widgets_detected": 41,
+    "widgets_missing": 2
   },
   "visual_comparisons": [
     {
@@ -5118,11 +5105,11 @@
       "status_class": "ok"
     },
     {
-      "compared": 32,
+      "compared": 40,
       "evidence": [
         "make raylib-matrix-check"
       ],
-      "gap_cases": 15,
+      "gap_cases": 7,
       "gap_label": "generated-C gaps",
       "id": "raylib-c-vs-krb-native",
       "label": "Generated C raylib vs KRB native software",
@@ -5133,11 +5120,11 @@
       "status_class": "part"
     },
     {
-      "compared": 34,
+      "compared": 35,
       "evidence": [
         "make libdraw-matrix-check"
       ],
-      "gap_cases": 13,
+      "gap_cases": 12,
       "gap_label": "generated-C gaps",
       "id": "libdraw-c-vs-krb-native",
       "label": "Generated C libdraw vs KRB native software",
@@ -5148,11 +5135,11 @@
       "status_class": "part"
     },
     {
-      "compared": 30,
+      "compared": 40,
       "evidence": [
         "make web-canvas-matrix-check"
       ],
-      "gap_cases": 17,
+      "gap_cases": 7,
       "gap_label": "generated-C gaps",
       "id": "web-canvas-c-vs-krb-native",
       "label": "Generated C web Canvas vs KRB native software",
@@ -5179,79 +5166,56 @@
     }
   ],
   "widget_counts": {
-    "ActionModal": 3,
-    "Background": 20,
+    "Background": 23,
     "Bevel": 2,
-    "NavigationBar": 2,
-    "Button": 17,
+    "Button": 18,
     "Canvas": 3,
     "CanvasGrid": 3,
-    "Checkbox": 6,
+    "Checkbox": 8,
     "Collapsible": 5,
-    "ColorPicker": 3,
+    "ColorPicker": 4,
     "Column": 7,
-    "Combobox": 5,
-    "ConfirmDialog": 3,
-    "Dropdown": 4,
-    "Href": 2,
+    "Dropdown": 7,
     "Icon": 2,
-    "IconLink": 1,
-    "ImageBox": 2,
+    "Image": 4,
     "LabelFrame": 2,
     "Line": 3,
+    "Link": 2,
     "ListBox": 4,
     "MenuBar": 3,
-    "MessageDialog": 3,
-    "Modal": 1,
-    "Notebook": 2,
+    "Modal": 4,
     "PanedView": 3,
     "Paragraph": 2,
-    "Picture": 3,
     "Progress": 5,
-    "PromptDialog": 3,
     "Radio": 4,
     "Rect": 8,
     "Row": 7,
     "Screen": 39,
     "Scroll": 2,
     "SelectableText": 1,
-    "Slider": 5,
-    "SourceView": 2,
+    "Slider": 6,
     "Spinbox": 3,
     "Stack": 3,
-    "TabBar": 2,
+    "TabBar": 4,
     "TabItem": 1,
     "TableView": 5,
     "Text": 26,
     "TextArea": 7,
     "TextField": 10,
-    "TextLines": 2,
     "TitleBar": 2,
     "Toast": 2,
     "Toggle": 4,
     "Toolbar": 2,
-    "TopNav": 2,
     "TreeView": 4
   },
   "widget_coverage": [
     {
-      "id": "ActionModal",
-      "semantic_sources": [],
-      "source_count": 3,
-      "sources": [
-        "examples/04_modal.kry",
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
       "id": "Background",
       "semantic_sources": [],
-      "source_count": 20,
+      "source_count": 23,
       "sources": [
         "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
         "examples/03_theme.kry",
         "examples/04_modal.kry",
         "examples/05_color.kry",
@@ -5267,9 +5231,11 @@
         "examples/16_dialogs.kry",
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
-        "examples/19_pictures.kry",
+        "examples/19_images.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
+        "examples/27_dropdowns.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5287,15 +5253,12 @@
       "status_class": "ok"
     },
     {
-      "id": "NavigationBar",
+      "id": "BottomNav",
       "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
+      "source_count": 0,
+      "sources": [],
+      "status": "missing",
+      "status_class": "no"
     },
     {
       "id": "Button",
@@ -5307,9 +5270,10 @@
         "tests/parity/scroll_content.kry",
         "tests/parity/selection_images.kry"
       ],
-      "source_count": 17,
+      "source_count": 18,
       "sources": [
         "examples/01_file_dialog.kry",
+        "examples/02_buttons.kry",
         "examples/03_theme.kry",
         "examples/04_modal.kry",
         "examples/07_layout.kry",
@@ -5358,15 +5322,19 @@
       "id": "Checkbox",
       "semantic_sources": [
         "tests/parity/basic_controls.kry",
-        "tests/parity/composed_combo.kry"
+        "tests/parity/composed_combo.kry",
+        "tests/parity/scroll_content.kry",
+        "tests/parity/selection_images.kry"
       ],
-      "source_count": 6,
+      "source_count": 8,
       "sources": [
         "examples/03_theme.kry",
         "examples/18_accessibility.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
         "tests/parity/composed_combo.kry",
+        "tests/parity/scroll_content.kry",
+        "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5391,11 +5359,14 @@
     },
     {
       "id": "ColorPicker",
-      "semantic_sources": [],
-      "source_count": 3,
+      "semantic_sources": [
+        "tests/parity/plots.kry"
+      ],
+      "source_count": 4,
       "sources": [
         "examples/16_dialogs.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/plots.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5424,54 +5395,19 @@
       "status_class": "ok"
     },
     {
-      "id": "Combobox",
+      "id": "Dropdown",
       "semantic_sources": [
+        "tests/parity/basic_controls.kry",
         "tests/parity/scroll_content.kry"
       ],
-      "source_count": 5,
+      "source_count": 7,
       "sources": [
+        "examples/03_theme.kry",
         "examples/11_basic_controls.kry",
         "examples/26_widget_catalog.kry",
         "examples/27_dropdowns.kry",
-        "tests/parity/scroll_content.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "ConfirmDialog",
-      "semantic_sources": [],
-      "source_count": 3,
-      "sources": [
-        "examples/16_dialogs.kry",
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "Dropdown",
-      "semantic_sources": [
-        "tests/parity/basic_controls.kry"
-      ],
-      "source_count": 4,
-      "sources": [
-        "examples/03_theme.kry",
-        "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "Href",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
+        "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5489,21 +5425,23 @@
       "status_class": "ok"
     },
     {
-      "id": "IconLink",
+      "id": "IconButton",
       "semantic_sources": [],
-      "source_count": 1,
-      "sources": [
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
+      "source_count": 0,
+      "sources": [],
+      "status": "missing",
+      "status_class": "no"
     },
     {
-      "id": "ImageBox",
-      "semantic_sources": [],
-      "source_count": 2,
+      "id": "Image",
+      "semantic_sources": [
+        "tests/parity/selection_images.kry"
+      ],
+      "source_count": 4,
       "sources": [
+        "examples/19_images.kry",
         "examples/26_widget_catalog.kry",
+        "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5526,6 +5464,17 @@
       "source_count": 3,
       "sources": [
         "examples/07_layout.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Link",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
         "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -5562,32 +5511,12 @@
       "status_class": "ok"
     },
     {
-      "id": "MessageDialog",
-      "semantic_sources": [],
-      "source_count": 3,
-      "sources": [
-        "examples/16_dialogs.kry",
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
       "id": "Modal",
       "semantic_sources": [],
-      "source_count": 1,
+      "source_count": 4,
       "sources": [
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "Notebook",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
+        "examples/04_modal.kry",
+        "examples/16_dialogs.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -5618,18 +5547,6 @@
       "status_class": "ok"
     },
     {
-      "id": "Picture",
-      "semantic_sources": [],
-      "source_count": 3,
-      "sources": [
-        "examples/19_pictures.kry",
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
       "id": "Progress",
       "semantic_sources": [
         "tests/parity/menus.kry",
@@ -5641,18 +5558,6 @@
         "examples/26_widget_catalog.kry",
         "tests/parity/menus.kry",
         "tests/parity/progress.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "PromptDialog",
-      "semantic_sources": [],
-      "source_count": 3,
-      "sources": [
-        "examples/16_dialogs.kry",
-        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5683,7 +5588,7 @@
         "examples/05_color.kry",
         "examples/06_scaling.kry",
         "examples/07_layout.kry",
-        "examples/19_pictures.kry",
+        "examples/19_images.kry",
         "examples/25_text_area_slider.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/scroll_content.kry",
@@ -5751,7 +5656,7 @@
         "examples/16_dialogs.kry",
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
-        "examples/19_pictures.kry",
+        "examples/19_images.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
         "examples/26_widget_catalog.kry",
@@ -5801,25 +5706,16 @@
     {
       "id": "Slider",
       "semantic_sources": [
-        "tests/parity/basic_controls.kry"
+        "tests/parity/basic_controls.kry",
+        "tests/parity/plots.kry"
       ],
-      "source_count": 5,
+      "source_count": 6,
       "sources": [
         "examples/03_theme.kry",
         "examples/25_text_area_slider.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "SourceView",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
+        "tests/parity/plots.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5842,7 +5738,7 @@
       "semantic_sources": [],
       "source_count": 3,
       "sources": [
-        "examples/19_pictures.kry",
+        "examples/19_images.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -5851,11 +5747,15 @@
     },
     {
       "id": "TabBar",
-      "semantic_sources": [],
-      "source_count": 2,
+      "semantic_sources": [
+        "tests/parity/selection_images.kry"
+      ],
+      "source_count": 4,
       "sources": [
         "examples/15_containers.kry",
-        "examples/26_widget_catalog.kry"
+        "examples/26_widget_catalog.kry",
+        "tests/parity/selection_images.kry",
+        "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -5915,7 +5815,7 @@
         "examples/15_containers.kry",
         "examples/17_keyboard_platform.kry",
         "examples/18_accessibility.kry",
-        "examples/19_pictures.kry",
+        "examples/19_images.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
         "examples/26_widget_catalog.kry",
@@ -5978,17 +5878,6 @@
       "status_class": "ok"
     },
     {
-      "id": "TextLines",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
       "id": "TitleBar",
       "semantic_sources": [],
       "source_count": 2,
@@ -6027,17 +5916,6 @@
     },
     {
       "id": "Toolbar",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "TopNav",
       "semantic_sources": [],
       "source_count": 2,
       "sources": [

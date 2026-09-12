@@ -15,24 +15,24 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
-| Text and value helpers | `Text(TextProps)`, `LabelText`, `BulletText`, `SeparatorText`, `Value*` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation |
-| Buttons and boolean choices | `Button` (including `ControlSizeSmall`), `InvisibleButton`, `ArrowButton`, `Toggle`, `Checkbox`, `CheckboxFlags`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
-| Progress and links | `Progress`, `Href` | covered; `Href` represents both clickable text and open-URL links |
-| Images | `Picture`, `ImageWithBg`, `ImageButton` | covered; `ImageButton` shares ordinary focus and keyboard activation |
-| Combo boxes | `Combobox`, `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
-| Drag values | `DragFloat`, `DragInt`, `DragFloatRange2`, `DragIntRange2` | covered, including counted N-component values, component focus/Tab traversal, Left/Right adjustment, Home/End bounds, Shift/Alt step modifiers, and Ctrl-click/double-click temporary keyboard entry |
-| Sliders | `SliderFloat`, `SliderInt`, `VSliderFloat`, `VSliderInt`, `SliderAngle` | counted N-component values, component focus, arrow/Home/End keyboard adjustment, slow/fast modifiers, and Ctrl-click/double-click temporary keyboard entry are covered |
-| Keyboard inputs | `TextField`, `TextArea`, `InputFloat`, `InputInt`, `InputDouble` | covered, including hints and counted N-component values |
-| Color editors and pickers | `ColorEdit3`, `ColorEdit4`, `ColorPicker3`, `ColorPicker4`, `ColorButton` | covered; `ColorButton` shares ordinary focus and keyboard activation |
+| Text and value helpers | `Text(TextProps)`, `Bullet`, `Separator` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation; label/value rows are composition |
+| Buttons and boolean choices | `Button` (including `ControlSizeSmall`, arrow/info/menu/split options), `InvisibleButton`, `Toggle`, `Checkbox`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
+| Progress and links | `Progress`, `Link` | covered; `Link` represents both clickable text and open-URL links |
+| Images | `Image`, image `Button` | covered; image content on `Button` shares ordinary focus and keyboard activation |
+| Dropdowns | `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
+| Drag values | `Drag(DragProps)` | covered, including counted N-component values, range endpoints, component focus/Tab traversal, Left/Right adjustment, Home/End bounds, Shift/Alt step modifiers, and Ctrl-click/double-click temporary keyboard entry |
+| Sliders | `Slider(SliderProps)` | counted N-component values, vertical orientation, angle mode, component focus, arrow/Home/End keyboard adjustment, slow/fast modifiers, and Ctrl-click/double-click temporary keyboard entry are covered |
+| Keyboard inputs | `TextField`, `TextArea`, `Input(InputProps)` | covered, including hints and counted N-component values |
+| Color editors and pickers | `ColorPicker`, swatch `Button` | covered; swatch content on `Button` shares ordinary focus and keyboard activation |
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, optional close/visibility state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
 | Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including shared focus/Enter/Space activation, Tab traversal, arrow/Home/End navigation, and Ctrl/Shift range selection |
-| List boxes | `ListBox`, `BeginListBox` / `EndListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll, plus a framed scrolling scope for arbitrary native children |
+| List boxes | `ListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll |
 | Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
-| Plots | `PlotLines`, `PlotHistogram` | covered |
+| Plots | `Plot` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | nested submenus plus focus, disabled/separator skipping, arrow/Home/End traversal, submenu entry/backout, activation, and Escape dismissal in native C and Go |
 | Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
-| Tabs | `TabBar`, `BeginTabBar` / `BeginTabItem` / `EndTabItem` / `EndTabBar`, `ClosableTabBar`, `TabItemButton` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; the scope submits arbitrary native children only for the selected item, and omitted scroll state is owned independently by stable tab-bar ID |
+| Tabs | `TabBar`, `BeginTabBar` / `BeginTabItem` / `EndTabItem` / `EndTabBar`, add-tab `Button` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; the scope submits arbitrary native children only for the selected item, and omitted scroll state is owned independently by stable tab-bar ID |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
 | Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
 
@@ -214,7 +214,7 @@ the popup is explicitly closed. Widget-specific shortcut paths still require
 their own ownership coverage. Popup menus apply that ownership to Escape as
 well as navigation and activation, so an obscured menu cannot clear focus
 belonging to the active popup branch.
-Dropdown/Combobox stores the declaration's popup-owner snapshot for its
+Dropdown stores the declaration's popup-owner snapshot for its
 deferred overlay pass. Escape, arrows, Home/End, and Enter are ignored while a
 newer child branch owns the keyboard, then work again as soon as that branch
 closes.
@@ -246,8 +246,8 @@ extend `buttons_layout.kry` coverage with Enter/Space, disabled activation
 rejection and Tab skipping the disabled button; these additional assertions are
 native-only and do not claim JavaScript keyboard coverage.
 The same focusable-activation contract now backs native C and Go `Toggle`, `Checkbox`,
-`CheckboxFlags`, `Radio`, `Selectable`, `InvisibleButton`, `ImageButton`, and
-`ColorButton`, instead of duplicating key handling in each paint routine.
+`Checkbox`, `Radio`, `Selectable`, `InvisibleButton`, image `Button`, and
+swatch `Button`, instead of duplicating key handling in each paint routine.
 Direct runtime tests cover Enter/Space, Tab, disabled scopes, focus presentation,
 and top-popup ownership. The generated `basic_controls.kry` fixture exercises
 the canonical checkbox and props-based choice widgets through k2c and k2go;
@@ -358,8 +358,8 @@ editable text field, and button: the native runners verify independent state,
 text editing, rejection of hidden button clicks, and activation after scrolling.
 This demonstrates mixed-content composition using the general scroll scope,
 with selection and editing delegated to its child widgets. The mixed-content
-region now uses `BeginListBox`/`EndListBox`. This fixture is not executed by the
-JavaScript runner. The same native fixture opens nested tree-style `Collapsible`
+region now uses the general `BeginScroll`/`EndScroll` scope directly. This
+fixture is not executed by the JavaScript runner. The same native fixture opens nested tree-style `Collapsible`
 headers, activates an arbitrary button child, closes the root, rejects clicks on
 the hidden child, and reopens with the nested open state preserved. Callers own
 child layout; `Depth` indents the header hit and drawing bounds only.

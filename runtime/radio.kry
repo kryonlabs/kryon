@@ -1,0 +1,123 @@
+#module "radio"
+#import "drawing_props"
+
+RadioSpec :: struct {
+    bounds: Rectangle
+    checked: bool
+    disabled: bool
+    default_style: bool
+    selected_amount: float
+    scale: float
+    text_color: u32
+    icon_color: u32
+    button_color: u32
+    primary_color: u32
+    surface_variant_color: u32
+    disabled_color: u32
+}
+
+RadioPaint :: struct {
+    hit_bounds: Rectangle
+    mark_bounds: Rectangle
+    label_bounds: Rectangle
+    center: Vector2
+    label_x: float
+    diameter: float
+    touch: float
+    outer_radius: float
+    stroke_width: float
+    fill_radius: float
+    ring_color: u32
+    fill_color: u32
+    label_color: u32
+}
+
+RadioSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(20.0 * scale)
+}
+
+RadioTouchSize :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(40.0 * scale)
+}
+
+RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
+    paint: RadioPaint
+    scale: float = spec.scale
+    if scale <= 0.0 { scale = 1.0 }
+    diameter: float = (float)RadioSize(scale)
+    touch: float = (float)RadioTouchSize(scale)
+    gap: float = 8.0 * scale
+    if spec.default_style {
+        gap = 4.0 * scale
+    }
+
+    paint.hit_bounds = spec.bounds
+    if spec.default_style && paint.hit_bounds.width < touch {
+        paint.hit_bounds.width = touch
+    }
+    paint.diameter = diameter
+    paint.touch = touch
+    paint.center.x = spec.bounds.x + diameter * 0.5
+    paint.center.y = spec.bounds.y + spec.bounds.height * 0.5
+    if spec.default_style {
+        paint.center.x = spec.bounds.x + touch * 0.5
+    }
+
+    paint.mark_bounds.x = spec.bounds.x
+    paint.mark_bounds.y = spec.bounds.y + (spec.bounds.height - diameter) * 0.5
+    paint.mark_bounds.width = diameter
+    paint.mark_bounds.height = diameter
+    if spec.default_style {
+        paint.mark_bounds.x = spec.bounds.x + (touch - diameter) * 0.5
+    }
+
+    paint.label_x = spec.bounds.x + diameter + gap
+    if spec.default_style {
+        paint.label_x = spec.bounds.x + touch + gap
+    }
+    paint.label_bounds.x = paint.label_x
+    paint.label_bounds.y = spec.bounds.y
+    paint.label_bounds.width = spec.bounds.width - (paint.label_x - spec.bounds.x)
+    paint.label_bounds.height = spec.bounds.height
+    if paint.label_bounds.width < 0.0 {
+        paint.label_bounds.width = 0.0
+    }
+
+    selected: float = spec.selected_amount
+    if selected < 0.0 { selected = 0.0 }
+    if selected > 1.0 { selected = 1.0 }
+    if spec.checked {
+        selected = 1.0
+    }
+    paint.outer_radius = diameter * 0.5
+    paint.stroke_width = 2.0 * scale
+    if paint.stroke_width < 1.0 { paint.stroke_width = 1.0 }
+    paint.fill_radius = (paint.outer_radius - paint.stroke_width * 1.5) * selected
+    if spec.checked {
+        paint.fill_radius = paint.outer_radius - paint.stroke_width
+    }
+    if paint.fill_radius < 0.0 {
+        paint.fill_radius = 0.0
+    }
+
+    paint.ring_color = spec.icon_color
+    paint.fill_color = spec.text_color
+    paint.label_color = spec.text_color
+    if spec.default_style {
+        paint.ring_color = spec.checked ? spec.text_color : spec.surface_variant_color
+        paint.fill_color = spec.text_color
+        paint.label_color = spec.text_color
+        if !spec.checked && selected > 0.0 {
+            paint.ring_color = spec.primary_color
+        }
+    }
+    if spec.disabled {
+        paint.ring_color = spec.default_style ? spec.disabled_color : spec.button_color
+        paint.fill_color = spec.default_style ? spec.disabled_color : spec.button_color
+        paint.label_color = spec.default_style ? spec.disabled_color : spec.button_color
+    }
+    return paint
+}
+

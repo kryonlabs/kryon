@@ -95,7 +95,7 @@ func (r *runtime) BeginCombo(p ComboProps) bool {
 	}
 	if p.Flags&ComboWidthFitPreview != 0 {
 		need := float32(runtimeTextWidth(preview, Text16) + 20)
-		if p.Flags&ComboNoArrowButton == 0 {
+		if p.Flags&ComboNoArrow == 0 {
 			need += 20
 		}
 		if need > trigger.Width {
@@ -103,7 +103,7 @@ func (r *runtime) BeginCombo(p ComboProps) bool {
 		}
 	}
 	label := preview
-	if p.Flags&ComboNoArrowButton == 0 {
+	if p.Flags&ComboNoArrow == 0 {
 		label += " v"
 	}
 	pressed := r.Button(ButtonProps{Bounds: trigger, Label: label, ID: p.ID, Disabled: p.Disabled})

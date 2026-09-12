@@ -153,8 +153,15 @@ RenderActionModal(ModalProps modal)
     int btn_y;
     int button_rows;
     int buttons_h;
+    int prompt_h = 0;
+    int prompt_gap = 0;
+    int prompt_y = 0;
+    int commit_pressed = 0;
     int title_w;
     int result = 0;
+    int has_prompt = modal.text != NULL && modal.text_size > 0 &&
+                     modal.cursor_position != NULL &&
+                     modal.focused != NULL;
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
     Color scrim;
@@ -178,7 +185,12 @@ RenderActionModal(ModalProps modal)
                                                msg_w, btn_gap, btn_font);
     buttons_h = button_rows > 0 ?
                 button_rows * btn_h + (button_rows - 1) * btn_gap : 0;
+    if(has_prompt) {
+        prompt_h = Scale(38);
+        prompt_gap = Scale(18);
+    }
     modal_h = title_h + GetTextLayoutHeight(&msg_layout) +
+              (prompt_h > 0 ? prompt_gap + prompt_h : 0) +
               (buttons_h > 0 ? msg_gap + buttons_h : 0) + padding_bottom;
     if(modal_h < Scale(160))
         modal_h = Scale(160);
@@ -200,6 +212,7 @@ RenderActionModal(ModalProps modal)
     msg_x = modal_x + padding_x;
     msg_y = modal_y + title_h;
     btn_y = modal_y + modal_h - buttons_h - padding_bottom;
+    prompt_y = msg_y + GetTextLayoutHeight(&msg_layout) + prompt_gap;
 
     scrim.r = 0;
     scrim.g = 0;
@@ -230,6 +243,22 @@ RenderActionModal(ModalProps modal)
     DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
     FreeTextLayout(&msg_layout);
 
+    if(has_prompt) {
+        TextFieldProps field_props;
+        memset(&field_props, 0, sizeof(field_props));
+        field_props.bounds = (Rectangle){(float)msg_x, (float)prompt_y,
+                                         (float)msg_w, (float)prompt_h};
+        field_props.text = modal.text;
+        field_props.text_size = (size_t)modal.text_size;
+        field_props.cursor_position = modal.cursor_position;
+        field_props.focused = modal.focused;
+        field_props.max_codepoints = modal.text_size - 1;
+        field_props.font = GetFontSize();
+        field_props.focus_id = modal.focus_id > 0 ? modal.focus_id : 7301;
+        field_props.commit_pressed = &commit_pressed;
+        ui_text_field_render(field_props);
+    }
+
     if(result == 0 && modal.close_icon.id != 0) {
         int icon_size = Scale(20);
         int icon_padding = Scale(8);
@@ -246,47 +275,12 @@ RenderActionModal(ModalProps modal)
         result = ui_modal_draw_actions(modal.actions, modal.action_count,
                                        msg_x, btn_y, msg_w, btn_h, btn_gap,
                                        btn_font, mouse_world);
+    if(result == 0 && has_prompt && commit_pressed)
+        result = modal.action_count > 1 ? 2 : 1;
+    if(result == 0 && has_prompt && IsKeyPressed(KEY_ESCAPE))
+        result = 1;
 
     return result;
-}
-
-int
-RenderModal(const char *title, const char *message,
-               const char *cancel_btn, const char *confirm_btn)
-{
-    ModalAction actions[2] = {
-        { cancel_btn, ButtonToneNeutral, ButtonEmphasisSoft, 0 },
-        { confirm_btn, ButtonToneAccent, ButtonEmphasisFilled, 0 }
-    };
-    ModalProps props;
-
-    memset(&props, 0, sizeof(props));
-    props.title = title;
-    props.message = message;
-    props.actions = actions;
-    props.action_count = 2;
-    props.max_width = 360;
-    return RenderActionModal(props);
-}
-
-int
-RenderModal3Button(const char *title, const char *message,
-                    const char *left_btn, const char *middle_btn, const char *right_btn)
-{
-    ModalAction actions[3] = {
-        { left_btn, ButtonToneNeutral, ButtonEmphasisSoft, 0 },
-        { middle_btn, ButtonToneAccent, ButtonEmphasisFilled, 0 },
-        { right_btn, ButtonToneDanger, ButtonEmphasisFilled, 0 }
-    };
-    ModalProps props;
-
-    memset(&props, 0, sizeof(props));
-    props.title = title;
-    props.message = message;
-    props.actions = actions;
-    props.action_count = 3;
-    props.max_width = 420;
-    return RenderActionModal(props);
 }
 
 int

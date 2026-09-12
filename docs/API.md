@@ -34,7 +34,7 @@ item hides navigation. `disabled` blocks both taps and movement. `id` reserves
   - [Web Utilities](#web-utilities)
 - [UI Components](#ui-components)
   - [Buttons](#buttons)
-  - [Pictures](#pictures)
+  - [Images](#images)
   - [Text Input](#text-input)
   - [Navigation](#navigation)
   - [Modals](#modals)
@@ -254,7 +254,9 @@ Use canonical widget names when declaring controls from C:
 ```c
 Button(button);
 TextField(field);
-Slider(id, x, y, w, "Volume", 0, 100, &volume, "%", NULL);
+Slider((SliderProps){.bounds = {20, 64, 180, 56}, .id = 12,
+    .label = "Volume", .kind = NumericInt, .int_values = &volume,
+    .value_count = 1, .min = 0, .max = 100, .format = "%"});
 Overlays();
 ```
 
@@ -437,8 +439,8 @@ Link((LinkProps){{40, 96, 160, 28}, "Docs", "/docs", Text16, 101, 0, GetThemeLin
 End();
 ```
 
-Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `PagePicture`,
-`Flow`, and `Grid` for Kryon-authored website surfaces. `PagePicture` is named
+Use `Page`, `Section`, `Heading`, `ParagraphText`, `Link`, `PageImage`,
+`Flow`, and `Grid` for Kryon-authored website surfaces. `PageImage` is named
 separately because `Image` is already the decoded-image type in the raylib
 compatibility surface. The Go runtime mirrors these helpers and records
 semantic `FrameOp` metadata, so `.kry` files lowered through `k2go` can use the
@@ -842,13 +844,13 @@ websites can sync shared assets from a vendored Kryon copy with
 `vendor/kryon/scripts/sync-icons.sh`. Embedded C assets are refreshed with
 `make icons-embed`.
 
-Profile-picture, platform, payment, and language artwork is packed into the
+Profile-image, platform, payment, and language artwork is packed into the
 separate full-color `icons/pfp.png`, `icons/platforms.png`,
 `icons/payments.png`, `icons/language.png`, and `icons/tiles.png` sheets. They remain in the same
 indexed icon catalog with their existing `UI_ICON_TYPE_*` values. Use
 `GetUIProfilePictureIconCount`,
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
-the standard profile-picture options.
+the standard profile-image options.
 
 Kryon also exposes stable `UI_SYNC_PROFILE_ICON_*` IDs and mapping helpers:
 
@@ -1283,37 +1285,38 @@ int SyncWebWindowSize(void);
 
 ## UI Components
 
-### Pictures
+### Images
 
 ```c
-typedef enum PictureFit {
-    PICTURE_FIT_STRETCH,
-    PICTURE_FIT_CONTAIN,
-    PICTURE_FIT_COVER
-} PictureFit;
+typedef enum ImageFit {
+    IMAGE_FIT_STRETCH,
+    IMAGE_FIT_CONTAIN,
+    IMAGE_FIT_COVER
+} ImageFit;
 
-typedef struct PictureProps {
+typedef struct ImageProps {
     const char *asset_path;
     Rectangle bounds;
     Rectangle source;
     Vector2 origin;
     float rotation;
     Color tint;
-    PictureFit fit;
-    PictureStyle style;
-} PictureProps;
+    ImageFit fit;
+    ImageStyle style;
+} ImageProps;
 
-void Picture(PictureProps picture);
+Image((ImageProps){...})
+void RenderImage(ImageProps image);
 ```
 
-Pictures are image-backed UI widget nodes. `asset_path` is resolved first as a
-runtime file path and then as an embedded asset path. `Picture` uses the full
+Images are image-backed UI widget nodes. `asset_path` is resolved first as a
+runtime file path and then as an embedded asset path. `Image` uses the full
 image with contain fitting and exposes source rect, origin, rotation, tint, fit
 mode, and optional material-style image treatment through `style`. The
 `Sprite2D` scene node shares the same texture cache for world-space game
-sprites. Named
-`Picture` rather than `Image` because raylib already owns `Image` as a
-decoded-image-in-memory struct type.
+sprites. The public `.kry`, Go, and JS widget is `Image`; C host support uses
+`RenderImage` because raylib already owns `Image` as a decoded-image-in-memory
+struct type.
 
 ### Buttons
 
@@ -1406,27 +1409,27 @@ padding is scaled into that area. Unpositioned children fill missing dimensions
 and are centered; explicitly positioned children retain their placement.
 Oversized padding leaves an empty area, and negative padding acts as zero.
 
-#### `Href`
+#### `Link`
 
 ```c
 typedef struct {
     Rectangle bounds;
     const char *text;
-    const char *href;
+    const char *link;
     int font;
     int focus_id;
     int disabled;
     Color color;
     Color hover_color;
-} Href;
+} LinkProps;
 ```
 
-#### `UIHrefNode`
+#### `Link`
 
 Draw and handle a text link using the current theme link color by default.
 
 ```c
-int UIHrefNode(Href link);
+int Link(LinkProps link);
 ```
 
 ---
@@ -1535,26 +1538,7 @@ typedef struct {
 } ToolbarProps;
 
 ToolbarResult Toolbar(ToolbarProps toolbar);
-ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
 ```
-
-#### Sidebar Account Header
-
-```c
-SidebarAccountHeaderResult SidebarAccountHeader(SidebarAccountHeaderProps header);
-ProfilePicturePickerResult ProfilePicturePicker(ProfilePicturePickerProps modal);
-```
-
-`SidebarAccountHeader` draws the standard account top area with banner,
-username, subtitle, friends summary, and pfp. `content_padding_x` overrides
-the internal horizontal inset while the header bounds can fill its parent. It
-returns separate click flags
-for pfp, username, and friends so applications keep ownership of route changes
-and persistence.
-
-`ProfilePicturePicker` draws the shared pfp selection modal over the
-standard built-in pfp icon set and writes the selected `UIIconType` when the
-user chooses one.
 
 #### Tab Bar
 
@@ -1597,15 +1581,14 @@ not introduce a second renderer; it delegates the complete header behavior to
 
 #### Dropdown
 
-`Dropdown` is the props-based implementation. `Combobox`, `DropdownLegacy`, and
-`DropdownOptions` adapt their arguments to the same implementation. Opening or
-reselecting the current option returns no change. Native C and Go share popup
-placement, disabled-row navigation, dismissal, and row-based scrolling policy.
+`Dropdown` is the props-based implementation and the only public option
+selection widget. Use `DropdownProps.options` for plain labels and
+`DropdownProps.items` for rich items. Opening or reselecting the current option
+returns no change. Native C and Go share popup placement, disabled-row
+navigation, dismissal, and row-based scrolling policy.
 
 ```c
 int Dropdown(DropdownProps dropdown);
-int DropdownLegacy(int id, int x, int y, int w, int h,
-                   const char **options, int option_count, int *selected_index);
 void Overlays(void);
 ```
 
@@ -1648,7 +1631,7 @@ typedef enum {
     ComboHeightRegular = 1 << 2,
     ComboHeightLarge = 1 << 3,
     ComboHeightLargest = 1 << 4,
-    ComboNoArrowButton = 1 << 5,
+    ComboNoArrow = 1 << 5,
     ComboNoPreview = 1 << 6,
     ComboWidthFitPreview = 1 << 7
 } ComboFlags;
@@ -1763,46 +1746,12 @@ int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
 ```
 
-#### Score Control
-
-Responsive signed score selector for compact voting, rating, and priority
-inputs. It uses Kryon button, focus, text, and wrapping layout primitives, and
-stores the selected integer through the supplied value pointer.
-
-```c
-typedef struct {
-    Rectangle bounds;
-    int id;
-    int min_value;
-    int max_value;
-    int *value;
-    int font;
-    int gap;
-    int height;
-    int min_item_width;
-    int wrap;
-} ScoreControlProps;
-
-typedef struct {
-    int value;
-    int clicked;
-    int clicked_value;
-    int changed;
-    int height;
-} ScoreControlResult;
-
-int GetScoreControlHeight(ScoreControlProps control);
-ScoreControlResult ScoreControl(ScoreControlProps control);
-```
-
----
-
 ### Modals
 
-#### `ActionModal`
+#### `Modal`
 
-Adaptive action modal for a title, message, optional close icon, and one to
-three action buttons.
+Adaptive action modal for a title, message, optional close icon, and action
+buttons.
 
 ```c
 typedef struct {
@@ -1821,7 +1770,7 @@ typedef struct {
     int max_width;
 } ModalProps;
 
-int ActionModal(ModalProps modal);
+int Modal(ModalProps modal);
 ```
 
 **Returns:** `-1` when the close icon is clicked, `0` for no action, or the
@@ -1832,59 +1781,6 @@ the content width, and action buttons measure their labels. Button text is fitte
 inside the button, and the action row wraps to multiple rows when labels do not
 fit. Backdrop clicks are blocked automatically for the current frame and the next
 frame.
-
-#### `Modal`
-
-Simple two-button modal.
-
-```c
-int Modal(const char *title, const char *message,
-          const char *cancel_btn, const char *confirm_btn);
-```
-
-**Returns:** 1 for cancel, 2 for confirm
-
-Uses the same adaptive modal behavior as `ActionModal`: adaptive width,
-reflowed message text, fitted button labels, wrapped actions when needed, and
-automatic backdrop capture for the current frame and the next frame.
-
-#### `Modal3Button`
-
-Three-button modal.
-
-```c
-int Modal3Button(const char *title, const char *message,
-                 const char *left_btn, const char *middle_btn, const char *right_btn);
-```
-
-Uses the same adaptive modal behavior as `ActionModal`: adaptive width,
-reflowed message text, fitted button labels, wrapped actions when needed, and
-automatic backdrop capture for the current frame and the next frame.
-
-#### `UIPanelFrame` / `ModalFrame`
-
-```c
-typedef struct {
-    int x;
-    int y;
-    int w;
-    int h;
-    int content_x;
-    int content_y;
-    int content_w;
-    int content_h;
-    int left_clicked;
-    int right_clicked;
-} UIPanelFrame;
-
-UIPanelFrame ModalFrame(int width, int height, const char *title,
-                        Texture2D left_icon, Texture2D right_icon);
-```
-
-`ModalFrame` also updates the modal capture bounds automatically for the current
-frame and the next frame.
-
----
 
 ### Scrolling
 
@@ -1961,54 +1857,24 @@ int GetNodeHeightById(int id);
 #### Sliders
 
 ```c
-int UISliderNode(int id, int x, int y, int w, const char *label,
-                   int min, int max, int *value, const char *suffix,
-                   const char *value_text_override);
+int Slider(SliderProps slider);
 ```
 
 #### Toggle Switch
 
 ```c
-int Toggle(int x, int y, int w, int h, int *value,
-                         const char *off_label, const char *on_label);
+int Toggle(ToggleProps toggle);
 ```
 
 #### Checkbox
 
 ```c
-int Checkbox(int x, int y, const char *label, int *value);
-int Checkbox(int x, int y, const char *label,
-                                     int *value, int disabled);
+int Checkbox(CheckboxProps checkbox);
 ```
 
 ---
 
 ### Layout Components
-
-#### Info Rows
-
-```c
-typedef struct {
-    const char *text;
-    int font;
-    Color color;
-} UIInfoRow;
-
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int row_height;
-    int padding_x;
-    const UIInfoRow *rows;
-    int row_count;
-    Color background;
-    Color separator;
-    Color default_text;
-} InfoRows;
-
-void UIInfoRowsNode(InfoRows rows);
-```
 
 #### Button Rows
 
@@ -2181,11 +2047,11 @@ next frame. While a modal carried from the previous frame has not registered its
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
 
-Built-in modal helpers (`ActionModal`, `Modal`, `Modal3Button`, `ModalFrame`)
+Built-in modal helpers (`Modal`)
 register their bounds automatically.
 
-Applications should use `ActionModal` for standard title/message/action dialogs
-and `ModalFrame` for custom modal content instead of manually drawing a backdrop
+Applications should use `Modal` for standard title/message/action dialogs
+and `Modal` for modal content instead of manually drawing a backdrop
 and calling `SetUIModalCapture`. Manual capture remains available for
 specialized overlays, but the helpers keep modal bounds, backdrop, and input
 capture consistent across projects.
@@ -2531,19 +2397,13 @@ Feature families:
 
 - Geometry: `BeginFrameBox`, `FramePack`, `GridCell`, `Place`, `UISeparatorNode`
 - Menus: `UIMenuBarNode`, `UIPopupMenuNode`
-- Basic controls: `Radio`, `Progress`, `Spinbox`, `Combobox`, `UILabelFrameNode`, `UIImageBoxNode`
+- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `UILabelFrameNode`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
 
-`BeginListBox(ListBoxProps)` opens a framed, scrollable area for arbitrary
-native children; finish it with `EndListBox()`. Its returned rectangle is the
-scrolled content origin and available width, excluding the frame and scrollbar.
-Set `content_height` (`ContentHeight` in Go) explicitly, or use `item_count`
-times `row_height` (default 30). Place children using the returned bounds or a
-nested Row/Column. The scope owns clipping, scrolling and disabled state; child
-widgets own selection and editing. `items` and `selected_index` are used by the
-string-list `ListBox` helper, not by this composition scope.
+Use `ListBox(ListBoxProps)` for selectable string lists. For arbitrary
+scrolling child content, use the general scroll scope directly.
 - Canvas: `BeginCanvas`, `EndCanvas`, `UICanvasGridNode`, `CanvasHitTest`
-- Containers: `UINotebookNode`, `PanedView`, `Collapsible`
+- Containers: `TabBar`, `PanedView`, `Collapsible`
 
 `TableViewProps.header_height` controls header height, with a minimum/default
 of 30 logical pixels. `header_angle` rotates header labels in degrees, clamped

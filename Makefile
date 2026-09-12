@@ -297,6 +297,7 @@ UI_TK_TEST = $(BUILD_DIR)/tests/ui_tk_test
 UI_PRIMARY_SELECTION_TEST = $(BUILD_DIR)/tests/ui_primary_selection_test
 UI_PAGER_TEST = $(BUILD_DIR)/tests/ui_pager_test
 DROPDOWN_LAYOUT_TEST = $(BUILD_DIR)/tests/dropdown_layout_test
+SEGMENTED_CONTROL_TEST = $(BUILD_DIR)/tests/segmented_control_test
 DROPDOWN_THEME_SCREEN_TEST = $(BUILD_DIR)/tests/dropdown_theme_screen_test
 BOTTOM_NAV_ICON_COLOR_TEST = $(BUILD_DIR)/tests/bottom_nav_icon_color_test
 DISMISSIBLE_OVERLAY_TEST = $(BUILD_DIR)/tests/dismissible_overlay_test
@@ -733,20 +734,22 @@ $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(RUNTIME_KRY)
 
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
-$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/instance.h
+$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/label_frame.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
 
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h
 
 $(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h
-$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h $(GENERATED_SRC_DIR)/runtime/text_input.h
 $(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
-$(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/combo.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
+$(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
-$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/menu_button.h $(GENERATED_SRC_DIR)/runtime/split_button.h $(GENERATED_SRC_DIR)/runtime/card.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h
 
 .PHONY: generate-runtime generate-button-policy
 generate-button-policy: generate-runtime
@@ -993,7 +996,7 @@ $(LIBDRAW_HIERARCHY_TEST): tests/libdraw_hierarchy_main.c $(LIB) $(KRYON_BACKEND
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/label_frame.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/multi_select_list.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
@@ -1032,6 +1035,12 @@ $(UI_PRIMARY_SELECTION_TEST): tests/ui_primary_selection_test.c $(LIB) $(KRYON_B
 $(DROPDOWN_LAYOUT_TEST): tests/dropdown_layout_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/dropdown_layout_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $@
+
+$(SEGMENTED_CONTROL_TEST): tests/segmented_control_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/segmented_control.h | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/segmented_control_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 

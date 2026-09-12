@@ -89,7 +89,7 @@ offset `0` MUST be `0x00` (the empty string lives at offset 0).
 | 3 | RECT | x,y,w,h = bounds | filled rect |
 | 4 | BUTTON | bounds | filled rect + 1px border + centered label (`text_off`); import `bind_slot` fires on press-in-bounds. `style`: 0 primary (theme button color), 1 plain (theme surface), 2 danger (`0xB83B3BFF`) |
 | 5 | DATA | — | not drawn; state-field metadata |
-| 6 | PICTURE | bounds | texture; `text_off` = asset path, `color` = tint, `style` = fit (0 stretch, 1 contain, 2 cover) |
+| 6 | IMAGE | bounds | texture; `text_off` = asset path, `color` = tint, `style` = fit (0 stretch, 1 contain, 2 cover) |
 | 7 | CHECKBOX | box at bounds; label at `x+w+4` | cartridge-owned toggle on mount path `name_off`; flips value on press-in-bounds |
 | 8 | TOGGLE | switch at bounds; label beside | same mount behavior as CHECKBOX |
 | 9 | CONTROL | bounds = widget bounds | range widget; `bind_slot` indexes controls[] |
@@ -141,8 +141,8 @@ Referenced by a CONTROL node's `bind_slot`.
 
 | Offset | Size | Field | Type | Meaning |
 |---|---|---|---|---|
-| 0 | 1 | kind | u8 | 1 slider, 2 vslider, 3 spinbox, 4 dropdown, 5 combobox, 6 progress, 7 radio |
-| 1 | 1 | option_count | u8 | dropdown/combobox option count, 0 otherwise |
+| 0 | 1 | kind | u8 | 1 slider, 2 vslider, 3 spinbox, 4 dropdown, 6 progress, 7 radio |
+| 1 | 1 | option_count | u8 | dropdown option count, 0 otherwise |
 | 2 | 2 | id | u16 | widget id |
 | 4 | 4 | min | i32 | range minimum |
 | 8 | 4 | max | i32 | range maximum |
@@ -154,10 +154,10 @@ Referenced by a CONTROL node's `bind_slot`.
 
 Slider: held-drag maps the pointer position across the track to
 `[min, max]`. Spinbox: click left/right half decrements/increments by
-`step`, clamped to `[min, max]`. Dropdown (`kind 4`) and combobox (`kind 5`):
-`options_off` points at `option_count` consecutive NUL-terminated option
-strings; the bound `int` holds the selected index. Click toggles the popup;
-clicking a row writes the index and closes. Progress (`kind 6`) reads the
+`step`, clamped to `[min, max]`. Dropdown (`kind 4`) stores
+`option_count` consecutive NUL-terminated option strings; the bound `int` holds
+the selected index. Click toggles the popup; clicking a row writes the index and
+closes. Progress (`kind 6`) reads the
 bound `int`, clamps it to `[min, max]`, and draws a noninteractive filled bar
 with optional `label_off` text. Radio (`kind 7`) reads the bound `int`, draws
 selected when it equals `id`, and writes `id` on click.
@@ -215,7 +215,7 @@ When header offset 28 (`asset_bytes`) is nonzero, an asset section follows
 20 bytes, then the blobs. Entry: `path_off u32@0` (string table),
 `data_off u32@4` (absolute file offset), `size u32@8`, `kind u16@12`
 (0 = raw RGBA8 pixels, 1 = glyph atlas), `w u16@14`, `h u16@16`,
-`reserved u16@18`. `asset_bytes` counts the whole section. A PICTURE node
+`reserved u16@18`. `asset_bytes` counts the whole section. A IMAGE node
 whose path matches an embedded raw-RGBA asset is rendered from cartridge
 pixels through the backend's optional `texture_rgba` (scaled, tinted);
 non-embedded paths fall back to host texture loading. The conventional

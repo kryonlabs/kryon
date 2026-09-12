@@ -36,7 +36,7 @@ func TestNumericInputStepLifecycle(t *testing.T) {
 		r.BeginFrame()
 		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
 		r.BeginDisabled(scenario == 3)
-		r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 870,
+		r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 870,
 			Values: values, ValueCount: 1, Step: 2, StepFast: 5})
 		r.EndDisabled()
 		r.End()
@@ -63,7 +63,7 @@ func TestNumericInputTypingLifecycle(t *testing.T) {
 		r.BeginFrame()
 		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
 		r.BeginDisabled(frame == 2)
-		changed := r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 871,
+		changed := r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 871,
 			Values: values, ValueCount: 1})
 		r.EndDisabled()
 		r.End()
@@ -82,7 +82,7 @@ func TestNumericInputOriginLayout(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	r.BeginFrame()
 	r.Row(RowProps{Bounds: NewRectangle(0, 0, 220, 24)})
-	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 872,
+	r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 872,
 		Values: []int32{10}, ValueCount: 1, Step: 1})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 40, 24), ID: 873, Label: "next"})
 	r.End()
@@ -123,9 +123,9 @@ func TestNumericInputComponentIdentities(t *testing.T) {
 		}
 	}
 	r.BeginFrame()
-	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 0, 1700, 24), ID: 1,
+	r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 1700, 24), ID: 1,
 		Values: make([]int32, 17), ValueCount: 17, Step: 1})
-	r.InputInt(InputIntProps{Bounds: NewRectangle(0, 30, 100, 24), ID: 2,
+	r.inputInt(inputIntProps{Bounds: NewRectangle(0, 30, 100, 24), ID: 2,
 		Values: []int32{0}, ValueCount: 1, Step: 1})
 	r.EndFrame()
 	ids := map[int32]bool{}
@@ -226,12 +226,12 @@ func TestTreeHeaderKeyboardGates(t *testing.T) {
 func TestComboPopupLifecycle(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
-	p := ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
+	p := DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
 	draw := func(show, scope bool) {
 		r.BeginFrame()
 		r.BeginDisabled(scope)
 		if show {
-			r.Combobox(p)
+			r.Dropdown(p)
 		}
 		r.EndDisabled()
 		r.EndFrame()
@@ -267,7 +267,7 @@ func TestComboOverlayLayerAndCapture(t *testing.T) {
 			actions++
 		}
 		r.BeginScroll(NewRectangle(10, 10, 180, 28), 28, nil)
-		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected})
+		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		r.EndScroll()
 		r.Rect(10, 42, 160, 56, RED, BLANK)
 		r.EndFrame()
@@ -297,8 +297,8 @@ func TestComboOverlayLayerAndCapture(t *testing.T) {
 func TestComboDismissal(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
-	p := ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
-	draw := func() { r.BeginFrame(); r.Combobox(p); r.EndFrame() }
+	p := DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
+	draw := func() { r.BeginFrame(); r.Dropdown(p); r.EndFrame() }
 	r.QueueTap(20, 20)
 	r.QueueKey(KeyEscape)
 	draw()
@@ -414,7 +414,8 @@ func TestListBoxScope(t *testing.T) {
 		r.QueueMouseMove(30, 30)
 		r.QueueMouseWheel(-1)
 		r.BeginFrame()
-		content := r.BeginListBox(ListBoxProps{Bounds: NewRectangle(20, 20, 120, 80), ItemCount: 4, RowHeight: 25, ScrollOffset: &offset, Disabled: disabled})
+		r.BeginDisabled(disabled)
+		content := r.BeginScroll(NewRectangle(21, 21, 118, 78), 100, &offset)
 		want := int32(22)
 		if disabled {
 			want = 0
@@ -425,7 +426,8 @@ func TestListBoxScope(t *testing.T) {
 		if r.contentDisabled() != disabled {
 			t.Fatal("list disabled scope")
 		}
-		r.EndListBox()
+		r.EndScroll()
+		r.EndDisabled()
 		if r.contentDisabled() {
 			t.Fatal("list scope not restored")
 		}
@@ -433,13 +435,13 @@ func TestListBoxScope(t *testing.T) {
 	}
 	r.BeginFrame()
 	r.BeginScroll(NewRectangle(10, 10, 100, 80), 80, nil)
-	r.BeginListBox(ListBoxProps{Bounds: NewRectangle(20, 20, 120, 80), ContentHeight: 200})
+	r.BeginScroll(NewRectangle(21, 21, 118, 78), 200, nil)
 	r.Rect(0, 0, 300, 300, RED, BLANK)
 	op := r.FrameOps()[len(r.FrameOps())-1]
 	if !op.HasClip || op.Clip != NewRectangle(21, 21, 89, 69) {
 		t.Fatalf("nested list clip: %+v", op)
 	}
-	r.EndListBox()
+	r.EndScroll()
 	r.EndScroll()
 	r.EndFrame()
 }
@@ -492,8 +494,10 @@ func TestCanonicalTextProperties(t *testing.T) {
 	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "colored", Font: Text16, Color: color, Wrap: TextWrapNone})
 	r.Text(TextProps{Bounds: NewRectangle(10, 30, 0, 0), Text: "disabled", Font: Text16, Wrap: TextWrapNone, Disabled: true})
 	r.Text(TextProps{Bounds: NewRectangle(10, 50, 48, 60), Text: "one two three four", Font: Text16, Color: color})
-	r.LabelText("Status", "Ready", NewRectangle(10, 120, 160, 20), Text16, color)
-	r.BulletText("item", NewRectangle(10, 150, 120, 20), Text16, color)
+	r.Text(TextProps{Bounds: NewRectangle(10, 120, 0, 0), Text: "Status", Font: Text16, Color: r.Fade(color, 0.72), Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(70, 120, 0, 0), Text: "Ready", Font: Text16, Color: color, Wrap: TextWrapNone})
+	r.Bullet(NewRectangle(10, 150, 12, 20))
+	r.Text(TextProps{Bounds: NewRectangle(26, 150, 0, 0), Text: "item", Font: Text16, Color: color, Wrap: TextWrapNone})
 	r.EndFrame()
 
 	ops := r.FrameOps()
@@ -522,22 +526,22 @@ func TestCanonicalTextProperties(t *testing.T) {
 	}
 }
 
-func TestNativeValueHelpers(t *testing.T) {
+func TestNativeTextValueComposition(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	r.BeginFrame()
-	r.ValueBool("Enabled", true, NewRectangle(10, 10, 140, 20), Text14, White)
-	r.ValueInt("Count", -7, NewRectangle(10, 35, 140, 20), Text14, White)
-	r.ValueUInt("Mask", 42, NewRectangle(10, 60, 140, 20), Text14, White)
-	r.ValueFloat("Rate", 1.25, "%.1f Hz", NewRectangle(10, 85, 140, 20), Text14, White)
+	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: r.TextFormat("Enabled: %t", true), Font: Text14, Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 35, 0, 0), Text: r.TextFormat("Count: %d", -7), Font: Text14, Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 60, 0, 0), Text: r.TextFormat("Mask: %d", 42), Font: Text14, Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 85, 0, 0), Text: r.TextFormat("Rate: %.1f Hz", 1.25), Font: Text14, Color: White, Wrap: TextWrapNone})
 	r.EndFrame()
 	ops := r.FrameOps()
-	if len(ops) != 8 {
-		t.Fatalf("value helper ops=%d, want 8", len(ops))
+	if len(ops) != 4 {
+		t.Fatalf("value text ops=%d, want 4", len(ops))
 	}
-	want := []string{"Enabled", "true", "Count", "-7", "Mask", "42", "Rate", "1.2 Hz"}
+	want := []string{"Enabled: true", "Count: -7", "Mask: 42", "Rate: 1.2 Hz"}
 	for i, text := range want {
 		if ops[i].Text != text {
-			t.Fatalf("value helper op %d text=%q, want %q", i, ops[i].Text, text)
+			t.Fatalf("value text op %d text=%q, want %q", i, ops[i].Text, text)
 		}
 	}
 }
@@ -729,7 +733,7 @@ func TestNativeImGuiWidgetSlice(t *testing.T) {
 
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if got := r.Radio(RadioButtonProps{Bounds: NewRectangle(8, 8, 140, 28), Label: "Choice", ID: 17}); got != 17 {
+	if got := r.Radio(RadioProps{Bounds: NewRectangle(8, 8, 140, 28), Label: "Choice", ID: 17}); got != 17 {
 		t.Fatalf("Radio click = %d, want 17", got)
 	}
 	r.EndFrame()
@@ -744,25 +748,26 @@ func TestNativeImGuiWidgetSlice(t *testing.T) {
 	r.EndFrame()
 
 	selected := int32(0)
-	combo := ComboboxProps{Bounds: NewRectangle(10, 10, 120, 24), ID: 44, Options: []string{"A", "B", "C"}, SelectedIndex: &selected}
+	combo := DropdownProps{Bounds: NewRectangle(10, 10, 120, 24), ID: 44, Options: []string{"A", "B", "C"}, SelectedIndex: &selected}
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	r.Combobox(combo)
+	r.Dropdown(combo)
 	r.EndFrame()
 	r.QueueTap(20, 74)
 	r.BeginFrame()
-	if !r.Combobox(combo) || selected != 1 {
-		t.Fatalf("Combobox selected=%d, want 1", selected)
+	if !r.Dropdown(combo) || selected != 1 {
+		t.Fatalf("Dropdown selected=%d, want 1", selected)
 	}
 	r.EndFrame()
 
 	selected = 0
-	tabs := NotebookProps{Bounds: NewRectangle(10, 10, 300, 120), Tabs: []string{"One", "Two"}, SelectedIndex: &selected}
-	r.QueueTap(float32(10+runtimeTextWidth("One", Text16)+38), 20)
+	tabs := []Tab{{Label: "One"}, {Label: "Two"}}
+	r.QueueTap(200, 20)
 	r.BeginFrame()
-	if r.Notebook(tabs) != 1 || selected != 1 {
-		t.Fatalf("Notebook selected=%d, want 1", selected)
+	if clicked := r.TabBar(TabBarProps{Bounds: NewRectangle(10, 10, 300, 34), Tabs: tabs, Count: 2, SelectedIndex: selected}); clicked != 1 {
+		t.Fatalf("TabBar clicked=%d, want 1", clicked)
 	}
+	selected = 1
 	r.EndFrame()
 
 	open := false
@@ -782,11 +787,11 @@ func TestNativeImGuiWidgetSlice(t *testing.T) {
 	r.LabelFrame(LabelFrameProps{Bounds: NewRectangle(10, 120, 180, 80), Title: "Group"})
 	r.EndFrame()
 
-	color := Color{R: 10, G: 20, B: 30, A: 255}
+	colorValues := []float32{0.1, 0.2, 0.3, 1.0}
 	r.QueueTap(75, 30)
 	r.BeginFrame()
-	if !r.ColorPicker(NewRectangle(10, 10, 120, 160), &color) || color.R <= 10 || color.G != 20 || color.B != 30 || color.A != 255 {
-		t.Fatalf("ColorPicker color=%+v", color)
+	if !r.ColorPicker(ColorPickerProps{Bounds: NewRectangle(10, 10, 120, 160), ID: 78, Values: colorValues, ValueCount: 4, Picker: true}) || colorValues[0] <= 0.1 || colorValues[1] != 0.2 || colorValues[2] != 0.3 || colorValues[3] != 1.0 {
+		t.Fatalf("ColorPicker values=%v", colorValues)
 	}
 	r.EndFrame()
 }
@@ -812,7 +817,7 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 	t.Run("plots", func(t *testing.T) {
 		values := []float32{0, 0.25, 1, 0.5}
 		r.BeginFrame()
-		r.PlotLines(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Lines", Values: values, ScaleMin: 0, ScaleMax: 1})
+		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Lines", Values: values, ScaleMin: 0, ScaleMax: 1})
 		lines := 0
 		for _, op := range r.FrameOps() {
 			if op.Kind == FrameOpLine {
@@ -820,12 +825,12 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 			}
 		}
 		if lines != 3 {
-			t.Fatalf("PlotLines segments=%d, want 3", lines)
+			t.Fatalf("Plot line segments=%d, want 3", lines)
 		}
 		r.EndFrame()
 
 		r.BeginFrame()
-		r.PlotHistogram(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1})
+		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1, Mode: 1})
 		bars := 0
 		for _, op := range r.FrameOps() {
 			if op.Kind == FrameOpRect && op.Color == r.theme().buttonHover {
@@ -833,7 +838,7 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 			}
 		}
 		if bars != 4 {
-			t.Fatalf("PlotHistogram bars=%d, want 4", bars)
+			t.Fatalf("Plot histogram bars=%d, want 4", bars)
 		}
 		r.EndFrame()
 	})
@@ -867,24 +872,6 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 		r.EndFrame()
 	})
 
-	t.Run("source view", func(t *testing.T) {
-		sx, sy := int32(0), int32(0)
-		r.BeginFrame()
-		scrollable := r.SourceView(SourceViewProps{Bounds: NewRectangle(0, 0, 100, 52), Text: "first\nsecond\nthird\nfourth", ScrollX: &sx, ScrollY: &sy, FontSize: Text14, LineHeight: 18, ShowLineNumbers: true})
-		if scrollable != 1 {
-			t.Fatal("SourceView should report scrollable content")
-		}
-		textOps := 0
-		for _, op := range r.FrameOps() {
-			if op.Kind == FrameOpText {
-				textOps++
-			}
-		}
-		if textOps < 2 {
-			t.Fatalf("SourceView text ops=%d, want visible line and number", textOps)
-		}
-		r.EndFrame()
-	})
 }
 
 func TestNativeDialogs(t *testing.T) {
@@ -892,15 +879,15 @@ func TestNativeDialogs(t *testing.T) {
 
 	r.QueueTap(460, 300)
 	r.BeginFrame()
-	if got := r.MessageDialog(MessageDialogProps{Title: "Notice", Message: "Saved"}); got != 1 {
-		t.Fatalf("MessageDialog result=%d, want 1", got)
+	if got := r.Modal(ModalProps{Title: "Notice", Message: "Saved", Actions: []ModalAction{{Label: "OK", Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}}, ActionCount: 1}); got != 1 {
+		t.Fatalf("Modal message result=%d, want 1", got)
 	}
 	r.EndFrame()
 
 	r.QueueTap(460, 300)
 	r.BeginFrame()
-	if got := r.ConfirmDialog(ConfirmDialogProps{Title: "Delete", Message: "Continue?"}); got != 2 {
-		t.Fatalf("ConfirmDialog result=%d, want 2", got)
+	if got := r.Modal(ModalProps{Title: "Delete", Message: "Continue?", Actions: []ModalAction{{Label: "Cancel", Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, {Label: "OK", Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}}, ActionCount: 2}); got != 2 {
+		t.Fatalf("Modal confirm result=%d, want 2", got)
 	}
 	r.EndFrame()
 
@@ -911,8 +898,8 @@ func TestNativeDialogs(t *testing.T) {
 	r.QueueText("name")
 	r.QueueKey(KeyEnter)
 	r.BeginFrame()
-	if got := r.PromptDialog(PromptDialogProps{Title: "Name", Text: buf, Cursor: &cursor, Focused: &focused}); got != 2 || CString(buf) != "name" {
-		t.Fatalf("PromptDialog result=%d text=%q, want 2/name", got, CString(buf))
+	if got := r.Modal(ModalProps{Title: "Name", Actions: []ModalAction{{Label: "Cancel", Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, {Label: "OK", Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}}, ActionCount: 2, Text: buf, TextSize: int32(len(buf)), CursorPosition: &cursor, Focused: &focused}); got != 2 || CString(buf) != "name" {
+		t.Fatalf("prompt Modal result=%d text=%q, want 2/name", got, CString(buf))
 	}
 	r.EndFrame()
 }
@@ -921,8 +908,8 @@ func TestNativeNavigationAndFeedback(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	r.QueueTap(100, 450)
 	r.BeginFrame()
-	r.TitleBar("Workspace", 44)
-	r.TopNav(TopNavProps{ID: 10, Y: 44, Width: 300, Height: 40, Title: "Project"})
+	r.TitleBar(TitleBarProps{Title: "Workspace", Height: 44})
+	r.Toolbar(ToolbarProps{ID: 10, Y: 44, Width: 300, Height: 40})
 	r.NavigationBar(NavigationBarProps{ViewWidth: 640, ViewHeight: 480, Height: 60, Count: 2, Items: []NavigationBarItem{{Route: 1, Label: "Home", Active: true}, {Route: 2, Label: "Settings"}}})
 	r.ShowToastFor("Updated", 1)
 	r.EndFrame()
@@ -950,9 +937,9 @@ func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
 						r.BeginDisabled(disabled)
 					}
 					if slider {
-						r.SliderFloat(SliderFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 981, Values: values, Min: 0, Max: 100, Disabled: disabled && !scope})
+						r.sliderFloat(sliderFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 981, Values: values, Min: 0, Max: 100, Disabled: disabled && !scope}, false)
 					} else {
-						r.DragFloat(DragFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 982, Values: values, Speed: 1, Min: 0, Max: 100, Disabled: disabled && !scope})
+						r.dragFloat(dragFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 982, Values: values, Speed: 1, Min: 0, Max: 100, Disabled: disabled && !scope})
 					}
 					if scope {
 						r.EndDisabled()
@@ -980,32 +967,32 @@ func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
 func TestNativeDragScalars(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{1, 2}
-	floatProps := DragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 50, Label: "Position", Values: floats, ValueCount: 2, Speed: 0.1, Min: 0, Max: 10}
+	floatProps := dragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 50, Label: "Position", Values: floats, ValueCount: 2, Speed: 0.1, Min: 0, Max: 10}
 	r.QueueMouseButtonDown(MouseButtonLeft, 20, 20)
 	r.BeginFrame()
-	r.DragFloat(floatProps)
+	r.dragFloat(floatProps)
 	r.EndFrame()
 	r.QueueMouseMove(40, 20)
 	r.BeginFrame()
-	if !r.DragFloat(floatProps) || floats[0] != 3 || floats[1] != 2 {
-		t.Fatalf("DragFloat values=%v, want [3 2]", floats)
+	if !r.dragFloat(floatProps) || floats[0] != 3 || floats[1] != 2 {
+		t.Fatalf("Drag float values=%v, want [3 2]", floats)
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 40, 20)
 	r.BeginFrame()
-	r.DragFloat(floatProps)
+	r.dragFloat(floatProps)
 	r.EndFrame()
 
 	ints := []int32{3, 4}
-	intProps := DragIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 51, Label: "Size", Values: ints, ValueCount: 2, Speed: 0.5, Min: 0, Max: 10}
+	intProps := dragIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 51, Label: "Size", Values: ints, ValueCount: 2, Speed: 0.5, Min: 0, Max: 10}
 	r.QueueMouseButtonDown(MouseButtonLeft, 120, 60)
 	r.BeginFrame()
-	r.DragInt(intProps)
+	r.dragInt(intProps)
 	r.EndFrame()
 	r.QueueMouseMove(130, 60)
 	r.BeginFrame()
-	if !r.DragInt(intProps) || ints[0] != 3 || ints[1] != 9 {
-		t.Fatalf("DragInt values=%v, want [3 9]", ints)
+	if !r.dragInt(intProps) || ints[0] != 3 || ints[1] != 9 {
+		t.Fatalf("Drag int values=%v, want [3 9]", ints)
 	}
 	r.EndFrame()
 }
@@ -1013,13 +1000,13 @@ func TestNativeDragScalars(t *testing.T) {
 func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
 	floats := []float32{2.5}
-	drag := DragFloatProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 520,
+	drag := dragFloatProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 520,
 		Values: floats, ValueCount: 1, Speed: 0.1, Min: 0, Max: 10}
 
 	r.QueueKey(KeyLeftControl)
 	r.QueueTap(40, 20)
 	r.BeginFrame()
-	if r.DragFloat(drag) || floats[0] != 2.5 {
+	if r.dragFloat(drag) || floats[0] != 2.5 {
 		t.Fatalf("Ctrl-click changed drag value before editing: %v", floats)
 	}
 	r.EndFrame()
@@ -1036,30 +1023,30 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	r.QueueShortcut(KeyA)
 	r.QueueText("7.25")
 	r.BeginFrame()
-	if !r.DragFloat(drag) || floats[0] != 7.25 {
+	if !r.dragFloat(drag) || floats[0] != 7.25 {
 		t.Fatalf("edited drag value=%v, want 7.25", floats)
 	}
 	r.EndFrame()
 	r.QueueKey(KeyEnter)
 	r.BeginFrame()
-	r.DragFloat(drag)
+	r.dragFloat(drag)
 	r.EndFrame()
-	if r.numericInputs[numericInputKey{kind: numericEditDragFloat, widgetID: 520}].focused {
+	if r.numericInputs[numericInputKey{kind: numericEditDragScalar, widgetID: 520}].focused {
 		t.Fatal("Enter did not finish drag keyboard entry")
 	}
 
 	ints := []int32{4}
-	slider := SliderIntProps{Bounds: NewRectangle(10, 60, 120, 30), ID: 521,
+	slider := sliderIntProps{Bounds: NewRectangle(10, 60, 120, 30), ID: 521,
 		Values: ints, ValueCount: 1, Min: 0, Max: 10}
 	r.QueueKey(KeyLeftControl)
 	r.QueueTap(40, 70)
 	r.BeginFrame()
-	r.SliderInt(slider)
+	r.sliderInt(slider, false)
 	r.EndFrame()
 	r.QueueShortcut(KeyA)
 	r.QueueText("19")
 	r.BeginFrame()
-	if !r.SliderInt(slider) || ints[0] != 19 {
+	if !r.sliderInt(slider, false) || ints[0] != 19 {
 		t.Fatalf("temporary slider input should be unclamped: %v", ints)
 	}
 	r.EndFrame()
@@ -1068,30 +1055,30 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	r.QueueKey(KeyLeftControl)
 	r.QueueTap(40, 110)
 	r.BeginFrame()
-	r.DragInt(DragIntProps{Bounds: NewRectangle(10, 100, 120, 30), ID: 522,
+	r.dragInt(dragIntProps{Bounds: NewRectangle(10, 100, 120, 30), ID: 522,
 		Values: disabled, ValueCount: 1, Min: 0, Max: 10, Disabled: true})
 	r.EndFrame()
-	state := r.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 522}]
+	state := r.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 522}]
 	if state != nil && state.focused {
 		t.Fatal("disabled drag accepted Ctrl-click keyboard entry")
 	}
 
 	doubleRuntime := New(AppConfig{Width: 240, Height: 120}).(*runtime)
 	doubleValues := []int32{6}
-	doubleDrag := DragIntProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 523,
+	doubleDrag := dragIntProps{Bounds: NewRectangle(10, 10, 120, 30), ID: 523,
 		Values: doubleValues, ValueCount: 1, Speed: 1, Min: 0, Max: 10}
 	doubleRuntime.QueueTap(40, 20)
 	doubleRuntime.BeginFrame()
-	doubleRuntime.DragInt(doubleDrag)
+	doubleRuntime.dragInt(doubleDrag)
 	doubleRuntime.EndFrame()
-	if state := doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 523}]; state != nil {
+	if state := doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 523}]; state != nil {
 		t.Fatal("single click created a temporary drag editor")
 	}
 	doubleRuntime.QueueTap(40, 20)
 	doubleRuntime.BeginFrame()
-	doubleRuntime.DragInt(doubleDrag)
+	doubleRuntime.dragInt(doubleDrag)
 	doubleRuntime.EndFrame()
-	state = doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragInt, widgetID: 523}]
+	state = doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 523}]
 	if state == nil || !state.focused {
 		t.Fatal("double-click did not open temporary drag editor")
 	}
@@ -1101,12 +1088,12 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
 	floats := []float32{2, 5}
 	ints := []int32{2, 5}
-	floatProps := DragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 70, Values: floats, ValueCount: 2, Speed: 0.25, Min: 0, Max: 10}
-	intProps := DragIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 71, Values: ints, ValueCount: 2, Speed: 2, Min: 0, Max: 10}
+	floatProps := dragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 70, Values: floats, ValueCount: 2, Speed: 0.25, Min: 0, Max: 10}
+	intProps := dragIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 71, Values: ints, ValueCount: 2, Speed: 2, Min: 0, Max: 10}
 	draw := func() {
 		r.BeginFrame()
-		r.DragFloat(floatProps)
-		r.DragInt(intProps)
+		r.dragFloat(floatProps)
+		r.dragInt(intProps)
 		r.EndFrame()
 	}
 	draw()
@@ -1114,7 +1101,7 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	r.QueueKey(KeyRight)
 	draw()
 	if floats[0] != 2.25 {
-		t.Fatalf("DragFloat Right=%v, want 2.25", floats[0])
+		t.Fatalf("Drag float Right=%v, want 2.25", floats[0])
 	}
 	foundFocus := false
 	for _, op := range r.ops {
@@ -1128,41 +1115,41 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	r.QueueShiftKey(KeyRight)
 	draw()
 	if floats[0] != 4.75 {
-		t.Fatalf("DragFloat Shift+Right=%v, want 4.75", floats[0])
+		t.Fatalf("Drag float Shift+Right=%v, want 4.75", floats[0])
 	}
 	r.QueueKey(KeyTab)
 	draw()
 	if r.Focus() == 70 {
-		t.Fatal("DragFloat Tab did not reach second component")
+		t.Fatal("Drag float Tab did not reach second component")
 	}
 	r.QueueKey(KeyHome)
 	draw()
 	if floats[1] != 0 {
-		t.Fatalf("DragFloat Home=%v, want 0", floats[1])
+		t.Fatalf("Drag float Home=%v, want 0", floats[1])
 	}
 	r.SetFocus(71)
 	r.QueueKey(KeyRight)
 	draw()
 	if ints[0] != 4 {
-		t.Fatalf("DragInt Right=%d, want 4", ints[0])
+		t.Fatalf("Drag int Right=%d, want 4", ints[0])
 	}
 	r.QueueKey(KeyTab)
 	draw()
 	r.QueueKey(KeyLeft)
 	draw()
 	if ints[1] != 3 {
-		t.Fatalf("DragInt second Left=%d, want 3", ints[1])
+		t.Fatalf("Drag int second Left=%d, want 3", ints[1])
 	}
 
 	floatMin, floatMax := float32(2), float32(8)
 	intMin, intMax := int32(2), int32(8)
-	floatRange := DragFloatRange2Props{Bounds: NewRectangle(240, 10, 200, 30), ID: 72, CurrentMin: &floatMin, CurrentMax: &floatMax, Speed: 1, Min: 0, Max: 10}
-	intRange := DragIntRange2Props{Bounds: NewRectangle(240, 50, 200, 30), ID: 73, CurrentMin: &intMin, CurrentMax: &intMax, Speed: 2, Min: 0, Max: 10}
+	floatRange := dragFloatRangeProps{Bounds: NewRectangle(240, 10, 200, 30), ID: 72, CurrentMin: &floatMin, CurrentMax: &floatMax, Speed: 1, Min: 0, Max: 10}
+	intRange := dragIntRangeProps{Bounds: NewRectangle(240, 50, 200, 30), ID: 73, CurrentMin: &intMin, CurrentMax: &intMax, Speed: 2, Min: 0, Max: 10}
 	drawRanges := func(disabled bool) {
 		r.BeginFrame()
 		r.BeginDisabled(disabled)
-		r.DragFloatRange2(floatRange)
-		r.DragIntRange2(intRange)
+		r.dragFloatRange(floatRange)
+		r.dragIntRange(intRange)
 		r.EndDisabled()
 		r.EndFrame()
 	}
@@ -1171,33 +1158,33 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	r.QueueKey(KeyRight)
 	drawRanges(false)
 	if floatMin != 3 {
-		t.Fatalf("DragFloatRange2 min Right=%v, want 3", floatMin)
+		t.Fatalf("Drag range float min Right=%v, want 3", floatMin)
 	}
 	r.QueueKey(KeyTab)
 	drawRanges(false)
 	r.QueueKey(KeyLeft)
 	drawRanges(false)
 	if floatMax != 7 {
-		t.Fatalf("DragFloatRange2 max Left=%v, want 7", floatMax)
+		t.Fatalf("Drag range float max Left=%v, want 7", floatMax)
 	}
 	r.SetFocus(73)
 	r.QueueKey(KeyRight)
 	drawRanges(false)
 	if intMin != 4 {
-		t.Fatalf("DragIntRange2 min Right=%d, want 4", intMin)
+		t.Fatalf("Drag range int min Right=%d, want 4", intMin)
 	}
 	r.QueueKey(KeyTab)
 	drawRanges(false)
 	r.QueueKey(KeyLeft)
 	drawRanges(false)
 	if intMax != 6 {
-		t.Fatalf("DragIntRange2 max Left=%d, want 6", intMax)
+		t.Fatalf("Drag range int max Left=%d, want 6", intMax)
 	}
 	r.SetFocus(72)
 	r.QueueKey(KeyRight)
 	drawRanges(true)
 	if floatMin != 3 {
-		t.Fatalf("disabled DragFloatRange2 changed min to %v", floatMin)
+		t.Fatalf("disabled Drag range float changed min to %v", floatMin)
 	}
 }
 
@@ -1206,32 +1193,32 @@ func TestNativeSliders(t *testing.T) {
 	floats := []float32{0, 2}
 	r.QueueMouseButtonDown(MouseButtonLeft, 60, 20)
 	r.BeginFrame()
-	if !r.SliderFloat(SliderFloatProps{Bounds: NewRectangle(10, 10, 100, 30), ID: 60, Values: floats, ValueCount: 1, Min: 0, Max: 10}) || floats[0] != 5 {
-		t.Fatalf("SliderFloat values=%v, want [5 2]", floats)
+	if !r.sliderFloat(sliderFloatProps{Bounds: NewRectangle(10, 10, 100, 30), ID: 60, Values: floats, ValueCount: 1, Min: 0, Max: 10}, false) || floats[0] != 5 {
+		t.Fatalf("Slider float values=%v, want [5 2]", floats)
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 60, 20)
 	r.BeginFrame()
-	r.SliderFloat(SliderFloatProps{Bounds: NewRectangle(10, 10, 100, 30), ID: 60, Values: floats, ValueCount: 1, Min: 0, Max: 10})
+	r.sliderFloat(sliderFloatProps{Bounds: NewRectangle(10, 10, 100, 30), ID: 60, Values: floats, ValueCount: 1, Min: 0, Max: 10}, false)
 	r.EndFrame()
 
 	ints := []int32{0}
 	r.QueueMouseButtonDown(MouseButtonLeft, 130, 25)
 	r.BeginFrame()
-	if !r.VSliderInt(SliderIntProps{Bounds: NewRectangle(120, 10, 30, 100), ID: 61, Values: ints, Min: 0, Max: 10}) || ints[0] != 9 {
-		t.Fatalf("VSliderInt value=%d, want 9", ints[0])
+	if !r.sliderInt(sliderIntProps{Bounds: NewRectangle(120, 10, 30, 100), ID: 61, Values: ints, Min: 0, Max: 10}, true) || ints[0] != 9 {
+		t.Fatalf("VSlider int value=%d, want 9", ints[0])
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 130, 25)
 	r.BeginFrame()
-	r.VSliderInt(SliderIntProps{Bounds: NewRectangle(120, 10, 30, 100), ID: 61, Values: ints, Min: 0, Max: 10})
+	r.sliderInt(sliderIntProps{Bounds: NewRectangle(120, 10, 30, 100), ID: 61, Values: ints, Min: 0, Max: 10}, true)
 	r.EndFrame()
 
 	angle := float32(0)
 	r.QueueMouseButtonDown(MouseButtonLeft, 75, 140)
 	r.BeginFrame()
-	if !r.SliderAngle(SliderAngleProps{Bounds: NewRectangle(10, 130, 100, 30), ID: 62, Value: &angle, MinDegrees: -180, MaxDegrees: 180}) || angle < 0.94 || angle > 0.95 {
-		t.Fatalf("SliderAngle radians=%f, want about 0.942", angle)
+	if !r.sliderAngle(sliderAngleProps{Bounds: NewRectangle(10, 130, 100, 30), ID: 62, Value: &angle, MinDegrees: -180, MaxDegrees: 180}) || angle < 0.94 || angle > 0.95 {
+		t.Fatalf("Slider angle radians=%f, want about 0.942", angle)
 	}
 	r.EndFrame()
 }
@@ -1239,26 +1226,26 @@ func TestNativeSliders(t *testing.T) {
 func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{0.25, 0.75}
-	floatProps := SliderFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 600,
+	floatProps := sliderFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 600,
 		Values: floats, ValueCount: 2, Min: 0, Max: 1}
 
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	r.QueueMouseButtonDown(MouseButtonLeft, 35, 20)
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	if r.Focus() != 600 {
 		t.Fatalf("clicked slider focus=%d, want 600", r.Focus())
 	}
 	r.QueueMouseButtonUp(MouseButtonLeft, 35, 20)
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	r.QueueKey(KeyRight)
 	r.BeginFrame()
-	if !r.SliderFloat(floatProps) || floats[0] < 0.2599 || floats[0] > 0.2601 {
+	if !r.sliderFloat(floatProps, false) || floats[0] < 0.2599 || floats[0] > 0.2601 {
 		t.Fatalf("horizontal slider Right values=%v, want first value 0.26", floats)
 	}
 	r.EndFrame()
@@ -1273,7 +1260,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	}
 	r.QueueShiftKey(KeyRight)
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	if floats[0] < 0.3599 || floats[0] > 0.3601 {
 		t.Fatalf("Shift slider value=%v, want 0.36", floats[0])
@@ -1281,7 +1268,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	r.QueueKey(KeyLeftAlt)
 	r.QueueKey(KeyRight)
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	if floats[0] < 0.3609 || floats[0] > 0.3611 {
 		t.Fatalf("Alt slider value=%v, want 0.361", floats[0])
@@ -1289,7 +1276,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 
 	r.QueueKey(KeyTab)
 	r.BeginFrame()
-	r.SliderFloat(floatProps)
+	r.sliderFloat(floatProps, false)
 	r.EndFrame()
 	secondFocus := sliderFocusID(600, 1, false)
 	if r.Focus() != secondFocus {
@@ -1297,13 +1284,13 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	}
 	r.QueueKey(KeyLeft)
 	r.BeginFrame()
-	if !r.SliderFloat(floatProps) || floats[1] < 0.7399 || floats[1] > 0.7401 {
+	if !r.sliderFloat(floatProps, false) || floats[1] < 0.7399 || floats[1] > 0.7401 {
 		t.Fatalf("second slider component Left values=%v, want second value 0.74", floats)
 	}
 	r.EndFrame()
 
 	ints := []int32{5}
-	intProps := SliderIntProps{Bounds: NewRectangle(10, 60, 30, 120), ID: 601,
+	intProps := sliderIntProps{Bounds: NewRectangle(10, 60, 30, 120), ID: 601,
 		Values: ints, ValueCount: 1, Min: 0, Max: 10}
 	r.SetFocus(601)
 	for _, step := range []struct {
@@ -1312,7 +1299,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	}{{KeyUp, 6}, {KeyDown, 5}, {KeyHome, 0}, {KeyEnd, 10}} {
 		r.QueueKey(step.key)
 		r.BeginFrame()
-		if !r.VSliderInt(intProps) || ints[0] != step.want {
+		if !r.sliderInt(intProps, true) || ints[0] != step.want {
 			t.Fatalf("vertical slider key %d value=%d, want %d", step.key, ints[0], step.want)
 		}
 		r.EndFrame()
@@ -1322,7 +1309,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	r.SetFocus(601)
 	r.QueueKey(KeyLeft)
 	r.BeginFrame()
-	if r.VSliderInt(intProps) || ints[0] != 10 {
+	if r.sliderInt(intProps, true) || ints[0] != 10 {
 		t.Fatalf("disabled slider accepted keyboard input: value=%d", ints[0])
 	}
 	r.EndFrame()
@@ -1331,32 +1318,32 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 func TestNativeDragRangesKeepOrderedEndpoints(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floatMin, floatMax := float32(2), float32(4)
-	floatProps := DragFloatRange2Props{Bounds: NewRectangle(10, 10, 200, 30), ID: 63, Label: "Float range", CurrentMin: &floatMin, CurrentMax: &floatMax, Speed: 1, Min: 0, Max: 10, Format: "%.1f", FormatMax: "max %.1f"}
+	floatProps := dragFloatRangeProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 63, Label: "Float range", CurrentMin: &floatMin, CurrentMax: &floatMax, Speed: 1, Min: 0, Max: 10, Format: "%.1f", FormatMax: "max %.1f"}
 	r.QueueMouseButtonDown(MouseButtonLeft, 20, 20)
 	r.BeginFrame()
-	r.DragFloatRange2(floatProps)
+	r.dragFloatRange(floatProps)
 	r.EndFrame()
 	r.QueueMouseMove(80, 20)
 	r.BeginFrame()
-	if !r.DragFloatRange2(floatProps) || floatMin != floatMax {
-		t.Fatalf("DragFloatRange2 range=[%v,%v], want ordered endpoints clamped together", floatMin, floatMax)
+	if !r.dragFloatRange(floatProps) || floatMin != floatMax {
+		t.Fatalf("Drag range float range=[%v,%v], want ordered endpoints clamped together", floatMin, floatMax)
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 80, 20)
 	r.BeginFrame()
-	r.DragFloatRange2(floatProps)
+	r.dragFloatRange(floatProps)
 	r.EndFrame()
 
 	intMin, intMax := int32(2), int32(8)
-	intProps := DragIntRange2Props{Bounds: NewRectangle(120, 50, 200, 30), ID: 64, Label: "Int range", CurrentMin: &intMin, CurrentMax: &intMax, Speed: 1, Min: 0, Max: 10, FormatMax: "max %d"}
+	intProps := dragIntRangeProps{Bounds: NewRectangle(120, 50, 200, 30), ID: 64, Label: "Int range", CurrentMin: &intMin, CurrentMax: &intMax, Speed: 1, Min: 0, Max: 10, FormatMax: "max %d"}
 	r.QueueMouseButtonDown(MouseButtonLeft, 250, 60)
 	r.BeginFrame()
-	r.DragIntRange2(intProps)
+	r.dragIntRange(intProps)
 	r.EndFrame()
 	r.QueueMouseMove(200, 60)
 	r.BeginFrame()
-	if !r.DragIntRange2(intProps) || intMax != intMin {
-		t.Fatalf("DragIntRange2 range=[%d,%d], want ordered endpoints clamped together", intMin, intMax)
+	if !r.dragIntRange(intProps) || intMax != intMin {
+		t.Fatalf("Drag range int range=[%d,%d], want ordered endpoints clamped together", intMin, intMax)
 	}
 	r.EndFrame()
 }
@@ -1364,47 +1351,47 @@ func TestNativeDragRangesKeepOrderedEndpoints(t *testing.T) {
 func TestNativeNumericInputs(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{1.25, 2.5}
-	floatProps := InputFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 70, Values: floats, ValueCount: 2}
+	floatProps := inputFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 70, Values: floats, ValueCount: 2}
 	r.QueueTap(30, 20)
 	r.BeginFrame()
-	r.InputFloat(floatProps)
+	r.inputFloat(floatProps)
 	r.EndFrame()
 	r.QueueShortcut(KeyA)
 	r.QueueText("3.5")
 	r.BeginFrame()
-	if !r.InputFloat(floatProps) || floats[0] != 3.5 || floats[1] != 2.5 {
-		t.Fatalf("InputFloat values=%v, want [3.5 2.5]", floats)
+	if !r.inputFloat(floatProps) || floats[0] != 3.5 || floats[1] != 2.5 {
+		t.Fatalf("Input float values=%v, want [3.5 2.5]", floats)
 	}
 	r.EndFrame()
 
 	ints := []int32{4}
-	intProps := InputIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 71, Values: ints, Step: 2, StepFast: 10}
+	intProps := inputIntProps{Bounds: NewRectangle(10, 50, 200, 30), ID: 71, Values: ints, Step: 2, StepFast: 10}
 	r.QueueTap(198, 60)
 	r.BeginFrame()
-	if !r.InputInt(intProps) || ints[0] != 6 {
-		t.Fatalf("InputInt step value=%d, want 6", ints[0])
+	if !r.inputInt(intProps) || ints[0] != 6 {
+		t.Fatalf("Input int step value=%d, want 6", ints[0])
 	}
 	r.EndFrame()
 	state := r.numericInputState(numericInputKey{kind: 1, widgetID: 71, component: 0}, "6")
 	r.SetFocus(state.token + 2)
 	r.QueueKey(KeySpace)
 	r.BeginFrame()
-	if !r.InputInt(intProps) || ints[0] != 8 {
-		t.Fatalf("InputInt keyboard step value=%d, want 8", ints[0])
+	if !r.inputInt(intProps) || ints[0] != 8 {
+		t.Fatalf("Input int keyboard step value=%d, want 8", ints[0])
 	}
 	r.EndFrame()
 
 	doubles := []float64{1}
-	doubleProps := InputDoubleProps{Bounds: NewRectangle(10, 90, 200, 30), ID: 72, Values: doubles}
+	doubleProps := inputDoubleProps{Bounds: NewRectangle(10, 90, 200, 30), ID: 72, Values: doubles}
 	r.QueueTap(30, 100)
 	r.BeginFrame()
-	r.InputDouble(doubleProps)
+	r.inputDouble(doubleProps)
 	r.EndFrame()
 	r.QueueShortcut(KeyA)
 	r.QueueText("2.125")
 	r.BeginFrame()
-	if !r.InputDouble(doubleProps) || doubles[0] != 2.125 {
-		t.Fatalf("InputDouble value=%f, want 2.125", doubles[0])
+	if !r.inputDouble(doubleProps) || doubles[0] != 2.125 {
+		t.Fatalf("Input double value=%f, want 2.125", doubles[0])
 	}
 	r.EndFrame()
 }
@@ -1473,11 +1460,11 @@ func TestNativeBasicImGuiWidgets(t *testing.T) {
 
 	r.QueueTap(20, 100)
 	r.BeginFrame()
-	if !r.ArrowButton(ArrowButtonProps{Bounds: NewRectangle(10, 90, 30, 24), ID: 82, Direction: ArrowDown}) {
-		t.Fatal("ArrowButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 90, 30, 24), ID: 82, Arrow: true, Direction: int32(ArrowDown)}) {
+		t.Fatal("arrow Button did not consume its tap")
 	}
 	r.Bullet(NewRectangle(50, 90, 20, 20))
-	r.Separator(NewRectangle(80, 90, 100, 20), 0)
+	r.Separator(SeparatorProps{Bounds: NewRectangle(80, 90, 100, 20)})
 	ops := r.FrameOps()
 	if len(ops) != 3 || ops[0].Text != "v" || ops[1].Kind != FrameOpRect || ops[2].Kind != FrameOpLine {
 		t.Fatalf("basic ImGui widget ops=%#v", ops)
@@ -1498,29 +1485,30 @@ func TestNativeSelectionAndImageWidgets(t *testing.T) {
 	flags := int32(1)
 	r.QueueTap(20, 60)
 	r.BeginFrame()
-	if !r.CheckboxFlags(CheckboxFlagsProps{Bounds: NewRectangle(10, 50, 140, 28), ID: 84, Label: "Feature", Flags: &flags, FlagsValue: 4}) || flags != 5 {
-		t.Fatalf("CheckboxFlags flags=%d, want 5", flags)
+	if !r.Checkbox(CheckboxProps{Bounds: NewRectangle(10, 50, 140, 28), ID: 84, Label: "Feature", Flags: &flags, FlagsValue: 4}) || flags != 5 {
+		t.Fatalf("Checkbox flags=%d, want 5", flags)
 	}
 	r.EndFrame()
 
-	picture := PictureProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 90, 48, 32), Tint: White, Fit: PictureFitContain}
+	image := ImageProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 90, 48, 32), Tint: White, Fit: ImageFitContain}
 	r.BeginFrame()
-	r.ImageWithBg(ImageWithBgProps{Picture: picture, Background: Color{R: 10, G: 20, B: 30, A: 255}})
+	image.Style = ImageStyle{Enabled: true, Background: Color{R: 10, G: 20, B: 30, A: 255}}
+	r.Image(image)
 	ops := r.FrameOps()
-	if len(ops) != 2 || ops[0].Kind != FrameOpRect || ops[1].Kind != FrameOpPicture {
-		t.Fatalf("ImageWithBg ops=%#v", ops)
+	if len(ops) != 2 || ops[0].Kind != FrameOpRect || ops[1].Kind != FrameOpImage {
+		t.Fatalf("Image style ops=%#v", ops)
 	}
 	r.EndFrame()
 
-	picture.Bounds = NewRectangle(70, 90, 48, 32)
+	image.Bounds = NewRectangle(70, 90, 48, 32)
 	r.QueueTap(80, 100)
 	r.BeginFrame()
-	if !r.ImageButton(ImageButtonProps{Picture: picture, Background: Color{R: 40, G: 50, B: 60, A: 255}, ID: 85}) {
-		t.Fatal("ImageButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: image.Tint, ImageFit: int32(image.Fit), ImageBackground: Color{R: 40, G: 50, B: 60, A: 255}, ID: 85}) {
+		t.Fatal("Button image content did not consume its tap")
 	}
 	ops = r.FrameOps()
-	if len(ops) != 2 || ops[0].Kind != FrameOpButton || ops[1].Kind != FrameOpPicture {
-		t.Fatalf("ImageButton ops=%#v", ops)
+	if len(ops) != 2 || ops[0].Kind != FrameOpButton || ops[1].Kind != FrameOpImage {
+		t.Fatalf("Button image ops=%#v", ops)
 	}
 	r.EndFrame()
 }
@@ -1528,31 +1516,31 @@ func TestNativeSelectionAndImageWidgets(t *testing.T) {
 func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	checkbox, selected, flags := int32(0), int32(0), int32(0)
-	picture := PictureProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 170, 48, 32), Tint: White, Fit: PictureFitContain}
+	image := ImageProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 170, 48, 32), Tint: White, Fit: ImageFitContain}
 	activations := make(map[int32]int)
 	draw := func(disableFlags bool) {
 		r.BeginFrame()
-		if r.Checkbox(900, 10, 10, "Check", &checkbox) {
+		if r.Checkbox(CheckboxProps{Bounds: NewRectangle(10, 10, 120, 34), ID: 900, Label: "Check", Value: &checkbox}) {
 			activations[900]++
 		}
 		if r.Selectable(SelectableProps{Bounds: NewRectangle(10, 50, 140, 28), ID: 901, Label: "Choice", Selected: &selected}) {
 			activations[901]++
 		}
 		r.BeginDisabled(disableFlags)
-		if r.CheckboxFlags(CheckboxFlagsProps{Bounds: NewRectangle(10, 90, 140, 28), ID: 902, Label: "Flag", Flags: &flags, FlagsValue: 4}) {
+		if r.Checkbox(CheckboxProps{Bounds: NewRectangle(10, 90, 140, 28), ID: 902, Label: "Flag", Flags: &flags, FlagsValue: 4}) {
 			activations[902]++
 		}
 		r.EndDisabled()
-		if got := r.Radio(RadioButtonProps{Bounds: NewRectangle(10, 130, 140, 28), ID: 903, Label: "Radio"}); got != 0 {
+		if got := r.Radio(RadioProps{Bounds: NewRectangle(10, 130, 140, 28), ID: 903, Label: "Radio"}); got != 0 {
 			activations[got]++
 		}
-		if r.ImageButton(ImageButtonProps{Picture: picture, Background: Black, ID: 904}) {
+		if r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: image.Tint, ImageFit: int32(image.Fit), ImageBackground: Black, ID: 904}) {
 			activations[904]++
 		}
 		if r.InvisibleButton(InvisibleButtonProps{Bounds: NewRectangle(70, 170, 48, 32), ID: 905}) {
 			activations[905]++
 		}
-		if r.ColorButton(ColorButtonProps{Bounds: NewRectangle(10, 220, 100, 32), ID: 906, Label: "Color", Color: Color{R: 255, A: 255}}) {
+		if r.Button(ButtonProps{Bounds: NewRectangle(10, 220, 100, 32), ID: 906, Label: "Color", Swatch: true, SwatchColor: Color{R: 255, A: 255}}) {
 			activations[906]++
 		}
 		r.EndFrame()
@@ -1610,7 +1598,7 @@ func TestToggleKeyboardNavigation(t *testing.T) {
 	draw := func(disabled bool) bool {
 		r.BeginFrame()
 		r.BeginDisabled(disabled)
-		activated := r.Toggle(907, 10, 10, 120, 34, &value, "Off", "On")
+		activated := r.Toggle(ToggleProps{Bounds: NewRectangle(10, 10, 120, 34), ID: 907, Value: &value, OffLabel: "Off", OnLabel: "On"})
 		r.EndDisabled()
 		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 908, Label: "Next"})
 		r.EndFrame()
@@ -1648,17 +1636,17 @@ func TestToggleKeyboardNavigation(t *testing.T) {
 	}
 }
 
-func TestNativeSeparatorText(t *testing.T) {
+func TestNativeSeparatorLabel(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.BeginFrame()
-	r.SeparatorText(SeparatorTextProps{Bounds: NewRectangle(10, 20, 200, 24), Label: "Section", Font: Text14})
+	r.Separator(SeparatorProps{Bounds: NewRectangle(10, 20, 200, 24), Label: "Section", Font: Text14})
 	r.EndFrame()
 	ops := r.FrameOps()
 	if len(ops) != 2 || ops[0].Kind != FrameOpText || ops[0].Text != "Section" || ops[1].Kind != FrameOpLine {
-		t.Fatalf("SeparatorText ops=%#v", ops)
+		t.Fatalf("Separator label ops=%#v", ops)
 	}
 	if ops[1].Bounds.X <= ops[0].Bounds.X+ops[0].Bounds.Width {
-		t.Fatalf("SeparatorText rule overlaps label: text=%+v line=%+v", ops[0].Bounds, ops[1].Bounds)
+		t.Fatalf("Separator rule overlaps label: text=%+v line=%+v", ops[0].Bounds, ops[1].Bounds)
 	}
 }
 
@@ -1666,26 +1654,28 @@ func TestNativeTabItemControls(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if !r.TabItemButton(TabItemButtonProps{Bounds: NewRectangle(10, 10, 60, 28), ID: 86, Label: "+", Font: Text14}) {
-		t.Fatal("TabItemButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 10, 60, 28), ID: 86, Label: "+", Font: Text14, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisGhost}) {
+		t.Fatal("Button did not consume its tap")
 	}
 	r.EndFrame()
 
 	tabs := []Tab{{Label: "One", Closeable: true}, {Label: "Two", Closeable: true}}
 	selected, closed := int32(0), int32(-1)
-	props := ClosableTabBarProps{Bounds: NewRectangle(10, 60, 200, 30), Tabs: tabs, Count: 2, SelectedIndex: &selected, Font: Text14, ClosedIndex: &closed}
+	props := TabBarProps{Bounds: NewRectangle(10, 60, 200, 30), Tabs: tabs, Count: 2, SelectedIndex: selected, Font: Text14, MinTabWidth: 100, MaxTabWidth: 100, ClosedIndex: &closed}
 	r.QueueTap(195, 70)
 	r.BeginFrame()
-	if clicked := r.ClosableTabBar(props); clicked != -1 || closed != 1 || selected != 0 {
+	if clicked := r.TabBar(props); clicked != -1 || closed != 1 || selected != 0 {
 		t.Fatalf("close result clicked=%d closed=%d selected=%d", clicked, closed, selected)
 	}
 	r.EndFrame()
 
+	props.SelectedIndex = selected
 	r.QueueTap(130, 70)
 	r.BeginFrame()
-	if clicked := r.ClosableTabBar(props); clicked != 1 || closed != -1 || selected != 1 {
+	if clicked := r.TabBar(props); clicked != 1 || closed != -1 {
 		t.Fatalf("select result clicked=%d closed=%d selected=%d", clicked, closed, selected)
 	}
+	selected = 1
 	r.EndFrame()
 }
 
@@ -1874,7 +1864,7 @@ func TestNativeComposedTabBarScope(t *testing.T) {
 	}
 	if r.BeginTabItem(1) {
 		visible = 1
-		r.Checkbox(928, 20, 60, "Second", &visible)
+		r.Checkbox(CheckboxProps{Bounds: NewRectangle(20, 60, 120, 34), ID: 928, Label: "Second", Value: &visible})
 		r.EndTabItem()
 	}
 	r.EndTabBar()
@@ -1948,7 +1938,7 @@ func TestManyComboIdentities(t *testing.T) {
 			if i == 0 {
 				x = 10
 			}
-			r.Combobox(ComboboxProps{Bounds: NewRectangle(x, 10, 160, 28), ID: int32(20000 + i),
+			r.Dropdown(DropdownProps{Bounds: NewRectangle(x, 10, 160, 28), ID: int32(20000 + i),
 				Options: []string{"One", "Two"}, SelectedIndex: &selected[i]})
 		}
 		r.EndFrame()
@@ -1985,7 +1975,7 @@ func TestLargeComboOptions(t *testing.T) {
 	selected := int32(0)
 	draw := func() {
 		r.BeginFrame()
-		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 21000,
+		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 21000,
 			Options: options, SelectedIndex: &selected})
 		r.EndFrame()
 	}
@@ -2009,7 +1999,7 @@ func TestLongComboLabelOwnership(t *testing.T) {
 	selected := int32(0)
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 22000,
+	r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 22000,
 		Options: options, SelectedIndex: &selected})
 	options[0] = "changed"
 	r.EndFrame()
@@ -2035,7 +2025,7 @@ func TestComboKeyboardNavigation(t *testing.T) {
 			r.QueueKey(key)
 		}
 		r.BeginFrame()
-		r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 23000,
+		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 23000,
 			Options: options, SelectedIndex: &selected})
 		r.EndFrame()
 		want := int32(0)
@@ -2060,7 +2050,7 @@ func TestComboKeyboardOpen(t *testing.T) {
 			r.BeginFrame()
 			r.SetFocus(24000)
 			r.BeginDisabled(mode == 2)
-			r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 24000,
+			r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 24000,
 				Options: []string{"One", "Two"}, SelectedIndex: &selected, Disabled: mode == 1})
 			r.EndDisabled()
 			r.EndFrame()
@@ -2196,35 +2186,35 @@ func TestNativeColorWidgets(t *testing.T) {
 	rgb := []float32{0, 0.25, 0.75}
 	r.QueueMouseButtonDown(MouseButtonLeft, 40, 20)
 	r.BeginFrame()
-	if !r.ColorEdit3(ColorEditProps{Bounds: NewRectangle(10, 10, 180, 30), ID: 90, Values: rgb, ValueCount: 3}) || rgb[0] != 0.5 {
-		t.Fatalf("ColorEdit3 values=%v, want red 0.5", rgb)
+	if !r.ColorPicker(ColorPickerProps{Bounds: NewRectangle(10, 10, 180, 30), ID: 90, Values: rgb, ValueCount: 3}) || rgb[0] != 0.5 {
+		t.Fatalf("ColorPicker edit values=%v, want red 0.5", rgb)
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 40, 20)
 	r.BeginFrame()
-	r.ColorEdit3(ColorEditProps{Bounds: NewRectangle(10, 10, 180, 30), ID: 90, Values: rgb, ValueCount: 3})
+	r.ColorPicker(ColorPickerProps{Bounds: NewRectangle(10, 10, 180, 30), ID: 90, Values: rgb, ValueCount: 3})
 	r.EndFrame()
 
 	rgba := []float32{0.1, 0.2, 0.3, 0}
 	r.QueueMouseButtonDown(MouseButtonLeft, 60, 200)
 	r.BeginFrame()
-	if !r.ColorPicker4(ColorEditProps{Bounds: NewRectangle(10, 60, 100, 200), ID: 91, Values: rgba, ValueCount: 4}) || rgba[3] != 0.5 {
-		t.Fatalf("ColorPicker4 values=%v, want alpha 0.5", rgba)
+	if !r.ColorPicker(ColorPickerProps{Bounds: NewRectangle(10, 60, 100, 200), ID: 91, Values: rgba, ValueCount: 4, Picker: true}) || rgba[3] != 0.5 {
+		t.Fatalf("ColorPicker values=%v, want alpha 0.5", rgba)
 	}
 	r.EndFrame()
 	r.QueueMouseButtonUp(MouseButtonLeft, 60, 200)
 	r.BeginFrame()
-	r.ColorPicker4(ColorEditProps{Bounds: NewRectangle(10, 60, 100, 200), ID: 91, Values: rgba, ValueCount: 4})
+	r.ColorPicker(ColorPickerProps{Bounds: NewRectangle(10, 60, 100, 200), ID: 91, Values: rgba, ValueCount: 4, Picker: true})
 	r.EndFrame()
 
 	r.QueueTap(150, 20)
 	r.BeginFrame()
-	if !r.ColorButton(ColorButtonProps{Bounds: NewRectangle(130, 10, 60, 30), ID: 92, Label: "Tint", Color: Color{20, 40, 60, 128}}) {
-		t.Fatal("ColorButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: NewRectangle(130, 10, 60, 30), ID: 92, Label: "Tint", Swatch: true, SwatchColor: Color{20, 40, 60, 128}}) {
+		t.Fatal("Button swatch did not consume its tap")
 	}
 	ops := r.FrameOps()
-	if len(ops) != 4 || ops[3].Kind != FrameOpButton || ops[3].Color.A != 128 {
-		t.Fatalf("ColorButton ops=%#v", ops)
+	if len(ops) != 1 || ops[0].Kind != FrameOpButton || ops[0].Color.A != 128 {
+		t.Fatalf("Button swatch ops=%#v", ops)
 	}
 	r.EndFrame()
 }

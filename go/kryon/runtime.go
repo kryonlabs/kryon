@@ -37,7 +37,7 @@ type ThemeId int32
 type ThemeStyle int32
 type ThemeSource int32
 type ThemeMode int32
-type PictureFit int32
+type ImageFit int32
 type MenuItemKind int32
 type UISemanticKind int32
 
@@ -128,9 +128,9 @@ const (
 )
 
 const (
-	PictureFitStretch PictureFit = iota
-	PictureFitContain
-	PictureFitCover
+	ImageFitStretch ImageFit = iota
+	ImageFitContain
+	ImageFitCover
 
 	Text8  int32 = 8
 	Text12 int32 = 12
@@ -168,9 +168,9 @@ const (
 	THEME_SWEET    = 14
 	THEME_COUNT    = 15
 
-	PICTURE_FIT_STRETCH = PictureFitStretch
-	PICTURE_FIT_CONTAIN = PictureFitContain
-	PICTURE_FIT_COVER   = PictureFitCover
+	IMAGE_FIT_STRETCH = ImageFitStretch
+	IMAGE_FIT_CONTAIN = ImageFitContain
+	IMAGE_FIT_COVER   = ImageFitCover
 )
 
 const (
@@ -180,7 +180,7 @@ const (
 	UISemanticHeading
 	UISemanticParagraph
 	UISemanticLink
-	UISemanticPicture
+	UISemanticImage
 	UISemanticButton
 
 	UI_SEMANTIC_NONE      = UISemanticNone
@@ -189,7 +189,7 @@ const (
 	UI_SEMANTIC_HEADING   = UISemanticHeading
 	UI_SEMANTIC_PARAGRAPH = UISemanticParagraph
 	UI_SEMANTIC_LINK      = UISemanticLink
-	UI_SEMANTIC_PICTURE   = UISemanticPicture
+	UI_SEMANTIC_IMAGE     = UISemanticImage
 	UI_SEMANTIC_BUTTON    = UISemanticButton
 )
 
@@ -367,64 +367,6 @@ type TextInputStyle struct {
 	PaddingY    int32
 }
 
-type ThemeSettingsState struct {
-	DrawSourceMenu  int32
-	DrawModeMenu    int32
-	DrawPaletteMenu int32
-	DrawStyleMenu   int32
-	PaletteIndex    int32
-}
-
-type ThemeSettingsProps struct {
-	IdBase                int32
-	X, Y, W               int32
-	ThemeSource           *int32
-	ThemeMode             *int32
-	ThemeId               *int32
-	ThemeStyle            *int32
-	AllowSystemSource     int32
-	AllowSystemMode       int32
-	ThemeLabel            string
-	SourceAppLabel        string
-	SourceSystemLabel     string
-	ModeLabel             string
-	ModeSystemLabel       string
-	ModeLightLabel        string
-	ModeDarkLabel         string
-	PaletteLabel          string
-	StyleLabel            string
-	StyleSystemLabel      string
-	StyleClassicLabel     string
-	StyleDefaultLabel     string
-	StyleFluentLabel      string
-	StyleAdwaitaLabel     string
-	StyleLiquidGlassLabel string
-	SystemThemeLabel      string
-}
-
-type ThemeSettingsResult struct {
-	Changed        int32
-	SourceChanged  int32
-	ModeChanged    int32
-	PaletteChanged int32
-	StyleChanged   int32
-}
-
-type MenuButtonProps struct {
-	Button    ButtonProps
-	MenuID    int32
-	Items     []MenuItem
-	ItemCount int32
-	Open      *int32
-}
-
-type SplitButtonProps = MenuButtonProps
-
-type SplitButtonResult struct {
-	Clicked     bool
-	ActivatedID int32
-}
-
 type ThemeColors struct {
 	Background, Surface, SurfaceRaised, SurfaceSunken, Overlay Color
 	Text, MutedText, DisabledText, Icon, MutedIcon             Color
@@ -469,32 +411,22 @@ type SelectableProps struct {
 	Disabled bool
 }
 
-type CheckboxFlagsProps struct {
+type CheckboxProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
+	Value      *int32
 	Flags      *int32
 	FlagsValue int32
 	Disabled   bool
 }
 
-type ImageWithBgProps struct {
-	Picture    PictureProps
-	Background Color
-}
-
-type ImageButtonProps struct {
-	Picture    PictureProps
-	Background Color
-	ID         int32
-	Disabled   bool
-}
-
-type TabItemButtonProps struct {
+type ToggleProps struct {
 	Bounds   Rectangle
 	ID       int32
-	Label    string
-	Font     int32
+	Value    *int32
+	OffLabel string
+	OnLabel  string
 	Disabled bool
 }
 
@@ -528,17 +460,6 @@ type TabBarProps struct {
 	Disabled           bool
 }
 
-type ClosableTabBarProps struct {
-	Bounds        Rectangle
-	Tabs          []Tab
-	Count         int32
-	SelectedIndex *int32
-	Font          int32
-	ClosedIndex   *int32
-	ID            int32
-	Disabled      bool
-}
-
 type tabBarScope struct {
 	count    int32
 	selected int32
@@ -551,8 +472,9 @@ type InvisibleButtonProps struct {
 	Disabled bool
 }
 
-type SeparatorTextProps struct {
+type SeparatorProps struct {
 	Bounds   Rectangle
+	Vertical bool
 	Label    string
 	Font     int32
 	Disabled bool
@@ -598,39 +520,14 @@ const (
 	ArrowDown
 )
 
-type ArrowButtonProps struct {
-	Bounds    Rectangle
-	ID        int32
-	Direction ArrowDirection
-	Disabled  bool
-}
-
-type ColorEditProps struct {
+type ColorPickerProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
 	Values     []float32
 	ValueCount int32
 	Disabled   bool
-}
-
-type ColorButtonProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Label    string
-	Color    Color
-	Disabled bool
-}
-
-type HrefProps struct {
-	Bounds     Rectangle
-	Text       string
-	Href       string
-	Font       int32
-	FocusID    int32
-	Disabled   bool
-	Color      Color
-	HoverColor Color
+	Picker     bool
 }
 
 type TextFieldProps struct {
@@ -703,7 +600,7 @@ const (
 	ComboHeightRegular
 	ComboHeightLarge
 	ComboHeightLargest
-	ComboNoArrowButton
+	ComboNoArrow
 	ComboNoPreview
 	ComboWidthFitPreview
 )
@@ -775,14 +672,29 @@ type ParagraphSpec struct {
 	Align    TextAlign
 }
 
-type PictureProps struct {
+type ImageProps struct {
 	AssetPath string
 	Bounds    Rectangle
 	Source    Rectangle
 	Origin    Vector2
 	Rotation  float32
 	Tint      Color
-	Fit       PictureFit
+	Fit       ImageFit
+	Style     ImageStyle
+}
+
+type ImageStyle struct {
+	Enabled        bool
+	Background     Color
+	TonalOverlay   Color
+	SurfaceOverlay Color
+	ScrimTop       Color
+	ScrimBottom    Color
+	Outline        Color
+	Roundness      float32
+	RadiusPx       int32
+	Segments       int32
+	OutlinePx      int32
 }
 
 type PageProps struct {
@@ -826,12 +738,31 @@ type ParagraphTextProps struct {
 type LinkProps struct {
 	Bounds     Rectangle
 	Text       string
-	Href       string
+	Link       string
 	Font       int32
 	FocusID    int32
 	Disabled   bool
 	Color      Color
 	HoverColor Color
+}
+
+type TitleBarDropdown struct {
+	ID            int32
+	Options       []string
+	OptionCount   int32
+	SelectedIndex *int32
+	Disabled      bool
+	MinWidth      int32
+	Height        int32
+}
+
+type TitleBarProps struct {
+	Title            string
+	Height           int32
+	LeadingIcon      Texture2D
+	HasLeadingAction bool
+	Dropdown         TitleBarDropdown
+	HasDropdown      bool
 }
 
 type FlowProps = ColumnProps
@@ -857,23 +788,6 @@ type NavigationBarProps struct {
 	BottomMargin   int32
 	MaxButtonWidth int32
 	IconColor      Color
-}
-
-type TopNavProps struct {
-	ID                int32
-	X, Y              int32
-	Width, Height     int32
-	Title             string
-	Options           string
-	OptionCount       int32
-	SelectedIndex     *int32
-	Disabled          bool
-	DropdownMinWidth  int32
-	DropdownHeight    int32
-	ActionIconSize    int32
-	ActionIconPadding int32
-	ActionGap         int32
-	SidePadding       int32
 }
 
 type ToolbarProps struct {
@@ -939,7 +853,7 @@ type ContextMenuProps struct {
 	Y         *int32
 }
 
-type RadioButtonProps struct {
+type RadioProps struct {
 	Bounds   Rectangle
 	Label    string
 	ID       int32
@@ -947,7 +861,7 @@ type RadioButtonProps struct {
 	Disabled bool
 }
 
-type ProgressBarProps struct {
+type ProgressProps struct {
 	Bounds Rectangle
 	Min    int32
 	Max    int32
@@ -964,9 +878,10 @@ type PlotProps struct {
 	Overlay    string
 	ScaleMin   float32
 	ScaleMax   float32
+	Mode       int32
 }
 
-type DragFloatProps struct {
+type dragFloatProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -979,7 +894,7 @@ type DragFloatProps struct {
 	Disabled   bool
 }
 
-type DragIntProps struct {
+type dragIntProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -992,7 +907,7 @@ type DragIntProps struct {
 	Disabled   bool
 }
 
-type DragFloatRange2Props struct {
+type dragFloatRangeProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1006,7 +921,7 @@ type DragFloatRange2Props struct {
 	Disabled   bool
 }
 
-type DragIntRange2Props struct {
+type dragIntRangeProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1020,7 +935,43 @@ type DragIntRange2Props struct {
 	Disabled   bool
 }
 
-type SliderFloatProps struct {
+type NumericValueKind int32
+
+const (
+	NumericFloat NumericValueKind = iota
+	NumericInt
+	NumericDouble
+)
+
+type DragMode int32
+
+const (
+	DragValue DragMode = iota
+	DragRange
+)
+
+type DragProps struct {
+	Bounds      Rectangle
+	ID          int32
+	Label       string
+	Kind        NumericValueKind
+	Mode        DragMode
+	FloatValues []float32
+	IntValues   []int32
+	ValueCount  int32
+	FloatMin    *float32
+	FloatMax    *float32
+	IntMin      *int32
+	IntMax      *int32
+	Speed       float32
+	Min         float64
+	Max         float64
+	Format      string
+	FormatMax   string
+	Disabled    bool
+}
+
+type sliderFloatProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1032,7 +983,7 @@ type SliderFloatProps struct {
 	Disabled   bool
 }
 
-type SliderIntProps struct {
+type sliderIntProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1044,7 +995,7 @@ type SliderIntProps struct {
 	Disabled   bool
 }
 
-type SliderAngleProps struct {
+type sliderAngleProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1055,7 +1006,24 @@ type SliderAngleProps struct {
 	Disabled   bool
 }
 
-type InputFloatProps struct {
+type SliderProps struct {
+	Bounds      Rectangle
+	ID          int32
+	Label       string
+	Kind        NumericValueKind
+	FloatValues []float32
+	IntValues   []int32
+	ValueCount  int32
+	FloatValue  *float32
+	Min         float64
+	Max         float64
+	Format      string
+	Disabled    bool
+	Vertical    bool
+	Angle       bool
+}
+
+type inputFloatProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1067,7 +1035,7 @@ type InputFloatProps struct {
 	Disabled   bool
 }
 
-type InputIntProps struct {
+type inputIntProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1079,7 +1047,7 @@ type InputIntProps struct {
 	Disabled   bool
 }
 
-type InputDoubleProps struct {
+type inputDoubleProps struct {
 	Bounds     Rectangle
 	ID         int32
 	Label      string
@@ -1089,6 +1057,21 @@ type InputDoubleProps struct {
 	StepFast   float64
 	Format     string
 	Disabled   bool
+}
+
+type InputProps struct {
+	Bounds       Rectangle
+	ID           int32
+	Label        string
+	Kind         NumericValueKind
+	FloatValues  []float32
+	IntValues    []int32
+	DoubleValues []float64
+	ValueCount   int32
+	Step         float64
+	StepFast     float64
+	Format       string
+	Disabled     bool
 }
 
 type SpinboxProps struct {
@@ -1111,7 +1094,7 @@ type DropdownOption struct {
 	SeparatorBefore bool
 }
 
-type ComboboxProps struct {
+type DropdownProps struct {
 	Items         []DropdownOption
 	Bounds        Rectangle
 	ID            int32
@@ -1120,8 +1103,6 @@ type ComboboxProps struct {
 	SelectedIndex *int32
 	Disabled      bool
 }
-
-type DropdownProps = ComboboxProps
 
 type LabelFrameProps struct {
 	Bounds Rectangle
@@ -1157,16 +1138,6 @@ type TreeViewProps struct {
 	ScrollOffset *int32
 	RowHeight    int32
 	Disabled     bool
-}
-
-type SourceViewProps struct {
-	Bounds          Rectangle
-	Text            string
-	ScrollX         *int32
-	ScrollY         *int32
-	FontSize        int32
-	LineHeight      int32
-	ShowLineNumbers bool
 }
 
 type TableRow struct {
@@ -1213,12 +1184,6 @@ type TableViewProps struct {
 	CustomCells          bool
 }
 
-type NotebookProps struct {
-	Bounds        Rectangle
-	Tabs          []string
-	SelectedIndex *int32
-}
-
 type PanedViewProps struct {
 	Bounds    Rectangle
 	ID        int32
@@ -1241,26 +1206,25 @@ type CollapsibleProps struct {
 	Visible  *bool
 }
 
-type MessageDialogProps struct {
-	Title   string
-	Message string
-	OKLabel string
+type ModalAction struct {
+	Label    string
+	Tone     ButtonTone
+	Emphasis ButtonEmphasis
+	Disabled bool
 }
 
-type ConfirmDialogProps struct {
-	Title        string
-	Message      string
-	CancelLabel  string
-	ConfirmLabel string
-}
-
-type PromptDialogProps struct {
-	Title        string
-	Text         []byte
-	Cursor       *int32
-	Focused      *bool
-	CancelLabel  string
-	ConfirmLabel string
+type ModalProps struct {
+	Title          string
+	Message        string
+	Actions        []ModalAction
+	ActionCount    int32
+	CloseIcon      Texture2D
+	MaxWidth       int32
+	Text           []byte
+	TextSize       int32
+	CursorPosition *int32
+	Focused        *bool
+	FocusID        int32
 }
 
 type Canvas struct {
@@ -1326,8 +1290,8 @@ type Runtime interface {
 	DarkenColor(Color, int32) Color
 	MergeStyle(Style, Style) Style
 	NewVector2(any, any) Vector2
-	DrawCircleV(Vector2, any, Color)
-	DrawRing(Vector2, any, any, any, any, int32, Color)
+	Circle(int32, int32, int32, Color)
+	Ring(int32, int32, int32, int32, Color)
 	Rect(int32, int32, int32, int32, Color, ...Color)
 	Surface(Rectangle, Style)
 	RectGradientH(int32, int32, int32, int32, Color, Color)
@@ -1340,44 +1304,21 @@ type Runtime interface {
 	Button(ButtonProps) bool
 	ReadActivation(bounds Rectangle, id int32, enabled bool) Activation
 	BeginButton(ButtonProps)
-	MenuButton(MenuButtonProps) int32
-	SplitButton(SplitButtonProps) SplitButtonResult
 	Selectable(SelectableProps) bool
-	CheckboxFlags(CheckboxFlagsProps) bool
-	ImageWithBg(ImageWithBgProps)
-	ImageButton(ImageButtonProps) bool
-	TabItemButton(TabItemButtonProps) bool
-	ClosableTabBar(ClosableTabBarProps) int32
+	Checkbox(CheckboxProps) bool
 	InvisibleButton(InvisibleButtonProps) bool
-	ArrowButton(ArrowButtonProps) bool
 	Bullet(Rectangle)
-	Separator(Rectangle, int32)
-	SeparatorText(SeparatorTextProps)
+	Separator(SeparatorProps)
 	DragDropSource(DragDropSourceProps) bool
 	DragDropTarget(DragDropTargetProps) bool
 	MultiSelectList(MultiSelectListProps) int32
-	ColorEdit3(ColorEditProps) bool
-	ColorEdit4(ColorEditProps) bool
-	ColorPicker3(ColorEditProps) bool
-	ColorPicker4(ColorEditProps) bool
-	ColorButton(ColorButtonProps) bool
+	ColorPicker(ColorPickerProps) bool
 	TabBar(TabBarProps) int32
-	Progress(ProgressBarProps)
-	PlotLines(PlotProps)
-	PlotHistogram(PlotProps)
-	DragFloat(DragFloatProps) bool
-	DragInt(DragIntProps) bool
-	DragFloatRange2(DragFloatRange2Props) bool
-	DragIntRange2(DragIntRange2Props) bool
-	SliderFloat(SliderFloatProps) bool
-	SliderInt(SliderIntProps) bool
-	VSliderFloat(SliderFloatProps) bool
-	VSliderInt(SliderIntProps) bool
-	SliderAngle(SliderAngleProps) bool
-	InputFloat(InputFloatProps) bool
-	InputInt(InputIntProps) bool
-	InputDouble(InputDoubleProps) bool
-	Checkbox(int32, int32, int32, string, *int32) bool
+	Progress(ProgressProps)
+	Plot(PlotProps)
+	Drag(DragProps) bool
+	Slider(SliderProps) bool
+	Input(InputProps) bool
 	Dropdown(args ...any) bool
 	Column(ColumnProps)
 	Row(ColumnProps)
@@ -1399,7 +1340,7 @@ type Runtime interface {
 	Heading(HeadingProps)
 	ParagraphText(ParagraphTextProps)
 	Link(LinkProps) bool
-	PagePicture(PictureProps, string)
+	PageImage(ImageProps, string)
 	Flow(FlowProps)
 	TextField(TextFieldProps)
 	Key(text string) KeyID
@@ -1417,24 +1358,14 @@ type Runtime interface {
 	SetThemeFamily(ThemeFamily)
 	GetThemeFamily() ThemeFamily
 	GetTheme() Theme
-	LabelText(label, value string, bounds Rectangle, fontSize int32, color Color)
-	BulletText(text string, bounds Rectangle, fontSize int32, color Color)
-	ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color)
-	ValueInt(prefix string, value int32, bounds Rectangle, fontSize int32, color Color)
-	ValueUInt(prefix string, value uint32, bounds Rectangle, fontSize int32, color Color)
-	ValueFloat(prefix string, value float32, format string, bounds Rectangle, fontSize int32, color Color)
-	TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color)
 	Bevel(x, y, w, h int32, light, dark Color)
 	Icon(id, x, y, size int32, iconType int32, tint Color)
-	Picture(props PictureProps)
+	Image(props ImageProps)
 	Paragraph(spec ParagraphSpec, x int32, y *int32)
-	Href(props HrefProps) bool
-	Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool
-	Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool
-	Modal(title, message, cancelBtn, confirmBtn string) int
-	TitleBar(title string, height int32)
+	Toggle(ToggleProps) bool
+	Modal(ModalProps) int32
+	TitleBar(TitleBarProps) int32
 	NavigationBar(props NavigationBarProps)
-	TopNav(props TopNavProps)
 	Toolbar(props ToolbarProps) ToolbarResult
 	MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult
 	PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32
@@ -1444,25 +1375,16 @@ type Runtime interface {
 	ShowToast(message string)
 	ShowToastFor(message string, seconds float64)
 	TextArea(props TextAreaProps) bool
-	Radio(props RadioButtonProps) int32
+	Radio(props RadioProps) int32
 	Spinbox(props SpinboxProps) bool
-	Combobox(props ComboboxProps) bool
 	LabelFrame(props LabelFrameProps)
-	Notebook(props NotebookProps) int32
 	PanedView(props PanedViewProps) int32
 	Collapsible(props CollapsibleProps) int32
-	ColorPicker(bounds Rectangle, color *Color) bool
 	TreeView(props TreeViewProps) int32
 	ListBox(props ListBoxProps) int32
-	BeginListBox(ListBoxProps) Rectangle
-	EndListBox()
-	SourceView(props SourceViewProps) int32
 	TableView(props TableViewProps) int32
 	BeginTableCell(TableViewProps, int32, int32) Rectangle
 	EndTableCell()
-	MessageDialog(props MessageDialogProps) int32
-	ConfirmDialog(props ConfirmDialogProps) int32
-	PromptDialog(props PromptDialogProps) int32
 	BeginCanvas(canvas Canvas) CanvasResult
 	EndCanvas(canvas Canvas)
 	BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox
@@ -1686,10 +1608,10 @@ type numericInputState struct {
 }
 
 const (
-	numericEditDragFloat int32 = 3 + iota
-	numericEditDragInt
-	numericEditSliderFloat
-	numericEditSliderInt
+	numericEditDragScalar int32 = 3 + iota
+	numericEditDragWhole
+	numericEditSliderScalar
+	numericEditSliderWhole
 )
 
 type dragDropState struct {
@@ -2119,17 +2041,27 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			FontID: fontID, Disabled: props.Disabled || inheritedDisabled, LetterSpacing: spacing})
 	}
 }
-func (r *runtime) TextFormat(format string, args ...any) string       { return fmt.Sprintf(format, args...) }
-func (r *runtime) Scale(px int32) int32                               { return px }
-func (r *runtime) GetScreenWidth() int32                              { return int32(r.config.Width) }
-func (r *runtime) GetScreenHeight() int32                             { return int32(r.config.Height) }
-func (r *runtime) GetThemeBackground() Color                          { return r.theme().background }
-func (r *runtime) GetThemeText() Color                                { return r.theme().text }
-func (r *runtime) GetThemeIcon() Color                                { return r.theme().icon }
-func (r *runtime) FancyEffectsEnabled() int32                         { return 1 }
-func (r *runtime) NewVector2(x, y any) Vector2                        { return NewVector2(number32(x), number32(y)) }
-func (r *runtime) DrawCircleV(Vector2, any, Color)                    {}
-func (r *runtime) DrawRing(Vector2, any, any, any, any, int32, Color) {}
+func (r *runtime) TextFormat(format string, args ...any) string { return fmt.Sprintf(format, args...) }
+func (r *runtime) Scale(px int32) int32                         { return px }
+func (r *runtime) GetScreenWidth() int32                        { return int32(r.config.Width) }
+func (r *runtime) GetScreenHeight() int32                       { return int32(r.config.Height) }
+func (r *runtime) GetThemeBackground() Color                    { return r.theme().background }
+func (r *runtime) GetThemeText() Color                          { return r.theme().text }
+func (r *runtime) GetThemeIcon() Color                          { return r.theme().icon }
+func (r *runtime) FancyEffectsEnabled() int32                   { return 1 }
+func (r *runtime) NewVector2(x, y any) Vector2                  { return NewVector2(number32(x), number32(y)) }
+func (r *runtime) Circle(centerX, centerY, radius int32, color Color) {
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: Rectangle{
+		X: float32(centerX - radius), Y: float32(centerY - radius),
+		Width: float32(radius * 2), Height: float32(radius * 2),
+	}, Color: color})
+}
+func (r *runtime) Ring(centerX, centerY, innerRadius, outerRadius int32, color Color) {
+	r.record(FrameOp{Kind: FrameOpRing, Bounds: Rectangle{
+		X: float32(centerX - outerRadius), Y: float32(centerY - outerRadius),
+		Width: float32(outerRadius * 2), Height: float32(outerRadius * 2),
+	}, Radius: float32(innerRadius), Color: color})
+}
 func (r *runtime) Rect(x, y, w, h int32, color Color, rest ...Color) {
 	op := FrameOp{
 		Kind:   FrameOpRect,
@@ -2234,6 +2166,93 @@ func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
 	return Rectangle{X: x, Y: y, Width: max(float32(0), min(bounds.X+bounds.Width, clip.X+clip.Width)-x), Height: max(float32(0), min(bounds.Y+bounds.Height, clip.Y+clip.Height)-y)}
 }
 func (r *runtime) Button(props ButtonProps) bool {
+	if props.Arrow {
+		props.Label = string(rune(Button_ButtonArrowGlyph(props.Direction)))
+		if props.Font <= 0 {
+			props.Font = Text14
+		}
+	}
+	if props.Info {
+		props.Label = "i"
+		props.Circle = true
+		props.IconOnly = false
+		if props.Font <= 0 {
+			props.Font = Text14
+		}
+		if props.Bounds.Width <= 0 {
+			props.Bounds.Width = 18
+		}
+		if props.Bounds.Height <= 0 {
+			props.Bounds.Height = props.Bounds.Width
+		}
+	}
+	if props.Split {
+		activated := int32(0)
+		if props.ActivatedID == nil {
+			props.ActivatedID = &activated
+		}
+		*props.ActivatedID = 0
+		open := int32(0)
+		if props.Open == nil {
+			props.Open = &open
+		}
+		action := r.resolveButtonProps(props)
+		menuID := action.ID + 1
+		if action.ID == 0 {
+			action.ID = r.resolveFocusID(0)
+			menuID = r.resolveFocusID(0)
+		}
+		layout := Button_ButtonResolveSplitLayout(action.Bounds.Width, action.Bounds.Height)
+		fullBounds := action.Bounds
+		fullBounds.Width = layout.Width
+		action.Bounds.Width = layout.ActionWidth
+		menu := action
+		menu.Bounds = Rectangle{X: fullBounds.X + layout.MenuOffset,
+			Y: action.Bounds.Y, Width: layout.MenuWidth, Height: action.Bounds.Height}
+		menu.Label = "Open menu"
+		menu.ID = menuID
+		menu.IconType = UIIconTypeNone
+		menu.IconOnly = true
+		menu.Square = true
+		menu.Menu = false
+		menu.Split = false
+		clicked := r.surfaceButtonAt(action, fullBounds, false)
+		*props.Open = boolInt(Button_ButtonToggleMenuOpen(*props.Open != 0, r.surfaceButtonAt(menu, fullBounds, true)))
+		r.record(FrameOp{Kind: FrameOpLine,
+			Bounds: Rectangle{X: menu.Bounds.X, Y: menu.Bounds.Y + layout.DividerInset,
+				Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: r.theme().border})
+		if *props.Open != 0 {
+			*props.ActivatedID = r.PopupMenu(props.MenuID, int32(fullBounds.X),
+				int32(fullBounds.Y+fullBounds.Height), props.Items, props.ItemCount)
+			*props.Open = boolInt(Button_ButtonCloseMenuAfterActivation(*props.Open != 0,
+				*props.ActivatedID))
+		}
+		return clicked
+	}
+	if props.Menu {
+		activated := int32(0)
+		if props.ActivatedID == nil {
+			props.ActivatedID = &activated
+		}
+		*props.ActivatedID = 0
+		open := int32(0)
+		if props.Open == nil {
+			props.Open = &open
+		}
+		props.IconType = UIIconTypeNone
+		props.IconPlacement = IconPlacementTrailing
+		props = r.resolveSurfaceButtonProps(props, true)
+		props.Bounds = r.layoutRect(props.Bounds)
+		*props.Open = boolInt(Button_ButtonToggleMenuOpen(*props.Open != 0,
+			r.surfaceButtonAt(props, Rectangle{}, true)))
+		if *props.Open == 0 {
+			return false
+		}
+		*props.ActivatedID = r.PopupMenu(props.MenuID, int32(props.Bounds.X),
+			int32(props.Bounds.Y+props.Bounds.Height), props.Items, props.ItemCount)
+		*props.Open = boolInt(Button_ButtonCloseMenuAfterActivation(*props.Open != 0, *props.ActivatedID))
+		return *props.ActivatedID != 0
+	}
 	props = r.resolveButtonProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	return r.buttonAt(props)
@@ -2303,64 +2322,6 @@ func boolInt(value bool) int32 {
 	return 0
 }
 
-func (r *runtime) MenuButton(props MenuButtonProps) int32 {
-	open := int32(0)
-	if props.Open == nil {
-		props.Open = &open
-	}
-	props.Button.IconType = UIIconTypeNone
-	props.Button.IconPlacement = IconPlacementTrailing
-	props.Button = r.resolveSurfaceButtonProps(props.Button, true)
-	props.Button.Bounds = r.layoutRect(props.Button.Bounds)
-	*props.Open = boolInt(MenuButton_ToggleOpen(*props.Open != 0,
-		r.surfaceButtonAt(props.Button, Rectangle{}, true)))
-	if *props.Open == 0 {
-		return 0
-	}
-	activated := r.PopupMenu(props.MenuID, int32(props.Button.Bounds.X),
-		int32(props.Button.Bounds.Y+props.Button.Bounds.Height),
-		props.Items, props.ItemCount)
-	*props.Open = boolInt(MenuButton_CloseAfterActivation(*props.Open != 0, activated))
-	return activated
-}
-
-func (r *runtime) SplitButton(props SplitButtonProps) SplitButtonResult {
-	open := int32(0)
-	if props.Open == nil {
-		props.Open = &open
-	}
-	action := r.resolveButtonProps(props.Button)
-	menuID := action.ID + 1
-	if action.ID == 0 {
-		action.ID = r.resolveFocusID(0)
-		menuID = r.resolveFocusID(0)
-	}
-	layout := SplitButton_ResolveLayout(action.Bounds.Width, action.Bounds.Height)
-	fullBounds := action.Bounds
-	fullBounds.Width = layout.Width
-	action.Bounds.Width = layout.ActionWidth
-	menu := action
-	menu.Bounds = Rectangle{X: fullBounds.X + layout.MenuOffset,
-		Y: action.Bounds.Y, Width: layout.MenuWidth, Height: action.Bounds.Height}
-	menu.Label = "Open menu"
-	menu.ID = menuID
-	menu.IconType = UIIconTypeNone
-	menu.IconOnly = true
-	menu.Square = true
-	result := SplitButtonResult{Clicked: r.surfaceButtonAt(action, fullBounds, false)}
-	*props.Open = boolInt(MenuButton_ToggleOpen(*props.Open != 0, r.surfaceButtonAt(menu, fullBounds, true)))
-	r.record(FrameOp{Kind: FrameOpLine,
-		Bounds: Rectangle{X: menu.Bounds.X, Y: menu.Bounds.Y + layout.DividerInset,
-			Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: r.theme().border})
-	if *props.Open != 0 {
-		result.ActivatedID = r.PopupMenu(props.MenuID, int32(fullBounds.X),
-			int32(fullBounds.Y+fullBounds.Height), props.Items, props.ItemCount)
-		*props.Open = boolInt(MenuButton_CloseAfterActivation(*props.Open != 0,
-			result.ActivatedID))
-	}
-	return result
-}
-
 // buttonAt applies the canonical Button interaction and paint contract to an
 // already-laid-out rectangle. Composite widgets use it for embedded buttons
 // without advancing their parent's layout a second time.
@@ -2370,8 +2331,37 @@ func (r *runtime) buttonAt(props ButtonProps) bool {
 
 func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, disclosure bool) bool {
 	frame, pressed := r.surfaceButtonFrame(props, surfaceBounds, disclosure)
+	if props.Swatch {
+		frame.Color = props.SwatchColor
+	}
 	r.record(frame)
+	if image, ok := buttonImageProps(frame.Button.Props); ok {
+		r.record(FrameOp{Kind: FrameOpImage, Bounds: image.Bounds, Text: image.AssetPath, Color: image.Tint, Disabled: frame.Disabled})
+	}
 	return pressed
+}
+
+func buttonImageProps(props ButtonProps) (ImageProps, bool) {
+	if props.ImageAssetPath == "" && props.ImageBounds.Width <= 0 && props.ImageBounds.Height <= 0 {
+		return ImageProps{}, false
+	}
+	bounds := props.ImageBounds
+	if bounds.Width <= 0 && bounds.Height <= 0 {
+		bounds = props.Bounds
+	}
+	tint := props.ImageTint
+	if tint.A == 0 {
+		tint = White
+	}
+	return ImageProps{
+		AssetPath: props.ImageAssetPath,
+		Bounds:    bounds,
+		Source:    props.ImageSource,
+		Origin:    props.ImageOrigin,
+		Rotation:  props.ImageRotation,
+		Tint:      tint,
+		Fit:       ImageFit(props.ImageFit),
+	}, true
 }
 
 // Resolve input and animation once. A composed button uses this same frame
@@ -2380,7 +2370,8 @@ func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle,
 	props = r.resolveSurfaceButtonProps(props, disclosure)
 	props.ID = r.resolveFocusID(props.ID)
 	theme := r.theme()
-	input := r.Button_ReadButtonInput(props)
+	input := r.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+		props.Disabled, props.Loading, props.Selected)
 	palette, metrics := buttonThemeValues(theme, r.effectiveDark(), r.activeTheme)
 	resolved := r.Button_AdvanceFrame(uint64(uint32(props.ID)), props, input,
 		palette, metrics, packStyleStates(props.Style), Surface_DefaultMotionEnabled(),
@@ -2564,120 +2555,92 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 		selected = !selected
 	}
 	theme := r.theme()
-	if selected || pressed {
-		fill := theme.button
-		if pressed {
-			fill = theme.buttonHover
-		}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: fill, Disabled: props.Disabled})
+	paint := Selectable_SelectablePaintFor(SelectableSpec{
+		Bounds:            props.Bounds,
+		Selected:          selected,
+		Pressed:           pressed,
+		Disabled:          props.Disabled,
+		FillColor:         packRGBA(theme.button),
+		HoverColor:        packRGBA(theme.buttonHover),
+		TextColor:         packRGBA(theme.text),
+		DisabledTextColor: packRGBA(r.Fade(theme.text, 0.45)),
+		LabelInset:        8,
+	})
+	if paint.DrawFill {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.FillColor), Disabled: props.Disabled})
 	}
-	textColor := theme.text
-	if props.Disabled {
-		textColor = r.Fade(textColor, 0.45)
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 8, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - 16, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.LabelX, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - 16, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.TextColor), FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
 	return pressed
 }
 
-func (r *runtime) CheckboxFlags(props CheckboxFlagsProps) bool {
+func (r *runtime) Checkbox(props CheckboxProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	checked := props.Flags != nil && (*props.Flags&props.FlagsValue) == props.FlagsValue
-	disabled := props.Disabled || props.Flags == nil
+	disabled := props.Disabled || (props.Value == nil && props.Flags == nil)
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, disabled)
-	if pressed {
-		if checked {
-			*props.Flags &^= props.FlagsValue
-		} else {
-			*props.Flags |= props.FlagsValue
+	checked := false
+	changed := false
+	if props.Flags != nil {
+		state := Checkbox_CheckboxFlagApply(uint32(*props.Flags), uint32(props.FlagsValue), pressed)
+		checked = state.Checked
+		changed = state.Changed
+		if state.Changed {
+			*props.Flags = int32(state.Flags)
 		}
-		checked = !checked
+	} else if props.Value != nil {
+		checked = *props.Value != 0
+		if pressed {
+			if checked {
+				*props.Value = 0
+			} else {
+				*props.Value = 1
+			}
+			checked = !checked
+			changed = true
+		}
 	}
 	theme := r.theme()
-	box := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + (props.Bounds.Height-20)/2, Width: 20, Height: 20}
-	border := theme.border
-	if focused {
-		border = theme.focus
+	palette, metrics := buttonThemeValues(theme, r.effectiveDark(), r.activeTheme)
+	paint := Checkbox_CheckboxPaintFor(CheckboxSpec{
+		Bounds:  props.Bounds,
+		Checked: checked,
+		Enabled: !disabled,
+		Focused: focused,
+		Scale:   1,
+		Palette: palette,
+		Metrics: metrics,
+	})
+	fill := theme.surface
+	if paint.ShowFill {
+		fill = unpackRGBA(paint.FillColor)
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: box, Color: theme.surface, BorderColor: border, ID: props.ID, Disabled: disabled, Pressed: pressed, Selected: checked, Focused: focused})
-	if checked {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: box.X + 4, Y: box.Y + 4, Width: 12, Height: 12}, Color: theme.circle})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: pressed, Selected: checked, Focused: focused})
+	if paint.ShowMark {
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 	}
-	textColor := theme.text
-	if disabled {
-		textColor = r.Fade(textColor, 0.45)
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: box.X + 28, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: textColor, FontSize: Text14, Disabled: disabled})
-	return pressed
-}
-
-func (r *runtime) ImageWithBg(props ImageWithBgProps) {
-	bounds := r.layoutRect(props.Picture.Bounds)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: props.Background})
-	r.record(FrameOp{Kind: FrameOpPicture, Bounds: bounds, Text: props.Picture.AssetPath, Color: props.Picture.Tint})
-}
-
-func (r *runtime) ImageButton(props ImageButtonProps) bool {
-	bounds := r.layoutRect(props.Picture.Bounds)
-	pressed, focused := r.focusablePress(bounds, props.ID, props.Disabled)
-	border := r.theme().border
-	if focused {
-		border = r.theme().focus
-	}
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Color: props.Background, BorderColor: border, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
-	r.record(FrameOp{Kind: FrameOpPicture, Bounds: bounds, Text: props.Picture.AssetPath, Color: props.Picture.Tint, Disabled: props.Disabled})
-	return pressed
-}
-
-func (r *runtime) TabItemButton(props TabItemButtonProps) bool {
-	font := props.Font
-	if font <= 0 {
-		font = Text14
-	}
-	return r.Button(ButtonProps{Bounds: props.Bounds, Label: props.Label, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisGhost, Font: font, ID: props.ID, Disabled: props.Disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), FontSize: Text14, Disabled: disabled})
+	return changed
 }
 
 func (r *runtime) InvisibleButton(props InvisibleButtonProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
-	pressed, _ := r.focusablePress(props.Bounds, props.ID, props.Disabled)
+	pressed, _ := r.focusablePress(props.Bounds, props.ID, !Button_ButtonActionEnabled(props.Disabled, r.contentDisabled()))
 	return pressed
-}
-
-func (r *runtime) ArrowButton(props ArrowButtonProps) bool {
-	label := "<"
-	switch props.Direction {
-	case ArrowRight:
-		label = ">"
-	case ArrowUp:
-		label = "^"
-	case ArrowDown:
-		label = "v"
-	}
-	return r.Button(ButtonProps{Bounds: props.Bounds, Label: label, Font: Text14, ID: props.ID, Disabled: props.Disabled})
 }
 
 func (r *runtime) Bullet(bounds Rectangle) {
 	bounds = r.layoutRect(bounds)
-	size := bounds.Width
-	if bounds.Height < size {
-		size = bounds.Height
-	}
-	size *= 0.5
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: bounds.X + (bounds.Width-size)/2, Y: bounds.Y + (bounds.Height-size)/2, Width: size, Height: size}, Color: r.theme().text})
+	paint := Separator_BulletPaintFor(bounds, packRGBA(r.theme().text))
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.Color)})
 }
 
-func (r *runtime) Separator(bounds Rectangle, vertical int32) {
-	bounds = r.layoutRect(bounds)
-	if vertical != 0 {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X + bounds.Width/2, Y: bounds.Y, Height: bounds.Height}, Color: r.theme().border})
-	} else {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height/2, Width: bounds.Width}, Color: r.theme().border})
-	}
-}
-
-func (r *runtime) SeparatorText(props SeparatorTextProps) {
+func (r *runtime) Separator(props SeparatorProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
+	if props.Label == "" {
+		paint := Separator_SeparatorLineFor(props.Bounds, props.Vertical, packRGBA(r.theme().border))
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.Color)})
+		return
+	}
 	font := props.Font
 	if font <= 0 {
 		font = Text14
@@ -2688,15 +2651,13 @@ func (r *runtime) SeparatorText(props SeparatorTextProps) {
 		color = r.Fade(color, 0.45)
 		lineColor = r.Fade(lineColor, 0.45)
 	}
-	lineX := props.Bounds.X
-	if props.Label != "" {
-		textWidth := float32(runtimeTextWidth(props.Label, font))
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: textWidth, Height: props.Bounds.Height}, Text: props.Label, Color: color, FontSize: font, Disabled: props.Disabled})
-		lineX += textWidth + 12
+	labelWidth := float32(runtimeTextWidth(props.Label, font))
+	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, packRGBA(color), packRGBA(lineColor))
+	if paint.ShowText {
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), FontSize: font, Disabled: props.Disabled})
 	}
-	endX := props.Bounds.X + props.Bounds.Width
-	if lineX < endX {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: lineX, Y: props.Bounds.Y + props.Bounds.Height/2, Width: endX - lineX}, Color: lineColor, Disabled: props.Disabled})
+	if paint.ShowLine {
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.LineColor), Disabled: props.Disabled})
 	}
 }
 
@@ -2768,10 +2729,7 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 		return -1
 	}
 	bounds := r.layoutRect(props.Bounds)
-	rowHeight := props.RowHeight
-	if rowHeight <= 0 {
-		rowHeight = 28
-	}
+	rowHeight := MultiSelectList_MultiSelectRowHeight(props.RowHeight, 1)
 	disabled := props.Disabled || r.contentDisabled()
 	if !disabled {
 		r.registerField(props.ID)
@@ -2780,7 +2738,7 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 	rangeAnchor := int32(-1)
 	if !disabled {
 		for i := 0; i < count; i++ {
-			row := Rectangle{X: bounds.X, Y: bounds.Y + float32(i*int(rowHeight)), Width: bounds.Width, Height: float32(rowHeight)}
+			row := MultiSelectList_MultiSelectRowBounds(bounds, int32(i), rowHeight)
 			if r.consumeTap(row) {
 				clicked = int32(i)
 				if props.ID > 0 {
@@ -2795,90 +2753,48 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 	shift := r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
 	if focused && clicked < 0 {
 		cursor := int32(-1)
+		selectedFirst := int32(-1)
 		if props.Anchor != nil && *props.Anchor >= 0 && int(*props.Anchor) < count {
 			cursor = *props.Anchor
 		} else {
 			for i := 0; i < count; i++ {
 				if props.Selected[i] != 0 {
-					cursor = int32(i)
+					selectedFirst = int32(i)
 					break
 				}
 			}
 		}
-		if cursor < 0 {
-			cursor = 0
-		}
-		next := cursor
-		navigate := true
-		switch {
-		case r.keyDown[KeyHome]:
-			next = 0
-		case r.keyDown[KeyEnd]:
-			next = int32(count - 1)
-		case r.keyDown[KeyUp]:
-			if next > 0 {
-				next--
-			}
-		case r.keyDown[KeyDown]:
-			if int(next)+1 < count {
-				next++
-			}
-		case r.keyDown[KeySpace]:
-			clicked, control, shift = cursor, true, false
-			navigate = false
-		case r.keyDown[KeyEnter]:
-			clicked, control, shift = cursor, false, false
-			navigate = false
-		default:
-			navigate = false
-		}
-		if navigate {
-			if shift {
-				rangeAnchor = cursor
-				control = true
-			}
+		cursor = MultiSelectList_MultiSelectFocusedRow(cursor, selectedFirst, int32(count))
+		nav := MultiSelectList_MultiSelectNavigate(int32(count), cursor, control, shift,
+			r.keyDown[KeyHome], r.keyDown[KeyEnd], r.keyDown[KeyUp],
+			r.keyDown[KeyDown], r.keyDown[KeySpace], r.keyDown[KeyEnter])
+		clicked = nav.Clicked
+		control = nav.Control
+		shift = nav.Shift
+		rangeAnchor = nav.RangeAnchor
+		if nav.AnchorChanged {
 			if props.Anchor != nil {
-				*props.Anchor = next
-			}
-			if !control || shift {
-				clicked = next
+				*props.Anchor = nav.Anchor
 			}
 		}
 	}
 	if clicked >= 0 {
-		i := int(clicked)
 		anchor := int32(-1)
-		if rangeAnchor >= 0 {
-			anchor = rangeAnchor
-		} else if props.Anchor != nil {
+		if props.Anchor != nil {
 			anchor = *props.Anchor
 		}
-		if shift && anchor >= 0 && int(anchor) < count {
-			first, last := int(anchor), i
-			if first > last {
-				first, last = last, first
-			}
-			if !control {
-				clear(props.Selected[:count])
-			}
-			for j := first; j <= last; j++ {
-				props.Selected[j] = 1
-			}
-		} else if control {
-			if props.Selected[i] != 0 {
-				props.Selected[i] = 0
+		for row := 0; row < count; row++ {
+			if MultiSelectList_MultiSelectSelectionForRow(int32(row),
+				props.Selected[row] != 0, clicked, int32(count), anchor,
+				control, shift, rangeAnchor) {
+				props.Selected[row] = 1
 			} else {
-				props.Selected[i] = 1
+				props.Selected[row] = 0
 			}
-			if props.Anchor != nil {
-				*props.Anchor = clicked
-			}
-		} else {
-			clear(props.Selected[:count])
-			props.Selected[i] = 1
-			if props.Anchor != nil {
-				*props.Anchor = clicked
-			}
+		}
+		if props.Anchor != nil {
+			*props.Anchor = MultiSelectList_MultiSelectAnchorAfterClick(anchor,
+				clicked, int32(count), control, shift, rangeAnchor)
 		}
 	}
 	theme := r.theme()
@@ -2904,7 +2820,7 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 		if selected {
 			selectedCount++
 		}
-		row := Rectangle{X: bounds.X, Y: bounds.Y + float32(i*int(rowHeight)), Width: bounds.Width, Height: float32(rowHeight)}
+		row := MultiSelectList_MultiSelectRowBounds(bounds, int32(i), rowHeight)
 		fill := theme.surface
 		if selected {
 			fill = theme.buttonHover
@@ -2928,69 +2844,46 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 	return clicked
 }
 
-func (r *runtime) colorEdit(props ColorEditProps, channels int) bool {
+func (r *runtime) colorEdit(props ColorPickerProps, channels int) bool {
 	if len(props.Values) < channels || int(props.ValueCount) > 0 && int(props.ValueCount) < channels {
 		return false
 	}
-	return r.sliderFloat(SliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: props.Values[:channels], ValueCount: int32(channels), Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false)
+	return r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: props.Values[:channels], ValueCount: int32(channels), Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false)
 }
 
 func colorFromFloats(values []float32, channels int) Color {
 	component := [4]float32{0, 0, 0, 1}
 	for i := 0; i < channels && i < len(values); i++ {
 		component[i] = values[i]
-		if component[i] < 0 {
-			component[i] = 0
-		} else if component[i] > 1 {
-			component[i] = 1
-		}
 	}
-	return Color{R: uint8(component[0]*255 + 0.5), G: uint8(component[1]*255 + 0.5), B: uint8(component[2]*255 + 0.5), A: uint8(component[3]*255 + 0.5)}
+	return ColorPicker_ColorPickerColorFor(component[0], component[1], component[2], component[3], int32(channels))
 }
 
-func (r *runtime) colorPickerFloat(props ColorEditProps, channels int) bool {
+func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 	if len(props.Values) < channels || int(props.ValueCount) > 0 && int(props.ValueCount) < channels {
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	swatchHeight := float32(36)
-	gap := float32(4)
-	rowHeight := (props.Bounds.Height - swatchHeight - gap) / float32(channels)
-	if rowHeight < 20 {
-		rowHeight = 28
-	}
+	layout := ColorPicker_ColorPickerLayoutFor(props.Bounds, int32(channels), 1)
 	changed := false
 	for i := 0; i < channels; i++ {
-		row := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + float32(i)*rowHeight, Width: props.Bounds.Width, Height: rowHeight - 2}
-		changed = r.sliderFloat(SliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
+		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1)
+		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
 	}
-	swatch := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + rowHeight*float32(channels) + gap, Width: props.Bounds.Width, Height: swatchHeight}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: swatch, Color: colorFromFloats(props.Values, channels), BorderColor: r.theme().border, Disabled: props.Disabled})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.SwatchBounds, Color: colorFromFloats(props.Values, channels), BorderColor: r.theme().border, Disabled: props.Disabled})
 	r.drawSliderLabel(props.Bounds, props.Label)
 	return changed
 }
 
-func (r *runtime) ColorEdit3(props ColorEditProps) bool   { return r.colorEdit(props, 3) }
-func (r *runtime) ColorEdit4(props ColorEditProps) bool   { return r.colorEdit(props, 4) }
-func (r *runtime) ColorPicker3(props ColorEditProps) bool { return r.colorPickerFloat(props, 3) }
-func (r *runtime) ColorPicker4(props ColorEditProps) bool { return r.colorPickerFloat(props, 4) }
-
-func (r *runtime) ColorButton(props ColorButtonProps) bool {
-	props.Bounds = r.layoutRect(props.Bounds)
-	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
-	t := r.theme()
-	halfW, halfH := props.Bounds.Width/2, props.Bounds.Height/2
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: Color{180, 180, 180, 255}})
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: halfW, Height: halfH}, Color: Color{220, 220, 220, 255}})
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X + halfW, Y: props.Bounds.Y + halfH, Width: halfW, Height: halfH}, Color: Color{220, 220, 220, 255}})
-	border := t.border
-	if focused {
-		border = t.focus
+func (r *runtime) ColorPicker(props ColorPickerProps) bool {
+	channels := 3
+	if props.ValueCount >= 4 {
+		channels = 4
 	}
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: props.Bounds, Text: props.Label, Color: props.Color, BorderColor: border, TextColor: t.text, FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Focused: focused})
-	return pressed
+	if props.Picker {
+		return r.colorPickerFloat(props, channels)
+	}
+	return r.colorEdit(props, channels)
 }
 
 // TabBar is the canonical tab implementation. It owns sizing, scrolling,
@@ -3087,22 +2980,23 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	if maxWidth < minWidth {
 		maxWidth = minWidth
 	}
+	metrics := TabBar_TabBarDefaultMetrics(int32(minWidth), int32(maxWidth), 1)
 	widths := make([]float32, count)
-	totalWidth := float32(0)
+	totalWidth := int32(0)
 	for i := 0; i < count; i++ {
-		w := float32(runtimeTextWidth(props.Tabs[i].Label, font) + 16)
-		if props.Tabs[i].Closeable {
-			w += 24
-		}
-		w = min(maxWidth, max(minWidth, w))
-		widths[i], totalWidth = w, totalWidth+w
+		labelWidth := int32(runtimeTextWidth(props.Tabs[i].Label, font))
+		w := TabBar_TabBarTabWidth(labelWidth, props.Tabs[i].Label != "", false, props.Tabs[i].Closeable, metrics)
+		widths[i] = float32(w)
+		totalWidth += w
 	}
-	equalTabs := totalWidth <= bounds.Width
+	totalWidth = TabBar_TabBarTotalWidth(totalWidth, int32(count), 0)
+	scrollState := TabBar_TabBarScrollFor(bounds.Width, totalWidth, 0)
+	equalTabs := scrollState.EqualTabs
 	if equalTabs {
 		for i := range widths {
 			widths[i] = bounds.Width / float32(count)
 		}
-		totalWidth = bounds.Width
+		totalWidth = int32(bounds.Width)
 	}
 	localScroll := int32(0)
 	scroll := props.ScrollOffset
@@ -3116,8 +3010,9 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		scroll = &localScroll
 	}
-	maxScroll := int32(max(float32(0), totalWidth-bounds.Width))
-	*scroll = min(maxScroll, max(0, *scroll))
+	scrollState = TabBar_TabBarScrollFor(bounds.Width, totalWidth, *scroll)
+	maxScroll := scrollState.MaxScroll
+	*scroll = scrollState.Scroll
 	if !disabled && !equalTabs && r.pointerCanReach(bounds) && r.mouseWheel != 0 {
 		*scroll = min(maxScroll, max(0, *scroll-int32(r.mouseWheel*42)))
 		r.mouseWheel = 0
@@ -3130,11 +3025,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		for i := int32(0); i < selected; i++ {
 			x += widths[i]
 		}
-		if x < bounds.X {
-			*scroll = max(0, *scroll-int32(bounds.X-x))
-		} else if end := x + widths[selected]; end > bounds.X+bounds.Width {
-			*scroll = min(maxScroll, *scroll+int32(end-(bounds.X+bounds.Width)))
-		}
+		*scroll = TabBar_TabBarRevealScroll(x, widths[selected], bounds, *scroll, maxScroll)
 	}
 	theme := r.theme()
 	x := bounds.X - float32(*scroll)
@@ -3238,25 +3129,6 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	return clicked
 }
 
-func (r *runtime) ClosableTabBar(props ClosableTabBarProps) int32 {
-	selected := int32(0)
-	if props.SelectedIndex != nil {
-		selected = *props.SelectedIndex
-	}
-	minWidth := int32(0)
-	if props.Count > 0 && props.Bounds.Width > 0 {
-		minWidth = int32(props.Bounds.Width) / props.Count
-	}
-	clicked := r.TabBar(TabBarProps{Bounds: props.Bounds, Tabs: props.Tabs,
-		Count: props.Count, SelectedIndex: selected, Font: props.Font,
-		MinTabWidth: minWidth, MaxTabWidth: minWidth, ClosedIndex: props.ClosedIndex,
-		ID: props.ID, Disabled: props.Disabled})
-	if clicked >= 0 && props.SelectedIndex != nil {
-		*props.SelectedIndex = clicked
-	}
-	return clicked
-}
-
 // fitTabLabel truncates with an ellipsis until the label measures within
 // maxWidth (rune-safe; measurement falls back to a width estimate when no
 // font face is loaded, e.g. headless tests).
@@ -3281,46 +3153,26 @@ func fitTabLabel(label string, maxWidth float32, fontSize int32) string {
 	}
 	return string(runes)
 }
-func (r *runtime) Progress(props ProgressBarProps) {
+func (r *runtime) Progress(props ProgressProps) {
 	theme := r.theme()
 	bounds := r.layoutRect(props.Bounds)
-	minimum := props.Min
-	maximum := props.Max
-	if maximum <= minimum {
-		maximum = minimum + 1
-	}
-	t := float32(props.Value-minimum) / float32(maximum-minimum)
-	if t < 0 {
-		t = 0
-	} else if t > 1 {
-		t = 1
-	}
+	font := int32(Text14)
+	labelW := float32(runtimeTextWidth(props.Label, font))
+	layout := Progress_ProgressLayoutFor(bounds, props.Min, props.Max, props.Value, labelW, 6)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: theme.button})
-	if bounds.Width > 0 && bounds.Height > 0 && t > 0 {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * t, Height: bounds.Height}, Color: theme.buttonHover, Selected: true})
+	if bounds.Width > 0 && bounds.Height > 0 && layout.Ratio > 0 {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.FillBounds, Color: theme.buttonHover, Selected: true})
 	}
 	if props.Label != "" {
-		font := Text14
-		labelW := float32(runtimeTextWidth(props.Label, font))
-		fillW := bounds.Width * t
-		fillEnd := bounds.X + fillW
-		x := bounds.X + (bounds.Width-labelW)/2
 		textColor := theme.text
-		pad := float32(6)
-		emptyW := bounds.Width - fillW
-		if emptyW >= labelW+pad*2 {
-			x = fillEnd + pad
-		} else if fillW >= labelW+pad*2 {
-			x = fillEnd - labelW - pad
+		if layout.LabelOnFill {
 			textColor = theme.background
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: x, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, FontSize: font})
 	}
 }
 
-func (r *runtime) PlotLines(props PlotProps)     { r.plot(props, false) }
-func (r *runtime) PlotHistogram(props PlotProps) { r.plot(props, true) }
-func (r *runtime) plot(props PlotProps, histogram bool) {
+func (r *runtime) Plot(props PlotProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -3332,9 +3184,7 @@ func (r *runtime) plot(props PlotProps, histogram bool) {
 		return
 	}
 	offset := int(props.Offset) % count
-	if offset < 0 {
-		offset += count
-	}
+	offset = int(Plot_PlotOffset(int32(count), int32(offset)))
 	minValue, maxValue := props.ScaleMin, props.ScaleMax
 	if minValue >= maxValue {
 		minValue, maxValue = props.Values[offset], props.Values[offset]
@@ -3352,43 +3202,36 @@ func (r *runtime) plot(props PlotProps, histogram bool) {
 			maxValue += 0.5
 		}
 	}
-	normalize := func(v float32) float32 {
-		v = (v - minValue) / (maxValue - minValue)
-		if v < 0 {
-			return 0
-		}
-		if v > 1 {
-			return 1
-		}
-		return v
-	}
-	if histogram {
-		step := props.Bounds.Width / float32(count)
+	plotRange := Plot_PlotRangeFor(props.ScaleMin, props.ScaleMax, minValue, maxValue)
+	markColor := packRGBA(t.buttonHover)
+	if props.Mode == 1 {
 		for i := 0; i < count; i++ {
-			h := normalize(props.Values[(offset+i)%count]) * props.Bounds.Height
-			w := step - 2
-			if w < 1 {
-				w = step
-			}
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: props.Bounds.X + float32(i)*step + 1, Y: props.Bounds.Y + props.Bounds.Height - h, Width: w, Height: h}, Color: t.buttonHover, Row: int32(i)})
+			bar := Plot_PlotHistogramBar(props.Bounds, int32(i), int32(count), props.Values[(offset+i)%count], plotRange, markColor)
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: bar.Bounds, Color: unpackRGBA(bar.Color), Row: int32(i)})
 		}
 	} else if count == 1 {
-		y := props.Bounds.Y + (1-normalize(props.Values[offset]))*props.Bounds.Height
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: props.Bounds.X, Y: y, Width: props.Bounds.Width}, Color: t.buttonHover})
+		line := Plot_PlotSingleLine(props.Bounds, props.Values[offset], plotRange, markColor)
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color)})
 	} else {
 		for i := 1; i < count; i++ {
-			x1 := props.Bounds.X + float32(i-1)*props.Bounds.Width/float32(count-1)
-			x2 := props.Bounds.X + float32(i)*props.Bounds.Width/float32(count-1)
-			y1 := props.Bounds.Y + (1-normalize(props.Values[(offset+i-1)%count]))*props.Bounds.Height
-			y2 := props.Bounds.Y + (1-normalize(props.Values[(offset+i)%count]))*props.Bounds.Height
-			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x1, Y: y1, Width: x2 - x1, Height: y2 - y1}, Color: t.buttonHover, Row: int32(i - 1)})
+			line := Plot_PlotLineSegment(props.Bounds, int32(i), int32(count), props.Values[(offset+i-1)%count], props.Values[(offset+i)%count], plotRange, markColor)
+			r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color), Row: int32(i - 1)})
 		}
 	}
+	labelWidth := float32(0)
 	if props.Label != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 6, Y: props.Bounds.Y + 4, Width: props.Bounds.Width - 12, Height: 18}, Text: props.Label, Color: t.text, FontSize: Text14})
+		labelWidth = float32(runtimeTextWidth(props.Label, Text14))
+	}
+	overlayWidth := float32(0)
+	if props.Overlay != "" {
+		overlayWidth = float32(runtimeTextWidth(props.Overlay, Text14))
+	}
+	text := Plot_PlotTextPaintFor(props.Bounds, labelWidth, overlayWidth, 1, packRGBA(t.text), props.Label != "", props.Overlay != "")
+	if props.Label != "" {
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), FontSize: Text14})
 	}
 	if props.Overlay != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + props.Bounds.Width - float32(runtimeTextWidth(props.Overlay, Text14)) - 6, Y: props.Bounds.Y + 4, Width: props.Bounds.Width - 12, Height: 18}, Text: props.Overlay, Color: t.text, FontSize: Text14})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.OverlayBounds, Text: props.Overlay, Color: unpackRGBA(text.TextColor), FontSize: Text14})
 	}
 }
 
@@ -3426,32 +3269,13 @@ func (r *runtime) dragFloatKeyboard(focusID int32, speed, minimum, maximum, valu
 	for _, event := range r.inputEvents {
 		handled := false
 		if !event.shortcut {
-			switch event.key {
-			case KeyHome:
-				if minimum < maximum {
-					next, handled = minimum, true
-				}
-			case KeyEnd:
-				if minimum < maximum {
-					next, handled = maximum, true
-				}
-			default:
-				direction := r.sliderKeyboardDirection(false, event.key)
-				if direction == 0 {
-					break
-				}
-				step := speed
-				if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
-					step *= 0.1
-				}
-				if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
-					step *= 10
-				}
-				next += float32(direction) * step
-				if minimum < maximum {
-					next = min(maximum, max(minimum, next))
-				}
-				handled = true
+			direction := r.sliderKeyboardDirection(false, event.key)
+			step := Drag_DragScalarKeyboardValue(next, speed, minimum, maximum,
+				direction, event.key == KeyHome, event.key == KeyEnd,
+				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
+				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			if step.Changed {
+				next, handled = step.Value, true
 			}
 		}
 		if !handled {
@@ -3466,45 +3290,18 @@ func (r *runtime) dragIntKeyboard(focusID int32, speed float32, minimum, maximum
 	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) {
 		return value, false
 	}
-	next := int64(value)
+	next := value
 	remaining := r.inputEvents[:0]
 	for _, event := range r.inputEvents {
 		handled := false
 		if !event.shortcut {
-			switch event.key {
-			case KeyHome:
-				if minimum < maximum {
-					next, handled = int64(minimum), true
-				}
-			case KeyEnd:
-				if minimum < maximum {
-					next, handled = int64(maximum), true
-				}
-			default:
-				direction := r.sliderKeyboardDirection(false, event.key)
-				if direction == 0 {
-					break
-				}
-				step := speed
-				if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
-					step *= 0.1
-				}
-				if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
-					step *= 10
-				}
-				delta := int64(math.Round(float64(step)))
-				if delta == 0 {
-					if step < 0 {
-						delta = -1
-					} else {
-						delta = 1
-					}
-				}
-				next += int64(direction) * delta
-				if minimum < maximum {
-					next = min(int64(maximum), max(int64(minimum), next))
-				}
-				handled = true
+			direction := r.sliderKeyboardDirection(false, event.key)
+			step := Drag_DragWholeKeyboardValue(next, speed, minimum, maximum,
+				direction, event.key == KeyHome, event.key == KeyEnd,
+				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
+				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			if step.Changed {
+				next, handled = step.Value, true
 			}
 		}
 		if !handled {
@@ -3512,10 +3309,10 @@ func (r *runtime) dragIntKeyboard(focusID int32, speed float32, minimum, maximum
 		}
 	}
 	r.inputEvents = remaining
-	return int32(next), int32(next) != value
+	return next, next != value
 }
 
-func (r *runtime) DragFloat(props DragFloatProps) bool {
+func (r *runtime) dragFloat(props dragFloatProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -3524,10 +3321,7 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 	if count == 0 {
 		return false
 	}
-	speed := props.Speed
-	if speed == 0 {
-		speed = 1
-	}
+	speed := Drag_DragEffectiveSpeed(props.Speed)
 	changed := false
 	for i := 0; i < count; i++ {
 		focusID := sliderFocusID(props.ID, int32(i), false)
@@ -3537,7 +3331,7 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempFloat(cell,
-			numericInputKey{kind: numericEditDragFloat, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditDragScalar, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
@@ -3550,17 +3344,9 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			value := props.Values[i] + delta*speed
-			if props.Min < props.Max {
-				if value < props.Min {
-					value = props.Min
-				}
-				if value > props.Max {
-					value = props.Max
-				}
-			}
-			changed = changed || value != props.Values[i]
-			props.Values[i] = value
+			step := Drag_DragScalarDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
+			changed = changed || step.Changed
+			props.Values[i] = step.Value
 		}
 		format := props.Format
 		if format == "" {
@@ -3573,7 +3359,7 @@ func (r *runtime) DragFloat(props DragFloatProps) bool {
 	return changed
 }
 
-func (r *runtime) DragInt(props DragIntProps) bool {
+func (r *runtime) dragInt(props dragIntProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -3582,10 +3368,7 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 	if count == 0 {
 		return false
 	}
-	speed := props.Speed
-	if speed == 0 {
-		speed = 1
-	}
+	speed := Drag_DragEffectiveSpeed(props.Speed)
 	changed := false
 	for i := 0; i < count; i++ {
 		focusID := sliderFocusID(props.ID, int32(i), true)
@@ -3595,7 +3378,7 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempInt(cell,
-			numericInputKey{kind: numericEditDragInt, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditDragWhole, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
@@ -3608,17 +3391,9 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			scaled := delta * speed
-			step := int32(scaled + 0.5)
-			if scaled < 0 {
-				step = int32(scaled - 0.5)
-			}
-			value := props.Values[i] + step
-			if props.Min < props.Max {
-				value = clamp32(value, props.Min, props.Max)
-			}
-			changed = changed || value != props.Values[i]
-			props.Values[i] = value
+			step := Drag_DragWholeDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
+			changed = changed || step.Changed
+			props.Values[i] = step.Value
 		}
 		format := props.Format
 		if format == "" {
@@ -3631,15 +3406,12 @@ func (r *runtime) DragInt(props DragIntProps) bool {
 	return changed
 }
 
-func (r *runtime) DragFloatRange2(props DragFloatRange2Props) bool {
+func (r *runtime) dragFloatRange(props dragFloatRangeProps) bool {
 	if props.CurrentMin == nil || props.CurrentMax == nil {
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	speed := props.Speed
-	if speed == 0 {
-		speed = 1
-	}
+	speed := Drag_DragEffectiveSpeed(props.Speed)
 	changed := false
 	values := [2]*float32{props.CurrentMin, props.CurrentMax}
 	formats := [2]string{props.Format, props.FormatMax}
@@ -3662,17 +3434,9 @@ func (r *runtime) DragFloatRange2(props DragFloatRange2Props) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			value := *values[i] + delta*speed
-			if low < high {
-				if value < low {
-					value = low
-				}
-				if value > high {
-					value = high
-				}
-			}
-			changed = changed || value != *values[i]
-			*values[i] = value
+			step := Drag_DragScalarDeltaValue(*values[i], delta, speed, low, high)
+			changed = changed || step.Changed
+			*values[i] = step.Value
 		}
 		format := formats[i]
 		if format == "" {
@@ -3691,15 +3455,12 @@ func (r *runtime) DragFloatRange2(props DragFloatRange2Props) bool {
 	return changed
 }
 
-func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
+func (r *runtime) dragIntRange(props dragIntRangeProps) bool {
 	if props.CurrentMin == nil || props.CurrentMax == nil {
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	speed := props.Speed
-	if speed == 0 {
-		speed = 1
-	}
+	speed := Drag_DragEffectiveSpeed(props.Speed)
 	changed := false
 	values := [2]*int32{props.CurrentMin, props.CurrentMax}
 	formats := [2]string{props.Format, props.FormatMax}
@@ -3722,17 +3483,9 @@ func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			scaled := delta * speed
-			step := int32(scaled + 0.5)
-			if scaled < 0 {
-				step = int32(scaled - 0.5)
-			}
-			value := *values[i] + step
-			if low < high {
-				value = clamp32(value, low, high)
-			}
-			changed = changed || value != *values[i]
-			*values[i] = value
+			step := Drag_DragWholeDeltaValue(*values[i], delta, speed, low, high)
+			changed = changed || step.Changed
+			*values[i] = step.Value
 		}
 		format := formats[i]
 		if format == "" {
@@ -3749,6 +3502,73 @@ func (r *runtime) DragIntRange2(props DragIntRange2Props) bool {
 	}
 	r.drawDragLabel(props.Bounds, props.Label)
 	return changed
+}
+
+func (r *runtime) Drag(props DragProps) bool {
+	count := props.ValueCount
+	if count <= 0 {
+		if props.Kind == NumericInt {
+			count = int32(len(props.IntValues))
+		} else {
+			count = int32(len(props.FloatValues))
+		}
+	}
+	if props.Mode == DragRange {
+		if props.Kind == NumericInt {
+			return r.dragIntRange(dragIntRangeProps{
+				Bounds:     props.Bounds,
+				ID:         props.ID,
+				Label:      props.Label,
+				CurrentMin: props.IntMin,
+				CurrentMax: props.IntMax,
+				Speed:      props.Speed,
+				Min:        int32(props.Min),
+				Max:        int32(props.Max),
+				Format:     props.Format,
+				FormatMax:  props.FormatMax,
+				Disabled:   props.Disabled,
+			})
+		}
+		return r.dragFloatRange(dragFloatRangeProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			CurrentMin: props.FloatMin,
+			CurrentMax: props.FloatMax,
+			Speed:      props.Speed,
+			Min:        float32(props.Min),
+			Max:        float32(props.Max),
+			Format:     props.Format,
+			FormatMax:  props.FormatMax,
+			Disabled:   props.Disabled,
+		})
+	}
+	if props.Kind == NumericInt {
+		return r.dragInt(dragIntProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Values:     props.IntValues,
+			ValueCount: count,
+			Speed:      props.Speed,
+			Min:        int32(props.Min),
+			Max:        int32(props.Max),
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		})
+	}
+	return r.dragFloat(dragFloatProps{
+		Bounds:     props.Bounds,
+		ID:         props.ID,
+		Label:      props.Label,
+		Values:     props.FloatValues,
+		ValueCount: count,
+		Speed:      props.Speed,
+		Min:        float32(props.Min),
+		Max:        float32(props.Max),
+		Format:     props.Format,
+		Disabled:   props.Disabled,
+	})
 }
 
 func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, id, component int32) {
@@ -3925,7 +3745,7 @@ func (r *runtime) sliderKeyboardDirection(vertical bool, key int32) int32 {
 }
 
 func (r *runtime) sliderFloatKeyboard(focusID int32, vertical bool, minimum, maximum, value float32) (float32, bool) {
-	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) || maximum <= minimum {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) {
 		return value, false
 	}
 	next := value
@@ -3933,23 +3753,13 @@ func (r *runtime) sliderFloatKeyboard(focusID int32, vertical bool, minimum, max
 	for _, event := range r.inputEvents {
 		handled := false
 		if !event.shortcut {
-			switch event.key {
-			case KeyHome:
-				next, handled = minimum, true
-			case KeyEnd:
-				next, handled = maximum, true
-			default:
-				if direction := r.sliderKeyboardDirection(vertical, event.key); direction != 0 {
-					step := (maximum - minimum) * 0.01
-					if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
-						step *= 0.1
-					}
-					if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
-						step *= 10
-					}
-					next = min(maximum, max(minimum, next+float32(direction)*step))
-					handled = true
-				}
+			direction := r.sliderKeyboardDirection(vertical, event.key)
+			step := Slider_SliderScalarKeyboardValue(next, minimum, maximum,
+				direction, event.key == KeyHome, event.key == KeyEnd,
+				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
+				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			if step.Changed {
+				next, handled = step.Value, true
 			}
 		}
 		if !handled {
@@ -3961,43 +3771,21 @@ func (r *runtime) sliderFloatKeyboard(focusID int32, vertical bool, minimum, max
 }
 
 func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maximum, value int32) (int32, bool) {
-	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) || maximum <= minimum {
+	if focusID <= 0 || r.focusID != focusID || r.popupFocusCaptures(focusID) {
 		return value, false
 	}
-	next := int64(value)
-	rangeValue := int64(maximum) - int64(minimum)
+	next := value
 	remaining := r.inputEvents[:0]
 	for _, event := range r.inputEvents {
 		handled := false
 		if !event.shortcut {
-			switch event.key {
-			case KeyHome:
-				next, handled = int64(minimum), true
-			case KeyEnd:
-				next, handled = int64(maximum), true
-			default:
-				if direction := r.sliderKeyboardDirection(vertical, event.key); direction != 0 {
-					step := int64(1)
-					if rangeValue > 100 {
-						step = (rangeValue + 50) / 100
-					}
-					if r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt] {
-						step /= 10
-						if step < 1 {
-							step = 1
-						}
-					}
-					if event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift] {
-						step *= 10
-					}
-					next += int64(direction) * step
-					if next < int64(minimum) {
-						next = int64(minimum)
-					} else if next > int64(maximum) {
-						next = int64(maximum)
-					}
-					handled = true
-				}
+			direction := r.sliderKeyboardDirection(vertical, event.key)
+			step := Slider_SliderWholeKeyboardValue(next, minimum, maximum,
+				direction, event.key == KeyHome, event.key == KeyEnd,
+				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
+				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
+			if step.Changed {
+				next, handled = step.Value, true
 			}
 		}
 		if !handled {
@@ -4005,7 +3793,7 @@ func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maxim
 		}
 	}
 	r.inputEvents = remaining
-	return int32(next), int32(next) != value
+	return next, next != value
 }
 
 func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical, focused bool, id, component int32) {
@@ -4039,7 +3827,7 @@ func (r *runtime) drawSliderLabel(bounds Rectangle, label string) {
 	}
 }
 
-func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
+func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -4048,7 +3836,6 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 	if count == 0 {
 		return false
 	}
-	rangeValue := props.Max - props.Min
 	changed := false
 	for i := 0; i < count; i++ {
 		focusID := sliderFocusID(props.ID, int32(i), false)
@@ -4058,31 +3845,23 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempFloat(cell,
-			numericInputKey{kind: numericEditSliderFloat, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditSliderScalar, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
 			continue
 		}
-		ratio := float32(0)
-		if rangeValue > 0 {
-			ratio = (props.Values[i] - props.Min) / rangeValue
-		}
-		if ratio < 0 {
-			ratio = 0
-		} else if ratio > 1 {
-			ratio = 1
-		}
+		ratio := Slider_SliderScalarRatio(props.Values[i], props.Min, props.Max)
 		if enabled {
 			if next, keyboardChanged := r.sliderFloatKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
-				ratio = (next - props.Min) / rangeValue
+				ratio = Slider_SliderScalarRatio(next, props.Min, props.Max)
 				changed = true
 			}
 		}
-		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && rangeValue > 0 {
+		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
-			value := props.Min + ratio*rangeValue
+			value := Slider_SliderScalarValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]
 			props.Values[i] = value
 		}
@@ -4097,7 +3876,7 @@ func (r *runtime) sliderFloat(props SliderFloatProps, vertical bool) bool {
 	return changed
 }
 
-func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
+func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -4106,7 +3885,6 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 	if count == 0 {
 		return false
 	}
-	rangeValue := int64(props.Max) - int64(props.Min)
 	changed := false
 	for i := 0; i < count; i++ {
 		focusID := sliderFocusID(props.ID, int32(i), true)
@@ -4116,31 +3894,23 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempInt(cell,
-			numericInputKey{kind: numericEditSliderInt, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditSliderWhole, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
 			continue
 		}
-		ratio := float32(0)
-		if rangeValue > 0 {
-			ratio = float32(float64(int64(props.Values[i])-int64(props.Min)) / float64(rangeValue))
-		}
-		if ratio < 0 {
-			ratio = 0
-		} else if ratio > 1 {
-			ratio = 1
-		}
+		ratio := Slider_SliderWholeRatio(props.Values[i], props.Min, props.Max)
 		if enabled {
 			if next, keyboardChanged := r.sliderIntKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
-				ratio = float32(float64(int64(next)-int64(props.Min)) / float64(rangeValue))
+				ratio = Slider_SliderWholeRatio(next, props.Min, props.Max)
 				changed = true
 			}
 		}
-		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && rangeValue > 0 {
+		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
-			value := int32(int64(props.Min) + int64(float64(ratio)*float64(rangeValue)+0.5))
+			value := Slider_SliderWholeValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]
 			props.Values[i] = value
 		}
@@ -4155,12 +3925,7 @@ func (r *runtime) sliderInt(props SliderIntProps, vertical bool) bool {
 	return changed
 }
 
-func (r *runtime) SliderFloat(props SliderFloatProps) bool  { return r.sliderFloat(props, false) }
-func (r *runtime) SliderInt(props SliderIntProps) bool      { return r.sliderInt(props, false) }
-func (r *runtime) VSliderFloat(props SliderFloatProps) bool { return r.sliderFloat(props, true) }
-func (r *runtime) VSliderInt(props SliderIntProps) bool     { return r.sliderInt(props, true) }
-
-func (r *runtime) SliderAngle(props SliderAngleProps) bool {
+func (r *runtime) sliderAngle(props sliderAngleProps) bool {
 	if props.Value == nil {
 		return false
 	}
@@ -4170,11 +3935,66 @@ func (r *runtime) SliderAngle(props SliderAngleProps) bool {
 		format = "%.0f deg"
 	}
 	values := []float32{degrees}
-	changed := r.sliderFloat(SliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: values, ValueCount: 1, Min: props.MinDegrees, Max: props.MaxDegrees, Format: format, Disabled: props.Disabled}, false)
+	changed := r.sliderFloat(sliderFloatProps{Bounds: props.Bounds, ID: props.ID, Label: props.Label, Values: values, ValueCount: 1, Min: props.MinDegrees, Max: props.MaxDegrees, Format: format, Disabled: props.Disabled}, false)
 	if changed {
 		*props.Value = values[0] * 0.017453292519943295
 	}
 	return changed
+}
+
+func (r *runtime) Slider(props SliderProps) bool {
+	count := props.ValueCount
+	if count <= 0 {
+		if props.Kind == NumericInt {
+			count = int32(len(props.IntValues))
+		} else {
+			count = int32(len(props.FloatValues))
+		}
+	}
+	if props.Angle {
+		return r.sliderAngle(sliderAngleProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Value:      props.FloatValue,
+			MinDegrees: float32(props.Min),
+			MaxDegrees: float32(props.Max),
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		})
+	}
+	if props.Kind == NumericInt {
+		slider := sliderIntProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Values:     props.IntValues,
+			ValueCount: count,
+			Min:        int32(props.Min),
+			Max:        int32(props.Max),
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		}
+		if props.Vertical {
+			return r.sliderInt(slider, true)
+		}
+		return r.sliderInt(slider, false)
+	}
+	slider := sliderFloatProps{
+		Bounds:     props.Bounds,
+		ID:         props.ID,
+		Label:      props.Label,
+		Values:     props.FloatValues,
+		ValueCount: count,
+		Min:        float32(props.Min),
+		Max:        float32(props.Max),
+		Format:     props.Format,
+		Disabled:   props.Disabled,
+	}
+	if props.Vertical {
+		return r.sliderFloat(slider, true)
+	}
+	return r.sliderFloat(slider, false)
 }
 
 func (r *runtime) numericInputState(key numericInputKey, formatted string) *numericInputState {
@@ -4209,12 +4029,12 @@ func (r *runtime) setNumericInputText(key numericInputKey, formatted string) {
 	state.cursor = int32(len(formatted))
 }
 
-func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, formatted string, disabled bool, step, stepFast float64) (string, float64, bool) {
+func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, formatted string, disabled bool, stepEnabled bool) (string, int32, bool, bool) {
 	state := r.numericInputState(key, formatted)
 	token := state.token
 	field := bounds
 	minus, plus := bounds, bounds
-	if step != 0 {
+	if stepEnabled {
 		buttonWidth := float32(24)
 		field.Width -= buttonWidth * 2
 		minus = Rectangle{X: field.X + field.Width, Y: bounds.Y, Width: buttonWidth, Height: bounds.Height}
@@ -4228,27 +4048,25 @@ func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, format
 		textChanged = r.editText(field, state.text, &state.cursor, &state.focused, &commit, token, textEditOptions{maxCodepoints: 63})
 	}
 	r.recordTextInput(FrameOpTextField, field, state.text, &state.cursor, &state.focused, token, Text14, false, false)
-	if step == 0 {
-		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
+	if !stepEnabled {
+		return string(state.text[:zeroIndex(state.text)]), 0, false, textChanged
 	}
 	minusPressed := r.buttonAt(ButtonProps{Bounds: minus, Label: "-", Font: Text14,
 		ID: token + 1, Disabled: disabled})
 	plusPressed := r.buttonAt(ButtonProps{Bounds: plus, Label: "+", Font: Text14,
 		ID: token + 2, Disabled: disabled})
 	if !minusPressed && !plusPressed {
-		return string(state.text[:zeroIndex(state.text)]), 0, textChanged
+		return string(state.text[:zeroIndex(state.text)]), 0, false, textChanged
 	}
-	increment := step
-	if (r.keyDown[340] || r.keyDown[344]) && stepFast != 0 {
-		increment = stepFast
-	}
+	direction := int32(1)
 	if minusPressed {
-		increment = -increment
+		direction = -1
 	}
-	return string(state.text[:zeroIndex(state.text)]), increment, textChanged
+	fast := r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift]
+	return string(state.text[:zeroIndex(state.text)]), direction, fast, textChanged
 }
 
-func (r *runtime) InputFloat(props InputFloatProps) bool {
+func (r *runtime) inputFloat(props inputFloatProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -4262,7 +4080,7 @@ func (r *runtime) InputFloat(props InputFloatProps) bool {
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
 		key := numericInputKey{kind: 0, widgetID: props.ID, component: int32(i)}
-		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
+		text, direction, fast, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step != 0)
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -4270,8 +4088,9 @@ func (r *runtime) InputFloat(props InputFloatProps) bool {
 				value, valid = float32(parsed), true
 			}
 		}
-		if increment != 0 {
-			value, valid = value+float32(increment), true
+		if direction != 0 {
+			step := Input_InputScalarStepValue(value, props.Step, props.StepFast, direction, fast)
+			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
@@ -4283,7 +4102,7 @@ func (r *runtime) InputFloat(props InputFloatProps) bool {
 	return changed
 }
 
-func (r *runtime) InputInt(props InputIntProps) bool {
+func (r *runtime) inputInt(props inputIntProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -4297,7 +4116,7 @@ func (r *runtime) InputInt(props InputIntProps) bool {
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
 		key := numericInputKey{kind: 1, widgetID: props.ID, component: int32(i)}
-		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, float64(props.Step), float64(props.StepFast))
+		text, direction, fast, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step != 0)
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -4305,8 +4124,9 @@ func (r *runtime) InputInt(props InputIntProps) bool {
 				value, valid = int32(parsed), true
 			}
 		}
-		if increment != 0 {
-			value, valid = value+int32(increment), true
+		if direction != 0 {
+			step := Input_InputWholeStepValue(value, props.Step, props.StepFast, direction, fast)
+			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
@@ -4318,7 +4138,7 @@ func (r *runtime) InputInt(props InputIntProps) bool {
 	return changed
 }
 
-func (r *runtime) InputDouble(props InputDoubleProps) bool {
+func (r *runtime) inputDouble(props inputDoubleProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := int(props.ValueCount)
 	if count <= 0 || count > len(props.Values) {
@@ -4332,7 +4152,7 @@ func (r *runtime) InputDouble(props InputDoubleProps) bool {
 		}
 		cell := Rectangle{X: props.Bounds.X + float32(i)*props.Bounds.Width/float32(count), Y: props.Bounds.Y, Width: props.Bounds.Width / float32(count), Height: props.Bounds.Height}
 		key := numericInputKey{kind: 2, widgetID: props.ID, component: int32(i)}
-		text, increment, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step, props.StepFast)
+		text, direction, fast, edited := r.numericInputCell(cell, key, fmt.Sprintf(format, props.Values[i]), props.Disabled, props.Step != 0)
 		value := props.Values[i]
 		valid := false
 		if edited {
@@ -4340,8 +4160,9 @@ func (r *runtime) InputDouble(props InputDoubleProps) bool {
 				value, valid = parsed, true
 			}
 		}
-		if increment != 0 {
-			value, valid = value+increment, true
+		if direction != 0 {
+			step := Input_InputDoubleStepValue(value, props.Step, props.StepFast, direction, fast)
+			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
 		if valid && value != props.Values[i] {
@@ -4353,40 +4174,58 @@ func (r *runtime) InputDouble(props InputDoubleProps) bool {
 	return changed
 }
 
-func (r *runtime) Checkbox(id int32, x, y int32, label string, value *int32) bool {
-	if value == nil {
-		return false
-	}
-	theme := r.theme()
-	font := Text16
-	box := float32(22)
-	gap := float32(10)
-	labelW := float32(runtimeTextWidth(label, font))
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: box + gap + labelW, Height: box})
-	pressed, focused := r.focusablePress(bounds, id, value == nil)
-	if dbg := r.tapDebug(bounds, pressed, label); dbg != "" {
-		log.Print(dbg)
-	}
-	if pressed {
-		if *value == 0 {
-			*value = 1
-		} else {
-			*value = 0
+func (r *runtime) Input(props InputProps) bool {
+	count := props.ValueCount
+	if count <= 0 {
+		switch props.Kind {
+		case NumericInt:
+			count = int32(len(props.IntValues))
+		case NumericDouble:
+			count = int32(len(props.DoubleValues))
+		default:
+			count = int32(len(props.FloatValues))
 		}
 	}
-	boxBounds := Rectangle{X: bounds.X, Y: bounds.Y, Width: box, Height: box}
-	border := theme.border
-	if focused {
-		border = theme.focus
+	switch props.Kind {
+	case NumericInt:
+		return r.inputInt(inputIntProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Values:     props.IntValues,
+			ValueCount: count,
+			Step:       int32(props.Step),
+			StepFast:   int32(props.StepFast),
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		})
+	case NumericDouble:
+		return r.inputDouble(inputDoubleProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Values:     props.DoubleValues,
+			ValueCount: count,
+			Step:       props.Step,
+			StepFast:   props.StepFast,
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		})
+	default:
+		return r.inputFloat(inputFloatProps{
+			Bounds:     props.Bounds,
+			ID:         props.ID,
+			Label:      props.Label,
+			Values:     props.FloatValues,
+			ValueCount: count,
+			Step:       float32(props.Step),
+			StepFast:   float32(props.StepFast),
+			Format:     props.Format,
+			Disabled:   props.Disabled,
+		})
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: boxBounds, Color: theme.button, BorderColor: border, ID: id, Pressed: pressed, Selected: *value != 0, Focused: focused})
-	if *value != 0 {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 4, Y: boxBounds.Y + 11, Width: 6, Height: 7}, Color: theme.text, ID: id})
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: boxBounds.X + 10, Y: boxBounds.Y + 18, Width: 8, Height: -14}, Color: theme.text, ID: id})
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + box + gap, Y: bounds.Y + 3, Width: labelW, Height: bounds.Height}, Text: label, Color: theme.text, FontSize: font, ID: id})
-	return pressed
 }
+
 func (r *runtime) Dropdown(args ...any) bool {
 	if len(args) == 1 {
 		switch p := args[0].(type) {
@@ -4607,7 +4446,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}
 	track := Rectangle{X: panel.X + panel.Width - 10, Y: panel.Y, Width: 10, Height: panel.Height}
 	scrollbar := r.scrollDragOffset == offset || maximum > 0 && pointInRect(r.mousePos.X, r.mousePos.Y, track)
-	gesture := Dropdown_Drag(r.dropdownGestures[id], *offset, r.mouseDown[MouseButtonLeft],
+	gesture := Dropdown_PopupDragGesture(r.dropdownGestures[id], *offset, r.mouseDown[MouseButtonLeft],
 		pointInRect(r.mousePos.X, r.mousePos.Y, panel) || pointInRect(r.mousePos.X, r.mousePos.Y, bounds),
 		scrollbar, r.mousePos.Y, maximum, 8)
 	*offset = gesture.Offset
@@ -4792,20 +4631,31 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: UISemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {
-	return r.Href(HrefProps{
-		Bounds:     props.Bounds,
-		Text:       props.Text,
-		Href:       props.Href,
-		Font:       props.Font,
-		FocusID:    props.FocusID,
-		Disabled:   props.Disabled,
-		Color:      props.Color,
-		HoverColor: props.HoverColor,
-	})
+	font := props.Font
+	if font <= 0 {
+		font = Text16
+	}
+	color := props.Color
+	if color.A == 0 {
+		color = r.theme().link
+	}
+	bounds := r.layoutRect(props.Bounds)
+	if bounds.Width <= 0 {
+		bounds.Width = float32(runtimeTextWidth(props.Text, font))
+	}
+	if bounds.Height <= 0 {
+		bounds.Height = float32(font + 4)
+	}
+	pressed := false
+	if !props.Disabled {
+		pressed = r.consumeTap(bounds)
+	}
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: UISemanticLink, Link: props.Link, Role: "link"})
+	return pressed
 }
-func (r *runtime) PagePicture(props PictureProps, altText string) {
+func (r *runtime) PageImage(props ImageProps, altText string) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	r.record(FrameOp{Kind: FrameOpPicture, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: UISemanticPicture, Role: "img", AltText: altText})
+	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: UISemanticImage, Role: "img", AltText: altText})
 }
 func (r *runtime) Flow(props FlowProps) {
 	r.Row(ColumnProps(props))
@@ -4844,40 +4694,6 @@ func (r *runtime) GetThemeSurfaceVariant() Color {
 func (r *runtime) GetThemeScheme() DefaultScheme {
 	return materialScheme(r.theme(), r.effectiveDark())
 }
-func (r *runtime) LabelText(label, value string, bounds Rectangle, fontSize int32, color Color) {
-	labelWidth := float32(runtimeTextWidth(label, fontSize))
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: label, Color: r.Fade(color, 0.72), FontSize: fontSize})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + labelWidth + 8, Y: bounds.Y, Width: bounds.Width - labelWidth - 8, Height: bounds.Height}, Text: value, Color: color, FontSize: fontSize})
-}
-func (r *runtime) BulletText(text string, bounds Rectangle, fontSize int32, color Color) {
-	bulletSize := float32(12)
-	bulletHeight := bounds.Height
-	if bulletHeight < float32(fontSize) {
-		bulletHeight = float32(fontSize)
-	}
-	r.Bullet(Rectangle{X: bounds.X, Y: bounds.Y, Width: bulletSize, Height: bulletHeight})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bulletSize + 4, Y: bounds.Y, Width: bounds.Width - bulletSize - 4, Height: bounds.Height}, Text: text, Color: color, FontSize: fontSize})
-}
-
-func (r *runtime) ValueBool(prefix string, value bool, bounds Rectangle, fontSize int32, color Color) {
-	r.LabelText(prefix, strconv.FormatBool(value), bounds, fontSize, color)
-}
-
-func (r *runtime) ValueInt(prefix string, value int32, bounds Rectangle, fontSize int32, color Color) {
-	r.LabelText(prefix, strconv.FormatInt(int64(value), 10), bounds, fontSize, color)
-}
-
-func (r *runtime) ValueUInt(prefix string, value uint32, bounds Rectangle, fontSize int32, color Color) {
-	r.LabelText(prefix, strconv.FormatUint(uint64(value), 10), bounds, fontSize, color)
-}
-
-func (r *runtime) ValueFloat(prefix string, value float32, format string, bounds Rectangle, fontSize int32, color Color) {
-	if format == "" {
-		format = "%.3f"
-	}
-	r.LabelText(prefix, fmt.Sprintf(format, value), bounds, fontSize, color)
-}
-
 func wrapRuntimeText(text string, width float32, fontSize int32) []string {
 	return wrapRuntimeTextMeasured(text, width, func(value string) int {
 		return runtimeTextWidth(value, fontSize)
@@ -4909,28 +4725,6 @@ func wrapRuntimeTextMeasured(text string, width float32, measure func(string) in
 	}
 	return lines
 }
-func (r *runtime) TextLines(lines any, count int32, x int32, y *int32, font, lineH int32, color Color) {
-	_, _, _, _, _ = lines, count, x, font, color
-	for i, line := range labelsOf(lines) {
-		if int32(i) >= count {
-			break
-		}
-		lineY := int32(0)
-		if y != nil {
-			lineY = *y + int32(i)*lineH
-		}
-		r.record(FrameOp{
-			Kind:     FrameOpText,
-			Bounds:   Rectangle{X: float32(x), Y: float32(lineY), Width: float32(font * 8), Height: float32(font)},
-			Text:     line,
-			Color:    color,
-			FontSize: font,
-		})
-	}
-	if y != nil {
-		*y += lineH * count
-	}
-}
 func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color) {}
 func (r *runtime) Icon(id, x, y, size int32, iconType int32, tint Color) {
 	r.record(FrameOp{
@@ -4942,9 +4736,12 @@ func (r *runtime) Icon(id, x, y, size int32, iconType int32, tint Color) {
 		IconSize: float32(size),
 	})
 }
-func (r *runtime) Picture(props PictureProps) {
+func (r *runtime) Image(props ImageProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	r.record(FrameOp{Kind: FrameOpPicture, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint})
+	if props.Style.Enabled && props.Style.Background.A > 0 {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: props.Style.Background})
+	}
+	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint})
 }
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	font := spec.Font
@@ -5044,33 +4841,6 @@ func (r *runtime) iconAction(props iconActionProps) bool {
 	r.Icon(props.FocusID, iconX, iconY, size, iconType, iconColor)
 	return pressed
 }
-func (r *runtime) Href(props HrefProps) bool {
-	font := props.Font
-	if font <= 0 {
-		font = Text16
-	}
-	color := props.Color
-	if color.A == 0 {
-		color = r.theme().link
-	}
-	bounds := r.layoutRect(props.Bounds)
-	if bounds.Width <= 0 {
-		bounds.Width = float32(runtimeTextWidth(props.Text, font))
-	}
-	if bounds.Height <= 0 {
-		bounds.Height = float32(font + 4)
-	}
-	pressed := false
-	if !props.Disabled {
-		pressed = r.consumeTap(bounds)
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: UISemanticLink, Href: props.Href, Role: "link"})
-	return pressed
-}
-func (r *runtime) Slider(id, x, y, w int32, label string, min, max int32, value *int32, rest ...any) bool {
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: 56})
-	return r.sliderAt(id, bounds, label, min, max, value, rest...)
-}
 func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max int32, value *int32, rest ...any) bool {
 	if value == nil {
 		return false
@@ -5113,48 +4883,81 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: bounds.X + fillW - 6, Y: trackY - 7, Width: 12, Height: 22}, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: changed})
 	return changed
 }
-func (r *runtime) Toggle(id, x, y, w, h int32, value *int32, offLabel, onLabel string) bool {
-	if value == nil {
+func (r *runtime) Toggle(props ToggleProps) bool {
+	if props.Value == nil {
 		return false
 	}
 	theme := r.theme()
-	if h < 34 {
-		h = 34
+	bounds := props.Bounds
+	if bounds.Height < 34 {
+		bounds.Height = 34
 	}
-	minHalf := maxInt(runtimeTextWidth(offLabel, Text16), runtimeTextWidth(onLabel, Text16)) + 16
-	minW := int32(minHalf*2 + 6)
-	if w < minW {
-		w = minW
+	minHalf := maxInt(runtimeTextWidth(props.OffLabel, Text16), runtimeTextWidth(props.OnLabel, Text16)) + 16
+	minW := float32(minHalf*2 + 6)
+	if bounds.Width < minW {
+		bounds.Width = minW
 	}
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)})
-	pressed, focused := r.focusablePress(bounds, id, false)
+	bounds = r.layoutRect(bounds)
+	pressed, focused := r.focusablePress(bounds, props.ID, props.Disabled)
 	if pressed {
-		if *value == 0 {
-			*value = 1
+		if *props.Value == 0 {
+			*props.Value = 1
 		} else {
-			*value = 0
+			*props.Value = 0
 		}
 	}
 	border := theme.border
 	if focused {
 		border = theme.focus
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: border, ID: id, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: border, ID: props.ID, Focused: focused, Disabled: props.Disabled})
 	activeW := (bounds.Width - 6) / 2
 	activeX := bounds.X + 3
-	if *value != 0 {
+	if *props.Value != 0 {
 		activeX = bounds.X + bounds.Width - activeW - 3
 	}
 	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: activeX, Y: bounds.Y + 3, Width: activeW, Height: bounds.Height - 6}, Color: theme.button, BorderColor: theme.buttonHover, ID: id, Pressed: pressed, Selected: *value != 0})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: offLabel, Color: theme.text, FontSize: Text16, ID: id})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width/2, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: onLabel, Color: theme.text, FontSize: Text16, ID: id})
+		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: activeX, Y: bounds.Y + 3, Width: activeW, Height: bounds.Height - 6}, Color: theme.button, BorderColor: theme.buttonHover, ID: props.ID, Pressed: pressed, Selected: *props.Value != 0, Disabled: props.Disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: props.OffLabel, Color: theme.text, FontSize: Text16, ID: props.ID, Disabled: props.Disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width/2, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: props.OnLabel, Color: theme.text, FontSize: Text16, ID: props.ID, Disabled: props.Disabled})
 	return pressed
 }
-func (r *runtime) Modal(title, message, cancelBtn, confirmBtn string) int {
-	result, _ := r.drawActionModal(title, message, []string{cancelBtn, confirmBtn}, 0)
-	return int(result)
+func (r *runtime) Modal(props ModalProps) int32 {
+	count := int(props.ActionCount)
+	if count <= 0 || count > len(props.Actions) {
+		count = len(props.Actions)
+	}
+	labels := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		labels = append(labels, props.Actions[i].Label)
+	}
+	fieldHeight := float32(0)
+	if props.Text != nil && props.CursorPosition != nil && props.Focused != nil {
+		fieldHeight = 38
+	}
+	result, field := r.drawActionModal(props.Title, props.Message, labels, fieldHeight)
+	commit := false
+	if fieldHeight > 0 {
+		focusID := props.FocusID
+		if focusID == 0 {
+			focusID = 7301
+		}
+		maxCodepoints := int32(len(props.Text) - 1)
+		if props.TextSize > 0 && props.TextSize <= int32(len(props.Text)) {
+			maxCodepoints = props.TextSize - 1
+		}
+		r.editText(field, props.Text, props.CursorPosition, props.Focused, &commit, focusID, textEditOptions{maxCodepoints: maxCodepoints})
+		r.recordTextInput(FrameOpTextField, field, props.Text, props.CursorPosition, props.Focused, focusID, Text16, false, false)
+	}
+	if result == 0 && commit {
+		if count > 1 {
+			result = 2
+		} else {
+			result = 1
+		}
+	}
+	return result
 }
 
 func (r *runtime) drawActionModal(title, message string, labels []string, fieldHeight float32) (int32, Rectangle) {
@@ -5223,14 +5026,16 @@ func (r *runtime) drawActionModal(title, message string, labels []string, fieldH
 	field := Rectangle{X: x + 18, Y: buttonY - fieldHeight - 12, Width: w - 36, Height: fieldHeight}
 	return result, field
 }
-func (r *runtime) TitleBar(title string, height int32) {
+func (r *runtime) TitleBar(props TitleBarProps) int32 {
+	height := props.Height
 	if height <= 0 {
 		height = 44
 	}
 	t := r.theme()
 	b := Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(height)}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: 12, Y: float32(height-Text20) / 2, Width: b.Width - 24, Height: float32(Text20 + 4)}, Text: title, Color: t.text, FontSize: Text20})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: 12, Y: float32(height-Text20) / 2, Width: b.Width - 24, Height: float32(Text20 + 4)}, Text: props.Title, Color: t.text, FontSize: Text20})
+	return 0
 }
 func (r *runtime) NavigationBar(props NavigationBarProps) {
 	count := int(props.Count)
@@ -5286,43 +5091,6 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: ib.X + 6, Y: ib.Y + (ib.Height-float32(Text14))/2, Width: ib.Width - 12, Height: float32(Text14 + 4)}, Text: item.Label, Color: color, FontSize: Text14, ID: item.Route, Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
-func (r *runtime) TopNav(props TopNavProps) {
-	w, h := props.Width, props.Height
-	if w <= 0 {
-		w = r.GetScreenWidth() - props.X
-	}
-	if h <= 0 {
-		h = 44
-	}
-	b := Rectangle{X: float32(props.X), Y: float32(props.Y), Width: float32(w), Height: float32(h)}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
-	labels := labelsOf(props.Options)
-	count := int(props.OptionCount)
-	if count <= 0 || count > len(labels) {
-		count = len(labels)
-	}
-	if count > 0 && props.SelectedIndex != nil {
-		pad := props.SidePadding
-		if pad <= 0 {
-			pad = 8
-		}
-		dh := props.DropdownHeight
-		if dh <= 0 {
-			dh = h - pad*2
-		}
-		drop := Rectangle{X: b.X + float32(pad), Y: b.Y + float32((h-dh)/2), Width: b.Width - float32(pad*2), Height: float32(dh)}
-		if props.Disabled {
-			r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-				BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-				AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: drop, Text: selectedLabel(labels[:count], props.SelectedIndex), Color: t.surface, BorderColor: t.border, TextColor: t.icon, FontSize: Text16, ID: props.ID, Disabled: true})
-		} else {
-			r.dropdownAt(props.ID, drop, labels[:count], props.SelectedIndex)
-		}
-		return
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: b.X + 12, Y: b.Y + float32(h-Text20)/2, Width: b.Width - 24, Height: float32(Text20 + 4)}, Text: props.Title, Color: t.text, FontSize: Text20, Disabled: props.Disabled})
-}
 func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	theme := r.theme()
 	result := ToolbarResult{SelectedMenuItem: -1, ClickedAction: -1}
@@ -5332,42 +5100,36 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 	if props.Height <= 0 {
 		props.Height = 44
 	}
-	sidePadding := props.SidePadding
-	if sidePadding < 0 {
-		sidePadding = 0
-	} else if sidePadding == 0 {
-		sidePadding = 12
+	actionCount := int32(props.ActionCount)
+	if actionCount <= 0 || int(actionCount) > len(props.Actions) {
+		actionCount = int32(len(props.Actions))
 	}
-	iconSize := props.ActionIconSize
-	if iconSize <= 0 {
-		iconSize = 20
-	}
-	iconPadding := props.ActionIconPadding
-	if iconPadding <= 0 {
-		iconPadding = 6
-	}
-	gap := props.ActionGap
-	if gap <= 0 {
-		gap = 6
-	}
-	bounds := Rectangle{X: float32(props.X), Y: float32(props.Y), Width: float32(props.Width), Height: float32(props.Height)}
+	layout := Toolbar_ToolbarLayoutFor(ToolbarSpec{
+		X:                 props.X,
+		Y:                 props.Y,
+		Width:             props.Width,
+		Height:            props.Height,
+		ActionCount:       actionCount,
+		ActionIconSize:    props.ActionIconSize,
+		ActionIconPadding: props.ActionIconPadding,
+		ActionGap:         props.ActionGap,
+		SidePadding:       props.SidePadding,
+		DropdownMinWidth:  props.DropdownMinWidth,
+		DropdownMaxWidth:  props.DropdownMaxWidth,
+		DropdownHeight:    props.DropdownHeight,
+		Scale:             1,
+	})
+	bounds := layout.Bounds
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.6)})
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
-	actionCount := int(props.ActionCount)
-	if actionCount <= 0 || actionCount > len(props.Actions) {
-		actionCount = len(props.Actions)
-	}
-	actionW := iconSize + iconPadding*2
-	x := props.X + props.Width - sidePadding - actionW
-	y := props.Y + (props.Height-actionW)/2
-	for i := 0; i < actionCount; i++ {
+	for i := int32(0); i < actionCount; i++ {
 		action := props.Actions[i]
 		if r.iconAction(iconActionProps{
-			Bounds:          Rectangle{X: float32(x), Y: float32(y), Width: float32(actionW), Height: float32(actionW)},
+			Bounds:          Toolbar_ToolbarActionBoundsFor(layout, i, actionCount),
 			Icon:            action.Icon,
 			IconType:        action.IconType,
-			IconSize:        iconSize,
-			IconPadding:     iconPadding,
+			IconSize:        layout.ActionIconSize,
+			IconPadding:     layout.ActionIconPadding,
 			FocusID:         props.ID*100 + int32(i) + 1,
 			Disabled:        action.Disabled,
 			Background:      theme.surface,
@@ -5377,7 +5139,6 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 		}) {
 			result.ClickedAction = int32(i)
 		}
-		x -= actionW + gap
 	}
 	return result
 }
@@ -5418,6 +5179,7 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 	theme := r.theme()
 	result := MenuBarResult{OpenIndex: -1}
 	state := r.menuNav(id)
+	metrics := Menu_MenuMetricsFor(1)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(r.GetScreenWidth()) - bounds.X
 	}
@@ -5491,8 +5253,8 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 	x := bounds.X + 4
 	font := Text14
 	for i, menu := range menus {
-		w := float32(maxInt(44, runtimeTextWidth(menu.Label, font)+24))
-		item := Rectangle{X: x, Y: bounds.Y + 3, Width: w, Height: bounds.Height - 6}
+		w := Menu_MenuBarItemWidth(int32(runtimeTextWidth(menu.Label, font)), metrics)
+		item := Menu_MenuBarItemBounds(int32(x), bounds, w, metrics)
 		if !r.contentDisabled() && r.consumeTap(item) {
 			r.setFocus(id)
 			idx := int32(i)
@@ -5512,7 +5274,7 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: item, Color: theme.button})
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: theme.text, FontSize: font})
-		x += w + 2
+		x += float32(w + metrics.BarItemGap)
 	}
 	if open >= 0 && int(open) < len(menus) {
 		result.OpenIndex = open
@@ -5522,7 +5284,8 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 		menu := menus[open]
 		menuX := bounds.X + 4
 		for i := 0; i < int(open); i++ {
-			menuX += float32(maxInt(44, runtimeTextWidth(menus[i].Label, font)+24)) + 2
+			w := Menu_MenuBarItemWidth(int32(runtimeTextWidth(menus[i].Label, font)), metrics)
+			menuX += float32(w + metrics.BarItemGap)
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
 		handled := openedByKeyboard
@@ -5550,18 +5313,18 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
 	theme := r.theme()
 	font := int32(Text14)
-	rowH := float32(30)
-	width := float32(180)
+	metrics := Menu_MenuMetricsFor(1)
+	width := metrics.PanelMinWidth
 	for _, item := range items {
-		candidate := float32(runtimeTextWidth(item.Label, font) + 36)
+		accelWidth := int32(0)
 		if item.Accelerator != "" {
-			candidate += float32(runtimeTextWidth(item.Accelerator, font) + 28)
+			accelWidth = int32(runtimeTextWidth(item.Accelerator, font))
 		}
-		if candidate > width {
-			width = candidate
-		}
+		width = Menu_MenuPanelWidthStep(width,
+			int32(runtimeTextWidth(item.Label, font)), accelWidth,
+			item.Accelerator != "", metrics)
 	}
-	panel := Rectangle{X: float32(x), Y: float32(y), Width: width, Height: rowH*float32(len(items)) + 8}
+	panel := Menu_MenuPanelBounds(x, y, width, int32(len(items)), metrics)
 	if len(items) == 0 {
 		return 0, panel
 	}
@@ -5608,7 +5371,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border})
 	for i, item := range items {
-		row := Rectangle{X: panel.X + 4, Y: panel.Y + 4 + float32(i)*rowH, Width: panel.Width - 8, Height: rowH}
+		row := Menu_MenuRowBounds(panel, int32(i), metrics)
 		if item.Kind == MenuSeparator {
 			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16}, Color: theme.border})
 			continue
@@ -5646,7 +5409,8 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, FontSize: font, Disabled: item.Disabled})
 		if item.Accelerator != "" {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(runtimeTextWidth(item.Accelerator, font)) - 12, Y: row.Y + 6, Width: 80, Height: row.Height}, Text: item.Accelerator, Color: theme.icon, FontSize: font, Disabled: item.Disabled})
+			accelWidth := runtimeTextWidth(item.Accelerator, font)
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: theme.icon, FontSize: font, Disabled: item.Disabled})
 		}
 		if item.Kind == MenuSubmenu {
 			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, FontSize: font})
@@ -5656,7 +5420,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			}
 			if submenuOpen {
 				subitems := limitedMenuItems(item.Submenu, item.SubmenuCount)
-				activated, _ := r.drawPopupMenu(item.ID, int32(row.X+row.Width), int32(row.Y), subitems, focusID, depth+1, handled)
+				activated, _ := r.drawPopupMenu(item.ID, Menu_MenuSubmenuX(row), int32(row.Y), subitems, focusID, depth+1, handled)
 				if activated != 0 {
 					return activated, panel
 				}
@@ -5750,15 +5514,15 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 }
 func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 	bounds = r.layoutRect(bounds)
-	spacing := r.Scale(step)
-	if spacing < 4 {
-		spacing = 4
+	spacing := CanvasGrid_CanvasGridSpacing(r.Scale(step), 4)
+	packed := packRGBA(color)
+	for i, count := int32(0), CanvasGrid_CanvasGridLineCount(bounds.Width, spacing); i < count; i++ {
+		line := CanvasGrid_CanvasGridVerticalLine(bounds, i, spacing, packed)
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color)})
 	}
-	for x := bounds.X; x < bounds.X+bounds.Width; x += float32(spacing) {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Width: 0, Height: bounds.Height}, Color: color})
-	}
-	for y := bounds.Y; y < bounds.Y+bounds.Height; y += float32(spacing) {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: y, Width: bounds.Width, Height: 0}, Color: color})
+	for i, count := int32(0), CanvasGrid_CanvasGridLineCount(bounds.Height, spacing); i < count; i++ {
+		line := CanvasGrid_CanvasGridHorizontalLine(bounds, i, spacing, packed)
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color)})
 	}
 }
 func (r *runtime) SelectableText(value string, x, y, fontSize int32, color Color) {
@@ -5820,39 +5584,38 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 }
 
 func textAreaPageRows(props TextAreaProps) int {
-	font := props.Font
-	if font <= 0 {
-		font = Text16
-	}
-	lineGap := props.LineGap
-	if lineGap < 0 {
-		lineGap = 6
-	}
-	paddingY := props.Style.PaddingY
-	if paddingY <= 0 {
-		paddingY = 8
-	}
-	lineHeight := font + lineGap
-	visibleHeight := int32(props.Bounds.Height) - paddingY*2
-	if lineHeight <= 0 || visibleHeight < lineHeight {
-		return 1
-	}
-	return int(visibleHeight / lineHeight)
+	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, Text16, 10, 8, 6)
+	return int(TextInput_TextAreaPageRows(props.Bounds.Height, metrics.Font, metrics.LineGap, metrics.PaddingY))
 }
 
-func (r *runtime) Radio(props RadioButtonProps) int32 {
+func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
-	c := r.theme().text
-	if props.Disabled {
-		c = r.theme().icon
-	}
+	theme := r.theme()
+	paint := Radio_RadioPaintFor(RadioSpec{
+		Bounds:   props.Bounds,
+		Checked:  props.Checked,
+		Disabled: props.Disabled,
+		SelectedAmount: func() float32 {
+			if props.Checked {
+				return 1
+			}
+			return 0
+		}(),
+		Scale:         1,
+		TextColor:     packRGBA(theme.text),
+		IconColor:     packRGBA(theme.icon),
+		ButtonColor:   packRGBA(theme.button),
+		PrimaryColor:  packRGBA(theme.button),
+		DisabledColor: packRGBA(theme.icon),
+	})
 	mark := "○"
 	if props.Checked {
 		mark = "◉"
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: 24, Height: props.Bounds.Height}, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + 28, Y: props.Bounds.Y, Width: props.Bounds.Width - 28, Height: props.Bounds.Height}, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
+	c := unpackRGBA(paint.LabelColor)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
 	if pressed {
 		return props.ID
 	}
@@ -5860,40 +5623,26 @@ func (r *runtime) Radio(props RadioButtonProps) int32 {
 }
 func (r *runtime) Spinbox(p SpinboxProps) bool {
 	p.Bounds = r.layoutRect(p.Bounds)
-	bw := float32(28)
-	if p.Bounds.Width < bw*2 {
-		bw = p.Bounds.Width / 2
-	}
-	l := Rectangle{X: p.Bounds.X, Y: p.Bounds.Y, Width: bw, Height: p.Bounds.Height}
-	rr := Rectangle{X: p.Bounds.X + p.Bounds.Width - bw, Y: p.Bounds.Y, Width: bw, Height: p.Bounds.Height}
+	layout := Spinbox_SpinboxLayoutFor(p.Bounds, 28)
+	l := layout.Left
+	rr := layout.Right
 	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-", Font: Text16,
 		ID: p.ID*10 + 1, Disabled: p.Disabled})
 	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+", Font: Text16,
 		ID: p.ID*10 + 2, Disabled: p.Disabled})
-	step := p.Step
-	if step <= 0 {
-		step = 1
-	}
+	step := Spinbox_SpinboxEffectiveStep(p.Step)
 	changed := false
 	if p.Value != nil && minus {
-		n := *p.Value - step
-		if p.Wrap && *p.Value <= p.Min {
-			n = p.Max
-		}
-		n = clamp32(n, p.Min, p.Max)
-		changed = n != *p.Value
-		*p.Value = n
+		result := Spinbox_SpinboxStepValue(*p.Value, p.Min, p.Max, step, -1, p.Wrap)
+		changed = result.Changed
+		*p.Value = result.Value
 	}
 	if p.Value != nil && plus {
-		n := *p.Value + step
-		if p.Wrap && *p.Value >= p.Max {
-			n = p.Min
-		}
-		n = clamp32(n, p.Min, p.Max)
-		changed = changed || n != *p.Value
-		*p.Value = n
+		result := Spinbox_SpinboxStepValue(*p.Value, p.Min, p.Max, step, 1, p.Wrap)
+		changed = changed || result.Changed
+		*p.Value = result.Value
 	}
-	center := Rectangle{X: l.X + bw, Y: p.Bounds.Y, Width: p.Bounds.Width - bw*2, Height: p.Bounds.Height}
+	center := layout.Text
 	txt := p.ValueText
 	if txt == "" {
 		v := int32(0)
@@ -5907,50 +5656,19 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: t.text, FontSize: Text16})
 	return changed
 }
-func (r *runtime) Combobox(p ComboboxProps) bool {
-	return r.dropdownFromProps(p)
-}
 func (r *runtime) LabelFrame(p LabelFrameProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
 	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: p.Bounds, BorderColor: t.border})
+	w := float32(0)
 	if p.Title != "" {
-		w := float32(runtimeTextWidth(p.Title, Text14))
-		b := Rectangle{X: p.Bounds.X + 8, Y: p.Bounds.Y - 8, Width: w + 16, Height: 18}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.background})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: b.X + 8, Y: b.Y, Width: w, Height: b.Height}, Text: p.Title, Color: t.text, FontSize: Text14})
+		w = float32(runtimeTextWidth(p.Title, Text14))
 	}
-}
-func (r *runtime) Notebook(p NotebookProps) int32 {
-	if p.SelectedIndex == nil || len(p.Tabs) == 0 {
-		return 0
+	paint := LabelFrame_LabelFramePaintFor(p.Bounds, w, p.Title != "", 1, packRGBA(t.border), packRGBA(t.background), packRGBA(t.text))
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Frame, BorderColor: unpackRGBA(paint.BorderColor), BorderWidth: paint.BorderWidth})
+	if paint.ShowTitle {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.TitleBackground, Color: unpackRGBA(paint.BackgroundColor)})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), FontSize: Text14})
 	}
-	p.Bounds = r.layoutRect(p.Bounds)
-	t := r.theme()
-	x := p.Bounds.X
-	changed := int32(0)
-	for i, s := range p.Tabs {
-		w := float32(runtimeTextWidth(s, Text16) + 28)
-		b := Rectangle{X: x, Y: p.Bounds.Y, Width: w, Height: 34}
-		pressed := r.consumeTap(b)
-		sel := *p.SelectedIndex == int32(i)
-		fill := t.button
-		if sel {
-			fill = t.surface
-		}
-		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: b, Text: s, Color: fill, BorderColor: t.border, TextColor: t.text, FontSize: Text16, Pressed: pressed, Selected: sel})
-		if pressed && !sel {
-			*p.SelectedIndex = int32(i)
-			changed = 1
-		}
-		x += w
-	}
-	if p.Bounds.Height > 34 {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: p.Bounds.X, Y: p.Bounds.Y + 34, Width: p.Bounds.Width, Height: p.Bounds.Height - 34}, BorderColor: t.border})
-	}
-	return changed
 }
 func (r *runtime) PanedView(p PanedViewProps) int32 {
 	if p.Split == nil {
@@ -6145,22 +5863,6 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	return 0
 }
-func (r *runtime) ColorPicker(b Rectangle, c *Color) bool {
-	if c == nil {
-		return false
-	}
-	b = r.layoutRect(b)
-	rv, gv, bv := int32(c.R), int32(c.G), int32(c.B)
-	changed := r.sliderAt(8101, Rectangle{X: b.X, Y: b.Y, Width: b.Width, Height: 32}, "R", 0, 255, &rv)
-	changed = r.sliderAt(8102, Rectangle{X: b.X, Y: b.Y + 36, Width: b.Width, Height: 32}, "G", 0, 255, &gv) || changed
-	changed = r.sliderAt(8103, Rectangle{X: b.X, Y: b.Y + 72, Width: b.Width, Height: 32}, "B", 0, 255, &bv) || changed
-	if changed {
-		c.R, c.G, c.B = uint8(rv), uint8(gv), uint8(bv)
-	}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: b.X, Y: b.Y + 112, Width: 80, Height: 36}, Color: *c, BorderColor: t.border})
-	return changed
-}
 func (r *runtime) TreeView(props TreeViewProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	count := props.ItemCount
@@ -6226,113 +5928,18 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	}
 	return changed
 }
-func (r *runtime) SourceView(props SourceViewProps) int32 {
-	props.Bounds = r.layoutRect(props.Bounds)
-	font := props.FontSize
-	if font <= 0 {
-		font = Text14
-	}
-	lineH := props.LineHeight
-	if lineH <= 0 {
-		lineH = font + 4
-	}
-	lines := strings.Split(props.Text, "\n")
-	if props.Text == "" {
-		lines = nil
-	}
-	pad := int32(12)
-	gutter := int32(0)
-	if props.ShowLineNumbers {
-		gutter = 58
-	}
-	viewH := max32(0, int32(props.Bounds.Height)-pad*2)
-	contentH := int32(len(lines)) * lineH
-	maxY := max32(0, contentH-viewH)
-	if props.ScrollY != nil {
-		*props.ScrollY = clamp32(*props.ScrollY, 0, maxY)
-		if r.pointerCanReach(props.Bounds) && r.mouseWheel != 0 {
-			*props.ScrollY = clamp32(*props.ScrollY-int32(r.mouseWheel)*lineH*3, 0, maxY)
-		}
-	}
-	maxWidth := int32(0)
-	for _, line := range lines {
-		line = strings.ReplaceAll(line, "\t", "    ")
-		maxWidth = max32(maxWidth, int32(runtimeTextWidth(line, font)))
-	}
-	viewW := max32(0, int32(props.Bounds.Width)-pad*2-gutter)
-	maxX := max32(0, maxWidth-viewW+24)
-	if props.ScrollX != nil {
-		*props.ScrollX = clamp32(*props.ScrollX, 0, maxX)
-	}
-	scrollY, scrollX := int32(0), int32(0)
-	if props.ScrollY != nil {
-		scrollY = *props.ScrollY
-	}
-	if props.ScrollX != nil {
-		scrollX = *props.ScrollX
-	}
-	theme := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: theme.surface, BorderColor: theme.border})
-	first := scrollY / lineH
-	yOffset := scrollY % lineH
-	for i := first; i < int32(len(lines)); i++ {
-		y := props.Bounds.Y + float32(pad+(i-first)*lineH-yOffset)
-		if y >= props.Bounds.Y+props.Bounds.Height-float32(pad) {
-			break
-		}
-		if props.ShowLineNumbers {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + float32(pad), Y: y, Width: float32(gutter), Height: float32(lineH)}, Text: fmt.Sprint(i + 1), Color: theme.icon, FontSize: font, Row: i})
-		}
-		line := strings.ReplaceAll(lines[i], "\t", "    ")
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: props.Bounds.X + float32(pad+gutter-scrollX), Y: y, Width: float32(maxWidth), Height: float32(lineH)}, Text: line, Color: theme.text, FontSize: font, Row: i})
-	}
-	if maxX > 0 || maxY > 0 {
-		return 1
-	}
-	return 0
-}
-func (r *runtime) BeginListBox(props ListBoxProps) Rectangle {
-	props.Bounds = r.layoutRect(props.Bounds)
-	r.BeginDisabled(props.Disabled)
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: t.surface, ID: props.ID, Role: "listbox"})
-	for _, edge := range []Rectangle{
-		{X: props.Bounds.X, Y: props.Bounds.Y, Width: props.Bounds.Width},
-		{X: props.Bounds.X, Y: props.Bounds.Y + props.Bounds.Height - 1, Width: props.Bounds.Width},
-		{X: props.Bounds.X, Y: props.Bounds.Y, Height: props.Bounds.Height},
-		{X: props.Bounds.X + props.Bounds.Width - 1, Y: props.Bounds.Y, Height: props.Bounds.Height},
-	} {
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: edge, Color: t.border, ID: props.ID})
-	}
-	inner := Rectangle{X: props.Bounds.X + 1, Y: props.Bounds.Y + 1, Width: max(float32(0), props.Bounds.Width-2), Height: max(float32(0), props.Bounds.Height-2)}
-	height := props.ContentHeight
-	if height <= 0 {
-		rowH := props.RowHeight
-		if rowH <= 0 {
-			rowH = 30
-		}
-		height = int32(min(int64(1<<31-1), int64(max32(0, props.ItemCount))*int64(rowH)))
-	}
-	return r.BeginScroll(inner, height, props.ScrollOffset)
-}
-
-func (r *runtime) EndListBox() { r.EndScroll(); r.EndDisabled() }
-
 func (r *runtime) ListBox(props ListBoxProps) int32 {
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	props.Disabled = props.Disabled || r.contentDisabled()
-	rowH := props.RowHeight
-	if rowH <= 0 {
-		rowH = 30
-	}
-	maxScroll := max32(0, int32(len(props.Items))*rowH-int32(props.Bounds.Height))
+	rowH := ListBox_ListBoxRowHeight(props.RowHeight)
+	maxScroll := ListBox_ListBoxMaxScroll(props.Bounds.Height, int32(len(props.Items)), rowH, 0)
 	if props.ScrollOffset != nil {
-		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+		*props.ScrollOffset = ListBox_ListBoxClampScroll(*props.ScrollOffset, maxScroll)
 	}
 	changed := int32(0)
 	if !props.Disabled && r.pointerCanReach(props.Bounds) && props.ScrollOffset != nil && r.mouseWheel != 0 {
-		*props.ScrollOffset = clamp32(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, 0, maxScroll)
+		*props.ScrollOffset = ListBox_ListBoxClampScroll(*props.ScrollOffset-int32(r.mouseWheel)*rowH*3, maxScroll)
 		changed = 1
 	}
 	if !props.Disabled && props.ID != 0 {
@@ -6340,44 +5947,29 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 	}
 	if !props.Disabled && props.ID != 0 && r.focusID == props.ID &&
 		!r.popupFocusCaptures(props.ID) && props.SelectedIndex != nil && len(props.Items) > 0 {
-		next := *props.SelectedIndex
-		navigate := true
+		key := int32(0)
 		switch {
 		case r.keyDown[KeyHome]:
-			next = 0
+			key = 1
 		case r.keyDown[KeyEnd]:
-			next = int32(len(props.Items) - 1)
+			key = 2
 		case r.keyDown[KeyUp]:
-			if next < 0 {
-				next = int32(len(props.Items) - 1)
-			} else {
-				next--
-			}
+			key = 3
 		case r.keyDown[KeyDown]:
-			if next < 0 {
-				next = 0
-			} else {
-				next++
-			}
-		default:
-			navigate = false
+			key = 4
 		}
-		if navigate {
-			next = clamp32(next, 0, int32(len(props.Items)-1))
-			if next != *props.SelectedIndex {
-				*props.SelectedIndex = next
+		if key != 0 {
+			scroll := int32(0)
+			if props.ScrollOffset != nil {
+				scroll = *props.ScrollOffset
+			}
+			nav := ListBox_ListBoxNavigate(*props.SelectedIndex, int32(len(props.Items)), key, scroll, rowH, props.Bounds.Height, maxScroll)
+			if nav.Changed {
+				*props.SelectedIndex = nav.Selected
 				changed = 1
 			}
 			if props.ScrollOffset != nil {
-				top := next * rowH
-				bottom := top + rowH
-				viewport := int32(props.Bounds.Height)
-				if top < *props.ScrollOffset {
-					*props.ScrollOffset = top
-				} else if bottom > *props.ScrollOffset+viewport {
-					*props.ScrollOffset = bottom - viewport
-				}
-				*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
+				*props.ScrollOffset = nav.Scroll
 			}
 		}
 	}
@@ -6583,35 +6175,6 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	r.drawTableOps(props, rowH, headerH)
 	return changed
 }
-func (r *runtime) MessageDialog(props MessageDialogProps) int32 {
-	result, _ := r.drawActionModal(props.Title, props.Message, []string{props.OKLabel}, 0)
-	return result
-}
-func (r *runtime) ConfirmDialog(props ConfirmDialogProps) int32 {
-	result, _ := r.drawActionModal(props.Title, props.Message, []string{props.CancelLabel, props.ConfirmLabel}, 0)
-	return result
-}
-func (r *runtime) PromptDialog(props PromptDialogProps) int32 {
-	escape := false
-	for _, event := range r.inputEvents {
-		if !event.shortcut && event.key == KeyEscape {
-			escape = true
-		}
-	}
-	result, field := r.drawActionModal(props.Title, "", []string{props.CancelLabel, props.ConfirmLabel}, 38)
-	commit := false
-	if props.Text != nil && props.Cursor != nil && props.Focused != nil {
-		r.editText(field, props.Text, props.Cursor, props.Focused, &commit, 7301, textEditOptions{maxCodepoints: int32(len(props.Text) - 1)})
-		r.recordTextInput(FrameOpTextField, field, props.Text, props.Cursor, props.Focused, 7301, Text16, false, false)
-	}
-	if result == 0 && commit {
-		result = 2
-	}
-	if result == 0 && escape {
-		result = 1
-	}
-	return result
-}
 func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
 	return CanvasResult{Active: true, World: Vector2{X: canvas.Bounds.X, Y: canvas.Bounds.Y}}
 }
@@ -6748,14 +6311,7 @@ func (r *runtime) GetThemeMode() ThemeMode {
 	return r.themeMode
 }
 
-func themeSettingsText(value, fallback string) string {
-	if value != "" {
-		return value
-	}
-	return fallback
-}
-
-func themeSettingsThemeLabel(id int32) string {
+func themeLabel(id int32) string {
 	switch normalizeTheme(id) {
 	case ThemeSky:
 		return "Sky"
@@ -6803,141 +6359,18 @@ func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
 	}
 }
 
-func ThemeSettings(props ThemeSettingsProps, state *ThemeSettingsState, result *ThemeSettingsResult) bool {
-	if result != nil {
-		*result = ThemeSettingsResult{}
-	}
-	if props.ThemeSource == nil || props.ThemeMode == nil || props.ThemeId == nil || props.W <= 0 {
-		return false
-	}
-
-	if state != nil {
-		state.DrawSourceMenu = 0
-		state.DrawModeMenu = 0
-		state.DrawPaletteMenu = 0
-		state.DrawStyleMenu = 0
-	}
-
-	changed := false
-	id := props.IdBase
-	if id == 0 {
-		id = 9000
-	}
-	x, y, w := props.X, props.Y, props.W
-	rowH := int32(34)
-	rowGap := int32(14)
-	labelGap := int32(22)
-
-	rowButton := func(buttonID int32, label, value string) bool {
-		Text(TextProps{Bounds: Rectangle{X: float32(x), Y: float32(y)}, Text: label, Font: Text14, Color: GetThemeText(), Wrap: TextWrapNone})
-		pressed := Button(ButtonProps{
-			Bounds: NewRectangle(float32(x), float32(y+labelGap), float32(w), float32(rowH)),
-			Label:  value,
-			Tone:   ButtonToneNeutral, Emphasis: ButtonEmphasisSoft,
-			Font: Text14,
-			ID:   buttonID,
-		})
-		y += labelGap + rowH + rowGap
-		return pressed
-	}
-
-	if *props.ThemeSource < int32(ThemeSourceApp) || *props.ThemeSource > int32(ThemeSourceSystem) {
-		*props.ThemeSource = int32(ThemeSourceApp)
-	}
-	if *props.ThemeMode < int32(ThemeModeSystem) || *props.ThemeMode > int32(ThemeModeDark) {
-		*props.ThemeMode = int32(ThemeModeSystem)
-	}
-	if *props.ThemeId < 0 || *props.ThemeId >= int32(ThemeCount) {
-		*props.ThemeId = int32(ThemeMono)
-	}
-
-	modeValue := themeSettingsText(props.ModeSystemLabel, "System")
-	switch ThemeMode(*props.ThemeMode) {
-	case ThemeModeLight:
-		modeValue = themeSettingsText(props.ModeLightLabel, "Light")
-	case ThemeModeDark:
-		modeValue = themeSettingsText(props.ModeDarkLabel, "Dark")
-	}
-	if rowButton(id+1, themeSettingsText(props.ModeLabel, "Mode"), modeValue) {
-		previous := *props.ThemeMode
-		if props.AllowSystemMode != 0 {
-			*props.ThemeMode = (*props.ThemeMode + 1) % 3
-		} else if ThemeMode(*props.ThemeMode) == ThemeModeLight {
-			*props.ThemeMode = int32(ThemeModeDark)
-		} else {
-			*props.ThemeMode = int32(ThemeModeLight)
-		}
-		if previous != *props.ThemeMode {
-			changed = true
-			if result != nil {
-				result.ModeChanged = 1
-			}
-		}
-	}
-
-	paletteValue := themeSettingsThemeLabel(*props.ThemeId)
-	if props.AllowSystemSource != 0 && ThemeSource(*props.ThemeSource) == ThemeSourceSystem {
-		paletteValue = themeSettingsText(props.SourceSystemLabel, "System")
-	}
-	if rowButton(id+2, themeSettingsText(props.PaletteLabel, "Color"), paletteValue) {
-		previousSource := *props.ThemeSource
-		previousTheme := *props.ThemeId
-		if props.AllowSystemSource != 0 && ThemeSource(*props.ThemeSource) != ThemeSourceSystem {
-			*props.ThemeSource = int32(ThemeSourceSystem)
-		} else {
-			*props.ThemeSource = int32(ThemeSourceApp)
-			*props.ThemeId = (*props.ThemeId + 1) % int32(ThemeCount)
-		}
-		if previousSource != *props.ThemeSource {
-			changed = true
-			if result != nil {
-				result.SourceChanged = 1
-			}
-		}
-		if previousTheme != *props.ThemeId {
-			changed = true
-			if result != nil {
-				result.PaletteChanged = 1
-			}
-		}
-	}
-
-	if props.ThemeStyle != nil {
-		if *props.ThemeStyle < int32(ThemeStyleSystem) || *props.ThemeStyle > int32(ThemeStyleDefault) {
-			*props.ThemeStyle = int32(ThemeStyleSystem)
-		}
-		styleValue := themeSettingsText(props.StyleSystemLabel, "System style")
-		switch ThemeStyle(*props.ThemeStyle) {
-		case ThemeStyleClassic:
-			styleValue = themeSettingsText(props.StyleClassicLabel, "Classic")
-		case ThemeStyleDefault:
-			styleValue = themeSettingsText(props.StyleDefaultLabel, "Default")
-		}
-		if rowButton(id+3, themeSettingsText(props.StyleLabel, "Style"), styleValue) {
-			previous := *props.ThemeStyle
-			*props.ThemeStyle = (*props.ThemeStyle + 1) % 3
-			if previous != *props.ThemeStyle {
-				changed = true
-				if result != nil {
-					result.StyleChanged = 1
-				}
-			}
-		}
-	}
-	if result != nil && changed {
-		result.Changed = 1
-	}
-	return changed
-}
-
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
+	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, 0, Text16, 10, 8, 0)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
 		secure:        props.Secure,
 		readOnly:      props.ReadOnly,
 	})
-	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, props.Font, props.Secure, props.ReadOnly)
+	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, metrics.Font, props.Secure, props.ReadOnly, textInputRecordOptions{
+		paddingX: metrics.PaddingX,
+		paddingY: metrics.PaddingY,
+	})
 }
 
 func (r *runtime) theme() themePalette {
@@ -7076,30 +6509,15 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 }
 
 func (r *runtime) recordTextArea(props TextAreaProps) {
-	font := props.Font
-	if font <= 0 {
-		font = Text16
-	}
-	lineGap := props.LineGap
-	if lineGap < 0 {
-		lineGap = 6
-	}
-	paddingX := props.Style.PaddingX
-	if paddingX <= 0 {
-		paddingX = 10
-	}
-	paddingY := props.Style.PaddingY
-	if paddingY <= 0 {
-		paddingY = 8
-	}
+	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, Text16, 10, 8, 6)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY
 	}
-	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, font, false, props.ReadOnly, textInputRecordOptions{
-		lineGap:  lineGap,
-		paddingX: paddingX,
-		paddingY: paddingY,
+	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, metrics.Font, false, props.ReadOnly, textInputRecordOptions{
+		lineGap:  metrics.LineGap,
+		paddingX: metrics.PaddingX,
+		paddingY: metrics.PaddingY,
 		scrollY:  scrollY,
 		wrap:     props.Wrap,
 	})
@@ -8044,9 +7462,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		}
 		return color
 	}
-	if rowH <= 0 {
-		rowH = 30
-	}
+	rowH = ListBox_ListBoxRowHeight(rowH)
 	changed := int32(0)
 	focused := !props.Disabled && props.ID != 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
 	border := theme.border
@@ -8058,18 +7474,13 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	first := scroll / rowH
-	yOffset := scroll % rowH
-	visible := int32(props.Bounds.Height) / rowH
+	layout := ListBox_ListBoxLayoutFor(props.Bounds, int32(len(props.Items)), rowH, 0, scroll)
+	first := layout.FirstRow
+	visible := layout.VisibleRows
 	font := Text16
 	for i := int32(0); i <= visible && first+i < int32(len(props.Items)); i++ {
 		index := first + i
-		row := Rectangle{
-			X:      props.Bounds.X,
-			Y:      props.Bounds.Y + float32(i*rowH-yOffset),
-			Width:  props.Bounds.Width,
-			Height: float32(rowH),
-		}
+		row := ListBox_ListBoxRowBounds(props.Bounds, i, layout)
 		if !props.Disabled && props.SelectedIndex != nil && r.consumeTap(row) {
 			if *props.SelectedIndex != index {
 				*props.SelectedIndex = index

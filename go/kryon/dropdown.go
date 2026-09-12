@@ -996,7 +996,7 @@ func Dropdown_Rows(count int32, offset int32, viewport float32, row float32) Vis
 	return value_46
 }
 
-func Dropdown_Drag(gesture PopupGesture, offset int32, down bool, inside bool, scrollbar bool, y float32, maximum int32, threshold float32) PopupGesture {
+func Dropdown_PopupDragGesture(gesture PopupGesture, offset int32, down bool, inside bool, scrollbar bool, y float32, maximum int32, threshold float32) PopupGesture {
 	var value_0 int32 = offset
 	var value_1 float64 = float64(value_0)
 	var value_2 int32 = maximum

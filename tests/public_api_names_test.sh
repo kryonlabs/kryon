@@ -7,15 +7,15 @@ cd "$root"
 matches="$(
     bad_prefix_a='UI''Draw'
     bad_prefix_b='Draw''UIStyled'
-    bad_prefix_c='Kry''LoadPicture'
-    bad_prefix_d='Kry''PictureFit'
-    bad_prefix_e='Kry''DrawPicture'
-    helper_d='UIPicture'
-    helper_e='UI_PICTURE_FIT_'
-    helper_f='DrawPicture'
-    helper_a='Load''PictureTexture'
-    helper_b='Picture''FitRect'
-    helper_c='Picture''Texture'
+    bad_prefix_c='Kry''LoadPic''ture'
+    bad_prefix_d='Kry''ImageFit'
+    bad_prefix_e='Kry''DrawPic''ture'
+    helper_d='UIPic''ture'
+    helper_e='UI_PIC''TURE_FIT_'
+    helper_f='DrawPic''ture'
+    helper_a='Load''ImageTexture'
+    helper_b='Image''FitRect'
+    helper_c='Image''Texture'
     rg -n "\b(${bad_prefix_a}[A-Za-z0-9_]*|${bad_prefix_b}[A-Za-z0-9_]*|${bad_prefix_c}[A-Za-z0-9_]*|${bad_prefix_d}[A-Za-z0-9_]*|${bad_prefix_e}[A-Za-z0-9_]*|${helper_a}|${helper_b}|${helper_c}|${helper_d}[A-Za-z0-9_]*|${helper_e}[A-Za-z0-9_]*|${helper_f})\b" \
         include docs examples \
         --glob '!vendor/**' \
@@ -24,7 +24,7 @@ matches="$(
 )"
 
 if [ -n "$matches" ]; then
-    echo "Picture API must use Picture/PictureProps names without stale framework prefixes:"
+    echo "Image API must use ImageProps names without stale framework prefixes:"
     echo "$matches"
     exit 1
 fi
@@ -42,7 +42,7 @@ if [ -n "$form_matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITopNavAction|UITopNavResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UISubtab|UITab|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfilePicturePickerModal|UIProfilePicturePickerResult)\b' \
         go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -267,7 +267,7 @@ public_composite_draw_matches="$(
 )"
 
 if [ -n "$public_composite_draw_matches" ]; then
-    echo "Public/generated composite widget surfaces must use clean names such as ThemeSettings, TabBar, ModalFrame, and ShowToast:"
+    echo "Public/generated composite widget surfaces must use clean names such as TabBar, Modal, and ShowToast:"
     echo "$public_composite_draw_matches"
     exit 1
 fi
@@ -350,6 +350,57 @@ split_context_popup_matches="$(
 if [ -n "$split_context_popup_matches" ]; then
     echo "Context popup content must use the canonical Popup scope with PopupContext:"
     echo "$split_context_popup_matches"
+    exit 1
+fi
+
+if [ ! -f docs/CANONICAL_WIDGET_SURFACE.md ]; then
+    echo "docs/CANONICAL_WIDGET_SURFACE.md must exist as the shared widget/node naming review surface."
+    exit 1
+fi
+
+registry_doc_misses="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+
+registry = Path("src/ui/ui_node_registry.c").read_text()
+doc = Path("docs/CANONICAL_WIDGET_SURFACE.md").read_text()
+names = re.findall(r'\{"([^"]+)"\s*,', registry)
+for name in names:
+    if f"`{name}`" not in doc:
+        print(name)
+PY
+)"
+
+if [ -n "$registry_doc_misses" ]; then
+    echo "Canonical widget surface doc must list every registered public node/widget name:"
+    echo "$registry_doc_misses"
+    exit 1
+fi
+
+doc_status_misses="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+
+doc = Path("docs/CANONICAL_WIDGET_SURFACE.md").read_text()
+statuses = (
+    ".kry canonical",
+    "Native canonical",
+    "Native support",
+    "Composite candidate",
+    "Rename review",
+    "Remove after migration",
+)
+for status in statuses:
+    if status not in doc:
+        print(status)
+PY
+)"
+
+if [ -n "$doc_status_misses" ]; then
+    echo "Canonical widget surface doc must keep the review status key complete:"
+    echo "$doc_status_misses"
     exit 1
 fi
 

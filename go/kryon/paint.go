@@ -23,7 +23,7 @@ type Drawing struct {
 	Font    int32
 	Icon    int32
 	Texture Texture2D
-	Ring    Ring
+	Ring    LoadingRingSpec
 }
 
 type Painter func(Drawing)

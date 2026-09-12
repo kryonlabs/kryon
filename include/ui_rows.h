@@ -7,25 +7,6 @@
 #include "ui_tk.h"
 
 typedef struct {
-    const char *text;
-    int font;
-    Color color;
-} UIInfoRow;
-
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int row_height;
-    int padding_x;
-    const UIInfoRow *rows;
-    int row_count;
-    Color background;
-    Color separator;
-    Color default_text;
-} InfoRowsProps;
-
-typedef struct {
     const char *label;
     ButtonTone tone;
     ButtonEmphasis emphasis;
@@ -56,7 +37,7 @@ typedef struct {
 typedef struct {
     const char *label;
     int font;
-    int info_button;
+    int info;
     int icon_diameter;
     int height;
     Color color;
@@ -68,18 +49,6 @@ typedef struct {
     int height;
     int disabled;
 } CheckboxRowProps;
-
-typedef struct {
-    Rectangle bounds;
-    const char *label;
-    int font;
-    int disabled;
-    Color background;
-    Color hover_background;
-    Color border;
-    Color hover_border;
-    Color text;
-} OverlayButtonProps;
 
 typedef struct {
     int x;

@@ -1,0 +1,84 @@
+#module "popup_policy"
+#import "drawing_props"
+
+PopupDecision :: struct {
+    valid: bool
+    tooltip: bool
+    modal: bool
+    context: bool
+    captures_input: bool
+    requires_open: bool
+    requires_trigger: bool
+}
+
+PopupDecisionFor :: (flags: u32, disabled: bool) -> PopupDecision #export {
+    decision: PopupDecision
+    tooltip_flag: u32 = (u32)1
+    modal_flag: u32 = (u32)2
+    context_flag: u32 = (u32)4
+    known: u32 = tooltip_flag | modal_flag | context_flag
+
+    if (flags & ~known) != (u32)0 {
+        return decision
+    }
+    decision.tooltip = (flags & tooltip_flag) != (u32)0
+    decision.modal = (flags & modal_flag) != (u32)0
+    decision.context = (flags & context_flag) != (u32)0
+    selected: i32 = 0
+    if decision.tooltip { selected += 1 }
+    if decision.modal { selected += 1 }
+    if decision.context { selected += 1 }
+    if selected > 1 {
+        return decision
+    }
+    decision.valid = true
+    decision.captures_input = !decision.tooltip
+    decision.requires_open = !decision.tooltip
+    decision.requires_trigger = decision.tooltip || decision.context
+    if disabled && !decision.tooltip {
+        decision.captures_input = false
+    }
+    return decision
+}
+
+PopupCanBegin :: (decision: PopupDecision, id: i32, bounds: Rectangle,
+    trigger: Rectangle, has_open: bool) -> bool #export {
+    if !decision.valid || id <= 0 || bounds.width <= 0.0 || bounds.height <= 0.0 {
+        return false
+    }
+    if decision.requires_open && !has_open {
+        return false
+    }
+    if decision.requires_trigger &&
+       (trigger.width <= 0.0 || trigger.height <= 0.0) {
+        return false
+    }
+    return true
+}
+
+PopupOpenAfterDisabled :: (decision: PopupDecision, open: bool,
+    disabled: bool) -> bool #export {
+    if disabled && !decision.tooltip {
+        return false
+    }
+    return open
+}
+
+PopupInputBounds :: (decision: PopupDecision, bounds: Rectangle,
+    view_width: float, view_height: float) -> Rectangle #export {
+    input: Rectangle = bounds
+    if decision.modal {
+        input.x = 0.0
+        input.y = 0.0
+        input.width = view_width
+        input.height = view_height
+    }
+    return input
+}
+
+PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
+    if decision.modal {
+        return 180
+    }
+    return 0
+}

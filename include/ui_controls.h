@@ -51,17 +51,6 @@ Style ResolveControlStyle(Style base, ControlStyle control,
 typedef struct {
     Rectangle bounds;
     const char *text;
-    const char *href;
-    int font;
-    int focus_id;
-    int disabled;
-    Color color;
-    Color hover_color;
-} HrefProps;
-
-typedef struct {
-    Rectangle bounds;
-    const char *text;
     int cursor_position;
     int focused;
     int cursor_visible;
@@ -119,43 +108,6 @@ typedef struct {
     int read_only;
     int wrap;
 } TextAreaProps;
-
-typedef enum {
-    RichTextToolBold = 1 << 0,
-    RichTextToolItalic = 1 << 1,
-    RichTextToolUnderline = 1 << 2,
-    RichTextToolHeading = 1 << 3,
-    RichTextToolBulletList = 1 << 4,
-    RichTextToolNumberedList = 1 << 5,
-    RichTextToolQuote = 1 << 6,
-    RichTextToolCode = 1 << 7,
-    RichTextToolLink = 1 << 8
-} RichTextTool;
-
-#define RICH_TEXT_TOOLS_DEFAULT \
-    (RichTextToolBold | RichTextToolItalic | RichTextToolUnderline | \
-     RichTextToolHeading | RichTextToolBulletList | RichTextToolNumberedList | \
-     RichTextToolQuote | RichTextToolCode | RichTextToolLink)
-
-typedef struct {
-    Rectangle bounds;
-    char *text;
-    size_t text_size;
-    int *cursor_position;
-    int *focused;
-    int *scroll_y;
-    int max_codepoints;
-    int font;
-    int line_gap;
-    int focus_id;
-    const char *placeholder;
-    TextInputStyle style;
-    TextInputStyle toolbar_style;
-    unsigned int tools;
-    int content_version;
-    int read_only;
-    int wrap;
-} RichTextEditorProps;
 
 typedef struct {
     Rectangle bounds;
@@ -268,27 +220,6 @@ typedef struct {
     int height;
 } SegmentedControlResult;
 
-typedef struct {
-    Rectangle bounds;
-    int id;
-    int min_value;
-    int max_value;
-    int *value;
-    int font;
-    int gap;
-    int height;
-    int min_item_width;
-    int wrap;
-} ScoreControlProps;
-
-typedef struct {
-    int value;
-    int clicked;
-    int clicked_value;
-    int changed;
-    int height;
-} ScoreControlResult;
-
 ThemeMetrics GetThemeMetrics(void);
 ThemeMetrics GetThemeMetricsForThemeStyle(ThemeStyle style);
 ThemeScheme GetThemeScheme(void);
@@ -313,8 +244,6 @@ void SetTextAreaSelection(int focus_id, int anchor, int cursor);
 
 int GetSegmentedControlHeight(SegmentedControlProps control);
 SegmentedControlResult SegmentedControl(SegmentedControlProps control);
-int GetScoreControlHeight(ScoreControlProps control);
-ScoreControlResult ScoreControl(ScoreControlProps control);
 
 
 #endif

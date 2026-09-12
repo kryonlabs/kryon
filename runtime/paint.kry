@@ -21,7 +21,7 @@ Drawing :: struct {
     font: i32
     icon: i32
     texture: Texture2D
-    ring: Ring
+    ring: LoadingRingSpec
 }
 
 # Synchronous rasterizer endpoints. The widget owns command order and content.

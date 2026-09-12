@@ -1,0 +1,124 @@
+#module "tab_bar"
+#import "drawing_props"
+
+TabBarMetrics :: struct {
+    min_width: i32
+    max_width: i32
+    icon_width: i32
+    gap: i32
+    close_width: i32
+}
+
+TabBarScroll :: struct {
+    scroll: i32
+    max_scroll: i32
+    equal_tabs: bool
+}
+
+TabBarPolicyHeight :: (scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return (i32)(32.0 * scale)
+}
+
+TabBarDefaultMetrics :: (min_width: i32, max_width: i32, scale: float) -> TabBarMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TabBarMetrics
+    metrics.min_width = min_width
+    if metrics.min_width <= 0 {
+        metrics.min_width = (i32)(120.0 * scale)
+    }
+    metrics.max_width = max_width
+    if metrics.max_width <= 0 {
+        metrics.max_width = metrics.min_width
+    }
+    if metrics.max_width < metrics.min_width {
+        metrics.max_width = metrics.min_width
+    }
+    metrics.icon_width = (i32)(44.0 * scale)
+    metrics.gap = (i32)(4.0 * scale)
+    metrics.close_width = (i32)(24.0 * scale)
+    return metrics
+}
+
+TabBarTabWidth :: (label_width: i32, has_label: bool, has_icon: bool,
+    closeable: bool, metrics: TabBarMetrics) -> i32 #export {
+    if !has_label && has_icon {
+        return metrics.icon_width
+    }
+    if !has_label {
+        return metrics.min_width
+    }
+    width: i32 = label_width + 16
+    if closeable {
+        width += metrics.close_width
+    }
+    if width < metrics.min_width {
+        width = metrics.min_width
+    }
+    if width > metrics.max_width {
+        width = metrics.max_width
+    }
+    return width
+}
+
+TabBarTotalWidth :: (tab_width_sum: i32, count: i32, gap: i32) -> i32 #export {
+    if count <= 0 {
+        return 0
+    }
+    total: i32 = tab_width_sum + gap * (count - 1)
+    if total < 0 {
+        return 0
+    }
+    return total
+}
+
+TabBarScrollFor :: (bounds_width: float, total_width: i32, scroll: i32) -> TabBarScroll #export {
+    result: TabBarScroll
+    result.equal_tabs = (float)total_width <= bounds_width
+    result.max_scroll = total_width - (i32)bounds_width
+    if result.max_scroll < 0 || result.equal_tabs {
+        result.max_scroll = 0
+    }
+    if result.equal_tabs {
+        result.scroll = 0
+    } else if scroll < 0 {
+        result.scroll = 0
+    } else if scroll > result.max_scroll {
+        result.scroll = result.max_scroll
+    } else {
+        result.scroll = scroll
+    }
+    return result
+}
+
+TabBarRevealScroll :: (tab_x: float, tab_width: float, bounds: Rectangle,
+    scroll: i32, max_scroll: i32) -> i32 #export {
+    if tab_x < bounds.x {
+        scroll = scroll - (i32)(bounds.x - tab_x)
+    } else if tab_x + tab_width > bounds.x + bounds.width {
+        scroll = scroll + (i32)((tab_x + tab_width) - (bounds.x + bounds.width))
+    }
+    if scroll < 0 {
+        return 0
+    }
+    if scroll > max_scroll {
+        return max_scroll
+    }
+    return scroll
+}
+
+TabBarEqualTabBounds :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle #export {
+    rect: Rectangle
+    if count <= 0 || index < 0 || index >= count {
+        return rect
+    }
+    width: float = bounds.width / (float)count
+    rect.x = bounds.x + width * (float)index
+    rect.y = bounds.y
+    rect.width = width
+    rect.height = bounds.height
+    if index == count - 1 {
+        rect.width = bounds.x + bounds.width - rect.x
+    }
+    return rect
+}

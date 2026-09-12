@@ -16,7 +16,7 @@ func TestDropdownUsesButtonPaletteAndKeepsSelectionDistinct(t *testing.T) {
 		selected := int32(1)
 		draw := func(disabled bool) {
 			r.BeginFrame()
-			r.Combobox(ComboboxProps{ID: 29000, Bounds: NewRectangle(20, 20, 280, 40),
+			r.Dropdown(DropdownProps{ID: 29000, Bounds: NewRectangle(20, 20, 280, 40),
 				Options:       []string{"Light", "Dark", "A very long option label that must leave room for the checkmark"},
 				SelectedIndex: &selected, Disabled: disabled})
 			r.EndFrame()
@@ -75,7 +75,7 @@ func TestDropdownRichOptionsSkipDisabledRows(t *testing.T) {
 	}
 	draw := func() {
 		r.BeginFrame()
-		r.Combobox(ComboboxProps{ID: 29001, Bounds: NewRectangle(20, 20, 280, 40),
+		r.Dropdown(DropdownProps{ID: 29001, Bounds: NewRectangle(20, 20, 280, 40),
 			Items: items, SelectedIndex: &selected})
 		r.EndFrame()
 	}

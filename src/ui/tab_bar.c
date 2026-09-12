@@ -1,6 +1,7 @@
 #include "ui_internal.h"
 #include "ui_popup_input_internal.h"
 #include "tab_bar_store.h"
+#include "runtime/tab_bar.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -165,25 +166,20 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 {
     const Tab *tab;
     int label_w;
-    int w;
+    int has_label;
+    TabBarMetrics metrics;
 
     if(index < 0 || index >= bar.count || bar.tabs == NULL)
         return min_tab_w;
 
     tab = &bar.tabs[index];
-    if((tab->label == NULL || tab->label[0] == '\0') && tab->icon.id != 0)
-        return icon_tab_w;
-
-    if(tab->label == NULL || tab->label[0] == '\0')
-        return min_tab_w;
-
-    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
-    w = label_w + Scale(16);
-    if(w < min_tab_w)
-        w = min_tab_w;
-    if(w > max_tab_w)
-        w = max_tab_w;
-    return w;
+    has_label = tab->label != NULL && tab->label[0] != '\0';
+    label_w = has_label ? TextWidth(tab->label, bar.font > 0 ? bar.font : Text12) : 0;
+    metrics = TabBarDefaultMetrics(min_tab_w, max_tab_w,
+                                   (float)Scale(1000) / 1000.0f);
+    metrics.icon_width = icon_tab_w;
+    return TabBarTabWidth(label_w, has_label, tab->icon.id != 0,
+                          tab->closeable, metrics);
 }
 
 static int
@@ -233,14 +229,12 @@ static int
 ui_tab_bar_total_width(TabBarProps bar, int min_tab_w, int max_tab_w,
                        int icon_tab_w, int tab_gap)
 {
-    int total = tab_gap * (bar.count - 1);
+    int total = 0;
 
-    if(total < 0)
-        total = 0;
     for(int i = 0; i < bar.count; i++)
         total += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
                                       icon_tab_w);
-    return total;
+    return TabBarTotalWidth(total, bar.count, tab_gap);
 }
 
 static Rectangle
@@ -249,20 +243,17 @@ ui_tab_bar_rect_at(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 {
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
-    int bar_w = (int)bar.bounds.width;
-    int bar_h = (int)bar.bounds.height;
     int tab_x = equal_tabs ? bar_x : bar_x + tab_gap - scroll;
     int tab_w = min_tab_w;
 
+    if(equal_tabs)
+        return TabBarEqualTabBounds(bar.bounds, bar.count, index);
     for(int i = 0; i <= index && i < bar.count; i++) {
-        tab_w = equal_tabs ? bar_w / bar.count :
-                ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
+        tab_w = ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
                                      icon_tab_w);
-        if(equal_tabs && i == bar.count - 1)
-            tab_w = bar_x + bar_w - tab_x;
         if(i == index)
             return (Rectangle){(float)tab_x, (float)bar_y,
-                               (float)tab_w, (float)bar_h};
+                               (float)tab_w, bar.bounds.height};
         tab_x += tab_w + tab_gap;
     }
     return (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
@@ -305,33 +296,6 @@ ui_draw_tab_shape(int x, int y, int w, int h, int selected, Color fill,
     DrawLine(x + w - 1, top_y, x + w - 1, bottom_y, border_dark);
     if(!selected)
         DrawLine(x, bottom_y, x + w - 1, bottom_y, border_dark);
-}
-
-static int
-ui_pane_tab_bar_tab_width(PaneTabBar bar, int index, int min_tab_w,
-                          int max_tab_w, int icon_tab_w)
-{
-    const Tab *tab;
-    int label_w;
-    int w;
-
-    if(index < 0 || index >= bar.count || bar.tabs == NULL)
-        return min_tab_w;
-
-    tab = &bar.tabs[index];
-    if((tab->label == NULL || tab->label[0] == '\0') && tab->icon.id != 0)
-        return icon_tab_w;
-
-    if(tab->label == NULL || tab->label[0] == '\0')
-        return min_tab_w;
-
-    label_w = TextWidth(tab->label, bar.font > 0 ? bar.font : Text12);
-    w = label_w + Scale(16);
-    if(w < min_tab_w)
-        w = min_tab_w;
-    if(w > max_tab_w)
-        w = max_tab_w;
-    return w;
 }
 
 int
@@ -395,23 +359,16 @@ RenderTabBar(TabBarProps bar)
     if(icon_tab_w > max_tab_w)
         icon_tab_w = max_tab_w;
 
-    // Calculate if scrolling is needed
     int total_tabs_w = ui_tab_bar_total_width(bar, min_tab_w, max_tab_w,
                                               icon_tab_w, tab_gap);
-    int needs_scroll = total_tabs_w > bar_w;
-    int equal_tabs = !needs_scroll;
+    TabBarScroll scroll_policy = TabBarScrollFor(bar.bounds.width,
+                                                 total_tabs_w,
+                                                 *scroll_offset);
+    int needs_scroll = !scroll_policy.equal_tabs;
+    int equal_tabs = scroll_policy.equal_tabs;
+    int max_scroll = scroll_policy.max_scroll;
 
-    // Set scroll offset
-    if(*scroll_offset < 0)
-        *scroll_offset = 0;
-    int max_scroll = total_tabs_w - bar_w;
-    if(max_scroll < 0)
-        max_scroll = 0;
-    if(*scroll_offset > max_scroll)
-        *scroll_offset = max_scroll;
-
-    if(equal_tabs)
-        *scroll_offset = 0;
+    *scroll_offset = scroll_policy.scroll;
 
     if(needs_scroll && bar.focus_selected &&
        bar.selected_index >= 0 && bar.selected_index < bar.count) {
@@ -421,17 +378,10 @@ RenderTabBar(TabBarProps bar)
         for(int i = 0; i < bar.selected_index; i++)
             selected_tab_x += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
                                                    icon_tab_w) + tab_gap;
-        int selected_tab_end = selected_tab_x + selected_tab_w;
-
-        if(selected_tab_x < bar_x)
-            *scroll_offset -= (bar_x - selected_tab_x) + tab_gap;
-        else if(selected_tab_end > bar_x + bar_w)
-            *scroll_offset += (selected_tab_end - (bar_x + bar_w)) + tab_gap;
-
-        if(*scroll_offset < 0)
-            *scroll_offset = 0;
-        if(*scroll_offset > max_scroll)
-            *scroll_offset = max_scroll;
+        *scroll_offset = TabBarRevealScroll((float)(selected_tab_x - tab_gap),
+                                            (float)(selected_tab_w + tab_gap * 2),
+                                            bar.bounds, *scroll_offset,
+                                            max_scroll);
     }
 
     // Default top tabs are distributed equally across the full app bar.
@@ -814,109 +764,6 @@ RenderTabBar(TabBarProps bar)
     return clicked_tab;
 }
 
-PaneTabBarResult
-RenderPaneTabBar(PaneTabBar bar)
-{
-    PaneTabBarResult result = {-1, -1};
-    TabBarProps tabs = {0};
-    Vector2 mouse = ui_mouse_world();
-    int font = bar.font > 0 ? bar.font : Text12;
-    int bar_x = (int)bar.bounds.x;
-    int bar_y = (int)bar.bounds.y;
-    int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_default_style() ? 0 : Scale(4);
-    int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : Scale(92);
-    int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : min_tab_w;
-    int icon_tab_w = bar_h + tab_gap * 2;
-    int scroll = bar.scroll_offset != NULL ? *bar.scroll_offset : 0;
-    int total_gap_w;
-    int total_tabs_w;
-    int needs_scroll;
-    int equal_tabs;
-    int tab_x;
-    int drag_threshold = Scale(6);
-
-    if(bar.dragged_index != NULL)
-        *bar.dragged_index = -1;
-
-    tabs.bounds = bar.bounds;
-    tabs.tabs = bar.tabs;
-    tabs.count = bar.count;
-    tabs.selected_index = bar.selected_index;
-    tabs.font = font;
-    tabs.min_tab_width = min_tab_w;
-    tabs.max_tab_width = max_tab_w;
-    tabs.scroll_offset = bar.scroll_offset;
-    tabs.focus_selected = 0;
-    tabs.closed_index = NULL;
-    result.clicked_index = RenderTabBar(tabs);
-
-    if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
-       bar.bounds.height <= 0)
-        return result;
-
-    if(max_tab_w < min_tab_w)
-        max_tab_w = min_tab_w;
-    if(icon_tab_w > max_tab_w)
-        icon_tab_w = max_tab_w;
-
-    total_gap_w = tab_gap * (bar.count - 1);
-    total_tabs_w = total_gap_w;
-    for(int i = 0; i < bar.count; i++)
-        total_tabs_w += ui_pane_tab_bar_tab_width(bar, i, min_tab_w,
-                                                  max_tab_w, icon_tab_w);
-    needs_scroll = total_tabs_w > (int)bar.bounds.width;
-    equal_tabs = ui_default_style() && !needs_scroll;
-
-    if(bar.scroll_offset != NULL)
-        scroll = *bar.scroll_offset;
-    if(!needs_scroll)
-        scroll = 0;
-
-    tab_x = equal_tabs ? bar_x : bar_x + tab_gap - scroll;
-    for(int i = 0; i < bar.count; i++) {
-        int tab_w = equal_tabs ? (int)bar.bounds.width / bar.count :
-                    ui_pane_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
-        if(equal_tabs && i == bar.count - 1)
-            tab_w = bar_x + (int)bar.bounds.width - tab_x;
-        Rectangle tab_rect = {(float)tab_x, (float)bar_y,
-                              (float)tab_w, (float)bar_h};
-        if(CheckCollisionPointRec(mouse, tab_rect) &&
-           !UIInputCapturesClick(mouse)) {
-            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                tab_bar_store->pane_press_index = i;
-                tab_bar_store->pane_press_position = mouse;
-                tab_bar_store->pane_drag_reported = 0;
-            } else if(IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-                      tab_bar_store->pane_press_index == i &&
-                      !tab_bar_store->pane_drag_reported) {
-                int dx = (int)(mouse.x -
-                               tab_bar_store->pane_press_position.x);
-                int dy = (int)(mouse.y -
-                               tab_bar_store->pane_press_position.y);
-                if(dx < 0)
-                    dx = -dx;
-                if(dy < 0)
-                    dy = -dy;
-                if(dx >= drag_threshold || dy >= drag_threshold) {
-                    result.dragged_index = i;
-                    if(bar.dragged_index != NULL)
-                        *bar.dragged_index = i;
-                    tab_bar_store->pane_drag_reported = 1;
-                }
-            }
-            MarkClickable();
-        }
-        tab_x += tab_w + tab_gap;
-    }
-    if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        tab_bar_store->pane_press_index = -1;
-        tab_bar_store->pane_drag_reported = 0;
-    }
-
-    return result;
-}
-
 PaneDropZone
 GetPaneDropZone(Rectangle bounds, Vector2 mouse)
 {
@@ -936,28 +783,4 @@ GetPaneDropZone(Rectangle bounds, Vector2 mouse)
         return PaneDropBottom;
 
     return PaneDropCenter;
-}
-
-void
-RenderPaneDropPreview(Rectangle bounds, PaneDropZone zone)
-{
-    Rectangle preview = bounds;
-
-    if(zone == PaneDropNone)
-        return;
-
-    if(zone == PaneDropLeft) {
-        preview.width = bounds.width * 0.35f;
-    } else if(zone == PaneDropRight) {
-        preview.x = bounds.x + bounds.width * 0.65f;
-        preview.width = bounds.width * 0.35f;
-    } else if(zone == PaneDropTop) {
-        preview.height = bounds.height * 0.35f;
-    } else if(zone == PaneDropBottom) {
-        preview.y = bounds.y + bounds.height * 0.65f;
-        preview.height = bounds.height * 0.35f;
-    }
-
-    DrawRectangleRec(preview, Fade(c_link, 0.18f));
-    DrawRectangleLinesEx(preview, 2.0f, c_link);
 }

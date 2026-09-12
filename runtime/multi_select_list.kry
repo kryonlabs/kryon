@@ -1,0 +1,119 @@
+#module "multi_select_list"
+#import "drawing_props"
+
+MultiSelectNavResult :: struct {
+    clicked: i32
+    anchor: i32
+    anchor_changed: bool
+    control: bool
+    shift: bool
+    range_anchor: i32
+}
+
+MultiSelectRowHeight :: (row_height: i32, scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if row_height > 0 { return row_height }
+    return (i32)(28.0 * scale)
+}
+
+MultiSelectRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {
+    row: Rectangle
+    row.x = bounds.x
+    row.y = bounds.y + (float)(index * row_height)
+    row.width = bounds.width
+    row.height = (float)row_height
+    return row
+}
+
+MultiSelectFocusedRow :: (anchor: i32, selected_first: i32, item_count: i32) -> i32 #export {
+    if item_count <= 0 { return -1 }
+    if anchor >= 0 && anchor < item_count { return anchor }
+    if selected_first >= 0 && selected_first < item_count { return selected_first }
+    return 0
+}
+
+MultiSelectNavigate :: (item_count: i32, cursor: i32, control: bool,
+    shift: bool, home: bool, end: bool, up: bool, down: bool,
+    space: bool, enter: bool) -> MultiSelectNavResult #export {
+    result: MultiSelectNavResult
+    result.clicked = -1
+    result.anchor = cursor
+    result.anchor_changed = false
+    result.control = control
+    result.shift = shift
+    result.range_anchor = -1
+    if item_count <= 0 { return result }
+    if cursor < 0 { cursor = 0 }
+    if cursor >= item_count { cursor = item_count - 1 }
+    next: i32 = cursor
+    navigate: bool = true
+    if home {
+        next = 0
+    } else if end {
+        next = item_count - 1
+    } else if up {
+        if next > 0 { next = next - 1 }
+    } else if down {
+        if next + 1 < item_count { next = next + 1 }
+    } else if space {
+        result.clicked = cursor
+        result.control = true
+        result.shift = false
+        navigate = false
+    } else if enter {
+        result.clicked = cursor
+        result.control = false
+        result.shift = false
+        navigate = false
+    } else {
+        navigate = false
+    }
+    if navigate {
+        if shift {
+            result.range_anchor = cursor
+            result.control = true
+        }
+        result.anchor = next
+        result.anchor_changed = true
+        if !result.control || shift { result.clicked = next }
+    }
+    return result
+}
+
+MultiSelectActionAnchor :: (current_anchor: i32, range_anchor: i32) -> i32 #export {
+    if range_anchor >= 0 { return range_anchor }
+    return current_anchor
+}
+
+MultiSelectSelectionForRow :: (row: i32, was_selected: bool, clicked: i32,
+    item_count: i32, current_anchor: i32, control: bool, shift: bool,
+    range_anchor: i32) -> bool #export {
+    if clicked < 0 || clicked >= item_count { return was_selected }
+    anchor: i32 = MultiSelectActionAnchor(current_anchor, range_anchor)
+    if shift && anchor >= 0 && anchor < item_count {
+        first: i32 = anchor
+        last: i32 = clicked
+        if first > last {
+            temp: i32 = first
+            first = last
+            last = temp
+        }
+        if row >= first && row <= last { return true }
+        if control { return was_selected }
+        return false
+    }
+    if control {
+        if row == clicked { return !was_selected }
+        return was_selected
+    }
+    return row == clicked
+}
+
+MultiSelectAnchorAfterClick :: (current_anchor: i32, clicked: i32,
+    item_count: i32, control: bool, shift: bool, range_anchor: i32) -> i32 #export {
+    anchor: i32 = MultiSelectActionAnchor(current_anchor, range_anchor)
+    if clicked < 0 || clicked >= item_count { return current_anchor }
+    if shift && anchor >= 0 && anchor < item_count { return current_anchor }
+    if control || !shift { return clicked }
+    return current_anchor
+}

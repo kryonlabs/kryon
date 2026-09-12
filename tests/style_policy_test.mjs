@@ -74,6 +74,7 @@ assert.equal(style.Style_MergeValues(null, undefined, undefined,
 assert.equal(style.Style_MergeValues(null, undefined, undefined,
   namedStyle, { fields: host.StyleTypeface, typeface: "" }).typeface, "");
 const textPolicy = await import(new URL("./text.js", pathToFileURL(process.argv[2])).href);
+const button = await import(pathToFileURL(process.argv[3]).href);
 for (const [requested, inherited, fallback, expected] of [
   [13, 27, 18, 13], [0, 27, 18, 27], [-1, 27, 18, 27],
   [0, 0, 18, 18], [0, -1, 18, 18], [0, 0, 0, 16],
@@ -91,12 +92,11 @@ for (const present of [false, true]) {
     0, 27, 16, 0, 0x112233ff, 0xffffffff, true, present, false, false, 0);
   assert.equal(appearance.color, present ? 0 : 0x112233ff);
 }
-const splitButton = await import(new URL("./split_button.js", pathToFileURL(process.argv[2])).href);
 for (const [width, height, resolvedWidth, actionWidth] of [
   [120, 40, 120, 80], [24, 40, 80, 40], [80, 40, 80, 40],
   [100.5, 27.25, 100.5, 73.25],
 ]) {
-  assert.deepEqual(splitButton.SplitButton_ResolveLayout(null, undefined, undefined, width, height), {
+  assert.deepEqual(button.Button_ButtonResolveSplitLayout(null, undefined, undefined, width, height), {
     width: resolvedWidth, action_width: actionWidth, menu_offset: actionWidth,
     menu_width: height, divider_inset: 8,
   });
@@ -381,7 +381,6 @@ assert.equal(frame.fill.hover_amount, 0.5);
 assert.equal(frame.fill.press_amount, 0.25);
 assert.equal(frame.fill.focus_amount, 0.75);
 assert.deepEqual([resolved, normal, hover, press, focus], originals);
-const button = await import(pathToFileURL(process.argv[3]).href);
 for (const surfaceColor of [0x092039ff, 0xffffffff]) {
   const colored = button.Button_ButtonBorder(null, undefined, undefined,
     1, 2, 5, surfaceColor, 0x006cffff, 0, 0, 0, 0);
@@ -426,7 +425,18 @@ const measurement = {
   tone: 0, emphasis: 0, size: 0, disabled: false, loading: false, selected: false,
   full_width: false, pill: false, circle: false,
   icon: { id: 1, width: 0, height: 0, mipmaps: 0, format: 0 }, icon_type: 0,
-  icon_placement: 0, icon_only: false, square: false, state: 0,
+  icon_placement: 0, icon_only: false, square: false,
+  image_asset_path: "",
+  image_bounds: { x: 0, y: 0, width: 0, height: 0 },
+  image_source: { x: 0, y: 0, width: 0, height: 0 },
+  image_origin: { x: 0, y: 0 },
+  image_rotation: 0,
+  image_tint: color,
+  image_fit: 0,
+  image_background: color,
+  swatch: false,
+  swatch_color: color,
+  state: 0,
   style: Object.fromEntries(["normal", "hover", "pressed", "focused", "disabled", "loading", "selected"].map(state => [state, measureStyle])),
 };
 let availableWidth = 0;
@@ -458,7 +468,8 @@ const frameAppearance = {
 };
 const restingTrack = () => ({ value: 0, origin: 0, target: 0, elapsed_ms: 0 });
 const restingMotion = { hover: restingTrack(), press: restingTrack(), focus: restingTrack(), active: false };
-const frameInput = button.Button_ResolveButtonInput(null, undefined, undefined, drawingProps,
+const frameInput = button.Button_ResolveButtonInput(null, undefined, undefined,
+  drawingProps.state, drawingProps.disabled, drawingProps.loading, drawingProps.selected,
   { activated: false, pressed: false, hovered: false, focused: false });
 const buttonFrame = button.Button_BuildFrame(null, undefined, undefined, drawingProps, frameInput,
   frameAppearance, restingMotion, { x: 0, y: 0, width: 0, height: 0 }, 0xffffffff, 2, 32, 16);
@@ -518,7 +529,8 @@ for (let state = 0; state <= 7; state++) {
       assert.equal(allowed, enabled);
       return { activated: true, pressed: true, hovered: true, focused: true };
     }
-  }, measurement);
+  }, measurement.bounds, measurement.id, measurement.state, measurement.disabled,
+    measurement.loading, measurement.selected);
   assert.equal(input.activated, enabled);
   assert.equal(input.interaction.state, state || 3);
   assert.deepEqual(input.interaction, {

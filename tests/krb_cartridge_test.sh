@@ -44,14 +44,43 @@ if [ "$magic" != "4b524200" ]; then
     exit 1
 fi
 
-if ! strings "$krb" | grep -q click_count; then
-    echo "cartridge missing click_count path" >&2
+if ! strings "$krb" | grep -q menu_open; then
+    echo "cartridge missing menu_open path" >&2
     exit 1
 fi
-if ! strings "$krb" | grep -q last_action; then
-    echo "cartridge missing last_action path" >&2
+if ! strings "$krb" | grep -q split_open; then
+    echo "cartridge missing split_open path" >&2
     exit 1
 fi
+
+cat > "$work/click_host.kry" <<'EOF'
+#import "kryon.h"
+
+state {
+    click_count: int = 0
+    last_action: [64] char = "none"
+}
+
+app "Click Host" {
+    size 240 120
+    fps 60
+}
+
+ButtonsExample :: (viewport: Rectangle) #ui {
+    Screen root: {
+        bounds = viewport
+        if Button((ButtonProps){.bounds={20,20,120,32}, .label="Primary Button", .id=1}) {
+            click_count += 1
+            snprintf(last_action,sizeof(last_action),"Primary Button clicked.")
+        }
+        if Button((ButtonProps){.bounds={20,64,120,32}, .label="Danger Button", .id=2}) {
+            click_count += 1
+            snprintf(last_action,sizeof(last_action),"Danger Button clicked.")
+        }
+    }
+}
+EOF
+"$k2b" --root "$work" -o "$work" "$work/click_host.kry"
 
 # A #ui app body should emit a cartridge with stateful controls.
 cat > "$work/frame.kry" <<'EOF'
@@ -76,16 +105,16 @@ app "Frame" {
 
 App :: () #ui {
     Screen root: {
-        ClearBackground(GetThemeBackground())
+        Background(GetThemeBackground())
         Background(GetThemeSurface())
         Text((TextProps){.bounds={Scale(4), Scale(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Picture((PictureProps){"tiles/tile.png", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, PICTURE_FIT_CONTAIN})
-        Checkbox(1, Scale(4), Scale(40), "Flag", &cb_flag)
-        Radio((RadioButtonProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
-        Progress((ProgressBarProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
+        Image((ImageProps){"tiles/tile.png", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, IMAGE_FIT_CONTAIN})
+        Checkbox((CheckboxProps){.bounds = {Scale(4), Scale(40), Scale(110), Scale(34)}, .id = 1, .label = "Flag", .value = &cb_flag})
+        Radio((RadioProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
+        Progress((ProgressProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
         LabelFrame((LabelFrameProps){.bounds = {Scale(28), Scale(56), Scale(64), Scale(20)}, .title = "PanelTitle"})
-        Combobox((ComboboxProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
-        Dropdown(3, Scale(6), Scale(84), Scale(80), Scale(24), "x;y", &dd_sel)
+        Dropdown((DropdownProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
+        Dropdown((DropdownProps){.bounds = {Scale(6), Scale(84), Scale(80), Scale(24)}, .id = 3, .options = "x;y", .option_count = 2, .selected_index = &dd_sel})
     }
 }
 EOF
@@ -94,8 +123,8 @@ if [ ! -f "$work/frame.krb" ]; then
     echo "#ui hierarchy did not emit a cartridge" >&2
     exit 1
 fi
-if echo "$frame_out" | grep -q 'Combobox'; then
-    echo "k2b dropped the Combobox call: $frame_out" >&2
+if echo "$frame_out" | grep -q 'Dropdown'; then
+    echo "k2b dropped the Dropdown call: $frame_out" >&2
     exit 1
 fi
 if echo "$frame_out" | grep -q 'Progress'; then
@@ -111,7 +140,7 @@ if echo "$frame_out" | grep -q 'LabelFrame'; then
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "Gamma"; then
-    echo "frame cartridge missing Combobox options (string-array state)" >&2
+    echo "frame cartridge missing Dropdown options (string-array state)" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "cb_flag"; then
@@ -119,11 +148,11 @@ if ! strings "$work/frame.krb" | grep -q "cb_flag"; then
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "Alpha"; then
-    echo "frame cartridge missing Combobox options (string-array state)" >&2
+    echo "frame cartridge missing Dropdown options (string-array state)" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "combo_sel"; then
-    echo "frame cartridge missing Combobox selected-index path" >&2
+    echo "frame cartridge missing Dropdown selected-index path" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "progress_value"; then
@@ -169,7 +198,7 @@ grep -q 'unresolved #assert is not supported by KRB' "$work/assert_unknown.err"
 cat > "$work/unsupported.kry" <<'EOF'
 #import "kryon.h"
 Unsupported :: () #ui {
-    InfoButton(1, 10, 10, 10)
+    PanedView((PanedViewProps){0})
 }
 EOF
 if "$k2b" --root "$work" -o "$work" "$work/unsupported.kry" \
@@ -177,7 +206,7 @@ if "$k2b" --root "$work" -o "$work" "$work/unsupported.kry" \
     echo "unsupported KRB call did not fail by default" >&2
     exit 1
 fi
-grep -q 'unsupported calls: InfoButton x1' "$work/unsupported.err"
+grep -q 'unsupported calls: PanedView x1' "$work/unsupported.err"
 "$k2b" --allow-unsupported --root "$work" -o "$work" \
     "$work/unsupported.kry" 2>"$work/unsupported_allowed.err"
 test -f "$work/unsupported.krb"
@@ -186,7 +215,7 @@ if [ -n "$walker" ] && [ -x "$walker" ]; then
     "$walker" "$krb"
 fi
 
-if [ ! -f "$work/02_buttons.krb.c" ] || [ ! -f "$work/02_buttons.krb.h" ]; then
+if [ ! -f "$work/click_host.krb.c" ] || [ ! -f "$work/click_host.krb.h" ]; then
     echo "k2b did not write the C host" >&2
     exit 1
 fi
@@ -196,7 +225,7 @@ cc -Wall -Wextra -Werror -DKRYON_KRB_NO_MAIN \
     -I"$work" -I"$root/include" \
     -o "$host" \
     "$root/tests/krb_host_click_test.c" \
-    "$work/02_buttons.krb.c" \
+    "$work/click_host.krb.c" \
     "$root/src/krb/krb.c" \
     "$root/src/backend/kry_backend.c"
 "$host"

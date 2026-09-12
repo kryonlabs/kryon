@@ -1,0 +1,146 @@
+#module "plot"
+#import "drawing_props"
+
+PlotRange :: struct {
+    min_value: float
+    max_value: float
+    range: float
+}
+
+PlotMark :: struct {
+    bounds: Rectangle
+    color: u32
+}
+
+PlotTextPaint :: struct {
+    label_bounds: Rectangle
+    overlay_bounds: Rectangle
+    text_color: u32
+    show_label: bool
+    show_overlay: bool
+}
+
+PlotOffset :: (count: i32, offset: i32) -> i32 #export {
+    if count <= 0 {
+        return 0
+    }
+    wrapped: i32 = offset % count
+    if wrapped < 0 {
+        wrapped = wrapped + count
+    }
+    return wrapped
+}
+
+PlotRangeFor :: (scale_min: float, scale_max: float,
+    observed_min: float, observed_max: float) -> PlotRange #export {
+    result: PlotRange
+    result.min_value = scale_min
+    result.max_value = scale_max
+    if result.min_value >= result.max_value {
+        result.min_value = observed_min
+        result.max_value = observed_max
+    }
+    if result.min_value == result.max_value {
+        result.min_value = result.min_value - 0.5
+        result.max_value = result.max_value + 0.5
+    }
+    result.range = result.max_value - result.min_value
+    if result.range <= 0.0 {
+        result.range = 1.0
+    }
+    return result
+}
+
+PlotNormalize :: (value: float, plot_range: PlotRange) -> float #export {
+    t: float = (value - plot_range.min_value) / plot_range.range
+    if t < 0.0 {
+        return 0.0
+    }
+    if t > 1.0 {
+        return 1.0
+    }
+    return t
+}
+
+PlotHistogramBar :: (bounds: Rectangle, index: i32, count: i32,
+    value: float, plot_range: PlotRange, color: u32) -> PlotMark #export {
+    mark: PlotMark
+    if count <= 0 {
+        mark.color = color
+        return mark
+    }
+    step: float = bounds.width / (float)count
+    height: float = PlotNormalize(value, plot_range) * bounds.height
+    width: float = step - 2.0
+    if width < 1.0 {
+        width = step
+    }
+    mark.bounds.x = bounds.x + (float)index * step + 1.0
+    mark.bounds.y = bounds.y + bounds.height - height
+    mark.bounds.width = width
+    mark.bounds.height = height
+    mark.color = color
+    return mark
+}
+
+PlotSingleLine :: (bounds: Rectangle, value: float,
+    plot_range: PlotRange, color: u32) -> PlotMark #export {
+    mark: PlotMark
+    y: float = bounds.y + (1.0 - PlotNormalize(value, plot_range)) * bounds.height
+    mark.bounds.x = bounds.x
+    mark.bounds.y = y
+    mark.bounds.width = bounds.width
+    mark.bounds.height = 0.0
+    mark.color = color
+    return mark
+}
+
+PlotLineSegment :: (bounds: Rectangle, index: i32, count: i32,
+    a: float, b: float, plot_range: PlotRange, color: u32) -> PlotMark #export {
+    mark: PlotMark
+    if count <= 1 {
+        return PlotSingleLine(bounds, b, plot_range, color)
+    }
+    x1: float = bounds.x + (float)(index - 1) * bounds.width / (float)(count - 1)
+    x2: float = bounds.x + (float)index * bounds.width / (float)(count - 1)
+    y1: float = bounds.y + (1.0 - PlotNormalize(a, plot_range)) * bounds.height
+    y2: float = bounds.y + (1.0 - PlotNormalize(b, plot_range)) * bounds.height
+    mark.bounds.x = x1
+    mark.bounds.y = y1
+    mark.bounds.width = x2 - x1
+    mark.bounds.height = y2 - y1
+    mark.color = color
+    return mark
+}
+
+PlotTextPaintFor :: (bounds: Rectangle, label_width: float,
+    overlay_width: float, scale: float, text_color: u32,
+    show_label: bool, show_overlay: bool) -> PlotTextPaint #export {
+    paint: PlotTextPaint
+    if scale <= 0.0 {
+        scale = 1.0
+    }
+    pad_x: float = 6.0 * scale
+    pad_y: float = 4.0 * scale
+    text_height: float = 18.0 * scale
+    paint.text_color = text_color
+    paint.show_label = show_label
+    paint.show_overlay = show_overlay
+    paint.label_bounds.x = bounds.x + pad_x
+    paint.label_bounds.y = bounds.y + pad_y
+    paint.label_bounds.width = label_width
+    paint.label_bounds.height = text_height
+    paint.overlay_bounds.x = bounds.x + bounds.width - overlay_width - pad_x
+    paint.overlay_bounds.y = bounds.y + pad_y
+    paint.overlay_bounds.width = overlay_width
+    paint.overlay_bounds.height = text_height
+    if !show_label {
+        paint.label_bounds.width = 0.0
+        paint.label_bounds.height = 0.0
+    }
+    if !show_overlay {
+        paint.overlay_bounds.width = 0.0
+        paint.overlay_bounds.height = 0.0
+    }
+    return paint
+}

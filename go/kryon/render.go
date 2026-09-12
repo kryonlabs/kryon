@@ -63,6 +63,10 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 				op.Material = MaterialFlat
 				renderMaterial(img, op)
 			}
+		case FrameOpCircle:
+			fillCircle(img, op.Bounds, opaque(op.Color, BLACK))
+		case FrameOpRing:
+			fillRing(img, op.Bounds, op.Radius, opaque(op.Color, BLACK))
 		case FrameOpLine:
 			drawLine(img, op.Bounds, opaque(op.Color, BLACK))
 		case FrameOpText:
@@ -77,7 +81,7 @@ func RenderFrameInto(img *image.RGBA, ops []FrameOp) {
 			renderMaterial(img, op)
 		case FrameOpIcon:
 			renderIcon(img, op)
-		case FrameOpPicture:
+		case FrameOpImage:
 			fillRect(img, op.Bounds, opaque(op.Color, Color{224, 229, 236, 255}))
 			strokeRect(img, op.Bounds, Color{136, 146, 160, 255})
 		case FrameOpTextField, FrameOpTextArea:
@@ -194,7 +198,7 @@ func renderDrawing(img *image.RGBA, command Drawing, fontID uint32) {
 	}
 }
 
-func renderLoadingRing(img *image.RGBA, cx, cy float32, ring Ring) {
+func renderLoadingRing(img *image.RGBA, cx, cy float32, ring LoadingRingSpec) {
 	inner, outer := ring.InnerRadius, ring.OuterRadius
 	if outer <= 0 || inner >= outer || ring.EndAngle <= ring.StartAngle {
 		return
@@ -691,6 +695,50 @@ func strokeRect(img *image.RGBA, r Rectangle, c Color) {
 		setPixel(img, rect.Min.X, y, c)
 		setPixel(img, rect.Max.X-1, y, c)
 	}
+}
+
+func fillCircle(img *image.RGBA, r Rectangle, c Color) {
+	cx, cy := r.X+r.Width/2, r.Y+r.Height/2
+	outer := minFloat32(r.Width, r.Height) / 2
+	outer2 := outer * outer
+	pixels := clipRect(img, r)
+	for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+		dy := float32(y) + 0.5 - cy
+		for x := pixels.Min.X; x < pixels.Max.X; x++ {
+			dx := float32(x) + 0.5 - cx
+			if dx*dx+dy*dy <= outer2 {
+				setPixel(img, x, y, c)
+			}
+		}
+	}
+}
+
+func fillRing(img *image.RGBA, r Rectangle, innerRadius float32, c Color) {
+	cx, cy := r.X+r.Width/2, r.Y+r.Height/2
+	outer := minFloat32(r.Width, r.Height) / 2
+	if innerRadius < 0 {
+		innerRadius = 0
+	}
+	outer2 := outer * outer
+	inner2 := innerRadius * innerRadius
+	pixels := clipRect(img, r)
+	for y := pixels.Min.Y; y < pixels.Max.Y; y++ {
+		dy := float32(y) + 0.5 - cy
+		for x := pixels.Min.X; x < pixels.Max.X; x++ {
+			dx := float32(x) + 0.5 - cx
+			d2 := dx*dx + dy*dy
+			if d2 <= outer2 && d2 >= inner2 {
+				setPixel(img, x, y, c)
+			}
+		}
+	}
+}
+
+func minFloat32(a, b float32) float32 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func drawLine(img *image.RGBA, r Rectangle, c Color) {

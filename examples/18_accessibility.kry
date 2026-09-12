@@ -15,7 +15,7 @@ AccessibilityExample :: (viewport: Rectangle) #ui {
         bounds = viewport
         Background(GetThemeBackground())
         Text((TextProps){.bounds={40, 40, 0, 0}, .text="Accessibility overlay", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        Checkbox(1801,40,90,"Show focus/debug overlay",&enabled)
+        Checkbox((CheckboxProps){.bounds = {40,90,Scale(260),Scale(34)}, .id = 1801, .label = "Show focus/debug overlay", .value = &enabled})
         if Button((ButtonProps){.bounds = {40, 140, 200, 40}, .label = "Focusable Button",  .font = Text16, .id = 101}) {
             enabled = !enabled
         }

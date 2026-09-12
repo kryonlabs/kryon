@@ -2,14 +2,14 @@
  * TileMap: renders a grid of tile IDs from a single tileset texture. On draw
  * it iterates the tile grid and blits each non-empty tile via DrawTexturePro
  * (raylib batches these internally by texture). The tileset is shared through
- * the picture texture cache. TileLayer is a thin alias (same kind, used for
+ * the image texture cache. TileLayer is a thin alias (same kind, used for
  * layered rendering under different Camera2D depths).
  */
 
 #include "scene_tree.h"
 #include "node2d_props.h"
-#include "ui_picture.h"
-#include "../ui/ui_picture_internal.h"
+#include "ui_image.h"
+#include "../ui/ui_image_internal.h"
 #include <stdlib.h>
 
 static void
@@ -28,7 +28,7 @@ kry_tilemap_draw(Scene *scene, NodeId node)
        props->asset_path[0] == '\0' || props->tiles == NULL ||
        props->map_w <= 0 || props->map_h <= 0 || props->tiles_per_row <= 0)
         return;
-    texture = LoadPictureTexture(props->asset_path);
+    texture = LoadImageTexture(props->asset_path);
     if(texture.id == 0)
         return;
     tint = props->tint.a == 0 ? WHITE : props->tint;

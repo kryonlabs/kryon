@@ -8,7 +8,7 @@ func TestComboHorizontalViewport(t *testing.T) {
 		selected := int32(0)
 		draw := func() {
 			r.BeginFrame()
-			r.Combobox(ComboboxProps{Bounds: bounds, ID: 25002, Options: []string{"One", "Two"}, SelectedIndex: &selected})
+			r.Dropdown(DropdownProps{Bounds: bounds, ID: 25002, Options: []string{"One", "Two"}, SelectedIndex: &selected})
 			r.EndFrame()
 		}
 		r.SetFocus(25002)
@@ -36,7 +36,7 @@ func TestComboScrollbarDismissal(t *testing.T) {
 		draw := func(disabled, missing bool) {
 			r.BeginFrame()
 			if !missing {
-				r.Combobox(ComboboxProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 25001,
+				r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 25001,
 					Options: make([]string, 131), SelectedIndex: &selected, Disabled: disabled})
 			}
 			r.EndFrame()
@@ -66,7 +66,7 @@ func TestComboConstrainedViewport(t *testing.T) {
 		selected := int32(0)
 		draw := func() {
 			r.BeginFrame()
-			r.Combobox(ComboboxProps{Bounds: NewRectangle(10, float32(y), 160, 28), ID: 25000,
+			r.Dropdown(DropdownProps{Bounds: NewRectangle(10, float32(y), 160, 28), ID: 25000,
 				Options: options, SelectedIndex: &selected})
 			r.EndFrame()
 		}

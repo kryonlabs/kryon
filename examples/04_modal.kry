@@ -28,7 +28,7 @@ ModalExample :: (viewport: Rectangle) #ui {
         }
         if modal_open {
             actions: [3] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"Confirm",ButtonToneAccent,ButtonEmphasisFilled,0},{"Delete",ButtonToneDanger,ButtonEmphasisFilled,0}}
-            result: int = ActionModal((ModalProps){"Adaptive Action Modal","Kryon measures action labels and blocks background clicks.",actions,3,420})
+            result: int = Modal((ModalProps){.title = "Adaptive Action Modal", .message = "Kryon measures action labels and blocks background clicks.", .actions = actions, .action_count = 3, .max_width = 420})
             if result == 1 {
                 modal_open = 0
                 snprintf(last_label,sizeof(last_label),"cancel")

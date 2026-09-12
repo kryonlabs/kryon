@@ -60,7 +60,7 @@ func CarouselControls(p CarouselControlsProps) int32 {
 			if p.Disabled {
 				c.A = 51
 			}
-			DrawCircleV(Vector2{X: b.X + float32(hit)/2, Y: b.Y + float32(hit)/2}, Scale(r), c)
+			Circle(int32(b.X+float32(hit)/2), int32(b.Y+float32(hit)/2), Scale(r), c)
 		}
 	}
 	return s

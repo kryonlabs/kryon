@@ -44,7 +44,7 @@ examples/15_containers.kry
 examples/16_dialogs.kry
 examples/17_keyboard_platform.kry
 examples/18_accessibility.kry
-examples/19_pictures.kry
+examples/19_images.kry
 examples/20_scene.kry
 examples/20_scroll.kry
 examples/21_signals.kry
@@ -86,14 +86,14 @@ const outDir = process.argv[2];
 const expected = new Map([
   ["examples/01_file_dialog.js", ["Screen", "Background", "Text", "Text", "Button", "Button", "Button", "Text", "Text", "Text"]],
   ["examples/02_buttons.js", ["Screen","Text","Rect","Text","Text","Text","Text","Text","Text","Text","Text","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Rect","Text","Text","Text","Text","Text","Text","Text","Text","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button","Button","Button","Button","Button","Text","Button"]],
-  ["examples/03_theme.js", ["Screen", "Background", "Text", "Text", "Text", "Button", "Button", "TextField", "Dropdown", "Slider", "Toggle", "Checkbox", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
+  ["examples/03_theme.js", ["Screen", "Background", "Text", "Text", "Text", "Button", "Button", "Button", "Text", "Button", "Button", "TextField", "Dropdown", "Slider", "Toggle", "Checkbox", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
   ["examples/04_modal.js", ["Screen", "Background", "Text", "Text", "Button", "Text", "Text", "Button"]],
   ["examples/05_color.js", ["Screen", "Background", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Rect", "Rect", "Text", "Text", "Text"]],
   ["examples/06_scaling.js", ["Screen", "Background", "Text", "Rect", "Text", "Text", "Text"]],
-  ["examples/07_layout.js", ["Screen", "Background", "Text", "Rect", "Line", "Line", "Rect", "Text", "Text", "Text", "Text", "Text"]],
+  ["examples/07_layout.js", ["Screen", "Background", "Text", "Rect", "Line", "Line", "Rect", "Text", "Text", "Text", "Button", "Button", "Button", "Text", "Text"]],
   ["examples/09_geometry.js", ["Screen", "Background", "Text", "Separator", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Separator", "Text"]],
   ["examples/10_menus.js", ["Screen", "Background", "Text"]],
-  ["examples/11_basic_controls.js", ["Screen", "Background", "Text", "Text", "Spinbox", "Combobox", "Progress"]],
+  ["examples/11_basic_controls.js", ["Screen", "Background", "Text", "Radio", "Radio", "Text", "Spinbox", "Dropdown", "Progress"]],
   ["examples/12_collections.js", ["Screen", "Background", "ListBox", "TreeView", "TableView", "Text"]],
   ["examples/13_text_editor.js", ["Screen", "Background", "TextArea", "Text", "Button", "Button"]],
   ["examples/14_canvas.js", ["Screen", "Background", "CanvasGrid"]],
@@ -101,9 +101,9 @@ const expected = new Map([
   ["examples/16_dialogs.js", ["Screen", "Background", "Button", "Button", "Button", "ColorPicker"]],
   ["examples/17_keyboard_platform.js", ["Screen", "Background", "Text", "Text", "Text"]],
   ["examples/18_accessibility.js", ["Screen", "Background", "Text", "Checkbox", "Button"]],
-  ["examples/19_pictures.js", ["Screen", "Background", "Text", "Stack", "Rect", "Picture", "Picture", "Text"]],
+  ["examples/19_images.js", ["Screen", "Background", "Text", "Stack", "Rect", "Image", "Image", "Text"]],
   ["examples/20_scene.js", []],
-  ["examples/20_scroll.js", ["Screen", "Background", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
+  ["examples/20_scroll.js", ["Screen", "Background", "Background", "Text", "Text", "Text", "Text", "Text", "Text", "Text"]],
   ["examples/21_signals.js", []],
   ["examples/22_physics.js", []],
   ["examples/23_animation.js", []],
@@ -111,17 +111,17 @@ const expected = new Map([
   ["tests/parity/generated_form.js", ["Screen", "Column", "Text", "TextField", "TextField", "TextField", "TextArea", "Row", "Button", "Button"]],
   ["tests/parity/fields.js", ["Screen", "TextField", "TextArea"]],
   ["tests/parity/focus.js", ["Screen", "TextField", "TextField", "TextField"]],
-  ["tests/parity/buttons_layout.js", ["BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "Screen", "Column", "Text", "Row", "BeginDisabled", "BeginDisabled", "Button", "EndDisabled", "EndDisabled", "Button"]],
+  ["tests/parity/buttons_layout.js", ["BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "BeginDisabled", "EndDisabled", "Screen", "Column", "Text", "Row", "BeginDisabled", "BeginDisabled", "Button", "EndDisabled", "EndDisabled", "Button", "Button"]],
   ["tests/parity/long_text.js", ["Screen", "Column", "Text", "TextField", "TextField"]],
-    ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown", "Selectable", "CheckboxFlags"]],
+    ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown", "Selectable", "Checkbox", "Radio"]],
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
-  ["tests/parity/plots.js", ["Screen", "PlotLines", "PlotHistogram", "DragFloat", "DragInt", "DragFloatRange2", "DragIntRange2", "SliderFloat", "SliderInt", "VSliderFloat", "VSliderInt", "SliderAngle", "InputFloat", "InputInt", "InputDouble", "Button", "InvisibleButton", "ArrowButton", "Bullet", "Separator", "ColorEdit3", "ColorEdit4", "ColorPicker3", "ColorPicker4", "ColorButton", "Text", "Text", "Text", "LabelText", "BulletText", "ValueBool", "ValueInt", "ValueUInt", "ValueFloat"]],
+  ["tests/parity/plots.js", ["Screen", "Plot", "Plot", "Drag", "Drag", "Drag", "Drag", "Slider", "Slider", "Slider", "Slider", "Slider", "Input", "Input", "Input", "Button", "InvisibleButton", "Button", "Bullet", "Separator", "ColorPicker", "ColorPicker", "ColorPicker", "ColorPicker", "Button", "Text", "Text", "Text", "Text", "Text", "Bullet", "Text", "Text", "Text", "Text", "Text"]],
   ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
-  ["tests/parity/selection_images.js", ["Screen", "Selectable", "CheckboxFlags", "ImageWithBg", "ImageButton", "SeparatorText", "TabItemButton", "ClosableTabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
+  ["tests/parity/selection_images.js", ["Screen", "Selectable", "Checkbox", "Image", "Button", "Separator", "Button", "TabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
-  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "TopNav", "Toolbar", "NavigationBar", "Column", "Text", "Row", "Button", "Href", "Stack", "Rect", "Line", "Bevel", "Text", "TextLines", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Combobox", "Progress", "ColorPicker", "LabelFrame", "Icon", "Picture", "Notebook", "ListBox", "TreeView", "SourceView", "TableView", "PanedView", "Collapsible", "Modal", "MessageDialog", "ConfirmDialog", "PromptDialog", "ActionModal", "CanvasGrid"]]
+  ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "Toolbar", "Toolbar", "NavigationBar", "Column", "Text", "Row", "Button", "Button", "Link", "Stack", "Rect", "Line", "Bevel", "Text", "Text", "Text", "Text", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Dropdown", "Progress", "ColorPicker", "LabelFrame", "Image", "Icon", "Button", "Image", "TabBar", "ListBox", "TreeView", "Rect", "Text", "Text", "TableView", "PanedView", "Collapsible", "Modal", "Modal", "Modal", "Modal", "Modal", "CanvasGrid"]]
 ]);
 
 for (const [relPath, widgets] of expected) {
@@ -132,10 +132,8 @@ for (const [relPath, widgets] of expected) {
   const snap = mod.frame(undefined, state);
   const got = snap.frame.map((item) => item.name);
   if (relPath === "examples/02_buttons.js") {
-    assert.equal(got.filter((name) => name === "Button").length, 172,
+    assert.equal(got.filter((name) => name === "Button").length, 181,
       `${relPath}: complete split-theme button matrices`);
-    assert.equal(got.filter((name) => name === "SplitButton" || name === "MenuButton").length, 8,
-      `${relPath}: split-theme compound controls`);
     const headings = snap.frame.filter((item) => item.name === "Text").map((item) => item.args.text);
     assert.ok(headings.includes("DARK THEME") && headings.includes("LIGHT THEME"),
       `${relPath}: evaluated split-theme headings`);

@@ -11,7 +11,7 @@
 #include "ui_overlay.h"
 #include "ui_profile.h"
 #include "ui_rows.h"
-#include "ui_picture.h"
+#include "ui_image.h"
 #include "ui_tk.h"
 
 struct UITransition;
@@ -55,6 +55,7 @@ typedef enum UIWidgetKind {
     UI_WIDGET_TEXT_NODE,
     UI_WIDGET_RECT_NODE,
     UI_WIDGET_CIRCLE_NODE,
+    UI_WIDGET_RING_NODE,
     UI_WIDGET_LINE_NODE,
     UI_WIDGET_TRIANGLE_NODE,
     UI_WIDGET_BUTTON_NODE,
@@ -64,16 +65,10 @@ typedef enum UIWidgetKind {
     UI_WIDGET_SLIDER_NODE,
     UI_WIDGET_TOGGLE_NODE,
     UI_WIDGET_CHECKBOX_NODE,
-    UI_WIDGET_THEME_SETTINGS_NODE,
     UI_WIDGET_PARAGRAPH_NODE,
     UI_WIDGET_READONLY_TEXT_BOX_NODE,
-    UI_WIDGET_LABEL_TEXT_FIELD_NODE,
-    UI_WIDGET_SECTION_LABEL_NODE,
-    UI_WIDGET_CHECKBOX_ROW_NODE,
-    UI_WIDGET_BUTTON_ROW_NODE,
     UI_WIDGET_NAVIGATION_BAR_NODE,
     UI_WIDGET_TAB_BAR_NODE,
-    UI_WIDGET_THEME_PICKER_NODE,
     UI_WIDGET_PARAGRAPH_MODAL_NODE,
     UI_WIDGET_TITLE_BAR_NODE,
     UI_WIDGET_GROUP_NODE,
@@ -81,13 +76,9 @@ typedef enum UIWidgetKind {
     UI_WIDGET_ROW_NODE,
     UI_WIDGET_STACK_NODE,
     UI_WIDGET_GRID_NODE,
-    UI_WIDGET_PICTURE_NODE,
+    UI_WIDGET_IMAGE_NODE,
     UI_WIDGET_CUSTOM_NODE,
-    UI_WIDGET_FLOAT_SLIDER_NODE,
-    UI_WIDGET_INT_SLIDER_NODE,
-    UI_WIDGET_ANGLE_SLIDER_NODE,
-    UI_WIDGET_FLOAT_DRAG_NODE,
-    UI_WIDGET_INT_DRAG_NODE,
+    UI_WIDGET_DRAG_NODE,
     UI_WIDGET_TEXT_INPUT_PAINT_NODE,
     UI_WIDGET_ROUTER_NODE,
     UI_WIDGET_CARD_NODE
@@ -112,27 +103,13 @@ typedef struct UIWidgetTextInputPaint {
 typedef union UIWidgetData {
     UIWidgetTextInputPaint text_input_paint;
     struct {
-        DragFloatProps props;
+        DragProps props;
         size_t format_offset;
-    } float_drag;
+    } drag;
     struct {
-        DragIntProps props;
+        SliderProps props;
         size_t format_offset;
-    } int_drag;
-    struct {
-        SliderAngleProps props;
-        size_t format_offset;
-    } angle_slider;
-    struct {
-        SliderFloatProps props;
-        int vertical;
-        size_t format_offset;
-    } float_slider;
-    struct {
-        SliderIntProps props;
-        int vertical;
-        size_t format_offset;
-    } int_slider;
+    } slider;
     struct {
         int gap;
         int padding;
@@ -142,13 +119,8 @@ typedef union UIWidgetData {
     } layout;
     ParagraphSpec paragraph;
     ReadonlyTextBoxProps readonly_text_box;
-    LabelTextFieldProps label_text_field;
-    SectionLabelProps section_label;
-    CheckboxRowProps checkbox_row;
-    ButtonRowProps button_row;
-    ThemeSettingsProps theme_settings;
     ParagraphModalMeasureProps paragraph_modal;
-    PictureProps picture;
+    ImageProps image;
     struct {
         int x1;
         int y1;
@@ -184,17 +156,6 @@ typedef union UIWidgetData {
         int *value;
         const char *label;
     } checkbox;
-    struct {
-        int *value;
-        const char *label;
-        const char *suffix;
-        const char *value_text_override;
-        int min;
-        int max;
-        int vertical;
-        UIVerticalSliderMarkCallback mark_callback;
-        void *mark_callback_user_data;
-    } slider;
 } UIWidgetData;
 
 typedef struct UIWidgetNode {
@@ -249,40 +210,12 @@ void SetAccessibilitySink(UIAccessibilitySink sink, void *userdata);
 
 UIWidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
 UIWidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
-UIWidgetNode NodeLabelTextField(LabelTextFieldProps row, int x, int y, int w);
-UIWidgetNode NodeSectionLabel(SectionLabelProps label, int x, int y);
-UIWidgetNode NodeCheckboxRow(CheckboxRowProps row, int x, int y);
-UIWidgetNode NodeButtonRow(ButtonRowProps row);
 UIWidgetNode NodeNavigationBar(NavigationBarProps nav);
-UIWidgetNode NodeTopNav(TopNavProps nav);
 UIWidgetNode NodeTabBar(TabBarProps bar);
-UIWidgetNode NodeThemeSettings(ThemeSettingsProps settings);
-UIWidgetNode NodeThemePicker(int x, int y, int w);
 UIWidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
 UIWidgetNode NodeTitleBar(int height);
 
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
-
-typedef struct MenuButtonProps {
-    ButtonProps button;
-    int menu_id;
-    const MenuItem *items;
-    int item_count;
-    int *open;
-} MenuButtonProps;
-
-typedef struct SplitButtonProps {
-    ButtonProps button;
-    int menu_id;
-    const MenuItem *items;
-    int item_count;
-    int *open;
-} SplitButtonProps;
-
-typedef struct SplitButtonResult {
-    int clicked;
-    int activated_id;
-} SplitButtonResult;
 
 void BeginDisabled(int disabled);
 void EndDisabled(void);
@@ -301,62 +234,18 @@ typedef struct {
     Rectangle bounds;
     int id;
     const char *label;
+    int *value;
     int *flags;
     int flags_value;
     int disabled;
-} CheckboxFlagsProps;
-
-typedef struct {
-    PictureProps picture;
-    Color background;
-} ImageWithBgProps;
-
-typedef struct {
-    PictureProps picture;
-    Color background;
-    int id;
-    int disabled;
-} ImageButtonProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *label;
-    int font;
-    int disabled;
-} TabItemButtonProps;
-
-typedef struct {
-    Rectangle bounds;
-    const Tab *tabs;
-    int count;
-    int *selected_index;
-    int font;
-    int *closed_index;
-    int id;
-    int disabled;
-} ClosableTabBarProps;
+} CheckboxProps;
 
 void Background(Color color);
 void Surface(Rectangle bounds, Style style);
 int Card(CardProps card);
 NodeId BeginCard(CardProps card);
 void Text(TextProps props);
-void LabelText(const char *label, const char *value, Rectangle bounds,
-               int font_size, Color color);
-void BulletText(const char *text, Rectangle bounds, int font_size,
-                Color color);
-void ValueBool(const char *prefix, int value, Rectangle bounds,
-               int font_size, Color color);
-void ValueInt(const char *prefix, int value, Rectangle bounds,
-              int font_size, Color color);
-void ValueUInt(const char *prefix, unsigned int value, Rectangle bounds,
-               int font_size, Color color);
-void ValueFloat(const char *prefix, float value, const char *format,
-                Rectangle bounds, int font_size, Color color);
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
-void TextLines(const char **lines, int count, int x, int *y,
-                     int font, int line_h, Color color);
 #ifdef KRYON_BACKEND_LIBDRAW
 void kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border);
 #define Rect kry_ui_rect_shape
@@ -365,33 +254,19 @@ void Rect(int x, int y, int w, int h, Color fill, Color border);
 #endif
 void Box(Rectangle bounds, Color fill, Color border);
 void Circle(int center_x, int center_y, int radius, Color color);
+void Ring(int center_x, int center_y, int inner_radius, int outer_radius,
+          Color color);
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
-void Texture(Texture2D texture, Rectangle source, Rectangle bounds, Color tint);
 void Icon(int id, int x, int y, int size, UIIconType icon, Color tint);
-void Picture(PictureProps picture);
+void RenderImage(ImageProps image);
 int ButtonNode(ButtonSpec button);
-int Href(HrefProps link);
 int TextField(TextFieldProps field);
-int InfoButton(int id, int center_x, int center_y, int diameter);
 int Dropdown(DropdownProps dropdown);
-int DropdownLegacy(int id, int x, int y, int w, int h,
-                   const char **options, int option_count,
-                   int *selected_index);
-int DropdownOptions(int id, int x, int y, int w, int h,
-                    const DropdownOption *options, int option_count,
-                    int *selected_index);
-int Slider(int id, int x, int y, int w, const char *label,
-                 int min, int max, int *value, const char *suffix,
-                 const char *value_text_override);
-int Toggle(int id, int x, int y, int w, int h, int *value,
-                 const char *off_label, const char *on_label);
-int Checkbox(int id, int x, int y, const char *label, int *value);
-int ThemeSettings(ThemeSettingsProps settings, ThemeSettingsState *state,
-                        ThemeSettingsResult *result);
-void Separator(Rectangle bounds, int vertical);
-void SeparatorText(SeparatorTextProps separator);
+int Toggle(ToggleProps toggle);
+int Checkbox(CheckboxProps checkbox);
+void Separator(SeparatorProps separator);
 int DragDropSource(DragDropSourceProps source);
 int DragDropTarget(DragDropTargetProps target);
 int MultiSelectList(MultiSelectListProps list);
@@ -400,24 +275,13 @@ MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
 int PopupMenu(int id, int x, int y, const MenuItem *items,
                     int item_count);
 int ContextMenu(ContextMenuProps menu);
-int Radio(RadioButtonProps radio);
-void Progress(ProgressBarProps progress);
-void PlotLines(PlotProps plot);
-void PlotHistogram(PlotProps plot);
-int DragFloat(DragFloatProps drag);
-int DragInt(DragIntProps drag);
-int DragFloatRange2(DragFloatRange2Props drag);
-int DragIntRange2(DragIntRange2Props drag);
-int SliderFloat(SliderFloatProps slider);
-int SliderInt(SliderIntProps slider);
-int VSliderFloat(SliderFloatProps slider);
-int VSliderInt(SliderIntProps slider);
-int SliderAngle(SliderAngleProps slider);
-int InputFloat(InputFloatProps input);
-int InputInt(InputIntProps input);
-int InputDouble(InputDoubleProps input);
+int Radio(RadioProps radio);
+void Progress(ProgressProps progress);
+void Plot(PlotProps plot);
+int Drag(DragProps drag);
+int Input(InputProps input);
+int Slider(SliderProps slider);
 int Spinbox(SpinboxProps spinbox);
-int Combobox(ComboboxProps combo);
 int BeginCombo(ComboProps combo);
 void EndCombo(void);
 void CloseCombo(void);
@@ -425,56 +289,22 @@ int BeginPopup(PopupProps popup);
 void EndPopup(void);
 void ClosePopup(void);
 void LabelFrame(LabelFrameProps frame);
-void ImageBox(ImageBoxProps image);
 int ListBox(ListBoxProps list);
-Rectangle BeginListBox(ListBoxProps list);
-void EndListBox(void);
 int TreeView(TreeViewProps tree);
-int CascadingTreeView(CascadingTreeViewProps tree);
-int SourceView(SourceViewProps source);
 int TableView(TableViewProps table);
 Rectangle BeginTableCell(TableViewProps table, int row, int column);
 void EndTableCell(void);
 int TextArea(TextAreaProps area);
-int RichTextEditor(RichTextEditorProps editor);
 void CanvasGrid(Rectangle bounds, int step, Color color);
-int Notebook(NotebookProps notebook);
 int PanedView(PanedViewProps panes);
 int Collapsible(CollapsibleProps section);
-int ColorPicker(Rectangle bounds, Color *color);
-int ActionModal(ModalProps modal);
-int MessageDialog(MessageDialogProps dialog);
-int ConfirmDialog(ConfirmDialogProps dialog);
-int PromptDialog(PromptDialogProps dialog);
-int TextPopover(TextPopoverProps popover);
-int PickerDialog(PickerDialogProps picker);
+int ColorPicker(ColorPickerProps picker);
 void Focus(Rectangle bounds);
 void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-UIGuideResult GuideOverlay(GuideOverlayProps guide);
-int ThemeSwitcher(int x, int y, int w, const char *label,
-                        const char *light_label, const char *dark_label,
-                        int *theme_id, int *dark_mode);
-int ThemePicker(int x, int y, int w, int dark_mode, int *theme_id);
-void TutorialImagePlaceholder(const char *label, int x, int y,
-                                    int w, int h);
-void TutorialImage(Texture2D texture, const char *fallback,
-                         int x, int y, int w, int h);
 void TransitionFade(const struct UITransition *transition, int width,
                           int height, Color color);
-void InfoRows(InfoRowsProps rows);
-int LabelTextField(LabelTextFieldProps row, int x, int y, int w);
-int SectionLabel(SectionLabelProps label, int x, int y);
-int CheckboxRow(CheckboxRowProps row, int x, int y);
-int OverlayButton(OverlayButtonProps button);
-int ButtonRow(ButtonRowProps row);
-int IconSliderPopup(IconSliderPopupProps popup);
-IconRowResult BottomIconRow(BottomIconRowProps row);
 NavigationBarResult NavigationBar(NavigationBarProps nav);
-NavigationBarConfigResult NavigationBarConfig(NavigationBarConfigProps modal);
-TopNavResult TopNav(TopNavProps nav);
 ToolbarResult Toolbar(ToolbarProps toolbar);
-ToolbarHeaderResult ToolbarHeader(ToolbarHeaderProps header);
-int SubtabBar(SubtabBarProps bar);
 int TabBar(TabBarProps bar);
 /* Render a canonical tab bar and begin its arbitrary-content scope. The
  * caller owns selected_index; a tab selected by pointer or keyboard is
@@ -483,44 +313,14 @@ int BeginTabBar(TabBarProps bar, int *selected_index);
 int BeginTabItem(int index);
 void EndTabItem(void);
 void EndTabBar(void);
-PaneTabBarResult PaneTabs(PaneTabBar bar);
-void PaneDropPreview(Rectangle bounds, PaneDropZone zone);
-SidebarAccountHeaderResult SidebarAccountHeader(SidebarAccountHeaderProps header);
-ProfilePicturePickerResult ProfilePicturePicker(ProfilePicturePickerProps modal);
-void ReorderHandle(int id, int x, int y, int w, int h, int active);
-void ReorderPlaceholder(Rectangle bounds);
-int Modal(const char *title, const char *message,
-                const char *cancel_btn, const char *confirm_btn);
-int Modal3Button(const char *title, const char *message,
-                       const char *left_btn, const char *middle_btn,
-                       const char *right_btn);
-void TitleBar(const char *title, int height);
-int ReturnTitleBar(Texture2D return_icon, const char *title,
-                         int height);
-int ReturnDropdownTitleBar(Texture2D return_icon,
-                                 UITitleBarDropdown dropdown, int height);
-UIPanelFrame ModalFrame(int width, int height, const char *title,
-                              Texture2D left_icon, Texture2D right_icon);
+int Modal(ModalProps modal);
+int TitleBar(TitleBarProps title_bar);
 
 int Button(ButtonProps button);
 NodeId BeginButton(ButtonProps button);
-int MenuButton(MenuButtonProps button);
-SplitButtonResult SplitButton(SplitButtonProps button);
 int Selectable(SelectableProps selectable);
-int CheckboxFlags(CheckboxFlagsProps checkbox);
-void ImageWithBg(ImageWithBgProps image);
-int ImageButton(ImageButtonProps image);
-int TabItemButton(TabItemButtonProps button);
-int ClosableTabBar(ClosableTabBarProps bar);
 int InvisibleButton(InvisibleButtonProps button);
-int ArrowButton(ArrowButtonProps button);
 void Bullet(Rectangle bounds);
-int ColorEdit3(ColorEditProps edit);
-int ColorEdit4(ColorEditProps edit);
-int ColorPicker3(ColorEditProps picker);
-int ColorPicker4(ColorEditProps picker);
-int ColorButton(ColorButtonProps button);
-
 /* Layout nodes: auto-position children like flexbox. */
 typedef struct {
     Rectangle bounds;

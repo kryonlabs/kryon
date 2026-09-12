@@ -41,6 +41,6 @@ TextAreaSliderExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={48, 78, 0, 0}, .text="A small, responsive note editor.", .font=Text16, .color=(Color){82,96,116,255}, .wrap=TextWrapNone})
         TextArea((TextAreaProps){ta_bounds, note, sizeof(note), &note_cursor, &note_focused, &note_scroll, 4000, Text16, 6, 200, "Type something here...", SyntaxNone, ta_style, 0, 0, 0, 0, 1})
         Rect((int)panel.x, (int)panel.y, (int)panel.width, (int)panel.height, (Color){248,250,252,255}, (Color){190,200,215,255})
-        Slider(100, (int)panel.x + 18, (int)panel.y + 13, (int)panel.width - 36, "Background hue", 0, 360, &hue, "", 0)
+        Slider((SliderProps){.bounds = {panel.x + 18.0f, panel.y + 13.0f, panel.width - 36.0f, 28.0f}, .id = 100, .label = "Background hue", .kind = NumericInt, .int_values = &hue, .value_count = 1, .min = 0, .max = 360})
     }
 }

@@ -1,0 +1,105 @@
+#module "text_input"
+#import "drawing_props"
+
+TextInputMetrics :: struct {
+    font: i32
+    padding_x: i32
+    padding_y: i32
+    line_gap: i32
+    line_height: i32
+}
+
+TextFieldScroll :: struct {
+    scroll: i32
+    max_scroll: i32
+    clip_width: i32
+    text_origin_x: i32
+}
+
+TextInputMetricsFor :: (font: i32, padding_x: i32, padding_y: i32,
+    line_gap: i32, default_font: i32, default_padding_x: i32,
+    default_padding_y: i32, default_line_gap: i32) -> TextInputMetrics #export {
+    metrics: TextInputMetrics
+    metrics.font = font
+    if metrics.font <= 0 {
+        metrics.font = default_font
+    }
+    metrics.padding_x = padding_x
+    if metrics.padding_x <= 0 {
+        metrics.padding_x = default_padding_x
+    }
+    metrics.padding_y = padding_y
+    if metrics.padding_y <= 0 {
+        metrics.padding_y = default_padding_y
+    }
+    metrics.line_gap = line_gap
+    if metrics.line_gap < 0 {
+        metrics.line_gap = default_line_gap
+    }
+    metrics.line_height = metrics.font + metrics.line_gap
+    if metrics.line_height <= 0 {
+        metrics.line_height = 1
+    }
+    return metrics
+}
+
+TextInputContentWidth :: (bounds_width: float, padding_x: i32) -> i32 #export {
+    width: i32 = (i32)bounds_width - padding_x * 2
+    if width < 0 {
+        return 0
+    }
+    return width
+}
+
+TextAreaPageRows :: (bounds_height: float, font: i32, line_gap: i32,
+    padding_y: i32) -> i32 #export {
+    line_height: i32 = font + line_gap
+    visible_height: i32 = (i32)bounds_height - padding_y * 2
+    if line_height <= 0 || visible_height < line_height {
+        return 1
+    }
+    rows: i32 = visible_height / line_height
+    if rows < 1 {
+        return 1
+    }
+    return rows
+}
+
+TextFieldScrollFor :: (bounds_x: float, bounds_width: float, padding_x: i32,
+    text_width: i32, scroll: i32) -> TextFieldScroll #export {
+    result: TextFieldScroll
+    result.clip_width = TextInputContentWidth(bounds_width, padding_x)
+    result.max_scroll = text_width - result.clip_width
+    if result.max_scroll < 0 {
+        result.max_scroll = 0
+    }
+    if scroll < 0 {
+        result.scroll = 0
+    } else if scroll > result.max_scroll {
+        result.scroll = result.max_scroll
+    } else {
+        result.scroll = scroll
+    }
+    result.text_origin_x = (i32)bounds_x + padding_x - result.scroll
+    return result
+}
+
+TextFieldRevealScroll :: (scroll: i32, max_scroll: i32, clip_width: i32,
+    cursor_text_x: i32, margin: i32) -> i32 #export {
+    if margin < 0 {
+        margin = 0
+    }
+    if cursor_text_x < scroll + margin {
+        scroll = cursor_text_x - margin
+    }
+    if cursor_text_x > scroll + clip_width - margin {
+        scroll = cursor_text_x - clip_width + margin
+    }
+    if scroll < 0 {
+        return 0
+    }
+    if scroll > max_scroll {
+        return max_scroll
+    }
+    return scroll
+}

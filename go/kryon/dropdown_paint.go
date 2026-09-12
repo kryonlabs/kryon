@@ -36,9 +36,10 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 		Focused:  r.dropdownStyle(0, false, ButtonStateFocus),
 		Disabled: r.dropdownStyle(0, false, ButtonStateDisabled),
 	}
-	input := Button_ResolveButtonInput(props, Activation{Hovered: hovered, Pressed: held, Focused: focused})
+	input := Button_ResolveButtonInput(int32(props.State), props.Disabled, props.Loading, props.Selected,
+		Activation{Hovered: hovered, Pressed: held, Focused: focused})
 	metrics := r.themeMetrics()
-	motion := r.Button_AdvanceButtonMotion(uint64(uint32(id)), props, input,
+	motion := r.Button_AdvanceButtonMotion(uint64(uint32(id)), int32(props.State), input,
 		Surface_DefaultMotionEnabled(), r.frameDeltaMS,
 		metrics.TransitionNormalMS, metrics.TransitionFastMS)
 	appearance := resolveButtonFrame(r.theme(), r.effectiveDark(), r.activeTheme, props,

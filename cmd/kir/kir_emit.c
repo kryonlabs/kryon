@@ -138,6 +138,7 @@ portable_type_path(const KirModule *module, const char *type, const TypePath *pa
     int status;
 
     if(KirTargetType(type, KIR_C)) return 1;
+    if(strchr(type, '*') != NULL) return 1;
     record = KirFindType(module, type, &owner);
     if(record == NULL)
         return 0;

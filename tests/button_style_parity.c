@@ -2,7 +2,6 @@
 #include "../src/ui/ui_internal.h"
 #include "../src/ui/toolkit_store.h"
 #include "runtime/button.h"
-#include "runtime/split_button.h"
 #include "runtime/instance.h"
 #include "runtime/material.h"
 #include <stdio.h>
@@ -217,7 +216,8 @@ static void check_button_input(void)
             for(int bits = 0; bits < 16; bits++) {
                 Activation sample = {.activated = bits & 1, .pressed = bits & 2,
                     .hovered = bits & 4, .focused = bits & 8};
-                ButtonInput input = ResolveButtonInput(props, sample);
+                ButtonInput input = ResolveButtonInput((int)props.state,
+                    props.disabled, props.loading, props.selected, sample);
                 int expected = disabled ? ButtonStateDisabled : loading ? ButtonStateLoading :
                     state ? state : sample.pressed ? ButtonStatePressed :
                     sample.hovered ? ButtonStateHover : sample.focused ? ButtonStateFocus :
@@ -254,7 +254,8 @@ static void check_button_content_drawing(void)
     assert(content.mark.ring.x == 110 && content.mark.ring.y == 60);
     assert(content.mark.ring.outer_radius == 18);
     props.bounds = (Rectangle){10, 20, 100, 80};
-    ButtonInput input = ResolveButtonInput(props, (Activation){0});
+    ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, (Activation){0});
     StyleFrame appearance = {.value = {.padding_x = 8, .padding_y = 6,
         .foreground = 0x12345680, .opacity = 0.5}};
     ButtonFrame frame = BuildFrame(props, input, appearance, (InteractionMotion){0},
@@ -273,7 +274,8 @@ static void check_animated_button_frame(void)
     StyleStates styles = {.normal = {.fields = StyleFontSize, .font_size = 17}};
     Palette palette = DefaultPalette(false);
     Metrics metrics = DefaultMetrics();
-    ButtonInput input = ResolveButtonInput(props, (Activation){.hovered = true});
+    ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, (Activation){.hovered = true});
     ButtonFrame frame = AdvanceFrame(701, props, input, palette, metrics, styles,
         true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
     assert(frame.font == 26);
@@ -283,7 +285,8 @@ static void check_animated_button_frame(void)
         true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
     assert(frame.material.hover > first_hover);
     props.state = ButtonStateLoading;
-    input = ResolveButtonInput(props, (Activation){.activated = true, .hovered = true});
+    input = ResolveButtonInput((int)props.state, props.disabled,
+        props.loading, props.selected, (Activation){.activated = true, .hovered = true});
     frame = AdvanceFrame(701, props, input, palette, metrics, styles,
         true, 16, (Rectangle){0}, palette.surface, 1.5f, 16);
     assert(frame.props.loading && frame.props.label[0] == '\0' && !input.activated);
@@ -428,7 +431,7 @@ int main(void)
     };
     for(unsigned int index = 0; index < sizeof(split_cases) / sizeof(split_cases[0]); index++) {
         const float *input = split_cases[index];
-        SplitLayout layout = ResolveLayout(input[0], input[1]);
+        ButtonSplitLayout layout = ButtonResolveSplitLayout(input[0], input[1]);
         assert(layout.width == input[2]);
         assert(layout.action_width == input[3]);
         assert(layout.menu_offset == layout.action_width);
@@ -471,7 +474,7 @@ int main(void)
         assert(measured.icon_size == expected_size);
         if(expected_size == 0) {
             assert(measured.gap == 0 && measured.width == 60);
-            Ring ring = LoadingRing(72, 40, icon_sizes[i], 0, 0xffffffffu, 0xffffffffu);
+            LoadingRingSpec ring = LoadingRing(72, 40, icon_sizes[i], 0, 0xffffffffu, 0xffffffffu);
             assert(LoadingPaintRadius(ring) == 0);
         }
     }

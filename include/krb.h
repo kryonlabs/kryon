@@ -25,7 +25,7 @@ enum {
     KRB_NODE_RECT = 3,
     KRB_NODE_BUTTON = 4,
     KRB_NODE_DATA = 5,
-    KRB_NODE_PICTURE = 6,
+    KRB_NODE_IMAGE = 6,
     KRB_NODE_CHECKBOX = 7,
     KRB_NODE_TOGGLE = 8,
     KRB_NODE_CONTROL = 9,
@@ -38,14 +38,13 @@ enum {
 
 /* Interactive control kinds, carried in a KrbControl record (controls[] table)
  * referenced by a CONTROL nodes bind_slot. Range widgets (slider/spinbox) use
- * min/max/step; dropdown/combobox carry an option list. The bound value is a
+ * min/max/step; dropdown carries an option list. The bound value is a
  * state-field path (value_off) read/written through the mount. */
 enum {
     KRB_CTRL_SLIDER = 1,
     KRB_CTRL_VSLIDER = 2,
     KRB_CTRL_SPINBOX = 3,
     KRB_CTRL_DROPDOWN = 4,
-    KRB_CTRL_COMBOBOX = 5,
     KRB_CTRL_PROGRESS = 6,
     KRB_CTRL_RADIO = 7
 };

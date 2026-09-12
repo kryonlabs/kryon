@@ -18,8 +18,8 @@ ContainersExample :: (viewport: Rectangle) #ui {
         bounds = viewport
         Background(GetThemeBackground())
         TabBar((TabBarProps){.bounds={40,50,680,0},.tabs=tabs,.count=3,.selected_index=tab,.focus_selected=1,.id=1501})
-        PanedView((PanedViewProps){{40,100,680,280},501,1,&split,120,160})
-        Collapsible((CollapsibleProps){{60,410,320,120},"Details",&open})
+        PanedView((PanedViewProps){.bounds = {40,100,680,280}, .id = 501, .vertical = 1, .split = &split, .min_first = 120, .min_second = 160})
+        Collapsible((CollapsibleProps){.bounds = {60,410,320,120}, .label = "Details", .open = &open})
         if open {
             Text((TextProps){.bounds={80, 455, 0, 0}, .text="Collapsible content", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }

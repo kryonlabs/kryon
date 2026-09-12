@@ -192,25 +192,30 @@ func TestButtonInputConsumesOnlyItsOwnActivation(t *testing.T) {
 	defer first.EndFrame()
 	for _, state := range []ButtonState{ButtonStateDisabled, ButtonStateLoading} {
 		props.State = state
-		if input := first.Button_ReadButtonInput(props); input.Activated {
+		if input := first.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+			props.Disabled, props.Loading, props.Selected); input.Activated {
 			t.Fatalf("state %v accepted activation", state)
 		}
 	}
 	props.State = ButtonStateAuto
-	input := first.Button_ReadButtonInput(props)
+	input := first.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+		props.Disabled, props.Loading, props.Selected)
 	if !input.Activated || !input.Interaction.Pressed {
 		t.Fatalf("disabled previews consumed the enabled button's event: %+v", input)
 	}
-	if next := first.Button_ReadButtonInput(props); next.Activated {
+	if next := first.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+		props.Disabled, props.Loading, props.Selected); next.Activated {
 		t.Fatal("activation was consumed twice")
 	}
-	if other := second.Button_ReadButtonInput(props); other.Activated {
+	if other := second.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+		props.Disabled, props.Loading, props.Selected); other.Activated {
 		t.Fatal("activation leaked to the active runtime")
 	}
 	// Resolving a retained paint sample cannot poll the host or consume input.
 	first.QueueTap(20, 20)
-	Button_ResolveButtonInput(props, Activation{Hovered: true})
-	if !first.Button_ReadButtonInput(props).Activated {
+	resolveButtonInputForTest(props, Activation{Hovered: true})
+	if !first.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
+		props.Disabled, props.Loading, props.Selected).Activated {
 		t.Fatal("retained paint resolution consumed an activation")
 	}
 }
@@ -570,7 +575,7 @@ func TestFaceChromaPreservesThemeHueAndOpacity(t *testing.T) {
 	}
 }
 
-func TestSplitButtonLayoutPolicy(t *testing.T) {
+func TestButtonSplitLayoutPolicy(t *testing.T) {
 	for _, test := range []struct {
 		width, height, resolvedWidth, actionWidth float32
 	}{
@@ -579,8 +584,8 @@ func TestSplitButtonLayoutPolicy(t *testing.T) {
 		{80, 40, 80, 40},
 		{100.5, 27.25, 100.5, 73.25},
 	} {
-		layout := SplitButton_ResolveLayout(test.width, test.height)
-		want := SplitLayout{Width: test.resolvedWidth, ActionWidth: test.actionWidth,
+		layout := Button_ButtonResolveSplitLayout(test.width, test.height)
+		want := ButtonSplitLayout{Width: test.resolvedWidth, ActionWidth: test.actionWidth,
 			MenuOffset: test.actionWidth, MenuWidth: test.height, DividerInset: 8}
 		if layout != want || layout.MenuOffset+layout.MenuWidth != layout.Width {
 			t.Fatalf("split layout for %+v: got %+v, want %+v", test, layout, want)
@@ -588,13 +593,16 @@ func TestSplitButtonLayoutPolicy(t *testing.T) {
 	}
 }
 
-func TestAutomaticSplitButtonSegmentsHaveIndependentIDs(t *testing.T) {
+func TestAutomaticButtonSplitSegmentsHaveIndependentIDs(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 200}).(*runtime)
 	for frame := 0; frame < 2; frame++ {
 		r.BeginFrame()
 		for index := 0; index < 2; index++ {
-			r.SplitButton(SplitButtonProps{Button: ButtonProps{
-				Bounds: Rectangle{X: float32(10 + index*150), Y: 10, Width: 120, Height: 40}, Label: "Add"}})
+			r.Button(ButtonProps{
+				Bounds: Rectangle{X: float32(10 + index*150), Y: 10, Width: 120, Height: 40},
+				Label:  "Add",
+				Split:  true,
+			})
 		}
 		r.Button(ButtonProps{Bounds: Rectangle{X: 310, Y: 10, Width: 120, Height: 40}, ID: 1, Label: "Explicit"})
 		r.Button(ButtonProps{Bounds: Rectangle{X: 460, Y: 10, Width: 120, Height: 40}, Label: "Automatic"})
@@ -616,7 +624,7 @@ func TestAutomaticSplitButtonSegmentsHaveIndependentIDs(t *testing.T) {
 	}
 }
 
-func TestSplitButtonSharedSurfaceAndIndependentActions(t *testing.T) {
+func TestButtonSplitSharedSurfaceAndIndependentActions(t *testing.T) {
 	for _, test := range []struct {
 		name                           string
 		x                              float32
@@ -633,11 +641,14 @@ func TestSplitButtonSharedSurfaceAndIndependentActions(t *testing.T) {
 			r.QueueTap(test.x, 30)
 			open := int32(0)
 			bounds := Rectangle{X: 10, Y: 10, Width: 120, Height: 40}
-			result := r.SplitButton(SplitButtonProps{Button: ButtonProps{
+			activated := int32(0)
+			clicked := r.Button(ButtonProps{
 				Bounds: bounds, Label: "Add", ID: 20,
-				Disabled: test.disabled, Loading: test.loading}, Open: &open, MenuID: 80})
-			if result.Clicked != test.click || (open != 0) != test.open {
-				t.Fatalf("activation: clicked=%v open=%v", result.Clicked, open)
+				Disabled: test.disabled, Loading: test.loading,
+				Split: true, Open: &open, MenuID: 80, ActivatedID: &activated,
+			})
+			if clicked != test.click || (open != 0) != test.open {
+				t.Fatalf("activation: clicked=%v open=%v", clicked, open)
 			}
 			buttons := 0
 			for _, op := range r.FrameOps() {

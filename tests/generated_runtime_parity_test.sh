@@ -630,7 +630,7 @@ func main() {
 	if ComposedComboStateValue.ComboAction != 1 { panic("ordinary generated popup button did not activate") }
 	ComposedComboStateValue.ComboClose = true
 	drawComposedCombo()
-	if ComposedComboStateValue.ComboOpen { panic("generated CloseCombo did not update caller state") }
+	if ComposedComboStateValue.ComboOpen { panic("generated ClosePopup did not update caller state") }
 	ComposedComboStateValue.ComboClose = false
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -995,7 +995,7 @@ func main() {
 	requireFrameOps("controls", map[kryon.FrameOpKind]int{
 		kryon.FrameOpRect:   5,
 		kryon.FrameOpText:   10,
-		kryon.FrameOpButton: 3,
+		kryon.FrameOpButton: 2,
 	})
 	requireRenderedFrame("controls", 1200)
 	driver.QueueTap(146, 48)
@@ -1491,7 +1491,7 @@ int main(void)
     InjectPump(); draw_composed_combo();
     if(combo_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
     combo_close = 1; draw_composed_combo();
-    if(combo_open) { fprintf(stderr,"generated CloseCombo did not update caller state\n"); return 1; }
+    if(combo_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
     combo_close = 0;
     BeginUIFrame(640,480,1);
     composed_combo_early_exit(1);

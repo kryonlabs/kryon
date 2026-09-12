@@ -305,23 +305,26 @@ typedef struct Image {
     int format;             // Data format (PixelFormat type)
 } Image;
 
-// Texture2D, tex data stored in GPU memory (VRAM)
+// Texture, tex data stored in GPU memory (VRAM)
 typedef struct Texture {
     unsigned int id;        // OpenGL texture id
     int width;              // Texture base width
     int height;             // Texture base height
     int mipmaps;            // Mipmap levels, 1 by default
     int format;             // Data format (PixelFormat type)
-} Texture2D;
+} Texture;
+
+// Texture2D, same as Texture
+typedef Texture Texture2D;
 
 // TextureCubemap, same as Texture
-typedef Texture2D TextureCubemap;
+typedef Texture TextureCubemap;
 
 // RenderTexture, fbo for texture rendering
 typedef struct RenderTexture {
     unsigned int id;        // OpenGL framebuffer object id
-    Texture2D texture;      // Color buffer attachment texture
-    Texture2D depth;        // Depth buffer attachment texture
+    Texture texture;        // Color buffer attachment texture
+    Texture depth;          // Depth buffer attachment texture
 } RenderTexture;
 
 // RenderTexture2D, same as RenderTexture
