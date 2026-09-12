@@ -325,6 +325,10 @@ and `Page` nodes.
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.
 
+`webNodeIdentity(node)` returns a plain identity projection for a Web Document
+node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
+DOM name, and source refs.
+
 `webNodeQuery(rt, selector)` and `webNodeQueryAll(rt, selector)` return
 unmounted Web Document nodes by the same KSS-style selector facts used for
 style resolution.
@@ -347,6 +351,10 @@ resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `webDOMObjectFromElement(element)` walks from a native element or event target
 to the nearest mounted Kry DOM object, which gives delegated browser handlers
 and inspectors a reverse bridge back to `.kry` identity.
+
+`webDOMIdentity(target, query)` returns the same plain identity projection for
+a mounted Kry DOM object. Rendered elements expose it directly as
+`element.kryIdentity`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source

@@ -271,6 +271,26 @@ export interface WebNodeStyleFacts {
   state: Record<string, boolean>;
 }
 
+export interface WebNodeIdentity {
+  ref: string;
+  aliases: string[];
+  index: number;
+  kind: string;
+  tag: string;
+  key: string;
+  name: string;
+  path: string;
+  parentPath: string;
+  webRef: string;
+  domId: string;
+  domName: string;
+  sourcePath: string;
+  sourceLine: number;
+  sourceColumn: number;
+  sourceRef: string;
+  sourceColumnRef: string;
+}
+
 export interface WebDocumentFrame {
   app: AppMeta | null;
   nodes: WebDocumentNode[];
@@ -320,6 +340,7 @@ declare global {
     readonly kryRef?: string;
     readonly kryNode?: WebDocumentNode | null;
     readonly kryObject?: WebDOMObject | null;
+    readonly kryIdentity?: WebNodeIdentity | null;
   }
 }
 
@@ -421,6 +442,7 @@ export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
+export function webNodeIdentity(node: WebDocumentNode): WebNodeIdentity;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
@@ -435,6 +457,7 @@ export function webNodeChildren(rt: Runtime, query?: string): WebDocumentNode[];
 export function webNodeClosest(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
+export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];

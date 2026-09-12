@@ -1332,6 +1332,41 @@ export function webNodeStyleFacts(node) {
   };
 }
 
+export function webNodeIdentity(node) {
+  const ref = webNodeRef(node);
+  const sourceRef = webNodeSourceRef(node);
+  const sourceColumnRef = webNodeSourceColumnRef(node);
+  const aliases = [...new Set([
+    ref,
+    node?.path || "",
+    node?.name || "",
+    node?.key || "",
+    node?.domId || "",
+    node?.domName || "",
+    sourceRef,
+    sourceColumnRef
+  ].filter(Boolean))];
+  return {
+    ref,
+    aliases,
+    index: node?.index || 0,
+    kind: node?.kind || "",
+    tag: node?.tag || "",
+    key: node?.key || "",
+    name: node?.name || "",
+    path: node?.path || "",
+    parentPath: node?.parentPath || "",
+    webRef: node?.webRef || "",
+    domId: node?.domId || "",
+    domName: node?.domName || "",
+    sourcePath: node?.sourcePath || "",
+    sourceLine: node?.sourceLine || 0,
+    sourceColumn: node?.sourceColumn || 0,
+    sourceRef,
+    sourceColumnRef
+  };
+}
+
 export function webAccessibilitySnapshot(source) {
   const frame = source?.nodes ? source : webDocumentFrame(source);
   return {
@@ -2285,6 +2320,13 @@ function bindWebDOMObjectProperties(el) {
         const node = this.__kryDocNode || null;
         return node ? { ref: webNodeRef(node), node, element: this } : null;
       }
+    },
+    kryIdentity: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode ? webNodeIdentity(this.__kryDocNode) : null;
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;
@@ -2797,6 +2839,11 @@ export function webDOMObject(target, query) {
   const element = findWebElement(target, text);
   const node = element?.__kryDocNode || null;
   return node && element ? { ref: webNodeRef(node), node, element } : null;
+}
+
+export function webDOMIdentity(target, query) {
+  const object = webDOMObject(target, query);
+  return object ? webNodeIdentity(object.node) : null;
 }
 
 function webDOMObjectForNode(root, node) {

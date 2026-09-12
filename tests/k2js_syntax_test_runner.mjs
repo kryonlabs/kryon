@@ -232,6 +232,32 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   }
 });
 assert.deepEqual(runtime.webNodeStyleFacts(webDoc.nodes[2]), webDoc.nodes[2].styleFacts);
+assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
+  ref: "primary-action",
+  aliases: [
+    "primary-action",
+    "Scene/root/tap",
+    "tap",
+    "tap-button",
+    tapSourceRef,
+    tapSourceColumnRef
+  ],
+  index: 2,
+  kind: "Button",
+  tag: "button",
+  key: "tap",
+  name: "tap",
+  path: "Scene/root/tap",
+  parentPath: "Scene/root",
+  webRef: "primary-action",
+  domId: "tap-button",
+  domName: "",
+  sourcePath: webDoc.nodes[2].sourcePath,
+  sourceLine: webDoc.nodes[2].sourceLine,
+  sourceColumn: webDoc.nodes[2].sourceColumn,
+  sourceRef: tapSourceRef,
+  sourceColumnRef: tapSourceColumnRef
+});
 assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   background: "#203040",
   foreground: "#f0f0f0",
@@ -971,7 +997,10 @@ function fakeDocument() {
     assert.equal(firstButton.kryNode.webRef, "primary-action");
     assert.equal(firstButton.kryObject.ref, "primary-action");
     assert.equal(firstButton.kryObject.element, firstButton);
+    assert.equal(firstButton.kryIdentity.ref, "primary-action");
+    assert.ok(firstButton.kryIdentity.aliases.includes("Scene/root/tap"));
     assert.equal(Object.keys(firstButton).includes("kryObject"), false);
+    assert.equal(Object.keys(firstButton).includes("kryIdentity"), false);
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
     assert.ok(Number(firstButton.dataset.kryLine) > 0);
     assert.ok(Number(firstButton.dataset.kryColumn) > 0);
@@ -1017,6 +1046,13 @@ function fakeDocument() {
     assert.equal(runtime.findWebElement(target, tapSourceColumnRef), firstButton);
     assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
+    assert.equal(runtime.webDOMIdentity(target, "primary-action").domId, "tap-button");
+    assert.deepEqual(runtime.webDOMIdentity(target, "tap-button").aliases.slice(0, 4), [
+      "primary-action",
+      "Scene/root/tap",
+      "tap",
+      "tap-button"
+    ]);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).element, firstButton);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).ref, tapSourceRef);
     assert.equal(runtime.webDOMObject(target, tapSourceColumnRef).ref, tapSourceColumnRef);
