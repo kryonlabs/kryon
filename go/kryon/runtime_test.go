@@ -4300,3 +4300,38 @@ func TestCanvasSpaceInputInvariant(t *testing.T) {
 		t.Fatalf("value = %d, translated tap must not flip", v)
 	}
 }
+
+func TestBeginCanvasUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.canvas;
+tokens {
+  color {
+    panel: #18222d;
+    rule: #667788;
+  }
+  length { radius: 7; border: 3; }
+  material { flat: Flat; }
+}
+Canvas { background: panel; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Canvas", "") || !SetActiveStylePack("test.canvas") {
+		t.Fatal("test canvas style did not activate")
+	}
+	rt := New(AppConfig{Width: 320, Height: 200}).(*runtime)
+
+	rt.BeginCanvas(Canvas{Bounds: Rectangle{X: 10, Y: 20, Width: 140, Height: 90}})
+	rt.EndCanvas(Canvas{})
+
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 20, Width: 140, Height: 90}) {
+			if op.Color != (Color{R: 0x18, G: 0x22, B: 0x2d, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x66, G: 0x77, B: 0x88, A: 0xff}) ||
+				op.BorderWidth != 3 || op.Radius != 7 {
+				t.Fatalf("canvas style op = %+v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("missing canvas style op: %+v", rt.FrameOps())
+}

@@ -6905,6 +6905,8 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
 	var scrollX, scrollY int32
 	zoom := float32(1)
+	frame := defaultStyleFrame(StyleSheet_StyleKindCanvas())
+	r.record(styleFrameRectOp(canvas.Bounds, canvas.Bounds, frame))
 	if canvas.ScrollX != nil {
 		scrollX = *canvas.ScrollX
 	}
