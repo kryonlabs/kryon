@@ -193,7 +193,7 @@ host roles rather than retained nodes.
 | `AppBackground` | `.kry canonical` | App chrome background command backed by active style facts; preferred over spelling out `Background(GetThemeBackground())`. |
 | `Background` | `.kry canonical` | Fill/display widget; geometry policy is in `.kry`. |
 | `Text` | `.kry canonical` | Canonical text surface. |
-| `Paragraph` | `.kry canonical` | Rich text surface; may become `Text` props if that stays cleaner. |
+| `Paragraph` | `.kry canonical` | Rich text surface. Plain labels stay `Text`; paragraph flow, icons, wrapping metrics, and rich text policy stay here. |
 | `Box` | `.kry canonical` | Canonical rectangle primitive with `Rectangle` bounds. |
 | `Line` | `.kry canonical` | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
 | `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
@@ -346,7 +346,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `Background` | `.kry canonical` | Viewport bounds policy is in `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `.kry canonical` | Single canonical signature should be `Text(TextProps)`. |
-| `Paragraph` | `.kry canonical` | Metrics/default policy is in `.kry`; may become `Text` variant if props cover paragraph layout. |
+| `Paragraph` | `.kry canonical` | Metrics/default policy is in `.kry`; host keeps rich text parsing, reflow, icon shaping, and drawing. |
 | `Box` | `.kry canonical` | Rectangle primitive with `Rectangle` bounds. |
 | `Rect` | Removed | Old positional rectangle helper; use `Box`. |
 | `Circle` | `.kry canonical` | Retained bounds policy is in `.kry`; host keeps circle drawing. Replaces raylib-style `DrawCircleV` in `.kry` surface. |
@@ -516,7 +516,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_SLIDER` | `Slider` | `.kry canonical` |
 | `WIDGET_TOGGLE` | `Toggle` | `.kry canonical` |
 | `WIDGET_CHECKBOX` | `Checkbox` | `.kry canonical` |
-| `WIDGET_PARAGRAPH` | `Paragraph` | Rename review; may become `Text` props |
+| `WIDGET_PARAGRAPH` | `Paragraph` | `.kry canonical`; rich text metrics/default policy is `.kry-backed` |
 | `WIDGET_READONLY_TEXT_BOX` | Removed | Old retained node/helper deleted; use `TextArea` with read-only props. |
 | `WIDGET_NAVIGATION_BAR` | `NavigationBar` | `.kry canonical` |
 | `WIDGET_TAB_BAR` | `TabBar` | `.kry canonical` |
