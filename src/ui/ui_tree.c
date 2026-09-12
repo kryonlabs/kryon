@@ -2327,7 +2327,7 @@ Text(TextProps props)
     props.disabled = props.disabled || (UIContentDisabled() && !inherited_disabled);
     Style style = ui_unpack_style(ResolveActiveStyle(
         ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
-        StyleTextFacts(0, 0, StyleAny(),
+        StyleTextFacts(0, 0, StyleKindText(),
             props.disabled ? ButtonStateDisabled : ButtonStateNormal),
         props.disabled ? ButtonStateDisabled : ButtonStateNormal));
     if(props.color.a != 0)

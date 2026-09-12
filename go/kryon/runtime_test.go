@@ -2761,6 +2761,37 @@ Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 	}
 }
 
+func TestTextUsesStyleSheetKind(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.text_widget;
+tokens {
+  color { ink: #26384a; }
+}
+Text { foreground: ink; font-size: 21; opacity: 0.62; }
+`, "Test Text Widget", "") || !SetActiveStylePack("test.text_widget") {
+		t.Fatal("test text widget style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+
+	rt.Text(TextProps{
+		Bounds: Rectangle{X: 12, Y: 14, Width: 120, Height: 26},
+		Text:   "Styled",
+	})
+
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpText && op.Text == "Styled" {
+			if op.FontSize != 21 || op.Opacity != 0 ||
+				op.Color != (Color{R: 0x26, G: 0x38, B: 0x4a, A: 0x9e}) {
+				t.Fatalf("text style op = %+v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("missing styled text op: %+v", rt.FrameOps())
+}
+
 func TestSelectableUsesStyleSheetTextAndPadding(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
