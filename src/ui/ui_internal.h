@@ -432,7 +432,6 @@ int RenderDragDropTarget(DragDropTargetProps target);
 int RenderMultiSelectList(MultiSelectListProps list);
 int RenderSelectable(SelectableProps selectable);
 int RenderCheckbox(CheckboxProps checkbox);
-int RenderInvisibleButton(InvisibleButtonProps button);
 void RenderBullet(Rectangle bounds);
 int RenderColorPicker(ColorPickerProps picker);
 MenuBarResult RenderMenuBar(int id, Rectangle bounds, const Menu *menus,

@@ -281,7 +281,6 @@ int TitleBar(TitleBarProps title_bar);
 int Button(ButtonProps button);
 NodeId BeginButton(ButtonProps button);
 int Selectable(SelectableProps selectable);
-int InvisibleButton(InvisibleButtonProps button);
 void Bullet(Rectangle bounds);
 /* Layout nodes: auto-position children like flexbox. */
 typedef struct {

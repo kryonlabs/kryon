@@ -1483,7 +1483,7 @@ test_focusable_image_keyboard_navigation(void)
 
     InjectReset();
     BeginInterfaceFrame(240,180,1);
-    RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
+    Button((ButtonProps){.bounds={10,50,40,30},.id=620,.invisible=true});
     Button((ButtonProps){
         .bounds=image.bounds,.id=621,.image_asset_path=image.asset_path,
         .image_bounds=image.bounds,.image_source=image.source,
@@ -1500,7 +1500,7 @@ test_focusable_image_keyboard_navigation(void)
     SetFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("invisible button Enter activation",
-              RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0}),1);
+              Button((ButtonProps){.bounds={10,50,40,30},.id=620,.invisible=true}),1);
     EndInterfaceFrame();
 
     SetFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();

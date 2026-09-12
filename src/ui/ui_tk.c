@@ -697,16 +697,6 @@ RenderMultiSelectList(MultiSelectListProps list)
     return clicked;
 }
 
-int
-RenderInvisibleButton(InvisibleButtonProps button)
-{
-    ButtonSpec spec = {.props = {.bounds = button.bounds, .font = GetSmallFontSize(),
-                                .id = button.id,
-                                .disabled = !ButtonActionEnabled(button.disabled,
-                                    UIContentDisabled())}};
-    return HandleButton(spec);
-}
-
 void
 RenderBullet(Rectangle bounds)
 {

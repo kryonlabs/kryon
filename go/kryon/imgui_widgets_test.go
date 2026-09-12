@@ -1450,11 +1450,11 @@ func TestNativeBasicImGuiWidgets(t *testing.T) {
 
 	r.QueueTap(20, 60)
 	r.BeginFrame()
-	if !r.InvisibleButton(InvisibleButtonProps{Bounds: NewRectangle(10, 50, 80, 24), ID: 81}) {
-		t.Fatal("InvisibleButton did not consume its tap")
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 50, 80, 24), ID: 81, Invisible: true}) {
+		t.Fatal("invisible Button did not consume its tap")
 	}
 	if len(r.FrameOps()) != 0 {
-		t.Fatalf("InvisibleButton recorded visible operations: %#v", r.FrameOps())
+		t.Fatalf("invisible Button recorded visible operations: %#v", r.FrameOps())
 	}
 	r.EndFrame()
 
@@ -1537,7 +1537,7 @@ func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 		if r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: image.Tint, ImageFit: int32(image.Fit), ImageBackground: Black, ID: 904}) {
 			activations[904]++
 		}
-		if r.InvisibleButton(InvisibleButtonProps{Bounds: NewRectangle(70, 170, 48, 32), ID: 905}) {
+		if r.Button(ButtonProps{Bounds: NewRectangle(70, 170, 48, 32), ID: 905, Invisible: true}) {
 			activations[905]++
 		}
 		if r.Button(ButtonProps{Bounds: NewRectangle(10, 220, 100, 32), ID: 906, Label: "Color", Swatch: true, SwatchColor: Color{R: 255, A: 255}}) {

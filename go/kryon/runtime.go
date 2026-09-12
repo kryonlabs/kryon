@@ -445,12 +445,6 @@ type TabBarProps struct {
 	Disabled           bool
 }
 
-type InvisibleButtonProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Disabled bool
-}
-
 type SeparatorProps struct {
 	Bounds   Rectangle
 	Vertical bool
@@ -1236,7 +1230,6 @@ type Runtime interface {
 	BeginButton(ButtonProps)
 	Selectable(SelectableProps) bool
 	Checkbox(CheckboxProps) bool
-	InvisibleButton(InvisibleButtonProps) bool
 	Bullet(Rectangle)
 	Separator(SeparatorProps)
 	DragDropSource(DragDropSourceProps) bool
@@ -2530,12 +2523,6 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	}
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), FontSize: Text14, Disabled: disabled})
 	return changed
-}
-
-func (r *runtime) InvisibleButton(props InvisibleButtonProps) bool {
-	props.Bounds = r.layoutRect(props.Bounds)
-	pressed, _ := r.focusablePress(props.Bounds, props.ID, !Button_ButtonActionEnabled(props.Disabled, r.contentDisabled()))
-	return pressed
 }
 
 func (r *runtime) Bullet(bounds Rectangle) {

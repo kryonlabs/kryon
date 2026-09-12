@@ -133,12 +133,6 @@ typedef struct {
     int disabled;
 } InputProps;
 
-typedef struct {
-    Rectangle bounds;
-    int id;
-    int disabled;
-} InvisibleButtonProps;
-
 typedef enum {
     TextWrapAuto = 0,
     TextWrapNone

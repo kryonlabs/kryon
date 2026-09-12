@@ -262,7 +262,6 @@ func Button(props ButtonProps) bool                    { return active().Button(
 func BeginButton(props ButtonProps)                    { active().BeginButton(props) }
 func Selectable(props SelectableProps) bool            { return active().Selectable(props) }
 func Checkbox(props CheckboxProps) bool                { return active().Checkbox(props) }
-func InvisibleButton(props InvisibleButtonProps) bool  { return active().InvisibleButton(props) }
 func Bullet(bounds Rectangle)                          { active().Bullet(bounds) }
 func Separator(props SeparatorProps)                   { active().Separator(props) }
 func DragDropSource(props DragDropSourceProps) bool    { return active().DragDropSource(props) }

@@ -32,7 +32,6 @@ NATIVE_COMPAT_EXPORTS = {
     "EndPopup",
     "EndScroll",
     "EndTableCell",
-    "InvisibleButton",
     "MenuBar",
     "PopupMenu",
 }
@@ -48,7 +47,6 @@ ROLE_COMPAT_EXPORTS = {
     "ContextMenu",
     "DragDropSource",
     "DragDropTarget",
-    "InvisibleButton",
     "MenuBar",
     "PopupMenu",
 }

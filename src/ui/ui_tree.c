@@ -3545,17 +3545,6 @@ Selectable(SelectableProps selectable)
     return RenderSelectable(selectable);
 }
 
-int
-InvisibleButton(InvisibleButtonProps button)
-{
-    NodeId node = ui_tree_add(button.id, WIDGET_BUTTON, button.bounds, &button);
-    int clicked = RenderInvisibleButton(button);
-
-    ui_tree_note_build_activation(clicked);
-    ui_tree_mark_painted_immediate(node);
-    return clicked;
-}
-
 void
 Bullet(Rectangle bounds)
 {
