@@ -1195,6 +1195,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: #343b48;
   foreground: muted;
+  font-size: font.sm;
   gap: space.3;
   opacity: 1;
 }
@@ -2887,6 +2888,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: border-soft;
   foreground: muted;
+  font-size: font;
   gap: gap;
 }
 
@@ -4557,6 +4559,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: border-soft;
   foreground: muted;
+  font-size: font.sm;
   gap: gap;
   opacity: 1;
 }
@@ -6331,6 +6334,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: border-soft;
   foreground: muted;
+  font-size: font.sm;
   gap: gap;
   opacity: 1;
 }
@@ -8101,6 +8105,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: border;
   foreground: muted;
+  font-size: font;
   gap: gap;
 }
 

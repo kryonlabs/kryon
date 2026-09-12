@@ -590,12 +590,16 @@ void
 RenderSeparator(SeparatorProps separator)
 {
     const char *label = separator.label != NULL ? separator.label : "";
-    int font = separator.font > 0 ? separator.font : GetSmallFontSize();
-    int text_width = TextWidth(label, font);
-    int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
         separator.disabled, 0, StyleKindSeparator(), 6);
+    Style label_style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    int font = separator.font > 0 ? separator.font :
+        (label_style.font_size > 0.0f
+            ? (int)(label_style.font_size + 0.5f)
+            : GetSmallFontSize());
+    int text_width = TextWidth(label, font);
+    int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame line_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
         separator.disabled, 0, StyleKindSeparator(), 7);
@@ -612,7 +616,7 @@ RenderSeparator(SeparatorProps separator)
         return;
     if(paint.show_text)
         RenderText(label, (int)paint.text.x, text_y, font,
-                   GetColor(paint.text_color));
+                   Fade(GetColor(paint.text_color), label_style.opacity));
     if(paint.show_line)
         DrawLine((int)paint.line.x, (int)paint.line.y,
                  (int)(paint.line.x + paint.line.width),

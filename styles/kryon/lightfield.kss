@@ -1264,6 +1264,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: border;
   foreground: muted;
+  font-size: font;
   gap: gap;
 }
 

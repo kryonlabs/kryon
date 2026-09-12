@@ -748,7 +748,7 @@ Progress[role=Track] { background: track; foreground: label; border: line; radiu
 Progress[role=Fill] { background: fill; foreground: ink; border: fill; radius: radius; border-width: border; material: flat; opacity: 1; }
 Progress[role=Label] { foreground: label; font-size: 18; material: flat; opacity: 0.68; }
 Separator[role=Line] { background: line; foreground: line; gap: gap; opacity: 1; }
-Separator[role=Label] { background: line; foreground: label; gap: gap; opacity: 1; }
+Separator[role=Label] { background: line; foreground: label; font-size: 17; gap: gap; opacity: 0.57; }
 Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity: 1; }
 `, "Test Parts", "") || !SetActiveStylePack("test.parts") {
 		t.Fatal("test parts style did not activate")
@@ -761,7 +761,7 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 	})
 	rt.Separator(SeparatorProps{
 		Bounds: Rectangle{X: 10, Y: 40, Width: 100, Height: 20},
-		Label:  "Section", Font: Text14,
+		Label:  "Section",
 	})
 	rt.Bullet(Rectangle{X: 10, Y: 70, Width: 12, Height: 12})
 
@@ -789,7 +789,8 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 			}
 		case op.Kind == FrameOpText && op.Text == "Section":
 			sawSeparatorLabel = true
-			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) ||
+				op.FontSize != 17 || op.Opacity != 0.57 {
 				t.Fatalf("separator label style op = %+v", op)
 			}
 		case op.Kind == FrameOpLine && op.Bounds.Y == 50:

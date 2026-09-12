@@ -2725,7 +2725,7 @@ func (r *runtime) Separator(props SeparatorProps) {
 	}
 	font := props.Font
 	if font <= 0 {
-		font = Text14
+		font = styleFont(unpackStyle(frame.Value), Text14)
 	}
 	labelWidth := float32(runtimeTextWidth(props.Label, font))
 	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
@@ -2733,7 +2733,8 @@ func (r *runtime) Separator(props SeparatorProps) {
 		StyleSheet_StyleKindSeparator(), 7)
 	paint.LineColor = lineFrame.Value.Background
 	if paint.ShowText {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), FontSize: font, Disabled: props.Disabled})
+		labelStyle := unpackStyle(frame.Value)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: labelStyle.Opacity, FontSize: font, Disabled: props.Disabled})
 	}
 	if paint.ShowLine {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.LineColor), Disabled: props.Disabled})

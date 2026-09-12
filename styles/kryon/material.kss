@@ -1193,6 +1193,7 @@ Separator[role=Line] {
 Separator[role=Label] {
   background: #343b48;
   foreground: muted;
+  font-size: font.sm;
   gap: space.3;
   opacity: 1;
 }
