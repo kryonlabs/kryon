@@ -950,6 +950,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMObject(target, tapSourceRef).element, firstButton);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).ref, tapSourceRef);
+    assert.equal(runtime.webDOMObjectFromElement(firstButton).node.path, "Scene/root/tap");
+    const nestedSpan = document.createElement("span");
+    firstButton.appendChild(nestedSpan);
+    assert.equal(runtime.webDOMObjectFromElement(nestedSpan).node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMParent(target, "tap-button").node.path, "Scene/root");
     assert.deepEqual(runtime.webDOMChildren(target, "Scene/root")
       .map((object) => object.node.path), [

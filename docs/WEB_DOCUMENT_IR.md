@@ -324,6 +324,10 @@ native DOM objects by the same KSS-style selector facts used for style
 resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `[type=...]`, `[href=...]`, `[data-*=...]`, source fields, and state pseudos.
 
+`webDOMObjectFromElement(element)` walks from a native element or event target
+to the nearest mounted Kry DOM object, which gives delegated browser handlers
+and inspectors a reverse bridge back to `.kry` identity.
+
 `webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
 `webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as
 DOM objects. This lets inspectors, tests, and host code walk from a native

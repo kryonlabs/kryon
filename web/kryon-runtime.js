@@ -2674,6 +2674,17 @@ function webDOMObjectForNode(root, node) {
   return element ? { ref: webNodeRef(node), node, element } : null;
 }
 
+export function webDOMObjectFromElement(element) {
+  let el = element || null;
+  while (el) {
+    const node = el.__kryDocNode || null;
+    if (node)
+      return { ref: webNodeRef(node), node, element: el };
+    el = el.parentNode || null;
+  }
+  return null;
+}
+
 export function webDOMObjects(target) {
   const root = mountedRoot(target);
   if (!root)
