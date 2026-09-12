@@ -448,8 +448,12 @@ typedef struct UiBlock {
     char props[KIR_TEXT_MAX];
     char dom_tag[KIR_NAME_MAX];
     char dom_id[KIR_NAME_MAX];
+    char dom_name_attr[KIR_NAME_MAX];
     char dom_class[KIR_TEXT_MAX];
     char dom_title[KIR_TEXT_MAX];
+    char dom_href[KIR_TEXT_MAX];
+    char dom_target[KIR_NAME_MAX];
+    char dom_rel[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
@@ -668,6 +672,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_id, sizeof(block->dom_id), "%s", value);
         return 1;
     }
+    if(strcmp(field, "dom_name") == 0 || strcmp(field, "html_name") == 0 ||
+       strcmp(field, "name_attr") == 0) {
+        snprintf(block->dom_name_attr, sizeof(block->dom_name_attr), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "class") == 0 || strcmp(field, "classes") == 0 ||
        strcmp(field, "class_name") == 0) {
         snprintf(block->dom_class, sizeof(block->dom_class), "%s", value);
@@ -676,6 +686,18 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     if(strcmp(field, "title") == 0 || strcmp(field, "dom_title") == 0 ||
        strcmp(field, "html_title") == 0) {
         snprintf(block->dom_title, sizeof(block->dom_title), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "dom_href") == 0 || strcmp(field, "html_href") == 0) {
+        snprintf(block->dom_href, sizeof(block->dom_href), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "dom_target") == 0 || strcmp(field, "html_target") == 0) {
+        snprintf(block->dom_target, sizeof(block->dom_target), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "dom_rel") == 0 || strcmp(field, "html_rel") == 0) {
+        snprintf(block->dom_rel, sizeof(block->dom_rel), "%s", value);
         return 1;
     }
     if(strcmp(field, "placeholder") == 0 ||
@@ -764,10 +786,18 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_tag);
     snprintf(statement->dom_id, sizeof(statement->dom_id), "%s",
              block->dom_id);
+    snprintf(statement->dom_name_attr, sizeof(statement->dom_name_attr), "%s",
+             block->dom_name_attr);
     snprintf(statement->dom_class, sizeof(statement->dom_class), "%s",
              block->dom_class);
     snprintf(statement->dom_title, sizeof(statement->dom_title), "%s",
              block->dom_title);
+    snprintf(statement->dom_href, sizeof(statement->dom_href), "%s",
+             block->dom_href);
+    snprintf(statement->dom_target, sizeof(statement->dom_target), "%s",
+             block->dom_target);
+    snprintf(statement->dom_rel, sizeof(statement->dom_rel), "%s",
+             block->dom_rel);
     snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),
              "%s", block->dom_placeholder);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",

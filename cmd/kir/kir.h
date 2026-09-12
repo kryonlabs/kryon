@@ -128,8 +128,12 @@ typedef struct KirStmt {
     char node_parent_path[KIR_TEXT_MAX];/* parent UI tree path, empty at root */
     char dom_tag[KIR_NAME_MAX];         /* requested browser element tag */
     char dom_id[KIR_NAME_MAX];          /* requested browser id */
+    char dom_name_attr[KIR_NAME_MAX];   /* requested browser name attribute */
     char dom_class[KIR_TEXT_MAX];       /* requested browser/KSS classes */
     char dom_title[KIR_TEXT_MAX];       /* requested browser title */
+    char dom_href[KIR_TEXT_MAX];        /* requested browser link target */
+    char dom_target[KIR_NAME_MAX];      /* requested browser browsing context */
+    char dom_rel[KIR_TEXT_MAX];         /* requested browser link relation */
     char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
     char dom_tab_index[KIR_NAME_MAX];   /* requested tabindex expression */
     char dom_role[KIR_NAME_MAX];        /* requested accessibility role */

@@ -128,6 +128,7 @@ Scene :: (viewport: Rectangle) #ui {
             text = label
             dom = "input"
             dom_id = "search-field"
+            dom_name = "q"
             class = "field"
             placeholder = "Search terms"
             aria_label = "Search"
@@ -209,6 +210,7 @@ grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
 grep -q '"onKey": "note_key"' "$out"
 grep -q '"onSubmit": "submit_search"' "$out"
+grep -q '"domName": "q"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
@@ -232,6 +234,12 @@ Anon :: () #ui {
     Screen root: {
         Text((TextProps){.text="first"})
         Text((TextProps){.text="second"})
+        Link docs: {
+            text = "Docs"
+            dom_href = "/docs"
+            dom_target = "_blank"
+            dom_rel = "noopener"
+        }
     }
 }
 EOF
@@ -239,6 +247,9 @@ EOF
 anon_out="$work/out/src/anon_refs.js"
 grep -Eq '"path": "Anon/root/Text@[0-9]+"' "$anon_out"
 grep -Eq '"path": "Anon/root/Text@[0-9]+-2"' "$anon_out"
+grep -q '"href": "/docs"' "$anon_out"
+grep -q '"target": "_blank"' "$anon_out"
+grep -q '"rel": "noopener"' "$anon_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {

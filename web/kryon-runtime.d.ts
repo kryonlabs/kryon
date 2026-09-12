@@ -79,6 +79,7 @@ export interface WebDocumentNode {
   sourcePath: string;
   sourceLine: number;
   domId: string;
+  domName: string;
   classes: string[];
   title: string;
   placeholder: string;
@@ -87,6 +88,8 @@ export interface WebDocumentNode {
   value: unknown;
   level: number;
   href: string;
+  target: string;
+  rel: string;
   inputType: string;
   alt: string;
   asset: string;

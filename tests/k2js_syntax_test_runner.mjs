@@ -155,6 +155,7 @@ assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");
 assert.equal(webDoc.nodes[3].domId, "search-field");
+assert.equal(webDoc.nodes[3].domName, "q");
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -250,7 +251,7 @@ function fakeDocument() {
     runtime.widget(ariaRt, "Heading", { level: 2, text: "Welcome" }, null,
       { nodeName: "welcome", path: "Page/welcome" });
     runtime.widget(ariaRt, "Link", { href: "/docs", text: "Docs", selected: true }, null,
-      { nodeName: "docs", path: "Page/docs" });
+      { nodeName: "docs", path: "Page/docs", href: "/reference", target: "_blank", rel: "noopener" });
     runtime.widget(ariaRt, "Checkbox", { checked: true, disabled: true, loading: true }, null,
       { nodeName: "accept", path: "Page/accept" });
     runtime.endFrame(ariaRt);
@@ -258,7 +259,7 @@ function fakeDocument() {
     assert.equal(snapshot.nodes[0].role, "heading");
     assert.equal(snapshot.nodes[0].level, 2);
     assert.equal(snapshot.nodes[1].role, "link");
-    assert.equal(snapshot.nodes[1].href, "/docs");
+    assert.equal(snapshot.nodes[1].href, "/reference");
     assert.equal(snapshot.nodes[2].role, "checkbox");
     assert.equal(snapshot.nodes[2].inputType, "checkbox");
     assert.equal(snapshot.nodes[2].state.checked, true);
@@ -268,6 +269,9 @@ function fakeDocument() {
     const link = runtime.findWebElement(target, "Page/docs");
     const checkbox = runtime.findWebElement(target, "Page/accept");
     assert.equal(link.attributes["aria-current"], "page");
+    assert.equal(link.attributes.href, "/reference");
+    assert.equal(link.attributes.target, "_blank");
+    assert.equal(link.attributes.rel, "noopener");
     assert.equal(checkbox.attributes["aria-checked"], "true");
     assert.equal(checkbox.attributes["aria-disabled"], "true");
     assert.equal(checkbox.attributes["aria-busy"], "true");
@@ -362,6 +366,7 @@ function fakeDocument() {
     const firstField = screen.children[2];
     assert.equal(firstField.tagName, "INPUT");
     assert.equal(firstField.id, "search-field");
+    assert.equal(firstField.attributes.name, "q");
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");

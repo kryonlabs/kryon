@@ -1093,6 +1093,7 @@ function webNodeFromWidget(item, index) {
     sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
     sourceLine: Number.isFinite(Number(meta.sourceLine)) ? Math.trunc(Number(meta.sourceLine)) : 0,
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
+    domName: meta.domName === undefined || meta.domName === null ? "" : String(meta.domName),
     classes: [...new Set(classes)],
     title: meta.title === undefined || meta.title === null ? "" : String(meta.title),
     placeholder: meta.placeholder === undefined || meta.placeholder === null ? "" : String(meta.placeholder),
@@ -1100,7 +1101,9 @@ function webNodeFromWidget(item, index) {
     text: widgetText(item),
     value: widgetText(item),
     level: widgetLevel(item),
-    href: widgetHref(item),
+    href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
+    target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
+    rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     inputType: widgetInputType(item),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
@@ -1683,6 +1686,7 @@ function applyWebNode(el, docNode, rt) {
   else
     delete el.dataset.kryName;
   setAttr(el, "id", docNode.domId);
+  setAttr(el, "name", docNode.domName);
   setAttr(el, "title", docNode.title);
   setAttr(el, "placeholder", docNode.placeholder);
   setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
@@ -1741,6 +1745,8 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-level",
     docNode.role === "heading" && docNode.level ? String(docNode.level) : "");
   setAttr(el, "href", docNode.href);
+  setAttr(el, "target", docNode.target);
+  setAttr(el, "rel", docNode.rel);
   setAttr(el, "type", docNode.inputType);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);

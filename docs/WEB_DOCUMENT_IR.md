@@ -88,8 +88,12 @@ Supported metadata fields in this first slice:
 | source span | `sourcePath`, `sourceLine` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_id`, `html_id` | `domId` |
+| `dom_name`, `html_name`, `name_attr` | `domName` |
 | `class`, `classes`, `class_name` | `classes` |
 | `title`, `dom_title`, `html_title` | `title` |
+| `dom_href`, `html_href` | `href` |
+| `dom_target`, `html_target` | `target` |
+| `dom_rel`, `html_rel` | `rel` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
@@ -127,11 +131,14 @@ Supported metadata fields in this first slice:
       path,
       parentPath,
       domId,
+      domName,
       classes,
       text,
       value,
       level,
       href,
+      target,
+      rel,
       inputType,
       alt,
       asset,
