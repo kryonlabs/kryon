@@ -2065,7 +2065,7 @@ func TestDropdownKeyboardOpen(t *testing.T) {
 	}
 }
 
-func TestNativeMultiSelectListModifiers(t *testing.T) {
+func TestNativeListBoxMultiModifiers(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	selected := []int32{1, 0, 0}
 	selectedCount, anchor := int32(1), int32(0)
@@ -2103,7 +2103,7 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r.EndFrame()
 }
 
-func TestNativeMultiSelectListKeyboardNavigation(t *testing.T) {
+func TestNativeListBoxMultiKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	selected := []int32{1, 0, 0}
 	selectedCount, anchor := int32(1), int32(0)

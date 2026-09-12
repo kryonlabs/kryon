@@ -915,7 +915,7 @@ TreeViewItem:selected { background: selected; foreground: ink; border: selected;
 	}
 }
 
-func TestMultiSelectListPaintUsesStyleSheet(t *testing.T) {
+func TestListBoxMultiPaintUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`

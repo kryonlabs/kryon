@@ -3087,7 +3087,7 @@ ListBox(ListBoxProps list)
 {
     ui_tree_add(list.id, WIDGET_CUSTOM, list.bounds, &list);
     if(list.selected != NULL)
-        return RenderMultiSelectList(list);
+        return RenderListBoxMulti(list);
     return RenderListBox(list);
 }
 

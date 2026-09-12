@@ -17,7 +17,7 @@
 #include "runtime/focus.h"
 #include "runtime/list_box.h"
 #include "runtime/menu.h"
-#include "runtime/multi_select_list.h"
+#include "runtime/list_box_multi.h"
 #include "runtime/paned_view.h"
 #include "runtime/plot.h"
 #include "runtime/progress.h"
@@ -699,25 +699,25 @@ RenderDragDrop(DragDropProps drag_drop)
 }
 
 static void
-ui_multi_select_apply(ListBoxProps list, int index, int control,
+ui_list_box_multi_apply(ListBoxProps list, int index, int control,
                       int shift, int range_anchor)
 {
     int anchor = list.anchor != NULL ? *list.anchor : -1;
     for(int row = 0; row < list.item_count; row++) {
-        list.selected[row] = MultiSelectSelectionForRow(row,
+        list.selected[row] = ListBoxMultiSelectionForRow(row,
             list.selected[row] != 0, index, list.item_count, anchor,
             control != 0, shift != 0, range_anchor) ? 1 : 0;
     }
     if(list.anchor != NULL)
-        *list.anchor = MultiSelectAnchorAfterClick(anchor, index,
+        *list.anchor = ListBoxMultiAnchorAfterClick(anchor, index,
             list.item_count, control != 0, shift != 0, range_anchor);
 }
 
 int
-RenderMultiSelectList(ListBoxProps list)
+RenderListBoxMulti(ListBoxProps list)
 {
     Vector2 mouse = ui_mouse_world();
-    int row_height = MultiSelectRowHeight(list.row_height,
+    int row_height = ListBoxMultiRowHeight(list.row_height,
         (float)Scale(1000) / 1000.0f);
     int paint = IsWindowReady();
     int clicked = -1;
@@ -736,16 +736,16 @@ RenderMultiSelectList(ListBoxProps list)
     if(focused) {
         int cursor = -1;
         int selected_first = -1;
-        MultiSelectNavResult nav;
+        ListBoxMultiNavResult nav;
         if(list.anchor != NULL && *list.anchor >= 0 &&
            *list.anchor < list.item_count)
             cursor = *list.anchor;
         else
             for(int i = 0; i < list.item_count; i++)
                 if(list.selected[i]) { selected_first = i; break; }
-        cursor = MultiSelectFocusedRow(cursor, selected_first,
+        cursor = ListBoxMultiFocusedRow(cursor, selected_first,
                                        list.item_count);
-        nav = MultiSelectNavigate(list.item_count, cursor, control != 0,
+        nav = ListBoxMultiNavigate(list.item_count, cursor, control != 0,
             shift != 0, IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
             IsKeyPressed(KEY_UP), IsKeyPressed(KEY_DOWN),
             IsKeyPressed(KEY_SPACE),
@@ -759,7 +759,7 @@ RenderMultiSelectList(ListBoxProps list)
         }
     }
     if(clicked >= 0)
-        ui_multi_select_apply(list,clicked,control,shift,range_anchor);
+        ui_list_box_multi_apply(list,clicked,control,shift,range_anchor);
     if(paint) {
         StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
@@ -770,7 +770,7 @@ RenderMultiSelectList(ListBoxProps list)
                   (int)list.bounds.width, (int)list.bounds.height);
     }
     for(int i = 0; i < list.item_count; i++) {
-        Rectangle row = MultiSelectRowBounds(list.bounds, i, row_height);
+        Rectangle row = ListBoxMultiRowBounds(list.bounds, i, row_height);
         int hot = CheckCollisionPointRec(mouse, row) &&
                   !InputCapturesClick(mouse);
         int selected = list.selected[i] != 0;
@@ -800,7 +800,7 @@ RenderMultiSelectList(ListBoxProps list)
                 focused = 1;
             }
             clicked = i;
-            ui_multi_select_apply(list,clicked,control,shift,-1);
+            ui_list_box_multi_apply(list,clicked,control,shift,-1);
         }
     }
     if(paint)

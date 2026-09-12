@@ -1,7 +1,7 @@
-#module "multi_select_list"
+#module "list_box_multi"
 #import "drawing_props"
 
-MultiSelectNavResult :: struct {
+ListBoxMultiNavResult :: struct {
     clicked: i32
     anchor: i32
     anchor_changed: bool
@@ -10,13 +10,13 @@ MultiSelectNavResult :: struct {
     range_anchor: i32
 }
 
-MultiSelectRowHeight :: (row_height: i32, scale: float) -> i32 #export {
+ListBoxMultiRowHeight :: (row_height: i32, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     if row_height > 0 { return row_height }
     return (i32)(28.0 * scale)
 }
 
-MultiSelectRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {
+ListBoxMultiRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {
     row: Rectangle
     row.x = bounds.x
     row.y = bounds.y + (float)(index * row_height)
@@ -25,17 +25,17 @@ MultiSelectRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rect
     return row
 }
 
-MultiSelectFocusedRow :: (anchor: i32, selected_first: i32, item_count: i32) -> i32 #export {
+ListBoxMultiFocusedRow :: (anchor: i32, selected_first: i32, item_count: i32) -> i32 #export {
     if item_count <= 0 { return -1 }
     if anchor >= 0 && anchor < item_count { return anchor }
     if selected_first >= 0 && selected_first < item_count { return selected_first }
     return 0
 }
 
-MultiSelectNavigate :: (item_count: i32, cursor: i32, control: bool,
+ListBoxMultiNavigate :: (item_count: i32, cursor: i32, control: bool,
     shift: bool, home: bool, end: bool, up: bool, down: bool,
-    space: bool, enter: bool) -> MultiSelectNavResult #export {
-    result: MultiSelectNavResult
+    space: bool, enter: bool) -> ListBoxMultiNavResult #export {
+    result: ListBoxMultiNavResult
     result.clicked = -1
     result.anchor = cursor
     result.anchor_changed = false
@@ -80,16 +80,16 @@ MultiSelectNavigate :: (item_count: i32, cursor: i32, control: bool,
     return result
 }
 
-MultiSelectActionAnchor :: (current_anchor: i32, range_anchor: i32) -> i32 #export {
+ListBoxMultiActionAnchor :: (current_anchor: i32, range_anchor: i32) -> i32 #export {
     if range_anchor >= 0 { return range_anchor }
     return current_anchor
 }
 
-MultiSelectSelectionForRow :: (row: i32, was_selected: bool, clicked: i32,
+ListBoxMultiSelectionForRow :: (row: i32, was_selected: bool, clicked: i32,
     item_count: i32, current_anchor: i32, control: bool, shift: bool,
     range_anchor: i32) -> bool #export {
     if clicked < 0 || clicked >= item_count { return was_selected }
-    anchor: i32 = MultiSelectActionAnchor(current_anchor, range_anchor)
+    anchor: i32 = ListBoxMultiActionAnchor(current_anchor, range_anchor)
     if shift && anchor >= 0 && anchor < item_count {
         first: i32 = anchor
         last: i32 = clicked
@@ -109,9 +109,9 @@ MultiSelectSelectionForRow :: (row: i32, was_selected: bool, clicked: i32,
     return row == clicked
 }
 
-MultiSelectAnchorAfterClick :: (current_anchor: i32, clicked: i32,
+ListBoxMultiAnchorAfterClick :: (current_anchor: i32, clicked: i32,
     item_count: i32, control: bool, shift: bool, range_anchor: i32) -> i32 #export {
-    anchor: i32 = MultiSelectActionAnchor(current_anchor, range_anchor)
+    anchor: i32 = ListBoxMultiActionAnchor(current_anchor, range_anchor)
     if clicked < 0 || clicked >= item_count { return current_anchor }
     if shift && anchor >= 0 && anchor < item_count { return current_anchor }
     if control || !shift { return clicked }

@@ -9,7 +9,7 @@
 #include "runtime/drag.h"
 #include "runtime/input.h"
 #include "runtime/fieldset.h"
-#include "runtime/multi_select_list.h"
+#include "runtime/list_box_multi.h"
 #include "runtime/popup_policy.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
@@ -592,18 +592,18 @@ static void
 test_multi_select_policy(void)
 {
     Rectangle bounds = {10, 20, 120, 90};
-    Rectangle row = MultiSelectRowBounds(bounds, 2, 28);
-    MultiSelectNavResult down = MultiSelectNavigate(3, 0, 0, 0,
+    Rectangle row = ListBoxMultiRowBounds(bounds, 2, 28);
+    ListBoxMultiNavResult down = ListBoxMultiNavigate(3, 0, 0, 0,
         0, 0, 0, 1, 0, 0);
-    MultiSelectNavResult shift_down = MultiSelectNavigate(3, 1, 0, 1,
+    ListBoxMultiNavResult shift_down = ListBoxMultiNavigate(3, 1, 0, 1,
         0, 0, 0, 1, 0, 0);
-    MultiSelectNavResult space = MultiSelectNavigate(3, 2, 0, 0,
+    ListBoxMultiNavResult space = ListBoxMultiNavigate(3, 2, 0, 0,
         0, 0, 0, 0, 1, 0);
 
-    check_int("multi row default height", MultiSelectRowHeight(0, 1.0f), 28);
+    check_int("multi row default height", ListBoxMultiRowHeight(0, 1.0f), 28);
     check_float("multi row y", row.y, 76.0f);
     check_float("multi row height", row.height, 28.0f);
-    check_int("multi focused fallback", MultiSelectFocusedRow(-1, 2, 3), 2);
+    check_int("multi focused fallback", ListBoxMultiFocusedRow(-1, 2, 3), 2);
 
     check_int("multi nav down clicked", down.clicked, 1);
     check_int("multi nav down anchor", down.anchor, 1);
@@ -615,17 +615,17 @@ test_multi_select_policy(void)
     check_int("multi space control", space.control ? 1 : 0, 1);
 
     check_int("multi plain clears other",
-        MultiSelectSelectionForRow(0, 1, 1, 3, 0, 0, 0, -1) ? 1 : 0, 0);
+        ListBoxMultiSelectionForRow(0, 1, 1, 3, 0, 0, 0, -1) ? 1 : 0, 0);
     check_int("multi plain selects clicked",
-        MultiSelectSelectionForRow(1, 0, 1, 3, 0, 0, 0, -1) ? 1 : 0, 1);
+        ListBoxMultiSelectionForRow(1, 0, 1, 3, 0, 0, 0, -1) ? 1 : 0, 1);
     check_int("multi control toggles",
-        MultiSelectSelectionForRow(1, 1, 1, 3, 0, 1, 0, -1) ? 1 : 0, 0);
+        ListBoxMultiSelectionForRow(1, 1, 1, 3, 0, 1, 0, -1) ? 1 : 0, 0);
     check_int("multi shift range keeps row",
-        MultiSelectSelectionForRow(2, 0, 2, 3, 0, 0, 1, -1) ? 1 : 0, 1);
+        ListBoxMultiSelectionForRow(2, 0, 2, 3, 0, 0, 1, -1) ? 1 : 0, 1);
     check_int("multi anchor after plain",
-              MultiSelectAnchorAfterClick(0, 2, 3, 0, 0, -1), 2);
+              ListBoxMultiAnchorAfterClick(0, 2, 3, 0, 0, -1), 2);
     check_int("multi anchor after shift",
-              MultiSelectAnchorAfterClick(0, 2, 3, 0, 1, -1), 0);
+              ListBoxMultiAnchorAfterClick(0, 2, 3, 0, 1, -1), 0);
 }
 
 static void

@@ -66,7 +66,7 @@ surface review:
 | `runtime/list_box.kry` | ListBox layout/navigation policy | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
-| `runtime/multi_select_list.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
+| `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
 | `runtime/paint.kry` | Paint/drawing helpers | Native support |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |

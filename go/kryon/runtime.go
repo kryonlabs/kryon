@@ -2812,7 +2812,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 		return -1
 	}
 	bounds := r.layoutRect(props.Bounds)
-	rowHeight := MultiSelectList_MultiSelectRowHeight(props.RowHeight, 1)
+	rowHeight := ListBoxMulti_ListBoxMultiRowHeight(props.RowHeight, 1)
 	disabled := props.Disabled || r.contentDisabled()
 	if !disabled {
 		r.registerField(props.ID)
@@ -2821,7 +2821,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 	rangeAnchor := int32(-1)
 	if !disabled {
 		for i := 0; i < count; i++ {
-			row := MultiSelectList_MultiSelectRowBounds(bounds, int32(i), rowHeight)
+			row := ListBoxMulti_ListBoxMultiRowBounds(bounds, int32(i), rowHeight)
 			if r.consumeTap(row) {
 				clicked = int32(i)
 				if props.ID > 0 {
@@ -2847,8 +2847,8 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 				}
 			}
 		}
-		cursor = MultiSelectList_MultiSelectFocusedRow(cursor, selectedFirst, int32(count))
-		nav := MultiSelectList_MultiSelectNavigate(int32(count), cursor, control, shift,
+		cursor = ListBoxMulti_ListBoxMultiFocusedRow(cursor, selectedFirst, int32(count))
+		nav := ListBoxMulti_ListBoxMultiNavigate(int32(count), cursor, control, shift,
 			r.keyDown[KeyHome], r.keyDown[KeyEnd], r.keyDown[KeyUp],
 			r.keyDown[KeyDown], r.keyDown[KeySpace], r.keyDown[KeyEnter])
 		clicked = nav.Clicked
@@ -2867,7 +2867,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			anchor = *props.Anchor
 		}
 		for row := 0; row < count; row++ {
-			if MultiSelectList_MultiSelectSelectionForRow(int32(row),
+			if ListBoxMulti_ListBoxMultiSelectionForRow(int32(row),
 				props.Selected[row] != 0, clicked, int32(count), anchor,
 				control, shift, rangeAnchor) {
 				props.Selected[row] = 1
@@ -2876,7 +2876,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			}
 		}
 		if props.Anchor != nil {
-			*props.Anchor = MultiSelectList_MultiSelectAnchorAfterClick(anchor,
+			*props.Anchor = ListBoxMulti_ListBoxMultiAnchorAfterClick(anchor,
 				clicked, int32(count), control, shift, rangeAnchor)
 		}
 	}
@@ -2916,7 +2916,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 		if selected {
 			selectedCount++
 		}
-		row := MultiSelectList_MultiSelectRowBounds(bounds, int32(i), rowHeight)
+		row := ListBoxMulti_ListBoxMultiRowBounds(bounds, int32(i), rowHeight)
 		rowFocused := focusRow == int32(i)
 		hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
 		pressed := int32(i) == clicked
