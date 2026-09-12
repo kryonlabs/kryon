@@ -228,8 +228,22 @@ function fakeDocument() {
       },
       addEventListener(type, fn) { this["on" + type] = fn; },
       click() { if (this.onclick) this.onclick(); },
-      input(value) { this.value = value; if (this.oninput) this.oninput(); },
-      change(value) { this.value = value; if (this.onchange) this.onchange(); },
+      input(value) {
+        if (typeof value === "boolean")
+          this.checked = value;
+        else
+          this.value = value;
+        if (this.oninput)
+          this.oninput();
+      },
+      change(value) {
+        if (typeof value === "boolean")
+          this.checked = value;
+        else
+          this.value = value;
+        if (this.onchange)
+          this.onchange();
+      },
       keydown(key) { if (this.onkeydown) this.onkeydown({ key }); },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
@@ -293,6 +307,28 @@ function fakeDocument() {
     assert.equal(checkbox.attributes["aria-busy"], "true");
     assert.equal(runtime.webFormValue(target, "accept"), true);
     assert.equal(root.children.length, 3);
+
+    let inputValue = null;
+    let changeValue = null;
+    const formRt = runtime.createRuntime();
+    runtime.beginFrame(formRt);
+    runtime.widget(formRt, "Checkbox", { checked: false }, null,
+      {
+        nodeName: "confirm",
+        path: "Page/confirm",
+        inputAction(value) { inputValue = value; },
+        changeAction(value) { changeValue = value; }
+      });
+    runtime.endFrame(formRt);
+    const formTarget = document.createElement("div");
+    runtime.renderWebDocument(formRt, formTarget);
+    const formCheckbox = runtime.findWebElement(formTarget, "confirm");
+    formCheckbox.input(true);
+    assert.equal(inputValue, true);
+    assert.equal(runtime.webFormValue(formTarget, "confirm"), true);
+    formCheckbox.change(false);
+    assert.equal(changeValue, false);
+    assert.equal(runtime.webFormValue(formTarget, "confirm"), false);
   } finally {
     globalThis.document = previousDocument;
   }

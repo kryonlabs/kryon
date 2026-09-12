@@ -1618,9 +1618,9 @@ function bindNodeEvents(el) {
   });
   el.addEventListener("input", () => {
     const docNode = el.__kryDocNode;
-    updateElementFormValue(el);
+    const value = updateElementFormValue(el);
     if (docNode?.inputAction)
-      docNode.inputAction(el.value ?? "");
+      docNode.inputAction(value);
   });
   el.addEventListener("change", () => {
     const docNode = el.__kryDocNode;
