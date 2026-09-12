@@ -421,6 +421,7 @@ Spinbox {
   focus: focus;
   radius: radius;
   border-width: 1;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -460,6 +461,7 @@ DragValue {
   radius: radius;
   border-width: 1;
   padding-x: space.3;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -1429,6 +1431,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font;
 }
 
 Slider:hover {

@@ -452,6 +452,7 @@ Drag {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -465,6 +466,7 @@ DragValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -1470,6 +1472,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font.sm;
 }
 
 Slider:hover {

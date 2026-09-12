@@ -419,6 +419,7 @@ Drag {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -431,6 +432,7 @@ DragValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -1393,6 +1395,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font.sm;
 }
 
 Slider:hover {
@@ -1784,6 +1787,7 @@ Image {
   focus: accent;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2108,6 +2112,7 @@ DragValue {
   radius: radius;
   border-width: border;
   padding-x: space.2;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3043,6 +3048,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font;
 }
 
 Slider:hover {
@@ -3750,6 +3756,7 @@ Drag {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -3762,6 +3769,7 @@ DragValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -4730,6 +4738,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font.sm;
 }
 
 Slider:hover {
@@ -5465,6 +5474,7 @@ Drag {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -5478,6 +5488,7 @@ DragValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -6483,6 +6494,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font.sm;
 }
 
 Slider:hover {
@@ -7209,6 +7221,7 @@ Spinbox {
   focus: focus;
   radius: radius;
   border-width: 1;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7248,6 +7261,7 @@ DragValue {
   radius: radius;
   border-width: 1;
   padding-x: space.3;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -8217,6 +8231,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font;
 }
 
 Slider:hover {

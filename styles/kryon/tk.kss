@@ -105,6 +105,7 @@ Image {
   focus: accent;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -429,6 +430,7 @@ DragValue {
   radius: radius;
   border-width: border;
   padding-x: space.2;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -1364,6 +1366,7 @@ Slider[role=Track] {
 
 Slider[role=Label] {
   foreground: text;
+  font-size: font;
 }
 
 Slider:hover {
