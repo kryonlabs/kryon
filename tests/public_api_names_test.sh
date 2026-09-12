@@ -124,6 +124,19 @@ if [ -n "$web_lowered_builder_matches" ]; then
     exit 1
 fi
 
+lowered_doc_matches="$(
+    rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas)\b' \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$lowered_doc_matches" ]; then
+    echo "User-facing widget docs must name canonical blocks/widgets, not lowered host Begin*/End* entries:"
+    echo "$lowered_doc_matches"
+    exit 1
+fi
+
 rect_matches="$(
     rg -n '\bRectangleShape\b' \
         include src cmd docs examples tests \

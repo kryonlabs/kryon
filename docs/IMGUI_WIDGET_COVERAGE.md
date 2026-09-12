@@ -27,14 +27,14 @@ implemented popup scope and its remaining lifecycle/backend gaps.
 | Trees and collapsing headers | `TreeView`, `Collapsible` | `Collapsible` supports tree styling, depth indentation, leaves, selected/disabled state, optional close/visibility state, arbitrary nested children, keyboard expansion, and directional header/parent/child focus traversal |
 | Selectables and multi-selection | `Selectable`, `MultiSelectList` | covered, including shared focus/Enter/Space activation, Tab traversal, arrow/Home/End navigation, and Ctrl/Shift range selection |
 | List boxes | `ListBox` | string-list helper with focus, arrow/Home/End navigation and selection-following scroll |
-| Scrollable child content needed for composed lists and trees | `BeginScroll` / `EndScroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
+| Scrollable child content needed for composed lists and trees | `Scroll` | C/Go wheel scrolling, scrollbar dragging, and nested clipping implemented and exercised through generated native fixtures |
 | Plots | `Plot` | covered |
 | Menus | `MenuBar`, `PopupMenu`, `ContextMenu` | nested submenus plus focus, disabled/separator skipping, arrow/Home/End traversal, submenu entry/backout, activation, and Escape dismissal in native C and Go |
-| Tooltips and popups | `PopupMenu`, `ContextMenu`, modal/dialog widgets, `BeginPopup` / `EndPopup` / `ClosePopup` with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
-| Tables | `TableView`, `BeginTableCell` / `EndTableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
+| Tooltips and popups | `Popup`, `PopupMenu`, `ContextMenu`, modal/dialog widgets with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
+| Tables | `TableView`, `TableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, add-tab `Button` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; selected tab contents are submitted with ordinary conditionals, and omitted scroll state is owned independently by stable tab-bar ID |
 | Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
-| Disabled content | `BeginDisabled`, `EndDisabled`, per-widget `Disabled` fields | covered, including nested scopes |
+| Disabled content | `Disabled` blocks and per-widget `Disabled` fields | covered, including nested scopes |
 
 Dear ImGui layout calls such as `SameLine`, `Spacing`, `Indent`, and groups are
 represented by Kryon's retained `Row`, `Column`, `Stack`, and `Grid` layout
@@ -358,7 +358,7 @@ editable text field, and button: the native runners verify independent state,
 text editing, rejection of hidden button clicks, and activation after scrolling.
 This demonstrates mixed-content composition using the general scroll scope,
 with selection and editing delegated to its child widgets. The mixed-content
-region now uses the general `BeginScroll`/`EndScroll` scope directly. This
+region now uses the general `Scroll` block directly. This
 fixture is not executed by the JavaScript runner. The same native fixture opens nested tree-style `Collapsible`
 headers, activates an arbitrary button child, closes the root, rejects clicks on
 the hidden child, and reopens with the nested open state preserved. Callers own

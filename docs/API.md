@@ -1349,10 +1349,10 @@ the tree is being declared cannot replace the previous complete tree with a
 partial declaration. Retained hosts should consume `EVENT_CLICK` from
 `NextEvent` after `EndTree` when wiring purely declarative state updates.
 
-`BeginButton(props)` opens a centered content area until `End()`. Logical style
-padding is scaled into that area. Unpositioned children fill missing dimensions
-and are centered; explicitly positioned children retain their placement.
-Oversized padding leaves an empty area, and negative padding acts as zero.
+Button blocks support caller-owned child content. Logical style padding is
+scaled into the content area. Unpositioned children fill missing dimensions and
+are centered; explicitly positioned children retain their placement. Oversized
+padding leaves an empty area, and negative padding acts as zero.
 
 #### `Link`
 
@@ -2189,8 +2189,8 @@ Canvas canvas: {
 }
 ```
 
-The compiler lowers the block to host `BeginCanvas`/`EndCanvas` support.
-Scroll and zoom are applied to canvas drawing and hit coordinates.
+The compiler lowers the block to host canvas-scope support. Scroll and zoom are
+applied to canvas drawing and hit coordinates.
 
 Text fields and text areas use the shared `EditText` core. Ctrl/Cmd+C copies
 the field buffer, Ctrl/Cmd+X cuts it, and Ctrl/Cmd+V pastes clipboard text

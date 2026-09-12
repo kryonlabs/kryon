@@ -135,7 +135,7 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | Column / Row / Stack (flex-like) | ✅ | ✅ | ✅ | ✅ all three | ✅ all three | ✅ structural no-ops (node table is the tree) |
 | Group | ✅ (lowers to Stack) | ✅ | ✅ | ◐ via Column | ✅ via Stack | ✅ |
-| Scroll container | ✅ `BeginScroll`/`EndScroll` | ✅ C API | ✅ C API | ✅ generated wheel/drag/nested-child tests | ✅ wheel scrolling, scrollbar dragging, and nested clipping via `BeginScroll`/`EndScroll` | ✅ SCROLL node |
+| Scroll block | ✅ `Scroll` | ✅ `.kry` block lowering | ✅ `.kry` block lowering | ✅ generated wheel/drag/nested-child tests | ✅ wheel scrolling, scrollbar dragging, and nested clipping via `Scroll` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Fieldset | ✅ | ✅ | ✅ | ✅ | ✅ `Fieldset` | ✅ rect/text lowering |
 | TabBar (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
