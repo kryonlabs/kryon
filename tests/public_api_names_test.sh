@@ -98,6 +98,19 @@ if [ -n "$generated_matches" ]; then
     exit 1
 fi
 
+web_lowered_builder_matches="$(
+    rg -n '\b(export function (BeginButton|EndCanvas|EndScroll)|"(BeginButton|EndCanvas|EndScroll)")\b' \
+        web/kryon-runtime.js web/kryon-runtime.d.ts \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$web_lowered_builder_matches" ]; then
+    echo "Web runtime builder exports must expose canonical widgets; lowered Begin*/End* host entries are not public builders:"
+    echo "$web_lowered_builder_matches"
+    exit 1
+fi
+
 rect_matches="$(
     rg -n '\bRectangleShape\b' \
         include src cmd docs examples tests \

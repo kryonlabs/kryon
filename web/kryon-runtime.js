@@ -2456,8 +2456,8 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
-  "ClearBackground", "Collapsible", "Column", "Dropdown", "BeginCanvas", "EndCanvas",
-  "EndScroll", "Icon", "Fieldset", "Link", "ListBox",
+  "ClearBackground", "Collapsible", "Column", "Dropdown",
+  "Icon", "Fieldset", "Link", "ListBox",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
@@ -2477,15 +2477,12 @@ export function Bevel(...args) { return struct("Bevel", args); }
 export function BottomNav(...args) { return struct("BottomNav", args); }
 export function Button(...args) { return struct("Button", args); }
 export function Card(...args) { return struct("Card", args); }
-export function BeginButton(...args) { return struct("BeginButton", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
 export function ClearBackground(...args) { return struct("ClearBackground", args); }
 export function Collapsible(...args) { return struct("Collapsible", args); }
 export function Column(...args) { return struct("Column", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
-export function EndCanvas(...args) { return struct("EndCanvas", args); }
-export function EndScroll(...args) { return struct("EndScroll", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }
 export function Link(...args) { return struct("Link", args); }
