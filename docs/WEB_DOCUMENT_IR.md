@@ -297,6 +297,8 @@ The initial tag mapping is intentionally conservative:
 | `Radio` | `input type=radio` |
 | `Progress` | `progress` |
 | `Separator` | `hr` |
+| `TableView` | `table` |
+| `CanvasGrid` | `canvas` |
 
 Other widgets remain `div` nodes until they gain a specific web-native
 contract.

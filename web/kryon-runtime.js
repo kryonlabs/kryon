@@ -1084,6 +1084,10 @@ function widgetTag(item) {
     return "progress";
   case "Separator":
     return "hr";
+  case "TableView":
+    return "table";
+  case "CanvasGrid":
+    return "canvas";
   default:
     return "div";
   }

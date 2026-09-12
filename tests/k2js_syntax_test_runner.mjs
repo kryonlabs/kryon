@@ -894,6 +894,10 @@ function fakeDocument() {
       { nodeName: "choice", path: "Page/choice" });
     runtime.widget(nativeRt, "ListBox", {}, null,
       { nodeName: "items", path: "Page/items" });
+    runtime.widget(nativeRt, "TableView", {}, null,
+      { nodeName: "table", path: "Page/table" });
+    runtime.widget(nativeRt, "CanvasGrid", {}, null,
+      { nodeName: "grid", path: "Page/grid" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -933,6 +937,8 @@ function fakeDocument() {
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[1].role, "group");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
+    assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
       ["Slider", "Spinbox", "Dropdown", "ListBox"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
@@ -958,6 +964,8 @@ function fakeDocument() {
     const copies = runtime.findWebElement(nativeTarget, "copies");
     const choice = runtime.findWebElement(nativeTarget, "choice");
     const items = runtime.findWebElement(nativeTarget, "items");
+    const table = runtime.findWebElement(nativeTarget, "table");
+    const grid = runtime.findWebElement(nativeTarget, "grid");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
@@ -976,6 +984,8 @@ function fakeDocument() {
     assert.equal(copies.attributes.type, "number");
     assert.equal(choice.tagName, "SELECT");
     assert.equal(items.tagName, "SELECT");
+    assert.equal(table.tagName, "TABLE");
+    assert.equal(grid.tagName, "CANVAS");
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");
     assert.equal(popover.attributes.popover, "auto");
