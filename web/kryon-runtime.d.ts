@@ -459,6 +459,7 @@ export function hostCall(host: unknown, method: string, args?: unknown[]): unkno
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
 export function webNodeIdentity(node: WebDocumentNode): WebNodeIdentity;
+export function webSourceRef(sourcePath: string, sourceLine: number, sourceColumn?: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
@@ -473,6 +474,8 @@ export function webNodeMatches(rt: Runtime, query: string, selector: string): bo
 export function webNodeParent(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeChildren(rt: Runtime, query?: string): WebDocumentNode[];
 export function webNodeClosest(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
+export function webNodeAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
+export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
@@ -492,6 +495,8 @@ export function webDOMClosest(target: Element | string | null, query: string, se
 export function webDOMQuery(target: Element | string | null, selector: string): WebDOMObject | null;
 export function webDOMQueryAll(target: Element | string | null, selector: string): WebDOMObject[];
 export function webDOMMatches(target: Element | string | null, query: string, selector: string): boolean;
+export function webDOMObjectAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+export function webDOMObjectsAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
 export function webDOMAddEventListener(target: Element | string | null, query: string, type: string,
   handler: (event: Event, object: WebDOMObject | null) => unknown,
   options?: boolean | AddEventListenerOptions): (() => void) | null;

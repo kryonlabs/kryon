@@ -141,8 +141,15 @@ assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
 const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine}`;
 const tapSourceColumnRef = `${tapSourceRef}:${webDoc.nodes[2].sourceColumn}`;
+assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine), tapSourceRef);
+assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceColumn), tapSourceColumnRef);
 assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceColumn).path, webDoc.nodes[2].path);
+assert.deepEqual(runtime.webNodesAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceColumn).map((node) => node.path), [webDoc.nodes[2].path]);
 assert.equal(runtime.findWebNode(rt, "primary-action").path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");
@@ -1255,6 +1262,11 @@ function fakeDocument() {
       firstButton);
     assert.equal(runtime.webDOMQuery(target, `[sourceColumnRef="${tapSourceColumnRef}"]`).element,
       firstButton);
+    assert.equal(runtime.webDOMObjectAtSource(target, "src/valid.kry", webDoc.nodes[2].sourceLine,
+      webDoc.nodes[2].sourceColumn).element, firstButton);
+    assert.deepEqual(runtime.webDOMObjectsAtSource(target, "src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn).map((object) => object.ref),
+      [tapSourceColumnRef]);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "search-box"
     ]);

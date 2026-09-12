@@ -332,6 +332,10 @@ frame. The mount root also exposes non-enumerable `kryRuntime`, `kryFrame`, and
 
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.
+`webSourceRef(sourcePath, sourceLine, sourceColumn?)` builds the stable source
+identity string for a `.kry` node. `webNodeAtSource(...)` and
+`webNodesAtSource(...)` resolve those source locations back to unmounted Web
+Document nodes without requiring callers to hand-format selector strings.
 
 `webNodeIdentity(node)` returns a plain identity projection for a Web Document
 node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
@@ -355,6 +359,9 @@ node name, key, DOM id, DOM name, or selector fallback matches `query`.
 native DOM objects by the same KSS-style selector facts used for style
 resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `[type=...]`, `[href=...]`, `[data-*=...]`, source fields, and state pseudos.
+`webDOMObjectAtSource(...)` and `webDOMObjectsAtSource(...)` provide the same
+bridge after mount, returning Kry DOM objects whose `element` is the native
+browser object and whose `node` retains the `.kry` source identity.
 
 `webDOMObjectFromElement(element)` walks from a native element or event target
 to the nearest mounted Kry DOM object, which gives delegated browser handlers

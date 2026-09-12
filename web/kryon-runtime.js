@@ -2235,6 +2235,15 @@ function webNodeSourceColumnRef(docNode) {
     : "";
 }
 
+export function webSourceRef(sourcePath, sourceLine, sourceColumn = 0) {
+  const path = String(sourcePath || "").trim();
+  const line = Number.isFinite(Number(sourceLine)) ? Math.trunc(Number(sourceLine)) : 0;
+  const column = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
+  if (!path || line <= 0)
+    return "";
+  return column > 0 ? `${path}:${line}:${column}` : `${path}:${line}`;
+}
+
 function sourceRefMatches(docNode, query) {
   const text = String(query || "");
   return webNodeSourceRef(docNode) === text || webNodeSourceColumnRef(docNode) === text;
@@ -2858,6 +2867,15 @@ export function webNodeClosest(rt, query, selector) {
   return null;
 }
 
+export function webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {
+  const ref = webSourceRef(sourcePath, sourceLine, sourceColumn);
+  return ref ? webNodeQueryAll(rt, ref) : [];
+}
+
+export function webNodeAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {
+  return webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn)[0] || null;
+}
+
 export function findWebElement(target, query) {
   const root = mountedRoot(target);
   if (!root)
@@ -3136,6 +3154,15 @@ export function webDOMQuery(target, selector) {
 export function webDOMMatches(target, query, selector) {
   const object = webDOMObject(target, query);
   return !!object && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), object.node);
+}
+
+export function webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColumn = 0) {
+  const ref = webSourceRef(sourcePath, sourceLine, sourceColumn);
+  return ref ? webDOMQueryAll(target, ref) : [];
+}
+
+export function webDOMObjectAtSource(target, sourcePath, sourceLine, sourceColumn = 0) {
+  return webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColumn)[0] || null;
 }
 
 function cleanDOMEventType(type) {
