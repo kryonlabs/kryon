@@ -371,6 +371,16 @@ browser object and whose `node` retains the `.kry` source identity.
 to the nearest mounted Kry DOM object, which gives delegated browser handlers
 and inspectors a reverse bridge back to `.kry` identity.
 
+Kry DOM objects keep the plain enumerable shape `{ ref, node, element }` for
+serialization and compatibility, and add non-enumerable helpers for live JS
+logic. `object.root`, `object.identity`, `object.snapshot`, `object.parent`,
+and `object.children` expose the mount root, identity, serializable snapshot,
+and Kry tree links. Object methods such as `matches(...)`, `closest(...)`,
+`listen(...)`, `addClass(...)`, `setAttr(...)`, `setStyle(...)`,
+`setState(...)`, `text(...)`, `value(...)`, `dispatch(...)`, `rect(...)`,
+`scroll(...)`, and native commands mirror the module-level `webDOM*` helpers
+without requiring generated JS to own browser DOM shape.
+
 `webDOMObjectFromEvent(eventOrTarget)` and `webDOMIdentityFromEvent(...)` accept
 a native browser event, event target, or element and resolve the nearest Kry DOM
 object/identity through the same event-target walk.

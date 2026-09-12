@@ -2416,7 +2416,7 @@ function bindWebDOMObjectProperties(el) {
       enumerable: false,
       get() {
         const node = this.__kryDocNode || null;
-        return node ? { ref: webNodeRef(node), node, element: this } : null;
+        return makeWebDOMObject(this.__kryMountRoot || mountedRoot(this), node, this);
       }
     },
     kryIdentity: {
@@ -2432,11 +2432,7 @@ function bindWebDOMObjectProperties(el) {
       get() {
         const node = this.__kryDocNode || null;
         const root = this.__kryMountRoot || mountedRoot(this);
-        return node && root ? webDOMObjectSnapshot(root, {
-          ref: webNodeRef(node),
-          node,
-          element: this
-        }) : null;
+        return node && root ? webDOMObjectSnapshot(root, makeWebDOMObject(root, node, this)) : null;
       }
     },
     kryParent: {
@@ -2790,6 +2786,355 @@ function bindWebDOMObjectProperties(el) {
     }
   });
   el.__kryObjectPropertiesBound = true;
+}
+
+function webDOMObjectRoot(object) {
+  return object?.root || object?.element?.__kryMountRoot ||
+    mountedRoot(object?.element || null);
+}
+
+function webDOMObjectQuery(object) {
+  return object?.ref || webNodeRef(object?.node) || object?.node?.path || "";
+}
+
+function makeWebDOMObject(root, node, element, ref = "") {
+  if (!node || !element)
+    return null;
+  const object = {
+    ref: ref || webNodeRef(node),
+    node,
+    element
+  };
+  Object.defineProperties(object, {
+    root: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return root || element.__kryMountRoot || mountedRoot(element) || null;
+      }
+    },
+    identity: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeIdentity(this.node);
+      }
+    },
+    snapshot: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webDOMObjectSnapshot(webDOMObjectRoot(this), this);
+      }
+    },
+    parent: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMParent(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    children: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMChildren(target, webDOMObjectQuery(this)) : [];
+      }
+    },
+    matches: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        return selectorMatchesWebNode(parseSelector(String(selector || "").trim()), this.node);
+      }
+    },
+    closest: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMClosest(target, webDOMObjectQuery(this), selector) : null;
+      }
+    },
+    listen: {
+      configurable: true,
+      enumerable: false,
+      value(type, handler, options) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMAddEventListener(target, webDOMObjectQuery(this), type, handler, options) : null;
+      }
+    },
+    addClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMAddClass(target, webDOMObjectQuery(this), className);
+      }
+    },
+    removeClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMRemoveClass(target, webDOMObjectQuery(this), className);
+      }
+    },
+    toggleClass: {
+      configurable: true,
+      enumerable: false,
+      value(className, force) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMToggleClass(target, webDOMObjectQuery(this), className, force);
+      }
+    },
+    hasClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMHasClass(target, webDOMObjectQuery(this), className);
+      }
+    },
+    getAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMGetAttribute(target, webDOMObjectQuery(this), name) : undefined;
+      }
+    },
+    setAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name, value = "") {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMSetAttribute(target, webDOMObjectQuery(this), name, value);
+      }
+    },
+    removeAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMRemoveAttribute(target, webDOMObjectQuery(this), name);
+      }
+    },
+    hasAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMHasAttribute(target, webDOMObjectQuery(this), name);
+      }
+    },
+    getProp: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMGetProperty(target, webDOMObjectQuery(this), name) : undefined;
+      }
+    },
+    setProp: {
+      configurable: true,
+      enumerable: false,
+      value(name, value) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMSetProperty(target, webDOMObjectQuery(this), name, value);
+      }
+    },
+    getStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMGetStyle(target, webDOMObjectQuery(this), name) : undefined;
+      }
+    },
+    setStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name, value = "") {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMSetStyle(target, webDOMObjectQuery(this), name, value);
+      }
+    },
+    removeStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMRemoveStyle(target, webDOMObjectQuery(this), name);
+      }
+    },
+    computedStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name = "") {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMComputedStyle(target, webDOMObjectQuery(this), name) : undefined;
+      }
+    },
+    getState: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMGetState(target, webDOMObjectQuery(this), name) : undefined;
+      }
+    },
+    setState: {
+      configurable: true,
+      enumerable: false,
+      value(name, value) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMSetState(target, webDOMObjectQuery(this), name, value);
+      }
+    },
+    text: {
+      configurable: true,
+      enumerable: false,
+      value(text) {
+        const target = webDOMObjectRoot(this);
+        if (!target)
+          return text === undefined ? undefined : false;
+        return text === undefined
+          ? webDOMGetText(target, webDOMObjectQuery(this))
+          : webDOMSetText(target, webDOMObjectQuery(this), text);
+      }
+    },
+    value: {
+      configurable: true,
+      enumerable: false,
+      value(value) {
+        const target = webDOMObjectRoot(this);
+        if (!target)
+          return value === undefined ? undefined : false;
+        return value === undefined
+          ? webDOMGetValue(target, webDOMObjectQuery(this))
+          : webDOMSetValue(target, webDOMObjectQuery(this), value);
+      }
+    },
+    dispatch: {
+      configurable: true,
+      enumerable: false,
+      value(type, init = {}) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMDispatchEvent(target, webDOMObjectQuery(this), type, init);
+      }
+    },
+    click: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMClick(target, webDOMObjectQuery(this));
+      }
+    },
+    focus: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMFocus(target, webDOMObjectQuery(this));
+      }
+    },
+    blur: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMBlur(target, webDOMObjectQuery(this));
+      }
+    },
+    submit: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMSubmit(target, webDOMObjectQuery(this));
+      }
+    },
+    reset: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMReset(target, webDOMObjectQuery(this));
+      }
+    },
+    rect: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        return webDOMRectFromElement(this.element);
+      }
+    },
+    scroll: {
+      configurable: true,
+      enumerable: false,
+      value(left, top = null) {
+        const target = webDOMObjectRoot(this);
+        if (!target)
+          return left === undefined ? null : false;
+        return left === undefined
+          ? webDOMGetScroll(target, webDOMObjectQuery(this))
+          : webDOMSetScroll(target, webDOMObjectQuery(this), left, top);
+      }
+    },
+    scrollIntoView: {
+      configurable: true,
+      enumerable: false,
+      value(options = true) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMScrollIntoView(target, webDOMObjectQuery(this), options);
+      }
+    },
+    showModal: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMShowModal(target, webDOMObjectQuery(this));
+      }
+    },
+    close: {
+      configurable: true,
+      enumerable: false,
+      value(returnValue = "") {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMClose(target, webDOMObjectQuery(this), returnValue);
+      }
+    },
+    showPopover: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMShowPopover(target, webDOMObjectQuery(this));
+      }
+    },
+    hidePopover: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMHidePopover(target, webDOMObjectQuery(this));
+      }
+    },
+    togglePopover: {
+      configurable: true,
+      enumerable: false,
+      value(force) {
+        const target = webDOMObjectRoot(this);
+        return !!target && webDOMTogglePopover(target, webDOMObjectQuery(this), force);
+      }
+    }
+  });
+  return object;
 }
 
 function applyWebNode(el, docNode, rt) {
@@ -3171,7 +3516,7 @@ function webDOMObjectsFromRoot(root) {
   return [...(root.__kryChildren?.values?.() || [])]
     .map((element) => {
       const node = element.__kryDocNode;
-      return node ? { ref: webNodeRef(node), node, element } : null;
+      return makeWebDOMObject(root, node, element);
     })
     .filter(Boolean);
 }
@@ -3220,19 +3565,19 @@ export function renderWebDocument(rt, target) {
       root.__kryNodes.set(docNode.path, docNode);
     const ref = webNodeRef(docNode);
     if (ref) {
-      root.__kryDomObjects.set(ref, { ref, node: docNode, element: el });
+      root.__kryDomObjects.set(ref, makeWebDOMObject(root, docNode, el, ref));
       root.__kryElementsByRef.set(ref, el);
     }
     const sourceRef = webNodeSourceRef(docNode);
     if (sourceRef) {
-      const sourceObject = { ref: sourceRef, node: docNode, element: el };
+      const sourceObject = makeWebDOMObject(root, docNode, el, sourceRef);
       if (!root.__kryDomObjects.has(sourceRef))
         root.__kryDomObjects.set(sourceRef, sourceObject);
       pushIndex(root.__kryDomObjectsBySource, sourceRef, sourceObject);
     }
     const sourceColumnRef = webNodeSourceColumnRef(docNode);
     if (sourceColumnRef) {
-      const sourceColumnObject = { ref: sourceColumnRef, node: docNode, element: el };
+      const sourceColumnObject = makeWebDOMObject(root, docNode, el, sourceColumnRef);
       if (!root.__kryDomObjects.has(sourceColumnRef))
         root.__kryDomObjects.set(sourceColumnRef, sourceColumnObject);
       pushIndex(root.__kryDomObjectsBySource, sourceColumnRef, sourceColumnObject);
@@ -3419,7 +3764,7 @@ export function webDOMObject(target, query) {
     return root.__kryDomObjects.get(text);
   const element = findWebElement(target, text);
   const node = element?.__kryDocNode || null;
-  return node && element ? { ref: webNodeRef(node), node, element } : null;
+  return makeWebDOMObject(root, node, element);
 }
 
 export function webDOMIdentity(target, query) {
@@ -3431,7 +3776,7 @@ function webDOMObjectForNode(root, node) {
   if (!root || !node)
     return null;
   const element = node.path ? root.__kryElementsByPath?.get(node.path) : null;
-  return element ? { ref: webNodeRef(node), node, element } : null;
+  return makeWebDOMObject(root, node, element);
 }
 
 export function webDOMObjectFromElement(element) {
@@ -3439,7 +3784,7 @@ export function webDOMObjectFromElement(element) {
   while (el) {
     const node = el.__kryDocNode || null;
     if (node)
-      return { ref: webNodeRef(node), node, element: el };
+      return makeWebDOMObject(el.__kryMountRoot || mountedRoot(el), node, el);
     el = el.parentNode || null;
   }
   return null;

@@ -333,6 +333,50 @@ export interface WebDOMObject {
   ref: string;
   node: WebDocumentNode;
   element: Element;
+  readonly root: Element | null;
+  readonly identity: WebNodeIdentity;
+  readonly snapshot: WebDOMSnapshot | null;
+  readonly parent: WebDOMObject | null;
+  readonly children: WebDOMObject[];
+  matches(selector: string): boolean;
+  closest(selector: string): WebDOMObject | null;
+  listen(type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
+    options?: boolean | AddEventListenerOptions): (() => void) | null;
+  addClass(className: string): boolean;
+  removeClass(className: string): boolean;
+  toggleClass(className: string, force?: boolean): boolean;
+  hasClass(className: string): boolean;
+  getAttr(name: string): string | undefined;
+  setAttr(name: string, value?: unknown): boolean;
+  removeAttr(name: string): boolean;
+  hasAttr(name: string): boolean;
+  getProp(name: string): unknown;
+  setProp(name: string, value: unknown): boolean;
+  getStyle(name: string): string | undefined;
+  setStyle(name: string, value?: unknown): boolean;
+  removeStyle(name: string): boolean;
+  computedStyle(name?: string): unknown;
+  getState(name: string): boolean | undefined;
+  setState(name: string, value: boolean): boolean;
+  text(): string | undefined;
+  text(text: unknown): boolean;
+  value(): unknown;
+  value(value: unknown): boolean;
+  dispatch(type: string, init?: Record<string, unknown>): boolean;
+  click(): boolean;
+  focus(): boolean;
+  blur(): boolean;
+  submit(): boolean;
+  reset(): boolean;
+  rect(): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
+  scroll(): { left: number; top: number; width: number; height: number } | null;
+  scroll(left: number, top?: number | null): boolean;
+  scrollIntoView(options?: boolean | ScrollIntoViewOptions): boolean;
+  showModal(): boolean;
+  close(returnValue?: string): boolean;
+  showPopover(): boolean;
+  hidePopover(): boolean;
+  togglePopover(force?: boolean): boolean;
 }
 
 export interface WebDOMRenderDetail {
