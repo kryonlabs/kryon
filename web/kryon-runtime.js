@@ -1125,6 +1125,7 @@ function webNodeFromWidget(item, index) {
     tabIndex: Number.isFinite(Number(meta.tabIndex)) ? Math.trunc(Number(meta.tabIndex)) : null,
     text: widgetText(item),
     value: widgetText(item),
+    domValue: metaString(meta, "domValue"),
     level: widgetLevel(item),
     href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
@@ -1203,6 +1204,7 @@ export function webNodeStyleFacts(node) {
     sourceLine: node?.sourceLine || 0,
     id: node?.domId || "",
     domName: node?.domName || "",
+    domValue: node?.domValue || "",
     href: node?.href || "",
     target: node?.target || "",
     rel: node?.rel || "",
@@ -1489,6 +1491,7 @@ function selectorDataAttrValue(key, facts) {
 function selectorNativeAttrValue(key, facts) {
   switch (key) {
     case "name": return facts.domName;
+    case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
     case "action": return facts.formAction;
     case "method": return facts.formMethod;
@@ -1874,6 +1877,7 @@ function applyWebNode(el, docNode, rt) {
     delete el.dataset.kryName;
   setAttr(el, "id", docNode.domId);
   setAttr(el, "name", docNode.domName);
+  setAttr(el, "value", docNode.domValue);
   setAttr(el, "title", docNode.title);
   setAttr(el, "placeholder", docNode.placeholder);
   setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
@@ -1984,8 +1988,9 @@ function applyWebNode(el, docNode, rt) {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
   } else if (docNode.tag === "input") {
-    if (docNode.value !== undefined && docNode.value !== null && docNode.value !== "")
-      el.setAttribute("value", docNode.value);
+    const nativeValue = docNode.domValue || docNode.value;
+    if (nativeValue !== undefined && nativeValue !== null && nativeValue !== "")
+      el.setAttribute("value", nativeValue);
     else
       removeAttr(el, "value");
     setAttr(el, "checked",
@@ -1993,7 +1998,7 @@ function applyWebNode(el, docNode, rt) {
         ? docNode.state.checked
         : false);
     if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio")
-      el.value = docNode.value;
+      el.value = nativeValue;
     el.checked = !!docNode.state.checked;
   } else if (docNode.tag === "textarea") {
     el.value = docNode.value;
