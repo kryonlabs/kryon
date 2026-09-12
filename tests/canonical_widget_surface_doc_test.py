@@ -14,6 +14,7 @@ PARSER = ROOT / "cmd/kir/kir_parse.c"
 UI_TREE = ROOT / "include/ui_tree.h"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
+RUNTIME = ROOT / "runtime"
 
 NATIVE_COMPAT_EXPORTS = {
     "BeginButton",
@@ -67,6 +68,10 @@ PUBLIC_WIDGET_NAMES = {
 def registry_names() -> list[str]:
     text = REGISTRY.read_text(encoding="utf-8")
     return re.findall(r'\{"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"[^"]*"', text)
+
+
+def runtime_module_paths() -> list[str]:
+    return sorted(path.relative_to(ROOT).as_posix() for path in RUNTIME.glob("*.kry"))
 
 
 def parser_widget_names() -> list[str]:
@@ -145,6 +150,27 @@ def audit_rows() -> dict[str, list[str]]:
             if name in rows:
                 raise AssertionError(f"duplicate registry audit row: {name}")
             rows[name] = cells
+    return rows
+
+
+def runtime_module_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Runtime `\.kry` Modules\n(?P<body>.*?)(?=^## )",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing ## Runtime `.kry` Modules section")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            module = cells[0].strip("`")
+            if module in rows:
+                raise AssertionError(f"duplicate runtime module row: {module}")
+            rows[module] = cells
     return rows
 
 
@@ -234,6 +260,8 @@ def feature_matrix_parser_names() -> tuple[int, list[str]]:
 
 def main() -> int:
     errors: list[str] = []
+    runtime_expected = runtime_module_paths()
+    runtime_doc_rows = runtime_module_rows()
     expected = registry_names()
     rows = audit_rows()
     parser_expected = parser_widget_names()
@@ -246,6 +274,11 @@ def main() -> int:
     ui_tree_functions = ui_tree_function_names()
     compat_expected = ui_tree_compat_exports()
 
+    for module in runtime_expected:
+        if module not in runtime_doc_rows:
+            errors.append(f"missing runtime module row: {module}")
+    for module in sorted(set(runtime_doc_rows) - set(runtime_expected)):
+        errors.append(f"runtime module row has no file: {module}")
     for name in expected:
         if name not in rows:
             errors.append(f"missing registry audit row: {name}")

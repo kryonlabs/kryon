@@ -45,6 +45,7 @@ surface review:
 | `runtime/collapsible.kry` | Collapsible metrics/header geometry policy | `.kry canonical` |
 | `runtime/color_picker.kry` | ColorPicker channel layout and color policy | `.kry canonical` |
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
+| `runtime/drawing_props.kry` | Shared drawing props | `.kry canonical` |
 | `runtime/dropdown.kry` | Dropdown composition | `.kry canonical` |
 | `runtime/drag_drop.kry` | DragDrop decision policy | `.kry canonical` |
 | `runtime/drag.kry` | Drag value/keyboard policy | `.kry canonical` |
@@ -54,8 +55,10 @@ surface review:
 | `runtime/guide.kry` | Guide overlay layout and step policy | `.kry canonical` |
 | `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | Native support |
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
+| `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
 | `runtime/input.kry` | Input value/step policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props | `.kry canonical` |
+| `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/focus.kry` | Focus ring and debug overlay geometry policy | Native support |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
@@ -80,6 +83,7 @@ surface review:
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
+| `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
