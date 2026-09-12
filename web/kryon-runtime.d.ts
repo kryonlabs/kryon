@@ -109,6 +109,9 @@ export interface WebDocumentNode {
     invalid: boolean;
     expanded: boolean;
     open: boolean;
+    hover: boolean;
+    pressed: boolean;
+    focus: boolean;
   };
   styleFacts: WebNodeStyleFacts;
 }

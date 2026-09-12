@@ -207,6 +207,12 @@ native DOM objects by the same KSS-style selector facts used for style
 resolution: kind selectors, `#id`, `.class`, `[role=...]`, source fields, and
 state pseudos.
 
+The DOM renderer maintains native interaction facts for KSS state selectors:
+`mouseenter`/`mouseleave` update `hover`, `mousedown`/`mouseup` update
+`pressed`, and `focus`/`blur` update `focus`. These update the Web Document node
+state and reapply resolved KSS without requiring app logic to mirror browser
+pseudo-state.
+
 `webFormValue(target, query)` and `webFormValues(target)` expose current mounted
 native form values by Kry path, node name, key, and DOM id. Values are refreshed
 on render and after native `input`/`change` events.
@@ -230,7 +236,8 @@ non-browser tests.
 - Route helpers expose path/hash changes, and k2js can dispatch route pages
   declared in `.kry`; nested route parameters are not parsed yet.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
-  and `on_change(value)` actions in this slice.
+  `on_change(value)`, and native hover/pressed/focus facts for KSS state
+  selectors in this slice.
 - KSS parsing exists in C for style-rule tables and in the JS runtime for web
   DOM style application; k2js embeds resolvable style imports, but package
   discovery beyond `styles/kryon/<pack>.kss` and every style property are still

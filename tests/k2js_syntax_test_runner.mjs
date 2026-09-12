@@ -50,6 +50,15 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button#tap-button {
     background: id-face;
   }
+  Button#tap-button:hover {
+    background: #304050;
+  }
+  Button#tap-button:pressed {
+    background: #405060;
+  }
+  Button#tap-button:focus {
+    border: #506070;
+  }
   TextField.field {
     border-width: line;
     padding-y: field-y;
@@ -115,7 +124,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
     checked: false,
     invalid: false,
     expanded: false,
-    open: false
+    open: false,
+    hover: false,
+    pressed: false,
+    focus: false
   }
 });
 assert.deepEqual(runtime.webNodeStyleFacts(webDoc.nodes[2]), webDoc.nodes[2].styleFacts);
@@ -191,7 +203,13 @@ function fakeDocument() {
       addEventListener(type, fn) { this["on" + type] = fn; },
       click() { if (this.onclick) this.onclick(); },
       input(value) { this.value = value; if (this.oninput) this.oninput(); },
-      change(value) { this.value = value; if (this.onchange) this.onchange(); }
+      change(value) { this.value = value; if (this.onchange) this.onchange(); },
+      mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
+      mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
+      mousedown() { if (this.onmousedown) this.onmousedown(); },
+      mouseup() { if (this.onmouseup) this.onmouseup(); },
+      focus() { if (this.onfocus) this.onfocus(); },
+      blur() { if (this.onblur) this.onblur(); }
     };
     return element;
   };
@@ -290,6 +308,22 @@ function fakeDocument() {
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
     assert.equal(firstButton.style.paddingLeft, "13px");
+    firstButton.mouseenter();
+    assert.equal(firstButton.style.background, "#304050");
+    assert.equal(firstButton.__kryDocNode.state.hover, true);
+    firstButton.mousedown();
+    assert.equal(firstButton.style.background, "#405060");
+    assert.equal(firstButton.__kryDocNode.state.pressed, true);
+    firstButton.mouseup();
+    assert.equal(firstButton.style.background, "#304050");
+    firstButton.mouseleave();
+    assert.equal(firstButton.style.background, "#203040");
+    assert.equal(firstButton.__kryDocNode.state.hover, false);
+    firstButton.focus();
+    assert.equal(firstButton.style.borderColor, "#506070");
+    assert.equal(firstButton.__kryDocNode.state.focus, true);
+    firstButton.blur();
+    assert.equal(firstButton.style.borderColor, "");
     assert.equal(runtime.findWebNode(domRt, "Scene/root/tap").domId, "tap-button");
     assert.equal(runtime.findWebElement(target, "Scene/root/tap"), firstButton);
     assert.equal(runtime.findWebElement(target, "tap"), firstButton);

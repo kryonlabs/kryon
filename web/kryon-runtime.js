@@ -1077,7 +1077,10 @@ function webNodeFromWidget(item, index) {
     checked: isTruthyProp(args, "checked"),
     invalid: isTruthyProp(args, "invalid"),
     expanded: isTruthyProp(args, "expanded"),
-    open: isTruthyProp(args, "open")
+    open: isTruthyProp(args, "open"),
+    hover: false,
+    pressed: false,
+    focus: false
   };
   const node = {
     index,
@@ -1541,6 +1544,22 @@ function bindNodeEvents(el) {
   if (el.__kryClickBound)
     return;
   el.__kryClickBound = true;
+  const interactiveState = (changes) => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    Object.assign(docNode.state, changes);
+    docNode.styleFacts = webNodeStyleFacts(docNode);
+    applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+      ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+      : null);
+  };
+  el.addEventListener("mouseenter", () => interactiveState({ hover: true }));
+  el.addEventListener("mouseleave", () => interactiveState({ hover: false, pressed: false }));
+  el.addEventListener("mousedown", () => interactiveState({ pressed: true }));
+  el.addEventListener("mouseup", () => interactiveState({ pressed: false }));
+  el.addEventListener("focus", () => interactiveState({ focus: true }));
+  el.addEventListener("blur", () => interactiveState({ focus: false, pressed: false }));
   el.addEventListener("click", () => {
     const docNode = el.__kryDocNode;
     const rt = el.__kryRuntime;
