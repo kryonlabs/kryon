@@ -162,6 +162,11 @@ Scene :: (viewport: Rectangle) #ui {
             on_focus = focus_search
             on_blur = blur_search
         }
+        Text search_label: {
+            text = "Search"
+            dom = "label"
+            dom_for = "search-field"
+        }
         count += 1
     }
 }
@@ -253,6 +258,7 @@ grep -q '"multiple": true' "$out"
 grep -q '"inputMode": "search"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
+grep -q '"htmlFor": "search-field"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1

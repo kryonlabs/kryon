@@ -134,6 +134,7 @@ typedef struct KirStmt {
     char dom_href[KIR_TEXT_MAX];        /* requested browser link target */
     char dom_target[KIR_NAME_MAX];      /* requested browser browsing context */
     char dom_rel[KIR_TEXT_MAX];         /* requested browser link relation */
+    char dom_for_attr[KIR_NAME_MAX];    /* requested label/control id */
     char dom_data_attrs[KIR_TEXT_MAX];  /* requested data-* attributes */
     char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
     char dom_input_type[KIR_NAME_MAX];  /* requested browser input type */

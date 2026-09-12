@@ -90,6 +90,7 @@ export interface WebDocumentNode {
   href: string;
   target: string;
   rel: string;
+  htmlFor: string;
   dataAttrs: Record<string, string>;
   inputType: string;
   formAction: string;
@@ -174,6 +175,7 @@ export interface WebNodeStyleFacts {
   href: string;
   target: string;
   rel: string;
+  htmlFor: string;
   inputType: string;
   formAction: string;
   formMethod: string;

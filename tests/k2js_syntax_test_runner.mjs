@@ -91,7 +91,7 @@ const snap = generated.frame(rt, state, host);
 assert.equal(state.count, 1);
 assert.equal(state.viewport_width, 320);
 assert.equal(state.viewport_height, 240);
-assert.equal(snap.frame.length, 4);
+assert.equal(snap.frame.length, 5);
 assert.equal(snap.frame[0].name, "Screen");
 assert.equal(snap.frame[1].name, "Text");
 assert.equal(snap.frame[2].name, "Button");
@@ -105,7 +105,8 @@ assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
   ["Screen", "main"],
   ["Text", "div"],
   ["Button", "button"],
-  ["TextField", "input"]
+  ["TextField", "input"],
+  ["Text", "label"]
 ]);
 assert.equal(webDoc.nodes[2].text, "Tap");
 assert.deepEqual(webDoc.nodes[2].bounds, { x: 10, y: 50, width: 120, height: 28 });
@@ -139,6 +140,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   href: "",
   target: "",
   rel: "",
+  htmlFor: "",
   inputType: "",
   formAction: "",
   formMethod: "",
@@ -209,6 +211,8 @@ assert.equal(runtime.webNodeQuery(rt, "[multiple=true]").path, "Scene/root/searc
 assert.equal(runtime.webNodeQuery(rt, "[multiple]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[data-role]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[for=\"search-field\"]").path, "Scene/root/search_label");
+assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-field\"]").path, "Scene/root/search_label");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -567,12 +571,15 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[multiple]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[inputmode=search]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[data-role]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[for=\"search-field\"]").ref, "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
     assert.deepEqual(domRefs.slice(2), [
       "Scene/root/tap",
-      "Scene/root/search"
+      "Scene/root/search",
+      "Scene/root/search_label"
     ]);
     const firstField = screen.children[2];
     assert.equal(firstField.tagName, "INPUT");
@@ -599,6 +606,10 @@ function fakeDocument() {
     assert.equal(firstField.dataset.kryOnSubmit, "submit_search");
     assert.equal(firstField.dataset.kryOnFocus, "focus_search");
     assert.equal(firstField.dataset.kryOnBlur, "blur_search");
+    const searchLabel = screen.children[3];
+    assert.equal(searchLabel.tagName, "LABEL");
+    assert.equal(searchLabel.attributes.for, "search-field");
+    assert.equal(searchLabel.textContent, "Search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
@@ -629,6 +640,7 @@ function fakeDocument() {
     assert.equal(screen.children[0], firstText);
     assert.equal(screen.children[1], firstButton);
     assert.equal(screen.children[2], firstField);
+    assert.equal(screen.children[3], searchLabel);
     runtime.setWebStyleSheets(domRt, []);
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "");
@@ -728,7 +740,7 @@ assert.equal(state.viewport_height, 240);
 const defaultSnapshot = generated.frame();
 assert.equal(generated.moduleState.viewport_width, 320);
 assert.equal(generated.moduleState.viewport_height, 240);
-assert.equal(defaultSnapshot.frame.length, 4);
+assert.equal(defaultSnapshot.frame.length, 5);
 
 const mounted = generated.main(null, host);
 assert.equal(mounted.mounted, false);

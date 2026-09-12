@@ -454,6 +454,7 @@ typedef struct UiBlock {
     char dom_href[KIR_TEXT_MAX];
     char dom_target[KIR_NAME_MAX];
     char dom_rel[KIR_TEXT_MAX];
+    char dom_for_attr[KIR_NAME_MAX];
     char dom_data_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
     char dom_input_type[KIR_NAME_MAX];
@@ -724,6 +725,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_rel, sizeof(block->dom_rel), "%s", value);
         return 1;
     }
+    if(strcmp(field, "dom_for") == 0 || strcmp(field, "html_for") == 0 ||
+       strcmp(field, "for_attr") == 0) {
+        snprintf(block->dom_for_attr, sizeof(block->dom_for_attr), "%s",
+                 value);
+        return 1;
+    }
     if(strncmp(field, "data_", 5) == 0 ||
        strncmp(field, "dom_data_", 9) == 0 ||
        strncmp(field, "html_data_", 10) == 0) {
@@ -978,6 +985,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_target);
     snprintf(statement->dom_rel, sizeof(statement->dom_rel), "%s",
              block->dom_rel);
+    snprintf(statement->dom_for_attr, sizeof(statement->dom_for_attr), "%s",
+             block->dom_for_attr);
     snprintf(statement->dom_data_attrs, sizeof(statement->dom_data_attrs),
              "%s", block->dom_data_attrs);
     snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),

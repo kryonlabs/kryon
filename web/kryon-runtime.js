@@ -1130,6 +1130,7 @@ function webNodeFromWidget(item, index) {
     href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
+    htmlFor: metaString(meta, "htmlFor"),
     dataAttrs: propDataAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
     formAction: meta.formAction === undefined || meta.formAction === null ? "" : String(meta.formAction),
@@ -1206,6 +1207,7 @@ export function webNodeStyleFacts(node) {
     href: node?.href || "",
     target: node?.target || "",
     rel: node?.rel || "",
+    htmlFor: node?.htmlFor || "",
     inputType: node?.inputType || "",
     formAction: node?.formAction || "",
     formMethod: node?.formMethod || "",
@@ -1499,6 +1501,7 @@ function selectorNativeAttrValue(key, facts) {
     case "maxlength": return facts.maxLength;
     case "inputmode": return facts.inputMode;
     case "multiple": return facts.multiple;
+    case "for": return facts.htmlFor;
     default: return facts[key];
   }
 }
@@ -1960,6 +1963,7 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
   setAttr(el, "rel", docNode.rel);
+  setAttr(el, "for", docNode.htmlFor);
   applyDataAttrs(el, docNode.dataAttrs);
   setAttr(el, "type", docNode.inputType);
   setAttr(el, "action", docNode.formAction);
