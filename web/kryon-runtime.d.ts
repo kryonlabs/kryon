@@ -434,46 +434,82 @@ declare global {
     kryDelegate?(selector: string, type: string, handler: (event: Event, object: WebDOMObject) => unknown,
       options?: boolean | AddEventListenerOptions): (() => void) | null;
     kryAddClass?(className: string): boolean;
+    kryAddClass?(query: string, className: string): boolean;
     kryRemoveClass?(className: string): boolean;
+    kryRemoveClass?(query: string, className: string): boolean;
     kryToggleClass?(className: string, force?: boolean): boolean;
+    kryToggleClass?(query: string, className: string, force?: boolean): boolean;
     kryHasClass?(className: string): boolean;
+    kryHasClass?(query: string, className: string): boolean;
     kryGetAttr?(name: string): string | undefined;
+    kryGetAttr?(query: string, name: string): string | undefined;
     krySetAttr?(name: string, value?: unknown): boolean;
+    krySetAttr?(query: string, name: string, value?: unknown): boolean;
     kryRemoveAttr?(name: string): boolean;
+    kryRemoveAttr?(query: string, name: string): boolean;
     kryHasAttr?(name: string): boolean;
+    kryHasAttr?(query: string, name: string): boolean;
     kryGetProp?(name: string): unknown;
+    kryGetProp?(query: string, name: string): unknown;
     krySetProp?(name: string, value: unknown): boolean;
+    krySetProp?(query: string, name: string, value: unknown): boolean;
     kryGetStyle?(name: string): string | undefined;
+    kryGetStyle?(query: string, name: string): string | undefined;
     krySetStyle?(name: string, value?: unknown): boolean;
+    krySetStyle?(query: string, name: string, value?: unknown): boolean;
     kryRemoveStyle?(name: string): boolean;
+    kryRemoveStyle?(query: string, name: string): boolean;
     kryComputedStyle?(name?: string): unknown;
+    kryComputedStyle?(query: string, name?: string): unknown;
     kryGetState?(name: string): boolean | undefined;
+    kryGetState?(query: string, name: string): boolean | undefined;
     krySetState?(name: string, value: boolean): boolean;
+    krySetState?(query: string, name: string, value: boolean): boolean;
+    kryToggleState?(query: string, name: string, force?: boolean): boolean;
     kryText?: {
       (): string | undefined;
       (text: unknown): boolean;
+      (query: string): string | undefined;
+      (query: string, text: unknown): boolean;
     };
     kryValue?: {
       (): unknown;
       (value: unknown): boolean;
+      (query: string): unknown;
+      (query: string, value: unknown): boolean;
     };
     kryDispatch?(type: string, init?: Record<string, unknown>): boolean;
+    kryDispatch?(query: string, type: string, init?: Record<string, unknown>): boolean;
     kryClick?(): boolean;
+    kryClick?(query: string): boolean;
     kryFocus?(): boolean;
+    kryFocus?(query: string): boolean;
     kryBlur?(): boolean;
+    kryBlur?(query: string): boolean;
     krySubmit?(): boolean;
+    krySubmit?(query: string): boolean;
     kryReset?(): boolean;
+    kryReset?(query: string): boolean;
     kryRect?(): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
+    kryRect?(query: string): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
     kryScroll?: {
       (): { left: number; top: number; width: number; height: number } | null;
       (left: number, top?: number | null): boolean;
+      (query: string): { left: number; top: number; width: number; height: number } | null;
+      (query: string, left: number, top?: number | null): boolean;
     };
     kryScrollIntoView?(options?: boolean | ScrollIntoViewOptions): boolean;
+    kryScrollIntoView?(query: string, options?: boolean | ScrollIntoViewOptions): boolean;
     kryShowModal?(): boolean;
+    kryShowModal?(query: string): boolean;
     kryClose?(returnValue?: string): boolean;
+    kryClose?(query: string, returnValue?: string): boolean;
     kryShowPopover?(): boolean;
+    kryShowPopover?(query: string): boolean;
     kryHidePopover?(): boolean;
+    kryHidePopover?(query: string): boolean;
     kryTogglePopover?(force?: boolean): boolean;
+    kryTogglePopover?(query: string, force?: boolean): boolean;
   }
 
   interface Event {

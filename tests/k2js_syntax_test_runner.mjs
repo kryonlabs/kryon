@@ -1129,6 +1129,7 @@ function fakeDocument() {
     assert.equal(root.kryAtSource("src/valid.kry", webDoc.nodes[2].sourceLine,
       webDoc.nodes[2].sourceColumn).element, firstButton);
     assert.equal(Object.keys(root).includes("kryQuery"), false);
+    assert.equal(Object.keys(root).includes("kryAddClass"), false);
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
     assert.ok(Number(firstButton.dataset.kryLine) > 0);
     assert.ok(Number(firstButton.dataset.kryColumn) > 0);
@@ -1165,6 +1166,10 @@ function fakeDocument() {
     assert.equal(firstButton.style.borderColor, "#506070");
     assert.equal(firstButton.__kryDocNode.state.focus, true);
     assert.equal(firstButton.kryBlur(), true);
+    assert.equal(firstButton.__kryDocNode.state.focus, false);
+    assert.equal(root.kryFocus("tap-button"), true);
+    assert.equal(firstButton.__kryDocNode.state.focus, true);
+    assert.equal(root.kryBlur("tap-button"), true);
     assert.equal(firstButton.__kryDocNode.state.focus, false);
     assert.equal(firstButton.kryFocus(), true);
     assert.equal(firstButton.__kryDocNode.state.focus, true);
@@ -1356,6 +1361,16 @@ function fakeDocument() {
       right: 130,
       bottom: 78
     });
+    assert.deepEqual(root.kryRect("tap-button"), {
+      x: 10,
+      y: 50,
+      width: 120,
+      height: 28,
+      left: 10,
+      top: 50,
+      right: 130,
+      bottom: 78
+    });
     assert.deepEqual(firstButton.kryRect(), {
       x: 10,
       y: 50,
@@ -1399,6 +1414,14 @@ function fakeDocument() {
     assert.equal(runtime.webDOMToggleClass(target, "tap-button", "runtime-selected", true), true);
     assert.equal(runtime.webDOMRemoveClass(target, "tap-button", "runtime-selected"), true);
     assert.equal(runtime.webDOMHasClass(target, "tap-button", "runtime-selected"), false);
+    assert.equal(root.kryAddClass("tap-button", "root-selected"), true);
+    assert.equal(root.kryHasClass("Scene/root/tap", "root-selected"), true);
+    assert.equal(runtime.webDOMQuery(target, "Button.root-selected").element, firstButton);
+    assert.equal(root.kryToggleClass("tap-button", "root-selected"), true);
+    assert.equal(root.kryHasClass("tap-button", "root-selected"), false);
+    assert.equal(root.kryToggleClass("tap-button", "root-selected", true), true);
+    assert.equal(root.kryRemoveClass("tap-button", "root-selected"), true);
+    assert.equal(root.kryHasClass("tap-button", "root-selected"), false);
     assert.equal(firstButton.kryAddClass("method-selected"), true);
     assert.equal(firstButton.kryHasClass("method-selected"), true);
     assert.equal(runtime.webDOMQuery(target, "Button.method-selected").element, firstButton);
@@ -1422,6 +1445,12 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetAttribute(target, "Scene/root/tap", "data-runtime"), "1");
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMQuery(target, "[data-runtime=\"1\"]").element, firstButton);
+    assert.equal(root.krySetAttr("tap-button", "data-root", "4"), true);
+    assert.equal(root.kryGetAttr("tap-button", "data-root"), "4");
+    assert.equal(root.kryHasAttr("tap-button", "data-root"), true);
+    assert.equal(runtime.webDOMQuery(target, "[data-root=\"4\"]").element, firstButton);
+    assert.equal(root.kryRemoveAttr("tap-button", "data-root"), true);
+    assert.equal(root.kryHasAttr("tap-button", "data-root"), false);
     assert.equal(firstButton.krySetAttr("data-local", "2"), true);
     assert.equal(firstButton.kryGetAttr("data-local"), "2");
     assert.equal(firstButton.kryHasAttr("data-local"), true);
@@ -1441,6 +1470,7 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetStyle(target, "Scene/root/tap", "background"), "pink");
     assert.equal(runtime.webDOMComputedStyle(target, "Scene/root/tap", "background"), "pink");
     assert.equal(firstButton.kryComputedStyle("background"), "pink");
+    assert.equal(root.kryComputedStyle("tap-button", "background"), "pink");
     assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "2");
     assert.equal(runtime.webDOMComputedStyle(target, "tap-button", "--accent-level"), "2");
     assert.equal(firstButton.kryComputedStyle("--accent-level"), "2");
@@ -1456,6 +1486,10 @@ function fakeDocument() {
     assert.equal(firstButton.style.background, "lavender");
     assert.equal(firstButton.kryRemoveStyle("background"), true);
     assert.equal(firstButton.style.background, "#203040");
+    assert.equal(root.krySetStyle("tap-button", "background", "seagreen"), true);
+    assert.equal(root.kryGetStyle("tap-button", "background"), "seagreen");
+    assert.equal(root.kryRemoveStyle("tap-button", "background"), true);
+    assert.equal(firstButton.style.background, "#203040");
     assert.equal(buttonObject.setStyle("background", "cornflowerblue"), true);
     assert.equal(buttonObject.getStyle("background"), "cornflowerblue");
     assert.equal(buttonObject.computedStyle("background"), "cornflowerblue");
@@ -1467,13 +1501,20 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetProperty(target, "tap-button", "disabled"), true);
+    assert.equal(root.kryGetProp("tap-button", "disabled"), true);
     assert.equal(firstButton.kryGetProp("disabled"), true);
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), true);
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", false), true);
+    assert.equal(root.krySetProp("tap-button", "disabled", true), true);
+    assert.equal(root.kryGetProp("tap-button", "disabled"), true);
     assert.equal(firstButton.krySetProp("disabled", true), true);
     assert.equal(firstButton.kryGetProp("disabled"), true);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetState(target, "Scene/root/tap", "disabled"), true);
+    assert.equal(root.kryGetState("tap-button", "disabled"), true);
+    assert.equal(root.kryToggleState("tap-button", "disabled"), true);
+    assert.equal(root.kryGetState("tap-button", "disabled"), false);
+    assert.equal(root.krySetState("tap-button", "disabled", true), true);
     assert.equal(firstButton.kryGetState("disabled"), true);
     assert.equal(firstButton.krySetState("disabled", false), true);
     assert.equal(firstButton.kryGetState("disabled"), false);
@@ -1499,6 +1540,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
     assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
+    assert.equal(root.kryText("tap-button"), "Launch");
+    assert.equal(root.kryText("tap-button", "Root text"), true);
+    assert.equal(root.kryText("tap-button"), "Root text");
+    assert.equal(root.kryText("tap-button", "Launch"), true);
     assert.equal(firstButton.kryText(), "Launch");
     assert.equal(firstButton.kryText("Go"), true);
     assert.equal(firstButton.kryText(), "Go");
@@ -1586,12 +1631,23 @@ function fakeDocument() {
     assert.equal(fieldObject.scroll(13, 29), true);
     assert.equal(firstField.__kryDocNode.scrollLeft, 13);
     assert.equal(firstField.__kryDocNode.scrollTop, 29);
+    assert.deepEqual(root.kryScroll("search-box"), {
+      left: 13,
+      top: 29,
+      width: 0,
+      height: 0
+    });
+    assert.equal(root.kryScroll("search-box", 17, 31), true);
+    assert.equal(firstField.__kryDocNode.scrollLeft, 17);
+    assert.equal(firstField.__kryDocNode.scrollTop, 31);
     assert.equal(runtime.webDOMScrollIntoView(target, "[data-role]", { block: "center" }), true);
     assert.deepEqual(firstField.scrolledIntoView, { block: "center" });
     assert.equal(firstField.kryScrollIntoView({ inline: "nearest" }), true);
     assert.deepEqual(firstField.scrolledIntoView, { inline: "nearest" });
     assert.equal(fieldObject.scrollIntoView({ block: "nearest" }), true);
     assert.deepEqual(firstField.scrolledIntoView, { block: "nearest" });
+    assert.equal(root.kryScrollIntoView("search-box", { inline: "center" }), true);
+    assert.deepEqual(firstField.scrolledIntoView, { inline: "center" });
     assert.equal(firstButton.attributes["aria-current"], "page");
     assert.equal(firstButton.attributes["aria-pressed"], "false");
     assert.equal(firstField.tagName, "INPUT");
@@ -1662,6 +1718,9 @@ function fakeDocument() {
     assert.equal(fieldObject.value("object"), true);
     assert.equal(fieldObject.value(), "object");
     assert.equal(runtime.webFormValue(target, "q"), "object");
+    assert.equal(root.kryValue("search-box"), "object");
+    assert.equal(root.kryValue("search-box", "root-value"), true);
+    assert.equal(root.kryValue("search-box"), "root-value");
     assert.equal(runtime.webDOMSetProperty(target, "q", "value", "property"), true);
     assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "property");
     assert.equal(runtime.webFormValue(target, "q"), "property");
@@ -1712,6 +1771,8 @@ function fakeDocument() {
     assert.equal(domState.count, countBeforeDispatch + 2000);
     assert.equal(fieldObject.dispatch("keydown", { key: "Escape" }), true);
     assert.equal(domState.count, countBeforeDispatch + 3000);
+    assert.equal(root.kryDispatch("[name=q]", "keydown", { key: "Escape" }), true);
+    assert.equal(domState.count, countBeforeDispatch + 4000);
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "focus"), true);
     assert.equal(firstField.__kryDocNode.state.focus, true);
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "blur"), true);
@@ -1739,6 +1800,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMClick(target, "tap-button"), true);
     assert.equal(domRt.input.events.at(-1).type, "tap");
     assert.equal(firstButton.kryClick(), true);
+    assert.equal(domRt.input.events.at(-1).type, "tap");
+    assert.equal(root.kryClick("tap-button"), true);
     assert.equal(domRt.input.events.at(-1).type, "tap");
     const previousEventCount = domRt.input.events.length;
     const nextRt = runtime.createRuntime({ app: generated.app });

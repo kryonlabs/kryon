@@ -337,6 +337,10 @@ Mount roots also provide non-enumerable `kryElement(query)`,
 `kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
 `kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser
 code can resolve `.kry` nodes without importing the module-level helpers.
+They also expose query-based `kryAddClass(...)`, `krySetAttr(...)`,
+`krySetStyle(...)`, `krySetState(...)`, `kryText(...)`, `kryValue(...)`,
+`kryDispatch(...)`, geometry, scroll, dialog, popover, and native command
+methods that mirror the module-level `webDOM*` helpers from the mount root.
 
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.

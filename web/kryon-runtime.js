@@ -3505,6 +3505,237 @@ function bindWebRootProperties(root) {
       value(selector, type, handler, options) {
         return webDOMAddDelegatedEventListener(this, selector, type, handler, options);
       }
+    },
+    kryAddClass: {
+      configurable: true,
+      enumerable: false,
+      value(query, className) {
+        return webDOMAddClass(this, query, className);
+      }
+    },
+    kryRemoveClass: {
+      configurable: true,
+      enumerable: false,
+      value(query, className) {
+        return webDOMRemoveClass(this, query, className);
+      }
+    },
+    kryToggleClass: {
+      configurable: true,
+      enumerable: false,
+      value(query, className, force) {
+        return webDOMToggleClass(this, query, className, force);
+      }
+    },
+    kryHasClass: {
+      configurable: true,
+      enumerable: false,
+      value(query, className) {
+        return webDOMHasClass(this, query, className);
+      }
+    },
+    kryGetAttr: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMGetAttribute(this, query, name);
+      }
+    },
+    krySetAttr: {
+      configurable: true,
+      enumerable: false,
+      value(query, name, value = "") {
+        return webDOMSetAttribute(this, query, name, value);
+      }
+    },
+    kryRemoveAttr: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMRemoveAttribute(this, query, name);
+      }
+    },
+    kryHasAttr: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMHasAttribute(this, query, name);
+      }
+    },
+    kryGetProp: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMGetProperty(this, query, name);
+      }
+    },
+    krySetProp: {
+      configurable: true,
+      enumerable: false,
+      value(query, name, value) {
+        return webDOMSetProperty(this, query, name, value);
+      }
+    },
+    kryGetStyle: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMGetStyle(this, query, name);
+      }
+    },
+    krySetStyle: {
+      configurable: true,
+      enumerable: false,
+      value(query, name, value = "") {
+        return webDOMSetStyle(this, query, name, value);
+      }
+    },
+    kryRemoveStyle: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMRemoveStyle(this, query, name);
+      }
+    },
+    kryComputedStyle: {
+      configurable: true,
+      enumerable: false,
+      value(query, name = "") {
+        return webDOMComputedStyle(this, query, name);
+      }
+    },
+    kryGetState: {
+      configurable: true,
+      enumerable: false,
+      value(query, name) {
+        return webDOMGetState(this, query, name);
+      }
+    },
+    krySetState: {
+      configurable: true,
+      enumerable: false,
+      value(query, name, value) {
+        return webDOMSetState(this, query, name, value);
+      }
+    },
+    kryToggleState: {
+      configurable: true,
+      enumerable: false,
+      value(query, name, force) {
+        return webDOMToggleState(this, query, name, force);
+      }
+    },
+    kryText: {
+      configurable: true,
+      enumerable: false,
+      value(query, text) {
+        return text === undefined ? webDOMGetText(this, query) : webDOMSetText(this, query, text);
+      }
+    },
+    kryValue: {
+      configurable: true,
+      enumerable: false,
+      value(query, value) {
+        return value === undefined ? webDOMGetValue(this, query) : webDOMSetValue(this, query, value);
+      }
+    },
+    kryDispatch: {
+      configurable: true,
+      enumerable: false,
+      value(query, type, init = {}) {
+        return webDOMDispatchEvent(this, query, type, init);
+      }
+    },
+    kryClick: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMClick(this, query);
+      }
+    },
+    kryFocus: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMFocus(this, query);
+      }
+    },
+    kryBlur: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMBlur(this, query);
+      }
+    },
+    krySubmit: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMSubmit(this, query);
+      }
+    },
+    kryReset: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMReset(this, query);
+      }
+    },
+    kryRect: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMRect(this, query);
+      }
+    },
+    kryScroll: {
+      configurable: true,
+      enumerable: false,
+      value(query, left, top = null) {
+        return left === undefined ? webDOMGetScroll(this, query) : webDOMSetScroll(this, query, left, top);
+      }
+    },
+    kryScrollIntoView: {
+      configurable: true,
+      enumerable: false,
+      value(query, options = true) {
+        return webDOMScrollIntoView(this, query, options);
+      }
+    },
+    kryShowModal: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMShowModal(this, query);
+      }
+    },
+    kryClose: {
+      configurable: true,
+      enumerable: false,
+      value(query, returnValue = "") {
+        return webDOMClose(this, query, returnValue);
+      }
+    },
+    kryShowPopover: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMShowPopover(this, query);
+      }
+    },
+    kryHidePopover: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMHidePopover(this, query);
+      }
+    },
+    kryTogglePopover: {
+      configurable: true,
+      enumerable: false,
+      value(query, force) {
+        return webDOMTogglePopover(this, query, force);
+      }
     }
   });
   root.__kryRootPropertiesBound = true;
