@@ -5,16 +5,16 @@
 #include "ui_image.h"
 #include "ui_tree.h"
 
-typedef enum UISemanticKind {
-    UI_SEMANTIC_NONE = 0,
-    UI_SEMANTIC_PAGE,
-    UI_SEMANTIC_SECTION,
-    UI_SEMANTIC_HEADING,
-    UI_SEMANTIC_PARAGRAPH,
-    UI_SEMANTIC_LINK,
-    UI_SEMANTIC_IMAGE,
-    UI_SEMANTIC_BUTTON
-} UISemanticKind;
+typedef enum SemanticKind {
+    SEMANTIC_NONE = 0,
+    SEMANTIC_PAGE,
+    SEMANTIC_SECTION,
+    SEMANTIC_HEADING,
+    SEMANTIC_PARAGRAPH,
+    SEMANTIC_LINK,
+    SEMANTIC_IMAGE,
+    SEMANTIC_BUTTON
+} SemanticKind;
 
 typedef struct PageProps {
     Rectangle bounds;

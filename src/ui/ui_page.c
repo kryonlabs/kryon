@@ -51,14 +51,14 @@ page_color_or(Color color, Color fallback)
 }
 
 static void
-page_semantic_box(UISemanticKind kind, Rectangle bounds, const char *label)
+page_semantic_box(SemanticKind kind, Rectangle bounds, const char *label)
 {
     if(kry_dom_semantic_box != NULL)
         kry_dom_semantic_box((int)kind, bounds, label);
 }
 
 static void
-page_semantic_next(UISemanticKind kind, const char *label, const char *href,
+page_semantic_next(SemanticKind kind, const char *label, const char *href,
                    const char *role, int level, int tab_index)
 {
     if(kry_dom_semantic_next != NULL)
@@ -181,7 +181,7 @@ Page(PageProps props)
         SetPageThemeColor(props.theme_color);
     if(props.background.a != 0)
         Background(props.background);
-    page_semantic_box(UI_SEMANTIC_PAGE, bounds, props.title);
+    page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
     return Column((ColumnProps){bounds, props.gap, props.padding, key});
 }
 
@@ -191,7 +191,7 @@ Section(SectionProps props)
     Rectangle bounds = page_bounds_or_view(props.bounds);
     KeyID key = props.key != 0 ? props.key : Key(props.label);
 
-    page_semantic_box(UI_SEMANTIC_SECTION, bounds, props.label);
+    page_semantic_box(SEMANTIC_SECTION, bounds, props.label);
     return Column((ColumnProps){bounds, props.gap, props.padding, key});
 }
 
@@ -233,14 +233,14 @@ ParagraphText(ParagraphTextProps props)
     paragraph.font = props.font > 0 ? props.font : GetFontSize();
     paragraph.line_gap = props.line_gap;
     paragraph.color = page_color_or(props.color, GetThemeText());
-    page_semantic_next(UI_SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
+    page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }
 
 int
 Link(LinkProps props)
 {
-    page_semantic_next(UI_SEMANTIC_LINK, props.text, props.link, "link", 0,
+    page_semantic_next(SEMANTIC_LINK, props.text, props.link, "link", 0,
                        props.focus_id);
     return RenderLink(props);
 }
@@ -248,7 +248,7 @@ Link(LinkProps props)
 void
 PageImage(ImageProps image, const char *alt_text)
 {
-    page_semantic_next(UI_SEMANTIC_IMAGE, alt_text, NULL, "img", 0, -1);
+    page_semantic_next(SEMANTIC_IMAGE, alt_text, NULL, "img", 0, -1);
     RenderImage(image);
 }
 

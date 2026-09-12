@@ -91,7 +91,7 @@ type FrameOp struct {
 	SelectionEndCol   int32
 	IconType          int32
 	IconSize          float32
-	Semantic          UISemanticKind
+	Semantic          SemanticKind
 	Link              string
 	Role              string
 	AltText           string

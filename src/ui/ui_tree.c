@@ -116,7 +116,7 @@ ui_tree_heading_semantic(const char *text, int level)
 {
 #if defined(__GNUC__) || defined(__clang__)
     if(level > 0 && kry_dom_semantic_next != NULL)
-        kry_dom_semantic_next(UI_SEMANTIC_HEADING, text, NULL, NULL, level, -1);
+        kry_dom_semantic_next(SEMANTIC_HEADING, text, NULL, NULL, level, -1);
 #else
     (void)text;
     (void)level;

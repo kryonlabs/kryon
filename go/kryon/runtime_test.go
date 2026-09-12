@@ -937,13 +937,13 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	var sawPage, sawHeading, sawLink, sawImage, sawGrid bool
 	for _, op := range rt.FrameOps() {
 		switch {
-		case op.Kind == FrameOpPage && op.Semantic == UISemanticPage && op.Bounds.Width == 320:
+		case op.Kind == FrameOpPage && op.Semantic == SemanticPage && op.Bounds.Width == 320:
 			sawPage = true
-		case op.Kind == FrameOpText && op.Semantic == UISemanticHeading && op.Level == 2 && op.Text == "Install":
+		case op.Kind == FrameOpText && op.Semantic == SemanticHeading && op.Level == 2 && op.Text == "Install":
 			sawHeading = true
-		case op.Kind == FrameOpText && op.Semantic == UISemanticLink && op.Link == "/more":
+		case op.Kind == FrameOpText && op.Semantic == SemanticLink && op.Link == "/more":
 			sawLink = true
-		case op.Kind == FrameOpImage && op.Semantic == UISemanticImage && op.AltText == "Hero":
+		case op.Kind == FrameOpImage && op.Semantic == SemanticImage && op.AltText == "Hero":
 			sawImage = true
 		case op.Kind == FrameOpGrid && op.Columns == 2:
 			sawGrid = true

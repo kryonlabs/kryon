@@ -39,7 +39,7 @@ type ThemeSource int32
 type ThemeMode int32
 type ImageFit int32
 type MenuItemKind int32
-type UISemanticKind int32
+type SemanticKind int32
 
 const (
 	FlagVsyncHint       uint = 0x00000040
@@ -174,23 +174,14 @@ const (
 )
 
 const (
-	UISemanticNone UISemanticKind = iota
-	UISemanticPage
-	UISemanticSection
-	UISemanticHeading
-	UISemanticParagraph
-	UISemanticLink
-	UISemanticImage
-	UISemanticButton
-
-	UI_SEMANTIC_NONE      = UISemanticNone
-	UI_SEMANTIC_PAGE      = UISemanticPage
-	UI_SEMANTIC_SECTION   = UISemanticSection
-	UI_SEMANTIC_HEADING   = UISemanticHeading
-	UI_SEMANTIC_PARAGRAPH = UISemanticParagraph
-	UI_SEMANTIC_LINK      = UISemanticLink
-	UI_SEMANTIC_IMAGE     = UISemanticImage
-	UI_SEMANTIC_BUTTON    = UISemanticButton
+	SemanticNone SemanticKind = iota
+	SemanticPage
+	SemanticSection
+	SemanticHeading
+	SemanticParagraph
+	SemanticLink
+	SemanticImage
+	SemanticButton
 )
 
 const (
@@ -4531,7 +4522,7 @@ func (r *runtime) Page(props PageProps) {
 	if props.Background.A != 0 {
 		r.Background(props.Background)
 	}
-	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: UISemanticPage})
+	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage})
 	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
 }
 func (r *runtime) Section(props SectionProps) {
@@ -4540,7 +4531,7 @@ func (r *runtime) Section(props SectionProps) {
 	if key == 0 {
 		key = Key(props.Label)
 	}
-	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: UISemanticSection})
+	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: SemanticSection})
 	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
 }
 func (r *runtime) Heading(props HeadingProps) {
@@ -4566,7 +4557,7 @@ func (r *runtime) Heading(props HeadingProps) {
 		bounds.Height = float32(font)
 	}
 	bounds = r.layoutRect(bounds)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: UISemanticHeading, Level: level})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
 }
 func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	font := props.Font
@@ -4582,7 +4573,7 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
 	}
 	bounds := r.layoutRect(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: float32(width), Height: float32(font + props.LineGap)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: UISemanticParagraph})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, ID: int32(props.Key), Semantic: SemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {
 	font := props.Font
@@ -4604,12 +4595,12 @@ func (r *runtime) Link(props LinkProps) bool {
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: UISemanticLink, Link: props.Link, Role: "link"})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
 }
 func (r *runtime) PageImage(props ImageProps, altText string) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: UISemanticImage, Role: "img", AltText: altText})
+	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint, Semantic: SemanticImage, Role: "img", AltText: altText})
 }
 func (r *runtime) Flow(props FlowProps) {
 	r.Row(ColumnProps(props))
