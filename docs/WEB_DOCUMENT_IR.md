@@ -329,6 +329,10 @@ and current Kry DOM objects.
 the root itself. `webDOMFrame(target)` returns the last rendered Web Document
 frame. The mount root also exposes non-enumerable `kryRuntime`, `kryFrame`, and
 `kryObjects` getters for browser inspectors and host integrations.
+Mount roots also provide non-enumerable `kryElement(query)`,
+`kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
+`kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser
+code can resolve `.kry` nodes without importing the module-level helpers.
 
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.

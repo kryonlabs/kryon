@@ -351,6 +351,11 @@ declare global {
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];
+    kryElement?(query: string): Element | null;
+    kryObject?(query: string): WebDOMObject | null;
+    kryQuery?(selector: string): WebDOMObject | null;
+    kryQueryAll?(selector: string): WebDOMObject[];
+    kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
   }
 
   interface Event {

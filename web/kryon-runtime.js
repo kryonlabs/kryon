@@ -2671,6 +2671,41 @@ function bindWebRootProperties(root) {
       get() {
         return webDOMObjectsFromRoot(this);
       }
+    },
+    kryElement: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return findWebElement(this, query);
+      }
+    },
+    kryObject: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMObject(this, query);
+      }
+    },
+    kryQuery: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        return webDOMQuery(this, selector);
+      }
+    },
+    kryQueryAll: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        return webDOMQueryAll(this, selector);
+      }
+    },
+    kryAtSource: {
+      configurable: true,
+      enumerable: false,
+      value(sourcePath, sourceLine, sourceColumn = 0) {
+        return webDOMObjectAtSource(this, sourcePath, sourceLine, sourceColumn);
+      }
     }
   });
   root.__kryRootPropertiesBound = true;
