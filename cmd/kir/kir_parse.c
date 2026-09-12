@@ -473,6 +473,7 @@ typedef struct UiBlock {
     char dom_on_change[KIR_NAME_MAX];
     char dom_on_key[KIR_NAME_MAX];
     char dom_on_submit[KIR_NAME_MAX];
+    char dom_on_reset[KIR_NAME_MAX];
     char dom_on_focus[KIR_NAME_MAX];
     char dom_on_blur[KIR_NAME_MAX];
     char dom_on_mouse_enter[KIR_NAME_MAX];
@@ -837,6 +838,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "on_reset") == 0) {
+        snprintf(block->dom_on_reset, sizeof(block->dom_on_reset), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "on_focus") == 0) {
         snprintf(block->dom_on_focus, sizeof(block->dom_on_focus), "%s",
                  value);
@@ -940,6 +946,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_key);
     snprintf(statement->dom_on_submit, sizeof(statement->dom_on_submit), "%s",
              block->dom_on_submit);
+    snprintf(statement->dom_on_reset, sizeof(statement->dom_on_reset), "%s",
+             block->dom_on_reset);
     snprintf(statement->dom_on_focus, sizeof(statement->dom_on_focus), "%s",
              block->dom_on_focus);
     snprintf(statement->dom_on_blur, sizeof(statement->dom_on_blur), "%s",

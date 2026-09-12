@@ -260,6 +260,7 @@ function fakeDocument() {
       },
       keydown(key) { if (this.onkeydown) this.onkeydown({ key }); },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
+      reset() { if (this.onreset) this.onreset({ preventDefault() {} }); },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
       mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
       mousedown() { if (this.onmousedown) this.onmousedown(); },
@@ -345,6 +346,7 @@ function fakeDocument() {
     assert.equal(runtime.webFormValue(formTarget, "confirm"), false);
 
     let submitValues = null;
+    let resetValues = null;
     const submitRt = runtime.createRuntime();
     runtime.beginFrame(submitRt);
     runtime.widget(submitRt, "Column", {}, null,
@@ -356,7 +358,9 @@ function fakeDocument() {
         formMethod: "post",
         formEncType: "multipart/form-data",
         autoComplete: "off",
-        submitAction(values) { submitValues = values; }
+        onReset: "clear_contact",
+        submitAction(values) { submitValues = values; },
+        resetAction(values) { resetValues = values; }
       });
     runtime.widget(submitRt, "TextField", { text: "hello@example.test" }, null,
       { nodeName: "email", path: "Page/contact/email", parentPath: "Page/contact", domName: "email" });
@@ -376,9 +380,13 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(submitTarget, "[method=post]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[enctype=\"multipart/form-data\"]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[autocomplete=off]").element, submitForm);
+    assert.equal(submitForm.dataset.kryOnReset, "clear_contact");
     submitForm.submit();
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
+    submitForm.reset();
+    assert.equal(resetValues.email, "hello@example.test");
+    assert.equal(resetValues["Page/contact/email"], "hello@example.test");
 
     const pointerEvents = [];
     const pointerRt = runtime.createRuntime();

@@ -1137,6 +1137,7 @@ function webNodeFromWidget(item, index) {
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
     onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
+    onReset: meta.onReset === undefined || meta.onReset === null ? "" : String(meta.onReset),
     onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
     onBlur: meta.onBlur === undefined || meta.onBlur === null ? "" : String(meta.onBlur),
     onMouseEnter: meta.onMouseEnter === undefined || meta.onMouseEnter === null ? "" : String(meta.onMouseEnter),
@@ -1148,6 +1149,7 @@ function webNodeFromWidget(item, index) {
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
     keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
+    resetAction: typeof meta.resetAction === "function" ? meta.resetAction : null,
     focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
     blurAction: typeof meta.blurAction === "function" ? meta.blurAction : null,
     mouseEnterAction: typeof meta.mouseEnterAction === "function" ? meta.mouseEnterAction : null,
@@ -1712,6 +1714,13 @@ function bindNodeEvents(el) {
     if (docNode?.submitAction)
       docNode.submitAction(webFormValuesFromRoot(el.__kryMountRoot));
   });
+  el.addEventListener("reset", (event) => {
+    if (event?.preventDefault)
+      event.preventDefault();
+    const docNode = el.__kryDocNode;
+    if (docNode?.resetAction)
+      docNode.resetAction(webFormValuesFromRoot(el.__kryMountRoot));
+  });
 }
 
 function webElementValue(el, docNode = el?.__kryDocNode) {
@@ -1827,6 +1836,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnSubmit = docNode.onSubmit;
   else
     delete el.dataset.kryOnSubmit;
+  if (docNode.onReset)
+    el.dataset.kryOnReset = docNode.onReset;
+  else
+    delete el.dataset.kryOnReset;
   if (docNode.onFocus)
     el.dataset.kryOnFocus = docNode.onFocus;
   else

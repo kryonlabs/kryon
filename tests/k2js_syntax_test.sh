@@ -281,6 +281,7 @@ Anon :: () #ui {
             dom_method = "post"
             dom_enctype = "multipart/form-data"
             autocomplete = "off"
+            on_reset = pointer_leave
         }
     }
 }
@@ -300,6 +301,7 @@ grep -q '"formAction": "/contact"' "$anon_out"
 grep -q '"formMethod": "post"' "$anon_out"
 grep -q '"formEncType": "multipart/form-data"' "$anon_out"
 grep -q '"autoComplete": "off"' "$anon_out"
+grep -q '"onReset": "pointer_leave"' "$anon_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {

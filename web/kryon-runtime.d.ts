@@ -109,6 +109,7 @@ export interface WebDocumentNode {
   onChange: string;
   onKey: string;
   onSubmit: string;
+  onReset: string;
   onFocus: string;
   onBlur: string;
   onMouseEnter: string;
@@ -120,6 +121,7 @@ export interface WebDocumentNode {
   changeAction: ((value: unknown) => unknown) | null;
   keyAction: ((key: string) => unknown) | null;
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
+  resetAction: ((values: Record<string, unknown>) => unknown) | null;
   focusAction: (() => unknown) | null;
   blurAction: (() => unknown) | null;
   mouseEnterAction: (() => unknown) | null;
