@@ -21,6 +21,16 @@ typedef struct ImageCacheEntry {
 
 static ImageCacheEntry image_cache[KRY_IMAGE_CACHE_MAX];
 
+static Style
+image_widget_style(void)
+{
+    return ui_unpack_style(ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindImage()).value);
+}
+
 static Rectangle
 image_world_rect_to_screen(Rectangle rect)
 {
@@ -331,7 +341,7 @@ image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
     ThemeMetrics tokens = GetThemeMetrics();
 
     if(theme_style == THEME_STYLE_CLASSIC) {
-        Style surface_style = ui_surface_style();
+        Style image_style = image_widget_style();
         *radius = 0.0f;
         *roundness = 0.0f;
         *segments = 1;
@@ -342,9 +352,9 @@ image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
             style->scrim_bottom.a = 30;
         if(style->tonal_overlay.a > 24)
             style->tonal_overlay.a = 24;
-        style->outline = surface_style.border.a != 0
-                           ? surface_style.border
-                           : surface_style.background;
+        style->outline = image_style.border.a != 0
+                           ? image_style.border
+                           : image_style.background;
         style->outline.a = 255;
         return;
     }
@@ -431,11 +441,11 @@ ImageTexture(Texture2D texture, ImageProps image)
                                       image.style.scrim_top,
                                       image.style.scrim_bottom);
     if(theme_style == THEME_STYLE_CLASSIC) {
-        Style surface_style = ui_surface_style();
+        Style image_style = image_widget_style();
         RenderBevel((int)image.bounds.x, (int)image.bounds.y,
                     (int)image.bounds.width, (int)image.bounds.height,
-                    surface_style.border,
-                    surface_style.background);
+                    image_style.border,
+                    image_style.background);
         if(image.style.outline.a > 0)
             DrawRectangleLinesEx(image.bounds, (float)outline_px,
                                  image.style.outline);
