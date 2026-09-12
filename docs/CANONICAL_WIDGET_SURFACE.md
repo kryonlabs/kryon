@@ -459,7 +459,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `ClosePopup` | Native support | Explicit close operation for the active `.kry` `Popup` block. |
-| `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned; host handles capture, input, text editing, and drawing. |
+| `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Current C rendering is host support around `runtime/guide.kry` policy. |

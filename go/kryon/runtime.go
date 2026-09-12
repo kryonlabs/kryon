@@ -5398,7 +5398,9 @@ func (r *runtime) Modal(props ModalProps) int32 {
 			maxCodepoints = props.TextSize - 1
 		}
 		r.editText(field, props.Text, props.CursorPosition, props.Focused, &commit, focusID, textEditOptions{maxCodepoints: maxCodepoints})
-		r.recordTextInput(FrameOpTextField, field, props.Text, props.CursorPosition, props.Focused, focusID, Text16, false, false)
+		focused := r.focusID == focusID || props.Focused != nil && *props.Focused
+		font := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), Text16)
+		r.recordTextInput(FrameOpTextField, field, props.Text, props.CursorPosition, props.Focused, focusID, font, false, false)
 	}
 	if result == 0 && commit {
 		if count > 1 {

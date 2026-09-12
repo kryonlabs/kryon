@@ -243,14 +243,24 @@ Modal[role=Title] { foreground: ink; font-size: 16; opacity: 0.91; }
 Modal[role=Message] { foreground: ink; font-size: 16; opacity: 0.73; }
 Modal[role=Action] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; border: action; radius: radius; border-width: border; material: flat; }
+TextField { background: panel; foreground: ink; border: rule; focus: action; radius: radius; border-width: border; font-size: 19; material: flat; }
 `, "Test Modal", "") || !SetActiveStylePack("test.modal") {
 		t.Fatal("test modal style did not activate")
 	}
 	rt := New(AppConfig{Width: 420, Height: 280}).(*runtime)
+	text := make([]byte, 32)
+	copy(text, "prompt")
+	cursor := int32(6)
+	focused := true
 
 	rt.Modal(ModalProps{
-		Title:   "Notice",
-		Message: "Styled",
+		Title:          "Notice",
+		Message:        "Styled",
+		Text:           text,
+		TextSize:       int32(len(text)),
+		CursorPosition: &cursor,
+		Focused:        &focused,
+		FocusID:        90,
 		Actions: []ModalAction{{
 			Label:    "OK",
 			Tone:     ButtonToneAccent,
@@ -259,7 +269,7 @@ Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; bo
 		ActionCount: 1,
 	})
 
-	var sawScrim, sawPanel, sawTitle, sawMessage, sawButton bool
+	var sawScrim, sawPanel, sawTitle, sawMessage, sawButton, sawPrompt bool
 	for _, op := range rt.FrameOps() {
 		switch {
 		case op.Kind == FrameOpRect && op.Bounds.Width == 420 && op.Bounds.Height == 280:
@@ -288,10 +298,15 @@ Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; bo
 			if style.Background != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) || style.Foreground != (Color{R: 0x04, G: 0x20, B: 0x17, A: 0xff}) || style.Border != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) {
 				t.Fatalf("modal action style op = %+v", op)
 			}
+		case op.Kind == FrameOpTextField:
+			sawPrompt = true
+			if op.FontSize != 19 {
+				t.Fatalf("modal prompt font = %d, want 19: %+v", op.FontSize, op)
+			}
 		}
 	}
-	if !sawScrim || !sawPanel || !sawTitle || !sawMessage || !sawButton {
-		t.Fatalf("missing styled modal ops: scrim=%v panel=%v title=%v message=%v button=%v ops=%+v", sawScrim, sawPanel, sawTitle, sawMessage, sawButton, rt.FrameOps())
+	if !sawScrim || !sawPanel || !sawTitle || !sawMessage || !sawButton || !sawPrompt {
+		t.Fatalf("missing styled modal ops: scrim=%v panel=%v title=%v message=%v button=%v prompt=%v ops=%+v", sawScrim, sawPanel, sawTitle, sawMessage, sawButton, sawPrompt, rt.FrameOps())
 	}
 }
 

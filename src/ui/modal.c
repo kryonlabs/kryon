@@ -287,7 +287,6 @@ RenderActionModal(ModalProps modal)
         field_props.cursor_position = modal.cursor_position;
         field_props.focused = modal.focused;
         field_props.max_codepoints = modal.text_size - 1;
-        field_props.font = GetFontSize();
         field_props.focus_id = modal.focus_id > 0 ? modal.focus_id : 7301;
         field_props.commit_pressed = &commit_pressed;
         ui_text_field_render(field_props);
