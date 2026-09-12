@@ -30,6 +30,13 @@ type TextNavigationDecision struct {
 	ExtendSelection        bool
 }
 
+type TextDeleteDecision struct {
+	Consumed      bool
+	CharDirection int32
+	WordDirection int32
+	DocumentEdge  int32
+}
+
 func TextInput_TextNavNone() int32 {
 	var value_0 int32 = 0
 	return value_0
@@ -72,6 +79,21 @@ func TextInput_TextNavPageUp() int32 {
 
 func TextInput_TextNavPageDown() int32 {
 	var value_0 int32 = 8
+	return value_0
+}
+
+func TextInput_TextDeleteNone() int32 {
+	var value_0 int32 = 0
+	return value_0
+}
+
+func TextInput_TextDeleteBackspace() int32 {
+	var value_0 int32 = 1
+	return value_0
+}
+
+func TextInput_TextDeleteForward() int32 {
+	var value_0 int32 = 2
 	return value_0
 }
 
@@ -482,4 +504,76 @@ func TextInput_TextNavigationDecisionFor(key int32, multiline bool, shift bool, 
 	}
 	var value_89 TextNavigationDecision = decision
 	return value_89
+}
+
+func TextInput_TextDeleteDecisionFor(action int32, modifier bool, secure bool, has_selection bool) TextDeleteDecision {
+	var decision TextDeleteDecision = TextDeleteDecision{}
+	var value_0 int32 = action
+	var value_1 int32 = TextInput_TextDeleteBackspace()
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 bool = true
+		decision.Consumed = value_3
+		var value_4 bool = has_selection
+		if value_4 {
+			var value_5 TextDeleteDecision = decision
+			return value_5
+		}
+		var value_6 bool = modifier
+		var value_7 bool = value_6
+		if value_7 {
+			var value_8 bool = secure
+			value_7 = value_8
+		}
+		if value_7 {
+			var value_9 int32 = -1
+			decision.DocumentEdge = value_9
+		} else {
+			var value_10 bool = modifier
+			if value_10 {
+				var value_11 int32 = -1
+				decision.WordDirection = value_11
+			} else {
+				var value_12 int32 = -1
+				decision.CharDirection = value_12
+			}
+		}
+		var value_13 TextDeleteDecision = decision
+		return value_13
+	}
+	var value_14 int32 = action
+	var value_15 int32 = TextInput_TextDeleteForward()
+	var value_16 bool = value_14 == value_15
+	if value_16 {
+		var value_17 bool = true
+		decision.Consumed = value_17
+		var value_18 bool = has_selection
+		if value_18 {
+			var value_19 TextDeleteDecision = decision
+			return value_19
+		}
+		var value_20 bool = modifier
+		var value_21 bool = value_20
+		if value_21 {
+			var value_22 bool = secure
+			value_21 = value_22
+		}
+		if value_21 {
+			var value_23 int32 = 1
+			decision.DocumentEdge = value_23
+		} else {
+			var value_24 bool = modifier
+			if value_24 {
+				var value_25 int32 = 1
+				decision.WordDirection = value_25
+			} else {
+				var value_26 int32 = 1
+				decision.CharDirection = value_26
+			}
+		}
+		var value_27 TextDeleteDecision = decision
+		return value_27
+	}
+	var value_28 TextDeleteDecision = decision
+	return value_28
 }

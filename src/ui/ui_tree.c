@@ -9,6 +9,7 @@
 #include "runtime/style.h"
 #include "runtime/surface.h"
 #include "runtime/text.h"
+#include "runtime/text_input.h"
 #include "runtime/grid.h"
 #include "ui_image_internal.h"
 #include "ui_clip_internal.h"
@@ -1540,13 +1541,15 @@ RouteInput(void)
             while(backspace_count-- > 0)
                 changed |= ui_text_delete_key(
                     field->text, field->text_size, &state->anchor,
-                    &state->cursor, KEY_BACKSPACE, modifier, field->secure);
+                    &state->cursor, TextDeleteBackspace(), modifier,
+                    field->secure);
             selection_changed = changed;
         } else if(delete_count > 0 && !field->read_only) {
             while(delete_count-- > 0)
                 changed |= ui_text_delete_key(
                     field->text, field->text_size, &state->anchor,
-                    &state->cursor, KEY_DELETE, modifier, field->secure);
+                    &state->cursor, TextDeleteForward(), modifier,
+                    field->secure);
             selection_changed = changed;
         }
         if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) {

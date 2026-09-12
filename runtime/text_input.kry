@@ -29,6 +29,13 @@ TextNavigationDecision :: struct {
     extend_selection: bool
 }
 
+TextDeleteDecision :: struct {
+    consumed: bool
+    char_direction: i32
+    word_direction: i32
+    document_edge: i32
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }
@@ -63,6 +70,18 @@ TextNavPageUp :: () -> i32 #export {
 
 TextNavPageDown :: () -> i32 #export {
     return 8
+}
+
+TextDeleteNone :: () -> i32 #export {
+    return 0
+}
+
+TextDeleteBackspace :: () -> i32 #export {
+    return 1
+}
+
+TextDeleteForward :: () -> i32 #export {
+    return 2
 }
 
 TextInputMetricsFor :: (font: i32, padding_x: i32, padding_y: i32,
@@ -227,6 +246,43 @@ TextNavigationDecisionFor :: (key: i32, multiline: bool, shift: bool,
     if key == TextNavPageDown() && multiline {
         decision.consumed = true
         decision.page_direction = 1
+        return decision
+    }
+
+    return decision
+}
+
+TextDeleteDecisionFor :: (action: i32, modifier: bool, secure: bool,
+    has_selection: bool) -> TextDeleteDecision #export {
+    decision: TextDeleteDecision
+
+    if action == TextDeleteBackspace() {
+        decision.consumed = true
+        if has_selection {
+            return decision
+        }
+        if modifier && secure {
+            decision.document_edge = -1
+        } else if modifier {
+            decision.word_direction = -1
+        } else {
+            decision.char_direction = -1
+        }
+        return decision
+    }
+
+    if action == TextDeleteForward() {
+        decision.consumed = true
+        if has_selection {
+            return decision
+        }
+        if modifier && secure {
+            decision.document_edge = 1
+        } else if modifier {
+            decision.word_direction = 1
+        } else {
+            decision.char_direction = 1
+        }
         return decision
     }
 

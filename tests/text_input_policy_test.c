@@ -23,6 +23,7 @@ main(void)
     TextInputMetrics metrics = TextInputMetricsFor(0, 0, -1, -1,
                                                    16, 6, 8, 4);
     TextNavigationDecision decision;
+    TextDeleteDecision delete_decision;
     TextFieldScroll scroll;
 
     assert(metrics.font == 16);
@@ -89,6 +90,24 @@ main(void)
                                          false, false);
     assert(decision.consumed);
     assert(decision.vertical_direction == -1);
+
+    delete_decision = TextDeleteDecisionFor(TextDeleteBackspace(), true,
+                                            false, false);
+    assert(delete_decision.consumed);
+    assert(delete_decision.word_direction == -1);
+
+    delete_decision = TextDeleteDecisionFor(TextDeleteForward(), true,
+                                            true, false);
+    assert(delete_decision.consumed);
+    assert(delete_decision.document_edge == 1);
+    assert(delete_decision.word_direction == 0);
+
+    delete_decision = TextDeleteDecisionFor(TextDeleteForward(), false,
+                                            false, true);
+    assert(delete_decision.consumed);
+    assert(delete_decision.char_direction == 0);
+    assert(delete_decision.word_direction == 0);
+    assert(delete_decision.document_edge == 0);
 
     return 0;
 }

@@ -87,7 +87,7 @@ surface review:
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
-| `runtime/text_input.kry` | TextField/TextArea metrics and scroll policy | `.kry canonical` |
+| `runtime/text_input.kry` | TextField/TextArea metrics, scroll, navigation, and delete-intent policy | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout policy | `.kry canonical` |
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
@@ -109,7 +109,7 @@ text measurement, painting, storage, or platform services.
 |---|---|---|
 | Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options | helper button variants belong in `ButtonProps` or composition; invisible hit testing is host support |
-| Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
+| Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics/navigation/delete intent, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/buffer mutation host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/multi-selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, `Menu` geometry policy | retained menu open/focus/input state, router/link helpers |
@@ -139,7 +139,7 @@ has a single place to land.
 | `Card` | `UI/Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
 | `Button` | `UI/Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition. |
 | `Link` | `UI/Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | State/color policy is `.kry`; URL dispatch remains host support. |
-| `TextField` | `UI/Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/scroll are `.kry`; editing, IME, selection, and paint still native. |
+| `TextField` | `UI/Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, scroll, navigation, and delete intent are `.kry`; buffer mutation, IME, selection, and paint still native. |
 | `Dropdown` | `UI/Input` | Selection | `runtime/dropdown.kry` | `.kry-backed` | Selection-only control. |
 | `Slider` | `UI/Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, and angle/unit are props. |
 | `Toggle` | `UI/Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
@@ -157,7 +157,7 @@ has a single place to land.
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation policy is `.kry`; host keeps input/scroll sampling. |
 | `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, and text bounds policy are `.kry`; host keeps input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
-| `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics and page-navigation row policy are `.kry`; editing, IME, selection, and paint still native. |
+| `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, navigation, and delete intent are `.kry`; buffer mutation, IME, selection, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
 | `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint and sizing policy are `.kry`. |
@@ -205,8 +205,8 @@ host roles rather than retained nodes.
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |
-| `TextField` | `.kry canonical` | Metrics/scroll policy in `.kry`; editing host support remains. |
-| `TextArea` | `.kry canonical` | Metrics/page-navigation policy in `.kry`; editing host support remains. |
+| `TextField` | `.kry canonical` | Metrics, scroll, navigation, and delete intent policy in `.kry`; buffer mutation and IME host support remain. |
+| `TextArea` | `.kry canonical` | Metrics, page-navigation, navigation, and delete intent policy in `.kry`; buffer mutation and IME host support remain. |
 | `Dropdown` | `.kry canonical` | Selection control only. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
 | `Slider` | `.kry canonical` | Type/orientation/angle variants are props. |
@@ -370,8 +370,8 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginDisabled` | Native support | Host scope for disabled child content. |
 | `EndDisabled` | Native support | Host scope exit for disabled child content. |
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |
-| `TextField` | `.kry canonical` | Metrics and horizontal scroll policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
-| `TextArea` | `.kry canonical` | Metrics and page-navigation row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
+| `TextField` | `.kry canonical` | Metrics, horizontal scroll, navigation, and delete intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
+| `TextArea` | `.kry canonical` | Metrics, page-navigation rows, navigation, and delete intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
@@ -510,8 +510,8 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_LINE` | `Line` | `.kry-backed`; measured bounds and retained endpoints come from runtime primitive policy |
 | `WIDGET_TRIANGLE` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
 | `WIDGET_BUTTON` | `Button` | `.kry canonical` |
-| `WIDGET_TEXT_FIELD` | `TextField` | `.kry canonical`; editing policy still migrating |
-| `WIDGET_TEXT_AREA` | `TextArea` | `.kry canonical`; editing policy still migrating |
+| `WIDGET_TEXT_FIELD` | `TextField` | `.kry canonical`; navigation/delete intent migrated, buffer mutation and IME still migrating |
+| `WIDGET_TEXT_AREA` | `TextArea` | `.kry canonical`; navigation/delete intent migrated, buffer mutation and IME still migrating |
 | `WIDGET_DROPDOWN` | `Dropdown` | `.kry canonical` |
 | `WIDGET_SLIDER` | `Slider` | `.kry canonical` |
 | `WIDGET_TOGGLE` | `Toggle` | `.kry canonical` |

@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "runtime/text_input.h"
+
 /* Declarations under test (declared in ui_internal.h, but we avoid pulling in
  * the whole UI header chain here; these are the only symbols we exercise). */
 int ui_utf8_next_offset(const char *text, int offset);
@@ -41,11 +43,6 @@ int ui_text_insert_text(char *text, size_t text_size, int *cursor,
                         const char *input, int allow_newlines,
                         TextInputFilter filter, void *filter_user_data,
                         int max_codepoints);
-
-enum {
-    TEST_KEY_BACKSPACE = 259,
-    TEST_KEY_DELETE = 261
-};
 
 static int failures = 0;
 
@@ -206,19 +203,19 @@ test_delete_key(void)
 
     check_true("word backspace deletes final word",
                ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
-                                  TEST_KEY_BACKSPACE, 1, 0));
+                                  TextDeleteBackspace(), 1, 0));
     check_str("word backspace result", text, "alpha beta.");
     check_int("word backspace cursor", cursor, 11);
     check_true("word backspace deletes separator",
                ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
-                                  TEST_KEY_BACKSPACE, 1, 0));
+                                  TextDeleteBackspace(), 1, 0));
     check_str("word separator deletion result", text, "alpha beta");
 
     cursor = 6;
     anchor = cursor;
     check_true("word delete removes next word",
                ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
-                                  TEST_KEY_DELETE, 1, 0));
+                                  TextDeleteForward(), 1, 0));
     check_str("word delete result", text, "alpha ");
 
     strcpy(text, "alpha beta");
@@ -226,7 +223,7 @@ test_delete_key(void)
     cursor = 5;
     check_true("selection deletion takes precedence",
                ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
-                                  TEST_KEY_DELETE, 1, 0));
+                                  TextDeleteForward(), 1, 0));
     check_str("selection deletion result", text, " beta");
     check_int("selection deletion collapses anchor", anchor, 0);
     check_int("selection deletion collapses cursor", cursor, 0);
@@ -236,7 +233,7 @@ test_delete_key(void)
     anchor = cursor;
     check_true("secure word backspace hides boundaries",
                ui_text_delete_key(text, sizeof(text), &anchor, &cursor,
-                                  TEST_KEY_BACKSPACE, 1, 1));
+                                  TextDeleteBackspace(), 1, 1));
     check_str("secure word backspace result", text, " beta");
 }
 

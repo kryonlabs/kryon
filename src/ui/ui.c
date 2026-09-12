@@ -2225,7 +2225,7 @@ EditText(TextEdit edit)
         for(int i = 0; i < repeat; i++)
             changed |= ui_text_delete_key(
                 edit.text, edit.text_size, &anchor, edit.cursor_position,
-                KEY_BACKSPACE, ui_mod_key_down(), 0);
+                TextDeleteBackspace(), ui_mod_key_down(), 0);
         g_ui_text_input_backspace_count = 0;
     }
 
@@ -2233,7 +2233,7 @@ EditText(TextEdit edit)
         anchor = *edit.cursor_position;
         changed |= ui_text_delete_key(
             edit.text, edit.text_size, &anchor, edit.cursor_position,
-            KEY_DELETE, ui_mod_key_down(), 0);
+            TextDeleteForward(), ui_mod_key_down(), 0);
     }
 
     if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
@@ -3907,11 +3907,11 @@ ui_text_area_render(TextAreaProps area)
             while(backspace_count-- > 0)
                 changed |= ui_text_delete_key(
                     area.text, area.text_size, &anchor, area.cursor_position,
-                    KEY_BACKSPACE, ui_mod_key_down(), 0);
+                    TextDeleteBackspace(), ui_mod_key_down(), 0);
             while(delete_count-- > 0)
                 changed |= ui_text_delete_key(
                     area.text, area.text_size, &anchor, area.cursor_position,
-                    KEY_DELETE, ui_mod_key_down(), 0);
+                    TextDeleteForward(), ui_mod_key_down(), 0);
             ui_text_selection_set(&g_ui_text_area_selection, drag_id,
                                   area.focused, *area.cursor_position,
                                   *area.cursor_position, 0);
@@ -4575,13 +4575,13 @@ ui_text_field_render(TextFieldProps field)
             while(backspace_count-- > 0)
                 changed |= ui_text_delete_key(
                     field.text, field.text_size, &anchor,
-                    field.cursor_position, KEY_BACKSPACE, ui_mod_key_down(),
-                    field.secure);
+                    field.cursor_position, TextDeleteBackspace(),
+                    ui_mod_key_down(), field.secure);
             while(delete_count-- > 0)
                 changed |= ui_text_delete_key(
                     field.text, field.text_size, &anchor,
-                    field.cursor_position, KEY_DELETE, ui_mod_key_down(),
-                    field.secure);
+                    field.cursor_position, TextDeleteForward(),
+                    ui_mod_key_down(), field.secure);
             g_ui_text_input_backspace_count = 0;
             ui_text_selection_set(&g_ui_text_field_selection, field.focus_id,
                                   field.focused, *field.cursor_position,

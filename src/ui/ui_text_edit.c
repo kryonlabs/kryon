@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "runtime/text_input.h"
 
 /* UTF-8 codec and text-buffer mutation helpers extracted from ui.c. These are
  * pure functions over caller-owned buffers (no UI state, no clipboard), so they
@@ -288,8 +289,9 @@ ui_text_delete_range(char *text, size_t text_size, int *cursor, int start, int e
 
 int
 ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
-                   int key, int modifier, int secure)
+                   int action, int modifier, int secure)
 {
+    TextDeleteDecision decision;
     int start;
     int end;
 
@@ -297,21 +299,23 @@ ui_text_delete_key(char *text, size_t text_size, int *anchor, int *cursor,
         return 0;
     start = *anchor < *cursor ? *anchor : *cursor;
     end = *anchor > *cursor ? *anchor : *cursor;
+    decision = TextDeleteDecisionFor(action, modifier != 0, secure != 0,
+                                     start != end);
+    if(!decision.consumed)
+        return 0;
     if(start == end) {
-        if(key == KEY_BACKSPACE) {
-            if(modifier)
-                start = secure ? 0 : ui_text_word_left(text, *cursor);
-            else
-                start = ui_utf8_prev_offset(text, *cursor);
-        } else if(key == KEY_DELETE) {
-            if(modifier)
-                end = secure
-                    ? (int)strlen(text) : ui_text_word_right(text, *cursor);
-            else
-                end = ui_utf8_next_offset(text, *cursor);
-        } else {
-            return 0;
-        }
+        if(decision.document_edge < 0)
+            start = 0;
+        else if(decision.document_edge > 0)
+            end = (int)strlen(text);
+        else if(decision.word_direction < 0)
+            start = ui_text_word_left(text, *cursor);
+        else if(decision.word_direction > 0)
+            end = ui_text_word_right(text, *cursor);
+        else if(decision.char_direction < 0)
+            start = ui_utf8_prev_offset(text, *cursor);
+        else if(decision.char_direction > 0)
+            end = ui_utf8_next_offset(text, *cursor);
     }
     if(!ui_text_delete_range(text, text_size, cursor, start, end))
         return 0;
