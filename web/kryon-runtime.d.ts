@@ -373,6 +373,14 @@ declare global {
     kryQuery?(selector: string): WebDOMObject | null;
     kryQueryAll?(selector: string): WebDOMObject[];
     kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+    kryListen?: {
+      (type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
+        options?: boolean | AddEventListenerOptions): (() => void) | null;
+      (query: string, type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
+        options?: boolean | AddEventListenerOptions): (() => void) | null;
+    };
+    kryDelegate?(selector: string, type: string, handler: (event: Event, object: WebDOMObject) => unknown,
+      options?: boolean | AddEventListenerOptions): (() => void) | null;
   }
 
   interface Event {
@@ -738,7 +746,7 @@ export function Bevel(...args: unknown[]): unknown;
 export function BottomNav(...args: unknown[]): unknown;
 export function Button(...args: unknown[]): unknown;
 export function Card(...args: unknown[]): unknown;
-export function Canvas(canvas: unknown): Record<string, unknown>;
+export function BeginCanvas(canvas: unknown): Record<string, unknown>;
 export function CanvasGrid(...args: unknown[]): unknown;
 export function Checkbox(...args: unknown[]): unknown;
 export function ClearBackground(...args: unknown[]): unknown;
@@ -750,6 +758,7 @@ export function Icon(...args: unknown[]): unknown;
 export function Fieldset(...args: unknown[]): unknown;
 export function Link(...args: unknown[]): unknown;
 export function ListBox(...args: unknown[]): unknown;
+export function Menu(...args: unknown[]): unknown;
 export function Modal(...args: unknown[]): unknown;
 export function Paragraph(...args: unknown[]): unknown;
 export function Image(...args: unknown[]): unknown;

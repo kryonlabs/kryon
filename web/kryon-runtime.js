@@ -997,6 +997,7 @@ function widgetTag(item) {
   case "Link":
     return "a";
   case "Button":
+  case "InvisibleButton":
     return "button";
   case "TextField":
     return "input";
@@ -1023,6 +1024,7 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
+  case "InvisibleButton":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -2470,6 +2472,27 @@ function bindWebDOMObjectProperties(el) {
         const root = object?.element?.__kryMountRoot || mountedRoot(object?.element || null);
         return object && root ? webDOMClosest(root, object.node.path, selector) : null;
       }
+    },
+    kryListen: {
+      configurable: true,
+      enumerable: false,
+      value(type, handler, options) {
+        const eventType = cleanDOMEventType(type);
+        if (!eventType || typeof handler !== "function" ||
+            typeof this.addEventListener !== "function")
+          return null;
+        const el = this;
+        const listener = (event) => {
+          bindWebDOMEventProperties(event);
+          return handler(event, webDOMObjectFromElement(event?.target || el) ||
+            webDOMObjectFromElement(el));
+        };
+        el.addEventListener(eventType, listener, options);
+        return () => {
+          if (typeof el.removeEventListener === "function")
+            el.removeEventListener(eventType, listener, options);
+        };
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;
@@ -2828,6 +2851,20 @@ function bindWebRootProperties(root) {
       enumerable: false,
       value(sourcePath, sourceLine, sourceColumn = 0) {
         return webDOMObjectAtSource(this, sourcePath, sourceLine, sourceColumn);
+      }
+    },
+    kryListen: {
+      configurable: true,
+      enumerable: false,
+      value(query, type, handler, options) {
+        return webDOMAddEventListener(this, query, type, handler, options);
+      }
+    },
+    kryDelegate: {
+      configurable: true,
+      enumerable: false,
+      value(selector, type, handler, options) {
+        return webDOMAddDelegatedEventListener(this, selector, type, handler, options);
       }
     }
   });
@@ -4275,7 +4312,7 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function Canvas(canvas) {
+export function BeginCanvas(canvas) {
   return {
     active: false,
     dragging: false,
@@ -4293,7 +4330,7 @@ export function CanvasHitTest(canvas, screen) {
 const runtimeCallNames = [
   "AppBackground", "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "DragDrop", "Dropdown",
-  "Icon", "Fieldset", "Link", "ListBox",
+  "Icon", "Fieldset", "Link", "ListBox", "Menu",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
@@ -4325,6 +4362,7 @@ export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }
 export function Link(...args) { return struct("Link", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
+export function Menu(...args) { return struct("Menu", args); }
 export function Modal(...args) { return struct("Modal", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
 export function Image(...args) { return struct("Image", args); }

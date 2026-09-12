@@ -406,6 +406,9 @@ nearest Kry DOM object to the handler. `webDOMAddDelegatedEventListener(target,
 selector, type, handler)` listens from the Kry mount root and resolves bubbling
 event targets through the same selector facts. Both return an unsubscribe
 function when the listener is installed.
+Mount roots expose the same behavior as `root.kryListen(query, type, handler)`
+and `root.kryDelegate(selector, type, handler)`. Mounted elements expose
+`element.kryListen(type, handler)` for local Kry-aware native handlers.
 
 `webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
 `webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as

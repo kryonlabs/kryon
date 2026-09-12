@@ -1170,6 +1170,33 @@ function fakeDocument() {
     assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);
+    const elementMethodEvents = [];
+    const removeElementMethod = firstButton.kryListen("kry-element-method",
+      (event, object) => elementMethodEvents.push([event.kryRef, object?.ref]));
+    assert.equal(typeof removeElementMethod, "function");
+    firstButton.dispatchEvent({ type: "kry-element-method" });
+    assert.deepEqual(elementMethodEvents, [["primary-action", "primary-action"]]);
+    removeElementMethod();
+    firstButton.dispatchEvent({ type: "kry-element-method" });
+    assert.deepEqual(elementMethodEvents, [["primary-action", "primary-action"]]);
+    const rootMethodEvents = [];
+    const removeRootMethod = root.kryListen("tap-button", "kry-root-method",
+      (event, object) => rootMethodEvents.push([event.kryPath, object?.node.path]));
+    assert.equal(typeof removeRootMethod, "function");
+    firstButton.dispatchEvent({ type: "kry-root-method" });
+    assert.deepEqual(rootMethodEvents, [["Scene/root/tap", "Scene/root/tap"]]);
+    removeRootMethod();
+    firstButton.dispatchEvent({ type: "kry-root-method" });
+    assert.deepEqual(rootMethodEvents, [["Scene/root/tap", "Scene/root/tap"]]);
+    const rootDelegatedEvents = [];
+    const removeRootDelegated = root.kryDelegate("Button.primary", "kry-root-delegated",
+      (event, object) => rootDelegatedEvents.push([event.kryKind, object.node.path]));
+    assert.equal(typeof removeRootDelegated, "function");
+    nestedSpan.dispatchEvent({ type: "kry-root-delegated" });
+    assert.deepEqual(rootDelegatedEvents, [["Button", "Scene/root/tap"]]);
+    removeRootDelegated();
+    nestedSpan.dispatchEvent({ type: "kry-root-delegated" });
+    assert.deepEqual(rootDelegatedEvents, [["Button", "Scene/root/tap"]]);
     const directEvents = [];
     const removeDirect = runtime.webDOMAddEventListener(target, "tap-button", "kry-test",
       (event, object) => directEvents.push([
