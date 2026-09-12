@@ -1076,6 +1076,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObjectFromEvent({ currentTarget: firstButton }).node.path,
       "Scene/root/tap");
     assert.equal(runtime.webDOMIdentityFromEvent({ target: nestedSpan }).ref, "primary-action");
+    assert.equal(runtime.webDOMSnapshotFromElement(nestedSpan).parentRef, "Scene/root");
+    assert.equal(runtime.webDOMSnapshotFromEvent({ target: nestedSpan }).ref, "primary-action");
     const buttonSnapshot = runtime.webDOMSnapshot(target, "tap-button");
     assert.equal(buttonSnapshot.ref, "primary-action");
     assert.equal(buttonSnapshot.webRef, "primary-action");

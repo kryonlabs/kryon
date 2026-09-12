@@ -2738,7 +2738,7 @@ function mountedRoot(target) {
   const node = typeof target === "string" && typeof document !== "undefined"
     ? document.querySelector(target)
     : target;
-  return node?.__kryRuntimeRoot || null;
+  return node?.__kryRuntimeRoot || (node?.__kryChildren ? node : null) || null;
 }
 
 export function findWebNode(rt, query) {
@@ -2968,6 +2968,18 @@ export function webDOMSnapshots(target, selector = "") {
   const text = String(selector || "").trim();
   const objects = text ? webDOMQueryAll(target, text) : webDOMObjects(target);
   return objects.map((object) => webDOMObjectSnapshot(target, object)).filter(Boolean);
+}
+
+export function webDOMSnapshotFromElement(element) {
+  const object = webDOMObjectFromElement(element);
+  const root = object?.element?.__kryMountRoot || mountedRoot(object?.element || null);
+  return object ? webDOMObjectSnapshot(root, object) : null;
+}
+
+export function webDOMSnapshotFromEvent(eventOrTarget) {
+  const object = webDOMObjectFromEvent(eventOrTarget);
+  const root = object?.element?.__kryMountRoot || mountedRoot(object?.element || null);
+  return object ? webDOMObjectSnapshot(root, object) : null;
 }
 
 export function webDOMParent(target, query) {

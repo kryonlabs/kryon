@@ -471,6 +471,8 @@ export function webDOMElementMatches(element: Element | null, selector: string):
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
 export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
+export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;
+export function webDOMSnapshotFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMSnapshot | null;
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMChildren(target: Element | string | null, query?: string): WebDOMObject[];
 export function webDOMClosest(target: Element | string | null, query: string, selector: string): WebDOMObject | null;

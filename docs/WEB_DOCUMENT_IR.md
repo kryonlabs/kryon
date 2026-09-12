@@ -367,6 +367,8 @@ a mounted Kry DOM object. Rendered elements expose it directly as
 plain, serializable views of mounted Kry DOM objects: identity, source
 location, parent/child refs, attributes, dataset, style, text/value, state,
 geometry, and scroll without live DOM references.
+`webDOMSnapshotFromElement(element)` and `webDOMSnapshotFromEvent(...)` provide
+the same serializable projection from native DOM elements and events.
 
 `webDOMMatches(target, query, selector)` and
 `webDOMElementMatches(element, selector)` test mounted DOM objects against the
