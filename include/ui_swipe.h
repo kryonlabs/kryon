@@ -1,32 +1,32 @@
-#ifndef UI_SWIPE_H
-#define UI_SWIPE_H
+#ifndef KRYON_SWIPE_H
+#define KRYON_SWIPE_H
 
 #include "kryon_compat.generated.h"
 
-typedef enum UISwipeDirection {
-    UI_SWIPE_NONE = 0,
-    UI_SWIPE_LEFT = 1 << 0,
-    UI_SWIPE_RIGHT = 1 << 1,
-    UI_SWIPE_UP = 1 << 2,
-    UI_SWIPE_DOWN = 1 << 3,
-    UI_SWIPE_HORIZONTAL = UI_SWIPE_LEFT | UI_SWIPE_RIGHT,
-    UI_SWIPE_VERTICAL = UI_SWIPE_UP | UI_SWIPE_DOWN,
-    UI_SWIPE_ALL = UI_SWIPE_HORIZONTAL | UI_SWIPE_VERTICAL
-} UISwipeDirection;
+typedef enum SwipeDirection {
+    SWIPE_NONE = 0,
+    SWIPE_LEFT = 1 << 0,
+    SWIPE_RIGHT = 1 << 1,
+    SWIPE_UP = 1 << 2,
+    SWIPE_DOWN = 1 << 3,
+    SWIPE_HORIZONTAL = SWIPE_LEFT | SWIPE_RIGHT,
+    SWIPE_VERTICAL = SWIPE_UP | SWIPE_DOWN,
+    SWIPE_ALL = SWIPE_HORIZONTAL | SWIPE_VERTICAL
+} SwipeDirection;
 
-typedef struct UISwipeGesture {
+typedef struct SwipeGesture {
     /* Caller-owned state. Zero initialization is valid. */
     int active;
     int dragging;
     int cancelled;
     Vector2 start;
     double started_at;
-} UISwipeGesture;
+} SwipeGesture;
 
-typedef struct UISwipeSpec {
+typedef struct SwipeSpec {
     /* A press must begin inside bounds. */
     Rectangle bounds;
-    /* Bitwise UISwipeDirection values; zero enables every direction. */
+    /* Bitwise SwipeDirection values; zero enables every direction. */
     unsigned int directions;
     /* Defaults to 48 UI pixels when non-positive. */
     float min_distance;
@@ -34,20 +34,20 @@ typedef struct UISwipeSpec {
     float axis_bias;
     /* Seconds from press to release; non-positive disables the time limit. */
     float max_duration;
-} UISwipeSpec;
+} SwipeSpec;
 
-typedef struct UISwipeResult {
+typedef struct SwipeResult {
     /* Set for one release frame when a swipe completes. */
-    UISwipeDirection direction;
+    SwipeDirection direction;
     Vector2 delta;
     /* Dominant distance divided by min_distance, clamped to 0..1. */
     float progress;
     int active;
     int dragging;
     int cancelled;
-} UISwipeResult;
+} SwipeResult;
 
-UISwipeResult UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec);
-void ResetUISwipe(UISwipeGesture *gesture);
+SwipeResult UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec);
+void ResetSwipe(SwipeGesture *gesture);
 
 #endif

@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-static UISwipeGesture swipe;
-static UIGuidePagerProps pager = {
+static SwipeGesture swipe;
+static GuidePagerProps pager = {
     .content_bounds = {0.0f, 0.0f, 320.0f, 400.0f},
     .footer_bounds = {0.0f, 400.0f, 320.0f, 80.0f},
     .swipe = &swipe,
@@ -26,10 +26,10 @@ check_int(const char *name, int got, int want)
     exit(1);
 }
 
-static UIGuidePagerResult
+static GuidePagerResult
 pager_frame(float x, float y, int down)
 {
-    UIGuidePagerResult result;
+    GuidePagerResult result;
 
     InjectMousePosition(x, y);
     InjectMouseButton(MOUSE_BUTTON_LEFT, down);
@@ -46,19 +46,19 @@ static void
 reset_test(int page)
 {
     InjectReset();
-    ResetUISwipe(&swipe);
+    ResetSwipe(&swipe);
     ClearUIFocus();
     pager.page = page;
 }
 
-static UIGuidePagerResult
+static GuidePagerResult
 click_footer(float x)
 {
     pager_frame(x, 440.0f, 1);
     return pager_frame(x, 440.0f, 0);
 }
 
-static UIGuidePagerResult
+static GuidePagerResult
 swipe_content(float from_x, float to_x)
 {
     pager_frame(from_x, 220.0f, 1);
@@ -69,7 +69,7 @@ swipe_content(float from_x, float to_x)
 static void
 test_footer_actions(void)
 {
-    UIGuidePagerResult result;
+    GuidePagerResult result;
 
     reset_test(0);
     result = click_footer(70.0f);
@@ -94,7 +94,7 @@ test_footer_actions(void)
 static void
 test_swipe_actions_and_boundaries(void)
 {
-    UIGuidePagerResult result;
+    GuidePagerResult result;
 
     reset_test(1);
     result = swipe_content(270.0f, 100.0f);

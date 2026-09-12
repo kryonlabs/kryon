@@ -18,10 +18,10 @@ ui_pager_button(Rectangle bounds, const char *label, ButtonEmphasis emphasis,
     });
 }
 
-UIGuidePagerResult
-GuidePager(UIGuidePagerProps pager)
+GuidePagerResult
+GuidePager(GuidePagerProps pager)
 {
-    UIGuidePagerResult result = {0};
+    GuidePagerResult result = {0};
     int page_count = pager.page_count > 0 ? pager.page_count : 1;
     int page = ui_clampi(pager.page, 0, page_count - 1);
     int pad = Scale(12);
@@ -40,15 +40,15 @@ GuidePager(UIGuidePagerProps pager)
 
     result.page = page;
     if(pager.swipe != NULL && page_count > 1) {
-        result.swipe = UpdateUISwipe(pager.swipe, (UISwipeSpec){
+        result.swipe = UpdateSwipe(pager.swipe, (SwipeSpec){
             .bounds = pager.content_bounds,
-            .directions = UI_SWIPE_HORIZONTAL,
+            .directions = SWIPE_HORIZONTAL,
             .min_distance = (float)Scale(48),
             .axis_bias = 1.25f,
             .max_duration = 0.8f
         });
-        previous = result.swipe.direction == UI_SWIPE_RIGHT;
-        next = result.swipe.direction == UI_SWIPE_LEFT;
+        previous = result.swipe.direction == SWIPE_RIGHT;
+        next = result.swipe.direction == SWIPE_LEFT;
     }
 
     if(IsKeyPressed(KEY_LEFT))
@@ -108,7 +108,7 @@ GuidePager(UIGuidePagerProps pager)
         result.page = page + 1;
         result.changed = 1;
     } else if(next && page == page_count - 1 &&
-              result.swipe.direction == UI_SWIPE_NONE &&
+              result.swipe.direction == SWIPE_NONE &&
               (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER))) {
         result.finished = 1;
     }

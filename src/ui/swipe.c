@@ -7,32 +7,32 @@ ui_swipe_abs(float value)
 }
 
 static unsigned int
-ui_swipe_directions(UISwipeSpec spec)
+ui_swipe_directions(SwipeSpec spec)
 {
-    return spec.directions != 0 ? spec.directions : UI_SWIPE_ALL;
+    return spec.directions != 0 ? spec.directions : SWIPE_ALL;
 }
 
-static UISwipeDirection
+static SwipeDirection
 ui_swipe_direction(Vector2 delta, unsigned int directions, float axis_bias)
 {
     float dx = ui_swipe_abs(delta.x);
     float dy = ui_swipe_abs(delta.y);
-    UISwipeDirection direction;
+    SwipeDirection direction;
 
     if(dx >= dy * axis_bias)
-        direction = delta.x < 0.0f ? UI_SWIPE_LEFT : UI_SWIPE_RIGHT;
+        direction = delta.x < 0.0f ? SWIPE_LEFT : SWIPE_RIGHT;
     else if(dy >= dx * axis_bias)
-        direction = delta.y < 0.0f ? UI_SWIPE_UP : UI_SWIPE_DOWN;
+        direction = delta.y < 0.0f ? SWIPE_UP : SWIPE_DOWN;
     else
-        return UI_SWIPE_NONE;
+        return SWIPE_NONE;
 
     return (directions & (unsigned int)direction) != 0
                ? direction
-               : UI_SWIPE_NONE;
+               : SWIPE_NONE;
 }
 
 void
-ResetUISwipe(UISwipeGesture *gesture)
+ResetSwipe(SwipeGesture *gesture)
 {
     if(gesture == NULL)
         return;
@@ -41,10 +41,10 @@ ResetUISwipe(UISwipeGesture *gesture)
         g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
 }
 
-UISwipeResult
-UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
+SwipeResult
+UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 {
-    UISwipeResult result = {0};
+    SwipeResult result = {0};
     Vector2 pointer = ui_mouse_world();
     Vector2 delta = {0};
     unsigned int directions = ui_swipe_directions(spec);
@@ -60,7 +60,7 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
         return result;
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        ResetUISwipe(gesture);
+        ResetSwipe(gesture);
         if(g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
            !ui_input_captures_click_internal(pointer, 0) &&
            CheckCollisionPointRec(pointer, spec.bounds)) {
@@ -81,7 +81,7 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
     result.active = 1;
 
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        UISwipeDirection direction;
+        SwipeDirection direction;
         float distance;
 
         if(g_ui_pointer_owner != UI_POINTER_OWNER_NONE &&
@@ -99,11 +99,11 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
                        : ui_swipe_abs(delta.y);
 
         if(!gesture->dragging && distance >= decision_distance) {
-            if(direction == UI_SWIPE_NONE) {
+            if(direction == SWIPE_NONE) {
                 float dx = ui_swipe_abs(delta.x);
                 float dy = ui_swipe_abs(delta.y);
-                int horizontal_allowed = (directions & UI_SWIPE_HORIZONTAL) != 0;
-                int vertical_allowed = (directions & UI_SWIPE_VERTICAL) != 0;
+                int horizontal_allowed = (directions & SWIPE_HORIZONTAL) != 0;
+                int vertical_allowed = (directions & SWIPE_VERTICAL) != 0;
 
                 if((horizontal_allowed && !vertical_allowed && dy >= dx * axis_bias) ||
                    (vertical_allowed && !horizontal_allowed && dx >= dy * axis_bias)) {
@@ -120,7 +120,7 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
 
         result.dragging = gesture->dragging;
         if(gesture->dragging) {
-            float primary = direction == UI_SWIPE_LEFT || direction == UI_SWIPE_RIGHT
+            float primary = direction == SWIPE_LEFT || direction == SWIPE_RIGHT
                                 ? ui_swipe_abs(delta.x)
                                 : ui_swipe_abs(delta.y);
             result.progress = primary / min_distance;
@@ -134,9 +134,9 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
     }
 
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-        UISwipeDirection direction =
+        SwipeDirection direction =
             ui_swipe_direction(delta, directions, axis_bias);
-        float primary = direction == UI_SWIPE_LEFT || direction == UI_SWIPE_RIGHT
+        float primary = direction == SWIPE_LEFT || direction == SWIPE_RIGHT
                             ? ui_swipe_abs(delta.x)
                             : ui_swipe_abs(delta.y);
         double elapsed = now - gesture->started_at;
@@ -156,11 +156,11 @@ UpdateUISwipe(UISwipeGesture *gesture, UISwipeSpec spec)
             result.progress = 1.0f;
         result.dragging = 0;
         result.active = 0;
-        ResetUISwipe(gesture);
+        ResetSwipe(gesture);
         return result;
     }
 
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
-        ResetUISwipe(gesture);
+        ResetSwipe(gesture);
     return result;
 }

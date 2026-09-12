@@ -1,13 +1,13 @@
-#ifndef UI_PAGER_H
-#define UI_PAGER_H
+#ifndef KRYON_PAGER_H
+#define KRYON_PAGER_H
 
 #include "kryon_compat.generated.h"
 #include "ui_swipe.h"
 
-typedef struct UIGuidePagerProps {
+typedef struct GuidePagerProps {
     Rectangle content_bounds;
     Rectangle footer_bounds;
-    UISwipeGesture *swipe;
+    SwipeGesture *swipe;
     int page;
     int page_count;
     int focus_id;
@@ -15,16 +15,16 @@ typedef struct UIGuidePagerProps {
     const char *back_label;
     const char *next_label;
     const char *finish_label;
-} UIGuidePagerProps;
+} GuidePagerProps;
 
-typedef struct UIGuidePagerResult {
+typedef struct GuidePagerResult {
     int page;
     int changed;
     int closed;
     int finished;
-    UISwipeResult swipe;
-} UIGuidePagerResult;
+    SwipeResult swipe;
+} GuidePagerResult;
 
-UIGuidePagerResult GuidePager(UIGuidePagerProps pager);
+GuidePagerResult GuidePager(GuidePagerProps pager);
 
 #endif
