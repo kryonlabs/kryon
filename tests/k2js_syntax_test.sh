@@ -291,6 +291,31 @@ Text {
 }
 EOF
 
+mkdir -p "$work/vendor/theme"
+cat > "$work/styles/packages.kssmap" <<'EOF'
+# Optional package registry for KSS packs that do not live under styles/.
+registered.theme = vendor/theme/main.kss
+EOF
+
+cat > "$work/vendor/theme/main.kss" <<'EOF'
+@pack registered.theme;
+@layer app;
+Button {
+  foreground: #abcdef;
+}
+EOF
+
+cat > "$work/src/registry_styles.kry" <<'EOF'
+#import "kryon.h"
+#style <registered.theme> as registered_theme
+app "Registry Styles" {
+    size 80 60
+}
+RegistryScreen :: () #ui {
+    Button((ButtonProps){.label="Mapped"})
+}
+EOF
+
 "$k2js" --root "$work" -o "$work/out" "$work/src/valid.kry"
 out="$work/out/src/valid.js"
 
@@ -378,6 +403,12 @@ if grep -q 'TODO k2js' "$out"; then
 fi
 
 node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/out/kryon-runtime.js"
+
+"$k2js" --root "$work" -o "$work/out" "$work/src/registry_styles.kry"
+registry_out="$work/out/src/registry_styles.js"
+grep -q 'target: "registered.theme"' "$registry_out"
+grep -q 'alias: "registered_theme"' "$registry_out"
+grep -q '@pack registered.theme;' "$registry_out"
 
 cat > "$work/src/anon_refs.kry" <<'EOF'
 #import "kryon.h"

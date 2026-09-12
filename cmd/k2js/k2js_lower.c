@@ -204,6 +204,98 @@ read_text_file(const char *path)
 }
 
 static char *
+trim_ascii_ws(char *s)
+{
+    char *end;
+
+    while(*s != '\0' && isspace((unsigned char)*s))
+        s++;
+    end = s + strlen(s);
+    while(end > s && isspace((unsigned char)end[-1]))
+        *--end = '\0';
+    return s;
+}
+
+static int
+path_has_parent_segment(const char *path)
+{
+    const char *p = path;
+
+    while(*p != '\0') {
+        const char *start = p;
+        size_t n;
+
+        while(*p != '\0' && *p != '/')
+            p++;
+        n = (size_t)(p - start);
+        if(n == 2 && start[0] == '.' && start[1] == '.')
+            return 1;
+        if(*p == '/')
+            p++;
+    }
+    return 0;
+}
+
+static int
+style_registry_path_is_safe(const char *path)
+{
+    return path[0] != '\0' && path[0] != '/' && path[0] != '\\' &&
+           strchr(path, '\\') == NULL && !path_has_parent_segment(path);
+}
+
+static int
+style_registry_package_path(const char *root, const char *target,
+                            char *dst, size_t dst_size)
+{
+    char path[KIR_PATH_MAX * 4];
+    char *text;
+    char *line;
+
+    snprintf(path, sizeof(path), "%s/styles/packages.kssmap", root);
+    text = read_text_file(path);
+    if(text == NULL)
+        return 0;
+    for(line = text; line != NULL && *line != '\0';) {
+        char *next = strchr(line, '\n');
+        char *comment;
+        char *sep;
+        char *key;
+        char *value;
+
+        if(next != NULL)
+            *next++ = '\0';
+        comment = strchr(line, '#');
+        if(comment != NULL)
+            *comment = '\0';
+        key = trim_ascii_ws(line);
+        if(*key == '\0') {
+            line = next;
+            continue;
+        }
+        sep = strchr(key, '=');
+        if(sep == NULL) {
+            for(sep = key; *sep != '\0' && !isspace((unsigned char)*sep);
+                sep++) {}
+        }
+        if(*sep == '\0') {
+            line = next;
+            continue;
+        }
+        *sep++ = '\0';
+        value = trim_ascii_ws(sep);
+        key = trim_ascii_ws(key);
+        if(strcmp(key, target) == 0 && style_registry_path_is_safe(value)) {
+            snprintf(dst, dst_size, "%s", value);
+            free(text);
+            return 1;
+        }
+        line = next;
+    }
+    free(text);
+    return 0;
+}
+
+static char *
 read_style_import_source(const KirModule *m, const char *root,
                          const KirStyleImport *style)
 {
@@ -232,6 +324,13 @@ read_style_import_source(const KirModule *m, const char *root,
                               dotted_relative, sizeof(dotted_relative)) &&
            strcmp(relative, dotted_relative) != 0) {
             snprintf(path, sizeof(path), "%s/%s", root, dotted_relative);
+            text = read_text_file(path);
+            if(text != NULL)
+                return text;
+        }
+        if(style_registry_package_path(root, style->target,
+                                       relative, sizeof(relative))) {
+            snprintf(path, sizeof(path), "%s/%s", root, relative);
             text = read_text_file(path);
             if(text != NULL)
                 return text;

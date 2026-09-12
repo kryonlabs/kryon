@@ -327,8 +327,10 @@ sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
 source text in `app.styles[].source` when a `#style` import resolves on disk.
 File imports resolve relative to the source module and then the project root;
 package imports resolve built-in `kryon.*` packs and project packages under
-`styles/`, including dotted package names as nested paths. `createRuntime({
-app })` installs those embedded sheets automatically. CSS export and
+`styles/`, including dotted package names as nested paths. Projects can also
+map package names with `styles/packages.kssmap`, one `package.name =
+relative/file.kss` entry per line. `createRuntime({ app })` installs those
+embedded sheets automatically. CSS export and
 installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. The web
