@@ -192,8 +192,8 @@ contract.
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
-`name`, `path`, `parentPath`, `id`, `classes`, `dataAttrs`, `role`, and
-`state`. The DOM
+`name`, `path`, `parentPath`, `id`, `domName`, `href`, `target`, `rel`,
+`inputType`, `classes`, `dataAttrs`, `role`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -231,8 +231,8 @@ node name, key, DOM id, or DOM name matches `query`.
 
 `webDOMQuery(target, selector)` and `webDOMQueryAll(target, selector)` return
 native DOM objects by the same KSS-style selector facts used for style
-resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[data-*=...]`,
-source fields, and state pseudos.
+resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
+`[type=...]`, `[href=...]`, `[data-*=...]`, source fields, and state pseudos.
 
 The DOM renderer maintains native interaction facts for KSS state selectors:
 `mouseenter`/`mouseleave` update `hover`, `mousedown`/`mouseup` update

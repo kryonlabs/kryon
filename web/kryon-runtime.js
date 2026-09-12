@@ -1161,6 +1161,11 @@ export function webNodeStyleFacts(node) {
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
     id: node?.domId || "",
+    domName: node?.domName || "",
+    href: node?.href || "",
+    target: node?.target || "",
+    rel: node?.rel || "",
+    inputType: node?.inputType || "",
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     role: node?.role || "",
@@ -1436,6 +1441,14 @@ function selectorMatchesFacts(selector, facts) {
       if (String(selectorDataAttrValue(key, facts) ?? "") !== value)
         return false;
     }
+    else if (key === "name") {
+      if (value !== facts.domName)
+        return false;
+    }
+    else if (key === "type") {
+      if (value !== facts.inputType)
+        return false;
+    }
     else if (!["role", "state"].includes(key) && String(facts[key] ?? "") !== value)
       return false;
   }
@@ -1443,7 +1456,8 @@ function selectorMatchesFacts(selector, facts) {
 }
 
 function selectorMatchesWebNode(selector, node) {
-  return selectorMatchesFacts(selector, webNodeStyleFacts(node));
+  const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
+  return selectorMatchesFacts(selector, facts);
 }
 
 export function resolveWebStyle(node, sheets = []) {

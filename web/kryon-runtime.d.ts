@@ -141,6 +141,11 @@ export interface WebNodeStyleFacts {
   sourcePath: string;
   sourceLine: number;
   id: string;
+  domName: string;
+  href: string;
+  target: string;
+  rel: string;
+  inputType: string;
   classes: string[];
   dataAttrs: Record<string, string>;
   role: string;
