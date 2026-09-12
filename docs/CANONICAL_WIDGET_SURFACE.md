@@ -146,7 +146,7 @@ has a single place to land.
 | `ColorPicker` | `UI/Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
 | `Group` | `UI/Layout` | Container | `runtime/group.kry` | `.kry-backed` | Canonical non-layout grouping scope; bounds/content policy is `.kry`, host keeps retained tree scope ownership. |
 | `Separator` | `UI/Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
-| `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Canonical titled group; old `LabelFrame` stays removed. |
+| `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
 | `PanedView` | `UI/Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp and handle geometry are `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, and marker text are `.kry`; host keeps input, focus, tree navigation, and drawing. |
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation policy is `.kry`; host keeps input/scroll sampling. |
@@ -228,8 +228,7 @@ has a single place to land.
 | `Screen` | `.kry canonical` | Top-level screen container; viewport fallback bounds policy is in `.kry`. |
 | `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Separator` | `.kry canonical` | Line, label, and bullet layout/paint policy are in `.kry`; host handles text measurement and drawing. |
-| `Fieldset` | `.kry canonical` | Canonical titled border group; replaces old `LabelFrame` spelling. |
-| `LabelFrame` | Removed | Old spelling for `Fieldset`; no longer accepted as a public widget name. |
+| `Fieldset` | `.kry canonical` | Titled border group. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `.kry canonical` | Header metrics, geometry, and marker text are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
@@ -365,7 +364,7 @@ Recent retained-tree public C cleanup:
 | `UIWidgetKind`, `UI_WIDGET_*_NODE` | `WidgetKind`, `WIDGET_*` |
 | `UIWidgetNode` | `WidgetNode` |
 | `UIWidgetData` | `WidgetData` |
-| `UIWidgetTextInputPaint`, `WidgetTextInputPaint` | Internal `TextInputPaint` host snapshot; not public. |
+| text input paint snapshot | Internal `TextInputPaint` host snapshot. |
 | `UIAccessibilitySink` | `AccessibilitySink` |
 | `UIInspect*`, `BeginUIInspect*`, `PushUIInspect*`, `IsUIInspectActive` | `Inspect*`, `BeginInspect*`, `PushInspect*`, `IsInspectActive` |
 | `UIDPIState`, `UI_DPI_BASE_*`, `InitUIDPI`, `GetUIDPI*` | `DPIState`, `DPI_BASE_*`, `InitDPI`, `GetDPI*` |
