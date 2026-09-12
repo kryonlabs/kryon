@@ -51,12 +51,8 @@ ROLE_COMPAT_EXPORTS = {
 }
 
 PUBLIC_WIDGET_NAMES = {
-    "BeginButton",
-    "BeginCard",
-    "BeginDisabled",
     "Bullet",
     "DismissibleOverlay",
-    "EndDisabled",
     "Flow",
     "Heading",
     "Page",
