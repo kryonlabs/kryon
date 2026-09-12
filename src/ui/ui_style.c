@@ -24,7 +24,7 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
         .value = {.background = ColorToInt(background), .border = ColorToInt(border),
                   .focus = ColorToInt(focus), .radius = radius,
                   .border_width = border_width, .opacity = opacity, .material = material},
-        .light = ColorToInt(light), .ambient = ColorToInt(ui_surface_style().background),
+        .light = ColorToInt(light), .ambient = ColorToInt(ui_app_style().background),
         .hover = hover, .press = press, .focus = focused, .disabled = disabled,
         .fill = fill_states, .fill_valid = true, .scale = (float)Scale(1000) / 1000.0f
     };
@@ -238,6 +238,18 @@ ui_style_apply_effects_fill(FillStates fill)
         return fill;
     memset(&fill, 0, sizeof(fill));
     return fill;
+}
+
+Style
+ui_app_style(void)
+{
+    StyleData base = {
+        .fields = (uint32_t)(StyleOpacity),
+        .opacity = 1.0f
+    };
+    StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindApp()),
+                                         ButtonStateNormal);
+    return ui_style_apply_effects(ui_unpack_style(value));
 }
 
 Style
@@ -706,7 +718,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(ui_default_style()) {
         ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
     } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
-        Color shadow = DarkenColor(ui_surface_style().background, 35);
+        Color shadow = DarkenColor(ui_app_style().background, 35);
         shadow.a = tokens.shadow_alpha;
         DrawRectangleRounded((Rectangle){bounds.x,
                                          bounds.y + Scale(tokens.shadow_offset_y),

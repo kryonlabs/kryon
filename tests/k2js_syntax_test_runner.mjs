@@ -101,6 +101,16 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
+const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
+assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
+assert.match(webStyleCSS, /background: #102030;/);
+assert.match(webStyleCSS, /color: #f0f0f0;/);
+assert.match(webStyleCSS, /border-radius: 9px;/);
+assert.match(webStyleCSS, /padding-left: 13px;/);
+assert.match(webStyleCSS, /padding-right: 13px;/);
+assert.match(webStyleCSS,
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
+assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 runtime.setWebStyleSheets(rt, webStyleSheet);
 assert.equal(generated.Valid_ApplyPreviewMode(rt, state, host, 1), 2);
 assert.equal(runtime.GetTheme().mode, 1);
@@ -1243,17 +1253,21 @@ function fakeDocument() {
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
     assert.equal(firstButton.style.paddingLeft, "13px");
+    assert.equal(firstButton.dataset.kryState, undefined);
     firstButton.mouseenter();
     assert.equal(firstButton.style.background, "#304050");
     assert.equal(firstButton.__kryDocNode.state.hover, true);
+    assert.equal(firstButton.dataset.kryState, "hover");
     firstButton.mousedown();
     assert.equal(firstButton.style.background, "#405060");
     assert.equal(firstButton.__kryDocNode.state.pressed, true);
+    assert.equal(firstButton.dataset.kryState, "hover pressed");
     firstButton.mouseup();
     assert.equal(firstButton.style.background, "#304050");
     firstButton.mouseleave();
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(firstButton.__kryDocNode.state.hover, false);
+    assert.equal(firstButton.dataset.kryState, undefined);
     assert.equal(runtime.webDOMFocus(target, "tap-button"), true);
     assert.equal(firstButton.style.borderColor, "#506070");
     assert.equal(firstButton.__kryDocNode.state.focus, true);

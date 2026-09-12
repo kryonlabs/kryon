@@ -1899,14 +1899,24 @@ func (r *runtime) ClearBackground(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
 }
 func (r *runtime) AppBackground() {
-	style := unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
-		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindApp()),
-		int32(ButtonStateNormal)))
+	style := r.appStyle()
 	color := style.Background
 	if color.A == 0 {
 		color = r.GetThemeBackground()
 	}
 	r.Background(color)
+}
+func (r *runtime) appStyle() Style {
+	return unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindApp()),
+		int32(ButtonStateNormal)))
+}
+func (r *runtime) appAmbientColor() Color {
+	color := r.appStyle().Background
+	if color.A == 0 {
+		color = r.GetThemeBackground()
+	}
+	return color
 }
 func (r *runtime) Background(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground,
@@ -2030,25 +2040,18 @@ func (r *runtime) GetThemeIcon() Color                          { return r.theme
 func (r *runtime) FancyEffectsEnabled() int32                   { return 1 }
 func (r *runtime) NewVector2(x, y any) Vector2                  { return NewVector2(number32(x), number32(y)) }
 func (r *runtime) Circle(centerX, centerY, radius int32, color Color) {
-	r.record(FrameOp{Kind: FrameOpCircle, Bounds: Rectangle{
-		X: float32(centerX - radius), Y: float32(centerY - radius),
-		Width: float32(radius * 2), Height: float32(radius * 2),
-	}, Color: color})
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: Primitive_PrimitiveCircleBounds(centerX, centerY, radius), Color: color})
 }
 func (r *runtime) Ring(centerX, centerY, innerRadius, outerRadius int32, color Color) {
-	r.record(FrameOp{Kind: FrameOpRing, Bounds: Rectangle{
-		X: float32(centerX - outerRadius), Y: float32(centerY - outerRadius),
-		Width: float32(outerRadius * 2), Height: float32(outerRadius * 2),
-	}, Radius: float32(innerRadius), Color: color})
+	r.record(FrameOp{Kind: FrameOpRing, Bounds: Primitive_PrimitiveRingBounds(centerX, centerY, outerRadius), Radius: float32(innerRadius), Color: color})
 }
 func (r *runtime) Box(bounds Rectangle, fill Color, border Color) {
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: fill, BorderColor: border})
 }
 func (r *runtime) Surface(bounds Rectangle, style Style) {
 	style = mergeStyle(unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value), style)
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	r.record(FrameOp{Kind: FrameOpSurface, Bounds: bounds,
-		Material: style.Material, FocusColor: style.Focus, AmbientColor: surface.Background,
+		Material: style.Material, FocusColor: style.Focus, AmbientColor: r.appAmbientColor(),
 		BackgroundEnd: style.BackgroundEnd, HasBackgroundEnd: style.Fields&StyleBackgroundEnd != 0,
 		Color: style.Background, BorderColor: style.Border, Radius: style.Radius,
 		BorderWidth: style.BorderWidth, Opacity: style.Opacity})
@@ -2373,7 +2376,6 @@ func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds
 	input := r.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
 		props.Disabled, props.Loading, props.Selected)
 	metrics := r.themeMetrics()
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	props.Disabled = input.Flags.Disabled
 	props.Loading = input.Flags.Loading
 	props.Selected = input.Flags.Selected
@@ -2384,7 +2386,7 @@ func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds
 		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value,
 		motion.Focus.Value, styleKind, role)
 	resolved := Button_BuildFrame(props, input, appearance, motion,
-		surfaceBounds, packRGBA(surface.Background), 1,
+		surfaceBounds, packRGBA(r.appAmbientColor()), 1,
 		int32(appearance.Value.FontSize), Text16)
 	frame := FrameOp{Kind: FrameOpButton, Button: resolved,
 		Bounds: resolved.Props.Bounds, SurfaceBounds: surfaceBounds, Text: resolved.Props.Label, ID: resolved.Props.ID,
@@ -3750,14 +3752,13 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 		Disabled: disabled,
 	}
 	frame := simpleStyleFrame(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindTextField())
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	button := Button_BuildFrame(props, ButtonInput{}, frame, InteractionMotion{},
-		Rectangle{}, packRGBA(surface.Background), 1, Text14, Text14)
+		Rectangle{}, packRGBA(r.appAmbientColor()), 1, Text14, Text14)
 	style := unpackStyle(button.Appearance.Value)
 	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button,
 		Opacity: 1, BorderWidth: style.BorderWidth, Radius: style.Radius,
 		Material: MaterialKind(style.Material), FillStates: styleFill(style),
-		FillStatesValid: true, AmbientColor: surface.Background, FocusColor: style.Focus,
+		FillStatesValid: true, AmbientColor: r.appAmbientColor(), FocusColor: style.Focus,
 		Bounds: bounds, Text: text, Color: style.Background, BorderColor: style.Border,
 		TextColor: style.Foreground, FontSize: Text14, ID: id, Row: component,
 		Disabled: disabled, Pressed: pressed, Focused: focused})
@@ -6472,7 +6473,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, !enabled, p.Selected,
 		StyleSheet_StyleKindCollapsible(), headerRole)
 	button := Button_BuildFrame(buttonProps, ButtonInput{}, frame, InteractionMotion{},
-		Rectangle{}, packRGBA(unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value).Background), 1,
+		Rectangle{}, packRGBA(r.appAmbientColor()), 1,
 		Text16, Text16)
 	fg := unpackRGBA(button.Foreground)
 	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button, Opacity: 1,
@@ -7080,7 +7081,6 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	fieldFocused := r.focusID == focusID || focused != nil && *focused
 	disabled := r.contentDisabled()
 	paint := r.textInputStyle(kind, fieldFocused, disabled)
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	var opt textInputRecordOptions
 	if len(options) > 0 {
 		opt = options[0]
@@ -7092,7 +7092,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		Color:             paint.Background,
 		BorderColor:       paint.Border,
 		FocusColor:        paint.Focus,
-		AmbientColor:      surface.Background,
+		AmbientColor:      r.appAmbientColor(),
 		TextColor:         paint.Foreground,
 		SelectionColor:    paint.Focus,
 		SelectedTextColor: paint.Foreground,

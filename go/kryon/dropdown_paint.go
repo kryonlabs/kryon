@@ -29,10 +29,9 @@ func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState) St
 
 func (r *runtime) dropdownSurface(bounds Rectangle, role int32, selected bool, state ButtonState) FrameOp {
 	paint := r.dropdownStyle(role, selected, state)
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	return FrameOp{Kind: FrameOpSurface, Bounds: bounds,
 		Color: paint.Background, BorderColor: paint.Border, TextColor: paint.Foreground,
-		FocusColor: paint.Focus, AmbientColor: surface.Background,
+		FocusColor: paint.Focus, AmbientColor: r.appAmbientColor(),
 		Radius: paint.Radius, BorderWidth: paint.BorderWidth, Opacity: paint.Opacity,
 		Material: paint.Material, FillStates: styleFill(paint), FillStatesValid: true,
 		Hovered: role == 2 && !selected && state == ButtonStateHover}
@@ -59,9 +58,8 @@ func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool
 	appearance := resolveButtonFrameForKind(r.theme(), r.effectiveDark(), r.activeTheme, props,
 		ButtonState(input.Interaction.State), true, motion.Hover.Value, motion.Press.Value,
 		motion.Focus.Value, StyleSheet_StyleKindDropdown())
-	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	resolved := Button_BuildFrame(props, input, appearance, motion, Rectangle{},
-		packRGBA(surface.Background), 1, int32(appearance.Value.FontSize), Text16)
+		packRGBA(r.appAmbientColor()), 1, int32(appearance.Value.FontSize), Text16)
 	r.record(FrameOp{Kind: FrameOpButton, Button: resolved, Bounds: bounds, ID: id,
 		Disabled: disabled, Focused: focused, Hovered: hovered, Pressed: held})
 	return unpackRGBA(resolved.Foreground)

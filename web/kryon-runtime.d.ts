@@ -667,6 +667,8 @@ export function webSourceRef(sourcePath: string, sourceLine: number, sourceColum
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
+export function webStyleSelectorToCSS(selector: Record<string, unknown>): string;
+export function webStyleSheetToCSS(sheet: string | WebStyleSheet): string;
 export function setWebStyleSheets(rt: Runtime, sheets: string | WebStyleSheet | Array<string | WebStyleSheet>): Runtime;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function webDOMRoot(target: Element | string | null): Element | null;

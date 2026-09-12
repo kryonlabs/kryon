@@ -170,14 +170,14 @@ func TestDropdownStyleComesFromKSS(t *testing.T) {
 	}
 }
 
-func TestDropdownAmbientSurfaceComesFromKSS(t *testing.T) {
+func TestDropdownAmbientAppComesFromKSS(t *testing.T) {
 	ClearStylePacks()
 	defer ClearStylePacks()
 	if !RegisterStylePackSource(`
 @pack test.dropdown_ambient;
 tokens {
   color {
-    app-surface: #101820;
+    app-canvas: #101820;
     trigger: #263449;
     ink: #eef5ff;
     rule: #5a6b7d;
@@ -185,7 +185,7 @@ tokens {
   length { radius: 4; border: 2; }
   material { flat: Flat; }
 }
-Surface { background: app-surface; material: flat; }
+App { background: app-canvas; }
 Dropdown { background: trigger; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 `, "Dropdown Ambient", "") || !SetActiveStylePack("test.dropdown_ambient") {
 		t.Fatal("test dropdown ambient style did not activate")
@@ -205,7 +205,7 @@ Dropdown { background: trigger; foreground: ink; border: rule; radius: radius; b
 	for _, op := range r.FrameOps() {
 		if op.ID == 9910 && op.Kind == FrameOpButton {
 			if op.Button.Material.Ambient != 0x101820ff {
-				t.Fatalf("dropdown trigger ambient = %#x, want KSS surface", op.Button.Material.Ambient)
+				t.Fatalf("dropdown trigger ambient = %#x, want KSS app background", op.Button.Material.Ambient)
 			}
 			return
 		}

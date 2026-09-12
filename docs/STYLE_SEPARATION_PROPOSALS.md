@@ -652,16 +652,9 @@ matching order.
 Tokens are the power feature. They are typed, validated, inspectable, and
 portable across backends.
 
-Canonical KSS does not use one directive per token. This is intentionally not
-the syntax:
-
-```text
-@token color text = #16181d;
-@token length space.4 = 16;
-```
-
-That form repeats ceremony, makes theme diffs noisy, and leaks parser-ish
-vocabulary into the design language. The canonical form is grouped by type:
+Canonical KSS does not use one directive per token. Repeating a directive for
+every token makes theme diffs noisy and leaks parser-ish vocabulary into the
+design language. The canonical form is grouped by type:
 
 ```text
 tokens {

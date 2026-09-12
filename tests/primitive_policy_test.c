@@ -16,9 +16,12 @@ int
 main(void)
 {
     LinePrimitive line;
+    TrianglePrimitive triangle;
 
     check_rect(PrimitiveBackgroundBounds(640, 480), 0, 0, 640, 480);
     check_rect(PrimitiveRectBounds(10, 20, 30, 40), 10, 20, 30, 40);
+    check_rect(PrimitiveCircleBounds(40, 50, 8), 32, 42, 16, 16);
+    check_rect(PrimitiveRingBounds(40, 50, 12), 28, 38, 24, 24);
 
     line = PrimitiveLineFor(10, 20, 50, 5);
     assert(line.x1 == 10);
@@ -33,5 +36,14 @@ main(void)
     assert(line.x2 == 10);
     assert(line.y2 == 20);
     check_rect(line.bounds, 10, 5, 40, 15);
+
+    triangle = PrimitiveTriangleFor(20, 10, -5, 30, 12, -4);
+    assert(triangle.x1 == 20);
+    assert(triangle.y1 == 10);
+    assert(triangle.x2 == -5);
+    assert(triangle.y2 == 30);
+    assert(triangle.x3 == 12);
+    assert(triangle.y3 == -4);
+    check_rect(triangle.bounds, -5, -4, 25, 34);
     return 0;
 }

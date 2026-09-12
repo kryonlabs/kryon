@@ -2461,11 +2461,9 @@ Box(Rectangle bounds, Color fill, Color border)
 void
 Circle(int center_x, int center_y, int radius, Color color)
 {
-    int diameter = radius * 2;
     NodeId node = ui_tree_add(0, WIDGET_CIRCLE,
-                              (Rectangle){center_x - radius,
-                                          center_y - radius,
-                                          diameter, diameter},
+                              PrimitiveCircleBounds(center_x, center_y,
+                                                    radius),
                               NULL);
 
     if(node >= 0)
@@ -2479,11 +2477,9 @@ void
 Ring(int center_x, int center_y, int inner_radius, int outer_radius,
      Color color)
 {
-    int diameter = outer_radius * 2;
     NodeId node = ui_tree_add(0, WIDGET_RING,
-                              (Rectangle){center_x - outer_radius,
-                                          center_y - outer_radius,
-                                          diameter, diameter},
+                              PrimitiveRingBounds(center_x, center_y,
+                                                  outer_radius),
                               NULL);
 
     if(node >= 0) {
@@ -2518,31 +2514,15 @@ Line(int x1, int y1, int x2, int y2, Color color)
 void
 Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color)
 {
-    int min_x = x1 < x2 ? x1 : x2;
-    int min_y = y1 < y2 ? y1 : y2;
-    int max_x = x1 > x2 ? x1 : x2;
-    int max_y = y1 > y2 ? y1 : y2;
-    NodeId node;
-
-    if(x3 < min_x)
-        min_x = x3;
-    if(y3 < min_y)
-        min_y = y3;
-    if(x3 > max_x)
-        max_x = x3;
-    if(y3 > max_y)
-        max_y = y3;
-
-    node = ui_tree_add(0, WIDGET_TRIANGLE,
-                       (Rectangle){min_x, min_y, max_x - min_x,
-                                   max_y - min_y}, NULL);
+    TrianglePrimitive triangle = PrimitiveTriangleFor(x1, y1, x2, y2, x3, y3);
+    NodeId node = ui_tree_add(0, WIDGET_TRIANGLE, triangle.bounds, NULL);
     if(node >= 0) {
-        ui_tree_nodes[node].data.primitive.x1 = x1;
-        ui_tree_nodes[node].data.primitive.y1 = y1;
-        ui_tree_nodes[node].data.primitive.x2 = x2;
-        ui_tree_nodes[node].data.primitive.y2 = y2;
-        ui_tree_nodes[node].data.primitive.x3 = x3;
-        ui_tree_nodes[node].data.primitive.y3 = y3;
+        ui_tree_nodes[node].data.primitive.x1 = triangle.x1;
+        ui_tree_nodes[node].data.primitive.y1 = triangle.y1;
+        ui_tree_nodes[node].data.primitive.x2 = triangle.x2;
+        ui_tree_nodes[node].data.primitive.y2 = triangle.y2;
+        ui_tree_nodes[node].data.primitive.x3 = triangle.x3;
+        ui_tree_nodes[node].data.primitive.y3 = triangle.y3;
         ui_tree_nodes[node].data.primitive.color = color;
     }
     if(ui_tree_building)

@@ -10,6 +10,16 @@ type LinePrimitive struct {
 	Y2     int32
 }
 
+type TrianglePrimitive struct {
+	Bounds Rectangle
+	X1     int32
+	Y1     int32
+	X2     int32
+	Y2     int32
+	X3     int32
+	Y3     int32
+}
+
 func Primitive_PrimitiveBackgroundBounds(width int32, height int32) Rectangle {
 	var bounds Rectangle = Rectangle{}
 	var value_0 float32 = 0.0
@@ -98,4 +108,121 @@ func Primitive_PrimitiveLineFor(x1 int32, y1 int32, x2 int32, y2 int32) LinePrim
 	line.Bounds.Height = value_29
 	var value_30 LinePrimitive = line
 	return value_30
+}
+
+func Primitive_PrimitiveCircleBounds(center_x int32, center_y int32, radius int32) Rectangle {
+	var value_0 int32 = radius
+	var value_1 int32 = 2
+	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 3))
+	var diameter int32 = value_2
+	var value_3 int32 = center_x
+	var value_4 int32 = radius
+	var value_5 int32 = int32(number_runtime_bits(uint64(value_3), uint64(value_4), 32, true, 2))
+	var value_6 int32 = center_y
+	var value_7 int32 = radius
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 2))
+	var value_9 int32 = diameter
+	var value_10 int32 = diameter
+	var value_11 Rectangle = Primitive_PrimitiveRectBounds(value_5, value_8, value_9, value_10)
+	return value_11
+}
+
+func Primitive_PrimitiveRingBounds(center_x int32, center_y int32, outer_radius int32) Rectangle {
+	var value_0 int32 = center_x
+	var value_1 int32 = center_y
+	var value_2 int32 = outer_radius
+	var value_3 Rectangle = Primitive_PrimitiveCircleBounds(value_0, value_1, value_2)
+	return value_3
+}
+
+func Primitive_PrimitiveTriangleFor(x1 int32, y1 int32, x2 int32, y2 int32, x3 int32, y3 int32) TrianglePrimitive {
+	var triangle TrianglePrimitive = TrianglePrimitive{}
+	var value_0 int32 = x1
+	triangle.X1 = value_0
+	var value_1 int32 = y1
+	triangle.Y1 = value_1
+	var value_2 int32 = x2
+	triangle.X2 = value_2
+	var value_3 int32 = y2
+	triangle.Y2 = value_3
+	var value_4 int32 = x3
+	triangle.X3 = value_4
+	var value_5 int32 = y3
+	triangle.Y3 = value_5
+	var value_6 int32 = x1
+	var min_x int32 = value_6
+	var value_7 int32 = y1
+	var min_y int32 = value_7
+	var value_8 int32 = x1
+	var max_x int32 = value_8
+	var value_9 int32 = y1
+	var max_y int32 = value_9
+	var value_10 int32 = x2
+	var value_11 int32 = min_x
+	var value_12 bool = value_10 < value_11
+	if value_12 {
+		var value_13 int32 = x2
+		min_x = value_13
+	}
+	var value_14 int32 = x3
+	var value_15 int32 = min_x
+	var value_16 bool = value_14 < value_15
+	if value_16 {
+		var value_17 int32 = x3
+		min_x = value_17
+	}
+	var value_18 int32 = y2
+	var value_19 int32 = min_y
+	var value_20 bool = value_18 < value_19
+	if value_20 {
+		var value_21 int32 = y2
+		min_y = value_21
+	}
+	var value_22 int32 = y3
+	var value_23 int32 = min_y
+	var value_24 bool = value_22 < value_23
+	if value_24 {
+		var value_25 int32 = y3
+		min_y = value_25
+	}
+	var value_26 int32 = x2
+	var value_27 int32 = max_x
+	var value_28 bool = value_26 > value_27
+	if value_28 {
+		var value_29 int32 = x2
+		max_x = value_29
+	}
+	var value_30 int32 = x3
+	var value_31 int32 = max_x
+	var value_32 bool = value_30 > value_31
+	if value_32 {
+		var value_33 int32 = x3
+		max_x = value_33
+	}
+	var value_34 int32 = y2
+	var value_35 int32 = max_y
+	var value_36 bool = value_34 > value_35
+	if value_36 {
+		var value_37 int32 = y2
+		max_y = value_37
+	}
+	var value_38 int32 = y3
+	var value_39 int32 = max_y
+	var value_40 bool = value_38 > value_39
+	if value_40 {
+		var value_41 int32 = y3
+		max_y = value_41
+	}
+	var value_42 int32 = min_x
+	var value_43 int32 = min_y
+	var value_44 int32 = max_x
+	var value_45 int32 = min_x
+	var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 2))
+	var value_47 int32 = max_y
+	var value_48 int32 = min_y
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 2))
+	var value_50 Rectangle = Primitive_PrimitiveRectBounds(value_42, value_43, value_46, value_49)
+	triangle.Bounds = value_50
+	var value_51 TrianglePrimitive = triangle
+	return value_51
 }

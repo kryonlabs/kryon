@@ -25,6 +25,7 @@ StyleData ui_style_apply_effects_data(StyleData value);
 StyleFrame ui_style_apply_effects_frame(StyleFrame frame);
 Style ui_style_apply_effects(Style value);
 FillStates ui_style_apply_effects_fill(FillStates fill);
+Style ui_app_style(void);
 Style ui_surface_style(void);
 
 /* Theme adapters only; widget visual policy belongs to runtime .kry. */

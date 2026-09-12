@@ -1496,6 +1496,7 @@ tokens {
   material { flat: Flat; }
 }
 Surface { background: surface; material: flat; }
+App { background: surface; }
 Text { foreground: label; font-size: 14; }
 TextField { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
 TextField:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
@@ -3354,6 +3355,7 @@ tokens {
   length { field-radius: 5; area-radius: 7; border: 2; }
   material { flat: Flat; }
 }
+App { background: #101820; }
 Surface { background: #101820; material: flat; }
 TextField { background: field; foreground: field-ink; border: field-rule; focus: focus-ring; radius: field-radius; border-width: border; material: flat; }
 TextField:focus { background: field-focus; foreground: field-ink; border: focus-ring; focus: focus-ring; material: flat; }

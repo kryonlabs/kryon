@@ -99,7 +99,7 @@ ui_draw_button_content(const ButtonSpec *button, Rectangle bounds,
                        .offset_x = button->paint.content_offset.x, .offset_y = button->paint.content_offset.y};
     ContentDrawing content = PaintContent(props, bounds, paint, font,
         TextWidth(props.label != NULL ? props.label : "", font), ColorToInt(color),
-        ColorToInt(ui_surface_style().background), (float)Scale(1000) / 1000.0f,
+        ColorToInt(ui_app_style().background), (float)Scale(1000) / 1000.0f,
         GetTime() * 1000.0, button->disclosure);
     ui_draw(content.mark);
     ui_draw(content.label);
@@ -311,7 +311,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             button.style_kind != 0 ? button.style_kind : StyleKindButton());
         style_font = (int)(appearance.value.font_size * GetScale() + 0.5f);
         ButtonFrame frame = BuildFrame(props, input, appearance, motion,
-            button.surface_bounds, ColorToInt(ui_surface_style().background),
+            button.surface_bounds, ColorToInt(ui_app_style().background),
             GetScale(), style_font, GetFontSize());
         frame.appearance = ui_style_apply_effects_frame(frame.appearance);
         frame.material.value = frame.appearance.value;
