@@ -1,7 +1,7 @@
 # Composed popup implementation requirements
 
-Status: the public native `BeginPopup` / `EndPopup` / `ClosePopup` scope is
-implemented in C and Go, with k2c, k2cpp and k2go generated coverage. The
+Status: the public `Popup` block and `ClosePopup` operation are implemented in
+C and Go, with k2c, k2cpp and k2go generated coverage. The
 remaining lifecycle and backend gaps below still apply. This is an
 implementation checklist, not a completion claim or a restriction of the
 native ImGui widget goal.
@@ -232,7 +232,8 @@ in native C and Go. It inherits disabled state and only accepts a chord in the
 top live popup branch. Generated k2c/k2cpp/k2go parity queues Ctrl+C with an
 open popup, verifies that only the popup command fires, closes the popup, and
 verifies that background routing resumes on the next declaration. C
-`BeginPopup` now retires an explicitly closed or outside-dismissed input owner
+The lowered popup host path now retires an explicitly closed or
+outside-dismissed input owner
 before returning, rather than leaving keyboard capture until frame cleanup.
 This establishes generic accelerator ownership and explicit-close replay, not
 all widget-specific shortcuts or cross-window routing.
@@ -337,7 +338,7 @@ Presenter texture readback preserves its caller's framebuffer, so interleaving
 an auxiliary presentation does not redirect the main frame's later composition.
 Callers of private internals still must balance layer scopes and finish retained
 painting before host finalization. The public popup scope owns that balancing
-for ordinary callers and rejects an unmatched `EndPopup`.
+for ordinary callers and rejects unmatched lowered host popup exits.
 
 ## Implemented prerequisite: native Go nested paint collection
 
