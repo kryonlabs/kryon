@@ -108,7 +108,7 @@ text measurement, painting, storage, or platform services.
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation policy, `MultiSelectList` row/navigation/selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
-| Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, menu geometry policy | `MenuBar`, `PopupMenu`, `ContextMenu` retained state/input, router/link helpers |
+| Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, `Menu` geometry policy | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, `TransitionFade` alpha/easing policy | theme pickers |
 | Game2D | Native scene nodes | Game2D nodes are separate from UI widgets; keep them in the Game2D runtime unless `.kry` scene declarations are introduced. |
 
@@ -155,8 +155,8 @@ has a single place to land.
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Page rows/metrics are `.kry`; editing, IME, selection, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
-| `MenuBar` | `UI/Navigation` | Menu | `runtime/menu.kry` | Partly `.kry-backed` | Geometry is `.kry`; retained open/focus/input state remains native. |
-| `PopupMenu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/popup_policy.kry` | Partly `.kry-backed` | Menu geometry and popup mode are `.kry`; nested input registry remains native. |
+| `MenuBar` | `UI/Navigation` | Menu | `runtime/menu.kry` | Native support | Legacy/native command-menu entry point. Clean public spelling should be `Menu` with bar/popup/context mode props. |
+| `PopupMenu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/popup_policy.kry` | Native support | Legacy/native popup command menu entry point. Clean public spelling should be `Menu` inside or anchored by `Popup`, not a separate widget concept. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint and sizing policy are `.kry`. |
 | `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry are `.kry`; host dispatches child actions. |
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing/scroll policy is `.kry`; host keeps input sampling. |
@@ -286,9 +286,10 @@ has a single place to land.
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | Already has `.kry` module. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
-| `MenuBar` | `.kry canonical` | Menu geometry is in `.kry`; retained open/focus/input state still native host support. |
-| `PopupMenu` | `.kry canonical` | Menu geometry is in `.kry`; retained focus/input state still native host support. |
-| `ContextMenu` | `.kry canonical` | Menu geometry is in `.kry`; retained trigger/open/input state still native host support. |
+| `Menu` | `.kry canonical` | Command menu surface. Bar, popup, and context behavior belong in props or `Popup` composition; menu geometry is in `.kry`, retained open/focus/input state remains native host support. |
+| `MenuBar` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` props. |
+| `PopupMenu` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` inside or anchored by `Popup`. |
+| `ContextMenu` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` with context trigger props. |
 | `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout policy is in `.kry`; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |

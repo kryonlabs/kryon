@@ -65,6 +65,8 @@ CanvasGrid SelectableText`
 
 `Canvas`, `Scroll`, and `TableCell` are lexical `.kry` blocks rather than
 ordinary one-call widgets; the compiler lowers them to host begin/end support.
+The clean command-menu concept is `Menu`; the current compiler/runtime still
+exposes `MenuBar`, `PopupMenu`, and `ContextMenu` as migration support.
 
 ## Widget matrix
 
@@ -161,7 +163,7 @@ declaration pass (`src/ui/ui_tree.c`).
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| MenuBar / PopupMenu / ContextMenu | ✅ | ✅ | ✅ | ✅ | ✅ (`MenuBar`, nested items, retained right-click context state) | ✗ |
+| Menu (bar, popup, and context modes) | ✅ | ✅ | ✅ | ✅ | ✅ (legacy `MenuBar`/`PopupMenu`/`ContextMenu` entry points during migration) | ✗ |
 | Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | Button add-tab actions / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
