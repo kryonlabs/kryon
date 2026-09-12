@@ -7,6 +7,19 @@
 static int icon_calls;
 static Color icon_tints[3];
 
+static StyleFrame
+test_style_frame(uint32_t background, uint32_t foreground, uint32_t border)
+{
+    StyleFrame frame = {0};
+    frame.value.fields = StyleBackground | StyleForeground | StyleBorder |
+                         StyleOpacity;
+    frame.value.background = background;
+    frame.value.foreground = foreground;
+    frame.value.border = border;
+    frame.value.opacity = 1.0f;
+    return frame;
+}
+
 static void
 check_int(const char *name, int got, int want)
 {
@@ -155,19 +168,26 @@ main(void)
     SetThemeSource(THEME_SOURCE_APP);
     SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
+    ClearStylePacks();
+    if(!RegisterBuiltInStylePacks()) {
+        fprintf(stderr, "built-in styles did not register\n");
+        return 1;
+    }
 
     check_int("compact navigation bar default height",
               NavigationBarDefaultHeight(1.0f), 86);
     {
-        Palette palette = DefaultPalette(false);
-        Metrics metrics = DefaultMetrics();
+        StyleFrame bar = test_style_frame(0x111111ffu, 0x222222ffu,
+                                          0x333333ffu);
+        StyleFrame item = test_style_frame(0x444444ffu, 0x555555ffu,
+                                           0x666666ffu);
+        item.value.radius = 29.0f;
         NavigationBarPaint paint = NavigationBarPaintFor((NavigationBarSpec){
             .view_width = 900,
             .view_height = 720,
             .count = 4,
             .scale = 1.0f,
-            .palette = palette,
-            .metrics = metrics,
+            .bar = bar,
         });
         NavigationBarItemPaint item_paint =
             NavigationBarItemPaintFor((NavigationBarItemSpec){
@@ -175,8 +195,8 @@ main(void)
                 .index = 1,
                 .active = true,
                 .label_height = TextLineHeight(GetSmallFontSize()),
-                .palette = palette,
-                .metrics = metrics,
+                .base = item,
+                .face = item,
             });
 
         check_int("compact navigation bar hit target width",
@@ -197,8 +217,8 @@ main(void)
                        (int)(item_paint.state_bounds.y +
                              (item_paint.state_bounds.height -
                               item_paint.icon_bounds.height) / 2.0f));
-        check_true("compact navigation bar active badge is pill-shaped",
-                   item_paint.face.value.radius >= metrics.radius_pill);
+        check_int("compact navigation bar active badge uses KSS radius",
+                  (int)item_paint.face.value.radius, 29);
     }
 
     BeginInterfaceFrame(900, 720, 1.0f);
@@ -219,14 +239,12 @@ main(void)
     {
         check_int("inactive navigation bar icon alpha", icon_tints[0].a, 255);
         check_int("active navigation bar icon alpha", icon_tints[1].a, 255);
-        check_true("active navigation bar icon has distinct theme color",
-                   icon_tints[0].r != icon_tints[1].r ||
-                   icon_tints[0].g != icon_tints[1].g ||
-                   icon_tints[0].b != icon_tints[1].b);
-        check_true("disabled navigation bar icon is not active accent",
-                   icon_tints[2].r != icon_tints[1].r ||
-                   icon_tints[2].g != icon_tints[1].g ||
-                   icon_tints[2].b != icon_tints[1].b);
+        check_int("inactive navigation bar icon KSS red", icon_tints[0].r, 0x8d);
+        check_int("inactive navigation bar icon KSS green", icon_tints[0].g, 0x91);
+        check_int("inactive navigation bar icon KSS blue", icon_tints[0].b, 0x9a);
+        check_int("active navigation bar icon KSS red", icon_tints[1].r, 0x17);
+        check_int("active navigation bar icon KSS green", icon_tints[1].g, 0x10);
+        check_int("active navigation bar icon KSS blue", icon_tints[1].b, 0x22);
         check_int("disabled navigation bar icon alpha", icon_tints[2].a, 150);
     }
     for(int dark = 0; dark <= 1; dark++) {

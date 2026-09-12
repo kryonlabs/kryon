@@ -359,6 +359,11 @@ Document nodes without requiring callers to hand-format selector strings.
 `webNodeIdentity(node)` returns a plain identity projection for a Web Document
 node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
 DOM name, and source refs.
+If a generated widget item does not yet carry an explicit Kry path, the web
+runtime synthesizes one from the nearest known parent, widget kind, source line,
+and frame index before exposing node identity. This keeps every Web Document
+node addressable as a DOM object while the compiler-side all-node metadata work
+continues.
 
 `webNodeQuery(rt, selector)` and `webNodeQueryAll(rt, selector)` return
 unmounted Web Document nodes by the same KSS-style selector facts used for

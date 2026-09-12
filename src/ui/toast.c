@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/toast.h"
 
 #define UI_TOAST_MESSAGE_SIZE 256
@@ -13,7 +14,7 @@ copy_toast_message(const char *message)
     snprintf(toast_message, sizeof(toast_message), "%s", message ? message : "");
 }
 
-void
+static void
 ClearToast(void)
 {
     toast_message[0] = '\0';
@@ -21,22 +22,17 @@ ClearToast(void)
 }
 
 void
-ShowToastFor(const char *message, double seconds)
+Toast(ToastProps props)
 {
     ToastMetrics metrics = ToastMetricsFor(1.0f);
 
-    if(message == NULL || message[0] == '\0') {
+    if(props.message == NULL || props.message[0] == '\0') {
         ClearToast();
         return;
     }
-    copy_toast_message(message);
-    toast_until = GetTime() + (double)ToastDuration((float)seconds, metrics);
-}
-
-void
-ShowToast(const char *message)
-{
-    ShowToastFor(message, UI_TOAST_DEFAULT_SECONDS);
+    copy_toast_message(props.message);
+    toast_until = GetTime() + (double)ToastDuration((float)props.seconds,
+                                                    metrics);
 }
 
 void
@@ -75,12 +71,32 @@ RenderToast(void)
     layout = ToastLayoutFor(ui_view_width, ui_view_height, text_w, line_h,
                             metrics);
 
-    DrawRectangleRounded(layout.bounds, 0.18f, 12, DarkenColor(c_surface, 18));
-    DrawRectangleRoundedLinesEx(layout.bounds, 0.18f, 12, Scale(1),
-                                DarkenColor(c_surface, 46));
+    StyleData base = {.fields = (uint32_t)(StyleOpacity | StyleFontSize |
+                                           StyleMaterial),
+                      .opacity = 1.0f,
+                      .font_size = (float)font,
+                      .material = MaterialFlat};
+    StyleFrame surface_frame = {
+        .value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindToast()),
+                                    ButtonStateNormal)};
+    StyleFrame label_frame = {
+        .value = ResolveActiveStyle(base,
+                                    StyleControlRoleFacts(
+                                        StyleKindToast(), 0, 0, 6,
+                                        ButtonToneNeutral,
+                                        ButtonEmphasisSoft,
+                                        ControlSizeMedium, ButtonStateNormal),
+                                    ButtonStateNormal)};
+    Style surface = ui_unpack_style(ui_style_apply_effects_frame(surface_frame).value);
+    Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
+    ui_draw_material(layout.bounds, (Rectangle){0}, surface.background,
+                     surface.border, surface.border, surface.radius,
+                     surface.border_width, 0.0f, 0.0f, 0,
+                     surface.focus, 0.0f, surface.opacity,
+                     ui_style_fill(surface), surface.material);
     RenderText(display,
                (int)layout.text_bounds.x,
                GetUIControlTextY(display, (int)layout.bounds.y,
                                  (int)layout.bounds.height, font),
-               font, c_text);
+               font, text.foreground);
 }

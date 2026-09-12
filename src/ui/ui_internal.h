@@ -44,6 +44,22 @@ extern int g_ui_pointer_owner;
 extern int g_ui_scroll_gesture_pending;
 
 typedef struct {
+    Rectangle bounds;
+    int view_width;
+    int view_height;
+    Color scrim;
+    int dismiss_disabled;
+} DismissibleOverlayProps;
+
+typedef struct {
+    int closed;
+    int outside_released;
+    int release_consumed;
+} DismissibleOverlayResult;
+
+DismissibleOverlayResult DismissibleOverlay(DismissibleOverlayProps overlay);
+
+typedef struct {
     Rectangle anchor;
     const char *text;
 } GuideStep;
@@ -84,7 +100,7 @@ typedef struct {
     Rectangle close_button;
     Rectangle back_button;
     Rectangle next_button;
-} UIGuideOverlayDebug;
+} GuideOverlayDebug;
 
 typedef struct {
     const char *text;
@@ -360,6 +376,8 @@ int ui_button_render(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
+Style ui_resolve_button_style_kind(ButtonProps button, ButtonState state,
+                                   int style_kind);
 int ButtonNode(ButtonSpec button);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
@@ -428,16 +446,17 @@ int RenderTabBar(TabBarProps bar);
 PaneDropZone GetPaneDropZone(Rectangle bounds, Vector2 mouse);
 void RenderSeparator(SeparatorProps separator);
 int RenderDragDrop(DragDropProps drag_drop);
-int RenderMultiSelectList(MultiSelectListProps list);
+int RenderMultiSelectList(ListBoxProps list);
 int RenderSelectable(SelectableProps selectable);
 int RenderCheckbox(CheckboxProps checkbox);
 void RenderBullet(Rectangle bounds);
 int RenderColorPicker(ColorPickerProps picker);
-MenuBarResult RenderMenuBar(int id, Rectangle bounds, const Menu *menus,
-                              int menu_count, int *open_index);
+MenuResult RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus,
+                            int menu_count, int *open_index);
 int RenderPopupMenu(int id, int x, int y, const MenuItem *items,
                     int item_count);
-int RenderContextMenu(ContextMenuProps menu);
+int RenderContextMenu(MenuProps menu);
+MenuResult RenderMenu(MenuProps menu);
 int RenderRadio(RadioProps radio);
 void RenderProgress(ProgressProps progress);
 void RenderPlotLines(PlotProps plot);

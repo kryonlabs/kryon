@@ -1,8 +1,11 @@
 #ifndef KRYON_TOAST_H
 #define KRYON_TOAST_H
 
-void ShowToast(const char *message);
-void ShowToastFor(const char *message, double seconds);
-void ClearToast(void);
+typedef struct ToastProps {
+    const char *message;
+    double seconds;
+} ToastProps;
+
+void Toast(ToastProps props);
 
 #endif

@@ -20,7 +20,7 @@ mkdir -p "$work/src" "$work/out"
 cat > "$work/src/app.kry" <<'EOF'
 #module "demo.app"
 #import "kryon.h"
-#style <kryon.vanilla> as vanilla
+#style <kryon.material> as material
 #style "brand.kss" as brand
 ui :: #import "src/ui/panel"
 
@@ -59,7 +59,7 @@ grep -Fq 'kir 1' "$kir"
 grep -Fq 'module demo.app source src/app.kry span src/app.kry:1:1' "$kir"
 grep -Fq 'import header kryon.h target kryon.h' "$kir"
 grep -Fq 'import module ui target src/ui/panel' "$kir"
-grep -Fq 'style builtin target kryon.vanilla alias vanilla' "$kir"
+grep -Fq 'style builtin target kryon.material alias material' "$kir"
 grep -Fq 'style file target brand.kss alias brand' "$kir"
 grep -Fq 'import extern platform_ping target platform_ping' "$kir"
 grep -Fq 'import extern native_abs target c.abs extern_kind c extern_symbol abs' "$kir"

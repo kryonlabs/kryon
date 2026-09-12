@@ -68,11 +68,11 @@ is_runtime_go_type(const char *type)
     static const char *types[] = {
 		"KeyID",
 		"Accelerator",
-		"MenuItemKind", "MenuItem", "Menu", "MenuBarResult", "ContextMenuProps",
+		"MenuItemKind", "MenuItem", "MenuGroup", "MenuMode", "MenuResult", "MenuProps",
         "TextAlign", "TextWrap",
         "Theme", "ThemeFamily", "ThemeColors", "ThemeMetrics",
         "SyntaxMode", "ThemeStyle", "ThemeSource",
-        "ThemeMode", "ImageFit", "ImageStyle", "UISemanticKind",
+        "ThemeMode", "ImageFit", "ImageStyle", "SemanticKind",
         "TextInputStyle", "SelectableProps", "CheckboxProps", "ToggleProps",
 		"Tab", "TabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
@@ -83,9 +83,11 @@ is_runtime_go_type(const char *type)
 		"ToolbarProps", "CardProps", "RadioProps", "ProgressProps", "PlotProps",
 		"NumericValueKind", "DragMode", "DragProps", "SliderProps", "InputProps",
 		"TextProps", "SeparatorProps", "DragDropRole", "DragDropProps",
-		"MultiSelectListProps",
+		"ToastProps",
 		"ColorPickerProps",
-		"SpinboxProps", "DropdownOption", "DropdownProps", "PopupFlags", "PopupProps",
+		"SpinboxProps", "DropdownOption", "DropdownProps",
+		"SegmentOption", "SegmentedControlProps", "SegmentedControlResult",
+		"PopupFlags", "PopupProps",
 		"FieldsetProps", "ListBoxProps",
 		"TreeItem", "TreeViewProps",
         "TableRow", "TableViewProps",
@@ -1044,13 +1046,11 @@ props_field_at(const KirModule *module, const char *type, int index,
 		{"InputProps", {"Bounds", "ID", "Label", "Kind", "FloatValues",
 		                   "IntValues", "DoubleValues", "ValueCount",
 		                   "Step", "StepFast", "Format", "Disabled"}},
-		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled", "LetterSpacing", "Typeface", "Style"}},
+		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled", "LetterSpacing", "Selectable", "Typeface", "Style"}},
 		{"SeparatorProps", {"Bounds", "Vertical", "Label", "Font", "Disabled"}},
 		{"DragDropProps", {"Bounds", "ID", "Role", "Type", "Data", "DataSize",
 		                    "Output", "OutputSize", "AcceptedSize", "Disabled"}},
-		{"MultiSelectListProps", {"Bounds", "ID", "Items", "ItemCount",
-		                            "Selected", "SelectedCount", "Anchor",
-		                            "RowHeight", "Disabled"}},
+		{"ToastProps", {"Message", "Seconds"}},
 		{"ColorPickerProps", {"Bounds", "ID", "Label", "Values", "ValueCount",
 		                       "Disabled", "Picker"}},
 		{"ModalAction", {"Label", "Tone", "Emphasis", "Disabled"}},
@@ -1059,16 +1059,23 @@ props_field_at(const KirModule *module, const char *type, int index,
 		                 "CursorPosition", "Focused", "FocusID"}},
 		{"MenuItem", {"Kind", "Label", "Accelerator", "ID", "Disabled",
 		                 "Checked", "Submenu", "SubmenuCount"}},
-		{"Menu", {"Bounds", "Label", "Items", "ItemCount"}},
-		{"MenuBarResult", {"ActivatedID", "OpenIndex"}},
-		{"ContextMenuProps", {"ID", "Trigger", "Items", "ItemCount", "Open",
-		                        "X", "Y"}},
+		{"MenuGroup", {"Bounds", "Label", "Items", "ItemCount"}},
+		{"MenuResult", {"ActivatedID", "OpenIndex"}},
+		{"MenuProps", {"ID", "Mode", "Bounds", "Trigger", "Menus",
+		                 "MenuCount", "Items", "ItemCount", "OpenIndex",
+		                 "Open", "X", "Y"}},
         {"SpinboxProps", {"Bounds", "ID", "Min", "Max", "Step", "Value",
                           "Disabled", "ValueText", "Wrap"}},
         {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
                             "SeparatorBefore"}},
         {"DropdownProps", {"Bounds", "ID", "Options", "OptionCount",
                            "SelectedIndex", "Disabled", "Items"}},
+        {"SegmentOption", {"Label", "Disabled"}},
+        {"SegmentedControlProps", {"Bounds", "ID", "Options", "OptionCount",
+                                   "SelectedIndex", "Font", "Gap", "Height",
+                                   "MinItemWidth", "MaxItemWidth", "Wrap"}},
+        {"SegmentedControlResult", {"SelectedIndex", "ClickedIndex", "Changed",
+                                    "Height"}},
         {"PopupProps", {"Bounds", "ID", "Open", "Disabled", "Trigger", "Flags"}},
         {"Accelerator", {"Key", "Ctrl", "Shift", "Alt", "ID"}},
         {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
@@ -1081,7 +1088,8 @@ props_field_at(const KirModule *module, const char *type, int index,
                            "Style", "Filter", "FilterUserData",
                            "ContentVersion", "ReadOnly", "Wrap"}},
 		{"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
-		                  "SelectedIndex", "ScrollOffset", "RowHeight", "Disabled"}},
+		                  "SelectedIndex", "Selected", "SelectedCount", "Anchor",
+		                  "ScrollOffset", "RowHeight", "Disabled", "ContentHeight"}},
 		{"TreeItem", {"Label", "Depth", "ID", "Expanded", "Selectable"}},
 		{"TreeViewProps", {"Bounds", "ID", "Items", "ItemCount",
 		                   "SelectedID", "ScrollOffset", "RowHeight", "Disabled"}},
@@ -1261,18 +1269,20 @@ slice_prop_field(const char *type, const char *field)
     if(strcmp(type, "DropdownProps") == 0 &&
        (strcmp(field, "Options") == 0 || strcmp(field, "Items") == 0))
         return 1;
+    if(strcmp(type, "SegmentedControlProps") == 0 &&
+       strcmp(field, "Options") == 0)
+        return 1;
     if(strcmp(type, "ButtonProps") == 0 && strcmp(field, "Items") == 0)
         return 1;
-    if((strcmp(type, "ListBoxProps") == 0 ||
-        strcmp(type, "TreeViewProps") == 0) && strcmp(field, "Items") == 0)
+    if(strcmp(type, "ListBoxProps") == 0 &&
+       (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0))
+        return 1;
+    if(strcmp(type, "TreeViewProps") == 0 && strcmp(field, "Items") == 0)
         return 1;
     if(strcmp(type, "TabBarProps") == 0 && strcmp(field, "Tabs") == 0)
         return 1;
     if(strcmp(type, "DragDropProps") == 0 &&
        (strcmp(field, "Data") == 0 || strcmp(field, "Output") == 0))
-        return 1;
-    if(strcmp(type, "MultiSelectListProps") == 0 &&
-       (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0))
         return 1;
     if(strcmp(type, "PlotProps") == 0 && strcmp(field, "Values") == 0)
         return 1;
@@ -1288,11 +1298,12 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "ColorPickerProps") == 0 && strcmp(field, "Values") == 0)
         return 1;
-    if(strcmp(type, "Menu") == 0 && strcmp(field, "Items") == 0)
+    if(strcmp(type, "MenuGroup") == 0 && strcmp(field, "Items") == 0)
         return 1;
     if(strcmp(type, "MenuItem") == 0 && strcmp(field, "Submenu") == 0)
         return 1;
-    if(strcmp(type, "ContextMenuProps") == 0 && strcmp(field, "Items") == 0)
+    if(strcmp(type, "MenuProps") == 0 &&
+       (strcmp(field, "Items") == 0 || strcmp(field, "Menus") == 0))
         return 1;
     if(strcmp(type, "TableViewProps") == 0 &&
        (strcmp(field, "Columns") == 0 || strcmp(field, "Rows") == 0 ||
@@ -1551,6 +1562,8 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     *dn += (size_t)snprintf(dst + *dn, K2GO_TEXT_MAX - *dn, ", ");
                 if(!declared_record && ((!strcmp(field_type, "bool") ||
                     (!*field_type && bool_prop_field(field))) ||
+                    (strcmp(type, "TextProps") == 0 &&
+                     strcmp(field, "Selectable") == 0) ||
                     (strcmp(type, "TableViewProps") == 0 && strcmp(field, "CustomCells") == 0) ||
                     (strcmp(type, "CollapsibleProps") == 0 &&
                      (strcmp(field, "Tree") == 0 || strcmp(field, "Leaf") == 0 ||
@@ -2031,6 +2044,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"PopupContext", "PopupContext"},
                     {"DragDropRoleSource", "DragDropRoleSource"},
                     {"DragDropRoleTarget", "DragDropRoleTarget"},
+                    {"MenuModeBar", "MenuModeBar"},
+                    {"MenuModePopup", "MenuModePopup"},
+                    {"MenuModeContext", "MenuModeContext"},
                     {"KEY_C", "KeyC"},
 					{"MenuCommand", "MenuCommand"},
 					{"MenuCheck", "MenuCheck"},

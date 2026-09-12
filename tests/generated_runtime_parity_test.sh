@@ -1059,13 +1059,13 @@ func main() {
 	driver.QueueKey(kryon.KeyDown)
 	drawMultiSelect()
 	if SelectionImagesStateValue.MultiAnchor != 1 || SelectionImagesStateValue.MultiCount != 1 || SelectionImagesStateValue.MultiSelected != [3]int32{0, 1, 0} {
-		panic(fmt.Sprintf("multi_select: generated MultiSelectList Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
+		panic(fmt.Sprintf("multi_select: generated Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
 	}
 	driver.QueueKey(kryon.KeyLeftShift)
 	driver.QueueKey(kryon.KeyDown)
 	drawMultiSelect()
 	if SelectionImagesStateValue.MultiAnchor != 2 || SelectionImagesStateValue.MultiCount != 2 || SelectionImagesStateValue.MultiSelected != [3]int32{0, 1, 1} {
-		panic(fmt.Sprintf("multi_select: generated MultiSelectList Shift+Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
+		panic(fmt.Sprintf("multi_select: generated Shift+Down state=%v/%d/%d", SelectionImagesStateValue.MultiSelected, SelectionImagesStateValue.MultiCount, SelectionImagesStateValue.MultiAnchor))
 	}
 	drawTabScope()
 	driver.QueueTap(60, 84)
@@ -2214,7 +2214,7 @@ int main(void)
     SetFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
     if(multi_anchor != 1 || multi_count != 1 ||
        multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 0) {
-        fprintf(stderr,"multi_select: generated MultiSelectList Down state=%d%d%d/%d/%d\n",
+        fprintf(stderr,"multi_select: generated Down state=%d%d%d/%d/%d\n",
                 multi_selected[0],multi_selected[1],multi_selected[2],multi_count,multi_anchor);
         return 1;
     }
@@ -2223,7 +2223,7 @@ int main(void)
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     if(multi_anchor != 2 || multi_count != 2 ||
        multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 1) {
-        fprintf(stderr,"multi_select: generated MultiSelectList Shift+Down state=%d%d%d/%d/%d\n",
+        fprintf(stderr,"multi_select: generated Shift+Down state=%d%d%d/%d/%d\n",
                 multi_selected[0],multi_selected[1],multi_selected[2],multi_count,multi_anchor);
         return 1;
     }

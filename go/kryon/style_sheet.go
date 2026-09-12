@@ -149,6 +149,186 @@ func StyleSheet_StyleKindSeparator() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindNavigationBar() int32 {
+	var value_0 int32 = 15
+	return value_0
+}
+
+func StyleSheet_StyleKindNavigationBarItem() int32 {
+	var value_0 int32 = 16
+	return value_0
+}
+
+func StyleSheet_StyleKindSelectable() int32 {
+	var value_0 int32 = 17
+	return value_0
+}
+
+func StyleSheet_StyleKindFieldset() int32 {
+	var value_0 int32 = 18
+	return value_0
+}
+
+func StyleSheet_StyleKindPlot() int32 {
+	var value_0 int32 = 19
+	return value_0
+}
+
+func StyleSheet_StyleKindPlotMark() int32 {
+	var value_0 int32 = 20
+	return value_0
+}
+
+func StyleSheet_StyleKindLink() int32 {
+	var value_0 int32 = 21
+	return value_0
+}
+
+func StyleSheet_StyleKindTabBar() int32 {
+	var value_0 int32 = 22
+	return value_0
+}
+
+func StyleSheet_StyleKindTab() int32 {
+	var value_0 int32 = 23
+	return value_0
+}
+
+func StyleSheet_StyleKindTabClose() int32 {
+	var value_0 int32 = 24
+	return value_0
+}
+
+func StyleSheet_StyleKindSegmentedControl() int32 {
+	var value_0 int32 = 25
+	return value_0
+}
+
+func StyleSheet_StyleKindSegment() int32 {
+	var value_0 int32 = 26
+	return value_0
+}
+
+func StyleSheet_StyleKindMenu() int32 {
+	var value_0 int32 = 27
+	return value_0
+}
+
+func StyleSheet_StyleKindMenuItem() int32 {
+	var value_0 int32 = 28
+	return value_0
+}
+
+func StyleSheet_StyleKindMenuSeparator() int32 {
+	var value_0 int32 = 29
+	return value_0
+}
+
+func StyleSheet_StyleKindListBox() int32 {
+	var value_0 int32 = 30
+	return value_0
+}
+
+func StyleSheet_StyleKindListBoxItem() int32 {
+	var value_0 int32 = 31
+	return value_0
+}
+
+func StyleSheet_StyleKindTreeView() int32 {
+	var value_0 int32 = 32
+	return value_0
+}
+
+func StyleSheet_StyleKindTreeViewItem() int32 {
+	var value_0 int32 = 33
+	return value_0
+}
+
+func StyleSheet_StyleKindListBoxMulti() int32 {
+	var value_0 int32 = 34
+	return value_0
+}
+
+func StyleSheet_StyleKindListBoxMultiItem() int32 {
+	var value_0 int32 = 35
+	return value_0
+}
+
+func StyleSheet_StyleKindDragDropTarget() int32 {
+	var value_0 int32 = 36
+	return value_0
+}
+
+func StyleSheet_StyleKindSpinbox() int32 {
+	var value_0 int32 = 37
+	return value_0
+}
+
+func StyleSheet_StyleKindSpinboxValue() int32 {
+	var value_0 int32 = 38
+	return value_0
+}
+
+func StyleSheet_StyleKindColorPickerSwatch() int32 {
+	var value_0 int32 = 39
+	return value_0
+}
+
+func StyleSheet_StyleKindSliderThumb() int32 {
+	var value_0 int32 = 40
+	return value_0
+}
+
+func StyleSheet_StyleKindToggleThumb() int32 {
+	var value_0 int32 = 41
+	return value_0
+}
+
+func StyleSheet_StyleKindScroll() int32 {
+	var value_0 int32 = 42
+	return value_0
+}
+
+func StyleSheet_StyleKindScrollThumb() int32 {
+	var value_0 int32 = 43
+	return value_0
+}
+
+func StyleSheet_StyleKindPanedView() int32 {
+	var value_0 int32 = 44
+	return value_0
+}
+
+func StyleSheet_StyleKindToast() int32 {
+	var value_0 int32 = 45
+	return value_0
+}
+
+func StyleSheet_StyleKindCollapsible() int32 {
+	var value_0 int32 = 46
+	return value_0
+}
+
+func StyleSheet_StyleKindTitleBar() int32 {
+	var value_0 int32 = 47
+	return value_0
+}
+
+func StyleSheet_StyleKindToolbar() int32 {
+	var value_0 int32 = 48
+	return value_0
+}
+
+func StyleSheet_StyleKindModal() int32 {
+	var value_0 int32 = 49
+	return value_0
+}
+
+func StyleSheet_StyleKindTableView() int32 {
+	var value_0 int32 = 50
+	return value_0
+}
+
 func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	var facts StyleFacts = StyleFacts{}
 	var value_0 int32 = kind
@@ -191,6 +371,22 @@ func StyleSheet_StyleControlFacts(kind int32, name int32, class_name int32, tone
 	facts.State = value_7
 	var value_8 StyleFacts = facts
 	return value_8
+}
+
+func StyleSheet_StyleControlRoleFacts(kind int32, name int32, class_name int32, role int32, tone int32, emphasis int32, size int32, state int32) StyleFacts {
+	var value_0 int32 = kind
+	var value_1 int32 = name
+	var value_2 int32 = class_name
+	var value_3 int32 = tone
+	var value_4 int32 = emphasis
+	var value_5 int32 = size
+	var value_6 int32 = state
+	var value_7 StyleFacts = StyleSheet_StyleControlFacts(value_0, value_1, value_2, value_3, value_4, value_5, value_6)
+	var facts StyleFacts = value_7
+	var value_8 int32 = role
+	facts.Role = value_8
+	var value_9 StyleFacts = facts
+	return value_9
 }
 
 func StyleSheet_StyleTextFacts(name int32, class_name int32, role int32, state int32) StyleFacts {

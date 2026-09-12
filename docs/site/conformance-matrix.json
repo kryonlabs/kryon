@@ -506,7 +506,7 @@
       },
       "widgets": [
         "Background",
-        "Rect",
+        "Box",
         "Screen",
         "Text"
       ]
@@ -607,7 +607,7 @@
       },
       "widgets": [
         "Background",
-        "Rect",
+        "Box",
         "Screen",
         "Text"
       ]
@@ -710,7 +710,7 @@
         "Background",
         "Button",
         "Line",
-        "Rect",
+        "Box",
         "Screen",
         "Text"
       ]
@@ -911,7 +911,7 @@
       },
       "widgets": [
         "Background",
-        "MenuBar",
+        "Menu",
         "Screen",
         "Text"
       ]
@@ -1830,7 +1830,7 @@
       "widgets": [
         "Background",
         "Image",
-        "Rect",
+        "Box",
         "Screen",
         "Stack",
         "Text"
@@ -2513,7 +2513,7 @@
       },
       "widgets": [
         "Background",
-        "Rect",
+        "Box",
         "Screen",
         "Slider",
         "Text",
@@ -2631,13 +2631,13 @@
         "Line",
         "Link",
         "ListBox",
-        "MenuBar",
+        "Menu",
         "Modal",
         "PanedView",
         "Paragraph",
         "Progress",
         "Radio",
-        "Rect",
+        "Box",
         "Row",
         "Screen",
         "Scroll",
@@ -3961,7 +3961,7 @@
         }
       },
       "widgets": [
-        "MenuBar",
+        "Menu",
         "Progress",
         "Screen",
         "Text"
@@ -4268,7 +4268,7 @@
         "Collapsible",
         "Column",
         "Dropdown",
-        "Rect",
+        "Box",
         "Row",
         "TableView",
         "TextField"
@@ -4613,13 +4613,13 @@
       },
       "renderer_matrix": {
         "desktop_libdraw_c": {
-          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and standalone selectable text is now expressed through TextProps.selectable.",
           "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
         },
         "desktop_raylib": {
-          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and standalone selectable text is now expressed through TextProps.selectable.",
           "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
@@ -4637,7 +4637,7 @@
           "status_class": "ok"
         },
         "web_canvas_wasm": {
-          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and standalone selectable text is now expressed through TextProps.selectable.",
           "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
           "status": "compile gap",
           "status_class": "part"
@@ -4664,7 +4664,7 @@
           "status_class": "ok"
         },
         "libdraw_c": {
-          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
+          "evidence": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and standalone selectable text is now expressed through TextProps.selectable.",
           "status": "compile gap",
           "status_class": "part"
         }
@@ -4691,10 +4691,10 @@
         "Paragraph",
         "Progress",
         "Radio",
-        "Rect",
+        "Box",
         "Row",
         "Screen",
-        "SelectableText",
+        "standalone selectable text widget",
         "Slider",
         "Spinbox",
         "Stack",
@@ -5086,17 +5086,17 @@
     "Line": 3,
     "Link": 2,
     "ListBox": 4,
-    "MenuBar": 3,
+    "Menu": 3,
     "Modal": 4,
     "PanedView": 3,
     "Paragraph": 2,
     "Progress": 5,
     "Radio": 4,
-    "Rect": 8,
+    "Box": 8,
     "Row": 7,
     "Screen": 39,
     "Scroll": 2,
-    "SelectableText": 1,
+    "standalone selectable text widget": 1,
     "Slider": 6,
     "Spinbox": 3,
     "Stack": 3,
@@ -5155,14 +5155,6 @@
       ],
       "status": "covered",
       "status_class": "ok"
-    },
-    {
-      "id": "BottomNav",
-      "semantic_sources": [],
-      "source_count": 0,
-      "sources": [],
-      "status": "missing",
-      "status_class": "no"
     },
     {
       "id": "Button",
@@ -5401,7 +5393,7 @@
       "status_class": "ok"
     },
     {
-      "id": "MenuBar",
+      "id": "Menu",
       "semantic_sources": [
         "tests/parity/menus.kry"
       ],
@@ -5483,7 +5475,7 @@
       "status_class": "ok"
     },
     {
-      "id": "Rect",
+      "id": "Box",
       "semantic_sources": [
         "tests/parity/scroll_content.kry"
       ],
@@ -5598,7 +5590,7 @@
       "status_class": "ok"
     },
     {
-      "id": "SelectableText",
+      "id": "standalone selectable text widget",
       "semantic_sources": [],
       "source_count": 1,
       "sources": [

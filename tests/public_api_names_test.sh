@@ -30,7 +30,7 @@ if [ -n "$matches" ]; then
 fi
 
 removed_widget_matches="$(
-    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
+    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags|SelectableText|ShowToast|ShowToastFor)\b' \
         include src cmd go web docs examples tests tools scripts \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -41,6 +41,73 @@ removed_widget_matches="$(
 if [ -n "$removed_widget_matches" ]; then
     echo "Removed widget names must stay out of public/runtime/codegen surfaces; use Link, Image, Dropdown, Popup, or Menu:"
     echo "$removed_widget_matches"
+    exit 1
+fi
+
+multi_select_public_matches="$(
+    rg -n '\bMultiSelectList\s*\(|\bMultiSelectListProps\b|include/ui_tree\.h function MultiSelectList|^\| `MultiSelectList`' \
+        include docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/PUBLIC_API_SNAPSHOT.txt docs/RUNTIME_PARITY.md examples tests/parity tests/k2go_syntax_test.sh cmd/kir/kir_parse.c cmd/k2go/k2go_lower.c go/kryon/api.go go/kryon/runtime.go web/kryon-runtime.js web/kryon-runtime.d.ts \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$multi_select_public_matches" ]; then
+    echo "Multi-selection is a ListBoxProps mode; do not expose MultiSelectList as a public widget or props type:"
+    echo "$multi_select_public_matches"
+    exit 1
+fi
+
+multi_select_style_matches="$(
+    rg -n '\b(MultiSelectList|MultiSelectItem|StyleKindMultiSelectList|StyleKindMultiSelectItem)\b' \
+        runtime/style_sheet.kry styles/kryon src/ui/kss_parser.c go/kryon/kss_parser.go go/kryon/style_sheet.go go/kryon/style_builtins.go tests/kss_parser_test.c tests/style_builtin_packs_test.c go/kryon/style_sheet_test.go \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$multi_select_style_matches" ]; then
+    echo "KSS/style public surface must style ListBox multi-select mode with ListBoxMulti/ListBoxMultiItem, not old MultiSelect* widget names:"
+    echo "$multi_select_style_matches"
+    exit 1
+fi
+
+internal_overlay_public_matches="$(
+    rg -n '\b(DismissibleOverlay|DismissibleOverlayProps|DismissibleOverlayResult)\b|ui_overlay\.h' \
+        include docs/PUBLIC_API_SNAPSHOT.txt docs/CANONICAL_WIDGET_SURFACE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$internal_overlay_public_matches" ]; then
+    echo "DismissibleOverlay is internal overlay host support, not public widget/API surface:"
+    echo "$internal_overlay_public_matches"
+    exit 1
+fi
+
+focus_debug_public_matches="$(
+    rg -n '\b(FocusDebugOverlay|TransitionFade)\s*\(|include/ui_tree\.h function (FocusDebugOverlay|TransitionFade)|^\| (FocusDebugOverlay|TransitionFade) \|' \
+        include docs/API.md docs/PUBLIC_API_SNAPSHOT.txt docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$focus_debug_public_matches" ]; then
+    echo "FocusDebugOverlay and TransitionFade are internal overlay host support; public surface should keep clean props plus .kry policy:"
+    echo "$focus_debug_public_matches"
+    exit 1
+fi
+
+profile_picture_doc_matches="$(
+    rg -n '\bProfilePicture\b|\bprofile_picture\b|\bprofile picture\b|\bUISyncProfileIcon\b|\bUI_SYNC_PROFILE_ICON_' \
+        docs/CANONICAL_WIDGET_SURFACE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$profile_picture_doc_matches" ]; then
+    echo "Canonical widget docs must use ProfileImage/SyncProfileIcon naming, not Picture-era names:"
+    echo "$profile_picture_doc_matches"
     exit 1
 fi
 
@@ -98,7 +165,7 @@ if [ -n "$public_scroll_helper_matches" ]; then
 fi
 
 generated_matches="$(
-    rg -n '\b(TextInputControl|GenericButton|TextButton|IconButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UISeparatorNode|UIMenuBarNode|UIPopupMenuNode|UIFieldsetNode|UICanvasGridNode|UIMessageDialogNode|UIConfirmDialogNode|UIPromptDialogNode|UIColorPickerNode|UIFocusDebugOverlayNode|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITitleBarDropdown|UISubtab|UITab|UITreeItem|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfileImagePickerModal|UIProfileImagePickerResult)\b' \
+    rg -n '\b(TextInputControl|GenericButton|TextButton|IconButton|LocaleDropdown|VerticalSlider|VerticalSliderWithMarks|ReadonlyTextBox|DrawCenteredUIControlText|UIDropdownOption|DropdownEx|SetUIDropdownClipTop|SetUIDropdownClipBottom|RenderDropdown|RenderDropdownEx|UIParagraphSpec|UIParagraphLayout|UIModalAction|UINodeId|UIKey|UISide|UI_SIDE_[A-Z_]+|UIFrame|UIGrid|BeginUIFrameBox|UIFramePack|UIGridCell|UIPlace|PageGrid|GridLayout|GridLayoutProps|UICanvas|BeginUICanvas|EndUICanvas|UISeparatorNode|UIMenuBarNode|UIPopupMenuNode|UIFieldsetNode|UICanvasGridNode|UIMessageDialogNode|UIConfirmDialogNode|UIPromptDialogNode|UIColorPickerNode|UIFocusNode|UIFocusDebugOverlayNode|UIMenuItemKind|UIMenuItem|UIMenuBarResult|UIMenu|UI_MENU_[A-Z_]+|UIContextMenu|UIAccelerator|UIAcceleratorPressed|DispatchUIAccelerators|UIIconRowItem|UIIconRowResult|UIBottomNavItem|UIBottomNavResult|UIBottomNavOption|UIBottomNavConfigResult|UIToolbarAction|UIToolbarResult|UIToolbarHeaderResult|UITitleBarDropdown|UISubtab|UITab|UITreeItem|UIPaneDropZone|UIPaneTabBar|UIPaneTabBarResult|GetUIPaneDropZone|GetUITabBarHeight|UI_PANE_DROP_[A-Z_]+|UISidebarAccountHeaderSpec|UISidebarAccountHeaderResult|UIProfileImagePickerModal|UIProfileImagePickerResult)\b' \
         go/kryon include/ui_controls.h include/ui_tree.h include/ui_tk.h include/ui_nav.h include/ui_profile.h include/ui_draw.h include/ui_modal.h src/ui/dropdown.c src/ui/ui_node_registry.c cmd/k2b examples tests/k2c_syntax_test.sh tests/k2go_syntax_test.sh docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -112,21 +179,72 @@ if [ -n "$generated_matches" ]; then
 fi
 
 web_lowered_builder_matches="$(
-    rg -n '\b(export function (BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll)|"(BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll|InvisibleButton)")\b' \
+    rg -n '\b(export function (BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll|BottomNav|ClearBackground)|"(BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll|InvisibleButton|BottomNav|ClearBackground)")\b' \
         web/kryon-runtime.js web/kryon-runtime.d.ts \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
 
 if [ -n "$web_lowered_builder_matches" ]; then
-    echo "Web runtime builder exports must expose canonical widgets; lowered Begin*/End* host entries are not public builders:"
+    echo "Web runtime builder exports must expose canonical widgets; lowered Begin*/End* host entries, BottomNav aliases, and low-level ClearBackground are not public builders:"
     echo "$web_lowered_builder_matches"
+    exit 1
+fi
+
+web_missing_parser_widgets="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+root = Path('.')
+parser = (root / 'cmd/kir/kir_parse.c').read_text(encoding='utf-8')
+web = (root / 'web/kryon-runtime.js').read_text(encoding='utf-8')
+pm = re.search(r'static const char \*const widgets\[\]\s*=\s*\{(?P<body>.*?)\};', parser, re.S)
+wm = re.search(r'const runtimeCallNames = \[(?P<body>.*?)\];', web, re.S)
+parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
+web_names = set(re.findall(r'"([^"]+)"', wm.group('body')) if wm else [])
+special = {'Canvas', 'End'}
+for name in parser_names:
+    if name not in special and name not in web_names:
+        print(name)
+PY
+)"
+
+if [ -n "$web_missing_parser_widgets" ]; then
+    echo "Web runtime builders must cover canonical parser widgets:"
+    echo "$web_missing_parser_widgets"
+    exit 1
+fi
+
+go_missing_parser_widgets="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+root = Path('.')
+parser = (root / 'cmd/kir/kir_parse.c').read_text(encoding='utf-8')
+api = (root / 'go/kryon/api.go').read_text(encoding='utf-8')
+runtime = (root / 'go/kryon/runtime.go').read_text(encoding='utf-8')
+pm = re.search(r'static const char \*const widgets\[\]\s*=\s*\{(?P<body>.*?)\};', parser, re.S)
+parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
+api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
+runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
+special = {'Canvas', 'End'}
+for name in parser_names:
+    if name in special:
+        continue
+    if name not in api_funcs or name not in runtime_methods:
+        print(name)
+PY
+)"
+
+if [ -n "$go_missing_parser_widgets" ]; then
+    echo "Go runtime/API must cover canonical parser widgets:"
+    echo "$go_missing_parser_widgets"
     exit 1
 fi
 
 lowered_doc_matches="$(
     rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup)\b' \
-        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/ARCHITECTURE.md docs/COMPOSED_POPUP_IMPLEMENTATION.md docs/site/matrices.html \
+        docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/ARCHITECTURE.md docs/COMPOSED_POPUP_IMPLEMENTATION.md docs/site/matrices.html \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -147,6 +265,22 @@ legacy_menu_doc_matches="$(
 if [ -n "$legacy_menu_doc_matches" ]; then
     echo "User-facing widget docs must describe the canonical Menu concept, with legacy menu entry points only as migration support:"
     echo "$legacy_menu_doc_matches"
+    exit 1
+fi
+
+legacy_menu_surface_matches="$(
+    rg -n 'StyleKindMenuBar|MenuBarItem|RenderMenuBar|^MenuBar\s*\{' \
+        runtime src/ui go/kryon tests scripts styles docs include \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!tests/public_api_names_test.sh' \
+        --glob '!go/kryon/desktop_tray_sni.go' \
+        --glob '!go/kryon/dbus_marshal_test.go' || true
+)"
+
+if [ -n "$legacy_menu_surface_matches" ]; then
+    echo "Menu is the canonical command-menu surface; do not reintroduce MenuBar style/runtime names:"
+    echo "$legacy_menu_surface_matches"
     exit 1
 fi
 
@@ -185,8 +319,21 @@ rect_matches="$(
 )"
 
 if [ -n "$rect_matches" ]; then
-    echo "Rect is the canonical rectangle widget; do not reintroduce RectangleShape:"
+    echo "Box is the canonical rectangle widget; do not reintroduce RectangleShape:"
     echo "$rect_matches"
+    exit 1
+fi
+
+public_rect_matches="$(
+    rg -n 'void (Rect|kry_ui_rect_shape)\s*\(|#define Rect\b|include/ui_tree\.h (function (Rect|kry_ui_rect_shape)|macro Rect)|\bRect\b|\(\?:Rectangle\|Rect\)' \
+        include/ui_tree.h include/kry_backend.h include/kryon.h include/kryon_compat.generated.h docs/PUBLIC_API_SNAPSHOT.txt docs/site/conformance-matrix.json docs/site/matrices.html web/kryon-runtime.js web/kryon-runtime.d.ts \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_rect_matches" ]; then
+    echo "Box is the canonical rectangle widget; do not reintroduce public Rect:"
+    echo "$public_rect_matches"
     exit 1
 fi
 
@@ -373,7 +520,6 @@ fi
 
 public_composite_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b|\b(ShowUIToast|ShowUIToastFor|ClearUIToast)\b" \
-        include/ui_overlay.h \
         include/ui_rows.h \
         include/ui_toast.h \
         include/ui_modal.h \
@@ -388,8 +534,21 @@ public_composite_draw_matches="$(
 )"
 
 if [ -n "$public_composite_draw_matches" ]; then
-    echo "Public/generated composite widget surfaces must use clean names such as TabBar, Modal, and ShowToast:"
+    echo "Public/generated composite widget surfaces must use clean names such as TabBar, Modal, and Toast:"
     echo "$public_composite_draw_matches"
+    exit 1
+fi
+
+public_toast_helper_matches="$(
+    rg -n '\bClearToast\s*\(|include/ui_toast\.h function ClearToast' \
+        include docs/PUBLIC_API_SNAPSHOT.txt docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_toast_helper_matches" ]; then
+    echo "Toast clearing is internal host state; do not expose ClearToast as public widget API:"
+    echo "$public_toast_helper_matches"
     exit 1
 fi
 
@@ -571,7 +730,7 @@ statuses = (
     "Native support",
     "Composite candidate",
     "Rename review",
-    "Remove after migration",
+    "Removed",
 )
 for status in statuses:
     if status not in doc:

@@ -25,13 +25,10 @@ NATIVE_COMPAT_EXPORTS = {
     "BeginPopup",
     "BeginScroll",
     "BeginTableCell",
-    "ContextMenu",
     "EndDisabled",
     "EndPopup",
     "EndScroll",
     "EndTableCell",
-    "MenuBar",
-    "PopupMenu",
 }
 
 NATIVE_SCOPE_EXPORT_ALLOWLIST = {
@@ -41,11 +38,7 @@ NATIVE_SCOPE_EXPORT_ALLOWLIST = {
     "EndTree",
 }
 
-ROLE_COMPAT_EXPORTS = {
-    "ContextMenu",
-    "MenuBar",
-    "PopupMenu",
-}
+ROLE_COMPAT_EXPORTS = set()
 
 GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
     "BeginCanvas",
@@ -65,11 +58,8 @@ PUBLIC_WIDGET_NAMES = {
     "Bullet",
     "Drag",
     "DragDrop",
-    "DismissibleOverlay",
     "Dropdown",
     "Flow",
-    "Guide",
-    "GuideStep",
     "Heading",
     "Image",
     "Input",
@@ -79,10 +69,9 @@ PUBLIC_WIDGET_NAMES = {
     "ParagraphText",
     "Popup",
     "Section",
-    "ShowToast",
-    "ShowToastFor",
     "Slider",
     "Surface",
+    "Toast",
 }
 
 

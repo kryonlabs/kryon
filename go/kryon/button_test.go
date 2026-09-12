@@ -35,33 +35,6 @@ func TestButtonEnumBindingsPreservePublicTypesAndValues(t *testing.T) {
 	}
 }
 
-func TestDisabledBordersSoftenColorWithoutErasingNeutralEdges(t *testing.T) {
-	colors := []uint32{0x183858ff, 0x006cffff, 0xff0020ff, 0x00ccaaff, 0xffaa00ff}
-	for _, surface := range []uint32{0x092039ff, 0xffffffff} {
-		for tone, base := range colors {
-			for _, emphasis := range []ButtonEmphasis{ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline, ButtonEmphasisGhost, ButtonEmphasisLink} {
-				color := base
-				if surface == 0xffffffff && emphasis == ButtonEmphasisFilled && tone != int(ButtonToneAccent) {
-					color = Button_MixColor(surface, color, 28)
-				}
-				amount := uint32(25)
-				if tone == int(ButtonToneNeutral) {
-					amount = 45
-				}
-				want := Button_MixColor(surface, color, amount)
-				if emphasis == ButtonEmphasisGhost || emphasis == ButtonEmphasisLink {
-					want = 0
-				}
-				got := Button_ButtonBorder(int32(tone), int32(emphasis), int32(ButtonStateDisabled),
-					surface, colors[1], colors[0], colors[2], colors[3], colors[4])
-				if got != want {
-					t.Fatalf("surface=%08x tone=%d emphasis=%d: border=%08x want=%08x", surface, tone, emphasis, got, want)
-				}
-			}
-		}
-	}
-}
-
 func TestButtonMotionIdentitySurvivesContentAndOrderChanges(t *testing.T) {
 	for _, ids := range [][2]int32{{9400, 9401}, {-2128831035, -1266624162}} {
 		r := New(AppConfig{Width: 768, Height: 1024}).(*runtime)
@@ -88,91 +61,6 @@ func TestButtonMotionIdentitySurvivesContentAndOrderChanges(t *testing.T) {
 				true, false, false, false, r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
 			if instanceState[ButtonInstance](r, uint64(uint32(ids[0]))).Motion.Hover.Value != expected.Hover.Value || instanceState[ButtonInstance](r, uint64(uint32(ids[1]))).Motion.Hover.Value != 0 {
 				t.Fatal("moving and relabeling a stable instance must not reset or transfer its animation")
-			}
-		}
-	}
-}
-
-func TestLightDangerPressedBodyAndOverride(t *testing.T) {
-	palette := Theme_DefaultPalette(false)
-	resolve := func(state ButtonState, styles StyleStates) StyleData {
-		return Button_ResolveAppearance(int32(ButtonToneDanger), int32(ButtonEmphasisFilled),
-			int32(state), 0, false, false, false, false, false, palette, Theme_DefaultMetrics(), styles)
-	}
-	normal := resolve(ButtonStateNormal, StyleStates{})
-	pressed := resolve(ButtonStatePressed, StyleStates{})
-	if pressed.Background != Button_MixColor(normal.Background, palette.Surface, 20) {
-		t.Fatal("pressed danger material must soften its saturated body")
-	}
-	if pressed.Foreground != normal.Foreground {
-		t.Fatal("pressed body tint must not change the semantic label")
-	}
-	custom := uint32(0x12345600)
-	styles := StyleStates{Pressed: StyleData{Fields: uint32(StyleBackground), Background: custom}}
-	if resolve(ButtonStatePressed, styles).Background != custom {
-		t.Fatal("custom pressed background must override the default tint")
-	}
-}
-
-func TestLightWarningBodyAndDisabledTint(t *testing.T) {
-	palette := Theme_DefaultPalette(false)
-	resolve := func(state ButtonState, styles StyleStates) StyleData {
-		return Button_ResolveAppearance(int32(ButtonToneWarning), int32(ButtonEmphasisFilled),
-			int32(state), 0, false, false, false, false, false, palette, Theme_DefaultMetrics(), styles)
-	}
-	warning := Surface_ChromaColor(palette.Warning, 255)
-	want := Button_MixColor(palette.Surface, warning, 20)
-	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateFocus} {
-		if resolve(state, StyleStates{}).Background != want {
-			t.Fatal("available warning face must retain its chromatic body")
-		}
-	}
-	disabled := Button_MixColor(palette.Surface, Button_MixColor(palette.Surface, warning, 18), 45)
-	if resolve(ButtonStateDisabled, StyleStates{}).Background != disabled {
-		t.Fatal("stronger available tint must not deepen disabled warning material")
-	}
-	custom := uint32(0x12345600)
-	if resolve(ButtonStateNormal, StyleStates{Normal: StyleData{Fields: uint32(StyleBackground), Background: custom}}).Background != custom {
-		t.Fatal("custom transparent background must override the warning material")
-	}
-}
-
-func TestLightOutlineBodyPreservesAlphaAndOverrides(t *testing.T) {
-	for _, alpha := range []uint32{0, 128, 255} {
-		palette := Theme_DefaultPalette(false)
-		palette.Surface = palette.Surface&0xffffff00 | alpha
-		for _, state := range []ButtonState{ButtonStateNormal, ButtonStateFocus} {
-			resolve := func(styles StyleStates) StyleData {
-				return Button_ResolveAppearance(int32(ButtonToneAccent), int32(ButtonEmphasisOutline),
-					int32(state), 0, false, false, false, false, false, palette, Theme_DefaultMetrics(), styles)
-			}
-			want := Button_MixColor(palette.Surface, palette.Accent, 4)&0xffffff00 | alpha
-			if got := resolve(StyleStates{}); got.Background != want {
-				t.Fatalf("state %v: outline tint must retain the surface alpha: %08x, want %08x", state, got.Background, want)
-			}
-			custom := uint32(0x12345600) | alpha
-			if got := resolve(StyleStates{Normal: StyleData{Fields: uint32(StyleBackground), Background: custom}}); got.Background != custom {
-				t.Fatal("application background must override the default outline tint")
-			}
-		}
-	}
-}
-
-func TestDarkPressedOutlineKeepsRestrainedTintAndOverrides(t *testing.T) {
-	palette := Theme_DefaultPalette(true)
-	resolve := func(styles StyleStates) StyleData {
-		return Button_ResolveAppearance(int32(ButtonToneAccent), int32(ButtonEmphasisOutline),
-			int32(ButtonStatePressed), 0, false, false, false, false, false,
-			palette, Theme_DefaultMetrics(), styles)
-	}
-	if got := resolve(StyleStates{}).Background; got != Button_MixColor(palette.Surface, palette.Accent, 12) {
-		t.Fatalf("pressed outline has excessive body tint: %08x", got)
-	}
-	for _, custom := range []uint32{0x12345600, 0x12345680, 0x123456ff} {
-		value := StyleData{Fields: uint32(StyleBackground), Background: custom}
-		for _, styles := range []StyleStates{{Normal: value}, {Pressed: value}} {
-			if resolve(styles).Background != custom {
-				t.Fatal("outline tint replaced an explicit background or its alpha")
 			}
 		}
 	}
@@ -232,207 +120,6 @@ func TestExplicitDisabledButtonOverridesLoadingAppearance(t *testing.T) {
 	}
 	if unpackRGBA(frame.Button.Appearance.Value.Background) != (Color{1, 2, 3, 128}) {
 		t.Fatalf("disabled appearance lost its explicit style: %+v", unpackRGBA(frame.Button.Appearance.Value.Background))
-	}
-}
-
-func TestLightGhostHoverBodyPreservesAlphaAndOverrides(t *testing.T) {
-	for _, alpha := range []uint32{0, 128, 255} {
-		palette := Theme_DefaultPalette(false)
-		palette.Surface = palette.Surface&0xffffff00 | alpha
-		resolve := func(state ButtonState, styles StyleStates) StyleData {
-			return Button_ResolveAppearance(int32(ButtonToneAccent), int32(ButtonEmphasisGhost),
-				int32(state), 0, false, false, false, false, false, palette, Theme_DefaultMetrics(), styles)
-		}
-		want := Button_MixColor(palette.Surface, palette.Accent, 5)&0xffffff00 | alpha
-		hover := resolve(ButtonStateHover, StyleStates{})
-		if hover.Background != want || hover.Border != 0 {
-			t.Fatal("hovering ghost must keep a borderless tinted face with the surface alpha")
-		}
-		for _, state := range []ButtonState{ButtonStateNormal, ButtonStateFocus} {
-			if resolve(state, StyleStates{}).Background != palette.Surface {
-				t.Fatal("hover tint must not change resting or focused ghost material")
-			}
-		}
-		custom := uint32(0x12345600) | alpha
-		styles := StyleStates{Hover: StyleData{Fields: uint32(StyleBackground), Background: custom}}
-		if resolve(ButtonStateHover, styles).Background != custom {
-			t.Fatal("explicit hover background must override the ghost tint")
-		}
-	}
-}
-
-func TestFocusLinkTintPreservesSurfaceAlpha(t *testing.T) {
-	for _, dark := range []bool{false, true} {
-		for _, alpha := range []uint32{0, 128, 255} {
-			palette := Theme_DefaultPalette(dark)
-			palette.Surface = palette.Surface&0xffffff00 | alpha
-			metrics := Theme_DefaultMetrics()
-			appearance := func(emphasis ButtonEmphasis, styles StyleStates) StyleData {
-				return Button_ResolveAppearance(int32(ButtonToneAccent), int32(emphasis),
-					int32(ButtonStateFocus), 0, false, false, false, false, false, palette, metrics, styles)
-			}
-			link := appearance(ButtonEmphasisLink, StyleStates{})
-			want := Button_MixColor(palette.Surface, palette.Accent, 8)&0xffffff00 | alpha
-			if link.Background != want || link.Border != 0 {
-				t.Fatalf("focused link must retain a borderless, alpha-preserving tinted face: %+v", link)
-			}
-			if ghost := appearance(ButtonEmphasisGhost, StyleStates{}); ghost.Background != palette.Surface {
-				t.Fatal("link tint must not change the ghost face")
-			}
-			custom := uint32(0x12345600) | alpha
-			styles := StyleStates{Focused: StyleData{Fields: uint32(StyleBackground), Background: custom}}
-			if got := appearance(ButtonEmphasisLink, styles); got.Background != custom {
-				t.Fatal("explicit focused background must override the default link tint")
-			}
-		}
-	}
-}
-
-func TestPaleAccentFocusTintAndOverrides(t *testing.T) {
-	for _, alpha := range []uint32{0, 128, 255} {
-		palette := Theme_DefaultPalette(false)
-		palette.Surface = palette.Surface&0xffffff00 | alpha
-		palette.Accent = palette.Accent&0xffffff00 | alpha
-		appearance := func(styles StyleStates) StyleData {
-			return Button_ResolveAppearance(int32(ButtonToneAccent), int32(ButtonEmphasisFilled),
-				int32(ButtonStateFocus), 0, false, false, false, false, false,
-				palette, Theme_DefaultMetrics(), styles)
-		}
-		focus := appearance(StyleStates{})
-		if focus.Background != Button_MixColor(palette.Surface, palette.Accent, 10) || focus.Background&255 != alpha {
-			t.Fatal("pale accent focus must retain a quiet, alpha-preserving tint")
-		}
-		custom := uint32(0x12345600) | alpha
-		for _, styles := range []StyleStates{
-			{Normal: StyleData{Fields: uint32(StyleBackground), Background: custom}},
-			{Focused: StyleData{Fields: uint32(StyleBackground), Background: custom}},
-		} {
-			if appearance(styles).Background != custom {
-				t.Fatal("explicit background must override the pale focus default")
-			}
-		}
-	}
-}
-
-func TestNeutralFocusBodyLightPreservesAlphaAndOverrides(t *testing.T) {
-	for _, alpha := range []uint32{0, 128, 255} {
-		palette := Theme_DefaultPalette(true)
-		palette.Surface = palette.Surface&0xffffff00 | alpha
-		palette.SurfaceRaised = palette.SurfaceRaised&0xffffff00 | alpha
-		metrics := Theme_DefaultMetrics()
-		appearance := func(state ButtonState, styles StyleStates) StyleData {
-			return Button_ResolveAppearance(int32(ButtonToneNeutral), int32(ButtonEmphasisSoft),
-				int32(state), 0, false, false, false, false, false, palette, metrics, styles)
-		}
-		normal := appearance(ButtonStateNormal, StyleStates{})
-		focus := appearance(ButtonStateFocus, StyleStates{})
-		white := uint32(0xffffff00) | alpha
-		if focus.Background != Button_MixColor(normal.Background, white, 5) || focus.Background&255 != alpha {
-			t.Fatal("neutral focus body light must preserve the material's alpha")
-		}
-		custom := uint32(0x12345600) | alpha
-		styles := StyleStates{Normal: StyleData{Fields: uint32(StyleBackground), Background: custom}}
-		if got := appearance(ButtonStateFocus, styles); got.Background != custom {
-			t.Fatal("explicit Style background must override diffuse focus light")
-		}
-	}
-}
-
-func TestSharedButtonFrameTransitionEligibility(t *testing.T) {
-	for _, dark := range []bool{false, true} {
-		palette, metrics := Theme_DefaultPalette(dark), Theme_DefaultMetrics()
-		styles := packStyleStates(ControlStyle{
-			Normal: Style{Fields: StyleForeground | StyleBackgroundEnd, Foreground: Color{20, 40, 60, 0}, BackgroundEnd: Color{80, 90, 100, 255}},
-			Hover:  Style{Fields: StyleForeground | StyleFontSize, Foreground: Color{100, 120, 140, 255}, FontSize: 27},
-		})
-		for flags := 0; flags < 16; flags++ {
-			automatic, disabled, loading, selected := flags&1 != 0, flags&2 != 0, flags&4 != 0, flags&8 != 0
-			resolved := Button_ResolveAppearance(1, 0, int32(ButtonStateHover), 0, false, false,
-				disabled, loading, selected, palette, metrics, styles)
-			frame := Button_ResolveFrame(1, 0, int32(ButtonStateHover), 0, false, false,
-				disabled, loading, selected, palette, metrics, styles, automatic, 0.5, 0, 0)
-			if automatic && !disabled && !loading && !selected {
-				normal := Button_ResolveAppearance(1, 0, int32(ButtonStateNormal), 0, false, false,
-					false, false, false, palette, metrics, styles)
-				if frame.Value.Foreground != Surface_InteractionColor(normal.Foreground, resolved.Foreground, normal.Foreground, normal.Foreground, 0.5, 0, 0) ||
-					frame.Value.FontSize != 27 {
-					t.Fatal("automatic appearance must blend color while retaining the resolved layout font")
-				}
-			} else if frame.Value != resolved || frame.Fill != Surface_FillState(resolved.Fields, resolved.Background, resolved.BackgroundEnd) {
-				t.Fatalf("flags %d: fixed, disabled, loading or selected style was animated", flags)
-			}
-		}
-	}
-}
-
-func TestDarkPrimaryHoverKeepsDepthInTheSurface(t *testing.T) {
-	for _, test := range []struct {
-		state   ButtonState
-		surface uint32
-		want    uint32
-	}{
-		{ButtonStateHover, 0x092039ff, 0x0570ffff},
-		{ButtonStateNormal, 0x092039ff, 0x006cffff},
-		{ButtonStateHover, 0xffffffff, 0x87bdffff},
-	} {
-		got := Button_ButtonBackground(int32(ButtonToneAccent), int32(ButtonEmphasisFilled),
-			int32(test.state), test.surface, 0x006cffff, 0x2184ffff, 0, 0, 0, 0, 0)
-		if got != test.want {
-			t.Fatalf("state=%d surface=%08x: background=%08x, want %08x", test.state, test.surface, got, test.want)
-		}
-	}
-}
-
-func TestLoadingEdgeLeavesActivityToSpinner(t *testing.T) {
-	for _, test := range []struct {
-		state   ButtonState
-		surface uint32
-		want    uint32
-	}{
-		{ButtonStateLoading, 0x092039ff, 0x082c59ff},
-		{ButtonStateNormal, 0x092039ff, 0x006cffff},
-		{ButtonStateLoading, 0xffffffff, 0xe0edffff},
-		{ButtonStateNormal, 0xffffffff, 0x006cffff},
-	} {
-		got := Button_ButtonBorder(int32(ButtonToneAccent), int32(ButtonEmphasisFilled),
-			int32(test.state), test.surface, 0x006cffff, 0, 0, 0, 0)
-		if got != test.want {
-			t.Fatalf("state=%d surface=%08x: border=%08x, want %08x", test.state, test.surface, got, test.want)
-		}
-	}
-	spinner := Button_ButtonForeground(int32(ButtonToneAccent), int32(ButtonEmphasisFilled),
-		int32(ButtonStateLoading), 0x092039ff, 0xffffffff, 0xffffffff,
-		0, 0, 0, 0, 0, 0, 0, 0, 0x006cffff)
-	if spinner != 0x006cffff {
-		t.Fatalf("loading spinner lost its accent: %08x", spinner)
-	}
-	outline := Button_ButtonBorder(int32(ButtonToneAccent), int32(ButtonEmphasisOutline),
-		int32(ButtonStateLoading), 0xffffffff, 0x006cffff, 0, 0, 0, 0)
-	if outline != 0xbfdaffff {
-		t.Fatalf("light loading outline lost its extra definition: %08x", outline)
-	}
-	for _, tone := range []ButtonTone{ButtonToneNeutral, ButtonToneAccent, ButtonToneDanger, ButtonToneSuccess, ButtonToneWarning} {
-		for _, emphasis := range []ButtonEmphasis{ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline} {
-			border := Button_ButtonBorder(int32(tone), int32(emphasis), int32(ButtonStateLoading),
-				0x092039ff, 0x006cffff, 0x183858ff, 0xff0020ff, 0x00ccaaff, 0xffaa00ff)
-			wantAlpha := uint32(255)
-			if tone == ButtonToneNeutral || emphasis == ButtonEmphasisOutline {
-				wantAlpha = 0
-			}
-			if border&255 != wantAlpha {
-				t.Fatalf("loading tone %v emphasis %v: border alpha %d, want %d", tone, emphasis, border&255, wantAlpha)
-			}
-		}
-	}
-	r := New(AppConfig{}).(*runtime)
-	r.SetTheme(ThemeDefaultDark())
-	for _, alpha := range []uint8{0, 128, 255} {
-		props := ButtonProps{Emphasis: ButtonEmphasisOutline, Style: ControlStyle{
-			Loading: Style{Fields: StyleBorder, Border: Color{17, 34, 51, alpha}}}}
-		resolved := resolveButtonStyle(r.theme(), false, r.activeTheme, props, ButtonStateLoading)
-		if resolved.Border != props.Style.Loading.Border {
-			t.Fatal("loading material discarded a custom border")
-		}
 	}
 }
 
@@ -535,6 +222,7 @@ func TestExplicitButtonPreviewDoesNotAnimateActivation(t *testing.T) {
 }
 
 func TestDisabledLabelsRemainReadableWithoutBecomingInteractive(t *testing.T) {
+	useMaterialStyleForTest(t)
 	for _, theme := range []Theme{ThemeDefaultDark(), ThemeDefaultLight()} {
 		r := New(AppConfig{Width: 120, Height: 60}).(*runtime)
 		r.SetTheme(theme)
@@ -550,13 +238,9 @@ func TestDisabledLabelsRemainReadableWithoutBecomingInteractive(t *testing.T) {
 		if !op.Disabled {
 			t.Fatal("disabled state was lost")
 		}
-		brightness := func(c Color) int { return int(c.R) + int(c.G) + int(c.B) }
-		if theme.Mode == ThemeModeDark {
-			if brightness(unpackRGBA(op.Button.Appearance.Value.Foreground)) <= brightness(theme.Colors.DisabledText) {
-				t.Fatal("dark disabled labels must retain contrast against the muted face")
-			}
-		} else if brightness(unpackRGBA(op.Button.Appearance.Value.Foreground)) >= brightness(theme.Colors.DisabledText) {
-			t.Fatal("light disabled labels must not wash out against the pale face")
+		foreground := unpackRGBA(op.Button.Appearance.Value.Foreground)
+		if foreground.A == 0 || op.Button.Appearance.Value.Opacity >= 1 {
+			t.Fatal("disabled labels must come from the attached style without becoming interactive")
 		}
 		r.EndFrame()
 	}
@@ -737,64 +421,8 @@ func TestButtonControlStyleLayersTransparentAndStateValues(t *testing.T) {
 	}
 }
 
-func TestOutlineRadiusUsesThemeAndPreservesOverrides(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
-	theme := ThemeDefaultLight()
-	theme.Metrics.RadiusMedium = 6
-	theme.Metrics.RadiusLarge = 14
-	theme.Metrics.RadiusPill = 999
-	r.SetTheme(theme)
-	props := ButtonProps{Emphasis: ButtonEmphasisOutline}
-	resolve := func(state ButtonState) Style {
-		return resolveButtonStyle(r.theme(), false, r.activeTheme, props, state)
-	}
-	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover} {
-		if resolve(state).Radius != 14 {
-			t.Fatal("resting outline did not use the theme's large radius")
-		}
-	}
-	for _, state := range []ButtonState{ButtonStateFocus, ButtonStatePressed, ButtonStateDisabled} {
-		if resolve(state).Radius != 6 {
-			t.Fatal("compact outline did not use the theme's medium radius")
-		}
-	}
-	props.Pill = true
-	if resolve(ButtonStateNormal).Radius != 999 {
-		t.Fatal("outline geometry replaced explicit pill shape")
-	}
-	props.Style.Normal = Style{Fields: StyleRadius, Radius: 0}
-	if resolve(ButtonStateNormal).Radius != 0 {
-		t.Fatal("explicit zero radius was lost")
-	}
-}
-
-func TestRestingButtonRadiusUsesThemeMetrics(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
-	theme := ThemeDefaultDark()
-	theme.Metrics.RadiusMedium = 6
-	theme.Metrics.RadiusLarge = 14
-	r.SetTheme(theme)
-	for _, size := range []ControlSize{ControlSizeSmall, ControlSizeMedium, ControlSizeLarge} {
-		for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
-			ButtonStateFocus, ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected} {
-			props := ButtonProps{Size: size}
-			want := float32(6)
-			if size == ControlSizeMedium && (state == ButtonStateNormal || state == ButtonStateHover) {
-				want = 10
-			}
-			actual := resolveButtonStyle(r.theme(), false, r.activeTheme, props, state)
-			if actual.Radius != want {
-				t.Fatalf("size %v state %v: radius %g, want %g", size, state, actual.Radius, want)
-			}
-			props.Style.Normal = Style{Fields: StyleRadius}
-			if resolveButtonStyle(r.theme(), false, r.activeTheme, props, state).Radius != 0 {
-				t.Fatal("default rounding replaced explicit zero radius")
-			}
-		}
-	}
-}
-
 func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
+	useMaterialStyleForTest(t)
 	for _, theme := range []Theme{ThemeDefaultLight(), ThemeDefaultDark()} {
 		t.Run(theme.Name, func(t *testing.T) {
 			now := time.Unix(1, 0)
@@ -821,7 +449,7 @@ func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
 					expected := want
 					bounds := props.Bounds
 					if op.ID == neighbor.ID {
-						expected = 12
+						expected = 8
 						bounds = neighbor.Bounds
 					}
 					if op.Button.Appearance.Value.Radius != expected || op.Bounds != bounds {
@@ -834,127 +462,25 @@ func TestOutlineRadiusTransitionsThroughRealInput(t *testing.T) {
 					t.Fatalf("recorded %d buttons, want both independent instances", seen)
 				}
 			}
-			frame(0, 12)
+			frame(0, 8)
 			r.SetFocus(props.ID)
-			// At 35/140 ms, cubic ease-out is 0.578125.
-			frame(35*time.Millisecond, 9.6875)
+			frame(35*time.Millisecond, 8)
 			r.SetFocus(0)
-			frame(0, 9.6875) // Retargeting must not jump.
-			frame(35*time.Millisecond, 12-4*0.578125*0.421875)
-			frame(140*time.Millisecond, 12)
+			frame(0, 8)
+			frame(35*time.Millisecond, 8)
+			frame(140*time.Millisecond, 8)
 			r.SetFocus(props.ID)
 			frame(140*time.Millisecond, 8)
 			r.QueueMouseMove(50, 40)
-			frame(140*time.Millisecond, 12)
+			frame(140*time.Millisecond, 8)
 			r.QueueMouseButtonDown(MouseButtonLeft, 50, 40)
-			frame(40*time.Millisecond, 8.5) // Half of the 80 ms press duration.
+			frame(40*time.Millisecond, 8)
 			r.QueueMouseButtonUp(MouseButtonLeft, 50, 40)
-			frame(140*time.Millisecond, 12)
+			frame(140*time.Millisecond, 8)
 			props.Style.Normal = Style{Fields: StyleRadius, Radius: 0}
 			frame(0, 0)
 			r.QueueMouseMove(-100, -100)
 			frame(70*time.Millisecond, 0)
 		})
-	}
-}
-
-func TestLightButtonInteractionPreservesMaterialEmphasis(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
-	r.SetTheme(ThemeDefaultLight())
-	resolve := func(tone ButtonTone, emphasis ButtonEmphasis, state ButtonState) Style {
-		return resolveButtonStyle(r.theme(), false, r.activeTheme,
-			ButtonProps{Tone: tone, Emphasis: emphasis}, state)
-	}
-	for _, tone := range []ButtonTone{ButtonToneDanger, ButtonToneSuccess, ButtonToneWarning} {
-		normal := resolve(tone, ButtonEmphasisFilled, ButtonStateNormal)
-		hover := resolve(tone, ButtonEmphasisFilled, ButtonStateHover)
-		if hover.Background.R < normal.Background.R || hover.Background.G < normal.Background.G ||
-			hover.Background.B < normal.Background.B || hover.Background == normal.Background {
-			t.Fatalf("light semantic hover must illuminate its pastel face: tone=%d normal=%v hover=%v",
-				tone, normal.Background, hover.Background)
-		}
-		if hover.Background.A != normal.Background.A || hover.Foreground != normal.Foreground {
-			t.Fatal("hover illumination must preserve face opacity and readable label color")
-		}
-	}
-	for _, emphasis := range []ButtonEmphasis{ButtonEmphasisOutline, ButtonEmphasisLink} {
-		pressed := resolve(ButtonToneAccent, emphasis, ButtonStatePressed)
-		filled := resolve(ButtonToneAccent, ButtonEmphasisFilled, ButtonStatePressed)
-		if pressed.Background.R <= filled.Background.R || pressed.Background.G <= filled.Background.G {
-			t.Fatalf("press turned low-emphasis material into a filled face: emphasis=%d", emphasis)
-		}
-	}
-	normal := resolve(ButtonToneNeutral, ButtonEmphasisSoft, ButtonStateNormal)
-	pressed := resolve(ButtonToneNeutral, ButtonEmphasisSoft, ButtonStatePressed)
-	if pressed.Background != normal.Background {
-		t.Fatal("neutral press should sink the existing surface, not replace it with white")
-	}
-}
-
-func TestGeneratedButtonThemePolicy(t *testing.T) {
-	if ButtonStateHover != 2 || int32(ButtonStateHover) != 2 ||
-		ButtonToneAccent != 1 || int32(ButtonToneAccent) != 1 ||
-		ButtonEmphasisFilled != 0 || int32(ButtonEmphasisFilled) != 0 {
-		t.Fatalf("public/generated enum values diverged: state=%d/%d tone=%d/%d emphasis=%d/%d",
-			ButtonStateHover, int32(ButtonStateHover), ButtonToneAccent, int32(ButtonToneAccent),
-			ButtonEmphasisFilled, int32(ButtonEmphasisFilled))
-	}
-	surface := Color{16, 24, 40, 255}
-	accent := Color{37, 99, 235, 255}
-	hover := Color{59, 130, 246, 255}
-	pressed := Color{29, 78, 216, 255}
-	neutral := Color{51, 65, 85, 255}
-	danger := Color{220, 38, 38, 255}
-	success := Color{5, 150, 105, 255}
-	warning := Color{217, 119, 6, 255}
-	neutralHover := Button_ButtonBackground(
-		int32(ButtonToneNeutral), int32(ButtonEmphasisSoft), int32(ButtonStateHover),
-		packRGBA(surface), packRGBA(accent), packRGBA(hover), packRGBA(pressed),
-		packRGBA(neutral), packRGBA(danger), packRGBA(success), packRGBA(warning))
-	neutralBody := Button_MixColor(packRGBA(surface), packRGBA(neutral), 85)
-	if neutralHover != Button_MixColor(neutralBody, packRGBA(hover), 12) {
-		t.Fatal("neutral hover must retain its body color beneath the cool reflection")
-	}
-
-	got := unpackRGBA(Button_ButtonBackground(
-		int32(ButtonToneAccent), int32(ButtonEmphasisFilled), int32(ButtonStateHover),
-		packRGBA(surface), packRGBA(accent), packRGBA(hover), packRGBA(pressed),
-		packRGBA(neutral), packRGBA(danger), packRGBA(success), packRGBA(warning)))
-	// The body uses a 15% lift; surface lighting supplies the remaining depth.
-	wantHover := Color{40, 104, 237, 255}
-	if got != wantHover {
-		t.Fatalf("accent hover = %#v, want %#v", got, wantHover)
-	}
-
-	got = unpackRGBA(Button_ButtonBackground(
-		int32(ButtonToneDanger), int32(ButtonEmphasisOutline), int32(ButtonStateNormal),
-		packRGBA(surface), packRGBA(accent), packRGBA(hover), packRGBA(pressed),
-		packRGBA(neutral), packRGBA(danger), packRGBA(success), packRGBA(warning)))
-	if got != surface {
-		t.Fatalf("outlined danger background = %#v, want surface %#v", got, surface)
-	}
-
-	// Dark semantic faces brighten on hover and sink on press, while the
-	// saturated tone remains available independently for the border and glow.
-	for _, tone := range []ButtonTone{ButtonToneDanger, ButtonToneSuccess, ButtonToneWarning} {
-		colors := make([]Color, 3)
-		for index, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed} {
-			colors[index] = unpackRGBA(Button_ButtonBackground(
-				int32(tone), int32(ButtonEmphasisFilled), int32(state),
-				packRGBA(surface), packRGBA(accent), packRGBA(hover), packRGBA(pressed),
-				packRGBA(neutral), packRGBA(danger), packRGBA(success), packRGBA(warning)))
-		}
-		brightness := func(color Color) int { return int(color.R) + int(color.G) + int(color.B) }
-		if brightness(colors[1]) <= brightness(colors[0]) || brightness(colors[2]) >= brightness(colors[0]) {
-			t.Fatalf("semantic tone %d lacks hover/pressed depth: %#v", tone, colors)
-		}
-	}
-
-	border := unpackRGBA(Button_ButtonBorder(
-		int32(ButtonToneNeutral), int32(ButtonEmphasisGhost), int32(ButtonStateNormal),
-		packRGBA(surface), packRGBA(accent), packRGBA(neutral), packRGBA(danger),
-		packRGBA(success), packRGBA(warning)))
-	if border != (Color{}) {
-		t.Fatalf("ghost border = %#v, want transparent", border)
 	}
 }

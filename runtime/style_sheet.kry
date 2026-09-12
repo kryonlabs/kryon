@@ -73,6 +73,154 @@ StyleKindSeparator :: () -> i32 #export {
     return 14
 }
 
+StyleKindNavigationBar :: () -> i32 #export {
+    return 15
+}
+
+StyleKindNavigationBarItem :: () -> i32 #export {
+    return 16
+}
+
+StyleKindSelectable :: () -> i32 #export {
+    return 17
+}
+
+StyleKindFieldset :: () -> i32 #export {
+    return 18
+}
+
+StyleKindPlot :: () -> i32 #export {
+    return 19
+}
+
+StyleKindPlotMark :: () -> i32 #export {
+    return 20
+}
+
+StyleKindLink :: () -> i32 #export {
+    return 21
+}
+
+StyleKindTabBar :: () -> i32 #export {
+    return 22
+}
+
+StyleKindTab :: () -> i32 #export {
+    return 23
+}
+
+StyleKindTabClose :: () -> i32 #export {
+    return 24
+}
+
+StyleKindSegmentedControl :: () -> i32 #export {
+    return 25
+}
+
+StyleKindSegment :: () -> i32 #export {
+    return 26
+}
+
+StyleKindMenu :: () -> i32 #export {
+    return 27
+}
+
+StyleKindMenuItem :: () -> i32 #export {
+    return 28
+}
+
+StyleKindMenuSeparator :: () -> i32 #export {
+    return 29
+}
+
+StyleKindListBox :: () -> i32 #export {
+    return 30
+}
+
+StyleKindListBoxItem :: () -> i32 #export {
+    return 31
+}
+
+StyleKindTreeView :: () -> i32 #export {
+    return 32
+}
+
+StyleKindTreeViewItem :: () -> i32 #export {
+    return 33
+}
+
+StyleKindListBoxMulti :: () -> i32 #export {
+    return 34
+}
+
+StyleKindListBoxMultiItem :: () -> i32 #export {
+    return 35
+}
+
+StyleKindDragDropTarget :: () -> i32 #export {
+    return 36
+}
+
+StyleKindSpinbox :: () -> i32 #export {
+    return 37
+}
+
+StyleKindSpinboxValue :: () -> i32 #export {
+    return 38
+}
+
+StyleKindColorPickerSwatch :: () -> i32 #export {
+    return 39
+}
+
+StyleKindSliderThumb :: () -> i32 #export {
+    return 40
+}
+
+StyleKindToggleThumb :: () -> i32 #export {
+    return 41
+}
+
+StyleKindScroll :: () -> i32 #export {
+    return 42
+}
+
+StyleKindScrollThumb :: () -> i32 #export {
+    return 43
+}
+
+StyleKindPanedView :: () -> i32 #export {
+    return 44
+}
+
+StyleKindToast :: () -> i32 #export {
+    return 45
+}
+
+StyleKindCollapsible :: () -> i32 #export {
+    return 46
+}
+
+StyleKindTitleBar :: () -> i32 #export {
+    return 47
+}
+
+StyleKindToolbar :: () -> i32 #export {
+    return 48
+}
+
+StyleKindModal :: () -> i32 #export {
+    return 49
+}
+
+StyleKindTableView :: () -> i32 #export {
+    return 50
+}
+
+StyleKindGuide :: () -> i32 #export {
+    return 51
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32
@@ -157,6 +305,14 @@ StyleControlFacts :: (kind: i32, name: i32, class_name: i32, tone: i32,
     facts.emphasis = emphasis
     facts.size = size
     facts.state = state
+    return facts
+}
+
+StyleControlRoleFacts :: (kind: i32, name: i32, class_name: i32, role: i32,
+    tone: i32, emphasis: i32, size: i32, state: i32) -> StyleFacts #export {
+    facts: StyleFacts = StyleControlFacts(kind, name, class_name, tone,
+        emphasis, size, state)
+    facts.role = role
     return facts
 }
 

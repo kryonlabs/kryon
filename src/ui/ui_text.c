@@ -6,6 +6,7 @@
 #include "ui_widget.h"
 #include "embedded_assets.h"
 #include "ui_scaling.h"
+#include "ui_style_internal.h"
 #include "theme.h"
 
 #include <stdio.h>
@@ -1222,7 +1223,10 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
 static Color
 ui_text_default_selection_color(Color text_color)
 {
-    Color color = c_link.a != 0 ? c_link : text_color;
+    Style link = ui_resolve_button_style_kind((ButtonProps){0},
+                                              ButtonStateNormal,
+                                              StyleKindLink());
+    Color color = link.foreground.a != 0 ? link.foreground : text_color;
 
     color.a = 88;
     return color;

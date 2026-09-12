@@ -1,8 +1,9 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/guide.h"
 #include <stdio.h>
 
-static UIGuideOverlayDebug g_ui_guide_debug;
+static GuideOverlayDebug g_guide_debug;
 
 static void
 guide_draw_scrim(GuideScrim scrim, Color color)
@@ -25,7 +26,10 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     int arrow_size = Scale(10);
     Vector2 start, end;
     Vector2 tip0, tip1, tip2;
-    Color color = GetThemeText();
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Color color = text_style.foreground;
 
     if(anchor_cy < tip_top) {
         start.x = (float)anchor_cx;
@@ -102,14 +106,16 @@ RenderGuideOverlay(GuideOverlayProps guide)
     Rectangle tip;
     int y;
     Color scrim;
-    Color panel;
-    Color panel_border;
     IconActionSpec icon_props;
     int previous_requested = 0;
     int next_requested = 0;
     int close_requested = 0;
+    Style surface_style = ui_surface_style();
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
 
-    g_ui_guide_debug.valid = 0;
+    g_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
 
@@ -163,14 +169,15 @@ RenderGuideOverlay(GuideOverlayProps guide)
                                    metrics), scrim);
     DrawRectangleLinesEx(guide.steps[step].anchor,
                          (float)metrics.anchor_stroke,
-                         GetThemeText());
+                         text_style.foreground);
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
-    panel = GetThemeSurface();
-    panel.a = 255;
-    panel_border = Fade(GetThemeText(), 0.22f);
-    DrawRectangleRounded(tip, 0.08f, 8, panel);
-    DrawRectangleRoundedLines(tip, 0.08f, 8, panel_border);
+    ui_draw_material(tip, (Rectangle){0}, surface_style.background,
+                     surface_style.border, surface_style.border,
+                     surface_style.radius, surface_style.border_width,
+                     0.0f, 0.0f, 0, surface_style.focus, 0.0f,
+                     surface_style.opacity, ui_style_fill(surface_style),
+                     surface_style.material);
 
     memset(&icon_props, 0, sizeof(icon_props));
     icon_props.bounds = layout.close_button;
@@ -183,16 +190,16 @@ RenderGuideOverlay(GuideOverlayProps guide)
     }
 
     y = (int)layout.text.y;
-    g_ui_guide_debug.valid = 1;
-    g_ui_guide_debug.step = step;
-    g_ui_guide_debug.count = guide.count;
-    g_ui_guide_debug.paragraph_height = paragraph_h;
-    g_ui_guide_debug.text_clip_height = layout.text_clip_height;
-    g_ui_guide_debug.text_clipped = layout.text_clipped;
-    g_ui_guide_debug.tip = tip;
-    g_ui_guide_debug.text = layout.text;
-    g_ui_guide_debug.close_button = layout.close_button;
-    g_ui_guide_debug.back_button = (Rectangle){0};
+    g_guide_debug.valid = 1;
+    g_guide_debug.step = step;
+    g_guide_debug.count = guide.count;
+    g_guide_debug.paragraph_height = paragraph_h;
+    g_guide_debug.text_clip_height = layout.text_clip_height;
+    g_guide_debug.text_clipped = layout.text_clipped;
+    g_guide_debug.tip = tip;
+    g_guide_debug.text = layout.text;
+    g_guide_debug.close_button = layout.close_button;
+    g_guide_debug.back_button = (Rectangle){0};
     if(layout.text_clip_height > 0) {
         if(layout.text_clipped)
             BeginClip((int)layout.text.x,
@@ -208,12 +215,12 @@ RenderGuideOverlay(GuideOverlayProps guide)
     RenderText(page_text, (int)tip.x + metrics.pad,
                     layout.controls_y +
                         (metrics.button_size - metrics.page_font) / 2,
-                    metrics.page_font, GetThemeText());
+                    metrics.page_font, text_style.foreground);
 
     if(step > 0) {
         memset(&icon_props, 0, sizeof(icon_props));
         icon_props.bounds = layout.back_button;
-        g_ui_guide_debug.back_button = layout.back_button;
+        g_guide_debug.back_button = layout.back_button;
         icon_props.icon = guide.back_icon;
         icon_props.icon_size = metrics.nav_icon_size;
         icon_props.icon_padding = metrics.nav_icon_padding;
@@ -223,7 +230,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     }
     memset(&icon_props, 0, sizeof(icon_props));
     icon_props.bounds = layout.next_button;
-    g_ui_guide_debug.next_button = layout.next_button;
+    g_guide_debug.next_button = layout.next_button;
     icon_props.icon = layout.finish ? guide.done_icon : guide.next_icon;
     icon_props.icon_size = metrics.nav_icon_size;
     icon_props.icon_padding = metrics.nav_icon_padding;

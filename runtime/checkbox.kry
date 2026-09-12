@@ -1,7 +1,7 @@
 #module "checkbox"
 #import "drawing_props"
+#import "style"
 #import "surface"
-#import "theme"
 
 CheckboxSpec :: struct {
     bounds: Rectangle
@@ -11,8 +11,8 @@ CheckboxSpec :: struct {
     pressed: bool
     focused: bool
     scale: float
-    palette: Palette
-    metrics: Metrics
+    box: StyleFrame
+    active: StyleFrame
 }
 
 CheckboxPaint :: struct {
@@ -24,6 +24,8 @@ CheckboxPaint :: struct {
     check_start: Vector2
     check_middle: Vector2
     check_end: Vector2
+    box: StyleFrame
+    active: StyleFrame
     fill_color: u32
     border_color: u32
     mark_color: u32
@@ -104,10 +106,7 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     box_size: float = (float)CheckboxBoxSize(scale)
     state_outset: float = 4.0 * scale
     focus_outset: float = 3.0 * scale
-    border_width: float = spec.metrics.border_width * scale
-    focus_width: float = spec.metrics.focus_width * scale
-    if border_width < 1.0 { border_width = 1.0 }
-    if focus_width < 1.0 { focus_width = 1.0 }
+    border_width: float = spec.box.value.border_width * scale
 
     paint.bounds = spec.bounds
     paint.slot_bounds.x = spec.bounds.x
@@ -137,18 +136,21 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     paint.check_end.x = paint.box_bounds.x + paint.box_bounds.width - 5.0 * scale
     paint.check_end.y = paint.box_bounds.y + 5.0 * scale
 
-    paint.fill_color = spec.checked ? spec.palette.accent : spec.palette.surface
-    paint.border_color = spec.checked ? spec.palette.accent : spec.palette.border_strong
-    paint.mark_color = spec.palette.on_accent
-    paint.state_color = Opacity(spec.checked ? spec.palette.accent : spec.palette.text,
+    paint.box = spec.box
+    paint.active = spec.active
+    paint.fill_color = spec.checked ? spec.active.value.background : spec.box.value.background
+    paint.border_color = spec.checked ? spec.active.value.border : spec.box.value.border
+    paint.mark_color = spec.active.value.foreground
+    paint.state_color = Opacity(spec.checked ? spec.active.value.background : spec.box.value.foreground,
         spec.pressed ? 0.14 : (spec.hovered ? 0.08 : 0.10))
-    paint.focus_color = spec.palette.focus
-    paint.label_color = spec.palette.text
+    paint.focus_color = spec.box.value.focus
+    paint.label_color = spec.box.value.foreground
 
     paint.radius = 0.18
     paint.state_radius = 0.28
     paint.focus_radius = 0.26
     paint.border_width = border_width
+    if paint.border_width < 0.0 { paint.border_width = 0.0 }
     paint.mark_width = 2.4 * scale
 
     paint.show_fill = spec.checked
@@ -157,10 +159,6 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     paint.show_focus = spec.enabled && spec.focused
 
     if !spec.enabled {
-        paint.fill_color = spec.checked ? Opacity(spec.palette.text_disabled, 0.42) : spec.palette.surface
-        paint.border_color = Opacity(spec.palette.text_disabled, 0.62)
-        paint.mark_color = Opacity(spec.palette.surface, 0.70)
-        paint.label_color = spec.palette.text_disabled
         paint.show_state = false
         paint.show_focus = false
     }

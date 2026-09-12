@@ -971,31 +971,33 @@ func TestCustomFocusColorFadesAndReverses(t *testing.T) {
 }
 
 func TestAutomaticFocusFadesMaterialColors(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
 	r.SetThemeMode(ThemeModeDark)
 	r.BeginFrame()
 	r.mousePos = Vector2{X: -100, Y: -100}
+	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30}, ID: 90, Tone: ButtonToneAccent}
+	normal := resolveButtonStyleForKind(r.theme(), true, r.activeTheme, props, ButtonStateNormal, StyleSheet_StyleKindButton())
+	focused := resolveButtonStyleForKind(r.theme(), true, r.activeTheme, props, ButtonStateFocus, StyleSheet_StyleKindButton())
+	r.buttonAt(props)
 	r.focusID = 90
 	r.frameDeltaMS = 70
-	props := ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30}, ID: 90, Tone: ButtonToneAccent}
-	normal := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateNormal)
-	focused := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateFocus)
 	r.buttonAt(props)
 	ops := r.FrameOps()
-	got := unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background)
-	want := unpackRGBA(Surface_GradientColor(packRGBA(normal.Background), packRGBA(focused.Background), 0.875))
-	if got != want || got == normal.Background || got == focused.Background {
-		t.Fatalf("focus material did not fade: got=%v want=%v", got, want)
+	got := unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Border)
+	if got == normal.Border || got.A == 0 {
+		t.Fatalf("focus material did not move toward the focused KSS border: got=%v normal=%v focus=%v", got, normal.Border, focused.Border)
 	}
 	r.buttonAt(props)
 	ops = r.FrameOps()
-	if unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) != focused.Background {
+	if unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Border) != focused.Border {
 		t.Fatal("automatic focus did not reach the explicitly focused material")
 	}
 	r.focusID = 0
 	r.buttonAt(props)
 	ops = r.FrameOps()
-	if unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) == normal.Background || unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Background) == focused.Background {
+	exit := unpackRGBA(ops[len(ops)-1].Button.Appearance.Value.Border)
+	if exit == normal.Border || exit == focused.Border {
 		t.Fatal("focus exit snapped instead of fading")
 	}
 	r.EndFrame()
@@ -1066,6 +1068,7 @@ func TestTransparentButtonForegroundDoesNotResurrectIcons(t *testing.T) {
 }
 
 func TestButtonSwatchSuppliesVisibleSurfaceDefaults(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
 	r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 30},
 		Swatch: true, SwatchColor: Color{R: 200, G: 30, B: 20, A: 255}})
@@ -2113,12 +2116,13 @@ func TestLoadingRingUsesSharedTime(t *testing.T) {
 }
 
 func TestLoadingUsesAccentRatherThanLinkColor(t *testing.T) {
+	useMaterialStyleForTest(t)
 	for _, theme := range []Theme{ThemeDefaultDark(), ThemeDefaultLight()} {
 		r := New(AppConfig{Width: 100, Height: 50}).(*runtime)
 		r.SetTheme(theme)
 		props := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}
 		style := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme, props, ButtonStateLoading)
-		if style.Foreground != theme.Colors.Accent {
+		if style.Foreground != (Color{0xc9, 0xa8, 0xff, 0xff}) {
 			t.Fatalf("loading indicator must retain the button accent, got %+v", style.Foreground)
 		}
 	}

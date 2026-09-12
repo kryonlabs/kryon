@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Accessibility" {
     size 800 600
@@ -13,8 +14,8 @@ state {
 AccessibilityExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
-        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Accessibility overlay", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        AppBackground()
+        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Accessibility overlay", .font=Text24, .wrap=TextWrapNone})
         Checkbox((CheckboxProps){.bounds = {40,90,Scale(260),Scale(34)}, .id = 1801, .label = "Show focus/debug overlay", .value = &enabled})
         if Button((ButtonProps){.bounds = {40, 140, 200, 40}, .label = "Focusable Button",  .font = Text16, .id = 101}) {
             enabled = !enabled

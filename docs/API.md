@@ -201,9 +201,9 @@ future backends.
 Use canonical widgets and retained primitives for normal UI:
 
 ```kry
-Box(panel, GetThemeSurface(), GetThemeButton())
-Circle(cx, cy, Scale(12), GetThemeLink())
-Line(x1, y1, x2, y2, GetThemeBorder())
+#style <kryon.material> as material
+
+AppBackground()
 Button {
     label = "Save"
     bounds = {20, 20, 120, 34}
@@ -851,6 +851,10 @@ void SetCurrentTheme(int theme_id, int dark_mode);
 ```
 
 #### Theme Colors
+
+Prefer KSS style packs, `AppBackground()`, and widget defaults for app chrome.
+The direct theme color getters remain for compatibility and low-level drawing
+code that must choose explicit primitive colors.
 
 ```c
 Color GetCurrentThemeColor(const char *key);
@@ -1881,7 +1885,7 @@ void SetFocusTextInputActive(int active);
 ### Focus Indicator
 
 ```c
-void UIFocusNode(Rectangle bounds);
+void Focus(Rectangle bounds);
 ```
 
 ---
@@ -1931,15 +1935,16 @@ press, and focus tracks as the material. A state without a custom endpoint
 uses its live material fill throughout the transition, including on exit;
 it is not treated as a transparent endpoint. Explicit states remain immediate.
 
-Modern buttons also accept `StyleMaterial` with `material = MaterialFlat` to use an
-unshaded fill, border, and a simple inward focus edge. Flat material has no
-Lightfield glow, bevel, contact shadow, or elevation offset; labels, icons,
-loading indicators, activation, and state-color transitions remain available.
-`MaterialLightfield` is the default. Material selection is discrete at the
-resolved state, like layout metrics; colors and custom gradient endpoints
-still interpolate. Set `StyleMaterial` even when selecting the zero-valued
-`MaterialLightfield`, so it explicitly replaces an inherited flat selection.
-The selector and geometry live in `runtime/surface.kry`, shared by C and Go.
+Modern buttons accept `StyleMaterial` with `material = MaterialFlat` to use an
+unshaded fill, border, and a simple inward focus edge. Flat material is the
+cheap default used by the shipped Material style pack: it has no Lightfield
+glow, bevel, contact shadow, or elevation offset; labels, icons, loading
+indicators, activation, and state-color transitions remain available.
+Material selection is discrete at the resolved state, like layout metrics;
+colors and custom gradient endpoints still interpolate. Set `StyleMaterial`
+and `material = MaterialLightfield` only for styles that explicitly opt into
+the premium Lightfield treatment. The selector and geometry live in
+`runtime/surface.kry`, shared by C and Go.
 
 Without overrides, the surface uses the active theme's surface color, medium
 radius, border width, and full opacity; its border is transparent. Radius and
@@ -1951,12 +1956,10 @@ not acquire hover, focus, or press behavior. Custom gradient endpoints work
 with either material.
 
 ```c
-Surface((Rectangle){24, 74, 720, 920}, (Style){
-    .fields = StyleBackground | StyleBackgroundEnd | StyleRadius,
-    .background = GetThemeBackground(),
-    .background_end = GetThemeSurface(),
-    .radius = 12,
-});
+Style panel = {0};
+panel.fields = StyleRadius;
+panel.radius = 12;
+Surface((Rectangle){24, 74, 720, 920}, panel);
 ```
 
 ## Button Properties
@@ -2161,12 +2164,12 @@ through the existing codepoint filter.
 Feature families:
 
 - Geometry: `Rectangle`, `Grid`, `Column`, `Row`, `Stack`, `Separator`
-- Menus: `Menu` with bar, popup, or context behavior; legacy command-menu
-  entry points remain migration support.
-- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `Fieldset`, `Image`
+- Menus: `Menu` with bar, popup, or context behavior selected by `MenuProps`.
+- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `SegmentedControl`, `Fieldset`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
 
-Use `ListBox(ListBoxProps)` for selectable string lists. For arbitrary
+Use `ListBox(ListBoxProps)` for selectable string lists. Multi-selection uses
+`selected`, `selected_count`, and `anchor` on `ListBoxProps`. For arbitrary
 scrolling child content, use the general scroll scope directly.
 - Canvas: `Canvas`, `CanvasGrid`, `CanvasHitTest`
 - Containers: `TabBar`, `PanedView`, `Collapsible`
@@ -2235,7 +2238,7 @@ Depth determines that hierarchy. Leaves and disabled content never expand;
 disabled headers are skipped during directional traversal. Automatic child
 indentation is not implemented.
 - Dialogs/platform: `MessageDialog`, `ConfirmDialog`, `PromptDialog`, `ColorPicker`, accelerators, clipboard helpers
-- Accessibility/debug: `FocusDebugOverlay`
+- Accessibility/debug: focus debug paint policy lives in `runtime/focus.kry` and the host renderer is internal.
 
 Examples `09_geometry` through `18_accessibility` demonstrate these APIs.
 

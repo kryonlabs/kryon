@@ -6,17 +6,17 @@ package kryon
 // #import drawing_props
 // #import style
 // #import surface
-// #import theme
 type SliderSpec struct {
-	Bounds   Rectangle
-	Ratio    float32
-	Vertical bool
-	Active   bool
-	Hovered  bool
-	Disabled bool
-	Scale    float32
-	Palette  Palette
-	Metrics  Metrics
+	Bounds      Rectangle
+	Ratio       float32
+	Vertical    bool
+	Active      bool
+	Hovered     bool
+	Disabled    bool
+	Scale       float32
+	Track       StyleFrame
+	ActiveTrack StyleFrame
+	Thumb       StyleFrame
 }
 
 type SliderPaint struct {
@@ -34,6 +34,7 @@ type SliderPaint struct {
 	ThumbHighlightColor uint32
 	Track               StyleFrame
 	ActiveTrack         StyleFrame
+	Thumb               StyleFrame
 }
 
 type SliderScalarStep struct {
@@ -563,123 +564,72 @@ func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 	var value_99 float32 = value_97 * value_98
 	var value_100 float32 = value_96 + value_99
 	paint.GlowRadius = value_100
-	var value_101 int32 = int32(ButtonStateNormal)
-	var state int32 = value_101
-	var value_102 bool = spec.Hovered
-	if value_102 {
-		var value_103 int32 = int32(ButtonStateHover)
-		state = value_103
-	}
-	var value_104 bool = spec.Active
-	if value_104 {
-		var value_105 int32 = int32(ButtonStatePressed)
-		state = value_105
-	}
-	var styles StyleStates = StyleStates{}
-	var value_106 int32 = int32(ButtonToneNeutral)
-	var value_107 int32 = int32(ButtonEmphasisSoft)
-	var value_108 int32 = state
-	var value_109 int32 = int32(ControlSizeMedium)
-	var value_110 bool = true
-	var value_111 bool = false
+	var value_101 StyleFrame = spec.Track
+	paint.Track = value_101
+	var value_102 StyleFrame = spec.ActiveTrack
+	paint.ActiveTrack = value_102
+	var value_103 StyleFrame = spec.Thumb
+	paint.Thumb = value_103
+	var value_104 float32 = paint.Thumb.Value.Opacity
+	var thumb_opacity float32 = value_104
+	var value_105 uint32 = paint.Thumb.Value.Background
+	var value_106 float32 = thumb_opacity
+	var value_107 uint32 = Surface_Opacity(value_105, value_106)
+	paint.ThumbFillColor = value_107
+	var value_108 uint32 = paint.Thumb.Value.Border
+	var value_109 float32 = thumb_opacity
+	var value_110 uint32 = Surface_Opacity(value_108, value_109)
+	paint.ThumbEdgeColor = value_110
+	var value_111 uint32 = paint.Thumb.Value.Focus
 	var value_112 bool = spec.Disabled
-	var value_113 bool = false
-	var value_114 bool = false
-	var value_115 Palette = spec.Palette
-	var value_116 Metrics = spec.Metrics
-	var value_117 StyleStates = styles
-	var value_118 bool = false
-	var value_119 float32 = 0.0
-	var value_120 float32 = 0.0
-	var value_121 float32 = 0.0
-	var value_122 StyleFrame = Button_ResolveFrame(value_106, value_107, value_108, value_109, value_110, value_111, value_112, value_113, value_114, value_115, value_116, value_117, value_118, value_119, value_120, value_121)
-	paint.Track = value_122
-	var value_123 int32 = int32(ButtonToneAccent)
-	var value_124 int32 = int32(ButtonEmphasisFilled)
-	var value_125 int32 = state
-	var value_126 int32 = int32(ControlSizeMedium)
-	var value_127 bool = true
-	var value_128 bool = false
-	var value_129 bool = spec.Disabled
-	var value_130 bool = false
-	var value_131 bool = false
-	var value_132 Palette = spec.Palette
-	var value_133 Metrics = spec.Metrics
-	var value_134 StyleStates = styles
-	var value_135 bool = false
-	var value_136 float32 = 0.0
-	var value_137 float32 = 0.0
-	var value_138 float32 = 0.0
-	var value_139 StyleFrame = Button_ResolveFrame(value_123, value_124, value_125, value_126, value_127, value_128, value_129, value_130, value_131, value_132, value_133, value_134, value_135, value_136, value_137, value_138)
-	paint.ActiveTrack = value_139
-	var value_140 int32 = 16777215
-	var value_141 uint32 = uint32(number_runtime_bits(uint64(value_140), uint64(0), 32, false, 0))
-	var value_142 int32 = 255
-	var value_143 uint32 = uint32(number_runtime_bits(uint64(value_142), uint64(0), 32, false, 0))
-	var value_144 uint32 = Theme_PackedColor(value_141, value_143)
-	var white uint32 = value_144
-	var value_145 uint32 = paint.ActiveTrack.Value.Background
-	paint.ThumbFillColor = value_145
-	var value_146 uint32 = paint.ActiveTrack.Value.Background
-	var value_147 uint32 = white
-	var value_148 float32 = 0.50
-	var value_149 uint32 = Surface_GradientColor(value_146, value_147, value_148)
-	paint.ThumbEdgeColor = value_149
-	var value_150 uint32 = spec.Palette.Shadow
-	var value_151 bool = spec.Disabled
-	var value_152 float32 = 0
-	if value_151 {
-		var value_153 float32 = 0.28
-		value_152 = value_153
+	var value_113 float32 = 0
+	if value_112 {
+		var value_114 float32 = 0.18
+		value_113 = value_114
 	} else {
-		var value_154 float32 = 0.60
-		value_152 = value_154
+		var value_115 float32 = 0.36
+		value_113 = value_115
 	}
-	var value_155 uint32 = Surface_Opacity(value_150, value_152)
-	paint.ThumbShadowColor = value_155
-	var value_156 uint32 = white
-	var value_157 bool = spec.Disabled
-	var value_158 float32 = 0
-	if value_157 {
-		var value_159 float32 = 0.08
-		value_158 = value_159
+	var value_116 float32 = thumb_opacity
+	var value_117 float32 = value_113 * value_116
+	var value_118 uint32 = Surface_Opacity(value_111, value_117)
+	paint.ThumbShadowColor = value_118
+	var value_119 uint32 = paint.Thumb.Value.Foreground
+	var value_120 bool = spec.Disabled
+	var value_121 float32 = 0
+	if value_120 {
+		var value_122 float32 = 0.08
+		value_121 = value_122
 	} else {
-		var value_160 float32 = 0.20
-		value_158 = value_160
+		var value_123 float32 = 0.20
+		value_121 = value_123
 	}
-	var value_161 uint32 = Surface_Opacity(value_156, value_158)
-	paint.ThumbHighlightColor = value_161
-	var value_162 uint32 = paint.ActiveTrack.Value.Background
-	var value_163 bool = spec.Active
-	var value_164 float32 = 0
-	if value_163 {
-		var value_165 float32 = 0.32
-		value_164 = value_165
+	var value_124 float32 = thumb_opacity
+	var value_125 float32 = value_121 * value_124
+	var value_126 uint32 = Surface_Opacity(value_119, value_125)
+	paint.ThumbHighlightColor = value_126
+	var value_127 uint32 = paint.Thumb.Value.Focus
+	var value_128 bool = spec.Active
+	var value_129 float32 = 0
+	if value_128 {
+		var value_130 float32 = 0.32
+		value_129 = value_130
 	} else {
-		var value_166 bool = spec.Hovered
-		var value_167 float32 = 0
-		if value_166 {
-			var value_168 float32 = 0.18
-			value_167 = value_168
+		var value_131 bool = spec.Hovered
+		var value_132 float32 = 0
+		if value_131 {
+			var value_133 float32 = 0.18
+			value_132 = value_133
 		} else {
-			var value_169 float32 = 0.0
-			value_167 = value_169
+			var value_134 float32 = 0.0
+			value_132 = value_134
 		}
-		value_164 = value_167
+		value_129 = value_132
 	}
-	var value_170 uint32 = Surface_Opacity(value_162, value_164)
-	paint.GlowColor = value_170
-	var value_171 bool = spec.Disabled
-	if value_171 {
-		var value_172 uint32 = paint.ThumbFillColor
-		var value_173 float32 = 0.45
-		var value_174 uint32 = Surface_Opacity(value_172, value_173)
-		paint.ThumbFillColor = value_174
-		var value_175 uint32 = paint.ThumbEdgeColor
-		var value_176 float32 = 0.38
-		var value_177 uint32 = Surface_Opacity(value_175, value_176)
-		paint.ThumbEdgeColor = value_177
-	}
-	var value_178 SliderPaint = paint
-	return value_178
+	var value_135 float32 = thumb_opacity
+	var value_136 float32 = value_129 * value_135
+	var value_137 uint32 = Surface_Opacity(value_127, value_136)
+	paint.GlowColor = value_137
+	var value_138 SliderPaint = paint
+	return value_138
 }

@@ -35,6 +35,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+static StyleFrame
+test_style_frame(uint32_t background, uint32_t foreground, uint32_t border)
+{
+    StyleFrame frame = {0};
+    frame.value.fields = StyleBackground | StyleForeground | StyleBorder;
+    frame.value.background = background;
+    frame.value.foreground = foreground;
+    frame.value.border = border;
+    frame.value.focus = border;
+    frame.value.border_width = 1.0f;
+    frame.value.opacity = 1.0f;
+    return frame;
+}
+
 static void
 check_int(const char *name, int got, int want)
 {
@@ -182,8 +196,6 @@ test_theme_surface_helpers(void)
 static void
 test_checkbox_paint_geometry_is_stable(void)
 {
-    Palette palette = DefaultPalette(1);
-    Metrics metrics = DefaultMetrics();
     CheckboxSpec spec = {
         .bounds = {10, 20, 160, 30},
         .checked = 0,
@@ -192,11 +204,12 @@ test_checkbox_paint_geometry_is_stable(void)
         .pressed = 0,
         .focused = 0,
         .scale = 1.0f,
-        .palette = palette,
-        .metrics = metrics
+        .box = test_style_frame(0x11223344, 0x99AABBCC, 0x01020304),
+        .active = test_style_frame(0x55667788, 0xFFFFFFFF, 0x01020304)
     };
     CheckboxPaint unchecked = CheckboxPaintFor(spec);
     CheckboxPaint checked;
+    CheckboxPaint unstyled;
     CheckboxLayout layout = CheckboxLayoutFor(10, 20, 64, 1.0f);
     CheckboxFlagResult flags_on = CheckboxFlagApply(1, 4, true);
     CheckboxFlagResult flags_off = CheckboxFlagApply(5, 4, true);
@@ -221,6 +234,12 @@ test_checkbox_paint_geometry_is_stable(void)
               (int)(checked.state_bounds.width - checked.box_bounds.width), 8);
     check_int("checkbox unchecked has no mark", unchecked.show_mark, 0);
     check_int("checkbox checked has mark", checked.show_mark, 1);
+    spec.box.value.border_width = 0.0f;
+    spec.active.value.border_width = 0.0f;
+    spec.focused = 1;
+    unstyled = CheckboxPaintFor(spec);
+    check_float("unstyled checkbox keeps zero border width",
+                unstyled.border_width, 0.0f);
     check_int("checkbox flags turns on", (int)flags_on.flags, 5);
     check_int("checkbox flags on checked", flags_on.checked, 1);
     check_int("checkbox flags turns off", (int)flags_off.flags, 1);
@@ -232,8 +251,10 @@ test_checkbox_paint_geometry_is_stable(void)
 static void
 test_swatch_policy(void)
 {
-    Palette palette = DefaultPalette(0);
-    Metrics metrics = DefaultMetrics();
+    StyleFrame frame = test_style_frame(0x00000000, 0x111111FF,
+                                        0x222222FF);
+    frame.value.focus = 0x333333FF;
+    frame.value.radius = 6.0f;
     SwatchPaint paint = SwatchPaintFor((SwatchSpec){
         .bounds = {10, 20, 80, 30},
         .color = {20, 40, 60, 128},
@@ -241,8 +262,7 @@ test_swatch_policy(void)
         .hovered = 1,
         .focused = 1,
         .scale = 1.0f,
-        .palette = palette,
-        .metrics = metrics
+        .face = frame
     });
     SwatchPaint disabled = SwatchPaintFor((SwatchSpec){
         .bounds = {10, 20, 80, 30},
@@ -251,8 +271,7 @@ test_swatch_policy(void)
         .hovered = 1,
         .focused = 1,
         .scale = 1.0f,
-        .palette = palette,
-        .metrics = metrics
+        .face = frame
     });
 
     check_int("color button checker a width", (int)paint.checker_a.width, 40);
@@ -260,6 +279,18 @@ test_swatch_policy(void)
     check_int("color button label x", (int)paint.label_x, 16);
     check_int("color button swatch alpha", paint.swatch_color.a, 128);
     check_int("color button focus visible", paint.show_focus, 1);
+    frame.value.border_width = 0.0f;
+    paint = SwatchPaintFor((SwatchSpec){
+        .bounds = {10, 20, 80, 30},
+        .color = {20, 40, 60, 128},
+        .focused = 1,
+        .scale = 1.0f,
+        .face = frame
+    });
+    check_float("unstyled swatch keeps zero border width",
+                paint.border_width, 0.0f);
+    check_float("unstyled swatch keeps zero focus width",
+                paint.focus_width, 0.0f);
     check_int("color button disabled alpha", disabled.swatch_color.a, 128);
     check_int("color button disabled focus hidden", disabled.show_focus, 0);
 }
@@ -300,15 +331,17 @@ static void
 test_separator_policy(void)
 {
     Rectangle bounds = {10, 20, 100, 30};
-    SeparatorLine horizontal = SeparatorLineFor(bounds, 0, 0x11223344);
-    SeparatorLine vertical = SeparatorLineFor(bounds, 1, 0x55667788);
+    StyleFrame frame = test_style_frame(0x05060708, 0x01020304,
+                                        0x11223344);
+    frame.value.gap = 12.0f;
+    SeparatorLine horizontal = SeparatorLineFor(bounds, 0, frame);
+    SeparatorLine vertical = SeparatorLineFor(bounds, 1, frame);
     SeparatorLabelPaint text = SeparatorLabelPaintFor(bounds, 40, 1, 14, 1.0f,
-                                                      0x01020304, 0x05060708);
+                                                      frame);
     SeparatorLabelPaint no_text = SeparatorLabelPaintFor(bounds, 0, 0, 14,
-                                                         1.0f, 0x01020304,
-                                                         0x05060708);
+                                                         1.0f, frame);
     BulletPaint bullet = BulletPaintFor((Rectangle){10, 20, 20, 12},
-                                        0xAABBCCDD);
+                                        frame);
 
     check_int("separator horizontal y", (int)horizontal.line.y, 35);
     check_int("separator horizontal width", (int)horizontal.line.width, 100);
@@ -349,13 +382,13 @@ static void
 test_fieldset_policy(void)
 {
     Rectangle bounds = {10, 20, 120, 80};
-    FieldsetPaint paint = FieldsetPaintFor(bounds, 40, 1, 1.0f,
-                                               0x01020304, 0x05060708,
-                                               0x090A0B0C);
-    FieldsetPaint no_title = FieldsetPaintFor(bounds, 40, 0, 1.0f,
-                                                  0x01020304, 0x05060708,
-                                                  0x090A0B0C);
+    StyleFrame frame = test_style_frame(0x05060708, 0x090A0B0C,
+                                        0x01020304);
+    FieldsetPaint paint = FieldsetPaintFor(bounds, 40, 1, 1.0f, frame);
+    FieldsetPaint no_title = FieldsetPaintFor(bounds, 40, 0, 1.0f, frame);
 
+    check_int("fieldset face border",
+              (int)paint.face.value.border, 0x090A0B0C);
     check_int("fieldset title bg x", (int)paint.title_background.x, 18);
     check_int("fieldset title bg y", (int)paint.title_background.y, 12);
     check_int("fieldset title bg width", (int)paint.title_background.width, 56);
@@ -375,6 +408,9 @@ test_plot_policy(void)
     PlotMark bar;
     PlotMark line;
     PlotTextPaint text;
+    StyleFrame bar_frame = test_style_frame(0x11223344u, 0, 0);
+    StyleFrame line_frame = test_style_frame(0x55667788u, 0, 0);
+    StyleFrame text_frame = test_style_frame(0, 0xaabbccddu, 0);
 
     check_int("plot negative offset", PlotOffset(4, -1), 3);
     check_int("plot wrapped offset", PlotOffset(4, 5), 1);
@@ -382,21 +418,22 @@ test_plot_policy(void)
     check_float("plot range max", range.max_value, 1.0f);
     check_float("plot normalize clamp", PlotNormalize(2.0f, range), 1.0f);
 
-    bar = PlotHistogramBar(bounds, 2, 4, 0.75f, range, 0x11223344u);
+    bar = PlotHistogramBar(bounds, 2, 4, 0.75f, range, bar_frame);
     check_float("plot bar x", bar.bounds.x, 71.0f);
     check_float("plot bar y", bar.bounds.y, 35.0f);
     check_float("plot bar width", bar.bounds.width, 28.0f);
     check_float("plot bar height", bar.bounds.height, 45.0f);
     check_int("plot bar color", (int)bar.color, (int)0x11223344u);
 
-    line = PlotLineSegment(bounds, 2, 4, 0.25f, 0.75f, range, 0x55667788u);
+    line = PlotLineSegment(bounds, 2, 4, 0.25f, 0.75f, range,
+                           line_frame);
     check_float("plot line x", line.bounds.x, 50.0f);
     check_float("plot line y", line.bounds.y, 65.0f);
     check_float("plot line width", line.bounds.width, 40.0f);
     check_float("plot line height", line.bounds.height, -30.0f);
     check_int("plot line color", (int)line.color, (int)0x55667788u);
 
-    text = PlotTextPaintFor(bounds, 20.0f, 30.0f, 1.0f, 0xaabbccddu,
+    text = PlotTextPaintFor(bounds, 20.0f, 30.0f, 1.0f, text_frame,
                             true, true);
     check_float("plot label x", text.label_bounds.x, 16.0f);
     check_float("plot label y", text.label_bounds.y, 24.0f);
@@ -436,10 +473,7 @@ test_selectable_paint_policy(void)
         .hovered = 0,
         .pressed = 0,
         .disabled = 0,
-        .fill_color = 0x11223344,
-        .hover_color = 0x55667788,
-        .text_color = 0x99AABBCC,
-        .disabled_text_color = 0x01020304,
+        .face = test_style_frame(0x11223344, 0x99AABBCC, 0),
         .label_inset = 8.0f
     });
     SelectablePaint selected = SelectablePaintFor((SelectableSpec){
@@ -448,10 +482,7 @@ test_selectable_paint_policy(void)
         .hovered = 0,
         .pressed = 0,
         .disabled = 0,
-        .fill_color = 0x11223344,
-        .hover_color = 0x55667788,
-        .text_color = 0x99AABBCC,
-        .disabled_text_color = 0x01020304,
+        .face = test_style_frame(0x11223344, 0x99AABBCC, 0),
         .label_inset = 8.0f
     });
     SelectablePaint hovered = SelectablePaintFor((SelectableSpec){
@@ -460,10 +491,7 @@ test_selectable_paint_policy(void)
         .hovered = 1,
         .pressed = 0,
         .disabled = 0,
-        .fill_color = 0x11223344,
-        .hover_color = 0x55667788,
-        .text_color = 0x99AABBCC,
-        .disabled_text_color = 0x01020304,
+        .face = test_style_frame(0x55667788, 0x99AABBCC, 0),
         .label_inset = 8.0f
     });
     SelectablePaint disabled = SelectablePaintFor((SelectableSpec){
@@ -472,10 +500,7 @@ test_selectable_paint_policy(void)
         .hovered = 1,
         .pressed = 0,
         .disabled = 1,
-        .fill_color = 0x11223344,
-        .hover_color = 0x55667788,
-        .text_color = 0x99AABBCC,
-        .disabled_text_color = 0x01020304,
+        .face = test_style_frame(0x11223344, 0x01020304, 0),
         .label_inset = 8.0f
     });
 
@@ -492,6 +517,12 @@ static void
 test_radio_paint_policy(void)
 {
     Rectangle bounds = {10, 20, 140, 28};
+    StyleFrame frame = test_style_frame(0x111111FF, 0x111111FF, 0x222222FF);
+    StyleFrame selected = test_style_frame(0x444444FF, 0x111111FF, 0x444444FF);
+    StyleFrame disabled_frame = test_style_frame(0x333333FF, 0x333333FF, 0x333333FF);
+    frame.value.border_width = 2.0f;
+    selected.value.border_width = 2.0f;
+    disabled_frame.value.border_width = 2.0f;
     RadioPaint unchecked = RadioPaintFor((RadioSpec){
         .bounds = bounds,
         .checked = 0,
@@ -499,12 +530,8 @@ test_radio_paint_policy(void)
         .default_style = 0,
         .selected_amount = 0.0f,
         .scale = 1.0f,
-        .text_color = 0x111111FF,
-        .icon_color = 0x222222FF,
-        .button_color = 0x333333FF,
-        .primary_color = 0x444444FF,
-        .surface_variant_color = 0x555555FF,
-        .disabled_color = 0x666666FF
+        .frame = frame,
+        .selected = selected
     });
     RadioPaint checked = RadioPaintFor((RadioSpec){
         .bounds = bounds,
@@ -513,12 +540,8 @@ test_radio_paint_policy(void)
         .default_style = 0,
         .selected_amount = 1.0f,
         .scale = 1.0f,
-        .text_color = 0x111111FF,
-        .icon_color = 0x222222FF,
-        .button_color = 0x333333FF,
-        .primary_color = 0x444444FF,
-        .surface_variant_color = 0x555555FF,
-        .disabled_color = 0x666666FF
+        .frame = frame,
+        .selected = selected
     });
     RadioPaint disabled = RadioPaintFor((RadioSpec){
         .bounds = bounds,
@@ -527,12 +550,8 @@ test_radio_paint_policy(void)
         .default_style = 0,
         .selected_amount = 1.0f,
         .scale = 1.0f,
-        .text_color = 0x111111FF,
-        .icon_color = 0x222222FF,
-        .button_color = 0x333333FF,
-        .primary_color = 0x444444FF,
-        .surface_variant_color = 0x555555FF,
-        .disabled_color = 0x666666FF
+        .frame = disabled_frame,
+        .selected = disabled_frame
     });
 
     check_int("radio size", RadioSize(1.0f), 20);
@@ -1410,11 +1429,11 @@ test_toggle_keyboard_navigation(void)
 }
 
 static int
-draw_multi_select_keyboard(MultiSelectListProps list)
+draw_multi_select_keyboard(ListBoxProps list)
 {
     int clicked;
     BeginInterfaceFrame(320,240,1);
-    clicked = MultiSelectList(list);
+    clicked = ListBox(list);
     (void)Button((ButtonProps){.bounds={10,110,80,28},.id=619,.label="Next"});
     EndInterfaceFrame();
     return clicked;
@@ -1427,7 +1446,7 @@ test_multi_select_keyboard_navigation(void)
     int selected[] = {1,0,0};
     int count = 1;
     int anchor = 0;
-    MultiSelectListProps list = {
+    ListBoxProps list = {
         .bounds={10,10,180,84},.id=618,.items=items,.item_count=3,
         .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
     };
@@ -1500,7 +1519,8 @@ test_focusable_image_keyboard_navigation(void)
     SetFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,180,1);
     check_int("invisible button Enter activation",
-              Button((ButtonProps){.bounds={10,50,40,30},.id=620,.invisible=true}),1);
+              Button((ButtonProps){.bounds={10,50,40,30},.id=620,
+                                    .invisible=true}),1);
     EndInterfaceFrame();
 
     SetFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
@@ -1588,7 +1608,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
     static const MenuItem edit_items[] = {
         {MenuCommand, "Copy", "Ctrl+C", 201, 0, 0, NULL, 0}
     };
-    static const Menu menus[] = {
+    static const MenuGroup menus[] = {
         {{0, 0, 0, 0}, "File", file_items, 1},
         {{0, 0, 0, 0}, "Edit", edit_items, 1}
     };
@@ -1596,7 +1616,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
     int open_index = 0;
     int font;
     int edit_x;
-    MenuBarResult result;
+    MenuResult result;
 
     InjectReset();
     BeginInterfaceFrame(640, 480, 1.0f);
@@ -1611,7 +1631,7 @@ test_menu_bar_switches_while_popup_captures_input(void)
 
     BeginInterfaceFrame(640, 480, 1.0f);
     PushInputCapture((Rectangle){0, 28, 180, 64}, 1);
-    result = MenuBar(700, bounds, menus, 2, &open_index);
+    result = Menu((MenuProps){.id = 700, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open_index});
     EndInterfaceFrame();
 
     check_int("menu bar switches over popup capture", open_index, 1);
@@ -1634,53 +1654,53 @@ test_menu_keyboard_navigation(void)
     static const MenuItem edit[] = {
         {MenuCommand,"Copy",NULL,31,0,0,NULL,0}
     };
-    static const Menu menus[] = {
+    static const MenuGroup menus[] = {
         {{0,0,0,0},"File",file,4}, {{0,0,0,0},"Edit",edit,1}
     };
     Rectangle bounds = {0,0,360,30};
     int open = -1;
-    MenuBarResult result;
+    MenuResult result;
 
     InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Down opens",open,0);
     check_int("menu Down open result",result.open_index,0);
 
     InjectKeyTap(KEY_END); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectPump(); BeginInterfaceFrame(640,480,1);
-    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("submenu Enter activates",result.activated_id,23);
     check_int("submenu activation closes",open,-1);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Right then Down opens next",result.open_index,1);
     InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectPump(); BeginInterfaceFrame(640,480,1);
-    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    result = Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("second menu Enter activates",result.activated_id,31);
 
     InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     InjectKeyTap(KEY_ESCAPE); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    Menu((MenuProps){.id = 300, .mode = MenuModeBar, .bounds = bounds, .menus = menus, .menu_count = 2, .open_index = &open}); EndInterfaceFrame();
     check_int("menu Escape closes",open,-1);
     InjectReset();
 }
@@ -1697,12 +1717,12 @@ test_popup_menu_keyboard_navigation(void)
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(400);
-    activated = PopupMenu(400,20,20,items,3); EndInterfaceFrame();
+    activated = Menu((MenuProps){.id = 400, .mode = MenuModePopup, .bounds = {20,20,0,0}, .items = items, .item_count = 3}).activated_id; EndInterfaceFrame();
     check_int("popup Enter skips disabled",activated,42);
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(640,480,1); SetFocus(999);
-    activated = PopupMenu(400,20,20,items,3); EndInterfaceFrame();
+    activated = Menu((MenuProps){.id = 400, .mode = MenuModePopup, .bounds = {20,20,0,0}, .items = items, .item_count = 3}).activated_id; EndInterfaceFrame();
     check_int("unfocused popup rejects Enter",activated,0);
     InjectReset();
 }
@@ -1726,7 +1746,7 @@ test_popup_menu_keyboard_ownership(void)
         if(!inside) ui_popup_input_end(child);
         SetFocus(25711);
         check_int("only top popup menu handles keyboard",
-                  PopupMenu(25711,10,10,items,1),inside ? 25710 : 0);
+                  Menu((MenuProps){.id = 25711, .mode = MenuModePopup, .bounds = {10,10,0,0}, .items = items, .item_count = 1}).activated_id,inside ? 25710 : 0);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);
@@ -1755,7 +1775,7 @@ test_popup_menu_keyboard_ownership(void)
         if(!inside)
             ui_popup_input_end(child);
         SetFocus(25711);
-        (void)PopupMenu(25711,10,10,items,1);
+        (void)Menu((MenuProps){.id = 25711, .mode = MenuModePopup, .bounds = {10,10,0,0}, .items = items, .item_count = 1}).activated_id;
         check_int("only top popup menu handles Escape",
                   GetFocus(),expected_focus);
         if(inside)
@@ -2460,7 +2480,7 @@ test_popup_multi_select_keyboard_ownership(void)
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25706);
-        int clicked = MultiSelectList((MultiSelectListProps){
+        int clicked = ListBox((ListBoxProps){
             .bounds={10,10,120,56},.id=25706,.items=items,.item_count=2,
             .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
         });
@@ -3762,13 +3782,13 @@ test_popup_layout_restoration(void)
 {
     BeginTree(Key("popup layout restoration"));
     NodeId parent = Row((RowProps){.bounds={10,10,200,20},.gap=5});
-    Rect(0,0,20,20,RED,BLANK);
+    Box((Rectangle){0,0,20,20},RED,BLANK);
     UITreeLayoutScope scope = ui_tree_layout_suspend();
     NodeId popup = Row((RowProps){.bounds={0,0,100,20},.gap=3});
-    Rect(0,0,30,20,BLUE,BLANK);
+    Box((Rectangle){0,0,30,20},BLUE,BLANK);
     End();
     ui_tree_layout_resume(scope);
-    Rect(0,0,20,20,GREEN,BLANK);
+    Box((Rectangle){0,0,20,20},GREEN,BLANK);
     End();
     EndTree();
     int count = 0;
@@ -4405,19 +4425,18 @@ test_control_style_resolution(void)
     check_color("theme preserves icon", GetThemeIcon(), custom.colors.icon);
     ButtonProps button = {.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisFilled};
     got = ResolveButtonStyle(button, ButtonStateNormal);
-    check_color("button uses declared raised surface", got.background, custom.colors.surface_raised);
+    check_color("button has no implicit theme background", got.background, BLANK);
     button.emphasis = ButtonEmphasisOutline;
     got = ResolveButtonStyle(button, ButtonStateNormal);
-    check_color("button preserves transparent theme surface", got.background, custom.colors.surface);
+    check_color("button has no implicit outline background", got.background, BLANK);
     Theme light = ThemeDefaultLight();
     SetTheme(light);
     button.tone = ButtonToneAccent;
     button.emphasis = ButtonEmphasisFilled;
     got = ResolveButtonStyle(button, ButtonStateFocus);
-    check_color("light focus blue ink", got.foreground, light.colors.link);
-    check_int("light focus pale face", got.background.r >= 220 && got.background.g >= 230, 1);
+    check_color("button focus has no implicit background", got.background, BLANK);
     got = ResolveButtonStyle(button, ButtonStateHover);
-    check_color("light hover blue ink", got.foreground, light.colors.link);
+    check_color("button hover has no implicit background", got.background, BLANK);
     SetTheme(original);
     ClearThemeMetricsOverride();
 }

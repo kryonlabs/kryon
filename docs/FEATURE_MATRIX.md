@@ -48,24 +48,25 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 54 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 51 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface (except `Canvas`, below);
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
-`Background Text Paragraph Rect Line Bevel Icon
-Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown Slider
-MenuBar PopupMenu ContextMenu Toggle Checkbox Radio Progress Plot
-Drag Input Spinbox DragDrop MultiSelectList
+`AppBackground Background Text Paragraph Box Line Bevel Icon
+Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown
+SegmentedControl Slider
+Menu Toggle Checkbox Radio Progress Plot
+Drag Input Spinbox DragDrop
 Screen Column Row Stack End Scroll Canvas Modal TitleBar TabBar
-NavigationBar Toolbar ShowToast ShowToastFor Fieldset PanedView Collapsible
-ListBox TreeView TableView ColorPicker CanvasGrid SelectableText`
+NavigationBar Toolbar Toast Fieldset PanedView Collapsible
+ListBox TreeView TableView ColorPicker CanvasGrid`
 
 `Canvas`, `Scroll`, and `TableCell` are lexical `.kry` blocks rather than
 ordinary one-call widgets; the compiler lowers them to host begin/end support.
-The clean command-menu concept is `Menu`; the current compiler/runtime still
-exposes legacy command-menu entry points as migration support.
+The clean command-menu concept is `Menu`; bar, popup, and context behavior are
+selected by `MenuProps`.
 
 ## Widget matrix
 
@@ -93,7 +94,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Text | ✅ | ✅ | ✅ | ✅ | ✅ `Text` | ✅ node |
 | Text properties (bounds, wrap, clip, color, alignment, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Text(TextProps)` | ✅ |
 | Paragraph (rich text + inline icons) | ✅ | ✅ | ✅ | ✅ | ✅ `Paragraph` | ✗ |
-| Rect | ✅ | ✅ | ✅ | ✅ (+ `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
+| Box | ✅ | ✅ | ✅ | ✅ `Box` (+ native `RectGradientH`) | ◐ `DrawRectangle*` primitives | ✅ node |
 | Line | ✅ | ✅ | ✅ | ✅ | ✅ `DrawLine` | ✅ |
 | Bevel | ✅ | ✅ | ✅ | ✅ | ✅ `Bevel` | ✅ |
 | Icon sheets (MingCute UI plus 6 full-color families) | ✅ | ✅ | ✅ | ✅ (by icon type) | ✅ `Icon` | ✗ |
@@ -107,16 +108,14 @@ declaration pass (`src/ui/ui_tree.c`).
 |---|---|---|---|---|---|---|
 | Button (ButtonProps) | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.Button(kryon.ButtonProps)` | ✅ node |
 | Selectable / Checkbox | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Legacy positional buttons | ✅ low-level only | ✅ only for existing C callers | ✅ only for existing C callers | ✗ use `kryon.Button(kryon.ButtonProps)` | ✗ generated Go uses `kryon.Button` | ◐ BUTTON style byte |
 | Button options (small, arrow, info/help, menu, split) | ✅ | ✅ | ✅ | ✅ | ✅ `Button(ButtonProps)` | ◐ BUTTON style byte |
-| Link (TextLink / open URL) | ✅ | ✅ | ✅ | ✅ | ✅ `Link` | ✗ |
-| IconLink | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Link (open URL) | ✅ | ✅ | ✅ | ✅ | ✅ `Link` | ✗ |
 | TextField | ✅ | ✅ | ✅ | ✅ | ✅ `kryon.TextField(kryon.TextFieldProps)` / `kryon.TextField("Name", &value)` | ✅ TEXTINPUT node |
 | Read-only text | ✅ | ✅ | ✅ | ✅ via `Text` | ✅ `Text(TextProps)` | ✗ |
-| TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `NewTextArea`/`TextArea` | ✗ |
+| TextArea (selection, syntax highlight) | ✅ | ✅ | ✅ | ✅ | ✅ `TextArea` | ✗ |
 | Dropdown | ✅ | ✅ | ✅ | ✅ `Dropdown` | ✅ `Dropdown` | ✅ DROPDOWN control |
-| Slider | ✅ | ✅ | ✅ | ✅ | ✅ `Slider`/`Slider` | ✅ SLIDER control |
-| Vertical sliders | ✅ | ✅ | ✅ | ✅ `Slider(SliderProps{Vertical: true})` | ✅ | ✅ VSLIDER control |
+| SegmentedControl | ✅ | ✅ | ✅ | ✅ `SegmentedControl` | ✅ `SegmentedControl` | ✗ |
+| Slider | ✅ | ✅ | ✅ | ✅ `Slider(SliderProps)` | ✅ `Slider` | ✅ SLIDER/VSLIDER control |
 | Toggle (switch) | ✅ | ✅ | ✅ | ✅ | ✅ `Toggle` | ✅ node |
 | Checkbox (+ disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `Checkbox` | ✅ node |
 | Radio | ✅ | ✅ | ✅ | ✅ | ✅ `Radio` | ✅ `KRB_CTRL_RADIO` |
@@ -143,7 +142,6 @@ declaration pass (`src/ui/ui_tree.c`).
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
 | Geometry layout (`Rectangle`, `Grid`, `Column`, `Row`, `Stack`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ structural |
-| Form cursor (`Form*`) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
 | Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Canvas` block | ✅ host canvas scope + hit-test | ✗ |
 
 ### UI/Collections
@@ -154,15 +152,15 @@ declaration pass (`src/ui/ui_tree.c`).
 | TreeView (+ disabled) | ✅ | ✅ | ✅ | ◐ `TreeView` | ◐ `TreeView` | ✗ |
 | TableView (resizing, frozen rows, sort direction, cell colors, column visibility/order, focus/keyboard/clipboard, disabled) | ✅ | ✅ | ✅ | ✅ | ✅ `TableView` | ✗ |
 | CanvasGrid | ✅ | ✅ | ✅ | ✅ | ✅ `CanvasGrid` | ✗ |
-| SelectableText | ✅ | ✅ | ✅ | ✅ | ✅ `SelectableText` | ✗ |
-| MultiSelectList (focus, keyboard navigation, Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Selectable text | ✅ `TextProps.selectable` | ✅ | ✅ | ✅ via `Text` | ✅ via `TextProps.Selectable` | ✗ |
+| ListBox multi-select props (focus, keyboard navigation, Ctrl/Shift range selection) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Nested disabled scope | ✅ | ✅ | ✅ | ✅ | ✅ `Disabled` block | ✗ |
 
 ### UI/Navigation
 
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
-| Menu (bar, popup, and context modes) | ✅ | ✅ | ✅ | ✅ | ✅ (legacy command-menu entry points during migration) | ✗ |
+| Menu (bar, popup, and context modes) | ✅ | ✅ | ✅ | ✅ | ✅ `Menu` | ✗ |
 | Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | Button add-tab actions / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
@@ -176,9 +174,8 @@ declaration pass (`src/ui/ui_tree.c`).
 | Widget | C | k2c | k2cpp | k2go | Go | KRB |
 |---|---|---|---|---|---|---|
 | Modal | ✅ | ✅ | ✅ | ✅ `Modal` | ✅ `Modal` | ✗ |
-| Toast | ✅ | ✅ | ✅ | ✅ `ShowToast(For)` | ✅ `ShowToast(For)` | ✗ |
-| TransitionFade / Focus ring | ✅ | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
-| FocusDebugOverlay | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
+| Toast | ✅ | ✅ | ✅ | ✅ `Toast` | ✅ `Toast` | ✗ |
+| Transition/focus policy | ✅ | ✅ | ✅ | ✗ | ✗ | ◐ `AnimNode` + `TIME` opcode drive animation |
 
 ### UI/Composite And App Framework
 

@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Basic Controls" {
     size 800 600
@@ -17,8 +18,8 @@ state {
 BasicControlsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
-        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Basic controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        AppBackground()
+        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Basic controls", .font=Text24, .wrap=TextWrapNone})
         picked: int = Radio((RadioProps){.bounds = {40,90,160,28}, .label = "Choice A", .id = 1, .checked = radio == 1})
         if picked {
             radio = picked
@@ -27,7 +28,7 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
         if picked {
             radio = picked
         }
-        Text((TextProps){.bounds={40, 166, 0, 0}, .text=TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={40, 166, 0, 0}, .text=TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), .font=Text16, .wrap=TextWrapNone})
         Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
         Dropdown((DropdownProps){.bounds = {240,140,180,34}, .id = 202,
             .options = choices, .option_count = 3, .selected_index = &dropdown})

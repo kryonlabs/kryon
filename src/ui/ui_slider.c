@@ -53,6 +53,120 @@ ui_draw_slider_paint(SliderPaint paint, int hovered, int active,
                     paint.thumb_radius, GetColor(paint.thumb_edge_color));
 }
 
+static StyleFrame
+ui_slider_style_frame_role_kind(ButtonTone tone, ButtonState state, int disabled,
+                                int kind, int role);
+
+static StyleFrame
+ui_toggle_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
+                           int role);
+
+static StyleFrame
+ui_slider_style_frame_kind(ButtonTone tone, ButtonState state, int disabled,
+                           int kind)
+{
+    return ui_slider_style_frame_role_kind(tone, state, disabled, kind,
+                                           StyleAny());
+}
+
+static StyleFrame
+ui_slider_style_frame_role_kind(ButtonTone tone, ButtonState state, int disabled,
+                                int kind, int role)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                            kind, role);
+}
+
+static StyleFrame
+ui_slider_style_frame(ButtonTone tone, ButtonState state, int disabled)
+{
+    return ui_slider_style_frame_role_kind(tone, state, disabled,
+                                           StyleKindSlider(), 4);
+}
+
+static StyleFrame
+ui_slider_fill_style_frame(ButtonTone tone, ButtonState state, int disabled)
+{
+    return ui_slider_style_frame_role_kind(tone, state, disabled,
+                                           StyleKindSlider(), 5);
+}
+
+static StyleFrame
+ui_slider_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled)
+{
+    return ui_slider_style_frame_kind(tone, state, disabled,
+                                      StyleKindSliderThumb());
+}
+
+static StyleFrame
+ui_toggle_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
+                           int role)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                            StyleKindToggle(), role);
+}
+
+static StyleFrame
+ui_toggle_thumb_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                            int selected)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = selected ? ButtonEmphasisFilled : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                       StyleKindToggleThumb());
+}
+
+static StyleFrame
+ui_checkbox_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                        int selected)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisOutline;
+    props.size = ControlSizeMedium;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                       StyleKindCheckbox());
+}
+
+static ButtonState
+ui_checkbox_button_state(int hovered, int down, int focused, int disabled)
+{
+    if(disabled)
+        return ButtonStateDisabled;
+    if(down)
+        return ButtonStatePressed;
+    if(focused)
+        return ButtonStateFocus;
+    if(hovered)
+        return ButtonStateHover;
+    return ButtonStateNormal;
+}
+
 int
 ui_render_slider(int id, int x, int y, int w, const char *label,
                  int min, int max, int *value, const char *suffix,
@@ -104,9 +218,13 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     else
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     if(can_draw) {
-        RenderText(label, x, y, label_font, c_text);
+        StyleFrame label_frame = ui_slider_style_frame(ButtonToneNeutral,
+            ButtonStateNormal, 0);
+        Style label_style = ui_unpack_style(
+            ui_style_apply_effects_frame(label_frame).value);
+        RenderText(label, x, y, label_font, label_style.foreground);
         RenderText(value_text, x + w - TextWidth(value_text, value_font),
-                   y, value_font, c_text);
+                   y, value_font, label_style.foreground);
     }
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
@@ -147,13 +265,12 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
     if(can_draw) {
-        Palette palette;
-        Metrics tokens;
         int active = g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
                       !InputCapturesClick(mouse_world);
+        ButtonState state = active ? ButtonStatePressed :
+                            (hovered ? ButtonStateHover : ButtonStateNormal);
 
-        ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
             .bounds = {(float)x, (float)knob_y, (float)w, (float)knob_h},
             .ratio = t,
@@ -162,8 +279,12 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             .hovered = hovered,
             .disabled = UIContentDisabled(),
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .track = ui_slider_style_frame(ButtonToneNeutral, state,
+                                           UIContentDisabled()),
+            .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
+                                                       UIContentDisabled()),
+            .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
+                                                 UIContentDisabled())
         }), hovered, active, UIContentDisabled());
     }
 
@@ -244,13 +365,12 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
 
     {
         float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
-        Palette palette;
-        Metrics tokens;
         int active = active_visual || g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
                       !InputCapturesClick(mouse_world);
+        ButtonState state = active ? ButtonStatePressed :
+                            (hovered ? ButtonStateHover : ButtonStateNormal);
 
-        ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
             .bounds = {(float)(x - knob_w / 2), (float)y,
                        (float)knob_w, (float)h},
@@ -260,8 +380,12 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
             .hovered = hovered,
             .disabled = UIContentDisabled(),
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .track = ui_slider_style_frame(ButtonToneNeutral, state,
+                                           UIContentDisabled()),
+            .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
+                                                       UIContentDisabled()),
+            .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
+                                                 UIContentDisabled())
         }), hovered, active, UIContentDisabled());
     }
 
@@ -361,13 +485,12 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
 
     {
         float t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
-        Palette palette;
-        Metrics tokens;
         int active = g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
                       !InputCapturesClick(mouse_world);
+        ButtonState state = active ? ButtonStatePressed :
+                            (hovered ? ButtonStateHover : ButtonStateNormal);
 
-        ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
             .bounds = {(float)(x - knob_w / 2), (float)y,
                        (float)knob_w, (float)h},
@@ -377,8 +500,12 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
             .hovered = hovered,
             .disabled = UIContentDisabled(),
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .track = ui_slider_style_frame(ButtonToneNeutral, state,
+                                           UIContentDisabled()),
+            .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
+                                                       UIContentDisabled()),
+            .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
+                                                 UIContentDisabled())
         }), hovered, active, UIContentDisabled());
     }
 
@@ -459,19 +586,25 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     }
 
     {
-        Palette palette;
-        Metrics tokens;
         ToggleSpec spec;
         TogglePaint paint;
         StyleFrame track_frame;
         Style track_style;
         StyleFrame active_frame;
         Style active_style;
+        StyleFrame label_frame;
+        Style label_style;
+        ButtonState state = down ? ButtonStatePressed :
+                            (hovered ? ButtonStateHover : ButtonStateNormal);
+        int checked = value != NULL && *value;
+        ButtonTone track_tone = checked && !has_labels
+            ? ButtonToneAccent
+            : ButtonToneNeutral;
+        int track_role = checked && !has_labels ? 5 : 4;
 
-        ui_runtime_theme_values(&palette, &tokens);
         spec = (ToggleSpec){
             .bounds = editor_bounds,
-            .checked = value != NULL && *value,
+            .checked = checked,
             .enabled = enabled,
             .hovered = hovered,
             .pressed = down,
@@ -481,10 +614,25 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
             .on_width = on_w,
             .font = font,
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .track = ui_toggle_style_frame_role(track_tone, state, !enabled,
+                                                track_role),
+            .active = ui_toggle_style_frame_role(ButtonToneAccent, state,
+                                                 !enabled, 5),
+            .thumb = ui_toggle_thumb_style_frame(track_tone, state, !enabled,
+                                                 checked)
         };
         paint = TogglePaintFor(spec);
+        label_frame = ui_toggle_style_frame_role(ButtonToneNeutral, state,
+                                                 !enabled, 6);
+        label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
+        if(paint.has_labels) {
+            unsigned int label_color = Opacity(ColorToInt(label_style.foreground),
+                                               label_style.opacity);
+            if(checked)
+                paint.off_label_color = label_color;
+            else
+                paint.on_label_color = label_color;
+        }
         track_frame = ui_style_apply_effects_frame(paint.track);
         track_style = ui_unpack_style(track_frame.value);
 
@@ -602,25 +750,27 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     }
 
     {
-        Palette palette;
-        Metrics tokens;
         int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
                       !InputCapturesClick(mouse_world) &&
                       HoverEffectsEnabled();
         int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        int checked = value != NULL && *value;
+        ButtonState state = ui_checkbox_button_state(hovered, down, 0,
+                                                     disabled);
         CheckboxPaint paint;
 
-        ui_runtime_theme_values(&palette, &tokens);
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = bounds,
-            .checked = value != NULL && *value,
+            .checked = checked,
             .enabled = !disabled,
             .hovered = hovered,
             .pressed = down,
             .focused = 0,
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .box = ui_checkbox_style_frame(ButtonToneNeutral, state, disabled,
+                                           checked),
+            .active = ui_checkbox_style_frame(ButtonToneAccent, state,
+                                              disabled, checked)
         });
 
         if(paint.show_state)

@@ -155,6 +155,7 @@ func Selection(focusID int32) (anchor, cursor int32, ok bool) {
 	return 0, 0, false
 }
 func ClearBackground(c Color) { active().ClearBackground(c) }
+func AppBackground()          { active().AppBackground() }
 func Background(c Color)      { active().Background(c) }
 func Text(props TextProps)    { active().Text(props) }
 func MeasureTextWidth(text string, font int32, typeface string) int32 {
@@ -241,8 +242,8 @@ func Circle(centerX, centerY, radius int32, color Color) {
 func Ring(centerX, centerY, innerRadius, outerRadius int32, color Color) {
 	active().Ring(centerX, centerY, innerRadius, outerRadius, color)
 }
-func Rect(x, y, w, h int32, color Color, rest ...Color) { active().Rect(x, y, w, h, color, rest...) }
-func Surface(bounds Rectangle, style Style)             { active().Surface(bounds, style) }
+func Box(bounds Rectangle, fill Color, border Color) { active().Box(bounds, fill, border) }
+func Surface(bounds Rectangle, style Style)          { active().Surface(bounds, style) }
 func RectGradientH(x, y, w, h int32, left, right Color) {
 	active().RectGradientH(x, y, w, h, left, right)
 }
@@ -265,7 +266,6 @@ func Checkbox(props CheckboxProps) bool                { return active().Checkbo
 func Bullet(bounds Rectangle)                          { active().Bullet(bounds) }
 func Separator(props SeparatorProps)                   { active().Separator(props) }
 func DragDrop(props DragDropProps) bool                { return active().DragDrop(props) }
-func MultiSelectList(props MultiSelectListProps) int32 { return active().MultiSelectList(props) }
 func ColorPicker(props ColorPickerProps) bool          { return active().ColorPicker(props) }
 func TabBar(props TabBarProps) int32                   { return active().TabBar(props) }
 func Progress(props ProgressProps) {
@@ -276,6 +276,12 @@ func Drag(props DragProps) bool     { return active().Drag(props) }
 func Slider(props SliderProps) bool { return active().Slider(props) }
 func Input(props InputProps) bool   { return active().Input(props) }
 func Dropdown(args ...any) bool     { return active().Dropdown(args...) }
+func GetSegmentedControlHeight(props SegmentedControlProps) int32 {
+	return active().GetSegmentedControlHeight(props)
+}
+func SegmentedControl(props SegmentedControlProps) SegmentedControlResult {
+	return active().SegmentedControl(props)
+}
 func StylePicker(props StylePickerProps) bool {
 	return active().StylePicker(props)
 }
@@ -328,49 +334,33 @@ func Toggle(props ToggleProps) bool { return active().Toggle(props) }
 func Modal(props ModalProps) int32 {
 	return active().Modal(props)
 }
-func TitleBar(props TitleBarProps) int32       { return active().TitleBar(props) }
-func NavigationBar(props NavigationBarProps)   { active().NavigationBar(props) }
-func Toolbar(props ToolbarProps) ToolbarResult { return active().Toolbar(props) }
-func MenuBar(id int32, bounds Rectangle, menus []Menu, args ...any) MenuBarResult {
-	var openIndex *int32
-	for _, arg := range args {
-		if value, ok := arg.(*int32); ok {
-			openIndex = value
-		}
-	}
-	return active().MenuBar(id, bounds, menus, openIndex)
-}
-func PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
-	return active().PopupMenu(id, x, y, items, itemCount)
-}
-func ContextMenu(props ContextMenuProps) int32             { return active().ContextMenu(props) }
+func TitleBar(props TitleBarProps) int32                   { return active().TitleBar(props) }
+func NavigationBar(props NavigationBarProps)               { active().NavigationBar(props) }
+func Toolbar(props ToolbarProps) ToolbarResult             { return active().Toolbar(props) }
+func Menu(props MenuProps) MenuResult                      { return active().Menu(props) }
 func CanvasGrid(bounds Rectangle, step int32, color Color) { active().CanvasGrid(bounds, step, color) }
-func SelectableText(value string, x, y, fontSize int32, color Color) {
-	active().SelectableText(value, x, y, fontSize, color)
-}
-func ShowToast(message string)                     { active().ShowToast(message) }
-func ShowToastFor(message string, seconds float64) { active().ShowToastFor(message, seconds) }
-func TextField(args ...any) bool                   { return textField(args...) }
-func TextArea(props TextAreaProps) bool            { return active().TextArea(props) }
-func Radio(props RadioProps) int32                 { return active().Radio(props) }
-func Spinbox(props SpinboxProps) bool              { return active().Spinbox(props) }
-func Fieldset(props FieldsetProps)                 { active().Fieldset(props) }
-func PanedView(props PanedViewProps) int32         { return active().PanedView(props) }
-func Collapsible(props CollapsibleProps) int32     { return active().Collapsible(props) }
-func TreeView(props TreeViewProps) int32           { return active().TreeView(props) }
-func ListBox(props ListBoxProps) int32             { return active().ListBox(props) }
-func TableView(props TableViewProps) int32         { return active().TableView(props) }
-func BeginCanvas(canvas Canvas) CanvasResult       { return active().BeginCanvas(canvas) }
-func EndCanvas(canvas Canvas)                      { active().EndCanvas(canvas) }
-func SetCurrentTheme(themeID, darkMode int32)      { active().SetCurrentTheme(themeID, darkMode) }
-func SetTheme(theme Theme)                         { active().SetTheme(theme) }
-func SetThemeFamily(family ThemeFamily)            { active().SetThemeFamily(family) }
-func GetThemeFamily() ThemeFamily                  { return active().GetThemeFamily() }
-func GetTheme() Theme                              { return active().GetTheme() }
-func SetThemeDarkMode(dark int32)                  { active().SetThemeDarkMode(dark) }
-func SetThemeStyle(style ThemeStyle)               { active().SetThemeStyle(style) }
-func SetThemeSource(source ThemeSource)            { active().SetThemeSource(source) }
-func SetThemeMode(mode ThemeMode)                  { active().SetThemeMode(mode) }
-func GetThemeMode() ThemeMode                      { return active().GetThemeMode() }
-func GetThemeScheme() DefaultScheme                { return active().GetThemeScheme() }
-func SystemThemePrefersDark() bool                 { return systemPrefersDark() }
+func Toast(props ToastProps)                               { active().Toast(props) }
+func TextField(args ...any) bool                           { return textField(args...) }
+func TextArea(props TextAreaProps) bool                    { return active().TextArea(props) }
+func Radio(props RadioProps) int32                         { return active().Radio(props) }
+func Spinbox(props SpinboxProps) bool                      { return active().Spinbox(props) }
+func Fieldset(props FieldsetProps)                         { active().Fieldset(props) }
+func PanedView(props PanedViewProps) int32                 { return active().PanedView(props) }
+func Collapsible(props CollapsibleProps) int32             { return active().Collapsible(props) }
+func TreeView(props TreeViewProps) int32                   { return active().TreeView(props) }
+func ListBox(props ListBoxProps) int32                     { return active().ListBox(props) }
+func TableView(props TableViewProps) int32                 { return active().TableView(props) }
+func BeginCanvas(canvas Canvas) CanvasResult               { return active().BeginCanvas(canvas) }
+func EndCanvas(canvas Canvas)                              { active().EndCanvas(canvas) }
+func SetCurrentTheme(themeID, darkMode int32)              { active().SetCurrentTheme(themeID, darkMode) }
+func SetTheme(theme Theme)                                 { active().SetTheme(theme) }
+func SetThemeFamily(family ThemeFamily)                    { active().SetThemeFamily(family) }
+func GetThemeFamily() ThemeFamily                          { return active().GetThemeFamily() }
+func GetTheme() Theme                                      { return active().GetTheme() }
+func SetThemeDarkMode(dark int32)                          { active().SetThemeDarkMode(dark) }
+func SetThemeStyle(style ThemeStyle)                       { active().SetThemeStyle(style) }
+func SetThemeSource(source ThemeSource)                    { active().SetThemeSource(source) }
+func SetThemeMode(mode ThemeMode)                          { active().SetThemeMode(mode) }
+func GetThemeMode() ThemeMode                              { return active().GetThemeMode() }
+func GetThemeScheme() DefaultScheme                        { return active().GetThemeScheme() }
+func SystemThemePrefersDark() bool                         { return systemPrefersDark() }

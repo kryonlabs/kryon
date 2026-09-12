@@ -3,6 +3,7 @@
 #include "ui_tree_layout_internal.h"
 #include "ui_disabled_internal.h"
 #include "ui_input_clip_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/popup_policy.h"
 #include <limits.h>
 #include <stdlib.h>
@@ -67,7 +68,11 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
     PushInputClip(popup);
     if(IsWindowReady()) {
         BeginClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
-        DrawRectangleRec(popup,GetThemeSurface());
+        Style panel = ui_surface_style();
+        ui_draw_material(popup, (Rectangle){0}, panel.background, panel.border,
+                         panel.border, panel.radius, panel.border_width,
+                         0, 0, 0, panel.focus, 0, panel.opacity,
+                         ui_style_fill(panel), panel.material);
         scope->has_clip = 1;
     }
     popup_scope = scope;

@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/title_bar.h"
 
 /* Screen header (title bar) widgets. These were split out of modal.c so that
@@ -8,27 +9,18 @@
 static void
 RenderTitleBarBackground(int height)
 {
-    Color top = DarkenColor(c_bg, 8);
-    Color bottom = c_bg;
-    Color divider = GetThemeText();
-    ThemeMetrics tokens = GetThemeMetrics();
+    StyleFrame bar_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
+    Style bar = ui_unpack_style(bar_frame.value);
+    Rectangle bounds = {0, 0, (float)ui_view_width, (float)height};
 
-    if(ui_default_style()) {
-        top = ui_default_surface_container();
-        bottom = c_bg;
-    }
-    if(tokens.title_bar_alpha < top.a)
-        top.a = tokens.title_bar_alpha;
-    if(tokens.title_bar_alpha < bottom.a)
-        bottom.a = tokens.title_bar_alpha;
-    DrawRectangleGradientV(0, 0, ui_view_width, height, top, bottom);
-    if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
-        Color shine = WHITE;
-        shine.a = GetThemeMetrics().shine_alpha;
-        DrawRectangle(0, 0, ui_view_width, Scale(1), shine);
-    }
-    divider.a = 34;
-    DrawLine(0, height - 1, ui_view_width, height - 1, divider);
+    ui_draw_material(bounds, (Rectangle){0}, bar.background, bar.border,
+                     bar.border, bar.radius, bar.border_width, 0.0f, 0.0f,
+                     0, bar.focus, 0.0f, bar.opacity, ui_style_fill(bar),
+                     bar.material);
+    DrawLine(0, height - 1, ui_view_width, height - 1, bar.border);
 }
 
 static int
@@ -41,8 +33,16 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
     button.icon = return_icon;
     button.icon_size = metrics.leading_icon_size;
     button.icon_padding = metrics.leading_padding;
-    button.icon_color = GetThemeText();
-    button.hover_background = Fade(GetThemeText(), 0.12f);
+    Style normal = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
+    Style hover = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateHover, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
+    button.icon_color = normal.foreground;
+    button.hover_background = hover.background;
     button.radius = 0.50f;
     return RenderIconAction(button);
 }
@@ -67,9 +67,13 @@ RenderTitleBarCenteredTitle(const char *title, int height,
         font--;
         title_w = TextWidth(title, font);
     }
+    Style text = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16).value);
     RenderText(title, TitleBarTitleX(ui_view_width, title_w),
-                    GetUIControlTextY(title, 0, height, font),
-                    font, c_text);
+               GetUIControlTextY(title, 0, height, font),
+               font, text.foreground);
 }
 
 int

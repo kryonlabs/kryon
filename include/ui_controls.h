@@ -42,6 +42,7 @@ typedef struct {
     int style_resolved;
     Rectangle surface_bounds;
     int disclosure;
+    int style_kind;
 } ButtonSpec;
 
 Style MergeStyle(Style base, Style overrides);

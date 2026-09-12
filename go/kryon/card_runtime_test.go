@@ -2,8 +2,7 @@ package kryon
 
 import "testing"
 
-func TestCardButtonPropsUsesRuntimeStyleDefaults(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
+func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 	card := CardProps{
 		Bounds:    Rectangle{X: 8, Y: 9, Width: 120, Height: 48},
 		ID:        77,
@@ -17,7 +16,7 @@ func TestCardButtonPropsUsesRuntimeStyleDefaults(t *testing.T) {
 		},
 	}
 
-	button := r.Card_CardButtonProps(card, 12, 1, 16, 10,
+	button := Card_CardButtonProps(card, 12, 1, 16, 10,
 		Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
 
 	if button.ID != card.ID || button.Bounds != card.Bounds {
@@ -30,22 +29,45 @@ func TestCardButtonPropsUsesRuntimeStyleDefaults(t *testing.T) {
 		button.Style.Normal.Background != (Color{1, 2, 3, 4}) {
 		t.Fatalf("normal overrides did not win: %+v", button.Style.Normal)
 	}
-	if button.Style.Normal.PaddingX != 16 || button.Style.Normal.PaddingY != 10 {
-		t.Fatal("card defaults must still provide unset padding")
+	if button.Style.Normal.PaddingX != 0 || button.Style.Normal.PaddingY != 0 {
+		t.Fatal("card must not provide hidden padding defaults")
 	}
-	if button.Style.Normal.Material != MaterialLightfield ||
-		button.Style.Hover.Material != MaterialLightfield {
-		t.Fatal("card defaults must use the lightfield material")
+	if button.Style.Normal.Material != 0 || button.Style.Hover.Material != 0 {
+		t.Fatal("card must not provide hidden material defaults")
 	}
 	if button.Style.Hover.Border != (Color{5, 6, 7, 8}) {
-		t.Fatal("hover override did not win over generated defaults")
+		t.Fatal("hover override was not preserved")
 	}
 
-	plain := r.Card_CardButtonProps(CardProps{
+	plain := Card_CardButtonProps(CardProps{
 		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
 	}, 12, 1, 16, 10, Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
-	if plain.Emphasis != ButtonEmphasisSoft {
-		t.Fatal("plain neutral filled cards should default to soft button styling")
+	if plain.Emphasis != ButtonEmphasisFilled || plain.Style.Normal.Fields != 0 {
+		t.Fatal("plain card should preserve semantics and carry no visual style")
+	}
+}
+
+func TestCardRuntimeUsesCardStyleFacts(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	if !RegisterBuiltInStylePacks() {
+		t.Fatal("built-in style packs did not register")
+	}
+
+	r := New(AppConfig{}).(*runtime)
+	button := Card_CardButtonProps(CardProps{
+		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
+	}, 12, 1, 16, 10, Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
+	cardStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
+		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())
+	buttonStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
+		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindButton())
+
+	if cardStyle.Background != (Color{0x1a, 0x1f, 0x29, 0xff}) {
+		t.Fatalf("card did not resolve Material Card background: %+v", cardStyle.Background)
+	}
+	if buttonStyle.Background == cardStyle.Background {
+		t.Fatal("card runtime should use Card style facts, not Button facts")
 	}
 }
 

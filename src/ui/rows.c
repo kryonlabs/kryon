@@ -1,15 +1,25 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 
 void
 RenderInfoRows(InfoRowsProps rows)
 {
+    Style surface_style = ui_surface_style();
+    Style separator_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                         ButtonStateNormal,
+                                                         StyleKindSeparator());
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
     Color background = rows.background.a != 0
                            ? rows.background
-                           : DarkenColor(c_bg, 6);
+                           : surface_style.background;
     Color separator = rows.separator.a != 0
                           ? rows.separator
-                          : DarkenColor(c_bg, 30);
-    Color default_text = rows.default_text.a != 0 ? rows.default_text : c_text;
+                          : separator_style.background;
+    Color default_text = rows.default_text.a != 0
+                             ? rows.default_text
+                             : text_style.foreground;
     int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
     int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
 
@@ -59,7 +69,13 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
     int label_h = row.label_h > 0 ? row.label_h : Scale(22);
     int field_h = row.field_h > 0 ? row.field_h : Scale(40);
     int gap = row.gap > 0 ? row.gap : 0;
-    Color label_color = row.label_color.a != 0 ? row.label_color : DarkenColor(c_text, 34);
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Color label_color = row.label_color.a != 0 ? row.label_color
+                                               : text_style.foreground;
+    if(row.label_color.a == 0)
+        label_color.a = (unsigned char)(label_color.a * 0.72f);
     TextFieldProps field = row.field;
 
     RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
@@ -78,7 +94,12 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetSmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
-    Color color = label.color.a != 0 ? label.color : DarkenColor(c_text, 34);
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Color color = label.color.a != 0 ? label.color : text_style.foreground;
+    if(label.color.a == 0)
+        color.a = (unsigned char)(color.a * 0.72f);
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 
@@ -301,7 +322,11 @@ FormSpinbox(Form *form, SpinboxRowProps row)
                   : form->width - control_w - Scale(12);
     if(label_w < 0)
         label_w = 0;
-    label_color = row.label_color.a != 0 ? row.label_color : c_text;
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    label_color = row.label_color.a != 0 ? row.label_color
+                                         : text_style.foreground;
 
     DrawLeftUIControlTextInRect(row.label != NULL ? row.label : "",
                                 (Rectangle){(float)form->x, (float)y,

@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/guide_pager.h"
 #include "ui_pager_internal.h"
 
@@ -66,9 +67,17 @@ GuidePager(GuidePagerProps pager)
         goto finish_policy;
 
     if(IsWindowReady()) {
-        DrawRectangleRec(pager.footer_bounds, GetThemeBackground());
+        Style surface = ui_surface_style();
+        Style separator = ui_resolve_button_style_kind((ButtonProps){0},
+                                                       ButtonStateNormal,
+                                                       StyleKindSeparator());
+        ui_draw_material(pager.footer_bounds, (Rectangle){0},
+                         surface.background, surface.border, surface.border,
+                         surface.radius, surface.border_width, 0.0f, 0.0f,
+                         0, surface.focus, 0.0f, surface.opacity,
+                         ui_style_fill(surface), surface.material);
         DrawLine(footer_x, footer_y, footer_x + footer_w, footer_y,
-                 Fade(GetThemeText(), 0.16f));
+                 separator.background);
     }
 
     if(ui_pager_button(layout.left_button,

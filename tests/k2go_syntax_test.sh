@@ -132,7 +132,7 @@ App :: () #ui {
     Screen root: {
     Background(GetThemeBackground())
     menu_items: [2] MenuItem = {{MenuCommand,"Open","Ctrl+O",46,0,0,NULL,0},{MenuCheck,"Grid",NULL,47,0,1,NULL,0}}
-    menus: [1] Menu = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
+    menus: [1] MenuGroup = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
     rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
     if tab == TAB_JOBS {
         Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text=tab_label_text(tab), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
@@ -151,7 +151,7 @@ App :: () #ui {
             scroll_off = 1
     }
     for int i = 0; i < 3; i++ {
-        Rect(Scale(4), Scale(8), Scale(2), Scale(2), GetThemeText())
+        Box((Rectangle){Scale(4), Scale(8), Scale(2), Scale(2)}, GetThemeText(), BLANK)
     }
     guard tab >= 0 {
         return
@@ -205,7 +205,7 @@ App :: () #ui {
     Stack smoke_stack: {
         bounds = {Scale(4), Scale(190), Scale(100), Scale(40)}
         key = Key("smoke-stack")
-        Rect(Scale(4), Scale(190), Scale(100), Scale(40), Fade(GetThemeSurface(), 0.5f), GetThemeButton())
+        Box((Rectangle){Scale(4), Scale(190), Scale(100), Scale(40)}, Fade(GetThemeSurface(), 0.5f), GetThemeButton())
     }
     Row smoke_row: {
         bounds = {Scale(120), Scale(190), Scale(100), Scale(40)}
@@ -222,10 +222,13 @@ App :: () #ui {
     plot_doubles: [2] double = {1.0, 2.0}
     edit_color: [4] float = {0.2f, 0.4f, 0.6f, 0.8f}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
+    segments: [3] SegmentOption = {{"Day",0},{"Week",0},{"Month",1}}
     tree_items: [2] TreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
+    AppBackground()
     Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
     Dropdown((DropdownProps){.bounds = {Scale(150), Scale(70), Scale(90), Scale(24)}, .id = 22, .options = choices, .option_count = 3, .selected_index = &pick})
+    SegmentedControl((SegmentedControlProps){.bounds = {Scale(150), Scale(98), Scale(180), Scale(30)}, .id = 221, .options = segments, .option_count = 3, .selected_index = &pick, .wrap = true})
     grid_cell: Rectangle = {Scale(12), Scale(400), Scale(64), Scale(24)}
     placed: Rectangle = {Scale(16), Scale(432), Scale(24), Scale(12)}
     CanvasGrid(grid_cell, 8, GetThemeIcon())
@@ -239,8 +242,8 @@ App :: () #ui {
     }
     Slider((SliderProps){.bounds = {Scale(250), Scale(8), Scale(60), Scale(56)}, .id = 23, .kind = 1, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0})
     CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
-    SelectableText("select me", Scale(150), Scale(100), Text16, GetThemeText())
-    ShowToast("toast from kry")
+    Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
+    Toast((ToastProps){.message = "toast from kry"})
     TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
     TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
@@ -295,9 +298,9 @@ App :: () #ui {
     Text((TextProps){.bounds = {Scale(250),Scale(1054),0,0}, .text = TextFormat("Count: %d", scalar), .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(250),Scale(1078),0,0}, .text = TextFormat("Mask: %u", 42), .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(250),Scale(1102),0,0}, .text = TextFormat("Rate: %.1f", plot_values[0]), .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
-    MenuBar(46, (Rectangle){Scale(4),Scale(834),Scale(220),Scale(30)}, menus, 1, &menu_open)
-    PopupMenu(47, Scale(4), Scale(868), menu_items, 2)
-    ContextMenu((ContextMenuProps){.id = 48, .trigger = {Scale(230),Scale(834),Scale(100),Scale(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
+    Menu((MenuProps){.id = 46, .mode = MenuModeBar, .bounds = {Scale(4),Scale(834),Scale(220),Scale(30)}, .menus = menus, .menu_count = 1, .open_index = &menu_open})
+    Menu((MenuProps){.id = 47, .mode = MenuModePopup, .bounds = {Scale(4),Scale(868),0,0}, .items = menu_items, .item_count = 2})
+    Menu((MenuProps){.id = 48, .mode = MenuModeContext, .trigger = {Scale(230),Scale(834),Scale(100),Scale(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
     if BeginPopup((PopupProps){.bounds={Scale(220),Scale(934),Scale(176),Scale(42)},.id=58,.trigger={Scale(230),Scale(900),Scale(100),Scale(30)},.flags=PopupTooltip}) {
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
         EndPopup()
@@ -313,7 +316,7 @@ App :: () #ui {
     tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})
     DragDrop((DragDropProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .role = DragDropRoleSource, .type = "TEXT", .data = field_text, .data_size = 64})
     DragDrop((DragDropProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .role = DragDropRoleTarget, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
-    MultiSelectList((MultiSelectListProps){.bounds = {Scale(250),Scale(1194),Scale(180),Scale(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
+    ListBox((ListBoxProps){.bounds = {Scale(250),Scale(1194),Scale(180),Scale(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
     Progress((ProgressProps){{Scale(140), Scale(224), Scale(100), Scale(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressProps){{Scale(140), Scale(238), Scale(100), Scale(10)}, 0, 100, helper_value(), ""})
     Progress((ProgressProps){{Scale(140), Scale(252), Scale(100), Scale(10)}, 0, 100, c_abs(-8), ""})
@@ -432,7 +435,7 @@ if grep -q 'TODO k2go' "$out"; then
     exit 1
 fi
 unqualified_runtime_calls="$(
-    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Rect|Circle|Ring|Scroll|EndScroll|Open|Close)\(' "$out" || true
+    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Box|Circle|Ring|Scroll|EndScroll|Open|Close)\(' "$out" || true
 )"
 if [ -n "$unqualified_runtime_calls" ]; then
     echo "k2go emitted unqualified runtime calls; generated Go must use kr.<Name>:" >&2
@@ -486,7 +489,8 @@ grep -q 'Hierarchy_Main(viewport)' "$hier"
 grep -q 'Checkbox(' "$out"
 grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
-grep -q 'Rect(' "$out"
+grep -q 'kr.Box(kr.Rectangle{X: float32(kr.Scale(4)), Y: float32(kr.Scale(8)), Width: float32(kr.Scale(2)), Height: float32(kr.Scale(2))}' "$out"
+grep -q 'kr.Box(kr.Rectangle{.*kr.Fade(kr.GetThemeSurface(), 0.5).*kr.GetThemeButton' "$out"
 grep -q 'Text: "small".*Font: kr.Text14.*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
 grep -q 'Text: "large".*Font: kr.Text20.*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
 
@@ -527,6 +531,7 @@ grep -q 'kr.Modal(kr.ModalProps{.*Title: "Title".*Actions: modal_actions\[:\].*A
 grep -q 'kr.TitleBar(kr.TitleBarProps{Title: "Smoke"' "$out"
 grep -q 'kr.Toolbar(kr.ToolbarProps{' "$out"
 grep -q 'kr.NavigationBar(kr.NavigationBarProps{' "$out"
+grep -q 'kr.AppBackground()' "$out"
 grep -q 'Fade(' "$out"
 grep -q 'GetThemeSurface()' "$out"
 
@@ -536,12 +541,13 @@ grep -q 'kr.BeginDisabled(true)' "$out"
 grep -q 'kr.EndDisabled()' "$out"
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 22.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
+grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: 221.*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"
 grep -q 'canvas_result_spec kr.Canvas = kr.Canvas{' "$out"
 grep -q 'canvas_result kr.CanvasResult = kr.BeginCanvas(canvas_result_spec)' "$out"
 grep -q 'kr.EndCanvas(canvas_result_spec)' "$out"
 grep -q 'CanvasGrid(' "$out"
-grep -q 'SelectableText(' "$out"
-grep -q 'ShowToast("toast from kry")' "$out"
+grep -q 'Selectable: (1 != 0)' "$out"
+grep -q 'kr.Toast(kr.ToastProps{.*Message: "toast from kry"' "$out"
 grep -q 'kr.TextField(kr.TextFieldProps{' "$out"
 grep -q 'kr.TextArea(kr.TextAreaProps{.*Syntax: kr.SyntaxNone' "$out"
 grep -q 'kr.Radio(kr.RadioProps{' "$out"
@@ -585,9 +591,9 @@ grep -q 'kr.TextFormat("Enabled: %s"' "$out"
 grep -q 'kr.TextFormat("Count: %d"' "$out"
 grep -q 'kr.TextFormat("Mask: %u"' "$out"
 grep -q 'kr.TextFormat("Rate: %.1f"' "$out"
-grep -q 'kr.MenuBar(46, kr.Rectangle{.*menus\[:\], 1, &st.MenuOpen)' "$out"
-grep -q 'kr.PopupMenu(47, .*menu_items\[:\], 2)' "$out"
-grep -q 'kr.ContextMenu(kr.ContextMenuProps{.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: 46.*Mode: kr.MenuModeBar.*Menus: menus\[:\].*OpenIndex: &st.MenuOpen' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: 47.*Mode: kr.MenuModePopup.*Items: menu_items\[:\]' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: 48.*Mode: kr.MenuModeContext.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
 grep -q 'kr.BeginPopup(kr.PopupProps{.*ID: 58.*Flags: kr.PopupTooltip' "$out"
 grep -q 'Text: "Helpful text"' "$out"
 grep -q 'kr.Selectable(kr.SelectableProps{.*Selected: &st.SelectedRow' "$out"
@@ -600,7 +606,7 @@ grep -q 'kr.Button(kr.ButtonProps{.*Label: "+".*Font: int32(kr.Text14).*Tone: kr
 grep -q 'kr.TabBar(kr.TabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: st.Tab.*ClosedIndex: &st.ClosedTab' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleSource.*Data: st.FieldText\[:\]' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleTarget.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
-grep -q 'kr.MultiSelectList(kr.MultiSelectListProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
+grep -q 'kr.ListBox(kr.ListBoxProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
 grep -q 'kr.Collapsible(kr.CollapsibleProps{' "$out"
 grep -q 'SetThemeDarkMode(1' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"

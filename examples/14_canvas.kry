@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Canvas" {
     size 800 600
@@ -17,7 +18,7 @@ state {
 CanvasExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
+        AppBackground()
         Canvas canvas: {
             bounds = {40,50,620,420}
             scroll_x = &sx

@@ -1,0 +1,1448 @@
+@pack kryon.material;
+
+tokens {
+  color {
+    canvas: #101217;
+    text: #f5f2ff;
+    muted: #8d919a;
+    surface: #151922;
+    card: #1a1f29;
+    panel: #202631;
+    panel-hover: #2a3140;
+    panel-pressed: #181d26;
+    border: #3a4250;
+    border-soft: #2a303b;
+    border-hover: #4a5363;
+    focus: #c9a8ff;
+    accent: #c9a8ff;
+    accent-hover: #d5bbff;
+    accent-ink: #171022;
+    danger: #f07178;
+    danger-ink: #220b0d;
+    danger-border: #ff9da2;
+    transparent: #00000000;
+  }
+  length {
+    radius.sm: 6;
+    radius.md: 8;
+    radius.lg: 10;
+    border: 1;
+    border.none: 0;
+    space.2: 8;
+    space.3: 12;
+    space.4: 16;
+    space.5: 20;
+    pad.control-y: 10;
+    pad.field-y: 9;
+    font.sm: 14;
+    font.md: 16;
+    font.lg: 18;
+    icon.md: 20;
+  }
+  material {
+    default: Flat;
+  }
+}
+
+@layer base;
+
+App {
+  background: canvas;
+  foreground: text;
+  material: default;
+}
+
+Surface {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.4;
+  padding-y: 14;
+  gap: space.3;
+  material: default;
+}
+
+Card {
+  background: card;
+  foreground: text;
+  border: #343b48;
+  radius: radius.md;
+  border-width: border;
+  padding-x: 18;
+  padding-y: space.4;
+  gap: space.3;
+  material: default;
+}
+
+NavigationBar {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: radius.lg;
+  border-width: border;
+  padding-x: space.4;
+  padding-y: space.3;
+  gap: space.3;
+  opacity: 1;
+  material: default;
+}
+
+NavigationBarItem {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+NavigationBarItem:hover {
+  background: panel;
+  foreground: text;
+}
+
+NavigationBarItem:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+NavigationBarItem:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+TabBar {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+Tab {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+Tab:hover {
+  background: panel;
+  foreground: text;
+}
+
+Tab:pressed {
+  background: panel-pressed;
+  foreground: text;
+}
+
+Tab:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Tab:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+TabClose {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+TabClose:hover {
+  background: panel;
+  foreground: text;
+}
+
+SegmentedControl {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  padding-x: 2;
+  padding-y: 2;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+Segment {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: 7;
+  opacity: 1;
+  material: default;
+}
+
+Segment:hover {
+  background: panel;
+  foreground: text;
+}
+
+Segment:pressed {
+  background: panel-pressed;
+  foreground: text;
+}
+
+Segment:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Segment:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+Menu {
+  background: surface;
+  foreground: text;
+  border: border;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.2;
+  padding-y: space.2;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+Menu[role=Bar] {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+}
+
+Menu[role=Popup] {
+  background: card;
+  foreground: text;
+  border: border;
+}
+
+Menu[role=Context] {
+  background: card;
+  foreground: text;
+  border: border;
+}
+
+MenuItem {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+MenuItem:hover {
+  background: panel-hover;
+  foreground: text;
+}
+
+MenuItem:pressed {
+  background: panel-pressed;
+  foreground: text;
+}
+
+MenuItem:selected {
+  background: panel-hover;
+  foreground: text;
+}
+
+MenuItem:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+MenuSeparator {
+  background: transparent;
+  foreground: border-soft;
+  border: border-soft;
+  radius: 0;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Spinbox {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+SpinboxValue {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.3;
+  opacity: 1;
+  material: default;
+}
+
+ColorPickerSwatch {
+  background: transparent;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.2;
+  opacity: 1;
+  material: default;
+}
+
+ListBox {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.2;
+  padding-y: space.2;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+ListBoxItem {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+ListBoxItem:hover {
+  background: panel-hover;
+  foreground: text;
+}
+
+ListBoxItem:selected {
+  background: accent;
+  foreground: accent-ink;
+}
+
+ListBoxItem:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+TreeView {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.2;
+  padding-y: space.2;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+TreeViewItem {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+TreeViewItem:hover {
+  background: panel-hover;
+  foreground: text;
+}
+
+TreeViewItem:selected {
+  background: accent;
+  foreground: accent-ink;
+}
+
+TreeViewItem:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+ListBoxMulti {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.2;
+  padding-y: space.2;
+  gap: space.2;
+  opacity: 1;
+  material: default;
+}
+
+ListBoxMultiItem {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border.none;
+  padding-x: space.3;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+ListBoxMultiItem:hover {
+  background: panel-hover;
+  foreground: text;
+}
+
+ListBoxMultiItem:selected {
+  background: accent;
+  foreground: accent-ink;
+}
+
+ListBoxMultiItem:focus {
+  border: focus;
+}
+
+ListBoxMultiItem:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+DragDropTarget {
+  background: transparent;
+  border: border-hover;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  material: default;
+}
+
+DragDropTarget:hover {
+  border: accent;
+  border-width: 2;
+}
+
+Selectable {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  focus: focus;
+  radius: radius.md;
+  border-width: border.none;
+  padding-x: space.2;
+  padding-y: space.2;
+  opacity: 1;
+  material: default;
+}
+
+Selectable:hover {
+  background: panel;
+  foreground: text;
+}
+
+Selectable:pressed {
+  background: panel-pressed;
+  foreground: text;
+}
+
+Selectable:selected {
+  background: accent;
+  foreground: accent-ink;
+}
+
+Selectable:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+Fieldset {
+  background: canvas;
+  foreground: muted;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+PanedView {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+PanedView[role=Handle] {
+  background: border-soft;
+  foreground: muted;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+PanedView[role=Handle]:hover {
+  background: border-hover;
+}
+
+PanedView[role=Handle]:pressed {
+  background: accent;
+}
+
+Toast {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 0.98;
+  material: default;
+}
+
+Toast[role=Label] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Collapsible {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Collapsible[role=Header] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Collapsible[role=Header]:hover {
+  background: panel-hover;
+}
+
+Collapsible[role=Header]:pressed {
+  background: panel-pressed;
+}
+
+Collapsible[role=Header]:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Collapsible[role=Header]:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+Collapsible[role=TreeHeader] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Collapsible[role=TreeHeader]:hover {
+  background: panel;
+}
+
+Collapsible[role=TreeHeader]:selected {
+  background: transparent;
+  foreground: accent;
+}
+
+Collapsible[role=TreeHeader]:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+Collapsible[role=Close] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Collapsible[role=Close]:hover {
+  foreground: text;
+}
+
+Collapsible[role=Close]:disabled {
+  opacity: 0.45;
+}
+
+TitleBar {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+TitleBar[role=Bar] {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+TitleBar[role=Title] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  font-size: font.lg;
+  opacity: 1;
+  material: default;
+}
+
+TitleBar[role=Action] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+TitleBar[role=Action]:hover {
+  background: panel;
+}
+
+TitleBar[role=Action]:pressed {
+  background: panel-pressed;
+}
+
+Toolbar {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Toolbar[role=Bar] {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Toolbar[role=Divider] {
+  background: transparent;
+  foreground: muted;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Toolbar[role=Action] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Toolbar[role=Action]:hover {
+  background: panel;
+}
+
+Toolbar[role=Action]:pressed {
+  background: panel-pressed;
+}
+
+Modal {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Scrim] {
+  background: #000000;
+  foreground: text;
+  border: transparent;
+  opacity: 0.62;
+  material: default;
+}
+
+Modal[role=Panel] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Title] {
+  foreground: text;
+  font-size: font.lg;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Message] {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Action] {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Action]:hover {
+  background: panel-hover;
+}
+
+Modal[role=Action]:pressed {
+  background: panel-pressed;
+}
+
+Modal[role=Action][tone=Accent] {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Modal[role=Action][tone=Danger] {
+  background: danger;
+  foreground: danger-ink;
+  border: danger-border;
+}
+
+Modal[role=Close] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Modal[role=Close]:hover {
+  background: panel-hover;
+}
+
+Modal[role=Close]:pressed {
+  background: panel-pressed;
+}
+
+TableView {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Panel] {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Header] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  radius: radius.sm;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Header]:hover {
+  background: panel-hover;
+}
+
+TableView[role=Header]:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+TableView[role=Row] {
+  background: #171c25;
+  foreground: text;
+  border: transparent;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Cell] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  font-size: font.sm;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Selection] {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+  radius: radius.sm;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+TableView[role=Selection]:hover {
+  background: accent-hover;
+}
+
+TableView[role=Divider] {
+  background: transparent;
+  foreground: muted;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Plot {
+  background: card;
+  foreground: muted;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+PlotMark {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+  opacity: 1;
+  material: default;
+}
+
+Text {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+}
+
+Link {
+  foreground: accent;
+  font-size: font.md;
+  opacity: 1;
+  material: default;
+}
+
+Link:hover {
+  foreground: accent-hover;
+}
+
+Link:disabled {
+  foreground: muted;
+  opacity: 0.45;
+}
+
+Separator {
+  background: #343b48;
+  foreground: muted;
+  gap: space.3;
+  opacity: 1;
+}
+
+Separator[role=Line] {
+  background: #343b48;
+  foreground: muted;
+  gap: space.3;
+  opacity: 1;
+}
+
+Separator[role=Label] {
+  background: #343b48;
+  foreground: muted;
+  gap: space.3;
+  opacity: 1;
+}
+
+Separator[role=Bullet] {
+  background: #343b48;
+  foreground: muted;
+  gap: space.3;
+  opacity: 1;
+}
+
+Progress {
+  background: #222832;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Progress[role=Track] {
+  background: #222832;
+  foreground: text;
+  border: border-soft;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Progress[role=Fill] {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+  opacity: 1;
+  material: default;
+}
+
+Progress[role=Label] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+@layer components;
+
+Button {
+  background: panel;
+  background-end: surface;
+  foreground: text;
+  border: border;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  padding-x: space.4;
+  padding-y: pad.control-y;
+  gap: space.2;
+  font-size: font.md;
+  icon-size: icon.md;
+  opacity: 1;
+  material: default;
+}
+
+Button:hover {
+  background: panel-hover;
+  background-end: panel;
+  border: border-hover;
+}
+
+Button:pressed {
+  background: panel-pressed;
+  background-end: panel;
+}
+
+Button:focus {
+  border: focus;
+}
+
+Button:disabled {
+  foreground: muted;
+  border: #2b3039;
+  opacity: 0.55;
+}
+
+Button:loading {
+  foreground: accent;
+}
+
+Button[tone=Accent] {
+  background: accent;
+  background-end: accent-hover;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Button[tone=Accent]:hover {
+  background: accent-hover;
+  background-end: accent;
+}
+
+Button[tone=Accent]:focus {
+  border: focus;
+}
+
+Button[tone=Accent]:loading {
+  foreground: accent;
+}
+
+Button[tone=Danger] {
+  background: danger;
+  foreground: danger-ink;
+  border: danger-border;
+}
+
+Button[emphasis=Outline] {
+  background: transparent;
+  foreground: text;
+  border: #4b5361;
+}
+
+Button[emphasis=Ghost] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  border-width: border.none;
+}
+
+Button[size=Small] {
+  radius: radius.sm;
+  padding-x: space.3;
+  padding-y: 7;
+  font-size: font.sm;
+  icon-size: 18;
+}
+
+Button[size=Large] {
+  radius: radius.lg;
+  padding-x: space.5;
+  padding-y: 13;
+  font-size: font.lg;
+  icon-size: 22;
+}
+
+Dropdown {
+  background: #171c25;
+  foreground: #f5f2ff;
+  border: #3a4250;
+  focus: #c9a8ff;
+  radius: 8;
+  border-width: 1;
+  padding-x: 14;
+  padding-y: 9;
+  gap: 8;
+  material: Flat;
+}
+
+Dropdown:hover {
+  background: panel-hover;
+  border: border-hover;
+}
+
+Dropdown:pressed {
+  background: panel-pressed;
+}
+
+Dropdown:focus {
+  border: focus;
+}
+
+Dropdown:disabled {
+  foreground: muted;
+  opacity: 0.55;
+}
+
+Dropdown[tone=Accent] {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Dropdown:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Slider {
+  background: #2a303b;
+  foreground: text;
+  border: #3a4250;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Slider[role=Track] {
+  opacity: 1;
+}
+
+Slider[role=Label] {
+  foreground: text;
+}
+
+Slider:hover {
+  background: #343b48;
+}
+
+Slider:pressed {
+  background: #202631;
+}
+
+Slider[role=Fill] {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Slider:disabled {
+  foreground: muted;
+  opacity: 0.5;
+}
+
+SliderThumb {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+  focus: accent;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: flat;
+}
+
+SliderThumb:disabled {
+  background: muted;
+  foreground: surface;
+  border: border;
+  focus: border;
+  opacity: 0.5;
+}
+
+Scroll {
+  background: #202631;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+ScrollThumb {
+  background: #6f7480;
+  foreground: surface;
+  border: #9ca2ad;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+ScrollThumb:hover {
+  background: accent-hover;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+ScrollThumb:pressed {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Toggle {
+  background: #2a303b;
+  foreground: text;
+  border: #3a4250;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Toggle[role=Track] {
+  opacity: 1;
+}
+
+Toggle[role=Label] {
+  foreground: text;
+}
+
+Toggle:hover {
+  background: #343b48;
+}
+
+Toggle:pressed {
+  background: #202631;
+}
+
+Toggle[role=Fill] {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Toggle:disabled {
+  foreground: muted;
+  opacity: 0.5;
+}
+
+ToggleThumb {
+  background: surface;
+  foreground: #ffffff;
+  border: border-hover;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: flat;
+}
+
+ToggleThumb[tone=Accent] {
+  background: accent-ink;
+  foreground: #ffffff;
+  border: #d8c0ff;
+  focus: accent;
+}
+
+ToggleThumb:disabled {
+  background: muted;
+  foreground: surface;
+  border: border;
+  focus: border;
+  opacity: 0.5;
+}
+
+Checkbox {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Checkbox:hover {
+  background: panel;
+}
+
+Checkbox:pressed {
+  background: panel-pressed;
+}
+
+Checkbox:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Checkbox:disabled {
+  background: surface;
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
+}
+
+Checkbox[role=Box] {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Checkbox[role=Mark] {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Checkbox[role=Label] {
+  foreground: text;
+  opacity: 1;
+  material: default;
+}
+
+Checkbox[role=Label]:disabled {
+  foreground: muted;
+  opacity: 0.55;
+}
+
+Radio {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Radio:hover {
+  border: focus;
+}
+
+Radio:selected {
+  background: accent;
+  foreground: text;
+  border: accent;
+}
+
+Radio:disabled {
+  foreground: muted;
+  border: border-soft;
+  opacity: 0.55;
+}
+
+Radio[role=Ring] {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Radio[role=Mark] {
+  background: accent;
+  foreground: text;
+  border: accent;
+  focus: focus;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Radio[role=Label] {
+  foreground: text;
+  opacity: 1;
+  material: default;
+}
+
+Radio[role=Label]:disabled {
+  foreground: muted;
+  opacity: 0.55;
+}
+
+TextField {
+  background: #11151d;
+  foreground: #f5f2ff;
+  border: #3a4250;
+  focus: #c9a8ff;
+  radius: 8;
+  border-width: 1;
+  padding-x: 12;
+  padding-y: 9;
+  font-size: 16;
+  material: Flat;
+}
+
+TextArea {
+  background: #11151d;
+  foreground: #f5f2ff;
+  border: #3a4250;
+  focus: #c9a8ff;
+  radius: 8;
+  border-width: 1;
+  padding-x: 12;
+  padding-y: 10;
+  font-size: 16;
+  material: Flat;
+}

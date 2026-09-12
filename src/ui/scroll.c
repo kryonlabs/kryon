@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/scroll.h"
 
 int
@@ -383,64 +384,6 @@ EnsureScrollRectVisible(ScrollArea area, Rectangle rect, int margin)
  * SCROLLBAR
  * ================================================================ */
 
-static int
-ui_scrollbar_abs_diff(int a, int b)
-{
-    return a > b ? a - b : b - a;
-}
-
-static int
-ui_scrollbar_luminance(Color color)
-{
-    return ((int)color.r * 77 + (int)color.g * 150 + (int)color.b * 29) / 256;
-}
-
-static int
-ui_scrollbar_color_delta(Color a, Color b)
-{
-    return ui_scrollbar_abs_diff(a.r, b.r) +
-           ui_scrollbar_abs_diff(a.g, b.g) +
-           ui_scrollbar_abs_diff(a.b, b.b);
-}
-
-static Color
-ui_scrollbar_contrast_from(Color color, int amount)
-{
-    int delta = ui_scrollbar_luminance(color) < 128 ? amount : -amount;
-    int r = (int)color.r + delta;
-    int g = (int)color.g + delta;
-    int b = (int)color.b + delta;
-
-    if(r < 0)
-        r = 0;
-    if(r > 255)
-        r = 255;
-    if(g < 0)
-        g = 0;
-    if(g > 255)
-        g = 255;
-    if(b < 0)
-        b = 0;
-    if(b > 255)
-        b = 255;
-
-    return (Color){(unsigned char)r, (unsigned char)g, (unsigned char)b, color.a};
-}
-
-static Color
-ui_scrollbar_ensure_visible(Color color, Color against,
-                            int amount, int min_delta, int min_luminance_delta)
-{
-    int delta = ui_scrollbar_color_delta(color, against);
-    int luminance_delta = ui_scrollbar_abs_diff(ui_scrollbar_luminance(color),
-                                                ui_scrollbar_luminance(against));
-
-    if(delta >= min_delta && luminance_delta >= min_luminance_delta)
-        return color;
-
-    return ui_scrollbar_contrast_from(against, amount);
-}
-
 static int scrollbar_drag_active;
 static int *scrollbar_drag_offset;
 static int scrollbar_drag_start_y;
@@ -532,32 +475,44 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         ui_scrollbar_cancel(scroll_offset);
     }
 
-    Color track_color = ui_scrollbar_ensure_visible(
-        ui_scrollbar_contrast_from(c_bg, 42), c_bg, 46, 48, 22);
-    Color thumb_color = thumb_hover ||
-                        (scrollbar_drag_active &&
-                         scrollbar_drag_offset == scroll_offset)
-                            ? c_button_hover
-                            : c_button;
-    thumb_color = ui_scrollbar_ensure_visible(thumb_color, track_color, 72, 78, 28);
-    thumb_color = ui_scrollbar_ensure_visible(thumb_color, c_bg, 64, 62, 22);
+    ButtonState thumb_state = ButtonStateNormal;
+    StyleFrame track_frame = ui_control_style_frame_kind(
+        (ButtonProps){.size = ControlSizeSmall, .pill = 1},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindScroll());
+    StyleFrame thumb_frame;
+    Style track_style;
+    Style thumb_style;
+
+    if(scrollbar_drag_active && scrollbar_drag_offset == scroll_offset)
+        thumb_state = ButtonStatePressed;
+    else if(thumb_hover)
+        thumb_state = ButtonStateHover;
+
+    thumb_frame = ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneAccent, .emphasis = ButtonEmphasisFilled,
+                      .size = ControlSizeSmall, .pill = 1},
+        thumb_state, 0, 0.0f, 0.0f, 0.0f, StyleKindScrollThumb());
+    track_style = ui_unpack_style(track_frame.value);
+    thumb_style = ui_unpack_style(thumb_frame.value);
 
     if(IsWindowReady()) {
         thumb_bounds.y = y + (int)((float)*scroll_offset / max_scroll * track_span);
-        if(ui_modern_style() || ui_default_style()) {
-            Rectangle track = {(float)x, (float)y,
-                               (float)scrollbar_width, (float)viewport_h};
-            Color outline = ui_scrollbar_contrast_from(thumb_color, 34);
-            DrawRectangleRounded(track, 0.5f, 10, track_color);
-            DrawRectangleRounded(thumb_bounds, 0.5f, 10, thumb_color);
-            DrawRectangleRoundedLinesEx(thumb_bounds, 0.5f, 10,
-                                        (float)Scale(1), outline);
-        } else {
-            DrawRectangle(x, y, scrollbar_width, viewport_h, track_color);
-            DrawRectangleRec(thumb_bounds, thumb_color);
-            DrawRectangleLinesEx(thumb_bounds, (float)Scale(1),
-                                 ui_scrollbar_contrast_from(thumb_color, 34));
-        }
+        ui_draw_material((Rectangle){(float)x, (float)y,
+                                     (float)scrollbar_width, (float)viewport_h},
+                         (Rectangle){0}, track_style.background,
+                         track_style.border, WHITE, track_style.radius,
+                         track_style.border_width, 0.0f, 0.0f, 0,
+                         track_style.focus, 0.0f, track_style.opacity,
+                         track_frame.fill, track_style.material);
+        ui_draw_material(thumb_bounds, (Rectangle){(float)x, (float)y,
+                                                   (float)scrollbar_width,
+                                                   (float)viewport_h},
+                         thumb_style.background, thumb_style.border, WHITE,
+                         thumb_style.radius, thumb_style.border_width,
+                         thumb_state == ButtonStateHover ? 1.0f : 0.0f,
+                         thumb_state == ButtonStatePressed ? 1.0f : 0.0f, 0,
+                         thumb_style.focus, 0.0f, thumb_style.opacity,
+                         thumb_frame.fill, thumb_style.material);
     }
 
     return 1;

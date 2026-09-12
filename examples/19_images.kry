@@ -1,5 +1,6 @@
 #module "example_images"
 #import "kryon.h"
+#style <kryon.material> as material
 #import "kryon_example_font.h"
 
 app "Kryon Images" {
@@ -10,12 +11,12 @@ app "Kryon Images" {
 
 App :: () #ui {
     Screen root: {
-        Background(GetThemeBackground())
-        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Images are image nodes", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        AppBackground()
+        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Images are image nodes", .font=Text24, .wrap=TextWrapNone})
         Stack image_card: {
             bounds = {Scale(32), Scale(82), Scale(260), Scale(210)}
             key = Key("image-card")
-            Rect(Scale(32), Scale(82), Scale(260), Scale(210),
+            Box((Rectangle){Scale(32), Scale(82), Scale(260), Scale(210)},
                        GetThemeSurface(), GetThemeButton())
             Image((ImageProps){.asset_path = "tiles/tile.png",
                      .bounds = {Scale(52), Scale(104), Scale(96), Scale(96)},

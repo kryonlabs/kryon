@@ -71,7 +71,7 @@ int main(void)
             ClearBackground(BLACK);
             BeginInterfaceFrame(640,480,1);
             BeginTree(1);
-            Rect(10,10,20,20,RED,BLANK);
+            Box((Rectangle){10,10,20,20},RED,BLANK);
             Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .font=16, .color=WHITE, .wrap=TextWrapNone});
             if(kind == 0) {
                 ModalAction actions[] = {{"OK", ButtonToneAccent,
@@ -119,7 +119,7 @@ int main(void)
                                    .action_count = 3,
                                    .max_width = 300});
             }
-            Rect(40,10,20,20,GREEN,BLANK);
+            Box((Rectangle){40,10,20,20},GREEN,BLANK);
             EndTree();
             EndInterfaceFrame();
             EndTextureMode();

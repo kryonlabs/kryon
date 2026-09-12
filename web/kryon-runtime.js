@@ -997,7 +997,6 @@ function widgetTag(item) {
   case "Link":
     return "a";
   case "Button":
-  case "InvisibleButton":
     return "button";
   case "TextField":
     return "input";
@@ -1024,7 +1023,6 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
-  case "InvisibleButton":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -1845,12 +1843,53 @@ export function setWebStyleSheets(rt, sheets) {
 }
 
 export function webDocumentFrame(rt) {
+  const nodes = (rt?.frame || []).map(webNodeFromWidget);
+  normalizeWebDocumentNodes(nodes);
   const frame = {
     app: rt?.app || null,
-    nodes: (rt?.frame || []).map(webNodeFromWidget)
+    nodes
   };
   frame.metadata = webDocumentMetadata(frame);
   return frame;
+}
+
+function cleanWebPathSegment(value, fallback = "node") {
+  const text = String(value || "").trim()
+    .replace(/[^A-Za-z0-9_.:-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return text || fallback;
+}
+
+function webNodeFallbackPath(node, index, parentPath) {
+  const suffix = node.sourceLine
+    ? `${node.kind}@${node.sourceLine}-${index}`
+    : `${node.kind}@${index}`;
+  const segment = cleanWebPathSegment(node.name || suffix, suffix);
+  return parentPath ? `${parentPath}/${segment}` : segment;
+}
+
+function normalizeWebDocumentNodes(nodes) {
+  let rootPath = "";
+  let lastParentPath = "";
+  for (const [index, node] of nodes.entries()) {
+    if (!node)
+      continue;
+    const hadPath = !!node.path;
+    const parentPath = node.parentPath || (!hadPath ? lastParentPath || rootPath || "" : "");
+    if (!hadPath)
+      node.path = webNodeFallbackPath(node, index, parentPath);
+    if (!hadPath && !node.parentPath && parentPath && parentPath !== node.path)
+      node.parentPath = parentPath;
+    if (!node.key)
+      node.key = node.name || cleanWebPathSegment(node.path.split("/").pop(), String(index));
+    if (!node.name && node.key && !/^\d+$/.test(String(node.key)))
+      node.name = String(node.key);
+    if (!node.parentPath || node.parentPath === node.path)
+      rootPath = node.path || rootPath;
+    else
+      lastParentPath = node.parentPath;
+    node.styleFacts = webNodeStyleFacts(node);
+  }
 }
 
 function webDocumentMetadata(frame) {
@@ -5255,7 +5294,7 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function BeginCanvas(canvas) {
+export function Canvas(canvas) {
   return {
     active: false,
     dragging: false,
@@ -5271,13 +5310,13 @@ export function CanvasHitTest(canvas, screen) {
 }
 
 const runtimeCallNames = [
-  "AppBackground", "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
-  "ClearBackground", "Collapsible", "Column", "DragDrop", "Dropdown",
-  "Icon", "Fieldset", "Link", "ListBox", "Menu",
-  "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
-  "Row", "Screen", "Scroll", "SetCurrentTheme",
+  "AppBackground", "Background", "Bevel", "Box", "Bullet", "Button", "Card", "CanvasGrid", "Checkbox",
+  "Collapsible", "ColorPicker", "Column", "Drag", "DragDrop", "Dropdown", "Input", "SegmentedControl",
+  "Icon", "Fieldset", "Line", "Link", "ListBox", "Menu",
+  "Modal", "NavigationBar", "PanedView", "Paragraph", "Image", "Plot", "Progress", "Radio",
+  "Row", "Screen", "Scroll", "Selectable", "Separator", "SetCurrentTheme",
   "SetThemeDarkMode", "Toast", "Slider", "Spinbox", "Stack", "TabBar",
-  "Text", "TextArea", "TextField", "TitleBar",
+  "TableView", "Text", "TextArea", "TextField", "TitleBar", "TreeView",
   "Toggle", "Toolbar"
 ];
 
@@ -5291,30 +5330,39 @@ globalThis.__kryonRuntimeInit = true;
 export function AppBackground(...args) { return struct("AppBackground", args); }
 export function Background(...args) { return struct("Background", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
-export function BottomNav(...args) { return struct("BottomNav", args); }
+export function Bullet(...args) { return struct("Bullet", args); }
 export function Button(...args) { return struct("Button", args); }
 export function Card(...args) { return struct("Card", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
-export function ClearBackground(...args) { return struct("ClearBackground", args); }
 export function Collapsible(...args) { return struct("Collapsible", args); }
+export function ColorPicker(...args) { return struct("ColorPicker", args); }
 export function Column(...args) { return struct("Column", args); }
+export function Drag(...args) { return struct("Drag", args); }
 export function DragDrop(...args) { return struct("DragDrop", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
+export function Input(...args) { return struct("Input", args); }
+export function SegmentedControl(...args) { return struct("SegmentedControl", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }
+export function Line(...args) { return struct("Line", args); }
 export function Link(...args) { return struct("Link", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
 export function Menu(...args) { return struct("Menu", args); }
 export function Modal(...args) { return struct("Modal", args); }
+export function NavigationBar(...args) { return struct("NavigationBar", args); }
+export function PanedView(...args) { return struct("PanedView", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
 export function Image(...args) { return struct("Image", args); }
+export function Plot(...args) { return struct("Plot", args); }
 export function Progress(...args) { return struct("Progress", args); }
 export function Radio(...args) { return struct("Radio", args); }
-export function Rect(...args) { return struct("Rect", args); }
+export function Box(...args) { return struct("Box", args); }
 export function Row(...args) { return struct("Row", args); }
 export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
+export function Selectable(...args) { return struct("Selectable", args); }
+export function Separator(...args) { return struct("Separator", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
 export function SetThemeDarkMode(dark) {
   activeThemeMode = dark ? 2 : 1;
@@ -5328,9 +5376,11 @@ export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }
 export function Stack(...args) { return struct("Stack", args); }
 export function TabBar(...args) { return struct("TabBar", args); }
+export function TableView(...args) { return struct("TableView", args); }
 export function Text(...args) { return struct("Text", args); }
 export function TextArea(...args) { return struct("TextArea", args); }
 export function TextField(...args) { return struct("TextField", args); }
 export function TitleBar(...args) { return struct("TitleBar", args); }
+export function TreeView(...args) { return struct("TreeView", args); }
 export function Toggle(...args) { return struct("Toggle", args); }
 export function Toolbar(...args) { return struct("Toolbar", args); }

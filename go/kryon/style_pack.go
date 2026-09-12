@@ -43,10 +43,37 @@ func RegisterStylePack(pack StylePack) bool {
 	return true
 }
 
+func RegisterStylePackSource(source, label, description string) bool {
+	id, rules, err := ParseStyleSheet(source)
+	if err != nil || id == "" || len(rules) == 0 {
+		return false
+	}
+	if label == "" {
+		label = id
+	}
+	copied := append([]StyleRule(nil), rules...)
+	return RegisterStylePack(StylePack{
+		ID:          id,
+		Label:       label,
+		Description: description,
+		Sheet:       copied,
+	})
+}
+
 func ClearStylePacks() {
 	stylePacks = nil
 	activeStylePack = -1
 	stylePackVersion++
+}
+
+func EnsureBuiltInStylePacks() bool {
+	if len(stylePacks) == 0 {
+		return RegisterBuiltInStylePacks()
+	}
+	if activeStylePack < 0 {
+		return SetActiveStylePack("kryon.material")
+	}
+	return true
 }
 
 func GetStylePackCount() int {
@@ -135,6 +162,9 @@ func ResolveActiveStyle(base StyleData, facts StyleFacts, activeState int32) Sty
 
 func (r *runtime) StylePicker(props StylePickerProps) bool {
 	count := len(stylePacks)
+	if count == 0 && EnsureBuiltInStylePacks() {
+		count = len(stylePacks)
+	}
 	if count == 0 {
 		return false
 	}

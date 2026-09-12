@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_popup_input_internal.h"
+#include "ui_style_internal.h"
 #include "tab_bar_store.h"
 #include "runtime/tab_bar.h"
 
@@ -7,6 +8,34 @@
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
+
+static StyleFrame
+ui_tab_bar_style_frame(int style_kind, ButtonState state, int disabled,
+                       int selected)
+{
+    ButtonProps props = {0};
+    props.tone = selected ? ButtonToneAccent : ButtonToneNeutral;
+    props.emphasis = selected ? ButtonEmphasisFilled : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                       style_kind);
+}
+
+static float
+ui_tab_roundness(Rectangle bounds, float radius)
+{
+    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
+    if(min_side <= 0.0f || radius <= 0.0f)
+        return 0.0f;
+    radius = radius / min_side;
+    if(radius < 0.0f)
+        return 0.0f;
+    if(radius > 0.5f)
+        return 0.5f;
+    return radius;
+}
 
 typedef struct UITabBarState {
     struct UITabBarState *next;
@@ -283,21 +312,6 @@ ui_tab_bar_reorder_target(TabBarProps bar, int active_index, int min_tab_w,
     return ui_clampi(target, 0, bar.count - 1);
 }
 
-static void
-ui_draw_tab_shape(int x, int y, int w, int h, int selected, Color fill,
-                  Color border_light, Color border_dark)
-{
-    int top_y = selected ? y : y + Scale(4);
-    int bottom_y = y + h - 2;
-
-    DrawRectangle(x, top_y, w, bottom_y - top_y + 1, fill);
-    DrawLine(x, top_y, x + w - 1, top_y, border_light);
-    DrawLine(x, top_y, x, bottom_y, border_light);
-    DrawLine(x + w - 1, top_y, x + w - 1, bottom_y, border_dark);
-    if(!selected)
-        DrawLine(x, bottom_y, x + w - 1, bottom_y, border_dark);
-}
-
 int
 RenderTabBar(TabBarProps bar)
 {
@@ -309,14 +323,17 @@ RenderTabBar(TabBarProps bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int tab_gap = ui_default_style() ? Scale(6) : 0;
+    int disabled = bar.disabled || UIContentDisabled();
+    StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+    int tab_gap = (int)bar_frame.value.gap;
+    if(tab_gap < 0)
+        tab_gap = 0;
     int default_min_tab_w = ui_default_style() ? Scale(72) : Scale(120);
     int default_max_tab_w = ui_default_style() ? Scale(168) : default_min_tab_w;
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
-    int cues = TransitionCuesEnabled();
-    int disabled = bar.disabled || UIContentDisabled();
     int focused = 0;
     int can_draw = IsWindowReady();
     int default_scroll_offset = 0;
@@ -345,14 +362,16 @@ RenderTabBar(TabBarProps bar)
     focused = !disabled && bar.id > 0 && GetFocus() == bar.id &&
               !ui_popup_input_focus_captures(bar.id);
 
-    if(can_draw && ui_default_style())
-        DrawRectangle(bar_x, bar_y, bar_w, bar_h,
-                      ui_default_scheme().surface_container);
-    else if(can_draw) {
-        DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenColor(c_bg, 12));
-        DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenColor(c_bg, 38));
-        DrawLine(bar_x, bar_y + bar_h - 1, bar_x + bar_w,
-                 bar_y + bar_h - 1, c_link);
+    if(can_draw) {
+        Style bar_style = ui_unpack_style(
+            ui_style_apply_effects_frame(bar_frame).value);
+        ui_draw_material(bar.bounds, bar.bounds, bar_style.background,
+                         bar_style.border, bar_style.border,
+                         bar_style.radius, bar_style.border_width,
+                         0.0f, 0.0f, disabled, bar_style.focus, 0.0f,
+                         bar_style.opacity,
+                         ui_style_apply_effects_fill(bar_frame.fill),
+                         bar_style.material);
     }
 
     if(max_tab_w < min_tab_w)
@@ -436,64 +455,41 @@ RenderTabBar(TabBarProps bar)
         int is_hovered = is_active && HoverEffectsEnabled();
         int is_selected = i == bar.selected_index;
         int is_disabled = disabled || tab->disabled;
+        ButtonState tab_state = is_disabled ? ButtonStateDisabled :
+            ((is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ?
+                 ButtonStatePressed :
+             (is_hovered ? ButtonStateHover :
+              (is_selected ? ButtonStateSelected : ButtonStateNormal)));
+        StyleFrame tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
+            tab_state, is_disabled, is_selected);
+        StyleFrame close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
+            ButtonStateNormal, is_disabled, 0);
+        TabBarPaint paint;
+        StyleFrame styled_tab_frame;
+        Style tab_style;
 
         if(is_selected && bar.selected_tab_bounds != NULL)
             *bar.selected_tab_bounds = tab_rect;
 
-        Color tab_fill;
-        if(ui_default_style()) {
-            ThemeScheme scheme = ui_default_scheme();
-            int indicator_w = Scale(56);
-            int indicator_h = Scale(28);
-            int indicator_x;
-            int indicator_y = bar_y + (bar_h - indicator_h) / 2;
-
-            if(can_draw && !is_disabled)
-                ui_default_state_layer(tab_rect,
-                                        is_selected ? scheme.on_secondary :
-                                                      scheme.on_surface_variant,
-                                        is_hovered, 0,
-                                        is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-            if(can_draw && is_selected) {
-                if(indicator_w > tab_w - Scale(24))
-                    indicator_w = tab_w - Scale(24);
-                if(indicator_w > 0) {
-                    indicator_x = tab_x + (tab_w - indicator_w) / 2;
-                    DrawRectangleRounded((Rectangle){(float)indicator_x,
-                                                     (float)indicator_y,
-                                                     (float)indicator_w,
-                                                     (float)indicator_h},
-                                         0.50f, 12, scheme.secondary);
-                }
-            }
-        } else {
-            if(is_disabled) {
-                tab_fill = DarkenColor(c_bg, 10);
-            } else if(is_selected) {
-                tab_fill = LightenColor(c_bg, 4);
-            } else if(is_hovered) {
-                tab_fill = LightenColor(c_bg, cues ? 6 : 4);
-            } else {
-                tab_fill = DarkenColor(c_bg, 4);
-            }
-            if(can_draw)
-                ui_draw_tab_shape(tab_x, bar_y, tab_w, bar_h, is_selected,
-                                  tab_fill, LightenColor(tab_fill, 18),
-                                  DarkenColor(tab_fill, 18));
+        paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
+        styled_tab_frame = ui_style_apply_effects_frame(tab_frame);
+        tab_style = ui_unpack_style(styled_tab_frame.value);
+        if(can_draw) {
+            ui_draw_material(tab_rect, bar.bounds, tab_style.background,
+                             tab_style.border, tab_style.border,
+                             tab_style.radius, tab_style.border_width,
+                             is_hovered ? 1.0f : 0.0f,
+                             (is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ? 1.0f : 0.0f,
+                             is_disabled, tab_style.focus,
+                             focused && is_selected ? 1.0f : 0.0f,
+                             tab_style.opacity,
+                             ui_style_apply_effects_fill(styled_tab_frame.fill),
+                             tab_style.material);
         }
 
-        if(can_draw && !ui_default_style() && is_selected) {
+        if(can_draw && is_selected && paint.tab_border_color != 0) {
             DrawLine(tab_x, bar_y + bar_h - 1, tab_x + tab_w - 1,
-                     bar_y + bar_h - 1, c_link);
-        } else if(can_draw && !ui_default_style() && is_hovered && !is_disabled) {
-            (void)cues;
-            DrawLine(tab_x + Scale(4), bar_y + Scale(5),
-                     tab_x + tab_w - Scale(5), bar_y + Scale(5),
-                     LightenColor(tab_fill, 10));
-        } else if(can_draw && !ui_default_style() && !is_disabled) {
-            DrawLine(tab_x + tab_w - 1, bar_y + Scale(8),
-                     tab_x + tab_w - 1, bar_y + bar_h - Scale(4),
-                     DarkenColor(c_bg, 14));
+                     bar_y + bar_h - 1, GetColor(paint.tab_border_color));
         }
 
         if(can_draw && !ui_default_style() && owns_drag && drag_target == i) {
@@ -502,12 +498,17 @@ RenderTabBar(TabBarProps bar)
             if(drag_target > tab_bar_store->press_index)
                 marker_x = tab_x + tab_w;
             DrawRectangle(marker_x - Scale(1), bar_y + Scale(4),
-                          Scale(2), bar_h - Scale(8), c_link);
+                          Scale(2), bar_h - Scale(8),
+                          GetColor(paint.focus_color));
         }
 
         // Draw tab text and icon
-        int text_pad = ui_default_style() ? Scale(8) : Scale(12);
-        int icon_size = tab->icon_size > 0 ? tab->icon_size : Scale(16);
+        int text_pad = (int)tab_frame.value.padding_x;
+        if(text_pad <= 0)
+            text_pad = Scale(8);
+        int icon_size = tab->icon_size > 0 ? tab->icon_size :
+            (tab_frame.value.icon_size > 0.0f ? (int)tab_frame.value.icon_size
+                                               : Scale(16));
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
         int text_x = icon_x + icon_size + Scale(4);
@@ -526,28 +527,14 @@ RenderTabBar(TabBarProps bar)
                            !input_captured;
         int close_hovered = close_active && HoverEffectsEnabled();
 
-        Color text_color = ui_default_style()
-                               ? ui_default_scheme().on_surface_variant
-                               : c_text;
-        Color icon_tint = WHITE;
-
-        if(is_disabled) {
-            text_color = DarkenColor(c_text, 70);
-            text_color.a = text_color.a > 150 ? 150 : text_color.a;
-            icon_tint.a = 150;
-        } else if(is_selected) {
-            if(ui_default_style()) {
-                text_color = ui_default_scheme().primary;
-            } else {
-                text_color = LightenColor(c_text, 10);
-            }
-        }
+        Color text_color = GetColor(paint.text_color);
+        Color icon_tint = GetColor(paint.icon_color);
 
         // Draw icon if present
         if(tab->icon.id != 0) {
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
-            else if(ui_default_style()) {
+            else {
                 int gap = Scale(4);
                 int label_w = TextWidth(tab->label, font);
                 int content_w = icon_size + gap + label_w;
@@ -567,11 +554,8 @@ RenderTabBar(TabBarProps bar)
                 DrawTexturePro(tab->icon, icon_src, icon_rect,
                                kryon_zero_vector2, 0, icon_tint);
             text_x = icon_x + icon_size + Scale(4);
-        } else {
-            text_x = ui_default_style() && has_label
-                         ? tab_x + (tab_w - TextWidth(tab->label, font)) / 2
-                         : tab_x + text_pad;
-        }
+        } else
+            text_x = tab_x + text_pad;
 
         // Draw tab label
         Rectangle text_rect = {
@@ -582,12 +566,6 @@ RenderTabBar(TabBarProps bar)
             (float)content_h
         };
 
-        if(ui_default_style() && tab->icon.id == 0) {
-            text_rect.x = (float)(tab_x + text_pad);
-            text_rect.width = (float)(tab_w - text_pad * 2 -
-                (tab->closeable ? close_size + close_pad : 0));
-        }
-
         if(can_draw && text_rect.width > 0 && has_label) {
             if(tab->italic) {
                 int y = TextBaselineY(tab->label, (int)text_rect.y,
@@ -596,29 +574,24 @@ RenderTabBar(TabBarProps bar)
                 RenderTextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
                 EndClip();
-            } else if(ui_default_style()) {
-                int label_x = (int)text_rect.x +
-                    ((int)text_rect.width - TextWidth(tab->label, font)) / 2;
-                int label_y = TextBaselineY(tab->label, (int)text_rect.y,
-                                            (int)text_rect.height, font);
-                ui_begin_world_clip(text_rect);
-                RenderText(tab->label, label_x, label_y, font, text_color);
-                EndClip();
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }
 
         if(can_draw && tab->closeable) {
-            Color close_color = close_hovered ? c_link : icon_tint;
-            if(close_hovered)
-                DrawRectangleRounded(close_rect, 0.40f, 6,
-                                     ui_default_style() ? ui_default_scheme().surface_variant
-                                                         : DarkenColor(c_button_hover, 8));
+            if(close_hovered) {
+                close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
+                    ButtonStateHover, is_disabled, 0);
+                paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
+                DrawRectangleRounded(close_rect,
+                    ui_tab_roundness(close_rect, close_frame.value.radius),
+                    6, GetColor(close_frame.value.background));
+            }
             RenderText("x",
                          (int)(close_rect.x + (close_rect.width -
                                                (float)TextWidth("x", font)) * 0.5f),
                          TextBaselineY("x", (int)close_rect.y, (int)close_rect.height, font),
-                         font, close_color);
+                         font, GetColor(paint.close_color));
         }
 
         // Handle click detection

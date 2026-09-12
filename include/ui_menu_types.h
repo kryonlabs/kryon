@@ -27,11 +27,32 @@ typedef struct {
     const char *label;
     const MenuItem *items;
     int item_count;
-} Menu;
+} MenuGroup;
+
+typedef enum {
+    MenuModeBar = 0,
+    MenuModePopup = 1,
+    MenuModeContext = 2
+} MenuMode;
 
 typedef struct {
     int activated_id;
     int open_index;
-} MenuBarResult;
+} MenuResult;
+
+typedef struct {
+    int id;
+    MenuMode mode;
+    Rectangle bounds;
+    Rectangle trigger;
+    const MenuGroup *menus;
+    int menu_count;
+    const MenuItem *items;
+    int item_count;
+    int *open_index;
+    int *open;
+    int *x;
+    int *y;
+} MenuProps;
 
 #endif

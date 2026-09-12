@@ -3,7 +3,7 @@
 
 #include "kryon_version.h"
 /* Legacy graphics/input compatibility surface. New Kryon-facing code should
- * use owned widgets and primitives (Button, Card, Router, Rect, Box, Circle,
+ * use owned widgets and primitives (Button, Card, Router, Box, Circle,
  * Line, Triangle, ...); the concrete backend is selected at link time via
  * KRYON_BACKEND. */
 #include "kryon_compat.generated.h"
@@ -27,7 +27,6 @@
 #include "ui_icons.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
-#include "ui_overlay.h"
 #include "ui_profile.h"
 #include "ui_reorder.h"
 #include "ui_rows.h"

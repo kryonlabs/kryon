@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -202,7 +203,10 @@ Heading(HeadingProps props)
     const char *text = props.text != NULL ? props.text : "";
     int level = props.level;
     int font = props.font > 0 ? props.font : Text24;
-    Color color = page_color_or(props.color, GetThemeText());
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Color color = page_color_or(props.color, text_style.foreground);
 
     if(level < 1)
         level = 1;
@@ -232,7 +236,10 @@ ParagraphText(ParagraphTextProps props)
     paragraph.width = width;
     paragraph.font = props.font > 0 ? props.font : GetFontSize();
     paragraph.line_gap = props.line_gap;
-    paragraph.color = page_color_or(props.color, GetThemeText());
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    paragraph.color = page_color_or(props.color, text_style.foreground);
     ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }

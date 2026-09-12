@@ -2,10 +2,12 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type FieldsetPaint struct {
 	Frame           Rectangle
 	TitleBackground Rectangle
 	TitleText       Rectangle
+	Face            StyleFrame
 	BorderColor     uint32
 	BackgroundColor uint32
 	TextColor       uint32
@@ -13,7 +15,7 @@ type FieldsetPaint struct {
 	ShowTitle       bool
 }
 
-func Fieldset_FieldsetPaintFor(bounds Rectangle, title_width float32, has_title bool, scale float32, border_color uint32, background_color uint32, text_color uint32) FieldsetPaint {
+func Fieldset_FieldsetPaintFor(bounds Rectangle, title_width float32, has_title bool, scale float32, frame StyleFrame) FieldsetPaint {
 	var paint FieldsetPaint = FieldsetPaint{}
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -40,60 +42,69 @@ func Fieldset_FieldsetPaintFor(bounds Rectangle, title_width float32, has_title 
 	var text_offset_y float32 = value_15
 	var value_16 Rectangle = bounds
 	paint.Frame = value_16
-	var value_17 uint32 = border_color
-	paint.BorderColor = value_17
-	var value_18 uint32 = background_color
-	paint.BackgroundColor = value_18
-	var value_19 uint32 = text_color
-	paint.TextColor = value_19
-	var value_20 float32 = 1.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	paint.BorderWidth = value_22
-	var value_23 bool = has_title
-	paint.ShowTitle = value_23
-	var value_24 float32 = bounds.X
-	var value_25 float32 = pad
-	var value_26 float32 = value_24 + value_25
-	paint.TitleBackground.X = value_26
-	var value_27 float32 = bounds.Y
-	var value_28 float32 = title_offset_y
-	var value_29 float32 = value_27 - value_28
-	paint.TitleBackground.Y = value_29
-	var value_30 float32 = title_width
-	var value_31 float32 = pad
-	var value_32 float32 = 2.0
-	var value_33 float32 = value_31 * value_32
-	var value_34 float32 = value_30 + value_33
-	paint.TitleBackground.Width = value_34
-	var value_35 float32 = title_height
-	paint.TitleBackground.Height = value_35
-	var value_36 float32 = bounds.X
-	var value_37 float32 = pad
-	var value_38 float32 = 2.0
-	var value_39 float32 = value_37 * value_38
-	var value_40 float32 = value_36 + value_39
-	paint.TitleText.X = value_40
-	var value_41 float32 = bounds.Y
-	var value_42 float32 = text_offset_y
-	var value_43 float32 = value_41 - value_42
-	paint.TitleText.Y = value_43
-	var value_44 float32 = title_width
-	paint.TitleText.Width = value_44
-	var value_45 float32 = title_height
-	paint.TitleText.Height = value_45
-	var value_46 bool = has_title
-	var value_47 bool = !value_46
-	if value_47 {
-		var value_48 float32 = 0.0
-		paint.TitleBackground.Width = value_48
-		var value_49 float32 = 0.0
-		paint.TitleBackground.Height = value_49
-		var value_50 float32 = 0.0
-		paint.TitleText.Width = value_50
-		var value_51 float32 = 0.0
-		paint.TitleText.Height = value_51
+	var value_17 StyleFrame = frame
+	paint.Face = value_17
+	var value_18 uint32 = frame.Value.Border
+	paint.BorderColor = value_18
+	var value_19 uint32 = frame.Value.Background
+	paint.BackgroundColor = value_19
+	var value_20 uint32 = frame.Value.Foreground
+	paint.TextColor = value_20
+	var value_21 float32 = frame.Value.BorderWidth
+	var value_22 float32 = scale
+	var value_23 float32 = value_21 * value_22
+	paint.BorderWidth = value_23
+	var value_24 float32 = paint.BorderWidth
+	var value_25 float32 = 0.0
+	var value_26 bool = value_24 < value_25
+	if value_26 {
+		var value_27 float32 = 0.0
+		paint.BorderWidth = value_27
 	}
-	var value_52 FieldsetPaint = paint
-	return value_52
+	var value_28 bool = has_title
+	paint.ShowTitle = value_28
+	var value_29 float32 = bounds.X
+	var value_30 float32 = pad
+	var value_31 float32 = value_29 + value_30
+	paint.TitleBackground.X = value_31
+	var value_32 float32 = bounds.Y
+	var value_33 float32 = title_offset_y
+	var value_34 float32 = value_32 - value_33
+	paint.TitleBackground.Y = value_34
+	var value_35 float32 = title_width
+	var value_36 float32 = pad
+	var value_37 float32 = 2.0
+	var value_38 float32 = value_36 * value_37
+	var value_39 float32 = value_35 + value_38
+	paint.TitleBackground.Width = value_39
+	var value_40 float32 = title_height
+	paint.TitleBackground.Height = value_40
+	var value_41 float32 = bounds.X
+	var value_42 float32 = pad
+	var value_43 float32 = 2.0
+	var value_44 float32 = value_42 * value_43
+	var value_45 float32 = value_41 + value_44
+	paint.TitleText.X = value_45
+	var value_46 float32 = bounds.Y
+	var value_47 float32 = text_offset_y
+	var value_48 float32 = value_46 - value_47
+	paint.TitleText.Y = value_48
+	var value_49 float32 = title_width
+	paint.TitleText.Width = value_49
+	var value_50 float32 = title_height
+	paint.TitleText.Height = value_50
+	var value_51 bool = has_title
+	var value_52 bool = !value_51
+	if value_52 {
+		var value_53 float32 = 0.0
+		paint.TitleBackground.Width = value_53
+		var value_54 float32 = 0.0
+		paint.TitleBackground.Height = value_54
+		var value_55 float32 = 0.0
+		paint.TitleText.Width = value_55
+		var value_56 float32 = 0.0
+		paint.TitleText.Height = value_56
+	}
+	var value_57 FieldsetPaint = paint
+	return value_57
 }

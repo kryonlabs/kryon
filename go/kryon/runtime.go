@@ -473,16 +473,9 @@ type DragDropProps struct {
 	Disabled     bool
 }
 
-type MultiSelectListProps struct {
-	Bounds        Rectangle
-	ID            int32
-	Items         []string
-	ItemCount     int32
-	Selected      []int32
-	SelectedCount *int32
-	Anchor        *int32
-	RowHeight     int32
-	Disabled      bool
+type ToastProps struct {
+	Message string
+	Seconds float64
 }
 
 type ArrowDirection int32
@@ -561,6 +554,7 @@ type TextProps struct {
 	VerticalAlign TextAlign
 	Disabled      bool
 	LetterSpacing int32
+	Selectable    bool
 	Typeface      string
 	Style         Style
 }
@@ -763,23 +757,36 @@ type MenuItem struct {
 	SubmenuCount int32
 }
 
-type Menu struct {
+type MenuGroup struct {
 	Bounds    Rectangle
 	Label     string
 	Items     []MenuItem
 	ItemCount int32
 }
 
-type MenuBarResult struct {
+type MenuMode int32
+
+const (
+	MenuModeBar     MenuMode = 0
+	MenuModePopup   MenuMode = 1
+	MenuModeContext MenuMode = 2
+)
+
+type MenuResult struct {
 	ActivatedID int32
 	OpenIndex   int32
 }
 
-type ContextMenuProps struct {
+type MenuProps struct {
 	ID        int32
+	Mode      MenuMode
+	Bounds    Rectangle
 	Trigger   Rectangle
+	Menus     []MenuGroup
+	MenuCount int32
 	Items     []MenuItem
 	ItemCount int32
+	OpenIndex *int32
 	Open      *int32
 	X         *int32
 	Y         *int32
@@ -1036,6 +1043,32 @@ type DropdownProps struct {
 	Disabled      bool
 }
 
+type SegmentOption struct {
+	Label    string
+	Disabled bool
+}
+
+type SegmentedControlProps struct {
+	Bounds        Rectangle
+	ID            int32
+	Options       []SegmentOption
+	OptionCount   int32
+	SelectedIndex *int32
+	Font          int32
+	Gap           int32
+	Height        int32
+	MinItemWidth  int32
+	MaxItemWidth  int32
+	Wrap          bool
+}
+
+type SegmentedControlResult struct {
+	SelectedIndex int32
+	ClickedIndex  int32
+	Changed       int32
+	Height        int32
+}
+
 type FieldsetProps struct {
 	Bounds Rectangle
 	Title  string
@@ -1047,6 +1080,9 @@ type ListBoxProps struct {
 	Items         []string
 	ItemCount     int32
 	SelectedIndex *int32
+	Selected      []int32
+	SelectedCount *int32
+	Anchor        *int32
 	ScrollOffset  *int32
 	RowHeight     int32
 	Disabled      bool
@@ -1201,6 +1237,7 @@ type Runtime interface {
 	AcceleratorPressed(Accelerator) int32
 	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)
+	AppBackground()
 	Background(Color)
 	Text(TextProps)
 	MeasureTextWidth(text string, font int32, typeface string) int32
@@ -1217,7 +1254,7 @@ type Runtime interface {
 	NewVector2(any, any) Vector2
 	Circle(int32, int32, int32, Color)
 	Ring(int32, int32, int32, int32, Color)
-	Rect(int32, int32, int32, int32, Color, ...Color)
+	Box(Rectangle, Color, Color)
 	Surface(Rectangle, Style)
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
@@ -1234,7 +1271,6 @@ type Runtime interface {
 	Bullet(Rectangle)
 	Separator(SeparatorProps)
 	DragDrop(DragDropProps) bool
-	MultiSelectList(MultiSelectListProps) int32
 	ColorPicker(ColorPickerProps) bool
 	TabBar(TabBarProps) int32
 	Progress(ProgressProps)
@@ -1243,6 +1279,8 @@ type Runtime interface {
 	Slider(SliderProps) bool
 	Input(InputProps) bool
 	Dropdown(args ...any) bool
+	GetSegmentedControlHeight(SegmentedControlProps) int32
+	SegmentedControl(SegmentedControlProps) SegmentedControlResult
 	StylePicker(StylePickerProps) bool
 	Column(ColumnProps)
 	Row(ColumnProps)
@@ -1291,13 +1329,9 @@ type Runtime interface {
 	TitleBar(TitleBarProps) int32
 	NavigationBar(props NavigationBarProps)
 	Toolbar(props ToolbarProps) ToolbarResult
-	MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult
-	PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32
-	ContextMenu(props ContextMenuProps) int32
+	Menu(props MenuProps) MenuResult
 	CanvasGrid(bounds Rectangle, step int32, color Color)
-	SelectableText(value string, x, y, fontSize int32, color Color)
-	ShowToast(message string)
-	ShowToastFor(message string, seconds float64)
+	Toast(props ToastProps)
 	TextArea(props TextAreaProps) bool
 	Radio(props RadioProps) int32
 	Spinbox(props SpinboxProps) bool
@@ -1864,6 +1898,16 @@ func (r *runtime) FrameOps() []FrameOp {
 func (r *runtime) ClearBackground(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
 }
+func (r *runtime) AppBackground() {
+	style := unpackStyle(ResolveActiveStyle(StyleData{Fields: uint32(StyleOpacity), Opacity: 1},
+		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindApp()),
+		int32(ButtonStateNormal)))
+	color := style.Background
+	if color.A == 0 {
+		color = r.GetThemeBackground()
+	}
+	r.Background(color)
+}
 func (r *runtime) Background(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground,
 		Bounds: Primitive_PrimitiveBackgroundBounds(r.GetScreenWidth(), r.GetScreenHeight()),
@@ -1890,11 +1934,24 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			break
 		}
 	}
-	style := mergeStyle(Style{Foreground: props.Color, FontSize: float32(props.Font), Opacity: 1}, props.Style)
-	colorSet := props.Color.A != 0 || props.Style.Fields&StyleForeground != 0
 	props.Disabled = props.Disabled || (r.contentDisabled() && !inheritedDisabled)
-	appearance := Text_ResolveTextStyle(int32(style.FontSize), inheritedFont, Text16,
-		packRGBA(style.Foreground), packRGBA(inheritedColor), packRGBA(r.GetThemeText()),
+	textState := int32(ButtonStateNormal)
+	if props.Disabled {
+		textState = int32(ButtonStateDisabled)
+	}
+	style := unpackStyle(ResolveActiveStyle(packStyle(Style{Opacity: 1}),
+		StyleSheet_StyleTextFacts(0, 0, StyleSheet_StyleAny(), textState),
+		textState))
+	if props.Color.A != 0 {
+		style = mergeStyle(style, Style{Fields: StyleForeground, Foreground: props.Color})
+	}
+	style = mergeStyle(style, props.Style)
+	colorSet := style.Fields&StyleForeground != 0
+	if style.Fields&StyleFontSize != 0 {
+		props.Font = int32(style.FontSize)
+	}
+	appearance := Text_ResolveTextStyle(props.Font, inheritedFont, Text16,
+		packRGBA(style.Foreground), packRGBA(inheritedColor), 0xffffffff,
 		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, props.LetterSpacing)
 	font, spacing := appearance.Font, appearance.LetterSpacing
 	color := unpackRGBA(Surface_Opacity(appearance.Color, style.Opacity))
@@ -1924,6 +1981,22 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	if bounds.X == 0 && bounds.Y == 0 {
 		bounds = r.layoutRect(bounds)
 	}
+	var textKey KeyID
+	var textSelected bool
+	if props.Selectable && props.Text != "" && !props.Disabled && !inheritedDisabled {
+		textKey = Key(fmt.Sprintf("%g:%g:%s", bounds.X, bounds.Y, props.Text))
+		if r.consumeTap(bounds) {
+			r.selectableText = textKey
+		}
+		textSelected = r.selectableText == textKey
+		if textSelected && !r.contentDisabled() && !r.popupKeyboardCaptures() {
+			for _, event := range r.inputEvents {
+				if event.shortcut && event.key == KeyC {
+					r.clipboard = props.Text
+				}
+			}
+		}
+	}
 	startY := bounds.Y + Text_TextAlignmentOffset(bounds.Height, contentHeight, int32(props.VerticalAlign))
 	for i, line := range lines {
 		y := startY + float32(i)*lineHeight
@@ -1934,10 +2007,17 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 		}
 		lineWidth := float32(measure(line))
 		x := bounds.X + Text_TextAlignmentOffset(bounds.Width, lineWidth, int32(props.Align))
-		r.record(FrameOp{Kind: FrameOpText,
+		op := FrameOp{Kind: FrameOpText,
 			Bounds: Rectangle{X: x, Y: y, Width: lineWidth, Height: float32(textHeight(font, fontID))},
 			Clip:   bounds, HasClip: true, Text: line, Color: color, FontSize: font,
-			FontID: fontID, Disabled: props.Disabled || inheritedDisabled, LetterSpacing: spacing})
+			FontID: fontID, Disabled: props.Disabled || inheritedDisabled, LetterSpacing: spacing}
+		if textSelected {
+			op.ID = int32(textKey)
+			op.Selected = true
+			op.SelectionStart = 0
+			op.SelectionEnd = int32(len(line))
+		}
+		r.record(op)
 	}
 }
 func (r *runtime) TextFormat(format string, args ...any) string { return fmt.Sprintf(format, args...) }
@@ -1961,27 +2041,14 @@ func (r *runtime) Ring(centerX, centerY, innerRadius, outerRadius int32, color C
 		Width: float32(outerRadius * 2), Height: float32(outerRadius * 2),
 	}, Radius: float32(innerRadius), Color: color})
 }
-func (r *runtime) Rect(x, y, w, h int32, color Color, rest ...Color) {
-	op := FrameOp{
-		Kind:   FrameOpRect,
-		Bounds: Primitive_PrimitiveRectBounds(x, y, w, h),
-		Color:  color,
-	}
-	if len(rest) > 0 {
-		op.BorderColor = rest[0]
-	}
-	r.record(op)
+func (r *runtime) Box(bounds Rectangle, fill Color, border Color) {
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: fill, BorderColor: border})
 }
 func (r *runtime) Surface(bounds Rectangle, style Style) {
-	metrics := r.themeMetrics()
-	style = mergeStyle(Style{
-		Fields:     StyleBackground | StyleRadius | StyleBorderWidth | StyleOpacity | StyleMaterial,
-		Material:   MaterialFlat,
-		Background: r.theme().surface, Radius: metrics.RadiusMedium,
-		BorderWidth: metrics.BorderWidth, Opacity: 1,
-	}, style)
+	style = mergeStyle(unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value), style)
+	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	r.record(FrameOp{Kind: FrameOpSurface, Bounds: bounds,
-		Material: style.Material, FocusColor: style.Focus, AmbientColor: r.theme().surface,
+		Material: style.Material, FocusColor: style.Focus, AmbientColor: surface.Background,
 		BackgroundEnd: style.BackgroundEnd, HasBackgroundEnd: style.Fields&StyleBackgroundEnd != 0,
 		Color: style.Background, BorderColor: style.Border, Radius: style.Radius,
 		BorderWidth: style.BorderWidth, Opacity: style.Opacity})
@@ -2038,9 +2105,21 @@ func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int
 				}
 			}
 			thumbY = bounds.Y + travel*float32(*offset)/float32(maximum)
-			t := r.theme()
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: track, Color: t.surface})
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}, Color: t.button})
+			thumbState := ButtonStateNormal
+			if r.scrollDragOffset == offset {
+				thumbState = ButtonStatePressed
+			} else if r.pointerCanReach(Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}) {
+				thumbState = ButtonStateHover
+			}
+			trackFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
+				ButtonProps{Size: ControlSizeSmall, Pill: true}, ButtonStateNormal,
+				false, 0, 0, 0, StyleSheet_StyleKindScroll())
+			thumbFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
+				ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled,
+					Size: ControlSizeSmall, Pill: true},
+				thumbState, false, 0, 0, 0, StyleSheet_StyleKindScrollThumb())
+			r.record(styleFrameRectOp(track, Rectangle{}, trackFrame))
+			r.record(styleFrameRectOp(Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}, track, thumbFrame))
 			bounds.Width -= 10
 			clip = r.scrollClip(bounds)
 		}
@@ -2118,12 +2197,17 @@ func (r *runtime) Button(props ButtonProps) bool {
 		menu.Split = false
 		clicked := r.surfaceButtonAt(action, fullBounds, false)
 		*props.Open = boolInt(Button_ButtonToggleMenuOpen(*props.Open != 0, r.surfaceButtonAt(menu, fullBounds, true)))
+		divider := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindButton()).Value)
 		r.record(FrameOp{Kind: FrameOpLine,
 			Bounds: Rectangle{X: menu.Bounds.X, Y: menu.Bounds.Y + layout.DividerInset,
-				Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: r.theme().border})
+				Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: divider.Border})
 		if *props.Open != 0 {
-			*props.ActivatedID = r.PopupMenu(props.MenuID, int32(fullBounds.X),
-				int32(fullBounds.Y+fullBounds.Height), props.Items, props.ItemCount)
+			*props.ActivatedID = r.Menu(MenuProps{
+				ID: props.MenuID, Mode: MenuModePopup,
+				Bounds:    NewRectangle(fullBounds.X, fullBounds.Y+fullBounds.Height, 0, 0),
+				Items:     props.Items,
+				ItemCount: props.ItemCount,
+			}).ActivatedID
 			*props.Open = boolInt(Button_ButtonCloseMenuAfterActivation(*props.Open != 0,
 				*props.ActivatedID))
 		}
@@ -2148,8 +2232,12 @@ func (r *runtime) Button(props ButtonProps) bool {
 		if *props.Open == 0 {
 			return false
 		}
-		*props.ActivatedID = r.PopupMenu(props.MenuID, int32(props.Bounds.X),
-			int32(props.Bounds.Y+props.Bounds.Height), props.Items, props.ItemCount)
+		*props.ActivatedID = r.Menu(MenuProps{
+			ID: props.MenuID, Mode: MenuModePopup,
+			Bounds:    NewRectangle(props.Bounds.X, props.Bounds.Y+props.Bounds.Height, 0, 0),
+			Items:     props.Items,
+			ItemCount: props.ItemCount,
+		}).ActivatedID
 		*props.Open = boolInt(Button_ButtonCloseMenuAfterActivation(*props.Open != 0, *props.ActivatedID))
 		return *props.ActivatedID != 0
 	}
@@ -2172,22 +2260,24 @@ func cardButtonProps(props CardProps) ButtonProps {
 }
 
 func (r *runtime) Card(props CardProps) bool {
-	button := r.resolveButtonProps(cardButtonProps(props))
+	button := r.resolveSurfaceButtonPropsForKind(cardButtonProps(props), false, StyleSheet_StyleKindCard())
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
 	if !props.Clickable {
-		frame, _ := r.surfaceButtonFrame(button, Rectangle{}, false)
+		frame, _ := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
 		r.record(frame)
 		return false
 	}
-	return r.buttonAt(button)
+	frame, pressed := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
+	r.record(frame)
+	return pressed
 }
 
 func (r *runtime) BeginCard(props CardProps) {
-	button := r.resolveButtonProps(cardButtonProps(props))
+	button := r.resolveSurfaceButtonPropsForKind(cardButtonProps(props), false, StyleSheet_StyleKindCard())
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
-	frame, _ := r.surfaceButtonFrame(button, Rectangle{}, false)
+	frame, _ := r.surfaceButtonFrameForKind(button, Rectangle{}, false, StyleSheet_StyleKindCard())
 	r.record(frame)
 	r.layout = append(r.layout, layoutFrame{
 		bounds: frame.Button.ContentBounds,
@@ -2270,15 +2360,32 @@ func buttonImageProps(props ButtonProps) (ImageProps, bool) {
 // Resolve input and animation once. A composed button uses this same frame
 // for its surface and inherited content instead of resolving a static style.
 func (r *runtime) surfaceButtonFrame(props ButtonProps, surfaceBounds Rectangle, disclosure bool) (FrameOp, bool) {
-	props = r.resolveSurfaceButtonProps(props, disclosure)
+	return r.surfaceButtonFrameForKind(props, surfaceBounds, disclosure, StyleSheet_StyleKindButton())
+}
+
+func (r *runtime) surfaceButtonFrameForKind(props ButtonProps, surfaceBounds Rectangle, disclosure bool, styleKind int32) (FrameOp, bool) {
+	return r.surfaceButtonFrameForRoleKind(props, surfaceBounds, disclosure, styleKind, StyleSheet_StyleAny())
+}
+
+func (r *runtime) surfaceButtonFrameForRoleKind(props ButtonProps, surfaceBounds Rectangle, disclosure bool, styleKind int32, role int32) (FrameOp, bool) {
+	props = r.resolveSurfaceButtonPropsForRoleKind(props, disclosure, styleKind, role)
 	props.ID = r.resolveFocusID(props.ID)
-	theme := r.theme()
 	input := r.Button_ReadButtonInput(props.Bounds, props.ID, int32(props.State),
 		props.Disabled, props.Loading, props.Selected)
-	palette, metrics := buttonThemeValues(theme, r.effectiveDark(), r.activeTheme)
-	resolved := r.Button_AdvanceFrame(uint64(uint32(props.ID)), props, input,
-		palette, metrics, packStyleStates(props.Style), Surface_DefaultMotionEnabled(),
-		r.frameDeltaMS, surfaceBounds, packRGBA(theme.surface), 1, Text16)
+	metrics := r.themeMetrics()
+	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
+	props.Disabled = input.Flags.Disabled
+	props.Loading = input.Flags.Loading
+	props.Selected = input.Flags.Selected
+	motion := r.Button_AdvanceButtonMotion(uint64(uint32(props.ID)),
+		int32(props.State), input, Surface_DefaultMotionEnabled(),
+		r.frameDeltaMS, metrics.TransitionNormalMS, metrics.TransitionFastMS)
+	appearance := resolveMinimalControlRoleFrame(props, ButtonState(input.Interaction.State),
+		props.State == ButtonStateAuto, motion.Hover.Value, motion.Press.Value,
+		motion.Focus.Value, styleKind, role)
+	resolved := Button_BuildFrame(props, input, appearance, motion,
+		surfaceBounds, packRGBA(surface.Background), 1,
+		int32(appearance.Value.FontSize), Text16)
 	frame := FrameOp{Kind: FrameOpButton, Button: resolved,
 		Bounds: resolved.Props.Bounds, SurfaceBounds: surfaceBounds, Text: resolved.Props.Label, ID: resolved.Props.ID,
 		FontID:     registeredTypeface(resolved.Appearance.Value.Typeface),
@@ -2302,9 +2409,16 @@ func (r *runtime) resolveButtonProps(props ButtonProps) ButtonProps {
 }
 
 func (r *runtime) resolveSurfaceButtonProps(props ButtonProps, disclosure bool) ButtonProps {
+	return r.resolveSurfaceButtonPropsForKind(props, disclosure, StyleSheet_StyleKindButton())
+}
+
+func (r *runtime) resolveSurfaceButtonPropsForKind(props ButtonProps, disclosure bool, styleKind int32) ButtonProps {
+	return r.resolveSurfaceButtonPropsForRoleKind(props, disclosure, styleKind, StyleSheet_StyleAny())
+}
+
+func (r *runtime) resolveSurfaceButtonPropsForRoleKind(props ButtonProps, disclosure bool, styleKind int32, role int32) ButtonProps {
 	props.Disabled = props.Disabled || r.contentDisabled()
-	style := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
-		props, props.State)
+	style := unpackStyle(resolveMinimalControlRoleState(props, props.State, styleKind, role))
 	font := Style_ResolveFont(props.Font, int32(style.FontSize), Text16)
 	metrics := defaultThemeMetrics()
 	if r.activeTheme != nil {
@@ -2335,62 +2449,78 @@ func resolveButtonStyle(theme themePalette, dark bool, active *Theme, props Butt
 	return unpackStyle(resolveButtonFrame(theme, dark, active, props, state, false, 0, 0, 0).Value)
 }
 
-func resolveButtonFrame(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState,
-	automatic bool, hover, press, focusAmount float32) StyleFrame {
-	palette, tokens := buttonThemeValues(theme, dark, active)
-	return Button_ResolveFrame(int32(props.Tone), int32(props.Emphasis),
-		int32(state), int32(props.Size), props.Pill, props.Circle, props.Disabled,
-		props.Loading, props.Selected, palette, tokens, packStyleStates(props.Style), automatic, hover, press, focusAmount)
+func resolveButtonStyleForKind(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState, styleKind int32) Style {
+	return unpackStyle(resolveButtonFrameForKind(theme, dark, active, props, state, false, 0, 0, 0, styleKind).Value)
 }
 
-func buttonThemeValues(theme themePalette, dark bool, active *Theme) (Palette, Metrics) {
-	scheme := materialScheme(theme, dark)
-	defaults := Theme_DefaultPalette(dark)
-	surface, neutral := scheme.Surface, scheme.SurfaceVariant
-	accent, accentHover, accentPressed := scheme.Primary, theme.buttonHover, mixColor(scheme.Primary, Black, 0.14)
-	danger, onDanger := unpackRGBA(defaults.Danger), unpackRGBA(defaults.OnDanger)
-	success, onSuccess := unpackRGBA(defaults.Success), unpackRGBA(defaults.OnSuccess)
-	warning, onWarning := unpackRGBA(defaults.Warning), unpackRGBA(defaults.OnWarning)
-	text, link, disabledText := scheme.OnSurface, theme.link, unpackRGBA(defaults.TextDisabled)
-	if active != nil {
-		surface, neutral = active.Colors.Surface, active.Colors.SurfaceRaised
-		accent, accentHover, accentPressed = active.Colors.Accent, active.Colors.AccentHover, active.Colors.AccentPressed
-		danger, onDanger = active.Colors.Danger, active.Colors.OnDanger
-		success, onSuccess = active.Colors.Success, active.Colors.OnSuccess
-		warning, onWarning = active.Colors.Warning, active.Colors.OnWarning
-		text, link, disabledText = active.Colors.Text, active.Colors.Link, active.Colors.DisabledText
+func resolveButtonFrame(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState,
+	automatic bool, hover, press, focusAmount float32) StyleFrame {
+	return resolveButtonFrameForKind(theme, dark, active, props, state, automatic,
+		hover, press, focusAmount, StyleSheet_StyleKindButton())
+}
+
+func resolveButtonFrameForKind(theme themePalette, dark bool, active *Theme, props ButtonProps, state ButtonState,
+	automatic bool, hover, press, focusAmount float32, styleKind int32) StyleFrame {
+	if styleKind == 0 {
+		styleKind = StyleSheet_StyleKindButton()
 	}
-	onAccent := scheme.OnPrimary
-	metrics := defaultThemeMetrics()
-	focus := theme.focus
-	if active != nil {
-		onAccent = active.Colors.OnAccent
-		metrics = active.Metrics
-		focus = active.Colors.Focus
+	return resolveMinimalControlFrame(props, state, automatic, hover, press,
+		focusAmount, styleKind)
+}
+
+func minimalControlStyleData() StyleData {
+	return StyleData{
+		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize | StyleMaterial),
+		Opacity:  1,
+		FontSize: 16,
+		IconSize: 20,
+		Material: int32(MaterialFlat),
 	}
-	palette := Palette{
-		Surface: packRGBA(surface), SurfaceRaised: packRGBA(neutral),
-		Accent: packRGBA(accent), AccentHover: packRGBA(accentHover),
-		AccentPressed: packRGBA(accentPressed), OnAccent: packRGBA(onAccent),
-		Text: packRGBA(text), TextDisabled: packRGBA(disabledText),
-		Danger: packRGBA(danger), OnDanger: packRGBA(onDanger),
-		Success: packRGBA(success), OnSuccess: packRGBA(onSuccess),
-		Warning: packRGBA(warning), OnWarning: packRGBA(onWarning),
-		Link: packRGBA(link), Focus: packRGBA(focus),
+}
+
+func resolveMinimalControlState(props ButtonProps, state ButtonState, styleKind int32) StyleData {
+	return resolveMinimalControlRoleState(props, state, styleKind, StyleSheet_StyleAny())
+}
+
+func resolveMinimalControlRoleState(props ButtonProps, state ButtonState, styleKind int32, role int32) StyleData {
+	facts := StyleSheet_StyleControlFacts(styleKind, props.ID, 0,
+		int32(props.Tone), int32(props.Emphasis), int32(props.Size), int32(state))
+	facts.Role = role
+	value := ResolveActiveStyle(minimalControlStyleData(), facts, int32(state))
+	return Style_ResolveValues(value, packStyleStates(props.Style), int32(state))
+}
+
+func resolveMinimalControlFrame(props ButtonProps, state ButtonState, automatic bool,
+	hover, press, focusAmount float32, styleKind int32) StyleFrame {
+	return resolveMinimalControlRoleFrame(props, state, automatic, hover, press,
+		focusAmount, styleKind, StyleSheet_StyleAny())
+}
+
+func resolveMinimalControlRoleFrame(props ButtonProps, state ButtonState, automatic bool,
+	hover, press, focusAmount float32, styleKind int32, role int32) StyleFrame {
+	flags := Style_ResolveFlags(int32(props.State), props.Disabled, props.Loading, props.Selected)
+	frame := StyleFrame{Value: resolveMinimalControlRoleState(props, state, styleKind, role)}
+	frame.Fill = Surface_FillState(frame.Value.Fields, frame.Value.Background, frame.Value.BackgroundEnd)
+	if automatic && !flags.Disabled && !flags.Loading && !flags.Selected &&
+		(hover > 0 || press > 0 || focusAmount > 0) {
+		normal := frame.Value
+		if state != ButtonStateNormal {
+			normal = resolveMinimalControlRoleState(props, ButtonStateNormal, styleKind, role)
+		}
+		hoverStyle, pressStyle, focusStyle := normal, normal, normal
+		if hover > 0 {
+			hoverStyle = resolveMinimalControlRoleState(props, ButtonStateHover, styleKind, role)
+		}
+		if press > 0 {
+			pressStyle = resolveMinimalControlRoleState(props, ButtonStatePressed, styleKind, role)
+		}
+		if focusAmount > 0 {
+			focusStyle = resolveMinimalControlRoleState(props, ButtonStateFocus, styleKind, role)
+		}
+		frame = Style_TransitionFrame(frame.Value, normal, hoverStyle,
+			pressStyle, focusStyle, hover, press, focusAmount)
 	}
-	tokens := Metrics{
-		TransitionNormalMs: metrics.TransitionNormalMS, TransitionFastMs: metrics.TransitionFastMS,
-		RadiusMedium: metrics.RadiusMedium, RadiusPill: metrics.RadiusPill,
-		RadiusLarge: metrics.RadiusLarge,
-		BorderWidth: metrics.BorderWidth, ControlGap: metrics.ControlGap,
-		ControlPaddingSmall:  metrics.ControlPaddingSmall,
-		ControlPaddingMedium: metrics.ControlPaddingMedium,
-		ControlPaddingLarge:  metrics.ControlPaddingLarge,
-		FontSizeSmall:        metrics.FontSizeSmall, FontSizeMedium: metrics.FontSizeMedium,
-		FontSizeLarge: metrics.FontSizeLarge, IconSizeSmall: metrics.IconSizeSmall,
-		IconSizeMedium: metrics.IconSizeMedium, IconSizeLarge: metrics.IconSizeLarge,
-	}
-	return palette, tokens
+	return frame
 }
 
 func packRGBA(c Color) uint32 {
@@ -2457,17 +2587,21 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 		}
 		selected = !selected
 	}
-	theme := r.theme()
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	} else if pressed {
+		state = ButtonStatePressed
+	} else if selected {
+		state = ButtonStateSelected
+	}
 	paint := Selectable_SelectablePaintFor(SelectableSpec{
-		Bounds:            props.Bounds,
-		Selected:          selected,
-		Pressed:           pressed,
-		Disabled:          props.Disabled,
-		FillColor:         packRGBA(theme.button),
-		HoverColor:        packRGBA(theme.buttonHover),
-		TextColor:         packRGBA(theme.text),
-		DisabledTextColor: packRGBA(r.Fade(theme.text, 0.45)),
-		LabelInset:        8,
+		Bounds:     props.Bounds,
+		Selected:   selected,
+		Pressed:    pressed,
+		Disabled:   props.Disabled,
+		Face:       simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, selected, StyleSheet_StyleKindSelectable()),
+		LabelInset: 8,
 	})
 	if paint.DrawFill {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.FillColor), Disabled: props.Disabled})
@@ -2479,11 +2613,11 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 func (r *runtime) Checkbox(props CheckboxProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
 	disabled := props.Disabled || (props.Value == nil && props.Flags == nil)
-	pressed, focused := r.focusablePress(props.Bounds, props.ID, disabled)
+	input := r.ReadActivation(props.Bounds, props.ID, !disabled)
 	checked := false
 	changed := false
 	if props.Flags != nil {
-		state := Checkbox_CheckboxFlagApply(uint32(*props.Flags), uint32(props.FlagsValue), pressed)
+		state := Checkbox_CheckboxFlagApply(uint32(*props.Flags), uint32(props.FlagsValue), input.Activated)
 		checked = state.Checked
 		changed = state.Changed
 		if state.Changed {
@@ -2491,7 +2625,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		}
 	} else if props.Value != nil {
 		checked = *props.Value != 0
-		if pressed {
+		if input.Activated {
 			if checked {
 				*props.Value = 0
 			} else {
@@ -2501,22 +2635,27 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 			changed = true
 		}
 	}
-	theme := r.theme()
-	palette, metrics := buttonThemeValues(theme, r.effectiveDark(), r.activeTheme)
+	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, disabled)
+	box := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, 9)
+	active := checkboxStyleFrame(ButtonToneAccent, state, disabled, checked, 10)
+	label := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, 6)
 	paint := Checkbox_CheckboxPaintFor(CheckboxSpec{
 		Bounds:  props.Bounds,
 		Checked: checked,
 		Enabled: !disabled,
-		Focused: focused,
+		Hovered: input.Hovered,
+		Pressed: input.Pressed,
+		Focused: input.Focused,
 		Scale:   1,
-		Palette: palette,
-		Metrics: metrics,
+		Box:     box,
+		Active:  active,
 	})
-	fill := theme.surface
+	paint.LabelColor = label.Value.Foreground
+	fill := unpackRGBA(box.Value.Background)
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: pressed, Selected: checked, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BoxBounds, Color: fill, BorderColor: unpackRGBA(paint.BorderColor), ID: props.ID, Disabled: disabled, Pressed: input.Pressed, Selected: checked, Focused: input.Focused})
 	if paint.ShowMark {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
@@ -2525,16 +2664,56 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	return changed
 }
 
+func checkboxStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, role int32) StyleFrame {
+	props := ButtonProps{
+		Tone:     tone,
+		Emphasis: ButtonEmphasisOutline,
+		Size:     ControlSizeMedium,
+		Disabled: disabled,
+		Selected: selected,
+	}
+	if tone == ButtonToneAccent {
+		props.Emphasis = ButtonEmphasisFilled
+	}
+	return resolveMinimalControlRoleFrame(props, state, false, 0, 0, 0,
+		StyleSheet_StyleKindCheckbox(), role)
+}
+
+func checkboxButtonState(hovered, pressed, focused, disabled bool) ButtonState {
+	switch {
+	case disabled:
+		return ButtonStateDisabled
+	case pressed:
+		return ButtonStatePressed
+	case focused:
+		return ButtonStateFocus
+	case hovered:
+		return ButtonStateHover
+	default:
+		return ButtonStateNormal
+	}
+}
+
 func (r *runtime) Bullet(bounds Rectangle) {
 	bounds = r.layoutRect(bounds)
-	paint := Separator_BulletPaintFor(bounds, packRGBA(r.theme().text))
+	frame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindSeparator(), 8)
+	paint := Separator_BulletPaintFor(bounds, frame)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.Color)})
 }
 
 func (r *runtime) Separator(props SeparatorProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	}
+	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
+		StyleSheet_StyleKindSeparator(), 6)
 	if props.Label == "" {
-		paint := Separator_SeparatorLineFor(props.Bounds, props.Vertical, packRGBA(r.theme().border))
+		lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
+			StyleSheet_StyleKindSeparator(), 7)
+		paint := Separator_SeparatorLineFor(props.Bounds, props.Vertical, lineFrame)
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.Color)})
 		return
 	}
@@ -2542,14 +2721,11 @@ func (r *runtime) Separator(props SeparatorProps) {
 	if font <= 0 {
 		font = Text14
 	}
-	color := r.theme().text
-	lineColor := r.theme().border
-	if props.Disabled {
-		color = r.Fade(color, 0.45)
-		lineColor = r.Fade(lineColor, 0.45)
-	}
 	labelWidth := float32(runtimeTextWidth(props.Label, font))
-	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, packRGBA(color), packRGBA(lineColor))
+	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
+	lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
+		StyleSheet_StyleKindSeparator(), 7)
+	paint.LineColor = lineFrame.Value.Background
 	if paint.ShowText {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), FontSize: font, Disabled: props.Disabled})
 	}
@@ -2559,19 +2735,30 @@ func (r *runtime) Separator(props SeparatorProps) {
 }
 
 func (r *runtime) DragDrop(props DragDropProps) bool {
-	bounds := r.layoutRect(props.Bounds)
 	if props.Role == DragDropRoleTarget {
 		if props.AcceptedSize != nil {
 			*props.AcceptedSize = 0
 		}
+		bounds := r.layoutRect(props.Bounds)
 		matches := DragDrop_DragDropTargetMatches(r.dragDrop.active, props.Type != "", r.dragDrop.typeName == props.Type)
+		disabled := props.Disabled || r.contentDisabled()
 		hot := DragDrop_DragDropTargetHot(props.Disabled, r.contentDisabled(), r.pointerCanReach(bounds))
 		if matches {
-			color := r.theme().border
-			if hot {
-				color = r.theme().link
-			}
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, BorderColor: color, Disabled: props.Disabled, Selected: hot})
+			frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+				if disabled {
+					return ButtonStateDisabled
+				}
+				if hot {
+					return ButtonStateHover
+				}
+				return ButtonStateNormal
+			}(), disabled, hot, StyleSheet_StyleKindDragDropTarget())
+			op := styleFrameRectOp(bounds, Rectangle{}, frame)
+			op.ID = props.ID
+			op.Disabled = disabled
+			op.Hovered = hot
+			op.Selected = hot
+			r.record(op)
 		}
 		if !DragDrop_DragDropTargetAccepts(props.Disabled, r.contentDisabled(), matches, hot, r.mouseReleased[MouseButtonLeft]) {
 			return false
@@ -2592,7 +2779,6 @@ func (r *runtime) DragDrop(props DragDropProps) bool {
 		r.mouseReleased[MouseButtonLeft] = false
 		return true
 	}
-
 	if DragDrop_DragDropShouldClearSource(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{}
 	}
@@ -2604,13 +2790,14 @@ func (r *runtime) DragDrop(props DragDropProps) bool {
 	if !valid {
 		return false
 	}
+	bounds := r.layoutRect(props.Bounds)
 	if DragDrop_DragDropSourceStarts(valid, r.pointerCanReach(bounds), r.mousePressed[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{active: true, sourceID: props.ID, typeName: props.Type, data: append([]byte(nil), props.Data[:size]...)}
 	}
 	return DragDrop_DragDropSourceReturnsActive(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft])
 }
 
-func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
+func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 	count := int(props.ItemCount)
 	if count <= 0 || count > len(props.Items) {
 		count = len(props.Items)
@@ -2693,7 +2880,6 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 				clicked, int32(count), control, shift, rangeAnchor)
 		}
 	}
-	theme := r.theme()
 	selectedCount := int32(0)
 	focusRow := int32(-1)
 	if focused {
@@ -2711,28 +2897,60 @@ func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {
 			}
 		}
 	}
+	listFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		if focused {
+			return ButtonStateFocus
+		}
+		return ButtonStateNormal
+	}(), disabled, false, StyleSheet_StyleKindListBoxMulti())
+	listOp := styleFrameRectOp(bounds, Rectangle{}, listFrame)
+	listOp.ID = props.ID
+	listOp.Disabled = disabled
+	listOp.Focused = focused
+	r.record(listOp)
 	for i := 0; i < count; i++ {
 		selected := props.Selected[i] != 0
 		if selected {
 			selectedCount++
 		}
 		row := MultiSelectList_MultiSelectRowBounds(bounds, int32(i), rowHeight)
-		fill := theme.surface
-		if selected {
-			fill = theme.buttonHover
-		}
-		textColor := theme.text
-		if disabled {
-			textColor = r.Fade(textColor, 0.45)
-		}
 		rowFocused := focusRow == int32(i)
-		border := theme.border
-		if rowFocused {
-			border = theme.focus
+		hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		pressed := int32(i) == clicked
+		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+			if disabled {
+				return ButtonStateDisabled
+			}
+			if hovered {
+				return ButtonStateHover
+			}
+			if selected {
+				return ButtonStateSelected
+			}
+			if rowFocused {
+				return ButtonStateFocus
+			}
+			return ButtonStateNormal
+		}(), disabled, selected, StyleSheet_StyleKindListBoxMultiItem())
+		itemStyle := unpackStyle(itemFrame.Value)
+		if selected || hovered || disabled || rowFocused {
+			op := styleFrameRectOp(row, bounds, itemFrame)
+			op.ID = props.ID
+			op.Row = int32(i)
+			op.Selected = selected
+			op.Hovered = hovered
+			op.Pressed = pressed
+			op.Focused = rowFocused
+			op.Disabled = disabled
+			if rowFocused {
+				op.BorderColor = op.FocusColor
+			}
+			r.record(op)
 		}
-		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: row, Text: props.Items[i], Color: fill, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: int32(i) == clicked, Focused: rowFocused})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: props.Items[i], Color: itemStyle.Foreground, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
 	}
 	if props.SelectedCount != nil {
 		*props.SelectedCount = selectedCount
@@ -2766,8 +2984,22 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1)
 		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.SwatchBounds, Color: colorFromFloats(props.Values, channels), BorderColor: r.theme().border, Disabled: props.Disabled})
-	r.drawSliderLabel(props.Bounds, props.Label)
+	disabled := props.Disabled || r.contentDisabled()
+	frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), disabled, false, StyleSheet_StyleKindColorPickerSwatch())
+	style := unpackStyle(frame.Value)
+	op := styleFrameRectOp(layout.SwatchBounds, props.Bounds, frame)
+	op.ID = props.ID
+	op.Color = colorFromFloats(props.Values, channels)
+	op.Disabled = disabled
+	r.record(op)
+	if props.Label != "" {
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.SwatchBounds.X + 6, Y: layout.SwatchBounds.Y + (layout.SwatchBounds.Height-float32(Text14))/2, Width: layout.SwatchBounds.Width - 12, Height: float32(Text14)}, Text: props.Label, Color: style.Foreground, FontSize: Text14, ID: props.ID, Disabled: disabled})
+	}
 	return changed
 }
 
@@ -2815,6 +3047,16 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		r.registerField(props.ID)
 	}
 	focused := !disabled && props.ID > 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
+	barFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), disabled, false, StyleSheet_StyleKindTabBar())
+	tabGap := int32(barFrame.Value.Gap)
+	if tabGap < 0 {
+		tabGap = 0
+	}
 	selected := props.SelectedIndex
 	if selected < 0 || int(selected) >= count {
 		selected = 0
@@ -2885,7 +3127,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		widths[i] = float32(w)
 		totalWidth += w
 	}
-	totalWidth = TabBar_TabBarTotalWidth(totalWidth, int32(count), 0)
+	totalWidth = TabBar_TabBarTotalWidth(totalWidth, int32(count), tabGap)
 	scrollState := TabBar_TabBarScrollFor(bounds.Width, totalWidth, 0)
 	equalTabs := scrollState.EqualTabs
 	if equalTabs {
@@ -2919,21 +3161,19 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	if props.FocusSelected && !equalTabs {
 		x := bounds.X - float32(*scroll)
 		for i := int32(0); i < selected; i++ {
-			x += widths[i]
+			x += widths[i] + float32(tabGap)
 		}
 		*scroll = TabBar_TabBarRevealScroll(x, widths[selected], bounds, *scroll, maxScroll)
 	}
-	theme := r.theme()
+	barPaint := TabBar_TabBarPaintFor(barFrame, barFrame, barFrame)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: unpackRGBA(barPaint.BarColor), BorderColor: unpackRGBA(barPaint.BarBorderColor), BorderWidth: barFrame.Value.BorderWidth, Radius: barFrame.Value.Radius})
 	x := bounds.X - float32(*scroll)
 	for i := 0; i < count; i++ {
 		item := props.Tabs[i]
 		tab := Rectangle{X: x, Y: bounds.Y, Width: widths[i], Height: bounds.Height}
-		x += widths[i]
+		x += widths[i] + float32(tabGap)
 		itemDisabled := disabled || item.Disabled
 		isSelected := int32(i) == selected
-		if isSelected && props.SelectedTabBounds != nil {
-			*props.SelectedTabBounds = tab
-		}
 		closeWidth := float32(0)
 		closeBounds := Rectangle{}
 		closed := false
@@ -2960,32 +3200,49 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 			}
 			r.lastTabClick = tabClick{id: props.ID, index: int32(i), when: now, bounds: bounds}
 		}
+		isSelected = int32(i) == selected
+		if isSelected && props.SelectedTabBounds != nil {
+			*props.SelectedTabBounds = tab
+		}
 		if !itemDisabled {
 			if _, middle := r.consumeMouseButtonPoint(MouseButtonMiddle, intersectRectangles(tab, bounds)); middle && props.MiddleClickedIndex != nil {
 				*props.MiddleClickedIndex = int32(i)
 			}
 		}
-		fill, textColor, border := theme.surface, theme.icon, theme.border
 		hovered := !itemDisabled && r.pointerCanReach(intersectRectangles(tab, bounds))
-		if isSelected || int32(i) == selected {
-			fill, textColor = theme.buttonHover, theme.text
-		} else if hovered {
-			fill, textColor = theme.button, theme.text
-		}
+		tabState := ButtonStateNormal
 		if itemDisabled {
-			textColor = r.Fade(textColor, 0.45)
+			tabState = ButtonStateDisabled
+		} else if pressed {
+			tabState = ButtonStatePressed
+		} else if hovered {
+			tabState = ButtonStateHover
+		} else if isSelected {
+			tabState = ButtonStateSelected
 		}
-		if focused && int32(i) == selected {
-			border = theme.focus
+		tabFrame := simpleStyleFrame(func() ButtonTone {
+			if isSelected {
+				return ButtonToneAccent
+			}
+			return ButtonToneNeutral
+		}(), tabState, itemDisabled, isSelected, StyleSheet_StyleKindTab())
+		closeState := ButtonStateNormal
+		if itemDisabled {
+			closeState = ButtonStateDisabled
 		}
+		if item.Closeable && !itemDisabled && r.pointerCanReach(closeBounds) {
+			closeState = ButtonStateHover
+		}
+		closeFrame := simpleStyleFrame(ButtonToneNeutral, closeState, itemDisabled, false, StyleSheet_StyleKindTabClose())
+		paint := TabBar_TabBarPaintFor(barFrame, tabFrame, closeFrame)
 		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: tab, Clip: bounds, HasClip: true,
-			Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: fill,
-			BorderColor: border, TextColor: textColor, FontSize: font, ID: props.ID,
-			Disabled: itemDisabled, Pressed: int32(i) == selected, Focused: focused && int32(i) == selected, Row: int32(i)})
+			BorderWidth: paint.BorderWidth, Radius: paint.Radius,
+			AmbientColor: unpackRGBA(paint.BarColor), FocusColor: unpackRGBA(paint.FocusColor), Bounds: tab, Clip: bounds, HasClip: true,
+			Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: unpackRGBA(paint.TabColor),
+			BorderColor: unpackRGBA(paint.TabBorderColor), TextColor: unpackRGBA(paint.TextColor), FontSize: font, ID: props.ID,
+			Disabled: itemDisabled, Pressed: isSelected, Focused: focused && isSelected, Row: int32(i)})
 		if item.Closeable {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Clip: bounds, HasClip: true, Text: "×", Color: textColor,
+			r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Clip: bounds, HasClip: true, Text: "×", Color: unpackRGBA(paint.CloseColor),
 				FontSize: font, Disabled: itemDisabled, Pressed: closed, Row: int32(i)})
 		}
 	}
@@ -2998,7 +3255,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 					r.tabDrag = tabDrag{active: true, id: token, from: int32(i), bounds: bounds}
 					break
 				}
-				x += width
+				x += width + float32(tabGap)
 			}
 		}
 		if r.tabDrag.active && r.tabDrag.id == token && r.tabDrag.bounds == bounds && r.mouseReleased[MouseButtonLeft] {
@@ -3010,7 +3267,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 					break
 				}
 				to = int32(i)
-				x += width
+				x += width + float32(tabGap)
 			}
 			if to != r.tabDrag.from {
 				*props.ReorderedFromIndex, *props.ReorderedToIndex = r.tabDrag.from, to
@@ -3050,21 +3307,26 @@ func fitTabLabel(label string, maxWidth float32, fontSize int32) string {
 	return string(runes)
 }
 func (r *runtime) Progress(props ProgressProps) {
-	theme := r.theme()
 	bounds := r.layoutRect(props.Bounds)
 	font := int32(Text14)
 	labelW := float32(runtimeTextWidth(props.Label, font))
-	layout := Progress_ProgressLayoutFor(bounds, props.Min, props.Max, props.Value, labelW, 6)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: theme.button})
-	if bounds.Width > 0 && bounds.Height > 0 && layout.Ratio > 0 {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.FillBounds, Color: theme.buttonHover, Selected: true})
+	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 6, 1,
+		simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+			StyleSheet_StyleKindProgress(), 4),
+		simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true,
+			StyleSheet_StyleKindProgress(), 5),
+		simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+			StyleSheet_StyleKindProgress(), 6))
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: unpackRGBA(paint.TrackColor), BorderColor: unpackRGBA(paint.BorderColor), BorderWidth: paint.BorderWidth, Radius: paint.Radius})
+	if bounds.Width > 0 && bounds.Height > 0 && paint.Layout.Ratio > 0 {
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Layout.FillBounds, Color: unpackRGBA(paint.FillColor), Radius: paint.Radius, Selected: true})
 	}
 	if props.Label != "" {
-		textColor := theme.text
-		if layout.LabelOnFill {
-			textColor = theme.background
+		textColor := unpackRGBA(paint.LabelColor)
+		if paint.Layout.LabelOnFill {
+			textColor = unpackRGBA(paint.FilledLabelColor)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.Layout.LabelX, Y: bounds.Y + (bounds.Height-float32(font))/2, Width: labelW, Height: float32(font)}, Text: props.Label, Color: textColor, FontSize: font})
 	}
 }
 
@@ -3074,8 +3336,10 @@ func (r *runtime) Plot(props PlotProps) {
 	if count <= 0 || count > len(props.Values) {
 		count = len(props.Values)
 	}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: mixColor(t.background, t.surface, 0.65), BorderColor: t.border})
+	plotFrame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindPlot())
+	markFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindPlotMark())
+	plotStyle := unpackStyle(plotFrame.Value)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: plotStyle.Background, BorderColor: plotStyle.Border, BorderWidth: plotStyle.BorderWidth})
 	if count == 0 {
 		return
 	}
@@ -3099,18 +3363,17 @@ func (r *runtime) Plot(props PlotProps) {
 		}
 	}
 	plotRange := Plot_PlotRangeFor(props.ScaleMin, props.ScaleMax, minValue, maxValue)
-	markColor := packRGBA(t.buttonHover)
 	if props.Mode == 1 {
 		for i := 0; i < count; i++ {
-			bar := Plot_PlotHistogramBar(props.Bounds, int32(i), int32(count), props.Values[(offset+i)%count], plotRange, markColor)
+			bar := Plot_PlotHistogramBar(props.Bounds, int32(i), int32(count), props.Values[(offset+i)%count], plotRange, markFrame)
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: bar.Bounds, Color: unpackRGBA(bar.Color), Row: int32(i)})
 		}
 	} else if count == 1 {
-		line := Plot_PlotSingleLine(props.Bounds, props.Values[offset], plotRange, markColor)
+		line := Plot_PlotSingleLine(props.Bounds, props.Values[offset], plotRange, markFrame)
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color)})
 	} else {
 		for i := 1; i < count; i++ {
-			line := Plot_PlotLineSegment(props.Bounds, int32(i), int32(count), props.Values[(offset+i-1)%count], props.Values[(offset+i)%count], plotRange, markColor)
+			line := Plot_PlotLineSegment(props.Bounds, int32(i), int32(count), props.Values[(offset+i-1)%count], props.Values[(offset+i)%count], plotRange, markFrame)
 			r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color), Row: int32(i - 1)})
 		}
 	}
@@ -3122,7 +3385,7 @@ func (r *runtime) Plot(props PlotProps) {
 	if props.Overlay != "" {
 		overlayWidth = float32(runtimeTextWidth(props.Overlay, Text14))
 	}
-	text := Plot_PlotTextPaintFor(props.Bounds, labelWidth, overlayWidth, 1, packRGBA(t.text), props.Label != "", props.Overlay != "")
+	text := Plot_PlotTextPaintFor(props.Bounds, labelWidth, overlayWidth, 1, plotFrame, props.Label != "", props.Overlay != "")
 	if props.Label != "" {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), FontSize: Text14})
 	}
@@ -3468,26 +3731,44 @@ func (r *runtime) Drag(props DragProps) bool {
 }
 
 func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, id, component int32) {
-	t := r.theme()
-	color := t.button
-	textColor := t.text
+	pressed := r.drag.active && r.drag.token == id*16+component+1
+	state := ButtonStateNormal
 	if disabled {
-		color, textColor = t.surface, t.icon
+		state = ButtonStateDisabled
+	} else if pressed {
+		state = ButtonStatePressed
+	} else if focused {
+		state = ButtonStateFocus
 	}
-	border := t.border
-	if focused {
-		border = t.focus
+	props := ButtonProps{
+		Bounds:   bounds,
+		Label:    text,
+		ID:       id,
+		Tone:     ButtonToneNeutral,
+		Emphasis: ButtonEmphasisSoft,
+		Size:     ControlSizeMedium,
+		Disabled: disabled,
 	}
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Text: text, Color: color, BorderColor: border, TextColor: textColor, FontSize: Text14, ID: id, Row: component, Disabled: disabled, Pressed: r.drag.active && r.drag.token == id*16+component+1, Focused: focused})
+	frame := simpleStyleFrame(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindTextField())
+	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
+	button := Button_BuildFrame(props, ButtonInput{}, frame, InteractionMotion{},
+		Rectangle{}, packRGBA(surface.Background), 1, Text14, Text14)
+	style := unpackStyle(button.Appearance.Value)
+	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button,
+		Opacity: 1, BorderWidth: style.BorderWidth, Radius: style.Radius,
+		Material: MaterialKind(style.Material), FillStates: styleFill(style),
+		FillStatesValid: true, AmbientColor: surface.Background, FocusColor: style.Focus,
+		Bounds: bounds, Text: text, Color: style.Background, BorderColor: style.Border,
+		TextColor: style.Foreground, FontSize: Text14, ID: id, Row: component,
+		Disabled: disabled, Pressed: pressed, Focused: focused})
 }
 
 func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 	if label == "" {
 		return
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: r.theme().text, FontSize: Text14})
+	style := defaultTextStyle(Text14)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: style.Foreground, FontSize: Text14})
 }
 
 func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID int32, formatted string, disabled bool) (*numericInputState, bool, bool) {
@@ -3693,33 +3974,49 @@ func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maxim
 }
 
 func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, disabled, vertical, focused bool, id, component int32) {
-	t := r.theme()
-	base, accent, textColor := t.button, t.buttonHover, t.text
+	hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, bounds)
+	state := ButtonStateNormal
 	if disabled {
-		base, accent, textColor = t.surface, t.icon, t.icon
+		state = ButtonStateDisabled
+	} else if focused {
+		state = ButtonStateFocus
+	} else if hovered {
+		state = ButtonStateHover
 	}
-	border := t.border
+	trackFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindSlider(), 4)
+	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, state, disabled, true, StyleSheet_StyleKindSlider(), 5)
+	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindSlider(), 6)
+	trackStyle := unpackStyle(trackFrame.Value)
+	activeStyle := unpackStyle(activeFrame.Value)
+	labelStyle := unpackStyle(labelFrame.Value)
+	trackOp := styleFrameRectOp(bounds, Rectangle{}, trackFrame)
+	trackOp.ID = id
+	trackOp.Row = component
+	trackOp.Disabled = disabled
+	trackOp.Focused = focused
+	trackOp.Hovered = hovered
 	if focused {
-		border = t.focus
+		trackOp.BorderColor = trackOp.FocusColor
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: base, BorderColor: border, ID: id, Row: component, Disabled: disabled, Focused: focused})
+	r.record(trackOp)
 	if vertical {
 		fill := Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height*(1-ratio), Width: bounds.Width, Height: bounds.Height * ratio}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: accent, ID: id, Row: component, Selected: true, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: activeStyle.Background, BorderColor: activeStyle.Border, ID: id, Row: component, Selected: true, Disabled: disabled})
 		y := bounds.Y + bounds.Height*(1-ratio)
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: y, Width: bounds.Width}, Color: textColor, ID: id, Row: component})
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: y, Width: bounds.Width}, Color: trackStyle.Foreground, ID: id, Row: component})
 	} else {
 		fill := Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * ratio, Height: bounds.Height}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: accent, ID: id, Row: component, Selected: true, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: fill, Color: activeStyle.Background, BorderColor: activeStyle.Border, ID: id, Row: component, Selected: true, Disabled: disabled})
 		x := bounds.X + bounds.Width*ratio
-		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: textColor, ID: id, Row: component})
+		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: trackStyle.Foreground, ID: id, Row: component})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(Text14))/2, Width: bounds.Width - 12, Height: float32(Text14)}, Text: text, Color: textColor, FontSize: Text14, ID: id, Row: component})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(Text14))/2, Width: bounds.Width - 12, Height: float32(Text14)}, Text: text, Color: labelStyle.Foreground, FontSize: Text14, ID: id, Row: component})
 }
 
-func (r *runtime) drawSliderLabel(bounds Rectangle, label string) {
+func (r *runtime) drawSliderLabel(bounds Rectangle, label string, id int32) {
 	if label != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: r.theme().text, FontSize: Text14})
+		style := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: style.Foreground, FontSize: Text14, ID: id})
 	}
 }
 
@@ -3768,7 +4065,7 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
 		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
 	}
-	r.drawSliderLabel(props.Bounds, props.Label)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
 	return changed
 }
 
@@ -3817,7 +4114,7 @@ func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
 		r.drawSliderCell(cell, ratio, fmt.Sprintf(format, props.Values[i]), props.Disabled, vertical, focused, props.ID, int32(i))
 	}
-	r.drawSliderLabel(props.Bounds, props.Label)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
 	return changed
 }
 
@@ -3994,7 +4291,7 @@ func (r *runtime) inputFloat(props inputFloatProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
 	return changed
 }
 
@@ -4030,7 +4327,7 @@ func (r *runtime) inputInt(props inputIntProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
 	return changed
 }
 
@@ -4066,7 +4363,7 @@ func (r *runtime) inputDouble(props inputDoubleProps) bool {
 			changed = true
 		}
 	}
-	r.drawSliderLabel(props.Bounds, props.Label)
+	r.drawSliderLabel(props.Bounds, props.Label, props.ID)
 	return changed
 }
 
@@ -4202,6 +4499,141 @@ func (r *runtime) dropdownFromProps(p DropdownProps) bool {
 	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex)
 }
 
+func (r *runtime) GetSegmentedControlHeight(props SegmentedControlProps) int32 {
+	props.Bounds = r.layoutRect(props.Bounds)
+	return r.segmentedControlHeight(props)
+}
+
+func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControlResult {
+	props.Bounds = r.layoutRect(props.Bounds)
+	selected := int32(-1)
+	if props.SelectedIndex != nil {
+		selected = *props.SelectedIndex
+	}
+	result := SegmentedControlResult{
+		SelectedIndex: selected,
+		ClickedIndex:  -1,
+		Height:        r.segmentedControlHeight(props),
+	}
+	count := r.segmentedControlCount(props)
+	metrics := r.segmentedControlMetrics(props)
+	if count <= 0 || props.Bounds.Width <= 0 || metrics.RowHeight <= 0 {
+		return result
+	}
+	rowStart := 0
+	rowWidth := int32(0)
+	rowCount := 0
+	y := int32(props.Bounds.Y)
+	for i := 0; i <= count; i++ {
+		endRow := i == count
+		itemWidth := int32(0)
+		if !endRow {
+			itemWidth = r.segmentedOptionWidth(props.Options[i], props.Font, metrics)
+		}
+		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
+		if !endRow && !SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
+			rowWidth = nextWidth
+			rowCount++
+			continue
+		}
+		if rowCount > 0 {
+			row := SegmentedControl_SegmentedRowFor(props.Bounds.X, props.Bounds.Width, y,
+				int32(rowStart), int32(rowCount), rowWidth, props.Wrap, metrics)
+			for j := 0; j < rowCount; j++ {
+				index := rowStart + j
+				option := props.Options[index]
+				bounds := Rectangle{
+					X:      float32(row.X + int32(j)*(row.ButtonWidth+metrics.Gap)),
+					Y:      float32(row.Y),
+					Width:  float32(row.ButtonWidth),
+					Height: float32(metrics.RowHeight),
+				}
+				pressed := r.segmentedButtonAt(ButtonProps{
+					Bounds:   bounds,
+					ID:       props.ID*1000 + int32(index) + 1,
+					Label:    option.Label,
+					Font:     r.segmentedControlFont(props.Font),
+					Pill:     true,
+					Selected: int32(index) == selected,
+					Disabled: option.Disabled || r.contentDisabled(),
+				})
+				if pressed {
+					result.ClickedIndex = int32(index)
+					result.SelectedIndex = int32(index)
+					if selected != int32(index) {
+						result.Changed = 1
+					}
+					if props.SelectedIndex != nil {
+						*props.SelectedIndex = int32(index)
+					}
+				}
+			}
+			y += metrics.RowHeight + metrics.Gap
+		}
+		rowStart = i
+		rowWidth = itemWidth
+		rowCount = 1
+	}
+	return result
+}
+
+func (r *runtime) segmentedButtonAt(props ButtonProps) bool {
+	frame, pressed := r.surfaceButtonFrameForKind(props, Rectangle{}, false,
+		StyleSheet_StyleKindSegmentedControl())
+	r.record(frame)
+	return pressed
+}
+
+func (r *runtime) segmentedControlHeight(props SegmentedControlProps) int32 {
+	count := r.segmentedControlCount(props)
+	metrics := r.segmentedControlMetrics(props)
+	if count <= 0 || metrics.RowHeight <= 0 {
+		return 0
+	}
+	if props.Bounds.Width <= 0 || !props.Wrap {
+		return metrics.RowHeight
+	}
+	rows := int32(1)
+	rowWidth := int32(0)
+	for i := 0; i < count; i++ {
+		itemWidth := r.segmentedOptionWidth(props.Options[i], props.Font, metrics)
+		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
+		if SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
+			rows++
+			rowWidth = itemWidth
+		} else {
+			rowWidth = nextWidth
+		}
+	}
+	return SegmentedControl_SegmentedHeightForRows(rows, metrics.RowHeight, metrics.Gap)
+}
+
+func (r *runtime) segmentedControlCount(props SegmentedControlProps) int {
+	count := len(props.Options)
+	if props.OptionCount > 0 && int(props.OptionCount) < count {
+		count = int(props.OptionCount)
+	}
+	return count
+}
+
+func (r *runtime) segmentedControlMetrics(props SegmentedControlProps) SegmentedMetrics {
+	return SegmentedControl_SegmentedDefaultMetrics(props.Gap, props.Height,
+		props.MinItemWidth, props.MaxItemWidth, r.Scale(6), r.Scale(30),
+		r.Scale(72), r.Scale(180))
+}
+
+func (r *runtime) segmentedControlFont(font int32) int32 {
+	if font > 0 {
+		return font
+	}
+	return Text14
+}
+
+func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, metrics SegmentedMetrics) int32 {
+	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidth(option.Label,
+		r.segmentedControlFont(font))), metrics, r.Scale(20))
+}
+
 func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
 	if _, openPopup := r.popupPanels[id]; openPopup {
 		return !r.popupKeyboardCapturesOwner(id, true)
@@ -4319,7 +4751,6 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}()
 	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal)
 	surface.ID = id
-	surface.Radius = r.themeMetrics().RadiusLarge + 2
 	r.record(surface)
 	if r.dropdownOffsets == nil {
 		r.dropdownOffsets = make(map[int32]*int32)
@@ -4402,7 +4833,8 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), FontID: fontID, ID: id, Row: int32(i), Selected: selectedRow})
 		if selectedRow {
 			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: IconCheck,
-				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}})
+				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon},
+				Row:    int32(i), Selected: true})
 		}
 	}
 	return changed
@@ -4501,7 +4933,7 @@ func (r *runtime) Heading(props HeadingProps) {
 	}
 	color := props.Color
 	if color.A == 0 {
-		color = r.theme().text
+		color = defaultTextStyle(font).Foreground
 	}
 	bounds := props.Bounds
 	if bounds.Width <= 0 {
@@ -4520,7 +4952,7 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	}
 	color := props.Color
 	if color.A == 0 {
-		color = r.theme().text
+		color = defaultTextStyle(font).Foreground
 	}
 	width := int32(props.Bounds.Width)
 	if width <= 0 {
@@ -4545,8 +4977,15 @@ func (r *runtime) Link(props LinkProps) bool {
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)
 	}
-	theme := r.theme()
-	appearance := Link_ResolveLinkAppearance(packRGBA(props.Color), packRGBA(props.HoverColor), packRGBA(theme.link), packRGBA(theme.linkHover), packRGBA(theme.textDisabled), false, props.Disabled)
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	}
+	frame := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, false, StyleSheet_StyleKindLink())
+	if !props.Disabled && props.Color.A != 0 {
+		frame.Value.Foreground = packRGBA(props.Color)
+	}
+	appearance := Link_ResolveLinkAppearance(frame, false, props.Disabled)
 	color := unpackRGBA(appearance.Color)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
@@ -4656,7 +5095,11 @@ func (r *runtime) Image(props ImageProps) {
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	color := spec.Color
 	if color.A == 0 {
-		color = r.theme().text
+		font := spec.Font
+		if font <= 0 {
+			font = Text16
+		}
+		color = defaultTextStyle(font).Foreground
 	}
 	textY := int32(0)
 	if y != nil {
@@ -4677,21 +5120,18 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 }
 
 type iconActionProps struct {
-	Bounds          Rectangle
-	Icon            Texture2D
-	IconType        int32
-	IconSize        int32
-	IconPadding     int32
-	FocusID         int32
-	Disabled        bool
-	Background      Color
-	HoverBackground Color
-	IconColor       Color
-	Border          Color
+	Bounds      Rectangle
+	Icon        Texture2D
+	IconType    int32
+	IconSize    int32
+	IconPadding int32
+	FocusID     int32
+	Disabled    bool
+	StyleKind   int32
+	Role        int32
 }
 
 func (r *runtime) iconAction(props iconActionProps) bool {
-	theme := r.theme()
 	props.Bounds = r.layoutRect(props.Bounds)
 	padding := props.IconPadding
 	if padding <= 0 {
@@ -4709,44 +5149,30 @@ func (r *runtime) iconAction(props iconActionProps) bool {
 			size = 1
 		}
 	}
-	background := props.Background
-	if background.A == 0 {
-		background = theme.button
+	styleKind := props.StyleKind
+	if styleKind == 0 {
+		styleKind = StyleSheet_StyleKindButton()
 	}
-	hoverBackground := props.HoverBackground
-	if hoverBackground.A == 0 {
-		hoverBackground = theme.buttonHover
+	role := props.Role
+	if role == 0 {
+		role = StyleSheet_StyleAny()
 	}
-	border := props.Border
-	if border.A == 0 {
-		border = theme.border
-	}
-	iconColor := props.IconColor
-	if iconColor.A == 0 {
-		iconColor = theme.icon
-	}
-	pressed := false
-	if !props.Disabled {
-		pressed = r.consumeTap(props.Bounds)
-	}
-	fill := background
-	if pressed {
-		fill = hoverBackground
-	}
-	if props.Disabled {
-		fill = mixColor(theme.surface, background, 0.45)
-		iconColor = mixColor(theme.icon, theme.surface, 0.55)
-	}
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: props.Bounds, Color: fill, BorderColor: border, ID: props.FocusID, Disabled: props.Disabled, Pressed: pressed})
+	frame, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{
+		Bounds:   props.Bounds,
+		ID:       props.FocusID,
+		Disabled: props.Disabled,
+		Tone:     ButtonToneNeutral,
+		Emphasis: ButtonEmphasisSoft,
+		Size:     ControlSizeMedium,
+	}, Rectangle{}, false, styleKind, role)
+	r.record(frame)
 	iconX := int32(props.Bounds.X) + (int32(props.Bounds.Width)-size)/2
 	iconY := int32(props.Bounds.Y) + (int32(props.Bounds.Height)-size)/2
 	iconType := props.IconType
 	if iconType == 0 && props.Icon.ID != 0 {
 		iconType = int32(props.Icon.ID)
 	}
-	r.Icon(props.FocusID, iconX, iconY, size, iconType, iconColor)
+	r.Icon(props.FocusID, iconX, iconY, size, iconType, unpackRGBA(frame.Button.Foreground))
 	return pressed
 }
 func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max int32, value *int32, rest ...any) bool {
@@ -4756,7 +5182,6 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 	if max < min {
 		min, max = max, min
 	}
-	theme := r.theme()
 	*value = clamp32(*value, min, max)
 	changed := false
 	if tapX, tapped := r.consumeTapPoint(bounds); tapped {
@@ -4775,76 +5200,158 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		changed = *value != old
 	}
 	font := Text16
-	trackY := bounds.Y + 28
-	track := Rectangle{X: bounds.X, Y: trackY, Width: bounds.Width, Height: 8}
 	valueText := fmt.Sprintf("%d%s", *value, sliderSuffix(rest...))
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: theme.text, FontSize: font, ID: id})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: theme.text, FontSize: font, ID: id})
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: track, Color: mixColor(theme.background, theme.button, 0.45), BorderColor: theme.border, ID: id})
-	fillW := float32(0)
+	ratio := float32(0)
 	if max > min {
-		fillW = float32(*value-min) / float32(max-min) * bounds.Width
+		ratio = float32(*value-min) / float32(max-min)
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{X: track.X, Y: track.Y, Width: fillW, Height: track.Height}, Color: theme.buttonHover, ID: id, Selected: true})
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: bounds.X + fillW - 6, Y: trackY - 7, Width: 12, Height: 22}, Color: theme.button, BorderColor: theme.border, ID: id, Pressed: changed})
+	trackFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 4)
+	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSlider(), 5)
+	thumbFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSliderThumb())
+	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
+	paint := Slider_SliderPaintFor(SliderSpec{
+		Bounds:      Rectangle{X: bounds.X, Y: bounds.Y + 18, Width: bounds.Width, Height: bounds.Height - 18},
+		Ratio:       ratio,
+		Scale:       1,
+		Track:       trackFrame,
+		ActiveTrack: activeFrame,
+		Thumb:       thumbFrame,
+	})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, FontSize: font, ID: id})
+	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
+	trackOp.ID = id
+	r.record(trackOp)
+	activeOp := styleFrameRectOp(paint.ActiveBounds, paint.TrackBounds, paint.ActiveTrack)
+	activeOp.ID = id
+	activeOp.Selected = true
+	r.record(activeOp)
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY+2, paint.ThumbRadius+1), Color: unpackRGBA(paint.ThumbShadowColor), ID: id})
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Color: unpackRGBA(paint.ThumbFillColor), ID: id, Pressed: changed})
+	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX-3, paint.ThumbY-4, paint.ThumbRadius*0.45), Color: unpackRGBA(paint.ThumbHighlightColor), ID: id})
+	r.record(FrameOp{Kind: FrameOpRing, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Radius: paint.ThumbRadius - 1, Color: unpackRGBA(paint.ThumbEdgeColor), ID: id})
 	return changed
 }
 func (r *runtime) Toggle(props ToggleProps) bool {
 	if props.Value == nil {
 		return false
 	}
-	theme := r.theme()
 	bounds := props.Bounds
-	if bounds.Height < 34 {
-		bounds.Height = 34
-	}
-	minHalf := maxInt(runtimeTextWidth(props.OffLabel, Text16), runtimeTextWidth(props.OnLabel, Text16)) + 16
-	minW := float32(minHalf*2 + 6)
-	if bounds.Width < minW {
+	hasLabels := props.OffLabel != "" || props.OnLabel != ""
+	offWidth := int32(runtimeTextWidth(props.OffLabel, Text16))
+	onWidth := int32(runtimeTextWidth(props.OnLabel, Text16))
+	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
 		bounds.Width = minW
 	}
+	if minH := float32(Toggle_ToggleMinimumHeight(1)); bounds.Height < minH {
+		bounds.Height = minH
+	}
 	bounds = r.layoutRect(bounds)
-	pressed, focused := r.focusablePress(bounds, props.ID, props.Disabled)
-	if pressed {
+	disabled := props.Disabled || r.contentDisabled()
+	input := r.ReadActivation(bounds, props.ID, !disabled)
+	if input.Activated {
 		if *props.Value == 0 {
 			*props.Value = 1
 		} else {
 			*props.Value = 0
 		}
 	}
-	border := theme.border
-	if focused {
-		border = theme.focus
+	checked := *props.Value != 0
+	state := ButtonStateNormal
+	if disabled {
+		state = ButtonStateDisabled
+	} else if input.Pressed {
+		state = ButtonStatePressed
+	} else if input.Focused {
+		state = ButtonStateFocus
+	} else if input.Hovered {
+		state = ButtonStateHover
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.65), BorderColor: border, ID: props.ID, Focused: focused, Disabled: props.Disabled})
-	activeW := (bounds.Width - 6) / 2
-	activeX := bounds.X + 3
-	if *props.Value != 0 {
-		activeX = bounds.X + bounds.Width - activeW - 3
+	trackTone := ButtonToneNeutral
+	trackRole := int32(4)
+	if checked && !hasLabels {
+		trackTone = ButtonToneAccent
+		trackRole = 5
 	}
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: Rectangle{X: activeX, Y: bounds.Y + 3, Width: activeW, Height: bounds.Height - 6}, Color: theme.button, BorderColor: theme.buttonHover, ID: props.ID, Pressed: pressed, Selected: *props.Value != 0, Disabled: props.Disabled})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: props.OffLabel, Color: theme.text, FontSize: Text16, ID: props.ID, Disabled: props.Disabled})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width/2, Y: bounds.Y + 6, Width: bounds.Width / 2, Height: bounds.Height}, Text: props.OnLabel, Color: theme.text, FontSize: Text16, ID: props.ID, Disabled: props.Disabled})
-	return pressed
+	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindToggle(), 6)
+	paint := Toggle_TogglePaintFor(ToggleSpec{
+		Bounds:    bounds,
+		Checked:   checked,
+		Enabled:   !disabled,
+		Hovered:   input.Hovered,
+		Pressed:   input.Pressed,
+		Focused:   input.Focused,
+		HasLabels: hasLabels,
+		OffWidth:  offWidth,
+		OnWidth:   onWidth,
+		Font:      Text16,
+		Scale:     1,
+		Track:     simpleStyleFrameWithRole(trackTone, state, disabled, checked, StyleSheet_StyleKindToggle(), trackRole),
+		Active:    simpleStyleFrameWithRole(ButtonToneAccent, state, disabled, checked, StyleSheet_StyleKindToggle(), 5),
+		Thumb:     simpleStyleFrame(trackTone, state, disabled, checked, StyleSheet_StyleKindToggleThumb()),
+	})
+	if paint.HasLabels {
+		labelStyle := unpackStyle(labelFrame.Value)
+		labelColor := Surface_Opacity(packRGBA(labelStyle.Foreground), labelStyle.Opacity)
+		if checked {
+			paint.OffLabelColor = labelColor
+		} else {
+			paint.OnLabelColor = labelColor
+		}
+	}
+	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
+	trackOp.ID = props.ID
+	trackOp.Focused = input.Focused
+	trackOp.Hovered = input.Hovered
+	trackOp.Pressed = input.Pressed
+	trackOp.Selected = checked
+	trackOp.Disabled = disabled
+	if input.Focused {
+		trackOp.BorderColor = trackOp.FocusColor
+	}
+	r.record(trackOp)
+	if paint.HasLabels {
+		activeOp := styleFrameRectOp(paint.ActiveBounds, paint.TrackBounds, paint.Active)
+		activeOp.ID = props.ID
+		activeOp.Pressed = input.Pressed
+		activeOp.Selected = true
+		activeOp.Disabled = disabled
+		r.record(activeOp)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), FontSize: Text16, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), FontSize: Text16, ID: props.ID, Disabled: disabled})
+	} else {
+		if input.Hovered && !disabled {
+			r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+5), Color: unpackRGBA(paint.ThumbGlowColor), ID: props.ID, Hovered: true})
+		}
+		r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY+2, paint.ThumbRadius+1), Color: unpackRGBA(paint.ThumbShadowColor), ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Color: unpackRGBA(paint.ThumbFillColor), ID: props.ID, Selected: checked, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX-3, paint.ThumbY-4, paint.ThumbRadius*0.45), Color: unpackRGBA(paint.ThumbHighlightColor), ID: props.ID, Disabled: disabled})
+		edgeRadius := paint.ThumbRadius - 1
+		if edgeRadius < 0 {
+			edgeRadius = 0
+		}
+		r.record(FrameOp{Kind: FrameOpRing, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Radius: edgeRadius, Color: unpackRGBA(paint.ThumbEdgeColor), ID: props.ID, Selected: checked, Disabled: disabled})
+	}
+	return input.Activated
+}
+
+func circleBounds(x, y, radius float32) Rectangle {
+	return Rectangle{X: x - radius, Y: y - radius, Width: radius * 2, Height: radius * 2}
 }
 func (r *runtime) Modal(props ModalProps) int32 {
 	count := int(props.ActionCount)
 	if count <= 0 || count > len(props.Actions) {
 		count = len(props.Actions)
 	}
-	labels := make([]string, 0, count)
+	actions := make([]ModalAction, 0, count)
 	for i := 0; i < count; i++ {
-		labels = append(labels, props.Actions[i].Label)
+		actions = append(actions, props.Actions[i])
 	}
 	fieldHeight := float32(0)
 	if props.Text != nil && props.CursorPosition != nil && props.Focused != nil {
 		fieldHeight = 38
 	}
-	result, field := r.drawActionModal(props.Title, props.Message, labels, fieldHeight)
+	result, field := r.drawActionModal(props.Title, props.Message, actions, fieldHeight)
 	commit := false
 	if fieldHeight > 0 {
 		focusID := props.FocusID
@@ -4868,50 +5375,80 @@ func (r *runtime) Modal(props ModalProps) int32 {
 	return result
 }
 
-func (r *runtime) drawActionModal(title, message string, labels []string, fieldHeight float32) (int32, Rectangle) {
-	t := r.theme()
+func defaultStyleFrame(styleKind int32) StyleFrame {
+	value := ResolveActiveStyle(minimalControlStyleData(), StyleSheet_StyleDefaultFacts(styleKind), int32(ButtonStateNormal))
+	return StyleFrame{Value: value, Fill: Surface_FillState(value.Fields, value.Background, value.BackgroundEnd)}
+}
+
+func defaultTextStyle(font int32) Style {
+	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
+		StyleSheet_StyleTextFacts(0, 0, StyleSheet_StyleAny(), int32(ButtonStateNormal)),
+		int32(ButtonStateNormal))
+	return unpackStyle(value)
+}
+
+func modalActionLabel(action ModalAction, index, count int) string {
+	if action.Label != "" {
+		return action.Label
+	}
+	if count == 1 {
+		return "OK"
+	}
+	if index == 0 {
+		return "Cancel"
+	}
+	return "OK"
+}
+
+func (r *runtime) drawActionModal(title, message string, actions []ModalAction, fieldHeight float32) (int32, Rectangle) {
 	metrics := Modal_ModalMetricsFor(1)
 	messageHeight := int32(0)
 	if message != "" {
 		messageHeight = 24
 	}
 	buttonRows := int32(0)
-	if len(labels) > 0 {
+	if len(actions) > 0 {
 		buttonRows = 1
 	}
 	layout := Modal_ModalLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), 0, messageHeight, buttonRows, fieldHeight > 0, metrics)
 	panel := layout.Panel
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: Color{A: 180}})
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: t.text, FontSize: Text20})
+	panelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindModal(), 2)
+	panelStyle := unpackStyle(panelFrame.Value)
+	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindModal(), 16).Value)
+	messageStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindModal(), 20).Value)
+	scrimStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindModal(), 19).Value)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
+	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, FontSize: int32(titleStyle.FontSize)})
 	if message != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: t.text, FontSize: Text16})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, FontSize: int32(messageStyle.FontSize)})
 	}
 
 	result := int32(0)
 	buttonW := float32(metrics.ActionMinWidth)
 	gap := float32(metrics.ButtonGap)
 	buttonY := float32(layout.ButtonY)
-	buttonX := panel.X + panel.Width - float32(metrics.PaddingX) - float32(len(labels))*buttonW - float32(maxInt(0, len(labels)-1))*gap
-	for i, label := range labels {
-		if label == "" {
-			if len(labels) == 1 {
-				label = "OK"
-			} else if i == 0 {
-				label = "Cancel"
-			} else {
-				label = "OK"
-			}
-		}
+	buttonX := panel.X + panel.Width - float32(metrics.PaddingX) - float32(len(actions))*buttonW - float32(maxInt(0, len(actions)-1))*gap
+	for i, action := range actions {
+		label := modalActionLabel(action, i, len(actions))
 		bounds := Rectangle{X: buttonX + float32(i)*(buttonW+gap), Y: buttonY, Width: buttonW, Height: float32(metrics.ButtonHeight)}
-		pressed := r.consumeTap(bounds)
-		fill := t.button
-		if i == len(labels)-1 {
-			fill = t.buttonHover
+		tone := action.Tone
+		emphasis := action.Emphasis
+		if emphasis == 0 {
+			emphasis = ButtonEmphasisSoft
 		}
-		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-			BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-			AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: bounds, Text: label, Color: fill, BorderColor: t.border, TextColor: t.text, FontSize: Text14, Pressed: pressed})
+		if tone == 0 && i == len(actions)-1 {
+			tone = ButtonToneAccent
+		}
+		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{Bounds: bounds, Label: label,
+			Tone: tone, Emphasis: emphasis, Disabled: action.Disabled, Font: Text14},
+			panel, false, StyleSheet_StyleKindModal(), 17)
+		button.AmbientColor = panelStyle.Background
+		r.record(button)
 		if pressed {
 			result = int32(i + 1)
 		}
@@ -4933,21 +5470,27 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	if height <= 0 {
 		height = 44
 	}
-	t := r.theme()
 	metrics := TitleBar_TitleBarMetricsFor(1)
 	layout := TitleBar_TitleBarLayoutFor(r.GetScreenWidth(), height,
 		props.HasLeadingAction, props.HasDropdown, props.Dropdown.Height,
 		props.Dropdown.MinWidth, metrics)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: t.surface, BorderColor: t.border})
+	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindTitleBar(), 1)
+	r.record(styleFrameRectOp(layout.Bounds, Rectangle{}, surfaceFrame))
 	clicked := int32(0)
 	if props.HasLeadingAction {
-		if !r.contentDisabled() && r.consumeTap(layout.LeadingBounds) {
+		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{
+			Bounds:   layout.LeadingBounds,
+			Disabled: r.contentDisabled(),
+			Tone:     ButtonToneNeutral,
+			Emphasis: ButtonEmphasisSoft,
+			Size:     ControlSizeMedium,
+		}, layout.Bounds, false, StyleSheet_StyleKindTitleBar(), 17)
+		if pressed {
 			clicked = 1
 		}
-		r.record(FrameOp{Kind: FrameOpButton, Bounds: layout.LeadingBounds,
-			Color: t.surface, BorderColor: t.border, TextColor: t.text,
-			IconSize: float32(metrics.LeadingIconSize),
-			Pressed:  clicked != 0, Disabled: r.contentDisabled()})
+		button.IconSize = float32(metrics.LeadingIconSize)
+		r.record(button)
 	}
 	if props.HasDropdown {
 		if !props.Dropdown.Disabled {
@@ -4972,10 +5515,12 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	}
 	titleW := runtimeTextWidth(props.Title, Text20)
 	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
+	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindTitleBar(), 16).Value)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{
 		X: float32(titleX), Y: float32(height-Text20) / 2,
 		Width: float32(titleW), Height: float32(Text20 + 4),
-	}, Text: props.Title, Color: t.text, FontSize: Text20})
+	}, Text: props.Title, Color: titleStyle.Foreground, FontSize: int32(titleStyle.FontSize)})
 	return clicked
 }
 func (r *runtime) NavigationBar(props NavigationBarProps) {
@@ -4986,54 +5531,75 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 	if count == 0 {
 		return
 	}
-	w, h := props.ViewWidth, props.Height
+	w := props.ViewWidth
 	if w <= 0 {
 		w = r.GetScreenWidth()
-	}
-	if h <= 0 {
-		h = 64
 	}
 	viewH := props.ViewHeight
 	if viewH <= 0 {
 		viewH = r.GetScreenHeight()
 	}
-	b := Rectangle{X: float32(props.SideMargin), Y: float32(viewH - props.BottomMargin - h), Width: float32(w - props.SideMargin*2), Height: float32(h)}
-	if b.Width < 1 {
-		b.Width = 1
-	}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
-	itemW := b.Width / float32(count)
+	paint := NavigationBar_NavigationBarPaintFor(NavigationBarSpec{
+		ViewWidth:    w,
+		ViewHeight:   viewH,
+		Count:        int32(count),
+		Height:       props.Height,
+		SideMargin:   props.SideMargin,
+		BottomMargin: props.BottomMargin,
+		IconSize:     props.IconSize,
+		Scale:        1,
+		Bar:          simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindNavigationBar()),
+	})
+	bar := unpackStyle(paint.Bar.Value)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.BarBounds, Color: bar.Background,
+		BorderColor: bar.Border, BorderWidth: bar.BorderWidth, Radius: bar.Radius,
+		Material: bar.Material})
 	for i := 0; i < count; i++ {
 		item := props.Items[i]
-		ib := Rectangle{X: b.X + float32(i)*itemW, Y: b.Y, Width: itemW, Height: b.Height}
-		pressed := !item.Disabled && r.consumeTap(ib)
-		color := t.text
-		if item.Disabled {
-			color = t.icon
+		labelFont := int32(Text14)
+		itemState := checkboxButtonState(false, false, false, item.Disabled)
+		if item.Active && !item.Disabled {
+			itemState = ButtonStateSelected
 		}
-		if item.Active {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: ib, Color: t.button, Selected: true})
+		itemPaint := NavigationBar_NavigationBarItemPaintFor(NavigationBarItemSpec{
+			Bar:         paint,
+			Index:       int32(i),
+			Active:      item.Active,
+			Disabled:    item.Disabled,
+			Hovered:     false,
+			LabelHeight: labelFont + 4,
+			Base:        simpleStyleFrame(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, StyleSheet_StyleKindNavigationBarItem()),
+			Face: simpleStyleFrame(func() ButtonTone {
+				if item.Active {
+					return ButtonToneAccent
+				}
+				return ButtonToneNeutral
+			}(), itemState, item.Disabled, item.Active, StyleSheet_StyleKindNavigationBarItem()),
+		})
+		pressed := !item.Disabled && r.consumeTap(itemPaint.Bounds)
+		if itemPaint.DrawFace {
+			face := unpackStyle(itemPaint.Face.Value)
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: itemPaint.StateBounds, Color: face.Background,
+				BorderColor: face.Border, BorderWidth: face.BorderWidth, Radius: face.Radius,
+				Material: face.Material, Selected: item.Active, Disabled: item.Disabled})
 		}
 		if item.Icon.ID != 0 {
 			tint := props.IconColor
 			if tint.A == 0 {
-				tint = Color{R: 255, G: 255, B: 255, A: 255}
+				tint = unpackRGBA(itemPaint.IconColor)
 			}
 			if item.Disabled {
-				tint.A = uint8(uint32(tint.A) * 150 / 255)
+				tint.A = uint8(uint32(tint.A) * uint32(itemPaint.IconAlpha) / 255)
 			}
-			size := props.IconSize
-			if size <= 0 {
-				size = 26
-			}
-			r.Icon(item.Route, int32(ib.X)+(int32(ib.Width)-size)/2, int32(ib.Y)+6, size, int32(item.Icon.ID), tint)
+			r.Icon(item.Route, int32(itemPaint.IconBounds.X), int32(itemPaint.IconBounds.Y),
+				int32(itemPaint.IconBounds.Width), int32(item.Icon.ID), tint)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: ib.X + 6, Y: ib.Y + (ib.Height-float32(Text14))/2, Width: ib.Width - 12, Height: float32(Text14 + 4)}, Text: item.Label, Color: color, FontSize: Text14, ID: item.Route, Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: itemPaint.LabelBounds, Text: item.Label,
+			Color: unpackRGBA(itemPaint.TextColor), FontSize: labelFont, ID: item.Route,
+			Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
 func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
-	theme := r.theme()
 	result := ToolbarResult{SelectedMenuItem: -1, ClickedAction: -1}
 	if props.Width <= 0 {
 		props.Width = r.GetScreenWidth() - props.X
@@ -5061,22 +5627,24 @@ func (r *runtime) Toolbar(props ToolbarProps) ToolbarResult {
 		Scale:             1,
 	})
 	bounds := layout.Bounds
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: mixColor(theme.background, theme.surface, 0.6)})
-	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
+	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindToolbar(), 1)
+	r.record(styleFrameRectOp(bounds, Rectangle{}, surfaceFrame))
+	dividerStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		StyleSheet_StyleKindToolbar(), 18).Value)
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: dividerStyle.Border})
 	for i := int32(0); i < actionCount; i++ {
 		action := props.Actions[i]
 		if r.iconAction(iconActionProps{
-			Bounds:          Toolbar_ToolbarActionBoundsFor(layout, i, actionCount),
-			Icon:            action.Icon,
-			IconType:        action.IconType,
-			IconSize:        layout.ActionIconSize,
-			IconPadding:     layout.ActionIconPadding,
-			FocusID:         props.ID*100 + int32(i) + 1,
-			Disabled:        action.Disabled,
-			Background:      theme.surface,
-			HoverBackground: theme.buttonHover,
-			IconColor:       theme.icon,
-			Border:          theme.border,
+			Bounds:      Toolbar_ToolbarActionBoundsFor(layout, i, actionCount),
+			Icon:        action.Icon,
+			IconType:    action.IconType,
+			IconSize:    layout.ActionIconSize,
+			IconPadding: layout.ActionIconPadding,
+			FocusID:     props.ID*100 + int32(i) + 1,
+			Disabled:    action.Disabled,
+			StyleKind:   StyleSheet_StyleKindToolbar(),
+			Role:        17,
 		}) {
 			result.ClickedAction = int32(i)
 		}
@@ -5116,9 +5684,8 @@ func resetMenuPath(state *menuNavigation, items []MenuItem) {
 	}
 }
 
-func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *int32) MenuBarResult {
-	theme := r.theme()
-	result := MenuBarResult{OpenIndex: -1}
+func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openIndex *int32) MenuResult {
+	result := MenuResult{OpenIndex: -1}
 	state := r.menuNav(id)
 	metrics := Menu_MenuMetricsFor(1)
 	if bounds.Width <= 0 {
@@ -5189,13 +5756,16 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 			}
 		}
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: theme.surface, BorderColor: theme.border})
-	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: theme.border})
+	barFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, StyleSheet_StyleKindMenu(), 1)
+	barStyle := unpackStyle(barFrame.Value)
+	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: barStyle.Border})
 	x := bounds.X + 4
 	font := Text14
 	for i, menu := range menus {
-		w := Menu_MenuBarItemWidth(int32(runtimeTextWidth(menu.Label, font)), metrics)
-		item := Menu_MenuBarItemBounds(int32(x), bounds, w, metrics)
+		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidth(menu.Label, font)), metrics)
+		item := Menu_MenuGroupItemBounds(int32(x), bounds, w, metrics)
 		if !r.contentDisabled() && r.consumeTap(item) {
 			r.setFocus(id)
 			idx := int32(i)
@@ -5211,10 +5781,25 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 				resetMenuPath(state, limitedMenuItems(menu.Items, menu.ItemCount))
 			}
 		}
-		if open == int32(i) || focused && open < 0 && state.Top == int32(i) {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: item, Color: theme.button})
+		itemSelected := open == int32(i)
+		itemFocused := focused && open < 0 && state.Top == int32(i)
+		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+			if itemSelected {
+				return ButtonStateSelected
+			}
+			if itemFocused {
+				return ButtonStateFocus
+			}
+			return ButtonStateNormal
+		}(), false, itemSelected, StyleSheet_StyleKindMenuItem())
+		itemStyle := unpackStyle(itemFrame.Value)
+		if itemSelected || itemFocused {
+			op := styleFrameRectOp(item, bounds, itemFrame)
+			op.Selected = itemSelected
+			op.Focused = itemFocused
+			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: theme.text, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, FontSize: font})
 		x += float32(w + metrics.BarItemGap)
 	}
 	if open >= 0 && int(open) < len(menus) {
@@ -5225,7 +5810,7 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 		menu := menus[open]
 		menuX := bounds.X + 4
 		for i := 0; i < int(open); i++ {
-			w := Menu_MenuBarItemWidth(int32(runtimeTextWidth(menus[i].Label, font)), metrics)
+			w := Menu_MenuGroupItemWidth(int32(runtimeTextWidth(menus[i].Label, font)), metrics)
 			menuX += float32(w + metrics.BarItemGap)
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
@@ -5244,6 +5829,13 @@ func (r *runtime) MenuBar(id int32, bounds Rectangle, menus []Menu, openIndex *i
 	return result
 }
 
+func limitedMenus(menus []MenuGroup, count int32) []MenuGroup {
+	if count <= 0 || int(count) > len(menus) {
+		return menus
+	}
+	return menus[:count]
+}
+
 func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 	if count <= 0 || int(count) > len(items) {
 		return items
@@ -5252,7 +5844,6 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 }
 
 func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
-	theme := r.theme()
 	font := int32(Text14)
 	metrics := Menu_MenuMetricsFor(1)
 	width := metrics.PanelMinWidth
@@ -5310,27 +5901,47 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			}
 		}
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: theme.surface, BorderColor: theme.border})
+	panelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, StyleSheet_StyleKindMenu(), 2)
+	separatorStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindMenuSeparator()).Value)
+	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
 	for i, item := range items {
 		row := Menu_MenuRowBounds(panel, int32(i), metrics)
 		if item.Kind == MenuSeparator {
-			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16}, Color: theme.border})
+			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 8, Y: row.Y + row.Height/2, Width: row.Width - 16}, Color: separatorStyle.Border})
 			continue
 		}
 		hovered := !r.contentDisabled() && pointInRect(r.mousePos.X, r.mousePos.Y, row)
 		selected := keyboard && len(state.Path) > depth && state.Path[depth] == i
+		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+			if item.Disabled {
+				return ButtonStateDisabled
+			}
+			if hovered {
+				return ButtonStateHover
+			}
+			if selected {
+				return ButtonStateSelected
+			}
+			return ButtonStateNormal
+		}(), item.Disabled, selected, StyleSheet_StyleKindMenuItem())
+		itemStyle := unpackStyle(itemFrame.Value)
 		if hovered && !item.Disabled {
 			if len(state.Path) > depth {
 				state.Path[depth] = i
 				state.Path = state.Path[:depth+1]
 			}
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.buttonHover})
+			op := styleFrameRectOp(row, panel, itemFrame)
+			op.Hovered = true
+			r.record(op)
 			if item.Kind == MenuSubmenu {
 				r.openSubmenus[id] = item.ID
 			}
 		}
 		if selected && !hovered {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: theme.buttonHover})
+			op := styleFrameRectOp(row, panel, itemFrame)
+			op.Selected = true
+			r.record(op)
 		}
 		if !item.Disabled && r.consumeTap(row) {
 			r.setFocus(focusID)
@@ -5340,10 +5951,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 				return item.ID, panel
 			}
 		}
-		textColor := theme.text
-		if item.Disabled {
-			textColor = r.Fade(theme.text, 0.45)
-		}
+		textColor := itemStyle.Foreground
 		label := item.Label
 		if (item.Kind == MenuCheck || item.Kind == MenuRadio) && item.Checked {
 			label = "✓ " + label
@@ -5351,7 +5959,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, FontSize: font, Disabled: item.Disabled})
 		if item.Accelerator != "" {
 			accelWidth := runtimeTextWidth(item.Accelerator, font)
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: theme.icon, FontSize: font, Disabled: item.Disabled})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, FontSize: font, Disabled: item.Disabled})
 		}
 		if item.Kind == MenuSubmenu {
 			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, FontSize: font})
@@ -5371,7 +5979,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 	return 0, panel
 }
 
-func (r *runtime) PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
+func (r *runtime) popupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
 	items = limitedMenuItems(items, itemCount)
 	if !r.contentDisabled() {
 		r.registerField(id)
@@ -5387,7 +5995,7 @@ func (r *runtime) PopupMenu(id, x, y int32, items []MenuItem, itemCount int32) i
 	return selected
 }
 
-func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
+func (r *runtime) contextMenu(props MenuProps) int32 {
 	if props.ID == 0 {
 		return 0
 	}
@@ -5453,6 +6061,22 @@ func (r *runtime) ContextMenu(props ContextMenuProps) int32 {
 	}
 	return selected
 }
+
+func (r *runtime) Menu(props MenuProps) MenuResult {
+	result := MenuResult{OpenIndex: -1}
+	switch props.Mode {
+	case MenuModeBar:
+		return r.menuBar(props.ID, props.Bounds,
+			limitedMenus(props.Menus, props.MenuCount), props.OpenIndex)
+	case MenuModePopup:
+		result.ActivatedID = r.popupMenu(props.ID, int32(props.Bounds.X),
+			int32(props.Bounds.Y), props.Items, props.ItemCount)
+		return result
+	default:
+		result.ActivatedID = r.contextMenu(props)
+		return result
+	}
+}
 func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 	bounds = r.layoutRect(bounds)
 	spacing := CanvasGrid_CanvasGridSpacing(r.Scale(step), 4)
@@ -5466,35 +6090,15 @@ func (r *runtime) CanvasGrid(bounds Rectangle, step int32, color Color) {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: line.Bounds, Color: unpackRGBA(line.Color)})
 	}
 }
-func (r *runtime) SelectableText(value string, x, y, fontSize int32, color Color) {
-	if fontSize <= 0 {
-		fontSize = Text16
-	}
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(y), Width: float32(runtimeTextWidth(value, fontSize)), Height: float32(fontSize + 4)})
-	key := Key(fmt.Sprintf("%g:%g:%s", bounds.X, bounds.Y, value))
-	if r.consumeTap(bounds) {
-		r.selectableText = key
-	}
-	selected := r.selectableText == key
-	if selected && !r.contentDisabled() && !r.popupKeyboardCaptures() {
-		for _, event := range r.inputEvents {
-			if event.shortcut && event.key == KeyC {
-				r.clipboard = value
-			}
-		}
-	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: value, Color: color, FontSize: fontSize, ID: int32(key), Selected: selected, SelectionStart: 0, SelectionEnd: int32(len(value))})
-}
-func (r *runtime) ShowToast(message string) { r.ShowToastFor(message, 3) }
-func (r *runtime) ShowToastFor(message string, seconds float64) {
+func (r *runtime) Toast(props ToastProps) {
 	metrics := Toast_ToastMetricsFor(1)
-	if message == "" {
+	if props.Message == "" {
 		r.toastMessage = ""
 		r.toastUntil = time.Time{}
 		return
 	}
-	r.toastMessage = message
-	duration := Toast_ToastDuration(float32(seconds), metrics)
+	r.toastMessage = props.Message
+	duration := Toast_ToastDuration(float32(props.Seconds), metrics)
 	r.toastUntil = time.Now().Add(time.Duration(float64(duration) * float64(time.Second)))
 }
 func (r *runtime) recordToast() {
@@ -5502,12 +6106,15 @@ func (r *runtime) recordToast() {
 		r.toastMessage = ""
 		return
 	}
-	t := r.theme()
 	metrics := Toast_ToastMetricsFor(1)
 	textWidth := int32(runtimeTextWidth(r.toastMessage, Text14))
 	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, 18, metrics)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: t.text, FontSize: Text14})
+	surfaceFrame := defaultStyleFrame(StyleSheet_StyleKindToast())
+	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindToast(), 6)
+	surface := unpackStyle(surfaceFrame.Value)
+	label := unpackStyle(labelFrame.Value)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: surface.Background, BorderColor: surface.Border, Radius: surface.Radius, BorderWidth: surface.BorderWidth, Material: MaterialKind(surface.Material), Opacity: surface.Opacity})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: label.Foreground, FontSize: Text14})
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -5528,8 +6135,8 @@ func textAreaPageRows(props TextAreaProps) int {
 
 func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
-	pressed, focused := r.focusablePress(props.Bounds, props.ID, props.Disabled)
-	theme := r.theme()
+	input := r.ReadActivation(props.Bounds, props.ID, !props.Disabled)
+	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, props.Disabled)
 	paint := Radio_RadioPaintFor(RadioSpec{
 		Bounds:   props.Bounds,
 		Checked:  props.Checked,
@@ -5540,31 +6147,102 @@ func (r *runtime) Radio(props RadioProps) int32 {
 			}
 			return 0
 		}(),
-		Scale:         1,
-		TextColor:     packRGBA(theme.text),
-		IconColor:     packRGBA(theme.icon),
-		ButtonColor:   packRGBA(theme.button),
-		PrimaryColor:  packRGBA(theme.button),
-		DisabledColor: packRGBA(theme.icon),
+		Scale:    1,
+		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 11),
+		Selected: radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, 10),
 	})
+	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 6)
+	paint.LabelColor = label.Value.Foreground
 	mark := Radio_RadioMarkText(props.Checked)
-	c := unpackRGBA(paint.LabelColor)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
-	if pressed {
+	markColor := unpackRGBA(paint.RingColor)
+	if props.Checked {
+		markColor = unpackRGBA(paint.FillColor)
+	}
+	labelColor := unpackRGBA(paint.LabelColor)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, FontSize: Text16, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, FontSize: Text16, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	if input.Activated {
 		return props.ID
 	}
 	return 0
 }
+
+func radioStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, role int32) StyleFrame {
+	props := ButtonProps{
+		Tone:     tone,
+		Emphasis: ButtonEmphasisOutline,
+		Size:     ControlSizeMedium,
+		Disabled: disabled,
+		Selected: selected,
+	}
+	if tone == ButtonToneAccent {
+		props.Emphasis = ButtonEmphasisFilled
+	}
+	return resolveMinimalControlRoleFrame(props, state, false, 0, 0, 0,
+		StyleSheet_StyleKindRadio(), role)
+}
+
+func simpleStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, styleKind int32) StyleFrame {
+	return simpleStyleFrameWithRole(tone, state, disabled, selected,
+		styleKind, StyleSheet_StyleAny())
+}
+
+func simpleStyleFrameWithRole(tone ButtonTone, state ButtonState, disabled, selected bool, styleKind int32, role int32) StyleFrame {
+	props := ButtonProps{
+		Tone:     tone,
+		Emphasis: ButtonEmphasisSoft,
+		Size:     ControlSizeMedium,
+		Pill:     true,
+		Disabled: disabled,
+		Selected: selected,
+	}
+	if tone == ButtonToneAccent {
+		props.Emphasis = ButtonEmphasisFilled
+	}
+	return resolveMinimalControlRoleFrame(props, state, false, 0, 0, 0, styleKind, role)
+}
+
+func styleFrameRectOp(bounds, surface Rectangle, frame StyleFrame) FrameOp {
+	style := unpackStyle(frame.Value)
+	return FrameOp{
+		Kind:             FrameOpRect,
+		Bounds:           bounds,
+		SurfaceBounds:    surface,
+		Color:            style.Background,
+		BackgroundEnd:    style.BackgroundEnd,
+		HasBackgroundEnd: frame.Value.Fields&uint32(StyleBackgroundEnd) != 0,
+		FillStates:       frame.Fill,
+		FillStatesValid:  true,
+		BorderColor:      style.Border,
+		FocusColor:       style.Focus,
+		TextColor:        style.Foreground,
+		Radius:           style.Radius,
+		BorderWidth:      style.BorderWidth,
+		Opacity:          style.Opacity,
+		Material:         style.Material,
+	}
+}
+
 func (r *runtime) Spinbox(p SpinboxProps) bool {
 	p.Bounds = r.layoutRect(p.Bounds)
 	layout := Spinbox_SpinboxLayoutFor(p.Bounds, 28)
 	l := layout.Left
 	rr := layout.Right
+	disabled := p.Disabled || r.contentDisabled()
+	frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), disabled, false, StyleSheet_StyleKindSpinbox())
+	op := styleFrameRectOp(p.Bounds, Rectangle{}, frame)
+	op.ID = p.ID
+	op.Disabled = disabled
+	r.record(op)
 	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-", Font: Text16,
-		ID: p.ID*10 + 1, Disabled: p.Disabled})
+		ID: p.ID*10 + 1, Disabled: disabled})
 	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+", Font: Text16,
-		ID: p.ID*10 + 2, Disabled: p.Disabled})
+		ID: p.ID*10 + 2, Disabled: disabled})
 	step := Spinbox_SpinboxEffectiveStep(p.Step)
 	changed := false
 	if p.Value != nil && minus {
@@ -5586,20 +6264,29 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 		}
 		txt = fmt.Sprint(v)
 	}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: center, Color: t.surface, BorderColor: t.border, ID: p.ID, Disabled: p.Disabled})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: t.text, FontSize: Text16})
+	valueFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), disabled, false, StyleSheet_StyleKindSpinboxValue())
+	valueStyle := unpackStyle(valueFrame.Value)
+	valueOp := styleFrameRectOp(center, p.Bounds, valueFrame)
+	valueOp.ID = p.ID
+	valueOp.Disabled = disabled
+	r.record(valueOp)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: valueStyle.Foreground, FontSize: Text16, ID: p.ID, Disabled: disabled})
 	return changed
 }
 func (r *runtime) Fieldset(p FieldsetProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
-	t := r.theme()
 	w := float32(0)
 	if p.Title != "" {
 		w = float32(runtimeTextWidth(p.Title, Text14))
 	}
-	paint := Fieldset_FieldsetPaintFor(p.Bounds, w, p.Title != "", 1, packRGBA(t.border), packRGBA(t.background), packRGBA(t.text))
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Frame, BorderColor: unpackRGBA(paint.BorderColor), BorderWidth: paint.BorderWidth})
+	frame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindFieldset())
+	paint := Fieldset_FieldsetPaintFor(p.Bounds, w, p.Title != "", 1, frame)
+	r.record(styleFrameRectOp(paint.Frame, Rectangle{}, paint.Face))
 	if paint.ShowTitle {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.TitleBackground, Color: unpackRGBA(paint.BackgroundColor)})
 		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), FontSize: Text14})
@@ -5642,8 +6329,15 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 		*p.Split = split
 		changed = 1
 	}
-	t := r.theme()
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: h, Color: t.button, BorderColor: t.border, ID: p.ID, Pressed: changed != 0})
+	state := ButtonStateNormal
+	if changed != 0 {
+		state = ButtonStatePressed
+	}
+	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, false, false, StyleSheet_StyleKindPanedView(), 12)
+	op := styleFrameRectOp(h, p.Bounds, frame)
+	op.ID = p.ID
+	op.Pressed = changed != 0
+	r.record(op)
 	return changed
 }
 
@@ -5750,23 +6444,54 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	marker := Collapsible_CollapsibleMarkerFor(p.Open != nil && *p.Open, p.Leaf)
 	mark := Collapsible_CollapsibleMarkerText(marker)
-	t := r.theme()
-	bg, border, fg := t.button, t.buttonHover, t.text
-	if p.Tree {
-		bg, border = BLANK, BLANK
-	}
-	if p.Selected {
-		bg = t.buttonHover
-	}
-	if !enabled {
-		fg.A = uint8(float32(fg.A) * 0.45)
-	}
 	label := elideText(mark+"  "+p.Label, body.Width-12, Text16)
-	r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
-		BorderWidth: r.themeMetrics().BorderWidth, Radius: r.themeMetrics().RadiusMedium,
-		AmbientColor: r.theme().surface, FocusColor: r.theme().focus, Bounds: header, Text: label, Color: bg, BorderColor: border, TextColor: fg, FontSize: Text16, Pressed: pressed, Selected: p.Selected, ID: p.ID, Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
+	state := ButtonStateNormal
+	if !enabled {
+		state = ButtonStateDisabled
+	} else if pressed {
+		state = ButtonStatePressed
+	} else if enabled && p.ID != 0 && r.focusID == p.ID {
+		state = ButtonStateFocus
+	} else if p.Selected {
+		state = ButtonStateSelected
+	}
+	buttonProps := ButtonProps{
+		Bounds:   header,
+		Label:    label,
+		ID:       p.ID,
+		Tone:     ButtonToneNeutral,
+		Emphasis: ButtonEmphasisSoft,
+		Size:     ControlSizeMedium,
+		Selected: p.Selected,
+		Disabled: !enabled,
+	}
+	headerRole := int32(13)
+	if p.Tree {
+		headerRole = 14
+	}
+	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, !enabled, p.Selected,
+		StyleSheet_StyleKindCollapsible(), headerRole)
+	button := Button_BuildFrame(buttonProps, ButtonInput{}, frame, InteractionMotion{},
+		Rectangle{}, packRGBA(unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value).Background), 1,
+		Text16, Text16)
+	fg := unpackRGBA(button.Foreground)
+	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button, Opacity: 1,
+		Bounds: header, Text: label, Color: unpackRGBA(button.Appearance.Value.Background),
+		BorderColor: unpackRGBA(button.Appearance.Value.Border), TextColor: fg,
+		BorderWidth: button.Appearance.Value.BorderWidth, Radius: button.Appearance.Value.Radius,
+		Material: MaterialKind(button.Appearance.Value.Material), FontSize: Text16,
+		Pressed: pressed, Selected: p.Selected, ID: p.ID,
+		Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
 	if p.Visible != nil {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: fg, FontSize: Text16, Pressed: closed, Disabled: !enabled})
+		closeState := ButtonStateNormal
+		if !enabled {
+			closeState = ButtonStateDisabled
+		} else if closed {
+			closeState = ButtonStatePressed
+		}
+		closeStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, closeState, !enabled,
+			false, StyleSheet_StyleKindCollapsible(), 15).Value)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, FontSize: Text16, Pressed: closed, Disabled: !enabled})
 	}
 	if pressed || closed {
 		return 1
@@ -5795,12 +6520,16 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	}
 	scrollLayout := TreeView_TreeViewScrollFor(scroll, rowH)
 	visible := TreeView_TreeViewVisibleRows(int32(props.Bounds.Height), rowH)
-	theme := r.theme()
-	panelColor, borderColor := theme.surface, theme.border
-	if props.Disabled {
-		panelColor, borderColor = r.Fade(panelColor, 0.45), r.Fade(borderColor, 0.45)
-	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: panelColor, BorderColor: borderColor, ID: props.ID, Disabled: props.Disabled})
+	panelFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if props.Disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), props.Disabled, false, StyleSheet_StyleKindTreeView())
+	panelOp := styleFrameRectOp(props.Bounds, Rectangle{}, panelFrame)
+	panelOp.ID = props.ID
+	panelOp.Disabled = props.Disabled
+	r.record(panelOp)
 	changed := int32(0)
 	first := scrollLayout.First
 	yOffset := scrollLayout.YOffset
@@ -5817,29 +6546,44 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 			selected = true
 			changed = 1
 		}
-		if selected {
-			color := theme.button
+		hovered := !props.Disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
 			if props.Disabled {
-				color = r.Fade(color, 0.45)
+				return ButtonStateDisabled
 			}
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: color, ID: props.ID, Row: index, Selected: true, Disabled: props.Disabled})
+			if hovered {
+				return ButtonStateHover
+			}
+			if selected {
+				return ButtonStateSelected
+			}
+			return ButtonStateNormal
+		}(), props.Disabled, selected, StyleSheet_StyleKindTreeViewItem())
+		itemStyle := unpackStyle(itemFrame.Value)
+		if selected || hovered || props.Disabled {
+			op := styleFrameRectOp(row, props.Bounds, itemFrame)
+			op.ID = props.ID
+			op.Row = index
+			op.Selected = selected
+			op.Hovered = hovered
+			op.Disabled = props.Disabled
+			r.record(op)
 		}
 		mark := ">"
 		if item.Expanded != 0 {
 			mark = "v"
 		}
-		iconColor, textColor := theme.icon, theme.text
-		if props.Disabled {
-			iconColor, textColor = r.Fade(iconColor, 0.45), r.Fade(textColor, 0.45)
-		}
 		markerBounds.Y += 4
 		textBounds.Y += 4
-		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: iconColor, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: textColor, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
 func (r *runtime) ListBox(props ListBoxProps) int32 {
+	if props.Selected != nil {
+		return r.listBoxMultiSelect(props)
+	}
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	props.Disabled = props.Disabled || r.contentDisabled()
@@ -6333,10 +7077,10 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	if secure {
 		text = strings.Repeat("*", utf8.RuneCountInString(text))
 	}
-	theme := r.theme()
 	fieldFocused := r.focusID == focusID || focused != nil && *focused
 	disabled := r.contentDisabled()
-	paint := r.textInputStyle(fieldFocused, disabled)
+	paint := r.textInputStyle(kind, fieldFocused, disabled)
+	surface := unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value)
 	var opt textInputRecordOptions
 	if len(options) > 0 {
 		opt = options[0]
@@ -6348,11 +7092,11 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		Color:             paint.Background,
 		BorderColor:       paint.Border,
 		FocusColor:        paint.Focus,
-		AmbientColor:      theme.surface,
+		AmbientColor:      surface.Background,
 		TextColor:         paint.Foreground,
-		SelectionColor:    theme.selectedHot,
-		SelectedTextColor: theme.selectedText,
-		CursorColor:       theme.focus,
+		SelectionColor:    paint.Focus,
+		SelectedTextColor: paint.Foreground,
+		CursorColor:       paint.Focus,
 		Radius:            paint.Radius,
 		BorderWidth:       paint.BorderWidth,
 		Opacity:           paint.Opacity,
@@ -6404,7 +7148,7 @@ type textInputRecordOptions struct {
 	wrap     bool
 }
 
-func (r *runtime) textInputStyle(focused, disabled bool) Style {
+func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool) Style {
 	state := ButtonStateNormal
 	if focused {
 		state = ButtonStateFocus
@@ -6412,8 +7156,12 @@ func (r *runtime) textInputStyle(focused, disabled bool) Style {
 	if disabled {
 		state = ButtonStateDisabled
 	}
-	return resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
-		ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state)
+	styleKind := StyleSheet_StyleKindTextField()
+	if kind == FrameOpTextArea {
+		styleKind = StyleSheet_StyleKindTextArea()
+	}
+	return resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
+		ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state, styleKind)
 }
 
 func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {
@@ -6453,9 +7201,9 @@ func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
 		padding = policy.Padding
 	}
 	r.layout = append(r.layout, layoutFrame{
-		bounds:  bounds,
-		gap:     float32(gap),
-		padding: float32(padding),
+		bounds:   bounds,
+		gap:      float32(gap),
+		padding:  float32(padding),
 		noLayout: true,
 	})
 	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
@@ -7272,21 +8020,23 @@ func textMoveSelection(current selection, cursor, target int, extend bool) (int,
 }
 
 func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
-	theme := r.theme()
-	disabledColor := func(color Color) Color {
-		if props.Disabled {
-			return r.Fade(color, 0.45)
-		}
-		return color
-	}
 	rowH = ListBox_ListBoxRowHeight(rowH)
 	changed := int32(0)
 	focused := !props.Disabled && props.ID != 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
-	border := theme.border
-	if focused {
-		border = theme.focus
-	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), BorderColor: disabledColor(border), ID: props.ID, Disabled: props.Disabled, Focused: focused})
+	listFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		if props.Disabled {
+			return ButtonStateDisabled
+		}
+		if focused {
+			return ButtonStateFocus
+		}
+		return ButtonStateNormal
+	}(), props.Disabled, false, StyleSheet_StyleKindListBox())
+	listOp := styleFrameRectOp(props.Bounds, Rectangle{}, listFrame)
+	listOp.ID = props.ID
+	listOp.Disabled = props.Disabled
+	listOp.Focused = focused
+	r.record(listOp)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
@@ -7308,10 +8058,30 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 			}
 		}
 		selected := props.SelectedIndex != nil && *props.SelectedIndex == index
-		if selected {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: disabledColor(theme.button), ID: props.ID, Row: index, Selected: true, Disabled: props.Disabled})
+		hovered := !props.Disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
+		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+			if props.Disabled {
+				return ButtonStateDisabled
+			}
+			if hovered {
+				return ButtonStateHover
+			}
+			if selected {
+				return ButtonStateSelected
+			}
+			return ButtonStateNormal
+		}(), props.Disabled, selected, StyleSheet_StyleKindListBoxItem())
+		itemStyle := unpackStyle(itemFrame.Value)
+		if selected || hovered || props.Disabled {
+			op := styleFrameRectOp(row, props.Bounds, itemFrame)
+			op.ID = props.ID
+			op.Row = index
+			op.Selected = selected
+			op.Hovered = hovered
+			op.Disabled = props.Disabled
+			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: disabledColor(theme.text), FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: itemStyle.Foreground, FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
@@ -7654,14 +8424,32 @@ func tableHeaderShift(props TableViewProps, y float32) float32 {
 }
 
 func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
-	theme := r.theme()
 	disabledColor := func(color Color) Color {
 		if props.Disabled {
 			return r.Fade(color, 0.45)
 		}
 		return color
 	}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: disabledColor(theme.surface), Disabled: props.Disabled})
+	tableState := ButtonStateNormal
+	if props.Disabled {
+		tableState = ButtonStateDisabled
+	}
+	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		StyleSheet_StyleKindTableView(), 2)
+	cellStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		StyleSheet_StyleKindTableView(), 22).Value)
+	rowFrame := simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		StyleSheet_StyleKindTableView(), 21)
+	rowStyle := unpackStyle(rowFrame.Value)
+	selectedFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateSelected, props.Disabled, true,
+		StyleSheet_StyleKindTableView(), 23)
+	selectedStyle := unpackStyle(selectedFrame.Value)
+	dividerStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		StyleSheet_StyleKindTableView(), 18).Value)
+	tableOp := styleFrameRectOp(props.Bounds, Rectangle{}, surfaceFrame)
+	tableOp.Color = disabledColor(tableOp.Color)
+	tableOp.Disabled = props.Disabled
+	r.record(tableOp)
 	displayColumns := tableDisplayColumns(props)
 	if len(displayColumns) == 0 {
 		return
@@ -7690,24 +8478,45 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			x += float32(tableColumnWidth(props, logical))
 		}
 		rect := TableView_TableViewHeaderBounds(props.Bounds, int32(x), tableColumnWidth(props, col), headerH)
-		fill := theme.button
 		selected := false
 		if selectedRow < 0 && selectedCol == col {
-			fill = theme.selectedHot
 			selected = true
 		}
+		headerFrame := simpleStyleFrameWithRole(func() ButtonTone {
+			if selected {
+				return ButtonToneAccent
+			}
+			return ButtonToneNeutral
+		}(), func() ButtonState {
+			if props.Disabled {
+				return ButtonStateDisabled
+			}
+			if selected {
+				return ButtonStateSelected
+			}
+			return ButtonStateNormal
+		}(), props.Disabled, selected, StyleSheet_StyleKindTableView(), 13)
+		headerStyle := unpackStyle(headerFrame.Value)
 		shift := tableHeaderShift(props, rect.Y)
 		var polygon [4]Vector2
 		if shift != 0 {
 			polygon = [4]Vector2{{rect.X + shift, rect.Y}, {rect.X + rect.Width + shift, rect.Y}, {rect.X + rect.Width, rect.Y + rect.Height}, {rect.X, rect.Y + rect.Height}}
 		}
 		headerClip := r.scrollClip(Rectangle{X: props.Bounds.X, Y: props.Bounds.Y, Width: props.Bounds.Width, Height: float32(headerH)})
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Polygon: polygon, HasPolygon: shift != 0, Color: disabledColor(fill), Row: -1, Column: col, Selected: selected, Disabled: props.Disabled})
+		headerOp := styleFrameRectOp(rect, props.Bounds, headerFrame)
+		headerOp.Polygon = polygon
+		headerOp.HasPolygon = shift != 0
+		headerOp.Color = disabledColor(headerOp.Color)
+		headerOp.Row = -1
+		headerOp.Column = col
+		headerOp.Selected = selected
+		headerOp.Disabled = props.Disabled
+		r.record(headerOp)
 		if shift != 0 {
 			r.ops[len(r.ops)-1].Clip = headerClip
 			r.ops[len(r.ops)-1].HasClip = true
 		}
-		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: disabledColor(theme.text), FontSize: font, Row: -1, Column: col, Disabled: props.Disabled}
+		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: disabledColor(headerStyle.Foreground), FontSize: font, Row: -1, Column: col, Disabled: props.Disabled}
 		angle := props.HeaderAngle
 		if math.IsNaN(float64(angle)) || math.IsInf(float64(angle), 0) {
 			angle = 0
@@ -7731,7 +8540,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			r.ops[len(r.ops)-1].HasClip = true
 		}
 		if props.Resizable && c < len(props.ColumnWidths) {
-			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: rect.X + rect.Width + shift - 1, Y: rect.Y, Width: -shift, Height: rect.Height}, Color: disabledColor(theme.border), Column: col, Disabled: props.Disabled})
+			r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: rect.X + rect.Width + shift - 1, Y: rect.Y, Width: -shift, Height: rect.Height}, Color: disabledColor(dividerStyle.Border), Column: col, Disabled: props.Disabled})
 			r.ops[len(r.ops)-1].Clip, r.ops[len(r.ops)-1].HasClip = headerClip, true
 		}
 	}
@@ -7755,10 +8564,16 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		rowY := TableCellRect(props, row, displayColumns[0]).Y
 		rowRect := Rectangle{X: props.Bounds.X, Y: rowY, Width: props.Bounds.Width, Height: float32(rowH)}
 		if row%2 == 1 {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: disabledColor(mixColor(theme.surface, theme.button, 0.16)), Row: row, Disabled: props.Disabled})
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: disabledColor(rowStyle.Background), BorderColor: disabledColor(rowStyle.Border), Radius: rowStyle.Radius, BorderWidth: rowStyle.BorderWidth, Material: rowStyle.Material, Opacity: rowStyle.Opacity, Row: row, Disabled: props.Disabled})
 		}
 		if row == selectedRow && selectedCol < 0 {
-			r.record(FrameOp{Kind: FrameOpRect, Bounds: rowRect, Color: disabledColor(theme.selectedHot), Row: row, Column: -1, Selected: true, Disabled: props.Disabled})
+			op := styleFrameRectOp(rowRect, props.Bounds, selectedFrame)
+			op.Color = disabledColor(op.Color)
+			op.Row = row
+			op.Column = -1
+			op.Selected = true
+			op.Disabled = props.Disabled
+			r.record(op)
 		}
 		for _, col := range displayColumns {
 			c := int(col)
@@ -7766,7 +8581,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			if rect.Y+rect.Height < props.Bounds.Y+float32(headerH) || rect.Y > props.Bounds.Y+props.Bounds.Height {
 				continue
 			}
-			cellTextColor := theme.text
+			cellTextColor := cellStyle.Foreground
 			if int(row) < len(props.Rows) {
 				tableRow := props.Rows[row]
 				if c < len(tableRow.BackgroundColors) && tableRow.BackgroundColors[c].A != 0 {
@@ -7777,8 +8592,18 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				}
 			}
 			if tableCellSelected(props, row, col, selectedRow, selectedCol) {
-				r.record(FrameOp{Kind: FrameOpRect, Bounds: rect, Color: disabledColor(theme.selectedHot), Row: row, Column: col, Selected: true, Disabled: props.Disabled, SelectionStartRow: valueOr32(props.SelectionStartRow, -1), SelectionStartCol: valueOr32(props.SelectionStartColumn, -1), SelectionEndRow: valueOr32(props.SelectionEndRow, -1), SelectionEndCol: valueOr32(props.SelectionEndColumn, -1)})
-				cellTextColor = theme.selectedText
+				op := styleFrameRectOp(rect, props.Bounds, selectedFrame)
+				op.Color = disabledColor(op.Color)
+				op.Row = row
+				op.Column = col
+				op.Selected = true
+				op.Disabled = props.Disabled
+				op.SelectionStartRow = valueOr32(props.SelectionStartRow, -1)
+				op.SelectionStartCol = valueOr32(props.SelectionStartColumn, -1)
+				op.SelectionEndRow = valueOr32(props.SelectionEndRow, -1)
+				op.SelectionEndCol = valueOr32(props.SelectionEndColumn, -1)
+				r.record(op)
+				cellTextColor = selectedStyle.Foreground
 			}
 			text := ""
 			if int(row) < len(props.Rows) && c < len(props.Rows[row].Cells) {

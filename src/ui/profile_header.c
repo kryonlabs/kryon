@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 
 /* zero constants: the native Plan 9 compiler rejects short
  * compound literals like (Type){0}, and a copy of a zero
@@ -184,7 +185,7 @@ ui_draw_avatar_tile(Rectangle bounds, Color background, Color outline)
 static int
 ui_profile_images_dark_mode(void)
 {
-    return IsThemeColorDark(GetThemeBackground()) ? 1 : 0;
+    return IsThemeColorDark(ui_surface_style().background) ? 1 : 0;
 }
 
 static void
@@ -260,7 +261,22 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     header_bounds.y = (float)header.y;
     header_bounds.width = (float)header.width;
     header_bounds.height = (float)height;
-    DrawRectangleRounded(header_bounds, 0.06f, 8, DarkenColor(c_surface, 6));
+    Style surface_style = ui_surface_style();
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Style hover_style = ui_resolve_button_style_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft},
+        ButtonStateHover, StyleKindSelectable());
+    Color muted_text = text_style.foreground;
+    muted_text.a = (unsigned char)(muted_text.a * 0.72f);
+    ui_draw_material(header_bounds, (Rectangle){0}, surface_style.background,
+                     surface_style.border, surface_style.border,
+                     surface_style.radius, surface_style.border_width,
+                     0.0f, 0.0f, 0, surface_style.focus, 0.0f,
+                     surface_style.opacity, ui_style_fill(surface_style),
+                     surface_style.material);
     if(CheckCollisionPointRec(mouse, pfp_bounds) && !InputCapturesClick(mouse)) {
         MarkClickable();
         if(released) {
@@ -272,7 +288,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                                     (float)(avatar_y - avatar_r - Scale(3)),
                                     (float)(avatar_size + Scale(6)),
                                     (float)(avatar_size + Scale(6))},
-                        c_surface, DarkenColor(c_surface, 18));
+                        surface_style.background, surface_style.border);
     if(header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT) {
         Rectangle icon_bounds;
@@ -287,7 +303,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
         ui_draw_pfp_texture_in_circle(pfp_icon, avatar_x, avatar_y, avatar_r);
     else
         ui_draw_pfp_fallback(avatar_x - avatar_r, avatar_y - avatar_r,
-                             avatar_size, c_icon);
+                             avatar_size, text_style.foreground);
 
     if(CheckCollisionPointRec(mouse, username_bounds) &&
        !InputCapturesClick(mouse)) {
@@ -298,15 +314,19 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
         }
     }
     DrawFittedTextInRect(username, username_bounds, name_font,
-                           Text8, c_text);
+                           Text8, text_style.foreground);
     if(subtitle[0] != '\0')
         RenderText(subtitle, name_x, name_y + Scale(22), small_font,
-                   DarkenColor(c_text, 34));
+                   muted_text);
 
     if(CheckCollisionPointRec(mouse, friends_bounds) &&
        !InputCapturesClick(mouse)) {
-        DrawRectangleRounded(friends_bounds, 0.18f, 8,
-                             LightenColor(c_surface, 8));
+        ui_draw_material(friends_bounds, header_bounds,
+                         hover_style.background, hover_style.border,
+                         hover_style.border, hover_style.radius,
+                         hover_style.border_width, 1.0f, 0.0f, 0,
+                         hover_style.focus, 0.0f, hover_style.opacity,
+                         ui_style_fill(hover_style), hover_style.material);
         MarkClickable();
         if(released) {
             ConsumeRelease();
@@ -315,7 +335,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     }
     if(friends_text[0] != '\0')
         RenderText(friends_text, header.x + Scale(12),
-                   count_y + Scale(8), small_font, c_text);
+                   count_y + Scale(8), small_font, text_style.foreground);
 
     return result;
 }
@@ -408,14 +428,22 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
         int hovered = CheckCollisionPointRec(mouse, bounds) &&
                       !InputCapturesClick(mouse);
         int active = type == selected;
+        ButtonState state = active ? ButtonStateSelected
+                          : hovered ? ButtonStateHover
+                          : ButtonStateNormal;
+        Style cell_style = ui_resolve_button_style_kind(
+            (ButtonProps){.tone = active ? ButtonToneAccent : ButtonToneNeutral,
+                          .emphasis = ButtonEmphasisSoft,
+                          .selected = active},
+            state, StyleKindSelectable());
+        Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                        ButtonStateNormal,
+                                                        StyleKindText());
 
         ui_draw_avatar_tile(bounds,
-                            hovered ? LightenColor(c_surface, 10)
-                                    : c_surface,
-                            active ? c_button_hover
-                                   : DarkenColor(c_surface, 22));
+                            cell_style.background, cell_style.border);
         if(active)
-            DrawRectangleLinesEx(bounds, Scale(2), c_button_hover);
+            DrawRectangleLinesEx(bounds, Scale(2), cell_style.border);
         if(modal.icons != NULL && type > ICON_NONE &&
            type < ICON_COUNT)
             icon = modal.icons[type];
@@ -433,7 +461,7 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                 cell - icon_inset * 2);
         else
             ui_draw_pfp_fallback(x + icon_inset, y + icon_inset,
-                                 cell - icon_inset * 2, c_icon);
+                                 cell - icon_inset * 2, text_style.foreground);
 
         if(hovered) {
             MarkClickable();

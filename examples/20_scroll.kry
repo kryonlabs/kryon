@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Scroll" {
     size 480 360
@@ -11,19 +12,19 @@ state {
 
 ScrollExample :: () #ui {
     Screen root: {
-        Background(GetThemeBackground())
+        AppBackground()
         Background(GetThemeSurface())
-        Text((TextProps){.bounds={Scale(40), Scale(28), 0, 0}, .text="Scroll", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(40), Scale(28), 0, 0}, .text="Scroll", .font=Text24, .wrap=TextWrapNone})
         Scroll content: {
             bounds = {Scale(40), Scale(76), Scale(360), Scale(220)}
             content_height = Scale(520)
             scroll_offset = &scroll_off
-            Text((TextProps){.bounds={content.x, content.y + Scale(12), 0, 0}, .text="First row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={content.x, content.y + Scale(82), 0, 0}, .text="Second row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={content.x, content.y + Scale(152), 0, 0}, .text="Third row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={content.x, content.y + Scale(222), 0, 0}, .text="Fourth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={content.x, content.y + Scale(292), 0, 0}, .text="Fifth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-            Text((TextProps){.bounds={content.x, content.y + Scale(362), 0, 0}, .text="Sixth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(12), 0, 0}, .text="First row", .font=Text16, .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(82), 0, 0}, .text="Second row", .font=Text16, .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(152), 0, 0}, .text="Third row", .font=Text16, .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(222), 0, 0}, .text="Fourth row", .font=Text16, .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(292), 0, 0}, .text="Fifth row", .font=Text16, .wrap=TextWrapNone})
+            Text((TextProps){.bounds={content.x, content.y + Scale(362), 0, 0}, .text="Sixth row", .font=Text16, .wrap=TextWrapNone})
         }
     }
 }

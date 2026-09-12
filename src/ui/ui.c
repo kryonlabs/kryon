@@ -29,6 +29,16 @@
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
 
+static Color
+ui_default_text_color(void)
+{
+    Style style = ui_unpack_style(ResolveActiveStyle(
+        ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
+        StyleTextFacts(0, 0, StyleAny(), ButtonStateNormal),
+        ButtonStateNormal));
+    return style.foreground.a != 0 ? style.foreground : c_text;
+}
+
 static Rectangle
 ui_rect(float x, float y, float width, float height)
 {
@@ -527,8 +537,30 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
             }
             thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
             if(IsWindowReady()) {
-                DrawRectangleRec(track, c_surface);
-                DrawRectangleRec((Rectangle){track.x+2,thumb_y,6,thumb_h}, c_button);
+                Style track_style = ui_surface_style();
+                Style thumb_style = ui_resolve_button_style_kind(
+                    (ButtonProps){.tone = ButtonToneAccent,
+                                  .emphasis = ButtonEmphasisFilled,
+                                  .size = ControlSizeSmall,
+                                  .pill = 1},
+                    ButtonStateNormal, StyleKindSlider());
+                Rectangle thumb = {track.x+2,thumb_y,6,thumb_h};
+                ui_draw_material(track, (Rectangle){0},
+                                 track_style.background, track_style.border,
+                                 track_style.border, track_style.radius,
+                                 track_style.border_width, 0.0f, 0.0f, 0,
+                                 track_style.focus, 0.0f,
+                                 track_style.opacity,
+                                 ui_style_fill(track_style),
+                                 track_style.material);
+                ui_draw_material(thumb, track,
+                                 thumb_style.background, thumb_style.border,
+                                 thumb_style.border, thumb_style.radius,
+                                 thumb_style.border_width, 0.0f, 0.0f, 0,
+                                 thumb_style.focus, 0.0f,
+                                 thumb_style.opacity,
+                                 ui_style_fill(thumb_style),
+                                 thumb_style.material);
             }
             bounds.width -= 10;
             content.width = bounds.width;
@@ -1223,7 +1255,7 @@ ui_text_draw_context_overlay(void)
     int has_selection = g_ui_text_context_selection_end >
                         g_ui_text_context_selection_start;
     int command;
-    ContextMenuProps menu;
+    MenuProps menu;
     TextEdit edit;
     int changed;
 
@@ -1259,13 +1291,14 @@ ui_text_draw_context_overlay(void)
 
     memset(&menu, 0, sizeof(menu));
     menu.id = 8500 + g_ui_text_context_kind;
+    menu.mode = MenuModeContext;
     menu.trigger = ui_rect(-10000.0f, -10000.0f, 1.0f, 1.0f);
     menu.items = items;
     menu.item_count = 4;
     menu.open = &g_ui_text_context_open;
     menu.x = &g_ui_text_context_x;
     menu.y = &g_ui_text_context_y;
-    command = RenderContextMenu(menu);
+    command = RenderMenu(menu).activated_id;
     if(command != 0) {
         memset(&edit, 0, sizeof(edit));
         edit.text = g_ui_text_context_text;
@@ -1761,9 +1794,14 @@ void
 RenderFocus(Rectangle bounds)
 {
     FocusPaint paint = FocusPaintFor(bounds, (float)GetScale());
+    Style style = ui_resolve_button_style_kind(
+        (ButtonProps){.tone = ButtonToneAccent,
+                      .emphasis = ButtonEmphasisOutline},
+        ButtonStateFocus, StyleKindButton());
+    Color focus = style.focus.a != 0 ? style.focus : style.border;
 
     DrawRectangleLinesEx(paint.bounds, (float)paint.stroke_width,
-                         c_button_hover);
+                         focus.a != 0 ? focus : c_button_hover);
 }
 
 int
@@ -1801,42 +1839,43 @@ GetUIControlTextY(const char *text, int box_y, int box_h, int font)
 }
 
 static TextInputStyle
-ui_resolve_text_input_style(TextInputStyle style)
+ui_resolve_text_input_style(TextInputStyle style, int style_kind)
 {
-    Color background = c_surface.a != 0 ? c_surface : c_bg;
+    Style resolved = ui_unpack_style(ui_style_apply_effects_data(
+        ResolveActiveStyle(
+            ui_pack_style_states((ControlStyle){.normal = {
+                .fields = StyleOpacity | StyleMaterial,
+                .opacity = 1.0f,
+                .material = MaterialFlat
+            }}).normal,
+            StyleDefaultFacts(style_kind), ButtonStateNormal)));
 
-    if(ui_default_style()) {
-        ThemeScheme scheme = ui_default_scheme();
-        ButtonProps props = {.tone = ButtonToneNeutral,
-                             .emphasis = ButtonEmphasisSoft};
-        Style control = ResolveButtonStyle(props, ButtonStateNormal);
-
-        background = control.background.a != 0 ? control.background
-                                               : scheme.surface_variant;
-        if(style.border.a == 0)
-            style.border = control.border.a != 0 ? control.border
-                                                 : scheme.outline;
-        if(style.focus_border.a == 0)
-            style.focus_border = control.focus.a != 0 ? control.focus
-                                                      : scheme.primary;
-        if(style.text.a == 0)
-            style.text = control.foreground.a != 0 ? control.foreground
-                                                   : scheme.on_surface;
-        if(style.cursor.a == 0)
-            style.cursor = scheme.primary;
-    } else {
-        if(style.border.a == 0)
-            style.border = DarkenColor(background, 35);
-        if(style.focus_border.a == 0)
-            style.focus_border = c_circle;
-        if(style.text.a == 0)
-            style.text = c_text;
-        if(style.cursor.a == 0)
-            style.cursor = c_circle;
-    }
     if(style.background.a == 0)
-        style.background = background;
+        style.background = resolved.background;
+    if(style.border.a == 0)
+        style.border = resolved.border;
+    if(style.focus_border.a == 0)
+        style.focus_border = resolved.focus;
+    if(style.text.a == 0)
+        style.text = resolved.foreground;
+    if(style.cursor.a == 0)
+        style.cursor = resolved.focus.a != 0 ? resolved.focus
+                                             : resolved.foreground;
+    if(style.radius <= 0.0f)
+        style.radius = resolved.radius;
+    if(style.padding_x <= 0 && resolved.padding_x > 0.0f)
+        style.padding_x = Scale((int)(resolved.padding_x + 0.5f));
+    if(style.padding_y <= 0 && resolved.padding_y > 0.0f)
+        style.padding_y = Scale((int)(resolved.padding_y + 0.5f));
     return style;
+}
+
+static int
+ui_text_input_style_kind(const char *kind)
+{
+    if(kind != NULL && strcmp(kind, "text_area") == 0)
+        return StyleKindTextArea();
+    return StyleKindTextField();
 }
 
 static uint64_t
@@ -1868,6 +1907,7 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
 {
     int disabled = UIContentDisabled();
     int hovered = 0;
+    int style_kind = ui_text_input_style_kind(kind);
 
     if(ui_default_style()) {
         ThemeMetrics metrics = GetThemeMetrics();
@@ -1875,10 +1915,11 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
                              .tone = ButtonToneNeutral,
                              .emphasis = ButtonEmphasisSoft,
                              .disabled = disabled};
-        Style paint = ResolveButtonStyle(
+        Style paint = ui_resolve_button_style_kind(
             props, disabled ? ButtonStateDisabled
                             : (focused ? ButtonStateFocus
-                                       : ButtonStateNormal));
+                                       : ButtonStateNormal),
+            style_kind);
         FillStates fill_states;
         Vector2 mouse = ui_mouse_world();
         Color border = focused ? style.focus_border : style.border;
@@ -1895,8 +1936,6 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
             paint.focus = style.focus_border;
         if(requested.text.a != 0)
             paint.foreground = style.text;
-        paint.radius = metrics.control_radius;
-        paint.border_width = metrics.border_width;
         paint.opacity = 1.0f;
 
         hovered = editable &&
@@ -1917,10 +1956,10 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
             InvalidateTree(INVALIDATE_PAINT);
         paint = ui_style_transition(
             paint,
-            ResolveButtonStyle(props, ButtonStateNormal),
-            ResolveButtonStyle(props, ButtonStateHover),
-            ResolveButtonStyle(props, ButtonStatePressed),
-            ResolveButtonStyle(props, ButtonStateFocus),
+            ui_resolve_button_style_kind(props, ButtonStateNormal, style_kind),
+            ui_resolve_button_style_kind(props, ButtonStateHover, style_kind),
+            ui_resolve_button_style_kind(props, ButtonStatePressed, style_kind),
+            ui_resolve_button_style_kind(props, ButtonStateFocus, style_kind),
             motion.hover.value, motion.press.value, motion.focus.value,
             &fill_states);
         if(requested.background.a != 0)
@@ -1932,8 +1971,6 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
             paint.focus = style.focus_border;
         if(requested.text.a != 0)
             paint.foreground = style.text;
-        paint.radius = metrics.control_radius;
-        paint.border_width = metrics.border_width;
         paint.opacity = 1.0f;
         fill_states = ui_style_fill(paint);
         return ui_draw_material(
@@ -1962,7 +1999,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 {
     TextInputStyle requested_style = style;
 
-    style = ui_resolve_text_input_style(style);
+    style = ui_resolve_text_input_style(style, StyleKindTextField());
     const char *value = text ? text : "";
     int x = (int)bounds.x;
     int y = (int)bounds.y;
@@ -2266,7 +2303,9 @@ RenderLink(LinkProps link)
     int hovered;
     int focused;
     int clicked = 0;
-    Theme theme;
+    ButtonState state = ButtonStateNormal;
+    ButtonProps style_props = {0};
+    StyleFrame style_frame;
     LinkAppearance appearance;
     Color color;
 
@@ -2292,13 +2331,20 @@ RenderLink(LinkProps link)
     focused = !link.disabled && link.focus_id > 0 &&
               RegisterFocus(link.focus_id, bounds);
 
-    theme = GetTheme();
-    appearance = ResolveLinkAppearance((uint32_t)ColorToInt(link.color),
-                                       (uint32_t)ColorToInt(link.hover_color),
-                                       (uint32_t)ColorToInt(c_link),
-                                       (uint32_t)ColorToInt(theme.colors.link_hover),
-                                       (uint32_t)ColorToInt(theme.colors.text_disabled),
-                                       hovered != 0,
+    if(link.disabled)
+        state = ButtonStateDisabled;
+    else if(hovered)
+        state = ButtonStateHover;
+    style_props.emphasis = ButtonEmphasisLink;
+    style_props.size = ControlSizeMedium;
+    style_props.disabled = link.disabled;
+    style_frame = ui_control_style_frame_kind(style_props, state, 0, 0.0f,
+                                              0.0f, 0.0f, StyleKindLink());
+    if(!link.disabled && hovered && link.hover_color.a != 0)
+        style_frame.value.foreground = (uint32_t)ColorToInt(link.hover_color);
+    else if(!link.disabled && link.color.a != 0)
+        style_frame.value.foreground = (uint32_t)ColorToInt(link.color);
+    appearance = ResolveLinkAppearance(style_frame, hovered != 0,
                                        link.disabled != 0);
     color = GetColor(appearance.color);
 
@@ -3216,7 +3262,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
 
     if(area.text == NULL)
         return;
-    area.style = ui_resolve_text_input_style(area.style);
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
     font = area.font > 0 ? area.font : GetFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
@@ -3494,7 +3540,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
 
     if(gutter_width <= 0)
         return area.bounds;
-    area.style = ui_resolve_text_input_style(area.style);
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
     font = area.font > 0 ? area.font : GetFontSize();
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
@@ -3523,8 +3569,10 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
             DrawRectangle((int)gutter.x, y - Scale(2), (int)gutter.width,
                           line_h, area.style.border);
         snprintf(label, sizeof(label), "%d", line_no);
+        Color inactive = ui_default_text_color();
+        inactive.a = (unsigned char)(inactive.a * 0.62f);
         RenderText(label, (int)gutter.x + Scale(6), y, Scale(10),
-                   line_no == active ? area.style.text : GetThemeIcon());
+                   line_no == active ? area.style.text : inactive);
         y += line_h;
         if(y > (int)(gutter.y + gutter.height))
             break;
@@ -3580,7 +3628,7 @@ ui_text_area_render(TextAreaProps area)
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
-    area.style = ui_resolve_text_input_style(area.style);
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
     memset(&area_edit, 0, sizeof(area_edit));
     area_edit.text = area.text;
     area_edit.text_size = area.text_size;
@@ -4184,6 +4232,7 @@ ui_text_field_render(TextFieldProps field)
     int committed_selection_end;
     TextInputMetrics metrics;
     TextFieldScroll scroll_policy;
+    TextInputStyle layout_style;
 
     if(field.commit_pressed != NULL)
         *field.commit_pressed = 0;
@@ -4255,8 +4304,9 @@ ui_text_field_render(TextFieldProps field)
                            WIDGET_RESIZABLE);
     field.bounds = widget.bounds;
 
-    metrics = TextInputMetricsFor(field.font, field.style.padding_x,
-                                  field.style.padding_y, 0,
+    layout_style = ui_resolve_text_input_style(field.style, StyleKindTextField());
+    metrics = TextInputMetricsFor(field.font, layout_style.padding_x,
+                                  layout_style.padding_y, 0,
                                   GetFontSize(), Scale(10), Scale(8), 0);
     font = metrics.font;
     padding_x = metrics.padding_x;
@@ -4782,7 +4832,8 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
                                                        paragraph.width,
                                                        0, *y);
     int font = metrics.font;
-    Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
+    Color color = paragraph.color.a != 0 ? paragraph.color
+                                         : ui_default_text_color();
     TextLayout layout = ParagraphLayout(paragraph);
     if(paragraph.align != TextAlignStart)
         DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width,
@@ -4806,7 +4857,8 @@ ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
                                                        paragraph.width,
                                                        0, *y);
     int font = metrics.font;
-    Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
+    Color color = paragraph.color.a != 0 ? paragraph.color
+                                         : ui_default_text_color();
     TextLayout layout = ParagraphLayout(paragraph);
     DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width, align);
     FreeTextLayout(&layout);
@@ -4876,6 +4928,7 @@ InitInterface(int width, int height, float dpi)
     ui_view_width = width;
     ui_view_height = height;
     SetScale(dpi);
+    EnsureBuiltInStylePacks();
     ApplyCurrentTheme();
     if(ui_default_font_auto_load)
         EnsureUIDefaultFont();

@@ -9,8 +9,9 @@ see `docs/FEATURE_MATRIX.md`.
 ## The surface and how selection works
 
 Kryon's app-facing API is the owned widget and primitive surface documented in
-`docs/API.md`: `Button`, `Card`, `Router`, `Rect`, `Box`, `Circle`, `Line`, and
-the rest of the Kryon vocabulary. `include/kryon_compat.generated.h` is the
+`docs/API.md`: `Button`, `Card`, `Router`, `Box`, `Circle`, `Line`, and the rest
+of the Kryon vocabulary. The old positional `Rect` helper is removed from the
+public Kryon surface; use `Box` with `Rectangle` bounds. `include/kryon_compat.generated.h` is the
 legacy backend/migration contract. It still carries raylib-shaped drawing,
 input, asset, and window names so existing code and backends can link while the
 public API moves to Kryon-owned names. No `raylib.h` include and no raylib build

@@ -13,7 +13,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Background", "Background", "UI/Display", "Control", "Fill", KRYON_NODE_INSERTABLE | KRYON_NODE_SELECTABLE},
     {"Text", "Text", "UI/Display", "Control", "Label", MOVABLE_TEXT},
     {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", KRYON_NODE_SELECTABLE},
-    {"Rect", "Rect", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
+    {"Box", "Box", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
     {"Icon", "Icon", "UI/Display", "Control", "Icon", EDITABLE},
@@ -45,8 +45,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"TextArea", "Text Area", "UI/Collections", "Control", "Text area", EDITABLE},
     {"CanvasGrid", "Canvas Grid", "UI/Collections", "Control", "Grid", EDITABLE},
 
-    {"MenuBar", "Menu Bar", "UI/Navigation", "Control", "Menu", EDITABLE},
-    {"PopupMenu", "Popup Menu", "UI/Navigation", "Control", "Menu", EDITABLE},
+    {"Menu", "Menu", "UI/Navigation", "Control", "Menu", EDITABLE},
     {"NavigationBar", "Navigation Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
     {"Toolbar", "Toolbar", "UI/Navigation", "Control", "Tools", EDITABLE},
     {"TabBar", "Tab Bar", "UI/Navigation", "Control", "Tabs", EDITABLE},
@@ -86,7 +85,7 @@ kryon_node_type_has_snippet(const char *name)
     static const char *snippet_names[] = {
         "Background",
         "Text",
-        "Rect",
+        "Box",
         "Line",
         "Image",
         "Card",
@@ -186,25 +185,24 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     id = (x * 31 + y * 17 + index * 101) & 0x7fffffff;
     if(strcmp(type->name, "Background") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Background(GetThemeBackground())\n");
+                 "\n    Surface((SurfaceProps){.bounds = {0, 0, (float)GetViewWidth(), (float)GetViewHeight()}})\n");
     } else if(strcmp(type->name, "Text") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Text((TextProps){\n"
                  "        .bounds = {Scale(%d), Scale(%d), 0, 0},\n"
                  "        .text = \"Text\",\n"
                  "        .font = Text16,\n"
-                 "        .color = GetThemeText(),\n"
                  "        .wrap = TextWrapNone,\n"
                  "    })\n",
                  x, y);
-    } else if(strcmp(type->name, "Rect") == 0) {
+    } else if(strcmp(type->name, "Box") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Rect(Scale(%d), Scale(%d), Scale(160), Scale(90), GetThemeButton(), GetThemeButtonHover())\n",
+                 "\n    Box((Rectangle){Scale(%d), Scale(%d), Scale(160), Scale(90)}, GetThemeSurface(), GetThemeBorder())\n",
                  x, y);
     } else if(strcmp(type->name, "Line") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Line(Scale(%d), Scale(%d), Scale(%d), Scale(%d), GetThemeLink())\n",
-                 x, y, x + 160, y + 40);
+                 "\n    Separator((SeparatorProps){.bounds = {Scale(%d), Scale(%d), Scale(160), Scale(24)}})\n",
+                 x, y);
     } else if(strcmp(type->name, "Image") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Image((ImageProps){\n"
@@ -249,10 +247,6 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .max_codepoints = 128,\n"
                  "        .font = Text16,\n"
                  "        .focus_id = %d,\n"
-                 "        .style = (TextInputStyle){\n"
-                 "            GetThemeSurface(), GetThemeButton(), GetThemeLink(),\n"
-                 "            GetThemeText(), GetThemeLink(), 0, Scale(8), Scale(6),\n"
-                 "        },\n"
                  "    })\n",
                  id, id, id, x, y, id, id, id, id, 5200 + (id % 1000));
     } else if(strcmp(type->name, "Toggle") == 0) {
@@ -279,7 +273,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Group") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    Group((ColumnProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}, .key = Key(\"group-%d\")})\n"
-                 "    Rect(Scale(%d), Scale(%d), Scale(180), Scale(110), Fade(GetThemeButton(), 0.45), GetThemeButtonHover())\n"
+                 "    Surface((SurfaceProps){.bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)}})\n"
                  "    End()\n",
                  x, y, 10200 + (id % 1000), x, y);
     } else {

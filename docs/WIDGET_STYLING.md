@@ -1,9 +1,10 @@
 # Widget styling
 
-Button is the reference implementation for Kryon's default control styling.
-Other controls resolve the same styles and consume the same material and content
-metrics. They adapt layout to their interaction; they do not copy screenshot
-colors or maintain a second theme palette.
+KSS style packs are the reference implementation for Kryon's control styling.
+Button is the deepest consumer of that policy: other controls resolve the same
+style facts and consume the same material and content metrics. They adapt layout
+to their interaction; they do not copy screenshot colors or maintain a second
+theme palette.
 
 The visual reference is the Magnetic Lightfield button board in
 `design/widget-proposals/08-magnetic-lightfield.png`. The Frosted Glass dropdown
@@ -14,7 +15,8 @@ Reference images guide visual review; executable shared policy defines behavior.
 
 | Concern | Shared source | Responsibility |
 |---|---|---|
-| Theme palette and dimensions | `runtime/theme.kry` | Active theme colors, radii, size tokens, timing |
+| Style packs and selectors | `styles/kryon/*.kss`, `runtime/style_sheet.kry` | Visible colors, radii, typography, materials, states |
+| Legacy/system palette bridge | `runtime/theme.kry` | System mode and compatibility color inputs while apps migrate to KSS |
 | State and style overrides | `runtime/style.kry` | State priority, explicit fields, interpolation, content sizing |
 | Button appearance and content | `runtime/button.kry` | Tone/emphasis colors, measurement, motion, content drawing |
 | Material geometry | `runtime/surface.kry` | Face, gradients, rim, shadow, glow, focus, chevron coverage |

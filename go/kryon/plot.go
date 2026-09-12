@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type PlotRange struct {
 	MinValue float32
 	MaxValue float32
@@ -114,13 +115,13 @@ func Plot_PlotNormalize(value float32, plot_range PlotRange) float32 {
 	return value_13
 }
 
-func Plot_PlotHistogramBar(bounds Rectangle, index int32, count int32, value float32, plot_range PlotRange, color uint32) PlotMark {
+func Plot_PlotHistogramBar(bounds Rectangle, index int32, count int32, value float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
 	var value_0 int32 = count
 	var value_1 int32 = 0
 	var value_2 bool = value_0 <= value_1
 	if value_2 {
-		var value_3 uint32 = color
+		var value_3 uint32 = mark_frame.Value.Background
 		mark.Color = value_3
 		var value_4 PlotMark = mark
 		return value_4
@@ -166,13 +167,13 @@ func Plot_PlotHistogramBar(bounds Rectangle, index int32, count int32, value flo
 	mark.Bounds.Width = value_34
 	var value_35 float32 = height
 	mark.Bounds.Height = value_35
-	var value_36 uint32 = color
+	var value_36 uint32 = mark_frame.Value.Background
 	mark.Color = value_36
 	var value_37 PlotMark = mark
 	return value_37
 }
 
-func Plot_PlotSingleLine(bounds Rectangle, value float32, plot_range PlotRange, color uint32) PlotMark {
+func Plot_PlotSingleLine(bounds Rectangle, value float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
 	var value_0 float32 = bounds.Y
 	var value_1 float32 = 1.0
@@ -192,13 +193,13 @@ func Plot_PlotSingleLine(bounds Rectangle, value float32, plot_range PlotRange, 
 	mark.Bounds.Width = value_11
 	var value_12 float32 = 0.0
 	mark.Bounds.Height = value_12
-	var value_13 uint32 = color
+	var value_13 uint32 = mark_frame.Value.Background
 	mark.Color = value_13
 	var value_14 PlotMark = mark
 	return value_14
 }
 
-func Plot_PlotLineSegment(bounds Rectangle, index int32, count int32, a float32, b float32, plot_range PlotRange, color uint32) PlotMark {
+func Plot_PlotLineSegment(bounds Rectangle, index int32, count int32, a float32, b float32, plot_range PlotRange, mark_frame StyleFrame) PlotMark {
 	var mark PlotMark = PlotMark{}
 	var value_0 int32 = count
 	var value_1 int32 = 1
@@ -207,7 +208,7 @@ func Plot_PlotLineSegment(bounds Rectangle, index int32, count int32, a float32,
 		var value_3 Rectangle = bounds
 		var value_4 float32 = b
 		var value_5 PlotRange = plot_range
-		var value_6 uint32 = color
+		var value_6 StyleFrame = mark_frame
 		var value_7 PlotMark = Plot_PlotSingleLine(value_3, value_4, value_5, value_6)
 		return value_7
 	}
@@ -269,13 +270,13 @@ func Plot_PlotLineSegment(bounds Rectangle, index int32, count int32, a float32,
 	var value_56 float32 = y1
 	var value_57 float32 = value_55 - value_56
 	mark.Bounds.Height = value_57
-	var value_58 uint32 = color
+	var value_58 uint32 = mark_frame.Value.Background
 	mark.Color = value_58
 	var value_59 PlotMark = mark
 	return value_59
 }
 
-func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width float32, scale float32, text_color uint32, show_label bool, show_overlay bool) PlotTextPaint {
+func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width float32, scale float32, frame StyleFrame, show_label bool, show_overlay bool) PlotTextPaint {
 	var paint PlotTextPaint = PlotTextPaint{}
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -296,7 +297,7 @@ func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width 
 	var value_11 float32 = scale
 	var value_12 float32 = value_10 * value_11
 	var text_height float32 = value_12
-	var value_13 uint32 = text_color
+	var value_13 uint32 = frame.Value.Foreground
 	paint.TextColor = value_13
 	var value_14 bool = show_label
 	paint.ShowLabel = value_14

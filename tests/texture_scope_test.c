@@ -294,7 +294,7 @@ int main(void)
     ClearBackground(BLANK);
     RenderTexture2D transparent_previous = ui_tree_set_paint_target(inner);
     DrawRectangle(0,0,4,4,(Color){0,255,0,128});
-    Rect(4,4,4,4,(Color){255,0,0,128},BLANK);
+    Box((Rectangle){4,4,4,4},(Color){255,0,0,128},BLANK);
     ui_tree_set_paint_target(transparent_previous);
     EndTextureMode();
     /* The lexical capture scope ends before deferred painting. Neither its
@@ -378,7 +378,7 @@ int main(void)
                 ui_paint_layers_composite(foreign);
                 ui_paint_layers_destroy(foreign);
             }
-            Rect(20,0,4,4,YELLOW,BLANK);
+            Box((Rectangle){20,0,4,4},YELLOW,BLANK);
             /* A descendant outside its parent's bounds must also lose capture
              * when the parent's paint branch is hidden. */
             UIPopupInputToken child_input = ui_popup_input_begin(
@@ -394,11 +394,11 @@ int main(void)
             BeginScroll((Rectangle){0,0,4,4},20,NULL);
             check_invalid_layer_end(child_layer,"unclosed popup scroll scope");
             EndScroll();
-            Rect(4,4,4,4,GREEN,BLANK);
+            Box((Rectangle){4,4,4,4},GREEN,BLANK);
             ui_paint_layer_end(child_layer);
             ui_popup_input_end(child_input);
             check_invalid_layer_end(child_layer,"layer closed twice");
-            Rect(4,4,4,4,BLUE,BLANK);
+            Box((Rectangle){4,4,4,4},BLUE,BLANK);
             ui_paint_layer_end(parent_layer);
             ui_popup_input_end(parent_input);
             if(!ui_popup_input_current_captures((Vector2){1,1}) ||
@@ -415,7 +415,7 @@ int main(void)
                 }
             }
         }
-        Rect(0,0,64,64,WHITE,BLANK);
+        Box((Rectangle){0,0,64,64},WHITE,BLANK);
         EndTree();
         BeginMode2D((Camera2D){.offset={7,5},.zoom=1});
         BeginClip(40,40,4,4);
@@ -491,7 +491,7 @@ int main(void)
 
     UIPaintLayers *host_a = ui_paint_layers_create();
     UIPaintLayers *host_b = ui_paint_layers_create();
-    Menu host_menus[] = {{.label = "Host"}};
+    MenuGroup host_menus[] = {{.label = "Host"}};
     for(int frame = 0; frame < 2; frame++) {
         int size = frame == 0 ? 32 : 64;
         RenderTexture2D host_target = LoadRenderTexture(size,size);
@@ -501,7 +501,7 @@ int main(void)
         ClearBackground(BLACK);
         ui_paint_layers_frame(host_a,size,size);
         int host_a_open = frame == 0 ? 0 : -1;
-        MenuBarResult host_a_menu = RenderMenuBar(
+        MenuResult host_a_menu = RenderMenuGroups(
             41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"first host lost its open menu: %d\n",
@@ -519,14 +519,14 @@ int main(void)
         }
         UIPaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
         DrawRectangle(0,0,size,size,RED);
-        Rect(size-4,size-4,4,4,YELLOW,BLANK);
+        Box((Rectangle){size-4,size-4,4,4},YELLOW,BLANK);
         ui_paint_layer_end(a_layer);
         EndTextureMode();
         BeginTextureMode(inner);
         ClearBackground(BLUE);
         ui_paint_layers_frame(host_b,16,16);
         int host_b_open = -1;
-        MenuBarResult host_b_menu = RenderMenuBar(
+        MenuResult host_b_menu = RenderMenuGroups(
             41300, (Rectangle){0,0,16,12}, host_menus, 1, &host_b_open);
         if(host_b_menu.open_index != -1) {
             fprintf(stderr,"open menu crossed hosts: %d\n",
@@ -541,7 +541,7 @@ int main(void)
         *host_b_scroll = 9;
         UIPaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
         DrawRectangle(0,0,4,4,GREEN);
-        Rect(8,8,4,4,MAGENTA,BLANK);
+        Box((Rectangle){8,8,4,4},MAGENTA,BLANK);
         ui_paint_layer_end(b_layer);
         EndTextureMode();
         EndTree();
@@ -556,7 +556,7 @@ int main(void)
         }
         BeginTextureMode(host_target);
         host_a_open = -1;
-        host_a_menu = RenderMenuBar(
+        host_a_menu = RenderMenuGroups(
             41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"restored host has wrong open menu: %d\n",
@@ -614,10 +614,10 @@ int main(void)
                 BeginTree(Key("NativeWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
-                Rect(40,40,4,4,YELLOW,BLANK);
+                Box((Rectangle){40,40,4,4},YELLOW,BLANK);
                 ui_paint_layer_end(window_layer);
                 ui_popup_input_end(window_input);
-                Rect(0,0,64,64,RED,BLANK);
+                Box((Rectangle){0,0,64,64},RED,BLANK);
                 EndTree();
             }
             check_window_readback = frame == 2 ? 2 : 1;
@@ -650,22 +650,22 @@ int main(void)
         RenderTexture2D previous = ui_tree_set_paint_target(inner);
         DrawRectangle(1,1,3,3,GREEN);
         BeginClip(12,12,2,2);
-        Rect(11,11,4,4,WHITE,BLANK);
+        Box((Rectangle){11,11,4,4},WHITE,BLANK);
         EndClip();
-        Rect(8,8,3,3,YELLOW,BLANK);
+        Box((Rectangle){8,8,3,3},YELLOW,BLANK);
         BeginMode2D((Camera2D){.offset = {4,3}, .zoom = 1});
-        Rect(3,3,2,2,ORANGE,BLANK);
+        Box((Rectangle){3,3,2,2},ORANGE,BLANK);
         BeginTextureMode(leaf);
         ClearBackground(MAGENTA);
         RenderTexture2D parent = ui_tree_set_paint_target(leaf);
-        Rect(2,2,2,2,WHITE,BLANK);
+        Box((Rectangle){2,2,2,2},WHITE,BLANK);
         ui_tree_set_paint_target(parent);
         EndTextureMode();
-        Rect(8,0,2,2,WHITE,BLANK);
+        Box((Rectangle){8,0,2,2},WHITE,BLANK);
         EndMode2D();
         ui_tree_set_paint_target(previous);
         EndTextureMode();
-        Rect(1,1,64,64,RED,BLANK);
+        Box((Rectangle){1,1,64,64},RED,BLANK);
         BeginClip(0,0,4,4);
         EndTree();
         DrawRectangle(0,0,32,32,ORANGE);
@@ -704,7 +704,7 @@ int main(void)
     check_pixel(clip_image,2,2,GREEN,"saved clip restored");
     check_pixel(clip_image,8,8,BLACK,"restored clip excludes outside");
     UnloadImage(clip_image);
-    /* Sliders use the same declaration-order painter and layout as Rect/Button. */
+    /* Sliders use the same declaration-order painter and layout as Box/Button. */
     float float_value = 0;
     float angle_value = 0;
     int int_value = 0;
@@ -713,7 +713,7 @@ int main(void)
     BeginTextureMode(outer);
     ClearBackground(BLACK);
     BeginTree(Key("slider lifecycle"));
-    Rect(1,1,63,63,RED,BLANK);
+    Box((Rectangle){1,1,63,63},RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
     test_slider_whole((SliderWholeProps){.bounds = {0,0,20,12}, .id = 911,
               .values = &int_value, .value_count = 1, .min = 0, .max = 10, .format = " "});
@@ -730,7 +730,7 @@ int main(void)
     angle_value = 1.5707963267948966f;
     slider_label[0] = 'X';
     slider_format[2] = '3';
-    Rect(23,17,3,3,BLUE,BLANK);
+    Box((Rectangle){23,17,3,3},BLUE,BLANK);
     EndTree();
     EndTextureMode();
     Image sliders = LoadImageFromTexture(outer.texture);
@@ -763,7 +763,7 @@ int main(void)
     BeginTextureMode(outer);
     ClearBackground(BLACK);
     BeginTree(Key("drag lifecycle"));
-    Rect(1,1,63,63,RED,BLANK);
+    Box((Rectangle){1,1,63,63},RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
     test_drag_scalar((DragScalarProps){.bounds = {0,0,20,12}, .id = 920,
               .values = &drag_float, .value_count = 1, .format = drag_format});
@@ -825,12 +825,12 @@ int main(void)
     BeginTextureMode(outer);
     ClearBackground(BLACK);
     BeginTree(Key("boxed text lifecycle"));
-    Rect(0,0,64,64,RED,BLANK);
+    Box((Rectangle){0,0,64,64},RED,BLANK);
     Row((RowProps){.bounds = {10,10,20,20}});
     Text((TextProps){.bounds=(Rectangle){0,0,20,20}, .text=boxed_text, .font=16, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
     End();
     memset(boxed_text,'X',4);
-    Rect(25,10,5,20,BLUE,BLANK);
+    Box((Rectangle){25,10,5,20},BLUE,BLANK);
     EndTree();
     EndTextureMode();
     Image boxed = LoadImageFromTexture(outer.texture);
@@ -865,10 +865,10 @@ int main(void)
         BeginTextureMode(outer);
         ClearBackground(BLACK);
         BeginTree(Key("editor paint lifecycle"));
-        Rect(0,0,64,64,RED,BLANK);
+        Box((Rectangle){0,0,64,64},RED,BLANK);
         ui_text_field_render(editor);
         memset(editor_text,'X',3);
-        Rect(45,8,15,24,BLUE,BLANK);
+        Box((Rectangle){45,8,15,24},BLUE,BLANK);
         EndTree();
         EndTextureMode();
         Image editor_result = LoadImageFromTexture(outer.texture);
@@ -995,9 +995,9 @@ int main(void)
             failures++;
         }
         BeginTree(Key("main host owned layers"));
-        Rect(0,0,64,64,RED,BLANK);
+        Box((Rectangle){0,0,64,64},RED,BLANK);
         Row((RowProps){.bounds={10,20,44,8},.gap=2});
-        Rect(0,0,8,8,BLUE,BLANK);
+        Box((Rectangle){0,0,8,8},BLUE,BLANK);
         if(frame == 0) {
             UIPaintLayers *main_layers = ui_frame_paint_layers();
             if(main_layers == NULL) return 1;
@@ -1006,15 +1006,15 @@ int main(void)
             main_input = ui_paint_layers_input(main_layers);
             UIPopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
             Column((ColumnProps){.bounds={0,0,4,4}});
-            Rect(0,0,4,4,MAGENTA,BLANK);
+            Box((Rectangle){0,0,4,4},MAGENTA,BLANK);
             End();
             DrawRectangle(8,8,4,4,GREEN);
-            Rect(40,40,4,4,YELLOW,BLANK);
+            Box((Rectangle){40,40,4,4},YELLOW,BLANK);
             ui_paint_layer_end(layer);
             ui_popup_input_end(input);
             EndScroll();
         }
-        Rect(0,0,8,8,ORANGE,BLANK);
+        Box((Rectangle){0,0,8,8},ORANGE,BLANK);
         End();
         EndTree();
         if(frame == 0) {
@@ -1065,11 +1065,11 @@ int main(void)
         if(BeginPopup((PopupProps){.bounds={0,8,64,56},.id=28000,
                 .open=&composed_open})) {
             DrawRectangle(0,8,8,8,GREEN);
-            Rect(16,16,8,8,YELLOW,BLANK);
+            Box((Rectangle){16,16,8,8},YELLOW,BLANK);
             if(frame == 1) ClosePopup();
             EndPopup();
         }
-        Rect(0,0,64,64,RED,BLANK);
+        Box((Rectangle){0,0,64,64},RED,BLANK);
         EndTree();
         EndInterfaceFrame();
         EndTextureMode();

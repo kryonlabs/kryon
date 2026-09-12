@@ -71,12 +71,14 @@ func (r *runtime) BeginPopup(p PopupProps) bool {
 		}
 	}
 	paint := r.beginPaintLayer(p.ID)
-	t := r.theme()
 	if alpha := PopupPolicy_PopupBackdropAlpha(decision); alpha > 0 {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: NewRectangle(0, 0, float32(r.GetScreenWidth()), float32(r.GetScreenHeight())), Color: Color{A: uint8(alpha)}})
 	}
 	r.scrollClips = append(r.scrollClips, p.Bounds)
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: p.Bounds, Color: t.surface, BorderColor: t.border, ID: p.ID})
+	panelFrame := defaultStyleFrame(StyleSheet_StyleKindSurface())
+	panelOp := styleFrameRectOp(p.Bounds, Rectangle{}, panelFrame)
+	panelOp.ID = p.ID
+	r.record(panelOp)
 	r.popupScopes = append(r.popupScopes, popupScope{id: p.ID, open: p.Open, paint: paint, input: input, capturesInput: decision.CapturesInput})
 	return true
 }

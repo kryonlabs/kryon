@@ -5,7 +5,6 @@ package kryon
 // #import control_props
 // #import drawing_props
 // #import style
-// #import theme
 type NavigationBarSpec struct {
 	ViewWidth    int32
 	ViewHeight   int32
@@ -15,8 +14,7 @@ type NavigationBarSpec struct {
 	BottomMargin int32
 	IconSize     int32
 	Scale        float32
-	Palette      Palette
-	Metrics      Metrics
+	Bar          StyleFrame
 }
 
 type NavigationBarPaint struct {
@@ -39,8 +37,8 @@ type NavigationBarItemSpec struct {
 	Disabled    bool
 	Hovered     bool
 	LabelHeight int32
-	Palette     Palette
-	Metrics     Metrics
+	Base        StyleFrame
+	Face        StyleFrame
 }
 
 type NavigationBarItemPaint struct {
@@ -265,31 +263,10 @@ func NavigationBar_NavigationBarPaintFor(spec NavigationBarSpec) NavigationBarPa
 	paint.Height = value_128
 	var value_129 int32 = y
 	paint.Y = value_129
-	var styles StyleStates = StyleStates{}
-	var value_130 int32 = int32(ButtonToneNeutral)
-	var value_131 int32 = int32(ButtonEmphasisSoft)
-	var value_132 int32 = int32(ButtonStateNormal)
-	var value_133 int32 = int32(ControlSizeLarge)
-	var value_134 bool = true
-	var value_135 bool = false
-	var value_136 bool = false
-	var value_137 bool = false
-	var value_138 bool = false
-	var value_139 Palette = spec.Palette
-	var value_140 Metrics = spec.Metrics
-	var value_141 StyleStates = styles
-	var value_142 bool = false
-	var value_143 float32 = 0.0
-	var value_144 float32 = 0.0
-	var value_145 float32 = 0.0
-	var value_146 StyleFrame = Button_ResolveFrame(value_130, value_131, value_132, value_133, value_134, value_135, value_136, value_137, value_138, value_139, value_140, value_141, value_142, value_143, value_144, value_145)
-	paint.Bar = value_146
-	var value_147 float32 = spec.Metrics.RadiusLarge
-	var value_148 float32 = 4.0
-	var value_149 float32 = value_147 + value_148
-	paint.Bar.Value.Radius = value_149
-	var value_150 NavigationBarPaint = paint
-	return value_150
+	var value_130 StyleFrame = spec.Bar
+	paint.Bar = value_130
+	var value_131 NavigationBarPaint = paint
+	return value_131
 }
 
 func NavigationBar_NavigationBarItemPaintFor(spec NavigationBarItemSpec) NavigationBarItemPaint {
@@ -555,95 +532,42 @@ func NavigationBar_NavigationBarItemPaintFor(spec NavigationBarItemSpec) Navigat
 	var value_204 int32 = spec.LabelHeight
 	var value_205 float32 = float32(value_204)
 	paint.LabelBounds.Height = value_205
-	var styles StyleStates = StyleStates{}
-	var value_206 bool = spec.Active
-	var value_207 int32 = 0
-	if value_206 {
-		var value_208 int32 = int32(ButtonToneAccent)
-		value_207 = value_208
+	var value_206 StyleFrame = spec.Face
+	paint.Face = value_206
+	var value_207 bool = spec.Active
+	var value_208 bool = value_207
+	if !value_208 {
+		var value_209 bool = spec.Hovered
+		value_208 = value_209
+	}
+	paint.DrawFace = value_208
+	var value_210 uint32 = spec.Base.Value.Foreground
+	paint.IconColor = value_210
+	var value_211 uint32 = spec.Base.Value.Foreground
+	paint.TextColor = value_211
+	var value_212 bool = spec.Active
+	if value_212 {
+		var value_213 uint32 = paint.Face.Value.Foreground
+		paint.IconColor = value_213
+		var value_214 uint32 = paint.Face.Value.Foreground
+		paint.TextColor = value_214
+	}
+	var value_215 bool = spec.Active
+	var value_216 bool = !value_215
+	if value_216 {
+		var value_217 float32 = 0.45
+		paint.Face.Value.Opacity = value_217
+	}
+	var value_218 bool = spec.Disabled
+	var value_219 int32 = 0
+	if value_218 {
+		var value_220 int32 = 150
+		value_219 = value_220
 	} else {
-		var value_209 int32 = int32(ButtonToneNeutral)
-		value_207 = value_209
+		var value_221 int32 = 255
+		value_219 = value_221
 	}
-	var tone int32 = value_207
-	var value_210 bool = spec.Active
-	var value_211 int32 = 0
-	if value_210 {
-		var value_212 int32 = int32(ButtonEmphasisFilled)
-		value_211 = value_212
-	} else {
-		var value_213 int32 = int32(ButtonEmphasisGhost)
-		value_211 = value_213
-	}
-	var emphasis int32 = value_211
-	var value_214 int32 = int32(ButtonStateNormal)
-	var state int32 = value_214
-	var value_215 bool = spec.Hovered
-	if value_215 {
-		var value_216 int32 = int32(ButtonStateHover)
-		state = value_216
-	}
-	var value_217 int32 = tone
-	var value_218 int32 = emphasis
-	var value_219 int32 = state
-	var value_220 int32 = int32(ControlSizeMedium)
-	var value_221 bool = true
-	var value_222 bool = false
-	var value_223 bool = spec.Disabled
-	var value_224 bool = false
-	var value_225 bool = spec.Active
-	var value_226 Palette = spec.Palette
-	var value_227 Metrics = spec.Metrics
-	var value_228 StyleStates = styles
-	var value_229 bool = false
-	var value_230 float32 = 0.0
-	var value_231 float32 = 0.0
-	var value_232 float32 = 0.0
-	var value_233 StyleFrame = Button_ResolveFrame(value_217, value_218, value_219, value_220, value_221, value_222, value_223, value_224, value_225, value_226, value_227, value_228, value_229, value_230, value_231, value_232)
-	paint.Face = value_233
-	var value_234 float32 = spec.Metrics.RadiusPill
-	paint.Face.Value.Radius = value_234
-	var value_235 bool = spec.Active
-	var value_236 bool = value_235
-	if !value_236 {
-		var value_237 bool = spec.Hovered
-		value_236 = value_237
-	}
-	paint.DrawFace = value_236
-	var value_238 uint32 = spec.Palette.TextMuted
-	paint.IconColor = value_238
-	var value_239 uint32 = spec.Palette.TextMuted
-	paint.TextColor = value_239
-	var value_240 bool = spec.Active
-	if value_240 {
-		var value_241 uint32 = paint.Face.Value.Foreground
-		paint.IconColor = value_241
-		var value_242 uint32 = paint.Face.Value.Foreground
-		paint.TextColor = value_242
-	}
-	var value_243 bool = spec.Disabled
-	if value_243 {
-		var value_244 uint32 = spec.Palette.TextDisabled
-		paint.IconColor = value_244
-		var value_245 uint32 = spec.Palette.TextDisabled
-		paint.TextColor = value_245
-	}
-	var value_246 bool = spec.Active
-	var value_247 bool = !value_246
-	if value_247 {
-		var value_248 float32 = 0.45
-		paint.Face.Value.Opacity = value_248
-	}
-	var value_249 bool = spec.Disabled
-	var value_250 int32 = 0
-	if value_249 {
-		var value_251 int32 = 150
-		value_250 = value_251
-	} else {
-		var value_252 int32 = 255
-		value_250 = value_252
-	}
-	paint.IconAlpha = value_250
-	var value_253 NavigationBarItemPaint = paint
-	return value_253
+	paint.IconAlpha = value_219
+	var value_222 NavigationBarItemPaint = paint
+	return value_222
 }

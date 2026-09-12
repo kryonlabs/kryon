@@ -34,6 +34,100 @@
  * compound literals like (Type){0}, and a copy of a zero
  * object is equivalent on every platform. */
 static const Vector2 kryon_zero_vector2;
+
+static StyleFrame ui_tk_simple_style_frame_role(ButtonTone tone,
+                                                ButtonState state,
+                                                int disabled, int selected,
+                                                int style_kind, int role);
+
+static StyleFrame
+ui_tk_checkbox_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                           int selected, int role)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisOutline;
+    props.size = ControlSizeMedium;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                            StyleKindCheckbox(), role);
+}
+
+static ButtonState
+ui_tk_checkbox_button_state(int hovered, int down, int focused, int disabled)
+{
+    if(disabled)
+        return ButtonStateDisabled;
+    if(down)
+        return ButtonStatePressed;
+    if(focused)
+        return ButtonStateFocus;
+    if(hovered)
+        return ButtonStateHover;
+    return ButtonStateNormal;
+}
+
+static StyleFrame
+ui_tk_radio_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                        int selected, int role)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisOutline;
+    props.size = ControlSizeMedium;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                            StyleKindRadio(), role);
+}
+
+static StyleFrame
+ui_tk_simple_style_frame(ButtonTone tone, ButtonState state, int disabled,
+                         int selected, int style_kind)
+{
+    return ui_tk_simple_style_frame_role(tone, state, disabled, selected,
+                                         style_kind, StyleAny());
+}
+
+static StyleFrame
+ui_tk_simple_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
+                              int selected, int style_kind, int role)
+{
+    ButtonProps props = {0};
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
+                                            0.0f, style_kind, role);
+}
+
+static void
+ui_tk_draw_style_frame(Rectangle bounds, Rectangle surface_bounds,
+                       StyleFrame frame, int hovered, int pressed,
+                       int disabled, int focused)
+{
+    StyleFrame styled = ui_style_apply_effects_frame(frame);
+    Style style = ui_unpack_style(styled.value);
+
+    ui_draw_material(bounds, surface_bounds,
+                     style.background, style.border, style.border,
+                     style.radius, style.border_width,
+                     hovered ? 1.0f : 0.0f, pressed ? 1.0f : 0.0f,
+                     disabled, style.focus, focused ? 1.0f : 0.0f,
+                     style.opacity, ui_style_apply_effects_fill(styled.fill),
+                     style.material);
+}
+
 static const TextInputStyle kryon_zero_text_input_style;
 
 static void
@@ -389,31 +483,23 @@ ui_row_text_y(Rectangle bounds, int font)
     return (int)bounds.y + ((int)bounds.height - TextLineHeight(font)) / 2;
 }
 
-static Color
-ui_panel_color(int amount)
-{
-    int lum = ((int)c_bg.r + (int)c_bg.g + (int)c_bg.b) / 3;
-    return lum < 96 ? LightenColor(c_bg, amount) : DarkenColor(c_bg, amount);
-}
-
 static void
 ui_draw_panel(Rectangle bounds)
 {
-    DrawRectangleRec(bounds, c_surface);
-    DrawRectangleLinesEx(bounds, 1.0f, c_button);
+    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+                                                ButtonStateNormal, 0, 0,
+                                                StyleKindSurface());
+    ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, 0, 0);
 }
 
 static void
 ui_draw_menu_panel(Rectangle bounds)
 {
-    Color surface = GetThemeSurface();
-    Color border = GetThemeButton();
-    Color shadow = Fade(GetThemeText(), 0.16f);
-
-    DrawRectangleRec((Rectangle){bounds.x + 2.0f, bounds.y + 2.0f,
-                                 bounds.width, bounds.height}, shadow);
-    DrawRectangleRec(bounds, surface);
-    DrawRectangleLinesEx(bounds, 1.0f, border);
+    StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindMenu(), 2);
+    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    ui_default_elevation(bounds, style.radius, 2);
+    ui_tk_draw_style_frame(bounds, (Rectangle){0}, frame, 0, 0, 0, 0);
 }
 
 static void
@@ -485,9 +571,12 @@ static void
 ui_render_separator_line(Rectangle bounds, int vertical)
 {
     SeparatorLine paint;
+    StyleFrame frame;
     if(!IsWindowReady())
         return;
-    paint = SeparatorLineFor(bounds, vertical != 0, ColorToInt(c_button));
+    frame = ui_tk_simple_style_frame_role(ButtonToneNeutral, ButtonStateNormal,
+                                          0, 0, StyleKindSeparator(), 7);
+    paint = SeparatorLineFor(bounds, vertical != 0, frame);
     if(vertical)
         DrawLine((int)paint.line.x, (int)paint.line.y,
                  (int)paint.line.x,
@@ -506,12 +595,16 @@ RenderSeparator(SeparatorProps separator)
     int font = separator.font > 0 ? separator.font : GetSmallFontSize();
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
-    Color color = separator.disabled ? Fade(c_text, 0.45f) : c_text;
-    Color line_color = separator.disabled ? Fade(c_button, 0.45f) : c_button;
+    StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        separator.disabled, 0, StyleKindSeparator(), 6);
+    StyleFrame line_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        separator.disabled, 0, StyleKindSeparator(), 7);
     SeparatorLabelPaint paint = SeparatorLabelPaintFor(
         separator.bounds, (float)text_width, label[0] != '\0', font,
-        (float)Scale(1000) / 1000.0f, ColorToInt(color),
-        ColorToInt(line_color));
+        (float)Scale(1000) / 1000.0f, frame);
+    paint.line_color = line_frame.value.background;
 
     if(label[0] == '\0') {
         ui_render_separator_line(separator.bounds, separator.vertical);
@@ -573,18 +666,23 @@ RenderDragDrop(DragDropProps drag_drop)
     }
 
     hot = CheckCollisionPointRec(mouse, drag_drop.bounds) &&
-          !disabled && !InspectInputCapturesClick(mouse) &&
-          !ui_input_captures_click_internal(mouse, 0);
+              !disabled && !InspectInputCapturesClick(mouse) &&
+              !ui_input_captures_click_internal(mouse, 0);
     matches = DragDropTargetMatches(toolkit->drag_drop.active,
-              drag_drop.type != NULL && drag_drop.type[0] != '\0',
-              drag_drop.type != NULL &&
-              strcmp(toolkit->drag_drop.type, drag_drop.type) == 0);
+                  drag_drop.type != NULL && drag_drop.type[0] != '\0',
+                  drag_drop.type != NULL &&
+                  strcmp(toolkit->drag_drop.type, drag_drop.type) == 0);
 
     if(drag_drop.accepted_size != NULL)
         *drag_drop.accepted_size = 0;
-    if(matches && IsWindowReady())
-        DrawRectangleLinesEx(drag_drop.bounds, hot ? 2.0f : 1.0f,
-                             hot ? c_link : c_button_hover);
+    if(matches && IsWindowReady()) {
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            disabled ? ButtonStateDisabled :
+            (hot ? ButtonStateHover : ButtonStateNormal),
+            disabled, hot, StyleKindDragDropTarget());
+        ui_tk_draw_style_frame(drag_drop.bounds, (Rectangle){0}, frame, hot, 0,
+                               disabled, 0);
+    }
     if(!DragDropTargetAccepts(drag_drop.disabled, UIContentDisabled(), matches,
        hot, IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
         return 0;
@@ -601,7 +699,7 @@ RenderDragDrop(DragDropProps drag_drop)
 }
 
 static void
-ui_multi_select_apply(MultiSelectListProps list, int index, int control,
+ui_multi_select_apply(ListBoxProps list, int index, int control,
                       int shift, int range_anchor)
 {
     int anchor = list.anchor != NULL ? *list.anchor : -1;
@@ -616,11 +714,12 @@ ui_multi_select_apply(MultiSelectListProps list, int index, int control,
 }
 
 int
-RenderMultiSelectList(MultiSelectListProps list)
+RenderMultiSelectList(ListBoxProps list)
 {
     Vector2 mouse = ui_mouse_world();
     int row_height = MultiSelectRowHeight(list.row_height,
         (float)Scale(1000) / 1000.0f);
+    int paint = IsWindowReady();
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
@@ -661,17 +760,35 @@ RenderMultiSelectList(MultiSelectListProps list)
     }
     if(clicked >= 0)
         ui_multi_select_apply(list,clicked,control,shift,range_anchor);
+    if(paint) {
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+            StyleKindListBoxMulti());
+        ui_tk_draw_style_frame(list.bounds, (Rectangle){0}, frame, 0, 0,
+                               disabled, focused);
+        BeginClip((int)list.bounds.x, (int)list.bounds.y,
+                  (int)list.bounds.width, (int)list.bounds.height);
+    }
     for(int i = 0; i < list.item_count; i++) {
         Rectangle row = MultiSelectRowBounds(list.bounds, i, row_height);
         int hot = CheckCollisionPointRec(mouse, row) &&
                   !InputCapturesClick(mouse);
-        if(IsWindowReady()) {
-            if(list.selected[i] || hot)
-                DrawRectangleRec(row, list.selected[i] ? c_button_hover : c_button);
+        int selected = list.selected[i] != 0;
+        ButtonState item_state = disabled ? ButtonStateDisabled :
+            (hot ? ButtonStateHover :
+             (selected ? ButtonStateSelected : ButtonStateNormal));
+        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            item_state, disabled, selected, StyleKindListBoxMultiItem());
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
+        if(paint) {
+            if(selected || hot || disabled)
+                ui_tk_draw_style_frame(row, list.bounds, item_frame, hot, 0,
+                                       disabled, 0);
             RenderText(list.items[i] != NULL ? list.items[i] : "",
                        (int)row.x + Scale(8),
                        ui_row_text_y(row, GetSmallFontSize()),
-                       GetSmallFontSize(), disabled ? c_icon : c_text);
+                       GetSmallFontSize(), item_style.foreground);
         }
         if(hot)
             disabled ? MarkDisabled() : MarkClickable();
@@ -686,7 +803,9 @@ RenderMultiSelectList(MultiSelectListProps list)
             ui_multi_select_apply(list,clicked,control,shift,-1);
         }
     }
-    if(IsWindowReady() && focused)
+    if(paint)
+        EndClip();
+    if(paint && focused)
         RenderFocus(list.bounds);
     if(list.selected_count != NULL) {
         int count = 0;
@@ -701,9 +820,11 @@ void
 RenderBullet(Rectangle bounds)
 {
     BulletPaint paint;
+    StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindSeparator(), 8);
     if(!IsWindowReady())
         return;
-    paint = BulletPaintFor(bounds, ColorToInt(GetThemeText()));
+    paint = BulletPaintFor(bounds, frame);
     DrawCircleV(paint.center, paint.radius, GetColor(paint.color));
 }
 
@@ -718,16 +839,23 @@ RenderSelectable(SelectableProps selectable)
                                        selectable.disabled, &focused);
     int hot = !disabled && ui_contains(selectable.bounds, mouse) &&
               !InputCapturesClick(mouse);
+    ButtonState state = ButtonStateNormal;
+    if(disabled)
+        state = ButtonStateDisabled;
+    else if(pressed)
+        state = ButtonStatePressed;
+    else if(hot)
+        state = ButtonStateHover;
+    else if(selected)
+        state = ButtonStateSelected;
     SelectablePaint paint = SelectablePaintFor((SelectableSpec){
         .bounds = selectable.bounds,
         .selected = selected,
         .hovered = hot,
         .pressed = pressed,
         .disabled = disabled,
-        .fill_color = ColorToInt(GetThemeButton()),
-        .hover_color = ColorToInt(GetThemeButtonHover()),
-        .text_color = ColorToInt(GetThemeText()),
-        .disabled_text_color = ColorToInt(Fade(GetThemeText(), 0.45f)),
+        .face = ui_tk_simple_style_frame(ButtonToneNeutral, state, disabled,
+                                         selected, StyleKindSelectable()),
         .label_inset = (float)Scale(8)
     });
 
@@ -777,16 +905,15 @@ RenderCheckbox(CheckboxProps checkbox)
     }
 
     if(IsWindowReady()) {
-        Palette palette;
-        Metrics tokens;
         float runtime_scale = (float)Scale(1000) / 1000.0f;
         int hovered = !disabled && ui_contains(checkbox.bounds, ui_mouse_world()) &&
                       !InputCapturesClick(ui_mouse_world()) &&
                       HoverEffectsEnabled();
         int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        ButtonState state = ui_tk_checkbox_button_state(hovered, down,
+                                                        focused, disabled);
         CheckboxPaint paint;
 
-        ui_runtime_theme_values(&palette, &tokens);
         paint = CheckboxPaintFor((CheckboxSpec){
             .bounds = checkbox.bounds,
             .checked = checked,
@@ -795,9 +922,14 @@ RenderCheckbox(CheckboxProps checkbox)
             .pressed = down,
             .focused = focused,
             .scale = runtime_scale,
-            .palette = palette,
-            .metrics = tokens
+            .box = ui_tk_checkbox_style_frame(ButtonToneNeutral, state,
+                                              disabled, checked, 9),
+            .active = ui_tk_checkbox_style_frame(ButtonToneAccent, state,
+                                                 disabled, checked, 10)
         });
+        paint.label_color =
+            ui_tk_checkbox_style_frame(ButtonToneNeutral, state, disabled,
+                                       checked, 6).value.foreground;
 
         if(paint.show_state)
             DrawRectangleRounded(paint.state_bounds, paint.state_radius, 8,
@@ -870,12 +1002,17 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
     }
     if(IsWindowReady()) {
         Rectangle swatch = layout.swatch_bounds;
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            picker.disabled ? ButtonStateDisabled : ButtonStateNormal,
+            picker.disabled, 0, StyleKindColorPickerSwatch());
+        Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
-        DrawRectangleLinesEx(swatch, 1.0f, c_button);
+        ui_tk_draw_style_frame(swatch, picker.bounds, frame, 0, 0,
+                               picker.disabled, 0);
         if(picker.label != NULL)
             RenderText(picker.label, (int)swatch.x + Scale(6),
                        ui_row_text_y(swatch, GetSmallFontSize()),
-                       GetSmallFontSize(), c_text);
+                       GetSmallFontSize(), style.foreground);
     }
     return changed;
 }
@@ -1029,6 +1166,15 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         int hot = row_hot && !item->disabled;
         int selected = keyboard && depth < UI_TK_MENU_DEPTH_MAX &&
                        state->navigation.path[depth] == i;
+        ButtonState item_state = item->disabled ? ButtonStateDisabled :
+            ((hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ?
+                 ButtonStatePressed :
+             (hot ? ButtonStateHover :
+              (selected ? ButtonStateSelected : ButtonStateNormal)));
+        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            item_state, item->disabled, selected, StyleKindMenuItem());
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
 
         if(item->kind == MenuSeparator) {
             if(can_draw)
@@ -1042,35 +1188,40 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 state->navigation.path[depth] = i;
                 state->navigation.depth = depth;
                 for(int child = depth+1; child < UI_TK_MENU_DEPTH_MAX; child++)
-                    state->navigation.path[child] = -1;
+                state->navigation.path[child] = -1;
             }
             if(can_draw)
-                DrawRectangleRec(row, GetThemeButtonHover());
+                ui_tk_draw_style_frame(row, panel, item_frame, 1,
+                                       IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+                                       item->disabled, 0);
             MarkClickable();
         }
         if(selected && !hot && can_draw)
-            DrawRectangleRec(row, GetThemeButtonHover());
+            ui_tk_draw_style_frame(row, panel, item_frame, 0, 0,
+                                   item->disabled, 0);
+        if(item->disabled && can_draw)
+            ui_tk_draw_style_frame(row, panel, item_frame, 0, 0, 1, 0);
         if(item->disabled && row_hot)
             MarkDisabled();
         if(can_draw && item->checked)
-            RenderText("*", (int)row.x + Scale(8), ui_row_text_y(row, font), font, GetThemeIcon());
+            RenderText("*", (int)row.x + Scale(8), ui_row_text_y(row, font),
+                       font, item_style.foreground);
         if(can_draw)
             RenderText(item->label != NULL ? item->label : "",
                        (int)row.x + Scale(28), ui_row_text_y(row, font),
-                       font, item->disabled ? GetThemeButton()
-                                            : GetThemeText());
+                       font, item_style.foreground);
         if(can_draw && item->accelerator != NULL) {
             int accel_text_w = TextWidth(item->accelerator, font);
             RenderText(item->accelerator,
                        (int)(row.x + row.width - accel_text_w -
                              metrics.panel_padding),
                        ui_row_text_y(row, font),
-                       font, item->disabled ? GetThemeButton() : GetThemeIcon());
+                       font, item_style.foreground);
         }
         if(can_draw && item->kind == MenuSubmenu)
             RenderText(">", (int)(row.x + row.width - Scale(18)),
                        ui_row_text_y(row, font),
-                       font, item->disabled ? GetThemeButton() : GetThemeIcon());
+                       font, item_style.foreground);
         if(hot && item->kind == MenuSubmenu)
             state->submenu_id = item->id;
         if(item->kind == MenuSubmenu &&
@@ -1162,7 +1313,7 @@ copy_menu_items(MenuItem *arena, int *used, const MenuItem *items,
 }
 
 static void
-queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
+queue_context_menu_overlay(MenuProps menu, int suppress_close)
 {
     ToolkitStore *state = toolkit_state();
     int count = 0;
@@ -1183,11 +1334,11 @@ queue_context_menu_overlay(ContextMenuProps menu, int suppress_close)
     state->context_overlay.suppress_close = suppress_close;
 }
 
-MenuBarResult
-RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *open_index)
+MenuResult
+RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_count, int *open_index)
 {
     ToolkitStore *state = toolkit_state();
-    MenuBarResult result = {0, -1};
+    MenuResult result = {0, -1};
     int font = GetFontSize();
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
     int x = (int)bounds.x + Scale(4);
@@ -1275,24 +1426,32 @@ RenderMenuBar(int id, Rectangle bounds, const Menu *menus, int menu_count, int *
     }
     state->overlay.active = 0;
     if(can_draw) {
-        DrawRectangleRec(bounds, c_surface);
-        DrawRectangleLinesEx(bounds, 1.0f, c_button);
+        StyleFrame bar_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            ButtonStateNormal, 0, 0, StyleKindMenu(), 1);
+        ui_tk_draw_style_frame(bounds, (Rectangle){0}, bar_frame, 0, 0, 0, 0);
     }
 
     for(int i = 0; i < menu_count; i++) {
-        int w = MenuBarItemWidth(TextWidth(menus[i].label != NULL ? menus[i].label : "", font), metrics);
-        Rectangle item = MenuBarItemBounds(x, bounds, w, metrics);
+        int w = MenuGroupItemWidth(TextWidth(menus[i].label != NULL ? menus[i].label : "", font), metrics);
+        Rectangle item = MenuGroupItemBounds(x, bounds, w, metrics);
         int menu_id = id + 1 + i;
         int open = state->open_id == menu_id;
         int hot = !UIContentDisabled() && ui_hot(item);
+        ButtonState item_state = open ? ButtonStateSelected :
+            (hot ? ButtonStateHover : ButtonStateNormal);
+        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            item_state, 0, open, StyleKindMenuItem());
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
         if(can_draw && (hot || open))
-            DrawRectangleRec(item, open ? c_button : c_button_hover);
+            ui_tk_draw_style_frame(item, bounds, item_frame, hot, 0, 0,
+                                   focused && state->navigation.top == i);
         if(hot)
             MarkClickable();
         if(can_draw)
             RenderText(menus[i].label != NULL ? menus[i].label : "",
                        x + Scale(12), ui_row_text_y(item, font), font,
-                       c_text);
+                       item_style.foreground);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             ConsumeRelease();
             SetFocus(id);
@@ -1405,7 +1564,7 @@ RenderPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
 }
 
 int
-RenderContextMenu(ContextMenuProps menu)
+RenderContextMenu(MenuProps menu)
 {
     ToolkitStore *state = toolkit_state();
     Vector2 mouse = ui_mouse_world();
@@ -1475,6 +1634,24 @@ RenderContextMenu(ContextMenuProps menu)
     return 0;
 }
 
+MenuResult
+RenderMenu(MenuProps menu)
+{
+    MenuResult result = {0, -1};
+    if(menu.mode == MenuModeBar) {
+        return RenderMenuGroups(menu.id, menu.bounds, menu.menus,
+                                menu.menu_count, menu.open_index);
+    }
+    if(menu.mode == MenuModePopup) {
+        result.activated_id = RenderPopupMenu(menu.id, (int)menu.bounds.x,
+                                              (int)menu.bounds.y, menu.items,
+                                              menu.item_count);
+        return result;
+    }
+    result.activated_id = RenderContextMenu(menu);
+    return result;
+}
+
 int
 RenderRadio(RadioProps radio)
 {
@@ -1488,13 +1665,21 @@ RenderRadio(RadioProps radio)
         .default_style = ui_default_style(),
         .selected_amount = radio.checked ? 1.0f : 0.0f,
         .scale = runtime_scale,
-        .text_color = ColorToInt(c_text),
-        .icon_color = ColorToInt(c_icon),
-        .button_color = ColorToInt(c_button),
-        .primary_color = ColorToInt(ui_default_scheme().primary),
-        .surface_variant_color = ColorToInt(ui_default_scheme().on_surface_variant),
-        .disabled_color = ColorToInt(ui_default_scheme().disabled_content)
+        .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                         radio.disabled ? ButtonStateDisabled
+                                                        : ButtonStateNormal,
+                                         radio.disabled, radio.checked, 11),
+        .selected = ui_tk_radio_style_frame(ButtonToneAccent,
+                                            radio.disabled ? ButtonStateDisabled
+                                                           : ButtonStateNormal,
+                                            radio.disabled, radio.checked, 10)
     });
+    paint.label_color =
+        ui_tk_radio_style_frame(ButtonToneNeutral,
+                                radio.disabled ? ButtonStateDisabled
+                                               : ButtonStateNormal,
+                                radio.disabled, radio.checked, 6)
+            .value.foreground;
     int hot;
     int down;
     int focused = 0;
@@ -1512,7 +1697,6 @@ RenderRadio(RadioProps radio)
     if(!IsWindowReady())
         return activated ? radio.id : 0;
     if(ui_default_style()) {
-        ThemeScheme scheme = ui_default_scheme();
         UIRadioAnimState *anim;
         Rectangle state_bounds = {
             paint.center.x - paint.touch / 2.0f,
@@ -1566,13 +1750,26 @@ RenderRadio(RadioProps radio)
             .default_style = 1,
             .selected_amount = selected,
             .scale = runtime_scale,
-            .text_color = ColorToInt(c_text),
-            .icon_color = ColorToInt(c_icon),
-            .button_color = ColorToInt(c_button),
-            .primary_color = ColorToInt(scheme.primary),
-            .surface_variant_color = ColorToInt(scheme.on_surface_variant),
-            .disabled_color = ColorToInt(scheme.disabled_content)
+            .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                             ui_tk_checkbox_button_state(hot,
+                                                 down, focused,
+                                                 radio.disabled),
+                                             radio.disabled, radio.checked,
+                                             11),
+            .selected = ui_tk_radio_style_frame(ButtonToneAccent,
+                                                ui_tk_checkbox_button_state(hot,
+                                                    down, focused,
+                                                    radio.disabled),
+                                                radio.disabled, radio.checked,
+                                                10)
         });
+        paint.label_color =
+            ui_tk_radio_style_frame(ButtonToneNeutral,
+                                    ui_tk_checkbox_button_state(hot, down,
+                                                               focused,
+                                                               radio.disabled),
+                                    radio.disabled, radio.checked, 6)
+                .value.foreground;
 
         ring = GetColor(paint.ring_color);
         fill = GetColor(paint.fill_color);
@@ -1592,14 +1789,16 @@ RenderRadio(RadioProps radio)
         ui_default_ripple(state_bounds, ring, (int)key, down);
         if(paint.fill_radius > 0.2f)
             DrawCircleV(paint.center, paint.fill_radius, fill);
-        DrawRing(paint.center, paint.outer_radius - paint.stroke_width,
-                 paint.outer_radius, 0.0f, 360.0f, 48, ring);
+        if(paint.stroke_width > 0.0f)
+            DrawRing(paint.center, paint.outer_radius - paint.stroke_width,
+                     paint.outer_radius, 0.0f, 360.0f, 48, ring);
         RenderText(radio.label != NULL ? radio.label : "",
                    (int)paint.label_x,
                    ui_row_text_y(radio.bounds, font), font, label);
     } else {
-        DrawCircleLines((int)paint.center.x, (int)paint.center.y,
-                        paint.outer_radius, GetColor(paint.ring_color));
+        if(paint.stroke_width > 0.0f)
+            DrawCircleLines((int)paint.center.x, (int)paint.center.y,
+                            paint.outer_radius, GetColor(paint.ring_color));
         if(radio.checked)
             DrawCircleV(paint.center, paint.fill_radius,
                         GetColor(paint.fill_color));
@@ -1618,40 +1817,57 @@ RenderRadio(RadioProps radio)
 void
 RenderProgress(ProgressProps progress)
 {
-    ProgressLayout layout;
+    ProgressPaint paint;
     Rectangle fill;
     const char *label = progress.label;
-    Color fill_color = c_button_hover;
     int font = GetSmallFontSize();
     int label_w = label != NULL ? TextWidth(label, font) : 0;
     int pad = Scale(6);
+    StyleFrame track = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindProgress(), 4);
+    StyleFrame active = ui_tk_simple_style_frame_role(ButtonToneAccent,
+        ButtonStateNormal, 0, 1, StyleKindProgress(), 5);
+    StyleFrame text = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindProgress(), 6);
 
-    layout = ProgressLayoutFor(progress.bounds, progress.min, progress.max,
-                               progress.value, (float)label_w, (float)pad);
-    fill = layout.fill_bounds;
+    paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
+                             progress.value, (float)label_w, (float)pad,
+                             (float)Scale(1000) / 1000.0f, track, active,
+                             text);
+    fill = paint.layout.fill_bounds;
     if(!IsWindowReady())
         return;
     if(ui_modern_style() || ui_default_style()) {
-        Color track = ui_default_style()
-            ? ui_default_surface_container()
-            : DarkenColor(c_bg, 16);
-        Color border = ui_default_style()
-            ? ui_default_outline()
-            : Fade(GetThemeButtonHover(), 0.46f);
-        DrawRectangleRounded(progress.bounds, 0.5f, 12, track);
+        float radius = progress.bounds.height > 0.0f
+            ? paint.radius / progress.bounds.height
+            : 0.0f;
+        if(radius < 0.0f)
+            radius = 0.0f;
+        if(radius > 1.0f)
+            radius = 1.0f;
+        DrawRectangleRounded(progress.bounds, radius, 12,
+                             GetColor(paint.track_color));
         if(fill.width > 0.0f)
-            DrawRectangleRounded(fill, 0.5f, 12, fill_color);
-        DrawRectangleRoundedLinesEx(progress.bounds, 0.5f, 12, 1.0f, border);
+            DrawRectangleRounded(fill, radius, 12,
+                                 GetColor(paint.fill_color));
+        if(paint.border_width > 0.0f)
+            DrawRectangleRoundedLinesEx(progress.bounds, radius, 12,
+                                        paint.border_width,
+                                        GetColor(paint.border_color));
     } else {
-        DrawRectangleRec(progress.bounds, ui_panel_color(10));
-        DrawRectangleRec(fill, fill_color);
-        DrawRectangleLinesEx(progress.bounds, 1.0f, c_button);
+        DrawRectangleRec(progress.bounds, GetColor(paint.track_color));
+        DrawRectangleRec(fill, GetColor(paint.fill_color));
+        if(paint.border_width > 0.0f)
+            DrawRectangleLinesEx(progress.bounds, paint.border_width,
+                                 GetColor(paint.border_color));
     }
     if(label != NULL) {
-        int text_x = (int)layout.label_x;
+        int text_x = (int)paint.layout.label_x;
         int text_y = GetUIControlTextY(label, (int)progress.bounds.y,
                                        (int)progress.bounds.height, font);
-        Color text_color = layout.label_on_fill ? ui_default_on_color(fill_color) : c_text;
+        Color text_color = GetColor(paint.layout.label_on_fill
+            ? paint.filled_label_color
+            : paint.label_color);
         RenderText(label, text_x, text_y, font, text_color);
     }
 }
@@ -1664,12 +1880,20 @@ ui_plot(PlotProps plot, int histogram)
     PlotRange range;
     int count = plot.value_count;
     int offset;
-    unsigned int mark_color;
+    StyleFrame plot_frame;
+    StyleFrame mark_frame;
+    Style plot_style;
 
     if(!IsWindowReady())
         return;
-    DrawRectangleRec(plot.bounds, ui_panel_color(10));
-    DrawRectangleLinesEx(plot.bounds, 1.0f, c_button);
+    plot_frame = ui_tk_simple_style_frame(ButtonToneNeutral, ButtonStateNormal,
+                                          0, 0, StyleKindPlot());
+    mark_frame = ui_tk_simple_style_frame(ButtonToneAccent, ButtonStateSelected,
+                                          0, 1, StyleKindPlotMark());
+    plot_style = ui_unpack_style(ui_style_apply_effects_frame(plot_frame).value);
+    DrawRectangleRec(plot.bounds, plot_style.background);
+    DrawRectangleLinesEx(plot.bounds, plot_style.border_width,
+                         plot_style.border);
     if(plot.values == NULL || count <= 0)
         return;
     offset = PlotOffset(count, plot.offset);
@@ -1690,19 +1914,18 @@ ui_plot(PlotProps plot, int histogram)
         }
     }
     range = PlotRangeFor(plot.scale_min, plot.scale_max, min_value, max_value);
-    mark_color = ColorToInt(c_button_hover);
     BeginClip((int)plot.bounds.x, (int)plot.bounds.y,
                 (int)plot.bounds.width, (int)plot.bounds.height);
     if(histogram) {
         for(int i = 0; i < count; i++) {
             float value = plot.values[(offset + i) % count];
             PlotMark bar = PlotHistogramBar(plot.bounds, i, count, value,
-                                             range, mark_color);
+                                             range, mark_frame);
             DrawRectangleRec(bar.bounds, GetColor(bar.color));
         }
     } else if(count == 1) {
         PlotMark line = PlotSingleLine(plot.bounds, plot.values[offset],
-                                       range, mark_color);
+                                       range, mark_frame);
         DrawLine((int)line.bounds.x, (int)line.bounds.y,
                  (int)(line.bounds.x + line.bounds.width),
                  (int)line.bounds.y, GetColor(line.color));
@@ -1711,7 +1934,7 @@ ui_plot(PlotProps plot, int histogram)
             float a = plot.values[(offset + i - 1) % count];
             float b = plot.values[(offset + i) % count];
             PlotMark line = PlotLineSegment(plot.bounds, i, count, a, b,
-                                            range, mark_color);
+                                            range, mark_frame);
             DrawLine((int)line.bounds.x, (int)line.bounds.y,
                      (int)(line.bounds.x + line.bounds.width),
                      (int)(line.bounds.y + line.bounds.height),
@@ -1725,7 +1948,7 @@ ui_plot(PlotProps plot, int histogram)
         float label_width = plot.label != NULL ? (float)TextWidth(plot.label, font) : 0.0f;
         float overlay_width = plot.overlay != NULL ? (float)TextWidth(plot.overlay, font) : 0.0f;
         PlotTextPaint text = PlotTextPaintFor(plot.bounds, label_width,
-            overlay_width, runtime_scale, ColorToInt(c_text),
+            overlay_width, runtime_scale, plot_frame,
             plot.label != NULL, plot.overlay != NULL);
         if(text.show_label)
             RenderText(plot.label, (int)text.label_bounds.x,
@@ -2038,21 +2261,30 @@ ui_update_drag_whole(DragWholeProps drag)
 static void
 ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused)
 {
-    DrawRectangleRec(bounds, disabled ? c_surface : c_button);
-    DrawRectangleLinesEx(bounds, 1.0f, c_button_hover);
+    ButtonState state = disabled ? ButtonStateDisabled : ButtonStateNormal;
+    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral, state,
+                                                disabled, 0,
+                                                StyleKindSpinboxValue());
+    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+
+    ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, disabled, focused);
     RenderText(text, (int)bounds.x + Scale(6),
                ui_row_text_y(bounds, GetSmallFontSize()),
-               GetSmallFontSize(), disabled ? c_icon : c_text);
-    if(focused) RenderFocus(bounds);
+               GetSmallFontSize(), style.foreground);
 }
 
 static void
 ui_paint_drag_label(Rectangle bounds, const char *label)
 {
-    if(label != NULL)
+    if(label != NULL) {
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+                                                    ButtonStateNormal, 0, 0,
+                                                    StyleKindText());
+        Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         RenderText(label, (int)bounds.x + Scale(6),
                    (int)bounds.y - GetSmallFontSize() - Scale(2),
-                   GetSmallFontSize(), c_text);
+                   GetSmallFontSize(), style.foreground);
+    }
 }
 
 void
@@ -2204,14 +2436,27 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
 {
     if(!IsWindowReady())
         return;
-    Palette palette;
-    Metrics tokens;
     Vector2 mouse = ui_mouse_world();
     int hovered = CheckCollisionPointRec(mouse, cell) &&
                   !disabled &&
                   !InputCapturesClick(mouse);
+    ButtonState state = disabled ? ButtonStateDisabled :
+                        (focused ? ButtonStateFocus :
+                         (hovered ? ButtonStateHover : ButtonStateNormal));
+    StyleFrame track = ui_tk_simple_style_frame_role(ButtonToneNeutral, state,
+                                                     disabled, 0,
+                                                     StyleKindSlider(), 4);
+    StyleFrame active = ui_tk_simple_style_frame_role(ButtonToneAccent, state,
+                                                      disabled, 1,
+                                                      StyleKindSlider(), 5);
+    StyleFrame thumb = ui_tk_simple_style_frame(ButtonToneAccent, state,
+                                                disabled, 1,
+                                                StyleKindSliderThumb());
+    StyleFrame label = ui_tk_simple_style_frame_role(ButtonToneNeutral, state,
+                                                     disabled, 0,
+                                                     StyleKindSlider(), 6);
+    Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label).value);
 
-    ui_runtime_theme_values(&palette, &tokens);
     ui_tk_draw_slider_paint(SliderPaintFor((SliderSpec){
         .bounds = cell,
         .ratio = ratio,
@@ -2220,12 +2465,13 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
         .hovered = hovered,
         .disabled = disabled,
         .scale = (float)Scale(1000) / 1000.0f,
-        .palette = palette,
-        .metrics = tokens
+        .track = track,
+        .active_track = active,
+        .thumb = thumb
     }), hovered, focused, disabled);
     RenderText(text, (int)cell.x + Scale(6),
                ui_row_text_y(cell, GetSmallFontSize()),
-               GetSmallFontSize(), disabled ? c_icon : c_text);
+               GetSmallFontSize(), label_style.foreground);
     if(focused)
         RenderFocus(cell);
 }
@@ -2233,10 +2479,14 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
 static void
 ui_draw_slider_label(Rectangle bounds, const char *label)
 {
-    if(IsWindowReady() && label != NULL)
+    if(IsWindowReady() && label != NULL) {
+        StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            ButtonStateNormal, 0, 0, StyleKindSlider(), 6);
+        Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         RenderText(label, (int)bounds.x + Scale(6),
                    (int)bounds.y - GetSmallFontSize() - Scale(2),
-                   GetSmallFontSize(), c_text);
+                   GetSmallFontSize(), style.foreground);
+    }
 }
 
 int
@@ -2588,8 +2838,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         }
         (void)commit;
     }
-    if(IsWindowReady() && label != NULL)
-        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - GetSmallFontSize() - Scale(2), 0, 0}, .text=label, .font=GetSmallFontSize(), .color=c_text, .wrap=TextWrapNone});
+    ui_draw_slider_label(bounds, label);
     EndDisabled();
     return changed;
 }
@@ -2623,6 +2872,7 @@ RenderSpinbox(SpinboxProps spinbox)
 {
     SpinboxLayout layout = SpinboxLayoutFor(spinbox.bounds, Scale(28));
     int changed = 0;
+    int disabled = spinbox.disabled || UIContentDisabled();
     char value_text[32];
     Rectangle left = layout.left;
     Rectangle right = layout.right;
@@ -2630,23 +2880,33 @@ RenderSpinbox(SpinboxProps spinbox)
 
     spinbox.step = SpinboxEffectiveStep(spinbox.step);
 
-    if(spinbox.disabled)
+    if(disabled)
         MarkDisabled();
     if(spinbox.value_text != NULL)
         snprintf(value_text, sizeof(value_text), "%s", spinbox.value_text);
     else
         snprintf(value_text, sizeof(value_text), "%d", spinbox.value != NULL ? *spinbox.value : 0);
     if(IsWindowReady()) {
-        DrawRectangleRec(text, c_surface);
-        DrawRectangleLinesEx(spinbox.bounds, 1.0f, c_button);
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+            StyleKindSpinbox());
+        StyleFrame value_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+            StyleKindSpinboxValue());
+        Style value_style = ui_unpack_style(
+            ui_style_apply_effects_frame(value_frame).value);
+        ui_tk_draw_style_frame(spinbox.bounds, (Rectangle){0}, frame, 0, 0,
+                               disabled, 0);
+        ui_tk_draw_style_frame(text, spinbox.bounds, value_frame, 0, 0,
+                               disabled, 0);
         DrawCenteredUIText(value_text, (int)(text.x + text.width / 2),
                            (int)(text.y + text.height / 2), GetFontSize(),
-                           c_text);
+                           value_style.foreground);
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
-        .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = spinbox.disabled},
-        .paint = {.background = c_button, .foreground = c_text, .border = c_button},
-        .hover_background = c_button_hover}) &&
+        .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = disabled},
+        .style_resolved = 1, .surface_bounds = spinbox.bounds,
+        .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {
         SpinboxStepResult step = SpinboxStepValue(
             *spinbox.value, spinbox.min, spinbox.max, spinbox.step, -1,
@@ -2656,9 +2916,9 @@ RenderSpinbox(SpinboxProps spinbox)
         changed |= step.changed;
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
-        .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = spinbox.disabled},
-        .paint = {.background = c_button, .foreground = c_text, .border = c_button},
-        .hover_background = c_button_hover}) &&
+        .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = disabled},
+        .style_resolved = 1, .surface_bounds = spinbox.bounds,
+        .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {
         SpinboxStepResult step = SpinboxStepValue(
             *spinbox.value, spinbox.min, spinbox.max, spinbox.step, 1,
@@ -2676,13 +2936,13 @@ RenderFieldset(FieldsetProps frame)
     int font = GetSmallFontSize();
     const char *title = frame.title != NULL ? frame.title : "";
     int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
+    StyleFrame style = ui_tk_simple_style_frame(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindFieldset());
     FieldsetPaint paint = FieldsetPaintFor(
         frame.bounds, (float)title_width, title[0] != '\0',
-        (float)Scale(1000) / 1000.0f, ColorToInt(c_button),
-        ColorToInt(c_bg), ColorToInt(c_text));
+        (float)Scale(1000) / 1000.0f, style);
 
-    DrawRectangleLinesEx(paint.frame, paint.border_width,
-                         GetColor(paint.border_color));
+    ui_tk_draw_style_frame(paint.frame, (Rectangle){0}, paint.face, 0, 0, 0, 0);
     if(paint.show_title) {
         DrawRectangleRec(paint.title_background,
                          GetColor(paint.background_color));
@@ -2744,7 +3004,11 @@ RenderListBox(ListBoxProps list)
     first = layout.first_row;
     visible = layout.visible_rows;
     if(paint) {
-        ui_draw_panel(list.bounds);
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+            StyleKindListBox());
+        ui_tk_draw_style_frame(list.bounds, (Rectangle){0}, frame, 0, 0,
+                               disabled, focused);
         BeginClip((int)list.bounds.x, (int)list.bounds.y,
                     (int)list.bounds.width, (int)list.bounds.height);
     }
@@ -2752,16 +3016,22 @@ RenderListBox(ListBoxProps list)
         int index = first + i;
         Rectangle row = ListBoxRowBounds(list.bounds, i, layout);
         int hot = !disabled && ui_hot(row);
-        if(paint && index == selected)
-            DrawRectangleRec(row, disabled ? DarkenColor(c_button, 38) : c_button);
-        else if(paint && hot)
-            DrawRectangleRec(row, c_button_hover);
+        ButtonState item_state = disabled ? ButtonStateDisabled :
+            (hot ? ButtonStateHover :
+             (index == selected ? ButtonStateSelected : ButtonStateNormal));
+        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            item_state, disabled, index == selected, StyleKindListBoxItem());
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
+        if(paint && (index == selected || hot || disabled))
+            ui_tk_draw_style_frame(row, list.bounds, item_frame, hot, 0,
+                                   disabled, 0);
         if(hot)
             MarkClickable();
         if(paint)
             RenderText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
                        (int)row.x + Scale(8), ui_row_text_y(row, font), font,
-                       disabled ? DarkenColor(c_text, 38) : c_text);
+                       item_style.foreground);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             ConsumeRelease();
             *list.selected_index = index;
@@ -2802,7 +3072,11 @@ RenderTreeView(TreeViewProps tree)
     first = scroll_layout.first;
     y_offset = scroll_layout.y_offset;
     if(paint) {
-        ui_draw_panel(tree.bounds);
+        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
+            tree.disabled, 0, StyleKindTreeView());
+        ui_tk_draw_style_frame(tree.bounds, (Rectangle){0}, frame, 0, 0,
+                               tree.disabled, 0);
         BeginClip((int)tree.bounds.x, (int)tree.bounds.y,
                     (int)tree.bounds.width, (int)tree.bounds.height);
     }
@@ -2813,22 +3087,29 @@ RenderTreeView(TreeViewProps tree)
         Rectangle marker_bounds = TreeViewMarkerBounds(row, item->depth, metrics);
         Rectangle text_bounds = TreeViewTextBounds(row, item->depth, metrics);
         int hot = !tree.disabled && ui_hot(row);
-        if(paint && tree.selected_id != NULL && *tree.selected_id == item->id)
-            DrawRectangleRec(row, tree.disabled ? DarkenColor(c_button, 38) : c_button);
-        else if(paint && hot)
-            DrawRectangleRec(row, c_button_hover);
+        int selected = tree.selected_id != NULL && *tree.selected_id == item->id;
+        ButtonState item_state = tree.disabled ? ButtonStateDisabled :
+            (hot ? ButtonStateHover :
+             (selected ? ButtonStateSelected : ButtonStateNormal));
+        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+            item_state, tree.disabled, selected, StyleKindTreeViewItem());
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
+        if(paint && (selected || hot || tree.disabled))
+            ui_tk_draw_style_frame(row, tree.bounds, item_frame, hot, 0,
+                                   tree.disabled, 0);
         if(paint) {
             if(item->expanded)
                 RenderText("v", (int)marker_bounds.x,
                            ui_row_text_y(marker_bounds, font), font,
-                           tree.disabled ? DarkenColor(c_icon, 38) : c_icon);
+                           item_style.foreground);
             else
                 RenderText(">", (int)marker_bounds.x,
                            ui_row_text_y(marker_bounds, font), font,
-                           tree.disabled ? DarkenColor(c_icon, 38) : c_icon);
+                           item_style.foreground);
             RenderText(item->label != NULL ? item->label : "",
                        (int)text_bounds.x, ui_row_text_y(text_bounds, font), font,
-                       tree.disabled ? DarkenColor(c_text, 38) : c_text);
+                       item_style.foreground);
         }
         if(hot)
             MarkClickable();
@@ -3186,6 +3467,9 @@ RenderTableView(TableViewProps table)
     int scroll_body_h;
     int max_scroll;
     int changed = 0;
+    Style text_style = {0};
+    Style selection_style = {0};
+    Style divider_style = {0};
 
     table.disabled = table.disabled || UIContentDisabled();
 
@@ -3284,8 +3568,25 @@ RenderTableView(TableViewProps table)
                                        scroll_body_h);
     first = scroll_layout.first;
     visible = scroll_layout.visible_rows;
-    if(paint)
-        ui_draw_panel(table.bounds);
+    if(paint) {
+        StyleFrame surface_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+            table.disabled, 0, StyleKindTableView(), 2);
+        StyleFrame text_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+            table.disabled, 0, StyleKindTableView(), 22);
+        StyleFrame selection_frame = ui_tk_simple_style_frame_role(ButtonToneAccent,
+            table.disabled ? ButtonStateDisabled : ButtonStateSelected,
+            table.disabled, 1, StyleKindTableView(), 23);
+        StyleFrame divider_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+            table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+            table.disabled, 0, StyleKindTableView(), 18);
+        text_style = ui_unpack_style(ui_style_apply_effects_frame(text_frame).value);
+        selection_style = ui_unpack_style(ui_style_apply_effects_frame(selection_frame).value);
+        divider_style = ui_unpack_style(ui_style_apply_effects_frame(divider_frame).value);
+        ui_tk_draw_style_frame(table.bounds, (Rectangle){0}, surface_frame, 0, 0,
+                               table.disabled, focused);
+    }
 
     for(int slot = 0; slot < table.column_count; slot++) {
         int c = ui_table_display_column(table, slot);
@@ -3294,9 +3595,26 @@ RenderTableView(TableViewProps table)
         int x = ui_table_column_x(table, c, default_col_w);
         int col_w = ui_table_column_width(table, c, default_col_w);
         Rectangle head = TableViewHeaderBounds(table.bounds, x, col_w, header_h);
+        Vector2 header_mouse = ui_mouse_world();
+        Vector2 local_mouse = {header_mouse.x-ui_table_header_shift(table,header_mouse.y),header_mouse.y};
+        Rectangle all_headers = {table.bounds.x,table.bounds.y,table.bounds.width,(float)header_h};
+        int header_hot = !table.disabled && ui_contains(all_headers,header_mouse) &&
+            ui_contains(head,local_mouse) && !InputCapturesClick(header_mouse);
         if(paint) {
-            Color header_color = DarkenColor(c_bg, table.disabled ? 32 : 10);
-            Color text_color = table.disabled ? DarkenColor(c_text, 38) : c_text;
+            int selected_header = (table.selected_column != NULL &&
+                                   *table.selected_column == c) ||
+                                  (table.sort_column != NULL &&
+                                   *table.sort_column == c);
+            ButtonState header_state = table.disabled ? ButtonStateDisabled :
+                (header_hot ? ButtonStateHover :
+                 (selected_header ? ButtonStateSelected : ButtonStateNormal));
+            StyleFrame header_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+                header_state, table.disabled, selected_header,
+                StyleKindTableView(), 13);
+            Style header_paint = ui_unpack_style(
+                ui_style_apply_effects_frame(header_frame).value);
+            Color header_color = header_paint.background;
+            Color text_color = header_paint.foreground;
             float shift = ui_table_header_shift(table,head.y);
             if(shift != 0) {
                 Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
@@ -3305,8 +3623,8 @@ RenderTableView(TableViewProps table)
                 DrawTriangle(a,d,c,header_color); DrawTriangle(a,c,b,header_color);
                 EndClip();
             } else {
-                DrawRectangleRec(head, header_color);
-                DrawRectangleLinesEx(head, 1.0f, DarkenColor(c_bg, 28));
+                ui_tk_draw_style_frame(head, table.bounds, header_frame,
+                                       header_hot, 0, table.disabled, 0);
             }
             const char *label = table.columns != NULL && table.columns[c] != NULL ? table.columns[c] : "";
             float angle = isfinite(table.header_angle) ? fmaxf(-89, fminf(89,table.header_angle)) : 0;
@@ -3330,13 +3648,10 @@ RenderTableView(TableViewProps table)
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
                          (int)(head.x + head.width) - 1,
                          (int)(head.y + head.height),
-                         table.disabled ? DarkenColor(c_button, 38) : c_button);
+                         divider_style.border);
                 EndClip();
             }
         }
-        Vector2 header_mouse = ui_mouse_world();
-        Vector2 local_mouse = {header_mouse.x-ui_table_header_shift(table,header_mouse.y),header_mouse.y};
-        Rectangle all_headers = {table.bounds.x,table.bounds.y,table.bounds.width,(float)header_h};
         if(!table.disabled && ui_contains(all_headers,header_mouse) && ui_contains(head,local_mouse) &&
            !InputCapturesClick(header_mouse) && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && table.sort_column != NULL) {
             int previous_sort_column = *table.sort_column;
@@ -3378,10 +3693,22 @@ RenderTableView(TableViewProps table)
         Rectangle viewport = TableViewViewport(table.bounds, layout,
                                                scrolling != 0);
         int hot = !table.disabled && !table.custom_cells && ui_contains(viewport, ui_mouse_world()) && ui_hot(row);
-        if(paint && table.selected_row != NULL && *table.selected_row == r)
-            DrawRectangleRec(row, DarkenColor(c_bg, 18));
-        else if(paint && hot)
-            DrawRectangleRec(row, c_button_hover);
+        if(paint && (r % 2) == 1) {
+            StyleFrame row_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+                table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+                table.disabled, 0, StyleKindTableView(), 21);
+            ui_tk_draw_style_frame(row, table.bounds, row_frame, 0, 0,
+                                   table.disabled, 0);
+        }
+        if(paint && ((table.selected_row != NULL && *table.selected_row == r) || hot)) {
+            int selected = table.selected_row != NULL && *table.selected_row == r;
+            ButtonState row_state = hot ? ButtonStateHover : ButtonStateSelected;
+            StyleFrame row_frame = ui_tk_simple_style_frame_role(ButtonToneAccent,
+                row_state, table.disabled, selected, StyleKindTableView(), 23);
+            selection_style = ui_unpack_style(ui_style_apply_effects_frame(row_frame).value);
+            ui_tk_draw_style_frame(row, table.bounds, row_frame, hot, 0,
+                                   table.disabled, 0);
+        }
         if(hot)
             MarkClickable();
         for(int slot = 0; slot < table.column_count; slot++) {
@@ -3401,12 +3728,14 @@ RenderTableView(TableViewProps table)
                                          ? DarkenColor(table.rows[r].background_colors[c], 38)
                                          : table.rows[r].background_colors[c]);
                 BeginClip(x, (int)row.y, col_w, (int)row.height);
-                Color text_color = c_text;
+                Color text_color = text_style.foreground;
                 if(table.rows != NULL && table.rows[r].text_colors != NULL &&
                    c < table.rows[r].cell_count && table.rows[r].text_colors[c].a != 0)
                     text_color = table.rows[r].text_colors[c];
-                if(table.disabled)
-                    text_color = DarkenColor(text_color, 38);
+                else if((table.selected_row != NULL && *table.selected_row == r) || hot)
+                    text_color = selection_style.foreground;
+                else
+                    text_color = text_style.foreground;
                 RenderText(text, x + Scale(6), ui_row_text_y(row, font), font, text_color);
                 EndClip();
             }
@@ -3543,7 +3872,11 @@ EndCanvas(Canvas canvas)
         toolkit->canvas_depth--;
         EndClip();
     }
-    DrawRectangleLinesEx(canvas.bounds, 1.0f, c_button);
+    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+                                                ButtonStateNormal, 0, 0,
+                                                StyleKindSurface());
+    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    DrawRectangleLinesEx(canvas.bounds, 1.0f, style.border);
 }
 
 void
@@ -3620,7 +3953,12 @@ RenderPanedView(PanedViewProps panes)
     }
     handle = PanedViewHandleFor(panes.bounds, panes.vertical != 0,
                                 split, metrics);
-    if(IsWindowReady()) DrawRectangleRec(handle, c_button);
+    if(IsWindowReady()) {
+        StyleFrame frame = ui_tk_simple_style_frame_role(
+            ButtonToneNeutral, ButtonStateNormal, 0, 0, StyleKindPanedView(),
+            12);
+        ui_tk_draw_style_frame(handle, (Rectangle){0}, frame, 0, 0, 0, 0);
+    }
     return changed;
 }
 
@@ -3741,13 +4079,29 @@ RenderCollapsible(CollapsibleProps section)
     }
     focused = enabled && section.id > 0 && IsFocusActive(section.id);
     if(IsWindowReady()) {
-        Color text = c_text, icon = c_icon;
+        ButtonState state = !enabled ? ButtonStateDisabled
+                          : focused ? ButtonStateFocus
+                          : section.selected ? ButtonStateSelected
+                          : ButtonStateNormal;
+        StyleFrame item_frame = ui_tk_simple_style_frame_role(
+            ButtonToneNeutral, state, !enabled, section.selected,
+            StyleKindCollapsible(), section.tree ? 14 : 13);
+        Style item_style = ui_unpack_style(
+            ui_style_apply_effects_frame(item_frame).value);
+        StyleFrame link_frame = ui_tk_simple_style_frame_role(
+            ButtonToneNeutral, close_hover ? ButtonStateHover : ButtonStateNormal,
+            !enabled, 0, StyleKindCollapsible(), 15);
+        Style link_style = ui_unpack_style(
+            ui_style_apply_effects_frame(link_frame).value);
+        Color text = item_style.foreground;
+        Color icon = item_style.foreground;
         int marker = CollapsibleMarkerFor(section.open != NULL && *section.open,
                                           section.leaf != 0);
-        if(!enabled) { text.a = (unsigned char)(text.a * 0.45f); icon.a = (unsigned char)(icon.a * 0.45f); }
         if(!section.tree || section.selected)
-            DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
-        if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
+            ui_tk_draw_style_frame(header, header, item_frame, 0, 0,
+                                   !enabled, focused);
+        if(!section.tree && item_style.border.a != 0)
+            DrawRectangleLinesEx(header, 1.0f, item_style.border);
         RenderText(CollapsibleMarkerText(marker),
                    (int)header.x + metrics.icon_offset,
                    ui_row_text_y(header, font), font, icon);
@@ -3763,7 +4117,7 @@ RenderCollapsible(CollapsibleProps section)
                        (int)(close_bounds.x +
                              (close_bounds.width - TextWidth("x", font)) * 0.5f),
                        ui_row_text_y(close_bounds, font), font,
-                       close_hover ? c_link : text);
+                       close_hover ? link_style.foreground : text);
         if(focused) RenderFocus(header);
     }
     return changed;
@@ -3807,7 +4161,13 @@ RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
     if(nodes == NULL)
         return;
     for(int i = 0; i < count; i++) {
-        Color color = nodes[i].focused ? c_link : c_icon;
+        StyleFrame frame = ui_tk_simple_style_frame(
+            nodes[i].focused ? ButtonToneAccent : ButtonToneNeutral,
+            nodes[i].focused ? ButtonStateFocus : ButtonStateNormal,
+            0, nodes[i].focused, nodes[i].focused ? StyleKindLink()
+                                                  : StyleKindText());
+        Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+        Color color = style.foreground;
         FocusDebugOverlayPaint paint =
             FocusDebugOverlayPaintFor(nodes[i].bounds, TextLineHeight(font),
                                       nodes[i].label != NULL);

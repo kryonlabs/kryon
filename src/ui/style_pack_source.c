@@ -1,0 +1,96 @@
+#include "ui_style_sheet.h"
+
+#include "kss_parser.h"
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define STYLE_SOURCE_PACK_MAX 32
+#define STYLE_SOURCE_RULE_MAX 256
+
+typedef struct StyleSourcePack {
+    char id[64];
+    const char *label;
+    const char *description;
+    StyleRule rules[STYLE_SOURCE_RULE_MAX];
+    StyleSheet sheet;
+} StyleSourcePack;
+
+static StyleSourcePack source_packs[STYLE_SOURCE_PACK_MAX];
+static int source_pack_count;
+
+static char *
+style_copy_text(const char *text)
+{
+    size_t len;
+    char *copy;
+
+    if(text == NULL)
+        return NULL;
+    len = strlen(text);
+    copy = (char *)malloc(len + 1);
+    if(copy == NULL)
+        return NULL;
+    memcpy(copy, text, len + 1);
+    return copy;
+}
+
+static StyleSourcePack *
+style_source_pack_slot(const char *id)
+{
+    for(int i = 0; i < source_pack_count; i++)
+        if(strcmp(source_packs[i].id, id) == 0)
+            return &source_packs[i];
+    if(source_pack_count >= STYLE_SOURCE_PACK_MAX)
+        return NULL;
+    return &source_packs[source_pack_count++];
+}
+
+bool
+RegisterStylePackSource(const char *source, const char *label,
+                        const char *description)
+{
+    KssParseResult result = {0};
+    StyleRule rules[STYLE_SOURCE_RULE_MAX] = {0};
+    char diagnostic[256];
+    StyleSourcePack *slot;
+    char *label_copy = NULL;
+    char *description_copy = NULL;
+
+    if(source == NULL)
+        return false;
+    if(!kss_parse_string(source, rules, STYLE_SOURCE_RULE_MAX, &result,
+                         diagnostic, sizeof(diagnostic)))
+        return false;
+    if(result.pack_id[0] == '\0' || result.rule_count <= 0)
+        return false;
+
+    slot = style_source_pack_slot(result.pack_id);
+    if(slot == NULL)
+        return false;
+    label_copy = style_copy_text(label != NULL ? label : result.pack_id);
+    description_copy = style_copy_text(description != NULL ? description : "");
+    if(label_copy == NULL || description_copy == NULL) {
+        free(label_copy);
+        free(description_copy);
+        return false;
+    }
+
+    free((void *)slot->label);
+    free((void *)slot->description);
+    memset(slot, 0, sizeof(*slot));
+    snprintf(slot->id, sizeof(slot->id), "%s", result.pack_id);
+    slot->label = label_copy;
+    slot->description = description_copy;
+    memcpy(slot->rules, rules, (size_t)result.rule_count * sizeof(rules[0]));
+    slot->sheet.rules = slot->rules;
+    slot->sheet.rule_count = result.rule_count;
+
+    return RegisterStylePack((StylePack){
+        .id = slot->id,
+        .label = slot->label,
+        .description = slot->description,
+        .sheet = &slot->sheet,
+    });
+}

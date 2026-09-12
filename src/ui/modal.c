@@ -1,10 +1,13 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/modal.h"
 
 static int
 ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *hover)
 {
     IconActionSpec props;
+    Style normal;
+    Style hovered;
     memset(&props, 0, sizeof(props));
     props.bounds = (Rectangle){(float)x, (float)y,
                                (float)(size + padding * 2),
@@ -12,10 +15,22 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
     props.icon = icon;
     props.icon_size = size;
     props.icon_padding = padding;
-    props.background = c_button;
-    props.hover_background = c_button_hover;
-    props.icon_color = GetThemeText();
-    props.border = DarkenColor(c_button, 35);
+    normal = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 15).value);
+    hovered = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 15).value);
+    props.background = normal.background;
+    props.hover_background = hovered.background;
+    props.icon_color = normal.foreground;
+    props.border = normal.border;
     props.radius = 0.12f;
     if(hover != NULL)
         *hover = 0;
@@ -28,15 +43,36 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                 Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
+    ButtonProps props = {.bounds = bounds, .label = label, .font = font,
+                         .tone = tone, .emphasis = emphasis,
+                         .disabled = disabled};
+    ButtonSpec button = {0};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
                  !InputCapturesClick(mouse_world);
 
     if(active)
         MarkClickable();
 
-    if(Button((ButtonProps){.bounds= bounds, .label=label, .font=font,
-                            .tone=tone, .emphasis=emphasis,
-                            .disabled=disabled}))
+    button.props = props;
+    button.props.style.normal = ui_unpack_style(
+        ui_control_style_frame_role_kind(
+            props, disabled ? ButtonStateDisabled : ButtonStateNormal,
+            0, 0.0f, 0.0f, 0.0f, StyleKindModal(), 17).value);
+    button.props.style.hover = ui_unpack_style(
+        ui_control_style_frame_role_kind(
+            props, ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindModal(), 17).value);
+    button.props.style.pressed = ui_unpack_style(
+        ui_control_style_frame_role_kind(
+            props, ButtonStatePressed, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindModal(), 17).value);
+    button.props.style.disabled = ui_unpack_style(
+        ui_control_style_frame_role_kind(
+            props, ButtonStateDisabled, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindModal(), 17).value);
+    button.style_kind = StyleKindModal();
+    button.style_resolved = 1;
+    if(ui_button_render(button))
         return 1;
     return 0;
 }
@@ -155,10 +191,24 @@ RenderActionModal(ModalProps modal)
                      modal.focused != NULL;
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
-    Color scrim;
+    Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 2).value);
+    Style title_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 16).value);
+    Style message_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 20).value);
+    Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 19).value);
 
     modal_w = ModalClampWidth(ui_view_width, modal_max_w, metrics);
     msg_w = ModalContentWidth(modal_w, metrics);
+    if((message_style.fields & (uint32_t)StyleFontSize) != 0 &&
+       message_style.font_size > 0.0f)
+        msg_font = Scale((int)message_style.font_size);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -194,33 +244,28 @@ RenderActionModal(ModalProps modal)
     btn_y = layout.button_y;
     prompt_y = layout.prompt_y;
 
-    scrim.r = 0;
-    scrim.g = 0;
-    scrim.b = 0;
-    scrim.a = 180;
-    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
-    if(ui_modern_style()) {
-        ThemeMetrics tokens = GetThemeMetrics();
-        Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
-        Color surface = c_surface;
-        Color border = LightenColor(c_surface, 24);
-        if(tokens.panel_alpha < surface.a)
-            surface.a = tokens.panel_alpha;
-        ui_draw_control_background(bounds, surface, border,
-                                   ui_radius_px(bounds, tokens.panel_radius));
-    } else {
-        DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
-        RenderBevel(modal_x, modal_y, modal_w, modal_h,
-                    LightenColor(c_surface, 40), DarkenColor(c_surface, 40));
-    }
+    DrawRectangle(0, 0, ui_view_width, ui_view_height,
+                  GetColor(Opacity(ColorToInt(scrim_style.background),
+                                   scrim_style.opacity)));
+    ui_draw_material((Rectangle){modal_x, modal_y, modal_w, modal_h},
+                     (Rectangle){0}, panel_style.background,
+                     panel_style.border, panel_style.border,
+                     panel_style.radius, panel_style.border_width,
+                     0.0f, 0.0f, 0, panel_style.focus, 0.0f,
+                     panel_style.opacity, ui_style_fill(panel_style),
+                     panel_style.material);
 
     title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
+    if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
+       title_style.font_size > 0.0f)
+        title_font = Scale((int)title_style.font_size);
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
-               modal_y + Scale(14), title_font, c_text);
+               modal_y + Scale(14), title_font, title_style.foreground);
 
-    DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font, c_text);
+    DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font,
+                   message_style.foreground);
     FreeTextLayout(&msg_layout);
 
     if(has_prompt) {
@@ -279,7 +324,15 @@ RenderModalFrame(int width, int height, const char *title,
     int hover = 0;
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
-    Color scrim;
+    Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 2).value);
+    Style title_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 16).value);
+    Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 19).value);
 
     if(width > ui_view_width - Scale(24))
         width = ui_view_width - Scale(24);
@@ -331,28 +384,23 @@ RenderModalFrame(int width, int height, const char *title,
         frame.right_clicked = 1;
     }
 
-    scrim.r = 0;
-    scrim.g = 0;
-    scrim.b = 0;
-    scrim.a = 180;
-    DrawRectangle(0, 0, ui_view_width, ui_view_height, scrim);
-    if(ui_modern_style()) {
-        ThemeMetrics tokens = GetThemeMetrics();
-        Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};
-        Color surface = c_surface;
-        Color border = LightenColor(c_surface, 24);
-        if(tokens.panel_alpha < surface.a)
-            surface.a = tokens.panel_alpha;
-        ui_draw_control_background(bounds, surface, border,
-                                   ui_radius_px(bounds, tokens.panel_radius));
-    } else {
-        DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
-        RenderBevel(frame.x, frame.y, frame.w, frame.h,
-                    LightenColor(c_surface, 40), DarkenColor(c_surface, 40));
-    }
+    DrawRectangle(0, 0, ui_view_width, ui_view_height,
+                  GetColor(Opacity(ColorToInt(scrim_style.background),
+                                   scrim_style.opacity)));
+    ui_draw_material((Rectangle){frame.x, frame.y, frame.w, frame.h},
+                     (Rectangle){0}, panel_style.background,
+                     panel_style.border, panel_style.border,
+                     panel_style.radius, panel_style.border_width,
+                     0.0f, 0.0f, 0, panel_style.focus, 0.0f,
+                     panel_style.opacity, ui_style_fill(panel_style),
+                     panel_style.material);
 
+    if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
+       title_style.font_size > 0.0f)
+        title_font = Scale((int)title_style.font_size);
+    title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
-                    frame.y + Scale(14), title_font, c_text);
+               frame.y + Scale(14), title_font, title_style.foreground);
 
     if(left_icon.id != 0) {
         frame.left_clicked = ui_modal_icon_button(frame.x + Scale(6),

@@ -75,11 +75,11 @@ ICON_FILES = $(wildcard $(ICON_DIR)/*.png $(ICON_DIR)/*.json)
 ICON_ASSETS_C = $(GENERATED_SRC_DIR)/ui/ui_icon_assets.c
 ICON_NAMES_C = $(GENERATED_SRC_DIR)/ui/ui_icon_names.c
 ICON_TYPES_H = $(GENERATED_INCLUDE_DIR)/ui_icon_types.h
-# Default embedded assets: themes + the regular UI font. The CJK Noto faces
+# Default embedded assets: styles, themes, and the regular UI font. The CJK Noto faces
 # (JP/KR/SC/TC, ~22 MB) are intentionally NOT embedded by default — nothing in
 # the default UI loads them. Apps that need CJK can override:
-#   make EMBED_ASSETS="themes fonts/noto"
-EMBED_ASSETS ?= themes fonts/noto/NotoSans-Regular.ttf fonts/noto/NotoSans-SemiBold.ttf fonts/noto/LICENSE.txt fonts/noto/NOTICE-SemiBold.txt
+#   make EMBED_ASSETS="styles themes fonts/noto"
+EMBED_ASSETS ?= styles themes fonts/noto/NotoSans-Regular.ttf fonts/noto/NotoSans-SemiBold.ttf fonts/noto/LICENSE.txt fonts/noto/NOTICE-SemiBold.txt
 EMBED_ASSET_FILES = $(shell find $(EMBED_ASSETS) -type f 2>/dev/null)
 EMBED_ASSETS_C = $(BUILD_DIR)/embedded_asset_data.c
 FONT_SUBSET_OUT_DIR ?= $(BUILD_DIR)/fonts/subset
@@ -544,19 +544,18 @@ widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIB
 
 .PHONY: surface-policy-test
 .PHONY: image-policy-test
-.PHONY: button-style-parity-test
-button-style-parity-test: $(BUILD_DIR)/button-style-parity
-	$(BUILD_DIR)/button-style-parity > $(BUILD_DIR)/button-style-parity.jsonl
-	cd go/kryon && KRYON_BUTTON_STYLE_FIXTURE="$(abspath $(BUILD_DIR)/button-style-parity.jsonl)" go test -run '^TestButtonStyleParityWithC$$' -count=1
-
-$(BUILD_DIR)/button-style-parity: tests/button_style_parity.c $(LIB) $(KRYON_BACKEND_LIBS)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
-
 .PHONY: style-policy-test
 .PHONY: style-sheet-policy-test
 .PHONY: style-pack-registry-test
 .PHONY: style-picker-test
 .PHONY: kss-parser-test
+.PHONY: style-assets-test
+.PHONY: style-builtins-test
+.PHONY: go-style-builtins
+.PHONY: go-style-builtins-check
+.PHONY: style-pack-source-test
+.PHONY: app-background-style-test
+.PHONY: style-widget-policy-test
 .PHONY: text-policy-test
 text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
@@ -574,13 +573,51 @@ style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_pack_registry_test.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-registry-test
 	$(BUILD_DIR)/style-pack-registry-test
 
-style-picker-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c include/ui_style_sheet.h
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_picker_test.c src/ui/style_picker.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
+style-picker-test: $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c include/ui_style_sheet.h include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_picker_test.c src/ui/style_picker.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
 	$(BUILD_DIR)/style-picker-test
 
 kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
 	$(BUILD_DIR)/kss-parser-test
+
+style-assets-test: $(EMBED_ASSETS_C) tests/style_assets_test.c src/core/embedded_assets.c include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude tests/style_assets_test.c src/core/embedded_assets.c $(EMBED_ASSETS_C) -o $(BUILD_DIR)/style-assets-test
+	$(BUILD_DIR)/style-assets-test
+
+style-builtins-test: $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_builtin_packs.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h include/embedded_assets.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_builtin_packs_test.c src/ui/style_builtin_packs.c src/ui/kss_parser.c src/ui/style_sheet.c src/core/embedded_assets.c $(EMBED_ASSETS_C) $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-builtins-test
+	$(BUILD_DIR)/style-builtins-test
+
+go-style-builtins: scripts/generate-go-style-builtins.py $(wildcard styles/kryon/*.kss)
+	python3 scripts/generate-go-style-builtins.py
+	gofmt -w go/kryon/style_builtins.go
+
+go-style-builtins-check: scripts/generate-go-style-builtins.py go/kryon/style_builtins.go $(wildcard styles/kryon/*.kss)
+	python3 scripts/generate-go-style-builtins.py --check
+
+style-pack-source-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_pack_source.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/style_pack_source_test.c src/ui/style_pack_source.c src/ui/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-pack-source-test
+	$(BUILD_DIR)/style-pack-source-test
+
+app-background-style-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/app_background_style_test.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/app_background_style_test.c \
+		-Wl,--wrap=DrawRectangle \
+		-Wl,--wrap=DrawRectangleRec \
+		-Wl,--wrap=DrawRectangleLinesEx \
+		-Wl,--wrap=DrawRectangleRounded \
+		-Wl,--wrap=DrawLine \
+		-Wl,--wrap=BeginScissorMode \
+		-Wl,--wrap=EndScissorMode \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $(BUILD_DIR)/app-background-style-test
+	$(BUILD_DIR)/app-background-style-test
+
+style-widget-policy-test: $(LIB) $(KRYON_BACKEND_LIBS) tests/style_widget_policy_test.c $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/toggle.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/style_widget_policy_test.c \
+		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
+		-o $(BUILD_DIR)/style-widget-policy-test
+	$(BUILD_DIR)/style-widget-policy-test
 
 surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
 	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
@@ -682,8 +719,8 @@ focus-policy-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/run
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/focus_policy_test.c $(GENERATED_SRC_DIR)/runtime/focus.c -lm -o $(FOCUS_POLICY_TEST)
 	$(FOCUS_POLICY_TEST)
 
-link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/link.h $(GENERATED_SRC_DIR)/runtime/theme.c
-	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/link_policy_test.c $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/theme.c -lm -o $(LINK_POLICY_TEST)
+link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/link.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/link_policy_test.c $(GENERATED_SRC_DIR)/runtime/link.c -lm -o $(LINK_POLICY_TEST)
 	$(LINK_POLICY_TEST)
 
 .PHONY: canonical-surface-test
@@ -734,9 +771,14 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-sur
 	$(MAKE) style-pack-registry-test
 	$(MAKE) style-picker-test
 	$(MAKE) kss-parser-test
+	$(MAKE) style-assets-test
+	$(MAKE) style-builtins-test
+	$(MAKE) go-style-builtins-check
+	$(MAKE) style-pack-source-test
+	$(MAKE) app-background-style-test
+	$(MAKE) style-widget-policy-test
 	$(MAKE) group-policy-test
 	$(MAKE) radio-policy-test
-	$(MAKE) button-style-parity-test
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 	sh tests/kt_cli_test.sh $(KT)

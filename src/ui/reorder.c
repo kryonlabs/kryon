@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 
 typedef struct ReorderState {
     int list_id;
@@ -208,7 +209,13 @@ RenderReorderHandle(int x, int y, int w, int h, int active)
     int total_h = dot * 3 + gap * 2;
     int start_x = x + (w - total_w) / 2;
     int start_y = y + (h - total_h) / 2;
-    Color color = active ? LightenColor(c_icon, 20) : DarkenColor(c_icon, 18);
+    Style style = ui_resolve_button_style_kind(
+        (ButtonProps){.tone = active ? ButtonToneAccent : ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .selected = active},
+        active ? ButtonStateSelected : ButtonStateNormal,
+        StyleKindSelectable());
+    Color color = style.foreground;
 
     if(w <= 0 || h <= 0)
         return;
@@ -230,7 +237,11 @@ RenderReorderPlaceholder(Rectangle bounds)
     int w = (int)bounds.width;
     int h = (int)bounds.height;
     int line_h = Scale(2);
-    Color color = LightenColor(c_button_hover, 10);
+    Style style = ui_resolve_button_style_kind(
+        (ButtonProps){.tone = ButtonToneAccent,
+                      .emphasis = ButtonEmphasisOutline},
+        ButtonStateFocus, StyleKindSelectable());
+    Color color = style.border.a != 0 ? style.border : style.foreground;
 
     if(w <= 0 || h <= 0)
         return;

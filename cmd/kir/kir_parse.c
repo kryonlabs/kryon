@@ -364,20 +364,20 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
                        char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Background", "Text", "Paragraph",
-        "Rect", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
+        "AppBackground", "Background", "Text", "Paragraph",
+        "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
         "Bullet", "Separator",
-        "Link", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
-        "PopupMenu", "ContextMenu",
+        "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
+        "Slider", "Menu",
         "Toggle", "Checkbox", "Radio", "Progress", "Plot",
         "Drag", "Input", "Spinbox",
-        "DragDrop", "MultiSelectList",
+        "DragDrop",
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
         "Modal", "TitleBar", "TabBar",
         "NavigationBar",
-        "Toolbar", "ShowToast", "ShowToastFor", "Fieldset",
+        "Toolbar", "Toast", "Fieldset",
 		"PanedView", "Collapsible", "ListBox", "TreeView", "TableView",
-		"ColorPicker", "CanvasGrid", "SelectableText"
+		"ColorPicker", "CanvasGrid"
     };
     const char *p = text;
     const char *open;
@@ -589,6 +589,8 @@ ui_block_prop_type(const char *widget)
         return "SpinboxProps";
     if(strcmp(widget, "Dropdown") == 0)
         return "DropdownProps";
+    if(strcmp(widget, "SegmentedControl") == 0)
+        return "SegmentedControlProps";
     if(strcmp(widget, "Fieldset") == 0)
         return "FieldsetProps";
     if(strcmp(widget, "PanedView") == 0)

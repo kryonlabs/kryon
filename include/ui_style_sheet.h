@@ -29,6 +29,10 @@ typedef struct StylePickerProps {
 } StylePickerProps;
 
 bool RegisterStylePack(StylePack pack);
+bool RegisterStylePackSource(const char *source, const char *label,
+                             const char *description);
+bool RegisterBuiltInStylePacks(void);
+bool EnsureBuiltInStylePacks(void);
 void ClearStylePacks(void);
 int GetStylePackCount(void);
 const StylePack *GetStylePackAt(int index);

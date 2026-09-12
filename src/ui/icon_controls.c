@@ -1,22 +1,16 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 #include "runtime/dropdown.h"
+#include "ui_style_sheet.h"
 
 static Style
 icon_popup_style(void)
 {
     ButtonProps props = {0};
     props.tone = ButtonToneNeutral;
-    props.emphasis = ButtonEmphasisSoft;
-    Style base = ResolveButtonStyle(props, ButtonStateHover);
-    props.tone = ButtonToneAccent;
     props.emphasis = ButtonEmphasisFilled;
-    Style accent = ResolveButtonStyle(props, ButtonStateNormal);
-    Style panel = ui_unpack_style(Appearance(
-        ui_pack_style_states((ControlStyle){.normal = base}).normal,
-        ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        ColorToInt(GetThemeSurface()), 0, ButtonStateHover, 0));
-    return ui_style_apply_effects(panel);
+    return ui_style_apply_effects(ui_resolve_button_style_kind(props,
+        ButtonStateNormal, StyleKindDropdown()));
 }
 
 static void

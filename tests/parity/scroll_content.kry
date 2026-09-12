@@ -113,7 +113,7 @@ scroll_content_frame :: () #ui {
         content_height = 28
         Dropdown((DropdownProps){.bounds = {240,180,160,28}, .id = 996, .items = overlay_items, .option_count = 3, .selected_index = &overlay_selected})
     }
-    Rect(240,212,160,56,RED,BLANK)
+    Box((Rectangle){240,212,160,56},RED,BLANK)
     if edge_dropdown_visible {
         Dropdown((DropdownProps){.bounds = {620,410,160,28}, .id = 24002, .options = overlay_options, .option_count = 2, .selected_index = &edge_dropdown_selected})
     }
@@ -126,11 +126,11 @@ scroll_content_frame :: () #ui {
         bounds = {10,10,100,60}
         content_height = 200
         scroll_offset = &scrolling_offset
-        Rect(10, 0, 100, 100, RED, BLANK)
+        Box((Rectangle){10, 0, 100, 100}, RED, BLANK)
         Scroll {
             bounds = {60,50,100,60}
             content_height = 100
-            Rect(0, 0, 200, 200, BLUE, BLANK)
+            Box((Rectangle){0, 0, 200, 200}, BLUE, BLANK)
             if Button((ButtonProps){.bounds = {60,60,100,28}, .label = "Nested", .id = 986}) {
                 scrolling_actions += 1000
             }

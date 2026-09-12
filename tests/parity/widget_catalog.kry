@@ -65,7 +65,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
             Stack surface_stack: {
                 bounds = {Scale(32), Scale(170), Scale(230), Scale(60)}
                 key = Key("catalog-stack")
-                Rect(Scale(32), Scale(170), Scale(230), Scale(60), GetThemeSurface(), GetThemeButton())
+                Box((Rectangle){Scale(32), Scale(170), Scale(230), Scale(60)}, GetThemeSurface(), GetThemeButton())
                 Line(Scale(32), Scale(170), Scale(262), Scale(230), GetThemeIcon())
                 Bevel(Scale(44), Scale(184), Scale(60), Scale(24), GetThemeSurface(), GetThemeButton())
             }
@@ -78,8 +78,8 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={Scale(24), y + Scale(36), 0, 0}, .text="three", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         y += Scale(54)
         Paragraph((ParagraphSpec){.text = "Paragraph", .icon_type = 1, .icon_size = Scale(16), .width = Scale(180), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(24), &y)
-        SelectableText("Selectable", Scale(24), y + Scale(18), Text16, GetThemeText())
-        ShowToast("Catalog toast")
+        Text((TextProps){.bounds={Scale(24), y + Scale(18), 0, 0}, .text="Selectable", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
+        Toast((ToastProps){.message = "Catalog toast"})
 
         TextField((TextFieldProps){.bounds = {Scale(350), Scale(92), Scale(160), Scale(28)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
         TextArea((TextAreaProps){.bounds = {Scale(350), Scale(128), Scale(180), Scale(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
@@ -108,7 +108,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         TabBar((TabBarProps){.bounds = {Scale(540), Scale(270), Scale(160), Scale(36)}, .tabs = tabs[:], .count = 2, .selected_index = pick, .id = 108})
         ListBox((ListBoxProps){.bounds = {Scale(540), Scale(336), Scale(160), Scale(70)}, .id = 41, .items = choices[:], .selected_index = &pick, .scroll_offset = &list_scroll, .row_height = Scale(22)})
         TreeView((TreeViewProps){.bounds = {Scale(540), Scale(418), Scale(160), Scale(70)}, .id = 42, .items = tree_items[:], .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = Scale(22)})
-        Rect(Scale(24), Scale(470), Scale(240), Scale(72), GetThemeSurface(), GetThemeBorder())
+        Box((Rectangle){Scale(24), Scale(470), Scale(240), Scale(72)}, GetThemeSurface(), GetThemeBorder())
         Text((TextProps){.bounds = {Scale(36), Scale(484), 0, 0}, .text = "1  fn main()", .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
         Text((TextProps){.bounds = {Scale(36), Scale(502), 0, 0}, .text = "2    Text()", .font = Text14, .color = GetThemeText(), .wrap = TextWrapNone})
         TableView((TableViewProps){.bounds = {Scale(276), Scale(470), Scale(240), Scale(72)}, .id = 43, .columns = columns[:], .column_count = 2, .rows = rows[:], .row_count = 2, .column_widths = widths[:], .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})

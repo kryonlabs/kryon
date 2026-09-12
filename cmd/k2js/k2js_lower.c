@@ -247,6 +247,7 @@ canonical_widget_name(const char *widget)
         return "Card";
     return widget;
 }
+
 static int
 next_enum_member(const char **cursor, char *name, size_t name_size,
                  char *value, size_t value_size)
@@ -934,8 +935,11 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
                          char *args, size_t args_size)
 {
     static const char *const widgets[] = {
-        "Button", "Card", "Checkbox", "Dropdown", "ListBox",
-        "Radio", "Slider", "TabBar", "TableView", "TextField", "Toggle"
+        "Button", "Card", "Selectable", "Checkbox", "Drag", "DragDrop",
+        "Dropdown", "Input", "Slider", "Toggle", "Radio", "Spinbox",
+        "ColorPicker", "SegmentedControl", "Menu", "Modal", "TitleBar",
+        "TabBar", "Toolbar", "PanedView", "Collapsible", "ListBox",
+        "TreeView", "TableView", "TextField", "TextArea"
     };
     char name[K2JS_NAME_MAX];
 
@@ -1537,7 +1541,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
 }
 
 static void
-emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
+emit_if(FILE *f, const KirModule *m, const KirStmt *st, const char *raw,
+        int indent, int *chained)
 {
     char cond[K2JS_TEXT_MAX];
     char out[K2JS_TEXT_MAX];
@@ -1560,7 +1565,9 @@ emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
             js_string(f, widget);
             fprintf(f, ", ");
             emit_widget_arguments(f, m, widget, args);
-            fprintf(f, ", $state)) {\n");
+            fprintf(f, ", $state, ");
+            emit_web_metadata(f, m, st);
+            fprintf(f, ")) {\n");
         } else {
             tx_expr(m, cond, out, sizeof(out));
             fprintf(f, "} else if (%s) {\n", out);
@@ -1584,7 +1591,9 @@ emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
         js_string(f, widget);
         fprintf(f, ", ");
         emit_widget_arguments(f, m, widget, args);
-        fprintf(f, ", $state)) {\n");
+        fprintf(f, ", $state, ");
+        emit_web_metadata(f, m, st);
+        fprintf(f, ")) {\n");
     } else {
         tx_expr(m, cond, out, sizeof(out));
         fprintf(f, "if (%s) {\n", out);
@@ -1757,7 +1766,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_IF: {
             int chained = 0;
 
-            emit_if(f, m, raw, indent, &chained);
+            emit_if(f, m, st, raw, indent, &chained);
             (void)chained;
             if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
                 block_stack[block_top++] = 1;
@@ -1800,6 +1809,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         }
         case KIR_STMT_EXPR: {
             char name[K2JS_NAME_MAX], args[K2JS_TEXT_MAX], out[K2JS_TEXT_MAX];
+            char widget[K2JS_NAME_MAX];
             if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
                (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
                 emit_indent(f, indent);
@@ -1809,6 +1819,18 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 } else {
                     fprintf(f, "kryon.widget($rt, \"Disabled\", \"end\", $state);\n");
                 }
+                break;
+            }
+            if(condition_is_widget_call(raw, widget, sizeof(widget), args,
+                                        sizeof(args))) {
+                emit_indent(f, indent);
+                fprintf(f, "kryon.widget($rt, ");
+                js_string(f, widget);
+                fprintf(f, ", ");
+                emit_widget_arguments(f, m, widget, args);
+                fprintf(f, ", $state, ");
+                emit_web_metadata(f, m, st);
+                fprintf(f, ");\n");
                 break;
             }
             if(strncmp(raw, "BeginTree", 9) == 0 ||

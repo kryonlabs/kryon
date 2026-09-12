@@ -2,17 +2,15 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type SelectableSpec struct {
-	Bounds            Rectangle
-	Selected          bool
-	Hovered           bool
-	Pressed           bool
-	Disabled          bool
-	FillColor         uint32
-	HoverColor        uint32
-	TextColor         uint32
-	DisabledTextColor uint32
-	LabelInset        float32
+	Bounds     Rectangle
+	Selected   bool
+	Hovered    bool
+	Pressed    bool
+	Disabled   bool
+	Face       StyleFrame
+	LabelInset float32
 }
 
 type SelectablePaint struct {
@@ -31,43 +29,28 @@ func Selectable_SelectablePaintFor(spec SelectableSpec) SelectablePaint {
 	var value_2 float32 = spec.LabelInset
 	var value_3 float32 = value_1 + value_2
 	paint.LabelX = value_3
-	var value_4 uint32 = spec.TextColor
+	var value_4 uint32 = spec.Face.Value.Foreground
 	paint.TextColor = value_4
 	var value_5 bool = spec.Disabled
-	if value_5 {
-		var value_6 uint32 = spec.DisabledTextColor
-		paint.TextColor = value_6
-	}
-	var value_7 bool = spec.Disabled
-	var value_8 bool = !value_7
-	var value_9 bool = value_8
-	if value_9 {
-		var value_10 bool = spec.Selected
-		var value_11 bool = value_10
+	var value_6 bool = !value_5
+	var value_7 bool = value_6
+	if value_7 {
+		var value_8 bool = spec.Selected
+		var value_9 bool = value_8
+		if !value_9 {
+			var value_10 bool = spec.Hovered
+			value_9 = value_10
+		}
+		var value_11 bool = value_9
 		if !value_11 {
-			var value_12 bool = spec.Hovered
+			var value_12 bool = spec.Pressed
 			value_11 = value_12
 		}
-		var value_13 bool = value_11
-		if !value_13 {
-			var value_14 bool = spec.Pressed
-			value_13 = value_14
-		}
-		value_9 = value_13
+		value_7 = value_11
 	}
-	paint.DrawFill = value_9
-	var value_15 uint32 = spec.FillColor
-	paint.FillColor = value_15
-	var value_16 bool = spec.Hovered
-	var value_17 bool = value_16
-	if !value_17 {
-		var value_18 bool = spec.Pressed
-		value_17 = value_18
-	}
-	if value_17 {
-		var value_19 uint32 = spec.HoverColor
-		paint.FillColor = value_19
-	}
-	var value_20 SelectablePaint = paint
-	return value_20
+	paint.DrawFill = value_7
+	var value_13 uint32 = spec.Face.Value.Background
+	paint.FillColor = value_13
+	var value_14 SelectablePaint = paint
+	return value_14
 }

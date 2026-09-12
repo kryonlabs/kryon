@@ -381,20 +381,6 @@ assert.equal(frame.fill.hover_amount, 0.5);
 assert.equal(frame.fill.press_amount, 0.25);
 assert.equal(frame.fill.focus_amount, 0.75);
 assert.deepEqual([resolved, normal, hover, press, focus], originals);
-for (const surfaceColor of [0x092039ff, 0xffffffff]) {
-  const colored = button.Button_ButtonBorder(null, undefined, undefined,
-    1, 2, 5, surfaceColor, 0x006cffff, 0, 0, 0, 0);
-  assert.equal(colored, button.Button_MixColor(null, undefined, undefined, surfaceColor, 0x006cffff, 25));
-  const neutral = button.Button_ButtonBorder(null, undefined, undefined,
-    0, 1, 5, surfaceColor, 0x006cffff, 0x183858ff, 0, 0, 0);
-  assert.equal(neutral, button.Button_MixColor(null, undefined, undefined, surfaceColor, 0x183858ff, 45));
-}
-const neutralBody = button.Button_MixColor(null, undefined, undefined, 0x101828ff, 0x334155ff, 85);
-const neutralHover = button.Button_ButtonBackground(null, undefined, undefined,
-  0, 1, 2, 0x101828ff, 0x2563ebff, 0x3b82f6ff, 0x1d4ed8ff,
-  0x334155ff, 0xdc2626ff, 0x059669ff, 0xd97706ff);
-assert.equal(neutralHover, button.Button_MixColor(null, undefined, undefined, neutralBody, 0x3b82f6ff, 12),
-  "neutral hover must retain its body color beneath the cool reflection");
 for (let state = 0; state <= 7; state++) {
   for (let bits = 0; bits < 8; bits++) {
     assert.deepEqual(style.Style_ResolveFlags(null, undefined, undefined, state,
@@ -541,43 +527,4 @@ for (let state = 0; state <= 7; state++) {
   });
 }
 assert.equal(inputPolls, 8, "each Button input phase must poll exactly once");
-const theme = await import(pathToFileURL(process.argv[4]).href);
-const metrics = theme.Theme_DefaultMetrics(null);
-for (const dark of [false, true]) {
-  const palette = theme.Theme_DefaultPalette(null, undefined, undefined, dark);
-  assert.equal(palette.link, dark ? 0x00bbffff : 0x0033ffff);
-  assert.equal(palette.accent, 0x006cffff);
-  for (let tone = 0; tone < 5; tone++) {
-    for (let emphasis = 0; emphasis < 5; emphasis++) {
-      for (let state = 1; state <= 7; state++) {
-        for (let size = 0; size < 3; size++) {
-          const result = button.Button_DefaultButtonStyle(null, undefined, undefined,
-            tone, emphasis, state, size, false, false, palette, metrics);
-          const background = button.Button_ButtonBackground(null, undefined, undefined,
-            tone, emphasis, state, palette.surface, palette.accent,
-            palette.accent_hover, palette.accent_pressed, palette.surface_raised,
-            palette.danger, palette.success, palette.warning);
-          assert.equal(result.background, background);
-          const appearance = button.Button_ResolveAppearance(null, undefined, undefined,
-            tone, emphasis, state, size, false, false, false, false, false,
-            palette, metrics, stateStyles);
-          assert.equal(appearance.background, result.background);
-          assert.equal(appearance.radius, state);
-          assert.equal(result.fields, 8191 | host.StyleMaterial | (dark && size === 2 ? host.StyleTypeface : 0));
-          assert.equal(result.typeface, dark && size === 2 ? "semibold" : "");
-          assert.equal(result.material, host.MaterialLightfield);
-          assert.equal(result.opacity, 1);
-          const softOutline = emphasis === 2 && (state === 1 || state === 2) && size !== 1;
-          const softRest = size === 0 && (state === 1 || state === 2);
-          const restingRadius = (metrics.radius_medium + metrics.radius_large) * 0.5;
-          assert.equal(result.radius, softOutline ? metrics.radius_large
-            : softRest ? restingRadius : metrics.radius_medium);
-          assert.equal(result.font_size, size === 1 ? metrics.font_size_small
-            : size === 2 ? metrics.font_size_large : metrics.font_size_medium);
-          assert.equal(result.background_end, 0);
-        }
-      }
-    }
-  }
-}
 console.log("JavaScript cross-module style policy passed");

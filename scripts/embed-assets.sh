@@ -38,7 +38,7 @@ asset_mime()
         *.png) printf 'image/png' ;;
         *.jpg|*.jpeg) printf 'image/jpeg' ;;
         *.ogg) printf 'audio/ogg' ;;
-        *.ini|*.txt|*.dat) printf 'text/plain' ;;
+        *.ini|*.kss|*.txt|*.dat) printf 'text/plain' ;;
         *) printf 'application/octet-stream' ;;
     esac
 }

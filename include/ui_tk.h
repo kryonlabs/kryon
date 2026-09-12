@@ -23,16 +23,6 @@ typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
 
 typedef struct {
-    int id;
-    Rectangle trigger;
-    const MenuItem *items;
-    int item_count;
-    int *open;
-    int *x;
-    int *y;
-} ContextMenuProps;
-
-typedef struct {
     Rectangle bounds;
     const char *label;
     int id;
@@ -154,6 +144,7 @@ typedef struct {
     TextAlign vertical_align;
     int disabled;
     int letter_spacing;
+    int selectable;
     const char *typeface;
     Style style;
 } TextProps;
@@ -183,18 +174,6 @@ typedef struct {
     int *accepted_size;
     int disabled;
 } DragDropProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char **items;
-    int item_count;
-    int *selected;
-    int *selected_count;
-    int *anchor;
-    int row_height;
-    int disabled;
-} MultiSelectListProps;
 
 typedef enum {
     ARROW_LEFT = 0,
@@ -262,6 +241,9 @@ typedef struct {
     const char **items;
     int item_count;
     int *selected_index;
+    int *selected;
+    int *selected_count;
+    int *anchor;
     int *scroll_offset;
     int row_height;
     int disabled;
@@ -392,7 +374,7 @@ Rectangle CanvasRectToScreen(Canvas canvas, Rectangle rect);
 
 int AcceleratorPressed(Accelerator accelerator);
 int DispatchAccelerators(const Accelerator *accelerators, int count);
-int ContextMenu(ContextMenuProps menu);
+MenuResult Menu(MenuProps menu);
 int SetClipboardTextValue(const char *text);
 const char *GetClipboardTextValue(void);
 int SetPrimarySelectionTextValue(const char *text);

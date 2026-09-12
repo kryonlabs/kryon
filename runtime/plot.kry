@@ -1,5 +1,6 @@
 #module "plot"
 #import "drawing_props"
+#import "style"
 
 PlotRange :: struct {
     min_value: float
@@ -63,10 +64,10 @@ PlotNormalize :: (value: float, plot_range: PlotRange) -> float #export {
 }
 
 PlotHistogramBar :: (bounds: Rectangle, index: i32, count: i32,
-    value: float, plot_range: PlotRange, color: u32) -> PlotMark #export {
+    value: float, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
     mark: PlotMark
     if count <= 0 {
-        mark.color = color
+        mark.color = mark_frame.value.background
         return mark
     }
     step: float = bounds.width / (float)count
@@ -79,27 +80,27 @@ PlotHistogramBar :: (bounds: Rectangle, index: i32, count: i32,
     mark.bounds.y = bounds.y + bounds.height - height
     mark.bounds.width = width
     mark.bounds.height = height
-    mark.color = color
+    mark.color = mark_frame.value.background
     return mark
 }
 
 PlotSingleLine :: (bounds: Rectangle, value: float,
-    plot_range: PlotRange, color: u32) -> PlotMark #export {
+    plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
     mark: PlotMark
     y: float = bounds.y + (1.0 - PlotNormalize(value, plot_range)) * bounds.height
     mark.bounds.x = bounds.x
     mark.bounds.y = y
     mark.bounds.width = bounds.width
     mark.bounds.height = 0.0
-    mark.color = color
+    mark.color = mark_frame.value.background
     return mark
 }
 
 PlotLineSegment :: (bounds: Rectangle, index: i32, count: i32,
-    a: float, b: float, plot_range: PlotRange, color: u32) -> PlotMark #export {
+    a: float, b: float, plot_range: PlotRange, mark_frame: StyleFrame) -> PlotMark #export {
     mark: PlotMark
     if count <= 1 {
-        return PlotSingleLine(bounds, b, plot_range, color)
+        return PlotSingleLine(bounds, b, plot_range, mark_frame)
     }
     x1: float = bounds.x + (float)(index - 1) * bounds.width / (float)(count - 1)
     x2: float = bounds.x + (float)index * bounds.width / (float)(count - 1)
@@ -109,12 +110,12 @@ PlotLineSegment :: (bounds: Rectangle, index: i32, count: i32,
     mark.bounds.y = y1
     mark.bounds.width = x2 - x1
     mark.bounds.height = y2 - y1
-    mark.color = color
+    mark.color = mark_frame.value.background
     return mark
 }
 
 PlotTextPaintFor :: (bounds: Rectangle, label_width: float,
-    overlay_width: float, scale: float, text_color: u32,
+    overlay_width: float, scale: float, frame: StyleFrame,
     show_label: bool, show_overlay: bool) -> PlotTextPaint #export {
     paint: PlotTextPaint
     if scale <= 0.0 {
@@ -123,7 +124,7 @@ PlotTextPaintFor :: (bounds: Rectangle, label_width: float,
     pad_x: float = 6.0 * scale
     pad_y: float = 4.0 * scale
     text_height: float = 18.0 * scale
-    paint.text_color = text_color
+    paint.text_color = frame.value.foreground
     paint.show_label = show_label
     paint.show_overlay = show_overlay
     paint.label_bounds.x = bounds.x + pad_x

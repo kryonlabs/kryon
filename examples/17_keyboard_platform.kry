@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Keyboard Platform" {
     size 800 600
@@ -14,9 +15,9 @@ state {
 KeyboardPlatformExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
-        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Keyboard and clipboard", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={40, 90, 0, 0}, .text=message, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        AppBackground()
+        Text((TextProps){.bounds={40, 40, 0, 0}, .text="Keyboard and clipboard", .font=Text24, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={40, 90, 0, 0}, .text=message, .font=Text16, .wrap=TextWrapNone})
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,1}) {
             SetClipboardTextValue("Copied from Kryon")
             snprintf(message,sizeof(message),"Copied to clipboard")

@@ -1,5 +1,6 @@
 #module "radio"
 #import "drawing_props"
+#import "style"
 
 RadioSpec :: struct {
     bounds: Rectangle
@@ -8,12 +9,8 @@ RadioSpec :: struct {
     default_style: bool
     selected_amount: float
     scale: float
-    text_color: u32
-    icon_color: u32
-    button_color: u32
-    primary_color: u32
-    surface_variant_color: u32
-    disabled_color: u32
+    frame: StyleFrame
+    selected: StyleFrame
 }
 
 RadioPaint :: struct {
@@ -97,8 +94,8 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
         selected = 1.0
     }
     paint.outer_radius = diameter * 0.5
-    paint.stroke_width = 2.0 * scale
-    if paint.stroke_width < 1.0 { paint.stroke_width = 1.0 }
+    paint.stroke_width = spec.frame.value.border_width * scale
+    if paint.stroke_width < 0.0 { paint.stroke_width = 0.0 }
     paint.fill_radius = (paint.outer_radius - paint.stroke_width * 1.5) * selected
     if spec.checked {
         paint.fill_radius = paint.outer_radius - paint.stroke_width
@@ -107,21 +104,14 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
         paint.fill_radius = 0.0
     }
 
-    paint.ring_color = spec.icon_color
-    paint.fill_color = spec.text_color
-    paint.label_color = spec.text_color
-    if spec.default_style {
-        paint.ring_color = spec.checked ? spec.text_color : spec.surface_variant_color
-        paint.fill_color = spec.text_color
-        paint.label_color = spec.text_color
-        if !spec.checked && selected > 0.0 {
-            paint.ring_color = spec.primary_color
-        }
+    paint.ring_color = spec.frame.value.border
+    paint.fill_color = spec.selected.value.background
+    paint.label_color = spec.frame.value.foreground
+    if spec.checked {
+        paint.ring_color = spec.selected.value.background
     }
-    if spec.disabled {
-        paint.ring_color = spec.default_style ? spec.disabled_color : spec.button_color
-        paint.fill_color = spec.default_style ? spec.disabled_color : spec.button_color
-        paint.label_color = spec.default_style ? spec.disabled_color : spec.button_color
+    if !spec.checked && selected > 0.0 {
+        paint.ring_color = spec.selected.value.background
     }
     return paint
 }

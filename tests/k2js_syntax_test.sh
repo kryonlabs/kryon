@@ -35,6 +35,7 @@ state {
     viewport_width: float = 0
     viewport_height: float = 0
     label: [64] char = "hello"
+    selected: int = 0
 }
 
 app "JS Smoke" {
@@ -143,6 +144,8 @@ Scene :: (viewport: Rectangle) #ui {
     viewport_height = viewport.height
     left: int = 10
     widths: [2] int = {100, 20}
+    values: [2] float = {0.0f, 1.0f}
+    value_changed: bool = false
     button_bounds: Rectangle = {left, 50 + count, widths[0] + widths[1], 28}
     button_bounds = (Rectangle){left, 50 + count, widths[0] + widths[1], 28}
     Screen root: {
@@ -221,6 +224,14 @@ Scene :: (viewport: Rectangle) #ui {
             on_close = close_search
             on_cancel = cancel_search
         }
+        if Selectable((SelectableProps){.bounds={10, 132, 180, 28}, .id=500, .label="Choice", .selected=&selected}) {
+            count += 4
+        }
+        value_changed = Input((InputProps){.bounds={10, 168, 180, 28}, .id=501, .label="Value", .kind=NumericFloat, .float_values=values, .value_count=2, .step=0.1f, .step_fast=1.0f})
+        Input((InputProps){.bounds={10, 204, 180, 28}, .id=502, .label="Standalone", .kind=NumericFloat, .float_values=values, .value_count=1, .step=0.1f, .step_fast=1.0f})
+        if value_changed {
+            count += 8
+        }
         count += 1
     }
 }
@@ -279,6 +290,8 @@ grep -q 'export function frame' "$out"
 grep -q 'export function main' "$out"
 grep -q 'kryon.widget(\$rt, "Text"' "$out"
 grep -q 'kryon.widget(\$rt, "Button"' "$out"
+grep -q 'kryon.widget(\$rt, "Selectable"' "$out"
+grep -q 'kryon.widget(\$rt, "Input"' "$out"
 grep -q '"nodeName": "tap"' "$out"
 grep -q '"path": "Scene/root/tap"' "$out"
 grep -q '"parentPath": "Scene/root"' "$out"
@@ -539,11 +552,13 @@ EOF
 
 "$k2js" --strict --root "$root" -o "$work/out" \
     runtime/*.kry
+cp "$root"/web/*.js "$work/out/"
 node "$root/tests/style_policy_test.mjs" "$work/out/runtime/style.js" \
     "$work/out/runtime/button.js" "$work/out/runtime/theme.js"
 
 "$k2js" --strict --root "$root" -o "$work/out" \
     tests/fixtures/module_calls.kry tests/fixtures/modules/counter.kry
+cp "$root"/web/*.js "$work/out/"
 node "$root/tests/module_calls_test.mjs" "$work/out/tests/fixtures/module_calls.js" \
     "$work/out/tests/fixtures/modules/counter.js"
 

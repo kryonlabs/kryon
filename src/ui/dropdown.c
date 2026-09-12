@@ -5,6 +5,7 @@
 #include "theme.h"
 #include "runtime/dropdown.h"
 #include "ui_paint_internal.h"
+#include "ui_style_sheet.h"
 
 #include <limits.h>
 
@@ -128,24 +129,38 @@ dropdown_resize_options(DropdownState *state, int count)
     state->option_count = count;
 }
 
-/* Dropdowns use the same neutral face and accent selection as buttons. */
+/* Dropdowns expose semantic roles; KSS owns the visual result. */
 static Style
 dropdown_style(int role, int selected, ButtonState state)
 {
     ButtonProps props = {0};
+    Style base;
+    Style accent;
+
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
-    Style base = ResolveButtonStyle(props, state);
-    if(role == 0)
+    if(role == 1)
+        props.emphasis = ButtonEmphasisFilled;
+    if(role == 2 && selected && state != ButtonStateDisabled) {
+        props.tone = ButtonToneAccent;
+        props.emphasis = ButtonEmphasisFilled;
+        props.selected = 1;
+        state = ButtonStateSelected;
+    }
+    base = ui_resolve_button_style_kind(props, state, StyleKindDropdown());
+    if(role != 2)
         return ui_style_apply_effects(base);
+
     props.tone = ButtonToneAccent;
-    props.emphasis = role == 2
-        ? SelectionEmphasis(ColorToInt(GetThemeSurface())) : ButtonEmphasisFilled;
-    Style accent = ResolveButtonStyle(props, ButtonStateNormal);
+    props.emphasis = ButtonEmphasisFilled;
+    props.selected = selected;
+    accent = ui_resolve_button_style_kind(props,
+        selected && state != ButtonStateDisabled ? ButtonStateSelected : state,
+        StyleKindDropdown());
     return ui_style_apply_effects(ui_unpack_style(Appearance(
         ui_pack_style_states((ControlStyle){.normal = base}).normal,
         ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        ColorToInt(GetThemeSurface()), role, state, selected)));
+        role, state, selected)));
 }
 
 static ControlStyle
@@ -183,7 +198,7 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
     StyleFrame appearance = ui_button_style_frame(props, input.interaction.state,
         1, motion.hover.value, motion.press.value, motion.focus.value);
     ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
-        ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
+        ColorToInt(ui_surface_style().background), (float)Scale(1000) / 1000.0f,
         Scale(appearance.value.font_size), GetFontSize());
     if(frame.repaint)
         InvalidateTree(INVALIDATE_PAINT);
@@ -573,7 +588,6 @@ dropdown_paint_menu(int id)
 
     if(can_draw) {
         Style paint = dropdown_style(1, 0, ButtonStateNormal);
-        paint.radius = GetThemeMetrics().radius_large + 2;
         dropdown_draw_surface(menu_bounds, paint, 0);
     }
 

@@ -8,7 +8,7 @@ type TextAppearance struct {
 	LetterSpacing int32
 }
 
-func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, theme_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
+func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32, color uint32, inherited_color uint32, fallback_color uint32, inherited_color_set bool, color_set bool, disabled bool, inherited_disabled bool, letter_spacing int32) TextAppearance {
 	var style TextAppearance = TextAppearance{}
 	var value_0 int32 = font
 	var value_1 int32 = inherited_font
@@ -20,7 +20,7 @@ func Text_ResolveTextStyle(font int32, inherited_font int32, default_font int32,
 	var value_5 bool = color_set
 	var value_6 bool = !value_5
 	if value_6 {
-		var value_7 uint32 = theme_color
+		var value_7 uint32 = fallback_color
 		style.Color = value_7
 		var value_8 bool = inherited_color_set
 		if value_8 {

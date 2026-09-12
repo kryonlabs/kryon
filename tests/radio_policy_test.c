@@ -4,6 +4,18 @@
 
 #include "runtime/radio.h"
 
+static StyleFrame
+test_radio_frame(uint32_t background, uint32_t foreground, uint32_t border)
+{
+    StyleFrame frame = {0};
+    frame.value.fields = StyleBackground | StyleForeground | StyleBorder;
+    frame.value.background = background;
+    frame.value.foreground = foreground;
+    frame.value.border = border;
+    frame.value.border_width = 2.0f;
+    return frame;
+}
+
 static void
 check_rect(Rectangle got, float x, float y, float width, float height)
 {
@@ -27,12 +39,8 @@ main(void)
     paint = RadioPaintFor((RadioSpec){
         .bounds = {10, 20, 160, 30},
         .scale = 1.0f,
-        .text_color = 0x111111ff,
-        .icon_color = 0x222222ff,
-        .button_color = 0x333333ff,
-        .primary_color = 0x444444ff,
-        .surface_variant_color = 0x555555ff,
-        .disabled_color = 0x666666ff,
+        .frame = test_radio_frame(0x111111ff, 0x111111ff, 0x222222ff),
+        .selected = test_radio_frame(0x444444ff, 0x111111ff, 0x444444ff),
     });
     check_rect(paint.mark_bounds, 10, 25, 20, 20);
     check_rect(paint.label_bounds, 38, 20, 132, 30);
@@ -45,12 +53,8 @@ main(void)
         .disabled = true,
         .default_style = true,
         .scale = 1.0f,
-        .text_color = 0x111111ff,
-        .icon_color = 0x222222ff,
-        .button_color = 0x333333ff,
-        .primary_color = 0x444444ff,
-        .surface_variant_color = 0x555555ff,
-        .disabled_color = 0x666666ff,
+        .frame = test_radio_frame(0x333333ff, 0x666666ff, 0x666666ff),
+        .selected = test_radio_frame(0x666666ff, 0x666666ff, 0x666666ff),
     });
     check_rect(paint.mark_bounds, 20, 25, 20, 20);
     check_rect(paint.label_bounds, 54, 20, 116, 30);

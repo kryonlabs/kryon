@@ -1,5 +1,6 @@
 #module "separator"
 #import "drawing_props"
+#import "style"
 
 SeparatorLine :: struct {
     line: Rectangle
@@ -22,9 +23,9 @@ BulletPaint :: struct {
     color: u32
 }
 
-SeparatorLineFor :: (bounds: Rectangle, vertical: bool, color: u32) -> SeparatorLine #export {
+SeparatorLineFor :: (bounds: Rectangle, vertical: bool, frame: StyleFrame) -> SeparatorLine #export {
     paint: SeparatorLine
-    paint.color = color
+    paint.color = frame.value.background
     if vertical {
         paint.line.x = bounds.x + bounds.width * 0.5
         paint.line.y = bounds.y
@@ -40,13 +41,15 @@ SeparatorLineFor :: (bounds: Rectangle, vertical: bool, color: u32) -> Separator
 }
 
 SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
-    has_label: bool, font: i32, scale: float, text_color: u32,
-    line_color: u32) -> SeparatorLabelPaint #export {
+    has_label: bool, font: i32, scale: float, frame: StyleFrame) -> SeparatorLabelPaint #export {
     paint: SeparatorLabelPaint
     if scale <= 0.0 { scale = 1.0 }
     if font <= 0 { font = 14 }
 
-    gap: float = 12.0 * scale
+    gap: float = frame.value.gap * scale
+    if gap <= 0.0 {
+        gap = 12.0 * scale
+    }
     line_x: float = bounds.x
     end_x: float = bounds.x + bounds.width
 
@@ -54,8 +57,8 @@ SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
     paint.text.y = bounds.y
     paint.text.width = label_width
     paint.text.height = bounds.height
-    paint.text_color = text_color
-    paint.line_color = line_color
+    paint.text_color = frame.value.foreground
+    paint.line_color = frame.value.background
     paint.show_text = has_label
 
     if has_label {
@@ -74,7 +77,7 @@ SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
     return paint
 }
 
-BulletPaintFor :: (bounds: Rectangle, color: u32) -> BulletPaint #export {
+BulletPaintFor :: (bounds: Rectangle, frame: StyleFrame) -> BulletPaint #export {
     paint: BulletPaint
     size: float = bounds.width
     if bounds.height < size {
@@ -88,6 +91,6 @@ BulletPaintFor :: (bounds: Rectangle, color: u32) -> BulletPaint #export {
     paint.center.x = bounds.x + bounds.width * 0.5
     paint.center.y = bounds.y + bounds.height * 0.5
     paint.radius = size * 0.5
-    paint.color = color
+    paint.color = frame.value.foreground
     return paint
 }

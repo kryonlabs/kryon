@@ -2,8 +2,8 @@
 package kryon
 
 // #import drawing_props
+// #import style
 // #import surface
-// #import theme
 type CheckboxSpec struct {
 	Bounds  Rectangle
 	Checked bool
@@ -12,8 +12,8 @@ type CheckboxSpec struct {
 	Pressed bool
 	Focused bool
 	Scale   float32
-	Palette Palette
-	Metrics Metrics
+	Box     StyleFrame
+	Active  StyleFrame
 }
 
 type CheckboxPaint struct {
@@ -25,6 +25,8 @@ type CheckboxPaint struct {
 	CheckStart  Vector2
 	CheckMiddle Vector2
 	CheckEnd    Vector2
+	Box         StyleFrame
+	Active      StyleFrame
 	FillColor   uint32
 	BorderColor uint32
 	MarkColor   uint32
@@ -194,268 +196,239 @@ func Checkbox_CheckboxPaintFor(spec CheckboxSpec) CheckboxPaint {
 	var value_15 float32 = scale
 	var value_16 float32 = value_14 * value_15
 	var focus_outset float32 = value_16
-	var value_17 float32 = spec.Metrics.BorderWidth
+	var value_17 float32 = spec.Box.Value.BorderWidth
 	var value_18 float32 = scale
 	var value_19 float32 = value_17 * value_18
 	var border_width float32 = value_19
-	var value_20 float32 = spec.Metrics.FocusWidth
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var focus_width float32 = value_22
-	var value_23 float32 = border_width
-	var value_24 float32 = 1.0
-	var value_25 bool = value_23 < value_24
-	if value_25 {
-		var value_26 float32 = 1.0
-		border_width = value_26
-	}
-	var value_27 float32 = focus_width
-	var value_28 float32 = 1.0
-	var value_29 bool = value_27 < value_28
-	if value_29 {
-		var value_30 float32 = 1.0
-		focus_width = value_30
-	}
-	var value_31 Rectangle = spec.Bounds
-	paint.Bounds = value_31
-	var value_32 float32 = spec.Bounds.X
-	paint.SlotBounds.X = value_32
-	var value_33 float32 = spec.Bounds.Y
-	var value_34 float32 = spec.Bounds.Height
-	var value_35 float32 = slot_size
-	var value_36 float32 = value_34 - value_35
-	var value_37 float32 = 0.5
-	var value_38 float32 = value_36 * value_37
-	var value_39 float32 = value_33 + value_38
-	paint.SlotBounds.Y = value_39
-	var value_40 float32 = slot_size
-	paint.SlotBounds.Width = value_40
-	var value_41 float32 = slot_size
-	paint.SlotBounds.Height = value_41
-	var value_42 float32 = paint.SlotBounds.X
-	var value_43 float32 = slot_size
-	var value_44 float32 = box_size
-	var value_45 float32 = value_43 - value_44
-	var value_46 float32 = 0.5
-	var value_47 float32 = value_45 * value_46
-	var value_48 float32 = value_42 + value_47
-	paint.BoxBounds.X = value_48
-	var value_49 float32 = paint.SlotBounds.Y
-	var value_50 float32 = slot_size
-	var value_51 float32 = box_size
+	var value_20 Rectangle = spec.Bounds
+	paint.Bounds = value_20
+	var value_21 float32 = spec.Bounds.X
+	paint.SlotBounds.X = value_21
+	var value_22 float32 = spec.Bounds.Y
+	var value_23 float32 = spec.Bounds.Height
+	var value_24 float32 = slot_size
+	var value_25 float32 = value_23 - value_24
+	var value_26 float32 = 0.5
+	var value_27 float32 = value_25 * value_26
+	var value_28 float32 = value_22 + value_27
+	paint.SlotBounds.Y = value_28
+	var value_29 float32 = slot_size
+	paint.SlotBounds.Width = value_29
+	var value_30 float32 = slot_size
+	paint.SlotBounds.Height = value_30
+	var value_31 float32 = paint.SlotBounds.X
+	var value_32 float32 = slot_size
+	var value_33 float32 = box_size
+	var value_34 float32 = value_32 - value_33
+	var value_35 float32 = 0.5
+	var value_36 float32 = value_34 * value_35
+	var value_37 float32 = value_31 + value_36
+	paint.BoxBounds.X = value_37
+	var value_38 float32 = paint.SlotBounds.Y
+	var value_39 float32 = slot_size
+	var value_40 float32 = box_size
+	var value_41 float32 = value_39 - value_40
+	var value_42 float32 = 0.5
+	var value_43 float32 = value_41 * value_42
+	var value_44 float32 = value_38 + value_43
+	paint.BoxBounds.Y = value_44
+	var value_45 float32 = box_size
+	paint.BoxBounds.Width = value_45
+	var value_46 float32 = box_size
+	paint.BoxBounds.Height = value_46
+	var value_47 float32 = paint.BoxBounds.X
+	var value_48 float32 = state_outset
+	var value_49 float32 = value_47 - value_48
+	paint.StateBounds.X = value_49
+	var value_50 float32 = paint.BoxBounds.Y
+	var value_51 float32 = state_outset
 	var value_52 float32 = value_50 - value_51
-	var value_53 float32 = 0.5
-	var value_54 float32 = value_52 * value_53
-	var value_55 float32 = value_49 + value_54
-	paint.BoxBounds.Y = value_55
-	var value_56 float32 = box_size
-	paint.BoxBounds.Width = value_56
-	var value_57 float32 = box_size
-	paint.BoxBounds.Height = value_57
-	var value_58 float32 = paint.BoxBounds.X
+	paint.StateBounds.Y = value_52
+	var value_53 float32 = paint.BoxBounds.Width
+	var value_54 float32 = state_outset
+	var value_55 float32 = 2.0
+	var value_56 float32 = value_54 * value_55
+	var value_57 float32 = value_53 + value_56
+	paint.StateBounds.Width = value_57
+	var value_58 float32 = paint.BoxBounds.Height
 	var value_59 float32 = state_outset
-	var value_60 float32 = value_58 - value_59
-	paint.StateBounds.X = value_60
-	var value_61 float32 = paint.BoxBounds.Y
-	var value_62 float32 = state_outset
-	var value_63 float32 = value_61 - value_62
-	paint.StateBounds.Y = value_63
-	var value_64 float32 = paint.BoxBounds.Width
-	var value_65 float32 = state_outset
-	var value_66 float32 = 2.0
-	var value_67 float32 = value_65 * value_66
-	var value_68 float32 = value_64 + value_67
-	paint.StateBounds.Width = value_68
-	var value_69 float32 = paint.BoxBounds.Height
-	var value_70 float32 = state_outset
+	var value_60 float32 = 2.0
+	var value_61 float32 = value_59 * value_60
+	var value_62 float32 = value_58 + value_61
+	paint.StateBounds.Height = value_62
+	var value_63 float32 = paint.BoxBounds.X
+	var value_64 float32 = focus_outset
+	var value_65 float32 = value_63 - value_64
+	paint.FocusBounds.X = value_65
+	var value_66 float32 = paint.BoxBounds.Y
+	var value_67 float32 = focus_outset
+	var value_68 float32 = value_66 - value_67
+	paint.FocusBounds.Y = value_68
+	var value_69 float32 = paint.BoxBounds.Width
+	var value_70 float32 = focus_outset
 	var value_71 float32 = 2.0
 	var value_72 float32 = value_70 * value_71
 	var value_73 float32 = value_69 + value_72
-	paint.StateBounds.Height = value_73
-	var value_74 float32 = paint.BoxBounds.X
+	paint.FocusBounds.Width = value_73
+	var value_74 float32 = paint.BoxBounds.Height
 	var value_75 float32 = focus_outset
-	var value_76 float32 = value_74 - value_75
-	paint.FocusBounds.X = value_76
-	var value_77 float32 = paint.BoxBounds.Y
-	var value_78 float32 = focus_outset
-	var value_79 float32 = value_77 - value_78
-	paint.FocusBounds.Y = value_79
-	var value_80 float32 = paint.BoxBounds.Width
-	var value_81 float32 = focus_outset
-	var value_82 float32 = 2.0
-	var value_83 float32 = value_81 * value_82
-	var value_84 float32 = value_80 + value_83
-	paint.FocusBounds.Width = value_84
+	var value_76 float32 = 2.0
+	var value_77 float32 = value_75 * value_76
+	var value_78 float32 = value_74 + value_77
+	paint.FocusBounds.Height = value_78
+	var value_79 float32 = paint.BoxBounds.X
+	var value_80 float32 = 5.0
+	var value_81 float32 = scale
+	var value_82 float32 = value_80 * value_81
+	var value_83 float32 = value_79 + value_82
+	paint.CheckStart.X = value_83
+	var value_84 float32 = paint.BoxBounds.Y
 	var value_85 float32 = paint.BoxBounds.Height
-	var value_86 float32 = focus_outset
-	var value_87 float32 = 2.0
-	var value_88 float32 = value_86 * value_87
-	var value_89 float32 = value_85 + value_88
-	paint.FocusBounds.Height = value_89
-	var value_90 float32 = paint.BoxBounds.X
-	var value_91 float32 = 5.0
-	var value_92 float32 = scale
-	var value_93 float32 = value_91 * value_92
-	var value_94 float32 = value_90 + value_93
-	paint.CheckStart.X = value_94
-	var value_95 float32 = paint.BoxBounds.Y
-	var value_96 float32 = paint.BoxBounds.Height
-	var value_97 float32 = 0.53
-	var value_98 float32 = value_96 * value_97
-	var value_99 float32 = value_95 + value_98
-	paint.CheckStart.Y = value_99
-	var value_100 float32 = paint.BoxBounds.X
-	var value_101 float32 = paint.BoxBounds.Width
-	var value_102 float32 = 0.42
-	var value_103 float32 = value_101 * value_102
-	var value_104 float32 = value_100 + value_103
-	paint.CheckMiddle.X = value_104
-	var value_105 float32 = paint.BoxBounds.Y
-	var value_106 float32 = paint.BoxBounds.Height
-	var value_107 float32 = value_105 + value_106
-	var value_108 float32 = 5.0
-	var value_109 float32 = scale
-	var value_110 float32 = value_108 * value_109
-	var value_111 float32 = value_107 - value_110
-	paint.CheckMiddle.Y = value_111
-	var value_112 float32 = paint.BoxBounds.X
-	var value_113 float32 = paint.BoxBounds.Width
-	var value_114 float32 = value_112 + value_113
-	var value_115 float32 = 5.0
-	var value_116 float32 = scale
-	var value_117 float32 = value_115 * value_116
-	var value_118 float32 = value_114 - value_117
-	paint.CheckEnd.X = value_118
-	var value_119 float32 = paint.BoxBounds.Y
-	var value_120 float32 = 5.0
-	var value_121 float32 = scale
-	var value_122 float32 = value_120 * value_121
-	var value_123 float32 = value_119 + value_122
-	paint.CheckEnd.Y = value_123
+	var value_86 float32 = 0.53
+	var value_87 float32 = value_85 * value_86
+	var value_88 float32 = value_84 + value_87
+	paint.CheckStart.Y = value_88
+	var value_89 float32 = paint.BoxBounds.X
+	var value_90 float32 = paint.BoxBounds.Width
+	var value_91 float32 = 0.42
+	var value_92 float32 = value_90 * value_91
+	var value_93 float32 = value_89 + value_92
+	paint.CheckMiddle.X = value_93
+	var value_94 float32 = paint.BoxBounds.Y
+	var value_95 float32 = paint.BoxBounds.Height
+	var value_96 float32 = value_94 + value_95
+	var value_97 float32 = 5.0
+	var value_98 float32 = scale
+	var value_99 float32 = value_97 * value_98
+	var value_100 float32 = value_96 - value_99
+	paint.CheckMiddle.Y = value_100
+	var value_101 float32 = paint.BoxBounds.X
+	var value_102 float32 = paint.BoxBounds.Width
+	var value_103 float32 = value_101 + value_102
+	var value_104 float32 = 5.0
+	var value_105 float32 = scale
+	var value_106 float32 = value_104 * value_105
+	var value_107 float32 = value_103 - value_106
+	paint.CheckEnd.X = value_107
+	var value_108 float32 = paint.BoxBounds.Y
+	var value_109 float32 = 5.0
+	var value_110 float32 = scale
+	var value_111 float32 = value_109 * value_110
+	var value_112 float32 = value_108 + value_111
+	paint.CheckEnd.Y = value_112
+	var value_113 StyleFrame = spec.Box
+	paint.Box = value_113
+	var value_114 StyleFrame = spec.Active
+	paint.Active = value_114
+	var value_115 bool = spec.Checked
+	var value_116 uint32 = 0
+	if value_115 {
+		var value_117 uint32 = spec.Active.Value.Background
+		value_116 = value_117
+	} else {
+		var value_118 uint32 = spec.Box.Value.Background
+		value_116 = value_118
+	}
+	paint.FillColor = value_116
+	var value_119 bool = spec.Checked
+	var value_120 uint32 = 0
+	if value_119 {
+		var value_121 uint32 = spec.Active.Value.Border
+		value_120 = value_121
+	} else {
+		var value_122 uint32 = spec.Box.Value.Border
+		value_120 = value_122
+	}
+	paint.BorderColor = value_120
+	var value_123 uint32 = spec.Active.Value.Foreground
+	paint.MarkColor = value_123
 	var value_124 bool = spec.Checked
 	var value_125 uint32 = 0
 	if value_124 {
-		var value_126 uint32 = spec.Palette.Accent
+		var value_126 uint32 = spec.Active.Value.Background
 		value_125 = value_126
 	} else {
-		var value_127 uint32 = spec.Palette.Surface
+		var value_127 uint32 = spec.Box.Value.Foreground
 		value_125 = value_127
 	}
-	paint.FillColor = value_125
-	var value_128 bool = spec.Checked
-	var value_129 uint32 = 0
+	var value_128 bool = spec.Pressed
+	var value_129 float32 = 0
 	if value_128 {
-		var value_130 uint32 = spec.Palette.Accent
+		var value_130 float32 = 0.14
 		value_129 = value_130
 	} else {
-		var value_131 uint32 = spec.Palette.BorderStrong
-		value_129 = value_131
-	}
-	paint.BorderColor = value_129
-	var value_132 uint32 = spec.Palette.OnAccent
-	paint.MarkColor = value_132
-	var value_133 bool = spec.Checked
-	var value_134 uint32 = 0
-	if value_133 {
-		var value_135 uint32 = spec.Palette.Accent
-		value_134 = value_135
-	} else {
-		var value_136 uint32 = spec.Palette.Text
-		value_134 = value_136
-	}
-	var value_137 bool = spec.Pressed
-	var value_138 float32 = 0
-	if value_137 {
-		var value_139 float32 = 0.14
-		value_138 = value_139
-	} else {
-		var value_140 bool = spec.Hovered
-		var value_141 float32 = 0
-		if value_140 {
-			var value_142 float32 = 0.08
-			value_141 = value_142
+		var value_131 bool = spec.Hovered
+		var value_132 float32 = 0
+		if value_131 {
+			var value_133 float32 = 0.08
+			value_132 = value_133
 		} else {
-			var value_143 float32 = 0.10
-			value_141 = value_143
+			var value_134 float32 = 0.10
+			value_132 = value_134
 		}
-		value_138 = value_141
+		value_129 = value_132
 	}
-	var value_144 uint32 = Surface_Opacity(value_134, value_138)
-	paint.StateColor = value_144
-	var value_145 uint32 = spec.Palette.Focus
-	paint.FocusColor = value_145
-	var value_146 uint32 = spec.Palette.Text
-	paint.LabelColor = value_146
-	var value_147 float32 = 0.18
-	paint.Radius = value_147
-	var value_148 float32 = 0.28
-	paint.StateRadius = value_148
-	var value_149 float32 = 0.26
-	paint.FocusRadius = value_149
-	var value_150 float32 = border_width
-	paint.BorderWidth = value_150
-	var value_151 float32 = 2.4
-	var value_152 float32 = scale
-	var value_153 float32 = value_151 * value_152
-	paint.MarkWidth = value_153
-	var value_154 bool = spec.Checked
-	paint.ShowFill = value_154
-	var value_155 bool = spec.Checked
-	paint.ShowMark = value_155
-	var value_156 bool = spec.Enabled
-	var value_157 bool = value_156
-	if value_157 {
-		var value_158 bool = spec.Hovered
-		var value_159 bool = value_158
-		if !value_159 {
-			var value_160 bool = spec.Pressed
-			value_159 = value_160
+	var value_135 uint32 = Surface_Opacity(value_125, value_129)
+	paint.StateColor = value_135
+	var value_136 uint32 = spec.Box.Value.Focus
+	paint.FocusColor = value_136
+	var value_137 uint32 = spec.Box.Value.Foreground
+	paint.LabelColor = value_137
+	var value_138 float32 = 0.18
+	paint.Radius = value_138
+	var value_139 float32 = 0.28
+	paint.StateRadius = value_139
+	var value_140 float32 = 0.26
+	paint.FocusRadius = value_140
+	var value_141 float32 = border_width
+	paint.BorderWidth = value_141
+	var value_142 float32 = paint.BorderWidth
+	var value_143 float32 = 0.0
+	var value_144 bool = value_142 < value_143
+	if value_144 {
+		var value_145 float32 = 0.0
+		paint.BorderWidth = value_145
+	}
+	var value_146 float32 = 2.4
+	var value_147 float32 = scale
+	var value_148 float32 = value_146 * value_147
+	paint.MarkWidth = value_148
+	var value_149 bool = spec.Checked
+	paint.ShowFill = value_149
+	var value_150 bool = spec.Checked
+	paint.ShowMark = value_150
+	var value_151 bool = spec.Enabled
+	var value_152 bool = value_151
+	if value_152 {
+		var value_153 bool = spec.Hovered
+		var value_154 bool = value_153
+		if !value_154 {
+			var value_155 bool = spec.Pressed
+			value_154 = value_155
 		}
-		var value_161 bool = value_159
-		if !value_161 {
-			var value_162 bool = spec.Focused
-			value_161 = value_162
+		var value_156 bool = value_154
+		if !value_156 {
+			var value_157 bool = spec.Focused
+			value_156 = value_157
 		}
-		value_157 = value_161
+		value_152 = value_156
 	}
-	paint.ShowState = value_157
-	var value_163 bool = spec.Enabled
-	var value_164 bool = value_163
-	if value_164 {
-		var value_165 bool = spec.Focused
-		value_164 = value_165
+	paint.ShowState = value_152
+	var value_158 bool = spec.Enabled
+	var value_159 bool = value_158
+	if value_159 {
+		var value_160 bool = spec.Focused
+		value_159 = value_160
 	}
-	paint.ShowFocus = value_164
-	var value_166 bool = spec.Enabled
-	var value_167 bool = !value_166
-	if value_167 {
-		var value_168 bool = spec.Checked
-		var value_169 uint32 = 0
-		if value_168 {
-			var value_170 uint32 = spec.Palette.TextDisabled
-			var value_171 float32 = 0.42
-			var value_172 uint32 = Surface_Opacity(value_170, value_171)
-			value_169 = value_172
-		} else {
-			var value_173 uint32 = spec.Palette.Surface
-			value_169 = value_173
-		}
-		paint.FillColor = value_169
-		var value_174 uint32 = spec.Palette.TextDisabled
-		var value_175 float32 = 0.62
-		var value_176 uint32 = Surface_Opacity(value_174, value_175)
-		paint.BorderColor = value_176
-		var value_177 uint32 = spec.Palette.Surface
-		var value_178 float32 = 0.70
-		var value_179 uint32 = Surface_Opacity(value_177, value_178)
-		paint.MarkColor = value_179
-		var value_180 uint32 = spec.Palette.TextDisabled
-		paint.LabelColor = value_180
-		var value_181 bool = false
-		paint.ShowState = value_181
-		var value_182 bool = false
-		paint.ShowFocus = value_182
+	paint.ShowFocus = value_159
+	var value_161 bool = spec.Enabled
+	var value_162 bool = !value_161
+	if value_162 {
+		var value_163 bool = false
+		paint.ShowState = value_163
+		var value_164 bool = false
+		paint.ShowFocus = value_164
 	}
-	var value_183 CheckboxPaint = paint
-	return value_183
+	var value_165 CheckboxPaint = paint
+	return value_165
 }

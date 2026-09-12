@@ -1,11 +1,26 @@
 #module "progress"
 #import "drawing_props"
+#import "style"
 
 ProgressLayout :: struct {
     ratio: float
     fill_bounds: Rectangle
     label_x: float
     label_on_fill: bool
+}
+
+ProgressPaint :: struct {
+    layout: ProgressLayout
+    track: StyleFrame
+    fill: StyleFrame
+    label: StyleFrame
+    track_color: u32
+    fill_color: u32
+    border_color: u32
+    label_color: u32
+    filled_label_color: u32
+    radius: float
+    border_width: float
 }
 
 ProgressRatio :: (min: i32, max: i32, value: i32) -> float #export {
@@ -65,3 +80,22 @@ ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
     return layout
 }
 
+ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
+    label_width: float, padding: float, scale: float, track: StyleFrame,
+    fill: StyleFrame, label: StyleFrame) -> ProgressPaint #export {
+    paint: ProgressPaint
+    if scale <= 0.0 { scale = 1.0 }
+    paint.layout = ProgressLayoutFor(bounds, min, max, value, label_width, padding)
+    paint.track = track
+    paint.fill = fill
+    paint.label = label
+    paint.track_color = track.value.background
+    paint.fill_color = fill.value.background
+    paint.border_color = track.value.border
+    paint.label_color = label.value.foreground
+    paint.filled_label_color = fill.value.foreground
+    paint.radius = track.value.radius * scale
+    paint.border_width = track.value.border_width * scale
+    if paint.border_width < 0.0 { paint.border_width = 0.0 }
+    return paint
+}

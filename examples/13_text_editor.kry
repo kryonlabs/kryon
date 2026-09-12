@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Text Editor" {
     size 800 600
@@ -16,9 +17,9 @@ state {
 TextEditorExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
+        AppBackground()
         TextArea((TextAreaProps){{40,70,520,180},text_value,sizeof(text_value),&cursor,&focused,&scroll,500,Text16,6,401,"Write here",SyntaxNone,{0},NULL,NULL})
-        Text((TextProps){.bounds={40, 260, 0, 0}, .text="Ctrl/Cmd+C, X, and V work in the text area.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={40, 260, 0, 0}, .text="Ctrl/Cmd+C, X, and V work in the text area.", .font=Text16, .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {40, 300, 110, 34}, .label = "Copy", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 101}) {
             SetClipboardTextValue(text_value)
         }

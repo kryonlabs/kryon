@@ -9,7 +9,7 @@ app "Kryon Widget Catalog" {
 state {
     image_path: const char * = "icons/tiles.png"
     menu_items: [2] MenuItem = {{MenuCommand,"Open",NULL,1,0,0,NULL,0},{MenuCommand,"Save",NULL,2,0,0,NULL,0}}
-    menus: [1] Menu = {{{0},"File",menu_items,2}}
+    menus: [1] MenuGroup = {{{0},"File",menu_items,2}}
     action_count: int = 0
     category: int = 0
     category_names: [10] const char * = {"Display & media","Actions & input","Layout & containers","Collections & editors","Navigation","Feedback & dialogs","Canvas","Numbers & plots","Colors","Pages & settings"}
@@ -165,7 +165,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y + Scale(150), 0, 0}, .text=display_lines[1], .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         paragraph_y: int = y + Scale(176)
         Paragraph((ParagraphSpec){.text = "A short paragraph with an icon.", .icon_type = 1, .icon_size = Scale(16), .width = Scale(300), .font = Text16, .line_gap = Scale(4), .color = GetThemeText()}, x, &paragraph_y)
-        Rect(right, y + Scale(38), Scale(120), Scale(54), GetThemeSurface(), GetThemeButton())
+        Box((Rectangle){right, y + Scale(38), Scale(120), Scale(54)}, GetThemeSurface(), GetThemeButton())
         Line(right, y + Scale(110), right + Scale(120), y + Scale(110), GetThemeLink())
         Bevel(right, y + Scale(132), Scale(120), Scale(34), GetThemeSurface(), GetThemeButton())
         Icon(100, right + Scale(150), y + Scale(46), Scale(28), 1, GetThemeIcon())
@@ -190,7 +190,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN, .style = {.enabled = true, .background = GetThemeSurface()}})
         if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_asset_path = image_path, .image_source = {0,0,64,64}, .image_bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_tint = WHITE, .image_fit = IMAGE_FIT_CONTAIN, .image_background = GetThemeSurface(), .id = 210}) {
             action_count += 1
-            ShowToast("Image button clicked")
+            Toast((ToastProps){.message = "Image button clicked"})
         }
         Text((TextProps){.bounds={right, y + Scale(606), 0, 0}, .text="Image / Button image", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         Separator((SeparatorProps){.bounds = {x,y + Scale(570),Scale(350),Scale(30)}, .label = "Separator"})
@@ -235,7 +235,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={right, y + Scale(258), 0, 0}, .text="Invisible Button", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {right,y + Scale(250),Scale(300),Scale(32)}, .id = 204, .invisible = true}) {
             action_count += 1
-            ShowToast("Invisible button clicked")
+            Toast((ToastProps){.message = "Invisible button clicked"})
         }
         Disabled disabled_action: {
             if Button((ButtonProps){.bounds = {x,y + Scale(310),Scale(180),Scale(34)}, .label = "Disabled button", .id = 205}) {
@@ -272,7 +272,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Stack demo_stack: {
             bounds = {x + Scale(214), y + Scale(38), Scale(160), Scale(92)}
             key = Key("catalog-stack")
-            Rect(x + Scale(214), y + Scale(38), Scale(160), Scale(92), GetThemeSurface(), GetThemeButton())
+            Box((Rectangle){x + Scale(214), y + Scale(38), Scale(160), Scale(92)}, GetThemeSurface(), GetThemeButton())
             Text((TextProps){.bounds={x + Scale(258), y + Scale(70), 0, 0}, .text="Stack", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         }
         Grid((GridProps){.bounds = {x, y + Scale(148), Scale(374), Scale(48)}, .columns = 2, .gap = Scale(6)})
@@ -298,17 +298,17 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="COLLECTIONS AND EDITORS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         ListBox((ListBoxProps){.bounds = {x, y + Scale(38), Scale(180), Scale(90)}, .id = 115, .items = choices, .item_count = 3, .selected_index = &picked, .scroll_offset = &list_scroll, .row_height = Scale(26)})
         TreeView((TreeViewProps){.bounds = {x + Scale(198), y + Scale(38), Scale(180), Scale(90)}, .id = 116, .items = tree_items, .item_count = 2, .selected_id = &tree_selected, .scroll_offset = &list_scroll, .row_height = Scale(26)})
-        Rect(right, y + Scale(38), Scale(360), Scale(90), GetThemeSurface(), GetThemeBorder())
+        Box((Rectangle){right, y + Scale(38), Scale(360), Scale(90)}, GetThemeSurface(), GetThemeBorder())
         Text((TextProps){.bounds={right + Scale(12), y + Scale(52), 0, 0}, .text="1  Text(\"Hello\")", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         TableView((TableViewProps){.bounds = {x, y + Scale(148), Scale(378), Scale(100)}, .id = 117, .columns = columns, .column_count = 2, .rows = rows, .row_count = 2, .column_widths = widths, .selected_row = &table_selected_row, .selected_column = &table_selected_column, .activated_row = &table_activated_row, .activated_column = &table_activated_column, .right_clicked_row = &table_right_row, .right_clicked_column = &table_right_column})
 
-        Text((TextProps){.bounds={x, y + Scale(290), 0, 0}, .text="MultiSelectList (Ctrl / Shift to select)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        MultiSelectList((MultiSelectListProps){.bounds = {x,y + Scale(330),Scale(350),Scale(110)}, .id = 206, .items = choices, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = Scale(30)})
+        Text((TextProps){.bounds={x, y + Scale(290), 0, 0}, .text="ListBox multi-select (Ctrl / Shift)", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        ListBox((ListBoxProps){.bounds = {x,y + Scale(330),Scale(350),Scale(110)}, .id = 206, .items = choices, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = Scale(30)})
         Text((TextProps){.bounds={x, y + Scale(480), 0, 0}, .text="Drag text from the left into the right box", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Rect(x,y + Scale(522),Scale(300),Scale(48),GetThemeSurface(),GetThemeButton())
+        Box((Rectangle){x,y + Scale(522),Scale(300),Scale(48)},GetThemeSurface(),GetThemeButton())
         Text((TextProps){.bounds={x + Scale(12), y + Scale(538), 0, 0}, .text="DragDrop source", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         DragDrop((DragDropProps){.bounds = {x,y + Scale(522),Scale(300),Scale(48)}, .id = 207, .role = DragDropRoleSource, .type = "TEXT", .data = text_value, .data_size = sizeof(text_value)})
-        Rect(right,y + Scale(522),Scale(300),Scale(48),GetThemeSurface(),GetThemeButton())
+        Box((Rectangle){right,y + Scale(522),Scale(300),Scale(48)},GetThemeSurface(),GetThemeButton())
         Text((TextProps){.bounds={right + Scale(12), y + Scale(538), 0, 0}, .text="DragDrop target", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         DragDrop((DragDropProps){.bounds = {right,y + Scale(522),Scale(300),Scale(48)}, .id = 208, .role = DragDropRoleTarget, .type = "TEXT", .output = area_value, .output_size = sizeof(area_value), .accepted_size = &accepted_size})
         Text((TextProps){.bounds={right, y + Scale(590), 0, 0}, .text=area_value, .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
@@ -323,8 +323,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if tab_result >= 0 {
             picked = tab_result
         }
-        menu_result: MenuBarResult = MenuBar(126, (Rectangle){x, y + Scale(148), Scale(360), Scale(34)}, menus, 1, &open_menu)
-        context_result: int = ContextMenu((ContextMenuProps){127, {right, y + Scale(132), Scale(280), Scale(50)}, menu_items, 2, &context_open, &context_x, &context_y})
+        menu_result: MenuResult = Menu((MenuProps){.id = 126, .mode = MenuModeBar, .bounds = {x, y + Scale(148), Scale(360), Scale(34)}, .menus = menus, .menu_count = 1, .open_index = &open_menu})
+        context_result: int = Menu((MenuProps){.id = 127, .mode = MenuModeContext, .trigger = {right, y + Scale(132), Scale(280), Scale(50)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y}).activated_id
         if menu_result.activated_id > 0 {
             menu_command = menu_result.activated_id
         }
@@ -377,7 +377,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if category == 5 {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="FEEDBACK AND DIALOGS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {x, y + Scale(40), Scale(150), Scale(34)}, .label = "Show toast", .id = 120}) {
-            ShowToast("Hello from Kryon")
+            Toast((ToastProps){.message = "Hello from Kryon"})
         }
         if Button((ButtonProps){.bounds = {x + Scale(166), y + Scale(40), Scale(150), Scale(34)}, .label = "Message dialog", .id = 121}) {
             dialog = 1

@@ -25,7 +25,7 @@ and what must move out of native code into `.kry`.
 | `Native support` | Runtime support only; not a canonical public widget. |
 | `Composite candidate` | Keep as `.kry` composition if it is reusable, otherwise fold into callers. |
 | `Rename review` | Public name needs a naming decision. |
-| `Remove after migration` | Compatibility or duplicate surface to delete once callers move. |
+| `Removed` | Deleted from public headers/codegen/runtime surfaces. |
 
 ## Runtime `.kry` Modules
 
@@ -66,14 +66,14 @@ surface review:
 | `runtime/list_box.kry` | ListBox layout/navigation policy | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
-| `runtime/multi_select_list.kry` | MultiSelectList row/navigation/selection policy | `.kry canonical` |
+| `runtime/multi_select_list.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
 | `runtime/paint.kry` | Paint/drawing helpers | Native support |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paragraph.kry` | Paragraph metrics/default policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
-| `runtime/primitive.kry` | Background/Rect/Line primitive geometry policy | `.kry canonical` |
+| `runtime/primitive.kry` | Background/Box/Line primitive geometry policy | `.kry canonical` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
@@ -107,13 +107,13 @@ text measurement, painting, storage, or platform services.
 
 | Group | `.kry`-backed today | Still native-only or compatibility |
 |---|---|---|
-| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Rect`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
+| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Box`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options | helper button variants belong in `ButtonProps` or composition; invisible hit testing is host support |
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
-| Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation policy, `MultiSelectList` row/navigation/selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
+| Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/multi-selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, `Menu` geometry policy | retained menu open/focus/input state, router/link helpers |
-| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, `TransitionFade` alpha/easing policy | theme pickers |
+| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy | theme pickers |
 | Game2D | Native scene nodes | Game2D nodes are separate from UI widgets; keep them in the Game2D runtime unless `.kry` scene declarations are introduced. |
 
 The immediate migration target is to finish moving high-use controls first:
@@ -131,7 +131,7 @@ has a single place to land.
 | `Background` | `UI/Display` | Fill | `runtime/primitive.kry` | Partly `.kry-backed` | Viewport bounds policy is `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `UI/Display` | Label | `runtime/text.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface. |
 | `Paragraph` | `UI/Display` | Rich text | `runtime/paragraph.kry` | Partly `.kry-backed` | Metrics/default policy is `.kry`; text parsing, reflow, icon shaping, and drawing remain host support. |
-| `Rect` | `UI/Display` | Shape | `runtime/primitive.kry` | Partly `.kry-backed` | Bounds policy is `.kry`; still review whether public name should be `Box` or surface props. |
+| `Box` | `UI/Display` | Shape | `runtime/primitive.kry` | Partly `.kry-backed` | Registry/public rectangle primitive with `Rectangle` bounds. |
 | `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | Partly `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
 | `Icon` | `UI/Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
@@ -159,8 +159,7 @@ has a single place to land.
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Page rows/metrics are `.kry`; editing, IME, selection, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
-| `MenuBar` | `UI/Navigation` | Menu | `runtime/menu.kry` | Native support | Legacy/native command-menu entry point. Clean public spelling should be `Menu` with bar/popup/context mode props. |
-| `PopupMenu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/popup_policy.kry` | Native support | Legacy/native popup command menu entry point. Clean public spelling should be `Menu` inside or anchored by `Popup`, not a separate widget concept. |
+| `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint and sizing policy are `.kry`. |
 | `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry are `.kry`; host dispatches child actions. |
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing/scroll policy is `.kry`; host keeps input sampling. |
@@ -191,10 +190,11 @@ host roles rather than retained nodes.
 
 | Parser name | Current decision | Notes |
 |---|---|---|
+| `AppBackground` | `.kry canonical` | App chrome background command backed by active style facts; preferred over spelling out `Background(GetThemeBackground())`. |
 | `Background` | `.kry canonical` | Fill/display widget; geometry policy is in `.kry`. |
 | `Text` | `.kry canonical` | Canonical text surface. |
 | `Paragraph` | `.kry canonical` | Rich text surface; may become `Text` props if that stays cleaner. |
-| `Rect` | Native canonical | Drawing primitive; rename review against `Box`. |
+| `Box` | Native canonical | Canonical rectangle primitive with `Rectangle` bounds. |
 | `Line` | Native canonical | Drawing primitive. |
 | `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
 | `Icon` | `.kry canonical` | Icon bounds/size policy is in `.kry`. |
@@ -208,10 +208,9 @@ host roles rather than retained nodes.
 | `TextField` | `.kry canonical` | Metrics/scroll policy in `.kry`; editing host support remains. |
 | `TextArea` | `.kry canonical` | Metrics/page policy in `.kry`; editing host support remains. |
 | `Dropdown` | `.kry canonical` | Selection control only. |
+| `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
 | `Slider` | `.kry canonical` | Type/orientation/angle variants are props. |
-| `MenuBar` | Native support | Legacy command-menu entry point; migrate to `Menu` props. |
-| `PopupMenu` | Native support | Legacy command-menu entry point; migrate to `Menu` inside or anchored by `Popup`. |
-| `ContextMenu` | Native support | Legacy command-menu entry point; migrate to `Menu` context props. |
+| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. KSS uses `Menu`, `MenuItem`, and `MenuSeparator`; no `MenuBar` selector. |
 | `Toggle` | `.kry canonical` | Boolean switch. |
 | `Checkbox` | `.kry canonical` | Boolean checkbox. |
 | `Radio` | `.kry canonical` | Choice control. |
@@ -221,7 +220,7 @@ host roles rather than retained nodes.
 | `Input` | `.kry canonical` | Numeric input control; value type/count are props. |
 | `Spinbox` | `.kry canonical` | Numeric stepper. |
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
-| `MultiSelectList` | `.kry canonical` | Multi-selection list; may fold into `ListBox` props later. |
+| `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
 | `Screen` | `.kry canonical` | Top-level screen container. |
 | `Column` | `.kry canonical` | Layout block. |
 | `Row` | `.kry canonical` | Layout block. |
@@ -234,8 +233,7 @@ host roles rather than retained nodes.
 | `TabBar` | `.kry canonical` | Tab navigation surface. |
 | `NavigationBar` | `.kry canonical` | App navigation bar. |
 | `Toolbar` | `.kry canonical` | Tool/action strip. |
-| `ShowToast` | `.kry canonical` | Toast command using toast policy. |
-| `ShowToastFor` | `.kry canonical` | Timed toast command using toast policy. |
+| `Toast` | `.kry canonical` | Toast feedback command; message and duration live in `ToastProps`. |
 | `Fieldset` | `.kry canonical` | Titled frame/group. |
 | `PanedView` | `.kry canonical` | Split panes. |
 | `Collapsible` | `.kry canonical` | Collapsible section. |
@@ -244,7 +242,6 @@ host roles rather than retained nodes.
 | `TableView` | `.kry canonical` | Table geometry policy in `.kry`; host keeps state/input. |
 | `ColorPicker` | `.kry canonical` | Color channel layout/conversion. |
 | `CanvasGrid` | `.kry canonical` | Canvas grid line policy. |
-| `SelectableText` | `.kry canonical` | Text selection/copy surface; review whether `Text` props should absorb it. |
 
 ## Block Statement Surface
 
@@ -275,6 +272,7 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 | `Separator` | `.kry canonical` | Block form with `SeparatorProps`. |
 | `Spinbox` | `.kry canonical` | Block form with `SpinboxProps`. |
 | `Dropdown` | `.kry canonical` | Block form with `DropdownProps`. |
+| `SegmentedControl` | `.kry canonical` | Block form with `SegmentedControlProps`. |
 | `Fieldset` | `.kry canonical` | Titled frame block. |
 | `PanedView` | `.kry canonical` | Split pane block. |
 | `Collapsible` | `.kry canonical` | Collapsible section block. |
@@ -310,9 +308,6 @@ behavior.
 | `EndPopup` | `Popup` block | Lowered host exit for popup content. |
 | `BeginTableCell` | `TableCell` block | Lowered host entry for custom table-cell content. |
 | `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
-| `MenuBar` | `Menu` bar mode | Legacy command-menu entry point; mode belongs in props/composition. |
-| `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
-| `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
 
 ## Go Public Compatibility Exports
 
@@ -336,9 +331,6 @@ those surfaces become available.
 | `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
 | `BeginCanvas` | `Canvas` block | Lowered host entry for canvas content. |
 | `EndCanvas` | `Canvas` block | Lowered host exit for canvas content. |
-| `MenuBar` | `Menu` bar mode | Legacy command-menu entry point; mode belongs in props/composition. |
-| `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
-| `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
 
 ## Web Runtime Compatibility Entries
 
@@ -355,8 +347,8 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Background` | `.kry canonical` | Viewport bounds policy is in `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `.kry canonical` | Single canonical signature should be `Text(TextProps)`. |
 | `Paragraph` | `.kry canonical` | Metrics/default policy is in `.kry`; may become `Text` variant if props cover paragraph layout. |
-| `Rect` | Native canonical | Bounds policy is in `.kry`; still review against `Box` or surface props. |
-| `Box` | Native canonical | Rectangle primitive with `Rectangle` bounds; keep only if it remains clearer than `Rect` props. |
+| `Box` | Native canonical | Rectangle primitive with `Rectangle` bounds. |
+| `Rect` | Removed | Old positional rectangle helper; use `Box`. |
 | `Circle` | Native canonical | Primitive drawing node; replaces raylib-style `DrawCircleV` in `.kry` surface. |
 | `Ring` | Native canonical | Primitive drawing node; replaces raylib-style `DrawRing` in `.kry` surface. |
 | `Line` | Native canonical | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
@@ -392,11 +384,11 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Progress` | `.kry canonical` | Prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; host handles label measurement, focus/input, and button drawing. |
-| `LabelTextField` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `.kry` composition of `Text`/`TextField`. |
-| `CheckboxRow` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `.kry` composition of `Text`/`Checkbox`. |
-| `SpinboxRow` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `.kry` composition of `Text`/`Spinbox`. |
-| `ButtonRow` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `Row` with `Button` children. |
-| `SectionLabel` | Remove after migration | Removed from public headers; native helper is internal only while callers move to `Text`/`Heading` props or `.kry` composition. |
+| `LabelTextField` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `TextField`. |
+| `CheckboxRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `Checkbox`. |
+| `SpinboxRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `Spinbox`. |
+| `ButtonRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Row` with `Button` children. |
+| `SectionLabel` | Removed | Removed from public headers; internal row helper only. Public code should use `Text`/`Heading` props or `.kry` composition. |
 | `InfoRows` | Native support | Internal repeated label/value row helper; public forms should use `.kry` layout with `Row`/`Text`. |
 | `Form` | Native support | Cursor/layout helper for legacy native row APIs; not a public widget concept. Prefer `.kry` layout blocks. |
 
@@ -438,8 +430,7 @@ No web runtime widget entries are accepted as public compatibility names.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `ListBox` | `.kry canonical` | Layout/navigation policy is in `.kry`; host handles input sampling, scroll scope, and drawing. |
-| `MultiSelectList` | `.kry canonical` | Row, keyboard navigation, and selection policy are in `.kry`; could become `ListBox` selection props. |
+| `ListBox` | `.kry canonical` | Layout/navigation policy is in `.kry`; multi-selection uses `selected`, `selected_count`, and `anchor` props. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
 | `TreeView` | `.kry canonical` | Row/window geometry policy is in `.kry`; host handles input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/cell geometry is in `.kry`; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
@@ -454,10 +445,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | Already has `.kry` module. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
-| `Menu` | `.kry canonical` | Command menu surface. Bar, popup, and context behavior belong in props or `Popup` composition; menu geometry is in `.kry`, retained open/focus/input state remains native host support. |
-| `MenuBar` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` props. |
-| `PopupMenu` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` inside or anchored by `Popup`. |
-| `ContextMenu` | Native support | Legacy/native command-menu entry point while callers migrate to `Menu` with context trigger props. |
+| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout policy is in `.kry`; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |
@@ -472,35 +460,37 @@ No web runtime widget entries are accepted as public compatibility names.
 | `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `ClosePopup` | Native support | Explicit close operation for the active `.kry` `Popup` block. |
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; host handles capture, input, text editing, and drawing. |
-| `ShowToast` | `.kry canonical` | Public toast command. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
-| `ShowToastFor` | `.kry canonical` | Timed toast command using the same toast policy. |
-| `DismissibleOverlay` | Native support | Pointer-dismiss policy for overlay owners; not a visual widget by itself. |
+| `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
-| `FocusDebugOverlay` | Native support | Debug overlay bounds and label placement are in `.kry`; accessibility snapshot sampling remains host support. |
-| `Guide` | `.kry canonical` | Public guided overlay flow. Steps, tip placement, scrim cutout, nav button layout, and step transition policy are in `.kry`; host keeps target lookup, text measurement, input sampling, and drawing. |
-| `GuideStep` | `.kry canonical` | One anchored instruction inside `Guide`; replaces `UIGuideStep` as the public spelling. |
-| `GuidePager` | Internal/lowered support | Not a clean public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by `kryon.h`/`ui.h`. |
-| `TransitionFade` | `.kry canonical` | Alpha/easing policy is in `.kry`; host keeps state mutation and fade rectangle drawing. |
+| `Guide` | Native support | Guided overlay flow exists as an internal C renderer backed by `.kry` policy. It is not a public parser/Go/web widget yet; promote later as one `Guide(GuideProps)` surface with step data in props. |
+| `GuideStep` | Props/data only | One anchored instruction inside future `GuideProps`; not a standalone widget. |
+| `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
 
 ## Game2D Nodes
 
 Game2D has its own node family. These are canonical for the Game2D domain, but
-they should stay separate from general UI widgets.
+they are still native scene nodes today and should stay separate from general
+UI widgets.
 
 | Public name | Current decision | Notes |
 |---|---|---|
-| `Scene` | `.kry canonical` | Root game scene. |
-| `Node2D` | `.kry canonical` | Base 2D node. |
-| `Camera2D` | `.kry canonical` | Camera node. |
-| `Sprite2D` | `.kry canonical` | Sprite node. |
-| `AnimatedSprite2D` | `.kry canonical` | Animated sprite node. |
-| `TileMap` | `.kry canonical` | Tile map node. |
-| `CollisionShape2D` | `.kry canonical` | Collision shape node. |
-| `Area2D` | `.kry canonical` | Trigger/area node. |
-| `Body2D` | `.kry canonical` | Physics/body node. |
-| `Timer` | `.kry canonical` | Timer node. |
-| `AudioSource` | `.kry canonical` | Audio playback node. |
-| `Light2D` | `.kry canonical` | Light node. |
+| `Scene` | Game2D native scene | Root game scene; add `.kry` declaration support later. |
+| `Node2D` | Game2D native scene | Base 2D node; add `.kry` declaration support later. |
+| `Camera2D` | Game2D native scene | Camera node; add `.kry` declaration support later. |
+| `Sprite2D` | Game2D native scene | Sprite node; add `.kry` declaration support later. |
+| `AnimatedSprite2D` | Game2D native scene | Animated sprite node; add `.kry` declaration support later. |
+| `TileMap` | Game2D native scene | Tile map node; add `.kry` declaration support later. |
+| `CollisionShape2D` | Game2D native scene | Collision shape node; add `.kry` declaration support later. |
+| `Area2D` | Game2D native scene | Trigger/area node; add `.kry` declaration support later. |
+| `Body2D` | Game2D native scene | Physics/body node; add `.kry` declaration support later. |
+| `Timer` | Game2D native scene | Timer node; add `.kry` declaration support later. |
+| `AudioSource` | Game2D native scene | Audio playback node; add `.kry` declaration support later. |
+| `Light2D` | Game2D native scene | Light node; add `.kry` declaration support later. |
+
+## Escape Hatches
+
+| Public name | Current decision | Notes |
+|---|---|---|
 | `Custom` | Native support | Escape hatch, not preferred public design surface. |
 
 ## Retained Node Kinds
@@ -514,7 +504,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_SCREEN` | `Screen` | `.kry canonical`; viewport fallback bounds policy is `.kry-backed` |
 | `WIDGET_BACKGROUND` | `Background` | Partly `.kry-backed` |
 | `WIDGET_TEXT` | `Text` | `.kry canonical` |
-| `WIDGET_RECT` | `Rect` / `Box` | Rename review; geometry is `.kry-backed` |
+| `WIDGET_RECT` | `Box` | `.kry-backed`; public code uses `Box` |
 | `WIDGET_CIRCLE` | `Circle` | Native canonical |
 | `WIDGET_RING` | `Ring` | Native canonical |
 | `WIDGET_LINE` | `Line` | Partly `.kry-backed` |
@@ -562,7 +552,7 @@ Recent retained-tree public C cleanup:
 | `SetUI*`, `GetUI*`, `IsUI*`, `ClearUI*`, `PushUI*`, `PopUI*` focus/input helpers | `Set*`, `Get*`, `Is*`, `Clear*`, `Push*`, `Pop*` focus/input helpers |
 | `UIFont*`, `UI_FONT_*`, `RegisterUISmallFont` | `TextFont*`, `TEXT_FONT_*`, `RegisterSmallTextFont` |
 | `UIClipboard*`, `UI_CLIPBOARD_*`, `UIPrimarySelection*` | `Clipboard*`, `CLIPBOARD_*`, `PrimarySelection*` |
-| `ProfilePicture*`, `UISyncProfileIcon`, `UI_SYNC_PROFILE_ICON_*` | `ProfileImage*`, `SyncProfileIcon`, `SYNC_PROFILE_ICON_*` |
+| old profile image helpers | `ProfileImage*`, `SyncProfileIcon`, `SYNC_PROFILE_ICON_*` |
 | `SetUIViewSize`, `GetUIViewWidth`, `GetUIViewHeight` | `SetViewSize`, `GetViewWidth`, `GetViewHeight` |
 | `GetUICenteredColumn`, `GetUIPageSidePadding` | `GetCenteredColumn`, `GetPageSidePadding` |
 | `SetUIScale`, `GetUIScale`, `ClampUIPx` | `SetScale`, `GetScale`, `ClampPx` |
@@ -580,8 +570,9 @@ Recent retained-tree public C cleanup:
 
 1. Finish porting high-use native controls into `.kry`: `TextField` and
    `TextArea` editing/composition policy.
-2. Remove other compatibility names after migrations: immediate-mode
-   `Begin*`/`End*` wrappers from public `.kry` documentation. Tutorial image
-   helpers remain internal and should route through canonical `Image` policy.
+2. Keep lowered host scopes out of public `.kry` documentation:
+   immediate-mode `Begin*`/`End*` wrappers are native support, not widget names.
+   Tutorial image helpers remain internal and route through canonical `Image`
+   policy.
 3. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.

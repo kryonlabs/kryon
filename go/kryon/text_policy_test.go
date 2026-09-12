@@ -175,6 +175,22 @@ func TestTextSharedStyle(t *testing.T) {
 	}
 }
 
+func TestUnstyledTextFallbackIgnoresThemeTextColor(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+
+	r := New(AppConfig{Width: 240, Height: 100}).(*runtime)
+	theme := ThemeDefaultDark()
+	theme.Colors.Text = Color{1, 2, 3, 255}
+	r.SetTheme(theme)
+	r.Text(TextProps{Text: "unstyled", Wrap: TextWrapNone})
+
+	op := r.FrameOps()[0]
+	if op.Color != (Color{255, 255, 255, 255}) {
+		t.Fatalf("unstyled text used theme styling fallback: %+v", op.Color)
+	}
+}
+
 func TestNestedTextStyleKeepsExplicitTransparency(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	r.BeginFrame()

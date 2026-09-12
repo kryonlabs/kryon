@@ -9,6 +9,8 @@ StylePicker(StylePickerProps props)
     int selected = -1;
     int count = GetStylePackCount();
 
+    if(count <= 0 && EnsureBuiltInStylePacks())
+        count = GetStylePackCount();
     if(count <= 0)
         return false;
     if(count > STYLE_PACK_MAX)

@@ -55,10 +55,10 @@ func fontUnitAdvance(advance fixed.Int26_6, scale float32) fixed.Int26_6 {
 }
 
 var (
-	fontMu           sync.Mutex
-	nextFontID       uint32 = 1
-	fontsByID               = map[uint32]*uiFontSource{}
-	fontsByName             = map[string]*uiFontSource{}
+	fontMu             sync.Mutex
+	nextFontID         uint32 = 1
+	fontsByID                 = map[uint32]*uiFontSource{}
+	fontsByName               = map[string]*uiFontSource{}
 	activeTextFontName string
 )
 

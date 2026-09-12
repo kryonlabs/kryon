@@ -1,4 +1,5 @@
 #import "kryon.h"
+#style <kryon.material> as material
 
 app "Kryon Dialogs" {
     size 800 600
@@ -17,7 +18,7 @@ state {
 DialogsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
-        Background(GetThemeBackground())
+        AppBackground()
         if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message",  .font = Text16, .id = 101}) {
             dialog = 1
         }

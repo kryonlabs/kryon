@@ -36,7 +36,7 @@ func BeginDrawing() { BeginFrame() }
 func EndDrawing()   { EndFrame() }
 
 func DrawRectangleRec(r Rectangle, c Color) {
-	Rect(int32(r.X), int32(r.Y), int32(r.Width), int32(r.Height), c)
+	Box(r, c, BLANK)
 }
 
 func DrawRectangleLinesEx(r Rectangle, thick int32, c Color) {

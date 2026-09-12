@@ -112,7 +112,7 @@ const snap = generated.frame(rt, state, host);
 assert.equal(state.count, 1);
 assert.equal(state.viewport_width, 320);
 assert.equal(state.viewport_height, 240);
-assert.equal(snap.frame.length, 5);
+assert.equal(snap.frame.length, 8);
 assert.equal(snap.frame[0].name, "Screen");
 assert.equal(snap.frame[1].name, "Text");
 assert.equal(snap.frame[2].name, "Button");
@@ -121,13 +121,19 @@ assert.deepEqual(rectangle(snap.frame[2].args.bounds), { x: 10, y: 50, width: 12
 assert.equal(snap.frame[2].args.label, "Tap");
 assert.equal(snap.frame[2].args.style.normal.radius, 6);
 assert.equal(snap.frame[2].args.style.normal.fields, 16);
+assert.equal(snap.frame[5].name, "Selectable");
+assert.equal(snap.frame[6].name, "Input");
+assert.equal(snap.frame[7].name, "Input");
 const webDoc = runtime.webDocumentFrame(rt);
 assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
   ["Screen", "main"],
   ["Text", "div"],
   ["Button", "button"],
   ["TextField", "input"],
-  ["Text", "label"]
+  ["Text", "label"],
+  ["Selectable", "div"],
+  ["Input", "div"],
+  ["Input", "div"]
 ]);
 assert.equal(webDoc.nodes[2].text, "Tap");
 assert.deepEqual(webDoc.nodes[2].bounds, { x: 10, y: 50, width: 120, height: 28 });
@@ -322,6 +328,9 @@ assert.equal(runtime.webNodeQuery(rt, "[ref=\"primary-action\"]").path, "Scene/r
 assert.equal(runtime.webNodeQuery(rt, "[webRef=\"primary-action\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), true);
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
+assert.equal(webDoc.nodes.every((node) => !!node.path), true);
+assert.equal(webDoc.nodes[5].path, "Scene/root/Selectable_5");
+assert.equal(runtime.webNodeQuery(rt, "Scene/root/Selectable_5").kind, "Selectable");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -330,7 +339,10 @@ assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.pa
   webDoc.nodes[1].path,
   "Scene/root/tap",
   "Scene/root/search",
-  "Scene/root/search_label"
+  "Scene/root/search_label",
+  "Scene/root/Selectable_5",
+  "Scene/root/Input@207-2",
+  "Scene/root/Input@208-3"
 ]);
 assert.deepEqual(runtime.webNodeChildren(rt).map((node) => node.path), ["Scene/root"]);
 assert.equal(runtime.webNodeClosest(rt, "Scene/root/tap", "Screen").path, "Scene/root");
@@ -1367,7 +1379,10 @@ function fakeDocument() {
         firstText.dataset.kryPath,
         "Scene/root/tap",
         "Scene/root/search",
-        "Scene/root/search_label"
+        "Scene/root/search_label",
+        "Scene/root/Selectable_5",
+        "Scene/root/Input@207-2",
+        "Scene/root/Input@208-3"
       ]);
     assert.deepEqual(runtime.webDOMChildren(target).map((object) => object.node.path),
       ["Scene/root"]);
@@ -1629,7 +1644,10 @@ function fakeDocument() {
     assert.deepEqual(domRefs.slice(2), [
       "primary-action",
       "search-box",
-      "Scene/root/search_label"
+      "Scene/root/search_label",
+      "Scene/root/Selectable_5",
+      "Scene/root/Input@207-2",
+      "Scene/root/Input@208-3"
     ]);
     const domObjectMap = runtime.webDOMObjectMap(target);
     assert.equal(domObjectMap.get("primary-action").element, firstButton);
@@ -1638,6 +1656,7 @@ function fakeDocument() {
     assert.equal(domObjectMap.get("tap-button").element, firstButton);
     assert.equal(domObjectMap.get(tapSourceRef).element, firstButton);
     assert.equal(domObjectMap.get(tapSourceColumnRef).element, firstButton);
+    assert.equal(domObjectMap.get("Scene/root/Selectable_5").node.kind, "Selectable");
     const firstField = screen.children[2];
     assert.equal(firstField.__kryDocNode.scrollLeft, 7);
     assert.equal(firstField.__kryDocNode.scrollTop, 19);
@@ -1952,7 +1971,7 @@ assert.equal(state.viewport_height, 240);
 const defaultSnapshot = generated.frame();
 assert.equal(generated.moduleState.viewport_width, 320);
 assert.equal(generated.moduleState.viewport_height, 240);
-assert.equal(defaultSnapshot.frame.length, 5);
+assert.equal(defaultSnapshot.frame.length, 8);
 
 const mounted = generated.main(null, host);
 assert.equal(mounted.mounted, false);

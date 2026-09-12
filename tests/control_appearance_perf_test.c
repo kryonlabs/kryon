@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "kryon.h"
 #include "ui_style_internal.h"
+#include "ui_style_sheet.h"
 #include "runtime/button.h"
 #include "runtime/dropdown.h"
 #include "runtime/material.h"
@@ -222,20 +223,34 @@ static Style
 make_dropdown_style(int role, int selected, ButtonState state)
 {
     ButtonProps props;
+    Style base;
+    Style accent;
+
     memset(&props, 0, sizeof(props));
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
-    Style base = ResolveButtonStyle(props, state);
-    if(role == 0)
+    if(role == 1)
+        props.emphasis = ButtonEmphasisFilled;
+    if(role == 2 && selected && state != ButtonStateDisabled) {
+        props.tone = ButtonToneAccent;
+        props.emphasis = ButtonEmphasisFilled;
+        props.selected = 1;
+        state = ButtonStateSelected;
+    }
+    base = ui_resolve_button_style_kind(props, state, StyleKindDropdown());
+    if(role != 2)
         return ui_style_apply_effects(base);
+
     props.tone = ButtonToneAccent;
-    props.emphasis = role == 2 ? SelectionEmphasis(PackedColor(0x092039u, 255u))
-                               : ButtonEmphasisFilled;
-    Style accent = ResolveButtonStyle(props, ButtonStateNormal);
+    props.emphasis = ButtonEmphasisFilled;
+    props.selected = selected != 0;
+    accent = ui_resolve_button_style_kind(props,
+        selected && state != ButtonStateDisabled ? ButtonStateSelected : state,
+        StyleKindDropdown());
     StyleData data = Appearance(
         ui_pack_style_states((ControlStyle){.normal = base}).normal,
         ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        PackedColor(0x092039u, 255u), role, state, selected != 0);
+        role, state, selected != 0);
     return ui_style_apply_effects(ui_unpack_style(data));
 }
 

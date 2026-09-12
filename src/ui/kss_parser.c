@@ -6,6 +6,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define KSS_TOKEN_MAX 128
+
+typedef enum KssTokenKind {
+    KSS_TOKEN_COLOR,
+    KSS_TOKEN_LENGTH,
+    KSS_TOKEN_MATERIAL
+} KssTokenKind;
+
+typedef struct KssToken {
+    KssTokenKind kind;
+    char name[64];
+    uint32_t color;
+    float number;
+    int material;
+} KssToken;
+
 typedef struct KssParser {
     const char *source;
     const char *cursor;
@@ -13,6 +29,8 @@ typedef struct KssParser {
     int rule_capacity;
     int rule_count;
     int layer;
+    KssToken tokens[KSS_TOKEN_MAX];
+    int token_count;
     char pack_id[64];
     char *diagnostic;
     size_t diagnostic_size;
@@ -137,8 +155,16 @@ kss_style_kind(const char *name)
         return StyleKindCard();
     if(kss_ieq(name, "Slider"))
         return StyleKindSlider();
+    if(kss_ieq(name, "SliderThumb"))
+        return StyleKindSliderThumb();
     if(kss_ieq(name, "Toggle"))
         return StyleKindToggle();
+    if(kss_ieq(name, "ToggleThumb"))
+        return StyleKindToggleThumb();
+    if(kss_ieq(name, "Scroll"))
+        return StyleKindScroll();
+    if(kss_ieq(name, "ScrollThumb"))
+        return StyleKindScrollThumb();
     if(kss_ieq(name, "Checkbox"))
         return StyleKindCheckbox();
     if(kss_ieq(name, "Radio"))
@@ -147,6 +173,72 @@ kss_style_kind(const char *name)
         return StyleKindProgress();
     if(kss_ieq(name, "Separator"))
         return StyleKindSeparator();
+    if(kss_ieq(name, "NavigationBar"))
+        return StyleKindNavigationBar();
+    if(kss_ieq(name, "NavigationBarItem"))
+        return StyleKindNavigationBarItem();
+    if(kss_ieq(name, "Selectable"))
+        return StyleKindSelectable();
+    if(kss_ieq(name, "Fieldset"))
+        return StyleKindFieldset();
+    if(kss_ieq(name, "Plot"))
+        return StyleKindPlot();
+    if(kss_ieq(name, "PlotMark"))
+        return StyleKindPlotMark();
+    if(kss_ieq(name, "Link"))
+        return StyleKindLink();
+    if(kss_ieq(name, "TabBar"))
+        return StyleKindTabBar();
+    if(kss_ieq(name, "Tab"))
+        return StyleKindTab();
+    if(kss_ieq(name, "TabClose"))
+        return StyleKindTabClose();
+    if(kss_ieq(name, "SegmentedControl"))
+        return StyleKindSegmentedControl();
+    if(kss_ieq(name, "Segment"))
+        return StyleKindSegment();
+    if(kss_ieq(name, "Menu"))
+        return StyleKindMenu();
+    if(kss_ieq(name, "MenuItem"))
+        return StyleKindMenuItem();
+    if(kss_ieq(name, "MenuSeparator"))
+        return StyleKindMenuSeparator();
+    if(kss_ieq(name, "ListBox"))
+        return StyleKindListBox();
+    if(kss_ieq(name, "ListBoxItem"))
+        return StyleKindListBoxItem();
+    if(kss_ieq(name, "TreeView"))
+        return StyleKindTreeView();
+    if(kss_ieq(name, "TreeViewItem"))
+        return StyleKindTreeViewItem();
+    if(kss_ieq(name, "ListBoxMulti"))
+        return StyleKindListBoxMulti();
+    if(kss_ieq(name, "ListBoxMultiItem"))
+        return StyleKindListBoxMultiItem();
+    if(kss_ieq(name, "DragDropTarget"))
+        return StyleKindDragDropTarget();
+    if(kss_ieq(name, "Spinbox"))
+        return StyleKindSpinbox();
+    if(kss_ieq(name, "SpinboxValue"))
+        return StyleKindSpinboxValue();
+    if(kss_ieq(name, "ColorPickerSwatch"))
+        return StyleKindColorPickerSwatch();
+    if(kss_ieq(name, "PanedView"))
+        return StyleKindPanedView();
+    if(kss_ieq(name, "Toast"))
+        return StyleKindToast();
+    if(kss_ieq(name, "Collapsible"))
+        return StyleKindCollapsible();
+    if(kss_ieq(name, "TitleBar"))
+        return StyleKindTitleBar();
+    if(kss_ieq(name, "Toolbar"))
+        return StyleKindToolbar();
+    if(kss_ieq(name, "Modal"))
+        return StyleKindModal();
+    if(kss_ieq(name, "TableView"))
+        return StyleKindTableView();
+    if(kss_ieq(name, "Guide"))
+        return StyleKindGuide();
     return -999999;
 }
 
@@ -169,6 +261,63 @@ kss_state(const char *name)
         return ButtonStateLoading;
     if(kss_ieq(name, "selected"))
         return ButtonStateSelected;
+    return -999999;
+}
+
+static int
+kss_role(const char *name)
+{
+    if(kss_ieq(name, "Any"))
+        return StyleAny();
+    if(kss_ieq(name, "Bar") || kss_ieq(name, "MenuBar"))
+        return 1;
+    if(kss_ieq(name, "Popup") || kss_ieq(name, "Panel") ||
+       kss_ieq(name, "MenuPopup"))
+        return 2;
+    if(kss_ieq(name, "Context") || kss_ieq(name, "MenuContext"))
+        return 3;
+    if(kss_ieq(name, "Track"))
+        return 4;
+    if(kss_ieq(name, "Fill"))
+        return 5;
+    if(kss_ieq(name, "Label") || kss_ieq(name, "Text"))
+        return 6;
+    if(kss_ieq(name, "Line"))
+        return 7;
+    if(kss_ieq(name, "Bullet"))
+        return 8;
+    if(kss_ieq(name, "Box"))
+        return 9;
+    if(kss_ieq(name, "Mark") || kss_ieq(name, "Check"))
+        return 10;
+    if(kss_ieq(name, "Ring"))
+        return 11;
+    if(kss_ieq(name, "Handle"))
+        return 12;
+    if(kss_ieq(name, "Header"))
+        return 13;
+    if(kss_ieq(name, "TreeHeader"))
+        return 14;
+    if(kss_ieq(name, "Close"))
+        return 15;
+    if(kss_ieq(name, "Title"))
+        return 16;
+    if(kss_ieq(name, "Action"))
+        return 17;
+    if(kss_ieq(name, "Divider"))
+        return 18;
+    if(kss_ieq(name, "Scrim"))
+        return 19;
+    if(kss_ieq(name, "Message"))
+        return 20;
+    if(kss_ieq(name, "Row"))
+        return 21;
+    if(kss_ieq(name, "Cell"))
+        return 22;
+    if(kss_ieq(name, "Selection") || kss_ieq(name, "Selected"))
+        return 23;
+    if(kss_ieq(name, "Anchor"))
+        return 24;
     return -999999;
 }
 
@@ -290,6 +439,170 @@ kss_copy_id(char *dest, size_t dest_size, const char *src)
 }
 
 static bool
+kss_find_color_token(KssParser *p, const char *name, uint32_t *out)
+{
+    for(int i = p->token_count - 1; i >= 0; i--)
+        if(p->tokens[i].kind == KSS_TOKEN_COLOR &&
+           strcmp(p->tokens[i].name, name) == 0) {
+            *out = p->tokens[i].color;
+            return true;
+        }
+    return false;
+}
+
+static bool
+kss_find_length_token(KssParser *p, const char *name, float *out)
+{
+    for(int i = p->token_count - 1; i >= 0; i--)
+        if(p->tokens[i].kind == KSS_TOKEN_LENGTH &&
+           strcmp(p->tokens[i].name, name) == 0) {
+            *out = p->tokens[i].number;
+            return true;
+        }
+    return false;
+}
+
+static bool
+kss_find_material_token(KssParser *p, const char *name, int *out)
+{
+    for(int i = p->token_count - 1; i >= 0; i--)
+        if(p->tokens[i].kind == KSS_TOKEN_MATERIAL &&
+           strcmp(p->tokens[i].name, name) == 0) {
+            *out = p->tokens[i].material;
+            return true;
+        }
+    return false;
+}
+
+static bool
+kss_add_token(KssParser *p, KssToken token)
+{
+    if(p->token_count >= KSS_TOKEN_MAX)
+        return kss_fail(p, "style token capacity exceeded");
+    p->tokens[p->token_count++] = token;
+    return true;
+}
+
+static bool
+kss_read_color_value(KssParser *p, uint32_t *out)
+{
+    char ident[64];
+    const char *save;
+
+    if(kss_read_hex_color(p, out))
+        return true;
+    save = p->cursor;
+    if(kss_read_ident(p, ident, sizeof(ident)) &&
+       kss_find_color_token(p, ident, out))
+        return true;
+    p->cursor = save;
+    return false;
+}
+
+static bool
+kss_read_number_value(KssParser *p, float *out)
+{
+    char ident[64];
+    const char *save = p->cursor;
+
+    if(kss_read_number(p, out))
+        return true;
+    p->cursor = save;
+    if(kss_read_ident(p, ident, sizeof(ident)) &&
+       kss_find_length_token(p, ident, out))
+        return true;
+    p->cursor = save;
+    return false;
+}
+
+static bool
+kss_read_material_value(KssParser *p, int *out)
+{
+    char ident[64];
+    int mapped;
+    const char *save = p->cursor;
+
+    if(!kss_read_ident(p, ident, sizeof(ident)))
+        return false;
+    mapped = kss_material(ident);
+    if(mapped != -999999) {
+        *out = mapped;
+        return true;
+    }
+    if(kss_find_material_token(p, ident, out))
+        return true;
+    p->cursor = save;
+    return false;
+}
+
+static bool
+kss_parse_token_group(KssParser *p)
+{
+    char group[32];
+    KssTokenKind kind;
+
+    if(!kss_read_ident(p, group, sizeof(group)))
+        return kss_fail(p, "expected token group");
+    if(kss_ieq(group, "color"))
+        kind = KSS_TOKEN_COLOR;
+    else if(kss_ieq(group, "length") || kss_ieq(group, "number"))
+        kind = KSS_TOKEN_LENGTH;
+    else if(kss_ieq(group, "material"))
+        kind = KSS_TOKEN_MATERIAL;
+    else
+        return kss_fail(p, "unknown token group '%s'", group);
+    if(!kss_expect(p, '{'))
+        return kss_fail(p, "expected '{' after token group");
+
+    for(;;) {
+        KssToken token = {0};
+        kss_skip_ws(p);
+        if(*p->cursor == '}') {
+            p->cursor++;
+            return true;
+        }
+        if(*p->cursor == '\0')
+            return kss_fail(p, "unterminated token group");
+        token.kind = kind;
+        if(!kss_read_ident(p, token.name, sizeof(token.name)))
+            return kss_fail(p, "expected token name");
+        if(!kss_expect(p, ':'))
+            return kss_fail(p, "expected ':' after token name");
+        if(kind == KSS_TOKEN_COLOR) {
+            if(!kss_read_hex_color(p, &token.color))
+                return kss_fail(p, "expected token color");
+        } else if(kind == KSS_TOKEN_LENGTH) {
+            if(!kss_read_number(p, &token.number))
+                return kss_fail(p, "expected token number");
+        } else if(!kss_read_material_value(p, &token.material)) {
+            return kss_fail(p, "expected token material");
+        }
+        if(!kss_expect(p, ';'))
+            return kss_fail(p, "expected ';'");
+        if(!kss_add_token(p, token))
+            return false;
+    }
+}
+
+static bool
+kss_parse_tokens(KssParser *p)
+{
+    if(!kss_expect(p, '{'))
+        return kss_fail(p, "expected '{' after tokens");
+    for(;;) {
+        kss_skip_ws(p);
+        if(*p->cursor == '}') {
+            p->cursor++;
+            return true;
+        }
+        if(*p->cursor == '\0')
+            return kss_fail(p, "unterminated tokens block");
+        if(!kss_parse_token_group(p))
+            return false;
+    }
+}
+
+static bool
 kss_parse_directive(KssParser *p)
 {
     char keyword[32];
@@ -367,6 +680,13 @@ kss_apply_attr(KssParser *p, StyleSelector *selector)
         selector->state = mapped;
         return true;
     }
+    if(kss_ieq(name, "role")) {
+        mapped = kss_role(value);
+        if(mapped == -999999)
+            return kss_fail(p, "unknown role '%s'", value);
+        selector->role = mapped;
+        return true;
+    }
     return kss_fail(p, "unknown selector attribute '%s'", name);
 }
 
@@ -423,89 +743,87 @@ kss_parse_property(KssParser *p, StyleData *style)
         return kss_fail(p, "expected ':' after property");
 
     if(kss_ieq(name, "background") || kss_ieq(name, "background-color")) {
-        if(!kss_read_hex_color(p, &color))
+        if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBackground;
         style->background = color;
     } else if(kss_ieq(name, "foreground") || kss_ieq(name, "color")) {
-        if(!kss_read_hex_color(p, &color))
+        if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleForeground;
         style->foreground = color;
     } else if(kss_ieq(name, "border") || kss_ieq(name, "border-color")) {
-        if(!kss_read_hex_color(p, &color))
+        if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBorder;
         style->border = color;
     } else if(kss_ieq(name, "focus") || kss_ieq(name, "focus-color")) {
-        if(!kss_read_hex_color(p, &color))
+        if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleFocus;
         style->focus = color;
     } else if(kss_ieq(name, "background-end") ||
               kss_ieq(name, "background_end")) {
-        if(!kss_read_hex_color(p, &color))
+        if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBackgroundEnd;
         style->background_end = color;
     } else if(kss_ieq(name, "radius")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleRadius;
         style->radius = number;
     } else if(kss_ieq(name, "border-width") ||
               kss_ieq(name, "border_width")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleBorderWidth;
         style->border_width = number;
     } else if(kss_ieq(name, "opacity")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleOpacity;
         style->opacity = number;
     } else if(kss_ieq(name, "padding-x") || kss_ieq(name, "padding_x")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StylePaddingX;
         style->padding_x = number;
     } else if(kss_ieq(name, "padding-y") || kss_ieq(name, "padding_y")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StylePaddingY;
         style->padding_y = number;
     } else if(kss_ieq(name, "gap")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleGap;
         style->gap = number;
     } else if(kss_ieq(name, "font-size") || kss_ieq(name, "font_size")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleFontSize;
         style->font_size = number;
     } else if(kss_ieq(name, "icon-size") || kss_ieq(name, "icon_size")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleIconSize;
         style->icon_size = number;
     } else if(kss_ieq(name, "offset-x") || kss_ieq(name, "offset_x")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleContentOffset;
         style->offset_x = number;
     } else if(kss_ieq(name, "offset-y") || kss_ieq(name, "offset_y")) {
-        if(!kss_read_number(p, &number))
+        if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleContentOffset;
         style->offset_y = number;
     } else if(kss_ieq(name, "material")) {
         int mapped;
-        if(!kss_read_ident(p, ident, sizeof(ident)))
+        (void)ident;
+        if(!kss_read_material_value(p, &mapped))
             return kss_fail(p, "expected material");
-        mapped = kss_material(ident);
-        if(mapped == -999999)
-            return kss_fail(p, "unknown material '%s'", ident);
         style->fields |= (uint32_t)StyleMaterial;
         style->material = mapped;
     } else {
@@ -565,13 +883,26 @@ kss_parse_string(const char *source, StyleRule *rules, int rule_capacity,
     parser.diagnostic_size = diagnostic_size;
 
     while(true) {
+        const char *save;
+        char keyword[32];
+
         kss_skip_ws(&parser);
         if(*parser.cursor == '\0')
             break;
         if(*parser.cursor == '@') {
             if(!kss_parse_directive(&parser))
                 return false;
-        } else if(!kss_parse_rule(&parser)) {
+            continue;
+        }
+        save = parser.cursor;
+        if(kss_read_ident(&parser, keyword, sizeof(keyword)) &&
+           kss_ieq(keyword, "tokens")) {
+            if(!kss_parse_tokens(&parser))
+                return false;
+            continue;
+        }
+        parser.cursor = save;
+        if(!kss_parse_rule(&parser)) {
             return false;
         }
     }

@@ -6,6 +6,7 @@
 #include "ui_internal.h"
 #include "ui_image.h"
 #include "ui_image_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/image.h"
 #include "embedded_assets.h"
 #include <math.h>
@@ -330,6 +331,7 @@ image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
     ThemeMetrics tokens = GetThemeMetrics();
 
     if(theme_style == THEME_STYLE_CLASSIC) {
+        Style surface_style = ui_surface_style();
         *radius = 0.0f;
         *roundness = 0.0f;
         *segments = 1;
@@ -340,7 +342,9 @@ image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
             style->scrim_bottom.a = 30;
         if(style->tonal_overlay.a > 24)
             style->tonal_overlay.a = 24;
-        style->outline = DarkenColor(GetThemeBackground(), 44);
+        style->outline = surface_style.border.a != 0
+                           ? surface_style.border
+                           : surface_style.background;
         style->outline.a = 255;
         return;
     }
@@ -427,10 +431,11 @@ ImageTexture(Texture2D texture, ImageProps image)
                                       image.style.scrim_top,
                                       image.style.scrim_bottom);
     if(theme_style == THEME_STYLE_CLASSIC) {
+        Style surface_style = ui_surface_style();
         RenderBevel((int)image.bounds.x, (int)image.bounds.y,
                     (int)image.bounds.width, (int)image.bounds.height,
-                    LightenColor(GetThemeBackground(), 52),
-                    DarkenColor(GetThemeBackground(), 50));
+                    surface_style.border,
+                    surface_style.background);
         if(image.style.outline.a > 0)
             DrawRectangleLinesEx(image.bounds, (float)outline_px,
                                  image.style.outline);

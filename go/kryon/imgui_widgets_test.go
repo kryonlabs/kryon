@@ -269,7 +269,7 @@ func TestDropdownOverlayLayerAndCapture(t *testing.T) {
 		r.BeginScroll(NewRectangle(10, 10, 180, 28), 28, nil)
 		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		r.EndScroll()
-		r.Rect(10, 42, 160, 56, RED, BLANK)
+		r.Box(NewRectangle(10, 42, 160, 56), RED, BLANK)
 		r.EndFrame()
 	}
 	r.QueueTap(20, 20)
@@ -335,6 +335,7 @@ func TestDropdownDismissal(t *testing.T) {
 }
 
 func TestRotatedTableHeader(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	p := TableViewProps{Bounds: NewRectangle(10, 10, 140, 150), Columns: []string{"Header"}, Rows: []TableRow{{Cells: []string{"Body"}}}, HeaderHeight: 80, HeaderAngle: -45, RowHeight: 28}
 	r.BeginFrame()
@@ -385,7 +386,7 @@ func TestCustomTableCellScope(t *testing.T) {
 	if cell.X != 110 || cell.Y != 50 {
 		t.Fatalf("reordered scrolling cell: %+v", cell)
 	}
-	r.Rect(0, 0, 300, 300, RED, BLANK)
+	r.Box(NewRectangle(0, 0, 300, 300), RED, BLANK)
 	if !r.Button(ButtonProps{Bounds: cell, ID: 1000}) {
 		t.Fatal("visible cell child inactive")
 	}
@@ -436,7 +437,7 @@ func TestListBoxScope(t *testing.T) {
 	r.BeginFrame()
 	r.BeginScroll(NewRectangle(10, 10, 100, 80), 80, nil)
 	r.BeginScroll(NewRectangle(21, 21, 118, 78), 200, nil)
-	r.Rect(0, 0, 300, 300, RED, BLANK)
+	r.Box(NewRectangle(0, 0, 300, 300), RED, BLANK)
 	op := r.FrameOps()[len(r.FrameOps())-1]
 	if !op.HasClip || op.Clip != NewRectangle(21, 21, 89, 69) {
 		t.Fatalf("nested list clip: %+v", op)
@@ -557,8 +558,8 @@ func TestNativePopupAndContextMenus(t *testing.T) {
 
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if got := r.PopupMenu(100, 10, 10, items, int32(len(items))); got != 11 {
-		t.Fatalf("PopupMenu activation=%d, want 11", got)
+	if got := r.Menu(MenuProps{ID: 100, Mode: MenuModePopup, Bounds: NewRectangle(10, 10, 0, 0), Items: items, ItemCount: int32(len(items))}).ActivatedID; got != 11 {
+		t.Fatalf("menu popup activation=%d, want 11", got)
 	}
 	r.EndFrame()
 
@@ -566,27 +567,27 @@ func TestNativePopupAndContextMenus(t *testing.T) {
 	parents := []MenuItem{{Kind: MenuSubmenu, Label: "More", ID: 21, Submenu: submenu, SubmenuCount: 1}}
 	r.QueueMouseMove(20, 20)
 	r.BeginFrame()
-	r.PopupMenu(101, 10, 10, parents, 1)
+	r.Menu(MenuProps{ID: 101, Mode: MenuModePopup, Bounds: NewRectangle(10, 10, 0, 0), Items: parents, ItemCount: 1})
 	r.EndFrame()
 	r.QueueTap(200, 20)
 	r.BeginFrame()
-	if got := r.PopupMenu(101, 10, 10, parents, 1); got != 22 {
+	if got := r.Menu(MenuProps{ID: 101, Mode: MenuModePopup, Bounds: NewRectangle(10, 10, 0, 0), Items: parents, ItemCount: 1}).ActivatedID; got != 22 {
 		t.Fatalf("submenu activation=%d, want 22", got)
 	}
 	r.EndFrame()
 
 	open, x, y := int32(0), int32(0), int32(0)
-	props := ContextMenuProps{ID: 102, Trigger: NewRectangle(40, 40, 100, 80), Items: items, ItemCount: int32(len(items)), Open: &open, X: &x, Y: &y}
+	props := MenuProps{ID: 102, Mode: MenuModeContext, Trigger: NewRectangle(40, 40, 100, 80), Items: items, ItemCount: int32(len(items)), Open: &open, X: &x, Y: &y}
 	r.QueueMouseButtonUp(MouseButtonRight, 50, 50)
 	r.BeginFrame()
-	if got := r.ContextMenu(props); got != 0 || open != 1 || x != 50 || y != 50 {
-		t.Fatalf("ContextMenu open result=%d open=%d pos=(%d,%d)", got, open, x, y)
+	if got := r.Menu(props).ActivatedID; got != 0 || open != 1 || x != 50 || y != 50 {
+		t.Fatalf("context menu open result=%d open=%d pos=(%d,%d)", got, open, x, y)
 	}
 	r.EndFrame()
 	r.QueueTap(60, 60)
 	r.BeginFrame()
-	if got := r.ContextMenu(props); got != 11 || open != 0 {
-		t.Fatalf("ContextMenu activation=%d open=%d, want 11/0", got, open)
+	if got := r.Menu(props).ActivatedID; got != 11 || open != 0 {
+		t.Fatalf("context menu activation=%d open=%d, want 11/0", got, open)
 	}
 	r.EndFrame()
 }
@@ -601,12 +602,12 @@ func TestMenuKeyboardNavigation(t *testing.T) {
 		{Kind: MenuSubmenu, Label: "More", ID: 24, Submenu: child, SubmenuCount: 1},
 	}
 	edit := []MenuItem{{Kind: MenuCommand, Label: "Copy", ID: 31}}
-	menus := []Menu{{Label: "File", Items: file, ItemCount: int32(len(file))}, {Label: "Edit", Items: edit, ItemCount: 1}}
+	menus := []MenuGroup{{Label: "File", Items: file, ItemCount: int32(len(file))}, {Label: "Edit", Items: edit, ItemCount: 1}}
 	open := int32(-1)
-	draw := func(key int32) MenuBarResult {
+	draw := func(key int32) MenuResult {
 		r.QueueKey(key)
 		r.BeginFrame()
-		result := r.MenuBar(300, NewRectangle(0, 0, 360, 30), menus, &open)
+		result := r.Menu(MenuProps{ID: 300, Mode: MenuModeBar, Bounds: NewRectangle(0, 0, 360, 30), Menus: menus, MenuCount: int32(len(menus)), OpenIndex: &open})
 		r.EndFrame()
 		return result
 	}
@@ -650,18 +651,18 @@ func TestContextMenuKeyboardNavigationAndOwnership(t *testing.T) {
 		{Kind: MenuCommand, Label: "Run", ID: 42},
 	}
 	open, x, y := int32(0), int32(20), int32(20)
-	props := ContextMenuProps{ID: 400, Trigger: NewRectangle(10, 10, 100, 50), Items: items, ItemCount: int32(len(items)), Open: &open, X: &x, Y: &y}
+	props := MenuProps{ID: 400, Mode: MenuModeContext, Trigger: NewRectangle(10, 10, 100, 50), Items: items, ItemCount: int32(len(items)), Open: &open, X: &x, Y: &y}
 
 	r.QueueMouseButtonUp(MouseButtonRight, 20, 20)
 	r.BeginFrame()
-	r.ContextMenu(props)
+	r.Menu(props)
 	r.EndFrame()
 	if open != 1 || r.Focus() != 400 {
 		t.Fatalf("context open/focus=%d/%d, want 1/400", open, r.Focus())
 	}
 	r.QueueKey(KeyEnter)
 	r.BeginFrame()
-	got := r.ContextMenu(props)
+	got := r.Menu(props).ActivatedID
 	r.EndFrame()
 	if got != 42 || open != 0 {
 		t.Fatalf("context Enter=%d open=%d, want 42/0", got, open)
@@ -671,7 +672,7 @@ func TestContextMenuKeyboardNavigationAndOwnership(t *testing.T) {
 	r.SetFocus(999)
 	r.QueueKey(KeyEnter)
 	r.BeginFrame()
-	got = r.ContextMenu(props)
+	got = r.Menu(props).ActivatedID
 	r.EndFrame()
 	if got != 0 || open != 1 {
 		t.Fatalf("unfocused context consumed Enter: got=%d open=%d", got, open)
@@ -679,7 +680,7 @@ func TestContextMenuKeyboardNavigationAndOwnership(t *testing.T) {
 	r.SetFocus(400)
 	r.QueueKey(KeyEscape)
 	r.BeginFrame()
-	r.ContextMenu(props)
+	r.Menu(props)
 	r.EndFrame()
 	if open != 0 {
 		t.Fatalf("Escape left context menu open")
@@ -831,9 +832,10 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 
 		r.BeginFrame()
 		r.Plot(PlotProps{Bounds: NewRectangle(10, 10, 120, 60), Label: "Bars", Values: values, Offset: 1, Mode: 1})
+		markColor := unpackStyle(simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindPlotMark()).Value).Background
 		bars := 0
 		for _, op := range r.FrameOps() {
-			if op.Kind == FrameOpRect && op.Color == r.theme().buttonHover {
+			if op.Kind == FrameOpRect && op.Color == markColor && op.Bounds != NewRectangle(10, 10, 120, 60) {
 				bars++
 			}
 		}
@@ -846,14 +848,14 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 	t.Run("selectable text copy", func(t *testing.T) {
 		r.QueueTap(12, 12)
 		r.BeginFrame()
-		r.SelectableText("copy me", 10, 10, Text16, Color{R: 255, G: 255, B: 255, A: 255})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
 		if ops := r.FrameOps(); len(ops) != 1 || !ops[0].Selected {
-			t.Fatalf("SelectableText ops=%+v", ops)
+			t.Fatalf("selectable Text ops=%+v", ops)
 		}
 		r.EndFrame()
 		r.QueueShortcut(KeyC)
 		r.BeginFrame()
-		r.SelectableText("copy me", 10, 10, Text16, Color{R: 255, G: 255, B: 255, A: 255})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
 		if r.ClipboardText() != "copy me" {
 			t.Fatalf("clipboard=%q, want copy me", r.ClipboardText())
 		}
@@ -911,7 +913,7 @@ func TestNativeNavigationAndFeedback(t *testing.T) {
 	r.TitleBar(TitleBarProps{Title: "Workspace", Height: 44})
 	r.Toolbar(ToolbarProps{ID: 10, Y: 44, Width: 300, Height: 40})
 	r.NavigationBar(NavigationBarProps{ViewWidth: 640, ViewHeight: 480, Height: 60, Count: 2, Items: []NavigationBarItem{{Route: 1, Label: "Home", Active: true}, {Route: 2, Label: "Settings"}}})
-	r.ShowToastFor("Updated", 1)
+	r.Toast(ToastProps{Message: "Updated", Seconds: 1})
 	r.EndFrame()
 
 	pressedNav, sawTitle, sawToast := false, false, false
@@ -1085,6 +1087,7 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 }
 
 func TestNativeDragKeyboardNavigation(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 480, Height: 240}).(*runtime)
 	floats := []float32{2, 5}
 	ints := []int32{2, 5}
@@ -1105,7 +1108,7 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	}
 	foundFocus := false
 	for _, op := range r.ops {
-		if op.ID == 70 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+		if op.ID == 70 && op.Row == 0 && op.Focused && op.FocusColor.A != 0 {
 			foundFocus = true
 		}
 	}
@@ -1224,6 +1227,7 @@ func TestNativeSliders(t *testing.T) {
 }
 
 func TestNativeSliderKeyboardNavigation(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{0.25, 0.75}
 	floatProps := sliderFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 600,
@@ -1251,7 +1255,7 @@ func TestNativeSliderKeyboardNavigation(t *testing.T) {
 	r.EndFrame()
 	focusedPaint := false
 	for _, op := range r.FrameOps() {
-		if op.Kind == FrameOpRect && op.ID == 600 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+		if op.Kind == FrameOpRect && op.ID == 600 && op.Row == 0 && op.Focused && op.FocusColor.A != 0 && op.BorderColor == op.FocusColor {
 			focusedPaint = true
 		}
 	}
@@ -1593,6 +1597,7 @@ func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 }
 
 func TestToggleKeyboardNavigation(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 240, Height: 120}).(*runtime)
 	value := int32(0)
 	draw := func(disabled bool) bool {
@@ -1614,7 +1619,7 @@ func TestToggleKeyboardNavigation(t *testing.T) {
 	}
 	focused := false
 	for _, op := range r.FrameOps() {
-		if op.ID == 907 && op.Focused && op.BorderColor == r.theme().focus {
+		if op.ID == 907 && op.Focused && op.FocusColor.A != 0 && op.BorderColor == op.FocusColor {
 			focused = true
 		}
 	}
@@ -1714,8 +1719,13 @@ func TestNativeTabBarKeyboardNavigation(t *testing.T) {
 		t.Fatalf("Home result clicked=%d selected=%d", clicked, selected)
 	}
 	focused := false
+	expectedFocus := unpackRGBA(TabBar_TabBarPaintFor(
+		simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindTabBar()),
+		simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindTab()),
+		simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindTabClose()),
+	).FocusColor)
 	for _, op := range r.FrameOps() {
-		if op.ID == props.ID && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+		if op.ID == props.ID && op.Row == 0 && op.Focused && op.FocusColor == expectedFocus {
 			focused = true
 		}
 	}
@@ -2014,6 +2024,11 @@ func TestDropdownKeyboardNavigation(t *testing.T) {
 }
 
 func TestDropdownKeyboardOpen(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	if !RegisterBuiltInStylePacks() {
+		t.Fatal("built-in styles did not register")
+	}
 	for _, key := range []int32{KeyEnter, 335, KeySpace, KeyDown} {
 		for mode := 0; mode < 3; mode++ {
 			r := New(AppConfig{}).(*runtime)
@@ -2038,8 +2053,7 @@ func TestDropdownKeyboardOpen(t *testing.T) {
 				if op.Focused != (mode == 0) {
 					t.Fatalf("opening key %d mode %d: focused paint=%v", key, mode, op.Focused)
 				}
-				focus := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
-					ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}, ButtonStateFocus)
+				focus := r.dropdownStyle(0, false, ButtonStateFocus)
 				if mode == 0 && (unpackRGBA(op.Button.Appearance.Value.Focus) != focus.Focus) {
 					t.Fatalf("opening key %d: focused dropdown lacks focus border", key)
 				}
@@ -2055,11 +2069,11 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	selected := []int32{1, 0, 0}
 	selectedCount, anchor := int32(1), int32(0)
-	props := MultiSelectListProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
+	props := ListBoxProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
 
 	r.QueueTap(20, 48)
 	r.BeginFrame()
-	if clicked := r.MultiSelectList(props); clicked != 1 || selectedCount != 1 || anchor != 1 || selected[1] != 1 || selected[0] != 0 {
+	if clicked := r.ListBox(props); clicked != 1 || selectedCount != 1 || anchor != 1 || selected[1] != 1 || selected[0] != 0 {
 		t.Fatalf("plain selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
 	}
 	r.EndFrame()
@@ -2067,7 +2081,7 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r.QueueKey(KeyLeftControl)
 	r.QueueTap(20, 76)
 	r.BeginFrame()
-	if clicked := r.MultiSelectList(props); clicked != 2 || selectedCount != 2 || anchor != 2 || selected[1] != 1 || selected[2] != 1 {
+	if clicked := r.ListBox(props); clicked != 2 || selectedCount != 2 || anchor != 2 || selected[1] != 1 || selected[2] != 1 {
 		t.Fatalf("control selection clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
 	}
 	r.EndFrame()
@@ -2075,7 +2089,7 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r.QueueKey(KeyLeftShift)
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if clicked := r.MultiSelectList(props); clicked != 0 || selectedCount != 3 || selected[0] != 1 || selected[1] != 1 || selected[2] != 1 {
+	if clicked := r.ListBox(props); clicked != 0 || selectedCount != 3 || selected[0] != 1 || selected[1] != 1 || selected[2] != 1 {
 		t.Fatalf("shift range clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
 	}
 	r.EndFrame()
@@ -2083,7 +2097,7 @@ func TestNativeMultiSelectListModifiers(t *testing.T) {
 	r.QueueKey(KeyLeftControl)
 	r.QueueTap(20, 48)
 	r.BeginFrame()
-	if clicked := r.MultiSelectList(props); clicked != 1 || selectedCount != 2 || selected[1] != 0 {
+	if clicked := r.ListBox(props); clicked != 1 || selectedCount != 2 || selected[1] != 0 {
 		t.Fatalf("control toggle clicked=%d selected=%v count=%d anchor=%d", clicked, selected, selectedCount, anchor)
 	}
 	r.EndFrame()
@@ -2093,10 +2107,10 @@ func TestNativeMultiSelectListKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	selected := []int32{1, 0, 0}
 	selectedCount, anchor := int32(1), int32(0)
-	props := MultiSelectListProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
+	props := ListBoxProps{Bounds: NewRectangle(10, 10, 180, 84), ID: 89, Items: []string{"Alpha", "Beta", "Gamma"}, ItemCount: 3, Selected: selected, SelectedCount: &selectedCount, Anchor: &anchor, RowHeight: 28}
 	draw := func() int32 {
 		r.BeginFrame()
-		clicked := r.MultiSelectList(props)
+		clicked := r.ListBox(props)
 		r.Button(ButtonProps{Bounds: NewRectangle(10, 110, 80, 28), ID: 90, Label: "Next"})
 		r.EndFrame()
 		return clicked
@@ -2128,7 +2142,7 @@ func TestNativeMultiSelectListKeyboardNavigation(t *testing.T) {
 	}
 	foundFocus := false
 	for _, op := range r.ops {
-		if op.ID == 89 && op.Row == 0 && op.Focused && op.BorderColor == r.theme().focus {
+		if op.ID == 89 && op.Row == 0 && op.Focused && op.BorderColor == op.FocusColor {
 			foundFocus = true
 		}
 	}
@@ -2145,7 +2159,7 @@ func TestNativeMultiSelectListKeyboardNavigation(t *testing.T) {
 	r.QueueKey(KeySpace)
 	r.BeginFrame()
 	r.BeginDisabled(true)
-	clicked := r.MultiSelectList(props)
+	clicked := r.ListBox(props)
 	r.EndDisabled()
 	r.EndFrame()
 	if clicked != -1 || selectedCount != 1 || selected[0] != 1 {

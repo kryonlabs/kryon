@@ -64,6 +64,39 @@ ui_draw_navigation_bar_icon(Texture2D icon, IconType icon_type, Rectangle dst,
     DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, tint);
 }
 
+static StyleFrame
+ui_navigation_bar_surface_frame(void)
+{
+    ButtonProps props = {0};
+    props.tone = ButtonToneNeutral;
+    props.emphasis = ButtonEmphasisSoft;
+    props.size = ControlSizeLarge;
+    props.pill = 1;
+    return ui_control_style_frame_kind(props, ButtonStateNormal, 0, 0.0f,
+                                       0.0f, 0.0f, StyleKindNavigationBar());
+}
+
+static StyleFrame
+ui_navigation_bar_item_frame(int active, int disabled, int hovered)
+{
+    ButtonProps props = {0};
+    ButtonState state = ButtonStateNormal;
+    props.tone = active ? ButtonToneAccent : ButtonToneNeutral;
+    props.emphasis = active ? ButtonEmphasisFilled : ButtonEmphasisGhost;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    props.selected = active;
+    if(disabled)
+        state = ButtonStateDisabled;
+    else if(active)
+        state = ButtonStateSelected;
+    else if(hovered)
+        state = ButtonStateHover;
+    return ui_control_style_frame_kind(props, state, 0, 0.0f, 0.0f, 0.0f,
+                                       StyleKindNavigationBarItem());
+}
+
 NavigationBarResult
 RenderNavigationBar(NavigationBarProps nav)
 {
@@ -73,8 +106,6 @@ RenderNavigationBar(NavigationBarProps nav)
     int height = nav.height > 0 ? nav.height : ui_navigation_bar_height();
     Widget widget;
     Rectangle bounds;
-    Palette palette;
-    Metrics tokens;
     NavigationBarPaint paint;
     StyleFrame bar_frame;
     Style bar_style;
@@ -83,7 +114,6 @@ RenderNavigationBar(NavigationBarProps nav)
 
     if(nav.items == NULL || count <= 0 || nav.view_width <= 0 || nav.view_height <= 0)
         return result;
-    ui_runtime_theme_values(&palette, &tokens);
     paint = NavigationBarPaintFor((NavigationBarSpec){
         .view_width = nav.view_width,
         .view_height = nav.view_height,
@@ -93,8 +123,7 @@ RenderNavigationBar(NavigationBarProps nav)
         .bottom_margin = nav.bottom_margin,
         .icon_size = nav.icon_size,
         .scale = runtime_scale,
-        .palette = palette,
-        .metrics = tokens
+        .bar = ui_navigation_bar_surface_frame()
     });
     count = paint.count;
     result.y = paint.y;
@@ -128,8 +157,9 @@ RenderNavigationBar(NavigationBarProps nav)
             .disabled = item->disabled,
             .hovered = 0,
             .label_height = label_h,
-            .palette = palette,
-            .metrics = tokens
+            .base = ui_navigation_bar_item_frame(0, item->disabled, 0),
+            .face = ui_navigation_bar_item_frame(item->active,
+                                                 item->disabled, 0)
         });
         if(ui_navigation_bar_hit(item_paint.bounds, item->disabled, &hover)) {
             result.clicked_index = i;
@@ -143,8 +173,9 @@ RenderNavigationBar(NavigationBarProps nav)
                 .disabled = item->disabled,
                 .hovered = hover,
                 .label_height = label_h,
-                .palette = palette,
-                .metrics = tokens
+                .base = ui_navigation_bar_item_frame(0, item->disabled, 0),
+                .face = ui_navigation_bar_item_frame(item->active,
+                                                     item->disabled, hover)
             });
         }
         if(item_paint.draw_face) {
@@ -218,12 +249,10 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     int add_w;
     int route_view_h;
     int route_content_h;
-    int reset_hover = 0;
-    int cancel_hover = 0;
-    int save_hover = 0;
     int dropdown_blocks_buttons;
     int i;
     int j;
+    Style label_style;
 
     if(max_route_count > 16)
         max_route_count = 16;
@@ -235,6 +264,10 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         option_count = 16;
     for(i = 0; i < option_count; i++)
         option_labels[i] = modal.options[i].label;
+    label_style = ui_unpack_style(ui_style_apply_effects_frame(
+        ui_control_style_frame_kind((ButtonProps){0}, ButtonStateNormal, 0,
+                                    0.0f, 0.0f, 0.0f,
+                                    StyleKindText())).value);
     for(i = 0; i < route_count; i++)
         selected[i] = navigation_bar_option_index(modal.options, option_count,
                                               modal.routes != NULL ? modal.routes[i] : 0);
@@ -281,7 +314,8 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
                                      ? modal.slot_labels[i]
                                      : "";
-        RenderText(slot_label, frame.content_x, y, GetFontSize(), c_text);
+        RenderText(slot_label, frame.content_x, y, GetFontSize(),
+                   label_style.foreground);
         if(Dropdown((DropdownProps){.id = modal.id + i, .bounds = {frame.content_x, y + Scale(22), frame.content_w - remove_w - Scale(8), dropdown_h},
             .options = option_labels, .option_count = option_count, .selected_index = &selected[i]}) &&
            modal.routes != NULL && selected[i] >= 0 && selected[i] < option_count) {

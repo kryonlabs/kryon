@@ -4,7 +4,6 @@
 #import "drawing_props"
 #import "style"
 #import "surface"
-#import "theme"
 
 SliderSpec :: struct {
     bounds: Rectangle
@@ -14,8 +13,9 @@ SliderSpec :: struct {
     hovered: bool
     disabled: bool
     scale: float
-    palette: Palette
-    metrics: Metrics
+    track: StyleFrame
+    active_track: StyleFrame
+    thumb: StyleFrame
 }
 
 SliderPaint :: struct {
@@ -33,6 +33,7 @@ SliderPaint :: struct {
     thumb_highlight_color: u32
     track: StyleFrame
     active_track: StyleFrame
+    thumb: StyleFrame
 }
 
 SliderScalarStep :: struct {
@@ -186,27 +187,18 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     paint.thumb_radius = thumb_size * 0.5
     paint.glow_radius = paint.thumb_radius + 8.0 * scale
 
-    state: i32 = ButtonStateNormal
-    if spec.hovered { state = ButtonStateHover }
-    if spec.active { state = ButtonStatePressed }
-    styles: StyleStates
-    paint.track = ResolveFrame(ButtonToneNeutral, ButtonEmphasisSoft, state,
-        ControlSizeMedium, true, false, spec.disabled, false, false,
-        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
-    paint.active_track = ResolveFrame(ButtonToneAccent, ButtonEmphasisFilled,
-        state, ControlSizeMedium, true, false, spec.disabled, false, false,
-        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
+    paint.track = spec.track
+    paint.active_track = spec.active_track
+    paint.thumb = spec.thumb
 
-    white: u32 = PackedColor((u32)0xFFFFFF, (u32)255)
-    paint.thumb_fill_color = paint.active_track.value.background
-    paint.thumb_edge_color = GradientColor(paint.active_track.value.background, white, 0.50)
-    paint.thumb_shadow_color = Opacity(spec.palette.shadow, spec.disabled ? 0.28 : 0.60)
-    paint.thumb_highlight_color = Opacity(white, spec.disabled ? 0.08 : 0.20)
-    paint.glow_color = Opacity(paint.active_track.value.background,
-        spec.active ? 0.32 : (spec.hovered ? 0.18 : 0.0))
-    if spec.disabled {
-        paint.thumb_fill_color = Opacity(paint.thumb_fill_color, 0.45)
-        paint.thumb_edge_color = Opacity(paint.thumb_edge_color, 0.38)
-    }
+    thumb_opacity: float = paint.thumb.value.opacity
+    paint.thumb_fill_color = Opacity(paint.thumb.value.background, thumb_opacity)
+    paint.thumb_edge_color = Opacity(paint.thumb.value.border, thumb_opacity)
+    paint.thumb_shadow_color = Opacity(paint.thumb.value.focus,
+        (spec.disabled ? 0.18 : 0.36) * thumb_opacity)
+    paint.thumb_highlight_color = Opacity(paint.thumb.value.foreground,
+        (spec.disabled ? 0.08 : 0.20) * thumb_opacity)
+    paint.glow_color = Opacity(paint.thumb.value.focus,
+        (spec.active ? 0.32 : (spec.hovered ? 0.18 : 0.0)) * thumb_opacity)
     return paint
 }

@@ -310,7 +310,7 @@ GENERATED_C_COMPILE_GAPS = {
     "examples/22_physics.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/23_animation.kry": "Generated-C app-host route is missing for scene-only source.",
     "examples/24_tilemap.kry": "Generated-C app-host route is missing for scene-only source.",
-    "tests/parity/widget_catalog.kry": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and SelectableText has no host widget yet.",
+    "tests/parity/widget_catalog.kry": "Fixture is ahead of the runtime: k2c cannot lower full-array slices (arr[:]) and standalone selectable text is now expressed through TextProps.selectable.",
 }
 
 RAYLIB_C_RENDER_GAPS = {
@@ -450,18 +450,17 @@ WIDGETS = {
     "Link",
     "Line",
     "ListBox",
-    "MenuBar",
+    "Menu",
     "Modal",
     "PanedView",
     "Paragraph",
     "Image",
     "Progress",
     "Radio",
-    "Rect",
+    "Box",
     "Row",
     "Screen",
     "Scroll",
-    "SelectableText",
     "Slider",
     "Spinbox",
     "Stack",
@@ -479,7 +478,6 @@ WIDGETS = {
 }
 
 WIDGET_ALIASES = {
-    "Toast": {"ShowToast", "ShowToastFor"},
     "TabItem": {"BeginTabItem"},
 }
 

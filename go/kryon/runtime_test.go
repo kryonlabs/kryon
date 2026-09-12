@@ -111,7 +111,7 @@ func TestTextFieldCursorNavigationAndUnicodeInput(t *testing.T) {
 func TestIconActionToolbarAndMenuBar(t *testing.T) {
 	rt := New(AppConfig{Width: 360, Height: 180}).(*runtime)
 	open := int32(-1)
-	menus := []Menu{{
+	menus := []MenuGroup{{
 		Label: "File",
 		Items: []MenuItem{
 			{Kind: MenuCommand, Label: "Save", Accelerator: "Ctrl+S", ID: 101},
@@ -125,7 +125,7 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 	}
 
 	rt.QueueTap(18, 16)
-	res := rt.MenuBar(10, Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, menus, &open)
+	res := rt.Menu(MenuProps{ID: 10, Mode: MenuModeBar, Bounds: Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, Menus: menus, OpenIndex: &open})
 	if got, want := res.OpenIndex, int32(0); got != want {
 		t.Fatalf("menu open index = %d, want %d", got, want)
 	}
@@ -134,7 +134,7 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 	}
 
 	rt.QueueTap(20, 43)
-	res = rt.MenuBar(10, Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, menus, &open)
+	res = rt.Menu(MenuProps{ID: 10, Mode: MenuModeBar, Bounds: Rectangle{X: 0, Y: 0, Width: 360, Height: 30}, Menus: menus, OpenIndex: &open})
 	if got, want := res.ActivatedID, int32(101); got != want {
 		t.Fatalf("activated menu id = %d, want %d", got, want)
 	}
@@ -166,6 +166,1382 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 	}
 	if !sawIcon {
 		t.Fatalf("toolbar did not record save icon op: %#v", rt.FrameOps())
+	}
+}
+
+func TestIconActionUsesButtonStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.icon_action;
+tokens {
+  color {
+    face: #223142;
+    ink: #e9f1ff;
+    rule: #506070;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Button { background: face; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Icon Action", "") || !SetActiveStylePack("test.icon_action") {
+		t.Fatal("test icon action style did not activate")
+	}
+	rt := New(AppConfig{Width: 120, Height: 80}).(*runtime)
+
+	rt.iconAction(iconActionProps{
+		Bounds:      Rectangle{X: 10, Y: 12, Width: 32, Height: 32},
+		IconType:    IconSave,
+		IconSize:    16,
+		IconPadding: 4,
+		FocusID:     701,
+	})
+
+	var sawButton, sawIcon bool
+	for _, op := range rt.FrameOps() {
+		if op.ID != 701 {
+			continue
+		}
+		switch op.Kind {
+		case FrameOpButton:
+			sawButton = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x22, G: 0x31, B: 0x42, A: 0xff}) || style.Border != (Color{R: 0x50, G: 0x60, B: 0x70, A: 0xff}) || style.Radius != 5 || style.BorderWidth != 2 {
+				t.Fatalf("icon action button style op = %+v", op)
+			}
+		case FrameOpIcon:
+			sawIcon = true
+			if op.Color != (Color{R: 0xe9, G: 0xf1, B: 0xff, A: 0xff}) {
+				t.Fatalf("icon action tint = %+v", op)
+			}
+		}
+	}
+	if !sawButton || !sawIcon {
+		t.Fatalf("missing styled icon action ops: button=%v icon=%v ops=%+v", sawButton, sawIcon, rt.FrameOps())
+	}
+}
+
+func TestModalUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.modal;
+tokens {
+  color {
+    panel: #202836;
+    ink: #ecf3ff;
+    action: #7ae2ba;
+    action-ink: #042017;
+    rule: #566578;
+  }
+  length { radius: 8; border: 2; }
+  material { flat: Flat; }
+}
+Modal[role=Scrim] { background: #111111; opacity: 0.5; material: flat; }
+Modal[role=Panel] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Modal[role=Title] { foreground: ink; font-size: 16; }
+Modal[role=Message] { foreground: ink; font-size: 16; }
+Modal[role=Action] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; border: action; radius: radius; border-width: border; material: flat; }
+`, "Test Modal", "") || !SetActiveStylePack("test.modal") {
+		t.Fatal("test modal style did not activate")
+	}
+	rt := New(AppConfig{Width: 420, Height: 280}).(*runtime)
+
+	rt.Modal(ModalProps{
+		Title:   "Notice",
+		Message: "Styled",
+		Actions: []ModalAction{{
+			Label:    "OK",
+			Tone:     ButtonToneAccent,
+			Emphasis: ButtonEmphasisFilled,
+		}},
+		ActionCount: 1,
+	})
+
+	var sawScrim, sawPanel, sawTitle, sawMessage, sawButton bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds.Width == 420 && op.Bounds.Height == 280:
+			sawScrim = true
+			if op.Color != (Color{R: 0x11, G: 0x11, B: 0x11, A: 0x7f}) {
+				t.Fatalf("modal scrim style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Color == (Color{R: 0x20, G: 0x28, B: 0x36, A: 0xff}):
+			sawPanel = true
+			if op.BorderColor != (Color{R: 0x56, G: 0x65, B: 0x78, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 8 {
+				t.Fatalf("modal panel style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Notice":
+			sawTitle = true
+			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) {
+				t.Fatalf("modal title style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Styled":
+			sawMessage = true
+			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) {
+				t.Fatalf("modal message style op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.Text == "OK":
+			sawButton = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) || style.Foreground != (Color{R: 0x04, G: 0x20, B: 0x17, A: 0xff}) || style.Border != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) {
+				t.Fatalf("modal action style op = %+v", op)
+			}
+		}
+	}
+	if !sawScrim || !sawPanel || !sawTitle || !sawMessage || !sawButton {
+		t.Fatalf("missing styled modal ops: scrim=%v panel=%v title=%v message=%v button=%v ops=%+v", sawScrim, sawPanel, sawTitle, sawMessage, sawButton, rt.FrameOps())
+	}
+}
+
+func TestTitleBarUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.titlebar;
+tokens {
+  color {
+    surface: #182231;
+    ink: #f1f5ff;
+    button: #28384c;
+    button-ink: #dbe8ff;
+    rule: #506172;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+TitleBar[role=Bar] { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+TitleBar[role=Title] { foreground: ink; font-size: 20; }
+TitleBar[role=Action] { background: button; foreground: button-ink; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test TitleBar", "") || !SetActiveStylePack("test.titlebar") {
+		t.Fatal("test title bar style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+
+	rt.TitleBar(TitleBarProps{Title: "Workspace", Height: 44, HasLeadingAction: true})
+
+	var sawBar, sawTitle, sawLeading bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds.Width == 240 && op.Bounds.Height == 44:
+			sawBar = true
+			if op.Color != (Color{R: 0x18, G: 0x22, B: 0x31, A: 0xff}) || op.BorderColor != (Color{R: 0x50, G: 0x61, B: 0x72, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("title bar surface op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Workspace":
+			sawTitle = true
+			if op.Color != (Color{R: 0xf1, G: 0xf5, B: 0xff, A: 0xff}) {
+				t.Fatalf("title bar text op = %+v", op)
+			}
+		case op.Kind == FrameOpButton:
+			sawLeading = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x28, G: 0x38, B: 0x4c, A: 0xff}) || style.Foreground != (Color{R: 0xdb, G: 0xe8, B: 0xff, A: 0xff}) || style.Border != (Color{R: 0x50, G: 0x61, B: 0x72, A: 0xff}) {
+				t.Fatalf("title bar leading style op = %+v", op)
+			}
+		}
+	}
+	if !sawBar || !sawTitle || !sawLeading {
+		t.Fatalf("missing styled title bar ops: bar=%v title=%v leading=%v ops=%+v", sawBar, sawTitle, sawLeading, rt.FrameOps())
+	}
+}
+
+func TestToolbarUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.toolbar;
+tokens {
+  color {
+    surface: #1b2635;
+    ink: #eaf2ff;
+    button: #2d3d52;
+    button-ink: #cfe0ff;
+    rule: #596a7c;
+  }
+  length { radius: 4; border: 2; }
+  material { flat: Flat; }
+}
+Toolbar[role=Bar] { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Toolbar[role=Divider] { border: rule; }
+Toolbar[role=Action] { background: button; foreground: button-ink; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Toolbar", "") || !SetActiveStylePack("test.toolbar") {
+		t.Fatal("test toolbar style did not activate")
+	}
+	rt := New(AppConfig{Width: 320, Height: 120}).(*runtime)
+
+	rt.Toolbar(ToolbarProps{
+		ID:     8,
+		X:      0,
+		Y:      12,
+		Width:  240,
+		Height: 40,
+		Actions: []ToolbarAction{{
+			IconType: IconSave,
+		}},
+		ActionCount: 1,
+	})
+
+	var sawBar, sawDivider, sawButton, sawIcon bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds.X == 0 && op.Bounds.Y == 12 && op.Bounds.Width == 240 && op.Bounds.Height == 40:
+			sawBar = true
+			if op.Color != (Color{R: 0x1b, G: 0x26, B: 0x35, A: 0xff}) || op.BorderColor != (Color{R: 0x59, G: 0x6a, B: 0x7c, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 4 {
+				t.Fatalf("toolbar surface op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.Color == (Color{R: 0x59, G: 0x6a, B: 0x7c, A: 0xff}):
+			sawDivider = true
+		case op.Kind == FrameOpButton && op.ID == 801:
+			sawButton = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x2d, G: 0x3d, B: 0x52, A: 0xff}) || style.Foreground != (Color{R: 0xcf, G: 0xe0, B: 0xff, A: 0xff}) || style.Border != (Color{R: 0x59, G: 0x6a, B: 0x7c, A: 0xff}) {
+				t.Fatalf("toolbar action style op = %+v", op)
+			}
+		case op.Kind == FrameOpIcon && op.ID == 801:
+			sawIcon = true
+			if op.Color != (Color{R: 0xcf, G: 0xe0, B: 0xff, A: 0xff}) {
+				t.Fatalf("toolbar icon tint op = %+v", op)
+			}
+		}
+	}
+	if !sawBar || !sawDivider || !sawButton || !sawIcon {
+		t.Fatalf("missing styled toolbar ops: bar=%v divider=%v button=%v icon=%v ops=%+v", sawBar, sawDivider, sawButton, sawIcon, rt.FrameOps())
+	}
+}
+
+func TestCollapsibleUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.collapsible;
+tokens {
+  color {
+    face: #233248;
+    ink: #edf4ff;
+    rule: #5e7188;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Collapsible[role=Header] { background: face; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Collapsible[role=TreeHeader] { background: #00000000; foreground: ink; border: #00000000; radius: radius; border-width: 0; material: flat; }
+Collapsible[role=Close] { foreground: ink; }
+`, "Test Collapsible", "") || !SetActiveStylePack("test.collapsible") {
+		t.Fatal("test collapsible style did not activate")
+	}
+	rt := New(AppConfig{Width: 260, Height: 120}).(*runtime)
+	open, visible := false, true
+
+	rt.Collapsible(CollapsibleProps{
+		Bounds:  Rectangle{X: 10, Y: 12, Width: 180, Height: 32},
+		Label:   "Details",
+		Open:    &open,
+		Visible: &visible,
+		ID:      991,
+	})
+
+	var sawHeader, sawClose bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpButton && op.ID == 991:
+			sawHeader = true
+			if op.Color != (Color{R: 0x23, G: 0x32, B: 0x48, A: 0xff}) || op.BorderColor != (Color{R: 0x5e, G: 0x71, B: 0x88, A: 0xff}) || op.TextColor != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("collapsible header style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "×":
+			sawClose = true
+			if op.Color != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) {
+				t.Fatalf("collapsible close style op = %+v", op)
+			}
+		}
+	}
+	if !sawHeader || !sawClose {
+		t.Fatalf("missing styled collapsible ops: header=%v close=%v ops=%+v", sawHeader, sawClose, rt.FrameOps())
+	}
+
+	rt.BeginFrame()
+	rt.Collapsible(CollapsibleProps{
+		Bounds:   Rectangle{X: 10, Y: 48, Width: 180, Height: 32},
+		Label:    "Node",
+		Tree:     true,
+		Selected: true,
+		ID:       992,
+	})
+	rt.EndFrame()
+	var sawTree bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpButton && op.ID == 992 {
+			sawTree = true
+			if op.Color != BLANK || op.BorderColor != BLANK {
+				t.Fatalf("tree collapsible should keep transparent chrome: %+v", op)
+			}
+		}
+	}
+	if !sawTree {
+		t.Fatalf("missing tree collapsible op: %+v", rt.FrameOps())
+	}
+}
+
+func TestTableViewPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.table;
+tokens {
+  color {
+    surface: #111923;
+    row-text: #cbd6e4;
+    header: #263449;
+    header-ink: #eef5ff;
+    header-selected: #3b66ff;
+    header-selected-ink: #ffffff;
+    selected: #6f42c1;
+    selected-ink: #fff7ff;
+    rule: #5a6b7d;
+  }
+  length { radius: 4; border: 2; }
+  material { flat: Flat; }
+}
+TableView[role=Panel] { background: surface; border: rule; radius: radius; border-width: border; material: flat; }
+TableView[role=Header] { background: header; foreground: header-ink; border: rule; radius: radius; border-width: border; material: flat; }
+TableView[role=Header]:selected { background: header-selected; foreground: header-selected-ink; border: header-selected; material: flat; }
+TableView[role=Cell] { foreground: row-text; font-size: 14; }
+TableView[role=Selection] { background: selected; foreground: selected-ink; border: selected; radius: radius; border-width: border; material: flat; }
+TableView[role=Divider] { border: rule; }
+`, "Test Table", "") || !SetActiveStylePack("test.table") {
+		t.Fatal("test table style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	selectedRow := int32(-1)
+	selectedColumn := int32(1)
+	scroll := int32(0)
+
+	rt.BeginFrame()
+	rt.TableView(TableViewProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 260, Height: 92},
+		ID:             77,
+		Columns:        []string{"Name", "Value"},
+		Rows:           []TableRow{{Cells: []string{"plain", "chosen"}}},
+		ColumnWidths:   []int32{120, 140},
+		SelectedRow:    &selectedRow,
+		SelectedColumn: &selectedColumn,
+		ScrollOffset:   &scroll,
+		RowHeight:      28,
+		Resizable:      true,
+	})
+	rt.EndFrame()
+
+	var sawSurface, sawNormalHeader, sawSelectedHeader, sawDivider, sawBodyText, sawSelectedCell, sawSelectedText bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 10, Width: 260, Height: 92}):
+			sawSurface = true
+			if op.Color != (Color{R: 0x11, G: 0x19, B: 0x23, A: 0xff}) || op.BorderColor != (Color{R: 0x5a, G: 0x6b, B: 0x7d, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 4 {
+				t.Fatalf("table surface style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Row == -1 && op.Column == 0:
+			sawNormalHeader = true
+			if op.Color != (Color{R: 0x26, G: 0x34, B: 0x49, A: 0xff}) || op.BorderColor != (Color{R: 0x5a, G: 0x6b, B: 0x7d, A: 0xff}) {
+				t.Fatalf("table normal header style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == -1 && op.Column == 0:
+			if op.Color != (Color{R: 0xee, G: 0xf5, B: 0xff, A: 0xff}) {
+				t.Fatalf("table normal header text style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Row == -1 && op.Column == 1 && op.Selected:
+			sawSelectedHeader = true
+			if op.Color != (Color{R: 0x3b, G: 0x66, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0x3b, G: 0x66, B: 0xff, A: 0xff}) {
+				t.Fatalf("table selected header style op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.Column == 0:
+			sawDivider = true
+			if op.Color != (Color{R: 0x5a, G: 0x6b, B: 0x7d, A: 0xff}) {
+				t.Fatalf("table divider style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == 0 && op.Column == 0:
+			sawBodyText = true
+			if op.Color != (Color{R: 0xcb, G: 0xd6, B: 0xe4, A: 0xff}) {
+				t.Fatalf("table body text style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Row == 0 && op.Column == 1 && op.Selected:
+			sawSelectedCell = true
+			if op.Color != (Color{R: 0x6f, G: 0x42, B: 0xc1, A: 0xff}) || op.BorderColor != (Color{R: 0x6f, G: 0x42, B: 0xc1, A: 0xff}) {
+				t.Fatalf("table selected cell style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == 0 && op.Column == 1:
+			sawSelectedText = true
+			if op.Color != (Color{R: 0xff, G: 0xf7, B: 0xff, A: 0xff}) {
+				t.Fatalf("table selected cell text style op = %+v", op)
+			}
+		}
+	}
+	if !sawSurface || !sawNormalHeader || !sawSelectedHeader || !sawDivider || !sawBodyText || !sawSelectedCell || !sawSelectedText {
+		t.Fatalf("missing styled table ops: surface=%v normalHeader=%v selectedHeader=%v divider=%v bodyText=%v selectedCell=%v selectedText=%v ops=%+v",
+			sawSurface, sawNormalHeader, sawSelectedHeader, sawDivider, sawBodyText, sawSelectedCell, sawSelectedText, rt.FrameOps())
+	}
+}
+
+func TestMenuPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.menu;
+tokens {
+  color {
+    bar: #101820;
+    panel: #202a36;
+    item: #2f6bff;
+    ink: #f5f2ff;
+    rule: #708090;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Menu[role=Bar] { background: bar; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Menu[role=Popup] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+MenuItem:selected { background: item; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+MenuSeparator { border: rule; foreground: rule; material: flat; }
+`, "Test Menu", "") || !SetActiveStylePack("test.menu") {
+		t.Fatal("test menu style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	open := int32(0)
+	menus := []MenuGroup{{
+		Label: "File",
+		Items: []MenuItem{
+			{Kind: MenuCommand, Label: "Save", ID: 101},
+			{Kind: MenuSeparator},
+		},
+	}}
+
+	rt.Menu(MenuProps{ID: 10, Mode: MenuModeBar, Bounds: Rectangle{X: 0, Y: 0, Width: 240, Height: 30}, Menus: menus, OpenIndex: &open})
+
+	var sawBar, sawPanel bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect {
+			continue
+		}
+		if op.Bounds == (Rectangle{X: 0, Y: 0, Width: 240, Height: 30}) {
+			sawBar = true
+			if op.Color != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("menu bar style op = %+v", op)
+			}
+		}
+		if op.Color == (Color{R: 0x20, G: 0x2a, B: 0x36, A: 0xff}) {
+			sawPanel = true
+			if op.BorderColor != (Color{R: 0x70, G: 0x80, B: 0x90, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("menu panel style op = %+v", op)
+			}
+		}
+	}
+	if !sawBar || !sawPanel {
+		t.Fatalf("missing styled menu ops: bar=%v panel=%v ops=%+v", sawBar, sawPanel, rt.FrameOps())
+	}
+}
+
+func TestProgressAndSeparatorRolesUseStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.parts;
+tokens {
+  color {
+    track: #18202a;
+    fill: #c9a8ff;
+    ink: #171022;
+    label: #f5f2ff;
+    line: #536070;
+    bullet: #2f6bff;
+  }
+  length { radius: 6; border: 2; gap: 10; }
+  material { flat: Flat; }
+}
+Progress[role=Track] { background: track; foreground: label; border: line; radius: radius; border-width: border; material: flat; opacity: 1; }
+Progress[role=Fill] { background: fill; foreground: ink; border: fill; radius: radius; border-width: border; material: flat; opacity: 1; }
+Progress[role=Label] { foreground: label; material: flat; opacity: 1; }
+Separator[role=Line] { background: line; foreground: line; gap: gap; opacity: 1; }
+Separator[role=Label] { background: line; foreground: label; gap: gap; opacity: 1; }
+Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity: 1; }
+`, "Test Parts", "") || !SetActiveStylePack("test.parts") {
+		t.Fatal("test parts style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+
+	rt.Progress(ProgressProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 100, Height: 12},
+		Min:    0, Max: 100, Value: 50, Label: "50%",
+	})
+	rt.Separator(SeparatorProps{
+		Bounds: Rectangle{X: 10, Y: 40, Width: 100, Height: 20},
+		Label:  "Section", Font: Text14,
+	})
+	rt.Bullet(Rectangle{X: 10, Y: 70, Width: 12, Height: 12})
+
+	var sawTrack, sawFill, sawProgressLabel, sawSeparatorLabel, sawSeparatorLine, sawBullet bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 10, Width: 100, Height: 12}):
+			sawTrack = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("progress track style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Selected:
+			sawFill = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) ||
+				op.Radius != 6 {
+				t.Fatalf("progress fill style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "50%":
+			sawProgressLabel = true
+			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("progress label on fill style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Section":
+			sawSeparatorLabel = true
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+				t.Fatalf("separator label style op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.Bounds.Y == 50:
+			sawSeparatorLine = true
+			if op.Color != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) {
+				t.Fatalf("separator line style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds.X == 13 && op.Bounds.Y == 73:
+			sawBullet = true
+			if op.Color != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) {
+				t.Fatalf("separator bullet style op = %+v", op)
+			}
+		}
+	}
+	if !sawTrack || !sawFill || !sawProgressLabel || !sawSeparatorLabel ||
+		!sawSeparatorLine || !sawBullet {
+		t.Fatalf("missing role styled ops: track=%v fill=%v progressLabel=%v separatorLabel=%v separatorLine=%v bullet=%v ops=%+v",
+			sawTrack, sawFill, sawProgressLabel, sawSeparatorLabel, sawSeparatorLine, sawBullet, rt.FrameOps())
+	}
+}
+
+func TestCheckboxAndRadioRolesUseStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.checks;
+tokens {
+  color {
+    box: #18202a;
+    mark: #c9a8ff;
+    mark-ink: #171022;
+    label: #f5f2ff;
+    ring: #536070;
+  }
+  length { border: 2; }
+  material { flat: Flat; }
+}
+Checkbox[role=Box] { background: box; foreground: label; border: ring; border-width: border; material: flat; opacity: 1; }
+Checkbox[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
+Checkbox[role=Label] { foreground: label; material: flat; opacity: 1; }
+Radio[role=Ring] { foreground: label; border: ring; border-width: border; material: flat; opacity: 1; }
+Radio[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
+Radio[role=Label] { foreground: label; material: flat; opacity: 1; }
+`, "Test Checks", "") || !SetActiveStylePack("test.checks") {
+		t.Fatal("test check/radio style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	checked := int32(1)
+
+	rt.Checkbox(CheckboxProps{
+		Bounds: Rectangle{X: 10, Y: 10, Width: 140, Height: 28},
+		ID:     41,
+		Label:  "Enabled",
+		Value:  &checked,
+	})
+	rt.Radio(RadioProps{
+		Bounds:  Rectangle{X: 10, Y: 50, Width: 140, Height: 28},
+		ID:      42,
+		Label:   "Choice",
+		Checked: true,
+	})
+
+	var sawBox, sawCheckMark, sawCheckLabel, sawRadioMark, sawRadioLabel bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.ID == 41:
+			sawBox = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("checkbox box/mark style op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.ID == 41:
+			sawCheckMark = true
+			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("checkbox mark style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Enabled":
+			sawCheckLabel = true
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+				t.Fatalf("checkbox label style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "\u25c9":
+			sawRadioMark = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("radio mark style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Choice":
+			sawRadioLabel = true
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+				t.Fatalf("radio label style op = %+v", op)
+			}
+		}
+	}
+	if !sawBox || !sawCheckMark || !sawCheckLabel || !sawRadioMark || !sawRadioLabel {
+		t.Fatalf("missing check/radio role styled ops: box=%v checkMark=%v checkLabel=%v radioMark=%v radioLabel=%v ops=%+v",
+			sawBox, sawCheckMark, sawCheckLabel, sawRadioMark, sawRadioLabel, rt.FrameOps())
+	}
+}
+
+func TestListBoxPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.listbox;
+tokens {
+  color {
+    panel: #18202a;
+    selected: #c9a8ff;
+    ink: #171022;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+ListBox { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+ListBoxItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+`, "Test ListBox", "") || !SetActiveStylePack("test.listbox") {
+		t.Fatal("test list box style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	selected := int32(1)
+	items := []string{"One", "Two", "Three"}
+
+	rt.ListBox(ListBoxProps{
+		Bounds:        Rectangle{X: 8, Y: 8, Width: 120, Height: 72},
+		ID:            22,
+		Items:         items,
+		SelectedIndex: &selected,
+		RowHeight:     24,
+	})
+
+	var sawPanel, sawSelected bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect {
+			continue
+		}
+		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
+			sawPanel = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("list box panel style op = %+v", op)
+			}
+		}
+		if op.Row == 1 && op.Selected {
+			sawSelected = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("list box selected style op = %+v", op)
+			}
+		}
+	}
+	if !sawPanel || !sawSelected {
+		t.Fatalf("missing styled list box ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	}
+}
+
+func TestTreeViewPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.tree;
+tokens {
+  color {
+    panel: #18202a;
+    selected: #c9a8ff;
+    ink: #171022;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+TreeView { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+TreeViewItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+`, "Test TreeView", "") || !SetActiveStylePack("test.tree") {
+		t.Fatal("test tree view style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	selected := int32(2)
+	items := []TreeItem{
+		{Label: "Root", ID: 1, Expanded: 1},
+		{Label: "Child", Depth: 1, ID: 2, Selectable: 1},
+	}
+
+	rt.TreeView(TreeViewProps{
+		Bounds:     Rectangle{X: 8, Y: 8, Width: 120, Height: 72},
+		ID:         33,
+		Items:      items,
+		SelectedID: &selected,
+		RowHeight:  24,
+	})
+
+	var sawPanel, sawSelected bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect {
+			continue
+		}
+		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
+			sawPanel = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("tree view panel style op = %+v", op)
+			}
+		}
+		if op.Row == 1 && op.Selected {
+			sawSelected = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("tree view selected style op = %+v", op)
+			}
+		}
+	}
+	if !sawPanel || !sawSelected {
+		t.Fatalf("missing styled tree view ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	}
+}
+
+func TestMultiSelectListPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.multi;
+tokens {
+  color {
+    panel: #18202a;
+    selected: #c9a8ff;
+    ink: #171022;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+ListBoxMulti { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+ListBoxMultiItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+`, "Test MultiSelect", "") || !SetActiveStylePack("test.multi") {
+		t.Fatal("test multi select style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	selected := []int32{0, 1, 0}
+	count := int32(0)
+	anchor := int32(1)
+
+	rt.ListBox(ListBoxProps{
+		Bounds:        Rectangle{X: 8, Y: 8, Width: 120, Height: 72},
+		ID:            44,
+		Items:         []string{"One", "Two", "Three"},
+		Selected:      selected,
+		SelectedCount: &count,
+		Anchor:        &anchor,
+		RowHeight:     24,
+	})
+
+	if count != 1 {
+		t.Fatalf("selected count = %d", count)
+	}
+	var sawPanel, sawSelected bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect {
+			continue
+		}
+		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
+			sawPanel = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("multi select panel style op = %+v", op)
+			}
+		}
+		if op.Row == 1 && op.Selected {
+			sawSelected = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("multi select selected style op = %+v", op)
+			}
+		}
+	}
+	if !sawPanel || !sawSelected {
+		t.Fatalf("missing styled multi select ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	}
+}
+
+func TestDragDropTargetPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.drag;
+tokens {
+  color {
+    target: #536070;
+    hot: #c9a8ff;
+  }
+  length { radius: 6; border: 1; hot-border: 3; }
+  material { flat: Flat; }
+}
+DragDropTarget { background: #00000000; border: target; radius: radius; border-width: border; material: flat; }
+DragDropTarget:hover { border: hot; border-width: hot-border; }
+`, "Test Drag", "") || !SetActiveStylePack("test.drag") {
+		t.Fatal("test drag target style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	rt.dragDrop = dragDropState{active: true, typeName: "ITEM", data: []byte("item")}
+	rt.QueueMouseMove(24, 24)
+
+	rt.DragDrop(DragDropProps{
+		Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 40},
+		ID:     55,
+		Role:   DragDropRoleTarget,
+		Type:   "ITEM",
+	})
+
+	var sawTarget bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpRect && op.ID == 55 {
+			sawTarget = true
+			if !op.Hovered || op.BorderWidth != 3 || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("drag drop target style op = %+v", op)
+			}
+		}
+	}
+	if !sawTarget {
+		t.Fatalf("missing drag drop target op: %+v", rt.FrameOps())
+	}
+}
+
+func TestSpinboxPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.spinbox;
+tokens {
+  color {
+    shell: #18202a;
+    value: #c9a8ff;
+    ink: #171022;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+Spinbox { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+SpinboxValue { background: value; foreground: ink; border: value; radius: radius; border-width: border; material: flat; }
+`, "Test Spinbox", "") || !SetActiveStylePack("test.spinbox") {
+		t.Fatal("test spinbox style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	value := int32(3)
+
+	rt.Spinbox(SpinboxProps{
+		Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 30},
+		ID:     66,
+		Min:    0,
+		Max:    10,
+		Value:  &value,
+	})
+
+	var sawShell, sawValue bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpRect || op.ID != 66 {
+			continue
+		}
+		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 30}) {
+			sawShell = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("spinbox shell style op = %+v", op)
+			}
+		}
+		if op.Bounds == (Rectangle{X: 36, Y: 8, Width: 64, Height: 30}) {
+			sawValue = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("spinbox value style op = %+v", op)
+			}
+		}
+	}
+	if !sawShell || !sawValue {
+		t.Fatalf("missing styled spinbox ops: shell=%v value=%v ops=%+v", sawShell, sawValue, rt.FrameOps())
+	}
+}
+
+func TestColorPickerSwatchPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.color;
+tokens {
+  color {
+    ink: #171022;
+    rule: #c9a8ff;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Color", "") || !SetActiveStylePack("test.color") {
+		t.Fatal("test color picker style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 220}).(*runtime)
+	values := []float32{0.1, 0.2, 0.3, 1}
+
+	rt.ColorPicker(ColorPickerProps{
+		Bounds:     Rectangle{X: 8, Y: 8, Width: 120, Height: 160},
+		ID:         77,
+		Label:      "Preview",
+		Values:     values,
+		ValueCount: 4,
+		Picker:     true,
+	})
+
+	var sawSwatch, sawLabel bool
+	for _, op := range rt.FrameOps() {
+		if op.ID != 77 {
+			continue
+		}
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 132, Width: 120, Height: 36}) {
+			sawSwatch = true
+			if op.Color != (Color{R: 26, G: 51, B: 77, A: 255}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("color picker swatch style op = %+v", op)
+			}
+		}
+		if op.Kind == FrameOpText && op.Text == "Preview" {
+			sawLabel = true
+			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("color picker swatch label op = %+v", op)
+			}
+		}
+	}
+	if !sawSwatch || !sawLabel {
+		t.Fatalf("missing styled color picker ops: swatch=%v label=%v ops=%+v", sawSwatch, sawLabel, rt.FrameOps())
+	}
+}
+
+func TestSliderPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.slider;
+tokens {
+  color {
+    track: #18202a;
+    active: #c9a8ff;
+    thumb: #f8f5ff;
+    thumb-highlight: #ffffff66;
+    ink: #171022;
+    label: #3b2f55;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+Slider[role=Track] { background: track; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Slider[role=Fill] { background: active; foreground: ink; border: active; radius: radius; border-width: border; material: flat; }
+Slider[role=Label] { foreground: label; }
+`, "Test Slider", "") || !SetActiveStylePack("test.slider") {
+		t.Fatal("test slider style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	values := []float32{0.5}
+
+	rt.sliderFloat(sliderFloatProps{
+		Bounds:     Rectangle{X: 8, Y: 28, Width: 120, Height: 30},
+		ID:         88,
+		Label:      "Level",
+		Values:     values,
+		ValueCount: 1,
+		Min:        0,
+		Max:        1,
+		Format:     "%.1f",
+	}, false)
+
+	var sawTrack, sawFill, sawValue, sawLabel bool
+	for _, op := range rt.FrameOps() {
+		if op.ID != 88 {
+			continue
+		}
+		switch {
+		case op.Kind == FrameOpRect && op.Row == 0 && !op.Selected:
+			sawTrack = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderColor != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("slider track style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Row == 0 && op.Selected:
+			sawFill = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("slider active style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == 0 && op.Text == "0.5":
+			sawValue = true
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+				t.Fatalf("slider value text style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Level":
+			sawLabel = true
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+				t.Fatalf("slider label style op = %+v", op)
+			}
+		}
+	}
+	if !sawTrack || !sawFill || !sawValue || !sawLabel {
+		t.Fatalf("missing styled slider ops: track=%v fill=%v value=%v label=%v ops=%+v", sawTrack, sawFill, sawValue, sawLabel, rt.FrameOps())
+	}
+}
+
+func TestSliderAtUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.slider_legacy;
+tokens {
+  color {
+    track: #18202a;
+    active: #c9a8ff;
+    thumb: #f8f5ff;
+    thumb-highlight: #ffffff66;
+    ink: #171022;
+    label: #3b2f55;
+    rule: #536070;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+Slider[role=Track] { background: track; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Slider[role=Fill] { background: active; foreground: ink; border: active; radius: radius; border-width: border; material: flat; }
+Slider[role=Label] { foreground: label; }
+SliderThumb { background: thumb; foreground: thumb-highlight; border: active; focus: active; radius: radius; border-width: border; material: flat; }
+`, "Test Slider Legacy", "") || !SetActiveStylePack("test.slider_legacy") {
+		t.Fatal("test legacy slider style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	value := int32(50)
+
+	rt.sliderAt(188, Rectangle{X: 8, Y: 18, Width: 120, Height: 46}, "Amount", 0, 100, &value, "%")
+
+	var sawTrack, sawFill, sawLabel, sawValue, sawThumb bool
+	for _, op := range rt.FrameOps() {
+		if op.ID != 188 {
+			continue
+		}
+		switch {
+		case op.Kind == FrameOpRect && !op.Selected:
+			sawTrack = true
+			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderColor != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("sliderAt track style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Selected:
+			sawFill = true
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+				t.Fatalf("sliderAt active style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Amount":
+			sawLabel = true
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+				t.Fatalf("sliderAt label style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "50%":
+			sawValue = true
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+				t.Fatalf("sliderAt value style op = %+v", op)
+			}
+		case op.Kind == FrameOpCircle && op.Color == (Color{R: 0xf8, G: 0xf5, B: 0xff, A: 0xff}):
+			sawThumb = true
+		}
+	}
+	if !sawTrack || !sawFill || !sawLabel || !sawValue || !sawThumb {
+		t.Fatalf("missing styled sliderAt ops: track=%v fill=%v label=%v value=%v thumb=%v ops=%+v", sawTrack, sawFill, sawLabel, sawValue, sawThumb, rt.FrameOps())
+	}
+}
+
+func TestTogglePaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.toggle;
+tokens {
+  color {
+    track: #101923;
+    active: #54d6a7;
+    ink: #182017;
+    active-ink: #02130d;
+    label: #d2ddd0;
+    rule: #405266;
+    focus-ring: #ff9f1c;
+  }
+  length { radius: 7; border: 2; }
+  material { flat: Flat; }
+}
+Toggle[role=Track] { background: track; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+Toggle[role=Fill] { background: active; foreground: active-ink; border: active; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+Toggle[role=Label] { foreground: label; }
+`, "Test Toggle", "") || !SetActiveStylePack("test.toggle") {
+		t.Fatal("test toggle style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	value := int32(0)
+	rt.SetFocus(89)
+
+	rt.Toggle(ToggleProps{
+		Bounds:   Rectangle{X: 8, Y: 28, Width: 120, Height: 34},
+		ID:       89,
+		Value:    &value,
+		OffLabel: "Off",
+		OnLabel:  "On",
+	})
+
+	var sawTrack, sawActive, sawOff, sawOn bool
+	for _, op := range rt.FrameOps() {
+		if op.ID != 89 {
+			continue
+		}
+		switch {
+		case op.Kind == FrameOpRect && op.Focused:
+			sawTrack = true
+			if op.Color != (Color{R: 0x10, G: 0x19, B: 0x23, A: 0xff}) || op.BorderColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.FocusColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
+				t.Fatalf("toggle track style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Selected:
+			sawActive = true
+			if op.Color != (Color{R: 0x54, G: 0xd6, B: 0xa7, A: 0xff}) || op.BorderColor != (Color{R: 0x54, G: 0xd6, B: 0xa7, A: 0xff}) {
+				t.Fatalf("toggle active style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Off":
+			sawOff = true
+			if op.Color != (Color{R: 0x02, G: 0x13, B: 0x0d, A: 0xff}) {
+				t.Fatalf("toggle off label style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "On":
+			sawOn = true
+			if op.Color != (Color{R: 0xd2, G: 0xdd, B: 0xd0, A: 0xff}) {
+				t.Fatalf("toggle on label style op = %+v", op)
+			}
+		}
+	}
+	if !sawTrack || !sawActive || !sawOff || !sawOn {
+		t.Fatalf("missing styled toggle ops: track=%v active=%v off=%v on=%v ops=%+v", sawTrack, sawActive, sawOff, sawOn, rt.FrameOps())
+	}
+}
+
+func TestFieldsetPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.fieldset;
+tokens {
+  color {
+    canvas: #101820;
+    text: #d8e4f5;
+    rule: #506172;
+  }
+  length { radius: 9; border: 3; }
+  material { flat: Flat; }
+}
+Fieldset { background: canvas; foreground: text; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.75; }
+`, "Test Fieldset", "") || !SetActiveStylePack("test.fieldset") {
+		t.Fatal("test fieldset style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+
+	rt.Fieldset(FieldsetProps{
+		Bounds: Rectangle{X: 12, Y: 24, Width: 140, Height: 70},
+		Title:  "Group",
+	})
+
+	var sawFrame, sawTitle, sawText bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 12, Y: 24, Width: 140, Height: 70}):
+			sawFrame = true
+			if op.Color != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x50, G: 0x61, B: 0x72, A: 0xff}) ||
+				op.BorderWidth != 3 || op.Radius != 9 ||
+				op.Material != MaterialFlat || op.Opacity != 0.75 {
+				t.Fatalf("fieldset frame style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds.Y == 16:
+			sawTitle = true
+			if op.Color != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) {
+				t.Fatalf("fieldset title background op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Group":
+			sawText = true
+			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) {
+				t.Fatalf("fieldset title text op = %+v", op)
+			}
+		}
+	}
+	if !sawFrame || !sawTitle || !sawText {
+		t.Fatalf("missing fieldset ops: frame=%v title=%v text=%v ops=%+v", sawFrame, sawTitle, sawText, rt.FrameOps())
+	}
+}
+
+func TestPanedViewHandleUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.paned;
+tokens {
+  color {
+    handle: #314150;
+    edge: #6a7d90;
+  }
+  length { radius: 4; border: 2; }
+  material { flat: Flat; }
+}
+PanedView[role=Handle] { background: handle; border: edge; radius: radius; border-width: border; material: flat; opacity: 0.8; }
+`, "Test Paned", "") || !SetActiveStylePack("test.paned") {
+		t.Fatal("test paned style did not activate")
+	}
+	rt := New(AppConfig{Width: 180, Height: 140}).(*runtime)
+	split := int32(50)
+
+	changed := rt.PanedView(PanedViewProps{
+		ID:        77,
+		Bounds:    Rectangle{X: 10, Y: 20, Width: 120, Height: 80},
+		Split:     &split,
+		MinFirst:  20,
+		MinSecond: 20,
+	})
+
+	if changed != 0 {
+		t.Fatalf("paned view unexpectedly changed split: %d", changed)
+	}
+	ops := rt.FrameOps()
+	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
+		t.Fatalf("expected one paned handle op, got %+v", ops)
+	}
+	op := ops[0]
+	if op.Bounds != (Rectangle{X: 10, Y: 66, Width: 120, Height: 8}) ||
+		op.Color != (Color{R: 0x31, G: 0x41, B: 0x50, A: 0xff}) ||
+		op.BorderColor != (Color{R: 0x6a, G: 0x7d, B: 0x90, A: 0xff}) ||
+		op.BorderWidth != 2 || op.Radius != 4 ||
+		op.Material != MaterialFlat || op.Opacity != 0.8 ||
+		op.ID != 77 {
+		t.Fatalf("paned handle style op = %+v", op)
+	}
+}
+
+func TestToastUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.toast;
+tokens {
+  color {
+    panel: #233040;
+    text: #edf3ff;
+    rule: #7890aa;
+  }
+  length { radius: 7; border: 2; }
+  material { flat: Flat; }
+}
+Toast { background: panel; foreground: text; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.85; }
+Toast[role=Label] { foreground: text; }
+`, "Test Toast", "") || !SetActiveStylePack("test.toast") {
+		t.Fatal("test toast style did not activate")
+	}
+	rt := New(AppConfig{Width: 220, Height: 120}).(*runtime)
+
+	rt.BeginFrame()
+	rt.Toast(ToastProps{Message: "Saved", Seconds: 1})
+	rt.EndFrame()
+
+	var sawSurface, sawLabel bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect:
+			sawSurface = true
+			if op.Color != (Color{R: 0x23, G: 0x30, B: 0x40, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x78, G: 0x90, B: 0xaa, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 7 ||
+				op.Material != MaterialFlat || op.Opacity != 0.85 {
+				t.Fatalf("toast surface style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Saved":
+			sawLabel = true
+			if op.Color != (Color{R: 0xed, G: 0xf3, B: 0xff, A: 0xff}) {
+				t.Fatalf("toast label style op = %+v", op)
+			}
+		}
+	}
+	if !sawSurface || !sawLabel {
+		t.Fatalf("missing toast ops: surface=%v label=%v ops=%+v", sawSurface, sawLabel, rt.FrameOps())
+	}
+}
+
+func TestDragScalarPaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.drag_scalar;
+tokens {
+  color {
+    surface: #101820;
+    field: #182231;
+    field-focus: #22364f;
+    ink: #e8f1ff;
+    label: #d8e4f5;
+    rule: #506172;
+    focus-ring: #ff9f1c;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Surface { background: surface; material: flat; }
+Text { foreground: label; font-size: 14; }
+TextField { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+TextField:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
+`, "Test Drag Scalar", "") || !SetActiveStylePack("test.drag_scalar") {
+		t.Fatal("test drag scalar style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	values := []float32{2.5}
+	rt.SetFocus(sliderFocusID(303, 0, false))
+
+	rt.BeginFrame()
+	rt.dragFloat(dragFloatProps{
+		Bounds:     Rectangle{X: 10, Y: 30, Width: 120, Height: 30},
+		ID:         303,
+		Label:      "Amount",
+		Values:     values,
+		ValueCount: 1,
+		Speed:      1,
+		Min:        0,
+		Max:        10,
+		Format:     "%.1f",
+	})
+	rt.EndFrame()
+
+	var sawCell, sawLabel bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpButton && op.ID == 303 && op.Row == 0:
+			sawCell = true
+			if !op.Focused || op.Color != (Color{R: 0x22, G: 0x36, B: 0x4f, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) ||
+				op.FocusColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) ||
+				op.TextColor != (Color{R: 0xe8, G: 0xf1, B: 0xff, A: 0xff}) ||
+				op.AmbientColor != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("drag scalar cell style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Amount":
+			sawLabel = true
+			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) {
+				t.Fatalf("drag scalar label style op = %+v", op)
+			}
+		}
+	}
+	if !sawCell || !sawLabel {
+		t.Fatalf("missing styled drag scalar ops: cell=%v label=%v ops=%+v", sawCell, sawLabel, rt.FrameOps())
 	}
 }
 
@@ -378,6 +1754,7 @@ func TestButtonConsumesTapInsideBounds(t *testing.T) {
 }
 
 func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
+	useMaterialStyleForTest(t)
 	rt := New(AppConfig{}).(*runtime)
 	bounds := Rectangle{X: 20, Y: 10, Width: 80, Height: 32}
 
@@ -399,8 +1776,8 @@ func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
 	if len(ops) == 0 || !ops[0].Disabled {
 		t.Fatal("disabled scope did not mark recorded content disabled")
 	}
-	want := resolveButtonStyle(rt.theme(), rt.effectiveDark(), rt.activeTheme,
-		ButtonProps{Disabled: true}, ButtonStateDisabled)
+	want := resolveButtonStyleForKind(rt.theme(), rt.effectiveDark(), rt.activeTheme,
+		ButtonProps{Disabled: true}, ButtonStateDisabled, StyleSheet_StyleKindButton())
 	if unpackRGBA(ops[0].Button.Appearance.Value.Background) != want.Background || unpackRGBA(ops[0].Button.Appearance.Value.Foreground) != want.Foreground || unpackRGBA(ops[0].Button.Appearance.Value.Border) != want.Border {
 		t.Fatal("disabled scope did not use the canonical disabled button style")
 	}
@@ -446,9 +1823,9 @@ func TestScrollScopeClipsAndRestoresChildren(t *testing.T) {
 	if r.Button(ButtonProps{Bounds: NewRectangle(10, 80, 100, 28), Label: "clipped"}) {
 		t.Fatal("clipped child activated")
 	}
-	r.Rect(10, 0, 100, 160, RED)
+	r.Box(NewRectangle(10, 0, 100, 160), RED, BLANK)
 	r.BeginScroll(NewRectangle(20, 30, 100, 60), 100, nil)
-	r.Rect(0, 0, 160, 160, BLUE)
+	r.Box(NewRectangle(0, 0, 160, 160), BLUE, BLANK)
 	r.EndScroll()
 	r.EndScroll()
 	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 80, 100, 28), Label: "outside"}) {
@@ -498,6 +1875,61 @@ func TestScrollThumbDrag(t *testing.T) {
 	draw()
 	if offset != 140 {
 		t.Fatal("released thumb kept dragging")
+	}
+}
+
+func TestScrollChromePaintUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.scroll;
+tokens {
+  color {
+    surface: #121a24;
+    thumb: #7ae2ba;
+    rule: #506172;
+    wrong: #ff00ff;
+  }
+  length { radius: 4; border: 2; }
+  material { flat: Flat; }
+}
+Surface { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
+Slider[tone=Accent] { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
+SliderThumb { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
+Scroll { background: surface; border: rule; radius: radius; border-width: border; material: flat; }
+ScrollThumb { background: thumb; border: thumb; radius: radius; border-width: border; material: flat; }
+`, "Test Scroll", "") || !SetActiveStylePack("test.scroll") {
+		t.Fatal("test scroll style did not activate")
+	}
+	r := New(AppConfig{Width: 200, Height: 160}).(*runtime)
+	offset := int32(40)
+
+	r.BeginFrame()
+	r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
+	r.EndScroll()
+	r.EndFrame()
+
+	var sawTrack, sawThumb bool
+	for _, op := range r.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 100, Y: 10, Width: 10, Height: 60}):
+			sawTrack = true
+			if op.Color != (Color{R: 0x12, G: 0x1a, B: 0x24, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x50, G: 0x61, B: 0x72, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 4 {
+				t.Fatalf("scroll track style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds.X == 102 && op.Bounds.Width == 6:
+			sawThumb = true
+			if op.Color != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 4 {
+				t.Fatalf("scroll thumb style op = %+v", op)
+			}
+		}
+	}
+	if !sawTrack || !sawThumb {
+		t.Fatalf("missing styled scroll chrome: track=%v thumb=%v ops=%+v", sawTrack, sawThumb, r.FrameOps())
 	}
 }
 
@@ -709,6 +2141,7 @@ func TestRowPlacesZeroOriginButtons(t *testing.T) {
 }
 
 func TestDirectPackageButtonProps(t *testing.T) {
+	useMaterialStyleForTest(t)
 	var drawButton func(ButtonProps) bool = Button
 	rt := New(AppConfig{}).(*runtime)
 	SetRuntime(rt)
@@ -889,6 +2322,27 @@ func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 	}
 }
 
+func TestAppBackgroundUsesActiveStylePack(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.app_background;
+App { background: #123456; }
+`, "App Background", "") {
+		t.Fatal("style pack did not register")
+	}
+
+	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	rt.AppBackground()
+	ops := rt.FrameOps()
+	if len(ops) != 1 || ops[0].Kind != FrameOpBackground {
+		t.Fatalf("missing app background op: %#v", ops)
+	}
+	if ops[0].Color != (Color{0x12, 0x34, 0x56, 0xff}) {
+		t.Fatalf("app background color = %#v", ops[0].Color)
+	}
+}
+
 func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 
@@ -965,7 +2419,7 @@ func TestFrameOpsResetEachFrame(t *testing.T) {
 	}
 
 	rt.BeginFrame()
-	rt.Rect(1, 2, 3, 4, RED)
+	rt.Box(NewRectangle(1, 2, 3, 4), RED, BLANK)
 	rt.EndFrame()
 	ops := rt.FrameOps()
 	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
@@ -1617,6 +3071,7 @@ func TestMouseButtonDownAndReleaseState(t *testing.T) {
 }
 
 func TestTableViewKeyboardNavigationScrollAndRendering(t *testing.T) {
+	useMaterialStyleForTest(t)
 	rt := New(AppConfig{Width: 360, Height: 260}).(*runtime)
 	selectedRow := int32(0)
 	selectedColumn := int32(0)
@@ -1880,10 +3335,33 @@ func TestSystemThemeReadsXFCEXSettingsAndGTKCSS(t *testing.T) {
 	}
 }
 
-func TestTextInputFrameOpsCarryModernThemeStyle(t *testing.T) {
+func TestTextInputFrameOpsCarryStyleSheetPaint(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.text_input;
+tokens {
+  color {
+    field: #182231;
+    field-focus: #22364f;
+    area: #202a36;
+    field-ink: #e8f1ff;
+    area-ink: #d8e4f5;
+    field-rule: #506172;
+    area-rule: #60758b;
+    focus-ring: #ff9f1c;
+  }
+  length { field-radius: 5; area-radius: 7; border: 2; }
+  material { flat: Flat; }
+}
+Surface { background: #101820; material: flat; }
+TextField { background: field; foreground: field-ink; border: field-rule; focus: focus-ring; radius: field-radius; border-width: border; material: flat; }
+TextField:focus { background: field-focus; foreground: field-ink; border: focus-ring; focus: focus-ring; material: flat; }
+TextArea { background: area; foreground: area-ink; border: area-rule; focus: focus-ring; radius: area-radius; border-width: border; material: flat; }
+`, "Test Text Input", "") || !SetActiveStylePack("test.text_input") {
+		t.Fatal("test text input style did not activate")
+	}
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
-	rt.SetThemeSource(ThemeSourceApp)
-	rt.SetCurrentTheme(int32(ThemeCobalt), 1)
 	SetRuntime(rt)
 	defer SetRuntime(nil)
 
@@ -1914,8 +3392,8 @@ func TestTextInputFrameOpsCarryModernThemeStyle(t *testing.T) {
 	})
 	EndFrame()
 
-	wantFocused := rt.textInputStyle(true, false)
-	wantIdle := rt.textInputStyle(false, false)
+	wantFocused := rt.textInputStyle(FrameOpTextField, true, false)
+	wantIdle := rt.textInputStyle(FrameOpTextArea, false, false)
 	foundField := false
 	foundArea := false
 	ops := FrameOps()
@@ -1948,11 +3426,17 @@ func TestTextInputFrameOpsCarryModernThemeStyle(t *testing.T) {
 		if got := op.BorderWidth; got != want.BorderWidth {
 			t.Fatalf("%s border width = %#v, want %#v", op.Kind, got, want.BorderWidth)
 		}
-		if got, want := op.SelectionColor, rt.theme().selectedHot; got != want {
+		if got, want := op.SelectionColor, want.Focus; got != want {
 			t.Fatalf("selection color = %#v, want %#v", got, want)
 		}
-		if got, want := op.SelectedTextColor, rt.theme().selectedText; got != want {
+		if got, want := op.SelectedTextColor, want.Foreground; got != want {
 			t.Fatalf("selected text color = %#v, want %#v", got, want)
+		}
+		if got, want := op.CursorColor, want.Focus; got != want {
+			t.Fatalf("cursor color = %#v, want %#v", got, want)
+		}
+		if got, want := op.AmbientColor, (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}); got != want {
+			t.Fatalf("ambient color = %#v, want %#v", got, want)
 		}
 		if op.SelectionStart != 1 || op.SelectionEnd != 4 {
 			t.Fatalf("selection range = %d..%d, want 1..4", op.SelectionStart, op.SelectionEnd)

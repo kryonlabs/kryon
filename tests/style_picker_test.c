@@ -24,8 +24,17 @@ main(void)
 
     ClearStylePacks();
     dropdown_calls = 0;
+    dropdown_changed = 0;
+    dropdown_next_index = 0;
     assert(!StylePicker((StylePickerProps){.id = 41}));
-    assert(dropdown_calls == 0);
+    assert(dropdown_calls == 1);
+    assert(captured_dropdown.option_count >= 5);
+    assert(captured_dropdown.options != NULL);
+    assert(strcmp(captured_dropdown.options[0], "Material") == 0);
+    assert(GetActiveStylePack() != NULL);
+    assert(strcmp(GetActiveStylePack()->id, "kryon.material") == 0);
+
+    ClearStylePacks();
 
     assert(RegisterStylePack((StylePack){
         .id = "vanilla",

@@ -260,6 +260,46 @@ func TestComposedPopupOwnsOrdinaryChildrenAndPaintOrder(t *testing.T) {
 	}
 }
 
+func TestComposedPopupPanelUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.popup;
+tokens {
+  color {
+    panel: #202836;
+    rule: #566578;
+  }
+  length { radius: 8; border: 2; }
+  material { flat: Flat; }
+}
+Surface { background: panel; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Popup", "") || !SetActiveStylePack("test.popup") {
+		t.Fatal("test popup style did not activate")
+	}
+	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
+	open := true
+
+	r.BeginFrame()
+	if !r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 30, 140, 100), ID: 29010, Open: &open}) {
+		t.Fatal("open popup returned false")
+	}
+	r.EndPopup()
+	r.EndFrame()
+
+	for _, op := range r.FrameOps() {
+		if op.ID == 29010 && op.Kind == FrameOpRect {
+			if op.Color != (Color{R: 0x20, G: 0x28, B: 0x36, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x56, G: 0x65, B: 0x78, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 8 {
+				t.Fatalf("popup panel style op = %+v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("popup panel op not found: %+v", r.FrameOps())
+}
+
 func TestComposedPopupDismissalConsumesOutsideTap(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 180}).(*runtime)
 	open := true

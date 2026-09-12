@@ -67,8 +67,8 @@ Valid :: (viewport: Rectangle) #ui {
             }
         }
         menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
-        menus: [1] Menu = {{{0},"File",menu_items,2}}
-        menu_result: MenuBarResult = MenuBar(104,(Rectangle){0,0,Scale(200),Scale(30)},menus,1,&menu_open)
+        menus: [1] MenuGroup = {{{0},"File",menu_items,2}}
+        menu_result: MenuResult = Menu((MenuProps){.id = 104, .mode = MenuModeBar, .bounds = {0,0,Scale(200),Scale(30)}, .menus = menus, .menu_count = 1, .open_index = &menu_open})
         if menu_result.activated_id != 0 {
             count = menu_result.activated_id
         }
@@ -248,8 +248,8 @@ grep -Fq 'Button(([&]() { ButtonProps record_value_0{};' "$c"
 grep -Fq 'MenuItem menu_items[2]' "$c"
 grep -Fq 'MenuCommand' "$c"
 grep -Fq 'MenuSeparator' "$c"
-grep -Fq 'Menu menus[1]' "$c"
-grep -Fq 'MenuBarResult menu_result = MenuBar' "$c"
+grep -Fq 'MenuGroup menus[1]' "$c"
+grep -Fq 'MenuResult menu_result = Menu' "$c"
 grep -Fq 'AcceleratorPressed((Accelerator)' "$c"
 grep -Fq 'NavigationBarItem nav_items[1]' "$c"
 grep -Fq 'NavigationBarResult nav_result = NavigationBar' "$c"

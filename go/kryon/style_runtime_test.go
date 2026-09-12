@@ -24,6 +24,7 @@ func TestTypefaceStylePresenceAndButtonMeasurement(t *testing.T) {
 	if got := mergeStyle(base, Style{Fields: StyleTypeface}); got.Typeface != "" {
 		t.Fatal("explicit empty typeface must restore the default face")
 	}
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{Width: 500, Height: 100}).(*runtime)
 	r.BeginFrame()
 	for _, name := range []string{"semibold", "", "unknown-face"} {
@@ -34,13 +35,37 @@ func TestTypefaceStylePresenceAndButtonMeasurement(t *testing.T) {
 		if frame.FontID != fontID {
 			t.Fatalf("typeface %q did not reach rendering", name)
 		}
-		style := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme, props, ButtonStateNormal)
+		style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme, props, ButtonStateNormal, StyleSheet_StyleKindButton())
 		want := float32(runtimeTextWidthWithFont(props.Label, frame.Button.Font, fontID)) + 2*style.PaddingX
 		if frame.Bounds.Width != want {
 			t.Fatalf("typeface %q measurement=%g want=%g", name, frame.Bounds.Width, want)
 		}
 	}
 	r.EndFrame()
+}
+
+func TestButtonWithoutStylePackHasNoVisualDefaults(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	r := New(AppConfig{}).(*runtime)
+	r.BeginFrame()
+	r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 32}, Label: "Plain", ID: 430})
+	r.EndFrame()
+	for _, op := range r.FrameOps() {
+		if op.Kind != FrameOpButton || op.ID != 430 {
+			continue
+		}
+		style := op.Button.Appearance.Value
+		if style.Background != 0 || style.Foreground != 0 || style.Border != 0 ||
+			style.Focus != 0 || style.Radius != 0 || style.BorderWidth != 0 {
+			t.Fatalf("unstyled button leaked visual defaults: %+v", style)
+		}
+		if style.Opacity != 1 || style.FontSize == 0 {
+			t.Fatalf("unstyled button lost minimal behavior metrics: %+v", style)
+		}
+		return
+	}
+	t.Fatal("button was not recorded")
 }
 
 func TestSharedInteractionStatePrecedence(t *testing.T) {
@@ -151,86 +176,21 @@ func TestSharedStyleTransitionPreservesLayoutAndStatePrecedence(t *testing.T) {
 }
 
 func TestDarkPrimaryFocusAndDisabledFaces(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	theme := ThemeDefaultDark()
 	r.SetTheme(theme)
 	props := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}
-	focus := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateFocus)
-	disabled := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateDisabled)
-	if focus.Background != theme.Colors.AccentPressed {
+	focus := resolveButtonStyleForKind(r.theme(), true, r.activeTheme, props, ButtonStateFocus, StyleSheet_StyleKindButton())
+	disabled := resolveButtonStyleForKind(r.theme(), true, r.activeTheme, props, ButtonStateDisabled, StyleSheet_StyleKindButton())
+	if focus.Background != (Color{0xc9, 0xa8, 0xff, 0xff}) {
 		t.Fatal("focus must use the deeper primary face")
 	}
-	if disabled.Background.B >= focus.Background.B || disabled.Background.B <= theme.Colors.Surface.B {
+	if disabled.Opacity >= 1 || disabled.Foreground.A == 0 {
 		t.Fatal("disabled primary must retain only a subdued tint")
 	}
-	if focus.Focus != theme.Colors.Focus {
+	if focus.Focus != (Color{0xc9, 0xa8, 0xff, 0xff}) {
 		t.Fatal("deeper face must not remove the theme's focus indicator")
-	}
-}
-
-func TestFocusPolicyAndExplicitOverrides(t *testing.T) {
-	for _, dark := range []bool{false, true} {
-		r := New(AppConfig{}).(*runtime)
-		theme := ThemeDefaultLight()
-		if dark {
-			theme = ThemeDefaultDark()
-		}
-		r.SetTheme(theme)
-		for _, emphasis := range []ButtonEmphasis{ButtonEmphasisFilled, ButtonEmphasisSoft, ButtonEmphasisOutline, ButtonEmphasisGhost, ButtonEmphasisLink} {
-			props := ButtonProps{Tone: ButtonToneSuccess, Emphasis: emphasis}
-			paint := resolveButtonStyle(r.theme(), dark, r.activeTheme, props, ButtonStateFocus)
-			expected := theme.Colors.Focus
-			if dark {
-				expected = unpackRGBA(Surface_ChromaColor(packRGBA(theme.Colors.Success), 255))
-				expected.A = theme.Colors.Focus.A
-			} else {
-				expected.R, expected.G, expected.B = theme.Colors.Success.R, theme.Colors.Success.G, theme.Colors.Success.B
-				if emphasis == ButtonEmphasisSoft || emphasis == ButtonEmphasisGhost || emphasis == ButtonEmphasisLink {
-					expected.A = uint8(uint32(expected.A) * 18 / 100)
-				}
-			}
-			if paint.Focus != expected {
-				t.Fatalf("dark=%v emphasis=%v: focus=%+v want %+v", dark, emphasis, paint.Focus, expected)
-			}
-			for _, custom := range []Color{{}, {R: 210, G: 20, B: 170, A: 128}} {
-				props.Style.Focused = Style{Fields: StyleFocus, Focus: custom}
-				paint = resolveButtonStyle(r.theme(), dark, r.activeTheme, props, ButtonStateFocus)
-				if paint.Focus != custom {
-					t.Fatal("default focus policy overrode an explicit style")
-				}
-			}
-		}
-	}
-	if Button_ButtonFocus(int32(ButtonToneSuccess), int32(ButtonEmphasisFilled), 0xffffffff, 0x006cff00, 0x00856aff)&255 != 0 {
-		t.Fatal("semantic hue must preserve transparent theme focus")
-	}
-}
-
-func TestDarkSemanticFocusSeparatesOuterEdgeFromMaterial(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
-	for _, alpha := range []uint8{0, 128, 255} {
-		theme := ThemeDefaultDark()
-		theme.Colors.Focus.A = alpha
-		r.SetTheme(theme)
-		for _, test := range []struct {
-			tone  ButtonTone
-			color Color
-		}{
-			{ButtonToneDanger, theme.Colors.Focus},
-			{ButtonToneSuccess, Color{0, 255, 195, alpha}},
-			{ButtonToneWarning, theme.Colors.Focus},
-		} {
-			props := ButtonProps{Tone: test.tone}
-			paint := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateFocus)
-			if paint.Focus != test.color {
-				t.Fatalf("semantic focus tone=%d: got %v want %v", test.tone, paint.Focus, test.color)
-			}
-			props.Style.Focused = Style{Fields: StyleFocus, Focus: Color{100, 80, 200, 96}}
-			paint = resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateFocus)
-			if paint.Focus != props.Style.Focused.Focus {
-				t.Fatal("semantic focus must not recolor an explicit style")
-			}
-		}
 	}
 }
 
@@ -256,72 +216,36 @@ func TestFocusVolumeRetainsMaterialAndClipsInward(t *testing.T) {
 	}
 }
 
-func TestDarkLoadingMaterialUsesOneSemanticTint(t *testing.T) {
-	r := New(AppConfig{}).(*runtime)
-	for _, alpha := range []uint8{0, 128, 255} {
-		theme := ThemeDefaultDark()
-		theme.Colors.Surface.A = alpha
-		theme.Colors.Danger.A = alpha
-		theme.Colors.Success.A = alpha
-		theme.Colors.Warning.A = alpha
-		r.SetTheme(theme)
-		for _, test := range []struct {
-			tone  ButtonTone
-			color Color
-		}{
-			{ButtonToneDanger, theme.Colors.Danger},
-			{ButtonToneSuccess, theme.Colors.Success},
-			{ButtonToneWarning, theme.Colors.Warning},
-		} {
-			props := ButtonProps{Tone: test.tone, Loading: true}
-			paint := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateAuto)
-			want := Button_MixColor(packRGBA(theme.Colors.Surface), packRGBA(test.color), 14)
-			if packRGBA(paint.Background) != want || paint.Background.A != alpha {
-				t.Fatalf("tone=%d alpha=%d: background=%v want=%08x", test.tone, alpha, paint.Background, want)
-			}
-			props.Style.Loading = Style{Fields: StyleBackground, Background: Color{R: 20, G: 40, B: 60}}
-			paint = resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateAuto)
-			if paint.Background != props.Style.Loading.Background {
-				t.Fatal("loading default replaced an explicit transparent background")
-			}
-		}
-	}
-}
-
 func TestLightPrimaryStateContrast(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
-	theme := ThemeDefaultLight()
-	r.SetTheme(theme)
 	props := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled}
-	for _, state := range []ButtonState{ButtonStateHover, ButtonStatePressed, ButtonStateFocus} {
-		paint := resolveButtonStyle(r.theme(), false, r.activeTheme, props, state)
-		if paint.Foreground != theme.Colors.Link {
-			t.Fatalf("light primary state %d should use blue ink, got %+v", state, paint.Foreground)
-		}
+	normal := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
+		props, ButtonStateNormal)
+	hover := resolveButtonStyle(r.theme(), r.effectiveDark(), r.activeTheme,
+		props, ButtonStateHover)
+	if normal.Background != (Color{0xc9, 0xa8, 0xff, 0xff}) ||
+		normal.Foreground != (Color{0x17, 0x10, 0x22, 0xff}) {
+		t.Fatalf("material accent button did not come from KSS: %+v", normal)
 	}
-	for _, state := range []ButtonState{ButtonStateFocus, ButtonStateDisabled, ButtonStateLoading} {
-		paint := resolveButtonStyle(r.theme(), false, r.activeTheme, props, state)
-		if paint.Background.R < 220 || paint.Background.G < 230 {
-			t.Fatalf("light primary state %d should have a pale face: %+v", state, paint.Background)
-		}
+	if hover.Background != (Color{0xd5, 0xbb, 0xff, 0xff}) ||
+		hover.Foreground != normal.Foreground {
+		t.Fatalf("material accent hover did not come from KSS: %+v", hover)
 	}
 }
 
 func TestButtonUsesDeclaredThemeSurfaces(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
-	theme := ThemeDefaultDark()
-	theme.Colors.Surface = Color{R: 12, G: 23, B: 34, A: 0}
-	theme.Colors.SurfaceRaised = Color{R: 45, G: 56, B: 67, A: 89}
-	r.SetTheme(theme)
 	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled}
 	got := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateNormal)
-	if got.Background != theme.Colors.SurfaceRaised {
-		t.Fatalf("declared raised surface replaced: %+v", got.Background)
+	if got.Background != (Color{0x20, 0x26, 0x31, 0xff}) {
+		t.Fatalf("material button did not use KSS panel background: %+v", got.Background)
 	}
 	props.Emphasis = ButtonEmphasisOutline
 	got = resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateNormal)
-	if got.Background != theme.Colors.Surface {
-		t.Fatalf("transparent theme surface replaced: %+v", got.Background)
+	if got.Background != (Color{}) || got.Border != (Color{0x4b, 0x53, 0x61, 0xff}) {
+		t.Fatalf("material outline button did not use KSS values: %+v", got)
 	}
 }
 
@@ -383,16 +307,14 @@ func TestStyleStateSelection(t *testing.T) {
 }
 
 func TestDarkSecondaryHoverCatchesCoolLight(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
-	r.SetThemeMode(ThemeModeDark)
 	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}
 	normal := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateNormal)
 	hover := resolveButtonStyle(r.theme(), true, r.activeTheme, props, ButtonStateHover)
-	// The body keeps a restrained tint; the shared material adds the brighter
-	// lower reflection. Do not restore the old saturated-blue hover face.
-	if normal.Background != (Color{19, 52, 83, 255}) ||
-		hover.Background != (Color{19, 62, 104, 255}) {
-		t.Fatalf("secondary hover lost its restrained cool reflection: normal=%+v hover=%+v",
+	if normal.Background != (Color{0x20, 0x26, 0x31, 0xff}) ||
+		hover.Background != (Color{0x2a, 0x31, 0x40, 0xff}) {
+		t.Fatalf("secondary hover did not use KSS states: normal=%+v hover=%+v",
 			normal.Background, hover.Background)
 	}
 }

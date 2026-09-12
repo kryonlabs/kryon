@@ -104,7 +104,7 @@ are migrated to canonical props and the old surface is deleted.
 
 - `Text` is not an editable rich-text document model.
 - Kryon shall not ship `Heading`, `Caption`, `MutedText`, `ErrorText`,
-  `WrappedText`, or `SelectableText` widget entry points.
+  `WrappedText`, or `standalone selectable text widget` widget entry points.
 - Kryon shall not infer a role from content, position, or font size.
 - This proposal does not add Kapsule terminal rendering to Kryon text widgets.
 - Applications still own copy, localization keys, document structure, and

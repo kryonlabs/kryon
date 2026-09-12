@@ -24,7 +24,7 @@ ui_draw_material(Rectangle bounds, Rectangle surface_bounds, Color background, C
         .value = {.background = ColorToInt(background), .border = ColorToInt(border),
                   .focus = ColorToInt(focus), .radius = radius,
                   .border_width = border_width, .opacity = opacity, .material = material},
-        .light = ColorToInt(light), .ambient = ColorToInt(GetThemeSurface()),
+        .light = ColorToInt(light), .ambient = ColorToInt(ui_surface_style().background),
         .hover = hover, .press = press, .focus = focused, .disabled = disabled,
         .fill = fill_states, .fill_valid = true, .scale = (float)Scale(1000) / 1000.0f
     };
@@ -240,6 +240,22 @@ ui_style_apply_effects_fill(FillStates fill)
     return fill;
 }
 
+Style
+ui_surface_style(void)
+{
+    StyleData base = {
+        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
+                             StyleMaterial),
+        .opacity = 1.0f,
+        .font_size = 16.0f,
+        .icon_size = 20.0f,
+        .material = MaterialFlat
+    };
+    StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindSurface()),
+                                         ButtonStateNormal);
+    return ui_style_apply_effects(ui_unpack_style(value));
+}
+
 void
 ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
 {
@@ -250,7 +266,7 @@ ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
     Color neutral = theme != NULL ? theme->colors.surface_raised : scheme.surface_variant;
     Color accent = theme != NULL ? theme->colors.accent : scheme.primary;
     Color accent_hover = theme != NULL ? theme->colors.accent_hover
-                                        : GetThemeButtonHover();
+                                        : accent;
     Color accent_pressed = theme != NULL ? theme->colors.accent_pressed
                                           : DarkenColor(accent, 14);
     Color danger = theme != NULL ? theme->colors.danger : GetColor(defaults.danger);
@@ -261,7 +277,7 @@ ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
         : GetColor(defaults.text_disabled);
 
     Palette palette = {
-        .background = ColorToInt(theme != NULL ? theme->colors.background : GetThemeBackground()),
+        .background = ColorToInt(theme != NULL ? theme->colors.background : scheme.surface),
         .surface = ColorToInt(surface),
         .surface_raised = ColorToInt(neutral),
         .surface_sunken = ColorToInt(theme != NULL ? theme->colors.surface_sunken : scheme.surface_container),
@@ -284,8 +300,8 @@ ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
         .on_success = ColorToInt(theme != NULL ? theme->colors.on_success : GetColor(defaults.on_success)),
         .warning = ColorToInt(warning),
         .on_warning = ColorToInt(theme != NULL ? theme->colors.on_warning : GetColor(defaults.on_warning)),
-        .link = ColorToInt(theme != NULL ? theme->colors.link : GetThemeLink()),
-        .focus = ColorToInt(theme != NULL ? theme->colors.focus : GetThemeLink()),
+        .link = ColorToInt(theme != NULL ? theme->colors.link : scheme.primary),
+        .focus = ColorToInt(theme != NULL ? theme->colors.focus : scheme.primary),
         .shadow = ColorToInt(theme != NULL ? theme->colors.shadow : GetColor(defaults.shadow))
     };
     ThemeMetrics metrics = GetThemeMetrics();
@@ -690,7 +706,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(ui_default_style()) {
         ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
     } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
-        Color shadow = DarkenColor(c_bg, 35);
+        Color shadow = DarkenColor(ui_surface_style().background, 35);
         shadow.a = tokens.shadow_alpha;
         DrawRectangleRounded((Rectangle){bounds.x,
                                          bounds.y + Scale(tokens.shadow_offset_y),

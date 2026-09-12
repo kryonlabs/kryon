@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "runtime/toolbar.h"
 
 ToolbarResult
@@ -21,34 +22,57 @@ RenderToolbar(ToolbarProps toolbar)
         .scale = (float)Scale(1000) / 1000.0f
     });
 
-    Color bar = DarkenColor(c_bg, 14);
-    if(ui_modern_style()) {
-        ThemeMetrics tokens = GetThemeMetrics();
-        if(tokens.panel_alpha < bar.a)
-            bar.a = tokens.panel_alpha;
-    }
-    DrawRectangle(toolbar.x, toolbar.y, toolbar.width, toolbar.height, bar);
-    if(ui_modern_style() && GetThemeMetrics().shine_alpha > 0) {
-        Color shine = WHITE;
-        shine.a = GetThemeMetrics().shine_alpha;
-        DrawRectangle(toolbar.x, toolbar.y, toolbar.width, Scale(1), shine);
-    }
+    StyleFrame bar_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 1);
+    StyleFrame divider_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 18);
+    Style bar = ui_unpack_style(bar_frame.value);
+    Style divider = ui_unpack_style(divider_frame.value);
+    Rectangle bar_bounds = {(float)toolbar.x, (float)toolbar.y,
+                            (float)toolbar.width, (float)toolbar.height};
+    ui_draw_material(bar_bounds, (Rectangle){0}, bar.background, bar.border,
+                     bar.border, bar.radius, bar.border_width, 0.0f, 0.0f,
+                     0, bar.focus, 0.0f, bar.opacity, ui_style_fill(bar),
+                     bar.material);
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
-             DarkenColor(c_bg, 42));
+             divider.border);
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {
         for(int i = toolbar.action_count - 1; i >= 0; i--) {
             Rectangle action_bounds = ToolbarActionBoundsFor(layout, i,
                                                              toolbar.action_count);
-            if(!toolbar.actions[i].disabled &&
-               Button((ButtonProps){
-                   .bounds = action_bounds,
-                   .icon = toolbar.actions[i].icon, .icon_only = true,
-                   .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                   .style = {.normal = {.fields = StyleIconSize,
-                       .icon_size = (float)layout.action_icon_size * 1000.0f / Scale(1000)}}
-               }))
+            ButtonSpec button = {0};
+            Style action = ui_unpack_style(ui_control_style_frame_role_kind(
+                (ButtonProps){.tone = ButtonToneNeutral,
+                              .emphasis = ButtonEmphasisSoft,
+                              .size = ControlSizeMedium,
+                              .icon_only = true},
+                ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
+            Style action_hover = ui_unpack_style(ui_control_style_frame_role_kind(
+                (ButtonProps){.tone = ButtonToneNeutral,
+                              .emphasis = ButtonEmphasisSoft,
+                              .size = ControlSizeMedium,
+                              .icon_only = true},
+                ButtonStateHover, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
+            button.props.bounds = action_bounds;
+            button.props.icon = toolbar.actions[i].icon;
+            button.props.icon_only = 1;
+            button.props.disabled = toolbar.actions[i].disabled;
+            button.props.tone = ButtonToneNeutral;
+            button.props.emphasis = ButtonEmphasisSoft;
+            button.props.style.normal = action;
+            button.props.style.hover = action_hover;
+            button.props.style.normal.fields |= StyleIconSize;
+            button.props.style.normal.icon_size =
+                (float)layout.action_icon_size * 1000.0f / Scale(1000);
+            button.style_kind = StyleKindToolbar();
+            button.style_resolved = 1;
+            if(!toolbar.actions[i].disabled && ui_button_render(button))
                 result.clicked_action = i;
         }
     }

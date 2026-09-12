@@ -28,7 +28,7 @@ MenuMetricsFor :: (scale: float) -> MenuMetrics #export {
     return metrics
 }
 
-MenuBarItemWidth :: (label_width: i32, metrics: MenuMetrics) -> i32 #export {
+MenuGroupItemWidth :: (label_width: i32, metrics: MenuMetrics) -> i32 #export {
     width: i32 = label_width + metrics.bar_item_padding
     if width < metrics.bar_item_min_width {
         width = metrics.bar_item_min_width
@@ -80,7 +80,7 @@ MenuSubmenuX :: (row: Rectangle) -> i32 #export {
     return (i32)(row.x + row.width)
 }
 
-MenuBarItemBounds :: (x: i32, bar: Rectangle, width: i32,
+MenuGroupItemBounds :: (x: i32, bar: Rectangle, width: i32,
     metrics: MenuMetrics) -> Rectangle #export {
     item: Rectangle
     item.x = (float)x

@@ -223,7 +223,7 @@ func TestPopupMultiSelectKeyboardOwnership(t *testing.T) {
 		r := New(AppConfig{}).(*runtime)
 		selected := []int32{1, 0}
 		count, anchor := int32(1), int32(0)
-		props := MultiSelectListProps{
+		props := ListBoxProps{
 			Bounds: NewRectangle(10, 10, 120, 56), ID: 25706,
 			Items: []string{"Alpha", "Beta"}, ItemCount: 2, Selected: selected,
 			SelectedCount: &count, Anchor: &anchor, RowHeight: 28,
@@ -236,7 +236,7 @@ func TestPopupMultiSelectKeyboardOwnership(t *testing.T) {
 			r.endPopupInput(child)
 		}
 		r.setFocus(props.ID)
-		clicked := r.MultiSelectList(props)
+		clicked := r.ListBox(props)
 		wantClicked, wantAnchor, wantSelected := int32(-1), int32(0), int32(0)
 		if inside {
 			wantClicked, wantAnchor, wantSelected = 1, 1, 1
@@ -321,7 +321,7 @@ func TestPopupMenuKeyboardOwnership(t *testing.T) {
 			r.endPopupInput(child)
 		}
 		r.setFocus(25711)
-		got := r.PopupMenu(25711, 10, 10, items, 1)
+		got := r.Menu(MenuProps{ID: 25711, Mode: MenuModePopup, Bounds: NewRectangle(10, 10, 0, 0), Items: items, ItemCount: 1}).ActivatedID
 		want := int32(0)
 		if inside {
 			want = 25710
@@ -345,7 +345,7 @@ func TestPopupMenuKeyboardOwnership(t *testing.T) {
 			r.endPopupInput(child)
 		}
 		r.setFocus(25711)
-		r.PopupMenu(25711, 10, 10, items, 1)
+		r.Menu(MenuProps{ID: 25711, Mode: MenuModePopup, Bounds: NewRectangle(10, 10, 0, 0), Items: items, ItemCount: 1})
 		wantFocus := int32(25711)
 		if inside {
 			wantFocus = 0
@@ -433,7 +433,7 @@ func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
 		r := New(AppConfig{}).(*runtime)
 		r.QueueTap(12, 12)
 		r.BeginFrame()
-		r.SelectableText("copy me", 10, 10, Text16, WHITE)
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: WHITE, Selectable: true})
 		r.EndFrame()
 		r.SetClipboardText("seed")
 		r.QueueShortcut(KeyC)
@@ -443,7 +443,7 @@ func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
 		if !inside {
 			r.endPopupInput(child)
 		}
-		r.SelectableText("copy me", 10, 10, Text16, WHITE)
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: WHITE, Selectable: true})
 		want := "seed"
 		if inside {
 			want = "copy me"

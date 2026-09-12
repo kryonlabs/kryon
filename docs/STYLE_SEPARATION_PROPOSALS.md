@@ -241,9 +241,21 @@ The API contract is: a widget can say "I am a `Button`, named `save`, class
 `primary`, tone `Accent`, currently hovered." It cannot decide the fill,
 radius, font, shadow, or transition for that state.
 
-## 5. Zero default styling
+## 5. Default attachment and zero default styling
 
 Kryon should have no implicit product style for app UI.
+
+New Kryon app templates should start with an explicit style attachment:
+
+```kry
+#style <kryon.material> as material
+```
+
+That keeps source-level style attachment explicit for generated app templates.
+At runtime, `InitInterface()` also calls `EnsureBuiltInStylePacks()`: if the
+registry is empty, Kryon loads the shipped catalog and selects
+`<kryon.material>`. If a developer clears style packs or runs with an explicit
+unstyled mode after startup, the app is unstyled.
 
 No attached style pack means:
 
@@ -261,22 +273,62 @@ Kryon can ship optional packs:
 | Pack | Purpose |
 |---|---|
 | `<kryon.reset>` | minimum readable/debug affordances and normalized inherited tokens |
-| `<kryon.base>` | conservative app controls for templates and quick tools |
+| `<kryon.material>` | default attached app pack: clean Material-like controls, restrained surfaces, flat/cheap paint |
+| `<kryon.tk>` | toolkit-native pack for dense desktop utilities and easy picker previews |
 | `<kryon.vanilla>` | the current default Kryon styling expressed as a style pack |
 | `<kryon.glow>` | the current modern glow treatment expressed as a style pack |
 | `<kryon.classic>` | preserved original Kryon look as an explicit pack |
-| `<kryon.lightfield>` | approved modern Lightfield/Button/Dropdown visual language |
+| `<kryon.lightfield>` | premium Lightfield/Button/Dropdown visual language, opt-in because it is more performance intensive |
 | `<kryon.high-contrast>` | accessibility-oriented overlay or full pack |
 | `<kryon.terminal>` | termi-focused mapping for cell backends |
 
-Project templates may include `<kryon.base>` explicitly. Runtime code does not
-silently attach it.
+Project templates and app scaffolds still attach `<kryon.material>` explicitly
+so the source describes the app's intended baseline. Runtime startup mirrors
+that choice for hand-written hosts: `EnsureBuiltInStylePacks()` loads the
+embedded `.kss` pack sources only when needed and preserves any active app
+selection. If nothing is active, Material becomes active.
 
-The first shipped style-pack conversion should be today's actual look. Capture
-the current vanilla/default/glow behavior as style declarations, prove the pack
-against existing screenshots and capture boards, and only then delete the
-hidden runtime defaults. That lets Kryon keep its existing personality as a
-selectable stylesheet while making zero-default separation real.
+For host code that wants to force the shipped catalog back to its baseline,
+`RegisterBuiltInStylePacks()` loads Material, TK, Vanilla, Glow, and Lightfield
+as ordinary `StylePack` values and selects Material. Apps can immediately
+switch to TK, Vanilla, Glow, Lightfield, or a product pack through
+`StylePicker`; the picker lazily ensures the built-in catalog when the registry
+is empty. Lightfield must never be the automatic default: it is beautiful, but
+its translucent layered treatment is a premium opt-in rendering path, not the
+baseline cost every app should pay.
+
+App screens should use `AppBackground()` for their canvas instead of
+`Background(GetThemeBackground())`. `AppBackground()` resolves the active
+style pack's `App` rule, which keeps page chrome in KSS while preserving
+`Background(Color)` for intentionally explicit primitive drawing.
+
+The first shipped style-pack conversion should be a clean Material pack:
+neutral dark/light surfaces, crisp borders, modest radius, clear typography,
+lavender/accent highlights, and flat paint by default. The Android reference
+for the default direction is a dark Material customization screen: charcoal
+canvas, slightly raised panels, 6-10 px radii, thin dividers, clear section
+labels, lavender active tabs/sliders/toggles, and no glow, blur, or Lightfield
+volume. It should feel native, calm, and cheap to draw. This is the pack new
+Kryon apps attach on startup.
+
+TK should be equally real, not a placeholder: compact spacing, square-ish
+controls, light desktop colors, hard borders, and dense utility ergonomics so
+an app can preview and choose it immediately.
+
+Vanilla and Glow preserve Kryon's current visual personality as explicit
+stylesheets. Lightfield remains the premium pack for translucent depth and
+many-layer controls, opt-in because it costs more to render. None of these
+looks may live as hidden widget defaults.
+
+Current implementation note: Card, Dropdown, Text, Slider, Toggle, Checkbox,
+Radio, Progress, Separator, NavigationBar, Selectable, Fieldset, Plot, Link,
+TabBar, and Button now enter rendering through semantic style facts and
+attached KSS packs. Plot uses `Plot` for chart chrome/text and `PlotMark` for
+data marks. Navigation uses `NavigationBar` and `NavigationBarItem`; tabs use
+`TabBar`, `Tab`, and `TabClose`; segmented controls use `SegmentedControl` for
+the host surface and `Segment` for each choice. Button no longer owns a hidden
+palette/theme appearance path in `.kry`; its paint is resolved from KSS frames
+plus explicit per-call style overrides while those overrides are being retired.
 
 ## 6. Existing leaks to remove
 
@@ -325,6 +377,8 @@ import surface names each candidate pack, then selects one active pack through
 app state or host preferences:
 
 ```kry
+#style <kryon.material> as material
+#style <kryon.tk> as tk
 #style <kryon.vanilla> as vanilla
 #style <kryon.glow> as glow
 #style <kryon.lightfield> as lightfield
@@ -334,7 +388,7 @@ App {
     SettingsPanel {
         StylePicker theme_style {
             value = active_style
-            options = [vanilla, glow, lightfield, brand]
+            options = [material, tk, vanilla, glow, lightfield, brand]
         }
     }
 
@@ -598,6 +652,17 @@ matching order.
 Tokens are the power feature. They are typed, validated, inspectable, and
 portable across backends.
 
+Canonical KSS does not use one directive per token. This is intentionally not
+the syntax:
+
+```text
+@token color text = #16181d;
+@token length space.4 = 16;
+```
+
+That form repeats ceremony, makes theme diffs noisy, and leaks parser-ish
+vocabulary into the design language. The canonical form is grouped by type:
+
 ```text
 tokens {
     color {
@@ -853,7 +918,7 @@ The final pipeline is:
 ```
 
 There are no built-in visual defaults at the first step. The first visual
-declarations come from an attached reset/base/product style pack. Existing
+declarations come from an attached reset/material/product style pack. Existing
 `Default<Button>Style`-style functions become semantic normalization and
 fallback diagnostic helpers; they no longer manufacture product appearance by
 themselves.
@@ -1025,11 +1090,12 @@ Unsupported visual properties degrade; they do not fork style resolution.
 ### M2 - Ship explicit base packs
 
 - Add `<kryon.reset>` for zero-opinion readability/debug affordances.
-- Add `<kryon.base>` for ordinary app controls.
+- Add `<kryon.material>` as the default template-attached app pack.
+- Add `<kryon.tk>` as the dense toolkit-native picker option.
 - Convert today's actual default/vanilla styling into `<kryon.vanilla>`.
 - Convert today's glow treatment into `<kryon.glow>`.
 - Move the current approved Lightfield/Button/Dropdown look into
-  `<kryon.lightfield>`.
+  `<kryon.lightfield>` as an opt-in premium pack.
 - Preserve the original beveled look as `<kryon.classic>`.
 - Make examples attach a pack explicitly.
 - Add `StylePicker` as the standard dropdown-style control for choosing among
@@ -1067,11 +1133,14 @@ Unsupported visual properties degrade; they do not fork style resolution.
 
 ### M6 - Zero default
 
-- App UI starts unstyled unless a style pack is attached.
-- Project templates explicitly include `<kryon.base>`.
+- Widget implementations have zero hidden visual defaults.
+- App startup ensures the shipped style catalog and selects
+  `<kryon.material>` only when no pack is active.
+- Project templates explicitly include `<kryon.material>` so generated source
+  still shows the baseline style choice.
 - Existing Kryon visual personality remains available through explicit
-  `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.classic>`, and
-  `<kryon.lightfield>` imports.
+  `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.tk>`, and `<kryon.lightfield>`
+  imports.
 - `KRYON_STYLE=none` becomes a required test mode for behavior/layout.
 - Leak scanners flip to zero exemptions.
 
@@ -1100,7 +1169,8 @@ The plan is complete when:
 - every app-facing widget can render in `KRYON_STYLE=none`;
 - legacy theme files, theme import/export, and theme-style compatibility modes
   are gone from the app-facing styling surface;
-- `<kryon.base>`, `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.classic>`, and
+- `<kryon.material>`, `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.tk>`,
+  `<kryon.classic>`, and
   `<kryon.lightfield>` are ordinary style packs, not hidden runtime modes;
 - apps can register multiple packs and expose a `StylePicker` dropdown to
   switch between them quickly;

@@ -69,7 +69,7 @@ func Menu_MenuMetricsFor(scale float32) MenuMetrics {
 	return value_37
 }
 
-func Menu_MenuBarItemWidth(label_width int32, metrics MenuMetrics) int32 {
+func Menu_MenuGroupItemWidth(label_width int32, metrics MenuMetrics) int32 {
 	var value_0 int32 = label_width
 	var value_1 int32 = metrics.BarItemPadding
 	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 1))
@@ -213,7 +213,7 @@ func Menu_MenuSubmenuX(row Rectangle) int32 {
 	return value_3
 }
 
-func Menu_MenuBarItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
+func Menu_MenuGroupItemBounds(x int32, bar Rectangle, width int32, metrics MenuMetrics) Rectangle {
 	var item Rectangle = Rectangle{}
 	var value_0 int32 = x
 	var value_1 float32 = float32(value_0)

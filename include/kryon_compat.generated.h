@@ -4,7 +4,7 @@
  *
  * This header carries the old raylib-shaped drawing/input/asset names needed
  * by backends, tests, and existing migration code. New Kryon-facing API should
- * live in owned headers with owned names (for example Rect, Box, Circle,
+ * live in owned headers with owned names (for example Box, Circle,
  * Button, Card, Router), not in this compatibility surface.
  *
  * Keep this layer available while downstream code is being migrated, but do

@@ -2,11 +2,26 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type ProgressLayout struct {
 	Ratio       float32
 	FillBounds  Rectangle
 	LabelX      float32
 	LabelOnFill bool
+}
+
+type ProgressPaint struct {
+	Layout           ProgressLayout
+	Track            StyleFrame
+	Fill             StyleFrame
+	Label            StyleFrame
+	TrackColor       uint32
+	FillColor        uint32
+	BorderColor      uint32
+	LabelColor       uint32
+	FilledLabelColor uint32
+	Radius           float32
+	BorderWidth      float32
 }
 
 func Progress_ProgressRatio(min int32, max int32, value int32) float32 {
@@ -156,4 +171,56 @@ func Progress_ProgressLayoutFor(bounds Rectangle, min int32, max int32, value in
 	layout.LabelOnFill = value_15
 	var value_16 ProgressLayout = layout
 	return value_16
+}
+
+func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, padding float32, scale float32, track StyleFrame, fill StyleFrame, label StyleFrame) ProgressPaint {
+	var paint ProgressPaint = ProgressPaint{}
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 Rectangle = bounds
+	var value_5 int32 = min
+	var value_6 int32 = max
+	var value_7 int32 = value
+	var value_8 float32 = label_width
+	var value_9 float32 = padding
+	var value_10 ProgressLayout = Progress_ProgressLayoutFor(value_4, value_5, value_6, value_7, value_8, value_9)
+	paint.Layout = value_10
+	var value_11 StyleFrame = track
+	paint.Track = value_11
+	var value_12 StyleFrame = fill
+	paint.Fill = value_12
+	var value_13 StyleFrame = label
+	paint.Label = value_13
+	var value_14 uint32 = track.Value.Background
+	paint.TrackColor = value_14
+	var value_15 uint32 = fill.Value.Background
+	paint.FillColor = value_15
+	var value_16 uint32 = track.Value.Border
+	paint.BorderColor = value_16
+	var value_17 uint32 = label.Value.Foreground
+	paint.LabelColor = value_17
+	var value_18 uint32 = fill.Value.Foreground
+	paint.FilledLabelColor = value_18
+	var value_19 float32 = track.Value.Radius
+	var value_20 float32 = scale
+	var value_21 float32 = value_19 * value_20
+	paint.Radius = value_21
+	var value_22 float32 = track.Value.BorderWidth
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	paint.BorderWidth = value_24
+	var value_25 float32 = paint.BorderWidth
+	var value_26 float32 = 0.0
+	var value_27 bool = value_25 < value_26
+	if value_27 {
+		var value_28 float32 = 0.0
+		paint.BorderWidth = value_28
+	}
+	var value_29 ProgressPaint = paint
+	return value_29
 }

@@ -1,10 +1,12 @@
 #module "fieldset"
 #import "drawing_props"
+#import "style"
 
 FieldsetPaint :: struct {
     frame: Rectangle
     title_background: Rectangle
     title_text: Rectangle
+    face: StyleFrame
     border_color: u32
     background_color: u32
     text_color: u32
@@ -13,8 +15,7 @@ FieldsetPaint :: struct {
 }
 
 FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
-    has_title: bool, scale: float, border_color: u32, background_color: u32,
-    text_color: u32) -> FieldsetPaint #export {
+    has_title: bool, scale: float, frame: StyleFrame) -> FieldsetPaint #export {
     paint: FieldsetPaint
     if scale <= 0.0 {
         scale = 1.0
@@ -26,10 +27,14 @@ FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
     text_offset_y: float = 9.0 * scale
 
     paint.frame = bounds
-    paint.border_color = border_color
-    paint.background_color = background_color
-    paint.text_color = text_color
-    paint.border_width = 1.0 * scale
+    paint.face = frame
+    paint.border_color = frame.value.border
+    paint.background_color = frame.value.background
+    paint.text_color = frame.value.foreground
+    paint.border_width = frame.value.border_width * scale
+    if paint.border_width < 0.0 {
+        paint.border_width = 0.0
+    }
     paint.show_title = has_title
 
     paint.title_background.x = bounds.x + pad

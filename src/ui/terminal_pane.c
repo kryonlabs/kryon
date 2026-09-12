@@ -4,6 +4,7 @@
 #include "ui_clip.h"
 #include "ui_internal.h"
 #include "ui_scaling.h"
+#include "ui_style_internal.h"
 
 #include <stdio.h>
 
@@ -28,10 +29,21 @@ pane_color(Color configured, Color fallback)
 TerminalPaneColors
 GetTerminalPaneThemeColors(void)
 {
-    Color bg = GetThemeBackground();
-    Color text = GetThemeText();
-    Color surface = GetThemeSurface();
-    Color link = GetThemeLink();
+    Style app = ui_unpack_style(ResolveActiveStyle(
+        ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
+        StyleDefaultFacts(StyleKindApp()),
+        ButtonStateNormal));
+    Style surface_style = ui_surface_style();
+    Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindText());
+    Style link_style = ui_resolve_button_style_kind((ButtonProps){0},
+                                                    ButtonStateNormal,
+                                                    StyleKindLink());
+    Color bg = app.background.a != 0 ? app.background : surface_style.background;
+    Color text = text_style.foreground;
+    Color surface = surface_style.background;
+    Color link = link_style.foreground;
     Color border =
         Fade(surface.r == bg.r && surface.g == bg.g && surface.b == bg.b
                  ? text

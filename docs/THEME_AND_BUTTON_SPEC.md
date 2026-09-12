@@ -72,16 +72,16 @@ tables, tooltips, scrollbars, and future widgets.
 
 All new public names use direct domain names:
 
-| Use | Do not use |
+| Use | Avoid |
 |---|---|
-| `Theme` | `UITheme` |
-| `ThemeColors` | `UIColorTokens` |
-| `ThemeMetrics` | `UIStyleTokens` |
-| `ButtonProps` | `UIButtonProps` |
-| `ButtonTone` | `UIButtonStyle` |
-| `SetTheme` | `SetUITheme` |
-| `GetTheme` | `GetUITheme` |
-| `ResolveButtonStyle` | `UIResolveButtonStyle` |
+| `Theme` | prefixed theme aliases |
+| `ThemeColors` | prefixed color-token aliases |
+| `ThemeMetrics` | prefixed metric-token aliases |
+| `ButtonProps` | prefixed button props |
+| `ButtonTone` | old button-style aliases |
+| `SetTheme` | prefixed theme setters |
+| `GetTheme` | prefixed theme getters |
+| `ResolveButtonStyle` | prefixed style resolvers |
 
 Existing `UI*` names are migration inputs, not names to preserve or expand.
 
@@ -594,7 +594,7 @@ app "Example" {
 
 Generated output shall create one `Theme`, call `SetTheme()` during app setup,
 and emit ordinary `ButtonProps`. It shall not emit legacy `ThemeStyle` or
-`ButtonStyle` values.
+named button-style values.
 
 ## 15. Kryon replacement map
 
@@ -606,7 +606,7 @@ approved.
 | `include/theme_style.h` `ThemeStyle` | remove; geometry belongs to `ThemeMetrics` |
 | `include/ui_controls.h` `ThemeMetrics` | replace with `ThemeMetrics` in `theme.h` |
 | `include/ui_controls.h` `ThemeScheme` | replace with private resolution from `ThemeColors` |
-| `include/ui_controls.h` `ButtonStyle` | replace with `ButtonTone` + `ButtonEmphasis` |
+| legacy named button-style enum | replace with `ButtonTone` + `ButtonEmphasis` |
 | `include/ui_tree.h` `ButtonProps.style` | replace with `tone`, `emphasis`, `size`, state/content props |
 | `src/core/theme.c` catalog getters | produce/activate complete `Theme` values |
 | `src/ui/ui_style.c` style branches | replace with theme validation and shared resolvers |

@@ -133,7 +133,7 @@ def run_actions():
     check('ListBox','picked',lambda:click(290,160),1)
     check('TreeView','tree',lambda:click(510,160),2)
     check('TableView','row',lambda:click(310,302),1)
-    check('MultiSelectList','multi',lambda:click(300,455))
+    check('ListBox multi-select','multi',lambda:click(300,455))
     check('DragDrop roles','same_text',lambda:drag(330,628,770,628))
 
 def run_buttons():

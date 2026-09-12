@@ -1,19 +1,19 @@
 #include "ui_color.h"
 
 static float
-UIColorMin(float a, float b)
+ColorMin(float a, float b)
 {
     return a < b ? a : b;
 }
 
 static float
-UIColorMax(float a, float b)
+ColorMax(float a, float b)
 {
     return a > b ? a : b;
 }
 
 static float
-ClampUIColorFloat(float value, float min, float max)
+ClampColorFloat(float value, float min, float max)
 {
     if(value < min)
         return min;
@@ -23,7 +23,7 @@ ClampUIColorFloat(float value, float min, float max)
 }
 
 static unsigned char
-UIColorByte(float value)
+ColorByte(float value)
 {
     int scaled = (int)(value * 255.0f + 0.5f);
 
@@ -35,13 +35,13 @@ UIColorByte(float value)
 }
 
 static void
-UIColorToHSL(Color c, float *h, float *s, float *l)
+ColorToHSL(Color c, float *h, float *s, float *l)
 {
     float r = c.r / 255.0f;
     float g = c.g / 255.0f;
     float b = c.b / 255.0f;
-    float max = UIColorMax(r, UIColorMax(g, b));
-    float min = UIColorMin(r, UIColorMin(g, b));
+    float max = ColorMax(r, ColorMax(g, b));
+    float min = ColorMin(r, ColorMin(g, b));
     float chroma = max - min;
 
     *l = (max + min) * 0.5f;
@@ -64,7 +64,7 @@ UIColorToHSL(Color c, float *h, float *s, float *l)
 }
 
 static float
-UIColorHueToRGB(float p, float q, float t)
+ColorHueToRGB(float p, float q, float t)
 {
     if(t < 0.0f)
         t += 1.0f;
@@ -80,7 +80,7 @@ UIColorHueToRGB(float p, float q, float t)
 }
 
 static Color
-UIColorFromHSL(float h, float s, float l, unsigned char alpha)
+ColorFromHSL(float h, float s, float l, unsigned char alpha)
 {
     float r;
     float g;
@@ -88,43 +88,43 @@ UIColorFromHSL(float h, float s, float l, unsigned char alpha)
     float q;
     float p;
 
-    h = ClampUIColorFloat(h, 0.0f, 1.0f);
-    s = ClampUIColorFloat(s, 0.0f, 1.0f);
-    l = ClampUIColorFloat(l, 0.0f, 1.0f);
+    h = ClampColorFloat(h, 0.0f, 1.0f);
+    s = ClampColorFloat(s, 0.0f, 1.0f);
+    l = ClampColorFloat(l, 0.0f, 1.0f);
     if(s <= 0.0f) {
-        unsigned char gray = UIColorByte(l);
+        unsigned char gray = ColorByte(l);
         return (Color){gray, gray, gray, alpha};
     }
 
     q = l < 0.5f ? l * (1.0f + s) : l + s - l * s;
     p = 2.0f * l - q;
-    r = UIColorHueToRGB(p, q, h + 1.0f / 3.0f);
-    g = UIColorHueToRGB(p, q, h);
-    b = UIColorHueToRGB(p, q, h - 1.0f / 3.0f);
+    r = ColorHueToRGB(p, q, h + 1.0f / 3.0f);
+    g = ColorHueToRGB(p, q, h);
+    b = ColorHueToRGB(p, q, h - 1.0f / 3.0f);
 
-    return (Color){UIColorByte(r), UIColorByte(g), UIColorByte(b), alpha};
+    return (Color){ColorByte(r), ColorByte(g), ColorByte(b), alpha};
 }
 
 static Color
-AdjustUIColorLightness(Color c, int amount)
+AdjustColorLightness(Color c, int amount)
 {
     float h;
     float s;
     float l;
 
-    UIColorToHSL(c, &h, &s, &l);
-    l = ClampUIColorFloat(l + amount / 255.0f, 0.0f, 1.0f);
-    return UIColorFromHSL(h, s, l, c.a);
+    ColorToHSL(c, &h, &s, &l);
+    l = ClampColorFloat(l + amount / 255.0f, 0.0f, 1.0f);
+    return ColorFromHSL(h, s, l, c.a);
 }
 
 Color
 LightenColor(Color c, int amount)
 {
-    return AdjustUIColorLightness(c, amount < 0 ? 0 : amount);
+    return AdjustColorLightness(c, amount < 0 ? 0 : amount);
 }
 
 Color
 DarkenColor(Color c, int amount)
 {
-    return AdjustUIColorLightness(c, amount < 0 ? 0 : -amount);
+    return AdjustColorLightness(c, amount < 0 ? 0 : -amount);
 }

@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_style_internal.h"
 #include "ui_image_internal.h"
 #include "runtime/image.h"
 
@@ -10,11 +11,16 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
     ImagePlaceholderLayout layout =
         ImagePlaceholderLayoutFor((Rectangle){(float)x, (float)y,
                                   (float)w, (float)h}, tw, font);
-    DrawRectangleRec(layout.bounds, DarkenColor(c_bg, 12));
-    RenderBevel((int)layout.bounds.x, (int)layout.bounds.y,
-                (int)layout.bounds.width, (int)layout.bounds.height,
-                DarkenColor(c_bg, 45), LightenColor(c_bg, 35));
-    RenderText(label, layout.label_x, layout.label_y, font, c_text);
+    Style surface = ui_surface_style();
+    Style text = ui_resolve_button_style_kind((ButtonProps){0},
+                                              ButtonStateNormal,
+                                              StyleKindText());
+    ui_draw_material(layout.bounds, (Rectangle){0}, surface.background,
+                     surface.border, surface.border, surface.radius,
+                     surface.border_width, 0.0f, 0.0f, 0, surface.focus,
+                     0.0f, surface.opacity, ui_style_fill(surface),
+                     surface.material);
+    RenderText(label, layout.label_x, layout.label_y, font, text.foreground);
 }
 
 void

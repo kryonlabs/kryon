@@ -2,19 +2,16 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type RadioSpec struct {
-	Bounds              Rectangle
-	Checked             bool
-	Disabled            bool
-	DefaultStyle        bool
-	SelectedAmount      float32
-	Scale               float32
-	TextColor           uint32
-	IconColor           uint32
-	ButtonColor         uint32
-	PrimaryColor        uint32
-	SurfaceVariantColor uint32
-	DisabledColor       uint32
+	Bounds         Rectangle
+	Checked        bool
+	Disabled       bool
+	DefaultStyle   bool
+	SelectedAmount float32
+	Scale          float32
+	Frame          StyleFrame
+	Selected       StyleFrame
 }
 
 type RadioPaint struct {
@@ -226,15 +223,15 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var value_96 float32 = 0.5
 	var value_97 float32 = value_95 * value_96
 	paint.OuterRadius = value_97
-	var value_98 float32 = 2.0
+	var value_98 float32 = spec.Frame.Value.BorderWidth
 	var value_99 float32 = scale
 	var value_100 float32 = value_98 * value_99
 	paint.StrokeWidth = value_100
 	var value_101 float32 = paint.StrokeWidth
-	var value_102 float32 = 1.0
+	var value_102 float32 = 0.0
 	var value_103 bool = value_101 < value_102
 	if value_103 {
-		var value_104 float32 = 1.0
+		var value_104 float32 = 0.0
 		paint.StrokeWidth = value_104
 	}
 	var value_105 float32 = paint.OuterRadius
@@ -259,75 +256,30 @@ func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 		var value_119 float32 = 0.0
 		paint.FillRadius = value_119
 	}
-	var value_120 uint32 = spec.IconColor
+	var value_120 uint32 = spec.Frame.Value.Border
 	paint.RingColor = value_120
-	var value_121 uint32 = spec.TextColor
+	var value_121 uint32 = spec.Selected.Value.Background
 	paint.FillColor = value_121
-	var value_122 uint32 = spec.TextColor
+	var value_122 uint32 = spec.Frame.Value.Foreground
 	paint.LabelColor = value_122
-	var value_123 bool = spec.DefaultStyle
+	var value_123 bool = spec.Checked
 	if value_123 {
-		var value_124 bool = spec.Checked
-		var value_125 uint32 = 0
-		if value_124 {
-			var value_126 uint32 = spec.TextColor
-			value_125 = value_126
-		} else {
-			var value_127 uint32 = spec.SurfaceVariantColor
-			value_125 = value_127
-		}
-		paint.RingColor = value_125
-		var value_128 uint32 = spec.TextColor
-		paint.FillColor = value_128
-		var value_129 uint32 = spec.TextColor
-		paint.LabelColor = value_129
-		var value_130 bool = spec.Checked
-		var value_131 bool = !value_130
-		var value_132 bool = value_131
-		if value_132 {
-			var value_133 float32 = selected
-			var value_134 float32 = 0.0
-			var value_135 bool = value_133 > value_134
-			value_132 = value_135
-		}
-		if value_132 {
-			var value_136 uint32 = spec.PrimaryColor
-			paint.RingColor = value_136
-		}
+		var value_124 uint32 = spec.Selected.Value.Background
+		paint.RingColor = value_124
 	}
-	var value_137 bool = spec.Disabled
-	if value_137 {
-		var value_138 bool = spec.DefaultStyle
-		var value_139 uint32 = 0
-		if value_138 {
-			var value_140 uint32 = spec.DisabledColor
-			value_139 = value_140
-		} else {
-			var value_141 uint32 = spec.ButtonColor
-			value_139 = value_141
-		}
-		paint.RingColor = value_139
-		var value_142 bool = spec.DefaultStyle
-		var value_143 uint32 = 0
-		if value_142 {
-			var value_144 uint32 = spec.DisabledColor
-			value_143 = value_144
-		} else {
-			var value_145 uint32 = spec.ButtonColor
-			value_143 = value_145
-		}
-		paint.FillColor = value_143
-		var value_146 bool = spec.DefaultStyle
-		var value_147 uint32 = 0
-		if value_146 {
-			var value_148 uint32 = spec.DisabledColor
-			value_147 = value_148
-		} else {
-			var value_149 uint32 = spec.ButtonColor
-			value_147 = value_149
-		}
-		paint.LabelColor = value_147
+	var value_125 bool = spec.Checked
+	var value_126 bool = !value_125
+	var value_127 bool = value_126
+	if value_127 {
+		var value_128 float32 = selected
+		var value_129 float32 = 0.0
+		var value_130 bool = value_128 > value_129
+		value_127 = value_130
 	}
-	var value_150 RadioPaint = paint
-	return value_150
+	if value_127 {
+		var value_131 uint32 = spec.Selected.Value.Background
+		paint.RingColor = value_131
+	}
+	var value_132 RadioPaint = paint
+	return value_132
 }

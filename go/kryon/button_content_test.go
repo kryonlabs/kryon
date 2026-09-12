@@ -72,13 +72,20 @@ func TestButtonPaintCallbacks(t *testing.T) {
 
 func TestButtonAdvanceFrame(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
+	useMaterialStyleForTest(t)
 	props := ButtonProps{Label: "Run", Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
-	palette, metrics := Theme_DefaultPalette(false), Theme_DefaultMetrics()
-	styles := StyleStates{Normal: StyleData{Fields: uint32(StyleFontSize), FontSize: 17}}
+	props.Style.Normal = Style{Fields: StyleFontSize, FontSize: 17}
 	input := resolveButtonInputForTest(props, Activation{Hovered: true})
 	advance := func() ButtonFrame {
-		return r.Button_AdvanceFrame(701, props, input, palette, metrics, styles,
-			true, 16, Rectangle{}, palette.Surface, 1.5, 16)
+		metrics := r.themeMetrics()
+		motion := r.Button_AdvanceButtonMotion(701, int32(props.State), input,
+			true, 16, metrics.TransitionNormalMS, metrics.TransitionFastMS)
+		appearance := resolveMinimalControlFrame(props,
+			ButtonState(input.Interaction.State), props.State == ButtonStateAuto,
+			motion.Hover.Value, motion.Press.Value, motion.Focus.Value,
+			StyleSheet_StyleKindButton())
+		return Button_BuildFrame(props, input, appearance, motion, Rectangle{},
+			0xffffffff, 1.5, int32(appearance.Value.FontSize*1.5+0.5), 16)
 	}
 	frame := advance()
 	if frame.Font != 26 || frame.Material.Hover <= 0 || frame.Material.Hover >= 1 || !frame.Repaint {
@@ -219,6 +226,7 @@ func TestSharedStyleContentBoundsClampEmptyArea(t *testing.T) {
 }
 
 func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	for _, size := range []float32{-1, 0, 0.5, 1, 8.5, 18} {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
@@ -254,6 +262,7 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 }
 
 func TestButtonNaturalHeightFitsStyledText(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	for _, test := range []struct {
 		requested, padding, font, want float32
@@ -312,6 +321,7 @@ func TestButtonMeasurementMatchesPlacedContent(t *testing.T) {
 			}
 		}
 	}
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	props := ButtonProps{IconType: IconPlay,
 		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleIconSize | StyleGap,
@@ -346,13 +356,14 @@ func TestButtonContentSharedGeometry(t *testing.T) {
 }
 
 func TestDefaultAndExplicitButtonSizes(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	r.SetTheme(ThemeDefaultLight())
 	for _, test := range []struct {
 		size   ControlSize
 		height float32
 		font   int32
-	}{{ControlSizeMedium, 40, 18}, {ControlSizeSmall, 32, 16}, {ControlSizeLarge, 48, 20}} {
+	}{{ControlSizeMedium, 40, 16}, {ControlSizeSmall, 32, 14}, {ControlSizeLarge, 48, 18}} {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", Size: test.size})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 		if props.Bounds.Height != test.height || props.Font != 0 || frame.Button.Font != test.font {
@@ -365,12 +376,13 @@ func TestDefaultAndExplicitButtonSizes(t *testing.T) {
 }
 
 func TestButtonZeroPaddingAndGapRemainExplicit(t *testing.T) {
+	useMaterialStyleForTest(t)
 	r := New(AppConfig{}).(*runtime)
 	r.SetTheme(ThemeDefaultLight())
 	props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
 		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleGap, PaddingX: 0, Gap: 0}}})
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-	want := float32(runtimeTextWidth("Run", frame.Button.Font)) + 18
+	want := float32(runtimeTextWidth("Run", frame.Button.Font)) + frame.Button.Appearance.Value.IconSize
 	if props.Bounds.Width != want {
 		t.Fatalf("zero padding/gap was replaced by defaults: got %v, want %v", props.Bounds.Width, want)
 	}

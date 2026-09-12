@@ -55,7 +55,7 @@ check_absent "retained tree widget names" \
     $surface_paths
 
 check_absent "swipe/pager legacy names" \
-    '\bUISwipe|\bUI_SWIPE_|\bUIGuideStep|\bUIGuidePager|include/ui_pager\.h' \
+    '\bUISwipe|\bUI_SWIPE_|\bUIGuideStep|\bUIGuidePager|\bUIGuideOverlayDebug\b|include/ui_pager\.h' \
     $surface_paths
 
 check_absent "icon legacy names" \
@@ -69,6 +69,10 @@ check_absent "inspect legacy names" \
 check_absent "accessibility legacy names" \
     '\bUIAccessibilityNode\b' \
     $surface_paths
+
+check_absent "semantic kind legacy names" \
+    '\bUISemanticKind\b' \
+    $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts
 
 check_absent "DPI legacy names" \
     '\bUIDPIState\b|\bui_dpi_state\b|\bUI_DPI_BASE_|\bInitUIDPI\b|\bFixUIDPIFramebufferColor\b|\bInvalidateUIDPI\b|\bSetUIDeviceDensity\b|\bUpdateUIDPI\b|\bIsUIDPIDirty\b|\bGetUIDPI' \
@@ -103,7 +107,7 @@ check_absent "scaling legacy names" \
     $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts
 
 check_absent "color legacy names" \
-    '\bLightenUIColor\b|\bDarkenUIColor\b' \
+    '\bUIColor(Min|Max|Byte|ToHSL|HueToRGB|FromHSL)\b|\bClampUIColorFloat\b|\bAdjustUIColorLightness\b|\bLightenUIColor\b|\bDarkenUIColor\b' \
     $surface_paths web/kryon-runtime.js web/kryon-runtime.d.ts
 
 check_absent "clip legacy names" \

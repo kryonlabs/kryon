@@ -15,6 +15,7 @@
 #include "ui_blend_internal.h"
 #include "ui_tree_layout_internal.h"
 #include "ui_popup_input_internal.h"
+#include "ui_style_sheet.h"
 #include "embedded_assets.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -2219,17 +2220,33 @@ RenderImage(ImageProps image)
     ui_tree_add(0, WIDGET_IMAGE, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);
     if(texture.id == 0) {
+        Style surface = ui_surface_style();
+        Style text = ui_unpack_style(ResolveActiveStyle(
+            ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
+            StyleTextFacts(0, 0, StyleAny(), ButtonStateNormal),
+            ButtonStateNormal));
         fallback = image.style.enabled && image.style.background.a > 0
                      ? image.style.background
-                     : GetThemeSurface();
+                     : surface.background;
         DrawRectangleRec(image.bounds, fallback);
-        DrawRectangleLinesEx(image.bounds, 1.0f, GetThemeButtonHover());
+        DrawRectangleLinesEx(image.bounds, 1.0f, surface.border);
         RenderText("Missing image", (int)image.bounds.x + Scale(8),
                    (int)image.bounds.y + Scale(8), Text12,
-                   GetThemeIcon());
+                   text.foreground);
         return;
     }
     ImageTexture(texture, image);
+}
+
+void
+AppBackground(void)
+{
+    Style app = ui_unpack_style(ResolveActiveStyle(
+        (StyleData){.fields = StyleOpacity, .opacity = 1.0f},
+        StyleDefaultFacts(StyleKindApp()),
+        ButtonStateNormal));
+
+    Background(app.background);
 }
 
 void
@@ -2261,8 +2278,6 @@ Text(TextProps props)
     const char *value = props.text != NULL ? props.text : "";
     int font;
     int inherited_font = 0;
-    bool inherit_foreground = props.color.a == 0 &&
-        (props.style.fields & StyleForeground) == 0;
     Color inherited_color = {0};
     bool inherited_color_set = false;
     int inherited_disabled = 0;
@@ -2292,12 +2307,21 @@ Text(TextProps props)
         }
     }
     props.disabled = props.disabled || (UIContentDisabled() && !inherited_disabled);
-    Style style = MergeStyle((Style){.foreground = props.color, .opacity = 1}, props.style);
-    if((props.style.fields & StyleFontSize) != 0)
+    Style style = ui_unpack_style(ResolveActiveStyle(
+        ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
+        StyleTextFacts(0, 0, StyleAny(),
+            props.disabled ? ButtonStateDisabled : ButtonStateNormal),
+        props.disabled ? ButtonStateDisabled : ButtonStateNormal));
+    if(props.color.a != 0)
+        style = MergeStyle(style, (Style){.fields = StyleForeground,
+            .foreground = props.color});
+    style = MergeStyle(style, props.style);
+    if((style.fields & StyleFontSize) != 0)
         props.font = Scale((int)style.font_size);
     TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
-        ColorToInt(style.foreground), ColorToInt(inherited_color), ColorToInt(GetThemeText()),
-        inherited_color_set, !inherit_foreground, props.disabled, inherited_disabled, props.letter_spacing);
+        ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,
+        inherited_color_set, (style.fields & StyleForeground) != 0,
+        props.disabled, inherited_disabled, props.letter_spacing);
     font = appearance.font;
     props.color = GetColor(Opacity(appearance.color, style.opacity));
     props.letter_spacing = appearance.letter_spacing;
@@ -2329,12 +2353,13 @@ Text(TextProps props)
         ui_tree_nodes[node].data.primitive.wrap = props.wrap;
         ui_tree_nodes[node].data.primitive.align = props.align;
         ui_tree_nodes[node].data.primitive.vertical_align = props.vertical_align;
-        if(inherit_foreground && inherited_color_set)
+        if((style.fields & StyleForeground) == 0 && inherited_color_set)
             ui_tree_nodes[node].flags |= UI_NODE_INHERIT_FOREGROUND;
         if(props.disabled)
             ui_tree_nodes[node].flags |= UI_NODE_TEXT_DISABLED;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
+    int selectable_token = PushTextSelectable(props.selectable);
     if(ui_tree_building && IsWindowReady() &&
        !ui_tree_node_uses_retained_layout(node)) {
         ui_paint_text_box(value, bounds, font, props.color, props.wrap,
@@ -2346,6 +2371,7 @@ Text(TextProps props)
                           props.align, props.vertical_align,
                           ui_active_font_token(), props.letter_spacing);
     }
+    PopTextSelectable(selectable_token);
     ui_set_text_letter_spacing(previous_spacing);
     PopTextFont(previous_typeface);
 }
@@ -2378,13 +2404,7 @@ Paragraph(ParagraphSpec paragraph, int x, int *y)
 void
 Surface(Rectangle bounds, Style style)
 {
-    Style defaults = {0};
-    defaults.fields = StyleBackground | StyleRadius | StyleBorderWidth | StyleOpacity | StyleMaterial;
-    defaults.material = MaterialFlat;
-    defaults.background = GetThemeSurface();
-    defaults.radius = GetThemeMetrics().radius_medium;
-    defaults.border_width = GetThemeMetrics().border_width;
-    defaults.opacity = 1.0f;
+    Style defaults = ui_surface_style();
     style = MergeStyle(defaults, style);
     NodeId node = ui_tree_add(0, WIDGET_RECT, bounds, NULL);
     if(node >= 0) {
@@ -2398,11 +2418,7 @@ Surface(Rectangle bounds, Style style)
 static ButtonProps
 ui_card_button_props(CardProps card)
 {
-    ThemeMetrics metrics = GetThemeMetrics();
-    return CardButtonProps(card, metrics.radius_large, metrics.border_width,
-                           metrics.control_padding_large,
-                           metrics.control_padding_medium, GetThemeSurface(),
-                           GetThemeButtonHover());
+    return CardButtonProps(card, 0.0f, 0.0f, 0.0f, 0.0f, BLANK, BLANK);
 }
 
 static void
@@ -2420,17 +2436,6 @@ rect_shape_impl(int x, int y, int w, int h, Color fill, Color border)
     DrawRectangleRec(bounds, fill);
     if(border.a != 0)
         DrawRectangleLinesEx(bounds, 1, border);
-}
-
-#ifdef KRYON_BACKEND_LIBDRAW
-void
-kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border)
-#else
-void
-Rect(int x, int y, int w, int h, Color fill, Color border)
-#endif
-{
-    rect_shape_impl(x, y, w, h, fill, border);
 }
 
 void
@@ -2695,36 +2700,6 @@ DragDrop(DragDropProps drag_drop)
 }
 
 int
-MultiSelectList(MultiSelectListProps list)
-{
-    ui_tree_add(list.id, WIDGET_CUSTOM, list.bounds, &list);
-    return RenderMultiSelectList(list);
-}
-
-MenuBarResult
-MenuBar(int id, Rectangle bounds, const Menu *menus,
-              int menu_count, int *open_index)
-{
-    ui_tree_add(id, WIDGET_CUSTOM, bounds, open_index);
-    return RenderMenuBar(id, bounds, menus, menu_count, open_index);
-}
-
-int
-PopupMenu(int id, int x, int y, const MenuItem *items,
-                int item_count)
-{
-    ui_tree_add(id, WIDGET_CUSTOM, (Rectangle){x, y, 0, 0}, items);
-    return RenderPopupMenu(id, x, y, items, item_count);
-}
-
-int
-ContextMenu(ContextMenuProps menu)
-{
-    ui_tree_add(menu.id, WIDGET_CUSTOM, menu.trigger, &menu);
-    return RenderContextMenu(menu);
-}
-
-int
 Radio(RadioProps radio)
 {
     ui_tree_add(radio.id, WIDGET_CUSTOM, radio.bounds, &radio);
@@ -2813,7 +2788,7 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
         int font = GetSmallFontSize();
-        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .font=font, .color=c_text, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .font=font, .wrap=TextWrapNone});
     }
 }
 
@@ -3111,6 +3086,8 @@ int
 ListBox(ListBoxProps list)
 {
     ui_tree_add(list.id, WIDGET_CUSTOM, list.bounds, &list);
+    if(list.selected != NULL)
+        return RenderMultiSelectList(list);
     return RenderListBox(list);
 }
 
@@ -3211,23 +3188,6 @@ Focus(Rectangle bounds)
     RenderFocus(bounds);
 }
 
-void
-FocusDebugOverlay(const AccessibilityNode *nodes, int count)
-{
-    ui_tree_add(0, WIDGET_CUSTOM,
-                (Rectangle){0, 0, ui_view_width, ui_view_height}, nodes);
-    RenderFocusDebugOverlay(nodes, count);
-}
-
-void
-TransitionFade(const TransitionState *transition, int width, int height,
-                     Color color)
-{
-    ui_tree_add(0, WIDGET_CUSTOM, (Rectangle){0, 0, width, height},
-                transition);
-    RenderTransitionFade(transition, width, height, color);
-}
-
 NavigationBarResult
 NavigationBar(NavigationBarProps nav)
 {
@@ -3267,12 +3227,12 @@ TitleBar(TitleBarProps title_bar)
 }
 
 static Rectangle
-resolve_button_bounds(ButtonProps button, int disclosure)
+resolve_button_bounds_for_kind(ButtonProps button, int disclosure, int style_kind)
 {
     button.disabled = button.disabled || UIContentDisabled();
     Rectangle bounds = button.bounds;
     ThemeMetrics metrics = GetThemeMetrics();
-    Style style = ResolveButtonStyle(button, button.state);
+    Style style = ui_resolve_button_style_kind(button, button.state, style_kind);
     int height = Scale(SizeValue(button.size, metrics.control_height_small,
         metrics.control_height_medium, metrics.control_height_large));
     int font = ResolveFont(button.font, Scale(style.font_size), GetFontSize());
@@ -3293,7 +3253,8 @@ resolve_button_bounds(ButtonProps button, int disclosure)
 }
 
 static ButtonSpec
-ui_tree_button_spec(ButtonProps button, Rectangle surface_bounds, int disclosure)
+ui_tree_button_spec_for_kind(ButtonProps button, Rectangle surface_bounds,
+                             int disclosure, int style_kind)
 {
     Style paint;
     button.disabled = button.disabled || button.state == ButtonStateDisabled || UIContentDisabled();
@@ -3302,13 +3263,27 @@ ui_tree_button_spec(ButtonProps button, Rectangle surface_bounds, int disclosure
         .props = button,
         .surface_bounds = surface_bounds,
         .disclosure = disclosure,
+        .style_kind = style_kind != 0 ? style_kind : StyleKindButton(),
         .style_resolved = 1
     };
-    paint = ResolveButtonStyle(button, button.state);
+    paint = ui_resolve_button_style_kind(button, button.state, spec.style_kind);
     spec.paint = paint;
     spec.paint.radius = ui_radius_px(button.bounds, paint.radius);
     spec.hover_background = paint.background;
     return spec;
+}
+
+static Rectangle
+resolve_button_bounds(ButtonProps button, int disclosure)
+{
+    return resolve_button_bounds_for_kind(button, disclosure, StyleKindButton());
+}
+
+static ButtonSpec
+ui_tree_button_spec(ButtonProps button, Rectangle surface_bounds, int disclosure)
+{
+    return ui_tree_button_spec_for_kind(button, surface_bounds, disclosure,
+                                       StyleKindButton());
 }
 
 static int
@@ -3413,16 +3388,17 @@ Button(ButtonProps button)
         *button.open = ButtonToggleMenuOpen(*button.open,
             ui_tree_surface_button(menu, surface_bounds, 1));
         {
-            Color divider = GetThemeBorder();
+            Style divider_style = ui_resolve_button_style_kind(action,
+                ButtonStateNormal, StyleKindButton());
+            Color divider = divider_style.border;
             int inset = Scale((int)layout.divider_inset);
-            divider.a = GetThemeMetrics().border_alpha;
             Line((int)menu.bounds.x, (int)menu.bounds.y + inset,
                  (int)menu.bounds.x,
                  (int)(menu.bounds.y + menu.bounds.height) - inset,
                  divider);
         }
         if(*button.open) {
-            *button.activated_id = PopupMenu(
+            *button.activated_id = RenderPopupMenu(
                 button.menu_id, (int)action.bounds.x,
                 (int)(action.bounds.y + action.bounds.height),
                 button.items, button.item_count);
@@ -3438,7 +3414,7 @@ Button(ButtonProps button)
         *button.open = ButtonToggleMenuOpen(*button.open,
             ui_tree_surface_button(button, (Rectangle){0}, 1));
         if(*button.open) {
-            *button.activated_id = PopupMenu(button.menu_id,
+            *button.activated_id = RenderPopupMenu(button.menu_id,
                 (int)button.bounds.x,
                 (int)(button.bounds.y + button.bounds.height),
                 button.items, button.item_count);
@@ -3482,10 +3458,11 @@ Card(CardProps card)
     NodeId node;
     int clicked = 0;
 
-    button.bounds = resolve_button_bounds(button, 0);
+    button.bounds = resolve_button_bounds_for_kind(button, 0, StyleKindCard());
     if(card.clickable)
         button.id = ResolveFocusID(button.id);
-    spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
+    spec = ui_tree_button_spec_for_kind(button, (Rectangle){0}, 0,
+                                        StyleKindCard());
     spec.props.label = "";
 
     node = ui_tree_add(button.id, WIDGET_CARD, button.bounds, NULL);
@@ -3502,6 +3479,15 @@ Card(CardProps card)
     return clicked;
 }
 
+MenuResult
+Menu(MenuProps menu)
+{
+    Rectangle bounds = menu.mode == MenuModeContext ? menu.trigger : menu.bounds;
+
+    ui_tree_add(menu.id, WIDGET_CUSTOM, bounds, &menu);
+    return RenderMenu(menu);
+}
+
 NodeId
 BeginCard(CardProps card)
 {
@@ -3509,10 +3495,11 @@ BeginCard(CardProps card)
     ButtonSpec spec;
     NodeId node;
 
-    button.bounds = resolve_button_bounds(button, 0);
+    button.bounds = resolve_button_bounds_for_kind(button, 0, StyleKindCard());
     if(card.clickable)
         button.id = ResolveFocusID(button.id);
-    spec = ui_tree_button_spec(button, (Rectangle){0}, 0);
+    spec = ui_tree_button_spec_for_kind(button, (Rectangle){0}, 0,
+                                        StyleKindCard());
     spec.props.label = "";
 
     node = ui_tree_add(button.id, WIDGET_CARD, button.bounds, NULL);

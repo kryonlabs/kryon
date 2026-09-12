@@ -3,7 +3,6 @@
 #import "control_props"
 #import "drawing_props"
 #import "style"
-#import "theme"
 
 NavigationBarSpec :: struct {
     view_width: i32
@@ -14,8 +13,7 @@ NavigationBarSpec :: struct {
     bottom_margin: i32
     icon_size: i32
     scale: float
-    palette: Palette
-    metrics: Metrics
+    bar: StyleFrame
 }
 
 NavigationBarPaint :: struct {
@@ -38,8 +36,8 @@ NavigationBarItemSpec :: struct {
     disabled: bool
     hovered: bool
     label_height: i32
-    palette: Palette
-    metrics: Metrics
+    base: StyleFrame
+    face: StyleFrame
 }
 
 NavigationBarItemPaint :: struct {
@@ -103,11 +101,7 @@ NavigationBarPaintFor :: (spec: NavigationBarSpec) -> NavigationBarPaint #export
     paint.height = height
     paint.y = y
 
-    styles: StyleStates
-    paint.bar = ResolveFrame(ButtonToneNeutral, ButtonEmphasisSoft,
-        ButtonStateNormal, ControlSizeLarge, true, false, false, false, false,
-        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
-    paint.bar.value.radius = spec.metrics.radius_large + 4.0
+    paint.bar = spec.bar
     return paint
 }
 
@@ -162,25 +156,13 @@ NavigationBarItemPaintFor :: (spec: NavigationBarItemSpec) -> NavigationBarItemP
     paint.label_bounds.width = (float)(w - (i32)(6.0 * scale))
     paint.label_bounds.height = (float)spec.label_height
 
-    styles: StyleStates
-    tone: i32 = spec.active ? ButtonToneAccent : ButtonToneNeutral
-    emphasis: i32 = spec.active ? ButtonEmphasisFilled : ButtonEmphasisGhost
-    state: i32 = ButtonStateNormal
-    if spec.hovered { state = ButtonStateHover }
-    paint.face = ResolveFrame(tone, emphasis, state, ControlSizeMedium,
-        true, false, spec.disabled, false, spec.active,
-        spec.palette, spec.metrics, styles, false, 0.0, 0.0, 0.0)
-    paint.face.value.radius = spec.metrics.radius_pill
+    paint.face = spec.face
     paint.draw_face = spec.active || spec.hovered
-    paint.icon_color = spec.palette.text_muted
-    paint.text_color = spec.palette.text_muted
+    paint.icon_color = spec.base.value.foreground
+    paint.text_color = spec.base.value.foreground
     if spec.active {
         paint.icon_color = paint.face.value.foreground
         paint.text_color = paint.face.value.foreground
-    }
-    if spec.disabled {
-        paint.icon_color = spec.palette.text_disabled
-        paint.text_color = spec.palette.text_disabled
     }
     if !spec.active {
         paint.face.value.opacity = 0.45

@@ -98,7 +98,7 @@ and forces repaint so clearing a captured texture does not lose unchanged nodes.
 The texture must remain alive through `EndTree`; the hook neither allocates nor
 owns it. Immediate drawing is still captured by the caller's texture scope.
 
-The pixel test combines immediate drawing and retained `Rect` submissions,
+The pixel test combines immediate drawing and retained `Box` submissions,
 including a nested destination and translated retained content before and after
 that nested scope, followed by opaque ordinary retained content.
 It composites the captured target last and checks both frames of an unchanged

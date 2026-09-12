@@ -213,8 +213,8 @@ func TestTextClipsPartiallyVisibleLineInsteadOfDroppingIt(t *testing.T) {
 func TestRectBorderIsNotGradient(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	r.BeginFrame()
-	r.Rect(0, 0, 24, 24, White)
-	r.Rect(4, 4, 16, 16, RED, BLUE)
+	r.Box(NewRectangle(0, 0, 24, 24), White, BLANK)
+	r.Box(NewRectangle(4, 4, 16, 16), RED, BLUE)
 	img := RenderFrame(24, 24, r.FrameOps())
 	if img.RGBAAt(12, 12).R != RED.R || img.RGBAAt(5, 12) != img.RGBAAt(18, 12) {
 		t.Fatal("border color must not become a gradient across the face")
@@ -222,7 +222,7 @@ func TestRectBorderIsNotGradient(t *testing.T) {
 	if img.RGBAAt(4, 12).B != BLUE.B {
 		t.Fatal("rectangle border is missing")
 	}
-	r.Rect(6, 6, 12, 12, Color{})
+	r.Box(NewRectangle(6, 6, 12, 12), Color{}, BLANK)
 	after := RenderFrame(24, 24, r.FrameOps())
 	if after.RGBAAt(12, 12) != img.RGBAAt(12, 12) {
 		t.Fatal("transparent rectangle must preserve its backdrop")

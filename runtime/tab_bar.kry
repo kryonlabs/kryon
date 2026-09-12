@@ -1,5 +1,6 @@
 #module "tab_bar"
 #import "drawing_props"
+#import "style"
 
 TabBarMetrics :: struct {
     min_width: i32
@@ -13,6 +14,43 @@ TabBarScroll :: struct {
     scroll: i32
     max_scroll: i32
     equal_tabs: bool
+}
+
+TabBarPaint :: struct {
+    bar: StyleFrame
+    tab: StyleFrame
+    close: StyleFrame
+    bar_color: u32
+    bar_border_color: u32
+    tab_color: u32
+    tab_border_color: u32
+    text_color: u32
+    icon_color: u32
+    close_color: u32
+    focus_color: u32
+    radius: float
+    border_width: float
+    opacity: float
+}
+
+TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
+    close: StyleFrame) -> TabBarPaint #export {
+    paint: TabBarPaint
+    paint.bar = bar
+    paint.tab = tab
+    paint.close = close
+    paint.bar_color = bar.value.background
+    paint.bar_border_color = bar.value.border
+    paint.tab_color = tab.value.background
+    paint.tab_border_color = tab.value.border
+    paint.text_color = tab.value.foreground
+    paint.icon_color = tab.value.foreground
+    paint.close_color = close.value.foreground
+    paint.focus_color = tab.value.focus
+    paint.radius = tab.value.radius
+    paint.border_width = tab.value.border_width
+    paint.opacity = tab.value.opacity
+    return paint
 }
 
 TabBarPolicyHeight :: (scale: float) -> i32 #export {

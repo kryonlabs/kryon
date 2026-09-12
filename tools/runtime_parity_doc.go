@@ -22,11 +22,10 @@ func main() {
 
 	native, err := runtimeMethods("go/kryon/runtime.go")
 	check(err)
-	cleanC, err := cEntrypoints("include/kryon_frame.h", "include/ui_tree.h")
+	cleanC, err := cEntrypoints("include/kryon_frame.h", "include/ui_tree.h",
+		"include/ui_controls.h", "include/ui_page.h", "include/ui_toast.h")
 	check(err)
-	if sig, ok := cleanC["RenderImage"]; ok {
-		cleanC["Image"] = sig
-	}
+	cleanC["Image"] = "internal host image support"
 	checkForbidden("go/kryon/runtime.go")
 
 	doc, ok := render(native, cleanC)
@@ -171,21 +170,11 @@ func checkForbidden(path string) {
 
 func render(native, cleanC methodSet) (string, bool) {
 	names := []string{
+		"AppBackground",
 		"Background",
-		"BeginFrame",
-		"BeginScroll",
-		"BeginTableCell",
-		"EndTableCell",
-		"EndScroll",
-		"BeginDisabled",
-		"EndDisabled",
-		"BeginPopup",
-		"EndPopup",
-		"ClosePopup",
-		"EndFrame",
 		"Text",
 		"Paragraph",
-		"Rect",
+		"Box",
 		"Line",
 		"Bevel",
 		"Icon",
@@ -195,10 +184,8 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Bullet",
 		"Separator",
 		"DragDrop",
-		"MultiSelectList",
-		"MenuBar",
-		"PopupMenu",
-		"ContextMenu",
+		"Menu",
+		"Link",
 		"TextField",
 		"TextArea",
 		"TreeView",
@@ -209,6 +196,7 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Radio",
 		"Progress",
 		"Plot",
+		"NavigationBar",
 		"Drag",
 		"Input",
 		"Spinbox",
@@ -221,10 +209,12 @@ func render(native, cleanC methodSet) (string, bool) {
 		"PanedView",
 		"Collapsible",
 		"ColorPicker",
+		"SegmentedControl",
 		"TableView",
 		"Modal",
 		"TitleBar",
 		"Toolbar",
+		"Toast",
 	}
 	sort.Strings(names)
 

@@ -8,7 +8,6 @@
 #include "ui_grid_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
-#include "ui_overlay.h"
 #include "ui_profile.h"
 #include "ui_rows.h"
 #include "ui_image.h"
@@ -214,18 +213,13 @@ typedef struct {
     int disabled;
 } CheckboxProps;
 
+void AppBackground(void);
 void Background(Color color);
 void Surface(Rectangle bounds, Style style);
 int Card(CardProps card);
 NodeId BeginCard(CardProps card);
 void Text(TextProps props);
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
-#ifdef KRYON_BACKEND_LIBDRAW
-void kry_ui_rect_shape(int x, int y, int w, int h, Color fill, Color border);
-#define Rect kry_ui_rect_shape
-#else
-void Rect(int x, int y, int w, int h, Color fill, Color border);
-#endif
 void Box(Rectangle bounds, Color fill, Color border);
 void Circle(int center_x, int center_y, int radius, Color color);
 void Ring(int center_x, int center_y, int inner_radius, int outer_radius,
@@ -240,12 +234,6 @@ int Toggle(ToggleProps toggle);
 int Checkbox(CheckboxProps checkbox);
 void Separator(SeparatorProps separator);
 int DragDrop(DragDropProps drag_drop);
-int MultiSelectList(MultiSelectListProps list);
-MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
-                              int menu_count, int *open_index);
-int PopupMenu(int id, int x, int y, const MenuItem *items,
-                    int item_count);
-int ContextMenu(ContextMenuProps menu);
 int Radio(RadioProps radio);
 void Progress(ProgressProps progress);
 void Plot(PlotProps plot);
@@ -268,14 +256,12 @@ int PanedView(PanedViewProps panes);
 int Collapsible(CollapsibleProps section);
 int ColorPicker(ColorPickerProps picker);
 void Focus(Rectangle bounds);
-void FocusDebugOverlay(const AccessibilityNode *nodes, int count);
-void TransitionFade(const struct TransitionState *transition, int width,
-                          int height, Color color);
 NavigationBarResult NavigationBar(NavigationBarProps nav);
 ToolbarResult Toolbar(ToolbarProps toolbar);
 int TabBar(TabBarProps bar);
 int Modal(ModalProps modal);
 int TitleBar(TitleBarProps title_bar);
+MenuResult Menu(MenuProps menu);
 
 int Button(ButtonProps button);
 NodeId BeginButton(ButtonProps button);

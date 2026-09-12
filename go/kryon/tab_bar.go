@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type TabBarMetrics struct {
 	MinWidth   int32
 	MaxWidth   int32
@@ -14,6 +15,57 @@ type TabBarScroll struct {
 	Scroll    int32
 	MaxScroll int32
 	EqualTabs bool
+}
+
+type TabBarPaint struct {
+	Bar            StyleFrame
+	Tab            StyleFrame
+	Close          StyleFrame
+	BarColor       uint32
+	BarBorderColor uint32
+	TabColor       uint32
+	TabBorderColor uint32
+	TextColor      uint32
+	IconColor      uint32
+	CloseColor     uint32
+	FocusColor     uint32
+	Radius         float32
+	BorderWidth    float32
+	Opacity        float32
+}
+
+func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame) TabBarPaint {
+	var paint TabBarPaint = TabBarPaint{}
+	var value_0 StyleFrame = bar
+	paint.Bar = value_0
+	var value_1 StyleFrame = tab
+	paint.Tab = value_1
+	var value_2 StyleFrame = close
+	paint.Close = value_2
+	var value_3 uint32 = bar.Value.Background
+	paint.BarColor = value_3
+	var value_4 uint32 = bar.Value.Border
+	paint.BarBorderColor = value_4
+	var value_5 uint32 = tab.Value.Background
+	paint.TabColor = value_5
+	var value_6 uint32 = tab.Value.Border
+	paint.TabBorderColor = value_6
+	var value_7 uint32 = tab.Value.Foreground
+	paint.TextColor = value_7
+	var value_8 uint32 = tab.Value.Foreground
+	paint.IconColor = value_8
+	var value_9 uint32 = close.Value.Foreground
+	paint.CloseColor = value_9
+	var value_10 uint32 = tab.Value.Focus
+	paint.FocusColor = value_10
+	var value_11 float32 = tab.Value.Radius
+	paint.Radius = value_11
+	var value_12 float32 = tab.Value.BorderWidth
+	paint.BorderWidth = value_12
+	var value_13 float32 = tab.Value.Opacity
+	paint.Opacity = value_13
+	var value_14 TabBarPaint = paint
+	return value_14
 }
 
 func TabBar_TabBarPolicyHeight(scale float32) int32 {

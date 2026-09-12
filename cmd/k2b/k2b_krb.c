@@ -597,7 +597,7 @@ parse_text(KrbBuild *b, const char *call)
 {
     const char *args = strchr(call, '(');
     const char *props = strstr(call, "TextProps");
-    char parts[8][KIR_TEXT_MAX];
+    char parts[9][KIR_TEXT_MAX];
     int count;
     KrbBuildNode *n;
     char name[KIR_NAME_MAX];
@@ -2849,14 +2849,14 @@ is_kry_widget_call(const char *name)
 {
     static const char *const names[] = {
         "Background", "Text", "Paragraph",
-        "Rect", "Line", "Bevel", "Icon", "Image", "Button",
+        "Box", "Line", "Bevel", "Icon", "Image", "Button",
         "Link", "TextField", "TextArea", "Dropdown",
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
         "Screen", "Column", "Row", "Stack", "End", "Scroll",
         "Canvas", "Modal", "TitleBar", "TabBar", "NavigationBar",
-        "Toolbar", "ShowToast", "ShowToastFor", "Fieldset",
+        "Toolbar", "Toast", "Fieldset",
         "PanedView", "Collapsible", "ListBox",
-        "TableView", "CanvasGrid", "SelectableText", NULL
+        "TableView", "CanvasGrid", NULL
     };
 
     for(int i = 0; names[i] != NULL; i++)
@@ -2870,7 +2870,7 @@ parse_widget_from_table(KrbBuild *b, const char *call)
 {
     static const KrbWidgetParserEntry entries[] = {
         { "Background", parse_background },
-        { "Rect", parse_rect },
+        { "Box", parse_rect },
         { "Scroll", parse_scroll },
         { "TextField", parse_textfield },
         { "Dropdown", parse_dropdown_props },
