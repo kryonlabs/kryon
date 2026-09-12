@@ -77,7 +77,10 @@ The runtime exposes
 `webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
 path, node name, key, or DOM id without making generated JavaScript the source
-of structure. `sourcePath`, `sourceLine`, and `sourceColumn` identify the
+of structure. Rendered elements also expose non-enumerable `kryRef`, `kryNode`,
+and `kryObject` getters, so native event targets and browser inspectors can move
+directly from an element back to the source `.kry` object. `sourcePath`,
+`sourceLine`, and `sourceColumn` identify the
 `.kry` source location that produced each node. Source references support both
 `path:line` and `path:line:column` lookup forms. Anonymous widget expressions
 receive source-derived path components such as `Text@42`; repeated anonymous

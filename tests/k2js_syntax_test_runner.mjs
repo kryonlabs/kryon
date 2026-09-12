@@ -958,6 +958,11 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
+    assert.equal(firstButton.kryRef, "Scene/root/tap");
+    assert.equal(firstButton.kryNode.path, "Scene/root/tap");
+    assert.equal(firstButton.kryObject.ref, "Scene/root/tap");
+    assert.equal(firstButton.kryObject.element, firstButton);
+    assert.equal(Object.keys(firstButton).includes("kryObject"), false);
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
     assert.ok(Number(firstButton.dataset.kryLine) > 0);
     assert.ok(Number(firstButton.dataset.kryColumn) > 0);

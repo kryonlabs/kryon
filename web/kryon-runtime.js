@@ -2255,9 +2255,40 @@ function applyExtraAttrs(el, attrs) {
   el.__kryAppliedExtraAttrs = next;
 }
 
+function bindWebDOMObjectProperties(el) {
+  if (!el || el.__kryObjectPropertiesBound)
+    return;
+  Object.defineProperties(el, {
+    kryRef: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeRef(this.__kryDocNode);
+      }
+    },
+    kryNode: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode || null;
+      }
+    },
+    kryObject: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        return node ? { ref: webNodeRef(node), node, element: this } : null;
+      }
+    }
+  });
+  el.__kryObjectPropertiesBound = true;
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
+  bindWebDOMObjectProperties(el);
   bindNodeEvents(el);
   const extraClasses = [...(el.__kryExtraClasses || [])];
   docNode.classes = [...new Set([...(docNode.classes || []), ...extraClasses])];

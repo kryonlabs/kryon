@@ -312,6 +312,14 @@ export interface WebDOMObject {
   element: Element;
 }
 
+declare global {
+  interface Element {
+    readonly kryRef?: string;
+    readonly kryNode?: WebDocumentNode | null;
+    readonly kryObject?: WebDOMObject | null;
+  }
+}
+
 export interface WebDOMSnapshot {
   ref: string;
   index: number;
