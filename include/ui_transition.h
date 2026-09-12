@@ -1,25 +1,25 @@
-#ifndef UI_TRANSITION_H
-#define UI_TRANSITION_H
+#ifndef KRYON_TRANSITION_H
+#define KRYON_TRANSITION_H
 
 #include "kryon.h"
 
-typedef enum UITransitionPhase {
-    UI_TRANSITION_NONE = 0,
-    UI_TRANSITION_OUT = 1,
-    UI_TRANSITION_IN = 2
-} UITransitionPhase;
+typedef enum TransitionPhase {
+    TRANSITION_NONE = 0,
+    TRANSITION_OUT = 1,
+    TRANSITION_IN = 2
+} TransitionPhase;
 
-typedef struct UITransition {
+typedef struct TransitionState {
     int active;
     int phase;
     float elapsed_seconds;
     float duration_seconds;
-} UITransition;
+} TransitionState;
 
-void ResetUITransition(UITransition *transition);
-void BeginUITransition(UITransition *transition, float duration_seconds);
-void ReverseUITransitionToOut(UITransition *transition);
-float GetUITransitionAlpha(const UITransition *transition);
-int StepUITransition(UITransition *transition, float delta_seconds);
+void ResetTransition(TransitionState *transition);
+void BeginTransition(TransitionState *transition, float duration_seconds);
+void ReverseTransitionToOut(TransitionState *transition);
+float GetTransitionAlpha(const TransitionState *transition);
+int StepTransition(TransitionState *transition, float delta_seconds);
 
 #endif

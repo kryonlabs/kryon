@@ -1093,35 +1093,35 @@ and `PollWebRemoteEvents` pair instead.
 
 Transition effects for screen changes.
 
-#### `UITransition`
+#### `TransitionState`
 
 ```c
-typedef struct UITransition {
+typedef struct TransitionState {
     int active;
     int phase;
     float elapsed_seconds;
     float duration_seconds;
-} UITransition;
+} TransitionState;
 ```
 
-#### `ResetUITransition` / `BeginUITransition`
+#### `ResetTransition` / `BeginTransition`
 
 ```c
-void ResetUITransition(UITransition *transition);
-void BeginUITransition(UITransition *transition, float duration_seconds);
+void ResetTransition(TransitionState *transition);
+void BeginTransition(TransitionState *transition, float duration_seconds);
 ```
 
-#### `ReverseUITransitionToOut`
+#### `ReverseTransitionToOut`
 
 ```c
-void ReverseUITransitionToOut(UITransition *transition);
+void ReverseTransitionToOut(TransitionState *transition);
 ```
 
-#### `GetUITransitionAlpha` / `StepUITransition`
+#### `GetTransitionAlpha` / `StepTransition`
 
 ```c
-float GetUITransitionAlpha(const UITransition *transition);
-int StepUITransition(UITransition *transition, float delta_seconds);
+float GetTransitionAlpha(const TransitionState *transition);
+int StepTransition(TransitionState *transition, float delta_seconds);
 ```
 
 ---
@@ -2026,11 +2026,11 @@ void ui_set_input_blocked(int blocked);
 
 ```c
 int UIHoverEffectsEnabled(void);
-void SetUITransitionCuesEnabled(int enabled);
-int UITransitionCuesEnabled(void);
+void SetTransitionCuesEnabled(int enabled);
+int TransitionCuesEnabled(void);
 ```
 
-`SetUITransitionCuesEnabled` controls the extra subtle hover and selected-state cues
+`SetTransitionCuesEnabled` controls the extra subtle hover and selected-state cues
 used by built-in controls. Leave it disabled when an application has transitions
 turned off.
 

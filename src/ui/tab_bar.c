@@ -315,7 +315,7 @@ RenderTabBar(TabBarProps bar)
     int min_tab_w = bar.min_tab_width > 0 ? bar.min_tab_width : default_min_tab_w;
     int max_tab_w = bar.max_tab_width > 0 ? bar.max_tab_width : default_max_tab_w;
     int icon_tab_w = bar_h + tab_gap * 2;
-    int cues = UITransitionCuesEnabled();
+    int cues = TransitionCuesEnabled();
     int disabled = bar.disabled || UIContentDisabled();
     int focused = 0;
     int default_scroll_offset = 0;

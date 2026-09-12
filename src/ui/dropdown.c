@@ -177,7 +177,7 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
         key = (key ^ (unsigned int)(int)bounds.y) * 16777619u;
     }
     InteractionMotion motion = AdvanceButtonMotion(key, (int)props.state, input,
-        UITransitionCuesEnabled(), GetFrameTime() * 1000.0f,
+        TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
         metrics.transition_normal_ms, metrics.transition_fast_ms);
     StyleFrame appearance = ui_button_style_frame(props, input.interaction.state,
         1, motion.hover.value, motion.press.value, motion.focus.value);

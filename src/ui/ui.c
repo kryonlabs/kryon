@@ -907,13 +907,13 @@ UIHoverEffectsEnabled(void)
 }
 
 void
-SetUITransitionCuesEnabled(int enabled)
+SetTransitionCuesEnabled(int enabled)
 {
     g_ui_transition_cues_enabled = enabled ? 1 : 0;
 }
 
 int
-UITransitionCuesEnabled(void)
+TransitionCuesEnabled(void)
 {
 #if defined(KRYON_BACKEND_TERMI)
     return 0;
@@ -1916,7 +1916,7 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
             props.loading, props.selected, sample);
         motion = AdvanceButtonMotion(
             ui_text_input_motion_key(bounds, focus_id, kind), (int)props.state, input,
-            UITransitionCuesEnabled(), GetFrameTime() * 1000.0f,
+            TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
             metrics.transition_normal_ms, metrics.transition_fast_ms);
         if(motion.active)
             InvalidateTree(UI_INVALIDATE_PAINT);

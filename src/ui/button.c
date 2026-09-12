@@ -128,7 +128,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Color text = button.paint.foreground.a != 0 ? button.paint.foreground : c_text;
     Color border = button.paint.border.a != 0 ? button.paint.border : LightenUIColor(background, 32);
     float radius = button.paint.radius > 0.0f ? button.paint.radius : 0.06f;
-    int cues = UITransitionCuesEnabled();
+    int cues = TransitionCuesEnabled();
     Color draw_background;
     Color draw_border;
     float hover_amount = 0.0f;

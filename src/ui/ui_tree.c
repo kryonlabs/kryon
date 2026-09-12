@@ -3232,7 +3232,7 @@ FocusDebugOverlay(const UIAccessibilityNode *nodes, int count)
 }
 
 void
-TransitionFade(const UITransition *transition, int width, int height,
+TransitionFade(const TransitionState *transition, int width, int height,
                      Color color)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, (Rectangle){0, 0, width, height},

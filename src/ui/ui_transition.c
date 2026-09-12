@@ -20,36 +20,36 @@ SmoothTransitionProgress(float value)
 }
 
 void
-ResetUITransition(UITransition *transition)
+ResetTransition(TransitionState *transition)
 {
     if(transition == NULL)
         return;
     transition->active = 0;
-    transition->phase = UI_TRANSITION_NONE;
+    transition->phase = TRANSITION_NONE;
     transition->elapsed_seconds = 0.0f;
     transition->duration_seconds = 0.0f;
 }
 
 void
-BeginUITransition(UITransition *transition, float duration_seconds)
+BeginTransition(TransitionState *transition, float duration_seconds)
 {
     if(transition == NULL)
         return;
     if(duration_seconds <= 0.0f)
         duration_seconds = 0.001f;
     transition->active = 1;
-    transition->phase = UI_TRANSITION_OUT;
+    transition->phase = TRANSITION_OUT;
     transition->elapsed_seconds = 0.0f;
     transition->duration_seconds = duration_seconds;
 }
 
 void
-ReverseUITransitionToOut(UITransition *transition)
+ReverseTransitionToOut(TransitionState *transition)
 {
     if(transition == NULL || !transition->active)
         return;
-    if(transition->phase == UI_TRANSITION_IN) {
-        transition->phase = UI_TRANSITION_OUT;
+    if(transition->phase == TRANSITION_IN) {
+        transition->phase = TRANSITION_OUT;
         transition->elapsed_seconds = transition->duration_seconds - transition->elapsed_seconds;
         if(transition->elapsed_seconds < 0.0f)
             transition->elapsed_seconds = 0.0f;
@@ -57,51 +57,51 @@ ReverseUITransitionToOut(UITransition *transition)
 }
 
 float
-GetUITransitionAlpha(const UITransition *transition)
+GetTransitionAlpha(const TransitionState *transition)
 {
     float progress;
 
     if(transition == NULL || !transition->active || transition->duration_seconds <= 0.0f)
         return 0.0f;
     progress = SmoothTransitionProgress(transition->elapsed_seconds / transition->duration_seconds);
-    if(transition->phase == UI_TRANSITION_OUT)
+    if(transition->phase == TRANSITION_OUT)
         return progress;
-    if(transition->phase == UI_TRANSITION_IN)
+    if(transition->phase == TRANSITION_IN)
         return 1.0f - progress;
     return 0.0f;
 }
 
 int
-StepUITransition(UITransition *transition, float delta_seconds)
+StepTransition(TransitionState *transition, float delta_seconds)
 {
     if(transition == NULL || !transition->active)
-        return UI_TRANSITION_NONE;
+        return TRANSITION_NONE;
 
     if(delta_seconds < 0.0f)
         delta_seconds = 0.0f;
     transition->elapsed_seconds += delta_seconds;
     if(transition->elapsed_seconds < transition->duration_seconds)
-        return UI_TRANSITION_NONE;
+        return TRANSITION_NONE;
 
-    if(transition->phase == UI_TRANSITION_OUT) {
-        transition->phase = UI_TRANSITION_IN;
+    if(transition->phase == TRANSITION_OUT) {
+        transition->phase = TRANSITION_IN;
         transition->elapsed_seconds = 0.0f;
-        return UI_TRANSITION_OUT;
+        return TRANSITION_OUT;
     }
 
-    ResetUITransition(transition);
-    return UI_TRANSITION_IN;
+    ResetTransition(transition);
+    return TRANSITION_IN;
 }
 
 void
-RenderTransitionFade(const UITransition *transition,
+RenderTransitionFade(const TransitionState *transition,
                            int width, int height, Color color)
 {
     int alpha;
 
     if(transition == NULL || !transition->active)
         return;
-    alpha = (int)(GetUITransitionAlpha(transition) * 255.0f);
+    alpha = (int)(GetTransitionAlpha(transition) * 255.0f);
     if(alpha <= 0)
         return;
     if(alpha > 255)

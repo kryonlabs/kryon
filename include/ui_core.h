@@ -86,8 +86,8 @@ void UIConsumePointerRelease(void);
 int UIPointerReleaseAvailable(Vector2 point);
 int UIPointerReleaseOutside(Rectangle bounds);
 int UIHoverEffectsEnabled(void);
-void SetUITransitionCuesEnabled(int enabled);
-int UITransitionCuesEnabled(void);
+void SetTransitionCuesEnabled(int enabled);
+int TransitionCuesEnabled(void);
 
 void BeginUIFocus(void);
 void EndUIFocus(void);

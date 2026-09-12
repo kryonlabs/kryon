@@ -4440,11 +4440,11 @@ main(void)
     check_color("default dark icon", GetThemeIcon(), ThemeDefaultDark().colors.icon);
     SetThemeMode(THEME_MODE_LIGHT);
 #if !defined(KRYON_BACKEND_TERMI)
-    check_int("motion enabled by default", UITransitionCuesEnabled(), 1);
-    SetUITransitionCuesEnabled(0);
-    check_int("motion opt-out", UITransitionCuesEnabled(), 0);
-    SetUITransitionCuesEnabled(1);
-    check_int("motion re-enabled", UITransitionCuesEnabled(), 1);
+    check_int("motion enabled by default", TransitionCuesEnabled(), 1);
+    SetTransitionCuesEnabled(0);
+    check_int("motion opt-out", TransitionCuesEnabled(), 0);
+    SetTransitionCuesEnabled(1);
+    check_int("motion re-enabled", TransitionCuesEnabled(), 1);
 #endif
     test_control_style_resolution();
     {

@@ -319,7 +319,7 @@ void ui_paint_text_box(const char *text, Rectangle bounds, int font,
                        int font_token, int letter_spacing);
 int ui_set_text_letter_spacing(int spacing);
 int ui_get_text_letter_spacing(void);
-void RenderTransitionFade(const UITransition *transition, int width,
+void RenderTransitionFade(const TransitionState *transition, int width,
                           int height, Color color);
 int ui_scrollbar(int x, int y, int viewport_h, int content_h,
                  int *scroll_offset, int max_scroll, int overlay);

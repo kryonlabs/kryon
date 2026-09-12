@@ -14,7 +14,7 @@
 #include "ui_image.h"
 #include "ui_tk.h"
 
-struct UITransition;
+struct TransitionState;
 
 typedef int NodeId;
 typedef unsigned long long KeyID;
@@ -298,7 +298,7 @@ int Collapsible(CollapsibleProps section);
 int ColorPicker(ColorPickerProps picker);
 void Focus(Rectangle bounds);
 void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
-void TransitionFade(const struct UITransition *transition, int width,
+void TransitionFade(const struct TransitionState *transition, int width,
                           int height, Color color);
 NavigationBarResult NavigationBar(NavigationBarProps nav);
 ToolbarResult Toolbar(ToolbarProps toolbar);

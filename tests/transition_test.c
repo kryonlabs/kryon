@@ -36,45 +36,45 @@ check_float_near(const char *name, float actual, float expected)
 static void
 test_smooth_fade_alpha(void)
 {
-    UITransition transition;
+    TransitionState transition;
 
-    BeginUITransition(&transition, 1.0f);
-    check_float_near("fade out starts transparent", GetUITransitionAlpha(&transition), 0.0f);
-    check_true("half step does not complete", StepUITransition(&transition, 0.5f) == UI_TRANSITION_NONE);
-    check_float_near("fade out smooth midpoint", GetUITransitionAlpha(&transition), 0.5f);
-    check_true("fade out completes once", StepUITransition(&transition, 0.5f) == UI_TRANSITION_OUT);
-    check_true("phase changes to fade in", transition.phase == UI_TRANSITION_IN);
-    check_float_near("fade in starts opaque", GetUITransitionAlpha(&transition), 1.0f);
-    check_true("fade in completes once", StepUITransition(&transition, 1.0f) == UI_TRANSITION_IN);
+    BeginTransition(&transition, 1.0f);
+    check_float_near("fade out starts transparent", GetTransitionAlpha(&transition), 0.0f);
+    check_true("half step does not complete", StepTransition(&transition, 0.5f) == TRANSITION_NONE);
+    check_float_near("fade out smooth midpoint", GetTransitionAlpha(&transition), 0.5f);
+    check_true("fade out completes once", StepTransition(&transition, 0.5f) == TRANSITION_OUT);
+    check_true("phase changes to fade in", transition.phase == TRANSITION_IN);
+    check_float_near("fade in starts opaque", GetTransitionAlpha(&transition), 1.0f);
+    check_true("fade in completes once", StepTransition(&transition, 1.0f) == TRANSITION_IN);
     check_true("transition resets after fade in", !transition.active);
 }
 
 static void
 test_large_delta_and_clamp(void)
 {
-    UITransition transition;
+    TransitionState transition;
 
-    BeginUITransition(&transition, 0.0f);
+    BeginTransition(&transition, 0.0f);
     check_true("zero duration clamps active", transition.active);
     check_true("large delta completes only fade out phase",
-               StepUITransition(&transition, 100.0f) == UI_TRANSITION_OUT);
+               StepTransition(&transition, 100.0f) == TRANSITION_OUT);
     check_true("still active after large fade out step", transition.active);
     check_true("large delta completes fade in phase",
-               StepUITransition(&transition, 100.0f) == UI_TRANSITION_IN);
+               StepTransition(&transition, 100.0f) == TRANSITION_IN);
     check_true("inactive after large fade in step", !transition.active);
 }
 
 static void
 test_reverse_from_fade_in(void)
 {
-    UITransition transition;
+    TransitionState transition;
 
-    BeginUITransition(&transition, 1.0f);
-    check_true("enter fade in", StepUITransition(&transition, 1.0f) == UI_TRANSITION_OUT);
-    check_true("advance fade in", StepUITransition(&transition, 0.25f) == UI_TRANSITION_NONE);
-    ReverseUITransitionToOut(&transition);
-    check_true("reverse changes phase", transition.phase == UI_TRANSITION_OUT);
-    check_float_near("reverse preserves eased visual alpha", GetUITransitionAlpha(&transition), 0.84375f);
+    BeginTransition(&transition, 1.0f);
+    check_true("enter fade in", StepTransition(&transition, 1.0f) == TRANSITION_OUT);
+    check_true("advance fade in", StepTransition(&transition, 0.25f) == TRANSITION_NONE);
+    ReverseTransitionToOut(&transition);
+    check_true("reverse changes phase", transition.phase == TRANSITION_OUT);
+    check_float_near("reverse preserves eased visual alpha", GetTransitionAlpha(&transition), 0.84375f);
 }
 
 int
