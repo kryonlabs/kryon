@@ -441,7 +441,9 @@ Relationship fields such as `aria_controls`, `aria_describedby`, `dom_for`,
 and `popover_target` may name another Kry DOM object by ref, path, name, key,
 or native id. The Web Document facts keep the authored Kry value for KSS and
 queries, while the DOM renderer resolves the native attribute to a real element
-id during mount.
+id during mount. `webDOMRelations(target, query)`, `element.kryRelations`, and
+`object.relations` expose the resolved Kry DOM objects; snapshots include
+serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source
