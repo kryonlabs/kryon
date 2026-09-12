@@ -157,7 +157,7 @@ has a single place to land.
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation policy is `.kry`; host keeps input/scroll sampling. |
 | `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, and text bounds policy are `.kry`; host keeps input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
-| `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Page rows/metrics are `.kry`; editing, IME, selection, and paint still native. |
+| `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics and page-navigation row policy are `.kry`; editing, IME, selection, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
 | `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint and sizing policy are `.kry`. |
@@ -206,7 +206,7 @@ host roles rather than retained nodes.
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |
 | `TextField` | `.kry canonical` | Metrics/scroll policy in `.kry`; editing host support remains. |
-| `TextArea` | `.kry canonical` | Metrics/page policy in `.kry`; editing host support remains. |
+| `TextArea` | `.kry canonical` | Metrics/page-navigation policy in `.kry`; editing host support remains. |
 | `Dropdown` | `.kry canonical` | Selection control only. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
 | `Slider` | `.kry canonical` | Type/orientation/angle variants are props. |
@@ -371,7 +371,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `EndDisabled` | Native support | Host scope exit for disabled child content. |
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics and horizontal scroll policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
-| `TextArea` | `.kry canonical` | Metrics and page-row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
+| `TextArea` | `.kry canonical` | Metrics and page-navigation row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |

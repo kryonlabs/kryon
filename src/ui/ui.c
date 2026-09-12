@@ -2521,12 +2521,9 @@ ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_y = area.style.padding_y > 0
         ? area.style.padding_y : Scale(8);
-    int line_h = TextLineHeight(font) + line_gap;
-    int page_rows = line_h > 0
-        ? ((int)area.bounds.height - padding_y * 2) / line_h : 1;
+    int page_rows = TextAreaPageRows(area.bounds.height, font, line_gap,
+                                     padding_y);
 
-    if(page_rows < 1)
-        page_rows = 1;
     for(int row = 0; row < page_rows; row++)
         cursor = ui_text_move_vertical(area.text, cursor, font, direction);
     return cursor;
