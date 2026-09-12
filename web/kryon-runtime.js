@@ -1642,7 +1642,7 @@ function bindNodeEvents(el) {
       event.preventDefault();
     const docNode = el.__kryDocNode;
     if (docNode?.submitAction)
-      docNode.submitAction();
+      docNode.submitAction(webFormValuesFromRoot(el.__kryMountRoot));
   });
 }
 
@@ -1996,6 +1996,10 @@ export function webFormValue(target, query) {
 
 export function webFormValues(target) {
   const root = mountedRoot(target);
+  return webFormValuesFromRoot(root);
+}
+
+function webFormValuesFromRoot(root) {
   return root?.__kryFormValues
     ? Object.fromEntries(root.__kryFormValues.entries())
     : {};

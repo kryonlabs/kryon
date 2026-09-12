@@ -109,7 +109,7 @@ export interface WebDocumentNode {
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
   keyAction: ((key: string) => unknown) | null;
-  submitAction: (() => unknown) | null;
+  submitAction: ((values: Record<string, unknown>) => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

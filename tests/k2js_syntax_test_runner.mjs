@@ -329,6 +329,25 @@ function fakeDocument() {
     formCheckbox.change(false);
     assert.equal(changeValue, false);
     assert.equal(runtime.webFormValue(formTarget, "confirm"), false);
+
+    let submitValues = null;
+    const submitRt = runtime.createRuntime();
+    runtime.beginFrame(submitRt);
+    runtime.widget(submitRt, "Column", {}, null,
+      {
+        nodeName: "contact",
+        path: "Page/contact",
+        tag: "form",
+        submitAction(values) { submitValues = values; }
+      });
+    runtime.widget(submitRt, "TextField", { text: "hello@example.test" }, null,
+      { nodeName: "email", path: "Page/contact/email", parentPath: "Page/contact", domName: "email" });
+    runtime.endFrame(submitRt);
+    const submitTarget = document.createElement("div");
+    runtime.renderWebDocument(submitRt, submitTarget);
+    runtime.findWebElement(submitTarget, "contact").submit();
+    assert.equal(submitValues.email, "hello@example.test");
+    assert.equal(submitValues["Page/contact/email"], "hello@example.test");
   } finally {
     globalThis.document = previousDocument;
   }
