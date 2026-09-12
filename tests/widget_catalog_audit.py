@@ -134,11 +134,11 @@ def run_actions():
     check('TreeView','tree',lambda:click(510,160),2)
     check('TableView','row',lambda:click(310,302),1)
     check('MultiSelectList','multi',lambda:click(300,455))
-    check('DragDropSource / DragDropTarget','same_text',lambda:drag(330,628,770,628))
+    check('DragDrop roles','same_text',lambda:drag(330,628,770,628))
 
 def run_buttons():
     category(1)
-    for name,x,y in [('Button',320,137),('Icon Button',421,137),('Small Button',310,490),('Arrow button',408,490),('InvisibleButton',760,538)]:
+    for name,x,y in [('Button',320,137),('Icon button props',421,137),('Small button props',310,490),('Arrow button props',408,490),('Invisible hit test',760,538)]:
      check(name,'clicks',lambda x=x,y=y:click(x,y))
     before=state()['clicks'];check('Disabled button','clicks',lambda:click(320,599),before)
     category(2)

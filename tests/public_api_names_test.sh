@@ -152,7 +152,7 @@ fi
 
 legacy_button_variant_doc_matches="$(
     rg -n 'Small-sized Button / InvisibleButton|`Button`[^|\n]*`InvisibleButton`|InvisibleButton`, image' \
-        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/WEB_DOCUMENT_IR.md \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/WEB_DOCUMENT_IR.md tests/widget_catalog_audit.py \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -165,7 +165,7 @@ fi
 
 legacy_drag_drop_doc_matches="$(
     rg -n 'Typed drag-and-drop source / target|`DragDropSource`, `DragDropTarget`|DragDropSource / DragDropTarget' \
-        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md tests/widget_catalog_audit.py \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
