@@ -5600,11 +5600,19 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		Material: bar.Material})
 	for i := 0; i < count; i++ {
 		item := props.Items[i]
-		labelFont := int32(Text14)
 		itemState := checkboxButtonState(false, false, false, item.Disabled)
 		if item.Active && !item.Disabled {
 			itemState = ButtonStateSelected
 		}
+		baseFrame := simpleStyleFrame(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, StyleSheet_StyleKindNavigationBarItem())
+		baseStyle := unpackStyle(baseFrame.Value)
+		labelFont := styleFont(baseStyle, Text14)
+		faceFrame := simpleStyleFrame(func() ButtonTone {
+			if item.Active {
+				return ButtonToneAccent
+			}
+			return ButtonToneNeutral
+		}(), itemState, item.Disabled, item.Active, StyleSheet_StyleKindNavigationBarItem())
 		itemPaint := NavigationBar_NavigationBarItemPaintFor(NavigationBarItemSpec{
 			Bar:         paint,
 			Index:       int32(i),
@@ -5612,17 +5620,14 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 			Disabled:    item.Disabled,
 			Hovered:     false,
 			LabelHeight: labelFont + 4,
-			Base:        simpleStyleFrame(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, StyleSheet_StyleKindNavigationBarItem()),
-			Face: simpleStyleFrame(func() ButtonTone {
-				if item.Active {
-					return ButtonToneAccent
-				}
-				return ButtonToneNeutral
-			}(), itemState, item.Disabled, item.Active, StyleSheet_StyleKindNavigationBarItem()),
+			Base:        baseFrame,
+			Face:        faceFrame,
 		})
 		pressed := !item.Disabled && r.consumeTap(itemPaint.Bounds)
+		textStyle := baseStyle
 		if itemPaint.DrawFace {
 			face := unpackStyle(itemPaint.Face.Value)
+			textStyle = face
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: itemPaint.StateBounds, Color: face.Background,
 				BorderColor: face.Border, BorderWidth: face.BorderWidth, Radius: face.Radius,
 				Material: face.Material, Selected: item.Active, Disabled: item.Disabled})
@@ -5639,7 +5644,8 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 				int32(itemPaint.IconBounds.Width), int32(item.Icon.ID), tint)
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: itemPaint.LabelBounds, Text: item.Label,
-			Color: unpackRGBA(itemPaint.TextColor), FontSize: labelFont, ID: item.Route,
+			Color: unpackRGBA(itemPaint.TextColor), Opacity: textStyle.Opacity,
+			FontSize: styleFont(textStyle, labelFont), ID: item.Route,
 			Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
@@ -6631,10 +6637,11 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		if item.Expanded != 0 {
 			mark = "v"
 		}
+		font := styleFont(itemStyle, Text16)
 		markerBounds.Y += 4
 		textBounds.Y += 4
-		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: item.ID, Row: index, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }

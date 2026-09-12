@@ -3142,21 +3142,25 @@ RenderTreeView(TreeViewProps tree)
             item_state, tree.disabled, selected, StyleKindTreeViewItem());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
+        int item_font = item_style.font_size > 0.0f
+            ? (int)(item_style.font_size + 0.5f)
+            : font;
+        Color item_text = Fade(item_style.foreground, item_style.opacity);
         if(paint && (selected || hot || tree.disabled))
             ui_tk_draw_style_frame(row, tree.bounds, item_frame, hot, 0,
                                    tree.disabled, 0);
         if(paint) {
             if(item->expanded)
                 RenderText("v", (int)marker_bounds.x,
-                           ui_row_text_y(marker_bounds, font), font,
-                           item_style.foreground);
+                           ui_row_text_y(marker_bounds, item_font), item_font,
+                           item_text);
             else
                 RenderText(">", (int)marker_bounds.x,
-                           ui_row_text_y(marker_bounds, font), font,
-                           item_style.foreground);
+                           ui_row_text_y(marker_bounds, item_font), item_font,
+                           item_text);
             RenderText(item->label != NULL ? item->label : "",
-                       (int)text_bounds.x, ui_row_text_y(text_bounds, font), font,
-                       item_style.foreground);
+                       (int)text_bounds.x, ui_row_text_y(text_bounds, item_font),
+                       item_font, item_text);
         }
         if(hot)
             MarkClickable();

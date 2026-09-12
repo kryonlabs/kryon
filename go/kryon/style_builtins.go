@@ -184,6 +184,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -352,6 +353,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -518,6 +520,7 @@ TreeViewItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -1850,6 +1853,7 @@ NavigationBarItem {
   focus: accent;
   radius: radius;
   border-width: border.none;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2151,6 +2155,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2197,6 +2202,7 @@ TreeViewItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3507,6 +3513,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -3802,6 +3809,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -3846,6 +3854,7 @@ TreeViewItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -5201,6 +5210,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -5517,6 +5527,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -5563,6 +5574,7 @@ TreeViewItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -6968,6 +6980,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius;
   border-width: 0;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7284,6 +7297,7 @@ ListBoxItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7330,6 +7344,7 @@ TreeViewItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

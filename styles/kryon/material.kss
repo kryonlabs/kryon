@@ -182,6 +182,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -350,6 +351,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -516,6 +518,7 @@ TreeViewItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }

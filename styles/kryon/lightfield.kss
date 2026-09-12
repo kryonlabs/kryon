@@ -192,6 +192,7 @@ NavigationBarItem {
   focus: focus;
   radius: radius;
   border-width: 0;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -508,6 +509,7 @@ ListBoxItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -554,6 +556,7 @@ TreeViewItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

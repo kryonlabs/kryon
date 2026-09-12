@@ -683,6 +683,46 @@ MenuSeparator { border: rule; foreground: rule; material: flat; }
 	}
 }
 
+func TestNavigationBarItemLabelUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.navigation;
+tokens {
+  color {
+    surface: #101820;
+    ink: #d8f2ff;
+    rule: #708090;
+    selected: #2f6bff;
+  }
+  length { radius: 7; border: 1; }
+  material { flat: Flat; }
+}
+NavigationBar { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+NavigationBarItem { foreground: ink; font-size: 19; opacity: 0.64; }
+NavigationBarItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+`, "Test Navigation", "") || !SetActiveStylePack("test.navigation") {
+		t.Fatal("test navigation style did not activate")
+	}
+	rt := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	items := []NavigationBarItem{{Label: "Home", Route: 44}}
+
+	rt.NavigationBar(NavigationBarProps{
+		ViewWidth: 320, ViewHeight: 180,
+		Items: items, Count: int32(len(items)),
+	})
+
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpText && op.Text == "Home" {
+			if op.FontSize != 19 || op.Opacity != 0.64 {
+				t.Fatalf("navigation label style op = %+v", op)
+			}
+			return
+		}
+	}
+	t.Fatalf("missing navigation label op: %+v", rt.FrameOps())
+}
+
 func TestProgressAndSeparatorRolesUseStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
@@ -918,7 +958,7 @@ tokens {
   material { flat: Flat; }
 }
 TreeView { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-TreeViewItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+TreeViewItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; font-size: 18; material: flat; opacity: 0.58; }
 `, "Test TreeView", "") || !SetActiveStylePack("test.tree") {
 		t.Fatal("test tree view style did not activate")
 	}
@@ -937,26 +977,30 @@ TreeViewItem:selected { background: selected; foreground: ink; border: selected;
 		RowHeight:  24,
 	})
 
-	var sawPanel, sawSelected bool
+	var sawPanel, sawSelected, sawLabel bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind != FrameOpRect {
-			continue
-		}
-		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
 			sawPanel = true
 			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("tree view panel style op = %+v", op)
 			}
 		}
-		if op.Row == 1 && op.Selected {
+		if op.Kind == FrameOpRect && op.Row == 1 && op.Selected {
 			sawSelected = true
 			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
 				t.Fatalf("tree view selected style op = %+v", op)
 			}
 		}
+		if op.Kind == FrameOpText && op.Text == "Child" {
+			sawLabel = true
+			if op.FontSize != 18 || op.Opacity != 0.58 ||
+				op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("tree view item text style op = %+v", op)
+			}
+		}
 	}
-	if !sawPanel || !sawSelected {
-		t.Fatalf("missing styled tree view ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	if !sawPanel || !sawSelected || !sawLabel {
+		t.Fatalf("missing styled tree view ops: panel=%v selected=%v label=%v ops=%+v", sawPanel, sawSelected, sawLabel, rt.FrameOps())
 	}
 }
 
