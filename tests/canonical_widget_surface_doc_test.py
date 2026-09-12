@@ -17,7 +17,6 @@ PUBLIC_WIDGET_NAMES = {
     "BeginCard",
     "BeginDisabled",
     "Bullet",
-    "CarouselControls",
     "DismissibleOverlay",
     "EndDisabled",
     "Flow",

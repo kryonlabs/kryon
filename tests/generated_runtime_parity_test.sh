@@ -29,7 +29,6 @@ tests/parity/basic_controls.kry
 tests/parity/list_box.kry
 tests/parity/tree_view.kry
 tests/parity/progress.kry
-tests/parity/composed.kry
 tests/parity/plots.kry
 tests/parity/menus.kry
 tests/parity/selection_images.kry
@@ -408,9 +407,6 @@ func main() {
 	driver := host.Runtime().(inputDriver)
 	host.Draw(func() {
 		kryon.BeginFrame()
-		if Composed_ComposedResult(0, -1, 0) != 3 || Composed_ComposedResult(3, 1, 0) != 0 || Composed_ComposedResult(2, 1, 1) != 2 {
-			panic("composed widget parity")
-		}
 		kryon.EndFrame()
 	})
     drawDragDrop := func() {
@@ -1327,7 +1323,6 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/long_text.c"
 #include "$work/c/tests/parity/basic_controls.c"
 #include "$work/c/tests/parity/list_box.c"
-#include "$work/c/tests/parity/composed.c"
 #include "$work/c/tests/parity/tree_view.c"
 #include "$work/c/tests/parity/progress.c"
 #include "$work/c/tests/parity/plots.c"
@@ -1461,9 +1456,6 @@ int main(void)
 {
     InjectReset();
     BeginInterfaceFrame(640, 480, 1.0f);
-    if(composed_result(0, -1, 0) != 3 || composed_result(3, 1, 0) != 0 ||
-       composed_result(2, 1, 1) != 2)
-        return 1;
     EndInterfaceFrame();
     InjectTap(180,20);
     InjectPump(); draw_closeable_collapsible();

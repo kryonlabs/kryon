@@ -1374,7 +1374,6 @@ include/ui_clip.h function GetClipIntersection
 include/ui_clip.h function ResetClip
 include/ui_color.h function DarkenColor
 include/ui_color.h function LightenColor
-include/ui_composed.h function CarouselControls
 include/ui_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_controls.h enum ICON_SIZE_LARGE
 include/ui_controls.h enum ICON_SIZE_MEDIUM

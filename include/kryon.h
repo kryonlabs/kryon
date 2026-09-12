@@ -38,7 +38,6 @@
 #include "ui_widget.h"
 #include "ui_tree.h"
 #include "ui.h"
-#include "ui_composed.h"
 #include "ui_page.h"
 #include "ui_window.h"
 #include "terminal_pane.h"

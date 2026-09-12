@@ -304,15 +304,6 @@ has a single place to land.
 | `GuidePager` | Internal/lowered support | Not a clean public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by `kryon.h`/`ui.h`. |
 | `TransitionFade` | `.kry canonical` | Alpha/easing policy is in `.kry`; host keeps state mutation and fade rectangle drawing. |
 
-## Composite And App-Level Candidates
-
-These names are in the registry, but each should prove it is reusable Kryon
-surface before staying public:
-
-| Public name | Current decision | Notes |
-|---|---|---|
-| `CarouselControls` | Composite candidate | App-style carousel controls; should either stay as reusable `.kry` composition or fold into callers. |
-
 ## Game2D Nodes
 
 Game2D has its own node family. These are canonical for the Game2D domain, but

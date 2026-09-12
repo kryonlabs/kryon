@@ -77,7 +77,6 @@ is_runtime_go_type(const char *type)
 		"Tab", "TabBarProps",
         "TextFieldProps", "TextAreaProps", "ColumnProps", "RowProps",
         "ParagraphSpec", "ImageProps", "PageProps",
-        "CarouselControlsProps",
         "SectionProps", "HeadingProps", "ParagraphTextProps", "LinkProps",
         "FlowProps", "GridProps", "TitleBarDropdown", "TitleBarProps",
         "NavigationBarItem", "NavigationBarProps",
@@ -989,7 +988,6 @@ props_field_at(const KirModule *module, const char *type, int index,
         const char *fields[40];
     } table[] = {
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
-        {"CarouselControlsProps", {"Bounds", "Indicators", "Count", "Selected", "Move", "Disabled", "ID"}},
         {"FlowProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"GridProps", {"Bounds", "Columns", "MinItemWidth", "MaxColumns", "Gap", "Padding", "Key"}},
         {"PageProps", {"Bounds", "Title", "Description", "CanonicalURL",
