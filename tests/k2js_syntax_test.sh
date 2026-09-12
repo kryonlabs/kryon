@@ -275,6 +275,13 @@ Anon :: () #ui {
             on_pointer_down = pointer_down
             on_pointer_up = pointer_up
         }
+        Column contact: {
+            dom = "form"
+            dom_action = "/contact"
+            dom_method = "post"
+            dom_enctype = "multipart/form-data"
+            autocomplete = "off"
+        }
     }
 }
 EOF
@@ -289,6 +296,10 @@ grep -q '"onMouseEnter": "pointer_enter"' "$anon_out"
 grep -q '"onMouseLeave": "pointer_leave"' "$anon_out"
 grep -q '"onMouseDown": "pointer_down"' "$anon_out"
 grep -q '"onMouseUp": "pointer_up"' "$anon_out"
+grep -q '"formAction": "/contact"' "$anon_out"
+grep -q '"formMethod": "post"' "$anon_out"
+grep -q '"formEncType": "multipart/form-data"' "$anon_out"
+grep -q '"autoComplete": "off"' "$anon_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {

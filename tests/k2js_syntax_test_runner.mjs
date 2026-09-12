@@ -131,6 +131,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   target: "",
   rel: "",
   inputType: "",
+  formAction: "",
+  formMethod: "",
+  formEncType: "",
+  autoComplete: "",
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   role: "button",
@@ -348,6 +352,10 @@ function fakeDocument() {
         nodeName: "contact",
         path: "Page/contact",
         tag: "form",
+        formAction: "/contact",
+        formMethod: "post",
+        formEncType: "multipart/form-data",
+        autoComplete: "off",
         submitAction(values) { submitValues = values; }
       });
     runtime.widget(submitRt, "TextField", { text: "hello@example.test" }, null,
@@ -355,7 +363,12 @@ function fakeDocument() {
     runtime.endFrame(submitRt);
     const submitTarget = document.createElement("div");
     runtime.renderWebDocument(submitRt, submitTarget);
-    runtime.findWebElement(submitTarget, "contact").submit();
+    const submitForm = runtime.findWebElement(submitTarget, "contact");
+    assert.equal(submitForm.attributes.action, "/contact");
+    assert.equal(submitForm.attributes.method, "post");
+    assert.equal(submitForm.attributes.enctype, "multipart/form-data");
+    assert.equal(submitForm.attributes.autocomplete, "off");
+    submitForm.submit();
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
 

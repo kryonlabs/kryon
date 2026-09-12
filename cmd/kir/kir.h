@@ -137,6 +137,10 @@ typedef struct KirStmt {
     char dom_data_attrs[KIR_TEXT_MAX];  /* requested data-* attributes */
     char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
     char dom_input_type[KIR_NAME_MAX];  /* requested browser input type */
+    char dom_form_action[KIR_TEXT_MAX]; /* requested form action URL */
+    char dom_form_method[KIR_NAME_MAX]; /* requested form method */
+    char dom_form_enctype[KIR_NAME_MAX];/* requested form encoding */
+    char dom_autocomplete[KIR_NAME_MAX];/* requested autocomplete policy */
     char dom_tab_index[KIR_NAME_MAX];   /* requested tabindex expression */
     char dom_role[KIR_NAME_MAX];        /* requested accessibility role */
     char dom_aria_label[KIR_TEXT_MAX];  /* requested accessible label */

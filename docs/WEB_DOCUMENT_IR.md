@@ -97,6 +97,10 @@ Supported metadata fields in this first slice:
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
 | `input_type`, `dom_type`, `html_type`, `dom_input_type` | `inputType` |
+| `dom_action`, `html_action`, `form_action` | `formAction` |
+| `dom_method`, `html_method`, `form_method` | `formMethod` |
+| `dom_enctype`, `html_enctype`, `form_enctype` | `formEncType` |
+| `autocomplete`, `dom_autocomplete`, `html_autocomplete` | `autoComplete` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
@@ -199,7 +203,8 @@ contract.
 
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `id`, `domName`, `href`, `target`, `rel`,
-`inputType`, `classes`, `dataAttrs`, `role`, and `state`. The DOM
+`inputType`, `formAction`, `formMethod`, `formEncType`, `autoComplete`,
+`classes`, `dataAttrs`, `role`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.

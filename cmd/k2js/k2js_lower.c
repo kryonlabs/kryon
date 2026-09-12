@@ -1205,6 +1205,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_target[0] || st->dom_rel[0] ||
            st->dom_data_attrs[0] ||
            st->dom_placeholder[0] || st->dom_input_type[0] ||
+           st->dom_form_action[0] || st->dom_form_method[0] ||
+           st->dom_form_enctype[0] || st->dom_autocomplete[0] ||
            st->dom_tab_index[0] ||
            st->dom_role[0] || st->dom_aria_label[0] ||
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
@@ -1378,6 +1380,14 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "placeholder", st->dom_placeholder,
                              &emitted);
     emit_metadata_expr_field(f, m, "inputType", st->dom_input_type,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "formAction", st->dom_form_action,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "formMethod", st->dom_form_method,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "formEncType", st->dom_form_enctype,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "autoComplete", st->dom_autocomplete,
                              &emitted);
     emit_metadata_expr_field(f, m, "tabIndex", st->dom_tab_index, &emitted);
     emit_metadata_expr_field(f, m, "role", st->dom_role, &emitted);

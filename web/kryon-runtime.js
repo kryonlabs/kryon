@@ -1120,6 +1120,10 @@ function webNodeFromWidget(item, index) {
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     dataAttrs: propDataAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
+    formAction: meta.formAction === undefined || meta.formAction === null ? "" : String(meta.formAction),
+    formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
+    formEncType: meta.formEncType === undefined || meta.formEncType === null ? "" : String(meta.formEncType),
+    autoComplete: meta.autoComplete === undefined || meta.autoComplete === null ? "" : String(meta.autoComplete),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
@@ -1178,6 +1182,10 @@ export function webNodeStyleFacts(node) {
     target: node?.target || "",
     rel: node?.rel || "",
     inputType: node?.inputType || "",
+    formAction: node?.formAction || "",
+    formMethod: node?.formMethod || "",
+    formEncType: node?.formEncType || "",
+    autoComplete: node?.autoComplete || "",
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     role: node?.role || "",
@@ -1872,6 +1880,10 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "rel", docNode.rel);
   applyDataAttrs(el, docNode.dataAttrs);
   setAttr(el, "type", docNode.inputType);
+  setAttr(el, "action", docNode.formAction);
+  setAttr(el, "method", docNode.formMethod);
+  setAttr(el, "enctype", docNode.formEncType);
+  setAttr(el, "autocomplete", docNode.autoComplete);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);

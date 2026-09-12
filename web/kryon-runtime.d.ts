@@ -92,6 +92,10 @@ export interface WebDocumentNode {
   rel: string;
   dataAttrs: Record<string, string>;
   inputType: string;
+  formAction: string;
+  formMethod: string;
+  formEncType: string;
+  autoComplete: string;
   alt: string;
   asset: string;
   role: string;
@@ -158,6 +162,10 @@ export interface WebNodeStyleFacts {
   target: string;
   rel: string;
   inputType: string;
+  formAction: string;
+  formMethod: string;
+  formEncType: string;
+  autoComplete: string;
   classes: string[];
   dataAttrs: Record<string, string>;
   role: string;
