@@ -225,6 +225,21 @@ fi
 
 node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/out/kryon-runtime.js"
 
+cat > "$work/src/anon_refs.kry" <<'EOF'
+#import "kryon.h"
+
+Anon :: () #ui {
+    Screen root: {
+        Text((TextProps){.text="first"})
+        Text((TextProps){.text="second"})
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/anon_refs.kry"
+anon_out="$work/out/src/anon_refs.js"
+grep -Eq '"path": "Anon/root/Text@[0-9]+"' "$anon_out"
+grep -Eq '"path": "Anon/root/Text@[0-9]+-2"' "$anon_out"
+
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
     value: i32

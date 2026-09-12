@@ -463,6 +463,7 @@ typedef struct UiBlock {
     char dom_on_change[KIR_NAME_MAX];
     char dom_on_key[KIR_NAME_MAX];
     char dom_on_submit[KIR_NAME_MAX];
+    int anonymous_widget_count;
     int close_depth;
     int opened;
     int emits_end;
@@ -475,6 +476,7 @@ typedef struct UiBlock {
 typedef struct SlotParseFrame {
     int function_index;
     int depth;
+    int root_anonymous_count;
     int block_count;
     UiBlock *blocks;
     int body_count;
@@ -798,10 +800,11 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
 
 static void
 ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
-                              const UiBlock *parent, const char *widget,
-                              KirSourceSpan span)
+                              UiBlock *parent, int *root_anonymous_count,
+                              const char *widget, KirSourceSpan span)
 {
     const char *parent_path;
+    int ordinal = 1;
 
     if(statement == NULL)
         return;
@@ -814,14 +817,24 @@ ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
     parent_path = statement->node_parent_path[0] != '\0'
                     ? statement->node_parent_path
                     : (fn != NULL ? fn->name : "ui");
-    snprintf(statement->node_path, sizeof(statement->node_path),
-             "%.3000s/%.700s@%d", parent_path, widget, span.line);
+    if(parent != NULL)
+        ordinal = ++parent->anonymous_widget_count;
+    else if(root_anonymous_count != NULL)
+        ordinal = ++*root_anonymous_count;
+    if(ordinal <= 1)
+        snprintf(statement->node_path, sizeof(statement->node_path),
+                 "%.3000s/%.700s@%d", parent_path, widget, span.line);
+    else
+        snprintf(statement->node_path, sizeof(statement->node_path),
+                 "%.3000s/%.700s@%d-%d", parent_path, widget, span.line,
+                 ordinal);
 }
 
 static void
 ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
                                          const KirFunction *fn,
-                                         const UiBlock *parent,
+                                         UiBlock *parent,
+                                         int *root_anonymous_count,
                                          const char *raw,
                                          KirStmtKind kind,
                                          KirSourceSpan span)
@@ -848,7 +861,8 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
         return;
     }
     if(parse_widget_statement(expr, widget, sizeof(widget), args, sizeof(args)))
-        ui_stmt_apply_source_metadata(statement, fn, parent, widget, span);
+        ui_stmt_apply_source_metadata(statement, fn, parent,
+                                      root_anonymous_count, widget, span);
 }
 
 static void
@@ -2218,6 +2232,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int in_block_comment = 0;
     UiBlock ui_blocks[64];
     int ui_block_count = 0;
+    int root_anonymous_widget_count = 0;
     SlotParseFrame slot_frames[64];
     int slot_frame_count = 0;
 
@@ -2693,6 +2708,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     mode = FUNCTION;
                     depth = 1;
                     ui_block_count = 0;
+                    root_anonymous_widget_count = 0;
                 } else {
                     /* extern / body-less prototype: no body follows */
                     fn = NULL;
@@ -3012,6 +3028,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 SlotParseFrame *frame = &slot_frames[--slot_frame_count];
                 fn = &module->functions[frame->function_index];
                 depth = frame->depth;
+                root_anonymous_widget_count = frame->root_anonymous_count;
                 ui_block_count = frame->block_count;
                 if(ui_block_count)
                     memcpy(ui_blocks, frame->blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
@@ -3085,6 +3102,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     SlotParseFrame *frame = &slot_frames[slot_frame_count++];
                     frame->function_index = (int)(fn - module->functions);
                     frame->depth = depth;
+                    frame->root_anonymous_count = root_anonymous_widget_count;
                     frame->body_count = body_mcount;
                     memcpy(frame->body_depth, body_mdepth, sizeof(body_mdepth));
                     char name[KIR_NAME_MAX];
@@ -3110,6 +3128,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     fn->is_closure = 1;
                     kir_copy(fn->guard, sizeof(fn->guard), cur_guard);
                     depth = 1;
+                    root_anonymous_widget_count = 0;
                     ui_block_count = body_mcount = 0;
                     continue;
                 }
@@ -3238,6 +3257,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                               span);
                     ui_stmt_apply_source_metadata(st, fn,
                         ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                        &root_anonymous_widget_count,
                         widget, span);
                 } else {
                     KirStmt *st;
@@ -3248,6 +3268,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                        kind == KIR_STMT_ASSIGN)
                         ui_stmt_apply_expression_widget_metadata(st, fn,
                             ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                            &root_anonymous_widget_count,
                             t, kind, span);
                 }
                 depth += brace_delta;

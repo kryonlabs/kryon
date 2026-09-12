@@ -75,7 +75,10 @@ The runtime exposes
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
 path, node name, key, or DOM id without making generated JavaScript the source
 of structure. `sourcePath` and `sourceLine` identify the `.kry` source location
-that produced each node.
+that produced each node. Anonymous widget expressions receive source-derived
+path components such as `Text@42`; repeated anonymous widgets under the same
+parent receive deterministic occurrence suffixes such as `Text@42-2` so every
+DOM object remains individually addressable.
 
 Supported metadata fields in this first slice:
 
