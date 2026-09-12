@@ -445,9 +445,12 @@ declare global {
     readonly kryKey?: string;
     readonly krySourceRef?: string;
     readonly krySourceColumnRef?: string;
+    readonly krySourceRangeRef?: string;
     readonly krySourcePath?: string;
     readonly krySourceLine?: number;
     readonly krySourceColumn?: number;
+    readonly krySourceEndLine?: number;
+    readonly krySourceEndColumn?: number;
     readonly kryNode?: WebDocumentNode | null;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
@@ -575,9 +578,12 @@ declare global {
     readonly kryTag?: string;
     readonly krySourceRef?: string;
     readonly krySourceColumnRef?: string;
+    readonly krySourceRangeRef?: string;
     readonly krySourcePath?: string;
     readonly krySourceLine?: number;
     readonly krySourceColumn?: number;
+    readonly krySourceEndLine?: number;
+    readonly krySourceEndColumn?: number;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;

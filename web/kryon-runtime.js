@@ -2823,6 +2823,13 @@ function bindWebDOMObjectProperties(el) {
         return webNodeSourceColumnRef(this.__kryDocNode);
       }
     },
+    krySourceRangeRef: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeSourceRangeRef(this.__kryDocNode);
+      }
+    },
     krySourcePath: {
       configurable: true,
       enumerable: false,
@@ -2842,6 +2849,20 @@ function bindWebDOMObjectProperties(el) {
       enumerable: false,
       get() {
         return this.__kryDocNode?.sourceColumn || 0;
+      }
+    },
+    krySourceEndLine: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.sourceEndLine || 0;
+      }
+    },
+    krySourceEndColumn: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.sourceEndColumn || 0;
       }
     },
     kryNode: {
@@ -4887,6 +4908,13 @@ function bindWebDOMEventProperties(event) {
           return webNodeSourceColumnRef(rawWebDOMObjectFromEvent(this)?.node);
         }
       },
+      krySourceRangeRef: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return webNodeSourceRangeRef(rawWebDOMObjectFromEvent(this)?.node);
+        }
+      },
       krySourcePath: {
         configurable: true,
         enumerable: false,
@@ -4906,6 +4934,20 @@ function bindWebDOMEventProperties(event) {
         enumerable: false,
         get() {
           return rawWebDOMObjectFromEvent(this)?.node?.sourceColumn || 0;
+        }
+      },
+      krySourceEndLine: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.sourceEndLine || 0;
+        }
+      },
+      krySourceEndColumn: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.sourceEndColumn || 0;
         }
       },
       kryObject: {
