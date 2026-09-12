@@ -330,6 +330,7 @@ typedef struct KirRoute {
     char title[KIR_NAME_MAX];
     char group[KIR_NAME_MAX];
     char page[KIR_NAME_MAX];
+    char path[KIR_PATH_MAX];
     char guard[KIR_TEXT_MAX];
     KirSourceSpan span;
 } KirRoute;

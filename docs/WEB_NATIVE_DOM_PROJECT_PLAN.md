@@ -37,6 +37,8 @@ the browser receives normal elements, attributes, CSS, and events.
   wheel, drag/drop, clipboard, dialog, and popover events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, and `data-kry-state` mirroring.
+- k2js route dispatch for explicit route paths with nested `:param` segments,
+  plus runtime access to captured route params.
 
 ## Remaining Work
 
@@ -49,7 +51,6 @@ the browser receives normal elements, attributes, CSS, and events.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
 - Extend KSS package discovery beyond built-in `styles/kryon/<pack>.kss`.
-- Add route parameter parsing and nested route matching for k2js page dispatch.
 - Add more semantic relationship facts where widgets need them, such as grouped
   controls, owned regions, labelled-by chains, menu/list relationships, and
   table/grid headers.

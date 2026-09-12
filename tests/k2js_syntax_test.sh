@@ -501,6 +501,7 @@ route home {
 route about {
     title "About"
     group "Pages"
+    path "/docs/:section/:slug"
     page About
 }
 
@@ -528,7 +529,7 @@ const runtime = await import(pathToFileURL(process.argv[3]).href);
 
 assert.deepEqual(module.app.routes, [
   { id: "home", title: "Home", group: "Pages", page: "Home", path: "/" },
-  { id: "about", title: "About", group: "Pages", page: "About", path: "/about" }
+  { id: "about", title: "About", group: "Pages", page: "About", path: "/docs/:section/:slug" }
 ]);
 
 const state = module.createState();
@@ -539,11 +540,13 @@ assert.equal(state.visits, 1);
 assert.equal(runtime.webDocumentFrame(rt).nodes[0].path, "Home/home");
 assert.equal(snap.frame[1].args.text, "Home");
 
-runtime.ReplaceRoute("/about");
+runtime.ReplaceRoute("/docs/api/install");
 snap = module.frame(rt, state);
 assert.equal(state.visits, 101);
 assert.equal(runtime.webDocumentFrame(rt).nodes[0].path, "About/about");
 assert.equal(snap.frame[1].args.text, "About");
+assert.deepEqual(runtime.GetRouteParams(), { section: "api", slug: "install" });
+assert.equal(runtime.GetRouteParam("section"), "api");
 
 runtime.ReplaceRoute("/missing");
 snap = module.frame(rt, state);

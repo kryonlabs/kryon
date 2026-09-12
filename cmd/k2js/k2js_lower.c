@@ -2095,6 +2095,22 @@ emit_function_imports(FILE *f, const char *consumer_stem)
 }
 
 static void
+route_web_path(const KirRoute *route, int index, char *out, size_t out_size)
+{
+    if(out_size == 0)
+        return;
+    if(route != NULL && route->path[0] != '\0') {
+        snprintf(out, out_size, "%s", route->path);
+        return;
+    }
+    if(index == 0) {
+        snprintf(out, out_size, "/");
+        return;
+    }
+    snprintf(out, out_size, "/%s", route != NULL ? route->id : "");
+}
+
+static void
 emit_app(FILE *f, const KirModule *m, const char *root)
 {
     const KirAppMeta *a = &m->app;
@@ -2141,14 +2157,10 @@ emit_app(FILE *f, const KirModule *m, const char *root)
         fprintf(f, ", page: ");
         js_string(f, route->page);
         fprintf(f, ", path: ");
-        if(i == 0)
-            js_string(f, "/");
-        else {
-            char path[KIR_NAME_MAX + 2];
+        char path[KIR_PATH_MAX];
 
-            snprintf(path, sizeof(path), "/%s", route->id);
-            js_string(f, path);
-        }
+        route_web_path(route, i, path, sizeof(path));
+        js_string(f, path);
         fprintf(f, " }%s\n", i + 1 < m->route_count ? "," : "");
     }
     fprintf(f, "  ]\n};\n\n");
@@ -2315,22 +2327,22 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
                 for(int i = 0; i < m->route_count; i++) {
                     const KirRoute *route = &m->routes[i];
                     const KirFunction *page_fn = find_route_page_function(m, route);
-                    char path[KIR_NAME_MAX + 2];
+                    char path[KIR_PATH_MAX];
 
                     if(page_fn == NULL || frame_parameters(m, page_fn) < 0)
                         continue;
                     if(fallback_fn == NULL)
                         fallback_fn = page_fn;
-                    snprintf(path, sizeof(path), "/%s", route->id);
-                    fprintf(f, "  if (result === null && ($route === ");
+                    route_web_path(route, i, path, sizeof(path));
+                    fprintf(f, "  const $match%d = kryon.MatchRoute(", i);
                     js_string(f, path);
-                    if(i == 0)
-                        fprintf(f, " || $route === \"/\"");
-                    fprintf(f, ")) result = ");
+                    fprintf(f, ", $route);\n");
+                    fprintf(f, "  if (result === null && $match%d !== null) { kryon.SetRouteParams($match%d); result = ", i, i);
                     emit_frame_call(f, m, guard, page_fn);
-                    fprintf(f, ";\n");
+                    fprintf(f, "; }\n");
                 }
                 if(fallback_fn != NULL) {
+                    fprintf(f, "  if (result === null) kryon.SetRouteParams({});\n");
                     fprintf(f, "  if (result === null) result = ");
                     emit_frame_call(f, m, guard, fallback_fn);
                     fprintf(f, ";\n");

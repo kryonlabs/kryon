@@ -253,7 +253,8 @@ Supported metadata fields:
 
 `app.styles` contains `{ kind, target, alias }` records. `app.routes` contains
 `{ id, title, group, page, path }` records. The first route uses `/` as its
-browser path; later routes use `/<route-id>`.
+browser path by default; later routes use `/<route-id>` unless the route block
+declares `path "..."`.
 
 The initial tag mapping is intentionally conservative:
 
@@ -580,16 +581,18 @@ as `aria-checked`, `aria-disabled`, `aria-busy`, and selected-link
 `aria-current` when those facts are present.
 
 `GetRoutePath()`, `GetRouteHash()`, and `GetRouteVersion()` expose browser route
-state to generated logic. `PushRoute(path)` and `ReplaceRoute(path)` update
-native browser history when available and use the same in-memory route state in
-non-browser tests.
+state to generated logic. `MatchRoute(pattern, path?)` matches paths with
+`:param` segments, while `GetRouteParams()` and `GetRouteParam(name)` expose
+the params captured by generated route dispatch. `PushRoute(path)` and
+`ReplaceRoute(path)` update native browser history when available and use the
+same in-memory route state in non-browser tests.
 
 ## Current Limits
 
 - `renderWebDocument()` reuses DOM nodes by tag and Kry path, and nests nodes
   beneath their Kry parent when the parent is present in the frame.
 - Route helpers expose path/hash changes, and k2js can dispatch route pages
-  declared in `.kry`; nested route parameters are not parsed yet.
+  declared in `.kry`, including explicit paths with nested `:param` segments.
 - Event handling covers click-to-`QueueTap`, text/form events, key events,
   submit/reset, focus/blur, scroll, mouse and pointer enter/leave/move/down/up,
   wheel, drag/drop, clipboard actions, and native dialog/popover lifecycle

@@ -3206,6 +3206,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 sscanf(t, "page %127s", page);
                 if(page[0] != '\0')
                     snprintf(route->page, sizeof(route->page), "%s", page);
+            } else if(route != NULL && starts_word(t, "path")) {
+                parse_quoted(t, route->path, sizeof(route->path));
             }
         } else if(mode == TOP && starts_word(t, "app") &&
                   strchr(t, '{') != NULL) {

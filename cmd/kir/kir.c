@@ -798,8 +798,9 @@ KirProgramDump(const KirProgram *program, FILE *out)
         for(j = 0; j < m->route_count; j++) {
             const KirRoute *route = &m->routes[j];
 
-            fprintf(out, "  route %s title %s group %s page %s span ",
-                    route->id, route->title, route->group, route->page);
+            fprintf(out, "  route %s title %s group %s page %s path %s span ",
+                    route->id, route->title, route->group, route->page,
+                    route->path);
             kir_dump_span(out, route->span);
             fprintf(out, "\n");
         }

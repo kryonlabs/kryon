@@ -67,7 +67,8 @@ const pageMeta = {
 const routeState = {
   path: "/",
   hash: "",
-  version: 0
+  version: 0,
+  params: {}
 };
 let routeListenersInstalled = false;
 
@@ -93,8 +94,63 @@ function setRouteState(next) {
     return false;
   routeState.path = next.path;
   routeState.hash = next.hash;
+  routeState.params = {};
   routeState.version++;
   return true;
+}
+
+function splitRouteSegments(path) {
+  const text = normalizeRoute(path).path;
+  if (text === "/")
+    return [];
+  return text.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean)
+    .map((part) => {
+      try {
+        return decodeURIComponent(part);
+      } catch {
+        return part;
+      }
+    });
+}
+
+export function MatchRoute(pattern, path = GetRoutePath()) {
+  const patternParts = splitRouteSegments(pattern || "/");
+  const pathParts = splitRouteSegments(path || "/");
+  if (patternParts.length !== pathParts.length)
+    return null;
+  const params = {};
+  for (let i = 0; i < patternParts.length; i++) {
+    const expected = patternParts[i];
+    const actual = pathParts[i];
+    if (expected.startsWith(":")) {
+      const name = expected.slice(1);
+      if (!name)
+        return null;
+      params[name] = actual;
+    } else if (expected !== actual) {
+      return null;
+    }
+  }
+  return params;
+}
+
+export function RouteMatches(pattern, path = GetRoutePath()) {
+  return MatchRoute(pattern, path) !== null;
+}
+
+export function SetRouteParams(params = {}) {
+  routeState.params = { ...(params || {}) };
+  return routeState.params;
+}
+
+export function GetRouteParams() {
+  ensureRouteListeners();
+  syncRouteFromBrowser();
+  return { ...routeState.params };
+}
+
+export function GetRouteParam(name) {
+  return GetRouteParams()[String(name || "")] || "";
 }
 
 function syncRouteFromBrowser() {
