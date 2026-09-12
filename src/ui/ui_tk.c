@@ -2307,11 +2307,14 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused
                                                 disabled, 0,
                                                 StyleKindDragValue());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    int font = style.font_size > 0.0f
+        ? (int)(style.font_size + 0.5f)
+        : GetSmallFontSize();
 
     ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, disabled, focused);
     RenderText(text, (int)bounds.x + Scale(6),
-               ui_row_text_y(bounds, GetSmallFontSize()),
-               GetSmallFontSize(), style.foreground);
+               ui_row_text_y(bounds, font),
+               font, Fade(style.foreground, style.opacity));
 }
 
 static void
@@ -2322,9 +2325,12 @@ ui_paint_drag_label(Rectangle bounds, const char *label)
                                                     ButtonStateNormal, 0, 0,
                                                     StyleKindDrag());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+        int font = style.font_size > 0.0f
+            ? (int)(style.font_size + 0.5f)
+            : GetSmallFontSize();
         RenderText(label, (int)bounds.x + Scale(6),
-                   (int)bounds.y - GetSmallFontSize() - Scale(2),
-                   GetSmallFontSize(), style.foreground);
+                   (int)bounds.y - font - Scale(2),
+                   font, Fade(style.foreground, style.opacity));
     }
 }
 
@@ -2497,6 +2503,9 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
                                                      disabled, 0,
                                                      StyleKindSlider(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label).value);
+    int label_font = label_style.font_size > 0.0f
+        ? (int)(label_style.font_size + 0.5f)
+        : GetSmallFontSize();
 
     ui_tk_draw_slider_paint(SliderPaintFor((SliderSpec){
         .bounds = cell,
@@ -2511,8 +2520,8 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
         .thumb = thumb
     }), hovered, focused, disabled);
     RenderText(text, (int)cell.x + Scale(6),
-               ui_row_text_y(cell, GetSmallFontSize()),
-               GetSmallFontSize(), label_style.foreground);
+               ui_row_text_y(cell, label_font),
+               label_font, Fade(label_style.foreground, label_style.opacity));
     if(focused)
         RenderFocus(cell);
 }
@@ -2524,9 +2533,12 @@ ui_draw_slider_label(Rectangle bounds, const char *label)
         StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
             ButtonStateNormal, 0, 0, StyleKindSlider(), 6);
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+        int font = style.font_size > 0.0f
+            ? (int)(style.font_size + 0.5f)
+            : GetSmallFontSize();
         RenderText(label, (int)bounds.x + Scale(6),
-                   (int)bounds.y - GetSmallFontSize() - Scale(2),
-                   GetSmallFontSize(), style.foreground);
+                   (int)bounds.y - font - Scale(2),
+                   font, Fade(style.foreground, style.opacity));
     }
 }
 

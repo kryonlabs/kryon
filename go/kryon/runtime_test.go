@@ -1252,7 +1252,7 @@ tokens {
 }
 Slider[role=Track] { background: track; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Slider[role=Fill] { background: active; foreground: ink; border: active; radius: radius; border-width: border; material: flat; }
-Slider[role=Label] { foreground: label; }
+Slider[role=Label] { foreground: label; font-size: 18; opacity: 0.67; }
 `, "Test Slider", "") || !SetActiveStylePack("test.slider") {
 		t.Fatal("test slider style did not activate")
 	}
@@ -1288,12 +1288,14 @@ Slider[role=Label] { foreground: label; }
 			}
 		case op.Kind == FrameOpText && op.Row == 0 && op.Text == "0.5":
 			sawValue = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.67 {
 				t.Fatalf("slider value text style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Level":
 			sawLabel = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.67 {
 				t.Fatalf("slider label style op = %+v", op)
 			}
 		}
@@ -1610,8 +1612,8 @@ tokens {
 Surface { background: surface; material: flat; }
 App { background: surface; }
 Text { foreground: label; font-size: 14; }
-Drag { foreground: label; font-size: 14; }
-DragValue { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
+Drag { foreground: label; font-size: 15; opacity: 0.69; }
+DragValue { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; font-size: 17; material: flat; }
 DragValue:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
 DragValue:disabled { background: field-disabled; foreground: disabled-ink; border: disabled-rule; opacity: 0.55; }
 `, "Test Drag Scalar", "") || !SetActiveStylePack("test.drag_scalar") {
@@ -1645,12 +1647,13 @@ DragValue:disabled { background: field-disabled; foreground: disabled-ink; borde
 				op.FocusColor != (Color{R: 0xff, G: 0x9f, B: 0x1c, A: 0xff}) ||
 				op.TextColor != (Color{R: 0xe8, G: 0xf1, B: 0xff, A: 0xff}) ||
 				op.AmbientColor != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) ||
-				op.BorderWidth != 2 || op.Radius != 5 {
+				op.BorderWidth != 2 || op.Radius != 5 || op.FontSize != 17 {
 				t.Fatalf("drag scalar cell style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Amount":
 			sawLabel = true
-			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) {
+			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) ||
+				op.FontSize != 15 || op.Opacity != 0.69 {
 				t.Fatalf("drag scalar label style op = %+v", op)
 			}
 		}

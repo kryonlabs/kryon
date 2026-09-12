@@ -3775,12 +3775,13 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 	button := Button_BuildFrame(props, ButtonInput{}, frame, InteractionMotion{},
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1, Text14, Text14)
 	style := unpackStyle(button.Appearance.Value)
+	font := styleFont(style, Text14)
 	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button,
 		Opacity: style.Opacity, BorderWidth: style.BorderWidth, Radius: style.Radius,
 		Material: MaterialKind(style.Material), FillStates: styleFill(style),
 		FillStatesValid: true, AmbientColor: r.appAmbientColor(), FocusColor: style.Focus,
 		Bounds: bounds, Text: text, Color: style.Background, BorderColor: style.Border,
-		TextColor: style.Foreground, FontSize: Text14, ID: id, Row: component,
+		TextColor: style.Foreground, FontSize: font, ID: id, Row: component,
 		Disabled: disabled, Pressed: pressed, Focused: focused})
 }
 
@@ -3790,7 +3791,8 @@ func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
 	}
 	style := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false,
 		false, StyleSheet_StyleKindDrag()).Value)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: style.Foreground, FontSize: Text14})
+	font := styleFont(style, Text14)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font})
 }
 
 func (r *runtime) numericTempEdit(bounds Rectangle, key numericInputKey, focusID int32, formatted string, disabled bool) (*numericInputState, bool, bool) {
@@ -4032,13 +4034,15 @@ func (r *runtime) drawSliderCell(bounds Rectangle, ratio float32, text string, d
 		x := bounds.X + bounds.Width*ratio
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: x, Y: bounds.Y, Height: bounds.Height}, Color: trackStyle.Foreground, ID: id, Row: component})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(Text14))/2, Width: bounds.Width - 12, Height: float32(Text14)}, Text: text, Color: labelStyle.Foreground, FontSize: Text14, ID: id, Row: component})
+	labelFont := styleFont(labelStyle, Text14)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y + (bounds.Height-float32(labelFont))/2, Width: bounds.Width - 12, Height: float32(labelFont)}, Text: text, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: labelFont, ID: id, Row: component})
 }
 
 func (r *runtime) drawSliderLabel(bounds Rectangle, label string, id int32) {
 	if label != "" {
 		style := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - 18, Width: bounds.Width - 12, Height: 16}, Text: label, Color: style.Foreground, FontSize: Text14, ID: id})
+		font := styleFont(style, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, ID: id})
 	}
 }
 
