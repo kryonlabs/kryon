@@ -95,6 +95,7 @@ Supported metadata fields in this first slice:
       domId,
       classes,
       text,
+      value,
       href,
       inputType,
       alt,
@@ -167,6 +168,14 @@ path, node name, key, or DOM id matches `query`.
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, or DOM id matches `query`.
 
+`webFormValue(target, query)` and `webFormValues(target)` expose current mounted
+native form values by Kry path, node name, key, and DOM id. Values are refreshed
+on render and after native `input`/`change` events.
+
+`webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing
+projection of the Web Document frame: document title/description plus each
+node's path, name, role, label, text, value, and state.
+
 `GetRoutePath()`, `GetRouteHash()`, and `GetRouteVersion()` expose browser route
 state to generated logic. `PushRoute(path)` and `ReplaceRoute(path)` update
 native browser history when available and use the same in-memory route state in
@@ -181,4 +190,5 @@ non-browser tests.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   and `on_change(value)` actions in this slice.
 - KSS parsing and compiled style tables are not implemented yet.
-- Full form value synchronization and ARIA snapshots remain pending.
+- Form value lookup and accessibility snapshots are available; richer per-widget
+  ARIA mappings are still incremental.

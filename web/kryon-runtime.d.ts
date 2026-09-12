@@ -69,6 +69,7 @@ export interface WebDocumentNode {
   domId: string;
   classes: string[];
   text: string;
+  value: unknown;
   href: string;
   inputType: string;
   alt: string;
@@ -121,6 +122,24 @@ export interface WebDocumentFrame {
     canonicalURL: string;
     themeColor: string;
   };
+}
+
+export interface WebAccessibilityNode {
+  path: string;
+  name: string;
+  kind: string;
+  tag: string;
+  role: string;
+  label: string;
+  text: string;
+  value: unknown;
+  state: Record<string, boolean>;
+}
+
+export interface WebAccessibilitySnapshot {
+  title: string;
+  description: string;
+  nodes: WebAccessibilityNode[];
 }
 
 export interface Ref<T = unknown> {
@@ -178,9 +197,12 @@ export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
+export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;
+export function webFormValue(target: Element | string | null, query: string): unknown;
+export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
 export function Color(r?: number, g?: number, b?: number, a?: number): ColorValue;
 export function NewVector2(x?: number, y?: number): { x: number; y: number };

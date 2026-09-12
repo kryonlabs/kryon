@@ -93,6 +93,10 @@ assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
+assert.equal(webDoc.nodes[3].value, "label");
+assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].role, "button");
+assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[3].role, "textbox");
+assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[3].label, "Search");
 assert.equal(generated.Valid_CallHost(rt, state, host), 42);
 
 function fakeDocument() {
@@ -188,9 +192,15 @@ function fakeDocument() {
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
+    assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
+    assert.equal(runtime.webFormValues(target)["search-field"], "label");
     firstField.input("needle");
+    assert.equal(runtime.webFormValue(target, "Scene/root/search"), "needle");
+    assert.equal(runtime.webFormValue(target, "search"), "needle");
+    assert.equal(runtime.webFormValues(target)["search-field"], "needle");
     assert.equal(domState.count, 11);
     firstField.change("needle");
+    assert.equal(runtime.webFormValue(target, "search-field"), "needle");
     assert.equal(domState.count, 111);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);

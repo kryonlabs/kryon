@@ -1020,6 +1020,9 @@ function widgetText(item) {
   case "Button":
   case "InvisibleButton":
     return propString(args, "label", "");
+  case "TextField":
+  case "TextArea":
+    return propString(args, "text", propString(args, "value", ""));
   default:
     return "";
   }
@@ -1072,6 +1075,7 @@ function webNodeFromWidget(item, index) {
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     classes: [...new Set(classes)],
     text: widgetText(item),
+    value: widgetText(item),
     href: widgetHref(item),
     inputType: widgetInputType(item),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
@@ -1109,6 +1113,48 @@ export function webNodeStyleFacts(node) {
     role: node?.role || "",
     state: { ...(node?.state || {}) }
   };
+}
+
+export function webAccessibilitySnapshot(source) {
+  const frame = source?.nodes ? source : webDocumentFrame(source);
+  return {
+    title: frame.metadata?.title || "",
+    description: frame.metadata?.description || "",
+    nodes: (frame.nodes || []).map((node) => ({
+      path: node.path,
+      name: node.name,
+      kind: node.kind,
+      tag: node.tag,
+      role: node.role || implicitRole(node),
+      label: node.ariaLabel || node.text || node.name,
+      text: node.text,
+      value: node.tag === "input" || node.tag === "textarea" ? node.value : "",
+      state: { ...node.state }
+    }))
+  };
+}
+
+function implicitRole(node) {
+  if (!node)
+    return "";
+  if (node.tag === "button")
+    return "button";
+  if (node.tag === "a" && node.href)
+    return "link";
+  if (node.tag === "input") {
+    if (node.inputType === "checkbox")
+      return "checkbox";
+    if (node.inputType === "radio")
+      return "radio";
+    return "textbox";
+  }
+  if (node.tag === "textarea")
+    return "textbox";
+  if (/^h[1-6]$/.test(node.tag))
+    return "heading";
+  if (node.tag === "main")
+    return "main";
+  return "";
 }
 
 export function webDocumentFrame(rt) {
@@ -1206,6 +1252,7 @@ function bindNodeEvents(el) {
   });
   el.addEventListener("input", () => {
     const docNode = el.__kryDocNode;
+    updateElementFormValue(el);
     if (docNode?.inputAction)
       docNode.inputAction(el.value ?? "");
   });
@@ -1214,9 +1261,45 @@ function bindNodeEvents(el) {
     const value = el.type === "checkbox" || el.type === "radio"
       ? !!el.checked
       : (el.value ?? "");
+    updateElementFormValue(el, value);
     if (docNode?.changeAction)
       docNode.changeAction(value);
   });
+}
+
+function webElementValue(el, docNode = el?.__kryDocNode) {
+  if (!el || !docNode)
+    return undefined;
+  if (docNode.tag === "input") {
+    if (docNode.inputType === "checkbox" || docNode.inputType === "radio")
+      return !!el.checked;
+    return el.value ?? "";
+  }
+  if (docNode.tag === "textarea")
+    return el.value ?? "";
+  return undefined;
+}
+
+function recordFormValue(root, docNode, value) {
+  if (!root || !docNode || value === undefined)
+    return;
+  if (!root.__kryFormValues)
+    root.__kryFormValues = new Map();
+  for (const key of [docNode.path, docNode.name, docNode.key, docNode.domId]) {
+    if (key)
+      root.__kryFormValues.set(key, value);
+  }
+}
+
+function updateElementFormValue(el, value = webElementValue(el)) {
+  const docNode = el?.__kryDocNode;
+  if (!docNode || value === undefined)
+    return value;
+  docNode.value = value;
+  if (docNode.inputType === "checkbox" || docNode.inputType === "radio")
+    docNode.state.checked = !!value;
+  recordFormValue(el.__kryMountRoot, docNode, value);
+  return value;
 }
 
 function applyWebNode(el, docNode, rt) {
@@ -1277,13 +1360,15 @@ function applyWebNode(el, docNode, rt) {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
   } else if (docNode.tag === "input") {
-    if (docNode.text)
-      el.setAttribute("value", docNode.text);
+    if (docNode.value)
+      el.setAttribute("value", docNode.value);
     else
       removeAttr(el, "value");
+    if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio")
+      el.value = docNode.value;
     el.checked = !!docNode.state.checked;
   } else if (docNode.tag === "textarea") {
-    el.value = docNode.text;
+    el.value = docNode.value;
   } else {
     el.textContent = docNode.text;
   }
@@ -1323,6 +1408,7 @@ export function renderWebDocument(rt, target) {
   root.__kryNodes = new Map();
   root.__kryElementsByName = new Map();
   root.__kryElementsByDomId = new Map();
+  root.__kryFormValues = new Map();
   for (const docNode of frame.nodes) {
     const identity = docNode.tag + ":" + (docNode.path || docNode.key);
     let el = children.get(identity);
@@ -1331,6 +1417,8 @@ export function renderWebDocument(rt, target) {
       children.set(identity, el);
     }
     applyWebNode(el, docNode, rt);
+    el.__kryMountRoot = root;
+    updateElementFormValue(el);
     if (docNode.path && docNode.path !== docNode.parentPath)
       elementsByPath.set(docNode.path, el);
     if (docNode.path)
@@ -1390,6 +1478,20 @@ export function findWebElement(target, query) {
       return el;
   }
   return null;
+}
+
+export function webFormValue(target, query) {
+  const root = mountedRoot(target);
+  if (!root)
+    return undefined;
+  return root.__kryFormValues?.get(String(query || ""));
+}
+
+export function webFormValues(target) {
+  const root = mountedRoot(target);
+  return root?.__kryFormValues
+    ? Object.fromEntries(root.__kryFormValues.entries())
+    : {};
 }
 
 export function mount(rt, target) {
