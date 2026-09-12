@@ -61,6 +61,15 @@ wrapping, clipping, color, alignment, and disabled state belong in those props.
 Do not restore the positional `Text(text, x, y, font, color)` form or hide it
 behind a helper, macro, overload, generated shim, or compatibility alias.
 
+`Image` has exactly one public widget surface: `Image(ImageProps)`. Semantic
+page images use `PageImage(ImageProps, alt_text)`. Do not expose or recommend
+raylib texture draw calls (`Texture`, `DrawTexture`, `DrawTexturePro`,
+`DrawTextureRec`, or similar) as app-facing `.kry` UI fixes. Low-level texture
+drawing may exist inside backend/native tests and renderer internals, but
+generated app UI should target `ImageProps`. If `ImageProps` cannot express a
+needed app image case, add a clean reusable Kryon primitive here first instead
+of adding a downstream wrapper or compatibility alias.
+
 ## Test Rule
 
 Any change to k2go, k2c, k2cpp, the Go runtime, or the C runtime surface must keep the
