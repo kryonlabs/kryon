@@ -223,6 +223,13 @@ has a single place to land.
 | `Progress` | `.kry canonical` | Prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; host handles label measurement, focus/input, and button drawing. |
+| `LabelTextField` | Composite candidate | Native form-row helper in `ui_rows.h`; should become ordinary `.kry` composition of `Text`/`TextField` or fold into caller layout. |
+| `CheckboxRow` | Composite candidate | Native form-row helper in `ui_rows.h`; should become ordinary `.kry` composition of `Text`/`Checkbox` or fold into caller layout. |
+| `SpinboxRow` | Composite candidate | Native form-row helper in `ui_rows.h`; should become ordinary `.kry` composition of `Text`/`Spinbox` or fold into caller layout. |
+| `ButtonRow` | Composite candidate | Native action-row helper in `ui_rows.h`; should become ordinary `.kry` composition of `Button` children with row layout props. |
+| `SectionLabel` | Composite candidate | Native form-section label helper in `ui_rows.h`; should become `Text`/`Heading` props or a tiny `.kry` composition. |
+| `InfoRows` | Composite candidate | Native repeated label/value row helper; keep only if it becomes `.kry` composition backed by `Row`/`Text`. |
+| `Form` | Native support | Cursor/layout helper for legacy native row APIs; not a public widget concept. Prefer `.kry` layout blocks. |
 
 ## Layout And Containers
 
