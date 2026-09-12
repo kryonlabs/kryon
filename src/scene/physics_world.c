@@ -88,9 +88,9 @@ kry_body2d_create(Scene *scene, NodeId node, Body2DProps *props)
         return kryon_zero_b2bodyid;
     bd = b2DefaultBodyDef();
     switch(props->body_type) {
-    case KRY_BODY2D_STATIC: bd.type = b2_staticBody; break;
-    case KRY_BODY2D_KINEMATIC: bd.type = b2_kinematicBody; break;
-    case KRY_BODY2D_DYNAMIC: bd.type = b2_dynamicBody; break;
+    case Body2DStatic: bd.type = b2_staticBody; break;
+    case Body2DKinematic: bd.type = b2_kinematicBody; break;
+    case Body2DDynamic: bd.type = b2_dynamicBody; break;
     }
     bd.position.x = n->world.position.x;
     bd.position.y = n->world.position.y;
@@ -155,7 +155,7 @@ kry_collision_shape2d_attach(Scene *scene, NodeId node,
      * sensors); without this flag no overlap events are ever reported. */
     sd.enableSensorEvents = true;
     sd.userData = (void *)(intptr_t)node;
-    if(props->shape_kind == KRY_SHAPE2D_CIRCLE) {
+    if(props->shape_kind == Shape2DCircle) {
         b2Circle circle;
         circle.center.x = 0.0f;
         circle.center.y = 0.0f;
@@ -169,7 +169,7 @@ kry_collision_shape2d_attach(Scene *scene, NodeId node,
 }
 
 Body2DProps *
-Body2DPropsAlloc(KryBody2DType type)
+Body2DPropsAlloc(Body2DType type)
 {
     Body2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -180,7 +180,7 @@ Body2DPropsAlloc(KryBody2DType type)
 }
 
 CollisionShape2DProps *
-CollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h)
+CollisionShape2DPropsAlloc(Shape2DKind kind, float w, float h)
 {
     CollisionShape2DProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -309,7 +309,7 @@ kry_sensor_signal(Scene *scene, b2ShapeId sensor_shape, b2ShapeId visitor_shape,
     if(body_node == NULL)
         return;
     body_props = (Body2DProps *)body_node->props;
-    if(body_props == NULL || body_props->body_type == KRY_BODY2D_STATIC)
+    if(body_props == NULL || body_props->body_type == Body2DStatic)
         return;
     area_node = NodeGet(scene, area);
     if(area_node == NULL)

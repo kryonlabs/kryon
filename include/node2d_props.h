@@ -10,7 +10,7 @@
 
 #include "kryon_compat.generated.h"
 #include "ui_image.h" /* ImageProps / ImageFit, shared with the UI widget */
-#include "kry_animation.h" /* KryAnimation, held by AnimationPlayerProps */
+#include "kry_animation.h" /* Animation, held by AnimationPlayerProps */
 
 typedef struct Camera2DProps {
     float zoom;        /* 1.0 = default; >1 zooms in */
@@ -45,14 +45,14 @@ typedef struct Light2DProps {
 
 Light2DProps *Light2DPropsAlloc(float radius, Color color, float energy);
 
-typedef enum KryBody2DType {
-    KRY_BODY2D_STATIC,
-    KRY_BODY2D_KINEMATIC,
-    KRY_BODY2D_DYNAMIC
-} KryBody2DType;
+typedef enum Body2DType {
+    Body2DStatic,
+    Body2DKinematic,
+    Body2DDynamic
+} Body2DType;
 
 typedef struct Body2DProps {
-    KryBody2DType body_type;
+    Body2DType body_type;
     int fixed_rotation; /* nonzero prevents the body from rotating */
     float gravity_scale; /* 1.0 = normal; 0.0 = weightless */
     /* b2BodyId is {int32 index1, int16 world0, int16 generation}. Stored as
@@ -62,13 +62,13 @@ typedef struct Body2DProps {
     short body_id_gen;
 } Body2DProps;
 
-typedef enum KryShape2DKind {
-    KRY_SHAPE2D_BOX,
-    KRY_SHAPE2D_CIRCLE
-} KryShape2DKind;
+typedef enum Shape2DKind {
+    Shape2DBox,
+    Shape2DCircle
+} Shape2DKind;
 
 typedef struct CollisionShape2DProps {
-    KryShape2DKind shape_kind;
+    Shape2DKind shape_kind;
     Vector2 size;    /* full width/height (box) or diameter (circle) */
     int is_sensor;   /* nonzero = trigger volume (Area2D), no solid collision */
 } CollisionShape2DProps;
@@ -80,15 +80,15 @@ typedef struct Area2DProps {
     int last_exit_body;
 } Area2DProps;
 
-Body2DProps *Body2DPropsAlloc(KryBody2DType type);
-CollisionShape2DProps *CollisionShape2DPropsAlloc(KryShape2DKind kind, float w, float h);
+Body2DProps *Body2DPropsAlloc(Body2DType type);
+CollisionShape2DProps *CollisionShape2DPropsAlloc(Shape2DKind kind, float w, float h);
 Area2DProps *Area2DPropsAlloc(void);
 
 /* AnimationPlayer: holds up to N animations and the current play state. */
-#define KRY_PLAYER_ANIMS_MAX 4
+#define ANIMATION_PLAYER_ANIMS_MAX 4
 
 typedef struct AnimationPlayerProps {
-    KryAnimation anims[KRY_PLAYER_ANIMS_MAX];
+    Animation anims[ANIMATION_PLAYER_ANIMS_MAX];
     int anim_count;
     int current;       /* index of the playing animation, -1 if stopped */
     float time;        /* seconds into the current animation */
@@ -117,8 +117,8 @@ AnimatedSprite2DProps *AnimatedSprite2DPropsAlloc(const char *asset_path,
                                                      float fps);
 
 /* TileMap: a grid of tile IDs rendered from a single tileset texture. */
-#define KRY_TILEMAP_W_MAX 256
-#define KRY_TILEMAP_H_MAX 256
+#define TILEMAP_W_MAX 256
+#define TILEMAP_H_MAX 256
 
 typedef struct TileMapProps {
     const char *asset_path;    /* tileset texture */
@@ -137,14 +137,14 @@ TileMapProps *TileMapPropsAlloc(const char *asset_path, int tile_w, int tile_h,
                                    int tiles_per_row, int map_w, int map_h);
 
 /* AudioSource: plays a sound or music stream. */
-typedef enum KryAudioKind {
-    KRY_AUDIO_SOUND,  /* one-shot SFX via LoadSound/PlaySound */
-    KRY_AUDIO_MUSIC   /* streaming via LoadMusicStream/PlayMusicStream */
-} KryAudioKind;
+typedef enum AudioKind {
+    AudioSound,  /* one-shot SFX via LoadSound/PlaySound */
+    AudioMusic   /* streaming via LoadMusicStream/PlayMusicStream */
+} AudioKind;
 
 typedef struct AudioSourceProps {
     const char *asset_path;
-    KryAudioKind kind;
+    AudioKind kind;
     float volume;       /* 0..1 */
     float pitch;        /* 1.0 = normal */
     int loop;           /* music only */
@@ -156,7 +156,7 @@ typedef struct AudioSourceProps {
     void *handle;       /* points to a Sound or Music depending on `kind` */
 } AudioSourceProps;
 
-AudioSourceProps *AudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind);
+AudioSourceProps *AudioSourcePropsAlloc(const char *asset_path, AudioKind kind);
 void AudioSourcePlay(Scene *scene, NodeId node);
 void AudioSourceStop(Scene *scene, NodeId node);
 

@@ -15,7 +15,7 @@ kry_audio_source_ensure_loaded(AudioSourceProps *props)
     if(props == NULL || props->loaded || props->asset_path == NULL ||
        props->asset_path[0] == '\0')
         return;
-    if(props->kind == KRY_AUDIO_SOUND) {
+    if(props->kind == AudioSound) {
         Sound *s = malloc(sizeof(Sound));
         if(s == NULL)
             return;
@@ -44,7 +44,7 @@ kry_audio_source_process(Scene *scene, NodeId node, float dt)
     props = (AudioSourceProps *)n->props;
     if(props == NULL || !props->playing || !props->loaded)
         return;
-    if(props->kind == KRY_AUDIO_MUSIC && props->handle != NULL)
+    if(props->kind == AudioMusic && props->handle != NULL)
         UpdateMusicStream(*(Music *)props->handle);
 }
 
@@ -57,7 +57,7 @@ kry_audio_source_destroy(Scene *scene, Node *node)
     if(props == NULL)
         return;
     if(props->loaded && props->handle != NULL) {
-        if(props->kind == KRY_AUDIO_SOUND)
+        if(props->kind == AudioSound)
             UnloadSound(*(Sound *)props->handle);
         else
             UnloadMusicStream(*(Music *)props->handle);
@@ -82,7 +82,7 @@ kry_register_audio_source(void)
 }
 
 AudioSourceProps *
-AudioSourcePropsAlloc(const char *asset_path, KryAudioKind kind)
+AudioSourcePropsAlloc(const char *asset_path, AudioKind kind)
 {
     AudioSourceProps *p = calloc(1, sizeof(*p));
     if(p != NULL) {
@@ -108,7 +108,7 @@ AudioSourcePlay(Scene *scene, NodeId node)
     kry_audio_source_ensure_loaded(props);
     if(!props->loaded || props->handle == NULL)
         return;
-    if(props->kind == KRY_AUDIO_SOUND) {
+    if(props->kind == AudioSound) {
         Sound *s = (Sound *)props->handle;
         SetSoundVolume(*s, props->volume);
         SetSoundPitch(*s, props->pitch);
@@ -132,7 +132,7 @@ AudioSourceStop(Scene *scene, NodeId node)
     props = (AudioSourceProps *)n->props;
     if(props == NULL || !props->loaded || props->handle == NULL)
         return;
-    if(props->kind == KRY_AUDIO_MUSIC)
+    if(props->kind == AudioMusic)
         StopMusicStream(*(Music *)props->handle);
     props->playing = 0;
 }

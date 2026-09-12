@@ -35,7 +35,7 @@ scene main {
     track->target = sprite_id
     snprintf(track->property, sizeof(track->property), "position")
     track->component = 1
-    track->interp = KRY_ANIM_INTERP_LINEAR
+    track->interp = AnimInterpLinear
     track->keyframe_count = 2
     track->keyframes[0].time = 0.0
     track->keyframes[0].value = 160.0

@@ -168,14 +168,14 @@ main(void)
         CollisionShape2DProps *sp;
         int i;
 
-        bp = Body2DPropsAlloc(KRY_BODY2D_STATIC);
+        bp = Body2DPropsAlloc(Body2DStatic);
         NodeSetProps(&scene, anchor, bp);
         NodeSetPosition(&scene, anchor, 0.0f, 60.0f); /* +Y is down */
         ap = Area2DPropsAlloc();
         ap->monitoring = 1;
         NodeSetProps(&scene, area, ap);
         area_shape = NodeCreate(&scene, area, NODE_COLLISION_SHAPE2D, "s1");
-        sp = CollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 40.0f, 40.0f);
+        sp = CollisionShape2DPropsAlloc(Shape2DBox, 40.0f, 40.0f);
         sp->is_sensor = 1;
         NodeSetProps(&scene, area_shape, sp);
 
@@ -185,20 +185,20 @@ main(void)
             NodeId deco = NodeCreate(&scene, root, NODE_BODY2D, "deco");
             NodeId deco_shape;
 
-            bp = Body2DPropsAlloc(KRY_BODY2D_STATIC);
+            bp = Body2DPropsAlloc(Body2DStatic);
             NodeSetProps(&scene, deco, bp);
             NodeSetPosition(&scene, deco, 15.0f, 60.0f); /* inside the sensor,
                                                              off the faller column */
             deco_shape = NodeCreate(&scene, deco, NODE_COLLISION_SHAPE2D, "s0");
             NodeSetProps(&scene, deco_shape, CollisionShape2DPropsAlloc(
-                             KRY_SHAPE2D_BOX, 8.0f, 8.0f));
+                             Shape2DBox, 8.0f, 8.0f));
         }
 
-        bp = Body2DPropsAlloc(KRY_BODY2D_DYNAMIC);
+        bp = Body2DPropsAlloc(Body2DDynamic);
         NodeSetProps(&scene, faller, bp);
         faller_shape = NodeCreate(&scene, faller, NODE_COLLISION_SHAPE2D, "s2");
         NodeSetProps(&scene, faller_shape, CollisionShape2DPropsAlloc(
-                         KRY_SHAPE2D_BOX, 10.0f, 10.0f));
+                         Shape2DBox, 10.0f, 10.0f));
         NodeSetPosition(&scene, faller, 0.0f, 0.0f);
 
         check_int("physics world", ScenePhysicsCreate(&scene, 0.0f, 200.0f), 1);

@@ -45,7 +45,7 @@ if [ -n "$removed_widget_matches" ]; then
 fi
 
 prefixed_scene_matches="$(
-    rg -n '\b(Kry[A-Za-z0-9_]*PropsAlloc|KryAudioSourcePlay|KryAudioSourceStop)\b' \
+    rg -n '\b(Kry[A-Za-z0-9_]*PropsAlloc|KryAudioSourcePlay|KryAudioSourceStop|KryBody2DType|KryShape2DKind|KryAudioKind|KryAnimation|KryAnim[A-Za-z0-9_]*|KryKeyframe|KRY_BODY2D_[A-Z_]+|KRY_SHAPE2D_[A-Z_]+|KRY_AUDIO_(SOUND|MUSIC)|KRY_ANIM_[A-Z_]+|KRY_PLAYER_ANIMS_MAX|KRY_TILEMAP_[WH]_MAX)\b' \
         include/node2d_props.h src/scene docs/PUBLIC_API_SNAPSHOT.txt examples tests \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -53,7 +53,7 @@ prefixed_scene_matches="$(
 )"
 
 if [ -n "$prefixed_scene_matches" ]; then
-    echo "Scene node public helpers must use clean names such as Sprite2DPropsAlloc and AudioSourcePlay:"
+    echo "Scene node public helpers and enums must use clean names such as Sprite2DPropsAlloc, Body2DStatic, and Animation:"
     echo "$prefixed_scene_matches"
     exit 1
 fi

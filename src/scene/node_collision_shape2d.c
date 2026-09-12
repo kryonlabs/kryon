@@ -60,7 +60,7 @@ kry_collision_shape2d_draw(Scene *scene, NodeId node)
     props = (CollisionShape2DProps *)n->props;
     if(props == NULL)
         return;
-    if(props->shape_kind == KRY_SHAPE2D_CIRCLE) {
+    if(props->shape_kind == Shape2DCircle) {
         DrawCircleLines((int)n->world.position.x, (int)n->world.position.y,
                         (int)(props->size.x * 0.5f),
                         (Color){140, 255, 140, 180});

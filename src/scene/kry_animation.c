@@ -8,7 +8,7 @@
 #include <string.h>
 
 int
-KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value)
+AnimTrackSample(const AnimTrack *track, float t, float *out_value)
 {
     int i;
     if(track == NULL || out_value == NULL || track->keyframe_count <= 0)
@@ -26,10 +26,10 @@ KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value)
     }
     /* find the bracketing pair */
     for(i = 0; i < track->keyframe_count - 1; i++) {
-        const KryKeyframe *a = &track->keyframes[i];
-        const KryKeyframe *b = &track->keyframes[i + 1];
+        const Keyframe *a = &track->keyframes[i];
+        const Keyframe *b = &track->keyframes[i + 1];
         if(t >= a->time && t <= b->time) {
-            if(track->interp == KRY_ANIM_INTERP_STEP || b->time == a->time) {
+            if(track->interp == AnimInterpStep || b->time == a->time) {
                 *out_value = a->value;
             } else {
                 float alpha = (t - a->time) / (b->time - a->time);
@@ -43,18 +43,18 @@ KryAnimTrackSample(const KryAnimTrack *track, float t, float *out_value)
 }
 
 void
-KryAnimationApply(Scene *scene, const KryAnimation *anim, float t)
+AnimationApply(Scene *scene, const Animation *anim, float t)
 {
     int i;
     if(scene == NULL || anim == NULL)
         return;
     for(i = 0; i < anim->track_count; i++) {
-        const KryAnimTrack *track = &anim->tracks[i];
+        const AnimTrack *track = &anim->tracks[i];
         Node *n;
         float v;
         if(track->keyframe_count <= 0)
             continue;
-        if(!KryAnimTrackSample(track, t, &v))
+        if(!AnimTrackSample(track, t, &v))
             continue;
         n = NodeGet(scene, track->target);
         if(n == NULL)

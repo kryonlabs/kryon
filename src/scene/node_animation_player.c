@@ -1,7 +1,7 @@
 /*
  * AnimationPlayer: drives keyframe animations on the scene tree. Each process
  * tick advances the current animations time and applies sampled values to the
- * target nodes via KryAnimationApply. On finish (non-loop animation reaching
+ * target nodes via AnimationApply. On finish (non-loop animation reaching
  * duration) it emits an "animation_finished" signal on itself.
  */
 
@@ -18,7 +18,7 @@ kry_animation_player_process(Scene *scene, NodeId node, float dt)
 {
     Node *n = NodeGet(scene, node);
     AnimationPlayerProps *props;
-    KryAnimation *anim;
+    Animation *anim;
 
     if(n == NULL)
         return;
@@ -38,13 +38,13 @@ kry_animation_player_process(Scene *scene, NodeId node, float dt)
             /* clamp to the end and emit finished */
             props->time = anim->duration;
             props->playing = 0;
-            KryAnimationApply(scene, anim, props->time);
+            AnimationApply(scene, anim, props->time);
             SignalEmit(scene, node, "animation_finished",
                           PropertyInt(props->current));
             return;
         }
     }
-    KryAnimationApply(scene, anim, props->time);
+    AnimationApply(scene, anim, props->time);
 }
 
 static void

@@ -20,14 +20,14 @@ scene main {
     ScenePhysicsCreate(scene, 0.0, 980.0)
 
     ground := NodeCreate(scene, 0, NODE_BODY2D, "ground")
-    NodeSetProps(scene, ground, Body2DPropsAlloc(KRY_BODY2D_STATIC))
+    NodeSetProps(scene, ground, Body2DPropsAlloc(Body2DStatic))
     NodeSetPosition(scene, ground, GROUND_X, GROUND_Y)
     ground_shape := NodeCreate(scene, ground, NODE_COLLISION_SHAPE2D, "ground_shape")
-    NodeSetProps(scene, ground_shape, CollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 400.0, 32.0))
+    NodeSetProps(scene, ground_shape, CollisionShape2DPropsAlloc(Shape2DBox, 400.0, 32.0))
 
     box := NodeCreate(scene, 0, NODE_BODY2D, "box")
-    NodeSetProps(scene, box, Body2DPropsAlloc(KRY_BODY2D_DYNAMIC))
+    NodeSetProps(scene, box, Body2DPropsAlloc(Body2DDynamic))
     NodeSetPosition(scene, box, BOX_X, BOX_Y)
     box_shape := NodeCreate(scene, box, NODE_COLLISION_SHAPE2D, "box_shape")
-    NodeSetProps(scene, box_shape, CollisionShape2DPropsAlloc(KRY_SHAPE2D_BOX, 48.0, 48.0))
+    NodeSetProps(scene, box_shape, CollisionShape2DPropsAlloc(Shape2DBox, 48.0, 48.0))
 }
