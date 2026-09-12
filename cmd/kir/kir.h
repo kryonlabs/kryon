@@ -151,6 +151,9 @@ typedef struct KirStmt {
     char dom_download[KIR_TEXT_MAX];    /* requested download filename */
     char dom_formnovalidate[KIR_NAME_MAX]; /* requested formnovalidate expression */
     char dom_novalidate[KIR_NAME_MAX];  /* requested novalidate expression */
+    char dom_popover[KIR_NAME_MAX];     /* requested popover policy */
+    char dom_popover_target[KIR_NAME_MAX]; /* requested popover target id */
+    char dom_popover_target_action[KIR_NAME_MAX]; /* requested popover target action */
     char dom_readonly[KIR_NAME_MAX];    /* requested readonly expression */
     char dom_required[KIR_NAME_MAX];    /* requested required expression */
     char dom_min[KIR_NAME_MAX];         /* requested form min expression */

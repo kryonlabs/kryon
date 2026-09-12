@@ -107,6 +107,9 @@ export interface WebDocumentNode {
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
+  popover: string;
+  popoverTarget: string;
+  popoverTargetAction: string;
   readOnly: boolean;
   required: boolean;
   min: string;
@@ -225,6 +228,10 @@ export interface WebNodeStyleFacts {
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
+  popover: string;
+  popoverTarget: string;
+  popoverTargetAction: string;
+  open: boolean;
   scrollLeft: number;
   scrollTop: number;
   readOnly: boolean;
@@ -390,6 +397,11 @@ export function webDOMFocus(target: Element | string | null, query: string): boo
 export function webDOMBlur(target: Element | string | null, query: string): boolean;
 export function webDOMSubmit(target: Element | string | null, query: string): boolean;
 export function webDOMReset(target: Element | string | null, query: string): boolean;
+export function webDOMShowModal(target: Element | string | null, query: string): boolean;
+export function webDOMClose(target: Element | string | null, query: string, returnValue?: string): boolean;
+export function webDOMShowPopover(target: Element | string | null, query: string): boolean;
+export function webDOMHidePopover(target: Element | string | null, query: string): boolean;
+export function webDOMTogglePopover(target: Element | string | null, query: string, force?: boolean): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;

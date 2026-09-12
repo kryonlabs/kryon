@@ -1213,6 +1213,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_spellcheck[0] || st->dom_contenteditable[0] ||
            st->dom_autofocus[0] || st->dom_download[0] ||
            st->dom_formnovalidate[0] || st->dom_novalidate[0] ||
+           st->dom_popover[0] || st->dom_popover_target[0] ||
+           st->dom_popover_target_action[0] ||
            st->dom_readonly[0] || st->dom_required[0] ||
            st->dom_min[0] || st->dom_max[0] || st->dom_step[0] ||
            st->dom_minlength[0] || st->dom_maxlength[0] ||
@@ -1431,6 +1433,11 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                              st->dom_formnovalidate, &emitted);
     emit_metadata_expr_field(f, m, "noValidate", st->dom_novalidate,
                              &emitted);
+    emit_metadata_expr_field(f, m, "popover", st->dom_popover, &emitted);
+    emit_metadata_expr_field(f, m, "popoverTarget",
+                             st->dom_popover_target, &emitted);
+    emit_metadata_expr_field(f, m, "popoverTargetAction",
+                             st->dom_popover_target_action, &emitted);
     emit_metadata_expr_field(f, m, "readOnly", st->dom_readonly, &emitted);
     emit_metadata_expr_field(f, m, "required", st->dom_required, &emitted);
     emit_metadata_expr_field(f, m, "min", st->dom_min, &emitted);

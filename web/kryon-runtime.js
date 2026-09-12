@@ -1159,6 +1159,9 @@ function webNodeFromWidget(item, index) {
     download: metaString(meta, "download"),
     formNoValidate: metaBool(meta, "formNoValidate"),
     noValidate: metaBool(meta, "noValidate"),
+    popover: metaString(meta, "popover"),
+    popoverTarget: metaString(meta, "popoverTarget"),
+    popoverTargetAction: metaString(meta, "popoverTargetAction"),
     readOnly: metaBool(meta, "readOnly"),
     required: metaBool(meta, "required"),
     min: metaString(meta, "min"),
@@ -1269,6 +1272,10 @@ export function webNodeStyleFacts(node) {
     download: node?.download || "",
     formNoValidate: !!node?.formNoValidate,
     noValidate: !!node?.noValidate,
+    popover: node?.popover || "",
+    popoverTarget: node?.popoverTarget || "",
+    popoverTargetAction: node?.popoverTargetAction || "",
+    open: !!node?.state?.open,
     scrollLeft: Number.isFinite(Number(node?.scrollLeft)) ? Number(node.scrollLeft) : 0,
     scrollTop: Number.isFinite(Number(node?.scrollTop)) ? Number(node.scrollTop) : 0,
     readOnly: !!node?.readOnly,
@@ -1567,6 +1574,12 @@ function selectorNativeAttrValue(key, facts) {
     case "download": return facts.download;
     case "formnovalidate": return facts.formNoValidate;
     case "novalidate": return facts.noValidate;
+    case "popover": return facts.popover;
+    case "popovertarget": return facts.popoverTarget;
+    case "popoverTarget": return facts.popoverTarget;
+    case "popovertargetaction": return facts.popoverTargetAction;
+    case "popoverTargetAction": return facts.popoverTargetAction;
+    case "open": return facts.open;
     case "scrollleft": return facts.scrollLeft;
     case "scrolltop": return facts.scrollTop;
     case "readonly": return facts.readOnly;
@@ -2280,6 +2293,12 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-selected", docNode.state.selected ? "true" : "");
   setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : "");
   setAttr(el, "aria-expanded", docNode.state.expanded ? "true" : "");
+  if (docNode.tag === "details" || docNode.tag === "dialog") {
+    setAttr(el, "open", docNode.state.open);
+    el.open = !!docNode.state.open;
+  } else {
+    removeAttr(el, "open");
+  }
   setAttr(el, "aria-checked",
     docNode.inputType === "checkbox" || docNode.inputType === "radio"
       ? (docNode.state.checked ? "true" : "false")
@@ -2307,6 +2326,9 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "download", docNode.download);
   setAttr(el, "formnovalidate", docNode.formNoValidate);
   setAttr(el, "novalidate", docNode.noValidate);
+  setAttr(el, "popover", docNode.popover);
+  setAttr(el, "popovertarget", docNode.popoverTarget);
+  setAttr(el, "popovertargetaction", docNode.popoverTargetAction);
   el.hidden = !!docNode.hidden;
   if (docNode.draggable === "true" || docNode.draggable === "false")
     el.draggable = docNode.draggable === "true";
@@ -2502,6 +2524,12 @@ export function findWebElement(target, query) {
     const node = el.__kryDocNode;
     if (node && (node.path === text || node.key === text ||
                  sourceRefMatches(node, text)))
+      return el;
+  }
+  const selector = parseSelector(text);
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const node = el.__kryDocNode;
+    if (node && selectorMatchesWebNode(selector, node))
       return el;
   }
   return null;
@@ -2843,6 +2871,64 @@ export function webDOMReset(target, query) {
   else if (typeof el.onreset === "function")
     el.onreset({ preventDefault() {} });
   return true;
+}
+
+function setElementOpenState(el, open) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return false;
+  const extra = { ...(el.__kryExtraState || {}) };
+  extra.open = !!open;
+  el.__kryExtraState = extra;
+  docNode.state.open = !!open;
+  syncDOMStateMutation(el);
+  return true;
+}
+
+export function webDOMShowModal(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.showModal === "function")
+    el.showModal();
+  return setElementOpenState(el, true);
+}
+
+export function webDOMClose(target, query, returnValue = "") {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.close === "function")
+    el.close(returnValue);
+  return setElementOpenState(el, false);
+}
+
+export function webDOMShowPopover(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.showPopover === "function")
+    el.showPopover();
+  return setElementOpenState(el, true);
+}
+
+export function webDOMHidePopover(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.hidePopover === "function")
+    el.hidePopover();
+  return setElementOpenState(el, false);
+}
+
+export function webDOMTogglePopover(target, query, force) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  const next = force === undefined ? !el.__kryDocNode?.state?.open : !!force;
+  if (typeof el.togglePopover === "function")
+    el.togglePopover(next);
+  return setElementOpenState(el, next);
 }
 
 export function webFormValue(target, query) {

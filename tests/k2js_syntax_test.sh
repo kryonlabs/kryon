@@ -152,6 +152,8 @@ Scene :: (viewport: Rectangle) #ui {
             aria_controls = "search-field"
             aria_current = "page"
             aria_pressed = false
+            popover_target = "search-menu"
+            popover_target_action = "toggle"
             on_click = call_host
         }
         TextField search: {
@@ -197,6 +199,7 @@ Scene :: (viewport: Rectangle) #ui {
             text = "Search"
             dom = "label"
             dom_for = "search-field"
+            popover = "manual"
             hidden = true
         }
         count += 1

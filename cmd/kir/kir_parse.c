@@ -471,6 +471,9 @@ typedef struct UiBlock {
     char dom_download[KIR_TEXT_MAX];
     char dom_formnovalidate[KIR_NAME_MAX];
     char dom_novalidate[KIR_NAME_MAX];
+    char dom_popover[KIR_NAME_MAX];
+    char dom_popover_target[KIR_NAME_MAX];
+    char dom_popover_target_action[KIR_NAME_MAX];
     char dom_readonly[KIR_NAME_MAX];
     char dom_required[KIR_NAME_MAX];
     char dom_min[KIR_NAME_MAX];
@@ -879,6 +882,27 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "popover") == 0 || strcmp(field, "dom_popover") == 0 ||
+       strcmp(field, "html_popover") == 0) {
+        snprintf(block->dom_popover, sizeof(block->dom_popover), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "popover_target") == 0 ||
+       strcmp(field, "popovertarget") == 0 ||
+       strcmp(field, "dom_popover_target") == 0 ||
+       strcmp(field, "html_popover_target") == 0) {
+        snprintf(block->dom_popover_target,
+                 sizeof(block->dom_popover_target), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "popover_target_action") == 0 ||
+       strcmp(field, "popovertargetaction") == 0 ||
+       strcmp(field, "dom_popover_target_action") == 0 ||
+       strcmp(field, "html_popover_target_action") == 0) {
+        snprintf(block->dom_popover_target_action,
+                 sizeof(block->dom_popover_target_action), "%s", value);
+        return 1;
+    }
     if(strcmp(field, "readonly") == 0 || strcmp(field, "read_only") == 0 ||
        strcmp(field, "dom_readonly") == 0 || strcmp(field, "html_readonly") == 0) {
         snprintf(block->dom_readonly, sizeof(block->dom_readonly), "%s",
@@ -1187,6 +1211,14 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_formnovalidate);
     snprintf(statement->dom_novalidate, sizeof(statement->dom_novalidate),
              "%s", block->dom_novalidate);
+    snprintf(statement->dom_popover, sizeof(statement->dom_popover), "%s",
+             block->dom_popover);
+    snprintf(statement->dom_popover_target,
+             sizeof(statement->dom_popover_target), "%s",
+             block->dom_popover_target);
+    snprintf(statement->dom_popover_target_action,
+             sizeof(statement->dom_popover_target_action), "%s",
+             block->dom_popover_target_action);
     snprintf(statement->dom_readonly, sizeof(statement->dom_readonly), "%s",
              block->dom_readonly);
     snprintf(statement->dom_required, sizeof(statement->dom_required), "%s",

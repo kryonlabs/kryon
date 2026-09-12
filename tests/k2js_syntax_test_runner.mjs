@@ -149,6 +149,8 @@ assert.equal(webDoc.nodes[2].role, "button");
 assert.equal(webDoc.nodes[2].ariaLabel, "Tap the action");
 assert.equal(webDoc.nodes[2].ariaDescription, "Runs the host action");
 assert.equal(webDoc.nodes[2].ariaControls, "search-field");
+assert.equal(webDoc.nodes[2].popoverTarget, "search-menu");
+assert.equal(webDoc.nodes[2].popoverTargetAction, "toggle");
 assert.equal(webDoc.nodes[2].onClick, "call_host");
 assert.deepEqual(webDoc.nodes[2].styleFacts, {
   kind: "Button",
@@ -179,6 +181,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   download: "",
   formNoValidate: false,
   noValidate: false,
+  popover: "",
+  popoverTarget: "search-menu",
+  popoverTargetAction: "toggle",
+  open: false,
   scrollLeft: 0,
   scrollTop: 0,
   readOnly: false,
@@ -253,6 +259,8 @@ assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/se
 assert.equal(runtime.webNodeQuery(rt, "[data-role]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[for=\"search-field\"]").path, "Scene/root/search_label");
 assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-field\"]").path, "Scene/root/search_label");
+assert.equal(runtime.webNodeQuery(rt, "[popover=manual]").path, "Scene/root/search_label");
+assert.equal(runtime.webNodeQuery(rt, "[popoverTarget=\"search-menu\"]").path, "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -324,6 +332,7 @@ function fakeDocument() {
       className: "",
       textContent: "",
       checked: false,
+      open: false,
       formNoValidate: false,
       noValidate: false,
       value: "",
@@ -333,6 +342,8 @@ function fakeDocument() {
           this.id = String(value);
         if (name === "type")
           this.type = String(value);
+        if (name === "open")
+          this.open = true;
       },
       removeAttribute(name) {
         delete this.attributes[name];
@@ -340,6 +351,8 @@ function fakeDocument() {
           delete this.id;
         if (name === "type")
           delete this.type;
+        if (name === "open")
+          this.open = false;
       },
       appendChild(child) {
         if (child.parentNode)
@@ -424,6 +437,20 @@ function fakeDocument() {
       },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       reset() { if (this.onreset) this.onreset({ preventDefault() {} }); },
+      showModal() {
+        this.open = true;
+        this.setAttribute("open", "");
+      },
+      close(returnValue = "") {
+        this.returnValue = returnValue;
+        this.open = false;
+        this.removeAttribute("open");
+      },
+      showPopover() { this.popoverOpen = true; },
+      hidePopover() { this.popoverOpen = false; },
+      togglePopover(force) {
+        this.popoverOpen = force === undefined ? !this.popoverOpen : !!force;
+      },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
       mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
       mousedown() { if (this.onmousedown) this.onmousedown(); },
@@ -559,6 +586,54 @@ function fakeDocument() {
     assert.equal(runtime.webDOMReset(submitTarget, "Page/contact"), true);
     assert.equal(resetValues.email, "hello@example.test");
     assert.equal(resetValues["Page/contact/email"], "hello@example.test");
+
+    const nativeRt = runtime.createRuntime();
+    runtime.beginFrame(nativeRt);
+    runtime.widget(nativeRt, "Section", { open: true }, null,
+      { nodeName: "details", path: "Page/details", tag: "details" });
+    runtime.widget(nativeRt, "Section", {}, null,
+      { nodeName: "dialog", path: "Page/dialog", tag: "dialog" });
+    runtime.widget(nativeRt, "Section", {}, null,
+      { nodeName: "popover", path: "Page/popover", tag: "div", popover: "auto", data: { menu: "main" } });
+    runtime.widget(nativeRt, "Button", { label: "Menu" }, null,
+      {
+        nodeName: "popoverButton",
+        path: "Page/popoverButton",
+        popoverTarget: "popover",
+        popoverTargetAction: "toggle"
+      });
+    runtime.endFrame(nativeRt);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
+    const nativeTarget = document.createElement("div");
+    runtime.renderWebDocument(nativeRt, nativeTarget);
+    const details = runtime.findWebElement(nativeTarget, "details");
+    const dialog = runtime.findWebElement(nativeTarget, "dialog");
+    const popover = runtime.findWebElement(nativeTarget, "popover");
+    const popoverButton = runtime.findWebElement(nativeTarget, "popoverButton");
+    assert.equal(details.open, true);
+    assert.equal(details.attributes.open, "");
+    assert.equal(popover.attributes.popover, "auto");
+    assert.equal(popoverButton.attributes.popovertarget, "popover");
+    assert.equal(popoverButton.attributes.popovertargetaction, "toggle");
+    assert.equal(runtime.webDOMQuery(nativeTarget, "[popover=auto]").element, popover);
+    assert.equal(runtime.webDOMQuery(nativeTarget, "[popoverTarget=popover]").element, popoverButton);
+    assert.equal(runtime.webDOMClose(nativeTarget, "details"), true);
+    assert.equal(details.open, false);
+    assert.equal(runtime.webDOMGetState(nativeTarget, "details", "open"), false);
+    assert.equal(runtime.webDOMShowModal(nativeTarget, "dialog"), true);
+    assert.equal(dialog.open, true);
+    assert.equal(runtime.webDOMQuery(nativeTarget, "Section[open=true]").element, dialog);
+    assert.equal(runtime.webDOMClose(nativeTarget, "dialog", "accepted"), true);
+    assert.equal(dialog.open, false);
+    assert.equal(dialog.returnValue, "accepted");
+    assert.equal(runtime.webDOMShowPopover(nativeTarget, "[data-menu=main]"), true);
+    assert.equal(popover.popoverOpen, true);
+    assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), true);
+    assert.equal(runtime.webDOMTogglePopover(nativeTarget, "popover"), true);
+    assert.equal(popover.popoverOpen, false);
+    assert.equal(runtime.webDOMHidePopover(nativeTarget, "popover"), true);
+    assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), false);
 
     const pointerEvents = [];
     const pointerRt = runtime.createRuntime();
@@ -750,6 +825,8 @@ function fakeDocument() {
     assert.equal(firstButton.attributes["aria-label"], "Tap the action");
     assert.equal(firstButton.attributes["aria-description"], "Runs the host action");
     assert.equal(firstButton.attributes["aria-controls"], "search-field");
+    assert.equal(firstButton.attributes.popovertarget, "search-menu");
+    assert.equal(firstButton.attributes.popovertargetaction, "toggle");
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
@@ -849,6 +926,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[data-role]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[for=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
+    assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"search-menu\"]").ref, "Scene/root/tap");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
@@ -896,6 +975,7 @@ function fakeDocument() {
     const searchLabel = screen.children[3];
     assert.equal(searchLabel.tagName, "LABEL");
     assert.equal(searchLabel.attributes.for, "search-field");
+    assert.equal(searchLabel.attributes.popover, "manual");
     assert.equal(searchLabel.textContent, "Search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
