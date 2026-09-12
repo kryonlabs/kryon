@@ -402,6 +402,12 @@ export function webDOMClosest(target: Element | string | null, query: string, se
 export function webDOMQuery(target: Element | string | null, selector: string): WebDOMObject | null;
 export function webDOMQueryAll(target: Element | string | null, selector: string): WebDOMObject[];
 export function webDOMMatches(target: Element | string | null, query: string, selector: string): boolean;
+export function webDOMAddEventListener(target: Element | string | null, query: string, type: string,
+  handler: (event: Event, object: WebDOMObject | null) => unknown,
+  options?: boolean | AddEventListenerOptions): (() => void) | null;
+export function webDOMAddDelegatedEventListener(target: Element | string | null, selector: string, type: string,
+  handler: (event: Event, object: WebDOMObject) => unknown,
+  options?: boolean | AddEventListenerOptions): (() => void) | null;
 export function webDOMAddClass(target: Element | string | null, query: string, className: string): boolean;
 export function webDOMRemoveClass(target: Element | string | null, query: string, className: string): boolean;
 export function webDOMToggleClass(target: Element | string | null, query: string, className: string, force?: boolean): boolean;

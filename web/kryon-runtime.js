@@ -2851,6 +2851,53 @@ export function webDOMMatches(target, query, selector) {
   return !!object && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), object.node);
 }
 
+function cleanDOMEventType(type) {
+  return String(type || "").trim();
+}
+
+export function webDOMAddEventListener(target, query, type, handler, options) {
+  const eventType = cleanDOMEventType(type);
+  const el = eventType && typeof handler === "function" ? findWebElement(target, query) : null;
+  if (!el || typeof el.addEventListener !== "function")
+    return null;
+  const listener = (event) => {
+    const object = webDOMObjectFromElement(event?.target || el) ||
+      webDOMObjectFromElement(el);
+    return handler(event, object);
+  };
+  el.addEventListener(eventType, listener, options);
+  return () => {
+    if (typeof el.removeEventListener === "function")
+      el.removeEventListener(eventType, listener, options);
+  };
+}
+
+export function webDOMAddDelegatedEventListener(target, selector, type, handler, options) {
+  const root = mountedRoot(target);
+  const eventType = cleanDOMEventType(type);
+  if (!root || !eventType || typeof handler !== "function" ||
+      typeof root.addEventListener !== "function")
+    return null;
+  const parsed = parseSelector(String(selector || "").trim());
+  const listener = (event) => {
+    let object = webDOMObjectFromElement(event?.target || null);
+    while (object) {
+      if (selectorMatchesWebNode(parsed, object.node))
+        return handler(event, object);
+      const parentPath = object.node?.parentPath || "";
+      object = parentPath && parentPath !== object.node.path
+        ? webDOMObjectForNode(root, root.__kryNodes?.get(parentPath))
+        : null;
+    }
+    return undefined;
+  };
+  root.addEventListener(eventType, listener, options);
+  return () => {
+    if (typeof root.removeEventListener === "function")
+      root.removeEventListener(eventType, listener, options);
+  };
+}
+
 function cleanDOMClassName(name) {
   const value = String(name || "").trim();
   return value && !/\s/.test(value) ? value : "";

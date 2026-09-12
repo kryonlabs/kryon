@@ -347,6 +347,13 @@ and inspectors a reverse bridge back to `.kry` identity.
 `webDOMElementMatches(element, selector)` test mounted DOM objects against the
 same selector facts used by KSS and query helpers.
 
+`webDOMAddEventListener(target, query, type, handler)` attaches a native event
+listener to a resolved Kry DOM object and passes both the browser event and the
+nearest Kry DOM object to the handler. `webDOMAddDelegatedEventListener(target,
+selector, type, handler)` listens from the Kry mount root and resolves bubbling
+event targets through the same selector facts. Both return an unsubscribe
+function when the listener is installed.
+
 `webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
 `webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as
 DOM objects. This lets inspectors, tests, and host code walk from a native

@@ -361,6 +361,7 @@ function fakeDocument() {
       dataset: {},
       style: {},
       attributes: {},
+      listeners: {},
       className: "",
       textContent: "",
       checked: false,
@@ -409,17 +410,42 @@ function fakeDocument() {
           this.children.splice(index, 1);
         child.parentNode = null;
       },
-      addEventListener(type, fn) { this["on" + type] = fn; },
+      addEventListener(type, fn) {
+        if (!this.listeners[type])
+          this.listeners[type] = [];
+        this.listeners[type].push(fn);
+        this["on" + type] = fn;
+      },
+      removeEventListener(type, fn) {
+        const listeners = this.listeners[type] || [];
+        const index = listeners.indexOf(fn);
+        if (index >= 0)
+          listeners.splice(index, 1);
+        this["on" + type] = listeners[listeners.length - 1] || null;
+      },
       dispatchEvent(event) {
         if (!event)
           return false;
+        if (!event.target) {
+          try {
+            event.target = this;
+          } catch {
+            Object.defineProperty(event, "target", { value: this, configurable: true });
+          }
+        }
+        try {
+          event.currentTarget = this;
+        } catch {
+          Object.defineProperty(event, "currentTarget", { value: this, configurable: true });
+        }
         if (!event.preventDefault) {
           event.defaultPrevented = false;
           event.preventDefault = function() { this.defaultPrevented = true; };
         }
-        const handler = this["on" + event.type];
-        if (handler)
+        for (const handler of [...(this.listeners[event.type] || [])])
           handler(event);
+        if (event.bubbles !== false && this.parentNode?.dispatchEvent)
+          this.parentNode.dispatchEvent(event);
         return !event.defaultPrevented;
       },
       click() { if (this.onclick) this.onclick(); },
@@ -985,6 +1011,25 @@ function fakeDocument() {
     assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);
+    const directEvents = [];
+    const removeDirect = runtime.webDOMAddEventListener(target, "tap-button", "kry-test",
+      (event, object) => directEvents.push([event.type, object?.node.path]));
+    assert.equal(typeof removeDirect, "function");
+    firstButton.dispatchEvent({ type: "kry-test" });
+    assert.deepEqual(directEvents, [["kry-test", "Scene/root/tap"]]);
+    removeDirect();
+    firstButton.dispatchEvent({ type: "kry-test" });
+    assert.deepEqual(directEvents, [["kry-test", "Scene/root/tap"]]);
+    const delegatedEvents = [];
+    const removeDelegated = runtime.webDOMAddDelegatedEventListener(target, "Button.primary",
+      "kry-delegated", (event, object) =>
+        delegatedEvents.push([event.type, event.target.tagName, object.node.path]));
+    assert.equal(typeof removeDelegated, "function");
+    nestedSpan.dispatchEvent({ type: "kry-delegated" });
+    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap"]]);
+    removeDelegated();
+    nestedSpan.dispatchEvent({ type: "kry-delegated" });
+    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap"]]);
     assert.equal(runtime.webDOMParent(target, "tap-button").node.path, "Scene/root");
     assert.deepEqual(runtime.webDOMChildren(target, "Scene/root")
       .map((object) => object.node.path), [
