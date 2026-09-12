@@ -2865,6 +2865,16 @@ export function webDOMObjectFromElement(element) {
   return null;
 }
 
+export function webDOMObjectFromEvent(eventOrTarget) {
+  const target = eventOrTarget?.target || eventOrTarget?.currentTarget || eventOrTarget;
+  return webDOMObjectFromElement(target || null);
+}
+
+export function webDOMIdentityFromEvent(eventOrTarget) {
+  const object = webDOMObjectFromEvent(eventOrTarget);
+  return object ? webNodeIdentity(object.node) : null;
+}
+
 export function webDOMElementMatches(element, selector) {
   const object = webDOMObjectFromElement(element);
   return !!object && selectorMatchesWebNode(parseSelector(String(selector || "").trim()), object.node);

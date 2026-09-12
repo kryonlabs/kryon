@@ -459,6 +459,8 @@ export function findWebElement(target: Element | string | null, query: string): 
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
+export function webDOMObjectFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;
+export function webDOMIdentityFromEvent(eventOrTarget: Event | EventTarget | null): WebNodeIdentity | null;
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
