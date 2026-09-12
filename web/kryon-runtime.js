@@ -997,6 +997,7 @@ function widgetTag(item) {
   case "Link":
     return "a";
   case "Button":
+  case "InvisibleButton":
     return "button";
   case "TextField":
     return "input";
@@ -1023,6 +1024,7 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
+  case "InvisibleButton":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -2311,6 +2313,48 @@ function bindWebDOMObjectProperties(el) {
         return webNodeRef(this.__kryDocNode);
       }
     },
+    kryPath: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.path || "";
+      }
+    },
+    kryKind: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.kind || "";
+      }
+    },
+    kryName: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.name || "";
+      }
+    },
+    kryKey: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.key || "";
+      }
+    },
+    krySourceRef: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeSourceRef(this.__kryDocNode);
+      }
+    },
+    krySourceColumnRef: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeSourceColumnRef(this.__kryDocNode);
+      }
+    },
     kryNode: {
       configurable: true,
       enumerable: false,
@@ -3045,6 +3089,34 @@ function bindWebDOMEventProperties(event) {
         enumerable: false,
         get() {
           return rawWebDOMObjectFromEvent(this)?.ref || "";
+        }
+      },
+      kryPath: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.path || "";
+        }
+      },
+      kryKind: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.kind || "";
+        }
+      },
+      krySourceRef: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return webNodeSourceRef(rawWebDOMObjectFromEvent(this)?.node);
+        }
+      },
+      krySourceColumnRef: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return webNodeSourceColumnRef(rawWebDOMObjectFromEvent(this)?.node);
         }
       },
       kryObject: {
@@ -4136,7 +4208,7 @@ export function CanvasHitTest(canvas, screen) {
 }
 
 const runtimeCallNames = [
-  "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
+  "AppBackground", "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "Dropdown",
   "Icon", "Fieldset", "Link", "ListBox",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
@@ -4153,6 +4225,7 @@ for (const name of runtimeCallNames) {
 }
 globalThis.__kryonRuntimeInit = true;
 
+export function AppBackground(...args) { return struct("AppBackground", args); }
 export function Background(...args) { return struct("Background", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function BottomNav(...args) { return struct("BottomNav", args); }

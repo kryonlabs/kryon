@@ -344,6 +344,12 @@ export interface WebDOMRenderDetail {
 declare global {
   interface Element {
     readonly kryRef?: string;
+    readonly kryPath?: string;
+    readonly kryKind?: string;
+    readonly kryName?: string;
+    readonly kryKey?: string;
+    readonly krySourceRef?: string;
+    readonly krySourceColumnRef?: string;
     readonly kryNode?: WebDocumentNode | null;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
@@ -365,6 +371,10 @@ declare global {
 
   interface Event {
     readonly kryRef?: string;
+    readonly kryPath?: string;
+    readonly kryKind?: string;
+    readonly krySourceRef?: string;
+    readonly krySourceColumnRef?: string;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
@@ -710,6 +720,7 @@ export const THEME_STYLE_DEFAULT: number;
 export function SetFancyEffectsEnabled(enabled: unknown): void;
 export function FancyEffectsEnabled(): number;
 
+export function AppBackground(...args: unknown[]): unknown;
 export function Background(...args: unknown[]): unknown;
 export function Bevel(...args: unknown[]): unknown;
 export function BottomNav(...args: unknown[]): unknown;
