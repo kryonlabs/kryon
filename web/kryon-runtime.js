@@ -3784,6 +3784,23 @@ function webDOMRelationList(target, value) {
     .filter(Boolean);
 }
 
+function webDOMReverseRelationList(target, node, field) {
+  const root = mountedRoot(target);
+  const ref = webNodeRef(node);
+  if (!root || !node || !ref)
+    return [];
+  const out = [];
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const candidate = el.__kryDocNode || null;
+    if (!candidate || candidate === node)
+      continue;
+    const related = webDOMRelationList(root, candidate[field] || "");
+    if (related.some((object) => object.node === node || object.ref === ref))
+      out.push(makeWebDOMObject(root, candidate, el, webNodeRef(candidate)));
+  }
+  return out;
+}
+
 function webDOMRelationsForNode(target, node) {
   if (!node)
     return null;
@@ -3791,6 +3808,7 @@ function webDOMRelationsForNode(target, node) {
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     controls: webDOMRelationList(target, node.ariaControls),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
+    labelledBy: webDOMReverseRelationList(target, node, "htmlFor"),
     popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
   };
 }
@@ -5314,6 +5332,7 @@ function webDOMObjectSnapshot(target, object) {
       describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
       controls: (relations?.controls || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
+      labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
       popoverTarget: relations?.popoverTarget?.ref || ""
     },
     name: node.name || "",

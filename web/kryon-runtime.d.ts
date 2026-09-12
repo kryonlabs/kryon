@@ -422,6 +422,7 @@ export interface WebDOMRelations {
   describedBy: WebDOMObject[];
   controls: WebDOMObject[];
   labelFor: WebDOMObject | null;
+  labelledBy: WebDOMObject[];
   popoverTarget: WebDOMObject | null;
 }
 
@@ -605,6 +606,7 @@ export interface WebDOMSnapshot {
     describedBy: string[];
     controls: string[];
     labelFor: string;
+    labelledBy: string[];
     popoverTarget: string;
   };
   name: string;

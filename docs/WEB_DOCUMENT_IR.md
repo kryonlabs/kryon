@@ -474,7 +474,8 @@ and `popover_target` may name another Kry DOM object by ref, path, name, key,
 or native id. The Web Document facts keep the authored Kry value for KSS and
 queries, while the DOM renderer resolves the native attribute to a real element
 id during mount. `webDOMRelations(target, query)`, `element.kryRelations`, and
-`object.relations` expose the resolved Kry DOM objects; snapshots include
+`object.relations` expose the resolved Kry DOM objects, including reverse
+`labelledBy` links for controls targeted by `dom_for`; snapshots include
 serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return

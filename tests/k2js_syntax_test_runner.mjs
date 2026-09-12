@@ -1462,6 +1462,10 @@ function fakeDocument() {
     assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);
     assert.equal(buttonObject.relations.popoverTarget.ref, "Scene/root/search_label");
     assert.equal(firstButton.kryRelations.controls[0].ref, "search-box");
+    assert.deepEqual(runtime.webDOMRelations(target, "search-box").labelledBy
+      .map((object) => object.ref), ["Scene/root/search_label"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.labelledBy,
+      ["Scene/root/search_label"]);
     assert.equal(buttonObject.matches("Button.primary"), true);
     assert.equal(buttonObject.closest("Screen").node.path, "Scene/root");
     assert.equal(Object.keys(buttonObject).includes("root"), false);
