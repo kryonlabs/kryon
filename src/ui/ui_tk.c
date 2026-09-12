@@ -1872,15 +1872,18 @@ RenderProgress(ProgressProps progress)
     ProgressPaint paint;
     Rectangle fill;
     const char *label = progress.label;
-    int font = GetSmallFontSize();
+    StyleFrame text = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindProgress(), 6);
+    Style text_style = ui_unpack_style(ui_style_apply_effects_frame(text).value);
+    int font = text_style.font_size > 0.0f
+        ? (int)(text_style.font_size + 0.5f)
+        : GetSmallFontSize();
     int label_w = label != NULL ? TextWidth(label, font) : 0;
     int pad = Scale(6);
     StyleFrame track = ui_tk_simple_style_frame_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, StyleKindProgress(), 4);
     StyleFrame active = ui_tk_simple_style_frame_role(ButtonToneAccent,
         ButtonStateNormal, 0, 1, StyleKindProgress(), 5);
-    StyleFrame text = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindProgress(), 6);
 
     paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
                              progress.value, (float)label_w, (float)pad,
@@ -1920,7 +1923,8 @@ RenderProgress(ProgressProps progress)
         Color text_color = GetColor(paint.layout.label_on_fill
             ? paint.filled_label_color
             : paint.label_color);
-        RenderText(label, text_x, text_y, font, text_color);
+        RenderText(label, text_x, text_y, font,
+                   Fade(text_color, text_style.opacity));
     }
 }
 

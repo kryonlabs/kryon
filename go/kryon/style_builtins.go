@@ -1237,6 +1237,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -2925,6 +2926,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -4595,6 +4597,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -6370,6 +6373,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -8136,6 +8140,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
