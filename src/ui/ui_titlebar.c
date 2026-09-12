@@ -97,7 +97,7 @@ RenderTitleBar(TitleBarProps title_bar)
         side_reserved = Scale(60);
     }
     if(title_bar.has_dropdown) {
-        UITitleBarDropdown dropdown = title_bar.dropdown;
+        TitleBarDropdown dropdown = title_bar.dropdown;
         int gap = Scale(4);
         int dropdown_x = Scale(12);
         int dropdown_h = dropdown.height > 0 ? dropdown.height : Scale(32);

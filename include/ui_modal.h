@@ -23,14 +23,14 @@ typedef struct {
     int disabled;
     int min_width;
     int height;
-} UITitleBarDropdown;
+} TitleBarDropdown;
 
 typedef struct {
     const char *title;
     int height;
     Texture2D leading_icon;
     int has_leading_action;
-    UITitleBarDropdown dropdown;
+    TitleBarDropdown dropdown;
     int has_dropdown;
 } TitleBarProps;
 
