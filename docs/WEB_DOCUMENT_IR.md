@@ -595,6 +595,6 @@ non-browser tests.
   discovery beyond `styles/kryon/<pack>.kss` and every style property are still
   incremental.
 - Query-based DOM lookup, mutation, commands, event dispatch, geometry, scroll,
-  form value lookup, and accessibility snapshots are available. Deeper
-  per-widget ARIA relationships, such as controlled regions and described-by
-  chains, are still incremental.
+  form value lookup, relation lookup, and accessibility snapshots are
+  available. Additional per-widget semantic relationships beyond controls,
+  described-by, labels, and popovers are still incremental.

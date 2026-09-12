@@ -4915,7 +4915,9 @@ export function webDOMSync(target, query = "") {
   const text = String(query || "").trim();
   if (text) {
     const el = findWebElement(root, text);
-    return syncWebDOMElementFromNative(root, el);
+    const object = syncWebDOMElementFromNative(root, el);
+    resolveWebDOMRelations(root);
+    return object;
   }
   const objects = [];
   for (const el of root.__kryChildren?.values?.() || []) {
@@ -4924,6 +4926,7 @@ export function webDOMSync(target, query = "") {
       objects.push(object);
   }
   syncWebDOMRootIndexes(root);
+  resolveWebDOMRelations(root);
   return objects;
 }
 

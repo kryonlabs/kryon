@@ -1932,6 +1932,13 @@ function fakeDocument() {
       .map((object) => object.ref), ["primary-action"]);
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.describedBy,
       ["primary-action"]);
+    firstField.setAttribute("aria-describedby", "primary-action");
+    assert.equal(runtime.webDOMSync(target, "search-box").ref, "search-box");
+    assert.equal(firstField.attributes["aria-describedby"], "tap-button");
+    firstButton.setAttribute("aria-controls", "search-box");
+    assert.equal(runtime.webDOMSync(target)
+      .some((object) => object.ref === "primary-action"), true);
+    assert.equal(firstButton.attributes["aria-controls"], "search-field");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnBeforeInput, "note_before_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
