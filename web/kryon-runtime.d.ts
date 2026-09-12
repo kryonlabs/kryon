@@ -147,7 +147,7 @@ export function BeginFrameBox(bounds: unknown): Record<string, unknown>;
 export function FramePack(frame: unknown, side: number, size: number): Record<string, unknown>;
 export function GridCell(grid: unknown, column: number, row: number, columnSpan?: number, rowSpan?: number): Record<string, unknown>;
 export function Place(bounds: unknown, item: unknown): Record<string, unknown>;
-export function BeginUIScrollContainer(...args: unknown[]): unknown;
+export function BeginScrollContainer(...args: unknown[]): unknown;
 export function CanvasHitTest(canvas: unknown, screen: unknown): Record<string, unknown>;
 
 export const Text8: number;

@@ -14,14 +14,14 @@ ScrollExample :: () #ui {
         Background(GetThemeBackground())
         Background(GetThemeSurface())
         Text((TextProps){.bounds={Scale(40), Scale(28), 0, 0}, .text="Scroll", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        area: UIScrollArea = {{Scale(40), Scale(76), Scale(360), Scale(220)}, Scale(520), Scale(40), Scale(360), &scroll_off, 0, 0}
-        view: UIScrollView = BeginUIScrollContainer(area)
+        area: ScrollArea = {{Scale(40), Scale(76), Scale(360), Scale(220)}, Scale(520), Scale(40), Scale(360), &scroll_off, 0, 0}
+        view: ScrollView = BeginScrollContainer(area)
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(12), 0, 0}, .text="First row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(82), 0, 0}, .text="Second row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(152), 0, 0}, .text="Third row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(222), 0, 0}, .text="Fourth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(292), 0, 0}, .text="Fifth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={view.content_x, view.content_y + Scale(362), 0, 0}, .text="Sixth row", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        EndUIScrollContainer(area, view)
+        EndScrollContainer(area, view)
     }
 }

@@ -149,8 +149,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={Scale(20), (int)viewport.height - Scale(52), 0, 0}, .text="Wheel to scroll", .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={Scale(20), (int)viewport.height - Scale(30), 0, 0}, .text=TextFormat("Clicks: %d", action_count), .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
 
-        area: UIScrollArea = {{Scale(236), Scale(82), (int)viewport.width - Scale(252), (int)viewport.height - Scale(100)}, Scale(category_heights[category]), Scale(252), (int)viewport.width - Scale(292), &scroll_off, Scale(42), 0}
-        view: UIScrollView = BeginUIScrollContainer(area)
+        area: ScrollArea = {{Scale(236), Scale(82), (int)viewport.width - Scale(252), (int)viewport.height - Scale(100)}, Scale(category_heights[category]), Scale(252), (int)viewport.width - Scale(292), &scroll_off, Scale(42), 0}
+        view: ScrollView = BeginScrollContainer(area)
         x: int = view.content_x
         right: int = x + Scale(410)
         y: int = view.content_y
@@ -513,7 +513,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
                 SetCurrentTheme(theme_id, dark_mode)
             }
         }
-        EndUIScrollContainer(area, view)
+        EndScrollContainer(area, view)
 
         if dialog == 1 {
             message_actions: [1] ModalAction = {{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}

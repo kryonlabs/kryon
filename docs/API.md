@@ -1753,7 +1753,7 @@ typedef struct {
     int *scroll_offset;
     int wheel_step;
     int scrollbar_x;
-} UIScrollArea;
+} ScrollArea;
 
 typedef struct {
     int content_x;
@@ -1762,17 +1762,17 @@ typedef struct {
     int viewport_h;
     int content_h;
     int max_scroll;
-} UIScrollView;
+} ScrollView;
 
-UIScrollView MeasureUIScrollContainer(UIScrollArea area);
-UIScrollView BeginUIScrollContainer(UIScrollArea area);
-void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
+ScrollView MeasureScrollContainer(ScrollArea area);
+ScrollView BeginScrollContainer(ScrollArea area);
+void EndScrollContainer(ScrollArea area, ScrollView view);
 ```
 
 #### Scroll Page
 
 ```c
-typedef int (*UIScrollPageHeightFn)(int content_width, void *user_data);
+typedef int (*ScrollPageHeightFn)(int content_width, void *user_data);
 
 typedef struct {
     int y;
@@ -1784,21 +1784,21 @@ typedef struct {
     int wheel_step;
     int scrollbar_x;
     int measure_passes;
-    UIScrollPageHeightFn content_height;
+    ScrollPageHeightFn content_height;
     void *user_data;
-} UIScrollPageSpec;
+} ScrollPageSpec;
 
 typedef struct {
-    UIScrollArea area;
-    UIScrollView view;
+    ScrollArea area;
+    ScrollView view;
     int content_x;
     int content_y;
     int content_w;
     int content_h;
-} UIScrollPage;
+} ScrollPage;
 
-UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
-void EndUIScrollPage(UIScrollPage page);
+ScrollPage BeginScrollPage(ScrollPageSpec spec);
+void EndScrollPage(ScrollPage page);
 ```
 
 #### Node Measurement
@@ -1885,7 +1885,7 @@ int FormTextField(Form *form, LabelTextFieldProps row);
 int FormCheckbox(Form *form, CheckboxRowProps row);
 int FormSpinbox(Form *form, SpinboxRowProps row);
 int FormButtons(Form *form, ButtonRowProps row);
-int FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin);
+int FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin);
 ```
 
 `Form` is a small immediate-mode cursor for settings and data-entry pages.

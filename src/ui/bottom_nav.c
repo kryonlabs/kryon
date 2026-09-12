@@ -197,8 +197,8 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     static int route_scroll_offset = 0;
     NavigationBarConfigResult result = {0, 0};
     UIPanelFrame frame;
-    UIScrollArea route_area;
-    UIScrollView route_view;
+    ScrollArea route_area;
+    ScrollView route_view;
     const char *option_labels[16];
     int option_count = modal.option_count;
     int route_count = modal.route_count != NULL ? *modal.route_count : 0;
@@ -275,7 +275,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     route_area.wheel_step = row_h;
     route_area.scrollbar_x = frame.content_x + frame.content_w - Scale(8);
 
-    route_view = BeginUIScrollContainer(route_area);
+    route_view = BeginScrollContainer(route_area);
     y = route_view.content_y;
     for(i = 0; i < route_count; i++) {
         const char *slot_label = modal.slot_labels != NULL && modal.slot_labels[i] != NULL
@@ -305,7 +305,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
         }
         y += row_h;
     }
-    EndUIScrollContainer(route_area, route_view);
+    EndScrollContainer(route_area, route_view);
 
     dropdown_store_clip(frame.content_y, add_y - Scale(8));
 

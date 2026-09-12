@@ -11,7 +11,7 @@ typedef struct {
     int *scroll_offset;
     int wheel_step;
     int scrollbar_x;
-} UIScrollArea;
+} ScrollArea;
 
 typedef struct {
     int content_x;
@@ -20,9 +20,9 @@ typedef struct {
     int viewport_h;
     int content_h;
     int max_scroll;
-} UIScrollView;
+} ScrollView;
 
-typedef int (*UIScrollPageHeightFn)(int content_width, void *user_data);
+typedef int (*ScrollPageHeightFn)(int content_width, void *user_data);
 
 typedef struct {
     int y;
@@ -34,20 +34,20 @@ typedef struct {
     int wheel_step;
     int scrollbar_x;
     int measure_passes;
-    UIScrollPageHeightFn content_height;
+    ScrollPageHeightFn content_height;
     void *user_data;
-} UIScrollPageSpec;
+} ScrollPageSpec;
 
 typedef struct {
-    UIScrollArea area;
-    UIScrollView view;
+    ScrollArea area;
+    ScrollView view;
     int content_x;
     int content_y;
     int content_w;
     int content_h;
-} UIScrollPage;
+} ScrollPage;
 
-typedef int (*UIScreenScaffoldTitleFn)(const char *title, int height,
+typedef int (*ScreenScaffoldTitleFn)(const char *title, int height,
                                        void *user_data);
 
 typedef struct {
@@ -62,34 +62,34 @@ typedef struct {
     int wheel_step;
     int scrollbar_x;
     int measure_passes;
-    UIScrollPageHeightFn content_height;
+    ScrollPageHeightFn content_height;
     void *user_data;
-    UIScreenScaffoldTitleFn draw_title;
+    ScreenScaffoldTitleFn draw_title;
     void *title_user_data;
-} UIScreenScaffoldSpec;
+} ScreenScaffoldSpec;
 
 typedef struct {
     int closed;
     int title_height;
     int content_y;
     int content_h;
-    UIScrollPage page;
+    ScrollPage page;
     int content_x;
     int content_w;
     int y;
-} UIScreenScaffold;
+} ScreenScaffold;
 
-int GetUIScrollbarReservedWidth(int max_scroll);
-int GetUIScrollbarContentWidth(int content_width, int max_scroll);
-int GetUIScrollbarSafeContentWidth(int content_x, int content_width,
+int GetScrollbarReservedWidth(int max_scroll);
+int GetScrollbarContentWidth(int content_width, int max_scroll);
+int GetScrollbarSafeContentWidth(int content_x, int content_width,
                                    int scrollbar_x, int max_scroll);
-UIScrollView MeasureUIScrollContainer(UIScrollArea area);
-UIScrollView BeginUIScrollContainer(UIScrollArea area);
-void EndUIScrollContainer(UIScrollArea area, UIScrollView view);
-void EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin);
-UIScrollPage BeginUIScrollPage(UIScrollPageSpec spec);
-void EndUIScrollPage(UIScrollPage page);
-UIScreenScaffold BeginUIScreenScaffold(UIScreenScaffoldSpec spec);
-void EndUIScreenScaffold(UIScreenScaffold scaffold);
+ScrollView MeasureScrollContainer(ScrollArea area);
+ScrollView BeginScrollContainer(ScrollArea area);
+void EndScrollContainer(ScrollArea area, ScrollView view);
+void EnsureScrollRectVisible(ScrollArea area, Rectangle rect, int margin);
+ScrollPage BeginScrollPage(ScrollPageSpec spec);
+void EndScrollPage(ScrollPage page);
+ScreenScaffold BeginScreenScaffold(ScreenScaffoldSpec spec);
+void EndScreenScaffold(ScreenScaffold scaffold);
 
 #endif

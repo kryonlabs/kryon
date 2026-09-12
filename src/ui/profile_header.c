@@ -339,8 +339,8 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
     int icon_inset;
     int *scroll_offset = modal.scroll_offset != NULL ? modal.scroll_offset
                                                      : &default_scroll_offset;
-    UIScrollArea scroll_area;
-    UIScrollView scroll_view;
+    ScrollArea scroll_area;
+    ScrollView scroll_view;
     UIPanelFrame frame;
     UIIconType selected =
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
@@ -392,7 +392,7 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
     scroll_area.content_width = frame.content_w;
     scroll_area.scroll_offset = scroll_offset;
     scroll_area.wheel_step = cell + gap;
-    scroll_view = BeginUIScrollContainer(scroll_area);
+    scroll_view = BeginScrollContainer(scroll_area);
 
     mouse = ui_mouse_world();
     icon_inset = Scale(6);
@@ -448,7 +448,7 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
             }
         }
     }
-    EndUIScrollContainer(scroll_area, scroll_view);
+    EndScrollContainer(scroll_area, scroll_view);
 
     return result;
 }

@@ -80,7 +80,7 @@ int FormY(const Form *form);
 int FormAdvance(Form *form, int height);
 Rectangle FormTakeRect(Form *form, int height);
 void FormNoteFocus(Form *form, int focus_id, Rectangle bounds);
-int FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin);
+int FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin);
 int FormSection(Form *form, SectionLabelProps row);
 int FormTextField(Form *form, LabelTextFieldProps row);
 int FormCheckbox(Form *form, CheckboxRowProps row);

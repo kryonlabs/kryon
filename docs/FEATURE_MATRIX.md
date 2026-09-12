@@ -64,8 +64,8 @@ PanedView Collapsible ListBox TreeView TableView ColorPicker TabBar DragDropSour
 CanvasGrid SelectableText`
 
 (`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
-`BeginCanvas` directly. Scroll coverage uses the C `BeginUIScrollContainer` /
-`EndUIScrollContainer` API.)
+`BeginCanvas` directly. Scroll coverage uses the C `BeginScrollContainer` /
+`EndScrollContainer` API.)
 
 ## Widget matrix
 

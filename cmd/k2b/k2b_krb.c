@@ -1223,7 +1223,7 @@ collect_widgets(KrbBuild *b, const KirFunction *fn)
                     aname[nl] = '\0';
                     register_string_array(b, aname, eq + 1);
                 }
-                if(strstr(decl_type, "UIScrollArea") != NULL)
+                if(strstr(decl_type, "ScrollArea") != NULL)
                     parse_scroll_area_decl(b, st->text);
             }
         }
@@ -1829,7 +1829,7 @@ parse_scroll_area_decl(KrbBuild *b, const char *text)
     int scaled;
 
     if(t == NULL || colon == NULL || eq == NULL ||
-       strstr(colon, "UIScrollArea") == NULL ||
+       strstr(colon, "ScrollArea") == NULL ||
        b->scroll_area_count >= 16)
         return 0;
     open = strchr(eq, '{');
@@ -1889,7 +1889,7 @@ remember_scroll_view(KrbBuild *b, const char *raw, const KrbScrollAreaDef *area)
     size_t len;
 
     if(t == NULL || colon == NULL || eq == NULL || colon > eq ||
-       strstr(colon, "UIScrollView") == NULL ||
+       strstr(colon, "ScrollView") == NULL ||
        b->scroll_view_count >= 16)
         return;
     view = &b->scroll_views[b->scroll_view_count];
@@ -2912,9 +2912,9 @@ try_widget(KrbBuild *b, const char *raw)
     call = kir_skip_inline_ws(call);
     /* Retained declaration scopes are represented by the cartridge node
      * table itself; they are semantic no-ops for the KRB renderer. */
-    if(starts_ident(call, "BeginUIScrollContainer"))
+    if(starts_ident(call, "BeginScrollContainer"))
         return parse_begin_scroll_container(b, raw, call);
-    if(starts_ident(call, "EndUIScrollContainer")) {
+    if(starts_ident(call, "EndScrollContainer")) {
         b->scroll_open = -1;
         return 1;
     }

@@ -76,7 +76,7 @@ main(void)
     GridMetrics grid_metrics;
     GridCursor grid_cursor;
     Rectangle grid_item;
-    UIScreenScaffold scaffold;
+    ScreenScaffold scaffold;
     NavigationBarProps nav = {0};
     TabBarProps tabs = {0};
     const UIWidgetNode *nodes;
@@ -286,7 +286,7 @@ main(void)
     SetUIViewSize(320, 240);
     SetThemeStyle(THEME_STYLE_CLASSIC);
     BeginTree(37);
-    scaffold = BeginUIScreenScaffold((UIScreenScaffoldSpec){
+    scaffold = BeginScreenScaffold((ScreenScaffoldSpec){
         .title = "Settings",
         .bottom_reserved = 12,
         .max_content_width = 220,
@@ -301,7 +301,7 @@ main(void)
               240 - Scale(36) - 12);
     check_int("scaffold content w", scaffold.content_w,
               scaffold_fixture.seen_w);
-    EndUIScreenScaffold(scaffold);
+    EndScreenScaffold(scaffold);
     EndTree();
 
     BeginTree(38);

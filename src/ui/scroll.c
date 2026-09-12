@@ -1,15 +1,15 @@
 #include "ui_internal.h"
 
 int
-GetUIScrollbarReservedWidth(int max_scroll)
+GetScrollbarReservedWidth(int max_scroll)
 {
     return max_scroll > 0 ? Scale(16) : 0;
 }
 
 int
-GetUIScrollbarContentWidth(int content_width, int max_scroll)
+GetScrollbarContentWidth(int content_width, int max_scroll)
 {
-    int reserved = GetUIScrollbarReservedWidth(max_scroll);
+    int reserved = GetScrollbarReservedWidth(max_scroll);
 
     if(reserved <= 0)
         return content_width;
@@ -19,7 +19,7 @@ GetUIScrollbarContentWidth(int content_width, int max_scroll)
 }
 
 int
-GetUIScrollbarSafeContentWidth(int content_x, int content_width,
+GetScrollbarSafeContentWidth(int content_x, int content_width,
                                 int scrollbar_x, int max_scroll)
 {
     int gap = Scale(20);
@@ -36,10 +36,10 @@ GetUIScrollbarSafeContentWidth(int content_x, int content_width,
     return safe_width;
 }
 
-UIScrollView
-MeasureUIScrollContainer(UIScrollArea area)
+ScrollView
+MeasureScrollContainer(ScrollArea area)
 {
-    UIScrollView view;
+    ScrollView view;
     int x = (int)area.bounds.x;
     int y = (int)area.bounds.y;
     int w = (int)area.bounds.width;
@@ -65,18 +65,18 @@ MeasureUIScrollContainer(UIScrollArea area)
     } else {
         view.content_y = y;
     }
-    view.content_w = GetUIScrollbarSafeContentWidth(content_x, content_w,
+    view.content_w = GetScrollbarSafeContentWidth(content_x, content_w,
                                                      scrollbar_x, view.max_scroll);
 
     return view;
 }
 
-UIScrollPage
-BeginUIScrollPage(UIScrollPageSpec spec)
+ScrollPage
+BeginScrollPage(ScrollPageSpec spec)
 {
-    UIScrollPage page;
-    UIScrollArea area;
-    UIScrollView measured;
+    ScrollPage page;
+    ScrollArea area;
+    ScrollView measured;
     int max_content_w = spec.max_content_width;
     int min_content_w = spec.min_content_width;
     int side_padding = spec.side_padding > 0 ? spec.side_padding : GetUIPageSidePadding();
@@ -118,7 +118,7 @@ BeginUIScrollPage(UIScrollPageSpec spec)
         area.scroll_offset = spec.scroll_offset;
         area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step : Scale(42);
         area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - Scale(8);
-        measured = MeasureUIScrollContainer(area);
+        measured = MeasureScrollContainer(area);
         if(measured.content_w == draw_w)
             break;
         draw_w = measured.content_w;
@@ -127,7 +127,7 @@ BeginUIScrollPage(UIScrollPageSpec spec)
     if(spec.content_height != NULL)
         area.content_height = spec.content_height(draw_w, spec.user_data);
     page.area = area;
-    page.view = BeginUIScrollContainer(area);
+    page.view = BeginScrollContainer(area);
     page.content_x = page.view.content_x;
     page.content_y = page.view.content_y;
     page.content_w = page.view.content_w;
@@ -136,16 +136,16 @@ BeginUIScrollPage(UIScrollPageSpec spec)
 }
 
 void
-EndUIScrollPage(UIScrollPage page)
+EndScrollPage(ScrollPage page)
 {
-    EndUIScrollContainer(page.area, page.view);
+    EndScrollContainer(page.area, page.view);
 }
 
-UIScreenScaffold
-BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
+ScreenScaffold
+BeginScreenScaffold(ScreenScaffoldSpec spec)
 {
-    UIScreenScaffold scaffold;
-    UIScrollPageSpec page_spec;
+    ScreenScaffold scaffold;
+    ScrollPageSpec page_spec;
     int title_h = spec.title_height;
     int top_gap = spec.top_gap > 0 ? spec.top_gap : 0;
     int content_y;
@@ -184,7 +184,7 @@ BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
     page_spec.measure_passes = spec.measure_passes;
     page_spec.content_height = spec.content_height;
     page_spec.user_data = spec.user_data;
-    scaffold.page = BeginUIScrollPage(page_spec);
+    scaffold.page = BeginScrollPage(page_spec);
     scaffold.content_x = scaffold.page.content_x;
     scaffold.content_w = scaffold.page.content_w;
     scaffold.y = scaffold.page.content_y;
@@ -192,18 +192,18 @@ BeginUIScreenScaffold(UIScreenScaffoldSpec spec)
 }
 
 void
-EndUIScreenScaffold(UIScreenScaffold scaffold)
+EndScreenScaffold(ScreenScaffold scaffold)
 {
-    EndUIScrollPage(scaffold.page);
+    EndScrollPage(scaffold.page);
 }
-UIScrollView
-BeginUIScrollContainer(UIScrollArea area)
+ScrollView
+BeginScrollContainer(ScrollArea area)
 {
     static int content_drag_active = 0;
     static int content_dragging = 0;
     static int content_drag_start_y = 0;
     static int content_drag_start_scroll = 0;
-    UIScrollView view = MeasureUIScrollContainer(area);
+    ScrollView view = MeasureScrollContainer(area);
     Vector2 mouse_world = ui_mouse_world();
     int y = (int)area.bounds.y;
     int wheel_step = area.wheel_step > 0 ? area.wheel_step : Scale(42);
@@ -349,7 +349,7 @@ BeginUIScrollContainer(UIScrollArea area)
 }
 
 void
-EndUIScrollContainer(UIScrollArea area, UIScrollView view)
+EndScrollContainer(ScrollArea area, ScrollView view)
 {
     int scrollbar_w = Scale(8);
     int scrollbar_x;
@@ -372,9 +372,9 @@ EndUIScrollContainer(UIScrollArea area, UIScrollView view)
 }
 
 void
-EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin)
+EnsureScrollRectVisible(ScrollArea area, Rectangle rect, int margin)
 {
-    UIScrollView view;
+    ScrollView view;
     int next_scroll;
     int viewport_top;
     int viewport_bottom;
@@ -384,7 +384,7 @@ EnsureUIScrollRectVisible(UIScrollArea area, Rectangle rect, int margin)
     if(area.scroll_offset == NULL)
         return;
 
-    view = MeasureUIScrollContainer(area);
+    view = MeasureScrollContainer(area);
     if(view.max_scroll <= 0)
         return;
 

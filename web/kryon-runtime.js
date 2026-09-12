@@ -1076,8 +1076,8 @@ export function Place(bounds, item) {
   return { bounds, item };
 }
 
-export function BeginUIScrollContainer(...args) {
-  return struct("BeginUIScrollContainer", args);
+export function BeginScrollContainer(...args) {
+  return struct("BeginScrollContainer", args);
 }
 
 export function CanvasHitTest(canvas, screen) {

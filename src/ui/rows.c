@@ -209,11 +209,11 @@ FormNoteFocus(Form *form, int focus_id, Rectangle bounds)
 }
 
 int
-FormEnsureFocusedVisible(Form *form, UIScrollArea area, int margin)
+FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin)
 {
     if(form == NULL || !form->focused_rect_valid)
         return 0;
-    EnsureUIScrollRectVisible(area, form->focused_rect, margin);
+    EnsureScrollRectVisible(area, form->focused_rect, margin);
     form->focused_rect_valid = 0;
     return 1;
 }

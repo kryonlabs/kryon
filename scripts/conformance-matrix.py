@@ -517,7 +517,7 @@ def detect_widgets(source: str) -> list[str]:
     found.update(match.group(1) for match in BLOCK_RE.finditer(clean))
     if "BeginCanvas" in found or "EndCanvas" in found:
         found.add("Canvas")
-    if "BeginUIScrollContainer" in found or "EndUIScrollContainer" in found:
+    if "BeginScrollContainer" in found or "EndScrollContainer" in found:
         found.add("Scroll")
     for widget, aliases in WIDGET_ALIASES.items():
         if aliases & found:
