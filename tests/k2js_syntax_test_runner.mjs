@@ -1290,6 +1290,17 @@ function fakeDocument() {
     assert.equal(runtime.webDOMToggleClass(target, "tap-button", "runtime-selected", true), true);
     assert.equal(runtime.webDOMRemoveClass(target, "tap-button", "runtime-selected"), true);
     assert.equal(runtime.webDOMHasClass(target, "tap-button", "runtime-selected"), false);
+    assert.equal(firstButton.kryAddClass("method-selected"), true);
+    assert.equal(firstButton.kryHasClass("method-selected"), true);
+    assert.equal(runtime.webDOMQuery(target, "Button.method-selected").element, firstButton);
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(firstButton.kryHasClass("method-selected"), true);
+    assert.equal(firstButton.kryToggleClass("method-selected"), true);
+    assert.equal(firstButton.kryHasClass("method-selected"), false);
+    assert.equal(firstButton.kryToggleClass("method-selected", true), true);
+    assert.equal(firstButton.kryRemoveClass("method-selected"), true);
+    assert.equal(firstButton.kryHasClass("method-selected"), false);
+    assert.equal(Object.keys(firstButton).includes("kryAddClass"), false);
     assert.equal(runtime.webDOMSetAttribute(target, "tap-button", "data-runtime", "1"), true);
     assert.equal(runtime.webDOMGetAttribute(target, "Scene/root/tap", "data-runtime"), "1");
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), true);

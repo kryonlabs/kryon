@@ -420,6 +420,9 @@ markup.
 `webDOMToggleClass(...)`, and `webDOMHasClass(...)` mutate or inspect mounted
 native class names by the same query forms. Runtime class mutations are folded
 back into node facts, so they survive re-render and remain visible to KSS.
+Mounted elements expose the same local bridge as `element.kryAddClass(...)`,
+`element.kryRemoveClass(...)`, `element.kryToggleClass(...)`, and
+`element.kryHasClass(...)`.
 
 `webDOMSetAttribute(target, query, name, value)`,
 `webDOMRemoveAttribute(...)`, `webDOMGetAttribute(...)`, and

@@ -2494,6 +2494,42 @@ function bindWebDOMObjectProperties(el) {
         };
       }
     },
+    kryAddClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMAddClass(root, query, className);
+      }
+    },
+    kryRemoveClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMRemoveClass(root, query, className);
+      }
+    },
+    kryToggleClass: {
+      configurable: true,
+      enumerable: false,
+      value(className, force) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMToggleClass(root, query, className, force);
+      }
+    },
+    kryHasClass: {
+      configurable: true,
+      enumerable: false,
+      value(className) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMHasClass(root, query, className);
+      }
+    },
     kryGetAttr: {
       configurable: true,
       enumerable: false,

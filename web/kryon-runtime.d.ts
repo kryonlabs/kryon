@@ -381,6 +381,10 @@ declare global {
     };
     kryDelegate?(selector: string, type: string, handler: (event: Event, object: WebDOMObject) => unknown,
       options?: boolean | AddEventListenerOptions): (() => void) | null;
+    kryAddClass?(className: string): boolean;
+    kryRemoveClass?(className: string): boolean;
+    kryToggleClass?(className: string, force?: boolean): boolean;
+    kryHasClass?(className: string): boolean;
     kryGetAttr?(name: string): string | undefined;
     krySetAttr?(name: string, value?: unknown): boolean;
     kryRemoveAttr?(name: string): boolean;
