@@ -209,7 +209,7 @@ host roles rather than retained nodes.
 | `TextArea` | `.kry canonical` | Metrics, page-navigation, navigation, and edit intent policy in `.kry`; buffer mutation and IME host support remain. |
 | `Dropdown` | `.kry canonical` | Selection control only. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
-| `Slider` | `.kry canonical` | Type/orientation/angle variants are props. |
+| `Slider` | `.kry canonical` | Type/orientation/angle variants are props; label/value typography is KSS-owned. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. KSS uses `Menu`, `MenuItem`, and `MenuSeparator`; no `MenuBar` selector. |
 | `Toggle` | `.kry canonical` | Boolean switch. |
 | `Checkbox` | `.kry canonical` | Boolean checkbox. |

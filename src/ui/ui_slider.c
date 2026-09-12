@@ -222,9 +222,14 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             ButtonStateNormal, 0);
         Style label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
-        RenderText(label, x, y, label_font, label_style.foreground);
+        if(label_style.font_size > 0.0f) {
+            label_font = (int)(label_style.font_size + 0.5f);
+            value_font = label_font;
+        }
+        Color label_color = Fade(label_style.foreground, label_style.opacity);
+        RenderText(label, x, y, label_font, label_color);
         RenderText(value_text, x + w - TextWidth(value_text, value_font),
-                   y, value_font, label_style.foreground);
+                   y, value_font, label_color);
     }
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
