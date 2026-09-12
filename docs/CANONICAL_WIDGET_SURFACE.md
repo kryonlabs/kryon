@@ -377,7 +377,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`. |
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
-| `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, host handles input and drawing. |
+| `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
