@@ -23,6 +23,20 @@ ui_tab_bar_style_frame(int style_kind, ButtonState state, int disabled,
                                        style_kind);
 }
 
+static int
+ui_tab_bar_font(TabBarProps bar, int disabled)
+{
+    StyleFrame tab_frame;
+
+    if(bar.font > 0)
+        return bar.font;
+    tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+    return tab_frame.value.font_size > 0.0f
+        ? (int)(tab_frame.value.font_size + 0.5f)
+        : Text12;
+}
+
 static float
 ui_tab_roundness(Rectangle bounds, float radius)
 {
@@ -191,7 +205,7 @@ TabBarHeight(void)
 
 static int
 ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
-                     int icon_tab_w)
+                     int icon_tab_w, int font)
 {
     const Tab *tab;
     int label_w;
@@ -203,7 +217,7 @@ ui_tab_bar_tab_width(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 
     tab = &bar.tabs[index];
     has_label = tab->label != NULL && tab->label[0] != '\0';
-    label_w = has_label ? TextWidth(tab->label, bar.font > 0 ? bar.font : Text12) : 0;
+    label_w = has_label ? TextWidth(tab->label, font) : 0;
     metrics = TabBarDefaultMetrics(min_tab_w, max_tab_w,
                                    (float)Scale(1000) / 1000.0f);
     metrics.icon_width = icon_tab_w;
@@ -256,19 +270,20 @@ ui_tab_bar_keyboard_input(TabBarProps bar)
 
 static int
 ui_tab_bar_total_width(TabBarProps bar, int min_tab_w, int max_tab_w,
-                       int icon_tab_w, int tab_gap)
+                       int icon_tab_w, int tab_gap, int font)
 {
     int total = 0;
 
     for(int i = 0; i < bar.count; i++)
         total += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
-                                      icon_tab_w);
+                                      icon_tab_w, font);
     return TabBarTotalWidth(total, bar.count, tab_gap);
 }
 
 static Rectangle
 ui_tab_bar_rect_at(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
-                   int icon_tab_w, int tab_gap, int scroll, int equal_tabs)
+                   int icon_tab_w, int tab_gap, int scroll, int equal_tabs,
+                   int font)
 {
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
@@ -279,7 +294,7 @@ ui_tab_bar_rect_at(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
         return TabBarEqualTabBounds(bar.bounds, bar.count, index);
     for(int i = 0; i <= index && i < bar.count; i++) {
         tab_w = ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
-                                     icon_tab_w);
+                                     icon_tab_w, font);
         if(i == index)
             return (Rectangle){(float)tab_x, (float)bar_y,
                                (float)tab_w, bar.bounds.height};
@@ -291,7 +306,7 @@ ui_tab_bar_rect_at(TabBarProps bar, int index, int min_tab_w, int max_tab_w,
 static int
 ui_tab_bar_reorder_target(TabBarProps bar, int active_index, int min_tab_w,
                           int max_tab_w, int icon_tab_w, int tab_gap,
-                          int scroll, int equal_tabs, int pointer_x)
+                          int scroll, int equal_tabs, int pointer_x, int font)
 {
     int target = 0;
 
@@ -304,7 +319,7 @@ ui_tab_bar_reorder_target(TabBarProps bar, int active_index, int min_tab_w,
         if(i == active_index)
             continue;
         rect = ui_tab_bar_rect_at(bar, i, min_tab_w, max_tab_w, icon_tab_w,
-                                  tab_gap, scroll, equal_tabs);
+                                  tab_gap, scroll, equal_tabs, font);
         center_x = (int)(rect.x + rect.width / 2.0f);
         if(pointer_x > center_x)
             target++;
@@ -325,12 +340,7 @@ RenderTabBar(TabBarProps bar)
     int disabled = bar.disabled || UIContentDisabled();
     StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
-    StyleFrame base_tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
-        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
-    int font = bar.font > 0 ? bar.font :
-        (base_tab_frame.value.font_size > 0.0f
-            ? (int)(base_tab_frame.value.font_size + 0.5f)
-            : Text12);
+    int font = ui_tab_bar_font(bar, disabled);
     int tab_gap = (int)bar_frame.value.gap;
     if(tab_gap < 0)
         tab_gap = 0;
@@ -385,7 +395,7 @@ RenderTabBar(TabBarProps bar)
         icon_tab_w = max_tab_w;
 
     int total_tabs_w = ui_tab_bar_total_width(bar, min_tab_w, max_tab_w,
-                                              icon_tab_w, tab_gap);
+                                              icon_tab_w, tab_gap, font);
     TabBarScroll scroll_policy = TabBarScrollFor(bar.bounds.width,
                                                  total_tabs_w,
                                                  *scroll_offset);
@@ -398,11 +408,12 @@ RenderTabBar(TabBarProps bar)
     if(needs_scroll && bar.focus_selected &&
        bar.selected_index >= 0 && bar.selected_index < bar.count) {
         int selected_tab_w = ui_tab_bar_tab_width(bar, bar.selected_index,
-                                                  min_tab_w, max_tab_w, icon_tab_w);
+                                                  min_tab_w, max_tab_w,
+                                                  icon_tab_w, font);
         int selected_tab_x = bar_x + tab_gap - *scroll_offset;
         for(int i = 0; i < bar.selected_index; i++)
             selected_tab_x += ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
-                                                   icon_tab_w) + tab_gap;
+                                                   icon_tab_w, font) + tab_gap;
         *scroll_offset = TabBarRevealScroll((float)(selected_tab_x - tab_gap),
                                             (float)(selected_tab_w + tab_gap * 2),
                                             bar.bounds, *scroll_offset,
@@ -438,7 +449,7 @@ RenderTabBar(TabBarProps bar)
             drag_target = ui_tab_bar_reorder_target(
                 bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
                 icon_tab_w, tab_gap,
-                *scroll_offset, equal_tabs, (int)mouse_world.x);
+                *scroll_offset, equal_tabs, (int)mouse_world.x, font);
             PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
@@ -451,7 +462,8 @@ RenderTabBar(TabBarProps bar)
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
         int tab_w = equal_tabs ? bar_w / bar.count :
-                    ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w, icon_tab_w);
+                    ui_tab_bar_tab_width(bar, i, min_tab_w, max_tab_w,
+                                         icon_tab_w, font);
         if(equal_tabs && i == bar.count - 1)
             tab_w = bar_x + bar_w - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y, (float)tab_w, (float)bar_h};
@@ -688,7 +700,7 @@ RenderTabBar(TabBarProps bar)
             target = ui_tab_bar_reorder_target(
                 bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
                 icon_tab_w, tab_gap,
-                *scroll_offset, equal_tabs, (int)mouse_world.x);
+                *scroll_offset, equal_tabs, (int)mouse_world.x, font);
         if(target >= 0 && target < bar.count &&
            target != tab_bar_store->press_index) {
             *bar.reordered_from_index = tab_bar_store->press_index;
