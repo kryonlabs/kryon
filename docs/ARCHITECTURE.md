@@ -178,7 +178,7 @@ unsupported host operations still require the existing backend path.
 The built-in path accepts named `Button` blocks. The Lightfield example uses
 those blocks with explicit IDs and shared Button props. Childless Button
 blocks lower to the ordinary `Button` call; only blocks with child content open a
-`BeginButton`/`End` scope. Explicit IDs remain necessary for stable identity;
+lowered host content scope. Explicit IDs remain necessary for stable identity;
 the block name does not yet supply instance identity.
 JavaScript diagnostics record their evaluated nested props and geometry; menu
 interaction and material raster parity in that host are not implemented by
@@ -415,8 +415,9 @@ Deferred pointer-focus registration uses the same ownership snapshots without
 reopening scopes, preserving modal, clip, disabled and inspection capture.
 Retained hit testing and button hover/press state now use that same full capture
 predicate, so modal blocking also prevents deferred click events.
-The public `BeginPopup` / `EndPopup` / `ClosePopup` scope binds these paint,
-layout and input contexts for arbitrary native children. `PopupTooltip` reuses that paint/layout scope while
+The public `Popup` block binds these paint, layout and input contexts for
+arbitrary native children. `ClosePopup` remains an explicit host operation for
+the active popup. `PopupTooltip` reuses that paint/layout scope while
 intentionally skipping input ownership. `PopupModal` uses the same scope with a
 full-view input/backdrop policy, and `PopupContext` uses it with right-release
 activation over a retained trigger. Presentation variants remain flags on the
@@ -513,10 +514,10 @@ to existing runtime calls and lexical cleanup. The same cleanup pass used for
 backend emits code. The generated buttons parity fixture exercises those exits
 and nested disabled inheritance in C, Go and JS; C++ syntax coverage checks the
 same shared lowering. Native `Scroll` blocks use the same lexical cleanup and
-existing `BeginScroll`/`EndScroll` operations. An optional block name binds the
-returned content rectangle without leaking it beyond the block. Native generated
-scroll parity covers nested clips/input and restoration after return, break and
-continue. Native `Popup` blocks similarly lower caller-defined popup contents to
+lowered host scroll support. An optional block name binds the returned content
+rectangle without leaking it beyond the block. Native generated scroll parity
+covers nested clips/input and restoration after return, break and continue.
+Native `Popup` blocks similarly lower caller-defined popup contents to
 conditional begin calls plus cleanup-managed end calls, removing manual scope
 bookkeeping from `.kry` sources while retaining the small runtime contract.
 Other begin/end APIs have not all gained block syntax.
