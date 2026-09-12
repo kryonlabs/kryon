@@ -494,6 +494,7 @@ typedef struct UiBlock {
     char dom_aria_description[KIR_TEXT_MAX];
     char dom_aria_describedby[KIR_TEXT_MAX];
     char dom_aria_controls[KIR_TEXT_MAX];
+    char dom_aria_owns[KIR_TEXT_MAX];
     char dom_aria_live[KIR_NAME_MAX];
     char dom_aria_attrs[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
@@ -1038,6 +1039,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  "%s", value);
         return 1;
     }
+    if(strcmp(field, "aria_owns") == 0 || strcmp(field, "aria_own") == 0) {
+        snprintf(block->dom_aria_owns, sizeof(block->dom_aria_owns), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "aria_live") == 0 || strcmp(field, "live") == 0) {
         snprintf(block->dom_aria_live, sizeof(block->dom_aria_live), "%s",
                  value);
@@ -1328,6 +1334,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_aria_describedby);
     snprintf(statement->dom_aria_controls, sizeof(statement->dom_aria_controls),
              "%s", block->dom_aria_controls);
+    snprintf(statement->dom_aria_owns, sizeof(statement->dom_aria_owns), "%s",
+             block->dom_aria_owns);
     snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
              block->dom_aria_live);
     snprintf(statement->dom_aria_attrs, sizeof(statement->dom_aria_attrs),

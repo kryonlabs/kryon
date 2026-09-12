@@ -53,8 +53,7 @@ the browser receives normal elements, attributes, CSS, and events.
 - Add optional KSS package registry/config discovery beyond built-in Kryon packs
   and project-local `styles/<package>.kss` files.
 - Add more semantic relationship facts where widgets need them, such as grouped
-  controls, owned regions, labelled-by chains, menu/list relationships, and
-  table/grid headers.
+  controls, menu/list relationships, and table/grid headers.
 - Build browser-backed integration tests once a real DOM harness is available,
   keeping the fake DOM tests as fast contract tests.
 

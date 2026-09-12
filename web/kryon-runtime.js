@@ -1324,6 +1324,7 @@ function webNodeFromWidget(item, index) {
     ariaDescription: meta.ariaDescription === undefined || meta.ariaDescription === null ? "" : String(meta.ariaDescription),
     ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
+    ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
@@ -1457,6 +1458,7 @@ export function webNodeStyleFacts(node) {
     ariaAttrs: { ...(node?.ariaAttrs || {}) },
     extraAttrs: { ...(node?.extraAttrs || {}) },
     role: node?.role || "",
+    ariaOwns: node?.ariaOwns || "",
     state: { ...(node?.state || {}) }
   };
 }
@@ -3768,6 +3770,7 @@ function resolveWebDOMRelations(root) {
       continue;
     setAttr(el, "aria-describedby", resolveWebDOMRelationList(root, docNode.ariaDescribedBy));
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
+    setAttr(el, "aria-owns", resolveWebDOMRelationList(root, docNode.ariaOwns));
     setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
   }
@@ -3807,6 +3810,7 @@ function webDOMRelationsForNode(target, node) {
   return {
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     controls: webDOMRelationList(target, node.ariaControls),
+    owns: webDOMRelationList(target, node.ariaOwns),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
     labelledBy: webDOMReverseRelationList(target, node, "htmlFor"),
     popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
@@ -5245,7 +5249,7 @@ function syncWebDOMElementFromNative(root, el) {
     }
     if (attr.startsWith("aria-")) {
       const ariaName = attr.slice(5);
-      if (!["label", "description", "describedby", "controls", "live"].includes(ariaName))
+      if (!["label", "description", "describedby", "controls", "owns", "live"].includes(ariaName))
         ariaAttrs[ariaName] = value;
       continue;
     }
@@ -5331,6 +5335,7 @@ function webDOMObjectSnapshot(target, object) {
     relationRefs: {
       describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
       controls: (relations?.controls || []).map((relation) => relation.ref),
+      owns: (relations?.owns || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
       popoverTarget: relations?.popoverTarget?.ref || ""

@@ -151,6 +151,7 @@ Supported metadata fields:
 | `aria_description`, `accessible_description` | `ariaDescription` |
 | `aria_describedby`, `aria_described_by` | `ariaDescribedBy` |
 | `aria_controls` | `ariaControls` |
+| `aria_owns`, `aria_own` | `ariaOwns` |
 | `aria_live`, `live` | `ariaLive` |
 | `aria_*`, `dom_aria_*`, `html_aria_*` | `ariaAttrs` |
 | `on_click` | `onClick`, `action` |
@@ -469,14 +470,14 @@ scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryParent`, and
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
-Relationship fields such as `aria_controls`, `aria_describedby`, `dom_for`,
-and `popover_target` may name another Kry DOM object by ref, path, name, key,
-or native id. The Web Document facts keep the authored Kry value for KSS and
-queries, while the DOM renderer resolves the native attribute to a real element
-id during mount. `webDOMRelations(target, query)`, `element.kryRelations`, and
-`object.relations` expose the resolved Kry DOM objects, including reverse
-`labelledBy` links for controls targeted by `dom_for`; snapshots include
-serializable `relationRefs`.
+Relationship fields such as `aria_controls`, `aria_owns`,
+`aria_describedby`, `dom_for`, and `popover_target` may name another Kry DOM
+object by ref, path, name, key, or native id. The Web Document facts keep the
+authored Kry value for KSS and queries, while the DOM renderer resolves the
+native attribute to a real element id during mount. `webDOMRelations(target,
+query)`, `element.kryRelations`, and `object.relations` expose the resolved Kry
+DOM objects, including `owns` and reverse `labelledBy` links for controls
+targeted by `dom_for`; snapshots include serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source
