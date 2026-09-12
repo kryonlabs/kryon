@@ -508,6 +508,9 @@ typedef struct UiBlock {
     char dom_on_drag_end[KIR_NAME_MAX];
     char dom_on_drag_over[KIR_NAME_MAX];
     char dom_on_drop[KIR_NAME_MAX];
+    char dom_on_copy[KIR_NAME_MAX];
+    char dom_on_cut[KIR_NAME_MAX];
+    char dom_on_paste[KIR_NAME_MAX];
     int anonymous_widget_count;
     int close_depth;
     int opened;
@@ -1092,6 +1095,19 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_on_drop, sizeof(block->dom_on_drop), "%s", value);
         return 1;
     }
+    if(strcmp(field, "on_copy") == 0) {
+        snprintf(block->dom_on_copy, sizeof(block->dom_on_copy), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_cut") == 0) {
+        snprintf(block->dom_on_cut, sizeof(block->dom_on_cut), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_paste") == 0) {
+        snprintf(block->dom_on_paste, sizeof(block->dom_on_paste), "%s",
+                 value);
+        return 1;
+    }
     return 0;
 }
 
@@ -1237,6 +1253,12 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_on_drag_over);
     snprintf(statement->dom_on_drop, sizeof(statement->dom_on_drop), "%s",
              block->dom_on_drop);
+    snprintf(statement->dom_on_copy, sizeof(statement->dom_on_copy), "%s",
+             block->dom_on_copy);
+    snprintf(statement->dom_on_cut, sizeof(statement->dom_on_cut), "%s",
+             block->dom_on_cut);
+    snprintf(statement->dom_on_paste, sizeof(statement->dom_on_paste), "%s",
+             block->dom_on_paste);
 }
 
 static void

@@ -188,6 +188,9 @@ typedef struct KirStmt {
     char dom_on_drag_end[KIR_NAME_MAX];    /* logic function bound to dragend(value) */
     char dom_on_drag_over[KIR_NAME_MAX];   /* logic function bound to dragover */
     char dom_on_drop[KIR_NAME_MAX];        /* logic function bound to drop(value) */
+    char dom_on_copy[KIR_NAME_MAX];        /* logic function bound to copy(value) */
+    char dom_on_cut[KIR_NAME_MAX];         /* logic function bound to cut(value) */
+    char dom_on_paste[KIR_NAME_MAX];       /* logic function bound to paste(value) */
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int is_instance; /* typed record binding retained by its explicit key */

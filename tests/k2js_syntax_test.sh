@@ -344,6 +344,9 @@ Anon :: () #ui {
             on_drag_end = drag_value
             on_drag_over = drag_marker
             on_drop = drag_value
+            on_copy = drag_value
+            on_cut = drag_value
+            on_paste = drag_value
         }
         Column contact: {
             dom = "form"
@@ -373,6 +376,9 @@ grep -q '"onDragStart": "drag_value"' "$anon_out"
 grep -q '"onDragEnd": "drag_value"' "$anon_out"
 grep -q '"onDragOver": "drag_marker"' "$anon_out"
 grep -q '"onDrop": "drag_value"' "$anon_out"
+grep -q '"onCopy": "drag_value"' "$anon_out"
+grep -q '"onCut": "drag_value"' "$anon_out"
+grep -q '"onPaste": "drag_value"' "$anon_out"
 grep -q '"formAction": "/contact"' "$anon_out"
 grep -q '"formMethod": "post"' "$anon_out"
 grep -q '"formEncType": "multipart/form-data"' "$anon_out"

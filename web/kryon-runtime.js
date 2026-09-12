@@ -1197,6 +1197,9 @@ function webNodeFromWidget(item, index) {
     onDragEnd: meta.onDragEnd === undefined || meta.onDragEnd === null ? "" : String(meta.onDragEnd),
     onDragOver: meta.onDragOver === undefined || meta.onDragOver === null ? "" : String(meta.onDragOver),
     onDrop: meta.onDrop === undefined || meta.onDrop === null ? "" : String(meta.onDrop),
+    onCopy: meta.onCopy === undefined || meta.onCopy === null ? "" : String(meta.onCopy),
+    onCut: meta.onCut === undefined || meta.onCut === null ? "" : String(meta.onCut),
+    onPaste: meta.onPaste === undefined || meta.onPaste === null ? "" : String(meta.onPaste),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
@@ -1215,6 +1218,9 @@ function webNodeFromWidget(item, index) {
     dragEndAction: typeof meta.dragEndAction === "function" ? meta.dragEndAction : null,
     dragOverAction: typeof meta.dragOverAction === "function" ? meta.dragOverAction : null,
     dropAction: typeof meta.dropAction === "function" ? meta.dropAction : null,
+    copyAction: typeof meta.copyAction === "function" ? meta.copyAction : null,
+    cutAction: typeof meta.cutAction === "function" ? meta.cutAction : null,
+    pasteAction: typeof meta.pasteAction === "function" ? meta.pasteAction : null,
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
@@ -1887,6 +1893,36 @@ function bindNodeEvents(el) {
     if (docNode.dropAction)
       docNode.dropAction(value);
   });
+  el.addEventListener("copy", (event) => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = webDragValue(el, docNode);
+    if (event?.clipboardData?.setData)
+      event.clipboardData.setData("text/plain", String(value));
+    if (docNode.copyAction)
+      docNode.copyAction(value);
+  });
+  el.addEventListener("cut", (event) => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = webDragValue(el, docNode);
+    if (event?.clipboardData?.setData)
+      event.clipboardData.setData("text/plain", String(value));
+    if (docNode.cutAction)
+      docNode.cutAction(value);
+  });
+  el.addEventListener("paste", (event) => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = event?.clipboardData?.getData
+      ? event.clipboardData.getData("text/plain")
+      : "";
+    if (docNode.pasteAction)
+      docNode.pasteAction(value);
+  });
   el.addEventListener("input", () => {
     const docNode = el.__kryDocNode;
     const value = updateElementFormValue(el);
@@ -2142,6 +2178,18 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnDrop = docNode.onDrop;
   else
     delete el.dataset.kryOnDrop;
+  if (docNode.onCopy)
+    el.dataset.kryOnCopy = docNode.onCopy;
+  else
+    delete el.dataset.kryOnCopy;
+  if (docNode.onCut)
+    el.dataset.kryOnCut = docNode.onCut;
+  else
+    delete el.dataset.kryOnCut;
+  if (docNode.onPaste)
+    el.dataset.kryOnPaste = docNode.onPaste;
+  else
+    delete el.dataset.kryOnPaste;
   if (docNode.hasBounds) {
     el.style.position = "absolute";
     el.style.left = docNode.bounds.x + "px";

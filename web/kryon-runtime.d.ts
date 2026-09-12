@@ -144,6 +144,9 @@ export interface WebDocumentNode {
   onDragEnd: string;
   onDragOver: string;
   onDrop: string;
+  onCopy: string;
+  onCut: string;
+  onPaste: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
@@ -162,6 +165,9 @@ export interface WebDocumentNode {
   dragEndAction: ((value: unknown) => unknown) | null;
   dragOverAction: (() => unknown) | null;
   dropAction: ((value: unknown) => unknown) | null;
+  copyAction: ((value: unknown) => unknown) | null;
+  cutAction: ((value: unknown) => unknown) | null;
+  pasteAction: ((value: unknown) => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

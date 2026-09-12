@@ -1233,7 +1233,9 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_on_mouse_leave[0] || st->dom_on_mouse_down[0] ||
            st->dom_on_mouse_up[0] ||
            st->dom_on_drag_start[0] || st->dom_on_drag_end[0] ||
-           st->dom_on_drag_over[0] || st->dom_on_drop[0];
+           st->dom_on_drag_over[0] || st->dom_on_drop[0] ||
+           st->dom_on_copy[0] || st->dom_on_cut[0] ||
+           st->dom_on_paste[0];
 }
 
 static void
@@ -1483,6 +1485,12 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_web_action(f, m, "onDragOver", "dragOverAction",
                     st->dom_on_drag_over, "", &emitted);
     emit_web_action(f, m, "onDrop", "dropAction", st->dom_on_drop,
+                    "value", &emitted);
+    emit_web_action(f, m, "onCopy", "copyAction", st->dom_on_copy,
+                    "value", &emitted);
+    emit_web_action(f, m, "onCut", "cutAction", st->dom_on_cut,
+                    "value", &emitted);
+    emit_web_action(f, m, "onPaste", "pasteAction", st->dom_on_paste,
                     "value", &emitted);
     fputc('}', f);
 }

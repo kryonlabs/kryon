@@ -358,6 +358,24 @@ function fakeDocument() {
         if (this.ondrop)
           this.ondrop({ preventDefault() {}, dataTransfer });
       },
+      copy(clipboardData) {
+        const clipboard = clipboardData || fakeDataTransfer();
+        if (this.oncopy)
+          this.oncopy({ clipboardData: clipboard });
+        return clipboard;
+      },
+      cut(clipboardData) {
+        const clipboard = clipboardData || fakeDataTransfer();
+        if (this.oncut)
+          this.oncut({ clipboardData: clipboard });
+        return clipboard;
+      },
+      paste(text) {
+        const clipboard = fakeDataTransfer();
+        clipboard.setData("text/plain", text);
+        if (this.onpaste)
+          this.onpaste({ clipboardData: clipboard });
+      },
       invalid() { if (this.oninvalid) this.oninvalid({ preventDefault() {} }); },
       input(value) {
         if (typeof value === "boolean")
@@ -560,10 +578,16 @@ function fakeDocument() {
         onDragEnd: "drag_end",
         onDragOver: "drag_over",
         onDrop: "drop",
+        onCopy: "copy",
+        onCut: "cut",
+        onPaste: "paste",
         dragStartAction(value) { dragEvents.push(["start", value]); },
         dragEndAction(value) { dragEvents.push(["end", value]); },
         dragOverAction() { dragEvents.push(["over"]); },
-        dropAction(value) { dragEvents.push(["drop", value]); }
+        dropAction(value) { dragEvents.push(["drop", value]); },
+        copyAction(value) { dragEvents.push(["copy", value]); },
+        cutAction(value) { dragEvents.push(["cut", value]); },
+        pasteAction(value) { dragEvents.push(["paste", value]); }
       });
     runtime.endFrame(dragRt);
     const dragTarget = document.createElement("div");
@@ -574,16 +598,27 @@ function fakeDocument() {
     assert.equal(dragButton.dataset.kryOnDragEnd, "drag_end");
     assert.equal(dragButton.dataset.kryOnDragOver, "drag_over");
     assert.equal(dragButton.dataset.kryOnDrop, "drop");
+    assert.equal(dragButton.dataset.kryOnCopy, "copy");
+    assert.equal(dragButton.dataset.kryOnCut, "cut");
+    assert.equal(dragButton.dataset.kryOnPaste, "paste");
     const transfer = dragButton.dragstart();
     assert.equal(transfer.getData("text/plain"), "drag-payload");
     dragButton.dragover();
     dragButton.drop(transfer);
     dragButton.dragend();
+    const copied = dragButton.copy();
+    assert.equal(copied.getData("text/plain"), "drag-payload");
+    const cut = dragButton.cut();
+    assert.equal(cut.getData("text/plain"), "drag-payload");
+    dragButton.paste("pasted text");
     assert.deepEqual(dragEvents, [
       ["start", "drag-payload"],
       ["over"],
       ["drop", "drag-payload"],
-      ["end", "drag-payload"]
+      ["end", "drag-payload"],
+      ["copy", "drag-payload"],
+      ["cut", "drag-payload"],
+      ["paste", "pasted text"]
     ]);
 
     const linkRt = runtime.createRuntime();
