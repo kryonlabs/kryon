@@ -68,6 +68,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button.runtime-selected {
     border-width: 6;
   }
+  Button[data-runtime="1"] {
+    padding-y: 9;
+  }
   TextField.field {
     border-width: line;
     padding-y: field-y;
@@ -189,6 +192,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   ariaAttrs: { current: "page", pressed: "false" },
+  extraAttrs: {},
   role: "button",
   state: {
     disabled: false,
@@ -789,6 +793,15 @@ function fakeDocument() {
     assert.equal(runtime.webDOMToggleClass(target, "tap-button", "runtime-selected", true), true);
     assert.equal(runtime.webDOMRemoveClass(target, "tap-button", "runtime-selected"), true);
     assert.equal(runtime.webDOMHasClass(target, "tap-button", "runtime-selected"), false);
+    assert.equal(runtime.webDOMSetAttribute(target, "tap-button", "data-runtime", "1"), true);
+    assert.equal(runtime.webDOMGetAttribute(target, "Scene/root/tap", "data-runtime"), "1");
+    assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), true);
+    assert.equal(runtime.webDOMQuery(target, "[data-runtime=\"1\"]").element, firstButton);
+    assert.equal(firstButton.style.paddingTop, "9px");
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(runtime.webDOMGetAttribute(target, "tap-button", "data-runtime"), "1");
+    assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
+    assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "Scene/root/search"

@@ -1285,6 +1285,7 @@ export function webNodeStyleFacts(node) {
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     ariaAttrs: { ...(node?.ariaAttrs || {}) },
+    extraAttrs: { ...(node?.extraAttrs || {}) },
     role: node?.role || "",
     state: { ...(node?.state || {}) }
   };
@@ -1540,13 +1541,16 @@ function styleStateMatches(name, state) {
 
 function selectorDataAttrValue(key, facts) {
   if (key.startsWith("data-"))
-    return facts.dataAttrs?.[key.slice(5)];
+    return facts.dataAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("data."))
-    return facts.dataAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()];
+    return facts.dataAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()] ??
+      facts.extraAttrs?.["data-" + key.slice(5).replace(/_/g, "-").toLowerCase()];
   return undefined;
 }
 
 function selectorNativeAttrValue(key, facts) {
+  if (facts.extraAttrs && Object.prototype.hasOwnProperty.call(facts.extraAttrs, key))
+    return facts.extraAttrs[key];
   switch (key) {
     case "name": return facts.domName;
     case "value": return facts.domValue || facts.value;
@@ -1578,27 +1582,34 @@ function selectorNativeAttrValue(key, facts) {
 
 function selectorDataAttrPresent(key, facts) {
   if (key.startsWith("data-"))
-    return Object.prototype.hasOwnProperty.call(facts.dataAttrs || {}, key.slice(5));
+    return Object.prototype.hasOwnProperty.call(facts.dataAttrs || {}, key.slice(5)) ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);
   if (key.startsWith("data."))
     return Object.prototype.hasOwnProperty.call(facts.dataAttrs || {},
-      key.slice(5).replace(/_/g, "-").toLowerCase());
+      key.slice(5).replace(/_/g, "-").toLowerCase()) ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {},
+        "data-" + key.slice(5).replace(/_/g, "-").toLowerCase());
   return false;
 }
 
 function selectorAriaAttrValue(key, facts) {
   if (key.startsWith("aria-"))
-    return facts.ariaAttrs?.[key.slice(5)];
+    return facts.ariaAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("aria."))
-    return facts.ariaAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()];
+    return facts.ariaAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()] ??
+      facts.extraAttrs?.["aria-" + key.slice(5).replace(/_/g, "-").toLowerCase()];
   return undefined;
 }
 
 function selectorAriaAttrPresent(key, facts) {
   if (key.startsWith("aria-"))
-    return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5));
+    return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5)) ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);
   if (key.startsWith("aria."))
     return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {},
-      key.slice(5).replace(/_/g, "-").toLowerCase());
+      key.slice(5).replace(/_/g, "-").toLowerCase()) ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {},
+        "aria-" + key.slice(5).replace(/_/g, "-").toLowerCase());
   return false;
 }
 
@@ -2096,12 +2107,30 @@ function applyAriaAttrs(el, attrs) {
   el.__kryAriaAttrs = next;
 }
 
+function applyExtraAttrs(el, attrs) {
+  const previous = el.__kryAppliedExtraAttrs || new Set();
+  const next = new Set();
+  for (const [name, value] of Object.entries(attrs || {})) {
+    const attr = String(name || "").trim();
+    if (!attr)
+      continue;
+    next.add(attr);
+    setAttr(el, attr, value);
+  }
+  for (const attr of previous) {
+    if (!next.has(attr))
+      el.removeAttribute(attr);
+  }
+  el.__kryAppliedExtraAttrs = next;
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
   bindNodeEvents(el);
   const extraClasses = [...(el.__kryExtraClasses || [])];
   docNode.classes = [...new Set([...(docNode.classes || []), ...extraClasses])];
+  docNode.extraAttrs = { ...(docNode.extraAttrs || {}), ...(el.__kryExtraAttrs || {}) };
   el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
   el.dataset.kryKind = docNode.kind;
   el.dataset.kryKey = docNode.key;
@@ -2300,6 +2329,7 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "accept", docNode.accept);
   setAttr(el, "multiple", docNode.multiple);
   setAttr(el, "inputmode", docNode.inputMode);
+  applyExtraAttrs(el, docNode.extraAttrs);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
@@ -2578,6 +2608,65 @@ export function webDOMHasClass(target, query, className) {
   const name = cleanDOMClassName(className);
   const el = name ? findWebElement(target, query) : null;
   return !!el && String(el.className || "").split(/\s+/).includes(name);
+}
+
+function cleanDOMAttributeName(name) {
+  const value = String(name || "").trim();
+  return value && /^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(value) ? value : "";
+}
+
+function syncDOMAttributeMutation(el) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return null;
+  docNode.extraAttrs = { ...(el.__kryExtraAttrs || {}) };
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+    ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+    : null);
+  return docNode;
+}
+
+export function webDOMSetAttribute(target, query, name, value) {
+  const attr = cleanDOMAttributeName(name);
+  const el = attr ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const attrs = { ...(el.__kryExtraAttrs || {}) };
+  attrs[attr] = value === undefined || value === null ? "" : String(value);
+  el.__kryExtraAttrs = attrs;
+  setAttr(el, attr, attrs[attr]);
+  syncDOMAttributeMutation(el);
+  return true;
+}
+
+export function webDOMRemoveAttribute(target, query, name) {
+  const attr = cleanDOMAttributeName(name);
+  const el = attr ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const attrs = { ...(el.__kryExtraAttrs || {}) };
+  delete attrs[attr];
+  el.__kryExtraAttrs = attrs;
+  removeAttr(el, attr);
+  syncDOMAttributeMutation(el);
+  return true;
+}
+
+export function webDOMGetAttribute(target, query, name) {
+  const attr = cleanDOMAttributeName(name);
+  const el = attr ? findWebElement(target, query) : null;
+  if (!el)
+    return undefined;
+  if (typeof el.getAttribute === "function") {
+    const value = el.getAttribute(attr);
+    return value === null ? undefined : value;
+  }
+  return el.attributes ? el.attributes[attr] : undefined;
+}
+
+export function webDOMHasAttribute(target, query, name) {
+  return webDOMGetAttribute(target, query, name) !== undefined;
 }
 
 export function webFormValue(target, query) {

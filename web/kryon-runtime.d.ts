@@ -93,6 +93,7 @@ export interface WebDocumentNode {
   rel: string;
   htmlFor: string;
   dataAttrs: Record<string, string>;
+  extraAttrs: Record<string, string>;
   inputType: string;
   formAction: string;
   formMethod: string;
@@ -240,6 +241,7 @@ export interface WebNodeStyleFacts {
   classes: string[];
   dataAttrs: Record<string, string>;
   ariaAttrs: Record<string, string>;
+  extraAttrs: Record<string, string>;
   role: string;
   state: Record<string, boolean>;
 }
@@ -372,6 +374,10 @@ export function webDOMAddClass(target: Element | string | null, query: string, c
 export function webDOMRemoveClass(target: Element | string | null, query: string, className: string): boolean;
 export function webDOMToggleClass(target: Element | string | null, query: string, className: string, force?: boolean): boolean;
 export function webDOMHasClass(target: Element | string | null, query: string, className: string): boolean;
+export function webDOMSetAttribute(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
+export function webDOMRemoveAttribute(target: Element | string | null, query: string, name: string): boolean;
+export function webDOMGetAttribute(target: Element | string | null, query: string, name: string): string | undefined;
+export function webDOMHasAttribute(target: Element | string | null, query: string, name: string): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
