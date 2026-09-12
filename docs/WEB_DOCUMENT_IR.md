@@ -324,6 +324,10 @@ elements. It also applies document metadata from `SetPageTitle`,
 and `Page` nodes. After reconciliation, the mount root dispatches a bubbling
 `kry-render` event whose `detail` contains the Web Document frame, mount root,
 and current Kry DOM objects.
+During reconciliation, individual elements dispatch bubbling `kry-mount`,
+`kry-update`, and `kry-unmount` events. Their `detail` contains `{ frame, root,
+object, node, element }`, making each `.kry` source node observable as a live
+native DOM object through ordinary browser event listeners.
 
 `webDOMRoot(target)` returns the native Kry mount root for a mounted target or
 the root itself. `webDOMFrame(target)` returns the last rendered Web Document

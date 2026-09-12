@@ -3521,6 +3521,26 @@ function webDOMObjectsFromRoot(root) {
     .filter(Boolean);
 }
 
+function dispatchWebDOMLifecycle(root, type, frame, object) {
+  const el = object?.element || null;
+  if (!root || !el || typeof el.dispatchEvent !== "function")
+    return false;
+  const event = createWebDOMEvent(type, {
+    detail: {
+      frame,
+      root,
+      object,
+      node: object.node,
+      element: el
+    }
+  });
+  if (!event)
+    return false;
+  bindWebDOMEventProperties(event);
+  el.dispatchEvent(event);
+  return true;
+}
+
 export function renderWebDocument(rt, target) {
   const node = typeof target === "string" && typeof document !== "undefined"
     ? document.querySelector(target)
@@ -3551,6 +3571,7 @@ export function renderWebDocument(rt, target) {
   for (const docNode of frame.nodes) {
     const identity = docNode.tag + ":" + (docNode.path || docNode.key);
     let el = children.get(identity);
+    const existed = !!el && el.tagName?.toLowerCase() === docNode.tag;
     if (!el || el.tagName?.toLowerCase() !== docNode.tag) {
       el = document.createElement(docNode.tag);
       children.set(identity, el);
@@ -3599,13 +3620,18 @@ export function renderWebDocument(rt, target) {
       : root;
     parent.appendChild(el);
     live.add(identity);
+    dispatchWebDOMLifecycle(root, existed ? "kry-update" : "kry-mount", frame,
+      makeWebDOMObject(root, docNode, el, ref));
   }
-  for (const [identity, el] of Array.from(children.entries())) {
-    if (!live.has(identity)) {
+  const stale = Array.from(children.entries()).filter(([identity]) => !live.has(identity));
+  for (const [, el] of stale) {
+    dispatchWebDOMLifecycle(root, "kry-unmount", frame,
+      makeWebDOMObject(root, el.__kryDocNode || null, el));
+  }
+  for (const [identity, el] of stale) {
       if (el.parentNode && typeof el.parentNode.removeChild === "function")
         el.parentNode.removeChild(el);
       children.delete(identity);
-    }
   }
   root.__kryChildren = children;
   if (rt)
@@ -4971,7 +4997,7 @@ const runtimeCallNames = [
   "ClearBackground", "Collapsible", "Column", "DragDrop", "Dropdown",
   "Icon", "Fieldset", "Link", "ListBox", "Menu",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
-  "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
+  "Row", "Screen", "Scroll", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
   "Text", "TextArea", "TextField", "TitleBar",
   "Toggle", "Toolbar"
@@ -5011,7 +5037,6 @@ export function Rect(...args) { return struct("Rect", args); }
 export function Row(...args) { return struct("Row", args); }
 export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
-export function SelectableText(...args) { return struct("SelectableText", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
 export function SetThemeDarkMode(dark) {
   activeThemeMode = dark ? 2 : 1;

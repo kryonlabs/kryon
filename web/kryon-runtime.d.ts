@@ -385,6 +385,14 @@ export interface WebDOMRenderDetail {
   objects: WebDOMObject[];
 }
 
+export interface WebDOMLifecycleDetail {
+  frame: WebDocumentFrame;
+  root: Element;
+  object: WebDOMObject;
+  node: WebDocumentNode;
+  element: Element;
+}
+
 declare global {
   interface Element {
     readonly kryRef?: string;
@@ -853,7 +861,6 @@ export function Rect(...args: unknown[]): unknown;
 export function Row(...args: unknown[]): unknown;
 export function Screen(...args: unknown[]): unknown;
 export function Scroll(...args: unknown[]): unknown;
-export function SelectableText(...args: unknown[]): unknown;
 export function SetCurrentTheme(...args: unknown[]): unknown;
 export function SetThemeDarkMode(...args: unknown[]): unknown;
 export function ShowToast(...args: unknown[]): unknown;

@@ -1000,7 +1000,18 @@ function fakeDocument() {
     generated.frame(domRt, domState, host);
     const target = document.createElement("div");
     const renderEvents = [];
+    const lifecycleEvents = [];
     target.addEventListener("kry-render", (event) => renderEvents.push(event.detail));
+    for (const type of ["kry-mount", "kry-update", "kry-unmount"]) {
+      target.addEventListener(type, (event) => lifecycleEvents.push({
+        type,
+        ref: event.kryObject?.ref,
+        path: event.kryPath,
+        detailRef: event.detail?.object?.ref,
+        detailRoot: event.detail?.root,
+        detailElement: event.detail?.element
+      }));
+    }
     runtime.SetPageTitle("Runtime title");
     runtime.SetPageDescription("Runtime description");
     runtime.SetPageCanonicalURL("https://example.test/page");
@@ -1022,6 +1033,35 @@ function fakeDocument() {
     assert.equal(root.kryFrame.nodes.length, runtime.webDocumentFrame(domRt).nodes.length);
     assert.ok(root.kryObjects.some((object) => object.ref === "primary-action"));
     assert.equal(Object.keys(root).includes("kryObjects"), false);
+    assert.equal(lifecycleEvents.length, 5);
+    assert.deepEqual(lifecycleEvents.map((event) => event.type), [
+      "kry-mount",
+      "kry-mount",
+      "kry-mount",
+      "kry-mount",
+      "kry-mount"
+    ]);
+    assert.deepEqual(lifecycleEvents.map((event) => event.ref), [
+      "Scene/root",
+      webDoc.nodes[1].path,
+      "primary-action",
+      "search-box",
+      "Scene/root/search_label"
+    ]);
+    assert.equal(lifecycleEvents[2].path, "Scene/root/tap");
+    assert.equal(lifecycleEvents[2].detailRef, "primary-action");
+    assert.equal(lifecycleEvents[2].detailRoot, root);
+    assert.equal(lifecycleEvents[2].detailElement.dataset.kryRef, "primary-action");
+    const lifecycleCount = lifecycleEvents.length;
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(lifecycleEvents.length, lifecycleCount + 5);
+    assert.deepEqual(lifecycleEvents.slice(lifecycleCount).map((event) => event.type), [
+      "kry-update",
+      "kry-update",
+      "kry-update",
+      "kry-update",
+      "kry-update"
+    ]);
     const screen = root.children.find((child) => child.tagName === "MAIN");
     const firstText = screen.children[0];
     assert.equal(firstText.tagName, "DIV");
@@ -1710,6 +1750,28 @@ function fakeDocument() {
     firstButton.click();
     assert.equal(domRt.input.events.length, previousEventCount);
     assert.equal(nextRt.input.events.at(-1).type, "tap");
+    const unmountRt = runtime.createRuntime({ app: generated.app });
+    const unmountState = generated.createState();
+    generated.frame(unmountRt, unmountState, host);
+    const unmountTarget = document.createElement("div");
+    const unmountEvents = [];
+    unmountTarget.addEventListener("kry-unmount", (event) => unmountEvents.push([
+      event.kryRef,
+      event.detail?.object?.ref,
+      event.detail?.element?.dataset?.kryRef
+    ]));
+    runtime.renderWebDocument(unmountRt, unmountTarget);
+    unmountRt.frame = [];
+    runtime.renderWebDocument(unmountRt, unmountTarget);
+    assert.deepEqual(unmountEvents.map((event) => event[0]), [
+      "Scene/root",
+      webDoc.nodes[1].path,
+      "primary-action",
+      "search-box",
+      "Scene/root/search_label"
+    ]);
+    assert.deepEqual(unmountEvents.map((event) => event[1]), unmountEvents.map((event) => event[0]));
+    assert.deepEqual(unmountEvents.map((event) => event[2]), unmountEvents.map((event) => event[0]));
   } finally {
     globalThis.document = previousDocument;
   }
