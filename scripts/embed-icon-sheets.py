@@ -9,13 +9,13 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 SHEETS = (
-    ("ui", "UI_ICON_SHEET_UI", "ui_icon_atlas_png"),
-    ("pfp", "UI_ICON_SHEET_PFP", "ui_pfp_atlas_png"),
-    ("platforms", "UI_ICON_SHEET_PLATFORMS", "ui_platforms_atlas_png"),
-    ("payments", "UI_ICON_SHEET_PAYMENTS", "ui_payments_atlas_png"),
-    ("language", "UI_ICON_SHEET_LANGUAGE", "ui_language_atlas_png"),
-    ("tiles", "UI_ICON_SHEET_TILES", "ui_tiles_atlas_png"),
-    ("logos", "UI_ICON_SHEET_LOGOS", "ui_logos_atlas_png"),
+    ("ui", "ICON_SHEET_UI", "ui_icon_atlas_png"),
+    ("pfp", "ICON_SHEET_PFP", "ui_pfp_atlas_png"),
+    ("platforms", "ICON_SHEET_PLATFORMS", "ui_platforms_atlas_png"),
+    ("payments", "ICON_SHEET_PAYMENTS", "ui_payments_atlas_png"),
+    ("language", "ICON_SHEET_LANGUAGE", "ui_language_atlas_png"),
+    ("tiles", "ICON_SHEET_TILES", "ui_tiles_atlas_png"),
+    ("logos", "ICON_SHEET_LOGOS", "ui_logos_atlas_png"),
 )
 
 def enum_name(name: str) -> str:
@@ -65,7 +65,7 @@ def main() -> None:
         '#include "ui_icons.h"',
         "",
         *arrays,
-        "const UIIconAsset ui_icon_assets[] = {",
+        "const IconAsset ui_icon_assets[] = {",
     ]
     for icon in records:
         assets.append(

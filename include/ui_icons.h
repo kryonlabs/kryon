@@ -4,37 +4,37 @@
 #include "kryon.h"
 #include "ui_icon_types.h"
 
-typedef enum UIIconSheet {
-    UI_ICON_SHEET_UI,
-    UI_ICON_SHEET_PFP,
-    UI_ICON_SHEET_PLATFORMS,
-    UI_ICON_SHEET_PAYMENTS,
-    UI_ICON_SHEET_LANGUAGE,
-    UI_ICON_SHEET_TILES,
-    UI_ICON_SHEET_LOGOS,
-    UI_ICON_SHEET_COUNT
-} UIIconSheet;
+typedef enum IconSheet {
+    ICON_SHEET_UI,
+    ICON_SHEET_PFP,
+    ICON_SHEET_PLATFORMS,
+    ICON_SHEET_PAYMENTS,
+    ICON_SHEET_LANGUAGE,
+    ICON_SHEET_TILES,
+    ICON_SHEET_LOGOS,
+    ICON_SHEET_COUNT
+} IconSheet;
 
-typedef struct UIIconAsset {
+typedef struct IconAsset {
     IconType type;
     const char *name;
-    UIIconSheet sheet;
+    IconSheet sheet;
     Rectangle source;
-} UIIconAsset;
+} IconAsset;
 
-const UIIconAsset *GetUIIconAsset(IconType type);
-const UIIconAsset *GetUIIconAssetByName(const char *name);
-Texture2D LoadIconSheet(UIIconSheet sheet);
+const IconAsset *GetIconAsset(IconType type);
+const IconAsset *GetIconAssetByName(const char *name);
+Texture2D LoadIconSheet(IconSheet sheet);
 void UnloadIconSheets(void);
 void DrawIcon(IconType type, Rectangle bounds, Color tint);
 void DrawIconByName(const char *name, Rectangle bounds, Color tint);
 void DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode);
 
 /* Transitional texture API for controls that do not yet accept IconType. */
-Texture2D LoadUIIconTexture(IconType type);
-Texture2D LoadUIIconTextureByName(const char *name);
-void LoadAllUIIconTextures(Texture2D *icons);
-void UnloadAllUIIconTextures(Texture2D *icons);
+Texture2D LoadIconTexture(IconType type);
+Texture2D LoadIconTextureByName(const char *name);
+void LoadAllIconTextures(Texture2D *icons);
+void UnloadAllIconTextures(Texture2D *icons);
 
 /* Auto-generated icon names array (alphabetical order, matches IconType enum) */
 extern const char *ui_icon_names[];

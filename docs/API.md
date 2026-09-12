@@ -776,13 +776,13 @@ void FreeTextLayout(TextLayout *layout);
 
 ### Icons
 
-#### `GetUIIconAsset`
+#### `GetIconAsset`
 
 Get icon asset by type or name.
 
 ```c
-const UIIconAsset *GetUIIconAsset(IconType type);
-const UIIconAsset *GetUIIconAssetByName(const char *name);
+const IconAsset *GetIconAsset(IconType type);
+const IconAsset *GetIconAssetByName(const char *name);
 ```
 
 #### `LoadIconSheet` / `UnloadIconSheets`
@@ -792,7 +792,7 @@ and loads the correct sheet lazily, so normal widget code does not need to call
 these functions directly.
 
 ```c
-Texture2D LoadIconSheet(UIIconSheet sheet);
+Texture2D LoadIconSheet(IconSheet sheet);
 void UnloadIconSheets(void);
 ```
 

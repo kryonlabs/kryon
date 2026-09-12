@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern const UIIconAsset ui_icon_assets[];
+extern const IconAsset ui_icon_assets[];
 extern const unsigned int ui_icon_asset_count;
 extern const unsigned char ui_icon_atlas_png[];
 extern const unsigned int ui_icon_atlas_png_size;
@@ -24,41 +24,41 @@ extern const unsigned int ui_tiles_atlas_png_size;
 extern const unsigned char ui_logos_atlas_png[];
 extern const unsigned int ui_logos_atlas_png_size;
 
-static Texture2D icon_sheets[UI_ICON_SHEET_COUNT];
+static Texture2D icon_sheets[ICON_SHEET_COUNT];
 
 static int
-icon_sheet_png(UIIconSheet sheet, const unsigned char **png,
+icon_sheet_png(IconSheet sheet, const unsigned char **png,
                unsigned int *png_size)
 {
     if(png == NULL || png_size == NULL)
         return 0;
 
     switch(sheet) {
-    case UI_ICON_SHEET_UI:
+    case ICON_SHEET_UI:
         *png = ui_icon_atlas_png;
         *png_size = ui_icon_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_PFP:
+    case ICON_SHEET_PFP:
         *png = ui_pfp_atlas_png;
         *png_size = ui_pfp_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_PLATFORMS:
+    case ICON_SHEET_PLATFORMS:
         *png = ui_platforms_atlas_png;
         *png_size = ui_platforms_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_PAYMENTS:
+    case ICON_SHEET_PAYMENTS:
         *png = ui_payments_atlas_png;
         *png_size = ui_payments_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_LANGUAGE:
+    case ICON_SHEET_LANGUAGE:
         *png = ui_language_atlas_png;
         *png_size = ui_language_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_TILES:
+    case ICON_SHEET_TILES:
         *png = ui_tiles_atlas_png;
         *png_size = ui_tiles_atlas_png_size;
         return 1;
-    case UI_ICON_SHEET_LOGOS:
+    case ICON_SHEET_LOGOS:
         *png = ui_logos_atlas_png;
         *png_size = ui_logos_atlas_png_size;
         return 1;
@@ -90,8 +90,8 @@ load_atlas(Texture2D *atlas, const unsigned char *png, unsigned int png_size)
     return *atlas;
 }
 
-const UIIconAsset *
-GetUIIconAsset(IconType type)
+const IconAsset *
+GetIconAsset(IconType type)
 {
     for(unsigned int i = 0; i < ui_icon_asset_count; i++) {
         if(ui_icon_assets[i].type == type)
@@ -100,8 +100,8 @@ GetUIIconAsset(IconType type)
     return NULL;
 }
 
-const UIIconAsset *
-GetUIIconAssetByName(const char *name)
+const IconAsset *
+GetIconAssetByName(const char *name)
 {
     if(name == NULL)
         return NULL;
@@ -114,7 +114,7 @@ GetUIIconAssetByName(const char *name)
 }
 
 Texture2D
-LoadIconSheet(UIIconSheet sheet)
+LoadIconSheet(IconSheet sheet)
 {
     const unsigned char *png;
     unsigned int png_size;
@@ -127,7 +127,7 @@ LoadIconSheet(UIIconSheet sheet)
 void
 UnloadIconSheets(void)
 {
-    for(int sheet = 0; sheet < UI_ICON_SHEET_COUNT; sheet++) {
+    for(int sheet = 0; sheet < ICON_SHEET_COUNT; sheet++) {
         if(icon_sheets[sheet].id != 0)
             UnloadTexture(icon_sheets[sheet]);
     }
@@ -135,7 +135,7 @@ UnloadIconSheets(void)
 }
 
 static void
-draw_icon_asset(const UIIconAsset *asset, Rectangle bounds, Color tint)
+draw_icon_asset(const IconAsset *asset, Rectangle bounds, Color tint)
 {
     Texture2D atlas;
 
@@ -144,7 +144,7 @@ draw_icon_asset(const UIIconAsset *asset, Rectangle bounds, Color tint)
     atlas = LoadIconSheet(asset->sheet);
     if(atlas.id == 0)
         return;
-    if(asset->sheet != UI_ICON_SHEET_UI)
+    if(asset->sheet != ICON_SHEET_UI)
         tint = (Color){255, 255, 255, tint.a};
     DrawTexturePro(atlas, asset->source, bounds, (Vector2){0}, 0.0f, tint);
 }
@@ -168,13 +168,13 @@ DrawIcon(IconType type, Rectangle bounds, Color tint)
         }
         return;
     }
-    draw_icon_asset(GetUIIconAsset(type), bounds, tint);
+    draw_icon_asset(GetIconAsset(type), bounds, tint);
 }
 
 void
 DrawIconByName(const char *name, Rectangle bounds, Color tint)
 {
-    const UIIconAsset *asset = GetUIIconAssetByName(name);
+    const IconAsset *asset = GetIconAssetByName(name);
     if(asset != NULL)
         DrawIcon(asset->type, bounds, tint);
 }
@@ -182,7 +182,7 @@ DrawIconByName(const char *name, Rectangle bounds, Color tint)
 void
 DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode)
 {
-    const UIIconAsset *asset = GetUIIconAsset(type);
+    const IconAsset *asset = GetIconAsset(type);
 
     (void)dark_mode;
     if(asset == NULL || bounds.width <= 0 || bounds.height <= 0)
@@ -191,7 +191,7 @@ DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode)
 }
 
 static Texture2D
-load_icon_asset_texture(const UIIconAsset *asset)
+load_icon_asset_texture(const IconAsset *asset)
 {
     const unsigned char *png;
     unsigned int png_size;
@@ -251,29 +251,29 @@ load_icon_asset_texture(const UIIconAsset *asset)
 }
 
 Texture2D
-LoadUIIconTexture(IconType type)
+LoadIconTexture(IconType type)
 {
-    return load_icon_asset_texture(GetUIIconAsset(type));
+    return load_icon_asset_texture(GetIconAsset(type));
 }
 
 Texture2D
-LoadUIIconTextureByName(const char *name)
+LoadIconTextureByName(const char *name)
 {
-    return load_icon_asset_texture(GetUIIconAssetByName(name));
+    return load_icon_asset_texture(GetIconAssetByName(name));
 }
 
 void
-LoadAllUIIconTextures(Texture2D *icons)
+LoadAllIconTextures(Texture2D *icons)
 {
     if(icons == NULL)
         return;
     for(int i = 1; i < ICON_COUNT; i++)
         if(icons[i].id == 0)
-            icons[i] = LoadUIIconTexture((IconType)i);
+            icons[i] = LoadIconTexture((IconType)i);
 }
 
 void
-UnloadAllUIIconTextures(Texture2D *icons)
+UnloadAllIconTextures(Texture2D *icons)
 {
     if(icons == NULL)
         return;
