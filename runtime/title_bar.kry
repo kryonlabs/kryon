@@ -90,3 +90,8 @@ TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
 TitleBarTitleX :: (view_width: i32, title_width: i32) -> i32 #export {
     return (view_width - title_width) / 2
 }
+
+TitleBarShouldShrinkTitleFont :: (title_width: i32, max_width: i32,
+    font: i32, min_font: i32) -> bool #export {
+    return font > min_font && title_width > max_width
+}

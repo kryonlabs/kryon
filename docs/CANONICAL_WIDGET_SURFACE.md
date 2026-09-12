@@ -159,7 +159,7 @@ has a single place to land.
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint and sizing policy are `.kry`. |
 | `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry are `.kry`; host dispatches child actions. |
 | `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing/scroll policy is `.kry`; host keeps input sampling. |
-| `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout policy is `.kry`; host keeps dropdown dispatch, text fitting, and leading-action input/rendering. |
+| `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
 | `FocusDebugOverlay` | `UI/Overlays` | Debug | `runtime/focus.kry` | Partly `.kry-backed` | Debug overlay bounds and label placement are `.kry`; host keeps accessibility snapshot sampling and drawing. |
 | `TransitionFade` | `UI/Overlays` | Transition | `runtime/transition_fade.kry` | Partly `.kry-backed` | Alpha/easing policy is `.kry`; host keeps state mutation and fade rectangle drawing. |

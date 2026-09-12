@@ -39,5 +39,8 @@ main(void)
                                TitleBarMetricsFor(1.0f));
     check_rect(layout.dropdown_bounds, 12, 6, 78, 20);
     assert(TitleBarTitleX(360, 144) == 108);
+    assert(TitleBarShouldShrinkTitleFont(200, 160, 18, 12));
+    assert(!TitleBarShouldShrinkTitleFont(160, 160, 18, 12));
+    assert(!TitleBarShouldShrinkTitleFont(200, 160, 12, 12));
     return 0;
 }

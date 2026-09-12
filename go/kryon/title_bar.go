@@ -255,3 +255,17 @@ func TitleBar_TitleBarTitleX(view_width int32, title_width int32) int32 {
 	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 4))
 	return value_4
 }
+
+func TitleBar_TitleBarShouldShrinkTitleFont(title_width int32, max_width int32, font int32, min_font int32) bool {
+	var value_0 int32 = font
+	var value_1 int32 = min_font
+	var value_2 bool = value_0 > value_1
+	var value_3 bool = value_2
+	if value_3 {
+		var value_4 int32 = title_width
+		var value_5 int32 = max_width
+		var value_6 bool = value_4 > value_5
+		value_3 = value_6
+	}
+	return value_3
+}
