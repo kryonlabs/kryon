@@ -125,6 +125,7 @@ export interface WebDocumentNode {
   ariaDescribedBy: string;
   ariaControls: string;
   ariaLive: string;
+  ariaAttrs: Record<string, string>;
   onClick: string;
   onInput: string;
   onChange: string;
@@ -220,6 +221,7 @@ export interface WebNodeStyleFacts {
   inputMode: string;
   classes: string[];
   dataAttrs: Record<string, string>;
+  ariaAttrs: Record<string, string>;
   role: string;
   state: Record<string, boolean>;
 }

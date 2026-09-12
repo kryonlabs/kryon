@@ -489,6 +489,7 @@ typedef struct UiBlock {
     char dom_aria_describedby[KIR_TEXT_MAX];
     char dom_aria_controls[KIR_TEXT_MAX];
     char dom_aria_live[KIR_NAME_MAX];
+    char dom_aria_attrs[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
     char dom_on_input[KIR_NAME_MAX];
     char dom_on_change[KIR_NAME_MAX];
@@ -968,6 +969,31 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strncmp(field, "aria_", 5) == 0 ||
+       strncmp(field, "dom_aria_", 9) == 0 ||
+       strncmp(field, "html_aria_", 10) == 0) {
+        const char *name = field[0] == 'd' && field[3] == '_' ? field + 9 :
+                           field[0] == 'h' ? field + 10 : field + 5;
+        char attr[KIR_NAME_MAX];
+        size_t used = strlen(block->dom_aria_attrs);
+        size_t length = 0;
+
+        if(name[0] == '\0')
+            return 0;
+        for(const char *p = name; *p != '\0'; p++) {
+            if(!isalnum((unsigned char)*p) && *p != '_')
+                return 0;
+            if(length + 1 < sizeof(attr))
+                attr[length++] = *p == '_' ? '-' : (char)tolower((unsigned char)*p);
+        }
+        attr[length] = '\0';
+        int written = snprintf(block->dom_aria_attrs + used,
+                               sizeof(block->dom_aria_attrs) - used,
+                               "%s\t%s\n", attr, value);
+        if(written < 0 || (size_t)written >= sizeof(block->dom_aria_attrs) - used)
+            return 0;
+        return 1;
+    }
     if(strcmp(field, "on_click") == 0) {
         snprintf(block->dom_on_click, sizeof(block->dom_on_click), "%s",
                  value);
@@ -1144,6 +1170,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_aria_controls);
     snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
              block->dom_aria_live);
+    snprintf(statement->dom_aria_attrs, sizeof(statement->dom_aria_attrs),
+             "%s", block->dom_aria_attrs);
     snprintf(statement->dom_on_click, sizeof(statement->dom_on_click), "%s",
              block->dom_on_click);
     snprintf(statement->dom_on_input, sizeof(statement->dom_on_input), "%s",

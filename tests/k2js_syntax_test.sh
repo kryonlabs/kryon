@@ -140,6 +140,8 @@ Scene :: (viewport: Rectangle) #ui {
             aria_label = "Tap the action"
             aria_description = "Runs the host action"
             aria_controls = "search-field"
+            aria_current = "page"
+            aria_pressed = false
             on_click = call_host
         }
         TextField search: {
@@ -255,6 +257,7 @@ grep -q '"tabIndex": 3' "$out"
 grep -q '"onClick": "call_host"' "$out"
 grep -q '"ariaDescription": "Runs the host action"' "$out"
 grep -q '"ariaControls": "search-field"' "$out"
+grep -q '"aria": {"current": "page", "pressed": false}' "$out"
 grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
 grep -q '"onKey": "note_key"' "$out"

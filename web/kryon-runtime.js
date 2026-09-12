@@ -1076,6 +1076,20 @@ function propDataAttrs(meta) {
   return out;
 }
 
+function propAriaAttrs(meta) {
+  const out = {};
+  const aria = meta && typeof meta.aria === "object" && !Array.isArray(meta.aria) ? meta.aria : null;
+  if (!aria)
+    return out;
+  for (const [name, value] of Object.entries(aria)) {
+    const attr = String(name).trim().replace(/_/g, "-").toLowerCase();
+    if (!attr || !/^[a-z0-9][a-z0-9.-]*$/.test(attr))
+      continue;
+    out[attr] = value === undefined || value === null ? "" : String(value);
+  }
+  return out;
+}
+
 function metaBool(meta, name) {
   const value = meta?.[name];
   if (typeof value === "string")
@@ -1164,6 +1178,7 @@ function webNodeFromWidget(item, index) {
     ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
+    ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
@@ -1251,6 +1266,7 @@ export function webNodeStyleFacts(node) {
     inputMode: node?.inputMode || "",
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
+    ariaAttrs: { ...(node?.ariaAttrs || {}) },
     role: node?.role || "",
     state: { ...(node?.state || {}) }
   };
@@ -1551,9 +1567,28 @@ function selectorDataAttrPresent(key, facts) {
   return false;
 }
 
+function selectorAriaAttrValue(key, facts) {
+  if (key.startsWith("aria-"))
+    return facts.ariaAttrs?.[key.slice(5)];
+  if (key.startsWith("aria."))
+    return facts.ariaAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()];
+  return undefined;
+}
+
+function selectorAriaAttrPresent(key, facts) {
+  if (key.startsWith("aria-"))
+    return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5));
+  if (key.startsWith("aria."))
+    return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {},
+      key.slice(5).replace(/_/g, "-").toLowerCase());
+  return false;
+}
+
 function selectorAttrPresent(key, facts) {
   if (key.startsWith("data-") || key.startsWith("data."))
     return selectorDataAttrPresent(key, facts);
+  if (key.startsWith("aria-") || key.startsWith("aria."))
+    return selectorAriaAttrPresent(key, facts);
   const value = selectorNativeAttrValue(key, facts);
   return value !== undefined && value !== null && value !== false && value !== "";
 }
@@ -1577,6 +1612,10 @@ function selectorMatchesFacts(selector, facts) {
       return false;
     else if (key.startsWith("data-") || key.startsWith("data.")) {
       if (String(selectorDataAttrValue(key, facts) ?? "") !== value)
+        return false;
+    }
+    else if (key.startsWith("aria-") || key.startsWith("aria.")) {
+      if (String(selectorAriaAttrValue(key, facts) ?? "") !== value)
         return false;
     }
     else if (!["role", "state"].includes(key) && String(selectorNativeAttrValue(key, facts) ?? "") !== value)
@@ -1920,6 +1959,21 @@ function applyDataAttrs(el, attrs) {
   el.__kryDataAttrs = next;
 }
 
+function applyAriaAttrs(el, attrs) {
+  const previous = el.__kryAriaAttrs || new Set();
+  const next = new Set();
+  for (const [name, value] of Object.entries(attrs || {})) {
+    const attr = "aria-" + name;
+    next.add(attr);
+    setAttr(el, attr, value);
+  }
+  for (const attr of previous) {
+    if (!next.has(attr))
+      el.removeAttribute(attr);
+  }
+  el.__kryAriaAttrs = next;
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
@@ -2044,6 +2098,7 @@ function applyWebNode(el, docNode, rt) {
     docNode.tag === "a" && docNode.state.selected ? "page" : "");
   setAttr(el, "aria-level",
     docNode.role === "heading" && docNode.level ? String(docNode.level) : "");
+  applyAriaAttrs(el, docNode.ariaAttrs);
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
   setAttr(el, "rel", docNode.rel);

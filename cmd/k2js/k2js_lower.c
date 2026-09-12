@@ -1222,6 +1222,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_role[0] || st->dom_aria_label[0] ||
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
            st->dom_aria_controls[0] || st->dom_aria_live[0] ||
+           st->dom_aria_attrs[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
            st->dom_on_change[0] || st->dom_on_key[0] ||
            st->dom_on_invalid[0] ||
@@ -1263,8 +1264,8 @@ emit_metadata_string_field(FILE *f, const char *name, const char *value,
 }
 
 static void
-emit_metadata_data_attrs(FILE *f, const KirModule *m, const char *attrs,
-                         int *emitted)
+emit_metadata_attr_map(FILE *f, const KirModule *m, const char *field_name,
+                       const char *attrs, int *emitted)
 {
     const char *line = attrs;
     int field_count = 0;
@@ -1273,7 +1274,7 @@ emit_metadata_data_attrs(FILE *f, const KirModule *m, const char *attrs,
         return;
     if((*emitted)++)
         fputs(", ", f);
-    js_string(f, "data");
+    js_string(f, field_name);
     fputs(": {", f);
     while(*line != '\0') {
         const char *tab = strchr(line, '\t');
@@ -1307,6 +1308,13 @@ emit_metadata_data_attrs(FILE *f, const KirModule *m, const char *attrs,
         line = *end == '\n' ? end + 1 : end;
     }
     fputc('}', f);
+}
+
+static void
+emit_metadata_data_attrs(FILE *f, const KirModule *m, const char *attrs,
+                         int *emitted)
+{
+    emit_metadata_attr_map(f, m, "data", attrs, emitted);
 }
 
 static void
@@ -1438,6 +1446,7 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "ariaControls", st->dom_aria_controls,
                              &emitted);
     emit_metadata_expr_field(f, m, "ariaLive", st->dom_aria_live, &emitted);
+    emit_metadata_attr_map(f, m, "aria", st->dom_aria_attrs, &emitted);
     emit_web_action(f, m, "onClick", "action", st->dom_on_click, "", &emitted);
     emit_web_action(f, m, "onInput", "inputAction", st->dom_on_input,
                     "value", &emitted);

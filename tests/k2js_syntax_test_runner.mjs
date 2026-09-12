@@ -62,6 +62,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button[data-tracking-id="tap-1"] {
     opacity: 0.75;
   }
+  Button[aria-current=page] {
+    offset-y: 8;
+  }
   TextField.field {
     border-width: line;
     padding-y: field-y;
@@ -182,6 +185,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   inputMode: "",
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
+  ariaAttrs: { current: "page", pressed: "false" },
   role: "button",
   state: {
     disabled: false,
@@ -202,6 +206,7 @@ assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   foreground: "#f0f0f0",
   radius: 9,
   "padding-x": 13,
+  "offset-y": 8,
   opacity: 0.75
 });
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
@@ -659,6 +664,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[domValue=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[role=button]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[data-tracking-id=\"tap-1\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[aria-current=page]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[aria.pressed=false]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "Scene/root/search"
@@ -694,6 +701,8 @@ function fakeDocument() {
       "Scene/root/search_label"
     ]);
     const firstField = screen.children[2];
+    assert.equal(firstButton.attributes["aria-current"], "page");
+    assert.equal(firstButton.attributes["aria-pressed"], "false");
     assert.equal(firstField.tagName, "INPUT");
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.attributes.name, "q");

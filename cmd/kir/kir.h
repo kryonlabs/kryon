@@ -169,6 +169,7 @@ typedef struct KirStmt {
     char dom_aria_describedby[KIR_TEXT_MAX]; /* requested accessible relationship */
     char dom_aria_controls[KIR_TEXT_MAX];    /* requested controlled element ids */
     char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
+    char dom_aria_attrs[KIR_TEXT_MAX];  /* requested arbitrary aria-* attributes */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */
     char dom_on_input[KIR_NAME_MAX];    /* logic function bound to input(value) */
     char dom_on_change[KIR_NAME_MAX];   /* logic function bound to change(value) */
