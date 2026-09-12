@@ -2346,6 +2346,7 @@ function applyWebNode(el, docNode, rt) {
   el.dataset.kryIndex = String(docNode.index);
   el.dataset.kryKey = docNode.key;
   el.dataset.kryRef = webNodeRef(docNode);
+  el.dataset.kryAliases = JSON.stringify(webNodeIdentity(docNode).aliases);
   if (docNode.path)
     el.dataset.kryPath = docNode.path;
   else

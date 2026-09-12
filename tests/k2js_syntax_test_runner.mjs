@@ -990,6 +990,12 @@ function fakeDocument() {
     assert.equal(firstButton.attributes.value, "tap-value");
     assert.equal(firstButton.dataset.kryIndex, "2");
     assert.equal(firstButton.dataset.kryRef, "primary-action");
+    assert.deepEqual(JSON.parse(firstButton.dataset.kryAliases).slice(0, 4), [
+      "primary-action",
+      "Scene/root/tap",
+      "tap",
+      "tap-button"
+    ]);
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
     assert.equal(firstButton.kryRef, "primary-action");
@@ -1252,6 +1258,12 @@ function fakeDocument() {
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.attributes.name, "q");
     assert.equal(firstField.dataset.kryRef, "search-box");
+    assert.deepEqual(JSON.parse(firstField.dataset.kryAliases).slice(0, 4), [
+      "search-box",
+      "Scene/root/search",
+      "search",
+      "search-field"
+    ]);
     assert.equal(firstField.attributes["data-role"], "search");
     assert.equal(firstField.attributes.type, "search");
     assert.equal(firstField.attributes.draggable, "true");
