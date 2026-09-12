@@ -62,8 +62,9 @@ Do not restore the positional `Text(text, x, y, font, color)` form or hide it
 behind a helper, macro, overload, generated shim, or compatibility alias.
 
 `Image` has exactly one public widget surface: `Image(ImageProps)`. Semantic
-page images use `PageImage(ImageProps, alt_text)`. Do not expose or recommend
-raylib texture draw calls (`Texture`, `DrawTexture`, `DrawTexturePro`,
+page images are still `Image(ImageProps)` with semantic props/alt text, not a
+separate image widget. Do not expose or recommend raylib texture draw calls
+(`Texture`, `DrawTexture`, `DrawTexturePro`,
 `DrawTextureRec`, or similar) as app-facing `.kry` UI fixes. Low-level texture
 drawing may exist inside backend/native tests and renderer internals, but
 generated app UI should target `ImageProps`. If `ImageProps` cannot express a
