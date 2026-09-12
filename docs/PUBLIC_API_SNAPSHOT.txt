@@ -1952,7 +1952,6 @@ include/ui_tree.h function Bevel
 include/ui_tree.h function Box
 include/ui_tree.h function Bullet
 include/ui_tree.h function Button
-include/ui_tree.h function ButtonNode
 include/ui_tree.h function CanvasGrid
 include/ui_tree.h function Card
 include/ui_tree.h function Checkbox

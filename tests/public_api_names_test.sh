@@ -114,7 +114,7 @@ public_button_matches="$(
 )"
 
 if [ -n "$public_button_matches" ]; then
-    echo "Public button APIs must use clean ButtonSpec/ButtonNode names without stale UI prefixes:"
+    echo "Public button internals must use clean ButtonSpec/ButtonNode names without stale UI prefixes:"
     echo "$public_button_matches"
     exit 1
 fi

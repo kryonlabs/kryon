@@ -349,6 +349,7 @@ int ui_button_render(ButtonSpec button);
 int ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused);
 int ui_numeric_focus_id(int id, int component, int integer);
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
+int ButtonNode(ButtonSpec button);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
 typedef struct {
