@@ -461,6 +461,8 @@ typedef struct UiBlock {
     char dom_form_method[KIR_NAME_MAX];
     char dom_form_enctype[KIR_NAME_MAX];
     char dom_autocomplete[KIR_NAME_MAX];
+    char dom_readonly[KIR_NAME_MAX];
+    char dom_required[KIR_NAME_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
@@ -776,6 +778,18 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  "%s", value);
         return 1;
     }
+    if(strcmp(field, "readonly") == 0 || strcmp(field, "read_only") == 0 ||
+       strcmp(field, "dom_readonly") == 0 || strcmp(field, "html_readonly") == 0) {
+        snprintf(block->dom_readonly, sizeof(block->dom_readonly), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "required") == 0 || strcmp(field, "dom_required") == 0 ||
+       strcmp(field, "html_required") == 0) {
+        snprintf(block->dom_required, sizeof(block->dom_required), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "tab_index") == 0 || strcmp(field, "tabindex") == 0 ||
        strcmp(field, "dom_tab_index") == 0) {
         snprintf(block->dom_tab_index, sizeof(block->dom_tab_index), "%s",
@@ -920,6 +934,10 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_form_enctype);
     snprintf(statement->dom_autocomplete, sizeof(statement->dom_autocomplete),
              "%s", block->dom_autocomplete);
+    snprintf(statement->dom_readonly, sizeof(statement->dom_readonly), "%s",
+             block->dom_readonly);
+    snprintf(statement->dom_required, sizeof(statement->dom_required), "%s",
+             block->dom_required);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",
              block->dom_tab_index);
     snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",

@@ -141,6 +141,8 @@ typedef struct KirStmt {
     char dom_form_method[KIR_NAME_MAX]; /* requested form method */
     char dom_form_enctype[KIR_NAME_MAX];/* requested form encoding */
     char dom_autocomplete[KIR_NAME_MAX];/* requested autocomplete policy */
+    char dom_readonly[KIR_NAME_MAX];    /* requested readonly expression */
+    char dom_required[KIR_NAME_MAX];    /* requested required expression */
     char dom_tab_index[KIR_NAME_MAX];   /* requested tabindex expression */
     char dom_role[KIR_NAME_MAX];        /* requested accessibility role */
     char dom_aria_label[KIR_TEXT_MAX];  /* requested accessible label */

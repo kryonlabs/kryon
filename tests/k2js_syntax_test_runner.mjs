@@ -69,6 +69,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[data.role="search"] {
     opacity: 0.9;
   }
+  TextField[required=true] {
+    gap: 3;
+  }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 runtime.setWebStyleSheets(rt, webStyleSheet);
@@ -135,6 +138,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   formMethod: "",
   formEncType: "",
   autoComplete: "",
+  readOnly: false,
+  required: false,
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   role: "button",
@@ -174,6 +179,8 @@ assert.equal(runtime.webNodeQuery(rt, "Button.primary").path, webDoc.nodes[2].pa
 assert.equal(runtime.webNodeQuery(rt, "[data-tracking-id=\"tap-1\"]").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "[name=q]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[type=search]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[readonly=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[required=true]").path, "Scene/root/search");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -184,6 +191,9 @@ assert.equal(webDoc.nodes[3].domId, "search-field");
 assert.equal(webDoc.nodes[3].domName, "q");
 assert.deepEqual(webDoc.nodes[3].dataAttrs, { role: "search" });
 assert.equal(webDoc.nodes[3].inputType, "search");
+assert.equal(webDoc.nodes[3].readOnly, true);
+assert.equal(webDoc.nodes[3].required, true);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -503,6 +513,8 @@ function fakeDocument() {
     ]);
     assert.equal(runtime.webDOMQuery(target, "[name=q]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[type=search]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[readonly=true]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[required=true]").element, runtime.findWebElement(target, "q"));
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
@@ -516,6 +528,8 @@ function fakeDocument() {
     assert.equal(firstField.attributes.name, "q");
     assert.equal(firstField.attributes["data-role"], "search");
     assert.equal(firstField.attributes.type, "search");
+    assert.equal(firstField.attributes.readonly, "");
+    assert.equal(firstField.attributes.required, "");
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");

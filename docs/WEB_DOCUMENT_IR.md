@@ -101,6 +101,8 @@ Supported metadata fields in this first slice:
 | `dom_method`, `html_method`, `form_method` | `formMethod` |
 | `dom_enctype`, `html_enctype`, `form_enctype` | `formEncType` |
 | `autocomplete`, `dom_autocomplete`, `html_autocomplete` | `autoComplete` |
+| `readonly`, `read_only`, `dom_readonly`, `html_readonly` | `readOnly` |
+| `required`, `dom_required`, `html_required` | `required` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
@@ -205,7 +207,7 @@ contract.
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `id`, `domName`, `href`, `target`, `rel`,
 `inputType`, `formAction`, `formMethod`, `formEncType`, `autoComplete`,
-`classes`, `dataAttrs`, `role`, and `state`. The DOM
+`readOnly`, `required`, `classes`, `dataAttrs`, `role`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -218,8 +220,9 @@ same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 first web resolver supports the initial KSS grammar slice: kind selectors,
 `#id`, `.class`, `[role=...]`, `[state=...]`, native attribute aliases such as
 `[name=...]`, `[type=...]`, `[action=...]`, `[method=...]`,
-`[enctype=...]`, `[autocomplete=...]`, state pseudos, layers, colors, spacing,
-radius, border width, opacity, font size, and local
+`[enctype=...]`, `[autocomplete=...]`, `[readonly=true]`,
+`[required=true]`, state pseudos, layers, colors, spacing, radius, border
+width, opacity, font size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,

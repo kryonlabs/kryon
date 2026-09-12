@@ -140,6 +140,8 @@ Scene :: (viewport: Rectangle) #ui {
             dom_name = "q"
             dom_data_role = "search"
             dom_type = "search"
+            readonly = true
+            required = true
             class = "field"
             placeholder = "Search terms"
             aria_label = "Search"
@@ -229,6 +231,8 @@ grep -q '"onBlur": "blur_search"' "$out"
 grep -q '"domName": "q"' "$out"
 grep -q '"data": {"role": "search"}' "$out"
 grep -q '"inputType": "search"' "$out"
+grep -q '"readOnly": true' "$out"
+grep -q '"required": true' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then

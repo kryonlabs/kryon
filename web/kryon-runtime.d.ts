@@ -96,6 +96,8 @@ export interface WebDocumentNode {
   formMethod: string;
   formEncType: string;
   autoComplete: string;
+  readOnly: boolean;
+  required: boolean;
   alt: string;
   asset: string;
   role: string;
@@ -168,6 +170,8 @@ export interface WebNodeStyleFacts {
   formMethod: string;
   formEncType: string;
   autoComplete: string;
+  readOnly: boolean;
+  required: boolean;
   classes: string[];
   dataAttrs: Record<string, string>;
   role: string;

@@ -1077,6 +1077,13 @@ function propDataAttrs(meta) {
   return out;
 }
 
+function metaBool(meta, name) {
+  const value = meta?.[name];
+  if (typeof value === "string")
+    return /^(true|1|yes)$/i.test(value);
+  return !!value;
+}
+
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
@@ -1124,6 +1131,8 @@ function webNodeFromWidget(item, index) {
     formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
     formEncType: meta.formEncType === undefined || meta.formEncType === null ? "" : String(meta.formEncType),
     autoComplete: meta.autoComplete === undefined || meta.autoComplete === null ? "" : String(meta.autoComplete),
+    readOnly: metaBool(meta, "readOnly"),
+    required: metaBool(meta, "required"),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
@@ -1188,6 +1197,8 @@ export function webNodeStyleFacts(node) {
     formMethod: node?.formMethod || "",
     formEncType: node?.formEncType || "",
     autoComplete: node?.autoComplete || "",
+    readOnly: !!node?.readOnly,
+    required: !!node?.required,
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     role: node?.role || "",
@@ -1454,6 +1465,8 @@ function selectorNativeAttrValue(key, facts) {
     case "method": return facts.formMethod;
     case "enctype": return facts.formEncType;
     case "autocomplete": return facts.autoComplete;
+    case "readonly": return facts.readOnly;
+    case "required": return facts.required;
     default: return facts[key];
   }
 }
@@ -1901,6 +1914,8 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "method", docNode.formMethod);
   setAttr(el, "enctype", docNode.formEncType);
   setAttr(el, "autocomplete", docNode.autoComplete);
+  setAttr(el, "readonly", docNode.readOnly);
+  setAttr(el, "required", docNode.required);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
