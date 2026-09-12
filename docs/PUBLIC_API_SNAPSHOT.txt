@@ -1612,17 +1612,8 @@ include/ui_icons.h enum ICON_SHEET_PFP
 include/ui_icons.h enum ICON_SHEET_PLATFORMS
 include/ui_icons.h enum ICON_SHEET_TILES
 include/ui_icons.h enum ICON_SHEET_UI
-include/ui_icons.h function DrawIcon
-include/ui_icons.h function DrawIconByName
-include/ui_icons.h function DrawProfileImageIcon
 include/ui_icons.h function GetIconAsset
 include/ui_icons.h function GetIconAssetByName
-include/ui_icons.h function LoadAllIconTextures
-include/ui_icons.h function LoadIconSheet
-include/ui_icons.h function LoadIconTexture
-include/ui_icons.h function LoadIconTextureByName
-include/ui_icons.h function UnloadAllIconTextures
-include/ui_icons.h function UnloadIconSheets
 include/ui_image.h enum IMAGE_FIT_CONTAIN
 include/ui_image.h enum IMAGE_FIT_COVER
 include/ui_image.h enum IMAGE_FIT_STRETCH

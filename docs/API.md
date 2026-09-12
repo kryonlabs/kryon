@@ -775,27 +775,7 @@ const IconAsset *GetIconAsset(IconType type);
 const IconAsset *GetIconAssetByName(const char *name);
 ```
 
-#### `LoadIconSheet` / `UnloadIconSheets`
-
-Load a generated spritesheet or unload all icon textures. `DrawIcon` selects
-and loads the correct sheet lazily, so normal widget code does not need to call
-these functions directly.
-
-```c
-Texture2D LoadIconSheet(IconSheet sheet);
-void UnloadIconSheets(void);
-```
-
-#### `DrawIcon` / `DrawIconByName`
-
-Draw an indexed atlas glyph. UI icons accept the runtime tint; PFP, platform,
-payment, language, and tile icons retain their full source colors and only use the
-tint's alpha. Every entry uses one fixed 64×64 source cell.
-
-```c
-void DrawIcon(IconType type, Rectangle bounds, Color tint);
-void DrawIconByName(const char *name, Rectangle bounds, Color tint);
-```
+Use the canonical `Icon(...)` widget to draw icons in UI code.
 
 Kryon's checked-in `icons/` directory is the finished spritesheet package.
 Regular UI entries—including workbook controls—use the rounded MingCute Core

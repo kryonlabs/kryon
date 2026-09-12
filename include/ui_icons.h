@@ -24,17 +24,6 @@ typedef struct IconAsset {
 
 const IconAsset *GetIconAsset(IconType type);
 const IconAsset *GetIconAssetByName(const char *name);
-Texture2D LoadIconSheet(IconSheet sheet);
-void UnloadIconSheets(void);
-void DrawIcon(IconType type, Rectangle bounds, Color tint);
-void DrawIconByName(const char *name, Rectangle bounds, Color tint);
-void DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode);
-
-/* Transitional texture API for controls that do not yet accept IconType. */
-Texture2D LoadIconTexture(IconType type);
-Texture2D LoadIconTextureByName(const char *name);
-void LoadAllIconTextures(Texture2D *icons);
-void UnloadAllIconTextures(Texture2D *icons);
 
 /* Auto-generated icon names array (alphabetical order, matches IconType enum) */
 extern const char *ui_icon_names[];

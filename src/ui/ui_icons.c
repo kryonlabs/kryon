@@ -4,7 +4,6 @@
 #include "runtime/surface.h"
 #include <math.h>
 #include "../backend/kry_sw_png.h"
-#include <stdlib.h>
 #include <string.h>
 
 extern const IconAsset ui_icon_assets[];
@@ -113,7 +112,7 @@ GetIconAssetByName(const char *name)
     return NULL;
 }
 
-Texture2D
+static Texture2D
 LoadIconSheet(IconSheet sheet)
 {
     const unsigned char *png;
@@ -122,16 +121,6 @@ LoadIconSheet(IconSheet sheet)
     if(!icon_sheet_png(sheet, &png, &png_size))
         return (Texture2D){0};
     return load_atlas(&icon_sheets[sheet], png, png_size);
-}
-
-void
-UnloadIconSheets(void)
-{
-    for(int sheet = 0; sheet < ICON_SHEET_COUNT; sheet++) {
-        if(icon_sheets[sheet].id != 0)
-            UnloadTexture(icon_sheets[sheet]);
-    }
-    memset(icon_sheets, 0, sizeof(icon_sheets));
 }
 
 static void
@@ -172,14 +161,6 @@ DrawIcon(IconType type, Rectangle bounds, Color tint)
 }
 
 void
-DrawIconByName(const char *name, Rectangle bounds, Color tint)
-{
-    const IconAsset *asset = GetIconAssetByName(name);
-    if(asset != NULL)
-        DrawIcon(asset->type, bounds, tint);
-}
-
-void
 DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode)
 {
     const IconAsset *asset = GetIconAsset(type);
@@ -188,98 +169,4 @@ DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode)
     if(asset == NULL || bounds.width <= 0 || bounds.height <= 0)
         return;
     DrawIcon(type, bounds, WHITE);
-}
-
-static Texture2D
-load_icon_asset_texture(const IconAsset *asset)
-{
-    const unsigned char *png;
-    unsigned int png_size;
-    unsigned char *sheet_pixels;
-    unsigned char *icon_pixels;
-    Texture2D texture = {0};
-    Image image = {0};
-    int sheet_width;
-    int sheet_height;
-    int x;
-    int y;
-    int width;
-    int height;
-
-    if(asset == NULL ||
-       !icon_sheet_png(asset->sheet, &png, &png_size))
-        return texture;
-
-    sheet_pixels = kry_sw_png_rgba(png, (size_t)png_size,
-                                   &sheet_width, &sheet_height);
-    if(sheet_pixels == NULL)
-        return texture;
-
-    x = (int)asset->source.x;
-    y = (int)asset->source.y;
-    width = (int)asset->source.width;
-    height = (int)asset->source.height;
-    if(x < 0 || y < 0 || width <= 0 || height <= 0 ||
-       x + width > sheet_width || y + height > sheet_height) {
-        free(sheet_pixels);
-        return texture;
-    }
-
-    icon_pixels = malloc((size_t)width * (size_t)height * 4u);
-    if(icon_pixels == NULL) {
-        free(sheet_pixels);
-        return texture;
-    }
-    for(int row = 0; row < height; row++) {
-        memcpy(icon_pixels + (size_t)row * (size_t)width * 4u,
-               sheet_pixels + ((size_t)(y + row) * (size_t)sheet_width +
-                               (size_t)x) * 4u,
-               (size_t)width * 4u);
-    }
-    free(sheet_pixels);
-
-    image.data = icon_pixels;
-    image.width = width;
-    image.height = height;
-    image.mipmaps = 1;
-    image.format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8;
-    texture = LoadTextureFromImage(image);
-    UnloadImage(image);
-    if(texture.id != 0)
-        SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
-    return texture;
-}
-
-Texture2D
-LoadIconTexture(IconType type)
-{
-    return load_icon_asset_texture(GetIconAsset(type));
-}
-
-Texture2D
-LoadIconTextureByName(const char *name)
-{
-    return load_icon_asset_texture(GetIconAssetByName(name));
-}
-
-void
-LoadAllIconTextures(Texture2D *icons)
-{
-    if(icons == NULL)
-        return;
-    for(int i = 1; i < ICON_COUNT; i++)
-        if(icons[i].id == 0)
-            icons[i] = LoadIconTexture((IconType)i);
-}
-
-void
-UnloadAllIconTextures(Texture2D *icons)
-{
-    if(icons == NULL)
-        return;
-    for(int i = 0; i < ICON_COUNT; i++) {
-        if(icons[i].id != 0)
-            UnloadTexture(icons[i]);
-        memset(&icons[i], 0, sizeof(icons[i]));
-    }
 }

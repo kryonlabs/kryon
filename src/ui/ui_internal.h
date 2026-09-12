@@ -32,6 +32,8 @@ extern Texture2D g_ui_gear_icon;
 extern Texture2D g_ui_x_icon;
 extern unsigned long g_ui_frame_serial;
 extern float g_theme_content_alpha;
+void DrawIcon(IconType type, Rectangle bounds, Color tint);
+void DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode);
 int UIContentDisabled(void);
 int ui_current_input_clip(Rectangle *bounds);
 extern int g_ui_slider_active_id;
