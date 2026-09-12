@@ -438,6 +438,7 @@ SpinboxValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }

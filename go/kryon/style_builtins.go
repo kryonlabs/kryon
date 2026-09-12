@@ -405,6 +405,7 @@ SpinboxValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -2079,6 +2080,7 @@ SpinboxValue {
   radius: radius;
   border-width: border;
   padding-x: space.2;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3729,6 +3731,7 @@ SpinboxValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -5439,6 +5442,7 @@ SpinboxValue {
   radius: radius.sm;
   border-width: border;
   padding-x: space.3;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -7205,6 +7209,7 @@ SpinboxValue {
   radius: radius;
   border-width: 1;
   padding-x: space.3;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

@@ -2936,13 +2936,16 @@ RenderSpinbox(SpinboxProps spinbox)
             StyleKindSpinboxValue());
         Style value_style = ui_unpack_style(
             ui_style_apply_effects_frame(value_frame).value);
+        int value_font = value_style.font_size > 0.0f
+            ? (int)(value_style.font_size + 0.5f)
+            : GetFontSize();
         ui_tk_draw_style_frame(spinbox.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, 0);
         ui_tk_draw_style_frame(text, spinbox.bounds, value_frame, 0, 0,
                                disabled, 0);
         DrawCenteredUIText(value_text, (int)(text.x + text.width / 2),
-                           (int)(text.y + text.height / 2), GetFontSize(),
-                           value_style.foreground);
+                           (int)(text.y + text.height / 2), value_font,
+                           Fade(value_style.foreground, value_style.opacity));
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
         .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = disabled},

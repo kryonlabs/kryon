@@ -404,6 +404,7 @@ SpinboxValue {
   radius: radius;
   border-width: border;
   padding-x: space.2;
+  font-size: font;
   opacity: 1;
   material: default;
 }

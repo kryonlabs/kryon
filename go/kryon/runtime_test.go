@@ -1092,7 +1092,7 @@ tokens {
   material { flat: Flat; }
 }
 Spinbox { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-SpinboxValue { background: value; foreground: ink; border: value; radius: radius; border-width: border; material: flat; }
+SpinboxValue { background: value; foreground: ink; border: value; radius: radius; border-width: border; font-size: 19; material: flat; opacity: 0.61; }
 `, "Test Spinbox", "") || !SetActiveStylePack("test.spinbox") {
 		t.Fatal("test spinbox style did not activate")
 	}
@@ -1107,26 +1107,30 @@ SpinboxValue { background: value; foreground: ink; border: value; radius: radius
 		Value:  &value,
 	})
 
-	var sawShell, sawValue bool
+	var sawShell, sawValue, sawText bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind != FrameOpRect || op.ID != 66 {
-			continue
-		}
-		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 30}) {
+		if op.Kind == FrameOpRect && op.ID == 66 && op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 30}) {
 			sawShell = true
 			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("spinbox shell style op = %+v", op)
 			}
 		}
-		if op.Bounds == (Rectangle{X: 36, Y: 8, Width: 64, Height: 30}) {
+		if op.Kind == FrameOpRect && op.ID == 66 && op.Bounds == (Rectangle{X: 36, Y: 8, Width: 64, Height: 30}) {
 			sawValue = true
 			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
 				t.Fatalf("spinbox value style op = %+v", op)
 			}
 		}
+		if op.Kind == FrameOpText && op.ID == 66 && op.Text == "3" {
+			sawText = true
+			if op.FontSize != 19 || op.Opacity != 0.61 ||
+				op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+				t.Fatalf("spinbox value text style op = %+v", op)
+			}
+		}
 	}
-	if !sawShell || !sawValue {
-		t.Fatalf("missing styled spinbox ops: shell=%v value=%v ops=%+v", sawShell, sawValue, rt.FrameOps())
+	if !sawShell || !sawValue || !sawText {
+		t.Fatalf("missing styled spinbox ops: shell=%v value=%v text=%v ops=%+v", sawShell, sawValue, sawText, rt.FrameOps())
 	}
 }
 

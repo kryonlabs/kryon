@@ -6331,7 +6331,7 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	valueOp.ID = p.ID
 	valueOp.Disabled = disabled
 	r.record(valueOp)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: valueStyle.Foreground, FontSize: Text16, ID: p.ID, Disabled: disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: valueStyle.Foreground, Opacity: valueStyle.Opacity, FontSize: styleFont(valueStyle, Text16), ID: p.ID, Disabled: disabled})
 	return changed
 }
 func (r *runtime) Fieldset(p FieldsetProps) {
