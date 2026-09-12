@@ -60,6 +60,7 @@ PUBLIC_WIDGET_NAMES = {
     "DragDrop",
     "Dropdown",
     "Flow",
+    "Guide",
     "Heading",
     "Image",
     "Input",
@@ -378,6 +379,16 @@ def main() -> int:
     for name in sorted(PUBLIC_WIDGET_NAMES):
         if f"`{name}`" not in doc:
             errors.append(f"missing public widget surface row: {name}")
+    guide_row = re.search(r"^\| `Guide` \| (?P<decision>[^|]+) \| (?P<notes>[^|]+) \|$", doc, re.M)
+    if not guide_row:
+        errors.append("missing Guide overlay review row")
+    else:
+        decision = guide_row.group("decision").strip()
+        notes = guide_row.group("notes")
+        if decision != "`.kry canonical`":
+            errors.append(f"Guide must stay .kry canonical, found {decision}")
+        if "Guide(GuideProps)" not in notes:
+            errors.append("Guide row must name the clean Guide(GuideProps) surface")
     for name in parser_expected:
         if name not in parser_doc_rows:
             errors.append(f"missing parser statement surface row: {name}")

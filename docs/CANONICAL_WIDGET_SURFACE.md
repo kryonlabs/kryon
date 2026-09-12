@@ -462,8 +462,8 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
-| `Guide` | Native support | Guided overlay flow exists as an internal C renderer backed by `.kry` policy. It is not a public parser/Go/web widget yet; promote later as one `Guide(GuideProps)` surface with step data in props. |
-| `GuideStep` | Props/data only | One anchored instruction inside future `GuideProps`; not a standalone widget. |
+| `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Current C rendering is host support around `runtime/guide.kry` policy. |
+| `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
 
 ## Game2D Nodes
