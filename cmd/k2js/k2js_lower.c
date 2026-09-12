@@ -1804,7 +1804,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                     tx_expr(m, args, out, sizeof(out));
                     fprintf(f, "kryon.widget($rt, \"Disabled\", (%s) ? 1 : 0, $state);\n", out);
                 } else {
-                    fprintf(f, "kryon.widget($rt, \"EndDisabled\", \"\", $state);\n");
+                    fprintf(f, "kryon.widget($rt, \"Disabled\", \"end\", $state);\n");
                 }
                 break;
             }

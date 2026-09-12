@@ -77,7 +77,7 @@ done
 cp "$root"/web/*.js "$work/out/"
 printf '%s\n' '{"type":"module"}' > "$work/out/package.json"
 
-if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|EndCanvas)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
+if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|EndCanvas|EndDisabled)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
     cat /tmp/kryon-k2js-lowered.$$ >&2
     rm -f /tmp/kryon-k2js-lowered.$$
     echo "k2js output must use canonical widget names, not lowered scope names" >&2
@@ -119,7 +119,7 @@ const expected = new Map([
   ["tests/parity/generated_form.js", ["Screen", "Column", "Text", "TextField", "TextField", "TextField", "TextArea", "Row", "Button", "Button"]],
   ["tests/parity/fields.js", ["Screen", "TextField", "TextArea"]],
   ["tests/parity/focus.js", ["Screen", "TextField", "TextField", "TextField"]],
-  ["tests/parity/buttons_layout.js", ["Disabled", "EndDisabled", "Disabled", "EndDisabled", "Disabled", "EndDisabled", "Screen", "Column", "Text", "Row", "Disabled", "Disabled", "Button", "EndDisabled", "EndDisabled", "Button", "Button"]],
+  ["tests/parity/buttons_layout.js", ["Disabled", "Disabled", "Disabled", "Disabled", "Disabled", "Disabled", "Screen", "Column", "Text", "Row", "Disabled", "Disabled", "Button", "Disabled", "Disabled", "Button", "Button"]],
   ["tests/parity/long_text.js", ["Screen", "Column", "Text", "TextField", "TextField"]],
     ["tests/parity/basic_controls.js", ["Screen", "Slider", "Toggle", "Checkbox", "Dropdown", "Selectable", "Checkbox", "Radio"]],
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],

@@ -59,7 +59,6 @@ GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
 }
 
 WEB_COMPAT_ENTRIES = {
-    "EndDisabled",
     "InvisibleButton",
 }
 
