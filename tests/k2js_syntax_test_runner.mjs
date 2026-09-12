@@ -59,9 +59,15 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button#tap-button:focus {
     border: #506070;
   }
+  Button[data-tracking-id="tap-1"] {
+    opacity: 0.75;
+  }
   TextField.field {
     border-width: line;
     padding-y: field-y;
+  }
+  TextField[data.role="search"] {
+    opacity: 0.9;
   }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
@@ -121,6 +127,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   sourceLine: webDoc.nodes[2].sourceLine,
   id: "tap-button",
   classes: ["primary", "action"],
+  dataAttrs: { "tracking-id": "tap-1" },
   role: "button",
   state: {
     disabled: false,
@@ -140,7 +147,8 @@ assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   background: "#203040",
   foreground: "#f0f0f0",
   radius: 9,
-  "padding-x": 13
+  "padding-x": 13,
+  opacity: 0.75
 });
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
   @layer components;
@@ -355,8 +363,12 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[role=button]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[data-tracking-id=\"tap-1\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
+      "Scene/root/search"
+    ]);
+    assert.deepEqual(runtime.webDOMQueryAll(target, "[data.role=search]").map((object) => object.ref), [
       "Scene/root/search"
     ]);
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);

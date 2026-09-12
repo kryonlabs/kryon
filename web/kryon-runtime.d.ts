@@ -142,6 +142,7 @@ export interface WebNodeStyleFacts {
   sourceLine: number;
   id: string;
   classes: string[];
+  dataAttrs: Record<string, string>;
   role: string;
   state: Record<string, boolean>;
 }

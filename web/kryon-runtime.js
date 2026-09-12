@@ -1162,6 +1162,7 @@ export function webNodeStyleFacts(node) {
     sourceLine: node?.sourceLine || 0,
     id: node?.domId || "",
     classes: [...(node?.classes || [])],
+    dataAttrs: { ...(node?.dataAttrs || {}) },
     role: node?.role || "",
     state: { ...(node?.state || {}) }
   };
@@ -1249,7 +1250,7 @@ function parseSelector(text) {
     selector.specificity += 10;
     source = source.slice(0, stateMatch.index).trim();
   }
-  source = source.replace(/\[([A-Za-z_][\w-]*)\s*=\s*([^\]]+)\]/g, (_all, key, value) => {
+  source = source.replace(/\[([A-Za-z_][\w.-]*)\s*=\s*([^\]]+)\]/g, (_all, key, value) => {
     selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
     selector.specificity += 10;
     return "";
@@ -1410,6 +1411,14 @@ function styleStateMatches(name, state) {
   return !!state?.[key];
 }
 
+function selectorDataAttrValue(key, facts) {
+  if (key.startsWith("data-"))
+    return facts.dataAttrs?.[key.slice(5)];
+  if (key.startsWith("data."))
+    return facts.dataAttrs?.[key.slice(5).replace(/_/g, "-").toLowerCase()];
+  return undefined;
+}
+
 function selectorMatchesFacts(selector, facts) {
   if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
     return false;
@@ -1423,6 +1432,10 @@ function selectorMatchesFacts(selector, facts) {
       return false;
     else if (key === "state" && !styleStateMatches(value, facts.state))
       return false;
+    else if (key.startsWith("data-") || key.startsWith("data.")) {
+      if (String(selectorDataAttrValue(key, facts) ?? "") !== value)
+        return false;
+    }
     else if (!["role", "state"].includes(key) && String(facts[key] ?? "") !== value)
       return false;
   }
