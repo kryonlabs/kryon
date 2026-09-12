@@ -1193,6 +1193,10 @@ function webNodeFromWidget(item, index) {
     onMouseLeave: meta.onMouseLeave === undefined || meta.onMouseLeave === null ? "" : String(meta.onMouseLeave),
     onMouseDown: meta.onMouseDown === undefined || meta.onMouseDown === null ? "" : String(meta.onMouseDown),
     onMouseUp: meta.onMouseUp === undefined || meta.onMouseUp === null ? "" : String(meta.onMouseUp),
+    onDragStart: meta.onDragStart === undefined || meta.onDragStart === null ? "" : String(meta.onDragStart),
+    onDragEnd: meta.onDragEnd === undefined || meta.onDragEnd === null ? "" : String(meta.onDragEnd),
+    onDragOver: meta.onDragOver === undefined || meta.onDragOver === null ? "" : String(meta.onDragOver),
+    onDrop: meta.onDrop === undefined || meta.onDrop === null ? "" : String(meta.onDrop),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
@@ -1207,6 +1211,10 @@ function webNodeFromWidget(item, index) {
     mouseLeaveAction: typeof meta.mouseLeaveAction === "function" ? meta.mouseLeaveAction : null,
     mouseDownAction: typeof meta.mouseDownAction === "function" ? meta.mouseDownAction : null,
     mouseUpAction: typeof meta.mouseUpAction === "function" ? meta.mouseUpAction : null,
+    dragStartAction: typeof meta.dragStartAction === "function" ? meta.dragStartAction : null,
+    dragEndAction: typeof meta.dragEndAction === "function" ? meta.dragEndAction : null,
+    dragOverAction: typeof meta.dragOverAction === "function" ? meta.dragOverAction : null,
+    dropAction: typeof meta.dropAction === "function" ? meta.dropAction : null,
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
@@ -1842,6 +1850,43 @@ function bindNodeEvents(el) {
     if (docNode.action)
       docNode.action();
   });
+  el.addEventListener("dragstart", (event) => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = webDragValue(el, docNode);
+    if (event?.dataTransfer?.setData)
+      event.dataTransfer.setData("text/plain", String(value));
+    if (docNode.dragStartAction)
+      docNode.dragStartAction(value);
+  });
+  el.addEventListener("dragend", () => {
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = webDragValue(el, docNode);
+    if (docNode.dragEndAction)
+      docNode.dragEndAction(value);
+  });
+  el.addEventListener("dragover", (event) => {
+    if (event?.preventDefault)
+      event.preventDefault();
+    const docNode = el.__kryDocNode;
+    if (docNode?.dragOverAction)
+      docNode.dragOverAction();
+  });
+  el.addEventListener("drop", (event) => {
+    if (event?.preventDefault)
+      event.preventDefault();
+    const docNode = el.__kryDocNode;
+    if (!docNode)
+      return;
+    const value = event?.dataTransfer?.getData
+      ? event.dataTransfer.getData("text/plain")
+      : updateElementFormValue(el);
+    if (docNode.dropAction)
+      docNode.dropAction(value);
+  });
   el.addEventListener("input", () => {
     const docNode = el.__kryDocNode;
     const value = updateElementFormValue(el);
@@ -1920,6 +1965,17 @@ function updateElementFormValue(el, value = webElementValue(el)) {
     docNode.state.checked = !!value;
   recordFormValue(el.__kryMountRoot, docNode, value);
   return value;
+}
+
+function webDragValue(el, docNode = el?.__kryDocNode) {
+  const formValue = webElementValue(el, docNode);
+  if (docNode?.domValue)
+    return docNode.domValue;
+  if (formValue !== undefined)
+    return formValue;
+  if (docNode?.value !== undefined && docNode?.value !== null && docNode.value !== "")
+    return docNode.value;
+  return webNodeRef(docNode);
 }
 
 function webNodeRef(docNode) {
@@ -2070,6 +2126,22 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnMouseUp = docNode.onMouseUp;
   else
     delete el.dataset.kryOnMouseUp;
+  if (docNode.onDragStart)
+    el.dataset.kryOnDragStart = docNode.onDragStart;
+  else
+    delete el.dataset.kryOnDragStart;
+  if (docNode.onDragEnd)
+    el.dataset.kryOnDragEnd = docNode.onDragEnd;
+  else
+    delete el.dataset.kryOnDragEnd;
+  if (docNode.onDragOver)
+    el.dataset.kryOnDragOver = docNode.onDragOver;
+  else
+    delete el.dataset.kryOnDragOver;
+  if (docNode.onDrop)
+    el.dataset.kryOnDrop = docNode.onDrop;
+  else
+    delete el.dataset.kryOnDrop;
   if (docNode.hasBounds) {
     el.style.position = "absolute";
     el.style.left = docNode.bounds.x + "px";

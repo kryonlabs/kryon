@@ -184,6 +184,10 @@ typedef struct KirStmt {
     char dom_on_mouse_leave[KIR_NAME_MAX]; /* logic function bound to mouseleave */
     char dom_on_mouse_down[KIR_NAME_MAX];  /* logic function bound to mousedown */
     char dom_on_mouse_up[KIR_NAME_MAX];    /* logic function bound to mouseup */
+    char dom_on_drag_start[KIR_NAME_MAX];  /* logic function bound to dragstart(value) */
+    char dom_on_drag_end[KIR_NAME_MAX];    /* logic function bound to dragend(value) */
+    char dom_on_drag_over[KIR_NAME_MAX];   /* logic function bound to dragover */
+    char dom_on_drop[KIR_NAME_MAX];        /* logic function bound to drop(value) */
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int is_instance; /* typed record binding retained by its explicit key */

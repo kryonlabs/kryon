@@ -140,6 +140,10 @@ export interface WebDocumentNode {
   onMouseLeave: string;
   onMouseDown: string;
   onMouseUp: string;
+  onDragStart: string;
+  onDragEnd: string;
+  onDragOver: string;
+  onDrop: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
@@ -154,6 +158,10 @@ export interface WebDocumentNode {
   mouseLeaveAction: (() => unknown) | null;
   mouseDownAction: (() => unknown) | null;
   mouseUpAction: (() => unknown) | null;
+  dragStartAction: ((value: unknown) => unknown) | null;
+  dragEndAction: ((value: unknown) => unknown) | null;
+  dragOverAction: (() => unknown) | null;
+  dropAction: ((value: unknown) => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

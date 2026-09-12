@@ -504,6 +504,10 @@ typedef struct UiBlock {
     char dom_on_mouse_leave[KIR_NAME_MAX];
     char dom_on_mouse_down[KIR_NAME_MAX];
     char dom_on_mouse_up[KIR_NAME_MAX];
+    char dom_on_drag_start[KIR_NAME_MAX];
+    char dom_on_drag_end[KIR_NAME_MAX];
+    char dom_on_drag_over[KIR_NAME_MAX];
+    char dom_on_drop[KIR_NAME_MAX];
     int anonymous_widget_count;
     int close_depth;
     int opened;
@@ -1066,6 +1070,28 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "on_drag_start") == 0 ||
+       strcmp(field, "on_dragstart") == 0) {
+        snprintf(block->dom_on_drag_start, sizeof(block->dom_on_drag_start),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_drag_end") == 0 ||
+       strcmp(field, "on_dragend") == 0) {
+        snprintf(block->dom_on_drag_end, sizeof(block->dom_on_drag_end), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_drag_over") == 0 ||
+       strcmp(field, "on_dragover") == 0) {
+        snprintf(block->dom_on_drag_over, sizeof(block->dom_on_drag_over),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_drop") == 0) {
+        snprintf(block->dom_on_drop, sizeof(block->dom_on_drop), "%s", value);
+        return 1;
+    }
     return 0;
 }
 
@@ -1202,6 +1228,15 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_on_mouse_down);
     snprintf(statement->dom_on_mouse_up, sizeof(statement->dom_on_mouse_up),
              "%s", block->dom_on_mouse_up);
+    snprintf(statement->dom_on_drag_start,
+             sizeof(statement->dom_on_drag_start), "%s",
+             block->dom_on_drag_start);
+    snprintf(statement->dom_on_drag_end, sizeof(statement->dom_on_drag_end),
+             "%s", block->dom_on_drag_end);
+    snprintf(statement->dom_on_drag_over, sizeof(statement->dom_on_drag_over),
+             "%s", block->dom_on_drag_over);
+    snprintf(statement->dom_on_drop, sizeof(statement->dom_on_drop), "%s",
+             block->dom_on_drop);
 }
 
 static void

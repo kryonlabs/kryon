@@ -318,6 +318,13 @@ pointer_down :: () -> int {
 pointer_up :: () -> int {
     return 4
 }
+drag_value :: (value: string) -> int {
+    unused value
+    return 5
+}
+drag_marker :: () -> int {
+    return 6
+}
 
 Anon :: () #ui {
     Screen root: {
@@ -333,6 +340,10 @@ Anon :: () #ui {
             on_pointer_leave = pointer_leave
             on_pointer_down = pointer_down
             on_pointer_up = pointer_up
+            on_drag_start = drag_value
+            on_drag_end = drag_value
+            on_drag_over = drag_marker
+            on_drop = drag_value
         }
         Column contact: {
             dom = "form"
@@ -358,6 +369,10 @@ grep -q '"onMouseEnter": "pointer_enter"' "$anon_out"
 grep -q '"onMouseLeave": "pointer_leave"' "$anon_out"
 grep -q '"onMouseDown": "pointer_down"' "$anon_out"
 grep -q '"onMouseUp": "pointer_up"' "$anon_out"
+grep -q '"onDragStart": "drag_value"' "$anon_out"
+grep -q '"onDragEnd": "drag_value"' "$anon_out"
+grep -q '"onDragOver": "drag_marker"' "$anon_out"
+grep -q '"onDrop": "drag_value"' "$anon_out"
 grep -q '"formAction": "/contact"' "$anon_out"
 grep -q '"formMethod": "post"' "$anon_out"
 grep -q '"formEncType": "multipart/form-data"' "$anon_out"

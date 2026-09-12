@@ -294,6 +294,13 @@ assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[3].label, "Search");
 assert.equal(generated.Valid_CallHost(rt, state, host), 42);
 
 function fakeDocument() {
+  const fakeDataTransfer = () => {
+    const values = {};
+    return {
+      setData(type, value) { values[type] = String(value); },
+      getData(type) { return values[type] || ""; }
+    };
+  };
   const makeElement = (tag) => {
     const element = {
       tagName: tag.toUpperCase(),
@@ -336,6 +343,21 @@ function fakeDocument() {
       },
       addEventListener(type, fn) { this["on" + type] = fn; },
       click() { if (this.onclick) this.onclick(); },
+      dragstart(dataTransfer) {
+        const transfer = dataTransfer || fakeDataTransfer();
+        if (this.ondragstart)
+          this.ondragstart({ dataTransfer: transfer });
+        return transfer;
+      },
+      dragend() { if (this.ondragend) this.ondragend(); },
+      dragover() {
+        if (this.ondragover)
+          this.ondragover({ preventDefault() {} });
+      },
+      drop(dataTransfer) {
+        if (this.ondrop)
+          this.ondrop({ preventDefault() {}, dataTransfer });
+      },
       invalid() { if (this.oninvalid) this.oninvalid({ preventDefault() {} }); },
       input(value) {
         if (typeof value === "boolean")
@@ -524,6 +546,45 @@ function fakeDocument() {
     pointerButton.mouseup();
     pointerButton.mouseleave();
     assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave"]);
+
+    const dragEvents = [];
+    const dragRt = runtime.createRuntime();
+    runtime.beginFrame(dragRt);
+    runtime.widget(dragRt, "Button", { label: "Drag" }, null,
+      {
+        nodeName: "drag",
+        path: "Page/drag",
+        domValue: "drag-payload",
+        draggable: "true",
+        onDragStart: "drag_start",
+        onDragEnd: "drag_end",
+        onDragOver: "drag_over",
+        onDrop: "drop",
+        dragStartAction(value) { dragEvents.push(["start", value]); },
+        dragEndAction(value) { dragEvents.push(["end", value]); },
+        dragOverAction() { dragEvents.push(["over"]); },
+        dropAction(value) { dragEvents.push(["drop", value]); }
+      });
+    runtime.endFrame(dragRt);
+    const dragTarget = document.createElement("div");
+    runtime.renderWebDocument(dragRt, dragTarget);
+    const dragButton = runtime.findWebElement(dragTarget, "drag");
+    assert.equal(dragButton.attributes.draggable, "true");
+    assert.equal(dragButton.dataset.kryOnDragStart, "drag_start");
+    assert.equal(dragButton.dataset.kryOnDragEnd, "drag_end");
+    assert.equal(dragButton.dataset.kryOnDragOver, "drag_over");
+    assert.equal(dragButton.dataset.kryOnDrop, "drop");
+    const transfer = dragButton.dragstart();
+    assert.equal(transfer.getData("text/plain"), "drag-payload");
+    dragButton.dragover();
+    dragButton.drop(transfer);
+    dragButton.dragend();
+    assert.deepEqual(dragEvents, [
+      ["start", "drag-payload"],
+      ["over"],
+      ["drop", "drag-payload"],
+      ["end", "drag-payload"]
+    ]);
 
     const linkRt = runtime.createRuntime();
     runtime.beginFrame(linkRt);
