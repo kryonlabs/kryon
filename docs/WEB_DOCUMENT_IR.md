@@ -303,6 +303,11 @@ The initial tag mapping is intentionally conservative:
 Other widgets remain `div` nodes until they gain a specific web-native
 contract.
 
+Div-backed widgets still expose conservative native ARIA roles when the widget
+semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
+`TreeView` uses `tree`, `Menu` uses `menu`, `Toast` uses `status`, and
+`Plot`/`CanvasGrid` use `img`.
+
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,

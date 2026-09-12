@@ -902,6 +902,18 @@ function fakeDocument() {
       { nodeName: "table", path: "Page/table" });
     runtime.widget(nativeRt, "CanvasGrid", {}, null,
       { nodeName: "grid", path: "Page/grid" });
+    runtime.widget(nativeRt, "Toolbar", {}, null,
+      { nodeName: "toolbar", path: "Page/toolbar" });
+    runtime.widget(nativeRt, "TabBar", {}, null,
+      { nodeName: "tabs", path: "Page/tabs" });
+    runtime.widget(nativeRt, "TreeView", {}, null,
+      { nodeName: "tree", path: "Page/tree" });
+    runtime.widget(nativeRt, "Menu", {}, null,
+      { nodeName: "menu", path: "Page/menu" });
+    runtime.widget(nativeRt, "Toast", {}, null,
+      { nodeName: "toast", path: "Page/toast" });
+    runtime.widget(nativeRt, "Plot", {}, null,
+      { nodeName: "plot", path: "Page/plot" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -956,6 +968,10 @@ function fakeDocument() {
       ]);
     assert.deepEqual(runtime.webAccessibilitySnapshot(nativeRt).nodes.slice(4, 9)
       .map((node) => node.role), ["slider", "spinbutton", "combobox", "listbox", "table"]);
+    assert.deepEqual(["Toolbar", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
+      .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
+        .find((node) => node.kind === kind)?.role),
+      ["toolbar", "tablist", "tree", "menu", "status", "img", "img"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -970,6 +986,12 @@ function fakeDocument() {
     const items = runtime.findWebElement(nativeTarget, "items");
     const table = runtime.findWebElement(nativeTarget, "table");
     const grid = runtime.findWebElement(nativeTarget, "grid");
+    const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
+    const tabs = runtime.findWebElement(nativeTarget, "tabs");
+    const tree = runtime.findWebElement(nativeTarget, "tree");
+    const menu = runtime.findWebElement(nativeTarget, "menu");
+    const toast = runtime.findWebElement(nativeTarget, "toast");
+    const plot = runtime.findWebElement(nativeTarget, "plot");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
@@ -990,6 +1012,13 @@ function fakeDocument() {
     assert.equal(items.tagName, "SELECT");
     assert.equal(table.tagName, "TABLE");
     assert.equal(grid.tagName, "CANVAS");
+    assert.equal(grid.attributes.role, "img");
+    assert.equal(toolbar.attributes.role, "toolbar");
+    assert.equal(tabs.attributes.role, "tablist");
+    assert.equal(tree.attributes.role, "tree");
+    assert.equal(menu.attributes.role, "menu");
+    assert.equal(toast.attributes.role, "status");
+    assert.equal(plot.attributes.role, "img");
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");
     assert.equal(popover.attributes.popover, "auto");

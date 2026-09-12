@@ -1578,7 +1578,32 @@ function implicitRole(node) {
     return "group";
   if (node.tag === "dialog")
     return "dialog";
+  switch (node.kind) {
+  case "Toolbar":
+    return "toolbar";
+  case "TabBar":
+    return "tablist";
+  case "TreeView":
+    return "tree";
+  case "Menu":
+    return "menu";
+  case "Toast":
+    return "status";
+  case "Plot":
+  case "CanvasGrid":
+    return "img";
+  default:
+    break;
+  }
   return "";
+}
+
+function webDOMRole(node) {
+  const role = node?.role || "";
+  if (role)
+    return role;
+  const implicit = implicitRole(node);
+  return node?.tag === "div" || node?.tag === "canvas" ? implicit : "";
 }
 
 const webStyleLayers = {
@@ -3932,7 +3957,7 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "title", docNode.title);
   setAttr(el, "placeholder", docNode.placeholder);
   setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
-  setAttr(el, "role", docNode.role);
+  setAttr(el, "role", webDOMRole(docNode));
   setAttr(el, "aria-label", docNode.ariaLabel);
   setAttr(el, "aria-description", docNode.ariaDescription);
   setAttr(el, "aria-live", docNode.ariaLive);
