@@ -58,22 +58,24 @@ RenderTitleBarCenteredTitle(const char *title, int height,
                                               side_reserved > Scale(12),
                                               false, 0, 0, metrics);
     int max_w = (int)layout.title_bounds.width;
+    Style text = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16).value);
 
     if(title == NULL)
         title = "";
-    font = GetTitleFontSize(title, max_w);
+    font = text.font_size > 0.0f
+        ? Scale((int)text.font_size)
+        : GetTitleFontSize(title, max_w);
     title_w = TextWidth(title, font);
     while(TitleBarShouldShrinkTitleFont(title_w, max_w, font, Text12)) {
         font--;
         title_w = TextWidth(title, font);
     }
-    Style text = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
-        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16).value);
     RenderText(title, TitleBarTitleX(ui_view_width, title_w),
                GetUIControlTextY(title, 0, height, font),
-               font, text.foreground);
+               font, Fade(text.foreground, text.opacity));
 }
 
 int
