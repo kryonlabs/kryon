@@ -2905,6 +2905,89 @@ export function webDOMGetStyle(target, query, name) {
   return el ? getStyleProperty(el.style, prop) : undefined;
 }
 
+function webDOMRectFromElement(el) {
+  if (!el)
+    return null;
+  let rect = null;
+  if (typeof el.getBoundingClientRect === "function")
+    rect = el.getBoundingClientRect();
+  const docNode = el.__kryDocNode || {};
+  const bounds = docNode.bounds || {};
+  const x = Number.isFinite(Number(rect?.x)) ? Number(rect.x) :
+    Number.isFinite(Number(rect?.left)) ? Number(rect.left) :
+    Number.isFinite(Number(bounds.x)) ? Number(bounds.x) : 0;
+  const y = Number.isFinite(Number(rect?.y)) ? Number(rect.y) :
+    Number.isFinite(Number(rect?.top)) ? Number(rect.top) :
+    Number.isFinite(Number(bounds.y)) ? Number(bounds.y) : 0;
+  const width = Number.isFinite(Number(rect?.width)) ? Number(rect.width) :
+    Number.isFinite(Number(bounds.width)) ? Number(bounds.width) :
+    Number.isFinite(Number(el.clientWidth)) ? Number(el.clientWidth) : 0;
+  const height = Number.isFinite(Number(rect?.height)) ? Number(rect.height) :
+    Number.isFinite(Number(bounds.height)) ? Number(bounds.height) :
+    Number.isFinite(Number(el.clientHeight)) ? Number(el.clientHeight) : 0;
+  const left = Number.isFinite(Number(rect?.left)) ? Number(rect.left) : x;
+  const top = Number.isFinite(Number(rect?.top)) ? Number(rect.top) : y;
+  const right = Number.isFinite(Number(rect?.right)) ? Number(rect.right) : left + width;
+  const bottom = Number.isFinite(Number(rect?.bottom)) ? Number(rect.bottom) : top + height;
+  return { x, y, width, height, left, top, right, bottom };
+}
+
+function syncDOMScrollMutation(el) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return null;
+  docNode.scrollLeft = Number(el.scrollLeft) || 0;
+  docNode.scrollTop = Number(el.scrollTop) || 0;
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+    ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+    : null);
+  return docNode;
+}
+
+export function webDOMRect(target, query) {
+  return webDOMRectFromElement(findWebElement(target, query));
+}
+
+export function webDOMGetScroll(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return null;
+  return {
+    left: Number(el.scrollLeft) || 0,
+    top: Number(el.scrollTop) || 0,
+    width: Number(el.scrollWidth) || Number(el.clientWidth) || 0,
+    height: Number(el.scrollHeight) || Number(el.clientHeight) || 0
+  };
+}
+
+export function webDOMSetScroll(target, query, left, top = null) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  const nextLeft = Number.isFinite(Number(left)) ? Number(left) : 0;
+  const nextTop = top === null || top === undefined
+    ? Number(el.scrollTop) || 0
+    : Number.isFinite(Number(top)) ? Number(top) : 0;
+  if (typeof el.scrollTo === "function")
+    el.scrollTo(nextLeft, nextTop);
+  else {
+    el.scrollLeft = nextLeft;
+    el.scrollTop = nextTop;
+  }
+  syncDOMScrollMutation(el);
+  return true;
+}
+
+export function webDOMScrollIntoView(target, query, options = true) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.scrollIntoView === "function")
+    el.scrollIntoView(options);
+  return true;
+}
+
 export function webDOMGetText(target, query) {
   const el = findWebElement(target, query);
   if (!el)

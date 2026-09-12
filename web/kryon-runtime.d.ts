@@ -401,6 +401,10 @@ export function webDOMHasAttribute(target: Element | string | null, query: strin
 export function webDOMSetStyle(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
 export function webDOMRemoveStyle(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetStyle(target: Element | string | null, query: string, name: string): string | undefined;
+export function webDOMRect(target: Element | string | null, query: string): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
+export function webDOMGetScroll(target: Element | string | null, query: string): { left: number; top: number; width: number; height: number } | null;
+export function webDOMSetScroll(target: Element | string | null, query: string, left: number, top?: number | null): boolean;
+export function webDOMScrollIntoView(target: Element | string | null, query: string, options?: boolean | ScrollIntoViewOptions): boolean;
 export function webDOMGetText(target: Element | string | null, query: string): string | undefined;
 export function webDOMSetText(target: Element | string | null, query: string, text: unknown): boolean;
 export function webDOMGetValue(target: Element | string | null, query: string): unknown;

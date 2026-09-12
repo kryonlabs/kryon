@@ -345,6 +345,17 @@ function fakeDocument() {
       formNoValidate: false,
       noValidate: false,
       value: "",
+      clientWidth: 0,
+      clientHeight: 0,
+      scrollWidth: 0,
+      scrollHeight: 0,
+      getBoundingClientRect() {
+        const left = Number.parseFloat(this.style.left || 0) || 0;
+        const top = Number.parseFloat(this.style.top || 0) || 0;
+        const width = Number.parseFloat(this.style.width || this.clientWidth || 0) || 0;
+        const height = Number.parseFloat(this.style.height || this.clientHeight || 0) || 0;
+        return { x: left, y: top, left, top, width, height, right: left + width, bottom: top + height };
+      },
       setAttribute(name, value) {
         this.attributes[name] = String(value);
         if (name === "id")
@@ -456,6 +467,11 @@ function fakeDocument() {
         if (this.onscroll)
           this.onscroll();
       },
+      scrollTo(left, top) {
+        this.scrollLeft = left;
+        this.scrollTop = top;
+      },
+      scrollIntoView(options) { this.scrolledIntoView = options; },
       submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       reset() { if (this.onreset) this.onreset({ preventDefault() {} }); },
       showModal() { this.toggle(true); },
@@ -934,6 +950,16 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMObject(target, tapSourceRef).element, firstButton);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).ref, tapSourceRef);
+    assert.deepEqual(runtime.webDOMRect(target, "tap-button"), {
+      x: 10,
+      y: 50,
+      width: 120,
+      height: 28,
+      left: 10,
+      top: 50,
+      right: 130,
+      bottom: 78
+    });
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
@@ -1012,6 +1038,13 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[multiple]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[inputmode=search]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[data-role]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMSetScroll(target, "[data-role]", 7, 19), true);
+    assert.deepEqual(runtime.webDOMGetScroll(target, "Scene/root/search"), {
+      left: 7,
+      top: 19,
+      width: 0,
+      height: 0
+    });
     assert.equal(runtime.webDOMQuery(target, "[for=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
@@ -1027,6 +1060,10 @@ function fakeDocument() {
       "Scene/root/search_label"
     ]);
     const firstField = screen.children[2];
+    assert.equal(firstField.__kryDocNode.scrollLeft, 7);
+    assert.equal(firstField.__kryDocNode.scrollTop, 19);
+    assert.equal(runtime.webDOMScrollIntoView(target, "[data-role]", { block: "center" }), true);
+    assert.deepEqual(firstField.scrolledIntoView, { block: "center" });
     assert.equal(firstButton.attributes["aria-current"], "page");
     assert.equal(firstButton.attributes["aria-pressed"], "false");
     assert.equal(firstField.tagName, "INPUT");
