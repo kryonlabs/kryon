@@ -742,6 +742,39 @@ ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
 }
 
 static void
+ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
+                                         const KirFunction *fn,
+                                         const UiBlock *parent,
+                                         const char *raw,
+                                         KirStmtKind kind,
+                                         KirSourceSpan span)
+{
+    char expr[KIR_TEXT_MAX];
+    char widget[KIR_NAME_MAX];
+    char args[KIR_TEXT_MAX];
+    char *eq;
+
+    if(statement == NULL)
+        return;
+    snprintf(expr, sizeof(expr), "%s", raw);
+    kir_trim_in_place(expr);
+    if(kind == KIR_STMT_RETURN && starts_word(expr, "return")) {
+        memmove(expr, expr + 6, strlen(expr + 6) + 1);
+        kir_trim_in_place(expr);
+    } else if(kind == KIR_STMT_DECL || kind == KIR_STMT_ASSIGN) {
+        eq = strchr(expr, '=');
+        if(eq == NULL || eq[1] == '=')
+            return;
+        memmove(expr, eq + 1, strlen(eq + 1) + 1);
+        kir_trim_in_place(expr);
+    } else {
+        return;
+    }
+    if(parse_widget_statement(expr, widget, sizeof(widget), args, sizeof(args)))
+        ui_stmt_apply_source_metadata(statement, fn, parent, widget, span);
+}
+
+static void
 ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
                 const char *format, ...)
 {
@@ -3129,9 +3162,17 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     ui_stmt_apply_source_metadata(st, fn,
                         ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
                         widget, span);
-                } else
-                    KirFunctionAddStmt(fn, kind, t, widget,
-                                               KirSpan(rel, line_no, 1));
+                } else {
+                    KirStmt *st;
+                    KirSourceSpan span = KirSpan(rel, line_no, 1);
+
+                    st = KirFunctionAddStmt(fn, kind, t, widget, span);
+                    if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
+                       kind == KIR_STMT_ASSIGN)
+                        ui_stmt_apply_expression_widget_metadata(st, fn,
+                            ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                            t, kind, span);
+                }
                 depth += brace_delta;
                 if(depth < 0)
                     depth = 0;

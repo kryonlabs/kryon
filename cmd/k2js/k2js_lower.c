@@ -832,7 +832,11 @@ emit_statement_record(FILE *f, int indent, const char *raw)
     fprintf(f, ");\n");
 }
 
+static void emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st);
 static void emit_initializer_value(FILE *f, const KirModule *m, const char *source);
+static void emit_initializer_value_with_meta(FILE *f, const KirModule *m,
+                                             const char *source,
+                                             const KirStmt *meta);
 
 static int
 is_positional_record(const char *type)
@@ -843,7 +847,8 @@ is_positional_record(const char *type)
 }
 
 static void
-emit_assign(FILE *f, const KirModule *m, const char *raw, int indent)
+emit_assign(FILE *f, const KirModule *m, const KirStmt *st,
+            const char *raw, int indent)
 {
     static const char *ops[] = {"+=", "-=", "*=", "/=", "%=", "="};
     const char *op = NULL;
@@ -878,7 +883,7 @@ emit_assign(FILE *f, const KirModule *m, const char *raw, int indent)
         fprintf(f, "%s %s ", out_lhs, op);
         if(strcmp(op, "=") == 0)
             fputs("kryon.copyValue(", f);
-        emit_initializer_value(f, m, rhs);
+        emit_initializer_value_with_meta(f, m, rhs, st);
         if(strcmp(op, "=") == 0)
             fputc(')', f);
         fputs(";\n", f);
@@ -941,7 +946,8 @@ static void emit_widget_arguments(FILE *f, const KirModule *m,
 static void emit_zero_value(FILE *f, const KirModule *m, const char *type);
 
 static void
-emit_initializer_value(FILE *f, const KirModule *m, const char *source)
+emit_initializer_value_with_meta(FILE *f, const KirModule *m,
+                                 const char *source, const KirStmt *meta)
 {
     const char *value = kir_skip_ws(source);
     char widget[K2JS_NAME_MAX];
@@ -957,7 +963,12 @@ emit_initializer_value(FILE *f, const KirModule *m, const char *source)
         js_string(f, widget);
         fputs(", ", f);
         emit_widget_arguments(f, m, widget, arguments);
-        fputs(", $state)", f);
+        fputs(", $state", f);
+        if(meta != NULL) {
+            fputs(", ", f);
+            emit_web_metadata(f, m, meta);
+        }
+        fputc(')', f);
         return;
     }
     if(*value == '(') {
@@ -1097,6 +1108,12 @@ emit_initializer_value(FILE *f, const KirModule *m, const char *source)
     }
     fputc(named ? '}' : ']', f);
     free(parts);
+}
+
+static void
+emit_initializer_value(FILE *f, const KirModule *m, const char *source)
+{
+    emit_initializer_value_with_meta(f, m, source, NULL);
 }
 
 static void
@@ -1346,7 +1363,8 @@ emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
 }
 
 static void
-emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
+emit_decl(FILE *f, const KirModule *m, const KirStmt *st,
+          const char *raw, int indent)
 {
     const char *colon = strchr(raw, ':');
     const char *eq = colon != NULL ? strchr(colon, '=') : NULL;
@@ -1402,7 +1420,7 @@ emit_decl(FILE *f, const KirModule *m, const char *raw, int indent)
                 js_string(f, type);
                 fputs(", ", f);
             }
-            emit_initializer_value(f, m, rhs);
+            emit_initializer_value_with_meta(f, m, rhs, st);
             if(positional)
                 fputc(')', f);
             fputc(')', f);
@@ -1530,10 +1548,10 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             fprintf(f, ");\n");
             break;
         case KIR_STMT_DECL:
-            emit_decl(f, m, raw, indent);
+            emit_decl(f, m, st, raw, indent);
             break;
         case KIR_STMT_ASSIGN:
-            emit_assign(f, m, raw, indent);
+            emit_assign(f, m, st, raw, indent);
             break;
         case KIR_STMT_RETURN: {
             char *expr = raw;
@@ -1546,7 +1564,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 fprintf(f, "return kryon.snapshot($rt);\n");
             } else {
                 fputs("return ", f);
-                emit_initializer_value(f, m, expr);
+                emit_initializer_value_with_meta(f, m, expr, st);
                 fputs(";\n", f);
             }
             break;

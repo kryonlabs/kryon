@@ -429,7 +429,11 @@ assert.deepEqual(styles.map(style => style.font_size), [19, 24, 32]);
 assert.deepEqual(styles.map(({ content_offset: { x, y } }) => ({ x, y })),
   [{ x: 0, y: 1 }, { x: 0, y: 1 }, { x: 0, y: -1 }]);
 
-for (const action of [generated.Valid_DirectAction, generated.Valid_StoredAction, generated.Valid_AssignedAction]) {
+for (const [actionName, action] of [
+  ["DirectAction", generated.Valid_DirectAction],
+  ["StoredAction", generated.Valid_StoredAction],
+  ["AssignedAction", generated.Valid_AssignedAction]
+]) {
   const actionRuntime = runtime.createRuntime({ app: generated.app });
   for (const tapped of [false, true, false]) {
     if (tapped) actionRuntime.QueueTap(30, 110);
@@ -438,6 +442,7 @@ for (const action of [generated.Valid_DirectAction, generated.Valid_StoredAction
     const result = runtime.endFrame(actionRuntime);
     assert.equal(result.frame.length, 1);
     assert.equal(result.frame[0].name, "Button");
+    assert.match(result.frame[0].meta.path, new RegExp(`^${actionName}/Button@\\d+$`));
     assert.deepEqual(rectangle(result.frame[0].args.bounds), { x: 20, y: 100, width: 80, height: 32 });
   }
 }
