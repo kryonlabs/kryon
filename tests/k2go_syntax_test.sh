@@ -222,7 +222,7 @@ App :: () #ui {
     plot_doubles: [2] double = {1.0, 2.0}
     edit_color: [4] float = {0.2f, 0.4f, 0.6f, 0.8f}
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
-    tree_items: [2] UITreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
+    tree_items: [2] TreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
     Dropdown((DropdownProps){.bounds = {Scale(150), Scale(70), Scale(90), Scale(24)}, .id = 22, .options = choices, .option_count = 3, .selected_index = &pick})

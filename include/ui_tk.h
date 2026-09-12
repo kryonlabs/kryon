@@ -307,12 +307,12 @@ typedef struct {
     int id;
     int expanded;
     int selectable;
-} UITreeItem;
+} TreeItem;
 
 typedef struct {
     Rectangle bounds;
     int id;
-    const UITreeItem *items;
+    const TreeItem *items;
     int item_count;
     int *selected_id;
     int *scroll_offset;

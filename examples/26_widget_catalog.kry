@@ -90,7 +90,7 @@ state {
     cells_b: [2] const char * = {"Beta","2"}
     rows: [2] TableRow = {{.cells = cells_a, .cell_count = 2},{.cells = cells_b, .cell_count = 2}}
     widths: [2] int = {150,90}
-    tree_items: [2] UITreeItem = {{"Root",0,1,1,1},{"Child",1,2,0,1}}
+    tree_items: [2] TreeItem = {{"Root",0,1,1,1},{"Child",1,2,0,1}}
     tabs: [2] const Tab = {{.label = "One"},{.label = "Two"}}
 }
 

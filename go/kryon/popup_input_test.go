@@ -535,7 +535,7 @@ func TestPopupWheelOwnershipAcrossScrollableWidgets(t *testing.T) {
 			r.ListBox(ListBoxProps{Bounds: bounds, Items: make([]string, 20), ScrollOffset: offset})
 		},
 		"tree": func(r *runtime, offset *int32) {
-			r.TreeView(TreeViewProps{Bounds: bounds, Items: make([]UITreeItem, 20), ScrollOffset: offset})
+			r.TreeView(TreeViewProps{Bounds: bounds, Items: make([]TreeItem, 20), ScrollOffset: offset})
 		},
 		"table": func(r *runtime, offset *int32) {
 			r.TableView(TableViewProps{Bounds: bounds, Columns: []string{"Value"}, Rows: make([]TableRow, 20), ScrollOffset: offset})

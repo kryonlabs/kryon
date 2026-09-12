@@ -13,7 +13,7 @@ state {
 tree_frame :: () #ui {
     Screen tree_root: {
         bounds = {0,0,260,150}
-        items: [3] UITreeItem = {
+        items: [3] TreeItem = {
             {"Root",0,0,1,0},
             {"First",1,1,0,1},
             {"Second",1,2,0,1}

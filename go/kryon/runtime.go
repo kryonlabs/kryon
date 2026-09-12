@@ -1097,7 +1097,7 @@ type ListBoxProps struct {
 	ContentHeight int32
 }
 
-type UITreeItem struct {
+type TreeItem struct {
 	Label      string
 	Depth      int32
 	ID         int32
@@ -1108,7 +1108,7 @@ type UITreeItem struct {
 type TreeViewProps struct {
 	Bounds       Rectangle
 	ID           int32
-	Items        []UITreeItem
+	Items        []TreeItem
 	ItemCount    int32
 	SelectedID   *int32
 	ScrollOffset *int32

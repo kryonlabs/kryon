@@ -1345,7 +1345,7 @@ func TestDisabledListAndTreeViewsSuppressInteractionAndDimOps(t *testing.T) {
 	treeSelected, treeScroll := int32(1), int32(0)
 	tree := TreeViewProps{
 		Bounds: Rectangle{X: 10, Y: 10, Width: 160, Height: 48}, ID: 152,
-		Items:      []UITreeItem{{Label: "a", ID: 1, Selectable: 1}, {Label: "b", ID: 2, Selectable: 1}, {Label: "c", ID: 3, Selectable: 1}},
+		Items:      []TreeItem{{Label: "a", ID: 1, Selectable: 1}, {Label: "b", ID: 2, Selectable: 1}, {Label: "c", ID: 3, Selectable: 1}},
 		SelectedID: &treeSelected, ScrollOffset: &treeScroll, RowHeight: 24, Disabled: true,
 	}
 	rt.QueueTap(30, 45)

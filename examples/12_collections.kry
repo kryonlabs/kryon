@@ -21,7 +21,7 @@ CollectionsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        tree: [4] UITreeItem = {{"Project",0,1,1,1},{"src",1,2,1,1},{"main.kry",2,3,0,1},{"README.md",1,4,0,1}}
+        tree: [4] TreeItem = {{"Project",0,1,1,1},{"src",1,2,1,1},{"main.kry",2,3,0,1},{"README.md",1,4,0,1}}
         cols: [2] const char * = {"Name","Kind"}
         row0: [2] const char * = {"main.kry","Kry source"}
         row1: [2] const char * = {"README.md","Markdown"}

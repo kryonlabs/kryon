@@ -2885,7 +2885,7 @@ RenderTreeView(TreeViewProps tree)
     }
     for(int i = 0; i <= visible && first + i < tree.item_count; i++) {
         int index = first + i;
-        const UITreeItem *item = &tree.items[index];
+        const TreeItem *item = &tree.items[index];
         Rectangle row = {tree.bounds.x, tree.bounds.y + (float)(i * row_h - y_offset),
                          tree.bounds.width, (float)row_h};
         int hot = !tree.disabled && ui_hot(row);

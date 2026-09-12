@@ -862,7 +862,7 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 
 	t.Run("tree selection", func(t *testing.T) {
 		selected := int32(-1)
-		items := []UITreeItem{{Label: "Root", ID: 1, Expanded: 1}, {Label: "Leaf", Depth: 1, ID: 2, Selectable: 1}}
+		items := []TreeItem{{Label: "Root", ID: 1, Expanded: 1}, {Label: "Leaf", Depth: 1, ID: 2, Selectable: 1}}
 		r.QueueTap(40, 45)
 		r.BeginFrame()
 		changed := r.TreeView(TreeViewProps{Bounds: NewRectangle(10, 10, 180, 80), ID: 7, Items: items, SelectedID: &selected, RowHeight: 28})
