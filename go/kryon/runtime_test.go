@@ -241,8 +241,8 @@ Modal[role=Scrim] { background: #111111; opacity: 0.5; material: flat; }
 Modal[role=Panel] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Modal[role=Title] { foreground: ink; font-size: 16; opacity: 0.91; }
 Modal[role=Message] { foreground: ink; font-size: 16; opacity: 0.73; }
-Modal[role=Action] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; border: action; radius: radius; border-width: border; material: flat; }
+Modal[role=Action] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 18; material: flat; }
+Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; border: action; radius: radius; border-width: border; font-size: 18; material: flat; }
 TextField { background: panel; foreground: ink; border: rule; focus: action; radius: radius; border-width: border; font-size: 19; material: flat; }
 `, "Test Modal", "") || !SetActiveStylePack("test.modal") {
 		t.Fatal("test modal style did not activate")
@@ -295,7 +295,7 @@ TextField { background: panel; foreground: ink; border: rule; focus: action; rad
 		case op.Kind == FrameOpButton && op.Text == "OK":
 			sawButton = true
 			style := unpackStyle(op.Button.Appearance.Value)
-			if style.Background != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) || style.Foreground != (Color{R: 0x04, G: 0x20, B: 0x17, A: 0xff}) || style.Border != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) {
+			if op.Button.Font != 18 || style.FontSize != 18 || style.Background != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) || style.Foreground != (Color{R: 0x04, G: 0x20, B: 0x17, A: 0xff}) || style.Border != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) {
 				t.Fatalf("modal action style op = %+v", op)
 			}
 		case op.Kind == FrameOpTextField:

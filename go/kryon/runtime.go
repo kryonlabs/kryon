@@ -5504,7 +5504,7 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 			tone = ButtonToneAccent
 		}
 		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{Bounds: bounds, Label: label,
-			Tone: tone, Emphasis: emphasis, Disabled: action.Disabled, Font: Text14},
+			Tone: tone, Emphasis: emphasis, Disabled: action.Disabled},
 			panel, false, StyleSheet_StyleKindModal(), 17)
 		button.AmbientColor = panelStyle.Background
 		r.record(button)
