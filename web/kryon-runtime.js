@@ -1050,6 +1050,8 @@ function widgetTag(item) {
   case "Paragraph":
   case "ParagraphText":
     return "p";
+  case "Text":
+    return "span";
   case "Link":
     return "a";
   case "Button":
@@ -1066,6 +1068,8 @@ function widgetTag(item) {
     return "input";
   case "Progress":
     return "progress";
+  case "Separator":
+    return "hr";
   default:
     return "div";
   }

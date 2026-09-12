@@ -137,7 +137,7 @@ assert.equal(snap.frame[7].name, "Input");
 const webDoc = runtime.webDocumentFrame(rt);
 assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
   ["Screen", "main"],
-  ["Text", "div"],
+  ["Text", "span"],
   ["Button", "button"],
   ["TextField", "input"],
   ["Text", "label"],
@@ -724,6 +724,8 @@ function fakeDocument() {
       { nodeName: "accept", path: "Page/accept" });
     runtime.widget(ariaRt, "Progress", { min: 0, max: 100, value: 42, label: "Loading" }, null,
       { nodeName: "load", path: "Page/load" });
+    runtime.widget(ariaRt, "Separator", {}, null,
+      { nodeName: "break", path: "Page/break" });
     runtime.endFrame(ariaRt);
     const snapshot = runtime.webAccessibilitySnapshot(ariaRt);
     assert.equal(snapshot.nodes[0].role, "heading");
@@ -755,7 +757,9 @@ function fakeDocument() {
     assert.equal(progress.attributes.value, "42");
     assert.equal(progress.textContent, "Loading");
     assert.equal(runtime.webFormValue(target, "accept"), true);
-    assert.equal(root.children.length, 4);
+    const separator = runtime.findWebElement(target, "Page/break");
+    assert.equal(separator.tagName, "HR");
+    assert.equal(root.children.length, 5);
 
     let inputValue = null;
     let changeValue = null;
@@ -1218,7 +1222,7 @@ function fakeDocument() {
     assert.equal(boundFields.length, 1);
     const screen = root.children.find((child) => child.tagName === "MAIN");
     const firstText = screen.children[0];
-    assert.equal(firstText.tagName, "DIV");
+    assert.equal(firstText.tagName, "SPAN");
     assert.match(firstText.dataset.kryRef, /^Scene\/root\/Text@\d+$/);
     assert.equal(firstText.dataset.kryParentPath, "Scene/root");
     assert.equal(firstText.dataset.krySource, "src/valid.kry");

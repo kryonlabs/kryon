@@ -46,8 +46,8 @@ the browser receives normal elements, attributes, CSS, and events.
   have a DOM surface emits complete identity without runtime fallback synthesis.
 - Add source end spans once parser/KIR spans expose them, then support
   cursor-range lookup for editors and devtools.
-- Expand native tag contracts for widgets that still render as `div`, choosing
-  browser semantics only when the widget behavior maps cleanly.
+- Expand native tag contracts for remaining widgets that still render as `div`,
+  choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
 - Extend KSS package discovery beyond built-in `styles/kryon/<pack>.kss`.

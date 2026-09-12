@@ -262,6 +262,7 @@ The initial tag mapping is intentionally conservative:
 |---|---|
 | `Screen`, `Page` | `main` |
 | `Section` | `section` |
+| `Text` | `span` |
 | `Heading` | `h1`-`h6` |
 | `Paragraph`, `ParagraphText` | `p` |
 | `Link` | `a` |
@@ -273,6 +274,7 @@ The initial tag mapping is intentionally conservative:
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |
 | `Progress` | `progress` |
+| `Separator` | `hr` |
 
 Other widgets remain `div` nodes until they gain a specific web-native
 contract.
