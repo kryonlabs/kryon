@@ -2623,6 +2623,49 @@ export function webNodeQuery(rt, selector) {
   return webNodeQueryAll(rt, selector)[0] || null;
 }
 
+function webFrameNodeMap(frame) {
+  const nodes = new Map();
+  for (const node of frame?.nodes || [])
+    if (node.path)
+      nodes.set(node.path, node);
+  return nodes;
+}
+
+export function webNodeParent(rt, query) {
+  const frame = webDocumentFrame(rt);
+  const node = webNodeQuery(rt, query);
+  const parentPath = node?.parentPath || "";
+  if (!node || !parentPath || parentPath === node.path)
+    return null;
+  return webFrameNodeMap(frame).get(parentPath) || null;
+}
+
+export function webNodeChildren(rt, query = "") {
+  const frame = webDocumentFrame(rt);
+  const text = String(query || "").trim();
+  const parent = text ? webNodeQuery(rt, text) : null;
+  if (text && !parent)
+    return [];
+  const nodes = webFrameNodeMap(frame);
+  return frame.nodes.filter((node) => {
+    const parentPath = node.parentPath || "";
+    if (parent)
+      return parentPath === parent.path && node.path !== parent.path;
+    return !parentPath || parentPath === node.path || !nodes.has(parentPath);
+  });
+}
+
+export function webNodeClosest(rt, query, selector) {
+  let node = webNodeQuery(rt, query);
+  const parsed = parseSelector(String(selector || "").trim());
+  while (node) {
+    if (selectorMatchesWebNode(parsed, node))
+      return node;
+    node = webNodeParent(rt, node.path);
+  }
+  return null;
+}
+
 export function findWebElement(target, query) {
   const root = mountedRoot(target);
   if (!root)

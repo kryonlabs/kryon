@@ -382,6 +382,9 @@ export function renderWebDocument(rt: Runtime, target: Element | string | null):
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeQuery(rt: Runtime, selector: string): WebDocumentNode | null;
 export function webNodeQueryAll(rt: Runtime, selector: string): WebDocumentNode[];
+export function webNodeParent(rt: Runtime, query: string): WebDocumentNode | null;
+export function webNodeChildren(rt: Runtime, query?: string): WebDocumentNode[];
+export function webNodeClosest(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;

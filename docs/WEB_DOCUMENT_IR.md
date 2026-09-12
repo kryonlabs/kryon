@@ -316,6 +316,10 @@ path, node name, key, or DOM id matches `query`.
 unmounted Web Document nodes by the same KSS-style selector facts used for
 style resolution.
 
+`webNodeParent(rt, query)`, `webNodeChildren(rt, query)`, and
+`webNodeClosest(rt, query, selector)` expose the same `.kry` tree relationships
+before a frame has been mounted into browser DOM.
+
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, DOM id, DOM name, or selector fallback matches `query`.
 

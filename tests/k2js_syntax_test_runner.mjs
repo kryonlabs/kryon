@@ -270,6 +270,15 @@ assert.equal(runtime.webNodeQuery(rt, "[part=\"primary-action\"]").path, "Scene/
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
+assert.equal(runtime.webNodeParent(rt, "Scene/root/tap").path, "Scene/root");
+assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.path), [
+  webDoc.nodes[1].path,
+  "Scene/root/tap",
+  "Scene/root/search",
+  "Scene/root/search_label"
+]);
+assert.deepEqual(runtime.webNodeChildren(rt).map((node) => node.path), ["Scene/root"]);
+assert.equal(runtime.webNodeClosest(rt, "Scene/root/tap", "Screen").path, "Scene/root");
 assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");
