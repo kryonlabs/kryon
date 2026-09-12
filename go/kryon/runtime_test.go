@@ -691,7 +691,7 @@ tokens {
 }
 Progress[role=Track] { background: track; foreground: label; border: line; radius: radius; border-width: border; material: flat; opacity: 1; }
 Progress[role=Fill] { background: fill; foreground: ink; border: fill; radius: radius; border-width: border; material: flat; opacity: 1; }
-Progress[role=Label] { foreground: label; material: flat; opacity: 1; }
+Progress[role=Label] { foreground: label; font-size: 18; material: flat; opacity: 0.68; }
 Separator[role=Line] { background: line; foreground: line; gap: gap; opacity: 1; }
 Separator[role=Label] { background: line; foreground: label; gap: gap; opacity: 1; }
 Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity: 1; }
@@ -728,7 +728,8 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 			}
 		case op.Kind == FrameOpText && op.Text == "50%":
 			sawProgressLabel = true
-			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.68 {
 				t.Fatalf("progress label on fill style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Section":
