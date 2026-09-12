@@ -325,6 +325,11 @@ and `Page` nodes. After reconciliation, the mount root dispatches a bubbling
 `kry-render` event whose `detail` contains the Web Document frame, mount root,
 and current Kry DOM objects.
 
+`webDOMRoot(target)` returns the native Kry mount root for a mounted target or
+the root itself. `webDOMFrame(target)` returns the last rendered Web Document
+frame. The mount root also exposes non-enumerable `kryRuntime`, `kryFrame`, and
+`kryObjects` getters for browser inspectors and host integrations.
+
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.
 

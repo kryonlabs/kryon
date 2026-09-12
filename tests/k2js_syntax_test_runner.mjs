@@ -983,6 +983,13 @@ function fakeDocument() {
     assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, "https://example.test/page");
     assert.equal(document.querySelector('meta[name="theme-color"]').attributes.content, "rgb(1, 2, 3)");
     const root = target.children[0];
+    assert.equal(runtime.webDOMRoot(target), root);
+    assert.equal(runtime.webDOMRoot(root), root);
+    assert.equal(runtime.webDOMFrame(target).nodes.length, runtime.webDocumentFrame(domRt).nodes.length);
+    assert.equal(root.kryRuntime, domRt);
+    assert.equal(root.kryFrame.nodes.length, runtime.webDocumentFrame(domRt).nodes.length);
+    assert.ok(root.kryObjects.some((object) => object.ref === "primary-action"));
+    assert.equal(Object.keys(root).includes("kryObjects"), false);
     const screen = root.children.find((child) => child.tagName === "MAIN");
     const firstText = screen.children[0];
     assert.equal(firstText.tagName, "DIV");

@@ -2610,8 +2610,10 @@ function applyWebNode(el, docNode, rt) {
 
 function ensureMountRoot(node) {
   let root = node.__kryRuntimeRoot || null;
-  if (root && root.parentNode === node)
+  if (root && root.parentNode === node) {
+    bindWebRootProperties(root);
     return root;
+  }
   root = document.createElement("div");
   root.className = "kryon-runtime";
   root.dataset.kryRuntime = "web-document";
@@ -2619,9 +2621,39 @@ function ensureMountRoot(node) {
   root.style.minHeight = "100%";
   root.style.fontFamily = "system-ui, sans-serif";
   root.__kryChildren = new Map();
+  bindWebRootProperties(root);
   node.__kryRuntimeRoot = root;
   node.appendChild(root);
   return root;
+}
+
+function bindWebRootProperties(root) {
+  if (!root || root.__kryRootPropertiesBound)
+    return;
+  Object.defineProperties(root, {
+    kryRuntime: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryRuntime || null;
+      }
+    },
+    kryFrame: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryFrame || null;
+      }
+    },
+    kryObjects: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webDOMObjectsFromRoot(this);
+      }
+    }
+  });
+  root.__kryRootPropertiesBound = true;
 }
 
 function webDOMObjectsFromRoot(root) {
@@ -2647,6 +2679,8 @@ export function renderWebDocument(rt, target) {
   const frame = webDocumentFrame(rt);
   applyDocumentMetadata(frame.metadata);
   const root = ensureMountRoot(node);
+  root.__kryRuntime = rt || null;
+  root.__kryFrame = frame;
   const children = root.__kryChildren || new Map();
   const elementsByPath = new Map();
   const live = new Set();
@@ -2739,6 +2773,14 @@ function mountedRoot(target) {
     ? document.querySelector(target)
     : target;
   return node?.__kryRuntimeRoot || (node?.__kryChildren ? node : null) || null;
+}
+
+export function webDOMRoot(target) {
+  return mountedRoot(target);
+}
+
+export function webDOMFrame(target) {
+  return mountedRoot(target)?.__kryFrame || null;
 }
 
 export function findWebNode(rt, query) {

@@ -347,6 +347,9 @@ declare global {
     readonly kryNode?: WebDocumentNode | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
+    readonly kryRuntime?: Runtime | null;
+    readonly kryFrame?: WebDocumentFrame | null;
+    readonly kryObjects?: WebDOMObject[];
   }
 }
 
@@ -454,6 +457,8 @@ export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
 export function setWebStyleSheets(rt: Runtime, sheets: string | WebStyleSheet | Array<string | WebStyleSheet>): Runtime;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
+export function webDOMRoot(target: Element | string | null): Element | null;
+export function webDOMFrame(target: Element | string | null): WebDocumentFrame | null;
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeQuery(rt: Runtime, selector: string): WebDocumentNode | null;
 export function webNodeQueryAll(rt: Runtime, selector: string): WebDocumentNode[];
