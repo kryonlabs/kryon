@@ -449,8 +449,15 @@ typedef struct UiBlock {
     char dom_tag[KIR_NAME_MAX];
     char dom_id[KIR_NAME_MAX];
     char dom_class[KIR_TEXT_MAX];
+    char dom_title[KIR_TEXT_MAX];
+    char dom_placeholder[KIR_TEXT_MAX];
+    char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
+    char dom_aria_description[KIR_TEXT_MAX];
+    char dom_aria_describedby[KIR_TEXT_MAX];
+    char dom_aria_controls[KIR_TEXT_MAX];
+    char dom_aria_live[KIR_NAME_MAX];
     char dom_on_click[KIR_NAME_MAX];
     char dom_on_input[KIR_NAME_MAX];
     char dom_on_change[KIR_NAME_MAX];
@@ -662,6 +669,23 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_class, sizeof(block->dom_class), "%s", value);
         return 1;
     }
+    if(strcmp(field, "title") == 0 || strcmp(field, "dom_title") == 0 ||
+       strcmp(field, "html_title") == 0) {
+        snprintf(block->dom_title, sizeof(block->dom_title), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "placeholder") == 0 ||
+       strcmp(field, "dom_placeholder") == 0) {
+        snprintf(block->dom_placeholder, sizeof(block->dom_placeholder), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "tab_index") == 0 || strcmp(field, "tabindex") == 0 ||
+       strcmp(field, "dom_tab_index") == 0) {
+        snprintf(block->dom_tab_index, sizeof(block->dom_tab_index), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "role") == 0) {
         snprintf(block->dom_role, sizeof(block->dom_role), "%s", value);
         return 1;
@@ -669,6 +693,28 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     if(strcmp(field, "aria_label") == 0 ||
        strcmp(field, "accessible_label") == 0) {
         snprintf(block->dom_aria_label, sizeof(block->dom_aria_label), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "aria_description") == 0 ||
+       strcmp(field, "accessible_description") == 0) {
+        snprintf(block->dom_aria_description,
+                 sizeof(block->dom_aria_description), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_describedby") == 0 ||
+       strcmp(field, "aria_described_by") == 0) {
+        snprintf(block->dom_aria_describedby,
+                 sizeof(block->dom_aria_describedby), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_controls") == 0) {
+        snprintf(block->dom_aria_controls, sizeof(block->dom_aria_controls),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_live") == 0 || strcmp(field, "live") == 0) {
+        snprintf(block->dom_aria_live, sizeof(block->dom_aria_live), "%s",
                  value);
         return 1;
     }
@@ -707,10 +753,26 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_id);
     snprintf(statement->dom_class, sizeof(statement->dom_class), "%s",
              block->dom_class);
+    snprintf(statement->dom_title, sizeof(statement->dom_title), "%s",
+             block->dom_title);
+    snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),
+             "%s", block->dom_placeholder);
+    snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",
+             block->dom_tab_index);
     snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",
              block->dom_role);
     snprintf(statement->dom_aria_label, sizeof(statement->dom_aria_label), "%s",
              block->dom_aria_label);
+    snprintf(statement->dom_aria_description,
+             sizeof(statement->dom_aria_description), "%s",
+             block->dom_aria_description);
+    snprintf(statement->dom_aria_describedby,
+             sizeof(statement->dom_aria_describedby), "%s",
+             block->dom_aria_describedby);
+    snprintf(statement->dom_aria_controls, sizeof(statement->dom_aria_controls),
+             "%s", block->dom_aria_controls);
+    snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
+             block->dom_aria_live);
     snprintf(statement->dom_on_click, sizeof(statement->dom_on_click), "%s",
              block->dom_on_click);
     snprintf(statement->dom_on_input, sizeof(statement->dom_on_input), "%s",

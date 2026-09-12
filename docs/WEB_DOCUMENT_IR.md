@@ -86,8 +86,15 @@ Supported metadata fields in this first slice:
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_id`, `html_id` | `domId` |
 | `class`, `classes`, `class_name` | `classes` |
+| `title`, `dom_title`, `html_title` | `title` |
+| `placeholder`, `dom_placeholder` | `placeholder` |
+| `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
+| `aria_description`, `accessible_description` | `ariaDescription` |
+| `aria_describedby`, `aria_described_by` | `ariaDescribedBy` |
+| `aria_controls` | `ariaControls` |
+| `aria_live`, `live` | `ariaLive` |
 | `on_click` | `onClick`, `action` |
 | `on_input` | `onInput`, `inputAction(value)` |
 | `on_change` | `onChange`, `changeAction(value)` |

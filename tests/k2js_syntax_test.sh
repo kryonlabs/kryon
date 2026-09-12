@@ -106,8 +106,12 @@ Scene :: (viewport: Rectangle) #ui {
             dom = "button"
             dom_id = "tap-button"
             class = "primary action"
+            title = "Tap details"
+            tab_index = 3
             role = "button"
             aria_label = "Tap the action"
+            aria_description = "Runs the host action"
+            aria_controls = "search-field"
             on_click = call_host
         }
         TextField search: {
@@ -116,7 +120,9 @@ Scene :: (viewport: Rectangle) #ui {
             dom = "input"
             dom_id = "search-field"
             class = "field"
+            placeholder = "Search terms"
             aria_label = "Search"
+            aria_describedby = "tap-button"
             on_input = note_input
             on_change = note_change
         }
@@ -183,9 +189,15 @@ grep -q '"path": "Scene/root/tap"' "$out"
 grep -q '"parentPath": "Scene/root"' "$out"
 grep -q '"tag": "button"' "$out"
 grep -q '"class": "primary action"' "$out"
+grep -q '"title": "Tap details"' "$out"
+grep -q '"tabIndex": 3' "$out"
 grep -q '"onClick": "call_host"' "$out"
+grep -q '"ariaDescription": "Runs the host action"' "$out"
+grep -q '"ariaControls": "search-field"' "$out"
 grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
+grep -q '"placeholder": "Search terms"' "$out"
+grep -q '"ariaDescribedBy": "tap-button"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1

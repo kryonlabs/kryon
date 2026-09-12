@@ -129,8 +129,15 @@ typedef struct KirStmt {
     char dom_tag[KIR_NAME_MAX];         /* requested browser element tag */
     char dom_id[KIR_NAME_MAX];          /* requested browser id */
     char dom_class[KIR_TEXT_MAX];       /* requested browser/KSS classes */
+    char dom_title[KIR_TEXT_MAX];       /* requested browser title */
+    char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
+    char dom_tab_index[KIR_NAME_MAX];   /* requested tabindex expression */
     char dom_role[KIR_NAME_MAX];        /* requested accessibility role */
     char dom_aria_label[KIR_TEXT_MAX];  /* requested accessible label */
+    char dom_aria_description[KIR_TEXT_MAX]; /* requested accessible description */
+    char dom_aria_describedby[KIR_TEXT_MAX]; /* requested accessible relationship */
+    char dom_aria_controls[KIR_TEXT_MAX];    /* requested controlled element ids */
+    char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */
     char dom_on_input[KIR_NAME_MAX];    /* logic function bound to input(value) */
     char dom_on_change[KIR_NAME_MAX];   /* logic function bound to change(value) */

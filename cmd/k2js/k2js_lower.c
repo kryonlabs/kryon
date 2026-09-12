@@ -1200,7 +1200,11 @@ stmt_has_web_metadata(const KirStmt *st)
 {
     return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
            st->node_path[0] || st->node_parent_path[0] ||
-           st->dom_class[0] || st->dom_role[0] || st->dom_aria_label[0] ||
+           st->dom_class[0] || st->dom_title[0] ||
+           st->dom_placeholder[0] || st->dom_tab_index[0] ||
+           st->dom_role[0] || st->dom_aria_label[0] ||
+           st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
+           st->dom_aria_controls[0] || st->dom_aria_live[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
            st->dom_on_change[0];
 }
@@ -1310,8 +1314,19 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
     emit_metadata_expr_field(f, m, "class", st->dom_class, &emitted);
+    emit_metadata_expr_field(f, m, "title", st->dom_title, &emitted);
+    emit_metadata_expr_field(f, m, "placeholder", st->dom_placeholder,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "tabIndex", st->dom_tab_index, &emitted);
     emit_metadata_expr_field(f, m, "role", st->dom_role, &emitted);
     emit_metadata_expr_field(f, m, "ariaLabel", st->dom_aria_label, &emitted);
+    emit_metadata_expr_field(f, m, "ariaDescription",
+                             st->dom_aria_description, &emitted);
+    emit_metadata_expr_field(f, m, "ariaDescribedBy",
+                             st->dom_aria_describedby, &emitted);
+    emit_metadata_expr_field(f, m, "ariaControls", st->dom_aria_controls,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaLive", st->dom_aria_live, &emitted);
     emit_web_action(f, m, "onClick", "action", st->dom_on_click, "", &emitted);
     emit_web_action(f, m, "onInput", "inputAction", st->dom_on_input,
                     "value", &emitted);

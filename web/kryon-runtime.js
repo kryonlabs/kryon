@@ -1094,6 +1094,9 @@ function webNodeFromWidget(item, index) {
     sourceLine: Number.isFinite(Number(meta.sourceLine)) ? Math.trunc(Number(meta.sourceLine)) : 0,
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     classes: [...new Set(classes)],
+    title: meta.title === undefined || meta.title === null ? "" : String(meta.title),
+    placeholder: meta.placeholder === undefined || meta.placeholder === null ? "" : String(meta.placeholder),
+    tabIndex: Number.isFinite(Number(meta.tabIndex)) ? Math.trunc(Number(meta.tabIndex)) : null,
     text: widgetText(item),
     value: widgetText(item),
     level: widgetLevel(item),
@@ -1103,6 +1106,10 @@ function webNodeFromWidget(item, index) {
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
     ariaLabel: meta.ariaLabel === undefined || meta.ariaLabel === null ? "" : String(meta.ariaLabel),
+    ariaDescription: meta.ariaDescription === undefined || meta.ariaDescription === null ? "" : String(meta.ariaDescription),
+    ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
+    ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
+    ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
@@ -1154,6 +1161,7 @@ export function webAccessibilitySnapshot(source) {
       classes: [...node.classes],
       role: node.role || implicitRole(node),
       label: node.ariaLabel || node.text || node.name,
+      description: node.ariaDescription,
       text: node.text,
       value: node.tag === "input" || node.tag === "textarea" ? node.value : "",
       href: node.href,
@@ -1658,8 +1666,15 @@ function applyWebNode(el, docNode, rt) {
   else
     delete el.dataset.kryName;
   setAttr(el, "id", docNode.domId);
+  setAttr(el, "title", docNode.title);
+  setAttr(el, "placeholder", docNode.placeholder);
+  setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
   setAttr(el, "role", docNode.role);
   setAttr(el, "aria-label", docNode.ariaLabel);
+  setAttr(el, "aria-description", docNode.ariaDescription);
+  setAttr(el, "aria-describedby", docNode.ariaDescribedBy);
+  setAttr(el, "aria-controls", docNode.ariaControls);
+  setAttr(el, "aria-live", docNode.ariaLive);
   if (docNode.onClick)
     el.dataset.kryOnClick = docNode.onClick;
   else

@@ -80,6 +80,9 @@ export interface WebDocumentNode {
   sourceLine: number;
   domId: string;
   classes: string[];
+  title: string;
+  placeholder: string;
+  tabIndex: number | null;
   text: string;
   value: unknown;
   level: number;
@@ -89,6 +92,10 @@ export interface WebDocumentNode {
   asset: string;
   role: string;
   ariaLabel: string;
+  ariaDescription: string;
+  ariaDescribedBy: string;
+  ariaControls: string;
+  ariaLive: string;
   onClick: string;
   onInput: string;
   onChange: string;
@@ -153,6 +160,7 @@ export interface WebAccessibilityNode {
   classes: string[];
   role: string;
   label: string;
+  description: string;
   text: string;
   value: unknown;
   href: string;
