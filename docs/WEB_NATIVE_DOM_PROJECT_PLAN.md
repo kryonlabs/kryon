@@ -44,8 +44,8 @@ the browser receives normal elements, attributes, CSS, and events.
 
 - Finish all-node compiler metadata so every `.kry` syntactic node that should
   have a DOM surface emits complete identity without runtime fallback synthesis.
-- Add source end spans once parser/KIR spans expose them, then support
-  cursor-range lookup for editors and devtools.
+- Extend compiler source ranges beyond statement-level same-line spans to full
+  multiline AST spans for editors and devtools.
 - Expand native tag contracts for remaining widgets that still render as `div`,
   choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language

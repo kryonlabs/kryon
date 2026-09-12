@@ -81,7 +81,10 @@ Rendered DOM elements carry source identity as native attributes:
 `data-kry-source`,
 `data-kry-line`, and `data-kry-column`. The same source location is also available as
 `data-kry-source-ref` (`path:line`) and `data-kry-source-column-ref`
-(`path:line:column`) for native DOM queries and devtools inspection.
+(`path:line:column`) for native DOM queries and devtools inspection. When the
+compiler knows the end of the source statement, elements also carry
+`data-kry-end-line`, `data-kry-end-column`, and `data-kry-source-range-ref`
+(`path:startLine:startColumn-endLine:endColumn`).
 The runtime exposes
 `webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
@@ -102,7 +105,7 @@ Supported metadata fields:
 | `.kry` field | Web frame field |
 |---|---|
 | named block | `nodeName`, `key`, `name`, `path`, `parentPath` |
-| source span | `sourcePath`, `sourceLine`, `sourceColumn` |
+| source span | `sourcePath`, `sourceLine`, `sourceColumn`, `sourceEndLine`, `sourceEndColumn` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_ref`, `web_ref`, `kry_ref` | `webRef` |
 | `dom_id`, `html_id` | `domId` |
@@ -393,12 +396,14 @@ path, node name, key, or DOM id matches `query`.
 identity string for a `.kry` node. `webNodeAtSource(...)` and
 `webNodesAtSource(...)` resolve those source locations back to unmounted Web
 Document nodes without requiring callers to hand-format selector strings.
+`webNodeAtSourceRange(...)` and `webNodesAtSourceRange(...)` resolve a cursor
+position within compiler source spans.
 `webSourceMap(rt)` returns the source-backed node identities in the current
 frame.
 
 `webNodeIdentity(node)` returns a plain identity projection for a Web Document
 node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
-DOM name, and source refs.
+DOM name, source refs, and source range refs.
 If a generated widget item does not yet carry an explicit Kry path, the web
 runtime synthesizes one from the nearest known parent, widget kind, source line,
 and frame index before exposing node identity. This keeps every Web Document

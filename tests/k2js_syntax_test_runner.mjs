@@ -180,11 +180,16 @@ assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.webSourceMap(rt)
   .some((entry) => entry.ref === "primary-action" &&
-    entry.sourceColumnRef === tapSourceColumnRef), true);
+    entry.sourceColumnRef === tapSourceColumnRef &&
+    entry.sourceRangeRef === tapSourceRangeRef), true);
 assert.equal(runtime.webNodeAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn).path, webDoc.nodes[2].path);
 assert.deepEqual(runtime.webNodesAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn).map((node) => node.path), [webDoc.nodes[2].path]);
+assert.equal(runtime.webNodeAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceColumn + 1).path, webDoc.nodes[2].path);
+assert.deepEqual(runtime.webNodesAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
+  webDoc.nodes[2].sourceEndColumn + 1).map((node) => node.path), []);
 assert.equal(runtime.findWebNode(rt, "primary-action").path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");
@@ -1340,9 +1345,12 @@ function fakeDocument() {
     assert.equal(firstButton.kryKey, "tap");
     assert.equal(firstButton.krySourceRef, tapSourceRef);
     assert.equal(firstButton.krySourceColumnRef, tapSourceColumnRef);
+    assert.equal(firstButton.krySourceRangeRef, tapSourceRangeRef);
     assert.equal(firstButton.krySourcePath, "src/valid.kry");
     assert.equal(firstButton.krySourceLine, webDoc.nodes[2].sourceLine);
     assert.equal(firstButton.krySourceColumn, webDoc.nodes[2].sourceColumn);
+    assert.equal(firstButton.krySourceEndLine, webDoc.nodes[2].sourceEndLine);
+    assert.equal(firstButton.krySourceEndColumn, webDoc.nodes[2].sourceEndColumn);
     assert.equal(firstButton.kryNode.path, "Scene/root/tap");
     assert.equal(firstButton.kryRoot, root);
     assert.equal(firstButton.kryNode.webRef, "primary-action");
@@ -1898,8 +1906,15 @@ function fakeDocument() {
       firstButton);
     assert.equal(runtime.webDOMQuery(target, `[sourceColumnRef="${tapSourceColumnRef}"]`).element,
       firstButton);
+    assert.equal(runtime.webDOMQuery(target, `[sourceRangeRef="${tapSourceRangeRef}"]`).element,
+      firstButton);
+    assert.equal(firstButton.dataset.krySourceRangeRef, tapSourceRangeRef);
     assert.equal(runtime.webDOMObjectAtSource(target, "src/valid.kry", webDoc.nodes[2].sourceLine,
       webDoc.nodes[2].sourceColumn).element, firstButton);
+    assert.equal(runtime.webDOMObjectAtSourceRange(target, "src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1).element, firstButton);
+    assert.equal(root.kryAtSourceRange("src/valid.kry", webDoc.nodes[2].sourceLine,
+      webDoc.nodes[2].sourceColumn + 1).element, firstButton);
     assert.deepEqual(runtime.webDOMObjectsAtSource(target, "src/valid.kry",
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn).map((object) => object.ref),
       [tapSourceColumnRef]);

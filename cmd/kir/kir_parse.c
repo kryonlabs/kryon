@@ -445,6 +445,7 @@ typedef struct UiBlock {
     char name[KIR_NAME_MAX];
     char path[KIR_TEXT_MAX];
     char parent_path[KIR_TEXT_MAX];
+    KirSourceSpan span;
     char props[KIR_TEXT_MAX];
     char dom_tag[KIR_NAME_MAX];
     char dom_ref[KIR_NAME_MAX];
@@ -1483,6 +1484,9 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
     char call[KIR_TEXT_MAX];
     char args[KIR_TEXT_MAX];
     const char *prop_type;
+    KirSourceSpan source_span = block != NULL && block->span.path[0] != '\0'
+                                  ? block->span
+                                  : span;
 
     if(block == NULL || block->opened)
         return;
@@ -1502,10 +1506,11 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                      bounds, height, offset);
         if(n < 0 || (size_t)n >= sizeof(call))
             die("%s:%d: Scroll arguments are too long", span.path, span.line);
-        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         KirFunctionAddStmt(fn, block->name[0] ? KIR_STMT_DECL : KIR_STMT_EXPR,
-                           call, "", span);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "", span);
+                           call, "", source_span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "",
+                           source_span);
         block->opened = 1;
         return;
     }
@@ -1521,9 +1526,10 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         ui_block_format(call, sizeof(call), span,
                         "%s: Rectangle = BeginTableCell(%s, %s, %s)",
                         block->name, table, row, column);
-        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
-        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndTableCell()", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndTableCell()", "",
+                           source_span);
         block->opened = 1;
         return;
     }
@@ -1538,26 +1544,27 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         ui_block_format(args, sizeof(args), span, "(Canvas){%s}", block->props);
         ui_block_format(call, sizeof(call), span, "%s: Canvas = %s",
                         spec_name, args);
-        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
-        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
         ui_block_format(call, sizeof(call), span,
                         "%s: CanvasResult = BeginCanvas(%s)",
                         block->name, spec_name);
-        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
         ui_block_format(call, sizeof(call), span, "defer EndCanvas(%s)",
                         spec_name);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;
         return;
     }
     if(strcmp(block->widget, "Disabled") == 0) {
         const char *condition = block->prop_count ? block->props : "true";
-        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         ui_block_format(call, sizeof(call), span, "BeginDisabled(%s)", condition);
         /* Scope conditions are boolean expressions, not legacy integer UI
          * widget arguments. Keep the ordinary typed call in the shared IR. */
-        KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", span);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", source_span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "",
+                           source_span);
         block->opened = 1;
         return;
     }
@@ -1565,9 +1572,9 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         ui_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
         ui_block_format(call, sizeof(call), span, "if Begin%s(%s) {",
                         block->widget, args);
-        KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", source_span);
         snprintf(call,sizeof(call),"defer End%s()",block->widget);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;
         return;
     }
@@ -1580,7 +1587,8 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         const char *props_type = is_card ? "CardProps" : "ButtonProps";
         ui_block_format(args, sizeof(args), span, "(%s){%s}", props_type, block->props);
         ui_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);
-        KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call, span);
+        KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call,
+                                                  source_span);
         if(statement == NULL)
             die("out of memory parsing widget block");
         ui_block_apply_web_metadata(statement, block);
@@ -1597,7 +1605,9 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(!closing)
             die("%s:%d: declared widget blocks do not yet accept child content: %s",
                 span.path, span.line, block->widget);
-        KirStmt *statement = KirFunctionAddWidget(fn, block->widget, block->props, "", span);
+        KirStmt *statement = KirFunctionAddWidget(fn, block->widget,
+                                                  block->props, "",
+                                                  source_span);
         if(statement == NULL)
             die("out of memory parsing declared widget");
         ui_block_apply_web_metadata(statement, block);
@@ -1612,7 +1622,8 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                         "(%s){%s.key = Key(\"%s\")}",
                         prop_type, block->props, block->path);
     ui_block_format(call, sizeof(call), span, "%s(%s)", block->widget, args);
-    KirStmt *statement = KirFunctionAddWidget(fn, block->widget, args, call, span);
+    KirStmt *statement = KirFunctionAddWidget(fn, block->widget, args, call,
+                                              source_span);
     if(statement == NULL)
         die("out of memory parsing widget block");
     ui_block_apply_web_metadata(statement, block);
@@ -3749,6 +3760,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         die("%s:%d: too many nested UI blocks", rel, line_no);
                     block = &ui_blocks[ui_block_count++];
                     memset(block, 0, sizeof(*block));
+                    block->span = KirSpanEnd(rel, line_no, 1, line_no,
+                                             (int)strlen(t) + 1);
                     snprintf(block->widget, sizeof(block->widget), "%s",
                              block_widget);
                     snprintf(block->name, sizeof(block->name), "%s",
