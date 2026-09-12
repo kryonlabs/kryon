@@ -345,11 +345,17 @@ declare global {
   interface Element {
     readonly kryRef?: string;
     readonly kryPath?: string;
+    readonly kryAliases?: string[];
+    readonly kryIndex?: number;
     readonly kryKind?: string;
+    readonly kryTag?: string;
     readonly kryName?: string;
     readonly kryKey?: string;
     readonly krySourceRef?: string;
     readonly krySourceColumnRef?: string;
+    readonly krySourcePath?: string;
+    readonly krySourceLine?: number;
+    readonly krySourceColumn?: number;
     readonly kryNode?: WebDocumentNode | null;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
@@ -372,9 +378,15 @@ declare global {
   interface Event {
     readonly kryRef?: string;
     readonly kryPath?: string;
+    readonly kryAliases?: string[];
+    readonly kryIndex?: number;
     readonly kryKind?: string;
+    readonly kryTag?: string;
     readonly krySourceRef?: string;
     readonly krySourceColumnRef?: string;
+    readonly krySourcePath?: string;
+    readonly krySourceLine?: number;
+    readonly krySourceColumn?: number;
     readonly kryRoot?: Element | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;

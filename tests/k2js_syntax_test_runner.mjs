@@ -1020,11 +1020,22 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryKey, "tap");
     assert.equal(firstButton.kryRef, "primary-action");
     assert.equal(firstButton.kryPath, "Scene/root/tap");
+    assert.deepEqual(firstButton.kryAliases.slice(0, 4), [
+      "primary-action",
+      "Scene/root/tap",
+      "tap",
+      "tap-button"
+    ]);
+    assert.equal(firstButton.kryIndex, 2);
     assert.equal(firstButton.kryKind, "Button");
+    assert.equal(firstButton.kryTag, "button");
     assert.equal(firstButton.kryName, "tap");
     assert.equal(firstButton.kryKey, "tap");
     assert.equal(firstButton.krySourceRef, tapSourceRef);
     assert.equal(firstButton.krySourceColumnRef, tapSourceColumnRef);
+    assert.equal(firstButton.krySourcePath, "src/valid.kry");
+    assert.equal(firstButton.krySourceLine, webDoc.nodes[2].sourceLine);
+    assert.equal(firstButton.krySourceColumn, webDoc.nodes[2].sourceColumn);
     assert.equal(firstButton.kryNode.path, "Scene/root/tap");
     assert.equal(firstButton.kryRoot, root);
     assert.equal(firstButton.kryNode.webRef, "primary-action");
@@ -1045,6 +1056,7 @@ function fakeDocument() {
     assert.equal(Object.keys(firstButton).includes("krySnapshot"), false);
     assert.equal(Object.keys(firstButton).includes("kryMatches"), false);
     assert.equal(Object.keys(firstButton).includes("kryPath"), false);
+    assert.equal(Object.keys(firstButton).includes("kryAliases"), false);
     assert.equal(root.kryElement("primary-action"), firstButton);
     assert.equal(root.kryObject("primary-action").element, firstButton);
     assert.equal(root.kryQuery("Button.primary").element, firstButton);
@@ -1115,9 +1127,15 @@ function fakeDocument() {
     assert.equal(runtime.webDOMDecorateEvent(targetEvent).ref, "primary-action");
     assert.equal(targetEvent.kryRef, "primary-action");
     assert.equal(targetEvent.kryPath, "Scene/root/tap");
+    assert.deepEqual(targetEvent.kryAliases.slice(0, 2), ["primary-action", "Scene/root/tap"]);
+    assert.equal(targetEvent.kryIndex, 2);
     assert.equal(targetEvent.kryKind, "Button");
+    assert.equal(targetEvent.kryTag, "button");
     assert.equal(targetEvent.krySourceRef, tapSourceRef);
     assert.equal(targetEvent.krySourceColumnRef, tapSourceColumnRef);
+    assert.equal(targetEvent.krySourcePath, "src/valid.kry");
+    assert.equal(targetEvent.krySourceLine, webDoc.nodes[2].sourceLine);
+    assert.equal(targetEvent.krySourceColumn, webDoc.nodes[2].sourceColumn);
     assert.equal(targetEvent.kryRoot, root);
     assert.equal(targetEvent.kryObject.node.path, "Scene/root/tap");
     assert.equal(targetEvent.kryIdentity.ref, "primary-action");

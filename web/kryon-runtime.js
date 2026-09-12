@@ -2320,11 +2320,32 @@ function bindWebDOMObjectProperties(el) {
         return this.__kryDocNode?.path || "";
       }
     },
+    kryAliases: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webNodeIdentity(this.__kryDocNode).aliases;
+      }
+    },
+    kryIndex: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.index || 0;
+      }
+    },
     kryKind: {
       configurable: true,
       enumerable: false,
       get() {
         return this.__kryDocNode?.kind || "";
+      }
+    },
+    kryTag: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.tag || String(this.tagName || "").toLowerCase();
       }
     },
     kryName: {
@@ -2353,6 +2374,27 @@ function bindWebDOMObjectProperties(el) {
       enumerable: false,
       get() {
         return webNodeSourceColumnRef(this.__kryDocNode);
+      }
+    },
+    krySourcePath: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.sourcePath || "";
+      }
+    },
+    krySourceLine: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.sourceLine || 0;
+      }
+    },
+    krySourceColumn: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return this.__kryDocNode?.sourceColumn || 0;
       }
     },
     kryNode: {
@@ -3098,11 +3140,33 @@ function bindWebDOMEventProperties(event) {
           return rawWebDOMObjectFromEvent(this)?.node?.path || "";
         }
       },
+      kryAliases: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return webNodeIdentity(rawWebDOMObjectFromEvent(this)?.node).aliases;
+        }
+      },
+      kryIndex: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.index || 0;
+        }
+      },
       kryKind: {
         configurable: true,
         enumerable: false,
         get() {
           return rawWebDOMObjectFromEvent(this)?.node?.kind || "";
+        }
+      },
+      kryTag: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          return object?.node?.tag || String(object?.element?.tagName || "").toLowerCase();
         }
       },
       krySourceRef: {
@@ -3117,6 +3181,27 @@ function bindWebDOMEventProperties(event) {
         enumerable: false,
         get() {
           return webNodeSourceColumnRef(rawWebDOMObjectFromEvent(this)?.node);
+        }
+      },
+      krySourcePath: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.sourcePath || "";
+        }
+      },
+      krySourceLine: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.sourceLine || 0;
+        }
+      },
+      krySourceColumn: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.node?.sourceColumn || 0;
         }
       },
       kryObject: {
