@@ -209,6 +209,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Style hover_style = ui_resolve_button_style_kind(button.props,
         ButtonStateHover,
         button.style_kind != 0 ? button.style_kind : StyleKindButton());
+    const char *typeface = normal_style.typeface;
+    int typeface_token = 0;
     Color background = button.paint.background.a != 0 ? button.paint.background : normal_style.background;
     Color hover_background = button.hover_background.a != 0 ? button.hover_background : hover_style.background;
     Color text = button.paint.foreground.a != 0 ? button.paint.foreground : normal_style.foreground;
@@ -223,6 +225,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     int termi_button = ui_termi_backend();
     int default_controls = ui_default_style() && !termi_button;
 
+    if(button.props.font <= 0 && normal_style.font_size > 0.0f)
+        font = (int)(normal_style.font_size + 0.5f);
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {
         widget = BeginWidget("button",
@@ -359,7 +363,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     if(foreground != NULL)
         *foreground = text;
     ui_draw_button_swatch(button.props, draw_bounds);
+    typeface_token = PushTextFont(typeface);
     ui_draw_button_content(&button, draw_bounds, font, text);
+    PopTextFont(typeface_token);
     ui_draw_button_image(button.props, draw_bounds);
     if(handle_input)
         EndWidget(&widget);
