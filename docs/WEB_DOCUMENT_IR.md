@@ -1,6 +1,6 @@
 # Kryon Web Document Frame
 
-Status: initial implementation contract
+Status: active implementation contract
 
 The Web Document frame is the browser-facing structure produced from a Kryon
 runtime frame. It is not browser DOM, CSS, or a second widget API. It is the
@@ -80,7 +80,7 @@ path components such as `Text@42`; repeated anonymous widgets under the same
 parent receive deterministic occurrence suffixes such as `Text@42-2` so every
 DOM object remains individually addressable.
 
-Supported metadata fields in this first slice:
+Supported metadata fields:
 
 | `.kry` field | Web frame field |
 |---|---|
@@ -95,12 +95,24 @@ Supported metadata fields in this first slice:
 | `dom_target`, `html_target` | `target` |
 | `dom_rel`, `html_rel` | `rel` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
+| `attr_*`, `dom_attr_*`, `html_attr_*` | `extraAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
 | `input_type`, `dom_type`, `html_type`, `dom_input_type` | `inputType` |
 | `dom_action`, `html_action`, `form_action` | `formAction` |
 | `dom_method`, `html_method`, `form_method` | `formMethod` |
 | `dom_enctype`, `html_enctype`, `form_enctype` | `formEncType` |
 | `autocomplete`, `dom_autocomplete`, `html_autocomplete` | `autoComplete` |
+| `hidden`, `dom_hidden`, `html_hidden` | `hidden` |
+| `draggable`, `dom_draggable`, `html_draggable` | `draggable` |
+| `spellcheck`, `spell_check`, `dom_spellcheck`, `html_spellcheck` | `spellCheck` |
+| `contenteditable`, `content_editable`, `dom_contenteditable`, `html_contenteditable` | `contentEditable` |
+| `autofocus`, `auto_focus`, `dom_autofocus`, `html_autofocus` | `autoFocus` |
+| `download`, `dom_download`, `html_download` | `download` |
+| `form_no_validate`, `formnovalidate`, `dom_formnovalidate`, `html_formnovalidate` | `formNoValidate` |
+| `no_validate`, `novalidate`, `dom_novalidate`, `html_novalidate` | `noValidate` |
+| `popover`, `dom_popover`, `html_popover` | `popover` |
+| `popover_target`, `popovertarget`, `dom_popover_target`, `html_popover_target` | `popoverTarget` |
+| `popover_target_action`, `popovertargetaction`, `dom_popover_target_action`, `html_popover_target_action` | `popoverTargetAction` |
 | `readonly`, `read_only`, `dom_readonly`, `html_readonly` | `readOnly` |
 | `required`, `dom_required`, `html_required` | `required` |
 | `dom_min`, `html_min`, `form_min` | `min` |
@@ -119,18 +131,35 @@ Supported metadata fields in this first slice:
 | `aria_describedby`, `aria_described_by` | `ariaDescribedBy` |
 | `aria_controls` | `ariaControls` |
 | `aria_live`, `live` | `ariaLive` |
+| `aria_*`, `dom_aria_*`, `html_aria_*` | `ariaAttrs` |
 | `on_click` | `onClick`, `action` |
 | `on_input` | `onInput`, `inputAction(value)` |
+| `on_before_input`, `on_beforeinput` | `onBeforeInput`, `beforeInputAction(value)` |
 | `on_change` | `onChange`, `changeAction(value)` |
+| `on_select` | `onSelect`, `selectAction(value)` |
 | `on_key`, `on_key_down` | `onKey`, `keyAction(key)` |
+| `on_invalid` | `onInvalid`, `invalidAction(value)` |
 | `on_submit` | `onSubmit`, `submitAction(values)` |
 | `on_reset` | `onReset`, `resetAction(values)` |
+| `on_toggle` | `onToggle`, `toggleAction()` |
+| `on_close` | `onClose`, `closeAction()` |
+| `on_cancel` | `onCancel`, `cancelAction()` |
 | `on_focus` | `onFocus`, `focusAction()` |
 | `on_blur` | `onBlur`, `blurAction()` |
+| `on_scroll` | `onScroll`, `scrollAction(value)` |
 | `on_mouse_enter`, `on_pointer_enter` | `onMouseEnter`, `mouseEnterAction()` |
 | `on_mouse_leave`, `on_pointer_leave` | `onMouseLeave`, `mouseLeaveAction()` |
+| `on_mouse_move`, `on_pointer_move` | `onMouseMove`, `mouseMoveAction()` |
 | `on_mouse_down`, `on_pointer_down` | `onMouseDown`, `mouseDownAction()` |
 | `on_mouse_up`, `on_pointer_up` | `onMouseUp`, `mouseUpAction()` |
+| `on_wheel` | `onWheel`, `wheelAction(value)` |
+| `on_drag_start`, `on_dragstart` | `onDragStart`, `dragStartAction(value)` |
+| `on_drag_end`, `on_dragend` | `onDragEnd`, `dragEndAction(value)` |
+| `on_drag_over`, `on_dragover` | `onDragOver`, `dragOverAction()` |
+| `on_drop` | `onDrop`, `dropAction(value)` |
+| `on_copy` | `onCopy`, `copyAction(value)` |
+| `on_cut` | `onCut`, `cutAction(value)` |
+| `on_paste` | `onPaste`, `pasteAction(value)` |
 
 ## Runtime Contract
 
@@ -164,21 +193,44 @@ Supported metadata fields in this first slice:
       target,
       rel,
       dataAttrs,
+      ariaAttrs,
+      extraAttrs,
       inputType,
+      formAction,
+      formMethod,
+      formEncType,
+      autoComplete,
+      hidden,
+      draggable,
+      spellCheck,
+      contentEditable,
+      autoFocus,
+      download,
+      formNoValidate,
+      noValidate,
+      popover,
+      popoverTarget,
+      popoverTargetAction,
       alt,
       asset,
       role,
       ariaLabel,
       onClick,
       onInput,
+      onBeforeInput,
       onChange,
+      onSelect,
       action,
       inputAction,
+      beforeInputAction,
       changeAction,
+      selectAction,
       pageTitle,
       pageDescription,
       pageCanonicalURL,
       pageThemeColor,
+      sourcePath,
+      sourceLine,
       bounds,
       hasBounds,
       state,
@@ -215,11 +267,14 @@ contract.
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
-`name`, `path`, `parentPath`, `id`, `domName`, `href`, `target`, `rel`,
-`inputType`, `formAction`, `formMethod`, `formEncType`, `autoComplete`,
-`readOnly`, `required`, `min`, `max`, `step`, `minLength`, `maxLength`,
-`pattern`, `accept`, `multiple`, `inputMode`, `classes`, `dataAttrs`, `role`,
-and `state`. The DOM
+`name`, `path`, `parentPath`, `sourcePath`, `sourceLine`, `id`, `domName`,
+`href`, `target`, `rel`, `inputType`, `formAction`, `formMethod`,
+`formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
+`contentEditable`, `autoFocus`, `download`, `formNoValidate`, `noValidate`,
+`popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
+`min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
+`multiple`, `inputMode`, `classes`, `dataAttrs`, `ariaAttrs`, `extraAttrs`,
+`role`, `open`, `scrollLeft`, `scrollTop`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -228,14 +283,18 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `resolveWebStyle(node, sheets)`, and `setWebStyleSheets(rt, sheets)` for the
 same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `app.styles[].source` when a `#style` import resolves on disk, and
-`createRuntime({ app })` installs those embedded sheets automatically. This
-first web resolver supports the initial KSS grammar slice: kind selectors,
-`#id`, `.class`, `[role=...]`, `[state=...]`, native attribute aliases such as
-`[name=...]`, `[type=...]`, `[action=...]`, `[method=...]`,
-`[enctype=...]`, `[autocomplete=...]`, `[readonly=true]`,
-`[required=true]`, `[min=...]`, `[max=...]`, `[step=...]`,
-`[minlength=...]`, `[maxlength=...]`, `[pattern=...]`, `[accept=...]`,
-`[multiple=true]`, `[inputmode=...]`, state pseudos, layers, colors, spacing,
+`createRuntime({ app })` installs those embedded sheets automatically. The web
+resolver supports kind selectors, `#id`, `.class`, source identity selectors
+such as `[source=...]` and `[line=...]`, `[role=...]`, `[state=...]`,
+native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
+`[target=...]`, `[rel=...]`, `[action=...]`, `[method=...]`,
+`[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,
+`[draggable=true]`, `[spellcheck=...]`, `[contenteditable=...]`,
+`[download=...]`, `[readonly=true]`, `[required=true]`, `[popover=...]`,
+`[popovertarget=...]`, `[popovertargetaction=...]`, `[min=...]`,
+`[max=...]`, `[step=...]`, `[minlength=...]`, `[maxlength=...]`,
+`[pattern=...]`, `[accept=...]`, `[multiple=true]`, `[inputmode=...]`,
+data/ARIA/extra attribute selectors, state pseudos, layers, colors, spacing,
 radius, border width, opacity, font size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
@@ -258,18 +317,61 @@ unmounted Web Document nodes by the same KSS-style selector facts used for
 style resolution.
 
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
-node name, key, DOM id, or DOM name matches `query`.
+node name, key, DOM id, DOM name, or selector fallback matches `query`.
 
 `webDOMQuery(target, selector)` and `webDOMQueryAll(target, selector)` return
 native DOM objects by the same KSS-style selector facts used for style
 resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `[type=...]`, `[href=...]`, `[data-*=...]`, source fields, and state pseudos.
 
+`webDOMAddClass(target, query, className)`, `webDOMRemoveClass(...)`,
+`webDOMToggleClass(...)`, and `webDOMHasClass(...)` mutate or inspect mounted
+native class names by the same query forms. Runtime class mutations are folded
+back into node facts, so they survive re-render and remain visible to KSS.
+
+`webDOMSetAttribute(target, query, name, value)`,
+`webDOMRemoveAttribute(...)`, `webDOMGetAttribute(...)`, and
+`webDOMHasAttribute(...)` expose native attributes without making generated JS
+own the document shape. `data-*`, `aria-*`, global boolean attributes, form
+attributes, and arbitrary extra attributes are reflected into node facts.
+
+`webDOMSetStyle(target, query, name, value)`, `webDOMRemoveStyle(...)`, and
+`webDOMGetStyle(...)` apply imperative style overrides after resolved KSS.
+These overrides are intended for browser-measured or runtime-only state; KSS
+remains the authoring surface for visual design.
+
+`webDOMGetText(target, query)`, `webDOMSetText(...)`, `webDOMGetValue(...)`,
+and `webDOMSetValue(...)` read and write current mounted text and form values.
+Mutations synchronize back to the Web Document node before the next render.
+
+`webDOMSetState(target, query, name, value)`, `webDOMToggleState(...)`, and
+`webDOMGetState(...)` expose node state facts for logic-owned state that should
+also participate in KSS selectors.
+
+`webDOMClick(target, query)`, `webDOMFocus(...)`, `webDOMBlur(...)`,
+`webDOMSubmit(...)`, and `webDOMReset(...)` issue native commands when the
+mounted element supports them and fall back to dispatching the corresponding
+event.
+
+`webDOMShowModal(target, query)`, `webDOMClose(...)`,
+`webDOMShowPopover(...)`, `webDOMHidePopover(...)`, and
+`webDOMTogglePopover(...)` expose native dialog and popover behavior from the
+same Kry node identity surface.
+
+`webDOMDispatchEvent(target, query, type, init)` dispatches arbitrary browser
+events against a resolved DOM object. Prefer named helpers for stable app
+logic; this exists for host integrations and tests.
+
+`webDOMRect(target, query)`, `webDOMGetScroll(...)`, `webDOMSetScroll(...)`,
+and `webDOMScrollIntoView(...)` expose measured geometry and scroll state.
+Scroll mutations are reflected into node facts as `scrollLeft` and `scrollTop`
+so KSS can react to native browser position when needed.
+
 The DOM renderer maintains native interaction facts for KSS state selectors:
 `mouseenter`/`mouseleave` update `hover`, `mousedown`/`mouseup` update
-`pressed`, and `focus`/`blur` update `focus`. These update the Web Document node
-state and reapply resolved KSS without requiring app logic to mirror browser
-pseudo-state.
+`pressed`, `focus`/`blur` update `focus`, and native dialog/popover lifecycle
+events update `open`. These update the Web Document node state and reapply
+resolved KSS without requiring app logic to mirror browser pseudo-state.
 
 `webFormValue(target, query)` and `webFormValues(target)` expose current mounted
 native form values by Kry path, node name, key, DOM id, and DOM name. Values are
@@ -293,14 +395,16 @@ non-browser tests.
   beneath their Kry parent when the parent is present in the frame.
 - Route helpers expose path/hash changes, and k2js can dispatch route pages
   declared in `.kry`; nested route parameters are not parsed yet.
-- Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
-  `on_change(value)`, `on_key(key)`, `on_submit(values)`, `on_reset(values)`,
-  `on_focus()`, `on_blur()`, mouse/pointer enter/leave/down/up actions, and native
-  hover/pressed/focus facts for KSS state selectors in this slice.
+- Event handling covers click-to-`QueueTap`, text/form events, key events,
+  submit/reset, focus/blur, scroll, mouse and pointer enter/leave/move/down/up,
+  wheel, drag/drop, clipboard actions, and native dialog/popover lifecycle
+  events. Native hover/pressed/focus/open facts are maintained for KSS state
+  selectors.
 - KSS parsing exists in C for style-rule tables and in the JS runtime for web
   DOM style application; k2js embeds resolvable style imports, but package
   discovery beyond `styles/kryon/<pack>.kss` and every style property are still
   incremental.
-- Form value lookup and accessibility snapshots are available; deeper
+- Query-based DOM lookup, mutation, commands, event dispatch, geometry, scroll,
+  form value lookup, and accessibility snapshots are available. Deeper
   per-widget ARIA relationships, such as controlled regions and described-by
   chains, are still incremental.
