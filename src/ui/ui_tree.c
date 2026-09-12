@@ -36,6 +36,7 @@ ui_paint_surface(Rectangle bounds, Style style)
 #define UI_NODE_SCOPE_DISABLED (1U << 26)
 #define UI_NODE_INHERIT_FOREGROUND (1U << 25)
 #define UI_NODE_TEXT_DISABLED (1U << 24)
+#define UI_NODE_TEXT_INPUT_PAINT (1U << 23)
 
 typedef struct TextFieldState {
     int cursor;
@@ -718,7 +719,6 @@ static const WidgetOps ui_widget_ops[] = {
     [WIDGET_IMAGE] = {ui_measure_bounds_height},
     [WIDGET_CUSTOM] = {ui_measure_bounds_height},
     [WIDGET_DRAG] = {ui_measure_bounds_height},
-    [WIDGET_TEXT_INPUT_PAINT] = {ui_measure_bounds_height},
     [WIDGET_ROUTER] = {ui_measure_bounds_height},
     [WIDGET_CARD] = {ui_measure_bounds_height},
 };
@@ -1689,11 +1689,17 @@ DrawTree(void)
             PushInputClip(node->input_clip);
             if(window_ready) BeginClip((int)node->input_clip.x,(int)node->input_clip.y,(int)node->input_clip.width,(int)node->input_clip.height);
         }
-        switch(node->kind) {
-        case WIDGET_TEXT_INPUT_PAINT:
+        if((node->flags & UI_NODE_TEXT_INPUT_PAINT) != 0) {
             ui_paint_text_input(node->bounds, node->owned_text,
                                 node->data.text_input_paint);
-            break;
+            if(node->has_input_clip) {
+                if(window_ready) EndClip();
+                PopInputClip();
+            }
+            EndDisabled();
+            continue;
+        }
+        switch(node->kind) {
         case WIDGET_DRAG: {
             DragProps drag = node->data.drag.props;
             drag.bounds = node->bounds;
@@ -2027,7 +2033,6 @@ ui_accessibility_role(WidgetKind kind)
     case WIDGET_PARAGRAPH: return "text";
     case WIDGET_BUTTON: return "button";
     case WIDGET_CARD: return "group";
-    case WIDGET_TEXT_INPUT_PAINT:
     case WIDGET_TEXT_FIELD:
     case WIDGET_TEXT_AREA: return "textbox";
     case WIDGET_DROPDOWN: return "combobox";
@@ -2542,8 +2547,9 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
         ui_paint_text_input(bounds, text, paint);
         return;
     }
-    NodeId id = ui_tree_add(focus_id, WIDGET_TEXT_INPUT_PAINT, bounds, NULL);
+    NodeId id = ui_tree_add(focus_id, WIDGET_CUSTOM, bounds, NULL);
     if(id >= 0) {
+        ui_tree_nodes[id].flags |= UI_NODE_TEXT_INPUT_PAINT;
         ui_tree_nodes[id].owned_text = ui_tree_strdup(text);
         ui_tree_nodes[id].data.text_input_paint = paint;
         InvalidateTree(INVALIDATE_PAINT);

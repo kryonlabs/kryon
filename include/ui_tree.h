@@ -77,7 +77,6 @@ typedef enum WidgetKind {
     WIDGET_IMAGE,
     WIDGET_CUSTOM,
     WIDGET_DRAG,
-    WIDGET_TEXT_INPUT_PAINT,
     WIDGET_ROUTER,
     WIDGET_CARD
 } WidgetKind;

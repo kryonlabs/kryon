@@ -1936,7 +1936,6 @@ include/ui_tree.h enum WIDGET_TAB_BAR
 include/ui_tree.h enum WIDGET_TEXT
 include/ui_tree.h enum WIDGET_TEXT_AREA
 include/ui_tree.h enum WIDGET_TEXT_FIELD
-include/ui_tree.h enum WIDGET_TEXT_INPUT_PAINT
 include/ui_tree.h enum WIDGET_TITLE_BAR
 include/ui_tree.h enum WIDGET_TOGGLE
 include/ui_tree.h enum WIDGET_TRIANGLE

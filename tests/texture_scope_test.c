@@ -885,14 +885,12 @@ int main(void)
         }
         nodes = GetTreeNodes(&node_count);
         int snapshots = 0;
+        const char *expected = secure ? "***" : "123";
         for(int i = 0; i < node_count; i++) {
-            if(nodes[i].kind != WIDGET_TEXT_INPUT_PAINT) continue;
-            snapshots++;
             if(nodes[i].owned_text == NULL ||
-               strcmp(nodes[i].owned_text,secure ? "***" : "123") != 0) {
-                fprintf(stderr,"editor paint did not own its display text\n");
-                failures++;
-            }
+               strcmp(nodes[i].owned_text, expected) != 0)
+                continue;
+            snapshots++;
         }
         if(snapshots != 1) failures++;
         UnloadImage(editor_reference);

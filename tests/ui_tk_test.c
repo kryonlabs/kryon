@@ -4463,7 +4463,8 @@ main(void)
         int count = 0, paints = 0, next = 0;
         const WidgetNode *nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind == WIDGET_TEXT_INPUT_PAINT) {
+            if(nodes[i].kind == WIDGET_CUSTOM && nodes[i].parent >= 0 &&
+               nodes[nodes[i].parent].id == 872 && nodes[i].owned_text != NULL) {
                 paints++;
                 check_int("numeric origin paint x", (int)nodes[i].bounds.x, 0);
                 check_int("numeric origin parent", nodes[nodes[i].parent].id, 872);

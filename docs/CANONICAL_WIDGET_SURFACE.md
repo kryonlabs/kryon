@@ -368,7 +368,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_IMAGE` | `Image` | `.kry canonical` |
 | `WIDGET_CUSTOM` | `Custom` | Native support escape hatch |
 | `WIDGET_DRAG` | `Drag` | `.kry canonical` |
-| `WIDGET_TEXT_INPUT_PAINT` | `TextInputPaint` | Native support; internal paint node |
+| `WIDGET_TEXT_INPUT_PAINT` | Removed | Internal text input paint snapshots lower through `WIDGET_CUSTOM` with a private runtime flag. |
 | `WIDGET_ROUTER` | `Router` | Native support |
 | `WIDGET_CARD` | `Card` | `.kry canonical` |
 
