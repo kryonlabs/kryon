@@ -1110,7 +1110,7 @@ function widgetText(item) {
   }
 }
 
-function widgetHref(item) {
+function widgetLinkURL(item) {
   if (item.name !== "Link")
     return "";
   return propString(item.args, "href", propString(item.args, "url", ""));
@@ -1284,7 +1284,7 @@ function webNodeFromWidget(item, index) {
     value: widgetText(item),
     domValue: metaString(meta, "domValue") || widgetDOMValue(item),
     level: widgetLevel(item),
-    href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
+    href: meta.href === undefined || meta.href === null ? widgetLinkURL(item) : String(meta.href),
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     htmlFor: metaString(meta, "htmlFor"),
