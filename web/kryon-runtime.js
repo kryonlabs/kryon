@@ -462,6 +462,22 @@ function propIdent(args, prop) {
   return m ? m[1] : null;
 }
 
+function propStateArray(args, prop) {
+  const name = propIdent(args, prop);
+  return name && name !== "NULL" && name !== "null" ? name : null;
+}
+
+function writeStateValue(state, name, index, value) {
+  if (!state || !name)
+    return false;
+  if (Array.isArray(state[name])) {
+    state[name][index || 0] = value;
+    return true;
+  }
+  state[name] = value;
+  return true;
+}
+
 function hit(bounds, x, y) {
   return x >= bounds.x && y >= bounds.y &&
     x < bounds.x + bounds.width && y < bounds.y + bounds.height;
@@ -604,6 +620,25 @@ function handleCard(rt, args) {
 }
 
 function handleSlider(rt, state, args) {
+  if (String(args || "").includes("SliderProps")) {
+    const bounds = parseBounds(args);
+    const min = propNumber(args, "min", 0);
+    const max = propNumber(args, "max", 100);
+    const vertical = propNumber(args, "vertical", 0);
+    const intValues = propStateArray(args, "int_values");
+    const floatValues = propStateArray(args, "float_values");
+    const floatValue = propRef(args, "float_value");
+    const target = intValues || floatValues || floatValue;
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+    if (!tap || !state || !target)
+      return false;
+    const raw = vertical
+      ? (bounds.y + bounds.height - tap.y) / Math.max(1, bounds.height)
+      : (tap.x - bounds.x) / Math.max(1, bounds.width);
+    const t = Math.max(0, Math.min(1, raw));
+    const value = min + t * (max - min);
+    return writeStateValue(state, target, 0, intValues ? Math.round(value) : value);
+  }
   const p = splitTopLevel(String(args || ""));
   const ref = firstRef(args);
   const bounds = { x: numberValue(p[1]), y: numberValue(p[2]), width: numberValue(p[3]), height: 40 };
@@ -618,6 +653,15 @@ function handleSlider(rt, state, args) {
 }
 
 function handleToggle(rt, state, args) {
+  if (String(args || "").includes("ToggleProps")) {
+    const ref = propRef(args, "value");
+    const bounds = parseBounds(args);
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+    if (!tap || !state || !ref)
+      return false;
+    state[ref] = state[ref] ? 0 : 1;
+    return true;
+  }
   const p = splitTopLevel(String(args || ""));
   const ref = firstRef(args);
   const bounds = { x: numberValue(p[1]), y: numberValue(p[2]), width: numberValue(p[3]), height: numberValue(p[4], 24) };
@@ -629,6 +673,21 @@ function handleToggle(rt, state, args) {
 }
 
 function handleCheckbox(rt, state, args) {
+  if (String(args || "").includes("CheckboxProps")) {
+    const valueRef = propRef(args, "value");
+    const flagsRef = propRef(args, "flags");
+    const flagsValue = propNumber(args, "flags_value", 0);
+    const bounds = parseBounds(args);
+    const tap = consumeFirstEvent(rt, (ev) => ev.type === "tap" && hit(bounds, ev.x, ev.y));
+    if (!tap || !state || (!valueRef && !flagsRef))
+      return false;
+    if (flagsRef) {
+      state[flagsRef] = (state[flagsRef] & flagsValue) ? (state[flagsRef] & ~flagsValue) : (state[flagsRef] | flagsValue);
+      return true;
+    }
+    state[valueRef] = state[valueRef] ? 0 : 1;
+    return true;
+  }
   const p = splitTopLevel(String(args || ""));
   const ref = firstRef(args);
   const bounds = { x: numberValue(p[1]), y: numberValue(p[2]), width: 120, height: 24 };

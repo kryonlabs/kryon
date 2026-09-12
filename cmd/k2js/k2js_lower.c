@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 /*
  * k2js_lower.c - Kir -> browser-loadable JavaScript backend.
  */
@@ -1056,6 +1057,23 @@ emit_zero_value(FILE *f, const KirModule *m, const char *type)
     emit_zero_value_nested(f, m, type, 0);
 }
 
+static int
+initializer_to_string(const KirModule *m, const char *value, char *out, size_t out_size)
+{
+    char *buffer = NULL;
+    size_t size = 0;
+    FILE *stream = open_memstream(&buffer, &size);
+    if(stream == NULL)
+        return 0;
+    emit_initializer_value(stream, m, value);
+    fclose(stream);
+    if(buffer == NULL)
+        return 0;
+    snprintf(out, out_size, "%s", buffer);
+    free(buffer);
+    return 1;
+}
+
 static void
 emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const char *args)
 {
@@ -1510,8 +1528,14 @@ emit_state(FILE *f, const KirModule *m)
         const char *value = field->init[0] ? field->init :
             !strcmp(field->type, "string") ? "\"\"" :
             !strcmp(KirScalarType(field->type), "bool") ? "false" : "0";
-        if(!KirScalarLiteral(field->type,value,KIR_JS,field->span,init,sizeof(init)))
-            tx_expr(m,value,init,sizeof(init));
+        if(!KirScalarLiteral(field->type,value,KIR_JS,field->span,init,sizeof(init))) {
+            if((*kir_skip_ws(field->type) == '[' || KirFindType(m, field->type, NULL) != NULL) &&
+               initializer_to_string(m, value, init, sizeof(init))) {
+                /* initializer_to_string populated init */
+            } else {
+                tx_expr(m,value,init,sizeof(init));
+            }
+        }
         if(!strcmp(KirScalarType(field->type),"f32")) {
             char raw[K2JS_TEXT_MAX];snprintf(raw,sizeof(raw),"%s",init);
             snprintf(init,sizeof(init),"Math.fround(%.8000s)",raw);
