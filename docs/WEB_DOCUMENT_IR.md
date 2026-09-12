@@ -370,6 +370,8 @@ path, node name, key, or DOM id matches `query`.
 identity string for a `.kry` node. `webNodeAtSource(...)` and
 `webNodesAtSource(...)` resolve those source locations back to unmounted Web
 Document nodes without requiring callers to hand-format selector strings.
+`webSourceMap(rt)` returns the source-backed node identities in the current
+frame.
 
 `webNodeIdentity(node)` returns a plain identity projection for a Web Document
 node: canonical ref, all stable aliases, kind/tag, Kry path/name/key, DOM id,
@@ -405,6 +407,8 @@ resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `webDOMObjectAtSource(...)` and `webDOMObjectsAtSource(...)` provide the same
 bridge after mount, returning Kry DOM objects whose `element` is the native
 browser object and whose `node` retains the `.kry` source identity.
+`webDOMSourceMap(target)` and `root.krySourceMap` list all mounted
+source-backed DOM objects.
 
 `webDOMObjectFromElement(element)` walks from a native element or event target
 to the nearest mounted Kry DOM object, which gives delegated browser handlers

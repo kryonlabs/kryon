@@ -162,6 +162,9 @@ assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn), tapSourceColumnRef);
 assert.equal(runtime.findWebNode(rt, tapSourceRef).path, webDoc.nodes[2].path);
 assert.equal(runtime.findWebNode(rt, tapSourceColumnRef).path, webDoc.nodes[2].path);
+assert.equal(runtime.webSourceMap(rt)
+  .some((entry) => entry.ref === "primary-action" &&
+    entry.sourceColumnRef === tapSourceColumnRef), true);
 assert.equal(runtime.webNodeAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn).path, webDoc.nodes[2].path);
 assert.deepEqual(runtime.webNodesAtSource(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
@@ -1269,6 +1272,7 @@ function fakeDocument() {
     assert.deepEqual(root.kryQueryAll("Button.primary").map((object) => object.ref), ["primary-action"]);
     assert.equal(root.kryAtSource("src/valid.kry", webDoc.nodes[2].sourceLine,
       webDoc.nodes[2].sourceColumn).element, firstButton);
+    assert.equal(root.krySourceMap.some((object) => object.ref === "primary-action"), true);
     assert.equal(Object.keys(root).includes("kryQuery"), false);
     assert.equal(Object.keys(root).includes("kryAddClass"), false);
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
@@ -1798,6 +1802,8 @@ function fakeDocument() {
     assert.deepEqual(runtime.webDOMObjectsAtSource(target, "src/valid.kry",
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn).map((object) => object.ref),
       [tapSourceColumnRef]);
+    assert.equal(runtime.webDOMSourceMap(target)
+      .some((object) => object.ref === "primary-action"), true);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "search-box"
     ]);

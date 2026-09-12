@@ -3926,6 +3926,13 @@ function bindWebRootProperties(root) {
         return webDOMObjectAtSource(this, sourcePath, sourceLine, sourceColumn);
       }
     },
+    krySourceMap: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        return webDOMSourceMap(this);
+      }
+    },
     kryListen: {
       configurable: true,
       enumerable: false,
