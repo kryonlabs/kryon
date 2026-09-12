@@ -64,6 +64,27 @@ assert.deepEqual(webDoc.nodes[2].classes, ["primary", "action"]);
 assert.equal(webDoc.nodes[2].role, "button");
 assert.equal(webDoc.nodes[2].ariaLabel, "Tap the action");
 assert.equal(webDoc.nodes[2].onClick, "call_host");
+assert.deepEqual(webDoc.nodes[2].styleFacts, {
+  kind: "Button",
+  tag: "button",
+  key: "tap",
+  name: "tap",
+  path: "Scene/root/tap",
+  parentPath: "Scene/root",
+  id: "tap-button",
+  classes: ["primary", "action"],
+  role: "button",
+  state: {
+    disabled: false,
+    loading: false,
+    selected: false,
+    checked: false,
+    invalid: false,
+    expanded: false,
+    open: false
+  }
+});
+assert.deepEqual(runtime.webNodeStyleFacts(webDoc.nodes[2]), webDoc.nodes[2].styleFacts);
 assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");

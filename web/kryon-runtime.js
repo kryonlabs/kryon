@@ -1052,7 +1052,16 @@ function webNodeFromWidget(item, index) {
   const classes = [...propClassList(args)];
   if (meta.class !== undefined && meta.class !== null)
     String(meta.class).split(/\s+/).filter(Boolean).forEach((name) => classes.push(name));
-  return {
+  const state = {
+    disabled: isTruthyProp(args, "disabled"),
+    loading: isTruthyProp(args, "loading"),
+    selected: isTruthyProp(args, "selected"),
+    checked: isTruthyProp(args, "checked"),
+    invalid: isTruthyProp(args, "invalid"),
+    expanded: isTruthyProp(args, "expanded"),
+    open: isTruthyProp(args, "open")
+  };
+  const node = {
     index,
     kind: item.name,
     tag: widgetTag(item),
@@ -1081,15 +1090,24 @@ function webNodeFromWidget(item, index) {
     pageThemeColor: colorToCss(args?.theme_color || args?.themeColor || ""),
     bounds,
     hasBounds: bounds.width > 0 || bounds.height > 0,
-    state: {
-      disabled: isTruthyProp(args, "disabled"),
-      loading: isTruthyProp(args, "loading"),
-      selected: isTruthyProp(args, "selected"),
-      checked: isTruthyProp(args, "checked"),
-      invalid: isTruthyProp(args, "invalid"),
-      expanded: isTruthyProp(args, "expanded"),
-      open: isTruthyProp(args, "open")
-    }
+    state
+  };
+  node.styleFacts = webNodeStyleFacts(node);
+  return node;
+}
+
+export function webNodeStyleFacts(node) {
+  return {
+    kind: node?.kind || "",
+    tag: node?.tag || "",
+    key: node?.key || "",
+    name: node?.name || "",
+    path: node?.path || "",
+    parentPath: node?.parentPath || "",
+    id: node?.domId || "",
+    classes: [...(node?.classes || [])],
+    role: node?.role || "",
+    state: { ...(node?.state || {}) }
   };
 }
 

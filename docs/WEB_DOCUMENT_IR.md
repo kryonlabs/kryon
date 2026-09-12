@@ -113,7 +113,8 @@ Supported metadata fields in this first slice:
       pageThemeColor,
       bounds,
       hasBounds,
-      state
+      state,
+      styleFacts
     }
   ]
 }
@@ -143,10 +144,11 @@ contract.
 
 ## KSS Fit
 
-KSS should resolve against the facts in this frame: `kind`, `name`, `classes`,
-semantic attributes, and state. The DOM backend may translate resolved KSS
-values to CSS variables, classes, or style attributes, but browser CSS is an
-output detail rather than the authoring source of truth.
+KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
+`name`, `path`, `parentPath`, `id`, `classes`, `role`, and `state`. The DOM
+backend may translate resolved KSS values to CSS variables, classes, or style
+attributes, but browser CSS is an output detail rather than the authoring source
+of truth.
 
 The frame is also the right place for inspector data: matched KSS rules,
 winning declarations, token origins, state slice, and backend degradation can

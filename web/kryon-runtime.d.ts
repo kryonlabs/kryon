@@ -96,6 +96,20 @@ export interface WebDocumentNode {
     expanded: boolean;
     open: boolean;
   };
+  styleFacts: WebNodeStyleFacts;
+}
+
+export interface WebNodeStyleFacts {
+  kind: string;
+  tag: string;
+  key: string;
+  name: string;
+  path: string;
+  parentPath: string;
+  id: string;
+  classes: string[];
+  role: string;
+  state: Record<string, boolean>;
 }
 
 export interface WebDocumentFrame {
@@ -163,6 +177,7 @@ export function ref<T>(object: Record<string, T>, key: string): Ref<T>;
 export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
+export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;
