@@ -1887,6 +1887,16 @@ function webNodeRef(docNode) {
   return docNode?.path || docNode?.name || docNode?.key || docNode?.domId || "";
 }
 
+function webNodeSourceRef(docNode) {
+  return docNode?.sourcePath && docNode?.sourceLine
+    ? `${docNode.sourcePath}:${docNode.sourceLine}`
+    : "";
+}
+
+function sourceRefMatches(docNode, query) {
+  return webNodeSourceRef(docNode) === String(query || "");
+}
+
 function applyDataAttrs(el, attrs) {
   const previous = el.__kryDataAttrs || new Set();
   const next = new Set();
@@ -2127,6 +2137,7 @@ export function renderWebDocument(rt, target) {
   root.__kryElementsByName = new Map();
   root.__kryElementsByDomId = new Map();
   root.__kryElementsByDomName = new Map();
+  root.__kryElementsBySource = new Map();
   root.__kryFormValues = new Map();
   for (const docNode of frame.nodes) {
     const identity = docNode.tag + ":" + (docNode.path || docNode.key);
@@ -2146,6 +2157,9 @@ export function renderWebDocument(rt, target) {
     const ref = webNodeRef(docNode);
     if (ref)
       root.__kryDomObjects.set(ref, { ref, node: docNode, element: el });
+    const sourceRef = webNodeSourceRef(docNode);
+    if (sourceRef)
+      root.__kryDomObjects.set(sourceRef, { ref: sourceRef, node: docNode, element: el });
     if (docNode.path)
       root.__kryElementsByPath.set(docNode.path, el);
     if (docNode.name)
@@ -2154,6 +2168,8 @@ export function renderWebDocument(rt, target) {
       root.__kryElementsByDomId.set(docNode.domId, el);
     if (docNode.domName)
       root.__kryElementsByDomName.set(docNode.domName, el);
+    if (sourceRef)
+      root.__kryElementsBySource.set(sourceRef, el);
     const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
       ? elementsByPath.get(docNode.parentPath)
       : root;
@@ -2185,7 +2201,7 @@ export function findWebNode(rt, query) {
   const frame = webDocumentFrame(rt);
   return frame.nodes.find((node) =>
     node.path === text || node.name === text || node.key === text ||
-    node.domId === text) || null;
+    node.domId === text || sourceRefMatches(node, text)) || null;
 }
 
 export function webNodeQueryAll(rt, selector) {
@@ -2219,9 +2235,12 @@ export function findWebElement(target, query) {
     return root.__kryElementsByDomId.get(text);
   if (root.__kryElementsByDomName?.has(text))
     return root.__kryElementsByDomName.get(text);
+  if (root.__kryElementsBySource?.has(text))
+    return root.__kryElementsBySource.get(text);
   for (const el of root.__kryChildren?.values?.() || []) {
     const node = el.__kryDocNode;
-    if (node && (node.path === text || node.key === text))
+    if (node && (node.path === text || node.key === text ||
+                 sourceRefMatches(node, text)))
       return el;
   }
   return null;
