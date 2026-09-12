@@ -8543,10 +8543,11 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if props.SelectedColumn != nil {
 		selectedCol = *props.SelectedColumn
 	}
-	font := Text12
+	fallbackFont := Text12
 	if rowH >= 28 {
-		font = Text14
+		fallbackFont = Text14
 	}
+	cellFont := styleFont(cellStyle, fallbackFont)
 	metrics := TableView_TableViewMetricsFor(1)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, headerH, props.FreezeRows, 1, metrics)
 	for _, col := range displayColumns {
@@ -8578,6 +8579,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			return ButtonStateNormal
 		}(), props.Disabled, selected, StyleSheet_StyleKindTableView(), 13)
 		headerStyle := unpackStyle(headerFrame.Value)
+		headerFont := styleFont(headerStyle, fallbackFont)
 		shift := tableHeaderShift(props, rect.Y)
 		var polygon [4]Vector2
 		if shift != 0 {
@@ -8597,7 +8599,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			r.ops[len(r.ops)-1].Clip = headerClip
 			r.ops[len(r.ops)-1].HasClip = true
 		}
-		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, font), Color: disabledColor(headerStyle.Foreground), FontSize: font, Row: -1, Column: col, Disabled: props.Disabled}
+		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, headerFont), Color: disabledColor(headerStyle.Foreground), Opacity: headerStyle.Opacity, FontSize: headerFont, Row: -1, Column: col, Disabled: props.Disabled}
 		angle := props.HeaderAngle
 		if math.IsNaN(float64(angle)) || math.IsInf(float64(angle), 0) {
 			angle = 0
@@ -8672,7 +8674,8 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 					cellTextColor = tableRow.TextColors[c]
 				}
 			}
-			if tableCellSelected(props, row, col, selectedRow, selectedCol) {
+			selectedCell := tableCellSelected(props, row, col, selectedRow, selectedCol)
+			if selectedCell {
 				op := styleFrameRectOp(rect, props.Bounds, selectedFrame)
 				op.Color = disabledColor(op.Color)
 				op.Row = row
@@ -8690,7 +8693,13 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			if int(row) < len(props.Rows) && c < len(props.Rows[row].Cells) {
 				text = props.Rows[row].Cells[c]
 			}
-			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, font), Color: disabledColor(cellTextColor), FontSize: font, Row: row, Column: col, Disabled: props.Disabled})
+			textOpacity := cellStyle.Opacity
+			textFont := cellFont
+			if selectedCell {
+				textOpacity = selectedStyle.Opacity
+				textFont = styleFont(selectedStyle, cellFont)
+			}
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, textFont), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, Row: row, Column: col, Disabled: props.Disabled})
 		}
 	}
 	for row := int32(0); row < frozenRows; row++ {

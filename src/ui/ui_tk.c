@@ -3545,7 +3545,8 @@ RenderTableView(TableViewProps table)
 {
     ToolkitStore *toolkit = toolkit_state();
     int paint = IsWindowReady();
-    int font = GetSmallFontSize();
+    int fallback_font = GetSmallFontSize();
+    int cell_font = fallback_font;
     TableViewMetrics metrics = TableViewMetricsFor((float)GetScale());
     TableViewLayout layout;
     TableViewScrollLayout scroll_layout;
@@ -3676,6 +3677,8 @@ RenderTableView(TableViewProps table)
         text_style = ui_unpack_style(ui_style_apply_effects_frame(text_frame).value);
         selection_style = ui_unpack_style(ui_style_apply_effects_frame(selection_frame).value);
         divider_style = ui_unpack_style(ui_style_apply_effects_frame(divider_frame).value);
+        if(text_style.font_size > 0.0f)
+            cell_font = (int)(text_style.font_size + 0.5f);
         ui_tk_draw_style_frame(table.bounds, (Rectangle){0}, surface_frame, 0, 0,
                                table.disabled, focused);
     }
@@ -3706,7 +3709,11 @@ RenderTableView(TableViewProps table)
             Style header_paint = ui_unpack_style(
                 ui_style_apply_effects_frame(header_frame).value);
             Color header_color = header_paint.background;
-            Color text_color = header_paint.foreground;
+            Color text_color = Fade(header_paint.foreground,
+                                    header_paint.opacity);
+            int header_font = header_paint.font_size > 0.0f
+                ? (int)(header_paint.font_size + 0.5f)
+                : fallback_font;
             float shift = ui_table_header_shift(table,head.y);
             if(shift != 0) {
                 Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
@@ -3731,10 +3738,10 @@ RenderTableView(TableViewProps table)
                     BeginClip(x0,(int)head.y+row,x1-x0,1);
                     DrawTextPro(GetTextFont(), label,
                             (Vector2){head.x + (angle > 0 ? shift : 0) + Scale(6), angle < 0 ? head.y + head.height - Scale(6) : head.y + Scale(6)},
-                            (Vector2){0,0}, angle, font, 1, text_color);
+                            (Vector2){0,0}, angle, header_font, 1, text_color);
                     EndClip();
                 }
-            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, font), font, text_color);
+            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, header_font), header_font, text_color);
             if(table.resizable && table.column_widths != NULL) {
                 BeginClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
@@ -3821,14 +3828,21 @@ RenderTableView(TableViewProps table)
                                          : table.rows[r].background_colors[c]);
                 BeginClip(x, (int)row.y, col_w, (int)row.height);
                 Color text_color = text_style.foreground;
+                float text_opacity = text_style.opacity;
+                int render_font = cell_font;
                 if(table.rows != NULL && table.rows[r].text_colors != NULL &&
                    c < table.rows[r].cell_count && table.rows[r].text_colors[c].a != 0)
                     text_color = table.rows[r].text_colors[c];
-                else if((table.selected_row != NULL && *table.selected_row == r) || hot)
+                else if((table.selected_row != NULL && *table.selected_row == r) || hot) {
                     text_color = selection_style.foreground;
-                else
+                    text_opacity = selection_style.opacity;
+                    if(selection_style.font_size > 0.0f)
+                        render_font = (int)(selection_style.font_size + 0.5f);
+                } else {
                     text_color = text_style.foreground;
-                RenderText(text, x + Scale(6), ui_row_text_y(row, font), font, text_color);
+                }
+                RenderText(text, x + Scale(6), ui_row_text_y(row, render_font),
+                           render_font, Fade(text_color, text_opacity));
                 EndClip();
             }
         }

@@ -432,7 +432,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `ListBox` | `.kry canonical` | Layout/navigation policy is in `.kry`; multi-selection uses `selected`, `selected_count`, and `anchor` props. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
 | `TreeView` | `.kry canonical` | Row/window geometry policy is in `.kry`; host handles input, scrollbars, selection mutation, expansion state, and drawing. |
-| `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/cell geometry is in `.kry`; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
+| `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/cell geometry is in `.kry`; header, cell, and selection text typography is KSS-owned; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
 | `Canvas` | `.kry canonical` | Transform, hit-test, and result policy are in `.kry`; host keeps clip/camera renderer scope. |
 | `BeginCanvas` | Native support | Lowered host entry for `.kry` `Canvas` blocks; not a separate public widget name. |

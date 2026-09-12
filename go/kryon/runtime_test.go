@@ -536,10 +536,10 @@ tokens {
   material { flat: Flat; }
 }
 TableView[role=Panel] { background: surface; border: rule; radius: radius; border-width: border; material: flat; }
-TableView[role=Header] { background: header; foreground: header-ink; border: rule; radius: radius; border-width: border; material: flat; }
-TableView[role=Header]:selected { background: header-selected; foreground: header-selected-ink; border: header-selected; material: flat; }
-TableView[role=Cell] { foreground: row-text; font-size: 14; }
-TableView[role=Selection] { background: selected; foreground: selected-ink; border: selected; radius: radius; border-width: border; material: flat; }
+TableView[role=Header] { background: header; foreground: header-ink; border: rule; radius: radius; border-width: border; font-size: 17; opacity: 0.81; material: flat; }
+TableView[role=Header]:selected { background: header-selected; foreground: header-selected-ink; border: header-selected; font-size: 19; opacity: 0.91; material: flat; }
+TableView[role=Cell] { foreground: row-text; font-size: 14; opacity: 0.72; }
+TableView[role=Selection] { background: selected; foreground: selected-ink; border: selected; radius: radius; border-width: border; font-size: 16; opacity: 0.83; material: flat; }
 TableView[role=Divider] { border: rule; }
 `, "Test Table", "") || !SetActiveStylePack("test.table") {
 		t.Fatal("test table style did not activate")
@@ -578,13 +578,17 @@ TableView[role=Divider] { border: rule; }
 				t.Fatalf("table normal header style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Row == -1 && op.Column == 0:
-			if op.Color != (Color{R: 0xee, G: 0xf5, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xee, G: 0xf5, B: 0xff, A: 0xff}) || op.FontSize != 17 || op.Opacity != 0.81 {
 				t.Fatalf("table normal header text style op = %+v", op)
 			}
 		case op.Kind == FrameOpRect && op.Row == -1 && op.Column == 1 && op.Selected:
 			sawSelectedHeader = true
 			if op.Color != (Color{R: 0x3b, G: 0x66, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0x3b, G: 0x66, B: 0xff, A: 0xff}) {
 				t.Fatalf("table selected header style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Row == -1 && op.Column == 1:
+			if op.Color != (Color{R: 0xff, G: 0xff, B: 0xff, A: 0xff}) || op.FontSize != 19 || op.Opacity != 0.91 {
+				t.Fatalf("table selected header text style op = %+v", op)
 			}
 		case op.Kind == FrameOpLine && op.Column == 0:
 			sawDivider = true
@@ -593,7 +597,7 @@ TableView[role=Divider] { border: rule; }
 			}
 		case op.Kind == FrameOpText && op.Row == 0 && op.Column == 0:
 			sawBodyText = true
-			if op.Color != (Color{R: 0xcb, G: 0xd6, B: 0xe4, A: 0xff}) {
+			if op.Color != (Color{R: 0xcb, G: 0xd6, B: 0xe4, A: 0xff}) || op.FontSize != 14 || op.Opacity != 0.72 {
 				t.Fatalf("table body text style op = %+v", op)
 			}
 		case op.Kind == FrameOpRect && op.Row == 0 && op.Column == 1 && op.Selected:
@@ -603,7 +607,7 @@ TableView[role=Divider] { border: rule; }
 			}
 		case op.Kind == FrameOpText && op.Row == 0 && op.Column == 1:
 			sawSelectedText = true
-			if op.Color != (Color{R: 0xff, G: 0xf7, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xff, G: 0xf7, B: 0xff, A: 0xff}) || op.FontSize != 16 || op.Opacity != 0.83 {
 				t.Fatalf("table selected cell text style op = %+v", op)
 			}
 		}

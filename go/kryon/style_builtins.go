@@ -1068,6 +1068,7 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -2767,6 +2768,7 @@ TableView[role=Header] {
   border: border;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -4428,6 +4430,7 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -6200,6 +6203,7 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -7974,6 +7978,7 @@ TableView[role=Header] {
   border: border;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

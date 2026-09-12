@@ -1075,6 +1075,7 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
