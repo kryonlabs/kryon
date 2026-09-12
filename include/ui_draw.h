@@ -23,8 +23,4 @@ int FitFontSize(const char *text, int max_width,
                 int preferred_size, int min_size);
 int GetUIControlTextY(const char *text, int box_y, int box_h, int font);
 
-void DrawLeftUIControlTextInRect(const char *text, Rectangle rect,
-                                 int font_size, Color color);
-void DrawFittedTextInRect(const char *text, Rectangle rect,
-                            int preferred_size, int min_size, Color color);
 #endif

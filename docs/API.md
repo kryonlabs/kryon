@@ -2113,15 +2113,6 @@ Surface((Rectangle){24, 74, 720, 920}, (Style){
 });
 ```
 
-### Text Drawing Helpers
-
-```c
-void DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Color color);
-void DrawFittedTextInRect(const char *text, Rectangle rect, int preferred_size, int min_size, Color color);
-```
-
----
-
 ## Button Properties
 
 ```c
