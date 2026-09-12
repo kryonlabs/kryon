@@ -2131,6 +2131,7 @@ function applyWebNode(el, docNode, rt) {
   const extraClasses = [...(el.__kryExtraClasses || [])];
   docNode.classes = [...new Set([...(docNode.classes || []), ...extraClasses])];
   docNode.extraAttrs = { ...(docNode.extraAttrs || {}), ...(el.__kryExtraAttrs || {}) };
+  Object.assign(docNode.state, el.__kryExtraState || {});
   el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
   el.dataset.kryKind = docNode.kind;
   el.dataset.kryKey = docNode.key;
@@ -2608,6 +2609,61 @@ export function webDOMHasClass(target, query, className) {
   const name = cleanDOMClassName(className);
   const el = name ? findWebElement(target, query) : null;
   return !!el && String(el.className || "").split(/\s+/).includes(name);
+}
+
+const webDOMStateNames = new Set([
+  "disabled", "loading", "selected", "checked", "invalid", "expanded",
+  "open", "hover", "pressed", "focus"
+]);
+
+function cleanDOMStateName(name) {
+  const key = String(name || "").trim().toLowerCase().replace(/-/g, "_");
+  if (key === "focused")
+    return "focus";
+  return webDOMStateNames.has(key) ? key : "";
+}
+
+function syncDOMStateMutation(el) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return null;
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  applyWebNode(el, docNode, el.__kryRuntime || null);
+  applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+    ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+    : null);
+  return docNode;
+}
+
+export function webDOMSetState(target, query, name, value) {
+  const key = cleanDOMStateName(name);
+  const el = key ? findWebElement(target, query) : null;
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return false;
+  const extra = { ...(el.__kryExtraState || {}) };
+  extra[key] = !!value;
+  el.__kryExtraState = extra;
+  docNode.state[key] = !!value;
+  syncDOMStateMutation(el);
+  return true;
+}
+
+export function webDOMToggleState(target, query, name, force) {
+  const key = cleanDOMStateName(name);
+  const el = key ? findWebElement(target, query) : null;
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return false;
+  const next = force === undefined ? !docNode.state[key] : !!force;
+  return webDOMSetState(target, query, key, next);
+}
+
+export function webDOMGetState(target, query, name) {
+  const key = cleanDOMStateName(name);
+  const el = key ? findWebElement(target, query) : null;
+  const docNode = el?.__kryDocNode;
+  return docNode ? !!docNode.state[key] : undefined;
 }
 
 function cleanDOMAttributeName(name) {

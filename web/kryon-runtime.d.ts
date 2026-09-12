@@ -374,6 +374,9 @@ export function webDOMAddClass(target: Element | string | null, query: string, c
 export function webDOMRemoveClass(target: Element | string | null, query: string, className: string): boolean;
 export function webDOMToggleClass(target: Element | string | null, query: string, className: string, force?: boolean): boolean;
 export function webDOMHasClass(target: Element | string | null, query: string, className: string): boolean;
+export function webDOMSetState(target: Element | string | null, query: string, name: string, value: boolean): boolean;
+export function webDOMToggleState(target: Element | string | null, query: string, name: string, force?: boolean): boolean;
+export function webDOMGetState(target: Element | string | null, query: string, name: string): boolean | undefined;
 export function webDOMSetAttribute(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
 export function webDOMRemoveAttribute(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetAttribute(target: Element | string | null, query: string, name: string): string | undefined;

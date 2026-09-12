@@ -71,6 +71,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   Button[data-runtime="1"] {
     padding-y: 9;
   }
+  Button:disabled {
+    opacity: 0.25;
+  }
   TextField.field {
     border-width: line;
     padding-y: field-y;
@@ -805,6 +808,17 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetAttribute(target, "tap-button", "data-runtime"), "1");
     assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
+    assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
+    assert.equal(runtime.webDOMSetState(target, "tap-button", "disabled", true), true);
+    assert.equal(runtime.webDOMGetState(target, "Scene/root/tap", "disabled"), true);
+    assert.equal(firstButton.attributes.disabled, "");
+    assert.equal(firstButton.attributes["aria-disabled"], "true");
+    assert.equal(firstButton.style.opacity, "0.25");
+    assert.equal(runtime.webDOMQuery(target, "Button:disabled").element, firstButton);
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), true);
+    assert.equal(runtime.webDOMToggleState(target, "tap-button", "disabled"), true);
+    assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
     assert.equal(runtime.webDOMGetText(target, "tap-button"), "Tap");
     assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
