@@ -171,6 +171,7 @@ assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
 assert.ok(webDoc.nodes[2].sourceEndLine > 0);
 assert.ok(webDoc.nodes[2].sourceEndColumn > 0);
+assert.ok(webDoc.nodes[2].sourceEndLine > webDoc.nodes[2].sourceLine);
 assert.equal(webDoc.nodes[6].key, webDoc.nodes[6].path);
 assert.equal(webDoc.nodes[7].key, webDoc.nodes[7].path);
 const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine}`;
@@ -192,7 +193,10 @@ assert.deepEqual(runtime.webNodesAtSource(rt, "src/valid.kry", webDoc.nodes[2].s
 assert.equal(runtime.webNodeAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn + 1).path, webDoc.nodes[2].path);
 assert.deepEqual(runtime.webNodesAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceLine,
-  webDoc.nodes[2].sourceEndColumn + 1).map((node) => node.path), []);
+  webDoc.nodes[2].sourceColumn + 1).map((node) => node.path),
+  [webDoc.nodes[2].path, webDoc.nodes[0].path]);
+assert.deepEqual(runtime.webNodesAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceEndLine,
+  webDoc.nodes[2].sourceEndColumn + 1).map((node) => node.path), [webDoc.nodes[0].path]);
 assert.equal(runtime.findWebNode(rt, "primary-action").path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");

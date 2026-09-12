@@ -529,6 +529,7 @@ typedef struct UiBlock {
     char dom_on_paste[KIR_NAME_MAX];
     int anonymous_widget_count;
     int close_depth;
+    int statement_index;
     int opened;
     int emits_end;
     int prop_count;
@@ -1619,6 +1620,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                                                   source_span);
         if(statement == NULL)
             die("out of memory parsing widget block");
+        block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
         if(closing) {
             statement->declared_widget = 1;
@@ -1638,6 +1640,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                                                   source_span);
         if(statement == NULL)
             die("out of memory parsing declared widget");
+        block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
         statement->declared_widget = 1;
         block->opened = 1;
@@ -1654,12 +1657,26 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                                               source_span);
     if(statement == NULL)
         die("out of memory parsing widget block");
+    block->statement_index = (int)(statement - fn->stmts);
     ui_block_apply_web_metadata(statement, block);
     if(closing && !block->emits_end) {
         statement->declared_widget = 1;
         statement->widget_fallback = 1;
     }
     block->opened = 1;
+}
+
+static KirSourceSpan
+ui_block_close_span(const UiBlock *block, const char *path, int line_no,
+                    const char *line)
+{
+    KirSourceSpan start = block != NULL && block->span.path[0] != '\0'
+                            ? block->span
+                            : KirSpan(path, line_no, 1);
+    int end_column = (int)strlen(line) + 1;
+
+    return KirSpanEnd(start.path, start.line, start.column, line_no,
+                      end_column > 0 ? end_column : 1);
 }
 
 static int
@@ -3682,8 +3699,13 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
             } else if(t[0] == '}' && ui_block_count > 0 &&
                       depth == ui_blocks[ui_block_count - 1].close_depth) {
                 UiBlock *block = &ui_blocks[ui_block_count - 1];
+                KirSourceSpan block_span = ui_block_close_span(block, rel,
+                                                               line_no, t);
 
-                ui_block_open(fn, block, KirSpan(rel, line_no, 1), 1);
+                ui_block_open(fn, block, block_span, 1);
+                if(block->statement_index >= 0 &&
+                   block->statement_index < fn->stmt_count)
+                    fn->stmts[block->statement_index].span = block_span;
                 if(strcmp(block->widget, "Disabled") == 0 ||
                    strcmp(block->widget, "Scroll") == 0 ||
                    strcmp(block->widget, "TableCell") == 0 ||
@@ -3788,6 +3810,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         die("%s:%d: too many nested UI blocks", rel, line_no);
                     block = &ui_blocks[ui_block_count++];
                     memset(block, 0, sizeof(*block));
+                    block->statement_index = -1;
                     block->span = KirSpanEnd(rel, line_no, 1, line_no,
                                              (int)strlen(t) + 1);
                     snprintf(block->widget, sizeof(block->widget), "%s",

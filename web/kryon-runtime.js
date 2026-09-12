@@ -2741,6 +2741,28 @@ function sourcePositionWithinNode(node, sourcePath, line, column = 0) {
   return true;
 }
 
+function webNodePathDepth(node) {
+  return String(node?.path || "").split("/").filter(Boolean).length;
+}
+
+function compareWebNodesDeepestFirst(a, b) {
+  return webNodePathDepth(b) - webNodePathDepth(a) ||
+    (b.sourceLine || 0) - (a.sourceLine || 0) ||
+    (b.sourceColumn || 0) - (a.sourceColumn || 0);
+}
+
+function sortWebNodesDeepestFirst(nodes) {
+  return [...(nodes || [])].sort(compareWebNodesDeepestFirst);
+}
+
+function compareWebDOMObjectsDeepestFirst(a, b) {
+  return compareWebNodesDeepestFirst(a?.node, b?.node);
+}
+
+function sortWebDOMObjectsDeepestFirst(objects) {
+  return [...(objects || [])].sort(compareWebDOMObjectsDeepestFirst);
+}
+
 function sourceRefMatches(docNode, query) {
   const text = String(query || "");
   return webNodeSourceRef(docNode) === text || webNodeSourceColumnRef(docNode) === text;
@@ -4846,8 +4868,8 @@ export function webNodesAtSourceRange(rt, sourcePath, sourceLine, sourceColumn =
   const column = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
   if (!path || line <= 0)
     return [];
-  return webDocumentFrame(rt).nodes
-    .filter((node) => sourcePositionWithinNode(node, path, line, column));
+  return sortWebNodesDeepestFirst(webDocumentFrame(rt).nodes
+    .filter((node) => sourcePositionWithinNode(node, path, line, column)));
 }
 
 export function webNodeAtSourceRange(rt, sourcePath, sourceLine, sourceColumn = 0) {
@@ -5566,8 +5588,8 @@ export function webDOMObjectsAtSourceRange(target, sourcePath, sourceLine, sourc
   const column = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
   if (!root || !path || line <= 0)
     return [];
-  return webDOMObjects(target)
-    .filter((object) => sourcePositionWithinNode(object.node, path, line, column));
+  return sortWebDOMObjectsDeepestFirst(webDOMObjects(target)
+    .filter((object) => sourcePositionWithinNode(object.node, path, line, column)));
 }
 
 export function webDOMObjectAtSourceRange(target, sourcePath, sourceLine, sourceColumn = 0) {
