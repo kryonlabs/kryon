@@ -371,6 +371,7 @@ function fakeDocument() {
     assert.equal(link.attributes.target, "_blank");
     assert.equal(link.attributes.rel, "noopener");
     assert.equal(checkbox.attributes["aria-checked"], "true");
+    assert.equal(checkbox.attributes.checked, "");
     assert.equal(checkbox.attributes["aria-disabled"], "true");
     assert.equal(checkbox.attributes["aria-busy"], "true");
     assert.equal(runtime.webFormValue(target, "accept"), true);

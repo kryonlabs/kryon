@@ -1985,10 +1985,14 @@ function applyWebNode(el, docNode, rt) {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);
   } else if (docNode.tag === "input") {
-    if (docNode.value)
+    if (docNode.value !== undefined && docNode.value !== null && docNode.value !== "")
       el.setAttribute("value", docNode.value);
     else
       removeAttr(el, "value");
+    setAttr(el, "checked",
+      docNode.inputType === "checkbox" || docNode.inputType === "radio"
+        ? docNode.state.checked
+        : false);
     if (docNode.inputType !== "checkbox" && docNode.inputType !== "radio")
       el.value = docNode.value;
     el.checked = !!docNode.state.checked;
