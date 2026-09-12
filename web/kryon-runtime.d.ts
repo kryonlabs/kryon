@@ -80,6 +80,8 @@ export interface WebDocumentNode {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceEndLine: number;
+  sourceEndColumn: number;
   domId: string;
   domName: string;
   domValue: string;
@@ -224,8 +226,11 @@ export interface WebNodeStyleFacts {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceEndLine: number;
+  sourceEndColumn: number;
   sourceRef: string;
   sourceColumnRef: string;
+  sourceRangeRef: string;
   id: string;
   domName: string;
   domValue: string;
@@ -287,8 +292,11 @@ export interface WebNodeIdentity {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceEndLine: number;
+  sourceEndColumn: number;
   sourceRef: string;
   sourceColumnRef: string;
+  sourceRangeRef: string;
 }
 
 export interface WebDocumentFrame {
@@ -307,6 +315,8 @@ export interface WebAccessibilityNode {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceEndLine: number;
+  sourceEndColumn: number;
   name: string;
   kind: string;
   tag: string;
@@ -460,6 +470,7 @@ declare global {
     kryQueryWithin?(query: string, selector: string): WebDOMObject | null;
     kryQueryAllWithin?(query: string, selector: string): WebDOMObject[];
     kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+    kryAtSourceRange?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
     readonly krySourceMap?: WebDOMObject[];
     kryListen?: {
       (type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
@@ -598,8 +609,11 @@ export interface WebDOMSnapshot {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceEndLine: number;
+  sourceEndColumn: number;
   sourceRef: string;
   sourceColumnRef: string;
+  sourceRangeRef: string;
   text: string;
   value: unknown;
   state: Record<string, boolean>;
@@ -706,6 +720,8 @@ export function webNodeQueryWithin(rt: Runtime, query: string, selector: string)
 export function webNodeQueryAllWithin(rt: Runtime, query: string, selector: string): WebDocumentNode[];
 export function webNodeAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
 export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
+export function webNodeAtSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
+export function webNodesAtSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
 export function webSourceMap(rt: Runtime): WebNodeIdentity[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
@@ -741,6 +757,8 @@ export function webDOMQueryAllWithin(target: Element | string | null, query: str
 export function webDOMMatches(target: Element | string | null, query: string, selector: string): boolean;
 export function webDOMObjectAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
 export function webDOMObjectsAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
+export function webDOMObjectAtSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+export function webDOMObjectsAtSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
 export function webDOMSourceMap(target: Element | string | null): WebDOMObject[];
 export function webDOMAddEventListener(target: Element | string | null, query: string, type: string,
   handler: (event: Event, object: WebDOMObject | null) => unknown,

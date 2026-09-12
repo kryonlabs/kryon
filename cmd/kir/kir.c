@@ -313,12 +313,20 @@ KirProgramFree(KirProgram *program)
 KirSourceSpan
 KirSpan(const char *path, int line, int column)
 {
+    return KirSpanEnd(path, line, column, line, column);
+}
+
+KirSourceSpan
+KirSpanEnd(const char *path, int line, int column, int end_line, int end_column)
+{
     KirSourceSpan span;
 
     memset(&span, 0, sizeof(span));
     kir_copy(span.path, sizeof(span.path), path);
     span.line = line;
     span.column = column;
+    span.end_line = end_line;
+    span.end_column = end_column;
     return span;
 }
 
@@ -706,6 +714,9 @@ static void
 kir_dump_span(FILE *out, KirSourceSpan span)
 {
     fprintf(out, "%s:%d:%d", span.path, span.line, span.column);
+    if(span.end_line > 0 && span.end_column > 0 &&
+       (span.end_line != span.line || span.end_column != span.column))
+        fprintf(out, "-%d:%d", span.end_line, span.end_column);
 }
 
 static void

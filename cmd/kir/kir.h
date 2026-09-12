@@ -80,6 +80,8 @@ typedef struct KirSourceSpan {
     char path[KIR_PATH_MAX];
     int line;
     int column;
+    int end_line;
+    int end_column;
 } KirSourceSpan;
 
 typedef struct KirStateField {
@@ -392,6 +394,8 @@ KirProgram *KirProgramNew(void);
 void KirProgramFree(KirProgram *program);
 void kir_copy(char *dst, size_t dst_size, const char *src);
 KirSourceSpan KirSpan(const char *path, int line, int column);
+KirSourceSpan KirSpanEnd(const char *path, int line, int column,
+                         int end_line, int end_column);
 KirModule *KirProgramAddModule(KirProgram *program, const char *name,
                                const char *source_path, KirSourceSpan span);
 KirStateField *KirModuleAddStateField(KirModule *module, const char *name,

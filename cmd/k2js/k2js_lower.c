@@ -1476,6 +1476,9 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_string_field(f, "sourcePath", st->span.path, &emitted);
     emit_metadata_int_field(f, "sourceLine", st->span.line, &emitted);
     emit_metadata_int_field(f, "sourceColumn", st->span.column, &emitted);
+    emit_metadata_int_field(f, "sourceEndLine", st->span.end_line, &emitted);
+    emit_metadata_int_field(f, "sourceEndColumn", st->span.end_column,
+                            &emitted);
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "ref", st->dom_ref, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);

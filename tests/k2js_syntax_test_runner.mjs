@@ -166,10 +166,13 @@ assert.equal(webDoc.nodes[2].webRef, "primary-action");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
+assert.ok(webDoc.nodes[2].sourceEndLine > 0);
+assert.ok(webDoc.nodes[2].sourceEndColumn > 0);
 assert.equal(webDoc.nodes[6].key, webDoc.nodes[6].path);
 assert.equal(webDoc.nodes[7].key, webDoc.nodes[7].path);
 const tapSourceRef = `${webDoc.nodes[2].sourcePath}:${webDoc.nodes[2].sourceLine}`;
 const tapSourceColumnRef = `${tapSourceRef}:${webDoc.nodes[2].sourceColumn}`;
+const tapSourceRangeRef = `${tapSourceColumnRef}-${webDoc.nodes[2].sourceEndLine}:${webDoc.nodes[2].sourceEndColumn}`;
 assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine), tapSourceRef);
 assert.equal(runtime.webSourceRef("src/valid.kry", webDoc.nodes[2].sourceLine,
   webDoc.nodes[2].sourceColumn), tapSourceColumnRef);
@@ -213,8 +216,11 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   sourcePath: webDoc.nodes[2].sourcePath,
   sourceLine: webDoc.nodes[2].sourceLine,
   sourceColumn: webDoc.nodes[2].sourceColumn,
+  sourceEndLine: webDoc.nodes[2].sourceEndLine,
+  sourceEndColumn: webDoc.nodes[2].sourceEndColumn,
   sourceRef: tapSourceRef,
   sourceColumnRef: tapSourceColumnRef,
+  sourceRangeRef: tapSourceRangeRef,
   id: "tap-button",
   domName: "",
   domValue: "tap-value",
@@ -279,7 +285,8 @@ assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
     "tap",
     "tap-button",
     tapSourceRef,
-    tapSourceColumnRef
+    tapSourceColumnRef,
+    tapSourceRangeRef
   ],
   index: 2,
   kind: "Button",
@@ -294,8 +301,11 @@ assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
   sourcePath: webDoc.nodes[2].sourcePath,
   sourceLine: webDoc.nodes[2].sourceLine,
   sourceColumn: webDoc.nodes[2].sourceColumn,
+  sourceEndLine: webDoc.nodes[2].sourceEndLine,
+  sourceEndColumn: webDoc.nodes[2].sourceEndColumn,
   sourceRef: tapSourceRef,
-  sourceColumnRef: tapSourceColumnRef
+  sourceColumnRef: tapSourceColumnRef,
+  sourceRangeRef: tapSourceRangeRef
 });
 assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   background: "#203040",
@@ -348,6 +358,8 @@ assert.equal(runtime.webNodeQuery(rt,
   "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, `[sourceRef="${tapSourceRef}"]`).path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt, `[sourceColumnRef="${tapSourceColumnRef}"]`).path,
+  "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, `[sourceRangeRef="${tapSourceRangeRef}"]`).path,
   "Scene/root/tap");
 assert.equal(runtime.webNodeMatches(rt, "primary-action", "Button.primary"), true);
 assert.equal(runtime.webNodeQuery(rt, "[ref=\"primary-action\"]").path, "Scene/root/tap");

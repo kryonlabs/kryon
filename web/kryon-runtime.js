@@ -1272,6 +1272,8 @@ function webNodeFromWidget(item, index) {
     sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
     sourceLine: Number.isFinite(Number(meta.sourceLine)) ? Math.trunc(Number(meta.sourceLine)) : 0,
     sourceColumn: Number.isFinite(Number(meta.sourceColumn)) ? Math.trunc(Number(meta.sourceColumn)) : 0,
+    sourceEndLine: Number.isFinite(Number(meta.sourceEndLine)) ? Math.trunc(Number(meta.sourceEndLine)) : 0,
+    sourceEndColumn: Number.isFinite(Number(meta.sourceEndColumn)) ? Math.trunc(Number(meta.sourceEndColumn)) : 0,
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     domName: meta.domName === undefined || meta.domName === null ? "" : String(meta.domName),
     classes: [...new Set(classes)],
@@ -1408,8 +1410,11 @@ export function webNodeStyleFacts(node) {
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
     sourceColumn: node?.sourceColumn || 0,
+    sourceEndLine: node?.sourceEndLine || 0,
+    sourceEndColumn: node?.sourceEndColumn || 0,
     sourceRef: webNodeSourceRef(node),
     sourceColumnRef: webNodeSourceColumnRef(node),
+    sourceRangeRef: webNodeSourceRangeRef(node),
     id: node?.domId || "",
     domName: node?.domName || "",
     domValue: node?.domValue || "",
@@ -1460,6 +1465,7 @@ export function webNodeIdentity(node) {
   const ref = webNodeRef(node);
   const sourceRef = webNodeSourceRef(node);
   const sourceColumnRef = webNodeSourceColumnRef(node);
+  const sourceRangeRef = webNodeSourceRangeRef(node);
   const aliases = [...new Set([
     ref,
     node?.path || "",
@@ -1468,7 +1474,8 @@ export function webNodeIdentity(node) {
     node?.domId || "",
     node?.domName || "",
     sourceRef,
-    sourceColumnRef
+    sourceColumnRef,
+    sourceRangeRef
   ].filter(Boolean))];
   return {
     ref,
@@ -1486,8 +1493,11 @@ export function webNodeIdentity(node) {
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
     sourceColumn: node?.sourceColumn || 0,
+    sourceEndLine: node?.sourceEndLine || 0,
+    sourceEndColumn: node?.sourceEndColumn || 0,
     sourceRef,
-    sourceColumnRef
+    sourceColumnRef,
+    sourceRangeRef
   };
 }
 
@@ -1501,6 +1511,8 @@ export function webAccessibilitySnapshot(source) {
       sourcePath: node.sourcePath,
       sourceLine: node.sourceLine,
       sourceColumn: node.sourceColumn,
+      sourceEndLine: node.sourceEndLine,
+      sourceEndColumn: node.sourceEndColumn,
       name: node.name,
       kind: node.kind,
       tag: node.tag,
@@ -1791,6 +1803,12 @@ function webStyleSelectorAttrToCSS(key, value) {
     return attr("data-kry-source-ref");
   if (key === "sourceColumnRef")
     return attr("data-kry-source-column-ref");
+  if (key === "sourceRangeRef")
+    return attr("data-kry-source-range-ref");
+  if (key === "endLine" || key === "sourceEndLine")
+    return attr("data-kry-end-line");
+  if (key === "endColumn" || key === "sourceEndColumn")
+    return attr("data-kry-end-column");
   if (key === "state")
     return present ? "[data-kry-state]" : `[data-kry-state~="${cssEscapeString(value)}"]`;
   return attr(key);
@@ -1976,6 +1994,11 @@ function selectorNativeAttrValue(key, facts) {
     case "column": return facts.sourceColumn;
     case "sourceRef": return facts.sourceRef;
     case "sourceColumnRef": return facts.sourceColumnRef;
+    case "sourceRangeRef": return facts.sourceRangeRef;
+    case "endLine":
+    case "sourceEndLine": return facts.sourceEndLine;
+    case "endColumn":
+    case "sourceEndColumn": return facts.sourceEndColumn;
     case "name": return facts.domName;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
@@ -2630,6 +2653,13 @@ function webNodeSourceColumnRef(docNode) {
     : "";
 }
 
+function webNodeSourceRangeRef(docNode) {
+  if (!docNode?.sourcePath || !docNode?.sourceLine || !docNode?.sourceColumn ||
+      !docNode?.sourceEndLine || !docNode?.sourceEndColumn)
+    return "";
+  return `${docNode.sourcePath}:${docNode.sourceLine}:${docNode.sourceColumn}-${docNode.sourceEndLine}:${docNode.sourceEndColumn}`;
+}
+
 export function webSourceRef(sourcePath, sourceLine, sourceColumn = 0) {
   const path = String(sourcePath || "").trim();
   const line = Number.isFinite(Number(sourceLine)) ? Math.trunc(Number(sourceLine)) : 0;
@@ -2641,6 +2671,22 @@ export function webSourceRef(sourcePath, sourceLine, sourceColumn = 0) {
 
 function webNodeHasSource(node) {
   return !!(node?.sourcePath && node?.sourceLine);
+}
+
+function sourcePositionWithinNode(node, sourcePath, line, column = 0) {
+  if (!webNodeHasSource(node) || node.sourcePath !== sourcePath || line <= 0)
+    return false;
+  const startLine = node.sourceLine || 0;
+  const startColumn = node.sourceColumn || 0;
+  const endLine = node.sourceEndLine || startLine;
+  const endColumn = node.sourceEndColumn || startColumn;
+  if(line < startLine || line > endLine)
+    return false;
+  if(column > 0 && line === startLine && startColumn > 0 && column < startColumn)
+    return false;
+  if(column > 0 && line === endLine && endColumn > 0 && column > endColumn)
+    return false;
+  return true;
 }
 
 function sourceRefMatches(docNode, query) {
@@ -3764,6 +3810,14 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryColumn = String(docNode.sourceColumn);
   else
     delete el.dataset.kryColumn;
+  if (docNode.sourceEndLine)
+    el.dataset.kryEndLine = String(docNode.sourceEndLine);
+  else
+    delete el.dataset.kryEndLine;
+  if (docNode.sourceEndColumn)
+    el.dataset.kryEndColumn = String(docNode.sourceEndColumn);
+  else
+    delete el.dataset.kryEndColumn;
   const sourceRef = webNodeSourceRef(docNode);
   if (sourceRef)
     el.dataset.krySourceRef = sourceRef;
@@ -3774,6 +3828,11 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.krySourceColumnRef = sourceColumnRef;
   else
     delete el.dataset.krySourceColumnRef;
+  const sourceRangeRef = webNodeSourceRangeRef(docNode);
+  if (sourceRangeRef)
+    el.dataset.krySourceRangeRef = sourceRangeRef;
+  else
+    delete el.dataset.krySourceRangeRef;
   if (docNode.name)
     el.dataset.kryName = docNode.name;
   else
@@ -4106,6 +4165,13 @@ function bindWebRootProperties(root) {
       enumerable: false,
       value(sourcePath, sourceLine, sourceColumn = 0) {
         return webDOMObjectAtSource(this, sourcePath, sourceLine, sourceColumn);
+      }
+    },
+    kryAtSourceRange: {
+      configurable: true,
+      enumerable: false,
+      value(sourcePath, sourceLine, sourceColumn = 0) {
+        return webDOMObjectAtSourceRange(this, sourcePath, sourceLine, sourceColumn);
       }
     },
     krySourceMap: {
@@ -4478,6 +4544,13 @@ export function renderWebDocument(rt, target) {
         root.__kryDomObjects.set(sourceColumnRef, sourceColumnObject);
       pushIndex(root.__kryDomObjectsBySource, sourceColumnRef, sourceColumnObject);
     }
+    const sourceRangeRef = webNodeSourceRangeRef(docNode);
+    if (sourceRangeRef) {
+      const sourceRangeObject = makeWebDOMObject(root, docNode, el, sourceRangeRef);
+      if (!root.__kryDomObjects.has(sourceRangeRef))
+        root.__kryDomObjects.set(sourceRangeRef, sourceRangeObject);
+      pushIndex(root.__kryDomObjectsBySource, sourceRangeRef, sourceRangeObject);
+    }
     if (docNode.path)
       root.__kryElementsByPath.set(docNode.path, el);
     if (docNode.name)
@@ -4490,6 +4563,8 @@ export function renderWebDocument(rt, target) {
       pushIndex(root.__kryElementsBySource, sourceRef, el);
     if (sourceColumnRef)
       pushIndex(root.__kryElementsBySource, sourceColumnRef, el);
+    if (sourceRangeRef)
+      pushIndex(root.__kryElementsBySource, sourceRangeRef, el);
     const parent = docNode.parentPath && elementsByPath.get(docNode.parentPath)
       ? elementsByPath.get(docNode.parentPath)
       : root;
@@ -4649,6 +4724,20 @@ export function webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {
 
 export function webNodeAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {
   return webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn)[0] || null;
+}
+
+export function webNodesAtSourceRange(rt, sourcePath, sourceLine, sourceColumn = 0) {
+  const path = String(sourcePath || "").trim();
+  const line = Number.isFinite(Number(sourceLine)) ? Math.trunc(Number(sourceLine)) : 0;
+  const column = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
+  if (!path || line <= 0)
+    return [];
+  return webDocumentFrame(rt).nodes
+    .filter((node) => sourcePositionWithinNode(node, path, line, column));
+}
+
+export function webNodeAtSourceRange(rt, sourcePath, sourceLine, sourceColumn = 0) {
+  return webNodesAtSourceRange(rt, sourcePath, sourceLine, sourceColumn)[0] || null;
 }
 
 export function webSourceMap(rt) {
@@ -5050,6 +5139,14 @@ function syncWebDOMRootIndexes(root) {
       pushIndex(root.__kryDomObjectsBySource, sourceColumnRef, sourceColumnObject);
       pushIndex(root.__kryElementsBySource, sourceColumnRef, el);
     }
+    const sourceRangeRef = webNodeSourceRangeRef(docNode);
+    if (sourceRangeRef) {
+      const sourceRangeObject = makeWebDOMObject(root, docNode, el, sourceRangeRef);
+      if (!root.__kryDomObjects.has(sourceRangeRef))
+        root.__kryDomObjects.set(sourceRangeRef, sourceRangeObject);
+      pushIndex(root.__kryDomObjectsBySource, sourceRangeRef, sourceRangeObject);
+      pushIndex(root.__kryElementsBySource, sourceRangeRef, el);
+    }
     if (docNode.name)
       root.__kryElementsByName.set(docNode.name, el);
     if (docNode.domId)
@@ -5185,8 +5282,11 @@ function webDOMObjectSnapshot(target, object) {
     sourcePath: node.sourcePath || "",
     sourceLine: node.sourceLine || 0,
     sourceColumn: node.sourceColumn || 0,
+    sourceEndLine: node.sourceEndLine || 0,
+    sourceEndColumn: node.sourceEndColumn || 0,
     sourceRef: webNodeSourceRef(node),
     sourceColumnRef: webNodeSourceColumnRef(node),
+    sourceRangeRef: webNodeSourceRangeRef(node),
     text: webDOMGetText(target, node.path) ?? node.text ?? "",
     value: webDOMGetValue(target, node.path),
     state: { ...(node.state || {}) },
@@ -5317,6 +5417,21 @@ export function webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColu
 
 export function webDOMObjectAtSource(target, sourcePath, sourceLine, sourceColumn = 0) {
   return webDOMObjectsAtSource(target, sourcePath, sourceLine, sourceColumn)[0] || null;
+}
+
+export function webDOMObjectsAtSourceRange(target, sourcePath, sourceLine, sourceColumn = 0) {
+  const root = mountedRoot(target);
+  const path = String(sourcePath || "").trim();
+  const line = Number.isFinite(Number(sourceLine)) ? Math.trunc(Number(sourceLine)) : 0;
+  const column = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
+  if (!root || !path || line <= 0)
+    return [];
+  return webDOMObjects(target)
+    .filter((object) => sourcePositionWithinNode(object.node, path, line, column));
+}
+
+export function webDOMObjectAtSourceRange(target, sourcePath, sourceLine, sourceColumn = 0) {
+  return webDOMObjectsAtSourceRange(target, sourcePath, sourceLine, sourceColumn)[0] || null;
 }
 
 export function webDOMSourceMap(target) {

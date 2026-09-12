@@ -3855,7 +3855,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     kind = KIR_STMT_WIDGET;
                 if(kind == KIR_STMT_WIDGET) {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpan(rel, line_no, 1);
+                    KirSourceSpan span = KirSpanEnd(rel, line_no, 1, line_no,
+                                                    (int)strlen(t) + 1);
 
                     st = KirFunctionAddWidget(fn, widget, widget_args, t,
                                               span);
@@ -3865,7 +3866,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         widget, span);
                 } else {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpan(rel, line_no, 1);
+                    KirSourceSpan span = KirSpanEnd(rel, line_no, 1, line_no,
+                                                    (int)strlen(t) + 1);
 
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
