@@ -221,6 +221,10 @@ StyleKindGuide :: () -> i32 #export {
     return 51
 }
 
+StyleKindImage :: () -> i32 #export {
+    return 52
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

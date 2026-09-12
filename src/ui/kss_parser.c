@@ -239,6 +239,8 @@ kss_style_kind(const char *name)
         return StyleKindTableView();
     if(kss_ieq(name, "Guide"))
         return StyleKindGuide();
+    if(kss_ieq(name, "Image"))
+        return StyleKindImage();
     return -999999;
 }
 

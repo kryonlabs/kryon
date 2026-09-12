@@ -117,8 +117,11 @@ main(void)
         "}\n"
         "Guide[role=Anchor] {\n"
         "  border: accent;\n"
+        "}\n"
+        "Image[role=Label] {\n"
+        "  foreground: accent;\n"
         "}\n";
-    StyleRule rules[20] = {0};
+    StyleRule rules[21] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -131,10 +134,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 20, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 21, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 20);
+    assert(result.rule_count == 21);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -194,6 +197,9 @@ main(void)
     assert(rules[19].selector.kind == StyleKindGuide());
     assert(rules[19].selector.role == 24);
     assert(rules[19].style.border == 0x2f6bffffu);
+    assert(rules[20].selector.kind == StyleKindImage());
+    assert(rules[20].selector.role == 6);
+    assert(rules[20].style.foreground == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;

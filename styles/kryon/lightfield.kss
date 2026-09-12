@@ -82,6 +82,25 @@ Card {
   material: premium;
 }
 
+Image {
+  background: card;
+  background-end: card-end;
+  foreground: text;
+  border: card-border;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: premium;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: app;
+}
+
 NavigationBar {
   background: surface;
   background-end: surface-end;

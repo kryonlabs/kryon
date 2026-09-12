@@ -139,6 +139,7 @@ main(void)
         {"Modal", StyleKindModal()},
         {"TableView", StyleKindTableView()},
         {"Guide", StyleKindGuide()},
+        {"Image", StyleKindImage()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},
@@ -250,6 +251,7 @@ main(void)
         {"Guide[role=Action]", StyleKindGuide(), 17},
         {"Guide[role=Scrim]", StyleKindGuide(), 19},
         {"Guide[role=Anchor]", StyleKindGuide(), 24},
+        {"Image[role=Label]", StyleKindImage(), 6},
     };
     const char *pack_ids[] = {
         "kryon.material",

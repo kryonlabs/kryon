@@ -643,6 +643,8 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindTableView(), true
 	case "guide":
 		return StyleSheet_StyleKindGuide(), true
+	case "image":
+		return StyleSheet_StyleKindImage(), true
 	default:
 		return 0, false
 	}

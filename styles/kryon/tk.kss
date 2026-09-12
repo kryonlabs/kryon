@@ -70,6 +70,24 @@ Card {
   material: default;
 }
 
+Image {
+  background: card;
+  foreground: text;
+  border: border-soft;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: default;
+}
+
 NavigationBar {
   background: surface;
   foreground: text;

@@ -78,6 +78,24 @@ Card {
   material: default;
 }
 
+Image {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font.md;
+  opacity: 1;
+  material: default;
+}
+
 NavigationBar {
   background: surface;
   foreground: text;
@@ -1612,6 +1630,24 @@ Card {
   material: default;
 }
 
+Image {
+  background: card;
+  foreground: text;
+  border: border-soft;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: default;
+}
+
 NavigationBar {
   background: surface;
   foreground: text;
@@ -3134,6 +3170,24 @@ Card {
   padding-x: space.4;
   padding-y: space.4;
   gap: gap;
+  material: default;
+}
+
+Image {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font.md;
+  opacity: 1;
   material: default;
 }
 
@@ -4691,6 +4745,25 @@ Card {
   padding-y: space.4;
   gap: gap;
   material: glow;
+}
+
+Image {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font.md;
+  opacity: 1;
+  material: app;
 }
 
 NavigationBar {
@@ -6318,6 +6391,25 @@ Card {
   padding-y: space.4;
   gap: space.3;
   material: premium;
+}
+
+Image {
+  background: card;
+  background-end: card-end;
+  foreground: text;
+  border: card-border;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: premium;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font;
+  opacity: 1;
+  material: app;
 }
 
 NavigationBar {

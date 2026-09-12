@@ -225,11 +225,14 @@ TableView[role=Cell] {
 Guide[role=Anchor] {
   border: accent;
 }
+Image[role=Label] {
+  foreground: accent;
+}
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 26 {
+	if id != "smoke" || len(rules) != 27 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -360,6 +363,11 @@ Guide[role=Anchor] {
 		rules[25].Style.Border != 0x2f6bffff {
 		t.Fatalf("bad guide role rule: %#v", rules[25])
 	}
+	if rules[26].Selector.Kind != StyleSheet_StyleKindImage() ||
+		rules[26].Selector.Role != 6 ||
+		rules[26].Style.Foreground != 0x2f6bffff {
+		t.Fatalf("bad image role rule: %#v", rules[26])
+	}
 }
 
 func TestRegisterStylePackSourceInGo(t *testing.T) {
@@ -458,6 +466,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Modal", StyleSheet_StyleKindModal()},
 		{"TableView", StyleSheet_StyleKindTableView()},
 		{"Guide", StyleSheet_StyleKindGuide()},
+		{"Image", StyleSheet_StyleKindImage()},
 	}
 	stateKinds := []struct {
 		name  string
@@ -577,6 +586,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Guide[role=Action]", StyleSheet_StyleKindGuide(), 17},
 		{"Guide[role=Scrim]", StyleSheet_StyleKindGuide(), 19},
 		{"Guide[role=Anchor]", StyleSheet_StyleKindGuide(), 24},
+		{"Image[role=Label]", StyleSheet_StyleKindImage(), 6},
 	}
 	packIDs := []string{
 		"kryon.material",

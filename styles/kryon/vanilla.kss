@@ -77,6 +77,24 @@ Card {
   material: default;
 }
 
+Image {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Image[role=Label] {
+  foreground: muted;
+  font-size: font.md;
+  opacity: 1;
+  material: default;
+}
+
 NavigationBar {
   background: surface;
   foreground: text;

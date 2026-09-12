@@ -3,6 +3,14 @@
 #include "ui_image_internal.h"
 #include "runtime/image.h"
 
+static Style
+tutorial_image_style(int role)
+{
+    return ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindImage(), role).value);
+}
+
 void
 RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
@@ -11,15 +19,13 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
     ImagePlaceholderLayout layout =
         ImagePlaceholderLayoutFor((Rectangle){(float)x, (float)y,
                                   (float)w, (float)h}, tw, font);
-    Style surface = ui_surface_style();
-    Style text = ui_resolve_button_style_kind((ButtonProps){0},
-                                              ButtonStateNormal,
-                                              StyleKindText());
-    ui_draw_material(layout.bounds, (Rectangle){0}, surface.background,
-                     surface.border, surface.border, surface.radius,
-                     surface.border_width, 0.0f, 0.0f, 0, surface.focus,
-                     0.0f, surface.opacity, ui_style_fill(surface),
-                     surface.material);
+    Style image = tutorial_image_style(StyleAny());
+    Style text = tutorial_image_style(6);
+    ui_draw_material(layout.bounds, (Rectangle){0}, image.background,
+                     image.border, image.border, image.radius,
+                     image.border_width, 0.0f, 0.0f, 0, image.focus,
+                     0.0f, image.opacity, ui_style_fill(image),
+                     image.material);
     RenderText(label, layout.label_x, layout.label_y, font, text.foreground);
 }
 
