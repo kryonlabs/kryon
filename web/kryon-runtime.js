@@ -2100,6 +2100,8 @@ function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
   bindNodeEvents(el);
+  const extraClasses = [...(el.__kryExtraClasses || [])];
+  docNode.classes = [...new Set([...(docNode.classes || []), ...extraClasses])];
   el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
   el.dataset.kryKind = docNode.kind;
   el.dataset.kryKey = docNode.key;
@@ -2515,6 +2517,67 @@ export function webDOMQueryAll(target, selector) {
 
 export function webDOMQuery(target, selector) {
   return webDOMQueryAll(target, selector)[0] || null;
+}
+
+function cleanDOMClassName(name) {
+  const value = String(name || "").trim();
+  return value && !/\s/.test(value) ? value : "";
+}
+
+function syncDOMClassMutation(el) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return null;
+  const classNames = String(el.className || "").split(/\s+/).filter(Boolean);
+  docNode.classes = classNames.filter((name) =>
+    name !== "kryon-node" && name !== "kryon-" + docNode.kind.toLowerCase());
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+    ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+    : null);
+  return docNode;
+}
+
+function setDOMClass(target, query, className, enabled) {
+  const name = cleanDOMClassName(className);
+  const el = name ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const extras = el.__kryExtraClasses || new Set();
+  if (enabled)
+    extras.add(name);
+  else
+    extras.delete(name);
+  el.__kryExtraClasses = extras;
+  const base = ["kryon-node", "kryon-" + (el.__kryDocNode?.kind || "").toLowerCase()];
+  const declared = (el.__kryDocNode?.classes || []).filter((item) => item !== name);
+  el.className = [...new Set([...base, ...declared, ...extras])].filter(Boolean).join(" ");
+  syncDOMClassMutation(el);
+  return true;
+}
+
+export function webDOMAddClass(target, query, className) {
+  return setDOMClass(target, query, className, true);
+}
+
+export function webDOMRemoveClass(target, query, className) {
+  return setDOMClass(target, query, className, false);
+}
+
+export function webDOMToggleClass(target, query, className, force) {
+  const name = cleanDOMClassName(className);
+  const el = name ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const has = (el.__kryExtraClasses || new Set()).has(name) ||
+    String(el.className || "").split(/\s+/).includes(name);
+  return setDOMClass(target, query, name, force === undefined ? !has : !!force);
+}
+
+export function webDOMHasClass(target, query, className) {
+  const name = cleanDOMClassName(className);
+  const el = name ? findWebElement(target, query) : null;
+  return !!el && String(el.className || "").split(/\s+/).includes(name);
 }
 
 export function webFormValue(target, query) {

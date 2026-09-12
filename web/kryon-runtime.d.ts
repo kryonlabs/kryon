@@ -368,6 +368,10 @@ export function webDOMObject(target: Element | string | null, query: string): We
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webDOMQuery(target: Element | string | null, selector: string): WebDOMObject | null;
 export function webDOMQueryAll(target: Element | string | null, selector: string): WebDOMObject[];
+export function webDOMAddClass(target: Element | string | null, query: string, className: string): boolean;
+export function webDOMRemoveClass(target: Element | string | null, query: string, className: string): boolean;
+export function webDOMToggleClass(target: Element | string | null, query: string, className: string, force?: boolean): boolean;
+export function webDOMHasClass(target: Element | string | null, query: string, className: string): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
