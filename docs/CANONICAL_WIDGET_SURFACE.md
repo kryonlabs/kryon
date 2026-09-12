@@ -237,7 +237,6 @@ they should stay separate from general UI widgets.
 | `Sprite2D` | `.kry canonical` | Sprite node. |
 | `AnimatedSprite2D` | `.kry canonical` | Animated sprite node. |
 | `TileMap` | `.kry canonical` | Tile map node. |
-| `TileLayer` | Rename review | Registry has a declaration path; confirm implementation. |
 | `CollisionShape2D` | `.kry canonical` | Collision shape node. |
 | `Area2D` | `.kry canonical` | Trigger/area node. |
 | `Body2D` | `.kry canonical` | Physics/body node. |
@@ -253,7 +252,5 @@ they should stay separate from general UI widgets.
 2. Remove other compatibility names after migrations: tutorial helpers
    and immediate-mode `Begin*`/`End*` wrappers from public `.kry`
    documentation.
-3. Align editor registry names with canonical widget names and decide whether
-   `TileLayer` needs a full implementation or should leave the registry.
-4. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
+3. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.

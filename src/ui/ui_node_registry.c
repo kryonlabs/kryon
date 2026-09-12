@@ -63,7 +63,6 @@ static const KryonNodeType kryon_node_types[] = {
     {"Sprite2D", "Sprite2D", "Game2D/Rendering", "Node2D", "Image", 0},
     {"AnimatedSprite2D", "AnimatedSprite2D", "Game2D/Rendering", "Node2D", "Animation", 0},
     {"TileMap", "TileMap", "Game2D/Rendering", "Node2D", "Tiles", 0},
-    {"TileLayer", "TileLayer", "Game2D/Rendering", "Node2D", "Tile layer", 0},
     {"CollisionShape2D", "Collision Shape 2D", "Game2D/Physics", "Node2D", "Collider", 0},
     {"Area2D", "Area2D", "Game2D/Physics", "Node2D", "Trigger", 0},
     {"Body2D", "Body2D", "Game2D/Physics", "Node2D", "Body", 0},

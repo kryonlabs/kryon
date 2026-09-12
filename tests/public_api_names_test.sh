@@ -393,6 +393,42 @@ if [ -n "$registry_doc_misses" ]; then
     exit 1
 fi
 
+registry_game2d_misses="$(
+    python3 - <<'PY'
+from pathlib import Path
+import re
+
+registry = Path("src/ui/ui_node_registry.c").read_text()
+scene = Path("include/scene_tree.h").read_text()
+entries = re.findall(r'\{"([^"]+)"\s*,\s*"[^"]*"\s*,\s*"([^"]+)"', registry)
+kinds = set(re.findall(r'\bNODE_([A-Z0-9_]+)\b', scene))
+aliases = {
+    "Scene": "ROOT",
+    "Node2D": "NODE2D",
+    "Camera2D": "CAMERA2D",
+    "Sprite2D": "SPRITE2D",
+    "AnimatedSprite2D": "ANIMATED_SPRITE2D",
+    "TileMap": "TILEMAP",
+    "CollisionShape2D": "COLLISION_SHAPE2D",
+    "Area2D": "AREA2D",
+    "Body2D": "BODY2D",
+    "Light2D": "LIGHT2D",
+}
+for name, group in entries:
+    if not group.startswith("Game2D/"):
+        continue
+    expected = aliases.get(name, re.sub(r'(?<=[a-z0-9])(?=[A-Z])', '_', name).upper())
+    if expected not in kinds:
+        print(f"{name}: missing NODE_{expected}")
+PY
+)"
+
+if [ -n "$registry_game2d_misses" ]; then
+    echo "Game2D registry names must map to real scene NodeKind values:"
+    echo "$registry_game2d_misses"
+    exit 1
+fi
+
 registry_snippet_misses="$(
     python3 - <<'PY'
 from pathlib import Path

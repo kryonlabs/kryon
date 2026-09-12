@@ -2,8 +2,8 @@
  * TileMap: renders a grid of tile IDs from a single tileset texture. On draw
  * it iterates the tile grid and blits each non-empty tile via DrawTexturePro
  * (raylib batches these internally by texture). The tileset is shared through
- * the image texture cache. TileLayer is a thin alias (same kind, used for
- * layered rendering under different Camera2D depths).
+ * the image texture cache. Layered rendering uses multiple TileMap nodes at
+ * different Camera2D depths rather than a second public node kind.
  */
 
 #include "scene_tree.h"
@@ -75,9 +75,6 @@ kry_register_tilemap(void)
 {
     NodeRegisterOps(NODE_TILEMAP, &kry_tilemap_ops);
     NodeRegisterDestroy(NODE_TILEMAP, kry_tilemap_destroy);
-    /* TileLayer is a usage convention over TileMap (layered rendering at
-     * different z-depths), not a separate runtime kind. Callers create
-     * NODE_TILEMAP nodes for both. */
 }
 
 TileMapProps *
