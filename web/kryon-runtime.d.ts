@@ -398,6 +398,9 @@ export function webDOMSetAttribute(target: Element | string | null, query: strin
 export function webDOMRemoveAttribute(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetAttribute(target: Element | string | null, query: string, name: string): string | undefined;
 export function webDOMHasAttribute(target: Element | string | null, query: string, name: string): boolean;
+export function webDOMSetStyle(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
+export function webDOMRemoveStyle(target: Element | string | null, query: string, name: string): boolean;
+export function webDOMGetStyle(target: Element | string | null, query: string, name: string): string | undefined;
 export function webDOMGetText(target: Element | string | null, query: string): string | undefined;
 export function webDOMSetText(target: Element | string | null, query: string, text: unknown): boolean;
 export function webDOMGetValue(target: Element | string | null, query: string): unknown;

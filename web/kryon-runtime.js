@@ -1749,6 +1749,45 @@ function applyResolvedWebStyle(el, style) {
     applied.add("borderStyle");
   }
   el.__kryAppliedStyleProps = applied;
+  applyWebInlineStyles(el);
+}
+
+function setStyleProperty(style, name, value) {
+  if (style && typeof style.setProperty === "function")
+    style.setProperty(name, value);
+  else if (style)
+    style[name] = value;
+}
+
+function removeStyleProperty(style, name) {
+  if (style && typeof style.removeProperty === "function")
+    style.removeProperty(name);
+  else if (style)
+    style[name] = "";
+}
+
+function getStyleProperty(style, name) {
+  if (!style)
+    return "";
+  if (typeof style.getPropertyValue === "function") {
+    const value = style.getPropertyValue(name);
+    if (value !== undefined && value !== null && value !== "")
+      return String(value);
+  }
+  return style[name] === undefined || style[name] === null ? "" : String(style[name]);
+}
+
+function cleanDOMStyleName(name) {
+  const value = String(name || "").trim();
+  return value && /^(--[A-Za-z0-9_-]+|[A-Za-z][A-Za-z0-9_-]*)$/.test(value) ? value : "";
+}
+
+function applyWebInlineStyles(el) {
+  if (!el)
+    return;
+  const styles = el.__kryInlineStyles || {};
+  for (const [name, value] of Object.entries(styles))
+    setStyleProperty(el.style, name, value);
 }
 
 export function setWebStyleSheets(rt, sheets) {
@@ -2832,6 +2871,38 @@ export function webDOMGetAttribute(target, query, name) {
 
 export function webDOMHasAttribute(target, query, name) {
   return webDOMGetAttribute(target, query, name) !== undefined;
+}
+
+export function webDOMSetStyle(target, query, name, value) {
+  const prop = cleanDOMStyleName(name);
+  const el = prop ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const styles = { ...(el.__kryInlineStyles || {}) };
+  styles[prop] = value === undefined || value === null ? "" : String(value);
+  el.__kryInlineStyles = styles;
+  setStyleProperty(el.style, prop, styles[prop]);
+  return true;
+}
+
+export function webDOMRemoveStyle(target, query, name) {
+  const prop = cleanDOMStyleName(name);
+  const el = prop ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  const styles = { ...(el.__kryInlineStyles || {}) };
+  delete styles[prop];
+  el.__kryInlineStyles = styles;
+  removeStyleProperty(el.style, prop);
+  if (el.__kryRuntime?.webStyleSheets && el.__kryDocNode)
+    applyResolvedWebStyle(el, resolveWebStyle(el.__kryDocNode, el.__kryRuntime.webStyleSheets));
+  return true;
+}
+
+export function webDOMGetStyle(target, query, name) {
+  const prop = cleanDOMStyleName(name);
+  const el = prop ? findWebElement(target, query) : null;
+  return el ? getStyleProperty(el.style, prop) : undefined;
 }
 
 export function webDOMGetText(target, query) {

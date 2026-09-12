@@ -959,7 +959,17 @@ function fakeDocument() {
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMQuery(target, "[data-runtime=\"1\"]").element, firstButton);
     assert.equal(firstButton.style.paddingTop, "9px");
+    assert.equal(runtime.webDOMSetStyle(target, "tap-button", "background", "pink"), true);
+    assert.equal(runtime.webDOMSetStyle(target, "tap-button", "--accent-level", "2"), true);
+    assert.equal(runtime.webDOMGetStyle(target, "Scene/root/tap", "background"), "pink");
+    assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "2");
     runtime.renderWebDocument(domRt, target);
+    assert.equal(firstButton.style.background, "pink");
+    assert.equal(firstButton.style["--accent-level"], "2");
+    assert.equal(runtime.webDOMRemoveStyle(target, "tap-button", "background"), true);
+    assert.equal(firstButton.style.background, "#203040");
+    assert.equal(runtime.webDOMRemoveStyle(target, "tap-button", "--accent-level"), true);
+    assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "");
     assert.equal(runtime.webDOMGetAttribute(target, "tap-button", "data-runtime"), "1");
     assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
