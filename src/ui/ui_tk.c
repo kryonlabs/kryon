@@ -2869,7 +2869,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         if(ui_text_field_render((TextFieldProps){field_bounds, state->text,
                                                      sizeof(state->text), &state->cursor,
                                                      &state->focused, 63,
-                                                     GetSmallFontSize(), token,
+                                                     0, token,
                                                      kryon_zero_text_input_style,
                                                      ui_numeric_input_filter, NULL,
                                                      &commit, 0, disabled})) {
@@ -2888,9 +2888,9 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         if(step != 0.0) {
             int fast = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
             int minus_pressed = Button((ButtonProps){.bounds = minus, .label = "-",
-                .font = GetSmallFontSize(), .id = token + 1, .disabled = disabled});
+                .id = token + 1, .disabled = disabled});
             int plus_pressed = Button((ButtonProps){.bounds = plus, .label = "+",
-                .font = GetSmallFontSize(), .id = token + 2, .disabled = disabled});
+                .id = token + 2, .disabled = disabled});
             if(minus_pressed || plus_pressed) {
                 int direction = plus_pressed ? 1 : -1;
                 double value = ui_numeric_value(values, i, kind);

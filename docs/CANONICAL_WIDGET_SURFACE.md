@@ -375,7 +375,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Dropdown` | `.kry canonical` | Already has `.kry` module. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
-| `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`. |
+| `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
