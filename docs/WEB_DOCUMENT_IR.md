@@ -96,6 +96,7 @@ Supported metadata fields in this first slice:
       classes,
       text,
       value,
+      level,
       href,
       inputType,
       alt,
@@ -174,7 +175,10 @@ on render and after native `input`/`change` events.
 
 `webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing
 projection of the Web Document frame: document title/description plus each
-node's path, name, role, label, text, value, and state.
+node's path, name, DOM id, classes, role, label, text, value, href, input type,
+heading level, and state. The DOM renderer also writes accessibility state such
+as `aria-checked`, `aria-disabled`, `aria-busy`, and selected-link
+`aria-current` when those facts are present.
 
 `GetRoutePath()`, `GetRouteHash()`, and `GetRouteVersion()` expose browser route
 state to generated logic. `PushRoute(path)` and `ReplaceRoute(path)` update
@@ -190,5 +194,6 @@ non-browser tests.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   and `on_change(value)` actions in this slice.
 - KSS parsing and compiled style tables are not implemented yet.
-- Form value lookup and accessibility snapshots are available; richer per-widget
-  ARIA mappings are still incremental.
+- Form value lookup and accessibility snapshots are available; deeper
+  per-widget ARIA relationships, such as controlled regions and described-by
+  chains, are still incremental.

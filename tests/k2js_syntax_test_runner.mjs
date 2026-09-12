@@ -116,11 +116,15 @@ function fakeDocument() {
         this.attributes[name] = String(value);
         if (name === "id")
           this.id = String(value);
+        if (name === "type")
+          this.type = String(value);
       },
       removeAttribute(name) {
         delete this.attributes[name];
         if (name === "id")
           delete this.id;
+        if (name === "type")
+          delete this.type;
       },
       appendChild(child) {
         if (child.parentNode)
@@ -156,6 +160,43 @@ function fakeDocument() {
       return null;
     }
   };
+}
+
+{
+  const previousDocument = globalThis.document;
+  globalThis.document = fakeDocument();
+  try {
+    const ariaRt = runtime.createRuntime();
+    runtime.beginFrame(ariaRt);
+    runtime.widget(ariaRt, "Heading", { level: 2, text: "Welcome" }, null,
+      { nodeName: "welcome", path: "Page/welcome" });
+    runtime.widget(ariaRt, "Link", { href: "/docs", text: "Docs", selected: true }, null,
+      { nodeName: "docs", path: "Page/docs" });
+    runtime.widget(ariaRt, "Checkbox", { checked: true, disabled: true, loading: true }, null,
+      { nodeName: "accept", path: "Page/accept" });
+    runtime.endFrame(ariaRt);
+    const snapshot = runtime.webAccessibilitySnapshot(ariaRt);
+    assert.equal(snapshot.nodes[0].role, "heading");
+    assert.equal(snapshot.nodes[0].level, 2);
+    assert.equal(snapshot.nodes[1].role, "link");
+    assert.equal(snapshot.nodes[1].href, "/docs");
+    assert.equal(snapshot.nodes[2].role, "checkbox");
+    assert.equal(snapshot.nodes[2].inputType, "checkbox");
+    assert.equal(snapshot.nodes[2].state.checked, true);
+    const target = document.createElement("div");
+    runtime.renderWebDocument(ariaRt, target);
+    const root = target.children[0];
+    const link = runtime.findWebElement(target, "Page/docs");
+    const checkbox = runtime.findWebElement(target, "Page/accept");
+    assert.equal(link.attributes["aria-current"], "page");
+    assert.equal(checkbox.attributes["aria-checked"], "true");
+    assert.equal(checkbox.attributes["aria-disabled"], "true");
+    assert.equal(checkbox.attributes["aria-busy"], "true");
+    assert.equal(runtime.webFormValue(target, "accept"), true);
+    assert.equal(root.children.length, 3);
+  } finally {
+    globalThis.document = previousDocument;
+  }
 }
 
 {

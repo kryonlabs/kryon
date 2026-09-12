@@ -1048,6 +1048,12 @@ function widgetInputType(item) {
   }
 }
 
+function widgetLevel(item) {
+  if (item.name !== "Heading")
+    return 0;
+  return Math.max(1, Math.min(6, propNumber(item.args || {}, "level", 2)));
+}
+
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
@@ -1076,6 +1082,7 @@ function webNodeFromWidget(item, index) {
     classes: [...new Set(classes)],
     text: widgetText(item),
     value: widgetText(item),
+    level: widgetLevel(item),
     href: widgetHref(item),
     inputType: widgetInputType(item),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
@@ -1125,10 +1132,15 @@ export function webAccessibilitySnapshot(source) {
       name: node.name,
       kind: node.kind,
       tag: node.tag,
+      id: node.domId,
+      classes: [...node.classes],
       role: node.role || implicitRole(node),
       label: node.ariaLabel || node.text || node.name,
       text: node.text,
       value: node.tag === "input" || node.tag === "textarea" ? node.value : "",
+      href: node.href,
+      inputType: node.inputType,
+      level: node.level || 0,
       state: { ...node.state }
     }))
   };
@@ -1351,9 +1363,19 @@ function applyWebNode(el, docNode, rt) {
     el.style.height = "";
   }
   setAttr(el, "disabled", docNode.state.disabled);
+  setAttr(el, "aria-disabled", docNode.state.disabled ? "true" : "");
+  setAttr(el, "aria-busy", docNode.state.loading ? "true" : "");
   setAttr(el, "aria-selected", docNode.state.selected ? "true" : "");
   setAttr(el, "aria-invalid", docNode.state.invalid ? "true" : "");
   setAttr(el, "aria-expanded", docNode.state.expanded ? "true" : "");
+  setAttr(el, "aria-checked",
+    docNode.inputType === "checkbox" || docNode.inputType === "radio"
+      ? (docNode.state.checked ? "true" : "false")
+      : "");
+  setAttr(el, "aria-current",
+    docNode.tag === "a" && docNode.state.selected ? "page" : "");
+  setAttr(el, "aria-level",
+    docNode.role === "heading" && docNode.level ? String(docNode.level) : "");
   setAttr(el, "href", docNode.href);
   setAttr(el, "type", docNode.inputType);
   if (docNode.tag === "img") {

@@ -70,6 +70,7 @@ export interface WebDocumentNode {
   classes: string[];
   text: string;
   value: unknown;
+  level: number;
   href: string;
   inputType: string;
   alt: string;
@@ -129,10 +130,15 @@ export interface WebAccessibilityNode {
   name: string;
   kind: string;
   tag: string;
+  id: string;
+  classes: string[];
   role: string;
   label: string;
   text: string;
   value: unknown;
+  href: string;
+  inputType: string;
+  level: number;
   state: Record<string, boolean>;
 }
 
