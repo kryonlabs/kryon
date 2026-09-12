@@ -780,13 +780,19 @@ RenderListBoxMulti(ListBoxProps list)
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         if(paint) {
+            int font = item_style.font_size > 0.0f
+                ? (int)(item_style.font_size + 0.5f)
+                : GetSmallFontSize();
+            int label_inset = item_style.padding_x > 0.0f
+                ? (int)(item_style.padding_x + 0.5f)
+                : Scale(8);
             if(selected || hot || disabled)
                 ui_tk_draw_style_frame(row, list.bounds, item_frame, hot, 0,
                                        disabled, 0);
             RenderText(list.items[i] != NULL ? list.items[i] : "",
-                       (int)row.x + Scale(8),
-                       ui_row_text_y(row, GetSmallFontSize()),
-                       GetSmallFontSize(), item_style.foreground);
+                       (int)row.x + label_inset,
+                       ui_row_text_y(row, font),
+                       font, Fade(item_style.foreground, item_style.opacity));
         }
         if(hot)
             disabled ? MarkDisabled() : MarkClickable();
@@ -1087,7 +1093,13 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 int focus_id, int depth)
 {
     ToolkitStore *state = toolkit_state();
-    int font = GetFontSize();
+    StyleFrame base_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    Style base_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(base_item_frame).value);
+    int font = base_item_style.font_size > 0.0f
+        ? (int)(base_item_style.font_size + 0.5f)
+        : GetFontSize();
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
     int w = metrics.panel_min_width;
     int activated = 0;
@@ -1188,6 +1200,10 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
             item_state, item->disabled, selected, StyleKindMenuItem());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
+        int item_font = item_style.font_size > 0.0f
+            ? (int)(item_style.font_size + 0.5f)
+            : font;
+        Color item_text = Fade(item_style.foreground, item_style.opacity);
 
         if(item->kind == MenuSeparator) {
             if(can_draw)
@@ -1217,24 +1233,26 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         if(item->disabled && row_hot)
             MarkDisabled();
         if(can_draw && item->checked)
-            RenderText("*", (int)row.x + Scale(8), ui_row_text_y(row, font),
-                       font, item_style.foreground);
+            RenderText("*", (int)row.x + Scale(8),
+                       ui_row_text_y(row, item_font),
+                       item_font, item_text);
         if(can_draw)
             RenderText(item->label != NULL ? item->label : "",
-                       (int)row.x + Scale(28), ui_row_text_y(row, font),
-                       font, item_style.foreground);
+                       (int)row.x + Scale(28),
+                       ui_row_text_y(row, item_font),
+                       item_font, item_text);
         if(can_draw && item->accelerator != NULL) {
-            int accel_text_w = TextWidth(item->accelerator, font);
+            int accel_text_w = TextWidth(item->accelerator, item_font);
             RenderText(item->accelerator,
                        (int)(row.x + row.width - accel_text_w -
                              metrics.panel_padding),
-                       ui_row_text_y(row, font),
-                       font, item_style.foreground);
+                       ui_row_text_y(row, item_font),
+                       item_font, item_text);
         }
         if(can_draw && item->kind == MenuSubmenu)
             RenderText(">", (int)(row.x + row.width - Scale(18)),
-                       ui_row_text_y(row, font),
-                       font, item_style.foreground);
+                       ui_row_text_y(row, item_font),
+                       item_font, item_text);
         if(hot && item->kind == MenuSubmenu)
             state->submenu_id = item->id;
         if(item->kind == MenuSubmenu &&
@@ -1352,7 +1370,13 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
 {
     ToolkitStore *state = toolkit_state();
     MenuResult result = {0, -1};
-    int font = GetFontSize();
+    StyleFrame base_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    Style base_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(base_item_frame).value);
+    int font = base_item_style.font_size > 0.0f
+        ? (int)(base_item_style.font_size + 0.5f)
+        : GetFontSize();
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
     int x = (int)bounds.x + Scale(4);
     Vector2 mouse = ui_mouse_world();
@@ -1456,6 +1480,10 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
             item_state, 0, open, StyleKindMenuItem());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
+        int item_font = item_style.font_size > 0.0f
+            ? (int)(item_style.font_size + 0.5f)
+            : font;
+        Color item_text = Fade(item_style.foreground, item_style.opacity);
         if(can_draw && (hot || open))
             ui_tk_draw_style_frame(item, bounds, item_frame, hot, 0, 0,
                                    focused && state->navigation.top == i);
@@ -1463,8 +1491,8 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
             MarkClickable();
         if(can_draw)
             RenderText(menus[i].label != NULL ? menus[i].label : "",
-                       x + Scale(12), ui_row_text_y(item, font), font,
-                       item_style.foreground);
+                       x + Scale(12), ui_row_text_y(item, item_font),
+                       item_font, item_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             ConsumeRelease();
             SetFocus(id);

@@ -632,6 +632,7 @@ tokens {
 }
 Menu[role=Bar] { background: bar; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Menu[role=Popup] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+MenuItem { foreground: ink; font-size: 18; opacity: 0.72; }
 MenuItem:selected { background: item; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 MenuSeparator { border: rule; foreground: rule; material: flat; }
 `, "Test Menu", "") || !SetActiveStylePack("test.menu") {
@@ -649,26 +650,36 @@ MenuSeparator { border: rule; foreground: rule; material: flat; }
 
 	rt.Menu(MenuProps{ID: 10, Mode: MenuModeBar, Bounds: Rectangle{X: 0, Y: 0, Width: 240, Height: 30}, Menus: menus, OpenIndex: &open})
 
-	var sawBar, sawPanel bool
+	var sawBar, sawPanel, sawBarText, sawItemText bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind != FrameOpRect {
-			continue
-		}
-		if op.Bounds == (Rectangle{X: 0, Y: 0, Width: 240, Height: 30}) {
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 0, Y: 0, Width: 240, Height: 30}) {
 			sawBar = true
 			if op.Color != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
 				t.Fatalf("menu bar style op = %+v", op)
 			}
 		}
-		if op.Color == (Color{R: 0x20, G: 0x2a, B: 0x36, A: 0xff}) {
+		if op.Kind == FrameOpRect && op.Color == (Color{R: 0x20, G: 0x2a, B: 0x36, A: 0xff}) {
 			sawPanel = true
 			if op.BorderColor != (Color{R: 0x70, G: 0x80, B: 0x90, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
 				t.Fatalf("menu panel style op = %+v", op)
 			}
 		}
+		if op.Kind == FrameOpText && op.Text == "File" {
+			sawBarText = true
+			if op.FontSize != 18 || op.Opacity != 0.72 {
+				t.Fatalf("menu bar text style op = %+v", op)
+			}
+		}
+		if op.Kind == FrameOpText && op.Text == "Save" {
+			sawItemText = true
+			if op.FontSize != 18 || op.Opacity != 0.72 {
+				t.Fatalf("menu item text style op = %+v", op)
+			}
+		}
 	}
-	if !sawBar || !sawPanel {
-		t.Fatalf("missing styled menu ops: bar=%v panel=%v ops=%+v", sawBar, sawPanel, rt.FrameOps())
+	if !sawBar || !sawPanel || !sawBarText || !sawItemText {
+		t.Fatalf("missing styled menu ops: bar=%v panel=%v bar_text=%v item_text=%v ops=%+v",
+			sawBar, sawPanel, sawBarText, sawItemText, rt.FrameOps())
 	}
 }
 
@@ -965,7 +976,7 @@ tokens {
   material { flat: Flat; }
 }
 ListBoxMulti { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-ListBoxMultiItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+ListBoxMultiItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; padding-x: 11; padding-y: 3; font-size: 17; material: flat; opacity: 0.66; }
 `, "Test MultiSelect", "") || !SetActiveStylePack("test.multi") {
 		t.Fatal("test multi select style did not activate")
 	}
@@ -1005,8 +1016,20 @@ ListBoxMultiItem:selected { background: selected; foreground: ink; border: selec
 			}
 		}
 	}
-	if !sawPanel || !sawSelected {
-		t.Fatalf("missing styled multi select ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	var sawLabel bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpText && op.Text == "Two" {
+			sawLabel = true
+			if op.Bounds.X != 19 || op.Bounds.Y != 35 ||
+				op.Bounds.Width != 98 || op.Bounds.Height != 18 ||
+				op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) ||
+				op.FontSize != 17 || op.Opacity != 0.66 {
+				t.Fatalf("styled multi item text op = %+v", op)
+			}
+		}
+	}
+	if !sawPanel || !sawSelected || !sawLabel {
+		t.Fatalf("missing styled multi select ops: panel=%v selected=%v label=%v ops=%+v", sawPanel, sawSelected, sawLabel, rt.FrameOps())
 	}
 }
 

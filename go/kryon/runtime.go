@@ -2956,7 +2956,16 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			}
 			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: props.Items[i], Color: itemStyle.Foreground, FontSize: Text14, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
+		labelX := itemStyle.PaddingX
+		if labelX <= 0 {
+			labelX = 8
+		}
+		labelY := itemStyle.PaddingY
+		if labelY <= 0 {
+			labelY = 4
+		}
+		font := styleFont(itemStyle, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: props.Items[i], Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
 	}
 	if props.SelectedCount != nil {
 		*props.SelectedCount = selectedCount
@@ -5797,7 +5806,9 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: barStyle.Border})
 	x := bounds.X + 4
-	font := Text14
+	menuItemBaseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
+		false, false, StyleSheet_StyleKindMenuItem()).Value)
+	font := styleFont(menuItemBaseStyle, Text14)
 	for i, menu := range menus {
 		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidth(menu.Label, font)), metrics)
 		item := Menu_MenuGroupItemBounds(int32(x), bounds, w, metrics)
@@ -5828,13 +5839,14 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 			return ButtonStateNormal
 		}(), false, itemSelected, StyleSheet_StyleKindMenuItem())
 		itemStyle := unpackStyle(itemFrame.Value)
+		itemFont := styleFont(itemStyle, font)
 		if itemSelected || itemFocused {
 			op := styleFrameRectOp(item, bounds, itemFrame)
 			op.Selected = itemSelected
 			op.Focused = itemFocused
 			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: itemFont})
 		x += float32(w + metrics.BarItemGap)
 	}
 	if open >= 0 && int(open) < len(menus) {
@@ -5879,7 +5891,9 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 }
 
 func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
-	font := int32(Text14)
+	baseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
+		false, false, StyleSheet_StyleKindMenuItem()).Value)
+	font := styleFont(baseStyle, Text14)
 	metrics := Menu_MenuMetricsFor(1)
 	width := metrics.PanelMinWidth
 	for _, item := range items {
@@ -5961,6 +5975,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			return ButtonStateNormal
 		}(), item.Disabled, selected, StyleSheet_StyleKindMenuItem())
 		itemStyle := unpackStyle(itemFrame.Value)
+		itemFont := styleFont(itemStyle, font)
 		if hovered && !item.Disabled {
 			if len(state.Path) > depth {
 				state.Path[depth] = i
@@ -5991,13 +6006,13 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 		if (item.Kind == MenuCheck || item.Kind == MenuRadio) && item.Checked {
 			label = "✓ " + label
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, FontSize: font, Disabled: item.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, Disabled: item.Disabled})
 		if item.Accelerator != "" {
-			accelWidth := runtimeTextWidth(item.Accelerator, font)
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, FontSize: font, Disabled: item.Disabled})
+			accelWidth := runtimeTextWidth(item.Accelerator, itemFont)
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, Disabled: item.Disabled})
 		}
 		if item.Kind == MenuSubmenu {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, FontSize: font})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont})
 			submenuOpen := r.openSubmenus[id] == item.ID
 			if keyboard {
 				submenuOpen = selected && len(state.Path) > depth+1

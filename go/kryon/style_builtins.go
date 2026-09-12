@@ -224,6 +224,7 @@ Tab {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -558,6 +559,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -2019,6 +2021,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2238,6 +2241,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3669,6 +3673,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -3882,6 +3887,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -5373,6 +5379,7 @@ MenuItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -5598,6 +5605,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -7065,6 +7073,7 @@ Segment {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7362,6 +7371,7 @@ ListBoxMultiItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

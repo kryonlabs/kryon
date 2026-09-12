@@ -301,6 +301,7 @@ Segment {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -598,6 +599,7 @@ ListBoxMultiItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
