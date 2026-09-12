@@ -1323,6 +1323,7 @@ function webNodeFromWidget(item, index) {
     ariaLabel: meta.ariaLabel === undefined || meta.ariaLabel === null ? "" : String(meta.ariaLabel),
     ariaDescription: meta.ariaDescription === undefined || meta.ariaDescription === null ? "" : String(meta.ariaDescription),
     ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
+    ariaLabelledBy: meta.ariaLabelledBy === undefined || meta.ariaLabelledBy === null ? "" : String(meta.ariaLabelledBy),
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
     ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
@@ -1458,6 +1459,7 @@ export function webNodeStyleFacts(node) {
     ariaAttrs: { ...(node?.ariaAttrs || {}) },
     extraAttrs: { ...(node?.extraAttrs || {}) },
     role: node?.role || "",
+    ariaLabelledBy: node?.ariaLabelledBy || "",
     ariaOwns: node?.ariaOwns || "",
     state: { ...(node?.state || {}) }
   };
@@ -3769,6 +3771,7 @@ function resolveWebDOMRelations(root) {
     if (!docNode)
       continue;
     setAttr(el, "aria-describedby", resolveWebDOMRelationList(root, docNode.ariaDescribedBy));
+    setAttr(el, "aria-labelledby", resolveWebDOMRelationList(root, docNode.ariaLabelledBy));
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
     setAttr(el, "aria-owns", resolveWebDOMRelationList(root, docNode.ariaOwns));
     setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
@@ -3804,6 +3807,21 @@ function webDOMReverseRelationList(target, node, field) {
   return out;
 }
 
+function mergeWebDOMRelationObjects(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const object of list || []) {
+      const key = object?.ref || webNodeRef(object?.node) || "";
+      if (!object || !key || seen.has(key))
+        continue;
+      seen.add(key);
+      out.push(object);
+    }
+  }
+  return out;
+}
+
 function webDOMRelationsForNode(target, node) {
   if (!node)
     return null;
@@ -3812,7 +3830,10 @@ function webDOMRelationsForNode(target, node) {
     controls: webDOMRelationList(target, node.ariaControls),
     owns: webDOMRelationList(target, node.ariaOwns),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
-    labelledBy: webDOMReverseRelationList(target, node, "htmlFor"),
+    labelledBy: mergeWebDOMRelationObjects(
+      webDOMRelationList(target, node.ariaLabelledBy),
+      webDOMReverseRelationList(target, node, "htmlFor")
+    ),
     popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
   };
 }
@@ -5147,7 +5168,8 @@ export function webDOMBind(target, selector, handlers, options = {}) {
 
 const webDOMInternalAttributeNames = new Set([
   "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
-  "aria-label", "aria-description", "aria-describedby", "aria-controls", "aria-live",
+  "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
+  "aria-controls", "aria-owns", "aria-live",
   "href", "target", "rel", "for", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
   "autofocus", "download", "formnovalidate", "novalidate", "popover",

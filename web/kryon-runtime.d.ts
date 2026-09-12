@@ -131,6 +131,7 @@ export interface WebDocumentNode {
   ariaLabel: string;
   ariaDescription: string;
   ariaDescribedBy: string;
+  ariaLabelledBy: string;
   ariaControls: string;
   ariaOwns: string;
   ariaLive: string;
@@ -274,6 +275,7 @@ export interface WebNodeStyleFacts {
   ariaAttrs: Record<string, string>;
   extraAttrs: Record<string, string>;
   role: string;
+  ariaLabelledBy: string;
   ariaOwns: string;
   state: Record<string, boolean>;
 }
