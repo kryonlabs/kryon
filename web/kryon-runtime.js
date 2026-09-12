@@ -3556,8 +3556,6 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "role", docNode.role);
   setAttr(el, "aria-label", docNode.ariaLabel);
   setAttr(el, "aria-description", docNode.ariaDescription);
-  setAttr(el, "aria-describedby", docNode.ariaDescribedBy);
-  setAttr(el, "aria-controls", docNode.ariaControls);
   setAttr(el, "aria-live", docNode.ariaLive);
   if (docNode.onClick)
     el.dataset.kryOnClick = docNode.onClick;
@@ -3709,7 +3707,6 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
   setAttr(el, "rel", docNode.rel);
-  setAttr(el, "for", docNode.htmlFor);
   applyDataAttrs(el, docNode.dataAttrs);
   setAttr(el, "type", docNode.inputType);
   setAttr(el, "action", docNode.formAction);
@@ -3725,7 +3722,6 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "formnovalidate", docNode.formNoValidate);
   setAttr(el, "novalidate", docNode.noValidate);
   setAttr(el, "popover", docNode.popover);
-  setAttr(el, "popovertarget", docNode.popoverTarget);
   setAttr(el, "popovertargetaction", docNode.popoverTargetAction);
   el.hidden = !!docNode.hidden;
   if (docNode.draggable === "true" || docNode.draggable === "false")

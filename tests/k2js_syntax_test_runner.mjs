@@ -1830,7 +1830,7 @@ function fakeDocument() {
     const resolvedSearchLabel = runtime.findWebElement(target, "Scene/root/search_label");
     assert.equal(resolvedSearchLabel.id, "kry-Scene-root-search_label");
     assert.equal(resolvedSearchLabel.attributes.for, "search-field");
-    assert.equal(firstButton.attributes.popovertarget, "Scene/root/search_label");
+    assert.equal(firstButton.attributes.popovertarget, resolvedSearchLabel.id);
     assert.equal(runtime.webDOMQuery(target, "[fetchpriority=high]").ref, "primary-action");
     assert.equal(runtime.webDOMQuery(target, "[part=\"primary-action\"]").ref, "primary-action");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
