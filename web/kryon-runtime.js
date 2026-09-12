@@ -1886,6 +1886,8 @@ function webStyleRuleToCSS(rule) {
   const style = rule.style || {};
   const offsetX = style["offset-x"] ?? style.offset_x;
   const offsetY = style["offset-y"] ?? style.offset_y;
+  const backgroundStart = style.background ?? style["background-color"];
+  const backgroundEnd = style["background-end"] ?? style.background_end;
   for (const [name, value] of Object.entries(rule.style || {})) {
     if (name === "padding-x" || name === "padding_x") {
       const cssValue = webStyleCSSValue("padding-left", value);
@@ -1910,10 +1912,17 @@ function webStyleRuleToCSS(rule) {
       lines.push(`  --kry-icon-size: ${webStyleCSSValue("--kry-icon-size", value)};`);
       continue;
     }
+    if (name === "background-end" || name === "background_end") {
+      lines.push(`  --kry-background-end: ${webStyleCSSValue("--kry-background-end", value)};`);
+      continue;
+    }
     const line = webStyleValueToCSS(name, value);
     if (line)
       lines.push(line);
   }
+  if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
+      backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
+    lines.push(`  background-image: linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)});`);
   if (offsetX !== undefined && offsetX !== null && offsetX !== "")
     lines.push(`  --kry-offset-x: ${webStyleCSSValue("--kry-offset-x", offsetX)};`);
   if (offsetY !== undefined && offsetY !== null && offsetY !== "")
@@ -2158,7 +2167,13 @@ function applyResolvedWebStyle(el, style) {
     applied.add(name);
   };
   style = style || {};
-  set("background", style.background ?? style["background-color"]);
+  const backgroundStart = style.background ?? style["background-color"];
+  const backgroundEnd = style["background-end"] ?? style.background_end;
+  set("background", backgroundStart);
+  set("--kry-background-end", backgroundEnd);
+  if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
+      backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
+    set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
   set("color", style.foreground ?? style.color);
   set("borderColor", style.border ?? style["border-color"]);
   set("borderWidth", style["border-width"] ?? style.border_width);

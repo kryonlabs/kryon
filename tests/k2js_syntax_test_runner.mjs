@@ -47,6 +47,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   @layer components;
   Button.primary {
     background: button-face;
+    background-end: #203850;
     foreground: button-ink;
     radius: radius.md;
     padding-x: space.3;
@@ -111,6 +112,8 @@ assert.equal(webStyleSheet.pack, "smoke");
 const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(webStyleCSS, /background: #102030;/);
+assert.match(webStyleCSS, /--kry-background-end: #203850;/);
+assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
 assert.match(webStyleCSS, /color: #f0f0f0;/);
 assert.match(webStyleCSS, /border-radius: 9px;/);
 assert.match(webStyleCSS, /padding-left: 13px;/);
@@ -318,6 +321,7 @@ assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
 });
 assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
   background: "#203040",
+  "background-end": "#203850",
   foreground: "#f0f0f0",
   radius: 9,
   "padding-x": 13,
@@ -1416,6 +1420,8 @@ function fakeDocument() {
     assert.equal(firstButton.attributes.fetchpriority, "high");
     assert.equal(firstButton.attributes.part, "primary-action");
     assert.equal(firstButton.style.background, "#203040");
+    assert.equal(firstButton.style["--kry-background-end"], "#203850");
+    assert.equal(firstButton.style.backgroundImage, "linear-gradient(#203040, #203850)");
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
     assert.equal(firstButton.style.paddingLeft, "13px");
