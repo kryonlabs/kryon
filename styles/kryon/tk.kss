@@ -472,7 +472,6 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
-  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -615,6 +614,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }

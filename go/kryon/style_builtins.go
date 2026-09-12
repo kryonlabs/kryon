@@ -2144,7 +2144,6 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
-  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2287,6 +2286,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -7133,7 +7133,6 @@ MenuItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
-  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7407,6 +7406,7 @@ Selectable {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

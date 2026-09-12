@@ -373,7 +373,6 @@ MenuItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
-  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -647,6 +646,7 @@ Selectable {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
