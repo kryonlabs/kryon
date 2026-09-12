@@ -223,13 +223,13 @@ func renderIcon(img *image.RGBA, op FrameOp) {
 	}
 	shape := int32(0)
 	switch op.IconType {
-	case UIIconTypePlus:
+	case IconPlus:
 		shape = 1
-	case UIIconTypePlay:
+	case IconPlay:
 		shape = 2
-	case UIIconTypeTrash:
+	case IconTrash:
 		shape = 3
-	case UIIconTypeSave:
+	case IconSave:
 		shape = 4
 	}
 	if shape != 0 {
@@ -259,7 +259,7 @@ func renderIcon(img *image.RGBA, op FrameOp) {
 	}
 	rows := iconPattern(op.IconType)
 	if len(rows) == 0 {
-		rows = iconPattern(UIIconTypeText)
+		rows = iconPattern(IconText)
 	}
 	cell := maxInt(1, size/16)
 	x0 := int(round(op.Bounds.X)) + maxInt(0, (size-cell*16)/2)
@@ -280,7 +280,7 @@ func renderIcon(img *image.RGBA, op FrameOp) {
 
 func iconPattern(iconType int32) []string {
 	switch iconType {
-	case UIIconTypeX, UIIconTypeWorkbookClearFormatting:
+	case IconX, IconWorkbookClearFormatting:
 		return []string{
 			"................",
 			"..##........##..",
@@ -299,7 +299,7 @@ func iconPattern(iconType int32) []string {
 			"................",
 			"................",
 		}
-	case UIIconTypeWorkbookFillColor:
+	case IconWorkbookFillColor:
 		return []string{
 			"................",
 			".....####.......",
@@ -318,7 +318,7 @@ func iconPattern(iconType int32) []string {
 			"................",
 			"................",
 		}
-	case UIIconTypeWorkbookTextColor, UIIconTypeText:
+	case IconWorkbookTextColor, IconText:
 		return []string{
 			"................",
 			"......####......",
@@ -337,7 +337,7 @@ func iconPattern(iconType int32) []string {
 			"................",
 			"................",
 		}
-	case UIIconTypeEdit, UIIconTypePencil:
+	case IconEdit, IconPencil:
 		return []string{
 			"............##..",
 			"...........####.",

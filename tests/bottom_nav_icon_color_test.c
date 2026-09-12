@@ -146,9 +146,9 @@ main(void)
     color_icon.id = 42;
     color_icon.width = 16;
     color_icon.height = 16;
-    items[0] = (NavigationBarItem){1, "", color_icon, UI_ICON_TYPE_NONE, 0, 0};
-    items[1] = (NavigationBarItem){2, "", color_icon, UI_ICON_TYPE_NONE, 1, 0};
-    items[2] = (NavigationBarItem){3, "", color_icon, UI_ICON_TYPE_NONE, 0, 1};
+    items[0] = (NavigationBarItem){1, "", color_icon, ICON_NONE, 0, 0};
+    items[1] = (NavigationBarItem){2, "", color_icon, ICON_NONE, 1, 0};
+    items[2] = (NavigationBarItem){3, "", color_icon, ICON_NONE, 0, 1};
 
     SetUIScale(1.0f);
     SetUIDefaultFontAutoLoad(0);

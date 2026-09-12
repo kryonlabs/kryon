@@ -14,7 +14,7 @@ static const Vector2 kryon_zero_vector2;
 
 
 TextLayout
-ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size)
+ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_size)
 {
     TextLayout layout = {0};
 
@@ -247,7 +247,7 @@ ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
                 Rectangle src = {0, 0, (float)icon.width, (float)icon.height};
                 Rectangle dst = {(float)current_x, (float)y, (float)icon_size, (float)icon_size};
                 DrawTexturePro(icon, src, dst, kryon_zero_vector2, 0, color);
-            } else if(layout->elements[i].icon_type != UI_ICON_TYPE_NONE) {
+            } else if(layout->elements[i].icon_type != ICON_NONE) {
                 Rectangle dst = {(float)current_x, (float)y,
                                  (float)icon_size, (float)icon_size};
                 DrawIcon(layout->elements[i].icon_type, dst, color);

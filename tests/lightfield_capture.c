@@ -479,7 +479,7 @@ static void check_transparent_icon(void)
     Color background = {20, 40, 60, 255};
     BeginTextureMode(target);
     ClearBackground(background);
-    DrawIcon(UI_ICON_TYPE_X, (Rectangle){4, 4, 24, 24}, (Color){123, 45, 67, 0});
+    DrawIcon(ICON_X, (Rectangle){4, 4, 24, 24}, (Color){123, 45, 67, 0});
     EndTextureMode();
     Image image = LoadImageFromTexture(target.texture);
     Color *pixels = LoadImageColors(image);

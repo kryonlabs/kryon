@@ -120,8 +120,8 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 		},
 	}}
 	actions := []ToolbarAction{
-		{IconType: UIIconTypeSave},
-		{IconType: UIIconTypeWorkbookTextColor},
+		{IconType: IconSave},
+		{IconType: IconWorkbookTextColor},
 	}
 
 	rt.QueueTap(18, 16)
@@ -159,7 +159,7 @@ func TestIconActionToolbarAndMenuBar(t *testing.T) {
 
 	var sawIcon bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind == FrameOpIcon && op.IconType == UIIconTypeSave {
+		if op.Kind == FrameOpIcon && op.IconType == IconSave {
 			sawIcon = true
 			break
 		}
@@ -174,7 +174,7 @@ func TestIconRenderDrawsTintedPixels(t *testing.T) {
 		Kind:     FrameOpIcon,
 		Bounds:   Rectangle{X: 8, Y: 8, Width: 24, Height: 24},
 		Color:    Color{R: 210, G: 30, B: 40, A: 255},
-		IconType: UIIconTypeWorkbookFillColor,
+		IconType: IconWorkbookFillColor,
 		IconSize: 24,
 	}})
 	if got := countPixels(img, color.RGBA{R: 210, G: 30, B: 40, A: 255}); got < 40 {

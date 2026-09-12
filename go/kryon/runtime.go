@@ -193,127 +193,127 @@ const (
 )
 
 const (
-	UIIconTypeNone = iota
-	UIIconTypeActivity
-	UIIconTypeAmen
-	UIIconTypeBackward
-	UIIconTypeC
-	UIIconTypeCalendar
-	UIIconTypeCheck
-	UIIconTypeEdit
-	UIIconTypeEye
-	UIIconTypeEyeOff
-	UIIconTypeFingerprint
-	UIIconTypeForward
-	UIIconTypeGear
-	UIIconTypeGlobe
-	UIIconTypeHome
-	UIIconTypeJupiter
-	UIIconTypeKryon
-	UIIconTypeLeft
-	UIIconTypeLightoff
-	UIIconTypeLighton
-	UIIconTypeLink
-	UIIconTypeManual
-	UIIconTypeMars
-	UIIconTypeMercury
-	UIIconTypeMoon
-	UIIconTypeMusic
-	UIIconTypeMute
-	UIIconTypePause
-	UIIconTypePencil
-	UIIconTypePet
-	UIIconTypePlay
-	UIIconTypePlus
-	UIIconTypeProfile
-	UIIconTypeReturn
-	UIIconTypeRight
-	UIIconTypeRocket
-	UIIconTypeRoutine
-	UIIconTypeSaturn
-	UIIconTypeSave
-	UIIconTypeSound
-	UIIconTypeSound0
-	UIIconTypeSound1
-	UIIconTypeSound2
-	UIIconTypeSound3
-	UIIconTypeStack
-	UIIconTypeStat
-	UIIconTypeSun
-	UIIconTypeText
-	UIIconTypeTimeline
-	UIIconTypeTodos
-	UIIconTypeTrash
-	UIIconTypeVenus
-	UIIconTypeWeekly
-	UIIconTypeWrench
-	UIIconTypeX
-	UIIconTypeLanguageRay
-	UIIconTypeLanguageTcl
-	UIIconTypeLanguageUxn
-	UIIconTypeLanguageWasm
-	UIIconTypeLanguageWasm4
-	UIIconTypePaymentsBtc
-	UIIconTypePaymentsMonero
-	UIIconTypePaymentsStripe
-	UIIconTypePfpBambus
-	UIIconTypePfpBird
-	UIIconTypePfpBowl
-	UIIconTypePfpBush
-	UIIconTypePfpButterfly
-	UIIconTypePfpCactus
-	UIIconTypePfpCoffee
-	UIIconTypePfpDragonfly
-	UIIconTypePfpFireplace
-	UIIconTypePfpFlower1
-	UIIconTypePfpFlower2
-	UIIconTypePfpFox
-	UIIconTypePfpHeart
-	UIIconTypePfpIncense
-	UIIconTypePfpLotus
-	UIIconTypePfpMountain
-	UIIconTypePfpMushroom
-	UIIconTypePfpPalm
-	UIIconTypePfpPerson1
-	UIIconTypePfpRainbow
-	UIIconTypePfpTent
-	UIIconTypePfpTree1
-	UIIconTypePfpTree2
-	UIIconTypePfpTree3
-	UIIconTypePfpTree4
-	UIIconTypePlatformsAppimage
-	UIIconTypePlatformsBrowser
-	UIIconTypePlatformsChromewebstore
-	UIIconTypePlatformsDebian
-	UIIconTypePlatformsDiscord
-	UIIconTypePlatformsDroid
-	UIIconTypePlatformsEsp32
-	UIIconTypePlatformsFdroid
-	UIIconTypePlatformsFedora
-	UIIconTypePlatformsFlatpak
-	UIIconTypePlatformsFreebsd
-	UIIconTypePlatformsGithub
-	UIIconTypePlatformsGlenda
-	UIIconTypePlatformsIos
-	UIIconTypePlatformsItch
-	UIIconTypePlatformsMacos
-	UIIconTypePlatformsMicrocontroller
-	UIIconTypePlatformsPlaystore
-	UIIconTypePlatformsSnap
-	UIIconTypePlatformsSrht
-	UIIconTypePlatformsTelegram
-	UIIconTypePlatformsTux
-	UIIconTypePlatformsWin
-	UIIconTypeProjInbe
-	UIIconTypeProjKryon
-	UIIconTypeProjWao
-	UIIconTypeTilesTile
-	UIIconTypeTilesTile2
-	UIIconTypeTilesTile3
-	UIIconTypeTilesTile4
-	UIIconTypeWorkbookClearFormatting
-	UIIconTypeWorkbookFillColor
-	UIIconTypeWorkbookTextColor
+	IconNone = iota
+	IconActivity
+	IconAmen
+	IconBackward
+	IconC
+	IconCalendar
+	IconCheck
+	IconEdit
+	IconEye
+	IconEyeOff
+	IconFingerprint
+	IconForward
+	IconGear
+	IconGlobe
+	IconHome
+	IconJupiter
+	IconKryon
+	IconLeft
+	IconLightoff
+	IconLighton
+	IconLink
+	IconManual
+	IconMars
+	IconMercury
+	IconMoon
+	IconMusic
+	IconMute
+	IconPause
+	IconPencil
+	IconPet
+	IconPlay
+	IconPlus
+	IconProfile
+	IconReturn
+	IconRight
+	IconRocket
+	IconRoutine
+	IconSaturn
+	IconSave
+	IconSound
+	IconSound0
+	IconSound1
+	IconSound2
+	IconSound3
+	IconStack
+	IconStat
+	IconSun
+	IconText
+	IconTimeline
+	IconTodos
+	IconTrash
+	IconVenus
+	IconWeekly
+	IconWrench
+	IconX
+	IconLanguageRay
+	IconLanguageTcl
+	IconLanguageUxn
+	IconLanguageWasm
+	IconLanguageWasm4
+	IconPaymentsBtc
+	IconPaymentsMonero
+	IconPaymentsStripe
+	IconPfpBambus
+	IconPfpBird
+	IconPfpBowl
+	IconPfpBush
+	IconPfpButterfly
+	IconPfpCactus
+	IconPfpCoffee
+	IconPfpDragonfly
+	IconPfpFireplace
+	IconPfpFlower1
+	IconPfpFlower2
+	IconPfpFox
+	IconPfpHeart
+	IconPfpIncense
+	IconPfpLotus
+	IconPfpMountain
+	IconPfpMushroom
+	IconPfpPalm
+	IconPfpPerson1
+	IconPfpRainbow
+	IconPfpTent
+	IconPfpTree1
+	IconPfpTree2
+	IconPfpTree3
+	IconPfpTree4
+	IconPlatformsAppimage
+	IconPlatformsBrowser
+	IconPlatformsChromewebstore
+	IconPlatformsDebian
+	IconPlatformsDiscord
+	IconPlatformsDroid
+	IconPlatformsEsp32
+	IconPlatformsFdroid
+	IconPlatformsFedora
+	IconPlatformsFlatpak
+	IconPlatformsFreebsd
+	IconPlatformsGithub
+	IconPlatformsGlenda
+	IconPlatformsIos
+	IconPlatformsItch
+	IconPlatformsMacos
+	IconPlatformsMicrocontroller
+	IconPlatformsPlaystore
+	IconPlatformsSnap
+	IconPlatformsSrht
+	IconPlatformsTelegram
+	IconPlatformsTux
+	IconPlatformsWin
+	IconProjInbe
+	IconProjKryon
+	IconProjWao
+	IconTilesTile
+	IconTilesTile2
+	IconTilesTile3
+	IconTilesTile4
+	IconWorkbookClearFormatting
+	IconWorkbookFillColor
+	IconWorkbookTextColor
 )
 
 var (
@@ -2156,7 +2156,7 @@ func (r *runtime) Button(props ButtonProps) bool {
 			Y: action.Bounds.Y, Width: layout.MenuWidth, Height: action.Bounds.Height}
 		menu.Label = "Open menu"
 		menu.ID = menuID
-		menu.IconType = UIIconTypeNone
+		menu.IconType = IconNone
 		menu.IconOnly = true
 		menu.Square = true
 		menu.Menu = false
@@ -2184,7 +2184,7 @@ func (r *runtime) Button(props ButtonProps) bool {
 		if props.Open == nil {
 			props.Open = &open
 		}
-		props.IconType = UIIconTypeNone
+		props.IconType = IconNone
 		props.IconPlacement = IconPlacementTrailing
 		props = r.resolveSurfaceButtonProps(props, true)
 		props.Bounds = r.layoutRect(props.Bounds)
@@ -4349,7 +4349,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		selectedFontID = registeredTypeface(items[*selected].FontName)
 	}
 	textX := bounds.X + contentMetrics.Padding
-	if selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != UIIconTypeNone {
+	if selected != nil && *selected >= 0 && int(*selected) < len(items) && items[*selected].IconType != IconNone {
 		r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: bounds.Y + (bounds.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: items[*selected].IconType, Color: foreground, ID: id})
 		textX += contentMetrics.Icon + contentMetrics.Gap
 	}
@@ -4442,7 +4442,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 			if item.SeparatorBefore {
 				r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: row.X + 16, Y: row.Y, Width: row.Width - 32}, Color: r.Fade(paint.TextColor, 0.18), ID: id})
 			}
-			if item.IconType != UIIconTypeNone {
+			if item.IconType != IconNone {
 				r.record(FrameOp{Kind: FrameOpIcon, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}, IconType: item.IconType, Color: paint.TextColor, ID: id})
 				textX += contentMetrics.Icon + contentMetrics.Gap
 			}
@@ -4450,7 +4450,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		textClip := Rectangle{X: textX, Y: row.Y, Width: max(float32(0), row.X+row.Width-contentMetrics.Padding-contentMetrics.Icon-contentMetrics.Gap-textX), Height: row.Height}
 		r.record(FrameOp{Kind: FrameOpText, Clip: textClip, HasClip: true, Bounds: Rectangle{X: textX, Y: row.Y + (row.Height-contentMetrics.Font)/2, Width: max(float32(0), row.Width-48), Height: row.Height}, Text: label, Color: paint.TextColor, FontSize: int32(contentMetrics.Font), FontID: fontID, ID: id, Row: int32(i), Selected: selectedRow})
 		if selectedRow {
-			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: UIIconTypeCheck,
+			r.record(FrameOp{Kind: FrameOpIcon, ID: id, Color: paint.TextColor, IconType: IconCheck,
 				Bounds: Rectangle{X: row.X + row.Width - contentMetrics.Padding - contentMetrics.Icon, Y: row.Y + (row.Height-contentMetrics.Icon)/2, Width: contentMetrics.Icon, Height: contentMetrics.Icon}})
 		}
 	}

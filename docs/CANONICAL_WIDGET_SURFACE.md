@@ -122,7 +122,7 @@ been removed from the public surface. Existing generated fixtures use
 | `Line` | Native canonical | Primitive drawing node. |
 | `Triangle` | Native canonical | Primitive drawing node. |
 | `Bevel` | Native canonical | Primitive drawing effect unless replaced by surface props. |
-| `Icon` | `.kry canonical` | User-facing icon widget. |
+| `Icon` | `.kry canonical` | User-facing icon widget. Icon enum/type surface is `IconType` with C `ICON_*` values and Go `kr.IconHome`-style constants. |
 | `Image` | `.kry canonical` | Canonical image widget. |
 
 ## Controls

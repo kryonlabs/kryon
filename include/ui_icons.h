@@ -16,27 +16,27 @@ typedef enum UIIconSheet {
 } UIIconSheet;
 
 typedef struct UIIconAsset {
-    UIIconType type;
+    IconType type;
     const char *name;
     UIIconSheet sheet;
     Rectangle source;
 } UIIconAsset;
 
-const UIIconAsset *GetUIIconAsset(UIIconType type);
+const UIIconAsset *GetUIIconAsset(IconType type);
 const UIIconAsset *GetUIIconAssetByName(const char *name);
 Texture2D LoadIconSheet(UIIconSheet sheet);
 void UnloadIconSheets(void);
-void DrawIcon(UIIconType type, Rectangle bounds, Color tint);
+void DrawIcon(IconType type, Rectangle bounds, Color tint);
 void DrawIconByName(const char *name, Rectangle bounds, Color tint);
-void DrawProfilePictureIcon(UIIconType type, Rectangle bounds, int dark_mode);
+void DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode);
 
-/* Transitional texture API for controls that do not yet accept UIIconType. */
-Texture2D LoadUIIconTexture(UIIconType type);
+/* Transitional texture API for controls that do not yet accept IconType. */
+Texture2D LoadUIIconTexture(IconType type);
 Texture2D LoadUIIconTextureByName(const char *name);
 void LoadAllUIIconTextures(Texture2D *icons);
 void UnloadAllUIIconTextures(Texture2D *icons);
 
-/* Auto-generated icon names array (alphabetical order, matches UIIconType enum) */
+/* Auto-generated icon names array (alphabetical order, matches IconType enum) */
 extern const char *ui_icon_names[];
 
 #endif // UI_ICONS_H

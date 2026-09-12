@@ -54,9 +54,9 @@ static void
 rich_step(int *selected, int all_disabled)
 {
     DropdownOption items[] = {
-        {.label = "First", .icon_type = UI_ICON_TYPE_SUN, .disabled = all_disabled},
+        {.label = "First", .icon_type = ICON_SUN, .disabled = all_disabled},
         {.label = "Unavailable", .disabled = 1, .separator_before = 1},
-        {.label = "Last", .icon_type = UI_ICON_TYPE_MOON, .disabled = all_disabled},
+        {.label = "Last", .icon_type = ICON_MOON, .disabled = all_disabled},
         {.label = "Unavailable end", .disabled = 1}
     };
     InjectPump();

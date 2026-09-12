@@ -6,32 +6,32 @@
 static const Texture2D kryon_zero_texture2d;
 
 
-static const UIIconType ui_profile_picture_icons[] = {
-    UI_ICON_TYPE_PFP_BAMBUS,
-    UI_ICON_TYPE_PFP_BIRD,
-    UI_ICON_TYPE_PFP_BOWL,
-    UI_ICON_TYPE_PFP_BUSH,
-    UI_ICON_TYPE_PFP_BUTTERFLY,
-    UI_ICON_TYPE_PFP_CACTUS,
-    UI_ICON_TYPE_PFP_COFFEE,
-    UI_ICON_TYPE_PFP_DRAGONFLY,
-    UI_ICON_TYPE_PFP_FIREPLACE,
-    UI_ICON_TYPE_PFP_FLOWER1,
-    UI_ICON_TYPE_PFP_FLOWER2,
-    UI_ICON_TYPE_PFP_FOX,
-    UI_ICON_TYPE_PFP_HEART,
-    UI_ICON_TYPE_PFP_INCENSE,
-    UI_ICON_TYPE_PFP_LOTUS,
-    UI_ICON_TYPE_PFP_MOUNTAIN,
-    UI_ICON_TYPE_PFP_MUSHROOM,
-    UI_ICON_TYPE_PFP_PALM,
-    UI_ICON_TYPE_PFP_PERSON1,
-    UI_ICON_TYPE_PFP_RAINBOW,
-    UI_ICON_TYPE_PFP_TENT,
-    UI_ICON_TYPE_PFP_TREE1,
-    UI_ICON_TYPE_PFP_TREE2,
-    UI_ICON_TYPE_PFP_TREE3,
-    UI_ICON_TYPE_PFP_TREE4
+static const IconType ui_profile_picture_icons[] = {
+    ICON_PFP_BAMBUS,
+    ICON_PFP_BIRD,
+    ICON_PFP_BOWL,
+    ICON_PFP_BUSH,
+    ICON_PFP_BUTTERFLY,
+    ICON_PFP_CACTUS,
+    ICON_PFP_COFFEE,
+    ICON_PFP_DRAGONFLY,
+    ICON_PFP_FIREPLACE,
+    ICON_PFP_FLOWER1,
+    ICON_PFP_FLOWER2,
+    ICON_PFP_FOX,
+    ICON_PFP_HEART,
+    ICON_PFP_INCENSE,
+    ICON_PFP_LOTUS,
+    ICON_PFP_MOUNTAIN,
+    ICON_PFP_MUSHROOM,
+    ICON_PFP_PALM,
+    ICON_PFP_PERSON1,
+    ICON_PFP_RAINBOW,
+    ICON_PFP_TENT,
+    ICON_PFP_TREE1,
+    ICON_PFP_TREE2,
+    ICON_PFP_TREE3,
+    ICON_PFP_TREE4
 };
 
 static const int ui_profile_picture_sync_ids[] = {
@@ -97,11 +97,11 @@ GetUIProfilePictureIconCount(void)
                  sizeof(ui_profile_picture_icons[0]));
 }
 
-UIIconType
+IconType
 GetUIProfilePictureIconType(int index)
 {
     if(index < 0 || index >= GetUIProfilePictureIconCount())
-        return UI_ICON_TYPE_NONE;
+        return ICON_NONE;
     return ui_profile_picture_icons[index];
 }
 
@@ -113,26 +113,26 @@ GetUIProfilePictureIconName(int index)
     return ui_profile_picture_names[index];
 }
 
-UIIconType
+IconType
 GetUIProfilePictureIconTypeForSyncID(int sync_id)
 {
     int i;
 
     if(sync_id == UI_SYNC_PROFILE_ICON_NONE)
-        return UI_ICON_TYPE_NONE;
+        return ICON_NONE;
     for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
         if(ui_profile_picture_sync_ids[i] == sync_id)
             return ui_profile_picture_icons[i];
     }
-    return UI_ICON_TYPE_NONE;
+    return ICON_NONE;
 }
 
 int
-GetUISyncIDForProfilePictureIconType(UIIconType type)
+GetUISyncIDForProfilePictureIconType(IconType type)
 {
     int i;
 
-    if(type == UI_ICON_TYPE_NONE)
+    if(type == ICON_NONE)
         return UI_SYNC_PROFILE_ICON_NONE;
     for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
         if(ui_profile_picture_icons[i] == type)
@@ -238,8 +238,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     if(username_w > max_name_w)
         username_w = max_name_w;
     if(pfp_icon.id == 0 && header.icons != NULL &&
-       header.pfp_icon_type > UI_ICON_TYPE_NONE &&
-       header.pfp_icon_type < UI_ICON_TYPE_COUNT)
+       header.pfp_icon_type > ICON_NONE &&
+       header.pfp_icon_type < ICON_COUNT)
         pfp_icon = header.icons[header.pfp_icon_type];
 
     pfp_bounds.x = (float)(avatar_x - avatar_r - Scale(4));
@@ -273,8 +273,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                                     (float)(avatar_size + Scale(6)),
                                     (float)(avatar_size + Scale(6))},
                         c_surface, DarkenUIColor(c_surface, 18));
-    if(header.pfp_icon_type > UI_ICON_TYPE_NONE &&
-       header.pfp_icon_type < UI_ICON_TYPE_COUNT) {
+    if(header.pfp_icon_type > ICON_NONE &&
+       header.pfp_icon_type < ICON_COUNT) {
         Rectangle icon_bounds;
 
         icon_bounds.x = (float)(avatar_x - avatar_r + Scale(3));
@@ -342,9 +342,9 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
     ScrollArea scroll_area;
     ScrollView scroll_view;
     UIPanelFrame frame;
-    UIIconType selected =
+    IconType selected =
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
-                                         : UI_ICON_TYPE_NONE;
+                                         : ICON_NONE;
     Vector2 mouse;
     int i;
 
@@ -402,7 +402,7 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
         int x = scroll_view.content_x + (scroll_view.content_w - grid_w) / 2 +
                 col * (cell + gap);
         int y = scroll_view.content_y + row * (cell + gap);
-        UIIconType type = GetUIProfilePictureIconType(i);
+        IconType type = GetUIProfilePictureIconType(i);
         Texture2D icon = {0};
         Rectangle bounds = {(float)x, (float)y, (float)cell, (float)cell};
         int hovered = CheckCollisionPointRec(mouse, bounds) &&
@@ -416,10 +416,10 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
                                    : DarkenUIColor(c_surface, 22));
         if(active)
             DrawRectangleLinesEx(bounds, Scale(2), c_button_hover);
-        if(modal.icons != NULL && type > UI_ICON_TYPE_NONE &&
-           type < UI_ICON_TYPE_COUNT)
+        if(modal.icons != NULL && type > ICON_NONE &&
+           type < ICON_COUNT)
             icon = modal.icons[type];
-        if(type > UI_ICON_TYPE_NONE && type < UI_ICON_TYPE_COUNT) {
+        if(type > ICON_NONE && type < ICON_COUNT) {
             Rectangle icon_bounds;
 
             icon_bounds.x = (float)(x + icon_inset);

@@ -18,8 +18,8 @@ state {
     overlay_background_offset: int = 0
     overlay_options: [2] const char * = {"One","Two"}
     overlay_items: [3] DropdownOption = {
-        (DropdownOption){.label = "One", .icon_type = UI_ICON_TYPE_SUN},
-        (DropdownOption){.label = "Two", .icon_type = UI_ICON_TYPE_MOON, .separator_before = 1},
+        (DropdownOption){.label = "One", .icon_type = ICON_SUN},
+        (DropdownOption){.label = "Two", .icon_type = ICON_MOON, .separator_before = 1},
         (DropdownOption){.label = "Unavailable", .disabled = 1}
     }
     edge_dropdown_visible: bool = false

@@ -12,20 +12,20 @@
 
 static DropdownStore *stores[SAMPLE_COUNT];
 static const DropdownOption theme_items[] = {
-    {.label = "Light", .icon_type = UI_ICON_TYPE_SUN},
-    {.label = "Dark", .icon_type = UI_ICON_TYPE_MOON},
-    {.label = "System", .icon_type = UI_ICON_TYPE_PLATFORMS_BROWSER},
-    {.label = "High contrast", .icon_type = UI_ICON_TYPE_EYE},
-    {.label = "Auto (Beta)", .icon_type = UI_ICON_TYPE_GEAR, .separator_before = 1},
-    {.label = "Legacy", .icon_type = UI_ICON_TYPE_LIGHTOFF, .disabled = 1}
+    {.label = "Light", .icon_type = ICON_SUN},
+    {.label = "Dark", .icon_type = ICON_MOON},
+    {.label = "System", .icon_type = ICON_PLATFORMS_BROWSER},
+    {.label = "High contrast", .icon_type = ICON_EYE},
+    {.label = "Auto (Beta)", .icon_type = ICON_GEAR, .separator_before = 1},
+    {.label = "Legacy", .icon_type = ICON_LIGHTOFF, .disabled = 1}
 };
 static const DropdownOption fonts[] = {
-    {.label = "Inter", .icon_type = UI_ICON_TYPE_EDIT},
-    {.label = "Roboto", .icon_type = UI_ICON_TYPE_EDIT},
-    {.label = "Mono", .icon_type = UI_ICON_TYPE_EDIT},
-    {.label = "Poppins", .icon_type = UI_ICON_TYPE_EDIT},
-    {.label = "Open Sans", .icon_type = UI_ICON_TYPE_EDIT},
-    {.label = "Comic Sans", .icon_type = UI_ICON_TYPE_EDIT, .disabled = 1}
+    {.label = "Inter", .icon_type = ICON_EDIT},
+    {.label = "Roboto", .icon_type = ICON_EDIT},
+    {.label = "Mono", .icon_type = ICON_EDIT},
+    {.label = "Poppins", .icon_type = ICON_EDIT},
+    {.label = "Open Sans", .icon_type = ICON_EDIT},
+    {.label = "Comic Sans", .icon_type = ICON_EDIT, .disabled = 1}
 };
 
 static void

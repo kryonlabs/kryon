@@ -754,7 +754,7 @@ typedef struct TextLayout {
 Parse text input into a layout.
 
 ```c
-TextLayout ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
+TextLayout ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_size);
 ```
 
 #### `ReflowTextLayout`
@@ -781,7 +781,7 @@ void FreeTextLayout(TextLayout *layout);
 Get icon asset by type or name.
 
 ```c
-const UIIconAsset *GetUIIconAsset(UIIconType type);
+const UIIconAsset *GetUIIconAsset(IconType type);
 const UIIconAsset *GetUIIconAssetByName(const char *name);
 ```
 
@@ -803,7 +803,7 @@ payment, language, and tile icons retain their full source colors and only use t
 tint's alpha. Every entry uses one fixed 64×64 source cell.
 
 ```c
-void DrawIcon(UIIconType type, Rectangle bounds, Color tint);
+void DrawIcon(IconType type, Rectangle bounds, Color tint);
 void DrawIconByName(const char *name, Rectangle bounds, Color tint);
 ```
 
@@ -815,7 +815,7 @@ variants; runtime drawing can tint the clean alpha artwork on demand.
 Product and project marks retain their brand colors, stay out of the generic UI
 atlas, and are packed into the separate `icons/logos.png` sheet.
 Entries use names like `platforms_freebsd.png`, `proj_kryon.png`, and matching
-`UI_ICON_TYPE_PLATFORMS_*` / `UI_ICON_TYPE_PROJ_*` enum values. Downstream
+`ICON_PLATFORMS_*` / `ICON_PROJ_*` enum values. Downstream
 websites can sync shared assets from a vendored Kryon copy with
 `vendor/kryon/scripts/sync-icons.sh`. Embedded C assets are refreshed with
 `make icons-embed`.
@@ -823,7 +823,7 @@ websites can sync shared assets from a vendored Kryon copy with
 Profile-image, platform, payment, and language artwork is packed into the
 separate full-color `icons/pfp.png`, `icons/platforms.png`,
 `icons/payments.png`, `icons/language.png`, and `icons/tiles.png` sheets. They remain in the same
-indexed icon catalog with their existing `UI_ICON_TYPE_*` values. Use
+indexed icon catalog with their existing `ICON_*` values. Use
 `GetUIProfilePictureIconCount`,
 `GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
 the standard profile-image options.
@@ -831,12 +831,12 @@ the standard profile-image options.
 Kryon also exposes stable `UI_SYNC_PROFILE_ICON_*` IDs and mapping helpers:
 
 ```c
-UIIconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
-int GetUISyncIDForProfilePictureIconType(UIIconType type);
+IconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
+int GetUISyncIDForProfilePictureIconType(IconType type);
 ```
 
 Use those IDs for server storage or sync payloads instead of generated
-`UIIconType` ordinals.
+`IconType` ordinals.
 
 ---
 

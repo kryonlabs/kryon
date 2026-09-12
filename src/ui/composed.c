@@ -32,7 +32,7 @@ int CarouselControls(CarouselControlsProps p)
                    .disabled = p.disabled,
                    .circle = true,
                    .icon_only = true,
-                   .icon_type = i ? UI_ICON_TYPE_RIGHT : UI_ICON_TYPE_LEFT,
+                   .icon_type = i ? ICON_RIGHT : ICON_LEFT,
                    .tone = ButtonToneNeutral,
                    .emphasis = ButtonEmphasisSoft
                })) {

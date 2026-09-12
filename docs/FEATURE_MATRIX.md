@@ -281,7 +281,7 @@ declaration pass (`src/ui/ui_tree.c`).
   with `.kry` array declarations lowering to Go slices at the use site.
   Remaining boundaries: a forward `goto` over declarations is a loud Go
   compile error, and C pointer/`Texture2D` values cannot be written (icons pass by
-  `UIIconType`, option lists as joined strings or `[N]string`).
+  `IconType`, option lists as joined strings or `[N]string`).
 - `k2js` emits ESM for the web recorder runtime. `make
   k2js-runtime-snapshot-test` lowers every conformance source, imports the
   generated ESM in Node, runs `frame()`, and compares the recorded widget

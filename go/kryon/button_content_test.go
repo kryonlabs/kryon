@@ -12,14 +12,14 @@ func resolveButtonInputForTest(props ButtonProps, sample Activation) ButtonInput
 }
 
 func TestButtonContentDrawing(t *testing.T) {
-	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus}
+	props := ButtonProps{Label: "Run", IconType: IconPlus}
 	bounds := Rectangle{X: 10, Y: 20, Width: 200, Height: 80}
 	paint := StyleData{IconSize: 18, Gap: 8, OffsetX: 2, OffsetY: -3}
 	draw := func(disclosure bool) ContentDrawing {
 		return Button_PaintContent(props, bounds, paint, 32, 48, 0x12345680, 0xffffffff, 2, 375, disclosure)
 	}
 	content := draw(false)
-	if content.Mark.Kind != DrawingKindDrawingIcon || content.Mark.Icon != UIIconTypePlus ||
+	if content.Mark.Kind != DrawingKindDrawingIcon || content.Mark.Icon != IconPlus ||
 		content.Mark.Bounds != (Rectangle{X: 64, Y: 36, Width: 36, Height: 36}) {
 		t.Fatalf("scaled icon command: %+v", content.Mark)
 	}
@@ -47,7 +47,7 @@ func TestButtonContentDrawing(t *testing.T) {
 }
 
 func TestButtonPaintCallbacks(t *testing.T) {
-	props := ButtonProps{Label: "Run", IconType: UIIconTypePlus,
+	props := ButtonProps{Label: "Run", IconType: IconPlus,
 		Bounds: Rectangle{X: 10, Y: 20, Width: 100, Height: 40}}
 	appearance := StyleFrame{Value: StyleData{IconSize: 16, Gap: 8, Opacity: 1,
 		Foreground: 0x123456ff, Background: 0xffffffff}}
@@ -221,7 +221,7 @@ func TestSharedStyleContentBoundsClampEmptyArea(t *testing.T) {
 func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	for _, size := range []float32{-1, 0, 0.5, 1, 8.5, 18} {
-		props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: UIIconTypePlay,
+		props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
 			Style: ControlStyle{Normal: Style{Fields: StyleIconSize, IconSize: size}}})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 		if frame.Button.Appearance.Value.IconSize != size {
@@ -237,9 +237,9 @@ func TestButtonCustomIconSizesRemainExplicit(t *testing.T) {
 			if props.Bounds.Width != labelWidth+2*defaultThemeMetrics().ControlPaddingMedium {
 				t.Fatalf("hidden icon must not reserve a size or gap: width %v, text %v", props.Bounds.Width, labelWidth)
 			}
-			frame.Button.Props.IconType = UIIconTypeNone
+			frame.Button.Props.IconType = IconNone
 			expected := RenderFrame(160, 60, []FrameOp{frame})
-			for _, icon := range []int32{UIIconTypePlay, UIIconTypeText} {
+			for _, icon := range []int32{IconPlay, IconText} {
 				frame.Button.Props.IconType = icon
 				actual := RenderFrame(160, 60, []FrameOp{frame})
 				if !bytes.Equal(actual.Pix, expected.Pix) {
@@ -313,7 +313,7 @@ func TestButtonMeasurementMatchesPlacedContent(t *testing.T) {
 		}
 	}
 	r := New(AppConfig{}).(*runtime)
-	props := ButtonProps{IconType: UIIconTypePlay,
+	props := ButtonProps{IconType: IconPlay,
 		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleIconSize | StyleGap,
 			PaddingX: 11, IconSize: 64, Gap: 8}}}
 	measured := r.resolveButtonProps(props)
@@ -367,7 +367,7 @@ func TestDefaultAndExplicitButtonSizes(t *testing.T) {
 func TestButtonZeroPaddingAndGapRemainExplicit(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	r.SetTheme(ThemeDefaultLight())
-	props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: UIIconTypePlay,
+	props := r.resolveButtonProps(ButtonProps{Label: "Run", IconType: IconPlay,
 		Style: ControlStyle{Normal: Style{Fields: StylePaddingX | StyleGap, PaddingX: 0, Gap: 0}}})
 	frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
 	want := float32(runtimeTextWidth("Run", frame.Button.Font)) + 18

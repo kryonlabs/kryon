@@ -15,7 +15,7 @@ typedef struct {
     TextElementType type;
     const char *text;
     Texture2D icon;
-    UIIconType icon_type;
+    IconType icon_type;
     int icon_size;
     int text_width;
 } TextElement;
@@ -31,7 +31,7 @@ typedef struct TextLayout {
     int last_reflow_width;
 } TextLayout;
 
-TextLayout ParseTextLayout(const char *input, Texture2D icon, UIIconType icon_type, int icon_size);
+TextLayout ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_size);
 void ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_height);
 int GetTextLayoutHeight(TextLayout *layout);
 void FreeTextLayout(TextLayout *layout);

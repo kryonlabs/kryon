@@ -35,9 +35,9 @@ typedef enum {
 } UISyncProfileIcon;
 
 int GetUIProfilePictureIconCount(void);
-UIIconType GetUIProfilePictureIconType(int index);
+IconType GetUIProfilePictureIconType(int index);
 const char *GetUIProfilePictureIconName(int index);
-UIIconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
-int GetUISyncIDForProfilePictureIconType(UIIconType type);
+IconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
+int GetUISyncIDForProfilePictureIconType(IconType type);
 
 #endif

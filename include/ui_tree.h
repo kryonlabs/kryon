@@ -259,7 +259,7 @@ void Ring(int center_x, int center_y, int inner_radius, int outer_radius,
 void Line(int x1, int y1, int x2, int y2, Color color);
 void Triangle(int x1, int y1, int x2, int y2, int x3, int y3, Color color);
 void Bevel(int x, int y, int w, int h, Color light, Color dark);
-void Icon(int id, int x, int y, int size, UIIconType icon, Color tint);
+void Icon(int id, int x, int y, int size, IconType icon, Color tint);
 void RenderImage(ImageProps image);
 int ButtonNode(ButtonSpec button);
 int TextField(TextFieldProps field);

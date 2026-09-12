@@ -37,7 +37,7 @@ typedef struct {
     int route;
     const char *label;
     Texture2D icon;
-    UIIconType icon_type;
+    IconType icon_type;
     int active;
     int disabled;
 } NavigationBarItem;

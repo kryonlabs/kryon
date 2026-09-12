@@ -146,7 +146,7 @@ typedef struct {
     const char *friends_text;
     Texture2D pfp_icon;
     const Texture2D *icons;
-    UIIconType pfp_icon_type;
+    IconType pfp_icon_type;
     int content_padding_x;
     int current_frame;
     int block_click_frame;
@@ -162,7 +162,7 @@ typedef struct {
 typedef struct {
     const char *title;
     const Texture2D *icons;
-    UIIconType *selected_icon_type;
+    IconType *selected_icon_type;
     Texture2D close_icon;
     int max_width;
     int *scroll_offset;
@@ -172,7 +172,7 @@ typedef struct {
     int closed;
     int changed;
     int selected_index;
-    UIIconType selected_icon_type;
+    IconType selected_icon_type;
 } ProfilePicturePickerResult;
 
 typedef struct {
@@ -333,7 +333,7 @@ Color ui_paint_button(ButtonSpec button, int hovered, int pressed);
 typedef struct {
     Rectangle bounds;
     Texture2D icon;
-    UIIconType icon_type;
+    IconType icon_type;
     int icon_size;
     int icon_padding;
     int focus_id;

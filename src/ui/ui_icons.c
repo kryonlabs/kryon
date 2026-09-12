@@ -91,7 +91,7 @@ load_atlas(Texture2D *atlas, const unsigned char *png, unsigned int png_size)
 }
 
 const UIIconAsset *
-GetUIIconAsset(UIIconType type)
+GetUIIconAsset(IconType type)
 {
     for(unsigned int i = 0; i < ui_icon_asset_count; i++) {
         if(ui_icon_assets[i].type == type)
@@ -150,13 +150,13 @@ draw_icon_asset(const UIIconAsset *asset, Rectangle bounds, Color tint)
 }
 
 void
-DrawIcon(UIIconType type, Rectangle bounds, Color tint)
+DrawIcon(IconType type, Rectangle bounds, Color tint)
 {
     int shape = 0;
-    if(type == UI_ICON_TYPE_PLUS) shape = 1;
-    if(type == UI_ICON_TYPE_PLAY) shape = 2;
-    if(type == UI_ICON_TYPE_TRASH) shape = 3;
-    if(type == UI_ICON_TYPE_SAVE) shape = 4;
+    if(type == ICON_PLUS) shape = 1;
+    if(type == ICON_PLAY) shape = 2;
+    if(type == ICON_TRASH) shape = 3;
+    if(type == ICON_SAVE) shape = 4;
     if(shape != 0) {
         for(int y = (int)floorf(bounds.y); y < (int)ceilf(bounds.y + bounds.height); y++) {
             for(int x = (int)floorf(bounds.x); x < (int)ceilf(bounds.x + bounds.width); x++) {
@@ -180,7 +180,7 @@ DrawIconByName(const char *name, Rectangle bounds, Color tint)
 }
 
 void
-DrawProfilePictureIcon(UIIconType type, Rectangle bounds, int dark_mode)
+DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode)
 {
     const UIIconAsset *asset = GetUIIconAsset(type);
 
@@ -251,7 +251,7 @@ load_icon_asset_texture(const UIIconAsset *asset)
 }
 
 Texture2D
-LoadUIIconTexture(UIIconType type)
+LoadUIIconTexture(IconType type)
 {
     return load_icon_asset_texture(GetUIIconAsset(type));
 }
@@ -267,9 +267,9 @@ LoadAllUIIconTextures(Texture2D *icons)
 {
     if(icons == NULL)
         return;
-    for(int i = 1; i < UI_ICON_TYPE_COUNT; i++)
+    for(int i = 1; i < ICON_COUNT; i++)
         if(icons[i].id == 0)
-            icons[i] = LoadUIIconTexture((UIIconType)i);
+            icons[i] = LoadUIIconTexture((IconType)i);
 }
 
 void
@@ -277,7 +277,7 @@ UnloadAllUIIconTextures(Texture2D *icons)
 {
     if(icons == NULL)
         return;
-    for(int i = 0; i < UI_ICON_TYPE_COUNT; i++) {
+    for(int i = 0; i < ICON_COUNT; i++) {
         if(icons[i].id != 0)
             UnloadTexture(icons[i]);
         memset(&icons[i], 0, sizeof(icons[i]));

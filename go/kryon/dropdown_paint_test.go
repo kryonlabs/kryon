@@ -68,9 +68,9 @@ func TestDropdownRichOptionsSkipDisabledRows(t *testing.T) {
 	r := New(AppConfig{Width: 400, Height: 400}).(*runtime)
 	selected := int32(0)
 	items := []DropdownOption{
-		{Label: "First", IconType: UIIconTypeSun},
+		{Label: "First", IconType: IconSun},
 		{Label: "Unavailable", Disabled: true, SeparatorBefore: true},
-		{Label: "Last", IconType: UIIconTypeMoon},
+		{Label: "Last", IconType: IconMoon},
 		{Label: "Unavailable end", Disabled: true},
 	}
 	draw := func() {

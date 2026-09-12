@@ -59,7 +59,7 @@ func TestCarouselArrowsUseStandardButtonStates(t *testing.T) {
 			t.Fatalf("%s: expected two standard button surfaces, got %d", state, len(ops))
 		}
 		next := ops[1]
-		if next.Kind != FrameOpButton || !next.Button.Props.IconOnly || next.Button.Props.IconType != UIIconTypeRight ||
+		if next.Kind != FrameOpButton || !next.Button.Props.IconOnly || next.Button.Props.IconType != IconRight ||
 			next.Bounds.Width != 56 || next.Bounds.Height != 56 || next.Button.Appearance.Value.Radius < 28 {
 			t.Fatalf("%s: arrow is not a standard circular button: %+v", state, next)
 		}

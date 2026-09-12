@@ -235,12 +235,12 @@ static void check_button_input(void)
 
 static void check_button_content_drawing(void)
 {
-    ButtonProps props = {.label = "Run", .icon_type = UI_ICON_TYPE_PLUS};
+    ButtonProps props = {.label = "Run", .icon_type = ICON_PLUS};
     Rectangle bounds = {10, 20, 200, 80};
     StyleData paint = {.icon_size = 18, .gap = 8, .offset_x = 2, .offset_y = -3};
     ContentDrawing content = PaintContent(props, bounds, paint, 32, 48,
         0x12345680, 0xffffffff, 2, 375, false);
-    assert(content.mark.kind == DrawingIcon && content.mark.icon == UI_ICON_TYPE_PLUS);
+    assert(content.mark.kind == DrawingIcon && content.mark.icon == ICON_PLUS);
     assert(content.mark.bounds.x == 64 && content.mark.bounds.y == 36);
     assert(content.mark.bounds.width == 36 && content.mark.bounds.height == 36);
     assert(content.label.kind == DrawingText && content.label.font == 32);

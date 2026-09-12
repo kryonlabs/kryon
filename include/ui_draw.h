@@ -7,7 +7,7 @@
 typedef struct {
     const char *text;
     Texture2D icon;
-    UIIconType icon_type;
+    IconType icon_type;
     int icon_size;
     int width;
     int font;

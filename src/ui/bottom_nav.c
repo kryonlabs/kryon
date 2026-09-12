@@ -43,13 +43,13 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
 }
 
 static void
-ui_draw_navigation_bar_icon(Texture2D icon, UIIconType icon_type, Rectangle dst,
+ui_draw_navigation_bar_icon(Texture2D icon, IconType icon_type, Rectangle dst,
                             Color tint, unsigned char alpha)
 {
     Rectangle src;
 
     tint.a = (unsigned char)((int)tint.a * alpha / 255);
-    if(icon_type != UI_ICON_TYPE_NONE) {
+    if(icon_type != ICON_NONE) {
         DrawIcon(icon_type, dst, tint);
         return;
     }

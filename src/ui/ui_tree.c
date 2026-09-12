@@ -2603,7 +2603,7 @@ TextField(TextFieldProps field)
 }
 
 void
-Icon(int id, int x, int y, int size, UIIconType icon, Color tint)
+Icon(int id, int x, int y, int size, IconType icon, Color tint)
 {
     ui_tree_add(id, UI_WIDGET_CUSTOM_NODE, (Rectangle){x, y, size, size},
                 NULL);
@@ -3414,7 +3414,7 @@ Button(ButtonProps button)
                                   action.bounds.y, layout.menu_width,
                                   action.bounds.height};
         menu.label = "Open menu";
-        menu.icon_type = UI_ICON_TYPE_NONE;
+        menu.icon_type = ICON_NONE;
         menu.icon_only = 1;
         menu.square = 1;
         menu.menu = 0;
@@ -3445,7 +3445,7 @@ Button(ButtonProps button)
     }
     if(button.menu) {
         button.icon_placement = IconPlacementTrailing;
-        button.icon_type = UI_ICON_TYPE_NONE;
+        button.icon_type = ICON_NONE;
         button.bounds = resolve_button_bounds(button, 1);
         *button.open = ButtonToggleMenuOpen(*button.open,
             ui_tree_surface_button(button, (Rectangle){0}, 1));

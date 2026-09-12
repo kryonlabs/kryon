@@ -226,7 +226,7 @@ li{margin:.25rem 0}
 <ul>
 <li><code>k2go</code> targets native Go: the <code>Runtime</code> interface covers the widget</li>
 </ul>
-<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>UIIconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
+<p>whitelist plus the generated-code widget families in <code>go/kryon</code> (controls, Props widgets, dialogs, canvas, Tk layout helpers, toasts, theme control), with <code>.kry</code> array declarations lowering to Go slices at the use site. Remaining boundaries: a forward <code>goto</code> over declarations is a loud Go compile error, and C pointer/<code>Texture2D</code> values cannot be written (icons pass by <code>IconType</code>, option lists as joined strings or <code>[N]string</code>).</p>
 <ul>
 <li><code>k2js</code> emits ESM for the web recorder runtime. `make</li>
 </ul>

@@ -27,10 +27,10 @@ func CarouselControls(p CarouselControlsProps) int32 {
 			}
 			b := Rectangle{X: x, Y: p.Bounds.Y + (p.Bounds.Height-float32(hit))/2, Width: float32(hit), Height: float32(hit)}
 			d := int32(-1)
-			iconType := int32(UIIconTypeLeft)
+			iconType := int32(IconLeft)
 			if i == 1 {
 				d = 1
-				iconType = UIIconTypeRight
+				iconType = IconRight
 			}
 			if Button(ButtonProps{
 				Bounds: b, ID: p.ID + i, Disabled: p.Disabled,

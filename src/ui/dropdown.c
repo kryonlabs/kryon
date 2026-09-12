@@ -389,7 +389,7 @@ ui_dropdown(DropdownProps props)
         option_count = 0;
     dropdown_resize_options(state, option_count);
     for(int i = 0; i < option_count; i++) {
-        state->options[i].icon_type = options != NULL ? options[i].icon_type : UI_ICON_TYPE_NONE;
+        state->options[i].icon_type = options != NULL ? options[i].icon_type : ICON_NONE;
         state->options[i].disabled = options != NULL && options[i].disabled;
         state->options[i].separator_before = options != NULL && options[i].separator_before;
         dropdown_copy_text(&state->options[i].label, options != NULL ? options[i].label :
@@ -438,7 +438,7 @@ ui_dropdown(DropdownProps props)
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
     const char *current_font = option_count > 0 ? state->options[current_index].font_name : NULL;
     int text_x = x + (int)content.padding;
-    if(option_count > 0 && state->options[current_index].icon_type != UI_ICON_TYPE_NONE) {
+    if(option_count > 0 && state->options[current_index].icon_type != ICON_NONE) {
         if(can_draw)
             DrawIcon(state->options[current_index].icon_type,
                 (Rectangle){text_x, y + (h - content.icon) / 2, content.icon, content.icon}, button_text);
@@ -654,7 +654,7 @@ dropdown_paint_menu(int id)
             if(options[i].separator_before)
                 DrawLine(x + Scale(16), option_y, x + option_w - Scale(16), option_y,
                     Fade(row_text, 0.18f));
-            if(options[i].icon_type != UI_ICON_TYPE_NONE) {
+            if(options[i].icon_type != ICON_NONE) {
                 DrawIcon(options[i].icon_type,
                     (Rectangle){text_x, option_y + (option_h - content.icon) / 2, content.icon, content.icon}, row_text);
                 text_x += (int)(content.icon + content.gap);
@@ -672,7 +672,7 @@ dropdown_paint_menu(int id)
             if(state->selected_index == i) {
                 int cx = x + option_w - (int)(content.padding + content.icon / 2);
                 int cy = option_y + option_h / 2;
-                DrawIcon(UI_ICON_TYPE_CHECK,
+                DrawIcon(ICON_CHECK,
                     (Rectangle){cx - content.icon / 2, cy - content.icon / 2, content.icon, content.icon}, row_text);
             }
         }

@@ -1028,7 +1028,7 @@ func TestFallbackIconBlendsPartialOpacity(t *testing.T) {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 	fillRectPixels(img, 0, 0, 16, 16, Color{20, 40, 60, 255})
 	renderIcon(img, FrameOp{Bounds: Rectangle{Width: 16, Height: 16},
-		IconType: UIIconTypeX, Color: Color{200, 100, 50, 128}})
+		IconType: IconX, Color: Color{200, 100, 50, 128}})
 	if got := img.RGBAAt(2, 1); got != (color.RGBA{110, 70, 55, 255}) {
 		t.Fatalf("half-opacity icon did not composite over its surface: %+v", got)
 	}
@@ -1040,7 +1040,7 @@ func TestFallbackIconBlendsPartialOpacity(t *testing.T) {
 func TestTransparentButtonForegroundDoesNotResurrectIcons(t *testing.T) {
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed,
 		ButtonStateFocus, ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected} {
-		for _, icon := range []int32{UIIconTypePlay, UIIconTypeX, UIIconTypeWorkbookFillColor} {
+		for _, icon := range []int32{IconPlay, IconX, IconWorkbookFillColor} {
 			r := New(AppConfig{Width: 100, Height: 60}).(*runtime)
 			r.Button(ButtonProps{Bounds: Rectangle{X: 10, Y: 10, Width: 80, Height: 40},
 				State: state, IconType: icon, Style: ControlStyle{Normal: Style{
@@ -1053,7 +1053,7 @@ func TestTransparentButtonForegroundDoesNotResurrectIcons(t *testing.T) {
 				actual := image.NewRGBA(image.Rect(0, 0, 100, 60))
 				expected := image.NewRGBA(actual.Bounds())
 				renderButton(actual, op)
-				op.IconType = UIIconTypeNone
+				op.IconType = IconNone
 				renderButton(expected, op)
 				for i, pixel := range actual.Pix {
 					if pixel != expected.Pix[i] {
