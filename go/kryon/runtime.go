@@ -2649,10 +2649,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	})
 	paint.LabelColor = label.Value.Foreground
 	labelStyle := unpackStyle(label.Value)
-	labelFont := int32(labelStyle.FontSize)
-	if labelFont <= 0 {
-		labelFont = Text14
-	}
+	labelFont := styleFont(labelStyle, Text14)
 	fill := unpackRGBA(box.Value.Background)
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
@@ -4932,10 +4929,7 @@ func (r *runtime) Heading(props HeadingProps) {
 	style := defaultTextStyleForKind(Text24, StyleSheet_StyleKindHeading())
 	font := props.Font
 	if font <= 0 {
-		font = int32(style.FontSize)
-		if font <= 0 {
-			font = Text24
-		}
+		font = styleFont(style, Text24)
 	}
 	color := props.Color
 	if color.A == 0 {
@@ -4955,10 +4949,7 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	style := defaultTextStyleForKind(Text16, StyleSheet_StyleKindParagraphText())
 	font := props.Font
 	if font <= 0 {
-		font = int32(style.FontSize)
-		if font <= 0 {
-			font = Text16
-		}
+		font = styleFont(style, Text16)
 	}
 	color := props.Color
 	if color.A == 0 {
@@ -5251,9 +5242,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	labelFont := int32(Text16)
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
 		props.Disabled || r.contentDisabled(), false, StyleSheet_StyleKindToggle(), 6).Value)
-	if labelStyle.FontSize > 0 {
-		labelFont = int32(labelStyle.FontSize)
-	}
+	labelFont = styleFont(labelStyle, Text16)
 	offWidth := int32(runtimeTextWidth(props.OffLabel, labelFont))
 	onWidth := int32(runtimeTextWidth(props.OnLabel, labelFont))
 	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
@@ -5410,6 +5399,14 @@ func defaultTextStyleForKind(font int32, kind int32) Style {
 	return unpackStyle(value)
 }
 
+func styleFont(style Style, fallback int32) int32 {
+	font := int32(style.FontSize)
+	if font > 0 {
+		return font
+	}
+	return fallback
+}
+
 func modalActionLabel(action ModalAction, index, count int) string {
 	if action.Label != "" {
 		return action.Label
@@ -5446,9 +5443,9 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 		StyleSheet_StyleKindModal(), 19).Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, FontSize: int32(titleStyle.FontSize)})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: styleFont(titleStyle, Text16)})
 	if message != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, FontSize: int32(messageStyle.FontSize)})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, Opacity: messageStyle.Opacity, FontSize: styleFont(messageStyle, Text16)})
 	}
 
 	result := int32(0)
@@ -5536,14 +5533,15 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 		}
 		return clicked
 	}
-	titleW := runtimeTextWidth(props.Title, Text20)
-	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
 	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		StyleSheet_StyleKindTitleBar(), 16).Value)
+	titleFont := styleFont(titleStyle, Text20)
+	titleW := runtimeTextWidth(props.Title, titleFont)
+	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{
-		X: float32(titleX), Y: float32(height-Text20) / 2,
-		Width: float32(titleW), Height: float32(Text20 + 4),
-	}, Text: props.Title, Color: titleStyle.Foreground, FontSize: int32(titleStyle.FontSize)})
+		X: float32(titleX), Y: float32(height-titleFont) / 2,
+		Width: float32(titleW), Height: float32(titleFont + 4),
+	}, Text: props.Title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont})
 	return clicked
 }
 func (r *runtime) NavigationBar(props NavigationBarProps) {
@@ -6181,10 +6179,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 6)
 	paint.LabelColor = label.Value.Foreground
 	labelStyle := unpackStyle(label.Value)
-	labelFont := int32(labelStyle.FontSize)
-	if labelFont <= 0 {
-		labelFont = Text16
-	}
+	labelFont := styleFont(labelStyle, Text16)
 	mark := Radio_RadioMarkText(props.Checked)
 	markColor := unpackRGBA(paint.RingColor)
 	if props.Checked {

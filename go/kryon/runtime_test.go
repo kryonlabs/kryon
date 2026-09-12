@@ -239,8 +239,8 @@ tokens {
 }
 Modal[role=Scrim] { background: #111111; opacity: 0.5; material: flat; }
 Modal[role=Panel] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-Modal[role=Title] { foreground: ink; font-size: 16; }
-Modal[role=Message] { foreground: ink; font-size: 16; }
+Modal[role=Title] { foreground: ink; font-size: 16; opacity: 0.91; }
+Modal[role=Message] { foreground: ink; font-size: 16; opacity: 0.73; }
 Modal[role=Action] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; border: action; radius: radius; border-width: border; material: flat; }
 `, "Test Modal", "") || !SetActiveStylePack("test.modal") {
@@ -274,12 +274,12 @@ Modal[role=Action][tone=Accent] { background: action; foreground: action-ink; bo
 			}
 		case op.Kind == FrameOpText && op.Text == "Notice":
 			sawTitle = true
-			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) || op.Opacity != 0.91 {
 				t.Fatalf("modal title style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Styled":
 			sawMessage = true
-			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xec, G: 0xf3, B: 0xff, A: 0xff}) || op.Opacity != 0.73 {
 				t.Fatalf("modal message style op = %+v", op)
 			}
 		case op.Kind == FrameOpButton && op.Text == "OK":
@@ -312,7 +312,7 @@ tokens {
   material { flat: Flat; }
 }
 TitleBar[role=Bar] { background: surface; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-TitleBar[role=Title] { foreground: ink; font-size: 20; }
+TitleBar[role=Title] { foreground: ink; font-size: 20; opacity: 0.82; }
 TitleBar[role=Action] { background: button; foreground: button-ink; border: rule; radius: radius; border-width: border; material: flat; }
 `, "Test TitleBar", "") || !SetActiveStylePack("test.titlebar") {
 		t.Fatal("test title bar style did not activate")
@@ -331,7 +331,7 @@ TitleBar[role=Action] { background: button; foreground: button-ink; border: rule
 			}
 		case op.Kind == FrameOpText && op.Text == "Workspace":
 			sawTitle = true
-			if op.Color != (Color{R: 0xf1, G: 0xf5, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xf1, G: 0xf5, B: 0xff, A: 0xff}) || op.Opacity != 0.82 {
 				t.Fatalf("title bar text op = %+v", op)
 			}
 		case op.Kind == FrameOpButton:
