@@ -348,9 +348,13 @@ declare global {
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
+    readonly kryParent?: WebDOMObject | null;
+    readonly kryChildren?: WebDOMObject[];
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];
+    kryMatches?(selector: string): boolean;
+    kryClosest?(selector: string): WebDOMObject | null;
     kryElement?(query: string): Element | null;
     kryObject?(query: string): WebDOMObject | null;
     kryQuery?(selector: string): WebDOMObject | null;

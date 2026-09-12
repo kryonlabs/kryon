@@ -2347,6 +2347,40 @@ function bindWebDOMObjectProperties(el) {
           element: this
         }) : null;
       }
+    },
+    kryParent: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMParent(root, node.path) : null;
+      }
+    },
+    kryChildren: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMChildren(root, node.path) : [];
+      }
+    },
+    kryMatches: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        return webDOMElementMatches(this, selector);
+      }
+    },
+    kryClosest: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const object = webDOMObjectFromElement(this);
+        const root = object?.element?.__kryMountRoot || mountedRoot(object?.element || null);
+        return object && root ? webDOMClosest(root, object.node.path, selector) : null;
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;

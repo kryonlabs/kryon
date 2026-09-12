@@ -382,7 +382,9 @@ without generated JS owning DOM structure.
 `webDOMIdentity(target, query)` returns the same plain identity projection for
 a mounted Kry DOM object. Rendered elements expose the native bridge directly
 as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
-`element.kryIdentity`, and `element.krySnapshot` getters.
+`element.kryIdentity`, `element.krySnapshot`, `element.kryParent`, and
+`element.kryChildren` getters, plus `element.kryMatches(selector)` and
+`element.kryClosest(selector)` methods for KSS-style selector checks.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source
