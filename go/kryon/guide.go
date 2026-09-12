@@ -22,7 +22,6 @@ type GuideMetrics struct {
 	MinTipHeight     int32
 	DefaultTipWidth  int32
 	PanelSegments    int32
-	PageFont         int32
 }
 
 type GuideScrim struct {
@@ -171,10 +170,8 @@ func Guide_GuideMetricsFor(scale float32) GuideMetrics {
 	metrics.DefaultTipWidth = value_75
 	var value_76 int32 = 8
 	metrics.PanelSegments = value_76
-	var value_77 int32 = 12
-	metrics.PageFont = value_77
-	var value_78 GuideMetrics = metrics
-	return value_78
+	var value_77 GuideMetrics = metrics
+	return value_77
 }
 
 func Guide_GuideStepFor(step int32, count int32) int32 {

@@ -21,7 +21,6 @@ GuideMetrics :: struct {
     min_tip_height: i32
     default_tip_width: i32
     panel_segments: i32
-    page_font: i32
 }
 
 GuideScrim :: struct {
@@ -78,7 +77,6 @@ GuideMetricsFor :: (scale: float) -> GuideMetrics #export {
     metrics.min_tip_height = (i32)(112.0 * scale)
     metrics.default_tip_width = (i32)(300.0 * scale)
     metrics.panel_segments = 8
-    metrics.page_font = 12
     return metrics
 }
 
