@@ -1206,7 +1206,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
            st->dom_aria_controls[0] || st->dom_aria_live[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
-           st->dom_on_change[0];
+           st->dom_on_change[0] || st->dom_on_key[0] ||
+           st->dom_on_submit[0];
 }
 
 static void
@@ -1332,6 +1333,10 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                     "value", &emitted);
     emit_web_action(f, m, "onChange", "changeAction", st->dom_on_change,
                     "value", &emitted);
+    emit_web_action(f, m, "onKey", "keyAction", st->dom_on_key, "key",
+                    &emitted);
+    emit_web_action(f, m, "onSubmit", "submitAction", st->dom_on_submit, "",
+                    &emitted);
     fputc('}', f);
 }
 

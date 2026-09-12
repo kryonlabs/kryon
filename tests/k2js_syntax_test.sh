@@ -69,6 +69,15 @@ note_change :: (value: string) -> int {
     count += 100
     return count
 }
+note_key :: (value: string) -> int {
+    unused value
+    count += 1000
+    return count
+}
+submit_search :: () -> int {
+    count += 10000
+    return count
+}
 
 DirectAction :: (x: float) -> bool {
     return Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
@@ -125,6 +134,8 @@ Scene :: (viewport: Rectangle) #ui {
             aria_describedby = "tap-button"
             on_input = note_input
             on_change = note_change
+            on_key = note_key
+            on_submit = submit_search
         }
         count += 1
     }
@@ -196,6 +207,8 @@ grep -q '"ariaDescription": "Runs the host action"' "$out"
 grep -q '"ariaControls": "search-field"' "$out"
 grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
+grep -q '"onKey": "note_key"' "$out"
+grep -q '"onSubmit": "submit_search"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then

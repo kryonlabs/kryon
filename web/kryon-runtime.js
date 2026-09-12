@@ -1113,9 +1113,13 @@ function webNodeFromWidget(item, index) {
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
+    onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
+    onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
+    keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
+    submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
@@ -1596,6 +1600,19 @@ function bindNodeEvents(el) {
     if (docNode?.changeAction)
       docNode.changeAction(value);
   });
+  el.addEventListener("keydown", (event) => {
+    const docNode = el.__kryDocNode;
+    const key = event?.key ?? event?.code ?? "";
+    if (docNode?.keyAction)
+      docNode.keyAction(String(key));
+  });
+  el.addEventListener("submit", (event) => {
+    if (event?.preventDefault)
+      event.preventDefault();
+    const docNode = el.__kryDocNode;
+    if (docNode?.submitAction)
+      docNode.submitAction();
+  });
 }
 
 function webElementValue(el, docNode = el?.__kryDocNode) {
@@ -1687,6 +1704,14 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnChange = docNode.onChange;
   else
     delete el.dataset.kryOnChange;
+  if (docNode.onKey)
+    el.dataset.kryOnKey = docNode.onKey;
+  else
+    delete el.dataset.kryOnKey;
+  if (docNode.onSubmit)
+    el.dataset.kryOnSubmit = docNode.onSubmit;
+  else
+    delete el.dataset.kryOnSubmit;
   if (docNode.hasBounds) {
     el.style.position = "absolute";
     el.style.left = docNode.bounds.x + "px";

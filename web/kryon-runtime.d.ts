@@ -99,9 +99,13 @@ export interface WebDocumentNode {
   onClick: string;
   onInput: string;
   onChange: string;
+  onKey: string;
+  onSubmit: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
+  keyAction: ((key: string) => unknown) | null;
+  submitAction: (() => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

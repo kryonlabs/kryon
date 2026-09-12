@@ -161,6 +161,8 @@ assert.equal(webDoc.nodes[3].ariaLabel, "Search");
 assert.equal(webDoc.nodes[3].ariaDescribedBy, "tap-button");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
+assert.equal(webDoc.nodes[3].onKey, "note_key");
+assert.equal(webDoc.nodes[3].onSubmit, "submit_search");
 assert.equal(webDoc.nodes[3].value, "label");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].role, "button");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].description, "Runs the host action");
@@ -211,6 +213,8 @@ function fakeDocument() {
       click() { if (this.onclick) this.onclick(); },
       input(value) { this.value = value; if (this.oninput) this.oninput(); },
       change(value) { this.value = value; if (this.onchange) this.onchange(); },
+      keydown(key) { if (this.onkeydown) this.onkeydown({ key }); },
+      submit() { if (this.onsubmit) this.onsubmit({ preventDefault() {} }); },
       mouseenter() { if (this.onmouseenter) this.onmouseenter(); },
       mouseleave() { if (this.onmouseleave) this.onmouseleave(); },
       mousedown() { if (this.onmousedown) this.onmousedown(); },
@@ -362,6 +366,8 @@ function fakeDocument() {
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
+    assert.equal(firstField.dataset.kryOnKey, "note_key");
+    assert.equal(firstField.dataset.kryOnSubmit, "submit_search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
@@ -374,6 +380,10 @@ function fakeDocument() {
     firstField.change("needle");
     assert.equal(runtime.webFormValue(target, "search-field"), "needle");
     assert.equal(domState.count, 111);
+    firstField.keydown("Enter");
+    assert.equal(domState.count, 1111);
+    firstField.submit();
+    assert.equal(domState.count, 11111);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);

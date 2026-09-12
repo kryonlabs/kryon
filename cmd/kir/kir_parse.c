@@ -461,6 +461,8 @@ typedef struct UiBlock {
     char dom_on_click[KIR_NAME_MAX];
     char dom_on_input[KIR_NAME_MAX];
     char dom_on_change[KIR_NAME_MAX];
+    char dom_on_key[KIR_NAME_MAX];
+    char dom_on_submit[KIR_NAME_MAX];
     int close_depth;
     int opened;
     int emits_end;
@@ -733,6 +735,15 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "on_key") == 0 || strcmp(field, "on_key_down") == 0) {
+        snprintf(block->dom_on_key, sizeof(block->dom_on_key), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_submit") == 0) {
+        snprintf(block->dom_on_submit, sizeof(block->dom_on_submit), "%s",
+                 value);
+        return 1;
+    }
     return 0;
 }
 
@@ -779,6 +790,10 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_input);
     snprintf(statement->dom_on_change, sizeof(statement->dom_on_change), "%s",
              block->dom_on_change);
+    snprintf(statement->dom_on_key, sizeof(statement->dom_on_key), "%s",
+             block->dom_on_key);
+    snprintf(statement->dom_on_submit, sizeof(statement->dom_on_submit), "%s",
+             block->dom_on_submit);
 }
 
 static void
