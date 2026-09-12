@@ -403,6 +403,22 @@ declare global {
       (value: unknown): boolean;
     };
     kryDispatch?(type: string, init?: Record<string, unknown>): boolean;
+    kryClick?(): boolean;
+    kryFocus?(): boolean;
+    kryBlur?(): boolean;
+    krySubmit?(): boolean;
+    kryReset?(): boolean;
+    kryRect?(): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
+    kryScroll?: {
+      (): { left: number; top: number; width: number; height: number } | null;
+      (left: number, top?: number | null): boolean;
+    };
+    kryScrollIntoView?(options?: boolean | ScrollIntoViewOptions): boolean;
+    kryShowModal?(): boolean;
+    kryClose?(returnValue?: string): boolean;
+    kryShowPopover?(): boolean;
+    kryHidePopover?(): boolean;
+    kryTogglePopover?(force?: boolean): boolean;
   }
 
   interface Event {

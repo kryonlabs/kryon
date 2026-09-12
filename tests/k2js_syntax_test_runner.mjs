@@ -735,9 +735,13 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSubmit(submitTarget, "contact"), true);
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
+    assert.equal(submitForm.krySubmit(), true);
+    assert.equal(submitValues.email, "hello@example.test");
     assert.equal(runtime.webDOMReset(submitTarget, "Page/contact"), true);
     assert.equal(resetValues.email, "hello@example.test");
     assert.equal(resetValues["Page/contact/email"], "hello@example.test");
+    assert.equal(submitForm.kryReset(), true);
+    assert.equal(resetValues.email, "hello@example.test");
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);
@@ -801,14 +805,35 @@ function fakeDocument() {
     assert.equal(dialog.open, false);
     assert.equal(dialog.returnValue, "accepted");
     assert.deepEqual(nativeEvents.slice(1), ["dialog-cancel", "dialog-close"]);
+    assert.equal(dialog.kryShowModal(), true);
+    assert.equal(dialog.open, true);
+    assert.equal(dialog.kryClose("method"), true);
+    assert.equal(dialog.open, false);
+    assert.equal(dialog.returnValue, "method");
+    assert.deepEqual(nativeEvents.slice(1), ["dialog-cancel", "dialog-close", "dialog-close"]);
     assert.equal(runtime.webDOMShowPopover(nativeTarget, "[data-menu=main]"), true);
     assert.equal(popover.popoverOpen, true);
     assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), true);
     assert.equal(runtime.webDOMTogglePopover(nativeTarget, "popover"), true);
     assert.equal(popover.popoverOpen, false);
+    assert.equal(popover.kryShowPopover(), true);
+    assert.equal(popover.popoverOpen, true);
+    assert.equal(popover.kryTogglePopover(), true);
+    assert.equal(popover.popoverOpen, false);
+    assert.equal(popover.kryShowPopover(), true);
+    assert.equal(popover.kryHidePopover(), true);
+    assert.equal(popover.popoverOpen, false);
     assert.equal(runtime.webDOMHidePopover(nativeTarget, "popover"), true);
     assert.equal(runtime.webDOMGetState(nativeTarget, "popover", "open"), false);
-    assert.deepEqual(nativeEvents.slice(3), ["popover-toggle", "popover-toggle", "popover-toggle"]);
+    assert.deepEqual(nativeEvents.slice(4), [
+      "popover-toggle",
+      "popover-toggle",
+      "popover-toggle",
+      "popover-toggle",
+      "popover-toggle",
+      "popover-toggle",
+      "popover-toggle"
+    ]);
 
     const pointerEvents = [];
     const pointerRt = runtime.createRuntime();
@@ -1099,6 +1124,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMFocus(target, "tap-button"), true);
     assert.equal(firstButton.style.borderColor, "#506070");
     assert.equal(firstButton.__kryDocNode.state.focus, true);
+    assert.equal(firstButton.kryBlur(), true);
+    assert.equal(firstButton.__kryDocNode.state.focus, false);
+    assert.equal(firstButton.kryFocus(), true);
+    assert.equal(firstButton.__kryDocNode.state.focus, true);
     assert.equal(runtime.webDOMBlur(target, "Scene/root/tap"), true);
     assert.equal(firstButton.style.borderColor, "");
     assert.equal(runtime.findWebNode(domRt, "Scene/root/tap").domId, "tap-button");
@@ -1267,6 +1296,16 @@ function fakeDocument() {
       right: 130,
       bottom: 78
     });
+    assert.deepEqual(firstButton.kryRect(), {
+      x: 10,
+      y: 50,
+      width: 120,
+      height: 28,
+      left: 10,
+      top: 50,
+      right: 130,
+      bottom: 78
+    });
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[ref=\"primary-action\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[webRef=\"primary-action\"]").element, firstButton);
@@ -1423,8 +1462,19 @@ function fakeDocument() {
     const firstField = screen.children[2];
     assert.equal(firstField.__kryDocNode.scrollLeft, 7);
     assert.equal(firstField.__kryDocNode.scrollTop, 19);
+    assert.deepEqual(firstField.kryScroll(), {
+      left: 7,
+      top: 19,
+      width: 0,
+      height: 0
+    });
+    assert.equal(firstField.kryScroll(11, 23), true);
+    assert.equal(firstField.__kryDocNode.scrollLeft, 11);
+    assert.equal(firstField.__kryDocNode.scrollTop, 23);
     assert.equal(runtime.webDOMScrollIntoView(target, "[data-role]", { block: "center" }), true);
     assert.deepEqual(firstField.scrolledIntoView, { block: "center" });
+    assert.equal(firstField.kryScrollIntoView({ inline: "nearest" }), true);
+    assert.deepEqual(firstField.scrolledIntoView, { inline: "nearest" });
     assert.equal(firstButton.attributes["aria-current"], "page");
     assert.equal(firstButton.attributes["aria-pressed"], "false");
     assert.equal(firstField.tagName, "INPUT");
@@ -1564,6 +1614,8 @@ function fakeDocument() {
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(runtime.webDOMClick(target, "tap-button"), true);
+    assert.equal(domRt.input.events.at(-1).type, "tap");
+    assert.equal(firstButton.kryClick(), true);
     assert.equal(domRt.input.events.at(-1).type, "tap");
     const previousEventCount = domRt.input.events.length;
     const nextRt = runtime.createRuntime({ app: generated.app });

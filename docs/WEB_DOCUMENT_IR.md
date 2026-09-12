@@ -465,11 +465,16 @@ Mounted elements expose `element.krySetState(...)` and
 `webDOMSubmit(...)`, and `webDOMReset(...)` issue native commands when the
 mounted element supports them and fall back to dispatching the corresponding
 event.
+Mounted elements expose `element.kryClick()`, `element.kryFocus()`,
+`element.kryBlur()`, `element.krySubmit()`, and `element.kryReset()`.
 
 `webDOMShowModal(target, query)`, `webDOMClose(...)`,
 `webDOMShowPopover(...)`, `webDOMHidePopover(...)`, and
 `webDOMTogglePopover(...)` expose native dialog and popover behavior from the
 same Kry node identity surface.
+Mounted elements expose `element.kryShowModal()`, `element.kryClose(...)`,
+`element.kryShowPopover()`, `element.kryHidePopover()`, and
+`element.kryTogglePopover(...)`.
 
 `webDOMDispatchEvent(target, query, type, init)` dispatches arbitrary browser
 events against a resolved DOM object and decorates the event with the same Kry
@@ -482,6 +487,8 @@ Kry-aware event dispatch.
 and `webDOMScrollIntoView(...)` expose measured geometry and scroll state.
 Scroll mutations are reflected into node facts as `scrollLeft` and `scrollTop`
 so KSS can react to native browser position when needed.
+Mounted elements expose `element.kryRect()`, `element.kryScroll()` /
+`element.kryScroll(left, top)`, and `element.kryScrollIntoView(...)`.
 
 The DOM renderer maintains native interaction facts for KSS state selectors:
 `mouseenter`/`mouseleave` update `hover`, `mousedown`/`mouseup` update

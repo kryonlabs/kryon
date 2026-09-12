@@ -2641,6 +2641,125 @@ function bindWebDOMObjectProperties(el) {
         const query = webNodeRef(this.__kryDocNode);
         return !!root && !!query && webDOMDispatchEvent(root, query, type, init);
       }
+    },
+    kryClick: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMClick(root, query);
+      }
+    },
+    kryFocus: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMFocus(root, query);
+      }
+    },
+    kryBlur: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMBlur(root, query);
+      }
+    },
+    krySubmit: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMSubmit(root, query);
+      }
+    },
+    kryReset: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMReset(root, query);
+      }
+    },
+    kryRect: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        return webDOMRectFromElement(this);
+      }
+    },
+    kryScroll: {
+      configurable: true,
+      enumerable: false,
+      value(left, top = null) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        if (!root || !query)
+          return left === undefined ? null : false;
+        return left === undefined
+          ? webDOMGetScroll(root, query)
+          : webDOMSetScroll(root, query, left, top);
+      }
+    },
+    kryScrollIntoView: {
+      configurable: true,
+      enumerable: false,
+      value(options = true) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMScrollIntoView(root, query, options);
+      }
+    },
+    kryShowModal: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMShowModal(root, query);
+      }
+    },
+    kryClose: {
+      configurable: true,
+      enumerable: false,
+      value(returnValue = "") {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMClose(root, query, returnValue);
+      }
+    },
+    kryShowPopover: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMShowPopover(root, query);
+      }
+    },
+    kryHidePopover: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMHidePopover(root, query);
+      }
+    },
+    kryTogglePopover: {
+      configurable: true,
+      enumerable: false,
+      value(force) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMTogglePopover(root, query, force);
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;
