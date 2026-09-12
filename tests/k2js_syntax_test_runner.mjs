@@ -376,6 +376,18 @@ function fakeDocument() {
         child.parentNode = null;
       },
       addEventListener(type, fn) { this["on" + type] = fn; },
+      dispatchEvent(event) {
+        if (!event)
+          return false;
+        if (!event.preventDefault) {
+          event.defaultPrevented = false;
+          event.preventDefault = function() { this.defaultPrevented = true; };
+        }
+        const handler = this["on" + event.type];
+        if (handler)
+          handler(event);
+        return !event.defaultPrevented;
+      },
       click() { if (this.onclick) this.onclick(); },
       dragstart(dataTransfer) {
         const transfer = dataTransfer || fakeDataTransfer();
@@ -1075,6 +1087,18 @@ function fakeDocument() {
     assert.equal(domState.count, 10111335);
     firstField.blur();
     assert.equal(domState.count, 11111335);
+    const countBeforeDispatch = domState.count;
+    assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "keydown", { key: "Escape" }), true);
+    assert.equal(domState.count, countBeforeDispatch + 1000);
+    assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "focus"), true);
+    assert.equal(firstField.__kryDocNode.state.focus, true);
+    assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "blur"), true);
+    assert.equal(firstField.__kryDocNode.state.focus, false);
+    const countBeforeLifecycleDispatch = domState.count;
+    assert.equal(runtime.webDOMDispatchEvent(target, "[popover=manual]", "toggle"), true);
+    assert.equal(runtime.webDOMDispatchEvent(target, "[popover=manual]", "close"), true);
+    assert.equal(runtime.webDOMDispatchEvent(target, "[popover=manual]", "cancel"), true);
+    assert.equal(domState.count, countBeforeLifecycleDispatch + 12000000);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);

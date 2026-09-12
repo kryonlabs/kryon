@@ -2988,6 +2988,77 @@ export function webDOMTogglePopover(target, query, force) {
   return setElementOpenState(el, next);
 }
 
+function defineEventInitValue(event, key, value) {
+  if (!event || key === "type" || key === "target" || key === "currentTarget")
+    return;
+  try {
+    event[key] = value;
+  } catch {
+    try {
+      Object.defineProperty(event, key, { configurable: true, value });
+    } catch {
+      // Some browser event fields are intentionally read-only.
+    }
+  }
+}
+
+function createWebDOMEvent(type, init = {}) {
+  const name = String(type || "").trim();
+  if (!name)
+    return null;
+  const options = init && typeof init === "object" ? init : {};
+  const eventInit = {
+    bubbles: options.bubbles !== undefined ? !!options.bubbles : true,
+    cancelable: options.cancelable !== undefined ? !!options.cancelable : true,
+    composed: options.composed !== undefined ? !!options.composed : false
+  };
+  let event = null;
+  try {
+    if ((name.startsWith("key") || name === "beforeinput") &&
+        typeof globalThis.KeyboardEvent === "function") {
+      event = new globalThis.KeyboardEvent(name, { ...eventInit, ...options });
+    } else if ((name === "input" || name === "beforeinput") &&
+               typeof globalThis.InputEvent === "function") {
+      event = new globalThis.InputEvent(name, { ...eventInit, ...options });
+    } else if ((name.startsWith("mouse") || name === "click" ||
+                name.startsWith("pointer")) &&
+               typeof globalThis.MouseEvent === "function") {
+      event = new globalThis.MouseEvent(name, { ...eventInit, ...options });
+    } else if (Object.prototype.hasOwnProperty.call(options, "detail") &&
+               typeof globalThis.CustomEvent === "function") {
+      event = new globalThis.CustomEvent(name, { ...eventInit, detail: options.detail });
+    } else if (typeof globalThis.Event === "function") {
+      event = new globalThis.Event(name, eventInit);
+    }
+  } catch {
+    event = null;
+  }
+  if (!event) {
+    event = {
+      type: name,
+      ...eventInit,
+      defaultPrevented: false,
+      preventDefault() { this.defaultPrevented = true; }
+    };
+  }
+  for (const [key, value] of Object.entries(options))
+    defineEventInitValue(event, key, value);
+  return event;
+}
+
+export function webDOMDispatchEvent(target, query, type, init = {}) {
+  const el = findWebElement(target, query);
+  const event = el ? createWebDOMEvent(type, init) : null;
+  if (!el || !event)
+    return false;
+  if (typeof el.dispatchEvent === "function")
+    return el.dispatchEvent(event) !== false;
+  const handler = el["on" + event.type];
+  if (typeof handler === "function")
+    handler(event);
+  return !event.defaultPrevented;
+}
+
 export function webFormValue(target, query) {
   const root = mountedRoot(target);
   if (!root)

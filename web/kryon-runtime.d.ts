@@ -408,6 +408,7 @@ export function webDOMClose(target: Element | string | null, query: string, retu
 export function webDOMShowPopover(target: Element | string | null, query: string): boolean;
 export function webDOMHidePopover(target: Element | string | null, query: string): boolean;
 export function webDOMTogglePopover(target: Element | string | null, query: string, force?: boolean): boolean;
+export function webDOMDispatchEvent(target: Element | string | null, query: string, type: string, init?: Record<string, unknown>): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
