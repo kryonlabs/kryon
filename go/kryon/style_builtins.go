@@ -1804,7 +1804,6 @@ Focus {
   focus: accent;
   radius: radius;
   border-width: border;
-  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -2100,6 +2099,7 @@ Drag {
   focus: accent;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
