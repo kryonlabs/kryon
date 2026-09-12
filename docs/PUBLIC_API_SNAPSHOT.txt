@@ -1884,7 +1884,6 @@ include/ui_tk.h macro CLIPBOARD_BUFFER_SIZE
 include/ui_tk.h typedef ClipboardOSC52WriteFn
 include/ui_tk.h typedef ClipboardPasteWriteFn
 include/ui_toast.h function ClearToast
-include/ui_toast.h function DrawToast
 include/ui_toast.h function ShowToast
 include/ui_toast.h function ShowToastFor
 include/ui_transition.h enum TRANSITION_IN

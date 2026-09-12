@@ -40,12 +40,6 @@ ShowToast(const char *message)
 }
 
 void
-DrawToast(void)
-{
-    RenderToast();
-}
-
-void
 RenderToast(void)
 {
     int font = GetSmallFontSize();
