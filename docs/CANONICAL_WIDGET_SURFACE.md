@@ -299,7 +299,7 @@ been removed from the public surface. Existing generated fixtures use
 | `FocusDebugOverlay` | Native support | Debug overlay bounds and label placement are in `.kry`; accessibility snapshot sampling remains host support. |
 | `Guide` | `.kry canonical` | Public guided overlay flow. Steps, tip placement, scrim cutout, nav button layout, and step transition policy are in `.kry`; host keeps target lookup, text measurement, input sampling, and drawing. |
 | `GuideStep` | `.kry canonical` | One anchored instruction inside `Guide`; replaces `UIGuideStep` as the public spelling. |
-| `GuidePager` | Internal/lowered support | Not a clean public widget. Footer layout/page transition policy is `.kry`, but the public surface should be `Guide` or a generic `Pager` only if reused outside guides. |
+| `GuidePager` | Internal/lowered support | Not a clean public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by `kryon.h`/`ui.h`. |
 | `TransitionFade` | `.kry canonical` | Alpha/easing policy is in `.kry`; host keeps state mutation and fade rectangle drawing. |
 
 ## Composite And App-Level Candidates

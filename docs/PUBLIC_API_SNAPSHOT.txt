@@ -1696,7 +1696,6 @@ include/ui_page.h function SetPageCanonicalURL
 include/ui_page.h function SetPageDescription
 include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
-include/ui_pager.h function GuidePager
 include/ui_profile.h enum SYNC_PROFILE_ICON_BAMBUS
 include/ui_profile.h enum SYNC_PROFILE_ICON_BIRD
 include/ui_profile.h enum SYNC_PROFILE_ICON_BOWL

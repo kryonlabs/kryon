@@ -1142,7 +1142,7 @@ $(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_D
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_PAGER_TEST): tests/ui_pager_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/guide_pager.h | $(BUILD_DIR)
+$(UI_PAGER_TEST): tests/ui_pager_test.c src/ui/ui_pager_internal.h $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/guide_pager.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_pager_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \

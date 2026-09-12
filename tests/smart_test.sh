@@ -210,7 +210,7 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
-        runtime/guide_pager.kry|src/ui/pager.c|go/kryon/guide_pager.go|tests/guide_pager_policy_test.c|include/ui_pager.h)
+        runtime/guide_pager.kry|src/ui/pager.c|src/ui/ui_pager_internal.h|go/kryon/guide_pager.go|tests/guide_pager_policy_test.c)
             needs_guide_pager=1
             interesting=1
             ;;

@@ -1,6 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
-#include "ui_pager.h"
+#include "../src/ui/ui_pager_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

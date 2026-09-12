@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "runtime/guide_pager.h"
+#include "ui_pager_internal.h"
 
 static const char *
 ui_pager_label(const char *label)

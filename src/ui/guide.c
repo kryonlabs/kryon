@@ -82,10 +82,10 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     }
 }
 
-UIGuideResult
+GuideResult
 RenderGuideOverlay(GuideOverlayProps guide)
 {
-    UIGuideResult result = {0};
+    GuideResult result = {0};
     GuideMetrics metrics = GuideMetricsFor((float)GetScale());
     GuideLayout layout;
     GuidePolicy policy;

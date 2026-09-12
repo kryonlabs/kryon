@@ -42,10 +42,10 @@ extern int g_ui_scroll_gesture_pending;
 typedef struct {
     Rectangle anchor;
     const char *text;
-} UIGuideStep;
+} GuideStep;
 
 typedef struct {
-    const UIGuideStep *steps;
+    const GuideStep *steps;
     int count;
     int *step;
     int view_width;
@@ -66,7 +66,7 @@ typedef struct {
     int finished;
     int changed;
     int step;
-} UIGuideResult;
+} GuideResult;
 
 typedef struct {
     int valid;
@@ -442,7 +442,7 @@ void RenderCanvasGrid(Rectangle bounds, int step, Color color);
 int RenderPanedView(PanedViewProps panes);
 int RenderCollapsible(CollapsibleProps section);
 void RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count);
-UIGuideResult RenderGuideOverlay(GuideOverlayProps guide);
+GuideResult RenderGuideOverlay(GuideOverlayProps guide);
 void RenderTutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
 void RenderTutorialImage(Texture2D texture, const char *fallback,

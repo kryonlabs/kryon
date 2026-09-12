@@ -55,7 +55,7 @@ check_absent "retained tree widget names" \
     $surface_paths
 
 check_absent "swipe/pager legacy names" \
-    '\bUISwipe|\bUI_SWIPE_|\bUIGuidePager' \
+    '\bUISwipe|\bUI_SWIPE_|\bUIGuideStep|\bUIGuidePager|include/ui_pager\.h' \
     $surface_paths
 
 check_absent "icon legacy names" \
