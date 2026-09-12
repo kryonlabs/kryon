@@ -528,6 +528,23 @@ ui_button_style_frame(ButtonProps button, ButtonState state,
 }
 
 static int
+segmented_control_font(SegmentedControlProps control)
+{
+    StyleFrame frame;
+
+    if(control.font > 0)
+        return control.font;
+    frame = ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindSegment());
+    return frame.value.font_size > 0.0f
+        ? (int)(frame.value.font_size + 0.5f)
+        : GetSmallFontSize();
+}
+
+static int
 segmented_item_width(const SegmentOption *option, int font,
                      int min_item_width, int max_item_width)
 {
@@ -546,7 +563,7 @@ segmented_item_width(const SegmentOption *option, int font,
 int
 GetSegmentedControlHeight(SegmentedControlProps control)
 {
-    int font = control.font > 0 ? control.font : GetSmallFontSize();
+    int font = segmented_control_font(control);
     SegmentedMetrics metrics = SegmentedDefaultMetrics(
         control.gap, control.height, control.min_item_width,
         control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));
@@ -583,7 +600,7 @@ SegmentedControlResult
 SegmentedControl(SegmentedControlProps control)
 {
     SegmentedControlResult result;
-    int font = control.font > 0 ? control.font : GetSmallFontSize();
+    int font = segmented_control_font(control);
     SegmentedMetrics metrics = SegmentedDefaultMetrics(
         control.gap, control.height, control.min_item_width,
         control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));

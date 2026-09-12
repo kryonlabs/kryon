@@ -280,6 +280,7 @@ Segment {
   border-width: border;
   padding-x: space.2;
   padding-y: 5;
+  font-size: font;
   opacity: 1;
   material: default;
 }

@@ -3126,7 +3126,14 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	}
 	font := props.Font
 	if font <= 0 {
-		font = Text12
+		tabStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral,
+			func() ButtonState {
+				if disabled {
+					return ButtonStateDisabled
+				}
+				return ButtonStateNormal
+			}(), disabled, false, StyleSheet_StyleKindTab()).Value)
+		font = styleFont(tabStyle, Text12)
 	}
 	minWidth := float32(props.MinTabWidth)
 	if minWidth <= 0 {
@@ -4607,7 +4614,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 
 func (r *runtime) segmentedButtonAt(props ButtonProps) bool {
 	frame, pressed := r.surfaceButtonFrameForKind(props, Rectangle{}, false,
-		StyleSheet_StyleKindSegmentedControl())
+		StyleSheet_StyleKindSegment())
 	r.record(frame)
 	return pressed
 }
@@ -4654,7 +4661,7 @@ func (r *runtime) segmentedControlFont(font int32) int32 {
 	if font > 0 {
 		return font
 	}
-	return Text14
+	return styleFont(defaultTextStyleForKind(Text14, StyleSheet_StyleKindSegment()), Text14)
 }
 
 func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, metrics SegmentedMetrics) int32 {

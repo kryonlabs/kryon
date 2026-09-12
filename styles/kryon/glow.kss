@@ -307,6 +307,7 @@ Segment {
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }

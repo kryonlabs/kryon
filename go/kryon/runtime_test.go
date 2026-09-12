@@ -426,6 +426,63 @@ Toolbar[role=Action] { background: button; foreground: button-ink; border: rule;
 	}
 }
 
+func TestSegmentedControlUsesSegmentStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.segmented;
+tokens {
+  color {
+    segment: #24364a;
+    ink: #edf5ff;
+    selected: #7ae2ba;
+    selected-ink: #042017;
+    rule: #596a7c;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+SegmentedControl { background: #101820; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Segment { background: segment; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 19; material: flat; }
+Segment:selected { background: selected; foreground: selected-ink; border: selected; radius: radius; border-width: border; font-size: 19; material: flat; }
+`, "Test Segmented", "") || !SetActiveStylePack("test.segmented") {
+		t.Fatal("test segmented style did not activate")
+	}
+	rt := New(AppConfig{Width: 260, Height: 120}).(*runtime)
+	selected := int32(1)
+
+	rt.SegmentedControl(SegmentedControlProps{
+		Bounds:        Rectangle{X: 10, Y: 12, Width: 220, Height: 32},
+		ID:            17,
+		Options:       []SegmentOption{{Label: "One"}, {Label: "Two"}},
+		OptionCount:   2,
+		SelectedIndex: &selected,
+	})
+
+	var sawNormal, sawSelected bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind != FrameOpButton {
+			continue
+		}
+		style := unpackStyle(op.Button.Appearance.Value)
+		switch op.Text {
+		case "One":
+			sawNormal = true
+			if op.Button.Font != 19 || style.FontSize != 19 || style.Background != (Color{R: 0x24, G: 0x36, B: 0x4a, A: 0xff}) || style.Foreground != (Color{R: 0xed, G: 0xf5, B: 0xff, A: 0xff}) || style.Border != (Color{R: 0x59, G: 0x6a, B: 0x7c, A: 0xff}) {
+				t.Fatalf("normal segment style op = %+v", op)
+			}
+		case "Two":
+			sawSelected = true
+			if op.Button.Font != 19 || style.FontSize != 19 || style.Background != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) || style.Foreground != (Color{R: 0x04, G: 0x20, B: 0x17, A: 0xff}) || style.Border != (Color{R: 0x7a, G: 0xe2, B: 0xba, A: 0xff}) {
+				t.Fatalf("selected segment style op = %+v", op)
+			}
+		}
+	}
+	if !sawNormal || !sawSelected {
+		t.Fatalf("missing segmented ops: normal=%v selected=%v ops=%+v", sawNormal, sawSelected, rt.FrameOps())
+	}
+}
+
 func TestCollapsibleUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
@@ -4033,6 +4090,100 @@ func TestTabBarRecordsOpsAndSelectsOnClick(t *testing.T) {
 		t.Fatalf("last tab op = %+v, want active Gamma", active)
 	}
 	EndFrame()
+}
+
+func TestTabBarUsesKSSFontByDefault(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.tab_font;
+tokens {
+  color {
+    surface: #101820;
+    tab: #203040;
+    text: #ddeeff;
+    rule: #506172;
+  }
+  length { radius: 4; border: 1; }
+  material { flat: Flat; }
+}
+TabBar { background: surface; foreground: text; border: rule; radius: radius; border-width: border; material: flat; }
+Tab { background: tab; foreground: text; border: rule; radius: radius; border-width: border; font-size: 21; material: flat; }
+`, "Test Tab Font", "") || !SetActiveStylePack("test.tab_font") {
+		t.Fatal("test tab style did not activate")
+	}
+	rt := New(AppConfig{Width: 400, Height: 100}).(*runtime)
+	defer SetRuntime(nil)
+	SetRuntime(rt)
+	tabs := []Tab{{Label: "Alpha"}, {Label: "Beta"}}
+
+	BeginFrame()
+	defer EndFrame()
+	TabBar(TabBarProps{Bounds: NewRectangle(0, 0, 400, 30), Tabs: tabs,
+		Count: int32(len(tabs)), SelectedIndex: 0, ID: 902})
+
+	found := false
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpButton && op.Text == "Alpha" {
+			found = true
+			if op.FontSize != 21 {
+				t.Fatalf("tab font = %d, want 21: %+v", op.FontSize, op)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("missing tab button op: %+v", rt.FrameOps())
+	}
+}
+
+func TestSegmentedControlUsesKSSFontByDefault(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.segment_font;
+tokens {
+  color {
+    surface: #101820;
+    segment: #203040;
+    text: #ddeeff;
+    rule: #506172;
+  }
+  length { radius: 4; border: 1; }
+  material { flat: Flat; }
+}
+SegmentedControl { background: surface; foreground: text; border: rule; radius: radius; border-width: border; material: flat; }
+Segment { background: segment; foreground: text; border: rule; radius: radius; border-width: border; font-size: 22; material: flat; }
+`, "Test Segment Font", "") || !SetActiveStylePack("test.segment_font") {
+		t.Fatal("test segment style did not activate")
+	}
+	rt := New(AppConfig{Width: 400, Height: 100}).(*runtime)
+	defer SetRuntime(nil)
+	SetRuntime(rt)
+	options := []SegmentOption{{Label: "Alpha"}, {Label: "Beta"}}
+	selected := int32(0)
+
+	BeginFrame()
+	defer EndFrame()
+	SegmentedControl(SegmentedControlProps{
+		Bounds:        NewRectangle(0, 0, 400, 30),
+		ID:            912,
+		Options:       options,
+		OptionCount:   int32(len(options)),
+		SelectedIndex: &selected,
+	})
+
+	found := false
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpButton && op.Text == "Alpha" {
+			found = true
+			if op.Button.Font != 22 {
+				t.Fatalf("segment font = %d, want 22: %+v", op.Button.Font, op)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("missing segment button op: %+v", rt.FrameOps())
+	}
 }
 
 func TestTabBarEmptyLabels(t *testing.T) {
