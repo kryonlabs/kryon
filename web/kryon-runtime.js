@@ -2493,6 +2493,118 @@ function bindWebDOMObjectProperties(el) {
             el.removeEventListener(eventType, listener, options);
         };
       }
+    },
+    kryGetAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMGetAttribute(root, query, name) : undefined;
+      }
+    },
+    krySetAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name, value = "") {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMSetAttribute(root, query, name, value);
+      }
+    },
+    kryRemoveAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMRemoveAttribute(root, query, name);
+      }
+    },
+    kryHasAttr: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMHasAttribute(root, query, name);
+      }
+    },
+    kryGetStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMGetStyle(root, query, name) : undefined;
+      }
+    },
+    krySetStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name, value = "") {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMSetStyle(root, query, name, value);
+      }
+    },
+    kryRemoveStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMRemoveStyle(root, query, name);
+      }
+    },
+    kryGetState: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMGetState(root, query, name) : undefined;
+      }
+    },
+    krySetState: {
+      configurable: true,
+      enumerable: false,
+      value(name, value) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMSetState(root, query, name, value);
+      }
+    },
+    kryText: {
+      configurable: true,
+      enumerable: false,
+      value(text) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        if (!root || !query)
+          return text === undefined ? undefined : false;
+        return text === undefined ? webDOMGetText(root, query) : webDOMSetText(root, query, text);
+      }
+    },
+    kryValue: {
+      configurable: true,
+      enumerable: false,
+      value(value) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        if (!root || !query)
+          return value === undefined ? undefined : false;
+        return value === undefined ? webDOMGetValue(root, query) : webDOMSetValue(root, query, value);
+      }
+    },
+    kryDispatch: {
+      configurable: true,
+      enumerable: false,
+      value(type, init = {}) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMDispatchEvent(root, query, type, init);
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;

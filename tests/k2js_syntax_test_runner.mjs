@@ -1294,6 +1294,13 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetAttribute(target, "Scene/root/tap", "data-runtime"), "1");
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMQuery(target, "[data-runtime=\"1\"]").element, firstButton);
+    assert.equal(firstButton.krySetAttr("data-local", "2"), true);
+    assert.equal(firstButton.kryGetAttr("data-local"), "2");
+    assert.equal(firstButton.kryHasAttr("data-local"), true);
+    assert.equal(runtime.webDOMQuery(target, "[data-local=\"2\"]").element, firstButton);
+    assert.equal(firstButton.kryRemoveAttr("data-local"), true);
+    assert.equal(firstButton.kryHasAttr("data-local"), false);
+    assert.equal(Object.keys(firstButton).includes("krySetAttr"), false);
     assert.equal(firstButton.style.paddingTop, "9px");
     assert.equal(runtime.webDOMSetStyle(target, "tap-button", "background", "pink"), true);
     assert.equal(runtime.webDOMSetStyle(target, "tap-button", "--accent-level", "2"), true);
@@ -1308,6 +1315,11 @@ function fakeDocument() {
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(runtime.webDOMRemoveStyle(target, "tap-button", "--accent-level"), true);
     assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "");
+    assert.equal(firstButton.krySetStyle("background", "lavender"), true);
+    assert.equal(firstButton.kryGetStyle("background"), "lavender");
+    assert.equal(firstButton.style.background, "lavender");
+    assert.equal(firstButton.kryRemoveStyle("background"), true);
+    assert.equal(firstButton.style.background, "#203040");
     assert.equal(runtime.webDOMGetAttribute(target, "tap-button", "data-runtime"), "1");
     assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
@@ -1318,6 +1330,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", false), true);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetState(target, "Scene/root/tap", "disabled"), true);
+    assert.equal(firstButton.kryGetState("disabled"), true);
+    assert.equal(firstButton.krySetState("disabled", false), true);
+    assert.equal(firstButton.kryGetState("disabled"), false);
+    assert.equal(firstButton.krySetState("disabled", true), true);
     assert.equal(firstButton.attributes.disabled, "");
     assert.equal(firstButton.attributes["aria-disabled"], "true");
     assert.equal(firstButton.style.opacity, "0.25");
@@ -1332,6 +1348,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
     assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
+    assert.equal(firstButton.kryText(), "Launch");
+    assert.equal(firstButton.kryText("Go"), true);
+    assert.equal(firstButton.kryText(), "Go");
+    assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Go");
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.equal(runtime.webDOMQuery(target,
       `[source="src/valid.kry"][line=${webDoc.nodes[2].sourceLine}][column=${webDoc.nodes[2].sourceColumn}]`).element,
@@ -1456,6 +1476,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetValue(target, "q", "preset"), true);
     assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "preset");
     assert.equal(runtime.webFormValue(target, "q"), "preset");
+    assert.equal(firstField.kryValue(), "preset");
+    assert.equal(firstField.kryValue("method"), true);
+    assert.equal(firstField.kryValue(), "method");
+    assert.equal(runtime.webFormValue(target, "q"), "method");
     assert.equal(runtime.webDOMSetProperty(target, "q", "value", "property"), true);
     assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "property");
     assert.equal(runtime.webFormValue(target, "q"), "property");
@@ -1502,6 +1526,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "keydown", { key: "Escape" }), true);
     assert.deepEqual(dispatchedEvents, [["Escape", true, "search-box", "search-box", false, false]]);
     assert.equal(domState.count, countBeforeDispatch + 1000);
+    assert.equal(firstField.kryDispatch("keydown", { key: "Escape" }), true);
+    assert.equal(domState.count, countBeforeDispatch + 2000);
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "focus"), true);
     assert.equal(firstField.__kryDocNode.state.focus, true);
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "blur"), true);

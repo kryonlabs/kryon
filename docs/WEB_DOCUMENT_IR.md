@@ -426,6 +426,9 @@ back into node facts, so they survive re-render and remain visible to KSS.
 `webDOMHasAttribute(...)` expose native attributes without making generated JS
 own the document shape. `data-*`, `aria-*`, global boolean attributes, form
 attributes, and arbitrary extra attributes are reflected into node facts.
+Mounted elements expose the same local bridge as `element.krySetAttr(...)`,
+`element.kryGetAttr(...)`, `element.kryRemoveAttr(...)`, and
+`element.kryHasAttr(...)`.
 
 `webDOMSetProperty(target, query, name, value)` and
 `webDOMGetProperty(...)` expose native DOM element properties. Known state,
@@ -436,6 +439,8 @@ facts; unknown properties remain native host state.
 `webDOMGetStyle(...)` apply imperative style overrides after resolved KSS.
 These overrides are intended for browser-measured or runtime-only state; KSS
 remains the authoring surface for visual design.
+Mounted elements expose local `element.krySetStyle(...)`,
+`element.kryGetStyle(...)`, and `element.kryRemoveStyle(...)` methods.
 
 `webDOMComputedStyle(target, query, name)` reads the browser-computed style for
 a Kry DOM object when `getComputedStyle` is available, and falls back to the
@@ -444,10 +449,14 @@ element style object in non-browser hosts.
 `webDOMGetText(target, query)`, `webDOMSetText(...)`, `webDOMGetValue(...)`,
 and `webDOMSetValue(...)` read and write current mounted text and form values.
 Mutations synchronize back to the Web Document node before the next render.
+Mounted elements expose `element.kryText()` / `element.kryText(value)` and
+`element.kryValue()` / `element.kryValue(value)` for the same operations.
 
 `webDOMSetState(target, query, name, value)`, `webDOMToggleState(...)`, and
 `webDOMGetState(...)` expose node state facts for logic-owned state that should
 also participate in KSS selectors.
+Mounted elements expose `element.krySetState(...)` and
+`element.kryGetState(...)` for local state fact changes.
 
 `webDOMClick(target, query)`, `webDOMFocus(...)`, `webDOMBlur(...)`,
 `webDOMSubmit(...)`, and `webDOMReset(...)` issue native commands when the
@@ -463,6 +472,8 @@ same Kry node identity surface.
 events against a resolved DOM object and decorates the event with the same Kry
 event bridge exposed to native handlers. Prefer named helpers for stable app
 logic; this exists for host integrations and tests.
+Mounted elements expose `element.kryDispatch(type, init)` for the same
+Kry-aware event dispatch.
 
 `webDOMRect(target, query)`, `webDOMGetScroll(...)`, `webDOMSetScroll(...)`,
 and `webDOMScrollIntoView(...)` expose measured geometry and scroll state.
