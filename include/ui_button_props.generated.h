@@ -33,6 +33,7 @@ typedef struct ButtonProps {
     bool disabled;
     bool loading;
     bool selected;
+    bool invisible;
     bool full_width;
     bool pill;
     bool circle;

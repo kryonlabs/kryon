@@ -366,7 +366,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     static const char *const widgets[] = {
         "Background", "Text", "Paragraph",
         "Rect", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
-        "InvisibleButton", "Bullet", "Separator",
+        "Bullet", "Separator",
         "Link", "TextField", "TextArea", "Dropdown", "Slider", "MenuBar",
         "PopupMenu", "ContextMenu",
         "Toggle", "Checkbox", "Radio", "Progress", "Plot",

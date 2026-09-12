@@ -273,7 +273,7 @@ App :: () #ui {
     Input((InputProps){.bounds = {Scale(250), Scale(490), Scale(100), Scale(28)}, .id = 36, .kind = 1, .int_values = nums, .value_count = 2, .step = 1.0, .step_fast = 10.0})
     Input((InputProps){.bounds = {Scale(250), Scale(522), Scale(100), Scale(28)}, .id = 37, .kind = 2, .double_values = plot_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
     Button((ButtonProps){.bounds = {Scale(250), Scale(554), Scale(70), Scale(24)}, .label = "Small", .size = ControlSizeSmall, .id = 38})
-    InvisibleButton((InvisibleButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39})
+    Button((ButtonProps){.bounds = {Scale(324), Scale(554), Scale(30), Scale(24)}, .id = 39, .invisible = true})
     Button((ButtonProps){.bounds = {Scale(358), Scale(554), Scale(30), Scale(24)}, .id = 40, .arrow = true, .direction = 1})
     Bullet((Rectangle){Scale(392), Scale(554), Scale(20), Scale(20)})
     Separator((SeparatorProps){.bounds = {Scale(250), Scale(582), Scale(160), Scale(4)}})
@@ -567,7 +567,7 @@ grep -q 'kr.Input(kr.InputProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueC
 grep -q 'kr.Input(kr.InputProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: 2' "$out"
 grep -q 'kr.Input(kr.InputProps{.*Kind: 2.*DoubleValues: plot_doubles\[:\].*ValueCount: 2' "$out"
 grep -q 'Size: kr.ControlSizeSmall' "$out"
-grep -q 'kr.InvisibleButton(kr.InvisibleButtonProps{' "$out"
+grep -q 'kr.Button(kr.ButtonProps{.*Invisible: true' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Arrow: true' "$out"
 grep -q 'Direction: int32(1)' "$out"
 grep -q 'kr.Bullet(kr.Rectangle{' "$out"

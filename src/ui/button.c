@@ -179,6 +179,13 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     retained_pressed = input.interaction.pressed;
     focused = input.interaction.focused;
     draw_bounds = button.props.bounds;
+    if(button.props.invisible) {
+        if(focused)
+            SetFocusTextInputActive(0);
+        if(handle_input)
+            EndWidget(&widget);
+        return handle_input ? input.activated : 0;
+    }
     if(!paint || !IsWindowReady()) {
         if(focused)
             SetFocusTextInputActive(0);

@@ -202,7 +202,6 @@ host roles rather than retained nodes.
 | `Button` | `.kry canonical` | One button surface; variants belong in props/composition. |
 | `Card` | `.kry canonical` | Surface action/card composition. |
 | `Selectable` | `.kry canonical` | Selectable row/action surface. |
-| `InvisibleButton` | Native support | Hit-test primitive only; not a design widget. |
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |
@@ -383,7 +382,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginCard` | Native support | Lowered host entry for composed `.kry` `Card` content; not a separate widget concept. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, and emphasis behavior should live in `ButtonProps` or small `.kry` composition, not separate public widget names. |
 | `BeginButton` | Native support | Lowered host entry for composed `.kry` `Button` content; not a separate widget concept. |
-| `InvisibleButton` | Native support | Hit-test primitive; disabled policy is in `.kry`; not a design widget. |
+| `InvisibleButton` | Native compatibility only | New `.kry` code uses `ButtonProps.invisible`; not accepted as a parser widget. |
 | `BeginDisabled` | Native support | Host scope for disabled child content. |
 | `EndDisabled` | Native support | Host scope exit for disabled child content. |
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |

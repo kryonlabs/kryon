@@ -17,6 +17,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "    loading: bool\n"
         "    selected: bool\n"
+        "    invisible: bool\n"
         "    full_width: bool\n"
         "    pill: bool\n"
         "    circle: bool\n"

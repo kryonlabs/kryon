@@ -2238,6 +2238,9 @@ func (r *runtime) buttonAt(props ButtonProps) bool {
 
 func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, disclosure bool) bool {
 	frame, pressed := r.surfaceButtonFrame(props, surfaceBounds, disclosure)
+	if props.Invisible {
+		return pressed
+	}
 	if props.Swatch {
 		frame.Color = props.SwatchColor
 	}

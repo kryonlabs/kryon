@@ -14,6 +14,7 @@ type ButtonProps struct {
 	Disabled        bool
 	Loading         bool
 	Selected        bool
+	Invisible       bool
 	FullWidth       bool
 	Pill            bool
 	Circle          bool

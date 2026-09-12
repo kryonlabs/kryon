@@ -40,7 +40,7 @@ plots_frame :: () #ui {
         Input((InputProps){.bounds = {20,430,105,28}, .id = 928, .label = "Input int", .kind = NumericInt, .int_values = plots_input_whole_values, .value_count = 2, .step = 1, .step_fast = 10})
         Input((InputProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .kind = NumericDouble, .double_values = plots_input_precise_values, .value_count = 2, .step = 0.01, .step_fast = 1.0})
         Button((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .size = ControlSizeSmall, .id = 930})
-        InvisibleButton((InvisibleButtonProps){.bounds = {100,475,40,24}, .id = 931})
+        Button((ButtonProps){.bounds = {100,475,40,24}, .id = 931, .invisible = true})
         Button((ButtonProps){.bounds = {150,475,30,24}, .id = 932, .arrow = 1, .direction = 3})
         Bullet((Rectangle){190,475,20,20})
         Separator((SeparatorProps){.bounds = {20,515,220,4}})
