@@ -3004,7 +3004,12 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 	op.Disabled = disabled
 	r.record(op)
 	if props.Label != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.SwatchBounds.X + 6, Y: layout.SwatchBounds.Y + (layout.SwatchBounds.Height-float32(Text14))/2, Width: layout.SwatchBounds.Width - 12, Height: float32(Text14)}, Text: props.Label, Color: style.Foreground, FontSize: Text14, ID: props.ID, Disabled: disabled})
+		labelInset := style.PaddingX
+		if labelInset <= 0 {
+			labelInset = 6
+		}
+		font := styleFont(style, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.SwatchBounds.X + labelInset, Y: layout.SwatchBounds.Y + (layout.SwatchBounds.Height-float32(font))/2, Width: layout.SwatchBounds.Width - labelInset*2, Height: float32(font)}, Text: props.Label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, ID: props.ID, Disabled: disabled})
 	}
 	return changed
 }

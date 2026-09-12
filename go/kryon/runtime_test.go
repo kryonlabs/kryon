@@ -1120,7 +1120,7 @@ tokens {
   length { radius: 6; border: 2; }
   material { flat: Flat; }
 }
-ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius: radius; border-width: border; padding-x: 10; font-size: 18; material: flat; opacity: 0.64; }
 `, "Test Color", "") || !SetActiveStylePack("test.color") {
 		t.Fatal("test color picker style did not activate")
 	}
@@ -1149,7 +1149,9 @@ ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius
 		}
 		if op.Kind == FrameOpText && op.Text == "Preview" {
 			sawLabel = true
-			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) {
+			if op.Bounds.X != 18 || op.Bounds.Width != 100 ||
+				op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.64 {
 				t.Fatalf("color picker swatch label op = %+v", op)
 			}
 		}

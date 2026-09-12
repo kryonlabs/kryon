@@ -1013,13 +1013,19 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
             picker.disabled ? ButtonStateDisabled : ButtonStateNormal,
             picker.disabled, 0, StyleKindColorPickerSwatch());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+        int font = style.font_size > 0.0f
+            ? (int)(style.font_size + 0.5f)
+            : GetSmallFontSize();
+        int label_inset = style.padding_x > 0.0f
+            ? (int)(style.padding_x + 0.5f)
+            : Scale(6);
         DrawRectangleRec(swatch, ui_float_color(picker.values, channels));
         ui_tk_draw_style_frame(swatch, picker.bounds, frame, 0, 0,
                                picker.disabled, 0);
         if(picker.label != NULL)
-            RenderText(picker.label, (int)swatch.x + Scale(6),
-                       ui_row_text_y(swatch, GetSmallFontSize()),
-                       GetSmallFontSize(), style.foreground);
+            RenderText(picker.label, (int)swatch.x + label_inset,
+                       ui_row_text_y(swatch, font),
+                       font, Fade(style.foreground, style.opacity));
     }
     return changed;
 }

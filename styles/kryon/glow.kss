@@ -482,6 +482,7 @@ ColorPickerSwatch {
   radius: radius.sm;
   border-width: border;
   padding-x: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
