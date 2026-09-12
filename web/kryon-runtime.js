@@ -940,12 +940,12 @@ function handleWidget(rt, name, args, state) {
   if (!rt.input)
     return false;
   if (name === "Disabled") {
+    if (String(args || "").trim() === "end") {
+      if (rt.disabledStack.length > 0)
+        rt.disabledStack.pop();
+      return false;
+    }
     rt.disabledStack.push(numberValue(args) !== 0);
-    return false;
-  }
-  if (name === "EndDisabled") {
-    if (rt.disabledStack.length > 0)
-      rt.disabledStack.pop();
     return false;
   }
   if (rt.disabledStack.some(Boolean))
@@ -2333,6 +2333,19 @@ function bindWebDOMObjectProperties(el) {
       enumerable: false,
       get() {
         return this.__kryDocNode ? webNodeIdentity(this.__kryDocNode) : null;
+      }
+    },
+    krySnapshot: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMObjectSnapshot(root, {
+          ref: webNodeRef(node),
+          node,
+          element: this
+        }) : null;
       }
     }
   });

@@ -347,6 +347,7 @@ declare global {
     readonly kryNode?: WebDocumentNode | null;
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
+    readonly krySnapshot?: WebDOMSnapshot | null;
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];

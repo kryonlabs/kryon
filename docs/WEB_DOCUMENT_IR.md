@@ -376,8 +376,9 @@ event objects, adds non-enumerable `kryRef`, `kryObject`, `kryIdentity`, and
 without generated JS owning DOM structure.
 
 `webDOMIdentity(target, query)` returns the same plain identity projection for
-a mounted Kry DOM object. Rendered elements expose it directly as
-`element.kryIdentity`.
+a mounted Kry DOM object. Rendered elements expose the native bridge directly
+as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
+`element.kryIdentity`, and `element.krySnapshot` getters.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source
