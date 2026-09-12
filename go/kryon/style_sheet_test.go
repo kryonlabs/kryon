@@ -455,6 +455,9 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Collapsible", StyleSheet_StyleKindCollapsible()},
 		{"TitleBar", StyleSheet_StyleKindTitleBar()},
 		{"Toolbar", StyleSheet_StyleKindToolbar()},
+		{"Modal", StyleSheet_StyleKindModal()},
+		{"TableView", StyleSheet_StyleKindTableView()},
+		{"Guide", StyleSheet_StyleKindGuide()},
 	}
 	stateKinds := []struct {
 		name  string
@@ -554,6 +557,24 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Toolbar[role=Bar]", StyleSheet_StyleKindToolbar(), 1},
 		{"Toolbar[role=Divider]", StyleSheet_StyleKindToolbar(), 18},
 		{"Toolbar[role=Action]", StyleSheet_StyleKindToolbar(), 17},
+		{"Modal[role=Panel]", StyleSheet_StyleKindModal(), 2},
+		{"Modal[role=Title]", StyleSheet_StyleKindModal(), 16},
+		{"Modal[role=Action]", StyleSheet_StyleKindModal(), 17},
+		{"Modal[role=Scrim]", StyleSheet_StyleKindModal(), 19},
+		{"Modal[role=Message]", StyleSheet_StyleKindModal(), 20},
+		{"Modal[role=Close]", StyleSheet_StyleKindModal(), 15},
+		{"TableView[role=Panel]", StyleSheet_StyleKindTableView(), 2},
+		{"TableView[role=Header]", StyleSheet_StyleKindTableView(), 13},
+		{"TableView[role=Divider]", StyleSheet_StyleKindTableView(), 18},
+		{"TableView[role=Row]", StyleSheet_StyleKindTableView(), 21},
+		{"TableView[role=Cell]", StyleSheet_StyleKindTableView(), 22},
+		{"TableView[role=Selection]", StyleSheet_StyleKindTableView(), 23},
+		{"Guide[role=Panel]", StyleSheet_StyleKindGuide(), 2},
+		{"Guide[role=Label]", StyleSheet_StyleKindGuide(), 6},
+		{"Guide[role=Close]", StyleSheet_StyleKindGuide(), 15},
+		{"Guide[role=Action]", StyleSheet_StyleKindGuide(), 17},
+		{"Guide[role=Scrim]", StyleSheet_StyleKindGuide(), 19},
+		{"Guide[role=Anchor]", StyleSheet_StyleKindGuide(), 24},
 	}
 	packIDs := []string{
 		"kryon.material",

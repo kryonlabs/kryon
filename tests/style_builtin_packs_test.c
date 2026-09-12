@@ -138,6 +138,7 @@ main(void)
         {"Toolbar", StyleKindToolbar()},
         {"Modal", StyleKindModal()},
         {"TableView", StyleKindTableView()},
+        {"Guide", StyleKindGuide()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},
@@ -241,6 +242,12 @@ main(void)
         {"TableView[role=Row]", StyleKindTableView(), 21},
         {"TableView[role=Cell]", StyleKindTableView(), 22},
         {"TableView[role=Selection]", StyleKindTableView(), 23},
+        {"Guide[role=Panel]", StyleKindGuide(), 2},
+        {"Guide[role=Label]", StyleKindGuide(), 6},
+        {"Guide[role=Close]", StyleKindGuide(), 15},
+        {"Guide[role=Action]", StyleKindGuide(), 17},
+        {"Guide[role=Scrim]", StyleKindGuide(), 19},
+        {"Guide[role=Anchor]", StyleKindGuide(), 24},
     };
     const char *pack_ids[] = {
         "kryon.material",
