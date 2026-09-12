@@ -64,9 +64,19 @@ note_input :: (value: string) -> int {
     count += 10
     return count
 }
+note_before_input :: (value: string) -> int {
+    unused value
+    count += 2
+    return count
+}
 note_change :: (value: string) -> int {
     unused value
     count += 100
+    return count
+}
+note_select :: (value: string) -> int {
+    unused value
+    count += 200
     return count
 }
 note_key :: (value: string) -> int {
@@ -173,7 +183,9 @@ Scene :: (viewport: Rectangle) #ui {
             aria_label = "Search"
             aria_describedby = "tap-button"
             on_input = note_input
+            on_before_input = note_before_input
             on_change = note_change
+            on_select = note_select
             on_key = note_key
             on_invalid = invalid_search
             on_scroll = scroll_search
@@ -259,7 +271,9 @@ grep -q '"ariaDescription": "Runs the host action"' "$out"
 grep -q '"ariaControls": "search-field"' "$out"
 grep -q '"aria": {"current": "page", "pressed": false}' "$out"
 grep -q '"onInput": "note_input"' "$out"
+grep -q '"onBeforeInput": "note_before_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
+grep -q '"onSelect": "note_select"' "$out"
 grep -q '"onKey": "note_key"' "$out"
 grep -q '"onInvalid": "invalid_search"' "$out"
 grep -q '"onScroll": "scroll_search"' "$out"

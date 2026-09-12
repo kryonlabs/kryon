@@ -172,7 +172,9 @@ typedef struct KirStmt {
     char dom_aria_attrs[KIR_TEXT_MAX];  /* requested arbitrary aria-* attributes */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */
     char dom_on_input[KIR_NAME_MAX];    /* logic function bound to input(value) */
+    char dom_on_before_input[KIR_NAME_MAX]; /* logic function bound to beforeinput(value) */
     char dom_on_change[KIR_NAME_MAX];   /* logic function bound to change(value) */
+    char dom_on_select[KIR_NAME_MAX];   /* logic function bound to select(value) */
     char dom_on_key[KIR_NAME_MAX];      /* logic function bound to keydown(key) */
     char dom_on_invalid[KIR_NAME_MAX];  /* logic function bound to invalid(value) */
     char dom_on_submit[KIR_NAME_MAX];   /* logic function bound to submit */

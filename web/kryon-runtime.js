@@ -1181,7 +1181,9 @@ function webNodeFromWidget(item, index) {
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
+    onBeforeInput: meta.onBeforeInput === undefined || meta.onBeforeInput === null ? "" : String(meta.onBeforeInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
+    onSelect: meta.onSelect === undefined || meta.onSelect === null ? "" : String(meta.onSelect),
     onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
     onInvalid: meta.onInvalid === undefined || meta.onInvalid === null ? "" : String(meta.onInvalid),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
@@ -1202,7 +1204,9 @@ function webNodeFromWidget(item, index) {
     onPaste: meta.onPaste === undefined || meta.onPaste === null ? "" : String(meta.onPaste),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
+    beforeInputAction: typeof meta.beforeInputAction === "function" ? meta.beforeInputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
+    selectAction: typeof meta.selectAction === "function" ? meta.selectAction : null,
     keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
     invalidAction: typeof meta.invalidAction === "function" ? meta.invalidAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
@@ -1929,6 +1933,14 @@ function bindNodeEvents(el) {
     if (docNode?.inputAction)
       docNode.inputAction(value);
   });
+  el.addEventListener("beforeinput", (event) => {
+    const docNode = el.__kryDocNode;
+    const value = event?.data === undefined || event?.data === null
+      ? String(event?.inputType || "")
+      : String(event.data);
+    if (docNode?.beforeInputAction)
+      docNode.beforeInputAction(value);
+  });
   el.addEventListener("change", () => {
     const docNode = el.__kryDocNode;
     const value = el.type === "checkbox" || el.type === "radio"
@@ -1937,6 +1949,12 @@ function bindNodeEvents(el) {
     updateElementFormValue(el, value);
     if (docNode?.changeAction)
       docNode.changeAction(value);
+  });
+  el.addEventListener("select", () => {
+    const docNode = el.__kryDocNode;
+    const value = webElementSelection(el);
+    if (docNode?.selectAction)
+      docNode.selectAction(value);
   });
   el.addEventListener("keydown", (event) => {
     const docNode = el.__kryDocNode;
@@ -1979,6 +1997,18 @@ function webElementValue(el, docNode = el?.__kryDocNode) {
   if (docNode.tag === "textarea")
     return el.value ?? "";
   return undefined;
+}
+
+function webElementSelection(el) {
+  if (!el || typeof el.value !== "string")
+    return "";
+  const start = Number.isFinite(Number(el.selectionStart))
+    ? Math.max(0, Number(el.selectionStart))
+    : 0;
+  const end = Number.isFinite(Number(el.selectionEnd))
+    ? Math.max(start, Number(el.selectionEnd))
+    : start;
+  return el.value.slice(start, end);
 }
 
 function recordFormValue(root, docNode, value) {
@@ -2114,10 +2144,18 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnInput = docNode.onInput;
   else
     delete el.dataset.kryOnInput;
+  if (docNode.onBeforeInput)
+    el.dataset.kryOnBeforeInput = docNode.onBeforeInput;
+  else
+    delete el.dataset.kryOnBeforeInput;
   if (docNode.onChange)
     el.dataset.kryOnChange = docNode.onChange;
   else
     delete el.dataset.kryOnChange;
+  if (docNode.onSelect)
+    el.dataset.kryOnSelect = docNode.onSelect;
+  else
+    delete el.dataset.kryOnSelect;
   if (docNode.onKey)
     el.dataset.kryOnKey = docNode.onKey;
   else

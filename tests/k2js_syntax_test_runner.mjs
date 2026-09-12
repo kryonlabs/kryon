@@ -279,7 +279,9 @@ assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
 assert.equal(webDoc.nodes[3].ariaDescribedBy, "tap-button");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
+assert.equal(webDoc.nodes[3].onBeforeInput, "note_before_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
+assert.equal(webDoc.nodes[3].onSelect, "note_select");
 assert.equal(webDoc.nodes[3].onKey, "note_key");
 assert.equal(webDoc.nodes[3].onInvalid, "invalid_search");
 assert.equal(webDoc.nodes[3].onScroll, "scroll_search");
@@ -377,6 +379,10 @@ function fakeDocument() {
           this.onpaste({ clipboardData: clipboard });
       },
       invalid() { if (this.oninvalid) this.oninvalid({ preventDefault() {} }); },
+      beforeinput(data, inputType = "") {
+        if (this.onbeforeinput)
+          this.onbeforeinput({ data, inputType });
+      },
       input(value) {
         if (typeof value === "boolean")
           this.checked = value;
@@ -384,6 +390,12 @@ function fakeDocument() {
           this.value = value;
         if (this.oninput)
           this.oninput();
+      },
+      select(start, end) {
+        this.selectionStart = start;
+        this.selectionEnd = end;
+        if (this.onselect)
+          this.onselect();
       },
       change(value) {
         if (typeof value === "boolean")
@@ -823,7 +835,9 @@ function fakeDocument() {
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
+    assert.equal(firstField.dataset.kryOnBeforeInput, "note_before_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
+    assert.equal(firstField.dataset.kryOnSelect, "note_select");
     assert.equal(firstField.dataset.kryOnKey, "note_key");
     assert.equal(firstField.dataset.kryOnInvalid, "invalid_search");
     assert.equal(firstField.dataset.kryOnScroll, "scroll_search");
@@ -840,30 +854,34 @@ function fakeDocument() {
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
     assert.equal(runtime.webFormValue(target, "q"), "label");
     assert.equal(runtime.findWebElement(target, "q"), firstField);
+    firstField.beforeinput("n");
+    assert.equal(domState.count, 3);
     firstField.input("needle");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "needle");
     assert.equal(runtime.webFormValue(target, "search"), "needle");
     assert.equal(runtime.webFormValue(target, "q"), "needle");
     assert.equal(runtime.webFormValues(target)["search-field"], "needle");
-    assert.equal(domState.count, 11);
+    assert.equal(domState.count, 13);
+    firstField.select(1, 4);
+    assert.equal(domState.count, 213);
     firstField.change("needle");
     assert.equal(runtime.webFormValue(target, "search-field"), "needle");
-    assert.equal(domState.count, 111);
+    assert.equal(domState.count, 313);
     firstField.keydown("Enter");
-    assert.equal(domState.count, 1111);
+    assert.equal(domState.count, 1313);
     firstField.scroll(5, 22);
-    assert.equal(domState.count, 1133);
+    assert.equal(domState.count, 1335);
     assert.equal(firstField.__kryDocNode.scrollLeft, 5);
     assert.equal(firstField.__kryDocNode.scrollTop, 22);
     assert.equal(firstField.style.fontSize, "18px");
     firstField.invalid();
-    assert.equal(domState.count, 10001133);
+    assert.equal(domState.count, 10001335);
     firstField.submit();
-    assert.equal(domState.count, 10011133);
+    assert.equal(domState.count, 10011335);
     firstField.focus();
-    assert.equal(domState.count, 10111133);
+    assert.equal(domState.count, 10111335);
     firstField.blur();
-    assert.equal(domState.count, 11111133);
+    assert.equal(domState.count, 11111335);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);

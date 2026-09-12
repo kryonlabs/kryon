@@ -128,7 +128,9 @@ export interface WebDocumentNode {
   ariaAttrs: Record<string, string>;
   onClick: string;
   onInput: string;
+  onBeforeInput: string;
   onChange: string;
+  onSelect: string;
   onKey: string;
   onInvalid: string;
   onSubmit: string;
@@ -149,7 +151,9 @@ export interface WebDocumentNode {
   onPaste: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
+  beforeInputAction: ((value: string) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
+  selectAction: ((value: string) => unknown) | null;
   keyAction: ((key: string) => unknown) | null;
   invalidAction: ((value: unknown) => unknown) | null;
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
