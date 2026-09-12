@@ -59,18 +59,18 @@ var (
 	nextFontID       uint32 = 1
 	fontsByID               = map[uint32]*uiFontSource{}
 	fontsByName             = map[string]*uiFontSource{}
-	activeUIFontName string
+	activeTextFontName string
 )
 
-const defaultUIFontName = "kryon-default"
+const defaultTextFontName = "kryon-default"
 
-// ensureDefaultUIFont gives every native Go host the same default UI face as
-// the C runtime. Applications can still replace it with RegisterUIFontData and
-// UseUIFont; failure to resolve a packaged/system font keeps the small built-in
+// ensureDefaultTextFont gives every native Go host the same default UI face as
+// the C runtime. Applications can still replace it with RegisterTextFontData and
+// UseTextFont; failure to resolve a packaged/system font keeps the small built-in
 // renderer fallback available for minimal environments.
-func ensureDefaultUIFont() {
+func ensureDefaultTextFont() {
 	fontMu.Lock()
-	if activeUIFontName != "" {
+	if activeTextFontName != "" {
 		fontMu.Unlock()
 		return
 	}
@@ -96,12 +96,12 @@ func ensureDefaultUIFont() {
 		if err != nil {
 			continue
 		}
-		if _, ok := registerFontData(defaultUIFontName, ".ttf", data); ok {
+		if _, ok := registerFontData(defaultTextFontName, ".ttf", data); ok {
 			semiboldPath := filepath.Join(filepath.Dir(path), "NotoSans-SemiBold.ttf")
 			if semibold, err := os.ReadFile(semiboldPath); err == nil && registeredTypeface("semibold") == 0 {
 				registerFontData("semibold", ".ttf", semibold)
 			}
-			useUIFont(defaultUIFontName)
+			useTextFont(defaultTextFontName)
 			return
 		}
 	}
@@ -153,13 +153,13 @@ func registerFontData(name, typ string, data []byte) (uint32, bool) {
 	return id, true
 }
 
-func useUIFont(name string) bool {
+func useTextFont(name string) bool {
 	fontMu.Lock()
 	defer fontMu.Unlock()
 	if fontsByName[name] == nil {
 		return false
 	}
-	activeUIFontName = name
+	activeTextFontName = name
 	return true
 }
 
@@ -170,8 +170,8 @@ func faceForFont(id uint32, size int32) xfont.Face {
 	fontMu.Lock()
 	defer fontMu.Unlock()
 	source := fontsByID[id]
-	if source == nil && activeUIFontName != "" {
-		source = fontsByName[activeUIFontName]
+	if source == nil && activeTextFontName != "" {
+		source = fontsByName[activeTextFontName]
 	}
 	if source == nil || source.parsed == nil {
 		return nil

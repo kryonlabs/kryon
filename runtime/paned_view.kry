@@ -1,0 +1,58 @@
+#module "paned_view"
+#import "drawing_props"
+
+PanedViewMetrics :: struct {
+    grip: i32
+}
+
+PanedViewMetricsFor :: (scale: float) -> PanedViewMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: PanedViewMetrics
+    metrics.grip = (i32)(8.0 * scale)
+    return metrics
+}
+
+PanedViewSize :: (bounds: Rectangle, vertical: bool) -> i32 #export {
+    if vertical { return (i32)bounds.width }
+    return (i32)bounds.height
+}
+
+PanedViewLimit :: (size: i32, min_first: i32, min_second: i32) -> i32 #export {
+    limit: i32 = size - min_second
+    if limit < min_first { limit = min_first }
+    return limit
+}
+
+PanedViewClampSplit :: (split: i32, min_first: i32, limit: i32) -> i32 #export {
+    if split < min_first { return min_first }
+    if split > limit { return limit }
+    return split
+}
+
+PanedViewDefaultSplit :: (limit: i32) -> i32 #export {
+    return limit / 2
+}
+
+PanedViewPointerSplit :: (bounds: Rectangle, vertical: bool,
+    pointer_x: float, pointer_y: float) -> i32 #export {
+    if vertical { return (i32)(pointer_x - bounds.x) }
+    return (i32)(pointer_y - bounds.y)
+}
+
+PanedViewHandleFor :: (bounds: Rectangle, vertical: bool,
+    split: i32, metrics: PanedViewMetrics) -> Rectangle #export {
+    handle: Rectangle
+    half: float = (float)metrics.grip * 0.5
+    if vertical {
+        handle.x = bounds.x + (float)split - half
+        handle.y = bounds.y
+        handle.width = (float)metrics.grip
+        handle.height = bounds.height
+    } else {
+        handle.x = bounds.x
+        handle.y = bounds.y + (float)split - half
+        handle.width = bounds.width
+        handle.height = (float)metrics.grip
+    }
+    return handle
+}

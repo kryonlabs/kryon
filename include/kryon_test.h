@@ -3,7 +3,7 @@
 
 #include "ui_inspect.h"
 
-int KryTFind(const char *selector, UIInspectNode *node);
+int KryTFind(const char *selector, InspectNode *node);
 int KryTTap(const char *selector);
 int KryTType(const char *text);
 int KryTKey(const char *key);

@@ -24,11 +24,11 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
 {
     Vector2 mouse = ui_mouse_world();
     int inside = CheckCollisionPointRec(mouse, bounds);
-    int captured = UIInputCapturesClick(mouse);
+    int captured = InputCapturesClick(mouse);
     int active = inside && !disabled && !captured;
 
     if(hovered != NULL)
-        *hovered = active && UIHoverEffectsEnabled();
+        *hovered = active && HoverEffectsEnabled();
     if(inside && !captured) {
         if(disabled)
             MarkDisabled();
@@ -36,7 +36,7 @@ ui_navigation_bar_hit(Rectangle bounds, int disabled, int *hovered)
             MarkClickable();
     }
     if(mouse_release_activates_rect(bounds, mouse, active)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         return 1;
     }
     return 0;
@@ -71,7 +71,7 @@ RenderNavigationBar(NavigationBarProps nav)
     int count = nav.count;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int height = nav.height > 0 ? nav.height : ui_navigation_bar_height();
-    UIWidget widget;
+    Widget widget;
     Rectangle bounds;
     Palette palette;
     Metrics tokens;
@@ -100,9 +100,9 @@ RenderNavigationBar(NavigationBarProps nav)
     result.y = paint.y;
     result.height = paint.height;
     bounds = paint.bounds;
-    widget = BeginUIWidget("navigation_bar", "tmp:bottom-nav", bounds,
-                           UI_WIDGET_READONLY);
-    UIWidgetSetAction(&widget, "RenderNavigationBar");
+    widget = BeginWidget("navigation_bar", "tmp:bottom-nav", bounds,
+                           WIDGET_READONLY);
+    WidgetSetAction(&widget, "RenderNavigationBar");
 
     bar_frame = ui_style_apply_effects_frame(paint.bar);
     bar_style = ui_unpack_style(bar_frame.value);
@@ -172,7 +172,7 @@ RenderNavigationBar(NavigationBarProps nav)
         }
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return result;
 }
 

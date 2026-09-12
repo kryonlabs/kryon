@@ -31,7 +31,7 @@ static int cmp_double(const void *a, const void *b) { double x=*(const double *)
 static void frame(void)
 {
     int i;
-    BeginUIFocus();
+    BeginFocusScope();
     BeginTree(screen_key);
     for(i = 0; i < FIELD_COUNT; ++i)
         TextField((TextFieldProps){.bounds={20,fields[i].y,600,40},
@@ -42,10 +42,10 @@ static void frame(void)
     LayoutTree();
     RouteInput();
     UpdateTree();
-    EndUIFocus();
+    EndFocusScope();
 }
 
-static void drain_events(void) { UIEvent event; while(NextEvent(&event)) {} }
+static void drain_events(void) { Event event; while(NextEvent(&event)) {} }
 
 static void reset_fields(void)
 {
@@ -66,7 +66,7 @@ static void focus_field(int index)
 {
     /* Pointer-to-focus routing is covered by ui_tree_api_test.  Setting the
      * focus manager here isolates the measured keystroke frame itself. */
-    SetUIFocus(fields[index].focus_id);
+    SetFocus(fields[index].focus_id);
     frame();
     drain_events();
 }
@@ -95,7 +95,7 @@ static int run_scenario(const char *name)
             InjectText("replacement"); InjectPump(); frame();
             wrong += strcmp(fields[field].text, "replacement") != 0;
         } else if(strcmp(name, "tab_traversal") == 0) {
-            /* Traversal is resolved at EndUIFocus, then reflected in the
+            /* Traversal is resolved at EndFocusScope, then reflected in the
              * next declaration frame just as it is in an application. */
             InjectKeyTap(KEY_TAB); InjectPump(); frame(); frame();
             wrong += !fields[(field + 1) % FIELD_COUNT].focused;

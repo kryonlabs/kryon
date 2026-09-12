@@ -1,18 +1,18 @@
-#ifndef UI_TEXT_LAYOUT_H
-#define UI_TEXT_LAYOUT_H
+#ifndef KRYON_TEXT_LAYOUT_H
+#define KRYON_TEXT_LAYOUT_H
 
 #include "kryon.h"
 #include "ui_icon_types.h"
 #include "ui_text.h"
 
 typedef enum {
-    UI_TEXT_ELEMENT_TEXT,
-    UI_TEXT_ELEMENT_ICON,
-    UI_TEXT_ELEMENT_LINE_BREAK
-} TextElementType;
+    TEXT_ELEMENT_TEXT,
+    TEXT_ELEMENT_ICON,
+    TEXT_ELEMENT_LINE_BREAK
+} TextElementKind;
 
 typedef struct {
-    TextElementType type;
+    TextElementKind type;
     const char *text;
     Texture2D icon;
     IconType icon_type;

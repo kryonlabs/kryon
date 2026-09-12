@@ -447,7 +447,7 @@ only `FontId` values. Kryon owns fallback by codepoint and physical-size cache.
 - missing glyphs are diagnosed in debug builds and render a deterministic
   replacement glyph.
 
-`RegisterUIFontSource*` compatibility names are migrated to concise font
+`RegisterTextFontSource*` compatibility names are migrated to concise font
 registration names as part of implementation; generated output shall not emit
 the stale prefix.
 

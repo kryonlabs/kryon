@@ -39,8 +39,8 @@ export const app = {
 };
 
 export function createState() {
-  return {
-  };
+  const $state = {};
+  return $state;
 }
 
 export const moduleState = createState();

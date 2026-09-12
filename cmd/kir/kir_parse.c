@@ -475,7 +475,8 @@ static const char *
 ui_block_prop_type(const char *widget)
 {
     /* A lexical scope, not a runtime props type or another widget API. */
-    if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0)
+    if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0 ||
+       strcmp(widget, "TableCell") == 0 || strcmp(widget, "Canvas") == 0)
         return "";
     if(strcmp(widget, "Popup") == 0)
         return "PopupProps";
@@ -677,6 +678,47 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirFunctionAddStmt(fn, block->name[0] ? KIR_STMT_DECL : KIR_STMT_EXPR,
                            call, "", span);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "TableCell") == 0) {
+        const char *table = (block->scope_fields & 1) ? block->scope_args[0] : NULL;
+        const char *row = (block->scope_fields & 2) ? block->scope_args[1] : NULL;
+        const char *column = (block->scope_fields & 4) ? block->scope_args[2] : NULL;
+
+        if(block->name[0] == '\0')
+            die("%s:%d: TableCell requires a rectangle binding name", span.path, span.line);
+        if(table == NULL || row == NULL || column == NULL)
+            die("%s:%d: TableCell requires table, row and column", span.path, span.line);
+        ui_block_format(call, sizeof(call), span,
+                        "%s: Rectangle = BeginTableCell(%s, %s, %s)",
+                        block->name, table, row, column);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndTableCell()", "", span);
+        block->opened = 1;
+        return;
+    }
+    if(strcmp(block->widget, "Canvas") == 0) {
+        char spec_name[KIR_NAME_MAX + 16];
+
+        if(block->name[0] == '\0')
+            die("%s:%d: Canvas requires a result binding name", span.path, span.line);
+        if(!(block->scope_fields & 1))
+            die("%s:%d: Canvas requires 'bounds'", span.path, span.line);
+        ui_block_format(spec_name, sizeof(spec_name), span, "%s_spec", block->name);
+        ui_block_format(args, sizeof(args), span, "(Canvas){%s}", block->props);
+        ui_block_format(call, sizeof(call), span, "%s: Canvas = %s",
+                        spec_name, args);
+        KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", span);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
+        ui_block_format(call, sizeof(call), span,
+                        "%s: CanvasResult = BeginCanvas(%s)",
+                        block->name, spec_name);
+        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", span);
+        ui_block_format(call, sizeof(call), span, "defer EndCanvas(%s)",
+                        spec_name);
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", span);
         block->opened = 1;
         return;
     }
@@ -2707,6 +2749,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 ui_block_open(fn, block, KirSpan(rel, line_no, 1), 1);
                 if(strcmp(block->widget, "Disabled") == 0 ||
                    strcmp(block->widget, "Scroll") == 0 ||
+                   strcmp(block->widget, "TableCell") == 0 ||
+                   strcmp(block->widget, "Canvas") == 0 ||
                    strcmp(block->widget, "Popup") == 0)
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));
@@ -2838,18 +2882,44 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                       sizeof(prop_field), prop_value,
                                       sizeof(prop_value))) {
                     UiBlock *block = &ui_blocks[ui_block_count - 1];
-                    if(strcmp(block->widget, "Scroll") == 0) {
-                        int field = strcmp(prop_field, "bounds") == 0 ? 0 :
+                    if(strcmp(block->widget, "Scroll") == 0 ||
+                       strcmp(block->widget, "TableCell") == 0 ||
+                       strcmp(block->widget, "Canvas") == 0) {
+                        int field;
+
+                        if(strcmp(block->widget, "Scroll") == 0)
+                            field = strcmp(prop_field, "bounds") == 0 ? 0 :
                                     strcmp(prop_field, "content_height") == 0 ? 1 :
                                     strcmp(prop_field, "scroll_offset") == 0 ? 2 : -1;
+                        else if(strcmp(block->widget, "TableCell") == 0)
+                            field = strcmp(prop_field, "table") == 0 ? 0 :
+                                    strcmp(prop_field, "row") == 0 ? 1 :
+                                    strcmp(prop_field, "column") == 0 ? 2 : -1;
+                        else
+                            field = strcmp(prop_field, "bounds") == 0 ? 0 :
+                                    strcmp(prop_field, "scroll_x") == 0 ? 1 :
+                                    strcmp(prop_field, "scroll_y") == 0 ? 2 :
+                                    strcmp(prop_field, "zoom") == 0 ? 3 : -1;
                         if(field < 0)
-                            die("%s:%d: Scroll accepts only bounds, content_height and scroll_offset", rel, line_no);
+                            die("%s:%d: %s accepts only %s", rel, line_no,
+                                block->widget,
+                                strcmp(block->widget, "Scroll") == 0
+                                    ? "bounds, content_height and scroll_offset"
+                                    : strcmp(block->widget, "TableCell") == 0
+                                          ? "table, row and column"
+                                          : "bounds, scroll_x, scroll_y and zoom");
                         if(block->scope_fields & (1u << field))
-                            die("%s:%d: duplicate Scroll '%s' property", rel, line_no, prop_field);
-                        block->scope_args[field] = malloc(strlen(prop_value) + 1);
-                        if(block->scope_args[field] == NULL)
-                            die("out of memory parsing Scroll scope");
-                        strcpy(block->scope_args[field], prop_value);
+                            die("%s:%d: duplicate %s '%s' property",
+                                rel, line_no, block->widget, prop_field);
+                        if(strcmp(block->widget, "Canvas") == 0)
+                            ui_block_append_prop(block, prop_field, prop_value,
+                                                 KirSpan(rel, line_no, 1));
+                        else {
+                            block->scope_args[field] = malloc(strlen(prop_value) + 1);
+                            if(block->scope_args[field] == NULL)
+                                die("out of memory parsing %s scope", block->widget);
+                            strcpy(block->scope_args[field], prop_value);
+                        }
                         block->scope_fields |= 1u << field;
                     } else if(strcmp(block->widget, "Disabled") == 0) {
                         if(strcmp(prop_field, "when") != 0)

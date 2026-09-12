@@ -1,0 +1,74 @@
+#module "link"
+#import "theme"
+
+LinkVisualState :: enum {
+    LinkStateNormal = 0
+    LinkStateHover = 1
+    LinkStateDisabled = 2
+}
+
+LinkAppearance :: struct {
+    color: u32
+    underline: bool
+}
+
+LinkMixByte :: (from: u32, to: u32, amount: u32) -> u32 #export {
+    return (from * ((u32)100 - amount) + to * amount + (u32)50) / (u32)100
+}
+
+LinkMixColor :: (from: u32, to: u32, amount: u32) -> u32 #export {
+    fr: u32 = (from >> (u32)24) & (u32)255
+    fg: u32 = (from >> (u32)16) & (u32)255
+    fb: u32 = (from >> (u32)8) & (u32)255
+    fa: u32 = from & (u32)255
+    tr: u32 = (to >> (u32)24) & (u32)255
+    tg: u32 = (to >> (u32)16) & (u32)255
+    tb: u32 = (to >> (u32)8) & (u32)255
+    ta: u32 = to & (u32)255
+    return (LinkMixByte(fr, tr, amount) << (u32)24) |
+           (LinkMixByte(fg, tg, amount) << (u32)16) |
+           (LinkMixByte(fb, tb, amount) << (u32)8) |
+           LinkMixByte(fa, ta, amount)
+}
+
+LinkDefaultColor :: (explicit_color: u32, theme_link: u32) -> u32 #export {
+    if (explicit_color & (u32)255) != (u32)0 {
+        return explicit_color
+    }
+    return theme_link
+}
+
+LinkStateColor :: (base: u32, hover_color: u32, theme_hover: u32,
+    disabled_text: u32, state: i32) -> u32 #export {
+    if state == LinkStateDisabled {
+        return LinkMixColor(disabled_text, base, (u32)35)
+    }
+    if state == LinkStateHover {
+        if (hover_color & (u32)255) != (u32)0 {
+            return hover_color
+        }
+        if (theme_hover & (u32)255) != (u32)0 {
+            return theme_hover
+        }
+        return LinkMixColor(base, PackedColor((u32)0xFFFFFF, (u32)255), (u32)18)
+    }
+    return base
+}
+
+ResolveLinkAppearance :: (explicit_color: u32, hover_color: u32,
+    theme_link: u32, theme_hover: u32, disabled_text: u32,
+    hovered: bool, disabled: bool) -> LinkAppearance #export {
+    state: i32 = LinkStateNormal
+    if hovered {
+        state = LinkStateHover
+    }
+    if disabled {
+        state = LinkStateDisabled
+    }
+    appearance: LinkAppearance
+    base: u32 = LinkDefaultColor(explicit_color, theme_link)
+    appearance.color = LinkStateColor(base, hover_color, theme_hover,
+        disabled_text, state)
+    appearance.underline = state == LinkStateHover
+    return appearance
+}

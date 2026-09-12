@@ -88,11 +88,11 @@ func LoadFontFromMemory(typ string, data []byte, _ int32, _ []rune) Font {
 }
 
 func SetTextureFilter(Texture2D, int32) {}
-func RegisterUIFontData(name string, typ string, data []byte, _ []rune) bool {
+func RegisterTextFontData(name string, typ string, data []byte, _ []rune) bool {
 	_, ok := registerFontData(name, typ, data)
 	return ok
 }
-func UseUIFont(name string) { _ = useUIFont(name) }
+func UseTextFont(name string) { _ = useTextFont(name) }
 
 func GetMousePosition() Vector2 {
 	if rt, ok := active().(compatInputRuntime); ok {

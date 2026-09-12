@@ -1,5 +1,5 @@
-#ifndef UI_TEXT_H
-#define UI_TEXT_H
+#ifndef KRYON_TEXT_H
+#define KRYON_TEXT_H
 
 #include "kryon.h"
 
@@ -30,43 +30,43 @@ typedef struct {
     Color color;
 } SelectableTextBlock;
 
-Font GetUIFont(void);
+Font GetTextFont(void);
 int EnsureUIDefaultFont(void);
-int RegisterUIFont(const char *name, Font font);
-int RegisterUISmallFont(const char *name, Font font);
-int RegisterUIFontSource(const char *name, const char *file_type,
+int RegisterTextFont(const char *name, Font font);
+int RegisterSmallTextFont(const char *name, Font font);
+int RegisterTextFontSource(const char *name, const char *file_type,
                          const unsigned char *font_data, unsigned int font_size,
                          const int *codepoints, int codepoint_count);
-int RegisterUIFontSourceForText(const char *name, const char *file_type,
+int RegisterTextFontSourceForText(const char *name, const char *file_type,
                                 const unsigned char *font_data,
                                 unsigned int font_size,
                                 const char *text);
-int RegisterUIFixedFontSource(const char *name, const char *file_type,
+int RegisterFixedTextFontSource(const char *name, const char *file_type,
                               const unsigned char *font_data,
                               unsigned int font_size,
                               const int *codepoints, int codepoint_count);
-int RegisterUIFontFileSource(const char *name, const char *path,
+int RegisterTextFontFileSource(const char *name, const char *path,
                              const int *codepoints, int codepoint_count);
-int RegisterUIFontFileSourceForText(const char *name, const char *path,
+int RegisterTextFontFileSourceForText(const char *name, const char *path,
                                     const char *text);
-int UseUIFont(const char *name);
-int PushUIFont(const char *name);
-void PopUIFont(int token);
-int UIFontHasGlyph(Font font, int codepoint);
-Font LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data, unsigned int font_size, int base_size);
-Font LoadUIFontAsset(const char *path, int base_size);
-void UnloadUIFont(Font *font);
-void ClearUIFonts(void);
+int UseTextFont(const char *name);
+int PushTextFont(const char *name);
+void PopTextFont(int token);
+int TextFontHasGlyph(Font font, int codepoint);
+Font LoadTextFontFromMemory(const char *file_type, const unsigned char *font_data, unsigned int font_size, int base_size);
+Font LoadTextFontAsset(const char *path, int base_size);
+void UnloadTextFont(Font *font);
+void ClearTextFonts(void);
 /* Print per-font rasterization stats to stderr. No-op without
  * KRYON_MEM_DEBUG (see kryon_mem.h). */
-void UIFontMemoryReport(const char *tag);
+void TextFontMemoryReport(const char *tag);
 int TextWidth(const char *text, int font_size);
 int MeasureTextWidth(const char *text, int font_size, const char *typeface);
 int TextHeight(const char *text, int font_size);
 int TextLineHeight(int font_size);
 int ScaledTextWidth(const char *text, int scale);
-Font GetUIFontForCodepoint(int codepoint, int font_size);
-float GetUIFontScale(Font font, int font_size);
+Font GetTextFontForCodepoint(int codepoint, int font_size);
+float GetTextFontScale(Font font, int font_size);
 int PushTextSelectable(int selectable);
 void PopTextSelectable(int token);
 int TextBaselineY(const char *text, int box_y, int box_h, int font_size);

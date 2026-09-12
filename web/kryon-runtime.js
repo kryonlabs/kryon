@@ -39,10 +39,6 @@ export const DARKBROWN = Color(76, 63, 47, 255);
 export const MAGENTA = Color(255, 0, 255, 255);
 
 export * from "./control_props.js";
-export const SideTop = 0;
-export const SideBottom = 1;
-export const SideLeft = 2;
-export const SideRight = 3;
 export const KeyTab = 258;
 export const KeyBackspace = 259;
 export const KeyRight = 262;
@@ -157,7 +153,6 @@ export function createRuntime(options = {}) {
     instanceFrame: 0,
     instances: new Map(),
     disabledStack: [],
-    tabBarScopes: [],
     input: {
       events: [],
       focus: 0,
@@ -202,8 +197,6 @@ export function instanceState(rt, type, key, create) {
 }
 
 export function beginFrame(rt) {
-  if (rt.tabBarScopes.length !== 0)
-    throw new Error("unclosed tab bar scope at frame boundary");
   rt.frame = [];
   rt.statements = [];
   rt.hostCalls = [];
@@ -222,8 +215,6 @@ export function beginFrame(rt) {
 }
 
 export function endFrame(rt) {
-  if (rt.tabBarScopes.length !== 0)
-    throw new Error("unclosed tab bar scope at frame boundary");
   if (rt.input) {
     rt.input.lastFocusOrder = rt.input.focusOrder.slice();
     rt.input.events = [];
@@ -396,6 +387,38 @@ function stringValue(text, fallback = "") {
   const m = s.match(/^"((?:[^"\\]|\\.)*)"$/);
   if (!m) return fallback;
   return m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\t/g, "\t");
+}
+
+function propString(args, prop, fallback = "") {
+  if (args && typeof args === "object" && !Array.isArray(args)) {
+    const value = args[prop];
+    return value === undefined || value === null ? fallback : String(value);
+  }
+  const pattern = new RegExp("\\." + prop + "\\s*=\\s*(\"(?:[^\"\\\\]|\\\\.)*\"|[^,}]+)");
+  const match = String(args || "").match(pattern);
+  if (!match)
+    return fallback;
+  return stringValue(match[1], String(match[1] || "").trim());
+}
+
+function propClassList(args) {
+  const classes = [];
+  const add = (value) => {
+    if (value === undefined || value === null)
+      return;
+    String(value).split(/\s+/).filter(Boolean).forEach((name) => classes.push(name));
+  };
+  if (args && typeof args === "object" && !Array.isArray(args)) {
+    add(args.class);
+    add(args.className);
+    add(args.class_name);
+    if (Array.isArray(args.classes))
+      args.classes.forEach(add);
+  } else {
+    add(propString(args, "class", ""));
+    add(propString(args, "class_name", ""));
+  }
+  return [...new Set(classes)];
 }
 
 function parseBounds(args) {
@@ -843,37 +866,6 @@ function handleTabBar(rt, state, args, interactive = true) {
 function handleWidget(rt, name, args, state) {
   if (!rt.input)
     return false;
-  if (name === "EndTabItem") {
-    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
-    if (!scope || !scope.itemOpen)
-      throw new Error("EndTabItem without selected BeginTabItem");
-    scope.itemOpen = false;
-    return false;
-  }
-  if (name === "EndTabBar") {
-    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
-    if (!scope || scope.itemOpen)
-      throw new Error("unbalanced EndTabBar");
-    rt.tabBarScopes.pop();
-    return false;
-  }
-  if (name === "BeginTabBar") {
-    const scope = handleTabBar(rt, state, args,
-      !rt.disabledStack.some(Boolean));
-    if (scope.open)
-      rt.tabBarScopes.push(scope);
-    return scope.open;
-  }
-  if (name === "BeginTabItem") {
-    const scope = rt.tabBarScopes[rt.tabBarScopes.length - 1];
-    if (!scope || scope.itemOpen)
-      throw new Error("unbalanced BeginTabItem");
-    const index = numberValue(args, -1);
-    if (index < 0 || index >= scope.count || index !== scope.selected)
-      return false;
-    scope.itemOpen = true;
-    return true;
-  }
   if (name === "BeginDisabled") {
     rt.disabledStack.push(numberValue(args) !== 0);
     return false;
@@ -916,6 +908,113 @@ function handleWidget(rt, name, args, state) {
   }
 }
 
+function widgetTag(item) {
+  const args = item.args || {};
+  switch (item.name) {
+  case "Screen":
+  case "Page":
+    return "main";
+  case "Section":
+    return "section";
+  case "Heading":
+    return "h" + Math.max(1, Math.min(6, propNumber(args, "level", 2)));
+  case "Paragraph":
+  case "ParagraphText":
+    return "p";
+  case "Link":
+    return "a";
+  case "Button":
+  case "InvisibleButton":
+    return "button";
+  case "TextField":
+    return "input";
+  case "TextArea":
+    return "textarea";
+  case "Image":
+  case "PageImage":
+    return "img";
+  case "Checkbox":
+  case "Toggle":
+  case "Radio":
+    return "input";
+  default:
+    return "div";
+  }
+}
+
+function widgetText(item) {
+  const args = item.args || {};
+  switch (item.name) {
+  case "Text":
+  case "Heading":
+  case "Paragraph":
+  case "ParagraphText":
+  case "Link":
+    return propString(args, "text", "");
+  case "Button":
+  case "InvisibleButton":
+    return propString(args, "label", "");
+  default:
+    return "";
+  }
+}
+
+function widgetHref(item) {
+  if (item.name !== "Link")
+    return "";
+  return propString(item.args, "href", propString(item.args, "url", ""));
+}
+
+function widgetInputType(item) {
+  switch (item.name) {
+  case "Checkbox":
+  case "Toggle":
+    return "checkbox";
+  case "Radio":
+    return "radio";
+  case "TextField":
+    return "text";
+  default:
+    return "";
+  }
+}
+
+function webNodeFromWidget(item, index) {
+  const args = item.args || {};
+  const bounds = parseBounds(args);
+  return {
+    index,
+    kind: item.name,
+    tag: widgetTag(item),
+    key: propString(args, "key", propString(args, "id", String(index))),
+    name: propString(args, "name", ""),
+    classes: propClassList(args),
+    text: widgetText(item),
+    href: widgetHref(item),
+    inputType: widgetInputType(item),
+    alt: propString(args, "alt", propString(args, "alt_text", "")),
+    asset: propString(args, "asset_path", propString(args, "src", "")),
+    bounds,
+    hasBounds: bounds.width > 0 || bounds.height > 0,
+    state: {
+      disabled: isTruthyProp(args, "disabled"),
+      loading: isTruthyProp(args, "loading"),
+      selected: isTruthyProp(args, "selected"),
+      checked: isTruthyProp(args, "checked"),
+      invalid: isTruthyProp(args, "invalid"),
+      expanded: isTruthyProp(args, "expanded"),
+      open: isTruthyProp(args, "open")
+    }
+  };
+}
+
+export function webDocumentFrame(rt) {
+  return {
+    app: rt?.app || null,
+    nodes: (rt?.frame || []).map(webNodeFromWidget)
+  };
+}
+
 export function mount(rt, target) {
   const node = typeof target === "string" && typeof document !== "undefined"
     ? document.querySelector(target)
@@ -927,16 +1026,56 @@ export function mount(rt, target) {
   node.innerHTML = "";
   const root = document.createElement("div");
   root.className = "kryon-runtime";
+  root.dataset.kryRuntime = "web-document";
+  root.style.position = "relative";
+  root.style.minHeight = "100%";
   root.style.fontFamily = "system-ui, sans-serif";
-  root.style.display = "grid";
-  root.style.gap = "8px";
-  for (const item of rt.frame) {
-    const el = document.createElement(item.name === "Button" ? "button" : "div");
-    el.className = "kryon-widget kryon-widget-" + item.name.toLowerCase();
-    const args = item.args && typeof item.args === "object"
-      ? JSON.stringify(item.args, (_, value) => typeof value === "bigint" ? String(value) : value)
-      : item.args;
-    el.textContent = item.name + (args ? "(" + args + ")" : "");
+  for (const docNode of webDocumentFrame(rt).nodes) {
+    const el = document.createElement(docNode.tag);
+    el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
+    el.dataset.kryKind = docNode.kind;
+    el.dataset.kryKey = docNode.key;
+    if (docNode.name)
+      el.dataset.kryName = docNode.name;
+    if (docNode.hasBounds) {
+      el.style.position = "absolute";
+      el.style.left = docNode.bounds.x + "px";
+      el.style.top = docNode.bounds.y + "px";
+      el.style.width = Math.max(0, docNode.bounds.width) + "px";
+      el.style.height = Math.max(0, docNode.bounds.height) + "px";
+      el.style.boxSizing = "border-box";
+    }
+    if (docNode.state.disabled)
+      el.setAttribute("disabled", "");
+    if (docNode.state.selected)
+      el.setAttribute("aria-selected", "true");
+    if (docNode.state.invalid)
+      el.setAttribute("aria-invalid", "true");
+    if (docNode.state.expanded)
+      el.setAttribute("aria-expanded", "true");
+    if (docNode.href)
+      el.setAttribute("href", docNode.href);
+    if (docNode.inputType)
+      el.setAttribute("type", docNode.inputType);
+    if (docNode.tag === "img") {
+      if (docNode.asset)
+        el.setAttribute("src", docNode.asset);
+      el.setAttribute("alt", docNode.alt);
+    } else if (docNode.tag === "input") {
+      if (docNode.text)
+        el.setAttribute("value", docNode.text);
+      if (docNode.state.checked)
+        el.checked = true;
+    } else {
+      el.textContent = docNode.text;
+    }
+    el.addEventListener("click", () => {
+      if (rt?.QueueTap) {
+        const x = docNode.bounds.x + Math.max(1, docNode.bounds.width) * 0.5;
+        const y = docNode.bounds.y + Math.max(1, docNode.bounds.height) * 0.5;
+        rt.QueueTap(x, y);
+      }
+    });
     root.appendChild(el);
   }
   node.appendChild(root);
@@ -972,15 +1111,15 @@ export function GetScreenHeight() {
   return 600;
 }
 
-export function GetUIViewWidth() {
+export function GetViewWidth() {
   return GetScreenWidth();
 }
 
-export function GetUIViewHeight() {
+export function GetViewHeight() {
   return GetScreenHeight();
 }
 
-export function GetUIPageSidePadding() {
+export function GetPageSidePadding() {
   return Scale(24);
 }
 
@@ -1003,7 +1142,7 @@ function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-export function DarkenUIColor(color, amount) {
+export function DarkenColor(color, amount) {
   return Color(
     clampByte((color?.r || 0) - amount),
     clampByte((color?.g || 0) - amount),
@@ -1012,7 +1151,7 @@ export function DarkenUIColor(color, amount) {
   );
 }
 
-export function LightenUIColor(color, amount) {
+export function LightenColor(color, amount) {
   return Color(
     clampByte((color?.r || 0) + amount),
     clampByte((color?.g || 0) + amount),
@@ -1060,24 +1199,19 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function BeginFrameBox(bounds) {
-  return { bounds, cursor: NewVector2(bounds?.x || 0, bounds?.y || 0) };
-}
-
-export function FramePack(frame, side, size) {
-  return { frame, side, size };
-}
-
-export function GridCell(grid, column, row, columnSpan = 1, rowSpan = 1) {
-  return { grid, column, row, columnSpan, rowSpan };
-}
-
-export function Place(bounds, item) {
-  return { bounds, item };
-}
-
 export function BeginScrollContainer(...args) {
   return struct("BeginScrollContainer", args);
+}
+
+export function BeginCanvas(canvas) {
+  return {
+    active: false,
+    dragging: false,
+    selected_index: -1,
+    selectedIndex: -1,
+    world: NewVector2(),
+    canvas
+  };
 }
 
 export function CanvasHitTest(canvas, screen) {
@@ -1086,7 +1220,7 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
-  "ClearBackground", "Collapsible", "Column", "Dropdown", "EndCanvas",
+  "ClearBackground", "Collapsible", "Column", "Dropdown", "BeginCanvas", "EndCanvas",
   "EndScroll", "Icon", "Fieldset", "Link", "ListBox",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",

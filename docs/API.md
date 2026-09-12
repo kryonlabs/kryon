@@ -57,12 +57,12 @@ deltas drive the shared `.kry` motion policy. Supply nondecreasing timestamps.
 Leaving it nil uses `time.Now`. This callback is per runtime and does not
 replace wall-clock timing of input events or platform services.
 
-### `InitUI`
+### `InitInterface`
 
 Initialize the UI system with viewport dimensions and DPI scale.
 
 ```c
-void InitUI(int width, int height, float dpi);
+void InitInterface(int width, int height, float dpi);
 ```
 
 **Parameters:**
@@ -76,49 +76,49 @@ Set the active theme. UI controls automatically use the active theme colors.
 
 ```c
 void SetCurrentTheme(int theme_id, int current_dark_mode);
-void SetUILinkColor(Color link);
+void SetLinkColor(Color link);
 ```
 
-### `SetUIFrame`
+### `SetFrameCamera`
 
 Update the UI camera and reset per-frame state.
 
 ```c
-void SetUIFrame(Camera2D camera);
+void SetFrameCamera(Camera2D camera);
 ```
 
-`SetUIFrame` sanitizes invalid cameras before storing them. A zero-initialized
+`SetFrameCamera` sanitizes invalid cameras before storing them. A zero-initialized
 `Camera2D` is treated as an untransformed UI camera with `zoom = 1.0f`, so controls
 continue to receive pointer input. It also closes the previous focus pass and
 starts a new one, so registered focus controls are reset every frame. If an
-application does not need a transformed UI camera, prefer `BeginUIFrame`.
+application does not need a transformed UI camera, prefer `BeginInterfaceFrame`.
 
-### `GetUIDefaultCamera`
+### `GetDefaultCamera`
 
 Return the canonical untransformed UI camera.
 
 ```c
-Camera2D GetUIDefaultCamera(void);
+Camera2D GetDefaultCamera(void);
 ```
 
-### `BeginUIFrame`
+### `BeginInterfaceFrame`
 
 Convenience frame entry point for normal screen-space UI. It updates the viewport/DPI
 state, updates the layout view size, and begins a frame with
-`GetUIDefaultCamera()`.
+`GetDefaultCamera()`.
 
 ```c
-void BeginUIFrame(int width, int height, float dpi);
+void BeginInterfaceFrame(int width, int height, float dpi);
 ```
 
-### `EndUIFrame`
+### `EndInterfaceFrame`
 
 Finish the current UI frame after all widgets have been drawn and before the
 backend drawing pass ends. This draws deferred overlays, including dropdowns and
 text-input context menus, and finalizes focus and inspection state.
 
 ```c
-void EndUIFrame(void);
+void EndInterfaceFrame(void);
 ```
 
 ---
@@ -167,16 +167,15 @@ Scroll content: {
 `bounds` is required and accepts a rectangle expression or `{x,y,w,h}`.
 `content_height` defaults to zero; `scroll_offset` defaults to `nil` and, when
 provided, points to caller-owned integer state. A block name optionally binds
-the content rectangle returned by `BeginScroll`, visible only inside that block.
+the content rectangle for the scope, visible only inside that block.
 Child widgets use this rectangle for scrolled positioning; the scope does not
 silently transform explicit coordinates. Nested blocks intersect clips.
 
-The compiler pairs `BeginScroll` and `EndScroll` through lexical cleanup,
-including return, break and continue. The same structured-control-flow
-restrictions as `Disabled` apply. Generated C and native Go parity tests exercise
-nested input/clipping, wheel scrolling, scrollbar dragging and parent restoration;
-C++ syntax tests cover the shared lowering. This native scope is not yet
-behaviorally verified in the JS runner.
+The compiler lowers `Scroll` to the native host scroll scope through lexical
+cleanup, including return, break and continue. The same structured-control-flow
+restrictions as `Disabled` apply. Generated C, Go, and JavaScript parity tests
+exercise nested input/clipping, wheel scrolling, scrollbar dragging and parent
+restoration; C++ syntax tests cover the shared lowering.
 
 ### Popup blocks in native `.kry` code
 
@@ -403,11 +402,11 @@ ReplaceRoute("/docs#getting-started");
 int route_version = GetRouteVersion();
 
 Page((PageProps){
-    .bounds = {0, 0, GetUIViewWidth(), GetUIViewHeight()},
+    .bounds = {0, 0, GetViewWidth(), GetViewHeight()},
     .title = "Kryon",
     .description = "Native-feeling apps across desktop and web.",
     .gap = Scale(16),
-    .padding = GetUIPageSidePadding(),
+    .padding = GetPageSidePadding(),
     .key = Key("home")
 });
 Heading((HeadingProps){{40, 40, 520, 40}, "Kryon", 1, Text32, GetThemeText(), 0});
@@ -427,46 +426,46 @@ return `0`.
 
 ### Color
 
-#### `LightenUIColor`
+#### `LightenColor`
 
-Lighten a color by adding to each RGB component.
+Lighten a color by increasing HSL lightness.
 
 ```c
-Color LightenUIColor(Color c, int amount);
+Color LightenColor(Color c, int amount);
 ```
 
 **Parameters:**
 - `c` - Source color
-- `amount` - Amount to add (0-255)
+- `amount` - Lightness amount (0-255)
 
 **Returns:** Lightened color
 
-#### `DarkenUIColor`
+#### `DarkenColor`
 
-Darken a color by subtracting from each RGB component.
+Darken a color by decreasing HSL lightness.
 
 ```c
-Color DarkenUIColor(Color c, int amount);
+Color DarkenColor(Color c, int amount);
 ```
 
 ---
 
 ### Scaling
 
-#### `SetUIScale`
+#### `SetScale`
 
 Set the DPI scale factor (call once at startup).
 
 ```c
-void SetUIScale(float scale);
+void SetScale(float scale);
 ```
 
-#### `GetUIScale`
+#### `GetScale`
 
 Get the current DPI scale factor.
 
 ```c
-float GetUIScale(void);
+float GetScale(void);
 ```
 
 #### `Scale`
@@ -477,24 +476,24 @@ Scale a pixel value by the DPI factor.
 int Scale(int px);
 ```
 
-#### `ClampUIPx`
+#### `ClampPx`
 
 Scale and clamp a pixel value between min and max.
 
 ```c
-int ClampUIPx(int px, int min_px, int max_px);
+int ClampPx(int px, int min_px, int max_px);
 ```
 
 ---
 
 ### DPI
 
-#### `ui_dpi_state`
+#### `dpi_state`
 
 Global DPI state structure.
 
 ```c
-typedef struct UIDPIState {
+typedef struct DPIState {
     int view_width;
     int view_height;
     float ui_scale;
@@ -503,52 +502,52 @@ typedef struct UIDPIState {
     int base_width;
     int base_height;
     int needs_update;
-} UIDPIState;
+} DPIState;
 ```
 
-#### `InitUIDPI`
+#### `InitDPI`
 
 Initialize DPI system.
 
 ```c
-void InitUIDPI(void);
+void InitDPI(void);
 ```
 
-#### `UpdateUIDPI`
+#### `UpdateDPI`
 
 Update DPI state for new viewport size.
 
 ```c
-void UpdateUIDPI(int view_width, int view_height);
+void UpdateDPI(int view_width, int view_height);
 ```
 
 ---
 
 ### Layout
 
-#### `SetUIViewSize`
+#### `SetViewSize`
 
 Set the view dimensions.
 
 ```c
-void SetUIViewSize(int width, int height);
+void SetViewSize(int width, int height);
 ```
 
-#### `GetUIViewWidth` / `GetUIViewHeight`
+#### `GetViewWidth` / `GetViewHeight`
 
 Get current view dimensions.
 
 ```c
-int GetUIViewWidth(void);
-int GetUIViewHeight(void);
+int GetViewWidth(void);
+int GetViewHeight(void);
 ```
 
-#### `GetUICenteredColumn`
+#### `GetCenteredColumn`
 
 Calculate centered column dimensions.
 
 ```c
-void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
+void GetCenteredColumn(int max_w, int side_pad, int *x, int *w);
 ```
 
 **Parameters:**
@@ -557,48 +556,48 @@ void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
 - `x` - Output: x position (can be NULL)
 - `w` - Output: width (can be NULL)
 
-#### `GetUIPageSidePadding`
+#### `GetPageSidePadding`
 
 Calculate page side padding based on current view width.
 
 ```c
-int GetUIPageSidePadding(void);
+int GetPageSidePadding(void);
 ```
 
 ---
 
 ### Clipping
 
-#### `GetUIClipIntersection`
+#### `GetClipIntersection`
 
 Calculate intersection of two rectangles.
 
 ```c
-Rectangle GetUIClipIntersection(Rectangle a, Rectangle b);
+Rectangle GetClipIntersection(Rectangle a, Rectangle b);
 ```
 
-#### `BeginUIClip`
+#### `BeginClip`
 
 Begin a clipping region.
 
 ```c
-void BeginUIClip(int x, int y, int w, int h);
+void BeginClip(int x, int y, int w, int h);
 ```
 
-#### `EndUIClip`
+#### `EndClip`
 
 End the current clipping region.
 
 ```c
-void EndUIClip(void);
+void EndClip(void);
 ```
 
-#### `ResetUIClip`
+#### `ResetClip`
 
 Reset all clipping.
 
 ```c
-void ResetUIClip(void);
+void ResetClip(void);
 ```
 
 ---
@@ -614,36 +613,36 @@ measurement, and drawing remain backend services.
 #### Font Management
 
 ```c
-Font GetUIFont(void);
-int RegisterUIFont(const char *name, Font font);
-int RegisterUISmallFont(const char *name, Font font);
-int RegisterUIFontSourceForText(const char *name, const char *file_type, const unsigned char *font_data, unsigned int font_size, const char *text);
-int RegisterUIFontFileSourceForText(const char *name, const char *path, const char *text);
-int UseUIFont(const char *name);
-int UIFontHasGlyph(Font font, int codepoint);
+Font GetTextFont(void);
+int RegisterTextFont(const char *name, Font font);
+int RegisterSmallTextFont(const char *name, Font font);
+int RegisterTextFontSourceForText(const char *name, const char *file_type, const unsigned char *font_data, unsigned int font_size, const char *text);
+int RegisterTextFontFileSourceForText(const char *name, const char *path, const char *text);
+int UseTextFont(const char *name);
+int TextFontHasGlyph(Font font, int codepoint);
 ```
 
 #### Font Loading
 
 ```c
-Font LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data, unsigned int font_size, int base_size);
-Font LoadUIFontAsset(const char *path, int base_size);
-void UnloadUIFont(Font *font);
-void ClearUIFonts(void);
-void UIFontMemoryReport(const char *tag);
+Font LoadTextFontFromMemory(const char *file_type, const unsigned char *font_data, unsigned int font_size, int base_size);
+Font LoadTextFontAsset(const char *path, int base_size);
+void UnloadTextFont(Font *font);
+void ClearTextFonts(void);
+void TextFontMemoryReport(const char *tag);
 ```
 
-`UIFontMemoryReport` prints per-font rasterization stats (codepoint counts,
+`TextFontMemoryReport` prints per-font rasterization stats (codepoint counts,
 rasterized sizes, glyph counts) to stderr. It is a no-op unless
 `KRYON_MEM_DEBUG` is set in the environment.
 
-Source fonts registered through `RegisterUIFontSource` rasterize their
+Source fonts registered through `RegisterTextFontSource` rasterize their
 declared codepoints at each requested physical size and retain bounded size
 tiers. Their atlas coverage is immutable after registration: drawing or
 typing text never reallocates a font texture. Supply every codepoint the
 source is expected to render; omitting the list selects Kryon's standard UI
-coverage. `RegisterUIFixedFontSource` is an equivalent explicit name.
-Use `RegisterUIFontSourceForText` or `RegisterUIFontFileSourceForText` when
+coverage. `RegisterFixedTextFontSource` is an equivalent explicit name.
+Use `RegisterTextFontSourceForText` or `RegisterTextFontFileSourceForText` when
 the font should include Kryon's standard UI coverage plus the unique
 codepoints found in a UTF-8 corpus, such as localized strings.
 
@@ -824,15 +823,15 @@ Profile-image, platform, payment, and language artwork is packed into the
 separate full-color `icons/pfp.png`, `icons/platforms.png`,
 `icons/payments.png`, `icons/language.png`, and `icons/tiles.png` sheets. They remain in the same
 indexed icon catalog with their existing `ICON_*` values. Use
-`GetUIProfilePictureIconCount`,
-`GetUIProfilePictureIconType`, and `GetUIProfilePictureIconName` to enumerate
+`GetProfileImageIconCount`,
+`GetProfileImageIconType`, and `GetProfileImageIconName` to enumerate
 the standard profile-image options.
 
-Kryon also exposes stable `UI_SYNC_PROFILE_ICON_*` IDs and mapping helpers:
+Kryon also exposes stable `SYNC_PROFILE_ICON_*` IDs and mapping helpers:
 
 ```c
-IconType GetUIProfilePictureIconTypeForSyncID(int sync_id);
-int GetUISyncIDForProfilePictureIconType(IconType type);
+IconType GetProfileImageIconTypeForSyncID(int sync_id);
+int GetSyncIDForProfileImageIconType(IconType type);
 ```
 
 Use those IDs for server storage or sync payloads instead of generated
@@ -1377,7 +1376,7 @@ is needed.
 **Returns:** 1 if clicked, 0 otherwise. In retained `BeginTree`/`EndTree`
 declarations, reconciliation is atomic: a synchronous activation observed while
 the tree is being declared cannot replace the previous complete tree with a
-partial declaration. Retained hosts should consume `UI_EVENT_CLICK` from
+partial declaration. Retained hosts should consume `EVENT_CLICK` from
 `NextEvent` after `EndTree` when wiring purely declarative state updates.
 
 `BeginButton(props)` opens a centered content area until `End()`. Logical style
@@ -1540,20 +1539,11 @@ typedef struct {
 } TabBarProps;
 
 int TabBar(TabBarProps bar);
-int BeginTabBar(TabBarProps bar, int *selected_index);
-int BeginTabItem(int index);
-void EndTabItem(void);
-void EndTabBar(void);
 ```
 
-Use `TabBar` when only the header interaction result is needed. Use
-`BeginTabBar` for arbitrary tab contents: pass the same canonical
-`TabBarProps` plus caller-owned selection state, conditionally submit each
-item's children when `BeginTabItem(index)` returns true, and balance successful
-item and bar beginnings with their corresponding endings. A header selection
-updates `selected_index` before the item checks in that frame. The scope does
-not introduce a second renderer; it delegates the complete header behavior to
-`TabBar`.
+Use `TabBar` as the single canonical tab header. Store a non-negative returned
+index into caller-owned selection state, then draw the selected tab's content
+with ordinary conditionals. There is no separate Begin/End tab scope surface.
 
 #### Dropdown
 
@@ -1654,7 +1644,7 @@ void ClosePopup(void);
 
 `BeginPopup` returns nonzero only while the caller-owned `open` value is true.
 Its children use the same overlay painting, clipping, nested layout and input
-capture as composed combos. Escape, a pointer release outside the popup,
+capture as composed popups. Escape, a pointer release outside the popup,
 disabling it, or omitting its owner on a later frame closes it. Outside releases
 are consumed so the background widget underneath is not activated.
 
@@ -1804,7 +1794,7 @@ void EndScrollPage(ScrollPage page);
 #### Node Measurement
 
 ```c
-int GetNodeHeight(const UIWidgetNode *node);
+int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 ```
 
@@ -1990,19 +1980,19 @@ backend-neutral roles, labels, bounds, focus, disabled, and checked state.
 frame. The DOM backend additionally publishes the snapshot as ARIA nodes.
 
 ```c
-UIAccessibilityNode nodes[64];
+AccessibilityNode nodes[64];
 int count = GetAccessibilitySnapshot(nodes, 64);
 ```
 
 ### Input Capture
 
 ```c
-int UIInputCapturesClick(Vector2 point);
+int InputCapturesClick(Vector2 point);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
-void SetUIModalCapture(Rectangle bounds);
+void SetModalCapture(Rectangle bounds);
 ```
 
-`SetUIModalCapture` defines the active modal rectangle for the current frame and the
+`SetModalCapture` defines the active modal rectangle for the current frame and the
 next frame. While a modal carried from the previous frame has not registered its current
 bounds yet, all pointer input is captured. After registration, clicks outside the bounds
 are captured while controls inside the modal remain usable.
@@ -2012,7 +2002,7 @@ register their bounds automatically.
 
 Applications should use `Modal` for standard title/message/action dialogs
 and `Modal` for modal content instead of manually drawing a backdrop
-and calling `SetUIModalCapture`. Manual capture remains available for
+and calling `SetModalCapture`. Manual capture remains available for
 specialized overlays, but the helpers keep modal bounds, backdrop, and input
 capture consistent across projects.
 
@@ -2025,7 +2015,7 @@ void ui_set_input_blocked(int blocked);
 ### Hover Effects
 
 ```c
-int UIHoverEffectsEnabled(void);
+int HoverEffectsEnabled(void);
 void SetTransitionCuesEnabled(int enabled);
 int TransitionCuesEnabled(void);
 ```
@@ -2041,18 +2031,18 @@ Keyboard navigation and focus management.
 ### Focus Begin/End
 
 ```c
-void BeginUIFocus(void);
-void EndUIFocus(void);
+void BeginFocusScope(void);
+void EndFocusScope(void);
 ```
 
-Normal UI code does not need to call these. `BeginUIFrame` and `SetUIFrame`
+Normal UI code does not need to call these. `BeginInterfaceFrame` and `SetFrameCamera`
 manage the focus pass automatically. Use these only for custom frame lifecycles
 that do not go through Kryon's normal frame entry points.
 
 ### Focus Registration
 
 ```c
-int RegisterUIFocus(int id, Rectangle bounds);
+int RegisterFocus(int id, Rectangle bounds);
 ```
 
 **Returns:** 1 if this element has focus
@@ -2060,16 +2050,16 @@ int RegisterUIFocus(int id, Rectangle bounds);
 ### Focus State
 
 ```c
-int IsUIFocusActive(int id);
-int IsUIFocusActivatePressed(int id);
+int IsFocusActive(int id);
+int IsFocusActivatePressed(int id);
 ```
 
 ### Focus Control
 
 ```c
-void SetUIFocus(int id);
-void ClearUIFocus(void);
-void SetUIFocusTextInputActive(int active);
+void SetFocus(int id);
+void ClearFocus(void);
+void SetFocusTextInputActive(int active);
 ```
 
 ### Focus Indicator
@@ -2090,7 +2080,7 @@ void KryonMemReport(const char *tag);
 Both are no-ops unless `KRYON_MEM_DEBUG` is set in the environment, so apps
 can call them at interesting points unconditionally. `KryonMemReport` prints
 the process RSS/high-water marks (Linux) and the glibc allocator arena
-breakdown to stderr. `UIFontMemoryReport` (Text section) reports per-font
+breakdown to stderr. `TextFontMemoryReport` (Text section) reports per-font
 rasterization stats under the same switch.
 
 ## Utility Functions
@@ -2330,24 +2320,32 @@ each widget: prepare a plain struct, keep state in caller variables, and call th
 matching immediate-mode function each frame.
 
 ```c
-FrameBox frame = BeginFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
-Rectangle row = FramePack(&frame, SideTop, 32);
-
 int selected = 0;
-ListBox((ListBoxProps){
-    .bounds = row,
+Dropdown((DropdownProps){
+    .bounds = (Rectangle){40, 40, 220, 32},
     .id = 10,
-    .items = items,
-    .item_count = item_count,
+    .options = items,
+    .option_count = item_count,
     .selected_index = &selected,
-    .row_height = 30
 });
 ```
 
-Collection widgets use `scroll_offset` as a caller-owned pixel offset. Canvas
-uses the same one-call shape: draw between `BeginCanvas` and `EndCanvas`;
-scroll and zoom in the `Canvas` struct are applied to canvas drawing and hit
-coordinates.
+Collection widgets use `scroll_offset` as a caller-owned pixel offset. In
+native `.kry` code, canvas content uses a lexical `Canvas` block:
+
+```kry
+Canvas canvas: {
+    bounds = {40, 50, 620, 420}
+    scroll_x = &scroll_x
+    scroll_y = &scroll_y
+    zoom = &zoom
+    CanvasGrid((Rectangle){40, 50, 620, 420}, 24, GetThemeButton())
+    Circle((int)canvas.world.x, (int)canvas.world.y, 4, GetThemeSurface())
+}
+```
+
+The compiler lowers the block to host `BeginCanvas`/`EndCanvas` support.
+Scroll and zoom are applied to canvas drawing and hit coordinates.
 
 Text fields and text areas use the shared `EditText` core. Ctrl/Cmd+C copies
 the field buffer, Ctrl/Cmd+X cuts it, and Ctrl/Cmd+V pastes clipboard text
@@ -2355,7 +2353,7 @@ through the existing codepoint filter.
 
 Feature families:
 
-- Geometry: `FrameBox`, `FramePack`, `GridCell`, `Place`, `Separator`
+- Geometry: `Rectangle`, `Grid`, `Column`, `Row`, `Stack`, `Separator`
 - Menus: `MenuBar`, `PopupMenu`
 - Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `Fieldset`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
@@ -2386,17 +2384,25 @@ and target through `pasted_text`, `pasted_row`, and `pasted_column` (the matchin
 capitalized fields in Go). C exposes the pasted string from runtime-owned
 clipboard storage, valid until the clipboard is changed again.
 
-For interactive cell content, set `TableViewProps.custom_cells` (`CustomCells`
-in Go), draw `TableView`, then call `BeginTableCell(table, row, column)` for each
-cell and finish each scope with `EndTableCell()`. The returned rectangle is the
-cell's full bounds; place native child widgets using those coordinates. The
-scope clips drawing and input to the visible cell, respects column order,
-visibility, scrolling and frozen rows, and inherits table disabled state.
-Always end the scope, including for hidden or invalid cells. The table and
-children should use explicit bounds. In custom-cell mode, body selection,
-activation and body keyboard handling belong to the children; header sorting
-and resizing remain owned by the table. Keep row entries for geometry even
-when their cell text arrays are empty.
+For interactive cell content in `.kry`, set `TableViewProps.custom_cells`,
+draw `TableView`, then use a `TableCell` block for each custom cell:
+
+```kry
+TableCell action_cell: {
+    table = table_props
+    row = 0
+    column = 0
+    Button((ButtonProps){.bounds = action_cell, .label = "Open", .id = 40})
+}
+```
+
+The block name binds the cell's full bounds. Child widgets should use those
+coordinates. The scope clips drawing and input to the visible cell, respects
+column order, visibility, scrolling and frozen rows, and inherits table
+disabled state. The compiler closes the scope through lexical cleanup. In
+custom-cell mode, body selection, activation and body keyboard handling belong
+to the children; header sorting and resizing remain owned by the table. Keep
+row entries for geometry even when their cell text arrays are empty.
 
 Cell content may use `Row` or `Column` with the returned cell bounds and
 zero-positioned child controls. Explicitly positioned children stay outside the
@@ -2445,7 +2451,7 @@ int main(void) {
         BeginDrawing();
         ClearBackground(BLACK);
 
-        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), dpi);
+        BeginInterfaceFrame(GetScreenWidth(), GetScreenHeight(), dpi);
 
         // Draw UI
         if (Button((ButtonProps){
@@ -2456,7 +2462,7 @@ int main(void) {
             // Button clicked
         }
 
-        EndUIFrame();
+        EndInterfaceFrame();
         EndDrawing();
     }
 

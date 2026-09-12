@@ -226,16 +226,17 @@ App :: () #ui {
     Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
     Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
     Dropdown((DropdownProps){.bounds = {Scale(150), Scale(70), Scale(90), Scale(24)}, .id = 22, .options = choices, .option_count = 3, .selected_index = &pick})
-    frame_box: FrameBox = BeginFrameBox((Rectangle){Scale(4), Scale(392), Scale(160), Scale(80)}, Scale(8), Scale(8), Scale(4))
-    packed: Rectangle = FramePack(&frame_box, SideTop, Scale(24))
-    layout_grid: GridFrame = {frame_box.bounds, 2, 2, Scale(4), Scale(4), Scale(0), Scale(0)}
-    grid_cell: Rectangle = GridCell(layout_grid, 1, 1, 1, 1)
-    placed: Rectangle = Place(packed, Scale(4), Scale(4), Scale(24), Scale(12))
+    grid_cell: Rectangle = {Scale(12), Scale(400), Scale(64), Scale(24)}
+    placed: Rectangle = {Scale(16), Scale(432), Scale(24), Scale(12)}
     CanvasGrid(grid_cell, 8, GetThemeIcon())
     CanvasGrid(placed, 4, GetThemeButton())
-    canvas_result: CanvasResult = BeginCanvas((Canvas){{Scale(180), Scale(392), Scale(100), Scale(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-    Circle((int)canvas_result.world.x, (int)canvas_result.world.y, Scale(3), GetThemeSurface())
-    EndCanvas((Canvas){{Scale(180), Scale(392), Scale(100), Scale(64)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+    Canvas canvas_result: {
+        bounds = {Scale(180), Scale(392), Scale(100), Scale(64)}
+        scroll_x = &canvas_scroll_x
+        scroll_y = &canvas_scroll_y
+        zoom = &canvas_zoom
+        Circle((int)canvas_result.world.x, (int)canvas_result.world.y, Scale(3), GetThemeSurface())
+    }
     Slider((SliderProps){.bounds = {Scale(250), Scale(8), Scale(60), Scale(56)}, .id = 23, .kind = 1, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0})
     CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
     SelectableText("select me", Scale(150), Scale(100), Text16, GetThemeText())
@@ -535,12 +536,9 @@ grep -q 'kr.BeginDisabled(true)' "$out"
 grep -q 'kr.EndDisabled()' "$out"
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 22.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
-grep -q 'kr.BeginFrameBox(kr.Rectangle{' "$out"
-grep -q 'kr.FramePack(&frame_box, kr.SideTop' "$out"
-grep -q 'kr.GridCell(layout_grid, 1, 1, 1, 1)' "$out"
-grep -q 'kr.Place(packed,' "$out"
-grep -q 'kr.BeginCanvas(kr.Canvas{' "$out"
-grep -q 'kr.EndCanvas(kr.Canvas{' "$out"
+grep -q 'canvas_result_spec kr.Canvas = kr.Canvas{' "$out"
+grep -q 'canvas_result kr.CanvasResult = kr.BeginCanvas(canvas_result_spec)' "$out"
+grep -q 'kr.EndCanvas(canvas_result_spec)' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'SelectableText(' "$out"
 grep -q 'ShowToast("toast from kry")' "$out"

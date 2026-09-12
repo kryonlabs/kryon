@@ -1,0 +1,67 @@
+#module "collapsible"
+#import "drawing_props"
+
+CollapsibleMarkerKind :: enum {
+    CollapsibleMarkerClosed = 0
+    CollapsibleMarkerOpen = 1
+    CollapsibleMarkerLeaf = 2
+}
+
+CollapsibleMetrics :: struct {
+    header_height: i32
+    depth_indent: i32
+    close_width: i32
+    icon_offset: i32
+    text_offset: i32
+}
+
+CollapsibleLayout :: struct {
+    header: Rectangle
+    body: Rectangle
+    close_bounds: Rectangle
+    has_close: bool
+}
+
+CollapsibleMetricsFor :: (scale: float) -> CollapsibleMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: CollapsibleMetrics
+    metrics.header_height = (i32)(32.0 * scale)
+    metrics.depth_indent = (i32)(20.0 * scale)
+    metrics.close_width = (i32)(28.0 * scale)
+    metrics.icon_offset = (i32)(8.0 * scale)
+    metrics.text_offset = (i32)(28.0 * scale)
+    return metrics
+}
+
+CollapsibleMarkerFor :: (open: bool, leaf: bool) -> i32 #export {
+    if leaf { return CollapsibleMarkerLeaf }
+    if open { return CollapsibleMarkerOpen }
+    return CollapsibleMarkerClosed
+}
+
+CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
+    has_close: bool, metrics: CollapsibleMetrics) -> CollapsibleLayout #export {
+    layout: CollapsibleLayout
+    header: Rectangle = bounds
+    header.height = (float)metrics.header_height
+    if tree && depth > 0 {
+        indent: float = (float)(depth * metrics.depth_indent)
+        if indent > header.width { indent = header.width }
+        header.x += indent
+        header.width -= indent
+    }
+    layout.header = header
+    layout.body = header
+    layout.has_close = has_close
+    if has_close {
+        close_width: float = (float)metrics.close_width
+        if close_width > header.width { close_width = header.width }
+        layout.close_bounds.x = header.x + header.width - close_width
+        layout.close_bounds.y = header.y
+        layout.close_bounds.width = close_width
+        layout.close_bounds.height = header.height
+        layout.body.width = header.width - close_width
+        if layout.body.width < 0.0 { layout.body.width = 0.0 }
+    }
+    return layout
+}

@@ -2,9 +2,9 @@
  * sfs_test.c - synthetic file system + input injection.
  *
  * Headless: no window, no GPU. Widget directories come from the inspect
- * tree (widgets register through BeginUIWidget without drawing), input
+ * tree (widgets register through BeginWidget without drawing), input
  * files round-trip through kry_inject with raylib-style edges derived at
- * each pump, and widget taps land on the real click path (UIHandleClick).
+ * each pump, and widget taps land on the real click path (HandleClick).
  */
 #include "kryon.h"
 #include "kry_inject.h"
@@ -154,7 +154,7 @@ test_input_keys_and_text(void)
 static void
 test_widgets(void)
 {
-    UIWidget widget;
+    Widget widget;
     KrySfsEntry entries[16];
     int n;
     char buf[128];
@@ -162,14 +162,14 @@ test_widgets(void)
     /* any SFS touch arms inspect recording before widgets register; the
      * frame call gives ui_mouse_world a sane camera like a real app */
     KrySfsList("/", entries, 16);
-    BeginUIFrame(800, 600, 1.0f);
-    BeginUIInspectFrame(NULL);
-    widget = BeginUIWidget("button", "sfs-test:login", (Rectangle){100, 50,
+    BeginInterfaceFrame(800, 600, 1.0f);
+    BeginInspectFrame(NULL);
+    widget = BeginWidget("button", "sfs-test:login", (Rectangle){100, 50,
                                                                     80, 24},
                            0);
-    EndUIWidget(&widget);
-    EndUIInspectFrame();
-    EndUIFrame();
+    EndWidget(&widget);
+    EndInspectFrame();
+    EndInterfaceFrame();
 
     n = KrySfsList("/widgets", entries, 16);
     CHECK(n >= 1);
@@ -179,13 +179,13 @@ test_widgets(void)
     check_str("widget bounds", buf, "100 50 80 24");
 
     /* tapping the widget drives the real click path: the release lands on
-     * the second pump, which is when UIHandleClick fires */
+     * the second pump, which is when HandleClick fires */
     snprintf(buf, sizeof(buf), "/widgets/%d/tap", n - 1);
     CHECK(KrySfsWrite(buf, "1") == 1);
     InjectPump();
     CHECK(IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
     InjectPump();
-    CHECK(UIHandleClick((Rectangle){100, 50, 80, 24}, 0, NULL));
+    CHECK(HandleClick((Rectangle){100, 50, 80, 24}, 0, NULL));
     CHECK((int)GetMousePosition().x == 140);
     CHECK((int)GetMousePosition().y == 62);
 }
@@ -193,24 +193,24 @@ test_widgets(void)
 static void
 test_kryt_helpers(void)
 {
-    UIWidget widget;
+    Widget widget;
 
     InjectReset();
     KrySfsIsDir("/");
-    BeginUIFrame(800, 600, 1.0f);
-    BeginUIInspectFrame(NULL);
-    widget = BeginUIWidget("button", "sfs-test:save", (Rectangle){0, 0, 40,
+    BeginInterfaceFrame(800, 600, 1.0f);
+    BeginInspectFrame(NULL);
+    widget = BeginWidget("button", "sfs-test:save", (Rectangle){0, 0, 40,
                                                                    20},
                            0);
-    EndUIWidget(&widget);
-    EndUIInspectFrame();
-    EndUIFrame();
+    EndWidget(&widget);
+    EndInspectFrame();
+    EndInterfaceFrame();
 
     CHECK(KryTTap("sfs-test:save"));
     InjectPump();
     CHECK(IsMouseButtonPressed(MOUSE_BUTTON_LEFT));
     InjectPump();
-    CHECK(UIHandleClick((Rectangle){0, 0, 40, 20}, 0, NULL));
+    CHECK(HandleClick((Rectangle){0, 0, 40, 20}, 0, NULL));
     CHECK(KryTKey("ENTER"));
     InjectPump();
     CHECK(IsKeyPressed(KEY_ENTER));

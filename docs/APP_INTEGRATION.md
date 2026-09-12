@@ -21,13 +21,13 @@ interaction rules into Kryon when more than one screen or project needs them.
 
 ## Frame Lifecycle
 
-Call `BeginUIFrame(width, height, dpi)` once at the start of a normal
+Call `BeginInterfaceFrame(width, height, dpi)` once at the start of a normal
 screen-space UI frame. If the application uses a transformed UI camera, call
-`InitUI(width, height, dpi)` and then `SetUIFrame(camera)` instead. Kryon sanitizes
+`InitInterface(width, height, dpi)` and then `SetFrameCamera(camera)` instead. Kryon sanitizes
 invalid cameras before using them; a zero-initialized `Camera2D` is treated as
-`GetUIDefaultCamera()` so pointer input does not silently break.
+`GetDefaultCamera()` so pointer input does not silently break.
 
-After drawing all widgets, call `EndUIFrame()` before the backend's
+After drawing all widgets, call `EndInterfaceFrame()` before the backend's
 `EndFrame()`. The closing call draws deferred overlays such as dropdowns and
 text-field context menus, then finalizes focus and inspection state. Applications
 must not reproduce those overlay or finalization steps themselves.
@@ -50,18 +50,18 @@ cannot receive clicks before the modal is drawn.
 ## Input Capture
 
 Every clickable Kryon control should gate pointer interaction through
-`UIInputCapturesClick(point)` or the lower-level helpers already used inside Kryon.
+`InputCapturesClick(point)` or the lower-level helpers already used inside Kryon.
 That keeps scroll drags, dropdowns, modal backdrops, and explicit input blockers from
 leaking clicks to the screen underneath.
 
 Use these APIs by responsibility:
 
-- `UIInputCapturesClick(point)`: normal public check for app or component code.
+- `InputCapturesClick(point)`: normal public check for app or component code.
 - `ui_base_input_captures_click(point, include_pointer_drag)`: internal/specialized
   components that need to decide whether pointer dragging should count as capture.
 - `ui_set_input_blocked(blocked)`: full-frame blocking for overlays that should stop
   all controls for the rest of the frame.
-- `SetUIModalCapture(bounds)`: modal-specific capture that blocks background
+- `SetModalCapture(bounds)`: modal-specific capture that blocks background
   clicks, then allows controls inside the active modal rectangle after the modal
   registers its bounds. It applies immediately and to the next frame.
 
@@ -74,11 +74,11 @@ current frame and the next frame.
 
 Prefer `Modal` for title, message, and action-button dialogs. It measures button
 labels, fits text inside buttons, and wraps actions into multiple rows when localized
-labels do not fit. Use manual `SetUIModalCapture` only for specialized overlays that
+labels do not fit. Use manual `SetModalCapture` only for specialized overlays that
 cannot use the shared modal frame.
 
 When an application draws a custom modal manually, it must call
-`SetUIModalCapture((Rectangle){x, y, w, h})` immediately after calculating the modal
+`SetModalCapture((Rectangle){x, y, w, h})` immediately after calculating the modal
 rectangle and before drawing modal controls. This prevents clicks outside the modal from
 activating the underlying screen, prevents controls underneath the modal from receiving
 clicks before the modal is drawn, and keeps buttons, sliders, dropdowns, and text fields
@@ -96,7 +96,7 @@ int modal_h = Scale(240);
 int modal_x = (view_width - modal_w) / 2;
 int modal_y = (view_height - modal_h) / 2;
 
-SetUIModalCapture((Rectangle){
+SetModalCapture((Rectangle){
     (float)modal_x, (float)modal_y, (float)modal_w, (float)modal_h
 });
 

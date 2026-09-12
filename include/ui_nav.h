@@ -1,5 +1,5 @@
-#ifndef UI_NAV_H
-#define UI_NAV_H
+#ifndef KRYON_NAV_H
+#define KRYON_NAV_H
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"

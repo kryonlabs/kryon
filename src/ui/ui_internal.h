@@ -3,9 +3,16 @@
 
 #include "ui.h"
 #include "ui_clip.h"
+#include "theme.h"
+#include "ui_color.h"
 #include "ui_window.h"
 #include "ui_dpi.h"
+#include "ui_icons.h"
+#include "ui_layout.h"
+#include "ui_scaling.h"
+#include "ui_transition.h"
 #include "kryon.h"
+#include "kry_input.h"
 #include "ui_numeric_internal.h"
 #include "ui_text_layout.h"
 
@@ -166,14 +173,14 @@ typedef struct {
     Texture2D close_icon;
     int max_width;
     int *scroll_offset;
-} ProfilePicturePickerProps;
+} ProfileImagePickerProps;
 
 typedef struct {
     int closed;
     int changed;
     int selected_index;
     IconType selected_icon_type;
-} ProfilePicturePickerResult;
+} ProfileImagePickerResult;
 
 typedef struct {
     int x;
@@ -205,19 +212,19 @@ void MarkCursor(int cursor);
 void MarkClickable(void);
 void MarkDisabled(void);
 int ui_pointer_drag_is_horizontal(void);
-int UIHoverEffectsEnabled(void);
+int HoverEffectsEnabled(void);
 const char *ui_inspect_control_id(char *buf, size_t buf_size,
                                   const char *kind, int numeric_id,
                                   const char *label);
-int UIReleaseConsumed(void);
-void UIConsumeRelease(void);
-int UIPointerReleaseConsumed(void);
-void UIConsumePointerRelease(void);
-int UIPointerReleaseAvailable(Vector2 point);
-int UIPointerReleaseOutside(Rectangle bounds);
+int ReleaseConsumed(void);
+void ConsumeRelease(void);
+int PointerReleaseConsumed(void);
+void ConsumePointerRelease(void);
+int PointerReleaseAvailable(Vector2 point);
+int PointerReleaseOutside(Rectangle bounds);
 int mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active);
 void ClearTextInputFocus(void);
-int UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
+int HandleCircleClick(Vector2 center, float radius, int disabled, int *hover);
 int ui_base_input_captures_click(Vector2 point, int include_pointer_drag);
 int ui_input_captures_click_internal(Vector2 point, int include_pointer_drag);
 int dropdown_captures(Vector2 point);
@@ -227,8 +234,8 @@ void ui_draw_menu_overlays(void);
 void ui_tab_bar_finish_frame(void);
 void ui_tab_scope_finish_frame(void);
 int *ui_tab_bar_owned_scroll(int id, int *fallback);
-void PushUIInputClip(Rectangle bounds);
-void PopUIInputClip(void);
+void PushInputClip(Rectangle bounds);
+void PopInputClip(void);
 int ui_clampi(int value, int min_value, int max_value);
 int ui_classic_style(void);
 int ui_modern_style(void);
@@ -374,7 +381,7 @@ int ui_render_vertical_slider_active(int id, int x, int y, int h, int min,
                                      int max, int *value);
 int ui_render_vertical_slider_with_marks(
     int id, int x, int y, int h, int min, int max, int *value,
-    UIVerticalSliderMarkCallback callback, void *callback_user_data);
+    SliderMarkCallback callback, void *callback_user_data);
 int ToggleSwitch(int x, int y, int w, int h, int *value,
                  const char *off_label, const char *on_label, int focused);
 int RenderCheckboxToggle(int x, int y, const char *label, int *value);
@@ -412,19 +419,19 @@ int RenderRadio(RadioProps radio);
 void RenderProgress(ProgressProps progress);
 void RenderPlotLines(PlotProps plot);
 void RenderPlotHistogram(PlotProps plot);
-int ui_update_drag_float(UIFloatDragProps drag);
-int ui_update_drag_int(UIIntDragProps drag);
-void ui_paint_drag_float(UIFloatDragProps drag);
-void ui_paint_drag_int(UIIntDragProps drag);
-int ui_update_slider_float(UIFloatSliderProps slider, int vertical);
-int ui_update_slider_int(UIIntSliderProps slider, int vertical);
-void ui_paint_slider_float(UIFloatSliderProps slider, int vertical);
-void ui_paint_slider_int(UIIntSliderProps slider, int vertical);
-int ui_update_slider_angle(UIAngleSliderProps slider);
-void ui_paint_slider_angle(UIAngleSliderProps slider);
-int RenderInputScalar(UIFloatInputProps input);
-int RenderInputWhole(UIIntInputProps input);
-int RenderInputDouble(UIDoubleInputProps input);
+int ui_update_drag_scalar(DragScalarProps drag);
+int ui_update_drag_whole(DragWholeProps drag);
+void ui_paint_drag_scalar(DragScalarProps drag);
+void ui_paint_drag_whole(DragWholeProps drag);
+int ui_update_slider_scalar(SliderScalarProps slider, int vertical);
+int ui_update_slider_whole(SliderWholeProps slider, int vertical);
+void ui_paint_slider_scalar(SliderScalarProps slider, int vertical);
+void ui_paint_slider_whole(SliderWholeProps slider, int vertical);
+int ui_update_slider_angle(SliderAngleProps slider);
+void ui_paint_slider_angle(SliderAngleProps slider);
+int RenderInputScalar(InputScalarProps input);
+int RenderInputWhole(InputWholeProps input);
+int RenderInputPrecise(InputPreciseProps input);
 int RenderSpinbox(SpinboxProps spinbox);
 void RenderFieldset(FieldsetProps frame);
 int RenderListBox(ListBoxProps list);
@@ -434,7 +441,7 @@ void ui_consume_focus_tab(void);
 void RenderCanvasGrid(Rectangle bounds, int step, Color color);
 int RenderPanedView(PanedViewProps panes);
 int RenderCollapsible(CollapsibleProps section);
-void RenderFocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
+void RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count);
 UIGuideResult RenderGuideOverlay(GuideOverlayProps guide);
 void RenderTutorialImagePlaceholder(const char *label, int x, int y,
                                     int w, int h);
@@ -445,7 +452,7 @@ int RenderTitleBar(TitleBarProps title_bar);
 UIPanelFrame RenderModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
 SidebarAccountHeaderResult RenderSidebarAccountHeader(SidebarAccountHeaderProps header);
-ProfilePicturePickerResult RenderProfilePicturePickerModal(ProfilePicturePickerProps modal);
+ProfileImagePickerResult RenderProfileImagePickerModal(ProfileImagePickerProps modal);
 void RenderReorderHandle(int x, int y, int w, int h, int active);
 void RenderReorderPlaceholder(Rectangle bounds);
 void RenderToast(void);
@@ -456,9 +463,9 @@ void RenderInspectOverlay(void);
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
 void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
 void ui_tree_submit_text_input(Rectangle bounds, const char *text,
-                               UIWidgetTextInputPaint paint, int id);
+                               WidgetTextInputPaint paint, int id);
 void ui_paint_text_input(Rectangle bounds, const char *text,
-                         UIWidgetTextInputPaint paint);
+                         WidgetTextInputPaint paint);
 
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);

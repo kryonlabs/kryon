@@ -1,5 +1,5 @@
-#ifndef UI_TREE_H
-#define UI_TREE_H
+#ifndef KRYON_TREE_H
+#define KRYON_TREE_H
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
@@ -19,73 +19,73 @@ struct TransitionState;
 typedef int NodeId;
 typedef unsigned long long KeyID;
 
-typedef enum UIEventKind {
-    UI_EVENT_NONE = 0,
-    UI_EVENT_CLICK,
-    UI_EVENT_VALUE_CHANGED,
-    UI_EVENT_TEXT_CHANGED,
-    UI_EVENT_TEXT_COMMIT,
-    UI_EVENT_SELECTION_CHANGED,
-    UI_EVENT_COMPOSITION_CHANGED,
-    UI_EVENT_FOCUS,
-    UI_EVENT_BLUR
-} UIEventKind;
+typedef enum EventKind {
+    EVENT_NONE = 0,
+    EVENT_CLICK,
+    EVENT_VALUE_CHANGED,
+    EVENT_TEXT_CHANGED,
+    EVENT_TEXT_COMMIT,
+    EVENT_SELECTION_CHANGED,
+    EVENT_COMPOSITION_CHANGED,
+    EVENT_FOCUS,
+    EVENT_BLUR
+} EventKind;
 
-typedef struct UIEvent {
+typedef struct Event {
     KeyID key;
-    UIEventKind kind;
+    EventKind kind;
     double timestamp;
     union {
         int value;
         struct { int start, end; } selection;
         struct { int bytes; } text;
     } data;
-} UIEvent;
+} Event;
 
-typedef enum UIInvalidation {
-    UI_INVALIDATE_NONE = 0,
-    UI_INVALIDATE_PAINT = 1 << 0,
-    UI_INVALIDATE_LAYOUT = 1 << 1,
-    UI_INVALIDATE_TREE = 1 << 2
-} UIInvalidation;
+typedef enum Invalidation {
+    INVALIDATE_NONE = 0,
+    INVALIDATE_PAINT = 1 << 0,
+    INVALIDATE_LAYOUT = 1 << 1,
+    INVALIDATE_TREE = 1 << 2
+} Invalidation;
 
-typedef enum UIWidgetKind {
-    UI_WIDGET_SCREEN_NODE,
-    UI_WIDGET_BACKGROUND_NODE,
-    UI_WIDGET_TEXT_NODE,
-    UI_WIDGET_RECT_NODE,
-    UI_WIDGET_CIRCLE_NODE,
-    UI_WIDGET_RING_NODE,
-    UI_WIDGET_LINE_NODE,
-    UI_WIDGET_TRIANGLE_NODE,
-    UI_WIDGET_BUTTON_NODE,
-    UI_WIDGET_TEXT_FIELD_NODE,
-    UI_WIDGET_TEXT_AREA_NODE,
-    UI_WIDGET_DROPDOWN_NODE,
-    UI_WIDGET_SLIDER_NODE,
-    UI_WIDGET_TOGGLE_NODE,
-    UI_WIDGET_CHECKBOX_NODE,
-    UI_WIDGET_PARAGRAPH_NODE,
-    UI_WIDGET_READONLY_TEXT_BOX_NODE,
-    UI_WIDGET_NAVIGATION_BAR_NODE,
-    UI_WIDGET_TAB_BAR_NODE,
-    UI_WIDGET_PARAGRAPH_MODAL_NODE,
-    UI_WIDGET_TITLE_BAR_NODE,
-    UI_WIDGET_GROUP_NODE,
-    UI_WIDGET_COLUMN_NODE,
-    UI_WIDGET_ROW_NODE,
-    UI_WIDGET_STACK_NODE,
-    UI_WIDGET_GRID_NODE,
-    UI_WIDGET_IMAGE_NODE,
-    UI_WIDGET_CUSTOM_NODE,
-    UI_WIDGET_DRAG_NODE,
-    UI_WIDGET_TEXT_INPUT_PAINT_NODE,
-    UI_WIDGET_ROUTER_NODE,
-    UI_WIDGET_CARD_NODE
-} UIWidgetKind;
+typedef enum WidgetKind {
+    WIDGET_SCREEN,
+    WIDGET_BACKGROUND,
+    WIDGET_TEXT,
+    WIDGET_RECT,
+    WIDGET_CIRCLE,
+    WIDGET_RING,
+    WIDGET_LINE,
+    WIDGET_TRIANGLE,
+    WIDGET_BUTTON,
+    WIDGET_TEXT_FIELD,
+    WIDGET_TEXT_AREA,
+    WIDGET_DROPDOWN,
+    WIDGET_SLIDER,
+    WIDGET_TOGGLE,
+    WIDGET_CHECKBOX,
+    WIDGET_PARAGRAPH,
+    WIDGET_READONLY_TEXT_BOX,
+    WIDGET_NAVIGATION_BAR,
+    WIDGET_TAB_BAR,
+    WIDGET_PARAGRAPH_MODAL,
+    WIDGET_TITLE_BAR,
+    WIDGET_GROUP,
+    WIDGET_COLUMN,
+    WIDGET_ROW,
+    WIDGET_STACK,
+    WIDGET_GRID,
+    WIDGET_IMAGE,
+    WIDGET_CUSTOM,
+    WIDGET_DRAG,
+    WIDGET_TEXT_INPUT_PAINT,
+    WIDGET_ROUTER,
+    WIDGET_CARD
+} WidgetKind;
 
 /* Prepared painting only: no editing-state pointers survive submission. */
-typedef struct UIWidgetTextInputPaint {
+typedef struct WidgetTextInputPaint {
     TextInputStyle style;
     int cursor;
     int focused;
@@ -98,10 +98,10 @@ typedef struct UIWidgetTextInputPaint {
     int composition_start;
     int composition_end;
     int scroll_x;
-} UIWidgetTextInputPaint;
+} WidgetTextInputPaint;
 
-typedef union UIWidgetData {
-    UIWidgetTextInputPaint text_input_paint;
+typedef union WidgetData {
+    WidgetTextInputPaint text_input_paint;
     struct {
         DragProps props;
         size_t format_offset;
@@ -156,12 +156,12 @@ typedef union UIWidgetData {
         int *value;
         const char *label;
     } checkbox;
-} UIWidgetData;
+} WidgetData;
 
-typedef struct UIWidgetNode {
+typedef struct WidgetNode {
     int id;
     KeyID key;
-    UIWidgetKind kind;
+    WidgetKind kind;
     Rectangle bounds;
     Rectangle declared_bounds;
     Rectangle input_clip;
@@ -177,13 +177,13 @@ typedef struct UIWidgetNode {
     int next_sibling;
     const void *props;
     void *state;
-    UIWidgetData data;
+    WidgetData data;
     unsigned flags;
     unsigned generation;
     char *owned_text;
-} UIWidgetNode;
+} WidgetNode;
 
-typedef void (*UIAccessibilitySink)(const UIAccessibilityNode *nodes,
+typedef void (*AccessibilitySink)(const AccessibilityNode *nodes,
                                     int count, void *userdata);
 
 /* BeginTree starts a declaration pass. EndTree atomically reconciles, lays out,
@@ -192,28 +192,28 @@ void BeginTree(KeyID screen_key);
 void EndTree(void);
 void End(void);
 KeyID Key(const char *text);
-void InvalidateTree(UIInvalidation invalidation);
-int NextEvent(UIEvent *event);
+void InvalidateTree(Invalidation invalidation);
+int NextEvent(Event *event);
 int SetSelection(KeyID key, int anchor, int cursor);
 void ReconcileTree(void);
 void LayoutTree(void);
 void RouteInput(void);
 void UpdateTree(void);
 void Overlays(void);
-const UIWidgetNode *GetTreeNodes(int *count);
-int GetNodeHeight(UIWidgetNode node);
+const WidgetNode *GetTreeNodes(int *count);
+int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
-const UIWidgetNode *GetNode(NodeId id);
+const WidgetNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);
-int GetAccessibilitySnapshot(UIAccessibilityNode *nodes, int capacity);
-void SetAccessibilitySink(UIAccessibilitySink sink, void *userdata);
+int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
+void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 
-UIWidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
-UIWidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
-UIWidgetNode NodeNavigationBar(NavigationBarProps nav);
-UIWidgetNode NodeTabBar(TabBarProps bar);
-UIWidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
-UIWidgetNode NodeTitleBar(int height);
+WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
+WidgetNode NodeReadonlyTextBox(ReadonlyTextBoxProps box);
+WidgetNode NodeNavigationBar(NavigationBarProps nav);
+WidgetNode NodeTabBar(TabBarProps bar);
+WidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
+WidgetNode NodeTitleBar(int height);
 
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 
@@ -297,19 +297,12 @@ int PanedView(PanedViewProps panes);
 int Collapsible(CollapsibleProps section);
 int ColorPicker(ColorPickerProps picker);
 void Focus(Rectangle bounds);
-void FocusDebugOverlay(const UIAccessibilityNode *nodes, int count);
+void FocusDebugOverlay(const AccessibilityNode *nodes, int count);
 void TransitionFade(const struct TransitionState *transition, int width,
                           int height, Color color);
 NavigationBarResult NavigationBar(NavigationBarProps nav);
 ToolbarResult Toolbar(ToolbarProps toolbar);
 int TabBar(TabBarProps bar);
-/* Render a canonical tab bar and begin its arbitrary-content scope. The
- * caller owns selected_index; a tab selected by pointer or keyboard is
- * written before BeginTabItem is evaluated in the same frame. */
-int BeginTabBar(TabBarProps bar, int *selected_index);
-int BeginTabItem(int index);
-void EndTabItem(void);
-void EndTabBar(void);
 int Modal(ModalProps modal);
 int TitleBar(TitleBarProps title_bar);
 

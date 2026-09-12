@@ -235,7 +235,7 @@ grep -Fq 'Valid(Rectangle viewport)' "$c"
 grep -Fq 'int app_count = 0;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
+grep -Fq 'PushInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
 grep -Fq 'Text(([&]() { TextProps record_value_0{};' "$c"
 grep -Fq '"hi"' "$c"
@@ -256,7 +256,7 @@ grep -Fq 'NavigationBarResult nav_result = NavigationBar' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar(([&]() { TabBarProps record_value_0{};' "$c"
 grep -Fq 'count = c_abs(-3);' "$c"
-grep -Fq 'PopUIInspectSource();' "$c"
+grep -Fq 'PopInspectSource();' "$c"
 
 # inferred decl
 grep -Fq 'auto value = count + 1;' "$c"
@@ -432,8 +432,8 @@ EOF
 "$k2cpp" --no-main --root "$work" -o "$work/records" "$work/src/named_records.kry"
 cat > "$work/records/driver.cpp" <<'EOF'
 #include "src/named_records.cpp"
-void PushUIInspectSource(const char *, int) {}
-void PopUIInspectSource(void) {}
+void PushInspectSource(const char *, int) {}
+void PopInspectSource(void) {}
 int main() { return check(); }
 EOF
 c++ -std=c++17 -I"$root/include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"

@@ -43,11 +43,11 @@ static void
 step(void)
 {
     InjectPump();
-    BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
+    BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
     Dropdown((DropdownProps){.id = DD_ID, .bounds = {100, 560, 400, 44},
         .options = g_options, .option_count = OPT_COUNT,
         .selected_index = &g_selected});
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -60,20 +60,20 @@ rich_step(int *selected, int all_disabled)
         {.label = "Unavailable end", .disabled = 1}
     };
     InjectPump();
-    BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
-    SetUIFocus(7901);
+    BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
+    SetFocus(7901);
     Dropdown((DropdownProps){.bounds = {100, 100, 300, 40}, .id = 7901,
         .items = items, .option_count = 4, .selected_index = selected});
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
-/* UIInputCapturesClick answers open popups; the band above the button
+/* InputCapturesClick answers open popups; the band above the button
  * (y 20..556, button at 560..604) is popup-only territory. */
 static int
 popup_open(void)
 {
     step();
-    return UIInputCapturesClick((Vector2){300.0f, 300.0f});
+    return InputCapturesClick((Vector2){300.0f, 300.0f});
 }
 
 /* Clean slate between scenarios: clear injected input, dismiss popups. */
@@ -164,14 +164,14 @@ drag(int from_y, int to_y)
 int
 main(void)
 {
-    SetUIScale(1.0f);
+    SetScale(1.0f);
 
     for(int i = 0; i < OPT_COUNT; i++) {
         snprintf(g_labels[i], sizeof(g_labels[i]), "Option %d", i);
         g_options[i] = g_labels[i];
     }
 
-    InitUI(VIEW_W, VIEW_H, 1.0f);
+    InitInterface(VIEW_W, VIEW_H, 1.0f);
     for(int i = 0; i < 3; i++)
         step();
 

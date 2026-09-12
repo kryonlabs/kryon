@@ -24,14 +24,14 @@ static const Font kryon_zero_font;
 #include <malloc.h>
 #endif
 
-#define UI_FONT_MAX_REGISTERED 16
-#define UI_FONT_DEFAULT_NAME "default"
+#define TEXT_FONT_MAX_REGISTERED 16
+#define TEXT_FONT_DEFAULT_NAME "default"
 
 /* Text whose physical size is at least this multiple of the base raster gets
  * a dedicated large rasterization so headings stay crisp. One large slot per
  * font holds the largest size seen; smaller large-tier sizes scale down. */
 
-typedef struct UIFontEntry {
+typedef struct TextFontEntry {
     char name[32];
     char file_type_buf[8];
     Font font;
@@ -54,12 +54,12 @@ typedef struct UIFontEntry {
      * glyph seed on a low-end phone), so keep headroom over the realistic
      * per-screen type scale (a phone UI in one dynamic font easily reaches
      * six sizes once widget-internal label sizes are counted). */
-#define UI_FONT_MAX_RASTER_TIERS 16
-    Font tier_font[UI_FONT_MAX_RASTER_TIERS];
-    int tier_size[UI_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
-} UIFontEntry;
+#define TEXT_FONT_MAX_RASTER_TIERS 16
+    Font tier_font[TEXT_FONT_MAX_RASTER_TIERS];
+    int tier_size[TEXT_FONT_MAX_RASTER_TIERS]; /* 0 = free slot */
+} TextFontEntry;
 
-static UIFontEntry g_ui_fonts[UI_FONT_MAX_REGISTERED];
+static TextFontEntry g_ui_fonts[TEXT_FONT_MAX_REGISTERED];
 static int g_ui_font_count = 0;
 static int g_ui_active_font = -1;
 static int g_ui_default_font_attempted = 0;
@@ -114,19 +114,19 @@ text_world_rect_to_screen(Rectangle rect)
 static int
 font_valid(Font font)
 {
-    return UIFontReady(font);
+    return TextFontReady(font);
 }
 
 int
-UIFontHasGlyph(Font font, int codepoint)
+TextFontHasGlyph(Font font, int codepoint)
 {
-    return UIFontHasGlyphValue(font, codepoint);
+    return TextFontHasGlyphValue(font, codepoint);
 }
 
 static int
 font_entry_index(const char *name)
 {
-    const char *key = name != NULL && name[0] != '\0' ? name : UI_FONT_DEFAULT_NAME;
+    const char *key = name != NULL && name[0] != '\0' ? name : TEXT_FONT_DEFAULT_NAME;
 
     for(int i = 0; i < g_ui_font_count; i++) {
         if(strcmp(g_ui_fonts[i].name, key) == 0)
@@ -139,12 +139,12 @@ font_entry_index(const char *name)
 static int
 font_entry_alloc(const char *name)
 {
-    const char *key = name != NULL && name[0] != '\0' ? name : UI_FONT_DEFAULT_NAME;
+    const char *key = name != NULL && name[0] != '\0' ? name : TEXT_FONT_DEFAULT_NAME;
     int index = font_entry_index(key);
 
     if(index >= 0)
         return index;
-    if(g_ui_font_count >= UI_FONT_MAX_REGISTERED)
+    if(g_ui_font_count >= TEXT_FONT_MAX_REGISTERED)
         return -1;
 
     index = g_ui_font_count++;
@@ -178,11 +178,11 @@ ui_font_trim_heap(void)
 }
 
 static void
-clear_font_cache(UIFontEntry *entry)
+clear_font_cache(TextFontEntry *entry)
 {
     if(entry == NULL)
         return;
-    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+    for(int i = 0; i < TEXT_FONT_MAX_RASTER_TIERS; i++) {
         if(font_valid(entry->tier_font[i]))
             UnloadFont(entry->tier_font[i]);
         entry->tier_font[i] = kryon_zero_font;
@@ -191,7 +191,7 @@ clear_font_cache(UIFontEntry *entry)
 }
 
 static void
-clear_font_entry(UIFontEntry *entry)
+clear_font_entry(TextFontEntry *entry)
 {
     if(entry == NULL)
         return;
@@ -212,7 +212,7 @@ clear_font_entry(UIFontEntry *entry)
 }
 
 static int
-font_entry_has_codepoint(UIFontEntry *entry, int codepoint)
+font_entry_has_codepoint(TextFontEntry *entry, int codepoint)
 {
     if(entry == NULL || codepoint <= 0)
         return 0;
@@ -224,7 +224,7 @@ font_entry_has_codepoint(UIFontEntry *entry, int codepoint)
 }
 
 static Font
-load_font_source_size(UIFontEntry *entry, int physical_size)
+load_font_source_size(TextFontEntry *entry, int physical_size)
 {
     Font font;
 
@@ -250,12 +250,12 @@ load_font_source_size(UIFontEntry *entry, int physical_size)
         return kryon_zero_font;
 
     if(font_valid(font))
-        SetTextureFilter(UIFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(TextFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
     return font;
 }
 
 static Font
-entry_source_font_for_size(UIFontEntry *entry, int font_size)
+entry_source_font_for_size(TextFontEntry *entry, int font_size)
 {
     int physical_size = font_physical_size(font_size);
 
@@ -263,7 +263,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
         return kryon_zero_font;
 
     /* Exact tier hit: rasterized at this exact physical size, no resampling. */
-    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+    for(int i = 0; i < TEXT_FONT_MAX_RASTER_TIERS; i++) {
         if(entry->tier_size[i] == physical_size && font_valid(entry->tier_font[i]))
             return entry->tier_font[i];
     }
@@ -273,13 +273,13 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
      * no matching glyphs) would otherwise re-run the full parse for
      * every glyph of every string, pinning a core and freezing the app
      * mid-frame. */
-    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+    for(int i = 0; i < TEXT_FONT_MAX_RASTER_TIERS; i++) {
         if(entry->tier_size[i] == -physical_size)
             return kryon_zero_font;
     }
 
     /* Free slot: rasterize this size. */
-    for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+    for(int i = 0; i < TEXT_FONT_MAX_RASTER_TIERS; i++) {
         if(entry->tier_size[i] == 0) {
             entry->tier_font[i] = load_font_source_size(entry, physical_size);
             if(font_valid(entry->tier_font[i])) {
@@ -288,7 +288,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
                  * bitmap buckets come back at their nearest available
                  * height, so recording the real base size lets nearby
                  * requests share one bucket tier. */
-                int raster_size = UIFontBaseSize(entry->tier_font[i]);
+                int raster_size = TextFontBaseSize(entry->tier_font[i]);
 
                 entry->tier_size[i] =
                     raster_size > 0 ? raster_size : physical_size;
@@ -310,7 +310,7 @@ entry_source_font_for_size(UIFontEntry *entry, int font_size)
         int victim = 0;
         int nearest = 0x7fffffff;
 
-        for(int i = 0; i < UI_FONT_MAX_RASTER_TIERS; i++) {
+        for(int i = 0; i < TEXT_FONT_MAX_RASTER_TIERS; i++) {
             int dist = entry->tier_size[i] > physical_size
                        ? entry->tier_size[i] - physical_size
                        : physical_size - entry->tier_size[i];
@@ -335,7 +335,7 @@ ui_text_begin_frame(void)
 }
 
 static Font
-entry_font_for_size(UIFontEntry *entry, int font_size)
+entry_font_for_size(TextFontEntry *entry, int font_size)
 {
     Font font;
 
@@ -353,7 +353,7 @@ entry_font_for_size(UIFontEntry *entry, int font_size)
 }
 
 static Font
-entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
+entry_font_for_codepoint(TextFontEntry *entry, int codepoint, int font_size)
 {
     Font font;
 
@@ -370,7 +370,7 @@ entry_font_for_codepoint(UIFontEntry *entry, int codepoint, int font_size)
     if(!font_valid(font))
         return kryon_zero_font;
     if(codepoint <= 0 || codepoint == ' ' || codepoint == '\t' ||
-       UIFontHasGlyphValue(font, codepoint))
+       TextFontHasGlyphValue(font, codepoint))
         return font;
     return kryon_zero_font;
 }
@@ -436,14 +436,14 @@ static float
 font_size_scale(Font font, int font_size)
 {
     int target_size = font_physical_size(font_size);
-    int base = UIFontBaseSize(font);
+    int base = TextFontBaseSize(font);
     int base_size = base > 0 ? base : TextBaseSize;
 
     return (float)target_size / (float)base_size;
 }
 
 Font
-GetUIFont(void)
+GetTextFont(void)
 {
     return active_font();
 }
@@ -475,18 +475,18 @@ EnsureUIDefaultFont(void)
 
     g_ui_default_font_attempted = 1;
     for(int i = 0; paths[i] != NULL; i++) {
-        if(RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
-           UseUIFont(UI_FONT_DEFAULT_NAME)) {
+        if(RegisterTextFontFileSource(TEXT_FONT_DEFAULT_NAME, paths[i], NULL, 0) &&
+           UseTextFont(TEXT_FONT_DEFAULT_NAME)) {
             if(font_entry_index("semibold") < 0)
-                RegisterUIFontFileSource("semibold", semibold_paths[i], NULL, 0);
+                RegisterTextFontFileSource("semibold", semibold_paths[i], NULL, 0);
             TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
             return 1;
         }
     }
 
-    if(GetSystemUIFontFile(system_font_path, sizeof(system_font_path)) &&
-       RegisterUIFontFileSource(UI_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
-       UseUIFont(UI_FONT_DEFAULT_NAME)) {
+    if(GetSystemTextFontFile(system_font_path, sizeof(system_font_path)) &&
+       RegisterTextFontFileSource(TEXT_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
+       UseTextFont(TEXT_FONT_DEFAULT_NAME)) {
         TraceLog(LOG_INFO, "UIFONT: bundled face unavailable; default font "
                           "resolved from system: %s", system_font_path);
         return 1;
@@ -519,7 +519,7 @@ ensure_ui_italic_font(void)
 
     g_ui_italic_font_attempted = 1;
     for(int i = 0; paths[i] != NULL; i++) {
-        g_ui_italic_font = LoadUIFontAsset(paths[i], TextBaseSize);
+        g_ui_italic_font = LoadTextFontAsset(paths[i], TextBaseSize);
         if(font_valid(g_ui_italic_font))
             return 1;
     }
@@ -531,13 +531,13 @@ static Font
 italic_font_for_codepoint(int codepoint, int font_size)
 {
     (void)font_size;
-    if(ensure_ui_italic_font() && UIFontHasGlyph(g_ui_italic_font, codepoint))
+    if(ensure_ui_italic_font() && TextFontHasGlyph(g_ui_italic_font, codepoint))
         return g_ui_italic_font;
     return font_for_codepoint(codepoint, font_size);
 }
 
 int
-RegisterUIFont(const char *name, Font font)
+RegisterTextFont(const char *name, Font font)
 {
     int index;
 
@@ -554,7 +554,7 @@ RegisterUIFont(const char *name, Font font)
 }
 
 int
-RegisterUISmallFont(const char *name, Font font)
+RegisterSmallTextFont(const char *name, Font font)
 {
     int index;
 
@@ -637,7 +637,7 @@ register_ui_font_source(const char *name, const char *file_type,
 }
 
 int
-RegisterUIFontSource(const char *name, const char *file_type,
+RegisterTextFontSource(const char *name, const char *file_type,
                      const unsigned char *font_data, unsigned int font_size,
                      const int *codepoints, int codepoint_count)
 {
@@ -646,7 +646,7 @@ RegisterUIFontSource(const char *name, const char *file_type,
 }
 
 int
-RegisterUIFontSourceForText(const char *name, const char *file_type,
+RegisterTextFontSourceForText(const char *name, const char *file_type,
                             const unsigned char *font_data,
                             unsigned int font_size, const char *text)
 {
@@ -663,7 +663,7 @@ RegisterUIFontSourceForText(const char *name, const char *file_type,
 }
 
 int
-RegisterUIFixedFontSource(const char *name, const char *file_type,
+RegisterFixedTextFontSource(const char *name, const char *file_type,
                           const unsigned char *font_data,
                           unsigned int font_size,
                           const int *codepoints, int codepoint_count)
@@ -675,7 +675,7 @@ RegisterUIFixedFontSource(const char *name, const char *file_type,
 }
 
 int
-RegisterUIFontFileSource(const char *name, const char *path,
+RegisterTextFontFileSource(const char *name, const char *path,
                          const int *codepoints, int codepoint_count)
 {
     const EmbeddedAsset *asset;
@@ -715,7 +715,7 @@ RegisterUIFontFileSource(const char *name, const char *path,
     if(dot == NULL || dot[0] == '\0')
         dot = ".ttf";
 
-    ok = RegisterUIFontSource(name, dot, data, (unsigned int)data_size,
+    ok = RegisterTextFontSource(name, dot, data, (unsigned int)data_size,
                               codepoints, codepoint_count);
     if(!ok) {
         if(owns_data)
@@ -737,7 +737,7 @@ RegisterUIFontFileSource(const char *name, const char *path,
 }
 
 int
-RegisterUIFontFileSourceForText(const char *name, const char *path,
+RegisterTextFontFileSourceForText(const char *name, const char *path,
                                 const char *text)
 {
     int codepoint_count = 0;
@@ -746,13 +746,13 @@ RegisterUIFontFileSourceForText(const char *name, const char *path,
 
     if(codepoints == NULL || codepoint_count <= 0)
         return 0;
-    ok = RegisterUIFontFileSource(name, path, codepoints, codepoint_count);
+    ok = RegisterTextFontFileSource(name, path, codepoints, codepoint_count);
     free(codepoints);
     return ok;
 }
 
 int
-UseUIFont(const char *name)
+UseTextFont(const char *name)
 {
     int index = font_entry_index(name);
 
@@ -767,17 +767,17 @@ UseUIFont(const char *name)
 }
 
 int
-PushUIFont(const char *name)
+PushTextFont(const char *name)
 {
     int token = g_ui_active_font;
 
     if(name != NULL && name[0] != '\0')
-        (void)UseUIFont(name);
+        (void)UseTextFont(name);
     return token;
 }
 
 void
-PopUIFont(int token)
+PopTextFont(int token)
 {
     if(token >= 0 && token < g_ui_font_count)
         g_ui_active_font = token;
@@ -902,7 +902,7 @@ ui_font_codepoints_for_text(const char *text, int *out_count)
 }
 
 Font
-LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
+LoadTextFontFromMemory(const char *file_type, const unsigned char *font_data,
                      unsigned int font_size, int base_size)
 {
     Font font = {0};
@@ -924,12 +924,12 @@ LoadUIFontFromMemory(const char *file_type, const unsigned char *font_data,
     free(codepoints);
 
     if(font_valid(font))
-        SetTextureFilter(UIFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
+        SetTextureFilter(TextFontAtlasTexture(font), TEXTURE_FILTER_BILINEAR);
     return font;
 }
 
 Font
-LoadUIFontAsset(const char *path, int base_size)
+LoadTextFontAsset(const char *path, int base_size)
 {
     const EmbeddedAsset *asset;
     const char *file_type;
@@ -943,19 +943,19 @@ LoadUIFontAsset(const char *path, int base_size)
     file_type = GetEmbeddedAssetExtension(path);
     asset = GetEmbeddedAsset(path);
     if(asset != NULL)
-        return LoadUIFontFromMemory(file_type, asset->data, asset->size, base_size);
+        return LoadTextFontFromMemory(file_type, asset->data, asset->size, base_size);
 
     data = LoadFileData(path, &data_size);
     if(data == NULL || data_size <= 0)
         return kryon_zero_font;
 
-    font = LoadUIFontFromMemory(file_type, data, (unsigned int)data_size, base_size);
+    font = LoadTextFontFromMemory(file_type, data, (unsigned int)data_size, base_size);
     UnloadFileData(data);
     return font;
 }
 
 void
-UnloadUIFont(Font *font)
+UnloadTextFont(Font *font)
 {
     if(font == NULL || font->texture.id == 0)
         return;
@@ -965,7 +965,7 @@ UnloadUIFont(Font *font)
 }
 
 void
-ClearUIFonts(void)
+ClearTextFonts(void)
 {
     for(int i = 0; i < g_ui_font_count; i++) {
         clear_font_entry(&g_ui_fonts[i]);
@@ -982,7 +982,7 @@ ClearUIFonts(void)
 }
 
 void
-UIFontMemoryReport(const char *tag)
+TextFontMemoryReport(const char *tag)
 {
     if(!KryonMemDebugEnabled())
         return;
@@ -990,16 +990,16 @@ UIFontMemoryReport(const char *tag)
     fprintf(stderr, "[kryon-mem] --- ui fonts (%s) ---\n",
             tag != NULL ? tag : "-");
     for(int i = 0; i < g_ui_font_count; i++) {
-        UIFontEntry *entry = &g_ui_fonts[i];
+        TextFontEntry *entry = &g_ui_fonts[i];
 
         fprintf(stderr,
                 "[kryon-mem] font '%s' active=%d codepoints=%d tiers=",
                 entry->name, i == g_ui_active_font ? 1 : 0,
                 entry->codepoint_count);
-        for(int t = 0; t < UI_FONT_MAX_RASTER_TIERS; t++) {
+        for(int t = 0; t < TEXT_FONT_MAX_RASTER_TIERS; t++) {
             if(entry->tier_size[t] > 0)
                 fprintf(stderr, "%s%dpx/%dglyphs", t ? "," : "",
-                        entry->tier_size[t], UIFontGlyphCount(entry->tier_font[t]));
+                        entry->tier_size[t], TextFontGlyphCount(entry->tier_font[t]));
         }
         fprintf(stderr, "\n");
     }
@@ -1044,9 +1044,9 @@ ui_set_text_letter_spacing(int spacing)
 int
 MeasureTextWidth(const char *text, int font_size, const char *typeface)
 {
-    int token = PushUIFont(typeface);
+    int token = PushTextFont(typeface);
     int width = TextWidth(text, font_size);
-    PopUIFont(token);
+    PopTextFont(token);
     return width;
 }
 
@@ -1057,15 +1057,15 @@ TextWidth(const char *text, int font_size)
     Font font = active_font_for_size(normalized_font_size);
     int width = 0;
 
-    if(text == NULL || !UIFontReady(font))
+    if(text == NULL || !TextFontReady(font))
         return 0;
 
-    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
+    if(TextFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
         int byte_len = 0;
 
         while(text[byte_len] != '\0' && text[byte_len] != '\n')
             byte_len++;
-        return UIFontNativeTextWidth(font, text, byte_len);
+        return TextFontNativeTextWidth(font, text, byte_len);
     }
 
     for(int i = 0; text[i] != '\0';) {
@@ -1080,14 +1080,14 @@ TextWidth(const char *text, int font_size)
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
-                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+                     (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
         if(i > 0)
             width += g_ui_text_letter_spacing;
-        if(UIFontHasNativeText(glyph_font))
-            width += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        if(TextFontHasNativeText(glyph_font))
+            width += TextFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
         else
-            width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
+            width += (int)((float)TextFontAdvance(glyph_font, codepoint) *
                            font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
@@ -1140,11 +1140,11 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
     Font font = active_font_for_size(normalized_font_size);
     int width = 0;
 
-    if(text == NULL || byte_len <= 0 || !UIFontReady(font))
+    if(text == NULL || byte_len <= 0 || !TextFontReady(font))
         return 0;
 
-    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0)
-        return UIFontNativeTextWidth(font, text, byte_len);
+    if(TextFontHasNativeText(font) && g_ui_text_letter_spacing == 0)
+        return TextFontNativeTextWidth(font, text, byte_len);
 
     for(int i = 0; i < byte_len && text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1162,14 +1162,14 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
-                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+                     (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
         if(i > 0)
             width += g_ui_text_letter_spacing;
-        if(UIFontHasNativeText(glyph_font))
-            width += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        if(TextFontHasNativeText(glyph_font))
+            width += TextFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
         else
-            width += (int)((float)UIFontAdvance(glyph_font, codepoint) *
+            width += (int)((float)TextFontAdvance(glyph_font, codepoint) *
                            font_size_scale(glyph_font, normalized_font_size) + 0.5f);
         i += codepoint_byte_count;
     }
@@ -1202,12 +1202,12 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
-                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+                     (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
-        advance = (int)((float)UIFontAdvance(glyph_font, codepoint) *
+        advance = (int)((float)TextFontAdvance(glyph_font, codepoint) *
                         font_size_scale(glyph_font, normalized_font_size) + 0.5f);
-        if(UIFontHasNativeText(glyph_font))
-            advance = UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
+        if(TextFontHasNativeText(glyph_font))
+            advance = TextFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count);
         if(i + codepoint_byte_count < byte_len)
             advance += g_ui_text_letter_spacing;
         if(target_x < cursor_x + advance / 2)
@@ -1243,7 +1243,7 @@ ui_text_copy_selection(const char *text, int start, int end)
         return;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
-    SetUIClipboardTextValue(copy);
+    SetClipboardTextValue(copy);
     free(copy);
 }
 
@@ -1288,11 +1288,11 @@ TextHeight(const char *text, int font_size)
     float max_bottom = 0.0f;
     int seen_glyph = 0;
 
-    if(text == NULL || text[0] == '\0' || !UIFontReady(font))
+    if(text == NULL || text[0] == '\0' || !TextFontReady(font))
         return normalized_font_size;
 
-    if(UIFontHasNativeText(font)) {
-        int native_h = UIFontNativeTextHeight(font);
+    if(TextFontHasNativeText(font)) {
+        int native_h = TextFontNativeTextHeight(font);
 
         return native_h > 0 ? native_h : normalized_font_size;
     }
@@ -1306,10 +1306,10 @@ TextHeight(const char *text, int font_size)
             break;
         if(codepoint != ' ' && codepoint != '\t') {
             Font glyph_font = font_for_codepoint(codepoint, normalized_font_size);
-            GlyphInfo glyph = UIFontGlyph(glyph_font, codepoint);
-            Rectangle rec = UIFontAtlasRec(glyph_font, codepoint);
+            GlyphInfo glyph = TextFontGlyph(glyph_font, codepoint);
+            Rectangle rec = TextFontAtlasRec(glyph_font, codepoint);
             float glyph_scale = font_size_scale(glyph_font, normalized_font_size);
-            int padding = UIFontGlyphPadding(glyph_font);
+            int padding = TextFontGlyphPadding(glyph_font);
             float glyph_top = (float)glyph.offsetY * glyph_scale - (float)padding * glyph_scale;
             float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)padding) * glyph_scale;
 
@@ -1328,7 +1328,7 @@ TextHeight(const char *text, int font_size)
     }
 
     if(!seen_glyph)
-        return (int)((float)UIFontBaseSize(font) * scale + 0.5f);
+        return (int)((float)TextFontBaseSize(font) * scale + 0.5f);
     return (int)(max_bottom - min_top + 0.5f);
 }
 
@@ -1338,10 +1338,10 @@ TextLineHeight(int font_size)
     int normalized_font_size = ui_text_normalize_token_size(font_size);
     Font font = active_font_for_size(normalized_font_size);
     float scale = font_size_scale(font, normalized_font_size);
-    int base = UIFontBaseSize(font);
+    int base = TextFontBaseSize(font);
 
-    if(UIFontHasNativeText(font)) {
-        int native_h = UIFontNativeTextHeight(font);
+    if(TextFontHasNativeText(font)) {
+        int native_h = TextFontNativeTextHeight(font);
 
         if(native_h > 0)
             return native_h;
@@ -1357,13 +1357,13 @@ ScaledTextWidth(const char *text, int scale)
     Font font = active_font();
     int width = 0;
 
-    if(text == NULL || !UIFontReady(font))
+    if(text == NULL || !TextFontReady(font))
         return 0;
     if(scale < 1)
         scale = 1;
 
-    if(UIFontHasNativeText(font))
-        return UIFontNativeTextWidth(font, text, -1) * scale;
+    if(TextFontHasNativeText(font))
+        return TextFontNativeTextWidth(font, text, -1) * scale;
 
     for(int i = 0; text[i] != '\0';) {
         int codepoint_byte_count = 0;
@@ -1373,7 +1373,7 @@ ScaledTextWidth(const char *text, int scale)
             break;
 
         Font glyph_font = font_for_scaled_codepoint(codepoint);
-        width += UIFontAdvance(glyph_font, codepoint) * scale;
+        width += TextFontAdvance(glyph_font, codepoint) * scale;
         i += codepoint_byte_count;
     }
 
@@ -1381,13 +1381,13 @@ ScaledTextWidth(const char *text, int scale)
 }
 
 Font
-GetUIFontForCodepoint(int codepoint, int font_size)
+GetTextFontForCodepoint(int codepoint, int font_size)
 {
     return font_for_codepoint(codepoint, ui_text_normalize_token_size(font_size));
 }
 
 float
-GetUIFontScale(Font font, int font_size)
+GetTextFontScale(Font font, int font_size)
 {
     return font_size_scale(font, ui_text_normalize_token_size(font_size));
 }
@@ -1407,7 +1407,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
     int selected_start = 0;
     int selected_end = 0;
 
-    if(text == NULL || !UIFontReady(font))
+    if(text == NULL || !TextFontReady(font))
         return;
 
     font_size = normalized_font_size;
@@ -1421,19 +1421,19 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         char inspect_id[96];
         Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
         int inspect_hash = ui_text_id(text, x, y, font_size);
-        UIWidget widget;
+        Widget widget;
 
         snprintf(inspect_id, sizeof(inspect_id), "tmp:text:%d", inspect_hash);
-        widget = BeginUIWidget("text", inspect_id, bounds, UI_WIDGET_READONLY);
-        UIWidgetSetAction(&widget, text);
-        EndUIWidget(&widget);
+        widget = BeginWidget("text", inspect_id, bounds, WIDGET_READONLY);
+        WidgetSetAction(&widget, text);
+        EndWidget(&widget);
     }
 
     if(selectable) {
         Rectangle bounds = {(float)x, (float)y, (float)text_w, (float)line_h};
         Vector2 mouse = ui_mouse_world();
         int inside = CheckCollisionPointRec(mouse, bounds);
-        int captured = UIInputCapturesClick(mouse);
+        int captured = InputCapturesClick(mouse);
 
         if(inside && !captured)
             MarkCursor(MOUSE_CURSOR_IBEAM);
@@ -1455,7 +1455,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
                 g_ui_text_selection.dragging = 0;
             }
         }
-        if(g_ui_text_selection.id == id && UIKeyboardInputEnabled() &&
+        if(g_ui_text_selection.id == id && IsKeyboardInputEnabled() &&
            ui_text_mod_key_down() &&
            IsKeyPressed(KEY_C)) {
             int start = g_ui_text_selection.anchor;
@@ -1486,8 +1486,8 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         }
     }
 
-    if(UIFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
-        (void)UIFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
+    if(TextFontHasNativeText(font) && g_ui_text_letter_spacing == 0) {
+        (void)TextFontDrawNativeText(font, text, byte_len, x, y, font_size, color);
         return;
     }
 
@@ -1503,10 +1503,10 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
             break;
 
         glyph_font = font_for_codepoint(codepoint, font_size);
-        if(UIFontHasNativeText(glyph_font)) {
-            (void)UIFontDrawNativeText(glyph_font, &text[i], codepoint_byte_count,
+        if(TextFontHasNativeText(glyph_font)) {
+            (void)TextFontDrawNativeText(glyph_font, &text[i], codepoint_byte_count,
                                       cursor_x, y, font_size, color);
-            cursor_x += UIFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count)
+            cursor_x += TextFontNativeTextWidth(glyph_font, &text[i], codepoint_byte_count)
                         + g_ui_text_letter_spacing;
             i += codepoint_byte_count;
             continue;
@@ -1515,11 +1515,11 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
             /* which font entry actually serves this glyph + its advance */
             TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
-                     (double)UIFontGlyph(glyph_font, codepoint).advanceX);
+                     (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
         scale = font_size_scale(glyph_font, font_size);
-        glyph = UIFontGlyph(glyph_font, codepoint);
-        src = UIFontAtlasRec(glyph_font, codepoint);
+        glyph = TextFontGlyph(glyph_font, codepoint);
+        src = TextFontAtlasRec(glyph_font, codepoint);
 
         if(ui_text_trace_enabled() && i == 0) {
             TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
@@ -1534,7 +1534,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
                 .width = src.width * scale,
                 .height = src.height * scale
             };
-            DrawTexturePro(UIFontAtlasTexture(glyph_font), src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
+            DrawTexturePro(TextFontAtlasTexture(glyph_font), src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
         }
 
         cursor_x += (int)((float)glyph.advanceX * scale + 0.5f) + g_ui_text_letter_spacing;
@@ -1671,7 +1671,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
                                 block.font_size, &lines);
     line_h = TextLineHeight(block.font_size);
     height = count > 0 ? count * line_h + (count - 1) * block.line_gap : 0;
-    captured = UIInputCapturesClick(mouse);
+    captured = InputCapturesClick(mouse);
 
     for(int i = 0; i < count; i++) {
         int y = (int)block.bounds.y + i * (line_h + block.line_gap);
@@ -1751,7 +1751,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
             selected_start = selected_end;
             selected_end = tmp;
         }
-        if(UIKeyboardInputEnabled() && ui_text_mod_key_down() &&
+        if(IsKeyboardInputEnabled() && ui_text_mod_key_down() &&
            IsKeyPressed(KEY_C))
             ui_text_copy_selection(block.text, selected_start, selected_end);
     }
@@ -1803,14 +1803,14 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
             codepoint_byte_count = 1;
 
         glyph_font = italic_font_for_codepoint(codepoint, font_size);
-        if(!UIFontReady(glyph_font)) {
+        if(!TextFontReady(glyph_font)) {
             i += codepoint_byte_count;
             continue;
         }
 
         scale = font_size_scale(glyph_font, font_size);
-        glyph = UIFontGlyph(glyph_font, codepoint);
-        src = UIFontAtlasRec(glyph_font, codepoint);
+        glyph = TextFontGlyph(glyph_font, codepoint);
+        src = TextFontAtlasRec(glyph_font, codepoint);
 
         if(ui_text_trace_enabled() && i == 0) {
             TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
@@ -1825,11 +1825,11 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
                 .width = src.width * scale,
                 .height = src.height * scale
             };
-            DrawTexturePro(UIFontAtlasTexture(glyph_font), src, dst,
+            DrawTexturePro(TextFontAtlasTexture(glyph_font), src, dst,
                            (Vector2){0.0f, 0.0f}, 0.0f, color);
         }
 
-        cursor_x += (int)((float)UIFontAdvance(glyph_font, codepoint) * scale + 0.5f);
+        cursor_x += (int)((float)TextFontAdvance(glyph_font, codepoint) * scale + 0.5f);
         i += codepoint_byte_count;
     }
 }
@@ -1886,7 +1886,7 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
     Font font = active_font();
     int cursor_x = x;
 
-    if(text == NULL || !UIFontReady(font))
+    if(text == NULL || !TextFontReady(font))
         return;
     if(scale < 1)
         scale = 1;
@@ -1899,8 +1899,8 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
             break;
 
         Font glyph_font = font_for_scaled_codepoint(codepoint);
-        GlyphInfo glyph = UIFontGlyph(glyph_font, codepoint);
-        Rectangle src = UIFontAtlasRec(glyph_font, codepoint);
+        GlyphInfo glyph = TextFontGlyph(glyph_font, codepoint);
+        Rectangle src = TextFontAtlasRec(glyph_font, codepoint);
 
         if(src.width > 0.0f && src.height > 0.0f) {
             Rectangle dst = {
@@ -1909,7 +1909,7 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
                 .width = src.width * (float)scale,
                 .height = src.height * (float)scale
             };
-            DrawTexturePro(UIFontAtlasTexture(glyph_font), src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
+            DrawTexturePro(TextFontAtlasTexture(glyph_font), src, dst, (Vector2){0.0f, 0.0f}, 0.0f, color);
         }
 
         cursor_x += glyph.advanceX * scale;
@@ -1936,7 +1936,7 @@ ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale)
 
     if(scale < 1)
         scale = 1;
-    base = UIFontBaseSize(font);
+    base = TextFontBaseSize(font);
     font_size = base > 0 ? base * scale : 16 * scale;
     return TextBaselineY(text, box_y, box_h, font_size);
 }
@@ -1950,7 +1950,7 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
     float max_bottom = 0.0f;
     int seen_glyph = 0;
 
-    if(text == NULL || text[0] == '\0' || !UIFontReady(font))
+    if(text == NULL || text[0] == '\0' || !TextFontReady(font))
         return box_y + (int)(((float)box_h -
                               (float)TextLineHeight(normalized_font_size)) *
                              0.5f + 0.5f);
@@ -1964,10 +1964,10 @@ TextBaselineY(const char *text, int box_y, int box_h, int font_size)
 
         if(codepoint != ' ' && codepoint != '\t') {
             Font glyph_font = font_for_codepoint(codepoint, normalized_font_size);
-            GlyphInfo glyph = UIFontGlyph(glyph_font, codepoint);
-            Rectangle rec = UIFontAtlasRec(glyph_font, codepoint);
+            GlyphInfo glyph = TextFontGlyph(glyph_font, codepoint);
+            Rectangle rec = TextFontAtlasRec(glyph_font, codepoint);
             float glyph_scale = font_size_scale(glyph_font, normalized_font_size);
-            int padding = UIFontGlyphPadding(glyph_font);
+            int padding = TextFontGlyphPadding(glyph_font);
             float glyph_top = (float)glyph.offsetY * glyph_scale - (float)padding * glyph_scale;
             float glyph_bottom = glyph_top + ((float)rec.height + 2.0f * (float)padding) * glyph_scale;
 

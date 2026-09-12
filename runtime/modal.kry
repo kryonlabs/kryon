@@ -1,0 +1,138 @@
+#module "modal"
+#import "drawing_props"
+
+ModalMetrics :: struct {
+    screen_pad: i32
+    min_width: i32
+    default_max_width: i32
+    edge_pad: i32
+    title_height: i32
+    padding_x: i32
+    padding_bottom: i32
+    message_gap: i32
+    prompt_height: i32
+    prompt_gap: i32
+    button_height: i32
+    button_gap: i32
+    action_padding_x: i32
+    action_min_width: i32
+    action_max_width: i32
+    content_min_width: i32
+    min_height: i32
+}
+
+ModalLayout :: struct {
+    panel: Rectangle
+    content_width: i32
+    message_x: i32
+    message_y: i32
+    button_y: i32
+    prompt_y: i32
+    prompt_height: i32
+    buttons_height: i32
+}
+
+ModalMetricsFor :: (scale: float) -> ModalMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ModalMetrics
+    metrics.screen_pad = (i32)(24.0 * scale)
+    metrics.min_width = (i32)(280.0 * scale)
+    metrics.default_max_width = (i32)(420.0 * scale)
+    metrics.edge_pad = (i32)(8.0 * scale)
+    metrics.title_height = (i32)(48.0 * scale)
+    metrics.padding_x = (i32)(18.0 * scale)
+    metrics.padding_bottom = (i32)(18.0 * scale)
+    metrics.message_gap = (i32)(18.0 * scale)
+    metrics.prompt_height = (i32)(38.0 * scale)
+    metrics.prompt_gap = (i32)(18.0 * scale)
+    metrics.button_height = (i32)(44.0 * scale)
+    metrics.button_gap = (i32)(8.0 * scale)
+    metrics.action_padding_x = (i32)(24.0 * scale)
+    metrics.action_min_width = (i32)(88.0 * scale)
+    metrics.action_max_width = (i32)(150.0 * scale)
+    metrics.content_min_width = (i32)(120.0 * scale)
+    metrics.min_height = (i32)(160.0 * scale)
+    return metrics
+}
+
+ModalClampWidth :: (view_width: i32, requested_max_width: i32,
+    metrics: ModalMetrics) -> i32 #export {
+    width: i32 = requested_max_width
+    if width <= 0 { width = metrics.default_max_width }
+    if width > view_width - metrics.screen_pad { width = view_width - metrics.screen_pad }
+    if width < metrics.min_width { width = metrics.min_width }
+    if width > view_width - metrics.edge_pad { width = view_width - metrics.edge_pad }
+    if width < 1 { width = 1 }
+    return width
+}
+
+ModalContentWidth :: (modal_width: i32, metrics: ModalMetrics) -> i32 #export {
+    width: i32 = modal_width - metrics.padding_x * 2
+    if width < metrics.content_min_width { width = metrics.content_min_width }
+    return width
+}
+
+ModalActionWidth :: (label_width: i32, metrics: ModalMetrics) -> i32 #export {
+    width: i32 = label_width + metrics.action_padding_x
+    if width < metrics.action_min_width { width = metrics.action_min_width }
+    if width > metrics.action_max_width { width = metrics.action_max_width }
+    return width
+}
+
+ModalActionRowsStep :: (row_width: i32, rows: i32, action_width: i32,
+    content_width: i32, gap: i32) -> i32 #export {
+    next_width: i32 = action_width
+    if row_width > 0 { next_width = row_width + gap + action_width }
+    if row_width > 0 && next_width > content_width { return rows + 1 }
+    return rows
+}
+
+ModalActionRowWidthStep :: (row_width: i32, action_width: i32,
+    content_width: i32, gap: i32) -> i32 #export {
+    next_width: i32 = action_width
+    if row_width > 0 { next_width = row_width + gap + action_width }
+    if row_width > 0 && next_width > content_width { return action_width }
+    return next_width
+}
+
+ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {
+    if rows <= 0 { return 0 }
+    return rows * metrics.button_height + (rows - 1) * metrics.button_gap
+}
+
+ModalLayoutFor :: (view_width: i32, view_height: i32, max_width: i32,
+    message_height: i32, button_rows: i32, has_prompt: bool,
+    metrics: ModalMetrics) -> ModalLayout #export {
+    layout: ModalLayout
+    modal_width: i32 = ModalClampWidth(view_width, max_width, metrics)
+    content_width: i32 = ModalContentWidth(modal_width, metrics)
+    buttons_height: i32 = ModalButtonsHeight(button_rows, metrics)
+    prompt_height: i32 = 0
+    prompt_gap: i32 = 0
+    if has_prompt {
+        prompt_height = metrics.prompt_height
+        prompt_gap = metrics.prompt_gap
+    }
+    modal_height: i32 = metrics.title_height + message_height +
+        prompt_gap + prompt_height
+    if buttons_height > 0 { modal_height += metrics.message_gap + buttons_height }
+    modal_height += metrics.padding_bottom
+    if modal_height < metrics.min_height { modal_height = metrics.min_height }
+    max_height: i32 = view_height - metrics.screen_pad
+    if modal_height > max_height { modal_height = max_height }
+    if modal_height < 1 { modal_height = 1 }
+
+    layout.panel.x = (float)((view_width - modal_width) / 2)
+    layout.panel.y = (float)((view_height - modal_height) / 2)
+    layout.panel.width = (float)modal_width
+    layout.panel.height = (float)modal_height
+    layout.content_width = content_width
+    layout.message_x = (i32)layout.panel.x + metrics.padding_x
+    layout.message_y = (i32)layout.panel.y + metrics.title_height
+    layout.buttons_height = buttons_height
+    layout.button_y = (i32)layout.panel.y + modal_height -
+        buttons_height - metrics.padding_bottom
+    layout.prompt_y = layout.message_y + message_height + prompt_gap
+    layout.prompt_height = prompt_height
+    return layout
+}

@@ -42,34 +42,34 @@ main(void)
         fprintf(stderr, "FAIL: text input active initially got %d want 0\n",
                 TextInputActive());
 
-    BeginUIFrame(640, 480, 1.0f);
-    SetUIFocusTextInputActive(1);
+    BeginInterfaceFrame(640, 480, 1.0f);
+    SetFocusTextInputActive(1);
     ok &= TextInputActive() == 1;
     if(TextInputActive() != 1)
         fprintf(stderr, "FAIL: text input active after focus got %d want 1\n",
                 TextInputActive());
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(640, 480, 1.0f);
-    SetUIFocusTextInputActive(0);
+    BeginInterfaceFrame(640, 480, 1.0f);
+    SetFocusTextInputActive(0);
     ok &= TextInputActive() == 0;
     if(TextInputActive() != 0)
         fprintf(stderr, "FAIL: text input active after clear got %d want 0\n",
                 TextInputActive());
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(640, 480, 1.0f);
-    SetUIFocusTextInputActive(1);
-    EndUIFrame();
+    BeginInterfaceFrame(640, 480, 1.0f);
+    SetFocusTextInputActive(1);
+    EndInterfaceFrame();
 
-    BeginUIFrame(640, 480, 1.0f);
-    SetUIFocusTextInputActive(0);
-    SetUIFocusTextInputActive(1);
-    EndUIFrame();
+    BeginInterfaceFrame(640, 480, 1.0f);
+    SetFocusTextInputActive(0);
+    SetFocusTextInputActive(1);
+    EndInterfaceFrame();
 
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
     ClearTextInputFocus();
-    EndUIFrame();
+    EndInterfaceFrame();
 
     ok &= callback_count == 4;
     if(callback_count != 4)

@@ -547,7 +547,7 @@ Java_com_kryonlabs_kryon_KryonActivity_nativeSetDeviceDensity(JNIEnv *env,
     MutexLock(&g_android_host_mutex);
     g_device_density = density;
     MutexUnlock(&g_android_host_mutex);
-    SetUIDeviceDensity(density);
+    SetDeviceDensity(density);
 }
 
 JNIEXPORT void JNICALL

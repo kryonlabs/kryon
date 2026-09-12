@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "runtime/toast.h"
 
 #define UI_TOAST_MESSAGE_SIZE 256
 #define UI_TOAST_DEFAULT_SECONDS 3.0
@@ -22,14 +23,14 @@ ClearToast(void)
 void
 ShowToastFor(const char *message, double seconds)
 {
+    ToastMetrics metrics = ToastMetricsFor(1.0f);
+
     if(message == NULL || message[0] == '\0') {
         ClearToast();
         return;
     }
-    if(seconds <= 0.0)
-        seconds = UI_TOAST_DEFAULT_SECONDS;
     copy_toast_message(message);
-    toast_until = GetTime() + seconds;
+    toast_until = GetTime() + (double)ToastDuration((float)seconds, metrics);
 }
 
 void
@@ -48,17 +49,12 @@ void
 RenderToast(void)
 {
     int font = GetSmallFontSize();
-    int pad_x = Scale(14);
-    int pad_y = Scale(10);
-    int margin = Scale(18);
-    int max_w = ui_view_width - margin * 2;
+    float scale = (float)Scale(1000) / 1000.0f;
+    ToastMetrics metrics = ToastMetricsFor(scale);
+    ToastLayout layout;
     int text_w;
+    int line_h;
     int content_w;
-    int w;
-    int h;
-    int x;
-    int y;
-    Rectangle bounds;
     char display[UI_TOAST_MESSAGE_SIZE];
 
     if(toast_message[0] == '\0')
@@ -69,7 +65,7 @@ RenderToast(void)
     }
 
     snprintf(display, sizeof(display), "%s", toast_message);
-    content_w = max_w - pad_x * 2;
+    content_w = ToastContentWidth(ui_view_width, metrics);
     while(display[0] != '\0' && TextWidth(display, font) > content_w) {
         size_t len = strlen(display);
         if(len <= 3)
@@ -81,19 +77,16 @@ RenderToast(void)
     }
 
     text_w = TextWidth(display, font);
-    w = text_w + pad_x * 2;
-    if(w > max_w)
-        w = max_w;
-    h = TextLineHeight(font) + pad_y * 2;
-    x = (ui_view_width - w) / 2;
-    y = ui_view_height - h - margin;
-    bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
+    line_h = TextLineHeight(font);
+    layout = ToastLayoutFor(ui_view_width, ui_view_height, text_w, line_h,
+                            metrics);
 
-    DrawRectangleRounded(bounds, 0.18f, 12, DarkenUIColor(c_surface, 18));
-    DrawRectangleRoundedLinesEx(bounds, 0.18f, 12, Scale(1),
-                                DarkenUIColor(c_surface, 46));
+    DrawRectangleRounded(layout.bounds, 0.18f, 12, DarkenColor(c_surface, 18));
+    DrawRectangleRoundedLinesEx(layout.bounds, 0.18f, 12, Scale(1),
+                                DarkenColor(c_surface, 46));
     RenderText(display,
-               x + (w - text_w) / 2,
-               GetUIControlTextY(display, y, h, font),
+               (int)layout.text_bounds.x,
+               GetUIControlTextY(display, (int)layout.bounds.y,
+                                 (int)layout.bounds.height, font),
                font, c_text);
 }

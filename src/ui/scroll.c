@@ -79,7 +79,7 @@ BeginScrollPage(ScrollPageSpec spec)
     ScrollView measured;
     int max_content_w = spec.max_content_width;
     int min_content_w = spec.min_content_width;
-    int side_padding = spec.side_padding > 0 ? spec.side_padding : GetUIPageSidePadding();
+    int side_padding = spec.side_padding > 0 ? spec.side_padding : GetPageSidePadding();
     int content_x = 0;
     int content_w = 0;
     int draw_w;
@@ -97,7 +97,7 @@ BeginScrollPage(ScrollPageSpec spec)
     if(max_content_w < 0)
         max_content_w = 0;
 
-    GetUICenteredColumn(max_content_w, side_padding, &content_x, &content_w);
+    GetCenteredColumn(max_content_w, side_padding, &content_x, &content_w);
     draw_w = content_w;
 
     for(i = 0; i < passes; i++) {
@@ -208,7 +208,7 @@ BeginScrollContainer(ScrollArea area)
     int y = (int)area.bounds.y;
     int wheel_step = area.wheel_step > 0 ? area.wheel_step : Scale(42);
     int inside = CheckCollisionPointRec(mouse_world, area.bounds);
-    int captured = UIInputCapturesClick(mouse_world);
+    int captured = InputCapturesClick(mouse_world);
     int drag_threshold = Scale(5);
     int scrollbar_w = Scale(8);
     int scrollbar_x = area.scrollbar_x > 0
@@ -270,11 +270,11 @@ BeginScrollContainer(ScrollArea area)
                 content_dragging = 1;
                 *area.scroll_offset = content_drag_start_scroll - dy;
                 *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
-                PushUIInputCapture(capture, 0);
+                PushInputCapture(capture, 0);
             }
         } else if(content_drag_active) {
             if(content_dragging)
-                PushUIInputCapture(capture, 0);
+                PushInputCapture(capture, 0);
             content_drag_active = 0;
             content_dragging = 0;
         }
@@ -291,7 +291,7 @@ BeginScrollContainer(ScrollArea area)
             area.bounds.height * g_ui_camera.zoom
         };
         Rectangle visual_screen_bounds;
-        Rectangle clipped_screen_bounds = GetUIClipEffective(screen_bounds);
+        Rectangle clipped_screen_bounds = GetClipEffective(screen_bounds);
         Rectangle clipped_world_bounds = {
             (clipped_screen_bounds.x - g_ui_camera.offset.x) / g_ui_camera.zoom,
             (clipped_screen_bounds.y - g_ui_camera.offset.y) / g_ui_camera.zoom,
@@ -340,8 +340,8 @@ BeginScrollContainer(ScrollArea area)
         if(visual_screen_bounds.height < 0)
             visual_screen_bounds.height = 0;
 
-        PushUIInputClip(clipped_world_bounds);
-        BeginUIClip((int)visual_screen_bounds.x, (int)visual_screen_bounds.y,
+        PushInputClip(clipped_world_bounds);
+        BeginClip((int)visual_screen_bounds.x, (int)visual_screen_bounds.y,
                          (int)visual_screen_bounds.width,
                          (int)visual_screen_bounds.height);
     }
@@ -354,8 +354,8 @@ EndScrollContainer(ScrollArea area, ScrollView view)
     int scrollbar_w = Scale(8);
     int scrollbar_x;
 
-    EndUIClip();
-    PopUIInputClip();
+    EndClip();
+    PopInputClip();
 
     if(area.scroll_offset == NULL || view.max_scroll <= 0)
         return;
@@ -527,7 +527,7 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     int input_captured = overlay ? ui_base_input_captures_click(mouse_pos, 0)
                                  : ui_input_captures_click_internal(mouse_pos, 0);
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;
-    int thumb_hover = thumb_active && UIHoverEffectsEnabled();
+    int thumb_hover = thumb_active && HoverEffectsEnabled();
 
     if(thumb_active)
         MarkClickable();

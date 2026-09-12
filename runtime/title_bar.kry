@@ -1,0 +1,92 @@
+#module "title_bar"
+#import "drawing_props"
+
+TitleBarMetrics :: struct {
+    side_margin: i32
+    leading_reserved: i32
+    leading_icon_size: i32
+    leading_padding: i32
+    leading_x: i32
+    dropdown_gap: i32
+    dropdown_default_height: i32
+    title_min_width: i32
+    title_horizontal_padding: i32
+}
+
+TitleBarLayout :: struct {
+    bounds: Rectangle
+    leading_bounds: Rectangle
+    title_bounds: Rectangle
+    dropdown_bounds: Rectangle
+    side_reserved: i32
+}
+
+TitleBarMetricsFor :: (scale: float) -> TitleBarMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TitleBarMetrics
+    metrics.side_margin = (i32)(12.0 * scale)
+    metrics.leading_reserved = (i32)(60.0 * scale)
+    metrics.leading_icon_size = (i32)(20.0 * scale)
+    metrics.leading_padding = (i32)(10.0 * scale)
+    metrics.leading_x = (i32)(12.0 * scale)
+    metrics.dropdown_gap = (i32)(4.0 * scale)
+    metrics.dropdown_default_height = (i32)(32.0 * scale)
+    metrics.title_min_width = (i32)(48.0 * scale)
+    metrics.title_horizontal_padding = (i32)(16.0 * scale)
+    return metrics
+}
+
+TitleBarLayoutFor :: (view_width: i32, height: i32, has_leading: bool,
+    has_dropdown: bool, dropdown_height: i32, dropdown_min_width: i32,
+    metrics: TitleBarMetrics) -> TitleBarLayout #export {
+    layout: TitleBarLayout
+    layout.bounds.width = (float)view_width
+    layout.bounds.height = (float)height
+    layout.side_reserved = metrics.side_margin
+    if has_leading {
+        button_size: i32 = metrics.leading_icon_size + metrics.leading_padding * 2
+        y: i32 = (height - button_size) / 2
+        if y < 0 { y = 0 }
+        layout.leading_bounds.x = (float)metrics.leading_x
+        layout.leading_bounds.y = (float)y
+        layout.leading_bounds.width = (float)button_size
+        layout.leading_bounds.height = (float)button_size
+        layout.side_reserved = metrics.leading_reserved
+    }
+
+    max_width: i32 = view_width - layout.side_reserved * 2
+    if max_width < metrics.title_min_width {
+        max_width = view_width - metrics.title_horizontal_padding
+    }
+    if max_width < 1 { max_width = 1 }
+    layout.title_bounds.x = (float)((view_width - max_width) / 2)
+    layout.title_bounds.y = 0.0
+    layout.title_bounds.width = (float)max_width
+    layout.title_bounds.height = (float)height
+
+    if has_dropdown {
+        dropdown_x: i32 = metrics.side_margin
+        if has_leading {
+            dropdown_x += metrics.leading_icon_size + metrics.leading_padding * 2 +
+                metrics.dropdown_gap
+        }
+        dropdown_h: i32 = dropdown_height
+        if dropdown_h <= 0 { dropdown_h = metrics.dropdown_default_height }
+        dropdown_y: i32 = (height - dropdown_h) / 2
+        if dropdown_y < 0 { dropdown_y = 0 }
+        dropdown_w: i32 = view_width - dropdown_x - metrics.side_margin
+        if dropdown_min_width > 0 && dropdown_w < dropdown_min_width {
+            dropdown_w = view_width - dropdown_x
+        }
+        if dropdown_w < 1 { dropdown_w = 1 }
+        layout.dropdown_bounds.x = (float)dropdown_x
+        layout.dropdown_bounds.y = (float)dropdown_y
+        layout.dropdown_bounds.width = (float)dropdown_w
+        layout.dropdown_bounds.height = (float)dropdown_h
+    }
+    return layout
+}
+
+TitleBarTitleX :: (view_width: i32, title_width: i32) -> i32 #export {
+    return (view_width - title_width) / 2
+}

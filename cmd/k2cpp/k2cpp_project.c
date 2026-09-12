@@ -337,8 +337,8 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
         fprintf(out, "    InitWindow(width, height, %s);\n", title);
         fprintf(out, "    SetTargetFPS(%d);\n", fps);
         if(appmod->app.font_examples)
-            fprintf(out, "    LoadExampleUIFont();\n");
-        fprintf(out, "    InitUI(width, height, GetUIScale());\n");
+            fprintf(out, "    LoadExampleTextFont();\n");
+        fprintf(out, "    InitInterface(width, height, GetScale());\n");
         if(appmod->app.theme[0] != '\0') {
             fprintf(out, "    SetThemeSource(THEME_SOURCE_APP);\n");
             fprintf(out, "    SetThemeMode(%s);\n",
@@ -384,7 +384,7 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
             }
             if(entry != NULL && entry->is_ui) {
                 fprintf(out, "        BeginFrame();\n");
-                fprintf(out, "        BeginUIFrame(GetFrameWidth(), "
+                fprintf(out, "        BeginInterfaceFrame(GetFrameWidth(), "
                              "GetFrameHeight(), GetFrameScale());\n");
                 fprintf(out, "        BeginTree(Key(\"%s\"));\n", hook);
                 if(strstr(entry->args, "Rectangle") != NULL) {
@@ -395,7 +395,7 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
                     fprintf(out, "        %s();\n", hook);
                 }
                 fprintf(out, "        EndTree();\n");
-                fprintf(out, "        EndUIFrame();\n");
+                fprintf(out, "        EndInterfaceFrame();\n");
                 fprintf(out, "        EndFrame();\n");
             } else {
                 fprintf(out, "        %s();\n",
@@ -409,13 +409,13 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
             fprintf(out, "            route_version = GetRouteVersion();\n");
             fprintf(out, "        }\n");
             fprintf(out, "        BeginFrame();\n");
-            fprintf(out, "        BeginUIFrame(GetFrameWidth(), "
+            fprintf(out, "        BeginInterfaceFrame(GetFrameWidth(), "
                          "GetFrameHeight(), GetFrameScale());\n");
             fprintf(out, "        BeginTree(Key(\"kryon_project\"));\n");
             fprintf(out, "        DrawAppScreen(host, (Rectangle){0, 0, "
                          "(float)GetFrameWidth(), (float)GetFrameHeight()});\n");
             fprintf(out, "        EndTree();\n");
-            fprintf(out, "        EndUIFrame();\n");
+            fprintf(out, "        EndInterfaceFrame();\n");
             fprintf(out, "        EndFrame();\n");
         } else {
             fprintf(out, "        ;\n");
@@ -438,7 +438,7 @@ k2cpp_write_project(KirProgram *const *progs, int prog_count,
         if(route_host_main)
             fprintf(out, "    DestroyAppHost(host);\n");
         if(appmod->app.font_examples)
-            fprintf(out, "    UnloadExampleUIFont();\n");
+            fprintf(out, "    UnloadExampleTextFont();\n");
         fprintf(out, "    CloseWindow();\n");
         fprintf(out, "    return 0;\n}\n");
     }

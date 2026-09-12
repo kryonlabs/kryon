@@ -1,5 +1,5 @@
-#ifndef UI_OVERLAY_H
-#define UI_OVERLAY_H
+#ifndef KRYON_OVERLAY_H
+#define KRYON_OVERLAY_H
 
 #include "kryon_compat.generated.h"
 

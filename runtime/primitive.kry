@@ -1,0 +1,53 @@
+#module "primitive"
+#import "drawing_props"
+
+LinePrimitive :: struct {
+    bounds: Rectangle
+    x1: i32
+    y1: i32
+    x2: i32
+    y2: i32
+}
+
+PrimitiveBackgroundBounds :: (width: i32, height: i32) -> Rectangle #export {
+    bounds: Rectangle
+    bounds.x = 0.0
+    bounds.y = 0.0
+    bounds.width = (float)width
+    bounds.height = (float)height
+    return bounds
+}
+
+PrimitiveRectBounds :: (x: i32, y: i32, width: i32, height: i32) -> Rectangle #export {
+    bounds: Rectangle
+    bounds.x = (float)x
+    bounds.y = (float)y
+    bounds.width = (float)width
+    bounds.height = (float)height
+    return bounds
+}
+
+PrimitiveLineFor :: (x1: i32, y1: i32, x2: i32, y2: i32) -> LinePrimitive #export {
+    line: LinePrimitive
+    line.x1 = x1
+    line.y1 = y1
+    line.x2 = x2
+    line.y2 = y2
+    min_x: i32 = x1
+    max_x: i32 = x2
+    if x2 < min_x {
+        min_x = x2
+        max_x = x1
+    }
+    min_y: i32 = y1
+    max_y: i32 = y2
+    if y2 < min_y {
+        min_y = y2
+        max_y = y1
+    }
+    line.bounds.x = (float)min_x
+    line.bounds.y = (float)min_y
+    line.bounds.width = (float)(max_x - min_x)
+    line.bounds.height = (float)(max_y - min_y)
+    return line
+}

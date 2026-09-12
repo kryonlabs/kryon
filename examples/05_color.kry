@@ -16,8 +16,8 @@ ColorExample :: (viewport: Rectangle) #ui {
         Background(GetThemeBackground())
         colors: [5] Color = {GetThemeButton(),GetThemeButtonHover(),GetThemeCircle(),GetThemeSurface(),GetThemeLink()}
         base: Color = colors[color_index]
-        light: Color = LightenUIColor(base,40)
-        dark: Color = DarkenUIColor(base,40)
+        light: Color = LightenColor(base,40)
+        dark: Color = DarkenColor(base,40)
         Text((TextProps){.bounds={50, 20, 0, 0}, .text="Color Utilities", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Rect(50, 70, 70, 70, base, BLANK)
         Rect(50, 70, 70, 70, BLANK, GetThemeText())

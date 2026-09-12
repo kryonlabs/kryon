@@ -1,12 +1,12 @@
-#ifndef UI_CLIP_H
-#define UI_CLIP_H
+#ifndef KRYON_CLIP_H
+#define KRYON_CLIP_H
 
 #include "kryon.h"
 
-Rectangle GetUIClipIntersection(Rectangle a, Rectangle b);
-Rectangle GetUIClipEffective(Rectangle bounds);
-void BeginUIClip(int x, int y, int w, int h);
-void EndUIClip(void);
-void ResetUIClip(void);
+Rectangle GetClipIntersection(Rectangle a, Rectangle b);
+Rectangle GetClipEffective(Rectangle bounds);
+void BeginClip(int x, int y, int w, int h);
+void EndClip(void);
+void ResetClip(void);
 
 #endif

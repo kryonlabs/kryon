@@ -1,0 +1,71 @@
+#module "layout"
+#import "drawing_props"
+
+LayoutMetrics :: struct {
+    content: Rectangle
+    gap: i32
+    padding: i32
+}
+
+LayoutMetricsFor :: (bounds: Rectangle, gap: i32, padding: i32) -> LayoutMetrics #export {
+    metrics: LayoutMetrics
+    if gap < 0 { gap = 0 }
+    if padding < 0 { padding = 0 }
+    metrics.gap = gap
+    metrics.padding = padding
+    metrics.content.x = bounds.x + (float)padding
+    metrics.content.y = bounds.y + (float)padding
+    metrics.content.width = bounds.width - (float)(padding * 2)
+    metrics.content.height = bounds.height - (float)(padding * 2)
+    if metrics.content.width < 0.0 { metrics.content.width = 0.0 }
+    if metrics.content.height < 0.0 { metrics.content.height = 0.0 }
+    return metrics
+}
+
+LayoutScopeBounds :: (bounds: Rectangle, fallback_width: i32,
+    fallback_height: i32) -> Rectangle #export {
+    out: Rectangle = bounds
+    if out.width <= 0.0 { out.width = (float)fallback_width }
+    if out.height <= 0.0 { out.height = (float)fallback_height }
+    if out.width < 0.0 { out.width = 0.0 }
+    if out.height < 0.0 { out.height = 0.0 }
+    return out
+}
+
+LayoutCursorForChild :: (metrics: LayoutMetrics, horizontal: bool,
+    child_index: i32, previous_extent_sum: float) -> float #export {
+    if child_index < 0 { child_index = 0 }
+    base: float = metrics.content.y
+    if horizontal { base = metrics.content.x }
+    return base + previous_extent_sum + (float)(child_index * metrics.gap)
+}
+
+LayoutChildBounds :: (declared: Rectangle, current: Rectangle,
+    metrics: LayoutMetrics, horizontal: bool, cursor: float) -> Rectangle #export {
+    out: Rectangle = current
+    if horizontal {
+        out.x = cursor
+        out.y = metrics.content.y
+        if out.height <= 0.0 { out.height = metrics.content.height }
+    } else {
+        out.x = metrics.content.x
+        out.y = cursor
+        if out.width <= 0.0 { out.width = metrics.content.width }
+    }
+    # Explicit x/y declarations opt out of auto placement; hosts call this only
+    # after checking that declared.x and declared.y are zero, but keep the policy
+    # robust for generated runtimes.
+    if declared.x != 0.0 || declared.y != 0.0 { return current }
+    return out
+}
+
+StackChildBounds :: (declared: Rectangle, current: Rectangle,
+    metrics: LayoutMetrics) -> Rectangle #export {
+    out: Rectangle = current
+    if declared.x != 0.0 || declared.y != 0.0 { return current }
+    out.x = metrics.content.x
+    out.y = metrics.content.y
+    if out.width <= 0.0 { out.width = metrics.content.width }
+    if out.height <= 0.0 { out.height = metrics.content.height }
+    return out
+}

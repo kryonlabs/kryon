@@ -180,7 +180,7 @@ DrawIconByName(const char *name, Rectangle bounds, Color tint)
 }
 
 void
-DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode)
+DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode)
 {
     const IconAsset *asset = GetIconAsset(type);
 

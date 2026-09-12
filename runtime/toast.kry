@@ -1,0 +1,64 @@
+#module "toast"
+#import "drawing_props"
+
+ToastMetrics :: struct {
+    pad_x: i32
+    pad_y: i32
+    margin: i32
+    default_seconds: float
+}
+
+ToastLayout :: struct {
+    bounds: Rectangle
+    text_bounds: Rectangle
+    content_width: i32
+}
+
+ToastMetricsFor :: (scale: float) -> ToastMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ToastMetrics
+    metrics.pad_x = (i32)(14.0 * scale)
+    metrics.pad_y = (i32)(10.0 * scale)
+    metrics.margin = (i32)(18.0 * scale)
+    metrics.default_seconds = 3.0
+    return metrics
+}
+
+ToastDuration :: (seconds: float, metrics: ToastMetrics) -> float #export {
+    if seconds <= 0.0 { return metrics.default_seconds }
+    return seconds
+}
+
+ToastMaxWidth :: (view_width: i32, metrics: ToastMetrics) -> i32 #export {
+    width: i32 = view_width - metrics.margin * 2
+    if width < 1 { width = 1 }
+    return width
+}
+
+ToastContentWidth :: (view_width: i32, metrics: ToastMetrics) -> i32 #export {
+    width: i32 = ToastMaxWidth(view_width, metrics) - metrics.pad_x * 2
+    if width < 1 { width = 1 }
+    return width
+}
+
+ToastLayoutFor :: (view_width: i32, view_height: i32, text_width: i32,
+    line_height: i32, metrics: ToastMetrics) -> ToastLayout #export {
+    layout: ToastLayout
+    max_width: i32 = ToastMaxWidth(view_width, metrics)
+    width: i32 = text_width + metrics.pad_x * 2
+    height: i32 = line_height + metrics.pad_y * 2
+    if width > max_width { width = max_width }
+    if width < 1 { width = 1 }
+    if height < 1 { height = 1 }
+    layout.bounds.x = (float)((view_width - width) / 2)
+    layout.bounds.y = (float)(view_height - height - metrics.margin)
+    layout.bounds.width = (float)width
+    layout.bounds.height = (float)height
+    layout.text_bounds.x = layout.bounds.x + (float)((width - text_width) / 2)
+    layout.text_bounds.y = layout.bounds.y + (float)metrics.pad_y
+    layout.text_bounds.width = (float)(width - metrics.pad_x * 2)
+    layout.text_bounds.height = (float)line_height
+    if layout.text_bounds.width < 0.0 { layout.text_bounds.width = 0.0 }
+    layout.content_width = ToastContentWidth(view_width, metrics)
+    return layout
+}

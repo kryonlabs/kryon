@@ -1,0 +1,35 @@
+#module "paragraph"
+#import "drawing_props"
+
+ParagraphMetrics :: struct {
+    font: i32
+    line_gap: i32
+    icon_size: i32
+    width: i32
+    height: i32
+    next_y: i32
+}
+
+ParagraphResolveMetrics :: (requested_font: i32, default_font: i32,
+    requested_line_gap: i32, default_line_gap: i32, requested_icon_size: i32,
+    requested_width: i32, fallback_width: i32, measured_height: i32,
+    current_y: i32) -> ParagraphMetrics #export {
+    metrics: ParagraphMetrics
+    metrics.font = requested_font
+    if metrics.font <= 0 { metrics.font = default_font }
+    metrics.line_gap = requested_line_gap
+    if metrics.line_gap <= 0 { metrics.line_gap = default_line_gap }
+    metrics.icon_size = requested_icon_size
+    if metrics.icon_size <= 0 { metrics.icon_size = metrics.font }
+    metrics.width = requested_width
+    if metrics.width <= 0 { metrics.width = fallback_width }
+    if metrics.width < 0 { metrics.width = 0 }
+    metrics.height = measured_height
+    if metrics.height <= 0 { metrics.height = metrics.font + metrics.line_gap }
+    metrics.next_y = current_y + metrics.height
+    return metrics
+}
+
+ParagraphCanLayout :: (width: i32) -> bool #export {
+    return width > 0
+}

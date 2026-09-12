@@ -95,11 +95,11 @@ static void check_composed_button_style(ButtonProps props)
     End();
     EndTree();
     int count = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     assert(count == 3);
-    assert(nodes[0].kind == UI_WIDGET_SCREEN_NODE);
-    assert(nodes[1].kind == UI_WIDGET_BUTTON_NODE);
-    assert(nodes[2].kind == UI_WIDGET_BUTTON_NODE);
+    assert(nodes[0].kind == WIDGET_SCREEN);
+    assert(nodes[1].kind == WIDGET_BUTTON);
+    assert(nodes[2].kind == WIDGET_BUTTON);
     const ButtonSpec *plain = &nodes[1].data.button;
     const ButtonSpec *composed = &nodes[2].data.button;
     assert(plain->props.id == 11 && composed->props.id == 12);
@@ -150,8 +150,8 @@ static void check_explicit_state_font(void)
             Button(props);
             EndTree();
             int count = 0;
-            const UIWidgetNode *nodes = GetTreeNodes(&count);
-            assert(count == 2 && nodes[1].kind == UI_WIDGET_BUTTON_NODE);
+            const WidgetNode *nodes = GetTreeNodes(&count);
+            assert(count == 2 && nodes[1].kind == WIDGET_BUTTON);
             /* The node retains the request; resolving it must still give the
                same font used for measurement, without freezing Style defaults. */
             assert(nodes[1].data.button.props.font == explicit_font);
@@ -175,7 +175,7 @@ static void check_natural_height(void)
                 .padding_y = cases[i][1], .font_size = cases[i][2]}});
         EndTree();
         int count = 0;
-        const UIWidgetNode *nodes = GetTreeNodes(&count);
+        const WidgetNode *nodes = GetTreeNodes(&count);
         assert(count == 2 && nodes[1].bounds.height == cases[i][3]);
     }
 }
@@ -194,8 +194,8 @@ static void check_child_style_padding(void)
         End();
         EndTree();
         int count = 0;
-        const UIWidgetNode *nodes = GetTreeNodes(&count);
-        assert(count == 3 && nodes[2].kind == UI_WIDGET_COLUMN_NODE);
+        const WidgetNode *nodes = GetTreeNodes(&count);
+        assert(count == 3 && nodes[2].kind == WIDGET_COLUMN);
         Rectangle expected = states[i] == ButtonStateHover
             ? (Rectangle){20, 20, 200, 100} : (Rectangle){45, 24, 150, 92};
         assert(nodes[2].bounds.x == expected.x && nodes[2].bounds.y == expected.y);
@@ -388,8 +388,8 @@ int main(void)
                     .foreground = {17, 34, 51, 128}}}});
         EndTree();
         int count = 0;
-        const UIWidgetNode *nodes = GetTreeNodes(&count);
-        assert(count == 2 && nodes[1].kind == UI_WIDGET_BUTTON_NODE);
+        const WidgetNode *nodes = GetTreeNodes(&count);
+        assert(count == 2 && nodes[1].kind == WIDGET_BUTTON);
         if(!scoped) {
             direct_bounds = nodes[1].bounds;
             direct_spec = nodes[1].data.button;
@@ -414,8 +414,8 @@ int main(void)
                     .foreground = {0, 0, 0, alpha}, .font_size = 27, .opacity = 0.5f}});
             EndTree();
             int count = 0;
-            const UIWidgetNode *nodes = GetTreeNodes(&count);
-            assert(count == 2 && nodes[1].kind == UI_WIDGET_TEXT_NODE);
+            const WidgetNode *nodes = GetTreeNodes(&count);
+            assert(count == 2 && nodes[1].kind == WIDGET_TEXT);
             int expected_alpha = disabled ? (int)(alpha * 0.45f) : alpha;
             expected_alpha = (int)(expected_alpha * 0.5f);
             assert(nodes[1].data.primitive.font == 27);
@@ -605,9 +605,9 @@ int main(void)
     EndTree();
     int node_count = 0;
     int text_count = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&node_count);
+    const WidgetNode *nodes = GetTreeNodes(&node_count);
     for (int i = 0; i < node_count; i++) {
-        if (nodes[i].kind == UI_WIDGET_TEXT_NODE) {
+        if (nodes[i].kind == WIDGET_TEXT) {
             assert(nodes[i].data.primitive.font == (text_count < 2 ? 27 : 13));
             assert((unsigned int)ColorToInt(nodes[i].data.primitive.color) ==
                 (text_count < 2 ? 0x11223300u : 0x445566ffu));

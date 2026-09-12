@@ -85,7 +85,7 @@ main(void)
 
     BeginDrawing();
     ClearBackground(bg);
-    BeginUIFrame(260, 180, 1.0f);
+    BeginInterfaceFrame(260, 180, 1.0f);
     BeginTree(Key("libdraw-hierarchy"));
     Text((TextProps){.bounds={54, 68, 0, 0}, .text="HHHHHHHHHHHH", .font=32, .color=lower, .wrap=TextWrapNone});
     DrawRectangle(44, 54, 160, 84, cover);
@@ -97,7 +97,7 @@ main(void)
                          .id = 901});
     DrawRectangle(44, 128, 160, 42, cover);
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
     EndDrawing();
 
     shot = LoadImageFromScreen();

@@ -4,7 +4,7 @@
 static float g_dpi_scale = 1.0f;
 
 void
-SetUIScale(float scale)
+SetScale(float scale)
 {
     if (scale > 0.0f) {
         g_dpi_scale = scale;
@@ -12,7 +12,7 @@ SetUIScale(float scale)
 }
 
 float
-GetUIScale(void)
+GetScale(void)
 {
     return g_dpi_scale;
 }
@@ -24,7 +24,7 @@ Scale(int px)
 }
 
 int
-ClampUIPx(int px, int min_px, int max_px)
+ClampPx(int px, int min_px, int max_px)
 {
     int value = (int)(px * g_dpi_scale + 0.5f);
     int min_value = (int)(min_px * g_dpi_scale + 0.5f);

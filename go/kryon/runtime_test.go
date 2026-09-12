@@ -2083,15 +2083,15 @@ func TestRendererHasPortfolioGlyphs(t *testing.T) {
 	}
 }
 
-func TestRendererUsesRegisteredUIFontData(t *testing.T) {
+func TestRendererUsesRegisteredTextFontData(t *testing.T) {
 	data, err := os.ReadFile("../../fonts/noto/NotoSans-Regular.ttf")
 	if err != nil {
 		t.Fatalf("read test font: %v", err)
 	}
-	if !RegisterUIFontData("test-noto", ".ttf", data, nil) {
-		t.Fatal("RegisterUIFontData rejected valid TTF")
+	if !RegisterTextFontData("test-noto", ".ttf", data, nil) {
+		t.Fatal("RegisterTextFontData rejected valid TTF")
 	}
-	UseUIFont("test-noto")
+	UseTextFont("test-noto")
 
 	img := RenderFrame(220, 80, []FrameOp{
 		{Kind: FrameOpBackground, Color: WHITE},

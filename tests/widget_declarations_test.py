@@ -279,8 +279,8 @@ Inset :: enum {
             run(*command, *portable_flags, *(str(path) for path in sources))
             if target in ("c", "cpp"):
                 (output / "ui_inspect.h").write_text('''
-static inline void PushUIInspectSource(const char *p, int n) {(void)p; (void)n;}
-static inline void PopUIInspectSource(void) {}
+static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
+static inline void PopInspectSource(void) {}
 ''')
                 header = "h" if target == "c" else "hpp"
                 driver = output / f"driver.{target}"

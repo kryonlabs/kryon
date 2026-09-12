@@ -43,12 +43,12 @@ void SyncFrame(void)
     if(height <= 0)
         height = GetScreenHeight();
 
-    UpdateUIDPI(width, height);
+    UpdateDPI(width, height);
     frame_width = width;
     frame_height = height;
-    frame_scale = ui_dpi_state.ui_scale_clamped;
+    frame_scale = dpi_state.ui_scale_clamped;
     if(!(frame_scale > 0.0f))
-        frame_scale = GetUIScale();
+        frame_scale = GetScale();
     if(!(frame_scale > 0.0f))
         frame_scale = 1.0f;
 }

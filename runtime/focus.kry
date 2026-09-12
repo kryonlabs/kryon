@@ -1,0 +1,39 @@
+#module "focus"
+#import "drawing_props"
+
+FocusPaint :: struct {
+    bounds: Rectangle
+    stroke_width: i32
+}
+
+FocusDebugOverlayPaint :: struct {
+    outline: Rectangle
+    label_position: Vector2
+    stroke_width: i32
+    label_visible: bool
+}
+
+FocusPaintFor :: (bounds: Rectangle, scale: float) -> FocusPaint #export {
+    if scale <= 0.0 { scale = 1.0 }
+    pad: i32 = (i32)(3.0 * scale)
+    stroke: i32 = (i32)(2.0 * scale)
+    if stroke < 1 { stroke = 1 }
+    paint: FocusPaint
+    paint.bounds.x = bounds.x - (float)pad
+    paint.bounds.y = bounds.y - (float)pad
+    paint.bounds.width = bounds.width + (float)(pad * 2)
+    paint.bounds.height = bounds.height + (float)(pad * 2)
+    paint.stroke_width = stroke
+    return paint
+}
+
+FocusDebugOverlayPaintFor :: (bounds: Rectangle, font_height: i32, has_label: bool) -> FocusDebugOverlayPaint #export {
+    if font_height < 0 { font_height = 0 }
+    paint: FocusDebugOverlayPaint
+    paint.outline = bounds
+    paint.label_position.x = bounds.x
+    paint.label_position.y = bounds.y - (float)font_height
+    paint.stroke_width = 1
+    paint.label_visible = has_label
+    return paint
+}

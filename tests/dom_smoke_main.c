@@ -30,7 +30,7 @@ int main(void)
             InjectPump();
         }
         BeginDrawing();
-        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), 1.0f);
+        BeginInterfaceFrame(GetScreenWidth(), GetScreenHeight(), 1.0f);
         SetPageTitle("DOM smoke title");
         SetPageDescription("DOM smoke description");
         SetPageCanonicalURL("/dom-smoke");
@@ -90,7 +90,7 @@ int main(void)
             DrawText("route version", 146, 104, 16,
                      (Color){255, 255, 255, 255});
         SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
-        EndUIFrame();
+        EndInterfaceFrame();
         EndDrawing();
     }
 

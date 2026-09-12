@@ -18,7 +18,7 @@ KeyboardPlatformExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={40, 40, 0, 0}, .text="Keyboard and clipboard", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={40, 90, 0, 0}, .text=message, .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         if AcceleratorPressed((Accelerator){KEY_C,1,0,0,1}) {
-            SetUIClipboardTextValue("Copied from Kryon")
+            SetClipboardTextValue("Copied from Kryon")
             snprintf(message,sizeof(message),"Copied to clipboard")
             copied = 1
         }

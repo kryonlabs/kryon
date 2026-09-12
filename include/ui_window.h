@@ -69,7 +69,7 @@ int IsNativeWindowDragged(NativeWindow *window);
 
 /* Once-per-frame pump for the window system: applies drag motion recorded
  * by the SDL event watch and bridges core-window close requests. Called
- * by SetUIFrame; a no-op on backends that need no pumping. */
+ * by SetFrameCamera; a no-op on backends that need no pumping. */
 void PumpWindows(void);
 
 /* Atomically read and clear "the core window was asked to close" (X button,

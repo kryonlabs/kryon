@@ -5,10 +5,10 @@ RenderInfoRows(InfoRowsProps rows)
 {
     Color background = rows.background.a != 0
                            ? rows.background
-                           : DarkenUIColor(c_bg, 6);
+                           : DarkenColor(c_bg, 6);
     Color separator = rows.separator.a != 0
                           ? rows.separator
-                          : DarkenUIColor(c_bg, 30);
+                          : DarkenColor(c_bg, 30);
     Color default_text = rows.default_text.a != 0 ? rows.default_text : c_text;
     int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
     int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
@@ -59,7 +59,7 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
     int label_h = row.label_h > 0 ? row.label_h : Scale(22);
     int field_h = row.field_h > 0 ? row.field_h : Scale(40);
     int gap = row.gap > 0 ? row.gap : 0;
-    Color label_color = row.label_color.a != 0 ? row.label_color : DarkenUIColor(c_text, 34);
+    Color label_color = row.label_color.a != 0 ? row.label_color : DarkenColor(c_text, 34);
     TextFieldProps field = row.field;
 
     RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
@@ -78,7 +78,7 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
 {
     int font = label.font > 0 ? label.font : GetSmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
-    Color color = label.color.a != 0 ? label.color : DarkenUIColor(c_text, 34);
+    Color color = label.color.a != 0 ? label.color : DarkenColor(c_text, 34);
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 
@@ -202,7 +202,7 @@ FormNoteFocus(Form *form, int focus_id, Rectangle bounds)
 {
     if(form == NULL || focus_id <= 0)
         return;
-    if(IsUIFocusActive(focus_id)) {
+    if(IsFocusActive(focus_id)) {
         form->focused_rect = bounds;
         form->focused_rect_valid = 1;
     }

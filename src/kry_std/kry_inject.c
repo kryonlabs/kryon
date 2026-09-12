@@ -6,7 +6,7 @@
  * one frame, the same way raylib derives edges by comparing the previous
  * and current poll state. A tap schedules its own release on the following
  * pump, so a click reads press -> down -> release across two frames - what
- * UIHandleClick-based widgets expect. The generated input wrappers consult
+ * HandleClick-based widgets expect. The generated input wrappers consult
  * the query side before real platform input.
  */
 #include "kryon.h"

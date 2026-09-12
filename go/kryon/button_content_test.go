@@ -278,7 +278,7 @@ func TestButtonMeasurementClampsPaddingLikeContentBounds(t *testing.T) {
 }
 
 func TestButtonTextTruncatesFractionalOriginLikeC(t *testing.T) {
-	ensureDefaultUIFont()
+	ensureDefaultTextFont()
 	width := float32(runtimeTextWidth("Run", 18)) + 21
 	op := buttonOperation(FrameOp{Kind: FrameOpButton, Bounds: Rectangle{X: 4.25, Y: 3.25, Width: width, Height: 40},
 		Text: "Run", FontSize: 18, TextColor: White, Opacity: 1})

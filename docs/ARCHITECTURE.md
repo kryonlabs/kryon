@@ -208,6 +208,15 @@ parity or complete typed-record lowering: remaining host enum coverage,
 positional record field access, other widget argument lowering, and rendering
 still need migration.
 
+The JavaScript runtime also exposes a Web Document frame for generated web
+apps. `webDocumentFrame(rt)` normalizes the recorded widget stream into browser
+presentation facts: Kryon kind, key, classes, state, bounds, semantic tag,
+text/link/image/input metadata, and app metadata. This is the first stable
+bridge for the hybrid native DOM path: `.kry` remains the structure source,
+future KSS rule tables resolve against those facts, and `mount()` consumes the
+frame to create native browser elements instead of debug placeholder widgets.
+See `docs/WEB_DOCUMENT_IR.md`.
+
 Strict portable emission supports declared `.kry` enum values in function
 parameters, returns, locals, conditionals, and record fields, including imported
 types. Values use signed 32-bit storage: C emits an `int32_t` typedef, C++ a
@@ -384,7 +393,7 @@ operations preserve the active framebuffer. Native `NativeWindow` hosts lazily o
 their context and handle its frame, composition and destruction. The private
 active-window accessor exposes that owner to future composed widgets without
 adding app-level lifecycle calls. Main UI frames own a separate lazy context:
-`SetUIFrame` starts it, `EndUIFrame` composites it, and `CloseWindow` releases
+`SetFrameCamera` starts it, `EndInterfaceFrame` composites it, and `CloseWindow` releases
 its resources before graphics shutdown. The private frame accessor routes to
 the active NativeWindow when appropriate. Presenter readback preserves the calling
 framebuffer. Layer scopes suspend the retained Row/Column path, keeping popup
@@ -417,7 +426,7 @@ Long-lived drag values, sliders, splitters and table resizers store the same
 persistent owner identity, allowing out-of-bounds continuation only while that
 branch remains topmost and cancelling on dismissal or ownership changes.
 C and Go now have a pointer-independent top-popup keyboard predicate. Closed
-combos use it before keyboard opening, preventing a focused parent/background
+dropdowns use it before keyboard opening, preventing a focused parent/background
 dropdown from opening behind a child popup. Focus registrations now retain their
 popup owner: C filters and deduplicates Tab destinations at focus finalization,
 before releasing the host input binding; Go filters its current/previous-frame
@@ -465,7 +474,7 @@ cancellation, byte-for-byte buffer preservation and re-enabling without replay.
 Native Go runtime creation now resolves Kryon's Noto Sans UI face from packaged,
 development-tree, or standard system locations before falling back to the
 minimal bitmap renderer. This matches the C host's default-font policy while
-preserving explicit `RegisterUIFontData` / `UseUIFont` overrides.
+preserving explicit `RegisterTextFontData` / `UseTextFont` overrides.
 Private paint scopes share a drawing-order guard across host contexts while
 keeping texture ownership host-local. Token generations survive host destruction
 and allocation reuse. Invalid closes are rejected before restoring drawing state.

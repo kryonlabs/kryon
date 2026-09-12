@@ -38,9 +38,9 @@ static Rectangle
 page_bounds_or_view(Rectangle bounds)
 {
     if(bounds.width <= 0)
-        bounds.width = (float)GetUIViewWidth();
+        bounds.width = (float)GetViewWidth();
     if(bounds.height <= 0)
-        bounds.height = (float)GetUIViewHeight();
+        bounds.height = (float)GetViewHeight();
     return bounds;
 }
 
@@ -224,7 +224,7 @@ ParagraphText(ParagraphTextProps props)
     int width = (int)props.bounds.width;
 
     if(width <= 0)
-        width = GetUIViewWidth() - (int)props.bounds.x;
+        width = GetViewWidth() - (int)props.bounds.x;
     if(width < 0)
         width = 0;
     memset(&paragraph, 0, sizeof(paragraph));

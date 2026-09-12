@@ -122,7 +122,7 @@ UIPopupInputToken ui_popup_input_begin(UIPopupInput *context, int owner, Rectang
         panel->next = context->panels;
         context->panels = panel;
         panel->owner = owner;
-        panel->restore_focus = GetUIFocus();
+        panel->restore_focus = GetFocus();
         panel->autofocus = 1;
     }
     panel->parent = context->active;
@@ -147,7 +147,7 @@ void ui_popup_input_close(UIPopupInput *context, int owner)
     if(!context) abort();
     for(UIPopupPanel *panel = context->panels; panel; panel = panel->next) {
         if(panel->owner != owner) continue;
-        int focused = GetUIFocus(), restore = 0;
+        int focused = GetFocus(), restore = 0;
         for(UIPopupFocus *entry = context->focus; entry; entry = entry->next) {
             if(entry->id != focused || !entry->token.order) continue;
             for(UIPopupPanel *child = context->panels; child; child = child->next)
@@ -160,7 +160,7 @@ void ui_popup_input_close(UIPopupInput *context, int owner)
             if(child->has_last_focus && child->last_focus == focused) restore = 1;
             child->alive = 0;
         }
-        if(restore) SetUIFocus(panel->restore_focus);
+        if(restore) SetFocus(panel->restore_focus);
         return;
     }
 }
@@ -324,10 +324,10 @@ void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible
         if(panel && panel->alive) {
             if(eligible && panel->autofocus &&
                !ui_popup_input_snapshot_keyboard_captures(token)) {
-                SetUIFocus(id);
+                SetFocus(id);
                 panel->autofocus = 0;
             }
-            if(GetUIFocus() == id) {
+            if(GetFocus() == id) {
                 panel->last_focus = id;
                 panel->has_last_focus = 1;
             }

@@ -47,9 +47,9 @@ step(void)
     SegmentedControlResult result;
 
     InjectPump();
-    BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
+    BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
     result = SegmentedControl(props());
-    EndUIFrame();
+    EndInterfaceFrame();
     return result;
 }
 

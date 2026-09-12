@@ -127,7 +127,7 @@ UpdateReorderList(ReorderList list)
                                : Scale(12);
 
                 result.dragging = 1;
-                PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
+                PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                                (float)ui_view_height}, 0);
 
                 if(list.scroll_offset != NULL && list.max_scroll > 0) {
@@ -143,7 +143,7 @@ UpdateReorderList(ReorderList list)
         }
 
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
+            PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
             if(g_ui_reorder_state.dragging) {
                 result.dragging = 0;
@@ -189,7 +189,7 @@ UpdateReorderList(ReorderList list)
             result.active_index = i;
             result.target_index = i;
             result.active_id = item->id;
-            PushUIInputCapture((Rectangle){0, 0, (float)ui_view_width,
+            PushInputCapture((Rectangle){0, 0, (float)ui_view_width,
                                            (float)ui_view_height}, 0);
             return result;
         }
@@ -208,7 +208,7 @@ RenderReorderHandle(int x, int y, int w, int h, int active)
     int total_h = dot * 3 + gap * 2;
     int start_x = x + (w - total_w) / 2;
     int start_y = y + (h - total_h) / 2;
-    Color color = active ? LightenUIColor(c_icon, 20) : DarkenUIColor(c_icon, 18);
+    Color color = active ? LightenColor(c_icon, 20) : DarkenColor(c_icon, 18);
 
     if(w <= 0 || h <= 0)
         return;
@@ -230,7 +230,7 @@ RenderReorderPlaceholder(Rectangle bounds)
     int w = (int)bounds.width;
     int h = (int)bounds.height;
     int line_h = Scale(2);
-    Color color = LightenUIColor(c_button_hover, 10);
+    Color color = LightenColor(c_button_hover, 10);
 
     if(w <= 0 || h <= 0)
         return;

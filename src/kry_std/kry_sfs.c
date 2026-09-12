@@ -186,14 +186,14 @@ kry_sfs_ensure_widgets(void)
     static int ensured;
 
     if(!ensured) {
-        SetUIInspectEnabled(1);
-        SetUIInspectVisible(0);
+        SetInspectEnabled(1);
+        SetInspectVisible(0);
         ensured = 1;
     }
 }
 
 static int
-kry_sfs_widget_at(const char *index_text, UIInspectNode *node)
+kry_sfs_widget_at(const char *index_text, InspectNode *node)
 {
     char *end = NULL;
     long index;
@@ -203,7 +203,7 @@ kry_sfs_widget_at(const char *index_text, UIInspectNode *node)
     index = strtol(index_text, &end, 10);
     if(end == NULL || *end != '\0' || index < 0)
         return 0;
-    return UIInspectGetNode((int)index, node) && node->valid;
+    return InspectGetNode((int)index, node) && node->valid;
 }
 
 int
@@ -278,7 +278,7 @@ KrySfsList(const char *path, KrySfsEntry *entries, int cap)
     if(strcmp(seg[0], "widgets") == 0) {
         kry_sfs_ensure_widgets();
         if(n == 1) {
-            int total = UIInspectNodeCount();
+            int total = InspectNodeCount();
             char name[16];
             int i;
 
@@ -289,7 +289,7 @@ KrySfsList(const char *path, KrySfsEntry *entries, int cap)
             return count;
         }
         {
-            UIInspectNode node;
+            InspectNode node;
 
             if(!kry_sfs_widget_at(seg[1], &node))
                 return KRY_SFS_ENOENT;
@@ -379,7 +379,7 @@ KrySfsRead(const char *path, char *buf, size_t size)
         return KRY_SFS_ENOENT;
     }
     if(strcmp(seg[0], "widgets") == 0 && n == 3) {
-        UIInspectNode node;
+        InspectNode node;
 
         kry_sfs_ensure_widgets();
 
@@ -507,7 +507,7 @@ KrySfsWrite(const char *path, const char *value)
     }
     if(n == 3 && strcmp(seg[0], "widgets") == 0 &&
        strcmp(seg[2], "tap") == 0) {
-        UIInspectNode node;
+        InspectNode node;
 
         kry_sfs_ensure_widgets();
 

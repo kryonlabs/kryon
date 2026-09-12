@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "runtime/modal.h"
 
 static int
 ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *hover)
@@ -14,7 +15,7 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
     props.background = c_button;
     props.hover_background = c_button_hover;
     props.icon_color = GetThemeText();
-    props.border = DarkenUIColor(c_button, 35);
+    props.border = DarkenColor(c_button, 35);
     props.radius = 0.12f;
     if(hover != NULL)
         *hover = 0;
@@ -28,7 +29,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
-                 !UIInputCapturesClick(mouse_world);
+                 !InputCapturesClick(mouse_world);
 
     if(active)
         MarkClickable();
@@ -43,11 +44,10 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
 static int
 ui_modal_action_width(const char *label, int font)
 {
-    int width = TextWidth(label != NULL ? label : "", font) + Scale(24);
-    int min_width = Scale(88);
-    int max_width = Scale(150);
+    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
 
-    return ui_clampi(width, min_width, max_width);
+    return ModalActionWidth(TextWidth(label != NULL ? label : "", font),
+                            metrics);
 }
 
 static int
@@ -63,14 +63,10 @@ ui_modal_measure_action_rows(const ModalAction *actions, int count,
 
     for(i = 0; i < count; i++) {
         int action_w = ui_modal_action_width(actions[i].label, font);
-        int next_w = row_w > 0 ? row_w + gap + action_w : action_w;
-
-        if(row_w > 0 && next_w > content_w) {
-            rows++;
-            row_w = action_w;
-        } else {
-            row_w = next_w;
-        }
+        int next_rows = ModalActionRowsStep(row_w, rows, action_w,
+                                            content_w, gap);
+        row_w = ModalActionRowWidthStep(row_w, action_w, content_w, gap);
+        rows = next_rows;
     }
     return rows;
 }
@@ -131,30 +127,25 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
 int
 RenderActionModal(ModalProps modal)
 {
-    int screen_pad = Scale(24);
-    int modal_min_w = Scale(280);
-    int modal_max_w = modal.max_width > 0 ? Scale(modal.max_width) : Scale(420);
+    ModalMetrics metrics = ModalMetricsFor((float)GetScale());
+    int modal_max_w = modal.max_width > 0 ? Scale(modal.max_width) : 0;
+    ModalLayout layout;
     int modal_w;
     int modal_x;
     int modal_y;
     int title_font;
     int msg_font = GetFontSize();
     int btn_font = GetFontSize();
-    int btn_h = Scale(44);
-    int btn_gap = Scale(8);
-    int title_h = Scale(48);
-    int padding_x = Scale(18);
-    int padding_bottom = Scale(18);
+    int btn_h = metrics.button_height;
+    int btn_gap = metrics.button_gap;
     int msg_x;
     int msg_y;
     int msg_w;
-    int msg_gap = Scale(18);
     int modal_h;
     int btn_y;
     int button_rows;
     int buttons_h;
     int prompt_h = 0;
-    int prompt_gap = 0;
     int prompt_y = 0;
     int commit_pressed = 0;
     int title_w;
@@ -166,16 +157,8 @@ RenderActionModal(ModalProps modal)
     Rectangle capture;
     Color scrim;
 
-    modal_w = modal_max_w;
-    if(modal_w > ui_view_width - screen_pad)
-        modal_w = ui_view_width - screen_pad;
-    if(modal_w < modal_min_w)
-        modal_w = modal_min_w;
-    if(modal_w > ui_view_width - Scale(8))
-        modal_w = ui_view_width - Scale(8);
-    msg_w = modal_w - padding_x * 2;
-    if(msg_w < Scale(120))
-        msg_w = Scale(120);
+    modal_w = ModalClampWidth(ui_view_width, modal_max_w, metrics);
+    msg_w = ModalContentWidth(modal_w, metrics);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -183,36 +166,33 @@ RenderActionModal(ModalProps modal)
 
     button_rows = ui_modal_measure_action_rows(modal.actions, modal.action_count,
                                                msg_w, btn_gap, btn_font);
-    buttons_h = button_rows > 0 ?
-                button_rows * btn_h + (button_rows - 1) * btn_gap : 0;
+    buttons_h = ModalButtonsHeight(button_rows, metrics);
     if(has_prompt) {
-        prompt_h = Scale(38);
-        prompt_gap = Scale(18);
+        prompt_h = metrics.prompt_height;
     }
-    modal_h = title_h + GetTextLayoutHeight(&msg_layout) +
-              (prompt_h > 0 ? prompt_gap + prompt_h : 0) +
-              (buttons_h > 0 ? msg_gap + buttons_h : 0) + padding_bottom;
-    if(modal_h < Scale(160))
-        modal_h = Scale(160);
-    if(modal_h > ui_view_height - Scale(24))
-        modal_h = ui_view_height - Scale(24);
-    modal_x = (ui_view_width - modal_w) / 2;
-    modal_y = (ui_view_height - modal_h) / 2;
+    layout = ModalLayoutFor(ui_view_width, ui_view_height, modal_max_w,
+                            GetTextLayoutHeight(&msg_layout), button_rows,
+                            has_prompt != 0, metrics);
+    modal_x = (int)layout.panel.x;
+    modal_y = (int)layout.panel.y;
+    modal_w = (int)layout.panel.width;
+    modal_h = (int)layout.panel.height;
+    msg_w = layout.content_width;
     capture.x = (float)modal_x;
     capture.y = (float)modal_y;
     capture.width = (float)modal_w;
     capture.height = (float)modal_h;
-    SetUIModalCapture(capture);
+    SetModalCapture(capture);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !UIReleaseConsumed() &&
+       !ReleaseConsumed() &&
        !CheckCollisionPointRec(mouse_world, capture)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         result = -1;
     }
-    msg_x = modal_x + padding_x;
-    msg_y = modal_y + title_h;
-    btn_y = modal_y + modal_h - buttons_h - padding_bottom;
-    prompt_y = msg_y + GetTextLayoutHeight(&msg_layout) + prompt_gap;
+    msg_x = layout.message_x;
+    msg_y = layout.message_y;
+    btn_y = layout.button_y;
+    prompt_y = layout.prompt_y;
 
     scrim.r = 0;
     scrim.g = 0;
@@ -223,7 +203,7 @@ RenderActionModal(ModalProps modal)
         ThemeMetrics tokens = GetThemeMetrics();
         Rectangle bounds = {modal_x, modal_y, modal_w, modal_h};
         Color surface = c_surface;
-        Color border = LightenUIColor(c_surface, 24);
+        Color border = LightenColor(c_surface, 24);
         if(tokens.panel_alpha < surface.a)
             surface.a = tokens.panel_alpha;
         ui_draw_control_background(bounds, surface, border,
@@ -231,7 +211,7 @@ RenderActionModal(ModalProps modal)
     } else {
         DrawRectangle(modal_x, modal_y, modal_w, modal_h, c_surface);
         RenderBevel(modal_x, modal_y, modal_w, modal_h,
-                    LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+                    LightenColor(c_surface, 40), DarkenColor(c_surface, 40));
     }
 
     title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
@@ -326,7 +306,7 @@ RenderModalFrame(int width, int height, const char *title,
 {
     char editor_id[96];
     UIPanelFrame frame = {0};
-    UIWidget widget;
+    Widget widget;
     int title_font;
     int icon_size = Scale(20);
     int icon_padding = Scale(8);
@@ -351,9 +331,9 @@ RenderModalFrame(int width, int height, const char *title,
     {
         Rectangle bounds = {(float)frame.x, (float)frame.y,
                             (float)frame.w, (float)frame.h};
-        widget = BeginUIWidget("modal", editor_id, bounds,
-                               UI_WIDGET_MOVABLE |
-                               UI_WIDGET_RESIZABLE);
+        widget = BeginWidget("modal", editor_id, bounds,
+                               WIDGET_MOVABLE |
+                               WIDGET_RESIZABLE);
         bounds = widget.bounds;
         frame.x = (int)bounds.x;
         frame.y = (int)bounds.y;
@@ -367,7 +347,7 @@ RenderModalFrame(int width, int height, const char *title,
         bounds.y = (float)frame.y;
         bounds.width = (float)frame.w;
         bounds.height = (float)frame.h;
-        UIWidgetSetBounds(&widget, bounds);
+        WidgetSetBounds(&widget, bounds);
     }
     frame.content_x = frame.x + Scale(18);
     frame.content_y = frame.y + Scale(58);
@@ -379,11 +359,11 @@ RenderModalFrame(int width, int height, const char *title,
     capture.y = (float)frame.y;
     capture.width = (float)frame.w;
     capture.height = (float)frame.h;
-    SetUIModalCapture(capture);
+    SetModalCapture(capture);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !UIReleaseConsumed() &&
+       !ReleaseConsumed() &&
        !CheckCollisionPointRec(mouse_world, capture)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         frame.right_clicked = 1;
     }
 
@@ -396,7 +376,7 @@ RenderModalFrame(int width, int height, const char *title,
         ThemeMetrics tokens = GetThemeMetrics();
         Rectangle bounds = {frame.x, frame.y, frame.w, frame.h};
         Color surface = c_surface;
-        Color border = LightenUIColor(c_surface, 24);
+        Color border = LightenColor(c_surface, 24);
         if(tokens.panel_alpha < surface.a)
             surface.a = tokens.panel_alpha;
         ui_draw_control_background(bounds, surface, border,
@@ -404,7 +384,7 @@ RenderModalFrame(int width, int height, const char *title,
     } else {
         DrawRectangle(frame.x, frame.y, frame.w, frame.h, c_surface);
         RenderBevel(frame.x, frame.y, frame.w, frame.h,
-                    LightenUIColor(c_surface, 40), DarkenUIColor(c_surface, 40));
+                    LightenColor(c_surface, 40), DarkenColor(c_surface, 40));
     }
 
     RenderText(title, frame.x + (frame.w - title_w) / 2,
@@ -423,6 +403,6 @@ RenderModalFrame(int width, int height, const char *title,
                                                       right_icon, &hover);
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return frame;
 }

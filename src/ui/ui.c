@@ -8,7 +8,11 @@
 #include "ui_style_internal.h"
 #include "platform.h"
 #include "theme.h"
+#include "runtime/bevel.h"
 #include "runtime/button.h"
+#include "runtime/focus.h"
+#include "runtime/link.h"
+#include "runtime/paragraph.h"
 #include "runtime/surface.h"
 #include "runtime/text_input.h"
 #include "kry_uri.h"
@@ -63,7 +67,6 @@ static Vector2 g_ui_pointer_start_world = {0};
 /* Negative means use the shared default; explicit user choices are retained. */
 static int g_ui_transition_cues_enabled = -1;
 static int g_ui_release_consumed = 0;
-static int g_ui_keyboard_input_enabled = 1;
 static int g_ui_disabled_depth = 0;
 static int g_ui_disabled_start = 0;
 static int g_ui_disabled_floor;
@@ -349,7 +352,7 @@ screen_to_world_for_input(Vector2 screen)
 }
 
 void
-SetUIMouseWorldOverride(int enabled, Vector2 position)
+SetMouseWorldOverride(int enabled, Vector2 position)
 {
     g_ui_mouse_world_override_enabled = enabled ? 1 : 0;
     g_ui_mouse_world_override = position;
@@ -421,18 +424,9 @@ ui_iabs(int value)
 }
 
 int
-SetUIKeyboardInputEnabled(int enabled)
+IsKeyboardInputEnabled(void)
 {
-    int old = g_ui_keyboard_input_enabled;
-
-    g_ui_keyboard_input_enabled = enabled != 0;
-    return old;
-}
-
-int
-UIKeyboardInputEnabled(void)
-{
-    return g_ui_keyboard_input_enabled && !UIContentDisabled() &&
+    return KeyboardInputEnabled() && !UIContentDisabled() &&
            !ui_popup_input_keyboard_captures();
 }
 
@@ -504,7 +498,7 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
         max_scroll = 0;
     if(scroll_offset != NULL) {
         *scroll_offset = ui_clampi(*scroll_offset, 0, max_scroll);
-        if(CheckCollisionPointRec(mouse, bounds) && !UIInputCapturesClick(mouse) &&
+        if(CheckCollisionPointRec(mouse, bounds) && !InputCapturesClick(mouse) &&
            g_scroll_wheel_frame != g_ui_frame_serial && GetMouseWheelMove() != 0) {
             *scroll_offset = ui_clampi(*scroll_offset - (int)(GetMouseWheelMove() * 42), 0, max_scroll);
             g_scroll_wheel_frame = g_ui_frame_serial;
@@ -516,7 +510,7 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
             if(thumb_h > bounds.height) thumb_h = bounds.height;
             float travel = bounds.height-thumb_h;
             float thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
-            if(!UIContentDisabled() && !UIInputCapturesClick(mouse) &&
+            if(!UIContentDisabled() && !InputCapturesClick(mouse) &&
                CheckCollisionPointRec(mouse, track) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 g_scroll_drag_offset = scroll_offset;
                 g_scroll_drag_grab = mouse.y >= thumb_y && mouse.y < thumb_y+thumb_h
@@ -527,7 +521,7 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
                 else if(travel > 0 && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
                     *scroll_offset = ui_clampi((int)((mouse.y-bounds.y-g_scroll_drag_grab)*max_scroll/travel),0,max_scroll);
                 if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                    UIConsumeRelease();
+                    ConsumeRelease();
                     g_scroll_drag_offset = NULL;
                 }
             }
@@ -541,9 +535,9 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
         }
         offset = *scroll_offset;
     }
-    PushUIInputClip(bounds);
+    PushInputClip(bounds);
     if(IsWindowReady())
-        BeginUIClip((int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height);
+        BeginClip((int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height);
     g_scroll_scope_depth++;
     content.y -= offset;
     content.height = content_height > 0 ? (float)content_height : 0;
@@ -557,8 +551,8 @@ EndScroll(void)
         return;
     g_scroll_scope_depth--;
     if(IsWindowReady())
-        EndUIClip();
-    PopUIInputClip();
+        EndClip();
+    PopInputClip();
 }
 
 static int
@@ -665,13 +659,13 @@ ui_update_pointer_gesture(void)
 }
 
 void
-ClearUIInputCaptures(void)
+ClearInputCaptures(void)
 {
     g_ui_input_capture_stack_count = 0;
 }
 
 void
-PushUIInputCapture(Rectangle bounds, int allow_inside)
+PushInputCapture(Rectangle bounds, int allow_inside)
 {
     if(g_ui_input_capture_stack_count >= UI_INPUT_CAPTURE_STACK_MAX)
         return;
@@ -680,10 +674,10 @@ PushUIInputCapture(Rectangle bounds, int allow_inside)
 }
 
 void
-BeginUIModalLayer(void)
+BeginModalLayer(void)
 {
-    ClearUIInputCaptures();
-    PushUIInputCapture((Rectangle){0.0f, 0.0f,
+    ClearInputCaptures();
+    PushInputCapture((Rectangle){0.0f, 0.0f,
                                    (float)ui_view_width,
                                    (float)ui_view_height}, 0);
 }
@@ -752,41 +746,41 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 int
 ui_input_captures_snapshot(Vector2 point, UIPopupInputToken snapshot)
 {
-    return UIContentDisabled() || UIInspectInputCapturesClick(point) ||
+    return UIContentDisabled() || InspectInputCapturesClick(point) ||
            ui_base_input_captures_click(point,1) ||
            dropdown_captures(point) ||
            ui_popup_input_snapshot_captures(snapshot,point);
 }
 
 int
-UIInputCapturesClick(Vector2 point)
+InputCapturesClick(Vector2 point)
 {
     return ui_input_captures_snapshot(point,ui_popup_input_snapshot());
 }
 
 int
-UIReleaseConsumed(void)
+ReleaseConsumed(void)
 {
     return g_ui_release_consumed;
 }
 
 void
-UIConsumeRelease(void)
+ConsumeRelease(void)
 {
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_release_consumed = 1;
 }
 
 int
-UIPointerReleaseConsumed(void)
+PointerReleaseConsumed(void)
 {
-    return UIReleaseConsumed();
+    return ReleaseConsumed();
 }
 
 void
-UIConsumePointerRelease(void)
+ConsumePointerRelease(void)
 {
-    UIConsumeRelease();
+    ConsumeRelease();
 }
 
 static int
@@ -814,33 +808,33 @@ mouse_release_activates_rect(Rectangle bounds, Vector2 mouse, int active)
     return active &&
            IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
            !g_ui_release_consumed &&
-           !UIInputCapturesClick(mouse) &&
+           !InputCapturesClick(mouse) &&
            press_started_inside(bounds);
 }
 
 int
-UIPointerReleaseAvailable(Vector2 point)
+PointerReleaseAvailable(Vector2 point)
 {
     return IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-           !UIInputCapturesClick(point);
+           !InputCapturesClick(point);
 }
 
 int
-UIHandleClick(Rectangle bounds, int disabled, int *hover)
+HandleClick(Rectangle bounds, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     int mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
-    int captured = UIInputCapturesClick(mouse_world);
+    int captured = InputCapturesClick(mouse_world);
     int active = mouse_inside && !captured && !disabled;
 
     if(hover != NULL)
-        *hover = active && UIHoverEffectsEnabled();
+        *hover = active && HoverEffectsEnabled();
     if(disabled && mouse_inside && !captured)
         MarkDisabled();
     if(active)
         MarkClickable();
     if(mouse_release_activates_rect(bounds, mouse_world, active)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         return 1;
     }
     return 0;
@@ -851,10 +845,10 @@ ReadActivation(Rectangle bounds, int id, bool enabled)
 {
     Activation input = {0};
     int hovered = 0;
-    input.activated = UIHandleClick(bounds, !enabled, &hovered);
+    input.activated = HandleClick(bounds, !enabled, &hovered);
     input.hovered = hovered;
-    input.focused = enabled && id > 0 && RegisterUIFocus(id, bounds);
-    int keyboard = IsUIFocusActivatePressed(id);
+    input.focused = enabled && id > 0 && RegisterFocus(id, bounds);
+    int keyboard = IsFocusActivatePressed(id);
     input.pressed = (hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) ||
                     (input.focused && keyboard);
     input.activated = input.activated || keyboard;
@@ -862,42 +856,42 @@ ReadActivation(Rectangle bounds, int id, bool enabled)
 }
 
 int
-UIHandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
+HandleCircleClick(Vector2 center, float radius, int disabled, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
     float dx = mouse_world.x - center.x;
     float dy = mouse_world.y - center.y;
     int mouse_inside = dx * dx + dy * dy <= radius * radius;
-    int captured = UIInputCapturesClick(mouse_world);
+    int captured = InputCapturesClick(mouse_world);
     int active = mouse_inside && !captured && !disabled;
 
     if(hover != NULL)
-        *hover = active && UIHoverEffectsEnabled();
+        *hover = active && HoverEffectsEnabled();
     if(disabled && mouse_inside && !captured)
         MarkDisabled();
     if(active)
         MarkClickable();
     if(active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
        !g_ui_release_consumed &&
-       !UIInputCapturesClick(mouse_world) &&
+       !InputCapturesClick(mouse_world) &&
        press_started_inside_circle(center, radius)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         return 1;
     }
     return 0;
 }
 
 int
-UIPointerReleaseOutside(Rectangle bounds)
+PointerReleaseOutside(Rectangle bounds)
 {
     Vector2 mouse = ui_mouse_world();
 
-    return UIPointerReleaseAvailable(mouse) &&
+    return PointerReleaseAvailable(mouse) &&
            !CheckCollisionPointRec(mouse, bounds);
 }
 
 int
-UIHoverEffectsEnabled(void)
+HoverEffectsEnabled(void)
 {
 #if ANDROID_BUILD
     return 0;
@@ -925,17 +919,17 @@ TransitionCuesEnabled(void)
 }
 
 void
-PushUIInputClip(Rectangle bounds)
+PushInputClip(Rectangle bounds)
 {
     if(g_ui_input_clip_stack_count > 0)
-        bounds = GetUIClipIntersection(g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1],
+        bounds = GetClipIntersection(g_ui_input_clip_stack[g_ui_input_clip_stack_count - 1],
                                          bounds);
     if(g_ui_input_clip_stack_count < UI_INPUT_CLIP_STACK_MAX)
         g_ui_input_clip_stack[g_ui_input_clip_stack_count++] = bounds;
 }
 
 void
-PopUIInputClip(void)
+PopInputClip(void)
 {
     if(g_ui_input_clip_stack_count > 0)
         g_ui_input_clip_stack_count--;
@@ -991,7 +985,7 @@ ui_text_copy_range(const char *text, int start, int end)
         return 0;
     memcpy(copy, text + start, (size_t)len);
     copy[len] = '\0';
-    SetUIClipboardTextValue(copy);
+    SetClipboardTextValue(copy);
     free(copy);
     return 1;
 }
@@ -1004,7 +998,7 @@ ui_text_paste_clipboard(TextEdit edit, int allow_newlines)
     if(edit.text == NULL || edit.text_size == 0 ||
        edit.cursor_position == NULL)
         return 0;
-    clip = GetUIClipboardTextValue();
+    clip = GetClipboardTextValue();
     if(clip == NULL)
         return 0;
     return ui_text_insert_text(edit.text, edit.text_size,
@@ -1039,7 +1033,7 @@ ui_selection_range(TextSelection selection, const char *text,
 static int
 ui_clipboard_has_text(void)
 {
-    const char *text = GetUIClipboardTextValue();
+    const char *text = GetClipboardTextValue();
 
     return text != NULL && text[0] != '\0';
 }
@@ -1179,7 +1173,7 @@ ui_text_apply_context_command(int command, TextEdit edit,
                                     selection_start, selection_end))
                 changed = 1;
         } else if(!read_only && copy_all_when_empty && len > 0) {
-            SetUIClipboardTextValue(edit.text);
+            SetClipboardTextValue(edit.text);
             edit.text[0] = '\0';
             *edit.cursor_position = 0;
             changed = 1;
@@ -1191,7 +1185,7 @@ ui_text_apply_context_command(int command, TextEdit edit,
         if(selection_end > selection_start)
             ui_text_copy_range(edit.text, selection_start, selection_end);
         else if(copy_all_when_empty && len > 0)
-            SetUIClipboardTextValue(edit.text);
+            SetClipboardTextValue(edit.text);
         break;
     case UI_TEXT_CONTEXT_PASTE:
         if(read_only)
@@ -1319,7 +1313,7 @@ void
 ui_begin_world_clip(Rectangle rect)
 {
     Rectangle screen = ui_world_rect_to_screen(rect);
-    BeginUIClip((int)screen.x, (int)screen.y,
+    BeginClip((int)screen.x, (int)screen.y,
                      (int)screen.width, (int)screen.height);
 }
 
@@ -1335,7 +1329,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
     RenderText(value, x, y, font_size, color);
-    EndUIClip();
+    EndClip();
 }
 
 const char *
@@ -1442,7 +1436,7 @@ DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Col
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
                                     rect.width, rect.height + guard * 2});
     RenderText(value, (int)rect.x, y, font_size, color);
-    EndUIClip();
+    EndClip();
 }
 
 void
@@ -1480,7 +1474,7 @@ QueueTextInputEnter(void)
 }
 
 void
-BeginUIFocus(void)
+BeginFocusScope(void)
 {
     g_ui_focus_count = 0;
     g_ui_focus_tab_dir = 0;
@@ -1506,7 +1500,7 @@ ui_consume_focus_tab(void)
 }
 
 void
-EndUIFocus(void)
+EndFocusScope(void)
 {
     int current_index = -1;
     int next_index;
@@ -1555,7 +1549,7 @@ EndUIFocus(void)
 }
 
 int
-UIFocusFrameOpen(void)
+FocusFrameOpen(void)
 {
     return g_ui_focus_frame_open;
 }
@@ -1572,7 +1566,7 @@ ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
     focus_point = (Vector2){bounds.x+bounds.width*0.5f,
                             bounds.y+bounds.height*0.5f};
     ui_popup_input_register_focus(id,snapshot,
-        !UIContentDisabled() && !UIInspectInputCapturesClick(focus_point) &&
+        !UIContentDisabled() && !InspectInputCapturesClick(focus_point) &&
         !ui_base_input_captures_click(focus_point,0) &&
         !dropdown_captures(focus_point) &&
         !ui_popup_input_snapshot_captures(snapshot,focus_point));
@@ -1589,7 +1583,7 @@ ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
 }
 
 int
-RegisterUIFocus(int id, Rectangle bounds)
+RegisterFocus(int id, Rectangle bounds)
 {
     return ui_register_focus_snapshot(id,bounds,ui_popup_input_snapshot());
 }
@@ -1700,7 +1694,7 @@ IsUITextFocusOwner(int *focused)
         return 0;
     }
     /* No owner yet this frame. Allow adoption only if the app set this widgets
-     * flag (autofocus / programmatic SetUIFocus). First adoption wins; any
+     * flag (autofocus / programmatic SetFocus). First adoption wins; any
      * later widget with a stale flag is denied above. */
     if(*focused != 0 && g_ui_text_focus_owner == NULL) {
         g_ui_text_focus_owner = focused;
@@ -1713,39 +1707,39 @@ IsUITextFocusOwner(int *focused)
 }
 
 int
-IsUIFocusActive(int id)
+IsFocusActive(int id)
 {
     return id > 0 && g_ui_focus_active_id == id;
 }
 
 int
-IsUIFocusActivatePressed(int id)
+IsFocusActivatePressed(int id)
 {
-    return IsUIFocusActive(id) && g_ui_keyboard_input_enabled &&
+    return IsFocusActive(id) && IsKeyboardInputEnabled() &&
            !UIContentDisabled() && !ui_popup_input_focus_captures(id) &&
            (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
 }
 
 void
-SetUIFocus(int id)
+SetFocus(int id)
 {
     g_ui_focus_active_id = id;
 }
 
 int
-GetUIFocus(void)
+GetFocus(void)
 {
     return g_ui_focus_active_id;
 }
 
 void
-ClearUIFocus(void)
+ClearFocus(void)
 {
     g_ui_focus_active_id = 0;
 }
 
 void
-SetUIFocusTextInputActive(int active)
+SetFocusTextInputActive(int active)
 {
     active = active != 0;
     if(active) {
@@ -1766,9 +1760,10 @@ TextInputActive(void)
 void
 RenderFocus(Rectangle bounds)
 {
-    DrawRectangleLinesEx((Rectangle){bounds.x - Scale(3), bounds.y - Scale(3),
-                                     bounds.width + Scale(6), bounds.height + Scale(6)},
-                         Scale(2), c_button_hover);
+    FocusPaint paint = FocusPaintFor(bounds, (float)GetScale());
+
+    DrawRectangleLinesEx(paint.bounds, (float)paint.stroke_width,
+                         c_button_hover);
 }
 
 int
@@ -1831,7 +1826,7 @@ ui_resolve_text_input_style(TextInputStyle style)
             style.cursor = scheme.primary;
     } else {
         if(style.border.a == 0)
-            style.border = DarkenUIColor(background, 35);
+            style.border = DarkenColor(background, 35);
         if(style.focus_border.a == 0)
             style.focus_border = c_circle;
         if(style.text.a == 0)
@@ -1906,8 +1901,8 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
 
         hovered = editable &&
                   CheckCollisionPointRec(mouse, bounds) &&
-                  !UIInputCapturesClick(mouse) &&
-                  UIHoverEffectsEnabled();
+                  !InputCapturesClick(mouse) &&
+                  HoverEffectsEnabled();
         sample.hovered = hovered;
         sample.pressed = 0;
         sample.focused = focused;
@@ -1919,7 +1914,7 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
             TransitionCuesEnabled(), GetFrameTime() * 1000.0f,
             metrics.transition_normal_ms, metrics.transition_fast_ms);
         if(motion.active)
-            InvalidateTree(UI_INVALIDATE_PAINT);
+            InvalidateTree(INVALIDATE_PAINT);
         paint = ui_style_transition(
             paint,
             ResolveButtonStyle(props, ButtonStateNormal),
@@ -1984,7 +1979,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
     Color cursor_color = style.cursor.a != 0 ? style.cursor : c_circle;
 
     if(focused && text_input_active)
-        SetUIFocusTextInputActive(1);
+        SetFocusTextInputActive(1);
 
     (void)ui_text_input_surface(bounds, style, focused, text_input_active,
                                 focus_id, "text_input", requested_style);
@@ -2065,7 +2060,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         DrawRectangle(cursor_x, cursor_y, Scale(2), cursor_h,
                       ui_default_style() ? c_circle : cursor_color);
     }
-    EndUIClip();
+    EndClip();
 }
 
 void
@@ -2151,7 +2146,7 @@ EditText(TextEdit edit)
 
     len = (int)strlen(edit.text);
     *edit.cursor_position = ui_clampi(*edit.cursor_position, 0, len);
-    if(!UIKeyboardInputEnabled())
+    if(!IsKeyboardInputEnabled())
         return 0;
 
     {
@@ -2166,10 +2161,10 @@ EditText(TextEdit edit)
     }
 
     if(ui_mod_key_down() && IsKeyPressed(KEY_C)) {
-        SetUIClipboardTextValue(edit.text);
+        SetClipboardTextValue(edit.text);
     }
     if(ui_mod_key_down() && IsKeyPressed(KEY_X)) {
-        SetUIClipboardTextValue(edit.text);
+        SetClipboardTextValue(edit.text);
         edit.text[0] = '\0';
         *edit.cursor_position = 0;
         changed = 1;
@@ -2230,28 +2225,28 @@ int
 ui_text_input_control_render(TextInputProps input)
 {
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     int focused = input.focused;
 
-    widget = BeginUIWidget("text_input",
+    widget = BeginWidget("text_input",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "text_input",
                                                  input.focus_id, NULL),
                            input.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     input.bounds = widget.bounds;
 
-    if(input.focus_id > 0 && RegisterUIFocus(input.focus_id, input.bounds)) {
+    if(input.focus_id > 0 && RegisterFocus(input.focus_id, input.bounds)) {
         focused = 1;
-        SetUIFocusTextInputActive(1);
+        SetFocusTextInputActive(1);
     }
 
     DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetFontSize(),
                              input.style, input.focus_id);
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return focused;
 }
 
@@ -2259,7 +2254,7 @@ int
 RenderLink(LinkProps link)
 {
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int font = link.font > 0 ? link.font : GetFontSize();
     const char *text = link.text != NULL ? link.text : "";
@@ -2271,7 +2266,9 @@ RenderLink(LinkProps link)
     int hovered;
     int focused;
     int clicked = 0;
-    Color color = link.color.a != 0 ? link.color : c_link;
+    Theme theme;
+    LinkAppearance appearance;
+    Color color;
 
     if(bounds.width <= 0)
         bounds.width = (float)text_w;
@@ -2280,25 +2277,30 @@ RenderLink(LinkProps link)
     if(bounds.height <= 0)
         bounds.height = (float)font;
 
-    widget = BeginUIWidget("link",
+    widget = BeginWidget("link",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "link", link.focus_id, text),
                            bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     bounds = widget.bounds;
 
     mouse_inside = CheckCollisionPointRec(mouse_world, bounds);
-    captured = UIInputCapturesClick(mouse_world);
+    captured = InputCapturesClick(mouse_world);
     active = !link.disabled && !captured && mouse_inside;
-    hovered = active && UIHoverEffectsEnabled();
+    hovered = active && HoverEffectsEnabled();
     focused = !link.disabled && link.focus_id > 0 &&
-              RegisterUIFocus(link.focus_id, bounds);
+              RegisterFocus(link.focus_id, bounds);
 
-    if(link.disabled)
-        color = DarkenUIColor(color, 38);
-    else if(hovered)
-        color = link.hover_color.a != 0 ? link.hover_color : LightenUIColor(color, 18);
+    theme = GetTheme();
+    appearance = ResolveLinkAppearance((uint32_t)ColorToInt(link.color),
+                                       (uint32_t)ColorToInt(link.hover_color),
+                                       (uint32_t)ColorToInt(c_link),
+                                       (uint32_t)ColorToInt(theme.colors.link_hover),
+                                       (uint32_t)ColorToInt(theme.colors.text_disabled),
+                                       hovered != 0,
+                                       link.disabled != 0);
+    color = GetColor(appearance.color);
 
     if(active) {
         MarkClickable();
@@ -2311,23 +2313,23 @@ RenderLink(LinkProps link)
     RenderText(text, (int)bounds.x,
                GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
-    if(hovered && text_w > 0) {
+    if(appearance.underline && text_w > 0) {
         int underline_y = (int)(bounds.y + bounds.height) - Scale(2);
         DrawLine((int)bounds.x, underline_y, (int)bounds.x + text_w,
                  underline_y, color);
     }
     if(focused) {
-        SetUIFocusTextInputActive(0);
+        SetFocusTextInputActive(0);
         RenderFocus(bounds);
     }
     if(clicked)
-        UIConsumeRelease();
-    if(!link.disabled && (clicked || IsUIFocusActivatePressed(link.focus_id))) {
+        ConsumeRelease();
+    if(!link.disabled && (clicked || IsFocusActivatePressed(link.focus_id))) {
         ui_open_url(link.link);
-        EndUIWidget(&widget);
+        EndWidget(&widget);
         return 1;
     }
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return 0;
 }
 
@@ -3266,7 +3268,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
                                wrap_width, area.syntax, area.style,
                                selection_start, selection_end,
                                composition_start, composition_end);
-    EndUIClip();
+    EndClip();
 }
 
 void
@@ -3544,7 +3546,7 @@ int
 ui_text_area_render(TextAreaProps area)
 {
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     int changed = 0;
     int focused;
     int font;
@@ -3595,13 +3597,13 @@ ui_text_area_render(TextAreaProps area)
     area_edit.filter = area.filter;
     area_edit.filter_user_data = area.filter_user_data;
 
-    widget = BeginUIWidget("text_area",
+    widget = BeginWidget("text_area",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "text_area", area.focus_id,
                                                  area.placeholder),
                            area.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     area.bounds = widget.bounds;
 
     font = area.font > 0 ? area.font : GetFontSize();
@@ -3618,14 +3620,14 @@ ui_text_area_render(TextAreaProps area)
     focused = IsUITextFocusOwner(area.focused) ? focused : 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
-    if(area.focus_id > 0 && RegisterUIFocus(area.focus_id, area.bounds)) {
+    if(area.focus_id > 0 && RegisterFocus(area.focus_id, area.bounds)) {
         focused = 1;
         ClaimUITextAreaFocus(area.focused);
     }
 
     mouse_world = ui_mouse_world();
     mouse_inside = CheckCollisionPointRec(mouse_world, area.bounds);
-    captured = UIInputCapturesClick(mouse_world);
+    captured = InputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
         MarkTextCursor();
     drag_id = area.focus_id > 0 ? area.focus_id : 1;
@@ -3748,23 +3750,23 @@ ui_text_area_render(TextAreaProps area)
     }
 
     *area.focused = focused;
-    SetUIFocusTextInputActive(focused && !area.read_only);
-    if(focused && UIKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
+    SetFocusTextInputActive(focused && !area.read_only);
+    if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(area.focused, area.focus_id);
         *area.focused = 0;
-        SetUIFocusTextInputActive(0);
+        SetFocusTextInputActive(0);
     }
     copy_pressed = IsKeyPressed(KEY_C);
     cut_pressed = IsKeyPressed(KEY_X);
     paste_pressed = IsKeyPressed(KEY_V);
-    enter_requested = focused && UIKeyboardInputEnabled() &&
+    enter_requested = focused && IsKeyboardInputEnabled() &&
                       (IsKeyPressed(KEY_ENTER) ||
                        IsKeyPressed(KEY_KP_ENTER) ||
                        g_ui_text_input_enter_count > 0);
     has_selection = ui_text_selection_matches(g_ui_text_area_selection, drag_id,
                                               area.focused);
-    if(has_selection && !focused && UIKeyboardInputEnabled() &&
+    if(has_selection && !focused && IsKeyboardInputEnabled() &&
        ui_mod_key_down() &&
        (copy_pressed || cut_pressed || paste_pressed)) {
         focused = 1;
@@ -3787,7 +3789,7 @@ ui_text_area_render(TextAreaProps area)
             ? g_ui_text_area_selection.anchor : *area.cursor_position;
         TextCompositionResult composition_result = ui_text_composition_apply(
             area_edit, &anchor, area.focused, focused,
-            area.read_only || !UIKeyboardInputEnabled(), 1);
+            area.read_only || !IsKeyboardInputEnabled(), 1);
 
         changed |= composition_result.text_changed;
         if(composition_result.selection_changed) {
@@ -3798,7 +3800,7 @@ ui_text_area_render(TextAreaProps area)
             selection_start = selection_end = *area.cursor_position;
         }
     }
-    if(focused && UIKeyboardInputEnabled()) {
+    if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(area.text);
 
@@ -4076,7 +4078,7 @@ ui_text_area_render(TextAreaProps area)
     /* Keep editing usable without a renderer, as TextField already does. */
     if(!IsWindowReady()) {
         ui_text_composition_view_free(&composition);
-        EndUIWidget(&widget);
+        EndWidget(&widget);
         return changed;
     }
     border = focused ? area.style.focus_border : area.style.border;
@@ -4097,7 +4099,7 @@ ui_text_area_render(TextAreaProps area)
                                area.syntax, area.style, selection_start,
                                selection_end, composition_start,
                                composition_end);
-    EndUIClip();
+    EndClip();
     if(area.scroll_y != NULL && max_scroll > 0) {
         ui_scrollbar((int)(area.bounds.x + area.bounds.width - scrollbar_w),
                      (int)area.bounds.y,
@@ -4108,7 +4110,7 @@ ui_text_area_render(TextAreaProps area)
                      0);
     }
     ui_text_composition_view_free(&composition);
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return changed;
 }
 
@@ -4160,7 +4162,7 @@ ui_text_field_render(TextFieldProps field)
     } TextFieldFallbackFocus;
     static TextFieldFallbackFocus fallback_focus[TEXT_FIELD_FALLBACK_FOCUS_SLOTS];
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     int changed = 0;
     int focused;
     int font;
@@ -4252,13 +4254,13 @@ ui_text_field_render(TextFieldProps field)
         }
     }
 
-    widget = BeginUIWidget("text_field",
+    widget = BeginWidget("text_field",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "text_field",
                                                  field.focus_id, NULL),
                            field.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     field.bounds = widget.bounds;
 
     metrics = TextInputMetricsFor(field.font, field.style.padding_x,
@@ -4277,14 +4279,14 @@ ui_text_field_render(TextFieldProps field)
     *scroll_x_ptr = scroll_policy.scroll;
     text_origin_x = scroll_policy.text_origin_x;
 
-    if(field.focus_id > 0 && RegisterUIFocus(field.focus_id, field.bounds)) {
+    if(field.focus_id > 0 && RegisterFocus(field.focus_id, field.bounds)) {
         focused = 1;
         ClaimUITextFieldFocus(field.focused);
     }
 
     mouse_world = ui_mouse_world();
     mouse_inside = CheckCollisionPointRec(mouse_world, field.bounds);
-    captured = UIInputCapturesClick(mouse_world);
+    captured = InputCapturesClick(mouse_world);
     if(mouse_inside && !captured)
         MarkTextCursor();
     changed |= ui_text_context_take_changed(UI_TEXT_CONTEXT_FIELD,
@@ -4399,7 +4401,7 @@ ui_text_field_render(TextFieldProps field)
             g_ui_text_field_drag_id = 0;
             g_ui_text_field_drag_owner = NULL;
             g_ui_text_field_selection.dragging = 0;
-            PushUIInputCapture(capture, 0);
+            PushInputCapture(capture, 0);
         }
     }
     panning_field = g_ui_text_field_pan_owner == field.focused &&
@@ -4431,12 +4433,12 @@ ui_text_field_render(TextFieldProps field)
     }
 
     *field.focused = focused;
-    SetUIFocusTextInputActive(focused && !field.read_only);
-    if(focused && UIKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
+    SetFocusTextInputActive(focused && !field.read_only);
+    if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
         ReleaseUITextFocus(field.focused, field.focus_id);
         *field.focused = 0;
-        SetUIFocusTextInputActive(0);
+        SetFocusTextInputActive(0);
     }
     if((focused || context_active) &&
        ui_text_selection_matches(g_ui_text_field_selection,
@@ -4450,7 +4452,7 @@ ui_text_field_render(TextFieldProps field)
             ? g_ui_text_field_selection.anchor : *field.cursor_position;
         TextCompositionResult composition_result = ui_text_composition_apply(
             field_edit, &anchor, field.focused, focused,
-            field.read_only || !UIKeyboardInputEnabled(), 0);
+            field.read_only || !IsKeyboardInputEnabled(), 0);
 
         changed |= composition_result.text_changed;
         if(composition_result.selection_changed) {
@@ -4461,7 +4463,7 @@ ui_text_field_render(TextFieldProps field)
         }
     }
 
-    if(focused && UIKeyboardInputEnabled()) {
+    if(focused && IsKeyboardInputEnabled()) {
         if(ui_mod_key_down() && IsKeyPressed(KEY_A)) {
             int len = (int)strlen(field.text);
 
@@ -4476,7 +4478,7 @@ ui_text_field_render(TextFieldProps field)
             if(selection_end > selection_start)
                 ui_text_copy_range(field.text, selection_start, selection_end);
             else
-                SetUIClipboardTextValue(field.text);
+                SetClipboardTextValue(field.text);
             selection_handled = 1;
         }
         if(!field.read_only && !field.secure &&
@@ -4489,7 +4491,7 @@ ui_text_field_render(TextFieldProps field)
                                         selection_start, selection_end))
                     changed = 1;
             } else {
-                SetUIClipboardTextValue(field.text);
+                SetClipboardTextValue(field.text);
                 field.text[0] = '\0';
                 *field.cursor_position = 0;
                 changed = 1;
@@ -4712,7 +4714,7 @@ ui_text_field_render(TextFieldProps field)
                                         committed_selection_end, 0, 1,
                                         field.read_only);
 
-    UIWidgetTextInputPaint paint = {
+    WidgetTextInputPaint paint = {
         .style = field.style, .cursor = paint_cursor, .focused = focused,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
@@ -4725,23 +4727,23 @@ ui_text_field_render(TextFieldProps field)
     ui_tree_submit_text_input(field.bounds, display_text, paint, field.focus_id);
     ui_text_composition_view_free(&composition);
     free(masked_text);
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return changed;
 }
 
 void
-ui_paint_text_input(Rectangle bounds, const char *text, UIWidgetTextInputPaint paint)
+ui_paint_text_input(Rectangle bounds, const char *text, WidgetTextInputPaint paint)
 {
     if(!IsWindowReady())
         return;
     int previous_font = ui_active_font_token();
-    PopUIFont(paint.font_token);
+    PopTextFont(paint.font_token);
     RenderTextInputEx(bounds, text, paint.cursor, paint.focused, paint.editable,
                       paint.caret, paint.font, paint.style,
                       paint.selection_start, paint.selection_end,
                       paint.composition_start, paint.composition_end,
                       paint.scroll_x, 0);
-    PopUIFont(previous_font);
+    PopTextFont(previous_font);
 }
 
 int
@@ -4794,7 +4796,7 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
 {
     TextInputStyle requested_style = box.style;
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     char line[1024];
     const char *text = box.text != NULL ? box.text : "";
     int font = box.font > 0 ? box.font : GetFontSize();
@@ -4809,18 +4811,18 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
     Vector2 mouse_world = ui_mouse_world();
     int active;
 
-    widget = BeginUIWidget("readonly_text_box",
+    widget = BeginWidget("readonly_text_box",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "readonly_text_box", 0,
                                                  text),
                            box.bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     box.bounds = widget.bounds;
     box.style = ui_resolve_text_input_style(box.style);
 
     active = CheckCollisionPointRec(mouse_world, box.bounds) &&
-             !UIInputCapturesClick(mouse_world);
+             !InputCapturesClick(mouse_world);
 
     if(content_w < Scale(24))
         content_w = Scale(24);
@@ -4855,38 +4857,43 @@ RenderReadonlyTextBox(ReadonlyTextBoxProps box)
     }
     if(len == 0)
         RenderText("", (int)box.bounds.x + padding_x, draw_y, font, box.style.text);
-    EndUIClip();
+    EndClip();
 
     if(active) {
         MarkClickable();
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-            UIConsumeRelease();
-            EndUIWidget(&widget);
+            ConsumeRelease();
+            EndWidget(&widget);
             return 1;
         }
     }
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return 0;
 }
 
 static TextLayout
 ParagraphLayout(ParagraphSpec paragraph)
 {
-    int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
-    int line_gap = paragraph.line_gap > 0 ? paragraph.line_gap : Scale(4);
-    int icon_size = paragraph.icon_size > 0 ? paragraph.icon_size : font;
+    ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
+                                                       GetFontSize(),
+                                                       paragraph.line_gap,
+                                                       Scale(4),
+                                                       paragraph.icon_size,
+                                                       paragraph.width,
+                                                       paragraph.width,
+                                                       0, 0);
     TextLayout layout = ParseTextLayout(paragraph.text ? paragraph.text : "",
                                                      paragraph.icon,
                                                      paragraph.icon_type,
-                                                     icon_size);
-    ReflowTextLayout(&layout, paragraph.width, font, line_gap);
+                                                     metrics.icon_size);
+    ReflowTextLayout(&layout, metrics.width, metrics.font, metrics.line_gap);
     return layout;
 }
 
 int
 ui_paragraph_height(ParagraphSpec paragraph)
 {
-    if(paragraph.width <= 0)
+    if(!ParagraphCanLayout(paragraph.width))
         return 0;
     TextLayout layout = ParagraphLayout(paragraph);
     int height = GetTextLayoutHeight(&layout);
@@ -4897,9 +4904,17 @@ ui_paragraph_height(ParagraphSpec paragraph)
 void
 ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
 {
-    if(y == NULL || paragraph.width <= 0)
+    if(y == NULL || !ParagraphCanLayout(paragraph.width))
         return;
-    int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
+    ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
+                                                       GetFontSize(),
+                                                       paragraph.line_gap,
+                                                       Scale(4),
+                                                       paragraph.icon_size,
+                                                       paragraph.width,
+                                                       paragraph.width,
+                                                       0, *y);
+    int font = metrics.font;
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     TextLayout layout = ParagraphLayout(paragraph);
     if(paragraph.align != TextAlignStart)
@@ -4913,9 +4928,17 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
 void
 ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
 {
-    if(y == NULL || paragraph.width <= 0)
+    if(y == NULL || !ParagraphCanLayout(paragraph.width))
         return;
-    int font = paragraph.font > 0 ? paragraph.font : GetFontSize();
+    ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
+                                                       GetFontSize(),
+                                                       paragraph.line_gap,
+                                                       Scale(4),
+                                                       paragraph.icon_size,
+                                                       paragraph.width,
+                                                       paragraph.width,
+                                                       0, *y);
+    int font = metrics.font;
     Color color = paragraph.color.a != 0 ? paragraph.color : c_text;
     TextLayout layout = ParagraphLayout(paragraph);
     DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width, align);
@@ -4925,10 +4948,20 @@ ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
 void
 RenderBevel(int x, int y, int w, int h, Color light, Color dark)
 {
-    DrawLine(x, y, x + w - 1, y, light);
-    DrawLine(x, y, x, y + h - 1, light);
-    DrawLine(x, y + h - 1, x + w - 1, y + h - 1, dark);
-    DrawLine(x + w - 1, y, x + w - 1, y + h - 1, dark);
+    BevelLines lines = BevelLinesFor(x, y, w, h);
+
+    DrawLine((int)lines.top.x, (int)lines.top.y,
+             (int)(lines.top.x + lines.top.width),
+             (int)(lines.top.y + lines.top.height), light);
+    DrawLine((int)lines.left.x, (int)lines.left.y,
+             (int)(lines.left.x + lines.left.width),
+             (int)(lines.left.y + lines.left.height), light);
+    DrawLine((int)lines.bottom.x, (int)lines.bottom.y,
+             (int)(lines.bottom.x + lines.bottom.width),
+             (int)(lines.bottom.y + lines.bottom.height), dark);
+    DrawLine((int)lines.right.x, (int)lines.right.y,
+             (int)(lines.right.x + lines.right.width),
+             (int)(lines.right.y + lines.right.height), dark);
 }
 
 void
@@ -4944,11 +4977,11 @@ int
 GetUIIconBtnSize(int size)
 {
     switch(size) {
-    case ICON_SIZE_TINY: return ClampUIPx(12, 10, 18);
-    case ICON_SIZE_SMALL: return ClampUIPx(14, 12, 20);
-    case ICON_SIZE_MEDIUM: return ClampUIPx(16, 14, 24);
-    case ICON_SIZE_LARGE: return ClampUIPx(20, 18, 28);
-    default: return ClampUIPx(14, 12, 20);
+    case ICON_SIZE_TINY: return ClampPx(12, 10, 18);
+    case ICON_SIZE_SMALL: return ClampPx(14, 12, 20);
+    case ICON_SIZE_MEDIUM: return ClampPx(16, 14, 24);
+    case ICON_SIZE_LARGE: return ClampPx(20, 18, 28);
+    default: return ClampPx(14, 12, 20);
     }
 }
 
@@ -4965,24 +4998,24 @@ GetUIIconBtnPadding(int size)
 }
 
 void
-SetUIDefaultFontAutoLoad(int enabled)
+SetDefaultFontAutoLoad(int enabled)
 {
     ui_default_font_auto_load = enabled != 0;
 }
 
 void
-InitUI(int width, int height, float dpi)
+InitInterface(int width, int height, float dpi)
 {
     ui_view_width = width;
     ui_view_height = height;
-    SetUIScale(dpi);
+    SetScale(dpi);
     ApplyCurrentTheme();
     if(ui_default_font_auto_load)
         EnsureUIDefaultFont();
 }
 
 int
-IsUIDesktopMode(void)
+IsDesktopMode(void)
 {
     return ui_view_width >= Scale(500);
 }
@@ -5002,7 +5035,7 @@ ui_set_theme_colors(Color text, Color bg, Color surface, Color circle,
 }
 
 void
-SetUILinkColor(Color link)
+SetLinkColor(Color link)
 {
     c_link = link;
 }
@@ -5017,11 +5050,11 @@ ApplyCurrentTheme(void)
                         GetThemeButton(),
                         GetThemeButtonHover(),
                         GetThemeIcon());
-    SetUILinkColor(GetThemeLink());
+    SetLinkColor(GetThemeLink());
 }
 
 Camera2D
-GetUIDefaultCamera(void)
+GetDefaultCamera(void)
 {
     Camera2D camera;
 
@@ -5062,20 +5095,20 @@ ui_camera_ensure_sane(void)
 }
 
 void
-BeginUIFrame(int width, int height, float dpi)
+BeginInterfaceFrame(int width, int height, float dpi)
 {
     ui_reset_disabled_scope();
-    SetUIViewSize(width, height);
-    InitUI(width, height, dpi);
-    SetUIFrame(GetUIDefaultCamera());
+    SetViewSize(width, height);
+    InitInterface(width, height, dpi);
+    SetFrameCamera(GetDefaultCamera());
 }
 
 void
-SetUIFrame(Camera2D camera)
+SetFrameCamera(Camera2D camera)
 {
     PumpWindows();
-    EndUIFocus();
-    BeginUIFocus();
+    EndFocusScope();
+    BeginFocusScope();
     g_ui_frame_serial++;
     g_ui_auto_focus_id = 0x40000000;
     ui_text_begin_frame();
@@ -5091,24 +5124,24 @@ SetUIFrame(Camera2D camera)
 
     g_ui_camera = ui_sane_camera(camera);
     ui_update_pointer_gesture();
-    ClearUIInputCaptures();
+    ClearInputCaptures();
     if(g_ui_modal_capture_next_frame) {
-        PushUIInputCapture(g_ui_modal_capture_next_frame_bounds, 1);
+        PushInputCapture(g_ui_modal_capture_next_frame_bounds, 1);
         g_ui_modal_capture_next_frame = 0;
     }
     if(g_ui_text_context_open)
-        PushUIInputCapture((Rectangle){0.0f, 0.0f,
+        PushInputCapture((Rectangle){0.0f, 0.0f,
                                        (float)ui_view_width,
                                        (float)ui_view_height}, 0);
     g_ui_input_clip_stack_count = 0;
     g_scroll_scope_depth = 0;
-    ResetUIClip();
-    BeginUIInspectFrame(NULL);
+    ResetClip();
+    BeginInspectFrame(NULL);
     ui_frame_layers_begin();
 }
 
 int
-ResolveUIFocusID(int id)
+ResolveFocusID(int id)
 {
     if(id != 0)
         return id;
@@ -5121,7 +5154,7 @@ RenderFrameOverlays(void)
     if(g_ui_overlays_drawn_frame == g_ui_frame_serial)
         return;
     g_ui_overlays_drawn_frame = g_ui_frame_serial;
-    ResetUIClip();
+    ResetClip();
     ui_dropdown_overlays();
     ui_draw_menu_overlays();
     ui_tab_bar_finish_frame();
@@ -5129,10 +5162,10 @@ RenderFrameOverlays(void)
 }
 
 void
-EndUIFrame(void)
+EndInterfaceFrame(void)
 {
     RenderFrameOverlays();
-    EndUIFocus();
+    EndFocusScope();
     /* Unhandled text from a popup-captured frame must not be replayed into an
      * underlying editor after dismissal. Retain ordinary non-popup queue
      * behavior; the capture marker also covers a popup closed this frame. */
@@ -5145,13 +5178,13 @@ EndUIFrame(void)
     }
     ui_frame_layers_end();
     ui_sync_platform_text_input();
-    EndUIInspectFrame();
+    EndInspectFrame();
 }
 
-UIFrameState
-SaveUIFrameState(void)
+FrameState
+SaveFrameState(void)
 {
-    UIFrameState state;
+    FrameState state;
 
     state.view_width = ui_view_width;
     state.view_height = ui_view_height;
@@ -5185,12 +5218,12 @@ SaveUIFrameState(void)
     state.mouse_world_override = g_ui_mouse_world_override;
     state.frame_serial = g_ui_frame_serial;
     state.auto_focus_id = g_ui_auto_focus_id;
-    state.ui_scale = GetUIScale();
+    state.ui_scale = GetScale();
     return state;
 }
 
 void
-RestoreUIFrameState(UIFrameState state)
+RestoreFrameState(FrameState state)
 {
     ui_view_width = state.view_width;
     ui_view_height = state.view_height;
@@ -5228,15 +5261,15 @@ RestoreUIFrameState(UIFrameState state)
                       (float)g_ui_pointer_start_y});
     g_ui_frame_serial = state.frame_serial;
     g_ui_auto_focus_id = state.auto_focus_id;
-    SetUIScale(state.ui_scale);
-    ResetUIClip();
+    SetScale(state.ui_scale);
+    ResetClip();
 }
 
 void
-SetUIModalCapture(Rectangle bounds)
+SetModalCapture(Rectangle bounds)
 {
-    ClearUIInputCaptures();
-    PushUIInputCapture(bounds, 1);
+    ClearInputCaptures();
+    PushInputCapture(bounds, 1);
     g_ui_modal_capture_next_frame_bounds = bounds;
     g_ui_modal_capture_next_frame = 1;
 }
@@ -5260,7 +5293,7 @@ SetCursorDisabled(int *cursor_disabled)
 }
 
 void
-SetUIIcons(Texture2D gear_icon, Texture2D x_icon)
+SetInterfaceIcons(Texture2D gear_icon, Texture2D x_icon)
 {
     g_ui_gear_icon = gear_icon;
     g_ui_x_icon = x_icon;

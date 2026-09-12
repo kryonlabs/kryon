@@ -1,5 +1,5 @@
-#ifndef UI_IMAGE_H
-#define UI_IMAGE_H
+#ifndef KRYON_IMAGE_H
+#define KRYON_IMAGE_H
 
 /*
  * UI image widget + shared image texture cache.

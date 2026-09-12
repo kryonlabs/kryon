@@ -1,0 +1,48 @@
+#include <assert.h>
+#include <math.h>
+
+#include "runtime/tree_view.h"
+
+static void
+check_rect(Rectangle got, float x, float y, float width, float height)
+{
+    assert(fabsf(got.x - x) < 0.001f);
+    assert(fabsf(got.y - y) < 0.001f);
+    assert(fabsf(got.width - width) < 0.001f);
+    assert(fabsf(got.height - height) < 0.001f);
+}
+
+int
+main(void)
+{
+    Rectangle bounds = {10, 20, 180, 90};
+    TreeViewMetrics metrics = TreeViewMetricsFor(2.0f);
+    TreeViewScrollLayout scroll;
+    Rectangle row;
+
+    assert(metrics.default_row_height == 56);
+    assert(metrics.indent_x == 16);
+    assert(metrics.depth_indent == 36);
+    assert(metrics.marker_width == 32);
+    assert(metrics.text_gap == 4);
+    assert(TreeViewRowHeight(0, 2.0f, metrics) == 56);
+    assert(TreeViewRowHeight(18, 2.0f, metrics) == 36);
+    assert(TreeViewContentHeight(5, 28) == 140);
+    assert(TreeViewContentHeight(-1, 28) == 0);
+    assert(TreeViewMaxScroll(90, 140) == 50);
+    assert(TreeViewMaxScroll(160, 140) == 0);
+    assert(TreeViewVisibleRows(90, 28) == 4);
+
+    scroll = TreeViewScrollFor(65, 28);
+    assert(scroll.first == 2);
+    assert(scroll.y_offset == 9);
+
+    metrics = TreeViewMetricsFor(1.0f);
+    row = TreeViewRowBounds(bounds, 1, 28, 9);
+    check_rect(row, 10, 39, 180, 28);
+    assert(TreeViewIndent(-2, metrics) == 8);
+    assert(TreeViewIndent(2, metrics) == 44);
+    check_rect(TreeViewMarkerBounds(row, 2, metrics), 54, 39, 16, 28);
+    check_rect(TreeViewTextBounds(row, 2, metrics), 72, 39, 118, 28);
+    return 0;
+}

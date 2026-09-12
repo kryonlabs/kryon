@@ -91,8 +91,8 @@ main(int argc, char **argv)
         return 1;
     }
     SetTargetFPS(60);
-    InitUI(w, h, GetUIScale());
-    LoadExampleUIFont();
+    InitInterface(w, h, GetScale());
+    LoadExampleTextFont();
 
     host = CreateAppHost(APP_HOST_ABI_VERSION, ".");
     if(host == NULL) {
@@ -113,12 +113,12 @@ main(int argc, char **argv)
         BeginDrawing();
         ClearBackground(BLANK);
         BeginFrame();
-        BeginUIFrame(GetScreenWidth(), GetScreenHeight(), GetUIScale());
+        BeginInterfaceFrame(GetScreenWidth(), GetScreenHeight(), GetScale());
         BeginTree(Key("generated-c-capture"));
         DrawAppScreen(host, (Rectangle){0, 0, (float)GetScreenWidth(),
                                         (float)GetScreenHeight()});
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         EndFrame();
         EndDrawing();
     }
@@ -142,7 +142,7 @@ main(int argc, char **argv)
 
     UnloadImage(shot);
     DestroyAppHost(host);
-    UnloadExampleUIFont();
+    UnloadExampleTextFont();
     CloseWindow();
     return 0;
 }

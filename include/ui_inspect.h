@@ -1,9 +1,9 @@
-#ifndef UI_INSPECT_H
-#define UI_INSPECT_H
+#ifndef KRYON_INSPECT_H
+#define KRYON_INSPECT_H
 
 #include "ui_widget.h"
 
-typedef struct UIInspectSelection {
+typedef struct InspectSelection {
     char id[96];
     char kind[32];
     char action[64];
@@ -13,9 +13,9 @@ typedef struct UIInspectSelection {
     int kind_index;
     int source_line;
     int valid;
-} UIInspectSelection;
+} InspectSelection;
 
-typedef struct UIInspectNode {
+typedef struct InspectNode {
     char name[96];
     char role[32];
     char text[64];
@@ -27,26 +27,26 @@ typedef struct UIInspectNode {
     int parent;
     int source_line;
     int valid;
-} UIInspectNode;
+} InspectNode;
 
-void BeginUIInspectFrame(const char *project_root);
-void EndUIInspectFrame(void);
-void SetUIInspectEnabled(int enabled);
-void SetUIInspectVisible(int visible);
-int UIInspectEnabled(void);
-int UIInspectWidgetCount(void);
-int UIInspectNodeCount(void);
-int UIInspectGetNode(int index, UIInspectNode *node);
-int UIInspectFindNode(const char *selector, UIInspectNode *node);
-UIInspectSelection UIInspectGetSelection(void);
-int UIInspectSelectAt(Vector2 point);
-void SetUIInspectCanvasBounds(Rectangle bounds);
-int PushUIInspectTransform(Camera2D camera);
-void PopUIInspectTransform(int token);
-int PushUIInspectChrome(int enabled);
-void PopUIInspectChrome(int token);
-int UIInspectInputCapturesClick(Vector2 point);
-void PushUIInspectSource(const char *path, int line);
-void PopUIInspectSource(void);
+void BeginInspectFrame(const char *project_root);
+void EndInspectFrame(void);
+void SetInspectEnabled(int enabled);
+void SetInspectVisible(int visible);
+int InspectEnabled(void);
+int InspectWidgetCount(void);
+int InspectNodeCount(void);
+int InspectGetNode(int index, InspectNode *node);
+int InspectFindNode(const char *selector, InspectNode *node);
+InspectSelection InspectGetSelection(void);
+int InspectSelectAt(Vector2 point);
+void SetInspectCanvasBounds(Rectangle bounds);
+int PushInspectTransform(Camera2D camera);
+void PopInspectTransform(int token);
+int PushInspectChrome(int enabled);
+void PopInspectChrome(int token);
+int InspectInputCapturesClick(Vector2 point);
+void PushInspectSource(const char *path, int line);
+void PopInspectSource(void);
 
 #endif

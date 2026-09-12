@@ -60,13 +60,13 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
         scope->disabled = ui_disabled_suspend();
         scope->input_clip = ui_input_clip_suspend();
     }
-    if(backdrop) SetUIModalCapture(popup);
+    if(backdrop) SetModalCapture(popup);
     if(backdrop && IsWindowReady())
-        DrawRectangle(0,0,GetUIViewWidth(),GetUIViewHeight(),
+        DrawRectangle(0,0,GetViewWidth(),GetViewHeight(),
                       (Color){0,0,0,180});
-    PushUIInputClip(popup);
+    PushInputClip(popup);
     if(IsWindowReady()) {
-        BeginUIClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
+        BeginClip((int)popup.x,(int)popup.y,(int)popup.width,(int)popup.height);
         DrawRectangleRec(popup,GetThemeSurface());
         scope->has_clip = 1;
     }
@@ -87,8 +87,8 @@ static void end_popup_scope(void)
     UIComposedPopupScope *scope = popup_scope;
     if(!scope) abort();
     if(!*scope->open) close_popup_scope(scope);
-    if(scope->has_clip) EndUIClip();
-    PopUIInputClip();
+    if(scope->has_clip) EndClip();
+    PopInputClip();
     if(scope->has_paint) ui_paint_layer_end(scope->paint);
     else {
         ui_input_clip_resume(scope->input_clip);
@@ -113,7 +113,7 @@ int BeginPopup(PopupProps popup)
     if(decision.context && !popup.disabled &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
        CheckCollisionPointRec(ui_mouse_world(),popup.trigger) &&
-       !UIInputCapturesClick(ui_mouse_world()))
+       !InputCapturesClick(ui_mouse_world()))
         *popup.open = true;
     if(decision.tooltip) {
         if(popup.disabled ||
@@ -127,16 +127,16 @@ int BeginPopup(PopupProps popup)
         }
     }
     if(!decision.tooltip && !decision.modal &&
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !UIReleaseConsumed() &&
+       IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && !ReleaseConsumed() &&
        !CheckCollisionPointRec(ui_mouse_world(),popup.bounds)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         *popup.open = false;
         if(input_context) ui_popup_input_close(input_context,popup.id);
         return 0;
     }
     Rectangle input_bounds = PopupInputBounds(decision, popup.bounds,
-                                              GetUIViewWidth(),
-                                              GetUIViewHeight());
+                                              GetViewWidth(),
+                                              GetViewHeight());
     return enter_popup_scope(popup.id,decision.tooltip ? NULL : popup.open,popup.bounds,
                              layers,
                              (UIPopupInputToken){0},decision.captures_input,

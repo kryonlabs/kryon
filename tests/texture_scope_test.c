@@ -88,7 +88,7 @@ static void check_pixel_not(Image image, int x, int y, Color unexpected, const c
 }
 
 static int
-test_drag_float(UIFloatDragProps props)
+test_drag_scalar(DragScalarProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -98,7 +98,7 @@ test_drag_float(UIFloatDragProps props)
 }
 
 static int
-test_drag_int(UIIntDragProps props)
+test_drag_whole(DragWholeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -108,7 +108,7 @@ test_drag_int(UIIntDragProps props)
 }
 
 static int
-test_drag_float_range(UIFloatDragRangeProps props)
+test_drag_scalar_range(DragScalarRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat, .mode = DragRange,
@@ -119,7 +119,7 @@ test_drag_float_range(UIFloatDragRangeProps props)
 }
 
 static int
-test_drag_int_range(UIIntDragRangeProps props)
+test_drag_whole_range(DragWholeRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .mode = DragRange,
@@ -130,7 +130,7 @@ test_drag_int_range(UIIntDragRangeProps props)
 }
 
 static int
-test_slider_int(UIIntSliderProps props)
+test_slider_whole(SliderWholeProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -139,7 +139,7 @@ test_slider_int(UIIntSliderProps props)
 }
 
 static int
-test_vslider_float(UIFloatSliderProps props)
+test_vslider_scalar(SliderScalarProps props)
 {
     SliderProps slider = {.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -150,7 +150,7 @@ test_vslider_float(UIFloatSliderProps props)
 }
 
 static int
-test_slider_angle(UIAngleSliderProps props)
+test_slider_angle(SliderAngleProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat, .float_value = props.value,
@@ -418,7 +418,7 @@ int main(void)
         Rect(0,0,64,64,WHITE,BLANK);
         EndTree();
         BeginMode2D((Camera2D){.offset={7,5},.zoom=1});
-        BeginUIClip(40,40,4,4);
+        BeginClip(40,40,4,4);
         Matrix before_projection = rlGetMatrixProjection(), before_modelview = rlGetMatrixModelview();
         UIBlendState before_blend = ui_blend_save();
         ui_paint_layers_composite(owned_layers);
@@ -431,7 +431,7 @@ int main(void)
             failures++;
         }
         DrawRectangle(0,0,64,64,ORANGE);
-        EndUIClip(); EndMode2D();
+        EndClip(); EndMode2D();
         EndTextureMode();
         Image owned = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&owned);
@@ -588,17 +588,17 @@ int main(void)
         fprintf(stderr,"NativeWindow integration requires a working desktop window backend\n");
         failures++;
     } else {
-        SetUIFocus(42001);
+        SetFocus(42001);
         for(int frame = 0; frame < 4; frame++) {
             BeginNativeWindow(window);
-            if(GetUIFocus() != (frame == 0 ? 0 : 42002)) {
+            if(GetFocus() != (frame == 0 ? 0 : 42002)) {
                 fprintf(stderr,"NativeWindow restored wrong owned focus: %d\n",
-                        GetUIFocus());
+                        GetFocus());
                 failures++;
             }
-            SetUIFocus(42002);
+            SetFocus(42002);
             if(frame == 2)
-                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
+                RegisterFocus(42002,(Rectangle){4,4,20,20});
             BeginTextureMode(inner);
             ClearBackground(BLUE);
             BeginTextureMode(leaf);
@@ -609,7 +609,7 @@ int main(void)
                 UIPaintLayers *window_layers = ui_window_paint_layers();
                 if(window_layers == NULL) return 1;
                 UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
-                RegisterUIFocus(42002,(Rectangle){4,4,20,20});
+                RegisterFocus(42002,(Rectangle){4,4,20,20});
                 BeginTree(Key("NativeWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
@@ -623,9 +623,9 @@ int main(void)
             if(frame == 3) CloseNativeWindow(window);
             else EndNativeWindow();
             check_window_readback = 0;
-            if(GetUIFocus() != 42001) {
+            if(GetFocus() != 42001) {
                 fprintf(stderr,"NativeWindow leaked focus into caller: %d\n",
-                        GetUIFocus());
+                        GetFocus());
                 failures++;
             }
             if(ui_window_paint_layers() != NULL) {
@@ -648,9 +648,9 @@ int main(void)
         ClearBackground(BLUE);
         RenderTexture2D previous = ui_tree_set_paint_target(inner);
         DrawRectangle(1,1,3,3,GREEN);
-        BeginUIClip(12,12,2,2);
+        BeginClip(12,12,2,2);
         Rect(11,11,4,4,WHITE,BLANK);
-        EndUIClip();
+        EndClip();
         Rect(8,8,3,3,YELLOW,BLANK);
         BeginMode2D((Camera2D){.offset = {4,3}, .zoom = 1});
         Rect(3,3,2,2,ORANGE,BLANK);
@@ -665,10 +665,10 @@ int main(void)
         ui_tree_set_paint_target(previous);
         EndTextureMode();
         Rect(1,1,64,64,RED,BLANK);
-        BeginUIClip(0,0,4,4);
+        BeginClip(0,0,4,4);
         EndTree();
         DrawRectangle(0,0,32,32,ORANGE);
-        EndUIClip();
+        EndClip();
         DrawTextureRec(inner.texture,(Rectangle){0,0,16,-16},(Vector2){0,0},WHITE);
         EndTextureMode();
         Image captured = LoadImageFromTexture(outer.texture);
@@ -689,13 +689,13 @@ int main(void)
     }
     BeginTextureMode(outer);
     ClearBackground(BLACK);
-    BeginUIClip(0,0,4,4);
-    UIClipState saved_clip = ui_clip_save();
-    ResetUIClip();
+    BeginClip(0,0,4,4);
+    ClipState saved_clip = ui_clip_save();
+    ResetClip();
     DrawRectangle(20,20,4,4,WHITE);
     ui_clip_restore(saved_clip);
     DrawRectangle(0,0,64,64,GREEN);
-    EndUIClip();
+    EndClip();
     EndTextureMode();
     Image clip_image = LoadImageFromTexture(outer.texture);
     ImageFlipVertical(&clip_image);
@@ -714,14 +714,14 @@ int main(void)
     BeginTree(Key("slider lifecycle"));
     Rect(1,1,63,63,RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    test_slider_int((UIIntSliderProps){.bounds = {0,0,20,12}, .id = 911,
+    test_slider_whole((SliderWholeProps){.bounds = {0,0,20,12}, .id = 911,
               .values = &int_value, .value_count = 1, .min = 0, .max = 10, .format = " "});
-    test_vslider_float((UIFloatSliderProps){.bounds = {0,0,20,12}, .id = 912,
+    test_vslider_scalar((SliderScalarProps){.bounds = {0,0,20,12}, .id = 912,
                  .values = &float_value, .value_count = 1, .min = 0, .max = 1,
                  .label = slider_label, .format = slider_format});
     End();
     Column((ColumnProps){.bounds = {10,30,40,12}});
-    test_slider_angle((UIAngleSliderProps){.bounds = {0,0,40,12}, .id = 913,
+    test_slider_angle((SliderAngleProps){.bounds = {0,0,40,12}, .id = 913,
                 .value = &angle_value, .min_degrees = 0, .max_degrees = 180,
                 .format = " "});
     End();
@@ -745,7 +745,7 @@ int main(void)
     }
     UnloadImage(sliders);
     int node_count = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&node_count);
+    const WidgetNode *nodes = GetTreeNodes(&node_count);
     for(int i = 0; i < node_count; i++) {
         if(nodes[i].id == 912 &&
            (nodes[i].bounds.x != 30 || nodes[i].bounds.y != 10 ||
@@ -764,18 +764,18 @@ int main(void)
     BeginTree(Key("drag lifecycle"));
     Rect(1,1,63,63,RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    test_drag_float((UIFloatDragProps){.bounds = {0,0,20,12}, .id = 920,
+    test_drag_scalar((DragScalarProps){.bounds = {0,0,20,12}, .id = 920,
               .values = &drag_float, .value_count = 1, .format = drag_format});
     BeginDisabled(1);
-    test_drag_int((UIIntDragProps){.bounds = {0,0,20,12}, .id = 921,
+    test_drag_whole((DragWholeProps){.bounds = {0,0,20,12}, .id = 921,
             .values = &drag_int, .value_count = 1, .format = drag_format});
     EndDisabled();
     End();
     Column((ColumnProps){.bounds = {10,30,40,28}, .gap = 4});
-    test_drag_float_range((UIFloatDragRangeProps){.bounds = {0,0,40,12}, .id = 922,
+    test_drag_scalar_range((DragScalarRangeProps){.bounds = {0,0,40,12}, .id = 922,
         .current_min = &range_min, .current_max = &range_max,
         .format = drag_format, .format_max = drag_format});
-    test_drag_int_range((UIIntDragRangeProps){.bounds = {0,0,40,12}, .id = 923,
+    test_drag_whole_range((DragWholeRangeProps){.bounds = {0,0,40,12}, .id = 923,
         .current_min = &int_min, .current_max = &int_max,
         .format = drag_format, .format_max = drag_format});
     End();
@@ -798,7 +798,7 @@ int main(void)
     int drag_nodes = 0;
     for(int i = 0; i < node_count; i++) {
         size_t offset;
-        if(nodes[i].kind != UI_WIDGET_DRAG_NODE)
+        if(nodes[i].kind != WIDGET_DRAG)
             continue;
         offset = nodes[i].data.drag.format_offset;
         drag_nodes++;
@@ -813,10 +813,10 @@ int main(void)
     }
     BeginTextureMode(outer);
     ClearBackground(RED);
-    BeginUIClip(10,10,20,20);
+    BeginClip(10,10,20,20);
     RenderText("wide", 10 + (20 - TextWidth("wide",16)) / 2,
                TextBaselineY("wide",10,20,16),16,WHITE);
-    EndUIClip();
+    EndClip();
     DrawRectangle(25,10,5,20,BLUE);
     EndTextureMode();
     Image text_reference = LoadImageFromTexture(outer.texture);
@@ -886,7 +886,7 @@ int main(void)
         nodes = GetTreeNodes(&node_count);
         int snapshots = 0;
         for(int i = 0; i < node_count; i++) {
-            if(nodes[i].kind != UI_WIDGET_TEXT_INPUT_PAINT_NODE) continue;
+            if(nodes[i].kind != WIDGET_TEXT_INPUT_PAINT) continue;
             snapshots++;
             if(nodes[i].owned_text == NULL ||
                strcmp(nodes[i].owned_text,secure ? "***" : "123") != 0) {
@@ -909,12 +909,12 @@ int main(void)
         memcpy(long_label, original_label, sizeof(long_label));
         InjectPump();
         BeginTextureMode(outer);
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         Dropdown((DropdownProps){.bounds = {10,10,44,28}, .id = 22000,
             .options = long_options, .option_count = 1, .selected_index = &long_selected});
         memset(long_label, 'X', sizeof(long_label)-1);
         expected_dropdown_text = original_label;
-        EndUIFrame();
+        EndInterfaceFrame();
         expected_dropdown_text = NULL;
         EndTextureMode();
     }
@@ -923,8 +923,8 @@ int main(void)
         failures++;
     }
     InjectReset();
-    BeginUIFrame(240,240,1);
-    EndUIFrame();
+    BeginInterfaceFrame(240,240,1);
+    EndInterfaceFrame();
     /* Thumb and rows must reflect the same scroll offset on the drag frame,
      * not settle into agreement one frame later. Compare real framebuffer
      * pixels while holding the pointer still after moving the thumb. */
@@ -947,13 +947,13 @@ int main(void)
         InjectPump();
         BeginTextureMode(popup_target);
         ClearBackground(BLACK);
-        BeginUIFrame(240,240,1);
-        SetUIFocus(22001);
+        BeginInterfaceFrame(240,240,1);
+        SetFocus(22001);
         Dropdown((DropdownProps){.bounds={10,10,160,28},.id=22001,
             .options=scroll_options,.option_count=20,.selected_index=&scroll_selected});
         int previous_draws = full_dropdown_text_draws;
         if(frame == 4) expected_dropdown_text = "Last row";
-        EndUIFrame();
+        EndInterfaceFrame();
         expected_dropdown_text = NULL;
         if(frame == 3 && g_ui_pointer_owner != UI_POINTER_OWNER_SCROLL) {
             fprintf(stderr,"rendered popup scrollbar did not acquire drag\n");
@@ -981,7 +981,7 @@ int main(void)
             UnloadImage(settled);
         }
     }
-    InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+    InjectReset(); BeginInterfaceFrame(240,240,1); EndInterfaceFrame();
     UnloadRenderTexture(popup_target);
     NativeWindow *auxiliary = OpenNativeWindow("interleaved layer host",0,0,64,64,
                                        NATIVE_WINDOW_BORDERLESS,BLUE,1);
@@ -990,7 +990,7 @@ int main(void)
     for(int frame = 0; frame < 2; frame++) {
         BeginTextureMode(outer);
         ClearBackground(BLACK);
-        BeginUIFrame(64,64,1);
+        BeginInterfaceFrame(64,64,1);
         if(frame == 1 && !ui_popup_input_current_captures((Vector2){9,9})) {
             fprintf(stderr,"host did not preserve popup capture before owner declaration\n");
             failures++;
@@ -1037,7 +1037,7 @@ int main(void)
                 failures++;
             }
         }
-        EndUIFrame();
+        EndInterfaceFrame();
         if(ui_popup_input_bound() != NULL ||
            (frame == 1 && ui_popup_input_captures(main_input,(Vector2){9,9}))) {
             fprintf(stderr,"host retained stale popup binding or missing owner\n");
@@ -1061,7 +1061,7 @@ int main(void)
     for(int frame = 0; frame < 2; frame++) {
         BeginTextureMode(outer);
         ClearBackground(BLACK);
-        BeginUIFrame(64,64,1);
+        BeginInterfaceFrame(64,64,1);
         BeginTree(Key("public composed popup paint"));
         if(BeginPopup((PopupProps){.bounds={0,8,64,56},.id=28000,
                 .open=&composed_open})) {
@@ -1072,7 +1072,7 @@ int main(void)
         }
         Rect(0,0,64,64,RED,BLANK);
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         EndTextureMode();
         Image composed = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&composed);
@@ -1093,13 +1093,13 @@ int main(void)
     InitWindow(64,64,"reopened layer host");
     if(!IsWindowReady()) return 1;
     BeginDrawing();
-    BeginUIFrame(64,64,1);
+    BeginInterfaceFrame(64,64,1);
     UIPaintLayers *reopened_layers = ui_frame_paint_layers();
     if(reopened_layers == NULL) return 1;
     UIPaintLayerToken reopened_layer = ui_paint_layer_begin(reopened_layers,1);
     DrawRectangle(0,0,4,4,GREEN);
     ui_paint_layer_end(reopened_layer);
-    EndUIFrame();
+    EndInterfaceFrame();
     EndDrawing();
     CloseWindow();
     if(failures == 0) puts("nested texture scope pixels ok");

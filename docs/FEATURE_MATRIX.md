@@ -63,9 +63,8 @@ TabBar NavigationBar Toolbar ShowToast ShowToastFor Fieldset
 PanedView Collapsible ListBox TreeView TableView ColorPicker TabBar DragDropSource DragDropTarget MultiSelectList
 CanvasGrid SelectableText`
 
-(`Canvas` is whitelisted but no `Canvas(...)` widget exists — examples call
-`BeginCanvas` directly. Scroll coverage uses the C `BeginScrollContainer` /
-`EndScrollContainer` API.)
+`Canvas`, `Scroll`, and `TableCell` are lexical `.kry` blocks rather than
+ordinary one-call widgets; the compiler lowers them to host begin/end support.
 
 ## Widget matrix
 
@@ -142,9 +141,9 @@ declaration pass (`src/ui/ui_tree.c`).
 | TabBar (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
-| Tk pack/grid helpers (`FramePack`, `GridCell`, `Place`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Geometry layout (`Rectangle`, `Grid`, `Column`, `Row`, `Stack`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ structural |
 | Form cursor (`Form*`) | ✅ | ✅ | ✅ | ✗ | ✗ | ✗ |
-| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Begin/EndCanvas` | ✅ `Begin/EndCanvas`+hit-test | ✗ |
+| Canvas (pan/zoom, hit-test, grid) | ✅ | ✅ | ✅ | ✅ `Canvas` block | ✅ host canvas scope + hit-test | ✗ |
 
 ### UI/Collections
 
@@ -217,7 +216,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Theming | ✅ 6 palettes × light/dark INI, scopes, vars, runtime loader | ✅ `SetCurrentTheme`/`SetThemeDarkMode`/`GetTheme*` | ◐ theme color slots (`KrySwSetTheme`); light/dark env knobs on hosts |
 | Style tokens | ✅ radius/border/shadow/bevel; RETRO, MATERIAL, SYSTEM styles | ✅ `Get/SetThemeMetrics` | ✗ |
 | Animation | ✅ transitions (smoothstep), ripple, keyframe scene anims | ✗ | ◐ `AnimNode` + `TIME` opcode |
-| Text/fonts | ◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi | ✅ `RegisterUIFont(Data)`, `Push/Pop/UseUIFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
+| Text/fonts | ◐ multi-font registry, per-codepoint fallback, italic synthesis, wrap, selectable text, Android/browser IME preedit+commit; no shaping/bidi | ✅ `RegisterTextFont(Data)`, `Push/Pop/UseTextFont`, input queue | ◐ font8x8 default, or pre-baked KFA1 glyph atlas; no TTF rasterization |
 | DPI/scaling | ✅ viewport-derived scale, `Scale` | ✅ `Scale`, `GetWindowScaleDPI` | ◐ per-mille UI scale (`KRB_RUN_UI_SCALE`) |
 | Clipping | ✅ 16-deep scissor stack + input clip stack | ✅ `Begin/EndScissorMode` | ✅ 16-deep `clip_push/pop` in `kry_sw` |
 | Z-order/popups | ✅ overlay paint pass, modal capture, input-capture stack | ◐ dropdown popups internal to `Dropdown` | ◐ dropdown menus handled by the engine |

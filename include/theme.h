@@ -140,8 +140,8 @@ const char *GetSystemThemeName(void);
 const char *GetSystemThemeNameCached(void);
 ThemeStyle GetSystemThemeStyle(void);
 ThemeStyle GetSystemThemeStyleCached(void);
-bool GetSystemUIFontName(char *out, int out_size);
-bool GetSystemUIFontFile(char *out, int out_size);
+bool GetSystemTextFontName(char *out, int out_size);
+bool GetSystemTextFontFile(char *out, int out_size);
 bool RefreshSystemTheme(void);
 /* Number of full detection attempts so far — lets tests and diagnostics
    assert that per-frame theme queries never re-run file I/O. */

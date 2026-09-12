@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 set -eu
 
-root="${1:-.}"
-build_dir="${2:-build/header-check}"
-cc_cmd="${3:-${CC:-cc}}"
-cppflags="${4:-}"
-cflags="${5:-}"
+if [ "$#" -gt 0 ]; then root="$1"; shift; else root="."; fi
+if [ "$#" -gt 0 ]; then build_dir="$1"; shift; else build_dir="build/header-check"; fi
+if [ "$#" -gt 0 ]; then cc_cmd="$1"; shift; else cc_cmd="${CC:-cc}"; fi
+if [ "$#" -gt 0 ]; then cppflags="$1"; shift; else cppflags=""; fi
+if [ "$#" -gt 0 ]; then cflags="$1"; shift; else cflags=""; fi
 
 cd "$root"
 
@@ -21,7 +21,12 @@ python3 scripts/embed-icon-sheets.py icons "$generated_src/ui/ui_icon_assets.c" 
 
 status=0
 
-for header in include/*.h; do
+headers="$*"
+if [ -z "$headers" ]; then
+    headers="include/*.h"
+fi
+
+for header in $headers; do
     name=$(basename "$header")
     case "$name" in
         kryon_plan9.h)

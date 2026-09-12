@@ -110,8 +110,8 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
     text_labels: [2] const char* = {"Run", "Cancel"}
     leading_labels: [2] const char* = {"Run", "Delete"}
     trailing_labels: [2] const char* = {"Run", "Save"}
-    leading_icons: [2] int = {UI_ICON_TYPE_PLAY, UI_ICON_TYPE_TRASH}
-    trailing_icons: [2] int = {UI_ICON_TYPE_PLAY, UI_ICON_TYPE_SAVE}
+    leading_icons: [2] int = {ICON_PLAY, ICON_TRASH}
+    trailing_icons: [2] int = {ICON_PLAY, ICON_SAVE}
 
     panel_key := Key("lightfield-dark")
     if id_base != 0 { panel_key = Key("lightfield-light") }
@@ -464,7 +464,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
                 id = id_base + 3005 + row * 20
                 tone = tone
                 emphasis = emphasis
-                icon_type = UI_ICON_TYPE_PLUS
+                icon_type = ICON_PLUS
                 icon_only = true
                 square = true
             }
@@ -500,7 +500,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             bounds = {origin + 24, 901, 720, 34}
             label = "Run"
             id = id_base + 5000
-            icon_type = UI_ICON_TYPE_PLAY
+            icon_type = ICON_PLAY
             full_width = true
             pill = true
             tone = ButtonToneAccent
@@ -510,7 +510,7 @@ ButtonsPanel :: (viewport: Rectangle, origin: int, id_base: int, state_base: int
             bounds = {origin + 24, 945, 720, 38}
             label = "Delete"
             id = id_base + 5001
-            icon_type = UI_ICON_TYPE_TRASH
+            icon_type = ICON_TRASH
             full_width = true
             tone = ButtonToneNeutral
             emphasis = ButtonEmphasisSoft

@@ -701,6 +701,13 @@ func completeThemePalette(p themePalette) themePalette {
 	if p.link.A == 0 {
 		p.link = p.buttonHover
 	}
+	if p.linkHover.A == 0 {
+		p.linkHover = mixColor(p.link, White, 0.18)
+	}
+	if p.textDisabled.A == 0 {
+		p.textDisabled = p.text
+		p.textDisabled.A = uint8(float32(p.textDisabled.A) * 0.45)
+	}
 	if p.circle.A == 0 {
 		p.circle = p.link
 	}

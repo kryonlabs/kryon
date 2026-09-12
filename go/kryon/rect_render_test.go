@@ -144,7 +144,7 @@ func TestFontAdvanceTruncatesBeforePixelQuantization(t *testing.T) {
 }
 
 func TestTextFrameTruncatesFractionalOriginLikeC(t *testing.T) {
-	ensureDefaultUIFont()
+	ensureDefaultTextFont()
 	op := FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: 8.75, Y: 5.75, Width: 80, Height: 24},
 		Text: "Primary", FontSize: 18, Color: Black}
 	actual := RenderFrame(100, 40, []FrameOp{op})
@@ -156,7 +156,7 @@ func TestTextFrameTruncatesFractionalOriginLikeC(t *testing.T) {
 }
 
 func TestFontDrawingAndCaretUseSameIntegerAdvances(t *testing.T) {
-	ensureDefaultUIFont()
+	ensureDefaultTextFont()
 	face := faceForFont(0, 18)
 	if face == nil {
 		t.Fatal("default test font is missing")
@@ -176,7 +176,7 @@ func TestFontDrawingAndCaretUseSameIntegerAdvances(t *testing.T) {
 }
 
 func TestButtonTextCenterRoundsHalfPixelLikeC(t *testing.T) {
-	ensureDefaultUIFont()
+	ensureDefaultTextFont()
 	face := faceForFont(0, 18)
 	if face == nil {
 		t.Fatal("default test font is missing")

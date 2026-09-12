@@ -46,6 +46,14 @@ assert.deepEqual(rectangle(snap.frame[2].args.bounds), { x: 10, y: 50, width: 12
 assert.equal(snap.frame[2].args.label, "Tap");
 assert.equal(snap.frame[2].args.style.normal.radius, 6);
 assert.equal(snap.frame[2].args.style.normal.fields, 16);
+const webDoc = runtime.webDocumentFrame(rt);
+assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
+  ["Screen", "main"],
+  ["Text", "div"],
+  ["Button", "button"]
+]);
+assert.equal(webDoc.nodes[2].text, "Tap");
+assert.deepEqual(webDoc.nodes[2].bounds, { x: 10, y: 50, width: 120, height: 28 });
 assert.equal(generated.Valid_CallHost(rt, state, host), 42);
 
 rt.target = { clientWidth: 640, clientHeight: 480 };

@@ -6,6 +6,7 @@
 #include "ui_internal.h"
 #include "ui_image.h"
 #include "ui_image_internal.h"
+#include "runtime/image.h"
 #include "embedded_assets.h"
 #include <math.h>
 #include <stdio.h>
@@ -35,7 +36,7 @@ image_begin_bounds_clip(Rectangle bounds)
 {
     Rectangle screen = image_world_rect_to_screen(bounds);
 
-    BeginUIClip((int)screen.x, (int)screen.y,
+    BeginClip((int)screen.x, (int)screen.y,
                 (int)screen.width, (int)screen.height);
 }
 
@@ -92,29 +93,8 @@ LoadImageTexture(const char *path)
 Rectangle
 ImageFitRect(ImageProps image, Texture2D texture)
 {
-    Rectangle dst = image.bounds;
-    float src_w = image.source.width != 0.0f ? fabsf(image.source.width)
-                                               : (float)texture.width;
-    float src_h = image.source.height != 0.0f ? fabsf(image.source.height)
-                                                : (float)texture.height;
-    float sx;
-    float sy;
-    float scale;
-
-    if(image.fit == IMAGE_FIT_CONTAIN || image.fit == IMAGE_FIT_COVER) {
-        if(src_w == 0.0f || src_h == 0.0f)
-            return dst;
-        sx = dst.width / src_w;
-        sy = dst.height / src_h;
-        scale = image.fit == IMAGE_FIT_COVER
-                    ? (sx > sy ? sx : sy)
-                    : (sx < sy ? sx : sy);
-        dst.width = src_w * scale;
-        dst.height = src_h * scale;
-        dst.x = image.bounds.x + (image.bounds.width - dst.width) * 0.5f;
-        dst.y = image.bounds.y + (image.bounds.height - dst.height) * 0.5f;
-    }
-    return dst;
+    return ImageFitBounds(image.bounds, image.source, texture.width,
+                          texture.height, (int)image.fit);
 }
 
 static float
@@ -360,7 +340,7 @@ image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
             style->scrim_bottom.a = 30;
         if(style->tonal_overlay.a > 24)
             style->tonal_overlay.a = 24;
-        style->outline = DarkenUIColor(GetThemeBackground(), 44);
+        style->outline = DarkenColor(GetThemeBackground(), 44);
         style->outline.a = 255;
         return;
     }
@@ -410,7 +390,7 @@ ImageTexture(Texture2D texture, ImageProps image)
         image_begin_bounds_clip(image.bounds);
         DrawTexturePro(texture, source, dst, image.origin, image.rotation,
                        image.tint);
-        EndUIClip();
+        EndClip();
         return;
     }
 
@@ -449,8 +429,8 @@ ImageTexture(Texture2D texture, ImageProps image)
     if(theme_style == THEME_STYLE_CLASSIC) {
         RenderBevel((int)image.bounds.x, (int)image.bounds.y,
                     (int)image.bounds.width, (int)image.bounds.height,
-                    LightenUIColor(GetThemeBackground(), 52),
-                    DarkenUIColor(GetThemeBackground(), 50));
+                    LightenColor(GetThemeBackground(), 52),
+                    DarkenColor(GetThemeBackground(), 50));
         if(image.style.outline.a > 0)
             DrawRectangleLinesEx(image.bounds, (float)outline_px,
                                  image.style.outline);

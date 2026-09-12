@@ -898,7 +898,7 @@ void kry_dom_semantic_box(int kind, Rectangle bounds, const char *label)
 }
 
 void
-kry_platform_accessibility_snapshot(const UIAccessibilityNode *nodes,
+kry_platform_accessibility_snapshot(const AccessibilityNode *nodes,
                                     int count)
 {
     int i;

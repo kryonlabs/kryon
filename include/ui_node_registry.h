@@ -1,5 +1,5 @@
-#ifndef UI_NODE_REGISTRY_H
-#define UI_NODE_REGISTRY_H
+#ifndef KRYON_NODE_REGISTRY_H
+#define KRYON_NODE_REGISTRY_H
 
 typedef enum KryonNodeTypeFlags {
     KRYON_NODE_INSERTABLE = 1 << 0,
@@ -28,4 +28,4 @@ unsigned KryonNodeTypeFlagsAt(int index);
 int KryonNodeTypeInsertable(int index);
 int KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap);
 
-#endif /* UI_NODE_REGISTRY_H */
+#endif /* KRYON_NODE_REGISTRY_H */

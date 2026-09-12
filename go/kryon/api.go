@@ -90,12 +90,6 @@ func EndDisabled()                     { active().EndDisabled() }
 func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
 func EndPopup()                        { active().EndPopup() }
 func ClosePopup()                      { active().ClosePopup() }
-func BeginTabBar(props TabBarProps, selectedIndex *int32) bool {
-	return active().BeginTabBar(props, selectedIndex)
-}
-func BeginTabItem(index int32) bool { return active().BeginTabItem(index) }
-func EndTabItem()                   { active().EndTabItem() }
-func EndTabBar()                    { active().EndTabBar() }
 func AcceleratorPressed(accelerator Accelerator) int32 {
 	return active().AcceleratorPressed(accelerator)
 }
@@ -367,27 +361,15 @@ func ListBox(props ListBoxProps) int32             { return active().ListBox(pro
 func TableView(props TableViewProps) int32         { return active().TableView(props) }
 func BeginCanvas(canvas Canvas) CanvasResult       { return active().BeginCanvas(canvas) }
 func EndCanvas(canvas Canvas)                      { active().EndCanvas(canvas) }
-func BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox {
-	return active().BeginFrameBox(bounds, padX, padY, gap)
-}
-func FramePack(frame *FrameBox, side Side, size int32) Rectangle {
-	return active().FramePack(frame, side, size)
-}
-func GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle {
-	return active().GridCell(grid, row, col, rowSpan, colSpan)
-}
-func Place(parent Rectangle, x, y, w, h int32) Rectangle {
-	return active().Place(parent, x, y, w, h)
-}
-func SetCurrentTheme(themeID, darkMode int32) { active().SetCurrentTheme(themeID, darkMode) }
-func SetTheme(theme Theme)                    { active().SetTheme(theme) }
-func SetThemeFamily(family ThemeFamily)       { active().SetThemeFamily(family) }
-func GetThemeFamily() ThemeFamily             { return active().GetThemeFamily() }
-func GetTheme() Theme                         { return active().GetTheme() }
-func SetThemeDarkMode(dark int32)             { active().SetThemeDarkMode(dark) }
-func SetThemeStyle(style ThemeStyle)          { active().SetThemeStyle(style) }
-func SetThemeSource(source ThemeSource)       { active().SetThemeSource(source) }
-func SetThemeMode(mode ThemeMode)             { active().SetThemeMode(mode) }
-func GetThemeMode() ThemeMode                 { return active().GetThemeMode() }
-func GetThemeScheme() DefaultScheme           { return active().GetThemeScheme() }
-func SystemThemePrefersDark() bool            { return systemPrefersDark() }
+func SetCurrentTheme(themeID, darkMode int32)      { active().SetCurrentTheme(themeID, darkMode) }
+func SetTheme(theme Theme)                         { active().SetTheme(theme) }
+func SetThemeFamily(family ThemeFamily)            { active().SetThemeFamily(family) }
+func GetThemeFamily() ThemeFamily                  { return active().GetThemeFamily() }
+func GetTheme() Theme                              { return active().GetTheme() }
+func SetThemeDarkMode(dark int32)                  { active().SetThemeDarkMode(dark) }
+func SetThemeStyle(style ThemeStyle)               { active().SetThemeStyle(style) }
+func SetThemeSource(source ThemeSource)            { active().SetThemeSource(source) }
+func SetThemeMode(mode ThemeMode)                  { active().SetThemeMode(mode) }
+func GetThemeMode() ThemeMode                      { return active().GetThemeMode() }
+func GetThemeScheme() DefaultScheme                { return active().GetThemeScheme() }
+func SystemThemePrefersDark() bool                 { return systemPrefersDark() }

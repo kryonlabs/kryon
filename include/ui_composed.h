@@ -1,5 +1,5 @@
-#ifndef UI_COMPOSED_H
-#define UI_COMPOSED_H
+#ifndef KRYON_COMPOSED_H
+#define KRYON_COMPOSED_H
 #include "kryon_compat.generated.h"
 
 /* Stateless carousel navigation. Pass move=-1/+1 from a swipe or keyboard.

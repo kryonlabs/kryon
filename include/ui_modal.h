@@ -1,5 +1,5 @@
-#ifndef UI_MODAL_H
-#define UI_MODAL_H
+#ifndef KRYON_MODAL_H
+#define KRYON_MODAL_H
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"

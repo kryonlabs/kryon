@@ -1,0 +1,69 @@
+#module "canvas"
+#import "drawing_props"
+
+CanvasPolicyResult :: struct {
+    active: bool
+    dragging: bool
+    world: Vector2
+}
+
+CanvasZoom :: (zoom: float) -> float #export {
+    if zoom <= 0.01 { return 1.0 }
+    return zoom
+}
+
+CanvasContains :: (bounds: Rectangle, point: Vector2) -> bool #export {
+    return point.x >= bounds.x && point.y >= bounds.y &&
+        point.x <= bounds.x + bounds.width &&
+        point.y <= bounds.y + bounds.height
+}
+
+CanvasPointToScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
+    scroll_y: i32, zoom: float) -> Vector2 #export {
+    out: Vector2 = point
+    z: float = CanvasZoom(zoom)
+    out.x = out.x - (float)scroll_x
+    out.y = out.y - (float)scroll_y
+    out.x = bounds.x + (out.x - bounds.x) * z
+    out.y = bounds.y + (out.y - bounds.y) * z
+    return out
+}
+
+CanvasPointFromScreen :: (bounds: Rectangle, point: Vector2, scroll_x: i32,
+    scroll_y: i32, zoom: float) -> Vector2 #export {
+    out: Vector2 = point
+    z: float = CanvasZoom(zoom)
+    out.x = bounds.x + (out.x - bounds.x) / z + (float)scroll_x
+    out.y = bounds.y + (out.y - bounds.y) / z + (float)scroll_y
+    return out
+}
+
+CanvasRectToScreenBounds :: (bounds: Rectangle, rect: Rectangle,
+    scroll_x: i32, scroll_y: i32, zoom: float) -> Rectangle #export {
+    out: Rectangle = rect
+    z: float = CanvasZoom(zoom)
+    point: Vector2 = CanvasPointToScreen(bounds, (Vector2){rect.x, rect.y},
+        scroll_x, scroll_y, z)
+    out.x = point.x
+    out.y = point.y
+    out.width = rect.width * z
+    out.height = rect.height * z
+    return out
+}
+
+CanvasBeginResultFor :: (bounds: Rectangle, mouse: Vector2, scroll_x: i32,
+    scroll_y: i32, zoom: float, mouse_down: bool) -> CanvasPolicyResult #export {
+    result: CanvasPolicyResult
+    result.active = CanvasContains(bounds, mouse)
+    result.dragging = result.active && mouse_down
+    result.world = CanvasPointFromScreen(bounds, mouse, scroll_x, scroll_y,
+        zoom)
+    return result
+}
+
+CanvasHitTestStep :: (point: Vector2, item: Rectangle, item_index: i32,
+    current_index: i32) -> i32 #export {
+    if current_index >= 0 { return current_index }
+    if CanvasContains(item, point) { return item_index }
+    return -1
+}

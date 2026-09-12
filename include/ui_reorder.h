@@ -1,5 +1,5 @@
-#ifndef UI_REORDER_H
-#define UI_REORDER_H
+#ifndef KRYON_REORDER_H
+#define KRYON_REORDER_H
 
 #include "kryon_compat.generated.h"
 

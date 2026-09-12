@@ -2,7 +2,7 @@ package kryon
 
 import "testing"
 
-func TestPopupComboKeyboardOwnership(t *testing.T) {
+func TestPopupDropdownKeyboardOwnership(t *testing.T) {
 	for _, inside := range []bool{false, true} {
 		r := New(AppConfig{}).(*runtime)
 		r.QueueKey(KeySpace)

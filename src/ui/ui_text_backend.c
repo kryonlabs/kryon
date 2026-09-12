@@ -50,7 +50,7 @@ ui_font_glyph_index(Font font, int codepoint)
     UIGlyphIndexCacheEntry *cached;
     int fallback = 0;
 
-    if(!UIFontReady(font))
+    if(!TextFontReady(font))
         return 0;
 
     slot = ((unsigned int)codepoint * 2654435761u ^ font.texture.id) %
@@ -86,60 +86,60 @@ ui_font_glyph_index(Font font, int codepoint)
  */
 
 int
-UIFontReady(Font font)
+TextFontReady(Font font)
 {
     return font.texture.id != 0 && font.glyphs != NULL && font.recs != NULL &&
            font.glyphCount > 0 && font.baseSize > 0;
 }
 
 int
-UIFontBaseSize(Font font)
+TextFontBaseSize(Font font)
 {
     return font.baseSize;
 }
 
 int
-UIFontGlyphPadding(Font font)
+TextFontGlyphPadding(Font font)
 {
     return font.glyphPadding;
 }
 
 GlyphInfo
-UIFontGlyph(Font font, int codepoint)
+TextFontGlyph(Font font, int codepoint)
 {
-    if(!UIFontReady(font))
+    if(!TextFontReady(font))
         return kryon_zero_glyphinfo;
     return font.glyphs[ui_font_glyph_index(font, codepoint)];
 }
 
 Rectangle
-UIFontAtlasRec(Font font, int codepoint)
+TextFontAtlasRec(Font font, int codepoint)
 {
-    if(!UIFontReady(font))
+    if(!TextFontReady(font))
         return kryon_zero_rectangle;
     return font.recs[ui_font_glyph_index(font, codepoint)];
 }
 
 Texture2D
-UIFontAtlasTexture(Font font)
+TextFontAtlasTexture(Font font)
 {
     return font.texture;
 }
 
 int
-UIFontAdvance(Font font, int codepoint)
+TextFontAdvance(Font font, int codepoint)
 {
-    if(!UIFontReady(font))
+    if(!TextFontReady(font))
         return 0;
     return font.glyphs[ui_font_glyph_index(font, codepoint)].advanceX;
 }
 
 int
-UIFontHasGlyphValue(Font font, int codepoint)
+TextFontHasGlyphValue(Font font, int codepoint)
 {
     GlyphInfo glyph;
 
-    if(!UIFontReady(font))
+    if(!TextFontReady(font))
         return 0;
 
     glyph = font.glyphs[ui_font_glyph_index(font, codepoint)];
@@ -147,13 +147,13 @@ UIFontHasGlyphValue(Font font, int codepoint)
 }
 
 int
-UIFontGlyphCount(Font font)
+TextFontGlyphCount(Font font)
 {
     return font.glyphCount;
 }
 
 int
-UIFontHasNativeText(Font font)
+TextFontHasNativeText(Font font)
 {
 #if defined(KRYON_BACKEND_LIBDRAW)
     return kry_libdraw_font_height(font.texture.id) > 0;
@@ -168,7 +168,7 @@ UIFontHasNativeText(Font font)
 }
 
 int
-UIFontNativeTextWidth(Font font, const char *text, int byte_len)
+TextFontNativeTextWidth(Font font, const char *text, int byte_len)
 {
 #if defined(KRYON_BACKEND_LIBDRAW)
     return kry_libdraw_font_text_width(font.texture.id, text, byte_len);
@@ -185,7 +185,7 @@ UIFontNativeTextWidth(Font font, const char *text, int byte_len)
 }
 
 int
-UIFontNativeTextHeight(Font font)
+TextFontNativeTextHeight(Font font)
 {
 #if defined(KRYON_BACKEND_LIBDRAW)
     return kry_libdraw_font_height(font.texture.id);
@@ -200,7 +200,7 @@ UIFontNativeTextHeight(Font font)
 }
 
 int
-UIFontDrawNativeText(Font font, const char *text, int byte_len, int x, int y,
+TextFontDrawNativeText(Font font, const char *text, int byte_len, int x, int y,
                      int font_size, Color color)
 {
 #if defined(KRYON_BACKEND_LIBDRAW)

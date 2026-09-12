@@ -54,13 +54,13 @@ sample(int index, Rectangle bounds, const DropdownOption *items, int count,
     else
         InjectMousePosition(-100, -100);
     InjectPump();
-    BeginUIFrame(WIDTH, HEIGHT, 1.0f);
-    SetUIFocus(focused || open ? id : 0);
+    BeginInterfaceFrame(WIDTH, HEIGHT, 1.0f);
+    SetFocus(focused || open ? id : 0);
     BeginDisabled(disabled);
     Dropdown((DropdownProps){.id = id, .bounds = bounds,
         .items = items, .option_count = count, .selected_index = &chosen});
     EndDisabled();
-    EndUIFrame();
+    EndInterfaceFrame();
     dropdown_store_swap(previous);
 }
 
@@ -79,7 +79,7 @@ board(RenderTexture2D target, int dark)
     DrawCircleGradient((Vector2){-70, 920}, 310, Fade(accent, dark ? 0.18f : 0.09f), Fade(accent, 0));
     DrawRectangleRoundedLinesEx((Rectangle){4, 4, 760, 950}, 0.025f, 12, 1,
         Fade(accent, dark ? 0.38f : 0.13f));
-    BeginUIFrame(WIDTH, HEIGHT, 1.0f);
+    BeginInterfaceFrame(WIDTH, HEIGHT, 1.0f);
     label(dark ? "DARK THEME" : "LIGHT THEME", 28, 16, 22, text);
     label("FROSTED GLASS / SHARED BUTTON STYLING", 28, 48, 12, Fade(text, 0.72f));
     const char *states[] = {"Normal", "Hover", "Focus", "Disabled"};
@@ -103,7 +103,7 @@ board(RenderTexture2D target, int dark)
             .emphasis = ButtonEmphasisSoft, .state = button_states[i]});
     }
     label("Arrow keys to navigate   /   Enter to select   /   Escape to close", 28, 927, 13, Fade(text, 0.60f));
-    EndUIFrame();
+    EndInterfaceFrame();
     for(int i = 0; i < 4; i++)
         sample(i, (Rectangle){30 + i * 186, 122, 158, 42}, theme_items, 6, 2,
             0, i == 1, i == 2, i == 3);
@@ -126,8 +126,8 @@ main(int argc, char **argv)
     if(!IsWindowReady())
         return 1;
     SetTargetFPS(60);
-    LoadExampleUIFont();
-    InitUI(WIDTH, HEIGHT, 1.0f);
+    LoadExampleTextFont();
+    InitInterface(WIDTH, HEIGHT, 1.0f);
     SetThemeStyle(THEME_STYLE_DEFAULT);
     RenderTexture2D target = LoadRenderTexture(WIDTH, HEIGHT);
     Image panels[2];
@@ -152,8 +152,8 @@ main(int argc, char **argv)
         (Vector2){0, 64}, WHITE);
     ImageDrawImageRec(&combined, panels[0], (Rectangle){0, 0, WIDTH, HEIGHT},
         (Vector2){768, 64}, WHITE);
-    ImageDrawTextEx(&combined, GetUIFontForCodepoint('K', 24), "K R Y O N", (Vector2){28, 20}, 24, 1, WHITE);
-    ImageDrawTextEx(&combined, GetUIFontForCodepoint('D', 30), "DROPDOWNS / FROSTED GLASS", (Vector2){472, 16}, 30, 1, WHITE);
+    ImageDrawTextEx(&combined, GetTextFontForCodepoint('K', 24), "K R Y O N", (Vector2){28, 20}, 24, 1, WHITE);
+    ImageDrawTextEx(&combined, GetTextFontForCodepoint('D', 30), "DROPDOWNS / FROSTED GLASS", (Vector2){472, 16}, 30, 1, WHITE);
     char path[1024];
     snprintf(path, sizeof(path), "%s/board.png", argv[1]);
     int saved = ExportImage(combined, path);
@@ -161,7 +161,7 @@ main(int argc, char **argv)
     UnloadImage(panels[0]);
     UnloadImage(panels[1]);
     UnloadRenderTexture(target);
-    UnloadExampleUIFont();
+    UnloadExampleTextFont();
     CloseWindow();
     return saved ? 0 : 1;
 }

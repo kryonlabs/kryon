@@ -336,6 +336,26 @@ KRY_ARCHIVE_TEST = $(BUILD_DIR)/tests/kry_archive_test
 KRY_GZIP_TEST = $(BUILD_DIR)/tests/kry_gzip_test
 KRY_ZLIB_TEST = $(BUILD_DIR)/tests/kry_zlib_test
 KRY_HTTP_TEST = $(BUILD_DIR)/tests/kry_http_test
+LINK_POLICY_TEST = $(BUILD_DIR)/link-policy-test
+COLLAPSIBLE_POLICY_TEST = $(BUILD_DIR)/collapsible-policy-test
+PANED_VIEW_POLICY_TEST = $(BUILD_DIR)/paned-view-policy-test
+TITLE_BAR_POLICY_TEST = $(BUILD_DIR)/title-bar-policy-test
+PARAGRAPH_POLICY_TEST = $(BUILD_DIR)/paragraph-policy-test
+BEVEL_POLICY_TEST = $(BUILD_DIR)/bevel-policy-test
+ICON_POLICY_TEST = $(BUILD_DIR)/icon-policy-test
+TRANSITION_FADE_POLICY_TEST = $(BUILD_DIR)/transition-fade-policy-test
+MODAL_POLICY_TEST = $(BUILD_DIR)/modal-policy-test
+TREE_VIEW_POLICY_TEST = $(BUILD_DIR)/tree-view-policy-test
+TABLE_VIEW_POLICY_TEST = $(BUILD_DIR)/table-view-policy-test
+PRIMITIVE_POLICY_TEST = $(BUILD_DIR)/primitive-policy-test
+LAYOUT_POLICY_TEST = $(BUILD_DIR)/layout-policy-test
+GRID_POLICY_TEST = $(BUILD_DIR)/grid-policy-test
+TOAST_POLICY_TEST = $(BUILD_DIR)/toast-policy-test
+CANVAS_POLICY_TEST = $(BUILD_DIR)/canvas-policy-test
+DRAG_DROP_POLICY_TEST = $(BUILD_DIR)/drag-drop-policy-test
+GUIDE_POLICY_TEST = $(BUILD_DIR)/guide-policy-test
+GUIDE_PAGER_POLICY_TEST = $(BUILD_DIR)/guide-pager-policy-test
+FOCUS_POLICY_TEST = $(BUILD_DIR)/focus-policy-test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
 KRY_SHA256_TEST = $(BUILD_DIR)/tests/kry_sha256_test
@@ -344,7 +364,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2js-runtime-snapshot-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test icon-policy-test transition-fade-policy-test modal-policy-test tree-view-policy-test table-view-policy-test primitive-policy-test layout-policy-test grid-policy-test toast-policy-test canvas-policy-test drag-drop-policy-test guide-policy-test guide-pager-policy-test focus-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test paragraph-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -518,35 +538,8 @@ preflight test: widget-instance-test
 widget-instance-test: $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(LIB) $(KRYON_BACKEND_LIBS) web/instance.js
 	python3 tests/widget_instances_test.py $(BUILD_DIR) --cc="$(CC)" --cppflags="$(CPPFLAGS)" --ldflags="$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"
 
-.PHONY: lightfield-capture-build
-.PHONY: lightfield-go-capture
-lightfield-go-capture: $(K2GO) generate-button-policy
-	mkdir -p $(BUILD_DIR)/lightfield-go
-	$(K2GO) --no-main --pkg lightfield --root . -o $(BUILD_DIR)/lightfield-go examples/02_buttons.kry
-	cp tests/lightfield_go_capture_test.go $(BUILD_DIR)/lightfield-go/capture_test.go
-	cd go/kryon && KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield(Split)?$$' -count=1
-
-.PHONY: lightfield-label-fit
-lightfield-label-fit: lightfield-go-capture
-	cd go/kryon && KRYON_FIT_BUTTON_LABELS=1 KRYON_LIGHTFIELD_LABEL_GROUP="$(or $(LIGHTFIELD_LABEL_GROUP),states)" KRYON_LIGHTFIELD_REFERENCE="$(abspath design/widget-proposals/08-magnetic-lightfield.png)" KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield$$' -v -count=1
-
-.PHONY: lightfield-geometry-fit
-lightfield-geometry-fit: lightfield-go-capture
-	cd go/kryon && KRYON_FIT_BUTTON_GEOMETRY=1 KRYON_LIGHTFIELD_GEOMETRY_GROUP="$(or $(LIGHTFIELD_GEOMETRY_GROUP),states)" KRYON_LIGHTFIELD_REFERENCE="$(abspath design/widget-proposals/08-magnetic-lightfield.png)" KRYON_LIGHTFIELD_CAPTURE_DIR="$(abspath $(BUILD_DIR)/lightfield-go/captures)" go test "$(abspath $(BUILD_DIR)/lightfield-go/02_buttons.go)" "$(abspath $(BUILD_DIR)/lightfield-go/capture_test.go)" -run '^TestCaptureLightfield$$' -v -count=1
-
-.PHONY: lightfield-test
-# Render fresh frames before checking the approved baseline and transitions.
-# This target never updates design/lightfield-baseline.
-lightfield-test: lightfield-capture-build lightfield-go-capture
-	xvfb-run -a $(BUILD_DIR)/lightfield/capture $(BUILD_DIR)/lightfield
-	$(MAKE) lightfield-reference-test lightfield-motion-test lightfield-translation-test
-
-lightfield-capture-build: $(K2C) $(LIB) $(KRYON_BACKEND_LIBS)
-	mkdir -p $(BUILD_DIR)/lightfield
-	$(K2C) --no-main --root . -o $(BUILD_DIR)/lightfield examples/02_buttons.kry
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I$(BUILD_DIR)/lightfield tests/lightfield_capture.c $(BUILD_DIR)/lightfield/examples/02_buttons.c $(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -Wl,--wrap=GetTime -Wl,--wrap=GetFrameTime -o $(BUILD_DIR)/lightfield/capture
-
-.PHONY: surface-policy-test lightfield-reference-test
+.PHONY: surface-policy-test
+.PHONY: image-policy-test
 .PHONY: button-style-parity-test
 button-style-parity-test: $(BUILD_DIR)/button-style-parity
 	$(BUILD_DIR)/button-style-parity > $(BUILD_DIR)/button-style-parity.jsonl
@@ -554,21 +547,6 @@ button-style-parity-test: $(BUILD_DIR)/button-style-parity
 
 $(BUILD_DIR)/button-style-parity: tests/button_style_parity.c $(LIB) $(KRYON_BACKEND_LIBS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
-
-.PHONY: lightfield-motion-test
-.PHONY: lightfield-backend-test
-lightfield-backend-test:
-	python3 tests/lightfield_backend_test.py --c-captures $(BUILD_DIR)/lightfield --go-captures $(BUILD_DIR)/lightfield-go/captures
-
-lightfield-motion-test:
-	python3 tests/lightfield_motion_test.py --captures $(BUILD_DIR)/lightfield
-	python3 tests/lightfield_motion_test.py --captures $(BUILD_DIR)/lightfield-go/captures
-
-.PHONY: lightfield-translation-test
-lightfield-translation-test:
-	sh tests/prepare_raylib_precision_test.sh
-	python3 tests/lightfield_translation_test.py --captures $(BUILD_DIR)/lightfield --isolated-offset
-	python3 tests/lightfield_translation_test.py --captures $(BUILD_DIR)/lightfield-go/captures
 
 .PHONY: style-policy-test
 .PHONY: text-policy-test
@@ -584,17 +562,126 @@ surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)
 	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
 	$(BUILD_DIR)/surface-policy-test
 
-lightfield-reference-test:
-	python3 tests/lightfield_reference_test.py --captures $(BUILD_DIR)/lightfield
+image-policy-test: $(GENERATED_SRC_DIR)/runtime/image.c $(GENERATED_SRC_DIR)/runtime/image.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/image_policy_test.c $(GENERATED_SRC_DIR)/runtime/image.c -lm -o $(BUILD_DIR)/image-policy-test
+	$(BUILD_DIR)/image-policy-test
 
-preflight: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
+collapsible-policy-test: $(GENERATED_SRC_DIR)/runtime/collapsible.c $(GENERATED_SRC_DIR)/runtime/collapsible.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/collapsible_policy_test.c $(GENERATED_SRC_DIR)/runtime/collapsible.c -lm -o $(COLLAPSIBLE_POLICY_TEST)
+	$(COLLAPSIBLE_POLICY_TEST)
+
+paned-view-policy-test: $(GENERATED_SRC_DIR)/runtime/paned_view.c $(GENERATED_SRC_DIR)/runtime/paned_view.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/paned_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/paned_view.c -lm -o $(PANED_VIEW_POLICY_TEST)
+	$(PANED_VIEW_POLICY_TEST)
+
+title-bar-policy-test: $(GENERATED_SRC_DIR)/runtime/title_bar.c $(GENERATED_SRC_DIR)/runtime/title_bar.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/title_bar_policy_test.c $(GENERATED_SRC_DIR)/runtime/title_bar.c -lm -o $(TITLE_BAR_POLICY_TEST)
+	$(TITLE_BAR_POLICY_TEST)
+
+paragraph-policy-test: $(GENERATED_SRC_DIR)/runtime/paragraph.c $(GENERATED_SRC_DIR)/runtime/paragraph.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/paragraph_policy_test.c $(GENERATED_SRC_DIR)/runtime/paragraph.c -lm -o $(PARAGRAPH_POLICY_TEST)
+	$(PARAGRAPH_POLICY_TEST)
+
+bevel-policy-test: $(GENERATED_SRC_DIR)/runtime/bevel.c $(GENERATED_SRC_DIR)/runtime/bevel.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/bevel_policy_test.c $(GENERATED_SRC_DIR)/runtime/bevel.c -lm -o $(BEVEL_POLICY_TEST)
+	$(BEVEL_POLICY_TEST)
+
+icon-policy-test: $(GENERATED_SRC_DIR)/runtime/icon.c $(GENERATED_SRC_DIR)/runtime/icon.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/icon_policy_test.c $(GENERATED_SRC_DIR)/runtime/icon.c -lm -o $(ICON_POLICY_TEST)
+	$(ICON_POLICY_TEST)
+
+transition-fade-policy-test: $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/transition_fade_policy_test.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -lm -o $(TRANSITION_FADE_POLICY_TEST)
+	$(TRANSITION_FADE_POLICY_TEST)
+
+modal-policy-test: $(GENERATED_SRC_DIR)/runtime/modal.c $(GENERATED_SRC_DIR)/runtime/modal.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/modal_policy_test.c $(GENERATED_SRC_DIR)/runtime/modal.c -lm -o $(MODAL_POLICY_TEST)
+	$(MODAL_POLICY_TEST)
+
+tree-view-policy-test: $(GENERATED_SRC_DIR)/runtime/tree_view.c $(GENERATED_SRC_DIR)/runtime/tree_view.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/tree_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/tree_view.c -lm -o $(TREE_VIEW_POLICY_TEST)
+	$(TREE_VIEW_POLICY_TEST)
+
+table-view-policy-test: $(GENERATED_SRC_DIR)/runtime/table_view.c $(GENERATED_SRC_DIR)/runtime/table_view.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/table_view_policy_test.c $(GENERATED_SRC_DIR)/runtime/table_view.c -lm -o $(TABLE_VIEW_POLICY_TEST)
+	$(TABLE_VIEW_POLICY_TEST)
+
+primitive-policy-test: $(GENERATED_SRC_DIR)/runtime/primitive.c $(GENERATED_SRC_DIR)/runtime/primitive.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/primitive_policy_test.c $(GENERATED_SRC_DIR)/runtime/primitive.c -lm -o $(PRIMITIVE_POLICY_TEST)
+	$(PRIMITIVE_POLICY_TEST)
+
+layout-policy-test: $(GENERATED_SRC_DIR)/runtime/layout.c $(GENERATED_SRC_DIR)/runtime/layout.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/layout_policy_test.c $(GENERATED_SRC_DIR)/runtime/layout.c -lm -o $(LAYOUT_POLICY_TEST)
+	$(LAYOUT_POLICY_TEST)
+
+grid-policy-test: $(GENERATED_SRC_DIR)/runtime/grid.c $(GENERATED_SRC_DIR)/runtime/grid.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/grid_policy_test.c $(GENERATED_SRC_DIR)/runtime/grid.c -lm -o $(GRID_POLICY_TEST)
+	$(GRID_POLICY_TEST)
+
+toast-policy-test: $(GENERATED_SRC_DIR)/runtime/toast.c $(GENERATED_SRC_DIR)/runtime/toast.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/toast_policy_test.c $(GENERATED_SRC_DIR)/runtime/toast.c -lm -o $(TOAST_POLICY_TEST)
+	$(TOAST_POLICY_TEST)
+
+canvas-policy-test: $(GENERATED_SRC_DIR)/runtime/canvas.c $(GENERATED_SRC_DIR)/runtime/canvas.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/canvas_policy_test.c $(GENERATED_SRC_DIR)/runtime/canvas.c -lm -o $(CANVAS_POLICY_TEST)
+	$(CANVAS_POLICY_TEST)
+
+drag-drop-policy-test: $(GENERATED_SRC_DIR)/runtime/drag_drop.c $(GENERATED_SRC_DIR)/runtime/drag_drop.h
+	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/drag_drop_policy_test.c $(GENERATED_SRC_DIR)/runtime/drag_drop.c -lm -o $(DRAG_DROP_POLICY_TEST)
+	$(DRAG_DROP_POLICY_TEST)
+
+guide-policy-test: $(GENERATED_SRC_DIR)/runtime/guide.c $(GENERATED_SRC_DIR)/runtime/guide.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/guide_policy_test.c $(GENERATED_SRC_DIR)/runtime/guide.c -lm -o $(GUIDE_POLICY_TEST)
+	$(GUIDE_POLICY_TEST)
+
+guide-pager-policy-test: $(GENERATED_SRC_DIR)/runtime/guide_pager.c $(GENERATED_SRC_DIR)/runtime/guide_pager.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/guide_pager_policy_test.c $(GENERATED_SRC_DIR)/runtime/guide_pager.c -lm -o $(GUIDE_PAGER_POLICY_TEST)
+	$(GUIDE_PAGER_POLICY_TEST)
+
+focus-policy-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/focus_policy_test.c $(GENERATED_SRC_DIR)/runtime/focus.c -lm -o $(FOCUS_POLICY_TEST)
+	$(FOCUS_POLICY_TEST)
+
+link-policy-test: $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/link.h $(GENERATED_SRC_DIR)/runtime/theme.c
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/link_policy_test.c $(GENERATED_SRC_DIR)/runtime/link.c $(GENERATED_SRC_DIR)/runtime/theme.c -lm -o $(LINK_POLICY_TEST)
+	$(LINK_POLICY_TEST)
+
+.PHONY: canonical-surface-test
+canonical-surface-test:
+	sh tests/canonical_surface_test.sh .
+
+preflight: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check k2js-runtime-snapshot-test generated-runtime-parity-test
 	git diff --check
+
+fast-test: canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check image-policy-test
+	git diff --check
+
+smart-test:
+	sh tests/smart_test.sh .
+
+examples-syntax-test: $(K2C)
+	sh tests/examples_syntax_test.sh . $(K2C)
+
+go-runtime-test:
+	cd go/kryon && go test
+
+k2c-syntax-test: $(K2C)
+	sh tests/k2c_syntax_test.sh $(K2C)
+
+k2cpp-syntax-test: $(K2CPP)
+	sh tests/k2cpp_syntax_test.sh $(K2CPP)
+
+k2go-syntax-test: $(K2GO)
+	sh tests/k2go_syntax_test.sh $(K2GO)
+
+k2js-syntax-test: $(K2JS)
+	sh tests/k2js_syntax_test.sh $(K2JS)
 
 clean-text-api-check:
 	python3 tests/clean_text_api_test.py
 	python3 scripts/check-clean-text-api.py examples tests
 
-test: submodule-urls-check kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
+test: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-surface-test clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check examples-manifest-check generated-provenance-check backend-capabilities-check runtime-parity-check feature-matrix-docs-check conformance-matrix-check dom-test $(K2C) $(K2CPP) $(K2GO) $(K2JS) $(K2KIR) $(K2B) $(KT) $(KRY_TOOLS_TEST) $(KRYON_SYNC_TESTS) $(TRANSITION_TEST) $(FILE_DIALOG_BACKEND_TEST) $(DESKTOP_TEST) $(INSTANCE_LOCK_TEST) $(LINUX_DESKTOP_PACKAGE_TEST) $(MARKDOWN_TEST) $(ANDROID_SURFACE_TEST) $(FRAME_PACING_TEST) $(UI_DPI_TEST) $(UI_DPI_DESKTOP_TEST) $(RAYLIB_COMPAT_TEST) $(UI_TK_TEST) $(UI_PRIMARY_SELECTION_TEST) $(UI_PAGER_TEST) $(DROPDOWN_LAYOUT_TEST) $(DROPDOWN_THEME_SCREEN_TEST) $(BOTTOM_NAV_ICON_COLOR_TEST) $(DISMISSIBLE_OVERLAY_TEST) $(PREVIEW_TEST) $(PLATFORM_THREAD_TEST) $(OPEN_URI_TEST) $(UI_TEXT_EDIT_TEST) $(UI_TREE_API_TEST) $(UI_SWIPE_TEST) $(SPRITESHEET_TEST) $(APP_FRAMEWORK_TEST) $(APP_STORAGE_TEST) $(AUTOMATION_TEST) $(SCENE_TREE_TEST) $(SCENE_PROPERTY_TEST) $(ANIMATION_TEST) $(KIR_TEST) $(K2KIR_TEST) $(KRB_WALK_TEST) $(KRB_MOUNT_TEST) $(KRY_SW_TEST) $(KRB_LOGIC_TEST) $(KRB_ASSET_TEST) $(KRB_CAPS_TEST) $(KRB_RUN) $(TERMINAL_TEST) $(KRY_JSON_TEST) $(KRY_XML_TEST) $(KRY_ARCHIVE_TEST) $(KRY_GZIP_TEST) $(KRY_ZLIB_TEST) $(KRY_HTTP_TEST) $(RUNTIME_ASSETS_TEST) $(KRY_UPDATE_TEST) $(KRY_UPDATE_FLOW_TEST) $(KRY_SHA256_TEST) $(LOCALE_TEST) $(SFS_TEST) $(UI_WINDOW_TEST) $(SYSTEM_THEME_TEST) $(CURSOR_INTENT_TEST) $(TEXT_INPUT_PLATFORM_TEST) $(UI_WINDOW_SDL_CHECK)
 	sh tests/spec/spec_test.sh . $(BUILD_DIR)
 	sh tests/k2c_syntax_test.sh $(K2C)
 	sh tests/k2cpp_syntax_test.sh $(K2CPP)
@@ -699,6 +786,9 @@ public-api-snapshot-check: $(ICON_TYPES_H)
 public-headers-compile-check: | $(BUILD_DIR)
 	sh tests/public_headers_compile_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)"
 
+public-headers-compile-changed-check: | $(BUILD_DIR)
+	sh tests/public_headers_compile_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" $(KRYON_CHANGED_HEADERS)
+
 examples-manifest-check:
 	sh tests/examples_manifest_test.sh .
 
@@ -734,19 +824,23 @@ $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(RUNTIME_KRY)
 
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
-$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
+$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
 
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h
+$(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/icon.h
 
 $(BUILD_DIR)/ui/ui_style.o: $(GENERATED_SRC_DIR)/runtime/theme.h $(GENERATED_SRC_DIR)/runtime/style.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o: src/ui/ui_style_internal.h
-$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h $(GENERATED_SRC_DIR)/runtime/text_input.h
+$(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/bevel.h $(GENERATED_SRC_DIR)/runtime/link.h $(GENERATED_SRC_DIR)/runtime/paragraph.h $(GENERATED_SRC_DIR)/runtime/surface.h $(GENERATED_SRC_DIR)/runtime/text_input.h
+$(BUILD_DIR)/ui/toast.o: $(GENERATED_SRC_DIR)/runtime/toast.h
 $(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
+$(BUILD_DIR)/ui/ui_image_cache.o: $(GENERATED_SRC_DIR)/runtime/image.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
 $(BUILD_DIR)/ui/popup.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
 $(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
+$(BUILD_DIR)/ui/ui_titlebar.o: $(GENERATED_SRC_DIR)/runtime/title_bar.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h
 $(BUILD_DIR)/ui/ui_style.o $(BUILD_DIR)/ui/button.o $(BUILD_DIR)/ui/ui_paint.o: src/ui/ui_paint_internal.h $(GENERATED_SRC_DIR)/runtime/material.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/card.h
@@ -926,9 +1020,9 @@ $(SYNC_CRYPTO_TEST): tests/sync_crypto_test.c src/sync/sync_crypto.c include/syn
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/sync_crypto_test.c src/sync/sync_crypto.c \
 		src/sync/monocypher.c src/sync/monocypher_ed25519.c -o $@
 
-$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h | $(BUILD_DIR)
+$(TRANSITION_TEST): tests/transition_test.c src/ui/ui_transition.c include/ui_transition.h $(GENERATED_SRC_DIR)/runtime/transition_fade.c $(GENERATED_SRC_DIR)/runtime/transition_fade.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
-	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/transition_test.c src/ui/ui_transition.c $(GENERATED_SRC_DIR)/runtime/transition_fade.c -o $@
 
 $(MARKDOWN_TEST): tests/markdown_test.c src/markdown.c include/markdown.h $(KRYON_MARKDOWN_DEPS) | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
@@ -996,13 +1090,13 @@ $(LIBDRAW_HIERARCHY_TEST): tests/libdraw_hierarchy_main.c $(LIB) $(KRYON_BACKEND
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/multi_select_list.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
+$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/collapsible.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/drag_drop.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/multi_select_list.h $(GENERATED_SRC_DIR)/runtime/paned_view.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_PAGER_TEST): tests/ui_pager_test.c $(LIB) $(KRYON_BACKEND_LIBS) | $(BUILD_DIR)
+$(UI_PAGER_TEST): tests/ui_pager_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/guide_pager.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_pager_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \

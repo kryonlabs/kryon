@@ -31,10 +31,10 @@ popup must not submit children.
 - Native controls also paint immediately. Reordering retained nodes alone is
   insufficient: it would omit immediate controls from the popup paint layer.
 - `src/ui/ui_window.c:BeginNativeWindow` already enters a render texture before
-  `BeginUIFrame`; its end path calls `EndUIFrame` before ending that texture.
+  `BeginInterfaceFrame`; its end path calls `EndInterfaceFrame` before ending that texture.
   An overlay implementation must not restore the default framebuffer when the
   destination is an existing UI-window target.
-- `SaveUIFrameState` preserves UI camera/input state, not the active graphics
+- `SaveFrameState` preserves UI camera/input state, not the active graphics
   render target. It is not sufficient for nested paint-target restoration.
 - Go now collects deferred `FrameOp` records in runtime-owned nested paint
   layers. Existing option-list dropdowns and the public dropdown scope use that
@@ -212,7 +212,7 @@ scope uses this ownership registry. Persistent active-gesture ownership is
 covered below.
 
 C and Go now select the top live popup branch for keyboard eligibility without
-testing pointer coordinates. Closed combos consult this check before accepting
+testing pointer coordinates. Closed dropdowns consult this check before accepting
 keyboard opening. Matching native tests cover a focused dropdown in the parent
 versus the top child, and keyboard eligibility after child and branch dismissal.
 This check does not cover every shortcut path or establish complete keyboard
@@ -276,7 +276,7 @@ when a popup owner disappears without a navigation event.
 
 Text input lifetime now has dismissal regressions. C reproduced blocked text
 reappearing in the underlying editor after a popup closed. The host registry
-remembers keyboard capture for the frame, and EndUIFrame expires leftover native
+remembers keyboard capture for the frame, and EndInterfaceFrame expires leftover native
 characters and queued text-edit commands before releasing that binding. The
 marker survives same-frame dismissal and resets at the next host frame; ordinary
 non-popup queue behavior is unchanged. Tests cover immediate TextField/TextArea,
@@ -328,7 +328,7 @@ pass; Win32 runtime behavior remains unverified. This does not isolate C widget
 or input state.
 
 The main UI frame now lazily owns a separate context through the same private
-frame accessor. `SetUIFrame` starts its layer frame and `EndUIFrame` composites
+frame accessor. `SetFrameCamera` starts its layer frame and `EndInterfaceFrame` composites
 it; `CloseWindow` releases its textures before closing the graphics context.
 NativeWindow frames route to their own owner and do not end the main context. The
 pixel test covers main-frame immediate/retained content, a missing owner,

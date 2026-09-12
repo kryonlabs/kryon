@@ -42,7 +42,7 @@ typedef void (*DestroyAppHostCallback)(AppHost *host);
 
 void BeginKryonInputOverride(KryonInputOverride input);
 void EndKryonInputOverride(void);
-int IsUIInspectActive(void);
+int IsInspectActive(void);
 void ResizeAppHost(AppHost *host, int width, int height);
 void SetAppHostFocused(AppHost *host, int focused);
 

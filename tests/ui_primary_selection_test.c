@@ -106,188 +106,188 @@ fixture_reflow_char_blank(const void *cell, void *userdata)
 int
 main(void)
 {
-    check_int("set primary selection", SetUIPrimarySelectionTextValue("alpha"),
+    check_int("set primary selection", SetPrimarySelectionTextValue("alpha"),
               1);
-    check_str("get primary selection", GetUIPrimarySelectionTextValue(),
+    check_str("get primary selection", GetPrimarySelectionTextValue(),
               "alpha");
 
-    SetUIPrimarySelectionTextValue(NULL);
-    check_str("null clears primary selection", GetUIPrimarySelectionTextValue(),
+    SetPrimarySelectionTextValue(NULL);
+    check_str("null clears primary selection", GetPrimarySelectionTextValue(),
               "");
 
-    SetUIPrimarySelectionTextValue("primary");
-    check_str("primary selection resets", GetUIPrimarySelectionTextValue(),
+    SetPrimarySelectionTextValue("primary");
+    check_str("primary selection resets", GetPrimarySelectionTextValue(),
               "primary");
     check_int("primary source has text",
-              UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_PRIMARY), 1);
+              ClipboardSourceHasText(CLIPBOARD_SOURCE_PRIMARY), 1);
     check_int("terminal pane primary source has text",
               TerminalPaneClipboardSourceHasText(
-                  UI_CLIPBOARD_SOURCE_PRIMARY),
+                  CLIPBOARD_SOURCE_PRIMARY),
               1);
     check_int("clipboard source has no text",
-              UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_CLIPBOARD), 0);
+              ClipboardSourceHasText(CLIPBOARD_SOURCE_CLIPBOARD), 0);
     check_int("terminal pane clipboard source has no text",
               TerminalPaneClipboardSourceHasText(
-                  UI_CLIPBOARD_SOURCE_CLIPBOARD),
+                  CLIPBOARD_SOURCE_CLIPBOARD),
               0);
 
     {
-        UIClipboardBuffer buffer;
+        ClipboardBuffer buffer;
 
-        InitUIClipboardBuffer(&buffer, "seed");
-        check_str("clipboard buffer init", GetUIClipboardBufferText(&buffer),
+        InitClipboardBuffer(&buffer, "seed");
+        check_str("clipboard buffer init", GetClipboardBufferText(&buffer),
                   "seed");
         check_int("clipboard buffer init pending",
-                  UIClipboardBufferHasPendingWrite(&buffer), 0);
+                  ClipboardBufferHasPendingWrite(&buffer), 0);
 
         check_int("clipboard buffer request",
-                  RequestUIClipboardBufferWrite(&buffer, "shared"), 1);
+                  RequestClipboardBufferWrite(&buffer, "shared"), 1);
         check_str("clipboard buffer request text",
-                  GetUIClipboardBufferText(&buffer), "shared");
+                  GetClipboardBufferText(&buffer), "shared");
         check_int("clipboard buffer request pending",
-                  UIClipboardBufferHasPendingWrite(&buffer), 1);
+                  ClipboardBufferHasPendingWrite(&buffer), 1);
 
         check_int("clipboard buffer flush",
-                  FlushUIClipboardBufferToHost(&buffer), 1);
-        check_str("clipboard buffer host text", GetUIClipboardTextValue(),
+                  FlushClipboardBufferToHost(&buffer), 1);
+        check_str("clipboard buffer host text", GetClipboardTextValue(),
                   "shared");
         check_int("clipboard buffer flush pending",
-                  UIClipboardBufferHasPendingWrite(&buffer), 0);
+                  ClipboardBufferHasPendingWrite(&buffer), 0);
 
-        SetUIClipboardTextValue("host");
+        SetClipboardTextValue("host");
         check_int("clipboard buffer host sync",
-                  SyncUIClipboardBufferFromHost(&buffer), 1);
+                  SyncClipboardBufferFromHost(&buffer), 1);
         check_str("clipboard buffer synced text",
-                  GetUIClipboardBufferText(&buffer), "host");
+                  GetClipboardBufferText(&buffer), "host");
 
         check_int("clipboard source has text",
-                  UIClipboardSourceHasText(UI_CLIPBOARD_SOURCE_CLIPBOARD), 1);
+                  ClipboardSourceHasText(CLIPBOARD_SOURCE_CLIPBOARD), 1);
         check_str("clipboard source text",
-                  GetUIClipboardSourceText(&buffer,
-                                           UI_CLIPBOARD_SOURCE_CLIPBOARD),
+                  GetClipboardSourceText(&buffer,
+                                           CLIPBOARD_SOURCE_CLIPBOARD),
                   "host");
         check_int("primary source update",
-                  SetUIPrimarySelectionFromText("selection"), 1);
+                  SetPrimarySelectionFromText("selection"), 1);
         check_str("primary source text",
-                  GetUIClipboardSourceText(&buffer,
-                                           UI_CLIPBOARD_SOURCE_PRIMARY),
+                  GetClipboardSourceText(&buffer,
+                                           CLIPBOARD_SOURCE_PRIMARY),
                   "selection");
         check_int("preferred source uses primary",
-                  strcmp(GetUIClipboardSourceText(
+                  strcmp(GetClipboardSourceText(
                              &buffer,
-                             UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
+                             CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
                          "selection") == 0,
                   1);
         check_int("copy selection text",
-                  CopyUISelectionTextToClipboard(&buffer, "copied"), 1);
-        check_str("copied selection host", GetUIClipboardTextValue(),
+                  CopySelectionTextToClipboard(&buffer, "copied"), 1);
+        check_str("copied selection host", GetClipboardTextValue(),
                   "copied");
-        check_str("copied selection buffer", GetUIClipboardBufferText(&buffer),
+        check_str("copied selection buffer", GetClipboardBufferText(&buffer),
                   "copied");
-        check_str("copied selection primary", GetUIPrimarySelectionTextValue(),
+        check_str("copied selection primary", GetPrimarySelectionTextValue(),
                   "copied");
         check_int("empty copy does not replace clipboard",
-                  CopyUISelectionTextToClipboard(&buffer, ""), 0);
-        check_str("empty copy keeps clipboard", GetUIClipboardTextValue(),
+                  CopySelectionTextToClipboard(&buffer, ""), 0);
+        check_str("empty copy keeps clipboard", GetClipboardTextValue(),
                   "copied");
-        check_str("empty copy clears primary", GetUIPrimarySelectionTextValue(),
+        check_str("empty copy clears primary", GetPrimarySelectionTextValue(),
                   "");
     }
 
     {
-        UIClipboardBuffer buffer;
+        ClipboardBuffer buffer;
 
-        InitUIClipboardBuffer(&buffer, "clip");
-        SetUIPrimarySelectionTextValue("primary");
+        InitClipboardBuffer(&buffer, "clip");
+        SetPrimarySelectionTextValue("primary");
 
         check_int("default target includes clipboard",
-                  UIClipboardTargetIncludes(NULL, 'c'), 1);
+                  ClipboardTargetIncludes(NULL, 'c'), 1);
         check_int("default target excludes primary",
-                  UIClipboardTargetIncludes(NULL, 'p'), 0);
+                  ClipboardTargetIncludes(NULL, 'p'), 0);
         check_int("primary target uses primary",
-                  UIClipboardTargetUsesPrimary("p"), 1);
+                  ClipboardTargetUsesPrimary("p"), 1);
         check_int("combined target uses clipboard for reads",
-                  UIClipboardTargetUsesPrimary("cp"), 0);
+                  ClipboardTargetUsesPrimary("cp"), 0);
         check_str("default target reads clipboard",
-                  GetUIClipboardTargetText(&buffer, NULL), "clip");
+                  GetClipboardTargetText(&buffer, NULL), "clip");
         check_str("primary target reads primary",
-                  GetUIClipboardTargetText(&buffer, "p"), "primary");
+                  GetClipboardTargetText(&buffer, "p"), "primary");
         check_str("combined target reads clipboard",
-                  GetUIClipboardTargetText(&buffer, "cp"), "clip");
+                  GetClipboardTargetText(&buffer, "cp"), "clip");
 
         check_int("primary target write",
-                  RequestUIClipboardTargetWrite(&buffer, "p", "ptext"), 1);
+                  RequestClipboardTargetWrite(&buffer, "p", "ptext"), 1);
         check_str("primary target write text",
-                  GetUIPrimarySelectionTextValue(), "ptext");
+                  GetPrimarySelectionTextValue(), "ptext");
         check_str("primary target leaves clipboard",
-                  GetUIClipboardBufferText(&buffer), "clip");
+                  GetClipboardBufferText(&buffer), "clip");
 
         check_int("clipboard target write",
-                  RequestUIClipboardTargetWrite(&buffer, "c", "ctext"), 1);
+                  RequestClipboardTargetWrite(&buffer, "c", "ctext"), 1);
         check_str("clipboard target write text",
-                  GetUIClipboardBufferText(&buffer), "ctext");
+                  GetClipboardBufferText(&buffer), "ctext");
         check_str("clipboard target leaves primary",
-                  GetUIPrimarySelectionTextValue(), "ptext");
+                  GetPrimarySelectionTextValue(), "ptext");
 
         check_int("combined target write",
-                  RequestUIClipboardTargetWrite(&buffer, "cp", "both"), 1);
+                  RequestClipboardTargetWrite(&buffer, "cp", "both"), 1);
         check_str("combined target clipboard text",
-                  GetUIClipboardBufferText(&buffer), "both");
+                  GetClipboardBufferText(&buffer), "both");
         check_str("combined target primary text",
-                  GetUIPrimarySelectionTextValue(), "both");
+                  GetPrimarySelectionTextValue(), "both");
 
         check_int("selection target writes clipboard",
-                  RequestUIClipboardTargetWrite(&buffer, "s", "select"), 1);
+                  RequestClipboardTargetWrite(&buffer, "s", "select"), 1);
         check_str("selection target clipboard text",
-                  GetUIClipboardBufferText(&buffer), "select");
+                  GetClipboardBufferText(&buffer), "select");
 
         check_int("unknown target falls back to clipboard",
-                  RequestUIClipboardTargetWrite(&buffer, "x", "fallback"), 1);
+                  RequestClipboardTargetWrite(&buffer, "x", "fallback"), 1);
         check_str("unknown target clipboard text",
-                  GetUIClipboardBufferText(&buffer), "fallback");
+                  GetClipboardBufferText(&buffer), "fallback");
     }
 
     {
-        UIClipboardBuffer buffer;
+        ClipboardBuffer buffer;
         char response[256];
 
-        InitUIClipboardBuffer(&buffer, "");
-        SetUIPrimarySelectionTextValue("");
+        InitClipboardBuffer(&buffer, "");
+        SetPrimarySelectionTextValue("");
         response[0] = '\0';
 
         check_int("osc 52 writes clipboard",
-                  HandleUIClipboardOSC52(&buffer, "c;aGVsbG8=", NULL, NULL),
+                  HandleClipboardOSC52(&buffer, "c;aGVsbG8=", NULL, NULL),
                   1);
-        check_str("osc 52 clipboard text", GetUIClipboardBufferText(&buffer),
+        check_str("osc 52 clipboard text", GetClipboardBufferText(&buffer),
                   "hello");
         check_int("osc 52 clipboard query",
-                  HandleUIClipboardOSC52(&buffer, "c;?",
+                  HandleClipboardOSC52(&buffer, "c;?",
                                          capture_osc52_response, response),
                   1);
         check_str("osc 52 clipboard response", response,
                   "\x1b]52;c;aGVsbG8=\a");
 
         check_int("osc 52 writes primary",
-                  HandleUIClipboardOSC52(&buffer, "p;cHJpbWFyeQ==", NULL,
+                  HandleClipboardOSC52(&buffer, "p;cHJpbWFyeQ==", NULL,
                                          NULL),
                   1);
         response[0] = '\0';
         check_int("osc 52 primary query",
-                  HandleUIClipboardOSC52(&buffer, "p;?",
+                  HandleClipboardOSC52(&buffer, "p;?",
                                          capture_osc52_response, response),
                   1);
         check_str("osc 52 primary response", response,
                   "\x1b]52;p;cHJpbWFyeQ==\a");
 
         check_int("osc 52 clears clipboard",
-                  HandleUIClipboardOSC52(&buffer, "c;", NULL, NULL), 1);
-        check_str("osc 52 cleared text", GetUIClipboardBufferText(&buffer),
+                  HandleClipboardOSC52(&buffer, "c;", NULL, NULL), 1);
+        check_str("osc 52 cleared text", GetClipboardBufferText(&buffer),
                   "");
 
         check_int("osc 52 invalid payload ignored",
-                  HandleUIClipboardOSC52(&buffer, "c;%%%%", NULL, NULL), 0);
+                  HandleClipboardOSC52(&buffer, "c;%%%%", NULL, NULL), 0);
         check_str("osc 52 invalid keeps clipboard",
-                  GetUIClipboardBufferText(&buffer), "");
+                  GetClipboardBufferText(&buffer), "");
     }
 
     {
@@ -467,29 +467,29 @@ main(void)
                   "abcdefghijklmnopq");
 
         {
-            UIClipboardBuffer clipboard;
+            ClipboardBuffer clipboard;
             TerminalPaneClipboard pane_clipboard;
 
-            InitUIClipboardBuffer(&clipboard, "");
+            InitClipboardBuffer(&clipboard, "");
             pane_clipboard =
                 MakeTerminalPaneClipboard(&clipboard, 0, NULL, NULL);
-            SetUIPrimarySelectionTextValue("old primary");
+            SetPrimarySelectionTextValue("old primary");
             check_int("terminal selection primary update",
                       TerminalPaneSelectionUpdatePrimary(
                           &selection, fixture_line_text, fixture_line_wrapped,
                           &fixture),
                       1);
             check_str("terminal selection primary text",
-                      GetUIPrimarySelectionTextValue(), "abcdefghijklmnopq");
+                      GetPrimarySelectionTextValue(), "abcdefghijklmnopq");
             check_int("terminal selection clipboard copy",
                       TerminalPaneSelectionCopyToClipboard(
                           &selection, fixture_line_text, fixture_line_wrapped,
                           &fixture, &clipboard),
                       1);
             check_str("terminal selection clipboard host",
-                      GetUIClipboardTextValue(), "abcdefghijklmnopq");
+                      GetClipboardTextValue(), "abcdefghijklmnopq");
             check_str("terminal selection clipboard buffer",
-                      GetUIClipboardBufferText(&clipboard),
+                      GetClipboardBufferText(&clipboard),
                       "abcdefghijklmnopq");
             check_int("terminal pane clipboard selection primary",
                       TerminalPaneClipboardUpdatePrimarySelection(
@@ -497,14 +497,14 @@ main(void)
                           fixture_line_wrapped, &fixture),
                       1);
             check_str("terminal pane clipboard selection primary text",
-                      GetUIPrimarySelectionTextValue(), "abcdefghijklmnopq");
+                      GetPrimarySelectionTextValue(), "abcdefghijklmnopq");
             check_int("terminal pane clipboard selection copy",
                       TerminalPaneClipboardCopySelection(
                           pane_clipboard, &selection, fixture_line_text,
                           fixture_line_wrapped, &fixture),
                       1);
             check_str("terminal pane clipboard selection copy text",
-                      GetUIClipboardBufferText(&clipboard),
+                      GetClipboardBufferText(&clipboard),
                       "abcdefghijklmnopq");
             {
                 TerminalPaneClipboardController controller =
@@ -526,7 +526,7 @@ main(void)
                     MakeTerminalPaneClipboardActions(controller,
                                                      session_controller);
 
-                SetUIPrimarySelectionTextValue("old primary");
+                SetPrimarySelectionTextValue("old primary");
                 check_int("terminal pane command primary update",
                           TerminalPaneClipboardPerformCommand(
                               controller,
@@ -534,7 +534,7 @@ main(void)
                               NULL),
                           1);
                 check_str("terminal pane command primary text",
-                          GetUIPrimarySelectionTextValue(),
+                          GetPrimarySelectionTextValue(),
                           "abcdefghijklmnopq");
                 check_int("terminal pane command copy selection",
                           TerminalPaneClipboardPerformCommand(
@@ -543,7 +543,7 @@ main(void)
                               NULL),
                           1);
                 check_str("terminal pane command copy text",
-                          GetUIClipboardBufferText(&clipboard),
+                          GetClipboardBufferText(&clipboard),
                           "abcdefghijklmnopq");
                 TerminalPaneSelectionClear(&selection);
                 check_int("terminal pane command select all",
@@ -568,16 +568,16 @@ main(void)
                           1);
                 check_str("terminal pane actions selection text", text,
                           "abcdefghijklmnopq");
-                SetUIPrimarySelectionTextValue("old primary");
+                SetPrimarySelectionTextValue("old primary");
                 check_int("terminal pane actions update primary",
                           TerminalPaneClipboardUpdatePrimary(actions), 1);
                 check_str("terminal pane actions primary text",
-                          GetUIPrimarySelectionTextValue(),
+                          GetPrimarySelectionTextValue(),
                           "abcdefghijklmnopq");
                 check_int("terminal pane actions copy",
                           TerminalPaneClipboardCopy(actions), 1);
                 check_str("terminal pane actions copy text",
-                          GetUIClipboardBufferText(&clipboard),
+                          GetClipboardBufferText(&clipboard),
                           "abcdefghijklmnopq");
                 TerminalPaneSelectionClear(&selection);
                 check_int("terminal pane actions select all",
@@ -601,7 +601,7 @@ main(void)
                           &fixture),
                       1);
             check_str("terminal selection empty primary text",
-                      GetUIPrimarySelectionTextValue(), "");
+                      GetPrimarySelectionTextValue(), "");
             check_int("terminal selection empty clipboard copy",
                       TerminalPaneSelectionCopyToClipboard(
                           &selection, fixture_line_text, fixture_line_wrapped,
@@ -772,14 +772,14 @@ main(void)
 
         paste[0] = '\0';
         check_int("plain paste writes bytes",
-                  WriteUIClipboardPaste("plain", 0, capture_paste_write,
+                  WriteClipboardPaste("plain", 0, capture_paste_write,
                                         paste),
                   5);
         check_str("plain paste text", paste, "plain");
 
         paste[0] = '\0';
         check_int("bracketed paste writes bytes",
-                  WriteUIClipboardPaste("paste\ntext", 1,
+                  WriteClipboardPaste("paste\ntext", 1,
                                         capture_paste_write, paste),
                   22);
         check_str("bracketed paste text", paste,
@@ -787,42 +787,42 @@ main(void)
 
         paste[0] = '\0';
         check_int("sanitized bracketed paste writes bytes",
-                  WriteUIClipboardPaste(payload, 1, capture_paste_write,
+                  WriteClipboardPaste(payload, 1, capture_paste_write,
                                         paste),
                   (int)strlen(sanitized));
         check_str("sanitized bracketed paste text", paste, sanitized);
 
         {
-            UIClipboardBuffer buffer;
+            ClipboardBuffer buffer;
 
-            InitUIClipboardBuffer(&buffer, "");
-            SetUIClipboardTextValue("host paste");
-            SetUIPrimarySelectionTextValue("");
+            InitClipboardBuffer(&buffer, "");
+            SetClipboardTextValue("host paste");
+            SetPrimarySelectionTextValue("");
             paste[0] = '\0';
             check_int("clipboard source paste",
-                      WriteUIClipboardSourcePaste(
-                          &buffer, UI_CLIPBOARD_SOURCE_CLIPBOARD, 0,
+                      WriteClipboardSourcePaste(
+                          &buffer, CLIPBOARD_SOURCE_CLIPBOARD, 0,
                           capture_paste_write, paste),
                       10);
             check_str("clipboard source paste text", paste, "host paste");
             check_str("clipboard source paste buffer",
-                      GetUIClipboardBufferText(&buffer), "host paste");
+                      GetClipboardBufferText(&buffer), "host paste");
 
-            SetUIPrimarySelectionTextValue("primary paste");
+            SetPrimarySelectionTextValue("primary paste");
             paste[0] = '\0';
             check_int("preferred source paste",
-                      WriteUIClipboardSourcePaste(
-                          &buffer, UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD,
+                      WriteClipboardSourcePaste(
+                          &buffer, CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD,
                           0, capture_paste_write, paste),
                       13);
             check_str("preferred source paste text", paste, "primary paste");
         }
 
         {
-            UIClipboardBuffer buffer;
+            ClipboardBuffer buffer;
             TerminalPaneClipboard clipboard;
 
-            InitUIClipboardBuffer(&buffer, "");
+            InitClipboardBuffer(&buffer, "");
             clipboard = MakeTerminalPaneClipboard(&buffer, 1,
                                                   capture_paste_write, paste);
             paste[0] = '\0';
@@ -833,52 +833,52 @@ main(void)
             check_str("terminal pane clipboard text", paste,
                       "\x1b[200~pane\npaste\x1b[201~");
             check_str("terminal pane clipboard buffer",
-                      GetUIClipboardBufferText(&buffer), "pane\npaste");
+                      GetClipboardBufferText(&buffer), "pane\npaste");
 
-            SetUIPrimarySelectionTextValue("pane primary");
+            SetPrimarySelectionTextValue("pane primary");
             clipboard.bracketed_paste = 0;
             paste[0] = '\0';
             check_int("terminal pane clipboard source paste",
                       TerminalPaneClipboardPasteSource(
                           clipboard,
-                          UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
+                          CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD),
                       12);
             check_str("terminal pane clipboard source", paste,
                       "pane primary");
 
-            SetUIClipboardTextValue("pane clipboard");
-            (void)SyncUIClipboardBufferFromHost(&buffer);
+            SetClipboardTextValue("pane clipboard");
+            (void)SyncClipboardBufferFromHost(&buffer);
             paste[0] = '\0';
             check_int("terminal pane clipboard helper paste",
                       TerminalPaneClipboardPasteClipboard(clipboard), 14);
             check_str("terminal pane clipboard helper", paste,
                       "pane clipboard");
 
-            SetUIPrimarySelectionTextValue("helper primary");
+            SetPrimarySelectionTextValue("helper primary");
             paste[0] = '\0';
             check_int("terminal pane primary helper paste",
                       TerminalPaneClipboardPastePrimary(clipboard), 14);
             check_str("terminal pane primary helper", paste,
                       "helper primary");
 
-            SetUIPrimarySelectionTextValue("helper preferred");
+            SetPrimarySelectionTextValue("helper preferred");
             paste[0] = '\0';
             check_int("terminal pane preferred helper paste",
                       TerminalPaneClipboardPastePreferred(clipboard), 16);
             check_str("terminal pane preferred helper", paste,
                       "helper preferred");
 
-            SetUIClipboardTextValue("host sync");
+            SetClipboardTextValue("host sync");
             check_int("terminal pane clipboard sync",
                       TerminalPaneClipboardSyncFromHost(clipboard), 1);
             check_str("terminal pane clipboard synced buffer",
-                      GetUIClipboardBufferText(&buffer), "host sync");
+                      GetClipboardBufferText(&buffer), "host sync");
 
-            RequestUIClipboardBufferWrite(&buffer, "host flush");
+            RequestClipboardBufferWrite(&buffer, "host flush");
             check_int("terminal pane clipboard flush",
                       TerminalPaneClipboardFlushToHost(clipboard), 1);
             check_str("terminal pane clipboard flushed host",
-                      GetUIClipboardTextValue(), "host flush");
+                      GetClipboardTextValue(), "host flush");
 
             paste[0] = '\0';
             check_int("terminal pane action text paste",
@@ -888,7 +888,7 @@ main(void)
                       11);
             check_str("terminal pane action text", paste, "action text");
 
-            SetUIPrimarySelectionTextValue("action primary");
+            SetPrimarySelectionTextValue("action primary");
             paste[0] = '\0';
             check_int("terminal pane action preferred paste",
                       TerminalPaneClipboardPerform(
@@ -898,23 +898,23 @@ main(void)
             check_str("terminal pane action preferred", paste,
                       "action primary");
 
-            SetUIClipboardTextValue("action host");
+            SetClipboardTextValue("action host");
             check_int("terminal pane action sync",
                       TerminalPaneClipboardPerform(
                           clipboard,
                           TERMINAL_PANE_CLIPBOARD_SYNC_FROM_HOST, NULL),
                       1);
             check_str("terminal pane action synced buffer",
-                      GetUIClipboardBufferText(&buffer), "action host");
+                      GetClipboardBufferText(&buffer), "action host");
 
-            RequestUIClipboardBufferWrite(&buffer, "action flush");
+            RequestClipboardBufferWrite(&buffer, "action flush");
             check_int("terminal pane action flush",
                       TerminalPaneClipboardPerform(
                           clipboard,
                           TERMINAL_PANE_CLIPBOARD_FLUSH_TO_HOST, NULL),
                       1);
             check_str("terminal pane action flushed host",
-                      GetUIClipboardTextValue(), "action flush");
+                      GetClipboardTextValue(), "action flush");
 
             {
                 int scroll_offset = 0;
@@ -941,7 +941,7 @@ main(void)
                               TERMINAL_PANE_CLIPBOARD_COMMAND_COPY_SELECTION),
                           0);
 
-                SetUIPrimarySelectionTextValue("command primary");
+                SetPrimarySelectionTextValue("command primary");
                 paste[0] = '\0';
                 check_int("terminal pane command primary paste",
                           TerminalPaneClipboardPerformCommand(
@@ -996,7 +996,7 @@ main(void)
                               "simple paste");
                 }
 
-                SetUIClipboardTextValue("command host");
+                SetClipboardTextValue("command host");
                 check_int("terminal pane command sync",
                           TerminalPaneClipboardPerformCommand(
                               controller,
@@ -1004,9 +1004,9 @@ main(void)
                               NULL),
                           1);
                 check_str("terminal pane command synced buffer",
-                          GetUIClipboardBufferText(&buffer), "command host");
+                          GetClipboardBufferText(&buffer), "command host");
 
-                RequestUIClipboardBufferWrite(&buffer, "command flush");
+                RequestClipboardBufferWrite(&buffer, "command flush");
                 check_int("terminal pane command flush",
                           TerminalPaneClipboardPerformCommand(
                               controller,
@@ -1014,7 +1014,7 @@ main(void)
                               NULL),
                           1);
                 check_str("terminal pane command flushed host",
-                          GetUIClipboardTextValue(), "command flush");
+                          GetClipboardTextValue(), "command flush");
             }
         }
     }

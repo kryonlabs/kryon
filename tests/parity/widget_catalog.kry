@@ -126,10 +126,14 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         action_modal_actions: [2] ModalAction = {{"Run",ButtonToneAccent,ButtonEmphasisFilled,0},{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0}}
         Modal((ModalProps){.title = "Action", .message = "Dialog", .actions = action_modal_actions, .action_count = 2, .max_width = 360})
 
-        canvas_result: CanvasResult = BeginCanvas((Canvas){{Scale(520), Scale(510), Scale(92), Scale(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-        CanvasGrid((Rectangle){Scale(520), Scale(510), Scale(92), Scale(58)}, 8, GetThemeIcon())
-        Circle((int)canvas_result.world.x, (int)canvas_result.world.y,
-               Scale(4), GetThemeSurface())
-        EndCanvas((Canvas){{Scale(520), Scale(510), Scale(92), Scale(58)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+        Canvas canvas_result: {
+            bounds = {Scale(520), Scale(510), Scale(92), Scale(58)}
+            scroll_x = &canvas_scroll_x
+            scroll_y = &canvas_scroll_y
+            zoom = &canvas_zoom
+            CanvasGrid((Rectangle){Scale(520), Scale(510), Scale(92), Scale(58)}, 8, GetThemeIcon())
+            Circle((int)canvas_result.world.x, (int)canvas_result.world.y,
+                   Scale(4), GetThemeSurface())
+        }
     }
 }

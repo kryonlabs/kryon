@@ -314,10 +314,10 @@ gtk_sample_palette(GtkSettings *settings, gboolean prefer_dark,
     button_bg = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_NORMAL,
                                      surface);
     button_hover = style_background_for(gtk_widget_get_style_context(button), GTK_STATE_FLAG_PRELIGHT,
-                                        LightenUIColor(button_bg, 18));
+                                        LightenColor(button_bg, 18));
     accent = button_hover;
     if(accent.r == button_bg.r && accent.g == button_bg.g && accent.b == button_bg.b)
-        accent = LightenUIColor(button_bg, 24);
+        accent = LightenColor(button_bg, 24);
 
     *out = system_palette;
     out->background = view_bg;
@@ -1066,7 +1066,7 @@ gtk_css_palette_refresh(void)
     palette.surface = have_bg ? bg : palette.background;
     palette.text = have_fg ? fg : (Color){0x10, 0x10, 0x10, 0xFF};
     palette.button = palette.surface;
-    palette.button_hover = LightenUIColor(palette.button, 18);
+    palette.button_hover = LightenColor(palette.button, 18);
     palette.circle = have_selected ? selected : palette.button_hover;
     palette.link = palette.circle;
     palette.icon = palette.text;
@@ -1373,7 +1373,7 @@ GetSystemThemeStyleCached(void)
 }
 
 bool
-GetSystemUIFontName(char *out, int out_size)
+GetSystemTextFontName(char *out, int out_size)
 {
     if(out == NULL || out_size <= 0)
         return false;
@@ -1387,7 +1387,7 @@ GetSystemUIFontName(char *out, int out_size)
 }
 
 bool
-GetSystemUIFontFile(char *out, int out_size)
+GetSystemTextFontFile(char *out, int out_size)
 {
     if(out == NULL || out_size <= 0)
         return false;

@@ -1,0 +1,48 @@
+#module "drag_drop"
+
+DragDropShouldClearSource :: (active: bool, active_source_id: i32,
+    source_id: i32, mouse_down: bool, mouse_released: bool) -> bool #export {
+    return active && active_source_id == source_id && !mouse_down &&
+        !mouse_released
+}
+
+DragDropSourceValid :: (disabled: bool, content_disabled: bool,
+    has_type: bool, data_size: i32, max_size: i32, has_data: bool) -> bool #export {
+    if disabled || content_disabled || !has_type { return false }
+    if max_size >= 0 && data_size > max_size { return false }
+    if data_size < 0 { return false }
+    if data_size > 0 && !has_data { return false }
+    return true
+}
+
+DragDropSourceStarts :: (valid: bool, hot: bool, mouse_pressed: bool) -> bool #export {
+    return valid && hot && mouse_pressed
+}
+
+DragDropSourceReturnsActive :: (active: bool, active_source_id: i32,
+    source_id: i32, mouse_down: bool, mouse_released: bool) -> bool #export {
+    return active && active_source_id == source_id &&
+        (mouse_down || mouse_released)
+}
+
+DragDropTargetMatches :: (active: bool, has_type: bool,
+    same_type: bool) -> bool #export {
+    return active && has_type && same_type
+}
+
+DragDropTargetHot :: (disabled: bool, content_disabled: bool,
+    pointer_hot: bool) -> bool #export {
+    return !disabled && !content_disabled && pointer_hot
+}
+
+DragDropTargetAccepts :: (disabled: bool, content_disabled: bool,
+    matches: bool, hot: bool, mouse_released: bool) -> bool #export {
+    return !disabled && !content_disabled && matches && hot && mouse_released
+}
+
+DragDropCopySize :: (data_size: i32, output_size: i32) -> i32 #export {
+    if data_size < 0 { data_size = 0 }
+    if output_size < 0 { output_size = 0 }
+    if data_size < output_size { return data_size }
+    return output_size
+}

@@ -4,26 +4,26 @@
 #include <stddef.h>
 
 void
-SetUIViewSize(int width, int height)
+SetViewSize(int width, int height)
 {
     ui_view_width = width;
     ui_view_height = height;
 }
 
 int
-GetUIViewWidth(void)
+GetViewWidth(void)
 {
     return ui_view_width;
 }
 
 int
-GetUIViewHeight(void)
+GetViewHeight(void)
 {
     return ui_view_height;
 }
 
 void
-GetUICenteredColumn(int max_w, int side_pad, int *x, int *w)
+GetCenteredColumn(int max_w, int side_pad, int *x, int *w)
 {
     int available_w = ui_view_width - side_pad * 2;
 
@@ -41,7 +41,7 @@ GetUICenteredColumn(int max_w, int side_pad, int *x, int *w)
 }
 
 int
-GetUIPageSidePadding(void)
+GetPageSidePadding(void)
 {
     int padding = ui_view_width / 50;
 

@@ -79,7 +79,7 @@ main(int argc, char **argv)
     BeginDrawing();
     BeginTextureMode(target);
     ClearBackground(GetThemeBackground());
-    BeginUIFrame(width, height, 1.0f);
+    BeginInterfaceFrame(width, height, 1.0f);
     BeginTree(Key("control-appearance-capture"));
 
     DrawRectangle(0, 0, width / 2, height, GetThemeBackground());
@@ -89,7 +89,7 @@ main(int argc, char **argv)
     render_column(522, 0);
 
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
     EndTextureMode();
     EndDrawing();
 

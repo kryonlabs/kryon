@@ -144,8 +144,8 @@ with tempfile.TemporaryDirectory(prefix="kryon-language-") as directory:
 
     (work / "c/ui_inspect.h").write_text('''
 #include <stdbool.h>
-static inline void PushUIInspectSource(const char *p, int n) {(void)p; (void)n;}
-static inline void PopUIInspectSource(void) {}
+static inline void PushInspectSource(const char *p, int n) {(void)p; (void)n;}
+static inline void PopInspectSource(void) {}
 ''')
     # Include the generated translation unit so the harness can inspect its
     # private state without changing the generated API.

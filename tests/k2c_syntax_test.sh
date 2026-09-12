@@ -235,7 +235,7 @@ grep -Fq 'Valid(Rectangle viewport)' "$c"
 grep -Fq 'int app_count = 0;' "$c"
 
 # calls wrap with Push/Pop + source line
-grep -Fq 'PushUIInspectSource("src/valid.kry",' "$c"
+grep -Fq 'PushInspectSource("src/valid.kry",' "$c"
 grep -Fq 'Background(GetThemeBackground());' "$c"
 grep -Fq 'Text((TextProps){' "$c"
 grep -Fq '"hi"' "$c"
@@ -256,7 +256,7 @@ grep -Fq 'NavigationBarResult nav_result = NavigationBar' "$c"
 grep -Fq 'Tab tabs[1]' "$c"
 grep -Fq 'TabBar((TabBarProps)' "$c"
 grep -Fq 'count = c_abs(-3);' "$c"
-grep -Fq 'PopUIInspectSource();' "$c"
+grep -Fq 'PopInspectSource();' "$c"
 
 # inferred decl
 grep -Fq '__auto_type value = count + 1;' "$c"

@@ -1,5 +1,5 @@
-#ifndef UI_H
-#define UI_H
+#ifndef KRYON_H
+#define KRYON_H
 
 /*
  * Compatibility umbrella for existing callers. New code should include the

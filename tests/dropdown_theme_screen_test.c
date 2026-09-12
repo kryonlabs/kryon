@@ -83,7 +83,7 @@ step(void)
     const char *style_options[] = {"System", "Classic", "Default"};
 
     InjectPump();
-    BeginUIFrame(VIEW_W, VIEW_H, 1.0f);
+    BeginInterfaceFrame(VIEW_W, VIEW_H, 1.0f);
     Dropdown((DropdownProps){.bounds = {250, MODE_Y, 400, 34},
                              .id = 101,
                              .options = mode_options,
@@ -99,7 +99,7 @@ step(void)
                              .options = style_options,
                              .option_count = 3,
                              .selected_index = &style_sel});
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -111,13 +111,13 @@ tap(int x, int y)
     step();
 }
 
-/* UIInputCapturesClick answers open popups; probing the band under a
+/* InputCapturesClick answers open popups; probing the band under a
  * field (between fields) detects whether its popup is open. */
 static int
 popup_covers(int y)
 {
     step();
-    return UIInputCapturesClick((Vector2){450.0f, (float)y});
+    return InputCapturesClick((Vector2){450.0f, (float)y});
 }
 
 static void
@@ -135,8 +135,8 @@ main(void)
     int palette_row = 0;
     int style_row = 0;
 
-    SetUIScale(1.0f);
-    InitUI(VIEW_W, VIEW_H, 1.0f);
+    SetScale(1.0f);
+    InitInterface(VIEW_W, VIEW_H, 1.0f);
     check_material_android_outline_neutral();
     SetThemeSource(THEME_SOURCE_APP);
     SetThemeStyle(THEME_STYLE_DEFAULT);

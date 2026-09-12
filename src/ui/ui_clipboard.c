@@ -7,14 +7,14 @@
  * not this. Matches the raylib SDL read buffer set via RAY_RAYLIB_CONFIG so
  * copy and paste caps stay symmetric. */
 #define UI_TK_CLIPBOARD_MAX (1024 * 1024)
-#define UI_CLIPBOARD_OSC52_ENCODED_SIZE 5464
-#define UI_CLIPBOARD_OSC52_RESPONSE_SIZE 5520
+#define CLIPBOARD_OSC52_ENCODED_SIZE 5464
+#define CLIPBOARD_OSC52_RESPONSE_SIZE 5520
 
 static char g_clipboard_text[UI_TK_CLIPBOARD_MAX];
 static char g_primary_selection_text[UI_TK_CLIPBOARD_MAX];
 
 int
-SetUIClipboardTextValue(const char *text)
+SetClipboardTextValue(const char *text)
 {
     if(text == NULL)
         text = "";
@@ -24,7 +24,7 @@ SetUIClipboardTextValue(const char *text)
 }
 
 const char *
-GetUIClipboardTextValue(void)
+GetClipboardTextValue(void)
 {
     const char *text = GetClipboardText();
 
@@ -34,7 +34,7 @@ GetUIClipboardTextValue(void)
 }
 
 int
-SetUIPrimarySelectionTextValue(const char *text)
+SetPrimarySelectionTextValue(const char *text)
 {
     if(text == NULL)
         text = "";
@@ -44,81 +44,81 @@ SetUIPrimarySelectionTextValue(const char *text)
 }
 
 const char *
-GetUIPrimarySelectionTextValue(void)
+GetPrimarySelectionTextValue(void)
 {
     return g_primary_selection_text;
 }
 
 int
-UIClipboardSourceHasText(UIClipboardSource source)
+ClipboardSourceHasText(ClipboardSource source)
 {
     const char *text;
 
     switch(source) {
-    case UI_CLIPBOARD_SOURCE_PRIMARY:
-        text = GetUIPrimarySelectionTextValue();
+    case CLIPBOARD_SOURCE_PRIMARY:
+        text = GetPrimarySelectionTextValue();
         break;
-    case UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
-        text = GetUIPrimarySelectionTextValue();
+    case CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
+        text = GetPrimarySelectionTextValue();
         if(text != NULL && text[0] != '\0')
             return 1;
-        text = GetUIClipboardTextValue();
+        text = GetClipboardTextValue();
         break;
-    case UI_CLIPBOARD_SOURCE_CLIPBOARD:
+    case CLIPBOARD_SOURCE_CLIPBOARD:
     default:
-        text = GetUIClipboardTextValue();
+        text = GetClipboardTextValue();
         break;
     }
     return text != NULL && text[0] != '\0';
 }
 
 const char *
-GetUIClipboardSourceText(const UIClipboardBuffer *clipboard,
-                         UIClipboardSource source)
+GetClipboardSourceText(const ClipboardBuffer *clipboard,
+                         ClipboardSource source)
 {
     const char *text;
 
     switch(source) {
-    case UI_CLIPBOARD_SOURCE_PRIMARY:
-        return GetUIPrimarySelectionTextValue();
-    case UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
-        text = GetUIPrimarySelectionTextValue();
+    case CLIPBOARD_SOURCE_PRIMARY:
+        return GetPrimarySelectionTextValue();
+    case CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD:
+        text = GetPrimarySelectionTextValue();
         if(text != NULL && text[0] != '\0')
             return text;
         (void)clipboard;
-        return GetUIClipboardTextValue();
-    case UI_CLIPBOARD_SOURCE_CLIPBOARD:
+        return GetClipboardTextValue();
+    case CLIPBOARD_SOURCE_CLIPBOARD:
     default:
         (void)clipboard;
-        return GetUIClipboardTextValue();
+        return GetClipboardTextValue();
     }
 }
 
 int
-SetUIPrimarySelectionFromText(const char *text)
+SetPrimarySelectionFromText(const char *text)
 {
     if(text == NULL || text[0] == '\0')
         text = "";
-    return SetUIPrimarySelectionTextValue(text);
+    return SetPrimarySelectionTextValue(text);
 }
 
 int
-CopyUISelectionTextToClipboard(UIClipboardBuffer *clipboard, const char *text)
+CopySelectionTextToClipboard(ClipboardBuffer *clipboard, const char *text)
 {
     int changed = 0;
 
     if(text == NULL || text[0] == '\0') {
-        (void)SetUIPrimarySelectionTextValue("");
+        (void)SetPrimarySelectionTextValue("");
         return 0;
     }
-    changed |= SetUIClipboardTextValue(text);
-    changed |= SetUIClipboardBufferText(clipboard, text);
-    changed |= SetUIPrimarySelectionTextValue(text);
+    changed |= SetClipboardTextValue(text);
+    changed |= SetClipboardBufferText(clipboard, text);
+    changed |= SetPrimarySelectionTextValue(text);
     return changed;
 }
 
 int
-UIClipboardTargetIncludes(const char *target, char wanted)
+ClipboardTargetIncludes(const char *target, char wanted)
 {
     int i;
 
@@ -134,36 +134,36 @@ UIClipboardTargetIncludes(const char *target, char wanted)
 }
 
 int
-UIClipboardTargetUsesPrimary(const char *target)
+ClipboardTargetUsesPrimary(const char *target)
 {
-    return UIClipboardTargetIncludes(target, 'p') &&
-           !UIClipboardTargetIncludes(target, 'c') &&
-           !UIClipboardTargetIncludes(target, 's');
+    return ClipboardTargetIncludes(target, 'p') &&
+           !ClipboardTargetIncludes(target, 'c') &&
+           !ClipboardTargetIncludes(target, 's');
 }
 
 const char *
-GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
+GetClipboardTargetText(const ClipboardBuffer *clipboard,
                          const char *target)
 {
-    if(UIClipboardTargetUsesPrimary(target))
-        return GetUIPrimarySelectionTextValue();
-    return GetUIClipboardBufferText(clipboard);
+    if(ClipboardTargetUsesPrimary(target))
+        return GetPrimarySelectionTextValue();
+    return GetClipboardBufferText(clipboard);
 }
 
 int
-RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard, const char *target,
+RequestClipboardTargetWrite(ClipboardBuffer *clipboard, const char *target,
                               const char *text)
 {
     int changed = 0;
     int wrote = 0;
 
-    if(UIClipboardTargetIncludes(target, 'p')) {
-        changed |= SetUIPrimarySelectionTextValue(text);
+    if(ClipboardTargetIncludes(target, 'p')) {
+        changed |= SetPrimarySelectionTextValue(text);
         wrote = 1;
     }
-    if(UIClipboardTargetIncludes(target, 'c') ||
-       UIClipboardTargetIncludes(target, 's') || !wrote)
-        changed |= RequestUIClipboardBufferWrite(clipboard, text);
+    if(ClipboardTargetIncludes(target, 'c') ||
+       ClipboardTargetIncludes(target, 's') || !wrote)
+        changed |= RequestClipboardBufferWrite(clipboard, text);
     return changed;
 }
 
@@ -276,20 +276,20 @@ ui_clipboard_copy_osc52_target(char *out, int out_size, const char *payload,
 }
 
 static int
-ui_clipboard_send_osc52_response(UIClipboardBuffer *clipboard,
+ui_clipboard_send_osc52_response(ClipboardBuffer *clipboard,
                                  const char *target,
-                                 UIClipboardOSC52WriteFn write_response,
+                                 ClipboardOSC52WriteFn write_response,
                                  void *userdata)
 {
-    char encoded[UI_CLIPBOARD_OSC52_ENCODED_SIZE];
-    char response[UI_CLIPBOARD_OSC52_RESPONSE_SIZE];
+    char encoded[CLIPBOARD_OSC52_ENCODED_SIZE];
+    char response[CLIPBOARD_OSC52_RESPONSE_SIZE];
     const char *text;
     int size;
     int encoded_size;
 
     if(clipboard == NULL || write_response == NULL)
         return 0;
-    text = GetUIClipboardTargetText(clipboard, target);
+    text = GetClipboardTargetText(clipboard, target);
     size = (int)strlen(text);
     encoded_size =
         ui_clipboard_encode_base64(encoded, (int)sizeof(encoded), text, size);
@@ -300,8 +300,8 @@ ui_clipboard_send_osc52_response(UIClipboardBuffer *clipboard,
 }
 
 int
-HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
-                       UIClipboardOSC52WriteFn write_response,
+HandleClipboardOSC52(ClipboardBuffer *clipboard, const char *payload,
+                       ClipboardOSC52WriteFn write_response,
                        void *userdata)
 {
     char target[32];
@@ -315,13 +315,13 @@ HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
         return ui_clipboard_send_osc52_response(clipboard, target,
                                                 write_response, userdata);
     if(text_payload[0] == '\0')
-        return RequestUIClipboardTargetWrite(clipboard, target, "");
+        return RequestClipboardTargetWrite(clipboard, target, "");
     {
-        char decoded[UI_CLIPBOARD_BUFFER_SIZE];
+        char decoded[CLIPBOARD_BUFFER_SIZE];
 
         if(ui_clipboard_decode_base64(decoded, (int)sizeof(decoded),
                                       text_payload) > 0)
-            return RequestUIClipboardTargetWrite(clipboard, target, decoded);
+            return RequestClipboardTargetWrite(clipboard, target, decoded);
     }
     return 0;
 }
@@ -405,7 +405,7 @@ ui_clipboard_skip_paste_control_string(const char *cursor)
 }
 
 static int
-ui_clipboard_write_paste_chunk(UIClipboardPasteWriteFn write_text,
+ui_clipboard_write_paste_chunk(ClipboardPasteWriteFn write_text,
                                void *userdata, const char *text, int size)
 {
     if(write_text == NULL || text == NULL || size <= 0)
@@ -414,8 +414,8 @@ ui_clipboard_write_paste_chunk(UIClipboardPasteWriteFn write_text,
 }
 
 int
-WriteUIClipboardPaste(const char *text, int bracketed,
-                      UIClipboardPasteWriteFn write_text, void *userdata)
+WriteClipboardPaste(const char *text, int bracketed,
+                      ClipboardPasteWriteFn write_text, void *userdata)
 {
     int written = 0;
     const char *cursor;
@@ -482,25 +482,25 @@ WriteUIClipboardPaste(const char *text, int bracketed,
 }
 
 int
-WriteUIClipboardTextPaste(UIClipboardBuffer *clipboard, const char *text,
-                          int bracketed, UIClipboardPasteWriteFn write_text,
+WriteClipboardTextPaste(ClipboardBuffer *clipboard, const char *text,
+                          int bracketed, ClipboardPasteWriteFn write_text,
                           void *userdata)
 {
     if(text == NULL || text[0] == '\0')
         return 0;
-    (void)SetUIClipboardBufferText(clipboard, text);
-    return WriteUIClipboardPaste(text, bracketed, write_text, userdata);
+    (void)SetClipboardBufferText(clipboard, text);
+    return WriteClipboardPaste(text, bracketed, write_text, userdata);
 }
 
 int
-WriteUIClipboardSourcePaste(UIClipboardBuffer *clipboard,
-                            UIClipboardSource source, int bracketed,
-                            UIClipboardPasteWriteFn write_text, void *userdata)
+WriteClipboardSourcePaste(ClipboardBuffer *clipboard,
+                            ClipboardSource source, int bracketed,
+                            ClipboardPasteWriteFn write_text, void *userdata)
 {
     const char *text;
 
-    text = GetUIClipboardSourceText(clipboard, source);
-    return WriteUIClipboardTextPaste(clipboard, text, bracketed, write_text,
+    text = GetClipboardSourceText(clipboard, source);
+    return WriteClipboardTextPaste(clipboard, text, bracketed, write_text,
                                      userdata);
 }
 
@@ -519,7 +519,7 @@ ui_clipboard_buffer_copy_text(char *dst, int dst_size, const char *text)
 }
 
 void
-InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text)
+InitClipboardBuffer(ClipboardBuffer *buffer, const char *text)
 {
     if(buffer == NULL)
         return;
@@ -530,7 +530,7 @@ InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text)
 }
 
 int
-SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text)
+SetClipboardBufferText(ClipboardBuffer *buffer, const char *text)
 {
     int changed;
 
@@ -543,7 +543,7 @@ SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text)
 }
 
 int
-RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text)
+RequestClipboardBufferWrite(ClipboardBuffer *buffer, const char *text)
 {
     int changed;
     int was_pending;
@@ -558,7 +558,7 @@ RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text)
 }
 
 const char *
-GetUIClipboardBufferText(const UIClipboardBuffer *buffer)
+GetClipboardBufferText(const ClipboardBuffer *buffer)
 {
     if(buffer == NULL)
         return "";
@@ -566,29 +566,29 @@ GetUIClipboardBufferText(const UIClipboardBuffer *buffer)
 }
 
 int
-UIClipboardBufferHasPendingWrite(const UIClipboardBuffer *buffer)
+ClipboardBufferHasPendingWrite(const ClipboardBuffer *buffer)
 {
     return buffer != NULL && buffer->pending;
 }
 
 int
-SyncUIClipboardBufferFromHost(UIClipboardBuffer *buffer)
+SyncClipboardBufferFromHost(ClipboardBuffer *buffer)
 {
     const char *text;
 
     if(buffer == NULL || buffer->pending)
         return 0;
-    text = GetUIClipboardTextValue();
+    text = GetClipboardTextValue();
     return ui_clipboard_buffer_copy_text(buffer->text,
                                          (int)sizeof(buffer->text), text);
 }
 
 int
-FlushUIClipboardBufferToHost(UIClipboardBuffer *buffer)
+FlushClipboardBufferToHost(ClipboardBuffer *buffer)
 {
     if(buffer == NULL || !buffer->pending)
         return 0;
-    SetUIClipboardTextValue(buffer->text);
+    SetClipboardTextValue(buffer->text);
     buffer->pending = 0;
     return 1;
 }

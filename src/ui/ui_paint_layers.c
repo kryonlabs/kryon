@@ -46,7 +46,7 @@ Image ui_paint_readback(Texture2D texture)
 typedef struct UIPaintLayer {
     RenderTexture2D texture, previous_target;
     UIBlendState previous_blend;
-    UIClipState previous_clip;
+    ClipState previous_clip;
     UIPaintLayerToken previous_scope;
     UITreeLayoutScope previous_layout;
     UIDisabledScope previous_disabled;
@@ -317,7 +317,7 @@ UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)
     BeginTextureMode(layer->texture);
     layers->projection = rlGetMatrixProjection();
     layers->modelview = rlGetMatrixModelview();
-    ResetUIClip();
+    ResetClip();
     ClearBackground(BLANK);
     ui_blend_capture();
     layer->previous_target = ui_tree_set_paint_target(layer->texture);
@@ -358,7 +358,7 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
     if(ui_popup_input_bound() != layers->input) abort();
     ui_popup_input_finish(layers->input);
     UIBlendState blend = ui_blend_save();
-    UIClipState clip = ui_clip_save();
+    ClipState clip = ui_clip_save();
     Matrix projection = rlGetMatrixProjection(), modelview = rlGetMatrixModelview();
     /* Restoring the snapshot also flushes pending parent drawing before the
      * projection changes, without adding a public low-level drawing API. */
@@ -367,7 +367,7 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
         rlSetMatrixProjection(layers->projection);
         rlSetMatrixModelview(layers->modelview);
     }
-    ResetUIClip();
+    ResetClip();
     /* Keep paint-layer compositing on the same straight-alpha path as normal
      * UI drawing. Font atlases are straight-alpha textures; treating captured
      * layers as premultiplied makes glyph quads render as visible boxes. */

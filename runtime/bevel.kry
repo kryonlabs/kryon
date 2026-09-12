@@ -1,0 +1,29 @@
+#module "bevel"
+#import "drawing_props"
+
+BevelLines :: struct {
+    top: Rectangle
+    left: Rectangle
+    bottom: Rectangle
+    right: Rectangle
+}
+
+BevelLineBounds :: (x1: i32, y1: i32, x2: i32, y2: i32) -> Rectangle #export {
+    line: Rectangle
+    line.x = (float)x1
+    line.y = (float)y1
+    line.width = (float)(x2 - x1)
+    line.height = (float)(y2 - y1)
+    return line
+}
+
+BevelLinesFor :: (x: i32, y: i32, width: i32, height: i32) -> BevelLines #export {
+    lines: BevelLines
+    right: i32 = x + width - 1
+    bottom: i32 = y + height - 1
+    lines.top = BevelLineBounds(x, y, right, y)
+    lines.left = BevelLineBounds(x, y, x, bottom)
+    lines.bottom = BevelLineBounds(x, bottom, right, bottom)
+    lines.right = BevelLineBounds(right, y, right, bottom)
+    return lines
+}

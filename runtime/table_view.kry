@@ -1,0 +1,201 @@
+#module "table_view"
+#import "drawing_props"
+
+TableViewMetrics :: struct {
+    default_row_height: i32
+    min_header_height: i32
+    default_min_column_width: i32
+    header_text_pad_x: i32
+    resize_tolerance: i32
+}
+
+TableViewLayout :: struct {
+    row_height: i32
+    header_height: i32
+    body: Rectangle
+    frozen_rows: i32
+    scroll_body_height: i32
+    max_scroll: i32
+}
+
+TableViewScrollLayout :: struct {
+    first: i32
+    y_offset: i32
+    visible_rows: i32
+}
+
+TableViewMetricsFor :: (scale: float) -> TableViewMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TableViewMetrics
+    metrics.default_row_height = (i32)(28.0 * scale)
+    metrics.min_header_height = (i32)(30.0 * scale)
+    metrics.default_min_column_width = (i32)(32.0 * scale)
+    metrics.header_text_pad_x = (i32)(6.0 * scale)
+    metrics.resize_tolerance = (i32)(5.0 * scale)
+    return metrics
+}
+
+TableViewRowHeight :: (requested_row_height: i32, scale: float,
+    metrics: TableViewMetrics) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if requested_row_height > 0 {
+        height: i32 = (i32)((float)requested_row_height * scale)
+        if height > 0 { return height }
+    }
+    return metrics.default_row_height
+}
+
+TableViewHeaderHeight :: (requested_header_height: i32, scale: float,
+    metrics: TableViewMetrics) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    height: i32 = metrics.min_header_height
+    if requested_header_height > 30 {
+        height = (i32)((float)requested_header_height * scale)
+    }
+    if height < metrics.min_header_height { height = metrics.min_header_height }
+    return height
+}
+
+TableViewBodyBounds :: (bounds: Rectangle, header_height: i32) -> Rectangle #export {
+    body: Rectangle
+    body.x = bounds.x
+    body.y = bounds.y + (float)header_height
+    body.width = bounds.width
+    body.height = bounds.height - (float)header_height
+    if body.height < 0.0 { body.height = 0.0 }
+    return body
+}
+
+TableViewFrozenRows :: (requested: i32, row_count: i32, body_height: i32,
+    row_height: i32) -> i32 #export {
+    frozen: i32 = requested
+    if frozen < 0 { frozen = 0 }
+    if frozen > row_count { frozen = row_count }
+    if row_height <= 0 { row_height = 1 }
+    max_frozen: i32 = body_height / row_height
+    if max_frozen < 0 { max_frozen = 0 }
+    if frozen > max_frozen { frozen = max_frozen }
+    return frozen
+}
+
+TableViewScrollBodyHeight :: (body_height: i32, frozen_rows: i32,
+    row_height: i32) -> i32 #export {
+    height: i32 = body_height - frozen_rows * row_height
+    if height < 0 { return 0 }
+    return height
+}
+
+TableViewMaxScroll :: (row_count: i32, frozen_rows: i32, row_height: i32,
+    scroll_body_height: i32) -> i32 #export {
+    rows: i32 = row_count - frozen_rows
+    if rows < 0 { rows = 0 }
+    max_scroll: i32 = rows * row_height - scroll_body_height
+    if max_scroll < 0 { return 0 }
+    return max_scroll
+}
+
+TableViewLayoutFor :: (bounds: Rectangle, row_count: i32,
+    requested_row_height: i32, requested_header_height: i32,
+    requested_frozen_rows: i32, scale: float,
+    metrics: TableViewMetrics) -> TableViewLayout #export {
+    layout: TableViewLayout
+    layout.row_height = TableViewRowHeight(requested_row_height, scale, metrics)
+    layout.header_height = TableViewHeaderHeight(requested_header_height, scale, metrics)
+    layout.body = TableViewBodyBounds(bounds, layout.header_height)
+    layout.frozen_rows = TableViewFrozenRows(requested_frozen_rows, row_count,
+        (i32)layout.body.height, layout.row_height)
+    layout.scroll_body_height = TableViewScrollBodyHeight((i32)layout.body.height,
+        layout.frozen_rows, layout.row_height)
+    layout.max_scroll = TableViewMaxScroll(row_count, layout.frozen_rows,
+        layout.row_height, layout.scroll_body_height)
+    return layout
+}
+
+TableViewScrollFor :: (scroll_y: i32, frozen_rows: i32, row_height: i32,
+    scroll_body_height: i32) -> TableViewScrollLayout #export {
+    layout: TableViewScrollLayout
+    if scroll_y < 0 { scroll_y = 0 }
+    if row_height <= 0 { row_height = 1 }
+    layout.first = frozen_rows + scroll_y / row_height
+    layout.y_offset = scroll_y % row_height
+    if scroll_body_height <= 0 {
+        layout.visible_rows = 0
+    } else {
+        layout.visible_rows = scroll_body_height / row_height + 1
+    }
+    return layout
+}
+
+TableViewDefaultColumnWidth :: (bounds_width: i32, visible_columns: i32) -> i32 #export {
+    if visible_columns <= 0 { return 0 }
+    return bounds_width / visible_columns
+}
+
+TableViewColumnWidth :: (requested_width: i32, default_width: i32) -> i32 #export {
+    if requested_width > 0 { return requested_width }
+    return default_width
+}
+
+TableViewHeaderBounds :: (bounds: Rectangle, column_x: i32,
+    column_width: i32, header_height: i32) -> Rectangle #export {
+    header: Rectangle
+    header.x = (float)column_x
+    header.y = bounds.y
+    header.width = (float)column_width
+    header.height = (float)header_height
+    return header
+}
+
+TableViewRowBounds :: (bounds: Rectangle, layout: TableViewLayout,
+    row_index: i32, draw_index: i32, scroll: TableViewScrollLayout,
+    scrolling: bool) -> Rectangle #export {
+    row: Rectangle
+    row.x = bounds.x
+    if scrolling {
+        local: i32 = draw_index - layout.frozen_rows
+        row.y = bounds.y + (float)(layout.header_height +
+            layout.frozen_rows * layout.row_height +
+            local * layout.row_height - scroll.y_offset)
+    } else {
+        row.y = bounds.y + (float)(layout.header_height +
+            row_index * layout.row_height)
+    }
+    row.width = bounds.width
+    row.height = (float)layout.row_height
+    return row
+}
+
+TableViewCellBounds :: (row: Rectangle, column_x: i32, column_width: i32) -> Rectangle #export {
+    cell: Rectangle
+    cell.x = (float)column_x
+    cell.y = row.y
+    cell.width = (float)column_width
+    cell.height = row.height
+    return cell
+}
+
+TableViewViewport :: (bounds: Rectangle, layout: TableViewLayout,
+    scrolling: bool) -> Rectangle #export {
+    viewport: Rectangle
+    viewport.x = bounds.x
+    viewport.y = bounds.y + (float)layout.header_height
+    viewport.width = bounds.width
+    if scrolling {
+        viewport.y += (float)(layout.frozen_rows * layout.row_height)
+        viewport.height = (float)layout.scroll_body_height
+    } else {
+        viewport.height = (float)(layout.frozen_rows * layout.row_height)
+    }
+    if viewport.height < 0.0 { viewport.height = 0.0 }
+    return viewport
+}
+
+TableViewMinimumColumnWidth :: (requested_min_width: i32, scale: float,
+    metrics: TableViewMetrics) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if requested_min_width > 0 {
+        width: i32 = (i32)((float)requested_min_width * scale)
+        if width > 0 { return width }
+    }
+    return metrics.default_min_column_width
+}

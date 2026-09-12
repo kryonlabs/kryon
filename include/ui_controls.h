@@ -1,5 +1,5 @@
-#ifndef UI_CONTROLS_H
-#define UI_CONTROLS_H
+#ifndef KRYON_CONTROLS_H
+#define KRYON_CONTROLS_H
 
 #include "kryon_compat.generated.h"
 #include "theme_style.h"
@@ -183,8 +183,8 @@ typedef struct ThemeScheme {
     Color disabled_content;
 } ThemeScheme;
 
-typedef void (*UIVerticalSliderMarkCallback)(void *user_data, int x, int y,
-                                             int h, int min, int max, int value);
+typedef void (*SliderMarkCallback)(void *user_data, int x, int y, int h,
+                                   int min, int max, int value);
 
 typedef struct {
     const char *label;

@@ -223,7 +223,7 @@ func TestTreeHeaderKeyboardGates(t *testing.T) {
 	}
 }
 
-func TestComboPopupLifecycle(t *testing.T) {
+func TestDropdownPopupLifecycle(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
 	p := DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
@@ -257,7 +257,7 @@ func TestComboPopupLifecycle(t *testing.T) {
 	}
 }
 
-func TestComboOverlayLayerAndCapture(t *testing.T) {
+func TestDropdownOverlayLayerAndCapture(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
 	actions := 0
@@ -294,7 +294,7 @@ func TestComboOverlayLayerAndCapture(t *testing.T) {
 	}
 }
 
-func TestComboDismissal(t *testing.T) {
+func TestDropdownDismissal(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := int32(0)
 	p := DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
@@ -1828,7 +1828,7 @@ func TestNativeTabBarsOwnIndependentDefaultScroll(t *testing.T) {
 	}
 }
 
-func TestNativeComposedTabBarScope(t *testing.T) {
+func TestNativeComposedTabBarContent(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 180}).(*runtime)
 	tabs := []Tab{{Label: "One"}, {Label: "Two"}}
 	selected := int32(0)
@@ -1837,18 +1837,13 @@ func TestNativeComposedTabBarScope(t *testing.T) {
 	visible := int32(-1)
 
 	r.BeginFrame()
-	if !r.BeginTabBar(props, &selected) {
-		t.Fatal("BeginTabBar rejected valid props")
+	if clicked := r.TabBar(props); clicked >= 0 {
+		selected = clicked
 	}
-	if r.BeginTabItem(0) {
+	if selected == 0 {
 		visible = 0
 		r.Button(ButtonProps{Bounds: NewRectangle(20, 60, 80, 28), ID: 927, Label: "First"})
-		r.EndTabItem()
 	}
-	if r.BeginTabItem(1) {
-		t.Fatal("BeginTabItem exposed an unselected tab")
-	}
-	r.EndTabBar()
 	r.EndFrame()
 	if visible != 0 {
 		t.Fatalf("visible tab=%d, want 0", visible)
@@ -1856,43 +1851,20 @@ func TestNativeComposedTabBarScope(t *testing.T) {
 
 	r.QueueTap(160, 20)
 	r.BeginFrame()
-	if !r.BeginTabBar(props, &selected) {
-		t.Fatal("BeginTabBar rejected second frame")
+	if clicked := r.TabBar(props); clicked >= 0 {
+		selected = clicked
 	}
-	if r.BeginTabItem(0) {
+	if selected == 0 {
 		t.Fatal("old tab remained visible after header selection")
 	}
-	if r.BeginTabItem(1) {
+	if selected == 1 {
 		visible = 1
 		r.Checkbox(CheckboxProps{Bounds: NewRectangle(20, 60, 120, 34), ID: 928, Label: "Second", Value: &visible})
-		r.EndTabItem()
 	}
-	r.EndTabBar()
 	r.EndFrame()
 	if selected != 1 || visible != 1 {
 		t.Fatalf("selected/visible=%d/%d, want 1/1", selected, visible)
 	}
-
-	if r.BeginTabBar(TabBarProps{}, &selected) {
-		t.Fatal("BeginTabBar accepted invalid props")
-	}
-	mustPanic := func(call func()) {
-		t.Helper()
-		defer func() {
-			if recover() == nil {
-				t.Fatal("unbalanced tab scope did not panic")
-			}
-		}()
-		call()
-	}
-	mustPanic(func() { r.BeginTabItem(0) })
-	mustPanic(func() { r.EndTabItem() })
-	mustPanic(func() { r.EndTabBar() })
-	if !r.BeginTabBar(props, &selected) {
-		t.Fatal("BeginTabBar rejected frame-balance fixture")
-	}
-	mustPanic(func() { r.EndFrame() })
-	r.EndTabBar()
 }
 
 func TestNativeTypedDragDrop(t *testing.T) {
@@ -1928,7 +1900,7 @@ func TestNativeTypedDragDrop(t *testing.T) {
 	}
 }
 
-func TestManyComboIdentities(t *testing.T) {
+func TestManyDropdownIdentities(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	selected := make([]int32, 41)
 	draw := func(first int) {
@@ -1946,12 +1918,12 @@ func TestManyComboIdentities(t *testing.T) {
 	r.QueueTap(20, 20)
 	draw(0)
 	if !r.openDropdowns[20000] || !r.popupCaptures(20, 70) {
-		t.Fatal("41 combos lost first owner's open state")
+		t.Fatal("41 dropdowns lost first owner's open state")
 	}
 	r.QueueTap(20, 75)
 	draw(0)
 	if selected[0] != 1 {
-		t.Fatal("41 combos lost first owner's selection")
+		t.Fatal("41 dropdowns lost first owner's selection")
 	}
 	for _, value := range selected[1:] {
 		if value != 0 {
@@ -1966,7 +1938,7 @@ func TestManyComboIdentities(t *testing.T) {
 	}
 }
 
-func TestLargeComboOptions(t *testing.T) {
+func TestLargeDropdownOptions(t *testing.T) {
 	r := New(AppConfig{Width: 240, Height: 6000}).(*runtime)
 	options := make([]string, 131)
 	for i := range options {
@@ -2014,7 +1986,7 @@ func TestLongDropdownLabelOwnership(t *testing.T) {
 	}
 }
 
-func TestComboKeyboardNavigation(t *testing.T) {
+func TestDropdownKeyboardNavigation(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	options := make([]string, 131)
 	selected := int32(0)
@@ -2041,7 +2013,7 @@ func TestComboKeyboardNavigation(t *testing.T) {
 	}
 }
 
-func TestComboKeyboardOpen(t *testing.T) {
+func TestDropdownKeyboardOpen(t *testing.T) {
 	for _, key := range []int32{KeyEnter, 335, KeySpace, KeyDown} {
 		for mode := 0; mode < 3; mode++ {
 			r := New(AppConfig{}).(*runtime)

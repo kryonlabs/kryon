@@ -1,5 +1,5 @@
-#ifndef UI_PAGE_H
-#define UI_PAGE_H
+#ifndef KRYON_PAGE_H
+#define KRYON_PAGE_H
 
 #include "kryon_compat.generated.h"
 #include "ui_image.h"

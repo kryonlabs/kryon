@@ -45,7 +45,7 @@ SetFancyEffectsEnabled(int enabled)
     if(g_fancy_effects_enabled == next)
         return;
     g_fancy_effects_enabled = next;
-    InvalidateTree(UI_INVALIDATE_PAINT);
+    InvalidateTree(INVALIDATE_PAINT);
 }
 
 int
@@ -252,7 +252,7 @@ ui_runtime_theme_values(Palette *palette_out, Metrics *metrics_out)
     Color accent_hover = theme != NULL ? theme->colors.accent_hover
                                         : GetThemeButtonHover();
     Color accent_pressed = theme != NULL ? theme->colors.accent_pressed
-                                          : DarkenUIColor(accent, 14);
+                                          : DarkenColor(accent, 14);
     Color danger = theme != NULL ? theme->colors.danger : GetColor(defaults.danger);
     Color success = theme != NULL ? theme->colors.success : GetColor(defaults.success);
     Color warning = theme != NULL ? theme->colors.warning : GetColor(defaults.warning);
@@ -690,7 +690,7 @@ ui_draw_control_background(Rectangle bounds, Color background, Color border,
     if(ui_default_style()) {
         ui_default_elevation(bounds, radius, tokens.shadow_offset_y);
     } else if(tokens.shadow_alpha > 0 && tokens.shadow_offset_y > 0) {
-        Color shadow = DarkenUIColor(c_bg, 35);
+        Color shadow = DarkenColor(c_bg, 35);
         shadow.a = tokens.shadow_alpha;
         DrawRectangleRounded((Rectangle){bounds.x,
                                          bounds.y + Scale(tokens.shadow_offset_y),

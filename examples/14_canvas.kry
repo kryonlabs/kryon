@@ -18,14 +18,18 @@ CanvasExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        canvas: CanvasResult = BeginCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
-        CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
-        for int i = 0; i < 2; i++ {
-            Box(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface(),GetThemeIcon())
+        Canvas canvas: {
+            bounds = {40,50,620,420}
+            scroll_x = &sx
+            scroll_y = &sy
+            zoom = &zoom
+            CanvasGrid((Rectangle){40,50,620,420},24,GetThemeButton())
+            for int i = 0; i < 2; i++ {
+                Box(shapes[i],i==selected?GetThemeButtonHover():GetThemeSurface(),GetThemeIcon())
+            }
+            if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
+                selected = CanvasHitTest(canvas.world,shapes,2)
+            }
         }
-        if canvas.active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) {
-            selected = CanvasHitTest(canvas.world,shapes,2)
-        }
-        EndCanvas((Canvas){{40,50,620,420},&sx,&sy,&zoom})
     }
 }

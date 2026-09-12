@@ -6,7 +6,7 @@
 static const Texture2D kryon_zero_texture2d;
 
 
-static const IconType ui_profile_picture_icons[] = {
+static const IconType ui_profile_image_icons[] = {
     ICON_PFP_BAMBUS,
     ICON_PFP_BIRD,
     ICON_PFP_BOWL,
@@ -34,35 +34,35 @@ static const IconType ui_profile_picture_icons[] = {
     ICON_PFP_TREE4
 };
 
-static const int ui_profile_picture_sync_ids[] = {
-    UI_SYNC_PROFILE_ICON_BAMBUS,
-    UI_SYNC_PROFILE_ICON_BIRD,
-    UI_SYNC_PROFILE_ICON_BOWL,
-    UI_SYNC_PROFILE_ICON_BUSH,
-    UI_SYNC_PROFILE_ICON_BUTTERFLY,
-    UI_SYNC_PROFILE_ICON_CACTUS,
-    UI_SYNC_PROFILE_ICON_COFFEE,
-    UI_SYNC_PROFILE_ICON_DRAGONFLY,
-    UI_SYNC_PROFILE_ICON_FIREPLACE,
-    UI_SYNC_PROFILE_ICON_FLOWER1,
-    UI_SYNC_PROFILE_ICON_FLOWER2,
-    UI_SYNC_PROFILE_ICON_FOX,
-    UI_SYNC_PROFILE_ICON_HEART,
-    UI_SYNC_PROFILE_ICON_INCENSE,
-    UI_SYNC_PROFILE_ICON_LOTUS,
-    UI_SYNC_PROFILE_ICON_MOUNTAIN,
-    UI_SYNC_PROFILE_ICON_MUSHROOM,
-    UI_SYNC_PROFILE_ICON_PALM,
-    UI_SYNC_PROFILE_ICON_PERSON1,
-    UI_SYNC_PROFILE_ICON_RAINBOW,
-    UI_SYNC_PROFILE_ICON_TENT,
-    UI_SYNC_PROFILE_ICON_TREE1,
-    UI_SYNC_PROFILE_ICON_TREE2,
-    UI_SYNC_PROFILE_ICON_TREE3,
-    UI_SYNC_PROFILE_ICON_TREE4
+static const int ui_profile_image_sync_ids[] = {
+    SYNC_PROFILE_ICON_BAMBUS,
+    SYNC_PROFILE_ICON_BIRD,
+    SYNC_PROFILE_ICON_BOWL,
+    SYNC_PROFILE_ICON_BUSH,
+    SYNC_PROFILE_ICON_BUTTERFLY,
+    SYNC_PROFILE_ICON_CACTUS,
+    SYNC_PROFILE_ICON_COFFEE,
+    SYNC_PROFILE_ICON_DRAGONFLY,
+    SYNC_PROFILE_ICON_FIREPLACE,
+    SYNC_PROFILE_ICON_FLOWER1,
+    SYNC_PROFILE_ICON_FLOWER2,
+    SYNC_PROFILE_ICON_FOX,
+    SYNC_PROFILE_ICON_HEART,
+    SYNC_PROFILE_ICON_INCENSE,
+    SYNC_PROFILE_ICON_LOTUS,
+    SYNC_PROFILE_ICON_MOUNTAIN,
+    SYNC_PROFILE_ICON_MUSHROOM,
+    SYNC_PROFILE_ICON_PALM,
+    SYNC_PROFILE_ICON_PERSON1,
+    SYNC_PROFILE_ICON_RAINBOW,
+    SYNC_PROFILE_ICON_TENT,
+    SYNC_PROFILE_ICON_TREE1,
+    SYNC_PROFILE_ICON_TREE2,
+    SYNC_PROFILE_ICON_TREE3,
+    SYNC_PROFILE_ICON_TREE4
 };
 
-static const char *ui_profile_picture_names[] = {
+static const char *ui_profile_image_names[] = {
     "pfp_bambus",
     "pfp_bird",
     "pfp_bowl",
@@ -91,54 +91,54 @@ static const char *ui_profile_picture_names[] = {
 };
 
 int
-GetUIProfilePictureIconCount(void)
+GetProfileImageIconCount(void)
 {
-    return (int)(sizeof(ui_profile_picture_icons) /
-                 sizeof(ui_profile_picture_icons[0]));
+    return (int)(sizeof(ui_profile_image_icons) /
+                 sizeof(ui_profile_image_icons[0]));
 }
 
 IconType
-GetUIProfilePictureIconType(int index)
+GetProfileImageIconType(int index)
 {
-    if(index < 0 || index >= GetUIProfilePictureIconCount())
+    if(index < 0 || index >= GetProfileImageIconCount())
         return ICON_NONE;
-    return ui_profile_picture_icons[index];
+    return ui_profile_image_icons[index];
 }
 
 const char *
-GetUIProfilePictureIconName(int index)
+GetProfileImageIconName(int index)
 {
-    if(index < 0 || index >= GetUIProfilePictureIconCount())
+    if(index < 0 || index >= GetProfileImageIconCount())
         return NULL;
-    return ui_profile_picture_names[index];
+    return ui_profile_image_names[index];
 }
 
 IconType
-GetUIProfilePictureIconTypeForSyncID(int sync_id)
+GetProfileImageIconTypeForSyncID(int sync_id)
 {
     int i;
 
-    if(sync_id == UI_SYNC_PROFILE_ICON_NONE)
+    if(sync_id == SYNC_PROFILE_ICON_NONE)
         return ICON_NONE;
-    for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
-        if(ui_profile_picture_sync_ids[i] == sync_id)
-            return ui_profile_picture_icons[i];
+    for(i = 0; i < GetProfileImageIconCount(); i++) {
+        if(ui_profile_image_sync_ids[i] == sync_id)
+            return ui_profile_image_icons[i];
     }
     return ICON_NONE;
 }
 
 int
-GetUISyncIDForProfilePictureIconType(IconType type)
+GetSyncIDForProfileImageIconType(IconType type)
 {
     int i;
 
     if(type == ICON_NONE)
-        return UI_SYNC_PROFILE_ICON_NONE;
-    for(i = 0; i < GetUIProfilePictureIconCount(); i++) {
-        if(ui_profile_picture_icons[i] == type)
-            return ui_profile_picture_sync_ids[i];
+        return SYNC_PROFILE_ICON_NONE;
+    for(i = 0; i < GetProfileImageIconCount(); i++) {
+        if(ui_profile_image_icons[i] == type)
+            return ui_profile_image_sync_ids[i];
     }
-    return UI_SYNC_PROFILE_ICON_NONE;
+    return SYNC_PROFILE_ICON_NONE;
 }
 
 static void
@@ -182,7 +182,7 @@ ui_draw_avatar_tile(Rectangle bounds, Color background, Color outline)
 }
 
 static int
-ui_profile_pictures_dark_mode(void)
+ui_profile_images_dark_mode(void)
 {
     return IsThemeColorDark(GetThemeBackground()) ? 1 : 0;
 }
@@ -260,11 +260,11 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     header_bounds.y = (float)header.y;
     header_bounds.width = (float)header.width;
     header_bounds.height = (float)height;
-    DrawRectangleRounded(header_bounds, 0.06f, 8, DarkenUIColor(c_surface, 6));
-    if(CheckCollisionPointRec(mouse, pfp_bounds) && !UIInputCapturesClick(mouse)) {
+    DrawRectangleRounded(header_bounds, 0.06f, 8, DarkenColor(c_surface, 6));
+    if(CheckCollisionPointRec(mouse, pfp_bounds) && !InputCapturesClick(mouse)) {
         MarkClickable();
         if(released) {
-            UIConsumeRelease();
+            ConsumeRelease();
             result.pfp_clicked = 1;
         }
     }
@@ -272,7 +272,7 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                                     (float)(avatar_y - avatar_r - Scale(3)),
                                     (float)(avatar_size + Scale(6)),
                                     (float)(avatar_size + Scale(6))},
-                        c_surface, DarkenUIColor(c_surface, 18));
+                        c_surface, DarkenColor(c_surface, 18));
     if(header.pfp_icon_type > ICON_NONE &&
        header.pfp_icon_type < ICON_COUNT) {
         Rectangle icon_bounds;
@@ -281,8 +281,8 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
         icon_bounds.y = (float)(avatar_y - avatar_r + Scale(3));
         icon_bounds.width = (float)(avatar_size - Scale(6));
         icon_bounds.height = (float)(avatar_size - Scale(6));
-        DrawProfilePictureIcon(header.pfp_icon_type, icon_bounds,
-                               ui_profile_pictures_dark_mode());
+        DrawProfileImageIcon(header.pfp_icon_type, icon_bounds,
+                               ui_profile_images_dark_mode());
     } else if(pfp_icon.id != 0)
         ui_draw_pfp_texture_in_circle(pfp_icon, avatar_x, avatar_y, avatar_r);
     else
@@ -290,10 +290,10 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                              avatar_size, c_icon);
 
     if(CheckCollisionPointRec(mouse, username_bounds) &&
-       !UIInputCapturesClick(mouse)) {
+       !InputCapturesClick(mouse)) {
         MarkClickable();
         if(released) {
-            UIConsumeRelease();
+            ConsumeRelease();
             result.username_clicked = 1;
         }
     }
@@ -301,15 +301,15 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
                            Text8, c_text);
     if(subtitle[0] != '\0')
         RenderText(subtitle, name_x, name_y + Scale(22), small_font,
-                   DarkenUIColor(c_text, 34));
+                   DarkenColor(c_text, 34));
 
     if(CheckCollisionPointRec(mouse, friends_bounds) &&
-       !UIInputCapturesClick(mouse)) {
+       !InputCapturesClick(mouse)) {
         DrawRectangleRounded(friends_bounds, 0.18f, 8,
-                             LightenUIColor(c_surface, 8));
+                             LightenColor(c_surface, 8));
         MarkClickable();
         if(released) {
-            UIConsumeRelease();
+            ConsumeRelease();
             result.friends_clicked = 1;
         }
     }
@@ -320,12 +320,12 @@ RenderSidebarAccountHeader(SidebarAccountHeaderProps header)
     return result;
 }
 
-ProfilePicturePickerResult
-RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
+ProfileImagePickerResult
+RenderProfileImagePickerModal(ProfileImagePickerProps modal)
 {
-    ProfilePicturePickerResult result = {0};
+    ProfileImagePickerResult result = {0};
     static int default_scroll_offset = 0;
-    int count = GetUIProfilePictureIconCount();
+    int count = GetProfileImageIconCount();
     int width = modal.max_width > 0 ? Scale(modal.max_width) : Scale(520);
     int gap = Scale(8);
     int columns;
@@ -402,18 +402,18 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
         int x = scroll_view.content_x + (scroll_view.content_w - grid_w) / 2 +
                 col * (cell + gap);
         int y = scroll_view.content_y + row * (cell + gap);
-        IconType type = GetUIProfilePictureIconType(i);
+        IconType type = GetProfileImageIconType(i);
         Texture2D icon = {0};
         Rectangle bounds = {(float)x, (float)y, (float)cell, (float)cell};
         int hovered = CheckCollisionPointRec(mouse, bounds) &&
-                      !UIInputCapturesClick(mouse);
+                      !InputCapturesClick(mouse);
         int active = type == selected;
 
         ui_draw_avatar_tile(bounds,
-                            hovered ? LightenUIColor(c_surface, 10)
+                            hovered ? LightenColor(c_surface, 10)
                                     : c_surface,
                             active ? c_button_hover
-                                   : DarkenUIColor(c_surface, 22));
+                                   : DarkenColor(c_surface, 22));
         if(active)
             DrawRectangleLinesEx(bounds, Scale(2), c_button_hover);
         if(modal.icons != NULL && type > ICON_NONE &&
@@ -426,8 +426,8 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
             icon_bounds.y = (float)(y + icon_inset);
             icon_bounds.width = (float)(cell - icon_inset * 2);
             icon_bounds.height = (float)(cell - icon_inset * 2);
-            DrawProfilePictureIcon(type, icon_bounds,
-                                   ui_profile_pictures_dark_mode());
+            DrawProfileImageIcon(type, icon_bounds,
+                                   ui_profile_images_dark_mode());
         } else if(icon.id != 0)
             ui_draw_pfp_texture(icon, x + icon_inset, y + icon_inset,
                                 cell - icon_inset * 2);
@@ -438,7 +438,7 @@ RenderProfilePicturePickerModal(ProfilePicturePickerProps modal)
         if(hovered) {
             MarkClickable();
             if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-                UIConsumeRelease();
+                ConsumeRelease();
                 if(modal.selected_icon_type != NULL)
                     *modal.selected_icon_type = type;
                 result.changed = type != selected;

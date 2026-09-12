@@ -483,12 +483,12 @@ BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    window->previous_focus_id = GetUIFocus();
-    SetUIFocus(window->focus_id);
+    window->previous_focus_id = GetFocus();
+    SetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
-    BeginUIFrame(window->width, window->height, window->scale);
+    BeginInterfaceFrame(window->width, window->height, window->scale);
     ui_window_layers_begin();
 }
 
@@ -630,10 +630,10 @@ EndNativeWindow(void)
 
     if(window == NULL)
         return;
-    EndUIFrame();
+    EndInterfaceFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetUIFocus();
-    SetUIFocus(window->previous_focus_id);
+    window->focus_id = GetFocus();
+    SetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     /* EndTextureMode flushes the widget batch into the texture; the readback
      * then picks up finished pixels (kryon-preview uses the same order). */
@@ -918,12 +918,12 @@ void BeginNativeWindow(NativeWindow *window)
 {
     if(!window)
         return;
-    window->previous_focus_id = GetUIFocus();
-    SetUIFocus(window->focus_id);
+    window->previous_focus_id = GetFocus();
+    SetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
-    BeginUIFrame(window->width,window->height,window->scale);
+    BeginInterfaceFrame(window->width,window->height,window->scale);
     ui_window_layers_begin();
 }
 void EndNativeWindow(void)
@@ -937,11 +937,11 @@ void EndNativeWindow(void)
 
     if(window == NULL)
         return;
-    EndUIFrame();
+    EndInterfaceFrame();
     if(window->paint_layers != NULL)
         ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetUIFocus();
-    SetUIFocus(window->previous_focus_id);
+    window->focus_id = GetFocus();
+    SetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     EndTextureMode();
     image=ui_paint_readback(window->target.texture); if(!image.data)return;
@@ -1341,12 +1341,12 @@ BeginNativeWindow(NativeWindow *window)
 {
     if(window == NULL)
         return;
-    window->previous_focus_id = GetUIFocus();
-    SetUIFocus(window->focus_id);
+    window->previous_focus_id = GetFocus();
+    SetFocus(window->focus_id);
     ui_window_active = window;
     BeginTextureMode(window->target);
     ClearBackground(window->background);
-    BeginUIFrame(window->width, window->height, window->scale);
+    BeginInterfaceFrame(window->width, window->height, window->scale);
     ui_window_layers_begin();
 }
 
@@ -1357,10 +1357,10 @@ EndNativeWindow(void)
 
     if(window == NULL)
         return;
-    EndUIFrame();
+    EndInterfaceFrame();
     if(window->paint_layers) ui_paint_layers_composite(window->paint_layers);
-    window->focus_id = GetUIFocus();
-    SetUIFocus(window->previous_focus_id);
+    window->focus_id = GetFocus();
+    SetFocus(window->previous_focus_id);
     ui_window_active = NULL;
     EndTextureMode();
 #if defined(__linux__) || defined(__FreeBSD__)
@@ -1426,7 +1426,7 @@ GetNativeWindowPosition(NativeWindow *window, int *x, int *y)
 
 /* Apply state the event watch recorded (drag motion, core-window close
  * requests) from the frame loop, where calling into SDL is safe. Called
- * once per frame by SetUIFrame. */
+ * once per frame by SetFrameCamera. */
 int
 StealCoreWindowClose(void)
 {

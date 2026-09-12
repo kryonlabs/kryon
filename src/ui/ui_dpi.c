@@ -5,30 +5,30 @@
 extern void glDisable(unsigned int cap);
 #endif
 
-UIDPIState ui_dpi_state;
+DPIState dpi_state;
 static float g_device_density = 0.0f;
 
 void
-InitUIDPI(void)
+InitDPI(void)
 {
-    FixUIDPIFramebufferColor();
-    ui_dpi_state.physical_width = UI_DPI_BASE_WIDTH;
-    ui_dpi_state.physical_height = UI_DPI_BASE_HEIGHT;
-    ui_dpi_state.view_width = UI_DPI_BASE_WIDTH;
-    ui_dpi_state.view_height = UI_DPI_BASE_HEIGHT;
-    ui_dpi_state.layout_width = UI_DPI_BASE_WIDTH;
-    ui_dpi_state.layout_height = UI_DPI_BASE_HEIGHT;
-    ui_dpi_state.ui_scale = 1.0f;
-    ui_dpi_state.ui_scale_clamped = 1.0f;
-    ui_dpi_state.render_scale = 1.0f;
-    ui_dpi_state.camera_zoom = 1.0f;
-    ui_dpi_state.base_width = UI_DPI_BASE_WIDTH;
-    ui_dpi_state.base_height = UI_DPI_BASE_HEIGHT;
-    ui_dpi_state.needs_update = 0;
+    FixDPIFramebufferColor();
+    dpi_state.physical_width = DPI_BASE_WIDTH;
+    dpi_state.physical_height = DPI_BASE_HEIGHT;
+    dpi_state.view_width = DPI_BASE_WIDTH;
+    dpi_state.view_height = DPI_BASE_HEIGHT;
+    dpi_state.layout_width = DPI_BASE_WIDTH;
+    dpi_state.layout_height = DPI_BASE_HEIGHT;
+    dpi_state.ui_scale = 1.0f;
+    dpi_state.ui_scale_clamped = 1.0f;
+    dpi_state.render_scale = 1.0f;
+    dpi_state.camera_zoom = 1.0f;
+    dpi_state.base_width = DPI_BASE_WIDTH;
+    dpi_state.base_height = DPI_BASE_HEIGHT;
+    dpi_state.needs_update = 0;
 }
 
 void
-FixUIDPIFramebufferColor(void)
+FixDPIFramebufferColor(void)
 {
 #if defined(__FreeBSD__) && !defined(PLATFORM_WEB) && !defined(PLATFORM_ANDROID)
     if(IsWindowReady()) {
@@ -38,48 +38,48 @@ FixUIDPIFramebufferColor(void)
 }
 
 void
-InvalidateUIDPI(void)
+InvalidateDPI(void)
 {
-    ui_dpi_state.physical_width = -1;
-    ui_dpi_state.physical_height = -1;
-    ui_dpi_state.view_width = -1;
-    ui_dpi_state.view_height = -1;
-    ui_dpi_state.layout_width = -1;
-    ui_dpi_state.layout_height = -1;
-    ui_dpi_state.needs_update = 1;
+    dpi_state.physical_width = -1;
+    dpi_state.physical_height = -1;
+    dpi_state.view_width = -1;
+    dpi_state.view_height = -1;
+    dpi_state.layout_width = -1;
+    dpi_state.layout_height = -1;
+    dpi_state.needs_update = 1;
 }
 
 void
-SetUIDeviceDensity(float density)
+SetDeviceDensity(float density)
 {
     if(density > 0.0f) {
         g_device_density = density;
-        /* Force a recompute on the next UpdateUIDPI call so the new density
+        /* Force a recompute on the next UpdateDPI call so the new density
          * actually takes effect, even when the viewport size hasnt changed. */
-        ui_dpi_state.physical_width = -1;
-        ui_dpi_state.physical_height = -1;
-        ui_dpi_state.view_width = -1;
-        ui_dpi_state.view_height = -1;
+        dpi_state.physical_width = -1;
+        dpi_state.physical_height = -1;
+        dpi_state.view_width = -1;
+        dpi_state.view_height = -1;
     }
 }
 
 void
-UpdateUIDPI(int view_width, int view_height)
+UpdateDPI(int view_width, int view_height)
 {
-    int previous_width = ui_dpi_state.physical_width;
-    int previous_height = ui_dpi_state.physical_height;
-    int base_height = ui_dpi_state.base_height;
+    int previous_width = dpi_state.physical_width;
+    int previous_height = dpi_state.physical_height;
+    int base_height = dpi_state.base_height;
 
     if(base_height <= 0)
-        InitUIDPI();
-    base_height = ui_dpi_state.base_height > 0 ? ui_dpi_state.base_height : UI_DPI_BASE_HEIGHT;
+        InitDPI();
+    base_height = dpi_state.base_height > 0 ? dpi_state.base_height : DPI_BASE_HEIGHT;
 
     if(previous_width != view_width || previous_height != view_height) {
         int layout_width;
         int layout_height;
 
-        ui_dpi_state.physical_width = view_width;
-        ui_dpi_state.physical_height = view_height;
+        dpi_state.physical_width = view_width;
+        dpi_state.physical_height = view_height;
 
         float viewport_scale = view_height > 0
                                    ? (float)view_height / (float)base_height
@@ -115,55 +115,55 @@ UpdateUIDPI(int view_width, int view_height)
             real_dpi = window_dpi;
 #endif
 
-        ui_dpi_state.ui_scale = real_dpi;
-        if(!(ui_dpi_state.ui_scale > 0.0f) || ui_dpi_state.ui_scale > 8.0f)
-            ui_dpi_state.ui_scale = 1.0f;
-        ui_dpi_state.ui_scale_clamped = (ui_dpi_state.ui_scale < 1.0f) ? 1.0f : ui_dpi_state.ui_scale;
-        ui_dpi_state.render_scale = ui_dpi_state.ui_scale_clamped;
+        dpi_state.ui_scale = real_dpi;
+        if(!(dpi_state.ui_scale > 0.0f) || dpi_state.ui_scale > 8.0f)
+            dpi_state.ui_scale = 1.0f;
+        dpi_state.ui_scale_clamped = (dpi_state.ui_scale < 1.0f) ? 1.0f : dpi_state.ui_scale;
+        dpi_state.render_scale = dpi_state.ui_scale_clamped;
         layout_width = view_width;
         layout_height = view_height;
-        if(ui_dpi_state.render_scale > 1.0f) {
-            layout_width = (int)((float)view_width / ui_dpi_state.render_scale + 0.5f);
-            layout_height = (int)((float)view_height / ui_dpi_state.render_scale + 0.5f);
+        if(dpi_state.render_scale > 1.0f) {
+            layout_width = (int)((float)view_width / dpi_state.render_scale + 0.5f);
+            layout_height = (int)((float)view_height / dpi_state.render_scale + 0.5f);
         }
         if(layout_width < 1)
             layout_width = 1;
         if(layout_height < 1)
             layout_height = 1;
-        ui_dpi_state.layout_width = layout_width;
-        ui_dpi_state.layout_height = layout_height;
-        ui_dpi_state.view_width = layout_width;
-        ui_dpi_state.view_height = layout_height;
-        ui_dpi_state.camera_zoom = ui_dpi_state.render_scale;
-        ui_dpi_state.needs_update = 1;
+        dpi_state.layout_width = layout_width;
+        dpi_state.layout_height = layout_height;
+        dpi_state.view_width = layout_width;
+        dpi_state.view_height = layout_height;
+        dpi_state.camera_zoom = dpi_state.render_scale;
+        dpi_state.needs_update = 1;
     } else {
-        ui_dpi_state.needs_update = 0;
+        dpi_state.needs_update = 0;
     }
 }
 
 int
-IsUIDPIDirty(void)
+IsDPIDirty(void)
 {
-    return ui_dpi_state.needs_update;
+    return dpi_state.needs_update;
 }
 
 int
 GetLayoutWidth(void)
 {
-    return ui_dpi_state.layout_width > 0
-        ? ui_dpi_state.layout_width : ui_dpi_state.view_width;
+    return dpi_state.layout_width > 0
+        ? dpi_state.layout_width : dpi_state.view_width;
 }
 
 int
 GetLayoutHeight(void)
 {
-    return ui_dpi_state.layout_height > 0
-        ? ui_dpi_state.layout_height : ui_dpi_state.view_height;
+    return dpi_state.layout_height > 0
+        ? dpi_state.layout_height : dpi_state.view_height;
 }
 
 float
 GetRenderScale(void)
 {
-    return ui_dpi_state.render_scale > 0.0f
-        ? ui_dpi_state.render_scale : ui_dpi_state.ui_scale_clamped;
+    return dpi_state.render_scale > 0.0f
+        ? dpi_state.render_scale : dpi_state.ui_scale_clamped;
 }

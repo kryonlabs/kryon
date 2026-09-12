@@ -60,7 +60,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)Scale(56)};
-    UIWidget widget;
+    Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int mx = (int)mouse_world.x;
     int label_font = GetFontSize();
@@ -76,12 +76,12 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     Rectangle hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     float t;
 
-    widget = BeginUIWidget("slider",
+    widget = BeginWidget("slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "slider", id, label),
                            editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     editor_bounds = widget.bounds;
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
@@ -92,7 +92,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     knob_y = track_y - (knob_h - SliderTrackSize(0, runtime_scale)) / 2;
     hit = ui_centered_min_hit_rect(x, knob_y, w, knob_h, w, min_touch_h);
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)Scale(56)};
-    UIWidgetSetBounds(&widget, editor_bounds);
+    WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -111,7 +111,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
 
     t = max > min ? (float)(*value - min) / (float)(max - min) : 0.0f;
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
+    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
             g_ui_slider_active_id = id;
@@ -151,7 +151,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         Metrics tokens;
         int active = g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !UIInputCapturesClick(mouse_world);
+                      !InputCapturesClick(mouse_world);
 
         ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
@@ -167,7 +167,7 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         }), hovered, active, UIContentDisabled());
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return changed;
 }
 
@@ -179,7 +179,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
                                (float)Scale(36), (float)h};
-    UIWidget widget;
+    Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -192,12 +192,12 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                              min_touch_w, h);
 
-    widget = BeginUIWidget("vertical_slider",
+    widget = BeginWidget("vertical_slider",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "vertical_slider", id, NULL),
                            editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     editor_bounds = widget.bounds;
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
@@ -209,14 +209,14 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
                                    min_touch_w, h);
     editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
                                 (float)Scale(36), (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
+    WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
        !IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
         g_ui_slider_active_id = 0;
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
+    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
@@ -248,7 +248,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
         Metrics tokens;
         int active = active_visual || g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !UIInputCapturesClick(mouse_world);
+                      !InputCapturesClick(mouse_world);
 
         ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
@@ -265,7 +265,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
         }), hovered, active, UIContentDisabled());
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return changed;
 }
 
@@ -286,13 +286,13 @@ ui_render_vertical_slider_active(int id, int x, int y, int h,
 int
 ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                                      int min, int max, int *value,
-                                     UIVerticalSliderMarkCallback callback,
+                                     SliderMarkCallback callback,
                                      void *callback_user_data)
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)(x - Scale(18)), (float)y,
                                (float)Scale(36), (float)h};
-    UIWidget widget;
+    Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int my = (int)mouse_world.y;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
@@ -305,13 +305,13 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     Rectangle hit = ui_centered_min_hit_rect(x - track_w / 2, y, track_w, h,
                                              min_touch_w, h);
 
-    widget = BeginUIWidget("vertical_slider_marks",
+    widget = BeginWidget("vertical_slider_marks",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "vertical_slider_marks", id,
                                                  NULL),
                            editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     editor_bounds = widget.bounds;
     x = (int)(editor_bounds.x + editor_bounds.width * 0.5f);
     y = (int)editor_bounds.y;
@@ -323,7 +323,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
                                    min_touch_w, h);
     editor_bounds = (Rectangle){(float)(x - Scale(18)), (float)y,
                                 (float)Scale(36), (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
+    WidgetSetBounds(&widget, editor_bounds);
 
     if(g_ui_slider_active_id == id &&
        !IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
@@ -333,7 +333,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     if(callback != NULL)
         callback(callback_user_data, x, y, h, min, max, *value);
 
-    if(CheckCollisionPointRec(mouse_world, hit) && !UIInputCapturesClick(mouse_world)) {
+    if(CheckCollisionPointRec(mouse_world, hit) && !InputCapturesClick(mouse_world)) {
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
@@ -365,7 +365,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         Metrics tokens;
         int active = g_ui_slider_active_id == id;
         int hovered = CheckCollisionPointRec(mouse_world, hit) &&
-                      !UIInputCapturesClick(mouse_world);
+                      !InputCapturesClick(mouse_world);
 
         ui_runtime_theme_values(&palette, &tokens);
         ui_draw_slider_paint(SliderPaintFor((SliderSpec){
@@ -382,7 +382,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         }), hovered, active, UIContentDisabled());
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return changed;
 }
 
@@ -392,7 +392,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
 {
     char editor_id[96];
     Rectangle editor_bounds = {(float)x, (float)y, (float)w, (float)h};
-    UIWidget widget;
+    Widget widget;
     Vector2 mouse_world = ui_mouse_world();
     int min_touch = ui_touch_target_min();
     int font = GetFontSize();
@@ -416,12 +416,12 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         h = min_h;
 
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    widget = BeginUIWidget("toggle",
+    widget = BeginWidget("toggle",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "toggle", 0, off_text),
                            editor_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     editor_bounds = widget.bounds;
     x = (int)editor_bounds.x;
     y = (int)editor_bounds.y;
@@ -432,12 +432,12 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     if(h < min_h)
         h = min_h;
     editor_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    UIWidgetSetBounds(&widget, editor_bounds);
+    WidgetSetBounds(&widget, editor_bounds);
 
     bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
     enabled = value != NULL && !UIContentDisabled();
     hovered = CheckCollisionPointRec(mouse_world, bounds) &&
-              !UIInputCapturesClick(mouse_world);
+              !InputCapturesClick(mouse_world);
     down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hovered) {
@@ -451,10 +451,10 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
 
     if(pressed) {
         *value = !*value;
-        UIConsumeRelease();
+        ConsumeRelease();
     }
     if(!can_draw) {
-        EndUIWidget(&widget);
+        EndWidget(&widget);
         return pressed;
     }
 
@@ -550,7 +550,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         }
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return pressed;
 }
 
@@ -559,7 +559,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                              int *value, int disabled)
 {
     char editor_id[96];
-    UIWidget widget;
+    Widget widget;
     int font = GetFontSize();
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int slot_size = CheckboxSlotSize(runtime_scale);
@@ -572,17 +572,17 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     int pressed;
     int can_draw = IsWindowReady();
 
-    widget = BeginUIWidget("checkbox",
+    widget = BeginWidget("checkbox",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
                                                  "checkbox", 0, label),
                            bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     bounds = widget.bounds;
     x = (int)bounds.x;
     y = (int)bounds.y;
 
-    if(CheckCollisionPointRec(mouse_world, bounds) && !UIInputCapturesClick(mouse_world)) {
+    if(CheckCollisionPointRec(mouse_world, bounds) && !InputCapturesClick(mouse_world)) {
         if(disabled)
             MarkDisabled();
         else
@@ -590,14 +590,14 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
     }
 
     pressed = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-              !UIInputCapturesClick(mouse_world) &&
+              !InputCapturesClick(mouse_world) &&
               IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     if(pressed) {
         *value = !(*value);
-        UIConsumeRelease();
+        ConsumeRelease();
     }
     if(!can_draw) {
-        EndUIWidget(&widget);
+        EndWidget(&widget);
         return pressed;
     }
 
@@ -605,8 +605,8 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
         Palette palette;
         Metrics tokens;
         int hovered = CheckCollisionPointRec(mouse_world, bounds) && !disabled &&
-                      !UIInputCapturesClick(mouse_world) &&
-                      UIHoverEffectsEnabled();
+                      !InputCapturesClick(mouse_world) &&
+                      HoverEffectsEnabled();
         int down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
         CheckboxPaint paint;
 
@@ -648,7 +648,7 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
                    font, GetColor(paint.label_color));
     }
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     return pressed;
 }
 

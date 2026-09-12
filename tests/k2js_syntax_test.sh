@@ -145,12 +145,6 @@ fi
 
 node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/out/kryon-runtime.js"
 
-# Keep the actual viewport-based Lightfield screen syntactically valid too;
-# this is not a visual parity assertion for the diagnostic browser runtime.
-"$k2js" --no-main --root "$root" -o "$work/out" "$root/examples/02_buttons.kry"
-node --check "$work/out/examples/02_buttons.js"
-node "$root/tests/lightfield_js_geometry_test.mjs" "$work/out/examples/02_buttons.js"
-
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
     value: i32

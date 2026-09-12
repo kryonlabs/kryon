@@ -48,6 +48,36 @@ export interface RuntimeItem {
   text?: string;
 }
 
+export interface WebDocumentNode {
+  index: number;
+  kind: string;
+  tag: string;
+  key: string;
+  name: string;
+  classes: string[];
+  text: string;
+  href: string;
+  inputType: string;
+  alt: string;
+  asset: string;
+  bounds: { x: number; y: number; width: number; height: number };
+  hasBounds: boolean;
+  state: {
+    disabled: boolean;
+    loading: boolean;
+    selected: boolean;
+    checked: boolean;
+    invalid: boolean;
+    expanded: boolean;
+    open: boolean;
+  };
+}
+
+export interface WebDocumentFrame {
+  app: AppMeta | null;
+  nodes: WebDocumentNode[];
+}
+
 export interface Ref<T = unknown> {
   value: T;
   object: Record<string, T> | null;
@@ -100,6 +130,7 @@ export function recordValue<T>(type: string, value: T): T;
 export function ref<T>(object: Record<string, T>, key: string): Ref<T>;
 export function stateForModule(name?: string): Record<string, unknown>;
 export function hostCall(host: unknown, method: string, args?: unknown[]): unknown;
+export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
 export function Color(r?: number, g?: number, b?: number, a?: number): ColorValue;
 export function NewVector2(x?: number, y?: number): { x: number; y: number };
@@ -113,9 +144,9 @@ export function Key(value: unknown): string;
 export function Scale(value: number): number;
 export function GetScreenWidth(): number;
 export function GetScreenHeight(): number;
-export function GetUIViewWidth(): number;
-export function GetUIViewHeight(): number;
-export function GetUIPageSidePadding(): number;
+export function GetViewWidth(): number;
+export function GetViewHeight(): number;
+export function GetPageSidePadding(): number;
 export function GetThemeBackground(): ColorValue;
 export function GetThemeSurface(): ColorValue;
 export function GetThemeText(): ColorValue;
@@ -134,8 +165,8 @@ export function GetThemeIcon(): ColorValue;
 export function GetThemeLink(): ColorValue;
 export function SystemThemePrefersDark(): boolean;
 export function Fade(color: ColorValue, alpha: number): ColorValue;
-export function DarkenUIColor(color: ColorValue, amount: number): ColorValue;
-export function LightenUIColor(color: ColorValue, amount: number): ColorValue;
+export function DarkenColor(color: ColorValue, amount: number): ColorValue;
+export function LightenColor(color: ColorValue, amount: number): ColorValue;
 export function TextFormat(format: string, ...values: unknown[]): string;
 export function GetUIClipboardTextValue(): string;
 export function UpdateFileDialog(...args: unknown[]): number;
@@ -143,10 +174,6 @@ export function IsKeyPressed(key: number): boolean;
 export function IsKeyDown(key: number): boolean;
 export function IsMouseButtonReleased(button: number): boolean;
 export function GetThemeMetrics(): Record<string, unknown>;
-export function BeginFrameBox(bounds: unknown): Record<string, unknown>;
-export function FramePack(frame: unknown, side: number, size: number): Record<string, unknown>;
-export function GridCell(grid: unknown, column: number, row: number, columnSpan?: number, rowSpan?: number): Record<string, unknown>;
-export function Place(bounds: unknown, item: unknown): Record<string, unknown>;
 export function BeginScrollContainer(...args: unknown[]): unknown;
 export function CanvasHitTest(canvas: unknown, screen: unknown): Record<string, unknown>;
 
@@ -226,10 +253,6 @@ export const ButtonStateFocus: number;
 export const ButtonStateDisabled: number;
 export const ButtonStateLoading: number;
 export const ButtonStateSelected: number;
-export const SideTop: number;
-export const SideBottom: number;
-export const SideLeft: number;
-export const SideRight: number;
 export const KeyTab: number;
 export const KeyBackspace: number;
 export const KeyRight: number;
@@ -263,6 +286,7 @@ export function BottomNav(...args: unknown[]): unknown;
 export function Button(...args: unknown[]): unknown;
 export function Card(...args: unknown[]): unknown;
 export function BeginButton(...args: unknown[]): unknown;
+export function BeginCanvas(canvas: unknown): Record<string, unknown>;
 export function CanvasGrid(...args: unknown[]): unknown;
 export function Checkbox(...args: unknown[]): unknown;
 export function ClearBackground(...args: unknown[]): unknown;

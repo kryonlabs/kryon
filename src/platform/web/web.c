@@ -534,8 +534,8 @@ SyncWebWindowSize(void)
         return 0;
 
     SetWindowSize(width, height);
-    SetUIViewSize(width, height);
-    UpdateUIDPI(width, height);
+    SetViewSize(width, height);
+    UpdateDPI(width, height);
     pending_width = 0;
     pending_height = 0;
     stable_frames = 0;

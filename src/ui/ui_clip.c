@@ -1,13 +1,13 @@
 #include "ui_clip_internal.h"
 #include <string.h>
 
-static Rectangle g_ui_clip_stack[UI_CLIP_STACK_MAX];
+static Rectangle g_ui_clip_stack[CLIP_STACK_MAX];
 static int g_ui_clip_stack_count = 0;
 
-UIClipState
+ClipState
 ui_clip_save(void)
 {
-    UIClipState state = {0};
+    ClipState state = {0};
     state.count = g_ui_clip_stack_count;
     memcpy(state.bounds,g_ui_clip_stack,(size_t)state.count*sizeof(Rectangle));
     return state;
@@ -22,9 +22,9 @@ ui_clip_current(Rectangle *bounds)
 }
 
 void
-ui_clip_restore(UIClipState state)
+ui_clip_restore(ClipState state)
 {
-    ResetUIClip();
+    ResetClip();
     g_ui_clip_stack_count = state.count;
     memcpy(g_ui_clip_stack,state.bounds,(size_t)state.count*sizeof(Rectangle));
     if(state.count > 0) {
@@ -34,7 +34,7 @@ ui_clip_restore(UIClipState state)
 }
 
 Rectangle
-GetUIClipIntersection(Rectangle a, Rectangle b)
+GetClipIntersection(Rectangle a, Rectangle b)
 {
     float x1 = a.x > b.x ? a.x : b.x;
     float y1 = a.y > b.y ? a.y : b.y;
@@ -50,16 +50,16 @@ GetUIClipIntersection(Rectangle a, Rectangle b)
 }
 
 Rectangle
-GetUIClipEffective(Rectangle bounds)
+GetClipEffective(Rectangle bounds)
 {
     if(g_ui_clip_stack_count > 0)
-        bounds = GetUIClipIntersection(g_ui_clip_stack[g_ui_clip_stack_count - 1],
+        bounds = GetClipIntersection(g_ui_clip_stack[g_ui_clip_stack_count - 1],
                                          bounds);
     return bounds;
 }
 
 void
-BeginUIClip(int x, int y, int w, int h)
+BeginClip(int x, int y, int w, int h)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
 
@@ -68,8 +68,8 @@ BeginUIClip(int x, int y, int w, int h)
     if(h < 0)
         bounds.height = 0;
 
-    bounds = GetUIClipEffective(bounds);
-    if(g_ui_clip_stack_count < UI_CLIP_STACK_MAX)
+    bounds = GetClipEffective(bounds);
+    if(g_ui_clip_stack_count < CLIP_STACK_MAX)
         g_ui_clip_stack[g_ui_clip_stack_count++] = bounds;
 
     BeginScissorMode((int)bounds.x, (int)bounds.y,
@@ -77,7 +77,7 @@ BeginUIClip(int x, int y, int w, int h)
 }
 
 void
-EndUIClip(void)
+EndClip(void)
 {
     EndScissorMode();
     if(g_ui_clip_stack_count > 0)
@@ -90,7 +90,7 @@ EndUIClip(void)
 }
 
 void
-ResetUIClip(void)
+ResetClip(void)
 {
     if(IsWindowReady()) EndScissorMode();
     g_ui_clip_stack_count = 0;

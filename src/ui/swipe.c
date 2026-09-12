@@ -126,7 +126,7 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
             result.progress = primary / min_distance;
             if(result.progress > 1.0f)
                 result.progress = 1.0f;
-            PushUIInputCapture((Rectangle){0.0f, 0.0f,
+            PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
         }
@@ -144,8 +144,8 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
                           elapsed <= (double)spec.max_duration;
 
         if(gesture->dragging) {
-            UIConsumeRelease();
-            PushUIInputCapture((Rectangle){0.0f, 0.0f,
+            ConsumeRelease();
+            PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
         }

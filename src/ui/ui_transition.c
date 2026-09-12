@@ -1,23 +1,7 @@
 #include "ui_transition.h"
+#include "runtime/transition_fade.h"
 
 #include <stddef.h>
-
-static float
-ClampTransitionProgress(float value)
-{
-    if(value < 0.0f)
-        return 0.0f;
-    if(value > 1.0f)
-        return 1.0f;
-    return value;
-}
-
-static float
-SmoothTransitionProgress(float value)
-{
-    value = ClampTransitionProgress(value);
-    return value * value * (3.0f - 2.0f * value);
-}
 
 void
 ResetTransition(TransitionState *transition)
@@ -35,12 +19,10 @@ BeginTransition(TransitionState *transition, float duration_seconds)
 {
     if(transition == NULL)
         return;
-    if(duration_seconds <= 0.0f)
-        duration_seconds = 0.001f;
     transition->active = 1;
     transition->phase = TRANSITION_OUT;
     transition->elapsed_seconds = 0.0f;
-    transition->duration_seconds = duration_seconds;
+    transition->duration_seconds = TransitionDuration(duration_seconds);
 }
 
 void
@@ -50,25 +32,19 @@ ReverseTransitionToOut(TransitionState *transition)
         return;
     if(transition->phase == TRANSITION_IN) {
         transition->phase = TRANSITION_OUT;
-        transition->elapsed_seconds = transition->duration_seconds - transition->elapsed_seconds;
-        if(transition->elapsed_seconds < 0.0f)
-            transition->elapsed_seconds = 0.0f;
+        transition->elapsed_seconds = TransitionReverseElapsed(
+            transition->duration_seconds, transition->elapsed_seconds);
     }
 }
 
 float
 GetTransitionAlpha(const TransitionState *transition)
 {
-    float progress;
-
-    if(transition == NULL || !transition->active || transition->duration_seconds <= 0.0f)
+    if(transition == NULL)
         return 0.0f;
-    progress = SmoothTransitionProgress(transition->elapsed_seconds / transition->duration_seconds);
-    if(transition->phase == TRANSITION_OUT)
-        return progress;
-    if(transition->phase == TRANSITION_IN)
-        return 1.0f - progress;
-    return 0.0f;
+    return TransitionAlpha(transition->active != 0, transition->phase,
+                           transition->elapsed_seconds,
+                           transition->duration_seconds);
 }
 
 int
@@ -77,9 +53,7 @@ StepTransition(TransitionState *transition, float delta_seconds)
     if(transition == NULL || !transition->active)
         return TRANSITION_NONE;
 
-    if(delta_seconds < 0.0f)
-        delta_seconds = 0.0f;
-    transition->elapsed_seconds += delta_seconds;
+    transition->elapsed_seconds += TransitionDelta(delta_seconds);
     if(transition->elapsed_seconds < transition->duration_seconds)
         return TRANSITION_NONE;
 
@@ -101,12 +75,13 @@ RenderTransitionFade(const TransitionState *transition,
 
     if(transition == NULL || !transition->active)
         return;
-    alpha = (int)(GetTransitionAlpha(transition) * 255.0f);
+    alpha = TransitionFadeAlphaByte(transition->active != 0,
+                                    transition->phase,
+                                    transition->elapsed_seconds,
+                                    transition->duration_seconds);
     if(alpha <= 0)
         return;
-    if(alpha > 255)
-        alpha = 255;
-    color.a = (unsigned char)(((int)color.a * alpha) / 255);
+    color.a = (unsigned char)TransitionApplyAlpha((int)color.a, alpha);
     if(color.a == 0)
         return;
     DrawRectangle(0, 0, width, height, color);

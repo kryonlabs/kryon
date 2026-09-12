@@ -99,7 +99,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
     density: float = GetWindowScaleDPI().x
     if density > viewport.width / 1120.0f { density = viewport.width / 1120.0f }
     if density > viewport.height / 640.0f { density = viewport.height / 640.0f }
-    SetUIScale(density)
+    SetScale(density)
     SetExitKey(KEY_NULL)
     if !FileExists(image_path) {
         image_path = "../icons/tiles.png"
@@ -149,11 +149,13 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={Scale(20), (int)viewport.height - Scale(52), 0, 0}, .text="Wheel to scroll", .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={Scale(20), (int)viewport.height - Scale(30), 0, 0}, .text=TextFormat("Clicks: %d", action_count), .font=Text14, .color=GetThemeIcon(), .wrap=TextWrapNone})
 
-        area: ScrollArea = {{Scale(236), Scale(82), (int)viewport.width - Scale(252), (int)viewport.height - Scale(100)}, Scale(category_heights[category]), Scale(252), (int)viewport.width - Scale(292), &scroll_off, Scale(42), 0}
-        view: ScrollView = BeginScrollContainer(area)
-        x: int = view.content_x
-        right: int = x + Scale(410)
-        y: int = view.content_y
+        Scroll catalog_content: {
+        bounds = {Scale(236), Scale(82), (int)viewport.width - Scale(252), (int)viewport.height - Scale(100)}
+        content_height = Scale(category_heights[category])
+        scroll_offset = &scroll_off
+        x: float = catalog_content.x + Scale(16)
+        right: float = x + Scale(410)
+        y: float = catalog_content.y
 
         if category == 0 {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="DISPLAY AND MEDIA", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
@@ -400,7 +402,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="CANVAS", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
         canvas_bounds: Rectangle = {x,y + Scale(38),Scale(360),Scale(120)}
         mouse: Vector2 = GetMousePosition()
-        if CheckCollisionPointRec(mouse, canvas_bounds) && !UIInputCapturesClick(mouse) {
+        if CheckCollisionPointRec(mouse, canvas_bounds) && !InputCapturesClick(mouse) {
             wheel: float = GetMouseWheelMove()
             if wheel != 0 {
                 canvas_zoom = Clamp(canvas_zoom + wheel * 0.1f, 0.25f, 4.0f)
@@ -416,11 +418,15 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             canvas_last = mouse
             if IsMouseButtonReleased(MOUSE_BUTTON_LEFT) { canvas_dragging = 0 }
         }
-        canvas_result: CanvasResult = BeginCanvas((Canvas){{x, y + Scale(38), Scale(360), Scale(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
-        CanvasGrid((Rectangle){x, y + Scale(38), Scale(360), Scale(120)}, 12, GetThemeIcon())
-        Circle(x + Scale(180), y + Scale(98), Scale(16), GetThemeLink())
-        unused canvas_result
-        EndCanvas((Canvas){{x, y + Scale(38), Scale(360), Scale(120)}, &canvas_scroll_x, &canvas_scroll_y, &canvas_zoom})
+        Canvas canvas_result: {
+            bounds = {x, y + Scale(38), Scale(360), Scale(120)}
+            scroll_x = &canvas_scroll_x
+            scroll_y = &canvas_scroll_y
+            zoom = &canvas_zoom
+            CanvasGrid((Rectangle){x, y + Scale(38), Scale(360), Scale(120)}, 12, GetThemeIcon())
+            Circle(x + Scale(180), y + Scale(98), Scale(16), GetThemeLink())
+            unused canvas_result
+        }
         Text((TextProps){.bounds={right, y + Scale(56), 0, 0}, .text="Wheel to zoom; drag the canvas to pan.", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
 
         }
@@ -513,7 +519,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
                 SetCurrentTheme(theme_id, dark_mode)
             }
         }
-        EndScrollContainer(area, view)
+        }
 
         if dialog == 1 {
             message_actions: [1] ModalAction = {{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}

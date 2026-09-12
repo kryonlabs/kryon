@@ -1,740 +1,1047 @@
-# Kryon Style Separation Plan
+# Kryon KSS Styling Plan
 
-Status: open proposals — staged plan\
-Scope: removing visual styling 100% from widget props and widget implementations, and adding a limited CSS-class styling layer to Kryon\
-Rule: widgets own structure, input, state, and measurement; the style layer owns every visual value; one implementation; C/Go parity; no compatibility aliases
+Status: recommended architecture\
+Scope: detach visual styling from Kryon widgets and make KSS the single app-facing styling system\
+Rule: widgets own structure and behavior; KSS owns every visual value; no implicit product styling
 
-Kryon widgets still do two jobs. They own widget behavior — identity, input,
-state, layout, and content — and they also carry or assemble visual styling:
-colors, radii, spacing, typography, materials, and state appearance. This
-plan defines what 100% separation means, inventories where styling leaks into
-widgets today, and details five proposals for a limited CSS-class styling
-layer inside Kryon. All five proposals lower into the existing `StyleData`,
-`MergeValues`, and `ResolveValues` machinery in `runtime/style.kry`; they
-differ only in how style values reach a widget instance. Rendering, materials,
-and transition paths do not fork between proposals.
+Kryon should become a powerful CSS alternative, not a smaller copy of browser
+CSS. The goal is a semantic UI runtime where widgets expose facts, state, and
+layout contracts, while a typed style program decides how those facts look.
+The runtime may ship excellent style packs, but app UI receives no decorative
+styling unless a pack is explicitly attached.
 
-## 1. Goal
+This document replaces the older menu of competing proposals with one target:
+KSS, a deterministic stylesheet system for Kryon.
 
-- Widget code contains zero visual decisions. A widget implementation decides
-  *what* it is (kind, identity, content, state, input, measurement) and never
-  *how it looks* (no colors, radii, paddings, font sizes, opacities, or
-  materials chosen in widget code).
-- One styling path per widget family, expressed as shared `.kry` policy, in
-  the established `DefaultButtonStyle` pattern from `runtime/button.kry`.
-- App-facing styling that reads like a limited CSS: closed property
-  vocabulary, class- and name-based targeting, state variants, theme-token
-  values, cascade limited enough to stay deterministic and testable.
-- Styling works identically in C, Go, JS, and KRB, is hot-reloadable through
-  `kryon-preview`, and degrades cleanly on the `termi` cell backend.
-- Enforcement by scanners and capture boards, so separation cannot regress.
+## 1. North star
 
-## 2. Definition of done — the separation contract
-
-| Rule | Requirement |
-|---|---|
-| S1 | No public widget props struct carries a raw visual field. `Color`, radius, padding, gap, font size, opacity, material, and typeface do not appear in `*Props`. Props carry identity, behavior, content pointers, and semantic enums (tone, emphasis, size, role, state) plus at most one style reference (see proposals). |
-| S2 | Every widget family resolves visuals through one pure shared policy function in `runtime/<widget>.kry`: `Default<Widget>Style(semantics, state, Palette, Metrics) -> StyleData`. |
-| S3 | Every visual value originates from a theme token (`Palette`, `Metrics`) or a style rule. Raw literals are legal only inside style rules and theme definitions, never at widget call sites. |
-| S4 | State appearance for all widgets is selected by `runtime/style.kry` (`ResolveState`, `ResolveValues`); no widget re-implements state precedence. |
-| S5 | Paint code consumes resolved `StyleData` through the shared surface/material path (`runtime/surface.kry`, `runtime/material.kry`). Widget `.c` files do not call `GetTheme*` getters to assemble visuals. |
-| S6 | The identical rule set and resolution run in C, Go, JS, and KRB — rules are compiled to data, not re-parsed per backend — guarded by the existing parity gates. |
-| S7 | `scripts/check-style-separation.py` enforces S1 and S5 inside `make test`, and a per-family capture board renders every state in light and dark themes. |
-
-"100% separated" means S1–S7 hold with zero scanner exemptions. Anything a
-widget currently does with a `Color` either becomes a semantic enum, a style
-rule, or a theme token.
-
-## 3. Current state
-
-### 3.1 Already separated
-
-| Concern | Owner | Status |
-|---|---|---|
-| Semantic palette (29 colors: surfaces, text tiers, accent/semantic pairs, focus, selection, shadow) | `runtime/theme.kry` `Palette`, mirrored by `ThemeColors` in `include/theme.h` | separated |
-| Metrics (radii, spacing scale, control heights/paddings, type and icon scale, shadow, timings) | `runtime/theme.kry` `Metrics`, mirrored by `ThemeMetrics` in `include/ui_controls.h` | separated |
-| State precedence (disabled > loading > pressed > hovered > focused > selected > normal) and explicit-state overrides | `runtime/style.kry` `ResolveState` / `ResolveInteraction` | separated |
-| Presence-bit style merge (a field is set or absent; transparent is a value, not "unset") | `runtime/style.kry` `StyleData`, `MergeValues`, `ResolveValues`; field bits in `runtime/control_props.kry` `StyleField` | separated |
-| Button reference styling (tone x emphasis x size x state, pill/circle shapes) | `runtime/button.kry` `DefaultButtonStyle` | separated for the Button family; other families still adapting |
-| Materials (flat, lightfield, glass), focus track, shadows, glow | `runtime/surface.kry`, `runtime/material.kry` | separated |
-| State transitions and motion | `runtime/style.kry` `TransitionFrame`, `InteractionMotion` | separated |
-| Theme files, named scopes, INI persistence, export/import | `themes/*.ini`, `ThemeScope` API in `include/theme.h` | separated, but colors only |
-
-### 3.2 Where styling still leaks into widgets
-
-| Leak | Location | Symptom |
-|---|---|---|
-| Inline override table in props | `ButtonProps.style: ControlStyle` (`include/ui_button_props.generated.h` from `runtime/button_props.kry`) | A full seven-state style table travels inside a widget call; callers hand-assemble appearance at every call site |
-| Raw-color input styling | `TextInputStyle` in `include/ui_controls.h`, embedded in `TextInputProps`, `TextFieldProps`, `TextAreaProps`, `ReadonlyTextBoxProps` | `background`, `border`, `focus_border`, `text`, `cursor`, `radius`, `padding_x/y` are props |
-| Raw text colors | `TextProps.color` (`include/ui_text.h`); retained `primitive.color`/`primitive.border` (`include/ui_tree.h`) | Every text call site picks a color by hand; theme-aware text requires reading the palette in layout code |
-| Row, link, and page colors | `label_color`/`color` in `include/ui_rows.h`; `background`/`hover_color` in `include/ui_page.h` | Widgets accept one-off colors with no token vocabulary |
-| Alpha-zero-means-default fallbacks | For example `src/ui/button.c`: `background.a != 0 ? background : c_button` | Widget code invents defaults and precedence; transparent cannot be distinguished from unset |
-| Direct theme reads inside widget paint paths | 38 `GetTheme*` calls across `src/ui/*.c` | Widgets assemble their own visuals instead of consuming resolved `StyleData` |
-| Inline style literals in app code | `examples/02_buttons.kry` constructs `(Style){...}` at call sites and reads `chrome.colors.*` in layout code | Styling decisions live mixed into layout code |
-| No rule layer at all | — | The same override is retyped per call site; nothing corresponds to a CSS rule, class, or scoped theme |
-
-The leaks are cumulative: props carry style values, widget code fills gaps
-with hardcoded fallbacks, and apps bypass policy by inlining literals.
-Removing the props channel without adding a rule layer would force more
-hardcoded defaults, so the two moves must be staged together.
-
-## 4. Shared constraints and the resolution spine
-
-Every proposal must satisfy these constraints, taken from the repository
-rules and the existing runtime shape:
-
-1. **One spine.** Style resolution is always:
-   `defaults -> rule/class merge -> state select -> transition -> paint`.
-   The merge step is the existing presence-bit `MergeValues`; state selection
-   is `ResolveValues`; transition is `TransitionFrame`. Proposals differ only
-   in how the *rule/class merge* inputs are declared and stored.
-2. **Closed property vocabulary.** Properties are exactly the 16 `StyleField`
-   values (`background`, `foreground`, `border`, `focus`, `radius`,
-   `border_width`, `opacity`, `padding_x/y`, `gap`, `font_size`, `icon_size`,
-   `content_offset`, `background_end`, `material`, `typeface`) plus the
-   semantic switches `tone`, `emphasis`, `size`, and text `role`. Adding a
-   property is a runtime + parity change in the same commit (Test Rule).
-3. **Tokens before literals.** Rule values reference theme tokens (`@accent`,
-   `@space_4`, `@radius_medium`). Light/dark switching happens in the
-   palette, never in rules.
-4. **Immediate-mode safe.** Rules match on stable, interned identity
-   (widget kind, class name, node name) — never on pointers or call order.
-   Resolution output is cacheable per frame and invalidatable on theme or
-   rule change.
-5. **Backend degradation, not forking.** Rule resolution is backend
-   independent. `termi` collapses geometry (radius, border, material) and
-   maps colors to cells; `canvas`/`dom`/`libdraw` consume the same resolved
-   `StyleData` they consume today.
-6. **Compiled, not re-parsed.** Shipped apps embed rule tables as data
-   (KIR constants / generated C/Go). Text parsing exists only in
-   `kryon-preview` and `krb-run` for hot reload.
-7. **Clean naming.** The surface uses domain names (`Style`, `Theme`,
-   `Surface`, tone/emphasis/role). No invented prefix, no CSS jargon that
-   does not map to a Kryon concept.
-8. **Widgets keep ownership of state.** Hover, press, focus, and selection
-   are input facts owned by widgets; rules only describe how a state looks.
-
-The five proposals below are ordered from "least new surface" to "most new
-surface". They are not mutually exclusive; section 11 stages them.
-
-## 5. Proposal A — Token-only semantic styling (no override channel)
-
-### Concept
-
-Finish the direction `docs/WIDGET_STYLING.md` already describes: props carry
-only semantic enums, and every visual value is a function of
-`(semantics, state, Palette, Metrics)` computed by shared policy. There is no
-per-instance style override surface at all — the theme plus the semantic
-vocabulary is the entire styling system. This is the "no CSS" baseline that
-every other proposal needs anyway.
-
-### Surface
+Kryon UI should feel like this:
 
 ```kry
-Button save { label = "Save"; tone = Accent; emphasis = Filled }
-Button undo { label = "Undo"; tone = Neutral; emphasis = Ghost; size = Small }
-Text title { text = "Account"; role = Title }
-Text hint  { text = "Optional"; role = Caption }
-TextField name { placeholder = "Name"; tone = Neutral }
-```
+#style "app.kss"
 
-C mirrors this exactly: `ButtonProps` keeps `tone`, `emphasis`, `size`,
-`state`; loses `style`. `TextInputStyle` is deleted; input widgets gain
-`tone`/`size`. `TextProps.color`/`.border` are replaced by the `role` system
-already proposed for Text in `docs/TEXT_NODE_PROPOSALS.md`.
+App {
+    Column account {
+        Text title {
+            text = "Account"
+            role = Title
+        }
 
-### Code changes
+        TextField email {
+            value = account_email
+            placeholder = "Email"
+            class = "field"
+        }
 
-- Extend the semantic vocabulary where apps need it: one `Tone` list shared by
-  all controls (neutral, accent, danger, success, warning, info, link), the
-  existing `Emphasis` list, the existing `ControlSize` list, and Text roles.
-- Write `Default<Widget>Style` for every family that lacks one (inputs, rows,
-  href, card, slider, toggle, checkbox, radio, progress, separator) in its
-  `runtime/<widget>.kry`, all consuming `Palette`/`Metrics` only.
-- Delete raw visual fields from props: `ButtonProps.style`,
-  `TextInputStyle` (four structs), `TextProps.color/border`, row and page
-  colors. Update `runtime/*_props.kry`, regenerate headers, migrate callers.
-- Replace the 38 paint-time `GetTheme*` calls in `src/ui/*.c` with resolved
-  `StyleData` consumption.
-- One-off looks become theme scopes (existing `RegisterThemeScope`) or new
-  semantic enum values — decided in Kryon, not per call site.
+        Row actions {
+            Button cancel {
+                label = "Cancel"
+                class = "quiet"
+            }
 
-### Migration
-
-Breaking change to props structs. Migrate `examples/`, then downstream apps
-(kapsule, inbe, krait, uku, atr) with one submodule pointer bump each after
-the Kryon commit lands on master.
-
-### Performance, parity, testing
-
-Zero runtime cost — resolution is the existing pure functions. Parity risk is
-low (no new runtime semantics). Capture boards per family plus the new
-scanner are the regression gate.
-
-### Assessment
-
-- Pros: complete separation by construction; smallest possible surface;
-  trivially parity-stable; zero runtime cost; no new language or file format;
-  matches the published Button contract.
-- Cons: no per-instance customization; every real one-off look becomes an
-  enum or theme-scope request; downstream apps with brand-specific screens
-  may push back; vocabulary growth becomes the release valve and needs
-  review discipline.
-- Effort: medium (mostly migration). Risk: low.
-
-## 6. Proposal B — Named style registry (classes without selectors)
-
-### Concept
-
-Add exactly one override channel: named styles, registered once and referenced
-by name — the moral equivalent of a CSS class, without any selector engine. A
-style is data declared beside the UI, resolved at registration, and merged
-over widget defaults by the existing `MergeValues`. Call sites stop carrying
-inline tables and start carrying a name.
-
-### Surface
-
-`.kry` top-level declaration (compiled to a static table by `k2c`/`k2go`):
-
-```kry
-Style danger-cta: ControlStyle {
-    normal  = (Style){.background = @danger, .foreground = @on_danger}
-    hover   = (Style){.background = @danger_pressed}
-    pressed = (Style){.background = @danger_pressed, .opacity = 0.9}
-}
-
-Button delete-account { label = "Delete account"; style = "danger-cta" }
-```
-
-C host API (also mirrored in `go/kryon`):
-
-```c
-bool RegisterStyle(const char *name, ControlStyle style);   /* app or generated code */
-const ControlStyle *FindStyle(const char *name);            /* NULL = no such style */
-void ClearStyles(void);                                     /* tests and reloads */
-```
-
-`ButtonProps` and friends gain a single borrowed `const char *style` field.
-The inline `ControlStyle style` table field is removed (S1 still holds: a
-name is a reference, not a visual value).
-
-### Resolution pipeline
-
-1. Widget defaults from Proposal A policy: `Default<Widget>Style(...)`.
-2. Registry lookup by name; merge the found `ControlStyle`'s state slice via
-   the existing `ResolveValues`/`MergeValues`.
-3. State select and transition as today.
-
-Resolution cost is one hash lookup per widget per frame, or zero when the
-table is static and names are interned at generation time.
-
-### Code changes
-
-- New `runtime/style_registry.kry` policy module (intern table, lookup,
-  merge order) so C, Go, and JS share one implementation.
-- `k2c`/`k2cpp`/`k2go`: lower top-level `Style` declarations into generated
-  registration calls or static tables; extend the props-field mappings in
-  `cmd/kir/kir_parse.c` and `cmd/k2go/k2go_lower.c`.
-- Replace `ButtonProps.style` usage in examples with named styles.
-
-### Migration
-
-Additive first (registry + name field), then remove the inline table field in
-a second commit once callers move. Same downstream pointer-bump flow as A.
-
-### Performance, parity, testing
-
-Near-zero runtime cost. Parity: the table is data; both runtimes must produce
-identical merges — cover with the scripted parity harness on a board that
-uses named styles. Names are app-scoped; duplicate registration is an error
-at registration time, checked in tests.
-
-### Assessment
-
-- Pros: the smallest possible "limited CSS" step; reuses all existing
-  machinery; deterministic; compiles to data; natural fit for design-system
-  modules shared across apps.
-- Cons: no structural targeting (cannot say "all buttons in this panel");
-  string references can drift (mitigate by compile-time name checking in
-  `k2c`/`k2go`); still no locality between layout and style.
-- Effort: medium. Risk: low-medium (frontend lowering work in `k2c`/`k2go`).
-
-## 7. Proposal C — Tree-scoped cascade (`Style` nodes in `.kry`)
-
-### Concept
-
-Make `Style` a first-class node inside the UI tree. A `Style` node declares a
-rule; its position in the tree defines its scope — it applies to matching
-descendants of its parent container. This is the "limited CSS" proper: kind,
-class, and name targeting with state variants, scoped by structure, with a
-fixed specificity rule and no free-form cascade. It localizes styling where
-the structure lives, without an external file or a second language.
-
-### Surface
-
-```kry
-Column danger-zone {
-    Style Button        { tone = Danger; emphasis = Filled }
-    Style Button.cta    { radius = 2 }
-    Style .quiet        { emphasis = Ghost }
-    Style #confirm:hover { background = @danger_pressed; opacity = 0.9 }
-    Style TextField     { tone = Danger; padding_x = @space_4 }
-
-    Text title { text = "Danger zone"; role = Title }
-    TextField name { placeholder = "Type DELETE"; class = "quiet" }
-    Button confirm { label = "Delete account"; class = "cta"; tone = Danger }
+            Button save {
+                label = "Save"
+                tone = Accent
+                class = "primary"
+            }
+        }
+    }
 }
 ```
 
-Props gain one identity field: `class = "cta"` (a short class list; the
-`style = "name"` reference from Proposal B remains for whole-table reuse).
-
-### Selector grammar
-
-Deliberately small, defined once, identical across backends:
-
-```ebnf
-rule         = rule-target [ state-suffix ] ;
-rule-target  = kind | class | name | kind "." class ;
-kind         = "Button" | "TextField" | ... ;  (* widget kind names *)
-class        = "." identifier ;
-name         = "#" identifier ;
-state-suffix = ":" ( "hover" | "pressed" | "focused" |
-                     "selected" | "disabled" | "loading" ) ;
-```
-
-- Scope: a rule matches only descendants of the `Style` node's parent.
-- Specificity is fixed and total: `kind` < `.class` < `kind.class` < `#name`
-  (for example `Button.cta` beats both `Button` and `.cta`). Within equal
-  specificity, later source order wins. That is the
-  entire cascade — no parent or sibling combinators, no attribute selectors,
-  no media queries (light/dark is a palette concern), no inheritance of
-  layout.
-- State suffixes select the `ControlStyle` state slot the rule's values land
-  in; unsuffixed rules fill `normal` and remain present for merging.
-- Duplicate `#name` inside one scope is a compile error in `k2c`/`k2go` and a
-  runtime diagnostic in preview.
-
-### Property vocabulary
-
-Same closed set as section 4: the 16 `StyleField` properties, token
-references (`@accent`, `@radius_medium`, `@space_4`), literals, and the
-semantic switches (`tone`, `emphasis`, `size`, `role`). Unknown properties or
-tokens are compile errors, not warnings.
-
-### Resolution pipeline
-
-1. Hosts walk the frame as today. Entering a container collects its `Style`
-   child rules onto a scope stack; leaving the container pops them. This
-   mirrors the existing `#instance(key)` retention pattern — no new lifetime
-   model.
-2. For each widget instance, the resolver gathers candidate rules from the
-   scope stack (outermost first), orders them by the fixed specificity plus
-   source order, and merges their state slices over the Proposal A defaults
-   with `MergeValues`. Named-registry styles (Proposal B) merge before
-   cascade rules.
-3. `ResolveValues` selects the state slice; `TransitionFrame` interpolates.
-4. The retained tree stores resolved `StyleData` per instance, so repaint and
-   KRB serialization reuse identical values.
-
-Cache: resolved `StyleData` keyed by `(scope fingerprint, kind, classes,
-name, state)`. The fingerprint changes only when the scope stack, theme, or a
-rule changes — not per frame. Hot reload through `kryon-preview` invalidates
-fingerprints and re-resolves without rebuilding layout.
-
-Cost model: rules are few (tens, not thousands); matching is comparisons on
-interned strings, ordered once per scope entry. Worst case is
-`O(rules_in_scope x widgets_in_scope)` per fingerprint change, amortized to
-near zero in steady state.
-
-### Code changes
-
-- New `runtime/style_cascade.kry`: rule record, ordering predicate, scope
-  stack, gather-and-merge. One implementation shared by C, Go, and JS.
-- `cmd/kir/kir_parse.c`: parse `Style` child nodes and `class` props fields.
-- `cmd/k2c`, `cmd/k2cpp`, `cmd/k2go`, `cmd/k2js`: emit rule tables and scope
-  push/pop around container calls; extend props-field mappings.
-- `cmd/k2b`: serialize the rule table into the KRB cartridge.
-- `src/ui/ui_tree.c` and the retained tree: store resolved `StyleData` and
-  the scope fingerprint per instance.
-- `kryon-preview`: rule editing triggers fingerprint invalidation; the
-  inspector shows which rule contributed each field.
-
-### Migration
-
-Purely additive at first (`Style` nodes and `class` fields are optional).
-Once examples and apps express overrides as rules, the inline
-`ControlStyle` props channel is deleted (finishes Proposal A's S1). The
-`#name` targets use the node names `.kry` already has (`Button save { ... }`).
-
-### Performance, parity, testing
-
-- Parity harness drives a cascade-heavy board (nested scopes, class/kind/name
-  conflicts, state suffixes) through identical scripted input on C and Go.
-- Golden captures pin the resolved boards in light and dark themes.
-- Determinism tests: source order, specificity ties, scope shadowing, and
-  token indirection are unit-tested in `runtime/style_cascade.kry` output.
-- `termi` board proves geometry degradation.
-- Identity tests: repeated names across sibling scopes, class lists, name
-  reuse across frames.
-
-### Assessment
-
-- Pros: styling lives with structure; the familiar CSS mental model with the
-  dangerous parts removed; no new file format; scoped, cacheable,
-  deterministic; `.kry`-canonical (matches "new public widget behavior
-  starts in `.kry`"); enables deleting the last inline override channel.
-- Cons: the largest frontend change (parser, four backends, retained tree);
-  cascade semantics must be specified and policed against scope creep;
-  immediate-mode hosts must maintain the scope stack correctly.
-- Effort: large. Risk: medium — contained by sharing one `.kry` engine and
-  landing after A and B.
-
-## 8. Proposal D — Kryon style sheets (`.kss` external files)
-
-### Concept
-
-Move rules out of application source entirely into a separate style sheet
-file, the way CSS separates from HTML. The selector and property grammar is
-Proposal C's, unchanged; only the container differs — a file bound to the app
-by an import. Shipped apps compile the sheet into the same rule table C
-uses; only the preview tooling parses text at runtime.
-
-### Surface
-
-`brand.kss`:
+The `.kry` file says what the UI is. It does not say what color the button is,
+how round the field is, what font size the title uses, or whether the surface
+has glass, shadow, rim light, or a flat fill. Those decisions live in KSS:
 
 ```text
-Button.danger  { background: @danger; foreground: @on_danger }
-#save:hover    { background: @accent_hover }
-TextField      { border: @border; radius: @radius_medium; padding: @space_4 }
-Card           { material: glass; radius: @radius_large }
-Text.caption   { role: Caption }
+@pack app;
+@import <kryon.reset>;
+@layer tokens, base, components, screens;
+
+tokens {
+    color {
+        text: #16181d;
+        muted: #6f7480;
+        canvas: #fafafa;
+        surface: #ffffff;
+        accent: #2f6bff;
+        danger: #bd2430;
+    }
+
+    length space {
+        2: 8;
+        3: 12;
+        4: 16;
+    }
+
+    radius {
+        sm: 4;
+        md: 6;
+    }
+
+    duration {
+        fast: 80ms;
+        normal: 140ms;
+    }
+
+    font {
+        ui: "Noto Sans";
+    }
+}
+
+@theme dark {
+    text: #f4f6fb;
+    muted: #aeb4c2;
+    canvas: #101116;
+    surface: #191b22;
+    accent: #7aa2ff;
+}
+
+@layer base {
+    App {
+        background: canvas;
+        foreground: text;
+        font_family: ui;
+    }
+
+    Text {
+        foreground: text;
+        font_size: 16;
+        line_height: 1.35;
+    }
+
+    Text[role=Title] {
+        font_size: 28;
+        typeface: semibold;
+    }
+
+    Text[role=Caption] {
+        foreground: muted;
+        font_size: 13;
+    }
+}
+
+@layer components {
+    Button {
+        foreground: text;
+        background: transparent;
+        border: color-mix(text, transparent, 82%);
+        border_width: 1;
+        radius: radius.md;
+        padding_x: space.3;
+        padding_y: space.2;
+        gap: space.2;
+        material: flat;
+        transition: background normal ease-out, opacity fast ease-out;
+    }
+
+    Button:hover {
+        background: color-mix(text, transparent, 94%);
+    }
+
+    Button:pressed {
+        opacity: 0.86;
+        pressed_offset: 1;
+    }
+
+    Button[tone=Accent],
+    Button.primary {
+        background: accent;
+        foreground: white;
+        border: transparent;
+    }
+
+    Button.quiet {
+        background: transparent;
+        border: transparent;
+        foreground: muted;
+    }
+
+    TextField.field {
+        background: surface;
+        foreground: text;
+        border: color-mix(text, transparent, 84%);
+        focus: accent;
+        radius: radius.md;
+        padding_x: space.3;
+        padding_y: space.2;
+    }
+}
 ```
 
-Binding and host API:
+That is the shape: structure in `.kry`, styling in `.kss`, one typed resolver
+between them, and no visual fallback hidden inside widgets.
+
+## 2. Goals
+
+- Remove every raw visual value from app-facing widget props.
+- Remove visual defaults from widget implementations.
+- Make KSS the only app-facing visual styling system.
+- Convert the current vanilla/default Kryon styling, including the glow and
+  Lightfield treatments, into ordinary shipped KSS packs.
+- Let apps import several style packs and switch between them at runtime with
+  a standard style picker/dropdown.
+- Keep `.kry` structural and readable.
+- Preserve immediate-mode ergonomics: widgets remain simple calls with stable
+  names, classes, semantic attributes, and state.
+- Compile KSS into data for release builds. Do not parse text in shipped hot
+  paths.
+- Hot-reload KSS in `kryon-preview` and development tools.
+- Resolve styles identically in C, C++, Go, JS, KRB, DOM, canvas, libdraw,
+  raylib-style backends, and termi.
+- Make all style values inspectable: matched rules, winning declaration,
+  token origin, resolved value, state slice, and backend degradation.
+- Support zero style mode for testing, debugging, and true separation.
+- Keep the language small enough that every rule is deterministic and every
+  property is tested.
+
+## 3. Non-goals
+
+- Do not implement browser CSS.
+- Do not make layout a stylesheet language in this phase.
+- Do not add arbitrary units, arbitrary selectors, `!important`, browser-like
+  inheritance, pseudo-elements, sibling selectors, or backend-specific
+  properties.
+- Do not style 2D scene content such as `Sprite` and `Light2D`; their colors
+  are content.
+- Do not remove raw colors from low-level drawing primitives used by backends
+  and renderer tests.
+- Do not keep a legacy theme compatibility layer. Existing theme values are
+  migrated into KSS packs and overlays, then the old theme file/import/export
+  surface is removed.
+
+## 4. Core split
+
+Kryon has three layers. Values only move downward.
+
+| Layer | Owns | Must not own |
+|---|---|---|
+| Structure | widget kind, name, classes, content, behavior, input, state, slots, layout participation | colors, radius, border, padding, typography, material, shadows |
+| Style | selectors, tokens, variants, state appearance, metrics, typography, material, density, platform adaptation | input handling, widget state, layout tree mutation |
+| Renderer | rasterization of resolved drawing commands | theme lookup, selector matching, widget policy |
+
+The API contract is: a widget can say "I am a `Button`, named `save`, class
+`primary`, tone `Accent`, currently hovered." It cannot decide the fill,
+radius, font, shadow, or transition for that state.
+
+## 5. Zero default styling
+
+Kryon should have no implicit product style for app UI.
+
+No attached style pack means:
+
+- widgets still exist;
+- layout and measurement still run;
+- input and focus still work;
+- accessibility metadata still exists;
+- test overlays can reveal hit regions and focus;
+- text can use a minimal system ink fallback only so diagnostics are readable;
+- controls do not acquire product chrome, rounded boxes, shadows, material,
+  theme colors, or button-specific decoration.
+
+Kryon can ship optional packs:
+
+| Pack | Purpose |
+|---|---|
+| `<kryon.reset>` | minimum readable/debug affordances and normalized inherited tokens |
+| `<kryon.base>` | conservative app controls for templates and quick tools |
+| `<kryon.vanilla>` | the current default Kryon styling expressed as KSS |
+| `<kryon.glow>` | the current modern glow treatment expressed as KSS |
+| `<kryon.classic>` | preserved original Kryon look as an explicit pack |
+| `<kryon.lightfield>` | approved modern Lightfield/Button/Dropdown visual language |
+| `<kryon.high-contrast>` | accessibility-oriented overlay or full pack |
+| `<kryon.terminal>` | termi-focused mapping for cell backends |
+
+Project templates may include `<kryon.base>` explicitly. Runtime code does not
+silently attach it.
+
+The first shipped KSS conversion should be today's actual look. Capture the
+current vanilla/default/glow behavior as KSS declarations, prove the pack
+against existing screenshots and capture boards, and only then delete the
+hidden runtime defaults. That lets Kryon keep its existing personality as a
+selectable stylesheet while making zero-default separation real.
+
+## 6. Existing leaks to remove
+
+| Leak | Current location | Target |
+|---|---|---|
+| Inline override table | `ButtonProps.style: ControlStyle` | remove; use class/name/semantic selectors |
+| Raw input styling | `TextInputStyle` in `include/ui_controls.h` and text-input props | remove; KSS rules for input families |
+| Raw text colors | `TextProps.color`, retained primitive colors | remove from app-facing text; KSS handles foreground and selection |
+| Row, link, page colors | `ui_rows.h`, `ui_page.h` | convert to semantic role/tone plus KSS |
+| Alpha-zero defaults | widget paint fallbacks such as `background.a != 0` | remove; presence bits live in style declarations only |
+| Paint-time theme reads | `GetTheme*` calls in `src/ui/*.c` paint paths | renderer consumes resolved frames only |
+| Inline literals in app code | examples and maintained `.kry` apps | move into `.kss` or scoped `Style` |
+| Widget-family palettes | dropdown/input/row local color choices | replace with KSS declarations over shared properties |
+
+## 7. KSS file model
+
+A KSS file is a style pack or style module.
+
+```text
+@pack product;
+@version 1;
+@import <kryon.reset>;
+@import "tokens.kss";
+@import "controls.kss";
+@layer reset, tokens, base, components, screens, overrides;
+```
+
+Rules:
+
+- `@pack` names the pack for diagnostics and tooling.
+- `@version` selects the KSS grammar/property version.
+- `@import` loads built-in packs or project files.
+- `@layer` declares a total layer order.
+- `tokens { ... }` groups typed design values without repeating a directive
+  per value.
+- Imported layers merge by declared layer name.
+- Unknown layers are errors unless declared by the importing pack.
+- Cyclic imports are compile errors.
+- Shipped builds embed the flattened token table and rule table.
+- Preview parses files and rebuilds the same tables for hot reload.
+
+### Multiple packs and runtime switching
+
+Apps should be able to ship several looks without rebuilding UI code. The
+import surface names each candidate pack, then selects one active pack through
+app state or host preferences:
 
 ```kry
-#style "brand.kss"        # inside the app block; k2c/k2go compile and embed
+#style <kryon.vanilla> as vanilla
+#style <kryon.glow> as glow
+#style <kryon.lightfield> as lightfield
+#style "brand.kss" as brand
+
+App {
+    SettingsPanel {
+        StylePicker theme_style {
+            value = active_style
+            options = [vanilla, glow, lightfield, brand]
+        }
+    }
+
+    Column account {
+        Text title { text = "Account"; role = Title }
+        Button save { label = "Save"; tone = Accent }
+    }
+}
 ```
+
+Equivalent C host API:
 
 ```c
-bool LoadStyleSheet(const char *path);   /* preview and dynamically themed apps */
-void ApplyStyleSheet(RuleTable table);   /* compiled-in tables */
+typedef struct StylePackOption {
+    const char *id;
+    const char *label;
+    const char *description;
+} StylePackOption;
+
+bool RegisterStylePack(const char *id, const KssRuleTable *table);
+bool SetActiveStylePack(const char *id);
+const char *GetActiveStylePack(void);
+int GetStylePackOptions(StylePackOption *options, int capacity);
+bool StylePicker(StylePickerProps props);
 ```
 
-### Resolution pipeline
+`StylePicker` is visually styled by the currently active pack, exactly like a
+dropdown. If no product pack is active, it uses the minimal reset/debug
+affordance so users can still choose a style. Apps may expose this in Settings,
+developer menus, onboarding, or a command palette.
 
-Identical to Proposal C: the file lowers to the same rule table, so
-specificity, scope, states, tokens, and caching do not change. A file-level
-rule has no tree scope of its own; it applies at app scope (outermost), and
-in-tree `Style` nodes (Proposal C) always win over file rules.
+Switching packs:
 
-### Code changes
+- changes the active token/rule table;
+- invalidates style fingerprints;
+- preserves widget state, focus, scroll, text input, and layout identity;
+- recomputes measurements when typography or interior metrics change;
+- repaints without recompiling or rebuilding the UI tree;
+- can persist through the existing settings/storage layer.
 
-- New small parser (`cmd/kss` shared library used by `k2c`/`k2go`/`kryon-preview`)
-  for the text grammar; emitted diagnostics carry file and line.
-- `#style` import handling in the KIR frontend; rule-table serialization for
-  KRB.
-- `kryon-preview`: watch and hot-reload `.kss` edits with fingerprint
-  invalidation — the classic edit-without-recompile workflow.
+Pack choice is independent from light/dark theme choice. A user can choose
+`glow` plus dark, `vanilla` plus light, or a brand pack plus high contrast.
+The active visual state is:
 
-### Migration
-
-Additive and independent of A/B/C milestones; can be adopted per app.
-
-### Performance, parity, testing
-
-Zero shipped-runtime parsing; parity rides on the shared rule table. Tests:
-parser golden files (valid, invalid, token errors with line numbers),
-compile-embed equality (`LoadStyleSheet(f)` output equals the generated
-table), hot-reload frames in preview, and one end-to-end board.
-
-### Assessment
-
-- Pros: strongest physical separation (app code never mentions visuals);
-  designers can own one file; hot reload without recompiling; familiar
-  workflow for web-native developers.
-- Cons: a second source language to specify, test, and keep in sync with
-  `.kry` semantics; errors span two files; risk of drift between preview
-  parsing and compiled tables (mitigated by one shared parser); KRB grows a
-  table section; duplication with Proposal C's grammar must stay literal —
-  one grammar definition, two containers.
-- Effort: large. Risk: medium — mostly tooling and specification weight,
-  not runtime.
-
-## 9. Proposal E — Class-scoped theme palettes (theme files as the styling surface)
-
-### Concept
-
-Make the theme the only styling surface. Extend the existing theme system —
-`ThemeScope`, `themes/*.ini`, `runtime/theme.kry` — from a flat palette to
-layered, per-widget-class token groups with state variants and a metrics
-subset. Apps and shipped themes restyle whole widget families by editing
-theme data; app code never changes. This is "CSS by theme" with a closed,
-reviewed vocabulary instead of open-ended rules.
-
-### Surface
-
-Theme file growth (INI today; same content projected into `theme.kry`):
-
-```ini
-[Button]
-background       = @surface_raised
-background.hover = @accent_hover
-foreground       = @text
-
-[Button.danger]
-background       = @danger
-foreground       = @on_danger
-
-[Slider]
-track            = @surface_sunken
-thumb            = @accent
-radius           = @radius_medium
+```text
+style pack + theme overlay + environment overlay + scoped rules
 ```
 
-Host API (extending the existing scope API):
+This is important culturally for Kryon: today's default look should survive as
+`<kryon.vanilla>` or `<kryon.glow>`, but as one selectable style among many,
+not as an invisible assumption baked into every widget.
 
-```c
-Color GetThemeClassColor(const char *klass, const char *key);  /* "Button.danger" */
-float GetThemeClassMetric(const char *klass, const char *key);
+## 8. KSS grammar
+
+KSS is CSS-shaped but typed and finite.
+
+```ebnf
+sheet         = { directive | tokens_block | theme_block | env_block | rule } ;
+directive     = pack_decl | version_decl | import_decl | layer_decl ;
+pack_decl     = "@pack" identifier ";" ;
+version_decl  = "@version" integer ";" ;
+import_decl   = "@import" ( builtin | string ) ";" ;
+layer_decl    = "@layer" identifier { "," identifier } ";" ;
+tokens_block  = "tokens" "{" { token_group } "}" ;
+token_group   = token_type [ token_namespace ] "{" { token_entry } "}" ;
+token_entry   = token_leaf ":" value ";" ;
+theme_block   = "@theme" identifier "{" { token_name ":" value ";" } "}" ;
+env_block     = "@env" env_query "{" { rule | token_override } "}" ;
+rule          = [ "@layer" identifier ] selector_list "{" { declaration } "}" ;
+selector_list = selector { "," selector } ;
+selector      = compound { combinator compound } [ state ] ;
+combinator    = ">" | " " ;
+compound      = [ kind ] { "." class | "#" name | attr_match } ;
+attr_match    = "[" attr "=" attr_value "]" ;
+state         = ":" state_name ;
+declaration   = property ":" value ";" ;
 ```
 
-`runtime/theme.kry` gains a layered lookup: class-scoped token, else base
-palette token. `Default<Widget>Style` reads through this projection, so all
-existing policy functions keep their signatures.
+Allowed selector atoms:
 
-### Resolution pipeline
-
-No new resolution step: tokens resolve at theme load (indirection `@ref`
-resolved once, cycle-checked), and shared policy consumes the flattened
-result exactly as it consumes `Palette`/`Metrics` today. Light/dark stays a
-palette switch.
-
-### Code changes
-
-- `include/theme.h` / `src/core/theme.c`: scope entries gain metric values,
-  state variants, and `@ref` indirection; loader rejects unknown class/token
-  names (closed vocabulary, versioned).
-- `runtime/theme.kry`: layered palette projection shared by all hosts.
-- Port the shipped `themes/*.ini` families to the new keys where they
-  intentionally differ from defaults; keep user themes forward-compatible
-  through the aggregate-variable path.
-
-### Migration
-
-Additive and theme-file-only; no props changes, no app code changes. Pairs
-naturally with Proposal A (A deletes per-instance overrides; E restores
-family-level variety through data).
-
-### Performance, parity, testing
-
-One-time load resolution, cached flat tables, zero per-frame cost beyond
-today. Tests: loader acceptance/rejection boards, light/dark projections,
-INI round-trips through export/import, capture boards for each restyled
-family, and the theme picker flow.
-
-### Assessment
-
-- Pros: reuses the entire existing theme pipeline (INI, scopes, persistence,
-  export/import, system theme); user-visible theming gets deeper without new
-  language surface; perfect for shipped theme families; zero app-code churn.
-- Cons: theme files risk becoming an unbounded pseudo-CSS — the closed,
-  whitelisted vocabulary must be enforced by the loader; no per-instance or
-  structural targeting; INI needs metrics and state keys (format growth);
-  everything interesting still requires editing a theme, which may be too
-  coarse for app screens.
-- Effort: medium. Risk: low-medium (format growth and compatibility).
-
-## 10. Comparison
-
-| Criterion | A Token-only | B Registry | C Cascade | D `.kss` files | E Theme scopes |
-|---|---|---|---|---|---|
-| Separates styling from widget code | complete | complete | complete | complete | complete |
-| Removes raw visuals from props | yes | yes (name ref only) | yes (class ref only) | yes (nothing) | yes |
-| Per-instance overrides | none | named classes | classes + names | classes + names | none |
-| Structural targeting (scope) | none | none | descendant scopes | app scope | none |
-| State variants | policy only | per-state slots | per-state rules | per-state rules | theme keys |
-| Hot reload without recompile | no (theme reload only) | re-register | preview rule edit | yes (best) | theme reload |
-| New parser / file format | none | none | `.kry` grammar growth | new `.kss` parser | INI growth |
-| Runtime cost per frame | zero | one lookup | cached match | cached match | zero |
-| Frontend/tooling effort | low | medium | high | high | low |
-| Parity risk | low | low-medium | medium | medium | low |
-| Fits immediate mode | n/a | fully | scope stack | fully | fully |
-| Expressiveness for real apps | low | medium | high | high | medium (family-level) |
-
-## 11. Recommendation
-
-Stage the proposals; do not choose one.
-
-1. **Adopt A unconditionally.** It is the actual "separation" — every other
-   proposal needs the semantic defaults, the vocabulary, and the scanner
-   anyway. A alone already satisfies S1–S7 for the theme-driven apps.
-2. **Adopt B as the v1 override channel.** It is small, compiles to data, and
-   gives downstream apps a legal replacement for the deleted inline
-   `ControlStyle` tables before the inline field is removed.
-3. **Adopt C as the target app-facing styling surface** — this is the
-   "limited CSS" this plan exists to add. Land it after A and B so the
-   cascade only ever merges over semantic defaults, and so the engine, the
-   parser work, and the parity harness arrive when the rest of the system is
-   already clean. C subsumes B's registry as one more merge input; both share
-   `MergeValues`.
-4. **Hold D.** Revisit only if edit-without-recompile becomes a real design
-   workflow. If adopted, D compiles into C's rule table through the same
-   parser library — never a fourth resolution path.
-5. **Fold E's minimal form into A's milestones** (class token groups for the
-   families that shipped themes actually want to differentiate). E keeps
-   user-facing theming deep while A+B+C keep app code clean.
-
-Final state under A+B+C(+E): widget props contain zero visual values; every
-visual value is a theme token or a rule; rules live next to the structure
-they style; one `.kry` engine resolves them identically on every backend;
-scanners and capture boards hold the line.
-
-## 12. Phased roadmap
-
-Every milestone lands on kryon `master` as complete commits with tests in
-the same change (Test Rule), then downstream apps bump their `vendor/kryon`
-pointers. Nothing here edits vendor copies.
-
-### M0 — Audit and enforcement (foundation, no behavior change)
-
-- Add `scripts/check-style-separation.py`: flags raw visual fields in public
-  props headers and paint-time `GetTheme*` assembly in `src/ui/*.c`; starts
-  with the current leak list as a baseline report, wired into `make test` as
-  non-failing inventory.
-- Update `docs/BOUNDARIES.md`, `docs/ARCHITECTURE.md`, and `docs/API.md` with
-  the separation contract (S1–S7) and this plan's status.
-- Exit gate: scanner runs in CI; baseline counts recorded (38 `GetTheme*`
-  calls; props leaks enumerated in section 3.2).
-
-### M1 — Proposal A for the input and text families
-
-- Delete `TextInputStyle` from `TextInputProps`, `TextFieldProps`,
-  `TextAreaProps`, `ReadonlyTextBoxProps`; add tone/size semantics; write
-  `Default<Widget>Style` input policy in `runtime/text_input.kry`.
-- Finish Text roles so `TextProps.color`/`.border` can go; migrate examples.
-- Replace input-family `GetTheme*` paint assembly with resolved `StyleData`.
-- Exit gate: parity green; `make test` green; input capture boards in light
-  and dark; scanner count for these families drops to zero.
-
-### M2 — Proposal B (registry) then finish A
-
-- Land `runtime/style_registry.kry`, host APIs, and `k2c`/`k2cpp`/`k2go`
-  lowering for top-level `Style` declarations.
-- Add `style` name reference to props; migrate examples; then remove the
-  inline `ControlStyle` field from `ButtonProps` and every other props
-  struct. Delete alpha-zero fallback patterns in widget `.c` code.
-- Port row/page/href color props to semantic tones (section 3.2 items).
-- Exit gate: scanner S1 baseline reaches zero exemptions; full capture board
-  sweep (`make dropdown-capture` pattern extended per family); C/Go parity.
-
-### M3 — Proposal C (cascade) engine and tools
-
-- Land `runtime/style_cascade.kry`, `Style` child nodes, `class` identity
-  field, scope stack in hosts, retained resolved-`StyleData` storage, KRB
-  rule-table serialization, and `kryon-preview` inspector support.
-- Exit gate: cascade determinism unit tests; cascade-heavy parity board;
-  golden captures; `termi` degradation board; hot-reload rule-edit frames.
-
-### M4 — Proposal E (theme class scopes)
-
-- Layered theme scopes with closed vocabulary, `@ref` indirection, metric
-  keys; port shipped themes; user-theme compatibility through aggregates.
-- Exit gate: theme round-trip tests; per-family restyle captures; theme
-  picker works unchanged.
-
-### M5 — Close out
-
-- Flip the scanner to fully failing (zero exemptions); document the final
-  surface in `docs/WIDGET_STYLING.md`, `docs/API.md`, and the widget catalog;
-  decide Proposal D from real preview workflow evidence, not speculation.
-- Exit gate: S1–S7 hold; `make release-preflight` green.
-
-## 13. Testing and enforcement
-
-| Gate | What it proves | Where |
+| Atom | Example | Meaning |
 |---|---|---|
-| `scripts/check-style-separation.py` | S1 (no raw visual fields in props) and S5 (no theme-getter paint assembly) | `make test`, CI |
-| Generated-output scanners | `k2c`/`k2go`/`k2cpp`/`k2js` emit clean style surfaces, no stale names | existing scanner targets |
-| C/Go scripted parity | identical resolved frames and merges under identical input | existing parity harness |
-| Capture boards | every family x tone x emphasis x state in light and dark | `make <family>-capture`, golden images |
-| Cascade determinism tests | specificity order, source order, scope shadowing, token indirection | unit tests over `runtime/style_cascade.kry` |
-| Hot reload | rule and theme edits restyle without recompile | `kryon-preview` scripted frames |
-| Backend degradation | `termi` cells, `canvas`, `dom`, `null` smoke the same rule tables | per-backend test targets |
-| KRB round trip | serialized rule tables resolve identically | `cmd/k2b` + renderer tests |
+| kind | `Button` | widget family |
+| class | `.primary` | caller-provided class |
+| name | `#save` | caller-provided node name |
+| semantic attr | `[tone=Accent]` | typed widget semantic value |
+| state | `:hover` | widget-owned state slice |
+| child scope | `Toolbar > Button` | direct structural scope |
+| descendant scope | `Modal Button` | descendant structural scope |
 
-## 14. Non-goals
+Allowed semantic attributes are closed per widget family. Initial shared set:
 
-- Not implementing web CSS: no units, percentages, cascading inheritance of
-  layout, arbitrary selectors, `!important`, or media queries. Light/dark and
-  density live in the theme.
-- Not replacing the theme system — tokens remain the source of all values.
-- Not styling 2D scene content: `Sprite`/`Light2D` tints are content, not
-  chrome; they stay in their props.
-- Not removing raw colors from backend drawing primitives (`Rect`, `Circle`,
-  `Line`, ...). They are native backend surface; app UI consumes `Surface`
-  with resolved `StyleData`, and generated app code must not hand-pick colors
-  for maintained UI.
-- No per-widget animation definitions; motion stays on the shared transition
-  tracks.
+- `role`
+- `tone`
+- `emphasis`
+- `size`
+- `state`
+- `validation`
+- `orientation`
+- `placement`
 
-## 15. Risks and open questions
+Allowed states:
 
-| Risk | Mitigation |
+- `normal`
+- `hover`
+- `pressed`
+- `focused`
+- `selected`
+- `disabled`
+- `loading`
+- `checked`
+- `invalid`
+- `expanded`
+- `open`
+
+State names are not input logic. They are style slots fed by widget-owned
+facts.
+
+## 9. Deliberate differences from CSS
+
+KSS should feel familiar without inheriting CSS's hardest problems.
+
+| CSS feature | KSS decision |
 |---|---|
-| Downstream breakage when props lose visual fields | Stage removals after B lands; one pointer bump per app; examples migrate first |
-| Cascade scope creep toward real CSS | Grammar frozen in this document; additions require a language version bump and parity in the same change |
-| C/Go divergence in rule handling | One `.kry` engine; both hosts consume its output; parity board is a release gate |
-| Immediate-mode scope-stack mistakes in hosts | Scope push/pop emitted by the same code generators; unit tests around container re-entry and early exit |
-| Vocabulary growth pressure (A's release valve) | Every new tone/role needs a runtime policy value and capture board in the same change |
-| Theme INI format growth (E) | Versioned keys, closed whitelist, loader rejects unknown names |
-| Name collisions for `#id` rules | Uniqueness checked per scope at compile time in `k2c`/`k2go` |
+| Arbitrary attributes | no; only typed semantic attributes |
+| `!important` | no; layer and source order are enough |
+| Sibling selectors | no |
+| Pseudo-elements | no in v1 |
+| Browser layout properties | no in v1 |
+| Implicit inheritance | only explicit inherited token categories |
+| Runtime text parsing in shipped apps | no; compiled rule tables |
+| Backend vendor prefixes | no |
+| Global UA stylesheet | no implicit product style |
+| Open units | no; typed values only |
+| Dynamic DOM mutation semantics | no; immediate-mode facts and retained fingerprints |
 
-Open questions:
+The result should be less magical than CSS and easier to test.
 
-1. Should `class` accept multiple classes (`.a .b`) or exactly one? Multiple
-   classes are CSS-familiar but complicate ordering; single class plus
-   `style = "name"` may cover real cases. Decide with M3 examples.
-2. Do cascade rules need a `Text` role shortcut (`Text.caption` in D's
-   example) as a class-like target, or is `class` enough?
-3. Should Proposal E's theme class scopes also feed the terminal backend's
-   16-color mapping table explicitly?
-4. Does `ButtonStateFocus` need a rule state slot distinct from the existing
-   focus motion channel, or is the existing `focused` slot sufficient for
-   rules?
+## 10. Specificity and cascade
 
-## Appendix — Property vocabulary
+KSS must always resolve the same way in every backend.
 
-The closed property set every proposal shares (from
-`runtime/control_props.kry`; values are theme tokens or literals):
+Order:
+
+1. Earlier imports load first.
+2. Declared layers establish a total order.
+3. Unlayered rules come after declared layers.
+4. More specific selectors beat less specific selectors inside the same layer.
+5. Later source order wins inside the same layer and specificity.
+6. Scoped inline `Style` nodes win over file-level rules in their subtree.
+
+Specificity:
+
+| Selector part | Weight |
+|---|---:|
+| kind | 1 |
+| semantic attribute | 10 |
+| class | 20 |
+| kind plus class/attribute | additive |
+| name | 100 |
+| inline scoped style | 1000 |
+
+State rules do not add selector specificity. They write into state-specific
+style slots. For example:
+
+```text
+Button.primary { background: accent; }
+Button.primary:hover { background: accent.hover; }
+```
+
+Both rules match the same widgets. The first writes `normal`, the second
+writes `hover`.
+
+Interaction precedence remains Kryon's:
+
+```text
+disabled > loading > pressed > hovered > focused > selected > normal
+```
+
+This precedence chooses which state slice is active. It does not change rule
+matching order.
+
+## 11. Tokens
+
+Tokens are the power feature. They are typed, validated, inspectable, and
+portable across backends.
+
+```text
+tokens {
+    color {
+        accent: #2f6bff;
+        accent.hover: color-mix(accent, white, 12%);
+    }
+
+    length control {
+        pad.x: 12;
+    }
+
+    radius control {
+        radius: 6;
+    }
+
+    duration transition {
+        fast: 80ms;
+    }
+
+    font {
+        ui: "Noto Sans";
+    }
+}
+```
+
+Token groups remove declaration noise. `color { accent: ... }` creates
+`accent`; `length space { 3: 12; }` creates `space.3`; `duration transition
+{ fast: 80ms; }` creates `transition.fast`.
+
+Token types:
+
+| Type | Examples |
+|---|---|
+| `color` | `#rrggbb`, `#rrggbbaa`, named colors, `color-mix(...)` |
+| `length` | logical pixels |
+| `radius` | logical pixels or radius tuple in later versions |
+| `number` | opacity, line-height multiplier |
+| `duration` | milliseconds |
+| `easing` | `linear`, `ease-out`, named cubic curves |
+| `font` | registered font family name |
+| `material` | `flat`, `lightfield`, `glass` |
+| `shadow` | named shadow recipe |
+
+Rules use token names directly:
+
+```text
+Button {
+    background: accent;
+    padding_x: space.3;
+    transition: background transition.fast ease-out;
+}
+```
+
+The expected property type disambiguates tokens from enums and literals.
+`background: accent` looks up a color token. `material: flat` reads as a
+material enum because `material` expects a material. If a bare identifier could
+refer to both a token and an enum for the same property type, KSS reports an
+ambiguity and requires the explicit form `token(accent)`.
+
+Raw visual literals are legal only in `.kss` or inline `Style` nodes, never in
+ordinary widget calls.
+
+Token validation:
+
+- missing token is a compile error;
+- cyclic token reference is a compile error;
+- wrong token type for a property is a compile error;
+- unresolved font family is a runtime diagnostic with fallback;
+- preview reports diagnostics with file, line, column, token name, and
+  expected type.
+
+## 12. KSS themes and environment overlays
+
+Themes are token overlays inside KSS, not a separate styling language and not
+an import/export compatibility surface.
+
+```text
+@theme light {
+    text: #16181d;
+    canvas: #fafafa;
+    surface: #ffffff;
+}
+
+@theme dark {
+    text: #f4f6fb;
+    canvas: #101116;
+    surface: #191b22;
+}
+```
+
+Environment overlays are closed and typed:
+
+```text
+@env contrast(high) {
+    Button { border_width: 2; focus: accent; }
+}
+
+@env density(compact) {
+    Button { padding_x: 10; padding_y: 6; }
+    TextField { padding_y: 6; }
+}
+
+@env platform(android) {
+    Button { pointer_target_min: 48; }
+}
+```
+
+Allowed axes:
+
+- `theme(light|dark)`
+- `contrast(normal|high)`
+- `density(compact|comfortable|touch)`
+- `pointer(mouse|touch|mixed)`
+- `platform(desktop|android|web|plan9|terminal)`
+
+Existing `themes/*.ini` files should be treated as migration input only. Their
+useful values move into shipped KSS packs and `@theme` overlays. After that,
+the legacy theme file format, theme import/export commands, and widget-facing
+theme-style modes are deleted. Internally and publicly, the active visual state
+is the resolved KSS token and rule table.
+
+## 13. Properties
+
+The property vocabulary is closed and versioned. Adding a property requires
+runtime, generated-output, parity, tests, and docs updates in the same change.
+
+### Paint
 
 | Property | Type | Notes |
 |---|---|---|
-| `background`, `background_end` | color | gradient pair; end is optional |
-| `foreground` | color | label, icon, and content ink |
-| `border`, `focus` | color | `focus` feeds the shared focus track |
-| `radius`, `border_width`, `opacity` | number | |
-| `padding_x`, `padding_y`, `gap` | number | spacing tokens preferred |
-| `font_size`, `icon_size` | number | type/icon scale tokens preferred |
-| `content_offset` | vec2 | |
-| `material` | enum | `flat`, `lightfield`, `glass` |
-| `typeface` | string | registered typeface name |
-| `tone` | enum | neutral, accent, danger, success, warning, info, link |
-| `emphasis` | enum | filled, soft, outline, ghost, link |
-| `size` | enum | small, medium, large |
-| `role` | enum | text roles (title, body, caption, ...) |
+| `background` | color | primary fill |
+| `background_end` | color | optional gradient endpoint |
+| `foreground` | color | text, icon, and content ink |
+| `border` | color | border stroke |
+| `focus` | color | focus track input |
+| `shadow` | shadow | named/canonical shadow recipe |
+| `selection` | color | text/list selection |
+| `cursor` | color | text cursor, where relevant |
 
-Rule state suffixes map to the seven `ControlStyle` slots: `normal` (default),
-`hover`, `pressed`, `focused`, `selected`, `disabled`, `loading`.
+### Shape
 
+| Property | Type | Notes |
+|---|---|---|
+| `radius` | radius | rounded shape |
+| `border_width` | length | physical stroke width after scale |
+| `corner_style` | enum | `round`, `bevel`, `square` |
 
+### Interior metrics
 
+| Property | Type | Notes |
+|---|---|---|
+| `padding_x` | length | horizontal interior padding |
+| `padding_y` | length | vertical interior padding |
+| `gap` | length | icon/text/content gap |
+| `icon_size` | length | icon box |
+| `content_offset` | vec2 | visual offset, not hit bounds |
+| `pointer_target_min` | length | minimum input target, may affect measurement |
 
+### Typography
 
+| Property | Type | Notes |
+|---|---|---|
+| `font_family` | font | registered font family |
+| `typeface` | string/enum | regular, semibold, mono, etc. |
+| `font_size` | length | logical font size |
+| `line_height` | number/length | multiplier or logical length |
+| `letter_spacing` | length | defaults to zero |
+| `text_wrap` | enum | `none`, `word`, `line`, `clip` |
+| `text_align` | enum | `start`, `center`, `end` |
 
+### Material
 
+| Property | Type | Notes |
+|---|---|---|
+| `material` | material | `flat`, `lightfield`, `glass` |
+| `elevation` | number | material intensity |
+| `rim` | number/color | material edge treatment |
+| `blur` | length | glass blur where supported |
+| `surface_noise` | number | subtle texture recipe |
 
+### Motion
 
+| Property | Type | Notes |
+|---|---|---|
+| `transition` | transition list | property duration easing |
+| `duration` | duration | family default when transition omits duration |
+| `easing` | easing | family default easing |
+| `pressed_offset` | length | visual press displacement |
 
+Properties that affect natural size, such as padding and font size, must feed
+measurement through the same resolved style frame used for painting. Paint-only
+properties must not move hit bounds.
+
+## 14. Widget props after separation
+
+Public widget props should fit this shape:
+
+```c
+typedef struct ButtonProps {
+    Rectangle bounds;
+    const char *name;
+    const char *class_name;
+    const char *label;
+    IconType icon;
+    ButtonTone tone;
+    ButtonEmphasis emphasis;
+    ControlSize size;
+    ButtonState state;
+    bool disabled;
+    bool loading;
+    bool selected;
+} ButtonProps;
+```
+
+Allowed props:
+
+- identity: `name`, `class_name`, stable keys;
+- content: labels, values, placeholders, images, icons, children;
+- behavior: disabled, loading, selected, validation state, callbacks;
+- semantics: role, tone, emphasis, size, placement;
+- layout contract: bounds, scroll offsets, content size, slots.
+
+Forbidden props:
+
+- raw colors;
+- `Style`, `ControlStyle`, or family-specific visual structs;
+- radius, padding, border width, opacity;
+- font size, typeface, text color;
+- material, rim, glow, blur, and shadow choices;
+- alpha-zero-means-default behavior.
+
+For `Text`, role and content are structure. Foreground, font size, wrapping,
+selection paint, and typeface are style.
+
+For `Image`, source and fit are content/layout. Tint, radius, material, and
+filters are style, except in low-level drawing and scene nodes where color is
+actual content.
+
+## 15. Runtime model
+
+The final pipeline is:
+
+```text
+.kry widget facts
+  -> semantic normalization
+  -> collect imported, app, and scoped rule tables
+  -> resolve token overlays for environment
+  -> cascade typed declarations
+  -> select state slice
+  -> transition resolved frame
+  -> emit SurfaceDrawing / TextDrawing / ImageDrawing commands
+  -> backend rasterization
+```
+
+There are no built-in visual defaults at the first step. The first visual
+declarations come from an attached reset/base/product style pack. Existing
+`Default<Button>Style`-style functions become semantic normalization and
+fallback diagnostic helpers; they no longer manufacture product appearance by
+themselves.
+
+Compiled apps embed:
+
+- interned widget kind names;
+- interned class/name strings;
+- token table;
+- theme overlay table;
+- environment overlay table;
+- selector table;
+- declaration table;
+- state slices;
+- source maps for inspector diagnostics.
+
+Preview tools parse text, then produce the same tables.
+
+## 16. Style frames
+
+Resolution produces a style frame with presence bits:
+
+```c
+typedef struct ResolvedStyle {
+    uint64_t fields;
+    Color background;
+    Color background_end;
+    Color foreground;
+    Color border;
+    Color focus;
+    float radius;
+    float border_width;
+    float opacity;
+    float padding_x;
+    float padding_y;
+    float gap;
+    float font_size;
+    float icon_size;
+    Vector2 content_offset;
+    int material;
+    int font_family;
+    int typeface;
+} ResolvedStyle;
+```
+
+The exact generated shape can differ, but the rules are fixed:
+
+- absent means absent;
+- transparent is a real value;
+- zero is a real value when present;
+- state slices merge with presence bits;
+- transitions interpolate resolved values, not declarations;
+- renderer code receives resolved values only.
+
+## 17. Caching
+
+Style resolution should be cheap in immediate-mode UI.
+
+Cache key:
+
+```text
+style_fingerprint(
+    style_pack_version,
+    token_overlay_version,
+    environment_axes,
+    scope_fingerprint,
+    widget_kind,
+    widget_name,
+    widget_class_list,
+    semantic_attrs,
+    state
+)
+```
+
+Invalidation happens when:
+
+- a KSS file changes;
+- a theme/environment overlay changes;
+- a scoped `Style` node changes;
+- a widget's name/class/semantic attributes change;
+- a widget enters a different style scope;
+- a relevant state changes.
+
+State transitions can reuse previous and target resolved frames. The resolver
+does not need to rematch selectors every frame if the fingerprint is stable.
+
+## 18. Inline scoped style
+
+External KSS is the primary surface. Inline `Style` nodes exist for
+screen-local overrides and lower to the same rule table:
+
+```kry
+Column danger_zone {
+    Style {
+        Button { tone: Danger; }
+        Button.confirm { background: danger; foreground: white; }
+        Text[role=Caption] { foreground: muted; }
+    }
+
+    Text warning {
+        text = "This cannot be undone"
+        role = Caption
+    }
+
+    Button confirm {
+        label = "Delete"
+        class = "confirm"
+        tone = Danger
+    }
+}
+```
+
+Inline style wins over imported/app-level KSS because it is scoped closest to
+the structure. It is not the main authoring surface; it is for local screens,
+examples, experiments, and one-off product areas.
+
+## 19. Inspector
+
+The inspector is part of the feature, not a luxury.
+
+For any widget, it should show:
+
+- widget facts: kind, name, classes, semantic attrs, current state;
+- matching rules in cascade order;
+- winning declaration for each property;
+- token origin and resolved token value;
+- active theme/environment overlay;
+- state slice selected by interaction precedence;
+- transition progress and target frame;
+- backend degradation, such as termi ignoring radius/material;
+- source file and line for every declaration.
+
+This makes KSS more debuggable than CSS in a browser because Kryon owns the
+entire stack.
+
+## 20. Backend behavior
+
+All backends consume the same resolved style frame.
+
+| Backend | Behavior |
+|---|---|
+| raylib/canvas/libdraw | rasterize full resolved drawing commands |
+| DOM | maps resolved frames to DOM/CSS implementation details without exposing CSS as the source of truth |
+| KRB | serializes rule tables or resolved frames according to cartridge needs |
+| termi | maps foreground/background/focus/selection to cells and ignores unsupported geometry/material |
+| null/test | records resolved frames for parity and assertions |
+
+Unsupported visual properties degrade; they do not fork style resolution.
+
+## 21. Migration roadmap
+
+### M0 - Freeze new leaks
+
+- Add a scanner that fails on new raw visual fields in public widget props.
+- Add a scanner that fails on new paint-time theme getter usage in widget
+  paint paths.
+- Add a literal scanner for maintained `.kry` app UI.
+- Keep a non-failing inventory for existing leaks until each family migrates.
+
+### M1 - KSS compiler and rule table
+
+- Implement the KSS parser with stable diagnostics.
+- Add typed token tables, rule tables, layer ordering, selector specificity,
+  and state slices.
+- Lower `.kss` imports into generated C, C++, Go, JS, and KRB data.
+- Make `kryon-preview` watch and hot-reload KSS files.
+- Add source maps for inspector output.
+
+### M2 - Ship explicit base packs
+
+- Add `<kryon.reset>` for zero-opinion readability/debug affordances.
+- Add `<kryon.base>` for ordinary app controls.
+- Convert today's actual default/vanilla styling into `<kryon.vanilla>`.
+- Convert today's glow treatment into `<kryon.glow>`.
+- Move the current approved Lightfield/Button/Dropdown look into
+  `<kryon.lightfield>`.
+- Preserve the original beveled look as `<kryon.classic>`.
+- Make examples attach a pack explicitly.
+- Add `StylePicker` as the standard dropdown-style control for choosing among
+  registered packs.
+- Add settings persistence for the active style pack.
+
+### M3 - Move widget families to resolved styles
+
+- Convert Button, Text, TextField, TextArea, Dropdown, Surface, Card, Slider,
+  Toggle, Checkbox, Radio, Progress, Separator, rows, links, and page chrome
+  to consume resolved style frames.
+- Remove family-specific theme assembly from `.c` paint paths.
+- Ensure measurement uses the resolved typography and interior metrics.
+- Add capture boards for each family in light, dark, high contrast, and
+  none-style modes.
+
+### M4 - Delete visual props
+
+- Remove `ButtonProps.style`.
+- Remove `TextInputStyle`.
+- Remove `TextProps.color` from app-facing text.
+- Remove row/page color props.
+- Remove alpha-zero default behavior.
+- Remove legacy theme-style modes and theme import/export APIs after their
+  values have been converted into KSS packs.
+- Migrate examples, then downstream apps after the Kryon commit lands on
+  `master` and each app bumps `vendor/kryon`.
+
+### M5 - Scoped inline style and inspector
+
+- Add inline `Style` nodes in `.kry`.
+- Add inspector output for matched rules, winning declarations, token origins,
+  resolved values, transitions, and backend degradation.
+- Add hot-reload tests for both external KSS and inline style changes.
+
+### M6 - Zero default
+
+- App UI starts unstyled unless a style pack is attached.
+- Project templates explicitly include `<kryon.base>`.
+- Existing Kryon visual personality remains available through explicit
+  `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.classic>`, and
+  `<kryon.lightfield>` imports.
+- `KRYON_STYLE=none` becomes a required test mode for behavior/layout.
+- Leak scanners flip to zero exemptions.
+
+## 22. Testing and enforcement
+
+| Gate | Proves |
+|---|---|
+| Props scanner | no public widget props carry visual values |
+| Paint scanner | widget paint code does not assemble visuals from themes |
+| Literal scanner | maintained `.kry` UI uses raw visuals only inside `Style` nodes |
+| KSS parser tests | valid and invalid sheets produce stable diagnostics |
+| Rule-table parity | C, C++, Go, JS, and KRB resolve declarations identically |
+| Capture boards | shipped packs render approved states across themes |
+| None-style tests | widgets remain interactive, measurable, and accessible without chrome |
+| Hot-reload tests | KSS edits invalidate cached fingerprints and repaint without recompile |
+| Backend degradation tests | termi, DOM, canvas, libdraw, null consume the same resolved frames |
+| Inspector tests | source maps and winning declarations are reported accurately |
+
+## 23. Acceptance criteria
+
+The plan is complete when:
+
+- `make test` fails on any new app-facing visual prop;
+- `make test` fails on widget paint code that calls theme getters for chrome;
+- every maintained example uses `#style` or scoped `Style` for visuals;
+- every app-facing widget can render in `KRYON_STYLE=none`;
+- legacy theme files, theme import/export, and theme-style compatibility modes
+  are gone from the app-facing styling surface;
+- `<kryon.base>`, `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.classic>`, and
+  `<kryon.lightfield>` are ordinary style packs, not hidden runtime modes;
+- apps can register multiple packs and expose a `StylePicker` dropdown to
+  switch between them quickly;
+- style switching preserves widget state and invalidates only style
+  fingerprints and measurements affected by style;
+- C, C++, Go, JS, and KRB consume the same compiled rule table;
+- capture boards prove Button, Dropdown, Text, TextInput, Surface, and common
+  controls match their pack definitions;
+- the inspector can explain every visible style value on screen.
+
+## 24. Final shape
+
+The final architecture is one path:
+
+```text
+.kry structure + .kss style pack
+        |
+        v
+typed tokens + typed rule table
+        |
+        v
+shared style resolver
+        |
+        v
+resolved frames
+        |
+        v
+shared drawing commands
+        |
+        v
+backend rasterization
+```
+
+That is the line Kryon should hold: zero visual defaults in widgets, explicit
+style packs for real appearance, a small deterministic cascade, typed tokens
+instead of stringly CSS values, hot reload for design work, full inspector
+support, and one resolver that every backend shares.

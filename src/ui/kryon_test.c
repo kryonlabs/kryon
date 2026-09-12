@@ -20,15 +20,15 @@ kryt_copy(char *dst, size_t dst_size, const char *src)
 }
 
 int
-KryTFind(const char *selector, UIInspectNode *node)
+KryTFind(const char *selector, InspectNode *node)
 {
-    return UIInspectFindNode(selector, node);
+    return InspectFindNode(selector, node);
 }
 
 int
 KryTTap(const char *selector)
 {
-    UIInspectNode node;
+    InspectNode node;
 
     if(!KryTFind(selector, &node))
         return 0;
@@ -69,7 +69,7 @@ KryTKey(const char *key)
 int
 KryTSee(const char *text)
 {
-    UIInspectNode node;
+    InspectNode node;
     char selector[96];
 
     if(text == NULL || text[0] == '\0')

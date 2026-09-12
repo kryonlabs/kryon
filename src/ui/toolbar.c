@@ -21,7 +21,7 @@ RenderToolbar(ToolbarProps toolbar)
         .scale = (float)Scale(1000) / 1000.0f
     });
 
-    Color bar = DarkenUIColor(c_bg, 14);
+    Color bar = DarkenColor(c_bg, 14);
     if(ui_modern_style()) {
         ThemeMetrics tokens = GetThemeMetrics();
         if(tokens.panel_alpha < bar.a)
@@ -35,7 +35,7 @@ RenderToolbar(ToolbarProps toolbar)
     }
     DrawLine(toolbar.x, toolbar.y + toolbar.height - 1,
              toolbar.x + toolbar.width, toolbar.y + toolbar.height - 1,
-             DarkenUIColor(c_bg, 42));
+             DarkenColor(c_bg, 42));
 
     if(toolbar.actions != NULL && toolbar.action_count > 0) {
         for(int i = toolbar.action_count - 1; i >= 0; i--) {

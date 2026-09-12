@@ -6,18 +6,18 @@ app "Generated Plot Parity" {
 }
 
 state {
-    drag_floats: [2] float = {1.0f,2.0f}
-    drag_ints: [2] int = {3,4}
-    drag_float_min: float = 2.0f
-    drag_float_max: float = 8.0f
-    drag_int_min: int = 2
-    drag_int_max: int = 8
-    slider_floats: [2] float = {0.25f,0.75f}
-    slider_ints: [2] int = {2,8}
-    slider_angle: float = 0.0f
-    input_floats: [2] float = {1.25f,2.5f}
-    input_ints: [2] int = {4,8}
-    input_doubles: [2] double = {1.0,2.0}
+    plots_scalar_values: [2] float = {1.0f,2.0f}
+    plots_whole_values: [2] int = {3,4}
+    plots_scalar_range_min: float = 2.0f
+    plots_scalar_range_max: float = 8.0f
+    plots_whole_range_min: int = 2
+    plots_whole_range_max: int = 8
+    plots_slider_values: [2] float = {0.25f,0.75f}
+    plots_slider_whole_values: [2] int = {2,8}
+    plots_angle_value: float = 0.0f
+    plots_input_values: [2] float = {1.25f,2.5f}
+    plots_input_whole_values: [2] int = {4,8}
+    plots_input_precise_values: [2] double = {1.0,2.0}
     edit_color: [4] float = {0.2f,0.4f,0.6f,0.8f}
 }
 
@@ -27,18 +27,18 @@ plots_frame :: () #ui {
         values: [4] float = {0.0f,0.25f,1.0f,0.5f}
         Plot((PlotProps){.bounds = {20,20,220,60}, .label = "Lines", .values = values, .value_count = 4, .overlay = "peak", .scale_min = 0.0f, .scale_max = 1.0f})
         Plot((PlotProps){.bounds = {20,100,220,60}, .label = "Bars", .values = values, .value_count = 4, .offset = 1, .mode = 1})
-        Drag((DragProps){.bounds = {20,180,105,28}, .id = 920, .label = "Float", .kind = NumericFloat, .float_values = drag_floats, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
-        Drag((DragProps){.bounds = {135,180,105,28}, .id = 921, .label = "Int", .kind = NumericInt, .int_values = drag_ints, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
-        Drag((DragProps){.bounds = {20,215,105,28}, .id = 938, .label = "Float range", .kind = NumericFloat, .mode = DragRange, .float_min = &drag_float_min, .float_max = &drag_float_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format = "%.1f", .format_max = "max %.1f"})
-        Drag((DragProps){.bounds = {135,215,105,28}, .id = 939, .label = "Int range", .kind = NumericInt, .mode = DragRange, .int_min = &drag_int_min, .int_max = &drag_int_max, .speed = 1.0f, .min = 0, .max = 10, .format_max = "max %d"})
-        Slider((SliderProps){.bounds = {20,220,105,28}, .id = 922, .label = "Slider float", .kind = NumericFloat, .float_values = slider_floats, .value_count = 2, .min = 0.0f, .max = 1.0f})
-        Slider((SliderProps){.bounds = {135,220,105,28}, .id = 923, .label = "Slider int", .kind = NumericInt, .int_values = slider_ints, .value_count = 2, .min = 0, .max = 10})
-        Slider((SliderProps){.bounds = {20,270,50,100}, .id = 924, .label = "V float", .kind = NumericFloat, .float_values = slider_floats, .value_count = 1, .min = 0.0f, .max = 1.0f, .vertical = 1})
-        Slider((SliderProps){.bounds = {80,270,50,100}, .id = 925, .label = "V int", .kind = NumericInt, .int_values = slider_ints, .value_count = 1, .min = 0, .max = 10, .vertical = 1})
-        Slider((SliderProps){.bounds = {140,270,100,28}, .id = 926, .label = "Angle", .kind = NumericFloat, .float_value = &slider_angle, .min = -180.0f, .max = 180.0f, .angle = 1})
-        Input((InputProps){.bounds = {20,390,220,28}, .id = 927, .label = "Input float", .kind = NumericFloat, .float_values = input_floats, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
-        Input((InputProps){.bounds = {20,430,105,28}, .id = 928, .label = "Input int", .kind = NumericInt, .int_values = input_ints, .value_count = 2, .step = 1, .step_fast = 10})
-        Input((InputProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .kind = NumericDouble, .double_values = input_doubles, .value_count = 2, .step = 0.01, .step_fast = 1.0})
+        Drag((DragProps){.bounds = {20,180,105,28}, .id = 920, .label = "Float", .kind = NumericFloat, .float_values = plots_scalar_values, .value_count = 2, .speed = 0.1f, .min = 0.0f, .max = 10.0f})
+        Drag((DragProps){.bounds = {135,180,105,28}, .id = 921, .label = "Int", .kind = NumericInt, .int_values = plots_whole_values, .value_count = 2, .speed = 1.0f, .min = 0, .max = 10})
+        Drag((DragProps){.bounds = {20,215,105,28}, .id = 938, .label = "Float range", .kind = NumericFloat, .mode = DragRange, .float_min = &plots_scalar_range_min, .float_max = &plots_scalar_range_max, .speed = 0.1f, .min = 0.0f, .max = 10.0f, .format = "%.1f", .format_max = "max %.1f"})
+        Drag((DragProps){.bounds = {135,215,105,28}, .id = 939, .label = "Int range", .kind = NumericInt, .mode = DragRange, .int_min = &plots_whole_range_min, .int_max = &plots_whole_range_max, .speed = 1.0f, .min = 0, .max = 10, .format_max = "max %d"})
+        Slider((SliderProps){.bounds = {20,220,105,28}, .id = 922, .label = "Slider float", .kind = NumericFloat, .float_values = plots_slider_values, .value_count = 2, .min = 0.0f, .max = 1.0f})
+        Slider((SliderProps){.bounds = {135,220,105,28}, .id = 923, .label = "Slider int", .kind = NumericInt, .int_values = plots_slider_whole_values, .value_count = 2, .min = 0, .max = 10})
+        Slider((SliderProps){.bounds = {20,270,50,100}, .id = 924, .label = "V float", .kind = NumericFloat, .float_values = plots_slider_values, .value_count = 1, .min = 0.0f, .max = 1.0f, .vertical = 1})
+        Slider((SliderProps){.bounds = {80,270,50,100}, .id = 925, .label = "V int", .kind = NumericInt, .int_values = plots_slider_whole_values, .value_count = 1, .min = 0, .max = 10, .vertical = 1})
+        Slider((SliderProps){.bounds = {140,270,100,28}, .id = 926, .label = "Angle", .kind = NumericFloat, .float_value = &plots_angle_value, .min = -180.0f, .max = 180.0f, .angle = 1})
+        Input((InputProps){.bounds = {20,390,220,28}, .id = 927, .label = "Input float", .kind = NumericFloat, .float_values = plots_input_values, .value_count = 2, .step = 0.1f, .step_fast = 1.0f})
+        Input((InputProps){.bounds = {20,430,105,28}, .id = 928, .label = "Input int", .kind = NumericInt, .int_values = plots_input_whole_values, .value_count = 2, .step = 1, .step_fast = 10})
+        Input((InputProps){.bounds = {135,430,105,28}, .id = 929, .label = "Input double", .kind = NumericDouble, .double_values = plots_input_precise_values, .value_count = 2, .step = 0.01, .step_fast = 1.0})
         Button((ButtonProps){.bounds = {20,475,70,24}, .label = "Small", .size = ControlSizeSmall, .id = 930})
         InvisibleButton((InvisibleButtonProps){.bounds = {100,475,40,24}, .id = 931})
         Button((ButtonProps){.bounds = {150,475,30,24}, .id = 932, .arrow = 1, .direction = 3})
@@ -57,10 +57,10 @@ plots_frame :: () #ui {
         Bullet((Rectangle){140,805,16,20})
         Text((TextProps){.bounds={160,805,0,0}, .text="bullet text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         enabled_text: const char* = "false"
-        if drag_ints[0] != 0 { enabled_text = "true" }
+        if plots_whole_values[0] != 0 { enabled_text = "true" }
         Text((TextProps){.bounds={20,925,0,0}, .text=TextFormat("Enabled: %s", enabled_text), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,925,0,0}, .text=TextFormat("Count: %d", drag_ints[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={125,925,0,0}, .text=TextFormat("Count: %d", plots_whole_values[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={20,950,0,0}, .text=TextFormat("Mask: %u", 42), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,950,0,0}, .text=TextFormat("Rate: %.1f", drag_floats[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={125,950,0,0}, .text=TextFormat("Rate: %.1f", plots_scalar_values[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }

@@ -1,5 +1,5 @@
-#ifndef UI_ICONS_H
-#define UI_ICONS_H
+#ifndef KRYON_ICONS_H
+#define KRYON_ICONS_H
 
 #include "kryon.h"
 #include "ui_icon_types.h"
@@ -28,7 +28,7 @@ Texture2D LoadIconSheet(IconSheet sheet);
 void UnloadIconSheets(void);
 void DrawIcon(IconType type, Rectangle bounds, Color tint);
 void DrawIconByName(const char *name, Rectangle bounds, Color tint);
-void DrawProfilePictureIcon(IconType type, Rectangle bounds, int dark_mode);
+void DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode);
 
 /* Transitional texture API for controls that do not yet accept IconType. */
 Texture2D LoadIconTexture(IconType type);
@@ -39,4 +39,4 @@ void UnloadAllIconTextures(Texture2D *icons);
 /* Auto-generated icon names array (alphabetical order, matches IconType enum) */
 extern const char *ui_icon_names[];
 
-#endif // UI_ICONS_H
+#endif // KRYON_ICONS_H

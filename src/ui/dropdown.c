@@ -2,6 +2,7 @@
 #include "dropdown_store.h"
 #include "ui_popup_input_internal.h"
 #include "ui_style_internal.h"
+#include "theme.h"
 #include "runtime/dropdown.h"
 #include "ui_paint_internal.h"
 
@@ -166,7 +167,7 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
         .emphasis = ButtonEmphasisSoft, .disabled = UIContentDisabled(),
         .style = dropdown_trigger_style()};
     Activation sample = {.hovered = hovered, .pressed = pressed, .focused = focused};
-    if(focused && IsUIFocusActivatePressed(id))
+    if(focused && IsFocusActivatePressed(id))
         sample.pressed = true;
     ButtonInput input = ResolveButtonInput((int)props.state, props.disabled,
         props.loading, props.selected, sample);
@@ -185,7 +186,7 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int f
         ColorToInt(GetThemeSurface()), (float)Scale(1000) / 1000.0f,
         Scale(appearance.value.font_size), GetFontSize());
     if(frame.repaint)
-        InvalidateTree(UI_INVALIDATE_PAINT);
+        InvalidateTree(INVALIDATE_PAINT);
     frame.appearance = ui_style_apply_effects_frame(frame.appearance);
     frame.material.value = frame.appearance.value;
     frame.material.fill = ui_style_apply_effects_fill(frame.material.fill);
@@ -314,7 +315,7 @@ ui_dropdown(DropdownProps props)
         MarkDisabled();
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
-    UIWidget widget;
+    Widget widget;
     Style content_style = dropdown_style(0, 0, ButtonStateNormal);
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
@@ -330,8 +331,8 @@ ui_dropdown(DropdownProps props)
     int active = button_inside &&
                  (state->open
                       ? !ui_base_input_captures_click(mouse, 1)
-                      : !UIInputCapturesClick(mouse));
-    int hover = active && UIHoverEffectsEnabled();
+                      : !InputCapturesClick(mouse));
+    int hover = active && HoverEffectsEnabled();
     int can_draw = IsWindowReady();
 
     state->frame_seen = g_ui_frame_serial;
@@ -342,9 +343,9 @@ ui_dropdown(DropdownProps props)
     }
 
     snprintf(editor_id, sizeof(editor_id), "dropdown:%d", id);
-    widget = BeginUIWidget("dropdown", editor_id, btn_bounds,
-                           UI_WIDGET_MOVABLE |
-                           UI_WIDGET_RESIZABLE);
+    widget = BeginWidget("dropdown", editor_id, btn_bounds,
+                           WIDGET_MOVABLE |
+                           WIDGET_RESIZABLE);
     btn_bounds = widget.bounds;
     x = (int)btn_bounds.x;
     y = (int)btn_bounds.y;
@@ -355,15 +356,15 @@ ui_dropdown(DropdownProps props)
     if(h < Scale(24))
         h = Scale(24);
     btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
-    UIWidgetSetBounds(&widget, btn_bounds);
+    WidgetSetBounds(&widget, btn_bounds);
     button_inside = CheckCollisionPointRec(mouse, btn_bounds);
     active = !UIContentDisabled() && button_inside &&
              (state->open
                   ? !ui_base_input_captures_click(mouse, 1)
-                  : !UIInputCapturesClick(mouse));
-    hover = active && UIHoverEffectsEnabled();
-    int focused = !UIContentDisabled() && id > 0 && RegisterUIFocus(id, btn_bounds);
-    if(focused) SetUIFocusTextInputActive(0);
+                  : !InputCapturesClick(mouse));
+    hover = active && HoverEffectsEnabled();
+    int focused = !UIContentDisabled() && id > 0 && RegisterFocus(id, btn_bounds);
+    if(focused) SetFocusTextInputActive(0);
 
     if(state->pending_changed) {
         if(selected_index != NULL)
@@ -414,7 +415,7 @@ ui_dropdown(DropdownProps props)
     if(next_open != state->open) {
         ClearTextInputFocus();
         if(pointer_activate)
-            UIConsumeRelease();
+            ConsumeRelease();
         state->open = next_open;
         if(state->open) {
             close_other_dropdowns(id);
@@ -446,21 +447,21 @@ ui_dropdown(DropdownProps props)
     }
     int text_w = arrow_x - arrow_size - Scale(8) - text_x;
     if(can_draw && text_w > 0) {
-        int font_token = PushUIFont(current_font);
-        BeginUIClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
+        int font_token = PushTextFont(current_font);
+        BeginClip((int)(g_ui_camera.offset.x + (float)text_x * g_ui_camera.zoom),
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
         RenderText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, button_text);
-        EndUIClip();
-        PopUIFont(font_token);
+        EndClip();
+        PopTextFont(font_token);
     }
 
     if(can_draw)
         dropdown_draw_indicator(arrow_x, arrow_y, arrow_size,
                                 state->open, button_text);
 
-    EndUIWidget(&widget);
+    EndWidget(&widget);
     EndDisabled();
     return changed;
 }
@@ -583,7 +584,7 @@ dropdown_paint_menu(int id)
                      dropdown_h - Scale(4), content_h, &state->scroll_offset, max_scroll, 1);
 
     if(can_draw) {
-        BeginUIClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
+        BeginClip((int)(g_ui_camera.offset.x + (float)x * g_ui_camera.zoom),
                     (int)(g_ui_camera.offset.y +
                           (float)(dropdown_y + padding_top) * g_ui_camera.zoom),
                     (int)((float)option_w * g_ui_camera.zoom),
@@ -610,7 +611,7 @@ dropdown_paint_menu(int id)
 
         int option_active = !options[i].disabled && CheckCollisionPointRec(mouse, visible_bounds);
         int option_hover = !options[i].disabled && (state->highlight_index == i ||
-                           (option_active && UIHoverEffectsEnabled()));
+                           (option_active && HoverEffectsEnabled()));
 
         Color row_text = content_style.foreground;
         if(can_draw) {
@@ -635,7 +636,7 @@ dropdown_paint_menu(int id)
                 state->scrollbar_pressed, state->gesture.dragging,
                 state->scroll_offset == state->gesture.origin_offset)) {
                 ClearTextInputFocus();
-                UIConsumeRelease();
+                ConsumeRelease();
                 state->pending_changed = state->selected_index != i;
                 state->selected_index = i;
                 state->pending_index = i;
@@ -643,13 +644,13 @@ dropdown_paint_menu(int id)
                 state->scroll_offset = 0;
                 changed = state->pending_changed;
                 if(clip_started)
-                    EndUIClip();
+                    EndClip();
                 return changed;
             }
         }
 
         if(can_draw) {
-            int font_token = PushUIFont(options[i].font_name);
+            int font_token = PushTextFont(options[i].font_name);
             int text_x = x + (int)content.padding;
             if(options[i].separator_before)
                 DrawLine(x + Scale(16), option_y, x + option_w - Scale(16), option_y,
@@ -660,15 +661,15 @@ dropdown_paint_menu(int id)
                 text_x += (int)(content.icon + content.gap);
             }
             int text_w = x + option_w - (int)(content.padding + content.icon + content.gap) - text_x;
-            BeginUIClip((int)(g_ui_camera.offset.x + text_x * g_ui_camera.zoom),
+            BeginClip((int)(g_ui_camera.offset.x + text_x * g_ui_camera.zoom),
                 (int)(g_ui_camera.offset.y + visible_y * g_ui_camera.zoom),
                 (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
                 (int)(visible_h * g_ui_camera.zoom));
             RenderText(options[i].label, text_x,
                        GetUIControlTextY(options[i].label, option_y, option_h, font),
                        font, row_text);
-            EndUIClip();
-            PopUIFont(font_token);
+            EndClip();
+            PopTextFont(font_token);
             if(state->selected_index == i) {
                 int cx = x + option_w - (int)(content.padding + content.icon / 2);
                 int cy = option_y + option_h / 2;
@@ -679,7 +680,7 @@ dropdown_paint_menu(int id)
     }
 
     if(clip_started)
-        EndUIClip();
+        EndClip();
 
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) state->scrollbar_pressed = 0;
 

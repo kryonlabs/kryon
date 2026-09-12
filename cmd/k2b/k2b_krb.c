@@ -320,8 +320,8 @@ parse_color(const char *expr)
     size_t nlen;
 
     expr = kir_skip_inline_ws(expr);
-    /* Theme getters (matched as substrings, so they also resolve inside
-     * DarkenUIColor/LightenUIColor wrappers). */
+    /* Theme getters are matched as substrings, so calls like
+     * DarkenColor(GetThemeSurface(), 16) still resolve. */
     if(strstr(expr, "GetThemeBackground") != NULL)
         return 0x80000000u;
     if(strstr(expr, "GetThemeText") != NULL)
@@ -899,8 +899,8 @@ add_handler_line(KrbHandler *h, const char *raw)
 
     if(t[0] == '\0' || t[0] == '{' || t[0] == '}')
         return;
-    if(strncmp(t, "PushUIInspectSource(", 20) == 0 ||
-       strncmp(t, "PopUIInspectSource();", 21) == 0)
+    if(strncmp(t, "PushInspectSource(", 18) == 0 ||
+       strncmp(t, "PopInspectSource();", 19) == 0)
         return;
     if(strncmp(t, "if(", 3) == 0 || strncmp(t, "if (", 4) == 0)
         return;
@@ -2905,8 +2905,8 @@ try_widget(KrbBuild *b, const char *raw)
     const char *call;
     int parsed;
 
-    if(strncmp(text, "PushUIInspectSource(", 20) == 0 ||
-       strncmp(text, "PopUIInspectSource();", 21) == 0)
+    if(strncmp(text, "PushInspectSource(", 18) == 0 ||
+       strncmp(text, "PopInspectSource();", 19) == 0)
         return 0;
     call = call_after_eq(text);
     call = kir_skip_inline_ws(call);
@@ -3486,8 +3486,8 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
         fprintf(out, "    InitWindow(%d, %d, %s);\n", width, height, title);
         fprintf(out, "    SetTargetFPS(%d);\n", fps);
         if(m->app.font_examples)
-            fprintf(out, "    LoadExampleUIFont();\n");
-        fprintf(out, "    InitUI(%d, %d, GetUIScale());\n", width, height);
+            fprintf(out, "    LoadExampleTextFont();\n");
+        fprintf(out, "    InitInterface(%d, %d, GetScale());\n", width, height);
         if(m->app.theme[0] != '\0') {
             fprintf(out, "    SetThemeSource(THEME_SOURCE_APP);\n");
             fprintf(out, "    SetThemeMode(%s);\n",
@@ -3498,15 +3498,15 @@ write_krb_host(const KirModule *m, const char *root, const char *gen_rel,
         }
         fprintf(out, "    while(!WindowShouldClose()) {\n");
         fprintf(out, "        BeginDrawing();\n");
-        fprintf(out, "        BeginUIFrame(%d, %d, GetUIScale());\n",
+        fprintf(out, "        BeginInterfaceFrame(%d, %d, GetScale());\n",
                 width, height);
         fprintf(out, "        %s_krb_draw(0, 0, GetScreenWidth(), GetScreenHeight());\n",
                 screen);
-        fprintf(out, "        EndUIFrame();\n");
+        fprintf(out, "        EndInterfaceFrame();\n");
         fprintf(out, "        EndDrawing();\n");
         fprintf(out, "    }\n");
         if(m->app.font_examples)
-            fprintf(out, "    UnloadExampleUIFont();\n");
+            fprintf(out, "    UnloadExampleTextFont();\n");
         fprintf(out, "    CloseWindow();\n");
         fprintf(out, "    return 0;\n");
         fprintf(out, "}\n#endif\n");

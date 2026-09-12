@@ -435,9 +435,9 @@ typedef enum TerminalPaneModeAction {
 } TerminalPaneModeAction;
 
 typedef struct TerminalPaneClipboard {
-    UIClipboardBuffer *clipboard;
+    ClipboardBuffer *clipboard;
     int bracketed_paste;
-    UIClipboardPasteWriteFn write_text;
+    ClipboardPasteWriteFn write_text;
     void *userdata;
 } TerminalPaneClipboard;
 
@@ -703,7 +703,7 @@ int TerminalPaneSelectionUpdatePrimary(
 int TerminalPaneSelectionCopyToClipboard(
     const TerminalPaneSelection *selection, TerminalPaneSelectionLineFn line_text,
     TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
-    UIClipboardBuffer *clipboard);
+    ClipboardBuffer *clipboard);
 int TerminalPaneSelectionEdgeScrollDelta(float mouse_y, float viewport_y,
                                          float viewport_height,
                                          float edge_size);
@@ -777,19 +777,19 @@ int FormatTerminalPaneDeviceStatusReport(char *out, int out_size,
 int TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
                                    const char *text);
 TerminalPaneClipboard MakeTerminalPaneClipboard(
-    UIClipboardBuffer *clipboard, int bracketed_paste,
-    UIClipboardPasteWriteFn write_text, void *userdata);
+    ClipboardBuffer *clipboard, int bracketed_paste,
+    ClipboardPasteWriteFn write_text, void *userdata);
 TerminalPaneClipboardController MakeTerminalPaneClipboardController(
     TerminalPaneClipboard clipboard, TerminalPaneSelection *selection,
     TerminalPaneSelectionLineFn line_text,
     TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
     int total_rows, int cols, int *scroll_offset);
 int TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
-                                     UIClipboardSource source);
+                                     ClipboardSource source);
 int TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard);
-int TerminalPaneClipboardSourceHasText(UIClipboardSource source);
+int TerminalPaneClipboardSourceHasText(ClipboardSource source);
 int TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard);
 int TerminalPaneClipboardPerform(TerminalPaneClipboard clipboard,

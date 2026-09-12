@@ -1132,31 +1132,31 @@ func main() {
 	driver.SetFocus(920)
 	driver.QueueKey(kryon.KeyRight)
 	drawPlots()
-	if value := PlotsStateValue.DragFloats[0]; value < 1.0999 || value > 1.1001 {
+	if value := PlotsStateValue.PlotsScalarValues[0]; value < 1.0999 || value > 1.1001 {
 		panic(fmt.Sprintf("generated float drag keyboard value=%v, want 1.1", value))
 	}
 	driver.SetFocus(921)
 	driver.QueueKey(kryon.KeyRight)
 	drawPlots()
-	if value := PlotsStateValue.DragInts[0]; value != 4 {
+	if value := PlotsStateValue.PlotsWholeValues[0]; value != 4 {
 		panic(fmt.Sprintf("generated int drag keyboard value=%d, want 4", value))
 	}
 	driver.SetFocus(938)
 	driver.QueueKey(kryon.KeyRight)
 	drawPlots()
-	if value := PlotsStateValue.DragFloatMin; value < 2.0999 || value > 2.1001 {
+	if value := PlotsStateValue.PlotsScalarRangeMin; value < 2.0999 || value > 2.1001 {
 		panic(fmt.Sprintf("generated float range drag keyboard value=%v, want 2.1", value))
 	}
 	driver.SetFocus(922)
 	driver.QueueKey(kryon.KeyRight)
 	drawPlots()
-	if value := PlotsStateValue.SliderFloats[0]; value < 0.2599 || value > 0.2601 {
+	if value := PlotsStateValue.PlotsSliderValues[0]; value < 0.2599 || value > 0.2601 {
 		panic(fmt.Sprintf("generated float slider keyboard value=%v, want 0.26", value))
 	}
 	driver.SetFocus(925)
 	driver.QueueKey(kryon.KeyUp)
 	drawPlots()
-	if value := PlotsStateValue.SliderInts[0]; value != 3 {
+	if value := PlotsStateValue.PlotsSliderWholeValues[0]; value != 3 {
 		panic(fmt.Sprintf("generated vertical int slider keyboard value=%d, want 3", value))
 	}
 	driver.QueueKey(kryon.KeyLeftControl)
@@ -1165,7 +1165,7 @@ func main() {
 	driver.QueueShortcut(kryon.KeyA)
 	driver.QueueText("12.5")
 	drawPlots()
-	if value := PlotsStateValue.DragFloats[0]; value != 12.5 {
+	if value := PlotsStateValue.PlotsScalarValues[0]; value != 12.5 {
 		panic(fmt.Sprintf("generated float drag temporary input=%v, want 12.5", value))
 	}
 	driver.QueueKey(kryon.KeyEnter)
@@ -1177,7 +1177,7 @@ func main() {
 	driver.QueueShortcut(kryon.KeyA)
 	driver.QueueText("17")
 	drawPlots()
-	if value := PlotsStateValue.DragInts[0]; value != 17 {
+	if value := PlotsStateValue.PlotsWholeValues[0]; value != 17 {
 		panic(fmt.Sprintf("generated int drag double-click input=%d, want 17", value))
 	}
 	driver.QueueKey(kryon.KeyEnter)
@@ -1188,13 +1188,13 @@ func main() {
 	driver.QueueShortcut(kryon.KeyA)
 	driver.QueueText("19")
 	drawPlots()
-	if value := PlotsStateValue.SliderInts[0]; value != 19 {
+	if value := PlotsStateValue.PlotsSliderWholeValues[0]; value != 19 {
 		panic(fmt.Sprintf("generated int slider temporary input=%d, want 19", value))
 	}
 	driver.SetFocus(0x60000008)
 	driver.QueueKey(kryon.KeySpace)
 	drawPlots()
-	if value := PlotsStateValue.InputInts[0]; value != 5 {
+	if value := PlotsStateValue.PlotsInputWholeValues[0]; value != 5 {
 		panic(fmt.Sprintf("generated input step keyboard value=%d, want 5", value))
 	}
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
@@ -1341,17 +1341,17 @@ cat > "$work/c_runner.c" <<EOF
 
 static void drain_events(void)
 {
-    UIEvent event;
+    Event event;
     while(NextEvent(&event)) {}
 }
 
 static void draw_ui(void (*fn)(void))
 {
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
     BeginTree(Key("generated-runtime-parity"));
     fn();
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
     drain_events();
 }
 
@@ -1460,11 +1460,11 @@ static void require_long_text_node_count(int want, const char *label)
 int main(void)
 {
     InjectReset();
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
     if(composed_result(0, -1, 0) != 3 || composed_result(3, 1, 0) != 0 ||
        composed_result(2, 1, 1) != 2)
         return 1;
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectTap(180,20);
     InjectPump(); draw_closeable_collapsible();
     InjectPump(); draw_closeable_collapsible();
@@ -1478,7 +1478,7 @@ int main(void)
     if(tab_first_actions != 1 || tab_second_actions != 0) {
         fprintf(stderr,"tab scope: selected first child did not own input\n"); return 1;
     }
-    SetUIFocus(958); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_tab_scope();
+    SetFocus(958); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_tab_scope();
     InjectTap(60,84); InjectPump(); draw_tab_scope();
     InjectPump(); draw_tab_scope();
     if(tab_scope_selected != 1 || tab_first_actions != 1 ||
@@ -1493,9 +1493,9 @@ int main(void)
     popup_content_close = 1; draw_composed_popup_content();
     if(popup_content_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
     popup_content_close = 0;
-    BeginUIFrame(640,480,1);
+    BeginInterfaceFrame(640,480,1);
     composed_popup_early_exit(1);
-    EndUIFrame();
+    EndInterfaceFrame();
     draw_composed_popup_content();
     InjectTap(180,70); InjectPump(); draw_composed_popup_tools();
     InjectPump(); draw_composed_popup_tools();
@@ -1581,24 +1581,24 @@ int main(void)
     }
     InjectKey(KEY_C,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     popup_shortcut_open = 1;
-    SetUIFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    SetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(popup_tree_background_open) {
         fprintf(stderr,"generated background tree handled a popup-owned key\n"); return 1;
     }
-    InjectPump(); SetUIFocus(27071); InjectKeyTap(KEY_RIGHT); InjectPump();
+    InjectPump(); SetFocus(27071); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(!popup_tree_inside_open) {
         fprintf(stderr,"generated popup tree did not handle its owned key\n"); return 1;
     }
     InjectPump(); popup_shortcut_open = 0;
-    SetUIFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
+    SetFocus(27072); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_composed_popup_shortcut();
     if(!popup_tree_background_open) {
         fprintf(stderr,"generated background tree routing was not restored\n"); return 1;
     }
     InjectKey(KEY_RIGHT,0); InjectPump();
-    SetUIFocus(26100);
+    SetFocus(26100);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
     draw_composition();
     if(strcmp(composition_text,"base") != 0) {
@@ -1617,20 +1617,20 @@ int main(void)
     }
     composition_read_only = 1;
     for(int id = 26100; id <= 26101; id++) {
-        SetUIFocus(id);
+        SetFocus(id);
         InjectKey(KEY_LEFT_CONTROL,1);
         InjectKeyTap(KEY_A); InjectKeyTap(KEY_C); InjectKeyTap(KEY_X); InjectKeyTap(KEY_V);
         InjectKeyTap(KEY_BACKSPACE); InjectKeyTap(KEY_DELETE); InjectText("blocked");
         SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"blocked",7,0);
         InjectPump(); draw_composition();
-        if(strcmp(GetUIClipboardTextValue(),id == 26100 ? "base日本" : "area") != 0 ||
+        if(strcmp(GetClipboardTextValue(),id == 26100 ? "base日本" : "area") != 0 ||
            strcmp(composition_text,"base日本") != 0 || strcmp(composition_area,"area") != 0) {
             fprintf(stderr,"generated read-only copy or mutation guard failed\n"); return 1;
         }
         InjectReset();
     }
     composition_read_only = 0;
-    SetUIFocus(26102);
+    SetFocus(26102);
     InjectKey(KEY_LEFT_CONTROL,1);
     InjectKeyTap(KEY_RIGHT);
     InjectPump();
@@ -1659,7 +1659,7 @@ int main(void)
     draw_composition();
     InjectKey(KEY_LEFT_CONTROL,0);
     InjectPump();
-    if(strcmp(GetUIClipboardTextValue(),"\n") != 0) {
+    if(strcmp(GetClipboardTextValue(),"\n") != 0) {
         fprintf(stderr,"generated TextArea Ctrl+Shift+Right selection failed\n");
         return 1;
     }
@@ -1687,7 +1687,7 @@ int main(void)
     draw_composition();
     InjectKey(KEY_LEFT_CONTROL,0);
     InjectPump();
-    if(strcmp(GetUIClipboardTextValue(),"1\nc") != 0) {
+    if(strcmp(GetClipboardTextValue(),"1\nc") != 0) {
         fprintf(stderr,"generated TextArea Shift+Down did not select\n");
         return 1;
     }
@@ -1800,7 +1800,7 @@ int main(void)
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
     if(mixed_actions != 0) { fprintf(stderr, "scroll: hidden mixed button activated\n"); return 1; }
-    SetUIFocus(988);
+    SetFocus(988);
     InjectText("!");
     InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(mixed_text,"item!") != 0) { fprintf(stderr, "scroll: mixed text editing failed\n"); return 1; }
@@ -1825,10 +1825,10 @@ int main(void)
         }
     }
     InjectReset();
-    SetUIFocus(990);
+    SetFocus(990);
     const int branch_keys[] = {KEY_LEFT,KEY_RIGHT,KEY_RIGHT,KEY_ENTER,KEY_SPACE};
     for(int i = 0; i < 5; i++) {
-        SetUIFocus(990);
+        SetFocus(990);
         InjectKeyTap(branch_keys[i]);
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
@@ -1850,8 +1850,8 @@ int main(void)
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
         int want = (i == 0 || i == 2 || i == 6) ? 990 : i == 5 ? 995 : 991;
-        if(GetUIFocus() != want || !branch_open || nested_open != (i >= 4)) {
-            fprintf(stderr,"tree directional focus: step %d focus %d failed\n",i,GetUIFocus()); return 1;
+        if(GetFocus() != want || !branch_open || nested_open != (i >= 4)) {
+            fprintf(stderr,"tree directional focus: step %d focus %d failed\n",i,GetFocus()); return 1;
         }
     }
     InjectReset();
@@ -1882,7 +1882,7 @@ int main(void)
     }
     if(overlay_actions != 2) { fprintf(stderr,"dropdown dismissal: capture remained\n"); return 1; }
     for(int last = 0; last < 2; last++) {
-        SetUIFocus(996);
+        SetFocus(996);
         InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
         int before = overlay_selected;
@@ -1894,7 +1894,7 @@ int main(void)
         if(overlay_selected != last) { fprintf(stderr,"dropdown keyboard commit failed\n"); return 1; }
     }
     InjectReset();
-    SetUIFocus(24001);
+    SetFocus(24001);
     InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectKeyTap(KEY_END);
@@ -1904,7 +1904,7 @@ int main(void)
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     if(long_dropdown_selected != 19) { fprintf(stderr,"long dropdown flipped viewport did not reveal last row\n"); return 1; }
     long_dropdown_selected = 0;
-    SetUIFocus(24001);
+    SetFocus(24001);
     InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
@@ -1918,7 +1918,7 @@ int main(void)
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     if(long_dropdown_selected != 19) { fprintf(stderr,"dropdown scrollbar did not reveal last row\n"); return 1; }
     edge_dropdown_visible = 1;
-    SetUIFocus(24002); InjectKeyTap(KEY_SPACE);
+    SetFocus(24002); InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectTap(490,380);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
@@ -1970,7 +1970,7 @@ int main(void)
     InjectTap(20,380);
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
-    if(GetUIFocus() != 1006) { fprintf(stderr,"custom cell editor focus failed\n"); return 1; }
+    if(GetFocus() != 1006) { fprintf(stderr,"custom cell editor focus failed\n"); return 1; }
     InjectKeyTap(KEY_END); InjectPump(); draw_ui(scroll_content_frame);
     InjectText("!"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"custom cell editing failed: %s\n",custom_text); return 1; }
@@ -1978,12 +1978,12 @@ int main(void)
     InjectText("X"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!") != 0) { fprintf(stderr,"disabled custom cell edited: %s\n",custom_text); return 1; }
     custom_disabled = 0;
-    SetUIFocus(1006); InjectPump(); draw_ui(scroll_content_frame);
+    SetFocus(1006); InjectPump(); draw_ui(scroll_content_frame);
     InjectText("?"); InjectPump(); draw_ui(scroll_content_frame);
     if(strcmp(custom_text,"cell!?") != 0) { fprintf(stderr,"custom cell editor re-enable failed: %s\n",custom_text); return 1; }
     InjectReset();
     draw_form();
-    SetUIFocus(101);
+    SetFocus(101);
     draw_form();
     InjectKeyTap(KEY_LEFT);
     InjectPump();
@@ -1999,14 +1999,14 @@ int main(void)
         return 1;
     }
 
-    SetUIFocus(102);
+    SetFocus(102);
     draw_form();
     SetSelection(102, 0, 4);
     InjectText("acct");
     InjectPump();
     draw_form();
 
-    SetUIFocus(101);
+    SetFocus(101);
     draw_form();
     InjectKeyTap(KEY_TAB);
     InjectPump();
@@ -2015,8 +2015,8 @@ int main(void)
     InjectPump();
     draw_form();
 
-    SetUIClipboardTextValue("old");
-    SetUIFocus(103);
+    SetClipboardTextValue("old");
+    SetFocus(103);
     draw_form();
     SetSelection(103, 0, 6);
     InjectKey(KEY_LEFT_CONTROL, 1);
@@ -2059,7 +2059,7 @@ int main(void)
     InjectText("A");
     InjectPump();
     draw_focus();
-    int focus_after_focus = GetUIFocus();
+    int focus_after_focus = GetFocus();
 
     draw_buttons();
     InjectTap(30, 130);
@@ -2106,13 +2106,13 @@ int main(void)
     buttons_reverse = false;
     draw_buttons();
     int button_pointer_action = buttons_action;
-    SetUIFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
+    SetFocus(502); InjectKeyTap(KEY_ENTER); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
-    SetUIFocus(501); InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
+    SetFocus(501); InjectKeyTap(KEY_SPACE); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
     InjectKeyTap(KEY_TAB); InjectPump(); draw_buttons();
     InjectPump(); draw_buttons();
-    if(GetUIFocus() != 502) {
+    if(GetFocus() != 502) {
         fprintf(stderr,"generated button Tab did not skip disabled control\n");
         return 1;
     }
@@ -2126,7 +2126,7 @@ int main(void)
     draw_long_text();
     int long_text_nodes = 0;
     (void)GetTreeNodes(&long_text_nodes);
-    SetUIFocus(701);
+    SetFocus(701);
     draw_long_text();
     require_long_text_node_count(long_text_nodes, "focus");
     for(int i = 0; i < 2048; i++) {
@@ -2183,7 +2183,7 @@ int main(void)
                 slider_value, toggle_value, checkbox_value, selected);
         return 1;
     }
-    SetUIFocus(802); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    SetFocus(802); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
     if(toggle_value != 0) {
         fprintf(stderr,"controls: generated Toggle rejected keyboard toggle\n");
         return 1;
@@ -2193,33 +2193,33 @@ int main(void)
         fprintf(stderr,"controls: generated Toggle did not restore state\n");
         return 1;
     }
-    SetUIFocus(802); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
-    if(GetUIFocus() != 803) {
-        fprintf(stderr,"controls: generated Toggle Tab focus=%d, want 803\n",GetUIFocus());
+    SetFocus(802); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(GetFocus() != 803) {
+        fprintf(stderr,"controls: generated Toggle Tab focus=%d, want 803\n",GetFocus());
         return 1;
     }
-    SetUIFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    SetFocus(803); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
     if(checkbox_value != 0) {
         fprintf(stderr,"controls: generated Checkbox rejected keyboard toggle\n");
         return 1;
     }
     InjectPump(); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
-    SetUIFocus(805); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
-    SetUIFocus(806); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
-    SetUIFocus(807); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    SetFocus(805); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
+    SetFocus(806); InjectKeyTap(KEY_SPACE); InjectPump(); draw_controls();
+    SetFocus(807); InjectKeyTap(KEY_ENTER); InjectPump(); draw_controls();
     if(choice_selected != 1 || choice_flags != 4 || choice_radio_actions != 1) {
         fprintf(stderr,"controls: generated choice keyboard state=%d/%d/%d, want 1/4/1\n",
                 choice_selected,choice_flags,choice_radio_actions);
         return 1;
     }
     choice_selected = choice_flags = choice_radio_actions = 0;
-    SetUIFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
-    if(GetUIFocus() != 806) {
-        fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetUIFocus());
+    SetFocus(805); InjectKeyTap(KEY_TAB); InjectPump(); draw_controls();
+    if(GetFocus() != 806) {
+        fprintf(stderr,"controls: generated choice Tab focus=%d, want 806\n",GetFocus());
         return 1;
     }
     draw_multi_select();
-    SetUIFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
+    SetFocus(957); InjectKeyTap(KEY_DOWN); InjectPump(); draw_multi_select();
     if(multi_anchor != 1 || multi_count != 1 ||
        multi_selected[0] != 0 || multi_selected[1] != 1 || multi_selected[2] != 0) {
         fprintf(stderr,"multi_select: generated MultiSelectList Down state=%d%d%d/%d/%d\n",
@@ -2240,9 +2240,9 @@ int main(void)
     InjectTap(36, 78);
     InjectPump();
     draw_list_box();
-    SetUIFocus(0); InjectKeyTap(KEY_TAB); InjectPump(); draw_list_box();
-    if(GetUIFocus() != 801) { fprintf(stderr,"generated list Tab focus failed\n"); return 1; }
-    SetUIFocus(801); InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
+    SetFocus(0); InjectKeyTap(KEY_TAB); InjectPump(); draw_list_box();
+    if(GetFocus() != 801) { fprintf(stderr,"generated list Tab focus failed\n"); return 1; }
+    SetFocus(801); InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_HOME); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_END); InjectPump(); draw_list_box();
     InjectKeyTap(KEY_UP); InjectPump(); draw_list_box();
@@ -2255,7 +2255,7 @@ int main(void)
         return 1;
     }
 
-    SetUIFocus(940); InjectKeyTap(KEY_DOWN); InjectPump(); draw_menus();
+    SetFocus(940); InjectKeyTap(KEY_DOWN); InjectPump(); draw_menus();
     if(open_menu != 0) { fprintf(stderr,"generated menu Down did not open\n"); return 1; }
     InjectKeyTap(KEY_END); InjectPump(); draw_menus();
     InjectKeyTap(KEY_RIGHT); InjectPump(); draw_menus();
@@ -2280,32 +2280,32 @@ int main(void)
 
     draw_progress();
     draw_plots();
-    SetUIFocus(920); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
-    if(drag_floats[0] < 1.0999f || drag_floats[0] > 1.1001f) {
-        fprintf(stderr,"generated float drag keyboard value=%f, want 1.1\n",drag_floats[0]);
+    SetFocus(920); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(plots_scalar_values[0] < 1.0999f || plots_scalar_values[0] > 1.1001f) {
+        fprintf(stderr,"generated float drag keyboard value=%f, want 1.1\n",plots_scalar_values[0]);
         return 1;
     }
-    InjectPump(); SetUIFocus(921); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
-    if(drag_ints[0] != 4) {
-        fprintf(stderr,"generated int drag keyboard value=%d, want 4\n",drag_ints[0]);
+    InjectPump(); SetFocus(921); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(plots_whole_values[0] != 4) {
+        fprintf(stderr,"generated int drag keyboard value=%d, want 4\n",plots_whole_values[0]);
         return 1;
     }
-    InjectPump(); SetUIFocus(938); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
-    if(drag_float_min < 2.0999f || drag_float_min > 2.1001f) {
-        fprintf(stderr,"generated float range drag keyboard value=%f, want 2.1\n",drag_float_min);
+    InjectPump(); SetFocus(938); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if(plots_scalar_range_min < 2.0999f || plots_scalar_range_min > 2.1001f) {
+        fprintf(stderr,"generated float range drag keyboard value=%f, want 2.1\n",plots_scalar_range_min);
         return 1;
     }
     InjectPump();
-    SetUIFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
-    if((int)(slider_floats[0]*1000.0f+0.5f) != 260) {
+    SetFocus(922); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_plots();
+    if((int)(plots_slider_values[0]*1000.0f+0.5f) != 260) {
         fprintf(stderr,"generated float slider keyboard value=%f, want 0.26\n",
-                slider_floats[0]);
+                plots_slider_values[0]);
         return 1;
     }
-    SetUIFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
-    if(slider_ints[0] != 3) {
+    SetFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
+    if(plots_slider_whole_values[0] != 3) {
         fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
-                slider_ints[0]);
+                plots_slider_whole_values[0]);
         return 1;
     }
     InjectMousePosition(30,190); InjectKey(KEY_LEFT_CONTROL,1);
@@ -2316,9 +2316,9 @@ int main(void)
     InjectPump(); draw_plots();
     InjectKey(KEY_LEFT_CONTROL,0); InjectText("12.5");
     InjectPump(); draw_plots();
-    if(drag_floats[0] != 12.5f) {
+    if(plots_scalar_values[0] != 12.5f) {
         fprintf(stderr,"generated float drag temporary input=%f, want 12.5\n",
-                drag_floats[0]);
+                plots_scalar_values[0]);
         return 1;
     }
     InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();
@@ -2332,9 +2332,9 @@ int main(void)
     InjectPump(); draw_plots();
     InjectKey(KEY_LEFT_CONTROL,0); InjectText("17");
     InjectPump(); draw_plots();
-    if(drag_ints[0] != 17) {
+    if(plots_whole_values[0] != 17) {
         fprintf(stderr,"generated int drag double-click input=%d, want 17\n",
-                drag_ints[0]);
+                plots_whole_values[0]);
         return 1;
     }
     InjectKeyTap(KEY_ENTER); InjectPump(); draw_plots();
@@ -2346,15 +2346,15 @@ int main(void)
     InjectPump(); draw_plots();
     InjectKey(KEY_LEFT_CONTROL,0); InjectText("19");
     InjectPump(); draw_plots();
-    if(slider_ints[0] != 19) {
+    if(plots_slider_whole_values[0] != 19) {
         fprintf(stderr,"generated int slider temporary input=%d, want 19\n",
-                slider_ints[0]);
+                plots_slider_whole_values[0]);
         return 1;
     }
-    SetUIFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();
-    if(input_ints[0] != 5) {
+    SetFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();
+    if(plots_input_whole_values[0] != 5) {
         fprintf(stderr,"generated input step keyboard value=%d, want 5\n",
-                input_ints[0]);
+                plots_input_whole_values[0]);
         return 1;
     }
 
@@ -2386,19 +2386,19 @@ int main(void)
         return 1;
     }
 
-    SetUIFocus(901);
+    SetFocus(901);
     InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
     InjectKey(KEY_TAB,0); InjectPump();
-    if(selected_row != 1 || selected_column != 0 || GetUIFocus() != 901) {
+    if(selected_row != 1 || selected_column != 0 || GetFocus() != 901) {
         fprintf(stderr,"table_view tab: got selected=(%d,%d) focus=%d, want (1,0),901\n",
-                selected_row,selected_column,GetUIFocus());
+                selected_row,selected_column,GetFocus());
         return 1;
     }
     InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump(); draw_table_view();
     InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
-    if(selected_row != 0 || selected_column != 2 || GetUIFocus() != 901) {
+    if(selected_row != 0 || selected_column != 2 || GetFocus() != 901) {
         fprintf(stderr,"table_view shift-tab: got selected=(%d,%d) focus=%d, want (0,2),901\n",
-                selected_row,selected_column,GetUIFocus());
+                selected_row,selected_column,GetFocus());
         return 1;
     }
     InjectKey(KEY_LEFT,1); InjectPump(); draw_table_view();
@@ -2419,12 +2419,12 @@ int main(void)
     }
     InjectKey(KEY_LEFT_CONTROL,1); InjectKey(KEY_C,1); InjectPump(); draw_table_view();
     InjectKey(KEY_C,0); InjectPump();
-    if(strcmp(GetUIClipboardTextValue(),"Wallet") != 0) {
+    if(strcmp(GetClipboardTextValue(),"Wallet") != 0) {
         fprintf(stderr,"table_view cell copy: got %s, want Wallet\n",
-                GetUIClipboardTextValue());
+                GetClipboardTextValue());
         return 1;
     }
-    SetUIClipboardTextValue("generated-paste");
+    SetClipboardTextValue("generated-paste");
     InjectKey(KEY_V,1); InjectPump(); draw_table_view();
     InjectKey(KEY_V,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     if(pasted_text == NULL || strcmp(pasted_text,"generated-paste") != 0 ||
@@ -2433,7 +2433,7 @@ int main(void)
                 pasted_text != NULL ? pasted_text : "(null)",pasted_row,pasted_column);
         return 1;
     }
-    SetUIClipboardTextValue("old");
+    SetClipboardTextValue("old");
     selected_row = -1;
     selected_column = 2;
 
@@ -2447,7 +2447,7 @@ int main(void)
         list_selected, list_scroll, tree_selected, tree_scroll,
         selected_row, selected_column, table_activated_row,
         table_activated_column, sort_column,
-        GetUIClipboardTextValue());
+        GetClipboardTextValue());
     return 0;
 }
 EOF

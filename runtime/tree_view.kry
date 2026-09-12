@@ -1,0 +1,101 @@
+#module "tree_view"
+#import "drawing_props"
+
+TreeViewMetrics :: struct {
+    default_row_height: i32
+    indent_x: i32
+    depth_indent: i32
+    marker_width: i32
+    text_gap: i32
+}
+
+TreeViewScrollLayout :: struct {
+    first: i32
+    y_offset: i32
+}
+
+TreeViewMetricsFor :: (scale: float) -> TreeViewMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: TreeViewMetrics
+    metrics.default_row_height = (i32)(28.0 * scale)
+    metrics.indent_x = (i32)(8.0 * scale)
+    metrics.depth_indent = (i32)(18.0 * scale)
+    metrics.marker_width = (i32)(16.0 * scale)
+    metrics.text_gap = (i32)(2.0 * scale)
+    return metrics
+}
+
+TreeViewRowHeight :: (requested_row_height: i32, scale: float,
+    metrics: TreeViewMetrics) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if requested_row_height > 0 {
+        height: i32 = (i32)((float)requested_row_height * scale)
+        if height > 0 { return height }
+    }
+    return metrics.default_row_height
+}
+
+TreeViewContentHeight :: (item_count: i32, row_height: i32) -> i32 #export {
+    if item_count <= 0 || row_height <= 0 { return 0 }
+    return item_count * row_height
+}
+
+TreeViewMaxScroll :: (viewport_height: i32, content_height: i32) -> i32 #export {
+    max_scroll: i32 = content_height - viewport_height
+    if max_scroll < 0 { return 0 }
+    return max_scroll
+}
+
+TreeViewScrollFor :: (scroll_y: i32, row_height: i32) -> TreeViewScrollLayout #export {
+    layout: TreeViewScrollLayout
+    if scroll_y < 0 { scroll_y = 0 }
+    if row_height <= 0 { row_height = 1 }
+    layout.first = scroll_y / row_height
+    layout.y_offset = scroll_y % row_height
+    return layout
+}
+
+TreeViewVisibleRows :: (viewport_height: i32, row_height: i32) -> i32 #export {
+    if viewport_height <= 0 { return 0 }
+    if row_height <= 0 { row_height = 1 }
+    return viewport_height / row_height + 1
+}
+
+TreeViewRowBounds :: (bounds: Rectangle, visible_index: i32,
+    row_height: i32, y_offset: i32) -> Rectangle #export {
+    row: Rectangle
+    row.x = bounds.x
+    row.y = bounds.y + (float)(visible_index * row_height - y_offset)
+    row.width = bounds.width
+    row.height = (float)row_height
+    return row
+}
+
+TreeViewIndent :: (depth: i32, metrics: TreeViewMetrics) -> i32 #export {
+    if depth < 0 { depth = 0 }
+    return metrics.indent_x + depth * metrics.depth_indent
+}
+
+TreeViewMarkerBounds :: (row: Rectangle, depth: i32,
+    metrics: TreeViewMetrics) -> Rectangle #export {
+    marker: Rectangle
+    indent: i32 = TreeViewIndent(depth, metrics)
+    marker.x = row.x + (float)indent
+    marker.y = row.y
+    marker.width = (float)metrics.marker_width
+    marker.height = row.height
+    return marker
+}
+
+TreeViewTextBounds :: (row: Rectangle, depth: i32,
+    metrics: TreeViewMetrics) -> Rectangle #export {
+    text: Rectangle
+    indent: i32 = TreeViewIndent(depth, metrics)
+    x: float = row.x + (float)(indent + metrics.marker_width + metrics.text_gap)
+    text.x = x
+    text.y = row.y
+    text.width = row.width - (x - row.x)
+    if text.width < 0.0 { text.width = 0.0 }
+    text.height = row.height
+    return text
+}

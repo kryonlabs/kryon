@@ -1,0 +1,20 @@
+#module "icon"
+#import "drawing_props"
+
+IconLayout :: struct {
+    bounds: Rectangle
+    size: i32
+    drawable: bool
+}
+
+IconLayoutFor :: (x: i32, y: i32, size: i32) -> IconLayout #export {
+    layout: IconLayout
+    layout.size = size
+    if layout.size < 0 { layout.size = 0 }
+    layout.bounds.x = (float)x
+    layout.bounds.y = (float)y
+    layout.bounds.width = (float)layout.size
+    layout.bounds.height = (float)layout.size
+    layout.drawable = layout.size > 0
+    return layout
+}

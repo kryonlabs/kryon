@@ -12,17 +12,17 @@ DismissibleOverlay(DismissibleOverlayProps overlay)
     if(overlay.scrim.a != 0)
         DrawRectangle(0, 0, view_width, view_height, overlay.scrim);
 
-    SetUIModalCapture(bounds);
+    SetModalCapture(bounds);
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT) &&
-       !UIReleaseConsumed() &&
+       !ReleaseConsumed() &&
        !overlay.dismiss_disabled &&
        !CheckCollisionPointRec(mouse, bounds)) {
-        UIConsumeRelease();
+        ConsumeRelease();
         result.closed = 1;
         result.outside_released = 1;
         result.release_consumed = 1;
     } else {
-        result.release_consumed = UIReleaseConsumed();
+        result.release_consumed = ReleaseConsumed();
     }
 
     return result;

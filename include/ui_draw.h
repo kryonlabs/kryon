@@ -1,5 +1,5 @@
-#ifndef UI_DRAW_H
-#define UI_DRAW_H
+#ifndef KRYON_DRAW_H
+#define KRYON_DRAW_H
 
 #include "kryon_compat.generated.h"
 #include "ui_icon_types.h"

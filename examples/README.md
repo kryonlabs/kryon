@@ -78,9 +78,9 @@ only needed for full projects that want custom build or run targets.
 
 The toolkit examples use one direct API shape per widget: fill the struct that
 describes the widget state and call its widget function, such as `Button`,
-`TextField`, or `TableView`. Geometry
-uses `BeginFrameBox`, `FramePack`, `GridCell`, and `Place`; canvas uses
-`BeginCanvas` / `EndCanvas`.
+`TextField`, or `TableView`. Geometry examples use plain `Rectangle` values
+alongside canonical layout widgets; canvas content uses the lexical `Canvas`
+block.
 
 ## Usage
 

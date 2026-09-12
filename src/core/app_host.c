@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 int
-IsUIInspectActive(void)
+IsInspectActive(void)
 {
     const char *value = getenv("KRYON_INSPECT");
 

@@ -1,51 +1,25 @@
-#ifndef UI_TK_H
-#define UI_TK_H
+#ifndef KRYON_TK_H
+#define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
 #include "ui_controls.h"
 #include "ui_menu_types.h"
 
-#define UI_CLIPBOARD_BUFFER_SIZE 4096
-
-typedef enum {
-    SideTop,
-    SideBottom,
-    SideLeft,
-    SideRight
-} Side;
+#define CLIPBOARD_BUFFER_SIZE 4096
 
 typedef struct {
-    Rectangle bounds;
-    int pad_x;
-    int pad_y;
-    int gap;
-    int cursor_x;
-    int cursor_y;
-} FrameBox;
-
-typedef struct {
-    Rectangle bounds;
-    int rows;
-    int cols;
-    int gap_x;
-    int gap_y;
-    int pad_x;
-    int pad_y;
-} GridFrame;
-
-typedef struct {
-    char text[UI_CLIPBOARD_BUFFER_SIZE];
+    char text[CLIPBOARD_BUFFER_SIZE];
     int pending;
-} UIClipboardBuffer;
+} ClipboardBuffer;
 
 typedef enum {
-    UI_CLIPBOARD_SOURCE_CLIPBOARD,
-    UI_CLIPBOARD_SOURCE_PRIMARY,
-    UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD
-} UIClipboardSource;
+    CLIPBOARD_SOURCE_CLIPBOARD,
+    CLIPBOARD_SOURCE_PRIMARY,
+    CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD
+} ClipboardSource;
 
-typedef int (*UIClipboardOSC52WriteFn)(void *userdata, const char *text);
-typedef int (*UIClipboardPasteWriteFn)(void *userdata, const char *text,
+typedef int (*ClipboardOSC52WriteFn)(void *userdata, const char *text);
+typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
 
 typedef struct {
@@ -415,12 +389,8 @@ typedef struct {
     int focused;
     int disabled;
     int checked;
-} UIAccessibilityNode;
+} AccessibilityNode;
 
-FrameBox BeginFrameBox(Rectangle bounds, int pad_x, int pad_y, int gap);
-Rectangle FramePack(FrameBox *frame, Side side, int size);
-Rectangle GridCell(GridFrame grid, int row, int col, int row_span, int col_span);
-Rectangle Place(Rectangle parent, int x, int y, int w, int h);
 CanvasResult BeginCanvas(Canvas canvas);
 void EndCanvas(Canvas canvas);
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);
@@ -430,40 +400,40 @@ Rectangle CanvasRectToScreen(Canvas canvas, Rectangle rect);
 int AcceleratorPressed(Accelerator accelerator);
 int DispatchAccelerators(const Accelerator *accelerators, int count);
 int ContextMenu(ContextMenuProps menu);
-int SetUIClipboardTextValue(const char *text);
-const char *GetUIClipboardTextValue(void);
-int SetUIPrimarySelectionTextValue(const char *text);
-const char *GetUIPrimarySelectionTextValue(void);
-int UIClipboardSourceHasText(UIClipboardSource source);
-const char *GetUIClipboardSourceText(const UIClipboardBuffer *clipboard,
-                                     UIClipboardSource source);
-int SetUIPrimarySelectionFromText(const char *text);
-int CopyUISelectionTextToClipboard(UIClipboardBuffer *clipboard,
+int SetClipboardTextValue(const char *text);
+const char *GetClipboardTextValue(void);
+int SetPrimarySelectionTextValue(const char *text);
+const char *GetPrimarySelectionTextValue(void);
+int ClipboardSourceHasText(ClipboardSource source);
+const char *GetClipboardSourceText(const ClipboardBuffer *clipboard,
+                                     ClipboardSource source);
+int SetPrimarySelectionFromText(const char *text);
+int CopySelectionTextToClipboard(ClipboardBuffer *clipboard,
                                    const char *text);
-int UIClipboardTargetIncludes(const char *target, char wanted);
-int UIClipboardTargetUsesPrimary(const char *target);
-const char *GetUIClipboardTargetText(const UIClipboardBuffer *clipboard,
+int ClipboardTargetIncludes(const char *target, char wanted);
+int ClipboardTargetUsesPrimary(const char *target);
+const char *GetClipboardTargetText(const ClipboardBuffer *clipboard,
                                      const char *target);
-int RequestUIClipboardTargetWrite(UIClipboardBuffer *clipboard,
+int RequestClipboardTargetWrite(ClipboardBuffer *clipboard,
                                   const char *target, const char *text);
-int HandleUIClipboardOSC52(UIClipboardBuffer *clipboard, const char *payload,
-                           UIClipboardOSC52WriteFn write_response,
+int HandleClipboardOSC52(ClipboardBuffer *clipboard, const char *payload,
+                           ClipboardOSC52WriteFn write_response,
                            void *userdata);
-int WriteUIClipboardPaste(const char *text, int bracketed,
-                          UIClipboardPasteWriteFn write_text,
+int WriteClipboardPaste(const char *text, int bracketed,
+                          ClipboardPasteWriteFn write_text,
                           void *userdata);
-int WriteUIClipboardTextPaste(UIClipboardBuffer *clipboard, const char *text,
-                              int bracketed, UIClipboardPasteWriteFn write_text,
+int WriteClipboardTextPaste(ClipboardBuffer *clipboard, const char *text,
+                              int bracketed, ClipboardPasteWriteFn write_text,
                               void *userdata);
-int WriteUIClipboardSourcePaste(UIClipboardBuffer *clipboard,
-                                UIClipboardSource source, int bracketed,
-                                UIClipboardPasteWriteFn write_text,
+int WriteClipboardSourcePaste(ClipboardBuffer *clipboard,
+                                ClipboardSource source, int bracketed,
+                                ClipboardPasteWriteFn write_text,
                                 void *userdata);
-void InitUIClipboardBuffer(UIClipboardBuffer *buffer, const char *text);
-int SetUIClipboardBufferText(UIClipboardBuffer *buffer, const char *text);
-int RequestUIClipboardBufferWrite(UIClipboardBuffer *buffer, const char *text);
-const char *GetUIClipboardBufferText(const UIClipboardBuffer *buffer);
-int UIClipboardBufferHasPendingWrite(const UIClipboardBuffer *buffer);
-int SyncUIClipboardBufferFromHost(UIClipboardBuffer *buffer);
-int FlushUIClipboardBufferToHost(UIClipboardBuffer *buffer);
+void InitClipboardBuffer(ClipboardBuffer *buffer, const char *text);
+int SetClipboardBufferText(ClipboardBuffer *buffer, const char *text);
+int RequestClipboardBufferWrite(ClipboardBuffer *buffer, const char *text);
+const char *GetClipboardBufferText(const ClipboardBuffer *buffer);
+int ClipboardBufferHasPendingWrite(const ClipboardBuffer *buffer);
+int SyncClipboardBufferFromHost(ClipboardBuffer *buffer);
+int FlushClipboardBufferToHost(ClipboardBuffer *buffer);
 #endif

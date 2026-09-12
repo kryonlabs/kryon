@@ -49,20 +49,19 @@ tab_scope_frame :: () #ui {
             {"First",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0},
             {"Second",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,0}
         }
-        if BeginTabBar((TabBarProps){.bounds={20,20,240,32},.tabs=scope_tabs,.count=2,.selected_index=tab_scope_selected,.id=958}, &tab_scope_selected) {
-            if BeginTabItem(0) {
-                if Button((ButtonProps){.bounds={30,70,120,30},.label="First action",.id=959}) {
-                    tab_first_actions += 1
-                }
-                EndTabItem()
+        selected: int = TabBar((TabBarProps){.bounds={20,20,240,32},.tabs=scope_tabs,.count=2,.selected_index=tab_scope_selected,.id=958})
+        if selected >= 0 {
+            tab_scope_selected = selected
+        }
+        if tab_scope_selected == 0 {
+            if Button((ButtonProps){.bounds={30,70,120,30},.label="First action",.id=959}) {
+                tab_first_actions += 1
             }
-            if BeginTabItem(1) {
-                if Button((ButtonProps){.bounds={30,70,120,30},.label="Second action",.id=960}) {
-                    tab_second_actions += 1
-                }
-                EndTabItem()
+        }
+        if tab_scope_selected == 1 {
+            if Button((ButtonProps){.bounds={30,70,120,30},.label="Second action",.id=960}) {
+                tab_second_actions += 1
             }
-            EndTabBar()
         }
     }
 }

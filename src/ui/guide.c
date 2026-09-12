@@ -1,21 +1,16 @@
 #include "ui_internal.h"
+#include "runtime/guide.h"
 #include <stdio.h>
 
 static UIGuideOverlayDebug g_ui_guide_debug;
 
 static void
-guide_draw_scrim(int view_w, int view_h, Rectangle anchor, Color scrim)
+guide_draw_scrim(GuideScrim scrim, Color color)
 {
-    int padding = Scale(4);
-    int left = ui_clampi((int)anchor.x - padding, 0, view_w);
-    int top = ui_clampi((int)anchor.y - padding, 0, view_h);
-    int right = ui_clampi((int)(anchor.x + anchor.width) + padding, 0, view_w);
-    int bottom = ui_clampi((int)(anchor.y + anchor.height) + padding, 0, view_h);
-
-    DrawRectangle(0, 0, view_w, top, scrim);
-    DrawRectangle(0, bottom, view_w, view_h - bottom, scrim);
-    DrawRectangle(0, top, left, bottom - top, scrim);
-    DrawRectangle(right, top, view_w - right, bottom - top, scrim);
+    DrawRectangleRec(scrim.top, color);
+    DrawRectangleRec(scrim.bottom, color);
+    DrawRectangleRec(scrim.left, color);
+    DrawRectangleRec(scrim.right, color);
 }
 
 static void
@@ -87,152 +82,87 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor)
     }
 }
 
-static Rectangle
-guide_tip_bounds(Rectangle anchor, int w, int h, int view_w, int view_h,
-                 int reserved_top, int reserved_bottom)
-{
-    int margin = Scale(12);
-    int gap = Scale(20);
-    int bottom = view_h - reserved_bottom;
-    int x = (int)(anchor.x + anchor.width / 2) - w / 2;
-    int y;
-
-    if(bottom < reserved_top + margin)
-        bottom = view_h - margin;
-    if(x < margin)
-        x = margin;
-    if(x + w > view_w - margin)
-        x = view_w - margin - w;
-    if(x < margin)
-        x = margin;
-
-    if(anchor.y + anchor.height + gap + h < bottom)
-        y = (int)(anchor.y + anchor.height + gap);
-    else
-        y = (int)(anchor.y - gap - h);
-
-    if(y < reserved_top + margin)
-        y = reserved_top + margin;
-    if(y + h > bottom - margin)
-        y = bottom - margin - h;
-    if(y < margin)
-        y = margin;
-
-    {
-        Rectangle rect;
-
-        rect.x = (float)x;
-        rect.y = (float)y;
-        rect.width = (float)w;
-        rect.height = (float)h;
-        return rect;
-    }
-}
-
 UIGuideResult
 RenderGuideOverlay(GuideOverlayProps guide)
 {
     UIGuideResult result = {0};
+    GuideMetrics metrics = GuideMetricsFor((float)GetScale());
+    GuideLayout layout;
+    GuidePolicy policy;
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
     int view_h = guide.view_height > 0 ? guide.view_height : ui_view_height;
     int step;
-    int margin = Scale(12);
-    int tip_w = view_w - margin * 2;
-    int pad = Scale(12);
-    int button_size = Scale(34);
-    int close_size = Scale(28);
-    int page_font = Text12;
-    int line_gap = guide.line_gap > 0 ? guide.line_gap : Scale(6);
-    int text_gap = Scale(8);
-    int controls_gap = Scale(12);
-    int text_guard = Scale(8);
-    int tip_chrome_h;
+    int tip_w;
+    int line_gap = guide.line_gap > 0 ? guide.line_gap : metrics.default_line_gap;
     int max_tip_h;
     char page_text[32];
     ParagraphSpec paragraph;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
-    Rectangle close_button = {0};
-    Rectangle back_button = {0};
-    Rectangle next_button = {0};
     int y;
-    int text_clip_h;
-    int controls_y;
-    int finish;
     Color scrim;
     Color panel;
     Color panel_border;
     IconActionSpec icon_props;
+    int previous_requested = 0;
+    int next_requested = 0;
+    int close_requested = 0;
 
     g_ui_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
         return result;
 
-    step = ui_clampi(*guide.step, 0, guide.count - 1);
+    step = GuideStepFor(*guide.step, guide.count);
     *guide.step = step;
     result.step = step;
 
-    if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER)) {
-        if(step >= guide.count - 1) {
-            result.finished = 1;
-        } else {
-            *guide.step = step + 1;
-            result.changed = 1;
-            result.step = *guide.step;
-        }
-        return result;
-    }
-    if(IsKeyPressed(KEY_LEFT) && step > 0) {
-        *guide.step = step - 1;
-        result.changed = 1;
-        result.step = *guide.step;
-        return result;
-    }
-    if(IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE)) {
-        result.closed = 1;
+    next_requested = IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_ENTER);
+    previous_requested = IsKeyPressed(KEY_LEFT);
+    close_requested = IsKeyPressed(KEY_BACK) || IsKeyPressed(KEY_ESCAPE);
+    policy = GuidePolicyFor(step, guide.count, previous_requested != 0,
+                            next_requested != 0, close_requested != 0);
+    if(policy.closed || policy.finished || policy.changed) {
+        *guide.step = policy.step;
+        result.step = policy.step;
+        result.changed = policy.changed;
+        result.closed = policy.closed;
+        result.finished = policy.finished;
         return result;
     }
 
-    if(guide.max_width > 0 && tip_w > guide.max_width)
-        tip_w = guide.max_width;
-    else if(tip_w > Scale(300))
-        tip_w = Scale(300);
-
-    max_tip_h = view_h - guide.reserved_top - guide.reserved_bottom -
-                margin * 2;
-    if(max_tip_h < Scale(112))
-        max_tip_h = view_h - margin * 2;
-    tip_chrome_h = pad + close_size + text_gap + text_guard + controls_gap +
-                   button_size + pad;
+    tip_w = GuideTipWidth(view_w, guide.max_width, metrics);
+    max_tip_h = GuideMaxTipHeight(view_h, guide.reserved_top,
+                                  guide.reserved_bottom, metrics);
 
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = guide.steps[step].text;
-    paragraph.width = tip_w - pad * 2;
+    paragraph.width = tip_w - metrics.pad * 2;
     paragraph.font = guide.paragraph_font > 0 ? guide.paragraph_font : Text16;
     paragraph.line_gap = line_gap;
     paragraph_h = ui_paragraph_height(paragraph);
     while(paragraph.font > Text12 &&
-          paragraph_h > max_tip_h - tip_chrome_h) {
+          paragraph_h > max_tip_h - GuideChromeHeight(metrics)) {
         paragraph.font--;
         paragraph_h = ui_paragraph_height(paragraph);
     }
 
-    tip_h = tip_chrome_h + paragraph_h;
-    if(tip_h < Scale(112))
-        tip_h = Scale(112);
-    if(tip_h > max_tip_h)
-        tip_h = max_tip_h;
-    tip = guide_tip_bounds(guide.steps[step].anchor, tip_w, tip_h, view_w, view_h,
-                           guide.reserved_top, guide.reserved_bottom);
-    SetUIModalCapture(tip);
+    tip_h = GuideTipHeight(paragraph_h, max_tip_h, metrics);
+    tip = GuideTipBounds(guide.steps[step].anchor, tip_w, tip_h, view_w,
+                         view_h, guide.reserved_top, guide.reserved_bottom,
+                         metrics);
+    layout = GuideLayoutFor(tip, paragraph.width, paragraph_h, step,
+                            guide.count, metrics);
+    SetModalCapture(tip);
 
     scrim.r = 0;
     scrim.g = 0;
     scrim.b = 0;
     scrim.a = 86;
-    guide_draw_scrim(view_w, view_h, guide.steps[step].anchor, scrim);
-    DrawRectangleLinesEx(guide.steps[step].anchor, (float)Scale(2),
+    guide_draw_scrim(GuideScrimFor(view_w, view_h, guide.steps[step].anchor,
+                                   metrics), scrim);
+    DrawRectangleLinesEx(guide.steps[step].anchor,
+                         (float)metrics.anchor_stroke,
                          GetThemeText());
     guide_draw_arrow(tip, guide.steps[step].anchor);
 
@@ -243,86 +173,70 @@ RenderGuideOverlay(GuideOverlayProps guide)
     DrawRectangleRoundedLines(tip, 0.08f, 8, panel_border);
 
     memset(&icon_props, 0, sizeof(icon_props));
-    close_button.x = tip.x + tip.width - pad - close_size;
-    close_button.y = tip.y + pad;
-    close_button.width = (float)close_size;
-    close_button.height = (float)close_size;
-    icon_props.bounds = close_button;
+    icon_props.bounds = layout.close_button;
     icon_props.icon = guide.close_icon;
-    icon_props.icon_size = Scale(16);
-    icon_props.icon_padding = Scale(6);
+    icon_props.icon_size = metrics.close_icon_size;
+    icon_props.icon_padding = metrics.close_icon_padding;
     if(RenderIconAction(icon_props)) {
         result.closed = 1;
         return result;
     }
 
-    y = (int)tip.y + pad + close_size + text_gap;
-    controls_y = (int)tip.y + (int)tip.height - pad - button_size;
-    text_clip_h = controls_y - controls_gap - y;
+    y = (int)layout.text.y;
     g_ui_guide_debug.valid = 1;
     g_ui_guide_debug.step = step;
     g_ui_guide_debug.count = guide.count;
     g_ui_guide_debug.paragraph_height = paragraph_h;
-    g_ui_guide_debug.text_clip_height = text_clip_h;
-    g_ui_guide_debug.text_clipped = text_clip_h < paragraph_h + text_guard;
+    g_ui_guide_debug.text_clip_height = layout.text_clip_height;
+    g_ui_guide_debug.text_clipped = layout.text_clipped;
     g_ui_guide_debug.tip = tip;
-    g_ui_guide_debug.text = (Rectangle){(float)((int)tip.x + pad),
-                                        (float)y,
-                                        (float)paragraph.width,
-                                        (float)text_clip_h};
-    g_ui_guide_debug.close_button = close_button;
-    g_ui_guide_debug.back_button = back_button;
-    if(text_clip_h > 0) {
-        if(text_clip_h < paragraph_h + text_guard)
-            BeginUIClip((int)tip.x + pad, y - text_guard / 2,
-                        paragraph.width, text_clip_h + text_guard);
-        Paragraph(paragraph, (int)tip.x + pad, &y);
-        if(text_clip_h < paragraph_h + text_guard)
-            EndUIClip();
+    g_ui_guide_debug.text = layout.text;
+    g_ui_guide_debug.close_button = layout.close_button;
+    g_ui_guide_debug.back_button = (Rectangle){0};
+    if(layout.text_clip_height > 0) {
+        if(layout.text_clipped)
+            BeginClip((int)layout.text.x,
+                        y - metrics.text_guard / 2,
+                        paragraph.width,
+                        layout.text_clip_height + metrics.text_guard);
+        Paragraph(paragraph, (int)layout.text.x, &y);
+        if(layout.text_clipped)
+            EndClip();
     }
 
     snprintf(page_text, sizeof(page_text), "%d/%d", step + 1, guide.count);
-    RenderText(page_text, (int)tip.x + pad,
-                    controls_y + (button_size - page_font) / 2,
-                    page_font, GetThemeText());
+    RenderText(page_text, (int)tip.x + metrics.pad,
+                    layout.controls_y +
+                        (metrics.button_size - metrics.page_font) / 2,
+                    metrics.page_font, GetThemeText());
 
-    finish = step >= guide.count - 1;
     if(step > 0) {
         memset(&icon_props, 0, sizeof(icon_props));
-        back_button.x = tip.x + tip.width - pad - button_size * 2 - Scale(8);
-        back_button.y = (float)controls_y;
-        back_button.width = (float)button_size;
-        back_button.height = (float)button_size;
-        icon_props.bounds = back_button;
-        g_ui_guide_debug.back_button = back_button;
+        icon_props.bounds = layout.back_button;
+        g_ui_guide_debug.back_button = layout.back_button;
         icon_props.icon = guide.back_icon;
-        icon_props.icon_size = Scale(19);
-        icon_props.icon_padding = Scale(7);
+        icon_props.icon_size = metrics.nav_icon_size;
+        icon_props.icon_padding = metrics.nav_icon_padding;
         if(RenderIconAction(icon_props)) {
-            *guide.step = step - 1;
-            result.changed = 1;
-            result.step = *guide.step;
+            previous_requested = 1;
         }
     }
     memset(&icon_props, 0, sizeof(icon_props));
-    next_button.x = tip.x + tip.width - pad - button_size;
-    next_button.y = (float)controls_y;
-    next_button.width = (float)button_size;
-    next_button.height = (float)button_size;
-    icon_props.bounds = next_button;
-    g_ui_guide_debug.next_button = next_button;
-    icon_props.icon = finish ? guide.done_icon : guide.next_icon;
-    icon_props.icon_size = Scale(19);
-    icon_props.icon_padding = Scale(7);
+    icon_props.bounds = layout.next_button;
+    g_ui_guide_debug.next_button = layout.next_button;
+    icon_props.icon = layout.finish ? guide.done_icon : guide.next_icon;
+    icon_props.icon_size = metrics.nav_icon_size;
+    icon_props.icon_padding = metrics.nav_icon_padding;
     if(RenderIconAction(icon_props)) {
-        if(finish) {
-            result.finished = 1;
-        } else {
-            *guide.step = step + 1;
-            result.changed = 1;
-            result.step = *guide.step;
-        }
+        next_requested = 1;
     }
 
+    policy = GuidePolicyFor(step, guide.count, previous_requested != 0,
+                            next_requested != 0, 0);
+    *guide.step = policy.step;
+    result.step = policy.step;
+    result.changed = policy.changed;
+    result.closed = policy.closed;
+    result.finished = policy.finished;
     return result;
 }

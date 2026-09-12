@@ -79,8 +79,8 @@ main(void)
     ScreenScaffold scaffold;
     NavigationBarProps nav = {0};
     TabBarProps tabs = {0};
-    const UIWidgetNode *nodes;
-    const UIWidgetNode *node;
+    const WidgetNode *nodes;
+    const WidgetNode *node;
     NodeId group;
     NodeId nested;
     NodeId page;
@@ -89,7 +89,7 @@ main(void)
     NodeId grid_first;
     NodeId grid_second;
     KeyID stable_key;
-    UIEvent event;
+    Event event;
     int count = 0;
     ScaffoldFixture scaffold_fixture = {.closed = 1};
 
@@ -111,15 +111,15 @@ main(void)
     EndTree();
     nodes = GetTreeNodes(&count);
     {
-        const UIWidgetNode *short_button = NULL;
-        const UIWidgetNode *child_button = NULL;
-        const UIWidgetNode *short_text = NULL;
-        const UIWidgetNode *child_text = NULL;
+        const WidgetNode *short_button = NULL;
+        const WidgetNode *child_button = NULL;
+        const WidgetNode *short_text = NULL;
+        const WidgetNode *child_text = NULL;
 
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind == UI_WIDGET_BUTTON_NODE && nodes[i].id == 7001)
+            if(nodes[i].kind == WIDGET_BUTTON && nodes[i].id == 7001)
                 short_button = &nodes[i];
-            else if(nodes[i].kind == UI_WIDGET_BUTTON_NODE && nodes[i].id == 7002)
+            else if(nodes[i].kind == WIDGET_BUTTON && nodes[i].id == 7002)
                 child_button = &nodes[i];
         }
         if(short_button != NULL && short_button->first_child >= 0)
@@ -128,10 +128,10 @@ main(void)
             child_text = &nodes[child_button->first_child];
         check_int("button shorthand has Text child",
                   short_text != NULL &&
-                  short_text->kind == UI_WIDGET_TEXT_NODE, 1);
+                  short_text->kind == WIDGET_TEXT, 1);
         check_int("button composition has Text child",
                   child_text != NULL &&
-                  child_text->kind == UI_WIDGET_TEXT_NODE, 1);
+                  child_text->kind == WIDGET_TEXT, 1);
         if(short_text != NULL && child_text != NULL) {
             check_int("button Text font parity",
                       short_text->data.primitive.font,
@@ -228,7 +228,7 @@ main(void)
     check_int("dynamic last id", nodes[5000].id, 5999);
 
     /* Reconciliation retains node-owned state by parent/key/type. */
-    ((UIWidgetNode *)&nodes[2500])->state = (void *)0x1234;
+    ((WidgetNode *)&nodes[2500])->state = (void *)0x1234;
     BeginTree(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 2, 2},
@@ -245,8 +245,8 @@ main(void)
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
     EndTree();
     nodes = GetTreeNodes(&count);
-    ((UIWidgetNode *)&nodes[1])->state = (void *)0x1111;
-    ((UIWidgetNode *)&nodes[2])->state = (void *)0x2222;
+    ((WidgetNode *)&nodes[1])->state = (void *)0x1111;
+    ((WidgetNode *)&nodes[2])->state = (void *)0x2222;
     BeginTree(23);
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 1}); End();
@@ -283,7 +283,7 @@ main(void)
     check_int("route fallback hash", strcmp(GetRouteHash(), ""), 0);
     check_int("route fallback version", GetRouteVersion(), 0);
 
-    SetUIViewSize(320, 240);
+    SetViewSize(320, 240);
     SetThemeStyle(THEME_STYLE_CLASSIC);
     BeginTree(37);
     scaffold = BeginScreenScaffold((ScreenScaffoldSpec){
@@ -331,11 +331,11 @@ main(void)
     End();
     EndTree();
     nodes = GetTreeNodes(&count);
-    check_int("page fallback node kind", nodes[page].kind, UI_WIDGET_COLUMN_NODE);
+    check_int("page fallback node kind", nodes[page].kind, WIDGET_COLUMN);
     check_int("page fallback width", (int)nodes[page].bounds.width, 320);
     check_int("page fallback height", (int)nodes[page].bounds.height, 240);
-    check_int("page section node kind", nodes[page_section].kind, UI_WIDGET_COLUMN_NODE);
-    check_int("page grid kind", nodes[page_grid].kind, UI_WIDGET_GRID_NODE);
+    check_int("page section node kind", nodes[page_section].kind, WIDGET_COLUMN);
+    check_int("page grid kind", nodes[page_grid].kind, WIDGET_GRID);
     grid_first = nodes[page_grid].first_child;
     grid_second = nodes[grid_first].next_sibling;
     check_int("page grid first x", (int)nodes[grid_first].bounds.x,
@@ -374,13 +374,13 @@ main(void)
     /* Grid buttons must hit their visible cells during construction, before
        EndTree performs retained layout. Exercise both columns independently. */
     for(int column = 0; column < 2; column++) {
-        UIFrameState saved = SaveUIFrameState();
+        FrameState saved = SaveFrameState();
         InjectReset();
         for(int frame = 0; frame < 2; frame++) {
             InjectMousePosition(120 + column * 100, 120);
             InjectMouseButton(MOUSE_BUTTON_LEFT, frame == 0);
             InjectPump();
-            BeginUIFrame(640, 480, 1.0f);
+            BeginInterfaceFrame(640, 480, 1.0f);
             BeginTree(390 + column);
             Grid((GridProps){.bounds = {100, 100, 200, 60},
                               .columns = 2});
@@ -394,11 +394,11 @@ main(void)
                       frame == 1 && column == 1);
             End();
             EndTree();
-            EndUIFrame();
+            EndInterfaceFrame();
             while(NextEvent(&event)) {}
         }
         InjectReset();
-        RestoreUIFrameState(saved);
+        RestoreFrameState(saved);
     }
 
     InjectReset();
@@ -411,18 +411,18 @@ main(void)
     LayoutTree();
     RouteInput();
     check_int("button queues event", NextEvent(&event), 1);
-    check_int("button event kind", event.kind, UI_EVENT_CLICK);
+    check_int("button event kind", event.kind, EVENT_CLICK);
     check_int("button event key", (int)event.key, 9001);
     check_int("event delivered once", NextEvent(&event), 0);
 
     {
-        UIFrameState saved = SaveUIFrameState();
+        FrameState saved = SaveFrameState();
         int stopped = 0;
 
         InjectReset();
         while(NextEvent(&event)) {
         }
-        BeginUIFrame(320, 240, 1.0f);
+        BeginInterfaceFrame(320, 240, 1.0f);
         BeginTree(441);
         Button((ButtonProps){.bounds = {10, 10, 100, 40},
                              .label = "First", .id = 4411});
@@ -431,13 +431,13 @@ main(void)
         Button((ButtonProps){.bounds = {10, 110, 100, 40},
                              .label = "Third", .id = 4413});
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         nodes = GetTreeNodes(&count);
         check_int("atomic tree initial count", count, 4);
 
         InjectTap(25, 25);
         InjectPump();
-        BeginUIFrame(320, 240, 1.0f);
+        BeginInterfaceFrame(320, 240, 1.0f);
         BeginTree(441);
         check_int("atomic tree press does not stop",
                   Button((ButtonProps){.bounds = {10, 10, 100, 40},
@@ -447,10 +447,10 @@ main(void)
         Button((ButtonProps){.bounds = {10, 110, 100, 40},
                              .label = "Third", .id = 4413});
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
 
         InjectPump();
-        BeginUIFrame(320, 240, 1.0f);
+        BeginInterfaceFrame(320, 240, 1.0f);
         BeginTree(441);
         if(Button((ButtonProps){.bounds = {10, 10, 100, 40},
                                 .label = "First", .id = 4411})) {
@@ -463,7 +463,7 @@ main(void)
                                  .label = "Third", .id = 4413});
         }
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         nodes = GetTreeNodes(&count);
         check_int("atomic tree click reached handler", stopped, 1);
         check_int("atomic tree kept complete count", count, 4);
@@ -472,7 +472,7 @@ main(void)
         while(NextEvent(&event)) {
         }
         InjectReset();
-        RestoreUIFrameState(saved);
+        RestoreFrameState(saved);
     }
 
     {
@@ -504,9 +504,9 @@ main(void)
         InjectPump();
         RouteInput();
         while(NextEvent(&event)) {
-            if(event.kind == UI_EVENT_TEXT_CHANGED)
+            if(event.kind == EVENT_TEXT_CHANGED)
                 saw_text = 1;
-            if(event.kind == UI_EVENT_SELECTION_CHANGED &&
+            if(event.kind == EVENT_SELECTION_CHANGED &&
                event.data.selection.start == 1 &&
                event.data.selection.end == 1)
                 saw_selection = 1;
@@ -555,7 +555,7 @@ main(void)
         check_int("injected textarea enter is pressed", IsKeyPressed(KEY_ENTER), 1);
         RouteInput();
         while(NextEvent(&event)) {
-            if(event.kind == UI_EVENT_TEXT_COMMIT && event.key == 78)
+            if(event.kind == EVENT_TEXT_COMMIT && event.key == 78)
                 saw_commit = 1;
         }
         check_int("textfield enter commits", committed, 1);
@@ -587,7 +587,7 @@ main(void)
         InjectPump();
         RouteInput();
         while(NextEvent(&event)) {
-            if(event.kind == UI_EVENT_SELECTION_CHANGED &&
+            if(event.kind == EVENT_SELECTION_CHANGED &&
                event.data.selection.start == 0 &&
                event.data.selection.end == 11)
                 saw_selection = 1;
@@ -613,26 +613,26 @@ main(void)
         Rectangle third = {10, 90, 100, 30};
 
         InjectReset();
-        SetUIFocus(901);
+        SetFocus(901);
         InjectKeyTap(KEY_TAB);
         InjectPump();
-        BeginUIFocus();
-        RegisterUIFocus(901, first);
-        RegisterUIFocus(902, second);
-        RegisterUIFocus(903, third);
-        EndUIFocus();
-        check_int("tab advances focus", IsUIFocusActive(902), 1);
+        BeginFocusScope();
+        RegisterFocus(901, first);
+        RegisterFocus(902, second);
+        RegisterFocus(903, third);
+        EndFocusScope();
+        check_int("tab advances focus", IsFocusActive(902), 1);
         InjectPump();
 
         InjectKey(KEY_LEFT_SHIFT, 1);
         InjectKeyTap(KEY_TAB);
         InjectPump();
-        BeginUIFocus();
-        RegisterUIFocus(901, first);
-        RegisterUIFocus(902, second);
-        RegisterUIFocus(903, third);
-        EndUIFocus();
-        check_int("shift tab reverses focus", IsUIFocusActive(901), 1);
+        BeginFocusScope();
+        RegisterFocus(901, first);
+        RegisterFocus(902, second);
+        RegisterFocus(903, third);
+        EndFocusScope();
+        check_int("shift tab reverses focus", IsFocusActive(901), 1);
         InjectKey(KEY_LEFT_SHIFT, 0);
         InjectPump();
     }
@@ -649,7 +649,7 @@ main(void)
         InjectMousePosition(20, 20);
         InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         InjectPump();
-        BeginUIFocus();
+        BeginFocusScope();
         BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
             .text = first, .text_size = sizeof(first),
@@ -660,13 +660,13 @@ main(void)
             .cursor_position = &second_cursor, .focused = &second_focused,
             .focus_id = 1002, .font = 16 });
         EndTree();
-        EndUIFocus();
+        EndFocusScope();
         InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
 
         InjectKeyTap(KEY_TAB);
         InjectPump();
-        BeginUIFocus();
+        BeginFocusScope();
         BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
@@ -675,12 +675,12 @@ main(void)
             .text_size = sizeof(second), .cursor_position = &second_cursor,
             .focused = &second_focused, .focus_id = 1002, .font = 16 });
         EndTree();
-        EndUIFocus();
+        EndFocusScope();
 
         InjectPump();
         InjectText("x");
         InjectPump();
-        BeginUIFocus();
+        BeginFocusScope();
         BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
@@ -689,7 +689,7 @@ main(void)
             .text_size = sizeof(second), .cursor_position = &second_cursor,
             .focused = &second_focused, .focus_id = 1002, .font = 16 });
         EndTree();
-        EndUIFocus();
+        EndFocusScope();
         check_int("retained tab focuses next field", strcmp(second, "x"), 0);
     }
 
@@ -740,8 +740,8 @@ main(void)
         int scroll_y = 0;
 
         InjectReset();
-        SetUIClipboardTextValue(payload);
-        SetUIFocus(1005);
+        SetClipboardTextValue(payload);
+        SetFocus(1005);
         InjectKey(KEY_LEFT_CONTROL, 1);
         InjectKeyTap(KEY_V);
         InjectPump();
@@ -833,7 +833,7 @@ main(void)
 
     /* The retained tree exposes a backend-neutral accessibility snapshot. */
     {
-        UIAccessibilityNode nodes[8];
+        AccessibilityNode nodes[8];
         int count;
         int saw_main = 0;
         int saw_button = 0;
@@ -865,7 +865,7 @@ main(void)
         nodes = GetTreeNodes(&count);
         int boxed_count = 0;
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind != UI_WIDGET_TEXT_NODE)
+            if(nodes[i].kind != WIDGET_TEXT)
                 continue;
             boxed_count++;
             check_int("boxed text owns string", strcmp(nodes[i].owned_text,"owned"), 0);
@@ -887,17 +887,17 @@ main(void)
         int previous;
         int text_inputs = 0;
 
-        ClearUIFonts();
+        ClearTextFonts();
         font.baseSize = 16;
         font.glyphCount = 1;
         font.texture.id = 1;
         font.recs = &font_rec;
         font.glyphs = &font_glyph;
         check_int("register retained font base probe",
-                  RegisterUIFont("retained-base", font), 1);
+                  RegisterTextFont("retained-base", font), 1);
         check_int("register retained font snapshot probe",
-                  RegisterUIFont("retained-probe", font), 1);
-        previous = PushUIFont("retained-probe");
+                  RegisterTextFont("retained-probe", font), 1);
+        previous = PushTextFont("retained-probe");
         check_int("font probe preserves prior font", previous, 0);
         BeginTree(1500);
         TextField((TextFieldProps){.bounds = {10,10,80,24},
@@ -910,18 +910,18 @@ main(void)
         EndTree();
         nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind != UI_WIDGET_TEXT_FIELD_NODE &&
-               nodes[i].kind != UI_WIDGET_TEXT_AREA_NODE)
+            if(nodes[i].kind != WIDGET_TEXT_FIELD &&
+               nodes[i].kind != WIDGET_TEXT_AREA)
                 continue;
             text_inputs++;
             check_int("retained text captures declaration font",
                       nodes[i].font_token, 1);
         }
         check_int("both retained text widgets capture fonts", text_inputs, 2);
-        PopUIFont(previous);
+        PopTextFont(previous);
         check_int("font token restores prior font",
                   ui_active_font_token(), 0);
-        ClearUIFonts();
+        ClearTextFonts();
     }
     {
         RouterRoute routes[] = {
@@ -946,7 +946,7 @@ main(void)
         nodes = GetTreeNodes(&count);
         check_int("router node is retained",
                   count > 1 ? (int)nodes[1].kind : -1,
-                  UI_WIDGET_ROUTER_NODE);
+                  WIDGET_ROUTER);
 
         RouterNavigate(&state, 2);
         BeginTree(4100);

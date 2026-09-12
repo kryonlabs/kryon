@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "kry_inject.h"
+#include "ui_pager.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,11 +35,11 @@ pager_frame(float x, float y, int down)
     InjectMousePosition(x, y);
     InjectMouseButton(MOUSE_BUTTON_LEFT, down);
     InjectPump();
-    BeginUIFrame(320, 480, 1.0f);
-    BeginUIFocus();
+    BeginInterfaceFrame(320, 480, 1.0f);
+    BeginFocusScope();
     result = GuidePager(pager);
-    EndUIFocus();
-    EndUIFrame();
+    EndFocusScope();
+    EndInterfaceFrame();
     return result;
 }
 
@@ -47,7 +48,7 @@ reset_test(int page)
 {
     InjectReset();
     ResetSwipe(&swipe);
-    ClearUIFocus();
+    ClearFocus();
     pager.page = page;
 }
 
@@ -120,7 +121,7 @@ test_swipe_actions_and_boundaries(void)
 int
 main(void)
 {
-    InitUI(320, 480, 1.0f);
+    InitInterface(320, 480, 1.0f);
     test_footer_actions();
     test_swipe_actions_and_boundaries();
     reset_test(0);

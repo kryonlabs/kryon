@@ -30,7 +30,7 @@ static TerminalPaneGlyphCacheEntry
 static const TerminalPaneGlyphCacheEntry *
 terminal_pane_cached_glyph(unsigned int codepoint, int font_size)
 {
-    Font active = GetUIFont();
+    Font active = GetTextFont();
     unsigned int slot =
         (((unsigned int)codepoint * 2654435761u) ^
          ((unsigned int)font_size * 2246822519u) ^ active.texture.id) %
@@ -45,12 +45,12 @@ terminal_pane_cached_glyph(unsigned int codepoint, int font_size)
     entry->active_glyph_count = active.glyphCount;
     entry->codepoint = (int)codepoint;
     entry->font_size = font_size;
-    entry->font = GetUIFontForCodepoint((int)codepoint, font_size);
-    entry->ready = UIFontReady(entry->font);
+    entry->font = GetTextFontForCodepoint((int)codepoint, font_size);
+    entry->ready = TextFontReady(entry->font);
     if(entry->ready) {
-        entry->scale = GetUIFontScale(entry->font, font_size);
-        entry->glyph = UIFontGlyph(entry->font, (int)codepoint);
-        entry->source = UIFontAtlasRec(entry->font, (int)codepoint);
+        entry->scale = GetTextFontScale(entry->font, font_size);
+        entry->glyph = TextFontGlyph(entry->font, (int)codepoint);
+        entry->source = TextFontAtlasRec(entry->font, (int)codepoint);
     } else {
         entry->scale = 1.0f;
         entry->glyph = kryon_zero_glyphinfo;
@@ -73,7 +73,7 @@ static void draw_terminal_pane_grid_codepoint(unsigned int codepoint, int x,
     if(glyph->source.width <= 0.0f || glyph->source.height <= 0.0f)
         return;
     DrawTexturePro(
-        UIFontAtlasTexture(glyph->font), glyph->source,
+        TextFontAtlasTexture(glyph->font), glyph->source,
         (Rectangle){
             (float)x + (float)glyph->glyph.offsetX * glyph->scale,
             (float)y + (float)glyph->glyph.offsetY * glyph->scale,

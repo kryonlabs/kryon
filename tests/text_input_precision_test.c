@@ -13,7 +13,7 @@
  * tree across the whole run — exactly what a running application has — and
  * measures single events on it:
  *
- *   - tap a RANDOM field to focus it (real pointer routing, not SetUIFocus)
+ *   - tap a RANDOM field to focus it (real pointer routing, not SetFocus)
  *   - type ONE character, measure that frame, assert the letter landed
  *   - single backspace, measure, assert the text shrank
  *   - long-text fields (~200 chars) to expose O(n) edit costs
@@ -50,7 +50,7 @@ static unsigned long rng(void)
 
 static void frame(void)
 {
-    BeginUIFocus();
+    BeginFocusScope();
     BeginTree(screen_key);
     for(int i = 0; i < FIELD_COUNT; ++i)
         TextField((TextFieldProps){.bounds = {20, fields[i].y, FIELD_W, FIELD_H},
@@ -62,10 +62,10 @@ static void frame(void)
     LayoutTree();
     RouteInput();
     UpdateTree();
-    EndUIFocus();
+    EndFocusScope();
 }
 
-static void drain_events(void) { UIEvent event; while(NextEvent(&event)) {} }
+static void drain_events(void) { Event event; while(NextEvent(&event)) {} }
 
 static void reset_fields(int long_text)
 {
@@ -107,7 +107,7 @@ static int focus_random_field(int *index_out)
     frame();
     drain_events();
     if(!fields[index].focused)
-        SetUIFocus(fields[index].focus_id);   /* pointer miss fallback */
+        SetFocus(fields[index].focus_id);   /* pointer miss fallback */
     *index_out = index;
     return fields[index].focused != 0;
 }

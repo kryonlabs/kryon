@@ -28,7 +28,7 @@ check(int ok, const char *name)
 int
 main(void)
 {
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
 
     /* Draw order = stacking order: a disabled card first, then a button
      * on top of it. The button's hand must win. */
@@ -45,12 +45,12 @@ main(void)
     check(GetMouseCursorIntent() == MOUSE_CURSOR_RESIZE_EW,
           "resize foreground overrides disabled background");
 
-    EndUIFrame();
+    EndInterfaceFrame();
     /* The reset fires on the second consecutive intent-less frame start
      * (the check reads the previous frame's intent flag), which is one
      * 16ms frame of stale cursor — invisible, asserted as designed. */
-    BeginUIFrame(640, 480, 1.0f);
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
     check(GetMouseCursorIntent() == MOUSE_CURSOR_DEFAULT,
           "no intents resets to the default cursor");
 
@@ -59,7 +59,7 @@ main(void)
     check(GetMouseCursorIntent() == MOUSE_CURSOR_NOT_ALLOWED,
           "lone disabled control keeps the not-allowed cursor");
 
-    EndUIFrame();
+    EndInterfaceFrame();
 
     if(failures == 0)
         printf("cursor_intent_test: OK\n");

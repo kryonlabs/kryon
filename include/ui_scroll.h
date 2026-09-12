@@ -1,5 +1,5 @@
-#ifndef UI_SCROLL_H
-#define UI_SCROLL_H
+#ifndef KRYON_SCROLL_H
+#define KRYON_SCROLL_H
 
 #include "kryon_compat.generated.h"
 

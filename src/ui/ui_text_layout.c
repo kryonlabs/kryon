@@ -50,14 +50,14 @@ ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_
     p = input;
     while(*p && element_idx < element_count) {
         if(strncmp(p, "%i", 2) == 0) {
-            layout.elements[element_idx].type = UI_TEXT_ELEMENT_ICON;
+            layout.elements[element_idx].type = TEXT_ELEMENT_ICON;
             layout.elements[element_idx].icon = icon;
             layout.elements[element_idx].icon_type = icon_type;
             layout.elements[element_idx].icon_size = icon_size;
             element_idx++;
             p += 2;
         } else if(*p == '\n') {
-            layout.elements[element_idx].type = UI_TEXT_ELEMENT_LINE_BREAK;
+            layout.elements[element_idx].type = TEXT_ELEMENT_LINE_BREAK;
             element_idx++;
             p++;
         } else {
@@ -70,7 +70,7 @@ ParseTextLayout(const char *input, Texture2D icon, IconType icon_type, int icon_
                 if(text_copy != NULL) {
                     memcpy(text_copy, word_start, len);
                     text_copy[len] = '\0';
-                    layout.elements[element_idx].type = UI_TEXT_ELEMENT_TEXT;
+                    layout.elements[element_idx].type = TEXT_ELEMENT_TEXT;
                     layout.elements[element_idx].text = text_copy;
                     element_idx++;
                 }
@@ -108,7 +108,7 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
     }
 
     for(int i = 0; i < layout->element_count; i++) {
-        if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
+        if(layout->elements[i].type == TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
             layout->elements[i].text_width = TextWidth(layout->elements[i].text, font_size);
     }
 
@@ -119,7 +119,7 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
     int current_line_width = 0;
 
     for(int i = 0; i < layout->element_count; i++) {
-        if(layout->elements[i].type == UI_TEXT_ELEMENT_LINE_BREAK) {
+        if(layout->elements[i].type == TEXT_ELEMENT_LINE_BREAK) {
             layout->line_count++;
             layout->line_breaks[layout->line_count] = i;
             layout->line_widths[layout->line_count - 1] = current_line_width;
@@ -129,7 +129,7 @@ ReflowTextLayout(TextLayout *layout, int max_width, int font_size, int line_heig
 
         int element_width = 0;
         int spacing = 0;
-        if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT) {
+        if(layout->elements[i].type == TEXT_ELEMENT_TEXT) {
             element_width = layout->elements[i].text_width;
             spacing = (current_line_width > 0) ? space_width : 0;
         } else {
@@ -168,9 +168,9 @@ ui_text_layout_line_text_len(TextLayout *layout, int start, int end)
     for(int i = start; i < end; i++) {
         TextElement *element = &layout->elements[i];
 
-        if(element->type == UI_TEXT_ELEMENT_LINE_BREAK)
+        if(element->type == TEXT_ELEMENT_LINE_BREAK)
             continue;
-        if(element->type != UI_TEXT_ELEMENT_TEXT)
+        if(element->type != TEXT_ELEMENT_TEXT)
             return -1;
         if(element->text == NULL || element->text[0] == '\0')
             continue;
@@ -203,7 +203,7 @@ ui_text_layout_draw_text_line(TextLayout *layout, int start, int end,
         TextElement *element = &layout->elements[i];
         int element_len;
 
-        if(element->type != UI_TEXT_ELEMENT_TEXT ||
+        if(element->type != TEXT_ELEMENT_TEXT ||
            element->text == NULL || element->text[0] == '\0')
             continue;
         if(text_count > 0)
@@ -228,14 +228,14 @@ ui_text_layout_draw_mixed_line(TextLayout *layout, int start, int end,
     for(int i = start; i < end; i++) {
         int spacing = 0;
 
-        if(layout->elements[i].type == UI_TEXT_ELEMENT_LINE_BREAK)
+        if(layout->elements[i].type == TEXT_ELEMENT_LINE_BREAK)
             continue;
 
         if(current_x > x)
-            spacing = (layout->elements[i].type == UI_TEXT_ELEMENT_TEXT) ? space_width : icon_spacing;
+            spacing = (layout->elements[i].type == TEXT_ELEMENT_TEXT) ? space_width : icon_spacing;
         current_x += spacing;
 
-        if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT) {
+        if(layout->elements[i].type == TEXT_ELEMENT_TEXT) {
             if(layout->elements[i].text != NULL && layout->elements[i].text[0] != '\0') {
                 RenderText(layout->elements[i].text, current_x, y, font_size, color);
                 current_x += layout->elements[i].text_width;
@@ -331,7 +331,7 @@ FreeTextLayout(TextLayout *layout)
 
     if(layout->elements != NULL) {
         for(int i = 0; i < layout->element_count; i++) {
-            if(layout->elements[i].type == UI_TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
+            if(layout->elements[i].type == TEXT_ELEMENT_TEXT && layout->elements[i].text != NULL)
                 free((void *)layout->elements[i].text);
         }
         free(layout->elements);

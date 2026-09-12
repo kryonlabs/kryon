@@ -29,9 +29,9 @@ swipe_frame(float x, float y, int down)
     InjectMousePosition(x, y);
     InjectMouseButton(MOUSE_BUTTON_LEFT, down);
     InjectPump();
-    BeginUIFrame(320, 480, 1.0f);
+    BeginInterfaceFrame(320, 480, 1.0f);
     result = UpdateSwipe(&gesture, spec);
-    EndUIFrame();
+    EndInterfaceFrame();
     return result;
 }
 
@@ -55,7 +55,7 @@ test_horizontal_swipes(void)
     check_int("left drag progress", result.progress == 1.0f, 1);
     result = swipe_frame(170.0f, 204.0f, 0);
     check_int("left direction", result.direction, SWIPE_LEFT);
-    check_int("left release consumed", UIReleaseConsumed(), 1);
+    check_int("left release consumed", ReleaseConsumed(), 1);
 
     reset_test();
     swipe_frame(80.0f, 200.0f, 1);
@@ -74,7 +74,7 @@ test_threshold_and_axis_lock(void)
     swipe_frame(170.0f, 201.0f, 1);
     result = swipe_frame(170.0f, 201.0f, 0);
     check_int("short drag has no direction", result.direction, SWIPE_NONE);
-    check_int("short claimed drag consumes release", UIReleaseConsumed(), 1);
+    check_int("short claimed drag consumes release", ReleaseConsumed(), 1);
 
     reset_test();
     swipe_frame(160.0f, 120.0f, 1);
@@ -83,7 +83,7 @@ test_threshold_and_axis_lock(void)
     result = swipe_frame(163.0f, 190.0f, 0);
     check_int("cancelled gesture has no direction", result.direction,
               SWIPE_NONE);
-    check_int("cancelled release remains available", UIReleaseConsumed(), 0);
+    check_int("cancelled release remains available", ReleaseConsumed(), 0);
 }
 
 static void
@@ -130,7 +130,7 @@ test_vertical_swipes(void)
 int
 main(void)
 {
-    InitUI(320, 480, 1.0f);
+    InitInterface(320, 480, 1.0f);
     test_horizontal_swipes();
     test_threshold_and_axis_lock();
     test_bounds_and_allowed_directions();

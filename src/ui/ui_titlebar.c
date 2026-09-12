@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "runtime/title_bar.h"
 
 /* Screen header (title bar) widgets. These were split out of modal.c so that
  * modal.c holds only modal/dialog code. The public declarations live in
@@ -7,7 +8,7 @@
 static void
 RenderTitleBarBackground(int height)
 {
-    Color top = DarkenUIColor(c_bg, 8);
+    Color top = DarkenColor(c_bg, 8);
     Color bottom = c_bg;
     Color divider = GetThemeText();
     ThemeMetrics tokens = GetThemeMetrics();
@@ -31,22 +32,15 @@ RenderTitleBarBackground(int height)
 }
 
 static int
-RenderTitleBarReturnButton(Texture2D return_icon, int height)
+RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
+                           TitleBarMetrics metrics)
 {
-    int icon_size = Scale(20);
-    int padding = Scale(10);
-    int button_size = icon_size + padding * 2;
-    int x = Scale(12);
-    int y = (height - button_size) / 2;
     IconActionSpec button = {0};
 
-    if(y < 0)
-        y = 0;
-    button.bounds = (Rectangle){(float)x, (float)y,
-                                (float)button_size, (float)button_size};
+    button.bounds = bounds;
     button.icon = return_icon;
-    button.icon_size = icon_size;
-    button.icon_padding = padding;
+    button.icon_size = metrics.leading_icon_size;
+    button.icon_padding = metrics.leading_padding;
     button.icon_color = GetThemeText();
     button.hover_background = Fade(GetThemeText(), 0.12f);
     button.radius = 0.50f;
@@ -59,19 +53,21 @@ RenderTitleBarCenteredTitle(const char *title, int height,
 {
     int font;
     int title_w;
-    int max_w = ui_view_width - side_reserved * 2;
+    TitleBarMetrics metrics = TitleBarMetricsFor((float)GetScale());
+    TitleBarLayout layout = TitleBarLayoutFor(ui_view_width, height,
+                                              side_reserved > Scale(12),
+                                              false, 0, 0, metrics);
+    int max_w = (int)layout.title_bounds.width;
 
     if(title == NULL)
         title = "";
-    if(max_w < Scale(48))
-        max_w = ui_view_width - Scale(16);
     font = GetTitleFontSize(title, max_w);
     title_w = TextWidth(title, font);
     while(font > Text12 && title_w > max_w) {
         font--;
         title_w = TextWidth(title, font);
     }
-    RenderText(title, (ui_view_width - title_w) / 2,
+    RenderText(title, TitleBarTitleX(ui_view_width, title_w),
                     GetUIControlTextY(title, 0, height, font),
                     font, c_text);
 }
@@ -87,34 +83,28 @@ RenderTitleBar(TitleBarProps title_bar)
 {
     int height = title_bar.height;
     int clicked = 0;
-    int side_reserved = Scale(12);
+    TitleBarMetrics metrics = TitleBarMetricsFor((float)GetScale());
+    TitleBarLayout layout;
+    int side_reserved = metrics.side_margin;
 
     if(height <= 0)
         height = ui_title_bar_height();
+    layout = TitleBarLayoutFor(ui_view_width, height,
+                               title_bar.has_leading_action != 0,
+                               title_bar.has_dropdown != 0,
+                               title_bar.dropdown.height,
+                               title_bar.dropdown.min_width,
+                               metrics);
     RenderTitleBarBackground(height);
     if(title_bar.has_leading_action) {
-        clicked = RenderTitleBarReturnButton(title_bar.leading_icon, height);
-        side_reserved = Scale(60);
+        clicked = RenderTitleBarReturnButton(title_bar.leading_icon,
+                                             layout.leading_bounds, metrics);
+        side_reserved = layout.side_reserved;
     }
     if(title_bar.has_dropdown) {
         TitleBarDropdown dropdown = title_bar.dropdown;
-        int gap = Scale(4);
-        int dropdown_x = Scale(12);
-        int dropdown_h = dropdown.height > 0 ? dropdown.height : Scale(32);
-        int dropdown_y = (height - dropdown_h) / 2;
-        int dropdown_w;
-
-        if(title_bar.has_leading_action)
-            dropdown_x += Scale(40) + gap;
-        dropdown_w = ui_view_width - dropdown_x - Scale(12);
-        if(dropdown_y < 0)
-            dropdown_y = 0;
-        if(dropdown.min_width > 0 && dropdown_w < dropdown.min_width)
-            dropdown_w = ui_view_width - dropdown_x;
-        if(dropdown_w < 1)
-            dropdown_w = 1;
         if(!dropdown.disabled)
-            Dropdown((DropdownProps){.id = dropdown.id, .bounds = {dropdown_x, dropdown_y, dropdown_w, dropdown_h},
+            Dropdown((DropdownProps){.id = dropdown.id, .bounds = layout.dropdown_bounds,
                 .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
         return clicked;
     }

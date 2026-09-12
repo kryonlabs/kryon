@@ -301,7 +301,7 @@ DrawTerminalPane(TerminalPane pane)
             result.wrote_input = TerminalPaneHandleInput(pane.terminal);
     }
 
-    BeginUIClip((int)metrics.content.x, (int)metrics.content.y,
+    BeginClip((int)metrics.content.x, (int)metrics.content.y,
                 (int)metrics.content.width, (int)metrics.content.height);
     if(pane.terminal != NULL) {
         int rows = pane.terminal->rows;
@@ -323,7 +323,7 @@ DrawTerminalPane(TerminalPane pane)
                           metrics.cell_width, metrics.line_height, cursor);
         }
     }
-    EndUIClip();
+    EndClip();
 
     return result;
 }

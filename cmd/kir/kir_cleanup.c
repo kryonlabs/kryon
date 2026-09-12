@@ -95,11 +95,18 @@ opens(KirStmtKind kind)
 }
 
 static int
+opens_stmt(const KirStmt *st)
+{
+    return opens(st->kind) ||
+           (st->kind == KIR_STMT_CASE && strchr(st->text, '{') != NULL);
+}
+
+static int
 end_block(const KirFunction *fn, int start, int end)
 {
     int depth = 1;
     for(int i = start + 1; i < end; i++) {
-        if(opens(fn->stmts[i].kind)) depth++;
+        if(opens_stmt(&fn->stmts[i])) depth++;
         if(fn->stmts[i].kind == KIR_STMT_BLOCK_CLOSE && !--depth) return i;
     }
     return end;
@@ -112,7 +119,7 @@ falls_through(const KirFunction *fn, int start, int end)
         KirStmtKind kind = fn->stmts[i].kind;
         if(kind == KIR_STMT_RETURN || kind == KIR_STMT_BREAK || kind == KIR_STMT_CONTINUE)
             return 0;
-        if(opens(kind)) {
+        if(opens_stmt(&fn->stmts[i])) {
             int close = end_block(fn, i, end);
             int falls = falls_through(fn, i + 1, close);
             if(kind == KIR_STMT_BLOCK_OPEN && !falls) return 0;
@@ -153,11 +160,11 @@ KirLowerCleanup(KirFunction *fn)
         goto done;
     for(int i = 0; i < fn->stmt_count; i++) {
         const KirStmt *st = &fn->stmts[i];
-        if(st->kind == KIR_STMT_IF && !strncmp(st->text, "guard ", 6)) {
+        if(st->kind == KIR_STMT_IF && !strncmp(st->text, "guard ", 6) && count) {
             fail(st, "guard with defer requires an explicit if and return");
             goto done;
         }
-        if(st->kind == KIR_STMT_GOTO || st->kind == KIR_STMT_LABEL) {
+        if((st->kind == KIR_STMT_GOTO || st->kind == KIR_STMT_LABEL) && count) {
             fail(st, "goto and labels in functions with defer are not supported");
             goto done;
         }
@@ -268,7 +275,7 @@ KirLowerCleanup(KirFunction *fn)
         }
         if(!append(&out, st))
             goto done;
-        if(opens(st->kind)) {
+        if(opens_stmt(st)) {
             scopes[++depth] = st->kind;
             scope_start[depth] = i + 1;
         }

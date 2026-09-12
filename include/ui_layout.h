@@ -1,22 +1,22 @@
-#ifndef UI_LAYOUT_H
-#define UI_LAYOUT_H
+#ifndef KRYON_LAYOUT_H
+#define KRYON_LAYOUT_H
 
 #include <stdint.h>
 
 // Set the view dimensions (should be called when window/viewport changes)
-void SetUIViewSize(int width, int height);
+void SetViewSize(int width, int height);
 
 // Get the current view width
-int GetUIViewWidth(void);
+int GetViewWidth(void);
 
 // Get the current view height
-int GetUIViewHeight(void);
+int GetViewHeight(void);
 
 // Calculate centered column dimensions
 // Returns x position and width via pointers if not NULL
-void GetUICenteredColumn(int max_w, int side_pad, int *x, int *w);
+void GetCenteredColumn(int max_w, int side_pad, int *x, int *w);
 
 // Calculate page side padding based on current view width
-int GetUIPageSidePadding(void);
+int GetPageSidePadding(void);
 
-#endif // UI_LAYOUT_H
+#endif // KRYON_LAYOUT_H

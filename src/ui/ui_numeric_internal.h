@@ -1,5 +1,5 @@
-#ifndef UI_NUMERIC_INTERNAL_H
-#define UI_NUMERIC_INTERNAL_H
+#ifndef NUMERIC_INTERNAL_H
+#define NUMERIC_INTERNAL_H
 
 #include "kryon.h"
 
@@ -14,7 +14,7 @@ typedef struct {
     float max;
     const char *format;
     int disabled;
-} UIFloatDragProps;
+} DragScalarProps;
 
 typedef struct {
     Rectangle bounds;
@@ -27,7 +27,7 @@ typedef struct {
     int max;
     const char *format;
     int disabled;
-} UIIntDragProps;
+} DragWholeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -41,7 +41,7 @@ typedef struct {
     const char *format;
     const char *format_max;
     int disabled;
-} UIFloatDragRangeProps;
+} DragScalarRangeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -55,7 +55,7 @@ typedef struct {
     const char *format;
     const char *format_max;
     int disabled;
-} UIIntDragRangeProps;
+} DragWholeRangeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -67,7 +67,7 @@ typedef struct {
     float max;
     const char *format;
     int disabled;
-} UIFloatSliderProps;
+} SliderScalarProps;
 
 typedef struct {
     Rectangle bounds;
@@ -79,7 +79,7 @@ typedef struct {
     int max;
     const char *format;
     int disabled;
-} UIIntSliderProps;
+} SliderWholeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -90,7 +90,7 @@ typedef struct {
     float max_degrees;
     const char *format;
     int disabled;
-} UIAngleSliderProps;
+} SliderAngleProps;
 
 typedef struct {
     Rectangle bounds;
@@ -102,7 +102,7 @@ typedef struct {
     float step_fast;
     const char *format;
     int disabled;
-} UIFloatInputProps;
+} InputScalarProps;
 
 typedef struct {
     Rectangle bounds;
@@ -114,7 +114,7 @@ typedef struct {
     int step_fast;
     const char *format;
     int disabled;
-} UIIntInputProps;
+} InputWholeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -126,6 +126,6 @@ typedef struct {
     double step_fast;
     const char *format;
     int disabled;
-} UIDoubleInputProps;
+} InputPreciseProps;
 
 #endif

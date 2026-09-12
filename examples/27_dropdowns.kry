@@ -12,8 +12,8 @@ state {
     unavailable: int = 0
     applied: int = 0
     modes: [3] DropdownOption = {
-        (DropdownOption){.label = "Light", .icon_type = UI_ICON_TYPE_SUN},
-        (DropdownOption){.label = "Dark", .icon_type = UI_ICON_TYPE_MOON},
+        (DropdownOption){.label = "Light", .icon_type = ICON_SUN},
+        (DropdownOption){.label = "Dark", .icon_type = ICON_MOON},
         (DropdownOption){.label = "System"}
     }
     workflows: [5] DropdownOption = {

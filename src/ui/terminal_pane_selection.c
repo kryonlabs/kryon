@@ -315,15 +315,15 @@ TerminalPaneSelectionUpdatePrimary(
     if(TerminalPaneSelectionCollectText(
            selection, line_text, line_wrapped, userdata, buffer,
            (int)sizeof(buffer)))
-        return SetUIPrimarySelectionFromText(buffer);
-    return SetUIPrimarySelectionFromText("");
+        return SetPrimarySelectionFromText(buffer);
+    return SetPrimarySelectionFromText("");
 }
 
 int
 TerminalPaneSelectionCopyToClipboard(
     const TerminalPaneSelection *selection, TerminalPaneSelectionLineFn line_text,
     TerminalPaneSelectionWrappedFn line_wrapped, void *userdata,
-    UIClipboardBuffer *clipboard)
+    ClipboardBuffer *clipboard)
 {
     static char buffer[TERMINAL_PANE_SELECTION_COPY_BUFFER_SIZE];
 
@@ -331,7 +331,7 @@ TerminalPaneSelectionCopyToClipboard(
                                          userdata, buffer,
                                          (int)sizeof(buffer)))
         return 0;
-    return CopyUISelectionTextToClipboard(clipboard, buffer);
+    return CopySelectionTextToClipboard(clipboard, buffer);
 }
 
 int

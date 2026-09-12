@@ -10,7 +10,7 @@
 #define UI_INSPECT_SOURCE_STACK_MAX 32
 #define UI_INSPECT_TRANSFORM_STACK_MAX 16
 
-typedef struct UIInspectWidget {
+typedef struct InspectWidget {
     char id[UI_INSPECT_ID_MAX];
     char kind[UI_INSPECT_KIND_MAX];
     char action[UI_INSPECT_ACTION_MAX];
@@ -23,15 +23,15 @@ typedef struct UIInspectWidget {
     int parent;
     int depth;
     int source_line;
-} UIInspectWidget;
+} InspectWidget;
 
-typedef struct UIInspectOverride {
+typedef struct InspectOverride {
     char id[UI_INSPECT_ID_MAX];
     Rectangle bounds;
     int enabled;
-} UIInspectOverride;
+} InspectOverride;
 
-typedef struct UIInspectState {
+typedef struct InspectState {
     int initialized;
     int enabled;
     int visible;
@@ -52,13 +52,13 @@ typedef struct UIInspectState {
     int source_depth;
     int widget_stack[UI_INSPECT_MAX_WIDGETS];
     int widget_depth;
-    UIInspectWidget widgets[UI_INSPECT_MAX_WIDGETS];
+    InspectWidget widgets[UI_INSPECT_MAX_WIDGETS];
     int widget_count;
-    UIInspectOverride overrides[UI_INSPECT_MAX_OVERRIDES];
+    InspectOverride overrides[UI_INSPECT_MAX_OVERRIDES];
     int override_count;
-} UIInspectState;
+} InspectState;
 
-static UIInspectState g_ui_inspect;
+static InspectState g_ui_inspect;
 
 static void ui_inspect_select_at(Vector2 mouse);
 
@@ -123,7 +123,7 @@ ui_inspect_init_from_env(void)
     ui_inspect_default_project_root();
 }
 
-static UIInspectOverride *
+static InspectOverride *
 ui_inspect_find_override(const char *id)
 {
     for(int i = 0; i < g_ui_inspect.override_count; i++) {
@@ -133,10 +133,10 @@ ui_inspect_find_override(const char *id)
     return NULL;
 }
 
-static UIInspectOverride *
+static InspectOverride *
 ui_inspect_get_override(const char *id)
 {
-    UIInspectOverride *override;
+    InspectOverride *override;
 
     override = ui_inspect_find_override(id);
     if(override != NULL)
@@ -151,7 +151,7 @@ ui_inspect_get_override(const char *id)
 }
 
 void
-BeginUIInspectFrame(const char *project_root)
+BeginInspectFrame(const char *project_root)
 {
     ui_inspect_init_from_env();
     if(project_root != NULL && project_root[0] != '\0' &&
@@ -175,12 +175,12 @@ BeginUIInspectFrame(const char *project_root)
 }
 
 void
-EndUIInspectFrame(void)
+EndInspectFrame(void)
 {
 }
 
 void
-SetUIInspectEnabled(int enabled)
+SetInspectEnabled(int enabled)
 {
     ui_inspect_init_from_env();
     g_ui_inspect.enabled = enabled ? 1 : 0;
@@ -188,28 +188,28 @@ SetUIInspectEnabled(int enabled)
 }
 
 int
-UIInspectEnabled(void)
+InspectEnabled(void)
 {
     ui_inspect_init_from_env();
     return g_ui_inspect.enabled;
 }
 
 void
-SetUIInspectVisible(int visible)
+SetInspectVisible(int visible)
 {
     ui_inspect_init_from_env();
     g_ui_inspect.visible = visible ? 1 : 0;
 }
 
 int
-UIInspectWidgetCount(void)
+InspectWidgetCount(void)
 {
     ui_inspect_init_from_env();
     return g_ui_inspect.widget_count;
 }
 
 static void
-ui_inspect_fill_node(UIInspectNode *node, const UIInspectWidget *widget)
+ui_inspect_fill_node(InspectNode *node, const InspectWidget *widget)
 {
     if(node == NULL || widget == NULL)
         return;
@@ -228,14 +228,14 @@ ui_inspect_fill_node(UIInspectNode *node, const UIInspectWidget *widget)
 }
 
 int
-UIInspectNodeCount(void)
+InspectNodeCount(void)
 {
     ui_inspect_init_from_env();
     return g_ui_inspect.widget_count;
 }
 
 int
-UIInspectGetNode(int index, UIInspectNode *node)
+InspectGetNode(int index, InspectNode *node)
 {
     ui_inspect_init_from_env();
     if(index < 0 || index >= g_ui_inspect.widget_count || node == NULL)
@@ -245,7 +245,7 @@ UIInspectGetNode(int index, UIInspectNode *node)
 }
 
 static int
-ui_inspect_match_selector(const UIInspectWidget *widget, const char *selector)
+ui_inspect_match_selector(const InspectWidget *widget, const char *selector)
 {
     const char *value;
     char source[UI_INSPECT_PATH_MAX + 32];
@@ -271,7 +271,7 @@ ui_inspect_match_selector(const UIInspectWidget *widget, const char *selector)
 }
 
 int
-UIInspectFindNode(const char *selector, UIInspectNode *node)
+InspectFindNode(const char *selector, InspectNode *node)
 {
     ui_inspect_init_from_env();
     for(int i = g_ui_inspect.widget_count - 1; i >= 0; i--) {
@@ -283,11 +283,11 @@ UIInspectFindNode(const char *selector, UIInspectNode *node)
     return 0;
 }
 
-UIInspectSelection
-UIInspectGetSelection(void)
+InspectSelection
+InspectGetSelection(void)
 {
-    UIInspectSelection selection = {0};
-    UIInspectWidget *widget;
+    InspectSelection selection = {0};
+    InspectWidget *widget;
 
     ui_inspect_init_from_env();
     if(g_ui_inspect.selected < 0 ||
@@ -313,7 +313,7 @@ UIInspectGetSelection(void)
 }
 
 int
-UIInspectSelectAt(Vector2 point)
+InspectSelectAt(Vector2 point)
 {
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled || !g_ui_inspect.visible)
@@ -328,7 +328,7 @@ UIInspectSelectAt(Vector2 point)
 }
 
 void
-SetUIInspectCanvasBounds(Rectangle bounds)
+SetInspectCanvasBounds(Rectangle bounds)
 {
     ui_inspect_init_from_env();
     g_ui_inspect.canvas_bounds = bounds;
@@ -367,7 +367,7 @@ ui_inspect_screen_zoom(void)
 }
 
 int
-PushUIInspectTransform(Camera2D camera)
+PushInspectTransform(Camera2D camera)
 {
     int token;
 
@@ -382,7 +382,7 @@ PushUIInspectTransform(Camera2D camera)
 }
 
 void
-PopUIInspectTransform(int token)
+PopInspectTransform(int token)
 {
     ui_inspect_init_from_env();
     if(token < 0)
@@ -393,7 +393,7 @@ PopUIInspectTransform(int token)
 }
 
 int
-PushUIInspectChrome(int enabled)
+PushInspectChrome(int enabled)
 {
     int token;
 
@@ -405,7 +405,7 @@ PushUIInspectChrome(int enabled)
 }
 
 void
-PopUIInspectChrome(int token)
+PopInspectChrome(int token)
 {
     ui_inspect_init_from_env();
     if(token < 0)
@@ -414,7 +414,7 @@ PopUIInspectChrome(int token)
 }
 
 int
-UIInspectInputCapturesClick(Vector2 point)
+InspectInputCapturesClick(Vector2 point)
 {
     ui_inspect_init_from_env();
     (void)point;
@@ -434,7 +434,7 @@ UIInspectInputCapturesClick(Vector2 point)
 static void
 ui_widget_apply_bounds(const char *id, Rectangle *bounds)
 {
-    UIInspectOverride *override;
+    InspectOverride *override;
 
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled || id == NULL || bounds == NULL)
@@ -447,7 +447,7 @@ ui_widget_apply_bounds(const char *id, Rectangle *bounds)
 }
 
 void
-PushUIInspectSource(const char *path, int line)
+PushInspectSource(const char *path, int line)
 {
     int index;
 
@@ -463,7 +463,7 @@ PushUIInspectSource(const char *path, int line)
 }
 
 void
-PopUIInspectSource(void)
+PopInspectSource(void)
 {
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled)
@@ -476,8 +476,8 @@ static int
 ui_inspect_register_widget(const char *id, const char *kind,
                            Rectangle *bounds, int flags)
 {
-    UIInspectWidget *widget;
-    UIInspectOverride *override;
+    InspectWidget *widget;
+    InspectOverride *override;
     Rectangle screen_bounds;
     int index;
 
@@ -513,12 +513,12 @@ ui_inspect_register_widget(const char *id, const char *kind,
         widget->source_line = g_ui_inspect.source_line_stack[source];
     }
     if(!ui_inspect_persistent_id(id))
-        widget->flags |= UI_WIDGET_TEMPORARY_ID;
+        widget->flags |= WIDGET_TEMPORARY_ID;
     widget->order = g_ui_inspect.widget_count;
 
     override = ui_inspect_find_override(id);
     if(override == NULL && ui_inspect_persistent_id(id) &&
-       (flags & (UI_WIDGET_MOVABLE | UI_WIDGET_RESIZABLE)) != 0) {
+       (flags & (WIDGET_MOVABLE | WIDGET_RESIZABLE)) != 0) {
         override = ui_inspect_get_override(id);
         if(override != NULL)
             override->bounds = *bounds;
@@ -529,7 +529,7 @@ ui_inspect_register_widget(const char *id, const char *kind,
 static void
 ui_inspect_set_widget_action(int index, const char *action)
 {
-    UIInspectWidget *widget;
+    InspectWidget *widget;
 
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled || action == NULL)
@@ -540,10 +540,10 @@ ui_inspect_set_widget_action(int index, const char *action)
     ui_inspect_strncpy(widget->action, sizeof(widget->action), action);
 }
 
-UIWidget
-BeginUIWidget(const char *kind, const char *id, Rectangle bounds, int flags)
+Widget
+BeginWidget(const char *kind, const char *id, Rectangle bounds, int flags)
 {
-    UIWidget widget = {0};
+    Widget widget = {0};
     int index;
 
     ui_inspect_init_from_env();
@@ -558,7 +558,7 @@ BeginUIWidget(const char *kind, const char *id, Rectangle bounds, int flags)
     widget.bounds = bounds;
     widget.flags = flags;
     widget.index = -1;
-    if((flags & (UI_WIDGET_MOVABLE | UI_WIDGET_RESIZABLE)) != 0)
+    if((flags & (WIDGET_MOVABLE | WIDGET_RESIZABLE)) != 0)
         ui_widget_apply_bounds(widget.id, &widget.bounds);
     index = ui_inspect_register_widget(widget.id, widget.kind,
                                       &widget.bounds, flags);
@@ -572,9 +572,9 @@ BeginUIWidget(const char *kind, const char *id, Rectangle bounds, int flags)
 }
 
 void
-UIWidgetSetBounds(UIWidget *widget, Rectangle bounds)
+WidgetSetBounds(Widget *widget, Rectangle bounds)
 {
-    UIInspectWidget *inspect;
+    InspectWidget *inspect;
 
     ui_inspect_init_from_env();
     if(widget == NULL || !widget->active)
@@ -589,7 +589,7 @@ UIWidgetSetBounds(UIWidget *widget, Rectangle bounds)
 }
 
 void
-UIWidgetSetAction(UIWidget *widget, const char *action)
+WidgetSetAction(Widget *widget, const char *action)
 {
     if(widget == NULL || !widget->active)
         return;
@@ -597,7 +597,7 @@ UIWidgetSetAction(UIWidget *widget, const char *action)
 }
 
 void
-EndUIWidget(UIWidget *widget)
+EndWidget(Widget *widget)
 {
     if(widget == NULL || !widget->active)
         return;
@@ -644,8 +644,8 @@ ui_inspect_clamp_bounds(Rectangle bounds)
 static void
 ui_inspect_commit_selected(Rectangle bounds)
 {
-    UIInspectWidget *widget;
-    UIInspectOverride *override;
+    InspectWidget *widget;
+    InspectOverride *override;
 
     if(g_ui_inspect.selected < 0 ||
        g_ui_inspect.selected >= g_ui_inspect.widget_count)
@@ -667,7 +667,7 @@ static void
 ui_inspect_update_interaction(void)
 {
     Vector2 screen_mouse = ui_inspect_mouse_screen();
-    UIInspectWidget *selected;
+    InspectWidget *selected;
     Rectangle bounds;
     Rectangle screen_bounds;
     int can_move;
@@ -684,8 +684,8 @@ ui_inspect_update_interaction(void)
         ui_inspect_select_at(screen_mouse);
         if(g_ui_inspect.selected >= 0) {
             selected = &g_ui_inspect.widgets[g_ui_inspect.selected];
-            can_move = (selected->flags & UI_WIDGET_MOVABLE) != 0;
-            can_resize = (selected->flags & UI_WIDGET_RESIZABLE) != 0;
+            can_move = (selected->flags & WIDGET_MOVABLE) != 0;
+            can_resize = (selected->flags & WIDGET_RESIZABLE) != 0;
             g_ui_inspect.drag_start = screen_mouse;
             g_ui_inspect.edit_start = selected->bounds;
             g_ui_inspect.resizing = can_resize &&
@@ -725,7 +725,7 @@ ui_inspect_update_interaction(void)
     if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
         g_ui_inspect.dragging = 0;
         g_ui_inspect.resizing = 0;
-        UIConsumeRelease();
+        ConsumeRelease();
     }
     if(g_ui_inspect.selected >= 0 &&
        g_ui_inspect.selected < g_ui_inspect.widget_count) {
@@ -769,14 +769,14 @@ RenderInspectOverlay(void)
 
     ui_inspect_update_interaction();
     for(int i = 0; i < g_ui_inspect.widget_count; i++) {
-        UIInspectWidget *widget = &g_ui_inspect.widgets[i];
+        InspectWidget *widget = &g_ui_inspect.widgets[i];
         Rectangle screen_bounds = widget->screen_bounds;
         Color color = i == g_ui_inspect.selected ? selected : outline;
 
         DrawRectangleLinesEx(screen_bounds, i == g_ui_inspect.selected ? 2 : 1,
                              color);
         if(i == g_ui_inspect.selected &&
-           (widget->flags & UI_WIDGET_RESIZABLE) != 0) {
+           (widget->flags & WIDGET_RESIZABLE) != 0) {
             int s = Scale(10);
 
             DrawRectangle((int)(screen_bounds.x + screen_bounds.width - s),

@@ -55,13 +55,13 @@ draw_measure_text(const char *s, int size)
 static void
 draw_clip_push(int x, int y, int w, int h)
 {
-    BeginUIClip(x, y, w, h);
+    BeginClip(x, y, w, h);
 }
 
 static void
 draw_clip_pop(void)
 {
-    EndUIClip();
+    EndClip();
 }
 
 static void

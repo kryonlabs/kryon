@@ -2,7 +2,7 @@ package kryon
 
 import "testing"
 
-func TestComboHorizontalViewport(t *testing.T) {
+func TestDropdownHorizontalViewport(t *testing.T) {
 	for _, bounds := range []Rectangle{NewRectangle(-20, 10, 160, 28), NewRectangle(200, 10, 160, 28), NewRectangle(10, 10, 400, 28)} {
 		r := New(AppConfig{Width: 240, Height: 240}).(*runtime)
 		selected := int32(0)
@@ -29,7 +29,7 @@ func TestComboHorizontalViewport(t *testing.T) {
 	}
 }
 
-func TestComboScrollbarDismissal(t *testing.T) {
+func TestDropdownScrollbarDismissal(t *testing.T) {
 	for mode := 0; mode < 3; mode++ {
 		r := New(AppConfig{Width: 240, Height: 240}).(*runtime)
 		selected := int32(0)
@@ -59,7 +59,7 @@ func TestComboScrollbarDismissal(t *testing.T) {
 	}
 }
 
-func TestComboConstrainedViewport(t *testing.T) {
+func TestDropdownConstrainedViewport(t *testing.T) {
 	for _, y := range []int32{10, 200} {
 		r := New(AppConfig{Width: 240, Height: 240}).(*runtime)
 		options := make([]string, 131)

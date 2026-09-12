@@ -1,5 +1,5 @@
-#ifndef UI_MENU_TYPES_H
-#define UI_MENU_TYPES_H
+#ifndef KRYON_MENU_TYPES_H
+#define KRYON_MENU_TYPES_H
 
 #include "kryon_compat.generated.h"
 

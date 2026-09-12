@@ -3,8 +3,8 @@
 #include <stddef.h>
 
 TerminalPaneClipboard
-MakeTerminalPaneClipboard(UIClipboardBuffer *clipboard, int bracketed_paste,
-                          UIClipboardPasteWriteFn write_text, void *userdata)
+MakeTerminalPaneClipboard(ClipboardBuffer *clipboard, int bracketed_paste,
+                          ClipboardPasteWriteFn write_text, void *userdata)
 {
     TerminalPaneClipboard pane_clipboard = {0};
 
@@ -42,7 +42,7 @@ TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
     if(clipboard.clipboard == NULL || clipboard.write_text == NULL ||
        text == NULL || text[0] == '\0')
         return 0;
-    return WriteUIClipboardTextPaste(clipboard.clipboard, text,
+    return WriteClipboardTextPaste(clipboard.clipboard, text,
                                      clipboard.bracketed_paste,
                                      clipboard.write_text,
                                      clipboard.userdata);
@@ -50,11 +50,11 @@ TerminalPaneClipboardPasteText(TerminalPaneClipboard clipboard,
 
 int
 TerminalPaneClipboardPasteSource(TerminalPaneClipboard clipboard,
-                                 UIClipboardSource source)
+                                 ClipboardSource source)
 {
     if(clipboard.clipboard == NULL || clipboard.write_text == NULL)
         return 0;
-    return WriteUIClipboardSourcePaste(clipboard.clipboard, source,
+    return WriteClipboardSourcePaste(clipboard.clipboard, source,
                                        clipboard.bracketed_paste,
                                        clipboard.write_text,
                                        clipboard.userdata);
@@ -64,33 +64,33 @@ int
 TerminalPaneClipboardPasteClipboard(TerminalPaneClipboard clipboard)
 {
     return TerminalPaneClipboardPasteSource(clipboard,
-                                            UI_CLIPBOARD_SOURCE_CLIPBOARD);
+                                            CLIPBOARD_SOURCE_CLIPBOARD);
 }
 
 int
 TerminalPaneClipboardPastePrimary(TerminalPaneClipboard clipboard)
 {
     return TerminalPaneClipboardPasteSource(clipboard,
-                                            UI_CLIPBOARD_SOURCE_PRIMARY);
+                                            CLIPBOARD_SOURCE_PRIMARY);
 }
 
 int
 TerminalPaneClipboardPastePreferred(TerminalPaneClipboard clipboard)
 {
     return TerminalPaneClipboardPasteSource(
-        clipboard, UI_CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD);
+        clipboard, CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD);
 }
 
 int
-TerminalPaneClipboardSourceHasText(UIClipboardSource source)
+TerminalPaneClipboardSourceHasText(ClipboardSource source)
 {
-    return UIClipboardSourceHasText(source);
+    return ClipboardSourceHasText(source);
 }
 
 int
 TerminalPaneClipboardPrimarySelectionAvailable(void)
 {
-    return TerminalPaneClipboardSourceHasText(UI_CLIPBOARD_SOURCE_PRIMARY);
+    return TerminalPaneClipboardSourceHasText(CLIPBOARD_SOURCE_PRIMARY);
 }
 
 int
@@ -98,7 +98,7 @@ TerminalPaneClipboardSyncFromHost(TerminalPaneClipboard clipboard)
 {
     if(clipboard.clipboard == NULL)
         return 0;
-    return SyncUIClipboardBufferFromHost(clipboard.clipboard);
+    return SyncClipboardBufferFromHost(clipboard.clipboard);
 }
 
 int
@@ -106,7 +106,7 @@ TerminalPaneClipboardFlushToHost(TerminalPaneClipboard clipboard)
 {
     if(clipboard.clipboard == NULL)
         return 0;
-    return FlushUIClipboardBufferToHost(clipboard.clipboard);
+    return FlushClipboardBufferToHost(clipboard.clipboard);
 }
 
 int

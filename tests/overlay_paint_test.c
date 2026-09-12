@@ -16,7 +16,7 @@ int main(void)
     char text[32] = "Value";
     int cursor = 5, focused = 0;
     ModalAction actions[] = {{"Close", ButtonToneAccent, ButtonEmphasisFilled, 0}};
-    SetUIClipboardTextValue("");
+    SetClipboardTextValue("");
     InjectReset();
     for(int frame = 0; frame < 5; frame++) {
         InjectMousePosition(frame < 2 ? 10 : 300,14);
@@ -26,15 +26,15 @@ int main(void)
         InjectPump();
         BeginDrawing();
         ClearBackground(BLACK);
-        BeginUIFrame(640,480,1);
+        BeginInterfaceFrame(640,480,1);
         BeginTree(2);
         Text((TextProps){.bounds={10, 10, 0, 0}, .text="Select and copy this text.", .font=16, .color=WHITE, .wrap=TextWrapNone});
-        InvalidateTree(UI_INVALIDATE_PAINT);
+        InvalidateTree(INVALIDATE_PAINT);
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         EndDrawing();
     }
-    const char *copied = GetUIClipboardTextValue();
+    const char *copied = GetClipboardTextValue();
     if(copied == NULL || strcmp(copied,"Select and copy this text.") != 0) {
         fprintf(stderr,"retained text copy: %s\n",copied != NULL ? copied : "(null)");
         failures++;
@@ -49,9 +49,9 @@ int main(void)
         BeginDrawing();
         BeginTextureMode(target);
         ClearBackground(RED);
-        BeginUIFrame(640,480,1);
+        BeginInterfaceFrame(640,480,1);
         int clicked = TabBar((TabBarProps){.bounds={10,100,180,32},.tabs=tabs,.count=4,.selected_index=0,.scroll_offset=&tab_scroll});
-        EndUIFrame();
+        EndInterfaceFrame();
         EndTextureMode();
         EndDrawing();
         Image image = LoadImageFromTexture(target.texture);
@@ -69,7 +69,7 @@ int main(void)
             BeginDrawing();
             BeginTextureMode(target);
             ClearBackground(BLACK);
-            BeginUIFrame(640,480,1);
+            BeginInterfaceFrame(640,480,1);
             BeginTree(1);
             Rect(10,10,20,20,RED,BLANK);
             Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .font=16, .color=WHITE, .wrap=TextWrapNone});
@@ -121,7 +121,7 @@ int main(void)
             }
             Rect(40,10,20,20,GREEN,BLANK);
             EndTree();
-            EndUIFrame();
+            EndInterfaceFrame();
             EndTextureMode();
             EndDrawing();
             Image image = LoadImageFromTexture(target.texture);

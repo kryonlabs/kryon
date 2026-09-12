@@ -1,0 +1,108 @@
+#module "guide_pager"
+#import "drawing_props"
+
+GuidePagerMetrics :: struct {
+    pad: i32
+    gap: i32
+    button_height: i32
+    swipe_min_distance: float
+    swipe_axis_bias: float
+    swipe_max_duration: float
+}
+
+GuidePagerLayout :: struct {
+    valid: bool
+    left_button: Rectangle
+    right_button: Rectangle
+    button_height: i32
+}
+
+GuidePagerPolicy :: struct {
+    page: i32
+    changed: bool
+    closed: bool
+    finished: bool
+}
+
+GuidePagerMetricsFor :: (scale: float) -> GuidePagerMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: GuidePagerMetrics
+    metrics.pad = (i32)(12.0 * scale)
+    metrics.gap = (i32)(12.0 * scale)
+    metrics.button_height = (i32)(48.0 * scale)
+    metrics.swipe_min_distance = 48.0 * scale
+    metrics.swipe_axis_bias = 1.25
+    metrics.swipe_max_duration = 0.8
+    return metrics
+}
+
+GuidePagerPageCount :: (page_count: i32) -> i32 #export {
+    if page_count > 0 { return page_count }
+    return 1
+}
+
+GuidePagerPageFor :: (page: i32, page_count: i32) -> i32 #export {
+    count: i32 = GuidePagerPageCount(page_count)
+    if page < 0 { return 0 }
+    if page >= count { return count - 1 }
+    return page
+}
+
+GuidePagerLayoutFor :: (footer_bounds: Rectangle, metrics: GuidePagerMetrics) -> GuidePagerLayout #export {
+    layout: GuidePagerLayout
+    footer_x: i32 = (i32)footer_bounds.x
+    footer_y: i32 = (i32)footer_bounds.y
+    footer_w: i32 = (i32)footer_bounds.width
+    footer_h: i32 = (i32)footer_bounds.height
+    button_h: i32 = metrics.button_height
+    button_w: i32
+    button_y: i32
+
+    if footer_w <= 0 || footer_h <= 0 { return layout }
+    if button_h > footer_h - metrics.pad * 2 {
+        button_h = footer_h - metrics.pad * 2
+    }
+    if button_h < 1 { return layout }
+    button_w = (footer_w - metrics.pad * 2 - metrics.gap) / 2
+    if button_w < 1 { return layout }
+
+    button_y = footer_y + (footer_h - button_h) / 2
+    layout.valid = true
+    layout.button_height = button_h
+    layout.left_button.x = (float)(footer_x + metrics.pad)
+    layout.left_button.y = (float)button_y
+    layout.left_button.width = (float)button_w
+    layout.left_button.height = (float)button_h
+    layout.right_button.x = (float)(footer_x + metrics.pad + button_w + metrics.gap)
+    layout.right_button.y = (float)button_y
+    layout.right_button.width = (float)button_w
+    layout.right_button.height = (float)button_h
+    return layout
+}
+
+GuidePagerPolicyFor :: (page: i32, page_count: i32, previous: bool, next: bool,
+    close_requested: bool, finish_requested: bool, finish_on_next: bool) -> GuidePagerPolicy #export {
+    policy: GuidePagerPolicy
+    count: i32 = GuidePagerPageCount(page_count)
+    page = GuidePagerPageFor(page, count)
+    policy.page = page
+
+    if close_requested {
+        policy.closed = true
+        return policy
+    }
+    if finish_requested {
+        policy.finished = true
+        return policy
+    }
+    if previous && page > 0 {
+        policy.page = page - 1
+        policy.changed = true
+    } else if next && page < count - 1 {
+        policy.page = page + 1
+        policy.changed = true
+    } else if next && page == count - 1 && finish_on_next {
+        policy.finished = true
+    }
+    return policy
+}

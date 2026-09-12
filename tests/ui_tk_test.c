@@ -69,7 +69,7 @@ check_color(const char *name, Color got, Color want)
 }
 
 static int
-test_drag_float(UIFloatDragProps props)
+test_drag_scalar(DragScalarProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -79,7 +79,7 @@ test_drag_float(UIFloatDragProps props)
 }
 
 static int
-test_drag_int(UIIntDragProps props)
+test_drag_whole(DragWholeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -89,7 +89,7 @@ test_drag_int(UIIntDragProps props)
 }
 
 static int
-test_drag_float_range(UIFloatDragRangeProps props)
+test_drag_scalar_range(DragScalarRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat, .mode = DragRange,
@@ -100,7 +100,7 @@ test_drag_float_range(UIFloatDragRangeProps props)
 }
 
 static int
-test_drag_int_range(UIIntDragRangeProps props)
+test_drag_whole_range(DragWholeRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .mode = DragRange,
@@ -111,7 +111,7 @@ test_drag_int_range(UIIntDragRangeProps props)
 }
 
 static int
-test_slider_float(UIFloatSliderProps props)
+test_slider_scalar(SliderScalarProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -121,7 +121,7 @@ test_slider_float(UIFloatSliderProps props)
 }
 
 static int
-test_slider_int(UIIntSliderProps props)
+test_slider_whole(SliderWholeProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -130,7 +130,7 @@ test_slider_int(UIIntSliderProps props)
 }
 
 static int
-test_vslider_int(UIIntSliderProps props)
+test_vslider_whole(SliderWholeProps props)
 {
     SliderProps slider = {.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -140,7 +140,7 @@ test_vslider_int(UIIntSliderProps props)
 }
 
 static int
-test_input_int(UIIntInputProps props)
+test_input_whole(InputWholeProps props)
 {
     return Input((InputProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -740,7 +740,7 @@ test_spinbox_policy(void)
 static void
 test_semantic_font_sizes_follow_ui_scale(void)
 {
-    BeginUIFrame(720, 1400, 1.75f);
+    BeginInterfaceFrame(720, 1400, 1.75f);
     check_int("body font at 1.75x", GetFontSize(), 28);
     check_int("small font at 1.75x", GetSmallFontSize(), 25);
     check_int("title font at 1.75x", GetTitleFontSize("Title", 1000), 42);
@@ -752,7 +752,7 @@ test_semantic_font_sizes_follow_ui_scale(void)
         check_int("button label fit stays inside content width",
                   TextWidth("Delete Habit", fitted) <= Scale(64), 1);
     }
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -862,11 +862,11 @@ test_slider_keyboard_navigation(void)
 {
     float floats[2] = {0.25f,0.75f};
     int ints[1] = {5};
-    UIFloatSliderProps horizontal = {
+    SliderScalarProps horizontal = {
         .bounds = {10,10,200,30}, .id = 600, .values = floats,
         .value_count = 2, .min = 0.0f, .max = 1.0f
     };
-    UIIntSliderProps vertical = {
+    SliderWholeProps vertical = {
         .bounds = {10,60,30,120}, .id = 601, .values = ints,
         .value_count = 1, .min = 0, .max = 10
     };
@@ -874,76 +874,76 @@ test_slider_keyboard_navigation(void)
     int inspect_enabled;
 
     InjectReset();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
-    inspect_enabled = UIInspectEnabled();
-    SetUIInspectEnabled(0);
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    inspect_enabled = InspectEnabled();
+    SetInspectEnabled(0);
     InjectMousePosition(35,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
-    check_int("click focuses slider component",GetUIFocus(),600);
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    check_int("click focuses slider component",GetFocus(),600);
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
-    SetUIInspectEnabled(inspect_enabled);
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    SetInspectEnabled(inspect_enabled);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1.0f);
-    check_int("slider Right changed",test_slider_float(horizontal),1);
-    EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f);
+    check_int("slider Right changed",test_slider_scalar(horizontal),1);
+    EndInterfaceFrame();
     check_int("slider Right value",(int)(floats[0]*1000.0f+0.5f),260);
 
     InjectPump();
     InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
     check_int("slider Shift fast value",(int)(floats[0]*1000.0f+0.5f),360);
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     InjectKey(KEY_LEFT_ALT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
     check_int("slider Alt slow value",(int)(floats[0]*1000.0f+0.5f),361);
     InjectKey(KEY_LEFT_ALT,0); InjectPump();
 
     InjectKeyTap(KEY_TAB); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_slider_float(horizontal); EndUIFrame();
-    second_focus = GetUIFocus();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    second_focus = GetFocus();
     check_int("slider Tab reaches second component",second_focus != 600,1);
     InjectKeyTap(KEY_LEFT); InjectPump();
-    BeginUIFrame(640,480,1.0f);
-    check_int("second slider component changed",test_slider_float(horizontal),1);
-    EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f);
+    check_int("second slider component changed",test_slider_scalar(horizontal),1);
+    EndInterfaceFrame();
     check_int("second slider component value",
               (int)(floats[1]*1000.0f+0.5f),740);
 
-    SetUIFocus(601); InjectKeyTap(KEY_UP); InjectPump();
-    BeginUIFrame(640,480,1.0f);
-    check_int("vertical slider Up changed",test_vslider_int(vertical),1);
-    EndUIFrame();
+    SetFocus(601); InjectKeyTap(KEY_UP); InjectPump();
+    BeginInterfaceFrame(640,480,1.0f);
+    check_int("vertical slider Up changed",test_vslider_whole(vertical),1);
+    EndInterfaceFrame();
     check_int("vertical slider Up value",ints[0],6);
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
     check_int("vertical slider Down value",ints[0],5);
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
     check_int("vertical slider Home value",ints[0],0);
     InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(640,480,1.0f); test_vslider_int(vertical); EndUIFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
     check_int("vertical slider End value",ints[0],10);
 
     vertical.disabled = 1;
-    SetUIFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1.0f);
-    check_int("disabled slider unchanged",test_vslider_int(vertical),0);
-    EndUIFrame();
+    SetFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
+    BeginInterfaceFrame(640,480,1.0f);
+    check_int("disabled slider unchanged",test_vslider_whole(vertical),0);
+    EndInterfaceFrame();
     check_int("disabled slider value",ints[0],10);
 }
 
 static void
-draw_drag_keyboard(UIFloatDragProps floats, UIIntDragProps ints)
+draw_drag_keyboard(DragScalarProps floats, DragWholeProps ints)
 {
-    BeginUIFrame(480,240,1);
-    (void)test_drag_float(floats);
-    (void)test_drag_int(ints);
-    EndUIFrame();
+    BeginInterfaceFrame(480,240,1);
+    (void)test_drag_scalar(floats);
+    (void)test_drag_whole(ints);
+    EndInterfaceFrame();
 }
 
 static void
@@ -951,69 +951,69 @@ test_drag_keyboard_navigation(void)
 {
     float floats[] = {2.0f,5.0f};
     int ints[] = {2,5};
-    UIFloatDragProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
+    DragScalarProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
         .value_count=2,.speed=0.25f,.min=0,.max=10};
-    UIIntDragProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
+    DragWholeProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
         .value_count=2,.speed=2,.min=0,.max=10};
 
     InjectReset(); draw_drag_keyboard(fp,ip);
-    SetUIFocus(630); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    SetFocus(630); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag float Right",(int)(floats[0]*100),225);
     InjectPump(); InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
     draw_drag_keyboard(fp,ip);
     check_int("drag float Shift Right",(int)(floats[0]*100),475);
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
-    check_int("drag float Tab second",GetUIFocus(),ui_numeric_focus_id(630,1,0));
+    check_int("drag float Tab second",GetFocus(),ui_numeric_focus_id(630,1,0));
     InjectKeyTap(KEY_HOME); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag float Home",(int)floats[1],0);
 
-    SetUIFocus(631); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
+    SetFocus(631); InjectKeyTap(KEY_RIGHT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag int Right",ints[0],4);
     InjectKeyTap(KEY_TAB); InjectPump(); draw_drag_keyboard(fp,ip);
-    check_int("drag int Tab second",GetUIFocus(),ui_numeric_focus_id(631,1,1));
+    check_int("drag int Tab second",GetFocus(),ui_numeric_focus_id(631,1,1));
     InjectKeyTap(KEY_LEFT); InjectPump(); draw_drag_keyboard(fp,ip);
     check_int("drag int second Left",ints[1],3);
 
     {
         float fmin=2.0f, fmax=8.0f;
         int imin=2, imax=8;
-        UIFloatDragRangeProps fr = {.bounds={240,10,200,30},.id=632,
+        DragScalarRangeProps fr = {.bounds={240,10,200,30},.id=632,
             .current_min=&fmin,.current_max=&fmax,.speed=1,.min=0,.max=10};
-        UIIntDragRangeProps ir = {.bounds={240,50,200,30},.id=633,
+        DragWholeRangeProps ir = {.bounds={240,50,200,30},.id=633,
             .current_min=&imin,.current_max=&imax,.speed=2,.min=0,.max=10};
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
-        SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
         check_int("drag float range min",(int)fmin,3);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
-        check_int("drag float range Tab",GetUIFocus(),ui_numeric_focus_id(632,1,0));
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        check_int("drag float range Tab",GetFocus(),ui_numeric_focus_id(632,1,0));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
         check_int("drag float range max",(int)fmax,7);
-        SetUIFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
+        SetFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
         check_int("drag int range min",imin,4);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
-        check_int("drag int range Tab",GetUIFocus(),ui_numeric_focus_id(633,1,1));
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        check_int("drag int range Tab",GetFocus(),ui_numeric_focus_id(633,1,1));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginUIFrame(480,240,1); test_drag_float_range(fr); test_drag_int_range(ir); EndUIFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
         check_int("drag int range max",imax,6);
-        SetUIFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(480,240,1); BeginDisabled(1); test_drag_float_range(fr); EndDisabled(); EndUIFrame();
+        SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
+        BeginInterfaceFrame(480,240,1); BeginDisabled(1); test_drag_scalar_range(fr); EndDisabled(); EndInterfaceFrame();
         check_int("disabled drag range",(int)fmin,3);
     }
 }
 
 static void
-draw_numeric_temporary_inputs(UIFloatDragProps drag, UIIntSliderProps slider)
+draw_numeric_temporary_inputs(DragScalarProps drag, SliderWholeProps slider)
 {
-    BeginUIFrame(320,160,1);
-    (void)test_drag_float(drag);
-    (void)test_slider_int(slider);
-    EndUIFrame();
+    BeginInterfaceFrame(320,160,1);
+    (void)test_drag_scalar(drag);
+    (void)test_slider_whole(slider);
+    EndInterfaceFrame();
 }
 
 static void
@@ -1021,9 +1021,9 @@ test_numeric_ctrl_click_editing(void)
 {
     float drag_value = 1.25f;
     int slider_value = 4;
-    UIFloatDragProps drag = {.bounds={10,10,140,30},.id=634,
+    DragScalarProps drag = {.bounds={10,10,140,30},.id=634,
         .values=&drag_value,.value_count=1,.speed=0.1f,.min=0,.max=10};
-    UIIntSliderProps slider = {.bounds={10,60,140,30},.id=635,
+    SliderWholeProps slider = {.bounds={10,60,140,30},.id=635,
         .values=&slider_value,.value_count=1,.min=0,.max=10};
 
     InjectReset();
@@ -1126,32 +1126,32 @@ test_tab_bar_keyboard_navigation(void)
         .selected_index=selected,.closed_index=&closed,.id=634};
 
     InjectReset();
-    BeginUIFrame(360,180,1); ui_tab_bar_keyboard_input(props); EndUIFrame();
-    SetUIFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(360,180,1);
+    BeginInterfaceFrame(360,180,1); ui_tab_bar_keyboard_input(props); EndInterfaceFrame();
+    SetFocus(props.id); InjectKeyTap(KEY_RIGHT); InjectPump();
+    BeginInterfaceFrame(360,180,1);
     selected = ui_tab_bar_keyboard_input(props);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("tab Right skips disabled",selected,2);
     props.selected_index = selected;
 
     InjectKeyTap(KEY_DELETE); InjectPump();
-    BeginUIFrame(360,180,1);
+    BeginInterfaceFrame(360,180,1);
     check_int("tab Delete does not select",ui_tab_bar_keyboard_input(props),-1);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("tab Delete closes selected",closed,2);
 
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginUIFrame(360,180,1);
+    BeginInterfaceFrame(360,180,1);
     selected = ui_tab_bar_keyboard_input(props);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("tab Home",selected,0);
 
     props.disabled = 1;
     props.selected_index = 0;
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(360,180,1); SetUIFocus(props.id);
+    BeginInterfaceFrame(360,180,1); SetFocus(props.id);
     check_int("disabled tab ignores keyboard",ui_tab_bar_keyboard_input(props),-1);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectReset();
 }
 
@@ -1162,7 +1162,7 @@ test_tab_bar_owned_scroll_state(void)
     int *first;
     int *second;
 
-    BeginUIFrame(360,180,1);
+    BeginInterfaceFrame(360,180,1);
     first = ui_tab_bar_owned_scroll(635,&fallback);
     *first = 47;
     second = ui_tab_bar_owned_scroll(636,&fallback);
@@ -1171,7 +1171,7 @@ test_tab_bar_owned_scroll_state(void)
               *ui_tab_bar_owned_scroll(635,&fallback),47);
     check_int("anonymous tab bar uses caller fallback",
               ui_tab_bar_owned_scroll(0,&fallback) == &fallback,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -1184,38 +1184,40 @@ test_composed_tab_bar_scope(void)
     int visible = -1;
 
     InjectReset();
-    BeginUIFrame(260,140,1);
-    check_int("composed tab bar begins",BeginTabBar(props,&selected),1);
-    if(BeginTabItem(0)) {
+    BeginInterfaceFrame(260,140,1);
+    int clicked = TabBar((TabBarProps){.bounds=props.bounds,.tabs=props.tabs,
+        .count=props.count,.selected_index=selected,.id=props.id});
+    if(clicked >= 0)
+        selected = clicked;
+    if(selected == 0) {
         visible = 0;
         Button((ButtonProps){.bounds={20,60,80,28},.label="First",
                              .id=638});
-        EndTabItem();
     }
-    check_int("unselected composed tab hidden",BeginTabItem(1),0);
-    EndTabBar();
-    EndUIFrame();
+    check_int("unselected composed tab hidden",selected == 1,0);
+    EndInterfaceFrame();
     check_int("first composed tab content",visible,0);
 
-    SetUIFocus(props.id);
+    SetFocus(props.id);
     InjectKeyTap(KEY_RIGHT);
     InjectPump();
-    BeginUIFrame(260,140,1);
-    check_int("composed tab bar reopens",BeginTabBar(props,&selected),1);
-    check_int("old composed tab hidden",BeginTabItem(0),0);
-    if(BeginTabItem(1)) {
+    BeginInterfaceFrame(260,140,1);
+    clicked = TabBar((TabBarProps){.bounds=props.bounds,.tabs=props.tabs,
+        .count=props.count,.selected_index=selected,.id=props.id});
+    if(clicked >= 0)
+        selected = clicked;
+    check_int("old composed tab hidden",selected == 0,0);
+    if(selected == 1) {
         visible = 1;
         Checkbox((CheckboxProps){.bounds = {20,60,120,34}, .id = 639,
                  .label = "Second", .value = &visible});
-        EndTabItem();
     }
-    EndTabBar();
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("composed tab writes selection",selected,1);
     check_int("selected composed tab content",visible,1);
 
     check_int("invalid composed tab bar stays closed",
-              BeginTabBar((TabBarProps){0},&selected),0);
+              TabBar((TabBarProps){0}) < 0,1);
     InjectReset();
 }
 
@@ -1228,7 +1230,7 @@ test_popup_tab_bar_keyboard_ownership(void)
 
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(240,120,1);
+        BeginInterfaceFrame(240,120,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -1237,7 +1239,7 @@ test_popup_tab_bar_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(
             context,26101,(Rectangle){15,15,200,80});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(props.id);
+        SetFocus(props.id);
         check_int("only top popup tab bar handles keyboard",
                   ui_tab_bar_keyboard_input(props),inside ? 1 : -1);
         if(inside) ui_popup_input_end(child);
@@ -1245,7 +1247,7 @@ test_popup_tab_bar_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -1257,31 +1259,31 @@ test_step_button_keyboard_navigation(void)
     int input = 4;
     SpinboxProps spin = {.bounds={10,10,120,30},.id=635,.min=0,.max=5,
         .step=1,.value=&value};
-    UIIntInputProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
+    InputWholeProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
         .value_count=1,.step=2,.step_fast=10};
 
     InjectReset();
-    BeginUIFrame(240,140,1); RenderSpinbox(spin); RenderInputWhole(field); EndUIFrame();
-    SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(240,140,1);
+    BeginInterfaceFrame(240,140,1); RenderSpinbox(spin); RenderInputWhole(field); EndInterfaceFrame();
+    SetFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginInterfaceFrame(240,140,1);
     check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
-    RenderInputWhole(field); EndUIFrame();
+    RenderInputWhole(field); EndInterfaceFrame();
     check_int("spinbox keyboard increment",value,3);
 
     {
         UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
-        SetUIFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
-        BeginUIFrame(240,140,1); RenderSpinbox(spin);
+        SetFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+        BeginInterfaceFrame(240,140,1); RenderSpinbox(spin);
         check_int("numeric step keyboard changed",RenderInputWhole(field),1);
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("numeric step keyboard increment",input,6);
     }
 
     spin.disabled = 1;
-    SetUIFocus(spin.id * 10 + 2); InjectKeyTap(KEY_SPACE); InjectPump();
-    BeginUIFrame(240,140,1);
+    SetFocus(spin.id * 10 + 2); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginInterfaceFrame(240,140,1);
     check_int("disabled spinbox keyboard",RenderSpinbox(spin),0);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("disabled spinbox value",value,3);
     InjectReset();
 }
@@ -1292,7 +1294,7 @@ draw_focusable_choices(int *checkbox, int *selected, int *flags,
                        int *selectable_activated, int *flags_activated,
                        int *radio_activated)
 {
-    BeginUIFrame(640,480,1.0f);
+    BeginInterfaceFrame(640,480,1.0f);
     *checkbox_activated = Checkbox((CheckboxProps){
         .bounds = {10,130,120,34}, .id = 609, .label = "Check",
         .value = checkbox
@@ -1310,7 +1312,7 @@ draw_focusable_choices(int *checkbox, int *selected, int *flags,
     *radio_activated = Radio((RadioProps){
         .bounds = {10,90,140,28}, .label = "Radio", .id = 612
     });
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -1329,40 +1331,40 @@ test_focusable_choice_keyboard_navigation(void)
                            &selectable_activated,&flags_activated,
                            &radio_activated);
 
-    SetUIFocus(609); InjectKeyTap(KEY_ENTER); InjectPump();
+    SetFocus(609); InjectKeyTap(KEY_ENTER); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("checkbox Enter activation",checkbox_activated,1);
     check_int("checkbox Enter state",checkbox,1);
 
-    SetUIFocus(610); InjectKeyTap(KEY_SPACE); InjectPump();
+    SetFocus(610); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("selectable Space activation",selectable_activated,1);
     check_int("selectable Space state",selected,1);
 
-    SetUIFocus(611); InjectKeyTap(KEY_ENTER); InjectPump();
+    SetFocus(611); InjectKeyTap(KEY_ENTER); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("checkbox flags Enter activation",flags_activated,1);
     check_int("checkbox flags Enter state",flags,4);
 
-    SetUIFocus(612); InjectKeyTap(KEY_SPACE); InjectPump();
+    SetFocus(612); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
     check_int("radio Space activation",radio_activated,612);
 
-    SetUIFocus(610); InjectKeyTap(KEY_TAB); InjectPump();
+    SetFocus(610); InjectKeyTap(KEY_TAB); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,0,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
-    check_int("choice Tab traversal",GetUIFocus(),611);
+    check_int("choice Tab traversal",GetFocus(),611);
 
-    SetUIFocus(611); InjectKeyTap(KEY_SPACE); InjectPump();
+    SetFocus(611); InjectKeyTap(KEY_SPACE); InjectPump();
     draw_focusable_choices(&checkbox,&selected,&flags,1,&checkbox_activated,
                            &selectable_activated,&flags_activated,
                            &radio_activated);
@@ -1377,32 +1379,32 @@ test_toggle_keyboard_navigation(void)
     int activated;
 
     InjectReset();
-    BeginUIFrame(240,120,1);
+    BeginInterfaceFrame(240,120,1);
     (void)Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    SetUIFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
-    BeginUIFrame(240,120,1);
+    SetFocus(613); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginInterfaceFrame(240,120,1);
     activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("toggle Space activation",activated,1);
     check_int("toggle Space state",value,1);
 
-    SetUIFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
-    BeginUIFrame(240,120,1);
+    SetFocus(613); InjectKeyTap(KEY_TAB); InjectPump();
+    BeginInterfaceFrame(240,120,1);
     (void)Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     (void)Button((ButtonProps){.bounds={10,54,80,28},.id=614,.label="Next"});
-    EndUIFrame();
-    check_int("toggle Tab traversal",GetUIFocus(),614);
+    EndInterfaceFrame();
+    check_int("toggle Tab traversal",GetFocus(),614);
 
-    SetUIFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(240,120,1);
+    SetFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginInterfaceFrame(240,120,1);
     BeginDisabled(1);
     activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
     EndDisabled();
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("disabled toggle rejects activation",activated,0);
     check_int("disabled toggle preserves state",value,1);
 }
@@ -1411,10 +1413,10 @@ static int
 draw_multi_select_keyboard(MultiSelectListProps list)
 {
     int clicked;
-    BeginUIFrame(320,240,1);
+    BeginInterfaceFrame(320,240,1);
     clicked = MultiSelectList(list);
     (void)Button((ButtonProps){.bounds={10,110,80,28},.id=619,.label="Next"});
-    EndUIFrame();
+    EndInterfaceFrame();
     return clicked;
 }
 
@@ -1432,7 +1434,7 @@ test_multi_select_keyboard_navigation(void)
 
     InjectReset();
     draw_multi_select_keyboard(list);
-    SetUIFocus(618); InjectKeyTap(KEY_DOWN); InjectPump();
+    SetFocus(618); InjectKeyTap(KEY_DOWN); InjectPump();
     check_int("multi Down clicked",draw_multi_select_keyboard(list),1);
     check_int("multi Down anchor",anchor,1);
     check_int("multi Down count",count,1);
@@ -1463,10 +1465,10 @@ test_multi_select_keyboard_navigation(void)
 
     InjectKeyTap(KEY_TAB); InjectPump();
     draw_multi_select_keyboard(list);
-    check_int("multi Tab traversal",GetUIFocus(),619);
+    check_int("multi Tab traversal",GetFocus(),619);
 
     list.disabled = 1;
-    SetUIFocus(618); InjectKeyTap(KEY_SPACE); InjectPump();
+    SetFocus(618); InjectKeyTap(KEY_SPACE); InjectPump();
     check_int("disabled multi rejects keyboard",draw_multi_select_keyboard(list),-1);
     check_int("disabled multi preserves selection",selected[0],1);
 }
@@ -1480,7 +1482,7 @@ test_focusable_image_keyboard_navigation(void)
     };
 
     InjectReset();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0});
     Button((ButtonProps){
         .bounds=image.bounds,.id=621,.image_asset_path=image.asset_path,
@@ -1493,16 +1495,16 @@ test_focusable_image_keyboard_navigation(void)
         .bounds={10,90,80,30},.id=622,.label="Color",
         .swatch=true,.swatch_color=RED
     });
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    SetUIFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(240,180,1);
+    SetFocus(620); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginInterfaceFrame(240,180,1);
     check_int("invisible button Enter activation",
               RenderInvisibleButton((InvisibleButtonProps){{10,50,40,30},620,0}),1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    SetUIFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
-    BeginUIFrame(240,180,1);
+    SetFocus(621); InjectKeyTap(KEY_SPACE); InjectPump();
+    BeginInterfaceFrame(240,180,1);
     check_int("image button Space activation",
               Button((ButtonProps){
                   .bounds=image.bounds,.id=621,
@@ -1515,16 +1517,16 @@ test_focusable_image_keyboard_navigation(void)
                   .image_fit=image.fit,
                   .image_background=BLACK
               }),1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    SetUIFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(240,180,1);
+    SetFocus(622); InjectKeyTap(KEY_ENTER); InjectPump();
+    BeginInterfaceFrame(240,180,1);
     check_int("color button Enter activation",
               Button((ButtonProps){
                   .bounds={10,90,80,30},.id=622,.label="Color",
                   .swatch=true,.swatch_color=RED
               }),1);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -1546,9 +1548,9 @@ test_reorder_uses_item_center_and_header_handle(void)
     InjectMousePosition(50, 170);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
-    BeginUIFrame(300, 500, 1.0f);
+    BeginInterfaceFrame(300, 500, 1.0f);
     result = UpdateReorderList(list);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("reorder ignores item body below handle", result.active, 0);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
@@ -1557,24 +1559,24 @@ test_reorder_uses_item_center_and_header_handle(void)
     InjectMousePosition(50, 120);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
-    BeginUIFrame(300, 500, 1.0f);
+    BeginInterfaceFrame(300, 500, 1.0f);
     result = UpdateReorderList(list);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("reorder captures header", result.active, 1);
 
     InjectMousePosition(50, 240);
     InjectPump();
-    BeginUIFrame(300, 500, 1.0f);
+    BeginInterfaceFrame(300, 500, 1.0f);
     result = UpdateReorderList(list);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("reorder drag active", result.dragging, 1);
     check_int("reorder target follows lifted center", result.target_index, 1);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
-    BeginUIFrame(300, 500, 1.0f);
+    BeginInterfaceFrame(300, 500, 1.0f);
     result = UpdateReorderList(list);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -1597,20 +1599,20 @@ test_menu_bar_switches_while_popup_captures_input(void)
     MenuBarResult result;
 
     InjectReset();
-    BeginUIFrame(640, 480, 1.0f);
+    BeginInterfaceFrame(640, 480, 1.0f);
     font = GetFontSize();
     edit_x = Scale(4) + TextWidth("File", font) + Scale(24) +
              Scale(2) + Scale(8);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectTap((float)edit_x, 14.0f);
     InjectPump();
     InjectPump();
 
-    BeginUIFrame(640, 480, 1.0f);
-    PushUIInputCapture((Rectangle){0, 28, 180, 64}, 1);
+    BeginInterfaceFrame(640, 480, 1.0f);
+    PushInputCapture((Rectangle){0, 28, 180, 64}, 1);
     result = MenuBar(700, bounds, menus, 2, &open_index);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     check_int("menu bar switches over popup capture", open_index, 1);
     check_int("menu bar result switches over popup capture",
@@ -1640,45 +1642,45 @@ test_menu_keyboard_navigation(void)
     MenuBarResult result;
 
     InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     check_int("menu Down opens",open,0);
     check_int("menu Down open result",result.open_index,0);
 
     InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
-    InjectPump(); BeginUIFrame(640,480,1);
-    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    InjectPump(); BeginInterfaceFrame(640,480,1);
+    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     check_int("submenu Enter activates",result.activated_id,23);
     check_int("submenu activation closes",open,-1);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     check_int("menu Right then Down opens next",result.open_index,1);
     InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
-    InjectPump(); BeginUIFrame(640,480,1);
-    result = MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
+    InjectPump(); BeginInterfaceFrame(640,480,1);
+    result = MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     check_int("second menu Enter activates",result.activated_id,31);
 
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     InjectKeyTap(KEY_ESCAPE); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(300);
-    MenuBar(300,bounds,menus,2,&open); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(300);
+    MenuBar(300,bounds,menus,2,&open); EndInterfaceFrame();
     check_int("menu Escape closes",open,-1);
     InjectReset();
 }
@@ -1694,13 +1696,13 @@ test_popup_menu_keyboard_navigation(void)
     int activated;
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(400);
-    activated = PopupMenu(400,20,20,items,3); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(400);
+    activated = PopupMenu(400,20,20,items,3); EndInterfaceFrame();
     check_int("popup Enter skips disabled",activated,42);
 
     InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
-    BeginUIFrame(640,480,1); SetUIFocus(999);
-    activated = PopupMenu(400,20,20,items,3); EndUIFrame();
+    BeginInterfaceFrame(640,480,1); SetFocus(999);
+    activated = PopupMenu(400,20,20,items,3); EndInterfaceFrame();
     check_int("unfocused popup rejects Enter",activated,0);
     InjectReset();
 }
@@ -1713,7 +1715,7 @@ test_popup_menu_keyboard_ownership(void)
     };
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
-        BeginUIFrame(320,240,1);
+        BeginInterfaceFrame(320,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -1722,7 +1724,7 @@ test_popup_menu_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(
             context,25701,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25711);
+        SetFocus(25711);
         check_int("only top popup menu handles keyboard",
                   PopupMenu(25711,10,10,items,1),inside ? 25710 : 0);
         if(inside) ui_popup_input_end(child);
@@ -1730,7 +1732,7 @@ test_popup_menu_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     for(int inside = 0; inside < 2; inside++) {
         UIPopupInput *context;
@@ -1742,7 +1744,7 @@ test_popup_menu_keyboard_ownership(void)
         InjectReset();
         InjectKeyTap(KEY_ESCAPE);
         InjectPump();
-        BeginUIFrame(320,240,1);
+        BeginInterfaceFrame(320,240,1);
         context = ui_popup_input_create();
         ui_popup_input_frame(context);
         previous = ui_popup_input_bind(context);
@@ -1752,17 +1754,17 @@ test_popup_menu_keyboard_ownership(void)
             context,25701,(Rectangle){190,190,20,20});
         if(!inside)
             ui_popup_input_end(child);
-        SetUIFocus(25711);
+        SetFocus(25711);
         (void)PopupMenu(25711,10,10,items,1);
         check_int("only top popup menu handles Escape",
-                  GetUIFocus(),expected_focus);
+                  GetFocus(),expected_focus);
         if(inside)
             ui_popup_input_end(child);
         ui_popup_input_end(parent);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -1779,14 +1781,14 @@ test_circle_click_uses_ui_release_path(void)
     InjectPump();
     InjectPump();
 
-    BeginUIFrame(640, 480, 1.0f);
-    clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, &hover);
+    BeginInterfaceFrame(640, 480, 1.0f);
+    clicked = HandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, &hover);
     second_clicked =
-        UIHandleClick((Rectangle){80.0f, 80.0f, 40.0f, 40.0f}, 0, NULL);
-    EndUIFrame();
+        HandleClick((Rectangle){80.0f, 80.0f, 40.0f, 40.0f}, 0, NULL);
+    EndInterfaceFrame();
 
     check_int("circle click inside", clicked, 1);
-    check_int("circle click hover", hover, UIHoverEffectsEnabled() ? 1 : 0);
+    check_int("circle click hover", hover, HoverEffectsEnabled() ? 1 : 0);
     check_int("circle click consumes release", second_clicked, 0);
 
     InjectReset();
@@ -1794,9 +1796,9 @@ test_circle_click_uses_ui_release_path(void)
     InjectPump();
     InjectPump();
 
-    BeginUIFrame(640, 480, 1.0f);
-    clicked = UIHandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, NULL);
-    EndUIFrame();
+    BeginInterfaceFrame(640, 480, 1.0f);
+    clicked = HandleCircleClick((Vector2){100.0f, 100.0f}, 32.0f, 0, NULL);
+    EndInterfaceFrame();
 
     check_int("circle click outside", clicked, 0);
 }
@@ -1811,14 +1813,14 @@ test_icon_button_activation(void)
         InjectReset();
         InjectTap(30, 30);
         InjectPump();
-        BeginUIFrame(220, 100, 1.0f);
+        BeginInterfaceFrame(220, 100, 1.0f);
         check_int("icon action press", RenderIconAction(button), 0);
-        EndUIFrame();
+        EndInterfaceFrame();
         InjectPump();
-        BeginUIFrame(220, 100, 1.0f);
+        BeginInterfaceFrame(220, 100, 1.0f);
         check_int("icon action release", RenderIconAction(button), !disabled);
         check_int("icon action release consumed", RenderIconAction(button), 0);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -1842,17 +1844,17 @@ test_nested_disabled_scope(void)
     InjectReset();
     InjectTap(30, 20);
     InjectPump();
-    BeginUIFrame(220, 100, 1.0f);
+    BeginInterfaceFrame(220, 100, 1.0f);
     BeginDisabled(1);
     check_int("disabled button press frame", Button(button), 0);
     EndDisabled();
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectPump();
-    BeginUIFrame(220, 100, 1.0f);
+    BeginInterfaceFrame(220, 100, 1.0f);
     BeginDisabled(1);
     check_int("disabled button release frame", Button(button), 0);
     EndDisabled();
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -1862,8 +1864,8 @@ test_disabled_scalar_cancels_gesture(void)
         for(int scope = 0; scope < 2; scope++) {
             float value = 25.0f;
             float before = value;
-            UIFloatDragProps drag = {0};
-            UIFloatSliderProps slide = {0};
+            DragScalarProps drag = {0};
+            SliderScalarProps slide = {0};
             drag.bounds = slide.bounds = (Rectangle){10, 10, 100, 24};
             drag.id = 982;
             slide.id = 981;
@@ -1879,17 +1881,17 @@ test_disabled_scalar_cancels_gesture(void)
                 if(step == 3)
                     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
                 InjectPump();
-                BeginUIFrame(220, 100, 1.0f);
+                BeginInterfaceFrame(220, 100, 1.0f);
                 if(scope)
                     BeginDisabled(step == 1);
                 drag.disabled = slide.disabled = !scope && step == 1;
                 if(slider)
-                    (void)test_slider_float(slide);
+                    (void)test_slider_scalar(slide);
                 else
-                    (void)test_drag_float(drag);
+                    (void)test_drag_scalar(drag);
                 if(scope)
                     EndDisabled();
-                EndUIFrame();
+                EndInterfaceFrame();
                 if(step == 0)
                     before = value;
                 else
@@ -1902,21 +1904,21 @@ test_disabled_scalar_cancels_gesture(void)
 static void
 test_deep_disabled_scopes(void)
 {
-    int keyboard = SetUIKeyboardInputEnabled(1);
+    int keyboard = SetKeyboardInputEnabled(1);
     for(int outer = 0; outer < 2; outer++) {
         BeginDisabled(outer);
         for(int depth = 0; depth < 130; depth++)
             BeginDisabled(depth == 100);
-        check_int("deep disabled keyboard", UIKeyboardInputEnabled(), 0);
+        check_int("deep disabled keyboard", IsKeyboardInputEnabled(), 0);
         for(int depth = 129; depth >= 0; depth--) {
             EndDisabled();
-            check_int("deep disabled unwind", UIKeyboardInputEnabled(),
+            check_int("deep disabled unwind", IsKeyboardInputEnabled(),
                       !outer && depth <= 100);
         }
         EndDisabled();
-        check_int("deep disabled restored", UIKeyboardInputEnabled(), 1);
+        check_int("deep disabled restored", IsKeyboardInputEnabled(), 1);
     }
-    SetUIKeyboardInputEnabled(keyboard);
+    SetKeyboardInputEnabled(keyboard);
 }
 
 static void
@@ -1934,11 +1936,11 @@ test_collapsible_composes_children(void)
         InjectTap(20, (float)ys[click]);
         for(int frame = 0; frame < 2; frame++) {
             InjectPump();
-            BeginUIFrame(240, 300, 1.0f);
+            BeginInterfaceFrame(240, 300, 1.0f);
             (void)Collapsible(section);
             if(open && Button(child))
                 actions++;
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         check_int("collapsible open state", open, click < 2);
         check_int("collapsible child actions", actions, click > 0);
@@ -1958,9 +1960,9 @@ test_tree_header_modes(void)
         InjectTap(mode == 2 ? 20 : 60,20);
         for(int frame = 0; frame < 2; frame++) {
             InjectPump();
-            BeginUIFrame(240,240,1.0f);
+            BeginInterfaceFrame(240,240,1.0f);
             Collapsible(p);
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         check_int("tree leaf/disabled/indent/open",open,mode == 3);
     }
@@ -1979,9 +1981,9 @@ test_closeable_collapsible(void)
     InjectTap(180,20);
     for(int frame = 0; frame < 2; frame++) {
         InjectPump();
-        BeginUIFrame(240,240,1.0f);
+        BeginInterfaceFrame(240,240,1.0f);
         changed |= Collapsible(p);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("collapsible close changed", changed, 1);
     check_int("collapsible close visible", visible, 0);
@@ -1990,9 +1992,9 @@ test_closeable_collapsible(void)
     InjectTap(20,20);
     for(int frame = 0; frame < 2; frame++) {
         InjectPump();
-        BeginUIFrame(240,240,1.0f);
+        BeginInterfaceFrame(240,240,1.0f);
         Collapsible(p);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("hidden collapsible ignores input", open, 0);
 
@@ -2001,9 +2003,9 @@ test_closeable_collapsible(void)
     InjectTap(180,20);
     for(int frame = 0; frame < 2; frame++) {
         InjectPump();
-        BeginUIFrame(240,240,1.0f);
+        BeginInterfaceFrame(240,240,1.0f);
         Collapsible(p);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("disabled collapsible cannot close", visible, 1);
 }
@@ -2017,15 +2019,15 @@ test_tree_header_keyboard_gates(void)
     for(int mode = 0; mode < 4; mode++) {
         p.leaf = mode == 0;
         p.disabled = mode == 1;
-        SetUIFocus(994);
+        SetFocus(994);
         InjectKeyTap(KEY_RIGHT);
         for(int frame = 0; frame < 2; frame++) {
             InjectPump();
-            BeginUIFrame(240,240,1.0f);
+            BeginInterfaceFrame(240,240,1.0f);
             BeginDisabled(mode == 2);
             Collapsible(p);
             EndDisabled();
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         check_int("tree keyboard gates",open,mode == 3);
     }
@@ -2042,32 +2044,32 @@ test_dropdown_popup_lifecycle(void)
         p.disabled = 0;
         InjectTap(20,20);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
+            InjectPump(); BeginInterfaceFrame(240,240,1.0f); Dropdown(p); EndInterfaceFrame();
         }
-        check_int("dropdown opened capture",UIInputCapturesClick((Vector2){20,70}),1);
+        check_int("dropdown opened capture",InputCapturesClick((Vector2){20,70}),1);
         int background_scroll = 0;
         InjectMousePosition(20,70);
         InjectWheel(-1);
         InjectPump();
-        BeginUIFrame(240,240,1.0f);
+        BeginInterfaceFrame(240,240,1.0f);
         BeginScroll((Rectangle){10,40,180,120},400,&background_scroll);
         EndScroll();
         Dropdown(p);
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("popup owns wheel before owner declaration",background_scroll,0);
         p.disabled = mode == 0;
         InjectTap(20,75);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1.0f);
+            InjectPump(); BeginInterfaceFrame(240,240,1.0f);
             BeginDisabled(mode == 1);
             if(mode != 2) Dropdown(p);
-            EndDisabled(); EndUIFrame();
+            EndDisabled(); EndInterfaceFrame();
         }
         check_int("dropdown lifecycle selection",selected,0);
-        check_int("dropdown released capture",UIInputCapturesClick((Vector2){20,70}),0);
+        check_int("dropdown released capture",InputCapturesClick((Vector2){20,70}),0);
         p.disabled = 0;
-        BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
-        check_int("dropdown stays closed",UIInputCapturesClick((Vector2){20,70}),0);
+        BeginInterfaceFrame(240,240,1.0f); Dropdown(p); EndInterfaceFrame();
+        check_int("dropdown stays closed",InputCapturesClick((Vector2){20,70}),0);
     }
 }
 
@@ -2084,13 +2086,13 @@ test_dropdown_store_isolation(void)
     InjectTap(20,20);
     for(int frame = 0; frame < 3; frame++) {
         InjectPump();
-        BeginUIFrame(240,240,1.0f);
+        BeginInterfaceFrame(240,240,1.0f);
         frame_store = dropdown_store_swap(first);
         Dropdown((DropdownProps){.id = 9961, .bounds = {10, 10, 160, 28},
             .options = options, .option_count = 2, .selected_index = &selected});
         ui_dropdown_overlays();
         dropdown_store_swap(frame_store);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     frame_store = dropdown_store_swap(first);
     check_int("first dropdown store owns popup",
@@ -2123,27 +2125,27 @@ test_many_dropdown_identities(void)
         if(phase < 3) InjectTap(20, phase == 1 ? 75 : 20);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
-            BeginUIFrame(240,240,1);
+            BeginInterfaceFrame(240,240,1);
             for(int i = phase == 3 ? 1 : 0; i < 41; i++) {
                 Dropdown((DropdownProps){.bounds = {i ? 300 : 10,10,160,28},
                     .id = 20000+i, .options = options, .option_count = 2,
                     .selected_index = &selected[i]});
             }
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         if(phase == 0 || phase == 2)
-            check_int("41 combos keep first owner's capture",UIInputCapturesClick((Vector2){20,70}),1);
+            check_int("41 dropdowns keep first owner's capture",InputCapturesClick((Vector2){20,70}),1);
         if(phase == 3)
-            check_int("missing first dropdown releases capture",UIInputCapturesClick((Vector2){20,70}),0);
+            check_int("missing first dropdown releases capture",InputCapturesClick((Vector2){20,70}),0);
         if(phase == 1)
-            check_int("41 combos keep first owner's selection",selected[0],1);
+            check_int("41 dropdowns keep first owner's selection",selected[0],1);
         for(int i = 1; i < 41; i++)
-            check_int("41 combos preserve independent selection",selected[i],0);
+            check_int("41 dropdowns preserve independent selection",selected[i],0);
     }
     InjectReset();
-    BeginUIFrame(240,240,1);
-    EndUIFrame();
-    check_int("retired dropdown releases capture",UIInputCapturesClick((Vector2){20,70}),0);
+    BeginInterfaceFrame(240,240,1);
+    EndInterfaceFrame();
+    check_int("retired dropdown releases capture",InputCapturesClick((Vector2){20,70}),0);
 }
 
 static void
@@ -2157,16 +2159,16 @@ test_large_dropdown_options(void)
         InjectTap(20, phase == 0 ? 20 : 46 + 130*28 + 10);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
-            BeginUIFrame(240,6000,1);
+            BeginInterfaceFrame(240,6000,1);
             Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 21000,
                 .options = options, .option_count = 131, .selected_index = &selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
     }
     check_int("dropdown selects beyond old 128 option limit",selected,130);
     InjectReset();
-    BeginUIFrame(240,240,1);
-    EndUIFrame();
+    BeginInterfaceFrame(240,240,1);
+    EndInterfaceFrame();
 }
 
 static void
@@ -2182,10 +2184,10 @@ test_dropdown_keyboard_navigation(void)
         else InjectKeyTap(keys[step]);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
-            BeginUIFrame(240,240,1);
+            BeginInterfaceFrame(240,240,1);
             Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 23000,
                 .options = options, .option_count = 131, .selected_index = &selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         check_int("dropdown keyboard commits only on Enter",selected,step < 3 ? 0 : step < 10 ? 129 : 1);
     }
@@ -2195,10 +2197,10 @@ test_dropdown_keyboard_navigation(void)
         else InjectTap(20,200);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
-            BeginUIFrame(240,240,1);
+            BeginInterfaceFrame(240,240,1);
             Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 23000,
                 .options = options, .option_count = 131, .selected_index = &selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
     }
     check_int("keyboard End reveals last option for pointer selection",selected,130);
@@ -2215,7 +2217,7 @@ test_popup_preedit_cancellation(void)
         InjectReset(); ClearTextComposition();
         for(int frame = 0; frame < 3; frame++) {
             if(frame == 0) SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
-            InjectPump(); BeginUIFrame(240,240,1);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
             UIPopupInput *previous = ui_popup_input_bind(context);
             BeginTree(Key("popup-preedit-cancellation"));
@@ -2224,20 +2226,20 @@ test_popup_preedit_cancellation(void)
                 UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetUIFocus(frame == 1 && cause == 2 ? 0 : 26010);
+            SetFocus(frame == 1 && cause == 2 ? 0 : 26010);
             TextField((TextFieldProps){.bounds={10,10,120,28},.text=text,.text_size=sizeof(text),
                 .cursor_position=&cursor,.focused=&focused,.focus_id=26010,
                 .read_only=frame == 1 && cause == 1});
             ui_popup_input_end(parent);
-            UIEvent event;
+            Event event;
             while(NextEvent(&event)) {}
             EndTree();
             int composition_events = 0;
             while(NextEvent(&event))
-                if(event.kind == UI_EVENT_COMPOSITION_CHANGED) composition_events++;
+                if(event.kind == EVENT_COMPOSITION_CHANGED) composition_events++;
             check_int("preedit starts then cancels without revival",composition_events,frame < 2 ? 1 : 0);
             check_int("preedit cancellation leaves committed text intact",strcmp(text,"a"),0);
-            EndUIFrame();
+            EndInterfaceFrame();
             ui_popup_input_finish(context);
             ui_popup_input_bind(previous);
         }
@@ -2260,7 +2262,7 @@ test_popup_composition_dismissal_replay(void)
                 SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
                 SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"x",1,0);
             }
-            InjectPump(); BeginUIFrame(240,240,1);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
             UIPopupInput *previous = ui_popup_input_bind(context);
             BeginTree(Key("popup-composition-replay"));
@@ -2269,7 +2271,7 @@ test_popup_composition_dismissal_replay(void)
                 UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetUIFocus(26000); focused = 1;
+            SetFocus(26000); focused = 1;
             if(area)
                 TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                     .cursor_position=&cursor,.focused=&focused,.focus_id=26000,.read_only=read_only});
@@ -2280,7 +2282,7 @@ test_popup_composition_dismissal_replay(void)
             EndTree();
             check_int("IME commit respects popup ownership and read-only state",
                 strcmp(text,frame == 2 && !read_only ? "ax" : "a"),0);
-            EndUIFrame();
+            EndInterfaceFrame();
             ui_popup_input_finish(context);
             ui_popup_input_bind(previous);
         }
@@ -2307,7 +2309,7 @@ test_popup_text_dismissal_replay(void)
                 } else if(queued) QueueTextInputCodepoint('x');
                 else InjectText("x");
             }
-            InjectPump(); BeginUIFrame(240,240,1);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
             UIPopupInput *previous = ui_popup_input_bind(context);
             UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
@@ -2315,7 +2317,7 @@ test_popup_text_dismissal_replay(void)
                 UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
-            SetUIFocus(25900); focused = 1;
+            SetFocus(25900); focused = 1;
             if(area)
                 TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                     .cursor_position=&cursor,.focused=&focused,.focus_id=25900});
@@ -2327,7 +2329,7 @@ test_popup_text_dismissal_replay(void)
                 strcmp(text,frame == 2 ? (queued == 2 ? "" : "ax") : "a"),0);
             if(queued == 2) check_int("dismissal does not replay queued Enter",commit,frame == 2);
             if(close_same_frame && frame == 0) ui_popup_input_close(context,0);
-            EndUIFrame();
+            EndInterfaceFrame();
             ui_popup_input_finish(context);
             ui_popup_input_bind(previous);
         }
@@ -2344,27 +2346,27 @@ test_popup_tab_missing_owner(void)
     InjectReset();
     for(int frame = 0; frame < 3; frame++) {
         if(frame) InjectKeyTap(KEY_TAB);
-        InjectPump(); BeginUIFrame(240,240,1);
+        InjectPump(); BeginInterfaceFrame(240,240,1);
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
-        RegisterUIFocus(25800,(Rectangle){0});
+        RegisterFocus(25800,(Rectangle){0});
         if(frame < 2) {
             UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
-            RegisterUIFocus(25810,(Rectangle){0});
+            RegisterFocus(25810,(Rectangle){0});
             if(frame == 0) {
                 UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
-                RegisterUIFocus(25820,(Rectangle){0});
-                SetUIFocus(25820);
+                RegisterFocus(25820,(Rectangle){0});
+                SetFocus(25820);
                 ui_popup_input_end(child);
             }
             ui_popup_input_end(parent);
         }
-        EndUIFocus();
-        check_int("missing popup owner releases Tab in the same frame",GetUIFocus(),
+        EndFocusScope();
+        check_int("missing popup owner releases Tab in the same frame",GetFocus(),
             frame == 0 ? 25820 : frame == 1 ? 25810 : 25800);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
-        EndUIFrame();
+        EndInterfaceFrame();
         InjectPump();
     }
     ui_popup_input_destroy(context);
@@ -2378,8 +2380,8 @@ test_popup_button_keyboard_ownership(void)
     for(int key = 0; key < 2; key++)
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(keys[key]); InjectPump();
-        BeginUIFrame(240,240,1);
-        SetUIFocusTextInputActive(0);
+        BeginInterfaceFrame(240,240,1);
+        SetFocusTextInputActive(0);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -2387,21 +2389,21 @@ test_popup_button_keyboard_ownership(void)
         UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
         UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25700);
+        SetFocus(25700);
         int activated = Button((ButtonProps){.bounds={10,10,120,28},.label="Action",.id=25700});
         check_int("only top popup button activates from keyboard",activated,inside);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_end(parent);
-        UIEvent event;
+        Event event;
         while(NextEvent(&event)) {}
         EndTree();
         int clicks = 0;
-        while(NextEvent(&event)) if(event.kind == UI_EVENT_CLICK) clicks++;
+        while(NextEvent(&event)) if(event.kind == EVENT_CLICK) clicks++;
         check_int("deferred keyboard clicks preserve popup ownership",clicks,inside);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2412,7 +2414,7 @@ test_popup_choice_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         int selected = 0;
         InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -2421,7 +2423,7 @@ test_popup_choice_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25705);
+        SetFocus(25705);
         int activated = Selectable((SelectableProps){
             .bounds={10,10,120,28},.label="Choice",.id=25705,
             .selected=&selected
@@ -2434,7 +2436,7 @@ test_popup_choice_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2448,7 +2450,7 @@ test_popup_multi_select_keyboard_ownership(void)
         int count = 1;
         int anchor = 0;
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -2457,7 +2459,7 @@ test_popup_multi_select_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25706);
+        SetFocus(25706);
         int clicked = MultiSelectList((MultiSelectListProps){
             .bounds={10,10,120,56},.id=25706,.items=items,.item_count=2,
             .selected=selected,.selected_count=&count,.anchor=&anchor,.row_height=28
@@ -2470,7 +2472,7 @@ test_popup_multi_select_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2481,7 +2483,7 @@ test_popup_drag_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         float value = 1.0f;
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -2490,8 +2492,8 @@ test_popup_drag_keyboard_ownership(void)
         UIPopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25707);
-        int changed = test_drag_float((UIFloatDragProps){
+        SetFocus(25707);
+        int changed = test_drag_scalar((DragScalarProps){
             .bounds={10,10,120,28},.id=25707,.values=&value,.value_count=1,
             .speed=1,.min=0,.max=10
         });
@@ -2502,7 +2504,7 @@ test_popup_drag_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2516,30 +2518,30 @@ test_popup_tab_ownership(void)
         InjectReset();
         if(mode == 2 || mode == 3) InjectKey(KEY_LEFT_SHIFT,1);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginUIFrame(240,240,1);
-        SetUIFocus(start[mode]);
-        RegisterUIFocus(25600,(Rectangle){0});
+        BeginInterfaceFrame(240,240,1);
+        SetFocus(start[mode]);
+        RegisterFocus(25600,(Rectangle){0});
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
         UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
-        RegisterUIFocus(25610,(Rectangle){0});
+        RegisterFocus(25610,(Rectangle){0});
         UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
-        RegisterUIFocus(25620,(Rectangle){0});
-        RegisterUIFocus(25621,(Rectangle){0});
-        RegisterUIFocus(25620,(Rectangle){0});
+        RegisterFocus(25620,(Rectangle){0});
+        RegisterFocus(25621,(Rectangle){0});
+        RegisterFocus(25620,(Rectangle){0});
         ui_popup_input_end(child);
-        RegisterUIFocus(25611,(Rectangle){0});
+        RegisterFocus(25611,(Rectangle){0});
         ui_popup_input_end(parent);
-        RegisterUIFocus(25601,(Rectangle){0});
+        RegisterFocus(25601,(Rectangle){0});
         if(mode == 4) ui_popup_input_close(context,1);
         if(mode == 5) ui_popup_input_close(context,0);
-        EndUIFocus();
-        check_int("popup Tab ownership and wraparound",GetUIFocus(),want[mode]);
+        EndFocusScope();
+        check_int("popup Tab ownership and wraparound",GetFocus(),want[mode]);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2553,7 +2555,7 @@ test_popup_text_keyboard_ownership(void)
         char text[32] = "a";
         int cursor = 1, focused = 1;
         InjectReset(); ClearTextInputFocus(); InjectText("x"); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -2561,7 +2563,7 @@ test_popup_text_keyboard_ownership(void)
         UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
         UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(25500);
+        SetFocus(25500);
         if(area)
             TextArea((TextAreaProps){.bounds={10,10,120,80},.text=text,.text_size=sizeof(text),
                 .cursor_position=&cursor,.focused=&focused,.focus_id=25500});
@@ -2576,7 +2578,7 @@ test_popup_text_keyboard_ownership(void)
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
         ClearTextInputFocus();
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -2594,26 +2596,26 @@ test_text_area_page_navigation(void)
     };
 
     InjectReset();
-    SetUIFocus(area.focus_id);
+    SetFocus(area.focus_id);
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Down advances one line",cursor > 4,1);
 
     int before_page = cursor;
     InjectKeyTap(KEY_PAGE_DOWN); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea PageDown moves more than one line",cursor >= before_page + 4,1);
 
     before_page = cursor;
     InjectKeyTap(KEY_PAGE_UP); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea PageUp moves more than one line",cursor <= before_page - 4,1);
 
     int selection_start = 0;
     int selection_end = 0;
     before_page = cursor;
     InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_PAGE_DOWN); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     check_int("TextArea Shift+PageDown keeps anchor",
               GetTextAreaSelection(area.focus_id, &selection_start,
@@ -2623,25 +2625,25 @@ test_text_area_page_navigation(void)
     check_int("TextArea Shift+PageDown selection end",selection_end,cursor);
 
     InjectKeyTap(KEY_LEFT); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Left collapses selection",cursor,before_page);
     check_int("TextArea collapsed selection is empty",
               GetTextAreaSelection(area.focus_id, NULL, NULL),0);
 
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Home moves to line start",cursor,6);
     InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     check_int("TextArea Ctrl+End moves to buffer end",cursor,(int)strlen(text));
 
     InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Ctrl+Left moves by word",cursor,15);
     InjectPump();
     InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_LEFT); InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea Ctrl+Shift+Left moves by separator",cursor,14);
     check_int("TextArea Ctrl+Shift+Left keeps anchor",
               GetTextAreaSelection(area.focus_id, &selection_start,
@@ -2666,18 +2668,18 @@ test_secure_text_field_word_navigation(void)
     };
 
     InjectReset();
-    SetUIFocus(field.focus_id);
+    SetFocus(field.focus_id);
     InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_LEFT); InjectPump();
-    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    BeginInterfaceFrame(240,100,1); TextField(field); EndInterfaceFrame();
     check_int("secure TextField Ctrl+Left hides word boundaries",cursor,0);
 
     InjectPump(); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    BeginInterfaceFrame(240,100,1); TextField(field); EndInterfaceFrame();
     check_int("secure TextField Ctrl+Right hides word boundaries",
               cursor,(int)strlen(text));
 
     InjectPump(); InjectKeyTap(KEY_BACKSPACE); InjectPump();
-    BeginUIFrame(240,100,1); TextField(field); EndUIFrame();
+    BeginInterfaceFrame(240,100,1); TextField(field); EndInterfaceFrame();
     check_int("secure TextField Ctrl+Backspace clears opaque span",
               strcmp(text,""),0);
     InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
@@ -2711,13 +2713,13 @@ test_immediate_text_composition(void)
     InjectReset();
     ClearTextInputFocus();
     field_focused = 1;
-    SetUIFocus(field.focus_id);
+    SetFocus(field.focus_id);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
                           "\xE6\x97\xA5\xE6\x9C\xAC", 3, 0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     check_int("immediate TextField preedit is not committed",
               TextField(field), 0);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("immediate TextField preserves committed buffer",
               strcmp(field_text,"ab"), 0);
     check_int("immediate TextField owns shared preedit",
@@ -2729,10 +2731,10 @@ test_immediate_text_composition(void)
 
     SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
                           "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     check_int("immediate TextField commit reports change",
               TextField(field), 1);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("immediate TextField commits UTF-8 at caret",
               strcmp(field_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
     check_int("immediate TextField clears preedit after commit",
@@ -2740,36 +2742,36 @@ test_immediate_text_composition(void)
 
     ClearTextInputFocus();
     area_focused = 1;
-    SetUIFocus(area.focus_id);
+    SetFocus(area.focus_id);
     SetTextAreaSelection(area.focus_id, 1, 3);
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,
                           "\xE3\x81\xAB", 3, 0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     check_int("immediate TextArea preedit is not committed",
               TextArea(area), 0);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("immediate TextArea preserves selected text during preedit",
               strcmp(area_text,"aZZb"), 0);
 
     SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,
                           "\xE6\x97\xA5\xE6\x9C\xAC", 6, 0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     check_int("immediate TextArea commit reports change",
               TextArea(area), 1);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("immediate TextArea composition replaces selection",
               strcmp(area_text,"a\xE6\x97\xA5\xE6\x9C\xAC" "b"), 0);
 
     SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"blocked",7,0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     TextArea(area);
-    EndUIFrame();
+    EndInterfaceFrame();
     area.read_only = 1;
     SubmitTextComposition(KRY_TEXT_COMPOSITION_COMMIT,"x",1,0);
-    BeginUIFrame(240,160,1);
+    BeginInterfaceFrame(240,160,1);
     check_int("read-only immediate editor ignores IME commit",
               TextArea(area), 0);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("read-only immediate editor cancels preedit",
               ui_text_composition_get(&area_focused, NULL, NULL, NULL), 0);
     check_int("read-only immediate editor does not mutate text",
@@ -2797,7 +2799,7 @@ test_text_area_wheel_scroll(void)
     InjectMousePosition(40, 40);
     InjectWheel(-1);
     InjectPump();
-    BeginUIFrame(240,160,1); TextArea(area); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); TextArea(area); EndInterfaceFrame();
     check_int("TextArea wheel scrolls down", scroll > 0, 1);
     InjectReset();
 }
@@ -2808,7 +2810,7 @@ test_composed_popup_children_scope(void)
     bool open = true;
     char text[16] = "edit";
     int cursor = 4;
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup ordinary children"));
     Button((ButtonProps){.bounds={10,10,80,24},.label="Background",.id=26999});
     check_int("open composed popup returns true",
@@ -2822,7 +2824,7 @@ test_composed_popup_children_scope(void)
     Button((ButtonProps){.bounds={120,10,80,24},.label="After",.id=27003});
     EndTree();
     int count = 0, action = 0, field = 0, after = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) {
         if(nodes[i].id == 27001) {
             action++;
@@ -2835,9 +2837,9 @@ test_composed_popup_children_scope(void)
     check_int("ordinary button retained in composed popup",action,1);
     check_int("ordinary field retained in composed popup",field,1);
     check_int("parent declarations resume after popup",after,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
         BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
@@ -2845,18 +2847,18 @@ test_composed_popup_children_scope(void)
     check_int("ClosePopup updates caller state",open,0);
     EndPopup();
     EndTree();
-    EndUIFrame();
-    BeginUIFrame(240,180,1);
+    EndInterfaceFrame();
+    BeginInterfaceFrame(240,180,1);
     check_int("closed composed popup stays closed",
         BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),0);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
 test_composed_popup_scope(void)
 {
     bool open = true;
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup ordinary children"));
     check_int("open composed popup returns true",
         BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
@@ -2867,7 +2869,7 @@ test_composed_popup_scope(void)
     Button((ButtonProps){.bounds={160,30,70,28},.label="After",.id=29002});
     EndTree();
     int count = 0, child = 0, after = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) {
         if(nodes[i].id == 29001) {
             child++;
@@ -2876,9 +2878,9 @@ test_composed_popup_scope(void)
     }
     check_int("ordinary button retained in composed popup",child,1);
     check_int("parent resumes after composed popup",after,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
         BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
@@ -2886,12 +2888,12 @@ test_composed_popup_scope(void)
     check_int("ClosePopup updates caller state",open,0);
     EndPopup();
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     check_int("invalid composed popup stays closed",
         BeginPopup((PopupProps){.bounds={20,30,0,100},.id=29000,.open=&open}),0);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -2900,7 +2902,7 @@ test_composed_tooltip_scope(void)
     InjectReset();
     InjectMousePosition(30,25);
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed tooltip arbitrary children"));
     check_int("hovered tooltip popup opens",
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
@@ -2915,18 +2917,18 @@ test_composed_tooltip_scope(void)
     EndPopup();
     EndTree();
     int count = 0, child = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) if(nodes[i].id == 29301) child++;
     check_int("ordinary child retained in tooltip",child,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(230,170);
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     check_int("tooltip closes outside trigger",
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
             .trigger={20,20,80,30},.flags=PopupTooltip}),0);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -2934,7 +2936,7 @@ test_composed_modal_scope(void)
 {
     bool open = true;
     InjectReset();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed modal arbitrary children"));
     check_int("open composed modal returns true",
         BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
@@ -2948,20 +2950,20 @@ test_composed_modal_scope(void)
     Button((ButtonProps){.bounds={190,145,45,30},.label="Behind",.id=29402});
     EndTree();
     int count = 0, child = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) if(nodes[i].id == 29401) child++;
     check_int("ordinary child retained in modal",child,1);
     check_int("outside declaration leaves modal open",open,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectKeyTap(KEY_ESCAPE);
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     check_int("Escape closes composed modal",
         BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
             .open=&open,.flags=PopupModal}),0);
     check_int("Escape updates modal caller state",open,0);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectReset();
 }
 
@@ -2974,7 +2976,7 @@ test_composed_context_popup_scope(void)
     InjectMouseButton(MOUSE_BUTTON_RIGHT,1); InjectPump();
     InjectMousePosition(30,25);
     InjectMouseButton(MOUSE_BUTTON_RIGHT,0); InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("composed context popup arbitrary children"));
     check_int("right release opens composed context popup",
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
@@ -2985,31 +2987,31 @@ test_composed_context_popup_scope(void)
     EndTree();
     check_int("context popup updates caller open state",open,1);
     int count = 0, child = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++)
         if(nodes[i].id == 29501) child++;
     check_int("ordinary child retained in context popup",child,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectTap(220,160); InjectPump(); InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     check_int("outside release dismisses context popup",
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext}),0);
     check_int("context popup dismissal updates caller",open,0);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectReset();
     InjectMousePosition(30,25);
     InjectMouseButton(MOUSE_BUTTON_RIGHT,1); InjectPump();
     InjectMousePosition(30,25);
     InjectMouseButton(MOUSE_BUTTON_RIGHT,0); InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     check_int("disabled context popup stays closed",
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29500,
             .open=&open,.trigger={20,20,80,30},.flags=PopupContext,
             .disabled=1}),0);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectReset();
 }
 
@@ -3020,10 +3022,10 @@ test_composed_popup_focus_lifecycle(void)
     UIPopupInput *context = ui_popup_input_create();
     UIPopupInput *previous;
     InjectReset();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    SetUIFocus(29600);
+    SetFocus(29600);
     BeginTree(Key("composed popup focus acquisition"));
     check_int("focus parent popup opens",
         BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
@@ -3034,13 +3036,13 @@ test_composed_popup_focus_lifecycle(void)
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     EndPopup();
     EndTree();
-    check_int("parent popup acquires first child focus",GetUIFocus(),29611);
+    check_int("parent popup acquires first child focus",GetFocus(),29611);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     child_open = true;
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed nested popup focus"));
@@ -3053,12 +3055,12 @@ test_composed_popup_focus_lifecycle(void)
     EndPopup();
     EndPopup();
     EndTree();
-    check_int("nested popup acquires first child focus",GetUIFocus(),29621);
+    check_int("nested popup acquires first child focus",GetFocus(),29621);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed nested popup focus restore"));
@@ -3069,15 +3071,15 @@ test_composed_popup_focus_lifecycle(void)
         .open=&child_open});
     Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
     ClosePopup();
-    check_int("nested popup restores parent focus",GetUIFocus(),29611);
+    check_int("nested popup restores parent focus",GetFocus(),29611);
     EndPopup();
     EndPopup();
     EndTree();
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed parent popup focus restore"));
@@ -3085,38 +3087,38 @@ test_composed_popup_focus_lifecycle(void)
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     ClosePopup();
-    check_int("parent popup restores background focus",GetUIFocus(),29600);
+    check_int("parent popup restores background focus",GetFocus(),29600);
     EndPopup();
     EndTree();
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     parent_open = true;
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    SetUIFocus(29700);
+    SetFocus(29700);
     BeginTree(Key("composed missing popup owner focus"));
     BeginPopup((PopupProps){.bounds={20,20,120,80},.id=29710,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,90,24},.label="Popup",.id=29711});
     EndPopup();
     EndTree();
-    check_int("popup before missing owner has child focus",GetUIFocus(),29711);
+    check_int("popup before missing owner has child focus",GetFocus(),29711);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     BeginTree(Key("composed missing popup owner restore"));
     EndTree();
     ui_popup_input_finish(context);
-    check_int("missing popup owner restores background focus",GetUIFocus(),29700);
+    check_int("missing popup owner restores background focus",GetFocus(),29700);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     ui_popup_input_destroy(context);
     InjectReset();
 }
@@ -3131,11 +3133,11 @@ test_popup_active_drag_ownership(void)
     float background_value = 10.0f;
     float slider_value = 0.0f;
     int split = 50;
-    UIFloatDragProps drag = {.bounds={30,30,80,24},.id=401,
+    DragScalarProps drag = {.bounds={30,30,80,24},.id=401,
         .values=&drag_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
-    UIFloatSliderProps slider = {.bounds={30,30,80,24},.id=411,
+    SliderScalarProps slider = {.bounds={30,30,80,24},.id=411,
         .values=&slider_value,.value_count=1,.min=0,.max=100};
-    UIFloatDragProps background_drag = {.bounds={30,30,80,24},.id=391,
+    DragScalarProps background_drag = {.bounds={30,30,80,24},.id=391,
         .values=&background_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
     const char *columns[] = {"A","B"};
     const char *cells[] = {"a","b"};
@@ -3158,27 +3160,27 @@ test_popup_active_drag_ownership(void)
     InjectMousePosition(40,40);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)test_drag_float(background_drag);
+    (void)test_drag_scalar(background_drag);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(80,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,390,(Rectangle){20,20,120,100});
     ui_popup_input_end(owner);
-    check_int("new popup cancels background drag",test_drag_float(background_drag),0);
+    check_int("new popup cancels background drag",test_drag_scalar(background_drag),0);
     check_int("new popup blocks background drag mutation",(int)background_value,10);
     ui_popup_input_close(context,390);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
 
@@ -3186,38 +3188,38 @@ test_popup_active_drag_ownership(void)
     InjectMousePosition(40,40);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    (void)test_drag_float(drag);
+    (void)test_drag_scalar(drag);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(200,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    check_int("popup drag continues outside bounds",test_drag_float(drag),1);
+    check_int("popup drag continues outside bounds",test_drag_scalar(drag),1);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("popup drag outside value",(int)drag_value,170);
 
     InjectMousePosition(230,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    check_int("missing popup cancels active drag",test_drag_float(drag),0);
+    check_int("missing popup cancels active drag",test_drag_scalar(drag),0);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("dismissed popup drag does not mutate background",(int)drag_value,170);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
@@ -3225,38 +3227,38 @@ test_popup_active_drag_ownership(void)
     InjectMousePosition(50,40);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)test_slider_float(slider);
+    (void)test_slider_scalar(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(90,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)test_slider_float(slider);
+    (void)test_slider_scalar(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("popup slider follows owned drag",(int)slider_value,75);
 
     InjectMousePosition(30,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)test_slider_float(slider);
+    (void)test_slider_scalar(slider);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("dismissed popup slider does not mutate background",(int)slider_value,75);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
@@ -3264,7 +3266,7 @@ test_popup_active_drag_ownership(void)
     InjectMousePosition(80,40);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,415,(Rectangle){20,20,120,100});
@@ -3272,11 +3274,11 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(110,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,415,(Rectangle){20,20,120,100});
@@ -3284,18 +3286,18 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("popup splitter value",split,80);
 
     InjectMousePosition(60,40);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     (void)PanedView(panes);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("dismissed popup splitter does not mutate background",split,80);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
@@ -3303,7 +3305,7 @@ test_popup_active_drag_ownership(void)
     InjectMousePosition(93,35);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,420,(Rectangle){20,20,160,110});
@@ -3311,11 +3313,11 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(123,35);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,420,(Rectangle){20,20,160,110});
@@ -3323,18 +3325,18 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("popup table resize width",widths[0],100);
 
     InjectMousePosition(153,35);
     InjectPump();
-    BeginUIFrame(300,200,1);
+    BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     (void)TableView(table);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("dismissed popup resize does not mutate background",widths[0],100);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
@@ -3349,7 +3351,7 @@ test_popup_dropdown_keyboard_ownership(void)
     const char *options[] = {"One","Two"};
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
@@ -3358,7 +3360,7 @@ test_popup_dropdown_keyboard_ownership(void)
         if(!inside) ui_popup_input_end(child);
         check_int("keyboard capture is independent of pointer bounds",ui_popup_input_keyboard_captures(),!inside);
         int selected = 0;
-        SetUIFocus(25400);
+        SetFocus(25400);
         Dropdown((DropdownProps){.bounds={10,10,100,28},.id=25400,
             .options=options,.option_count=2,.selected_index=&selected});
         check_int("only top popup may open a focused dropdown",dropdown_captures((Vector2){20,60}),inside);
@@ -3373,7 +3375,7 @@ test_popup_dropdown_keyboard_ownership(void)
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
         dropdown_close(25400);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     for(int inside = 0; inside < 2; inside++) {
         UIPopupInput *context;
@@ -3385,8 +3387,8 @@ test_popup_dropdown_keyboard_ownership(void)
         InjectReset();
         InjectKeyTap(KEY_SPACE);
         InjectPump();
-        BeginUIFrame(240,240,1);
-        SetUIFocus(25400);
+        BeginInterfaceFrame(240,240,1);
+        SetFocus(25400);
         (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
@@ -3394,13 +3396,13 @@ test_popup_dropdown_keyboard_ownership(void)
             .option_count=2,
             .selected_index=&selected
         });
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("dropdown opens before Escape ownership test",
                   dropdown_captures((Vector2){20,50}),1);
 
         InjectKeyTap(KEY_ESCAPE);
         InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         context = ui_popup_input_create();
         ui_popup_input_frame(context);
         previous = ui_popup_input_bind(context);
@@ -3410,7 +3412,7 @@ test_popup_dropdown_keyboard_ownership(void)
             context,25701,(Rectangle){190,190,20,20});
         if(!inside)
             ui_popup_input_end(child);
-        SetUIFocus(25400);
+        SetFocus(25400);
         (void)Dropdown((DropdownProps){
             .bounds={10,10,100,28},
             .id=25400,
@@ -3427,7 +3429,7 @@ test_popup_dropdown_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
         dropdown_close(25400);
     }
     InjectReset();
@@ -3439,7 +3441,7 @@ test_popup_accelerator_keyboard_ownership(void)
     Accelerator copy = {KEY_C,1,0,0,91};
     Accelerator commands[] = {{KEY_X,1,0,0,90}, {KEY_C,1,0,0,91}};
     InjectReset(); InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_C); InjectPump();
-    BeginUIFrame(240,240,1);
+    BeginInterfaceFrame(240,240,1);
     UIPopupInput *context = ui_popup_input_create();
     ui_popup_input_frame(context);
     UIPopupInput *previous = ui_popup_input_bind(context);
@@ -3464,7 +3466,7 @@ test_popup_accelerator_keyboard_ownership(void)
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     ui_popup_input_destroy(context);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectKey(KEY_LEFT_CONTROL,0);
     InjectReset();
 }
@@ -3475,14 +3477,14 @@ test_popup_collapsible_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         bool open = false;
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginUIFrame(240,240,1);
+        BeginInterfaceFrame(240,240,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
         UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,120,100});
         UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){20,20,80,60});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(26110);
+        SetFocus(26110);
         Collapsible((CollapsibleProps){.bounds={20,20,80,28},.id=26110,
                     .label="Node",.open=&open,.tree=1});
         check_int("only top popup collapsible handles keyboard",open,inside);
@@ -3491,7 +3493,7 @@ test_popup_collapsible_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -3501,12 +3503,12 @@ test_retained_popup_pointer_focus(void)
 {
     for(int blocked = 0; blocked < 2; blocked++) {
         InjectReset(); InjectTap(60,60); InjectPump();
-        BeginUIFrame(240,240,1);
-        SetUIFocus(0);
+        BeginInterfaceFrame(240,240,1);
+        SetFocus(0);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
-        PushUIInputCapture((Rectangle){0,0,blocked ? 5 : 240,240},1);
+        PushInputCapture((Rectangle){0,0,blocked ? 5 : 240,240},1);
         BeginTree(Key("retained-popup-pointer-focus"));
         UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
         UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
@@ -3517,26 +3519,26 @@ test_retained_popup_pointer_focus(void)
         Button((ButtonProps){.bounds={50,50,40,24},.id=25302,.label="Parent"});
         ui_popup_input_end(outer);
         Button((ButtonProps){.bounds={50,50,40,24},.id=25303,.label="Background"});
-        check_int("immediate popup focus preserves modal blocking",GetUIFocus(),blocked ? 0 : 25301);
+        check_int("immediate popup focus preserves modal blocking",GetFocus(),blocked ? 0 : 25301);
         /* Exercise the deferred focus pass independently of the immediate
          * button check; the popup scopes are already closed here. */
-        SetUIFocus(0);
-        UIEvent event;
+        SetFocus(0);
+        Event event;
         while(NextEvent(&event)) {}
         EndTree();
-        check_int("deferred popup focus preserves modal blocking",GetUIFocus(),blocked ? 0 : 25301);
+        check_int("deferred popup focus preserves modal blocking",GetFocus(),blocked ? 0 : 25301);
         int clicks = 0;
         while(NextEvent(&event)) {
-            if(event.kind != UI_EVENT_CLICK) continue;
+            if(event.kind != EVENT_CLICK) continue;
             check_int("deferred click belongs to popup child",(int)event.key,25301);
             clicks++;
         }
         check_int("modal blocker prevents deferred popup clicks",clicks,blocked ? 0 : 1);
-        ClearUIInputCaptures();
+        ClearInputCaptures();
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -3544,50 +3546,50 @@ test_retained_popup_pointer_focus(void)
 static void
 test_card_props_retained_input(void)
 {
-    UIEvent event;
+    Event event;
     int clicks;
     int count;
-    const UIWidgetNode *nodes;
+    const WidgetNode *nodes;
     NodeId card;
 
     InjectReset();
     InjectTap(30,30);
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("passive-card-does-not-activate"));
     check_int("passive card ignores click",
         Card((CardProps){.bounds={10,10,80,60},.id=27601}),0);
     EndTree();
     clicks = 0;
-    while(NextEvent(&event)) if(event.kind == UI_EVENT_CLICK) clicks++;
+    while(NextEvent(&event)) if(event.kind == EVENT_CLICK) clicks++;
     check_int("passive card posts no click events",clicks,0);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectReset();
     InjectTap(30,30);
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("clickable-card-activates"));
     check_int("clickable card press waits for release",
         Card((CardProps){.bounds={10,10,80,60},.id=27602,.clickable=true}),0);
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectPump();
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("clickable-card-activates"));
     check_int("clickable card activates on single click release",
         Card((CardProps){.bounds={10,10,80,60},.id=27602,.clickable=true}),1);
     EndTree();
     clicks = 0;
     while(NextEvent(&event)) {
-        if(event.kind != UI_EVENT_CLICK) continue;
+        if(event.kind != EVENT_CLICK) continue;
         check_int("clickable card event key",(int)event.key,27602);
         clicks++;
     }
     check_int("clickable card posts one event",clicks,1);
-    EndUIFrame();
+    EndInterfaceFrame();
 
-    BeginUIFrame(240,180,1);
+    BeginInterfaceFrame(240,180,1);
     BeginTree(Key("card-content-scope"));
     card = BeginCard((CardProps){.bounds={10,10,120,80}});
     Text((TextProps){.text="Inside",.font=Text16});
@@ -3595,16 +3597,16 @@ test_card_props_retained_input(void)
     EndTree();
     nodes = GetTreeNodes(&count);
     check_int("card tree node count",count,3);
-    check_int("card node kind",nodes[1].kind,UI_WIDGET_CARD_NODE);
+    check_int("card node kind",nodes[1].kind,WIDGET_CARD);
     check_int("card child parent",nodes[2].parent,card);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
 test_retained_popup_input_ownership(void)
 {
     InjectReset();
-    BeginUIFrame(240,240,1);
+    BeginInterfaceFrame(240,240,1);
     BeginTree(Key("retained-popup-input"));
     Button((ButtonProps){.bounds={50,50,40,24},.id=25200,.label="Before"});
     UIPopupInput *context = ui_popup_input_create();
@@ -3618,7 +3620,7 @@ test_retained_popup_input_ownership(void)
     ui_popup_input_end(outer);
     Button((ButtonProps){.bounds={50,50,40,24},.id=25203,.label="After"});
     EndTree();
-    const UIWidgetNode *node = GetNode(HitTestNode((Vector2){60,60}));
+    const WidgetNode *node = GetNode(HitTestNode((Vector2){60,60}));
     check_int("retained child beats later parent and background",node ? node->id : -1,25201);
     NodeId child_hit = HitTestNode((Vector2){60,60});
     BeginTree(Key("replacement-popup-tree"));
@@ -3640,7 +3642,7 @@ test_retained_popup_input_ownership(void)
     node = GetNode(HitTestNode((Vector2){60,60}));
     check_int("destroyed registry snapshots reject input safely",node ? node->id : -1,25200);
     EndTree();
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -3652,7 +3654,7 @@ test_nested_popup_input_ownership(void)
     InjectReset();
     for(int frame = 0; frame < 4; frame++) {
         if(frame == 1) InjectTap(60,60);
-        InjectPump(); BeginUIFrame(240,240,1);
+        InjectPump(); BeginInterfaceFrame(240,240,1);
         ui_popup_input_frame(context);
         background += Button((ButtonProps){.bounds={50,50,40,24},.id=25100,.label="Before"});
         UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
@@ -3663,7 +3665,7 @@ test_nested_popup_input_ownership(void)
         ui_popup_input_end(outer);
         background += Button((ButtonProps){.bounds={50,50,40,24},.id=25103,.label="After"});
         ui_popup_input_finish(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("popup background controls blocked",background,0);
     check_int("popup parent cannot steal child input",parent,0);
@@ -3715,9 +3717,9 @@ test_popup_input_clip_restoration(void)
         int popup_actions = 0, parent_actions = 0;
         InjectReset(); InjectTap(20,20);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
             BeginTree(Key("popup input clip"));
-            PushUIInputCapture((Rectangle){0,0,blocked ? 5 : 100,100},1);
+            PushInputCapture((Rectangle){0,0,blocked ? 5 : 100,100},1);
             BeginScroll((Rectangle){0,0,1,1},100,NULL);
             UIInputClipScope scope = ui_input_clip_suspend();
             EndScroll(); /* Cannot pop the suspended owner's scroll scope. */
@@ -3725,7 +3727,7 @@ test_popup_input_clip_restoration(void)
             ui_input_clip_resume(scope);
             parent_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25005,.label="Clipped"});
             EndScroll();
-            EndTree(); ClearUIInputCaptures(); EndUIFrame();
+            EndTree(); ClearInputCaptures(); EndInterfaceFrame();
         }
         check_int("popup input escapes owner clip but respects capture",popup_actions,!blocked);
         check_int("owner input clip restored",parent_actions,0);
@@ -3770,7 +3772,7 @@ test_popup_layout_restoration(void)
     End();
     EndTree();
     int count = 0;
-    const UIWidgetNode *nodes = GetTreeNodes(&count);
+    const WidgetNode *nodes = GetTreeNodes(&count);
     check_int("isolated popup tree count",count,6);
     if(count != 6) return;
     check_int("popup attached to screen root",nodes[popup].parent,0);
@@ -3789,9 +3791,9 @@ test_dropdown_horizontal_viewport(void)
         int selected = 0;
         InjectReset(); InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1); SetUIFocus(25002);
+            InjectPump(); BeginInterfaceFrame(240,240,1); SetFocus(25002);
             Dropdown((DropdownProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         int x = i == 1 ? 92 : 12;
         check_int("shifted popup captures row",dropdown_captures((Vector2){x,80}),1);
@@ -3799,12 +3801,12 @@ test_dropdown_horizontal_viewport(void)
         check_int("popup right edge bounded",dropdown_captures((Vector2){241,80}),0);
         InjectTap(x,80);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
             Dropdown((DropdownProps){.bounds=bounds[i],.id=25002,.options=options,.option_count=2,.selected_index=&selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         check_int("shifted popup selected second row",selected,1);
-        InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+        InjectReset(); BeginInterfaceFrame(240,240,1); EndInterfaceFrame();
     }
 }
 
@@ -3818,27 +3820,27 @@ test_dropdown_scrollbar_dismissal(void)
         InjectReset();
         InjectKeyTap(KEY_SPACE);
         for(int frame = 0; frame < 3; frame++) {
-            InjectPump(); BeginUIFrame(240,240,1);
-            SetUIFocus(25001);
+            InjectPump(); BeginInterfaceFrame(240,240,1);
+            SetFocus(25001);
             Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected});
-            EndUIFrame();
+            EndInterfaceFrame();
         }
         InjectMousePosition(166,50); InjectMouseButton(MOUSE_BUTTON_LEFT,1);
-        InjectPump(); BeginUIFrame(240,240,1);
+        InjectPump(); BeginInterfaceFrame(240,240,1);
         Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
             .options=options,.option_count=131,.selected_index=&selected});
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("dropdown scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
         if(mode == 0) InjectKeyTap(KEY_ESCAPE);
-        InjectPump(); BeginUIFrame(240,240,1);
+        InjectPump(); BeginInterfaceFrame(240,240,1);
         if(mode != 2)
             Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("dismissed dropdown scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
         check_int("dismissed dropdown scrollbar released capture",dropdown_captures((Vector2){20,70}),0);
-        InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
+        InjectReset(); BeginInterfaceFrame(240,240,1); EndInterfaceFrame();
     }
 }
 
@@ -3854,20 +3856,20 @@ test_dropdown_keyboard_open(void)
             InjectKeyTap(keys[key]);
             for(int frame = 0; frame < 3; frame++) {
                 InjectPump();
-                BeginUIFrame(240,240,1);
-                SetUIFocus(24000);
+                BeginInterfaceFrame(240,240,1);
+                SetFocus(24000);
                 BeginDisabled(mode == 2);
                 Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 24000,
                     .options = options, .option_count = 2, .selected_index = &selected,
                     .disabled = mode == 1});
                 EndDisabled();
-                EndUIFrame();
+                EndInterfaceFrame();
             }
-            check_int("focused dropdown keyboard opening",UIInputCapturesClick((Vector2){20,70}),mode == 0);
+            check_int("focused dropdown keyboard opening",InputCapturesClick((Vector2){20,70}),mode == 0);
             check_int("opening key does not commit or move selection",selected,1);
             InjectReset();
-            BeginUIFrame(240,240,1);
-            EndUIFrame();
+            BeginInterfaceFrame(240,240,1);
+            EndInterfaceFrame();
         }
     }
 }
@@ -3883,18 +3885,18 @@ test_custom_table_cell_scope(void)
                        .freeze_rows = 1, .scroll_offset = &scroll, .custom_cells = 1};
     InjectReset(); InjectTap(120,75);
     for(int frame = 0; frame < 2; frame++) {
-        InjectPump(); BeginUIFrame(300,200,1.0f); TableView(p);
+        InjectPump(); BeginInterfaceFrame(300,200,1.0f); TableView(p);
         Rectangle cell = BeginTableCell(p,1,0);
         check_int("custom cell reordered x",(int)cell.x,110);
         check_int("custom cell scrolling y",(int)cell.y,50);
-        check_int("custom cell frozen clip",UIInputCapturesClick((Vector2){120,60}),1);
+        check_int("custom cell frozen clip",InputCapturesClick((Vector2){120,60}),1);
         if(Button((ButtonProps){.bounds = cell,.label = "Child",.id = 1000})) actions++;
         EndTableCell();
         p.disabled = 1; BeginTableCell(p,0,1);
         check_int("custom cell disabled",UIContentDisabled(),1);
         EndTableCell(); p.disabled = 0;
         check_int("custom cell disabled restored",UIContentDisabled(),0);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("custom cell child action",actions,1);
 }
@@ -3903,20 +3905,20 @@ static void
 test_retained_scope_clip(void)
 {
     InjectReset();
-    BeginUIFrame(200,120,1.0f);
+    BeginInterfaceFrame(200,120,1.0f);
     BeginTree(Key("retained-scope-clip"));
     BeginScroll((Rectangle){10,10,50,30},30,NULL);
     Row((RowProps){.bounds = {10,10,100,30}});
     Button((ButtonProps){.bounds = {0,0,100,30},.label = "Clipped",.id = 1005});
     End(); EndScroll(); EndTree();
     NodeId inside = HitTestNode((Vector2){20,20});
-    const UIWidgetNode *node = GetNode(inside);
+    const WidgetNode *node = GetNode(inside);
     check_int("retained cell hit",node != NULL ? node->id : -1,1005);
     check_int("retained clip captured",node->has_input_clip,1);
     check_int("retained clip width",(int)node->input_clip.width,50);
     NodeId outside = HitTestNode((Vector2){80,20});
     check_int("retained clip rejects outside",outside == inside,0);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -3925,7 +3927,7 @@ test_list_box_scope(void)
     for(int disabled = 0; disabled < 2; disabled++) {
         int offset = 0;
         InjectReset(); InjectMousePosition(30,30); InjectWheel(-1); InjectPump();
-        BeginUIFrame(200,150,1.0f);
+        BeginInterfaceFrame(200,150,1.0f);
         BeginDisabled(disabled);
         Rectangle content = BeginScroll((Rectangle){21,21,118,78}, Scale(100), &offset);
         check_int("list scope scroll",offset,disabled ? 0 : 22);
@@ -3935,7 +3937,7 @@ test_list_box_scope(void)
         EndScroll();
         EndDisabled();
         check_int("list scope restored",UIContentDisabled(),0);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
 }
 
@@ -3950,33 +3952,33 @@ test_list_box_keyboard_navigation(void)
     };
 
     InjectReset(); InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list End changed",RenderListBox(list),1); EndUIFrame();
+    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    check_int("list End changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list End selection",selected,7);
     check_int("list End reveal",offset,144);
 
     InjectKeyTap(KEY_UP); InjectPump();
-    BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list Up changed",RenderListBox(list),1); EndUIFrame();
+    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    check_int("list Up changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list Up selection",selected,6);
     check_int("list Up retains viewport",offset,144);
 
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("list Home changed",RenderListBox(list),1); EndUIFrame();
+    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    check_int("list Home changed",RenderListBox(list),1); EndInterfaceFrame();
     check_int("list Home selection",selected,0);
     check_int("list Home reveal",offset,0);
 
     list.disabled = 1;
     InjectKeyTap(KEY_END); InjectPump();
-    BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("disabled list rejects End",RenderListBox(list),0); EndUIFrame();
+    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    check_int("disabled list rejects End",RenderListBox(list),0); EndInterfaceFrame();
     check_int("disabled list selection",selected,0);
     list.disabled = 0;
     selected = -1;
     InjectReset(); InjectPump();
-    BeginUIFrame(200,120,1); SetUIFocus(list.id);
-    check_int("idle list unchanged",RenderListBox(list),0); EndUIFrame();
+    BeginInterfaceFrame(200,120,1); SetFocus(list.id);
+    check_int("idle list unchanged",RenderListBox(list),0); EndInterfaceFrame();
     check_int("idle list keeps no selection",selected,-1);
     InjectReset();
 }
@@ -3992,14 +3994,14 @@ test_popup_list_box_keyboard_ownership(void)
             .selected_index=&selected, .scroll_offset=&offset, .row_height=24
         };
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
-        BeginUIFrame(200,120,1);
+        BeginInterfaceFrame(200,120,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
         UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,100});
         UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(list.id);
+        SetFocus(list.id);
         RenderListBox(list);
         check_int("only top popup list handles keyboard",selected,inside ? 1 : 0);
         if(inside) ui_popup_input_end(child);
@@ -4007,7 +4009,7 @@ test_popup_list_box_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -4021,17 +4023,17 @@ test_scroll_scope(void)
     InjectMousePosition(30, 30);
     InjectWheel(-1);
     InjectPump();
-    BeginUIFrame(220, 220, 1.0f);
+    BeginInterfaceFrame(220, 220, 1.0f);
     content = BeginScroll((Rectangle){10,10,100,60}, 200, &offset);
     check_int("scroll offset", offset, 42);
     check_int("scroll content y", (int)content.y, -32);
-    check_int("scroll clipped input", UIInputCapturesClick((Vector2){20,90}), 1);
+    check_int("scroll clipped input", InputCapturesClick((Vector2){20,90}), 1);
     (void)BeginScroll((Rectangle){20,30,100,60}, 100, NULL);
-    check_int("nested scroll clips to parent", UIInputCapturesClick((Vector2){115,40}), 1);
+    check_int("nested scroll clips to parent", InputCapturesClick((Vector2){115,40}), 1);
     EndScroll();
     EndScroll();
-    check_int("scroll restores input", UIInputCapturesClick((Vector2){20,90}), 0);
-    EndUIFrame();
+    check_int("scroll restores input", InputCapturesClick((Vector2){20,90}), 0);
+    EndInterfaceFrame();
 }
 
 static void
@@ -4044,12 +4046,12 @@ test_scroll_thumb_drag(void)
         if(frame == 0) InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         if(frame == 2) InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
-        BeginUIFrame(220,220,1.0f);
+        BeginInterfaceFrame(220,220,1.0f);
         Rectangle content = BeginScroll((Rectangle){10,10,100,60},200,&offset);
         check_int("scrollbar reserves width", (int)content.width, 90);
-        check_int("scrollbar excludes child input", UIInputCapturesClick((Vector2){105,20}), 1);
+        check_int("scrollbar excludes child input", InputCapturesClick((Vector2){105,20}), 1);
         EndScroll();
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("scroll thumb drag and release", offset, frame == 0 ? 0 : 140);
     }
 }
@@ -4078,22 +4080,22 @@ test_table_column_resize(void)
     InjectMousePosition(108, 20);
     InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
     InjectPump();
-    BeginUIFrame(340, 180, 1.0f);
+    BeginInterfaceFrame(340, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
 
     InjectMousePosition(138, 20);
     InjectPump();
-    BeginUIFrame(340, 180, 1.0f);
+    BeginInterfaceFrame(340, 180, 1.0f);
     check_int("table resize changed", TableView(table), 1);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("table resized width", widths[0], 130);
 
     InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
     InjectPump();
-    BeginUIFrame(340, 180, 1.0f);
+    BeginInterfaceFrame(340, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
 }
 
 static void
@@ -4130,32 +4132,32 @@ test_table_frozen_rows_hit_testing(void)
     InjectReset();
     InjectTap(30, 45);
     InjectPump();
-    BeginUIFrame(300, 180, 1.0f);
+    BeginInterfaceFrame(300, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectPump();
-    BeginUIFrame(300, 180, 1.0f);
+    BeginInterfaceFrame(300, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("table frozen row hit", selected_row, 0);
 
     InjectTap(30, 70);
     InjectPump();
-    BeginUIFrame(300, 180, 1.0f);
+    BeginInterfaceFrame(300, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
     InjectPump();
-    BeginUIFrame(300, 180, 1.0f);
+    BeginInterfaceFrame(300, 180, 1.0f);
     (void)TableView(table);
-    EndUIFrame();
+    EndInterfaceFrame();
     check_int("table scrolled row hit", selected_row, 2);
 
     InjectTap(30, 115);
     for(int frame = 0; frame < 2; frame++) {
         InjectPump();
-        BeginUIFrame(300, 180, 1.0f);
+        BeginInterfaceFrame(300, 180, 1.0f);
         (void)TableView(table);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("table clipped row ignores click below body", selected_row, 2);
 }
@@ -4181,38 +4183,38 @@ test_table_keyboard_navigation(void)
     };
 
     InjectReset(); InjectKey(KEY_RIGHT,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145);
-    int changed = TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145);
+    int changed = TableView(table); EndInterfaceFrame();
     InjectKey(KEY_RIGHT,0); InjectPump();
     check_int("table keyboard right changed",changed,1);
     check_int("table keyboard follows display order",selected_column,0);
 
     InjectKey(KEY_TAB,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_TAB,0); InjectPump();
     check_int("table tab advances within row",selected_column,1);
-    check_int("table tab retains table focus",GetUIFocus(),145);
+    check_int("table tab retains table focus",GetFocus(),145);
 
     InjectKey(KEY_LEFT_SHIFT,1); InjectKey(KEY_TAB,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_TAB,0); InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     check_int("table shift tab reverses within row",selected_column,0);
-    check_int("table shift tab retains table focus",GetUIFocus(),145);
+    check_int("table shift tab retains table focus",GetFocus(),145);
 
     InjectKey(KEY_DOWN,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_DOWN,0); InjectPump();
     check_int("table keyboard down",selected_row,1);
 
     InjectKey(KEY_F2,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     check_int("table keyboard activated row",activated_row,1);
     check_int("table keyboard activated column",activated_column,0);
     InjectKey(KEY_F2,0); InjectPump();
 
     for(int row = 2; row < 6; row++) {
         InjectKey(KEY_DOWN,1); InjectPump();
-        BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+        BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
         InjectKey(KEY_DOWN,0); InjectPump();
         check_int("table keyboard advances each row",selected_row,row);
     }
@@ -4221,13 +4223,13 @@ test_table_keyboard_navigation(void)
 
     table.disabled = 1;
     InjectKey(KEY_UP,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_UP,0); InjectPump();
     check_int("disabled table blocks keyboard",selected_row,5);
     table.disabled = 0;
 
     InjectKey(KEY_ESCAPE,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_ESCAPE,0); InjectPump();
     check_int("table escape clears row",selected_row,-1);
     check_int("table escape clears column",selected_column,-1);
@@ -4235,28 +4237,28 @@ test_table_keyboard_navigation(void)
     selected_row = 0;
     selected_column = 1;
     InjectKey(KEY_LEFT_CONTROL,1); InjectKey(KEY_C,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
-    check_int("table cell copy",strcmp(GetUIClipboardTextValue(),"b"),0);
+    check_int("table cell copy",strcmp(GetClipboardTextValue(),"b"),0);
 
     selected_column = -1;
     InjectKey(KEY_C,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
-    check_int("table row copy",strcmp(GetUIClipboardTextValue(),"a\tb\tc"),0);
+    check_int("table row copy",strcmp(GetClipboardTextValue(),"a\tb\tc"),0);
 
     selected_row = -1;
     selected_column = 2;
     InjectKey(KEY_C,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
-    check_int("table column copy",strcmp(GetUIClipboardTextValue(),"c\nc\nc\nc\nc\nc"),0);
+    check_int("table column copy",strcmp(GetClipboardTextValue(),"c\nc\nc\nc\nc\nc"),0);
 
     table.copy_text = "editable-id";
     InjectKey(KEY_C,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145); TableView(table); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145); TableView(table); EndInterfaceFrame();
     InjectKey(KEY_C,0); InjectPump();
-    check_int("table copy override",strcmp(GetUIClipboardTextValue(),"editable-id"),0);
+    check_int("table copy override",strcmp(GetClipboardTextValue(),"editable-id"),0);
 
     const char *pasted_text = NULL;
     int pasted_row = -1, pasted_column = -1;
@@ -4265,10 +4267,10 @@ test_table_keyboard_navigation(void)
     table.pasted_column = &pasted_column;
     selected_row = 1;
     selected_column = 0;
-    SetUIClipboardTextValue("new\tvalues");
+    SetClipboardTextValue("new\tvalues");
     InjectKey(KEY_V,1); InjectPump();
-    BeginUIFrame(240,160,1); SetUIFocus(145);
-    check_int("table paste changed",TableView(table),1); EndUIFrame();
+    BeginInterfaceFrame(240,160,1); SetFocus(145);
+    check_int("table paste changed",TableView(table),1); EndInterfaceFrame();
     InjectKey(KEY_V,0); InjectKey(KEY_LEFT_CONTROL,0); InjectPump();
     check_int("table paste text",strcmp(pasted_text,"new\tvalues"),0);
     check_int("table paste row",pasted_row,1);
@@ -4291,14 +4293,14 @@ test_popup_table_keyboard_ownership(void)
             .selected_row=&selected_row, .selected_column=&selected_column
         };
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
-        BeginUIFrame(240,160,1);
+        BeginInterfaceFrame(240,160,1);
         UIPopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
         UIPopupInput *previous = ui_popup_input_bind(context);
         UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,120});
         UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,100});
         if(!inside) ui_popup_input_end(child);
-        SetUIFocus(26120);
+        SetFocus(26120);
         TableView(table);
         check_int("only top popup table handles keyboard",selected_row,inside ? 1 : 0);
         if(inside) ui_popup_input_end(child);
@@ -4306,7 +4308,7 @@ test_popup_table_keyboard_ownership(void)
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
         ui_popup_input_destroy(context);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     InjectReset();
 }
@@ -4314,7 +4316,7 @@ test_popup_table_keyboard_ownership(void)
 static void
 test_paned_drag_outside_handle(void)
 {
-    UIFrameState saved = SaveUIFrameState();
+    FrameState saved = SaveFrameState();
     int split = 90;
     PanedViewProps panes = {{10,10,240,80}, 9450, 1, &split, 40, 40};
     InjectReset();
@@ -4323,19 +4325,19 @@ test_paned_drag_outside_handle(void)
         if(frame == 0) InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         if(frame == 2) InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
-        BeginUIFrame(640,480,1);
+        BeginInterfaceFrame(640,480,1);
         PanedView(panes);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("paned drag follows pointer outside original handle", split, 180);
     InjectReset();
-    RestoreUIFrameState(saved);
+    RestoreFrameState(saved);
 }
 
 static void
 test_drag_drop_accepts_dragged_release(void)
 {
-    UIFrameState saved = SaveUIFrameState();
+    FrameState saved = SaveFrameState();
     int payload = 42, output = 0, accepted = 0;
     DragDropSourceProps source = {{10,10,80,40}, 9401, "integer", &payload, sizeof(payload), 0};
     DragDropTargetProps target = {{150,10,80,40}, 9402, "integer", &output, sizeof(output), &accepted, 0};
@@ -4346,16 +4348,16 @@ test_drag_drop_accepts_dragged_release(void)
         if(frame == 0) InjectMouseButton(MOUSE_BUTTON_LEFT, 1);
         if(frame == 2) InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
-        BeginUIFrame(640, 480, 1.0f);
+        BeginInterfaceFrame(640, 480, 1.0f);
         if(frame == 2) g_ui_pointer_dragging = 1;
         DragDropSource(source);
         DragDropTarget(target);
-        EndUIFrame();
+        EndInterfaceFrame();
     }
     check_int("dragged release copies payload", output, payload);
     check_int("dragged release reports copied size", accepted, sizeof(payload));
     InjectReset();
-    RestoreUIFrameState(saved);
+    RestoreFrameState(saved);
 }
 
 static void
@@ -4449,19 +4451,19 @@ main(void)
     test_control_style_resolution();
     {
         int value = 10;
-        BeginUIFrame(220,120,1);
+        BeginInterfaceFrame(220,120,1);
         BeginTree(Key("numeric origin layout"));
         Row((RowProps){.bounds = {0,0,220,24}});
-        test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 872,
+        test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 872,
             .values = &value, .value_count = 1, .step = 1});
         Button((ButtonProps){.bounds = {0,0,40,24}, .id = 873, .label = "next"});
         End();
         EndTree();
-        EndUIFrame();
+        EndInterfaceFrame();
         int count = 0, paints = 0, next = 0;
-        const UIWidgetNode *nodes = GetTreeNodes(&count);
+        const WidgetNode *nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind == UI_WIDGET_TEXT_INPUT_PAINT_NODE) {
+            if(nodes[i].kind == WIDGET_TEXT_INPUT_PAINT) {
                 paints++;
                 check_int("numeric origin paint x", (int)nodes[i].bounds.x, 0);
                 check_int("numeric origin parent", nodes[nodes[i].parent].id, 872);
@@ -4486,17 +4488,17 @@ main(void)
             }
             if(frame == 2) InjectText("9");
             InjectPump();
-            BeginUIFrame(220,120,1);
+            BeginInterfaceFrame(220,120,1);
             BeginTree(Key("numeric typing"));
             Row((RowProps){.bounds = {20,30,120,24}});
             BeginDisabled(frame == 2);
-            int changed = test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 871,
+            int changed = test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 871,
                 .values = &value, .value_count = 1});
             check_int("numeric typing returns during declaration", changed, frame == 1);
             EndDisabled();
             End();
             EndTree();
-            EndUIFrame();
+            EndInterfaceFrame();
             check_int("headless numeric typing and disabled discard", value, frame == 0 ? 10 : 105);
         }
         InjectReset();
@@ -4511,16 +4513,16 @@ main(void)
                 InjectMouseButton(MOUSE_BUTTON_LEFT, frame == 0);
                 InjectKey(KEY_LEFT_SHIFT, scenario == 2);
                 InjectPump();
-                BeginUIFrame(220,120,1);
+                BeginInterfaceFrame(220,120,1);
                 BeginTree(Key("numeric steps"));
                 Row((RowProps){.bounds = {20,30,120,24}});
                 BeginDisabled(scenario == 3);
-                test_input_int((UIIntInputProps){.bounds = {0,0,120,24}, .id = 870,
+                test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 870,
                     .values = &value, .value_count = 1, .step = 2, .step_fast = 5});
                 EndDisabled();
                 End();
                 EndTree();
-                EndUIFrame();
+                EndInterfaceFrame();
             }
             check_int("headless numeric step lifecycle", value, expected[scenario]);
         }
@@ -4562,17 +4564,13 @@ main(void)
     }
     test_paned_drag_outside_handle();
     test_drag_drop_accepts_dragged_release();
-    Rectangle parent = {10, 20, 200, 120};
-    FrameBox frame;
-    GridFrame grid;
-    Rectangle r;
     Rectangle hits[3] = {
         {0, 0, 20, 20},
         {10, 10, 20, 20},
         {100, 100, 10, 10}
     };
 
-    SetUIScale(1.0f);
+    SetScale(1.0f);
     test_theme_surface_helpers();
     test_semantic_font_sizes_follow_ui_scale();
     test_circle_click_uses_ui_release_path();
@@ -4651,20 +4649,6 @@ main(void)
 #else
     check_int("host default style", GetEffectiveThemeStyle(), THEME_STYLE_DEFAULT);
 #endif
-
-    frame = BeginFrameBox(parent, 10, 10, 4);
-    r = FramePack(&frame, SideTop, 30);
-    check_int("pack x", (int)r.x, 20);
-    check_int("pack y", (int)r.y, 30);
-    check_int("pack width", (int)r.width, 180);
-    check_int("pack height", (int)r.height, 30);
-
-    grid = (GridFrame){parent, 2, 2, 10, 10, 0, 0};
-    r = GridCell(grid, 1, 1, 1, 1);
-    check_int("grid x", (int)r.x, 115);
-    check_int("grid y", (int)r.y, 85);
-    check_int("grid width", (int)r.width, 95);
-    check_int("grid height", (int)r.height, 55);
 
     check_int("topmost hit", CanvasHitTest((Vector2){15, 15}, hits, 3), 1);
     check_int("miss", CanvasHitTest((Vector2){80, 80}, hits, 3), -1);
@@ -4751,34 +4735,34 @@ main(void)
 
     {
         Camera2D camera = {0};
-        UIWidget widget;
-        UIInspectNode node;
-        UIInspectSelection selection;
+        Widget widget;
+        InspectNode node;
+        InspectSelection selection;
         int token;
 
-        SetUIInspectEnabled(1);
-        BeginUIInspectFrame(".");
-        SetUIInspectCanvasBounds((Rectangle){40, 50, 200, 120});
+        SetInspectEnabled(1);
+        BeginInspectFrame(".");
+        SetInspectCanvasBounds((Rectangle){40, 50, 200, 120});
         camera.offset = (Vector2){40, 50};
         camera.zoom = 2.0f;
-        token = PushUIInspectTransform(camera);
-        BeginUIInspectFrame(NULL);
-        widget = BeginUIWidget("test", "inspect-transform",
+        token = PushInspectTransform(camera);
+        BeginInspectFrame(NULL);
+        widget = BeginWidget("test", "inspect-transform",
                                (Rectangle){10, 20, 30, 15}, 0);
-        EndUIWidget(&widget);
-        check_int("inspect transformed count", UIInspectWidgetCount(), 1);
-        check_int("inspect node count", UIInspectNodeCount(), 1);
+        EndWidget(&widget);
+        check_int("inspect transformed count", InspectWidgetCount(), 1);
+        check_int("inspect node count", InspectNodeCount(), 1);
         check_int("inspect find @name",
-                  UIInspectFindNode("@inspect-transform", &node), 1);
+                  InspectFindNode("@inspect-transform", &node), 1);
         check_int("inspect find role", KryTFind("role=test", &node), 1);
         check_int("inspect node line default", node.source_line, 0);
         check_int("inspect transformed hit",
-                  UIInspectSelectAt((Vector2){65, 95}), 1);
-        selection = UIInspectGetSelection();
+                  InspectSelectAt((Vector2){65, 95}), 1);
+        selection = InspectGetSelection();
         check_int("inspect selected x", (int)selection.bounds.x, 10);
         check_int("inspect transformed miss",
-                  UIInspectSelectAt((Vector2){20, 20}), 0);
-        PopUIInspectTransform(token);
+                  InspectSelectAt((Vector2){20, 20}), 0);
+        PopInspectTransform(token);
     }
 
     test_reorder_uses_item_center_and_header_handle();

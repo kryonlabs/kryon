@@ -203,11 +203,11 @@ ui_tab_bar_keyboard_input(TabBarProps bar)
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
        bar.bounds.height <= 0 || bar.disabled || UIContentDisabled() ||
-       bar.id <= 0 || !RegisterUIFocus(bar.id, bar.bounds) ||
+       bar.id <= 0 || !RegisterFocus(bar.id, bar.bounds) ||
        ui_popup_input_focus_captures(bar.id))
         return -1;
 
-    SetUIFocusTextInputActive(0);
+    SetFocusTextInputActive(0);
     selected = bar.selected_index;
     if(selected < 0 || selected >= bar.count)
         selected = 0;
@@ -318,6 +318,7 @@ RenderTabBar(TabBarProps bar)
     int cues = TransitionCuesEnabled();
     int disabled = bar.disabled || UIContentDisabled();
     int focused = 0;
+    int can_draw = IsWindowReady();
     int default_scroll_offset = 0;
     int *scroll_offset = bar.scroll_offset != NULL
                              ? bar.scroll_offset
@@ -341,15 +342,15 @@ RenderTabBar(TabBarProps bar)
         return -1;
 
     clicked_tab = ui_tab_bar_keyboard_input(bar);
-    focused = !disabled && bar.id > 0 && GetUIFocus() == bar.id &&
+    focused = !disabled && bar.id > 0 && GetFocus() == bar.id &&
               !ui_popup_input_focus_captures(bar.id);
 
-    if(ui_default_style())
+    if(can_draw && ui_default_style())
         DrawRectangle(bar_x, bar_y, bar_w, bar_h,
                       ui_default_scheme().surface_container);
-    else {
-        DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenUIColor(c_bg, 12));
-        DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenUIColor(c_bg, 38));
+    else if(can_draw) {
+        DrawRectangle(bar_x, bar_y, bar_w, bar_h, DarkenColor(c_bg, 12));
+        DrawLine(bar_x, bar_y, bar_x + bar_w, bar_y, DarkenColor(c_bg, 38));
         DrawLine(bar_x, bar_y + bar_h - 1, bar_x + bar_w,
                  bar_y + bar_h - 1, c_link);
     }
@@ -414,14 +415,15 @@ RenderTabBar(TabBarProps bar)
                 bar, tab_bar_store->press_index, min_tab_w, max_tab_w,
                 icon_tab_w, tab_gap,
                 *scroll_offset, equal_tabs, (int)mouse_world.x);
-            PushUIInputCapture((Rectangle){0.0f, 0.0f,
+            PushInputCapture((Rectangle){0.0f, 0.0f,
                                            (float)ui_view_width,
                                            (float)ui_view_height}, 0);
         }
     }
 
-    ui_begin_world_clip(bar.bounds);
-    PushUIInputClip(bar.bounds);
+    if(can_draw)
+        ui_begin_world_clip(bar.bounds);
+    PushInputClip(bar.bounds);
     for(int i = 0; i < bar.count; i++) {
         const Tab *tab = &bar.tabs[i];
         int tab_w = equal_tabs ? bar_w / bar.count :
@@ -429,9 +431,9 @@ RenderTabBar(TabBarProps bar)
         if(equal_tabs && i == bar.count - 1)
             tab_w = bar_x + bar_w - tab_x;
         Rectangle tab_rect = {(float)tab_x, (float)bar_y, (float)tab_w, (float)bar_h};
-        int input_captured = UIInputCapturesClick(mouse_world);
+        int input_captured = InputCapturesClick(mouse_world);
         int is_active = CheckCollisionPointRec(mouse_world, tab_rect) && !input_captured;
-        int is_hovered = is_active && UIHoverEffectsEnabled();
+        int is_hovered = is_active && HoverEffectsEnabled();
         int is_selected = i == bar.selected_index;
         int is_disabled = disabled || tab->disabled;
 
@@ -446,13 +448,13 @@ RenderTabBar(TabBarProps bar)
             int indicator_x;
             int indicator_y = bar_y + (bar_h - indicator_h) / 2;
 
-            if(!is_disabled)
+            if(can_draw && !is_disabled)
                 ui_default_state_layer(tab_rect,
                                         is_selected ? scheme.on_secondary :
                                                       scheme.on_surface_variant,
                                         is_hovered, 0,
                                         is_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT));
-            if(is_selected) {
+            if(can_draw && is_selected) {
                 if(indicator_w > tab_w - Scale(24))
                     indicator_w = tab_w - Scale(24);
                 if(indicator_w > 0) {
@@ -466,34 +468,35 @@ RenderTabBar(TabBarProps bar)
             }
         } else {
             if(is_disabled) {
-                tab_fill = DarkenUIColor(c_bg, 10);
+                tab_fill = DarkenColor(c_bg, 10);
             } else if(is_selected) {
-                tab_fill = LightenUIColor(c_bg, 4);
+                tab_fill = LightenColor(c_bg, 4);
             } else if(is_hovered) {
-                tab_fill = LightenUIColor(c_bg, cues ? 6 : 4);
+                tab_fill = LightenColor(c_bg, cues ? 6 : 4);
             } else {
-                tab_fill = DarkenUIColor(c_bg, 4);
+                tab_fill = DarkenColor(c_bg, 4);
             }
-            ui_draw_tab_shape(tab_x, bar_y, tab_w, bar_h, is_selected,
-                              tab_fill, LightenUIColor(tab_fill, 18),
-                              DarkenUIColor(tab_fill, 18));
+            if(can_draw)
+                ui_draw_tab_shape(tab_x, bar_y, tab_w, bar_h, is_selected,
+                                  tab_fill, LightenColor(tab_fill, 18),
+                                  DarkenColor(tab_fill, 18));
         }
 
-        if(!ui_default_style() && is_selected) {
+        if(can_draw && !ui_default_style() && is_selected) {
             DrawLine(tab_x, bar_y + bar_h - 1, tab_x + tab_w - 1,
                      bar_y + bar_h - 1, c_link);
-        } else if(!ui_default_style() && is_hovered && !is_disabled) {
+        } else if(can_draw && !ui_default_style() && is_hovered && !is_disabled) {
             (void)cues;
             DrawLine(tab_x + Scale(4), bar_y + Scale(5),
                      tab_x + tab_w - Scale(5), bar_y + Scale(5),
-                     LightenUIColor(tab_fill, 10));
-        } else if(!ui_default_style() && !is_disabled) {
+                     LightenColor(tab_fill, 10));
+        } else if(can_draw && !ui_default_style() && !is_disabled) {
             DrawLine(tab_x + tab_w - 1, bar_y + Scale(8),
                      tab_x + tab_w - 1, bar_y + bar_h - Scale(4),
-                     DarkenUIColor(c_bg, 14));
+                     DarkenColor(c_bg, 14));
         }
 
-        if(!ui_default_style() && owns_drag && drag_target == i) {
+        if(can_draw && !ui_default_style() && owns_drag && drag_target == i) {
             int marker_x = tab_x;
 
             if(drag_target > tab_bar_store->press_index)
@@ -521,7 +524,7 @@ RenderTabBar(TabBarProps bar)
         int close_active = tab->closeable && !is_disabled &&
                            CheckCollisionPointRec(mouse_world, close_rect) &&
                            !input_captured;
-        int close_hovered = close_active && UIHoverEffectsEnabled();
+        int close_hovered = close_active && HoverEffectsEnabled();
 
         Color text_color = ui_default_style()
                                ? ui_default_scheme().on_surface_variant
@@ -529,14 +532,14 @@ RenderTabBar(TabBarProps bar)
         Color icon_tint = WHITE;
 
         if(is_disabled) {
-            text_color = DarkenUIColor(c_text, 70);
+            text_color = DarkenColor(c_text, 70);
             text_color.a = text_color.a > 150 ? 150 : text_color.a;
             icon_tint.a = 150;
         } else if(is_selected) {
             if(ui_default_style()) {
                 text_color = ui_default_scheme().primary;
             } else {
-                text_color = LightenUIColor(c_text, 10);
+                text_color = LightenColor(c_text, 10);
             }
         }
 
@@ -560,7 +563,9 @@ RenderTabBar(TabBarProps bar)
                 (float)icon_size
             };
             Rectangle icon_src = {0, 0, (float)tab->icon.width, (float)tab->icon.height};
-            DrawTexturePro(tab->icon, icon_src, icon_rect, kryon_zero_vector2, 0, icon_tint);
+            if(can_draw)
+                DrawTexturePro(tab->icon, icon_src, icon_rect,
+                               kryon_zero_vector2, 0, icon_tint);
             text_x = icon_x + icon_size + Scale(4);
         } else {
             text_x = ui_default_style() && has_label
@@ -583,14 +588,14 @@ RenderTabBar(TabBarProps bar)
                 (tab->closeable ? close_size + close_pad : 0));
         }
 
-        if(text_rect.width > 0 && has_label) {
+        if(can_draw && text_rect.width > 0 && has_label) {
             if(tab->italic) {
                 int y = TextBaselineY(tab->label, (int)text_rect.y,
                                    (int)text_rect.height, font);
                 ui_begin_world_clip(text_rect);
                 RenderTextStyled(tab->label, (int)text_rect.x, y,
                                    (TextStyle){font, text_color, 1, 0});
-                EndUIClip();
+                EndClip();
             } else if(ui_default_style()) {
                 int label_x = (int)text_rect.x +
                     ((int)text_rect.width - TextWidth(tab->label, font)) / 2;
@@ -598,17 +603,17 @@ RenderTabBar(TabBarProps bar)
                                             (int)text_rect.height, font);
                 ui_begin_world_clip(text_rect);
                 RenderText(tab->label, label_x, label_y, font, text_color);
-                EndUIClip();
+                EndClip();
             } else
                 DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
         }
 
-        if(tab->closeable) {
+        if(can_draw && tab->closeable) {
             Color close_color = close_hovered ? c_link : icon_tint;
             if(close_hovered)
                 DrawRectangleRounded(close_rect, 0.40f, 6,
                                      ui_default_style() ? ui_default_scheme().surface_variant
-                                                         : DarkenUIColor(c_button_hover, 8));
+                                                         : DarkenColor(c_button_hover, 8));
             RenderText("x",
                          (int)(close_rect.x + (close_rect.width -
                                                (float)TextWidth("x", font)) * 0.5f),
@@ -647,7 +652,7 @@ RenderTabBar(TabBarProps bar)
                 tab_bar_store->last_clicked_bar_bounds =
                     (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
                 tab_bar_store->last_click_time = 0.0;
-                UIConsumeRelease();
+                ConsumeRelease();
             } else if(!close_active && released && !owns_drag &&
                       (tab_bar_store->press_index < 0 ||
                        (ui_tab_bar_same_identity(bar.id,bar.bounds,
@@ -669,20 +674,22 @@ RenderTabBar(TabBarProps bar)
                 tab_bar_store->last_click_time = now;
                 clicked_tab = i;
                 if(bar.id > 0) {
-                    SetUIFocus(bar.id);
+                    SetFocus(bar.id);
                     focused = 1;
                 }
             }
         }
 
-        if(focused && i == (clicked_tab >= 0 ? clicked_tab : bar.selected_index))
+        if(can_draw && focused &&
+           i == (clicked_tab >= 0 ? clicked_tab : bar.selected_index))
             RenderFocus(tab_rect);
 
         tab_x += tab_w + tab_gap;
     }
 
-    PopUIInputClip();
-    EndUIClip();
+    PopInputClip();
+    if(can_draw)
+        EndClip();
 
     owns_press = ui_tab_bar_same_identity(bar.id,bar.bounds,
                                            tab_bar_store->press_bar_id,
@@ -704,7 +711,7 @@ RenderTabBar(TabBarProps bar)
             *bar.reordered_to_index = target;
         }
         clicked_tab = -1;
-        UIConsumeRelease();
+        ConsumeRelease();
     }
     if((released || !IsMouseButtonDown(MOUSE_BUTTON_LEFT)) && owns_press) {
         tab_bar_store->press_index = -1;
@@ -760,7 +767,7 @@ RenderTabBar(TabBarProps bar)
     }
 
     if(clicked_tab >= 0)
-        UIConsumeRelease();
+        ConsumeRelease();
     return clicked_tab;
 }
 

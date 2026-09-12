@@ -150,8 +150,8 @@ main(void)
     items[1] = (NavigationBarItem){2, "", color_icon, ICON_NONE, 1, 0};
     items[2] = (NavigationBarItem){3, "", color_icon, ICON_NONE, 0, 1};
 
-    SetUIScale(1.0f);
-    SetUIDefaultFontAutoLoad(0);
+    SetScale(1.0f);
+    SetDefaultFontAutoLoad(0);
     SetThemeSource(THEME_SOURCE_APP);
     SetThemeStyle(THEME_STYLE_DEFAULT);
     SetCurrentTheme(THEME_SKY, 0);
@@ -201,7 +201,7 @@ main(void)
                    item_paint.face.value.radius >= metrics.radius_pill);
     }
 
-    BeginUIFrame(900, 720, 1.0f);
+    BeginInterfaceFrame(900, 720, 1.0f);
     result = NavigationBar((NavigationBarProps){
         .view_width = 900,
         .view_height = 720,
@@ -210,7 +210,7 @@ main(void)
         .height = 66,
         .bottom_margin = 48,
     });
-    EndUIFrame();
+    EndInterfaceFrame();
 
     check_int("navigation bar drew all icons", icon_calls, 3);
     check_int("navigation bar y honors bottom margin", result.y, 606);
@@ -233,13 +233,13 @@ main(void)
         SetCurrentTheme(THEME_SKY, dark);
         Color tint = GetThemeText();
         icon_calls = 0;
-        BeginUIFrame(900, 720, 1.0f);
+        BeginInterfaceFrame(900, 720, 1.0f);
         NavigationBar((NavigationBarProps){
             .view_width = 900, .view_height = 720,
             .count = 3, .items = items, .height = 66,
             .icon_color = tint,
         });
-        EndUIFrame();
+        EndInterfaceFrame();
         check_int("tinted icon count", icon_calls, 3);
         for(int i = 0; i < 3; i++) {
             check_int("theme tint red", icon_tints[i].r, tint.r);

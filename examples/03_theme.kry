@@ -103,8 +103,8 @@ ThemePanel :: (x: int, y: int, w: int) -> int {
 ControlDemo :: (x: int, y: int, w: int) {
     options: [3] const char * = {"One", "Two", "Three"}
     field_style := (TextInputStyle){
-        DarkenUIColor(GetThemeBackground(), 6),
-        DarkenUIColor(GetThemeBackground(), 38),
+        DarkenColor(GetThemeBackground(), 6),
+        DarkenColor(GetThemeBackground(), 38),
         GetThemeButtonHover(),
         GetThemeText(),
         GetThemeText(),

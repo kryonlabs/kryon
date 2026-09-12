@@ -31,7 +31,6 @@ type Font struct {
 }
 
 type KeyID uint64
-type Side int32
 type SyntaxMode int32
 type ThemeId int32
 type ThemeStyle int32
@@ -77,11 +76,6 @@ const (
 	MouseButtonMiddle int32 = 2
 
 	FilterBilinear int32 = 1
-
-	SideTop Side = iota
-	SideBottom
-	SideLeft
-	SideRight
 )
 
 const (
@@ -451,12 +445,6 @@ type TabBarProps struct {
 	Disabled           bool
 }
 
-type tabBarScope struct {
-	count    int32
-	selected int32
-	itemOpen bool
-}
-
 type InvisibleButtonProps struct {
 	Bounds   Rectangle
 	ID       int32
@@ -608,25 +596,6 @@ type ColumnProps struct {
 }
 
 type RowProps = ColumnProps
-
-type FrameBox struct {
-	Bounds  Rectangle
-	PadX    int32
-	PadY    int32
-	Gap     int32
-	CursorX int32
-	CursorY int32
-}
-
-type GridFrame struct {
-	Bounds Rectangle
-	Rows   int32
-	Cols   int32
-	GapX   int32
-	GapY   int32
-	PadX   int32
-	PadY   int32
-}
 
 type ParagraphSpec struct {
 	Text     string
@@ -1233,10 +1202,6 @@ type Runtime interface {
 	BeginPopup(PopupProps) bool
 	EndPopup()
 	ClosePopup()
-	BeginTabBar(TabBarProps, *int32) bool
-	BeginTabItem(int32) bool
-	EndTabItem()
-	EndTabBar()
 	AcceleratorPressed(Accelerator) int32
 	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)
@@ -1351,10 +1316,6 @@ type Runtime interface {
 	EndTableCell()
 	BeginCanvas(canvas Canvas) CanvasResult
 	EndCanvas(canvas Canvas)
-	BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox
-	FramePack(frame *FrameBox, side Side, size int32) Rectangle
-	GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle
-	Place(parent Rectangle, x, y, w, h int32) Rectangle
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeDarkMode(dark int32)
 	SetThemeStyle(style ThemeStyle)
@@ -1427,7 +1388,6 @@ type runtime struct {
 	paintLayerScopes  []paintLayerScope
 	paintLayerFrame   uint64
 	popupScopes       []popupScope
-	tabBarScopes      []tabBarScope
 	openPopups        map[int32]*bool
 	popupsSeen        map[int32]bool
 	tooltipPopupsSeen map[int32]bool
@@ -1462,6 +1422,8 @@ type themePalette struct {
 	buttonHover  Color
 	icon         Color
 	link         Color
+	linkHover    Color
+	textDisabled Color
 	selected     Color
 	selectedHot  Color
 	selectedText Color
@@ -1476,9 +1438,7 @@ type layoutFrame struct {
 	gap          float32
 	padding      float32
 	horizontal   bool
-	columns      int32
-	cellIndex    int32
-	rowHeight    float32
+	gridCursor   GridCursor
 	noLayout     bool
 	center       bool
 	textFont     int32
@@ -1593,7 +1553,7 @@ type menuNavigation struct {
 }
 
 func New(config AppConfig) Runtime {
-	ensureDefaultUIFont()
+	ensureDefaultTextFont()
 	if config.Width <= 0 {
 		config.Width = 640
 	}
@@ -1816,9 +1776,6 @@ func (r *runtime) EndFrame() {
 	if len(r.popupScopes) != 0 {
 		panic("unclosed popup scope at frame boundary")
 	}
-	if len(r.tabBarScopes) != 0 {
-		panic("unclosed tab bar scope at frame boundary")
-	}
 	for id, open := range r.openPopups {
 		if !r.popupsSeen[id] {
 			if open != nil {
@@ -1913,7 +1870,9 @@ func (r *runtime) ClearBackground(c Color) {
 	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
 }
 func (r *runtime) Background(c Color) {
-	r.record(FrameOp{Kind: FrameOpBackground, Color: c})
+	r.record(FrameOp{Kind: FrameOpBackground,
+		Bounds: Primitive_PrimitiveBackgroundBounds(r.GetScreenWidth(), r.GetScreenHeight()),
+		Color:  c})
 }
 func (r *runtime) Text(props TextProps) {
 	r.textWithFont(props, 0)
@@ -2010,7 +1969,7 @@ func (r *runtime) Ring(centerX, centerY, innerRadius, outerRadius int32, color C
 func (r *runtime) Rect(x, y, w, h int32, color Color, rest ...Color) {
 	op := FrameOp{
 		Kind:   FrameOpRect,
-		Bounds: Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)},
+		Bounds: Primitive_PrimitiveRectBounds(x, y, w, h),
 		Color:  color,
 	}
 	if len(rest) > 0 {
@@ -2035,15 +1994,16 @@ func (r *runtime) Surface(bounds Rectangle, style Style) {
 func (r *runtime) RectGradientH(x, y, w, h int32, left, right Color) {
 	r.record(FrameOp{
 		Kind:           FrameOpRect,
-		Bounds:         Rectangle{X: float32(x), Y: float32(y), Width: float32(w), Height: float32(h)},
+		Bounds:         Primitive_PrimitiveRectBounds(x, y, w, h),
 		Color:          left,
 		SecondaryColor: right,
 	})
 }
 func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
+	line := Primitive_PrimitiveLineFor(x1, y1, x2, y2)
 	r.record(FrameOp{
 		Kind:   FrameOpLine,
-		Bounds: Rectangle{X: float32(x1), Y: float32(y1), Width: float32(x2 - x1), Height: float32(y2 - y1)},
+		Bounds: Rectangle{X: float32(line.X1), Y: float32(line.Y1), Width: float32(line.X2 - line.X1), Height: float32(line.Y2 - line.Y1)},
 		Color:  color,
 	})
 }
@@ -2607,23 +2567,22 @@ func (r *runtime) Separator(props SeparatorProps) {
 }
 
 func (r *runtime) DragDropSource(props DragDropSourceProps) bool {
-	if r.dragDrop.active && r.dragDrop.sourceID == props.ID &&
-		!r.mouseDown[MouseButtonLeft] && !r.mouseReleased[MouseButtonLeft] {
+	if DragDrop_DragDropShouldClearSource(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{}
 	}
-	if props.Disabled || r.contentDisabled() || props.Type == "" {
+	size := int(props.DataSize)
+	if size <= 0 || size > len(props.Data) {
+		size = len(props.Data)
+	}
+	valid := DragDrop_DragDropSourceValid(props.Disabled, r.contentDisabled(), props.Type != "", int32(size), int32(len(props.Data)), len(props.Data) > 0)
+	if !valid {
 		return false
 	}
 	bounds := r.layoutRect(props.Bounds)
-	if r.mousePressed[MouseButtonLeft] && r.pointerCanReach(bounds) {
-		size := int(props.DataSize)
-		if size <= 0 || size > len(props.Data) {
-			size = len(props.Data)
-		}
+	if DragDrop_DragDropSourceStarts(valid, r.pointerCanReach(bounds), r.mousePressed[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{active: true, sourceID: props.ID, typeName: props.Type, data: append([]byte(nil), props.Data[:size]...)}
 	}
-	return r.dragDrop.active && r.dragDrop.sourceID == props.ID &&
-		(r.mouseDown[MouseButtonLeft] || r.mouseReleased[MouseButtonLeft])
+	return DragDrop_DragDropSourceReturnsActive(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft])
 }
 
 func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
@@ -2631,8 +2590,8 @@ func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
 		*props.AcceptedSize = 0
 	}
 	bounds := r.layoutRect(props.Bounds)
-	matches := r.dragDrop.active && props.Type != "" && r.dragDrop.typeName == props.Type
-	hot := !props.Disabled && r.pointerCanReach(bounds)
+	matches := DragDrop_DragDropTargetMatches(r.dragDrop.active, props.Type != "", r.dragDrop.typeName == props.Type)
+	hot := DragDrop_DragDropTargetHot(props.Disabled, r.contentDisabled(), r.pointerCanReach(bounds))
 	if matches {
 		color := r.theme().border
 		if hot {
@@ -2640,7 +2599,7 @@ func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
 		}
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, BorderColor: color, Disabled: props.Disabled, Selected: hot})
 	}
-	if props.Disabled || r.contentDisabled() || !matches || !hot || !r.mouseReleased[MouseButtonLeft] {
+	if !DragDrop_DragDropTargetAccepts(props.Disabled, r.contentDisabled(), matches, hot, r.mouseReleased[MouseButtonLeft]) {
 		return false
 	}
 	size := int(props.OutputSize)
@@ -2650,6 +2609,7 @@ func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
 	if size > len(r.dragDrop.data) {
 		size = len(r.dragDrop.data)
 	}
+	size = int(DragDrop_DragDropCopySize(int32(len(r.dragDrop.data)), int32(size)))
 	copy(props.Output[:size], r.dragDrop.data[:size])
 	if props.AcceptedSize != nil {
 		*props.AcceptedSize = int32(size)
@@ -4502,7 +4462,7 @@ func (r *runtime) ReplaceRoute(path string) {
 	r.setRoute(path)
 }
 func (r *runtime) Page(props PageProps) {
-	bounds := pageBoundsOrView(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
+	bounds := Layout_LayoutScopeBounds(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
 	key := props.Key
 	if key == 0 {
 		key = Key(props.Title)
@@ -4526,7 +4486,7 @@ func (r *runtime) Page(props PageProps) {
 	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
 }
 func (r *runtime) Section(props SectionProps) {
-	bounds := pageBoundsOrView(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
+	bounds := Layout_LayoutScopeBounds(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
 	key := props.Key
 	if key == 0 {
 		key = Key(props.Label)
@@ -4580,10 +4540,6 @@ func (r *runtime) Link(props LinkProps) bool {
 	if font <= 0 {
 		font = Text16
 	}
-	color := props.Color
-	if color.A == 0 {
-		color = r.theme().link
-	}
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(runtimeTextWidth(props.Text, font))
@@ -4595,6 +4551,9 @@ func (r *runtime) Link(props LinkProps) bool {
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)
 	}
+	theme := r.theme()
+	appearance := Link_ResolveLinkAppearance(packRGBA(props.Color), packRGBA(props.HoverColor), packRGBA(theme.link), packRGBA(theme.linkHover), packRGBA(theme.textDisabled), false, props.Disabled)
+	color := unpackRGBA(appearance.Color)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
 }
@@ -4670,15 +4629,25 @@ func wrapRuntimeTextMeasured(text string, width float32, measure func(string) in
 	}
 	return lines
 }
-func (r *runtime) Bevel(int32, int32, int32, int32, Color, Color) {}
+func (r *runtime) Bevel(x, y, w, h int32, light, dark Color) {
+	lines := Bevel_BevelLinesFor(x, y, w, h)
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: lines.Top, Color: light})
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: lines.Left, Color: light})
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: lines.Bottom, Color: dark})
+	r.record(FrameOp{Kind: FrameOpLine, Bounds: lines.Right, Color: dark})
+}
 func (r *runtime) Icon(id, x, y, size int32, iconType int32, tint Color) {
+	layout := Icon_IconLayoutFor(x, y, size)
+	if !layout.Drawable {
+		return
+	}
 	r.record(FrameOp{
 		Kind:     FrameOpIcon,
-		Bounds:   Rectangle{X: float32(x), Y: float32(y), Width: float32(size), Height: float32(size)},
+		Bounds:   layout.Bounds,
 		Color:    tint,
 		ID:       id,
 		IconType: iconType,
-		IconSize: float32(size),
+		IconSize: float32(layout.Size),
 	})
 }
 func (r *runtime) Image(props ImageProps) {
@@ -4689,11 +4658,6 @@ func (r *runtime) Image(props ImageProps) {
 	r.record(FrameOp{Kind: FrameOpImage, Bounds: props.Bounds, Text: props.AssetPath, Color: props.Tint})
 }
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
-	font := spec.Font
-	if font <= 0 {
-		font = Text16
-	}
-	lineGap := spec.LineGap
 	color := spec.Color
 	if color.A == 0 {
 		color = r.theme().text
@@ -4702,14 +4666,17 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	if y != nil {
 		textY = *y
 	}
-	width := spec.Width
-	if width <= 0 {
-		width = int32(r.config.Width) - x
+	fallbackWidth := int32(r.config.Width) - x
+	metrics := Paragraph_ParagraphResolveMetrics(spec.Font, Text16,
+		spec.LineGap, 4, spec.IconSize, spec.Width, fallbackWidth, 0, textY)
+	if !Paragraph_ParagraphCanLayout(metrics.Width) {
+		return
 	}
-	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY), Width: float32(width), Height: float32(font + lineGap)})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: font})
+	bounds := r.layoutRect(Rectangle{X: float32(x), Y: float32(textY),
+		Width: float32(metrics.Width), Height: float32(metrics.Height)})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: spec.Text, Color: color, FontSize: metrics.Font})
 	if y != nil {
-		*y += font + lineGap
+		*y = metrics.NextY
 	}
 }
 
@@ -4907,35 +4874,29 @@ func (r *runtime) Modal(props ModalProps) int32 {
 
 func (r *runtime) drawActionModal(title, message string, labels []string, fieldHeight float32) (int32, Rectangle) {
 	t := r.theme()
-	w := float32(420)
-	if limit := float32(r.GetScreenWidth() - 16); w > limit {
-		w = limit
-	}
-	if w < 280 {
-		w = 280
-	}
-	if limit := float32(max32(1, r.GetScreenWidth()-8)); w > limit {
-		w = limit
-	}
-	h := float32(160) + fieldHeight
+	metrics := Modal_ModalMetricsFor(1)
+	messageHeight := int32(0)
 	if message != "" {
-		h += 24
+		messageHeight = 24
 	}
-	x := (float32(r.GetScreenWidth()) - w) / 2
-	y := (float32(r.GetScreenHeight()) - h) / 2
-	panel := Rectangle{X: x, Y: y, Width: w, Height: h}
+	buttonRows := int32(0)
+	if len(labels) > 0 {
+		buttonRows = 1
+	}
+	layout := Modal_ModalLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), 0, messageHeight, buttonRows, fieldHeight > 0, metrics)
+	panel := layout.Panel
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: Color{A: 180}})
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: panel, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: x + 18, Y: y + 14, Width: w - 36, Height: 30}, Text: title, Color: t.text, FontSize: Text20})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: t.text, FontSize: Text20})
 	if message != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: x + 18, Y: y + 54, Width: w - 36, Height: h - 104 - fieldHeight}, Text: message, Color: t.text, FontSize: Text16})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: t.text, FontSize: Text16})
 	}
 
 	result := int32(0)
-	buttonW := float32(96)
-	gap := float32(8)
-	buttonY := y + h - 46
-	buttonX := x + w - 18 - float32(len(labels))*buttonW - float32(maxInt(0, len(labels)-1))*gap
+	buttonW := float32(metrics.ActionMinWidth)
+	gap := float32(metrics.ButtonGap)
+	buttonY := float32(layout.ButtonY)
+	buttonX := panel.X + panel.Width - float32(metrics.PaddingX) - float32(len(labels))*buttonW - float32(maxInt(0, len(labels)-1))*gap
 	for i, label := range labels {
 		if label == "" {
 			if len(labels) == 1 {
@@ -4946,7 +4907,7 @@ func (r *runtime) drawActionModal(title, message string, labels []string, fieldH
 				label = "OK"
 			}
 		}
-		bounds := Rectangle{X: buttonX + float32(i)*(buttonW+gap), Y: buttonY, Width: buttonW, Height: 30}
+		bounds := Rectangle{X: buttonX + float32(i)*(buttonW+gap), Y: buttonY, Width: buttonW, Height: float32(metrics.ButtonHeight)}
 		pressed := r.consumeTap(bounds)
 		fill := t.button
 		if i == len(labels)-1 {
@@ -4968,7 +4929,7 @@ func (r *runtime) drawActionModal(title, message string, labels []string, fieldH
 			}
 		}
 	}
-	field := Rectangle{X: x + 18, Y: buttonY - fieldHeight - 12, Width: w - 36, Height: fieldHeight}
+	field := Rectangle{X: float32(layout.MessageX), Y: float32(layout.PromptY), Width: float32(layout.ContentWidth), Height: float32(layout.PromptHeight)}
 	return result, field
 }
 func (r *runtime) TitleBar(props TitleBarProps) int32 {
@@ -4977,10 +4938,49 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 		height = 44
 	}
 	t := r.theme()
-	b := Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(height)}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: 12, Y: float32(height-Text20) / 2, Width: b.Width - 24, Height: float32(Text20 + 4)}, Text: props.Title, Color: t.text, FontSize: Text20})
-	return 0
+	metrics := TitleBar_TitleBarMetricsFor(1)
+	layout := TitleBar_TitleBarLayoutFor(r.GetScreenWidth(), height,
+		props.HasLeadingAction, props.HasDropdown, props.Dropdown.Height,
+		props.Dropdown.MinWidth, metrics)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: t.surface, BorderColor: t.border})
+	clicked := int32(0)
+	if props.HasLeadingAction {
+		if !r.contentDisabled() && r.consumeTap(layout.LeadingBounds) {
+			clicked = 1
+		}
+		r.record(FrameOp{Kind: FrameOpButton, Bounds: layout.LeadingBounds,
+			Color: t.surface, BorderColor: t.border, TextColor: t.text,
+			IconSize: float32(metrics.LeadingIconSize),
+			Pressed:  clicked != 0, Disabled: r.contentDisabled()})
+	}
+	if props.HasDropdown {
+		if !props.Dropdown.Disabled {
+			selected := props.Dropdown.SelectedIndex
+			count := props.Dropdown.OptionCount
+			if count <= 0 || count > int32(len(props.Dropdown.Options)) {
+				count = int32(len(props.Dropdown.Options))
+			}
+			changed := int32(0)
+			if r.Dropdown(DropdownProps{
+				ID:            props.Dropdown.ID,
+				Bounds:        layout.DropdownBounds,
+				Options:       props.Dropdown.Options[:count],
+				OptionCount:   count,
+				SelectedIndex: selected,
+			}) {
+				changed = 1
+			}
+			return clicked | changed
+		}
+		return clicked
+	}
+	titleW := runtimeTextWidth(props.Title, Text20)
+	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{
+		X: float32(titleX), Y: float32(height-Text20) / 2,
+		Width: float32(titleW), Height: float32(Text20 + 4),
+	}, Text: props.Title, Color: t.text, FontSize: Text20})
+	return clicked
 }
 func (r *runtime) NavigationBar(props NavigationBarProps) {
 	count := int(props.Count)
@@ -5491,16 +5491,15 @@ func (r *runtime) SelectableText(value string, x, y, fontSize int32, color Color
 }
 func (r *runtime) ShowToast(message string) { r.ShowToastFor(message, 3) }
 func (r *runtime) ShowToastFor(message string, seconds float64) {
+	metrics := Toast_ToastMetricsFor(1)
 	if message == "" {
 		r.toastMessage = ""
 		r.toastUntil = time.Time{}
 		return
 	}
-	if seconds <= 0 {
-		seconds = 3
-	}
 	r.toastMessage = message
-	r.toastUntil = time.Now().Add(time.Duration(seconds * float64(time.Second)))
+	duration := Toast_ToastDuration(float32(seconds), metrics)
+	r.toastUntil = time.Now().Add(time.Duration(float64(duration) * float64(time.Second)))
 }
 func (r *runtime) recordToast() {
 	if r.toastMessage == "" || time.Now().After(r.toastUntil) {
@@ -5508,13 +5507,11 @@ func (r *runtime) recordToast() {
 		return
 	}
 	t := r.theme()
-	w := float32(runtimeTextWidth(r.toastMessage, Text14) + 28)
-	if max := float32(max32(1, r.GetScreenWidth()-36)); w > max {
-		w = max
-	}
-	b := Rectangle{X: (float32(r.GetScreenWidth()) - w) / 2, Y: float32(r.GetScreenHeight() - 58), Width: w, Height: 40}
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: b, Color: t.surface, BorderColor: t.border})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: b.X + 14, Y: b.Y + 11, Width: b.Width - 28, Height: 18}, Text: r.toastMessage, Color: t.text, FontSize: Text14})
+	metrics := Toast_ToastMetricsFor(1)
+	textWidth := int32(runtimeTextWidth(r.toastMessage, Text14))
+	layout := Toast_ToastLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), textWidth, 18, metrics)
+	r.record(FrameOp{Kind: FrameOpRect, Bounds: layout.Bounds, Color: t.surface, BorderColor: t.border})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: layout.TextBounds, Text: r.toastMessage, Color: t.text, FontSize: Text14})
 }
 func (r *runtime) TextArea(props TextAreaProps) bool {
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -5621,18 +5618,10 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 	}
 	p.Bounds = r.layoutRect(p.Bounds)
 	split := *p.Split
-	limit := int32(p.Bounds.Height) - p.MinSecond
-	if p.Vertical {
-		limit = int32(p.Bounds.Width) - p.MinSecond
-	}
-	if limit < p.MinFirst {
-		limit = p.MinFirst
-	}
-	split = clamp32(split, p.MinFirst, limit)
-	h := Rectangle{X: p.Bounds.X, Y: p.Bounds.Y + float32(split) - 4, Width: p.Bounds.Width, Height: 8}
-	if p.Vertical {
-		h = Rectangle{X: p.Bounds.X + float32(split) - 4, Y: p.Bounds.Y, Width: 8, Height: p.Bounds.Height}
-	}
+	metrics := PanedView_PanedViewMetricsFor(1)
+	limit := PanedView_PanedViewLimit(PanedView_PanedViewSize(p.Bounds, p.Vertical), p.MinFirst, p.MinSecond)
+	split = PanedView_PanedViewClampSplit(split, p.MinFirst, limit)
+	h := PanedView_PanedViewHandleFor(p.Bounds, p.Vertical, split, metrics)
 	changed := int32(0)
 	if r.drag.active && r.popupInputOwnerCaptures(r.drag.owner) {
 		r.drag = scalarDrag{}
@@ -5644,22 +5633,15 @@ func (r *runtime) PanedView(p PanedViewProps) int32 {
 		r.drag = scalarDrag{active: true, token: p.ID, owner: r.currentPopupInputOwner()}
 	}
 	if r.drag.active && r.drag.token == p.ID && r.mouseDown[MouseButtonLeft] {
-		n := int32(r.mousePos.Y - p.Bounds.Y)
-		if p.Vertical {
-			n = int32(r.mousePos.X - p.Bounds.X)
-		}
-		n = clamp32(n, p.MinFirst, limit)
+		n := PanedView_PanedViewPointerSplit(p.Bounds, p.Vertical, r.mousePos.X, r.mousePos.Y)
+		n = PanedView_PanedViewClampSplit(n, p.MinFirst, limit)
 		if n != *p.Split {
 			*p.Split = n
 			split = n
 			changed = 1
 		}
 	}
-	if p.Vertical {
-		h.X = p.Bounds.X + float32(split) - 4
-	} else {
-		h.Y = p.Bounds.Y + float32(split) - 4
-	}
+	h = PanedView_PanedViewHandleFor(p.Bounds, p.Vertical, split, metrics)
 	if !r.mouseDown[MouseButtonLeft] && r.drag.token == p.ID {
 		r.drag = scalarDrag{}
 	}
@@ -5708,13 +5690,11 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	if p.Visible != nil && !*p.Visible {
 		return 0
 	}
-	p.Bounds.Height = 32
-	p.Bounds = r.layoutRect(p.Bounds)
-	if p.Tree && p.Depth > 0 {
-		indent := min(float32(p.Depth)*20, p.Bounds.Width)
-		p.Bounds.X += indent
-		p.Bounds.Width -= indent
-	}
+	metrics := Collapsible_CollapsibleMetricsFor(1)
+	layoutBounds := p.Bounds
+	layoutBounds.Height = float32(metrics.HeaderHeight)
+	p.Bounds = r.layoutRect(layoutBounds)
+	layout := Collapsible_CollapsibleLayoutFor(p.Bounds, p.Tree, p.Depth, p.Visible != nil, metrics)
 	enabled := !p.Disabled && !r.contentDisabled()
 	if enabled {
 		r.registerField(p.ID)
@@ -5722,14 +5702,11 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 			r.treeHeaders = append(r.treeHeaders, treeHeaderNav{p.ID, max(p.Depth, 0)})
 		}
 	}
-	header := p.Bounds
-	closeBounds := Rectangle{}
-	body := header
+	header := layout.Header
+	closeBounds := layout.CloseBounds
+	body := layout.Body
 	closed := false
 	if p.Visible != nil {
-		closeWidth := min(float32(28), header.Width)
-		closeBounds = Rectangle{X: header.X + header.Width - closeWidth, Y: header.Y, Width: closeWidth, Height: header.Height}
-		body.Width = max(float32(0), body.Width-closeWidth)
 		closed = enabled && r.consumeTap(closeBounds)
 		if closed {
 			*p.Visible = false
@@ -5778,11 +5755,12 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		}
 		r.inputEvents = remaining
 	}
+	marker := Collapsible_CollapsibleMarkerFor(p.Open != nil && *p.Open, p.Leaf)
 	mark := ">"
-	if p.Open != nil && *p.Open {
+	if marker == CollapsibleMarkerKindCollapsibleMarkerOpen {
 		mark = "v"
 	}
-	if p.Leaf {
+	if marker == CollapsibleMarkerKindCollapsibleMarkerLeaf {
 		mark = "•"
 	}
 	t := r.theme()
@@ -5814,11 +5792,10 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	if count <= 0 || count > int32(len(props.Items)) {
 		count = int32(len(props.Items))
 	}
-	rowH := props.RowHeight
-	if rowH <= 0 {
-		rowH = 28
-	}
-	maxScroll := max32(0, count*rowH-int32(props.Bounds.Height))
+	metrics := TreeView_TreeViewMetricsFor(1)
+	rowH := TreeView_TreeViewRowHeight(props.RowHeight, 1, metrics)
+	contentHeight := TreeView_TreeViewContentHeight(count, rowH)
+	maxScroll := TreeView_TreeViewMaxScroll(int32(props.Bounds.Height), contentHeight)
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
 		if !props.Disabled && r.pointerCanReach(props.Bounds) && r.mouseWheel != 0 {
@@ -5829,6 +5806,8 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
+	scrollLayout := TreeView_TreeViewScrollFor(scroll, rowH)
+	visible := TreeView_TreeViewVisibleRows(int32(props.Bounds.Height), rowH)
 	theme := r.theme()
 	panelColor, borderColor := theme.surface, theme.border
 	if props.Disabled {
@@ -5836,15 +5815,14 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	}
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: panelColor, BorderColor: borderColor, ID: props.ID, Disabled: props.Disabled})
 	changed := int32(0)
-	first := scroll / rowH
-	yOffset := scroll % rowH
-	for index := first; index < count; index++ {
-		y := props.Bounds.Y + float32((index-first)*rowH-yOffset)
-		if y >= props.Bounds.Y+props.Bounds.Height {
-			break
-		}
+	first := scrollLayout.First
+	yOffset := scrollLayout.YOffset
+	for visibleIndex := int32(0); visibleIndex < visible && first+visibleIndex < count; visibleIndex++ {
+		index := first + visibleIndex
 		item := props.Items[index]
-		row := Rectangle{X: props.Bounds.X, Y: y, Width: props.Bounds.Width, Height: float32(rowH)}
+		row := TreeView_TreeViewRowBounds(props.Bounds, visibleIndex, rowH, yOffset)
+		markerBounds := TreeView_TreeViewMarkerBounds(row, item.Depth, metrics)
+		textBounds := TreeView_TreeViewTextBounds(row, item.Depth, metrics)
 		selected := props.SelectedID != nil && *props.SelectedID == item.ID
 		pressed := !props.Disabled && item.Selectable != 0 && r.consumeTap(row)
 		if pressed && props.SelectedID != nil {
@@ -5859,7 +5837,6 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 			}
 			r.record(FrameOp{Kind: FrameOpRect, Bounds: row, Color: color, ID: props.ID, Row: index, Selected: true, Disabled: props.Disabled})
 		}
-		indent := float32(8 + item.Depth*18)
 		mark := ">"
 		if item.Expanded != 0 {
 			mark = "v"
@@ -5868,8 +5845,10 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		if props.Disabled {
 			iconColor, textColor = r.Fade(iconColor, 0.45), r.Fade(textColor, 0.45)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent, Y: row.Y + 4, Width: 16, Height: row.Height}, Text: mark, Color: iconColor, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + indent + 18, Y: row.Y + 4, Width: row.Width - indent - 26, Height: row.Height}, Text: item.Label, Color: textColor, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
+		markerBounds.Y += 4
+		textBounds.Y += 4
+		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: iconColor, FontSize: Text16, ID: item.ID, Row: index, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: textColor, FontSize: Text16, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
@@ -5929,20 +5908,11 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		return 0
 	}
 
-	rowH := props.RowHeight
-	if rowH <= 0 {
-		rowH = 28
-	}
-	headerH := max32(30, props.HeaderHeight)
-	body := Rectangle{
-		X:      props.Bounds.X,
-		Y:      props.Bounds.Y + float32(headerH),
-		Width:  props.Bounds.Width,
-		Height: props.Bounds.Height - float32(headerH),
-	}
-	if body.Height < 0 {
-		body.Height = 0
-	}
+	metrics := TableView_TableViewMetricsFor(1)
+	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
+	rowH := layout.RowHeight
+	headerH := layout.HeaderHeight
+	body := layout.Body
 	if props.ActivatedRow != nil {
 		*props.ActivatedRow = -1
 	}
@@ -5973,8 +5943,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		(r.tableResize.id != props.ID || props.Disabled || !props.Resizable || len(props.ColumnWidths) == 0) {
 		r.tableResize = tableResize{}
 	}
-	frozenRows := tableFrozenRows(props, rowH, int32(body.Height))
-	maxScroll := max32(0, (int32(len(props.Rows))-frozenRows)*rowH-(int32(body.Height)-frozenRows*rowH))
+	maxScroll := layout.MaxScroll
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = clamp32(*props.ScrollOffset, 0, maxScroll)
 	}
@@ -6003,10 +5972,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		}
 		if r.tableResize.active && r.tableResize.id == props.ID {
 			if r.mouseDown[MouseButtonLeft] {
-				minimum := props.MinColumnWidth
-				if minimum <= 0 {
-					minimum = 32
-				}
+				minimum := TableView_TableViewMinimumColumnWidth(props.MinColumnWidth, 1, metrics)
 				width := max32(minimum, r.tableResize.startWidth+int32(r.mousePos.X-r.tableResize.startX))
 				if props.ColumnWidths[r.tableResize.column] != width {
 					props.ColumnWidths[r.tableResize.column] = width
@@ -6121,48 +6087,21 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	return changed
 }
 func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
-	return CanvasResult{Active: true, World: Vector2{X: canvas.Bounds.X, Y: canvas.Bounds.Y}}
+	var scrollX, scrollY int32
+	zoom := float32(1)
+	if canvas.ScrollX != nil {
+		scrollX = *canvas.ScrollX
+	}
+	if canvas.ScrollY != nil {
+		scrollY = *canvas.ScrollY
+	}
+	if canvas.Zoom != nil {
+		zoom = *canvas.Zoom
+	}
+	policy := Canvas_CanvasBeginResultFor(canvas.Bounds, r.mousePos, scrollX, scrollY, zoom, r.mouseDown[MouseButtonLeft])
+	return CanvasResult{Active: policy.Active, Dragging: policy.Dragging, World: policy.World}
 }
 func (r *runtime) EndCanvas(Canvas) {}
-func (r *runtime) BeginFrameBox(bounds Rectangle, padX, padY, gap int32) FrameBox {
-	return FrameBox{Bounds: bounds, PadX: padX, PadY: padY, Gap: gap, CursorX: int32(bounds.X) + padX, CursorY: int32(bounds.Y) + padY}
-}
-func (r *runtime) FramePack(frame *FrameBox, side Side, size int32) Rectangle {
-	if frame == nil {
-		return Rectangle{}
-	}
-	out := frame.Bounds
-	switch side {
-	case SideTop:
-		out.Y = float32(frame.CursorY)
-		out.Height = float32(size)
-		frame.CursorY += size + frame.Gap
-	case SideBottom:
-		out.Y = frame.Bounds.Y + frame.Bounds.Height - float32(size) - float32(frame.PadY)
-		out.Height = float32(size)
-	case SideLeft:
-		out.X = float32(frame.CursorX)
-		out.Width = float32(size)
-		frame.CursorX += size + frame.Gap
-	case SideRight:
-		out.X = frame.Bounds.X + frame.Bounds.Width - float32(size) - float32(frame.PadX)
-		out.Width = float32(size)
-	}
-	return out
-}
-func (r *runtime) GridCell(grid GridFrame, row, col, rowSpan, colSpan int32) Rectangle {
-	if grid.Rows <= 0 || grid.Cols <= 0 {
-		return Rectangle{}
-	}
-	x := grid.Bounds.X + float32(grid.PadX) + float32(col)*(cellW(grid)+float32(grid.GapX))
-	y := grid.Bounds.Y + float32(grid.PadY) + float32(row)*(cellH(grid)+float32(grid.GapY))
-	w := cellW(grid)*float32(colSpan) + float32(max32(0, colSpan-1)*grid.GapX)
-	h := cellH(grid)*float32(rowSpan) + float32(max32(0, rowSpan-1)*grid.GapY)
-	return Rectangle{X: x, Y: y, Width: w, Height: h}
-}
-func (r *runtime) Place(parent Rectangle, x, y, w, h int32) Rectangle {
-	return Rectangle{X: parent.X + float32(x), Y: parent.Y + float32(y), Width: float32(w), Height: float32(h)}
-}
 func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
 	r.defaultTheme = false
 	r.activeTheme = nil
@@ -6322,17 +6261,19 @@ func (r *runtime) theme() themePalette {
 	if r.activeTheme != nil {
 		colors := r.activeTheme.Colors
 		return themeSelectionDefaults(themePalette{
-			background:  colors.Background,
-			surface:     colors.Surface,
-			text:        colors.Text,
-			circle:      colors.Accent,
-			button:      colors.Accent,
-			buttonHover: colors.AccentHover,
-			icon:        colors.Icon,
-			link:        colors.Link,
-			border:      colors.Border,
-			focus:       colors.Focus,
-			selected:    colors.Selection,
+			background:   colors.Background,
+			surface:      colors.Surface,
+			text:         colors.Text,
+			circle:       colors.Accent,
+			button:       colors.Accent,
+			buttonHover:  colors.AccentHover,
+			icon:         colors.Icon,
+			link:         colors.Link,
+			linkHover:    colors.LinkHover,
+			textDisabled: colors.DisabledText,
+			border:       colors.Border,
+			focus:        colors.Focus,
+			selected:     colors.Selection,
 		})
 	}
 	dark := r.effectiveDark()
@@ -6490,13 +6431,13 @@ func (r *runtime) textInputStyle(focused, disabled bool) Style {
 
 func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {
 	bounds := r.layoutRect(props.Bounds)
-	padding := float32(props.Padding)
+	metrics := Layout_LayoutMetricsFor(bounds, props.Gap, props.Padding)
 	r.layout = append(r.layout, layoutFrame{
 		bounds:     bounds,
-		cursorX:    bounds.X + padding,
-		cursorY:    bounds.Y + padding,
-		gap:        float32(props.Gap),
-		padding:    padding,
+		cursorX:    metrics.Content.X,
+		cursorY:    metrics.Content.Y,
+		gap:        float32(metrics.Gap),
+		padding:    float32(metrics.Padding),
 		horizontal: horizontal,
 	})
 	r.record(FrameOp{Kind: kind, Bounds: bounds, ID: int32(props.Key)})
@@ -6504,42 +6445,20 @@ func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKin
 
 func (r *runtime) pushGrid(props GridProps) {
 	bounds := r.layoutRect(props.Bounds)
-	padding := float32(props.Padding)
-	gap := float32(props.Gap)
-	available := int32(bounds.Width - padding*2)
-	columns := props.Columns
-	if available < 0 {
-		available = 0
-	}
-	if columns < 1 {
-		minWidth := props.MinItemWidth
-		if minWidth < 1 {
-			minWidth = available
-		}
-		if minWidth < 1 {
-			minWidth = 1
-		}
-		columns = (available + props.Gap) / (minWidth + props.Gap)
-	}
-	if columns < 1 {
-		columns = 1
-	}
-	if props.MaxColumns > 0 && columns > props.MaxColumns {
-		columns = props.MaxColumns
-	}
+	props.Bounds = bounds
+	cursor := Grid_BeginGridCursor(props)
 	r.layout = append(r.layout, layoutFrame{
-		bounds:  bounds,
-		cursorX: bounds.X + padding,
-		cursorY: bounds.Y + padding,
-		gap:     gap,
-		padding: padding,
-		columns: columns,
+		bounds:     bounds,
+		gridCursor: cursor,
 	})
-	r.record(FrameOp{Kind: FrameOpGrid, Bounds: bounds, ID: int32(props.Key), Columns: columns})
+	r.record(FrameOp{Kind: FrameOpGrid, Bounds: bounds, ID: int32(props.Key), Columns: cursor.Metrics.Columns})
 }
 
 func (r *runtime) pushGroup(props ColumnProps, kind FrameOpKind) {
 	bounds := props.Bounds
+	if kind == FrameOpScreen {
+		bounds = Layout_LayoutScopeBounds(bounds, r.GetScreenWidth(), r.GetScreenHeight())
+	}
 	r.layout = append(r.layout, layoutFrame{
 		bounds:   bounds,
 		noLayout: true,
@@ -6561,45 +6480,21 @@ func (r *runtime) layoutRect(bounds Rectangle) Rectangle {
 	if bounds.X != 0 || bounds.Y != 0 {
 		return bounds
 	}
-	if frame.columns > 0 {
-		out := bounds
-		columns := frame.columns
-		innerW := frame.bounds.Width - frame.padding*2
-		cellW := innerW
-		if columns > 1 {
-			cellW = (innerW - frame.gap*float32(columns-1)) / float32(columns)
+	if frame.gridCursor.Metrics.Columns > 0 {
+		height := int32(bounds.Height)
+		if height <= 0 {
+			height = int32(frame.gridCursor.Metrics.Content.Height)
 		}
-		if cellW < 0 {
-			cellW = 0
-		}
-		col := frame.cellIndex % columns
-		out.X = frame.cursorX + float32(col)*(cellW+frame.gap)
-		out.Y = frame.cursorY
-		if out.Width <= 0 {
-			out.Width = cellW
-		}
-		if out.Height <= 0 {
-			out.Height = frame.bounds.Height - frame.padding*2
-		}
-		if out.Height > frame.rowHeight {
-			frame.rowHeight = out.Height
-		}
-		frame.cellIndex++
-		if frame.cellIndex%columns == 0 {
-			frame.cursorY += frame.rowHeight + frame.gap
-			frame.rowHeight = 0
-		}
-		return out
+		frame.gridCursor = Grid_GridStep(frame.gridCursor, height, 1)
+		return frame.gridCursor.Item
 	}
 	out := bounds
-	out.X = frame.cursorX
-	out.Y = frame.cursorY
-	if out.Width <= 0 {
-		out.Width = frame.bounds.Width - frame.padding*2
+	metrics := Layout_LayoutMetricsFor(frame.bounds, int32(frame.gap), int32(frame.padding))
+	cursor := frame.cursorY
+	if frame.horizontal {
+		cursor = frame.cursorX
 	}
-	if out.Height <= 0 {
-		out.Height = frame.bounds.Height - frame.padding*2
-	}
+	out = Layout_LayoutChildBounds(bounds, out, metrics, frame.horizontal, cursor)
 	if frame.horizontal {
 		frame.cursorX += out.Width + frame.gap
 	} else {
@@ -6627,16 +6522,6 @@ func (r *runtime) setRoute(path string) {
 	if r.routePath != oldPath || r.routeHash != oldHash {
 		r.routeVersion++
 	}
-}
-
-func pageBoundsOrView(bounds Rectangle, viewWidth, viewHeight int32) Rectangle {
-	if bounds.Width <= 0 {
-		bounds.Width = float32(viewWidth)
-	}
-	if bounds.Height <= 0 {
-		bounds.Height = float32(viewHeight)
-	}
-	return bounds
 }
 
 type textEditOptions struct {
@@ -7391,14 +7276,6 @@ func textMoveSelection(current selection, cursor, target int, extend bool) (int,
 	return target, selection{Anchor: target, Cursor: target}
 }
 
-func cellW(grid GridFrame) float32 {
-	return (grid.Bounds.Width - float32(grid.PadX*2) - float32(max32(0, grid.Cols-1)*grid.GapX)) / float32(grid.Cols)
-}
-
-func cellH(grid GridFrame) float32 {
-	return (grid.Bounds.Height - float32(grid.PadY*2) - float32(max32(0, grid.Rows-1)*grid.GapY)) / float32(grid.Rows)
-}
-
 func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	theme := r.theme()
 	disabledColor := func(color Color) Color {
@@ -7478,22 +7355,11 @@ func normalizeListBoxProps(props ListBoxProps) ListBoxProps {
 func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)
 	cell := TableCellRect(props, row, col)
-	header := max32(30, props.HeaderHeight)
-	rowH := props.RowHeight
-	if rowH <= 0 {
-		rowH = 28
-	}
-	bodyHeight := max32(0, int32(props.Bounds.Height)-header)
-	frozen := tableFrozenRows(props, rowH, bodyHeight)
-	top := props.Bounds.Y + float32(header)
-	bottom := props.Bounds.Y + props.Bounds.Height
-	if row < frozen {
-		bottom = top + float32(frozen*rowH)
-	} else {
-		top += float32(frozen * rowH)
-	}
+	metrics := TableView_TableViewMetricsFor(1)
+	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
+	viewport := TableView_TableViewViewport(props.Bounds, layout, row >= layout.FrozenRows)
 	left, right := max(cell.X, props.Bounds.X), min(cell.X+cell.Width, props.Bounds.X+props.Bounds.Width)
-	top, bottom = max(top, cell.Y), min(bottom, cell.Y+cell.Height)
+	top, bottom := max(viewport.Y, cell.Y), min(viewport.Y+viewport.Height, cell.Y+cell.Height)
 	clip := Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
 	r.BeginDisabled(props.Disabled)
 	r.BeginScroll(clip, int32(clip.Height), nil)
@@ -7507,11 +7373,8 @@ func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	if len(props.Columns) == 0 || row < 0 || col < 0 || int(row) >= len(props.Rows) || int(col) >= len(props.Columns) {
 		return Rectangle{}
 	}
-	rowH := props.RowHeight
-	if rowH <= 0 {
-		rowH = 28
-	}
-	headerH := max32(30, props.HeaderHeight)
+	metrics := TableView_TableViewMetricsFor(1)
+	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
@@ -7528,20 +7391,13 @@ func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	if !found {
 		return Rectangle{}
 	}
-	bodyHeight := max32(0, int32(props.Bounds.Height)-headerH)
-	frozenRows := tableFrozenRows(props, rowH, bodyHeight)
-	y := props.Bounds.Y + float32(headerH)
-	if row < frozenRows {
-		y += float32(row * rowH)
-	} else {
-		y += float32(frozenRows*rowH + (row-frozenRows)*rowH - scroll)
+	scrollLayout := TableView_TableViewScrollFor(scroll, layout.FrozenRows, layout.RowHeight, layout.ScrollBodyHeight)
+	drawIndex := row
+	if row >= layout.FrozenRows {
+		drawIndex = layout.FrozenRows + row - scrollLayout.First
 	}
-	return Rectangle{
-		X:      x,
-		Y:      y,
-		Width:  float32(tableColumnWidth(props, col)),
-		Height: float32(rowH),
-	}
+	rowBounds := TableView_TableViewRowBounds(props.Bounds, layout, row, drawIndex, scrollLayout, row >= layout.FrozenRows)
+	return TableView_TableViewCellBounds(rowBounds, int32(x), tableColumnWidth(props, col))
 }
 
 func (r *runtime) handleTableKeys(props TableViewProps) int32 {
@@ -7827,11 +7683,18 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if rowH >= 28 {
 		font = Text14
 	}
+	metrics := TableView_TableViewMetricsFor(1)
+	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, headerH, props.FreezeRows, 1, metrics)
 	for _, col := range displayColumns {
 		c := int(col)
-		rect := TableCellRect(TableViewProps{Bounds: props.Bounds, Columns: props.Columns, Rows: []TableRow{{}}, ColumnWidths: props.ColumnWidths, ColumnEnabled: props.ColumnEnabled, ColumnOrder: props.ColumnOrder, RowHeight: rowH}, 0, col)
-		rect.Y = props.Bounds.Y
-		rect.Height = float32(headerH)
+		x := props.Bounds.X
+		for _, logical := range displayColumns {
+			if logical == col {
+				break
+			}
+			x += float32(tableColumnWidth(props, logical))
+		}
+		rect := TableView_TableViewHeaderBounds(props.Bounds, int32(x), tableColumnWidth(props, col), headerH)
 		fill := theme.button
 		selected := false
 		if selectedRow < 0 && selectedCol == col {
@@ -7881,22 +7744,12 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	bodyHeight := max32(0, int32(props.Bounds.Height)-headerH)
-	frozenRows := tableFrozenRows(props, rowH, bodyHeight)
-	first := frozenRows
-	if rowH > 0 {
-		first += scroll / rowH
-	}
-	visible := int32(0)
-	if rowH > 0 {
-		visible = int32(props.Bounds.Height-float32(headerH))/rowH + 2
-	}
+	frozenRows := layout.FrozenRows
+	scrollLayout := TableView_TableViewScrollFor(scroll, frozenRows, rowH, layout.ScrollBodyHeight)
+	first := scrollLayout.First
+	visible := scrollLayout.VisibleRows
 	drawRow := func(row int32) {
-		clip := Rectangle{X: props.Bounds.X, Y: props.Bounds.Y + float32(headerH), Width: props.Bounds.Width, Height: float32(frozenRows * rowH)}
-		if row >= frozenRows {
-			clip.Y += clip.Height
-			clip.Height = props.Bounds.Y + props.Bounds.Height - clip.Y
-		}
+		clip := TableView_TableViewViewport(props.Bounds, layout, row >= frozenRows)
 		start := len(r.ops)
 		defer func() {
 			for i := start; i < len(r.ops); i++ {
@@ -7956,18 +7809,20 @@ func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32)
 	if rowH <= 0 || len(props.Columns) == 0 {
 		return -1, -1
 	}
+	metrics := TableView_TableViewMetricsFor(1)
+	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	frozenRows := tableFrozenRows(props, rowH, int32(body.Height))
-	frozenHeight := float32(frozenRows * rowH)
+	frozenRows := layout.FrozenRows
+	frozenHeight := float32(frozenRows * layout.RowHeight)
 	localY := y - body.Y
 	row := int32(0)
 	if localY < frozenHeight {
-		row = int32(localY / float32(rowH))
+		row = int32(localY / float32(layout.RowHeight))
 	} else {
-		row = frozenRows + int32((localY-frozenHeight+float32(scroll))/float32(rowH))
+		row = frozenRows + int32((localY-frozenHeight+float32(scroll))/float32(layout.RowHeight))
 	}
 	if row < 0 || int(row) >= len(props.Rows) {
 		return -1, -1
@@ -8007,14 +7862,11 @@ func tableColumnWidth(props TableViewProps, col int32) int32 {
 	if visible == 0 {
 		return 0
 	}
-	return int32(props.Bounds.Width) / int32(visible)
+	return TableView_TableViewDefaultColumnWidth(int32(props.Bounds.Width), int32(visible))
 }
 
 func tableFrozenRows(props TableViewProps, rowH, bodyHeight int32) int32 {
-	if rowH <= 0 || bodyHeight <= 0 {
-		return 0
-	}
-	return clamp32(props.FreezeRows, 0, min32(int32(len(props.Rows)), bodyHeight/rowH))
+	return TableView_TableViewFrozenRows(props.FreezeRows, int32(len(props.Rows)), bodyHeight, rowH)
 }
 
 func tableSeparatorAtX(props TableViewProps, x, tolerance float32) (int32, float32) {

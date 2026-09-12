@@ -1,12 +1,12 @@
-#ifndef UI_DPI_H
-#define UI_DPI_H
+#ifndef KRYON_DPI_H
+#define KRYON_DPI_H
 
 #include "kryon.h"
 
-#define UI_DPI_BASE_WIDTH 320
-#define UI_DPI_BASE_HEIGHT 560
+#define DPI_BASE_WIDTH 320
+#define DPI_BASE_HEIGHT 560
 
-typedef struct UIDPIState {
+typedef struct DPIState {
     int physical_width;
     int physical_height;
     int view_width;
@@ -20,22 +20,22 @@ typedef struct UIDPIState {
     int base_width;
     int base_height;
     int needs_update;
-} UIDPIState;
+} DPIState;
 
-extern UIDPIState ui_dpi_state;
+extern DPIState dpi_state;
 
-void InitUIDPI(void);
-void FixUIDPIFramebufferColor(void);
-void InvalidateUIDPI(void);
-void SetUIDeviceDensity(float density);
-void UpdateUIDPI(int view_width, int view_height);
-int IsUIDPIDirty(void);
+void InitDPI(void);
+void FixDPIFramebufferColor(void);
+void InvalidateDPI(void);
+void SetDeviceDensity(float density);
+void UpdateDPI(int view_width, int view_height);
+int IsDPIDirty(void);
 int GetLayoutWidth(void);
 int GetLayoutHeight(void);
 float GetRenderScale(void);
-static inline float GetUIDPIScale(void) { return ui_dpi_state.ui_scale_clamped; }
-static inline int GetUIDPIViewWidth(void) { return ui_dpi_state.layout_width; }
-static inline int GetUIDPIViewHeight(void) { return ui_dpi_state.layout_height; }
-static inline float GetUIDPICameraZoom(void) { return ui_dpi_state.camera_zoom; }
+static inline float GetDPIScale(void) { return dpi_state.ui_scale_clamped; }
+static inline int GetDPIViewWidth(void) { return dpi_state.layout_width; }
+static inline int GetDPIViewHeight(void) { return dpi_state.layout_height; }
+static inline float GetDPICameraZoom(void) { return dpi_state.camera_zoom; }
 
 #endif

@@ -1,0 +1,245 @@
+#module "guide"
+#import "drawing_props"
+
+GuideMetrics :: struct {
+    margin: i32
+    anchor_padding: i32
+    anchor_stroke: i32
+    gap: i32
+    pad: i32
+    button_size: i32
+    close_size: i32
+    close_icon_size: i32
+    close_icon_padding: i32
+    nav_icon_size: i32
+    nav_icon_padding: i32
+    nav_gap: i32
+    text_gap: i32
+    default_line_gap: i32
+    controls_gap: i32
+    text_guard: i32
+    min_tip_height: i32
+    default_tip_width: i32
+    panel_segments: i32
+    page_font: i32
+}
+
+GuideScrim :: struct {
+    top: Rectangle
+    bottom: Rectangle
+    left: Rectangle
+    right: Rectangle
+}
+
+GuideLayout :: struct {
+    tip: Rectangle
+    text: Rectangle
+    close_button: Rectangle
+    back_button: Rectangle
+    next_button: Rectangle
+    controls_y: i32
+    text_clip_height: i32
+    text_clipped: bool
+    finish: bool
+}
+
+GuidePolicy :: struct {
+    step: i32
+    changed: bool
+    closed: bool
+    finished: bool
+}
+
+guide_clampi :: (value: i32, minimum: i32, maximum: i32) -> i32 {
+    if value < minimum { return minimum }
+    if value > maximum { return maximum }
+    return value
+}
+
+GuideMetricsFor :: (scale: float) -> GuideMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: GuideMetrics
+    metrics.margin = (i32)(12.0 * scale)
+    metrics.anchor_padding = (i32)(4.0 * scale)
+    metrics.anchor_stroke = (i32)(2.0 * scale)
+    metrics.gap = (i32)(20.0 * scale)
+    metrics.pad = (i32)(12.0 * scale)
+    metrics.button_size = (i32)(34.0 * scale)
+    metrics.close_size = (i32)(28.0 * scale)
+    metrics.close_icon_size = (i32)(16.0 * scale)
+    metrics.close_icon_padding = (i32)(6.0 * scale)
+    metrics.nav_icon_size = (i32)(19.0 * scale)
+    metrics.nav_icon_padding = (i32)(7.0 * scale)
+    metrics.nav_gap = (i32)(8.0 * scale)
+    metrics.text_gap = (i32)(8.0 * scale)
+    metrics.default_line_gap = (i32)(6.0 * scale)
+    metrics.controls_gap = (i32)(12.0 * scale)
+    metrics.text_guard = (i32)(8.0 * scale)
+    metrics.min_tip_height = (i32)(112.0 * scale)
+    metrics.default_tip_width = (i32)(300.0 * scale)
+    metrics.panel_segments = 8
+    metrics.page_font = 12
+    return metrics
+}
+
+GuideStepFor :: (step: i32, count: i32) -> i32 #export {
+    if count <= 0 { return 0 }
+    return guide_clampi(step, 0, count - 1)
+}
+
+GuidePolicyFor :: (step: i32, count: i32, previous: bool, next: bool,
+    close_requested: bool) -> GuidePolicy #export {
+    policy: GuidePolicy
+    step = GuideStepFor(step, count)
+    policy.step = step
+    if close_requested {
+        policy.closed = true
+        return policy
+    }
+    if previous && step > 0 {
+        policy.step = step - 1
+        policy.changed = true
+    } else if next {
+        if step >= count - 1 {
+            policy.finished = true
+        } else {
+            policy.step = step + 1
+            policy.changed = true
+        }
+    }
+    return policy
+}
+
+GuideTipWidth :: (view_width: i32, max_width: i32,
+    metrics: GuideMetrics) -> i32 #export {
+    width: i32 = view_width - metrics.margin * 2
+    if max_width > 0 && width > max_width {
+        width = max_width
+    } else if width > metrics.default_tip_width {
+        width = metrics.default_tip_width
+    }
+    if width < 1 { width = 1 }
+    return width
+}
+
+GuideMaxTipHeight :: (view_height: i32, reserved_top: i32,
+    reserved_bottom: i32, metrics: GuideMetrics) -> i32 #export {
+    max_h: i32 = view_height - reserved_top - reserved_bottom -
+                 metrics.margin * 2
+    if max_h < metrics.min_tip_height {
+        max_h = view_height - metrics.margin * 2
+    }
+    if max_h < 1 { max_h = 1 }
+    return max_h
+}
+
+GuideChromeHeight :: (metrics: GuideMetrics) -> i32 #export {
+    return metrics.pad + metrics.close_size + metrics.text_gap +
+           metrics.text_guard + metrics.controls_gap +
+           metrics.button_size + metrics.pad
+}
+
+GuideTipHeight :: (paragraph_height: i32, max_tip_height: i32,
+    metrics: GuideMetrics) -> i32 #export {
+    height: i32 = GuideChromeHeight(metrics) + paragraph_height
+    if height < metrics.min_tip_height { height = metrics.min_tip_height }
+    if height > max_tip_height { height = max_tip_height }
+    if height < 1 { height = 1 }
+    return height
+}
+
+GuideTipBounds :: (anchor: Rectangle, width: i32, height: i32,
+    view_width: i32, view_height: i32, reserved_top: i32,
+    reserved_bottom: i32, metrics: GuideMetrics) -> Rectangle #export {
+    bottom: i32 = view_height - reserved_bottom
+    x: i32 = (i32)(anchor.x + anchor.width / 2.0) - width / 2
+    y: i32
+    rect: Rectangle
+
+    if bottom < reserved_top + metrics.margin {
+        bottom = view_height - metrics.margin
+    }
+    if x < metrics.margin { x = metrics.margin }
+    if x + width > view_width - metrics.margin {
+        x = view_width - metrics.margin - width
+    }
+    if x < metrics.margin { x = metrics.margin }
+
+    if anchor.y + anchor.height + (float)metrics.gap + (float)height <
+       (float)bottom {
+        y = (i32)(anchor.y + anchor.height + (float)metrics.gap)
+    } else {
+        y = (i32)(anchor.y - (float)metrics.gap - (float)height)
+    }
+    if y < reserved_top + metrics.margin {
+        y = reserved_top + metrics.margin
+    }
+    if y + height > bottom - metrics.margin {
+        y = bottom - metrics.margin - height
+    }
+    if y < metrics.margin { y = metrics.margin }
+
+    rect.x = (float)x
+    rect.y = (float)y
+    rect.width = (float)width
+    rect.height = (float)height
+    return rect
+}
+
+GuideScrimFor :: (view_width: i32, view_height: i32,
+    anchor: Rectangle, metrics: GuideMetrics) -> GuideScrim #export {
+    scrim: GuideScrim
+    left: i32 = guide_clampi((i32)anchor.x - metrics.anchor_padding, 0, view_width)
+    top: i32 = guide_clampi((i32)anchor.y - metrics.anchor_padding, 0, view_height)
+    right: i32 = guide_clampi((i32)(anchor.x + anchor.width) +
+        metrics.anchor_padding, 0, view_width)
+    bottom: i32 = guide_clampi((i32)(anchor.y + anchor.height) +
+        metrics.anchor_padding, 0, view_height)
+
+    scrim.top = (Rectangle){0.0, 0.0, (float)view_width, (float)top}
+    scrim.bottom = (Rectangle){0.0, (float)bottom, (float)view_width,
+        (float)(view_height - bottom)}
+    scrim.left = (Rectangle){0.0, (float)top, (float)left,
+        (float)(bottom - top)}
+    scrim.right = (Rectangle){(float)right, (float)top,
+        (float)(view_width - right), (float)(bottom - top)}
+    return scrim
+}
+
+GuideLayoutFor :: (tip: Rectangle, paragraph_width: i32,
+    paragraph_height: i32, step: i32, count: i32,
+    metrics: GuideMetrics) -> GuideLayout #export {
+    layout: GuideLayout
+    y: i32 = (i32)tip.y + metrics.pad + metrics.close_size +
+             metrics.text_gap
+    layout.tip = tip
+    layout.controls_y = (i32)tip.y + (i32)tip.height - metrics.pad -
+                        metrics.button_size
+    layout.text_clip_height = layout.controls_y - metrics.controls_gap - y
+    layout.text_clipped = layout.text_clip_height <
+                          paragraph_height + metrics.text_guard
+    layout.finish = step >= count - 1
+    layout.text = (Rectangle){(float)((i32)tip.x + metrics.pad),
+        (float)y, (float)paragraph_width, (float)layout.text_clip_height}
+    layout.close_button = (Rectangle){
+        tip.x + tip.width - (float)metrics.pad - (float)metrics.close_size,
+        tip.y + (float)metrics.pad,
+        (float)metrics.close_size,
+        (float)metrics.close_size
+    }
+    layout.back_button = (Rectangle){
+        tip.x + tip.width - (float)metrics.pad -
+            (float)(metrics.button_size * 2) - (float)metrics.nav_gap,
+        (float)layout.controls_y,
+        (float)metrics.button_size,
+        (float)metrics.button_size
+    }
+    layout.next_button = (Rectangle){
+        tip.x + tip.width - (float)metrics.pad -
+            (float)metrics.button_size,
+        (float)layout.controls_y,
+        (float)metrics.button_size,
+        (float)metrics.button_size
+    }
+    return layout
+}

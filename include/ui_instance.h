@@ -1,5 +1,5 @@
-#ifndef UI_INSTANCE_H
-#define UI_INSTANCE_H
+#ifndef KRYON_INSTANCE_H
+#define KRYON_INSTANCE_H
 
 #include <stddef.h>
 #include <stdint.h>

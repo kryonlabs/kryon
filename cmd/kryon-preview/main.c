@@ -277,9 +277,9 @@ capture_source(PreviewSession *session, const char *source, const char *out,
     target = LoadRenderTexture(width, height);
     BeginTextureMode(target);
     ClearBackground(GetThemeBackground());
-    BeginUIFrame(width, height, 1.0f);
+    BeginInterfaceFrame(width, height, 1.0f);
     DrawAppScreen(session->host, (Rectangle){0, 0, (float)width, (float)height});
-    EndUIFrame();
+    EndInterfaceFrame();
     EndTextureMode();
     image = LoadImageFromTexture(target.texture);
     UnloadRenderTexture(target);
@@ -513,9 +513,9 @@ capture_cartridge(const char *krb_path, const char *out, int width, int height)
     target = LoadRenderTexture(width, height);
     BeginTextureMode(target);
     ClearBackground(GetThemeBackground());
-    BeginUIFrame(width, height, 1.0f);
+    BeginInterfaceFrame(width, height, 1.0f);
     KrbDraw(&img, 0, 0, width, height);
-    EndUIFrame();
+    EndInterfaceFrame();
     EndTextureMode();
     KrbFree(&img);
     image = LoadImageFromTexture(target.texture);
@@ -577,7 +577,7 @@ main(int argc, char **argv)
     SetConfigFlags(FLAG_WINDOW_HIDDEN);
     InitWindow(opt.width, opt.height, "Kryon Preview");
     SetTargetFPS(60);
-    InitUI(opt.width, opt.height, 1.0f);
+    InitInterface(opt.width, opt.height, 1.0f);
     SetCurrentTheme(THEME_MONO, 0);
     setenv("KRYON_INSPECT", "1", 1);
     if(strcmp(opt.command, "capture") == 0)
