@@ -456,7 +456,14 @@ int
 ui_text_button_render(int x, int y, const char *label, int *hover)
 {
     Vector2 mouse_world = ui_mouse_world();
-    int font = GetFontSize();
+    StyleFrame frame = ui_resolve_minimal_control_frame(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindButton());
+    int font = frame.value.font_size > 0.0f
+        ? (int)(frame.value.font_size + 0.5f)
+        : GetFontSize();
     const char *text = label != NULL ? label : "";
     int w = (int)TextWidth(text, font) + Scale(16);
     int h = TextLineHeight(font) + Scale(8);
@@ -483,7 +490,6 @@ ui_text_button_render(int x, int y, const char *label, int *hover)
     memset(&spec, 0, sizeof(spec));
     spec.props.bounds = bounds;
     spec.props.label = text;
-    spec.props.font = font;
     spec.style_resolved = 1;
     spec.style_kind = StyleKindButton();
     return ui_button_render(spec);
@@ -732,10 +738,12 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
         fill = style.background;
         stroke = style.border;
         text = style.foreground;
+        font = style.font_size > 0.0f
+            ? (int)(style.font_size + 0.5f)
+            : GetSmallFontSize();
     }
     DrawCircle(center_x, center_y, radius, fill);
     DrawCircleLines(center_x, center_y, radius, stroke);
-    font = GetSmallFontSize();
     ui_paint_text_box("i",
                       (Rectangle){(float)(center_x - radius),
                                   (float)(center_y - radius),
