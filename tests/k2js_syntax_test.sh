@@ -175,6 +175,7 @@ Scene :: (viewport: Rectangle) #ui {
             bounds = {10, 90, 180, 32}
             text = label
             dom = "input"
+            dom_ref = "search-box"
             dom_id = "search-field"
             dom_name = "q"
             dom_data_role = "search"

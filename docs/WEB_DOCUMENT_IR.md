@@ -429,7 +429,7 @@ events update `open`. These update the Web Document node state and reapply
 resolved KSS without requiring app logic to mirror browser pseudo-state.
 
 `webFormValue(target, query)` and `webFormValues(target)` expose current mounted
-native form values by Kry path, node name, key, DOM id, and DOM name. Values are
+native form values by Kry ref, path, node name, key, DOM id, and DOM name. Values are
 refreshed on render and after native `input`/`change` events.
 
 `webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing

@@ -305,6 +305,7 @@ assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");
 assert.equal(webDoc.nodes[3].domId, "search-field");
+assert.equal(webDoc.nodes[3].webRef, "search-box");
 assert.equal(webDoc.nodes[3].domName, "q");
 assert.deepEqual(webDoc.nodes[3].dataAttrs, { role: "search" });
 assert.equal(webDoc.nodes[3].inputType, "search");
@@ -1161,10 +1162,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, `[sourceColumnRef="${tapSourceColumnRef}"]`).element,
       firstButton);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
-      "Scene/root/search"
+      "search-box"
     ]);
     assert.deepEqual(runtime.webDOMQueryAll(target, "[data.role=search]").map((object) => object.ref), [
-      "Scene/root/search"
+      "search-box"
     ]);
     assert.equal(runtime.webDOMQuery(target, "[name=q]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[name]").element, runtime.findWebElement(target, "q"));
@@ -1201,7 +1202,7 @@ function fakeDocument() {
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
     assert.deepEqual(domRefs.slice(2), [
       "primary-action",
-      "Scene/root/search",
+      "search-box",
       "Scene/root/search_label"
     ]);
     const firstField = screen.children[2];
@@ -1214,6 +1215,7 @@ function fakeDocument() {
     assert.equal(firstField.tagName, "INPUT");
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.attributes.name, "q");
+    assert.equal(firstField.dataset.kryRef, "search-box");
     assert.equal(firstField.attributes["data-role"], "search");
     assert.equal(firstField.attributes.type, "search");
     assert.equal(firstField.attributes.draggable, "true");
@@ -1255,8 +1257,11 @@ function fakeDocument() {
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
+    assert.equal(runtime.webFormValue(target, "search-box"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
+    assert.equal(runtime.webFormValues(target)["search-box"], "label");
     assert.equal(runtime.webFormValue(target, "q"), "label");
+    assert.equal(runtime.findWebElement(target, "search-box"), firstField);
     assert.equal(runtime.findWebElement(target, "q"), firstField);
     assert.equal(runtime.webDOMSetValue(target, "q", "preset"), true);
     assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "preset");

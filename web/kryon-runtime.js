@@ -2598,6 +2598,7 @@ export function renderWebDocument(rt, target) {
   const live = new Set();
   root.__kryNodes = new Map();
   root.__kryElementsByPath = new Map();
+  root.__kryElementsByRef = new Map();
   root.__kryDomObjects = new Map();
   root.__kryElementsByName = new Map();
   root.__kryElementsByDomId = new Map();
@@ -2621,8 +2622,10 @@ export function renderWebDocument(rt, target) {
     if (docNode.path)
       root.__kryNodes.set(docNode.path, docNode);
     const ref = webNodeRef(docNode);
-    if (ref)
+    if (ref) {
       root.__kryDomObjects.set(ref, { ref, node: docNode, element: el });
+      root.__kryElementsByRef.set(ref, el);
+    }
     const sourceRef = webNodeSourceRef(docNode);
     if (sourceRef) {
       const sourceObject = { ref: sourceRef, node: docNode, element: el };
@@ -2759,6 +2762,8 @@ export function findWebElement(target, query) {
     return root.__kryChildren.get(text);
   if (root.__kryElementsByPath?.has(text))
     return root.__kryElementsByPath.get(text);
+  if (root.__kryElementsByRef?.has(text))
+    return root.__kryElementsByRef.get(text);
   if (root.__kryElementsByName?.has(text))
     return root.__kryElementsByName.get(text);
   if (root.__kryElementsByDomId?.has(text))
