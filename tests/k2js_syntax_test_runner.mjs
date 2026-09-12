@@ -950,8 +950,8 @@ function fakeDocument() {
         ["Dropdown", "select", "", "", "", ""],
         ["ListBox", "select", "", "", "", ""]
       ]);
-    assert.deepEqual(runtime.webAccessibilitySnapshot(nativeRt).nodes.slice(4, 8)
-      .map((node) => node.role), ["slider", "spinbutton", "combobox", "listbox"]);
+    assert.deepEqual(runtime.webAccessibilitySnapshot(nativeRt).nodes.slice(4, 9)
+      .map((node) => node.role), ["slider", "spinbutton", "combobox", "listbox", "table"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");

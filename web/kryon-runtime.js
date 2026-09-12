@@ -1566,6 +1566,8 @@ function implicitRole(node) {
     return "textbox";
   if (node.tag === "progress")
     return "progressbar";
+  if (node.tag === "table")
+    return "table";
   if (/^h[1-6]$/.test(node.tag))
     return "heading";
   if (node.tag === "main")
