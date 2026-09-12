@@ -838,6 +838,25 @@ Guide[role=Scrim] {
   material: default;
 }
 
+Guide[role=Bar] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Guide[role=Panel] {
   background: panel;
   foreground: text;
@@ -2370,6 +2389,25 @@ Guide[role=Scrim] {
   material: default;
 }
 
+Guide[role=Bar] {
+  background: card;
+  foreground: text;
+  border: border;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Guide[role=Panel] {
   background: card;
   foreground: text;
@@ -3865,6 +3903,25 @@ Guide[role=Scrim] {
   foreground: text;
   border: transparent;
   opacity: 0.32;
+  material: default;
+}
+
+Guide[role=Bar] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
   material: default;
 }
 
@@ -5456,6 +5513,26 @@ Guide[role=Scrim] {
   foreground: text;
   border: transparent;
   opacity: 0.34;
+  material: app;
+}
+
+Guide[role=Bar] {
+  background: panel;
+  background-end: panel-end;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: glow;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
   material: app;
 }
 
@@ -7056,6 +7133,26 @@ Guide[role=Scrim] {
   foreground: text;
   border: transparent;
   opacity: 0.36;
+  material: app;
+}
+
+Guide[role=Bar] {
+  background: card;
+  background-end: card-end;
+  foreground: text;
+  border: card-border;
+  radius: 0;
+  border-width: 0;
+  opacity: 1;
+  material: premium;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: card-border;
+  border-width: border;
+  opacity: 1;
   material: app;
 }
 

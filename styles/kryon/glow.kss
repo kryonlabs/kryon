@@ -910,6 +910,26 @@ Guide[role=Scrim] {
   material: app;
 }
 
+Guide[role=Bar] {
+  background: panel;
+  background-end: panel-end;
+  foreground: text;
+  border: border-soft;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: glow;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border-soft;
+  border-width: border;
+  opacity: 1;
+  material: app;
+}
+
 Guide[role=Panel] {
   background: panel;
   background-end: panel-end;

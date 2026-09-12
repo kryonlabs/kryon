@@ -847,6 +847,25 @@ Guide[role=Scrim] {
   material: default;
 }
 
+Guide[role=Bar] {
+  background: card;
+  foreground: text;
+  border: border;
+  radius: 0;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Divider] {
+  background: transparent;
+  foreground: text;
+  border: border;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Guide[role=Panel] {
   background: card;
   foreground: text;

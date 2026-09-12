@@ -230,6 +230,8 @@ main(void)
         {"Toolbar[role=Bar]", StyleKindToolbar(), 1},
         {"Toolbar[role=Divider]", StyleKindToolbar(), 18},
         {"Toolbar[role=Action]", StyleKindToolbar(), 17},
+        {"Guide[role=Bar]", StyleKindGuide(), 1},
+        {"Guide[role=Divider]", StyleKindGuide(), 18},
         {"Modal[role=Panel]", StyleKindModal(), 2},
         {"Modal[role=Title]", StyleKindModal(), 16},
         {"Modal[role=Action]", StyleKindModal(), 17},

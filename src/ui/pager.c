@@ -21,6 +21,14 @@ ui_pager_button(Rectangle bounds, const char *label, ButtonEmphasis emphasis,
     });
 }
 
+static Style
+ui_pager_guide_style(int role)
+{
+    return ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindGuide(), role).value);
+}
+
 GuidePagerResult
 GuidePager(GuidePagerProps pager)
 {
@@ -67,17 +75,14 @@ GuidePager(GuidePagerProps pager)
         goto finish_policy;
 
     if(IsWindowReady()) {
-        Style surface = ui_surface_style();
-        Style separator = ui_resolve_button_style_kind((ButtonProps){0},
-                                                       ButtonStateNormal,
-                                                       StyleKindSeparator());
+        Style bar = ui_pager_guide_style(1);
+        Style divider = ui_pager_guide_style(18);
         ui_draw_material(pager.footer_bounds, (Rectangle){0},
-                         surface.background, surface.border, surface.border,
-                         surface.radius, surface.border_width, 0.0f, 0.0f,
-                         0, surface.focus, 0.0f, surface.opacity,
-                         ui_style_fill(surface), surface.material);
+                         bar.background, bar.border, bar.border, bar.radius,
+                         bar.border_width, 0.0f, 0.0f, 0, bar.focus, 0.0f,
+                         bar.opacity, ui_style_fill(bar), bar.material);
         DrawLine(footer_x, footer_y, footer_x + footer_w, footer_y,
-                 separator.background);
+                 divider.border);
     }
 
     if(ui_pager_button(layout.left_button,

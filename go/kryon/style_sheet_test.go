@@ -557,6 +557,8 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Toolbar[role=Bar]", StyleSheet_StyleKindToolbar(), 1},
 		{"Toolbar[role=Divider]", StyleSheet_StyleKindToolbar(), 18},
 		{"Toolbar[role=Action]", StyleSheet_StyleKindToolbar(), 17},
+		{"Guide[role=Bar]", StyleSheet_StyleKindGuide(), 1},
+		{"Guide[role=Divider]", StyleSheet_StyleKindGuide(), 18},
 		{"Modal[role=Panel]", StyleSheet_StyleKindModal(), 2},
 		{"Modal[role=Title]", StyleSheet_StyleKindModal(), 16},
 		{"Modal[role=Action]", StyleSheet_StyleKindModal(), 17},
