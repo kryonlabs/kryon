@@ -1271,6 +1271,7 @@ function webNodeFromWidget(item, index) {
 
 export function webNodeStyleFacts(node) {
   return {
+    index: node?.index || 0,
     kind: node?.kind || "",
     tag: node?.tag || "",
     key: node?.key || "",
@@ -2264,6 +2265,7 @@ function applyWebNode(el, docNode, rt) {
   Object.assign(docNode.state, el.__kryExtraState || {});
   el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
   el.dataset.kryKind = docNode.kind;
+  el.dataset.kryIndex = String(docNode.index);
   el.dataset.kryKey = docNode.key;
   el.dataset.kryRef = webNodeRef(docNode);
   if (docNode.path)

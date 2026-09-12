@@ -211,6 +211,7 @@ export interface WebDocumentNode {
 }
 
 export interface WebNodeStyleFacts {
+  index: number;
   kind: string;
   tag: string;
   key: string;

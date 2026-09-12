@@ -160,6 +160,7 @@ assert.deepEqual(webDoc.nodes[2].extraAttrs, {
 });
 assert.equal(webDoc.nodes[2].onClick, "call_host");
 assert.deepEqual(webDoc.nodes[2].styleFacts, {
+  index: 2,
   kind: "Button",
   tag: "button",
   key: "tap",
@@ -953,6 +954,7 @@ function fakeDocument() {
     assert.equal(firstButton.tagName, "BUTTON");
     assert.equal(firstButton.id, "tap-button");
     assert.equal(firstButton.attributes.value, "tap-value");
+    assert.equal(firstButton.dataset.kryIndex, "2");
     assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
@@ -1055,6 +1057,7 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[domValue=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[role=button]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[data-tracking-id=\"tap-1\"]").element, firstButton);
