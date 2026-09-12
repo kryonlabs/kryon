@@ -553,10 +553,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(submitTarget, "[autocomplete=off]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[novalidate]").element, submitForm);
     assert.equal(submitForm.dataset.kryOnReset, "clear_contact");
-    submitForm.submit();
+    assert.equal(runtime.webDOMSubmit(submitTarget, "contact"), true);
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
-    submitForm.reset();
+    assert.equal(runtime.webDOMReset(submitTarget, "Page/contact"), true);
     assert.equal(resetValues.email, "hello@example.test");
     assert.equal(resetValues["Page/contact/email"], "hello@example.test");
 
@@ -765,10 +765,10 @@ function fakeDocument() {
     firstButton.mouseleave();
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(firstButton.__kryDocNode.state.hover, false);
-    firstButton.focus();
+    assert.equal(runtime.webDOMFocus(target, "tap-button"), true);
     assert.equal(firstButton.style.borderColor, "#506070");
     assert.equal(firstButton.__kryDocNode.state.focus, true);
-    firstButton.blur();
+    assert.equal(runtime.webDOMBlur(target, "Scene/root/tap"), true);
     assert.equal(firstButton.style.borderColor, "");
     assert.equal(runtime.findWebNode(domRt, "Scene/root/tap").domId, "tap-button");
     assert.equal(runtime.findWebElement(target, "Scene/root/tap"), firstButton);
@@ -949,7 +949,7 @@ function fakeDocument() {
     runtime.setWebStyleSheets(domRt, webStyleSheet);
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "#203040");
-    firstButton.click();
+    assert.equal(runtime.webDOMClick(target, "tap-button"), true);
     assert.equal(domRt.input.events.at(-1).type, "tap");
     const previousEventCount = domRt.input.events.length;
     const nextRt = runtime.createRuntime({ app: generated.app });

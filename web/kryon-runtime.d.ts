@@ -385,6 +385,11 @@ export function webDOMGetText(target: Element | string | null, query: string): s
 export function webDOMSetText(target: Element | string | null, query: string, text: unknown): boolean;
 export function webDOMGetValue(target: Element | string | null, query: string): unknown;
 export function webDOMSetValue(target: Element | string | null, query: string, value: unknown): boolean;
+export function webDOMClick(target: Element | string | null, query: string): boolean;
+export function webDOMFocus(target: Element | string | null, query: string): boolean;
+export function webDOMBlur(target: Element | string | null, query: string): boolean;
+export function webDOMSubmit(target: Element | string | null, query: string): boolean;
+export function webDOMReset(target: Element | string | null, query: string): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;

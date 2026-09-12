@@ -2788,6 +2788,63 @@ export function webDOMSetValue(target, query, value) {
   return true;
 }
 
+export function webDOMClick(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.click === "function")
+    el.click();
+  else if (typeof el.onclick === "function")
+    el.onclick();
+  return true;
+}
+
+export function webDOMFocus(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.focus === "function")
+    el.focus();
+  else if (typeof el.onfocus === "function")
+    el.onfocus();
+  return true;
+}
+
+export function webDOMBlur(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.blur === "function")
+    el.blur();
+  else if (typeof el.onblur === "function")
+    el.onblur();
+  return true;
+}
+
+export function webDOMSubmit(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.requestSubmit === "function")
+    el.requestSubmit();
+  else if (typeof el.submit === "function")
+    el.submit();
+  else if (typeof el.onsubmit === "function")
+    el.onsubmit({ preventDefault() {} });
+  return true;
+}
+
+export function webDOMReset(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  if (typeof el.reset === "function")
+    el.reset();
+  else if (typeof el.onreset === "function")
+    el.onreset({ preventDefault() {} });
+  return true;
+}
+
 export function webFormValue(target, query) {
   const root = mountedRoot(target);
   if (!root)
