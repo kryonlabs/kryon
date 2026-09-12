@@ -189,7 +189,13 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "\n    Background(GetThemeBackground())\n");
     } else if(strcmp(type->name, "Text") == 0) {
         snprintf(dst, (size_t)cap,
-                 "\n    Text(\"Text\", Scale(%d), Scale(%d), Text16, GetThemeText())\n",
+                 "\n    Text((TextProps){\n"
+                 "        .bounds = {Scale(%d), Scale(%d), 0, 0},\n"
+                 "        .text = \"Text\",\n"
+                 "        .font = Text16,\n"
+                 "        .color = GetThemeText(),\n"
+                 "        .wrap = TextWrapNone,\n"
+                 "    })\n",
                  x, y);
     } else if(strcmp(type->name, "Rect") == 0) {
         snprintf(dst, (size_t)cap,
@@ -261,8 +267,8 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
     } else if(strcmp(type->name, "Checkbox") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    check_%d: int = 0\n"
-                 "    Checkbox(%d, Scale(%d), Scale(%d), \"Checkbox\", &check_%d)\n",
-                 id, 8200 + (id % 1000), x, y, id);
+                 "    Checkbox((CheckboxProps){.bounds = {Scale(%d), Scale(%d), Scale(140), Scale(34)}, .id = %d, .label = \"Checkbox\", .value = &check_%d})\n",
+                 id, x, y, 8200 + (id % 1000), id);
     } else if(strcmp(type->name, "Dropdown") == 0) {
         snprintf(dst, (size_t)cap,
                  "\n    options_%d: [3] const char* = {\"One\", \"Two\", \"Three\"}\n"

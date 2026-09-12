@@ -378,6 +378,30 @@ if [ -n "$registry_doc_misses" ]; then
     exit 1
 fi
 
+registry_snippet_misses="$(
+    python3 - <<'PY'
+from pathlib import Path
+
+registry = Path("src/ui/ui_node_registry.c").read_text()
+required = {
+    "Text": "Text((TextProps){",
+    "Checkbox": "Checkbox((CheckboxProps){",
+}
+for name, needle in required.items():
+    if needle not in registry:
+        print(f"{name}: missing {needle}")
+for stale in ('Text("', 'Checkbox(%d,'):
+    if stale in registry:
+        print(f"stale snippet form: {stale}")
+PY
+)"
+
+if [ -n "$registry_snippet_misses" ]; then
+    echo "Editor registry snippets must use canonical props-based widget calls:"
+    echo "$registry_snippet_misses"
+    exit 1
+fi
+
 doc_status_misses="$(
     python3 - <<'PY'
 from pathlib import Path
