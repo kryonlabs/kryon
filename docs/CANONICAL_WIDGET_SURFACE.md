@@ -277,8 +277,9 @@ has a single place to land.
 | `Canvas` | `.kry canonical` | Transform, hit-test, and result policy are in `.kry`; host keeps clip/camera renderer scope. |
 | `BeginCanvas` | Native support | Lowered host entry for `.kry` `Canvas` blocks; not a separate public widget name. |
 | `EndCanvas` | Native support | Lowered host exit for `.kry` `Canvas` blocks; not a separate public widget name. |
-| `DragDropSource` | Native support | Decision policy is in `.kry`; host keeps payload storage, type comparison, and pointer ownership. |
-| `DragDropTarget` | Native support | Decision/copy-size policy is in `.kry`; host keeps payload storage, type comparison, output copy, and pointer ownership. |
+| `DragDrop` | `.kry canonical` | Typed drag/drop interaction concept. Source and target roles belong in props or composition; decision policy is in `.kry`, host keeps payload storage, type comparison, and pointer ownership. |
+| `DragDropSource` | Native support | Legacy/native source-role entry point while callers migrate to `DragDrop` props/composition. |
+| `DragDropTarget` | Native support | Legacy/native target-role entry point while callers migrate to `DragDrop` props/composition. |
 
 ## Navigation
 

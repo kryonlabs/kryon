@@ -33,7 +33,7 @@ implemented popup scope and its remaining lifecycle/backend gaps.
 | Tooltips and popups | `Popup`, modal/dialog widgets with `PopupTooltip`, `PopupModal`, and `PopupContext` | arbitrary popup, hover-tooltip, modal, and right-click context contents are native through one scope |
 | Tables | `TableView`, `TableCell` | row/cell model includes resizing, frozen rows, sorting, colors, visibility, ordering, slanted headers, focus/arrow/Tab navigation, activation, clipboard copy/paste targets, and scoped native child widgets in custom-cell mode |
 | Tabs | `TabBar`, add-tab `Button` | canonical tab sizing/scrolling, focus, disabled skipping, keyboard selection/close, popup ownership, close/middle/double-click signals, selected-tab reveal, and reorder reporting are covered; selected tab contents are submitted with ordinary conditionals, and omitted scroll state is owned independently by stable tab-bar ID |
-| Drag and drop | `DragDropSource`, `DragDropTarget` | covered with typed copied payloads |
+| Drag and drop | `DragDrop` (typed source and target roles) | covered with typed copied payloads; legacy native source/target entry points remain during migration |
 | Disabled content | `Disabled` blocks and per-widget `Disabled` fields | covered, including nested scopes |
 
 Dear ImGui layout calls such as `SameLine`, `Spacing`, `Indent`, and groups are

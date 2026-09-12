@@ -163,6 +163,19 @@ if [ -n "$legacy_button_variant_doc_matches" ]; then
     exit 1
 fi
 
+legacy_drag_drop_doc_matches="$(
+    rg -n 'Typed drag-and-drop source / target|`DragDropSource`, `DragDropTarget`|DragDropSource / DragDropTarget' \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$legacy_drag_drop_doc_matches" ]; then
+    echo "User-facing widget docs must describe DragDrop as one concept with source/target roles, not separate widget concepts:"
+    echo "$legacy_drag_drop_doc_matches"
+    exit 1
+fi
+
 rect_matches="$(
     rg -n '\bRectangleShape\b' \
         include src cmd docs examples tests \

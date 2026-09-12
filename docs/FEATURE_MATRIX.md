@@ -167,7 +167,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Popup scope (ordinary, hover-tooltip, modal arbitrary native content) | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | TabBar | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | Button add-tab actions / closable tab items | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
-| Typed drag-and-drop source / target | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| DragDrop (typed source and target roles) | ✅ | ✅ | ✅ | ✅ | ✅ (legacy source/target entry points during migration) | ✗ |
 | NavigationBar (+ config modal) | ✅ | ✅ | ✅ | ✅ | ✅ `NavigationBar` | ◐ `NavButton` lowers to a BUTTON |
 | Toolbar | ✅ | ✅ | ✅ | ◐ `Toolbar` only | ✅ `Toolbar` | ✗ |
 | TitleBar family | ✅ | ✅ | ✅ | ◐ `TitleBar` only | ✅ `TitleBar` | ✗ |
