@@ -1846,6 +1846,21 @@ GetUIControlTextY(const char *text, int box_y, int box_h, int font)
     return TextBaselineY("Hg", box_y, box_h, font);
 }
 
+static int
+ui_text_input_default_font(int style_kind)
+{
+    Style resolved = ui_unpack_style(ui_style_apply_effects_data(
+        ResolveActiveStyle(
+            ui_pack_style_states((ControlStyle){.normal = {
+                .fields = StyleOpacity | StyleMaterial,
+                .opacity = 1.0f,
+                .material = MaterialFlat
+            }}).normal,
+            StyleDefaultFacts(style_kind), ButtonStateNormal)));
+    return resolved.font_size > 0.0f
+        ? (int)(resolved.font_size + 0.5f) : GetFontSize();
+}
+
 static TextInputStyle
 ui_resolve_text_input_style(TextInputStyle style, int style_kind)
 {
@@ -2527,7 +2542,8 @@ ui_text_move_vertical(const char *text, int cursor, int font, int dir)
 int
 ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
 {
-    int font = area.font > 0 ? area.font : GetFontSize();
+    int font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_y = area.style.padding_y > 0
         ? area.style.padding_y : Scale(8);
@@ -3197,7 +3213,8 @@ ui_draw_text_area_text(const char *text, int cursor, int focused,
 int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
-    int font = area.font > 0 ? area.font : GetFontSize();
+    int font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_x = area.style.padding_x > 0
         ? area.style.padding_x : Scale(10);
@@ -3232,7 +3249,8 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
 
     if(area.text == NULL || area.scroll_y == NULL)
         return;
-    font = area.font > 0 ? area.font : GetFontSize();
+    font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     padding_x = area.style.padding_x > 0
         ? area.style.padding_x : Scale(10);
@@ -3278,7 +3296,8 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     if(area.text == NULL)
         return;
     area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
-    font = area.font > 0 ? area.font : GetFontSize();
+    font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0
@@ -3556,7 +3575,8 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     if(gutter_width <= 0)
         return area.bounds;
     area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
-    font = area.font > 0 ? area.font : GetFontSize();
+    font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     if(line_h <= 0)
@@ -3661,7 +3681,8 @@ ui_text_area_render(TextAreaProps area)
                            WIDGET_RESIZABLE);
     area.bounds = widget.bounds;
 
-    font = area.font > 0 ? area.font : GetFontSize();
+    font = area.font > 0 ? area.font
+        : ui_text_input_default_font(StyleKindTextArea());
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : Scale(10);
@@ -4322,7 +4343,8 @@ ui_text_field_render(TextFieldProps field)
     layout_style = ui_resolve_text_input_style(field.style, StyleKindTextField());
     metrics = TextInputMetricsFor(field.font, layout_style.padding_x,
                                   layout_style.padding_y, 0,
-                                  GetFontSize(), Scale(10), Scale(8), 0);
+                                  ui_text_input_default_font(StyleKindTextField()),
+                                  Scale(10), Scale(8), 0);
     font = metrics.font;
     padding_x = metrics.padding_x;
     focused = *field.focused != 0;

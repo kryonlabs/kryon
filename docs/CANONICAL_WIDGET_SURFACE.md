@@ -205,8 +205,8 @@ host roles rather than retained nodes.
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |
-| `TextField` | `.kry canonical` | Metrics, scroll, navigation, and edit intent policy in `.kry`; buffer mutation and IME host support remain. |
-| `TextArea` | `.kry canonical` | Metrics, page-navigation, navigation, and edit intent policy in `.kry`; buffer mutation and IME host support remain. |
+| `TextField` | `.kry canonical` | Metrics, KSS typography defaults, scroll, navigation, and edit intent policy in `.kry`; buffer mutation and IME host support remain. |
+| `TextArea` | `.kry canonical` | Metrics, KSS typography defaults, page-navigation, navigation, and edit intent policy in `.kry`; buffer mutation and IME host support remain. |
 | `Dropdown` | `.kry canonical` | Selection control only. |
 | `SegmentedControl` | `.kry canonical` | Segmented choice control; layout/wrapping policy is in `.kry`, generated Go uses `kr.SegmentedControl`. |
 | `Slider` | `.kry canonical` | Type/orientation/angle variants are props; label/value typography is KSS-owned. |

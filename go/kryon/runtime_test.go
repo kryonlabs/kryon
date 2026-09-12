@@ -3690,9 +3690,9 @@ tokens {
 }
 App { background: #101820; }
 Surface { background: #101820; material: flat; }
-TextField { background: field; foreground: field-ink; border: field-rule; focus: focus-ring; radius: field-radius; border-width: border; material: flat; }
+TextField { background: field; foreground: field-ink; border: field-rule; focus: focus-ring; radius: field-radius; border-width: border; font-size: 19; material: flat; }
 TextField:focus { background: field-focus; foreground: field-ink; border: focus-ring; focus: focus-ring; material: flat; }
-TextArea { background: area; foreground: area-ink; border: area-rule; focus: focus-ring; radius: area-radius; border-width: border; material: flat; }
+TextArea { background: area; foreground: area-ink; border: area-rule; focus: focus-ring; radius: area-radius; border-width: border; font-size: 21; material: flat; }
 `, "Test Text Input", "") || !SetActiveStylePack("test.text_input") {
 		t.Fatal("test text input style did not activate")
 	}
@@ -3715,7 +3715,6 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 		CursorPosition: &cursor,
 		Focused:        &focused,
 		FocusID:        77,
-		Font:           Text16,
 	})
 	TextArea(TextAreaProps{
 		Bounds:         Rectangle{X: 10, Y: 54, Width: 160, Height: 64},
@@ -3723,7 +3722,6 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 		CursorPosition: &cursor,
 		Focused:        &areaFocused,
 		FocusID:        78,
-		Font:           Text16,
 	})
 	EndFrame()
 
@@ -3760,6 +3758,13 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 		}
 		if got := op.BorderWidth; got != want.BorderWidth {
 			t.Fatalf("%s border width = %#v, want %#v", op.Kind, got, want.BorderWidth)
+		}
+		wantFont := int32(19)
+		if op.Kind == FrameOpTextArea {
+			wantFont = 21
+		}
+		if got := op.FontSize; got != wantFont {
+			t.Fatalf("%s font size = %d, want %d", op.Kind, got, wantFont)
 		}
 		if got, want := op.SelectionColor, want.Focus; got != want {
 			t.Fatalf("selection color = %#v, want %#v", got, want)

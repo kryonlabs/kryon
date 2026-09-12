@@ -7052,7 +7052,9 @@ func DefaultThemeForThemeStyle(style ThemeStyle) ThemeId {
 
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
-	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, 0, Text16, 10, 8, 0)
+	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
+	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), Text16)
+	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, 0, defaultFont, 10, 8, 0)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
 		secure:        props.Secure,
@@ -7201,7 +7203,9 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 }
 
 func (r *runtime) recordTextArea(props TextAreaProps) {
-	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, Text16, 10, 8, 6)
+	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
+	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), Text16)
+	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, defaultFont, 10, 8, 6)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY
@@ -7237,6 +7241,11 @@ func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool) Style
 	}
 	return resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
 		ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state, styleKind)
+}
+
+func (r *runtime) textInputDefaultFont(kind FrameOpKind, focused, disabled bool, fallback int32) int32 {
+	style := r.textInputStyle(kind, focused, disabled)
+	return styleFont(style, fallback)
 }
 
 func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {
