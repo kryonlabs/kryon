@@ -34,6 +34,22 @@ NATIVE_COMPAT_EXPORTS = {
     "PopupMenu",
 }
 
+NATIVE_SCOPE_EXPORT_ALLOWLIST = {
+    "BeginGridCursor",
+    "BeginTree",
+    "End",
+    "EndTree",
+}
+
+ROLE_COMPAT_EXPORTS = {
+    "ContextMenu",
+    "DragDropSource",
+    "DragDropTarget",
+    "InvisibleButton",
+    "MenuBar",
+    "PopupMenu",
+}
+
 PUBLIC_WIDGET_NAMES = {
     "BeginButton",
     "BeginCard",
@@ -88,6 +104,31 @@ def block_widget_names() -> list[str]:
     if not names:
         raise AssertionError("empty ui_block_prop_type block widget list")
     return names
+
+
+def ui_tree_function_names() -> set[str]:
+    text = UI_TREE.read_text(encoding="utf-8")
+    names = set(
+        re.findall(
+            r"^[A-Za-z_][A-Za-z0-9_ *]*\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(",
+            text,
+            flags=re.M,
+        )
+    )
+    if not names:
+        raise AssertionError("empty ui_tree.h function list")
+    return names
+
+
+def ui_tree_compat_exports() -> set[str]:
+    functions = ui_tree_function_names()
+    scope_exports = {
+        name
+        for name in functions
+        if (name.startswith("Begin") or name.startswith("End"))
+        and name not in NATIVE_SCOPE_EXPORT_ALLOWLIST
+    }
+    return scope_exports | (functions & ROLE_COMPAT_EXPORTS)
 
 
 def audit_rows() -> dict[str, list[str]]:
@@ -206,7 +247,8 @@ def main() -> int:
     compat_doc_rows = compat_rows()
     feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
-    ui_tree = UI_TREE.read_text(encoding="utf-8")
+    ui_tree_functions = ui_tree_function_names()
+    compat_expected = ui_tree_compat_exports()
 
     for name in expected:
         if name not in rows:
@@ -226,10 +268,15 @@ def main() -> int:
             errors.append(f"missing block statement surface row: {name}")
     for name in sorted(set(block_doc_rows) - set(block_expected)):
         errors.append(f"block statement row is not in ui_block_prop_type: {name}")
+    if compat_expected != NATIVE_COMPAT_EXPORTS:
+        for name in sorted(compat_expected - NATIVE_COMPAT_EXPORTS):
+            errors.append(f"unreviewed native compatibility export in ui_tree.h: {name}")
+        for name in sorted(NATIVE_COMPAT_EXPORTS - compat_expected):
+            errors.append(f"stale native compatibility export no longer in ui_tree.h: {name}")
     for name in sorted(NATIVE_COMPAT_EXPORTS):
         if name not in compat_doc_rows:
             errors.append(f"missing native compatibility export row: {name}")
-        if not re.search(rf"\b{name}\s*\(", ui_tree):
+        if name not in ui_tree_functions:
             errors.append(f"native compatibility export no longer exists in ui_tree.h: {name}")
     for name in sorted(set(compat_doc_rows) - NATIVE_COMPAT_EXPORTS):
         errors.append(f"native compatibility export row is not tracked by the test: {name}")
