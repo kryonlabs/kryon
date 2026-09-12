@@ -6311,9 +6311,9 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	op.ID = p.ID
 	op.Disabled = disabled
 	r.record(op)
-	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-", Font: Text16,
+	minus := r.buttonAt(ButtonProps{Bounds: l, Label: "-",
 		ID: p.ID*10 + 1, Disabled: disabled})
-	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+", Font: Text16,
+	plus := r.buttonAt(ButtonProps{Bounds: rr, Label: "+",
 		ID: p.ID*10 + 2, Disabled: disabled})
 	step := Spinbox_SpinboxEffectiveStep(p.Step)
 	changed := false

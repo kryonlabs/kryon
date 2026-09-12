@@ -2985,7 +2985,7 @@ RenderSpinbox(SpinboxProps spinbox)
                            Fade(value_style.foreground, value_style.opacity));
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = left, .label = "-",
-        .font = GetFontSize(), .id = spinbox.id * 10 + 1, .disabled = disabled},
+        .id = spinbox.id * 10 + 1, .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {
@@ -2997,7 +2997,7 @@ RenderSpinbox(SpinboxProps spinbox)
         changed |= step.changed;
     }
     if(ui_button_render((ButtonSpec){.props = {.bounds = right, .label = "+",
-        .font = GetFontSize(), .id = spinbox.id * 10 + 2, .disabled = disabled},
+        .id = spinbox.id * 10 + 2, .disabled = disabled},
         .style_resolved = 1, .surface_bounds = spinbox.bounds,
         .style_kind = StyleKindButton()}) &&
        spinbox.value != NULL) {

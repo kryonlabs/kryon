@@ -218,7 +218,7 @@ host roles rather than retained nodes.
 | `Plot` | `.kry canonical` | Plot geometry/text policy lives in `.kry`. |
 | `Drag` | `.kry canonical` | Numeric drag value control; value type/count are props. |
 | `Input` | `.kry canonical` | Numeric input control; value type/count are props. |
-| `Spinbox` | `.kry canonical` | Numeric stepper. |
+| `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
 | `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
 | `Screen` | `.kry canonical` | Top-level screen container. |
