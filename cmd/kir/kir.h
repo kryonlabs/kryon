@@ -149,6 +149,8 @@ typedef struct KirStmt {
     char dom_on_change[KIR_NAME_MAX];   /* logic function bound to change(value) */
     char dom_on_key[KIR_NAME_MAX];      /* logic function bound to keydown(key) */
     char dom_on_submit[KIR_NAME_MAX];   /* logic function bound to submit */
+    char dom_on_focus[KIR_NAME_MAX];    /* logic function bound to focus */
+    char dom_on_blur[KIR_NAME_MAX];     /* logic function bound to blur */
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int is_instance; /* typed record binding retained by its explicit key */

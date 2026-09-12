@@ -105,11 +105,15 @@ export interface WebDocumentNode {
   onChange: string;
   onKey: string;
   onSubmit: string;
+  onFocus: string;
+  onBlur: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
   keyAction: ((key: string) => unknown) | null;
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
+  focusAction: (() => unknown) | null;
+  blurAction: (() => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

@@ -188,6 +188,8 @@ assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
 assert.equal(webDoc.nodes[3].onKey, "note_key");
 assert.equal(webDoc.nodes[3].onSubmit, "submit_search");
+assert.equal(webDoc.nodes[3].onFocus, "focus_search");
+assert.equal(webDoc.nodes[3].onBlur, "blur_search");
 assert.equal(webDoc.nodes[3].value, "label");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].role, "button");
 assert.equal(runtime.webAccessibilitySnapshot(webDoc).nodes[2].description, "Runs the host action");
@@ -461,6 +463,8 @@ function fakeDocument() {
     assert.equal(firstField.dataset.kryOnChange, "note_change");
     assert.equal(firstField.dataset.kryOnKey, "note_key");
     assert.equal(firstField.dataset.kryOnSubmit, "submit_search");
+    assert.equal(firstField.dataset.kryOnFocus, "focus_search");
+    assert.equal(firstField.dataset.kryOnBlur, "blur_search");
     assert.equal(firstField.style.borderWidth, "2px");
     assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
@@ -480,6 +484,10 @@ function fakeDocument() {
     assert.equal(domState.count, 1111);
     firstField.submit();
     assert.equal(domState.count, 11111);
+    firstField.focus();
+    assert.equal(domState.count, 111111);
+    firstField.blur();
+    assert.equal(domState.count, 1111111);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);

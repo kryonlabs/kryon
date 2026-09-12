@@ -1133,11 +1133,15 @@ function webNodeFromWidget(item, index) {
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
     onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
+    onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
+    onBlur: meta.onBlur === undefined || meta.onBlur === null ? "" : String(meta.onBlur),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
     keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
+    focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
+    blurAction: typeof meta.blurAction === "function" ? meta.blurAction : null,
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
@@ -1615,8 +1619,18 @@ function bindNodeEvents(el) {
   el.addEventListener("mouseleave", () => interactiveState({ hover: false, pressed: false }));
   el.addEventListener("mousedown", () => interactiveState({ pressed: true }));
   el.addEventListener("mouseup", () => interactiveState({ pressed: false }));
-  el.addEventListener("focus", () => interactiveState({ focus: true }));
-  el.addEventListener("blur", () => interactiveState({ focus: false, pressed: false }));
+  el.addEventListener("focus", () => {
+    interactiveState({ focus: true });
+    const docNode = el.__kryDocNode;
+    if (docNode?.focusAction)
+      docNode.focusAction();
+  });
+  el.addEventListener("blur", () => {
+    interactiveState({ focus: false, pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.blurAction)
+      docNode.blurAction();
+  });
   el.addEventListener("click", () => {
     const docNode = el.__kryDocNode;
     const rt = el.__kryRuntime;
@@ -1773,6 +1787,14 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnSubmit = docNode.onSubmit;
   else
     delete el.dataset.kryOnSubmit;
+  if (docNode.onFocus)
+    el.dataset.kryOnFocus = docNode.onFocus;
+  else
+    delete el.dataset.kryOnFocus;
+  if (docNode.onBlur)
+    el.dataset.kryOnBlur = docNode.onBlur;
+  else
+    delete el.dataset.kryOnBlur;
   if (docNode.hasBounds) {
     el.style.position = "absolute";
     el.style.left = docNode.bounds.x + "px";

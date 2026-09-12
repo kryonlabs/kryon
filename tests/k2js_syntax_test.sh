@@ -78,6 +78,14 @@ submit_search :: () -> int {
     count += 10000
     return count
 }
+focus_search :: () -> int {
+    count += 100000
+    return count
+}
+blur_search :: () -> int {
+    count += 1000000
+    return count
+}
 
 DirectAction :: (x: float) -> bool {
     return Button((ButtonProps){.bounds={x, 100, 80, 32}, .label="Action"})
@@ -140,6 +148,8 @@ Scene :: (viewport: Rectangle) #ui {
             on_change = note_change
             on_key = note_key
             on_submit = submit_search
+            on_focus = focus_search
+            on_blur = blur_search
         }
         count += 1
     }
@@ -214,6 +224,8 @@ grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
 grep -q '"onKey": "note_key"' "$out"
 grep -q '"onSubmit": "submit_search"' "$out"
+grep -q '"onFocus": "focus_search"' "$out"
+grep -q '"onBlur": "blur_search"' "$out"
 grep -q '"domName": "q"' "$out"
 grep -q '"data": {"role": "search"}' "$out"
 grep -q '"inputType": "search"' "$out"
