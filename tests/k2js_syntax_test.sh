@@ -22,6 +22,8 @@ mkdir -p "$work/src" "$work/out"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
+#style <kryon.vanilla> as vanilla
+#style "brand.kss" as brand
 
 ANSWER :: #run 21 * 2
 #assert ANSWER == 42, "k2js #run assertion failed"

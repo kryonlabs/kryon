@@ -1742,6 +1742,19 @@ emit_app(FILE *f, const KirModule *m)
     fprintf(f, "  frame: ");
     js_string(f, a->frame[0] ? a->frame : "");
     fprintf(f, ",\n");
+    fprintf(f, "  styles: [\n");
+    for(int i = 0; i < m->style_import_count; i++) {
+        const KirStyleImport *style = &m->style_imports[i];
+
+        fprintf(f, "    { kind: ");
+        js_string(f, style->kind == KIR_STYLE_IMPORT_BUILTIN ? "builtin" : "file");
+        fprintf(f, ", target: ");
+        js_string(f, style->target);
+        fprintf(f, ", alias: ");
+        js_string(f, style->alias);
+        fprintf(f, " }%s\n", i + 1 < m->style_import_count ? "," : "");
+    }
+    fprintf(f, "  ],\n");
     fprintf(f, "  routes: [\n");
     for(int i = 0; i < m->route_count; i++) {
         const KirRoute *route = &m->routes[i];

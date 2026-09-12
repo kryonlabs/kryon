@@ -299,6 +299,7 @@ KirProgramFree(KirProgram *program)
         free(m->state_fields);
         free(m->globals);
         free(m->imports);
+        free(m->style_imports);
         free(m->functions);
         free(m->defines);
         free(m->asserts);
@@ -388,6 +389,32 @@ KirModuleAddImport(KirModule *module, KirImportKind kind, const char *name,
     kir_copy(imp->target, sizeof(imp->target), target);
     kir_copy(imp->signature, sizeof(imp->signature), signature);
     imp->required = required;
+    imp->span = span;
+    return imp;
+}
+
+KirStyleImport *
+KirModuleAddStyleImport(KirModule *module, KirStyleImportKind kind,
+                        const char *target, const char *alias,
+                        KirSourceSpan span)
+{
+    KirStyleImport *imports;
+    KirStyleImport *imp;
+
+    if(module == NULL)
+        return NULL;
+    imports = kir_realloc_array(module->style_imports,
+                                &module->style_import_cap,
+                                module->style_import_count,
+                                sizeof(KirStyleImport));
+    if(imports == NULL)
+        return NULL;
+    module->style_imports = imports;
+    imp = &module->style_imports[module->style_import_count++];
+    memset(imp, 0, sizeof(*imp));
+    imp->kind = kind;
+    kir_copy(imp->target, sizeof(imp->target), target);
+    kir_copy(imp->alias, sizeof(imp->alias), alias);
     imp->span = span;
     return imp;
 }
@@ -748,6 +775,15 @@ KirProgramDump(const KirProgram *program, FILE *out)
                         imp->extern_symbol);
             fprintf(out, " required %d signature %s span ",
                     imp->required, imp->signature);
+            kir_dump_span(out, imp->span);
+            fprintf(out, "\n");
+        }
+        for(j = 0; j < m->style_import_count; j++) {
+            const KirStyleImport *imp = &m->style_imports[j];
+
+            fprintf(out, "  style %s target %s alias %s span ",
+                    imp->kind == KIR_STYLE_IMPORT_BUILTIN ? "builtin" : "file",
+                    imp->target, imp->alias);
             kir_dump_span(out, imp->span);
             fprintf(out, "\n");
         }

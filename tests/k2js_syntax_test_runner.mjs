@@ -13,6 +13,10 @@ function rectangle(value) {
 assert.equal(generated.app.title, "JS Smoke");
 assert.equal(generated.app.width, 320);
 assert.equal(generated.app.height, 240);
+assert.deepEqual(generated.app.styles, [
+  { kind: "builtin", target: "kryon.vanilla", alias: "vanilla" },
+  { kind: "file", target: "brand.kss", alias: "brand" }
+]);
 
 const state = generated.createState();
 assert.equal(state.count, 0);

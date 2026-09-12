@@ -48,7 +48,11 @@ export const app = {
   width: 800,
   height: 600,
   fps: 60,
-  frame: ""
+  frame: "",
+  styles: [
+  ],
+  routes: [
+  ]
 };
 
 export function createState() {

@@ -9,7 +9,14 @@ export interface AppMeta {
   height: number;
   fps: number;
   frame: string;
+  styles?: AppStyleMeta[];
   routes?: AppRouteMeta[];
+}
+
+export interface AppStyleMeta {
+  kind: "file" | "builtin" | string;
+  target: string;
+  alias: string;
 }
 
 export interface AppRouteMeta {

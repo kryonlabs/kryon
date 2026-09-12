@@ -1082,6 +1082,57 @@ parse_import_line(KirModule *module, const char *path, int line_no,
 }
 
 static int
+parse_style_alias(const char *s, char *out, size_t out_size)
+{
+    const char *p = strstr(s, " as ");
+    size_t n = 0;
+
+    out[0] = '\0';
+    if(p == NULL)
+        return 1;
+    p += 4;
+    while(*p == ' ' || *p == '\t')
+        p++;
+    if(!isalpha((unsigned char)*p) && *p != '_')
+        return 0;
+    while((isalnum((unsigned char)*p) || *p == '_') && n + 1 < out_size)
+        out[n++] = *p++;
+    out[n] = '\0';
+    while(*p == ' ' || *p == '\t' || *p == ';')
+        p++;
+    return out[0] != '\0' && *p == '\0';
+}
+
+static int
+parse_style_line(KirModule *module, const char *path, int line_no,
+                 const char *line)
+{
+    const char *directive;
+    char target[K2KIR_PATH_MAX];
+    char alias[KIR_NAME_MAX];
+    int quoted;
+    KirStyleImport *imp;
+
+    directive = strstr(line, "#style");
+    if(directive == NULL)
+        return 0;
+    target[0] = '\0';
+    alias[0] = '\0';
+    quoted = parse_quoted(directive, target, sizeof(target));
+    if(!quoted && !parse_angled(directive, target, sizeof(target)))
+        die("%s:%d: #style requires \"file.kss\" or <builtin.pack>",
+            path, line_no);
+    if(!parse_style_alias(directive, alias, sizeof(alias)))
+        die("%s:%d: #style alias must be `as name`", path, line_no);
+    imp = KirModuleAddStyleImport(module,
+        quoted ? KIR_STYLE_IMPORT_FILE : KIR_STYLE_IMPORT_BUILTIN,
+        target, alias, KirSpan(path, line_no, 1));
+    if(imp == NULL)
+        die("%s:%d: out of memory while recording #style", path, line_no);
+    return 1;
+}
+
+static int
 parse_extern_line(KirModule *module, const char *path, int line_no,
                   const char *line)
 {
@@ -2352,12 +2403,19 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                   strncmp(t, "#defined", 8) != 0 &&
                   strncmp(t, "#enum", 5) != 0 &&
                   strncmp(t, "#module", 7) != 0 &&
-                  strncmp(t, "#import", 7) != 0) {
+                  strncmp(t, "#import", 7) != 0 &&
+                  strncmp(t, "#style", 6) != 0) {
             /* plain # comment at top level — never a header; real
              * directives (#module/#import/#if...) fall through below */
         } else if(mode == TOP && strncmp(t, "#module", 7) == 0) {
             if(parse_quoted(t, module_name, sizeof(module_name)))
                 snprintf(module->name, sizeof(module->name), "%s", module_name);
+        } else if(mode == TOP && parse_style_line(module, rel, line_no, t)) {
+            if(module->style_import_count > 0)
+                snprintf(module->style_imports[module->style_import_count - 1].guard,
+                         sizeof(module->style_imports[0].guard), "%s",
+                         cur_guard);
+            continue;
         } else if(mode == TOP &&
                   (parse_import_line(module, rel, line_no, t) ||
                    parse_extern_line(module, rel, line_no, t))) {

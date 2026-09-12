@@ -20,6 +20,8 @@ mkdir -p "$work/src" "$work/out"
 cat > "$work/src/app.kry" <<'EOF'
 #module "demo.app"
 #import "kryon.h"
+#style <kryon.vanilla> as vanilla
+#style "brand.kss" as brand
 ui :: #import "src/ui/panel"
 
 WEB :: #defined(PLATFORM_WEB)
@@ -57,6 +59,8 @@ grep -Fq 'kir 1' "$kir"
 grep -Fq 'module demo.app source src/app.kry span src/app.kry:1:1' "$kir"
 grep -Fq 'import header kryon.h target kryon.h' "$kir"
 grep -Fq 'import module ui target src/ui/panel' "$kir"
+grep -Fq 'style builtin target kryon.vanilla alias vanilla' "$kir"
+grep -Fq 'style file target brand.kss alias brand' "$kir"
 grep -Fq 'import extern platform_ping target platform_ping' "$kir"
 grep -Fq 'import extern native_abs target c.abs extern_kind c extern_symbol abs' "$kir"
 grep -Fq 'signature platform_ping :: (value: int, tag: const char*) -> int #extern' "$kir"
@@ -78,7 +82,7 @@ grep -Fq 'expr index text label[0] name  op' "$kir"
 grep -Fq 'expr unary text -index_value name  op -' "$kir"
 grep -Fq 'expr float text 1.5 name  op' "$kir"
 grep -Fq 'expr sizeof text sizeof(label) name  op' "$kir"
-grep -Fq 'expr compound text (Rectangle){0,0,1,1} name  op' "$kir"
+grep -Fq 'expr compound text (Rectangle){0,0,1,1} name Rectangle op' "$kir"
 if grep -Fq 'function WEB' "$kir"; then
     echo "top-level #defined binding was emitted as a function" >&2
     exit 1

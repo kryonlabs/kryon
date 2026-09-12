@@ -56,6 +56,17 @@ route home {
 `app.frame`, generated `frame()` selects the route page from `GetRoutePath()`;
 the first route handles `/` and also acts as the fallback.
 
+Style imports identify KSS inputs:
+
+```kry
+#style <kryon.vanilla> as vanilla
+#style "brand.kss" as brand
+```
+
+`k2js` emits these as `app.styles` so a web host can load built-in and file
+style sheets without scanning source text. KSS still owns style resolution;
+the Web Document frame supplies the node facts it resolves against.
+
 Supported metadata fields in this first slice:
 
 | `.kry` field | Web frame field |
@@ -122,8 +133,9 @@ Supported metadata fields in this first slice:
 }
 ```
 
-`app.routes` contains `{ id, title, group, page, path }` records. The first
-route uses `/` as its browser path; later routes use `/<route-id>`.
+`app.styles` contains `{ kind, target, alias }` records. `app.routes` contains
+`{ id, title, group, page, path }` records. The first route uses `/` as its
+browser path; later routes use `/<route-id>`.
 
 The initial tag mapping is intentionally conservative:
 
