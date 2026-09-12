@@ -723,6 +723,25 @@ static const WidgetOps ui_widget_ops[] = {
     [WIDGET_CARD] = {ui_measure_bounds_height},
 };
 
+static void
+ui_tree_store_text_input_paint(WidgetNode *node, TextInputPaint paint)
+{
+    if(sizeof(paint) > sizeof(node->data.internal.words))
+        abort();
+    memcpy(node->data.internal.words, &paint, sizeof(paint));
+}
+
+static TextInputPaint
+ui_tree_load_text_input_paint(const WidgetNode *node)
+{
+    TextInputPaint paint;
+
+    if(sizeof(paint) > sizeof(node->data.internal.words))
+        abort();
+    memcpy(&paint, node->data.internal.words, sizeof(paint));
+    return paint;
+}
+
 KeyID
 Key(const char *text)
 {
@@ -1691,7 +1710,7 @@ DrawTree(void)
         }
         if((node->flags & UI_NODE_TEXT_INPUT_PAINT) != 0) {
             ui_paint_text_input(node->bounds, node->owned_text,
-                                node->data.text_input_paint);
+                                ui_tree_load_text_input_paint(node));
             if(node->has_input_clip) {
                 if(window_ready) EndClip();
                 PopInputClip();
@@ -1905,7 +1924,7 @@ DrawTree(void)
                 }
             }
             {
-                WidgetTextInputPaint paint = {
+                TextInputPaint paint = {
                     .style = field.style,
                     .cursor = cursor,
                     .focused = state != NULL ? state->focused : 0,
@@ -2541,7 +2560,7 @@ ButtonNode(ButtonSpec button)
 
 void
 ui_tree_submit_text_input(Rectangle bounds, const char *text,
-                          WidgetTextInputPaint paint, int focus_id)
+                          TextInputPaint paint, int focus_id)
 {
     if(!ui_tree_building) {
         ui_paint_text_input(bounds, text, paint);
@@ -2551,7 +2570,7 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
     if(id >= 0) {
         ui_tree_nodes[id].flags |= UI_NODE_TEXT_INPUT_PAINT;
         ui_tree_nodes[id].owned_text = ui_tree_strdup(text);
-        ui_tree_nodes[id].data.text_input_paint = paint;
+        ui_tree_store_text_input_paint(&ui_tree_nodes[id], paint);
         InvalidateTree(INVALIDATE_PAINT);
     }
 }

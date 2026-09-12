@@ -4706,7 +4706,7 @@ ui_text_field_render(TextFieldProps field)
                                         committed_selection_end, 0, 1,
                                         field.read_only);
 
-    WidgetTextInputPaint paint = {
+    TextInputPaint paint = {
         .style = field.style, .cursor = paint_cursor, .focused = focused,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
@@ -4724,7 +4724,7 @@ ui_text_field_render(TextFieldProps field)
 }
 
 void
-ui_paint_text_input(Rectangle bounds, const char *text, WidgetTextInputPaint paint)
+ui_paint_text_input(Rectangle bounds, const char *text, TextInputPaint paint)
 {
     if(!IsWindowReady())
         return;

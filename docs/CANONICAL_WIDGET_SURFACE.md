@@ -382,7 +382,7 @@ Recent retained-tree public C cleanup:
 | `UIWidgetKind`, `UI_WIDGET_*_NODE` | `WidgetKind`, `WIDGET_*` |
 | `UIWidgetNode` | `WidgetNode` |
 | `UIWidgetData` | `WidgetData` |
-| `UIWidgetTextInputPaint` | `WidgetTextInputPaint` |
+| `UIWidgetTextInputPaint`, `WidgetTextInputPaint` | Internal `TextInputPaint` host snapshot; not public. |
 | `UIAccessibilitySink` | `AccessibilitySink` |
 | `UIInspect*`, `BeginUIInspect*`, `PushUIInspect*`, `IsUIInspectActive` | `Inspect*`, `BeginInspect*`, `PushInspect*`, `IsInspectActive` |
 | `UIDPIState`, `UI_DPI_BASE_*`, `InitUIDPI`, `GetUIDPI*` | `DPIState`, `DPI_BASE_*`, `InitDPI`, `GetDPI*` |

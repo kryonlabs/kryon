@@ -88,6 +88,23 @@ typedef struct {
     Color color;
 } UIInfoRow;
 
+/* Prepared retained painting only: no editing-state pointers survive
+ * submission. This is internal host storage, not a public widget surface. */
+typedef struct TextInputPaint {
+    TextInputStyle style;
+    int cursor;
+    int focused;
+    int editable;
+    int caret;
+    int font;
+    int font_token;
+    int selection_start;
+    int selection_end;
+    int composition_start;
+    int composition_end;
+    int scroll_x;
+} TextInputPaint;
+
 typedef struct {
     int x;
     int y;
@@ -459,9 +476,9 @@ void RenderInspectOverlay(void);
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
 void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
 void ui_tree_submit_text_input(Rectangle bounds, const char *text,
-                               WidgetTextInputPaint paint, int id);
+                               TextInputPaint paint, int id);
 void ui_paint_text_input(Rectangle bounds, const char *text,
-                         WidgetTextInputPaint paint);
+                         TextInputPaint paint);
 
 /* UTF-8 codec and text-buffer helpers (implemented in ui_text_edit.c). */
 int ui_utf8_next_offset(const char *text, int offset);

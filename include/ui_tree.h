@@ -81,24 +81,10 @@ typedef enum WidgetKind {
     WIDGET_CARD
 } WidgetKind;
 
-/* Prepared painting only: no editing-state pointers survive submission. */
-typedef struct WidgetTextInputPaint {
-    TextInputStyle style;
-    int cursor;
-    int focused;
-    int editable;
-    int caret;
-    int font;
-    int font_token;
-    int selection_start;
-    int selection_end;
-    int composition_start;
-    int composition_end;
-    int scroll_x;
-} WidgetTextInputPaint;
-
 typedef union WidgetData {
-    WidgetTextInputPaint text_input_paint;
+    struct {
+        unsigned long long words[16];
+    } internal;
     struct {
         DragProps props;
         size_t format_offset;
