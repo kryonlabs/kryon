@@ -722,6 +722,8 @@ function fakeDocument() {
       { nodeName: "docs", path: "Page/docs", href: "/reference", target: "_blank", rel: "noopener" });
     runtime.widget(ariaRt, "Checkbox", { checked: true, disabled: true, loading: true }, null,
       { nodeName: "accept", path: "Page/accept" });
+    runtime.widget(ariaRt, "Progress", { min: 0, max: 100, value: 42, label: "Loading" }, null,
+      { nodeName: "load", path: "Page/load" });
     runtime.endFrame(ariaRt);
     const snapshot = runtime.webAccessibilitySnapshot(ariaRt);
     assert.equal(snapshot.nodes[0].role, "heading");
@@ -731,11 +733,14 @@ function fakeDocument() {
     assert.equal(snapshot.nodes[2].role, "checkbox");
     assert.equal(snapshot.nodes[2].inputType, "checkbox");
     assert.equal(snapshot.nodes[2].state.checked, true);
+    assert.equal(snapshot.nodes[3].role, "progressbar");
+    assert.equal(snapshot.nodes[3].value, "42");
     const target = document.createElement("div");
     runtime.renderWebDocument(ariaRt, target);
     const root = target.children[0];
     const link = runtime.findWebElement(target, "Page/docs");
     const checkbox = runtime.findWebElement(target, "Page/accept");
+    const progress = runtime.findWebElement(target, "Page/load");
     assert.equal(link.attributes["aria-current"], "page");
     assert.equal(link.attributes.href, "/reference");
     assert.equal(link.attributes.target, "_blank");
@@ -744,8 +749,13 @@ function fakeDocument() {
     assert.equal(checkbox.attributes.checked, "");
     assert.equal(checkbox.attributes["aria-disabled"], "true");
     assert.equal(checkbox.attributes["aria-busy"], "true");
+    assert.equal(progress.tagName, "PROGRESS");
+    assert.equal(progress.attributes.min, "0");
+    assert.equal(progress.attributes.max, "100");
+    assert.equal(progress.attributes.value, "42");
+    assert.equal(progress.textContent, "Loading");
     assert.equal(runtime.webFormValue(target, "accept"), true);
-    assert.equal(root.children.length, 3);
+    assert.equal(root.children.length, 4);
 
     let inputValue = null;
     let changeValue = null;

@@ -1008,6 +1008,8 @@ function widgetTag(item) {
   case "Toggle":
   case "Radio":
     return "input";
+  case "Progress":
+    return "progress";
   default:
     return "div";
   }
@@ -1023,6 +1025,8 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
+    return propString(args, "label", "");
+  case "Progress":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -1050,6 +1054,44 @@ function widgetInputType(item) {
   default:
     return "";
   }
+}
+
+function progressPositionalProp(args, index, fallback = "") {
+  const text = String(args || "");
+  const match = text.match(/ProgressProps\)\s*\{\s*(?:\{[^{}]*\}|\([^)]+\)\s*\{[^{}]*\})\s*,\s*([^,}]+)\s*,\s*([^,}]+)\s*,\s*([^,}]+)/);
+  if (!match)
+    return fallback;
+  return String(match[index] || "").trim() || fallback;
+}
+
+function widgetDOMValue(item) {
+  if (item.name !== "Progress")
+    return "";
+  if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
+    const value = item.args.value;
+    return value === undefined || value === null ? "" : String(value);
+  }
+  return propString(item.args, "value", progressPositionalProp(item.args, 3));
+}
+
+function widgetMin(item) {
+  if (item.name !== "Progress")
+    return "";
+  if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
+    const value = item.args.min;
+    return value === undefined || value === null ? "" : String(value);
+  }
+  return propString(item.args, "min", progressPositionalProp(item.args, 1));
+}
+
+function widgetMax(item) {
+  if (item.name !== "Progress")
+    return "";
+  if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
+    const value = item.args.max;
+    return value === undefined || value === null ? "" : String(value);
+  }
+  return propString(item.args, "max", progressPositionalProp(item.args, 2));
 }
 
 function widgetLevel(item) {
@@ -1152,7 +1194,7 @@ function webNodeFromWidget(item, index) {
     tabIndex: Number.isFinite(Number(meta.tabIndex)) ? Math.trunc(Number(meta.tabIndex)) : null,
     text: widgetText(item),
     value: widgetText(item),
-    domValue: metaString(meta, "domValue"),
+    domValue: metaString(meta, "domValue") || widgetDOMValue(item),
     level: widgetLevel(item),
     href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
@@ -1178,8 +1220,8 @@ function webNodeFromWidget(item, index) {
     popoverTargetAction: metaString(meta, "popoverTargetAction"),
     readOnly: metaBool(meta, "readOnly"),
     required: metaBool(meta, "required"),
-    min: metaString(meta, "min"),
-    max: metaString(meta, "max"),
+    min: metaString(meta, "min") || widgetMin(item),
+    max: metaString(meta, "max") || widgetMax(item),
     step: metaString(meta, "step"),
     minLength: metaString(meta, "minLength"),
     maxLength: metaString(meta, "maxLength"),
@@ -1382,7 +1424,8 @@ export function webAccessibilitySnapshot(source) {
       label: node.ariaLabel || node.text || node.name,
       description: node.ariaDescription,
       text: node.text,
-      value: node.tag === "input" || node.tag === "textarea" ? node.value : "",
+      value: node.tag === "progress" ? node.domValue
+        : node.tag === "input" || node.tag === "textarea" ? node.value : "",
       href: node.href,
       inputType: node.inputType,
       level: node.level || 0,
@@ -1407,6 +1450,8 @@ function implicitRole(node) {
   }
   if (node.tag === "textarea")
     return "textbox";
+  if (node.tag === "progress")
+    return "progressbar";
   if (/^h[1-6]$/.test(node.tag))
     return "heading";
   if (node.tag === "main")

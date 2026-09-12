@@ -271,6 +271,7 @@ The initial tag mapping is intentionally conservative:
 | `Image` with `alt_text` | `img` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |
+| `Progress` | `progress` |
 
 Other widgets remain `div` nodes until they gain a specific web-native
 contract.
