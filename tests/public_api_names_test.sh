@@ -137,6 +137,19 @@ if [ -n "$lowered_doc_matches" ]; then
     exit 1
 fi
 
+legacy_menu_doc_matches="$(
+    rg -n 'MenuBar / PopupMenu / ContextMenu|`PopupMenu`, `ContextMenu`|PopupMenu`, `ContextMenu`' \
+        docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$legacy_menu_doc_matches" ]; then
+    echo "User-facing widget docs must describe the canonical Menu concept, with legacy menu entry points only as migration support:"
+    echo "$legacy_menu_doc_matches"
+    exit 1
+fi
+
 rect_matches="$(
     rg -n '\bRectangleShape\b' \
         include src cmd docs examples tests \
