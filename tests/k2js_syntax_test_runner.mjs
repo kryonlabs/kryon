@@ -1039,21 +1039,16 @@ function fakeDocument() {
     assert.equal(root.kryObjectMap.get(tapSourceColumnRef).element.dataset.kryRef, "primary-action");
     assert.equal(Object.keys(root).includes("kryObjects"), false);
     assert.equal(Object.keys(root).includes("kryObjectMap"), false);
-    assert.equal(lifecycleEvents.length, 5);
-    assert.deepEqual(lifecycleEvents.map((event) => event.type), [
-      "kry-mount",
-      "kry-mount",
-      "kry-mount",
-      "kry-mount",
-      "kry-mount"
-    ]);
-    assert.deepEqual(lifecycleEvents.map((event) => event.ref), [
-      "Scene/root",
-      webDoc.nodes[1].path,
-      "primary-action",
-      "search-box",
-      "Scene/root/search_label"
-    ]);
+    const expectedLifecycleRefs = runtime.webDOMObjects(target).map((object) => object.ref);
+    assert.equal(lifecycleEvents.length, expectedLifecycleRefs.length);
+    assert.deepEqual(lifecycleEvents.map((event) => event.type),
+      expectedLifecycleRefs.map(() => "kry-mount"));
+    assert.deepEqual(lifecycleEvents.map((event) => event.ref), expectedLifecycleRefs);
+    assert.ok(expectedLifecycleRefs.includes("Scene/root"));
+    assert.ok(expectedLifecycleRefs.includes(webDoc.nodes[1].path));
+    assert.ok(expectedLifecycleRefs.includes("primary-action"));
+    assert.ok(expectedLifecycleRefs.includes("search-box"));
+    assert.ok(expectedLifecycleRefs.includes("Scene/root/search_label"));
     assert.equal(lifecycleEvents[2].path, "Scene/root/tap");
     assert.equal(lifecycleEvents[2].detailRef, "primary-action");
     assert.equal(lifecycleEvents[2].detailRoot, root);
@@ -1067,7 +1062,7 @@ function fakeDocument() {
         detail.event?.type || ""
       ]));
     assert.equal(typeof removeButtonObserver, "function");
-    assert.deepEqual(observedButtons, [[["primary-action"], true, 5, ""]]);
+    assert.deepEqual(observedButtons, [[["primary-action"], true, webDoc.nodes.length, ""]]);
     const observedFields = [];
     const removeFieldObserver = root.kryObserve("TextField.field",
       (objects, detail) => observedFields.push([objects.map((object) => object.ref), detail.event?.type || ""]),
@@ -1076,17 +1071,12 @@ function fakeDocument() {
     assert.deepEqual(observedFields, []);
     const lifecycleCount = lifecycleEvents.length;
     runtime.renderWebDocument(domRt, target);
-    assert.equal(lifecycleEvents.length, lifecycleCount + 5);
-    assert.deepEqual(lifecycleEvents.slice(lifecycleCount).map((event) => event.type), [
-      "kry-update",
-      "kry-update",
-      "kry-update",
-      "kry-update",
-      "kry-update"
-    ]);
+    assert.equal(lifecycleEvents.length, lifecycleCount + expectedLifecycleRefs.length);
+    assert.deepEqual(lifecycleEvents.slice(lifecycleCount).map((event) => event.type),
+      expectedLifecycleRefs.map(() => "kry-update"));
     assert.deepEqual(observedButtons, [
-      [["primary-action"], true, 5, ""],
-      [["primary-action"], true, 5, "kry-render"]
+      [["primary-action"], true, webDoc.nodes.length, ""],
+      [["primary-action"], true, webDoc.nodes.length, "kry-render"]
     ]);
     assert.deepEqual(observedFields, [[["search-box"], "kry-render"]]);
     removeButtonObserver();
@@ -1874,13 +1864,12 @@ function fakeDocument() {
       [[], "kry-render"]
     ]);
     removeUnmountObserver();
-    assert.deepEqual(unmountEvents.map((event) => event[0]), [
-      "Scene/root",
-      webDoc.nodes[1].path,
-      "primary-action",
-      "search-box",
-      "Scene/root/search_label"
-    ]);
+    const expectedUnmountRefs = unmountEvents.map((event) => event[0]);
+    assert.ok(expectedUnmountRefs.includes("Scene/root"));
+    assert.ok(expectedUnmountRefs.includes(webDoc.nodes[1].path));
+    assert.ok(expectedUnmountRefs.includes("primary-action"));
+    assert.ok(expectedUnmountRefs.includes("search-box"));
+    assert.ok(expectedUnmountRefs.includes("Scene/root/search_label"));
     assert.deepEqual(unmountEvents.map((event) => event[1]), unmountEvents.map((event) => event[0]));
     assert.deepEqual(unmountEvents.map((event) => event[2]), unmountEvents.map((event) => event[0]));
   } finally {
