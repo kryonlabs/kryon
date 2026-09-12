@@ -820,6 +820,77 @@ Modal[role=Close]:pressed {
   background: panel-pressed;
 }
 
+Guide {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Scrim] {
+  background: #000000;
+  foreground: text;
+  border: transparent;
+  opacity: 0.34;
+  material: default;
+}
+
+Guide[role=Panel] {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Anchor] {
+  background: transparent;
+  foreground: accent;
+  border: accent;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Label] {
+  foreground: text;
+  font-size: font.md;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Action] {
+  background: surface;
+  foreground: text;
+  border: border-hover;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Action]:hover {
+  background: panel-hover;
+}
+
+Guide[role=Close] {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  radius: radius.sm;
+  border-width: border.none;
+  opacity: 1;
+  material: default;
+}
+
+Guide[role=Close]:hover {
+  background: panel-hover;
+}
+
 TableView {
   background: transparent;
   foreground: text;
