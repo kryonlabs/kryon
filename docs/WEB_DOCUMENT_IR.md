@@ -279,6 +279,10 @@ The initial tag mapping is intentionally conservative:
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text` |
 | `TextArea` | `textarea` |
+| `Slider` | `input type=range` |
+| `Spinbox` | `input type=number` |
+| `Dropdown` | `select` |
+| `ListBox` | `select` |
 | `Image` with `alt_text` | `img` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |

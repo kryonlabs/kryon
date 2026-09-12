@@ -1068,6 +1068,12 @@ function widgetTag(item) {
     return "input";
   case "TextArea":
     return "textarea";
+  case "Slider":
+  case "Spinbox":
+    return "input";
+  case "Dropdown":
+  case "ListBox":
+    return "select";
   case "Image":
     return "img";
   case "Checkbox":
@@ -1117,6 +1123,10 @@ function widgetInputType(item) {
     return "checkbox";
   case "Radio":
     return "radio";
+  case "Slider":
+    return "range";
+  case "Spinbox":
+    return "number";
   case "TextField":
     return "text";
   default:
@@ -1133,6 +1143,8 @@ function progressPositionalProp(args, index, fallback = "") {
 }
 
 function widgetDOMValue(item) {
+  if (item.name === "Slider" || item.name === "Spinbox")
+    return propString(item.args, "value", "");
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1143,6 +1155,8 @@ function widgetDOMValue(item) {
 }
 
 function widgetMin(item) {
+  if (item.name === "Slider" || item.name === "Spinbox")
+    return propString(item.args, "min", "");
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1153,6 +1167,8 @@ function widgetMin(item) {
 }
 
 function widgetMax(item) {
+  if (item.name === "Slider" || item.name === "Spinbox")
+    return propString(item.args, "max", "");
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1514,8 +1530,14 @@ function implicitRole(node) {
       return "checkbox";
     if (node.inputType === "radio")
       return "radio";
+    if (node.inputType === "range")
+      return "slider";
+    if (node.inputType === "number")
+      return "spinbutton";
     return "textbox";
   }
+  if (node.tag === "select")
+    return node.kind === "ListBox" ? "listbox" : "combobox";
   if (node.tag === "textarea")
     return "textbox";
   if (node.tag === "progress")

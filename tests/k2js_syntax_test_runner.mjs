@@ -861,6 +861,14 @@ function fakeDocument() {
       { nodeName: "autoDetails", path: "Page/autoDetails" });
     runtime.widget(nativeRt, "Modal", {}, null,
       { nodeName: "autoDialog", path: "Page/autoDialog" });
+    runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4 }, null,
+      { nodeName: "volume", path: "Page/volume" });
+    runtime.widget(nativeRt, "Spinbox", { min: 1, max: 8, value: 3 }, null,
+      { nodeName: "copies", path: "Page/copies" });
+    runtime.widget(nativeRt, "Dropdown", {}, null,
+      { nodeName: "choice", path: "Page/choice" });
+    runtime.widget(nativeRt, "ListBox", {}, null,
+      { nodeName: "items", path: "Page/items" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -900,6 +908,19 @@ function fakeDocument() {
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes[1].role, "group");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
+    assert.deepEqual(
+      ["Slider", "Spinbox", "Dropdown", "ListBox"].map((kind) => {
+        const node = runtime.webNodeQuery(nativeRt, kind);
+        return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
+      }),
+      [
+        ["Slider", "input", "range", "0", "10", "4"],
+        ["Spinbox", "input", "number", "1", "8", "3"],
+        ["Dropdown", "select", "", "", "", ""],
+        ["ListBox", "select", "", "", "", ""]
+      ]);
+    assert.deepEqual(runtime.webAccessibilitySnapshot(nativeRt).nodes.slice(4, 8)
+      .map((node) => node.role), ["slider", "spinbutton", "combobox", "listbox"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -908,6 +929,10 @@ function fakeDocument() {
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
     const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
     const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
+    const volume = runtime.findWebElement(nativeTarget, "volume");
+    const copies = runtime.findWebElement(nativeTarget, "copies");
+    const choice = runtime.findWebElement(nativeTarget, "choice");
+    const items = runtime.findWebElement(nativeTarget, "items");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
@@ -917,6 +942,15 @@ function fakeDocument() {
     assert.equal(autoDetails.tagName, "DETAILS");
     assert.equal(autoDetails.open, false);
     assert.equal(autoDialog.tagName, "DIALOG");
+    assert.equal(volume.tagName, "INPUT");
+    assert.equal(volume.attributes.type, "range");
+    assert.equal(volume.attributes.min, "0");
+    assert.equal(volume.attributes.max, "10");
+    assert.equal(volume.attributes.value, "4");
+    assert.equal(copies.tagName, "INPUT");
+    assert.equal(copies.attributes.type, "number");
+    assert.equal(choice.tagName, "SELECT");
+    assert.equal(items.tagName, "SELECT");
     assert.equal(details.open, true);
     assert.equal(details.attributes.open, "");
     assert.equal(popover.attributes.popover, "auto");
