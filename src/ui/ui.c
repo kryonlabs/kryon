@@ -34,7 +34,7 @@ ui_default_text_color(void)
 {
     Style style = ui_unpack_style(ResolveActiveStyle(
         ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
-        StyleTextFacts(0, 0, StyleAny(), ButtonStateNormal),
+        StyleTextFacts(0, 0, StyleKindText(), ButtonStateNormal),
         ButtonStateNormal));
     return style.foreground.a != 0 ? style.foreground : c_text;
 }

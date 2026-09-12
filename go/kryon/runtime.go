@@ -5426,7 +5426,7 @@ func defaultStyleFrame(styleKind int32) StyleFrame {
 
 func defaultTextStyle(font int32) Style {
 	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
-		StyleSheet_StyleTextFacts(0, 0, StyleSheet_StyleAny(), int32(ButtonStateNormal)),
+		StyleSheet_StyleTextFacts(0, 0, StyleSheet_StyleKindText(), int32(ButtonStateNormal)),
 		int32(ButtonStateNormal))
 	return unpackStyle(value)
 }
