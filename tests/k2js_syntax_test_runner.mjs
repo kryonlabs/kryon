@@ -1079,6 +1079,13 @@ function fakeDocument() {
     const nestedSpan = document.createElement("span");
     firstButton.appendChild(nestedSpan);
     assert.equal(runtime.webDOMObjectFromElement(nestedSpan).node.path, "Scene/root/tap");
+    const targetEvent = { target: nestedSpan };
+    assert.equal(runtime.webDOMDecorateEvent(targetEvent).ref, "primary-action");
+    assert.equal(targetEvent.kryRef, "primary-action");
+    assert.equal(targetEvent.kryObject.node.path, "Scene/root/tap");
+    assert.equal(targetEvent.kryIdentity.ref, "primary-action");
+    assert.equal(targetEvent.krySnapshot.parentRef, "Scene/root");
+    assert.equal(Object.keys(targetEvent).includes("kryObject"), false);
     assert.equal(runtime.webDOMObjectFromEvent({ target: nestedSpan }).ref, "primary-action");
     assert.equal(runtime.webDOMObjectFromEvent({ currentTarget: firstButton }).node.path,
       "Scene/root/tap");
@@ -1110,23 +1117,49 @@ function fakeDocument() {
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);
     const directEvents = [];
     const removeDirect = runtime.webDOMAddEventListener(target, "tap-button", "kry-test",
-      (event, object) => directEvents.push([event.type, object?.node.path]));
+      (event, object) => directEvents.push([
+        event.type,
+        object?.node.path,
+        event.kryRef,
+        event.kryObject?.ref,
+        event.kryIdentity?.ref,
+        event.krySnapshot?.ref
+      ]));
     assert.equal(typeof removeDirect, "function");
     firstButton.dispatchEvent({ type: "kry-test" });
-    assert.deepEqual(directEvents, [["kry-test", "Scene/root/tap"]]);
+    assert.deepEqual(directEvents, [[
+      "kry-test",
+      "Scene/root/tap",
+      "primary-action",
+      "primary-action",
+      "primary-action",
+      "primary-action"
+    ]]);
     removeDirect();
     firstButton.dispatchEvent({ type: "kry-test" });
-    assert.deepEqual(directEvents, [["kry-test", "Scene/root/tap"]]);
+    assert.deepEqual(directEvents, [[
+      "kry-test",
+      "Scene/root/tap",
+      "primary-action",
+      "primary-action",
+      "primary-action",
+      "primary-action"
+    ]]);
     const delegatedEvents = [];
     const removeDelegated = runtime.webDOMAddDelegatedEventListener(target, "Button.primary",
       "kry-delegated", (event, object) =>
-        delegatedEvents.push([event.type, event.target.tagName, object.node.path]));
+        delegatedEvents.push([
+          event.type,
+          event.target.tagName,
+          object.node.path,
+          event.kryObject?.node.path
+        ]));
     assert.equal(typeof removeDelegated, "function");
     nestedSpan.dispatchEvent({ type: "kry-delegated" });
-    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap"]]);
+    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap", "Scene/root/tap"]]);
     removeDelegated();
     nestedSpan.dispatchEvent({ type: "kry-delegated" });
-    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap"]]);
+    assert.deepEqual(delegatedEvents, [["kry-delegated", "SPAN", "Scene/root/tap", "Scene/root/tap"]]);
     assert.equal(runtime.webDOMParent(target, "tap-button").node.path, "Scene/root");
     assert.deepEqual(runtime.webDOMChildren(target, "Scene/root")
       .map((object) => object.node.path), [

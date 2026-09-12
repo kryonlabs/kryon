@@ -2927,9 +2927,62 @@ export function webDOMObjectFromElement(element) {
   return null;
 }
 
-export function webDOMObjectFromEvent(eventOrTarget) {
+function rawWebDOMObjectFromEvent(eventOrTarget) {
   const target = eventOrTarget?.target || eventOrTarget?.currentTarget || eventOrTarget;
   return webDOMObjectFromElement(target || null);
+}
+
+function bindWebDOMEventProperties(event) {
+  if (!event || typeof event !== "object" || event.__kryEventPropertiesBound)
+    return event;
+  try {
+    Object.defineProperties(event, {
+      kryRef: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.ref || "";
+        }
+      },
+      kryObject: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this);
+        }
+      },
+      kryIdentity: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          return object ? webNodeIdentity(object.node) : null;
+        }
+      },
+      krySnapshot: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return webDOMSnapshotFromEvent(this);
+        }
+      }
+    });
+    event.__kryEventPropertiesBound = true;
+  } catch {
+    // Some host Event implementations are sealed; helper return values still work.
+  }
+  return event;
+}
+
+export function webDOMDecorateEvent(eventOrTarget) {
+  const object = rawWebDOMObjectFromEvent(eventOrTarget);
+  if (eventOrTarget?.target || eventOrTarget?.currentTarget)
+    bindWebDOMEventProperties(eventOrTarget);
+  return object;
+}
+
+export function webDOMObjectFromEvent(eventOrTarget) {
+  return webDOMDecorateEvent(eventOrTarget);
 }
 
 export function webDOMIdentityFromEvent(eventOrTarget) {
@@ -3095,6 +3148,7 @@ export function webDOMAddEventListener(target, query, type, handler, options) {
   if (!el || typeof el.addEventListener !== "function")
     return null;
   const listener = (event) => {
+    bindWebDOMEventProperties(event);
     const object = webDOMObjectFromElement(event?.target || el) ||
       webDOMObjectFromElement(el);
     return handler(event, object);
@@ -3114,6 +3168,7 @@ export function webDOMAddDelegatedEventListener(target, selector, type, handler,
     return null;
   const parsed = parseSelector(String(selector || "").trim());
   const listener = (event) => {
+    bindWebDOMEventProperties(event);
     let object = webDOMObjectFromElement(event?.target || null);
     while (object) {
       if (selectorMatchesWebNode(parsed, object.node))

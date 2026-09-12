@@ -351,6 +351,13 @@ declare global {
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];
   }
+
+  interface Event {
+    readonly kryRef?: string;
+    readonly kryObject?: WebDOMObject | null;
+    readonly kryIdentity?: WebNodeIdentity | null;
+    readonly krySnapshot?: WebDOMSnapshot | null;
+  }
 }
 
 export interface WebDOMSnapshot {
@@ -470,6 +477,7 @@ export function findWebElement(target: Element | string | null, query: string): 
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
+export function webDOMDecorateEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;
 export function webDOMObjectFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;
 export function webDOMIdentityFromEvent(eventOrTarget: Event | EventTarget | null): WebNodeIdentity | null;
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;

@@ -363,6 +363,10 @@ and inspectors a reverse bridge back to `.kry` identity.
 `webDOMObjectFromEvent(eventOrTarget)` and `webDOMIdentityFromEvent(...)` accept
 a native browser event, event target, or element and resolve the nearest Kry DOM
 object/identity through the same event-target walk.
+`webDOMDecorateEvent(eventOrTarget)` performs the same lookup and, for native
+event objects, adds non-enumerable `kryRef`, `kryObject`, `kryIdentity`, and
+`krySnapshot` getters so ordinary browser handlers can inspect `.kry` identity
+without generated JS owning DOM structure.
 
 `webDOMIdentity(target, query)` returns the same plain identity projection for
 a mounted Kry DOM object. Rendered elements expose it directly as
