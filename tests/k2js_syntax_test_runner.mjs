@@ -31,6 +31,25 @@ const host = {
 generated.setHost(host);
 
 const rt = runtime.createRuntime({ app: generated.app });
+const webStyleSheet = runtime.parseWebStyleSheet(`
+  @pack smoke;
+  @layer components;
+  Button.primary {
+    background: #102030;
+    foreground: #f0f0f0;
+    radius: 9;
+    padding-x: 13;
+  }
+  Button#tap-button {
+    background: #203040;
+  }
+  TextField.field {
+    border-width: 2;
+    padding-y: 5;
+  }
+`);
+assert.equal(webStyleSheet.pack, "smoke");
+runtime.setWebStyleSheets(rt, webStyleSheet);
 assert.equal(generated.Valid_ApplyPreviewMode(rt, state, host, 1), 2);
 assert.equal(runtime.GetTheme().mode, 1);
 assert.equal(generated.Valid_ApplyPreviewMode(rt, state, host, 2), 3);
@@ -89,6 +108,22 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   }
 });
 assert.deepEqual(runtime.webNodeStyleFacts(webDoc.nodes[2]), webDoc.nodes[2].styleFacts);
+assert.deepEqual(runtime.resolveWebStyle(webDoc.nodes[2], webStyleSheet), {
+  background: "#203040",
+  foreground: "#f0f0f0",
+  radius: 9,
+  "padding-x": 13
+});
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet(`
+  @layer components;
+  Button#tap-button {
+    background: #203040;
+  }
+  @layer app;
+  Button.primary {
+    background: #405060;
+  }
+`)).background, "#405060");
 assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");
@@ -209,6 +244,7 @@ function fakeDocument() {
   try {
     const domState = generated.createState();
     const domRt = runtime.createRuntime({ app: generated.app });
+    runtime.setWebStyleSheets(domRt, webStyleSheet);
     generated.frame(domRt, domState, host);
     const target = document.createElement("div");
     runtime.SetPageTitle("Runtime title");
@@ -228,6 +264,10 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.kryName, "tap");
     assert.equal(firstButton.attributes.role, "button");
     assert.equal(firstButton.attributes["aria-label"], "Tap the action");
+    assert.equal(firstButton.style.background, "#203040");
+    assert.equal(firstButton.style.color, "#f0f0f0");
+    assert.equal(firstButton.style.borderRadius, "9px");
+    assert.equal(firstButton.style.paddingLeft, "13px");
     assert.equal(runtime.findWebNode(domRt, "Scene/root/tap").domId, "tap-button");
     assert.equal(runtime.findWebElement(target, "Scene/root/tap"), firstButton);
     assert.equal(runtime.findWebElement(target, "tap"), firstButton);
@@ -237,6 +277,8 @@ function fakeDocument() {
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
+    assert.equal(firstField.style.borderWidth, "2px");
+    assert.equal(firstField.style.paddingTop, "5px");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
     firstField.input("needle");
@@ -253,6 +295,13 @@ function fakeDocument() {
     assert.equal(root.children.find((child) => child.tagName === "MAIN"), screen);
     assert.equal(screen.children[0], firstButton);
     assert.equal(screen.children[1], firstField);
+    runtime.setWebStyleSheets(domRt, []);
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(firstButton.style.background, "");
+    assert.equal(firstButton.style.color, "");
+    runtime.setWebStyleSheets(domRt, webStyleSheet);
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(firstButton.style.background, "#203040");
     firstButton.click();
     assert.equal(domRt.input.events.at(-1).type, "tap");
     const previousEventCount = domRt.input.events.length;

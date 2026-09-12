@@ -34,6 +34,7 @@ export interface Runtime {
   statements: RuntimeItem[];
   hostCalls: RuntimeItem[];
   mounted: boolean;
+  webStyleSheets?: Array<string | WebStyleSheet>;
   instanceFrame: number;
   instances: Map<string, Map<bigint, { value: unknown; frameSeen: number }>>;
   input: {
@@ -155,6 +156,19 @@ export interface WebAccessibilitySnapshot {
   nodes: WebAccessibilityNode[];
 }
 
+export interface WebStyleRule {
+  selector: Record<string, unknown>;
+  style: Record<string, unknown>;
+  layer: number;
+  order: number;
+  score: number;
+}
+
+export interface WebStyleSheet {
+  pack?: string;
+  rules: WebStyleRule[];
+}
+
 export interface Ref<T = unknown> {
   value: T;
   object: Record<string, T> | null;
@@ -211,6 +225,9 @@ export function hostCall(host: unknown, method: string, args?: unknown[]): unkno
 export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
+export function parseWebStyleSheet(source: string): WebStyleSheet;
+export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
+export function setWebStyleSheets(rt: Runtime, sheets: string | WebStyleSheet | Array<string | WebStyleSheet>): Runtime;
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;

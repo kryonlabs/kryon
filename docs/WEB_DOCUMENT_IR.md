@@ -164,6 +164,13 @@ backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
 
+The JavaScript runtime exposes `parseWebStyleSheet(source)`,
+`resolveWebStyle(node, sheets)`, and `setWebStyleSheets(rt, sheets)` for the
+same bridge in browser-hosted k2js apps. This first web resolver supports the
+initial KSS grammar slice: kind selectors, `#id`, `.class`, `[role=...]`,
+`[state=...]`, state pseudos, layers, colors, spacing, radius, border width,
+opacity, and font size.
+
 The frame is also the right place for inspector data: matched KSS rules,
 winning declarations, token origins, state slice, and backend degradation can
 attach to nodes without changing app logic.
@@ -205,7 +212,9 @@ non-browser tests.
   declared in `.kry`; nested route parameters are not parsed yet.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   and `on_change(value)` actions in this slice.
-- KSS parsing and compiled style tables are not implemented yet.
+- KSS parsing exists in C for style-rule tables and in the JS runtime for web
+  DOM style application; full token/import loading and every style property are
+  still incremental.
 - Form value lookup and accessibility snapshots are available; deeper
   per-widget ARIA relationships, such as controlled regions and described-by
   chains, are still incremental.

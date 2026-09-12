@@ -1169,6 +1169,207 @@ function implicitRole(node) {
   return "";
 }
 
+const webStyleLayers = {
+  reset: 0,
+  base: 0,
+  defaults: 0,
+  components: 1,
+  widgets: 1,
+  app: 2,
+  overrides: 3
+};
+
+function stripKssComments(source) {
+  return String(source || "")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+}
+
+function parseSelector(text) {
+  let source = String(text || "").trim();
+  const selector = {
+    kind: "*",
+    id: "",
+    classes: [],
+    attrs: {},
+    state: "",
+    specificity: 0
+  };
+  const stateMatch = source.match(/:([A-Za-z_][\w-]*)\s*$/);
+  if (stateMatch) {
+    selector.state = stateMatch[1];
+    selector.specificity += 10;
+    source = source.slice(0, stateMatch.index).trim();
+  }
+  source = source.replace(/\[([A-Za-z_][\w-]*)\s*=\s*([^\]]+)\]/g, (_all, key, value) => {
+    selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
+    selector.specificity += 10;
+    return "";
+  });
+  source = source.replace(/#([A-Za-z_][\w-]*)/g, (_all, id) => {
+    selector.id = id;
+    selector.specificity += 100;
+    return "";
+  });
+  source = source.replace(/\.([A-Za-z_][\w-]*)/g, (_all, name) => {
+    selector.classes.push(name);
+    selector.specificity += 20;
+    return "";
+  });
+  source = source.trim();
+  if (source)
+    selector.kind = source;
+  if (selector.kind !== "*")
+    selector.specificity += 1;
+  return selector;
+}
+
+function parseKssValue(value) {
+  const text = String(value || "").trim();
+  const number = Number(text.replace(/px$/, ""));
+  if (Number.isFinite(number) && /^-?\d+(?:\.\d+)?(?:px)?$/.test(text))
+    return number;
+  return text;
+}
+
+function parseKssDeclarations(body) {
+  const style = {};
+  for (const part of String(body || "").split(";")) {
+    const colon = part.indexOf(":");
+    if (colon < 0)
+      continue;
+    const name = part.slice(0, colon).trim();
+    if (!name)
+      continue;
+    style[name] = parseKssValue(part.slice(colon + 1));
+  }
+  return style;
+}
+
+export function parseWebStyleSheet(source) {
+  const text = stripKssComments(source);
+  const rules = [];
+  let pack = "";
+  let layer = 0;
+  const itemPattern = /@([A-Za-z_][\w-]*)\s+([^;{}]+);|([^@{}]+)\{([^{}]*)\}/g;
+  for (let match; (match = itemPattern.exec(text));) {
+    if (match[1]) {
+      const name = match[1].toLowerCase();
+      const value = match[2].trim();
+      if (name === "pack")
+        pack = value;
+      else if (name === "layer")
+        layer = webStyleLayers[value.toLowerCase()] ?? layer;
+      continue;
+    }
+    for (const selectorText of String(match[3] || "").split(",")) {
+      if (!selectorText.trim())
+        continue;
+      const selector = parseSelector(selectorText);
+      const order = rules.length;
+      rules.push({
+        selector,
+        style: parseKssDeclarations(match[4]),
+        layer,
+        order,
+        score: layer * 1000000 + selector.specificity * 1000 + order
+      });
+    }
+  }
+  return { pack, rules };
+}
+
+function styleStateMatches(name, state) {
+  if (!name || name === "any")
+    return true;
+  const key = String(name).toLowerCase();
+  if (key === "normal")
+    return !Object.values(state || {}).some(Boolean);
+  if (key === "hover" || key === "pressed" || key === "focus" || key === "focused")
+    return !!state?.[key] || !!state?.[key === "focused" ? "focus" : key];
+  return !!state?.[key];
+}
+
+function selectorMatchesFacts(selector, facts) {
+  if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
+    return false;
+  if (selector.id && selector.id !== facts.id && selector.id !== facts.name && selector.id !== facts.key)
+    return false;
+  for (const cls of selector.classes)
+    if (!facts.classes?.includes(cls))
+      return false;
+  for (const [key, value] of Object.entries(selector.attrs)) {
+    if (key === "role" && value !== facts.role)
+      return false;
+    else if (key === "state" && !styleStateMatches(value, facts.state))
+      return false;
+    else if (!["role", "state"].includes(key) && String(facts[key] ?? "") !== value)
+      return false;
+  }
+  return styleStateMatches(selector.state, facts.state);
+}
+
+export function resolveWebStyle(node, sheets = []) {
+  const facts = node?.styleFacts || webNodeStyleFacts(node);
+  const resolved = {};
+  const scores = {};
+  const list = Array.isArray(sheets) ? sheets : [sheets];
+  for (const sheet of list) {
+    const rules = typeof sheet === "string" ? parseWebStyleSheet(sheet).rules : (sheet?.rules || []);
+    for (const rule of rules) {
+      if (!selectorMatchesFacts(rule.selector, facts))
+        continue;
+      const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
+      for (const [name, value] of Object.entries(rule.style || {})) {
+        if (scores[name] === undefined || score >= scores[name]) {
+          scores[name] = score;
+          resolved[name] = value;
+        }
+      }
+    }
+  }
+  return resolved;
+}
+
+function applyResolvedWebStyle(el, style) {
+  if (!el)
+    return;
+  for (const name of el.__kryAppliedStyleProps || [])
+    el.style[name] = "";
+  const applied = new Set();
+  const set = (name, value) => {
+    if (value === undefined || value === null || value === "")
+      return;
+    el.style[name] = typeof value === "number" && name !== "opacity" ? value + "px" : String(value);
+    applied.add(name);
+  };
+  style = style || {};
+  set("background", style.background ?? style["background-color"]);
+  set("color", style.foreground ?? style.color);
+  set("borderColor", style.border ?? style["border-color"]);
+  set("borderWidth", style["border-width"] ?? style.border_width);
+  set("borderRadius", style.radius);
+  set("opacity", style.opacity);
+  set("paddingLeft", style["padding-x"] ?? style.padding_x);
+  set("paddingRight", style["padding-x"] ?? style.padding_x);
+  set("paddingTop", style["padding-y"] ?? style.padding_y);
+  set("paddingBottom", style["padding-y"] ?? style.padding_y);
+  set("gap", style.gap);
+  set("fontSize", style["font-size"] ?? style.font_size);
+  if (style.border || style["border-color"] || style["border-width"] || style.border_width) {
+    el.style.borderStyle = el.style.borderStyle || "solid";
+    applied.add("borderStyle");
+  }
+  el.__kryAppliedStyleProps = applied;
+}
+
+export function setWebStyleSheets(rt, sheets) {
+  if (!rt)
+    return rt;
+  rt.webStyleSheets = Array.isArray(sheets) ? sheets : [sheets];
+  return rt;
+}
+
 export function webDocumentFrame(rt) {
   const frame = {
     app: rt?.app || null,
@@ -1439,6 +1640,7 @@ export function renderWebDocument(rt, target) {
       children.set(identity, el);
     }
     applyWebNode(el, docNode, rt);
+    applyResolvedWebStyle(el, rt?.webStyleSheets ? resolveWebStyle(docNode, rt.webStyleSheets) : null);
     el.__kryMountRoot = root;
     updateElementFormValue(el);
     if (docNode.path && docNode.path !== docNode.parentPath)
