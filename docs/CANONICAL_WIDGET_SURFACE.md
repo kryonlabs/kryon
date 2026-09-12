@@ -128,11 +128,11 @@ has a single place to land.
 
 | Public name | Registry group | Detail | Runtime `.kry` source | State | Migration note |
 |---|---|---|---|---|---|
-| `Background` | `UI/Display` | Fill | `runtime/primitive.kry` | Partly `.kry-backed` | Viewport bounds policy is `.kry`; host keeps immediate fill drawing and retained paint ordering. |
+| `Background` | `UI/Display` | Fill | `runtime/primitive.kry` | `.kry-backed` | Viewport bounds and app fallback policy are `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `UI/Display` | Label | `runtime/text.kry` | `.kry-backed` | Keep one `Text(TextProps)` surface. |
 | `Paragraph` | `UI/Display` | Rich text | `runtime/paragraph.kry` | Partly `.kry-backed` | Metrics/default policy is `.kry`; text parsing, reflow, icon shaping, and drawing remain host support. |
-| `Box` | `UI/Display` | Shape | `runtime/primitive.kry` | Partly `.kry-backed` | Registry/public rectangle primitive with `Rectangle` bounds. |
-| `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | Partly `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
+| `Box` | `UI/Display` | Shape | `runtime/primitive.kry` | `.kry-backed` | Rectangle bounds policy is `.kry`; host keeps fill/border drawing. |
+| `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
 | `Icon` | `UI/Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
 | `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; cache/loading/drawing remain host support. |

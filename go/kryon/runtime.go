@@ -2038,7 +2038,10 @@ func (r *runtime) Ring(centerX, centerY, innerRadius, outerRadius int32, color C
 	r.record(FrameOp{Kind: FrameOpRing, Bounds: Primitive_PrimitiveRingBounds(centerX, centerY, outerRadius), Radius: float32(innerRadius), Color: color})
 }
 func (r *runtime) Box(bounds Rectangle, fill Color, border Color) {
-	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: fill, BorderColor: border})
+	r.record(FrameOp{Kind: FrameOpRect,
+		Bounds:      Primitive_PrimitiveRectBounds(int32(bounds.X), int32(bounds.Y), int32(bounds.Width), int32(bounds.Height)),
+		Color:       fill,
+		BorderColor: border})
 }
 func (r *runtime) Surface(bounds Rectangle, style Style) {
 	style = mergeStyle(unpackStyle(defaultStyleFrame(StyleSheet_StyleKindSurface()).Value), style)

@@ -2421,6 +2421,18 @@ func TestPrimitiveAppBackgroundColorFallsBack(t *testing.T) {
 	}
 }
 
+func TestBoxUsesPrimitiveBoundsPolicy(t *testing.T) {
+	rt := New(AppConfig{}).(*runtime)
+	rt.Box(Rectangle{X: 1.8, Y: 2.2, Width: 3.9, Height: 4.1}, RED, BLUE)
+	ops := rt.FrameOps()
+	if len(ops) != 1 || ops[0].Kind != FrameOpRect {
+		t.Fatalf("box ops = %#v", ops)
+	}
+	if got, want := ops[0].Bounds, Primitive_PrimitiveRectBounds(1, 2, 3, 4); got != want {
+		t.Fatalf("box bounds = %#v, want %#v", got, want)
+	}
+}
+
 func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 
