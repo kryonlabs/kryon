@@ -426,8 +426,10 @@ tokens {
   material { flat: Flat; }
 }
 Collapsible[role=Header] { background: face; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Collapsible[role=Header]:disabled { foreground: #8090a4; opacity: 0.42; }
 Collapsible[role=TreeHeader] { background: #00000000; foreground: ink; border: #00000000; radius: radius; border-width: 0; material: flat; }
 Collapsible[role=Close] { foreground: ink; }
+Collapsible[role=Close]:disabled { foreground: #8090a4; opacity: 0.37; }
 `, "Test Collapsible", "") || !SetActiveStylePack("test.collapsible") {
 		t.Fatal("test collapsible style did not activate")
 	}
@@ -481,6 +483,35 @@ Collapsible[role=Close] { foreground: ink; }
 	}
 	if !sawTree {
 		t.Fatalf("missing tree collapsible op: %+v", rt.FrameOps())
+	}
+
+	rt.BeginFrame()
+	disabledVisible := true
+	rt.Collapsible(CollapsibleProps{
+		Bounds:   Rectangle{X: 10, Y: 84, Width: 180, Height: 32},
+		Label:    "Disabled",
+		Visible:  &disabledVisible,
+		Disabled: true,
+		ID:       993,
+	})
+	rt.EndFrame()
+	var sawDisabledHeader, sawDisabledClose bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpButton && op.ID == 993:
+			sawDisabledHeader = true
+			if !op.Disabled || op.TextColor != (Color{R: 0x80, G: 0x90, B: 0xa4, A: 0x6b}) || op.Opacity != 0.42 {
+				t.Fatalf("disabled collapsible header style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "×":
+			sawDisabledClose = true
+			if !op.Disabled || op.Color != (Color{R: 0x80, G: 0x90, B: 0xa4, A: 0xff}) || op.Opacity != 0.37 {
+				t.Fatalf("disabled collapsible close style op = %+v", op)
+			}
+		}
+	}
+	if !sawDisabledHeader || !sawDisabledClose {
+		t.Fatalf("missing disabled collapsible ops: header=%v close=%v ops=%+v", sawDisabledHeader, sawDisabledClose, rt.FrameOps())
 	}
 }
 

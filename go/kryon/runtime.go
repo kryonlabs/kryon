@@ -6477,7 +6477,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1,
 		Text16, Text16)
 	fg := unpackRGBA(button.Foreground)
-	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button, Opacity: 1,
+	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button, Opacity: button.Appearance.Value.Opacity,
 		Bounds: header, Text: label, Color: unpackRGBA(button.Appearance.Value.Background),
 		BorderColor: unpackRGBA(button.Appearance.Value.Border), TextColor: fg,
 		BorderWidth: button.Appearance.Value.BorderWidth, Radius: button.Appearance.Value.Radius,
@@ -6493,7 +6493,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		}
 		closeStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, closeState, !enabled,
 			false, StyleSheet_StyleKindCollapsible(), 15).Value)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, FontSize: Text16, Pressed: closed, Disabled: !enabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: Text16, Pressed: closed, Disabled: !enabled})
 	}
 	if pressed || closed {
 		return 1
