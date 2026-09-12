@@ -30,7 +30,7 @@ if [ -n "$matches" ]; then
 fi
 
 removed_widget_matches="$(
-    rg -n '\b(Href|Picture|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
+    rg -n '\b(Href|Picture|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
         include src cmd go web docs examples tests tools scripts \
         --glob '!vendor/**' \
         --glob '!build/**' \

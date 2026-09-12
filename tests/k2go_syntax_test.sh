@@ -247,7 +247,7 @@ App :: () #ui {
     Radio((RadioProps){.bounds = {Scale(4), Scale(270), Scale(120), Scale(24)}, .label = "one", .id = 1, .checked = pick == 1})
     Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 10, 1, &slider_val, 0, ""})
     Dropdown((DropdownProps){.bounds = {Scale(240), Scale(270), Scale(70), Scale(28)}, .id = 25, .options = choices, .option_count = 3, .selected_index = &pick})
-    LabelFrame((LabelFrameProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
+    Fieldset((FieldsetProps){.bounds = {Scale(4), Scale(300), Scale(120), Scale(50)}, .title = "frame"})
     tab_result: int = TabBar((TabBarProps){.bounds = {Scale(140), Scale(300), Scale(120), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = pick, .id = 260})
     if tab_result >= 0 { pick = tab_result }
     ListBox((ListBoxProps){.bounds = {Scale(280), Scale(300), Scale(60), Scale(50)}, .id = 26, .items = choices[:], .selected_index = &pick})
@@ -551,7 +551,7 @@ grep -q 'Label: "one"' "$out"
 grep -q 'Checked: st.Pick == 1' "$out"
 grep -q 'kr.Spinbox(kr.SpinboxProps{.*Value: &st.SliderVal' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 25.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
-grep -q 'kr.LabelFrame(kr.LabelFrameProps{' "$out"
+grep -q 'kr.Fieldset(kr.FieldsetProps{' "$out"
 grep -q 'kr.TabBar(kr.TabBarProps{.*ID: 260' "$out"
 grep -q 'kr.ListBox(kr.ListBoxProps{' "$out"
 grep -q 'kr.TreeView(kr.TreeViewProps{.*Items: tree_items\[:\].*SelectedID: &st.Pick' "$out"

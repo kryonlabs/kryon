@@ -48,7 +48,7 @@ surface review:
 | `runtime/grid_props.kry` | Grid props | `.kry canonical` |
 | `runtime/input.kry` | Input value/step policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props | `.kry canonical` |
-| `runtime/label_frame.kry` | LabelFrame layout/paint policy | Rename review |
+| `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
 | `runtime/list_box.kry` | ListBox layout/navigation policy | `.kry canonical` |
 | `runtime/material.kry` | Material helpers | Rename review |
 | `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
@@ -85,7 +85,7 @@ text measurement, painting, storage, or platform services.
 | Text and drawing | `Text` style resolution, `Image` canonical props/name, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | `Background`, `Paragraph`, `Rect`, `Line`, `Bevel`, `Icon` |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options, `InvisibleButton` disabled policy | helper button variants belong in `ButtonProps` or composition |
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
-| Layout | `Grid`, `LabelFrame` layout policy, `Separator`, shared `Surface`/`Style`/`Material` policy | `Column`, `Row`, `Stack`, `Screen`, `Group`, `PanedView`, `Collapsible`, scroll/list/table begin-end wrappers |
+| Layout | `Grid`, `Fieldset` layout policy, `Separator`, shared `Surface`/`Style`/`Material` policy | `Column`, `Row`, `Stack`, `Screen`, `Group`, `PanedView`, `Collapsible`, scroll/list/table begin-end wrappers |
 | Collections | `CanvasGrid`, `ListBox` layout/navigation policy, `MultiSelectList` row/navigation/selection policy, `Plot` geometry policy | `TreeView`, `TableView`, `Canvas`, drag/drop wrappers |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, menu geometry policy | `MenuBar`, `PopupMenu`, `ContextMenu` retained state/input, title bars, router/link helpers |
 | Overlays | `Popup` mode/input policy | dialogs, `Modal`, toast, theme pickers, focus/guide/tutorial overlays, transition helpers |
@@ -163,7 +163,8 @@ been removed from the public surface. Existing generated fixtures use
 | `Screen` | `.kry canonical` | Top-level screen container. |
 | `Group` | Native support | Low-level grouping; review public need. |
 | `Separator` | `.kry canonical` | Line, label, and bullet layout/paint policy are in `.kry`; host handles text measurement and drawing. |
-| `LabelFrame` | Rename review | Layout/paint policy is in `.kry`; decide whether final name should be `Fieldset`, `Group`, or surface props. |
+| `Fieldset` | `.kry canonical` | Canonical titled border group; replaces old `LabelFrame` spelling. |
+| `LabelFrame` | Removed | Old spelling for `Fieldset`; no longer accepted as a public widget name. |
 | `PanedView` | `.kry canonical` | Split-pane layout component. |
 | `Collapsible` | `.kry canonical` | Disclosure container. |
 | `BeginScroll` | Native support | Compatibility wrapper; canonical API should be declarative. |

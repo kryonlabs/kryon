@@ -15,7 +15,7 @@ components. The C files used for native and web builds are generated into
 7. **07_layout** - Existing layout helpers
 8. **09_geometry** - Packed frames, grid cells, placement, separators
 9. **10_menus** - Menubar and menu items
-10. **11_basic_controls** - Radio, progress, spinbox, dropdown, label frame
+10. **11_basic_controls** - Radio, progress, spinbox, dropdown, fieldset
 11. **12_collections** - Listbox, tree view, table view
 12. **13_text_editor** - Text area plus clipboard helpers
 13. **14_canvas** - Canvas clipping, grid, and hit testing

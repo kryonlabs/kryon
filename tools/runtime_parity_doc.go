@@ -218,7 +218,7 @@ func render(native, cleanC methodSet) (string, bool) {
 		"Row",
 		"Stack",
 		"CanvasGrid",
-		"LabelFrame",
+		"Fieldset",
 		"ListBox",
 		"PanedView",
 		"Collapsible",

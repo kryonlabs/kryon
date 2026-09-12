@@ -3113,10 +3113,10 @@ Spinbox(SpinboxProps spinbox)
 }
 
 void
-LabelFrame(LabelFrameProps frame)
+Fieldset(FieldsetProps frame)
 {
     ui_tree_add(0, UI_WIDGET_CUSTOM_NODE, frame.bounds, &frame);
-    RenderLabelFrame(frame);
+    RenderFieldset(frame);
 }
 
 int

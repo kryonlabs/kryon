@@ -359,7 +359,7 @@ func TextField(args ...any) bool                   { return textField(args...) }
 func TextArea(props TextAreaProps) bool            { return active().TextArea(props) }
 func Radio(props RadioProps) int32                 { return active().Radio(props) }
 func Spinbox(props SpinboxProps) bool              { return active().Spinbox(props) }
-func LabelFrame(props LabelFrameProps)             { active().LabelFrame(props) }
+func Fieldset(props FieldsetProps)                 { active().Fieldset(props) }
 func PanedView(props PanedViewProps) int32         { return active().PanedView(props) }
 func Collapsible(props CollapsibleProps) int32     { return active().Collapsible(props) }
 func TreeView(props TreeViewProps) int32           { return active().TreeView(props) }

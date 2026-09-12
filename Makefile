@@ -734,7 +734,7 @@ $(RUNTIME_C) $(RUNTIME_H) &: $(RUNTIME_KRY) $(K2C)
 	$(K2C) --strict --no-main --root . -o $(GENERATED_SRC_DIR) $(RUNTIME_KRY)
 
 $(BUILD_DIR)/core/theme.o: $(GENERATED_SRC_DIR)/runtime/theme.h
-$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/label_frame.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
+$(BUILD_DIR)/ui/ui_tk.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/instance.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/spinbox.h
 
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/grid.h
 
@@ -996,7 +996,7 @@ $(LIBDRAW_HIERARCHY_TEST): tests/libdraw_hierarchy_main.c $(LIB) $(KRYON_BACKEND
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \
 		-o $@
 
-$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/label_frame.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/multi_select_list.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
+$(UI_TK_TEST): tests/ui_tk_test.c $(LIB) $(KRYON_BACKEND_LIBS) $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/canvas_grid.h $(GENERATED_SRC_DIR)/runtime/checkbox.h $(GENERATED_SRC_DIR)/runtime/color_picker.h $(GENERATED_SRC_DIR)/runtime/drag.h $(GENERATED_SRC_DIR)/runtime/input.h $(GENERATED_SRC_DIR)/runtime/fieldset.h $(GENERATED_SRC_DIR)/runtime/list_box.h $(GENERATED_SRC_DIR)/runtime/multi_select_list.h $(GENERATED_SRC_DIR)/runtime/plot.h $(GENERATED_SRC_DIR)/runtime/progress.h $(GENERATED_SRC_DIR)/runtime/radio.h $(GENERATED_SRC_DIR)/runtime/selectable.h $(GENERATED_SRC_DIR)/runtime/separator.h $(GENERATED_SRC_DIR)/runtime/slider.h $(GENERATED_SRC_DIR)/runtime/tab_bar.h $(GENERATED_SRC_DIR)/runtime/popup_policy.h $(GENERATED_SRC_DIR)/runtime/text_input.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/spinbox.h | $(BUILD_DIR)
 	@mkdir -p $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/ui_tk_test.c \
 		$(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) \

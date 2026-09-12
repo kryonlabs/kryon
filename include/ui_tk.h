@@ -287,7 +287,7 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     const char *title;
-} LabelFrameProps;
+} FieldsetProps;
 
 typedef struct {
     Rectangle bounds;

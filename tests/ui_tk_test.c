@@ -8,7 +8,7 @@
 #include "runtime/color_picker.h"
 #include "runtime/drag.h"
 #include "runtime/input.h"
-#include "runtime/label_frame.h"
+#include "runtime/fieldset.h"
 #include "runtime/multi_select_list.h"
 #include "runtime/popup_policy.h"
 #include "runtime/progress.h"
@@ -346,24 +346,24 @@ test_canvas_grid_policy(void)
 }
 
 static void
-test_label_frame_policy(void)
+test_fieldset_policy(void)
 {
     Rectangle bounds = {10, 20, 120, 80};
-    LabelFramePaint paint = LabelFramePaintFor(bounds, 40, 1, 1.0f,
+    FieldsetPaint paint = FieldsetPaintFor(bounds, 40, 1, 1.0f,
                                                0x01020304, 0x05060708,
                                                0x090A0B0C);
-    LabelFramePaint no_title = LabelFramePaintFor(bounds, 40, 0, 1.0f,
+    FieldsetPaint no_title = FieldsetPaintFor(bounds, 40, 0, 1.0f,
                                                   0x01020304, 0x05060708,
                                                   0x090A0B0C);
 
-    check_int("label frame title bg x", (int)paint.title_background.x, 18);
-    check_int("label frame title bg y", (int)paint.title_background.y, 12);
-    check_int("label frame title bg width", (int)paint.title_background.width, 56);
-    check_int("label frame title text x", (int)paint.title_text.x, 26);
-    check_int("label frame title text y", (int)paint.title_text.y, 11);
-    check_int("label frame show title", paint.show_title, 1);
-    check_int("label frame no title hidden", no_title.show_title, 0);
-    check_int("label frame no title width",
+    check_int("fieldset title bg x", (int)paint.title_background.x, 18);
+    check_int("fieldset title bg y", (int)paint.title_background.y, 12);
+    check_int("fieldset title bg width", (int)paint.title_background.width, 56);
+    check_int("fieldset title text x", (int)paint.title_text.x, 26);
+    check_int("fieldset title text y", (int)paint.title_text.y, 11);
+    check_int("fieldset show title", paint.show_title, 1);
+    check_int("fieldset no title hidden", no_title.show_title, 0);
+    check_int("fieldset no title width",
               (int)no_title.title_background.width, 0);
 }
 
@@ -4788,7 +4788,7 @@ main(void)
     test_button_policy();
     test_separator_policy();
     test_canvas_grid_policy();
-    test_label_frame_policy();
+    test_fieldset_policy();
     test_plot_policy();
     test_progress_layout_policy();
     test_selectable_paint_policy();

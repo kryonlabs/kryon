@@ -1080,7 +1080,7 @@ type DropdownProps struct {
 	Disabled      bool
 }
 
-type LabelFrameProps struct {
+type FieldsetProps struct {
 	Bounds Rectangle
 	Title  string
 }
@@ -1350,7 +1350,7 @@ type Runtime interface {
 	TextArea(props TextAreaProps) bool
 	Radio(props RadioProps) int32
 	Spinbox(props SpinboxProps) bool
-	LabelFrame(props LabelFrameProps)
+	Fieldset(props FieldsetProps)
 	PanedView(props PanedViewProps) int32
 	Collapsible(props CollapsibleProps) int32
 	TreeView(props TreeViewProps) int32
@@ -5610,14 +5610,14 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: t.text, FontSize: Text16})
 	return changed
 }
-func (r *runtime) LabelFrame(p LabelFrameProps) {
+func (r *runtime) Fieldset(p FieldsetProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
 	t := r.theme()
 	w := float32(0)
 	if p.Title != "" {
 		w = float32(runtimeTextWidth(p.Title, Text14))
 	}
-	paint := LabelFrame_LabelFramePaintFor(p.Bounds, w, p.Title != "", 1, packRGBA(t.border), packRGBA(t.background), packRGBA(t.text))
+	paint := Fieldset_FieldsetPaintFor(p.Bounds, w, p.Title != "", 1, packRGBA(t.border), packRGBA(t.background), packRGBA(t.text))
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Frame, BorderColor: unpackRGBA(paint.BorderColor), BorderWidth: paint.BorderWidth})
 	if paint.ShowTitle {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.TitleBackground, Color: unpackRGBA(paint.BackgroundColor)})

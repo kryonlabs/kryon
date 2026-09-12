@@ -2293,9 +2293,9 @@ add_rect_node(KrbBuild *b, const char *prefix, int x, int y, int w, int h,
 }
 
 static int
-parse_labelframe(KrbBuild *b, const char *call)
+parse_fieldset(KrbBuild *b, const char *call)
 {
-    const char *p = strstr(call, "LabelFrameProps");
+    const char *p = strstr(call, "FieldsetProps");
     const char *open;
     const char *close;
     char body[KIR_TEXT_MAX];
@@ -2854,7 +2854,7 @@ is_kry_widget_call(const char *name)
         "Slider", "Toggle", "Checkbox", "Radio", "Progress", "Spinbox",
         "Screen", "Column", "Row", "Stack", "End", "Scroll",
         "Canvas", "Modal", "TitleBar", "TabBar", "NavigationBar",
-        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
+        "Toolbar", "ShowToast", "ShowToastFor", "Fieldset",
         "PanedView", "Collapsible", "ListBox",
         "TableView", "CanvasGrid", "SelectableText", NULL
     };
@@ -2888,7 +2888,7 @@ parse_widget_from_table(KrbBuild *b, const char *call)
         { "Toggle", parse_toggle },
         { "Spinbox", parse_spinbox },
         { "Progress", parse_progress },
-        { "LabelFrame", parse_labelframe },
+        { "Fieldset", parse_fieldset },
         { NULL, NULL }
     };
 

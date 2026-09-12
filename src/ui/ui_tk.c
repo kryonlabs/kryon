@@ -10,7 +10,7 @@
 #include "runtime/color_picker.h"
 #include "runtime/drag.h"
 #include "runtime/input.h"
-#include "runtime/label_frame.h"
+#include "runtime/fieldset.h"
 #include "runtime/list_box.h"
 #include "runtime/menu.h"
 #include "runtime/multi_select_list.h"
@@ -2752,12 +2752,12 @@ RenderSpinbox(SpinboxProps spinbox)
 }
 
 void
-RenderLabelFrame(LabelFrameProps frame)
+RenderFieldset(FieldsetProps frame)
 {
     int font = GetSmallFontSize();
     const char *title = frame.title != NULL ? frame.title : "";
     int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
-    LabelFramePaint paint = LabelFramePaintFor(
+    FieldsetPaint paint = FieldsetPaintFor(
         frame.bounds, (float)title_width, title[0] != '\0',
         (float)Scale(1000) / 1000.0f, ColorToInt(c_button),
         ColorToInt(c_bg), ColorToInt(c_text));

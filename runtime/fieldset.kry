@@ -1,7 +1,7 @@
-#module "label_frame"
+#module "fieldset"
 #import "drawing_props"
 
-LabelFramePaint :: struct {
+FieldsetPaint :: struct {
     frame: Rectangle
     title_background: Rectangle
     title_text: Rectangle
@@ -12,10 +12,10 @@ LabelFramePaint :: struct {
     show_title: bool
 }
 
-LabelFramePaintFor :: (bounds: Rectangle, title_width: float,
+FieldsetPaintFor :: (bounds: Rectangle, title_width: float,
     has_title: bool, scale: float, border_color: u32, background_color: u32,
-    text_color: u32) -> LabelFramePaint #export {
-    paint: LabelFramePaint
+    text_color: u32) -> FieldsetPaint #export {
+    paint: FieldsetPaint
     if scale <= 0.0 {
         scale = 1.0
     }

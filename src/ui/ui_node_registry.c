@@ -34,7 +34,7 @@ static const KryonNodeType kryon_node_types[] = {
 
     {"Group", "Group", "UI/Layout", "Control", "Container", INSERT_EDITABLE},
     {"Separator", "Separator", "UI/Layout", "Control", "Divider", EDITABLE},
-    {"LabelFrame", "Label Frame", "UI/Layout", "Control", "Frame", EDITABLE},
+    {"Fieldset", "Fieldset", "UI/Layout", "Control", "Frame", EDITABLE},
     {"PanedView", "Paned View", "UI/Layout", "Control", "Split panes", EDITABLE},
     {"Collapsible", "Collapsible", "UI/Layout", "Control", "Section", EDITABLE},
 

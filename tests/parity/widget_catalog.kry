@@ -96,7 +96,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Progress((ProgressProps){{Scale(350), Scale(458), Scale(160), Scale(18)}, 0, 100, slider_value, "Progress"})
 
         ColorPicker((ColorPickerProps){.bounds = {Scale(540), Scale(92), Scale(96), Scale(120)}, .id = 38, .values = pick_color, .value_count = 4, .picker = true})
-        LabelFrame((LabelFrameProps){.bounds = {Scale(540), Scale(148), Scale(140), Scale(48)}, .title = "Frame"})
+        Fieldset((FieldsetProps){.bounds = {Scale(540), Scale(148), Scale(140), Scale(48)}, .title = "Frame"})
         Image((ImageProps){.asset_path = "tiles/tile.png", .bounds = (Rectangle){Scale(690), Scale(148), Scale(48), Scale(48)}, .source = (Rectangle){0, 0, 0, 0}, .origin = (Vector2){0, 0}, .rotation = 0.0f, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
         Icon(39, Scale(540), Scale(210), Scale(24), 1, WHITE)
         if Button((ButtonProps){.bounds = {Scale(580), Scale(206), Scale(32), Scale(32)}, .id = 40,

@@ -2355,7 +2355,7 @@ Feature families:
 
 - Geometry: `BeginFrameBox`, `FramePack`, `GridCell`, `Place`, `UISeparatorNode`
 - Menus: `UIMenuBarNode`, `UIPopupMenuNode`
-- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `UILabelFrameNode`, `Image`
+- Basic controls: `Radio`, `Progress`, `Spinbox`, `Dropdown`, `UIFieldsetNode`, `Image`
 - Collections: `ListBox`, `TreeView`, `TableView`
 
 Use `ListBox(ListBoxProps)` for selectable string lists. For arbitrary

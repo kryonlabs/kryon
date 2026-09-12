@@ -285,7 +285,7 @@ int Spinbox(SpinboxProps spinbox);
 int BeginPopup(PopupProps popup);
 void EndPopup(void);
 void ClosePopup(void);
-void LabelFrame(LabelFrameProps frame);
+void Fieldset(FieldsetProps frame);
 int ListBox(ListBoxProps list);
 int TreeView(TreeViewProps tree);
 int TableView(TableViewProps table);

@@ -87,7 +87,7 @@ is_runtime_go_type(const char *type)
 		"DragDropTargetProps", "MultiSelectListProps",
 		"ColorPickerProps",
 		"SpinboxProps", "DropdownOption", "DropdownProps", "PopupFlags", "PopupProps",
-		"LabelFrameProps", "ListBoxProps",
+		"FieldsetProps", "ListBoxProps",
 		"UITreeItem", "TreeViewProps",
         "TableRow", "TableViewProps",
         "PanedViewProps", "CollapsibleProps", "ModalAction", "ModalProps",

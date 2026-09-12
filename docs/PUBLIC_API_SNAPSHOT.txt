@@ -1997,7 +1997,7 @@ include/ui_tree.h function Input
 include/ui_tree.h function InvalidateTree
 include/ui_tree.h function InvisibleButton
 include/ui_tree.h function Key
-include/ui_tree.h function LabelFrame
+include/ui_tree.h function Fieldset
 include/ui_tree.h function LayoutTree
 include/ui_tree.h function Line
 include/ui_tree.h function ListBox

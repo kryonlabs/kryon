@@ -375,7 +375,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "Screen", "Column", "Row", "Stack", "End", "Scroll", "Canvas",
         "Modal", "TitleBar", "TabBar",
         "NavigationBar",
-        "Toolbar", "ShowToast", "ShowToastFor", "LabelFrame",
+        "Toolbar", "ShowToast", "ShowToastFor", "Fieldset",
 		"PanedView", "Collapsible", "ListBox", "TreeView", "TableView",
 		"ColorPicker", "CanvasGrid", "SelectableText"
     };
@@ -508,8 +508,8 @@ ui_block_prop_type(const char *widget)
         return "SpinboxProps";
     if(strcmp(widget, "Dropdown") == 0)
         return "DropdownProps";
-    if(strcmp(widget, "LabelFrame") == 0)
-        return "LabelFrameProps";
+    if(strcmp(widget, "Fieldset") == 0)
+        return "FieldsetProps";
     if(strcmp(widget, "PanedView") == 0)
         return "PanedViewProps";
     if(strcmp(widget, "Collapsible") == 0)

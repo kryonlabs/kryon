@@ -272,7 +272,7 @@ export function Dropdown(...args: unknown[]): unknown;
 export function EndCanvas(...args: unknown[]): unknown;
 export function EndScroll(...args: unknown[]): unknown;
 export function Icon(...args: unknown[]): unknown;
-export function LabelFrame(...args: unknown[]): unknown;
+export function Fieldset(...args: unknown[]): unknown;
 export function Link(...args: unknown[]): unknown;
 export function ListBox(...args: unknown[]): unknown;
 export function Modal(...args: unknown[]): unknown;

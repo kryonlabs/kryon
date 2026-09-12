@@ -426,7 +426,7 @@ int RenderInputScalar(UIFloatInputProps input);
 int RenderInputWhole(UIIntInputProps input);
 int RenderInputDouble(UIDoubleInputProps input);
 int RenderSpinbox(SpinboxProps spinbox);
-void RenderLabelFrame(LabelFrameProps frame);
+void RenderFieldset(FieldsetProps frame);
 int RenderListBox(ListBoxProps list);
 int RenderTreeView(TreeViewProps tree);
 int RenderTableView(TableViewProps table);

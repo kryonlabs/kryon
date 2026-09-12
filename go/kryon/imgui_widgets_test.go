@@ -784,7 +784,7 @@ func TestNativeImGuiWidgetSlice(t *testing.T) {
 	if r.PanedView(PanedViewProps{Bounds: NewRectangle(0, 0, 200, 100), ID: 9, Vertical: true, Split: &split, MinFirst: 20, MinSecond: 20}) != 1 || split != 51 {
 		t.Fatalf("PanedView split=%d, want 51", split)
 	}
-	r.LabelFrame(LabelFrameProps{Bounds: NewRectangle(10, 120, 180, 80), Title: "Group"})
+	r.Fieldset(FieldsetProps{Bounds: NewRectangle(10, 120, 180, 80), Title: "Group"})
 	r.EndFrame()
 
 	colorValues := []float32{0.1, 0.2, 0.3, 1.0}

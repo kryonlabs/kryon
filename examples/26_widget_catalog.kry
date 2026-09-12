@@ -167,7 +167,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Line(right, y + Scale(110), right + Scale(120), y + Scale(110), GetThemeLink())
         Bevel(right, y + Scale(132), Scale(120), Scale(34), GetThemeSurface(), GetThemeButton())
         Icon(100, right + Scale(150), y + Scale(46), Scale(28), 1, GetThemeIcon())
-        LabelFrame((LabelFrameProps){.bounds = {right + Scale(200), y + Scale(36), Scale(150), Scale(58)}, .title = "Label frame"})
+        Fieldset((FieldsetProps){.bounds = {right + Scale(200), y + Scale(36), Scale(150), Scale(58)}, .title = "Fieldset"})
         Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(200), y + Scale(112), Scale(58), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
         Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(278), y + Scale(112), Scale(72), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
 

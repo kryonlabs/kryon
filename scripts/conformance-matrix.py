@@ -447,7 +447,7 @@ WIDGETS = {
 	"Dropdown",
 	"IconButton",
 	"Icon",
-	"LabelFrame",
+	"Fieldset",
 	"Link",
     "Line",
     "ListBox",

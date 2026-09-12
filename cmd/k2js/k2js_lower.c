@@ -1514,15 +1514,15 @@ static void
 emit_state(FILE *f, const KirModule *m)
 {
     fprintf(f, "export function createState() {\n");
-    fprintf(f, "  return {\n");
+    fprintf(f, "  const $state = {};\n");
     for(int i = 0; i < m->state_count; i++) {
         char init[K2JS_TEXT_MAX];
 
         const KirStateField *field=&m->state_fields[i];
         if(!field->init[0] && *kir_skip_ws(field->type) == '[') {
-            fprintf(f, "    %s: ", field->name);
+            fprintf(f, "  $state.%s = ", field->name);
             emit_zero_value(f, m, field->type);
-            fprintf(f, "%s\n", i + 1 < m->state_count ? "," : "");
+            fprintf(f, ";\n");
             continue;
         }
         const char *value = field->init[0] ? field->init :
@@ -1540,10 +1540,9 @@ emit_state(FILE *f, const KirModule *m)
             char raw[K2JS_TEXT_MAX];snprintf(raw,sizeof(raw),"%s",init);
             snprintf(init,sizeof(init),"Math.fround(%.8000s)",raw);
         }
-        fprintf(f, "    %s: %s%s\n", m->state_fields[i].name, init,
-                i + 1 < m->state_count ? "," : "");
+        fprintf(f, "  $state.%s = %s;\n", m->state_fields[i].name, init);
     }
-    fprintf(f, "  };\n");
+    fprintf(f, "  return $state;\n");
     fprintf(f, "}\n\n");
     fprintf(f, "export const moduleState = createState();\n");
     fprintf(f, "let moduleHost = null;\n");

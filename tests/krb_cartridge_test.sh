@@ -112,7 +112,7 @@ App :: () #ui {
         Checkbox((CheckboxProps){.bounds = {Scale(4), Scale(40), Scale(110), Scale(34)}, .id = 1, .label = "Flag", .value = &cb_flag})
         Radio((RadioProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
         Progress((ProgressProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
-        LabelFrame((LabelFrameProps){.bounds = {Scale(28), Scale(56), Scale(64), Scale(20)}, .title = "PanelTitle"})
+        Fieldset((FieldsetProps){.bounds = {Scale(28), Scale(56), Scale(64), Scale(20)}, .title = "PanelTitle"})
         Dropdown((DropdownProps){{6, 60, 80, 24}, 2, choices, 3, &dropdown_sel, 0})
         Dropdown((DropdownProps){.bounds = {Scale(6), Scale(84), Scale(80), Scale(24)}, .id = 3, .options = "x;y", .option_count = 2, .selected_index = &dd_sel})
     }
@@ -135,8 +135,8 @@ if echo "$frame_out" | grep -q 'Radio'; then
     echo "k2b dropped the Radio call: $frame_out" >&2
     exit 1
 fi
-if echo "$frame_out" | grep -q 'LabelFrame'; then
-    echo "k2b dropped the LabelFrame call: $frame_out" >&2
+if echo "$frame_out" | grep -q 'Fieldset'; then
+    echo "k2b dropped the Fieldset call: $frame_out" >&2
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "Gamma"; then
@@ -172,7 +172,7 @@ if ! strings "$work/frame.krb" | grep -q "Pick"; then
     exit 1
 fi
 if ! strings "$work/frame.krb" | grep -q "PanelTitle"; then
-    echo "frame cartridge missing LabelFrame title" >&2
+    echo "frame cartridge missing Fieldset title" >&2
     exit 1
 fi
 

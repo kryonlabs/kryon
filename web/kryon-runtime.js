@@ -1087,7 +1087,7 @@ export function CanvasHitTest(canvas, screen) {
 const runtimeCallNames = [
   "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
   "ClearBackground", "Collapsible", "Column", "Dropdown", "EndCanvas",
-  "EndScroll", "Icon", "LabelFrame", "Link", "ListBox",
+  "EndScroll", "Icon", "Fieldset", "Link", "ListBox",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
   "SetThemeDarkMode", "ShowToast", "Slider", "Spinbox", "Stack", "TabBar",
@@ -1117,7 +1117,7 @@ export function Dropdown(...args) { return struct("Dropdown", args); }
 export function EndCanvas(...args) { return struct("EndCanvas", args); }
 export function EndScroll(...args) { return struct("EndScroll", args); }
 export function Icon(...args) { return struct("Icon", args); }
-export function LabelFrame(...args) { return struct("LabelFrame", args); }
+export function Fieldset(...args) { return struct("Fieldset", args); }
 export function Link(...args) { return struct("Link", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
 export function Modal(...args) { return struct("Modal", args); }

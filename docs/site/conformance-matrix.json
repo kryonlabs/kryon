@@ -2627,7 +2627,7 @@
         "Dropdown",
         "Icon",
         "Image",
-        "LabelFrame",
+        "Fieldset",
         "Line",
         "Link",
         "ListBox",
@@ -4778,7 +4778,7 @@
         "Dropdown",
         "Icon",
         "Image",
-        "LabelFrame",
+        "Fieldset",
         "Line",
         "Link",
         "ListBox",
@@ -5178,7 +5178,7 @@
     "Dropdown": 7,
     "Icon": 2,
     "Image": 4,
-    "LabelFrame": 2,
+    "Fieldset": 2,
     "Line": 3,
     "Link": 2,
     "ListBox": 4,
@@ -5448,7 +5448,7 @@
       "status_class": "ok"
     },
     {
-      "id": "LabelFrame",
+      "id": "Fieldset",
       "semantic_sources": [],
       "source_count": 2,
       "sources": [

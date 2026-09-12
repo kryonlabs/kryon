@@ -59,7 +59,7 @@ Image Button Selectable InvisibleButton Bullet Separator ColorPicker Tooltip Lin
 Checkbox Radio Progress Spinbox Screen Column Row Stack End Scroll
 Plot Drag Slider Input
 Canvas Disabled Modal TitleBar MenuBar PopupMenu ContextMenu
-TabBar NavigationBar Toolbar ShowToast ShowToastFor LabelFrame
+TabBar NavigationBar Toolbar ShowToast ShowToastFor Fieldset
 PanedView Collapsible ListBox TreeView TableView ColorPicker TabBar DragDropSource DragDropTarget MultiSelectList
 CanvasGrid SelectableText`
 
@@ -138,7 +138,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Group | ✅ (lowers to Stack) | ✅ | ✅ | ◐ via Column | ✅ via Stack | ✅ |
 | Scroll container | ✅ `BeginScroll`/`EndScroll` | ✅ C API | ✅ C API | ✅ generated wheel/drag/nested-child tests | ✅ wheel scrolling, scrollbar dragging, and nested clipping via `BeginScroll`/`EndScroll` | ✅ SCROLL node |
 | Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| LabelFrame | ✅ | ✅ | ✅ | ✅ | ✅ `LabelFrame` | ✅ rect/text lowering |
+| Fieldset | ✅ | ✅ | ✅ | ✅ | ✅ `Fieldset` | ✅ rect/text lowering |
 | TabBar (tabs) | ✅ | ✅ | ✅ | ✅ | ✅ `TabBar` | ✗ |
 | PanedView (splitter) | ✅ | ✅ | ✅ | ✅ | ✅ `PanedView` | ✗ |
 | Collapsible | ✅ | ✅ | ✅ | ✅ | ✅ `Collapsible` | ✗ |
@@ -294,7 +294,7 @@ declaration pass (`src/ui/ui_tree.c`).
   `Dropdown` lowers to a dropdown-style control. `Progress` lowers to a read-only
   `KRB_CTRL_PROGRESS` control bound to an integer state field. `Radio` lowers
   to `KRB_CTRL_RADIO` for the common `selected == id` pattern and writes `id`
-  into the mounted selection field on click. `LabelFrame` lowers to border
+  into the mounted selection field on click. `Fieldset` lowers to border
   rectangles plus title background/text nodes.
 - Retained tree paints 10 node kinds and routes interaction for 6 (see caveat
   above the widget matrix).
