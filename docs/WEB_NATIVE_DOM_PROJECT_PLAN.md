@@ -25,7 +25,7 @@ the browser receives normal elements, attributes, CSS, and events.
 ## Implemented Foundation
 
 - Stable node identity for named and anonymous `.kry` widgets, including
-  compiler source spans.
+  multiline compiler source spans for UI blocks.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
 - Native tags and fallback ARIA roles for widgets with clear browser
@@ -47,8 +47,8 @@ the browser receives normal elements, attributes, CSS, and events.
 
 - Finish all-node compiler metadata so every `.kry` syntactic node that should
   have a DOM surface emits complete identity without runtime fallback synthesis.
-- Extend compiler source ranges beyond statement-level same-line spans to full
-  multiline AST spans for editors and devtools.
+- Extend compiler source ranges beyond UI blocks to full multiline AST spans
+  for every expression-backed DOM node editors and devtools need.
 - Expand native tag contracts for remaining widgets that still render as `div`,
   choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
