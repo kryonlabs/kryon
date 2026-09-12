@@ -4167,13 +4167,20 @@ RenderCollapsible(CollapsibleProps section)
             StyleKindCollapsible(), section.tree ? 14 : 13);
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
+        font = item_style.font_size > 0.0f
+            ? (int)(item_style.font_size + 0.5f)
+            : font;
         StyleFrame link_frame = ui_tk_simple_style_frame_role(
             ButtonToneNeutral, close_hover ? ButtonStateHover : ButtonStateNormal,
             !enabled, 0, StyleKindCollapsible(), 15);
         Style link_style = ui_unpack_style(
             ui_style_apply_effects_frame(link_frame).value);
-        Color text = item_style.foreground;
-        Color icon = item_style.foreground;
+        int close_font = link_style.font_size > 0.0f
+            ? (int)(link_style.font_size + 0.5f)
+            : font;
+        Color text = Fade(item_style.foreground, item_style.opacity);
+        Color icon = text;
+        Color close_text = Fade(link_style.foreground, link_style.opacity);
         int marker = CollapsibleMarkerFor(section.open != NULL && *section.open,
                                           section.leaf != 0);
         if(!section.tree || section.selected)
@@ -4194,9 +4201,9 @@ RenderCollapsible(CollapsibleProps section)
         if(section.visible != NULL)
             RenderText("x",
                        (int)(close_bounds.x +
-                             (close_bounds.width - TextWidth("x", font)) * 0.5f),
-                       ui_row_text_y(close_bounds, font), font,
-                       close_hover ? link_style.foreground : text);
+                             (close_bounds.width - TextWidth("x", close_font)) * 0.5f),
+                       ui_row_text_y(close_bounds, close_font), close_font,
+                       close_text);
         if(focused) RenderFocus(header);
     }
     return changed;

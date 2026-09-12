@@ -6516,7 +6516,6 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	marker := Collapsible_CollapsibleMarkerFor(p.Open != nil && *p.Open, p.Leaf)
 	mark := Collapsible_CollapsibleMarkerText(marker)
-	label := elideText(mark+"  "+p.Label, body.Width-12, Text16)
 	state := ButtonStateNormal
 	if !enabled {
 		state = ButtonStateDisabled
@@ -6529,7 +6528,6 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	buttonProps := ButtonProps{
 		Bounds:   header,
-		Label:    label,
 		ID:       p.ID,
 		Tone:     ButtonToneNeutral,
 		Emphasis: ButtonEmphasisSoft,
@@ -6543,15 +6541,18 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, !enabled, p.Selected,
 		StyleSheet_StyleKindCollapsible(), headerRole)
+	headerFont := styleFont(unpackStyle(frame.Value), Text16)
+	label := elideText(mark+"  "+p.Label, body.Width-12, headerFont)
+	buttonProps.Label = label
 	button := Button_BuildFrame(buttonProps, ButtonInput{}, frame, InteractionMotion{},
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1,
-		Text16, Text16)
+		headerFont, Text16)
 	fg := unpackRGBA(button.Foreground)
 	r.recordButton(FrameOp{Kind: FrameOpButton, Button: button, Opacity: button.Appearance.Value.Opacity,
 		Bounds: header, Text: label, Color: unpackRGBA(button.Appearance.Value.Background),
 		BorderColor: unpackRGBA(button.Appearance.Value.Border), TextColor: fg,
 		BorderWidth: button.Appearance.Value.BorderWidth, Radius: button.Appearance.Value.Radius,
-		Material: MaterialKind(button.Appearance.Value.Material), FontSize: Text16,
+		Material: MaterialKind(button.Appearance.Value.Material), FontSize: headerFont,
 		Pressed: pressed, Selected: p.Selected, ID: p.ID,
 		Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
 	if p.Visible != nil {
@@ -6563,7 +6564,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		}
 		closeStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, closeState, !enabled,
 			false, StyleSheet_StyleKindCollapsible(), 15).Value)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: Text16, Pressed: closed, Disabled: !enabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: styleFont(closeStyle, Text16), Pressed: closed, Disabled: !enabled})
 	}
 	if pressed || closed {
 		return 1

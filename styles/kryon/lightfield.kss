@@ -757,6 +757,7 @@ Collapsible[role=Header] {
   border: border-soft;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -789,6 +790,7 @@ Collapsible[role=TreeHeader] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  font-size: font;
   opacity: 1;
   material: app;
 }
@@ -813,6 +815,7 @@ Collapsible[role=Close] {
   background: transparent;
   foreground: muted;
   border: transparent;
+  font-size: font;
   opacity: 1;
   material: app;
 }

@@ -425,10 +425,10 @@ tokens {
   length { radius: 5; border: 2; }
   material { flat: Flat; }
 }
-Collapsible[role=Header] { background: face; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Collapsible[role=Header] { background: face; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 18; material: flat; }
 Collapsible[role=Header]:disabled { foreground: #8090a4; opacity: 0.42; }
 Collapsible[role=TreeHeader] { background: #00000000; foreground: ink; border: #00000000; radius: radius; border-width: 0; material: flat; }
-Collapsible[role=Close] { foreground: ink; }
+Collapsible[role=Close] { foreground: ink; font-size: 17; }
 Collapsible[role=Close]:disabled { foreground: #8090a4; opacity: 0.37; }
 `, "Test Collapsible", "") || !SetActiveStylePack("test.collapsible") {
 		t.Fatal("test collapsible style did not activate")
@@ -449,12 +449,12 @@ Collapsible[role=Close]:disabled { foreground: #8090a4; opacity: 0.37; }
 		switch {
 		case op.Kind == FrameOpButton && op.ID == 991:
 			sawHeader = true
-			if op.Color != (Color{R: 0x23, G: 0x32, B: 0x48, A: 0xff}) || op.BorderColor != (Color{R: 0x5e, G: 0x71, B: 0x88, A: 0xff}) || op.TextColor != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 {
+			if op.Color != (Color{R: 0x23, G: 0x32, B: 0x48, A: 0xff}) || op.BorderColor != (Color{R: 0x5e, G: 0x71, B: 0x88, A: 0xff}) || op.TextColor != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 5 || op.FontSize != 18 {
 				t.Fatalf("collapsible header style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "×":
 			sawClose = true
-			if op.Color != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xed, G: 0xf4, B: 0xff, A: 0xff}) || op.FontSize != 17 {
 				t.Fatalf("collapsible close style op = %+v", op)
 			}
 		}
