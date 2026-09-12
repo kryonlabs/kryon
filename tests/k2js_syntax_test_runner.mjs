@@ -72,6 +72,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[required=true] {
     gap: 3;
   }
+  TextField[required] {
+    font-size: 11;
+  }
   TextField[maxlength=64] {
     offset-x: 4;
   }
@@ -190,9 +193,11 @@ assert.equal(runtime.webNodeQuery(rt, "Scene/root/tap").path, webDoc.nodes[2].pa
 assert.equal(runtime.webNodeQuery(rt, "Button.primary").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "[data-tracking-id=\"tap-1\"]").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "[name=q]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[name]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[type=search]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[readonly=true]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[required=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[required]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[min=1]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[max=100]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[step=1]").path, "Scene/root/search");
@@ -201,7 +206,9 @@ assert.equal(runtime.webNodeQuery(rt, "[maxlength=64]").path, "Scene/root/search
 assert.equal(runtime.webNodeQuery(rt, "[pattern=\"needle.*\"]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[accept=\".txt\"]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[multiple=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[multiple]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[data-role]").path, "Scene/root/search");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -225,6 +232,7 @@ assert.equal(webDoc.nodes[3].multiple, true);
 assert.equal(webDoc.nodes[3].inputMode, "search");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-x"], 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"], 11);
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -543,9 +551,11 @@ function fakeDocument() {
       "Scene/root/search"
     ]);
     assert.equal(runtime.webDOMQuery(target, "[name=q]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[name]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[type=search]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[readonly=true]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[required=true]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[required]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[min=1]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[max=100]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[step=1]").element, runtime.findWebElement(target, "q"));
@@ -554,7 +564,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[pattern=\"needle.*\"]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[accept=\".txt\"]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[multiple=true]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[multiple]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[inputmode=search]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[data-role]").element, runtime.findWebElement(target, "q"));
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);

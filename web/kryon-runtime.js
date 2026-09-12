@@ -1316,6 +1316,11 @@ function parseSelector(text) {
     selector.specificity += 10;
     return "";
   });
+  source = source.replace(/\[([A-Za-z_][\w.-]*)\]/g, (_all, key) => {
+    selector.attrs[key] = null;
+    selector.specificity += 10;
+    return "";
+  });
   source = source.replace(/#([A-Za-z_][\w-]*)/g, (_all, id) => {
     selector.id = id;
     selector.specificity += 100;
@@ -1498,6 +1503,22 @@ function selectorNativeAttrValue(key, facts) {
   }
 }
 
+function selectorDataAttrPresent(key, facts) {
+  if (key.startsWith("data-"))
+    return Object.prototype.hasOwnProperty.call(facts.dataAttrs || {}, key.slice(5));
+  if (key.startsWith("data."))
+    return Object.prototype.hasOwnProperty.call(facts.dataAttrs || {},
+      key.slice(5).replace(/_/g, "-").toLowerCase());
+  return false;
+}
+
+function selectorAttrPresent(key, facts) {
+  if (key.startsWith("data-") || key.startsWith("data."))
+    return selectorDataAttrPresent(key, facts);
+  const value = selectorNativeAttrValue(key, facts);
+  return value !== undefined && value !== null && value !== false && value !== "";
+}
+
 function selectorMatchesFacts(selector, facts) {
   if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
     return false;
@@ -1507,7 +1528,11 @@ function selectorMatchesFacts(selector, facts) {
     if (!facts.classes?.includes(cls))
       return false;
   for (const [key, value] of Object.entries(selector.attrs)) {
-    if (key === "role" && value !== facts.role)
+    if (value === null) {
+      if (!selectorAttrPresent(key, facts))
+        return false;
+    }
+    else if (key === "role" && value !== facts.role)
       return false;
     else if (key === "state" && !styleStateMatches(value, facts.state))
       return false;
