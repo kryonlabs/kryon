@@ -967,11 +967,17 @@ function fakeDocument() {
     runtime.setWebStyleSheets(domRt, webStyleSheet);
     generated.frame(domRt, domState, host);
     const target = document.createElement("div");
+    const renderEvents = [];
+    target.addEventListener("kry-render", (event) => renderEvents.push(event.detail));
     runtime.SetPageTitle("Runtime title");
     runtime.SetPageDescription("Runtime description");
     runtime.SetPageCanonicalURL("https://example.test/page");
     runtime.SetPageThemeColor(runtime.Color(1, 2, 3, 255));
     runtime.renderWebDocument(domRt, target);
+    assert.equal(renderEvents.length, 1);
+    assert.equal(renderEvents[0].frame.nodes.length, runtime.webDocumentFrame(domRt).nodes.length);
+    assert.equal(renderEvents[0].root, target.children[0]);
+    assert.ok(renderEvents[0].objects.some((object) => object.ref === "primary-action"));
     assert.equal(document.title, "Runtime title");
     assert.equal(document.querySelector('meta[name="description"]').attributes.content, "Runtime description");
     assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, "https://example.test/page");

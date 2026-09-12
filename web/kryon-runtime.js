@@ -2624,6 +2624,17 @@ function ensureMountRoot(node) {
   return root;
 }
 
+function webDOMObjectsFromRoot(root) {
+  if (!root)
+    return [];
+  return [...(root.__kryChildren?.values?.() || [])]
+    .map((element) => {
+      const node = element.__kryDocNode;
+      return node ? { ref: webNodeRef(node), node, element } : null;
+    })
+    .filter(Boolean);
+}
+
 export function renderWebDocument(rt, target) {
   const node = typeof target === "string" && typeof document !== "undefined"
     ? document.querySelector(target)
@@ -2711,6 +2722,15 @@ export function renderWebDocument(rt, target) {
   root.__kryChildren = children;
   if (rt)
     rt.mounted = true;
+  if (typeof root.dispatchEvent === "function") {
+    root.dispatchEvent(createWebDOMEvent("kry-render", {
+      detail: {
+        frame,
+        root,
+        objects: webDOMObjectsFromRoot(root)
+      }
+    }));
+  }
   return rt;
 }
 
@@ -2882,14 +2902,7 @@ export function webDOMElementMatches(element, selector) {
 
 export function webDOMObjects(target) {
   const root = mountedRoot(target);
-  if (!root)
-    return [];
-  return [...(root.__kryChildren?.values?.() || [])]
-    .map((element) => {
-      const node = element.__kryDocNode;
-      return node ? { ref: webNodeRef(node), node, element } : null;
-    })
-    .filter(Boolean);
+  return webDOMObjectsFromRoot(root);
 }
 
 function plainElementMap(source) {
@@ -3872,7 +3885,7 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function Canvas(canvas) {
+export function BeginCanvas(canvas) {
   return {
     active: false,
     dragging: false,

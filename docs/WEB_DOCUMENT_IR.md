@@ -321,7 +321,9 @@ attach to nodes without changing app logic.
 `renderWebDocument(rt, target)` reconciles the Web Document frame into browser
 elements. It also applies document metadata from `SetPageTitle`,
 `SetPageDescription`, `SetPageCanonicalURL`, `SetPageThemeColor`, app metadata,
-and `Page` nodes.
+and `Page` nodes. After reconciliation, the mount root dispatches a bubbling
+`kry-render` event whose `detail` contains the Web Document frame, mount root,
+and current Kry DOM objects.
 
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.
