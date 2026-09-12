@@ -178,6 +178,72 @@ has a single place to land.
 | `AudioSource` | `Game2D/Audio` | Sound | missing | Game2D native scene | Separate Game2D surface. |
 | `Light2D` | `Game2D/Rendering` | Point light | missing | Game2D native scene | Separate Game2D surface. |
 
+## Parser Statement Surface
+
+These names are the current standalone widget-call whitelist in
+`cmd/kir/kir_parse.c`. This table is intentionally separate from the retained
+node registry because many entries are commands, lexical-block companions, or
+host roles rather than retained nodes.
+
+| Parser name | Current decision | Notes |
+|---|---|---|
+| `Background` | `.kry canonical` | Fill/display widget; geometry policy is in `.kry`. |
+| `Text` | `.kry canonical` | Canonical text surface. |
+| `Paragraph` | `.kry canonical` | Rich text surface; may become `Text` props if that stays cleaner. |
+| `Rect` | Native canonical | Drawing primitive; rename review against `Box`. |
+| `Line` | Native canonical | Drawing primitive. |
+| `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
+| `Icon` | `.kry canonical` | Icon bounds/size policy is in `.kry`. |
+| `Image` | `.kry canonical` | Canonical image widget; replaces old picture naming. |
+| `Button` | `.kry canonical` | One button surface; variants belong in props/composition. |
+| `Card` | `.kry canonical` | Surface action/card composition. |
+| `Selectable` | `.kry canonical` | Selectable row/action surface. |
+| `InvisibleButton` | Native support | Hit-test primitive only; not a design widget. |
+| `Bullet` | `.kry canonical` | Small list/text marker primitive. |
+| `Separator` | `.kry canonical` | Divider primitive. |
+| `Link` | `.kry canonical` | Canonical link activation name. |
+| `TextField` | `.kry canonical` | Metrics/scroll policy in `.kry`; editing host support remains. |
+| `TextArea` | `.kry canonical` | Metrics/page policy in `.kry`; editing host support remains. |
+| `Dropdown` | `.kry canonical` | Selection control only. |
+| `Slider` | `.kry canonical` | Type/orientation/angle variants are props. |
+| `MenuBar` | Native support | Legacy command-menu entry point; migrate to `Menu` props. |
+| `PopupMenu` | Native support | Legacy command-menu entry point; migrate to `Menu` inside or anchored by `Popup`. |
+| `ContextMenu` | Native support | Legacy command-menu entry point; migrate to `Menu` context props. |
+| `Toggle` | `.kry canonical` | Boolean switch. |
+| `Checkbox` | `.kry canonical` | Boolean checkbox. |
+| `Radio` | `.kry canonical` | Choice control. |
+| `Progress` | `.kry canonical` | One progress concept. |
+| `Plot` | `.kry canonical` | Plot geometry/text policy lives in `.kry`. |
+| `Drag` | `.kry canonical` | Numeric drag value control; value type/count are props. |
+| `Input` | `.kry canonical` | Numeric input control; value type/count are props. |
+| `Spinbox` | `.kry canonical` | Numeric stepper. |
+| `DragDropSource` | Native support | Legacy source role; migrate to `DragDrop` props/composition. |
+| `DragDropTarget` | Native support | Legacy target role; migrate to `DragDrop` props/composition. |
+| `MultiSelectList` | `.kry canonical` | Multi-selection list; may fold into `ListBox` props later. |
+| `Screen` | `.kry canonical` | Top-level screen container. |
+| `Column` | `.kry canonical` | Layout block. |
+| `Row` | `.kry canonical` | Layout block. |
+| `Stack` | `.kry canonical` | Layout block. |
+| `End` | Native support | Lowered/parser block close marker, not a widget. |
+| `Scroll` | `.kry canonical` | Lexical scroll-content block. |
+| `Canvas` | `.kry canonical` | Lexical canvas block. |
+| `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
+| `TitleBar` | `.kry canonical` | Title/action bar. |
+| `TabBar` | `.kry canonical` | Tab navigation surface. |
+| `NavigationBar` | `.kry canonical` | App navigation bar. |
+| `Toolbar` | `.kry canonical` | Tool/action strip. |
+| `ShowToast` | `.kry canonical` | Toast command using toast policy. |
+| `ShowToastFor` | `.kry canonical` | Timed toast command using toast policy. |
+| `Fieldset` | `.kry canonical` | Titled frame/group. |
+| `PanedView` | `.kry canonical` | Split panes. |
+| `Collapsible` | `.kry canonical` | Collapsible section. |
+| `ListBox` | `.kry canonical` | List selection/navigation. |
+| `TreeView` | `.kry canonical` | Tree rows/window policy in `.kry`; host keeps state/input. |
+| `TableView` | `.kry canonical` | Table geometry policy in `.kry`; host keeps state/input. |
+| `ColorPicker` | `.kry canonical` | Color channel layout/conversion. |
+| `CanvasGrid` | `.kry canonical` | Canvas grid line policy. |
+| `SelectableText` | `.kry canonical` | Text selection/copy surface; review whether `Text` props should absorb it. |
+
 ## Core Drawing And Text
 
 | Public name | Current decision | Notes |
