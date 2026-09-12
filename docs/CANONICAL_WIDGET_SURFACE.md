@@ -194,14 +194,20 @@ has a single place to land.
 | `Bevel` | Native canonical | Primitive drawing effect unless replaced by surface props. |
 | `Icon` | `.kry canonical` | Bounds/size policy is in `.kry`; icon sheet/type surface is `IconType` with C `ICON_*` values and Go `kr.IconHome`-style constants. |
 | `Image` | `.kry canonical` | Canonical image widget. |
+| `Surface` | `.kry canonical` | Material/container paint helper; layer assembly policy is in `.kry`. |
+| `Bullet` | `.kry canonical` | Bullet geometry and paint policy are in `.kry`; keep as a small primitive unless list item props absorb it. |
 
 ## Controls
 
 | Public name | Current decision | Notes |
 |---|---|---|
 | `Card` | `.kry canonical` | Already has `.kry` module. |
+| `BeginCard` | Native support | Lowered host entry for composed `.kry` `Card` content; not a separate widget concept. |
 | `Button` | `.kry canonical` | Single public button surface. Menu, split-action, icon-only, arrow, info/help, loading, disclosure, tone, and emphasis behavior should live in `ButtonProps` or small `.kry` composition, not separate public widget names. |
+| `BeginButton` | Native support | Lowered host entry for composed `.kry` `Button` content; not a separate widget concept. |
 | `InvisibleButton` | Native support | Hit-test primitive; disabled policy is in `.kry`; not a design widget. |
+| `BeginDisabled` | Native support | Host scope for disabled child content. |
+| `EndDisabled` | Native support | Host scope exit for disabled child content. |
 | `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics and horizontal scroll policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics and page-row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
@@ -238,6 +244,17 @@ has a single place to land.
 | `EndScroll` | Native support | Lowered host exit for `.kry` `Scroll` blocks; not a separate public widget name. |
 | `BeginTableCell` | Native support | Lowered host entry for `.kry` `TableCell` blocks; not a separate public widget name. |
 | `EndTableCell` | Native support | Lowered host exit for `.kry` `TableCell` blocks; not a separate public widget name. |
+
+## Page And Web Surfaces
+
+| Public name | Current decision | Notes |
+|---|---|---|
+| `Page` | `.kry canonical` | Top-level document surface for generated web/page output; lowers to layout scopes and page metadata host support. |
+| `Section` | `.kry canonical` | Page section container; lowers to layout scopes. |
+| `Heading` | `.kry canonical` | Semantic page heading backed by text policy. |
+| `ParagraphText` | `.kry canonical` | Semantic page paragraph backed by text policy. |
+| `PageImage` | `.kry canonical` | Semantic page image using canonical `ImageProps` plus required alt text. |
+| `Flow` | `.kry canonical` | Page flow layout; lowers to row/layout policy. |
 
 ## Collections And Editors
 
@@ -277,7 +294,9 @@ has a single place to land.
 | `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `ClosePopup` | Native support | Explicit close operation for the active `.kry` `Popup` block. |
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; host handles capture, input, text editing, and drawing. |
-| `Toast` | `.kry canonical` | Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
+| `ShowToast` | `.kry canonical` | Public toast command. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
+| `ShowToastFor` | `.kry canonical` | Timed toast command using the same toast policy. |
+| `DismissibleOverlay` | Native support | Pointer-dismiss policy for overlay owners; not a visual widget by itself. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
 | `FocusDebugOverlay` | Native support | Debug overlay bounds and label placement are in `.kry`; accessibility snapshot sampling remains host support. |
 | `Guide` | `.kry canonical` | Public guided overlay flow. Steps, tip placement, scrim cutout, nav button layout, and step transition policy are in `.kry`; host keeps target lookup, text measurement, input sampling, and drawing. |
@@ -292,6 +311,7 @@ surface before staying public:
 
 | Public name | Current decision | Notes |
 |---|---|---|
+| `CarouselControls` | Composite candidate | App-style carousel controls; should either stay as reusable `.kry` composition or fold into callers. |
 
 ## Game2D Nodes
 

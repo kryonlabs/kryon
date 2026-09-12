@@ -12,6 +12,25 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "src/ui/ui_node_registry.c"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 
+PUBLIC_WIDGET_NAMES = {
+    "BeginButton",
+    "BeginCard",
+    "BeginDisabled",
+    "Bullet",
+    "CarouselControls",
+    "DismissibleOverlay",
+    "EndDisabled",
+    "Flow",
+    "Heading",
+    "Page",
+    "PageImage",
+    "ParagraphText",
+    "Section",
+    "ShowToast",
+    "ShowToastFor",
+    "Surface",
+}
+
 
 def registry_names() -> list[str]:
     text = REGISTRY.read_text(encoding="utf-8")
@@ -43,12 +62,16 @@ def main() -> int:
     errors: list[str] = []
     expected = registry_names()
     rows = audit_rows()
+    doc = DOC.read_text(encoding="utf-8")
 
     for name in expected:
         if name not in rows:
             errors.append(f"missing registry audit row: {name}")
     for name in sorted(set(rows) - set(expected)):
         errors.append(f"registry audit row is not in node registry: {name}")
+    for name in sorted(PUBLIC_WIDGET_NAMES):
+        if f"`{name}`" not in doc:
+            errors.append(f"missing public widget surface row: {name}")
 
     for name, cells in rows.items():
         runtime_source = cells[3]
