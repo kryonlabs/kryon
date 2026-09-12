@@ -70,7 +70,9 @@ the Web Document frame supplies the node facts it resolves against.
 Rendered DOM elements carry source identity as native attributes:
 `data-kry-ref`, `data-kry-path`, `data-kry-parent-path`, `data-kry-name`,
 `data-kry-key`, `data-kry-kind`, `data-kry-source`, `data-kry-line`, and
-`data-kry-column`.
+`data-kry-column`. The same source location is also available as
+`data-kry-source-ref` (`path:line`) and `data-kry-source-column-ref`
+(`path:line:column`) for native DOM queries and devtools inspection.
 The runtime exposes
 `webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
@@ -272,7 +274,8 @@ contract.
 
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `sourcePath`, `sourceLine`, `sourceColumn`,
-`id`, `domName`, `href`, `target`, `rel`, `inputType`, `formAction`, `formMethod`,
+`sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`,
+`inputType`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `download`, `formNoValidate`, `noValidate`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
@@ -289,7 +292,8 @@ same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `app.styles[].source` when a `#style` import resolves on disk, and
 `createRuntime({ app })` installs those embedded sheets automatically. The web
 resolver supports kind selectors, `#id`, `.class`, source identity selectors
-such as `[source=...]`, `[line=...]`, and `[column=...]`, `[role=...]`, `[state=...]`,
+such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
+and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[target=...]`, `[rel=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,

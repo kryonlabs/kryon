@@ -1280,6 +1280,8 @@ export function webNodeStyleFacts(node) {
     sourcePath: node?.sourcePath || "",
     sourceLine: node?.sourceLine || 0,
     sourceColumn: node?.sourceColumn || 0,
+    sourceRef: webNodeSourceRef(node),
+    sourceColumnRef: webNodeSourceColumnRef(node),
     id: node?.domId || "",
     domName: node?.domName || "",
     domValue: node?.domValue || "",
@@ -1591,6 +1593,8 @@ function selectorNativeAttrValue(key, facts) {
     case "source": return facts.sourcePath;
     case "line": return facts.sourceLine;
     case "column": return facts.sourceColumn;
+    case "sourceRef": return facts.sourceRef;
+    case "sourceColumnRef": return facts.sourceColumnRef;
     case "name": return facts.domName;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
@@ -2282,6 +2286,16 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryColumn = String(docNode.sourceColumn);
   else
     delete el.dataset.kryColumn;
+  const sourceRef = webNodeSourceRef(docNode);
+  if (sourceRef)
+    el.dataset.krySourceRef = sourceRef;
+  else
+    delete el.dataset.krySourceRef;
+  const sourceColumnRef = webNodeSourceColumnRef(docNode);
+  if (sourceColumnRef)
+    el.dataset.krySourceColumnRef = sourceColumnRef;
+  else
+    delete el.dataset.krySourceColumnRef;
   if (docNode.name)
     el.dataset.kryName = docNode.name;
   else

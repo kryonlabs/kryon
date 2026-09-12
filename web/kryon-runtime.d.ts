@@ -220,6 +220,8 @@ export interface WebNodeStyleFacts {
   sourcePath: string;
   sourceLine: number;
   sourceColumn: number;
+  sourceRef: string;
+  sourceColumnRef: string;
   id: string;
   domName: string;
   domValue: string;

@@ -169,6 +169,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   sourcePath: webDoc.nodes[2].sourcePath,
   sourceLine: webDoc.nodes[2].sourceLine,
   sourceColumn: webDoc.nodes[2].sourceColumn,
+  sourceRef: tapSourceRef,
+  sourceColumnRef: tapSourceColumnRef,
   id: "tap-button",
   domName: "",
   domValue: "tap-value",
@@ -273,6 +275,9 @@ assert.equal(runtime.webNodeQuery(rt, "[fetchpriority=high]").path, "Scene/root/
 assert.equal(runtime.webNodeQuery(rt, "[part=\"primary-action\"]").path, "Scene/root/tap");
 assert.equal(runtime.webNodeQuery(rt,
   `[source="src/valid.kry"][line=${webDoc.nodes[2].sourceLine}][column=${webDoc.nodes[2].sourceColumn}]`).path,
+  "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, `[sourceRef="${tapSourceRef}"]`).path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, `[sourceColumnRef="${tapSourceColumnRef}"]`).path,
   "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
@@ -926,6 +931,8 @@ function fakeDocument() {
     assert.equal(firstButton.dataset.krySource, "src/valid.kry");
     assert.ok(Number(firstButton.dataset.kryLine) > 0);
     assert.ok(Number(firstButton.dataset.kryColumn) > 0);
+    assert.equal(firstButton.dataset.krySourceRef, tapSourceRef);
+    assert.equal(firstButton.dataset.krySourceColumnRef, tapSourceColumnRef);
     assert.equal(firstButton.dataset.kryName, "tap");
     assert.equal(firstButton.attributes["data-tracking-id"], "tap-1");
     assert.equal(firstButton.attributes.title, "Tap details");
@@ -1052,6 +1059,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.equal(runtime.webDOMQuery(target,
       `[source="src/valid.kry"][line=${webDoc.nodes[2].sourceLine}][column=${webDoc.nodes[2].sourceColumn}]`).element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, `[sourceRef="${tapSourceRef}"]`).element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, `[sourceColumnRef="${tapSourceColumnRef}"]`).element,
       firstButton);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "Scene/root/search"
