@@ -42,6 +42,20 @@ The block name, `save`, is the stable Kry node name. The web metadata fields
 are stored on the KIR statement and are not native widget props, so C and Go
 widget APIs do not need browser-only fields.
 
+Route blocks identify pages:
+
+```kry
+route home {
+    title "Home"
+    group "Pages"
+    page Home
+}
+```
+
+`k2js` emits these as `app.routes`. For modules with routes and no explicit
+`app.frame`, generated `frame()` selects the route page from `GetRoutePath()`;
+the first route handles `/` and also acts as the fallback.
+
 Supported metadata fields in this first slice:
 
 | `.kry` field | Web frame field |
@@ -105,6 +119,9 @@ Supported metadata fields in this first slice:
 }
 ```
 
+`app.routes` contains `{ id, title, group, page, path }` records. The first
+route uses `/` as its browser path; later routes use `/<route-id>`.
+
 The initial tag mapping is intentionally conservative:
 
 | Kryon kind | Browser tag |
@@ -157,8 +174,8 @@ non-browser tests.
 
 - `renderWebDocument()` reuses DOM nodes by tag and Kry path, and nests nodes
   beneath their Kry parent when the parent is present in the frame.
-- Route helpers expose path/hash changes, but there is not yet a declarative
-  `.kry` route-to-node mapping.
+- Route helpers expose path/hash changes, and k2js can dispatch route pages
+  declared in `.kry`; nested route parameters are not parsed yet.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   and `on_change(value)` actions in this slice.
 - KSS parsing and compiled style tables are not implemented yet.

@@ -9,6 +9,15 @@ export interface AppMeta {
   height: number;
   fps: number;
   frame: string;
+  routes?: AppRouteMeta[];
+}
+
+export interface AppRouteMeta {
+  id: string;
+  title: string;
+  group: string;
+  page: string;
+  path: string;
 }
 
 export interface Runtime {

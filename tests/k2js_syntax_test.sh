@@ -214,6 +214,78 @@ assert.equal(state.counters[1].value, 0);
 assert.equal(module.createState().counters[0].value, 0);
 EOF
 
+cat > "$work/src/routes.kry" <<'EOF'
+#import "kryon.h"
+
+state {
+    visits: int = 0
+}
+
+app "Route Smoke" {
+    size 480 320
+    fps 60
+}
+
+route home {
+    title "Home"
+    group "Pages"
+    page Home
+}
+
+route about {
+    title "About"
+    group "Pages"
+    page About
+}
+
+Home :: (viewport: Rectangle) #ui {
+    unused viewport
+    visits += 1
+    Screen home: {
+        Text((TextProps){.bounds={0, 0, 0, 0}, .text="Home", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+    }
+}
+
+About :: () #ui {
+    visits += 100
+    Screen about: {
+        Text((TextProps){.bounds={0, 0, 0, 0}, .text="About", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+    }
+}
+EOF
+"$k2js" --root "$work" -o "$work/out" "$work/src/routes.kry"
+node --input-type=module - "$work/out/src/routes.js" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+
+assert.deepEqual(module.app.routes, [
+  { id: "home", title: "Home", group: "Pages", page: "Home", path: "/" },
+  { id: "about", title: "About", group: "Pages", page: "About", path: "/about" }
+]);
+
+const state = module.createState();
+const rt = runtime.createRuntime({ app: module.app });
+runtime.ReplaceRoute("/");
+let snap = module.frame(rt, state);
+assert.equal(state.visits, 1);
+assert.equal(runtime.webDocumentFrame(rt).nodes[0].path, "Home/home");
+assert.equal(snap.frame[1].args.text, "Home");
+
+runtime.ReplaceRoute("/about");
+snap = module.frame(rt, state);
+assert.equal(state.visits, 101);
+assert.equal(runtime.webDocumentFrame(rt).nodes[0].path, "About/about");
+assert.equal(snap.frame[1].args.text, "About");
+
+runtime.ReplaceRoute("/missing");
+snap = module.frame(rt, state);
+assert.equal(state.visits, 102);
+assert.equal(runtime.webDocumentFrame(rt).nodes[0].path, "Home/home");
+assert.equal(snap.frame[1].args.text, "Home");
+EOF
+
 "$k2js" --strict --root "$root" -o "$work/out" \
     runtime/*.kry
 node "$root/tests/style_policy_test.mjs" "$work/out/runtime/style.js" \

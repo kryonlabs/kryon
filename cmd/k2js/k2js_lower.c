@@ -1741,7 +1741,31 @@ emit_app(FILE *f, const KirModule *m)
     fprintf(f, "  fps: %d,\n", a->fps > 0 ? a->fps : 60);
     fprintf(f, "  frame: ");
     js_string(f, a->frame[0] ? a->frame : "");
-    fprintf(f, "\n};\n\n");
+    fprintf(f, ",\n");
+    fprintf(f, "  routes: [\n");
+    for(int i = 0; i < m->route_count; i++) {
+        const KirRoute *route = &m->routes[i];
+
+        fprintf(f, "    { id: ");
+        js_string(f, route->id);
+        fprintf(f, ", title: ");
+        js_string(f, route->title);
+        fprintf(f, ", group: ");
+        js_string(f, route->group);
+        fprintf(f, ", page: ");
+        js_string(f, route->page);
+        fprintf(f, ", path: ");
+        if(i == 0)
+            js_string(f, "/");
+        else {
+            char path[KIR_NAME_MAX + 2];
+
+            snprintf(path, sizeof(path), "/%s", route->id);
+            js_string(f, path);
+        }
+        fprintf(f, " }%s\n", i + 1 < m->route_count ? "," : "");
+    }
+    fprintf(f, "  ]\n};\n\n");
 }
 
 /* Frames either have no arguments or consume the host viewport. A record
@@ -1786,6 +1810,32 @@ pick_frame_function(const KirModule *m)
         if((!m->functions[i].is_extern && !m->functions[i].is_closure) && m->functions[i].args[0] == '\0')
             return &m->functions[i];
     return NULL;
+}
+
+static const KirFunction *
+find_route_page_function(const KirModule *m, const KirRoute *route)
+{
+    if(route == NULL || route->page[0] == '\0')
+        return NULL;
+    for(int i = 0; i < m->function_count; i++) {
+        const KirFunction *fn = &m->functions[i];
+
+        if(!fn->is_extern && !fn->is_closure &&
+           strcmp(fn->name, route->page) == 0)
+            return fn;
+    }
+    return NULL;
+}
+
+static void
+emit_frame_call(FILE *f, const KirModule *m, const char *guard,
+                const KirFunction *fn)
+{
+    char fname[K2JS_NAME_MAX];
+
+    kir_camel_ident(fn->name, fname, sizeof(fname));
+    fprintf(f, "%s_%s(rt, state, host%s)", guard, fname,
+            frame_parameters(m, fn) == 1 ? ", kryon.viewport(rt, app)" : "");
 }
 
 int
@@ -1870,14 +1920,42 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
             }
             frame_fn = pick_frame_function(m);
             fprintf(f, "export function frame(rt = kryon.createRuntime(), state = moduleState, host = moduleHost) {\n");
-            if(frame_fn != NULL) {
-                char fname[K2JS_NAME_MAX];
+            if(m->route_count > 0 && m->app.frame[0] == '\0') {
+                const KirFunction *fallback_fn = NULL;
 
-                kir_camel_ident(frame_fn->name, fname, sizeof(fname));
                 fprintf(f, "  kryon.beginFrame(rt);\n");
-                fprintf(f, "  const result = %s_%s(rt, state, host%s);\n",
-                        guard, fname, frame_parameters(m, frame_fn) == 1
-                            ? ", kryon.viewport(rt, app)" : "");
+                fprintf(f, "  const $route = kryon.GetRoutePath();\n");
+                fprintf(f, "  let result = null;\n");
+                for(int i = 0; i < m->route_count; i++) {
+                    const KirRoute *route = &m->routes[i];
+                    const KirFunction *page_fn = find_route_page_function(m, route);
+                    char path[KIR_NAME_MAX + 2];
+
+                    if(page_fn == NULL || frame_parameters(m, page_fn) < 0)
+                        continue;
+                    if(fallback_fn == NULL)
+                        fallback_fn = page_fn;
+                    snprintf(path, sizeof(path), "/%s", route->id);
+                    fprintf(f, "  if (result === null && ($route === ");
+                    js_string(f, path);
+                    if(i == 0)
+                        fprintf(f, " || $route === \"/\"");
+                    fprintf(f, ")) result = ");
+                    emit_frame_call(f, m, guard, page_fn);
+                    fprintf(f, ";\n");
+                }
+                if(fallback_fn != NULL) {
+                    fprintf(f, "  if (result === null) result = ");
+                    emit_frame_call(f, m, guard, fallback_fn);
+                    fprintf(f, ";\n");
+                }
+                fprintf(f, "  kryon.endFrame(rt);\n");
+                fprintf(f, "  return result || kryon.snapshot(rt);\n");
+            } else if(frame_fn != NULL) {
+                fprintf(f, "  kryon.beginFrame(rt);\n");
+                fprintf(f, "  const result = ");
+                emit_frame_call(f, m, guard, frame_fn);
+                fprintf(f, ";\n");
                 fprintf(f, "  kryon.endFrame(rt);\n");
                 fprintf(f, "  return result || kryon.snapshot(rt);\n");
             } else {
