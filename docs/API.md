@@ -2276,11 +2276,11 @@ preserve the resolved foreground opacity. Loading buttons do not activate.
 
 ```c
 typedef enum {
-    UI_ICON_SIZE_TINY,
-    UI_ICON_SIZE_SMALL,
-    UI_ICON_SIZE_MEDIUM,
-    UI_ICON_SIZE_LARGE
-} UIIconSize;
+    ICON_SIZE_TINY,
+    ICON_SIZE_SMALL,
+    ICON_SIZE_MEDIUM,
+    ICON_SIZE_LARGE
+} IconSize;
 ```
 
 ---

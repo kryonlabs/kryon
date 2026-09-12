@@ -1378,10 +1378,10 @@ include/ui_color.h function LightenColor
 include/ui_color.h function LightenUIColor
 include/ui_composed.h function CarouselControls
 include/ui_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
-include/ui_controls.h enum UI_ICON_SIZE_LARGE
-include/ui_controls.h enum UI_ICON_SIZE_MEDIUM
-include/ui_controls.h enum UI_ICON_SIZE_SMALL
-include/ui_controls.h enum UI_ICON_SIZE_TINY
+include/ui_controls.h enum ICON_SIZE_LARGE
+include/ui_controls.h enum ICON_SIZE_MEDIUM
+include/ui_controls.h enum ICON_SIZE_SMALL
+include/ui_controls.h enum ICON_SIZE_TINY
 include/ui_controls.h function ClearThemeMetricsOverride
 include/ui_controls.h function EditText
 include/ui_controls.h function FancyEffectsEnabled

@@ -4944,10 +4944,10 @@ int
 GetUIIconBtnSize(int size)
 {
     switch(size) {
-    case UI_ICON_SIZE_TINY: return ClampUIPx(12, 10, 18);
-    case UI_ICON_SIZE_SMALL: return ClampUIPx(14, 12, 20);
-    case UI_ICON_SIZE_MEDIUM: return ClampUIPx(16, 14, 24);
-    case UI_ICON_SIZE_LARGE: return ClampUIPx(20, 18, 28);
+    case ICON_SIZE_TINY: return ClampUIPx(12, 10, 18);
+    case ICON_SIZE_SMALL: return ClampUIPx(14, 12, 20);
+    case ICON_SIZE_MEDIUM: return ClampUIPx(16, 14, 24);
+    case ICON_SIZE_LARGE: return ClampUIPx(20, 18, 28);
     default: return ClampUIPx(14, 12, 20);
     }
 }
@@ -4956,10 +4956,10 @@ int
 GetUIIconBtnPadding(int size)
 {
     switch(size) {
-    case UI_ICON_SIZE_TINY: return Scale(4);
-    case UI_ICON_SIZE_SMALL: return Scale(5);
-    case UI_ICON_SIZE_MEDIUM: return Scale(6);
-    case UI_ICON_SIZE_LARGE: return Scale(7);
+    case ICON_SIZE_TINY: return Scale(4);
+    case ICON_SIZE_SMALL: return Scale(5);
+    case ICON_SIZE_MEDIUM: return Scale(6);
+    case ICON_SIZE_LARGE: return Scale(7);
     default: return Scale(5);
     }
 }
