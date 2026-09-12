@@ -270,6 +270,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   extraAttrs: { fetchpriority: "high", part: "primary-action" },
   role: "button",
   ariaLabelledBy: "",
+  ariaActiveDescendant: "",
   ariaOwns: "search-box",
   state: {
     disabled: false,
@@ -388,8 +389,8 @@ assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.pa
   "Scene/root/search",
   "Scene/root/search_label",
   selectablePath,
-  "Scene/root/Input@211-2",
-  "Scene/root/Input@212-3"
+  "Scene/root/Input@212-2",
+  "Scene/root/Input@213-3"
 ]);
 assert.deepEqual(runtime.webNodeChildren(rt).map((node) => node.path), ["Scene/root"]);
 assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node.path), [
@@ -398,15 +399,15 @@ assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node
   "Scene/root/search",
   "Scene/root/search_label",
   selectablePath,
-  "Scene/root/Input@211-2",
-  "Scene/root/Input@212-3"
+  "Scene/root/Input@212-2",
+  "Scene/root/Input@213-3"
 ]);
 assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root", "Button.primary").path,
   "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAllWithin(rt, "Scene/root", "Input")
   .map((node) => node.path), [
-    "Scene/root/Input@211-2",
-    "Scene/root/Input@212-3"
+    "Scene/root/Input@212-2",
+    "Scene/root/Input@213-3"
   ]);
 assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root/tap", "TextField"), null);
 assert.equal(runtime.webNodeClosest(rt, "Scene/root/tap", "Screen").path, "Scene/root");
@@ -443,6 +444,7 @@ assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
 assert.equal(webDoc.nodes[3].ariaLabelledBy, "Scene/root/search_label");
+assert.equal(webDoc.nodes[3].ariaActiveDescendant, "Scene/root/search_label");
 assert.equal(webDoc.nodes[3].ariaDescribedBy, "primary-action");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onBeforeInput, "note_before_input");
@@ -1621,8 +1623,8 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@211-2",
-        "Scene/root/Input@212-3"
+        "Scene/root/Input@212-2",
+        "Scene/root/Input@213-3"
       ]);
     assert.deepEqual(runtime.webDOMChildren(target).map((object) => object.node.path),
       ["Scene/root"]);
@@ -1633,23 +1635,23 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@211-2",
-        "Scene/root/Input@212-3"
+        "Scene/root/Input@212-2",
+        "Scene/root/Input@213-3"
       ]);
     assert.equal(runtime.webDOMQueryWithin(target, "Scene/root", "Button.primary").element,
       firstButton);
     assert.deepEqual(runtime.webDOMQueryAllWithin(target, "Scene/root", "Input")
       .map((object) => object.node.path), [
-        "Scene/root/Input@211-2",
-        "Scene/root/Input@212-3"
+        "Scene/root/Input@212-2",
+        "Scene/root/Input@213-3"
       ]);
     assert.equal(runtime.webDOMQueryWithin(target, "Scene/root/tap", "TextField"), null);
     assert.equal(root.kryQueryWithin("Scene/root", "TextField.field").element,
       runtime.findWebElement(target, "q"));
     assert.deepEqual(root.kryQueryAllWithin("Scene/root", "Input")
       .map((object) => object.node.path), [
-        "Scene/root/Input@211-2",
-        "Scene/root/Input@212-3"
+        "Scene/root/Input@212-2",
+        "Scene/root/Input@213-3"
       ]);
     assert.deepEqual(root.kryDescendants("Scene/root")
       .map((object) => object.node.path), [
@@ -1658,8 +1660,8 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@211-2",
-        "Scene/root/Input@212-3"
+        "Scene/root/Input@212-2",
+        "Scene/root/Input@213-3"
       ]);
     assert.deepEqual(screen.kryDescendants().map((object) => object.node.path), [
       firstText.dataset.kryPath,
@@ -1667,19 +1669,19 @@ function fakeDocument() {
       "Scene/root/search",
       "Scene/root/search_label",
       selectablePath,
-      "Scene/root/Input@211-2",
-      "Scene/root/Input@212-3"
+      "Scene/root/Input@212-2",
+      "Scene/root/Input@213-3"
     ]);
     assert.equal(screen.kryQuery("Button.primary").element, firstButton);
     assert.deepEqual(screen.kryQueryAll("Input").map((object) => object.node.path), [
-      "Scene/root/Input@211-2",
-      "Scene/root/Input@212-3"
+      "Scene/root/Input@212-2",
+      "Scene/root/Input@213-3"
     ]);
     const screenObject = runtime.webDOMObject(target, "Scene/root");
     assert.equal(screenObject.query("Button.primary").element, firstButton);
     assert.deepEqual(screenObject.queryAll("Input").map((object) => object.node.path), [
-      "Scene/root/Input@211-2",
-      "Scene/root/Input@212-3"
+      "Scene/root/Input@212-2",
+      "Scene/root/Input@213-3"
     ]);
     assert.deepEqual(screenObject.descendants.map((object) => object.node.path),
       screen.kryDescendants().map((object) => object.node.path));
@@ -1979,8 +1981,8 @@ function fakeDocument() {
       "search-box",
       "Scene/root/search_label",
       selectablePath,
-      "Scene/root/Input@211-2",
-      "Scene/root/Input@212-3"
+      "Scene/root/Input@212-2",
+      "Scene/root/Input@213-3"
     ]);
     const domObjectMap = runtime.webDOMObjectMap(target);
     assert.equal(domObjectMap.get("primary-action").element, firstButton);
@@ -2062,12 +2064,17 @@ function fakeDocument() {
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.attributes["aria-labelledby"], "kry-Scene-root-search_label");
+    assert.equal(firstField.attributes["aria-activedescendant"], "kry-Scene-root-search_label");
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").describedBy
       .map((object) => object.ref), ["primary-action"]);
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").labelledBy
       .map((object) => object.ref), ["Scene/root/search_label"]);
+    assert.equal(runtime.webDOMRelations(target, "search-box").activeDescendant.ref,
+      "Scene/root/search_label");
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.describedBy,
       ["primary-action"]);
+    assert.equal(runtime.webDOMSnapshot(target, "search-box").relationRefs.activeDescendant,
+      "Scene/root/search_label");
     firstField.setAttribute("aria-describedby", "primary-action");
     assert.equal(runtime.webDOMSync(target, "search-box").ref, "search-box");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");

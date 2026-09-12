@@ -1298,6 +1298,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_role[0] || st->dom_aria_label[0] ||
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
            st->dom_aria_labelledby[0] ||
+           st->dom_aria_activedescendant[0] ||
            st->dom_aria_controls[0] || st->dom_aria_owns[0] ||
            st->dom_aria_live[0] || st->dom_aria_attrs[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
@@ -1543,6 +1544,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                              st->dom_aria_describedby, &emitted);
     emit_metadata_expr_field(f, m, "ariaLabelledBy",
                              st->dom_aria_labelledby, &emitted);
+    emit_metadata_expr_field(f, m, "ariaActiveDescendant",
+                             st->dom_aria_activedescendant, &emitted);
     emit_metadata_expr_field(f, m, "ariaControls", st->dom_aria_controls,
                              &emitted);
     emit_metadata_expr_field(f, m, "ariaOwns", st->dom_aria_owns, &emitted);

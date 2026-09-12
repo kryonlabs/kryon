@@ -132,6 +132,7 @@ export interface WebDocumentNode {
   ariaDescription: string;
   ariaDescribedBy: string;
   ariaLabelledBy: string;
+  ariaActiveDescendant: string;
   ariaControls: string;
   ariaOwns: string;
   ariaLive: string;
@@ -276,6 +277,7 @@ export interface WebNodeStyleFacts {
   extraAttrs: Record<string, string>;
   role: string;
   ariaLabelledBy: string;
+  ariaActiveDescendant: string;
   ariaOwns: string;
   state: Record<string, boolean>;
 }
@@ -428,6 +430,7 @@ export interface WebDOMRelations {
   owns: WebDOMObject[];
   labelFor: WebDOMObject | null;
   labelledBy: WebDOMObject[];
+  activeDescendant: WebDOMObject | null;
   popoverTarget: WebDOMObject | null;
 }
 
@@ -613,6 +616,7 @@ export interface WebDOMSnapshot {
     owns: string[];
     labelFor: string;
     labelledBy: string[];
+    activeDescendant: string;
     popoverTarget: string;
   };
   name: string;

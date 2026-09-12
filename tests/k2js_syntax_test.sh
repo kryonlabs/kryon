@@ -206,6 +206,7 @@ Scene :: (viewport: Rectangle) #ui {
             placeholder = "Search terms"
             aria_label = "Search"
             aria_labelledby = "Scene/root/search_label"
+            aria_activedescendant = "Scene/root/search_label"
             aria_describedby = "primary-action"
             on_input = note_input
             on_before_input = note_before_input
@@ -328,6 +329,7 @@ grep -q '"ariaDescription": "Runs the host action"' "$out"
 grep -q '"ariaControls": "search-box"' "$out"
 grep -q '"ariaOwns": "search-box"' "$out"
 grep -q '"ariaLabelledBy": "Scene/root/search_label"' "$out"
+grep -q '"ariaActiveDescendant": "Scene/root/search_label"' "$out"
 grep -q '"popoverTarget": "Scene/root/search_label"' "$out"
 grep -q '"aria": {"current": "page", "pressed": false}' "$out"
 grep -q '"onInput": "note_input"' "$out"

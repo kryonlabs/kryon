@@ -1324,6 +1324,7 @@ function webNodeFromWidget(item, index) {
     ariaDescription: meta.ariaDescription === undefined || meta.ariaDescription === null ? "" : String(meta.ariaDescription),
     ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
     ariaLabelledBy: meta.ariaLabelledBy === undefined || meta.ariaLabelledBy === null ? "" : String(meta.ariaLabelledBy),
+    ariaActiveDescendant: meta.ariaActiveDescendant === undefined || meta.ariaActiveDescendant === null ? "" : String(meta.ariaActiveDescendant),
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
     ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
@@ -1460,6 +1461,7 @@ export function webNodeStyleFacts(node) {
     extraAttrs: { ...(node?.extraAttrs || {}) },
     role: node?.role || "",
     ariaLabelledBy: node?.ariaLabelledBy || "",
+    ariaActiveDescendant: node?.ariaActiveDescendant || "",
     ariaOwns: node?.ariaOwns || "",
     state: { ...(node?.state || {}) }
   };
@@ -3772,6 +3774,7 @@ function resolveWebDOMRelations(root) {
       continue;
     setAttr(el, "aria-describedby", resolveWebDOMRelationList(root, docNode.ariaDescribedBy));
     setAttr(el, "aria-labelledby", resolveWebDOMRelationList(root, docNode.ariaLabelledBy));
+    setAttr(el, "aria-activedescendant", resolveWebDOMRelationToken(root, docNode.ariaActiveDescendant));
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
     setAttr(el, "aria-owns", resolveWebDOMRelationList(root, docNode.ariaOwns));
     setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
@@ -3834,6 +3837,7 @@ function webDOMRelationsForNode(target, node) {
       webDOMRelationList(target, node.ariaLabelledBy),
       webDOMReverseRelationList(target, node, "htmlFor")
     ),
+    activeDescendant: webDOMRelationList(target, node.ariaActiveDescendant)[0] || null,
     popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
   };
 }
@@ -5169,6 +5173,7 @@ export function webDOMBind(target, selector, handlers, options = {}) {
 const webDOMInternalAttributeNames = new Set([
   "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
+  "aria-activedescendant",
   "aria-controls", "aria-owns", "aria-live",
   "href", "target", "rel", "for", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
@@ -5360,6 +5365,7 @@ function webDOMObjectSnapshot(target, object) {
       owns: (relations?.owns || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
+      activeDescendant: relations?.activeDescendant?.ref || "",
       popoverTarget: relations?.popoverTarget?.ref || ""
     },
     name: node.name || "",

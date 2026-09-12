@@ -176,6 +176,7 @@ typedef struct KirStmt {
     char dom_aria_description[KIR_TEXT_MAX]; /* requested accessible description */
     char dom_aria_describedby[KIR_TEXT_MAX]; /* requested accessible relationship */
     char dom_aria_labelledby[KIR_TEXT_MAX]; /* requested labelling relationship */
+    char dom_aria_activedescendant[KIR_TEXT_MAX]; /* requested active descendant */
     char dom_aria_controls[KIR_TEXT_MAX];    /* requested controlled element ids */
     char dom_aria_owns[KIR_TEXT_MAX];        /* requested owned element ids */
     char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
