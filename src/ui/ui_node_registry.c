@@ -31,6 +31,7 @@ static const KryonNodeType kryon_node_types[] = {
     {"Progress", "Progress", "UI/Input", "Control", "Progress", EDITABLE},
     {"Spinbox", "Spinbox", "UI/Input", "Control", "Number", EDITABLE},
     {"ColorPicker", "Color Picker", "UI/Input", "Control", "Color", EDITABLE},
+    {"SegmentedControl", "Segmented Control", "UI/Input", "Control", "Segments", EDITABLE},
 
     {"Group", "Group", "UI/Layout", "Control", "Container", INSERT_EDITABLE},
     {"Separator", "Separator", "UI/Layout", "Control", "Divider", EDITABLE},
