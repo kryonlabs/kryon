@@ -63,6 +63,16 @@ func Radio_RadioTouchSize(scale float32) int32 {
 	return value_7
 }
 
+func Radio_RadioMarkText(checked bool) string {
+	var value_0 bool = checked
+	if value_0 {
+		var value_1 string = "◉"
+		return value_1
+	}
+	var value_2 string = "○"
+	return value_2
+}
+
 func Radio_RadioPaintFor(spec RadioSpec) RadioPaint {
 	var paint RadioPaint = RadioPaint{}
 	var value_0 float32 = spec.Scale

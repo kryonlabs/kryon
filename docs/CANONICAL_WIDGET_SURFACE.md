@@ -140,7 +140,7 @@ has a single place to land.
 | `Slider` | `UI/Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, and angle/unit are props. |
 | `Toggle` | `UI/Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
 | `Checkbox` | `UI/Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint/layout/flag policy is `.kry`. |
-| `Radio` | `UI/Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint/layout policy is `.kry`; host keeps group input. |
+| `Radio` | `UI/Input` | Choice | `runtime/radio.kry` | `.kry-backed` | Paint, layout, and marker text policy are `.kry`; host keeps group input. |
 | `Progress` | `UI/Input` | Progress | `runtime/progress.kry` | `.kry-backed` | One public progress concept. |
 | `Spinbox` | `UI/Input` | Number | `runtime/spinbox.kry` | `.kry-backed` | Layout/step policy is `.kry`; host keeps text/button input. |
 | `ColorPicker` | `UI/Input` | Color | `runtime/color_picker.kry` | `.kry-backed` | Channel layout and conversion are `.kry`. |
@@ -228,7 +228,7 @@ been removed from the public surface. Existing generated fixtures use
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public surface is `Toggle(ToggleProps)`; paint/layout policy is in `.kry`, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
-| `Radio` | `.kry canonical` | Paint/layout policy is in `.kry`; host handles focus/input and drawing. |
+| `Radio` | `.kry canonical` | Paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |

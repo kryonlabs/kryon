@@ -53,6 +53,7 @@ needs_focus=0
 needs_surface=0
 needs_style=0
 needs_style_sheet=0
+needs_radio=0
 needs_text_policy=0
 needs_text_input_policy=0
 needs_examples_syntax=0
@@ -307,6 +308,13 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
+        runtime/radio.kry|go/kryon/radio.go|tests/radio_policy_test.c)
+            needs_radio=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
         runtime/text.kry|runtime/style.kry|runtime/surface.kry|tests/text_policy_test.c)
             needs_text_policy=1
             interesting=1
@@ -529,6 +537,9 @@ if [ "$needs_style" -eq 1 ]; then
 fi
 if [ "$needs_style_sheet" -eq 1 ]; then
     targets="$targets style-sheet-policy-test style-pack-registry-test style-picker-test"
+fi
+if [ "$needs_radio" -eq 1 ]; then
+    targets="$targets radio-policy-test"
 fi
 if [ "$needs_text_policy" -eq 1 ]; then
     targets="$targets text-policy-test"

@@ -42,6 +42,11 @@ RadioTouchSize :: (scale: float) -> i32 #export {
     return (i32)(40.0 * scale)
 }
 
+RadioMarkText :: (checked: bool) -> const char* #export {
+    if checked { return "◉" }
+    return "○"
+}
+
 RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     paint: RadioPaint
     scale: float = spec.scale
@@ -120,4 +125,3 @@ RadioPaintFor :: (spec: RadioSpec) -> RadioPaint #export {
     }
     return paint
 }
-

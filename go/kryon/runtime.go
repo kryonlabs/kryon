@@ -5556,10 +5556,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 		PrimaryColor:  packRGBA(theme.button),
 		DisabledColor: packRGBA(theme.icon),
 	})
-	mark := "○"
-	if props.Checked {
-		mark = "◉"
-	}
+	mark := Radio_RadioMarkText(props.Checked)
 	c := unpackRGBA(paint.LabelColor)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: c, FontSize: Text16, ID: props.ID, Pressed: pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: focused})
