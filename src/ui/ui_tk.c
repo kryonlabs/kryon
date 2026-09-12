@@ -846,24 +846,33 @@ RenderSelectable(SelectableProps selectable)
         state = ButtonStateHover;
     else if(selected)
         state = ButtonStateSelected;
+    StyleFrame face = ui_tk_simple_style_frame(ButtonToneNeutral, state, disabled,
+                                               selected, StyleKindSelectable());
+    float label_inset = face.value.padding_x > 0.0f
+        ? face.value.padding_x
+        : (float)Scale(8);
+    int font = face.value.font_size > 0.0f
+        ? (int)(face.value.font_size + 0.5f)
+        : GetFontSize();
     SelectablePaint paint = SelectablePaintFor((SelectableSpec){
         .bounds = selectable.bounds,
         .selected = selected,
         .hovered = hot,
         .pressed = pressed,
         .disabled = disabled,
-        .face = ui_tk_simple_style_frame(ButtonToneNeutral, state, disabled,
-                                         selected, StyleKindSelectable()),
-        .label_inset = (float)Scale(8)
+        .face = face,
+        .label_inset = label_inset
     });
 
     if(IsWindowReady() && paint.draw_fill)
-        DrawRectangleRec(paint.bounds, GetColor(paint.fill_color));
+        DrawRectangleRec(paint.bounds, GetColor(Opacity(paint.fill_color,
+                                                        face.value.opacity)));
     if(IsWindowReady())
         RenderText(selectable.label != NULL ? selectable.label : "",
                    (int)paint.label_x,
-                   ui_row_text_y(selectable.bounds, GetFontSize()),
-                   GetFontSize(), GetColor(paint.text_color));
+                   ui_row_text_y(selectable.bounds, font),
+                   font, GetColor(Opacity(paint.text_color,
+                                          face.value.opacity)));
     if(focused && IsWindowReady())
         RenderFocus(selectable.bounds);
     if(pressed) {

@@ -603,6 +603,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -2143,6 +2144,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3925,6 +3927,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -5640,6 +5643,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -7129,6 +7133,7 @@ MenuItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

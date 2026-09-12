@@ -2592,18 +2592,25 @@ func (r *runtime) Selectable(props SelectableProps) bool {
 	} else if selected {
 		state = ButtonStateSelected
 	}
+	face := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, selected, StyleSheet_StyleKindSelectable())
+	style := unpackStyle(face.Value)
+	labelInset := style.PaddingX
+	if labelInset <= 0 {
+		labelInset = 8
+	}
+	font := styleFont(style, Text14)
 	paint := Selectable_SelectablePaintFor(SelectableSpec{
 		Bounds:     props.Bounds,
 		Selected:   selected,
 		Pressed:    pressed,
 		Disabled:   props.Disabled,
-		Face:       simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, selected, StyleSheet_StyleKindSelectable()),
-		LabelInset: 8,
+		Face:       face,
+		LabelInset: labelInset,
 	})
 	if paint.DrawFill {
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.FillColor), Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.Bounds, Color: unpackRGBA(paint.FillColor), Opacity: style.Opacity, Disabled: props.Disabled})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.LabelX, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - 16, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.TextColor), FontSize: Text14, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.LabelX, Y: props.Bounds.Y + 6, Width: props.Bounds.Width - labelInset*2, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font, ID: props.ID, Disabled: props.Disabled, Pressed: pressed, Selected: selected, Focused: focused})
 	return pressed
 }
 

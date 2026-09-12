@@ -611,6 +611,7 @@ Selectable {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.2;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }

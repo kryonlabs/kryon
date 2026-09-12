@@ -2541,6 +2541,59 @@ ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
 	}
 }
 
+func TestSelectableUsesStyleSheetTextAndPadding(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.selectable;
+tokens {
+  color {
+    selected: #31527a;
+    ink: #eef5ff;
+  }
+}
+Selectable {
+  background: selected;
+  foreground: ink;
+  padding-x: 14;
+  font-size: 18;
+  opacity: 0.72;
+}
+`, "Test Selectable", "") || !SetActiveStylePack("test.selectable") {
+		t.Fatal("test selectable style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	selected := int32(1)
+	rt.Selectable(SelectableProps{
+		Bounds:   Rectangle{X: 10, Y: 20, Width: 120, Height: 28},
+		ID:       72,
+		Label:    "Choice",
+		Selected: &selected,
+	})
+
+	var sawFill, sawText bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 20, Width: 120, Height: 28}):
+			sawFill = true
+			if op.Color != (Color{R: 0x31, G: 0x52, B: 0x7a, A: 0xff}) || op.Opacity != 0.72 {
+				t.Fatalf("selectable fill op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Choice":
+			sawText = true
+			if op.Bounds.X != 24 || op.Bounds.Width != 92 ||
+				op.Color != (Color{R: 0xee, G: 0xf5, B: 0xff, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.72 {
+				t.Fatalf("selectable label op = %+v", op)
+			}
+		}
+	}
+	if !sawFill || !sawText {
+		t.Fatalf("missing selectable styled ops: fill=%v text=%v ops=%+v",
+			sawFill, sawText, rt.FrameOps())
+	}
+}
+
 func TestFrameOpsResetEachFrame(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 
