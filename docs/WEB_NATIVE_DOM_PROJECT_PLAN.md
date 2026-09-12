@@ -50,7 +50,8 @@ the browser receives normal elements, attributes, CSS, and events.
   choosing browser semantics only when the widget behavior maps cleanly.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
-- Extend KSS package discovery beyond built-in `styles/kryon/<pack>.kss`.
+- Add optional KSS package registry/config discovery beyond built-in Kryon packs
+  and project-local `styles/<package>.kss` files.
 - Add more semantic relationship facts where widgets need them, such as grouped
   controls, owned regions, labelled-by chains, menu/list relationships, and
   table/grid headers.

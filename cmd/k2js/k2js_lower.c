@@ -132,6 +132,40 @@ style_builtin_path(const char *target, char *dst, size_t dst_size)
     snprintf(dst, dst_size, "styles/kryon/%s.kss", name);
 }
 
+static int
+style_package_path(const char *target, int dotted_dirs,
+                   char *dst, size_t dst_size)
+{
+    char name[KIR_PATH_MAX];
+    size_t n = 0;
+    int last_sep = 1;
+
+    if(target[0] == '\0' || target[0] == '/' || target[0] == '\\')
+        return 0;
+    for(const char *p = target; *p != '\0'; p++) {
+        unsigned char ch = (unsigned char)*p;
+
+        if(isalnum(ch) || ch == '_' || ch == '-') {
+            if(n + 1 >= sizeof(name))
+                return 0;
+            name[n++] = (char)ch;
+            last_sep = 0;
+        } else if(ch == '.' || ch == '/') {
+            if(last_sep || n + 1 >= sizeof(name))
+                return 0;
+            name[n++] = dotted_dirs || ch == '/' ? '/' : '.';
+            last_sep = 1;
+        } else {
+            return 0;
+        }
+    }
+    if(last_sep)
+        return 0;
+    name[n] = '\0';
+    snprintf(dst, dst_size, "styles/%s.kss", name);
+    return 1;
+}
+
 static char *
 read_text_file(const char *path)
 {
@@ -174,14 +208,35 @@ read_style_import_source(const KirModule *m, const char *root,
                          const KirStyleImport *style)
 {
     char relative[KIR_PATH_MAX * 2];
+    char dotted_relative[KIR_PATH_MAX * 2];
     char path[KIR_PATH_MAX * 4];
     char module_dir[KIR_PATH_MAX];
     char *text;
 
     if(style->kind == KIR_STYLE_IMPORT_BUILTIN) {
-        style_builtin_path(style->target, relative, sizeof(relative));
-        snprintf(path, sizeof(path), "%s/%s", root, relative);
-        return read_text_file(path);
+        relative[0] = '\0';
+        if(strncmp(style->target, "kryon.", 6) == 0) {
+            style_builtin_path(style->target, relative, sizeof(relative));
+            snprintf(path, sizeof(path), "%s/%s", root, relative);
+            text = read_text_file(path);
+            if(text != NULL)
+                return text;
+        }
+        if(style_package_path(style->target, 0, relative, sizeof(relative))) {
+            snprintf(path, sizeof(path), "%s/%s", root, relative);
+            text = read_text_file(path);
+            if(text != NULL)
+                return text;
+        }
+        if(style_package_path(style->target, 1,
+                              dotted_relative, sizeof(dotted_relative)) &&
+           strcmp(relative, dotted_relative) != 0) {
+            snprintf(path, sizeof(path), "%s/%s", root, dotted_relative);
+            text = read_text_file(path);
+            if(text != NULL)
+                return text;
+        }
+        return NULL;
     }
     if(style->target[0] == '/')
         return read_text_file(style->target);

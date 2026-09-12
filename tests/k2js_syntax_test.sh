@@ -18,12 +18,14 @@ if ! command -v node >/dev/null 2>&1; then
     exit 0
 fi
 
-mkdir -p "$work/src" "$work/out" "$work/styles/kryon"
+mkdir -p "$work/src" "$work/out" "$work/styles/kryon" "$work/styles/acme"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
 #style <kryon.material> as material
 #style "brand.kss" as brand
+#style <brand> as brand_pack
+#style <acme.dark> as acme_dark
 
 ANSWER :: #run 21 * 2
 #assert ANSWER == 42, "k2js #run assertion failed"
@@ -263,10 +265,26 @@ Button {
 EOF
 
 cat > "$work/src/brand.kss" <<'EOF'
-@pack brand;
+@pack local.brand;
 @layer app;
 Button.primary {
   background: #203040;
+}
+EOF
+
+cat > "$work/styles/brand.kss" <<'EOF'
+@pack brand;
+@layer app;
+Button.secondary {
+  background: #405060;
+}
+EOF
+
+cat > "$work/styles/acme/dark.kss" <<'EOF'
+@pack acme.dark;
+@layer app;
+Text {
+  foreground: #f4f4f4;
 }
 EOF
 

@@ -61,11 +61,16 @@ Style imports identify KSS inputs:
 ```kry
 #style <kryon.material> as material
 #style "brand.kss" as brand
+#style <brand> as brand_pack
+#style <acme.dark> as acme_dark
 ```
 
 `k2js` emits these as `app.styles` so a web host can load built-in and file
 style sheets without scanning source text. KSS still owns style resolution;
 the Web Document frame supplies the node facts it resolves against.
+Angle-bracket package imports resolve from built-in Kryon packs first for
+`kryon.*`, then from project package files such as `styles/brand.kss` and
+dotted package paths such as `styles/acme/dark.kss`.
 
 Rendered DOM elements carry source identity as native attributes:
 `data-kry-ref`, `data-kry-index`, `data-kry-path`, `data-kry-parent-path`,
@@ -300,9 +305,12 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `installWebStyleSheet(sheet, target?, id?)`, `loadAppWebStyleSheets(app)`,
 `installAppWebStyleSheets(app, target?, id?)`, and `setWebStyleSheets(rt,
 sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
-source text in `app.styles[].source` when a `#style` import resolves on disk,
-and `createRuntime({ app })` installs those embedded sheets automatically. CSS
-export and installation target Kry's native DOM annotations,
+source text in `app.styles[].source` when a `#style` import resolves on disk.
+File imports resolve relative to the source module and then the project root;
+package imports resolve built-in `kryon.*` packs and project packages under
+`styles/`, including dotted package names as nested paths. `createRuntime({
+app })` installs those embedded sheets automatically. CSS export and
+installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. The web
 resolver supports kind selectors, `[index=...]`, `#id`, `.class`, `[ref=...]`,
