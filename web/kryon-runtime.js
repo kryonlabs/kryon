@@ -1063,6 +1063,20 @@ function widgetLevel(item) {
   return Math.max(1, Math.min(6, propNumber(item.args || {}, "level", 2)));
 }
 
+function propDataAttrs(meta) {
+  const out = {};
+  const data = meta && typeof meta.data === "object" && !Array.isArray(meta.data) ? meta.data : null;
+  if (!data)
+    return out;
+  for (const [name, value] of Object.entries(data)) {
+    const attr = String(name).trim().replace(/_/g, "-").toLowerCase();
+    if (!attr || !/^[a-z0-9][a-z0-9.-]*$/.test(attr))
+      continue;
+    out[attr] = value === undefined || value === null ? "" : String(value);
+  }
+  return out;
+}
+
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
@@ -1104,6 +1118,7 @@ function webNodeFromWidget(item, index) {
     href: meta.href === undefined || meta.href === null ? widgetHref(item) : String(meta.href),
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
+    dataAttrs: propDataAttrs(meta),
     inputType: widgetInputType(item),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
@@ -1657,6 +1672,21 @@ function webNodeRef(docNode) {
   return docNode?.path || docNode?.name || docNode?.key || docNode?.domId || "";
 }
 
+function applyDataAttrs(el, attrs) {
+  const previous = el.__kryDataAttrs || new Set();
+  const next = new Set();
+  for (const [name, value] of Object.entries(attrs || {})) {
+    const attr = "data-" + name;
+    next.add(attr);
+    setAttr(el, attr, value);
+  }
+  for (const attr of previous) {
+    if (!next.has(attr))
+      el.removeAttribute(attr);
+  }
+  el.__kryDataAttrs = next;
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
@@ -1747,6 +1777,7 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
   setAttr(el, "rel", docNode.rel);
+  applyDataAttrs(el, docNode.dataAttrs);
   setAttr(el, "type", docNode.inputType);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);

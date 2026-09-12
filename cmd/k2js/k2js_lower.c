@@ -1203,6 +1203,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_name_attr[0] || st->dom_class[0] ||
            st->dom_title[0] || st->dom_href[0] ||
            st->dom_target[0] || st->dom_rel[0] ||
+           st->dom_data_attrs[0] ||
            st->dom_placeholder[0] || st->dom_tab_index[0] ||
            st->dom_role[0] || st->dom_aria_label[0] ||
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
@@ -1239,6 +1240,53 @@ emit_metadata_string_field(FILE *f, const char *name, const char *value,
     js_string(f, name);
     fputs(": ", f);
     js_string(f, value);
+}
+
+static void
+emit_metadata_data_attrs(FILE *f, const KirModule *m, const char *attrs,
+                         int *emitted)
+{
+    const char *line = attrs;
+    int field_count = 0;
+
+    if(attrs[0] == '\0')
+        return;
+    if((*emitted)++)
+        fputs(", ", f);
+    js_string(f, "data");
+    fputs(": {", f);
+    while(*line != '\0') {
+        const char *tab = strchr(line, '\t');
+        const char *end = strchr(line, '\n');
+        char name[K2JS_NAME_MAX];
+        char value[K2JS_TEXT_MAX];
+        char out[K2JS_TEXT_MAX];
+        size_t name_len;
+        size_t value_len;
+
+        if(end == NULL)
+            end = line + strlen(line);
+        if(tab == NULL || tab > end)
+            break;
+        name_len = (size_t)(tab - line);
+        value_len = (size_t)(end - tab - 1);
+        if(name_len >= sizeof(name))
+            name_len = sizeof(name) - 1;
+        if(value_len >= sizeof(value))
+            value_len = sizeof(value) - 1;
+        memcpy(name, line, name_len);
+        name[name_len] = '\0';
+        memcpy(value, tab + 1, value_len);
+        value[value_len] = '\0';
+        if(field_count++)
+            fputs(", ", f);
+        js_string(f, name);
+        fputs(": ", f);
+        tx_expr(m, value, out, sizeof(out));
+        fputs(out, f);
+        line = *end == '\n' ? end + 1 : end;
+    }
+    fputc('}', f);
 }
 
 static void
@@ -1322,6 +1370,7 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "href", st->dom_href, &emitted);
     emit_metadata_expr_field(f, m, "target", st->dom_target, &emitted);
     emit_metadata_expr_field(f, m, "rel", st->dom_rel, &emitted);
+    emit_metadata_data_attrs(f, m, st->dom_data_attrs, &emitted);
     emit_metadata_expr_field(f, m, "placeholder", st->dom_placeholder,
                              &emitted);
     emit_metadata_expr_field(f, m, "tabIndex", st->dom_tab_index, &emitted);

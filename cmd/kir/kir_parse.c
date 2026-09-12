@@ -454,6 +454,7 @@ typedef struct UiBlock {
     char dom_href[KIR_TEXT_MAX];
     char dom_target[KIR_NAME_MAX];
     char dom_rel[KIR_TEXT_MAX];
+    char dom_data_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
@@ -700,6 +701,31 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_rel, sizeof(block->dom_rel), "%s", value);
         return 1;
     }
+    if(strncmp(field, "data_", 5) == 0 ||
+       strncmp(field, "dom_data_", 9) == 0 ||
+       strncmp(field, "html_data_", 10) == 0) {
+        const char *name = field[0] == 'd' && field[3] == '_' ? field + 9 :
+                           field[0] == 'h' ? field + 10 : field + 5;
+        char attr[KIR_NAME_MAX];
+        size_t used = strlen(block->dom_data_attrs);
+        size_t length = 0;
+
+        if(name[0] == '\0')
+            return 0;
+        for(const char *p = name; *p != '\0'; p++) {
+            if(!isalnum((unsigned char)*p) && *p != '_')
+                return 0;
+            if(length + 1 < sizeof(attr))
+                attr[length++] = *p == '_' ? '-' : (char)tolower((unsigned char)*p);
+        }
+        attr[length] = '\0';
+        int written = snprintf(block->dom_data_attrs + used,
+                               sizeof(block->dom_data_attrs) - used,
+                               "%s\t%s\n", attr, value);
+        if(written < 0 || (size_t)written >= sizeof(block->dom_data_attrs) - used)
+            return 0;
+        return 1;
+    }
     if(strcmp(field, "placeholder") == 0 ||
        strcmp(field, "dom_placeholder") == 0) {
         snprintf(block->dom_placeholder, sizeof(block->dom_placeholder), "%s",
@@ -798,6 +824,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_target);
     snprintf(statement->dom_rel, sizeof(statement->dom_rel), "%s",
              block->dom_rel);
+    snprintf(statement->dom_data_attrs, sizeof(statement->dom_data_attrs),
+             "%s", block->dom_data_attrs);
     snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),
              "%s", block->dom_placeholder);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",

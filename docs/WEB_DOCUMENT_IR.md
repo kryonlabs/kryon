@@ -94,6 +94,7 @@ Supported metadata fields in this first slice:
 | `dom_href`, `html_href` | `href` |
 | `dom_target`, `html_target` | `target` |
 | `dom_rel`, `html_rel` | `rel` |
+| `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
@@ -139,6 +140,7 @@ Supported metadata fields in this first slice:
       href,
       target,
       rel,
+      dataAttrs,
       inputType,
       alt,
       asset,

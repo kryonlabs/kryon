@@ -90,6 +90,7 @@ export interface WebDocumentNode {
   href: string;
   target: string;
   rel: string;
+  dataAttrs: Record<string, string>;
   inputType: string;
   alt: string;
   asset: string;
