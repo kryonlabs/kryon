@@ -77,7 +77,7 @@ done
 cp "$root"/web/*.js "$work/out/"
 printf '%s\n' '{"type":"module"}' > "$work/out/package.json"
 
-if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|EndCanvas|EndDisabled)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
+if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|EndCanvas|EndDisabled|InvisibleButton)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
     cat /tmp/kryon-k2js-lowered.$$ >&2
     rm -f /tmp/kryon-k2js-lowered.$$
     echo "k2js output must use canonical widget names, not lowered scope names" >&2
@@ -125,7 +125,7 @@ const expected = new Map([
   ["tests/parity/list_box.js", ["Screen", "ListBox"]],
   ["tests/parity/tree_view.js", ["Screen", "TreeView"]],
   ["tests/parity/progress.js", ["Screen", "Progress"]],
-  ["tests/parity/plots.js", ["Screen", "Plot", "Plot", "Drag", "Drag", "Drag", "Drag", "Slider", "Slider", "Slider", "Slider", "Slider", "Input", "Input", "Input", "Button", "InvisibleButton", "Button", "Bullet", "Separator", "ColorPicker", "ColorPicker", "ColorPicker", "ColorPicker", "Button", "Text", "Text", "Text", "Text", "Text", "Bullet", "Text", "Text", "Text", "Text", "Text"]],
+  ["tests/parity/plots.js", ["Screen", "Plot", "Plot", "Drag", "Drag", "Drag", "Drag", "Slider", "Slider", "Slider", "Slider", "Slider", "Input", "Input", "Input", "Button", "Button", "Button", "Bullet", "Separator", "ColorPicker", "ColorPicker", "ColorPicker", "ColorPicker", "Button", "Text", "Text", "Text", "Text", "Text", "Bullet", "Text", "Text", "Text", "Text", "Text"]],
   ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
   ["tests/parity/selection_images.js", ["Screen", "Selectable", "Checkbox", "Image", "Button", "Separator", "Button", "TabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],

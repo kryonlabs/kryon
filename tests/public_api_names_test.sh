@@ -112,7 +112,7 @@ if [ -n "$generated_matches" ]; then
 fi
 
 web_lowered_builder_matches="$(
-    rg -n '\b(export function (BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll)|"(BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll)")\b' \
+    rg -n '\b(export function (BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll)|"(BeginButton|BeginCanvas|BeginCard|BeginDisabled|BeginScrollContainer|EndCanvas|EndDisabled|EndScroll|InvisibleButton)")\b' \
         web/kryon-runtime.js web/kryon-runtime.d.ts \
         --glob '!vendor/**' \
         --glob '!build/**' || true

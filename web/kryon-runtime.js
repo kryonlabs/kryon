@@ -997,7 +997,6 @@ function widgetTag(item) {
   case "Link":
     return "a";
   case "Button":
-  case "InvisibleButton":
     return "button";
   case "TextField":
     return "input";
@@ -1024,7 +1023,6 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
-  case "InvisibleButton":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":

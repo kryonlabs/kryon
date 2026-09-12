@@ -354,9 +354,7 @@ These names are still recognized or exported by `web/kryon-runtime.js`, but
 they are lowered host support rather than clean widget concepts. Generated web
 code should prefer canonical `.kry` names and blocks.
 
-| Entry | Replacement concept | Removal note |
-|---|---|---|
-| `InvisibleButton` | host hit-test support | Not a design widget; should stay internal to composed controls. |
+No web runtime widget entries are accepted as public compatibility names.
 
 ## Core Drawing And Text
 

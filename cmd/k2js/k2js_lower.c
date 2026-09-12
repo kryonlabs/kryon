@@ -238,6 +238,43 @@ js_string(FILE *f, const char *s)
     fputc('"', f);
 }
 
+static const char *
+canonical_widget_name(const char *widget)
+{
+    if(strcmp(widget, "BeginButton") == 0)
+        return "Button";
+    if(strcmp(widget, "BeginCard") == 0)
+        return "Card";
+    if(strcmp(widget, "InvisibleButton") == 0)
+        return "Button";
+    return widget;
+}
+
+static void
+replace_all_literal(const char *src, const char *needle, const char *replacement,
+                    char *dst, size_t dst_size)
+{
+    size_t needle_len = strlen(needle);
+    size_t replacement_len = strlen(replacement);
+    size_t used = 0;
+
+    if(dst_size == 0)
+        return;
+    while(*src != '\0' && used + 1 < dst_size) {
+        if(needle_len > 0 && strncmp(src, needle, needle_len) == 0) {
+            size_t copy_len = replacement_len;
+            if(copy_len > dst_size - used - 1)
+                copy_len = dst_size - used - 1;
+            memcpy(dst + used, replacement, copy_len);
+            used += copy_len;
+            src += needle_len;
+            continue;
+        }
+        dst[used++] = *src++;
+    }
+    dst[used] = '\0';
+}
+
 static int
 next_enum_member(const char **cursor, char *name, size_t name_size,
                  char *value, size_t value_size)
@@ -1190,6 +1227,14 @@ initializer_to_string(const KirModule *m, const char *value, char *out, size_t o
 static void
 emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const char *args)
 {
+    char canonical_args[K2JS_TEXT_MAX];
+
+    if(strcmp(widget, "InvisibleButton") == 0) {
+        replace_all_literal(args, "InvisibleButtonProps", "ButtonProps",
+                            canonical_args, sizeof(canonical_args));
+        emit_initializer_value(f, m, canonical_args);
+        return;
+    }
     if(strcmp(widget, "Text") == 0 || strcmp(widget, "Button") == 0 ||
        strcmp(widget, "Card") == 0)
         emit_initializer_value(f, m, args);
@@ -1393,15 +1438,31 @@ static void
 emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
 {
     int emitted = 0;
+    char canonical_node_name[K2JS_TEXT_MAX];
+    char canonical_node_path[K2JS_TEXT_MAX];
+    char canonical_parent_path[K2JS_TEXT_MAX];
+    int canonicalize_invisible = strcmp(st->widget, "InvisibleButton") == 0;
 
     if(!stmt_has_web_metadata(st)) {
         fputs("null", f);
         return;
     }
     fputc('{', f);
-    emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
-    emit_metadata_string_field(f, "path", st->node_path, &emitted);
-    emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
+    if(canonicalize_invisible) {
+        replace_all_literal(st->node_name, "InvisibleButton", "Button",
+                            canonical_node_name, sizeof(canonical_node_name));
+        replace_all_literal(st->node_path, "InvisibleButton", "Button",
+                            canonical_node_path, sizeof(canonical_node_path));
+        replace_all_literal(st->node_parent_path, "InvisibleButton", "Button",
+                            canonical_parent_path, sizeof(canonical_parent_path));
+        emit_metadata_string_field(f, "nodeName", canonical_node_name, &emitted);
+        emit_metadata_string_field(f, "path", canonical_node_path, &emitted);
+        emit_metadata_string_field(f, "parentPath", canonical_parent_path, &emitted);
+    } else {
+        emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
+        emit_metadata_string_field(f, "path", st->node_path, &emitted);
+        emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
+    }
     emit_metadata_string_field(f, "sourcePath", st->span.path, &emitted);
     emit_metadata_int_field(f, "sourceLine", st->span.line, &emitted);
     emit_metadata_int_field(f, "sourceColumn", st->span.column, &emitted);
@@ -1761,12 +1822,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 break;
             emit_indent(f, indent);
             fprintf(f, "kryon.widget($rt, ");
-            if(strcmp(st->widget, "BeginButton") == 0)
-                js_string(f, "Button");
-            else if(strcmp(st->widget, "BeginCard") == 0)
-                js_string(f, "Card");
-            else
-                js_string(f, st->widget[0] ? st->widget : raw);
+            js_string(f, st->widget[0] ? canonical_widget_name(st->widget) : raw);
             fprintf(f, ", ");
             emit_widget_arguments(f, m, st->widget, st->args[0] ? st->args : raw);
             fprintf(f, ", $state, ");

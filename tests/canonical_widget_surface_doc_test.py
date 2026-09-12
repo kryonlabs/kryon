@@ -58,9 +58,7 @@ GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
     "EndCanvas",
 }
 
-WEB_COMPAT_ENTRIES = {
-    "InvisibleButton",
-}
+WEB_COMPAT_ENTRIES = set()
 
 GO_SCOPE_EXPORT_ALLOWLIST = {
     "BeginFrame",
