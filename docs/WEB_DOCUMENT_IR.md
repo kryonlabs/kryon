@@ -336,6 +336,10 @@ frame. The mount root also exposes non-enumerable `kryRuntime`, `kryFrame`, and
 `webDOMObjectMap(target)` and `root.kryObjectMap` return a `Map` from every
 stable alias, including `web_ref`, Kry path/name/key, DOM id/name, and source
 refs, to the current live Kry DOM object.
+`webDOMObserve(target, selector, handler, options?)` and
+`root.kryObserve(selector, handler, options?)` subscribe to `kry-render` and
+pass the current matching Kry DOM objects to browser logic. Observers run once
+immediately unless `options.immediate` is `false`.
 Mount roots also provide non-enumerable `kryElement(query)`,
 `kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
 `kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser

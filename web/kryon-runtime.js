@@ -3513,6 +3513,13 @@ function bindWebRootProperties(root) {
         return webDOMAddDelegatedEventListener(this, selector, type, handler, options);
       }
     },
+    kryObserve: {
+      configurable: true,
+      enumerable: false,
+      value(selector, handler, options) {
+        return webDOMObserve(this, selector, handler, options);
+      }
+    },
     kryAddClass: {
       configurable: true,
       enumerable: false,
@@ -4220,6 +4227,28 @@ export function webDOMObjectMap(target) {
     }
   }
   return map;
+}
+
+export function webDOMObserve(target, selector, handler, options = {}) {
+  const root = mountedRoot(target);
+  if (!root || typeof handler !== "function" ||
+      typeof root.addEventListener !== "function")
+    return null;
+  const text = String(selector || "").trim();
+  const current = () => text ? webDOMQueryAll(root, text) : webDOMObjects(root);
+  const emit = (event = null) => handler(current(), {
+    root,
+    frame: root.__kryFrame || null,
+    event
+  });
+  const listener = (event) => emit(event);
+  root.addEventListener("kry-render", listener);
+  if (!options || options.immediate !== false)
+    emit(null);
+  return () => {
+    if (typeof root.removeEventListener === "function")
+      root.removeEventListener("kry-render", listener);
+  };
 }
 
 function plainElementMap(source) {

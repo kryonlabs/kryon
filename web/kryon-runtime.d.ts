@@ -393,6 +393,16 @@ export interface WebDOMLifecycleDetail {
   element: Element;
 }
 
+export interface WebDOMObserveDetail {
+  root: Element;
+  frame: WebDocumentFrame | null;
+  event: Event | null;
+}
+
+export interface WebDOMObserveOptions {
+  immediate?: boolean;
+}
+
 declare global {
   interface Element {
     readonly kryRef?: string;
@@ -434,6 +444,8 @@ declare global {
     };
     kryDelegate?(selector: string, type: string, handler: (event: Event, object: WebDOMObject) => unknown,
       options?: boolean | AddEventListenerOptions): (() => void) | null;
+    kryObserve?(selector: string, handler: (objects: WebDOMObject[], detail: WebDOMObserveDetail) => unknown,
+      options?: WebDOMObserveOptions): (() => void) | null;
     kryAddClass?(className: string): boolean;
     kryAddClass?(query: string, className: string): boolean;
     kryRemoveClass?(className: string): boolean;
@@ -658,6 +670,9 @@ export function webDOMIdentityFromEvent(eventOrTarget: Event | EventTarget | nul
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webDOMObjectMap(target: Element | string | null): Map<string, WebDOMObject>;
+export function webDOMObserve(target: Element | string | null, selector: string,
+  handler: (objects: WebDOMObject[], detail: WebDOMObserveDetail) => unknown,
+  options?: WebDOMObserveOptions): (() => void) | null;
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
 export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
 export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;

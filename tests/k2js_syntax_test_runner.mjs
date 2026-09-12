@@ -1058,6 +1058,22 @@ function fakeDocument() {
     assert.equal(lifecycleEvents[2].detailRef, "primary-action");
     assert.equal(lifecycleEvents[2].detailRoot, root);
     assert.equal(lifecycleEvents[2].detailElement.dataset.kryRef, "primary-action");
+    const observedButtons = [];
+    const removeButtonObserver = runtime.webDOMObserve(target, "Button.primary",
+      (objects, detail) => observedButtons.push([
+        objects.map((object) => object.ref),
+        detail.root === root,
+        detail.frame?.nodes.length || 0,
+        detail.event?.type || ""
+      ]));
+    assert.equal(typeof removeButtonObserver, "function");
+    assert.deepEqual(observedButtons, [[["primary-action"], true, 5, ""]]);
+    const observedFields = [];
+    const removeFieldObserver = root.kryObserve("TextField.field",
+      (objects, detail) => observedFields.push([objects.map((object) => object.ref), detail.event?.type || ""]),
+      { immediate: false });
+    assert.equal(typeof removeFieldObserver, "function");
+    assert.deepEqual(observedFields, []);
     const lifecycleCount = lifecycleEvents.length;
     runtime.renderWebDocument(domRt, target);
     assert.equal(lifecycleEvents.length, lifecycleCount + 5);
@@ -1068,6 +1084,16 @@ function fakeDocument() {
       "kry-update",
       "kry-update"
     ]);
+    assert.deepEqual(observedButtons, [
+      [["primary-action"], true, 5, ""],
+      [["primary-action"], true, 5, "kry-render"]
+    ]);
+    assert.deepEqual(observedFields, [[["search-box"], "kry-render"]]);
+    removeButtonObserver();
+    removeFieldObserver();
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(observedButtons.length, 2);
+    assert.equal(observedFields.length, 1);
     const screen = root.children.find((child) => child.tagName === "MAIN");
     const firstText = screen.children[0];
     assert.equal(firstText.tagName, "DIV");
@@ -1837,8 +1863,17 @@ function fakeDocument() {
       event.detail?.element?.dataset?.kryRef
     ]));
     runtime.renderWebDocument(unmountRt, unmountTarget);
+    const observedUnmount = [];
+    const removeUnmountObserver = runtime.webDOMObserve(unmountTarget, "Button.primary",
+      (objects, detail) => observedUnmount.push([objects.map((object) => object.ref), detail.event?.type || ""]));
+    assert.deepEqual(observedUnmount, [[["primary-action"], ""]]);
     unmountRt.frame = [];
     runtime.renderWebDocument(unmountRt, unmountTarget);
+    assert.deepEqual(observedUnmount, [
+      [["primary-action"], ""],
+      [[], "kry-render"]
+    ]);
+    removeUnmountObserver();
     assert.deepEqual(unmountEvents.map((event) => event[0]), [
       "Scene/root",
       webDoc.nodes[1].path,
