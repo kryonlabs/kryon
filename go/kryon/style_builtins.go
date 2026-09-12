@@ -1787,7 +1787,6 @@ Image {
   focus: accent;
   radius: radius;
   border-width: border;
-  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -1805,6 +1804,7 @@ Focus {
   focus: accent;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -7221,7 +7221,6 @@ Spinbox {
   focus: focus;
   radius: radius;
   border-width: 1;
-  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -7248,6 +7247,7 @@ Drag {
   focus: focus;
   radius: radius;
   border-width: 1;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

@@ -421,7 +421,6 @@ Spinbox {
   focus: focus;
   radius: radius;
   border-width: 1;
-  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -448,6 +447,7 @@ Drag {
   focus: focus;
   radius: radius;
   border-width: 1;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
