@@ -4273,7 +4273,6 @@ DispatchAccelerators(const Accelerator *accelerators, int count)
 void
 RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
 {
-    int font = GetSmallFontSize();
     if(nodes == NULL)
         return;
     for(int i = 0; i < count; i++) {
@@ -4285,13 +4284,17 @@ RenderFocusDebugOverlay(const AccessibilityNode *nodes, int count)
         Style label = ui_unpack_style(ui_control_style_frame_role_kind(
             (ButtonProps){0}, state, 0, 0.0f, 0.0f,
             nodes[i].focused ? 1.0f : 0.0f, StyleKindFocus(), 6).value);
+        int font = label.font_size > 0.0f
+            ? (int)(label.font_size + 0.5f)
+            : GetSmallFontSize();
         FocusDebugOverlayPaint paint =
             FocusDebugOverlayPaintFor(nodes[i].bounds, TextLineHeight(font),
                                       nodes[i].label != NULL);
         DrawRectangleLinesEx(paint.outline, (float)paint.stroke_width,
-                             box.border);
+                             Fade(box.border, box.opacity));
         if(paint.label_visible)
             RenderText(nodes[i].label, (int)paint.label_position.x,
-                       (int)paint.label_position.y, font, label.foreground);
+                       (int)paint.label_position.y, font,
+                       Fade(label.foreground, label.opacity));
     }
 }
