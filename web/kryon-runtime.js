@@ -1006,7 +1006,6 @@ function widgetTag(item) {
   case "TextArea":
     return "textarea";
   case "Image":
-  case "PageImage":
     return "img";
   case "Checkbox":
   case "Toggle":

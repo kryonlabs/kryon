@@ -30,7 +30,7 @@ if [ -n "$matches" ]; then
 fi
 
 removed_widget_matches="$(
-    rg -n '\b(Href|Picture|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
+    rg -n '\b(Href|Picture|PageImage|LabelFrame|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
         include src cmd go web docs examples tests tools scripts \
         --glob '!vendor/**' \
         --glob '!build/**' \
@@ -316,7 +316,7 @@ if [ -n "$public_text_draw_matches" ]; then
 fi
 
 public_text_helper_matches="$(
-    rg -n '\b(UITextStyle|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect)\b' \
+    rg -n '\b(UITextStyle|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect|DrawLeftUIControlTextInRect|DrawFittedTextInRect)\b' \
         include/ui_text.h \
         include/ui_draw.h \
         docs/API.md \
