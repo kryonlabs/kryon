@@ -1119,7 +1119,7 @@ function webNodeFromWidget(item, index) {
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     dataAttrs: propDataAttrs(meta),
-    inputType: widgetInputType(item),
+    inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),

@@ -456,6 +456,7 @@ typedef struct UiBlock {
     char dom_rel[KIR_TEXT_MAX];
     char dom_data_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
+    char dom_input_type[KIR_NAME_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
@@ -732,6 +733,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "input_type") == 0 || strcmp(field, "dom_type") == 0 ||
+       strcmp(field, "html_type") == 0 || strcmp(field, "dom_input_type") == 0) {
+        snprintf(block->dom_input_type, sizeof(block->dom_input_type), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "tab_index") == 0 || strcmp(field, "tabindex") == 0 ||
        strcmp(field, "dom_tab_index") == 0) {
         snprintf(block->dom_tab_index, sizeof(block->dom_tab_index), "%s",
@@ -828,6 +835,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_data_attrs);
     snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),
              "%s", block->dom_placeholder);
+    snprintf(statement->dom_input_type, sizeof(statement->dom_input_type), "%s",
+             block->dom_input_type);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",
              block->dom_tab_index);
     snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",

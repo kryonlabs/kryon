@@ -96,6 +96,7 @@ Supported metadata fields in this first slice:
 | `dom_rel`, `html_rel` | `rel` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
+| `input_type`, `dom_type`, `html_type`, `dom_input_type` | `inputType` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |

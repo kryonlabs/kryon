@@ -172,6 +172,7 @@ assert.equal(webDoc.nodes[3].tag, "input");
 assert.equal(webDoc.nodes[3].domId, "search-field");
 assert.equal(webDoc.nodes[3].domName, "q");
 assert.deepEqual(webDoc.nodes[3].dataAttrs, { role: "search" });
+assert.equal(webDoc.nodes[3].inputType, "search");
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -444,6 +445,7 @@ function fakeDocument() {
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.attributes.name, "q");
     assert.equal(firstField.attributes["data-role"], "search");
+    assert.equal(firstField.attributes.type, "search");
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
