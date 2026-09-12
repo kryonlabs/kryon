@@ -200,6 +200,11 @@ RenderActionModal(ModalProps modal)
     Style message_style = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 20).value);
+    Style action_style = ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindModal(), 17).value);
     Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 19).value);
@@ -209,6 +214,9 @@ RenderActionModal(ModalProps modal)
     if((message_style.fields & (uint32_t)StyleFontSize) != 0 &&
        message_style.font_size > 0.0f)
         msg_font = Scale((int)message_style.font_size);
+    if((action_style.fields & (uint32_t)StyleFontSize) != 0 &&
+       action_style.font_size > 0.0f)
+        btn_font = Scale((int)action_style.font_size);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -262,10 +270,11 @@ RenderActionModal(ModalProps modal)
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
-               modal_y + Scale(14), title_font, title_style.foreground);
+               modal_y + Scale(14), title_font,
+               Fade(title_style.foreground, title_style.opacity));
 
     DrawTextLayout(&msg_layout, msg_x, &msg_y, msg_font,
-                   message_style.foreground);
+                   Fade(message_style.foreground, message_style.opacity));
     FreeTextLayout(&msg_layout);
 
     if(has_prompt) {
@@ -400,7 +409,8 @@ RenderModalFrame(int width, int height, const char *title,
         title_font = Scale((int)title_style.font_size);
     title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
-               frame.y + Scale(14), title_font, title_style.foreground);
+               frame.y + Scale(14), title_font,
+               Fade(title_style.foreground, title_style.opacity));
 
     if(left_icon.id != 0) {
         frame.left_clicked = ui_modal_icon_button(frame.x + Scale(6),
