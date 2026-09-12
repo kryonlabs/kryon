@@ -99,6 +99,7 @@ export interface WebDocumentNode {
   dataAttrs: Record<string, string>;
   extraAttrs: Record<string, string>;
   inputType: string;
+  formOwner: string;
   formAction: string;
   formMethod: string;
   formEncType: string;
@@ -242,6 +243,7 @@ export interface WebNodeStyleFacts {
   rel: string;
   htmlFor: string;
   inputType: string;
+  formOwner: string;
   formAction: string;
   formMethod: string;
   formEncType: string;
@@ -429,6 +431,7 @@ export interface WebDOMRelations {
   controls: WebDOMObject[];
   owns: WebDOMObject[];
   labelFor: WebDOMObject | null;
+  formOwner: WebDOMObject | null;
   labelledBy: WebDOMObject[];
   activeDescendant: WebDOMObject | null;
   popoverTarget: WebDOMObject | null;
@@ -615,6 +618,7 @@ export interface WebDOMSnapshot {
     controls: string[];
     owns: string[];
     labelFor: string;
+    formOwner: string;
     labelledBy: string[];
     activeDescendant: string;
     popoverTarget: string;

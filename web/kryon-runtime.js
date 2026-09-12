@@ -1295,6 +1295,7 @@ function webNodeFromWidget(item, index) {
     dataAttrs: propDataAttrs(meta),
     extraAttrs: propExtraAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
+    formOwner: meta.formOwner === undefined || meta.formOwner === null ? "" : String(meta.formOwner),
     formAction: meta.formAction === undefined || meta.formAction === null ? "" : String(meta.formAction),
     formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
     formEncType: meta.formEncType === undefined || meta.formEncType === null ? "" : String(meta.formEncType),
@@ -1430,6 +1431,7 @@ export function webNodeStyleFacts(node) {
     rel: node?.rel || "",
     htmlFor: node?.htmlFor || "",
     inputType: node?.inputType || "",
+    formOwner: node?.formOwner || "",
     formAction: node?.formAction || "",
     formMethod: node?.formMethod || "",
     formEncType: node?.formEncType || "",
@@ -2048,6 +2050,7 @@ function selectorNativeAttrValue(key, facts) {
     case "name": return facts.domName;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
+    case "form": return facts.formOwner;
     case "action": return facts.formAction;
     case "method": return facts.formMethod;
     case "enctype": return facts.formEncType;
@@ -3846,6 +3849,7 @@ function resolveWebDOMRelations(root) {
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
     setAttr(el, "aria-owns", resolveWebDOMRelationList(root, docNode.ariaOwns));
     setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
+    setAttr(el, "form", resolveWebDOMRelationToken(root, docNode.formOwner));
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
   }
   syncWebDOMRootIndexes(root);
@@ -3901,6 +3905,7 @@ function webDOMRelationsForNode(target, node) {
     controls: webDOMRelationList(target, node.ariaControls),
     owns: webDOMRelationList(target, node.ariaOwns),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
+    formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     labelledBy: mergeWebDOMRelationObjects(
       webDOMRelationList(target, node.ariaLabelledBy),
       webDOMReverseRelationList(target, node, "htmlFor")
@@ -5243,7 +5248,7 @@ const webDOMInternalAttributeNames = new Set([
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
   "aria-activedescendant",
   "aria-controls", "aria-owns", "aria-live",
-  "href", "target", "rel", "for", "type", "action", "method", "enctype",
+  "href", "target", "rel", "for", "form", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
   "autofocus", "download", "formnovalidate", "novalidate", "popover",
   "popovertarget", "popovertargetaction", "readonly", "required", "min",
@@ -5329,6 +5334,7 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.title = attrs.title ?? docNode.title ?? "";
   docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
   docNode.role = attrs.role ?? docNode.role ?? "";
+  docNode.formOwner = attrs.form ?? docNode.formOwner ?? "";
   docNode.tabIndex = attrs.tabindex !== undefined && Number.isFinite(Number(attrs.tabindex))
     ? Math.trunc(Number(attrs.tabindex)) : docNode.tabIndex;
   const dataAttrs = {};
@@ -5432,6 +5438,7 @@ function webDOMObjectSnapshot(target, object) {
       controls: (relations?.controls || []).map((relation) => relation.ref),
       owns: (relations?.owns || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
+      formOwner: relations?.formOwner?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
       activeDescendant: relations?.activeDescendant?.ref || "",
       popoverTarget: relations?.popoverTarget?.ref || ""

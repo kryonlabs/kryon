@@ -503,6 +503,34 @@ grep -q '"autoComplete": "off"' "$anon_out"
 grep -q '"noValidate": true' "$anon_out"
 grep -q '"onReset": "pointer_leave"' "$anon_out"
 
+cat > "$work/src/form_owner.kry" <<'EOF'
+#import "kryon.h"
+
+app "Form Owner" {
+    size 80 60
+}
+
+FormOwnerScreen :: () #ui {
+    Screen root: {
+        Column contact: {
+            dom = "form"
+            dom_id = "contact-form"
+        }
+        TextField external_email: {
+            text = "x@example.test"
+            dom_name = "email"
+            form = "contact"
+        }
+    }
+}
+EOF
+"$k2js" --root "$work" -o "$work/out" "$work/src/form_owner.kry"
+form_owner_out="$work/out/src/form_owner.js"
+grep -q '"tag": "form"' "$form_owner_out"
+grep -q '"id": "contact-form"' "$form_owner_out"
+grep -q '"domName": "email"' "$form_owner_out"
+grep -q '"formOwner": "contact"' "$form_owner_out"
+
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
     value: i32

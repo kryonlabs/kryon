@@ -462,6 +462,7 @@ typedef struct UiBlock {
     char dom_extra_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
     char dom_input_type[KIR_NAME_MAX];
+    char dom_form_attr[KIR_NAME_MAX];
     char dom_form_action[KIR_TEXT_MAX];
     char dom_form_method[KIR_NAME_MAX];
     char dom_form_enctype[KIR_NAME_MAX];
@@ -840,6 +841,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     if(strcmp(field, "input_type") == 0 || strcmp(field, "dom_type") == 0 ||
        strcmp(field, "html_type") == 0 || strcmp(field, "dom_input_type") == 0) {
         snprintf(block->dom_input_type, sizeof(block->dom_input_type), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "form") == 0 || strcmp(field, "dom_form") == 0 ||
+       strcmp(field, "html_form") == 0) {
+        snprintf(block->dom_form_attr, sizeof(block->dom_form_attr), "%s",
                  value);
         return 1;
     }
@@ -1279,6 +1286,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_placeholder);
     snprintf(statement->dom_input_type, sizeof(statement->dom_input_type), "%s",
              block->dom_input_type);
+    snprintf(statement->dom_form_attr, sizeof(statement->dom_form_attr), "%s",
+             block->dom_form_attr);
     snprintf(statement->dom_form_action, sizeof(statement->dom_form_action),
              "%s", block->dom_form_action);
     snprintf(statement->dom_form_method, sizeof(statement->dom_form_method),

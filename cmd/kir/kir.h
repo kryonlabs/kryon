@@ -144,6 +144,7 @@ typedef struct KirStmt {
     char dom_extra_attrs[KIR_TEXT_MAX]; /* requested arbitrary browser attributes */
     char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
     char dom_input_type[KIR_NAME_MAX];  /* requested browser input type */
+    char dom_form_attr[KIR_NAME_MAX];   /* requested form owner id */
     char dom_form_action[KIR_TEXT_MAX]; /* requested form action URL */
     char dom_form_method[KIR_NAME_MAX]; /* requested form method */
     char dom_form_enctype[KIR_NAME_MAX];/* requested form encoding */

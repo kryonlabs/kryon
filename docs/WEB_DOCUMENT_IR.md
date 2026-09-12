@@ -119,6 +119,7 @@ Supported metadata fields:
 | `attr_*`, `dom_attr_*`, `html_attr_*` | `extraAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
 | `input_type`, `dom_type`, `html_type`, `dom_input_type` | `inputType` |
+| `form`, `dom_form`, `html_form` | `formOwner` |
 | `dom_action`, `html_action`, `form_action` | `formAction` |
 | `dom_method`, `html_method`, `form_method` | `formMethod` |
 | `dom_enctype`, `html_enctype`, `form_enctype` | `formEncType` |
@@ -220,6 +221,7 @@ Supported metadata fields:
       ariaAttrs,
       extraAttrs,
       inputType,
+      formOwner,
       formAction,
       formMethod,
       formEncType,
@@ -313,7 +315,7 @@ semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
 `sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`,
-`inputType`, `formAction`, `formMethod`,
+`inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `download`, `formNoValidate`, `noValidate`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
@@ -482,15 +484,16 @@ scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,
-`aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`, and
-`popover_target` may name another Kry DOM object by ref, path, name, key, or
+`aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`,
+`form`, and `popover_target` may name another Kry DOM object by ref, path, name, key, or
 native id. The Web Document facts keep the authored Kry value for KSS and
 queries, while the DOM renderer resolves the native attribute to a real element
 id during mount. `webDOMRelations(target, query)`, `element.kryRelations`, and
 `object.relations` expose the resolved Kry DOM objects, including `owns`,
 direct `labelledBy` links from `aria_labelledby`, active descendant links from
-`aria_activedescendant`, and reverse `labelledBy` links for controls targeted
-by `dom_for`; snapshots include serializable `relationRefs`.
+`aria_activedescendant`, form owner links from `form`, and reverse `labelledBy`
+links for controls targeted by `dom_for`; snapshots include serializable
+`relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source

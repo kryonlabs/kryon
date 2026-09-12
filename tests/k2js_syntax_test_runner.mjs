@@ -242,6 +242,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   rel: "",
   htmlFor: "",
   inputType: "",
+  formOwner: "",
   formAction: "",
   formMethod: "",
   formEncType: "",
@@ -851,7 +852,10 @@ function fakeDocument() {
       });
     runtime.widget(submitRt, "TextField", { text: "hello@example.test" }, null,
       { nodeName: "email", path: "Page/contact/email", parentPath: "Page/contact", domName: "email" });
+    runtime.widget(submitRt, "TextField", { text: "outside@example.test" }, null,
+      { nodeName: "externalEmail", path: "Page/externalEmail", domName: "external_email", formOwner: "contact" });
     runtime.endFrame(submitRt);
+    assert.equal(runtime.webNodeQuery(submitRt, "[form=contact]").path, "Page/externalEmail");
     assert.equal(runtime.webNodeQuery(submitRt, "[action=\"/contact\"]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[method=post]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[enctype=\"multipart/form-data\"]").path, "Page/contact");
@@ -866,6 +870,11 @@ function fakeDocument() {
     assert.equal(submitForm.attributes.autocomplete, "off");
     assert.equal(submitForm.attributes.novalidate, "");
     assert.equal(submitForm.noValidate, true);
+    const externalEmail = runtime.findWebElement(submitTarget, "external_email");
+    assert.equal(externalEmail.attributes.form, "kry-Page-contact");
+    assert.equal(runtime.webDOMQuery(submitTarget, "[form=contact]").element, externalEmail);
+    assert.equal(runtime.webDOMRelations(submitTarget, "external_email").formOwner.ref, "Page/contact");
+    assert.equal(runtime.webDOMSnapshot(submitTarget, "external_email").relationRefs.formOwner, "Page/contact");
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[method=post]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[enctype=\"multipart/form-data\"]").element, submitForm);
