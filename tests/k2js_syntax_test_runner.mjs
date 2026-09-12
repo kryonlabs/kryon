@@ -1083,7 +1083,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetStyle(target, "tap-button", "background", "pink"), true);
     assert.equal(runtime.webDOMSetStyle(target, "tap-button", "--accent-level", "2"), true);
     assert.equal(runtime.webDOMGetStyle(target, "Scene/root/tap", "background"), "pink");
+    assert.equal(runtime.webDOMComputedStyle(target, "Scene/root/tap", "background"), "pink");
     assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "2");
+    assert.equal(runtime.webDOMComputedStyle(target, "tap-button", "--accent-level"), "2");
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "pink");
     assert.equal(firstButton.style["--accent-level"], "2");

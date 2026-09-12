@@ -425,6 +425,7 @@ export function webDOMGetProperty(target: Element | string | null, query: string
 export function webDOMSetStyle(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
 export function webDOMRemoveStyle(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetStyle(target: Element | string | null, query: string, name: string): string | undefined;
+export function webDOMComputedStyle(target: Element | string | null, query: string, name?: string): unknown;
 export function webDOMRect(target: Element | string | null, query: string): { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
 export function webDOMGetScroll(target: Element | string | null, query: string): { left: number; top: number; width: number; height: number } | null;
 export function webDOMSetScroll(target: Element | string | null, query: string, left: number, top?: number | null): boolean;

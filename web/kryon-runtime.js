@@ -3164,6 +3164,24 @@ export function webDOMGetStyle(target, query, name) {
   return el ? getStyleProperty(el.style, prop) : undefined;
 }
 
+export function webDOMComputedStyle(target, query, name = "") {
+  const el = findWebElement(target, query);
+  if (!el)
+    return undefined;
+  const style = typeof globalThis.getComputedStyle === "function"
+    ? globalThis.getComputedStyle(el)
+    : (el.style || {});
+  const prop = String(name || "").trim();
+  if (!prop)
+    return style;
+  if (typeof style.getPropertyValue === "function") {
+    const cssValue = style.getPropertyValue(prop);
+    if (cssValue !== "")
+      return cssValue;
+  }
+  return getStyleProperty(style, prop);
+}
+
 function webDOMRectFromElement(el) {
   if (!el)
     return null;

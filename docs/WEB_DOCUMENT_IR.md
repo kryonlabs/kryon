@@ -381,6 +381,10 @@ facts; unknown properties remain native host state.
 These overrides are intended for browser-measured or runtime-only state; KSS
 remains the authoring surface for visual design.
 
+`webDOMComputedStyle(target, query, name)` reads the browser-computed style for
+a Kry DOM object when `getComputedStyle` is available, and falls back to the
+element style object in non-browser hosts.
+
 `webDOMGetText(target, query)`, `webDOMSetText(...)`, `webDOMGetValue(...)`,
 and `webDOMSetValue(...)` read and write current mounted text and form values.
 Mutations synchronize back to the Web Document node before the next render.
