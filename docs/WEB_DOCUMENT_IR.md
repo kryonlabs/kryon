@@ -221,6 +221,10 @@ and `Page` nodes.
 `findWebNode(rt, query)` returns the normalized Web Document node whose Kry
 path, node name, key, or DOM id matches `query`.
 
+`webNodeQuery(rt, selector)` and `webNodeQueryAll(rt, selector)` return
+unmounted Web Document nodes by the same KSS-style selector facts used for
+style resolution.
+
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, or DOM id matches `query`.
 

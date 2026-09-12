@@ -1905,6 +1905,22 @@ export function findWebNode(rt, query) {
     node.domId === text) || null;
 }
 
+export function webNodeQueryAll(rt, selector) {
+  const text = String(selector || "").trim();
+  if (!text)
+    return [];
+  const exact = findWebNode(rt, text);
+  if (exact)
+    return [exact];
+  const parsed = parseSelector(text);
+  return webDocumentFrame(rt).nodes
+    .filter((node) => selectorMatchesWebNode(parsed, node));
+}
+
+export function webNodeQuery(rt, selector) {
+  return webNodeQueryAll(rt, selector)[0] || null;
+}
+
 export function findWebElement(target, query) {
   const root = mountedRoot(target);
   if (!root)

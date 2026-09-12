@@ -160,6 +160,12 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet
     background: #405060;
   }
 `)).background, "#405060");
+assert.equal(runtime.webNodeQuery(rt, "Scene/root/tap").path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, "Button.primary").path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, "[data-tracking-id=\"tap-1\"]").path, webDoc.nodes[2].path);
+assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
+  "Scene/root/search"
+]);
 assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");
 assert.equal(webDoc.nodes[3].tag, "input");
