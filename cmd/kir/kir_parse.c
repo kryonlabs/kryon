@@ -449,6 +449,7 @@ typedef struct UiBlock {
     char dom_tag[KIR_NAME_MAX];
     char dom_id[KIR_NAME_MAX];
     char dom_name_attr[KIR_NAME_MAX];
+    char dom_value_attr[KIR_TEXT_MAX];
     char dom_class[KIR_TEXT_MAX];
     char dom_title[KIR_TEXT_MAX];
     char dom_href[KIR_TEXT_MAX];
@@ -700,6 +701,12 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     if(strcmp(field, "dom_name") == 0 || strcmp(field, "html_name") == 0 ||
        strcmp(field, "name_attr") == 0) {
         snprintf(block->dom_name_attr, sizeof(block->dom_name_attr), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "dom_value") == 0 || strcmp(field, "html_value") == 0 ||
+       strcmp(field, "value_attr") == 0) {
+        snprintf(block->dom_value_attr, sizeof(block->dom_value_attr), "%s",
                  value);
         return 1;
     }
@@ -975,6 +982,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_id);
     snprintf(statement->dom_name_attr, sizeof(statement->dom_name_attr), "%s",
              block->dom_name_attr);
+    snprintf(statement->dom_value_attr, sizeof(statement->dom_value_attr), "%s",
+             block->dom_value_attr);
     snprintf(statement->dom_class, sizeof(statement->dom_class), "%s",
              block->dom_class);
     snprintf(statement->dom_title, sizeof(statement->dom_title), "%s",
