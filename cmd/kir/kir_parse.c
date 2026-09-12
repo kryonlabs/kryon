@@ -471,6 +471,10 @@ typedef struct UiBlock {
     char dom_on_submit[KIR_NAME_MAX];
     char dom_on_focus[KIR_NAME_MAX];
     char dom_on_blur[KIR_NAME_MAX];
+    char dom_on_mouse_enter[KIR_NAME_MAX];
+    char dom_on_mouse_leave[KIR_NAME_MAX];
+    char dom_on_mouse_down[KIR_NAME_MAX];
+    char dom_on_mouse_up[KIR_NAME_MAX];
     int anonymous_widget_count;
     int close_depth;
     int opened;
@@ -812,6 +816,30 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_on_blur, sizeof(block->dom_on_blur), "%s", value);
         return 1;
     }
+    if(strcmp(field, "on_mouse_enter") == 0 ||
+       strcmp(field, "on_pointer_enter") == 0) {
+        snprintf(block->dom_on_mouse_enter, sizeof(block->dom_on_mouse_enter),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_mouse_leave") == 0 ||
+       strcmp(field, "on_pointer_leave") == 0) {
+        snprintf(block->dom_on_mouse_leave, sizeof(block->dom_on_mouse_leave),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_mouse_down") == 0 ||
+       strcmp(field, "on_pointer_down") == 0) {
+        snprintf(block->dom_on_mouse_down, sizeof(block->dom_on_mouse_down),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "on_mouse_up") == 0 ||
+       strcmp(field, "on_pointer_up") == 0) {
+        snprintf(block->dom_on_mouse_up, sizeof(block->dom_on_mouse_up), "%s",
+                 value);
+        return 1;
+    }
     return 0;
 }
 
@@ -878,6 +906,16 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_focus);
     snprintf(statement->dom_on_blur, sizeof(statement->dom_on_blur), "%s",
              block->dom_on_blur);
+    snprintf(statement->dom_on_mouse_enter,
+             sizeof(statement->dom_on_mouse_enter), "%s",
+             block->dom_on_mouse_enter);
+    snprintf(statement->dom_on_mouse_leave,
+             sizeof(statement->dom_on_mouse_leave), "%s",
+             block->dom_on_mouse_leave);
+    snprintf(statement->dom_on_mouse_down, sizeof(statement->dom_on_mouse_down),
+             "%s", block->dom_on_mouse_down);
+    snprintf(statement->dom_on_mouse_up, sizeof(statement->dom_on_mouse_up),
+             "%s", block->dom_on_mouse_up);
 }
 
 static void

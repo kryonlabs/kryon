@@ -151,6 +151,10 @@ typedef struct KirStmt {
     char dom_on_submit[KIR_NAME_MAX];   /* logic function bound to submit */
     char dom_on_focus[KIR_NAME_MAX];    /* logic function bound to focus */
     char dom_on_blur[KIR_NAME_MAX];     /* logic function bound to blur */
+    char dom_on_mouse_enter[KIR_NAME_MAX]; /* logic function bound to mouseenter */
+    char dom_on_mouse_leave[KIR_NAME_MAX]; /* logic function bound to mouseleave */
+    char dom_on_mouse_down[KIR_NAME_MAX];  /* logic function bound to mousedown */
+    char dom_on_mouse_up[KIR_NAME_MAX];    /* logic function bound to mouseup */
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int is_instance; /* typed record binding retained by its explicit key */

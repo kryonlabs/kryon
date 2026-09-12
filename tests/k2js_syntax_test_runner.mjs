@@ -358,6 +358,36 @@ function fakeDocument() {
     runtime.findWebElement(submitTarget, "contact").submit();
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
+
+    const pointerEvents = [];
+    const pointerRt = runtime.createRuntime();
+    runtime.beginFrame(pointerRt);
+    runtime.widget(pointerRt, "Button", { label: "Hover" }, null,
+      {
+        nodeName: "hover",
+        path: "Page/hover",
+        onMouseEnter: "enter",
+        onMouseLeave: "leave",
+        onMouseDown: "down",
+        onMouseUp: "up",
+        mouseEnterAction() { pointerEvents.push("enter"); },
+        mouseLeaveAction() { pointerEvents.push("leave"); },
+        mouseDownAction() { pointerEvents.push("down"); },
+        mouseUpAction() { pointerEvents.push("up"); }
+      });
+    runtime.endFrame(pointerRt);
+    const pointerTarget = document.createElement("div");
+    runtime.renderWebDocument(pointerRt, pointerTarget);
+    const pointerButton = runtime.findWebElement(pointerTarget, "hover");
+    assert.equal(pointerButton.dataset.kryOnMouseEnter, "enter");
+    assert.equal(pointerButton.dataset.kryOnMouseLeave, "leave");
+    assert.equal(pointerButton.dataset.kryOnMouseDown, "down");
+    assert.equal(pointerButton.dataset.kryOnMouseUp, "up");
+    pointerButton.mouseenter();
+    pointerButton.mousedown();
+    pointerButton.mouseup();
+    pointerButton.mouseleave();
+    assert.deepEqual(pointerEvents, ["enter", "down", "up", "leave"]);
   } finally {
     globalThis.document = previousDocument;
   }

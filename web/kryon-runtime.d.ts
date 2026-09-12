@@ -107,6 +107,10 @@ export interface WebDocumentNode {
   onSubmit: string;
   onFocus: string;
   onBlur: string;
+  onMouseEnter: string;
+  onMouseLeave: string;
+  onMouseDown: string;
+  onMouseUp: string;
   action: (() => unknown) | null;
   inputAction: ((value: unknown) => unknown) | null;
   changeAction: ((value: unknown) => unknown) | null;
@@ -114,6 +118,10 @@ export interface WebDocumentNode {
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
   focusAction: (() => unknown) | null;
   blurAction: (() => unknown) | null;
+  mouseEnterAction: (() => unknown) | null;
+  mouseLeaveAction: (() => unknown) | null;
+  mouseDownAction: (() => unknown) | null;
+  mouseUpAction: (() => unknown) | null;
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;

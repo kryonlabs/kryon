@@ -111,6 +111,10 @@ Supported metadata fields in this first slice:
 | `on_submit` | `onSubmit`, `submitAction(values)` |
 | `on_focus` | `onFocus`, `focusAction()` |
 | `on_blur` | `onBlur`, `blurAction()` |
+| `on_mouse_enter`, `on_pointer_enter` | `onMouseEnter`, `mouseEnterAction()` |
+| `on_mouse_leave`, `on_pointer_leave` | `onMouseLeave`, `mouseLeaveAction()` |
+| `on_mouse_down`, `on_pointer_down` | `onMouseDown`, `mouseDownAction()` |
+| `on_mouse_up`, `on_pointer_up` | `onMouseUp`, `mouseUpAction()` |
 
 ## Runtime Contract
 
@@ -266,8 +270,8 @@ non-browser tests.
   declared in `.kry`; nested route parameters are not parsed yet.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   `on_change(value)`, `on_key(key)`, `on_submit(values)`, `on_focus()`,
-  `on_blur()`, and native hover/pressed/focus facts for KSS state selectors in
-  this slice.
+  `on_blur()`, mouse/pointer enter/leave/down/up actions, and native
+  hover/pressed/focus facts for KSS state selectors in this slice.
 - KSS parsing exists in C for style-rule tables and in the JS runtime for web
   DOM style application; k2js embeds resolvable style imports, but package
   discovery beyond `styles/kryon/<pack>.kss` and every style property are still

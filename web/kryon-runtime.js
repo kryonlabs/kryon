@@ -1135,6 +1135,10 @@ function webNodeFromWidget(item, index) {
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
     onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
     onBlur: meta.onBlur === undefined || meta.onBlur === null ? "" : String(meta.onBlur),
+    onMouseEnter: meta.onMouseEnter === undefined || meta.onMouseEnter === null ? "" : String(meta.onMouseEnter),
+    onMouseLeave: meta.onMouseLeave === undefined || meta.onMouseLeave === null ? "" : String(meta.onMouseLeave),
+    onMouseDown: meta.onMouseDown === undefined || meta.onMouseDown === null ? "" : String(meta.onMouseDown),
+    onMouseUp: meta.onMouseUp === undefined || meta.onMouseUp === null ? "" : String(meta.onMouseUp),
     action: typeof meta.action === "function" ? meta.action : null,
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
@@ -1142,6 +1146,10 @@ function webNodeFromWidget(item, index) {
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
     focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
     blurAction: typeof meta.blurAction === "function" ? meta.blurAction : null,
+    mouseEnterAction: typeof meta.mouseEnterAction === "function" ? meta.mouseEnterAction : null,
+    mouseLeaveAction: typeof meta.mouseLeaveAction === "function" ? meta.mouseLeaveAction : null,
+    mouseDownAction: typeof meta.mouseDownAction === "function" ? meta.mouseDownAction : null,
+    mouseUpAction: typeof meta.mouseUpAction === "function" ? meta.mouseUpAction : null,
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
@@ -1615,10 +1623,30 @@ function bindNodeEvents(el) {
       ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
       : null);
   };
-  el.addEventListener("mouseenter", () => interactiveState({ hover: true }));
-  el.addEventListener("mouseleave", () => interactiveState({ hover: false, pressed: false }));
-  el.addEventListener("mousedown", () => interactiveState({ pressed: true }));
-  el.addEventListener("mouseup", () => interactiveState({ pressed: false }));
+  el.addEventListener("mouseenter", () => {
+    interactiveState({ hover: true });
+    const docNode = el.__kryDocNode;
+    if (docNode?.mouseEnterAction)
+      docNode.mouseEnterAction();
+  });
+  el.addEventListener("mouseleave", () => {
+    interactiveState({ hover: false, pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.mouseLeaveAction)
+      docNode.mouseLeaveAction();
+  });
+  el.addEventListener("mousedown", () => {
+    interactiveState({ pressed: true });
+    const docNode = el.__kryDocNode;
+    if (docNode?.mouseDownAction)
+      docNode.mouseDownAction();
+  });
+  el.addEventListener("mouseup", () => {
+    interactiveState({ pressed: false });
+    const docNode = el.__kryDocNode;
+    if (docNode?.mouseUpAction)
+      docNode.mouseUpAction();
+  });
   el.addEventListener("focus", () => {
     interactiveState({ focus: true });
     const docNode = el.__kryDocNode;
@@ -1795,6 +1823,22 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnBlur = docNode.onBlur;
   else
     delete el.dataset.kryOnBlur;
+  if (docNode.onMouseEnter)
+    el.dataset.kryOnMouseEnter = docNode.onMouseEnter;
+  else
+    delete el.dataset.kryOnMouseEnter;
+  if (docNode.onMouseLeave)
+    el.dataset.kryOnMouseLeave = docNode.onMouseLeave;
+  else
+    delete el.dataset.kryOnMouseLeave;
+  if (docNode.onMouseDown)
+    el.dataset.kryOnMouseDown = docNode.onMouseDown;
+  else
+    delete el.dataset.kryOnMouseDown;
+  if (docNode.onMouseUp)
+    el.dataset.kryOnMouseUp = docNode.onMouseUp;
+  else
+    delete el.dataset.kryOnMouseUp;
   if (docNode.hasBounds) {
     el.style.position = "absolute";
     el.style.left = docNode.bounds.x + "px";

@@ -248,6 +248,19 @@ node "$root/tests/k2js_syntax_test_runner.mjs" "$work/out/src/valid.js" "$work/o
 cat > "$work/src/anon_refs.kry" <<'EOF'
 #import "kryon.h"
 
+pointer_enter :: () -> int {
+    return 1
+}
+pointer_leave :: () -> int {
+    return 2
+}
+pointer_down :: () -> int {
+    return 3
+}
+pointer_up :: () -> int {
+    return 4
+}
+
 Anon :: () #ui {
     Screen root: {
         Text((TextProps){.text="first"})
@@ -257,6 +270,10 @@ Anon :: () #ui {
             dom_href = "/docs"
             dom_target = "_blank"
             dom_rel = "noopener"
+            on_pointer_enter = pointer_enter
+            on_pointer_leave = pointer_leave
+            on_pointer_down = pointer_down
+            on_pointer_up = pointer_up
         }
     }
 }
@@ -268,6 +285,10 @@ grep -Eq '"path": "Anon/root/Text@[0-9]+-2"' "$anon_out"
 grep -q '"href": "/docs"' "$anon_out"
 grep -q '"target": "_blank"' "$anon_out"
 grep -q '"rel": "noopener"' "$anon_out"
+grep -q '"onMouseEnter": "pointer_enter"' "$anon_out"
+grep -q '"onMouseLeave": "pointer_leave"' "$anon_out"
+grep -q '"onMouseDown": "pointer_down"' "$anon_out"
+grep -q '"onMouseUp": "pointer_up"' "$anon_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
