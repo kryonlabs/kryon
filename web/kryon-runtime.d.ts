@@ -338,6 +338,9 @@ export interface WebDOMObject {
   readonly snapshot: WebDOMSnapshot | null;
   readonly parent: WebDOMObject | null;
   readonly children: WebDOMObject[];
+  readonly descendants: WebDOMObject[];
+  query(selector: string): WebDOMObject | null;
+  queryAll(selector: string): WebDOMObject[];
   matches(selector: string): boolean;
   closest(selector: string): WebDOMObject | null;
   listen(type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
@@ -426,6 +429,7 @@ declare global {
     readonly krySnapshot?: WebDOMSnapshot | null;
     readonly kryParent?: WebDOMObject | null;
     readonly kryChildren?: WebDOMObject[];
+    kryDescendants?(): WebDOMObject[];
     readonly kryRuntime?: Runtime | null;
     readonly kryFrame?: WebDocumentFrame | null;
     readonly kryObjects?: WebDOMObject[];
@@ -436,6 +440,8 @@ declare global {
     kryObject?(query: string): WebDOMObject | null;
     kryQuery?(selector: string): WebDOMObject | null;
     kryQueryAll?(selector: string): WebDOMObject[];
+    kryQueryWithin?(query: string, selector: string): WebDOMObject | null;
+    kryQueryAllWithin?(query: string, selector: string): WebDOMObject[];
     kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
     kryListen?: {
       (type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
@@ -684,9 +690,12 @@ export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapsh
 export function webDOMSnapshotFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMSnapshot | null;
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMChildren(target: Element | string | null, query?: string): WebDOMObject[];
+export function webDOMDescendants(target: Element | string | null, query?: string): WebDOMObject[];
 export function webDOMClosest(target: Element | string | null, query: string, selector: string): WebDOMObject | null;
 export function webDOMQuery(target: Element | string | null, selector: string): WebDOMObject | null;
 export function webDOMQueryAll(target: Element | string | null, selector: string): WebDOMObject[];
+export function webDOMQueryWithin(target: Element | string | null, query: string, selector: string): WebDOMObject | null;
+export function webDOMQueryAllWithin(target: Element | string | null, query: string, selector: string): WebDOMObject[];
 export function webDOMMatches(target: Element | string | null, query: string, selector: string): boolean;
 export function webDOMObjectAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
 export function webDOMObjectsAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];

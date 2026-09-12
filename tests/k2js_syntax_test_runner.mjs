@@ -1386,6 +1386,63 @@ function fakeDocument() {
       ]);
     assert.deepEqual(runtime.webDOMChildren(target).map((object) => object.node.path),
       ["Scene/root"]);
+    assert.deepEqual(runtime.webDOMDescendants(target, "Scene/root")
+      .map((object) => object.node.path), [
+        firstText.dataset.kryPath,
+        "Scene/root/tap",
+        "Scene/root/search",
+        "Scene/root/search_label",
+        "Scene/root/Selectable_5",
+        "Scene/root/Input@207-2",
+        "Scene/root/Input@208-3"
+      ]);
+    assert.equal(runtime.webDOMQueryWithin(target, "Scene/root", "Button.primary").element,
+      firstButton);
+    assert.deepEqual(runtime.webDOMQueryAllWithin(target, "Scene/root", "Input")
+      .map((object) => object.node.path), [
+        "Scene/root/Input@207-2",
+        "Scene/root/Input@208-3"
+      ]);
+    assert.equal(runtime.webDOMQueryWithin(target, "Scene/root/tap", "TextField"), null);
+    assert.equal(root.kryQueryWithin("Scene/root", "TextField.field").element,
+      runtime.findWebElement(target, "q"));
+    assert.deepEqual(root.kryQueryAllWithin("Scene/root", "Input")
+      .map((object) => object.node.path), [
+        "Scene/root/Input@207-2",
+        "Scene/root/Input@208-3"
+      ]);
+    assert.deepEqual(root.kryDescendants("Scene/root")
+      .map((object) => object.node.path), [
+        firstText.dataset.kryPath,
+        "Scene/root/tap",
+        "Scene/root/search",
+        "Scene/root/search_label",
+        "Scene/root/Selectable_5",
+        "Scene/root/Input@207-2",
+        "Scene/root/Input@208-3"
+      ]);
+    assert.deepEqual(screen.kryDescendants().map((object) => object.node.path), [
+      firstText.dataset.kryPath,
+      "Scene/root/tap",
+      "Scene/root/search",
+      "Scene/root/search_label",
+      "Scene/root/Selectable_5",
+      "Scene/root/Input@207-2",
+      "Scene/root/Input@208-3"
+    ]);
+    assert.equal(screen.kryQuery("Button.primary").element, firstButton);
+    assert.deepEqual(screen.kryQueryAll("Input").map((object) => object.node.path), [
+      "Scene/root/Input@207-2",
+      "Scene/root/Input@208-3"
+    ]);
+    const screenObject = runtime.webDOMObject(target, "Scene/root");
+    assert.equal(screenObject.query("Button.primary").element, firstButton);
+    assert.deepEqual(screenObject.queryAll("Input").map((object) => object.node.path), [
+      "Scene/root/Input@207-2",
+      "Scene/root/Input@208-3"
+    ]);
+    assert.deepEqual(screenObject.descendants.map((object) => object.node.path),
+      screen.kryDescendants().map((object) => object.node.path));
     assert.equal(runtime.webDOMClosest(target, "tap-button", "Screen").node.path,
       "Scene/root");
     assert.deepEqual(runtime.webDOMRect(target, "tap-button"), {

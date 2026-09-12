@@ -2492,6 +2492,33 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMChildren(root, node.path) : [];
       }
     },
+    kryDescendants: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMDescendants(root, node.path) : [];
+      }
+    },
+    kryQuery: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMQueryWithin(root, node.path, selector) : null;
+      }
+    },
+    kryQueryAll: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMQueryAllWithin(root, node.path, selector) : [];
+      }
+    },
     kryMatches: {
       configurable: true,
       enumerable: false,
@@ -2889,6 +2916,30 @@ function makeWebDOMObject(root, node, element, ref = "") {
       get() {
         const target = webDOMObjectRoot(this);
         return target ? webDOMChildren(target, webDOMObjectQuery(this)) : [];
+      }
+    },
+    descendants: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMDescendants(target, webDOMObjectQuery(this)) : [];
+      }
+    },
+    query: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMQueryWithin(target, webDOMObjectQuery(this), selector) : null;
+      }
+    },
+    queryAll: {
+      configurable: true,
+      enumerable: false,
+      value(selector) {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMQueryAllWithin(target, webDOMObjectQuery(this), selector) : [];
       }
     },
     matches: {
@@ -3546,6 +3597,27 @@ function bindWebRootProperties(root) {
       enumerable: false,
       value(selector) {
         return webDOMQueryAll(this, selector);
+      }
+    },
+    kryDescendants: {
+      configurable: true,
+      enumerable: false,
+      value(query = "") {
+        return webDOMDescendants(this, query);
+      }
+    },
+    kryQueryWithin: {
+      configurable: true,
+      enumerable: false,
+      value(query, selector) {
+        return webDOMQueryWithin(this, query, selector);
+      }
+    },
+    kryQueryAllWithin: {
+      configurable: true,
+      enumerable: false,
+      value(query, selector) {
+        return webDOMQueryAllWithin(this, query, selector);
       }
     },
     kryAtSource: {
@@ -4557,6 +4629,22 @@ export function webDOMChildren(target, query = "") {
   });
 }
 
+export function webDOMDescendants(target, query = "") {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  const text = String(query || "").trim();
+  const parent = text ? webDOMObject(target, text) : null;
+  if (text && !parent)
+    return [];
+  const parentPath = parent?.node?.path || "";
+  if (!parentPath)
+    return webDOMObjects(target);
+  return webDOMObjects(target).filter((object) =>
+    object.node.path !== parentPath &&
+    object.node.path.startsWith(parentPath + "/"));
+}
+
 export function webDOMClosest(target, query, selector) {
   const root = mountedRoot(target);
   let object = root ? webDOMObject(target, query) : null;
@@ -4586,6 +4674,19 @@ export function webDOMQueryAll(target, selector) {
 
 export function webDOMQuery(target, selector) {
   return webDOMQueryAll(target, selector)[0] || null;
+}
+
+export function webDOMQueryAllWithin(target, query, selector) {
+  const text = String(selector || "").trim();
+  if (!text)
+    return [];
+  const parsed = parseSelector(text);
+  return webDOMDescendants(target, query)
+    .filter((object) => selectorMatchesWebNode(parsed, object.node));
+}
+
+export function webDOMQueryWithin(target, query, selector) {
+  return webDOMQueryAllWithin(target, query, selector)[0] || null;
 }
 
 export function webDOMMatches(target, query, selector) {

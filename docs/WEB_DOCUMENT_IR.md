@@ -449,6 +449,14 @@ and `root.kryDelegate(selector, type, handler)`. Mounted elements expose
 DOM objects. This lets inspectors, tests, and host code walk from a native
 element back through Kry parent/child relationships without scraping browser
 markup.
+`webDOMDescendants(target, query)`, `webDOMQueryWithin(target, query, selector)`,
+and `webDOMQueryAllWithin(target, query, selector)` scope the same KSS-style
+selector facts to one `.kry` subtree. Mount roots expose these as
+`root.kryDescendants(query)`, `root.kryQueryWithin(query, selector)`, and
+`root.kryQueryAllWithin(query, selector)`. Mounted elements expose
+`element.kryDescendants()`, `element.kryQuery(selector)`, and
+`element.kryQueryAll(selector)`, while `WebDOMObject` wrappers expose
+`object.descendants`, `object.query(selector)`, and `object.queryAll(selector)`.
 
 `webDOMAddClass(target, query, className)`, `webDOMRemoveClass(...)`,
 `webDOMToggleClass(...)`, and `webDOMHasClass(...)` mutate or inspect mounted
