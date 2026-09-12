@@ -13,6 +13,7 @@ REGISTRY = ROOT / "src/ui/ui_node_registry.c"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
 UI_TREE = ROOT / "include/ui_tree.h"
 GO_API = ROOT / "go/kryon/api.go"
+WEB_RUNTIME = ROOT / "web/kryon-runtime.js"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
 RUNTIME = ROOT / "runtime"
@@ -55,6 +56,14 @@ ROLE_COMPAT_EXPORTS = {
 GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
     "BeginCanvas",
     "EndCanvas",
+}
+
+WEB_COMPAT_ENTRIES = {
+    "BeginCanvas",
+    "BeginCard",
+    "BeginDisabled",
+    "EndDisabled",
+    "InvisibleButton",
 }
 
 GO_SCOPE_EXPORT_ALLOWLIST = {
@@ -161,6 +170,20 @@ def go_compat_exports() -> set[str]:
         and name not in GO_SCOPE_EXPORT_ALLOWLIST
     }
     return scope_exports | (functions & ROLE_COMPAT_EXPORTS)
+
+
+def web_runtime_names() -> set[str]:
+    text = WEB_RUNTIME.read_text(encoding="utf-8")
+    names = set(re.findall(r'^export function\s+([A-Z][A-Za-z0-9_]*)\s*\(', text, flags=re.M))
+    names.update(re.findall(r'name\s*===\s*"([^"]+)"', text))
+    names.update(re.findall(r'case\s+"([^"]+)":', text))
+    if not names:
+        raise AssertionError("empty web/kryon-runtime.js public name list")
+    return names
+
+
+def web_compat_entries() -> set[str]:
+    return web_runtime_names() & WEB_COMPAT_ENTRIES
 
 
 def audit_rows() -> dict[str, list[str]]:
@@ -289,6 +312,27 @@ def go_compat_rows() -> dict[str, list[str]]:
     return rows
 
 
+def web_compat_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Web Runtime Compatibility Entries\n(?P<body>.*?)(?=^## )",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing ## Web Runtime Compatibility Entries section")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            name = cells[0].strip("`")
+            if name in rows:
+                raise AssertionError(f"duplicate web compatibility entry row: {name}")
+            rows[name] = cells
+    return rows
+
+
 def feature_matrix_parser_names() -> tuple[int, list[str]]:
     text = FEATURE_MATRIX.read_text(encoding="utf-8")
     count_match = re.search(
@@ -322,12 +366,15 @@ def main() -> int:
     block_doc_rows = block_rows()
     compat_doc_rows = compat_rows()
     go_compat_doc_rows = go_compat_rows()
+    web_compat_doc_rows = web_compat_rows()
     feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
     ui_tree_functions = ui_tree_function_names()
     compat_expected = ui_tree_compat_exports()
     go_api_functions = go_api_function_names()
     go_compat_expected = go_compat_exports()
+    web_runtime_public_names = web_runtime_names()
+    web_compat_expected = web_compat_entries()
 
     for module in runtime_expected:
         if module not in runtime_doc_rows:
@@ -376,6 +423,18 @@ def main() -> int:
             errors.append(f"Go compatibility export no longer exists in api.go: {name}")
     for name in sorted(set(go_compat_doc_rows) - GO_COMPAT_EXPORTS):
         errors.append(f"Go compatibility export row is not tracked by the test: {name}")
+    if web_compat_expected != WEB_COMPAT_ENTRIES:
+        for name in sorted(web_compat_expected - WEB_COMPAT_ENTRIES):
+            errors.append(f"unreviewed web compatibility entry in kryon-runtime.js: {name}")
+        for name in sorted(WEB_COMPAT_ENTRIES - web_compat_expected):
+            errors.append(f"stale web compatibility entry no longer in kryon-runtime.js: {name}")
+    for name in sorted(WEB_COMPAT_ENTRIES):
+        if name not in web_compat_doc_rows:
+            errors.append(f"missing web compatibility entry row: {name}")
+        if name not in web_runtime_public_names:
+            errors.append(f"web compatibility entry no longer exists in kryon-runtime.js: {name}")
+    for name in sorted(set(web_compat_doc_rows) - WEB_COMPAT_ENTRIES):
+        errors.append(f"web compatibility entry row is not tracked by the test: {name}")
     if feature_count != len(parser_expected):
         errors.append(
             "feature matrix parser widget count is "

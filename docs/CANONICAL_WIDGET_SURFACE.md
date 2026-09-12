@@ -348,6 +348,20 @@ those surfaces become available.
 | `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
 | `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
 
+## Web Runtime Compatibility Entries
+
+These names are still recognized or exported by `web/kryon-runtime.js`, but
+they are lowered host support rather than clean widget concepts. Generated web
+code should prefer canonical `.kry` names and blocks.
+
+| Entry | Replacement concept | Removal note |
+|---|---|---|
+| `BeginCanvas` | `Canvas` block | Lowered host entry for canvas content. |
+| `BeginCard` | `Card` block | Lowered host entry for composed card content. |
+| `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
+| `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
+| `InvisibleButton` | host hit-test support | Not a design widget; should stay internal to composed controls. |
+
 ## Core Drawing And Text
 
 | Public name | Current decision | Notes |
