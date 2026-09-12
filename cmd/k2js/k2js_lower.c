@@ -1208,6 +1208,10 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_form_action[0] || st->dom_form_method[0] ||
            st->dom_form_enctype[0] || st->dom_autocomplete[0] ||
            st->dom_readonly[0] || st->dom_required[0] ||
+           st->dom_min[0] || st->dom_max[0] || st->dom_step[0] ||
+           st->dom_minlength[0] || st->dom_maxlength[0] ||
+           st->dom_pattern[0] || st->dom_accept[0] ||
+           st->dom_multiple[0] || st->dom_inputmode[0] ||
            st->dom_tab_index[0] ||
            st->dom_role[0] || st->dom_aria_label[0] ||
            st->dom_aria_description[0] || st->dom_aria_describedby[0] ||
@@ -1393,6 +1397,15 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                              &emitted);
     emit_metadata_expr_field(f, m, "readOnly", st->dom_readonly, &emitted);
     emit_metadata_expr_field(f, m, "required", st->dom_required, &emitted);
+    emit_metadata_expr_field(f, m, "min", st->dom_min, &emitted);
+    emit_metadata_expr_field(f, m, "max", st->dom_max, &emitted);
+    emit_metadata_expr_field(f, m, "step", st->dom_step, &emitted);
+    emit_metadata_expr_field(f, m, "minLength", st->dom_minlength, &emitted);
+    emit_metadata_expr_field(f, m, "maxLength", st->dom_maxlength, &emitted);
+    emit_metadata_expr_field(f, m, "pattern", st->dom_pattern, &emitted);
+    emit_metadata_expr_field(f, m, "accept", st->dom_accept, &emitted);
+    emit_metadata_expr_field(f, m, "multiple", st->dom_multiple, &emitted);
+    emit_metadata_expr_field(f, m, "inputMode", st->dom_inputmode, &emitted);
     emit_metadata_expr_field(f, m, "tabIndex", st->dom_tab_index, &emitted);
     emit_metadata_expr_field(f, m, "role", st->dom_role, &emitted);
     emit_metadata_expr_field(f, m, "ariaLabel", st->dom_aria_label, &emitted);

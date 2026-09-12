@@ -72,6 +72,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[required=true] {
     gap: 3;
   }
+  TextField[maxlength=64] {
+    offset-x: 4;
+  }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 runtime.setWebStyleSheets(rt, webStyleSheet);
@@ -140,6 +143,15 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   autoComplete: "",
   readOnly: false,
   required: false,
+  min: "",
+  max: "",
+  step: "",
+  minLength: "",
+  maxLength: "",
+  pattern: "",
+  accept: "",
+  multiple: false,
+  inputMode: "",
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   role: "button",
@@ -181,6 +193,15 @@ assert.equal(runtime.webNodeQuery(rt, "[name=q]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[type=search]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[readonly=true]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[required=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[min=1]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[max=100]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[step=1]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[minlength=2]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[maxlength=64]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[pattern=\"needle.*\"]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[accept=\".txt\"]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[multiple=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/search");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -193,7 +214,17 @@ assert.deepEqual(webDoc.nodes[3].dataAttrs, { role: "search" });
 assert.equal(webDoc.nodes[3].inputType, "search");
 assert.equal(webDoc.nodes[3].readOnly, true);
 assert.equal(webDoc.nodes[3].required, true);
+assert.equal(webDoc.nodes[3].min, "1");
+assert.equal(webDoc.nodes[3].max, "100");
+assert.equal(webDoc.nodes[3].step, "1");
+assert.equal(webDoc.nodes[3].minLength, "2");
+assert.equal(webDoc.nodes[3].maxLength, "64");
+assert.equal(webDoc.nodes[3].pattern, "needle.*");
+assert.equal(webDoc.nodes[3].accept, ".txt");
+assert.equal(webDoc.nodes[3].multiple, true);
+assert.equal(webDoc.nodes[3].inputMode, "search");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-x"], 4);
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -515,6 +546,15 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[type=search]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[readonly=true]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[required=true]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[min=1]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[max=100]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[step=1]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[minlength=2]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[maxlength=64]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[pattern=\"needle.*\"]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[accept=\".txt\"]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[multiple=true]").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "[inputmode=search]").element, runtime.findWebElement(target, "q"));
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
@@ -530,6 +570,15 @@ function fakeDocument() {
     assert.equal(firstField.attributes.type, "search");
     assert.equal(firstField.attributes.readonly, "");
     assert.equal(firstField.attributes.required, "");
+    assert.equal(firstField.attributes.min, "1");
+    assert.equal(firstField.attributes.max, "100");
+    assert.equal(firstField.attributes.step, "1");
+    assert.equal(firstField.attributes.minlength, "2");
+    assert.equal(firstField.attributes.maxlength, "64");
+    assert.equal(firstField.attributes.pattern, "needle.*");
+    assert.equal(firstField.attributes.accept, ".txt");
+    assert.equal(firstField.attributes.multiple, "");
+    assert.equal(firstField.attributes.inputmode, "search");
     assert.equal(firstField.attributes.placeholder, "Search terms");
     assert.equal(firstField.attributes["aria-describedby"], "tap-button");
     assert.equal(firstField.dataset.kryOnInput, "note_input");

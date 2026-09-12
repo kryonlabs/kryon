@@ -1084,6 +1084,11 @@ function metaBool(meta, name) {
   return !!value;
 }
 
+function metaString(meta, name) {
+  const value = meta?.[name];
+  return value === undefined || value === null ? "" : String(value);
+}
+
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
@@ -1133,6 +1138,15 @@ function webNodeFromWidget(item, index) {
     autoComplete: meta.autoComplete === undefined || meta.autoComplete === null ? "" : String(meta.autoComplete),
     readOnly: metaBool(meta, "readOnly"),
     required: metaBool(meta, "required"),
+    min: metaString(meta, "min"),
+    max: metaString(meta, "max"),
+    step: metaString(meta, "step"),
+    minLength: metaString(meta, "minLength"),
+    maxLength: metaString(meta, "maxLength"),
+    pattern: metaString(meta, "pattern"),
+    accept: metaString(meta, "accept"),
+    multiple: metaBool(meta, "multiple"),
+    inputMode: metaString(meta, "inputMode"),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
@@ -1199,6 +1213,15 @@ export function webNodeStyleFacts(node) {
     autoComplete: node?.autoComplete || "",
     readOnly: !!node?.readOnly,
     required: !!node?.required,
+    min: node?.min || "",
+    max: node?.max || "",
+    step: node?.step || "",
+    minLength: node?.minLength || "",
+    maxLength: node?.maxLength || "",
+    pattern: node?.pattern || "",
+    accept: node?.accept || "",
+    multiple: !!node?.multiple,
+    inputMode: node?.inputMode || "",
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     role: node?.role || "",
@@ -1467,6 +1490,10 @@ function selectorNativeAttrValue(key, facts) {
     case "autocomplete": return facts.autoComplete;
     case "readonly": return facts.readOnly;
     case "required": return facts.required;
+    case "minlength": return facts.minLength;
+    case "maxlength": return facts.maxLength;
+    case "inputmode": return facts.inputMode;
+    case "multiple": return facts.multiple;
     default: return facts[key];
   }
 }
@@ -1916,6 +1943,15 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "autocomplete", docNode.autoComplete);
   setAttr(el, "readonly", docNode.readOnly);
   setAttr(el, "required", docNode.required);
+  setAttr(el, "min", docNode.min);
+  setAttr(el, "max", docNode.max);
+  setAttr(el, "step", docNode.step);
+  setAttr(el, "minlength", docNode.minLength);
+  setAttr(el, "maxlength", docNode.maxLength);
+  setAttr(el, "pattern", docNode.pattern);
+  setAttr(el, "accept", docNode.accept);
+  setAttr(el, "multiple", docNode.multiple);
+  setAttr(el, "inputmode", docNode.inputMode);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
     setAttr(el, "alt", docNode.alt);

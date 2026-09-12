@@ -142,6 +142,15 @@ Scene :: (viewport: Rectangle) #ui {
             dom_type = "search"
             readonly = true
             required = true
+            dom_min = 1
+            dom_max = 100
+            dom_step = 1
+            min_length = 2
+            max_length = 64
+            pattern = "needle.*"
+            accept = ".txt"
+            multiple = true
+            input_mode = "search"
             class = "field"
             placeholder = "Search terms"
             aria_label = "Search"
@@ -233,6 +242,15 @@ grep -q '"data": {"role": "search"}' "$out"
 grep -q '"inputType": "search"' "$out"
 grep -q '"readOnly": true' "$out"
 grep -q '"required": true' "$out"
+grep -q '"min": 1' "$out"
+grep -q '"max": 100' "$out"
+grep -q '"step": 1' "$out"
+grep -q '"minLength": 2' "$out"
+grep -q '"maxLength": 64' "$out"
+grep -q '"pattern": "needle.*"' "$out"
+grep -q '"accept": ".txt"' "$out"
+grep -q '"multiple": true' "$out"
+grep -q '"inputMode": "search"' "$out"
 grep -q '"placeholder": "Search terms"' "$out"
 grep -q '"ariaDescribedBy": "tap-button"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then

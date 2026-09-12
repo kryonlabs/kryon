@@ -103,6 +103,15 @@ Supported metadata fields in this first slice:
 | `autocomplete`, `dom_autocomplete`, `html_autocomplete` | `autoComplete` |
 | `readonly`, `read_only`, `dom_readonly`, `html_readonly` | `readOnly` |
 | `required`, `dom_required`, `html_required` | `required` |
+| `dom_min`, `html_min`, `form_min` | `min` |
+| `dom_max`, `html_max`, `form_max` | `max` |
+| `step`, `dom_step`, `html_step` | `step` |
+| `min_length`, `minlength`, `dom_minlength`, `html_minlength` | `minLength` |
+| `max_length`, `maxlength`, `dom_maxlength`, `html_maxlength` | `maxLength` |
+| `pattern`, `dom_pattern`, `html_pattern` | `pattern` |
+| `accept`, `dom_accept`, `html_accept` | `accept` |
+| `multiple`, `dom_multiple`, `html_multiple` | `multiple` |
+| `input_mode`, `inputmode`, `dom_inputmode`, `html_inputmode` | `inputMode` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
@@ -207,7 +216,9 @@ contract.
 KSS should resolve against each node's `styleFacts`: `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `id`, `domName`, `href`, `target`, `rel`,
 `inputType`, `formAction`, `formMethod`, `formEncType`, `autoComplete`,
-`readOnly`, `required`, `classes`, `dataAttrs`, `role`, and `state`. The DOM
+`readOnly`, `required`, `min`, `max`, `step`, `minLength`, `maxLength`,
+`pattern`, `accept`, `multiple`, `inputMode`, `classes`, `dataAttrs`, `role`,
+and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -221,8 +232,10 @@ first web resolver supports the initial KSS grammar slice: kind selectors,
 `#id`, `.class`, `[role=...]`, `[state=...]`, native attribute aliases such as
 `[name=...]`, `[type=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[readonly=true]`,
-`[required=true]`, state pseudos, layers, colors, spacing, radius, border
-width, opacity, font size, and local
+`[required=true]`, `[min=...]`, `[max=...]`, `[step=...]`,
+`[minlength=...]`, `[maxlength=...]`, `[pattern=...]`, `[accept=...]`,
+`[multiple=true]`, `[inputmode=...]`, state pseudos, layers, colors, spacing,
+radius, border width, opacity, font size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,

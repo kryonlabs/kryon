@@ -463,6 +463,15 @@ typedef struct UiBlock {
     char dom_autocomplete[KIR_NAME_MAX];
     char dom_readonly[KIR_NAME_MAX];
     char dom_required[KIR_NAME_MAX];
+    char dom_min[KIR_NAME_MAX];
+    char dom_max[KIR_NAME_MAX];
+    char dom_step[KIR_NAME_MAX];
+    char dom_minlength[KIR_NAME_MAX];
+    char dom_maxlength[KIR_NAME_MAX];
+    char dom_pattern[KIR_TEXT_MAX];
+    char dom_accept[KIR_TEXT_MAX];
+    char dom_multiple[KIR_NAME_MAX];
+    char dom_inputmode[KIR_NAME_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
@@ -790,6 +799,55 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "dom_min") == 0 || strcmp(field, "html_min") == 0 ||
+       strcmp(field, "form_min") == 0) {
+        snprintf(block->dom_min, sizeof(block->dom_min), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "dom_max") == 0 || strcmp(field, "html_max") == 0 ||
+       strcmp(field, "form_max") == 0) {
+        snprintf(block->dom_max, sizeof(block->dom_max), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "step") == 0 || strcmp(field, "dom_step") == 0 ||
+       strcmp(field, "html_step") == 0) {
+        snprintf(block->dom_step, sizeof(block->dom_step), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "min_length") == 0 || strcmp(field, "minlength") == 0 ||
+       strcmp(field, "dom_minlength") == 0 || strcmp(field, "html_minlength") == 0) {
+        snprintf(block->dom_minlength, sizeof(block->dom_minlength), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "max_length") == 0 || strcmp(field, "maxlength") == 0 ||
+       strcmp(field, "dom_maxlength") == 0 || strcmp(field, "html_maxlength") == 0) {
+        snprintf(block->dom_maxlength, sizeof(block->dom_maxlength), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "pattern") == 0 || strcmp(field, "dom_pattern") == 0 ||
+       strcmp(field, "html_pattern") == 0) {
+        snprintf(block->dom_pattern, sizeof(block->dom_pattern), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "accept") == 0 || strcmp(field, "dom_accept") == 0 ||
+       strcmp(field, "html_accept") == 0) {
+        snprintf(block->dom_accept, sizeof(block->dom_accept), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "multiple") == 0 || strcmp(field, "dom_multiple") == 0 ||
+       strcmp(field, "html_multiple") == 0) {
+        snprintf(block->dom_multiple, sizeof(block->dom_multiple), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "input_mode") == 0 || strcmp(field, "inputmode") == 0 ||
+       strcmp(field, "dom_inputmode") == 0 || strcmp(field, "html_inputmode") == 0) {
+        snprintf(block->dom_inputmode, sizeof(block->dom_inputmode), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "tab_index") == 0 || strcmp(field, "tabindex") == 0 ||
        strcmp(field, "dom_tab_index") == 0) {
         snprintf(block->dom_tab_index, sizeof(block->dom_tab_index), "%s",
@@ -938,6 +996,24 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_readonly);
     snprintf(statement->dom_required, sizeof(statement->dom_required), "%s",
              block->dom_required);
+    snprintf(statement->dom_min, sizeof(statement->dom_min), "%s",
+             block->dom_min);
+    snprintf(statement->dom_max, sizeof(statement->dom_max), "%s",
+             block->dom_max);
+    snprintf(statement->dom_step, sizeof(statement->dom_step), "%s",
+             block->dom_step);
+    snprintf(statement->dom_minlength, sizeof(statement->dom_minlength), "%s",
+             block->dom_minlength);
+    snprintf(statement->dom_maxlength, sizeof(statement->dom_maxlength), "%s",
+             block->dom_maxlength);
+    snprintf(statement->dom_pattern, sizeof(statement->dom_pattern), "%s",
+             block->dom_pattern);
+    snprintf(statement->dom_accept, sizeof(statement->dom_accept), "%s",
+             block->dom_accept);
+    snprintf(statement->dom_multiple, sizeof(statement->dom_multiple), "%s",
+             block->dom_multiple);
+    snprintf(statement->dom_inputmode, sizeof(statement->dom_inputmode), "%s",
+             block->dom_inputmode);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",
              block->dom_tab_index);
     snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",
@@ -2414,12 +2490,15 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int body_mdepth[8];
     int body_mcount = 0;
     int in_block_comment = 0;
-    UiBlock ui_blocks[64];
+    enum { UI_BLOCK_CAP = 64 };
+    UiBlock *ui_blocks = calloc(UI_BLOCK_CAP, sizeof(*ui_blocks));
     int ui_block_count = 0;
     int root_anonymous_widget_count = 0;
     SlotParseFrame slot_frames[64];
     int slot_frame_count = 0;
 
+    if(ui_blocks == NULL)
+        die("out of memory");
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
     snprintf(rel, sizeof(rel), "%s", relative_path(root, path));
@@ -3217,6 +3296,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 if(ui_block_count)
                     memcpy(ui_blocks, frame->blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
                 free(frame->blocks);
+                frame->blocks = NULL;
                 body_mcount = frame->body_count;
                 memcpy(body_mdepth, frame->body_depth, sizeof(body_mdepth));
             } else if(t[0] == '}' && ui_block_count > 0 &&
@@ -3324,8 +3404,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     if(ui_block_count > 0)
                         ui_block_open(fn, &ui_blocks[ui_block_count - 1],
                                       KirSpan(rel, line_no, 1), 0);
-                    if(ui_block_count >=
-                       (int)(sizeof(ui_blocks) / sizeof(ui_blocks[0])))
+                    if(ui_block_count >= UI_BLOCK_CAP)
                         die("%s:%d: too many nested UI blocks", rel, line_no);
                     block = &ui_blocks[ui_block_count++];
                     memset(block, 0, sizeof(*block));
@@ -3469,10 +3548,12 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
             if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {
                 KirProgramFree(program);
+                free(ui_blocks);
                 return NULL;
             }
             KirStructureFunction(&program->modules[mi].functions[fi], &program->modules[mi]);
         }
+    free(ui_blocks);
     return program;
 }
 
