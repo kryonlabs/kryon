@@ -233,6 +233,10 @@ StyleKindPopup :: () -> i32 #export {
     return 54
 }
 
+StyleKindCanvas :: () -> i32 #export {
+    return 55
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

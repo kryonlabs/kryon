@@ -483,13 +483,11 @@ ui_row_text_y(Rectangle bounds, int font)
     return (int)bounds.y + ((int)bounds.height - TextLineHeight(font)) / 2;
 }
 
-static void
-ui_draw_panel(Rectangle bounds)
+static StyleFrame
+ui_canvas_frame(void)
 {
-    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-                                                ButtonStateNormal, 0, 0,
-                                                StyleKindSurface());
-    ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, 0, 0);
+    return ui_tk_simple_style_frame(ButtonToneNeutral, ButtonStateNormal, 0, 0,
+                                    StyleKindCanvas());
 }
 
 static void
@@ -3833,7 +3831,8 @@ BeginCanvas(Canvas canvas)
     Vector2 mouse = ui_mouse_world();
     CanvasPolicyResult policy;
 
-    ui_draw_panel(canvas.bounds);
+    ui_tk_draw_style_frame(canvas.bounds, canvas.bounds, ui_canvas_frame(),
+                           0, 0, 0, 0);
     policy = CanvasBeginResultFor(canvas.bounds, mouse,
                                   canvas.scroll_x != NULL ? *canvas.scroll_x : 0,
                                   canvas.scroll_y != NULL ? *canvas.scroll_y : 0,
@@ -3872,10 +3871,8 @@ EndCanvas(Canvas canvas)
         toolkit->canvas_depth--;
         EndClip();
     }
-    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-                                                ButtonStateNormal, 0, 0,
-                                                StyleKindSurface());
-    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    Style style = ui_unpack_style(
+        ui_style_apply_effects_frame(ui_canvas_frame()).value);
     DrawRectangleLinesEx(canvas.bounds, 1.0f, style.border);
 }
 

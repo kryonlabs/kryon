@@ -142,6 +142,7 @@ main(void)
         {"Image", StyleKindImage()},
         {"Focus", StyleKindFocus()},
         {"Popup", StyleKindPopup()},
+        {"Canvas", StyleKindCanvas()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},

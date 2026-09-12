@@ -89,6 +89,18 @@ Popup[role=Panel] {
   material: premium;
 }
 
+Canvas {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: premium;
+}
+
 Card {
   background: card;
   background-end: card-end;

@@ -93,6 +93,18 @@ Popup[role=Panel] {
   material: glow;
 }
 
+Canvas {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
 Card {
   background: card;
   background-end: card-end;

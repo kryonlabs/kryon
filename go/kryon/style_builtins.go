@@ -85,6 +85,17 @@ Popup[role=Panel] {
   material: default;
 }
 
+Canvas {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Card {
   background: card;
   foreground: text;
@@ -1693,6 +1704,16 @@ Popup[role=Panel] {
   material: default;
 }
 
+Canvas {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
 Card {
   background: card;
   foreground: text;
@@ -3288,6 +3309,17 @@ Popup[role=Panel] {
   border: border-soft;
   focus: focus;
   radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+Canvas {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
   border-width: border;
   opacity: 1;
   material: default;
@@ -4918,6 +4950,18 @@ Popup[role=Panel] {
   border: border-soft;
   focus: focus;
   radius: radius.lg;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
+Canvas {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
   border-width: border;
   opacity: 1;
   material: glow;
@@ -6619,6 +6663,18 @@ Popup {
 Popup[role=Panel] {
   background: button;
   background-end: dropdown-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: premium;
+}
+
+Canvas {
+  background: surface;
+  background-end: surface-end;
   foreground: text;
   border: border-soft;
   focus: focus;

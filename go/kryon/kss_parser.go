@@ -649,6 +649,8 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindFocus(), true
 	case "popup":
 		return StyleSheet_StyleKindPopup(), true
+	case "canvas":
+		return StyleSheet_StyleKindCanvas(), true
 	default:
 		return 0, false
 	}
