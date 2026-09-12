@@ -3075,6 +3075,63 @@ export function webDOMHasAttribute(target, query, name) {
   return webDOMGetAttribute(target, query, name) !== undefined;
 }
 
+function cleanDOMPropertyName(name) {
+  const value = String(name || "").trim();
+  return value && /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value) ? value : "";
+}
+
+const domPropertyStateAliases = {
+  disabled: "disabled",
+  checked: "checked",
+  selected: "selected",
+  open: "open",
+  invalid: "invalid"
+};
+
+function syncDOMPropertyMutation(el, prop) {
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return null;
+  const stateName = domPropertyStateAliases[prop];
+  if (stateName) {
+    const extra = { ...(el.__kryExtraState || {}) };
+    extra[stateName] = !!el[prop];
+    el.__kryExtraState = extra;
+    docNode.state[stateName] = !!el[prop];
+    syncDOMStateMutation(el);
+  } else if (prop === "value" || prop === "textContent") {
+    updateElementFormValue(el, prop === "textContent" ? String(el.textContent || "") : webElementValue(el));
+    if (prop === "textContent")
+      docNode.text = String(el.textContent || "");
+    docNode.styleFacts = webNodeStyleFacts(docNode);
+  } else if (prop === "scrollLeft" || prop === "scrollTop") {
+    syncDOMScrollMutation(el);
+  } else {
+    docNode.styleFacts = webNodeStyleFacts(docNode);
+  }
+  return docNode;
+}
+
+export function webDOMSetProperty(target, query, name, value) {
+  const prop = cleanDOMPropertyName(name);
+  const el = prop ? findWebElement(target, query) : null;
+  if (!el)
+    return false;
+  try {
+    el[prop] = value;
+  } catch {
+    return false;
+  }
+  syncDOMPropertyMutation(el, prop);
+  return true;
+}
+
+export function webDOMGetProperty(target, query, name) {
+  const prop = cleanDOMPropertyName(name);
+  const el = prop ? findWebElement(target, query) : null;
+  return el ? el[prop] : undefined;
+}
+
 export function webDOMSetStyle(target, query, name, value) {
   const prop = cleanDOMStyleName(name);
   const el = prop ? findWebElement(target, query) : null;

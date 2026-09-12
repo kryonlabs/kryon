@@ -1095,6 +1095,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
+    assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", true), true);
+    assert.equal(runtime.webDOMGetProperty(target, "tap-button", "disabled"), true);
+    assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), true);
+    assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", false), true);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetState(target, "Scene/root/tap", "disabled"), true);
     assert.equal(firstButton.attributes.disabled, "");
@@ -1106,6 +1110,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMToggleState(target, "tap-button", "disabled"), true);
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
     assert.equal(runtime.webDOMGetText(target, "tap-button"), "Tap");
+    assert.equal(runtime.webDOMSetProperty(target, "tap-button", "textContent", "Ready"), true);
+    assert.equal(runtime.webDOMGetText(target, "tap-button"), "Ready");
     assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
     assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
@@ -1218,6 +1224,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetValue(target, "q", "preset"), true);
     assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "preset");
     assert.equal(runtime.webFormValue(target, "q"), "preset");
+    assert.equal(runtime.webDOMSetProperty(target, "q", "value", "property"), true);
+    assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "property");
+    assert.equal(runtime.webFormValue(target, "q"), "property");
     firstField.beforeinput("n");
     assert.equal(domState.count, 3);
     firstField.input("needle");
@@ -1238,6 +1247,8 @@ function fakeDocument() {
     assert.equal(firstField.__kryDocNode.scrollLeft, 5);
     assert.equal(firstField.__kryDocNode.scrollTop, 22);
     assert.equal(firstField.style.fontSize, "18px");
+    assert.equal(runtime.webDOMSetProperty(target, "q", "scrollTop", 31), true);
+    assert.equal(firstField.__kryDocNode.scrollTop, 31);
     firstField.invalid();
     assert.equal(domState.count, 10001335);
     firstField.submit();

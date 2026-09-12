@@ -371,6 +371,11 @@ back into node facts, so they survive re-render and remain visible to KSS.
 own the document shape. `data-*`, `aria-*`, global boolean attributes, form
 attributes, and arbitrary extra attributes are reflected into node facts.
 
+`webDOMSetProperty(target, query, name, value)` and
+`webDOMGetProperty(...)` expose native DOM element properties. Known state,
+form value, text, and scroll properties synchronize back into Web Document
+facts; unknown properties remain native host state.
+
 `webDOMSetStyle(target, query, name, value)`, `webDOMRemoveStyle(...)`, and
 `webDOMGetStyle(...)` apply imperative style overrides after resolved KSS.
 These overrides are intended for browser-measured or runtime-only state; KSS

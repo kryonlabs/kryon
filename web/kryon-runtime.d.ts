@@ -420,6 +420,8 @@ export function webDOMSetAttribute(target: Element | string | null, query: strin
 export function webDOMRemoveAttribute(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetAttribute(target: Element | string | null, query: string, name: string): string | undefined;
 export function webDOMHasAttribute(target: Element | string | null, query: string, name: string): boolean;
+export function webDOMSetProperty(target: Element | string | null, query: string, name: string, value: unknown): boolean;
+export function webDOMGetProperty(target: Element | string | null, query: string, name: string): unknown;
 export function webDOMSetStyle(target: Element | string | null, query: string, name: string, value?: unknown): boolean;
 export function webDOMRemoveStyle(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetStyle(target: Element | string | null, query: string, name: string): string | undefined;
