@@ -52,6 +52,24 @@ def parser_widget_names() -> list[str]:
     return names
 
 
+def block_widget_names() -> list[str]:
+    text = PARSER.read_text(encoding="utf-8")
+    match = re.search(
+        r"static const char \*\nui_block_prop_type\(const char \*widget\)\n\{(?P<body>.*?)\n\}",
+        text,
+        flags=re.S,
+    )
+    if not match:
+        raise AssertionError("missing ui_block_prop_type block widget list")
+    names: list[str] = []
+    for name in re.findall(r'strcmp\(widget,\s*"([^"]+)"\)', match.group("body")):
+        if name not in names:
+            names.append(name)
+    if not names:
+        raise AssertionError("empty ui_block_prop_type block widget list")
+    return names
+
+
 def audit_rows() -> dict[str, list[str]]:
     text = DOC.read_text(encoding="utf-8")
     match = re.search(
@@ -94,6 +112,27 @@ def parser_rows() -> dict[str, list[str]]:
     return rows
 
 
+def block_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Block Statement Surface\n(?P<body>.*?)(?=^## )",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing ## Block Statement Surface section")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            name = cells[0].strip("`")
+            if name in rows:
+                raise AssertionError(f"duplicate block statement surface row: {name}")
+            rows[name] = cells
+    return rows
+
+
 def feature_matrix_parser_names() -> tuple[int, list[str]]:
     text = FEATURE_MATRIX.read_text(encoding="utf-8")
     count_match = re.search(
@@ -121,6 +160,8 @@ def main() -> int:
     rows = audit_rows()
     parser_expected = parser_widget_names()
     parser_doc_rows = parser_rows()
+    block_expected = block_widget_names()
+    block_doc_rows = block_rows()
     feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
 
@@ -137,6 +178,11 @@ def main() -> int:
             errors.append(f"missing parser statement surface row: {name}")
     for name in sorted(set(parser_doc_rows) - set(parser_expected)):
         errors.append(f"parser statement row is not in parse_widget_statement: {name}")
+    for name in block_expected:
+        if name not in block_doc_rows:
+            errors.append(f"missing block statement surface row: {name}")
+    for name in sorted(set(block_doc_rows) - set(block_expected)):
+        errors.append(f"block statement row is not in ui_block_prop_type: {name}")
     if feature_count != len(parser_expected):
         errors.append(
             "feature matrix parser widget count is "

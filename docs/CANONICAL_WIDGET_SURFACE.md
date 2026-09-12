@@ -244,6 +244,51 @@ host roles rather than retained nodes.
 | `CanvasGrid` | `.kry canonical` | Canvas grid line policy. |
 | `SelectableText` | `.kry canonical` | Text selection/copy surface; review whether `Text` props should absorb it. |
 
+## Block Statement Surface
+
+These names are accepted as `.kry` lexical blocks by the parser's
+`ui_block_prop_type` path. They include layout/content blocks and compositional
+widget blocks; lowered `Begin*`/`End*` calls remain native support only.
+
+| Block name | Current decision | Notes |
+|---|---|---|
+| `Disabled` | `.kry canonical` | Lexical disabled-content block; lowers to host disabled scope. |
+| `Scroll` | `.kry canonical` | Lexical scroll-content block. |
+| `TableCell` | `.kry canonical` | Lexical custom table-cell block. |
+| `Canvas` | `.kry canonical` | Lexical canvas block. |
+| `Popup` | `.kry canonical` | Lexical arbitrary overlay block. |
+| `Text` | `.kry canonical` | Block form with `TextProps`. |
+| `Row` | `.kry canonical` | Layout block with `RowProps`. |
+| `Screen` | `.kry canonical` | Top-level layout block. |
+| `Column` | `.kry canonical` | Layout block using column props. |
+| `Stack` | `.kry canonical` | Layout block using stack/column props. |
+| `Button` | `.kry canonical` | Composed content button block; lowers through native support. |
+| `Card` | `.kry canonical` | Composed content card block; lowers through native support. |
+| `TextField` | `.kry canonical` | Block form with `TextFieldProps`. |
+| `TextArea` | `.kry canonical` | Block form with `TextAreaProps`. |
+| `Image` | `.kry canonical` | Block form with `ImageProps`. |
+| `Radio` | `.kry canonical` | Block form with `RadioProps`. |
+| `Progress` | `.kry canonical` | Block form with `ProgressProps`. |
+| `ColorPicker` | `.kry canonical` | Block form with `ColorPickerProps`. |
+| `Separator` | `.kry canonical` | Block form with `SeparatorProps`. |
+| `Spinbox` | `.kry canonical` | Block form with `SpinboxProps`. |
+| `Dropdown` | `.kry canonical` | Block form with `DropdownProps`. |
+| `Fieldset` | `.kry canonical` | Titled frame block. |
+| `PanedView` | `.kry canonical` | Split pane block. |
+| `Collapsible` | `.kry canonical` | Collapsible section block. |
+| `ListBox` | `.kry canonical` | List block. |
+| `TableView` | `.kry canonical` | Table block. |
+| `NavigationBar` | `.kry canonical` | Navigation block. |
+| `Toolbar` | `.kry canonical` | Toolbar block. |
+| `TabBar` | `.kry canonical` | Tab bar block. |
+| `Page` | `.kry canonical` | Web/page root block. |
+| `Section` | `.kry canonical` | Semantic page section block. |
+| `Heading` | `.kry canonical` | Semantic page heading block. |
+| `ParagraphText` | `.kry canonical` | Semantic page paragraph block. |
+| `Link` | `.kry canonical` | Link block. |
+| `Flow` | `.kry canonical` | Page flow block. |
+| `Grid` | `.kry canonical` | Grid layout block. |
+
 ## Core Drawing And Text
 
 | Public name | Current decision | Notes |
