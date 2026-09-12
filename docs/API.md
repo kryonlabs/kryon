@@ -185,11 +185,11 @@ Popup tools: {
 }
 ```
 
-`Popup` conditionally submits its children only while open. The compiler emits
-`BeginPopup` and a matching `EndPopup` through lexical cleanup, including
-`return`, `break`, and `continue`, so application source cannot forget the
-closing call. Call `ClosePopup()` inside the block for explicit dismissal. Its
-properties are the fields of `PopupProps`.
+`Popup` conditionally submits its children only while open. The compiler lowers
+the block through lexical cleanup, including `return`, `break`, and `continue`,
+so application source cannot forget the host closing operation. Call
+`ClosePopup()` inside the block for explicit dismissal. Its properties are the
+fields of `PopupProps`.
 
 ### Runtime surface
 
@@ -1557,66 +1557,28 @@ Go uses the shared scroll container for wheel input, scrollbar dragging and
 row clipping, painting only visible rows. These behaviors do not yet provide general keyboard-focus
 isolation for arbitrary popup children or complete ImGui navigation semantics.
 
-For caller-defined contents, use the native composed popup scope:
+For caller-defined contents, use the canonical `Popup` block:
 
-```c
-typedef enum {
-    PopupFlagsNone = 0,
-    PopupTooltip = 1 << 0,
-    PopupModal = 1 << 1,
-    PopupContext = 1 << 2
-} PopupFlags;
+```kry
+Popup tools: {
+    bounds = {170, 50, 240, 140}
+    id = 4201
+    open = &tools_open
 
-typedef struct {
-    Rectangle bounds;
-    int id;
-    bool *open;
-    int disabled;
-    Rectangle trigger;
-    unsigned int flags;
-} PopupProps;
-
-int BeginPopup(PopupProps popup);
-void EndPopup(void);
-void ClosePopup(void);
+    Column content: {
+        Text { text = "Tools" }
+        Button { label = "Apply" }
+    }
+}
 ```
 
-Call `EndPopup` exactly once when `BeginPopup` returns nonzero. Between those
-calls, ordinary widgets and nested `Row` or `Column` layouts are clipped,
-painted, and routed as popup contents; no popup-specific widget variants are
-needed. `ClosePopup` closes the current scope immediately and updates the
-caller-owned `open` value. Tooltip, modal, and context behavior are selected by
-`PopupFlags`.
-
-For an arbitrary popup that is not owned by another popup, use:
-
-```c
-typedef struct {
-    Rectangle bounds;
-    int id;
-    bool *open;
-    int disabled;
-    Rectangle trigger;
-    unsigned int flags;
-} PopupProps;
-
-typedef enum {
-    PopupFlagsNone = 0,
-    PopupTooltip = 1 << 0,
-    PopupModal = 1 << 1,
-    PopupContext = 1 << 2
-} PopupFlags;
-
-int BeginPopup(PopupProps popup);
-void EndPopup(void);
-void ClosePopup(void);
-```
-
-`BeginPopup` returns nonzero only while the caller-owned `open` value is true.
-Its children use the same overlay painting, clipping, nested layout and input
+`Popup` submits children only while the caller-owned `open` value is true. Its
+children use the same overlay painting, clipping, nested layout and input
 capture as composed popups. Escape, a pointer release outside the popup,
 disabling it, or omitting its owner on a later frame closes it. Outside releases
-are consumed so the background widget underneath is not activated.
+are consumed so the background widget underneath is not activated. `ClosePopup`
+closes the current `Popup` block immediately and updates the caller-owned
+`open` value. Tooltip, modal, and context behavior are selected by popup flags.
 
 With `PopupTooltip`, `open` is optional and visibility is derived from pointer
 hover over `trigger`. The tooltip uses the same arbitrary-child paint and layout

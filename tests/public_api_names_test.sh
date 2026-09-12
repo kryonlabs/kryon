@@ -125,7 +125,7 @@ if [ -n "$web_lowered_builder_matches" ]; then
 fi
 
 lowered_doc_matches="$(
-    rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas)\b' \
+    rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup)\b' \
         docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
