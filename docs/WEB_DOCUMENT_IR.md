@@ -59,7 +59,7 @@ the first route handles `/` and also acts as the fallback.
 Style imports identify KSS inputs:
 
 ```kry
-#style <kryon.vanilla> as vanilla
+#style <kryon.material> as material
 #style "brand.kss" as brand
 ```
 
@@ -166,10 +166,12 @@ of truth.
 
 The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `resolveWebStyle(node, sheets)`, and `setWebStyleSheets(rt, sheets)` for the
-same bridge in browser-hosted k2js apps. This first web resolver supports the
-initial KSS grammar slice: kind selectors, `#id`, `.class`, `[role=...]`,
-`[state=...]`, state pseudos, layers, colors, spacing, radius, border width,
-opacity, and font size.
+same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
+`app.styles[].source` when a `#style` import resolves on disk, and
+`createRuntime({ app })` installs those embedded sheets automatically. This
+first web resolver supports the initial KSS grammar slice: kind selectors,
+`#id`, `.class`, `[role=...]`, `[state=...]`, state pseudos, layers, colors,
+spacing, radius, border width, opacity, and font size.
 
 The frame is also the right place for inspector data: matched KSS rules,
 winning declarations, token origins, state slice, and backend degradation can
@@ -213,8 +215,9 @@ non-browser tests.
 - Event handling covers click-to-`QueueTap`, `on_click`, `on_input(value)`,
   and `on_change(value)` actions in this slice.
 - KSS parsing exists in C for style-rule tables and in the JS runtime for web
-  DOM style application; full token/import loading and every style property are
-  still incremental.
+  DOM style application; k2js embeds resolvable style imports, but package
+  discovery beyond `styles/kryon/<pack>.kss` and every style property are still
+  incremental.
 - Form value lookup and accessibility snapshots are available; deeper
   per-widget ARIA relationships, such as controlled regions and described-by
   chains, are still incremental.

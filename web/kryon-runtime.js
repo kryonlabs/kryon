@@ -239,6 +239,15 @@ export function createRuntime(options = {}) {
   };
   rt.SetFocus = (id) => { rt.input.focus = Number(id); };
   rt.Focus = () => rt.input.focus;
+  if (options.webStyleSheets !== undefined) {
+    setWebStyleSheets(rt, options.webStyleSheets);
+  } else {
+    const embedded = (rt.app?.styles || [])
+      .map((style) => style?.source)
+      .filter((source) => typeof source === "string" && source.length > 0);
+    if (embedded.length > 0)
+      setWebStyleSheets(rt, embedded);
+  }
   return rt;
 }
 

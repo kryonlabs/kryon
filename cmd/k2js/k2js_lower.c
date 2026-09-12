@@ -103,6 +103,101 @@ base_from_source(const char *src, char *dst, size_t dst_size)
 }
 
 static void
+dir_from_source(const char *src, char *dst, size_t dst_size)
+{
+    const char *slash;
+    size_t n;
+
+    if(dst_size == 0)
+        return;
+    slash = strrchr(src, '/');
+    if(slash == NULL) {
+        dst[0] = '\0';
+        return;
+    }
+    n = (size_t)(slash - src);
+    if(n >= dst_size)
+        n = dst_size - 1;
+    memcpy(dst, src, n);
+    dst[n] = '\0';
+}
+
+static void
+style_builtin_path(const char *target, char *dst, size_t dst_size)
+{
+    const char *name = target;
+
+    if(strncmp(target, "kryon.", 6) == 0)
+        name = target + 6;
+    snprintf(dst, dst_size, "styles/kryon/%s.kss", name);
+}
+
+static char *
+read_text_file(const char *path)
+{
+    FILE *f = fopen(path, "rb");
+    long size;
+    char *text;
+
+    if(f == NULL)
+        return NULL;
+    if(fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    size = ftell(f);
+    if(size < 0) {
+        fclose(f);
+        return NULL;
+    }
+    if(fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    text = malloc((size_t)size + 1);
+    if(text == NULL) {
+        fclose(f);
+        return NULL;
+    }
+    if(fread(text, 1, (size_t)size, f) != (size_t)size) {
+        free(text);
+        fclose(f);
+        return NULL;
+    }
+    text[size] = '\0';
+    fclose(f);
+    return text;
+}
+
+static char *
+read_style_import_source(const KirModule *m, const char *root,
+                         const KirStyleImport *style)
+{
+    char relative[KIR_PATH_MAX * 2];
+    char path[KIR_PATH_MAX * 4];
+    char module_dir[KIR_PATH_MAX];
+    char *text;
+
+    if(style->kind == KIR_STYLE_IMPORT_BUILTIN) {
+        style_builtin_path(style->target, relative, sizeof(relative));
+        snprintf(path, sizeof(path), "%s/%s", root, relative);
+        return read_text_file(path);
+    }
+    if(style->target[0] == '/')
+        return read_text_file(style->target);
+    dir_from_source(m->source_path, module_dir, sizeof(module_dir));
+    if(module_dir[0] != '\0')
+        snprintf(path, sizeof(path), "%s/%s/%s", root, module_dir, style->target);
+    else
+        snprintf(path, sizeof(path), "%s/%s", root, style->target);
+    text = read_text_file(path);
+    if(text != NULL)
+        return text;
+    snprintf(path, sizeof(path), "%s/%s", root, style->target);
+    return read_text_file(path);
+}
+
+static void
 js_ident(const char *s, char *dst, size_t dst_size)
 {
     size_t n = 0;
@@ -1728,7 +1823,7 @@ emit_function_imports(FILE *f, const char *consumer_stem)
 }
 
 static void
-emit_app(FILE *f, const KirModule *m)
+emit_app(FILE *f, const KirModule *m, const char *root)
 {
     const KirAppMeta *a = &m->app;
 
@@ -1745,6 +1840,7 @@ emit_app(FILE *f, const KirModule *m)
     fprintf(f, "  styles: [\n");
     for(int i = 0; i < m->style_import_count; i++) {
         const KirStyleImport *style = &m->style_imports[i];
+        char *source = read_style_import_source(m, root, style);
 
         fprintf(f, "    { kind: ");
         js_string(f, style->kind == KIR_STYLE_IMPORT_BUILTIN ? "builtin" : "file");
@@ -1752,6 +1848,11 @@ emit_app(FILE *f, const KirModule *m)
         js_string(f, style->target);
         fprintf(f, ", alias: ");
         js_string(f, style->alias);
+        if(source != NULL) {
+            fprintf(f, ", source: ");
+            js_string(f, source);
+            free(source);
+        }
         fprintf(f, " }%s\n", i + 1 < m->style_import_count ? "," : "");
     }
     fprintf(f, "  ],\n");
@@ -1910,7 +2011,7 @@ k2js_lower(const KirProgram *const *progs, int prog_count,
                 }
                 fputs(";\n", f);
             }
-            emit_app(f, m);
+            emit_app(f, m, root);
             emit_state(f, m);
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];

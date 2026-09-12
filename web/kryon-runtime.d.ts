@@ -1,6 +1,7 @@
 export interface RuntimeOptions {
   app?: AppMeta;
   target?: Element | string | null;
+  webStyleSheets?: string | WebStyleSheet | Array<string | WebStyleSheet>;
 }
 
 export interface AppMeta {
@@ -17,6 +18,7 @@ export interface AppStyleMeta {
   kind: "file" | "builtin" | string;
   target: string;
   alias: string;
+  source?: string;
 }
 
 export interface AppRouteMeta {

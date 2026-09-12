@@ -18,11 +18,11 @@ if ! command -v node >/dev/null 2>&1; then
     exit 0
 fi
 
-mkdir -p "$work/src" "$work/out"
+mkdir -p "$work/src" "$work/out" "$work/styles/kryon"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
-#style <kryon.vanilla> as vanilla
+#style <kryon.material> as material
 #style "brand.kss" as brand
 
 ANSWER :: #run 21 * 2
@@ -139,6 +139,22 @@ StyleCopies :: () #ui {
     Button((ButtonProps){.id=1, .label="Source", .style=source, .bounds=bounds})
     Button((ButtonProps){.id=2, .label="Declared", .style=declared})
     Button((ButtonProps){.id=3, .label="Assigned", .style=assigned})
+}
+EOF
+
+cat > "$work/styles/kryon/material.kss" <<'EOF'
+@pack kryon.material;
+@layer components;
+Button {
+  radius: 8;
+}
+EOF
+
+cat > "$work/src/brand.kss" <<'EOF'
+@pack brand;
+@layer app;
+Button.primary {
+  background: #203040;
 }
 EOF
 
