@@ -460,6 +460,7 @@ declare global {
     kryQueryWithin?(query: string, selector: string): WebDOMObject | null;
     kryQueryAllWithin?(query: string, selector: string): WebDOMObject[];
     kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+    readonly krySourceMap?: WebDOMObject[];
     kryListen?: {
       (type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,
         options?: boolean | AddEventListenerOptions): (() => void) | null;
@@ -705,6 +706,7 @@ export function webNodeQueryWithin(rt: Runtime, query: string, selector: string)
 export function webNodeQueryAllWithin(rt: Runtime, query: string, selector: string): WebDocumentNode[];
 export function webNodeAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
 export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
+export function webSourceMap(rt: Runtime): WebNodeIdentity[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
@@ -739,6 +741,7 @@ export function webDOMQueryAllWithin(target: Element | string | null, query: str
 export function webDOMMatches(target: Element | string | null, query: string, selector: string): boolean;
 export function webDOMObjectAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
 export function webDOMObjectsAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
+export function webDOMSourceMap(target: Element | string | null): WebDOMObject[];
 export function webDOMAddEventListener(target: Element | string | null, query: string, type: string,
   handler: (event: Event, object: WebDOMObject | null) => unknown,
   options?: boolean | AddEventListenerOptions): (() => void) | null;
