@@ -537,13 +537,21 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
             }
             thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
             if(IsWindowReady()) {
-                Style track_style = ui_surface_style();
-                Style thumb_style = ui_resolve_button_style_kind(
-                    (ButtonProps){.tone = ButtonToneAccent,
-                                  .emphasis = ButtonEmphasisFilled,
-                                  .size = ControlSizeSmall,
-                                  .pill = 1},
-                    ButtonStateNormal, StyleKindSlider());
+                Style track_style = ui_unpack_style(
+                    ui_control_style_frame_kind(
+                        (ButtonProps){.tone = ButtonToneNeutral,
+                                      .emphasis = ButtonEmphasisSoft,
+                                      .size = ControlSizeSmall},
+                        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+                        StyleKindScroll()).value);
+                Style thumb_style = ui_unpack_style(
+                    ui_control_style_frame_kind(
+                        (ButtonProps){.tone = ButtonToneAccent,
+                                      .emphasis = ButtonEmphasisFilled,
+                                      .size = ControlSizeSmall,
+                                      .pill = 1},
+                        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+                        StyleKindScrollThumb()).value);
                 Rectangle thumb = {track.x+2,thumb_y,6,thumb_h};
                 ui_draw_material(track, (Rectangle){0},
                                  track_style.background, track_style.border,
