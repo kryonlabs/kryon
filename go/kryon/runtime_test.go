@@ -2645,6 +2645,7 @@ func TestPageTextUsesStyleSheetKinds(t *testing.T) {
 @pack test.page_text;
 Heading { foreground: #123456; font-size: 30; }
 ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
+Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 `, "Page Text", "") || !SetActiveStylePack("test.page_text") {
 		t.Fatal("test page text style did not activate")
 	}
@@ -2653,9 +2654,10 @@ ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
 	rt.BeginFrame()
 	rt.Heading(HeadingProps{Text: "Styled"})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
+	rt.Link(LinkProps{Text: "More", Link: "/more"})
 	rt.EndFrame()
 
-	var sawHeading, sawParagraph bool
+	var sawHeading, sawParagraph, sawLink bool
 	for _, op := range rt.FrameOps() {
 		switch {
 		case op.Kind == FrameOpText && op.Semantic == SemanticHeading:
@@ -2669,11 +2671,17 @@ ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
 				op.FontSize != 18 || op.Opacity != 0.72 {
 				t.Fatalf("paragraph style op = %+v", op)
 			}
+		case op.Kind == FrameOpText && op.Semantic == SemanticLink:
+			sawLink = true
+			if op.Color != (Color{R: 0x65, G: 0x43, B: 0x21, A: 0xff}) ||
+				op.FontSize != 19 || op.Opacity != 0.61 {
+				t.Fatalf("link style op = %+v", op)
+			}
 		}
 	}
-	if !sawHeading || !sawParagraph {
-		t.Fatalf("missing styled page text ops: heading=%v paragraph=%v ops=%#v",
-			sawHeading, sawParagraph, rt.FrameOps())
+	if !sawHeading || !sawParagraph || !sawLink {
+		t.Fatalf("missing styled page text ops: heading=%v paragraph=%v link=%v ops=%#v",
+			sawHeading, sawParagraph, sawLink, rt.FrameOps())
 	}
 }
 

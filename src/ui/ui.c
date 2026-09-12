@@ -2301,10 +2301,10 @@ RenderLink(LinkProps link)
     char editor_id[96];
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
-    int font = link.font > 0 ? link.font : GetFontSize();
     const char *text = link.text != NULL ? link.text : "";
-    int text_w = TextWidth(text, font);
     Rectangle bounds = link.bounds;
+    int font;
+    int text_w;
     int mouse_inside;
     int captured;
     int active;
@@ -2316,6 +2316,19 @@ RenderLink(LinkProps link)
     StyleFrame style_frame;
     LinkAppearance appearance;
     Color color;
+
+    style_props.emphasis = ButtonEmphasisLink;
+    style_props.size = ControlSizeMedium;
+    style_props.disabled = link.disabled;
+    style_frame = ui_control_style_frame_kind(style_props,
+                                              link.disabled ? ButtonStateDisabled : ButtonStateNormal,
+                                              0, 0.0f, 0.0f, 0.0f,
+                                              StyleKindLink());
+    font = link.font > 0 ? link.font :
+        (style_frame.value.font_size > 0.0f
+            ? Scale((int)style_frame.value.font_size)
+            : GetFontSize());
+    text_w = TextWidth(text, font);
 
     if(bounds.width <= 0)
         bounds.width = (float)text_w;
@@ -2343,9 +2356,6 @@ RenderLink(LinkProps link)
         state = ButtonStateDisabled;
     else if(hovered)
         state = ButtonStateHover;
-    style_props.emphasis = ButtonEmphasisLink;
-    style_props.size = ControlSizeMedium;
-    style_props.disabled = link.disabled;
     style_frame = ui_control_style_frame_kind(style_props, state, 0, 0.0f,
                                               0.0f, 0.0f, StyleKindLink());
     if(!link.disabled && hovered && link.hover_color.a != 0)
@@ -2354,7 +2364,7 @@ RenderLink(LinkProps link)
         style_frame.value.foreground = (uint32_t)ColorToInt(link.color);
     appearance = ResolveLinkAppearance(style_frame, hovered != 0,
                                        link.disabled != 0);
-    color = GetColor(appearance.color);
+    color = Fade(GetColor(appearance.color), style_frame.value.opacity);
 
     if(active) {
         MarkClickable();

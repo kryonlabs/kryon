@@ -4992,9 +4992,15 @@ func (r *runtime) ParagraphText(props ParagraphTextProps) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, ID: int32(props.Key), Semantic: SemanticParagraph})
 }
 func (r *runtime) Link(props LinkProps) bool {
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	}
+	frame := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, false, StyleSheet_StyleKindLink())
+	linkStyle := unpackStyle(frame.Value)
 	font := props.Font
 	if font <= 0 {
-		font = Text16
+		font = styleFont(linkStyle, Text16)
 	}
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 {
@@ -5007,17 +5013,12 @@ func (r *runtime) Link(props LinkProps) bool {
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)
 	}
-	state := ButtonStateNormal
-	if props.Disabled {
-		state = ButtonStateDisabled
-	}
-	frame := simpleStyleFrame(ButtonToneNeutral, state, props.Disabled, false, StyleSheet_StyleKindLink())
 	if !props.Disabled && props.Color.A != 0 {
 		frame.Value.Foreground = packRGBA(props.Color)
 	}
 	appearance := Link_ResolveLinkAppearance(frame, false, props.Disabled)
 	color := unpackRGBA(appearance.Color)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: linkStyle.Opacity, FontSize: font, FocusID: props.FocusID, Disabled: props.Disabled, Pressed: pressed, Semantic: SemanticLink, Link: props.Link, Role: "link"})
 	return pressed
 }
 func (r *runtime) Flow(props FlowProps) {
