@@ -277,7 +277,6 @@ int ui_checkbox_row_height(CheckboxRowProps row);
 int GetButtonRowHeight(ButtonRowProps row);
 int ui_navigation_bar_height(void);
 int ui_tab_bar_height(void);
-int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);
 int ui_title_bar_height(void);
 int ui_paragraph_height(ParagraphSpec paragraph);
 void RenderText(const char *text, int x, int y, int font_size, Color color);

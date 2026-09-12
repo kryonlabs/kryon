@@ -68,7 +68,6 @@ typedef enum WidgetKind {
     WIDGET_PARAGRAPH,
     WIDGET_NAVIGATION_BAR,
     WIDGET_TAB_BAR,
-    WIDGET_PARAGRAPH_MODAL,
     WIDGET_TITLE_BAR,
     WIDGET_GROUP,
     WIDGET_COLUMN,
@@ -117,7 +116,6 @@ typedef union WidgetData {
         int max_columns;
     } layout;
     ParagraphSpec paragraph;
-    ParagraphModalMeasureProps paragraph_modal;
     ImageProps image;
     struct {
         int x1;
@@ -209,7 +207,6 @@ void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
 WidgetNode NodeNavigationBar(NavigationBarProps nav);
 WidgetNode NodeTabBar(TabBarProps bar);
-WidgetNode NodeParagraphModal(ParagraphModalMeasureProps measure);
 WidgetNode NodeTitleBar(int height);
 
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);

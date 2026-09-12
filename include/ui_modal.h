@@ -5,17 +5,6 @@
 #include "ui_controls.h"
 
 typedef struct {
-    const char *message;
-    int width;
-    int header_h;
-    int button_h;
-    int line_gap;
-    int extra_lines;
-    int min_height;
-    int font;
-} ParagraphModalMeasureProps;
-
-typedef struct {
     int id;
     const char **options;
     int option_count;

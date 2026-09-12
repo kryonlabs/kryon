@@ -358,7 +358,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_READONLY_TEXT_BOX` | Removed | Old retained node/helper deleted; use `TextArea` with read-only props. |
 | `WIDGET_NAVIGATION_BAR` | `NavigationBar` | `.kry canonical` |
 | `WIDGET_TAB_BAR` | `TabBar` | `.kry canonical` |
-| `WIDGET_PARAGRAPH_MODAL` | `ParagraphModal` | Composite candidate |
+| `WIDGET_PARAGRAPH_MODAL` | Removed | Old retained measuring helper deleted; compose `Modal` with `Paragraph`/`Text`. |
 | `WIDGET_TITLE_BAR` | `TitleBar` | `.kry canonical` |
 | `WIDGET_GROUP` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
 | `WIDGET_COLUMN` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |

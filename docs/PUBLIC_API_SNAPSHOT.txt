@@ -1925,7 +1925,6 @@ include/ui_tree.h enum WIDGET_IMAGE
 include/ui_tree.h enum WIDGET_LINE
 include/ui_tree.h enum WIDGET_NAVIGATION_BAR
 include/ui_tree.h enum WIDGET_PARAGRAPH
-include/ui_tree.h enum WIDGET_PARAGRAPH_MODAL
 include/ui_tree.h enum WIDGET_RECT
 include/ui_tree.h enum WIDGET_RING
 include/ui_tree.h enum WIDGET_ROUTER
@@ -2003,7 +2002,6 @@ include/ui_tree.h function NavigationBar
 include/ui_tree.h function NextEvent
 include/ui_tree.h function NodeNavigationBar
 include/ui_tree.h function NodeParagraph
-include/ui_tree.h function NodeParagraphModal
 include/ui_tree.h function NodeTabBar
 include/ui_tree.h function NodeTitleBar
 include/ui_tree.h function Overlays

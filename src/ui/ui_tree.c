@@ -684,14 +684,6 @@ ui_measure_tab_bar(WidgetNode node)
 }
 
 static int
-ui_measure_paragraph_modal(WidgetNode node)
-{
-    if(node.props != NULL)
-        return ui_paragraph_modal_height(*(const ParagraphModalMeasureProps *)node.props);
-    return ui_paragraph_modal_height(node.data.paragraph_modal);
-}
-
-static int
 ui_measure_title_bar(WidgetNode node)
 {
     if(node.bounds.height > 0)
@@ -717,7 +709,6 @@ static const WidgetOps ui_widget_ops[] = {
     [WIDGET_PARAGRAPH] = {ui_measure_paragraph},
     [WIDGET_NAVIGATION_BAR] = {ui_measure_navigation_bar},
     [WIDGET_TAB_BAR] = {ui_measure_tab_bar},
-    [WIDGET_PARAGRAPH_MODAL] = {ui_measure_paragraph_modal},
     [WIDGET_TITLE_BAR] = {ui_measure_title_bar},
     [WIDGET_GROUP] = {ui_measure_bounds_height},
     [WIDGET_COLUMN] = {ui_measure_bounds_height},
@@ -2183,17 +2174,6 @@ WidgetNode
 NodeTabBar(TabBarProps bar)
 {
     return ui_node(0, WIDGET_TAB_BAR, bar.bounds);
-}
-
-WidgetNode
-NodeParagraphModal(ParagraphModalMeasureProps measure)
-{
-    WidgetNode node;
-
-    node = ui_node(0, WIDGET_PARAGRAPH_MODAL,
-                   (Rectangle){0, 0, measure.width, 0});
-    node.data.paragraph_modal = measure;
-    return node;
 }
 
 WidgetNode

@@ -263,42 +263,6 @@ RenderActionModal(ModalProps modal)
     return result;
 }
 
-int
-ui_paragraph_modal_height(ParagraphModalMeasureProps measure)
-{
-    int width = measure.width > 0 ? measure.width : Scale(320);
-    int header_h = measure.header_h > 0 ? measure.header_h : Scale(58);
-    int button_h = measure.button_h > 0 ? measure.button_h : Scale(36);
-    int line_gap = measure.line_gap > 0 ? measure.line_gap : Scale(4);
-    int font = measure.font > 0 ? measure.font : GetFontSize();
-    int extra_lines = measure.extra_lines > 0 ? measure.extra_lines : 0;
-    int min_h = measure.min_height > 0 ? measure.min_height : 0;
-    int content_w;
-    ParagraphSpec paragraph;
-    int height;
-
-    if(width > ui_view_width - Scale(24))
-        width = ui_view_width - Scale(24);
-    if(width < Scale(160))
-        width = Scale(160);
-    content_w = width - Scale(36);
-    if(content_w < Scale(120))
-        content_w = Scale(120);
-    memset(&paragraph, 0, sizeof(paragraph));
-    paragraph.text = measure.message;
-    paragraph.width = content_w;
-    paragraph.font = font;
-    paragraph.line_gap = line_gap;
-    height = header_h +
-             ui_paragraph_height(paragraph) +
-             extra_lines * (font + line_gap) +
-             button_h +
-             Scale(18);
-    if(height < min_h)
-        height = min_h;
-    return height;
-}
-
 UIPanelFrame
 RenderModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
