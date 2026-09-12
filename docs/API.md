@@ -1794,67 +1794,6 @@ int Checkbox(CheckboxProps checkbox);
 
 ### Layout Components
 
-#### Button Rows
-
-```c
-typedef struct {
-    const char *label;
-    ButtonTone tone;
-    ButtonEmphasis emphasis;
-    int disabled;
-} ButtonRowItem;
-
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int height;
-    int gap;
-    const ButtonRowItem *items;
-    int count;
-} ButtonRowProps;
-
-int FormButtons(Form *form, ButtonRowProps row);
-int GetButtonRowHeight(ButtonRowProps row);
-```
-
-`FormButtons` measures labels, stores the final height on the form cursor, fits
-text inside each button, and wraps into additional rows when the configured
-width cannot hold every action on one line. `GetButtonRowHeight` returns the
-same layout height without advancing the form.
-
-#### Form Cursor
-
-```c
-typedef struct {
-    int x;
-    int y;
-    int width;
-    int cursor_y;
-    int gap;
-    Rectangle last_bounds;
-    int focused_rect_valid;
-    Rectangle focused_rect;
-} Form;
-
-Form FormBegin(int x, int y, int width);
-int FormY(const Form *form);
-Rectangle FormTakeRect(Form *form, int height);
-int FormSection(Form *form, SectionLabelProps row);
-int FormTextField(Form *form, LabelTextFieldProps row);
-int FormCheckbox(Form *form, CheckboxRowProps row);
-int FormSpinbox(Form *form, SpinboxRowProps row);
-int FormButtons(Form *form, ButtonRowProps row);
-int FormEnsureFocusedVisible(Form *form, ScrollArea area, int margin);
-```
-
-`Form` is a small immediate-mode cursor for settings and data-entry pages.
-It centralizes row advancement, default row heights, and focused-field
-scrolling so apps do not need parallel `draw_*` and `content_height_*`
-arithmetic for simple forms.
-
----
-
 ## App Framework Helpers
 
 ### Route Stack And Shell Layout

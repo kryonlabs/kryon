@@ -14,6 +14,7 @@
 #include "kryon.h"
 #include "kry_input.h"
 #include "ui_numeric_internal.h"
+#include "ui_rows_internal.h"
 #include "ui_text_layout.h"
 
 #include <math.h>
