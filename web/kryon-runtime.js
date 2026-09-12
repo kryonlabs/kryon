@@ -3081,7 +3081,11 @@ function bindWebDOMEventProperties(event) {
         }
       }
     });
-    event.__kryEventPropertiesBound = true;
+    Object.defineProperty(event, "__kryEventPropertiesBound", {
+      configurable: true,
+      enumerable: false,
+      value: true
+    });
   } catch {
     // Some host Event implementations are sealed; helper return values still work.
   }
@@ -3916,6 +3920,7 @@ export function webDOMDispatchEvent(target, query, type, init = {}) {
   const event = el ? createWebDOMEvent(type, init) : null;
   if (!el || !event)
     return false;
+  bindWebDOMEventProperties(event);
   if (typeof el.dispatchEvent === "function")
     return el.dispatchEvent(event) !== false;
   const handler = el["on" + event.type];

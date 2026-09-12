@@ -455,7 +455,8 @@ event.
 same Kry node identity surface.
 
 `webDOMDispatchEvent(target, query, type, init)` dispatches arbitrary browser
-events against a resolved DOM object. Prefer named helpers for stable app
+events against a resolved DOM object and decorates the event with the same Kry
+event bridge exposed to native handlers. Prefer named helpers for stable app
 logic; this exists for host integrations and tests.
 
 `webDOMRect(target, query)`, `webDOMGetScroll(...)`, `webDOMSetScroll(...)`,

@@ -1434,7 +1434,17 @@ function fakeDocument() {
     firstField.blur();
     assert.equal(domState.count, 11111335);
     const countBeforeDispatch = domState.count;
+    const dispatchedEvents = [];
+    firstField.addEventListener("keydown", (event) => dispatchedEvents.push([
+      event.key,
+      event.kryRoot === root,
+      event.kryObject?.ref,
+      event.krySnapshot?.ref,
+      Object.keys(event).includes("kryObject"),
+      Object.keys(event).includes("__kryEventPropertiesBound")
+    ]));
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "keydown", { key: "Escape" }), true);
+    assert.deepEqual(dispatchedEvents, [["Escape", true, "search-box", "search-box", false, false]]);
     assert.equal(domState.count, countBeforeDispatch + 1000);
     assert.equal(runtime.webDOMDispatchEvent(target, "[name=q]", "focus"), true);
     assert.equal(firstField.__kryDocNode.state.focus, true);
