@@ -73,7 +73,7 @@ surface review:
 | `runtime/paragraph.kry` | Paragraph metrics/default policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
-| `runtime/primitive.kry` | Background/Box/Line primitive geometry policy | `.kry canonical` |
+| `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
@@ -107,7 +107,7 @@ text measurement, painting, storage, or platform services.
 
 | Group | `.kry`-backed today | Still native-only or compatibility |
 |---|---|---|
-| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Box`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
+| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options | helper button variants belong in `ButtonProps` or composition; invisible hit testing is host support |
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
@@ -194,8 +194,8 @@ host roles rather than retained nodes.
 | `Background` | `.kry canonical` | Fill/display widget; geometry policy is in `.kry`. |
 | `Text` | `.kry canonical` | Canonical text surface. |
 | `Paragraph` | `.kry canonical` | Rich text surface; may become `Text` props if that stays cleaner. |
-| `Box` | Native canonical | Canonical rectangle primitive with `Rectangle` bounds. |
-| `Line` | Native canonical | Drawing primitive. |
+| `Box` | `.kry canonical` | Canonical rectangle primitive with `Rectangle` bounds. |
+| `Line` | `.kry canonical` | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
 | `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
 | `Icon` | `.kry canonical` | Icon bounds/size policy is in `.kry`. |
 | `Image` | `.kry canonical` | Canonical image widget; replaces old picture naming. |
@@ -347,12 +347,12 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Background` | `.kry canonical` | Viewport bounds policy is in `.kry`; host keeps immediate fill drawing and retained paint ordering. |
 | `Text` | `.kry canonical` | Single canonical signature should be `Text(TextProps)`. |
 | `Paragraph` | `.kry canonical` | Metrics/default policy is in `.kry`; may become `Text` variant if props cover paragraph layout. |
-| `Box` | Native canonical | Rectangle primitive with `Rectangle` bounds. |
+| `Box` | `.kry canonical` | Rectangle primitive with `Rectangle` bounds. |
 | `Rect` | Removed | Old positional rectangle helper; use `Box`. |
-| `Circle` | Native canonical | Primitive drawing node; replaces raylib-style `DrawCircleV` in `.kry` surface. |
-| `Ring` | Native canonical | Primitive drawing node; replaces raylib-style `DrawRing` in `.kry` surface. |
-| `Line` | Native canonical | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
-| `Triangle` | Native canonical | Primitive drawing node. |
+| `Circle` | `.kry canonical` | Retained bounds policy is in `.kry`; host keeps circle drawing. Replaces raylib-style `DrawCircleV` in `.kry` surface. |
+| `Ring` | `.kry canonical` | Retained bounds policy is in `.kry`; host keeps ring drawing. Replaces raylib-style `DrawRing` in `.kry` surface. |
+| `Line` | `.kry canonical` | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
+| `Triangle` | `.kry canonical` | Retained bounds policy is in `.kry`; host keeps triangle drawing. |
 | `Bevel` | Native canonical | Primitive drawing effect unless replaced by surface props. |
 | `Icon` | `.kry canonical` | Bounds/size policy is in `.kry`; icon sheet/type surface is `IconType` with C `ICON_*` values and Go `kr.IconHome`-style constants. |
 | `Image` | `.kry canonical` | Canonical image widget. |
@@ -505,10 +505,10 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_BACKGROUND` | `Background` | Partly `.kry-backed` |
 | `WIDGET_TEXT` | `Text` | `.kry canonical` |
 | `WIDGET_RECT` | `Box` | `.kry-backed`; public code uses `Box` |
-| `WIDGET_CIRCLE` | `Circle` | Native canonical |
-| `WIDGET_RING` | `Ring` | Native canonical |
+| `WIDGET_CIRCLE` | `Circle` | `.kry-backed`; public code uses `Circle` |
+| `WIDGET_RING` | `Ring` | `.kry-backed`; public code uses `Ring` |
 | `WIDGET_LINE` | `Line` | Partly `.kry-backed` |
-| `WIDGET_TRIANGLE` | `Triangle` | Native canonical |
+| `WIDGET_TRIANGLE` | `Triangle` | `.kry-backed`; public code uses `Triangle` |
 | `WIDGET_BUTTON` | `Button` | `.kry canonical` |
 | `WIDGET_TEXT_FIELD` | `TextField` | `.kry canonical`; editing policy still migrating |
 | `WIDGET_TEXT_AREA` | `TextArea` | `.kry canonical`; editing policy still migrating |
