@@ -3758,8 +3758,7 @@ RenderCollapsible(CollapsibleProps section)
         if(!section.tree || section.selected)
             DrawRectangleRec(header, section.selected ? c_button_hover : c_button);
         if(!section.tree) DrawRectangleLinesEx(header, 1.0f, c_button_hover);
-        RenderText(marker == CollapsibleMarkerLeaf ? "•" :
-                   marker == CollapsibleMarkerOpen ? "v" : ">",
+        RenderText(CollapsibleMarkerText(marker),
                    (int)header.x + metrics.icon_offset,
                    ui_row_text_y(header, font), font, icon);
         BeginClip((int)header.x + metrics.text_offset, (int)header.y,

@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <math.h>
+#include <string.h>
 
 #include "runtime/collapsible.h"
 
@@ -44,6 +45,9 @@ main(void)
     assert(CollapsibleMarkerFor(false, false) == CollapsibleMarkerClosed);
     assert(CollapsibleMarkerFor(true, false) == CollapsibleMarkerOpen);
     assert(CollapsibleMarkerFor(true, true) == CollapsibleMarkerLeaf);
+    assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerClosed), ">") == 0);
+    assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerOpen), "v") == 0);
+    assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerLeaf), "•") == 0);
     assert(CollapsibleMetricsFor(0.0f).header_height == 32);
     return 0;
 }

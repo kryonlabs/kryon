@@ -39,6 +39,12 @@ CollapsibleMarkerFor :: (open: bool, leaf: bool) -> i32 #export {
     return CollapsibleMarkerClosed
 }
 
+CollapsibleMarkerText :: (marker: i32) -> const char* #export {
+    if marker == CollapsibleMarkerLeaf { return "•" }
+    if marker == CollapsibleMarkerOpen { return "v" }
+    return ">"
+}
+
 CollapsibleLayoutFor :: (bounds: Rectangle, tree: bool, depth: i32,
     has_close: bool, metrics: CollapsibleMetrics) -> CollapsibleLayout #export {
     layout: CollapsibleLayout

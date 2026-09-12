@@ -148,7 +148,7 @@ has a single place to land.
 | `Separator` | `UI/Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
 | `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Canonical titled group; old `LabelFrame` stays removed. |
 | `PanedView` | `UI/Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp and handle geometry are `.kry`; host keeps drag/input ownership. |
-| `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics/geometry are `.kry`; host keeps input, focus, tree navigation, and drawing. |
+| `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, and marker text are `.kry`; host keeps input, focus, tree navigation, and drawing. |
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation policy is `.kry`; host keeps input/scroll sampling. |
 | `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, and text bounds policy are `.kry`; host keeps input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
@@ -248,7 +248,7 @@ been removed from the public surface. Existing generated fixtures use
 | `Fieldset` | `.kry canonical` | Canonical titled border group; replaces old `LabelFrame` spelling. |
 | `LabelFrame` | Removed | Old spelling for `Fieldset`; no longer accepted as a public widget name. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
-| `Collapsible` | `.kry canonical` | Header metrics/geometry are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
+| `Collapsible` | `.kry canonical` | Header metrics, geometry, and marker text are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `BeginScroll` | Native support | Lowered host entry for `.kry` `Scroll` blocks; not a separate public widget name. |
@@ -360,7 +360,7 @@ this table for naming feedback before we lock the clean surface.
 | `WIDGET_TAB_BAR` | `TabBar` | `.kry canonical` |
 | `WIDGET_PARAGRAPH_MODAL` | `ParagraphModal` | Composite candidate |
 | `WIDGET_TITLE_BAR` | `TitleBar` | `.kry canonical` |
-| `WIDGET_GROUP` | `Group` | Native support; `Screen` group bounds are `.kry-backed` |
+| `WIDGET_GROUP` | `Group` | `.kry canonical`; bounds/content policy is `.kry-backed` |
 | `WIDGET_COLUMN` | `Column` | `.kry canonical`; placement policy is `.kry-backed` |
 | `WIDGET_ROW` | `Row` | `.kry canonical`; placement policy is `.kry-backed` |
 | `WIDGET_STACK` | `Stack` | `.kry canonical`; placement policy is `.kry-backed` |

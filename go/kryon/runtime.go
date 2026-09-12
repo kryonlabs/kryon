@@ -5761,13 +5761,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		r.inputEvents = remaining
 	}
 	marker := Collapsible_CollapsibleMarkerFor(p.Open != nil && *p.Open, p.Leaf)
-	mark := ">"
-	if marker == CollapsibleMarkerKindCollapsibleMarkerOpen {
-		mark = "v"
-	}
-	if marker == CollapsibleMarkerKindCollapsibleMarkerLeaf {
-		mark = "•"
-	}
+	mark := Collapsible_CollapsibleMarkerText(marker)
 	t := r.theme()
 	bg, border, fg := t.button, t.buttonHover, t.text
 	if p.Tree {

@@ -555,6 +555,7 @@ $(BUILD_DIR)/button-style-parity: tests/button_style_parity.c $(LIB) $(KRYON_BAC
 .PHONY: style-sheet-policy-test
 .PHONY: style-pack-registry-test
 .PHONY: style-picker-test
+.PHONY: kss-parser-test
 .PHONY: text-policy-test
 text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
@@ -575,6 +576,10 @@ style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED
 style-picker-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/style_picker.c include/ui_style_sheet.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_picker_test.c src/ui/style_picker.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-picker-test
 	$(BUILD_DIR)/style-picker-test
+
+kss-parser-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c src/ui/style_sheet.c src/ui/kss_parser.c src/ui/kss_parser.h include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) -Isrc tests/kss_parser_test.c src/ui/kss_parser.c src/ui/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/kss-parser-test
+	$(BUILD_DIR)/kss-parser-test
 
 surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
 	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
@@ -723,6 +728,7 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-sur
 	$(MAKE) style-sheet-policy-test
 	$(MAKE) style-pack-registry-test
 	$(MAKE) style-picker-test
+	$(MAKE) kss-parser-test
 	$(MAKE) group-policy-test
 	$(MAKE) button-style-parity-test
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)

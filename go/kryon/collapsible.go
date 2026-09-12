@@ -78,6 +78,25 @@ func Collapsible_CollapsibleMarkerFor(open bool, leaf bool) int32 {
 	return value_4
 }
 
+func Collapsible_CollapsibleMarkerText(marker int32) string {
+	var value_0 int32 = marker
+	var value_1 int32 = CollapsibleMarkerKindCollapsibleMarkerLeaf
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 string = "•"
+		return value_3
+	}
+	var value_4 int32 = marker
+	var value_5 int32 = CollapsibleMarkerKindCollapsibleMarkerOpen
+	var value_6 bool = value_4 == value_5
+	if value_6 {
+		var value_7 string = "v"
+		return value_7
+	}
+	var value_8 string = ">"
+	return value_8
+}
+
 func Collapsible_CollapsibleLayoutFor(bounds Rectangle, tree bool, depth int32, has_close bool, metrics CollapsibleMetrics) CollapsibleLayout {
 	var layout CollapsibleLayout = CollapsibleLayout{}
 	var value_0 Rectangle = bounds
