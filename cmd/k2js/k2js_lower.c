@@ -1200,8 +1200,7 @@ stmt_has_web_metadata(const KirStmt *st)
 {
     return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
            st->node_path[0] || st->node_parent_path[0] ||
-           st->dom_name_attr[0] || st->dom_value_attr[0] ||
-           st->dom_class[0] ||
+           st->dom_name_attr[0] || st->dom_class[0] ||
            st->dom_title[0] || st->dom_href[0] ||
            st->dom_target[0] || st->dom_rel[0] ||
            st->dom_for_attr[0] ||
@@ -1379,7 +1378,6 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
     emit_metadata_expr_field(f, m, "domName", st->dom_name_attr, &emitted);
-    emit_metadata_expr_field(f, m, "domValue", st->dom_value_attr, &emitted);
     emit_metadata_expr_field(f, m, "class", st->dom_class, &emitted);
     emit_metadata_expr_field(f, m, "title", st->dom_title, &emitted);
     emit_metadata_expr_field(f, m, "href", st->dom_href, &emitted);

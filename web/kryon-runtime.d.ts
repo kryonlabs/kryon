@@ -80,7 +80,6 @@ export interface WebDocumentNode {
   sourceLine: number;
   domId: string;
   domName: string;
-  domValue: string;
   classes: string[];
   title: string;
   placeholder: string;
@@ -173,7 +172,6 @@ export interface WebNodeStyleFacts {
   sourceLine: number;
   id: string;
   domName: string;
-  domValue: string;
   href: string;
   target: string;
   rel: string;

@@ -129,7 +129,6 @@ typedef struct KirStmt {
     char dom_tag[KIR_NAME_MAX];         /* requested browser element tag */
     char dom_id[KIR_NAME_MAX];          /* requested browser id */
     char dom_name_attr[KIR_NAME_MAX];   /* requested browser name attribute */
-    char dom_value_attr[KIR_TEXT_MAX];  /* requested browser value attribute */
     char dom_class[KIR_TEXT_MAX];       /* requested browser/KSS classes */
     char dom_title[KIR_TEXT_MAX];       /* requested browser title */
     char dom_href[KIR_TEXT_MAX];        /* requested browser link target */

@@ -117,7 +117,6 @@ assert.equal(webDoc.nodes[2].parentPath, "Scene/root");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
-assert.equal(webDoc.nodes[2].domValue, "tap-value");
 assert.deepEqual(webDoc.nodes[2].dataAttrs, { "tracking-id": "tap-1" });
 assert.deepEqual(webDoc.nodes[2].classes, ["primary", "action"]);
 assert.equal(webDoc.nodes[2].title, "Tap details");
@@ -138,7 +137,6 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   sourceLine: webDoc.nodes[2].sourceLine,
   id: "tap-button",
   domName: "",
-  domValue: "tap-value",
   href: "",
   target: "",
   rel: "",
@@ -196,8 +194,6 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], runtime.parseWebStyleSheet
 assert.equal(runtime.webNodeQuery(rt, "Scene/root/tap").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "Button.primary").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "[data-tracking-id=\"tap-1\"]").path, webDoc.nodes[2].path);
-assert.equal(runtime.webNodeQuery(rt, "[value=\"tap-value\"]").path, webDoc.nodes[2].path);
-assert.equal(runtime.webNodeQuery(rt, "[domValue=\"tap-value\"]").path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, "[name=q]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[name]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[type=search]").path, "Scene/root/search");
@@ -509,7 +505,6 @@ function fakeDocument() {
     const firstButton = screen.children[1];
     assert.equal(firstButton.tagName, "BUTTON");
     assert.equal(firstButton.id, "tap-button");
-    assert.equal(firstButton.attributes.value, "tap-value");
     assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
@@ -551,8 +546,6 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
-    assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
-    assert.equal(runtime.webDOMQuery(target, "[domValue=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[role=button]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[data-tracking-id=\"tap-1\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
