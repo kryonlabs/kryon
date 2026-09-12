@@ -854,6 +854,8 @@ function fakeDocument() {
       { nodeName: "email", path: "Page/contact/email", parentPath: "Page/contact", domName: "email" });
     runtime.widget(submitRt, "TextField", { text: "outside@example.test" }, null,
       { nodeName: "externalEmail", path: "Page/externalEmail", domName: "external_email", formOwner: "contact" });
+    runtime.widget(submitRt, "TextField", { text: "loose@example.test" }, null,
+      { nodeName: "looseEmail", path: "Page/looseEmail", parentPath: "Page", domName: "loose_email" });
     runtime.endFrame(submitRt);
     assert.equal(runtime.webNodeQuery(submitRt, "[form=contact]").path, "Page/externalEmail");
     assert.equal(runtime.webNodeQuery(submitRt, "[action=\"/contact\"]").path, "Page/contact");
@@ -875,6 +877,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(submitTarget, "[form=contact]").element, externalEmail);
     assert.equal(runtime.webDOMRelations(submitTarget, "external_email").formOwner.ref, "Page/contact");
     assert.equal(runtime.webDOMSnapshot(submitTarget, "external_email").relationRefs.formOwner, "Page/contact");
+    assert.equal(runtime.webFormValues(submitTarget, "contact").external_email, "outside@example.test");
+    assert.equal(runtime.webFormValues(submitTarget, "contact").loose_email, undefined);
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[method=post]").element, submitForm);
     assert.equal(runtime.webDOMQuery(submitTarget, "[enctype=\"multipart/form-data\"]").element, submitForm);
@@ -883,14 +887,20 @@ function fakeDocument() {
     assert.equal(submitForm.dataset.kryOnReset, "clear_contact");
     assert.equal(runtime.webDOMSubmit(submitTarget, "contact"), true);
     assert.equal(submitValues.email, "hello@example.test");
+    assert.equal(submitValues.external_email, "outside@example.test");
+    assert.equal(submitValues.loose_email, undefined);
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
     assert.equal(submitForm.krySubmit(), true);
     assert.equal(submitValues.email, "hello@example.test");
+    assert.equal(submitValues.external_email, "outside@example.test");
     assert.equal(runtime.webDOMReset(submitTarget, "Page/contact"), true);
     assert.equal(resetValues.email, "hello@example.test");
+    assert.equal(resetValues.external_email, "outside@example.test");
+    assert.equal(resetValues.loose_email, undefined);
     assert.equal(resetValues["Page/contact/email"], "hello@example.test");
     assert.equal(submitForm.kryReset(), true);
     assert.equal(resetValues.email, "hello@example.test");
+    assert.equal(resetValues.external_email, "outside@example.test");
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);

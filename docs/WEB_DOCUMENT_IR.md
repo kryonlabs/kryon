@@ -613,9 +613,11 @@ The DOM renderer maintains native interaction facts for KSS state selectors:
 events update `open`. These update the Web Document node state and reapply
 resolved KSS without requiring app logic to mirror browser pseudo-state.
 
-`webFormValue(target, query)` and `webFormValues(target)` expose current mounted
-native form values by Kry ref, path, node name, key, DOM id, and DOM name. Values are
-refreshed on render and after native `input`/`change` events.
+`webFormValue(target, query)` and `webFormValues(target, query?)` expose current
+mounted native form values by Kry ref, path, node name, key, DOM id, and DOM
+name. Values are refreshed on render and after native `input`/`change` events.
+Passing a form query to `webFormValues` returns values for descendant controls
+and controls whose `form` relation points at that Kry form object.
 
 `webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing
 projection of the Web Document frame: document title/description plus each

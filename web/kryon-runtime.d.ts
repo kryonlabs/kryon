@@ -825,7 +825,7 @@ export function webDOMHidePopover(target: Element | string | null, query: string
 export function webDOMTogglePopover(target: Element | string | null, query: string, force?: boolean): boolean;
 export function webDOMDispatchEvent(target: Element | string | null, query: string, type: string, init?: Record<string, unknown>): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
-export function webFormValues(target: Element | string | null): Record<string, unknown>;
+export function webFormValues(target: Element | string | null, query?: string): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
 export function Color(r?: number, g?: number, b?: number, a?: number): ColorValue;
 export function NewVector2(x?: number, y?: number): { x: number; y: number };

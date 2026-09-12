@@ -2598,14 +2598,14 @@ function bindNodeEvents(el) {
       event.preventDefault();
     const docNode = el.__kryDocNode;
     if (docNode?.submitAction)
-      docNode.submitAction(webFormValuesFromRoot(el.__kryMountRoot));
+      docNode.submitAction(webFormValuesForNode(el.__kryMountRoot, docNode));
   });
   el.addEventListener("reset", (event) => {
     if (event?.preventDefault)
       event.preventDefault();
     const docNode = el.__kryDocNode;
     if (docNode?.resetAction)
-      docNode.resetAction(webFormValuesFromRoot(el.__kryMountRoot));
+      docNode.resetAction(webFormValuesForNode(el.__kryMountRoot, docNode));
   });
   el.addEventListener("toggle", () => {
     const docNode = el.__kryDocNode;
@@ -2669,6 +2669,16 @@ function recordFormValue(root, docNode, value) {
   }
 }
 
+function collectFormValue(out, docNode, value) {
+  if (!out || !docNode || value === undefined)
+    return;
+  for (const key of [webNodeRef(docNode), docNode.path, docNode.name,
+                     docNode.key, docNode.domId, docNode.domName]) {
+    if (key && out[key] === undefined)
+      out[key] = value;
+  }
+}
+
 function updateElementFormValue(el, value = webElementValue(el)) {
   const docNode = el?.__kryDocNode;
   if (!docNode || value === undefined)
@@ -2678,6 +2688,30 @@ function updateElementFormValue(el, value = webElementValue(el)) {
     docNode.state.checked = !!value;
   recordFormValue(el.__kryMountRoot, docNode, value);
   return value;
+}
+
+function webNodeBelongsToForm(root, node, formNode) {
+  if (!root || !node || !formNode || node === formNode)
+    return false;
+  const formPath = formNode.path || "";
+  if (formPath && node.parentPath &&
+      (node.parentPath === formPath || node.parentPath.startsWith(formPath + "/")))
+    return true;
+  const owner = webDOMRelationList(root, node.formOwner)[0] || null;
+  return !!owner && (owner.node === formNode || owner.ref === webNodeRef(formNode));
+}
+
+function webFormValuesForNode(root, formNode) {
+  if (!root || !formNode)
+    return webFormValuesFromRoot(root);
+  const out = {};
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const node = el.__kryDocNode || null;
+    if (!webNodeBelongsToForm(root, node, formNode))
+      continue;
+    collectFormValue(out, node, updateElementFormValue(el));
+  }
+  return out;
 }
 
 function webDragValue(el, docNode = el?.__kryDocNode) {
@@ -3857,9 +3891,10 @@ function resolveWebDOMRelations(root) {
 
 function webDOMRelationList(target, value) {
   const root = mountedRoot(target);
-  if (!root)
+  const text = String(value || "").trim();
+  if (!root || !text)
     return [];
-  return String(value || "")
+  return text
     .split(/\s+/)
     .map((token) => webDOMObject(root, token))
     .filter(Boolean);
@@ -6278,8 +6313,12 @@ export function webFormValue(target, query) {
   return root.__kryFormValues?.get(String(query || ""));
 }
 
-export function webFormValues(target) {
+export function webFormValues(target, query = "") {
   const root = mountedRoot(target);
+  if (root && query) {
+    const form = findWebElement(root, query);
+    return webFormValuesForNode(root, form?.__kryDocNode || null);
+  }
   return webFormValuesFromRoot(root);
 }
 
