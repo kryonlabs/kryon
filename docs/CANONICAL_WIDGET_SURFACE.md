@@ -255,5 +255,5 @@ they should stay separate from general UI widgets.
    documentation.
 3. Align editor registry names with canonical widget names and decide whether
    `TileLayer` needs a full implementation or should leave the registry.
-5. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
+4. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.

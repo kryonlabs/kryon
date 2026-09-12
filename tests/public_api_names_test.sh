@@ -29,6 +29,21 @@ if [ -n "$matches" ]; then
     exit 1
 fi
 
+removed_widget_matches="$(
+    rg -n '\b(Href|Picture|Combo|BeginCombo|EndCombo|CloseCombo|ComboProps|ComboFlags)\b' \
+        include src cmd go web docs examples tests tools scripts \
+        --glob '!vendor/**' \
+        --glob '!build/**' \
+        --glob '!docs/CANONICAL_WIDGET_SURFACE.md' \
+        --glob '!tests/public_api_names_test.sh' || true
+)"
+
+if [ -n "$removed_widget_matches" ]; then
+    echo "Removed widget names must stay out of public/runtime/codegen surfaces; use Link, Image, Dropdown, Popup, or Menu:"
+    echo "$removed_widget_matches"
+    exit 1
+fi
+
 form_matches="$(
     rg -n '\bUIForm[A-Za-z0-9_]*\b' \
         include/ui_rows.h src/ui/rows.c docs/API.md docs/FEATURE_MATRIX.md \
