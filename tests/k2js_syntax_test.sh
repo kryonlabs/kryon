@@ -74,6 +74,11 @@ note_key :: (value: string) -> int {
     count += 1000
     return count
 }
+invalid_search :: (value: string) -> int {
+    unused value
+    count += 10000000
+    return count
+}
 submit_search :: () -> int {
     count += 10000
     return count
@@ -159,6 +164,7 @@ Scene :: (viewport: Rectangle) #ui {
             on_input = note_input
             on_change = note_change
             on_key = note_key
+            on_invalid = invalid_search
             on_submit = submit_search
             on_focus = focus_search
             on_blur = blur_search
@@ -241,6 +247,7 @@ grep -q '"ariaControls": "search-field"' "$out"
 grep -q '"onInput": "note_input"' "$out"
 grep -q '"onChange": "note_change"' "$out"
 grep -q '"onKey": "note_key"' "$out"
+grep -q '"onInvalid": "invalid_search"' "$out"
 grep -q '"onSubmit": "submit_search"' "$out"
 grep -q '"onFocus": "focus_search"' "$out"
 grep -q '"onBlur": "blur_search"' "$out"

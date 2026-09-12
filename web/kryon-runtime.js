@@ -1160,6 +1160,7 @@ function webNodeFromWidget(item, index) {
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
     onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
+    onInvalid: meta.onInvalid === undefined || meta.onInvalid === null ? "" : String(meta.onInvalid),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
     onReset: meta.onReset === undefined || meta.onReset === null ? "" : String(meta.onReset),
     onFocus: meta.onFocus === undefined || meta.onFocus === null ? "" : String(meta.onFocus),
@@ -1172,6 +1173,7 @@ function webNodeFromWidget(item, index) {
     inputAction: typeof meta.inputAction === "function" ? meta.inputAction : null,
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
     keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
+    invalidAction: typeof meta.invalidAction === "function" ? meta.invalidAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
     resetAction: typeof meta.resetAction === "function" ? meta.resetAction : null,
     focusAction: typeof meta.focusAction === "function" ? meta.focusAction : null,
@@ -1777,6 +1779,14 @@ function bindNodeEvents(el) {
     if (docNode?.keyAction)
       docNode.keyAction(String(key));
   });
+  el.addEventListener("invalid", (event) => {
+    if (event?.preventDefault)
+      event.preventDefault();
+    const docNode = el.__kryDocNode;
+    const value = updateElementFormValue(el);
+    if (docNode?.invalidAction)
+      docNode.invalidAction(value);
+  });
   el.addEventListener("submit", (event) => {
     if (event?.preventDefault)
       event.preventDefault();
@@ -1903,6 +1913,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnKey = docNode.onKey;
   else
     delete el.dataset.kryOnKey;
+  if (docNode.onInvalid)
+    el.dataset.kryOnInvalid = docNode.onInvalid;
+  else
+    delete el.dataset.kryOnInvalid;
   if (docNode.onSubmit)
     el.dataset.kryOnSubmit = docNode.onSubmit;
   else

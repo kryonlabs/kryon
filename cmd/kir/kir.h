@@ -165,6 +165,7 @@ typedef struct KirStmt {
     char dom_on_input[KIR_NAME_MAX];    /* logic function bound to input(value) */
     char dom_on_change[KIR_NAME_MAX];   /* logic function bound to change(value) */
     char dom_on_key[KIR_NAME_MAX];      /* logic function bound to keydown(key) */
+    char dom_on_invalid[KIR_NAME_MAX];  /* logic function bound to invalid(value) */
     char dom_on_submit[KIR_NAME_MAX];   /* logic function bound to submit */
     char dom_on_reset[KIR_NAME_MAX];    /* logic function bound to reset */
     char dom_on_focus[KIR_NAME_MAX];    /* logic function bound to focus */

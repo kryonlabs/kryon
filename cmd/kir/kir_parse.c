@@ -485,6 +485,7 @@ typedef struct UiBlock {
     char dom_on_input[KIR_NAME_MAX];
     char dom_on_change[KIR_NAME_MAX];
     char dom_on_key[KIR_NAME_MAX];
+    char dom_on_invalid[KIR_NAME_MAX];
     char dom_on_submit[KIR_NAME_MAX];
     char dom_on_reset[KIR_NAME_MAX];
     char dom_on_focus[KIR_NAME_MAX];
@@ -919,6 +920,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
         snprintf(block->dom_on_key, sizeof(block->dom_on_key), "%s", value);
         return 1;
     }
+    if(strcmp(field, "on_invalid") == 0) {
+        snprintf(block->dom_on_invalid, sizeof(block->dom_on_invalid), "%s",
+                 value);
+        return 1;
+    }
     if(strcmp(field, "on_submit") == 0) {
         snprintf(block->dom_on_submit, sizeof(block->dom_on_submit), "%s",
                  value);
@@ -1056,6 +1062,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_on_change);
     snprintf(statement->dom_on_key, sizeof(statement->dom_on_key), "%s",
              block->dom_on_key);
+    snprintf(statement->dom_on_invalid, sizeof(statement->dom_on_invalid),
+             "%s", block->dom_on_invalid);
     snprintf(statement->dom_on_submit, sizeof(statement->dom_on_submit), "%s",
              block->dom_on_submit);
     snprintf(statement->dom_on_reset, sizeof(statement->dom_on_reset), "%s",

@@ -1220,6 +1220,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_aria_controls[0] || st->dom_aria_live[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
            st->dom_on_change[0] || st->dom_on_key[0] ||
+           st->dom_on_invalid[0] ||
            st->dom_on_submit[0] || st->dom_on_reset[0] ||
            st->dom_on_focus[0] ||
            st->dom_on_blur[0] || st->dom_on_mouse_enter[0] ||
@@ -1427,6 +1428,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                     "value", &emitted);
     emit_web_action(f, m, "onKey", "keyAction", st->dom_on_key, "key",
                     &emitted);
+    emit_web_action(f, m, "onInvalid", "invalidAction",
+                    st->dom_on_invalid, "value", &emitted);
     emit_web_action(f, m, "onSubmit", "submitAction", st->dom_on_submit, "",
                     &emitted);
     emit_web_action(f, m, "onReset", "resetAction", st->dom_on_reset, "",

@@ -248,6 +248,7 @@ assert.equal(webDoc.nodes[3].ariaDescribedBy, "tap-button");
 assert.equal(webDoc.nodes[3].onInput, "note_input");
 assert.equal(webDoc.nodes[3].onChange, "note_change");
 assert.equal(webDoc.nodes[3].onKey, "note_key");
+assert.equal(webDoc.nodes[3].onInvalid, "invalid_search");
 assert.equal(webDoc.nodes[3].onSubmit, "submit_search");
 assert.equal(webDoc.nodes[3].onFocus, "focus_search");
 assert.equal(webDoc.nodes[3].onBlur, "blur_search");
@@ -299,6 +300,7 @@ function fakeDocument() {
       },
       addEventListener(type, fn) { this["on" + type] = fn; },
       click() { if (this.onclick) this.onclick(); },
+      invalid() { if (this.oninvalid) this.oninvalid({ preventDefault() {} }); },
       input(value) {
         if (typeof value === "boolean")
           this.checked = value;
@@ -611,6 +613,7 @@ function fakeDocument() {
     assert.equal(firstField.dataset.kryOnInput, "note_input");
     assert.equal(firstField.dataset.kryOnChange, "note_change");
     assert.equal(firstField.dataset.kryOnKey, "note_key");
+    assert.equal(firstField.dataset.kryOnInvalid, "invalid_search");
     assert.equal(firstField.dataset.kryOnSubmit, "submit_search");
     assert.equal(firstField.dataset.kryOnFocus, "focus_search");
     assert.equal(firstField.dataset.kryOnBlur, "blur_search");
@@ -635,12 +638,14 @@ function fakeDocument() {
     assert.equal(domState.count, 111);
     firstField.keydown("Enter");
     assert.equal(domState.count, 1111);
+    firstField.invalid();
+    assert.equal(domState.count, 10001111);
     firstField.submit();
-    assert.equal(domState.count, 11111);
+    assert.equal(domState.count, 10011111);
     firstField.focus();
-    assert.equal(domState.count, 111111);
+    assert.equal(domState.count, 10111111);
     firstField.blur();
-    assert.equal(domState.count, 1111111);
+    assert.equal(domState.count, 11111111);
     generated.frame(domRt, domState, host);
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);
