@@ -1524,6 +1524,10 @@ function updateElementFormValue(el, value = webElementValue(el)) {
   return value;
 }
 
+function webNodeRef(docNode) {
+  return docNode?.path || docNode?.name || docNode?.key || docNode?.domId || "";
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
@@ -1531,6 +1535,7 @@ function applyWebNode(el, docNode, rt) {
   el.className = ["kryon-node", "kryon-" + docNode.kind.toLowerCase(), ...docNode.classes].join(" ");
   el.dataset.kryKind = docNode.kind;
   el.dataset.kryKey = docNode.key;
+  el.dataset.kryRef = webNodeRef(docNode);
   if (docNode.path)
     el.dataset.kryPath = docNode.path;
   else
@@ -1638,6 +1643,8 @@ export function renderWebDocument(rt, target) {
   const elementsByPath = new Map();
   const live = new Set();
   root.__kryNodes = new Map();
+  root.__kryElementsByPath = new Map();
+  root.__kryDomObjects = new Map();
   root.__kryElementsByName = new Map();
   root.__kryElementsByDomId = new Map();
   root.__kryFormValues = new Map();
@@ -1656,6 +1663,11 @@ export function renderWebDocument(rt, target) {
       elementsByPath.set(docNode.path, el);
     if (docNode.path)
       root.__kryNodes.set(docNode.path, docNode);
+    const ref = webNodeRef(docNode);
+    if (ref)
+      root.__kryDomObjects.set(ref, { ref, node: docNode, element: el });
+    if (docNode.path)
+      root.__kryElementsByPath.set(docNode.path, el);
     if (docNode.name)
       root.__kryElementsByName.set(docNode.name, el);
     if (docNode.domId)
@@ -1701,6 +1713,8 @@ export function findWebElement(target, query) {
   const text = String(query || "");
   if (root.__kryChildren?.has(text))
     return root.__kryChildren.get(text);
+  if (root.__kryElementsByPath?.has(text))
+    return root.__kryElementsByPath.get(text);
   if (root.__kryElementsByName?.has(text))
     return root.__kryElementsByName.get(text);
   if (root.__kryElementsByDomId?.has(text))
@@ -1711,6 +1725,30 @@ export function findWebElement(target, query) {
       return el;
   }
   return null;
+}
+
+export function webDOMObject(target, query) {
+  const root = mountedRoot(target);
+  if (!root)
+    return null;
+  const text = String(query || "");
+  if (root.__kryDomObjects?.has(text))
+    return root.__kryDomObjects.get(text);
+  const element = findWebElement(target, text);
+  const node = element?.__kryDocNode || null;
+  return node && element ? { ref: webNodeRef(node), node, element } : null;
+}
+
+export function webDOMObjects(target) {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  return [...(root.__kryChildren?.values?.() || [])]
+    .map((element) => {
+      const node = element.__kryDocNode;
+      return node ? { ref: webNodeRef(node), node, element } : null;
+    })
+    .filter(Boolean);
 }
 
 export function webFormValue(target, query) {

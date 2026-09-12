@@ -261,9 +261,16 @@ function fakeDocument() {
     assert.equal(document.querySelector('meta[name="theme-color"]').attributes.content, "rgb(1, 2, 3)");
     const root = target.children[0];
     const screen = root.children.find((child) => child.tagName === "MAIN");
-    const firstButton = screen.children[0];
+    const firstText = screen.children[0];
+    assert.equal(firstText.tagName, "DIV");
+    assert.match(firstText.dataset.kryRef, /^Scene\/root\/Text@\d+$/);
+    assert.equal(firstText.dataset.kryParentPath, "Scene/root");
+    const firstButton = screen.children[1];
     assert.equal(firstButton.tagName, "BUTTON");
     assert.equal(firstButton.id, "tap-button");
+    assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
+    assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
+    assert.equal(firstButton.dataset.kryKey, "tap");
     assert.equal(firstButton.dataset.kryName, "tap");
     assert.equal(firstButton.attributes.role, "button");
     assert.equal(firstButton.attributes["aria-label"], "Tap the action");
@@ -275,7 +282,16 @@ function fakeDocument() {
     assert.equal(runtime.findWebElement(target, "Scene/root/tap"), firstButton);
     assert.equal(runtime.findWebElement(target, "tap"), firstButton);
     assert.equal(runtime.findWebElement(target, "tap-button"), firstButton);
-    const firstField = screen.children[1];
+    assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
+    assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
+    const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
+    assert.equal(domRefs[0], "Scene/root");
+    assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);
+    assert.deepEqual(domRefs.slice(2), [
+      "Scene/root/tap",
+      "Scene/root/search"
+    ]);
+    const firstField = screen.children[2];
     assert.equal(firstField.tagName, "INPUT");
     assert.equal(firstField.id, "search-field");
     assert.equal(firstField.dataset.kryOnInput, "note_input");
@@ -296,8 +312,9 @@ function fakeDocument() {
     runtime.renderWebDocument(domRt, target);
     assert.equal(target.children[0], root);
     assert.equal(root.children.find((child) => child.tagName === "MAIN"), screen);
-    assert.equal(screen.children[0], firstButton);
-    assert.equal(screen.children[1], firstField);
+    assert.equal(screen.children[0], firstText);
+    assert.equal(screen.children[1], firstButton);
+    assert.equal(screen.children[2], firstField);
     runtime.setWebStyleSheets(domRt, []);
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "");
@@ -312,7 +329,8 @@ function fakeDocument() {
     const nextState = generated.createState();
     generated.frame(nextRt, nextState, host);
     runtime.renderWebDocument(nextRt, target);
-    assert.equal(screen.children[0], firstButton);
+    assert.equal(runtime.findWebElement(target, "Scene/root/tap"), firstButton);
+    assert.equal(runtime.findWebElement(target, "Scene/root/search"), firstField);
     firstButton.click();
     assert.equal(domRt.input.events.length, previousEventCount);
     assert.equal(nextRt.input.events.at(-1).type, "tap");

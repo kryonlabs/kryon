@@ -67,6 +67,14 @@ Style imports identify KSS inputs:
 style sheets without scanning source text. KSS still owns style resolution;
 the Web Document frame supplies the node facts it resolves against.
 
+Rendered DOM elements carry source identity as native attributes:
+`data-kry-ref`, `data-kry-path`, `data-kry-parent-path`, `data-kry-name`,
+`data-kry-key`, and `data-kry-kind`. The runtime exposes
+`webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
+inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
+path, node name, key, or DOM id without making generated JavaScript the source
+of structure.
+
 Supported metadata fields in this first slice:
 
 | `.kry` field | Web frame field |

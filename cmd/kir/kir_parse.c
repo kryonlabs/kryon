@@ -720,6 +720,28 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
 }
 
 static void
+ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
+                              const UiBlock *parent, const char *widget,
+                              KirSourceSpan span)
+{
+    const char *parent_path;
+
+    if(statement == NULL)
+        return;
+    if(statement->node_parent_path[0] == '\0' && parent != NULL)
+        snprintf(statement->node_parent_path,
+                 sizeof(statement->node_parent_path), "%s",
+                 parent->path);
+    if(statement->node_path[0] != '\0')
+        return;
+    parent_path = statement->node_parent_path[0] != '\0'
+                    ? statement->node_parent_path
+                    : (fn != NULL ? fn->name : "ui");
+    snprintf(statement->node_path, sizeof(statement->node_path),
+             "%.3000s/%.700s@%d", parent_path, widget, span.line);
+}
+
+static void
 ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
                 const char *format, ...)
 {
@@ -3098,10 +3120,16 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                           widget_args,
                                           sizeof(widget_args)))
                     kind = KIR_STMT_WIDGET;
-                if(kind == KIR_STMT_WIDGET)
-                    KirFunctionAddWidget(fn, widget, widget_args, t,
-                                                 KirSpan(rel, line_no, 1));
-                else
+                if(kind == KIR_STMT_WIDGET) {
+                    KirStmt *st;
+                    KirSourceSpan span = KirSpan(rel, line_no, 1);
+
+                    st = KirFunctionAddWidget(fn, widget, widget_args, t,
+                                              span);
+                    ui_stmt_apply_source_metadata(st, fn,
+                        ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                        widget, span);
+                } else
                     KirFunctionAddStmt(fn, kind, t, widget,
                                                KirSpan(rel, line_no, 1));
                 depth += brace_delta;

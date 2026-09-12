@@ -158,6 +158,12 @@ export interface WebAccessibilitySnapshot {
   nodes: WebAccessibilityNode[];
 }
 
+export interface WebDOMObject {
+  ref: string;
+  node: WebDocumentNode;
+  element: Element;
+}
+
 export interface WebStyleRule {
   selector: Record<string, unknown>;
   style: Record<string, unknown>;
@@ -233,6 +239,8 @@ export function setWebStyleSheets(rt: Runtime, sheets: string | WebStyleSheet | 
 export function renderWebDocument(rt: Runtime, target: Element | string | null): Runtime;
 export function findWebNode(rt: Runtime, query: string): WebDocumentNode | null;
 export function findWebElement(target: Element | string | null, query: string): Element | null;
+export function webDOMObject(target: Element | string | null, query: string): WebDOMObject | null;
+export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
