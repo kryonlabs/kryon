@@ -81,6 +81,33 @@ guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color)
     }
 }
 
+static Style
+guide_style(int role, ButtonState state)
+{
+    return ui_unpack_style(ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true},
+        state, 0, 0.0f, 0.0f, 0.0f, StyleKindGuide(), role).value);
+}
+
+static IconActionSpec
+guide_icon_action(Rectangle bounds, Texture2D icon, int size, int padding,
+                  Style normal, Style hover)
+{
+    IconActionSpec props = {0};
+    props.bounds = bounds;
+    props.icon = icon;
+    props.icon_size = size;
+    props.icon_padding = padding;
+    props.background = normal.background;
+    props.hover_background = hover.background;
+    props.icon_color = normal.foreground;
+    props.border = normal.border;
+    props.radius = normal.radius;
+    return props;
+}
+
 GuideResult
 RenderGuideOverlay(GuideOverlayProps guide)
 {
@@ -104,42 +131,14 @@ RenderGuideOverlay(GuideOverlayProps guide)
     int previous_requested = 0;
     int next_requested = 0;
     int close_requested = 0;
-    Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 2).value);
-    Style label_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 6).value);
-    Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 19).value);
-    Style anchor_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 24).value);
-    Style close_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 15).value);
-    Style close_hover_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
-        ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 15).value);
-    Style action_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 17).value);
-    Style action_hover_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
-        ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), 17).value);
+    Style panel_style = guide_style(2, ButtonStateNormal);
+    Style label_style = guide_style(6, ButtonStateNormal);
+    Style scrim_style = guide_style(19, ButtonStateNormal);
+    Style anchor_style = guide_style(24, ButtonStateNormal);
+    Style close_style = guide_style(15, ButtonStateNormal);
+    Style close_hover_style = guide_style(15, ButtonStateHover);
+    Style action_style = guide_style(17, ButtonStateNormal);
+    Style action_hover_style = guide_style(17, ButtonStateHover);
 
     g_guide_debug.valid = 0;
     if(guide.steps == NULL || guide.count <= 0 || guide.step == NULL)
@@ -207,16 +206,10 @@ RenderGuideOverlay(GuideOverlayProps guide)
                      panel_style.opacity, ui_style_fill(panel_style),
                      panel_style.material);
 
-    memset(&icon_props, 0, sizeof(icon_props));
-    icon_props.bounds = layout.close_button;
-    icon_props.icon = guide.close_icon;
-    icon_props.icon_size = metrics.close_icon_size;
-    icon_props.icon_padding = metrics.close_icon_padding;
-    icon_props.background = close_style.background;
-    icon_props.hover_background = close_hover_style.background;
-    icon_props.icon_color = close_style.foreground;
-    icon_props.border = close_style.border;
-    icon_props.radius = close_style.radius;
+    icon_props = guide_icon_action(layout.close_button, guide.close_icon,
+                                   metrics.close_icon_size,
+                                   metrics.close_icon_padding,
+                                   close_style, close_hover_style);
     if(RenderIconAction(icon_props)) {
         result.closed = 1;
         return result;
@@ -251,32 +244,21 @@ RenderGuideOverlay(GuideOverlayProps guide)
                     metrics.page_font, label_style.foreground);
 
     if(step > 0) {
-        memset(&icon_props, 0, sizeof(icon_props));
-        icon_props.bounds = layout.back_button;
         g_guide_debug.back_button = layout.back_button;
-        icon_props.icon = guide.back_icon;
-        icon_props.icon_size = metrics.nav_icon_size;
-        icon_props.icon_padding = metrics.nav_icon_padding;
-        icon_props.background = action_style.background;
-        icon_props.hover_background = action_hover_style.background;
-        icon_props.icon_color = action_style.foreground;
-        icon_props.border = action_style.border;
-        icon_props.radius = action_style.radius;
+        icon_props = guide_icon_action(layout.back_button, guide.back_icon,
+                                       metrics.nav_icon_size,
+                                       metrics.nav_icon_padding,
+                                       action_style, action_hover_style);
         if(RenderIconAction(icon_props)) {
             previous_requested = 1;
         }
     }
-    memset(&icon_props, 0, sizeof(icon_props));
-    icon_props.bounds = layout.next_button;
     g_guide_debug.next_button = layout.next_button;
-    icon_props.icon = layout.finish ? guide.done_icon : guide.next_icon;
-    icon_props.icon_size = metrics.nav_icon_size;
-    icon_props.icon_padding = metrics.nav_icon_padding;
-    icon_props.background = action_style.background;
-    icon_props.hover_background = action_hover_style.background;
-    icon_props.icon_color = action_style.foreground;
-    icon_props.border = action_style.border;
-    icon_props.radius = action_style.radius;
+    icon_props = guide_icon_action(layout.next_button,
+                                   layout.finish ? guide.done_icon : guide.next_icon,
+                                   metrics.nav_icon_size,
+                                   metrics.nav_icon_padding,
+                                   action_style, action_hover_style);
     if(RenderIconAction(icon_props)) {
         next_requested = 1;
     }

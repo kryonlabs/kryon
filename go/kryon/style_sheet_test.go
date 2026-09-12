@@ -222,11 +222,14 @@ Modal[role=Scrim] {
 TableView[role=Cell] {
   foreground: accent;
 }
+Guide[role=Anchor] {
+  border: accent;
+}
 `)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 25 {
+	if id != "smoke" || len(rules) != 26 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -351,6 +354,11 @@ TableView[role=Cell] {
 		rules[24].Selector.Role != 22 ||
 		rules[24].Style.Foreground != 0x2f6bffff {
 		t.Fatalf("bad table view role rule: %#v", rules[24])
+	}
+	if rules[25].Selector.Kind != StyleSheet_StyleKindGuide() ||
+		rules[25].Selector.Role != 24 ||
+		rules[25].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad guide role rule: %#v", rules[25])
 	}
 }
 

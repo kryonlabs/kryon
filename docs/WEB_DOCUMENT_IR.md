@@ -340,6 +340,10 @@ refs, to the current live Kry DOM object.
 `root.kryObserve(selector, handler, options?)` subscribe to `kry-render` and
 pass the current matching Kry DOM objects to browser logic. Observers run once
 immediately unless `options.immediate` is `false`.
+`webDOMSync(target, query?)`, `root.krySync(query?)`, `element.krySync()`, and
+`object.sync()` fold direct native DOM mutations back into Kry node facts and
+refresh the mount root indexes, so browser-authored class, attribute, state,
+text/value, and scroll changes become visible to Kry queries and KSS selectors.
 Mount roots also provide non-enumerable `kryElement(query)`,
 `kryObject(query)`, `kryQuery(selector)`, `kryQueryAll(selector)`, and
 `kryAtSource(sourcePath, sourceLine, sourceColumn?)` methods so native browser

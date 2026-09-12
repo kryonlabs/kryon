@@ -2822,6 +2822,15 @@ function bindWebDOMObjectProperties(el) {
         const query = webNodeRef(this.__kryDocNode);
         return !!root && !!query && webDOMTogglePopover(root, query, force);
       }
+    },
+    krySync: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMSync(root, query) : null;
+      }
     }
   });
   el.__kryObjectPropertiesBound = true;
@@ -3170,6 +3179,14 @@ function makeWebDOMObject(root, node, element, ref = "") {
       value(force) {
         const target = webDOMObjectRoot(this);
         return !!target && webDOMTogglePopover(target, webDOMObjectQuery(this), force);
+      }
+    },
+    sync: {
+      configurable: true,
+      enumerable: false,
+      value() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMSync(target, webDOMObjectQuery(this)) : null;
       }
     }
   });
@@ -3789,6 +3806,13 @@ function bindWebRootProperties(root) {
       value(query, force) {
         return webDOMTogglePopover(this, query, force);
       }
+    },
+    krySync: {
+      configurable: true,
+      enumerable: false,
+      value(query = "") {
+        return webDOMSync(this, query);
+      }
     }
   });
   root.__kryRootPropertiesBound = true;
@@ -4288,6 +4312,147 @@ export function webDOMObserve(target, selector, handler, options = {}) {
     if (typeof root.removeEventListener === "function")
       root.removeEventListener("kry-render", listener);
   };
+}
+
+const webDOMInternalAttributeNames = new Set([
+  "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
+  "aria-label", "aria-description", "aria-describedby", "aria-controls", "aria-live",
+  "href", "target", "rel", "for", "type", "action", "method", "enctype",
+  "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
+  "autofocus", "download", "formnovalidate", "novalidate", "popover",
+  "popovertarget", "popovertargetaction", "readonly", "required", "min",
+  "max", "step", "minlength", "maxlength", "pattern", "accept", "multiple",
+  "inputmode", "alt", "src", "checked", "disabled", "selected", "open"
+]);
+
+function dataSetKeyToAttrName(key) {
+  return String(key || "").replace(/[A-Z]/g, (ch) => "-" + ch.toLowerCase());
+}
+
+function syncWebDOMRootIndexes(root) {
+  if (!root)
+    return;
+  root.__kryNodes = new Map();
+  root.__kryElementsByPath = new Map();
+  root.__kryElementsByRef = new Map();
+  root.__kryDomObjects = new Map();
+  root.__kryElementsByName = new Map();
+  root.__kryElementsByDomId = new Map();
+  root.__kryElementsByDomName = new Map();
+  root.__kryElementsBySource = new Map();
+  root.__kryDomObjectsBySource = new Map();
+  root.__kryFormValues = new Map();
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const docNode = el.__kryDocNode || null;
+    if (!docNode)
+      continue;
+    updateElementFormValue(el);
+    if (docNode.path) {
+      root.__kryNodes.set(docNode.path, docNode);
+      root.__kryElementsByPath.set(docNode.path, el);
+    }
+    const ref = webNodeRef(docNode);
+    if (ref) {
+      root.__kryDomObjects.set(ref, makeWebDOMObject(root, docNode, el, ref));
+      root.__kryElementsByRef.set(ref, el);
+    }
+    const sourceRef = webNodeSourceRef(docNode);
+    if (sourceRef) {
+      const sourceObject = makeWebDOMObject(root, docNode, el, sourceRef);
+      if (!root.__kryDomObjects.has(sourceRef))
+        root.__kryDomObjects.set(sourceRef, sourceObject);
+      pushIndex(root.__kryDomObjectsBySource, sourceRef, sourceObject);
+      pushIndex(root.__kryElementsBySource, sourceRef, el);
+    }
+    const sourceColumnRef = webNodeSourceColumnRef(docNode);
+    if (sourceColumnRef) {
+      const sourceColumnObject = makeWebDOMObject(root, docNode, el, sourceColumnRef);
+      if (!root.__kryDomObjects.has(sourceColumnRef))
+        root.__kryDomObjects.set(sourceColumnRef, sourceColumnObject);
+      pushIndex(root.__kryDomObjectsBySource, sourceColumnRef, sourceColumnObject);
+      pushIndex(root.__kryElementsBySource, sourceColumnRef, el);
+    }
+    if (docNode.name)
+      root.__kryElementsByName.set(docNode.name, el);
+    if (docNode.domId)
+      root.__kryElementsByDomId.set(docNode.domId, el);
+    if (docNode.domName)
+      root.__kryElementsByDomName.set(docNode.domName, el);
+  }
+}
+
+function syncWebDOMElementFromNative(root, el) {
+  const docNode = el?.__kryDocNode || null;
+  if (!root || !el || !docNode)
+    return null;
+  const attrs = plainElementMap(el.attributes);
+  const classes = String(el.className || "").split(/\s+/).filter(Boolean);
+  docNode.classes = classes.filter((name) =>
+    name !== "kryon-node" && name !== "kryon-" + docNode.kind.toLowerCase());
+  docNode.domId = attrs.id ?? el.id ?? "";
+  docNode.domName = attrs.name ?? el.name ?? "";
+  docNode.domValue = attrs.value ?? docNode.domValue ?? "";
+  docNode.title = attrs.title ?? docNode.title ?? "";
+  docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
+  docNode.role = attrs.role ?? docNode.role ?? "";
+  docNode.tabIndex = attrs.tabindex !== undefined && Number.isFinite(Number(attrs.tabindex))
+    ? Math.trunc(Number(attrs.tabindex)) : docNode.tabIndex;
+  const dataAttrs = {};
+  const ariaAttrs = {};
+  const extraAttrs = {};
+  for (const [name, value] of Object.entries(attrs)) {
+    const attr = String(name).toLowerCase();
+    if (attr.startsWith("data-kry-"))
+      continue;
+    if (attr.startsWith("data-")) {
+      dataAttrs[attr.slice(5)] = value;
+      continue;
+    }
+    if (attr.startsWith("aria-")) {
+      const ariaName = attr.slice(5);
+      if (!["label", "description", "describedby", "controls", "live"].includes(ariaName))
+        ariaAttrs[ariaName] = value;
+      continue;
+    }
+    if (!webDOMInternalAttributeNames.has(attr))
+      extraAttrs[attr] = value;
+  }
+  for (const [key, value] of Object.entries(el.dataset || {})) {
+    const attr = dataSetKeyToAttrName(key);
+    if (attr && !attr.startsWith("kry-"))
+      dataAttrs[attr] = String(value ?? "");
+  }
+  docNode.dataAttrs = dataAttrs;
+  docNode.ariaAttrs = ariaAttrs;
+  docNode.extraAttrs = extraAttrs;
+  for (const key of ["disabled", "checked", "selected", "open"])
+    docNode.state[key] = !!el[key] || attrs[key] !== undefined;
+  if (docNode.tag !== "input" && docNode.tag !== "textarea" && el.textContent !== undefined && el.textContent !== null)
+    docNode.text = String(el.textContent);
+  updateElementFormValue(el);
+  syncDOMScrollMutation(el);
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  syncWebDOMRootIndexes(root);
+  return makeWebDOMObject(root, docNode, el);
+}
+
+export function webDOMSync(target, query = "") {
+  const root = mountedRoot(target);
+  if (!root)
+    return query ? null : [];
+  const text = String(query || "").trim();
+  if (text) {
+    const el = findWebElement(root, text);
+    return syncWebDOMElementFromNative(root, el);
+  }
+  const objects = [];
+  for (const el of root.__kryChildren?.values?.() || []) {
+    const object = syncWebDOMElementFromNative(root, el);
+    if (object)
+      objects.push(object);
+  }
+  syncWebDOMRootIndexes(root);
+  return objects;
 }
 
 function plainElementMap(source) {

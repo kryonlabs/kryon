@@ -377,6 +377,7 @@ export interface WebDOMObject {
   showPopover(): boolean;
   hidePopover(): boolean;
   togglePopover(force?: boolean): boolean;
+  sync(): WebDOMObject | null;
 }
 
 export interface WebDOMRenderDetail {
@@ -523,6 +524,8 @@ declare global {
     kryHidePopover?(query: string): boolean;
     kryTogglePopover?(force?: boolean): boolean;
     kryTogglePopover?(query: string, force?: boolean): boolean;
+    krySync?(): WebDOMObject | WebDOMObject[] | null;
+    krySync?(query: string): WebDOMObject | null;
   }
 
   interface Event {
@@ -673,6 +676,8 @@ export function webDOMObjectMap(target: Element | string | null): Map<string, We
 export function webDOMObserve(target: Element | string | null, selector: string,
   handler: (objects: WebDOMObject[], detail: WebDOMObserveDetail) => unknown,
   options?: WebDOMObserveOptions): (() => void) | null;
+export function webDOMSync(target: Element | string | null): WebDOMObject[];
+export function webDOMSync(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
 export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
 export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;
