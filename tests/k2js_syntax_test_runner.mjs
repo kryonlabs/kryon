@@ -505,6 +505,9 @@ function fakeDocument() {
     formCheckbox.change(false);
     assert.equal(changeValue, false);
     assert.equal(runtime.webFormValue(formTarget, "confirm"), false);
+    assert.equal(runtime.webDOMSetValue(formTarget, "confirm", true), true);
+    assert.equal(runtime.webDOMGetValue(formTarget, "confirm"), true);
+    assert.equal(runtime.webFormValue(formTarget, "confirm"), true);
 
     let submitValues = null;
     let resetValues = null;
@@ -802,6 +805,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetAttribute(target, "tap-button", "data-runtime"), "1");
     assert.equal(runtime.webDOMRemoveAttribute(target, "tap-button", "data-runtime"), true);
     assert.equal(runtime.webDOMHasAttribute(target, "tap-button", "data-runtime"), false);
+    assert.equal(runtime.webDOMGetText(target, "tap-button"), "Tap");
+    assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
+    assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
+    assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
     assert.equal(runtime.webDOMQuery(target, "[sourcePath=\"src/valid.kry\"]").element, screen);
     assert.deepEqual(runtime.webDOMQueryAll(target, ".field").map((object) => object.ref), [
       "Scene/root/search"
@@ -882,6 +889,9 @@ function fakeDocument() {
     assert.equal(runtime.webFormValues(target)["search-field"], "label");
     assert.equal(runtime.webFormValue(target, "q"), "label");
     assert.equal(runtime.findWebElement(target, "q"), firstField);
+    assert.equal(runtime.webDOMSetValue(target, "q", "preset"), true);
+    assert.equal(runtime.webDOMGetValue(target, "Scene/root/search"), "preset");
+    assert.equal(runtime.webFormValue(target, "q"), "preset");
     firstField.beforeinput("n");
     assert.equal(domState.count, 3);
     firstField.input("needle");

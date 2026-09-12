@@ -2669,6 +2669,69 @@ export function webDOMHasAttribute(target, query, name) {
   return webDOMGetAttribute(target, query, name) !== undefined;
 }
 
+export function webDOMGetText(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return undefined;
+  return el.textContent === undefined || el.textContent === null
+    ? ""
+    : String(el.textContent);
+}
+
+export function webDOMSetText(target, query, text) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return false;
+  const value = text === undefined || text === null ? "" : String(text);
+  el.textContent = value;
+  const docNode = el.__kryDocNode;
+  if (docNode) {
+    docNode.text = value;
+    docNode.value = value;
+    docNode.styleFacts = webNodeStyleFacts(docNode);
+    applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+      ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+      : null);
+  }
+  return true;
+}
+
+export function webDOMGetValue(target, query) {
+  const el = findWebElement(target, query);
+  if (!el)
+    return undefined;
+  const docNode = el.__kryDocNode;
+  return webElementValue(el, docNode) ?? docNode?.value;
+}
+
+export function webDOMSetValue(target, query, value) {
+  const el = findWebElement(target, query);
+  const docNode = el?.__kryDocNode;
+  if (!el || !docNode)
+    return false;
+  let next = value;
+  if (docNode.inputType === "checkbox" || docNode.inputType === "radio") {
+    next = !!value;
+    el.checked = next;
+    setAttr(el, "checked", next);
+  } else if (docNode.tag === "input" || docNode.tag === "textarea") {
+    next = value === undefined || value === null ? "" : String(value);
+    el.value = next;
+    if (docNode.tag === "input")
+      setAttr(el, "value", next);
+  } else {
+    next = value === undefined || value === null ? "" : String(value);
+    el.textContent = next;
+    docNode.text = next;
+  }
+  updateElementFormValue(el, next);
+  docNode.styleFacts = webNodeStyleFacts(docNode);
+  applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
+    ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
+    : null);
+  return true;
+}
+
 export function webFormValue(target, query) {
   const root = mountedRoot(target);
   if (!root)

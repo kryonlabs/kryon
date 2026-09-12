@@ -378,6 +378,10 @@ export function webDOMSetAttribute(target: Element | string | null, query: strin
 export function webDOMRemoveAttribute(target: Element | string | null, query: string, name: string): boolean;
 export function webDOMGetAttribute(target: Element | string | null, query: string, name: string): string | undefined;
 export function webDOMHasAttribute(target: Element | string | null, query: string, name: string): boolean;
+export function webDOMGetText(target: Element | string | null, query: string): string | undefined;
+export function webDOMSetText(target: Element | string | null, query: string, text: unknown): boolean;
+export function webDOMGetValue(target: Element | string | null, query: string): unknown;
+export function webDOMSetValue(target: Element | string | null, query: string, value: unknown): boolean;
 export function webFormValue(target: Element | string | null, query: string): unknown;
 export function webFormValues(target: Element | string | null): Record<string, unknown>;
 export function mount(rt: Runtime, target: Element | string | null): Runtime;
