@@ -1299,7 +1299,12 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 static Rectangle
 menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
 {
-    int font = GetFontSize();
+    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
+    int font = style.font_size > 0.0f
+        ? (int)(style.font_size + 0.5f)
+        : GetFontSize();
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f);
     int w = metrics.panel_min_width;
 
