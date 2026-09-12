@@ -318,7 +318,6 @@ RenderTabBar(TabBarProps bar)
     Vector2 mouse_world = ui_mouse_world();
     int released = IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
     int clicked_tab = -1;
-    int font = bar.font > 0 ? bar.font : Text12;
     int bar_x = (int)bar.bounds.x;
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
@@ -326,6 +325,12 @@ RenderTabBar(TabBarProps bar)
     int disabled = bar.disabled || UIContentDisabled();
     StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+    StyleFrame base_tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
+    int font = bar.font > 0 ? bar.font :
+        (base_tab_frame.value.font_size > 0.0f
+            ? (int)(base_tab_frame.value.font_size + 0.5f)
+            : Text12);
     int tab_gap = (int)bar_frame.value.gap;
     if(tab_gap < 0)
         tab_gap = 0;
@@ -467,6 +472,7 @@ RenderTabBar(TabBarProps bar)
         TabBarPaint paint;
         StyleFrame styled_tab_frame;
         Style tab_style;
+        Style close_style;
 
         if(is_selected && bar.selected_tab_bounds != NULL)
             *bar.selected_tab_bounds = tab_rect;
@@ -474,6 +480,8 @@ RenderTabBar(TabBarProps bar)
         paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
         styled_tab_frame = ui_style_apply_effects_frame(tab_frame);
         tab_style = ui_unpack_style(styled_tab_frame.value);
+        close_style = ui_unpack_style(
+            ui_style_apply_effects_frame(close_frame).value);
         if(can_draw) {
             ui_draw_material(tab_rect, bar.bounds, tab_style.background,
                              tab_style.border, tab_style.border,
@@ -527,8 +535,8 @@ RenderTabBar(TabBarProps bar)
                            !input_captured;
         int close_hovered = close_active && HoverEffectsEnabled();
 
-        Color text_color = GetColor(paint.text_color);
-        Color icon_tint = GetColor(paint.icon_color);
+        Color text_color = Fade(GetColor(paint.text_color), tab_style.opacity);
+        Color icon_tint = Fade(GetColor(paint.icon_color), tab_style.opacity);
 
         // Draw icon if present
         if(tab->icon.id != 0) {
@@ -583,6 +591,8 @@ RenderTabBar(TabBarProps bar)
                 close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
                     ButtonStateHover, is_disabled, 0);
                 paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
+                close_style = ui_unpack_style(
+                    ui_style_apply_effects_frame(close_frame).value);
                 DrawRectangleRounded(close_rect,
                     ui_tab_roundness(close_rect, close_frame.value.radius),
                     6, GetColor(close_frame.value.background));
@@ -591,7 +601,8 @@ RenderTabBar(TabBarProps bar)
                          (int)(close_rect.x + (close_rect.width -
                                                (float)TextWidth("x", font)) * 0.5f),
                          TextBaselineY("x", (int)close_rect.y, (int)close_rect.height, font),
-                         font, GetColor(paint.close_color));
+                         font, Fade(GetColor(paint.close_color),
+                                    close_style.opacity));
         }
 
         // Handle click detection
