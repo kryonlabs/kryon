@@ -5327,7 +5327,7 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	})
 	if paint.HasLabels {
 		labelStyle = unpackStyle(labelFrame.Value)
-		labelColor := Surface_Opacity(packRGBA(labelStyle.Foreground), labelStyle.Opacity)
+		labelColor := packRGBA(labelStyle.Foreground)
 		if checked {
 			paint.OffLabelColor = labelColor
 		} else {
@@ -5352,8 +5352,8 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		activeOp.Selected = true
 		activeOp.Disabled = disabled
 		r.record(activeOp)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), FontSize: labelFont, ID: props.ID, Disabled: disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), FontSize: labelFont, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Disabled: disabled})
 	} else {
 		if input.Hovered && !disabled {
 			r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+5), Color: unpackRGBA(paint.ThumbGlowColor), ID: props.ID, Hovered: true})

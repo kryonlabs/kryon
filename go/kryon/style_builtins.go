@@ -1495,6 +1495,8 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  font-size: font.md;
+  opacity: 1;
 }
 
 Toggle:hover {
@@ -3155,6 +3157,8 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  font-size: font;
+  opacity: 1;
 }
 
 Toggle:hover {
@@ -4855,6 +4859,8 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  font-size: font.md;
+  opacity: 1;
 }
 
 Toggle:hover {
@@ -6628,6 +6634,8 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  font-size: font.md;
+  opacity: 1;
 }
 
 Toggle:hover {
@@ -8374,6 +8382,8 @@ Toggle[role=Track] {
 
 Toggle[role=Label] {
   foreground: text;
+  font-size: font;
+  opacity: 1;
 }
 
 Toggle:hover {
