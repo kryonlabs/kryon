@@ -6309,16 +6309,18 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 }
 func (r *runtime) Fieldset(p FieldsetProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
+	frame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindFieldset())
+	style := unpackStyle(frame.Value)
+	font := styleFont(style, Text14)
 	w := float32(0)
 	if p.Title != "" {
-		w = float32(runtimeTextWidth(p.Title, Text14))
+		w = float32(runtimeTextWidth(p.Title, font))
 	}
-	frame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindFieldset())
 	paint := Fieldset_FieldsetPaintFor(p.Bounds, w, p.Title != "", 1, frame)
 	r.record(styleFrameRectOp(paint.Frame, Rectangle{}, paint.Face))
 	if paint.ShowTitle {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.TitleBackground, Color: unpackRGBA(paint.BackgroundColor)})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), FontSize: Text14})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font})
 	}
 }
 func (r *runtime) PanedView(p PanedViewProps) int32 {

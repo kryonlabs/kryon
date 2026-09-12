@@ -1378,7 +1378,7 @@ tokens {
   length { radius: 9; border: 3; }
   material { flat: Flat; }
 }
-Fieldset { background: canvas; foreground: text; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.75; }
+Fieldset { background: canvas; foreground: text; border: rule; radius: radius; border-width: border; font-size: 18; material: flat; opacity: 0.75; }
 `, "Test Fieldset", "") || !SetActiveStylePack("test.fieldset") {
 		t.Fatal("test fieldset style did not activate")
 	}
@@ -1407,7 +1407,8 @@ Fieldset { background: canvas; foreground: text; border: rule; radius: radius; b
 			}
 		case op.Kind == FrameOpText && op.Text == "Group":
 			sawText = true
-			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) {
+			if op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.75 {
 				t.Fatalf("fieldset title text op = %+v", op)
 			}
 		}

@@ -2933,9 +2933,11 @@ RenderFieldset(FieldsetProps frame)
 {
     int font = GetSmallFontSize();
     const char *title = frame.title != NULL ? frame.title : "";
-    int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
     StyleFrame style = ui_tk_simple_style_frame(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, StyleKindFieldset());
+    if(style.value.font_size > 0.0f)
+        font = (int)(style.value.font_size + 0.5f);
+    int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;
     FieldsetPaint paint = FieldsetPaintFor(
         frame.bounds, (float)title_width, title[0] != '\0',
         (float)Scale(1000) / 1000.0f, style);
@@ -2945,7 +2947,8 @@ RenderFieldset(FieldsetProps frame)
         DrawRectangleRec(paint.title_background,
                          GetColor(paint.background_color));
         RenderText(title, (int)paint.title_text.x, (int)paint.title_text.y,
-                   font, GetColor(paint.text_color));
+                   font, GetColor(Opacity(paint.text_color,
+                                          style.value.opacity)));
     }
 }
 

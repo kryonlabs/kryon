@@ -633,6 +633,7 @@ Fieldset {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -2314,6 +2315,7 @@ Fieldset {
   border: border;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3953,6 +3955,7 @@ Fieldset {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -5670,6 +5673,7 @@ Fieldset {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: app;
 }
@@ -7431,6 +7435,7 @@ Fieldset {
   border: border-soft;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: app;
 }
