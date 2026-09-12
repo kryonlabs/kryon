@@ -457,6 +457,7 @@ typedef struct UiBlock {
     char dom_rel[KIR_TEXT_MAX];
     char dom_for_attr[KIR_NAME_MAX];
     char dom_data_attrs[KIR_TEXT_MAX];
+    char dom_extra_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
     char dom_input_type[KIR_NAME_MAX];
     char dom_form_action[KIR_TEXT_MAX];
@@ -783,6 +784,32 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                                sizeof(block->dom_data_attrs) - used,
                                "%s\t%s\n", attr, value);
         if(written < 0 || (size_t)written >= sizeof(block->dom_data_attrs) - used)
+            return 0;
+        return 1;
+    }
+    if(strncmp(field, "attr_", 5) == 0 ||
+       strncmp(field, "dom_attr_", 9) == 0 ||
+       strncmp(field, "html_attr_", 10) == 0) {
+        const char *name = field[0] == 'd' ? field + 9 :
+                           field[0] == 'h' ? field + 10 : field + 5;
+        char attr[KIR_NAME_MAX];
+        size_t used = strlen(block->dom_extra_attrs);
+        size_t length = 0;
+
+        if(name[0] == '\0')
+            return 0;
+        for(const char *p = name; *p != '\0'; p++) {
+            if(!isalnum((unsigned char)*p) && *p != '_' && *p != '-')
+                return 0;
+            if(length + 1 < sizeof(attr))
+                attr[length++] = *p == '_' ? '-' : (char)tolower((unsigned char)*p);
+        }
+        attr[length] = '\0';
+        int written = snprintf(block->dom_extra_attrs + used,
+                               sizeof(block->dom_extra_attrs) - used,
+                               "%s\t%s\n", attr, value);
+        if(written < 0 ||
+           (size_t)written >= sizeof(block->dom_extra_attrs) - used)
             return 0;
         return 1;
     }
@@ -1181,6 +1208,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_for_attr);
     snprintf(statement->dom_data_attrs, sizeof(statement->dom_data_attrs),
              "%s", block->dom_data_attrs);
+    snprintf(statement->dom_extra_attrs, sizeof(statement->dom_extra_attrs),
+             "%s", block->dom_extra_attrs);
     snprintf(statement->dom_placeholder, sizeof(statement->dom_placeholder),
              "%s", block->dom_placeholder);
     snprintf(statement->dom_input_type, sizeof(statement->dom_input_type), "%s",

@@ -151,6 +151,10 @@ assert.equal(webDoc.nodes[2].ariaDescription, "Runs the host action");
 assert.equal(webDoc.nodes[2].ariaControls, "search-field");
 assert.equal(webDoc.nodes[2].popoverTarget, "search-menu");
 assert.equal(webDoc.nodes[2].popoverTargetAction, "toggle");
+assert.deepEqual(webDoc.nodes[2].extraAttrs, {
+  fetchpriority: "high",
+  part: "primary-action"
+});
 assert.equal(webDoc.nodes[2].onClick, "call_host");
 assert.deepEqual(webDoc.nodes[2].styleFacts, {
   kind: "Button",
@@ -201,7 +205,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   ariaAttrs: { current: "page", pressed: "false" },
-  extraAttrs: {},
+  extraAttrs: { fetchpriority: "high", part: "primary-action" },
   role: "button",
   state: {
     disabled: false,
@@ -261,6 +265,8 @@ assert.equal(runtime.webNodeQuery(rt, "[for=\"search-field\"]").path, "Scene/roo
 assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-field\"]").path, "Scene/root/search_label");
 assert.equal(runtime.webNodeQuery(rt, "[popover=manual]").path, "Scene/root/search_label");
 assert.equal(runtime.webNodeQuery(rt, "[popoverTarget=\"search-menu\"]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[fetchpriority=high]").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "[part=\"primary-action\"]").path, "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -827,6 +833,8 @@ function fakeDocument() {
     assert.equal(firstButton.attributes["aria-controls"], "search-field");
     assert.equal(firstButton.attributes.popovertarget, "search-menu");
     assert.equal(firstButton.attributes.popovertargetaction, "toggle");
+    assert.equal(firstButton.attributes.fetchpriority, "high");
+    assert.equal(firstButton.attributes.part, "primary-action");
     assert.equal(firstButton.style.background, "#203040");
     assert.equal(firstButton.style.color, "#f0f0f0");
     assert.equal(firstButton.style.borderRadius, "9px");
@@ -928,6 +936,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "[htmlFor=\"search-field\"]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popover=manual]").ref, "Scene/root/search_label");
     assert.equal(runtime.webDOMQuery(target, "[popoverTarget=\"search-menu\"]").ref, "Scene/root/tap");
+    assert.equal(runtime.webDOMQuery(target, "[fetchpriority=high]").ref, "Scene/root/tap");
+    assert.equal(runtime.webDOMQuery(target, "[part=\"primary-action\"]").ref, "Scene/root/tap");
     const domRefs = runtime.webDOMObjects(target).map((object) => object.ref);
     assert.equal(domRefs[0], "Scene/root");
     assert.match(domRefs[1], /^Scene\/root\/Text@\d+$/);

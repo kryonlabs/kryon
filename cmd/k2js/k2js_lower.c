@@ -1205,7 +1205,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_title[0] || st->dom_href[0] ||
            st->dom_target[0] || st->dom_rel[0] ||
            st->dom_for_attr[0] ||
-           st->dom_data_attrs[0] ||
+           st->dom_data_attrs[0] || st->dom_extra_attrs[0] ||
            st->dom_placeholder[0] || st->dom_input_type[0] ||
            st->dom_form_action[0] || st->dom_form_method[0] ||
            st->dom_form_enctype[0] || st->dom_autocomplete[0] ||
@@ -1409,6 +1409,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "rel", st->dom_rel, &emitted);
     emit_metadata_expr_field(f, m, "htmlFor", st->dom_for_attr, &emitted);
     emit_metadata_data_attrs(f, m, st->dom_data_attrs, &emitted);
+    emit_metadata_attr_map(f, m, "extraAttrs", st->dom_extra_attrs,
+                           &emitted);
     emit_metadata_expr_field(f, m, "placeholder", st->dom_placeholder,
                              &emitted);
     emit_metadata_expr_field(f, m, "inputType", st->dom_input_type,

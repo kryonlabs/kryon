@@ -154,6 +154,8 @@ Scene :: (viewport: Rectangle) #ui {
             aria_pressed = false
             popover_target = "search-menu"
             popover_target_action = "toggle"
+            attr_fetchpriority = "high"
+            html_attr_part = "primary-action"
             on_click = call_host
         }
         TextField search: {

@@ -1090,6 +1090,21 @@ function propAriaAttrs(meta) {
   return out;
 }
 
+function propExtraAttrs(meta) {
+  const out = {};
+  const attrs = meta && typeof meta.extraAttrs === "object" && !Array.isArray(meta.extraAttrs)
+    ? meta.extraAttrs : null;
+  if (!attrs)
+    return out;
+  for (const [name, value] of Object.entries(attrs)) {
+    const attr = String(name).trim().toLowerCase();
+    if (!attr || !/^[a-z][a-z0-9._:-]*$/.test(attr))
+      continue;
+    out[attr] = value === undefined || value === null ? "" : String(value);
+  }
+  return out;
+}
+
 function metaBool(meta, name) {
   const value = meta?.[name];
   if (typeof value === "string")
@@ -1146,6 +1161,7 @@ function webNodeFromWidget(item, index) {
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     htmlFor: metaString(meta, "htmlFor"),
     dataAttrs: propDataAttrs(meta),
+    extraAttrs: propExtraAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
     formAction: meta.formAction === undefined || meta.formAction === null ? "" : String(meta.formAction),
     formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
