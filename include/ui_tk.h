@@ -166,24 +166,23 @@ typedef struct {
     int disabled;
 } SeparatorProps;
 
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char *type;
-    const void *data;
-    int data_size;
-    int disabled;
-} DragDropSourceProps;
+typedef enum {
+    DragDropRoleSource = 0,
+    DragDropRoleTarget = 1
+} DragDropRole;
 
 typedef struct {
     Rectangle bounds;
     int id;
+    DragDropRole role;
     const char *type;
+    const void *data;
+    int data_size;
     void *output;
     int output_size;
     int *accepted_size;
     int disabled;
-} DragDropTargetProps;
+} DragDropProps;
 
 typedef struct {
     Rectangle bounds;

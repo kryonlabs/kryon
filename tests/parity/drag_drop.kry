@@ -10,16 +10,16 @@ state {
 drag_drop_frame :: () #ui {
     Scroll {
         bounds = {0,0,1,1}
-        if DragDropSource((DragDropSourceProps){.bounds = {10,10,80,30}, .id = 961, .type = "ITEM", .data = dd_payload, .data_size = 8}) {
+        if DragDrop((DragDropProps){.bounds = {10,10,80,30}, .id = 961, .role = DragDropRoleSource, .type = "ITEM", .data = dd_payload, .data_size = 8}) {
             dd_invalid_accepts += 1
         }
     }
-    DragDropSource((DragDropSourceProps){.bounds = {10,10,80,30}, .id = 962, .type = "ITEM", .data = dd_payload, .data_size = 8})
+    DragDrop((DragDropProps){.bounds = {10,10,80,30}, .id = 962, .role = DragDropRoleSource, .type = "ITEM", .data = dd_payload, .data_size = 8})
     Scroll {
         bounds = {0,0,1,1}
-        if DragDropTarget((DragDropTargetProps){.bounds = {120,10,100,30}, .id = 963, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted}) {
+        if DragDrop((DragDropProps){.bounds = {120,10,100,30}, .id = 963, .role = DragDropRoleTarget, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted}) {
             dd_invalid_accepts += 1
         }
     }
-    DragDropTarget((DragDropTargetProps){.bounds = {120,10,100,30}, .id = 964, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted})
+    DragDrop((DragDropProps){.bounds = {120,10,100,30}, .id = 964, .role = DragDropRoleTarget, .type = "ITEM", .output = dd_received, .output_size = 8, .accepted_size = &dd_accepted})
 }

@@ -264,8 +264,7 @@ func Selectable(props SelectableProps) bool            { return active().Selecta
 func Checkbox(props CheckboxProps) bool                { return active().Checkbox(props) }
 func Bullet(bounds Rectangle)                          { active().Bullet(bounds) }
 func Separator(props SeparatorProps)                   { active().Separator(props) }
-func DragDropSource(props DragDropSourceProps) bool    { return active().DragDropSource(props) }
-func DragDropTarget(props DragDropTargetProps) bool    { return active().DragDropTarget(props) }
+func DragDrop(props DragDropProps) bool                { return active().DragDrop(props) }
 func MultiSelectList(props MultiSelectListProps) int32 { return active().MultiSelectList(props) }
 func ColorPicker(props ColorPickerProps) bool          { return active().ColorPicker(props) }
 func TabBar(props TabBarProps) int32                   { return active().TabBar(props) }

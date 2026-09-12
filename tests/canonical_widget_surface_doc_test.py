@@ -26,8 +26,6 @@ NATIVE_COMPAT_EXPORTS = {
     "BeginScroll",
     "BeginTableCell",
     "ContextMenu",
-    "DragDropSource",
-    "DragDropTarget",
     "EndDisabled",
     "EndPopup",
     "EndScroll",
@@ -45,8 +43,6 @@ NATIVE_SCOPE_EXPORT_ALLOWLIST = {
 
 ROLE_COMPAT_EXPORTS = {
     "ContextMenu",
-    "DragDropSource",
-    "DragDropTarget",
     "MenuBar",
     "PopupMenu",
 }

@@ -635,24 +635,24 @@ func TestPopupDragDropOwnershipAndClipping(t *testing.T) {
 	payload := []byte("item")
 	output := make([]byte, 8)
 	accepted := int32(99)
-	source := DragDropSourceProps{Bounds: panel, ID: 31, Type: "ITEM", Data: payload}
-	target := DragDropTargetProps{Bounds: panel, ID: 32, Type: "ITEM", Output: output, AcceptedSize: &accepted}
+	source := DragDropProps{Bounds: panel, ID: 31, Role: DragDropRoleSource, Type: "ITEM", Data: payload}
+	target := DragDropProps{Bounds: panel, ID: 32, Role: DragDropRoleTarget, Type: "ITEM", Output: output, AcceptedSize: &accepted}
 	r.BeginFrame()
 	owner := r.beginPopupInput(30, panel)
 	r.endPopupInput(owner)
 	r.EndFrame()
 	r.QueueMouseButtonDown(MouseButtonLeft, 40, 40)
 	r.BeginFrame()
-	if r.DragDropSource(source) || r.dragDrop.active {
+	if r.DragDrop(source) || r.dragDrop.active {
 		t.Fatal("background source stole popup press")
 	}
 	owner = r.beginPopupInput(30, panel)
 	r.scrollClips = []Rectangle{NewRectangle(0, 0, 1, 1)}
-	if r.DragDropSource(source) {
+	if r.DragDrop(source) {
 		t.Fatal("clipped source activated")
 	}
 	r.scrollClips = nil
-	if !r.DragDropSource(source) {
+	if !r.DragDrop(source) {
 		t.Fatal("popup source did not activate")
 	}
 	r.endPopupInput(owner)
@@ -660,24 +660,24 @@ func TestPopupDragDropOwnershipAndClipping(t *testing.T) {
 	payload[0] = 'X'
 	r.QueueMouseButtonUp(MouseButtonLeft, 40, 40)
 	r.BeginFrame()
-	if r.DragDropTarget(target) || accepted != 0 || !r.mouseReleased[MouseButtonLeft] || !r.dragDrop.active {
+	if r.DragDrop(target) || accepted != 0 || !r.mouseReleased[MouseButtonLeft] || !r.dragDrop.active {
 		t.Fatal("background target consumed popup release or payload")
 	}
 	owner = r.beginPopupInput(30, panel)
 	r.scrollClips = []Rectangle{NewRectangle(0, 0, 1, 1)}
-	if r.DragDropTarget(target) {
+	if r.DragDrop(target) {
 		t.Fatal("clipped target accepted payload")
 	}
 	r.scrollClips = nil
 	target.Disabled = true
-	if r.DragDropTarget(target) {
+	if r.DragDrop(target) {
 		t.Fatal("disabled target accepted payload")
 	}
 	target.Disabled = false
-	if !r.DragDropTarget(target) || accepted != 4 || string(output[:accepted]) != "item" {
+	if !r.DragDrop(target) || accepted != 4 || string(output[:accepted]) != "item" {
 		t.Fatal("popup target did not receive the owned payload after rejected targets")
 	}
-	if r.DragDropTarget(target) {
+	if r.DragDrop(target) {
 		t.Fatal("release accepted twice")
 	}
 	r.endPopupInput(owner)

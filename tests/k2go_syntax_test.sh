@@ -311,8 +311,8 @@ App :: () #ui {
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section", .font = Text14})
     Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .font = Text14, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
     tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})
-    DragDropSource((DragDropSourceProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .type = "TEXT", .data = field_text, .data_size = 64})
-    DragDropTarget((DragDropTargetProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
+    DragDrop((DragDropProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .role = DragDropRoleSource, .type = "TEXT", .data = field_text, .data_size = 64})
+    DragDrop((DragDropProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .role = DragDropRoleTarget, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
     MultiSelectList((MultiSelectListProps){.bounds = {Scale(250),Scale(1194),Scale(180),Scale(84)}, .id = 57, .items = choices, .item_count = 3, .selected = nums, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = 28})
     Progress((ProgressProps){{Scale(140), Scale(224), Scale(100), Scale(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressProps){{Scale(140), Scale(238), Scale(100), Scale(10)}, 0, 100, helper_value(), ""})
@@ -598,8 +598,8 @@ grep -q 'kr.Button(kr.ButtonProps{.*ImageAssetPath: choice_image.AssetPath.*Imag
 grep -q 'kr.Separator(kr.SeparatorProps{.*Label: "Section".*Font: kr.Text14' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Label: "+".*Font: int32(kr.Text14).*Tone: kr.ButtonToneNeutral.*Emphasis: kr.ButtonEmphasisGhost' "$out"
 grep -q 'kr.TabBar(kr.TabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: st.Tab.*ClosedIndex: &st.ClosedTab' "$out"
-grep -q 'kr.DragDropSource(kr.DragDropSourceProps{.*Data: st.FieldText\[:\]' "$out"
-grep -q 'kr.DragDropTarget(kr.DragDropTargetProps{.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
+grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleSource.*Data: st.FieldText\[:\]' "$out"
+grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleTarget.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
 grep -q 'kr.MultiSelectList(kr.MultiSelectListProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
 grep -q 'kr.Collapsible(kr.CollapsibleProps{' "$out"
 grep -q 'SetThemeDarkMode(1' "$out"

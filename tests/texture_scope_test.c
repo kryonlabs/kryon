@@ -455,9 +455,10 @@ int main(void)
     UIPaintLayers *gesture_a = ui_paint_layers_create();
     UIPaintLayers *gesture_b = ui_paint_layers_create();
     int drag_payload = 73;
-    DragDropSourceProps drag_source = {
+    DragDropProps drag_source = {
         .bounds = {0,0,8,8},
         .id = 41250,
+        .role = DragDropRoleSource,
         .type = "host-payload",
         .data = &drag_payload,
         .data_size = sizeof(drag_payload)
@@ -467,19 +468,19 @@ int main(void)
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
     ui_paint_layers_frame(gesture_a,64,64);
-    if(!RenderDragDropSource(drag_source)) {
+    if(!RenderDragDrop(drag_source)) {
         fprintf(stderr,"first host did not retain its drag payload\n");
         failures++;
     }
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
     ui_paint_layers_frame(gesture_b,64,64);
-    if(RenderDragDropSource(drag_source)) {
+    if(RenderDragDrop(drag_source)) {
         fprintf(stderr,"drag payload crossed render hosts\n");
         failures++;
     }
     ui_paint_layers_composite(gesture_b);
-    if(!RenderDragDropSource(drag_source)) {
+    if(!RenderDragDrop(drag_source)) {
         fprintf(stderr,"restored host lost its drag payload\n");
         failures++;
     }

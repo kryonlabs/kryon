@@ -1924,8 +1924,7 @@ include/ui_tree.h function ColorPicker
 include/ui_tree.h function Column
 include/ui_tree.h function ContextMenu
 include/ui_tree.h function Drag
-include/ui_tree.h function DragDropSource
-include/ui_tree.h function DragDropTarget
+include/ui_tree.h function DragDrop
 include/ui_tree.h function Dropdown
 include/ui_tree.h function End
 include/ui_tree.h function EndDisabled

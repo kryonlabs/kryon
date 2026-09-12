@@ -997,7 +997,6 @@ function widgetTag(item) {
   case "Link":
     return "a";
   case "Button":
-  case "InvisibleButton":
     return "button";
   case "TextField":
     return "input";
@@ -1024,7 +1023,6 @@ function widgetText(item) {
   case "Link":
     return propString(args, "text", "");
   case "Button":
-  case "InvisibleButton":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -4277,7 +4275,7 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function BeginCanvas(canvas) {
+export function Canvas(canvas) {
   return {
     active: false,
     dragging: false,
@@ -4294,7 +4292,7 @@ export function CanvasHitTest(canvas, screen) {
 
 const runtimeCallNames = [
   "AppBackground", "Background", "Bevel", "BottomNav", "Button", "Card", "CanvasGrid", "Checkbox",
-  "ClearBackground", "Collapsible", "Column", "Dropdown",
+  "ClearBackground", "Collapsible", "Column", "DragDrop", "Dropdown",
   "Icon", "Fieldset", "Link", "ListBox",
   "Modal", "Paragraph", "Image", "Progress", "Radio", "Rect",
   "Row", "Screen", "Scroll", "SelectableText", "SetCurrentTheme",
@@ -4321,6 +4319,7 @@ export function Checkbox(...args) { return struct("Checkbox", args); }
 export function ClearBackground(...args) { return struct("ClearBackground", args); }
 export function Collapsible(...args) { return struct("Collapsible", args); }
 export function Column(...args) { return struct("Column", args); }
+export function DragDrop(...args) { return struct("DragDrop", args); }
 export function Dropdown(...args) { return struct("Dropdown", args); }
 export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }

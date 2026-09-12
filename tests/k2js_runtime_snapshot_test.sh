@@ -127,7 +127,7 @@ const expected = new Map([
   ["tests/parity/progress.js", ["Screen", "Progress"]],
   ["tests/parity/plots.js", ["Screen", "Plot", "Plot", "Drag", "Drag", "Drag", "Drag", "Slider", "Slider", "Slider", "Slider", "Slider", "Input", "Input", "Input", "Button", "Button", "Button", "Bullet", "Separator", "ColorPicker", "ColorPicker", "ColorPicker", "ColorPicker", "Button", "Text", "Text", "Text", "Text", "Text", "Bullet", "Text", "Text", "Text", "Text", "Text"]],
   ["tests/parity/menus.js", ["Screen", "PopupMenu", "ContextMenu", "Text", "Progress"]],
-  ["tests/parity/selection_images.js", ["Screen", "Selectable", "Checkbox", "Image", "Button", "Separator", "Button", "TabBar", "DragDropSource", "DragDropTarget", "MultiSelectList"]],
+  ["tests/parity/selection_images.js", ["Screen", "Selectable", "Checkbox", "Image", "Button", "Separator", "Button", "TabBar", "DragDrop", "DragDrop", "MultiSelectList"]],
   ["tests/parity/table_view.js", ["Screen", "TableView"]],
   ["tests/parity/widget_catalog.js", ["Screen", "Background", "TitleBar", "Toolbar", "Toolbar", "NavigationBar", "Column", "Text", "Row", "Button", "Button", "Link", "Stack", "Rect", "Line", "Bevel", "Text", "Text", "Text", "Text", "Paragraph", "SelectableText", "ShowToast", "TextField", "TextArea", "Dropdown", "Slider", "Toggle", "Checkbox", "Radio", "Spinbox", "Dropdown", "Progress", "ColorPicker", "Fieldset", "Image", "Icon", "Button", "Image", "TabBar", "ListBox", "TreeView", "Rect", "Text", "Text", "TableView", "PanedView", "Collapsible", "Modal", "Modal", "Modal", "Modal", "Modal", "CanvasGrid"]]
 ]);

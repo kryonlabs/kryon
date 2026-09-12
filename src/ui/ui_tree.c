@@ -2688,17 +2688,10 @@ Separator(SeparatorProps separator)
 }
 
 int
-DragDropSource(DragDropSourceProps source)
+DragDrop(DragDropProps drag_drop)
 {
-    ui_tree_add(source.id, WIDGET_CUSTOM, source.bounds, &source);
-    return RenderDragDropSource(source);
-}
-
-int
-DragDropTarget(DragDropTargetProps target)
-{
-    ui_tree_add(target.id, WIDGET_CUSTOM, target.bounds, &target);
-    return RenderDragDropTarget(target);
+    ui_tree_add(drag_drop.id, WIDGET_CUSTOM, drag_drop.bounds, &drag_drop);
+    return RenderDragDrop(drag_drop);
 }
 
 int

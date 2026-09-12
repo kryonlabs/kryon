@@ -82,8 +82,8 @@ is_runtime_go_type(const char *type)
         "NavigationBarItem", "NavigationBarProps",
 		"ToolbarProps", "CardProps", "RadioProps", "ProgressProps", "PlotProps",
 		"NumericValueKind", "DragMode", "DragProps", "SliderProps", "InputProps",
-		"TextProps", "SeparatorProps", "DragDropSourceProps",
-		"DragDropTargetProps", "MultiSelectListProps",
+		"TextProps", "SeparatorProps", "DragDropRole", "DragDropProps",
+		"MultiSelectListProps",
 		"ColorPickerProps",
 		"SpinboxProps", "DropdownOption", "DropdownProps", "PopupFlags", "PopupProps",
 		"FieldsetProps", "ListBoxProps",
@@ -1046,10 +1046,8 @@ props_field_at(const KirModule *module, const char *type, int index,
 		                   "Step", "StepFast", "Format", "Disabled"}},
 		{"TextProps", {"Bounds", "Text", "Font", "Color", "Wrap", "Align", "VerticalAlign", "Disabled", "LetterSpacing", "Typeface", "Style"}},
 		{"SeparatorProps", {"Bounds", "Vertical", "Label", "Font", "Disabled"}},
-		{"DragDropSourceProps", {"Bounds", "ID", "Type", "Data", "DataSize",
-		                           "Disabled"}},
-		{"DragDropTargetProps", {"Bounds", "ID", "Type", "Output",
-		                           "OutputSize", "AcceptedSize", "Disabled"}},
+		{"DragDropProps", {"Bounds", "ID", "Role", "Type", "Data", "DataSize",
+		                    "Output", "OutputSize", "AcceptedSize", "Disabled"}},
 		{"MultiSelectListProps", {"Bounds", "ID", "Items", "ItemCount",
 		                            "Selected", "SelectedCount", "Anchor",
 		                            "RowHeight", "Disabled"}},
@@ -1270,9 +1268,8 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "TabBarProps") == 0 && strcmp(field, "Tabs") == 0)
         return 1;
-    if(strcmp(type, "DragDropSourceProps") == 0 && strcmp(field, "Data") == 0)
-        return 1;
-    if(strcmp(type, "DragDropTargetProps") == 0 && strcmp(field, "Output") == 0)
+    if(strcmp(type, "DragDropProps") == 0 &&
+       (strcmp(field, "Data") == 0 || strcmp(field, "Output") == 0))
         return 1;
     if(strcmp(type, "MultiSelectListProps") == 0 &&
        (strcmp(field, "Items") == 0 || strcmp(field, "Selected") == 0))
@@ -2032,6 +2029,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 					{"PopupTooltip", "PopupTooltip"},
 					{"PopupModal", "PopupModal"},
                     {"PopupContext", "PopupContext"},
+                    {"DragDropRoleSource", "DragDropRoleSource"},
+                    {"DragDropRoleTarget", "DragDropRoleTarget"},
                     {"KEY_C", "KeyC"},
 					{"MenuCommand", "MenuCommand"},
 					{"MenuCheck", "MenuCheck"},

@@ -453,19 +453,20 @@ type SeparatorProps struct {
 	Disabled bool
 }
 
-type DragDropSourceProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Type     string
-	Data     []byte
-	DataSize int32
-	Disabled bool
-}
+type DragDropRole int32
 
-type DragDropTargetProps struct {
+const (
+	DragDropRoleSource DragDropRole = 0
+	DragDropRoleTarget DragDropRole = 1
+)
+
+type DragDropProps struct {
 	Bounds       Rectangle
 	ID           int32
+	Role         DragDropRole
 	Type         string
+	Data         []byte
+	DataSize     int32
 	Output       []byte
 	OutputSize   int32
 	AcceptedSize *int32
@@ -1232,8 +1233,7 @@ type Runtime interface {
 	Checkbox(CheckboxProps) bool
 	Bullet(Rectangle)
 	Separator(SeparatorProps)
-	DragDropSource(DragDropSourceProps) bool
-	DragDropTarget(DragDropTargetProps) bool
+	DragDrop(DragDropProps) bool
 	MultiSelectList(MultiSelectListProps) int32
 	ColorPicker(ColorPickerProps) bool
 	TabBar(TabBarProps) int32
@@ -2558,7 +2558,41 @@ func (r *runtime) Separator(props SeparatorProps) {
 	}
 }
 
-func (r *runtime) DragDropSource(props DragDropSourceProps) bool {
+func (r *runtime) DragDrop(props DragDropProps) bool {
+	bounds := r.layoutRect(props.Bounds)
+	if props.Role == DragDropRoleTarget {
+		if props.AcceptedSize != nil {
+			*props.AcceptedSize = 0
+		}
+		matches := DragDrop_DragDropTargetMatches(r.dragDrop.active, props.Type != "", r.dragDrop.typeName == props.Type)
+		hot := DragDrop_DragDropTargetHot(props.Disabled, r.contentDisabled(), r.pointerCanReach(bounds))
+		if matches {
+			color := r.theme().border
+			if hot {
+				color = r.theme().link
+			}
+			r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, BorderColor: color, Disabled: props.Disabled, Selected: hot})
+		}
+		if !DragDrop_DragDropTargetAccepts(props.Disabled, r.contentDisabled(), matches, hot, r.mouseReleased[MouseButtonLeft]) {
+			return false
+		}
+		size := int(props.OutputSize)
+		if size <= 0 || size > len(props.Output) {
+			size = len(props.Output)
+		}
+		if size > len(r.dragDrop.data) {
+			size = len(r.dragDrop.data)
+		}
+		size = int(DragDrop_DragDropCopySize(int32(len(r.dragDrop.data)), int32(size)))
+		copy(props.Output[:size], r.dragDrop.data[:size])
+		if props.AcceptedSize != nil {
+			*props.AcceptedSize = int32(size)
+		}
+		r.dragDrop = dragDropState{}
+		r.mouseReleased[MouseButtonLeft] = false
+		return true
+	}
+
 	if DragDrop_DragDropShouldClearSource(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{}
 	}
@@ -2570,45 +2604,10 @@ func (r *runtime) DragDropSource(props DragDropSourceProps) bool {
 	if !valid {
 		return false
 	}
-	bounds := r.layoutRect(props.Bounds)
 	if DragDrop_DragDropSourceStarts(valid, r.pointerCanReach(bounds), r.mousePressed[MouseButtonLeft]) {
 		r.dragDrop = dragDropState{active: true, sourceID: props.ID, typeName: props.Type, data: append([]byte(nil), props.Data[:size]...)}
 	}
 	return DragDrop_DragDropSourceReturnsActive(r.dragDrop.active, r.dragDrop.sourceID, props.ID, r.mouseDown[MouseButtonLeft], r.mouseReleased[MouseButtonLeft])
-}
-
-func (r *runtime) DragDropTarget(props DragDropTargetProps) bool {
-	if props.AcceptedSize != nil {
-		*props.AcceptedSize = 0
-	}
-	bounds := r.layoutRect(props.Bounds)
-	matches := DragDrop_DragDropTargetMatches(r.dragDrop.active, props.Type != "", r.dragDrop.typeName == props.Type)
-	hot := DragDrop_DragDropTargetHot(props.Disabled, r.contentDisabled(), r.pointerCanReach(bounds))
-	if matches {
-		color := r.theme().border
-		if hot {
-			color = r.theme().link
-		}
-		r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, BorderColor: color, Disabled: props.Disabled, Selected: hot})
-	}
-	if !DragDrop_DragDropTargetAccepts(props.Disabled, r.contentDisabled(), matches, hot, r.mouseReleased[MouseButtonLeft]) {
-		return false
-	}
-	size := int(props.OutputSize)
-	if size <= 0 || size > len(props.Output) {
-		size = len(props.Output)
-	}
-	if size > len(r.dragDrop.data) {
-		size = len(r.dragDrop.data)
-	}
-	size = int(DragDrop_DragDropCopySize(int32(len(r.dragDrop.data)), int32(size)))
-	copy(props.Output[:size], r.dragDrop.data[:size])
-	if props.AcceptedSize != nil {
-		*props.AcceptedSize = int32(size)
-	}
-	r.dragDrop = dragDropState{}
-	r.mouseReleased[MouseButtonLeft] = false
-	return true
 }
 
 func (r *runtime) MultiSelectList(props MultiSelectListProps) int32 {

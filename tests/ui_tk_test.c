@@ -4339,8 +4339,8 @@ test_drag_drop_accepts_dragged_release(void)
 {
     FrameState saved = SaveFrameState();
     int payload = 42, output = 0, accepted = 0;
-    DragDropSourceProps source = {{10,10,80,40}, 9401, "integer", &payload, sizeof(payload), 0};
-    DragDropTargetProps target = {{150,10,80,40}, 9402, "integer", &output, sizeof(output), &accepted, 0};
+    DragDropProps source = {{10,10,80,40}, 9401, DragDropRoleSource, "integer", &payload, sizeof(payload), NULL, 0, NULL, 0};
+    DragDropProps target = {{150,10,80,40}, 9402, DragDropRoleTarget, "integer", NULL, 0, &output, sizeof(output), &accepted, 0};
 
     InjectReset();
     for(int frame = 0; frame < 3; frame++) {
@@ -4350,8 +4350,8 @@ test_drag_drop_accepts_dragged_release(void)
         InjectPump();
         BeginInterfaceFrame(640, 480, 1.0f);
         if(frame == 2) g_ui_pointer_dragging = 1;
-        DragDropSource(source);
-        DragDropTarget(target);
+        DragDrop(source);
+        DragDrop(target);
         EndInterfaceFrame();
     }
     check_int("dragged release copies payload", output, payload);

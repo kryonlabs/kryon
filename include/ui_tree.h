@@ -239,8 +239,7 @@ int Dropdown(DropdownProps dropdown);
 int Toggle(ToggleProps toggle);
 int Checkbox(CheckboxProps checkbox);
 void Separator(SeparatorProps separator);
-int DragDropSource(DragDropSourceProps source);
-int DragDropTarget(DragDropTargetProps target);
+int DragDrop(DragDropProps drag_drop);
 int MultiSelectList(MultiSelectListProps list);
 MenuBarResult MenuBar(int id, Rectangle bounds, const Menu *menus,
                               int menu_count, int *open_index);

@@ -306,11 +306,11 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         MultiSelectList((MultiSelectListProps){.bounds = {x,y + Scale(330),Scale(350),Scale(110)}, .id = 206, .items = choices, .item_count = 3, .selected = multi_selected, .selected_count = &multi_count, .anchor = &multi_anchor, .row_height = Scale(30)})
         Text((TextProps){.bounds={x, y + Scale(480), 0, 0}, .text="Drag text from the left into the right box", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Rect(x,y + Scale(522),Scale(300),Scale(48),GetThemeSurface(),GetThemeButton())
-        Text((TextProps){.bounds={x + Scale(12), y + Scale(538), 0, 0}, .text="DragDropSource", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        DragDropSource((DragDropSourceProps){.bounds = {x,y + Scale(522),Scale(300),Scale(48)}, .id = 207, .type = "TEXT", .data = text_value, .data_size = sizeof(text_value)})
+        Text((TextProps){.bounds={x + Scale(12), y + Scale(538), 0, 0}, .text="DragDrop source", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        DragDrop((DragDropProps){.bounds = {x,y + Scale(522),Scale(300),Scale(48)}, .id = 207, .role = DragDropRoleSource, .type = "TEXT", .data = text_value, .data_size = sizeof(text_value)})
         Rect(right,y + Scale(522),Scale(300),Scale(48),GetThemeSurface(),GetThemeButton())
-        Text((TextProps){.bounds={right + Scale(12), y + Scale(538), 0, 0}, .text="DragDropTarget", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        DragDropTarget((DragDropTargetProps){.bounds = {right,y + Scale(522),Scale(300),Scale(48)}, .id = 208, .type = "TEXT", .output = area_value, .output_size = sizeof(area_value), .accepted_size = &accepted_size})
+        Text((TextProps){.bounds={right + Scale(12), y + Scale(538), 0, 0}, .text="DragDrop target", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        DragDrop((DragDropProps){.bounds = {right,y + Scale(522),Scale(300),Scale(48)}, .id = 208, .role = DragDropRoleTarget, .type = "TEXT", .output = area_value, .output_size = sizeof(area_value), .accepted_size = &accepted_size})
         Text((TextProps){.bounds={right, y + Scale(590), 0, 0}, .text=area_value, .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
         }
 

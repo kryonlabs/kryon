@@ -1872,27 +1872,27 @@ func TestNativeTypedDragDrop(t *testing.T) {
 	payload := []byte("item-42")
 	output := make([]byte, 16)
 	accepted := int32(0)
-	source := DragDropSourceProps{Bounds: NewRectangle(10, 10, 80, 30), ID: 87, Type: "ITEM", Data: payload, DataSize: int32(len(payload))}
-	target := DragDropTargetProps{Bounds: NewRectangle(120, 10, 100, 30), ID: 88, Type: "ITEM", Output: output, OutputSize: int32(len(output)), AcceptedSize: &accepted}
+	source := DragDropProps{Bounds: NewRectangle(10, 10, 80, 30), ID: 87, Role: DragDropRoleSource, Type: "ITEM", Data: payload, DataSize: int32(len(payload))}
+	target := DragDropProps{Bounds: NewRectangle(120, 10, 100, 30), ID: 88, Role: DragDropRoleTarget, Type: "ITEM", Output: output, OutputSize: int32(len(output)), AcceptedSize: &accepted}
 
 	r.QueueMouseButtonDown(MouseButtonLeft, 20, 20)
 	r.BeginFrame()
-	if !r.DragDropSource(source) {
-		t.Fatal("DragDropSource did not activate on press")
+	if !r.DragDrop(source) {
+		t.Fatal("DragDrop source did not activate on press")
 	}
-	if r.DragDropTarget(target) {
-		t.Fatal("DragDropTarget accepted before release")
+	if r.DragDrop(target) {
+		t.Fatal("DragDrop target accepted before release")
 	}
 	r.EndFrame()
 
 	r.QueueMouseMove(150, 20)
 	r.QueueMouseButtonUp(MouseButtonLeft, 150, 20)
 	r.BeginFrame()
-	if !r.DragDropSource(source) {
-		t.Fatal("DragDropSource did not retain payload through release frame")
+	if !r.DragDrop(source) {
+		t.Fatal("DragDrop source did not retain payload through release frame")
 	}
-	if !r.DragDropTarget(target) {
-		t.Fatal("DragDropTarget did not accept matching released payload")
+	if !r.DragDrop(target) {
+		t.Fatal("DragDrop target did not accept matching released payload")
 	}
 	r.EndFrame()
 	if accepted != int32(len(payload)) || string(output[:accepted]) != string(payload) {

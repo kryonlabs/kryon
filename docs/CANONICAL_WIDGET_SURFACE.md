@@ -220,8 +220,7 @@ host roles rather than retained nodes.
 | `Drag` | `.kry canonical` | Numeric drag value control; value type/count are props. |
 | `Input` | `.kry canonical` | Numeric input control; value type/count are props. |
 | `Spinbox` | `.kry canonical` | Numeric stepper. |
-| `DragDropSource` | Native support | Legacy source role; migrate to `DragDrop` props/composition. |
-| `DragDropTarget` | Native support | Legacy target role; migrate to `DragDrop` props/composition. |
+| `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
 | `MultiSelectList` | `.kry canonical` | Multi-selection list; may fold into `ListBox` props later. |
 | `Screen` | `.kry canonical` | Top-level screen container. |
 | `Column` | `.kry canonical` | Layout block. |
@@ -311,8 +310,6 @@ behavior.
 | `EndPopup` | `Popup` block | Lowered host exit for popup content. |
 | `BeginTableCell` | `TableCell` block | Lowered host entry for custom table-cell content. |
 | `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
-| `DragDropSource` | `DragDrop` source role | Legacy role-specific entry point; role belongs in props/composition. |
-| `DragDropTarget` | `DragDrop` target role | Legacy role-specific entry point; role belongs in props/composition. |
 | `MenuBar` | `Menu` bar mode | Legacy command-menu entry point; mode belongs in props/composition. |
 | `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
 | `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
@@ -339,8 +336,6 @@ those surfaces become available.
 | `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
 | `BeginCanvas` | `Canvas` block | Lowered host entry for canvas content. |
 | `EndCanvas` | `Canvas` block | Lowered host exit for canvas content. |
-| `DragDropSource` | `DragDrop` source role | Legacy role-specific entry point; role belongs in props/composition. |
-| `DragDropTarget` | `DragDrop` target role | Legacy role-specific entry point; role belongs in props/composition. |
 | `MenuBar` | `Menu` bar mode | Legacy command-menu entry point; mode belongs in props/composition. |
 | `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
 | `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
@@ -452,8 +447,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginCanvas` | Native support | Lowered host entry for `.kry` `Canvas` blocks; not a separate public widget name. |
 | `EndCanvas` | Native support | Lowered host exit for `.kry` `Canvas` blocks; not a separate public widget name. |
 | `DragDrop` | `.kry canonical` | Typed drag/drop interaction concept. Source and target roles belong in props or composition; decision policy is in `.kry`, host keeps payload storage, type comparison, and pointer ownership. |
-| `DragDropSource` | Native support | Legacy/native source-role entry point while callers migrate to `DragDrop` props/composition. |
-| `DragDropTarget` | Native support | Legacy/native target-role entry point while callers migrate to `DragDrop` props/composition. |
 
 ## Navigation
 

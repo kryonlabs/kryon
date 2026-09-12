@@ -529,71 +529,71 @@ RenderSeparator(SeparatorProps separator)
 }
 
 int
-RenderDragDropSource(DragDropSourceProps source)
-{
-    ToolkitStore *toolkit = toolkit_state();
-    int hot;
-    int valid;
-
-    if(DragDropShouldClearSource(toolkit->drag_drop.active,
-       toolkit->drag_drop.source_id, source.id,
-       IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-       IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
-        toolkit->drag_drop = (UIDragDropState){0};
-    valid = DragDropSourceValid(source.disabled, UIContentDisabled(),
-                                source.type != NULL && source.type[0] != '\0',
-                                source.data_size, UI_DRAG_DROP_DATA_MAX,
-                                source.data != NULL);
-    if(!valid)
-        return 0;
-    hot = ui_hot(source.bounds);
-    if(hot)
-        MarkClickable();
-    if(DragDropSourceStarts(valid, hot,
-       IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
-        toolkit->drag_drop = (UIDragDropState){0};
-        toolkit->drag_drop.active = 1;
-        toolkit->drag_drop.source_id = source.id;
-        snprintf(toolkit->drag_drop.type, sizeof(toolkit->drag_drop.type),
-                 "%s", source.type);
-        toolkit->drag_drop.data_size = source.data_size;
-        if(source.data_size > 0)
-            memcpy(toolkit->drag_drop.data, source.data,
-                   (size_t)source.data_size);
-    }
-    return DragDropSourceReturnsActive(toolkit->drag_drop.active,
-        toolkit->drag_drop.source_id, source.id,
-        IsMouseButtonDown(MOUSE_BUTTON_LEFT),
-        IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
-}
-
-int
-RenderDragDropTarget(DragDropTargetProps target)
+RenderDragDrop(DragDropProps drag_drop)
 {
     ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
-    int hot = CheckCollisionPointRec(mouse, target.bounds) &&
-              !UIContentDisabled() && !InspectInputCapturesClick(mouse) &&
-              !ui_input_captures_click_internal(mouse, 0);
-    int matches = DragDropTargetMatches(toolkit->drag_drop.active,
-                  target.type != NULL && target.type[0] != '\0',
-                  target.type != NULL &&
-                  strcmp(toolkit->drag_drop.type, target.type) == 0);
+    int disabled = drag_drop.disabled || UIContentDisabled();
+    int hot;
+    int matches;
+    int valid;
 
-    if(target.accepted_size != NULL)
-        *target.accepted_size = 0;
+    if(drag_drop.role == DragDropRoleSource) {
+        if(DragDropShouldClearSource(toolkit->drag_drop.active,
+           toolkit->drag_drop.source_id, drag_drop.id,
+           IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+           IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
+            toolkit->drag_drop = (UIDragDropState){0};
+        valid = DragDropSourceValid(drag_drop.disabled, UIContentDisabled(),
+                                    drag_drop.type != NULL &&
+                                    drag_drop.type[0] != '\0',
+                                    drag_drop.data_size, UI_DRAG_DROP_DATA_MAX,
+                                    drag_drop.data != NULL);
+        if(!valid)
+            return 0;
+        hot = ui_hot(drag_drop.bounds);
+        if(hot)
+            MarkClickable();
+        if(DragDropSourceStarts(valid, hot,
+           IsMouseButtonPressed(MOUSE_BUTTON_LEFT))) {
+            toolkit->drag_drop = (UIDragDropState){0};
+            toolkit->drag_drop.active = 1;
+            toolkit->drag_drop.source_id = drag_drop.id;
+            snprintf(toolkit->drag_drop.type, sizeof(toolkit->drag_drop.type),
+                     "%s", drag_drop.type);
+            toolkit->drag_drop.data_size = drag_drop.data_size;
+            if(drag_drop.data_size > 0)
+                memcpy(toolkit->drag_drop.data, drag_drop.data,
+                       (size_t)drag_drop.data_size);
+        }
+        return DragDropSourceReturnsActive(toolkit->drag_drop.active,
+            toolkit->drag_drop.source_id, drag_drop.id,
+            IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+            IsMouseButtonReleased(MOUSE_BUTTON_LEFT));
+    }
+
+    hot = CheckCollisionPointRec(mouse, drag_drop.bounds) &&
+          !disabled && !InspectInputCapturesClick(mouse) &&
+          !ui_input_captures_click_internal(mouse, 0);
+    matches = DragDropTargetMatches(toolkit->drag_drop.active,
+              drag_drop.type != NULL && drag_drop.type[0] != '\0',
+              drag_drop.type != NULL &&
+              strcmp(toolkit->drag_drop.type, drag_drop.type) == 0);
+
+    if(drag_drop.accepted_size != NULL)
+        *drag_drop.accepted_size = 0;
     if(matches && IsWindowReady())
-        DrawRectangleLinesEx(target.bounds, hot ? 2.0f : 1.0f,
+        DrawRectangleLinesEx(drag_drop.bounds, hot ? 2.0f : 1.0f,
                              hot ? c_link : c_button_hover);
-    if(!DragDropTargetAccepts(target.disabled, UIContentDisabled(), matches,
+    if(!DragDropTargetAccepts(drag_drop.disabled, UIContentDisabled(), matches,
        hot, IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
         return 0;
-    if(target.output != NULL && target.output_size > 0) {
+    if(drag_drop.output != NULL && drag_drop.output_size > 0) {
         int copied = DragDropCopySize(toolkit->drag_drop.data_size,
-                                      target.output_size);
-        memcpy(target.output, toolkit->drag_drop.data, (size_t)copied);
-        if(target.accepted_size != NULL)
-            *target.accepted_size = copied;
+                                      drag_drop.output_size);
+        memcpy(drag_drop.output, toolkit->drag_drop.data, (size_t)copied);
+        if(drag_drop.accepted_size != NULL)
+            *drag_drop.accepted_size = copied;
     }
     toolkit->drag_drop = (UIDragDropState){0};
     ConsumeRelease();
