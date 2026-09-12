@@ -131,12 +131,12 @@ has a single place to land.
 | `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | Partly `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
 | `Icon` | `UI/Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
-| `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Canonical replacement for old `Picture`; fit and placeholder layout policy are `.kry`, cache/loading/drawing remain host support. |
+| `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Fit and placeholder layout policy are `.kry`; cache/loading/drawing remain host support. |
 | `Card` | `UI/Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
 | `Button` | `UI/Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition. |
-| `Link` | `UI/Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Canonical replacement for old `Href`; state/color policy is `.kry`, URL dispatch remains host support. |
+| `Link` | `UI/Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | State/color policy is `.kry`; URL dispatch remains host support. |
 | `TextField` | `UI/Input` | Input | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics/scroll are `.kry`; editing, IME, selection, and paint still native. |
-| `Dropdown` | `UI/Input` | Selection | `runtime/dropdown.kry` | `.kry-backed` | Selection-only control; old combo surface stays removed. |
+| `Dropdown` | `UI/Input` | Selection | `runtime/dropdown.kry` | `.kry-backed` | Selection-only control. |
 | `Slider` | `UI/Input` | Value | `runtime/slider.kry` | `.kry-backed` | Value type, orientation, and angle/unit are props. |
 | `Toggle` | `UI/Input` | On/off | `runtime/toggle.kry` | `.kry-backed` | Host handles input and drawing; paint/layout policy is `.kry`. |
 | `Checkbox` | `UI/Input` | Boolean | `runtime/checkbox.kry` | `.kry-backed` | Paint/layout/flag policy is `.kry`. |
@@ -177,19 +177,6 @@ has a single place to land.
 | `AudioSource` | `Game2D/Audio` | Sound | missing | Game2D native scene | Separate Game2D surface. |
 | `Light2D` | `Game2D/Rendering` | Point light | missing | Game2D native scene | Separate Game2D surface. |
 
-`Combo` is not a canonical public concept. The final surface has three clear
-names instead:
-
-| Concept | Canonical name | Notes |
-|---|---|---|
-| Choose one option from a list | `Dropdown` | No arbitrary child content. |
-| Arbitrary anchored/floating content | `Popup` | Includes tooltip, modal, and context variants through props. |
-| Command lists and menu bars | `Menu` / `MenuBar` / `PopupMenu` / `ContextMenu` | Command semantics, accelerators, and submenu behavior. |
-
-`BeginCombo`, `EndCombo`, `CloseCombo`, `ComboProps`, and `ComboFlags` have
-been removed from the public surface. Existing generated fixtures use
-`Dropdown` for option selection and `Popup` for arbitrary child content.
-
 ## Core Drawing And Text
 
 | Public name | Current decision | Notes |
@@ -218,10 +205,6 @@ been removed from the public surface. Existing generated fixtures use
 | `TextField` | `.kry canonical` | Metrics and horizontal scroll policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics and page-row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module. |
-| `Combo` | Removed | Old arbitrary-popup name; use `Dropdown`, `Popup`, or `Menu`. |
-| `BeginCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
-| `EndCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
-| `CloseCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`. |
