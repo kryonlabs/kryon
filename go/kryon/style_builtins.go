@@ -480,6 +480,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }

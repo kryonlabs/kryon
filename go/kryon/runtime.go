@@ -8117,7 +8117,6 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	layout := ListBox_ListBoxLayoutFor(props.Bounds, int32(len(props.Items)), rowH, 0, scroll)
 	first := layout.FirstRow
 	visible := layout.VisibleRows
-	font := Text16
 	for i := int32(0); i <= visible && first+i < int32(len(props.Items)); i++ {
 		index := first + i
 		row := ListBox_ListBoxRowBounds(props.Bounds, i, layout)
@@ -8154,7 +8153,16 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 			op.Disabled = props.Disabled
 			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 8, Y: row.Y + 4, Width: row.Width - 16, Height: row.Height}, Text: elideText(props.Items[index], row.Width-16, font), Color: itemStyle.Foreground, FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
+		labelX := itemStyle.PaddingX
+		if labelX <= 0 {
+			labelX = 8
+		}
+		labelY := itemStyle.PaddingY
+		if labelY <= 0 {
+			labelY = 4
+		}
+		font := styleFont(itemStyle, Text16)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideText(props.Items[index], row.Width-labelX*2, font), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }

@@ -900,11 +900,11 @@ tokens {
     ink: #171022;
     rule: #536070;
   }
-  length { radius: 6; border: 2; }
+  length { radius: 6; border: 2; inset: 11; }
   material { flat: Flat; }
 }
 ListBox { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
-ListBoxItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; material: flat; }
+ListBoxItem:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; padding-x: inset; padding-y: border; font-size: 18; material: flat; opacity: 0.62; }
 `, "Test ListBox", "") || !SetActiveStylePack("test.listbox") {
 		t.Fatal("test list box style did not activate")
 	}
@@ -920,26 +920,29 @@ ListBoxItem:selected { background: selected; foreground: ink; border: selected; 
 		RowHeight:     24,
 	})
 
-	var sawPanel, sawSelected bool
+	var sawPanel, sawSelected, sawSelectedText bool
 	for _, op := range rt.FrameOps() {
-		if op.Kind != FrameOpRect {
-			continue
-		}
-		if op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 72}) {
 			sawPanel = true
 			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("list box panel style op = %+v", op)
 			}
 		}
-		if op.Row == 1 && op.Selected {
+		if op.Kind == FrameOpRect && op.Row == 1 && op.Selected {
 			sawSelected = true
 			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
 				t.Fatalf("list box selected style op = %+v", op)
 			}
 		}
+		if op.Kind == FrameOpText && op.Row == 1 && op.Selected {
+			sawSelectedText = true
+			if op.FontSize != 18 || op.Opacity != 0.62 || op.Bounds.X != 19 || op.Bounds.Y != 34 {
+				t.Fatalf("list box selected text style op = %+v", op)
+			}
+		}
 	}
-	if !sawPanel || !sawSelected {
-		t.Fatalf("missing styled list box ops: panel=%v selected=%v ops=%+v", sawPanel, sawSelected, rt.FrameOps())
+	if !sawPanel || !sawSelected || !sawSelectedText {
+		t.Fatalf("missing styled list box ops: panel=%v selected=%v selectedText=%v ops=%+v", sawPanel, sawSelected, sawSelectedText, rt.FrameOps())
 	}
 }
 

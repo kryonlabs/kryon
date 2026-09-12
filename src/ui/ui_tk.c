@@ -3104,10 +3104,18 @@ RenderListBox(ListBoxProps list)
                                    disabled, 0);
         if(hot)
             MarkClickable();
-        if(paint)
+        if(paint) {
+            int item_font = item_style.font_size > 0.0f
+                ? (int)(item_style.font_size + 0.5f)
+                : font;
+            int label_inset = item_style.padding_x > 0.0f
+                ? (int)(item_style.padding_x + 0.5f)
+                : Scale(8);
             RenderText(list.items != NULL && list.items[index] != NULL ? list.items[index] : "",
-                       (int)row.x + Scale(8), ui_row_text_y(row, font), font,
-                       item_style.foreground);
+                       (int)row.x + label_inset,
+                       ui_row_text_y(row, item_font), item_font,
+                       Fade(item_style.foreground, item_style.opacity));
+        }
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT) && list.selected_index != NULL) {
             ConsumeRelease();
             *list.selected_index = index;
