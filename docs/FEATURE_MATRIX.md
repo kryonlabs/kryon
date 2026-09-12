@@ -65,7 +65,7 @@ ListBox TreeView TableView ColorPicker CanvasGrid SelectableText`
 `Canvas`, `Scroll`, and `TableCell` are lexical `.kry` blocks rather than
 ordinary one-call widgets; the compiler lowers them to host begin/end support.
 The clean command-menu concept is `Menu`; the current compiler/runtime still
-exposes `MenuBar`, `PopupMenu`, and `ContextMenu` as migration support.
+exposes legacy command-menu entry points as migration support.
 
 ## Widget matrix
 

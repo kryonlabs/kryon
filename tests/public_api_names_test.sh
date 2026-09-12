@@ -138,7 +138,7 @@ if [ -n "$lowered_doc_matches" ]; then
 fi
 
 legacy_menu_doc_matches="$(
-    rg -n 'MenuBar / PopupMenu / ContextMenu|`PopupMenu`, `ContextMenu`|PopupMenu`, `ContextMenu`' \
+    rg -n 'MenuBar / PopupMenu / ContextMenu|`PopupMenu`, `ContextMenu`|PopupMenu`, `ContextMenu`|Menus: `MenuBar`|`MenuBar`, `PopupMenu`' \
         docs/API.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md \
         --glob '!vendor/**' \
         --glob '!build/**' || true
