@@ -2239,6 +2239,9 @@ RenderImage(ImageProps image)
                           .emphasis = ButtonEmphasisSoft},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindImage(), 6).value);
+        int label_font = label_style.font_size > 0.0f
+            ? (int)(label_style.font_size + 0.5f)
+            : Text12;
         fallback = image.style.enabled && image.style.background.a > 0
                      ? image.style.background
                      : image_style.background;
@@ -2246,8 +2249,8 @@ RenderImage(ImageProps image)
         DrawRectangleLinesEx(image.bounds, image_style.border_width,
                              image_style.border);
         RenderText("Missing image", (int)image.bounds.x + Scale(8),
-                   (int)image.bounds.y + Scale(8), Text12,
-                   label_style.foreground);
+                   (int)image.bounds.y + Scale(8), label_font,
+                   Fade(label_style.foreground, label_style.opacity));
         return;
     }
     ImageTexture(texture, image);

@@ -14,19 +14,23 @@ tutorial_image_style(int role)
 void
 RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
-    int font = GetFontSize();
+    Style image = tutorial_image_style(StyleAny());
+    Style text = tutorial_image_style(6);
+    int font = text.font_size > 0.0f
+        ? (int)(text.font_size + 0.5f)
+        : GetFontSize();
     int tw = TextWidth(label, font);
     ImagePlaceholderLayout layout =
         ImagePlaceholderLayoutFor((Rectangle){(float)x, (float)y,
                                   (float)w, (float)h}, tw, font);
-    Style image = tutorial_image_style(StyleAny());
-    Style text = tutorial_image_style(6);
+
     ui_draw_material(layout.bounds, (Rectangle){0}, image.background,
                      image.border, image.border, image.radius,
                      image.border_width, 0.0f, 0.0f, 0, image.focus,
                      0.0f, image.opacity, ui_style_fill(image),
                      image.material);
-    RenderText(label, layout.label_x, layout.label_y, font, text.foreground);
+    RenderText(label, layout.label_x, layout.label_y, font,
+               Fade(text.foreground, text.opacity));
 }
 
 void
