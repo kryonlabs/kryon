@@ -5230,7 +5230,6 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		}
 		changed = *value != old
 	}
-	font := Text16
 	valueText := fmt.Sprintf("%d%s", *value, sliderSuffix(rest...))
 	ratio := float32(0)
 	if max > min {
@@ -5240,6 +5239,7 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSlider(), 5)
 	thumbFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSliderThumb())
 	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
+	font := styleFont(labelStyle, Text16)
 	paint := Slider_SliderPaintFor(SliderSpec{
 		Bounds:      Rectangle{X: bounds.X, Y: bounds.Y + 18, Width: bounds.Width, Height: bounds.Height - 18},
 		Ratio:       ratio,
@@ -5248,8 +5248,8 @@ func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max in
 		ActiveTrack: activeFrame,
 		Thumb:       thumbFrame,
 	})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, FontSize: font, ID: id})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, ID: id})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidth(valueText, font)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, ID: id})
 	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
 	trackOp.ID = id
 	r.record(trackOp)

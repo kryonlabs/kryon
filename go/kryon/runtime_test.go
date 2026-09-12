@@ -1334,7 +1334,7 @@ tokens {
 }
 Slider[role=Track] { background: track; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 Slider[role=Fill] { background: active; foreground: ink; border: active; radius: radius; border-width: border; material: flat; }
-Slider[role=Label] { foreground: label; }
+Slider[role=Label] { foreground: label; font-size: 17; opacity: 0.58; }
 SliderThumb { background: thumb; foreground: thumb-highlight; border: active; focus: active; radius: radius; border-width: border; material: flat; }
 `, "Test Slider Legacy", "") || !SetActiveStylePack("test.slider_legacy") {
 		t.Fatal("test legacy slider style did not activate")
@@ -1362,12 +1362,14 @@ SliderThumb { background: thumb; foreground: thumb-highlight; border: active; fo
 			}
 		case op.Kind == FrameOpText && op.Text == "Amount":
 			sawLabel = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
+				op.FontSize != 17 || op.Opacity != 0.58 {
 				t.Fatalf("sliderAt label style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "50%":
 			sawValue = true
-			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) {
+			if op.Color != (Color{R: 0x3b, G: 0x2f, B: 0x55, A: 0xff}) ||
+				op.FontSize != 17 || op.Opacity != 0.58 {
 				t.Fatalf("sliderAt value style op = %+v", op)
 			}
 		case op.Kind == FrameOpCircle && op.Color == (Color{R: 0xf8, G: 0xf5, B: 0xff, A: 0xff}):
