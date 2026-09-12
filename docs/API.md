@@ -178,35 +178,9 @@ nested input/clipping, wheel scrolling, scrollbar dragging and parent restoratio
 C++ syntax tests cover the shared lowering. This native scope is not yet
 behaviorally verified in the JS runner.
 
-### Composed combo blocks in native `.kry` code
+### Popup blocks in native `.kry` code
 
-Use a `Combo` block when the popup contains caller-defined widgets:
-
-```kry
-Combo commands: {
-    bounds = {20, 20, 180, 32}
-    popup_size = (Vector2){260, 160}
-    preview = "Commands"
-    id = 4200
-    open = &commands_open
-    flags = ComboPopupAlignLeft | ComboHeightSmall
-
-    Row actions: {
-        Button { label = "Run" }
-        TextField { text = query }
-    }
-}
-```
-
-The block conditionally submits its children only while open. The compiler
-emits `BeginCombo` and a matching `EndCombo` through the shared lexical cleanup
-pass, including `return`, `break`, and `continue`, so application source cannot
-forget the closing call. Call `CloseCombo()` inside the block for explicit
-dismissal. The properties are the fields of `ComboProps`; generated C, C++ and
-native Go target the same runtime scope.
-
-Use a `Popup` block for arbitrary caller-owned popup contents without a combo
-owner:
+Use a `Popup` block for arbitrary caller-owned popup contents:
 
 ```kry
 Popup tools: {
@@ -221,9 +195,11 @@ Popup tools: {
 }
 ```
 
-`Popup` has the same conditional, cleanup-managed block behavior as `Combo`.
-Call `ClosePopup()` inside the block for explicit dismissal. Its properties are
-the fields of `PopupProps`.
+`Popup` conditionally submits its children only while open. The compiler emits
+`BeginPopup` and a matching `EndPopup` through lexical cleanup, including
+`return`, `break`, and `continue`, so application source cannot forget the
+closing call. Call `ClosePopup()` inside the block for explicit dismissal. Its
+properties are the fields of `PopupProps`.
 
 ### Runtime surface
 
@@ -1621,56 +1597,38 @@ Go uses the shared scroll container for wheel input, scrollbar dragging and
 row clipping, painting only visible rows. These behaviors do not yet provide general keyboard-focus
 isolation for arbitrary popup children or complete ImGui navigation semantics.
 
-For caller-defined contents, use the native composed combo scope:
+For caller-defined contents, use the native composed popup scope:
 
 ```c
 typedef enum {
-    ComboFlagsNone = 0,
-    ComboPopupAlignLeft = 1 << 0,
-    ComboHeightSmall = 1 << 1,
-    ComboHeightRegular = 1 << 2,
-    ComboHeightLarge = 1 << 3,
-    ComboHeightLargest = 1 << 4,
-    ComboNoArrow = 1 << 5,
-    ComboNoPreview = 1 << 6,
-    ComboWidthFitPreview = 1 << 7
-} ComboFlags;
+    PopupFlagsNone = 0,
+    PopupTooltip = 1 << 0,
+    PopupModal = 1 << 1,
+    PopupContext = 1 << 2
+} PopupFlags;
 
 typedef struct {
     Rectangle bounds;
-    Vector2 popup_size;
-    const char *preview;
     int id;
     bool *open;
-    unsigned int flags;
     int disabled;
-} ComboProps;
+    Rectangle trigger;
+    unsigned int flags;
+} PopupProps;
 
-int BeginCombo(ComboProps combo);
-void EndCombo(void);
-void CloseCombo(void);
+int BeginPopup(PopupProps popup);
+void EndPopup(void);
+void ClosePopup(void);
 ```
 
-Call `EndCombo` exactly once when `BeginCombo` returns nonzero. Between those
+Call `EndPopup` exactly once when `BeginPopup` returns nonzero. Between those
 calls, ordinary widgets and nested `Row` or `Column` layouts are clipped,
 painted, and routed as popup contents; no popup-specific widget variants are
-needed. `CloseCombo` closes the current scope immediately and updates the
-caller-owned `open` value. Disabling the combo, pressing Escape, releasing the
-pointer outside its popup, or omitting its owner on a later frame also closes
-it. Nested combo scopes are supported.
+needed. `ClosePopup` closes the current scope immediately and updates the
+caller-owned `open` value. Tooltip, modal, and context behavior are selected by
+`PopupFlags`.
 
-At most one height flag may be supplied. With a zero popup height, Small,
-Regular/default, Large, and Largest select approximately 4, 8, 20, and 32 owner
-rows. A zero width uses the owner width. Popups are constrained to the current
-view and flip above the owner when necessary. The default aligns right edges;
-`ComboPopupAlignLeft` aligns left edges. The remaining flags suppress the arrow
-or preview and optionally expand the owner to fit its preview.
-
-The begin/end pair marks the lexical lifetime of arbitrary child declarations;
-frame ownership and paint-target management remain internal to Kryon. Generated
-C, C++ and native Go use this same clean surface.
-
-For an arbitrary popup that is not owned by a combo, use:
+For an arbitrary popup that is not owned by another popup, use:
 
 ```c
 typedef struct {

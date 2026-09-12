@@ -91,7 +91,7 @@ ANSWER :: #run 6 * 7
 
 state {
     cb_flag: int = 0
-    combo_sel: int = 0
+    dropdown_sel: int = 0
     dd_sel: int = 0
     progress_value: int = 42
     radio_sel: int = 0
@@ -113,7 +113,7 @@ App :: () #ui {
         Radio((RadioProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
         Progress((ProgressProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
         LabelFrame((LabelFrameProps){.bounds = {Scale(28), Scale(56), Scale(64), Scale(20)}, .title = "PanelTitle"})
-        Dropdown((DropdownProps){{6, 60, 80, 24}, 2, choices, 3, &combo_sel, 0})
+        Dropdown((DropdownProps){{6, 60, 80, 24}, 2, choices, 3, &dropdown_sel, 0})
         Dropdown((DropdownProps){.bounds = {Scale(6), Scale(84), Scale(80), Scale(24)}, .id = 3, .options = "x;y", .option_count = 2, .selected_index = &dd_sel})
     }
 }
@@ -151,7 +151,7 @@ if ! strings "$work/frame.krb" | grep -q "Alpha"; then
     echo "frame cartridge missing Dropdown options (string-array state)" >&2
     exit 1
 fi
-if ! strings "$work/frame.krb" | grep -q "combo_sel"; then
+if ! strings "$work/frame.krb" | grep -q "dropdown_sel"; then
     echo "frame cartridge missing Dropdown selected-index path" >&2
     exit 1
 fi

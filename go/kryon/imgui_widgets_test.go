@@ -748,14 +748,14 @@ func TestNativeImGuiWidgetSlice(t *testing.T) {
 	r.EndFrame()
 
 	selected := int32(0)
-	combo := DropdownProps{Bounds: NewRectangle(10, 10, 120, 24), ID: 44, Options: []string{"A", "B", "C"}, SelectedIndex: &selected}
+	dropdown := DropdownProps{Bounds: NewRectangle(10, 10, 120, 24), ID: 44, Options: []string{"A", "B", "C"}, SelectedIndex: &selected}
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	r.Dropdown(combo)
+	r.Dropdown(dropdown)
 	r.EndFrame()
 	r.QueueTap(20, 74)
 	r.BeginFrame()
-	if !r.Dropdown(combo) || selected != 1 {
+	if !r.Dropdown(dropdown) || selected != 1 {
 		t.Fatalf("Dropdown selected=%d, want 1", selected)
 	}
 	r.EndFrame()
@@ -1955,14 +1955,14 @@ func TestManyComboIdentities(t *testing.T) {
 	}
 	for _, value := range selected[1:] {
 		if value != 0 {
-			t.Fatal("combo selection leaked across identities")
+			t.Fatal("dropdown selection leaked across identities")
 		}
 	}
 	r.QueueTap(20, 20)
 	draw(0)
 	draw(1)
 	if r.openDropdowns[20000] || r.popupCaptures(20, 70) {
-		t.Fatal("missing combo retained open state or capture")
+		t.Fatal("missing dropdown retained open state or capture")
 	}
 }
 
@@ -1984,11 +1984,11 @@ func TestLargeComboOptions(t *testing.T) {
 	r.QueueTap(20, 42+130*28+10)
 	draw()
 	if selected != 130 {
-		t.Fatalf("large combo selected %d, want 130", selected)
+		t.Fatalf("large dropdown selected %d, want 130", selected)
 	}
 }
 
-func TestLongComboLabelOwnership(t *testing.T) {
+func TestLongDropdownLabelOwnership(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	labelBytes := make([]byte, 512)
 	for i := range labelBytes {
@@ -2010,7 +2010,7 @@ func TestLongComboLabelOwnership(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Fatal("deferred combo did not own the complete long label")
+		t.Fatal("deferred dropdown did not own the complete long label")
 	}
 }
 

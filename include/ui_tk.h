@@ -269,28 +269,6 @@ typedef struct {
 } DropdownProps;
 
 typedef enum {
-    ComboFlagsNone = 0,
-    ComboPopupAlignLeft = 1 << 0,
-    ComboHeightSmall = 1 << 1,
-    ComboHeightRegular = 1 << 2,
-    ComboHeightLarge = 1 << 3,
-    ComboHeightLargest = 1 << 4,
-    ComboNoArrow = 1 << 5,
-    ComboNoPreview = 1 << 6,
-    ComboWidthFitPreview = 1 << 7
-} ComboFlags;
-
-typedef struct {
-    Rectangle bounds;
-    Vector2 popup_size;
-    const char *preview;
-    int id;
-    bool *open;
-    unsigned int flags;
-    int disabled;
-} ComboProps;
-
-typedef enum {
     PopupFlagsNone = 0,
     PopupTooltip = 1 << 0,
     PopupModal = 1 << 1,

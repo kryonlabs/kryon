@@ -1947,7 +1947,6 @@ include/ui_tree.h enum UI_WIDGET_TRIANGLE_NODE
 include/ui_tree.h function Background
 include/ui_tree.h function BeginButton
 include/ui_tree.h function BeginCard
-include/ui_tree.h function BeginCombo
 include/ui_tree.h function BeginDisabled
 include/ui_tree.h function BeginGridCursor
 include/ui_tree.h function BeginPopup
@@ -1965,7 +1964,6 @@ include/ui_tree.h function CanvasGrid
 include/ui_tree.h function Card
 include/ui_tree.h function Checkbox
 include/ui_tree.h function Circle
-include/ui_tree.h function CloseCombo
 include/ui_tree.h function ClosePopup
 include/ui_tree.h function Collapsible
 include/ui_tree.h function ColorPicker
@@ -1976,7 +1974,6 @@ include/ui_tree.h function DragDropSource
 include/ui_tree.h function DragDropTarget
 include/ui_tree.h function Dropdown
 include/ui_tree.h function End
-include/ui_tree.h function EndCombo
 include/ui_tree.h function EndDisabled
 include/ui_tree.h function EndPopup
 include/ui_tree.h function EndScroll

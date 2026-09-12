@@ -2032,7 +2032,7 @@ test_tree_header_keyboard_gates(void)
 }
 
 static void
-test_combo_popup_lifecycle(void)
+test_dropdown_popup_lifecycle(void)
 {
     const char *options[] = {"One", "Two"};
     int selected = 0;
@@ -2044,7 +2044,7 @@ test_combo_popup_lifecycle(void)
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
         }
-        check_int("combo opened capture",UIInputCapturesClick((Vector2){20,70}),1);
+        check_int("dropdown opened capture",UIInputCapturesClick((Vector2){20,70}),1);
         int background_scroll = 0;
         InjectMousePosition(20,70);
         InjectWheel(-1);
@@ -2063,11 +2063,11 @@ test_combo_popup_lifecycle(void)
             if(mode != 2) Dropdown(p);
             EndDisabled(); EndUIFrame();
         }
-        check_int("combo lifecycle selection",selected,0);
-        check_int("combo released capture",UIInputCapturesClick((Vector2){20,70}),0);
+        check_int("dropdown lifecycle selection",selected,0);
+        check_int("dropdown released capture",UIInputCapturesClick((Vector2){20,70}),0);
         p.disabled = 0;
         BeginUIFrame(240,240,1.0f); Dropdown(p); EndUIFrame();
-        check_int("combo stays closed",UIInputCapturesClick((Vector2){20,70}),0);
+        check_int("dropdown stays closed",UIInputCapturesClick((Vector2){20,70}),0);
     }
 }
 
@@ -2114,7 +2114,7 @@ test_dropdown_store_isolation(void)
 }
 
 static void
-test_many_combo_identities(void)
+test_many_dropdown_identities(void)
 {
     const char *options[] = {"One", "Two"};
     int selected[41] = {0};
@@ -2134,7 +2134,7 @@ test_many_combo_identities(void)
         if(phase == 0 || phase == 2)
             check_int("41 combos keep first owner's capture",UIInputCapturesClick((Vector2){20,70}),1);
         if(phase == 3)
-            check_int("missing first combo releases capture",UIInputCapturesClick((Vector2){20,70}),0);
+            check_int("missing first dropdown releases capture",UIInputCapturesClick((Vector2){20,70}),0);
         if(phase == 1)
             check_int("41 combos keep first owner's selection",selected[0],1);
         for(int i = 1; i < 41; i++)
@@ -2143,11 +2143,11 @@ test_many_combo_identities(void)
     InjectReset();
     BeginUIFrame(240,240,1);
     EndUIFrame();
-    check_int("retired combo releases capture",UIInputCapturesClick((Vector2){20,70}),0);
+    check_int("retired dropdown releases capture",UIInputCapturesClick((Vector2){20,70}),0);
 }
 
 static void
-test_large_combo_options(void)
+test_large_dropdown_options(void)
 {
     const char *options[131];
     for(int i = 0; i < 131; i++) options[i] = "item";
@@ -2163,14 +2163,14 @@ test_large_combo_options(void)
             EndUIFrame();
         }
     }
-    check_int("combo selects beyond old 128 option limit",selected,130);
+    check_int("dropdown selects beyond old 128 option limit",selected,130);
     InjectReset();
     BeginUIFrame(240,240,1);
     EndUIFrame();
 }
 
 static void
-test_combo_keyboard_navigation(void)
+test_dropdown_keyboard_navigation(void)
 {
     const char *options[131];
     for(int i = 0; i < 131; i++) options[i] = "item";
@@ -2187,7 +2187,7 @@ test_combo_keyboard_navigation(void)
                 .options = options, .option_count = 131, .selected_index = &selected});
             EndUIFrame();
         }
-        check_int("combo keyboard commits only on Enter",selected,step < 3 ? 0 : step < 10 ? 129 : 1);
+        check_int("dropdown keyboard commits only on Enter",selected,step < 3 ? 0 : step < 10 ? 129 : 1);
     }
     for(int step = 0; step < 3; step++) {
         if(step == 0) InjectTap(20,20);
@@ -2803,23 +2803,22 @@ test_text_area_wheel_scroll(void)
 }
 
 static void
-test_composed_combo_scope(void)
+test_composed_popup_children_scope(void)
 {
     bool open = true;
     char text[16] = "edit";
     int cursor = 4;
     BeginUIFrame(240,180,1);
-    BeginTree(Key("composed combo ordinary children"));
+    BeginTree(Key("composed popup ordinary children"));
     Button((ButtonProps){.bounds={10,10,80,24},.label="Background",.id=26999});
-    check_int("open composed combo returns true",
-        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
-            .preview="Choose",.id=27000,.open=&open,.flags=ComboPopupAlignLeft}),1);
+    check_int("open composed popup returns true",
+        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
     Column((ColumnProps){.bounds={12,72,100,60},.gap=3});
     Button((ButtonProps){.bounds={0,0,90,24},.label="Action",.id=27001});
     TextField((TextFieldProps){.bounds={0,0,90,24},.text=text,.text_size=sizeof(text),
         .cursor_position=&cursor,.focus_id=27002});
     End();
-    EndCombo();
+    EndPopup();
     Button((ButtonProps){.bounds={120,10,80,24},.label="After",.id=27003});
     EndTree();
     int count = 0, action = 0, field = 0, after = 0;
@@ -2833,26 +2832,23 @@ test_composed_combo_scope(void)
         } else if(nodes[i].id == 27002) field++;
         else if(nodes[i].id == 27003) after++;
     }
-    check_int("ordinary button retained in composed combo",action,1);
-    check_int("ordinary field retained in composed combo",field,1);
-    check_int("parent declarations resume after combo",after,1);
+    check_int("ordinary button retained in composed popup",action,1);
+    check_int("ordinary field retained in composed popup",field,1);
+    check_int("parent declarations resume after popup",after,1);
     EndUIFrame();
 
     BeginUIFrame(240,180,1);
-    BeginTree(Key("composed combo explicit close"));
-    check_int("composed combo reopens from caller state",
-        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
-            .preview="Choose",.id=27000,.open=&open,
-            .flags=ComboNoArrow|ComboWidthFitPreview|ComboHeightSmall}),1);
-    CloseCombo();
-    check_int("CloseCombo updates caller state",open,0);
-    EndCombo();
+    BeginTree(Key("composed popup explicit close"));
+    check_int("composed popup reopens from caller state",
+        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
+    ClosePopup();
+    check_int("ClosePopup updates caller state",open,0);
+    EndPopup();
     EndTree();
     EndUIFrame();
     BeginUIFrame(240,180,1);
-    check_int("closed composed combo stays closed",
-        BeginCombo((ComboProps){.bounds={10,40,100,28},.popup_size={120,80},
-            .preview="Choose",.id=27000,.open=&open}),0);
+    check_int("closed composed popup stays closed",
+        BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),0);
     EndUIFrame();
 }
 
@@ -3348,7 +3344,7 @@ test_popup_active_drag_ownership(void)
 }
 
 static void
-test_popup_combo_keyboard_ownership(void)
+test_popup_dropdown_keyboard_ownership(void)
 {
     const char *options[] = {"One","Two"};
     for(int inside = 0; inside < 2; inside++) {
@@ -3365,7 +3361,7 @@ test_popup_combo_keyboard_ownership(void)
         SetUIFocus(25400);
         Dropdown((DropdownProps){.bounds={10,10,100,28},.id=25400,
             .options=options,.option_count=2,.selected_index=&selected});
-        check_int("only top popup may open a focused combo",dropdown_captures((Vector2){20,60}),inside);
+        check_int("only top popup may open a focused dropdown",dropdown_captures((Vector2){20,60}),inside);
         if(inside) ui_popup_input_end(child);
         ui_popup_input_close(context,1);
         check_int("child dismissal restores parent keyboard",ui_popup_input_keyboard_captures(),0);
@@ -3399,7 +3395,7 @@ test_popup_combo_keyboard_ownership(void)
             .selected_index=&selected
         });
         EndUIFrame();
-        check_int("combo opens before Escape ownership test",
+        check_int("dropdown opens before Escape ownership test",
                   dropdown_captures((Vector2){20,50}),1);
 
         InjectKeyTap(KEY_ESCAPE);
@@ -3426,7 +3422,7 @@ test_popup_combo_keyboard_ownership(void)
             ui_popup_input_end(child);
         ui_popup_input_end(parent);
         RenderFrameOverlays();
-        check_int("obscured combo ignores Escape",
+        check_int("obscured dropdown ignores Escape",
                   dropdown_captures((Vector2){20,50}),!inside);
         ui_popup_input_finish(context);
         ui_popup_input_bind(previous);
@@ -3785,7 +3781,7 @@ test_popup_layout_restoration(void)
 }
 
 static void
-test_combo_horizontal_viewport(void)
+test_dropdown_horizontal_viewport(void)
 {
     const Rectangle bounds[] = {{-20,10,160,28},{200,10,160,28},{10,10,400,28}};
     const char *options[] = {"One","Two"};
@@ -3813,7 +3809,7 @@ test_combo_horizontal_viewport(void)
 }
 
 static void
-test_combo_scrollbar_dismissal(void)
+test_dropdown_scrollbar_dismissal(void)
 {
     const char *options[131];
     for(int i = 0; i < 131; i++) options[i] = "item";
@@ -3833,21 +3829,21 @@ test_combo_scrollbar_dismissal(void)
         Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
             .options=options,.option_count=131,.selected_index=&selected});
         EndUIFrame();
-        check_int("combo scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
+        check_int("dropdown scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
         if(mode == 0) InjectKeyTap(KEY_ESCAPE);
         InjectPump(); BeginUIFrame(240,240,1);
         if(mode != 2)
             Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
         EndUIFrame();
-        check_int("dismissed combo scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
-        check_int("dismissed combo scrollbar released capture",dropdown_captures((Vector2){20,70}),0);
+        check_int("dismissed dropdown scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
+        check_int("dismissed dropdown scrollbar released capture",dropdown_captures((Vector2){20,70}),0);
         InjectReset(); BeginUIFrame(240,240,1); EndUIFrame();
     }
 }
 
 static void
-test_combo_keyboard_open(void)
+test_dropdown_keyboard_open(void)
 {
     const char *options[] = {"One", "Two"};
     const int keys[] = {KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_DOWN};
@@ -3867,7 +3863,7 @@ test_combo_keyboard_open(void)
                 EndDisabled();
                 EndUIFrame();
             }
-            check_int("focused combo keyboard opening",UIInputCapturesClick((Vector2){20,70}),mode == 0);
+            check_int("focused dropdown keyboard opening",UIInputCapturesClick((Vector2){20,70}),mode == 0);
             check_int("opening key does not commit or move selection",selected,1);
             InjectReset();
             BeginUIFrame(240,240,1);
@@ -4689,24 +4685,24 @@ main(void)
     test_tree_header_modes();
     test_closeable_collapsible();
     test_tree_header_keyboard_gates();
-    test_combo_popup_lifecycle();
+    test_dropdown_popup_lifecycle();
     test_dropdown_store_isolation();
-    test_many_combo_identities();
-    test_large_combo_options();
-    test_combo_keyboard_navigation();
-    test_combo_keyboard_open();
-    test_combo_scrollbar_dismissal();
-    test_combo_horizontal_viewport();
+    test_many_dropdown_identities();
+    test_large_dropdown_options();
+    test_dropdown_keyboard_navigation();
+    test_dropdown_keyboard_open();
+    test_dropdown_scrollbar_dismissal();
+    test_dropdown_horizontal_viewport();
     test_popup_layout_restoration();
     test_popup_disabled_restoration();
     test_popup_input_clip_restoration();
     test_nested_popup_input_ownership();
     test_retained_popup_input_ownership();
     test_retained_popup_pointer_focus();
-    test_popup_combo_keyboard_ownership();
+    test_popup_dropdown_keyboard_ownership();
     test_popup_accelerator_keyboard_ownership();
     test_popup_collapsible_keyboard_ownership();
-    test_composed_combo_scope();
+    test_composed_popup_children_scope();
     test_composed_popup_scope();
     test_composed_tooltip_scope();
     test_composed_modal_scope();

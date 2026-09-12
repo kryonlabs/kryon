@@ -744,7 +744,7 @@ $(BUILD_DIR)/ui/ui.o: $(GENERATED_SRC_DIR)/runtime/surface.h $(GENERATED_SRC_DIR
 $(BUILD_DIR)/ui/ui_icons.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/ui_tree.o: $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/dropdown.o: $(GENERATED_SRC_DIR)/runtime/dropdown.h
-$(BUILD_DIR)/ui/combo.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
+$(BUILD_DIR)/ui/popup.o: $(GENERATED_SRC_DIR)/runtime/popup_policy.h
 $(BUILD_DIR)/ui/button.o: $(GENERATED_SRC_DIR)/runtime/button.h $(GENERATED_SRC_DIR)/runtime/segmented_control.h $(GENERATED_SRC_DIR)/runtime/surface.h
 $(BUILD_DIR)/ui/tab_bar.o: $(GENERATED_SRC_DIR)/runtime/tab_bar.h
 $(BUILD_DIR)/ui/ui_paint.o: $(GENERATED_SRC_DIR)/runtime/paint.h

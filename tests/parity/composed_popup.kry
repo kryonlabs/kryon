@@ -6,13 +6,13 @@ app "Native Composed Popup Parity" {
 }
 
 state {
-    combo_open: bool = true
-    combo_close: bool = false
-    combo_action: int = 0
-    combo_checked: int = 0
-    combo_text: [32] char = "edit"
-    combo_cursor: int = 4
-    combo_cleanup_open: bool = true
+    popup_content_open: bool = true
+    popup_content_close: bool = false
+    popup_content_action: int = 0
+    popup_content_checked: int = 0
+    popup_content_text: [32] char = "edit"
+    popup_content_cursor: int = 4
+    popup_cleanup_open: bool = true
     popup_open: bool = true
     popup_close: bool = false
     popup_action: int = 0
@@ -127,11 +127,11 @@ composed_tooltip_frame :: () #ui {
     }
 }
 
-composed_combo_early_exit :: (leave: bool) #ui {
+composed_popup_early_exit :: (leave: bool) #ui {
     Popup cleanup: {
         bounds = {180,48,120,80}
         id = 27010
-        open = &combo_cleanup_open
+        open = &popup_cleanup_open
         if leave {
             return
         }
@@ -139,30 +139,30 @@ composed_combo_early_exit :: (leave: bool) #ui {
     }
 }
 
-composed_combo_frame :: () #ui {
+composed_popup_content_frame :: () #ui {
     Screen root: {
         Popup popup: {
             bounds = {20,48,150,100}
             id = 27000
-            open = &combo_open
+            open = &popup_content_open
             Row popup_row: {
                 bounds = {24,64,140,30}
                 gap = 6
                 key = Key("composed-popup-row")
                 if Button((ButtonProps){.bounds = {0,0,50,26}, .label = "Run", .id = 27001}) {
-                    combo_action += 1
+                    popup_content_action += 1
                 }
-                Checkbox((CheckboxProps){.bounds = {80,64,Scale(34),Scale(34)}, .id = 27003, .value = &combo_checked})
-                TextField((TextFieldProps){.bounds = {0,0,50,26}, .text = combo_text, .text_size = sizeof(combo_text), .cursor_position = &combo_cursor, .focus_id = 27002})
+                Checkbox((CheckboxProps){.bounds = {80,64,Scale(34),Scale(34)}, .id = 27003, .value = &popup_content_checked})
+                TextField((TextFieldProps){.bounds = {0,0,50,26}, .text = popup_content_text, .text_size = sizeof(popup_content_text), .cursor_position = &popup_content_cursor, .focus_id = 27002})
             }
-            if combo_close {
+            if popup_content_close {
                 ClosePopup()
             }
         }
     }
 }
 
-composed_popup_frame :: () #ui {
+composed_popup_tools_frame :: () #ui {
     Screen root: {
         Popup tools: {
             bounds = {170,50,130,100}
@@ -174,7 +174,7 @@ composed_popup_frame :: () #ui {
                 if Button((ButtonProps){.bounds = {0,0,54,26}, .label = "Apply", .id = 27021}) {
                     popup_action += 1
                 }
-                Checkbox((CheckboxProps){.bounds = {240,64,Scale(34),Scale(34)}, .id = 27022, .value = &combo_checked})
+                Checkbox((CheckboxProps){.bounds = {240,64,Scale(34),Scale(34)}, .id = 27022, .value = &popup_content_checked})
             }
             if popup_close {
                 ClosePopup()

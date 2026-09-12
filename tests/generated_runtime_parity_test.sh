@@ -37,7 +37,7 @@ tests/parity/table_view.kry
 tests/parity/scroll_content.kry
 tests/parity/drag_drop.kry
 tests/parity/composition.kry
-tests/parity/composed_combo.kry
+tests/parity/composed_popup.kry
 "
 fixture_args=
 for fixture in $fixtures; do
@@ -183,18 +183,18 @@ func drawComposition() {
 	})
 }
 
-func drawComposedCombo() {
+func drawComposedPopupContent() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedComboFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedPopupContentFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
 
-func drawComposedPopup() {
+func drawComposedPopupTools() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedPopupFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedPopupToolsFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -202,7 +202,7 @@ func drawComposedPopup() {
 func drawComposedTooltip() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedTooltipFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedTooltipFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -210,7 +210,7 @@ func drawComposedTooltip() {
 func drawComposedModal() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedModalFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedModalFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -218,7 +218,7 @@ func drawComposedModal() {
 func drawComposedContext() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedContextFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedContextFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -226,7 +226,7 @@ func drawComposedContext() {
 func drawComposedPopupDrag() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedPopupDragFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedPopupDragFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -234,7 +234,7 @@ func drawComposedPopupDrag() {
 func drawComposedPopupShortcut() {
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedPopupShortcutFrame(ComposedComboStateValue)
+		ComposedPopup_ComposedPopupShortcutFrame(ComposedPopupStateValue)
 		kryon.EndFrame()
 	})
 }
@@ -547,47 +547,47 @@ func main() {
 	if ScrollContentStateValue.OverlayBackgroundOffset != 0 { panic("background scroll stole popup wheel") }
 	driver.QueueTap(250,255)
 	drawScroll()
-	if ScrollContentStateValue.OverlaySelected != 1 || ScrollContentStateValue.OverlayActions != 0 { panic("combo overlay: selection or background capture") }
+	if ScrollContentStateValue.OverlaySelected != 1 || ScrollContentStateValue.OverlayActions != 0 { panic("dropdown overlay: selection or background capture") }
 	for _, escape := range []bool{true,false} {
 		driver.QueueTap(250,190); drawScroll()
 		if escape { driver.QueueKey(kryon.KeyEscape) } else { driver.QueueTap(220,280) }
 		drawScroll()
 		driver.QueueTap(250,220); drawScroll()
-		if ScrollContentStateValue.OverlaySelected != 1 { panic("combo dismissal: stale popup row selected") }
+		if ScrollContentStateValue.OverlaySelected != 1 { panic("dropdown dismissal: stale popup row selected") }
 	}
-	if ScrollContentStateValue.OverlayActions != 2 { panic("combo dismissal: popup capture remained") }
+	if ScrollContentStateValue.OverlayActions != 2 { panic("dropdown dismissal: popup capture remained") }
 	for _, key := range []int32{kryon.KeyHome,kryon.KeyEnd} {
 		driver.SetFocus(996)
 		driver.QueueKey(kryon.KeySpace); drawScroll()
 		before := ScrollContentStateValue.OverlaySelected
 		driver.QueueKey(key); drawScroll()
-		if ScrollContentStateValue.OverlaySelected != before { panic("combo navigation committed before Enter") }
+		if ScrollContentStateValue.OverlaySelected != before { panic("dropdown navigation committed before Enter") }
 		driver.QueueKey(kryon.KeyEnter); drawScroll()
 		want := int32(0); if key == kryon.KeyEnd { want = 1 }
-		if ScrollContentStateValue.OverlaySelected != want { panic("combo keyboard commit failed") }
+		if ScrollContentStateValue.OverlaySelected != want { panic("dropdown keyboard commit failed") }
 	}
 
 	driver.SetFocus(24001)
 	driver.QueueKey(kryon.KeySpace); drawScroll()
 	driver.QueueKey(kryon.KeyEnd); drawScroll()
-	if ScrollContentStateValue.LongComboSelected != 0 { panic("long combo navigation committed early") }
+	if ScrollContentStateValue.LongDropdownSelected != 0 { panic("long dropdown navigation committed early") }
 	driver.QueueTap(20,420); drawScroll()
-	if ScrollContentStateValue.LongComboSelected != 19 { panic("long combo flipped viewport did not reveal last row") }
-	ScrollContentStateValue.LongComboSelected = 0
+	if ScrollContentStateValue.LongDropdownSelected != 19 { panic("long dropdown flipped viewport did not reveal last row") }
+	ScrollContentStateValue.LongDropdownSelected = 0
 	driver.SetFocus(24001)
 	driver.QueueKey(kryon.KeySpace); drawScroll()
 	driver.QueueMouseButtonDown(kryon.MouseButtonLeft,166,50); drawScroll()
 	driver.QueueMouseMove(166,425); drawScroll()
 	driver.QueueMouseButtonUp(kryon.MouseButtonLeft,20,60); drawScroll()
-	if ScrollContentStateValue.LongComboSelected != 0 { panic("combo scrollbar drag selected a row") }
+	if ScrollContentStateValue.LongDropdownSelected != 0 { panic("dropdown scrollbar drag selected a row") }
 	driver.QueueTap(20,420); drawScroll()
-	if ScrollContentStateValue.LongComboSelected != 19 { panic("combo scrollbar did not reveal last row") }
-	ScrollContentStateValue.EdgeComboVisible = true
+	if ScrollContentStateValue.LongDropdownSelected != 19 { panic("dropdown scrollbar did not reveal last row") }
+	ScrollContentStateValue.EdgeDropdownVisible = true
 	driver.SetFocus(24002)
 	driver.QueueKey(kryon.KeySpace); drawScroll()
 	driver.QueueTap(490,380); drawScroll()
-	if ScrollContentStateValue.EdgeComboSelected != 1 { panic("edge combo shifted popup row did not select") }
-	ScrollContentStateValue.EdgeComboVisible = false
+	if ScrollContentStateValue.EdgeDropdownSelected != 1 { panic("edge dropdown shifted popup row did not select") }
+	ScrollContentStateValue.EdgeDropdownVisible = false
 
 	driver.QueueTap(450,270); drawScroll()
 	if ScrollContentStateValue.RotatedSort != -1 { panic("slanted header empty wedge sorted") }
@@ -624,88 +624,88 @@ func main() {
 	if text64(ScrollContentStateValue.CustomText) != "cell!?" { panic("custom cell editor re-enable") }
 
 	form := GeneratedFormStateValue
-	drawComposedCombo()
-	if !ComposedComboStateValue.ComboOpen { panic("generated composed combo did not open") }
-	driver.QueueTap(30,70); drawComposedCombo()
-	if ComposedComboStateValue.ComboAction != 1 { panic("ordinary generated popup button did not activate") }
-	ComposedComboStateValue.ComboClose = true
-	drawComposedCombo()
-	if ComposedComboStateValue.ComboOpen { panic("generated ClosePopup did not update caller state") }
-	ComposedComboStateValue.ComboClose = false
+	drawComposedPopupContent()
+	if !ComposedPopupStateValue.PopupContentOpen { panic("generated composed popup did not open") }
+	driver.QueueTap(30,70); drawComposedPopupContent()
+	if ComposedPopupStateValue.PopupContentAction != 1 { panic("ordinary generated popup button did not activate") }
+	ComposedPopupStateValue.PopupContentClose = true
+	drawComposedPopupContent()
+	if ComposedPopupStateValue.PopupContentOpen { panic("generated ClosePopup did not update caller state") }
+	ComposedPopupStateValue.PopupContentClose = false
 	host.Draw(func() {
 		kryon.BeginFrame()
-		ComposedCombo_ComposedComboEarlyExit(ComposedComboStateValue, true)
+		ComposedPopup_ComposedPopupEarlyExit(ComposedPopupStateValue, true)
 		kryon.EndFrame()
 	})
-	drawComposedPopup()
+	drawComposedPopupContent()
 	driver.QueueTap(180, 70)
-	drawComposedPopup()
-	if ComposedComboStateValue.PopupAction != 1 {
+	drawComposedPopupTools()
+	if ComposedPopupStateValue.PopupAction != 1 {
 		panic("ordinary generated popup button did not activate")
 	}
-	ComposedComboStateValue.PopupClose = true
-	drawComposedPopup()
-	if ComposedComboStateValue.PopupOpen {
+	ComposedPopupStateValue.PopupClose = true
+	drawComposedPopupTools()
+	if ComposedPopupStateValue.PopupOpen {
 		panic("generated ClosePopup did not update caller state")
 	}
-	ComposedComboStateValue.PopupClose = false
-	ComposedComboStateValue.PopupOpen = true
-	drawComposedPopup()
+	ComposedPopupStateValue.PopupClose = false
+	ComposedPopupStateValue.PopupOpen = true
+	drawComposedPopupTools()
 	driver.QueueTap(180, 170)
-	drawComposedPopup()
-	if ComposedComboStateValue.PopupOpen || ComposedComboStateValue.PopupBackground != 0 {
+	drawComposedPopupTools()
+	if ComposedPopupStateValue.PopupOpen || ComposedPopupStateValue.PopupBackground != 0 {
 		panic("outside popup dismissal leaked into background button")
 	}
 	driver.QueueMouseMove(30, 25)
 	drawComposedTooltip()
-	visibleFrames := ComposedComboStateValue.TooltipFrames
+	visibleFrames := ComposedPopupStateValue.TooltipFrames
 	if visibleFrames != 1 { panic("generated arbitrary tooltip did not open on hover") }
 	driver.QueueTap(30, 25)
 	drawComposedTooltip()
-	if ComposedComboStateValue.TooltipFrames != visibleFrames+1 || ComposedComboStateValue.TooltipBackground != 1 {
+	if ComposedPopupStateValue.TooltipFrames != visibleFrames+1 || ComposedPopupStateValue.TooltipBackground != 1 {
 		panic("generated tooltip captured background input")
 	}
 	driver.QueueMouseMove(300, 200)
 	drawComposedTooltip()
-	if ComposedComboStateValue.TooltipFrames != visibleFrames+1 { panic("generated tooltip remained open outside trigger") }
+	if ComposedPopupStateValue.TooltipFrames != visibleFrames+1 { panic("generated tooltip remained open outside trigger") }
 	drawComposedModal()
-	if !ComposedComboStateValue.ModalOpen || ComposedComboStateValue.ModalFrames != 1 {
+	if !ComposedPopupStateValue.ModalOpen || ComposedPopupStateValue.ModalFrames != 1 {
 		panic("generated arbitrary modal did not open")
 	}
 	driver.QueueTap(290, 175)
 	drawComposedModal()
-	if !ComposedComboStateValue.ModalOpen || ComposedComboStateValue.ModalBackground != 0 {
+	if !ComposedPopupStateValue.ModalOpen || ComposedPopupStateValue.ModalBackground != 0 {
 		panic("generated modal dismissed or leaked outside input")
 	}
 	driver.QueueKey(kryon.KeyEscape)
 	drawComposedModal()
-	if ComposedComboStateValue.ModalOpen { panic("generated modal ignored Escape") }
+	if ComposedPopupStateValue.ModalOpen { panic("generated modal ignored Escape") }
 	driver.QueueMouseButtonDown(kryon.MouseButtonRight, 30, 25)
 	drawComposedContext()
-	if ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextFrames != 0 {
+	if ComposedPopupStateValue.ContextOpen || ComposedPopupStateValue.ContextFrames != 0 {
 		panic("generated context popup opened before right release")
 	}
 	driver.QueueMouseButtonUp(kryon.MouseButtonRight, 30, 25)
 	drawComposedContext()
-	if !ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextFrames != 1 {
+	if !ComposedPopupStateValue.ContextOpen || ComposedPopupStateValue.ContextFrames != 1 {
 		panic("generated context popup did not open on right release")
 	}
 	driver.QueueTap(120, 80)
 	drawComposedContext()
-	if ComposedComboStateValue.ContextOpen || ComposedComboStateValue.ContextAction != 1 {
+	if ComposedPopupStateValue.ContextOpen || ComposedPopupStateValue.ContextAction != 1 {
 		panic("generated context popup child did not activate and close")
 	}
 	driver.QueueMouseButtonDown(kryon.MouseButtonLeft, 40, 40)
 	drawComposedPopupDrag()
 	driver.QueueMouseMove(200, 40)
 	drawComposedPopupDrag()
-	if ComposedComboStateValue.PopupDragValues[0] != 170 {
+	if ComposedPopupStateValue.PopupDragValues[0] != 170 {
 		panic("generated popup drag did not retain ownership outside its bounds")
 	}
-	ComposedComboStateValue.PopupDragOpen = false
+	ComposedPopupStateValue.PopupDragOpen = false
 	driver.QueueMouseMove(230, 40)
 	drawComposedPopupDrag()
-	if ComposedComboStateValue.PopupDragValues[0] != 170 {
+	if ComposedPopupStateValue.PopupDragValues[0] != 170 {
 		panic("generated dismissed popup drag leaked into background widget")
 	}
 	driver.QueueMouseButtonUp(kryon.MouseButtonLeft, 230, 40)
@@ -713,34 +713,34 @@ func main() {
 	driver.QueueKey(kryon.KeyLeftControl)
 	driver.QueueKey(kryon.KeyC)
 	drawComposedPopupShortcut()
-	if ComposedComboStateValue.PopupShortcutInside != 1 || ComposedComboStateValue.PopupShortcutBackground != 0 {
+	if ComposedPopupStateValue.PopupShortcutInside != 1 || ComposedPopupStateValue.PopupShortcutBackground != 0 {
 		panic("generated popup shortcut did not route exclusively to its owner")
 	}
-	ComposedComboStateValue.PopupShortcutOpen = false
+	ComposedPopupStateValue.PopupShortcutOpen = false
 	driver.QueueKey(kryon.KeyLeftControl)
 	driver.QueueKey(kryon.KeyC)
 	drawComposedPopupShortcut()
-	if ComposedComboStateValue.PopupShortcutInside != 1 || ComposedComboStateValue.PopupShortcutBackground != 1 {
+	if ComposedPopupStateValue.PopupShortcutInside != 1 || ComposedPopupStateValue.PopupShortcutBackground != 1 {
 		panic("generated popup shortcut did not restore background routing")
 	}
-	ComposedComboStateValue.PopupShortcutOpen = true
+	ComposedPopupStateValue.PopupShortcutOpen = true
 	driver.SetFocus(27072)
 	driver.QueueKey(kryon.KeyRight)
 	drawComposedPopupShortcut()
-	if ComposedComboStateValue.PopupTreeBackgroundOpen {
+	if ComposedPopupStateValue.PopupTreeBackgroundOpen {
 		panic("generated background tree handled a popup-owned key")
 	}
 	driver.SetFocus(27071)
 	driver.QueueKey(kryon.KeyRight)
 	drawComposedPopupShortcut()
-	if !ComposedComboStateValue.PopupTreeInsideOpen {
+	if !ComposedPopupStateValue.PopupTreeInsideOpen {
 		panic("generated popup tree did not handle its owned key")
 	}
-	ComposedComboStateValue.PopupShortcutOpen = false
+	ComposedPopupStateValue.PopupShortcutOpen = false
 	driver.SetFocus(27072)
 	driver.QueueKey(kryon.KeyRight)
 	drawComposedPopupShortcut()
-	if !ComposedComboStateValue.PopupTreeBackgroundOpen {
+	if !ComposedPopupStateValue.PopupTreeBackgroundOpen {
 		panic("generated background tree routing was not restored")
 	}
 	// Native-only composition contract: preedit never mutates committed text.
@@ -1337,7 +1337,7 @@ cat > "$work/c_runner.c" <<EOF
 #include "$work/c/tests/parity/scroll_content.c"
 #include "$work/c/tests/parity/drag_drop.c"
 #include "$work/c/tests/parity/composition.c"
-#include "$work/c/tests/parity/composed_combo.c"
+#include "$work/c/tests/parity/composed_popup.c"
 
 static void drain_events(void)
 {
@@ -1377,8 +1377,8 @@ static void draw_buttons(void)
 
 static void draw_composition(void) { draw_ui(composition_frame); }
 static void draw_tab_scope(void) { draw_ui(tab_scope_frame); }
-static void draw_composed_combo(void) { draw_ui(composed_combo_frame); }
-static void draw_composed_popup(void) { draw_ui(composed_popup_frame); }
+static void draw_composed_popup_content(void) { draw_ui(composed_popup_content_frame); }
+static void draw_composed_popup_tools(void) { draw_ui(composed_popup_tools_frame); }
 static void draw_composed_tooltip(void) { draw_ui(composed_tooltip_frame); }
 static void draw_composed_modal(void) { draw_ui(composed_modal_frame); }
 static void draw_composed_context(void) { draw_ui(composed_context_frame); }
@@ -1485,26 +1485,26 @@ int main(void)
        tab_second_actions != 1) {
         fprintf(stderr,"tab scope: selection did not switch arbitrary child content\n"); return 1;
     }
-    draw_composed_combo();
-    if(!combo_open) { fprintf(stderr,"generated composed combo did not open\n"); return 1; }
-    InjectTap(30,70); InjectPump(); draw_composed_combo();
-    InjectPump(); draw_composed_combo();
-    if(combo_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
-    combo_close = 1; draw_composed_combo();
-    if(combo_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
-    combo_close = 0;
+    draw_composed_popup_content();
+    if(!popup_content_open) { fprintf(stderr,"generated composed popup did not open\n"); return 1; }
+    InjectTap(30,70); InjectPump(); draw_composed_popup_content();
+    InjectPump(); draw_composed_popup_content();
+    if(popup_content_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
+    popup_content_close = 1; draw_composed_popup_content();
+    if(popup_content_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
+    popup_content_close = 0;
     BeginUIFrame(640,480,1);
-    composed_combo_early_exit(1);
+    composed_popup_early_exit(1);
     EndUIFrame();
-    draw_composed_popup();
-    InjectTap(180,70); InjectPump(); draw_composed_popup();
-    InjectPump(); draw_composed_popup();
+    draw_composed_popup_content();
+    InjectTap(180,70); InjectPump(); draw_composed_popup_tools();
+    InjectPump(); draw_composed_popup_tools();
     if(popup_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
-    popup_close = 1; draw_composed_popup();
+    popup_close = 1; draw_composed_popup_tools();
     if(popup_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
-    popup_close = 0; popup_open = 1; draw_composed_popup();
-    InjectTap(180,170); InjectPump(); draw_composed_popup();
-    InjectPump(); draw_composed_popup();
+    popup_close = 0; popup_open = 1; draw_composed_popup_tools();
+    InjectTap(180,170); InjectPump(); draw_composed_popup_tools();
+    InjectPump(); draw_composed_popup_tools();
     if(popup_open || popup_background != 0) {
         fprintf(stderr,"outside popup dismissal leaked into background button\n"); return 1;
     }
@@ -1866,7 +1866,7 @@ int main(void)
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
     InjectPump(); draw_ui(scroll_content_frame);
-    if(overlay_selected != 1 || overlay_actions != 0) { fprintf(stderr,"combo overlay: selection or background capture failed\n"); return 1; }
+    if(overlay_selected != 1 || overlay_actions != 0) { fprintf(stderr,"dropdown overlay: selection or background capture failed\n"); return 1; }
     for(int escape = 0; escape < 2; escape++) {
         InjectTap(250,190);
         InjectPump(); draw_ui(scroll_content_frame);
@@ -1878,9 +1878,9 @@ int main(void)
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
         InjectPump(); draw_ui(scroll_content_frame);
-        if(overlay_selected != 1) { fprintf(stderr,"combo dismissal: stale row selected\n"); return 1; }
+        if(overlay_selected != 1) { fprintf(stderr,"dropdown dismissal: stale row selected\n"); return 1; }
     }
-    if(overlay_actions != 2) { fprintf(stderr,"combo dismissal: capture remained\n"); return 1; }
+    if(overlay_actions != 2) { fprintf(stderr,"dropdown dismissal: capture remained\n"); return 1; }
     for(int last = 0; last < 2; last++) {
         SetUIFocus(996);
         InjectKeyTap(KEY_SPACE);
@@ -1888,10 +1888,10 @@ int main(void)
         int before = overlay_selected;
         InjectKeyTap(last ? KEY_END : KEY_HOME);
         for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-        if(overlay_selected != before) { fprintf(stderr,"combo navigation committed before Enter\n"); return 1; }
+        if(overlay_selected != before) { fprintf(stderr,"dropdown navigation committed before Enter\n"); return 1; }
         InjectKeyTap(KEY_ENTER);
         for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-        if(overlay_selected != last) { fprintf(stderr,"combo keyboard commit failed\n"); return 1; }
+        if(overlay_selected != last) { fprintf(stderr,"dropdown keyboard commit failed\n"); return 1; }
     }
     InjectReset();
     SetUIFocus(24001);
@@ -1899,11 +1899,11 @@ int main(void)
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectKeyTap(KEY_END);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-    if(long_combo_selected != 0) { fprintf(stderr,"long combo navigation committed early\n"); return 1; }
+    if(long_dropdown_selected != 0) { fprintf(stderr,"long dropdown navigation committed early\n"); return 1; }
     InjectTap(20,420);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-    if(long_combo_selected != 19) { fprintf(stderr,"long combo flipped viewport did not reveal last row\n"); return 1; }
-    long_combo_selected = 0;
+    if(long_dropdown_selected != 19) { fprintf(stderr,"long dropdown flipped viewport did not reveal last row\n"); return 1; }
+    long_dropdown_selected = 0;
     SetUIFocus(24001);
     InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
@@ -1913,17 +1913,17 @@ int main(void)
     InjectPump(); draw_ui(scroll_content_frame);
     InjectMousePosition(20,60); InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-    if(long_combo_selected != 0) { fprintf(stderr,"combo scrollbar drag selected a row\n"); return 1; }
+    if(long_dropdown_selected != 0) { fprintf(stderr,"dropdown scrollbar drag selected a row\n"); return 1; }
     InjectTap(20,420);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-    if(long_combo_selected != 19) { fprintf(stderr,"combo scrollbar did not reveal last row\n"); return 1; }
-    edge_combo_visible = 1;
+    if(long_dropdown_selected != 19) { fprintf(stderr,"dropdown scrollbar did not reveal last row\n"); return 1; }
+    edge_dropdown_visible = 1;
     SetUIFocus(24002); InjectKeyTap(KEY_SPACE);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
     InjectTap(490,380);
     for(int frame = 0; frame < 3; frame++) { InjectPump(); draw_ui(scroll_content_frame); }
-    if(edge_combo_selected != 1) { fprintf(stderr,"edge combo shifted popup row did not select\n"); return 1; }
-    edge_combo_visible = 0;
+    if(edge_dropdown_selected != 1) { fprintf(stderr,"edge dropdown shifted popup row did not select\n"); return 1; }
+    edge_dropdown_visible = 0;
     InjectReset();
     InjectTap(450,270);
     InjectPump(); draw_ui(scroll_content_frame);

@@ -22,10 +22,10 @@ state {
         (DropdownOption){.label = "Two", .icon_type = UI_ICON_TYPE_MOON, .separator_before = 1},
         (DropdownOption){.label = "Unavailable", .disabled = 1}
     }
-    edge_combo_visible: bool = false
-    edge_combo_selected: int = 0
-	long_combo_selected: int = 0
-	long_combo_options: [20] const char * = {"0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"}
+    edge_dropdown_visible: bool = false
+    edge_dropdown_selected: int = 0
+	long_dropdown_selected: int = 0
+	long_dropdown_options: [20] const char * = {"0","1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19"}
     rotated_sort: int = -1
     rotated_row: int = -1
     rotated_widths: [2] int = {90,90}
@@ -105,10 +105,10 @@ scroll_content_frame :: () #ui {
         Dropdown((DropdownProps){.bounds = {240,180,160,28}, .id = 996, .items = overlay_items, .option_count = 3, .selected_index = &overlay_selected})
     }
     Rect(240,212,160,56,RED,BLANK)
-    if edge_combo_visible {
-        Dropdown((DropdownProps){.bounds = {620,410,160,28}, .id = 24002, .options = overlay_options, .option_count = 2, .selected_index = &edge_combo_selected})
+    if edge_dropdown_visible {
+        Dropdown((DropdownProps){.bounds = {620,410,160,28}, .id = 24002, .options = overlay_options, .option_count = 2, .selected_index = &edge_dropdown_selected})
     }
-    Dropdown((DropdownProps){.bounds = {10,440,160,28}, .id = 24001, .options = long_combo_options, .option_count = 20, .selected_index = &long_combo_selected})
+    Dropdown((DropdownProps){.bounds = {10,440,160,28}, .id = 24001, .options = long_dropdown_options, .option_count = 20, .selected_index = &long_dropdown_selected})
     rotated_columns: [2] const char * = {"Angled label","Second"}
     rotated_cells: [2] const char * = {"Cell","Cell"}
     rotated_rows: [1] TableRow = {{.cells = rotated_cells, .cell_count = 2}}

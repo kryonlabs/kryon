@@ -104,9 +104,9 @@ names instead:
 | Arbitrary anchored/floating content | `Popup` | Includes tooltip, modal, and context variants through props. |
 | Command lists and menu bars | `Menu` / `MenuBar` / `PopupMenu` / `ContextMenu` | Command semantics, accelerators, and submenu behavior. |
 
-Remove `BeginCombo`, `EndCombo`, `CloseCombo`, `ComboProps`, and `ComboFlags`
-from the public surface after existing tests and generated fixtures move to
-`Dropdown` or `Popup`.
+`BeginCombo`, `EndCombo`, `CloseCombo`, `ComboProps`, and `ComboFlags` have
+been removed from the public surface. Existing generated fixtures use
+`Dropdown` for option selection and `Popup` for arbitrary child content.
 
 ## Core Drawing And Text
 
@@ -136,10 +136,10 @@ from the public surface after existing tests and generated fixtures move to
 | `TextField` | `.kry canonical` | Metrics and horizontal scroll policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics and page-row policy are in `.kry`; editing, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module. |
-| `Combo` | Remove after migration | Old name for arbitrary popup content. Use `Dropdown` for selection, `Popup` for arbitrary content, and `Menu` for commands. |
-| `BeginCombo` | Remove after migration | Immediate-mode compatibility; not canonical `.kry` surface. |
-| `EndCombo` | Remove after migration | Immediate-mode compatibility; not canonical `.kry` surface. |
-| `CloseCombo` | Remove after migration | Immediate-mode compatibility; not canonical `.kry` surface. |
+| `Combo` | Removed | Old arbitrary-popup name; use `Dropdown`, `Popup`, or `Menu`. |
+| `BeginCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
+| `EndCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
+| `CloseCombo` | Removed | Immediate-mode compatibility name deleted from the public surface. |
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`. |
@@ -250,14 +250,10 @@ they should stay separate from general UI widgets.
 
 1. Finish porting high-use native controls into `.kry`: `TextField` and
    `TextArea` editing/composition policy.
-2. Remove `Combo` completely: migrate remaining generated fixtures and tests
-   to `Dropdown`, `Popup`, or `Menu`; then delete `ComboProps`, `ComboFlags`,
-   `BeginCombo`, `EndCombo`, and `CloseCombo` from C, Go, JS, C++, docs, and
-   snapshots.
-3. Remove other compatibility names after migrations: tutorial helpers
+2. Remove other compatibility names after migrations: tutorial helpers
    and immediate-mode `Begin*`/`End*` wrappers from public `.kry`
    documentation.
-4. Align editor registry names with canonical widget names and decide whether
+3. Align editor registry names with canonical widget names and decide whether
    `TileLayer` needs a full implementation or should leave the registry.
 5. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.

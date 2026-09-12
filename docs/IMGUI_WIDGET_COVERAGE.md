@@ -11,7 +11,7 @@ than copying overload names: Kryon's counted value arrays cover the ImGui
 not proof of every overload, flag, interaction or rendering detail. Full-goal
 completion requires those semantics to be checked separately. In particular,
 the [composed popup checklist](COMPOSED_POPUP_IMPLEMENTATION.md) records the
-implemented combo scope and its remaining lifecycle/backend gaps.
+implemented popup scope and its remaining lifecycle/backend gaps.
 
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
@@ -19,7 +19,7 @@ implemented combo scope and its remaining lifecycle/backend gaps.
 | Buttons and boolean choices | `Button` (including `ControlSizeSmall`, arrow/info/menu/split options), `InvisibleButton`, `Toggle`, `Checkbox`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
 | Progress and links | `Progress`, `Link` | covered; `Link` represents both clickable text and open-URL links |
 | Images | `Image`, image `Button` | covered; image content on `Button` shares ordinary focus and keyboard activation |
-| Dropdowns | `Dropdown`, `Selectable`, `BeginCombo` / `EndCombo` / `CloseCombo` | option-list helper plus a native arbitrary-child scope with explicit close and presentation flags |
+| Dropdowns | `Dropdown`, `Selectable` | option-list helper plus shared selectable row semantics |
 | Drag values | `Drag(DragProps)` | covered, including counted N-component values, range endpoints, component focus/Tab traversal, Left/Right adjustment, Home/End bounds, Shift/Alt step modifiers, and Ctrl-click/double-click temporary keyboard entry |
 | Sliders | `Slider(SliderProps)` | counted N-component values, vertical orientation, angle mode, component focus, arrow/Home/End keyboard adjustment, slow/fast modifiers, and Ctrl-click/double-click temporary keyboard entry are covered |
 | Keyboard inputs | `TextField`, `TextArea`, `Input(InputProps)` | covered, including hints and counted N-component values |
@@ -44,7 +44,7 @@ APIs rather than widget families and are outside this widget inventory.
 
 ## Composition verification
 
-C and Go regressions declare 41 combo controls and verify independent identity,
+C and Go regressions declare 41 dropdown controls and verify independent identity,
 selection and open-state capture. C no longer aliases the first control after
 24 dropdown identities; missing owners' records are reclaimed at frame end.
 C options and their copied labels/font names also use dynamically sized owned
@@ -55,7 +55,7 @@ the corresponding deferred text record. Visible-row painting avoids drawing
 every option in a large list. The option-list helper's retained state is owned
 per render host; native C tests open the same numeric widget ID in independent
 stores and verify that popup visibility cannot cross windows. Arbitrary popup
-composition uses the separate public combo scope.
+composition uses the separate public dropdown scope.
 
 Open native C/Go dropdowns support Up/Down, Home/End and Enter, keeping the
 highlight separate from committed selection. Native tests navigate a 131-option
@@ -113,7 +113,7 @@ immediate and retained capture and compares premultiplied composition against
 direct source-over drawing. This manually configured backend test establishes
 the required alpha pipeline. Captured retained nodes now preserve declaration-time
 blend state and restore the caller's active and pending custom blend settings
-after painting, verified by the framebuffer test. The public combo scope uses
+after painting, verified by the framebuffer test. The public dropdown scope uses
 the C paint-layer context, which owns and
 composites textures with scope-level drawing-state restoration. Real pixel tests
 cover mixed translucent/retained content, nested ordering, hidden parents and
@@ -133,7 +133,7 @@ readback no longer changes the main frame's active destination.
 C paint layers now isolate the retained layout path. Headless node/position
 checks and real pixels verify a popup's independent Column origin and that the
 surrounding Row resumes at its next slot. Unclosed child layouts are rejected.
-The public combo scope uses this isolation so its child layouts do not consume
+The public dropdown scope uses this isolation so its child layouts do not consume
 the surrounding layout cursor.
 C layer disabled scopes now inherit the parent's state without allowing child
 scope endings to unwind the parent. Headless nested-scope tests and the real
@@ -195,8 +195,8 @@ a context-only child API. The caller retains open state and stable panel bounds;
 ordinary children, explicit close, outside dismissal, disabled rejection and
 missing-owner cleanup remain shared with `Popup`. Matching native C/Go tests
 and a generated k2c/k2cpp/k2go fixture cover the trigger and child lifecycle.
-Matching C and Go tests now cover keyboard opening of a combo inside the top
-popup versus a blocked parent, with popup bounds away from the combo to prove
+Matching C and Go tests now cover keyboard opening of a dropdown inside the top
+popup versus a blocked parent, with popup bounds away from the dropdown to prove
 the check is independent of pointer position. Child/branch dismissal restores
 parent/background keyboard eligibility. This is not Tab trapping or general
 button/editor keyboard isolation.
@@ -366,15 +366,15 @@ child layout; `Depth` indents the header hit and drawing bounds only.
 The native runners also exercise Left/Right expansion and Enter/Space toggling
 while preserving nested state. Directional tests move between headers and their
 parent/child, including a leaf and a disabled header that navigation must skip.
-The native fixture also selects a combo popup row outside the owner's scroll
+The native fixture also selects a dropdown popup row outside the owner's scroll
 viewport while a previously drawn button occupies the same bounds. Go pixel
 coverage verifies that the deferred popup paints above later content, without
-inheriting the owner's scroll clip. The separate composed-combo fixture covers
+inheriting the owner's scroll clip. The separate composed-dropdown fixture covers
 arbitrary native children. Native generated dismissal checks cover Escape and outside clicks,
 unchanged selection, and restoration of underlying button interaction. Go also
 tests closing when the option list becomes empty.
 Generated C/Go tests also check that an earlier background scroll scope does
-not change its offset on wheel input over an open combo popup. Native Go unit
+not change its offset on wheel input over an open dropdown popup. Native Go unit
 tests cover the same ownership rule for scroll scopes, lists, trees, source
 views and tables, including disabled and clipped content.
 

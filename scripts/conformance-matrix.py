@@ -279,7 +279,7 @@ KRB_WEB_EXPORTED_FUNCTIONS = (
 
 KRB_ALPHA_BYTE_GAPS = {
     "examples/26_widget_catalog.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
-    "tests/parity/composed_combo.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/composed_popup.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/composition.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/drag_drop.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/scroll_content.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",

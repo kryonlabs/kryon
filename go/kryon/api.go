@@ -87,9 +87,6 @@ func EndFrame() {
 }
 func BeginDisabled(disabled bool)      { active().BeginDisabled(disabled) }
 func EndDisabled()                     { active().EndDisabled() }
-func BeginCombo(props ComboProps) bool { return active().BeginCombo(props) }
-func EndCombo()                        { active().EndCombo() }
-func CloseCombo()                      { active().CloseCombo() }
 func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
 func EndPopup()                        { active().EndPopup() }
 func ClosePopup()                      { active().ClosePopup() }

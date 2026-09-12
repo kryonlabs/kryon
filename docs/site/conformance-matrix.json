@@ -3160,9 +3160,9 @@
       "widgets": []
     },
     {
-      "id": "tests-parity-composed_combo",
-      "label": "Native Composed Combo Parity",
-      "path": "tests/parity/composed_combo.kry",
+      "id": "tests-parity-composed_popup",
+      "label": "Native Composed Popup Parity",
+      "path": "tests/parity/composed_popup.kry",
       "pipelines": {
         "k2b": {
           "evidence": "conformance-matrix-check",
@@ -5264,7 +5264,7 @@
       "id": "Button",
       "semantic_sources": [
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/plots.kry",
         "tests/parity/scroll_content.kry",
@@ -5284,7 +5284,7 @@
         "examples/27_dropdowns.kry",
         "tests/parity/button_content.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/plots.kry",
         "tests/parity/scroll_content.kry",
@@ -5322,7 +5322,7 @@
       "id": "Checkbox",
       "semantic_sources": [
         "tests/parity/basic_controls.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/selection_images.kry"
       ],
@@ -5332,7 +5332,7 @@
         "examples/18_accessibility.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
@@ -5343,14 +5343,14 @@
     {
       "id": "Collapsible",
       "semantic_sources": [
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/scroll_content.kry"
       ],
       "source_count": 5,
       "sources": [
         "examples/15_containers.kry",
         "examples/26_widget_catalog.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -5376,7 +5376,7 @@
       "id": "Column",
       "semantic_sources": [
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
         "tests/parity/scroll_content.kry"
@@ -5385,7 +5385,7 @@
       "sources": [
         "examples/26_widget_catalog.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/long_text.kry",
         "tests/parity/scroll_content.kry",
@@ -5601,7 +5601,7 @@
       "id": "Row",
       "semantic_sources": [
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/scroll_content.kry"
       ],
@@ -5610,7 +5610,7 @@
         "examples/26_widget_catalog.kry",
         "tests/parity/button_content.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/generated_form.kry",
         "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
@@ -5623,7 +5623,7 @@
       "semantic_sources": [
         "tests/parity/basic_controls.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/composition.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",
@@ -5664,7 +5664,7 @@
         "tests/parity/basic_controls.kry",
         "tests/parity/button_content.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/composition.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",
@@ -5793,7 +5793,7 @@
       "id": "Text",
       "semantic_sources": [
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/long_text.kry",
         "tests/parity/menus.kry",
         "tests/parity/plots.kry"
@@ -5821,7 +5821,7 @@
         "examples/26_widget_catalog.kry",
         "examples/27_dropdowns.kry",
         "tests/parity/buttons_layout.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/long_text.kry",
         "tests/parity/menus.kry",
         "tests/parity/plots.kry",
@@ -5853,7 +5853,7 @@
     {
       "id": "TextField",
       "semantic_sources": [
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/composition.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",
@@ -5865,7 +5865,7 @@
       "sources": [
         "examples/03_theme.kry",
         "examples/26_widget_catalog.kry",
-        "tests/parity/composed_combo.kry",
+        "tests/parity/composed_popup.kry",
         "tests/parity/composition.kry",
         "tests/parity/fields.kry",
         "tests/parity/focus.kry",

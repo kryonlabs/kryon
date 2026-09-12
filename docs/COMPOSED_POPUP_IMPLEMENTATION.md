@@ -1,28 +1,21 @@
 # Composed popup implementation requirements
 
-Status: the public native `BeginCombo` / `EndCombo` / `CloseCombo` and generic
-`BeginPopup` / `EndPopup` / `ClosePopup` scopes are implemented in C and Go,
-with k2c, k2cpp and k2go generated coverage. The
+Status: the public native `BeginPopup` / `EndPopup` / `ClosePopup` scope is
+implemented in C and Go, with k2c, k2cpp and k2go generated coverage. The
 remaining lifecycle and backend gaps below still apply. This is an
 implementation checklist, not a completion claim or a restriction of the
 native ImGui widget goal.
 
 ## Contract
 
-Dear ImGui's [combo API](https://github.com/ocornut/imgui/blob/master/imgui.h)
-explicitly separates the option-list convenience helper from a begin/end scope
-whose contents and selection are caller-controlled. The upstream header was
-checked on 2026-09-05. It also exposes popup alignment and height choices,
-arrow/preview suppression, and fitting the width to the preview. Existing
-Kryon option arrays do not establish support for that scope or those flags.
-The same upstream header exposes arbitrary begin/end popup and tooltip scopes;
-Kryon's generic popup scope now covers caller-defined non-modal popup contents,
+Dear ImGui exposes arbitrary begin/end popup and tooltip scopes; Kryon's generic
+popup scope covers caller-defined non-modal popup contents,
 non-input-capturing hover tooltips through `PopupTooltip`, and arbitrary modal
 contents through `PopupModal`. `PopupContext` adds right-release activation over
 an explicit trigger while retaining the same arbitrary-child scope and
 caller-owned open state.
 
-The clean native scope must accept ordinary native controls and nested layouts,
+The clean native popup scope must accept ordinary native controls and nested layouts,
 not a second set of popup-specific widget aliases. C, C++ codegen over C, and
 native Go generated callers must share the same behavior. Selection and editing
 remain in caller state. A successful begin must have one matching end; a closed
@@ -44,7 +37,7 @@ popup must not submit children.
 - `SaveUIFrameState` preserves UI camera/input state, not the active graphics
   render target. It is not sufficient for nested paint-target restoration.
 - Go now collects deferred `FrameOp` records in runtime-owned nested paint
-  layers. Existing option-list dropdowns and the public combo scope use that
+  layers. Existing option-list dropdowns and the public dropdown scope use that
   collector and a private nested popup click-ownership registry. Scrollable
   widgets gate wheel input through popup ownership and the active content clip;
   drag values, sliders, splitters and table gestures retain their starting
@@ -70,7 +63,7 @@ popup must not submit children.
 3. Generalize Go's deferred popup records and both runtimes' pointer capture to
    nested scopes. Preserve the parent's layout, clip, disabled state, focus and
    paint destination on exit. Handle a missing owner and window destruction.
-4. Add the clean combo scope and explicit close behavior in C and Go together,
+4. Add the clean dropdown scope and explicit close behavior in C and Go together,
    then add k2c/k2cpp/k2go generated fixtures and output-scanner coverage.
 5. Exercise the upstream presentation choices instead of assuming the presence
    of an option-list helper covers them.
@@ -167,7 +160,7 @@ through the real framebuffer checks.
 The real framebuffer test covers translucent immediate content, retained content
 above later opaque main content, child-over-parent ordering, hidden parents,
 missing owners, and resumed drawing under a transformed camera and clip. This
-is exposed through the public combo scope. C layer scopes suspend the
+is exposed through the public dropdown scope. C layer scopes suspend the
 owner's retained layout path through `ui_tree_layout_suspend` and restore it on
 exit. Popup nodes stay attached to the screen root in the same retained tree,
 but do not consume parent Row/Column slots. Declaration-generation and balanced
@@ -214,13 +207,13 @@ inspection gates. A button regression clears immediate focus before the deferred
 pass and verifies child focus versus modal blocking after both scopes close.
 It also checks deferred click events. The test initially reproduced a click
 leaking through modal capture; hit testing and hover/press state now consult the
-same full capture predicate as pointer-focus registration. The public combo
+same full capture predicate as pointer-focus registration. The public dropdown
 scope uses this ownership registry. Persistent active-gesture ownership is
 covered below.
 
 C and Go now select the top live popup branch for keyboard eligibility without
 testing pointer coordinates. Closed combos consult this check before accepting
-keyboard opening. Matching native tests cover a focused combo in the parent
+keyboard opening. Matching native tests cover a focused dropdown in the parent
 versus the top child, and keyboard eligibility after child and branch dismissal.
 This check does not cover every shortcut path or establish complete keyboard
 ownership.
@@ -343,8 +336,8 @@ interleaving an auxiliary window, and closing/reopening the graphics context.
 Presenter texture readback preserves its caller's framebuffer, so interleaving
 an auxiliary presentation does not redirect the main frame's later composition.
 Callers of private internals still must balance layer scopes and finish retained
-painting before host finalization. The public combo scope owns that balancing
-for ordinary callers and rejects an unmatched `EndCombo`.
+painting before host finalization. The public popup scope owns that balancing
+for ordinary callers and rejects an unmatched `EndPopup`.
 
 ## Implemented prerequisite: native Go nested paint collection
 
@@ -366,7 +359,7 @@ reset, and rejection of foreign, stale and unbalanced scope tokens. The native
 Go suite and generated-runtime parity fixture for the existing dropdown path
 remain regression gates.
 
-The public Go combo scope now builds on this collector. Native tests cover
+The public Go dropdown scope now builds on this collector. Native tests cover
 ordinary buttons, checkboxes, editable fields and nested layouts, including
 nested dismissal, missing owners, layout restoration and presentation flags.
 The shared `.kry` fixture is executed through generated C and Go and is also
@@ -383,7 +376,7 @@ Existing dropdown click consumers use this registry. Scroll scopes, list boxes,
 trees and tables also use its ownership check for wheel input,
 alongside disabled-state and clip checks. Unit tests verify that each family
 rejects covered background scrolling while allowing its popup-owned counterpart
-to scroll. Generated native C/Go regression coverage opens a combo over an
+to scroll. Generated native C/Go regression coverage opens a dropdown over an
 earlier scroll scope and checks that the latter's offset remains unchanged on
 wheel input. Go drag-and-drop start/accept paths now also respect popup and clip
 ownership; tests verify that rejected background targets leave the release and
@@ -400,7 +393,7 @@ focus restoration covers both explicit dismissal and owner removal.
 | Case | Required evidence |
 |---|---|
 | Mixed contents | Generated button, checkbox, editable field and nested Row with independent caller state |
-| Layer order | C and Go pixel checks with opaque content drawn after the combo owner |
+| Layer order | C and Go pixel checks with opaque content drawn after the dropdown owner |
 | Existing render target | Native C offscreen/UI-window test proving the parent target and later drawing are preserved |
 | Nested popup | One level closes without corrupting the parent's capture, layout or destination |
 | Scrolling owner | Popup escapes the owner's clip while ordinary owner content remains clipped |

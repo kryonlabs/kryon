@@ -9,7 +9,7 @@ app "Kryon Basic Controls" {
 state {
     radio: int = 1
     spin: int = 4
-    combo: int = 0
+    dropdown: int = 0
     progress: int = 45
     choices: [3] const char * = {"Alpha","Beta","Gamma"}
 }
@@ -30,7 +30,7 @@ BasicControlsExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={40, 166, 0, 0}, .text=TextFormat("Selected: Choice %s", radio == 1 ? "A" : "B"), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Spinbox((SpinboxProps){{240,90,140,34},201,0,10,1,&spin,0})
         Dropdown((DropdownProps){.bounds = {240,140,180,34}, .id = 202,
-            .options = choices, .option_count = 3, .selected_index = &combo})
+            .options = choices, .option_count = 3, .selected_index = &dropdown})
         Progress((ProgressProps){{40,210,380,28},0,100,progress,"Progress"})
         if (IsKeyPressed(KEY_RIGHT)) {
             if progress < 100 {

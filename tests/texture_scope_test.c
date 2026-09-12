@@ -1062,14 +1062,13 @@ int main(void)
         BeginTextureMode(outer);
         ClearBackground(BLACK);
         BeginUIFrame(64,64,1);
-        BeginTree(Key("public composed combo paint"));
-        if(BeginCombo((ComboProps){.bounds={0,0,16,8},
-                .popup_size={64,56},.preview="",.id=28000,
-                .open=&composed_open,.flags=ComboPopupAlignLeft|ComboNoArrow})) {
+        BeginTree(Key("public composed popup paint"));
+        if(BeginPopup((PopupProps){.bounds={0,8,64,56},.id=28000,
+                .open=&composed_open})) {
             DrawRectangle(0,8,8,8,GREEN);
             Rect(16,16,8,8,YELLOW,BLANK);
-            if(frame == 1) CloseCombo();
-            EndCombo();
+            if(frame == 1) ClosePopup();
+            EndPopup();
         }
         Rect(0,0,64,64,RED,BLANK);
         EndTree();
@@ -1078,13 +1077,13 @@ int main(void)
         Image composed = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&composed);
         check_pixel(composed,2,10,frame == 0 ? GREEN : RED,
-                    "public combo immediate paint layer");
+                    "public popup immediate paint layer");
         check_pixel(composed,18,18,frame == 0 ? YELLOW : RED,
-                    "public combo retained paint layer");
+                    "public popup retained paint layer");
         UnloadImage(composed);
     }
     if(composed_open) {
-        fprintf(stderr,"public CloseCombo did not update caller state\n");
+        fprintf(stderr,"public ClosePopup did not update caller state\n");
         failures++;
     }
     CloseNativeWindow(auxiliary);

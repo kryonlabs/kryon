@@ -591,30 +591,6 @@ type TextProps struct {
 	Style         Style
 }
 
-type ComboFlags uint32
-
-const (
-	ComboFlagsNone      ComboFlags = 0
-	ComboPopupAlignLeft ComboFlags = 1 << (iota - 1)
-	ComboHeightSmall
-	ComboHeightRegular
-	ComboHeightLarge
-	ComboHeightLargest
-	ComboNoArrow
-	ComboNoPreview
-	ComboWidthFitPreview
-)
-
-type ComboProps struct {
-	Bounds    Rectangle
-	PopupSize Vector2
-	Preview   string
-	ID        int32
-	Open      *bool
-	Flags     ComboFlags
-	Disabled  bool
-}
-
 type PopupFlags uint32
 
 const (
@@ -1263,9 +1239,6 @@ type Runtime interface {
 	EndFrame()
 	BeginDisabled(bool)
 	EndDisabled()
-	BeginCombo(ComboProps) bool
-	EndCombo()
-	CloseCombo()
 	BeginPopup(PopupProps) bool
 	EndPopup()
 	ClosePopup()
@@ -1462,9 +1435,6 @@ type runtime struct {
 	paintLayers       []paintLayer
 	paintLayerScopes  []paintLayerScope
 	paintLayerFrame   uint64
-	comboScopes       []comboScope
-	openCombos        map[int32]*bool
-	combosSeen        map[int32]bool
 	popupScopes       []popupScope
 	tabBarScopes      []tabBarScope
 	openPopups        map[int32]*bool
@@ -1830,10 +1800,6 @@ func (r *runtime) BeginFrame() {
 		r.dropdownsSeen = make(map[int32]bool)
 	}
 	clear(r.dropdownsSeen)
-	if r.combosSeen == nil {
-		r.combosSeen = make(map[int32]bool)
-	}
-	clear(r.combosSeen)
 	if r.popupsSeen == nil {
 		r.popupsSeen = make(map[int32]bool)
 	}
@@ -1856,23 +1822,11 @@ func (r *runtime) BeginFrame() {
 	r.ops = r.ops[:0]
 }
 func (r *runtime) EndFrame() {
-	if len(r.comboScopes) != 0 {
-		panic("unclosed combo scope at frame boundary")
-	}
 	if len(r.popupScopes) != 0 {
 		panic("unclosed popup scope at frame boundary")
 	}
 	if len(r.tabBarScopes) != 0 {
 		panic("unclosed tab bar scope at frame boundary")
-	}
-	for id, open := range r.openCombos {
-		if !r.combosSeen[id] {
-			if open != nil {
-				*open = false
-			}
-			delete(r.openCombos, id)
-			r.closePopupInput(id)
-		}
 	}
 	for id, open := range r.openPopups {
 		if !r.popupsSeen[id] {
@@ -1894,7 +1848,7 @@ func (r *runtime) EndFrame() {
 		}
 	}
 	r.appendPaintLayers(func(id int32) bool {
-		return r.openDropdowns[id] || r.openCombos[id] != nil && *r.openCombos[id] ||
+		return r.openDropdowns[id] ||
 			r.openPopups[id] != nil && *r.openPopups[id] || r.tooltipPopupsSeen[id]
 	})
 	r.prunePopupInput()

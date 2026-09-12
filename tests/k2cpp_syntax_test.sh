@@ -323,14 +323,14 @@ c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$work/out" "$
 # Go. This fixture is shared with generated runtime parity.
 mkdir -p "$work/composed"
 "$k2cpp" --no-main --root "$root" -o "$work/composed" \
-    "$root/tests/parity/composed_combo.kry"
+    "$root/tests/parity/composed_popup.kry"
 sh "$root/tests/check_clean_generated_output.sh" "$work/composed"
-combo_cpp="$work/composed/tests/parity/composed_combo.cpp"
-grep -Fq 'BeginPopup(([&]() { PopupProps record_value_0{};' "$combo_cpp"
-grep -Fq 'ClosePopup();' "$combo_cpp"
-grep -Fq 'EndPopup();' "$combo_cpp"
+popup_cpp="$work/composed/tests/parity/composed_popup.cpp"
+grep -Fq 'BeginPopup(([&]() { PopupProps record_value_0{};' "$popup_cpp"
+grep -Fq 'ClosePopup();' "$popup_cpp"
+grep -Fq 'EndPopup();' "$popup_cpp"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
-    -I"$work/composed" "$combo_cpp"
+    -I"$work/composed" "$popup_cpp"
 
 # C++-specific output: extern "C" linkage in header and source
 grep -Fq '#ifdef __cplusplus' "$h"

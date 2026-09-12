@@ -17,7 +17,7 @@ state {
     text_value: [128] char = "Live Kryon text field"
     text_cursor: int = 21
     text_focused: int = 0
-    combo_index: int = 1
+    dropdown_index: int = 1
 }
 
 ClampInt :: (value: int, min_value: int, max_value: int) -> int {
@@ -133,7 +133,7 @@ ControlDemo :: (x: int, y: int, w: int) {
                                   field_style, NULL, NULL, NULL})
     y += Scale(70)
     Dropdown((DropdownProps){.bounds = {x, y, w, Scale(44)}, .id = 304,
-        .options = options, .option_count = 3, .selected_index = &combo_index})
+        .options = options, .option_count = 3, .selected_index = &dropdown_index})
     y += Scale(72)
     Slider((SliderProps){.bounds={x, y, w, Scale(40)}, .id=305, .label="Slider", .kind=NumericInt, .int_values=&slider_value, .value_count=1, .min=0, .max=100})
     y += Scale(72)

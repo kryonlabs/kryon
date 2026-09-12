@@ -20,7 +20,7 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
 			Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		if r.openDropdowns[25400] != inside {
-			t.Fatalf("combo open = %v, inside top popup = %v", r.openDropdowns[25400], inside)
+			t.Fatalf("dropdown open = %v, inside top popup = %v", r.openDropdowns[25400], inside)
 		}
 		r.closeDropdown(25400)
 		if inside {
@@ -55,7 +55,7 @@ func TestPopupComboKeyboardOwnership(t *testing.T) {
 		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 100, 28), ID: 25400,
 			Options: []string{"One", "Two"}, SelectedIndex: &selected})
 		if r.openDropdowns[25400] == inside {
-			t.Fatalf("inside=%v: obscured combo handled Escape", inside)
+			t.Fatalf("inside=%v: obscured dropdown handled Escape", inside)
 		}
 		r.closeDropdown(25400)
 		if inside {

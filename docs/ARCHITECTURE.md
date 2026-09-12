@@ -404,9 +404,8 @@ Deferred pointer-focus registration uses the same ownership snapshots without
 reopening scopes, preserving modal, clip, disabled and inspection capture.
 Retained hit testing and button hover/press state now use that same full capture
 predicate, so modal blocking also prevents deferred click events.
-The public `BeginCombo` / `EndCombo` / `CloseCombo` and `BeginPopup` /
-`EndPopup` / `ClosePopup` scopes bind these paint, layout and input contexts for
-arbitrary native children. `PopupTooltip` reuses that paint/layout scope while
+The public `BeginPopup` / `EndPopup` / `ClosePopup` scope binds these paint,
+layout and input contexts for arbitrary native children. `PopupTooltip` reuses that paint/layout scope while
 intentionally skipping input ownership. `PopupModal` uses the same scope with a
 full-view input/backdrop policy, and `PopupContext` uses it with right-release
 activation over a retained trigger. Presentation variants remain flags on the
@@ -419,7 +418,7 @@ persistent owner identity, allowing out-of-bounds continuation only while that
 branch remains topmost and cancelling on dismissal or ownership changes.
 C and Go now have a pointer-independent top-popup keyboard predicate. Closed
 combos use it before keyboard opening, preventing a focused parent/background
-combo from opening behind a child popup. Focus registrations now retain their
+dropdown from opening behind a child popup. Focus registrations now retain their
 popup owner: C filters and deduplicates Tab destinations at focus finalization,
 before releasing the host input binding; Go filters its current/previous-frame
 focus order during traversal. Native tests cover forward/reverse wraparound,
@@ -506,8 +505,8 @@ same shared lowering. Native `Scroll` blocks use the same lexical cleanup and
 existing `BeginScroll`/`EndScroll` operations. An optional block name binds the
 returned content rectangle without leaking it beyond the block. Native generated
 scroll parity covers nested clips/input and restoration after return, break and
-continue. Native `Combo` and `Popup` blocks similarly lower caller-defined popup
-contents to conditional begin calls plus cleanup-managed end calls, removing manual scope
+continue. Native `Popup` blocks similarly lower caller-defined popup contents to
+conditional begin calls plus cleanup-managed end calls, removing manual scope
 bookkeeping from `.kry` sources while retaining the small runtime contract.
 Other begin/end APIs have not all gained block syntax.
 
@@ -541,7 +540,7 @@ wrapped, or in-rectangle text widget implementations.
 
 The remaining families must migrate with evidence for layout, input timing,
 paint order, disabled/clip scopes, and data lifetime. Captured render textures
-remain private implementation machinery behind the public combo scope, not a
+remain private implementation machinery behind the public dropdown scope, not a
 low-level public paint API or the completed widget architecture. Native Go keeps
 its own implementation and must retain matching behavior through
 generated-runtime parity coverage.
@@ -586,13 +585,13 @@ the following frame, and removes descendants on closure or owner removal.
 Native Go scroll scopes, lists, trees and tables share a pointer
 reachability check for wheel input, respecting popup ownership, disabled state
 and parent clips. Generated C/Go tests verify that a background scroll scope
-declared before an open combo cannot steal its wheel input.
+declared before an open dropdown cannot steal its wheel input.
 Go drag-and-drop sources and targets also use that pointer check for starting
 and accepting a drag; an already active source retains its payload when the
 pointer leaves its original bounds. Rejected targets do not consume the release
 or payload. Generated C/Go tests cover clipped sources/targets and copied data
 lifetime across press and release.
-The public arbitrary-content combo scope integrates these paint and input
+The public arbitrary-content dropdown scope integrates these paint and input
 registries in C and Go. Generated C/Go execution and k2cpp syntax coverage use
 the same clean calls. Popup focus acquisition/restoration and active scalar,
 slider, splitter and table-resize ownership are covered in both native runtimes;
