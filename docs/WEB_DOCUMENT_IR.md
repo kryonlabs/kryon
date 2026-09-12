@@ -437,6 +437,8 @@ Mounted elements expose the same local bridge as `element.krySetAttr(...)`,
 `webDOMGetProperty(...)` expose native DOM element properties. Known state,
 form value, text, and scroll properties synchronize back into Web Document
 facts; unknown properties remain native host state.
+Mounted elements expose the same local bridge as `element.krySetProp(...)` and
+`element.kryGetProp(...)`.
 
 `webDOMSetStyle(target, query, name, value)`, `webDOMRemoveStyle(...)`, and
 `webDOMGetStyle(...)` apply imperative style overrides after resolved KSS.
@@ -448,6 +450,7 @@ Mounted elements expose local `element.krySetStyle(...)`,
 `webDOMComputedStyle(target, query, name)` reads the browser-computed style for
 a Kry DOM object when `getComputedStyle` is available, and falls back to the
 element style object in non-browser hosts.
+Mounted elements expose `element.kryComputedStyle(name)` for the same lookup.
 
 `webDOMGetText(target, query)`, `webDOMSetText(...)`, `webDOMGetValue(...)`,
 and `webDOMSetValue(...)` read and write current mounted text and form values.

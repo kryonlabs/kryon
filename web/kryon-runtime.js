@@ -2566,6 +2566,24 @@ function bindWebDOMObjectProperties(el) {
         return !!root && !!query && webDOMHasAttribute(root, query, name);
       }
     },
+    kryGetProp: {
+      configurable: true,
+      enumerable: false,
+      value(name) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMGetProperty(root, query, name) : undefined;
+      }
+    },
+    krySetProp: {
+      configurable: true,
+      enumerable: false,
+      value(name, value) {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return !!root && !!query && webDOMSetProperty(root, query, name, value);
+      }
+    },
     kryGetStyle: {
       configurable: true,
       enumerable: false,
@@ -2591,6 +2609,15 @@ function bindWebDOMObjectProperties(el) {
         const root = this.__kryMountRoot || mountedRoot(this);
         const query = webNodeRef(this.__kryDocNode);
         return !!root && !!query && webDOMRemoveStyle(root, query, name);
+      }
+    },
+    kryComputedStyle: {
+      configurable: true,
+      enumerable: false,
+      value(name = "") {
+        const root = this.__kryMountRoot || mountedRoot(this);
+        const query = webNodeRef(this.__kryDocNode);
+        return root && query ? webDOMComputedStyle(root, query, name) : undefined;
       }
     },
     kryGetState: {

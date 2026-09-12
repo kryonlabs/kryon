@@ -389,9 +389,12 @@ declare global {
     krySetAttr?(name: string, value?: unknown): boolean;
     kryRemoveAttr?(name: string): boolean;
     kryHasAttr?(name: string): boolean;
+    kryGetProp?(name: string): unknown;
+    krySetProp?(name: string, value: unknown): boolean;
     kryGetStyle?(name: string): string | undefined;
     krySetStyle?(name: string, value?: unknown): boolean;
     kryRemoveStyle?(name: string): boolean;
+    kryComputedStyle?(name?: string): unknown;
     kryGetState?(name: string): boolean | undefined;
     krySetState?(name: string, value: boolean): boolean;
     kryText?: {

@@ -1356,8 +1356,10 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSetStyle(target, "tap-button", "--accent-level", "2"), true);
     assert.equal(runtime.webDOMGetStyle(target, "Scene/root/tap", "background"), "pink");
     assert.equal(runtime.webDOMComputedStyle(target, "Scene/root/tap", "background"), "pink");
+    assert.equal(firstButton.kryComputedStyle("background"), "pink");
     assert.equal(runtime.webDOMGetStyle(target, "tap-button", "--accent-level"), "2");
     assert.equal(runtime.webDOMComputedStyle(target, "tap-button", "--accent-level"), "2");
+    assert.equal(firstButton.kryComputedStyle("--accent-level"), "2");
     runtime.renderWebDocument(domRt, target);
     assert.equal(firstButton.style.background, "pink");
     assert.equal(firstButton.style["--accent-level"], "2");
@@ -1376,8 +1378,11 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), false);
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetProperty(target, "tap-button", "disabled"), true);
+    assert.equal(firstButton.kryGetProp("disabled"), true);
     assert.equal(runtime.webDOMGetState(target, "tap-button", "disabled"), true);
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "disabled", false), true);
+    assert.equal(firstButton.krySetProp("disabled", true), true);
+    assert.equal(firstButton.kryGetProp("disabled"), true);
     assert.equal(runtime.webDOMSetState(target, "tap-button", "disabled", true), true);
     assert.equal(runtime.webDOMGetState(target, "Scene/root/tap", "disabled"), true);
     assert.equal(firstButton.kryGetState("disabled"), true);
@@ -1395,6 +1400,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMGetText(target, "tap-button"), "Tap");
     assert.equal(runtime.webDOMSetProperty(target, "tap-button", "textContent", "Ready"), true);
     assert.equal(runtime.webDOMGetText(target, "tap-button"), "Ready");
+    assert.equal(firstButton.krySetProp("textContent", "SetProp"), true);
+    assert.equal(firstButton.kryGetProp("textContent"), "SetProp");
+    assert.equal(runtime.webDOMGetText(target, "tap-button"), "SetProp");
     assert.equal(runtime.webDOMSetText(target, "tap-button", "Launch"), true);
     assert.equal(runtime.webDOMGetText(target, "Scene/root/tap"), "Launch");
     assert.equal(runtime.webDOMObject(target, "tap-button").node.text, "Launch");
