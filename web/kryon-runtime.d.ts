@@ -76,6 +76,8 @@ export interface WebDocumentNode {
   name: string;
   path: string;
   parentPath: string;
+  sourcePath: string;
+  sourceLine: number;
   domId: string;
   classes: string[];
   text: string;
@@ -118,6 +120,8 @@ export interface WebNodeStyleFacts {
   name: string;
   path: string;
   parentPath: string;
+  sourcePath: string;
+  sourceLine: number;
   id: string;
   classes: string[];
   role: string;
@@ -137,6 +141,8 @@ export interface WebDocumentFrame {
 
 export interface WebAccessibilityNode {
   path: string;
+  sourcePath: string;
+  sourceLine: number;
   name: string;
   kind: string;
   tag: string;

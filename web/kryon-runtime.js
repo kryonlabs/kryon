@@ -1087,6 +1087,8 @@ function webNodeFromWidget(item, index) {
     name: meta.nodeName || propString(args, "name", ""),
     path: meta.path === undefined || meta.path === null ? "" : String(meta.path),
     parentPath: meta.parentPath === undefined || meta.parentPath === null ? "" : String(meta.parentPath),
+    sourcePath: meta.sourcePath === undefined || meta.sourcePath === null ? "" : String(meta.sourcePath),
+    sourceLine: Number.isFinite(Number(meta.sourceLine)) ? Math.trunc(Number(meta.sourceLine)) : 0,
     domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
     classes: [...new Set(classes)],
     text: widgetText(item),
@@ -1124,6 +1126,8 @@ export function webNodeStyleFacts(node) {
     name: node?.name || "",
     path: node?.path || "",
     parentPath: node?.parentPath || "",
+    sourcePath: node?.sourcePath || "",
+    sourceLine: node?.sourceLine || 0,
     id: node?.domId || "",
     classes: [...(node?.classes || [])],
     role: node?.role || "",
@@ -1138,6 +1142,8 @@ export function webAccessibilitySnapshot(source) {
     description: frame.metadata?.description || "",
     nodes: (frame.nodes || []).map((node) => ({
       path: node.path,
+      sourcePath: node.sourcePath,
+      sourceLine: node.sourceLine,
       name: node.name,
       kind: node.kind,
       tag: node.tag,
@@ -1241,7 +1247,22 @@ function parseKssValue(value) {
   return text;
 }
 
-function parseKssDeclarations(body) {
+function parseKssDeclarationValue(name, value, tokens) {
+  const parsed = parseKssValue(value);
+  if (typeof parsed !== "string")
+    return parsed;
+  const key = parsed.trim();
+  const property = String(name || "").toLowerCase();
+  if (["background", "background-color", "foreground", "color", "border", "border-color", "focus", "focus-color", "background-end", "background_end"].includes(property))
+    return tokens.colors.get(key) ?? parsed;
+  if (["radius", "border-width", "border_width", "opacity", "padding-x", "padding_x", "padding-y", "padding_y", "gap", "font-size", "font_size", "icon-size", "icon_size", "offset-x", "offset_x", "offset-y", "offset_y"].includes(property))
+    return tokens.lengths.get(key) ?? parsed;
+  if (property === "material")
+    return tokens.materials.get(key) ?? parsed;
+  return parsed;
+}
+
+function parseKssDeclarations(body, tokens = emptyWebStyleTokens()) {
   const style = {};
   for (const part of String(body || "").split(";")) {
     const colon = part.indexOf(":");
@@ -1250,13 +1271,70 @@ function parseKssDeclarations(body) {
     const name = part.slice(0, colon).trim();
     if (!name)
       continue;
-    style[name] = parseKssValue(part.slice(colon + 1));
+    style[name] = parseKssDeclarationValue(name, part.slice(colon + 1), tokens);
   }
   return style;
 }
 
+function emptyWebStyleTokens() {
+  return { colors: new Map(), lengths: new Map(), materials: new Map() };
+}
+
+function findMatchingBrace(text, open) {
+  let depth = 0;
+  for (let i = open; i < text.length; i++) {
+    if (text[i] === "{")
+      depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0)
+        return i;
+    }
+  }
+  return -1;
+}
+
+function parseWebStyleTokens(text) {
+  const tokens = emptyWebStyleTokens();
+  let stripped = "";
+  let cursor = 0;
+  const tokenPattern = /\btokens\s*\{/g;
+  for (let match; (match = tokenPattern.exec(text));) {
+    const open = tokenPattern.lastIndex - 1;
+    const close = findMatchingBrace(text, open);
+    if (close < 0)
+      break;
+    stripped += text.slice(cursor, match.index);
+    const body = text.slice(open + 1, close);
+    const groupPattern = /([A-Za-z_][\w-]*)\s*\{([^{}]*)\}/g;
+    for (let group; (group = groupPattern.exec(body));) {
+      const kind = group[1].toLowerCase();
+      const target = kind === "color" ? tokens.colors :
+        (kind === "length" || kind === "number") ? tokens.lengths :
+        kind === "material" ? tokens.materials : null;
+      if (!target)
+        continue;
+      for (const part of group[2].split(";")) {
+        const colon = part.indexOf(":");
+        if (colon < 0)
+          continue;
+        const name = part.slice(0, colon).trim();
+        if (!name)
+          continue;
+        target.set(name, parseKssValue(part.slice(colon + 1)));
+      }
+    }
+    cursor = close + 1;
+    tokenPattern.lastIndex = close + 1;
+  }
+  stripped += text.slice(cursor);
+  return { text: stripped, tokens };
+}
+
 export function parseWebStyleSheet(source) {
-  const text = stripKssComments(source);
+  const parsedTokens = parseWebStyleTokens(stripKssComments(source));
+  const text = parsedTokens.text;
+  const tokens = parsedTokens.tokens;
   const rules = [];
   let pack = "";
   let layer = 0;
@@ -1278,7 +1356,7 @@ export function parseWebStyleSheet(source) {
       const order = rules.length;
       rules.push({
         selector,
-        style: parseKssDeclarations(match[4]),
+        style: parseKssDeclarations(match[4], tokens),
         layer,
         order,
         score: layer * 1000000 + selector.specificity * 1000 + order
@@ -1544,6 +1622,14 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryParentPath = docNode.parentPath;
   else
     delete el.dataset.kryParentPath;
+  if (docNode.sourcePath)
+    el.dataset.krySource = docNode.sourcePath;
+  else
+    delete el.dataset.krySource;
+  if (docNode.sourceLine)
+    el.dataset.kryLine = String(docNode.sourceLine);
+  else
+    delete el.dataset.kryLine;
   if (docNode.name)
     el.dataset.kryName = docNode.name;
   else

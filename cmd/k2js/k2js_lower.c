@@ -1235,6 +1235,17 @@ emit_metadata_string_field(FILE *f, const char *name, const char *value,
 }
 
 static void
+emit_metadata_int_field(FILE *f, const char *name, int value, int *emitted)
+{
+    if(value <= 0)
+        return;
+    if((*emitted)++)
+        fputs(", ", f);
+    js_string(f, name);
+    fprintf(f, ": %d", value);
+}
+
+static void
 emit_action_target(FILE *f, const KirModule *m, const char *name)
 {
     const KirModule *owner = NULL;
@@ -1294,6 +1305,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
     emit_metadata_string_field(f, "path", st->node_path, &emitted);
     emit_metadata_string_field(f, "parentPath", st->node_parent_path, &emitted);
+    emit_metadata_string_field(f, "sourcePath", st->span.path, &emitted);
+    emit_metadata_int_field(f, "sourceLine", st->span.line, &emitted);
     emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
     emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
     emit_metadata_expr_field(f, m, "class", st->dom_class, &emitted);

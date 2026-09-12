@@ -69,17 +69,20 @@ the Web Document frame supplies the node facts it resolves against.
 
 Rendered DOM elements carry source identity as native attributes:
 `data-kry-ref`, `data-kry-path`, `data-kry-parent-path`, `data-kry-name`,
-`data-kry-key`, and `data-kry-kind`. The runtime exposes
+`data-kry-key`, `data-kry-kind`, `data-kry-source`, and `data-kry-line`.
+The runtime exposes
 `webDOMObject(target, query)` and `webDOMObjects(target)` so JS logic,
 inspectors, tests, and hydration code can ask for native DOM objects by `.kry`
 path, node name, key, or DOM id without making generated JavaScript the source
-of structure.
+of structure. `sourcePath` and `sourceLine` identify the `.kry` source location
+that produced each node.
 
 Supported metadata fields in this first slice:
 
 | `.kry` field | Web frame field |
 |---|---|
 | named block | `nodeName`, `key`, `name`, `path`, `parentPath` |
+| source span | `sourcePath`, `sourceLine` |
 | `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
 | `dom_id`, `html_id` | `domId` |
 | `class`, `classes`, `class_name` | `classes` |
@@ -179,7 +182,8 @@ same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `createRuntime({ app })` installs those embedded sheets automatically. This
 first web resolver supports the initial KSS grammar slice: kind selectors,
 `#id`, `.class`, `[role=...]`, `[state=...]`, state pseudos, layers, colors,
-spacing, radius, border width, opacity, and font size.
+spacing, radius, border width, opacity, font size, and local
+`tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,
 winning declarations, token origins, state slice, and backend degradation can

@@ -36,19 +36,23 @@ generated.setHost(host);
 const rt = runtime.createRuntime({ app: generated.app });
 const webStyleSheet = runtime.parseWebStyleSheet(`
   @pack smoke;
+  tokens {
+    color { button-face: #102030; button-ink: #f0f0f0; id-face: #203040; }
+    length { radius.md: 9; space.3: 13; field-y: 5; line: 2; }
+  }
   @layer components;
   Button.primary {
-    background: #102030;
-    foreground: #f0f0f0;
-    radius: 9;
-    padding-x: 13;
+    background: button-face;
+    foreground: button-ink;
+    radius: radius.md;
+    padding-x: space.3;
   }
   Button#tap-button {
-    background: #203040;
+    background: id-face;
   }
   TextField.field {
-    border-width: 2;
-    padding-y: 5;
+    border-width: line;
+    padding-y: field-y;
   }
 `);
 assert.equal(webStyleSheet.pack, "smoke");
@@ -85,6 +89,8 @@ assert.equal(webDoc.nodes[2].key, "tap");
 assert.equal(webDoc.nodes[2].name, "tap");
 assert.equal(webDoc.nodes[2].path, "Scene/root/tap");
 assert.equal(webDoc.nodes[2].parentPath, "Scene/root");
+assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
+assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.deepEqual(webDoc.nodes[2].classes, ["primary", "action"]);
 assert.equal(webDoc.nodes[2].role, "button");
@@ -97,6 +103,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   name: "tap",
   path: "Scene/root/tap",
   parentPath: "Scene/root",
+  sourcePath: webDoc.nodes[2].sourcePath,
+  sourceLine: webDoc.nodes[2].sourceLine,
   id: "tap-button",
   classes: ["primary", "action"],
   role: "button",
@@ -265,12 +273,16 @@ function fakeDocument() {
     assert.equal(firstText.tagName, "DIV");
     assert.match(firstText.dataset.kryRef, /^Scene\/root\/Text@\d+$/);
     assert.equal(firstText.dataset.kryParentPath, "Scene/root");
+    assert.equal(firstText.dataset.krySource, "src/valid.kry");
+    assert.ok(Number(firstText.dataset.kryLine) > 0);
     const firstButton = screen.children[1];
     assert.equal(firstButton.tagName, "BUTTON");
     assert.equal(firstButton.id, "tap-button");
     assert.equal(firstButton.dataset.kryRef, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryPath, "Scene/root/tap");
     assert.equal(firstButton.dataset.kryKey, "tap");
+    assert.equal(firstButton.dataset.krySource, "src/valid.kry");
+    assert.ok(Number(firstButton.dataset.kryLine) > 0);
     assert.equal(firstButton.dataset.kryName, "tap");
     assert.equal(firstButton.attributes.role, "button");
     assert.equal(firstButton.attributes["aria-label"], "Tap the action");
@@ -443,6 +455,8 @@ for (const [actionName, action] of [
     assert.equal(result.frame.length, 1);
     assert.equal(result.frame[0].name, "Button");
     assert.match(result.frame[0].meta.path, new RegExp(`^${actionName}/Button@\\d+$`));
+    assert.equal(result.frame[0].meta.sourcePath, "src/valid.kry");
+    assert.ok(result.frame[0].meta.sourceLine > 0);
     assert.deepEqual(rectangle(result.frame[0].args.bounds), { x: 20, y: 100, width: 80, height: 32 });
   }
 }
