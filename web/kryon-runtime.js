@@ -3648,6 +3648,13 @@ function bindWebRootProperties(root) {
         return webDOMObserve(this, selector, handler, options);
       }
     },
+    kryBind: {
+      configurable: true,
+      enumerable: false,
+      value(selector, handlers, options) {
+        return webDOMBind(this, selector, handlers, options);
+      }
+    },
     kryAddClass: {
       configurable: true,
       enumerable: false,
@@ -4410,6 +4417,77 @@ export function webDOMObserve(target, selector, handler, options = {}) {
   return () => {
     if (typeof root.removeEventListener === "function")
       root.removeEventListener("kry-render", listener);
+  };
+}
+
+function normalizeWebDOMBindHandlers(handlers) {
+  if (typeof handlers === "function")
+    return { mount: handlers, update: null, unmount: null };
+  if (!handlers || typeof handlers !== "object")
+    return null;
+  return {
+    mount: typeof handlers.mount === "function" ? handlers.mount : null,
+    update: typeof handlers.update === "function" ? handlers.update : null,
+    unmount: typeof handlers.unmount === "function" ? handlers.unmount : null
+  };
+}
+
+export function webDOMBind(target, selector, handlers, options = {}) {
+  const root = mountedRoot(target);
+  const callbacks = normalizeWebDOMBindHandlers(handlers);
+  if (!root || !callbacks || typeof root.addEventListener !== "function")
+    return null;
+  const active = new Map();
+  const refresh = (event = null) => {
+    const detail = { root, frame: root.__kryFrame || null, event };
+    const next = new Map();
+    for (const object of webDOMQueryAll(root, selector)) {
+      const ref = object.ref || object.node?.path || "";
+      if (!ref)
+        continue;
+      const previous = active.get(ref);
+      if (previous) {
+        next.set(ref, previous);
+        previous.object = object;
+        if (callbacks.update)
+          callbacks.update(object, detail, previous.previousObject || null);
+        previous.previousObject = object;
+        continue;
+      }
+      const cleanup = callbacks.mount ? callbacks.mount(object, detail) : null;
+      next.set(ref, {
+        object,
+        previousObject: object,
+        cleanup: typeof cleanup === "function" ? cleanup : null
+      });
+    }
+    for (const [ref, record] of active.entries()) {
+      if (next.has(ref))
+        continue;
+      if (record.cleanup)
+        record.cleanup(record.object, detail);
+      if (callbacks.unmount)
+        callbacks.unmount(record.object, detail);
+    }
+    active.clear();
+    for (const [ref, record] of next.entries())
+      active.set(ref, record);
+  };
+  const listener = (event) => refresh(event);
+  root.addEventListener("kry-render", listener);
+  if (!options || options.immediate !== false)
+    refresh(null);
+  return () => {
+    if (typeof root.removeEventListener === "function")
+      root.removeEventListener("kry-render", listener);
+    const detail = { root, frame: root.__kryFrame || null, event: null };
+    for (const record of active.values()) {
+      if (record.cleanup)
+        record.cleanup(record.object, detail);
+      if (callbacks.unmount)
+        callbacks.unmount(record.object, detail);
+    }
+    active.clear();
   };
 }
 

@@ -127,10 +127,13 @@ main(void)
         "Canvas {\n"
         "  background: accent;\n"
         "}\n"
+        "DragValue {\n"
+        "  border: accent;\n"
+        "}\n"
         "Focus[role=Box]:focus {\n"
         "  border: accent;\n"
         "}\n";
-    StyleRule rules[24] = {0};
+    StyleRule rules[25] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -143,10 +146,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 24, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 25, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 24);
+    assert(result.rule_count == 25);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -214,10 +217,12 @@ main(void)
     assert(rules[21].style.border == 0x2f6bffffu);
     assert(rules[22].selector.kind == StyleKindCanvas());
     assert(rules[22].style.background == 0x2f6bffffu);
-    assert(rules[23].selector.kind == StyleKindFocus());
-    assert(rules[23].selector.role == 9);
-    assert(rules[23].state == ButtonStateFocus);
+    assert(rules[23].selector.kind == StyleKindDragValue());
     assert(rules[23].style.border == 0x2f6bffffu);
+    assert(rules[24].selector.kind == StyleKindFocus());
+    assert(rules[24].selector.role == 9);
+    assert(rules[24].state == ButtonStateFocus);
+    assert(rules[24].style.border == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;

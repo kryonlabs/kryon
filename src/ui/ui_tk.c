@@ -2262,7 +2262,7 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused
     ButtonState state = disabled ? ButtonStateDisabled : ButtonStateNormal;
     StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral, state,
                                                 disabled, 0,
-                                                StyleKindSpinboxValue());
+                                                StyleKindDragValue());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
 
     ui_tk_draw_style_frame(bounds, bounds, frame, 0, 0, disabled, focused);
@@ -2277,7 +2277,7 @@ ui_paint_drag_label(Rectangle bounds, const char *label)
     if(label != NULL) {
         StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
                                                     ButtonStateNormal, 0, 0,
-                                                    StyleKindText());
+                                                    StyleKindDrag());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         RenderText(label, (int)bounds.x + Scale(6),
                    (int)bounds.y - GetSmallFontSize() - Scale(2),

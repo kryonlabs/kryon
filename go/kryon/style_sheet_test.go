@@ -234,6 +234,9 @@ Popup[role=Panel] {
 Canvas {
   background: accent;
 }
+DragValue {
+  border: accent;
+}
 Focus[role=Box]:focus {
   border: accent;
 }
@@ -241,7 +244,7 @@ Focus[role=Box]:focus {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 30 {
+	if id != "smoke" || len(rules) != 31 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -386,11 +389,15 @@ Focus[role=Box]:focus {
 		rules[28].Style.Background != 0x2f6bffff {
 		t.Fatalf("bad canvas rule: %#v", rules[28])
 	}
-	if rules[29].Selector.Kind != StyleSheet_StyleKindFocus() ||
-		rules[29].Selector.Role != 9 ||
-		rules[29].State != int32(ButtonStateFocus) ||
+	if rules[29].Selector.Kind != StyleSheet_StyleKindDragValue() ||
 		rules[29].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad focus role rule: %#v", rules[29])
+		t.Fatalf("bad drag value rule: %#v", rules[29])
+	}
+	if rules[30].Selector.Kind != StyleSheet_StyleKindFocus() ||
+		rules[30].Selector.Role != 9 ||
+		rules[30].State != int32(ButtonStateFocus) ||
+		rules[30].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad focus role rule: %#v", rules[30])
 	}
 }
 
@@ -494,6 +501,8 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Focus", StyleSheet_StyleKindFocus()},
 		{"Popup", StyleSheet_StyleKindPopup()},
 		{"Canvas", StyleSheet_StyleKindCanvas()},
+		{"Drag", StyleSheet_StyleKindDrag()},
+		{"DragValue", StyleSheet_StyleKindDragValue()},
 	}
 	stateKinds := []struct {
 		name  string

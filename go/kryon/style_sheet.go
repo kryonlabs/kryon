@@ -354,6 +354,16 @@ func StyleSheet_StyleKindCanvas() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindDrag() int32 {
+	var value_0 int32 = 56
+	return value_0
+}
+
+func StyleSheet_StyleKindDragValue() int32 {
+	var value_0 int32 = 57
+	return value_0
+}
+
 func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	var facts StyleFacts = StyleFacts{}
 	var value_0 int32 = kind

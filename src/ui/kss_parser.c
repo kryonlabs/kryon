@@ -247,6 +247,10 @@ kss_style_kind(const char *name)
         return StyleKindPopup();
     if(kss_ieq(name, "Canvas"))
         return StyleKindCanvas();
+    if(kss_ieq(name, "Drag"))
+        return StyleKindDrag();
+    if(kss_ieq(name, "DragValue"))
+        return StyleKindDragValue();
     return -999999;
 }
 

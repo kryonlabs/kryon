@@ -651,6 +651,10 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindPopup(), true
 	case "canvas":
 		return StyleSheet_StyleKindCanvas(), true
+	case "drag":
+		return StyleSheet_StyleKindDrag(), true
+	case "dragvalue":
+		return StyleSheet_StyleKindDragValue(), true
 	default:
 		return 0, false
 	}

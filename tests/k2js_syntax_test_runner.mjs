@@ -1113,6 +1113,46 @@ function fakeDocument() {
     runtime.renderWebDocument(domRt, target);
     assert.equal(observedButtons.length, 2);
     assert.equal(observedFields.length, 1);
+    const boundButtons = [];
+    const removeButtonBinding = runtime.webDOMBind(target, "Button.primary", {
+      mount(object, detail) {
+        boundButtons.push(["mount", object.ref, detail.event?.type || ""]);
+        return (cleanupObject, cleanupDetail) => {
+          boundButtons.push(["cleanup", cleanupObject.ref, cleanupDetail.event?.type || ""]);
+        };
+      },
+      update(object, detail, previous) {
+        boundButtons.push(["update", object.ref, previous?.ref || "", detail.event?.type || ""]);
+      },
+      unmount(object, detail) {
+        boundButtons.push(["unmount", object.ref, detail.event?.type || ""]);
+      }
+    });
+    assert.equal(typeof removeButtonBinding, "function");
+    assert.deepEqual(boundButtons, [["mount", "primary-action", ""]]);
+    const boundFields = [];
+    const removeFieldBinding = root.kryBind("TextField.field",
+      (object, detail) => boundFields.push(["mount", object.ref, detail.event?.type || ""]),
+      { immediate: false });
+    assert.equal(typeof removeFieldBinding, "function");
+    assert.deepEqual(boundFields, []);
+    runtime.renderWebDocument(domRt, target);
+    assert.deepEqual(boundButtons, [
+      ["mount", "primary-action", ""],
+      ["update", "primary-action", "primary-action", "kry-render"]
+    ]);
+    assert.deepEqual(boundFields, [["mount", "search-box", "kry-render"]]);
+    removeButtonBinding();
+    removeFieldBinding();
+    assert.deepEqual(boundButtons, [
+      ["mount", "primary-action", ""],
+      ["update", "primary-action", "primary-action", "kry-render"],
+      ["cleanup", "primary-action", ""],
+      ["unmount", "primary-action", ""]
+    ]);
+    runtime.renderWebDocument(domRt, target);
+    assert.equal(boundButtons.length, 4);
+    assert.equal(boundFields.length, 1);
     const screen = root.children.find((child) => child.tagName === "MAIN");
     const firstText = screen.children[0];
     assert.equal(firstText.tagName, "DIV");

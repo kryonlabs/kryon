@@ -340,6 +340,12 @@ refs, to the current live Kry DOM object.
 `root.kryObserve(selector, handler, options?)` subscribe to `kry-render` and
 pass the current matching Kry DOM objects to browser logic. Observers run once
 immediately unless `options.immediate` is `false`.
+`webDOMBind(target, selector, handlers, options?)` and
+`root.kryBind(selector, handlers, options?)` provide per-object lifecycle
+binding for JS behavior: a mount function attaches native listeners or state to
+each matching Kry DOM object, optional update/unmount callbacks follow future
+renders, and any cleanup function returned from mount is called when the object
+leaves the selector or the binding is unsubscribed.
 `webDOMSync(target, query?)`, `root.krySync(query?)`, `element.krySync()`, and
 `object.sync()` fold direct native DOM mutations back into Kry node facts and
 refresh the mount root indexes, so browser-authored class, attribute, state,

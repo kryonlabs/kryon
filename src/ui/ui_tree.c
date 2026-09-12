@@ -2226,19 +2226,25 @@ RenderImage(ImageProps image)
     ui_tree_add(0, WIDGET_IMAGE, image.bounds, image.asset_path);
     texture = LoadImageTexture(image.asset_path);
     if(texture.id == 0) {
-        Style surface = ui_surface_style();
-        Style text = ui_unpack_style(ResolveActiveStyle(
-            ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
-            StyleTextFacts(0, 0, StyleAny(), ButtonStateNormal),
-            ButtonStateNormal));
+        Style image_style = ui_unpack_style(ui_control_style_frame_kind(
+            (ButtonProps){.tone = ButtonToneNeutral,
+                          .emphasis = ButtonEmphasisSoft},
+            ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindImage()).value);
+        Style label_style = ui_unpack_style(ui_control_style_frame_role_kind(
+            (ButtonProps){.tone = ButtonToneNeutral,
+                          .emphasis = ButtonEmphasisSoft},
+            ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+            StyleKindImage(), 6).value);
         fallback = image.style.enabled && image.style.background.a > 0
                      ? image.style.background
-                     : surface.background;
+                     : image_style.background;
         DrawRectangleRec(image.bounds, fallback);
-        DrawRectangleLinesEx(image.bounds, 1.0f, surface.border);
+        DrawRectangleLinesEx(image.bounds, image_style.border_width,
+                             image_style.border);
         RenderText("Missing image", (int)image.bounds.x + Scale(8),
                    (int)image.bounds.y + Scale(8), Text12,
-                   text.foreground);
+                   label_style.foreground);
         return;
     }
     ImageTexture(texture, image);

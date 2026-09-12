@@ -143,6 +143,8 @@ main(void)
         {"Focus", StyleKindFocus()},
         {"Popup", StyleKindPopup()},
         {"Canvas", StyleKindCanvas()},
+        {"Drag", StyleKindDrag()},
+        {"DragValue", StyleKindDragValue()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},

@@ -441,6 +441,31 @@ SpinboxValue {
   material: glow;
 }
 
+Drag {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
+DragValue {
+  background: panel;
+  background-end: panel-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.3;
+  opacity: 1;
+  material: glow;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;

@@ -407,6 +407,29 @@ SpinboxValue {
   material: default;
 }
 
+Drag {
+  background: surface;
+  foreground: text;
+  border: border;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+DragValue {
+  background: card;
+  foreground: text;
+  border: border-soft;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  padding-x: space.2;
+  opacity: 1;
+  material: default;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;

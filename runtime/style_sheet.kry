@@ -237,6 +237,14 @@ StyleKindCanvas :: () -> i32 #export {
     return 55
 }
 
+StyleKindDrag :: () -> i32 #export {
+    return 56
+}
+
+StyleKindDragValue :: () -> i32 #export {
+    return 57
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

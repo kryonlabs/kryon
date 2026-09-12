@@ -407,6 +407,14 @@ export interface WebDOMObserveOptions {
   immediate?: boolean;
 }
 
+export interface WebDOMBindHandlers {
+  mount?: (object: WebDOMObject, detail: WebDOMObserveDetail) =>
+    unknown | ((object: WebDOMObject, detail: WebDOMObserveDetail) => unknown);
+  update?: (object: WebDOMObject, detail: WebDOMObserveDetail,
+    previous: WebDOMObject | null) => unknown;
+  unmount?: (object: WebDOMObject, detail: WebDOMObserveDetail) => unknown;
+}
+
 declare global {
   interface Element {
     readonly kryRef?: string;
@@ -452,6 +460,9 @@ declare global {
     kryDelegate?(selector: string, type: string, handler: (event: Event, object: WebDOMObject) => unknown,
       options?: boolean | AddEventListenerOptions): (() => void) | null;
     kryObserve?(selector: string, handler: (objects: WebDOMObject[], detail: WebDOMObserveDetail) => unknown,
+      options?: WebDOMObserveOptions): (() => void) | null;
+    kryBind?(selector: string, handlers: WebDOMBindHandlers |
+      ((object: WebDOMObject, detail: WebDOMObserveDetail) => unknown),
       options?: WebDOMObserveOptions): (() => void) | null;
     kryAddClass?(className: string): boolean;
     kryAddClass?(query: string, className: string): boolean;
@@ -684,6 +695,9 @@ export function webDOMObjects(target: Element | string | null): WebDOMObject[];
 export function webDOMObjectMap(target: Element | string | null): Map<string, WebDOMObject>;
 export function webDOMObserve(target: Element | string | null, selector: string,
   handler: (objects: WebDOMObject[], detail: WebDOMObserveDetail) => unknown,
+  options?: WebDOMObserveOptions): (() => void) | null;
+export function webDOMBind(target: Element | string | null, selector: string,
+  handlers: WebDOMBindHandlers | ((object: WebDOMObject, detail: WebDOMObserveDetail) => unknown),
   options?: WebDOMObserveOptions): (() => void) | null;
 export function webDOMSync(target: Element | string | null): WebDOMObject[];
 export function webDOMSync(target: Element | string | null, query: string): WebDOMObject | null;

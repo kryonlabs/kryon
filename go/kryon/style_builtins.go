@@ -408,6 +408,29 @@ SpinboxValue {
   material: default;
 }
 
+Drag {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+DragValue {
+  background: panel;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.3;
+  opacity: 1;
+  material: default;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;
@@ -2035,6 +2058,29 @@ SpinboxValue {
   material: default;
 }
 
+Drag {
+  background: surface;
+  foreground: text;
+  border: border;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+DragValue {
+  background: card;
+  foreground: text;
+  border: border-soft;
+  focus: accent;
+  radius: radius;
+  border-width: border;
+  padding-x: space.2;
+  opacity: 1;
+  material: default;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;
@@ -3629,6 +3675,29 @@ Spinbox {
 }
 
 SpinboxValue {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.3;
+  opacity: 1;
+  material: default;
+}
+
+Drag {
+  background: surface;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: default;
+}
+
+DragValue {
   background: surface;
   foreground: text;
   border: border-soft;
@@ -5291,6 +5360,31 @@ Spinbox {
 }
 
 SpinboxValue {
+  background: panel;
+  background-end: panel-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.sm;
+  border-width: border;
+  padding-x: space.3;
+  opacity: 1;
+  material: glow;
+}
+
+Drag {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius.md;
+  border-width: border;
+  opacity: 1;
+  material: glow;
+}
+
+DragValue {
   background: panel;
   background-end: panel-end;
   foreground: text;
@@ -7007,6 +7101,31 @@ Spinbox {
 }
 
 SpinboxValue {
+  background: button;
+  background-end: button-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius;
+  border-width: 1;
+  padding-x: space.3;
+  opacity: 1;
+  material: premium;
+}
+
+Drag {
+  background: surface;
+  background-end: surface-end;
+  foreground: text;
+  border: border-soft;
+  focus: focus;
+  radius: radius;
+  border-width: 1;
+  opacity: 1;
+  material: premium;
+}
+
+DragValue {
   background: button;
   background-end: button-end;
   foreground: text;
