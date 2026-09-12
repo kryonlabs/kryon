@@ -762,6 +762,8 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
 
                     q = consume_group(kir_skip_ws(q) + 1, raw, sizeof(raw));
                     tx_args(m, raw, args, sizeof(args));
+                    if(strcmp(ident, "BeginCanvas") == 0)
+                        snprintf(ident, sizeof(ident), "Canvas");
                     dn += (size_t)snprintf(dst + dn, dst_size - dn,
                                            "kryon.%s(%s)", ident, args);
                     p = q;
@@ -1802,6 +1804,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 break;
             }
             if(strncmp(raw, "BeginTree", 9) == 0 ||
+               strncmp(raw, "EndCanvas", 9) == 0 ||
                strncmp(raw, "EndTree", 7) == 0)
                 break;
             int known_call = split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&

@@ -677,7 +677,7 @@ export function Bevel(...args: unknown[]): unknown;
 export function BottomNav(...args: unknown[]): unknown;
 export function Button(...args: unknown[]): unknown;
 export function Card(...args: unknown[]): unknown;
-export function BeginCanvas(canvas: unknown): Record<string, unknown>;
+export function Canvas(canvas: unknown): Record<string, unknown>;
 export function CanvasGrid(...args: unknown[]): unknown;
 export function Checkbox(...args: unknown[]): unknown;
 export function ClearBackground(...args: unknown[]): unknown;

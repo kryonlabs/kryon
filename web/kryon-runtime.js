@@ -3872,7 +3872,7 @@ export function FancyEffectsEnabled() {
   return fancyEffectsEnabled ? 1 : 0;
 }
 
-export function BeginCanvas(canvas) {
+export function Canvas(canvas) {
   return {
     active: false,
     dragging: false,
