@@ -1010,6 +1010,25 @@ function fakeDocument() {
     const nestedSpan = document.createElement("span");
     firstButton.appendChild(nestedSpan);
     assert.equal(runtime.webDOMObjectFromElement(nestedSpan).node.path, "Scene/root/tap");
+    const buttonSnapshot = runtime.webDOMSnapshot(target, "tap-button");
+    assert.equal(buttonSnapshot.ref, "Scene/root/tap");
+    assert.equal(buttonSnapshot.element, undefined);
+    assert.equal(buttonSnapshot.parentRef, "Scene/root");
+    assert.equal(buttonSnapshot.attrs.id, "tap-button");
+    assert.equal(buttonSnapshot.dataset.kryPath, "Scene/root/tap");
+    assert.equal(buttonSnapshot.style.background, "#203040");
+    assert.deepEqual(buttonSnapshot.rect, {
+      x: 10,
+      y: 50,
+      width: 120,
+      height: 28,
+      left: 10,
+      top: 50,
+      right: 130,
+      bottom: 78
+    });
+    assert.deepEqual(runtime.webDOMSnapshots(target, "Button.primary").map((snapshot) => snapshot.ref),
+      ["Scene/root/tap"]);
     assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);

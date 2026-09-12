@@ -343,6 +343,11 @@ resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 to the nearest mounted Kry DOM object, which gives delegated browser handlers
 and inspectors a reverse bridge back to `.kry` identity.
 
+`webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
+plain, serializable views of mounted Kry DOM objects: identity, source
+location, parent/child refs, attributes, dataset, style, text/value, state,
+geometry, and scroll without live DOM references.
+
 `webDOMMatches(target, query, selector)` and
 `webDOMElementMatches(element, selector)` test mounted DOM objects against the
 same selector facts used by KSS and query helpers.

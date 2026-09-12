@@ -2792,6 +2792,70 @@ export function webDOMObjects(target) {
     .filter(Boolean);
 }
 
+function plainElementMap(source) {
+  if (!source)
+    return {};
+  const out = {};
+  if (typeof source.length === "number" && typeof source.item === "function") {
+    for (let i = 0; i < source.length; i++) {
+      const attr = source.item(i);
+      if (attr?.name)
+        out[attr.name] = String(attr.value ?? "");
+    }
+    return out;
+  }
+  for (const [key, value] of Object.entries(source || {})) {
+    if (typeof value !== "function" && value !== undefined && value !== null)
+      out[key] = String(value);
+  }
+  return out;
+}
+
+function webDOMObjectSnapshot(target, object) {
+  if (!object)
+    return null;
+  const node = object.node || {};
+  const el = object.element || {};
+  return {
+    ref: object.ref || "",
+    index: node.index || 0,
+    kind: node.kind || "",
+    tag: node.tag || String(el.tagName || "").toLowerCase(),
+    path: node.path || "",
+    parentPath: node.parentPath || "",
+    parentRef: webDOMParent(target, node.path)?.ref || "",
+    childRefs: webDOMChildren(target, node.path).map((child) => child.ref),
+    name: node.name || "",
+    key: node.key || "",
+    id: node.domId || el.id || "",
+    domName: node.domName || "",
+    classes: [...(node.classes || [])],
+    sourcePath: node.sourcePath || "",
+    sourceLine: node.sourceLine || 0,
+    sourceColumn: node.sourceColumn || 0,
+    sourceRef: webNodeSourceRef(node),
+    sourceColumnRef: webNodeSourceColumnRef(node),
+    text: webDOMGetText(target, node.path) ?? node.text ?? "",
+    value: webDOMGetValue(target, node.path),
+    state: { ...(node.state || {}) },
+    attrs: plainElementMap(el.attributes),
+    dataset: plainElementMap(el.dataset),
+    style: plainElementMap(el.style),
+    rect: webDOMRect(target, node.path),
+    scroll: webDOMGetScroll(target, node.path)
+  };
+}
+
+export function webDOMSnapshot(target, query) {
+  return webDOMObjectSnapshot(target, webDOMObject(target, query));
+}
+
+export function webDOMSnapshots(target, selector = "") {
+  const text = String(selector || "").trim();
+  const objects = text ? webDOMQueryAll(target, text) : webDOMObjects(target);
+  return objects.map((object) => webDOMObjectSnapshot(target, object)).filter(Boolean);
+}
+
 export function webDOMParent(target, query) {
   const root = mountedRoot(target);
   const object = root ? webDOMObject(target, query) : null;

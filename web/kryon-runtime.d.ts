@@ -312,6 +312,35 @@ export interface WebDOMObject {
   element: Element;
 }
 
+export interface WebDOMSnapshot {
+  ref: string;
+  index: number;
+  kind: string;
+  tag: string;
+  path: string;
+  parentPath: string;
+  parentRef: string;
+  childRefs: string[];
+  name: string;
+  key: string;
+  id: string;
+  domName: string;
+  classes: string[];
+  sourcePath: string;
+  sourceLine: number;
+  sourceColumn: number;
+  sourceRef: string;
+  sourceColumnRef: string;
+  text: string;
+  value: unknown;
+  state: Record<string, boolean>;
+  attrs: Record<string, string>;
+  dataset: Record<string, string>;
+  style: Record<string, string>;
+  rect: { x: number; y: number; width: number; height: number; left: number; top: number; right: number; bottom: number } | null;
+  scroll: { left: number; top: number; width: number; height: number } | null;
+}
+
 export interface WebStyleRule {
   selector: Record<string, unknown>;
   style: Record<string, unknown>;
@@ -397,6 +426,8 @@ export function webDOMObject(target: Element | string | null, query: string): We
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
 export function webDOMElementMatches(element: Element | null, selector: string): boolean;
 export function webDOMObjects(target: Element | string | null): WebDOMObject[];
+export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
+export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMChildren(target: Element | string | null, query?: string): WebDOMObject[];
 export function webDOMClosest(target: Element | string | null, query: string, selector: string): WebDOMObject | null;
