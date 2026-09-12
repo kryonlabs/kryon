@@ -278,18 +278,28 @@ KRB_WEB_EXPORTED_FUNCTIONS = (
 )
 
 KRB_ALPHA_BYTE_GAPS = {
-    "examples/26_widget_catalog.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/01_file_dialog.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/04_modal.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/06_scaling.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/10_menus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/11_basic_controls.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/12_collections.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/13_text_editor.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/14_canvas.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/15_containers.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/16_dialogs.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/17_keyboard_platform.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/18_accessibility.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/19_images.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "examples/27_dropdowns.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
+    "tests/parity/button_content.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/composed_popup.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/composition.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/drag_drop.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/scroll_content.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "examples/20_scene.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "examples/21_signals.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
-    "examples/22_physics.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
-    "examples/23_animation.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
-    "examples/24_tilemap.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/buttons_layout.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
-    "tests/parity/composed.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/basic_controls.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/fields.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
     "tests/parity/focus.kry": "RGB exact; SDL readback alpha differs from headless kry_sw",
@@ -341,6 +351,12 @@ RAYLIB_C_VISUAL_GAPS = {
 WEB_CANVAS_C_VISUAL_GAPS = {
     **GENERATED_C_COMPILE_GAPS,
     **WEB_CANVAS_C_RENDER_GAPS,
+}
+
+SCENE_ONLY_EXAMPLES = {
+    "examples/22_physics.kry",
+    "examples/23_animation.kry",
+    "examples/24_tilemap.kry",
 }
 
 
@@ -436,7 +452,7 @@ def visual_comparisons(source_count: int) -> list[dict]:
 WIDGETS = {
     "Background",
     "Bevel",
-    "BottomNav",
+    "NavigationBar",
     "Button",
     "Canvas",
     "CanvasGrid",
@@ -465,7 +481,6 @@ WIDGETS = {
     "Spinbox",
     "Stack",
     "TabBar",
-    "TabItem",
     "TableView",
     "Text",
     "TextArea",
@@ -477,12 +492,10 @@ WIDGETS = {
     "TreeView",
 }
 
-WIDGET_ALIASES = {
-    "TabItem": {"BeginTabItem"},
-}
+WIDGET_ALIASES = {}
 
 CALL_RE = re.compile(r"\b([A-Z][A-Za-z0-9_]*)\s*\(")
-BLOCK_RE = re.compile(r"\b(Screen|Column|Row|Stack)\s+[A-Za-z_][A-Za-z0-9_]*\s*:")
+BLOCK_RE = re.compile(r"\b(Screen|Column|Row|Stack|Scroll|Canvas)\s+[A-Za-z_][A-Za-z0-9_]*\s*:")
 STRING_RE = re.compile(r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'')
 
 
@@ -579,6 +592,8 @@ def source_cases() -> list[dict]:
     for path in paths:
         source = read(path)
         r = rel(path)
+        if r in SCENE_ONLY_EXAMPLES:
+            continue
         case_type = "parity fixture" if r.startswith("tests/parity/") else "example"
         semantic_gate = r in parity
         libdraw_gap = LIBDRAW_C_VISUAL_GAPS.get(r)

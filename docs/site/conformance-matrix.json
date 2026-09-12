@@ -50,10 +50,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -79,9 +79,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -95,7 +95,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "Screen",
         "Text"
@@ -358,10 +357,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -387,9 +386,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -403,7 +402,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "Modal",
         "Screen",
@@ -561,10 +559,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -590,9 +588,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -606,7 +604,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Box",
         "Screen",
         "Text"
@@ -708,9 +705,9 @@
       },
       "widgets": [
         "Background",
+        "Box",
         "Button",
         "Line",
-        "Box",
         "Screen",
         "Text"
       ]
@@ -811,6 +808,7 @@
       },
       "widgets": [
         "Background",
+        "Box",
         "Screen",
         "Text"
       ]
@@ -865,10 +863,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -894,9 +892,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -910,7 +908,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Menu",
         "Screen",
         "Text"
@@ -966,10 +963,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -995,9 +992,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1011,7 +1008,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Dropdown",
         "Progress",
         "Radio",
@@ -1070,10 +1066,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1099,9 +1095,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1115,7 +1111,6 @@
         }
       },
       "widgets": [
-        "Background",
         "ListBox",
         "Screen",
         "TableView",
@@ -1173,10 +1168,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1202,9 +1197,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1218,7 +1213,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "Screen",
         "Text",
@@ -1275,10 +1269,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1304,9 +1298,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1320,7 +1314,7 @@
         }
       },
       "widgets": [
-        "Background",
+        "Box",
         "Canvas",
         "CanvasGrid",
         "Screen"
@@ -1376,10 +1370,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1405,9 +1399,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1421,7 +1415,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Collapsible",
         "PanedView",
         "Screen",
@@ -1479,10 +1472,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1508,9 +1501,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1524,7 +1517,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "ColorPicker",
         "Modal",
@@ -1581,10 +1573,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1610,9 +1602,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1626,7 +1618,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Screen",
         "Text"
       ]
@@ -1681,10 +1672,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1710,9 +1701,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1726,7 +1717,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "Checkbox",
         "Screen",
@@ -1783,10 +1773,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -1812,9 +1802,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -1828,9 +1818,8 @@
         }
       },
       "widgets": [
-        "Background",
-        "Image",
         "Box",
+        "Image",
         "Screen",
         "Stack",
         "Text"
@@ -2130,294 +2119,6 @@
       "widgets": []
     },
     {
-      "id": "examples-22_physics",
-      "label": "Kryon Physics",
-      "path": "examples/22_physics.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2cpp": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2kir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "RGB exact",
-          "status_class": "part"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "status": "alpha differs",
-          "status_class": "part"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "status": "compile gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": []
-    },
-    {
-      "id": "examples-23_animation",
-      "label": "Kryon Animation",
-      "path": "examples/23_animation.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2cpp": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2kir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "RGB exact",
-          "status_class": "part"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "status": "alpha differs",
-          "status_class": "part"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "status": "compile gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": []
-    },
-    {
-      "id": "examples-24_tilemap",
-      "label": "Kryon Tilemap",
-      "path": "examples/24_tilemap.kry",
-      "pipelines": {
-        "k2b": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2c": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2cpp": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2go": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2js": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        },
-        "k2kir": {
-          "evidence": "conformance-matrix-check",
-          "status": "gated",
-          "status_class": "ok"
-        }
-      },
-      "renderer_matrix": {
-        "desktop_libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C libdraw capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "desktop_raylib": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C raylib capture; cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "krb_native_sw": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "RGB exact",
-          "status_class": "part"
-        },
-        "krb_web_canvas": {
-          "evidence": "make krb-web-matrix-check",
-          "scope": "Per-source wasm Canvas2D capture byte-compared against native kry_sw.",
-          "status": "byte exact",
-          "status_class": "ok"
-        },
-        "web_canvas_wasm": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "scope": "Per-source generated-C wasm Canvas2D capture in Node; browser screenshot and cross-renderer pixel diff pending.",
-          "status": "compile gap",
-          "status_class": "part"
-        },
-        "web_raylib_wasm": {
-          "evidence": "docs-site Web IDE build",
-          "scope": "Wasm/WebGL build coverage; per-source browser screenshot capture pending.",
-          "status": "build gated",
-          "status_class": "part"
-        }
-      },
-      "semantic_evidence": "lowering-only; no state/visual parity automaton yet",
-      "semantic_parity": false,
-      "type": "example",
-      "visuals": {
-        "krb_alpha": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "status": "alpha differs",
-          "status_class": "part"
-        },
-        "krb_rgb": {
-          "evidence": "conformance-matrix-check",
-          "status": "RGB exact",
-          "status_class": "ok"
-        },
-        "libdraw_c": {
-          "evidence": "Generated-C app-host route is missing for scene-only source.",
-          "status": "compile gap",
-          "status_class": "part"
-        }
-      },
-      "widgets": []
-    },
-    {
       "id": "examples-25_text_area_slider",
       "label": "Text Area and Slider",
       "path": "examples/25_text_area_slider.kry",
@@ -2570,10 +2271,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "evidence": "conformance-matrix-check",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "RGB exact",
-          "status_class": "part"
+          "status": "byte exact",
+          "status_class": "ok"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -2599,9 +2300,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
-          "status": "alpha differs",
-          "status_class": "part"
+          "evidence": "conformance-matrix-check",
+          "status": "byte exact",
+          "status_class": "ok"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -2617,6 +2318,7 @@
       "widgets": [
         "Background",
         "Bevel",
+        "Box",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -2625,19 +2327,19 @@
         "ColorPicker",
         "Column",
         "Dropdown",
+        "Fieldset",
         "Icon",
         "Image",
-        "Fieldset",
         "Line",
         "Link",
         "ListBox",
         "Menu",
         "Modal",
+        "NavigationBar",
         "PanedView",
         "Paragraph",
         "Progress",
         "Radio",
-        "Box",
         "Row",
         "Screen",
         "Scroll",
@@ -2706,10 +2408,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -2735,9 +2437,9 @@
       "type": "example",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -2751,7 +2453,6 @@
         }
       },
       "widgets": [
-        "Background",
         "Button",
         "Dropdown",
         "Screen",
@@ -2911,10 +2612,10 @@
           "status_class": "ok"
         },
         "krb_native_sw": {
-          "evidence": "conformance-matrix-check",
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
           "scope": "Per-source native kry_sw output compared with SDL readback.",
-          "status": "byte exact",
-          "status_class": "ok"
+          "status": "RGB exact",
+          "status_class": "part"
         },
         "krb_web_canvas": {
           "evidence": "make krb-web-matrix-check",
@@ -2940,9 +2641,9 @@
       "type": "parity fixture",
       "visuals": {
         "krb_alpha": {
-          "evidence": "conformance-matrix-check",
-          "status": "byte exact",
-          "status_class": "ok"
+          "evidence": "RGB exact; SDL readback alpha differs from headless kry_sw",
+          "status": "alpha differs",
+          "status_class": "part"
         },
         "krb_rgb": {
           "evidence": "conformance-matrix-check",
@@ -4263,13 +3964,14 @@
         }
       },
       "widgets": [
+        "Box",
         "Button",
         "Checkbox",
         "Collapsible",
         "Column",
         "Dropdown",
-        "Box",
         "Row",
+        "Scroll",
         "TableView",
         "TextField"
       ]
@@ -4372,9 +4074,9 @@
         "Button",
         "Checkbox",
         "Image",
+        "ListBox",
         "Screen",
-        "TabBar",
-        "TabItem"
+        "TabBar"
       ]
     },
     {
@@ -4672,6 +4374,7 @@
       "widgets": [
         "Background",
         "Bevel",
+        "Box",
         "Button",
         "Canvas",
         "CanvasGrid",
@@ -4680,21 +4383,20 @@
         "ColorPicker",
         "Column",
         "Dropdown",
+        "Fieldset",
         "Icon",
         "Image",
-        "Fieldset",
         "Line",
         "Link",
         "ListBox",
         "Modal",
+        "NavigationBar",
         "PanedView",
         "Paragraph",
         "Progress",
         "Radio",
-        "Box",
         "Row",
         "Screen",
-        "standalone selectable text widget",
         "Slider",
         "Spinbox",
         "Stack",
@@ -4952,48 +4654,48 @@
     }
   ],
   "summary": {
-    "examples": 27,
-    "krb_alpha_byte_exact_cases": 23,
-    "krb_rgb_visual_cases": 47,
-    "libdraw_c_visual_cases": 35,
+    "examples": 24,
+    "krb_alpha_byte_exact_cases": 9,
+    "krb_rgb_visual_cases": 43,
+    "libdraw_c_visual_cases": 31,
     "libdraw_c_visual_gaps": 12,
-    "parity_fixtures": 20,
-    "pipeline_cells": 282,
-    "raylib_c_visual_cases": 40,
+    "parity_fixtures": 19,
+    "pipeline_cells": 258,
+    "raylib_c_visual_cases": 36,
     "raylib_c_visual_gaps": 7,
-    "renderer_source_cells": 282,
-    "renderer_source_ok_cells": 185,
-    "renderer_source_partial_cells": 97,
-    "semantic_parity_cases": 18,
-    "source_cases": 47,
+    "renderer_source_cells": 258,
+    "renderer_source_ok_cells": 164,
+    "renderer_source_partial_cells": 94,
+    "semantic_parity_cases": 17,
+    "source_cases": 43,
     "visual_comparison_exact_rows": 2,
     "visual_comparison_pending_rows": 4,
     "visual_comparison_rows": 6,
-    "web_canvas_c_visual_cases": 40,
+    "web_canvas_c_visual_cases": 36,
     "web_canvas_c_visual_gaps": 7,
-    "widgets_declared": 43,
-    "widgets_detected": 41,
-    "widgets_missing": 2
+    "widgets_declared": 40,
+    "widgets_detected": 40,
+    "widgets_missing": 0
   },
   "visual_comparisons": [
     {
-      "compared": 47,
+      "compared": 43,
       "evidence": [
         "make conformance-matrix-check",
         "tests/krb_exact_test.sh"
       ],
-      "gap_cases": 24,
+      "gap_cases": 34,
       "gap_label": "alpha-only gaps",
       "id": "krb-native-vs-sdl",
       "label": "KRB native software vs SDL host",
       "mode": "RGB pixel comparison",
       "scope": "Every listed .kry source is rendered through kry_sw headless and the SDL host; RGB pixels must match. Alpha-only gaps are listed separately.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "RGB exact",
       "status_class": "ok"
     },
     {
-      "compared": 47,
+      "compared": 43,
       "evidence": [
         "make krb-web-matrix-check",
         "cmd/krb-web/node-capture.js"
@@ -5004,12 +4706,12 @@
       "label": "KRB native software vs KRB web Canvas",
       "mode": "RGBA byte comparison",
       "scope": "Every listed .kry source is rendered by native kry_sw and the wasm Canvas2D KRB host; RGBA bytes must match.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "byte exact",
       "status_class": "ok"
     },
     {
-      "compared": 40,
+      "compared": 36,
       "evidence": [
         "make raylib-matrix-check"
       ],
@@ -5019,12 +4721,12 @@
       "label": "Generated C raylib vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C raylib captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 35,
+      "compared": 31,
       "evidence": [
         "make libdraw-matrix-check"
       ],
@@ -5034,12 +4736,12 @@
       "label": "Generated C libdraw vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C libdraw captures are gated for nonblank output on sources without known generated-C gaps; pixel comparison against KRB is not yet enforced.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "pixel diff pending",
       "status_class": "part"
     },
     {
-      "compared": 40,
+      "compared": 36,
       "evidence": [
         "make web-canvas-matrix-check"
       ],
@@ -5049,7 +4751,7 @@
       "label": "Generated C web Canvas vs KRB native software",
       "mode": "capture only",
       "scope": "Generated C wasm Canvas2D captures are gated for nonblank output in Node on sources without known generated-C gaps; browser screenshot and pixel comparison against KRB are not yet enforced.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "pixel diff pending",
       "status_class": "part"
     },
@@ -5064,14 +4766,15 @@
       "label": "Web raylib wasm vs desktop raylib",
       "mode": "build only",
       "scope": "The web raylib path builds with the website/Web IDE, but per-source browser screenshots and pixel comparison against desktop raylib are still missing.",
-      "source_cases": 47,
+      "source_cases": 43,
       "status": "browser screenshot pending",
       "status_class": "part"
     }
   ],
   "widget_counts": {
-    "Background": 23,
+    "Background": 9,
     "Bevel": 2,
+    "Box": 10,
     "Button": 18,
     "Canvas": 3,
     "CanvasGrid": 3,
@@ -5080,28 +4783,26 @@
     "ColorPicker": 4,
     "Column": 7,
     "Dropdown": 7,
+    "Fieldset": 2,
     "Icon": 2,
     "Image": 4,
-    "Fieldset": 2,
     "Line": 3,
     "Link": 2,
-    "ListBox": 4,
+    "ListBox": 5,
     "Menu": 3,
     "Modal": 4,
+    "NavigationBar": 2,
     "PanedView": 3,
     "Paragraph": 2,
     "Progress": 5,
     "Radio": 4,
-    "Box": 8,
     "Row": 7,
     "Screen": 39,
-    "Scroll": 2,
-    "standalone selectable text widget": 1,
+    "Scroll": 3,
     "Slider": 6,
     "Spinbox": 3,
     "Stack": 3,
     "TabBar": 4,
-    "TabItem": 1,
     "TableView": 5,
     "Text": 26,
     "TextArea": 7,
@@ -5116,30 +4817,16 @@
     {
       "id": "Background",
       "semantic_sources": [],
-      "source_count": 23,
+      "source_count": 9,
       "sources": [
-        "examples/01_file_dialog.kry",
         "examples/02_buttons.kry",
         "examples/03_theme.kry",
-        "examples/04_modal.kry",
         "examples/05_color.kry",
-        "examples/06_scaling.kry",
         "examples/07_layout.kry",
         "examples/09_geometry.kry",
-        "examples/10_menus.kry",
-        "examples/11_basic_controls.kry",
-        "examples/12_collections.kry",
-        "examples/13_text_editor.kry",
-        "examples/14_canvas.kry",
-        "examples/15_containers.kry",
-        "examples/16_dialogs.kry",
-        "examples/17_keyboard_platform.kry",
-        "examples/18_accessibility.kry",
-        "examples/19_images.kry",
         "examples/20_scroll.kry",
         "examples/25_text_area_slider.kry",
         "examples/26_widget_catalog.kry",
-        "examples/27_dropdowns.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5151,6 +4838,27 @@
       "source_count": 2,
       "sources": [
         "examples/26_widget_catalog.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "Box",
+      "semantic_sources": [
+        "tests/parity/scroll_content.kry"
+      ],
+      "source_count": 10,
+      "sources": [
+        "examples/05_color.kry",
+        "examples/06_scaling.kry",
+        "examples/07_layout.kry",
+        "examples/09_geometry.kry",
+        "examples/14_canvas.kry",
+        "examples/19_images.kry",
+        "examples/25_text_area_slider.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5310,6 +5018,17 @@
       "status_class": "ok"
     },
     {
+      "id": "Fieldset",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
+        "examples/26_widget_catalog.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
       "id": "Icon",
       "semantic_sources": [],
       "source_count": 2,
@@ -5321,14 +5040,6 @@
       "status_class": "ok"
     },
     {
-      "id": "IconButton",
-      "semantic_sources": [],
-      "source_count": 0,
-      "sources": [],
-      "status": "missing",
-      "status_class": "no"
-    },
-    {
       "id": "Image",
       "semantic_sources": [
         "tests/parity/selection_images.kry"
@@ -5338,17 +5049,6 @@
         "examples/19_images.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/selection_images.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "Fieldset",
-      "semantic_sources": [],
-      "source_count": 2,
-      "sources": [
-        "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5380,13 +5080,15 @@
     {
       "id": "ListBox",
       "semantic_sources": [
-        "tests/parity/list_box.kry"
+        "tests/parity/list_box.kry",
+        "tests/parity/selection_images.kry"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "sources": [
         "examples/12_collections.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/list_box.kry",
+        "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5413,6 +5115,17 @@
       "sources": [
         "examples/04_modal.kry",
         "examples/16_dialogs.kry",
+        "examples/26_widget_catalog.kry",
+        "tests/parity/widget_catalog.kry"
+      ],
+      "status": "covered",
+      "status_class": "ok"
+    },
+    {
+      "id": "NavigationBar",
+      "semantic_sources": [],
+      "source_count": 2,
+      "sources": [
         "examples/26_widget_catalog.kry",
         "tests/parity/widget_catalog.kry"
       ],
@@ -5469,25 +5182,6 @@
         "examples/11_basic_controls.kry",
         "examples/26_widget_catalog.kry",
         "tests/parity/basic_controls.kry",
-        "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "Box",
-      "semantic_sources": [
-        "tests/parity/scroll_content.kry"
-      ],
-      "source_count": 8,
-      "sources": [
-        "examples/05_color.kry",
-        "examples/06_scaling.kry",
-        "examples/07_layout.kry",
-        "examples/19_images.kry",
-        "examples/25_text_area_slider.kry",
-        "examples/26_widget_catalog.kry",
-        "tests/parity/scroll_content.kry",
         "tests/parity/widget_catalog.kry"
       ],
       "status": "covered",
@@ -5580,21 +5274,14 @@
     },
     {
       "id": "Scroll",
-      "semantic_sources": [],
-      "source_count": 2,
+      "semantic_sources": [
+        "tests/parity/scroll_content.kry"
+      ],
+      "source_count": 3,
       "sources": [
         "examples/20_scroll.kry",
-        "examples/26_widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "standalone selectable text widget",
-      "semantic_sources": [],
-      "source_count": 1,
-      "sources": [
-        "tests/parity/widget_catalog.kry"
+        "examples/26_widget_catalog.kry",
+        "tests/parity/scroll_content.kry"
       ],
       "status": "covered",
       "status_class": "ok"
@@ -5652,18 +5339,6 @@
         "examples/26_widget_catalog.kry",
         "tests/parity/selection_images.kry",
         "tests/parity/widget_catalog.kry"
-      ],
-      "status": "covered",
-      "status_class": "ok"
-    },
-    {
-      "id": "TabItem",
-      "semantic_sources": [
-        "tests/parity/selection_images.kry"
-      ],
-      "source_count": 1,
-      "sources": [
-        "tests/parity/selection_images.kry"
       ],
       "status": "covered",
       "status_class": "ok"

@@ -811,7 +811,7 @@ internal_button_matches="$(
     rg -n '\b(RenderButton|RenderTextButton|RenderGenericButton)\b' \
         src/ui/button.c \
         src/ui/rows.c \
-        src/ui/bottom_nav.c \
+        src/ui/navigation_bar.c \
         src/ui/modal.c \
         src/ui/ui_tk.c \
         src/ui/ui_tree.c \
