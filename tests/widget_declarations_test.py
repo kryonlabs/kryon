@@ -450,10 +450,10 @@ Layout :: (settings: Settings) #ui {
         assert "Layout/explicit" not in generated, (target, "replaced explicit key")
         assert "chosen" in generated, (target, "lost explicit layout key")
         if target == "js":
-            assert generated.count('"Button"') == 1, (target, "leaf button opened a content scope")
-            assert generated.count('"BeginButton"') == 1, (target, "composed button lost its content scope")
-            assert generated.count('"Card"') == 1, (target, "leaf card opened a content scope")
-            assert generated.count('"BeginCard"') == 1, (target, "composed card lost its content scope")
+            assert generated.count('"Button"') == 2, (target, "button calls should use the canonical widget name")
+            assert '"BeginButton"' not in generated, (target, "JS output exposed lowered button scope")
+            assert generated.count('"Card"') == 2, (target, "card calls should use the canonical widget name")
+            assert '"BeginCard"' not in generated, (target, "JS output exposed lowered card scope")
         else:
             assert len(re.findall(r"(?<![A-Za-z])Button\(", generated)) == 1, (target, "leaf button opened a content scope")
             assert generated.count("BeginButton(") == 1, (target, "composed button lost its content scope")

@@ -1761,7 +1761,12 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 break;
             emit_indent(f, indent);
             fprintf(f, "kryon.widget($rt, ");
-            js_string(f, st->widget[0] ? st->widget : raw);
+            if(strcmp(st->widget, "BeginButton") == 0)
+                js_string(f, "Button");
+            else if(strcmp(st->widget, "BeginCard") == 0)
+                js_string(f, "Card");
+            else
+                js_string(f, st->widget[0] ? st->widget : raw);
             fprintf(f, ", ");
             emit_widget_arguments(f, m, st->widget, st->args[0] ? st->args : raw);
             fprintf(f, ", $state, ");

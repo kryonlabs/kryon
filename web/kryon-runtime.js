@@ -955,8 +955,6 @@ function handleWidget(rt, name, args, state) {
     return handleButton(rt, args);
   case "Card":
     return handleCard(rt, args);
-  case "BeginCard":
-    return false;
   case "TextField":
   case "TextArea":
     return handleTextInput(rt, state, args);
