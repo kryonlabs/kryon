@@ -16,7 +16,7 @@ implemented popup scope and its remaining lifecycle/backend gaps.
 | Dear ImGui widget family | Kryon native surface | Status |
 |---|---|---|
 | Text and value helpers | `Text(TextProps)`, `Bullet`, `Separator` | one canonical text widget owns bounds, wrapping, clipping, color, alignment, and disabled presentation; label/value rows are composition |
-| Buttons and boolean choices | `Button` (including `ControlSizeSmall`, arrow/info/menu/split options), `InvisibleButton`, `Toggle`, `Checkbox`, `Radio`, `Bullet` | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
+| Buttons and boolean choices | `Button` (including size, icon, arrow, info, menu, split, loading, tone, and emphasis props), `Toggle`, `Checkbox`, `Radio`, `Bullet`; invisible hit testing remains host support | interactive controls share pointer focus, Tab traversal, Enter/Space activation, disabled gating, popup ownership, and focus presentation; `Bullet` is presentation-only |
 | Progress and links | `Progress`, `Link` | covered; `Link` represents both clickable text and open-URL links |
 | Images | `Image`, image `Button` | covered; image content on `Button` shares ordinary focus and keyboard activation |
 | Dropdowns | `Dropdown`, `Selectable` | option-list helper plus shared selectable row semantics |
@@ -246,7 +246,7 @@ extend `buttons_layout.kry` coverage with Enter/Space, disabled activation
 rejection and Tab skipping the disabled button; these additional assertions are
 native-only and do not claim JavaScript keyboard coverage.
 The same focusable-activation contract now backs native C and Go `Toggle`, `Checkbox`,
-`Checkbox`, `Radio`, `Selectable`, `InvisibleButton`, image `Button`, and
+`Checkbox`, `Radio`, `Selectable`, invisible hit-test support, image `Button`, and
 swatch `Button`, instead of duplicating key handling in each paint routine.
 Direct runtime tests cover Enter/Space, Tab, disabled scopes, focus presentation,
 and top-popup ownership. The generated `basic_controls.kry` fixture exercises

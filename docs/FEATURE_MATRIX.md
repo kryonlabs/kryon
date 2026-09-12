@@ -127,7 +127,7 @@ declaration pass (`src/ui/ui_tree.c`).
 | Drag values and ranges | ✅ | ✅ | ✅ | ✅ | ✅ `Drag(DragProps)` | ✗ |
 | Slider values, vertical sliders, and angle sliders | ✅ | ✅ | ✅ | ✅ | ✅ `Slider(SliderProps)` | ✗ |
 | Numeric keyboard inputs | ✅ | ✅ | ✅ | ✅ | ✅ `Input(InputProps)` | ✗ |
-| Small-sized Button / InvisibleButton / Bullet / Separator | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
+| Button sizing/options plus invisible hit-test support | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | Separator labels | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 | ColorPicker / swatch Button | ✅ | ✅ | ✅ | ✅ | ✅ | ✗ |
 
