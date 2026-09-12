@@ -215,8 +215,10 @@ same bridge in browser-hosted k2js apps. k2js embeds KSS source text in
 `app.styles[].source` when a `#style` import resolves on disk, and
 `createRuntime({ app })` installs those embedded sheets automatically. This
 first web resolver supports the initial KSS grammar slice: kind selectors,
-`#id`, `.class`, `[role=...]`, `[state=...]`, state pseudos, layers, colors,
-spacing, radius, border width, opacity, font size, and local
+`#id`, `.class`, `[role=...]`, `[state=...]`, native attribute aliases such as
+`[name=...]`, `[type=...]`, `[action=...]`, `[method=...]`,
+`[enctype=...]`, `[autocomplete=...]`, state pseudos, layers, colors, spacing,
+radius, border width, opacity, font size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
 The frame is also the right place for inspector data: matched KSS rules,

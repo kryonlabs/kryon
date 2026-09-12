@@ -1444,6 +1444,18 @@ function selectorDataAttrValue(key, facts) {
   return undefined;
 }
 
+function selectorNativeAttrValue(key, facts) {
+  switch (key) {
+    case "name": return facts.domName;
+    case "type": return facts.inputType;
+    case "action": return facts.formAction;
+    case "method": return facts.formMethod;
+    case "enctype": return facts.formEncType;
+    case "autocomplete": return facts.autoComplete;
+    default: return facts[key];
+  }
+}
+
 function selectorMatchesFacts(selector, facts) {
   if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
     return false;
@@ -1461,15 +1473,7 @@ function selectorMatchesFacts(selector, facts) {
       if (String(selectorDataAttrValue(key, facts) ?? "") !== value)
         return false;
     }
-    else if (key === "name") {
-      if (value !== facts.domName)
-        return false;
-    }
-    else if (key === "type") {
-      if (value !== facts.inputType)
-        return false;
-    }
-    else if (!["role", "state"].includes(key) && String(facts[key] ?? "") !== value)
+    else if (!["role", "state"].includes(key) && String(selectorNativeAttrValue(key, facts) ?? "") !== value)
       return false;
   }
   return styleStateMatches(selector.state, facts.state);

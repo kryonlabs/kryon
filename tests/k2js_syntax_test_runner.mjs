@@ -361,6 +361,10 @@ function fakeDocument() {
     runtime.widget(submitRt, "TextField", { text: "hello@example.test" }, null,
       { nodeName: "email", path: "Page/contact/email", parentPath: "Page/contact", domName: "email" });
     runtime.endFrame(submitRt);
+    assert.equal(runtime.webNodeQuery(submitRt, "[action=\"/contact\"]").path, "Page/contact");
+    assert.equal(runtime.webNodeQuery(submitRt, "[method=post]").path, "Page/contact");
+    assert.equal(runtime.webNodeQuery(submitRt, "[enctype=\"multipart/form-data\"]").path, "Page/contact");
+    assert.equal(runtime.webNodeQuery(submitRt, "[autocomplete=off]").path, "Page/contact");
     const submitTarget = document.createElement("div");
     runtime.renderWebDocument(submitRt, submitTarget);
     const submitForm = runtime.findWebElement(submitTarget, "contact");
@@ -368,6 +372,10 @@ function fakeDocument() {
     assert.equal(submitForm.attributes.method, "post");
     assert.equal(submitForm.attributes.enctype, "multipart/form-data");
     assert.equal(submitForm.attributes.autocomplete, "off");
+    assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
+    assert.equal(runtime.webDOMQuery(submitTarget, "[method=post]").element, submitForm);
+    assert.equal(runtime.webDOMQuery(submitTarget, "[enctype=\"multipart/form-data\"]").element, submitForm);
+    assert.equal(runtime.webDOMQuery(submitTarget, "[autocomplete=off]").element, submitForm);
     submitForm.submit();
     assert.equal(submitValues.email, "hello@example.test");
     assert.equal(submitValues["Page/contact/email"], "hello@example.test");
