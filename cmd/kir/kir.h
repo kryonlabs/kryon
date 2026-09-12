@@ -110,6 +110,13 @@ typedef struct KirStmt {
     char text[KIR_TEXT_MAX];
     char widget[KIR_NAME_MAX];
     char args[KIR_TEXT_MAX];
+    char node_name[KIR_NAME_MAX];       /* source-level UI block identity */
+    char dom_tag[KIR_NAME_MAX];         /* requested browser element tag */
+    char dom_id[KIR_NAME_MAX];          /* requested browser id */
+    char dom_class[KIR_TEXT_MAX];       /* requested browser/KSS classes */
+    char dom_role[KIR_NAME_MAX];        /* requested accessibility role */
+    char dom_aria_label[KIR_TEXT_MAX];  /* requested accessible label */
+    char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */
     int declared_widget; /* typed #ui block invocation, resolved after imports */
     int widget_fallback; /* leaf block may use host props only if no declaration resolves */
     int is_instance; /* typed record binding retained by its explicit key */

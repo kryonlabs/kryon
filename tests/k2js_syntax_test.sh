@@ -87,8 +87,17 @@ Scene :: (viewport: Rectangle) #ui {
     button_bounds = (Rectangle){left, 50 + count, widths[0] + widths[1], 28}
     Screen root: {
         Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Button((ButtonProps){.bounds = button_bounds, .label = "Tap",
-            .style = (ControlStyle){.normal = (Style){.fields = StyleRadius, .radius = (float)6}}})
+        Button tap: {
+            bounds = button_bounds
+            label = "Tap"
+            style = (ControlStyle){.normal = (Style){.fields = StyleRadius, .radius = (float)6}}
+            dom = "button"
+            dom_id = "tap-button"
+            class = "primary action"
+            role = "button"
+            aria_label = "Tap the action"
+            on_click = call_host
+        }
         count += 1
     }
 }
@@ -131,6 +140,10 @@ grep -q 'export function frame' "$out"
 grep -q 'export function main' "$out"
 grep -q 'kryon.widget(\$rt, "Text"' "$out"
 grep -q 'kryon.widget(\$rt, "Button"' "$out"
+grep -q '"nodeName": "tap"' "$out"
+grep -q '"tag": "button"' "$out"
+grep -q '"class": "primary action"' "$out"
+grep -q '"onClick": "call_host"' "$out"
 if grep -q 'kryon.widget(\$rt, "End"' "$out"; then
     echo "k2js emitted a synthetic End widget" >&2
     exit 1

@@ -12,6 +12,7 @@ browser presentation.
 The existing JavaScript runtime records generated widget calls and can simulate
 logic. The Web Document frame gives that stream a stable semantic shape:
 
+- named `.kry` UI blocks as source-level node identities;
 - widget kind, key, name, classes, state, and bounds;
 - native element tag selection for common web-capable widgets;
 - text, links, image sources, input type, and accessibility-facing state;
@@ -20,6 +21,38 @@ logic. The Web Document frame gives that stream a stable semantic shape:
 JavaScript remains responsible for generated logic, event glue, host calls, and
 browser bootstrapping. Widget structure stays in `.kry`; visual styling belongs
 to KSS.
+
+## Source Metadata
+
+Named UI blocks identify nodes:
+
+```kry
+Button save: {
+    label = "Save"
+    dom = "button"
+    dom_id = "save-button"
+    class = "primary"
+    role = "button"
+    aria_label = "Save settings"
+    on_click = save_settings
+}
+```
+
+The block name, `save`, is the stable Kry node name. The web metadata fields
+are stored on the KIR statement and are not native widget props, so C and Go
+widget APIs do not need browser-only fields.
+
+Supported metadata fields in this first slice:
+
+| `.kry` field | Web frame field |
+|---|---|
+| named block | `nodeName`, `key`, `name` |
+| `dom`, `dom_tag`, `html_tag`, `tag` | `tag` |
+| `dom_id`, `html_id` | `domId` |
+| `class`, `classes`, `class_name` | `classes` |
+| `role` | `role` |
+| `aria_label`, `accessible_label` | `ariaLabel` |
+| `on_click` | `onClick`, `action` |
 
 ## Runtime Contract
 
@@ -35,12 +68,17 @@ to KSS.
       tag,
       key,
       name,
+      domId,
       classes,
       text,
       href,
       inputType,
       alt,
       asset,
+      role,
+      ariaLabel,
+      onClick,
+      action,
       bounds,
       hasBounds,
       state

@@ -1,0 +1,89 @@
+#module "scroll"
+#import "drawing_props"
+
+ScrollMetrics :: struct {
+    scrollbar_width: i32
+    reserved_width: i32
+    safe_gap: i32
+    default_wheel_step: i32
+}
+
+ScrollPolicyView :: struct {
+    content_x: i32
+    content_y: i32
+    content_w: i32
+    viewport_h: i32
+    content_h: i32
+    max_scroll: i32
+    scrollbar_x: i32
+}
+
+ScrollMetricsFor :: (scale: float) -> ScrollMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
+    metrics: ScrollMetrics
+    metrics.scrollbar_width = (i32)(8.0 * scale)
+    metrics.reserved_width = (i32)(16.0 * scale)
+    metrics.safe_gap = (i32)(20.0 * scale)
+    metrics.default_wheel_step = (i32)(42.0 * scale)
+    return metrics
+}
+
+ScrollClamp :: (value: i32, maximum: i32) -> i32 #export {
+    if value < 0 { return 0 }
+    if value > maximum { return maximum }
+    return value
+}
+
+ScrollMax :: (content_height: i32, viewport_height: i32) -> i32 #export {
+    maximum: i32 = content_height - viewport_height
+    if maximum < 0 { maximum = 0 }
+    return maximum
+}
+
+ScrollReservedWidth :: (max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
+    if max_scroll > 0 { return metrics.reserved_width }
+    return 0
+}
+
+ScrollContentWidth :: (content_width: i32, max_scroll: i32,
+    metrics: ScrollMetrics) -> i32 #export {
+    reserved: i32 = ScrollReservedWidth(max_scroll, metrics)
+    if reserved <= 0 { return content_width }
+    if content_width <= reserved { return 0 }
+    return content_width - reserved
+}
+
+ScrollSafeContentWidth :: (content_x: i32, content_width: i32,
+    scrollbar_x: i32, max_scroll: i32, metrics: ScrollMetrics) -> i32 #export {
+    safe_width: i32 = content_width
+    if max_scroll <= 0 || scrollbar_x <= 0 { return content_width }
+    safe_width = scrollbar_x - content_x - metrics.safe_gap
+    if safe_width > content_width { return content_width }
+    if safe_width < 0 { return 0 }
+    return safe_width
+}
+
+ScrollMeasure :: (bounds: Rectangle, content_height: i32, content_x: i32,
+    content_width: i32, scroll_offset: i32, scrollbar_x: i32,
+    metrics: ScrollMetrics) -> ScrollPolicyView #export {
+    view: ScrollPolicyView
+    x: i32 = (i32)bounds.x
+    y: i32 = (i32)bounds.y
+    w: i32 = (i32)bounds.width
+    h: i32 = (i32)bounds.height
+    if content_height < 0 { content_height = 0 }
+    if content_x <= 0 { content_x = x }
+    if content_width <= 0 { content_width = w }
+    if scrollbar_x <= 0 { scrollbar_x = x + w - metrics.scrollbar_width }
+
+    view.content_x = content_x
+    view.viewport_h = h
+    view.content_h = content_height
+    view.max_scroll = ScrollMax(content_height, h)
+    scroll_offset = ScrollClamp(scroll_offset, view.max_scroll)
+    view.content_y = y - scroll_offset
+    view.scrollbar_x = scrollbar_x
+    view.content_w = ScrollSafeContentWidth(content_x, content_width,
+        scrollbar_x, view.max_scroll, metrics)
+    return view
+}

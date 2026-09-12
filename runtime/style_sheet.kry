@@ -1,0 +1,369 @@
+#module "style_sheet"
+#import "style"
+#import "control_props"
+
+# KSS is the text format. The runtime API uses plain Style* names.
+# Compilers and parsers lower .kss files into these typed rule tables.
+
+StyleAny :: () -> i32 #export {
+    return -1
+}
+
+StyleStateAny :: () -> i32 #export {
+    return 0
+}
+
+StyleKindAny :: () -> i32 #export {
+    return 0
+}
+
+StyleKindApp :: () -> i32 #export {
+    return 1
+}
+
+StyleKindButton :: () -> i32 #export {
+    return 2
+}
+
+StyleKindText :: () -> i32 #export {
+    return 3
+}
+
+StyleKindTextField :: () -> i32 #export {
+    return 4
+}
+
+StyleKindTextArea :: () -> i32 #export {
+    return 5
+}
+
+StyleKindSurface :: () -> i32 #export {
+    return 6
+}
+
+StyleKindDropdown :: () -> i32 #export {
+    return 7
+}
+
+StyleKindCard :: () -> i32 #export {
+    return 8
+}
+
+StyleKindSlider :: () -> i32 #export {
+    return 9
+}
+
+StyleKindToggle :: () -> i32 #export {
+    return 10
+}
+
+StyleKindCheckbox :: () -> i32 #export {
+    return 11
+}
+
+StyleKindRadio :: () -> i32 #export {
+    return 12
+}
+
+StyleKindProgress :: () -> i32 #export {
+    return 13
+}
+
+StyleKindSeparator :: () -> i32 #export {
+    return 14
+}
+
+StyleFacts :: struct {
+    kind: i32
+    name: i32
+    class_name: i32
+    role: i32
+    tone: i32
+    emphasis: i32
+    size: i32
+    state: i32
+    validation: i32
+    orientation: i32
+    placement: i32
+}
+
+StyleSelector :: struct {
+    kind: i32
+    name: i32
+    class_name: i32
+    role: i32
+    tone: i32
+    emphasis: i32
+    size: i32
+    state: i32
+    validation: i32
+    orientation: i32
+    placement: i32
+}
+
+StyleRule :: struct {
+    selector: StyleSelector
+    state: i32
+    layer: i32
+    order: i32
+    style: StyleData
+}
+
+StyleSheet :: struct {
+    rules: const StyleRule*
+    rule_count: i32
+}
+
+StyleCascade :: struct {
+    result: StyleData
+    background_score: i32
+    foreground_score: i32
+    border_score: i32
+    focus_score: i32
+    radius_score: i32
+    border_width_score: i32
+    opacity_score: i32
+    padding_x_score: i32
+    padding_y_score: i32
+    gap_score: i32
+    font_size_score: i32
+    icon_size_score: i32
+    content_offset_score: i32
+    background_end_score: i32
+    material_score: i32
+    typeface_score: i32
+}
+
+StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
+    facts: StyleFacts
+    facts.kind = kind
+    facts.role = StyleAny()
+    facts.tone = StyleAny()
+    facts.emphasis = StyleAny()
+    facts.size = StyleAny()
+    facts.state = StyleAny()
+    facts.validation = StyleAny()
+    facts.orientation = StyleAny()
+    facts.placement = StyleAny()
+    return facts
+}
+
+StyleDefaultSelector :: () -> StyleSelector #export {
+    selector: StyleSelector
+    selector.kind = StyleKindAny()
+    selector.role = StyleAny()
+    selector.tone = StyleAny()
+    selector.emphasis = StyleAny()
+    selector.size = StyleAny()
+    selector.state = StyleAny()
+    selector.validation = StyleAny()
+    selector.orientation = StyleAny()
+    selector.placement = StyleAny()
+    return selector
+}
+
+StyleMatchesOptional :: (selector_value: i32, fact_value: i32) -> bool #export {
+    if selector_value == StyleAny() {
+        return true
+    }
+    return selector_value == fact_value
+}
+
+StyleSelectorMatches :: (selector: StyleSelector, facts: StyleFacts) -> bool #export {
+    if selector.kind != StyleKindAny() && selector.kind != facts.kind {
+        return false
+    }
+    if selector.name != 0 && selector.name != facts.name {
+        return false
+    }
+    if selector.class_name != 0 && selector.class_name != facts.class_name {
+        return false
+    }
+    if !StyleMatchesOptional(selector.role, facts.role) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.tone, facts.tone) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.emphasis, facts.emphasis) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.size, facts.size) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.state, facts.state) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.validation, facts.validation) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.orientation, facts.orientation) {
+        return false
+    }
+    if !StyleMatchesOptional(selector.placement, facts.placement) {
+        return false
+    }
+    return true
+}
+
+StyleSelectorSpecificity :: (selector: StyleSelector) -> i32 #export {
+    score: i32 = 0
+    if selector.kind != StyleKindAny() { score += 1 }
+    if selector.role != StyleAny() { score += 10 }
+    if selector.tone != StyleAny() { score += 10 }
+    if selector.emphasis != StyleAny() { score += 10 }
+    if selector.size != StyleAny() { score += 10 }
+    if selector.state != StyleAny() { score += 10 }
+    if selector.validation != StyleAny() { score += 10 }
+    if selector.orientation != StyleAny() { score += 10 }
+    if selector.placement != StyleAny() { score += 10 }
+    if selector.class_name != 0 { score += 20 }
+    if selector.name != 0 { score += 100 }
+    return score
+}
+
+StyleRuleScore :: (rule: StyleRule) -> i32 #export {
+    return rule.layer * 1000000 + StyleSelectorSpecificity(rule.selector) * 1000 +
+        rule.order
+}
+
+StyleRuleMatchesState :: (rule_state: i32, active_state: i32) -> bool #export {
+    if rule_state == StyleStateAny() { return true }
+    if rule_state == ButtonStateNormal { return true }
+    return rule_state == active_state
+}
+
+StyleRuleMatches :: (rule: StyleRule, facts: StyleFacts, active_state: i32) -> bool #export {
+    if !StyleRuleMatchesState(rule.state, active_state) {
+        return false
+    }
+    return StyleSelectorMatches(rule.selector, facts)
+}
+
+StyleWins :: (score: i32, current: i32) -> bool #export {
+    return score >= current
+}
+
+BeginStyleCascade :: (base: StyleData) -> StyleCascade #export {
+    cascade: StyleCascade
+    cascade.result = base
+    return cascade
+}
+
+ApplyStyleRule :: (cascade: StyleCascade, rule: StyleRule,
+    facts: StyleFacts, active_state: i32) -> StyleCascade #export {
+    if !StyleRuleMatches(rule, facts, active_state) {
+        return cascade
+    }
+    score: i32 = StyleRuleScore(rule)
+    style: StyleData = rule.style
+    if (style.fields & (u32)StyleBackground) != (u32)0 &&
+       StyleWins(score, cascade.background_score) {
+        cascade.result.background = style.background
+        cascade.result.fields = cascade.result.fields | (u32)StyleBackground
+        cascade.background_score = score
+    }
+    if (style.fields & (u32)StyleForeground) != (u32)0 &&
+       StyleWins(score, cascade.foreground_score) {
+        cascade.result.foreground = style.foreground
+        cascade.result.fields = cascade.result.fields | (u32)StyleForeground
+        cascade.foreground_score = score
+    }
+    if (style.fields & (u32)StyleBorder) != (u32)0 &&
+       StyleWins(score, cascade.border_score) {
+        cascade.result.border = style.border
+        cascade.result.fields = cascade.result.fields | (u32)StyleBorder
+        cascade.border_score = score
+    }
+    if (style.fields & (u32)StyleFocus) != (u32)0 &&
+       StyleWins(score, cascade.focus_score) {
+        cascade.result.focus = style.focus
+        cascade.result.fields = cascade.result.fields | (u32)StyleFocus
+        cascade.focus_score = score
+    }
+    if (style.fields & (u32)StyleRadius) != (u32)0 &&
+       StyleWins(score, cascade.radius_score) {
+        cascade.result.radius = style.radius
+        cascade.result.fields = cascade.result.fields | (u32)StyleRadius
+        cascade.radius_score = score
+    }
+    if (style.fields & (u32)StyleBorderWidth) != (u32)0 &&
+       StyleWins(score, cascade.border_width_score) {
+        cascade.result.border_width = style.border_width
+        cascade.result.fields = cascade.result.fields | (u32)StyleBorderWidth
+        cascade.border_width_score = score
+    }
+    if (style.fields & (u32)StyleOpacity) != (u32)0 &&
+       StyleWins(score, cascade.opacity_score) {
+        cascade.result.opacity = style.opacity
+        cascade.result.fields = cascade.result.fields | (u32)StyleOpacity
+        cascade.opacity_score = score
+    }
+    if (style.fields & (u32)StylePaddingX) != (u32)0 &&
+       StyleWins(score, cascade.padding_x_score) {
+        cascade.result.padding_x = style.padding_x
+        cascade.result.fields = cascade.result.fields | (u32)StylePaddingX
+        cascade.padding_x_score = score
+    }
+    if (style.fields & (u32)StylePaddingY) != (u32)0 &&
+       StyleWins(score, cascade.padding_y_score) {
+        cascade.result.padding_y = style.padding_y
+        cascade.result.fields = cascade.result.fields | (u32)StylePaddingY
+        cascade.padding_y_score = score
+    }
+    if (style.fields & (u32)StyleGap) != (u32)0 &&
+       StyleWins(score, cascade.gap_score) {
+        cascade.result.gap = style.gap
+        cascade.result.fields = cascade.result.fields | (u32)StyleGap
+        cascade.gap_score = score
+    }
+    if (style.fields & (u32)StyleFontSize) != (u32)0 &&
+       StyleWins(score, cascade.font_size_score) {
+        cascade.result.font_size = style.font_size
+        cascade.result.fields = cascade.result.fields | (u32)StyleFontSize
+        cascade.font_size_score = score
+    }
+    if (style.fields & (u32)StyleIconSize) != (u32)0 &&
+       StyleWins(score, cascade.icon_size_score) {
+        cascade.result.icon_size = style.icon_size
+        cascade.result.fields = cascade.result.fields | (u32)StyleIconSize
+        cascade.icon_size_score = score
+    }
+    if (style.fields & (u32)StyleContentOffset) != (u32)0 &&
+       StyleWins(score, cascade.content_offset_score) {
+        cascade.result.offset_x = style.offset_x
+        cascade.result.offset_y = style.offset_y
+        cascade.result.fields = cascade.result.fields | (u32)StyleContentOffset
+        cascade.content_offset_score = score
+    }
+    if (style.fields & (u32)StyleBackgroundEnd) != (u32)0 &&
+       StyleWins(score, cascade.background_end_score) {
+        cascade.result.background_end = style.background_end
+        cascade.result.fields = cascade.result.fields | (u32)StyleBackgroundEnd
+        cascade.background_end_score = score
+    }
+    if (style.fields & (u32)StyleMaterial) != (u32)0 &&
+       StyleWins(score, cascade.material_score) {
+        cascade.result.material = style.material
+        cascade.result.fields = cascade.result.fields | (u32)StyleMaterial
+        cascade.material_score = score
+    }
+    if (style.fields & (u32)StyleTypeface) != (u32)0 &&
+       StyleWins(score, cascade.typeface_score) {
+        cascade.result.typeface = style.typeface
+        cascade.result.fields = cascade.result.fields | (u32)StyleTypeface
+        cascade.typeface_score = score
+    }
+    return cascade
+}
+
+FinishStyleCascade :: (cascade: StyleCascade) -> StyleData #export {
+    return cascade.result
+}
+
+ResolveStyleRule :: (base: StyleData, facts: StyleFacts,
+    rule: StyleRule, active_state: i32) -> StyleData #export {
+    cascade: StyleCascade = BeginStyleCascade(base)
+    cascade = ApplyStyleRule(cascade, rule, facts, active_state)
+    return FinishStyleCascade(cascade)
+}

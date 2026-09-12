@@ -1,8 +1,8 @@
-# Kryon KSS Styling Plan
+# Kryon Style Sheet Plan
 
 Status: recommended architecture\
-Scope: detach visual styling from Kryon widgets and make KSS the single app-facing styling system\
-Rule: widgets own structure and behavior; KSS owns every visual value; no implicit product styling
+Scope: detach visual styling from Kryon widgets and make style sheets the single app-facing styling system\
+Rule: widgets own structure and behavior; style sheets own every visual value; no implicit product styling
 
 Kryon should become a powerful CSS alternative, not a smaller copy of browser
 CSS. The goal is a semantic UI runtime where widgets expose facts, state, and
@@ -11,7 +11,9 @@ The runtime may ship excellent style packs, but app UI receives no decorative
 styling unless a pack is explicitly attached.
 
 This document replaces the older menu of competing proposals with one target:
-KSS, a deterministic stylesheet system for Kryon.
+a deterministic style sheet system for Kryon. KSS is the file syntax name;
+the canonical runtime API uses clean domain names such as `StyleSheet`,
+`StylePack`, `StyleRule`, `StyleToken`, and `ResolveStyle`.
 
 ## 1. North star
 
@@ -51,7 +53,8 @@ App {
 
 The `.kry` file says what the UI is. It does not say what color the button is,
 how round the field is, what font size the title uses, or whether the surface
-has glass, shadow, rim light, or a flat fill. Those decisions live in KSS:
+has glass, shadow, rim light, or a flat fill. Those decisions live in the
+style sheet:
 
 ```text
 @pack app;
@@ -176,17 +179,17 @@ between them, and no visual fallback hidden inside widgets.
 
 - Remove every raw visual value from app-facing widget props.
 - Remove visual defaults from widget implementations.
-- Make KSS the only app-facing visual styling system.
+- Make style sheets the only app-facing visual styling system.
 - Convert the current vanilla/default Kryon styling, including the glow and
-  Lightfield treatments, into ordinary shipped KSS packs.
+  Lightfield treatments, into ordinary shipped style packs.
 - Let apps import several style packs and switch between them at runtime with
   a standard style picker/dropdown.
 - Keep `.kry` structural and readable.
 - Preserve immediate-mode ergonomics: widgets remain simple calls with stable
   names, classes, semantic attributes, and state.
-- Compile KSS into data for release builds. Do not parse text in shipped hot
-  paths.
-- Hot-reload KSS in `kryon-preview` and development tools.
+- Compile `.kss` files into style-sheet data for release builds. Do not parse
+  text in shipped hot paths.
+- Hot-reload `.kss` files in `kryon-preview` and development tools.
 - Resolve styles identically in C, C++, Go, JS, KRB, DOM, canvas, libdraw,
   raylib-style backends, and termi.
 - Make all style values inspectable: matched rules, winning declaration,
@@ -207,7 +210,7 @@ between them, and no visual fallback hidden inside widgets.
 - Do not remove raw colors from low-level drawing primitives used by backends
   and renderer tests.
 - Do not keep a legacy theme compatibility layer. Existing theme values are
-  migrated into KSS packs and overlays, then the old theme file/import/export
+  migrated into style packs and overlays, then the old theme file/import/export
   surface is removed.
 
 ## 4. Core split
@@ -245,8 +248,8 @@ Kryon can ship optional packs:
 |---|---|
 | `<kryon.reset>` | minimum readable/debug affordances and normalized inherited tokens |
 | `<kryon.base>` | conservative app controls for templates and quick tools |
-| `<kryon.vanilla>` | the current default Kryon styling expressed as KSS |
-| `<kryon.glow>` | the current modern glow treatment expressed as KSS |
+| `<kryon.vanilla>` | the current default Kryon styling expressed as a style pack |
+| `<kryon.glow>` | the current modern glow treatment expressed as a style pack |
 | `<kryon.classic>` | preserved original Kryon look as an explicit pack |
 | `<kryon.lightfield>` | approved modern Lightfield/Button/Dropdown visual language |
 | `<kryon.high-contrast>` | accessibility-oriented overlay or full pack |
@@ -255,8 +258,8 @@ Kryon can ship optional packs:
 Project templates may include `<kryon.base>` explicitly. Runtime code does not
 silently attach it.
 
-The first shipped KSS conversion should be today's actual look. Capture the
-current vanilla/default/glow behavior as KSS declarations, prove the pack
+The first shipped style-pack conversion should be today's actual look. Capture
+the current vanilla/default/glow behavior as style declarations, prove the pack
 against existing screenshots and capture boards, and only then delete the
 hidden runtime defaults. That lets Kryon keep its existing personality as a
 selectable stylesheet while making zero-default separation real.
@@ -266,17 +269,17 @@ selectable stylesheet while making zero-default separation real.
 | Leak | Current location | Target |
 |---|---|---|
 | Inline override table | `ButtonProps.style: ControlStyle` | remove; use class/name/semantic selectors |
-| Raw input styling | `TextInputStyle` in `include/ui_controls.h` and text-input props | remove; KSS rules for input families |
-| Raw text colors | `TextProps.color`, retained primitive colors | remove from app-facing text; KSS handles foreground and selection |
-| Row, link, page colors | `ui_rows.h`, `ui_page.h` | convert to semantic role/tone plus KSS |
+| Raw input styling | `TextInputStyle` in `include/ui_controls.h` and text-input props | remove; style rules cover input families |
+| Raw text colors | `TextProps.color`, retained primitive colors | remove from app-facing text; style rules handle foreground and selection |
+| Row, link, page colors | `ui_rows.h`, `ui_page.h` | convert to semantic role/tone plus style rules |
 | Alpha-zero defaults | widget paint fallbacks such as `background.a != 0` | remove; presence bits live in style declarations only |
 | Paint-time theme reads | `GetTheme*` calls in `src/ui/*.c` paint paths | renderer consumes resolved frames only |
 | Inline literals in app code | examples and maintained `.kry` apps | move into `.kss` or scoped `Style` |
-| Widget-family palettes | dropdown/input/row local color choices | replace with KSS declarations over shared properties |
+| Widget-family palettes | dropdown/input/row local color choices | replace with style declarations over shared properties |
 
-## 7. KSS file model
+## 7. Style sheet file model
 
-A KSS file is a style pack or style module.
+A `.kss` file is a style pack or style module.
 
 ```text
 @pack product;
@@ -290,7 +293,7 @@ A KSS file is a style pack or style module.
 Rules:
 
 - `@pack` names the pack for diagnostics and tooling.
-- `@version` selects the KSS grammar/property version.
+- `@version` selects the style sheet grammar/property version.
 - `@import` loads built-in packs or project files.
 - `@layer` declares a total layer order.
 - `tokens { ... }` groups typed design values without repeating a directive
@@ -337,7 +340,7 @@ typedef struct StylePackOption {
     const char *description;
 } StylePackOption;
 
-bool RegisterStylePack(const char *id, const KssRuleTable *table);
+bool RegisterStylePack(const char *id, const StyleSheet *sheet);
 bool SetActiveStylePack(const char *id);
 const char *GetActiveStylePack(void);
 int GetStylePackOptions(StylePackOption *options, int capacity);
@@ -369,6 +372,25 @@ style pack + theme overlay + environment overlay + scoped rules
 This is important culturally for Kryon: today's default look should survive as
 `<kryon.vanilla>` or `<kryon.glow>`, but as one selectable style among many,
 not as an invisible assumption baked into every widget.
+
+### Naming rule
+
+KSS names the text file format only. Public and `.kry` runtime concepts use
+plain style names:
+
+| Concept | Public name |
+|---|---|
+| parsed stylesheet data | `StyleSheet` |
+| selectable visual package | `StylePack` |
+| selector plus declarations | `StyleRule` |
+| typed design value | `StyleToken` |
+| selector matcher | `StyleSelector` |
+| active resolver | `ResolveStyle` |
+| runtime chooser | `StylePicker` |
+
+Use `kss_` only for internal parser/tooling code that specifically handles
+the `.kss` text syntax, such as `kss_parse_file`. Do not expose `KssRuleTable`,
+`KssStylePack`, or similar names in app-facing APIs.
 
 ## 8. KSS grammar
 
@@ -576,10 +598,10 @@ Token validation:
 - preview reports diagnostics with file, line, column, token name, and
   expected type.
 
-## 12. KSS themes and environment overlays
+## 12. Themes and environment overlays
 
-Themes are token overlays inside KSS, not a separate styling language and not
-an import/export compatibility surface.
+Themes are token overlays inside the style sheet system, not a separate
+styling language and not an import/export compatibility surface.
 
 ```text
 @theme light {
@@ -621,10 +643,10 @@ Allowed axes:
 - `platform(desktop|android|web|plan9|terminal)`
 
 Existing `themes/*.ini` files should be treated as migration input only. Their
-useful values move into shipped KSS packs and `@theme` overlays. After that,
+useful values move into shipped style packs and `@theme` overlays. After that,
 the legacy theme file format, theme import/export commands, and widget-facing
 theme-style modes are deleted. Internally and publicly, the active visual state
-is the resolved KSS token and rule table.
+is the resolved `StyleSheet` token and rule table.
 
 ## 13. Properties
 
@@ -837,7 +859,7 @@ style_fingerprint(
 
 Invalidation happens when:
 
-- a KSS file changes;
+- a `.kss` file changes;
 - a theme/environment overlay changes;
 - a scoped `Style` node changes;
 - a widget's name/class/semantic attributes change;
@@ -849,7 +871,7 @@ does not need to rematch selectors every frame if the fingerprint is stable.
 
 ## 18. Inline scoped style
 
-External KSS is the primary surface. Inline `Style` nodes exist for
+External `.kss` files are the primary authoring surface. Inline `Style` nodes exist for
 screen-local overrides and lower to the same rule table:
 
 ```kry
@@ -873,9 +895,9 @@ Column danger_zone {
 }
 ```
 
-Inline style wins over imported/app-level KSS because it is scoped closest to
-the structure. It is not the main authoring surface; it is for local screens,
-examples, experiments, and one-off product areas.
+Inline style wins over imported/app-level style sheets because it is scoped
+closest to the structure. It is not the main authoring surface; it is for local
+screens, examples, experiments, and one-off product areas.
 
 ## 19. Inspector
 
@@ -893,8 +915,8 @@ For any widget, it should show:
 - backend degradation, such as termi ignoring radius/material;
 - source file and line for every declaration.
 
-This makes KSS more debuggable than CSS in a browser because Kryon owns the
-entire stack.
+This makes Kryon style sheets more debuggable than CSS in a browser because
+Kryon owns the entire stack.
 
 ## 20. Backend behavior
 
@@ -920,13 +942,13 @@ Unsupported visual properties degrade; they do not fork style resolution.
 - Add a literal scanner for maintained `.kry` app UI.
 - Keep a non-failing inventory for existing leaks until each family migrates.
 
-### M1 - KSS compiler and rule table
+### M1 - Style sheet compiler and rule table
 
-- Implement the KSS parser with stable diagnostics.
+- Implement the `.kss` parser with stable diagnostics.
 - Add typed token tables, rule tables, layer ordering, selector specificity,
   and state slices.
 - Lower `.kss` imports into generated C, C++, Go, JS, and KRB data.
-- Make `kryon-preview` watch and hot-reload KSS files.
+- Make `kryon-preview` watch and hot-reload `.kss` files.
 - Add source maps for inspector output.
 
 ### M2 - Ship explicit base packs
@@ -961,7 +983,7 @@ Unsupported visual properties degrade; they do not fork style resolution.
 - Remove row/page color props.
 - Remove alpha-zero default behavior.
 - Remove legacy theme-style modes and theme import/export APIs after their
-  values have been converted into KSS packs.
+  values have been converted into style packs.
 - Migrate examples, then downstream apps after the Kryon commit lands on
   `master` and each app bumps `vendor/kryon`.
 
@@ -970,7 +992,7 @@ Unsupported visual properties degrade; they do not fork style resolution.
 - Add inline `Style` nodes in `.kry`.
 - Add inspector output for matched rules, winning declarations, token origins,
   resolved values, transitions, and backend degradation.
-- Add hot-reload tests for both external KSS and inline style changes.
+- Add hot-reload tests for both external `.kss` files and inline style changes.
 
 ### M6 - Zero default
 
@@ -989,11 +1011,11 @@ Unsupported visual properties degrade; they do not fork style resolution.
 | Props scanner | no public widget props carry visual values |
 | Paint scanner | widget paint code does not assemble visuals from themes |
 | Literal scanner | maintained `.kry` UI uses raw visuals only inside `Style` nodes |
-| KSS parser tests | valid and invalid sheets produce stable diagnostics |
+| `.kss` parser tests | valid and invalid sheets produce stable diagnostics |
 | Rule-table parity | C, C++, Go, JS, and KRB resolve declarations identically |
 | Capture boards | shipped packs render approved states across themes |
 | None-style tests | widgets remain interactive, measurable, and accessible without chrome |
-| Hot-reload tests | KSS edits invalidate cached fingerprints and repaint without recompile |
+| Hot-reload tests | `.kss` edits invalidate cached fingerprints and repaint without recompile |
 | Backend degradation tests | termi, DOM, canvas, libdraw, null consume the same resolved frames |
 | Inspector tests | source maps and winning declarations are reported accurately |
 

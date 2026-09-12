@@ -1,72 +1,44 @@
 #include "ui_internal.h"
+#include "runtime/scroll.h"
 
 int
 GetScrollbarReservedWidth(int max_scroll)
 {
-    return max_scroll > 0 ? Scale(16) : 0;
+    return ScrollReservedWidth(max_scroll, ScrollMetricsFor((float)GetScale()));
 }
 
 int
 GetScrollbarContentWidth(int content_width, int max_scroll)
 {
-    int reserved = GetScrollbarReservedWidth(max_scroll);
-
-    if(reserved <= 0)
-        return content_width;
-    if(content_width <= reserved)
-        return 0;
-    return content_width - reserved;
+    return ScrollContentWidth(content_width, max_scroll,
+                              ScrollMetricsFor((float)GetScale()));
 }
 
 int
 GetScrollbarSafeContentWidth(int content_x, int content_width,
                                 int scrollbar_x, int max_scroll)
 {
-    int gap = Scale(20);
-    int safe_width = content_width;
-
-    if(max_scroll <= 0 || scrollbar_x <= 0)
-        return content_width;
-
-    safe_width = scrollbar_x - content_x - gap;
-    if(safe_width > content_width)
-        return content_width;
-    if(safe_width < 0)
-        return 0;
-    return safe_width;
+    return ScrollSafeContentWidth(content_x, content_width, scrollbar_x,
+                                  max_scroll,
+                                  ScrollMetricsFor((float)GetScale()));
 }
 
 ScrollView
 MeasureScrollContainer(ScrollArea area)
 {
     ScrollView view;
-    int x = (int)area.bounds.x;
-    int y = (int)area.bounds.y;
-    int w = (int)area.bounds.width;
-    int h = (int)area.bounds.height;
-    int scrollbar_w = Scale(8);
-    int scrollbar_x = area.scrollbar_x > 0
-                          ? area.scrollbar_x
-                          : x + w - scrollbar_w;
-    int content_x = area.content_x > 0 ? area.content_x : x;
-    int content_w = area.content_width > 0 ? area.content_width : w;
+    ScrollPolicyView policy = ScrollMeasure(area.bounds, area.content_height,
+        area.content_x, area.content_width,
+        area.scroll_offset != NULL ? *area.scroll_offset : 0,
+        area.scrollbar_x, ScrollMetricsFor((float)GetScale()));
 
     memset(&view, 0, sizeof(view));
-    view.content_x = content_x;
-    view.viewport_h = h;
-    view.content_h = area.content_height > 0 ? area.content_height : 0;
-    view.max_scroll = view.content_h - h;
-    if(view.max_scroll < 0)
-        view.max_scroll = 0;
-
-    if(area.scroll_offset != NULL) {
-        int scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
-        view.content_y = y - scroll_offset;
-    } else {
-        view.content_y = y;
-    }
-    view.content_w = GetScrollbarSafeContentWidth(content_x, content_w,
-                                                     scrollbar_x, view.max_scroll);
+    view.content_x = policy.content_x;
+    view.viewport_h = policy.viewport_h;
+    view.content_h = policy.content_h;
+    view.max_scroll = policy.max_scroll;
+    view.content_y = policy.content_y;
+    view.content_w = policy.content_w;
 
     return view;
 }

@@ -47,6 +47,7 @@ needs_canvas=0
 needs_drag_drop=0
 needs_guide=0
 needs_guide_pager=0
+needs_scroll=0
 needs_focus=0
 needs_surface=0
 needs_style=0
@@ -268,6 +269,13 @@ while IFS= read -r path; do
     esac
 
     case "$path" in
+        runtime/scroll.kry|src/ui/scroll.c|go/kryon/scroll.go|tests/scroll_policy_test.c|include/ui_scroll.h)
+            needs_scroll=1
+            interesting=1
+            ;;
+    esac
+
+    case "$path" in
         runtime/surface.kry|tests/surface_policy_test.c)
             needs_surface=1
             interesting=1
@@ -476,6 +484,9 @@ if [ "$needs_guide" -eq 1 ]; then
 fi
 if [ "$needs_guide_pager" -eq 1 ]; then
     targets="$targets guide-pager-policy-test"
+fi
+if [ "$needs_scroll" -eq 1 ]; then
+    targets="$targets scroll-policy-test"
 fi
 if [ "$needs_focus" -eq 1 ]; then
     targets="$targets focus-policy-test"

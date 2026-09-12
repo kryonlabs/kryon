@@ -445,6 +445,12 @@ typedef struct UiBlock {
     char name[KIR_NAME_MAX];
     char path[KIR_TEXT_MAX];
     char props[KIR_TEXT_MAX];
+    char dom_tag[KIR_NAME_MAX];
+    char dom_id[KIR_NAME_MAX];
+    char dom_class[KIR_TEXT_MAX];
+    char dom_role[KIR_NAME_MAX];
+    char dom_aria_label[KIR_TEXT_MAX];
+    char dom_on_click[KIR_NAME_MAX];
     int close_depth;
     int opened;
     int emits_end;
@@ -636,6 +642,62 @@ ui_block_append_prop(UiBlock *block, const char *field, const char *value,
         block->has_key = 1;
 }
 
+static int
+ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
+{
+    if(strcmp(field, "dom") == 0 || strcmp(field, "dom_tag") == 0 ||
+       strcmp(field, "html_tag") == 0 || strcmp(field, "tag") == 0) {
+        snprintf(block->dom_tag, sizeof(block->dom_tag), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "dom_id") == 0 || strcmp(field, "html_id") == 0) {
+        snprintf(block->dom_id, sizeof(block->dom_id), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "class") == 0 || strcmp(field, "classes") == 0 ||
+       strcmp(field, "class_name") == 0) {
+        snprintf(block->dom_class, sizeof(block->dom_class), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "role") == 0) {
+        snprintf(block->dom_role, sizeof(block->dom_role), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_label") == 0 ||
+       strcmp(field, "accessible_label") == 0) {
+        snprintf(block->dom_aria_label, sizeof(block->dom_aria_label), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "on_click") == 0) {
+        snprintf(block->dom_on_click, sizeof(block->dom_on_click), "%s",
+                 value);
+        return 1;
+    }
+    return 0;
+}
+
+static void
+ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
+{
+    if(statement == NULL || block == NULL)
+        return;
+    snprintf(statement->node_name, sizeof(statement->node_name), "%s",
+             block->name);
+    snprintf(statement->dom_tag, sizeof(statement->dom_tag), "%s",
+             block->dom_tag);
+    snprintf(statement->dom_id, sizeof(statement->dom_id), "%s",
+             block->dom_id);
+    snprintf(statement->dom_class, sizeof(statement->dom_class), "%s",
+             block->dom_class);
+    snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",
+             block->dom_role);
+    snprintf(statement->dom_aria_label, sizeof(statement->dom_aria_label), "%s",
+             block->dom_aria_label);
+    snprintf(statement->dom_on_click, sizeof(statement->dom_on_click), "%s",
+             block->dom_on_click);
+}
+
 static void
 ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
                 const char *format, ...)
@@ -755,6 +817,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call, span);
         if(statement == NULL)
             die("out of memory parsing widget block");
+        ui_block_apply_web_metadata(statement, block);
         if(closing) {
             statement->declared_widget = 1;
             statement->widget_fallback = 1;
@@ -771,6 +834,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirStmt *statement = KirFunctionAddWidget(fn, block->widget, block->props, "", span);
         if(statement == NULL)
             die("out of memory parsing declared widget");
+        ui_block_apply_web_metadata(statement, block);
         statement->declared_widget = 1;
         block->opened = 1;
         return;
@@ -785,6 +849,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
     KirStmt *statement = KirFunctionAddWidget(fn, block->widget, args, call, span);
     if(statement == NULL)
         die("out of memory parsing widget block");
+    ui_block_apply_web_metadata(statement, block);
     if(closing && !block->emits_end) {
         statement->declared_widget = 1;
         statement->widget_fallback = 1;
@@ -2928,6 +2993,10 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                             die("%s:%d: duplicate Disabled 'when' property", rel, line_no);
                         kir_copy(block->props, sizeof(block->props), prop_value);
                         block->prop_count = 1;
+                    } else if(ui_block_set_web_prop(block, prop_field,
+                                                    prop_value)) {
+                        /* Source-level web facts travel in KIR metadata.
+                         * They are not fields on the native widget props. */
                     } else {
                         ui_block_append_prop(block, prop_field, prop_value,
                                              KirSpan(rel, line_no, 1));

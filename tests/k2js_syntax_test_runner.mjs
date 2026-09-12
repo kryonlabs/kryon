@@ -54,6 +54,14 @@ assert.deepEqual(webDoc.nodes.map((node) => [node.kind, node.tag]), [
 ]);
 assert.equal(webDoc.nodes[2].text, "Tap");
 assert.deepEqual(webDoc.nodes[2].bounds, { x: 10, y: 50, width: 120, height: 28 });
+assert.equal(webDoc.nodes[2].key, "tap");
+assert.equal(webDoc.nodes[2].name, "tap");
+assert.equal(webDoc.nodes[2].domId, "tap-button");
+assert.deepEqual(webDoc.nodes[2].classes, ["primary", "action"]);
+assert.equal(webDoc.nodes[2].role, "button");
+assert.equal(webDoc.nodes[2].ariaLabel, "Tap the action");
+assert.equal(webDoc.nodes[2].onClick, "call_host");
+assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(generated.Valid_CallHost(rt, state, host), 42);
 
 rt.target = { clientWidth: 640, clientHeight: 480 };

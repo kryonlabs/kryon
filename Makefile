@@ -355,6 +355,7 @@ CANVAS_POLICY_TEST = $(BUILD_DIR)/canvas-policy-test
 DRAG_DROP_POLICY_TEST = $(BUILD_DIR)/drag-drop-policy-test
 GUIDE_POLICY_TEST = $(BUILD_DIR)/guide-policy-test
 GUIDE_PAGER_POLICY_TEST = $(BUILD_DIR)/guide-pager-policy-test
+SCROLL_POLICY_TEST = $(BUILD_DIR)/scroll-policy-test
 FOCUS_POLICY_TEST = $(BUILD_DIR)/focus-policy-test
 RUNTIME_ASSETS_TEST = $(BUILD_DIR)/tests/runtime_assets_test
 KRY_UPDATE_TEST = $(BUILD_DIR)/tests/kry_update_test
@@ -364,7 +365,7 @@ KRY_UPDATE_FLOW_TEST = $(BUILD_DIR)/tests/kry_update_flow_test
 SFS_TEST = $(BUILD_DIR)/tests/sfs_test
 RAYLIB_COMPAT_LDLIBS ?= $(KRYON_BACKEND_LDLIBS) -lpthread -lm $(if $(filter linux,$(KRYON_PLATFORM)),-ldl -lrt,)
 
-.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test icon-policy-test transition-fade-policy-test modal-policy-test tree-view-policy-test table-view-policy-test primitive-policy-test layout-policy-test grid-policy-test toast-policy-test canvas-policy-test drag-drop-policy-test guide-policy-test guide-pager-policy-test focus-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test paragraph-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
+.PHONY: all clean tools examples-run font-assets font-subsets docs-site test fast-test smart-test test-asan test-ubsan preflight spec-test perf-text-input perf-text-input-site perf-control-appearance capture-control-appearance bsd-check submodule-urls-check kryon-compat kryon-compat-check kryon-boundary-check clean-text-api-check public-api-names-check public-api-snapshot-check public-headers-compile-check public-headers-compile-changed-check examples-manifest-check examples-syntax-test generated-provenance-check backend-capabilities-check version release-check release-preflight dist-static check-static-package dist-tools check-tools-package install install-static k2c k2cpp k2go k2js k2c-syntax-test k2cpp-syntax-test k2go-syntax-test k2js-syntax-test go-runtime-test k2js-runtime-snapshot-test bevel-policy-test icon-policy-test transition-fade-policy-test modal-policy-test tree-view-policy-test table-view-policy-test primitive-policy-test layout-policy-test grid-policy-test toast-policy-test canvas-policy-test drag-drop-policy-test guide-policy-test guide-pager-policy-test scroll-policy-test focus-policy-test collapsible-policy-test paned-view-policy-test title-bar-policy-test paragraph-policy-test link-policy-test canvas-test dom-test canvas-audio-test canvas2d-parity-check web-canvas-matrix-check termi-test libdraw-test libdraw-matrix-check libdraw-matrix-check-internal conformance-matrix-check renderer-matrix-check widget-matrix-check visual-comparison-matrix-check krb-web-matrix-check runtime-matrix-check downstream-matrix-check krb-web krb-sdl icons-import-mingcute icons-embed
 
 k2c: $(K2C)
 k2cpp: $(K2CPP)
@@ -549,6 +550,8 @@ $(BUILD_DIR)/button-style-parity: tests/button_style_parity.c $(LIB) $(KRYON_BAC
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< $(LIB) $(KRYON_BACKEND_LIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS) -o $@
 
 .PHONY: style-policy-test
+.PHONY: style-sheet-policy-test
+.PHONY: style-pack-registry-test
 .PHONY: text-policy-test
 text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/text.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/text_policy_test.c $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/text-policy-test
@@ -557,6 +560,14 @@ text-policy-test: $(GENERATED_SRC_DIR)/runtime/text.c $(GENERATED_SRC_DIR)/runti
 style-policy-test: $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/style.h $(GENERATED_SRC_DIR)/runtime/surface.c
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_policy_test.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-policy-test
 	$(BUILD_DIR)/style-policy-test
+
+style-sheet-policy-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style_sheet.h $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_sheet_policy_test.c $(GENERATED_SRC_DIR)/runtime/style_sheet.c $(GENERATED_SRC_DIR)/runtime/style.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/style-sheet-policy-test
+	$(BUILD_DIR)/style-sheet-policy-test
+
+style-pack-registry-test: $(GENERATED_SRC_DIR)/runtime/style_sheet.h src/ui/style_sheet.c include/ui_style_sheet.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/style_pack_registry_test.c src/ui/style_sheet.c -o $(BUILD_DIR)/style-pack-registry-test
+	$(BUILD_DIR)/style-pack-registry-test
 
 surface-policy-test: $(GENERATED_SRC_DIR)/runtime/surface.c $(GENERATED_SRC_DIR)/runtime/surface.h
 	$(CC) -std=c99 -Wall -Werror -I$(GENERATED_SRC_DIR) tests/surface_policy_test.c $(GENERATED_SRC_DIR)/runtime/surface.c -lm -o $(BUILD_DIR)/surface-policy-test
@@ -638,6 +649,10 @@ guide-pager-policy-test: $(GENERATED_SRC_DIR)/runtime/guide_pager.c $(GENERATED_
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/guide_pager_policy_test.c $(GENERATED_SRC_DIR)/runtime/guide_pager.c -lm -o $(GUIDE_PAGER_POLICY_TEST)
 	$(GUIDE_PAGER_POLICY_TEST)
 
+scroll-policy-test: $(GENERATED_SRC_DIR)/runtime/scroll.c $(GENERATED_SRC_DIR)/runtime/scroll.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/scroll_policy_test.c $(GENERATED_SRC_DIR)/runtime/scroll.c -lm -o $(SCROLL_POLICY_TEST)
+	$(SCROLL_POLICY_TEST)
+
 focus-policy-test: $(GENERATED_SRC_DIR)/runtime/focus.c $(GENERATED_SRC_DIR)/runtime/focus.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/focus_policy_test.c $(GENERATED_SRC_DIR)/runtime/focus.c -lm -o $(FOCUS_POLICY_TEST)
 	$(FOCUS_POLICY_TEST)
@@ -690,6 +705,8 @@ test: submodule-urls-check kryon-compat-check kryon-boundary-check canonical-sur
 	sh tests/record_values_test.sh $(abspath $(BUILD_DIR)/bin)
 	$(MAKE) surface-policy-test
 	$(MAKE) style-policy-test
+	$(MAKE) style-sheet-policy-test
+	$(MAKE) style-pack-registry-test
 	$(MAKE) button-style-parity-test
 	sh tests/k2js_runtime_snapshot_test.sh . $(BUILD_DIR) $(K2JS)
 	sh tests/generated_runtime_parity_test.sh . $(BUILD_DIR) "$(CC)" "$(CPPFLAGS)" "$(CFLAGS)" "$(LIB) $(KRYON_BACKEND_LIBS) $(KRYON_SYNC_LDLIBS) $(RAYLIB_COMPAT_LDLIBS) $(LDLIBS)"

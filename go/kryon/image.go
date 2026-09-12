@@ -2,6 +2,12 @@
 package kryon
 
 // #import drawing_props
+type ImagePlaceholderLayout struct {
+	Bounds Rectangle
+	LabelX int32
+	LabelY int32
+}
+
 func Image_ImageFitBounds(bounds Rectangle, source Rectangle, texture_width int32, texture_height int32, fit int32) Rectangle {
 	var value_0 Rectangle = bounds
 	var dst Rectangle = value_0
@@ -123,4 +129,32 @@ func Image_ImageFitBounds(bounds Rectangle, source Rectangle, texture_width int3
 	}
 	var value_76 Rectangle = dst
 	return value_76
+}
+
+func Image_ImagePlaceholderLayoutFor(bounds Rectangle, text_width int32, font_height int32) ImagePlaceholderLayout {
+	var layout ImagePlaceholderLayout = ImagePlaceholderLayout{}
+	var value_0 Rectangle = bounds
+	layout.Bounds = value_0
+	var value_1 float32 = bounds.X
+	var value_2 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_1), 32, true)), uint64(0), 32, true, 0))
+	var value_3 float32 = bounds.Width
+	var value_4 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_3), 32, true)), uint64(0), 32, true, 0))
+	var value_5 int32 = text_width
+	var value_6 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 2))
+	var value_7 int32 = 2
+	var value_8 int32 = int32(number_runtime_bits(uint64(value_6), uint64(value_7), 32, true, 4))
+	var value_9 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_8), 32, true, 1))
+	layout.LabelX = value_9
+	var value_10 float32 = bounds.Y
+	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
+	var value_12 float32 = bounds.Height
+	var value_13 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_12), 32, true)), uint64(0), 32, true, 0))
+	var value_14 int32 = font_height
+	var value_15 int32 = int32(number_runtime_bits(uint64(value_13), uint64(value_14), 32, true, 2))
+	var value_16 int32 = 2
+	var value_17 int32 = int32(number_runtime_bits(uint64(value_15), uint64(value_16), 32, true, 4))
+	var value_18 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_17), 32, true, 1))
+	layout.LabelY = value_18
+	var value_19 ImagePlaceholderLayout = layout
+	return value_19
 }

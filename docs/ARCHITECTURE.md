@@ -208,14 +208,16 @@ parity or complete typed-record lowering: remaining host enum coverage,
 positional record field access, other widget argument lowering, and rendering
 still need migration.
 
-The JavaScript runtime also exposes a Web Document frame for generated web
-apps. `webDocumentFrame(rt)` normalizes the recorded widget stream into browser
-presentation facts: Kryon kind, key, classes, state, bounds, semantic tag,
-text/link/image/input metadata, and app metadata. This is the first stable
-bridge for the hybrid native DOM path: `.kry` remains the structure source,
-future KSS rule tables resolve against those facts, and `mount()` consumes the
-frame to create native browser elements instead of debug placeholder widgets.
-See `docs/WEB_DOCUMENT_IR.md`.
+The JavaScript web path also carries source-level node metadata from named
+`.kry` UI blocks. `Button save: { dom = "button"; class = "primary" }`
+lowers through KIR as a widget statement whose web metadata is separate from
+native widget props. The runtime exposes those facts through
+`webDocumentFrame(rt)`: Kryon kind, node name, DOM tag/id/class/role, event
+binding names, state, bounds, text/link/image/input metadata, and app metadata.
+This is the first stable bridge for the hybrid native DOM path: `.kry` remains
+the structure source, future KSS rule tables resolve against those facts, and
+`mount()` consumes the frame to create native browser elements instead of debug
+placeholder widgets. See `docs/WEB_DOCUMENT_IR.md`.
 
 Strict portable emission supports declared `.kry` enum values in function
 parameters, returns, locals, conditionals, and record fields, including imported

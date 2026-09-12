@@ -1,14 +1,20 @@
 #include "ui_internal.h"
 #include "ui_image_internal.h"
+#include "runtime/image.h"
 
 void
 RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
-    DrawRectangle(x, y, w, h, DarkenColor(c_bg, 12));
-    RenderBevel(x, y, w, h, DarkenColor(c_bg, 45), LightenColor(c_bg, 35));
     int font = GetFontSize();
     int tw = TextWidth(label, font);
-    RenderText(label, x + w / 2 - tw / 2, GetUIControlTextY(label, y, h, font), font, c_text);
+    ImagePlaceholderLayout layout =
+        ImagePlaceholderLayoutFor((Rectangle){(float)x, (float)y,
+                                  (float)w, (float)h}, tw, font);
+    DrawRectangleRec(layout.bounds, DarkenColor(c_bg, 12));
+    RenderBevel((int)layout.bounds.x, (int)layout.bounds.y,
+                (int)layout.bounds.width, (int)layout.bounds.height,
+                DarkenColor(c_bg, 45), LightenColor(c_bg, 35));
+    RenderText(label, layout.label_x, layout.label_y, font, c_text);
 }
 
 void

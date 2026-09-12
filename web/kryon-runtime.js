@@ -246,8 +246,8 @@ export function viewport(rt, app = null) {
   };
 }
 
-export function widget(rt, name, args, state = null) {
-  const item = { kind: "widget", name, args };
+export function widget(rt, name, args, state = null, meta = null) {
+  const item = { kind: "widget", name, args, meta };
   rt.frame.push(item);
   return handleWidget(rt, name, args, state);
 }
@@ -910,6 +910,8 @@ function handleWidget(rt, name, args, state) {
 
 function widgetTag(item) {
   const args = item.args || {};
+  if (item.meta?.tag)
+    return String(item.meta.tag).toLowerCase();
   switch (item.name) {
   case "Screen":
   case "Page":
@@ -981,19 +983,28 @@ function widgetInputType(item) {
 
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
+  const meta = item.meta || {};
   const bounds = parseBounds(args);
+  const classes = [...propClassList(args)];
+  if (meta.class !== undefined && meta.class !== null)
+    String(meta.class).split(/\s+/).filter(Boolean).forEach((name) => classes.push(name));
   return {
     index,
     kind: item.name,
     tag: widgetTag(item),
-    key: propString(args, "key", propString(args, "id", String(index))),
-    name: propString(args, "name", ""),
-    classes: propClassList(args),
+    key: meta.nodeName || propString(args, "key", propString(args, "id", String(index))),
+    name: meta.nodeName || propString(args, "name", ""),
+    domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
+    classes: [...new Set(classes)],
     text: widgetText(item),
     href: widgetHref(item),
     inputType: widgetInputType(item),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
+    role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
+    ariaLabel: meta.ariaLabel === undefined || meta.ariaLabel === null ? "" : String(meta.ariaLabel),
+    onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
+    action: typeof meta.action === "function" ? meta.action : null,
     bounds,
     hasBounds: bounds.width > 0 || bounds.height > 0,
     state: {
@@ -1037,6 +1048,14 @@ export function mount(rt, target) {
     el.dataset.kryKey = docNode.key;
     if (docNode.name)
       el.dataset.kryName = docNode.name;
+    if (docNode.domId)
+      el.id = docNode.domId;
+    if (docNode.role)
+      el.setAttribute("role", docNode.role);
+    if (docNode.ariaLabel)
+      el.setAttribute("aria-label", docNode.ariaLabel);
+    if (docNode.onClick)
+      el.dataset.kryOnClick = docNode.onClick;
     if (docNode.hasBounds) {
       el.style.position = "absolute";
       el.style.left = docNode.bounds.x + "px";
@@ -1075,6 +1094,8 @@ export function mount(rt, target) {
         const y = docNode.bounds.y + Math.max(1, docNode.bounds.height) * 0.5;
         rt.QueueTap(x, y);
       }
+      if (docNode.action)
+        docNode.action();
     });
     root.appendChild(el);
   }

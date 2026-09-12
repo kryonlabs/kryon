@@ -2,6 +2,12 @@
 #import "drawing_props"
 
 # Matches ImageFit in include/ui_image.h without exporting a second public enum.
+ImagePlaceholderLayout :: struct {
+    bounds: Rectangle
+    label_x: i32
+    label_y: i32
+}
+
 ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
     texture_width: i32, texture_height: i32, fit: i32) -> Rectangle #export {
     dst: Rectangle = bounds
@@ -31,4 +37,13 @@ ImageFitBounds :: (bounds: Rectangle, source: Rectangle,
         dst.y = bounds.y + (bounds.height - dst.height) * 0.5
     }
     return dst
+}
+
+ImagePlaceholderLayoutFor :: (bounds: Rectangle, text_width: i32,
+    font_height: i32) -> ImagePlaceholderLayout #export {
+    layout: ImagePlaceholderLayout
+    layout.bounds = bounds
+    layout.label_x = (i32)bounds.x + ((i32)bounds.width - text_width) / 2
+    layout.label_y = (i32)bounds.y + ((i32)bounds.height - font_height) / 2
+    return layout
 }

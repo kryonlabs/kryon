@@ -77,6 +77,7 @@ surface review:
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
 | `runtime/slider.kry` | Slider composition plus value/keyboard policy | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
+| `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
@@ -101,13 +102,13 @@ text measurement, painting, storage, or platform services.
 
 | Group | `.kry`-backed today | Still native-only or compatibility |
 |---|---|---|
-| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Rect`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
+| Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `Background`/`Rect`/`Line` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options, `InvisibleButton` disabled policy | helper button variants belong in `ButtonProps` or composition |
 | Inputs | `Checkbox`, `Dropdown`, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider`, `Spinbox`, `TextField`/`TextArea` metrics, `Toggle`, `Button` swatch props, `ColorPicker` layout/color policy | text composition/editing host support |
-| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, shared `Surface`/`Style`/`Material` policy | `Group`, scroll/list/table begin-end wrappers |
+| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | `Group`, scroll/list/table begin-end wrappers |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation policy, `MultiSelectList` row/navigation/selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, menu geometry policy | `MenuBar`, `PopupMenu`, `ContextMenu` retained state/input, router/link helpers |
-| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, `TransitionFade` alpha/easing policy | theme pickers, tutorial image placeholders |
+| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, `TransitionFade` alpha/easing policy | theme pickers |
 | Game2D | Native scene nodes | Game2D nodes are separate from UI widgets; keep them in the Game2D runtime unless `.kry` scene declarations are introduced. |
 
 The immediate migration target is to finish moving high-use controls first:
@@ -129,7 +130,7 @@ has a single place to land.
 | `Line` | `UI/Display` | Stroke | `runtime/primitive.kry` | Partly `.kry-backed` | Endpoint and retained-bounds policy is `.kry`; host keeps stroke drawing. |
 | `Bevel` | `UI/Display` | Relief | `runtime/bevel.kry` | `.kry-backed` | Line geometry is `.kry`; still review whether it should fold into `Surface`/material props. |
 | `Icon` | `UI/Display` | Icon | `runtime/icon.kry` | Partly `.kry-backed` | Bounds/size policy is `.kry`; icon sheet/type lookup and drawing remain host support. |
-| `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Canonical replacement for old `Picture`; fit policy is `.kry`, cache/loading/drawing remain host support. |
+| `Image` | `UI/Display` | Image | `runtime/image.kry` | Partly `.kry-backed` | Canonical replacement for old `Picture`; fit and placeholder layout policy are `.kry`, cache/loading/drawing remain host support. |
 | `Card` | `UI/Input` | Surface action | `runtime/card.kry`, `runtime/card_props.kry` | `.kry-backed` | Card composition and props live in `.kry`. |
 | `Button` | `UI/Input` | Action | `runtime/button.kry`, `runtime/button_props.kry` | `.kry-backed` | Single button surface; menu/split/info/icon variants are props/composition. |
 | `Link` | `UI/Input` | Link | `runtime/link.kry` | Partly `.kry-backed` | Canonical replacement for old `Href`; state/color policy is `.kry`, URL dispatch remains host support. |
@@ -247,7 +248,7 @@ been removed from the public surface. Existing generated fixtures use
 | `LabelFrame` | Removed | Old spelling for `Fieldset`; no longer accepted as a public widget name. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `.kry canonical` | Header metrics/geometry are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
-| `Scroll` | `.kry canonical` | Lexical scroll-content block; lowers to host scroll scope. |
+| `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `BeginScroll` | Native support | Lowered host entry for `.kry` `Scroll` blocks; not a separate public widget name. |
 | `EndScroll` | Native support | Lowered host exit for `.kry` `Scroll` blocks; not a separate public widget name. |
@@ -406,8 +407,8 @@ Recent retained-tree public C cleanup:
 
 1. Finish porting high-use native controls into `.kry`: `TextField` and
    `TextArea` editing/composition policy.
-2. Remove other compatibility names after migrations: tutorial helpers
-   and immediate-mode `Begin*`/`End*` wrappers from public `.kry`
-   documentation.
+2. Remove other compatibility names after migrations: immediate-mode
+   `Begin*`/`End*` wrappers from public `.kry` documentation. Tutorial image
+   helpers remain internal and should route through canonical `Image` policy.
 3. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.

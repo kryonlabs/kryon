@@ -1083,6 +1083,98 @@ emit_widget_arguments(FILE *f, const KirModule *m, const char *widget, const cha
         js_string(f, args);
 }
 
+static int
+stmt_has_web_metadata(const KirStmt *st)
+{
+    return st->node_name[0] || st->dom_tag[0] || st->dom_id[0] ||
+           st->dom_class[0] || st->dom_role[0] || st->dom_aria_label[0] ||
+           st->dom_on_click[0];
+}
+
+static void
+emit_metadata_expr_field(FILE *f, const KirModule *m, const char *name,
+                         const char *value, int *emitted)
+{
+    char out[K2JS_TEXT_MAX];
+
+    if(value[0] == '\0')
+        return;
+    if((*emitted)++)
+        fputs(", ", f);
+    js_string(f, name);
+    fputs(": ", f);
+    tx_expr(m, value, out, sizeof(out));
+    fputs(out, f);
+}
+
+static void
+emit_metadata_string_field(FILE *f, const char *name, const char *value,
+                           int *emitted)
+{
+    if(value[0] == '\0')
+        return;
+    if((*emitted)++)
+        fputs(", ", f);
+    js_string(f, name);
+    fputs(": ", f);
+    js_string(f, value);
+}
+
+static void
+emit_action_target(FILE *f, const KirModule *m, const char *name)
+{
+    const KirModule *owner = NULL;
+    const KirFunction *function = NULL;
+    char out[K2JS_NAME_MAX * 2];
+
+    if(KirResolveFunction(m, name, &owner, &function) == 1 &&
+       function != NULL) {
+        if(owner == m) {
+            char safe[K2JS_NAME_MAX];
+
+            kir_camel_ident(function->name, safe, sizeof(safe));
+            fprintf(f, "%s_%s", g_guard, safe);
+            return;
+        }
+        int index = global_fn_index(name, strlen(name));
+        if(index >= 0) {
+            g_functions[index].used = 1;
+            fputs(g_functions[index].js, f);
+            return;
+        }
+    }
+    tx_expr(m, name, out, sizeof(out));
+    fputs(out, f);
+}
+
+static void
+emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
+{
+    int emitted = 0;
+
+    if(!stmt_has_web_metadata(st)) {
+        fputs("null", f);
+        return;
+    }
+    fputc('{', f);
+    emit_metadata_string_field(f, "nodeName", st->node_name, &emitted);
+    emit_metadata_expr_field(f, m, "tag", st->dom_tag, &emitted);
+    emit_metadata_expr_field(f, m, "id", st->dom_id, &emitted);
+    emit_metadata_expr_field(f, m, "class", st->dom_class, &emitted);
+    emit_metadata_expr_field(f, m, "role", st->dom_role, &emitted);
+    emit_metadata_expr_field(f, m, "ariaLabel", st->dom_aria_label, &emitted);
+    if(st->dom_on_click[0] != '\0') {
+        emit_metadata_string_field(f, "onClick", st->dom_on_click, &emitted);
+        if(emitted++)
+            fputs(", ", f);
+        js_string(f, "action");
+        fputs(": () => ", f);
+        emit_action_target(f, m, st->dom_on_click);
+        fputs("($rt, $state, $host)", f);
+    }
+    fputc('}', f);
+}
+
 static void
 emit_if(FILE *f, const KirModule *m, const char *raw, int indent, int *chained)
 {
@@ -1318,7 +1410,9 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             js_string(f, st->widget[0] ? st->widget : raw);
             fprintf(f, ", ");
             emit_widget_arguments(f, m, st->widget, st->args[0] ? st->args : raw);
-            fprintf(f, ", $state);\n");
+            fprintf(f, ", $state, ");
+            emit_web_metadata(f, m, st);
+            fprintf(f, ");\n");
             break;
         case KIR_STMT_DECL:
             emit_decl(f, m, raw, indent);

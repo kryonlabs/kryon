@@ -45,5 +45,15 @@ main(void)
                ImageFitBounds(bounds, (Rectangle){0, 0, -400, -100}, 1, 1, 1),
                (Rectangle){10, 45, 200, 50});
 
+    ImagePlaceholderLayout placeholder =
+        ImagePlaceholderLayoutFor((Rectangle){10, 20, 200, 100}, 48, 16);
+    check_rect("placeholder keeps bounds", placeholder.bounds,
+               (Rectangle){10, 20, 200, 100});
+    if(placeholder.label_x != 86 || placeholder.label_y != 62) {
+        fprintf(stderr, "placeholder label: got {%d, %d}, want {86, 62}\n",
+                placeholder.label_x, placeholder.label_y);
+        failures++;
+    }
+
     return failures == 0 ? 0 : 1;
 }

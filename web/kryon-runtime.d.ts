@@ -45,6 +45,7 @@ export interface RuntimeItem {
   kind: string;
   name?: string;
   args?: unknown;
+  meta?: Record<string, unknown> | null;
   text?: string;
 }
 
@@ -54,12 +55,17 @@ export interface WebDocumentNode {
   tag: string;
   key: string;
   name: string;
+  domId: string;
   classes: string[];
   text: string;
   href: string;
   inputType: string;
   alt: string;
   asset: string;
+  role: string;
+  ariaLabel: string;
+  onClick: string;
+  action: (() => unknown) | null;
   bounds: { x: number; y: number; width: number; height: number };
   hasBounds: boolean;
   state: {
@@ -121,7 +127,8 @@ export function snapshot(rt: Runtime): {
   statements: RuntimeItem[];
   hostCalls: RuntimeItem[];
 };
-export function widget(rt: Runtime, name: string, args: string, state?: Record<string, unknown> | null): unknown;
+export function widget(rt: Runtime, name: string, args: string,
+  state?: Record<string, unknown> | null, meta?: Record<string, unknown> | null): unknown;
 export function statement(rt: Runtime, text: string): RuntimeItem;
 export function expr(text: string): { kind: "expr"; text: string };
 export function struct(type: string, value: unknown): { type: string; value: unknown };
