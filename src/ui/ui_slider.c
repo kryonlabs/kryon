@@ -218,8 +218,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     else
         snprintf(value_text, sizeof(value_text), "%d%s", *value, suffix != NULL ? suffix : "");
     if(can_draw) {
-        StyleFrame label_frame = ui_slider_style_frame(ButtonToneNeutral,
-            ButtonStateNormal, 0);
+        StyleFrame label_frame = ui_slider_style_frame_role_kind(
+            ButtonToneNeutral, ButtonStateNormal, 0, StyleKindSlider(), 6);
         Style label_style = ui_unpack_style(
             ui_style_apply_effects_frame(label_frame).value);
         if(label_style.font_size > 0.0f) {
