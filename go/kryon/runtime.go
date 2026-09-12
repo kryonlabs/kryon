@@ -2648,6 +2648,11 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		Active:  active,
 	})
 	paint.LabelColor = label.Value.Foreground
+	labelStyle := unpackStyle(label.Value)
+	labelFont := int32(labelStyle.FontSize)
+	if labelFont <= 0 {
+		labelFont = Text14
+	}
 	fill := unpackRGBA(box.Value.Background)
 	if paint.ShowFill {
 		fill = unpackRGBA(paint.FillColor)
@@ -2657,7 +2662,7 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckStart.X, Y: paint.CheckStart.Y, Width: paint.CheckMiddle.X - paint.CheckStart.X, Height: paint.CheckMiddle.Y - paint.CheckStart.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: paint.CheckMiddle.X, Y: paint.CheckMiddle.Y, Width: paint.CheckEnd.X - paint.CheckMiddle.X, Height: paint.CheckEnd.Y - paint.CheckMiddle.Y}, Color: unpackRGBA(paint.MarkColor), ID: props.ID})
 	}
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), FontSize: Text14, Disabled: disabled})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: paint.SlotBounds.X + float32(Checkbox_CheckboxSlotSize(1)) + 10, Y: props.Bounds.Y + 5, Width: props.Bounds.Width - 32, Height: props.Bounds.Height}, Text: props.Label, Color: unpackRGBA(paint.LabelColor), Opacity: labelStyle.Opacity, FontSize: labelFont, Disabled: disabled})
 	return changed
 }
 
@@ -6175,6 +6180,11 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	})
 	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 6)
 	paint.LabelColor = label.Value.Foreground
+	labelStyle := unpackStyle(label.Value)
+	labelFont := int32(labelStyle.FontSize)
+	if labelFont <= 0 {
+		labelFont = Text16
+	}
 	mark := Radio_RadioMarkText(props.Checked)
 	markColor := unpackRGBA(paint.RingColor)
 	if props.Checked {
@@ -6182,7 +6192,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	}
 	labelColor := unpackRGBA(paint.LabelColor)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, FontSize: Text16, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, FontSize: Text16, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	if input.Activated {
 		return props.ID
 	}

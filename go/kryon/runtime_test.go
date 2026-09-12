@@ -773,10 +773,10 @@ tokens {
 }
 Checkbox[role=Box] { background: box; foreground: label; border: ring; border-width: border; material: flat; opacity: 1; }
 Checkbox[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
-Checkbox[role=Label] { foreground: label; material: flat; opacity: 1; }
+Checkbox[role=Label] { foreground: label; font-size: 18; material: flat; opacity: 0.84; }
 Radio[role=Ring] { foreground: label; border: ring; border-width: border; material: flat; opacity: 1; }
 Radio[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
-Radio[role=Label] { foreground: label; material: flat; opacity: 1; }
+Radio[role=Label] { foreground: label; font-size: 19; material: flat; opacity: 0.76; }
 `, "Test Checks", "") || !SetActiveStylePack("test.checks") {
 		t.Fatal("test check/radio style did not activate")
 	}
@@ -812,7 +812,8 @@ Radio[role=Label] { foreground: label; material: flat; opacity: 1; }
 			}
 		case op.Kind == FrameOpText && op.Text == "Enabled":
 			sawCheckLabel = true
-			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) ||
+				op.FontSize != 18 || op.Opacity != 0.84 {
 				t.Fatalf("checkbox label style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "\u25c9":
@@ -822,7 +823,8 @@ Radio[role=Label] { foreground: label; material: flat; opacity: 1; }
 			}
 		case op.Kind == FrameOpText && op.Text == "Choice":
 			sawRadioLabel = true
-			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xf5, G: 0xf2, B: 0xff, A: 0xff}) ||
+				op.FontSize != 19 || op.Opacity != 0.76 {
 				t.Fatalf("radio label style op = %+v", op)
 			}
 		}
