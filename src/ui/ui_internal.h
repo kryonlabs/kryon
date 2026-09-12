@@ -269,7 +269,7 @@ int ui_readonly_text_box_height(const char *text, int font, int width,
 int ui_label_text_field_height(LabelTextFieldProps row);
 int ui_section_label_height(SectionLabelProps label);
 int ui_checkbox_row_height(CheckboxRowProps row);
-int GetUIButtonRowHeight(ButtonRowProps row);
+int GetButtonRowHeight(ButtonRowProps row);
 int ui_navigation_bar_height(void);
 int ui_tab_bar_height(void);
 int ui_paragraph_modal_height(ParagraphModalMeasureProps measure);

@@ -47,7 +47,7 @@ ui_label_text_field_height(LabelTextFieldProps row)
 }
 
 int
-GetUILabelTextFieldHeight(LabelTextFieldProps row)
+GetLabelTextFieldHeight(LabelTextFieldProps row)
 {
     return ui_label_text_field_height(row);
 }
@@ -105,7 +105,7 @@ RenderCheckboxRow(CheckboxRowProps row, int x, int y)
 }
 
 int
-GetUIButtonRowHeight(ButtonRowProps row)
+GetButtonRowHeight(ButtonRowProps row)
 {
     int height = row.height > 0 ? row.height : Scale(30);
     int gap = row.gap > 0 ? row.gap : Scale(6);
@@ -143,7 +143,7 @@ GetUIButtonRowHeight(ButtonRowProps row)
 }
 
 int
-GetUISpinboxRowHeight(SpinboxRowProps row)
+GetSpinboxRowHeight(SpinboxRowProps row)
 {
     return row.row_height > 0 ? row.row_height : Scale(54);
 }
@@ -289,7 +289,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     if(form == NULL)
         return 0;
     y = form->cursor_y;
-    height = GetUISpinboxRowHeight(row);
+    height = GetSpinboxRowHeight(row);
     FormTakeRect(form, height);
 
     label_font = row.label_font > 0 ? row.label_font : GetFontSize();
@@ -327,7 +327,7 @@ FormButtons(Form *form, ButtonRowProps row)
     row.x = form->x;
     row.y = form->cursor_y;
     row.width = form->width;
-    height = GetUIButtonRowHeight(row);
+    height = GetButtonRowHeight(row);
     FormTakeRect(form, height);
     return RenderButtonRow(row);
 }

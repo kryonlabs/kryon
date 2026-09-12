@@ -1852,14 +1852,16 @@ typedef struct {
     int gap;
     const ButtonRowItem *items;
     int count;
-} ButtonRow;
+} ButtonRowProps;
 
-int UIButtonRowNode(ButtonRow row);
+int FormButtons(Form *form, ButtonRowProps row);
+int GetButtonRowHeight(ButtonRowProps row);
 ```
 
-`UIButtonRowNode` measures labels, stores the final height on its node, fits
+`FormButtons` measures labels, stores the final height on the form cursor, fits
 text inside each button, and wraps into additional rows when the configured
-width cannot hold every action on one line.
+width cannot hold every action on one line. `GetButtonRowHeight` returns the
+same layout height without advancing the form.
 
 #### Form Cursor
 
@@ -2332,7 +2334,7 @@ FrameBox frame = BeginFrameBox((Rectangle){40, 40, 320, 200}, 12, 12, 8);
 Rectangle row = FramePack(&frame, SideTop, 32);
 
 int selected = 0;
-UIListBoxNode((ListBox){
+ListBox((ListBoxProps){
     .bounds = row,
     .id = 10,
     .items = items,

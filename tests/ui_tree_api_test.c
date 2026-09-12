@@ -149,10 +149,10 @@ main(void)
     }
 
     check_int("label text field",
-              GetUILabelTextFieldHeight(field),
+              GetLabelTextFieldHeight(field),
               Scale(22) + Scale(40) + Scale(24));
     check_int("button row",
-              GetUIButtonRowHeight(row),
+              GetButtonRowHeight(row),
               Scale(40));
     form = FormBegin(10, 20, 240);
     taken = FormTakeRect(&form, Scale(18));
@@ -169,7 +169,7 @@ main(void)
     check_int("form checkbox helper advances", FormY(&form),
               20 + Scale(18) + Scale(24) + Scale(42));
     check_int("spinbox row height",
-              GetUISpinboxRowHeight((SpinboxRowProps){0}),
+              GetSpinboxRowHeight((SpinboxRowProps){0}),
               Scale(54));
     check_int("navigation bar",
               GetNodeHeight(NodeNavigationBar(nav)),

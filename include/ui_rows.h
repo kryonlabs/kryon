@@ -71,9 +71,9 @@ typedef struct {
     Color label_color;
 } SpinboxRowProps;
 
-int GetUILabelTextFieldHeight(LabelTextFieldProps row);
-int GetUIButtonRowHeight(ButtonRowProps row);
-int GetUISpinboxRowHeight(SpinboxRowProps row);
+int GetLabelTextFieldHeight(LabelTextFieldProps row);
+int GetButtonRowHeight(ButtonRowProps row);
+int GetSpinboxRowHeight(SpinboxRowProps row);
 
 Form FormBegin(int x, int y, int width);
 int FormY(const Form *form);

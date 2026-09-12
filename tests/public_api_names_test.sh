@@ -59,7 +59,7 @@ if [ -n "$prefixed_scene_matches" ]; then
 fi
 
 form_matches="$(
-    rg -n '\bUIForm[A-Za-z0-9_]*\b' \
+    rg -n '\b(UIForm[A-Za-z0-9_]*|GetUI(LabelTextField|ButtonRow|SpinboxRow)Height|UIButtonRowNode|UIListBoxNode)\b' \
         include/ui_rows.h src/ui/rows.c docs/API.md docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html tests/ui_tree_api_test.c || true
 )"
