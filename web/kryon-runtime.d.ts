@@ -666,7 +666,10 @@ export function webNodeQueryAll(rt: Runtime, selector: string): WebDocumentNode[
 export function webNodeMatches(rt: Runtime, query: string, selector: string): boolean;
 export function webNodeParent(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeChildren(rt: Runtime, query?: string): WebDocumentNode[];
+export function webNodeDescendants(rt: Runtime, query?: string): WebDocumentNode[];
 export function webNodeClosest(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
+export function webNodeQueryWithin(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
+export function webNodeQueryAllWithin(rt: Runtime, query: string, selector: string): WebDocumentNode[];
 export function webNodeAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
 export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;

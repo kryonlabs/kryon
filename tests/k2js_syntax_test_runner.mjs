@@ -345,6 +345,23 @@ assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.pa
   "Scene/root/Input@208-3"
 ]);
 assert.deepEqual(runtime.webNodeChildren(rt).map((node) => node.path), ["Scene/root"]);
+assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node.path), [
+  webDoc.nodes[1].path,
+  "Scene/root/tap",
+  "Scene/root/search",
+  "Scene/root/search_label",
+  "Scene/root/Selectable_5",
+  "Scene/root/Input@207-2",
+  "Scene/root/Input@208-3"
+]);
+assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root", "Button.primary").path,
+  "Scene/root/tap");
+assert.deepEqual(runtime.webNodeQueryAllWithin(rt, "Scene/root", "Input")
+  .map((node) => node.path), [
+    "Scene/root/Input@207-2",
+    "Scene/root/Input@208-3"
+  ]);
+assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root/tap", "TextField"), null);
 assert.equal(runtime.webNodeClosest(rt, "Scene/root/tap", "Screen").path, "Scene/root");
 assert.equal(webDoc.nodes[2].action(), 42);
 assert.equal(webDoc.nodes[3].key, "search");

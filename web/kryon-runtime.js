@@ -4107,6 +4107,20 @@ export function webNodeChildren(rt, query = "") {
   });
 }
 
+export function webNodeDescendants(rt, query = "") {
+  const frame = webDocumentFrame(rt);
+  const text = String(query || "").trim();
+  const parent = text ? webNodeQuery(rt, text) : null;
+  if (text && !parent)
+    return [];
+  const parentPath = parent?.path || "";
+  if (!parentPath)
+    return frame.nodes;
+  return frame.nodes.filter((node) =>
+    node.path !== parentPath &&
+    node.path.startsWith(parentPath + "/"));
+}
+
 export function webNodeClosest(rt, query, selector) {
   let node = webNodeQuery(rt, query);
   const parsed = parseSelector(String(selector || "").trim());
@@ -4116,6 +4130,19 @@ export function webNodeClosest(rt, query, selector) {
     node = webNodeParent(rt, node.path);
   }
   return null;
+}
+
+export function webNodeQueryAllWithin(rt, query, selector) {
+  const text = String(selector || "").trim();
+  if (!text)
+    return [];
+  const parsed = parseSelector(text);
+  return webNodeDescendants(rt, query)
+    .filter((node) => selectorMatchesWebNode(parsed, node));
+}
+
+export function webNodeQueryWithin(rt, query, selector) {
+  return webNodeQueryAllWithin(rt, query, selector)[0] || null;
 }
 
 export function webNodesAtSource(rt, sourcePath, sourceLine, sourceColumn = 0) {

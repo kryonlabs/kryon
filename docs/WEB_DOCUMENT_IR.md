@@ -379,6 +379,10 @@ selector facts without requiring callers to repeat query/filter logic.
 `webNodeParent(rt, query)`, `webNodeChildren(rt, query)`, and
 `webNodeClosest(rt, query, selector)` expose the same `.kry` tree relationships
 before a frame has been mounted into browser DOM.
+`webNodeDescendants(rt, query)`, `webNodeQueryWithin(rt, query, selector)`, and
+`webNodeQueryAllWithin(rt, query, selector)` provide the pre-mount version of
+scoped subtree selection for compiler tests, static inspectors, and hydration
+planning.
 
 `findWebElement(target, query)` returns the mounted DOM element whose Kry path,
 node name, key, DOM id, DOM name, or selector fallback matches `query`.
