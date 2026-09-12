@@ -319,6 +319,35 @@ behavior.
 | `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
 | `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
 
+## Go Public Compatibility Exports
+
+These names are still exported by `go/kryon/api.go`, but they mirror lowered
+host support or role-specific compatibility rather than clean widget concepts.
+Generated Go should continue to prefer canonical calls such as `kr.Button`,
+`kr.Scroll` blocks, `kr.Popup` blocks, `kr.Menu`, and `kr.DragDrop` roles as
+those surfaces become available.
+
+| Export | Replacement concept | Removal note |
+|---|---|---|
+| `BeginButton` | `Button` block | Lowered host entry for composed button content. |
+| `BeginCard` | `Card` block | Lowered host entry for composed card content. |
+| `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
+| `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
+| `BeginScroll` | `Scroll` block | Lowered host entry for scroll content. |
+| `EndScroll` | `Scroll` block | Lowered host exit for scroll content. |
+| `BeginPopup` | `Popup` block | Lowered host entry for popup content. |
+| `EndPopup` | `Popup` block | Lowered host exit for popup content. |
+| `BeginTableCell` | `TableCell` block | Lowered host entry for custom table-cell content. |
+| `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
+| `BeginCanvas` | `Canvas` block | Lowered host entry for canvas content. |
+| `EndCanvas` | `Canvas` block | Lowered host exit for canvas content. |
+| `InvisibleButton` | host hit-test support | Not a design widget; should stay internal to composed controls. |
+| `DragDropSource` | `DragDrop` source role | Legacy role-specific entry point; role belongs in props/composition. |
+| `DragDropTarget` | `DragDrop` target role | Legacy role-specific entry point; role belongs in props/composition. |
+| `MenuBar` | `Menu` bar mode | Legacy command-menu entry point; mode belongs in props/composition. |
+| `PopupMenu` | `Menu` popup mode | Legacy command-menu entry point; compose with `Popup` where needed. |
+| `ContextMenu` | `Menu` context mode | Legacy command-menu entry point; trigger belongs in props/composition. |
+
 ## Core Drawing And Text
 
 | Public name | Current decision | Notes |

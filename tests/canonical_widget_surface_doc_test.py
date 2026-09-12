@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "src/ui/ui_node_registry.c"
 PARSER = ROOT / "cmd/kir/kir_parse.c"
 UI_TREE = ROOT / "include/ui_tree.h"
+GO_API = ROOT / "go/kryon/api.go"
 DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
 RUNTIME = ROOT / "runtime"
@@ -49,6 +50,17 @@ ROLE_COMPAT_EXPORTS = {
     "InvisibleButton",
     "MenuBar",
     "PopupMenu",
+}
+
+GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
+    "BeginCanvas",
+    "EndCanvas",
+}
+
+GO_SCOPE_EXPORT_ALLOWLIST = {
+    "BeginFrame",
+    "End",
+    "EndFrame",
 }
 
 PUBLIC_WIDGET_NAMES = {
@@ -128,6 +140,25 @@ def ui_tree_compat_exports() -> set[str]:
         for name in functions
         if (name.startswith("Begin") or name.startswith("End"))
         and name not in NATIVE_SCOPE_EXPORT_ALLOWLIST
+    }
+    return scope_exports | (functions & ROLE_COMPAT_EXPORTS)
+
+
+def go_api_function_names() -> set[str]:
+    text = GO_API.read_text(encoding="utf-8")
+    names = set(re.findall(r"^func\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", text, flags=re.M))
+    if not names:
+        raise AssertionError("empty go/kryon/api.go function list")
+    return names
+
+
+def go_compat_exports() -> set[str]:
+    functions = go_api_function_names()
+    scope_exports = {
+        name
+        for name in functions
+        if (name.startswith("Begin") or name.startswith("End"))
+        and name not in GO_SCOPE_EXPORT_ALLOWLIST
     }
     return scope_exports | (functions & ROLE_COMPAT_EXPORTS)
 
@@ -237,6 +268,27 @@ def compat_rows() -> dict[str, list[str]]:
     return rows
 
 
+def go_compat_rows() -> dict[str, list[str]]:
+    text = DOC.read_text(encoding="utf-8")
+    match = re.search(
+        r"^## Go Public Compatibility Exports\n(?P<body>.*?)(?=^## )",
+        text,
+        flags=re.M | re.S,
+    )
+    if not match:
+        raise AssertionError("missing ## Go Public Compatibility Exports section")
+
+    rows: dict[str, list[str]] = {}
+    for line in match.group("body").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[0].endswith("`"):
+            name = cells[0].strip("`")
+            if name in rows:
+                raise AssertionError(f"duplicate Go compatibility export row: {name}")
+            rows[name] = cells
+    return rows
+
+
 def feature_matrix_parser_names() -> tuple[int, list[str]]:
     text = FEATURE_MATRIX.read_text(encoding="utf-8")
     count_match = re.search(
@@ -269,10 +321,13 @@ def main() -> int:
     block_expected = block_widget_names()
     block_doc_rows = block_rows()
     compat_doc_rows = compat_rows()
+    go_compat_doc_rows = go_compat_rows()
     feature_count, feature_names = feature_matrix_parser_names()
     doc = DOC.read_text(encoding="utf-8")
     ui_tree_functions = ui_tree_function_names()
     compat_expected = ui_tree_compat_exports()
+    go_api_functions = go_api_function_names()
+    go_compat_expected = go_compat_exports()
 
     for module in runtime_expected:
         if module not in runtime_doc_rows:
@@ -309,6 +364,18 @@ def main() -> int:
             errors.append(f"native compatibility export no longer exists in ui_tree.h: {name}")
     for name in sorted(set(compat_doc_rows) - NATIVE_COMPAT_EXPORTS):
         errors.append(f"native compatibility export row is not tracked by the test: {name}")
+    if go_compat_expected != GO_COMPAT_EXPORTS:
+        for name in sorted(go_compat_expected - GO_COMPAT_EXPORTS):
+            errors.append(f"unreviewed Go compatibility export in api.go: {name}")
+        for name in sorted(GO_COMPAT_EXPORTS - go_compat_expected):
+            errors.append(f"stale Go compatibility export no longer in api.go: {name}")
+    for name in sorted(GO_COMPAT_EXPORTS):
+        if name not in go_compat_doc_rows:
+            errors.append(f"missing Go compatibility export row: {name}")
+        if name not in go_api_functions:
+            errors.append(f"Go compatibility export no longer exists in api.go: {name}")
+    for name in sorted(set(go_compat_doc_rows) - GO_COMPAT_EXPORTS):
+        errors.append(f"Go compatibility export row is not tracked by the test: {name}")
     if feature_count != len(parser_expected):
         errors.append(
             "feature matrix parser widget count is "
