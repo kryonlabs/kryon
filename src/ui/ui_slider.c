@@ -527,13 +527,18 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     const char *off_text = off_label != NULL ? off_label : "";
     const char *on_text = on_label != NULL ? on_label : "";
     int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
+    int enabled = value != NULL && !UIContentDisabled();
+    StyleFrame label_frame = ui_toggle_style_frame_role(ButtonToneNeutral,
+        ButtonStateNormal, !enabled, 6);
+    Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
+    if(label_style.font_size > 0.0f)
+        font = (int)(label_style.font_size + 0.5f);
     int off_w = has_labels ? TextWidth(off_text, font) : 0;
     int on_w = has_labels ? TextWidth(on_text, font) : 0;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int min_w = ToggleMinimumWidth(has_labels, off_w, on_w, runtime_scale);
     int min_h = ToggleMinimumHeight(runtime_scale);
     Rectangle bounds;
-    int enabled;
     int pressed;
     int hovered;
     int down;
@@ -562,7 +567,6 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     WidgetSetBounds(&widget, editor_bounds);
 
     bounds = ui_centered_min_hit_rect(x, y, w, h, min_touch, min_touch);
-    enabled = value != NULL && !UIContentDisabled();
     hovered = CheckCollisionPointRec(mouse_world, bounds) &&
               !InputCapturesClick(mouse_world);
     down = hovered && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
@@ -592,8 +596,6 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
         Style track_style;
         StyleFrame active_frame;
         Style active_style;
-        StyleFrame label_frame;
-        Style label_style;
         ButtonState state = down ? ButtonStatePressed :
                             (hovered ? ButtonStateHover : ButtonStateNormal);
         int checked = value != NULL && *value;

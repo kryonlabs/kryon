@@ -1312,7 +1312,7 @@ tokens {
 }
 Toggle[role=Track] { background: track; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; material: flat; }
 Toggle[role=Fill] { background: active; foreground: active-ink; border: active; focus: focus-ring; radius: radius; border-width: border; material: flat; }
-Toggle[role=Label] { foreground: label; }
+Toggle[role=Label] { foreground: label; font-size: 18; }
 `, "Test Toggle", "") || !SetActiveStylePack("test.toggle") {
 		t.Fatal("test toggle style did not activate")
 	}
@@ -1346,12 +1346,12 @@ Toggle[role=Label] { foreground: label; }
 			}
 		case op.Kind == FrameOpText && op.Text == "Off":
 			sawOff = true
-			if op.Color != (Color{R: 0x02, G: 0x13, B: 0x0d, A: 0xff}) {
+			if op.Color != (Color{R: 0x02, G: 0x13, B: 0x0d, A: 0xff}) || op.FontSize != 18 {
 				t.Fatalf("toggle off label style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "On":
 			sawOn = true
-			if op.Color != (Color{R: 0xd2, G: 0xdd, B: 0xd0, A: 0xff}) {
+			if op.Color != (Color{R: 0xd2, G: 0xdd, B: 0xd0, A: 0xff}) || op.FontSize != 18 {
 				t.Fatalf("toggle on label style op = %+v", op)
 			}
 		}

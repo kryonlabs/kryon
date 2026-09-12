@@ -5243,8 +5243,14 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	bounds := props.Bounds
 	hasLabels := props.OffLabel != "" || props.OnLabel != ""
-	offWidth := int32(runtimeTextWidth(props.OffLabel, Text16))
-	onWidth := int32(runtimeTextWidth(props.OnLabel, Text16))
+	labelFont := int32(Text16)
+	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
+		props.Disabled || r.contentDisabled(), false, StyleSheet_StyleKindToggle(), 6).Value)
+	if labelStyle.FontSize > 0 {
+		labelFont = int32(labelStyle.FontSize)
+	}
+	offWidth := int32(runtimeTextWidth(props.OffLabel, labelFont))
+	onWidth := int32(runtimeTextWidth(props.OnLabel, labelFont))
 	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
 		bounds.Width = minW
 	}
@@ -5289,14 +5295,14 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		HasLabels: hasLabels,
 		OffWidth:  offWidth,
 		OnWidth:   onWidth,
-		Font:      Text16,
+		Font:      labelFont,
 		Scale:     1,
 		Track:     simpleStyleFrameWithRole(trackTone, state, disabled, checked, StyleSheet_StyleKindToggle(), trackRole),
 		Active:    simpleStyleFrameWithRole(ButtonToneAccent, state, disabled, checked, StyleSheet_StyleKindToggle(), 5),
 		Thumb:     simpleStyleFrame(trackTone, state, disabled, checked, StyleSheet_StyleKindToggleThumb()),
 	})
 	if paint.HasLabels {
-		labelStyle := unpackStyle(labelFrame.Value)
+		labelStyle = unpackStyle(labelFrame.Value)
 		labelColor := Surface_Opacity(packRGBA(labelStyle.Foreground), labelStyle.Opacity)
 		if checked {
 			paint.OffLabelColor = labelColor
@@ -5322,8 +5328,8 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 		activeOp.Selected = true
 		activeOp.Disabled = disabled
 		r.record(activeOp)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), FontSize: Text16, ID: props.ID, Disabled: disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), FontSize: Text16, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OffLabelBounds, Text: props.OffLabel, Color: unpackRGBA(paint.OffLabelColor), FontSize: labelFont, ID: props.ID, Disabled: disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.OnLabelBounds, Text: props.OnLabel, Color: unpackRGBA(paint.OnLabelColor), FontSize: labelFont, ID: props.ID, Disabled: disabled})
 	} else {
 		if input.Hovered && !disabled {
 			r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius+5), Color: unpackRGBA(paint.ThumbGlowColor), ID: props.ID, Hovered: true})
