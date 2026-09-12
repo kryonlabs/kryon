@@ -73,15 +73,27 @@ GO_SCOPE_EXPORT_ALLOWLIST = {
 }
 
 PUBLIC_WIDGET_NAMES = {
+    "Button",
     "Bullet",
+    "Drag",
+    "DragDrop",
     "DismissibleOverlay",
+    "Dropdown",
     "Flow",
+    "Guide",
+    "GuideStep",
     "Heading",
+    "Image",
+    "Input",
+    "Link",
+    "Menu",
     "Page",
     "ParagraphText",
+    "Popup",
     "Section",
     "ShowToast",
     "ShowToastFor",
+    "Slider",
     "Surface",
 }
 
