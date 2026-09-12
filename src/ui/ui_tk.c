@@ -940,9 +940,13 @@ RenderCheckbox(CheckboxProps checkbox)
             .active = ui_tk_checkbox_style_frame(ButtonToneAccent, state,
                                                  disabled, checked, 10)
         });
-        paint.label_color =
+        Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
             ui_tk_checkbox_style_frame(ButtonToneNeutral, state, disabled,
-                                       checked, 6).value.foreground;
+                                       checked, 6)).value);
+        int label_font = label_style.font_size > 0.0f
+            ? (int)(label_style.font_size + 0.5f)
+            : GetFontSize();
+        paint.label_color = ColorToInt(label_style.foreground);
 
         if(paint.show_state)
             DrawRectangleRounded(paint.state_bounds, paint.state_radius, 8,
@@ -965,8 +969,9 @@ RenderCheckbox(CheckboxProps checkbox)
         }
         RenderText(checkbox.label != NULL ? checkbox.label : "",
                    (int)paint.slot_bounds.x + CheckboxSlotSize(runtime_scale) + Scale(10),
-                   ui_row_text_y(checkbox.bounds, GetFontSize()),
-                   GetFontSize(), GetColor(paint.label_color));
+                   ui_row_text_y(checkbox.bounds, label_font),
+                   label_font, Fade(GetColor(paint.label_color),
+                                    label_style.opacity));
     }
     return changed;
 }
@@ -1697,7 +1702,17 @@ int
 RenderRadio(RadioProps radio)
 {
     ToolkitStore *toolkit = toolkit_state();
-    int font = GetFontSize();
+    ButtonState initial_state = radio.disabled ? ButtonStateDisabled
+                                               : ButtonStateNormal;
+    StyleFrame label_frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                                     initial_state,
+                                                     radio.disabled,
+                                                     radio.checked, 6);
+    Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
+        label_frame).value);
+    int font = label_style.font_size > 0.0f
+        ? (int)(label_style.font_size + 0.5f)
+        : GetFontSize();
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     RadioPaint paint = RadioPaintFor((RadioSpec){
         .bounds = radio.bounds,
@@ -1707,20 +1722,13 @@ RenderRadio(RadioProps radio)
         .selected_amount = radio.checked ? 1.0f : 0.0f,
         .scale = runtime_scale,
         .frame = ui_tk_radio_style_frame(ButtonToneNeutral,
-                                         radio.disabled ? ButtonStateDisabled
-                                                        : ButtonStateNormal,
+                                         initial_state,
                                          radio.disabled, radio.checked, 11),
         .selected = ui_tk_radio_style_frame(ButtonToneAccent,
-                                            radio.disabled ? ButtonStateDisabled
-                                                           : ButtonStateNormal,
+                                            initial_state,
                                             radio.disabled, radio.checked, 10)
     });
-    paint.label_color =
-        ui_tk_radio_style_frame(ButtonToneNeutral,
-                                radio.disabled ? ButtonStateDisabled
-                                               : ButtonStateNormal,
-                                radio.disabled, radio.checked, 6)
-            .value.foreground;
+    paint.label_color = ColorToInt(label_style.foreground);
     int hot;
     int down;
     int focused = 0;
@@ -1804,17 +1812,20 @@ RenderRadio(RadioProps radio)
                                                 radio.disabled, radio.checked,
                                                 10)
         });
-        paint.label_color =
-            ui_tk_radio_style_frame(ButtonToneNeutral,
-                                    ui_tk_checkbox_button_state(hot, down,
-                                                               focused,
-                                                               radio.disabled),
-                                    radio.disabled, radio.checked, 6)
-                .value.foreground;
+        label_frame = ui_tk_radio_style_frame(ButtonToneNeutral,
+                                              ui_tk_checkbox_button_state(hot, down,
+                                                                         focused,
+                                                                         radio.disabled),
+                                              radio.disabled, radio.checked, 6);
+        label_style = ui_unpack_style(ui_style_apply_effects_frame(
+            label_frame).value);
+        if(label_style.font_size > 0.0f)
+            font = (int)(label_style.font_size + 0.5f);
+        paint.label_color = ColorToInt(label_style.foreground);
 
         ring = GetColor(paint.ring_color);
         fill = GetColor(paint.fill_color);
-        label = GetColor(paint.label_color);
+        label = Fade(GetColor(paint.label_color), label_style.opacity);
         if(radio.disabled) {
             press = 0.0f;
         }
@@ -1845,7 +1856,7 @@ RenderRadio(RadioProps radio)
                         GetColor(paint.fill_color));
         RenderText(radio.label != NULL ? radio.label : "", (int)paint.label_x,
                    ui_row_text_y(radio.bounds, font), font,
-                   GetColor(paint.label_color));
+                   Fade(GetColor(paint.label_color), label_style.opacity));
     }
     if(focused && IsWindowReady())
         RenderFocus(paint.hit_bounds);
@@ -1984,7 +1995,11 @@ ui_plot(PlotProps plot, int histogram)
     }
     EndClip();
     {
-        int font = GetSmallFontSize();
+        Style plot_style = ui_unpack_style(
+            ui_style_apply_effects_frame(plot_frame).value);
+        int font = plot_style.font_size > 0.0f
+            ? (int)(plot_style.font_size + 0.5f)
+            : GetSmallFontSize();
         float runtime_scale = (float)Scale(1000) / 1000.0f;
         float label_width = plot.label != NULL ? (float)TextWidth(plot.label, font) : 0.0f;
         float overlay_width = plot.overlay != NULL ? (float)TextWidth(plot.overlay, font) : 0.0f;
@@ -1993,10 +2008,12 @@ ui_plot(PlotProps plot, int histogram)
             plot.label != NULL, plot.overlay != NULL);
         if(text.show_label)
             RenderText(plot.label, (int)text.label_bounds.x,
-                       (int)text.label_bounds.y, font, GetColor(text.text_color));
+                       (int)text.label_bounds.y, font,
+                       Fade(GetColor(text.text_color), plot_style.opacity));
         if(text.show_overlay)
             RenderText(plot.overlay, (int)text.overlay_bounds.x,
-                       (int)text.overlay_bounds.y, font, GetColor(text.text_color));
+                       (int)text.overlay_bounds.y, font,
+                       Fade(GetColor(text.text_color), plot_style.opacity));
     }
 }
 

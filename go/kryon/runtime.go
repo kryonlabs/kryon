@@ -3400,19 +3400,20 @@ func (r *runtime) Plot(props PlotProps) {
 		}
 	}
 	labelWidth := float32(0)
+	font := styleFont(plotStyle, Text14)
 	if props.Label != "" {
-		labelWidth = float32(runtimeTextWidth(props.Label, Text14))
+		labelWidth = float32(runtimeTextWidth(props.Label, font))
 	}
 	overlayWidth := float32(0)
 	if props.Overlay != "" {
-		overlayWidth = float32(runtimeTextWidth(props.Overlay, Text14))
+		overlayWidth = float32(runtimeTextWidth(props.Overlay, font))
 	}
 	text := Plot_PlotTextPaintFor(props.Bounds, labelWidth, overlayWidth, 1, plotFrame, props.Label != "", props.Overlay != "")
 	if props.Label != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), FontSize: Text14})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.LabelBounds, Text: props.Label, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font})
 	}
 	if props.Overlay != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: text.OverlayBounds, Text: props.Overlay, Color: unpackRGBA(text.TextColor), FontSize: Text14})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: text.OverlayBounds, Text: props.Overlay, Color: unpackRGBA(text.TextColor), Opacity: plotStyle.Opacity, FontSize: font})
 	}
 }
 
@@ -6201,6 +6202,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	input := r.ReadActivation(props.Bounds, props.ID, !props.Disabled)
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, props.Disabled)
+	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, 10)
 	paint := Radio_RadioPaintFor(RadioSpec{
 		Bounds:   props.Bounds,
 		Checked:  props.Checked,
@@ -6213,19 +6215,21 @@ func (r *runtime) Radio(props RadioProps) int32 {
 		}(),
 		Scale:    1,
 		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 11),
-		Selected: radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, 10),
+		Selected: selectedFrame,
 	})
 	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 6)
 	paint.LabelColor = label.Value.Foreground
+	markStyle := unpackStyle(selectedFrame.Value)
 	labelStyle := unpackStyle(label.Value)
 	labelFont := styleFont(labelStyle, Text16)
+	markFont := styleFont(markStyle, Text16)
 	mark := Radio_RadioMarkText(props.Checked)
 	markColor := unpackRGBA(paint.RingColor)
 	if props.Checked {
 		markColor = unpackRGBA(paint.FillColor)
 	}
 	labelColor := unpackRGBA(paint.LabelColor)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, FontSize: Text16, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
+	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.MarkBounds, Text: mark, Color: markColor, Opacity: markStyle.Opacity, FontSize: markFont, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	r.record(FrameOp{Kind: FrameOpText, Bounds: paint.LabelBounds, Text: props.Label, Color: labelColor, Opacity: labelStyle.Opacity, FontSize: labelFont, ID: props.ID, Pressed: input.Pressed, Disabled: props.Disabled, Selected: props.Checked, Focused: input.Focused})
 	if input.Activated {
 		return props.ID

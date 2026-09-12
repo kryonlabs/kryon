@@ -1212,6 +1212,7 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -1678,6 +1679,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -1732,12 +1734,14 @@ Radio[role=Mark] {
   border: accent-hover;
   focus: focus;
   border-width: border;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }

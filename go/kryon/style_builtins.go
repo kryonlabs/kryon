@@ -1126,6 +1126,7 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -1587,6 +1588,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -1638,12 +1640,14 @@ Radio[role=Mark] {
   border: accent;
   focus: focus;
   border-width: border;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -2814,6 +2818,7 @@ Plot {
   border: border;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3241,6 +3246,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -3292,12 +3298,14 @@ Radio[role=Mark] {
   border: accent-border;
   focus: accent;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: default;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font;
   opacity: 1;
   material: default;
 }
@@ -4470,6 +4478,7 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: default;
 }
@@ -4927,6 +4936,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -4978,12 +4988,14 @@ Radio[role=Mark] {
   border: accent;
   focus: focus;
   border-width: border;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: default;
 }
@@ -6234,6 +6246,7 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  font-size: font.sm;
   opacity: 1;
   material: glow;
 }
@@ -6700,6 +6713,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -6754,12 +6768,14 @@ Radio[role=Mark] {
   border: accent-hover;
   focus: focus;
   border-width: border;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font.md;
   opacity: 1;
   material: glow;
 }
@@ -8000,6 +8016,7 @@ Plot {
   border: card-border;
   radius: radius;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -8434,6 +8451,7 @@ Checkbox[role=Mark] {
 
 Checkbox[role=Label] {
   foreground: text;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
@@ -8488,12 +8506,14 @@ Radio[role=Mark] {
   border: accent-border;
   focus: focus;
   border-width: border;
+  font-size: font;
   opacity: 1;
   material: premium;
 }
 
 Radio[role=Label] {
   foreground: text;
+  font-size: font;
   opacity: 1;
   material: premium;
 }

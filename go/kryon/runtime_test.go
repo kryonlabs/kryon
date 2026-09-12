@@ -827,7 +827,7 @@ Checkbox[role=Box] { background: box; foreground: label; border: ring; border-wi
 Checkbox[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
 Checkbox[role=Label] { foreground: label; font-size: 18; material: flat; opacity: 0.84; }
 Radio[role=Ring] { foreground: label; border: ring; border-width: border; material: flat; opacity: 1; }
-Radio[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; material: flat; opacity: 1; }
+Radio[role=Mark] { background: mark; foreground: mark-ink; border: mark; border-width: border; font-size: 21; material: flat; opacity: 0.63; }
 Radio[role=Label] { foreground: label; font-size: 19; material: flat; opacity: 0.76; }
 `, "Test Checks", "") || !SetActiveStylePack("test.checks") {
 		t.Fatal("test check/radio style did not activate")
@@ -870,7 +870,8 @@ Radio[role=Label] { foreground: label; font-size: 19; material: flat; opacity: 0
 			}
 		case op.Kind == FrameOpText && op.Text == "\u25c9":
 			sawRadioMark = true
-			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) {
+			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) ||
+				op.FontSize != 21 || op.Opacity != 0.63 {
 				t.Fatalf("radio mark style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Text == "Choice":
@@ -1585,6 +1586,57 @@ Toast[role=Label] { foreground: text; font-size: 18; opacity: 0.66; }
 	}
 	if !sawSurface || !sawLabel {
 		t.Fatalf("missing toast ops: surface=%v label=%v ops=%+v", sawSurface, sawLabel, rt.FrameOps())
+	}
+}
+
+func TestPlotTextUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.plot;
+tokens {
+  color {
+    panel: #101820;
+    ink: #d8e4f5;
+    rule: #506172;
+    mark: #c9a8ff;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Plot { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 18; material: flat; opacity: 0.62; }
+PlotMark { background: mark; foreground: ink; border: mark; material: flat; }
+`, "Test Plot", "") || !SetActiveStylePack("test.plot") {
+		t.Fatal("test plot style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
+	values := []float32{0.2, 0.7}
+
+	rt.Plot(PlotProps{
+		Bounds:     Rectangle{X: 8, Y: 8, Width: 120, Height: 60},
+		Values:     values,
+		ValueCount: int32(len(values)),
+		Label:      "Load",
+		Overlay:    "70%",
+	})
+
+	var sawLabel, sawOverlay bool
+	for _, op := range rt.FrameOps() {
+		if op.Kind == FrameOpText && (op.Text == "Load" || op.Text == "70%") {
+			if op.FontSize != 18 || op.Opacity != 0.62 ||
+				op.Color != (Color{R: 0xd8, G: 0xe4, B: 0xf5, A: 0xff}) {
+				t.Fatalf("plot text style op = %+v", op)
+			}
+			if op.Text == "Load" {
+				sawLabel = true
+			}
+			if op.Text == "70%" {
+				sawOverlay = true
+			}
+		}
+	}
+	if !sawLabel || !sawOverlay {
+		t.Fatalf("missing styled plot text: label=%v overlay=%v ops=%+v", sawLabel, sawOverlay, rt.FrameOps())
 	}
 }
 
