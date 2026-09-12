@@ -37,6 +37,12 @@ type TextDeleteDecision struct {
 	DocumentEdge  int32
 }
 
+type TextInsertDecision struct {
+	Accept bool
+	Skip   bool
+	Stop   bool
+}
+
 func TextInput_TextNavNone() int32 {
 	var value_0 int32 = 0
 	return value_0
@@ -576,4 +582,99 @@ func TextInput_TextDeleteDecisionFor(action int32, modifier bool, secure bool, h
 	}
 	var value_28 TextDeleteDecision = decision
 	return value_28
+}
+
+func TextInput_TextInsertDecisionFor(codepoint int32, encoded_len int32, text_len int32, text_size int32, current_codepoints int32, inserted_codepoints int32, max_codepoints int32, allow_newlines bool) TextInsertDecision {
+	var decision TextInsertDecision = TextInsertDecision{}
+	var value_0 int32 = codepoint
+	var value_1 int32 = 13
+	var value_2 bool = value_0 == value_1
+	if value_2 {
+		var value_3 bool = true
+		decision.Skip = value_3
+		var value_4 TextInsertDecision = decision
+		return value_4
+	}
+	var value_5 int32 = codepoint
+	var value_6 int32 = 10
+	var value_7 bool = value_5 == value_6
+	var value_8 bool = value_7
+	if value_8 {
+		var value_9 bool = allow_newlines
+		var value_10 bool = !value_9
+		value_8 = value_10
+	}
+	if value_8 {
+		var value_11 bool = true
+		decision.Skip = value_11
+		var value_12 TextInsertDecision = decision
+		return value_12
+	}
+	var value_13 int32 = codepoint
+	var value_14 int32 = 32
+	var value_15 bool = value_13 < value_14
+	var value_16 bool = value_15
+	if value_16 {
+		var value_17 int32 = codepoint
+		var value_18 int32 = 10
+		var value_19 bool = value_17 != value_18
+		value_16 = value_19
+	}
+	if value_16 {
+		var value_20 bool = true
+		decision.Skip = value_20
+		var value_21 TextInsertDecision = decision
+		return value_21
+	}
+	var value_22 int32 = encoded_len
+	var value_23 int32 = 0
+	var value_24 bool = value_22 <= value_23
+	if value_24 {
+		var value_25 bool = true
+		decision.Skip = value_25
+		var value_26 TextInsertDecision = decision
+		return value_26
+	}
+	var value_27 int32 = text_size
+	var value_28 int32 = 0
+	var value_29 bool = value_27 <= value_28
+	var value_30 bool = value_29
+	if !value_30 {
+		var value_31 int32 = text_len
+		var value_32 int32 = encoded_len
+		var value_33 int32 = int32(number_runtime_bits(uint64(value_31), uint64(value_32), 32, true, 1))
+		var value_34 int32 = 1
+		var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 1))
+		var value_36 int32 = text_size
+		var value_37 bool = value_35 > value_36
+		value_30 = value_37
+	}
+	if value_30 {
+		var value_38 bool = true
+		decision.Stop = value_38
+		var value_39 TextInsertDecision = decision
+		return value_39
+	}
+	var value_40 int32 = max_codepoints
+	var value_41 int32 = 0
+	var value_42 bool = value_40 > value_41
+	var value_43 bool = value_42
+	if value_43 {
+		var value_44 int32 = current_codepoints
+		var value_45 int32 = inserted_codepoints
+		var value_46 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_45), 32, true, 1))
+		var value_47 int32 = max_codepoints
+		var value_48 bool = value_46 >= value_47
+		value_43 = value_48
+	}
+	if value_43 {
+		var value_49 bool = true
+		decision.Stop = value_49
+		var value_50 TextInsertDecision = decision
+		return value_50
+	}
+	var value_51 bool = true
+	decision.Accept = value_51
+	var value_52 TextInsertDecision = decision
+	return value_52
 }

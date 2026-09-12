@@ -327,15 +327,19 @@ int
 ui_text_insert_ascii(char *text, size_t text_size, int *cursor, char ch,
                      int max_codepoints)
 {
+    TextInsertDecision decision;
     int len;
+    int codepoint_count;
 
     if(text == NULL || text_size == 0 || cursor == NULL || ch == '\0')
         return 0;
-    if(max_codepoints > 0 && ui_utf8_codepoint_count(text) >= max_codepoints)
-        return 0;
     len = (int)strlen(text);
+    codepoint_count = ui_utf8_codepoint_count(text);
     *cursor = ui_clampi(*cursor, 0, len);
-    if((size_t)(len + 2) > text_size)
+    decision = TextInsertDecisionFor((unsigned char)ch, 1, len,
+                                     (int)text_size, codepoint_count, 0,
+                                     max_codepoints, 0);
+    if(!decision.accept)
         return 0;
     memmove(text + *cursor + 1, text + *cursor,
             (size_t)(len - *cursor + 1));
@@ -348,21 +352,23 @@ int
 ui_text_insert_codepoint(char *text, size_t text_size, int *cursor, int codepoint,
                          int max_codepoints)
 {
+    TextInsertDecision decision;
     char encoded[5];
     int encoded_len;
     int len;
+    int codepoint_count;
 
-    if(text == NULL || text_size == 0 || cursor == NULL || codepoint < 32)
-        return 0;
-    if(max_codepoints > 0 && ui_utf8_codepoint_count(text) >= max_codepoints)
+    if(text == NULL || text_size == 0 || cursor == NULL)
         return 0;
 
     encoded_len = ui_utf8_encode(codepoint, encoded);
-    if(encoded_len <= 0)
-        return 0;
     len = (int)strlen(text);
+    codepoint_count = ui_utf8_codepoint_count(text);
     *cursor = ui_clampi(*cursor, 0, len);
-    if((size_t)(len + encoded_len + 1) > text_size)
+    decision = TextInsertDecisionFor(codepoint, encoded_len, len,
+                                     (int)text_size, codepoint_count, 0,
+                                     max_codepoints, 0);
+    if(!decision.accept)
         return 0;
 
     memmove(text + *cursor + encoded_len, text + *cursor, (size_t)(len - *cursor + 1));
@@ -381,7 +387,7 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
     int len;
     int out_len = 0;
     int inserted_codepoints = 0;
-    int remaining_codepoints = 0;
+    int current_codepoints = 0;
     size_t remaining_bytes;
 
     if(text == NULL || text_size == 0 || cursor == NULL ||
@@ -390,15 +396,12 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
 
     len = (int)strlen(text);
     *cursor = ui_clampi(*cursor, 0, len);
-    if((size_t)len + 1 >= text_size)
+    current_codepoints = ui_utf8_codepoint_count(text);
+    if(TextInsertDecisionFor(' ', 1, len, (int)text_size,
+                             current_codepoints, 0, max_codepoints,
+                             allow_newlines != 0).stop)
         return 0;
-
     remaining_bytes = text_size - (size_t)len - 1;
-    if(max_codepoints > 0) {
-        remaining_codepoints = max_codepoints - ui_utf8_codepoint_count(text);
-        if(remaining_codepoints <= 0)
-            return 0;
-    }
 
     insert = malloc(remaining_bytes + 1);
     if(insert == NULL)
@@ -410,23 +413,18 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
         int encoded_len;
         int cp;
 
-        if(max_codepoints > 0 && inserted_codepoints >= remaining_codepoints)
-            break;
-        if(input[i] == '\r') {
-            i++;
-            continue;
-        }
         if(input[i] == '\n') {
-            if(!allow_newlines) {
-                i++;
-                continue;
-            }
-            if(remaining_bytes < 1)
-                break;
-            insert[out_len++] = '\n';
-            remaining_bytes--;
-            inserted_codepoints++;
+            TextInsertDecision decision = TextInsertDecisionFor(
+                '\n', 1, len + out_len, (int)text_size, current_codepoints,
+                inserted_codepoints, max_codepoints, allow_newlines != 0);
             i++;
+            if(decision.stop)
+                break;
+            if(decision.accept) {
+                insert[out_len++] = '\n';
+                remaining_bytes--;
+                inserted_codepoints++;
+            }
             continue;
         }
 
@@ -434,13 +432,20 @@ ui_text_insert_text(char *text, size_t text_size, int *cursor,
         if(bytes <= 0)
             break;
         i += bytes;
-        if(cp < 32)
-            continue;
         if(filter != NULL && !filter(cp, filter_user_data))
             continue;
         encoded_len = ui_utf8_encode(cp, encoded);
-        if(encoded_len <= 0)
-            continue;
+        {
+            TextInsertDecision decision = TextInsertDecisionFor(
+                cp, encoded_len, len + out_len, (int)text_size,
+                current_codepoints, inserted_codepoints, max_codepoints,
+                allow_newlines != 0);
+
+            if(decision.stop)
+                break;
+            if(decision.skip)
+                continue;
+        }
         if((size_t)encoded_len > remaining_bytes)
             break;
         memcpy(insert + out_len, encoded, (size_t)encoded_len);

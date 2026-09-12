@@ -24,6 +24,7 @@ main(void)
                                                    16, 6, 8, 4);
     TextNavigationDecision decision;
     TextDeleteDecision delete_decision;
+    TextInsertDecision insert_decision;
     TextFieldScroll scroll;
 
     assert(metrics.font == 16);
@@ -108,6 +109,28 @@ main(void)
     assert(delete_decision.char_direction == 0);
     assert(delete_decision.word_direction == 0);
     assert(delete_decision.document_edge == 0);
+
+    insert_decision = TextInsertDecisionFor('a', 1, 2, 4, 2, 0, 4, false);
+    assert(insert_decision.accept);
+    assert(!insert_decision.skip);
+    assert(!insert_decision.stop);
+
+    insert_decision = TextInsertDecisionFor('\r', 1, 2, 4, 2, 0, 4, true);
+    assert(!insert_decision.accept);
+    assert(insert_decision.skip);
+    assert(!insert_decision.stop);
+
+    insert_decision = TextInsertDecisionFor('\n', 1, 2, 4, 2, 0, 4, false);
+    assert(!insert_decision.accept);
+    assert(insert_decision.skip);
+
+    insert_decision = TextInsertDecisionFor('a', 1, 3, 4, 3, 0, 0, false);
+    assert(!insert_decision.accept);
+    assert(insert_decision.stop);
+
+    insert_decision = TextInsertDecisionFor('a', 1, 2, 8, 4, 0, 4, false);
+    assert(!insert_decision.accept);
+    assert(insert_decision.stop);
 
     return 0;
 }

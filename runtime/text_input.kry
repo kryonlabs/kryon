@@ -36,6 +36,12 @@ TextDeleteDecision :: struct {
     document_edge: i32
 }
 
+TextInsertDecision :: struct {
+    accept: bool
+    skip: bool
+    stop: bool
+}
+
 TextNavNone :: () -> i32 #export {
     return 0
 }
@@ -286,5 +292,46 @@ TextDeleteDecisionFor :: (action: i32, modifier: bool, secure: bool,
         return decision
     }
 
+    return decision
+}
+
+TextInsertDecisionFor :: (codepoint: i32, encoded_len: i32,
+    text_len: i32, text_size: i32, current_codepoints: i32,
+    inserted_codepoints: i32, max_codepoints: i32,
+    allow_newlines: bool) -> TextInsertDecision #export {
+    decision: TextInsertDecision
+
+    if codepoint == 13 {
+        decision.skip = true
+        return decision
+    }
+
+    if codepoint == 10 && !allow_newlines {
+        decision.skip = true
+        return decision
+    }
+
+    if codepoint < 32 && codepoint != 10 {
+        decision.skip = true
+        return decision
+    }
+
+    if encoded_len <= 0 {
+        decision.skip = true
+        return decision
+    }
+
+    if text_size <= 0 || text_len + encoded_len + 1 > text_size {
+        decision.stop = true
+        return decision
+    }
+
+    if max_codepoints > 0 &&
+       current_codepoints + inserted_codepoints >= max_codepoints {
+        decision.stop = true
+        return decision
+    }
+
+    decision.accept = true
     return decision
 }
