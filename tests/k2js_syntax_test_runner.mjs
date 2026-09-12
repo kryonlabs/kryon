@@ -950,6 +950,18 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMObject(target, tapSourceRef).element, firstButton);
     assert.equal(runtime.webDOMObject(target, tapSourceRef).ref, tapSourceRef);
+    assert.equal(runtime.webDOMParent(target, "tap-button").node.path, "Scene/root");
+    assert.deepEqual(runtime.webDOMChildren(target, "Scene/root")
+      .map((object) => object.node.path), [
+        firstText.dataset.kryPath,
+        "Scene/root/tap",
+        "Scene/root/search",
+        "Scene/root/search_label"
+      ]);
+    assert.deepEqual(runtime.webDOMChildren(target).map((object) => object.node.path),
+      ["Scene/root"]);
+    assert.equal(runtime.webDOMClosest(target, "tap-button", "Screen").node.path,
+      "Scene/root");
     assert.deepEqual(runtime.webDOMRect(target, "tap-button"), {
       x: 10,
       y: 50,

@@ -2667,6 +2667,13 @@ export function webDOMObject(target, query) {
   return node && element ? { ref: webNodeRef(node), node, element } : null;
 }
 
+function webDOMObjectForNode(root, node) {
+  if (!root || !node)
+    return null;
+  const element = node.path ? root.__kryElementsByPath?.get(node.path) : null;
+  return element ? { ref: webNodeRef(node), node, element } : null;
+}
+
 export function webDOMObjects(target) {
   const root = mountedRoot(target);
   if (!root)
@@ -2677,6 +2684,43 @@ export function webDOMObjects(target) {
       return node ? { ref: webNodeRef(node), node, element } : null;
     })
     .filter(Boolean);
+}
+
+export function webDOMParent(target, query) {
+  const root = mountedRoot(target);
+  const object = root ? webDOMObject(target, query) : null;
+  const parentPath = object?.node?.parentPath || "";
+  if (!root || !object || !parentPath || parentPath === object.node.path)
+    return null;
+  return webDOMObjectForNode(root, root.__kryNodes?.get(parentPath));
+}
+
+export function webDOMChildren(target, query = "") {
+  const root = mountedRoot(target);
+  if (!root)
+    return [];
+  const text = String(query || "").trim();
+  const parent = text ? webDOMObject(target, text) : null;
+  if (text && !parent)
+    return [];
+  return webDOMObjects(target).filter((object) => {
+    const parentPath = object.node.parentPath || "";
+    if (parent)
+      return parentPath === parent.node.path && object.node.path !== parent.node.path;
+    return !parentPath || parentPath === object.node.path || !root.__kryNodes?.has(parentPath);
+  });
+}
+
+export function webDOMClosest(target, query, selector) {
+  const root = mountedRoot(target);
+  let object = root ? webDOMObject(target, query) : null;
+  const parsed = parseSelector(String(selector || "").trim());
+  while (object) {
+    if (selectorMatchesWebNode(parsed, object.node))
+      return object;
+    object = webDOMParent(target, object.node.path);
+  }
+  return null;
 }
 
 export function webDOMQueryAll(target, selector) {

@@ -324,6 +324,12 @@ native DOM objects by the same KSS-style selector facts used for style
 resolution: kind selectors, `#id`, `.class`, `[role=...]`, `[name=...]`,
 `[type=...]`, `[href=...]`, `[data-*=...]`, source fields, and state pseudos.
 
+`webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
+`webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as
+DOM objects. This lets inspectors, tests, and host code walk from a native
+element back through Kry parent/child relationships without scraping browser
+markup.
+
 `webDOMAddClass(target, query, className)`, `webDOMRemoveClass(...)`,
 `webDOMToggleClass(...)`, and `webDOMHasClass(...)` mutate or inspect mounted
 native class names by the same query forms. Runtime class mutations are folded
