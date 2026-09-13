@@ -32,15 +32,6 @@ typedef struct BottomIconRowProps {
     int32_t view_height;
     int32_t count;
     const IconRowItem* items;
-    int32_t icon_size;
-    int32_t icon_padding;
-    int32_t gap;
-    int32_t side_margin;
-    int32_t bottom_margin;
-    int32_t max_button_width;
-    int32_t min_icon_size;
-    int32_t min_icon_padding;
-    int32_t min_gap;
 } BottomIconRowProps;
 
 typedef struct IconRowResult {

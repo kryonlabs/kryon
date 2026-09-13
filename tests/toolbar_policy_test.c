@@ -43,26 +43,6 @@ test_bottom_icon_row_layout(void)
 }
 
 static void
-test_bottom_icon_row_fit(void)
-{
-    BottomIconRowProps props = {
-        .center_x = 100, .view_width = 120, .view_height = 100,
-        .count = 4, .side_margin = 12, .gap = 8,
-        .max_button_width = 24, .min_icon_size = 10,
-        .min_icon_padding = 4, .min_gap = 5
-    };
-    BottomIconRowLayout layout = BottomIconRowLayoutFor(props, 1.0f);
-    Rectangle last = BottomIconRowButtonBoundsFor(layout, 99);
-
-    assert(layout.button_width == 24);
-    assert(layout.icon_size == 12);
-    assert(layout.icon_padding == 6);
-    assert(layout.gap == 6);
-    assert(layout.start_x == 43);
-    assert(last.x == 133.0f);
-}
-
-static void
 test_icon_slider_popup_layout(void)
 {
     IconSliderPopupLayout layout =
@@ -94,7 +74,6 @@ main(void)
 {
     test_toolbar_action_bounds();
     test_bottom_icon_row_layout();
-    test_bottom_icon_row_fit();
     test_icon_slider_popup_layout();
     return 0;
 }

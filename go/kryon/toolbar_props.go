@@ -8,20 +8,11 @@ type IconRowItem struct {
 }
 
 type BottomIconRowProps struct {
-	CenterX        int32
-	ViewWidth      int32
-	ViewHeight     int32
-	Count          int32
-	Items          []IconRowItem
-	IconSize       int32
-	IconPadding    int32
-	Gap            int32
-	SideMargin     int32
-	BottomMargin   int32
-	MaxButtonWidth int32
-	MinIconSize    int32
-	MinIconPadding int32
-	MinGap         int32
+	CenterX    int32
+	ViewWidth  int32
+	ViewHeight int32
+	Count      int32
+	Items      []IconRowItem
 }
 
 type IconRowResult struct {

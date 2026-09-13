@@ -122,22 +122,19 @@ BottomIconRowLayoutFor :: (row: BottomIconRowProps, scale: float) -> BottomIconR
 
     count: i32 = row.count
     if count < 0 { count = 0 }
-    icon_size: i32 = ToolbarMetric(row.icon_size, 24.0, scale)
-    icon_padding: i32 = ToolbarMetric(row.icon_padding, 10.0, scale)
-    gap: i32 = ToolbarMetric(row.gap, 12.0, scale)
-    side_margin: i32 = ToolbarMetric(row.side_margin, 24.0, scale)
-    bottom_margin: i32 = ToolbarMetric(row.bottom_margin, 6.0, scale)
-    min_icon_size: i32 = ToolbarMetric(row.min_icon_size, 16.0, scale)
-    min_icon_padding: i32 = ToolbarMetric(row.min_icon_padding, 6.0, scale)
-    min_gap: i32 = ToolbarMetric(row.min_gap, 8.0, scale)
+    icon_size: i32 = ToolbarMetric(0, 24.0, scale)
+    icon_padding: i32 = ToolbarMetric(0, 10.0, scale)
+    gap: i32 = ToolbarMetric(0, 12.0, scale)
+    side_margin: i32 = ToolbarMetric(0, 24.0, scale)
+    bottom_margin: i32 = ToolbarMetric(0, 6.0, scale)
+    min_icon_size: i32 = ToolbarMetric(0, 16.0, scale)
+    min_icon_padding: i32 = ToolbarMetric(0, 6.0, scale)
+    min_gap: i32 = ToolbarMetric(0, 8.0, scale)
     available_w: i32 = row.view_width - side_margin * 2
     min_available: i32 = (i32)(120.0 * scale)
     if available_w < min_available { available_w = min_available }
 
-    max_btn_w: i32 = row.max_button_width
-    if max_btn_w <= 0 || max_btn_w > available_w {
-        max_btn_w = available_w
-    }
+    max_btn_w: i32 = available_w
     if count > 1 {
         fit_btn_w: i32 = (available_w - gap * (count - 1)) / count
         if max_btn_w <= 0 || max_btn_w > fit_btn_w {
