@@ -1132,7 +1132,8 @@ function widgetTag(item) {
   const authoredTag = propStringAny(args, ["dom", "dom_tag", "html_tag", "tag"]);
   if (/^[a-z][a-z0-9-]*$/i.test(authoredTag))
     return authoredTag.toLowerCase();
-  if (metaString(item.meta, "htmlFor") || propStringAny(args, ["for", "dom_for", "html_for"]))
+  if (item.name !== "Output" &&
+      (metaString(item.meta, "htmlFor") || propStringAny(args, ["for", "dom_for", "html_for"])))
     return "label";
   switch (item.name) {
   case "Screen":
@@ -7107,7 +7108,9 @@ function resolveWebDOMRelations(root) {
       setAttr(el, "headers", resolveWebDOMRelationList(root, docNode.headers));
     else if (!docNode.extraAttrs?.headers)
       removeAttr(el, "headers");
-    setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
+    setAttr(el, "for", String(docNode.tag || "").toLowerCase() === "output"
+      ? resolveWebDOMRelationList(root, docNode.htmlFor)
+      : resolveWebDOMRelationToken(root, docNode.htmlFor));
     setAttr(el, "form", resolveWebDOMRelationToken(root, docNode.formOwner));
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
   }
@@ -7165,6 +7168,10 @@ function webDOMFormControls(target, node) {
 
 function webNodeIsLabel(node) {
   return String(node?.tag || "").toLowerCase() === "label";
+}
+
+function webNodeIsOutput(node) {
+  return String(node?.tag || "").toLowerCase() === "output";
 }
 
 function webDOMImplicitLabelControl(target, node) {
@@ -7761,13 +7768,17 @@ function webDOMRelationsForNode(target, node) {
     columnHeaders: webDOMScopedHeaderList(target, node, ["col", "colgroup"]),
     rowGroupHeaders: webDOMScopedHeaderList(target, node, "rowgroup"),
     columnGroupHeaders: webDOMScopedHeaderList(target, node, "colgroup"),
-    labelFor: webDOMRelationList(target, node.htmlFor)[0] ||
-      webDOMImplicitLabelControl(target, node),
+    labelFor: webNodeIsLabel(node) && (webDOMRelationList(target, node.htmlFor)[0] ||
+      webDOMImplicitLabelControl(target, node)) || null,
+    outputFor: webNodeIsOutput(node) ? webDOMRelationList(target, node.htmlFor) : [],
+    outputBy: webDOMReverseRelationList(target, node, "htmlFor")
+      .filter((object) => webNodeIsOutput(object?.node)),
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     formControls: webDOMFormControls(target, node),
     labelledBy: mergeWebDOMRelationObjects(
       webDOMRelationList(target, node.ariaLabelledBy),
-      webDOMReverseRelationList(target, node, "htmlFor"),
+      webDOMReverseRelationList(target, node, "htmlFor")
+        .filter((object) => webNodeIsLabel(object?.node)),
       webDOMImplicitLabels(target, node)
     ),
     activeDescendant: webDOMRelationList(target, node.ariaActiveDescendant)[0] || null,
@@ -9143,6 +9154,8 @@ function webDOMRelationRefsForRelations(relations) {
     rowGroupHeaders: (relations?.rowGroupHeaders || []).map((relation) => relation.ref),
     columnGroupHeaders: (relations?.columnGroupHeaders || []).map((relation) => relation.ref),
     labelFor: relations?.labelFor?.ref || "",
+    outputFor: (relations?.outputFor || []).map((relation) => relation.ref),
+    outputBy: (relations?.outputBy || []).map((relation) => relation.ref),
     formOwner: relations?.formOwner?.ref || "",
     formControls: (relations?.formControls || []).map((relation) => relation.ref),
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
@@ -10098,13 +10111,17 @@ function webNodeRelationsForNode(rt, node) {
     columnHeaders: webNodeScopedHeaderList(rt, node, ["col", "colgroup"]),
     rowGroupHeaders: webNodeScopedHeaderList(rt, node, "rowgroup"),
     columnGroupHeaders: webNodeScopedHeaderList(rt, node, "colgroup"),
-    labelFor: webNodeRelationList(rt, node.htmlFor)[0] ||
-      webNodeImplicitLabelControl(rt, node),
+    labelFor: webNodeIsLabel(node) && (webNodeRelationList(rt, node.htmlFor)[0] ||
+      webNodeImplicitLabelControl(rt, node)) || null,
+    outputFor: webNodeIsOutput(node) ? webNodeRelationList(rt, node.htmlFor) : [],
+    outputBy: webNodeReverseRelationList(rt, node, "htmlFor")
+      .filter((candidate) => webNodeIsOutput(candidate)),
     formOwner: webNodeRelationList(rt, node.formOwner)[0] || null,
     formControls: webNodeFormControls(rt, node),
     labelledBy: mergeWebNodeRelations(
       webNodeRelationList(rt, node.ariaLabelledBy),
-      webNodeReverseRelationList(rt, node, "htmlFor"),
+      webNodeReverseRelationList(rt, node, "htmlFor")
+        .filter((candidate) => webNodeIsLabel(candidate)),
       webNodeImplicitLabels(rt, node)
     ),
     activeDescendant: webNodeRelationList(rt, node.ariaActiveDescendant)[0] || null,
@@ -10142,13 +10159,17 @@ function webNodeRelationRefsForNode(rt, node) {
     columnHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, ["col", "colgroup"])),
     rowGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "rowgroup")),
     columnGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "colgroup")),
-    labelFor: webNodeRef(webNodeRelationList(rt, node.htmlFor)[0] ||
+    labelFor: webNodeIsLabel(node) && webNodeRef(webNodeRelationList(rt, node.htmlFor)[0] ||
       webNodeImplicitLabelControl(rt, node)) || "",
+    outputFor: webNodeIsOutput(node) ? webNodeRefs(webNodeRelationList(rt, node.htmlFor)) : [],
+    outputBy: webNodeRefs(webNodeReverseRelationList(rt, node, "htmlFor")
+      .filter((candidate) => webNodeIsOutput(candidate))),
     formOwner: webNodeRef(webNodeRelationList(rt, node.formOwner)[0]) || "",
     formControls: webNodeRefs(webNodeFormControls(rt, node)),
     labelledBy: mergeWebNodeRelationRefs(
       webNodeRelationList(rt, node.ariaLabelledBy),
-      webNodeReverseRelationList(rt, node, "htmlFor"),
+      webNodeReverseRelationList(rt, node, "htmlFor")
+        .filter((candidate) => webNodeIsLabel(candidate)),
       webNodeImplicitLabels(rt, node)
     ),
     groupOwner: webNodeRef(webNodeGroupOwner(rt, node)) || "",

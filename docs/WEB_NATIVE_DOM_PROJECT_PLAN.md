@@ -237,6 +237,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Web relationship facts include reverse `formControls` links so form-like DOM
   nodes can enumerate controls that reference them through native form
   ownership.
+- Web relationship facts include `outputFor`/`outputBy` links so native
+  `Output` nodes can reference one or more controls through browser `for`
+  semantics without being treated as labels.
 - Web relationship facts include native implicit label links for authored
   `label` tags that wrap form controls.
 - Table header relationship facts include reverse `headerFor` links so header

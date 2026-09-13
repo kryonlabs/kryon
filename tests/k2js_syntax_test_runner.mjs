@@ -2928,7 +2928,7 @@ function fakeDocument() {
       { nodeName: "nativeSummary", path: "Page/nativeDetails/summary", parentPath: "Page/nativeDetails" });
     runtime.widget(nativeRt, "Dialog", { open: true }, null,
       { nodeName: "nativeDialog", path: "Page/nativeDialog" });
-    runtime.widget(nativeRt, "Output", { value: "Ready" }, null,
+    runtime.widget(nativeRt, "Output", { value: "Ready", for: "nativeEmail email" }, null,
       { nodeName: "nativeOutput", path: "Page/nativeOutput" });
     runtime.widget(nativeRt, "Card", {}, null,
       { nodeName: "plainCard", path: "Page/plainCard" });
@@ -3202,8 +3202,14 @@ function fakeDocument() {
       ["Page/nativeDetails/summary"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Dialog").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").tag, "output");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Output").htmlFor, "nativeEmail email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").text, "Ready");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").domValue, "Ready");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Output").outputFor,
+      ["Page/nativeForm/email", "Page/email"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/email").outputBy,
+      ["Page/nativeOutput"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/email").labelledBy, []);
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeForm/label").labelFor.path,
       "Page/nativeForm/email");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeForm").formControls,
@@ -3581,7 +3587,13 @@ function fakeDocument() {
     assert.equal(nativeDialog.open, true);
     assert.equal(nativeOutput.tagName, "OUTPUT");
     assert.equal(nativeOutput.attributes.value, "Ready");
+    assert.deepEqual(nativeOutput.attributes.for.split(/\s+/), ["form-email", "kry-Page-email"]);
     assert.equal(nativeOutput.textContent, "Ready");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Output").outputFor,
+      ["Page/nativeForm/email", "Page/email"]);
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/email").outputBy,
+      ["Page/nativeOutput"]);
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/email").labelledBy, []);
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/list/first").collectionOwner.ref,
       "Page/list");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/ordered/third").collectionOwner.ref,

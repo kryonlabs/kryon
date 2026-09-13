@@ -686,7 +686,8 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `labelledBy` links from `aria_labelledby`, active descendant links from
 `aria_activedescendant`, detail, error-message, and flow links from
 `aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
-`form`, reverse `formControls` links for controls owned by a form-like node,
+`form`, output/control links from native output `for`, reverse `formControls`
+links for controls owned by a form-like node,
 semantic `groupOwner`/`groupMembers` links for grouped controls,
 disabled scope owner/member links for controls inside disabled fieldsets or
 `Disabled` scopes,
