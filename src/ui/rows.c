@@ -22,16 +22,21 @@ RenderInfoRows(InfoRowsProps rows)
                              : text_style.foreground;
     int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
     int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
+    int default_font = text_style.font_size > 0.0f
+                           ? Scale((int)text_style.font_size)
+                           : GetFontSize();
+    int font_token;
 
     if(rows.rows == NULL || rows.row_count <= 0 || rows.width <= 0 || row_h <= 0)
         return;
 
+    font_token = PushTextFont(text_style.typeface);
     DrawRectangle(rows.x, rows.y, rows.width, row_h * rows.row_count,
                   background);
     for(int i = 0; i < rows.row_count; i++) {
         const UIInfoRow *row = &rows.rows[i];
         int y = rows.y + i * row_h;
-        int font = row->font > 0 ? row->font : GetFontSize();
+        int font = row->font > 0 ? row->font : default_font;
         Color text = row->color.a != 0 ? row->color : default_text;
 
         if(i > 0)
@@ -43,6 +48,7 @@ RenderInfoRows(InfoRowsProps rows)
                                                     (float)row_h},
                                         font, text);
     }
+    PopTextFont(font_token);
 }
 
 int
@@ -65,20 +71,26 @@ GetLabelTextFieldHeight(LabelTextFieldProps row)
 int
 RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
-    int label_font = row.label_font > 0 ? row.label_font : GetSmallFontSize();
     int label_h = row.label_h > 0 ? row.label_h : Scale(22);
     int field_h = row.field_h > 0 ? row.field_h : Scale(40);
     int gap = row.gap > 0 ? row.gap : 0;
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
+    int label_font = row.label_font > 0 ? row.label_font
+                     : text_style.font_size > 0.0f
+                         ? Scale((int)text_style.font_size)
+                         : GetSmallFontSize();
     Color label_color = row.label_color.a != 0 ? row.label_color
                                                : text_style.foreground;
+    int font_token;
     if(row.label_color.a == 0)
         label_color.a = (unsigned char)(label_color.a * 0.72f);
     TextFieldProps field = row.field;
 
+    font_token = PushTextFont(text_style.typeface);
     RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
+    PopTextFont(font_token);
     field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
     return ui_text_field_render(field);
 }
@@ -92,21 +104,29 @@ ui_section_label_height(SectionLabelProps label)
 int
 RenderSectionLabel(SectionLabelProps label, int x, int y)
 {
-    int font = label.font > 0 ? label.font : GetSmallFontSize();
     int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
+    int font = label.font > 0 ? label.font
+               : text_style.font_size > 0.0f
+                   ? Scale((int)text_style.font_size)
+                   : GetSmallFontSize();
     Color color = label.color.a != 0 ? label.color : text_style.foreground;
+    int font_token;
     if(label.color.a == 0)
         color.a = (unsigned char)(color.a * 0.72f);
     const char *text = label.label != NULL ? label.label : "";
     int label_w;
 
+    font_token = PushTextFont(text_style.typeface);
     RenderText(text, x, y, font, color);
-    if(!label.info)
+    if(!label.info) {
+        PopTextFont(font_token);
         return 0;
+    }
     label_w = TextWidth(text, font);
+    PopTextFont(font_token);
     return RenderButtonInfoIndicator(x + label_w + Scale(16),
                                y + font / 2 + Scale(1), icon_d);
 }
