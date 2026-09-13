@@ -4,6 +4,7 @@
 #include "ui_style_internal.h"
 #include "theme.h"
 #include "runtime/dropdown.h"
+#include "runtime/style.h"
 #include "ui_paint_internal.h"
 #include "ui_style_sheet.h"
 
@@ -220,9 +221,8 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed,
         motion.focus.value, StyleKindDropdown());
     ButtonFrame frame = BuildFrame(props, input, appearance, motion, (Rectangle){0},
         ColorToInt(ui_app_style().background), (float)Scale(1000) / 1000.0f,
-        appearance.value.font_size > 0.0f
-            ? (int)(appearance.value.font_size + 0.5f)
-            : GetFontSize(),
+        ResolveFont(0, (int)(appearance.value.font_size + 0.5f),
+            GetFontSize()),
         GetFontSize());
     if(frame.repaint)
         InvalidateTree(INVALIDATE_PAINT);
