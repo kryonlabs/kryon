@@ -342,6 +342,7 @@ The initial tag mapping is intentionally conservative:
 | `Separator` | `hr` |
 | `Menu` | `menu` |
 | `TableView` | `table` |
+| `TableCell` | `td` |
 | `Canvas` | `canvas` |
 | `Plot` | `canvas` |
 | `CanvasGrid` | `canvas` |

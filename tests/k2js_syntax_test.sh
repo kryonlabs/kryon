@@ -661,6 +661,30 @@ grep -q '"path": "CanvasBlockNodes/drawing"' "$canvas_block_out"
 grep -q 'const \$canvas = kryon.Canvas(drawing_spec)' "$canvas_block_out"
 grep -q 'if (drawing.active)' "$canvas_block_out"
 
+cat > "$work/src/table_cell_block_nodes.kry" <<'EOF'
+#import "kryon.h"
+TableCellBlockNodes :: () #ui {
+    labels: [2] const char * = {"Action", "State"}
+    rows: [1] TableRow = {{.cells = nil, .cell_count = 0}}
+    table: TableViewProps = (TableViewProps){.bounds = {0, 0, 200, 80}, .columns = labels, .column_count = 2, .rows = rows, .row_count = 1, .custom_cells = 1}
+    TableView(table)
+    TableCell action_cell: {
+        table = table
+        row = 0
+        column = 0
+        cell_width: float = action_cell.width
+        unused cell_width
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/table_cell_block_nodes.kry"
+table_cell_block_out="$work/out/src/table_cell_block_nodes.js"
+grep -q 'kryon.widget(\$rt, "TableCell"' "$table_cell_block_out"
+grep -q '"nodeName": "action_cell"' "$table_cell_block_out"
+grep -q '"path": "TableCellBlockNodes/action_cell"' "$table_cell_block_out"
+grep -q 'const \$bounds = kryon.recordValue("Rectangle", \[0, 0, 0, 0\])' "$table_cell_block_out"
+grep -q 'let cell_width = kryon.copyValue(action_cell.width)' "$table_cell_block_out"
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {

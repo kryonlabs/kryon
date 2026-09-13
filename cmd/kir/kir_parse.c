@@ -1773,6 +1773,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         const char *table = (block->scope_fields & 1) ? block->scope_args[0] : NULL;
         const char *row = (block->scope_fields & 2) ? block->scope_args[1] : NULL;
         const char *column = (block->scope_fields & 4) ? block->scope_args[2] : NULL;
+        KirStmt *statement;
 
         if(block->name[0] == '\0')
             die("%s:%d: TableCell requires a rectangle binding name", span.path, span.line);
@@ -1782,7 +1783,12 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                         "%s: Rectangle = BeginTableCell(%s, %s, %s)",
                         block->name, table, row, column);
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
-        KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
+        statement = KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "",
+                                       source_span);
+        if(statement == NULL)
+            die("out of memory parsing TableCell block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndTableCell()", "",
                            source_span);
         block->opened = 1;

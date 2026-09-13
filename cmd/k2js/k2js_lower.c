@@ -1140,6 +1140,16 @@ begin_canvas_call_args(const char *source, char *args, size_t args_size)
     return strcmp(name, "BeginCanvas") == 0;
 }
 
+static int
+begin_table_cell_call_args(const char *source, char *args, size_t args_size)
+{
+    char name[K2JS_NAME_MAX];
+
+    if(!split_direct_call(source, name, sizeof(name), args, args_size))
+        return 0;
+    return strcmp(name, "BeginTableCell") == 0;
+}
+
 static void
 emit_scroll_widget_arguments(FILE *f, const KirModule *m, const char *args)
 {
@@ -1209,6 +1219,30 @@ emit_canvas_initializer_with_meta(FILE *f, const KirModule *m,
     fputs("); return $canvas; })()", f);
 }
 
+static void
+emit_table_cell_initializer_with_meta(FILE *f, const KirModule *m,
+                                      const char *args, const KirStmt *meta)
+{
+    char parts[3][K2JS_TEXT_MAX];
+    int count = kir_split_top(args, parts[0], 3, sizeof(parts[0]));
+
+    if(count != 3) {
+        fputs("kryon.recordValue(\"Rectangle\", [0, 0, 0, 0])", f);
+        return;
+    }
+    for(int i = 0; i < count; i++)
+        kir_trim_in_place(parts[i]);
+    fputs("(() => { const $bounds = kryon.recordValue(\"Rectangle\", [0, 0, 0, 0]); kryon.widget($rt, \"TableCell\", {\"table\": ", f);
+    emit_initializer_value(f, m, parts[0]);
+    fputs(", \"row\": ", f);
+    emit_initializer_value(f, m, parts[1]);
+    fputs(", \"column\": ", f);
+    emit_initializer_value(f, m, parts[2]);
+    fputs(", \"bounds\": $bounds}, $state, ", f);
+    emit_web_metadata(f, m, meta);
+    fputs("); return $bounds; })()", f);
+}
+
 /* Evaluate initializer leaves in lexical scope, rather than sending source
  * text to a runtime parser that cannot see widget parameters or local values. */
 static void emit_widget_arguments(FILE *f, const KirModule *m,
@@ -1233,6 +1267,11 @@ emit_initializer_value_with_meta(FILE *f, const KirModule *m,
     if(meta != NULL && stmt_has_web_metadata(meta) &&
        begin_canvas_call_args(value, arguments, sizeof(arguments))) {
         emit_canvas_initializer_with_meta(f, m, arguments, meta);
+        return;
+    }
+    if(meta != NULL && stmt_has_web_metadata(meta) &&
+       begin_table_cell_call_args(value, arguments, sizeof(arguments))) {
+        emit_table_cell_initializer_with_meta(f, m, arguments, meta);
         return;
     }
     if(condition_is_widget_call(value, widget, sizeof(widget),
