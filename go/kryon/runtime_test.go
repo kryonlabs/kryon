@@ -2940,8 +2940,8 @@ tokens {
 Surface { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
 Slider[tone=Accent] { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
 SliderThumb { background: wrong; border: wrong; radius: 1; border-width: 1; material: flat; }
-Scroll { background: surface; border: rule; radius: radius; border-width: border; material: flat; }
-ScrollThumb { background: thumb; border: thumb; radius: radius; border-width: border; material: flat; }
+Scroll { background: surface; border: rule; radius: radius; border-width: border; icon-size: 10; padding-x: 16; gap: 20; offset-y: 42; material: flat; }
+ScrollThumb { background: thumb; border: thumb; radius: radius; border-width: border; icon-size: 16; padding-x: 2; material: flat; }
 `, "Test Scroll", "") || !SetActiveStylePack("test.scroll") {
 		t.Fatal("test scroll style did not activate")
 	}

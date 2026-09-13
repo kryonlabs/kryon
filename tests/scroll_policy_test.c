@@ -5,13 +5,17 @@
 int
 main(void)
 {
-    ScrollMetrics metrics = ScrollMetricsFor(2.0f);
+    StyleFrame track = {0};
+    StyleFrame thumb = {0};
+    ScrollMetrics metrics = ScrollMetricsFor(2.0f, track, thumb);
     ScrollPolicyView view;
 
-    assert(metrics.scrollbar_width == 16);
+    assert(metrics.scrollbar_width == 20);
     assert(metrics.reserved_width == 32);
     assert(metrics.safe_gap == 40);
     assert(metrics.default_wheel_step == 84);
+    assert(metrics.thumb_min_height == 32);
+    assert(metrics.thumb_inset == 4);
     assert(ScrollMax(300, 100) == 200);
     assert(ScrollMax(80, 100) == 0);
     assert(ScrollClamp(-3, 20) == 0);
@@ -25,7 +29,7 @@ main(void)
     assert(ScrollSafeContentWidth(10, 300, 260, 5, metrics) == 210);
     assert(ScrollSafeContentWidth(250, 100, 260, 5, metrics) == 0);
 
-    metrics = ScrollMetricsFor(1.0f);
+    metrics = ScrollMetricsFor(1.0f, track, thumb);
     view = ScrollMeasure((Rectangle){0, 20, 320, 100}, 260, 12, 280, 40,
                          300, metrics);
     assert(view.content_x == 12);
@@ -42,7 +46,18 @@ main(void)
     assert(view.content_y == 30);
     assert(view.content_w == 200);
     assert(view.max_scroll == 0);
-    assert(view.scrollbar_x == 202);
+    assert(view.scrollbar_x == 200);
+
+    track.value.fields = StyleIconSize | StylePaddingX | StyleGap |
+                         StyleContentOffset;
+    thumb.value.fields = StyleIconSize | StylePaddingX;
+    metrics = ScrollMetricsFor(1.0f, track, thumb);
+    assert(metrics.scrollbar_width == 0);
+    assert(metrics.reserved_width == 0);
+    assert(metrics.safe_gap == 0);
+    assert(metrics.default_wheel_step == 0);
+    assert(metrics.thumb_min_height == 0);
+    assert(metrics.thumb_inset == 0);
 
     return 0;
 }

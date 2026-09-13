@@ -2,17 +2,30 @@
 #include "ui_style_internal.h"
 #include "runtime/scroll.h"
 
+static ScrollMetrics
+ui_scroll_metrics(void)
+{
+    StyleFrame track = ui_control_style_frame_kind(
+        (ButtonProps){.size = ControlSizeSmall, .pill = 1},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindScroll());
+    StyleFrame thumb = ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneAccent, .emphasis = ButtonEmphasisFilled,
+                      .size = ControlSizeSmall, .pill = 1},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindScrollThumb());
+    return ScrollMetricsFor((float)GetScale(), track, thumb);
+}
+
 int
 GetScrollbarReservedWidth(int max_scroll)
 {
-    return ScrollReservedWidth(max_scroll, ScrollMetricsFor((float)GetScale()));
+    return ScrollReservedWidth(max_scroll, ui_scroll_metrics());
 }
 
 int
 GetScrollbarContentWidth(int content_width, int max_scroll)
 {
     return ScrollContentWidth(content_width, max_scroll,
-                              ScrollMetricsFor((float)GetScale()));
+                              ui_scroll_metrics());
 }
 
 int
@@ -21,7 +34,7 @@ GetScrollbarSafeContentWidth(int content_x, int content_width,
 {
     return ScrollSafeContentWidth(content_x, content_width, scrollbar_x,
                                   max_scroll,
-                                  ScrollMetricsFor((float)GetScale()));
+                                  ui_scroll_metrics());
 }
 
 ScrollView
@@ -31,7 +44,7 @@ MeasureScrollContainer(ScrollArea area)
     ScrollPolicyView policy = ScrollMeasure(area.bounds, area.content_height,
         area.content_x, area.content_width,
         area.scroll_offset != NULL ? *area.scroll_offset : 0,
-        area.scrollbar_x, ScrollMetricsFor((float)GetScale()));
+        area.scrollbar_x, ui_scroll_metrics());
 
     memset(&view, 0, sizeof(view));
     view.content_x = policy.content_x;

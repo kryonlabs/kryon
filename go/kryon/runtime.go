@@ -1346,21 +1346,37 @@ func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
 }
 func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	clip := r.scrollClip(bounds)
+	trackMetricFrame := styleMetricFrame(0, StyleSheet_StyleKindScroll(), StyleSheet_StyleAny())
+	thumbMetricFrame := styleMetricFrame(0, StyleSheet_StyleKindScrollThumb(), StyleSheet_StyleAny())
+	trackFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
+		ButtonProps{Size: ControlSizeSmall, Pill: true}, ButtonStateNormal,
+		false, 0, 0, 0, StyleSheet_StyleKindScroll())
+	metrics := Scroll_ScrollMetricsFor(1, trackMetricFrame, thumbMetricFrame)
 	if offset != nil {
 		maximum := max32(0, contentHeight-int32(bounds.Height))
 		*offset = clamp32(*offset, 0, maximum)
 		if r.pointerCanReach(clip) && r.mouseWheel != 0 {
-			*offset = clamp32(*offset-int32(r.mouseWheel*42), 0, maximum)
+			*offset = clamp32(*offset-int32(r.mouseWheel*float32(metrics.DefaultWheelStep)), 0, maximum)
 			r.mouseWheel = 0
 		}
-		if maximum > 0 && bounds.Width > 10 && bounds.Height > 0 {
-			track := Rectangle{X: bounds.X + bounds.Width - 10, Y: bounds.Y, Width: 10, Height: bounds.Height}
-			thumbH := min(bounds.Height, max(float32(16), bounds.Height*bounds.Height/float32(contentHeight)))
+		if maximum > 0 && bounds.Width > float32(metrics.ScrollbarWidth) && bounds.Height > 0 {
+			trackW := float32(metrics.ScrollbarWidth)
+			track := Rectangle{X: bounds.X + bounds.Width - trackW, Y: bounds.Y, Width: trackW, Height: bounds.Height}
+			thumbH := min(bounds.Height, max(float32(metrics.ThumbMinHeight), bounds.Height*bounds.Height/float32(contentHeight)))
 			travel := bounds.Height - thumbH
 			thumbY := bounds.Y
 			if travel > 0 {
 				thumbY += travel * float32(*offset) / float32(maximum)
 			}
+			thumbInset := float32(metrics.ThumbInset)
+			if thumbInset < 0 {
+				thumbInset = 0
+			}
+			if thumbInset*2 > track.Width {
+				thumbInset = track.Width / 2
+			}
+			thumbRect := Rectangle{X: track.X + thumbInset, Y: thumbY,
+				Width: track.Width - thumbInset*2, Height: thumbH}
 			if !r.contentDisabled() && r.mousePressed[MouseButtonLeft] && r.consumeTap(track) {
 				r.scrollDragOffset = offset
 				r.scrollDragGrab = thumbH / 2
@@ -1379,22 +1395,20 @@ func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int
 				}
 			}
 			thumbY = bounds.Y + travel*float32(*offset)/float32(maximum)
+			thumbRect.Y = thumbY
 			thumbState := ButtonStateNormal
 			if r.scrollDragOffset == offset {
 				thumbState = ButtonStatePressed
-			} else if r.pointerCanReach(Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}) {
+			} else if r.pointerCanReach(thumbRect) {
 				thumbState = ButtonStateHover
 			}
-			trackFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
-				ButtonProps{Size: ControlSizeSmall, Pill: true}, ButtonStateNormal,
-				false, 0, 0, 0, StyleSheet_StyleKindScroll())
 			thumbFrame := resolveButtonFrameForKind(r.theme(), true, r.activeTheme,
 				ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled,
 					Size: ControlSizeSmall, Pill: true},
 				thumbState, false, 0, 0, 0, StyleSheet_StyleKindScrollThumb())
 			r.record(styleFrameRectOp(track, Rectangle{}, trackFrame))
-			r.record(styleFrameRectOp(Rectangle{X: track.X + 2, Y: thumbY, Width: 6, Height: thumbH}, track, thumbFrame))
-			bounds.Width -= 10
+			r.record(styleFrameRectOp(thumbRect, track, thumbFrame))
+			bounds.Width -= trackW
 			clip = r.scrollClip(bounds)
 		}
 	}
@@ -4745,6 +4759,15 @@ func (r *runtime) Modal(props ModalProps) int32 {
 
 func defaultStyleFrame(styleKind int32) StyleFrame {
 	value := ResolveActiveStyle(minimalControlStyleData(), StyleSheet_StyleDefaultFacts(styleKind), int32(ButtonStateNormal))
+	return StyleFrame{Value: value, Fill: Surface_FillState(value.Fields, value.Background, value.BackgroundEnd)}
+}
+
+func styleMetricFrame(className int32, styleKind int32, role int32) StyleFrame {
+	facts := StyleSheet_StyleDefaultFacts(styleKind)
+	facts.ClassName = className
+	facts.Role = role
+	facts.State = int32(ButtonStateNormal)
+	value := ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateNormal))
 	return StyleFrame{Value: value, Fill: Surface_FillState(value.Fields, value.Background, value.BackgroundEnd)}
 }
 

@@ -1571,6 +1571,10 @@ Scroll {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 10;
+  padding-x: 16;
+  gap: 20;
+  offset-y: 42;
   opacity: 1;
   material: default;
 }
@@ -1582,6 +1586,8 @@ ScrollThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 16;
+  padding-x: 2;
   opacity: 1;
   material: default;
 }
@@ -3372,6 +3378,10 @@ Scroll {
   focus: accent;
   radius: radius;
   border-width: border;
+  icon-size: 10;
+  padding-x: 16;
+  gap: 20;
+  offset-y: 42;
   opacity: 1;
   material: default;
 }
@@ -3383,6 +3393,8 @@ ScrollThumb {
   focus: accent;
   radius: radius;
   border-width: border;
+  icon-size: 16;
+  padding-x: 2;
   opacity: 1;
   material: default;
 }
@@ -5209,6 +5221,10 @@ Scroll {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 10;
+  padding-x: 16;
+  gap: 20;
+  offset-y: 42;
   opacity: 1;
   material: default;
 }
@@ -5220,6 +5236,8 @@ ScrollThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 16;
+  padding-x: 2;
   opacity: 1;
   material: default;
 }
@@ -7118,6 +7136,10 @@ Scroll {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 10;
+  padding-x: 16;
+  gap: 20;
+  offset-y: 42;
   opacity: 1;
   material: glow;
 }
@@ -7129,6 +7151,8 @@ ScrollThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  icon-size: 16;
+  padding-x: 2;
   opacity: 1;
   material: glow;
 }
@@ -9001,6 +9025,10 @@ Scroll {
   focus: focus;
   radius: radius;
   border-width: border;
+  icon-size: 10;
+  padding-x: 16;
+  gap: 20;
+  offset-y: 42;
   opacity: 1;
   material: premium;
 }
@@ -9012,6 +9040,8 @@ ScrollThumb {
   focus: focus;
   radius: radius;
   border-width: border;
+  icon-size: 16;
+  padding-x: 2;
   opacity: 1;
   material: premium;
 }

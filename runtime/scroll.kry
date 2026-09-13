@@ -1,11 +1,15 @@
 #module "scroll"
+#import "control_props"
 #import "drawing_props"
+#import "style"
 
 ScrollMetrics :: struct {
     scrollbar_width: i32
     reserved_width: i32
     safe_gap: i32
     default_wheel_step: i32
+    thumb_min_height: i32
+    thumb_inset: i32
 }
 
 ScrollPolicyView :: struct {
@@ -18,13 +22,30 @@ ScrollPolicyView :: struct {
     scrollbar_x: i32
 }
 
-ScrollMetricsFor :: (scale: float) -> ScrollMetrics #export {
+ScrollMetric :: (fields: u32, field: u32, value: float, fallback: float,
+    scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) != (u32)0 && value >= 0.0 {
+        return (i32)(value * scale)
+    }
+    return (i32)(fallback * scale)
+}
+
+ScrollMetricsFor :: (scale: float, track: StyleFrame, thumb: StyleFrame) -> ScrollMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: ScrollMetrics
-    metrics.scrollbar_width = (i32)(8.0 * scale)
-    metrics.reserved_width = (i32)(16.0 * scale)
-    metrics.safe_gap = (i32)(20.0 * scale)
-    metrics.default_wheel_step = (i32)(42.0 * scale)
+    metrics.scrollbar_width = ScrollMetric(track.value.fields,
+        (u32)StyleIconSize, track.value.icon_size, 10.0, scale)
+    metrics.reserved_width = ScrollMetric(track.value.fields,
+        (u32)StylePaddingX, track.value.padding_x, 16.0, scale)
+    metrics.safe_gap = ScrollMetric(track.value.fields,
+        (u32)StyleGap, track.value.gap, 20.0, scale)
+    metrics.default_wheel_step = ScrollMetric(track.value.fields,
+        (u32)StyleContentOffset, track.value.offset_y, 42.0, scale)
+    metrics.thumb_min_height = ScrollMetric(thumb.value.fields,
+        (u32)StyleIconSize, thumb.value.icon_size, 16.0, scale)
+    metrics.thumb_inset = ScrollMetric(thumb.value.fields,
+        (u32)StylePaddingX, thumb.value.padding_x, 2.0, scale)
     return metrics
 }
 
