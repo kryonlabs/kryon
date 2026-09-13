@@ -591,11 +591,38 @@ Recent retained-tree public C cleanup:
 
 ## Cleanup Queue
 
-1. Finish porting high-use native controls into `.kry`: `TextField` and
-   `TextArea` editing/composition policy.
-2. Keep lowered host scopes out of public `.kry` documentation:
+1. Finish text editing policy migration:
+   `TextField` and `TextArea` already own metrics, paint geometry,
+   buffer-limit, navigation, edit-intent, and selection range policy in
+   `.kry`; remaining native work is buffer mutation, IME/composition,
+   selection ownership/painting, and the final decision about how much of that
+   can become reusable `.kry` policy.
+2. Finish rich text migration:
+   `Paragraph` has `.kry` metrics/default policy and generated
+   `ParagraphSpec` data, but parsing, reflow, icon shaping, and rendering are
+   still host work.
+3. Audit host-owned input/state lifecycles:
+   retained menu open/focus/input state, drag/drop payload storage, reorder and
+   swipe pointer ownership, paned-view drag ownership, tree/table selection
+   mutation, table resizing/clipboard, modal input capture, and toast message
+   storage/timing are still native support around `.kry` policy.
+4. Finish lowered block backend cleanup:
+   `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
+   blocks are canonical `.kry` syntax, but their lowered host scopes still
+   require backend support until generated backends own the whole block path.
+5. Separate pure host services from widget policy:
+   image cache/loading/drawing, icon sheet/type lookup, URL dispatch, text
+   measurement, focus registration, paint layers, clipping, and platform
+   services should stay native only when they are true host services and not
+   widget policy.
+6. Decide the Game2D boundary:
+   Game2D props/enums are generated from `runtime/node2d_props.kry`, but
+   `Scene`/`Node2D` declarations, scene lifecycle, physics/audio handles,
+   asset playback, and rendering remain native scene support. Either keep this
+   as an explicit non-widget domain or add `.kry` scene declaration support.
+7. Keep lowered host scopes out of public `.kry` documentation:
    immediate-mode `Begin*`/`End*` wrappers are native support, not widget names.
    Tutorial image helpers remain internal and route through canonical `Image`
    policy.
-3. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
+8. Keep `docs/IMGUI_WIDGET_COVERAGE.md` as the coverage audit. Use this file
    as the naming and migration review surface.
