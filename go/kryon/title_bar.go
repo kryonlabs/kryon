@@ -329,15 +329,6 @@ func TitleBar_TitleBarPaintFor(view_width int32, height int32) TitleBarPaint {
 	return value_12
 }
 
-func TitleBar_TitleBarTitleX(view_width int32, title_width int32) int32 {
-	var value_0 int32 = view_width
-	var value_1 int32 = title_width
-	var value_2 int32 = int32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, true, 2))
-	var value_3 int32 = 2
-	var value_4 int32 = int32(number_runtime_bits(uint64(value_2), uint64(value_3), 32, true, 4))
-	return value_4
-}
-
 func TitleBar_TitleBarTitlePaintFor(layout TitleBarLayout, title_width int32, title_line_height int32) TitleBarTitlePaint {
 	var paint TitleBarTitlePaint = TitleBarTitlePaint{}
 	var value_0 float32 = layout.TitleBounds.X

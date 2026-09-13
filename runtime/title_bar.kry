@@ -125,10 +125,6 @@ TitleBarPaintFor :: (view_width: i32, height: i32) -> TitleBarPaint #export {
     return paint
 }
 
-TitleBarTitleX :: (view_width: i32, title_width: i32) -> i32 #export {
-    return (view_width - title_width) / 2
-}
-
 TitleBarTitlePaintFor :: (layout: TitleBarLayout, title_width: i32,
     title_line_height: i32) -> TitleBarTitlePaint #export {
     paint: TitleBarTitlePaint

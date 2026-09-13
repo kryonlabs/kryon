@@ -74,7 +74,6 @@ main(void)
     assert(metrics.dropdown_default_height == 0);
     assert(metrics.title_min_width == 0);
     assert(metrics.title_horizontal_padding == 0);
-    assert(TitleBarTitleX(360, 144) == 108);
     paint = TitleBarPaintFor(360, 88);
     check_rect(paint.bounds, 0, 0, 360, 88);
     check_rect(paint.divider, 0, 87, 360, 1);

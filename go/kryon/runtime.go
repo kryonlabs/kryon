@@ -4968,9 +4968,9 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	titleStyle := unpackStyle(titleFrame.Value)
 	titleFont, titleFontID := styleTextFace(titleStyle, Text20)
 	titleW := runtimeTextWidthWithFont(props.Title, titleFont, titleFontID)
-	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
+	titlePaint := TitleBar_TitleBarTitlePaintFor(layout, int32(titleW), titleFont)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{
-		X: float32(titleX), Y: float32(height-titleFont) / 2,
+		X: float32(titlePaint.X), Y: float32(titlePaint.Y),
 		Width: float32(titleW), Height: float32(titleFont + 4),
 	}, Text: props.Title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont, FontID: titleFontID})
 	return clicked
