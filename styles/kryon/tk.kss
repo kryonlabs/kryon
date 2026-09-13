@@ -1631,7 +1631,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 28;
   padding-y: 4;
-  gap: 0;
+  gap: 10;
   icon-size: 6;
   offset-x: 28;
   offset-y: 24;

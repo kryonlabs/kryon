@@ -561,12 +561,16 @@ func Slider_SliderVerticalEditorWidthForStyle(track StyleFrame, thumb StyleFrame
 		content = value_31
 	}
 	var value_32 int32 = content
-	var value_33 float32 = 14.0
-	var value_34 float32 = scale
-	var value_35 float32 = value_33 * value_34
-	var value_36 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_35), 32, true)), uint64(0), 32, true, 0))
-	var value_37 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_36), 32, true, 1))
-	return value_37
+	var value_33 uint32 = track.Value.Fields
+	var value_34 int32 = int32(StyleGap)
+	var value_35 uint32 = uint32(number_runtime_bits(uint64(value_34), uint64(0), 32, false, 0))
+	var value_36 float32 = track.Value.Gap
+	var value_37 float32 = 14.0
+	var value_38 float32 = scale
+	var value_39 bool = true
+	var value_40 int32 = Slider_SliderMetric(value_33, value_35, value_36, value_37, value_38, value_39)
+	var value_41 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_40), 32, true, 1))
+	return value_41
 }
 
 func Slider_SliderGlowExpansionForStyle(thumb StyleFrame, scale float32) float32 {

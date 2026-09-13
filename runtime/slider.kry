@@ -209,7 +209,8 @@ SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
     track_size: i32 = SliderTrackSizeForStyle(true, track, scale)
     content: i32 = thumb_size
     if track_size > content { content = track_size }
-    return content + (i32)(14.0 * scale)
+    return content + SliderMetric(track.value.fields, (u32)StyleGap,
+        track.value.gap, 14.0, scale, true)
 }
 
 SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {

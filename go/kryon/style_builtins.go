@@ -1661,7 +1661,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 32;
   padding-y: 6;
-  gap: 0;
+  gap: 14;
   icon-size: 8;
   offset-x: 36;
   offset-y: 28;
@@ -3621,7 +3621,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 28;
   padding-y: 4;
-  gap: 0;
+  gap: 10;
   icon-size: 6;
   offset-x: 28;
   offset-y: 24;
@@ -5618,7 +5618,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 32;
   padding-y: 6;
-  gap: 0;
+  gap: 14;
   icon-size: 8;
   offset-x: 36;
   offset-y: 28;
@@ -7684,7 +7684,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 32;
   padding-y: 6;
-  gap: 0;
+  gap: 14;
   icon-size: 8;
   offset-x: 36;
   offset-y: 28;
@@ -9725,7 +9725,7 @@ Slider {
 Slider[role=Track] {
   padding-x: 32;
   padding-y: 6;
-  gap: 0;
+  gap: 14;
   icon-size: 8;
   offset-x: 36;
   offset-y: 28;

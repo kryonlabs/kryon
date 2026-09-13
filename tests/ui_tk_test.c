@@ -1005,9 +1005,10 @@ test_slider_value_policy(void)
               (int)vertical_layout.paint_bounds.x, 39);
 
     slider_track.value.fields = StylePaddingX | StylePaddingY |
-                                StyleIconSize | StyleContentOffset;
+                                StyleIconSize | StyleContentOffset | StyleGap;
     slider_track.value.padding_x = 64.0f;
     slider_track.value.padding_y = 9.0f;
+    slider_track.value.gap = 5.0f;
     slider_track.value.icon_size = 11.0f;
     slider_track.value.offset_x = 36.0f;
     slider_track.value.offset_y = 18.0f;
@@ -1030,6 +1031,16 @@ test_slider_value_policy(void)
               (int)vertical_layout.editor_bounds.height, 64);
     check_int("slider explicit zero glow",
               (int)SliderGlowExpansionForStyle(slider_thumb, 1.0f), 0);
+
+    slider_track.value.fields = StylePaddingY | StyleIconSize | StyleGap;
+    slider_track.value.padding_y = 9.0f;
+    slider_track.value.icon_size = 11.0f;
+    slider_track.value.gap = 5.0f;
+    vertical_layout = SliderVerticalEditorLayoutFor(50, 20, 20, 44, 1.0f,
+                                                   slider_track,
+                                                   slider_thumb);
+    check_int("slider styled vertical gap width",
+              (int)vertical_layout.editor_bounds.width, 25);
 
     cell_paint = SliderCellTextPaintFor((Rectangle){10, 20, 80, 30},
                                         6.0f, 14.0f);
