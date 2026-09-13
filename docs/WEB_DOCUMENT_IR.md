@@ -374,6 +374,8 @@ The initial tag mapping is intentionally conservative:
 | `Image` with `alt_text` | `img` |
 | `ImageMap` | `map` |
 | `Area` | `area` |
+| `EmbeddedObject` | `object` |
+| `Param` | `param` |
 | `Template` | `template` |
 | `Slot` | `slot` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |

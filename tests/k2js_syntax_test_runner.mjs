@@ -16,8 +16,8 @@ for (const name of [
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
-  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
+  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "EmbeddedObject", "OrderedList",
+  "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
@@ -2934,6 +2934,15 @@ function fakeDocument() {
       { nodeName: "nativeFrame", path: "Page/frame" });
     runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
       { nodeName: "nativeEmbed", path: "Page/embed" });
+    runtime.widget(nativeRt, "EmbeddedObject", {
+      object_data: "document.pdf",
+      type: "application/pdf",
+      width: 800,
+      height: 600
+    }, null,
+      { nodeName: "nativeObject", path: "Page/object" });
+    runtime.widget(nativeRt, "Param", { name: "page", value: "2" }, null,
+      { nodeName: "nativeParam", path: "Page/object/page", parentPath: "Page/object" });
     runtime.widget(nativeRt, "Source", { srcset: "hero.webp 1x, hero@2x.webp 2x", type: "image/webp" }, null,
       { nodeName: "nativePictureSource", path: "Page/sourceSet" });
     runtime.widget(nativeRt, "Template", { text: "Deferred content" }, null,
@@ -3288,6 +3297,16 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "[sandbox=\"allow-scripts\"]").path, "Page/frame");
     assert.equal(runtime.webNodeQuery(nativeRt, "[credentialless]").path, "Page/frame");
     assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
+    assert.equal(runtime.webNodeQuery(nativeRt, "EmbeddedObject").tag, "object");
+    assert.equal(runtime.webNodeQuery(nativeRt, "EmbeddedObject").extraAttrs.data, "document.pdf");
+    assert.equal(runtime.webNodeQuery(nativeRt, "EmbeddedObject").extraAttrs.type, "application/pdf");
+    assert.equal(runtime.webNodeQuery(nativeRt, "EmbeddedObject").extraAttrs.width, "800");
+    assert.equal(runtime.webNodeQuery(nativeRt, "EmbeddedObject").extraAttrs.height, "600");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Param").tag, "param");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Param").extraAttrs.name, "page");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Param").extraAttrs.value, "2");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[data=\"document.pdf\"]").path, "Page/object");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[value=\"2\"]").path, "Page/object/page");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").tag, "source");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").extraAttrs.srcset,
       "hero.webp 1x, hero@2x.webp 2x");
@@ -3577,6 +3596,8 @@ function fakeDocument() {
     const nativeAudio = runtime.findWebElement(nativeTarget, "nativeAudio");
     const nativeFrame = runtime.findWebElement(nativeTarget, "nativeFrame");
     const nativeEmbed = runtime.findWebElement(nativeTarget, "nativeEmbed");
+    const nativeObject = runtime.findWebElement(nativeTarget, "nativeObject");
+    const nativeParam = runtime.findWebElement(nativeTarget, "nativeParam");
     const nativeTable = runtime.findWebElement(nativeTarget, "nativeTable");
     const nativeTableCaption = runtime.findWebElement(nativeTarget, "nativeTableCaption");
     const nativeColumns = runtime.findWebElement(nativeTarget, "nativeColumns");
@@ -3759,6 +3780,14 @@ function fakeDocument() {
     assert.equal(nativeEmbed.tagName, "EMBED");
     assert.equal(nativeEmbed.attributes.src, "chart.svg");
     assert.equal(nativeEmbed.attributes.type, "image/svg+xml");
+    assert.equal(nativeObject.tagName, "OBJECT");
+    assert.equal(nativeObject.attributes.data, "document.pdf");
+    assert.equal(nativeObject.attributes.type, "application/pdf");
+    assert.equal(nativeObject.attributes.width, "800");
+    assert.equal(nativeObject.attributes.height, "600");
+    assert.equal(nativeParam.tagName, "PARAM");
+    assert.equal(nativeParam.attributes.name, "page");
+    assert.equal(nativeParam.attributes.value, "2");
     assert.equal(nativeTable.tagName, "TABLE");
     assert.equal(nativeTableCaption.tagName, "CAPTION");
     assert.equal(nativeTableCaption.textContent, "Totals");

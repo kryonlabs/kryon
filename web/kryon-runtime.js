@@ -1330,6 +1330,10 @@ function widgetTag(item) {
     return "iframe";
   case "Embed":
     return "embed";
+  case "EmbeddedObject":
+    return "object";
+  case "Param":
+    return "param";
   case "Checkbox":
   case "Toggle":
   case "Radio":
@@ -1882,6 +1886,22 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
     setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
       propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
+    break;
+  case "EmbeddedObject":
+    setWidgetNativeAttr(out, "data", metaString(meta, "objectData") ||
+      propStringAny(args, ["data", "object_data", "dom_object_data", "html_object_data"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
+      propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
+    setWidgetNativeAttr(out, "width", metaString(meta, "width") ||
+      propStringAny(args, ["width", "dom_width", "html_width"]));
+    setWidgetNativeAttr(out, "height", metaString(meta, "height") ||
+      propStringAny(args, ["height", "dom_height", "html_height"]));
+    break;
+  case "Param":
+    setWidgetNativeAttr(out, "name", metaString(meta, "paramName") ||
+      propStringAny(args, ["name", "param_name", "dom_name", "html_name"]));
+    setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
+      propStringAny(args, ["value", "param_value", "dom_value", "html_value"]));
     break;
   default:
     break;
@@ -11649,8 +11669,8 @@ const runtimeCallNames = [
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
   "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
-  "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
+  "Legend", "Mark", "Meter", "Nav", "Navigation", "EmbeddedObject", "OrderedList",
+  "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
@@ -11761,11 +11781,13 @@ export function Meter(...args) { return struct("Meter", args); }
 export function Nav(...args) { return struct("Nav", args); }
 export function NavigationBar(...args) { return struct("NavigationBar", args); }
 export function Navigation(...args) { return struct("Navigation", args); }
+export function EmbeddedObject(...args) { return struct("EmbeddedObject", args); }
 export function OrderedList(...args) { return struct("OrderedList", args); }
 export function OptionGroup(...args) { return struct("OptionGroup", args); }
 export function OptGroup(...args) { return struct("OptGroup", args); }
 export function Option(...args) { return struct("Option", args); }
 export function Output(...args) { return struct("Output", args); }
+export function Param(...args) { return struct("Param", args); }
 export function Page(...args) { return struct("Page", args); }
 export function PanedView(...args) { return struct("PanedView", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }

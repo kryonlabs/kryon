@@ -113,7 +113,7 @@ the browser receives normal elements, attributes, CSS, and events.
   participate in label, form-control, datalist, collection, dialog,
   grouped-option, and status accessibility facts.
 - Native media/embed aliases such as `Video`, `Audio`, `Source`,
-  `Track`, `IFrame`, and `Embed` render to matching browser elements with
+  `Track`, `IFrame`, `Embed`, `EmbeddedObject`, and `Param` render to matching browser elements with
   standard source, source-set, preload, controls, poster, track, loading,
   allow, sandbox, referrer policy, credentialless, frame-name, sizing, and MIME
   attributes available to snapshots, selectors, and mounted DOM.
