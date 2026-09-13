@@ -1,6 +1,7 @@
 #include <assert.h>
 
 #include "runtime/reorder.h"
+#include "runtime/style.h"
 
 static void
 check_rect(Rectangle actual, float x, float y, float w, float h)
@@ -14,22 +15,59 @@ check_rect(Rectangle actual, float x, float y, float w, float h)
 int
 main(void)
 {
+    StyleFrame handle_frame = {0};
+    StyleFrame placeholder_frame = {0};
     ReorderMetrics metrics;
     Rectangle handle;
     ReorderHandlePaint handle_paint;
     ReorderPlaceholderPaint placeholder;
 
-    metrics = ReorderMetricsFor(2.0f, 0, 0, 0, 0);
+    handle_frame.value.fields = StylePaddingX | StyleGap | StyleIconSize |
+                                StyleContentOffset;
+    handle_frame.value.padding_x = 8.0f;
+    handle_frame.value.gap = 4.0f;
+    handle_frame.value.icon_size = 3.0f;
+    handle_frame.value.offset_x = 36.0f;
+    handle_frame.value.offset_y = 5.0f;
+    placeholder_frame.value.fields = StylePaddingX | StyleIconSize |
+                                     StyleContentOffset | StyleBorderWidth |
+                                     StyleRadius | StyleOpacity;
+    placeholder_frame.value.padding_x = 3.0f;
+    placeholder_frame.value.icon_size = 32.0f;
+    placeholder_frame.value.offset_x = 34.0f;
+    placeholder_frame.value.offset_y = 12.0f;
+    placeholder_frame.value.border_width = 2.0f;
+    placeholder_frame.value.radius = 0.12f;
+    placeholder_frame.value.opacity = 0.10f;
+
+    metrics = ReorderMetricsFor(2.0f, 0, 0, 0, 0, handle_frame,
+                                placeholder_frame);
     assert(metrics.handle_width == 72);
     assert(metrics.drag_threshold == 10);
     assert(metrics.auto_scroll_margin == 68);
     assert(metrics.auto_scroll_step == 24);
 
-    metrics = ReorderMetricsFor(2.0f, 44, 7, 11, 13);
+    metrics = ReorderMetricsFor(2.0f, 44, 7, 11, 13, handle_frame,
+                                placeholder_frame);
     assert(metrics.handle_width == 44);
     assert(metrics.drag_threshold == 7);
     assert(metrics.auto_scroll_margin == 11);
     assert(metrics.auto_scroll_step == 13);
+
+    handle_frame.value.offset_x = 0.0f;
+    handle_frame.value.offset_y = 0.0f;
+    placeholder_frame.value.offset_x = 0.0f;
+    placeholder_frame.value.offset_y = 0.0f;
+    metrics = ReorderMetricsFor(1.0f, 0, 0, 0, 0, handle_frame,
+                                placeholder_frame);
+    assert(metrics.handle_width == 0);
+    assert(metrics.drag_threshold == 0);
+    assert(metrics.auto_scroll_margin == 0);
+    assert(metrics.auto_scroll_step == 0);
+    handle_frame.value.offset_x = 36.0f;
+    handle_frame.value.offset_y = 5.0f;
+    placeholder_frame.value.offset_x = 34.0f;
+    placeholder_frame.value.offset_y = 12.0f;
 
     handle = ReorderHandleBounds((Rectangle){10, 20, 200, 80}, 36, 40);
     assert(handle.x == 10.0f);
@@ -40,7 +78,8 @@ main(void)
     handle = ReorderHandleBounds((Rectangle){10, 20, 200, 30}, 36, 40);
     assert(handle.height == 30.0f);
 
-    handle_paint = ReorderHandlePaintFor((Rectangle){10, 20, 36, 40}, 1.0f);
+    handle_paint = ReorderHandlePaintFor((Rectangle){10, 20, 36, 40}, 1.0f,
+                                         handle_frame);
     assert(handle_paint.dot_count == 6);
     check_rect(handle_paint.dot0, 21.0f, 31.0f, 3.0f, 3.0f);
     check_rect(handle_paint.dot1, 32.0f, 31.0f, 3.0f, 3.0f);
@@ -49,7 +88,8 @@ main(void)
     check_rect(handle_paint.dot4, 21.0f, 45.0f, 3.0f, 3.0f);
     check_rect(handle_paint.dot5, 32.0f, 45.0f, 3.0f, 3.0f);
 
-    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 40}, 1.0f);
+    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 40},
+                                             1.0f, placeholder_frame);
     assert(placeholder.use_slot == 1);
     check_rect(placeholder.slot_bounds, 13.0f, 23.0f, 94.0f, 34.0f);
     assert(placeholder.stroke_width == 2.0f);
@@ -57,7 +97,8 @@ main(void)
     assert(placeholder.segments == 10);
     assert(placeholder.fill_alpha == 0.10f);
 
-    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 24}, 1.0f);
+    placeholder = ReorderPlaceholderPaintFor((Rectangle){10, 20, 100, 24},
+                                             1.0f, placeholder_frame);
     assert(placeholder.use_slot == 0);
     check_rect(placeholder.line_bounds, 10.0f, 31.0f, 100.0f, 2.0f);
 

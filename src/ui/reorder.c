@@ -38,6 +38,27 @@ ui_reorder_target_index(const ReorderList *list, int active_index,
     return ReorderTargetIndexFor(target, list->item_count);
 }
 
+static StyleFrame
+ui_reorder_frame(int role, ButtonState state, int active)
+{
+    return ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = active ? ButtonToneAccent : ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .selected = active},
+        state, 0, 0.0f, 0.0f, 0.0f, StyleKindReorder(), role);
+}
+
+static ReorderMetrics
+ui_reorder_metrics_for_list(ReorderList list)
+{
+    return ReorderMetricsFor(GetScale(), list.handle_width,
+                             list.drag_threshold,
+                             list.auto_scroll_margin,
+                             list.auto_scroll_step,
+                             ui_reorder_frame(12, ButtonStateNormal, 0),
+                             ui_reorder_frame(25, ButtonStateFocus, 1));
+}
+
 static void
 ui_reorder_cancel(void)
 {
@@ -53,10 +74,7 @@ UpdateReorderList(ReorderList list)
     Vector2 mouse = ui_mouse_world();
     int pointer_y = (int)mouse.y;
     int captured = ui_input_captures_click_internal(mouse, 0);
-    ReorderMetrics metrics = ReorderMetricsFor(GetScale(), list.handle_width,
-                                               list.drag_threshold,
-                                               list.auto_scroll_margin,
-                                               list.auto_scroll_step);
+    ReorderMetrics metrics = ui_reorder_metrics_for_list(list);
 
     result.from_index = -1;
     result.to_index = -1;
@@ -189,12 +207,9 @@ void
 RenderReorderHandle(int x, int y, int w, int h, int active)
 {
     ReorderHandlePaint paint;
-    Style style = ui_resolve_button_style_kind(
-        (ButtonProps){.tone = active ? ButtonToneAccent : ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft,
-                      .selected = active},
-        active ? ButtonStateSelected : ButtonStateNormal,
-        StyleKindSelectable());
+    StyleFrame frame = ui_reorder_frame(12,
+        active ? ButtonStateSelected : ButtonStateNormal, active);
+    Style style = ui_unpack_style(frame.value);
     Color color = style.foreground;
 
     if(w <= 0 || h <= 0)
@@ -202,7 +217,7 @@ RenderReorderHandle(int x, int y, int w, int h, int active)
     MarkClickable();
     paint = ReorderHandlePaintFor((Rectangle){(float)x, (float)y,
                                               (float)w, (float)h},
-                                  (float)GetScale());
+                                  (float)GetScale(), frame);
     if(paint.dot_count <= 0)
         return;
     DrawRectangleRec(paint.dot0, color);
@@ -217,15 +232,13 @@ void
 RenderReorderPlaceholder(Rectangle bounds)
 {
     ReorderPlaceholderPaint paint;
-    Style style = ui_resolve_button_style_kind(
-        (ButtonProps){.tone = ButtonToneAccent,
-                      .emphasis = ButtonEmphasisOutline},
-        ButtonStateFocus, StyleKindSelectable());
+    StyleFrame frame = ui_reorder_frame(25, ButtonStateFocus, 1);
+    Style style = ui_unpack_style(frame.value);
     Color color = style.border.a != 0 ? style.border : style.foreground;
 
     if(bounds.width <= 0 || bounds.height <= 0)
         return;
-    paint = ReorderPlaceholderPaintFor(bounds, (float)GetScale());
+    paint = ReorderPlaceholderPaintFor(bounds, (float)GetScale(), frame);
     if(paint.use_slot) {
         if(paint.slot_bounds.width <= 0 || paint.slot_bounds.height <= 0)
             return;

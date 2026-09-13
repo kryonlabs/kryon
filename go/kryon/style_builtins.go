@@ -671,6 +671,46 @@ DragDropTarget:hover {
   border-width: 2;
 }
 
+Reorder {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  border-width: border.none;
+  padding-x: 8;
+  gap: 4;
+  icon-size: 3;
+  offset-x: 36;
+  offset-y: 5;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle]:selected {
+  foreground: accent;
+}
+
+Reorder[role=Placeholder] {
+  background: accent;
+  foreground: accent;
+  border: accent;
+  radius: radius.md;
+  border-width: 2;
+  padding-x: 3;
+  icon-size: 32;
+  offset-x: 34;
+  offset-y: 12;
+  opacity: 0.10;
+  material: default;
+}
+
 Selectable {
   background: transparent;
   foreground: text;
@@ -2566,6 +2606,46 @@ DragDropTarget:hover {
   border-width: 2;
 }
 
+Reorder {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  border-width: border.none;
+  padding-x: 8;
+  gap: 4;
+  icon-size: 3;
+  offset-x: 36;
+  offset-y: 5;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle]:selected {
+  foreground: accent;
+}
+
+Reorder[role=Placeholder] {
+  background: accent;
+  foreground: accent;
+  border: accent-border;
+  radius: radius;
+  border-width: 2;
+  padding-x: 3;
+  icon-size: 32;
+  offset-x: 34;
+  offset-y: 12;
+  opacity: 0.10;
+  material: default;
+}
+
 Selectable {
   background: transparent;
   foreground: text;
@@ -4417,6 +4497,46 @@ DragDropTarget {
 DragDropTarget:hover {
   border: accent;
   border-width: 2;
+}
+
+Reorder {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  border-width: border.none;
+  padding-x: 8;
+  gap: 4;
+  icon-size: 3;
+  offset-x: 36;
+  offset-y: 5;
+  opacity: 1;
+  material: default;
+}
+
+Reorder[role=Handle]:selected {
+  foreground: accent;
+}
+
+Reorder[role=Placeholder] {
+  background: accent;
+  foreground: accent;
+  border: accent;
+  radius: radius.md;
+  border-width: 2;
+  padding-x: 3;
+  icon-size: 32;
+  offset-x: 34;
+  offset-y: 12;
+  opacity: 0.10;
+  material: default;
 }
 
 Selectable {
@@ -6345,6 +6465,46 @@ DragDropTarget {
 DragDropTarget:hover {
   border: accent-hover;
   border-width: 2;
+}
+
+Reorder {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: glow;
+}
+
+Reorder[role=Handle] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  border-width: border.none;
+  padding-x: 8;
+  gap: 4;
+  icon-size: 3;
+  offset-x: 36;
+  offset-y: 5;
+  opacity: 1;
+  material: glow;
+}
+
+Reorder[role=Handle]:selected {
+  foreground: accent;
+}
+
+Reorder[role=Placeholder] {
+  background: accent;
+  foreground: accent;
+  border: accent-hover;
+  radius: radius.md;
+  border-width: 2;
+  padding-x: 3;
+  icon-size: 32;
+  offset-x: 34;
+  offset-y: 12;
+  opacity: 0.10;
+  material: glow;
 }
 
 Selectable {
@@ -8314,6 +8474,46 @@ DragDropTarget {
 DragDropTarget:hover {
   border: accent-border;
   border-width: 2;
+}
+
+Reorder {
+  background: transparent;
+  foreground: text;
+  border: transparent;
+  opacity: 1;
+  material: premium;
+}
+
+Reorder[role=Handle] {
+  background: transparent;
+  foreground: muted;
+  border: transparent;
+  border-width: 0;
+  padding-x: 8;
+  gap: 4;
+  icon-size: 3;
+  offset-x: 36;
+  offset-y: 5;
+  opacity: 1;
+  material: premium;
+}
+
+Reorder[role=Handle]:selected {
+  foreground: accent;
+}
+
+Reorder[role=Placeholder] {
+  background: accent;
+  foreground: accent;
+  border: accent-border;
+  radius: radius;
+  border-width: 2;
+  padding-x: 3;
+  icon-size: 32;
+  offset-x: 34;
+  offset-y: 12;
+  opacity: 0.10;
+  material: premium;
 }
 
 Selectable {

@@ -1,28 +1,51 @@
 #module "reorder"
+#import "control_props"
 #import "reorder_props"
+#import "style"
 
 ReorderMetricsFor :: (scale: float, handle_width: i32, drag_threshold: i32,
-    auto_scroll_margin: i32, auto_scroll_step: i32) -> ReorderMetrics #export {
+    auto_scroll_margin: i32, auto_scroll_step: i32, handle: StyleFrame,
+    placeholder: StyleFrame) -> ReorderMetrics #export {
     metrics: ReorderMetrics
 
     metrics.handle_width = handle_width
     if metrics.handle_width <= 0 {
-        metrics.handle_width = (i32)(36.0 * scale)
+        if (handle.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+           handle.value.offset_x >= 0.0 {
+            metrics.handle_width = (i32)(handle.value.offset_x * scale)
+        } else {
+            metrics.handle_width = (i32)(36.0 * scale)
+        }
     }
 
     metrics.drag_threshold = drag_threshold
     if metrics.drag_threshold <= 0 {
-        metrics.drag_threshold = (i32)(5.0 * scale)
+        if (handle.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+           handle.value.offset_y >= 0.0 {
+            metrics.drag_threshold = (i32)(handle.value.offset_y * scale)
+        } else {
+            metrics.drag_threshold = (i32)(5.0 * scale)
+        }
     }
 
     metrics.auto_scroll_margin = auto_scroll_margin
     if metrics.auto_scroll_margin <= 0 {
-        metrics.auto_scroll_margin = (i32)(34.0 * scale)
+        if (placeholder.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+           placeholder.value.offset_x >= 0.0 {
+            metrics.auto_scroll_margin = (i32)(placeholder.value.offset_x * scale)
+        } else {
+            metrics.auto_scroll_margin = (i32)(34.0 * scale)
+        }
     }
 
     metrics.auto_scroll_step = auto_scroll_step
     if metrics.auto_scroll_step <= 0 {
-        metrics.auto_scroll_step = (i32)(12.0 * scale)
+        if (placeholder.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+           placeholder.value.offset_y >= 0.0 {
+            metrics.auto_scroll_step = (i32)(placeholder.value.offset_y * scale)
+        } else {
+            metrics.auto_scroll_step = (i32)(12.0 * scale)
+        }
     }
 
     return metrics
@@ -41,7 +64,8 @@ ReorderHandleBounds :: (item_bounds: Rectangle, handle_width: i32,
     return handle
 }
 
-ReorderHandlePaintFor :: (bounds: Rectangle, scale: float) -> ReorderHandlePaint #export {
+ReorderHandlePaintFor :: (bounds: Rectangle, scale: float,
+    handle: StyleFrame) -> ReorderHandlePaint #export {
     paint: ReorderHandlePaint
     w: i32 = (i32)bounds.width
     h: i32 = (i32)bounds.height
@@ -50,6 +74,18 @@ ReorderHandlePaintFor :: (bounds: Rectangle, scale: float) -> ReorderHandlePaint
     dot: i32 = (i32)(3.0 * scale)
     gap: i32 = (i32)(4.0 * scale)
     col_gap: i32 = (i32)(8.0 * scale)
+    if (handle.value.fields & (u32)StyleIconSize) != (u32)0 &&
+       handle.value.icon_size >= 0.0 {
+        dot = (i32)(handle.value.icon_size * scale)
+    }
+    if (handle.value.fields & (u32)StyleGap) != (u32)0 &&
+       handle.value.gap >= 0.0 {
+        gap = (i32)(handle.value.gap * scale)
+    }
+    if (handle.value.fields & (u32)StylePaddingX) != (u32)0 &&
+       handle.value.padding_x >= 0.0 {
+        col_gap = (i32)(handle.value.padding_x * scale)
+    }
     if dot < 1 { dot = 1 }
     if gap < 0 { gap = 0 }
     if col_gap < 0 { col_gap = 0 }
@@ -78,7 +114,8 @@ ReorderDotBounds :: (x: i32, y: i32, size: i32) -> Rectangle {
     return bounds
 }
 
-ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float) -> ReorderPlaceholderPaint #export {
+ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float,
+    placeholder: StyleFrame) -> ReorderPlaceholderPaint #export {
     paint: ReorderPlaceholderPaint
     x: i32 = (i32)bounds.x
     y: i32 = (i32)bounds.y
@@ -87,10 +124,23 @@ ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float) -> ReorderPlaceh
     if w <= 0 || h <= 0 { return paint }
 
     line_h: i32 = (i32)(2.0 * scale)
+    if (placeholder.value.fields & (u32)StyleBorderWidth) != (u32)0 &&
+       placeholder.value.border_width >= 0.0 {
+        line_h = (i32)(placeholder.value.border_width * scale)
+    }
     if line_h < 1 { line_h = 1 }
 
-    if h >= (i32)(32.0 * scale) {
+    threshold: i32 = (i32)(32.0 * scale)
+    if (placeholder.value.fields & (u32)StyleIconSize) != (u32)0 &&
+       placeholder.value.icon_size >= 0.0 {
+        threshold = (i32)(placeholder.value.icon_size * scale)
+    }
+    if h >= threshold {
         inset: i32 = (i32)(3.0 * scale)
+        if (placeholder.value.fields & (u32)StylePaddingX) != (u32)0 &&
+           placeholder.value.padding_x >= 0.0 {
+            inset = (i32)(placeholder.value.padding_x * scale)
+        }
         slot_w: i32 = w - inset * 2
         slot_h: i32 = h - inset * 2
         if slot_w <= 0 || slot_h <= 0 { return paint }
@@ -99,10 +149,22 @@ ReorderPlaceholderPaintFor :: (bounds: Rectangle, scale: float) -> ReorderPlaceh
         paint.slot_bounds.width = (float)slot_w
         paint.slot_bounds.height = (float)slot_h
         paint.stroke_width = 2.0 * scale
+        if (placeholder.value.fields & (u32)StyleBorderWidth) != (u32)0 &&
+           placeholder.value.border_width >= 0.0 {
+            paint.stroke_width = placeholder.value.border_width * scale
+        }
         if paint.stroke_width < 1.0 { paint.stroke_width = 1.0 }
         paint.radius = 0.12
+        if (placeholder.value.fields & (u32)StyleRadius) != (u32)0 &&
+           placeholder.value.radius >= 0.0 {
+            paint.radius = placeholder.value.radius
+        }
         paint.segments = 10
         paint.fill_alpha = 0.10
+        if (placeholder.value.fields & (u32)StyleOpacity) != (u32)0 &&
+           placeholder.value.opacity >= 0.0 {
+            paint.fill_alpha = placeholder.value.opacity
+        }
         paint.use_slot = 1
         return paint
     }

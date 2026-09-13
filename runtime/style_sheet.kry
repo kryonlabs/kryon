@@ -265,6 +265,10 @@ StyleKindSection :: () -> i32 #export {
     return 61
 }
 
+StyleKindReorder :: () -> i32 #export {
+    return 63
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

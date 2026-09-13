@@ -390,6 +390,11 @@ func StyleSheet_StyleKindSection() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindReorder() int32 {
+	var value_0 int32 = 63
+	return value_0
+}
+
 func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	var facts StyleFacts = StyleFacts{}
 	var value_0 int32 = kind

@@ -733,6 +733,8 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindPage(), true
 	case "section":
 		return StyleSheet_StyleKindSection(), true
+	case "reorder":
+		return StyleSheet_StyleKindReorder(), true
 	default:
 		return 0, false
 	}
@@ -790,6 +792,8 @@ func styleRole(name string) (int32, bool) {
 		return 23, true
 	case "anchor":
 		return 24, true
+	case "placeholder":
+		return 25, true
 	default:
 		return 0, false
 	}

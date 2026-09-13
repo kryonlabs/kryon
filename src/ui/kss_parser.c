@@ -311,6 +311,8 @@ kss_style_kind(const char *name)
         return StyleKindPage();
     if(kss_ieq(name, "Section"))
         return StyleKindSection();
+    if(kss_ieq(name, "Reorder"))
+        return StyleKindReorder();
     return -999999;
 }
 
@@ -390,6 +392,8 @@ kss_role(const char *name)
         return 23;
     if(kss_ieq(name, "Anchor"))
         return 24;
+    if(kss_ieq(name, "Placeholder"))
+        return 25;
     return -999999;
 }
 
