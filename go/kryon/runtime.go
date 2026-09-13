@@ -6155,6 +6155,26 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 	changed |= r.recordListBoxOps(props, rowH)
 	return changed
 }
+
+func tableViewMetrics(props TableViewProps) TableViewMetrics {
+	state := ButtonStateNormal
+	if props.Disabled {
+		state = ButtonStateDisabled
+	}
+	tableFrame := tableViewMetricFrame(props.ClassName, state, StyleSheet_StyleAny())
+	headerFrame := tableViewMetricFrame(props.ClassName, state, 13)
+	cellFrame := tableViewMetricFrame(props.ClassName, state, 22)
+	dividerFrame := tableViewMetricFrame(props.ClassName, state, 18)
+	return TableView_TableViewMetricsFor(1, tableFrame, headerFrame, cellFrame, dividerFrame)
+}
+
+func tableViewMetricFrame(className int32, state ButtonState, role int32) StyleFrame {
+	facts := StyleSheet_StyleControlRoleFacts(StyleSheet_StyleKindTableView(), 0, className,
+		role, int32(ButtonToneNeutral), int32(ButtonEmphasisSoft), int32(ControlSizeMedium), int32(state))
+	value := ResolveActiveStyle(StyleData{}, facts, int32(state))
+	return StyleFrame{Value: value}
+}
+
 func (r *runtime) TableView(props TableViewProps) int32 {
 	props = normalizeTableViewProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
@@ -6163,7 +6183,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 		return 0
 	}
 
-	metrics := TableView_TableViewMetricsFor(1)
+	metrics := tableViewMetrics(props)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	rowH := layout.RowHeight
 	headerH := layout.HeaderHeight
@@ -6215,13 +6235,14 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 				continue
 			}
 			shift := tableHeaderShift(props, click.y)
-			column, separatorX := tableSeparatorAtX(props, click.x-shift, 5)
+			column, separatorX := tableSeparatorAtX(props, click.x-shift, float32(metrics.ResizeTolerance))
 			separatorX += shift
 			if column < 0 || int(column) >= len(props.ColumnWidths) {
 				continue
 			}
 			click.consumed = true
-			r.consumeTap(Rectangle{X: separatorX - 5, Y: props.Bounds.Y, Width: 10, Height: float32(headerH)})
+			tolerance := float32(metrics.ResizeTolerance)
+			r.consumeTap(Rectangle{X: separatorX - tolerance, Y: props.Bounds.Y, Width: tolerance * 2, Height: float32(headerH)})
 			r.tableResize = tableResize{active: true, id: props.ID, column: column, startX: click.x, startWidth: tableColumnWidth(props, column), owner: r.currentPopupInputOwner()}
 			break
 		}
@@ -7646,7 +7667,7 @@ func normalizeListBoxProps(props ListBoxProps) ListBoxProps {
 func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)
 	cell := TableCellRect(props, row, col)
-	metrics := TableView_TableViewMetricsFor(1)
+	metrics := tableViewMetrics(props)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	viewport := TableView_TableViewViewport(props.Bounds, layout, row >= layout.FrozenRows)
 	left, right := max(cell.X, props.Bounds.X), min(cell.X+cell.Width, props.Bounds.X+props.Bounds.Width)
@@ -7664,7 +7685,7 @@ func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	if len(props.Columns) == 0 || row < 0 || col < 0 || int(row) >= len(props.Rows) || int(col) >= len(props.Columns) {
 		return Rectangle{}
 	}
-	metrics := TableView_TableViewMetricsFor(1)
+	metrics := tableViewMetrics(props)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), props.RowHeight, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {
@@ -7970,8 +7991,10 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	selectedFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected, props.Disabled, true,
 		props.ClassName, StyleSheet_StyleKindTableView(), 23)
 	selectedStyle := unpackStyle(selectedFrame.Value)
-	dividerStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
-		props.ClassName, StyleSheet_StyleKindTableView(), 18).Value)
+	dividerFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, tableState, props.Disabled, false,
+		props.ClassName, StyleSheet_StyleKindTableView(), 18)
+	dividerStyle := unpackStyle(dividerFrame.Value)
+	metrics := tableViewMetrics(props)
 	tableOp := styleFrameRectOp(props.Bounds, Rectangle{}, surfaceFrame)
 	tableOp.Color = disabledColor(tableOp.Color)
 	tableOp.Disabled = props.Disabled
@@ -7993,7 +8016,6 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 		fallbackFont = Text14
 	}
 	cellFont, cellFontID := styleTextFace(cellStyle, fallbackFont)
-	metrics := TableView_TableViewMetricsFor(1)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, headerH, props.FreezeRows, 1, metrics)
 	for _, col := range displayColumns {
 		c := int(col)
@@ -8044,7 +8066,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			r.ops[len(r.ops)-1].Clip = headerClip
 			r.ops[len(r.ops)-1].HasClip = true
 		}
-		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideTextWithFont(props.Columns[c], rect.Width-12, headerFont, headerFontID), Color: disabledColor(headerStyle.Foreground), Opacity: headerStyle.Opacity, FontSize: headerFont, FontID: headerFontID, Row: -1, Column: col, Disabled: props.Disabled}
+		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect, metrics.HeaderTextPadX), Text: elideTextWithFont(props.Columns[c], rect.Width-float32(metrics.HeaderTextPadX*2), headerFont, headerFontID), Color: disabledColor(headerStyle.Foreground), Opacity: headerStyle.Opacity, FontSize: headerFont, FontID: headerFontID, Row: -1, Column: col, Disabled: props.Disabled}
 		angle := props.HeaderAngle
 		if math.IsNaN(float64(angle)) || math.IsInf(float64(angle), 0) {
 			angle = 0
@@ -8054,12 +8076,12 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			textOp.Polygon = polygon
 			textOp.HasPolygon = true
 			textOp.Text, textOp.Rotation = props.Columns[c], angle
-			textOp.Bounds.X, textOp.Bounds.Y = rect.X+6, rect.Y+6
+			textOp.Bounds.X, textOp.Bounds.Y = rect.X+float32(metrics.HeaderTextPadX), rect.Y+float32(metrics.HeaderTextPadX)
 			if angle > 0 {
 				textOp.Bounds.X += shift
 			}
 			if angle < 0 {
-				textOp.Bounds.Y = rect.Y + rect.Height - 6
+				textOp.Bounds.Y = rect.Y + rect.Height - float32(metrics.HeaderTextPadX)
 			}
 		}
 		r.record(textOp)
@@ -8136,7 +8158,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 				textOpacity = selectedStyle.Opacity
 				textFont, textFontID = styleTextFaceWithFallback(selectedStyle, cellFont, cellFontID)
 			}
-			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideTextWithFont(text, rect.Width-12, textFont, textFontID), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, FontID: textFontID, Row: row, Column: col, Disabled: props.Disabled})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect, metrics.HeaderTextPadX), Text: elideTextWithFont(text, rect.Width-float32(metrics.HeaderTextPadX*2), textFont, textFontID), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, FontID: textFontID, Row: row, Column: col, Disabled: props.Disabled})
 		}
 	}
 	for row := int32(0); row < frozenRows; row++ {
@@ -8147,8 +8169,9 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	}
 }
 
-func tableTextBounds(rect Rectangle) Rectangle {
-	return Rectangle{X: rect.X + 6, Y: rect.Y + 6, Width: rect.Width - 12, Height: rect.Height - 8}
+func tableTextBounds(rect Rectangle, inset int32) Rectangle {
+	pad := float32(inset)
+	return Rectangle{X: rect.X + pad, Y: rect.Y + pad, Width: rect.Width - pad*2, Height: rect.Height - pad - 2}
 }
 
 func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32) (int32, int32) {
@@ -8156,7 +8179,7 @@ func tableCellAt(props TableViewProps, body Rectangle, rowH int32, x, y float32)
 	if rowH <= 0 || len(props.Columns) == 0 {
 		return -1, -1
 	}
-	metrics := TableView_TableViewMetricsFor(1)
+	metrics := tableViewMetrics(props)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, props.HeaderHeight, props.FreezeRows, 1, metrics)
 	scroll := int32(0)
 	if props.ScrollOffset != nil {

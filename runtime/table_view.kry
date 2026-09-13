@@ -1,5 +1,7 @@
 #module "table_view"
 #import "drawing_props"
+#import "style"
+#import "control_props"
 
 TableViewMetrics :: struct {
     default_row_height: i32
@@ -7,6 +9,7 @@ TableViewMetrics :: struct {
     default_min_column_width: i32
     header_text_pad_x: i32
     resize_tolerance: i32
+    scrollbar_width: i32
 }
 
 TableViewLayout :: struct {
@@ -24,14 +27,28 @@ TableViewScrollLayout :: struct {
     visible_rows: i32
 }
 
-TableViewMetricsFor :: (scale: float) -> TableViewMetrics #export {
+TableViewMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
+TableViewMetricsFor :: (scale: float, table: StyleFrame, header: StyleFrame,
+    cell: StyleFrame, divider: StyleFrame) -> TableViewMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TableViewMetrics
-    metrics.default_row_height = (i32)(28.0 * scale)
-    metrics.min_header_height = (i32)(30.0 * scale)
-    metrics.default_min_column_width = (i32)(32.0 * scale)
-    metrics.header_text_pad_x = (i32)(6.0 * scale)
-    metrics.resize_tolerance = (i32)(5.0 * scale)
+    metrics.default_row_height = TableViewMetric(table.value.fields,
+        (u32)StyleContentOffset, table.value.offset_y, 28.0, scale)
+    metrics.min_header_height = TableViewMetric(header.value.fields,
+        (u32)StyleContentOffset, header.value.offset_y, 30.0, scale)
+    metrics.default_min_column_width = TableViewMetric(cell.value.fields,
+        (u32)StyleContentOffset, cell.value.offset_x, 32.0, scale)
+    metrics.header_text_pad_x = TableViewMetric(header.value.fields,
+        (u32)StylePaddingX, header.value.padding_x, 6.0, scale)
+    metrics.resize_tolerance = TableViewMetric(divider.value.fields,
+        (u32)StylePaddingX, divider.value.padding_x, 5.0, scale)
+    metrics.scrollbar_width = TableViewMetric(divider.value.fields,
+        (u32)StyleContentOffset, divider.value.offset_y, 8.0, scale)
     return metrics
 }
 
@@ -49,7 +66,7 @@ TableViewHeaderHeight :: (requested_header_height: i32, scale: float,
     metrics: TableViewMetrics) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     height: i32 = metrics.min_header_height
-    if requested_header_height > 30 {
+    if requested_header_height > 0 {
         height = (i32)((float)requested_header_height * scale)
     }
     if height < metrics.min_header_height { height = metrics.min_header_height }

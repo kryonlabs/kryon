@@ -3498,6 +3498,34 @@ ui_table_clipboard_text(TableViewProps table, int row, int column)
     return copy;
 }
 
+static TableViewMetrics
+ui_table_metrics(TableViewProps table)
+{
+    ButtonState state = table.disabled ? ButtonStateDisabled : ButtonStateNormal;
+    StyleFrame table_frame = {0};
+    StyleFrame header_frame = {0};
+    StyleFrame cell_frame = {0};
+    StyleFrame divider_frame = {0};
+    table_frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
+            StyleAny(), ButtonToneNeutral, ButtonEmphasisSoft,
+            ControlSizeMedium, state), state);
+    header_frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
+            13, ButtonToneNeutral, ButtonEmphasisSoft,
+            ControlSizeMedium, state), state);
+    cell_frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
+            22, ButtonToneNeutral, ButtonEmphasisSoft,
+            ControlSizeMedium, state), state);
+    divider_frame.value = ResolveActiveStyle((StyleData){0},
+        StyleControlRoleFacts(StyleKindTableView(), 0, table.class_name,
+            18, ButtonToneNeutral, ButtonEmphasisSoft,
+            ControlSizeMedium, state), state);
+    return TableViewMetricsFor((float)GetScale(), table_frame, header_frame,
+                               cell_frame, divider_frame);
+}
+
 static int
 ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
                      int frozen_rows, int max_scroll)
@@ -3620,7 +3648,7 @@ BeginTableCell(TableViewProps table, int row, int column)
     for(int slot = 0; slot < table.column_count; slot++)
         if(ui_table_display_column(table,slot) == column) found = 1;
     if(found && visible > 0 && row >= 0 && row < table.row_count) {
-        TableViewMetrics metrics = TableViewMetricsFor((float)GetScale());
+        TableViewMetrics metrics = ui_table_metrics(table);
         TableViewLayout layout = TableViewLayoutFor(table.bounds, table.row_count,
             table.row_height, table.header_height, table.freeze_rows,
             (float)GetScale(), metrics);
@@ -3658,7 +3686,7 @@ RenderTableView(TableViewProps table)
 {
     ToolkitStore *toolkit = toolkit_state();
     int paint = IsWindowReady();
-    TableViewMetrics metrics = TableViewMetricsFor((float)GetScale());
+    TableViewMetrics metrics;
     TableViewLayout layout;
     TableViewScrollLayout scroll_layout;
     int row_h;
@@ -3679,6 +3707,7 @@ RenderTableView(TableViewProps table)
     int header_font;
 
     table.disabled = table.disabled || UIContentDisabled();
+    metrics = ui_table_metrics(table);
     StyleFrame default_header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
         table.disabled, 0, table.class_name, StyleKindTableView(), 13);
@@ -3745,7 +3774,7 @@ RenderTableView(TableViewProps table)
            ui_contains(header, mouse)) {
             int separator_x = 0;
             int column = ui_table_separator_at_x(table, (int)(mouse.x-ui_table_header_shift(table,mouse.y)),
-                                                  Scale(5), default_col_w,
+                                                  metrics.resize_tolerance, default_col_w,
                                                   &separator_x);
             if(column >= 0) {
                 toolkit->resize_table_id = table.id;
@@ -3867,11 +3896,11 @@ RenderTableView(TableViewProps table)
                     if(x1 <= x0) continue;
                     BeginClip(x0,(int)head.y+row,x1-x0,1);
                     DrawTextPro(GetTextFont(), label,
-                            (Vector2){head.x + (angle > 0 ? shift : 0) + Scale(6), angle < 0 ? head.y + head.height - Scale(6) : head.y + Scale(6)},
+                            (Vector2){head.x + (angle > 0 ? shift : 0) + metrics.header_text_pad_x, angle < 0 ? head.y + head.height - metrics.header_text_pad_x : head.y + metrics.header_text_pad_x},
                             (Vector2){0,0}, angle, render_header_font, 1, text_color);
                     EndClip();
                 }
-            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, render_header_font), render_header_font, text_color);
+            } else RenderText(label, (int)head.x + metrics.header_text_pad_x, ui_row_text_y(head, render_header_font), render_header_font, text_color);
             if(table.resizable && table.column_widths != NULL) {
                 BeginClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
@@ -3963,7 +3992,7 @@ RenderTableView(TableViewProps table)
                 } else {
                     text_color = text_style.foreground;
                 }
-                RenderText(text, x + Scale(6), ui_row_text_y(row, render_font),
+                RenderText(text, x + metrics.header_text_pad_x, ui_row_text_y(row, render_font),
                            render_font, Fade(text_color, text_opacity));
                 EndClip();
             }
@@ -4026,7 +4055,7 @@ RenderTableView(TableViewProps table)
         EndClip();
     if(paint && table.scroll_offset != NULL && max_scroll > 0) {
         Rectangle scrollbar = TableViewScrollbarBoundsFor(table.bounds, layout,
-                                                          Scale(8));
+                                                          metrics.scrollbar_width);
         ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
                         (int)scrollbar.height,
                         (table.row_count - frozen_rows) * row_h,

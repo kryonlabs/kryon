@@ -16,7 +16,16 @@ int
 main(void)
 {
     Rectangle bounds = {10, 20, 300, 160};
-    TableViewMetrics metrics = TableViewMetricsFor(2.0f);
+    StyleFrame table = {.value = {.fields = StyleContentOffset,
+                                   .offset_y = 28.0f}};
+    StyleFrame header = {.value = {.fields = StyleContentOffset | StylePaddingX,
+                                    .offset_y = 30.0f, .padding_x = 6.0f}};
+    StyleFrame cell = {.value = {.fields = StyleContentOffset,
+                                  .offset_x = 32.0f}};
+    StyleFrame divider = {.value = {.fields = StylePaddingX | StyleContentOffset,
+                                     .padding_x = 5.0f, .offset_y = 8.0f}};
+    TableViewMetrics metrics = TableViewMetricsFor(2.0f, table, header,
+                                                   cell, divider);
     TableViewLayout layout;
     TableViewScrollLayout scroll;
     Rectangle row;
@@ -26,6 +35,7 @@ main(void)
     assert(metrics.default_min_column_width == 64);
     assert(metrics.header_text_pad_x == 12);
     assert(metrics.resize_tolerance == 10);
+    assert(metrics.scrollbar_width == 16);
     assert(TableViewRowHeight(0, 2.0f, metrics) == 56);
     assert(TableViewRowHeight(18, 2.0f, metrics) == 36);
     assert(TableViewHeaderHeight(20, 2.0f, metrics) == 60);
@@ -36,7 +46,27 @@ main(void)
     assert(TableViewMinimumColumnWidth(0, 2.0f, metrics) == 64);
     assert(TableViewMinimumColumnWidth(40, 2.0f, metrics) == 80);
 
-    metrics = TableViewMetricsFor(1.0f);
+    table.value.offset_y = 26.0f;
+    header.value.offset_y = 34.0f;
+    header.value.padding_x = 9.0f;
+    cell.value.offset_x = 44.0f;
+    divider.value.padding_x = 7.0f;
+    divider.value.offset_y = 10.0f;
+    metrics = TableViewMetricsFor(1.0f, table, header, cell, divider);
+    assert(metrics.default_row_height == 26);
+    assert(metrics.min_header_height == 34);
+    assert(metrics.default_min_column_width == 44);
+    assert(metrics.header_text_pad_x == 9);
+    assert(metrics.resize_tolerance == 7);
+    assert(metrics.scrollbar_width == 10);
+
+    table.value.offset_y = 28.0f;
+    header.value.offset_y = 30.0f;
+    header.value.padding_x = 6.0f;
+    cell.value.offset_x = 32.0f;
+    divider.value.padding_x = 5.0f;
+    divider.value.offset_y = 8.0f;
+    metrics = TableViewMetricsFor(1.0f, table, header, cell, divider);
     layout = TableViewLayoutFor(bounds, 8, 28, 30, 2, 1.0f, metrics);
     assert(layout.row_height == 28);
     assert(layout.header_height == 30);

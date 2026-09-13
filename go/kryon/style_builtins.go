@@ -1096,6 +1096,7 @@ TableView {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -1117,6 +1118,8 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  padding-x: 6;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -1146,6 +1149,7 @@ TableView[role=Cell] {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-x: 32;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -1170,6 +1174,8 @@ TableView[role=Divider] {
   foreground: muted;
   border: border-soft;
   border-width: border;
+  padding-x: 5;
+  offset-y: 8;
   opacity: 1;
   material: default;
 }
@@ -2888,6 +2894,7 @@ TableView {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -2909,6 +2916,8 @@ TableView[role=Header] {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 6;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: default;
@@ -2939,6 +2948,7 @@ TableView[role=Cell] {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-x: 32;
   font-size: font;
   opacity: 1;
   material: default;
@@ -2959,6 +2969,8 @@ TableView[role=Divider] {
   foreground: muted;
   border: border;
   border-width: border;
+  padding-x: 5;
+  offset-y: 8;
   opacity: 1;
   material: default;
 }
@@ -4642,6 +4654,7 @@ TableView {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -4663,6 +4676,8 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  padding-x: 6;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -4692,6 +4707,7 @@ TableView[role=Cell] {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-x: 32;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -4716,6 +4732,8 @@ TableView[role=Divider] {
   foreground: muted;
   border: border-soft;
   border-width: border;
+  padding-x: 5;
+  offset-y: 8;
   opacity: 1;
   material: default;
 }
@@ -6505,6 +6523,7 @@ TableView {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-y: 28;
   opacity: 1;
   material: app;
 }
@@ -6528,6 +6547,8 @@ TableView[role=Header] {
   border: border-soft;
   radius: radius.sm;
   border-width: border;
+  padding-x: 6;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -6559,6 +6580,7 @@ TableView[role=Cell] {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-x: 32;
   font-size: font.sm;
   opacity: 1;
   material: app;
@@ -6580,6 +6602,8 @@ TableView[role=Divider] {
   foreground: muted;
   border: border-soft;
   border-width: border;
+  padding-x: 5;
+  offset-y: 8;
   opacity: 1;
   material: app;
 }
@@ -8370,6 +8394,7 @@ TableView {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-y: 28;
   opacity: 1;
   material: app;
 }
@@ -8393,6 +8418,8 @@ TableView[role=Header] {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 6;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: premium;
@@ -8424,6 +8451,7 @@ TableView[role=Cell] {
   background: transparent;
   foreground: text;
   border: transparent;
+  offset-x: 32;
   font-size: font;
   opacity: 1;
   material: app;
@@ -8445,6 +8473,8 @@ TableView[role=Divider] {
   foreground: muted;
   border: border-soft;
   border-width: border;
+  padding-x: 5;
+  offset-y: 8;
   opacity: 1;
   material: app;
 }

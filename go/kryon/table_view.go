@@ -2,12 +2,15 @@
 package kryon
 
 // #import drawing_props
+// #import style
+// #import control_props
 type TableViewMetrics struct {
 	DefaultRowHeight      int32
 	MinHeaderHeight       int32
 	DefaultMinColumnWidth int32
 	HeaderTextPadX        int32
 	ResizeTolerance       int32
+	ScrollbarWidth        int32
 }
 
 type TableViewLayout struct {
@@ -25,7 +28,32 @@ type TableViewScrollLayout struct {
 	VisibleRows int32
 }
 
-func TableView_TableViewMetricsFor(scale float32) TableViewMetrics {
+func TableView_TableViewMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 <= value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
+func TableView_TableViewMetricsFor(scale float32, table StyleFrame, header StyleFrame, cell StyleFrame, divider StyleFrame) TableViewMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -34,33 +62,56 @@ func TableView_TableViewMetricsFor(scale float32) TableViewMetrics {
 		scale = value_3
 	}
 	var metrics TableViewMetrics = TableViewMetrics{}
-	var value_4 float32 = 28.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	metrics.DefaultRowHeight = value_7
-	var value_8 float32 = 30.0
+	var value_4 uint32 = table.Value.Fields
+	var value_5 int32 = int32(StyleContentOffset)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = table.Value.OffsetY
+	var value_8 float32 = 28.0
 	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	metrics.MinHeaderHeight = value_11
-	var value_12 float32 = 32.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	metrics.DefaultMinColumnWidth = value_15
-	var value_16 float32 = 6.0
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	metrics.HeaderTextPadX = value_19
-	var value_20 float32 = 5.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
-	metrics.ResizeTolerance = value_23
-	var value_24 TableViewMetrics = metrics
-	return value_24
+	var value_10 int32 = TableView_TableViewMetric(value_4, value_6, value_7, value_8, value_9)
+	metrics.DefaultRowHeight = value_10
+	var value_11 uint32 = header.Value.Fields
+	var value_12 int32 = int32(StyleContentOffset)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = header.Value.OffsetY
+	var value_15 float32 = 30.0
+	var value_16 float32 = scale
+	var value_17 int32 = TableView_TableViewMetric(value_11, value_13, value_14, value_15, value_16)
+	metrics.MinHeaderHeight = value_17
+	var value_18 uint32 = cell.Value.Fields
+	var value_19 int32 = int32(StyleContentOffset)
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
+	var value_21 float32 = cell.Value.OffsetX
+	var value_22 float32 = 32.0
+	var value_23 float32 = scale
+	var value_24 int32 = TableView_TableViewMetric(value_18, value_20, value_21, value_22, value_23)
+	metrics.DefaultMinColumnWidth = value_24
+	var value_25 uint32 = header.Value.Fields
+	var value_26 int32 = int32(StylePaddingX)
+	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
+	var value_28 float32 = header.Value.PaddingX
+	var value_29 float32 = 6.0
+	var value_30 float32 = scale
+	var value_31 int32 = TableView_TableViewMetric(value_25, value_27, value_28, value_29, value_30)
+	metrics.HeaderTextPadX = value_31
+	var value_32 uint32 = divider.Value.Fields
+	var value_33 int32 = int32(StylePaddingX)
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
+	var value_35 float32 = divider.Value.PaddingX
+	var value_36 float32 = 5.0
+	var value_37 float32 = scale
+	var value_38 int32 = TableView_TableViewMetric(value_32, value_34, value_35, value_36, value_37)
+	metrics.ResizeTolerance = value_38
+	var value_39 uint32 = divider.Value.Fields
+	var value_40 int32 = int32(StyleContentOffset)
+	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
+	var value_42 float32 = divider.Value.OffsetY
+	var value_43 float32 = 8.0
+	var value_44 float32 = scale
+	var value_45 int32 = TableView_TableViewMetric(value_39, value_41, value_42, value_43, value_44)
+	metrics.ScrollbarWidth = value_45
+	var value_46 TableViewMetrics = metrics
+	return value_46
 }
 
 func TableView_TableViewRowHeight(requested_row_height int32, scale float32, metrics TableViewMetrics) int32 {
@@ -104,7 +155,7 @@ func TableView_TableViewHeaderHeight(requested_header_height int32, scale float3
 	var value_4 int32 = metrics.MinHeaderHeight
 	var height int32 = value_4
 	var value_5 int32 = requested_header_height
-	var value_6 int32 = 30
+	var value_6 int32 = 0
 	var value_7 bool = value_5 > value_6
 	if value_7 {
 		var value_8 int32 = requested_header_height
