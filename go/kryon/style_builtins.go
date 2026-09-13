@@ -1621,6 +1621,8 @@ Dropdown[role=Panel] {
   background: panel;
   border: border;
   padding-y: 4;
+  gap: 4;
+  offset-y: 16;
 }
 
 Dropdown[role=Option] {
@@ -3586,6 +3588,8 @@ Dropdown[role=Panel] {
   background: card;
   border: border;
   padding-y: 4;
+  gap: 4;
+  offset-y: 16;
 }
 
 Dropdown[role=Option] {
@@ -5588,6 +5592,8 @@ Dropdown[role=Panel] {
   background: panel;
   border: border;
   padding-y: 4;
+  gap: 4;
+  offset-y: 16;
 }
 
 Dropdown[role=Option] {
@@ -7656,6 +7662,8 @@ Dropdown[role=Panel] {
   background-end: panel-end;
   border: border;
   padding-y: 4;
+  gap: 4;
+  offset-y: 16;
 }
 
 Dropdown[role=Option] {
@@ -9702,6 +9710,8 @@ Dropdown[role=Panel] {
   background-end: dropdown-end;
   border: border;
   padding-y: 4;
+  gap: 4;
+  offset-y: 16;
 }
 
 Dropdown[role=Option] {

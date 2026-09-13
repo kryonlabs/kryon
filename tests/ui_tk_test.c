@@ -6,6 +6,7 @@
 #include "runtime/canvas_grid.h"
 #include "runtime/checkbox.h"
 #include "runtime/color_picker.h"
+#include "runtime/dropdown.h"
 #include "runtime/drag.h"
 #include "runtime/input.h"
 #include "runtime/fieldset.h"
@@ -680,6 +681,26 @@ test_toggle_paint_policy(void)
               ToggleMinimumWidthForStyle(1, 18, 22, 1.0f, track, active,
                                           label),
               50);
+}
+
+static void
+test_dropdown_popup_policy(void)
+{
+    Rectangle button = {10, 50, 80, 20};
+    Rectangle view = {0, 0, 200, 120};
+    StyleFrame panel = test_style_frame(0x111111FF, 0xFFFFFFFF, 0x222222FF);
+    Rectangle popup = PopupBounds(button, view, 2, 1.0f, panel);
+
+    check_int("dropdown fallback popup y", (int)popup.y, 74);
+    check_int("dropdown fallback popup height", (int)popup.height, 28);
+
+    panel.value.fields |= StyleGap | StylePaddingY | StyleContentOffset;
+    panel.value.gap = 0.0f;
+    panel.value.padding_y = 0.0f;
+    panel.value.offset_y = 0.0f;
+    popup = PopupBounds(button, view, 2, 1.0f, panel);
+    check_int("dropdown explicit zero popup y", (int)popup.y, 70);
+    check_int("dropdown explicit zero popup height", (int)popup.height, 40);
 }
 
 static void
@@ -5134,6 +5155,7 @@ main(void)
     test_selectable_paint_policy();
     test_radio_paint_policy();
     test_toggle_paint_policy();
+    test_dropdown_popup_policy();
     test_list_box_layout_policy();
     test_multi_select_policy();
     test_tab_bar_policy();
