@@ -390,6 +390,11 @@ matching the facts used by node queries and DOM object lookup.
 Top-level `@keyframes name { from { ... } to { ... } }` blocks parse into
 `sheet.keyframes` and emit as native CSS animation assets; they do not
 participate in node matching.
+Top-level `@media`, `@supports`, and `@container` groups parse into
+`sheet.groups` and emit as browser-native conditional CSS. Their nested rules
+target the same Kry DOM annotations as ordinary KSS rules. Runtime
+`resolveWebStyle(...)` remains limited to unconditional rules because media,
+support, and container query evaluation belongs to the browser.
 File imports resolve relative to the source module and then the project root;
 package imports resolve built-in `kryon.*` packs and project packages under
 `styles/`, including dotted package names as nested paths. Projects can also
