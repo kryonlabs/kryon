@@ -10,7 +10,7 @@ ui_reorder_find_index(const ReorderList *list, int item_id)
     if(list == NULL || list->items == NULL)
         return -1;
     for(int i = 0; i < list->item_count; i++) {
-        if(list->items[i].id == item_id)
+        if(ReorderItemMatches(list->items[i].id, item_id))
             return i;
     }
     return -1;
@@ -26,13 +26,8 @@ ui_reorder_target_index(const ReorderList *list, int active_index,
         return -1;
 
     for(int i = 0; i < list->item_count; i++) {
-        const ReorderItem *item = &list->items[i];
-        int center_y;
-
-        if(i == active_index)
-            continue;
-        if(ReorderTargetIncludesItem(pointer_y, item->bounds))
-            target++;
+        target = ReorderTargetStep(target, i, active_index, pointer_y,
+                                   list->items[i].bounds);
     }
 
     return ReorderTargetIndexFor(target, list->item_count);

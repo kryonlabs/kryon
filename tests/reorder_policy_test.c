@@ -127,6 +127,12 @@ main(void)
     assert(ReorderTargetIndexFor(2, 4) == 2);
     assert(ReorderTargetIndexFor(9, 4) == 3);
     assert(ReorderTargetIndexFor(0, 0) == -1);
+    assert(ReorderItemMatches(30, 30));
+    assert(!ReorderItemMatches(30, 40));
+    assert(ReorderTargetStep(1, 1, 1, 55,
+                             (Rectangle){0, 40, 100, 20}) == 1);
+    assert(ReorderTargetStep(1, 2, 1, 55,
+                             (Rectangle){0, 40, 100, 20}) == 2);
 
     metrics = (ReorderMetrics){.drag_threshold = 10,
                                .auto_scroll_margin = 20,

@@ -161,9 +161,22 @@ ReorderDraggedCenterY :: (pointer_y: i32, press_offset_y: i32,
     return pointer_y - press_offset_y + (i32)(item_height / 2.0)
 }
 
+ReorderItemMatches :: (candidate_id: i32, item_id: i32) -> bool #export {
+    return candidate_id == item_id
+}
+
 ReorderTargetIncludesItem :: (pointer_y: i32, item_bounds: Rectangle) -> bool #export {
     center_y: i32 = (i32)(item_bounds.y + item_bounds.height / 2.0)
     return pointer_y > center_y
+}
+
+ReorderTargetStep :: (target: i32, index: i32, active_index: i32,
+    pointer_y: i32, item_bounds: Rectangle) -> i32 #export {
+    if index == active_index { return target }
+    if ReorderTargetIncludesItem(pointer_y, item_bounds) {
+        return target + 1
+    }
+    return target
 }
 
 ReorderTargetIndexFor :: (target: i32, item_count: i32) -> i32 #export {
