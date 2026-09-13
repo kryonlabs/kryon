@@ -300,7 +300,7 @@ if [ -n "$go_missing_parser_widgets" ]; then
 fi
 
 go_lowered_scope_exports="$(
-    rg -n '^func (BeginDisabled|EndDisabled|DisabledScope|DisabledEndScope|PopupScope|PopupEndScope|BeginScroll|EndScroll|ScrollScope|ScrollEndScope|BeginTableCell|EndTableCell|TableCellScope|TableCellEndScope|BeginCanvas|EndCanvas|CanvasScope|CanvasEndScope)\(' \
+    rg -n '^func (BeginButton|BeginCard|ButtonScope|CardScope|BeginDisabled|EndDisabled|DisabledScope|DisabledEndScope|PopupScope|PopupEndScope|BeginScroll|EndScroll|ScrollScope|ScrollEndScope|BeginTableCell|EndTableCell|TableCellScope|TableCellEndScope|BeginCanvas|EndCanvas|CanvasScope|CanvasEndScope)\(' \
         go/kryon/api.go \
         --glob '!vendor/**' \
         --glob '!build/**' || true
