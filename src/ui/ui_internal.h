@@ -20,6 +20,7 @@
 #include "ui_widget_internal.h"
 #include "ui_rows_internal.h"
 #include "ui_text_layout.h"
+#include "runtime/text_input.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -426,6 +427,10 @@ StyleFrame ui_resolve_button_spec_frame(ButtonSpec button, ButtonState state,
                                         float f, int style_kind);
 TextInputStyle ui_resolve_text_input_style(TextInputStyle style,
                                            int style_kind, int class_name);
+TextInputMetrics ui_text_input_metrics_for_style(TextInputStyle style,
+                                                 int style_kind,
+                                                 int class_name,
+                                                 int default_line_gap);
 int ButtonNode(ButtonSpec button);
 int HandleButton(ButtonSpec button);
 Color ui_paint_button(ButtonSpec button, int hovered, int pressed);

@@ -1385,9 +1385,8 @@ RouteInput(void)
                 TextInputStyle style = ui_resolve_text_input_style(
                     (TextInputStyle){0}, StyleKindTextField(),
                     field->class_name);
-                TextInputMetrics metrics = TextInputMetricsFor(
-                    style.fields, 0, style.padding_x, style.padding_y, 0,
-                    font, Scale(10), Scale(8), 0);
+                TextInputMetrics metrics = ui_text_input_metrics_for_style(
+                    style, StyleKindTextField(), field->class_name, 0);
                 int padding = metrics.padding_x;
                 double now = GetTime();
                 KeyID click_key = field->focus_id > 0
@@ -1443,9 +1442,8 @@ RouteInput(void)
             TextInputStyle style = ui_resolve_text_input_style(
                 (TextInputStyle){0}, StyleKindTextField(),
                 field->class_name);
-            TextInputMetrics metrics = TextInputMetricsFor(
-                style.fields, 0, style.padding_x, style.padding_y, 0,
-                font, Scale(10), Scale(8), 0);
+            TextInputMetrics metrics = ui_text_input_metrics_for_style(
+                style, StyleKindTextField(), field->class_name, 0);
             int padding = metrics.padding_x;
             int cursor;
 
