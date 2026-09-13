@@ -487,8 +487,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
             if Button((ButtonProps){.bounds = {x,y + Scale(42),Scale(350),Scale(36)},.label = "Preview TitleBar and NavigationBar",.id = 965}) { page_preview = 1 }
             Page((PageProps){.bounds = {x,y + Scale(110),Scale(360),Scale(210)},.title = "Page",.gap = Scale(12),.padding = Scale(12),.key = 966})
             Section((SectionProps){.bounds = {0,0,Scale(336),Scale(180)},.label = "Section",.gap = Scale(12),.key = 967})
-            Heading((HeadingProps){.bounds = {x + Scale(12),y + Scale(122),Scale(312),Scale(40)},.text = "Page / Section",.level = 2,.font = Text20,.color = GetThemeText(),.key = 968})
-            ParagraphText((ParagraphTextProps){.bounds = {x + Scale(12),y + Scale(174),Scale(312),Scale(72)},.text = "Semantic page content using standard headings and paragraphs.",.font = Text16,.color = GetThemeText(),.key = 969})
+            Heading((HeadingProps){.bounds = {x + Scale(12),y + Scale(122),Scale(312),Scale(40)},.text = "Page / Section",.level = 2,.key = 968})
+            ParagraphText((ParagraphTextProps){.bounds = {x + Scale(12),y + Scale(174),Scale(312),Scale(72)},.text = "Semantic page content using standard headings and paragraphs.",.key = 969})
             End()
             End()
             theme_changed: int = 0

@@ -9,7 +9,6 @@ type PageProps struct {
 	Description  string
 	CanonicalURL string
 	ThemeColor   Color
-	Background   Color
 	Gap          int32
 	Padding      int32
 	Key          KeyID
@@ -24,19 +23,17 @@ type SectionProps struct {
 }
 
 type HeadingProps struct {
-	Bounds Rectangle
-	Text   string
-	Level  int32
-	Font   int32
-	Color  Color
-	Key    KeyID
+	Bounds    Rectangle
+	Text      string
+	Level     int32
+	ClassName int32
+	Key       KeyID
 }
 
 type ParagraphTextProps struct {
-	Bounds  Rectangle
-	Text    string
-	Font    int32
-	Color   Color
-	LineGap int32
-	Key     KeyID
+	Bounds    Rectangle
+	Text      string
+	ClassName int32
+	LineGap   int32
+	Key       KeyID
 }

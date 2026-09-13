@@ -8,7 +8,6 @@ PageProps :: struct {
     description: const char*
     canonical_url: const char*
     theme_color: Color
-    background: Color
     gap: i32
     padding: i32
     key: KeyID
@@ -26,16 +25,14 @@ HeadingProps :: struct {
     bounds: Rectangle
     text: const char*
     level: i32
-    font: i32
-    color: Color
+    class_name: i32
     key: KeyID
 }
 
 ParagraphTextProps :: struct {
     bounds: Rectangle
     text: const char*
-    font: i32
-    color: Color
+    class_name: i32
     line_gap: i32
     key: KeyID
 }

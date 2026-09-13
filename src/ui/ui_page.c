@@ -46,15 +46,17 @@ page_bounds_or_view(Rectangle bounds)
 }
 
 static Style
-page_text_style(int style_kind, int fallback_font)
+page_text_style(int style_kind, int class_name, int fallback_font)
 {
     StyleData base = {
         .fields = (uint32_t)(StyleOpacity | StyleFontSize),
         .opacity = 1.0f,
         .font_size = (float)fallback_font
     };
-    return ui_unpack_style(ResolveActiveStyle(base, StyleDefaultFacts(style_kind),
-                                             ButtonStateNormal));
+    StyleFacts facts = StyleDefaultFacts(style_kind);
+    facts.class_name = class_name;
+    facts.state = ButtonStateNormal;
+    return ui_unpack_style(ResolveActiveStyle(base, facts, ButtonStateNormal));
 }
 
 static void
@@ -186,8 +188,6 @@ Page(PageProps props)
         SetPageCanonicalURL(props.canonical_url);
     if(props.theme_color.a != 0)
         SetPageThemeColor(props.theme_color);
-    if(props.background.a != 0)
-        Background(props.background);
     page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
     return Column((ColumnProps){bounds, props.gap, props.padding, key});
 }
@@ -208,12 +208,12 @@ Heading(HeadingProps props)
     Rectangle bounds = props.bounds;
     const char *text = props.text != NULL ? props.text : "";
     int level = props.level;
-    Style text_style = page_text_style(StyleKindHeading(), Text24);
-    int font = props.font > 0 ? props.font : (int)text_style.font_size;
+    Style text_style = page_text_style(StyleKindHeading(), props.class_name,
+                                       Text24);
+    int font = (int)text_style.font_size;
     if(font <= 0)
         font = Text24;
-    Color color = props.color.a != 0 ? props.color : Fade(text_style.foreground,
-                                                          text_style.opacity);
+    Color color = Fade(text_style.foreground, text_style.opacity);
 
     if(level < 1)
         level = 1;
@@ -242,12 +242,12 @@ ParagraphText(ParagraphTextProps props)
     paragraph.text = text;
     paragraph.width = width;
     paragraph.line_gap = props.line_gap;
-    Style text_style = page_text_style(StyleKindParagraphText(), GetFontSize());
-    paragraph.font = props.font > 0 ? props.font : (int)text_style.font_size;
+    Style text_style = page_text_style(StyleKindParagraphText(),
+                                       props.class_name, GetFontSize());
+    paragraph.font = (int)text_style.font_size;
     if(paragraph.font <= 0)
         paragraph.font = GetFontSize();
-    paragraph.color = props.color.a != 0 ? props.color : Fade(text_style.foreground,
-                                                              text_style.opacity);
+    paragraph.color = Fade(text_style.foreground, text_style.opacity);
     ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }

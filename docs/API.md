@@ -433,7 +433,12 @@ Page((PageProps){
     .padding = GetPageSidePadding(),
     .key = Key("home")
 });
-Heading((HeadingProps){{40, 40, 520, 40}, "Kryon", 1, Text32, GetThemeText(), 0});
+Heading((HeadingProps){
+    .bounds = {40, 40, 520, 40},
+    .text = "Kryon",
+    .level = 1,
+    .key = Key("hero-heading")
+});
 Link((LinkProps){{40, 96, 160, 28}, "Docs", "/docs", Text16, 101, 0, GetThemeLink(), {0}});
 End();
 ```

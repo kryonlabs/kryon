@@ -3418,7 +3418,6 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 		Description:  "Kryon docs",
 		CanonicalURL: "https://example.test/docs",
 		ThemeColor:   Color{R: 1, G: 2, B: 3, A: 255},
-		Background:   WHITE,
 		Gap:          8,
 		Padding:      12,
 	})
@@ -3479,7 +3478,9 @@ func TestPageTextUsesStyleSheetKinds(t *testing.T) {
 	if !RegisterStylePackSource(`
 @pack test.page_text;
 Heading { foreground: #123456; font-size: 30; }
+Heading.hero { foreground: #243546; font-size: 34; }
 ParagraphText { foreground: #abcdef; font-size: 18; opacity: 0.72; }
+ParagraphText.lede { foreground: #fedcba; font-size: 20; opacity: 0.64; }
 Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 `, "Page Text", "") || !SetActiveStylePack("test.page_text") {
 		t.Fatal("test page text style did not activate")
@@ -3488,23 +3489,36 @@ Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	rt.BeginFrame()
 	rt.Heading(HeadingProps{Text: "Styled"})
+	rt.Heading(HeadingProps{Text: "Hero", ClassName: StyleClassID("hero")})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
+	rt.ParagraphText(ParagraphTextProps{Text: "Lede", Bounds: Rectangle{Width: 200}, ClassName: StyleClassID("lede")})
 	rt.Link(LinkProps{Text: "More", Link: "/more"})
 	rt.EndFrame()
 
-	var sawHeading, sawParagraph, sawLink bool
+	var sawHeading, sawHero, sawParagraph, sawLede, sawLink bool
 	for _, op := range rt.FrameOps() {
 		switch {
-		case op.Kind == FrameOpText && op.Semantic == SemanticHeading:
+		case op.Kind == FrameOpText && op.Semantic == SemanticHeading && op.Text == "Styled":
 			sawHeading = true
 			if op.Color != (Color{R: 0x12, G: 0x34, B: 0x56, A: 0xff}) || op.FontSize != 30 {
 				t.Fatalf("heading style op = %+v", op)
 			}
-		case op.Kind == FrameOpText && op.Semantic == SemanticParagraph:
+		case op.Kind == FrameOpText && op.Semantic == SemanticHeading && op.Text == "Hero":
+			sawHero = true
+			if op.Color != (Color{R: 0x24, G: 0x35, B: 0x46, A: 0xff}) || op.FontSize != 34 {
+				t.Fatalf("classed heading style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Semantic == SemanticParagraph && op.Text == "Body":
 			sawParagraph = true
 			if op.Color != (Color{R: 0xab, G: 0xcd, B: 0xef, A: 0xff}) ||
 				op.FontSize != 18 || op.Opacity != 0.72 {
 				t.Fatalf("paragraph style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Semantic == SemanticParagraph && op.Text == "Lede":
+			sawLede = true
+			if op.Color != (Color{R: 0xfe, G: 0xdc, B: 0xba, A: 0xff}) ||
+				op.FontSize != 20 || op.Opacity != 0.64 {
+				t.Fatalf("classed paragraph style op = %+v", op)
 			}
 		case op.Kind == FrameOpText && op.Semantic == SemanticLink:
 			sawLink = true
@@ -3514,9 +3528,9 @@ Link { foreground: #654321; font-size: 19; opacity: 0.61; }
 			}
 		}
 	}
-	if !sawHeading || !sawParagraph || !sawLink {
-		t.Fatalf("missing styled page text ops: heading=%v paragraph=%v link=%v ops=%#v",
-			sawHeading, sawParagraph, sawLink, rt.FrameOps())
+	if !sawHeading || !sawHero || !sawParagraph || !sawLede || !sawLink {
+		t.Fatalf("missing styled page text ops: heading=%v hero=%v paragraph=%v lede=%v link=%v ops=%#v",
+			sawHeading, sawHero, sawParagraph, sawLede, sawLink, rt.FrameOps())
 	}
 }
 

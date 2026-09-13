@@ -4271,9 +4271,6 @@ func (r *runtime) Page(props PageProps) {
 	if props.ThemeColor.A != 0 {
 		r.SetPageThemeColor(props.ThemeColor)
 	}
-	if props.Background.A != 0 {
-		r.Background(props.Background)
-	}
 	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage})
 	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
 }
@@ -4293,15 +4290,9 @@ func (r *runtime) Heading(props HeadingProps) {
 	} else if level > 6 {
 		level = 6
 	}
-	style := defaultTextStyleForKind(Text24, StyleSheet_StyleKindHeading())
+	style := defaultTextStyleForClassKind(Text24, props.ClassName, StyleSheet_StyleKindHeading())
 	font, fontID := styleTextFace(style, Text24)
-	if props.Font > 0 {
-		font = props.Font
-	}
-	color := props.Color
-	if color.A == 0 {
-		color = style.Foreground
-	}
+	color := style.Foreground
 	bounds := props.Bounds
 	if bounds.Width <= 0 {
 		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
@@ -4313,15 +4304,9 @@ func (r *runtime) Heading(props HeadingProps) {
 	r.record(FrameOp{Kind: FrameOpText, Bounds: bounds, Text: props.Text, Color: color, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: int32(props.Key), Semantic: SemanticHeading, Level: level})
 }
 func (r *runtime) ParagraphText(props ParagraphTextProps) {
-	style := defaultTextStyleForKind(Text16, StyleSheet_StyleKindParagraphText())
+	style := defaultTextStyleForClassKind(Text16, props.ClassName, StyleSheet_StyleKindParagraphText())
 	font, fontID := styleTextFace(style, Text16)
-	if props.Font > 0 {
-		font = props.Font
-	}
-	color := props.Color
-	if color.A == 0 {
-		color = style.Foreground
-	}
+	color := style.Foreground
 	width := int32(props.Bounds.Width)
 	if width <= 0 {
 		width = r.GetScreenWidth() - int32(props.Bounds.X)
@@ -4725,6 +4710,16 @@ func defaultTextStyle(font int32) Style {
 func defaultTextStyleForKind(font int32, kind int32) Style {
 	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
 		StyleSheet_StyleDefaultFacts(kind),
+		int32(ButtonStateNormal))
+	return unpackStyle(value)
+}
+
+func defaultTextStyleForClassKind(font int32, className int32, kind int32) Style {
+	facts := StyleSheet_StyleDefaultFacts(kind)
+	facts.ClassName = className
+	facts.State = int32(ButtonStateNormal)
+	value := ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleFontSize | StyleOpacity), FontSize: float32(font), Opacity: 1}),
+		facts,
 		int32(ButtonStateNormal))
 	return unpackStyle(value)
 }

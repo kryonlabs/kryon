@@ -55,8 +55,6 @@ int main(void)
             .bounds = {12, 6, 150, 28},
             .text = "DOM Page",
             .level = 1,
-            .font = 20,
-            .color = {245, 245, 245, 255},
             .key = Key("heading")
         });
         Link((LinkProps){

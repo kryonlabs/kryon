@@ -28,7 +28,6 @@ typedef struct PageProps {
     const char* description;
     const char* canonical_url;
     Color theme_color;
-    Color background;
     int32_t gap;
     int32_t padding;
     KeyID key;
@@ -46,16 +45,14 @@ typedef struct HeadingProps {
     Rectangle bounds;
     const char* text;
     int32_t level;
-    int32_t font;
-    Color color;
+    int32_t class_name;
     KeyID key;
 } HeadingProps;
 
 typedef struct ParagraphTextProps {
     Rectangle bounds;
     const char* text;
-    int32_t font;
-    Color color;
+    int32_t class_name;
     int32_t line_gap;
     KeyID key;
 } ParagraphTextProps;
