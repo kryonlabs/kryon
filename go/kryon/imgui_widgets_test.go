@@ -1506,7 +1506,7 @@ func TestNativeSelectionAndImageWidgets(t *testing.T) {
 	image.Bounds = NewRectangle(70, 90, 48, 32)
 	r.QueueTap(80, 100)
 	r.BeginFrame()
-	if !r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: White, ImageFit: int32(image.Fit), ImageBackground: Color{R: 40, G: 50, B: 60, A: 255}, ID: 85}) {
+	if !r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: White, ImageFit: int32(image.Fit), ID: 85}) {
 		t.Fatal("Button image content did not consume its tap")
 	}
 	ops = r.FrameOps()
@@ -1537,7 +1537,7 @@ func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 		if got := r.Radio(RadioProps{Bounds: NewRectangle(10, 130, 140, 28), ID: 903, Label: "Radio"}); got != 0 {
 			activations[got]++
 		}
-		if r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: White, ImageFit: int32(image.Fit), ImageBackground: Black, ID: 904}) {
+		if r.Button(ButtonProps{Bounds: image.Bounds, ImageAssetPath: image.AssetPath, ImageBounds: image.Bounds, ImageSource: image.Source, ImageOrigin: image.Origin, ImageRotation: image.Rotation, ImageTint: White, ImageFit: int32(image.Fit), ID: 904}) {
 			activations[904]++
 		}
 		if r.Button(ButtonProps{Bounds: NewRectangle(70, 170, 48, 32), ID: 905, Invisible: true}) {

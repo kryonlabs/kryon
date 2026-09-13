@@ -33,7 +33,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    image_rotation: float\n"
         "    image_tint: Color\n"
         "    image_fit: i32\n"
-        "    image_background: Color\n"
         "    swatch: bool\n"
         "    swatch_color: Color\n"
         "    menu_id: i32\n"

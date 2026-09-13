@@ -49,7 +49,6 @@ typedef struct ButtonProps {
     float image_rotation;
     Color image_tint;
     int32_t image_fit;
-    Color image_background;
     bool swatch;
     Color swatch_color;
     int32_t menu_id;

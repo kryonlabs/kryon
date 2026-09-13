@@ -172,8 +172,6 @@ ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds)
     image.origin = props.image_origin;
     image.rotation = props.image_rotation;
     image.fit = (ImageFit)props.image_fit;
-    if(props.image_background.a != 0)
-        DrawRectangleRec(image.bounds, props.image_background);
     ImageTextureTinted(LoadImageTexture(image.asset_path), image,
                        props.image_tint.a != 0 ? props.image_tint : WHITE);
 }

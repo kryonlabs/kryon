@@ -30,7 +30,6 @@ ButtonProps :: struct {
     image_rotation: float
     image_tint: Color
     image_fit: i32
-    image_background: Color
     swatch: bool
     swatch_color: Color
     menu_id: i32
