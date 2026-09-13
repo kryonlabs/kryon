@@ -545,6 +545,8 @@ export interface WebDOMRelations {
   collectionItems: WebDOMObject[];
   selectedCollectionOwner: WebDOMObject | null;
   selectedCollectionItems: WebDOMObject[];
+  activeCollectionOwner: WebDOMObject | null;
+  activeCollectionItems: WebDOMObject[];
   describedBy: WebDOMObject[];
   describes: WebDOMObject[];
   details: WebDOMObject | null;
@@ -584,6 +586,8 @@ export interface WebNodeRelations {
   collectionItems: WebDocumentNode[];
   selectedCollectionOwner: WebDocumentNode | null;
   selectedCollectionItems: WebDocumentNode[];
+  activeCollectionOwner: WebDocumentNode | null;
+  activeCollectionItems: WebDocumentNode[];
   describedBy: WebDocumentNode[];
   describes: WebDocumentNode[];
   details: WebDocumentNode | null;
@@ -623,6 +627,8 @@ export interface WebDOMRelationRefs {
   collectionItems: string[];
   selectedCollectionOwner: string;
   selectedCollectionItems: string[];
+  activeCollectionOwner: string;
+  activeCollectionItems: string[];
   describedBy: string[];
   describes: string[];
   details: string;

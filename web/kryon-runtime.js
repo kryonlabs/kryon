@@ -7013,6 +7013,16 @@ function webDOMSelectedCollectionItems(target, node) {
     .filter((object) => webNodeIsSelectedCollectionMember(object?.node));
 }
 
+function webDOMActiveCollectionOwner(target, node) {
+  const owners = webDOMReverseRelationList(target, node, "ariaActiveDescendant");
+  return owners.find((object) => webNodeCanOwnCollectionMember(object?.node, node)) || null;
+}
+
+function webDOMActiveCollectionItems(target, node) {
+  const active = webDOMRelationList(target, node?.ariaActiveDescendant);
+  return active.filter((object) => webNodeCanOwnCollectionMember(node, object?.node));
+}
+
 function webDOMSiblingObject(target, node, offset) {
   const root = mountedRoot(target);
   if (!root || !node)
@@ -7039,6 +7049,8 @@ function webDOMRelationsForNode(target, node) {
     collectionItems: webDOMCollectionItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
     selectedCollectionItems: webDOMSelectedCollectionItems(target, node),
+    activeCollectionOwner: webDOMActiveCollectionOwner(target, node),
+    activeCollectionItems: webDOMActiveCollectionItems(target, node),
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     describes: webDOMReverseRelationList(target, node, "ariaDescribedBy"),
     details: webDOMRelationList(target, node.ariaDetails)[0] || null,
@@ -8407,6 +8419,8 @@ function webDOMRelationRefsForRelations(relations) {
     collectionItems: (relations?.collectionItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
     selectedCollectionItems: (relations?.selectedCollectionItems || []).map((relation) => relation.ref),
+    activeCollectionOwner: relations?.activeCollectionOwner?.ref || "",
+    activeCollectionItems: (relations?.activeCollectionItems || []).map((relation) => relation.ref),
     activeDescendant: relations?.activeDescendant?.ref || "",
     activeDescendantOf: (relations?.activeDescendantOf || []).map((relation) => relation.ref),
     popoverTarget: relations?.popoverTarget?.ref || "",
@@ -9236,6 +9250,16 @@ function webNodeSelectedCollectionItems(rt, node) {
     .filter((candidate) => webNodeIsSelectedCollectionMember(candidate));
 }
 
+function webNodeActiveCollectionOwner(rt, node) {
+  return webNodeReverseRelationList(rt, node, "ariaActiveDescendant")
+    .find((candidate) => webNodeCanOwnCollectionMember(candidate, node)) || null;
+}
+
+function webNodeActiveCollectionItems(rt, node) {
+  return webNodeRelationList(rt, node?.ariaActiveDescendant)
+    .filter((candidate) => webNodeCanOwnCollectionMember(node, candidate));
+}
+
 function webNodeRefs(nodes) {
   return (nodes || []).map((node) => webNodeRef(node)).filter(Boolean);
 }
@@ -9269,6 +9293,8 @@ function webNodeRelationsForNode(rt, node) {
     collectionItems: webNodeCollectionItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
     selectedCollectionItems: webNodeSelectedCollectionItems(rt, node),
+    activeCollectionOwner: webNodeActiveCollectionOwner(rt, node),
+    activeCollectionItems: webNodeActiveCollectionItems(rt, node),
     describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
     describes: webNodeReverseRelationList(rt, node, "ariaDescribedBy"),
     details: webNodeRelationList(rt, node.ariaDetails)[0] || null,
@@ -9348,6 +9374,8 @@ function webNodeRelationRefsForNode(rt, node) {
     collectionItems: webNodeRefs(webNodeCollectionItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
     selectedCollectionItems: webNodeRefs(webNodeSelectedCollectionItems(rt, node)),
+    activeCollectionOwner: webNodeRef(webNodeActiveCollectionOwner(rt, node)) || "",
+    activeCollectionItems: webNodeRefs(webNodeActiveCollectionItems(rt, node)),
     activeDescendant: webNodeRef(webNodeRelationList(rt, node.ariaActiveDescendant)[0]) || "",
     activeDescendantOf: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaActiveDescendant")),
     popoverTarget: webNodeRef(webNodeRelationList(rt, node.popoverTarget)[0]) || "",

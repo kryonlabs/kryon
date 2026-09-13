@@ -95,6 +95,8 @@ the browser receives normal elements, attributes, CSS, and events.
   owner/member roles.
 - Semantic collection relationship facts expose `selectedCollectionOwner` and
   `selectedCollectionItems` for selected members inside those collections.
+- Semantic collection relationship facts expose `activeCollectionOwner` and
+  `activeCollectionItems` for composite widgets with an active descendant.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, pre-mount and mounted DOM
   snapshots, and accessibility snapshots.

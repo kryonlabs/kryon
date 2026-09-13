@@ -2726,11 +2726,13 @@ function fakeDocument() {
       ["Page/choices/choiceOne", "Page/choices/choiceTwo", "Page/choices/choiceThree"]);
     assert.equal(runtime.webNodeRelationRefs(menuRt, "Page/choices/choiceTwo").collectionOwner,
       "Page/choices");
+    assert.equal(runtime.webNodeRelationRefs(menuRt, "Page/choices/choiceTwo").activeCollectionOwner,
+      "");
 
     const treeItemRt = runtime.createRuntime();
     runtime.beginFrame(treeItemRt);
     runtime.widget(treeItemRt, "TreeView", {}, null,
-      { nodeName: "tree", path: "Page/tree" });
+      { nodeName: "tree", path: "Page/tree", ariaActiveDescendant: "Page/tree/branch" });
     runtime.widget(treeItemRt, "Selectable", { label: "Branch" }, null,
       { nodeName: "branch", path: "Page/tree/branch", parentPath: "Page/tree" });
     runtime.widget(treeItemRt, "Button", { label: "Leaf" }, null,
@@ -2748,7 +2750,11 @@ function fakeDocument() {
       "button");
     assert.deepEqual(runtime.webNodeRelationRefs(treeItemRt, "Page/tree").collectionItems,
       ["Page/tree/branch", "Page/tree/leaf"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(treeItemRt, "Page/tree").activeCollectionItems,
+      ["Page/tree/branch"]);
     assert.equal(runtime.webNodeRelationRefs(treeItemRt, "Page/tree/branch").collectionOwner,
+      "Page/tree");
+    assert.equal(runtime.webNodeRelationRefs(treeItemRt, "Page/tree/branch").activeCollectionOwner,
       "Page/tree");
     const menuTarget = document.createElement("div");
     runtime.renderWebDocument(menuRt, menuTarget);
@@ -2767,8 +2773,17 @@ function fakeDocument() {
       ["Page/choices/choiceOne", "Page/choices/choiceTwo", "Page/choices/choiceThree"]);
     assert.equal(runtime.webDOMSnapshot(menuTarget, "Page/choices/choiceThree")
       .relationRefs.collectionOwner, "Page/choices");
+    assert.equal(runtime.webDOMSnapshot(menuTarget, "Page/choices/choiceThree")
+      .relationRefs.activeCollectionOwner, "");
     assert.equal(runtime.webDOMQuery(menuTarget, "[aria-level=2]").element,
       choiceOne);
+
+    const treeTarget = document.createElement("div");
+    runtime.renderWebDocument(treeItemRt, treeTarget);
+    assert.deepEqual(runtime.webDOMRelationRefs(treeTarget, "Page/tree").activeCollectionItems,
+      ["Page/tree/branch"]);
+    assert.equal(runtime.webDOMSnapshot(treeTarget, "Page/tree/branch")
+      .relationRefs.activeCollectionOwner, "Page/tree");
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);
