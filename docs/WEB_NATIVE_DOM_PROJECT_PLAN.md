@@ -89,6 +89,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Headless browser smoke coverage verifies real DOM rendering, native
   attributes, source-range annotations, Kry object lookup, KSS application, and
   decorated event dispatch in Chromium when available.
+- Dedicated headless browser inspector coverage verifies mounted source maps,
+  object maps, selector-filtered snapshots, style traces, accessibility
+  snapshots, and element/event snapshot round-trips in Chromium when available.
 - Mounted DOM snapshots include effective role and `webNodeStyleFacts(...)`
   data, with direct mounted `webDOMStyleFacts(...)` and root/element/object
   accessors so devtools can inspect Kry identity and KSS selector facts

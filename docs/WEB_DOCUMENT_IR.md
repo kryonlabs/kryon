@@ -784,9 +784,11 @@ and controls whose `form` relation points at that Kry form object.
 `webAccessibilitySnapshot(rtOrFrame)` returns a compact accessibility-facing
 projection of the Web Document frame: document title/description plus each
 node's path, name, DOM id, classes, role, label, text, value, href, input type,
-heading level, and state. The DOM renderer also writes accessibility state such
-as `aria-checked`, `aria-disabled`, `aria-busy`, and selected-link
-`aria-current` when those facts are present.
+heading level, value range, and state. `webDOMAccessibilitySnapshot(...)`
+returns the same shape from mounted DOM objects for browser inspectors and
+integration tests. The DOM renderer also writes accessibility state such as
+`aria-checked`, `aria-disabled`, `aria-busy`, and selected-link `aria-current`
+when those facts are present.
 
 `GetRoutePath()`, `GetRouteHash()`, and `GetRouteVersion()` expose browser route
 state to generated logic. `MatchRoute(pattern, path?)` matches paths with
