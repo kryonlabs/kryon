@@ -942,6 +942,8 @@ test_slider_value_policy(void)
     SliderTextPaint cell_paint;
     SliderTextPaint label_paint;
     Rectangle cell;
+    StyleFrame slider_track = {0};
+    StyleFrame slider_thumb = {0};
 
     check_float("slider clamp low", SliderClampRatio(-0.5f), 0.0f);
     check_float("slider clamp high", SliderClampRatio(1.5f), 1.0f);
@@ -999,6 +1001,33 @@ test_slider_value_policy(void)
               (int)vertical_layout.hit_bounds.x, 28);
     check_int("slider vertical paint x",
               (int)vertical_layout.paint_bounds.x, 39);
+
+    slider_track.value.fields = StylePaddingX | StylePaddingY |
+                                StyleIconSize | StyleContentOffset;
+    slider_track.value.padding_x = 64.0f;
+    slider_track.value.padding_y = 9.0f;
+    slider_track.value.icon_size = 11.0f;
+    slider_track.value.offset_x = 36.0f;
+    slider_track.value.offset_y = 18.0f;
+    slider_thumb.value.fields = StyleIconSize | StyleGap;
+    slider_thumb.value.icon_size = 20.0f;
+    slider_thumb.value.gap = 0.0f;
+    horizontal_layout = SliderHorizontalEditorLayoutFor(10, 20, 20, 44, 1.0f,
+                                                       slider_track,
+                                                       slider_thumb);
+    check_int("slider styled horizontal min width",
+              (int)horizontal_layout.editor_bounds.width, 64);
+    check_int("slider styled horizontal editor height",
+              (int)horizontal_layout.editor_bounds.height, 36);
+    vertical_layout = SliderVerticalEditorLayoutFor(50, 20, 20, 44, 1.0f,
+                                                   slider_track,
+                                                   slider_thumb);
+    check_int("slider styled vertical editor width",
+              (int)vertical_layout.editor_bounds.width, 36);
+    check_int("slider styled vertical min height",
+              (int)vertical_layout.editor_bounds.height, 64);
+    check_int("slider explicit zero glow",
+              (int)SliderGlowExpansionForStyle(slider_thumb, 1.0f), 0);
 
     cell_paint = SliderCellTextPaintFor((Rectangle){10, 20, 80, 30},
                                         6.0f, 14.0f);

@@ -151,46 +151,60 @@ SliderCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle 
     return cell
 }
 
-SliderMinimumLengthForStyle :: (track: StyleFrame, scale: float) -> i32 #export {
+SliderMetric :: (fields: u32, field: u32, value: float, fallback: float,
+    scale: float, allow_zero: bool) -> i32 {
     if scale <= 0.0 { scale = 1.0 }
-    length: float = track.value.padding_x
-    if length <= 0.0 { length = 32.0 }
-    return (i32)(length * scale)
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+SliderMetricFloat :: (fields: u32, field: u32, value: float, fallback: float,
+    scale: float, allow_zero: bool) -> float {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return value * scale
+}
+
+SliderMinimumLengthForStyle :: (track: StyleFrame, scale: float) -> i32 #export {
+    return SliderMetric(track.value.fields, (u32)StylePaddingX,
+        track.value.padding_x, 32.0, scale, false)
 }
 
 SliderThumbSizeForStyle :: (thumb: StyleFrame, scale: float) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    size: float = thumb.value.icon_size
-    if size <= 0.0 { size = 22.0 }
-    return (i32)(size * scale)
+    return SliderMetric(thumb.value.fields, (u32)StyleIconSize,
+        thumb.value.icon_size, 22.0, scale, false)
 }
 
 SliderTrackSizeForStyle :: (vertical: bool, track: StyleFrame,
     scale: float) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    size: float = track.value.padding_y
     if vertical {
-        size = track.value.icon_size
-        if size <= 0.0 { size = 8.0 }
-    } else {
-        if size <= 0.0 { size = 6.0 }
+        return SliderMetric(track.value.fields, (u32)StyleIconSize,
+            track.value.icon_size, 8.0, scale, false)
     }
-    return (i32)(size * scale)
+    return SliderMetric(track.value.fields, (u32)StylePaddingY,
+        track.value.padding_y, 6.0, scale, false)
 }
 
 SliderTrackCenterOffsetForStyle :: (track: StyleFrame,
     scale: float) -> i32 #export {
-    if scale <= 0.0 { scale = 1.0 }
-    offset: float = track.value.offset_y
-    if offset <= 0.0 { offset = 28.0 }
-    return (i32)(offset * scale)
+    return SliderMetric(track.value.fields, (u32)StyleContentOffset,
+        track.value.offset_y, 28.0, scale, false)
 }
 
 SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
     scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     width: float = track.value.offset_x
-    if width > 0.0 { return (i32)(width * scale) }
+    if (track.value.fields & (u32)StyleContentOffset) != (u32)0 &&
+       width >= 0.0 {
+        return (i32)(width * scale)
+    }
     thumb_size: i32 = SliderThumbSizeForStyle(thumb, scale)
     track_size: i32 = SliderTrackSizeForStyle(true, track, scale)
     content: i32 = thumb_size
@@ -199,10 +213,8 @@ SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
 }
 
 SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
-    if scale <= 0.0 { scale = 1.0 }
-    gap: float = thumb.value.gap
-    if gap <= 0.0 { gap = 8.0 }
-    return gap * scale
+    return SliderMetricFloat(thumb.value.fields, (u32)StyleGap,
+        thumb.value.gap, 8.0, scale, true)
 }
 
 SliderClampRatio :: (ratio: float) -> float #export {

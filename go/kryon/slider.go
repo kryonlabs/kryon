@@ -362,7 +362,7 @@ func Slider_SliderCellBoundsFor(bounds Rectangle, count int32, index int32) Rect
 	return value_29
 }
 
-func Slider_SliderMinimumLengthForStyle(track StyleFrame, scale float32) int32 {
+func Slider_SliderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -370,105 +370,145 @@ func Slider_SliderMinimumLengthForStyle(track StyleFrame, scale float32) int32 {
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = track.Value.PaddingX
-	var length float32 = value_4
-	var value_5 float32 = length
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 32.0
-		length = value_8
+	var value_4 uint32 = fields
+	var value_5 uint32 = field
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
+	var value_7 int32 = 0
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 bool = value_6 == value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float32 = value
+		var value_12 float32 = 0.0
+		var value_13 bool = value_11 < value_12
+		value_10 = value_13
 	}
-	var value_9 float32 = length
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-	return value_12
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 bool = allow_zero
+		var value_16 bool = !value_15
+		var value_17 bool = value_16
+		if value_17 {
+			var value_18 float32 = value
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 <= value_19
+			value_17 = value_20
+		}
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_21 float32 = fallback
+		value = value_21
+	}
+	var value_22 float32 = value
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
+	return value_25
+}
+
+func Slider_SliderMetricFloat(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = fields
+	var value_5 uint32 = field
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
+	var value_7 int32 = 0
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 bool = value_6 == value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float32 = value
+		var value_12 float32 = 0.0
+		var value_13 bool = value_11 < value_12
+		value_10 = value_13
+	}
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 bool = allow_zero
+		var value_16 bool = !value_15
+		var value_17 bool = value_16
+		if value_17 {
+			var value_18 float32 = value
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 <= value_19
+			value_17 = value_20
+		}
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_21 float32 = fallback
+		value = value_21
+	}
+	var value_22 float32 = value
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	return value_24
+}
+
+func Slider_SliderMinimumLengthForStyle(track StyleFrame, scale float32) int32 {
+	var value_0 uint32 = track.Value.Fields
+	var value_1 int32 = int32(StylePaddingX)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = track.Value.PaddingX
+	var value_4 float32 = 32.0
+	var value_5 float32 = scale
+	var value_6 bool = false
+	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Slider_SliderThumbSizeForStyle(thumb StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = thumb.Value.IconSize
-	var size float32 = value_4
-	var value_5 float32 = size
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 22.0
-		size = value_8
-	}
-	var value_9 float32 = size
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-	return value_12
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleIconSize)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.IconSize
+	var value_4 float32 = 22.0
+	var value_5 float32 = scale
+	var value_6 bool = false
+	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Slider_SliderTrackSizeForStyle(vertical bool, track StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
+	var value_0 bool = vertical
+	if value_0 {
+		var value_1 uint32 = track.Value.Fields
+		var value_2 int32 = int32(StyleIconSize)
+		var value_3 uint32 = uint32(number_runtime_bits(uint64(value_2), uint64(0), 32, false, 0))
+		var value_4 float32 = track.Value.IconSize
+		var value_5 float32 = 8.0
+		var value_6 float32 = scale
+		var value_7 bool = false
+		var value_8 int32 = Slider_SliderMetric(value_1, value_3, value_4, value_5, value_6, value_7)
+		return value_8
 	}
-	var value_4 float32 = track.Value.PaddingY
-	var size float32 = value_4
-	var value_5 bool = vertical
-	if value_5 {
-		var value_6 float32 = track.Value.IconSize
-		size = value_6
-		var value_7 float32 = size
-		var value_8 float32 = 0.0
-		var value_9 bool = value_7 <= value_8
-		if value_9 {
-			var value_10 float32 = 8.0
-			size = value_10
-		}
-	} else {
-		var value_11 float32 = size
-		var value_12 float32 = 0.0
-		var value_13 bool = value_11 <= value_12
-		if value_13 {
-			var value_14 float32 = 6.0
-			size = value_14
-		}
-	}
-	var value_15 float32 = size
-	var value_16 float32 = scale
-	var value_17 float32 = value_15 * value_16
-	var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
-	return value_18
+	var value_9 uint32 = track.Value.Fields
+	var value_10 int32 = int32(StylePaddingY)
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+	var value_12 float32 = track.Value.PaddingY
+	var value_13 float32 = 6.0
+	var value_14 float32 = scale
+	var value_15 bool = false
+	var value_16 int32 = Slider_SliderMetric(value_9, value_11, value_12, value_13, value_14, value_15)
+	return value_16
 }
 
 func Slider_SliderTrackCenterOffsetForStyle(track StyleFrame, scale float32) int32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = track.Value.OffsetY
-	var offset float32 = value_4
-	var value_5 float32 = offset
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 28.0
-		offset = value_8
-	}
-	var value_9 float32 = offset
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	var value_12 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_11), 32, true)), uint64(0), 32, true, 0))
-	return value_12
+	var value_0 uint32 = track.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = track.Value.OffsetY
+	var value_4 float32 = 28.0
+	var value_5 float32 = scale
+	var value_6 bool = false
+	var value_7 int32 = Slider_SliderMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Slider_SliderVerticalEditorWidthForStyle(track StyleFrame, thumb StyleFrame, scale float32) int32 {
@@ -481,64 +521,64 @@ func Slider_SliderVerticalEditorWidthForStyle(track StyleFrame, thumb StyleFrame
 	}
 	var value_4 float32 = track.Value.OffsetX
 	var width float32 = value_4
-	var value_5 float32 = width
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 > value_6
-	if value_7 {
-		var value_8 float32 = width
-		var value_9 float32 = scale
-		var value_10 float32 = value_8 * value_9
-		var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-		return value_11
+	var value_5 uint32 = track.Value.Fields
+	var value_6 int32 = int32(StyleContentOffset)
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
+	var value_9 int32 = 0
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 bool = value_8 != value_10
+	var value_12 bool = value_11
+	if value_12 {
+		var value_13 float32 = width
+		var value_14 float32 = 0.0
+		var value_15 bool = value_13 >= value_14
+		value_12 = value_15
 	}
-	var value_12 StyleFrame = thumb
-	var value_13 float32 = scale
-	var value_14 int32 = Slider_SliderThumbSizeForStyle(value_12, value_13)
-	var thumb_size int32 = value_14
-	var value_15 bool = true
-	var value_16 StyleFrame = track
-	var value_17 float32 = scale
-	var value_18 int32 = Slider_SliderTrackSizeForStyle(value_15, value_16, value_17)
-	var track_size int32 = value_18
-	var value_19 int32 = thumb_size
-	var content int32 = value_19
-	var value_20 int32 = track_size
-	var value_21 int32 = content
-	var value_22 bool = value_20 > value_21
-	if value_22 {
-		var value_23 int32 = track_size
-		content = value_23
+	if value_12 {
+		var value_16 float32 = width
+		var value_17 float32 = scale
+		var value_18 float32 = value_16 * value_17
+		var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
+		return value_19
 	}
-	var value_24 int32 = content
-	var value_25 float32 = 14.0
-	var value_26 float32 = scale
-	var value_27 float32 = value_25 * value_26
-	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
-	var value_29 int32 = int32(number_runtime_bits(uint64(value_24), uint64(value_28), 32, true, 1))
-	return value_29
+	var value_20 StyleFrame = thumb
+	var value_21 float32 = scale
+	var value_22 int32 = Slider_SliderThumbSizeForStyle(value_20, value_21)
+	var thumb_size int32 = value_22
+	var value_23 bool = true
+	var value_24 StyleFrame = track
+	var value_25 float32 = scale
+	var value_26 int32 = Slider_SliderTrackSizeForStyle(value_23, value_24, value_25)
+	var track_size int32 = value_26
+	var value_27 int32 = thumb_size
+	var content int32 = value_27
+	var value_28 int32 = track_size
+	var value_29 int32 = content
+	var value_30 bool = value_28 > value_29
+	if value_30 {
+		var value_31 int32 = track_size
+		content = value_31
+	}
+	var value_32 int32 = content
+	var value_33 float32 = 14.0
+	var value_34 float32 = scale
+	var value_35 float32 = value_33 * value_34
+	var value_36 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_35), 32, true)), uint64(0), 32, true, 0))
+	var value_37 int32 = int32(number_runtime_bits(uint64(value_32), uint64(value_36), 32, true, 1))
+	return value_37
 }
 
 func Slider_SliderGlowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = thumb.Value.Gap
-	var gap float32 = value_4
-	var value_5 float32 = gap
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 8.0
-		gap = value_8
-	}
-	var value_9 float32 = gap
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	return value_11
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleGap)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.Gap
+	var value_4 float32 = 8.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Slider_SliderClampRatio(ratio float32) float32 {
