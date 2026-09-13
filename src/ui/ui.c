@@ -2341,7 +2341,7 @@ RenderLink(LinkProps link)
                                               StyleKindLink());
     font = link.font > 0 ? link.font :
         (style_frame.value.font_size > 0.0f
-            ? Scale((int)style_frame.value.font_size)
+            ? (int)(style_frame.value.font_size + 0.5f)
             : GetFontSize());
     text_w = TextWidth(text, font);
 

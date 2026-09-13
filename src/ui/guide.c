@@ -173,7 +173,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     paragraph.font = guide.paragraph_font > 0 ? guide.paragraph_font : Text16;
     if((label_style.fields & (uint32_t)StyleFontSize) != 0 &&
        label_style.font_size > 0.0f)
-        paragraph.font = Scale((int)label_style.font_size);
+        paragraph.font = (int)(label_style.font_size + 0.5f);
     label_font = paragraph.font;
     paragraph.line_gap = line_gap;
     paragraph.color = GetColor(Opacity(ColorToInt(label_style.foreground),

@@ -369,7 +369,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginButton` | Native support | Lowered host entry for composed `.kry` `Button` content; not a separate widget concept. |
 | `BeginDisabled` | Native support | Host scope for disabled child content. |
 | `EndDisabled` | Native support | Host scope exit for disabled child content. |
-| `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, URL dispatch remains host support. |
+| `Link` | `.kry canonical` | Canonical public name for URL/link activation; color/hover/disabled policy is in `.kry`, typography uses resolved KSS font sizes directly, and URL dispatch remains host support. |
 | `TextField` | `.kry canonical` | Metrics, horizontal scroll, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `TextArea` | `.kry canonical` | Metrics, page-navigation rows, navigation, and edit intent policy are in `.kry`; buffer mutation, IME, selection, and rendering remain native host support. |
 | `Dropdown` | `.kry canonical` | Already has `.kry` module; trigger and option typography use resolved KSS font sizes directly. |
@@ -447,7 +447,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
 | `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
-| `TitleBar` | `.kry canonical` | Layout policy is in `.kry`; leading action and dropdown behavior live in `TitleBarProps`. |
+| `TitleBar` | `.kry canonical` | Layout policy is in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
 
@@ -462,7 +462,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
-| `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Current C rendering is host support around `runtime/guide.kry` policy. |
+| `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
 
