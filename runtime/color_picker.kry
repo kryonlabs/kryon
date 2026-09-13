@@ -1,5 +1,6 @@
 #module "color_picker"
 #import "drawing_props"
+#import "style"
 
 ColorPickerLayout :: struct {
     row_height: float
@@ -22,27 +23,39 @@ ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
 }
 
 ColorPickerChannelBounds :: (bounds: Rectangle, index: i32,
-    channels: i32, scale: float) -> Rectangle #export {
+    channels: i32, scale: float, metrics: StyleFrame) -> Rectangle #export {
     row: Rectangle
-    layout: ColorPickerLayout = ColorPickerLayoutFor(bounds, channels, scale)
+    layout: ColorPickerLayout = ColorPickerLayoutFor(bounds, channels, scale, metrics)
+    inset: float = metrics.value.padding_y
+    if inset <= 0.0 { inset = 2.0 }
+    inset *= scale
     row.x = bounds.x
     row.y = bounds.y + layout.row_height * (float)index
     row.width = bounds.width
-    row.height = layout.row_height - 2.0 * scale
+    row.height = layout.row_height - inset
     if row.height < 0.0 { row.height = 0.0 }
     return row
 }
 
 ColorPickerLayoutFor :: (bounds: Rectangle, channels: i32,
-    scale: float) -> ColorPickerLayout #export {
+    scale: float, metrics: StyleFrame) -> ColorPickerLayout #export {
     layout: ColorPickerLayout
     if scale <= 0.0 { scale = 1.0 }
     if channels < 1 { channels = 1 }
-    swatch_height: float = 36.0 * scale
-    gap: float = 4.0 * scale
+    swatch_height: float = metrics.value.icon_size
+    gap: float = metrics.value.gap
+    minimum_row: float = metrics.value.offset_y
+    compact_threshold: float = metrics.value.offset_x
+    if swatch_height <= 0.0 { swatch_height = 36.0 }
+    if gap <= 0.0 { gap = 4.0 }
+    if minimum_row <= 0.0 { minimum_row = 28.0 }
+    if compact_threshold <= 0.0 { compact_threshold = 20.0 }
+    swatch_height *= scale
+    gap *= scale
+    minimum_row *= scale
+    compact_threshold *= scale
     row_height: float = (bounds.height - swatch_height - gap) / (float)channels
-    minimum_row: float = 28.0 * scale
-    if row_height < 20.0 * scale { row_height = minimum_row }
+    if row_height < compact_threshold { row_height = minimum_row }
     layout.row_height = row_height
     layout.swatch_bounds.x = bounds.x
     layout.swatch_bounds.y = bounds.y + row_height * (float)channels + gap

@@ -693,6 +693,8 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindSpinbox(), true
 	case "spinboxvalue":
 		return StyleSheet_StyleKindSpinboxValue(), true
+	case "colorpicker":
+		return StyleSheet_StyleKindColorPicker(), true
 	case "colorpickerswatch":
 		return StyleSheet_StyleKindColorPickerSwatch(), true
 	case "panedview":

@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type ColorPickerLayout struct {
 	RowHeight    float32
 	SwatchBounds Rectangle
@@ -33,42 +34,53 @@ func ColorPicker_ColorPickerSwatchPaintFor(bounds Rectangle, label_inset float32
 	return value_11
 }
 
-func ColorPicker_ColorPickerChannelBounds(bounds Rectangle, index int32, channels int32, scale float32) Rectangle {
+func ColorPicker_ColorPickerChannelBounds(bounds Rectangle, index int32, channels int32, scale float32, metrics StyleFrame) Rectangle {
 	var row Rectangle = Rectangle{}
 	var value_0 Rectangle = bounds
 	var value_1 int32 = channels
 	var value_2 float32 = scale
-	var value_3 ColorPickerLayout = ColorPicker_ColorPickerLayoutFor(value_0, value_1, value_2)
-	var layout ColorPickerLayout = value_3
-	var value_4 float32 = bounds.X
-	row.X = value_4
-	var value_5 float32 = bounds.Y
-	var value_6 float32 = layout.RowHeight
-	var value_7 int32 = index
-	var value_8 float32 = float32(value_7)
-	var value_9 float32 = value_6 * value_8
-	var value_10 float32 = value_5 + value_9
-	row.Y = value_10
-	var value_11 float32 = bounds.Width
-	row.Width = value_11
-	var value_12 float32 = layout.RowHeight
-	var value_13 float32 = 2.0
-	var value_14 float32 = scale
-	var value_15 float32 = value_13 * value_14
-	var value_16 float32 = value_12 - value_15
-	row.Height = value_16
-	var value_17 float32 = row.Height
-	var value_18 float32 = 0.0
-	var value_19 bool = value_17 < value_18
-	if value_19 {
-		var value_20 float32 = 0.0
-		row.Height = value_20
+	var value_3 StyleFrame = metrics
+	var value_4 ColorPickerLayout = ColorPicker_ColorPickerLayoutFor(value_0, value_1, value_2, value_3)
+	var layout ColorPickerLayout = value_4
+	var value_5 float32 = metrics.Value.PaddingY
+	var inset float32 = value_5
+	var value_6 float32 = inset
+	var value_7 float32 = 0.0
+	var value_8 bool = value_6 <= value_7
+	if value_8 {
+		var value_9 float32 = 2.0
+		inset = value_9
 	}
-	var value_21 Rectangle = row
-	return value_21
+	var value_10 float32 = inset
+	var value_11 float32 = scale
+	inset = value_10 * value_11
+	var value_12 float32 = bounds.X
+	row.X = value_12
+	var value_13 float32 = bounds.Y
+	var value_14 float32 = layout.RowHeight
+	var value_15 int32 = index
+	var value_16 float32 = float32(value_15)
+	var value_17 float32 = value_14 * value_16
+	var value_18 float32 = value_13 + value_17
+	row.Y = value_18
+	var value_19 float32 = bounds.Width
+	row.Width = value_19
+	var value_20 float32 = layout.RowHeight
+	var value_21 float32 = inset
+	var value_22 float32 = value_20 - value_21
+	row.Height = value_22
+	var value_23 float32 = row.Height
+	var value_24 float32 = 0.0
+	var value_25 bool = value_23 < value_24
+	if value_25 {
+		var value_26 float32 = 0.0
+		row.Height = value_26
+	}
+	var value_27 Rectangle = row
+	return value_27
 }
 
-func ColorPicker_ColorPickerLayoutFor(bounds Rectangle, channels int32, scale float32) ColorPickerLayout {
+func ColorPicker_ColorPickerLayoutFor(bounds Rectangle, channels int32, scale float32, metrics StyleFrame) ColorPickerLayout {
 	var layout ColorPickerLayout = ColorPickerLayout{}
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -84,55 +96,89 @@ func ColorPicker_ColorPickerLayoutFor(bounds Rectangle, channels int32, scale fl
 		var value_7 int32 = 1
 		channels = value_7
 	}
-	var value_8 float32 = 36.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var swatch_height float32 = value_10
-	var value_11 float32 = 4.0
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var gap float32 = value_13
-	var value_14 float32 = bounds.Height
-	var value_15 float32 = swatch_height
-	var value_16 float32 = value_14 - value_15
-	var value_17 float32 = gap
-	var value_18 float32 = value_16 - value_17
-	var value_19 int32 = channels
-	var value_20 float32 = float32(value_19)
-	var value_21 float32 = value_18 / value_20
-	var row_height float32 = value_21
-	var value_22 float32 = 28.0
-	var value_23 float32 = scale
-	var value_24 float32 = value_22 * value_23
-	var minimum_row float32 = value_24
-	var value_25 float32 = row_height
-	var value_26 float32 = 20.0
-	var value_27 float32 = scale
-	var value_28 float32 = value_26 * value_27
-	var value_29 bool = value_25 < value_28
-	if value_29 {
-		var value_30 float32 = minimum_row
-		row_height = value_30
+	var value_8 float32 = metrics.Value.IconSize
+	var swatch_height float32 = value_8
+	var value_9 float32 = metrics.Value.Gap
+	var gap float32 = value_9
+	var value_10 float32 = metrics.Value.OffsetY
+	var minimum_row float32 = value_10
+	var value_11 float32 = metrics.Value.OffsetX
+	var compact_threshold float32 = value_11
+	var value_12 float32 = swatch_height
+	var value_13 float32 = 0.0
+	var value_14 bool = value_12 <= value_13
+	if value_14 {
+		var value_15 float32 = 36.0
+		swatch_height = value_15
 	}
-	var value_31 float32 = row_height
-	layout.RowHeight = value_31
-	var value_32 float32 = bounds.X
-	layout.SwatchBounds.X = value_32
-	var value_33 float32 = bounds.Y
-	var value_34 float32 = row_height
-	var value_35 int32 = channels
-	var value_36 float32 = float32(value_35)
-	var value_37 float32 = value_34 * value_36
-	var value_38 float32 = value_33 + value_37
+	var value_16 float32 = gap
+	var value_17 float32 = 0.0
+	var value_18 bool = value_16 <= value_17
+	if value_18 {
+		var value_19 float32 = 4.0
+		gap = value_19
+	}
+	var value_20 float32 = minimum_row
+	var value_21 float32 = 0.0
+	var value_22 bool = value_20 <= value_21
+	if value_22 {
+		var value_23 float32 = 28.0
+		minimum_row = value_23
+	}
+	var value_24 float32 = compact_threshold
+	var value_25 float32 = 0.0
+	var value_26 bool = value_24 <= value_25
+	if value_26 {
+		var value_27 float32 = 20.0
+		compact_threshold = value_27
+	}
+	var value_28 float32 = swatch_height
+	var value_29 float32 = scale
+	swatch_height = value_28 * value_29
+	var value_30 float32 = gap
+	var value_31 float32 = scale
+	gap = value_30 * value_31
+	var value_32 float32 = minimum_row
+	var value_33 float32 = scale
+	minimum_row = value_32 * value_33
+	var value_34 float32 = compact_threshold
+	var value_35 float32 = scale
+	compact_threshold = value_34 * value_35
+	var value_36 float32 = bounds.Height
+	var value_37 float32 = swatch_height
+	var value_38 float32 = value_36 - value_37
 	var value_39 float32 = gap
-	var value_40 float32 = value_38 + value_39
-	layout.SwatchBounds.Y = value_40
-	var value_41 float32 = bounds.Width
-	layout.SwatchBounds.Width = value_41
-	var value_42 float32 = swatch_height
-	layout.SwatchBounds.Height = value_42
-	var value_43 ColorPickerLayout = layout
-	return value_43
+	var value_40 float32 = value_38 - value_39
+	var value_41 int32 = channels
+	var value_42 float32 = float32(value_41)
+	var value_43 float32 = value_40 / value_42
+	var row_height float32 = value_43
+	var value_44 float32 = row_height
+	var value_45 float32 = compact_threshold
+	var value_46 bool = value_44 < value_45
+	if value_46 {
+		var value_47 float32 = minimum_row
+		row_height = value_47
+	}
+	var value_48 float32 = row_height
+	layout.RowHeight = value_48
+	var value_49 float32 = bounds.X
+	layout.SwatchBounds.X = value_49
+	var value_50 float32 = bounds.Y
+	var value_51 float32 = row_height
+	var value_52 int32 = channels
+	var value_53 float32 = float32(value_52)
+	var value_54 float32 = value_51 * value_53
+	var value_55 float32 = value_50 + value_54
+	var value_56 float32 = gap
+	var value_57 float32 = value_55 + value_56
+	layout.SwatchBounds.Y = value_57
+	var value_58 float32 = bounds.Width
+	layout.SwatchBounds.Width = value_58
+	var value_59 float32 = swatch_height
+	layout.SwatchBounds.Height = value_59
+	var value_60 ColorPickerLayout = layout
+	return value_60
 }
 
 func ColorPicker_ColorPickerClampChannel(value float32) float32 {

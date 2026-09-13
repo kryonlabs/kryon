@@ -271,6 +271,8 @@ kss_style_kind(const char *name)
         return StyleKindSpinbox();
     if(kss_ieq(name, "SpinboxValue"))
         return StyleKindSpinboxValue();
+    if(kss_ieq(name, "ColorPicker"))
+        return StyleKindColorPicker();
     if(kss_ieq(name, "ColorPickerSwatch"))
         return StyleKindColorPickerSwatch();
     if(kss_ieq(name, "PanedView"))

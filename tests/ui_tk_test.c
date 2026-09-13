@@ -339,8 +339,13 @@ static void
 test_color_picker_policy(void)
 {
     Rectangle bounds = {10, 20, 120, 160};
-    ColorPickerLayout layout = ColorPickerLayoutFor(bounds, 4, 1.0f);
-    Rectangle row = ColorPickerChannelBounds(bounds, 2, 4, 1.0f);
+    StyleFrame metrics = {
+        .value = {.gap = 4.0f, .icon_size = 36.0f, .padding_y = 2.0f,
+                  .offset_x = 20.0f, .offset_y = 28.0f}
+    };
+    ColorPickerLayout layout = ColorPickerLayoutFor(bounds, 4, 1.0f,
+                                                    metrics);
+    Rectangle row = ColorPickerChannelBounds(bounds, 2, 4, 1.0f, metrics);
     ColorPickerSwatchPaint swatch = ColorPickerSwatchPaintFor(
         layout.swatch_bounds, 8.0f, 14.0f);
     Color rgba = ColorPickerColorFor(-0.5f, 0.5f, 2.0f, 0.25f, 4);
@@ -357,6 +362,18 @@ test_color_picker_policy(void)
     check_int("color picker clamp high", ColorPickerChannelByte(2.0f), 255);
     check_color("color picker rgba", rgba, (Color){0, 128, 255, 64});
     check_color("color picker rgb alpha", rgb, (Color){255, 0, 128, 255});
+
+    metrics.value.gap = 6.0f;
+    metrics.value.icon_size = 40.0f;
+    metrics.value.padding_y = 5.0f;
+    metrics.value.offset_x = 18.0f;
+    metrics.value.offset_y = 24.0f;
+    layout = ColorPickerLayoutFor(bounds, 4, 1.0f, metrics);
+    row = ColorPickerChannelBounds(bounds, 1, 4, 1.0f, metrics);
+    check_float("styled color picker row height", layout.row_height, 28.5f);
+    check_float("styled color picker swatch y", layout.swatch_bounds.y, 140.0f);
+    check_float("styled color picker swatch height", layout.swatch_bounds.height, 40.0f);
+    check_float("styled color picker channel height", row.height, 23.5f);
 }
 
 static void
@@ -2309,7 +2326,7 @@ test_many_dropdown_identities(void)
     int selected[41] = {0};
     InjectReset();
     for(int phase = 0; phase < 4; phase++) {
-        if(phase < 3) InjectTap(20, phase == 1 ? 75 : 20);
+        if(phase < 3) InjectTap(20, phase == 1 ? 85 : 20);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump();
             BeginInterfaceFrame(240,240,1);

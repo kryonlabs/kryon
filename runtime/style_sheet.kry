@@ -173,6 +173,10 @@ StyleKindColorPickerSwatch :: () -> i32 #export {
     return 39
 }
 
+StyleKindColorPicker :: () -> i32 #export {
+    return 62
+}
+
 StyleKindSliderThumb :: () -> i32 #export {
     return 40
 }

@@ -464,6 +464,14 @@ DragValue:disabled {
   opacity: 0.55;
 }
 
+ColorPicker {
+  gap: 4;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;
@@ -2102,7 +2110,7 @@ Menu {
   border-width: border;
   padding-x: space.1;
   padding-y: space.1;
-  gap: space.1;
+  gap: 4;
   opacity: 1;
   material: default;
 }
@@ -2236,6 +2244,14 @@ DragValue:disabled {
   foreground: muted;
   border: border-disabled;
   opacity: 0.55;
+}
+
+ColorPicker {
+  gap: space.1;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
 }
 
 ColorPickerSwatch {
@@ -3986,6 +4002,14 @@ DragValue:disabled {
   foreground: muted;
   border: border-soft;
   opacity: 0.55;
+}
+
+ColorPicker {
+  gap: 4;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
 }
 
 ColorPickerSwatch {
@@ -5799,6 +5823,14 @@ DragValue:disabled {
   foreground: muted;
   border: border-soft;
   opacity: 0.55;
+}
+
+ColorPicker {
+  gap: 4;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
 }
 
 ColorPickerSwatch {
@@ -7663,6 +7695,14 @@ DragValue:disabled {
   foreground: muted;
   border: border-soft;
   opacity: 0.55;
+}
+
+ColorPicker {
+  gap: 4;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
 }
 
 ColorPickerSwatch {

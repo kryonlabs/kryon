@@ -275,6 +275,11 @@ func StyleSheet_StyleKindColorPickerSwatch() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindColorPicker() int32 {
+	var value_0 int32 = 62
+	return value_0
+}
+
 func StyleSheet_StyleKindSliderThumb() int32 {
 	var value_0 int32 = 40
 	return value_0

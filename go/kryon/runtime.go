@@ -2280,13 +2280,19 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 		return false
 	}
 	props.Bounds = r.layoutRect(props.Bounds)
-	layout := ColorPicker_ColorPickerLayoutFor(props.Bounds, int32(channels), 1)
+	disabled := props.Disabled || r.contentDisabled()
+	pickerFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
+		if disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), disabled, false, props.ClassName, StyleSheet_StyleKindColorPicker(), StyleSheet_StyleAny())
+	layout := ColorPicker_ColorPickerLayoutFor(props.Bounds, int32(channels), 1, pickerFrame)
 	changed := false
 	for i := 0; i < channels; i++ {
-		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1)
+		row := ColorPicker_ColorPickerChannelBounds(props.Bounds, int32(i), int32(channels), 1, pickerFrame)
 		changed = r.sliderFloat(sliderFloatProps{Bounds: row, ID: props.ID*8 + int32(i) + 1, ClassName: props.ClassName, Values: props.Values[i : i+1], ValueCount: 1, Min: 0, Max: 1, Format: "%.3f", Disabled: props.Disabled}, false) || changed
 	}
-	disabled := props.Disabled || r.contentDisabled()
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled

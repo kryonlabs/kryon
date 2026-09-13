@@ -485,6 +485,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"DragDropTarget", StyleSheet_StyleKindDragDropTarget()},
 		{"Spinbox", StyleSheet_StyleKindSpinbox()},
 		{"SpinboxValue", StyleSheet_StyleKindSpinboxValue()},
+		{"ColorPicker", StyleSheet_StyleKindColorPicker()},
 		{"ColorPickerSwatch", StyleSheet_StyleKindColorPickerSwatch()},
 		{"PanedView", StyleSheet_StyleKindPanedView()},
 		{"Toast", StyleSheet_StyleKindToast()},

@@ -1551,6 +1551,7 @@ tokens {
   length { radius: 6; border: 2; }
   material { flat: Flat; }
 }
+ColorPicker { gap: 6; icon-size: 40; padding-y: 5; offset-x: 18; offset-y: 24; }
 ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius: radius; border-width: border; padding-x: 10; font-size: 18; material: flat; opacity: 0.64; }
 `, "Test Color", "") || !SetActiveStylePack("test.color") {
 		t.Fatal("test color picker style did not activate")
@@ -1572,7 +1573,7 @@ ColorPickerSwatch { background: #00000000; foreground: ink; border: rule; radius
 		if op.ID != 77 {
 			continue
 		}
-		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 132, Width: 120, Height: 36}) {
+		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 128, Width: 120, Height: 40}) {
 			sawSwatch = true
 			if op.Color != (Color{R: 26, G: 51, B: 77, A: 255}) || op.BorderColor != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("color picker swatch style op = %+v", op)
@@ -1613,6 +1614,7 @@ tokens {
 }
 Canvas.panel { background: canvas; border: rule; radius: radius; border-width: border; material: flat; }
 Link.panel { foreground: link; font-size: 19; opacity: 0.62; }
+ColorPicker.panel { gap: 4; icon-size: 36; padding-y: 2; offset-x: 20; offset-y: 28; }
 ColorPickerSwatch.panel { foreground: ink; border: swatch; radius: radius; border-width: border; padding-x: 9; font-size: 18; material: flat; opacity: 0.66; }
 Spinbox.panel { background: shell; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
 SpinboxValue.panel { background: value; foreground: ink; border: value; radius: radius; border-width: border; font-size: 20; material: flat; opacity: 0.7; }

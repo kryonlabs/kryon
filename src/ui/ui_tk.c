@@ -1040,14 +1040,20 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
     int changed = 0;
     float scale = (float)Scale(1000) / 1000.0f;
     ColorPickerLayout layout;
+    StyleFrame picker_frame;
     const char *labels[4] = {"R", "G", "B", "A"};
 
     if(picker.values == NULL || picker.value_count < channels)
         return 0;
-    layout = ColorPickerLayoutFor(picker.bounds, channels, scale);
+    picker_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        picker.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        picker.disabled, 0, picker.class_name, StyleKindColorPicker(),
+        StyleAny());
+    layout = ColorPickerLayoutFor(picker.bounds, channels, scale,
+                                  picker_frame);
     for(int i = 0; i < channels; i++) {
         Rectangle row = ColorPickerChannelBounds(picker.bounds, i, channels,
-                                                 scale);
+                                                 scale, picker_frame);
         SliderContinuousProps channel = {
             row,
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,

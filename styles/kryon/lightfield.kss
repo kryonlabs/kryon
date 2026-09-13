@@ -492,6 +492,14 @@ DragValue:disabled {
   opacity: 0.55;
 }
 
+ColorPicker {
+  gap: 4;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
+}
+
 ColorPickerSwatch {
   background: transparent;
   foreground: text;

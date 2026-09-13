@@ -326,7 +326,7 @@ Menu {
   border-width: border;
   padding-x: space.1;
   padding-y: space.1;
-  gap: space.1;
+  gap: 4;
   opacity: 1;
   material: default;
 }
@@ -460,6 +460,14 @@ DragValue:disabled {
   foreground: muted;
   border: border-disabled;
   opacity: 0.55;
+}
+
+ColorPicker {
+  gap: space.1;
+  icon-size: 36;
+  padding-y: 2;
+  offset-x: 20;
+  offset-y: 28;
 }
 
 ColorPickerSwatch {

@@ -130,6 +130,7 @@ main(void)
         {"DragDropTarget", StyleKindDragDropTarget()},
         {"Spinbox", StyleKindSpinbox()},
         {"SpinboxValue", StyleKindSpinboxValue()},
+        {"ColorPicker", StyleKindColorPicker()},
         {"ColorPickerSwatch", StyleKindColorPickerSwatch()},
         {"PanedView", StyleKindPanedView()},
         {"Toast", StyleKindToast()},
