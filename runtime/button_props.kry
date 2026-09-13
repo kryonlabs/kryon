@@ -8,6 +8,7 @@ ButtonProps :: struct {
     label: const char*
     font: i32
     id: i32
+    class_name: i32
     tone: ButtonTone
     emphasis: ButtonEmphasis
     size: ControlSize

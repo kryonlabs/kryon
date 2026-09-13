@@ -11,6 +11,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    label: const char*\n"
         "    font: i32\n"
         "    id: i32\n"
+        "    class_name: i32\n"
         "    tone: ButtonTone\n"
         "    emphasis: ButtonEmphasis\n"
         "    size: ControlSize\n"

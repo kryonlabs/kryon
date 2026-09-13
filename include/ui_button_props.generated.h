@@ -27,6 +27,7 @@ typedef struct ButtonProps {
     const char* label;
     int32_t font;
     int32_t id;
+    int32_t class_name;
     ButtonTone tone;
     ButtonEmphasis emphasis;
     ControlSize size;

@@ -8,6 +8,7 @@ type ButtonProps struct {
 	Label           string
 	Font            int32
 	ID              int32
+	ClassName       int32
 	Tone            ButtonTone
 	Emphasis        ButtonEmphasis
 	Size            ControlSize

@@ -32,6 +32,7 @@
 #include "../src/ui/ui_input_clip_internal.h"
 #include "../src/ui/ui_popup_input_internal.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -4438,6 +4439,22 @@ test_control_style_resolution(void)
     check_color("button focus has no implicit background", got.background, BLANK);
     got = ResolveButtonStyle(button, ButtonStateHover);
     check_color("button hover has no implicit background", got.background, BLANK);
+
+    ClearStylePacks();
+    assert(RegisterStylePackSource(
+        "@pack test.classes;\n"
+        "Button.primary { background: #123456; foreground: #f8f9fa; }\n",
+        "Classes", ""));
+    button.class_name = StyleClassId("primary");
+    button.tone = ButtonToneNeutral;
+    button.emphasis = ButtonEmphasisSoft;
+    got = ResolveButtonStyle(button, ButtonStateNormal);
+    check_color("button class stylesheet background", got.background,
+                (Color){0x12, 0x34, 0x56, 0xff});
+    check_color("button class stylesheet foreground", got.foreground,
+                (Color){0xf8, 0xf9, 0xfa, 0xff});
+    ClearStylePacks();
+
     SetTheme(original);
     ClearThemeMetricsOverride();
 }

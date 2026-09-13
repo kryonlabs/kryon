@@ -128,6 +128,33 @@ func TestStylePackRegistryInGo(t *testing.T) {
 	}
 }
 
+func TestButtonPropsClassNameResolvesKSSClassInGo(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+
+	if !RegisterStylePackSource(`@pack test.classes;
+Button.primary {
+  background: #123456;
+  foreground: #f8f9fa;
+}`, "Classes", "") {
+		t.Fatal("class style pack did not register")
+	}
+
+	props := ButtonProps{
+		ClassName: StyleClassID("primary"),
+		Tone:      ButtonToneNeutral,
+		Emphasis:  ButtonEmphasisSoft,
+		Size:      ControlSizeMedium,
+	}
+	got := resolveMinimalControlState(props, ButtonStateNormal, StyleSheet_StyleKindButton())
+	if got.Background != 0x123456ff {
+		t.Fatalf("button class background did not resolve: 0x%08x", got.Background)
+	}
+	if got.Foreground != 0xf8f9faff {
+		t.Fatalf("button class foreground did not resolve: 0x%08x", got.Foreground)
+	}
+}
+
 func TestStylePickerEmptyRegistryInGo(t *testing.T) {
 	ClearStylePacks()
 	defer ClearStylePacks()
