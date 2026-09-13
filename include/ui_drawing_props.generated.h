@@ -20,5 +20,18 @@ static inline bool StringEqual(String a, String b) {
 }
 #endif
 #include "kryon_compat.generated.h"
+#include "ui_text_props.generated.h"
+
+typedef struct ParagraphSpec {
+    const char* text;
+    Texture2D icon;
+    int32_t icon_type;
+    int32_t icon_size;
+    int32_t width;
+    int32_t font;
+    int32_t line_gap;
+    Color color;
+    TextAlign align;
+} ParagraphSpec;
 
 #endif /* K_RUNTIME_DRAWING_PROPS_H */

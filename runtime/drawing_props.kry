@@ -1,5 +1,6 @@
 #module "drawing_props"
 #import "kryon_compat.generated.h"
+#import "ui_text_props.generated.h"
 
 # The graphics host supplies these C types. Native Go uses the same field contract.
 Vector2 :: struct #extern {
@@ -27,4 +28,16 @@ Texture2D :: struct #extern {
     height: i32
     mipmaps: i32
     format: i32
+}
+
+ParagraphSpec :: struct {
+    text: const char*
+    icon: Texture2D
+    icon_type: i32
+    icon_size: i32
+    width: i32
+    font: i32
+    line_gap: i32
+    color: Color
+    align: TextAlign
 }

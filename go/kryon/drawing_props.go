@@ -2,6 +2,7 @@
 package kryon
 
 // #import kryon_compat.generated.h
+// #import ui_text_props.generated.h
 type Vector2 struct {
 	X float32
 	Y float32
@@ -27,4 +28,16 @@ type Texture2D struct {
 	Height  int32
 	Mipmaps int32
 	Format  int32
+}
+
+type ParagraphSpec struct {
+	Text     string
+	Icon     Texture2D
+	IconType int32
+	IconSize int32
+	Width    int32
+	Font     int32
+	LineGap  int32
+	Color    Color
+	Align    TextAlign
 }
