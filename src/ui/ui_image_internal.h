@@ -1,5 +1,5 @@
-#ifndef UI_IMAGE_INTERNAL_H
-#define UI_IMAGE_INTERNAL_H
+#ifndef IMAGE_INTERNAL_H
+#define IMAGE_INTERNAL_H
 
 #include "ui_image.h"
 

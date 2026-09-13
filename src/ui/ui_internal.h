@@ -1,5 +1,5 @@
-#ifndef UI_INTERNAL_H
-#define UI_INTERNAL_H
+#ifndef INTERFACE_INTERNAL_H
+#define INTERFACE_INTERNAL_H
 
 #include "ui_draw.h"
 #include "ui_tree.h"

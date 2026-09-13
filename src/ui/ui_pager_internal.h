@@ -1,5 +1,5 @@
-#ifndef UI_PAGER_INTERNAL_H
-#define UI_PAGER_INTERNAL_H
+#ifndef PAGER_INTERNAL_H
+#define PAGER_INTERNAL_H
 
 #include "kryon_compat.generated.h"
 #include "ui_swipe.h"

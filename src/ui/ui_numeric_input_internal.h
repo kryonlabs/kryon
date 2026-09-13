@@ -1,5 +1,5 @@
-#ifndef UI_NUMERIC_INPUT_INTERNAL_H
-#define UI_NUMERIC_INPUT_INTERNAL_H
+#ifndef NUMERIC_INPUT_INTERNAL_H
+#define NUMERIC_INPUT_INTERNAL_H
 
 typedef struct NumericInputState {
     int token;

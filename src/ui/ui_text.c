@@ -479,7 +479,7 @@ EnsureDefaultFont(void)
            UseTextFont(TEXT_FONT_DEFAULT_NAME)) {
             if(font_entry_index("semibold") < 0)
                 RegisterTextFontFileSource("semibold", semibold_paths[i], NULL, 0);
-            TraceLog(LOG_INFO, "UIFONT: default font resolved from %s", paths[i]);
+            TraceLog(LOG_INFO, "TEXTFONT: default font resolved from %s", paths[i]);
             return 1;
         }
     }
@@ -487,13 +487,13 @@ EnsureDefaultFont(void)
     if(GetSystemTextFontFile(system_font_path, sizeof(system_font_path)) &&
        RegisterTextFontFileSource(TEXT_FONT_DEFAULT_NAME, system_font_path, NULL, 0) &&
        UseTextFont(TEXT_FONT_DEFAULT_NAME)) {
-        TraceLog(LOG_INFO, "UIFONT: bundled face unavailable; default font "
+        TraceLog(LOG_INFO, "TEXTFONT: bundled face unavailable; default font "
                           "resolved from system: %s", system_font_path);
         return 1;
     }
 
     TraceLog(LOG_WARNING,
-             "UIFONT: no font source resolved; text will use the built-in "
+             "TEXTFONT: no font source resolved; text will use the built-in "
              "bitmap font (embed a face via the FONT_FILES build variable)");
     return 0;
 }
@@ -1078,7 +1078,7 @@ TextWidth(const char *text, int font_size)
         glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
-            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+            TraceLog(LOG_WARNING, "TEXTFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
@@ -1160,7 +1160,7 @@ ui_text_width_bytes(const char *text, int byte_len, int font_size)
         glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
-            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+            TraceLog(LOG_WARNING, "TEXTFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
@@ -1200,7 +1200,7 @@ ui_text_byte_offset_at_x(const char *text, int font_size, int target_x)
         glyph_font = font_for_codepoint(codepoint, normalized_font_size);
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
-            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+            TraceLog(LOG_WARNING, "TEXTFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, normalized_font_size, glyph_font.baseSize,
                      (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
@@ -1487,7 +1487,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         }
         if(ui_text_trace_enabled()) {
             /* which font entry actually serves this glyph + its advance */
-            TraceLog(LOG_WARNING, "UIFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
+            TraceLog(LOG_WARNING, "TEXTFONT: cp=%d fs=%d entry_base=%d adv=%.4f",
                      codepoint, font_size, glyph_font.baseSize,
                      (double)TextFontGlyph(glyph_font, codepoint).advanceX);
         }
@@ -1496,7 +1496,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
         src = TextFontAtlasRec(glyph_font, codepoint);
 
         if(ui_text_trace_enabled() && i == 0) {
-            TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
+            TraceLog(LOG_WARNING, "TEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
                      text, font_size, glyph_font.baseSize, scale, cursor_x, y,
                      glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,
                      (double)src.width);
@@ -1787,7 +1787,7 @@ ui_render_italic_text(const char *text, int x, int y, int font_size, Color color
         src = TextFontAtlasRec(glyph_font, codepoint);
 
         if(ui_text_trace_enabled() && i == 0) {
-            TraceLog(LOG_WARNING, "UITEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
+            TraceLog(LOG_WARNING, "TEXT: txt=%.12s fs=%d base=%d sc=%.3f x=%d y=%d off=(%d,%d) adv=%.2f w=%.0f",
                      text, font_size, glyph_font.baseSize, scale, cursor_x, y,
                      glyph.offsetX, glyph.offsetY, (double)glyph.advanceX,
                      (double)src.width);

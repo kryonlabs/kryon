@@ -1,5 +1,5 @@
-#ifndef UI_STYLE_INTERNAL_H
-#define UI_STYLE_INTERNAL_H
+#ifndef STYLE_INTERNAL_H
+#define STYLE_INTERNAL_H
 
 #include "ui_controls.h"
 #include "ui_style_sheet.h"
