@@ -281,6 +281,9 @@ SegmentedControl {
   border-width: border;
   padding-x: 2;
   padding-y: 2;
+  icon-size: 30;
+  offset-x: 72;
+  offset-y: 180;
   gap: space.2;
   opacity: 1;
   material: default;
@@ -2045,6 +2048,9 @@ SegmentedControl {
   border-width: border;
   padding-x: 2;
   padding-y: 2;
+  icon-size: 30;
+  offset-x: 72;
+  offset-y: 180;
   gap: 0;
   opacity: 1;
   material: default;
@@ -3795,6 +3801,9 @@ SegmentedControl {
   border-width: border;
   padding-x: 2;
   padding-y: 2;
+  icon-size: 30;
+  offset-x: 72;
+  offset-y: 180;
   gap: space.2;
   opacity: 1;
   material: default;
@@ -5590,6 +5599,9 @@ SegmentedControl {
   border-width: border;
   padding-x: 2;
   padding-y: 2;
+  icon-size: 30;
+  offset-x: 72;
+  offset-y: 180;
   gap: space.2;
   opacity: 1;
   material: glow;
@@ -7452,6 +7464,9 @@ SegmentedControl {
   border-width: 1;
   padding-x: 2;
   padding-y: 2;
+  icon-size: 30;
+  offset-x: 72;
+  offset-y: 180;
   gap: gap;
   opacity: 1;
   material: premium;

@@ -599,7 +599,8 @@ segmented_control_style_frame(SegmentedControlProps control, StyleFrame *frame)
                       .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
                       .class_name = control.class_name},
-        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindSegment());
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        StyleKindSegmentedControl());
 }
 
 static int
@@ -610,24 +611,33 @@ segmented_control_font_from_frame(StyleFrame frame)
         : GetSmallFontSize();
 }
 
-static int
-segmented_control_gap_from_frame(StyleFrame frame)
+static StyleFrame
+segmented_item_style_frame(SegmentedControlProps control)
 {
-    return frame.value.gap > 0.0f ? Scale((int)(frame.value.gap + 0.5f))
-                                  : Scale(6);
+    return ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium,
+                      .class_name = control.class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindSegment());
 }
 
 static SegmentedMetrics
-segmented_control_metrics(SegmentedControlProps control, int gap)
+segmented_control_metrics(SegmentedControlProps control)
 {
-    return SegmentedDefaultMetrics(gap, control.height, control.min_item_width,
-                                   control.max_item_width, Scale(6), Scale(30),
-                                   Scale(72), Scale(180));
+    StyleFrame control_frame;
+
+    segmented_control_style_frame(control, &control_frame);
+    return SegmentedDefaultMetrics(control.height, control.min_item_width,
+                                   control.max_item_width,
+                                   (float)Scale(1000) / 1000.0f,
+                                   control_frame,
+                                   segmented_item_style_frame(control));
 }
 
 static int
-segmented_item_width(const SegmentOption *option, int font,
-                     int min_item_width, int max_item_width)
+segmented_item_width(SegmentedControlProps control,
+                     const SegmentOption *option, int font)
 {
     SegmentedMetrics metrics;
     int label_w = TextWidth(option != NULL && option->label != NULL
@@ -635,10 +645,12 @@ segmented_item_width(const SegmentOption *option, int font,
                                 : "",
                             font);
 
-    metrics = SegmentedDefaultMetrics(0, 0, min_item_width, max_item_width,
-                                      Scale(6), Scale(30), Scale(72),
-                                      Scale(180));
-    return SegmentedItemWidth(label_w, metrics, Scale(20));
+    metrics = segmented_control_metrics((SegmentedControlProps){
+        .class_name = control.class_name,
+        .min_item_width = control.min_item_width,
+        .max_item_width = control.max_item_width
+    });
+    return SegmentedItemWidth(label_w, metrics);
 }
 
 int
@@ -650,10 +662,9 @@ GetSegmentedControlHeight(SegmentedControlProps control)
     int row_w = 0;
     int rows = 1;
 
-    segmented_control_style_frame(control, &frame);
+    frame = segmented_item_style_frame(control);
     font = segmented_control_font_from_frame(frame);
-    metrics = segmented_control_metrics(control,
-                                        segmented_control_gap_from_frame(frame));
+    metrics = segmented_control_metrics(control);
 
     if(control.options == NULL || control.option_count <= 0 ||
        metrics.row_height <= 0)
@@ -664,9 +675,7 @@ GetSegmentedControlHeight(SegmentedControlProps control)
         return metrics.row_height;
 
     for(int i = 0; i < control.option_count; i++) {
-        int item_w = segmented_item_width(&control.options[i], font,
-                                          control.min_item_width,
-                                          control.max_item_width);
+        int item_w = segmented_item_width(control, &control.options[i], font);
         int next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
 
         if(SegmentedShouldWrap(control.wrap != 0, row_w, next_w,
@@ -695,10 +704,9 @@ SegmentedControl(SegmentedControlProps control)
     int selected = control.selected_index != NULL ? *control.selected_index : -1;
 
     memset(&result, 0, sizeof(result));
-    segmented_control_style_frame(control, &frame);
+    frame = segmented_item_style_frame(control);
     font = segmented_control_font_from_frame(frame);
-    metrics = segmented_control_metrics(control,
-                                        segmented_control_gap_from_frame(frame));
+    metrics = segmented_control_metrics(control);
     result.selected_index = selected;
     result.clicked_index = -1;
     result.height = GetSegmentedControlHeight(control);
@@ -713,9 +721,7 @@ SegmentedControl(SegmentedControlProps control)
         int next_w;
 
         if(!end_row)
-            item_w = segmented_item_width(&control.options[i], font,
-                                          control.min_item_width,
-                                          control.max_item_width);
+            item_w = segmented_item_width(control, &control.options[i], font);
         next_w = SegmentedNextRowWidth(row_w, item_w, metrics.gap);
 
         if(!end_row &&

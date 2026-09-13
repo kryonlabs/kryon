@@ -789,13 +789,28 @@ test_text_input_policy(void)
 static void
 test_segmented_control_policy(void)
 {
-    SegmentedMetrics metrics = SegmentedDefaultMetrics(0, 0, 0, 0,
-                                                       6, 30, 72, 180);
-    int first = SegmentedItemWidth(40, metrics, 20);
-    int second = SegmentedItemWidth(100, metrics, 20);
-    int next = SegmentedNextRowWidth(first, second, metrics.gap);
-    SegmentedRow row = SegmentedRowFor(10.0f, 240.0f, 20, 0, 2, next,
-                                       1, metrics);
+    StyleFrame control = test_style_frame(0x05060708, 0x01020304,
+                                          0x11223344);
+    StyleFrame segment = test_style_frame(0x05060708, 0x01020304,
+                                          0x11223344);
+    SegmentedMetrics metrics;
+    int first;
+    int second;
+    int next;
+    SegmentedRow row;
+
+    control.value.fields |= StyleGap | StyleIconSize | StyleContentOffset;
+    control.value.gap = 6.0f;
+    control.value.icon_size = 30.0f;
+    control.value.offset_x = 72.0f;
+    control.value.offset_y = 180.0f;
+    segment.value.fields |= StylePaddingX;
+    segment.value.padding_x = 10.0f;
+    metrics = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
+    first = SegmentedItemWidth(40, metrics);
+    second = SegmentedItemWidth(100, metrics);
+    next = SegmentedNextRowWidth(first, second, metrics.gap);
+    row = SegmentedRowFor(10.0f, 240.0f, 20, 0, 2, next, 1, metrics);
 
     check_int("segmented gap default", metrics.gap, 6);
     check_int("segmented row height default", metrics.row_height, 30);

@@ -1,10 +1,12 @@
 #module "segmented_control"
+#import "style"
 
 SegmentedMetrics :: struct {
     gap: i32
     row_height: i32
     min_item_width: i32
     max_item_width: i32
+    label_padding: i32
 }
 
 SegmentedRow :: struct {
@@ -16,35 +18,48 @@ SegmentedRow :: struct {
     y: i32
 }
 
-SegmentedDefaultMetrics :: (gap: i32, row_height: i32, min_item_width: i32,
-    max_item_width: i32, default_gap: i32, default_row_height: i32,
-    default_min_item_width: i32, default_max_item_width: i32) -> SegmentedMetrics #export {
+SegmentedDefaultMetrics :: (row_height: i32, min_item_width: i32,
+    max_item_width: i32, scale: float, control: StyleFrame,
+    segment: StyleFrame) -> SegmentedMetrics #export {
+    if scale <= 0.0 { scale = 1.0 }
     metrics: SegmentedMetrics
-    metrics.gap = gap
+    metrics.gap = (i32)(control.value.gap * scale)
     if metrics.gap <= 0 {
-        metrics.gap = default_gap
+        metrics.gap = (i32)(6.0 * scale)
     }
     metrics.row_height = row_height
     if metrics.row_height <= 0 {
-        metrics.row_height = default_row_height
+        metrics.row_height = (i32)(control.value.icon_size * scale)
+        if metrics.row_height <= 0 {
+            metrics.row_height = (i32)(30.0 * scale)
+        }
     }
     metrics.min_item_width = min_item_width
     if metrics.min_item_width <= 0 {
-        metrics.min_item_width = default_min_item_width
+        metrics.min_item_width = (i32)(control.value.offset_x * scale)
+        if metrics.min_item_width <= 0 {
+            metrics.min_item_width = (i32)(72.0 * scale)
+        }
     }
     metrics.max_item_width = max_item_width
     if metrics.max_item_width <= 0 {
-        metrics.max_item_width = default_max_item_width
+        metrics.max_item_width = (i32)(control.value.offset_y * scale)
+        if metrics.max_item_width <= 0 {
+            metrics.max_item_width = (i32)(180.0 * scale)
+        }
     }
     if metrics.max_item_width > 0 && metrics.max_item_width < metrics.min_item_width {
         metrics.max_item_width = metrics.min_item_width
     }
+    metrics.label_padding = (i32)(segment.value.padding_x * 2.0 * scale)
+    if metrics.label_padding <= 0 {
+        metrics.label_padding = (i32)(20.0 * scale)
+    }
     return metrics
 }
 
-SegmentedItemWidth :: (label_width: i32, metrics: SegmentedMetrics,
-    horizontal_padding: i32) -> i32 #export {
-    width: i32 = label_width + horizontal_padding
+SegmentedItemWidth :: (label_width: i32, metrics: SegmentedMetrics) -> i32 #export {
+    width: i32 = label_width + metrics.label_padding
     if width < metrics.min_item_width {
         width = metrics.min_item_width
     }
