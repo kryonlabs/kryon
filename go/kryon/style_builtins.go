@@ -1224,6 +1224,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: #343b48;
   foreground: muted;
+  icon-size: 6;
   gap: space.3;
   opacity: 1;
 }
@@ -2959,6 +2960,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: border-soft;
   foreground: muted;
+  icon-size: 6;
   gap: gap;
 }
 
@@ -4674,6 +4676,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: border-soft;
   foreground: muted;
+  icon-size: 6;
   gap: gap;
   opacity: 1;
 }
@@ -6492,6 +6495,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: border-soft;
   foreground: muted;
+  icon-size: 6;
   gap: gap;
   opacity: 1;
 }
@@ -8304,6 +8308,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: border;
   foreground: muted;
+  icon-size: 6;
   gap: gap;
 }
 

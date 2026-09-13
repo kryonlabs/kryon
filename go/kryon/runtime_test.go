@@ -994,7 +994,7 @@ Separator[role=Line] { background: line; foreground: line; gap: gap; opacity: 1;
 Separator.accent[role=Line] { background: #778899; }
 Separator[role=Label] { background: line; foreground: label; font-size: 17; gap: gap; opacity: 0.57; }
 Separator.accent[role=Label] { foreground: #ccffee; }
-Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity: 1; }
+Separator[role=Bullet] { background: line; foreground: bullet; icon-size: 8; gap: gap; opacity: 1; }
 `, "Test Parts", "") || !SetActiveStylePack("test.parts") {
 		t.Fatal("test parts style did not activate")
 	}
@@ -1048,9 +1048,10 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 			if op.Color != (Color{R: 0x77, G: 0x88, B: 0x99, A: 0xff}) {
 				t.Fatalf("separator line style op = %+v", op)
 			}
-		case op.Kind == FrameOpRect && op.Bounds.X == 13 && op.Bounds.Y == 73:
+		case op.Kind == FrameOpRect && op.Bounds.X == 12 && op.Bounds.Y == 72:
 			sawBullet = true
-			if op.Color != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) {
+			if op.Bounds.Width != 8 || op.Bounds.Height != 8 ||
+				op.Color != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) {
 				t.Fatalf("separator bullet style op = %+v", op)
 			}
 		}

@@ -1291,6 +1291,7 @@ Separator[role=Label] {
 Separator[role=Bullet] {
   background: border;
   foreground: muted;
+  icon-size: 6;
   gap: gap;
 }
 

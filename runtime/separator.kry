@@ -79,11 +79,14 @@ SeparatorLabelPaintFor :: (bounds: Rectangle, label_width: float,
 
 BulletPaintFor :: (bounds: Rectangle, frame: StyleFrame) -> BulletPaint #export {
     paint: BulletPaint
-    size: float = bounds.width
-    if bounds.height < size {
-        size = bounds.height
+    size: float = frame.value.icon_size
+    if size <= 0.0 {
+        size = bounds.width
+        if bounds.height < size {
+            size = bounds.height
+        }
+        size = size * 0.5
     }
-    size = size * 0.5
     paint.bounds.x = bounds.x + (bounds.width - size) * 0.5
     paint.bounds.y = bounds.y + (bounds.height - size) * 0.5
     paint.bounds.width = size

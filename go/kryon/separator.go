@@ -151,57 +151,64 @@ func Separator_SeparatorLabelPaintFor(bounds Rectangle, label_width float32, has
 
 func Separator_BulletPaintFor(bounds Rectangle, frame StyleFrame) BulletPaint {
 	var paint BulletPaint = BulletPaint{}
-	var value_0 float32 = bounds.Width
+	var value_0 float32 = frame.Value.IconSize
 	var size float32 = value_0
-	var value_1 float32 = bounds.Height
-	var value_2 float32 = size
-	var value_3 bool = value_1 < value_2
+	var value_1 float32 = size
+	var value_2 float32 = 0.0
+	var value_3 bool = value_1 <= value_2
 	if value_3 {
-		var value_4 float32 = bounds.Height
+		var value_4 float32 = bounds.Width
 		size = value_4
+		var value_5 float32 = bounds.Height
+		var value_6 float32 = size
+		var value_7 bool = value_5 < value_6
+		if value_7 {
+			var value_8 float32 = bounds.Height
+			size = value_8
+		}
+		var value_9 float32 = size
+		var value_10 float32 = 0.5
+		var value_11 float32 = value_9 * value_10
+		size = value_11
 	}
-	var value_5 float32 = size
-	var value_6 float32 = 0.5
-	var value_7 float32 = value_5 * value_6
-	size = value_7
-	var value_8 float32 = bounds.X
-	var value_9 float32 = bounds.Width
-	var value_10 float32 = size
-	var value_11 float32 = value_9 - value_10
-	var value_12 float32 = 0.5
-	var value_13 float32 = value_11 * value_12
-	var value_14 float32 = value_8 + value_13
-	paint.Bounds.X = value_14
-	var value_15 float32 = bounds.Y
-	var value_16 float32 = bounds.Height
-	var value_17 float32 = size
-	var value_18 float32 = value_16 - value_17
-	var value_19 float32 = 0.5
-	var value_20 float32 = value_18 * value_19
-	var value_21 float32 = value_15 + value_20
-	paint.Bounds.Y = value_21
-	var value_22 float32 = size
-	paint.Bounds.Width = value_22
-	var value_23 float32 = size
-	paint.Bounds.Height = value_23
-	var value_24 float32 = bounds.X
-	var value_25 float32 = bounds.Width
-	var value_26 float32 = 0.5
-	var value_27 float32 = value_25 * value_26
-	var value_28 float32 = value_24 + value_27
-	paint.Center.X = value_28
-	var value_29 float32 = bounds.Y
-	var value_30 float32 = bounds.Height
-	var value_31 float32 = 0.5
-	var value_32 float32 = value_30 * value_31
-	var value_33 float32 = value_29 + value_32
-	paint.Center.Y = value_33
-	var value_34 float32 = size
+	var value_12 float32 = bounds.X
+	var value_13 float32 = bounds.Width
+	var value_14 float32 = size
+	var value_15 float32 = value_13 - value_14
+	var value_16 float32 = 0.5
+	var value_17 float32 = value_15 * value_16
+	var value_18 float32 = value_12 + value_17
+	paint.Bounds.X = value_18
+	var value_19 float32 = bounds.Y
+	var value_20 float32 = bounds.Height
+	var value_21 float32 = size
+	var value_22 float32 = value_20 - value_21
+	var value_23 float32 = 0.5
+	var value_24 float32 = value_22 * value_23
+	var value_25 float32 = value_19 + value_24
+	paint.Bounds.Y = value_25
+	var value_26 float32 = size
+	paint.Bounds.Width = value_26
+	var value_27 float32 = size
+	paint.Bounds.Height = value_27
+	var value_28 float32 = bounds.X
+	var value_29 float32 = bounds.Width
+	var value_30 float32 = 0.5
+	var value_31 float32 = value_29 * value_30
+	var value_32 float32 = value_28 + value_31
+	paint.Center.X = value_32
+	var value_33 float32 = bounds.Y
+	var value_34 float32 = bounds.Height
 	var value_35 float32 = 0.5
 	var value_36 float32 = value_34 * value_35
-	paint.Radius = value_36
-	var value_37 uint32 = frame.Value.Foreground
-	paint.Color = value_37
-	var value_38 BulletPaint = paint
-	return value_38
+	var value_37 float32 = value_33 + value_36
+	paint.Center.Y = value_37
+	var value_38 float32 = size
+	var value_39 float32 = 0.5
+	var value_40 float32 = value_38 * value_39
+	paint.Radius = value_40
+	var value_41 uint32 = frame.Value.Foreground
+	paint.Color = value_41
+	var value_42 BulletPaint = paint
+	return value_42
 }

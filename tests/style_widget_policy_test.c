@@ -4,6 +4,7 @@
 #include "runtime/plot.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
+#include "runtime/separator.h"
 #include "runtime/slider.h"
 #include "runtime/toggle.h"
 
@@ -67,6 +68,7 @@ main(void)
     CheckboxPaint checkbox_paint;
     FieldsetPaint fieldset_paint;
     PlotTextPaint plot_text_paint;
+    BulletPaint bullet_paint;
     SwatchPaint swatch_paint;
     RadioPaint radio_paint;
     ProgressPaint progress_paint;
@@ -158,6 +160,17 @@ main(void)
                 plot_text_paint.overlay_bounds.y, 33.0f);
     frame.value.padding_y = 0.0f;
     frame.value.font_size = 0.0f;
+    frame.value.icon_size = 8.0f;
+    bullet_paint = BulletPaintFor((Rectangle){10, 20, 20, 12}, frame);
+    check_float("bullet x comes from style size",
+                bullet_paint.bounds.x, 16.0f);
+    check_float("bullet y comes from style size",
+                bullet_paint.bounds.y, 22.0f);
+    check_float("bullet width comes from style size",
+                bullet_paint.bounds.width, 8.0f);
+    check_float("bullet radius comes from style size",
+                bullet_paint.radius, 4.0f);
+    frame.value.icon_size = 0.0f;
     frame.value.padding_x = 10.0f;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
         25, 20.0f, 1.0f, frame, frame, frame);
