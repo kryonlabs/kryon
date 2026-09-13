@@ -162,7 +162,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Parenthesized `BeginScroll(...)`, `BeginCanvas(...)`,
   `BeginTableCell(...)`, `BeginDisabled(...)`, and `BeginPopup(...)`
   scope-producing expressions emit compiler-owned `Scroll`, `Canvas`,
-  `TableCell`, `Disabled`, and `Popup` Web Document identity.
+  `TableCell`, `Disabled`, and `Popup` Web Document identity, including popup
+  open results stored in locals.
 - Web relationship facts include reverse `formControls` links so form-like DOM
   nodes can enumerate controls that reference them through native form
   ownership.

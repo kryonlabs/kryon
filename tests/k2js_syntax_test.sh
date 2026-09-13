@@ -898,6 +898,11 @@ ParenthesizedScopeCalls :: () #ui {
     if (BeginPopup(popup)) {
         EndPopup()
     }
+    popup_expr: PopupProps = (PopupProps){.bounds={0, 50, 80, 40}, .id=8, .flags=1}
+    popup_visible: bool = (BeginPopup(popup_expr))
+    if popup_visible {
+        EndPopup()
+    }
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"
@@ -912,6 +917,8 @@ grep -q '"path": "ParenthesizedScopeCalls/TableCell@6-2"' "$parenthesized_scope_
 grep -q '"path": "ParenthesizedScopeCalls/Canvas@9-3"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/Disabled@11-4"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/Popup@14-5"' "$parenthesized_scope_out"
+grep -q 'let popup_visible = kryon.copyValue((() => { const $open = kryon.widget($rt, "Popup"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Popup@18-6"' "$parenthesized_scope_out"
 node --input-type=module - "$parenthesized_scope_out" "$work/out/kryon-runtime.js" <<'EOF'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
@@ -924,7 +931,8 @@ assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
   "ParenthesizedScopeCalls/TableCell@6-2",
   "ParenthesizedScopeCalls/Canvas@9-3",
   "ParenthesizedScopeCalls/Disabled@11-4",
-  "ParenthesizedScopeCalls/Popup@14-5"
+  "ParenthesizedScopeCalls/Popup@14-5",
+  "ParenthesizedScopeCalls/Popup@18-6"
 ]);
 EOF
 

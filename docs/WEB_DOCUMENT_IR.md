@@ -107,7 +107,7 @@ Special scope-producing calls that become DOM surfaces, including
 `BeginScroll(...)`, `BeginCanvas(...)`, `BeginTableCell(...)`,
 `BeginDisabled(...)`, and `BeginPopup(...)`, use the same source-derived
 identity rules as their `Scroll`, `Canvas`, `TableCell`, `Disabled`, and
-`Popup` widgets.
+`Popup` widgets, including popup open results stored in locals.
 
 Supported metadata fields:
 
