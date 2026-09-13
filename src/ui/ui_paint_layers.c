@@ -60,7 +60,7 @@ struct UIPaintLayers {
     int width, height, finished;
     unsigned long frame;
     Matrix projection, modelview;
-    UIPopupInput *input, *previous_input;
+    PopupInput *input, *previous_input;
     DropdownStore *dropdowns, *previous_dropdowns;
     TabBarStore *tab_bars, *previous_tab_bars;
     ToolkitStore *toolkit, *previous_toolkit;
@@ -75,7 +75,7 @@ static int frame_layer_stack_depth;
 /* Input ownership is a runtime concern, not a renderer concern.  Injection,
  * generated parity, and other headless callers still need popup scopes even
  * when no texture-backed paint-layer host can exist. */
-static UIPopupInput *headless_input, *headless_previous_input;
+static PopupInput *headless_input, *headless_previous_input;
 static DropdownStore *headless_dropdowns, *headless_previous_dropdowns;
 static TabBarStore *headless_tab_bars, *headless_previous_tab_bars;
 static ToolkitStore *headless_toolkit, *headless_previous_toolkit;
@@ -243,7 +243,7 @@ UIPaintLayers *ui_paint_layers_create(void)
     return layers;
 }
 
-UIPopupInput *ui_paint_layers_input(UIPaintLayers *layers)
+PopupInput *ui_paint_layers_input(UIPaintLayers *layers)
 {
     return layers ? layers->input : NULL;
 }

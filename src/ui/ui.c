@@ -800,7 +800,7 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 }
 
 int
-ui_input_captures_snapshot(Vector2 point, UIPopupInputToken snapshot)
+ui_input_captures_snapshot(Vector2 point, PopupInputToken snapshot)
 {
     return ContentDisabled() || InspectInputCapturesClick(point) ||
            ui_base_input_captures_click(point,1) ||
@@ -1586,7 +1586,7 @@ FocusFrameOpen(void)
 }
 
 int
-ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
+ui_register_focus_snapshot(int id, Rectangle bounds, PopupInputToken snapshot)
 {
     Vector2 mouse_world;
     Vector2 focus_point;

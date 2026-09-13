@@ -2,72 +2,72 @@
 #include <stdlib.h>
 #include <limits.h>
 
-typedef struct UIPopupPanel {
-    struct UIPopupPanel *next, *parent;
+typedef struct PopupPanel {
+    struct PopupPanel *next, *parent;
     Rectangle bounds;
     unsigned long seen, order;
     int owner, alive;
     int restore_focus, last_focus, has_last_focus, autofocus;
-} UIPopupPanel;
+} PopupPanel;
 
-typedef struct UIPopupFocus {
-    struct UIPopupFocus *next;
-    UIPopupInputToken token;
+typedef struct PopupFocus {
+    struct PopupFocus *next;
+    PopupInputToken token;
     int id;
-} UIPopupFocus;
+} PopupFocus;
 
-struct UIPopupInput {
-    struct UIPopupInput *next;
-    UIPopupPanel *panels, *active;
-    UIPopupFocus *focus;
+struct PopupInput {
+    struct PopupInput *next;
+    PopupPanel *panels, *active;
+    PopupFocus *focus;
     unsigned long frame, order;
     int finished, keyboard_captured;
 };
 
-static UIPopupInput *bound_context;
-static UIPopupInput *contexts;
+static PopupInput *bound_context;
+static PopupInput *contexts;
 static unsigned long generation;
 
-static void clear_focus(UIPopupInput *context)
+static void clear_focus(PopupInput *context)
 {
     while(context->focus) {
-        UIPopupFocus *entry = context->focus;
+        PopupFocus *entry = context->focus;
         context->focus = entry->next;
         free(entry);
     }
 }
 
-static int descends(UIPopupPanel *panel, UIPopupPanel *ancestor)
+static int descends(PopupPanel *panel, PopupPanel *ancestor)
 {
     for(; panel; panel = panel->parent) if(panel == ancestor) return 1;
     return 0;
 }
 
-static int above(UIPopupPanel *a, UIPopupPanel *b)
+static int above(PopupPanel *a, PopupPanel *b)
 {
     if(descends(a,b)) return a != b;
     if(descends(b,a)) return 0;
     int ad = 0, bd = 0;
-    for(UIPopupPanel *p = a; p; p = p->parent) ad++;
-    for(UIPopupPanel *p = b; p; p = p->parent) bd++;
+    for(PopupPanel *p = a; p; p = p->parent) ad++;
+    for(PopupPanel *p = b; p; p = p->parent) bd++;
     while(ad > bd) { a = a->parent; ad--; }
     while(bd > ad) { b = b->parent; bd--; }
     while(a->parent != b->parent) { a = a->parent; b = b->parent; }
     return a->order > b->order;
 }
 
-static UIPopupPanel *top_panel(UIPopupInput *context)
+static PopupPanel *top_panel(PopupInput *context)
 {
-    UIPopupPanel *top = NULL;
+    PopupPanel *top = NULL;
     if(!context) return NULL;
-    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next)
+    for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->alive && (!top || above(panel,top))) top = panel;
     return top;
 }
 
-UIPopupInput *ui_popup_input_create(void)
+PopupInput *ui_popup_input_create(void)
 {
-    UIPopupInput *context = calloc(1,sizeof(*context));
+    PopupInput *context = calloc(1,sizeof(*context));
     if(!context) abort();
     context->finished = 1;
     context->next = contexts;
@@ -75,33 +75,33 @@ UIPopupInput *ui_popup_input_create(void)
     return context;
 }
 
-UIPopupInput *ui_popup_input_bind(UIPopupInput *context)
+PopupInput *ui_popup_input_bind(PopupInput *context)
 {
-    UIPopupInput *previous = bound_context;
+    PopupInput *previous = bound_context;
     bound_context = context;
     return previous;
 }
 
-UIPopupInput *ui_popup_input_bound(void) { return bound_context; }
+PopupInput *ui_popup_input_bound(void) { return bound_context; }
 
-void ui_popup_input_destroy(UIPopupInput *context)
+void ui_popup_input_destroy(PopupInput *context)
 {
     if(!context) return;
     if(context->active) abort();
     clear_focus(context);
     if(bound_context == context) bound_context = NULL;
-    UIPopupInput **link = &contexts;
+    PopupInput **link = &contexts;
     while(*link && *link != context) link = &(*link)->next;
     if(*link) *link = context->next;
     while(context->panels) {
-        UIPopupPanel *panel = context->panels;
+        PopupPanel *panel = context->panels;
         context->panels = panel->next;
         free(panel);
     }
     free(context);
 }
 
-void ui_popup_input_frame(UIPopupInput *context)
+void ui_popup_input_frame(PopupInput *context)
 {
     if(!context || context->active || !context->finished || generation == ULONG_MAX) abort();
     context->frame = ++generation;
@@ -110,10 +110,10 @@ void ui_popup_input_frame(UIPopupInput *context)
     context->keyboard_captured = 0;
 }
 
-UIPopupInputToken ui_popup_input_begin(UIPopupInput *context, int owner, Rectangle bounds)
+PopupInputToken ui_popup_input_begin(PopupInput *context, int owner, Rectangle bounds)
 {
     if(!context || context->finished || context->order == ULONG_MAX) abort();
-    UIPopupPanel *panel = context->panels;
+    PopupPanel *panel = context->panels;
     while(panel && panel->owner != owner) panel = panel->next;
     if(panel && descends(context->active,panel)) abort();
     if(!panel) {
@@ -131,31 +131,31 @@ UIPopupInputToken ui_popup_input_begin(UIPopupInput *context, int owner, Rectang
     panel->order = ++context->order;
     panel->alive = !panel->parent || panel->parent->alive;
     context->active = panel;
-    return (UIPopupInputToken){context,context->frame,panel->order,owner};
+    return (PopupInputToken){context,context->frame,panel->order,owner};
 }
 
-void ui_popup_input_end(UIPopupInputToken token)
+void ui_popup_input_end(PopupInputToken token)
 {
-    UIPopupInput *context = token.context;
+    PopupInput *context = token.context;
     if(!context || context->frame != token.generation || !context->active ||
        context->active->owner != token.owner || context->active->order != token.order) abort();
     context->active = context->active->parent;
 }
 
-void ui_popup_input_close(UIPopupInput *context, int owner)
+void ui_popup_input_close(PopupInput *context, int owner)
 {
     if(!context) abort();
-    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next) {
+    for(PopupPanel *panel = context->panels; panel; panel = panel->next) {
         if(panel->owner != owner) continue;
         int focused = GetFocus(), restore = 0;
-        for(UIPopupFocus *entry = context->focus; entry; entry = entry->next) {
+        for(PopupFocus *entry = context->focus; entry; entry = entry->next) {
             if(entry->id != focused || !entry->token.order) continue;
-            for(UIPopupPanel *child = context->panels; child; child = child->next)
+            for(PopupPanel *child = context->panels; child; child = child->next)
                 if(child->owner == entry->token.owner &&
                    child->order == entry->token.order && descends(child,panel))
                     restore = 1;
         }
-        for(UIPopupPanel *child = context->panels; child; child = child->next) {
+        for(PopupPanel *child = context->panels; child; child = child->next) {
             if(!descends(child,panel)) continue;
             if(child->has_last_focus && child->last_focus == focused) restore = 1;
             child->alive = 0;
@@ -165,59 +165,59 @@ void ui_popup_input_close(UIPopupInput *context, int owner)
     }
 }
 
-void ui_popup_input_retire_missing(UIPopupInput *context)
+void ui_popup_input_retire_missing(PopupInput *context)
 {
     if(!context || context->finished) return;
-    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next)
+    for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->seen != context->frame) ui_popup_input_close(context,panel->owner);
 }
 
-void ui_popup_input_finish(UIPopupInput *context)
+void ui_popup_input_finish(PopupInput *context)
 {
     if(!context || context->active || context->finished) abort();
     ui_popup_input_retire_missing(context);
-    UIPopupPanel **link = &context->panels;
+    PopupPanel **link = &context->panels;
     while(*link) {
-        UIPopupPanel *panel = *link;
+        PopupPanel *panel = *link;
         if(!panel->alive) { *link = panel->next; free(panel); }
         else link = &panel->next;
     }
     context->finished = 1;
 }
 
-static int captures(UIPopupInput *context, UIPopupPanel *active, Vector2 point)
+static int captures(PopupInput *context, PopupPanel *active, Vector2 point)
 {
     if(!context) return 0;
     if(active && !active->alive) return 1;
-    UIPopupPanel *top = NULL;
-    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next)
+    PopupPanel *top = NULL;
+    for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->alive && CheckCollisionPointRec(point,panel->bounds) && (!top || above(panel,top))) top = panel;
     return top && top != active;
 }
 
-int ui_popup_input_captures(UIPopupInput *context, Vector2 point)
+int ui_popup_input_captures(PopupInput *context, Vector2 point)
 {
     return captures(context,context ? context->active : NULL,point);
 }
 
-UIPopupInputToken ui_popup_input_snapshot(void)
+PopupInputToken ui_popup_input_snapshot(void)
 {
-    UIPopupInput *context = bound_context;
-    if(!context) return (UIPopupInputToken){0};
-    UIPopupPanel *panel = context->active;
-    return (UIPopupInputToken){context,context->frame,
+    PopupInput *context = bound_context;
+    if(!context) return (PopupInputToken){0};
+    PopupPanel *panel = context->active;
+    return (PopupInputToken){context,context->frame,
         panel ? panel->order : 0,panel ? panel->owner : 0};
 }
 
-static int snapshot_owner(UIPopupInputToken token, UIPopupInput **host, UIPopupPanel **owner)
+static int snapshot_owner(PopupInputToken token, PopupInput **host, PopupPanel **owner)
 {
     /* A background declaration may precede lazy creation of the host registry. */
     *owner = NULL;
     if(!token.context) { *host = bound_context; return 1; }
-    UIPopupInput *context = contexts;
+    PopupInput *context = contexts;
     while(context && context != token.context) context = context->next;
     if(!context || context->frame != token.generation) return 0;
-    UIPopupPanel *panel = NULL;
+    PopupPanel *panel = NULL;
     if(token.order) {
         for(panel = context->panels; panel; panel = panel->next)
             if(panel->owner == token.owner && panel->order == token.order) break;
@@ -228,10 +228,10 @@ static int snapshot_owner(UIPopupInputToken token, UIPopupInput **host, UIPopupP
     return 1;
 }
 
-int ui_popup_input_snapshot_captures(UIPopupInputToken token, Vector2 point)
+int ui_popup_input_snapshot_captures(PopupInputToken token, Vector2 point)
 {
-    UIPopupInput *context;
-    UIPopupPanel *panel;
+    PopupInput *context;
+    PopupPanel *panel;
     if(!snapshot_owner(token,&context,&panel)) return 1;
     return captures(context,panel,point);
 }
@@ -241,17 +241,17 @@ int ui_popup_input_current_captures(Vector2 point)
     return ui_popup_input_captures(bound_context,point);
 }
 
-int ui_popup_input_snapshot_keyboard_captures(UIPopupInputToken token)
+int ui_popup_input_snapshot_keyboard_captures(PopupInputToken token)
 {
-    UIPopupInput *context;
-    UIPopupPanel *active;
+    PopupInput *context;
+    PopupPanel *active;
     if(!snapshot_owner(token,&context,&active)) {
         if(bound_context) bound_context->keyboard_captured = 1;
         return 1;
     }
     if(!context) return 0;
-    UIPopupPanel *top = NULL;
-    for(UIPopupPanel *panel = context->panels; panel; panel = panel->next)
+    PopupPanel *top = NULL;
+    for(PopupPanel *panel = context->panels; panel; panel = panel->next)
         if(panel->alive && (!top || above(panel,top))) top = panel;
     int captured = top && top != active;
     if(captured) context->keyboard_captured = 1;
@@ -268,9 +268,9 @@ int ui_popup_input_keyboard_was_captured(void)
     return bound_context && bound_context->keyboard_captured;
 }
 
-UIPopupInputOwner ui_popup_input_owner(void)
+PopupInputOwner ui_popup_input_owner(void)
 {
-    UIPopupInputOwner owner = {bound_context,0,0};
+    PopupInputOwner owner = {bound_context,0,0};
     if(bound_context && bound_context->active) {
         owner.owner = bound_context->active->owner;
         owner.has_owner = 1;
@@ -278,11 +278,11 @@ UIPopupInputOwner ui_popup_input_owner(void)
     return owner;
 }
 
-int ui_popup_input_owner_captures(UIPopupInputOwner owner)
+int ui_popup_input_owner_captures(PopupInputOwner owner)
 {
-    UIPopupInput *context = contexts;
-    UIPopupPanel *current;
-    UIPopupPanel *top;
+    PopupInput *context = contexts;
+    PopupPanel *current;
+    PopupPanel *top;
 
     if(owner.context == NULL)
         return bound_context != NULL;
@@ -299,15 +299,15 @@ int ui_popup_input_owner_captures(UIPopupInputOwner owner)
     return top && (!owner.has_owner || top != current);
 }
 
-void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible)
+void ui_popup_input_register_focus(int id, PopupInputToken token, int eligible)
 {
-    UIPopupInput *context = token.context ? token.context : bound_context;
+    PopupInput *context = token.context ? token.context : bound_context;
     if(!context || id <= 0) return;
-    UIPopupInput *live = contexts;
+    PopupInput *live = contexts;
     while(live && live != context) live = live->next;
     if(!live) return;
-    if(!token.context) token = (UIPopupInputToken){context,context->frame,0,0};
-    UIPopupFocus *entry = context->focus;
+    if(!token.context) token = (PopupInputToken){context,context->frame,0,0};
+    PopupFocus *entry = context->focus;
     while(entry && entry->id != id) entry = entry->next;
     if(!entry) {
         entry = calloc(1,sizeof(*entry));
@@ -318,7 +318,7 @@ void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible
     }
     entry->token = token;
     if(token.order) {
-        UIPopupPanel *panel = context->panels;
+        PopupPanel *panel = context->panels;
         while(panel && (panel->owner != token.owner ||
               panel->order != token.order)) panel = panel->next;
         if(panel && panel->alive) {
@@ -337,10 +337,10 @@ void ui_popup_input_register_focus(int id, UIPopupInputToken token, int eligible
 
 int ui_popup_input_focus_captures(int id)
 {
-    UIPopupInput *context = bound_context;
+    PopupInput *context = bound_context;
     if(!context) return 0;
-    for(UIPopupFocus *entry = context->focus; entry; entry = entry->next)
+    for(PopupFocus *entry = context->focus; entry; entry = entry->next)
         if(entry->id == id) return ui_popup_input_snapshot_keyboard_captures(entry->token);
     return ui_popup_input_snapshot_keyboard_captures(
-        (UIPopupInputToken){context,context->frame,0,0});
+        (PopupInputToken){context,context->frame,0,0});
 }

@@ -8,11 +8,11 @@
 #include <limits.h>
 #include <stdlib.h>
 
-typedef struct UIComposedPopupScope {
-    struct UIComposedPopupScope *previous;
+typedef struct ComposedPopupScope {
+    struct ComposedPopupScope *previous;
     UIPaintLayers *layers;
     UIPaintLayerToken paint;
-    UIPopupInputToken input;
+    PopupInputToken input;
     TreeLayoutScopeState layout;
     DisabledScopeState disabled;
     InputClipScopeState input_clip;
@@ -20,17 +20,17 @@ typedef struct UIComposedPopupScope {
     int id, has_paint, has_input, has_clip;
     bool local_open;
     bool *open;
-} UIComposedPopupScope;
+} ComposedPopupScope;
 
-static UIComposedPopupScope *popup_scope;
+static ComposedPopupScope *popup_scope;
 
 static int
 enter_popup_scope(int id, bool *open, Rectangle popup,
-                  UIPaintLayers *layers, UIPopupInputToken input,
+                  UIPaintLayers *layers, PopupInputToken input,
                   int capture_input, Rectangle input_bounds, int backdrop,
                   int class_name)
 {
-    UIPopupInput *context = capture_input ?
+    PopupInput *context = capture_input ?
         (layers ? ui_paint_layers_input(layers) : ui_popup_input_bound()) : NULL;
     if(context && !input.context)
         input = ui_popup_input_begin(context,id,input_bounds);
@@ -44,7 +44,7 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
         return 0;
     }
 
-    UIComposedPopupScope *scope = calloc(1,sizeof(*scope));
+    ComposedPopupScope *scope = calloc(1,sizeof(*scope));
     if(!scope) abort();
     scope->previous = popup_scope;
     scope->layers = layers;
@@ -85,7 +85,7 @@ enter_popup_scope(int id, bool *open, Rectangle popup,
     return 1;
 }
 
-static void close_popup_scope(UIComposedPopupScope *scope)
+static void close_popup_scope(ComposedPopupScope *scope)
 {
     *scope->open = false;
     if(scope->layers) ui_paint_layers_hide(scope->layers,scope->id);
@@ -95,7 +95,7 @@ static void close_popup_scope(UIComposedPopupScope *scope)
 
 static void end_popup_scope(void)
 {
-    UIComposedPopupScope *scope = popup_scope;
+    ComposedPopupScope *scope = popup_scope;
     if(!scope) abort();
     if(!*scope->open) close_popup_scope(scope);
     if(scope->has_clip) EndClip();
@@ -119,7 +119,7 @@ int PopupScope(PopupProps popup)
                       popup.open != NULL))
         return 0;
     UIPaintLayers *layers = ui_frame_paint_layers();
-    UIPopupInput *input_context = layers ? ui_paint_layers_input(layers) :
+    PopupInput *input_context = layers ? ui_paint_layers_input(layers) :
                                           ui_popup_input_bound();
     if(decision.context && !popup.disabled &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT) &&
@@ -150,7 +150,7 @@ int PopupScope(PopupProps popup)
                                               GetViewHeight());
     return enter_popup_scope(popup.id,decision.tooltip ? NULL : popup.open,popup.bounds,
                              layers,
-                             (UIPopupInputToken){0},decision.captures_input,
+                             (PopupInputToken){0},decision.captures_input,
                              input_bounds,PopupBackdropAlpha(decision) > 0,
                              popup.class_name);
 }

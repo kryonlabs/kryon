@@ -102,9 +102,9 @@ typedef struct UIPaintCapture {
 } UIPaintCapture;
 static UIPaintCapture *ui_tree_paint_captures;
 static unsigned ui_tree_paint_capture_count, ui_tree_paint_capture_capacity;
-static UIPopupInputToken *ui_tree_input_captures;
+static PopupInputToken *ui_tree_input_captures;
 static unsigned ui_tree_input_capture_count, ui_tree_input_capture_capacity;
-static UIPopupInputToken *ui_committed_input_captures;
+static PopupInputToken *ui_committed_input_captures;
 static unsigned ui_committed_input_capture_capacity;
 static unsigned ui_tree_generation = 0;
 static unsigned ui_tree_invalid = INVALIDATE_TREE |
@@ -160,20 +160,20 @@ static char *ui_tree_numeric_text(const char *label, const char *format, size_t 
 static unsigned
 ui_tree_capture_input(void)
 {
-    UIPopupInputToken token = ui_popup_input_snapshot();
+    PopupInputToken token = ui_popup_input_snapshot();
     if(!token.context) return 0;
     if(ui_tree_input_capture_count) {
-        UIPopupInputToken last = ui_tree_input_captures[ui_tree_input_capture_count-1];
+        PopupInputToken last = ui_tree_input_captures[ui_tree_input_capture_count-1];
         if(last.context == token.context && last.generation == token.generation &&
            last.order == token.order && last.owner == token.owner)
             return ui_tree_input_capture_count;
     }
     if(ui_tree_input_capture_count == ui_tree_input_capture_capacity) {
         unsigned capacity = ui_tree_input_capture_capacity ? ui_tree_input_capture_capacity*2 : 8;
-        size_t bytes = (size_t)capacity*sizeof(UIPopupInputToken);
+        size_t bytes = (size_t)capacity*sizeof(PopupInputToken);
         if(capacity < ui_tree_input_capture_capacity ||
-           bytes/sizeof(UIPopupInputToken) != capacity) abort();
-        UIPopupInputToken *items = realloc(ui_tree_input_captures,bytes);
+           bytes/sizeof(PopupInputToken) != capacity) abort();
+        PopupInputToken *items = realloc(ui_tree_input_captures,bytes);
         if(!items) abort();
         ui_tree_input_captures = items;
         ui_tree_input_capture_capacity = capacity;
@@ -182,13 +182,13 @@ ui_tree_capture_input(void)
     return ui_tree_input_capture_count;
 }
 
-static UIPopupInputToken
+static PopupInputToken
 ui_tree_input_snapshot(const TreeNode *node)
 {
-    UIPopupInputToken *captures = ui_committed_node_count > 0 ?
+    PopupInputToken *captures = ui_committed_node_count > 0 ?
         ui_committed_input_captures : ui_tree_input_captures;
     return node->popup_input_capture ?
-        captures[node->popup_input_capture-1] : (UIPopupInputToken){0};
+        captures[node->popup_input_capture-1] : (PopupInputToken){0};
 }
 
 static int
@@ -1107,7 +1107,7 @@ ReconcileTree(void)
     /* Keep the displayed tree's snapshots intact while its replacement is
      * being declared. HitTestNode may still query that committed tree. */
     if(ui_committed_input_capture_capacity < ui_tree_input_capture_count) {
-        UIPopupInputToken *captures = realloc(ui_committed_input_captures,
+        PopupInputToken *captures = realloc(ui_committed_input_captures,
             (size_t)ui_tree_input_capture_count*sizeof(*captures));
         if(!captures) abort();
         ui_committed_input_captures = captures;

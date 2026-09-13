@@ -30,7 +30,7 @@ typedef struct DropdownState {
     int scrollbar_pressed;
     int clip_top;
     int clip_bottom;
-    UIPopupInputToken input_snapshot;
+    PopupInputToken input_snapshot;
     unsigned long frame_seen;
     unsigned long opened_frame;
 } DropdownState;

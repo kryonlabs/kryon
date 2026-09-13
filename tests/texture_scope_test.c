@@ -351,7 +351,7 @@ int main(void)
         BeginTree(Key("owned layers"));
         ui_paint_layers_frame(owned_layers,64,64);
         if(frame != 2) {
-            UIPopupInputToken parent_input = ui_popup_input_begin(
+            PopupInputToken parent_input = ui_popup_input_begin(
                 ui_paint_layers_input(owned_layers),1,(Rectangle){0,0,16,16});
             UIPaintLayerToken parent_layer = ui_paint_layer_begin(owned_layers,1);
             if(frame == 1) check_invalid_layer_end(stale_layer,"previous frame layer token");
@@ -378,7 +378,7 @@ int main(void)
             Box((Rectangle){20,0,4,4},YELLOW,BLANK);
             /* A descendant outside its parent's bounds must also lose capture
              * when the parent's paint branch is hidden. */
-            UIPopupInputToken child_input = ui_popup_input_begin(
+            PopupInputToken child_input = ui_popup_input_begin(
                 ui_paint_layers_input(owned_layers),2,(Rectangle){20,20,8,8});
             UIPaintLayerToken child_layer = ui_paint_layer_begin(owned_layers,2);
             check_invalid_layer_end(parent_layer,"parent closed before child");
@@ -606,7 +606,7 @@ int main(void)
             if(frame != 2) {
                 UIPaintLayers *window_layers = ui_window_paint_layers();
                 if(window_layers == NULL) return 1;
-                UIPopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
+                PopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
                 RegisterFocus(42002,(Rectangle){4,4,20,20});
                 BeginTree(Key("NativeWindow owned layers"));
                 UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
@@ -982,7 +982,7 @@ int main(void)
     NativeWindow *auxiliary = OpenNativeWindow("interleaved layer host",0,0,64,64,
                                        NATIVE_WINDOW_BORDERLESS,BLUE,1);
     if(auxiliary == NULL) return 1;
-    UIPopupInput *main_input = NULL;
+    PopupInput *main_input = NULL;
     for(int frame = 0; frame < 2; frame++) {
         BeginTextureMode(outer);
         ClearBackground(BLACK);
@@ -1001,7 +1001,7 @@ int main(void)
             ScrollScope((Rectangle){0,0,1,1},1,NULL);
             UIPaintLayerToken layer = ui_paint_layer_begin(main_layers,1);
             main_input = ui_paint_layers_input(main_layers);
-            UIPopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
+            PopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
             Column((ColumnProps){.bounds={0,0,4,4}});
             Box((Rectangle){0,0,4,4},MAGENTA,BLANK);
             End();

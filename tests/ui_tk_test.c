@@ -1768,12 +1768,12 @@ test_popup_tab_bar_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(240,120,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(
             context,26100,(Rectangle){10,10,220,100});
-        UIPopupInputToken child = ui_popup_input_begin(
+        PopupInputToken child = ui_popup_input_begin(
             context,26101,(Rectangle){15,15,200,80});
         if(!inside) ui_popup_input_end(child);
         SetFocus(props.id);
@@ -2251,12 +2251,12 @@ test_popup_menu_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_ENTER); InjectPump();
         BeginInterfaceFrame(320,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(
             context,25700,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(
+        PopupInputToken child = ui_popup_input_begin(
             context,25701,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25711);
@@ -2270,10 +2270,10 @@ test_popup_menu_keyboard_ownership(void)
         EndInterfaceFrame();
     }
     for(int inside = 0; inside < 2; inside++) {
-        UIPopupInput *context;
-        UIPopupInput *previous;
-        UIPopupInputToken parent;
-        UIPopupInputToken child;
+        PopupInput *context;
+        PopupInput *previous;
+        PopupInputToken parent;
+        PopupInputToken child;
         int expected_focus = inside ? 0 : 25711;
 
         InjectReset();
@@ -2746,7 +2746,7 @@ static void
 test_popup_preedit_cancellation(void)
 {
     for(int cause = 0; cause < 3; cause++) {
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         char text[32] = "a";
         int cursor = 1, focused = 1;
         InjectReset(); ClearTextComposition();
@@ -2754,11 +2754,11 @@ test_popup_preedit_cancellation(void)
             if(frame == 0) SubmitTextComposition(KRY_TEXT_COMPOSITION_UPDATE,"ni",2,0);
             InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
-            UIPopupInput *previous = ui_popup_input_bind(context);
+            PopupInput *previous = ui_popup_input_bind(context);
             BeginTree(Key("popup-preedit-cancellation"));
-            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
             if(frame == 1 && cause == 0) {
-                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
             SetFocus(frame == 1 && cause == 2 ? 0 : 26010);
@@ -2788,7 +2788,7 @@ test_popup_composition_dismissal_replay(void)
 {
     for(int read_only = 0; read_only < 2; read_only++)
     for(int area = 0; area < 2; area++) {
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         char text[32] = "a";
         int cursor = 1, focused = 1;
         InjectReset(); ClearTextComposition();
@@ -2799,11 +2799,11 @@ test_popup_composition_dismissal_replay(void)
             }
             InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
-            UIPopupInput *previous = ui_popup_input_bind(context);
+            PopupInput *previous = ui_popup_input_bind(context);
             BeginTree(Key("popup-composition-replay"));
-            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
             if(frame == 0) {
-                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
             SetFocus(26000); focused = 1;
@@ -2833,7 +2833,7 @@ test_popup_text_dismissal_replay(void)
     for(int area = 0; area < 2; area++)
     for(int queued = 0; queued < 3; queued++) {
         if(area && queued == 2) continue;
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         char text[32] = "a";
         int cursor = 1, focused = 1, commit = 0;
         InjectReset(); ClearTextInputFocus();
@@ -2846,10 +2846,10 @@ test_popup_text_dismissal_replay(void)
             }
             InjectPump(); BeginInterfaceFrame(240,240,1);
             ui_popup_input_frame(context);
-            UIPopupInput *previous = ui_popup_input_bind(context);
-            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            PopupInput *previous = ui_popup_input_bind(context);
+            PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
             if(frame == 0) {
-                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 ui_popup_input_end(child);
             } else ui_popup_input_close(context,1);
             SetFocus(25900); focused = 1;
@@ -2877,19 +2877,19 @@ test_popup_text_dismissal_replay(void)
 static void
 test_popup_tab_missing_owner(void)
 {
-    UIPopupInput *context = ui_popup_input_create();
+    PopupInput *context = ui_popup_input_create();
     InjectReset();
     for(int frame = 0; frame < 3; frame++) {
         if(frame) InjectKeyTap(KEY_TAB);
         InjectPump(); BeginInterfaceFrame(240,240,1);
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
+        PopupInput *previous = ui_popup_input_bind(context);
         RegisterFocus(25800,(Rectangle){0});
         if(frame < 2) {
-            UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+            PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
             RegisterFocus(25810,(Rectangle){0});
             if(frame == 0) {
-                UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+                PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
                 RegisterFocus(25820,(Rectangle){0});
                 SetFocus(25820);
                 ui_popup_input_end(child);
@@ -2917,12 +2917,12 @@ test_popup_button_keyboard_ownership(void)
         InjectReset(); InjectKeyTap(keys[key]); InjectPump();
         BeginInterfaceFrame(240,240,1);
         SetFocusTextInputActive(0);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
+        PopupInput *previous = ui_popup_input_bind(context);
         BeginTree(Key("popup-button-keyboard"));
-        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25700);
         int activated = Button((ButtonProps){.bounds={10,10,120,28},.label="Action",.id=25700});
@@ -2950,12 +2950,12 @@ test_popup_choice_keyboard_ownership(void)
         int selected = 0;
         InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(
             context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(
+        PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25705);
@@ -2986,12 +2986,12 @@ test_popup_multi_select_keyboard_ownership(void)
         int anchor = 0;
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(
             context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(
+        PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25706);
@@ -3019,12 +3019,12 @@ test_popup_drag_keyboard_ownership(void)
         float value = 1.0f;
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(
             context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(
+        PopupInputToken child = ui_popup_input_begin(
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25707);
@@ -3056,12 +3056,12 @@ test_popup_tab_ownership(void)
         BeginInterfaceFrame(240,240,1);
         SetFocus(start[mode]);
         RegisterFocus(25600,(Rectangle){0});
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
         RegisterFocus(25610,(Rectangle){0});
-        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
+        PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){20,20,60,60});
         RegisterFocus(25620,(Rectangle){0});
         RegisterFocus(25621,(Rectangle){0});
         RegisterFocus(25620,(Rectangle){0});
@@ -3091,12 +3091,12 @@ test_popup_text_keyboard_ownership(void)
         int cursor = 1, focused = 1;
         InjectReset(); ClearTextInputFocus(); InjectText("x"); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
+        PopupInput *previous = ui_popup_input_bind(context);
         if(retained) BeginTree(Key("popup-editor-keyboard"));
-        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25500);
         if(area)
@@ -3554,8 +3554,8 @@ static void
 test_composed_popup_focus_lifecycle(void)
 {
     bool parent_open = true, child_open = false;
-    UIPopupInput *context = ui_popup_input_create();
-    UIPopupInput *previous;
+    PopupInput *context = ui_popup_input_create();
+    PopupInput *previous;
     InjectReset();
     BeginInterfaceFrame(240,180,1);
     ui_popup_input_frame(context);
@@ -3661,9 +3661,9 @@ test_composed_popup_focus_lifecycle(void)
 static void
 test_popup_active_drag_ownership(void)
 {
-    UIPopupInput *context = ui_popup_input_create();
-    UIPopupInput *previous;
-    UIPopupInputToken owner;
+    PopupInput *context = ui_popup_input_create();
+    PopupInput *previous;
+    PopupInputToken owner;
     float drag_value = 10.0f;
     float background_value = 10.0f;
     float slider_value = 0.0f;
@@ -3890,11 +3890,11 @@ test_popup_dropdown_keyboard_ownership(void)
     for(int inside = 0; inside < 2; inside++) {
         InjectReset(); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
-        UIPopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(context,0,(Rectangle){180,180,40,40});
+        PopupInputToken child = ui_popup_input_begin(context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         check_int("keyboard capture is independent of pointer bounds",ui_popup_input_keyboard_captures(),!inside);
         int selected = 0;
@@ -3916,10 +3916,10 @@ test_popup_dropdown_keyboard_ownership(void)
         EndInterfaceFrame();
     }
     for(int inside = 0; inside < 2; inside++) {
-        UIPopupInput *context;
-        UIPopupInput *previous;
-        UIPopupInputToken parent;
-        UIPopupInputToken child;
+        PopupInput *context;
+        PopupInput *previous;
+        PopupInputToken parent;
+        PopupInputToken child;
         int selected = 0;
 
         InjectReset();
@@ -3980,11 +3980,11 @@ test_popup_accelerator_keyboard_ownership(void)
     Accelerator commands[] = {{KEY_X,1,0,0,90}, {KEY_C,1,0,0,91}};
     InjectReset(); InjectKey(KEY_LEFT_CONTROL,1); InjectKeyTap(KEY_C); InjectPump();
     BeginInterfaceFrame(240,240,1);
-    UIPopupInput *context = ui_popup_input_create();
+    PopupInput *context = ui_popup_input_create();
     ui_popup_input_frame(context);
-    UIPopupInput *previous = ui_popup_input_bind(context);
-    UIPopupInputToken parent = ui_popup_input_begin(context,26000,(Rectangle){10,10,120,100});
-    UIPopupInputToken child = ui_popup_input_begin(context,26001,(Rectangle){20,20,80,60});
+    PopupInput *previous = ui_popup_input_bind(context);
+    PopupInputToken parent = ui_popup_input_begin(context,26000,(Rectangle){10,10,120,100});
+    PopupInputToken child = ui_popup_input_begin(context,26001,(Rectangle){20,20,80,60});
 
     ui_popup_input_end(child);
     check_int("parent accelerator blocked behind child",AcceleratorPressed(copy),0);
@@ -4016,11 +4016,11 @@ test_popup_collapsible_keyboard_ownership(void)
         bool open = false;
         InjectReset(); InjectKeyTap(KEY_RIGHT); InjectPump();
         BeginInterfaceFrame(240,240,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,120,100});
-        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){20,20,80,60});
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,120,100});
+        PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){20,20,80,60});
         if(!inside) ui_popup_input_end(child);
         SetFocus(26110);
         Collapsible((CollapsibleProps){.bounds={20,20,80,28},.id=26110,
@@ -4043,13 +4043,13 @@ test_retained_popup_pointer_focus(void)
         InjectReset(); InjectTap(60,60); InjectPump();
         BeginInterfaceFrame(240,240,1);
         SetFocus(0);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
+        PopupInput *previous = ui_popup_input_bind(context);
         PushInputCapture((Rectangle){0,0,blocked ? 5 : 240,240},1);
         BeginTree(Key("retained-popup-pointer-focus"));
-        UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
-        UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+        PopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        PopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
         Row((RowProps){.bounds={50,50,80,24}});
         Button((ButtonProps){.bounds={0,0,40,24},.id=25301,.label="Child"});
         End();
@@ -4147,11 +4147,11 @@ test_retained_popup_input_ownership(void)
     BeginInterfaceFrame(240,240,1);
     BeginTree(Key("retained-popup-input"));
     Button((ButtonProps){.bounds={50,50,40,24},.id=25200,.label="Before"});
-    UIPopupInput *context = ui_popup_input_create();
+    PopupInput *context = ui_popup_input_create();
     ui_popup_input_frame(context);
-    UIPopupInput *previous = ui_popup_input_bind(context);
-    UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
-    UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+    PopupInput *previous = ui_popup_input_bind(context);
+    PopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+    PopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
     Button((ButtonProps){.bounds={50,50,40,24},.id=25201,.label="Child"});
     ui_popup_input_end(inner);
     Button((ButtonProps){.bounds={50,50,40,24},.id=25202,.label="Later parent"});
@@ -4186,8 +4186,8 @@ test_retained_popup_input_ownership(void)
 static void
 test_nested_popup_input_ownership(void)
 {
-    UIPopupInput *context = ui_popup_input_create();
-    UIPopupInput *previous = ui_popup_input_bind(context);
+    PopupInput *context = ui_popup_input_create();
+    PopupInput *previous = ui_popup_input_bind(context);
     int background = 0, parent = 0, child = 0;
     InjectReset();
     for(int frame = 0; frame < 4; frame++) {
@@ -4195,9 +4195,9 @@ test_nested_popup_input_ownership(void)
         InjectPump(); BeginInterfaceFrame(240,240,1);
         ui_popup_input_frame(context);
         background += Button((ButtonProps){.bounds={50,50,40,24},.id=25100,.label="Before"});
-        UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+        PopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
         parent += Button((ButtonProps){.bounds={50,50,40,24},.id=25101,.label="Parent"});
-        UIPopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
+        PopupInputToken inner = ui_popup_input_begin(context,1,(Rectangle){50,50,60,60});
         child += Button((ButtonProps){.bounds={50,50,40,24},.id=25102,.label="Child"});
         ui_popup_input_end(inner);
         ui_popup_input_end(outer);
@@ -4209,13 +4209,13 @@ test_nested_popup_input_ownership(void)
     check_int("popup parent cannot steal child input",parent,0);
     check_int("ordinary popup child button activates",child,1);
     ui_popup_input_frame(context);
-    UIPopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
+    PopupInputToken outer = ui_popup_input_begin(context,0,(Rectangle){10,10,120,120});
     check_int("previous-frame child remains above parent",ui_popup_input_captures(context,(Vector2){60,60}),1);
     ui_popup_input_close(context,1);
     check_int("closing child restores parent input",ui_popup_input_captures(context,(Vector2){60,60}),0);
     ui_popup_input_end(outer);
     ui_popup_input_finish(context);
-    UIPopupInput *other = ui_popup_input_create();
+    PopupInput *other = ui_popup_input_create();
     ui_popup_input_bind(other);
     check_int("popup capture remains context-local",ui_popup_input_current_captures((Vector2){60,60}),0);
     ui_popup_input_bind(context);
@@ -4225,9 +4225,9 @@ test_nested_popup_input_ownership(void)
     check_int("missing popup owner retired",ui_popup_input_current_captures((Vector2){60,60}),0);
     ui_popup_input_frame(context);
     outer = ui_popup_input_begin(context,0,(Rectangle){0,0,100,100});
-    UIPopupInputToken nested = ui_popup_input_begin(context,1,(Rectangle){0,0,100,100});
+    PopupInputToken nested = ui_popup_input_begin(context,1,(Rectangle){0,0,100,100});
     ui_popup_input_end(nested); ui_popup_input_end(outer);
-    UIPopupInputToken sibling = ui_popup_input_begin(context,2,(Rectangle){0,0,100,100});
+    PopupInputToken sibling = ui_popup_input_begin(context,2,(Rectangle){0,0,100,100});
     check_int("later sibling beats earlier nested branch",ui_popup_input_captures(context,(Vector2){60,60}),0);
     nested = ui_popup_input_begin(context,3,(Rectangle){0,0,100,100});
     ui_popup_input_end(nested); ui_popup_input_end(sibling);
@@ -4533,11 +4533,11 @@ test_popup_list_box_keyboard_ownership(void)
         };
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
         BeginInterfaceFrame(200,120,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,100});
-        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,100});
+        PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,80});
         if(!inside) ui_popup_input_end(child);
         SetFocus(list.id);
         RenderListBox(list);
@@ -4832,11 +4832,11 @@ test_popup_table_keyboard_ownership(void)
         };
         InjectReset(); InjectKeyTap(KEY_DOWN); InjectPump();
         BeginInterfaceFrame(240,160,1);
-        UIPopupInput *context = ui_popup_input_create();
+        PopupInput *context = ui_popup_input_create();
         ui_popup_input_frame(context);
-        UIPopupInput *previous = ui_popup_input_bind(context);
-        UIPopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,120});
-        UIPopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,100});
+        PopupInput *previous = ui_popup_input_bind(context);
+        PopupInputToken parent = ui_popup_input_begin(context,26100,(Rectangle){10,10,140,120});
+        PopupInputToken child = ui_popup_input_begin(context,26101,(Rectangle){15,15,120,100});
         if(!inside) ui_popup_input_end(child);
         SetFocus(26120);
         TableView(table);

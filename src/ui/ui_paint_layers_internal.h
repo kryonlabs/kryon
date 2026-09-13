@@ -20,7 +20,7 @@ UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner);
 void ui_paint_layer_end(UIPaintLayerToken token);
 void ui_paint_layers_hide(UIPaintLayers *layers, int owner);
 void ui_paint_layers_composite(UIPaintLayers *layers);
-UIPopupInput *ui_paint_layers_input(UIPaintLayers *layers);
+PopupInput *ui_paint_layers_input(UIPaintLayers *layers);
 void ui_window_layers_begin(void);
 /* Lazily obtain the active native NativeWindow's context. Its frame, composition
  * and destruction belong to the window, not to the caller. */

@@ -266,9 +266,9 @@ typedef struct InstanceEntry {
 struct ToolkitStore {
     int drag_active;
     float drag_last_x;
-    UIPopupInputOwner drag_owner;
+    PopupInputOwner drag_owner;
     int slider_active;
-    UIPopupInputOwner slider_owner;
+    PopupInputOwner slider_owner;
     UINumericClickState numeric_click;
     UIDragDropState drag_drop;
     int canvas_depth;
@@ -284,9 +284,9 @@ struct ToolkitStore {
     int resize_column;
     int resize_start_x;
     int resize_start_width;
-    UIPopupInputOwner resize_owner;
+    PopupInputOwner resize_owner;
     int *active_split;
-    UIPopupInputOwner active_split_owner;
+    PopupInputOwner active_split_owner;
     UINumericInputState *numeric_inputs[UI_NUMERIC_INPUT_BUCKETS];
     int numeric_next_token;
     UITreeHeaderNav *tree_headers;
