@@ -110,8 +110,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web background styling accepts native `background-image` alongside size,
   position, position-axis longhands, repeat, origin, clip, attachment, and
   blend controls.
-- KSS web type styling accepts both Kryon's `typeface` alias and the native
-  `font-family` property name.
+- KSS web type styling accepts native `font` shorthand, Kryon's `typeface`
+  alias, and the native `font-family` property name.
 - KSS web text decoration styling covers native line, color, style, thickness,
   underline offset, and skip-ink controls.
 - KSS web sizing supports logical `inline-size`/`block-size` and min/max

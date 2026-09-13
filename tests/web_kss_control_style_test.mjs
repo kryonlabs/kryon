@@ -18,6 +18,7 @@ const sheet = runtime.parseWebStyleSheet(`
     background-image: linear-gradient(#101820, #203040);
     background-position-x: left;
     background-position-y: top;
+    font: italic 14px system-ui;
     font-family: system-ui;
     border-radius: 6;
     border: 3px solid #203040;
@@ -40,6 +41,7 @@ assert.match(css, /background-color: #101820;/);
 assert.match(css, /background-image: linear-gradient\(#101820, #203040\);/);
 assert.match(css, /background-position-x: left;/);
 assert.match(css, /background-position-y: top;/);
+assert.match(css, /font: italic 14px system-ui;/);
 assert.match(css, /font-family: system-ui;/);
 assert.match(css, /border-radius: 6px;/);
 assert.match(css, /border: 3px solid #203040;/);
@@ -65,6 +67,7 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "background-image": "linear-gradient(#101820, #203040)",
   "background-position-x": "left",
   "background-position-y": "top",
+  font: "italic 14px system-ui",
   "font-family": "system-ui",
   "border-radius": 6,
   border: "3px solid #203040",
@@ -200,6 +203,7 @@ assert.equal(field.style.backgroundColor, "#101820");
 assert.equal(field.style.backgroundImage, "linear-gradient(#101820, #203040)");
 assert.equal(field.style.backgroundPositionX, "left");
 assert.equal(field.style.backgroundPositionY, "top");
+assert.equal(field.style.font, "italic 14px system-ui");
 assert.equal(field.style.fontFamily, "system-ui");
 assert.equal(field.style.borderRadius, "6px");
 assert.equal(field.style.border, "3px solid #203040");

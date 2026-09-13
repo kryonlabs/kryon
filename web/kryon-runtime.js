@@ -2010,7 +2010,7 @@ const webKssLengthProperties = new Set([
 const webKssMaterialProperties = new Set(["material"]);
 
 const webKssLiteralProperties = new Set([
-  "typeface", "font-family", "font-weight", "font-style", "font-variant", "font-stretch",
+  "font", "typeface", "font-family", "font-weight", "font-style", "font-variant", "font-stretch",
   "font-kerning", "font-optical-sizing", "font-feature-settings",
   "font-variation-settings", "text-align",
   "text-decoration", "text-decoration-line", "text-decoration-style",
@@ -2727,6 +2727,7 @@ const webCSSPropertyNames = new Map([
   ["gap", "gap"],
   ["row-gap", "row-gap"],
   ["column-gap", "column-gap"],
+  ["font", "font"],
   ["font-size", "font-size"],
   ["typeface", "font-family"],
   ["font-family", "font-family"],
@@ -3770,6 +3771,7 @@ function applyResolvedWebStyle(el, style) {
   set("gap", style.gap);
   set("rowGap", style["row-gap"]);
   set("columnGap", style["column-gap"]);
+  set("font", style.font);
   set("fontSize", style["font-size"]);
   set("fontFamily", style.typeface);
   set("fontFamily", style["font-family"]);
