@@ -1398,6 +1398,24 @@ function metaStringOrProp(meta, name, args, props) {
   return value === undefined || value === null ? propStringAny(args, props) : String(value);
 }
 
+function metaBoolOrProp(meta, name, args, props) {
+  const value = meta?.[name];
+  if (value === undefined || value === null)
+    return isTruthyPropAny(args, props);
+  if (typeof value === "string")
+    return /^(true|1|yes)$/i.test(value);
+  return !!value;
+}
+
+function metaNumberOrProp(meta, name, args, props, fallback = null) {
+  const value = meta?.[name];
+  const raw = value === undefined || value === null ? propStringAny(args, props) : value;
+  if (raw === undefined || raw === null || raw === "")
+    return fallback;
+  const n = Number(raw);
+  return Number.isFinite(n) ? Math.trunc(n) : fallback;
+}
+
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
@@ -1435,14 +1453,15 @@ function webNodeFromWidget(item, index) {
     sourceColumn: Number.isFinite(Number(meta.sourceColumn)) ? Math.trunc(Number(meta.sourceColumn)) : 0,
     sourceEndLine: Number.isFinite(Number(meta.sourceEndLine)) ? Math.trunc(Number(meta.sourceEndLine)) : 0,
     sourceEndColumn: Number.isFinite(Number(meta.sourceEndColumn)) ? Math.trunc(Number(meta.sourceEndColumn)) : 0,
-    domId: meta.id === undefined || meta.id === null ? "" : String(meta.id),
-    domName: meta.domName === undefined || meta.domName === null ? "" : String(meta.domName),
+    domId: metaStringOrProp(meta, "id", args, ["dom_id", "html_id"]),
+    domName: metaStringOrProp(meta, "domName", args, ["dom_name", "html_name", "name_attr"]),
     classes: [...new Set(classes)],
-    title: meta.title === undefined || meta.title === null ? "" : String(meta.title),
+    title: metaStringOrProp(meta, "title", args, ["title", "dom_title", "html_title"]),
     placeholder: meta.placeholder === undefined || meta.placeholder === null
       ? propStringAny(args, ["placeholder", "dom_placeholder"])
       : String(meta.placeholder),
-    tabIndex: Number.isFinite(Number(meta.tabIndex)) ? Math.trunc(Number(meta.tabIndex)) : null,
+    tabIndex: metaNumberOrProp(meta, "tabIndex", args,
+      ["tab_index", "tabindex", "dom_tab_index", "html_tab_index"]),
     clickable: isTruthyProp(args, "clickable") || isTruthyProp(args, "Clickable"),
     text: widgetText(item),
     value: widgetText(item),
@@ -1455,9 +1474,9 @@ function webNodeFromWidget(item, index) {
     rel: meta.rel === undefined || meta.rel === null
       ? propStringAny(args, ["rel", "dom_rel", "html_rel"])
       : String(meta.rel),
-    htmlFor: metaString(meta, "htmlFor"),
-    part: metaString(meta, "part"),
-    slot: metaString(meta, "slot"),
+    htmlFor: metaStringOrProp(meta, "htmlFor", args, ["for", "dom_for", "html_for"]),
+    part: metaStringOrProp(meta, "part", args, ["part", "dom_part", "html_part"]),
+    slot: metaStringOrProp(meta, "slot", args, ["slot", "dom_slot", "html_slot"]),
     dataAttrs: propDataAttrs(meta, args),
     extraAttrs: propExtraAttrs(meta, args),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
@@ -1476,26 +1495,33 @@ function webNodeFromWidget(item, index) {
     autoComplete: meta.autoComplete === undefined || meta.autoComplete === null
       ? propStringAny(args, ["autocomplete", "dom_autocomplete", "html_autocomplete"])
       : String(meta.autoComplete),
-    hidden: metaBool(meta, "hidden"),
-    draggable: metaString(meta, "draggable"),
-    spellCheck: metaString(meta, "spellCheck"),
-    contentEditable: metaString(meta, "contentEditable"),
-    autoFocus: metaBool(meta, "autoFocus"),
-    inert: metaBool(meta, "inert"),
-    autoCapitalize: metaString(meta, "autoCapitalize"),
+    hidden: metaBoolOrProp(meta, "hidden", args, ["hidden", "dom_hidden", "html_hidden"]),
+    draggable: metaStringOrProp(meta, "draggable", args, ["draggable", "dom_draggable", "html_draggable"]),
+    spellCheck: metaStringOrProp(meta, "spellCheck", args,
+      ["spellcheck", "spell_check", "dom_spellcheck", "html_spellcheck"]),
+    contentEditable: metaStringOrProp(meta, "contentEditable", args,
+      ["contenteditable", "content_editable", "dom_contenteditable", "html_contenteditable"]),
+    autoFocus: metaBoolOrProp(meta, "autoFocus", args,
+      ["autofocus", "auto_focus", "dom_autofocus", "html_autofocus"]),
+    inert: metaBoolOrProp(meta, "inert", args, ["inert", "dom_inert", "html_inert"]),
+    autoCapitalize: metaStringOrProp(meta, "autoCapitalize", args,
+      ["autocapitalize", "auto_capitalize", "dom_autocapitalize", "html_autocapitalize"]),
     enterKeyHint: metaString(meta, "enterKeyHint") ||
       propStringAny(args, ["enterkeyhint", "enter_key_hint", "dom_enterkeyhint", "html_enterkeyhint"]),
     download: metaString(meta, "download") ||
       propStringAny(args, ["download", "dom_download", "html_download"]),
-    formNoValidate: metaBool(meta, "formNoValidate"),
-    noValidate: metaBool(meta, "noValidate"),
-    popover: metaString(meta, "popover"),
-    popoverTarget: metaString(meta, "popoverTarget"),
-    popoverTargetAction: metaString(meta, "popoverTargetAction"),
-    readOnly: metaBool(meta, "readOnly") ||
-      isTruthyPropAny(args, ["readonly", "read_only", "dom_readonly", "html_readonly"]),
-    required: metaBool(meta, "required") ||
-      isTruthyPropAny(args, ["required", "dom_required", "html_required"]),
+    formNoValidate: metaBoolOrProp(meta, "formNoValidate", args,
+      ["form_no_validate", "formnovalidate", "dom_formnovalidate", "html_formnovalidate"]),
+    noValidate: metaBoolOrProp(meta, "noValidate", args,
+      ["no_validate", "novalidate", "dom_novalidate", "html_novalidate"]),
+    popover: metaStringOrProp(meta, "popover", args, ["popover", "dom_popover", "html_popover"]),
+    popoverTarget: metaStringOrProp(meta, "popoverTarget", args,
+      ["popover_target", "popovertarget", "dom_popover_target", "html_popover_target"]),
+    popoverTargetAction: metaStringOrProp(meta, "popoverTargetAction", args,
+      ["popover_target_action", "popovertargetaction", "dom_popover_target_action", "html_popover_target_action"]),
+    readOnly: metaBoolOrProp(meta, "readOnly", args,
+      ["readonly", "read_only", "dom_readonly", "html_readonly"]),
+    required: metaBoolOrProp(meta, "required", args, ["required", "dom_required", "html_required"]),
     min: metaString(meta, "min") || widgetMin(item),
     max: metaString(meta, "max") || widgetMax(item),
     step: metaString(meta, "step") ||
@@ -1508,14 +1534,13 @@ function webNodeFromWidget(item, index) {
       propStringAny(args, ["pattern", "dom_pattern", "html_pattern"]),
     accept: metaString(meta, "accept") ||
       propStringAny(args, ["accept", "dom_accept", "html_accept"]),
-    multiple: metaBool(meta, "multiple") ||
-      isTruthyPropAny(args, ["multiple", "dom_multiple", "html_multiple"]),
+    multiple: metaBoolOrProp(meta, "multiple", args, ["multiple", "dom_multiple", "html_multiple"]),
     inputMode: metaString(meta, "inputMode") ||
       propStringAny(args, ["input_mode", "inputmode", "dom_inputmode", "html_inputmode"]),
-    headers: metaString(meta, "headers"),
-    scope: metaString(meta, "scope"),
-    colSpan: metaString(meta, "colSpan"),
-    rowSpan: metaString(meta, "rowSpan"),
+    headers: metaStringOrProp(meta, "headers", args, ["headers", "dom_headers", "html_headers"]),
+    scope: metaStringOrProp(meta, "scope", args, ["scope", "dom_scope", "html_scope"]),
+    colSpan: metaStringOrProp(meta, "colSpan", args, ["colspan", "col_span", "dom_colspan", "html_colspan"]),
+    rowSpan: metaStringOrProp(meta, "rowSpan", args, ["rowspan", "row_span", "dom_rowspan", "html_rowspan"]),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: metaStringOrProp(meta, "role", args, ["role", "dom_role", "html_role"]),
@@ -1667,6 +1692,8 @@ export function webNodeStyleFacts(node) {
     sourceRangeRef: webNodeSourceRangeRef(node),
     id: node?.domId || "",
     domName: node?.domName || "",
+    title: node?.title || "",
+    tabIndex: Number.isFinite(Number(node?.tabIndex)) ? Math.trunc(Number(node.tabIndex)) : null,
     domValue: node?.domValue || "",
     href: node?.href || "",
     target: node?.target || "",
@@ -3075,7 +3102,10 @@ function selectorNativeAttrValue(key, facts) {
     case "sourceEndLine": return facts.sourceEndLine;
     case "endColumn":
     case "sourceEndColumn": return facts.sourceEndColumn;
+    case "id": return facts.id;
     case "name": return facts.domName;
+    case "title": return facts.title;
+    case "tabindex": return facts.tabIndex;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
     case "form": return facts.formOwner;

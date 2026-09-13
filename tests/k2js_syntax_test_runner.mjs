@@ -903,6 +903,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   sourceRangeRef: tapSourceRangeRef,
   id: "tap-button",
   domName: "",
+  title: "Tap details",
+  tabIndex: 3,
   domValue: "tap-value",
   href: "",
   target: "",
@@ -2524,6 +2526,15 @@ function fakeDocument() {
       download: "manual.pdf",
       data_tracking_id: "manual-link",
       attr_itemprop: "url",
+      dom_id: "manual-link",
+      dom_name: "manual_resource",
+      title: "Manual PDF",
+      tab_index: 2,
+      hidden: true,
+      draggable: "false",
+      contenteditable: "false",
+      part: "manual-link",
+      slot: "resource-link",
       role: "doc-biblioref",
       aria_label: "Open manual",
       aria_description: "Downloadable PDF",
@@ -2531,17 +2542,20 @@ function fakeDocument() {
     }, null,
       {
         nodeName: "manual",
-        path: "Page/manual",
-        hidden: true,
-        draggable: "false",
-        contentEditable: "false",
-        part: "manual-link",
-        slot: "resource-link"
+        path: "Page/manual"
       });
     runtime.endFrame(linkRt);
     assert.equal(runtime.webNodeQuery(linkRt, "Link").href, "/manual.pdf");
     assert.equal(runtime.webNodeQuery(linkRt, "Link").target, "_blank");
     assert.equal(runtime.webNodeQuery(linkRt, "Link").rel, "noopener");
+    assert.equal(runtime.webNodeQuery(linkRt, "#manual-link").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[name=\"manual_resource\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[title=\"Manual PDF\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[tabindex=\"2\"]").path,
+      "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[download=\"manual.pdf\"]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[href=\"/manual.pdf\"]").path,
@@ -2577,6 +2591,10 @@ function fakeDocument() {
     assert.equal(manual.attributes.target, "_blank");
     assert.equal(manual.attributes.rel, "noopener");
     assert.equal(manual.attributes.download, "manual.pdf");
+    assert.equal(manual.attributes.id, "manual-link");
+    assert.equal(manual.attributes.name, "manual_resource");
+    assert.equal(manual.attributes.title, "Manual PDF");
+    assert.equal(manual.attributes.tabindex, "2");
     assert.equal(manual.attributes["data-tracking-id"], "manual-link");
     assert.equal(manual.attributes.itemprop, "url");
     assert.equal(manual.attributes.role, "doc-biblioref");
