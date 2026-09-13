@@ -2107,7 +2107,8 @@ const webKssColorProperties = new Set([
   "border-right-color", "border-bottom-color", "border-left-color",
   "border-inline-color", "border-block-color", "border-inline-start-color",
   "border-inline-end-color", "border-block-start-color", "border-block-end-color",
-  "outline-color", "text-decoration-color", "column-rule-color"
+  "outline-color", "text-decoration-color", "text-emphasis-color",
+  "column-rule-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -2169,9 +2170,11 @@ const webKssLiteralProperties = new Set([
   "font-synthesis-small-caps", "font-synthesis-position",
   "text-align", "text-align-last", "text-rendering",
   "text-decoration", "text-decoration-line", "text-decoration-style",
-  "text-decoration-skip-ink", "text-shadow",
+  "text-decoration-skip-ink", "text-shadow", "text-emphasis",
+  "text-emphasis-style", "text-emphasis-position",
   "text-transform", "text-overflow", "white-space",
   "text-size-adjust", "text-orientation", "text-wrap",
+  "text-combine-upright", "ruby-align", "ruby-position",
   "text-spacing-trim", "text-autospace", "text-box-trim", "text-box-edge",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "border-top", "border-right", "border-bottom", "border-left",
@@ -2980,12 +2983,19 @@ const webCSSPropertyNames = new Map([
   ["text-decoration-thickness", "text-decoration-thickness"],
   ["text-underline-offset", "text-underline-offset"],
   ["text-shadow", "text-shadow"],
+  ["text-emphasis", "text-emphasis"],
+  ["text-emphasis-color", "text-emphasis-color"],
+  ["text-emphasis-style", "text-emphasis-style"],
+  ["text-emphasis-position", "text-emphasis-position"],
   ["text-transform", "text-transform"],
   ["text-overflow", "text-overflow"],
   ["white-space", "white-space"],
   ["text-size-adjust", "text-size-adjust"],
   ["text-orientation", "text-orientation"],
   ["text-wrap", "text-wrap"],
+  ["text-combine-upright", "text-combine-upright"],
+  ["ruby-align", "ruby-align"],
+  ["ruby-position", "ruby-position"],
   ["text-spacing-trim", "text-spacing-trim"],
   ["text-autospace", "text-autospace"],
   ["text-box-trim", "text-box-trim"],
@@ -4387,12 +4397,19 @@ function applyResolvedWebStyle(el, style) {
   set("textDecorationThickness", style["text-decoration-thickness"]);
   set("textUnderlineOffset", style["text-underline-offset"]);
   set("textShadow", style["text-shadow"]);
+  set("textEmphasis", style["text-emphasis"]);
+  set("textEmphasisColor", style["text-emphasis-color"]);
+  set("textEmphasisStyle", style["text-emphasis-style"]);
+  set("textEmphasisPosition", style["text-emphasis-position"]);
   set("textTransform", style["text-transform"]);
   set("textOverflow", style["text-overflow"]);
   set("whiteSpace", style["white-space"]);
   set("textSizeAdjust", style["text-size-adjust"]);
   set("textOrientation", style["text-orientation"]);
   set("textWrap", style["text-wrap"]);
+  set("textCombineUpright", style["text-combine-upright"]);
+  set("rubyAlign", style["ruby-align"]);
+  set("rubyPosition", style["ruby-position"]);
   set("textSpacingTrim", style["text-spacing-trim"]);
   set("textAutospace", style["text-autospace"]);
   set("textBoxTrim", style["text-box-trim"]);
