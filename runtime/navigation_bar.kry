@@ -92,9 +92,32 @@ NavigationBarConfigRowLayout :: struct {
     remove_bounds: Rectangle
 }
 
+NavigationBarConfigCounts :: struct {
+    route_count: i32
+    max_route_count: i32
+    option_count: i32
+}
+
 NavigationBarDefaultHeight :: (scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(86.0 * scale)
+}
+
+NavigationBarConfigCountsFor :: (route_count: i32, max_route_count: i32,
+    option_count: i32, slot_limit: i32) -> NavigationBarConfigCounts #export {
+    counts: NavigationBarConfigCounts
+    if slot_limit <= 0 { slot_limit = 16 }
+    if max_route_count <= 0 { max_route_count = route_count }
+    if max_route_count > slot_limit { max_route_count = slot_limit }
+    if max_route_count < 0 { max_route_count = 0 }
+    if route_count < 0 { route_count = 0 }
+    if route_count > max_route_count { route_count = max_route_count }
+    if option_count < 0 { option_count = 0 }
+    if option_count > slot_limit { option_count = slot_limit }
+    counts.route_count = route_count
+    counts.max_route_count = max_route_count
+    counts.option_count = option_count
+    return counts
 }
 
 NavigationBarMetric :: (fields: u32, field: u32, value: float,

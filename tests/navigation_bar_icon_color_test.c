@@ -429,8 +429,23 @@ main(void)
         NavigationBarConfigRowLayout row =
             NavigationBarConfigRowLayoutFor((Rectangle){118, 138, 304, 286},
                                             196, 18, metrics);
+        NavigationBarConfigCounts counts =
+            NavigationBarConfigCountsFor(5, 3, 20, 16);
 
         check_int("navigation config frame width", metrics.frame_width, 340);
+        check_int("navigation config route count clamps to max",
+                  counts.route_count, 3);
+        check_int("navigation config max route count keeps requested max",
+                  counts.max_route_count, 3);
+        check_int("navigation config option count clamps to slot limit",
+                  counts.option_count, 16);
+        counts = NavigationBarConfigCountsFor(-2, 0, -1, 0);
+        check_int("navigation config negative route count clamps",
+                  counts.route_count, 0);
+        check_int("navigation config default max route count clamps",
+                  counts.max_route_count, 0);
+        check_int("navigation config negative option count clamps",
+                  counts.option_count, 0);
         check_int("navigation config frame height",
                   NavigationBarConfigFrameHeight(3, metrics), 394);
         check_int("navigation config route view height",

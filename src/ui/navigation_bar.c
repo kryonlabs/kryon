@@ -281,6 +281,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     int option_count = modal.option_count;
     int route_count = modal.route_count != NULL ? *modal.route_count : 0;
     int max_route_count = modal.max_route_count > 0 ? modal.max_route_count : route_count;
+    NavigationBarConfigCounts counts;
     int selected[16] = {0};
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     NavigationBarConfigMetrics metrics =
@@ -293,14 +294,11 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
     Style label_style;
     int label_font;
 
-    if(max_route_count > 16)
-        max_route_count = 16;
-    if(route_count < 0)
-        route_count = 0;
-    if(route_count > max_route_count)
-        route_count = max_route_count;
-    if(option_count > 16)
-        option_count = 16;
+    counts = NavigationBarConfigCountsFor(route_count, max_route_count,
+                                          option_count, 16);
+    route_count = counts.route_count;
+    max_route_count = counts.max_route_count;
+    option_count = counts.option_count;
     for(i = 0; i < option_count; i++)
         option_labels[i] = modal.options[i].label;
     label_style = ui_unpack_style(ui_style_apply_effects_frame(
