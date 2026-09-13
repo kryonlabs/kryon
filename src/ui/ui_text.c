@@ -1355,35 +1355,6 @@ TextLineHeight(int font_size)
         (int)((float)TextBaseSize * scale + 0.5f);
 }
 
-int
-ScaledTextWidth(const char *text, int scale)
-{
-    Font font = active_font();
-    int width = 0;
-
-    if(text == NULL || !TextFontReady(font))
-        return 0;
-    if(scale < 1)
-        scale = 1;
-
-    if(TextFontHasNativeText(font))
-        return TextFontNativeTextWidth(font, text, -1) * scale;
-
-    for(int i = 0; text[i] != '\0';) {
-        int codepoint_byte_count = 0;
-        int codepoint = GetCodepointNext(&text[i], &codepoint_byte_count);
-
-        if(codepoint == '\n')
-            break;
-
-        Font glyph_font = font_for_scaled_codepoint(codepoint);
-        width += TextFontAdvance(glyph_font, codepoint) * scale;
-        i += codepoint_byte_count;
-    }
-
-    return width;
-}
-
 Font
 GetTextFontForCodepoint(int codepoint, int font_size)
 {
@@ -1929,20 +1900,6 @@ DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, 
     int y = TextBaselineY("Hg", center_y - line_h / 2, line_h, font_size);
 
     RenderText(text, center_x - text_w / 2, y, font_size, color);
-}
-
-int
-ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale)
-{
-    Font font = active_font();
-    int font_size;
-    int base;
-
-    if(scale < 1)
-        scale = 1;
-    base = TextFontBaseSize(font);
-    font_size = base > 0 ? base * scale : 16 * scale;
-    return TextBaselineY(text, box_y, box_h, font_size);
 }
 
 int

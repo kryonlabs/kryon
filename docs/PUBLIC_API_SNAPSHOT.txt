@@ -1758,9 +1758,7 @@ include/ui_text.h function LoadTextFontAsset
 include/ui_text.h function LoadTextFontFromMemory
 include/ui_text.h function MeasureTextWidth
 include/ui_text.h function PopTextFont
-include/ui_text.h function PopTextSelectable
 include/ui_text.h function PushTextFont
-include/ui_text.h function PushTextSelectable
 include/ui_text.h function RegisterFixedTextFontSource
 include/ui_text.h function RegisterSmallTextFont
 include/ui_text.h function RegisterTextFont
@@ -1768,8 +1766,6 @@ include/ui_text.h function RegisterTextFontFileSource
 include/ui_text.h function RegisterTextFontFileSourceForText
 include/ui_text.h function RegisterTextFontSource
 include/ui_text.h function RegisterTextFontSourceForText
-include/ui_text.h function ScaledTextBaselineY
-include/ui_text.h function ScaledTextWidth
 include/ui_text.h function TextBaselineY
 include/ui_text.h function TextFontHasGlyph
 include/ui_text.h function TextFontMemoryReport

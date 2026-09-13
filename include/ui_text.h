@@ -14,13 +14,6 @@
 #define Text48 48
 #define TextBaseSize 16
 
-typedef struct {
-    int font_size;
-    Color color;
-    int italic;
-    int selectable;
-} TextStyle;
-
 Font GetTextFont(void);
 int EnsureUIDefaultFont(void);
 int RegisterTextFont(const char *name, Font font);
@@ -55,12 +48,8 @@ int TextWidth(const char *text, int font_size);
 int MeasureTextWidth(const char *text, int font_size, const char *typeface);
 int TextHeight(const char *text, int font_size);
 int TextLineHeight(int font_size);
-int ScaledTextWidth(const char *text, int scale);
 Font GetTextFontForCodepoint(int codepoint, int font_size);
 float GetTextFontScale(Font font, int font_size);
-int PushTextSelectable(int selectable);
-void PopTextSelectable(int token);
 int TextBaselineY(const char *text, int box_y, int box_h, int font_size);
-int ScaledTextBaselineY(const char *text, int box_y, int box_h, int scale);
 
 #endif

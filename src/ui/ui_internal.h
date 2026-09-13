@@ -61,6 +61,13 @@ typedef struct {
 DismissibleOverlayResult DismissibleOverlay(DismissibleOverlayProps overlay);
 
 typedef struct {
+    int font_size;
+    Color color;
+    int italic;
+    int selectable;
+} TextStyle;
+
+typedef struct {
     int id;
     const char *text;
     Rectangle bounds;
@@ -347,6 +354,8 @@ int ui_text_word_left(const char *text, int cursor);
 int ui_text_word_right(const char *text, int cursor);
 int ui_text_navigation_key(int multiline);
 int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
+int PushTextSelectable(int selectable);
+void PopTextSelectable(int token);
 void RenderTextEx(const char *text, int x, int y, int font_size, Color color,
                   int selectable);
 void RenderTextStyled(const char *text, int x, int y, TextStyle style);

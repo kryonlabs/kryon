@@ -566,7 +566,7 @@ if [ -n "$public_text_draw_matches" ]; then
 fi
 
 public_text_helper_matches="$(
-    rg -n '\b(UITextStyle|SelectableTextBlock|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect|DrawLeftUIControlTextInRect|DrawFittedTextInRect)\b' \
+    rg -n '\b(TextStyle|UITextStyle|SelectableTextBlock|UISelectableTextBlock|MeasureUIText|GetUITextHeight|GetUITextLineHeight|MeasureScaledUIText|ScaledTextWidth|ScaledTextBaselineY|PushTextSelectable|PopTextSelectable|PushUITextSelectable|PopUITextSelectable|GetUITextY|GetScaledUITextY|DrawFittedUITextInRect|DrawLeftUIControlTextInRect|DrawFittedTextInRect)\b' \
         include/ui_text.h \
         include/ui_draw.h \
         docs/API.md \
