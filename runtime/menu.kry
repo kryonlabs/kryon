@@ -46,7 +46,7 @@ MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     metrics.panel_margin = MenuMetric(panel.value.fields,
         (u32)StyleGap, panel.value.gap, 4.0, scale, true)
     metrics.accelerator_gap = MenuMetric(item.value.fields,
-        (u32)StyleContentOffset, item.value.offset_x, 88.0, scale, false)
+        (u32)StyleContentOffset, item.value.offset_x, 88.0, scale, true)
     metrics.bar_item_min_width = 0
     metrics.bar_item_padding = MenuMetric(bar.value.fields,
         (u32)StylePaddingX, bar.value.padding_x * 2.0, 24.0, scale, true)

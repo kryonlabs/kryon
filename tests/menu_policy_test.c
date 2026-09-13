@@ -61,10 +61,14 @@ main(void)
     assert(metrics.row_height == 44);
     item.value.offset_y = 0.0f;
 
+    panel.value.padding_x = 0.0f;
     panel.value.gap = 0.0f;
+    item.value.offset_x = 0.0f;
     bar.value.gap = 0.0f;
     metrics = MenuMetricsFor(1.0f, panel, item, bar);
+    assert(metrics.panel_padding == 0);
     assert(metrics.panel_margin == 0);
+    assert(metrics.accelerator_gap == 0);
     assert(metrics.bar_item_gap == 0);
 
     panel = (StyleFrame){0};

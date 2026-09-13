@@ -135,7 +135,7 @@ func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar S
 	var value_54 float32 = item.Value.OffsetX
 	var value_55 float32 = 88.0
 	var value_56 float32 = scale
-	var value_57 bool = false
+	var value_57 bool = true
 	var value_58 int32 = Menu_MenuMetric(value_51, value_53, value_54, value_55, value_56, value_57)
 	metrics.AcceleratorGap = value_58
 	var value_59 int32 = 0
