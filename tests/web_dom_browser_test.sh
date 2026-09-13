@@ -147,6 +147,17 @@ try {
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
   assert(article.kryObject.element === article, "element Kry object getter failed");
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
+  const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
+    Button.primary {
+      background: rgb(12, 34, 56);
+    }
+    @media all {
+      Button.primary { border-top-width: 3px; }
+    }
+  \`), null, "browser-install");
+  assert(typeof removeInstalledStyle === "function", "installed CSS cleanup missing");
+  const installedStyle = document.querySelector('style[data-kry-style="browser-install"]');
+  assert(installedStyle?.textContent.includes('@media all'), "conditional CSS group not installed");
   const eventLog = [];
   article.addEventListener("click", (event) => {
     eventLog.push(event.kryObject?.ref || "");
@@ -155,6 +166,8 @@ try {
   assert(eventLog[0] === "article-ref", "decorated event did not expose Kry object");
   const button = kryon.webDOMQuery(target, "Section > Button.primary");
   assert(button?.element?.id === "save", "child selector query failed");
+  assert(getComputedStyle(button.element).backgroundColor === "rgb(12, 34, 56)",
+    "installed CSS did not style Kryon element");
   const priceHeader = kryon.findWebElement(target, "priceHeader");
   const itemHeader = kryon.findWebElement(target, "itemHeader");
   const priceCell = kryon.findWebElement(target, "priceCell");
@@ -178,6 +191,9 @@ try {
   const contactValues = kryon.webFormValues(target, "contact");
   assert(contactValues.email === "hello@example.test", "nested form value missing");
   assert(contactValues.external_email === "outside@example.test", "owned form value missing");
+  removeInstalledStyle();
+  assert(!document.querySelector('style[data-kry-style="browser-install"]'),
+    "installed CSS cleanup failed");
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";
