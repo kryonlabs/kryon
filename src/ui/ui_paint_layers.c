@@ -43,19 +43,19 @@ Image ui_paint_readback(Texture2D texture)
     return image;
 }
 
-typedef struct UIPaintLayer {
+typedef struct PaintLayer {
     RenderTexture2D texture, previous_target;
-    UIBlendState previous_blend;
+    BlendState previous_blend;
     ClipState previous_clip;
-    UIPaintLayerToken previous_scope;
+    PaintLayerToken previous_scope;
     TreeLayoutScopeState previous_layout;
     DisabledScopeState previous_disabled;
     InputClipScopeState previous_input_clip;
     int owner, parent, visible;
-} UIPaintLayer;
+} PaintLayer;
 
-struct UIPaintLayers {
-    UIPaintLayer *items;
+struct PaintLayers {
+    PaintLayer *items;
     int count, allocated, capacity, active;
     int width, height, finished;
     unsigned long frame;
@@ -66,11 +66,11 @@ struct UIPaintLayers {
     ToolkitStore *toolkit, *previous_toolkit;
 };
 
-static UIPaintLayers *main_layers;
+static PaintLayers *main_layers;
 static int main_frame_open;
 #define UI_FRAME_LAYER_STACK_MAX 8
-static UIPaintLayers *frame_layer_stack[UI_FRAME_LAYER_STACK_MAX];
-static UIPaintLayers *nested_frame_layers[UI_FRAME_LAYER_STACK_MAX];
+static PaintLayers *frame_layer_stack[UI_FRAME_LAYER_STACK_MAX];
+static PaintLayers *nested_frame_layers[UI_FRAME_LAYER_STACK_MAX];
 static int frame_layer_stack_depth;
 /* Input ownership is a runtime concern, not a renderer concern.  Injection,
  * generated parity, and other headless callers still need popup scopes even
@@ -82,7 +82,7 @@ static ToolkitStore *headless_toolkit, *headless_previous_toolkit;
 static int headless_input_open;
 /* Graphics scopes form one stack even when their textures belong to separate
  * host contexts. Validate it before restoring any backend or borrowed state. */
-static UIPaintLayerToken active_scope;
+static PaintLayerToken active_scope;
 static unsigned long scope_generation;
 
 void ui_frame_layers_begin(void)
@@ -123,7 +123,7 @@ void ui_frame_layers_begin(void)
     main_frame_open = 1;
 }
 
-UIPaintLayers *ui_frame_paint_layers(void)
+PaintLayers *ui_frame_paint_layers(void)
 {
     if(ui_window_frame_active()) return ui_window_paint_layers();
     if(!main_frame_open || !IsWindowReady()) return NULL;
@@ -230,9 +230,9 @@ void ui_paint_layers_shutdown(void)
     main_frame_open = 0;
 }
 
-UIPaintLayers *ui_paint_layers_create(void)
+PaintLayers *ui_paint_layers_create(void)
 {
-    UIPaintLayers *layers = calloc(1,sizeof(*layers));
+    PaintLayers *layers = calloc(1,sizeof(*layers));
     if(layers == NULL) abort();
     layers->active = -1;
     layers->finished = 1;
@@ -243,12 +243,12 @@ UIPaintLayers *ui_paint_layers_create(void)
     return layers;
 }
 
-PopupInput *ui_paint_layers_input(UIPaintLayers *layers)
+PopupInput *ui_paint_layers_input(PaintLayers *layers)
 {
     return layers ? layers->input : NULL;
 }
 
-void ui_paint_layers_destroy(UIPaintLayers *layers)
+void ui_paint_layers_destroy(PaintLayers *layers)
 {
     if(layers == NULL) return;
     if(layers->active != -1 || !layers->finished) abort();
@@ -261,7 +261,7 @@ void ui_paint_layers_destroy(UIPaintLayers *layers)
     free(layers);
 }
 
-void ui_paint_layers_frame(UIPaintLayers *layers, int width, int height)
+void ui_paint_layers_frame(PaintLayers *layers, int width, int height)
 {
     if(layers == NULL || layers->active != -1 || !layers->finished || width <= 0 || height <= 0) abort();
     layers->count = 0;
@@ -280,7 +280,7 @@ void ui_paint_layers_frame(UIPaintLayers *layers, int width, int height)
     toolkit_store_frame(layers->toolkit);
 }
 
-UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)
+PaintLayerToken ui_paint_layer_begin(PaintLayers *layers, int owner)
 {
     if(layers == NULL || layers->finished || !IsWindowReady()) abort();
     for(int i = 0; i < layers->count; i++)
@@ -288,16 +288,16 @@ UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)
     if(layers->count == layers->capacity) {
         if(layers->capacity > INT_MAX/2) abort();
         int capacity = layers->capacity ? layers->capacity * 2 : 4;
-        if((size_t)capacity > SIZE_MAX/sizeof(UIPaintLayer)) abort();
-        UIPaintLayer *items = realloc(layers->items,(size_t)capacity*sizeof(*items));
+        if((size_t)capacity > SIZE_MAX/sizeof(PaintLayer)) abort();
+        PaintLayer *items = realloc(layers->items,(size_t)capacity*sizeof(*items));
         if(items == NULL) abort();
         layers->items = items;
         layers->capacity = capacity;
     }
     int index = layers->count++;
-    UIPaintLayer *layer = &layers->items[index];
+    PaintLayer *layer = &layers->items[index];
     if(index >= layers->allocated) {
-        *layer = (UIPaintLayer){0};
+        *layer = (PaintLayer){0};
         layers->allocated++;
     }
     if(layer->texture.id && (layer->texture.texture.width != layers->width || layer->texture.texture.height != layers->height)) {
@@ -322,17 +322,17 @@ UIPaintLayerToken ui_paint_layer_begin(UIPaintLayers *layers, int owner)
     ui_blend_capture();
     layer->previous_target = ui_tree_set_paint_target(layer->texture);
     layers->active = index;
-    active_scope = (UIPaintLayerToken){layers,layers->frame,index};
+    active_scope = (PaintLayerToken){layers,layers->frame,index};
     return active_scope;
 }
 
-void ui_paint_layer_end(UIPaintLayerToken token)
+void ui_paint_layer_end(PaintLayerToken token)
 {
-    UIPaintLayers *layers = token.owner;
+    PaintLayers *layers = token.owner;
     if(layers == NULL || token.owner != active_scope.owner ||
        token.frame != active_scope.frame || token.index != active_scope.index) abort();
     if(token.frame != layers->frame || layers->active != token.index || token.index < 0) abort();
-    UIPaintLayer *layer = &layers->items[token.index];
+    PaintLayer *layer = &layers->items[token.index];
     ui_input_clip_resume(layer->previous_input_clip);
     ui_disabled_resume(layer->previous_disabled);
     ui_tree_layout_resume(layer->previous_layout);
@@ -344,7 +344,7 @@ void ui_paint_layer_end(UIPaintLayerToken token)
     active_scope = layer->previous_scope;
 }
 
-void ui_paint_layers_hide(UIPaintLayers *layers, int owner)
+void ui_paint_layers_hide(PaintLayers *layers, int owner)
 {
     if(layers == NULL || layers->finished) abort();
     ui_popup_input_close(layers->input,owner);
@@ -352,12 +352,12 @@ void ui_paint_layers_hide(UIPaintLayers *layers, int owner)
         if(layers->items[i].owner == owner) layers->items[i].visible = 0;
 }
 
-void ui_paint_layers_composite(UIPaintLayers *layers)
+void ui_paint_layers_composite(PaintLayers *layers)
 {
     if(layers == NULL || layers->active != -1 || layers->finished) abort();
     if(ui_popup_input_bound() != layers->input) abort();
     ui_popup_input_finish(layers->input);
-    UIBlendState blend = ui_blend_save();
+    BlendState blend = ui_blend_save();
     ClipState clip = ui_clip_save();
     Matrix projection = rlGetMatrixProjection(), modelview = rlGetMatrixModelview();
     /* Restoring the snapshot also flushes pending parent drawing before the
@@ -373,7 +373,7 @@ void ui_paint_layers_composite(UIPaintLayers *layers)
      * layers as premultiplied makes glyph quads render as visible boxes. */
     BeginBlendMode(BLEND_ALPHA);
     for(int i = 0; i < layers->count; i++) {
-        UIPaintLayer *layer = &layers->items[i];
+        PaintLayer *layer = &layers->items[i];
         if(layer->parent >= 0 && !layers->items[layer->parent].visible) layer->visible = 0;
         if(layer->visible)
             DrawTextureRec(layer->texture.texture,

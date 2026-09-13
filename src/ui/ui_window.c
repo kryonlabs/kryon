@@ -164,7 +164,7 @@ enum { InbeCWOverrideRedirect = 1 << 9 };
 #define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
 struct NativeWindow {
     Window window;
-    UIPaintLayers *paint_layers;
+    PaintLayers *paint_layers;
     int focus_id;
     int previous_focus_id;
     int width;
@@ -755,7 +755,7 @@ StealCoreWindowClose(void)
 #define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
 struct NativeWindow {
     HWND window;
-    UIPaintLayers *paint_layers;
+    PaintLayers *paint_layers;
     int focus_id;
     int previous_focus_id;
     int width, height;
@@ -978,7 +978,7 @@ int StealCoreWindowClose(void)
 #define NATIVE_WINDOW_OWNS_PAINT_LAYERS 1
 struct NativeWindow {
     SDL_Window *window;
-    UIPaintLayers *paint_layers;
+    PaintLayers *paint_layers;
     int focus_id;
     int previous_focus_id;
     SDL_GLContext context;
@@ -1591,7 +1591,7 @@ GetNativeWindowClickPosition(NativeWindow *window, int *x, int *y)
 
 #endif
 
-UIPaintLayers *ui_window_paint_layers(void)
+PaintLayers *ui_window_paint_layers(void)
 {
 #if defined(NATIVE_WINDOW_OWNS_PAINT_LAYERS)
     NativeWindow *window = ui_window_active;

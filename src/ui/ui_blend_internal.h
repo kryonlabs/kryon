@@ -4,7 +4,7 @@
 /* Private raylib backend snapshot: cached mode, custom factors, pending-change
  * bit, and effective GPU factors/equations. Preserve both configured and active
  * state: changing custom factors need not activate them immediately. */
-typedef struct UIBlendState { int values[17]; } UIBlendState;
+typedef struct BlendState { int values[17]; } BlendState;
 #if defined(KRYON_BACKEND_RAYLIB)
 void kryon_rl_blend_save(int *values);
 void kryon_rl_blend_restore(const int *values);
@@ -18,16 +18,16 @@ static inline void ui_blend_capture(void)
 #endif
 }
 
-static inline UIBlendState ui_blend_save(void)
+static inline BlendState ui_blend_save(void)
 {
-    UIBlendState state = {{0}};
+    BlendState state = {{0}};
 #if defined(KRYON_BACKEND_RAYLIB)
     kryon_rl_blend_save(state.values);
 #endif
     return state;
 }
 
-static inline void ui_blend_restore(UIBlendState state)
+static inline void ui_blend_restore(BlendState state)
 {
 #if defined(KRYON_BACKEND_RAYLIB)
     kryon_rl_blend_restore(state.values);

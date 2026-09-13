@@ -93,14 +93,14 @@ static NodeId ui_tree_stack[UI_TREE_MAX_DEPTH];
 static int ui_tree_stack_depth = 0;
 static unsigned long ui_tree_declaration;
 static RenderTexture2D ui_tree_paint_target;
-typedef struct UIPaintCapture {
+typedef struct PaintCapture {
     RenderTexture2D target;
     Matrix projection, modelview;
     Rectangle clip;
     int has_clip;
-    UIBlendState blend;
-} UIPaintCapture;
-static UIPaintCapture *ui_tree_paint_captures;
+    BlendState blend;
+} PaintCapture;
+static PaintCapture *ui_tree_paint_captures;
 static unsigned ui_tree_paint_capture_count, ui_tree_paint_capture_capacity;
 static PopupInputToken *ui_tree_input_captures;
 static unsigned ui_tree_input_capture_count, ui_tree_input_capture_capacity;
@@ -200,7 +200,7 @@ ui_tree_input_blocked(const TreeNode *node, Vector2 point)
 static unsigned
 ui_tree_capture_paint(void)
 {
-    UIPaintCapture capture = {0};
+    PaintCapture capture = {0};
     if(ui_tree_paint_target.id == 0 || !IsWindowReady()) return 0;
     capture.target = ui_tree_paint_target;
     capture.projection = rlGetMatrixProjection();
@@ -208,12 +208,12 @@ ui_tree_capture_paint(void)
     capture.has_clip = ui_clip_current(&capture.clip);
     capture.blend = ui_blend_save();
     if(ui_tree_paint_capture_count > 0) {
-        UIPaintCapture *last = &ui_tree_paint_captures[ui_tree_paint_capture_count-1];
+        PaintCapture *last = &ui_tree_paint_captures[ui_tree_paint_capture_count-1];
         if(last->target.id == capture.target.id &&
            last->target.texture.width == capture.target.texture.width &&
            last->target.texture.height == capture.target.texture.height &&
            last->has_clip == capture.has_clip &&
-           memcmp(&last->blend,&capture.blend,sizeof(UIBlendState)) == 0 &&
+           memcmp(&last->blend,&capture.blend,sizeof(BlendState)) == 0 &&
            (!capture.has_clip || memcmp(&last->clip,&capture.clip,sizeof(Rectangle)) == 0) &&
            memcmp(&last->projection,&capture.projection,sizeof(Matrix)) == 0 &&
            memcmp(&last->modelview,&capture.modelview,sizeof(Matrix)) == 0)
@@ -221,10 +221,10 @@ ui_tree_capture_paint(void)
     }
     if(ui_tree_paint_capture_count == ui_tree_paint_capture_capacity) {
         unsigned capacity = ui_tree_paint_capture_capacity ? ui_tree_paint_capture_capacity*2 : 8;
-        size_t bytes = (size_t)capacity*sizeof(UIPaintCapture);
+        size_t bytes = (size_t)capacity*sizeof(PaintCapture);
         if(capacity < ui_tree_paint_capture_capacity ||
-           bytes/sizeof(UIPaintCapture) != capacity) abort();
-        UIPaintCapture *captures = realloc(ui_tree_paint_captures,bytes);
+           bytes/sizeof(PaintCapture) != capacity) abort();
+        PaintCapture *captures = realloc(ui_tree_paint_captures,bytes);
         if(captures == NULL) abort();
         ui_tree_paint_captures = captures;
         ui_tree_paint_capture_capacity = capacity;
@@ -1730,7 +1730,7 @@ DrawTree(void)
     for(i = 0; i < ui_committed_node_count; i++) {
         TreeNode *node = &ui_committed_nodes[i];
         ClipState parent_clip = {0};
-        UIBlendState parent_blend = {{0}};
+        BlendState parent_blend = {{0}};
 
         if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
             continue;
@@ -1745,7 +1745,7 @@ DrawTree(void)
             continue;
 
         if(window_ready && node->paint_capture != 0) {
-            UIPaintCapture *capture = &ui_tree_paint_captures[node->paint_capture-1];
+            PaintCapture *capture = &ui_tree_paint_captures[node->paint_capture-1];
             parent_clip = ui_clip_save();
             parent_blend = ui_blend_save();
             BeginTextureMode(capture->target);

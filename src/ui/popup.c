@@ -10,8 +10,8 @@
 
 typedef struct ComposedPopupScope {
     struct ComposedPopupScope *previous;
-    UIPaintLayers *layers;
-    UIPaintLayerToken paint;
+    PaintLayers *layers;
+    PaintLayerToken paint;
     PopupInputToken input;
     TreeLayoutScopeState layout;
     DisabledScopeState disabled;
@@ -26,7 +26,7 @@ static ComposedPopupScope *popup_scope;
 
 static int
 enter_popup_scope(int id, bool *open, Rectangle popup,
-                  UIPaintLayers *layers, PopupInputToken input,
+                  PaintLayers *layers, PopupInputToken input,
                   int capture_input, Rectangle input_bounds, int backdrop,
                   int class_name)
 {
@@ -118,7 +118,7 @@ int PopupScope(PopupProps popup)
     if(!PopupCanBegin(decision, popup.id, popup.bounds, popup.trigger,
                       popup.open != NULL))
         return 0;
-    UIPaintLayers *layers = ui_frame_paint_layers();
+    PaintLayers *layers = ui_frame_paint_layers();
     PopupInput *input_context = layers ? ui_paint_layers_input(layers) :
                                           ui_popup_input_bound();
     if(decision.context && !popup.disabled &&

@@ -23,7 +23,7 @@ static int syntax_directive_tokens;
 static int syntax_string_tokens;
 static int syntax_comment_lines;
 
-static void check_invalid_layer_end(UIPaintLayerToken token, const char *label)
+static void check_invalid_layer_end(PaintLayerToken token, const char *label)
 {
 #if defined(__unix__)
     pid_t child = fork();
@@ -158,13 +158,13 @@ test_slider_angle(SliderAngleProps props)
         .format = props.format, .disabled = props.disabled, .angle = 1});
 }
 
-static void check_layered_text_not_boxed(UIPaintLayers *layers,
+static void check_layered_text_not_boxed(PaintLayers *layers,
                                          RenderTexture2D target)
 {
     BeginTextureMode(target);
     ClearBackground(BLACK);
     ui_paint_layers_frame(layers,64,64);
-    UIPaintLayerToken text_layer = ui_paint_layer_begin(layers,901);
+    PaintLayerToken text_layer = ui_paint_layer_begin(layers,901);
     RenderText("Hi",4,4,20,WHITE);
     ui_paint_layer_end(text_layer);
     ui_paint_layers_composite(layers);
@@ -300,10 +300,10 @@ int main(void)
     rlSetBlendFactorsSeparate(1,1,1,1,0x8006,0x8006);
     BeginBlendMode(BLEND_CUSTOM_SEPARATE);
     rlSetBlendFactorsSeparate(1,0,1,0,0x8006,0x8006);
-    UIBlendState caller_blend = ui_blend_save();
+    BlendState caller_blend = ui_blend_save();
     EndTree();
-    UIBlendState restored_blend = ui_blend_save();
-    if(memcmp(&caller_blend,&restored_blend,sizeof(UIBlendState)) != 0) {
+    BlendState restored_blend = ui_blend_save();
+    if(memcmp(&caller_blend,&restored_blend,sizeof(BlendState)) != 0) {
         fprintf(stderr,"retained layer did not restore active and pending blend state\n");
         failures++;
     }
@@ -341,9 +341,9 @@ int main(void)
     }
     UnloadImage(composite); UnloadImage(direct);
 
-    UIPaintLayers *owned_layers = ui_paint_layers_create();
+    PaintLayers *owned_layers = ui_paint_layers_create();
     check_layered_text_not_boxed(owned_layers,outer);
-    UIPaintLayerToken stale_layer = {0};
+    PaintLayerToken stale_layer = {0};
     check_invalid_layer_end(stale_layer,"null layer token");
     for(int frame = 0; frame < 3; frame++) {
         BeginTextureMode(outer);
@@ -353,15 +353,15 @@ int main(void)
         if(frame != 2) {
             PopupInputToken parent_input = ui_popup_input_begin(
                 ui_paint_layers_input(owned_layers),1,(Rectangle){0,0,16,16});
-            UIPaintLayerToken parent_layer = ui_paint_layer_begin(owned_layers,1);
+            PaintLayerToken parent_layer = ui_paint_layer_begin(owned_layers,1);
             if(frame == 1) check_invalid_layer_end(stale_layer,"previous frame layer token");
             stale_layer = parent_layer;
             DrawRectangle(0,0,16,16,(Color){255,0,0,128});
             if(frame == 0) {
-                UIPaintLayers *foreign = ui_paint_layers_create();
+                PaintLayers *foreign = ui_paint_layers_create();
                 ui_paint_layers_frame(foreign,64,64);
                 DisabledScope(1);
-                UIPaintLayerToken foreign_layer = ui_paint_layer_begin(foreign,1);
+                PaintLayerToken foreign_layer = ui_paint_layer_begin(foreign,1);
                 DisabledEndScope();
                 if(!ContentDisabled()) {
                     fprintf(stderr,"layer ended its parent's disabled scope\n");
@@ -380,7 +380,7 @@ int main(void)
              * when the parent's paint branch is hidden. */
             PopupInputToken child_input = ui_popup_input_begin(
                 ui_paint_layers_input(owned_layers),2,(Rectangle){20,20,8,8});
-            UIPaintLayerToken child_layer = ui_paint_layer_begin(owned_layers,2);
+            PaintLayerToken child_layer = ui_paint_layer_begin(owned_layers,2);
             check_invalid_layer_end(parent_layer,"parent closed before child");
             Row((RowProps){.bounds={40,40,4,4}});
             check_invalid_layer_end(child_layer,"unclosed popup child layout");
@@ -417,13 +417,13 @@ int main(void)
         BeginMode2D((Camera2D){.offset={7,5},.zoom=1});
         BeginClip(40,40,4,4);
         Matrix before_projection = rlGetMatrixProjection(), before_modelview = rlGetMatrixModelview();
-        UIBlendState before_blend = ui_blend_save();
+        BlendState before_blend = ui_blend_save();
         ui_paint_layers_composite(owned_layers);
         Matrix after_projection = rlGetMatrixProjection(), after_modelview = rlGetMatrixModelview();
-        UIBlendState after_blend = ui_blend_save();
+        BlendState after_blend = ui_blend_save();
         if(memcmp(&before_projection,&after_projection,sizeof(Matrix)) ||
            memcmp(&before_modelview,&after_modelview,sizeof(Matrix)) ||
-           memcmp(&before_blend,&after_blend,sizeof(UIBlendState))) {
+           memcmp(&before_blend,&after_blend,sizeof(BlendState))) {
             fprintf(stderr,"owned layer composite did not restore parent drawing state\n");
             failures++;
         }
@@ -441,16 +441,16 @@ int main(void)
     }
     ui_paint_layers_destroy(owned_layers);
     check_invalid_layer_end(stale_layer,"destroyed host layer token");
-    UIPaintLayers *replacement_host = ui_paint_layers_create();
+    PaintLayers *replacement_host = ui_paint_layers_create();
     ui_paint_layers_frame(replacement_host,64,64);
-    UIPaintLayerToken replacement_layer = ui_paint_layer_begin(replacement_host,1);
+    PaintLayerToken replacement_layer = ui_paint_layer_begin(replacement_host,1);
     check_invalid_layer_end(stale_layer,"destroyed host token after replacement allocation");
     ui_paint_layer_end(replacement_layer);
     ui_paint_layers_composite(replacement_host);
     ui_paint_layers_destroy(replacement_host);
 
-    UIPaintLayers *gesture_a = ui_paint_layers_create();
-    UIPaintLayers *gesture_b = ui_paint_layers_create();
+    PaintLayers *gesture_a = ui_paint_layers_create();
+    PaintLayers *gesture_b = ui_paint_layers_create();
     int drag_payload = 73;
     DragDropProps drag_source = {
         .bounds = {0,0,8,8},
@@ -486,8 +486,8 @@ int main(void)
     ui_paint_layers_destroy(gesture_a);
     InjectReset();
 
-    UIPaintLayers *host_a = ui_paint_layers_create();
-    UIPaintLayers *host_b = ui_paint_layers_create();
+    PaintLayers *host_a = ui_paint_layers_create();
+    PaintLayers *host_b = ui_paint_layers_create();
     MenuGroup host_menus[] = {{.label = "Host"}};
     for(int frame = 0; frame < 2; frame++) {
         int size = frame == 0 ? 32 : 64;
@@ -514,7 +514,7 @@ int main(void)
                     *host_a_scroll);
             failures++;
         }
-        UIPaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
+        PaintLayerToken a_layer = ui_paint_layer_begin(host_a,1);
         DrawRectangle(0,0,size,size,RED);
         Box((Rectangle){size-4,size-4,4,4},YELLOW,BLANK);
         ui_paint_layer_end(a_layer);
@@ -536,7 +536,7 @@ int main(void)
             failures++;
         }
         *host_b_scroll = 9;
-        UIPaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
+        PaintLayerToken b_layer = ui_paint_layer_begin(host_b,1);
         DrawRectangle(0,0,4,4,GREEN);
         Box((Rectangle){8,8,4,4},MAGENTA,BLANK);
         ui_paint_layer_end(b_layer);
@@ -604,12 +604,12 @@ int main(void)
             EndTextureMode();
             EndTextureMode();
             if(frame != 2) {
-                UIPaintLayers *window_layers = ui_window_paint_layers();
+                PaintLayers *window_layers = ui_window_paint_layers();
                 if(window_layers == NULL) return 1;
                 PopupInputToken window_input = ui_popup_input_begin(ui_paint_layers_input(window_layers),1,(Rectangle){0,0,64,64});
                 RegisterFocus(42002,(Rectangle){4,4,20,20});
                 BeginTree(Key("NativeWindow owned layers"));
-                UIPaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
+                PaintLayerToken window_layer = ui_paint_layer_begin(window_layers,1);
                 DrawRectangle(8,8,4,4,GREEN);
                 Box((Rectangle){40,40,4,4},YELLOW,BLANK);
                 ui_paint_layer_end(window_layer);
@@ -996,10 +996,10 @@ int main(void)
         Row((RowProps){.bounds={10,20,44,8},.gap=2});
         Box((Rectangle){0,0,8,8},BLUE,BLANK);
         if(frame == 0) {
-            UIPaintLayers *main_layers = ui_frame_paint_layers();
+            PaintLayers *main_layers = ui_frame_paint_layers();
             if(main_layers == NULL) return 1;
             ScrollScope((Rectangle){0,0,1,1},1,NULL);
-            UIPaintLayerToken layer = ui_paint_layer_begin(main_layers,1);
+            PaintLayerToken layer = ui_paint_layer_begin(main_layers,1);
             main_input = ui_paint_layers_input(main_layers);
             PopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
             Column((ColumnProps){.bounds={0,0,4,4}});
@@ -1015,15 +1015,15 @@ int main(void)
         End();
         EndTree();
         if(frame == 0) {
-            UIPaintLayers *main_owner = ui_frame_paint_layers();
+            PaintLayers *main_owner = ui_frame_paint_layers();
             BeginNativeWindow(auxiliary);
             if(ui_popup_input_current_captures((Vector2){9,9})) {
                 fprintf(stderr,"main popup capture leaked into auxiliary host\n");
                 failures++;
             }
-            UIPaintLayers *aux_owner = ui_frame_paint_layers();
+            PaintLayers *aux_owner = ui_frame_paint_layers();
             if(aux_owner == NULL || aux_owner == main_owner) return 1;
-            UIPaintLayerToken aux_layer = ui_paint_layer_begin(aux_owner,1);
+            PaintLayerToken aux_layer = ui_paint_layer_begin(aux_owner,1);
             DrawRectangle(0,0,4,4,GREEN);
             ui_paint_layer_end(aux_layer);
             EndNativeWindow();
@@ -1090,9 +1090,9 @@ int main(void)
     if(!IsWindowReady()) return 1;
     BeginDrawing();
     BeginInterfaceFrame(64,64,1);
-    UIPaintLayers *reopened_layers = ui_frame_paint_layers();
+    PaintLayers *reopened_layers = ui_frame_paint_layers();
     if(reopened_layers == NULL) return 1;
-    UIPaintLayerToken reopened_layer = ui_paint_layer_begin(reopened_layers,1);
+    PaintLayerToken reopened_layer = ui_paint_layer_begin(reopened_layers,1);
     DrawRectangle(0,0,4,4,GREEN);
     ui_paint_layer_end(reopened_layer);
     EndInterfaceFrame();
