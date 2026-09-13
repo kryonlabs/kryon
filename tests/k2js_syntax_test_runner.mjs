@@ -101,6 +101,15 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   TextField[formnovalidate] {
     content-offset-y: 7;
   }
+  TextField[inert=true] {
+    radius: 4;
+  }
+  TextField[autocapitalize=words] {
+    content-offset-x: 3;
+  }
+  TextField[enterkeyhint=search] {
+    icon-size: 16;
+  }
   TextField[pattern="needle.*"] {
     icon-size: 14;
   }
@@ -241,6 +250,8 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   target: "",
   rel: "",
   htmlFor: "",
+  part: "",
+  slot: "",
   inputType: "",
   formOwner: "",
   formAction: "",
@@ -252,6 +263,9 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   spellCheck: "",
   contentEditable: "",
   autoFocus: false,
+  inert: false,
+  autoCapitalize: "",
+  enterKeyHint: "",
   download: "",
   formNoValidate: false,
   noValidate: false,
@@ -364,6 +378,9 @@ assert.equal(runtime.webNodeQuery(rt, "[accept=\".txt\"]").path, "Scene/root/sea
 assert.equal(runtime.webNodeQuery(rt, "[multiple=true]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[multiple]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[inputmode=search]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[inert=true]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[autocapitalize=words]").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "[enterkeyhint=search]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[data-role]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[for=\"search-box\"]").path, "Scene/root/search_label");
 assert.equal(runtime.webNodeQuery(rt, "[htmlFor=\"search-box\"]").path, "Scene/root/search_label");
@@ -388,6 +405,9 @@ assert.equal(webDoc.nodes.every((node) => !!node.path), true);
 const selectablePath = webDoc.nodes[5].path;
 assert.match(selectablePath, /^Scene\/root\/Selectable_\d+-5$/);
 assert.equal(runtime.webNodeQuery(rt, selectablePath).kind, "Selectable");
+const inputPaths = webDoc.nodes
+  .filter((node) => node.kind === "Input")
+  .map((node) => node.path);
 assert.deepEqual(runtime.webNodeQueryAll(rt, "[data.role=search]").map((node) => node.path), [
   "Scene/root/search"
 ]);
@@ -398,8 +418,7 @@ assert.deepEqual(runtime.webNodeChildren(rt, "Scene/root").map((node) => node.pa
   "Scene/root/search",
   "Scene/root/search_label",
   selectablePath,
-  "Scene/root/Input@212-2",
-  "Scene/root/Input@213-3"
+  ...inputPaths
 ]);
 assert.deepEqual(runtime.webNodeChildren(rt).map((node) => node.path), ["Scene/root"]);
 assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node.path), [
@@ -408,16 +427,12 @@ assert.deepEqual(runtime.webNodeDescendants(rt, "Scene/root").map((node) => node
   "Scene/root/search",
   "Scene/root/search_label",
   selectablePath,
-  "Scene/root/Input@212-2",
-  "Scene/root/Input@213-3"
+  ...inputPaths
 ]);
 assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root", "Button.primary").path,
   "Scene/root/tap");
 assert.deepEqual(runtime.webNodeQueryAllWithin(rt, "Scene/root", "Input")
-  .map((node) => node.path), [
-    "Scene/root/Input@212-2",
-    "Scene/root/Input@213-3"
-  ]);
+  .map((node) => node.path), inputPaths);
 assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root/tap", "TextField"), null);
 assert.equal(runtime.webNodeClosest(rt, "Scene/root/tap", "Screen").path, "Scene/root");
 assert.equal(webDoc.nodes[2].action(), 42);
@@ -443,11 +458,16 @@ assert.equal(webDoc.nodes[3].draggable, "true");
 assert.equal(webDoc.nodes[3].spellCheck, "false");
 assert.equal(webDoc.nodes[3].contentEditable, "plaintext-only");
 assert.equal(webDoc.nodes[3].autoFocus, true);
+assert.equal(webDoc.nodes[3].inert, true);
+assert.equal(webDoc.nodes[3].autoCapitalize, "words");
+assert.equal(webDoc.nodes[3].enterKeyHint, "search");
 assert.equal(webDoc.nodes[3].formNoValidate, true);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).gap, 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-x"], 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["offset-y"], 6);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-y"], 7);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).radius, 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-x"], 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"], 11);
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
@@ -496,6 +516,7 @@ function fakeDocument() {
       textContent: "",
       checked: false,
       open: false,
+      inert: false,
       formNoValidate: false,
       noValidate: false,
       value: "",
@@ -1196,7 +1217,9 @@ function fakeDocument() {
         download: "manual.pdf",
         hidden: true,
         draggable: "false",
-        contentEditable: "false"
+        contentEditable: "false",
+        part: "manual-link",
+        slot: "resource-link"
       });
     runtime.endFrame(linkRt);
     assert.equal(runtime.webNodeQuery(linkRt, "[download=\"manual.pdf\"]").path,
@@ -1204,6 +1227,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(linkRt, "[hidden]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[draggable=false]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[part=\"manual-link\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[slot=\"resource-link\"]").path,
       "Page/manual");
     const linkTarget = document.createElement("div");
     runtime.renderWebDocument(linkRt, linkTarget);
@@ -1216,6 +1243,8 @@ function fakeDocument() {
     assert.equal(manual.draggable, false);
     assert.equal(manual.attributes.contenteditable, "false");
     assert.equal(manual.contentEditable, "false");
+    assert.equal(manual.attributes.part, "manual-link");
+    assert.equal(manual.attributes.slot, "resource-link");
 
     const sharedRt = runtime.createRuntime();
     runtime.beginFrame(sharedRt);
@@ -1691,8 +1720,7 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@212-2",
-        "Scene/root/Input@213-3"
+        ...inputPaths
       ]);
     assert.deepEqual(runtime.webDOMChildren(target).map((object) => object.node.path),
       ["Scene/root"]);
@@ -1703,24 +1731,17 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@212-2",
-        "Scene/root/Input@213-3"
+        ...inputPaths
       ]);
     assert.equal(runtime.webDOMQueryWithin(target, "Scene/root", "Button.primary").element,
       firstButton);
     assert.deepEqual(runtime.webDOMQueryAllWithin(target, "Scene/root", "Input")
-      .map((object) => object.node.path), [
-        "Scene/root/Input@212-2",
-        "Scene/root/Input@213-3"
-      ]);
+      .map((object) => object.node.path), inputPaths);
     assert.equal(runtime.webDOMQueryWithin(target, "Scene/root/tap", "TextField"), null);
     assert.equal(root.kryQueryWithin("Scene/root", "TextField.field").element,
       runtime.findWebElement(target, "q"));
     assert.deepEqual(root.kryQueryAllWithin("Scene/root", "Input")
-      .map((object) => object.node.path), [
-        "Scene/root/Input@212-2",
-        "Scene/root/Input@213-3"
-      ]);
+      .map((object) => object.node.path), inputPaths);
     assert.deepEqual(root.kryDescendants("Scene/root")
       .map((object) => object.node.path), [
         firstText.dataset.kryPath,
@@ -1728,8 +1749,7 @@ function fakeDocument() {
         "Scene/root/search",
         "Scene/root/search_label",
         selectablePath,
-        "Scene/root/Input@212-2",
-        "Scene/root/Input@213-3"
+        ...inputPaths
       ]);
     assert.deepEqual(screen.kryDescendants().map((object) => object.node.path), [
       firstText.dataset.kryPath,
@@ -1737,20 +1757,13 @@ function fakeDocument() {
       "Scene/root/search",
       "Scene/root/search_label",
       selectablePath,
-      "Scene/root/Input@212-2",
-      "Scene/root/Input@213-3"
+      ...inputPaths
     ]);
     assert.equal(screen.kryQuery("Button.primary").element, firstButton);
-    assert.deepEqual(screen.kryQueryAll("Input").map((object) => object.node.path), [
-      "Scene/root/Input@212-2",
-      "Scene/root/Input@213-3"
-    ]);
+    assert.deepEqual(screen.kryQueryAll("Input").map((object) => object.node.path), inputPaths);
     const screenObject = runtime.webDOMObject(target, "Scene/root");
     assert.equal(screenObject.query("Button.primary").element, firstButton);
-    assert.deepEqual(screenObject.queryAll("Input").map((object) => object.node.path), [
-      "Scene/root/Input@212-2",
-      "Scene/root/Input@213-3"
-    ]);
+    assert.deepEqual(screenObject.queryAll("Input").map((object) => object.node.path), inputPaths);
     assert.deepEqual(screenObject.descendants.map((object) => object.node.path),
       screen.kryDescendants().map((object) => object.node.path));
     assert.equal(runtime.webDOMClosest(target, "tap-button", "Screen").node.path,
@@ -2049,8 +2062,7 @@ function fakeDocument() {
       "search-box",
       "Scene/root/search_label",
       selectablePath,
-      "Scene/root/Input@212-2",
-      "Scene/root/Input@213-3"
+      ...inputPaths
     ]);
     const domObjectMap = runtime.webDOMObjectMap(target);
     assert.equal(domObjectMap.get("primary-action").element, firstButton);
@@ -2117,6 +2129,10 @@ function fakeDocument() {
     assert.equal(firstField.attributes.spellcheck, "false");
     assert.equal(firstField.attributes.contenteditable, "plaintext-only");
     assert.equal(firstField.attributes.autofocus, "");
+    assert.equal(firstField.attributes.inert, "");
+    assert.equal(firstField.inert, true);
+    assert.equal(firstField.attributes.autocapitalize, "words");
+    assert.equal(firstField.attributes.enterkeyhint, "search");
     assert.equal(firstField.attributes.formnovalidate, "");
     assert.equal(firstField.attributes.readonly, "");
     assert.equal(firstField.attributes.required, "");

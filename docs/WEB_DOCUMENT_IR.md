@@ -115,6 +115,8 @@ Supported metadata fields:
 | `dom_href`, `html_href` | `href` |
 | `dom_target`, `html_target` | `target` |
 | `dom_rel`, `html_rel` | `rel` |
+| `part`, `dom_part`, `html_part` | `part` |
+| `slot`, `dom_slot`, `html_slot` | `slot` |
 | `data_*`, `dom_data_*`, `html_data_*` | `dataAttrs` |
 | `attr_*`, `dom_attr_*`, `html_attr_*` | `extraAttrs` |
 | `placeholder`, `dom_placeholder` | `placeholder` |
@@ -129,6 +131,9 @@ Supported metadata fields:
 | `spellcheck`, `spell_check`, `dom_spellcheck`, `html_spellcheck` | `spellCheck` |
 | `contenteditable`, `content_editable`, `dom_contenteditable`, `html_contenteditable` | `contentEditable` |
 | `autofocus`, `auto_focus`, `dom_autofocus`, `html_autofocus` | `autoFocus` |
+| `inert`, `dom_inert`, `html_inert` | `inert` |
+| `autocapitalize`, `auto_capitalize`, `dom_autocapitalize`, `html_autocapitalize` | `autoCapitalize` |
+| `enterkeyhint`, `enter_key_hint`, `dom_enterkeyhint`, `html_enterkeyhint` | `enterKeyHint` |
 | `download`, `dom_download`, `html_download` | `download` |
 | `form_no_validate`, `formnovalidate`, `dom_formnovalidate`, `html_formnovalidate` | `formNoValidate` |
 | `no_validate`, `novalidate`, `dom_novalidate`, `html_novalidate` | `noValidate` |
@@ -217,6 +222,8 @@ Supported metadata fields:
       href,
       target,
       rel,
+      part,
+      slot,
       dataAttrs,
       ariaAttrs,
       extraAttrs,
@@ -231,6 +238,9 @@ Supported metadata fields:
       spellCheck,
       contentEditable,
       autoFocus,
+      inert,
+      autoCapitalize,
+      enterKeyHint,
       download,
       formNoValidate,
       noValidate,
@@ -314,10 +324,11 @@ semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
 
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
-`sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`,
+`sourceRef`, `sourceColumnRef`, `id`, `domName`, `href`, `target`, `rel`, `part`, `slot`,
 `inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
-`contentEditable`, `autoFocus`, `download`, `formNoValidate`, `noValidate`,
+`contentEditable`, `autoFocus`, `inert`, `autoCapitalize`, `enterKeyHint`,
+`download`, `formNoValidate`, `noValidate`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
 `multiple`, `inputMode`, `classes`, `dataAttrs`, `ariaAttrs`, `extraAttrs`,
@@ -346,9 +357,10 @@ resolver supports kind selectors, `[index=...]`, `#id`, `.class`, `[ref=...]`,
 such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
 and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
-`[target=...]`, `[rel=...]`, `[action=...]`, `[method=...]`,
+`[target=...]`, `[rel=...]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,
 `[draggable=true]`, `[spellcheck=...]`, `[contenteditable=...]`,
+`[inert=true]`, `[autocapitalize=...]`, `[enterkeyhint=...]`,
 `[download=...]`, `[readonly=true]`, `[required=true]`, `[popover=...]`,
 `[popovertarget=...]`, `[popovertargetaction=...]`, `[min=...]`,
 `[max=...]`, `[step=...]`, `[minlength=...]`, `[maxlength=...]`,

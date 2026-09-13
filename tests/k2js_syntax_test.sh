@@ -190,6 +190,9 @@ Scene :: (viewport: Rectangle) #ui {
             spellcheck = false
             content_editable = "plaintext-only"
             autofocus = true
+            inert = true
+            auto_capitalize = "words"
+            enter_key_hint = "search"
             form_no_validate = true
             readonly = true
             required = true
@@ -374,6 +377,9 @@ grep -q '"draggable": "true"' "$out"
 grep -q '"spellCheck": false' "$out"
 grep -q '"contentEditable": "plaintext-only"' "$out"
 grep -q '"autoFocus": true' "$out"
+grep -q '"inert": true' "$out"
+grep -q '"autoCapitalize": "words"' "$out"
+grep -q '"enterKeyHint": "search"' "$out"
 grep -q '"formNoValidate": true' "$out"
 grep -q '"readOnly": true' "$out"
 grep -q '"required": true' "$out"
@@ -519,6 +525,8 @@ FormOwnerScreen :: () #ui {
         TextField external_email: {
             text = "x@example.test"
             dom_name = "email"
+            part = "external-control"
+            slot = "contact-extra"
             form = "contact"
         }
     }
@@ -529,6 +537,8 @@ form_owner_out="$work/out/src/form_owner.js"
 grep -q '"tag": "form"' "$form_owner_out"
 grep -q '"id": "contact-form"' "$form_owner_out"
 grep -q '"domName": "email"' "$form_owner_out"
+grep -q '"part": "external-control"' "$form_owner_out"
+grep -q '"slot": "contact-extra"' "$form_owner_out"
 grep -q '"formOwner": "contact"' "$form_owner_out"
 
 cat > "$work/src/state_arrays.kry" <<'EOF'

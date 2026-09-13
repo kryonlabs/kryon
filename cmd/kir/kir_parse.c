@@ -458,6 +458,8 @@ typedef struct UiBlock {
     char dom_target[KIR_NAME_MAX];
     char dom_rel[KIR_TEXT_MAX];
     char dom_for_attr[KIR_NAME_MAX];
+    char dom_part[KIR_TEXT_MAX];
+    char dom_slot[KIR_NAME_MAX];
     char dom_data_attrs[KIR_TEXT_MAX];
     char dom_extra_attrs[KIR_TEXT_MAX];
     char dom_placeholder[KIR_TEXT_MAX];
@@ -472,6 +474,9 @@ typedef struct UiBlock {
     char dom_spellcheck[KIR_NAME_MAX];
     char dom_contenteditable[KIR_NAME_MAX];
     char dom_autofocus[KIR_NAME_MAX];
+    char dom_inert[KIR_NAME_MAX];
+    char dom_autocapitalize[KIR_NAME_MAX];
+    char dom_enterkeyhint[KIR_NAME_MAX];
     char dom_download[KIR_TEXT_MAX];
     char dom_formnovalidate[KIR_NAME_MAX];
     char dom_novalidate[KIR_NAME_MAX];
@@ -781,6 +786,16 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "part") == 0 || strcmp(field, "dom_part") == 0 ||
+       strcmp(field, "html_part") == 0) {
+        snprintf(block->dom_part, sizeof(block->dom_part), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "slot") == 0 || strcmp(field, "dom_slot") == 0 ||
+       strcmp(field, "html_slot") == 0) {
+        snprintf(block->dom_slot, sizeof(block->dom_slot), "%s", value);
+        return 1;
+    }
     if(strncmp(field, "data_", 5) == 0 ||
        strncmp(field, "dom_data_", 9) == 0 ||
        strncmp(field, "html_data_", 10) == 0) {
@@ -910,6 +925,27 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
        strcmp(field, "html_autofocus") == 0) {
         snprintf(block->dom_autofocus, sizeof(block->dom_autofocus), "%s",
                  value);
+        return 1;
+    }
+    if(strcmp(field, "inert") == 0 || strcmp(field, "dom_inert") == 0 ||
+       strcmp(field, "html_inert") == 0) {
+        snprintf(block->dom_inert, sizeof(block->dom_inert), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "autocapitalize") == 0 ||
+       strcmp(field, "auto_capitalize") == 0 ||
+       strcmp(field, "dom_autocapitalize") == 0 ||
+       strcmp(field, "html_autocapitalize") == 0) {
+        snprintf(block->dom_autocapitalize,
+                 sizeof(block->dom_autocapitalize), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "enterkeyhint") == 0 ||
+       strcmp(field, "enter_key_hint") == 0 ||
+       strcmp(field, "dom_enterkeyhint") == 0 ||
+       strcmp(field, "html_enterkeyhint") == 0) {
+        snprintf(block->dom_enterkeyhint,
+                 sizeof(block->dom_enterkeyhint), "%s", value);
         return 1;
     }
     if(strcmp(field, "download") == 0 ||
@@ -1278,6 +1314,10 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_rel);
     snprintf(statement->dom_for_attr, sizeof(statement->dom_for_attr), "%s",
              block->dom_for_attr);
+    snprintf(statement->dom_part, sizeof(statement->dom_part), "%s",
+             block->dom_part);
+    snprintf(statement->dom_slot, sizeof(statement->dom_slot), "%s",
+             block->dom_slot);
     snprintf(statement->dom_data_attrs, sizeof(statement->dom_data_attrs),
              "%s", block->dom_data_attrs);
     snprintf(statement->dom_extra_attrs, sizeof(statement->dom_extra_attrs),
@@ -1307,6 +1347,14 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_contenteditable);
     snprintf(statement->dom_autofocus, sizeof(statement->dom_autofocus), "%s",
              block->dom_autofocus);
+    snprintf(statement->dom_inert, sizeof(statement->dom_inert), "%s",
+             block->dom_inert);
+    snprintf(statement->dom_autocapitalize,
+             sizeof(statement->dom_autocapitalize), "%s",
+             block->dom_autocapitalize);
+    snprintf(statement->dom_enterkeyhint,
+             sizeof(statement->dom_enterkeyhint), "%s",
+             block->dom_enterkeyhint);
     snprintf(statement->dom_download, sizeof(statement->dom_download), "%s",
              block->dom_download);
     snprintf(statement->dom_formnovalidate,

@@ -1378,6 +1378,7 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_title[0] || st->dom_href[0] ||
            st->dom_target[0] || st->dom_rel[0] ||
            st->dom_for_attr[0] ||
+           st->dom_part[0] || st->dom_slot[0] ||
            st->dom_data_attrs[0] || st->dom_extra_attrs[0] ||
            st->dom_placeholder[0] || st->dom_input_type[0] ||
            st->dom_form_attr[0] ||
@@ -1385,7 +1386,9 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_form_enctype[0] || st->dom_autocomplete[0] ||
            st->dom_hidden[0] || st->dom_draggable[0] ||
            st->dom_spellcheck[0] || st->dom_contenteditable[0] ||
-           st->dom_autofocus[0] || st->dom_download[0] ||
+           st->dom_autofocus[0] || st->dom_inert[0] ||
+           st->dom_autocapitalize[0] || st->dom_enterkeyhint[0] ||
+           st->dom_download[0] ||
            st->dom_formnovalidate[0] || st->dom_novalidate[0] ||
            st->dom_popover[0] || st->dom_popover_target[0] ||
            st->dom_popover_target_action[0] ||
@@ -1592,6 +1595,8 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "target", st->dom_target, &emitted);
     emit_metadata_expr_field(f, m, "rel", st->dom_rel, &emitted);
     emit_metadata_expr_field(f, m, "htmlFor", st->dom_for_attr, &emitted);
+    emit_metadata_expr_field(f, m, "part", st->dom_part, &emitted);
+    emit_metadata_expr_field(f, m, "slot", st->dom_slot, &emitted);
     emit_metadata_data_attrs(f, m, st->dom_data_attrs, &emitted);
     emit_metadata_attr_map(f, m, "extraAttrs", st->dom_extra_attrs,
                            &emitted);
@@ -1615,6 +1620,11 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
     emit_metadata_expr_field(f, m, "contentEditable",
                              st->dom_contenteditable, &emitted);
     emit_metadata_expr_field(f, m, "autoFocus", st->dom_autofocus, &emitted);
+    emit_metadata_expr_field(f, m, "inert", st->dom_inert, &emitted);
+    emit_metadata_expr_field(f, m, "autoCapitalize",
+                             st->dom_autocapitalize, &emitted);
+    emit_metadata_expr_field(f, m, "enterKeyHint",
+                             st->dom_enterkeyhint, &emitted);
     emit_metadata_expr_field(f, m, "download", st->dom_download, &emitted);
     emit_metadata_expr_field(f, m, "formNoValidate",
                              st->dom_formnovalidate, &emitted);

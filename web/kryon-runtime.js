@@ -1292,6 +1292,8 @@ function webNodeFromWidget(item, index) {
     target: meta.target === undefined || meta.target === null ? "" : String(meta.target),
     rel: meta.rel === undefined || meta.rel === null ? "" : String(meta.rel),
     htmlFor: metaString(meta, "htmlFor"),
+    part: metaString(meta, "part"),
+    slot: metaString(meta, "slot"),
     dataAttrs: propDataAttrs(meta),
     extraAttrs: propExtraAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
@@ -1305,6 +1307,9 @@ function webNodeFromWidget(item, index) {
     spellCheck: metaString(meta, "spellCheck"),
     contentEditable: metaString(meta, "contentEditable"),
     autoFocus: metaBool(meta, "autoFocus"),
+    inert: metaBool(meta, "inert"),
+    autoCapitalize: metaString(meta, "autoCapitalize"),
+    enterKeyHint: metaString(meta, "enterKeyHint"),
     download: metaString(meta, "download"),
     formNoValidate: metaBool(meta, "formNoValidate"),
     noValidate: metaBool(meta, "noValidate"),
@@ -1430,6 +1435,8 @@ export function webNodeStyleFacts(node) {
     target: node?.target || "",
     rel: node?.rel || "",
     htmlFor: node?.htmlFor || "",
+    part: node?.part || "",
+    slot: node?.slot || "",
     inputType: node?.inputType || "",
     formOwner: node?.formOwner || "",
     formAction: node?.formAction || "",
@@ -1441,6 +1448,9 @@ export function webNodeStyleFacts(node) {
     spellCheck: node?.spellCheck || "",
     contentEditable: node?.contentEditable || "",
     autoFocus: !!node?.autoFocus,
+    inert: !!node?.inert,
+    autoCapitalize: node?.autoCapitalize || "",
+    enterKeyHint: node?.enterKeyHint || "",
     download: node?.download || "",
     formNoValidate: !!node?.formNoValidate,
     noValidate: !!node?.noValidate,
@@ -2051,6 +2061,8 @@ function selectorNativeAttrValue(key, facts) {
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
     case "form": return facts.formOwner;
+    case "part": return facts.part || facts.extraAttrs?.part;
+    case "slot": return facts.slot || facts.extraAttrs?.slot;
     case "action": return facts.formAction;
     case "method": return facts.formMethod;
     case "enctype": return facts.formEncType;
@@ -2060,6 +2072,9 @@ function selectorNativeAttrValue(key, facts) {
     case "spellcheck": return facts.spellCheck;
     case "contenteditable": return facts.contentEditable;
     case "autofocus": return facts.autoFocus;
+    case "inert": return facts.inert;
+    case "autocapitalize": return facts.autoCapitalize;
+    case "enterkeyhint": return facts.enterKeyHint;
     case "download": return facts.download;
     case "formnovalidate": return facts.formNoValidate;
     case "novalidate": return facts.noValidate;
@@ -2078,7 +2093,7 @@ function selectorNativeAttrValue(key, facts) {
     case "inputmode": return facts.inputMode;
     case "multiple": return facts.multiple;
     case "for": return facts.htmlFor;
-    default: return facts[key];
+    default: return facts[key] ?? facts.extraAttrs?.[key];
   }
 }
 
@@ -4173,6 +4188,8 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "href", docNode.href);
   setAttr(el, "target", docNode.target);
   setAttr(el, "rel", docNode.rel);
+  setAttr(el, "part", docNode.part);
+  setAttr(el, "slot", docNode.slot);
   applyDataAttrs(el, docNode.dataAttrs);
   setAttr(el, "type", docNode.inputType);
   setAttr(el, "action", docNode.formAction);
@@ -4184,6 +4201,9 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "spellcheck", docNode.spellCheck);
   setAttr(el, "contenteditable", docNode.contentEditable);
   setAttr(el, "autofocus", docNode.autoFocus);
+  setAttr(el, "inert", docNode.inert);
+  setAttr(el, "autocapitalize", docNode.autoCapitalize);
+  setAttr(el, "enterkeyhint", docNode.enterKeyHint);
   setAttr(el, "download", docNode.download);
   setAttr(el, "formnovalidate", docNode.formNoValidate);
   setAttr(el, "novalidate", docNode.noValidate);
@@ -4197,6 +4217,8 @@ function applyWebNode(el, docNode, rt) {
   if (docNode.contentEditable)
     el.contentEditable = docNode.contentEditable;
   el.autofocus = !!docNode.autoFocus;
+  if ("inert" in el)
+    el.inert = !!docNode.inert;
   if ("formNoValidate" in el)
     el.formNoValidate = !!docNode.formNoValidate;
   if ("noValidate" in el)
@@ -5283,9 +5305,9 @@ const webDOMInternalAttributeNames = new Set([
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
   "aria-activedescendant",
   "aria-controls", "aria-owns", "aria-live",
-  "href", "target", "rel", "for", "form", "type", "action", "method", "enctype",
+  "href", "target", "rel", "for", "form", "part", "slot", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
-  "autofocus", "download", "formnovalidate", "novalidate", "popover",
+  "autofocus", "inert", "autocapitalize", "enterkeyhint", "download", "formnovalidate", "novalidate", "popover",
   "popovertarget", "popovertargetaction", "readonly", "required", "min",
   "max", "step", "minlength", "maxlength", "pattern", "accept", "multiple",
   "inputmode", "alt", "src", "checked", "disabled", "selected", "open"
@@ -5370,6 +5392,11 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
   docNode.role = attrs.role ?? docNode.role ?? "";
   docNode.formOwner = attrs.form ?? docNode.formOwner ?? "";
+  docNode.part = attrs.part ?? docNode.part ?? "";
+  docNode.slot = attrs.slot ?? docNode.slot ?? "";
+  docNode.inert = !!el.inert || attrs.inert !== undefined;
+  docNode.autoCapitalize = attrs.autocapitalize ?? docNode.autoCapitalize ?? "";
+  docNode.enterKeyHint = attrs.enterkeyhint ?? docNode.enterKeyHint ?? "";
   docNode.tabIndex = attrs.tabindex !== undefined && Number.isFinite(Number(attrs.tabindex))
     ? Math.trunc(Number(attrs.tabindex)) : docNode.tabIndex;
   const dataAttrs = {};

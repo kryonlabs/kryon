@@ -96,6 +96,8 @@ export interface WebDocumentNode {
   target: string;
   rel: string;
   htmlFor: string;
+  part: string;
+  slot: string;
   dataAttrs: Record<string, string>;
   extraAttrs: Record<string, string>;
   inputType: string;
@@ -109,6 +111,9 @@ export interface WebDocumentNode {
   spellCheck: string;
   contentEditable: string;
   autoFocus: boolean;
+  inert: boolean;
+  autoCapitalize: string;
+  enterKeyHint: string;
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
@@ -242,6 +247,8 @@ export interface WebNodeStyleFacts {
   target: string;
   rel: string;
   htmlFor: string;
+  part: string;
+  slot: string;
   inputType: string;
   formOwner: string;
   formAction: string;
@@ -253,6 +260,9 @@ export interface WebNodeStyleFacts {
   spellCheck: string;
   contentEditable: string;
   autoFocus: boolean;
+  inert: boolean;
+  autoCapitalize: string;
+  enterKeyHint: string;
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;

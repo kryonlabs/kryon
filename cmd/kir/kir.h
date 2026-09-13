@@ -140,6 +140,8 @@ typedef struct KirStmt {
     char dom_target[KIR_NAME_MAX];      /* requested browser browsing context */
     char dom_rel[KIR_TEXT_MAX];         /* requested browser link relation */
     char dom_for_attr[KIR_NAME_MAX];    /* requested label/control id */
+    char dom_part[KIR_TEXT_MAX];        /* requested element part names */
+    char dom_slot[KIR_NAME_MAX];        /* requested shadow slot name */
     char dom_data_attrs[KIR_TEXT_MAX];  /* requested data-* attributes */
     char dom_extra_attrs[KIR_TEXT_MAX]; /* requested arbitrary browser attributes */
     char dom_placeholder[KIR_TEXT_MAX]; /* requested input placeholder */
@@ -154,6 +156,9 @@ typedef struct KirStmt {
     char dom_spellcheck[KIR_NAME_MAX];  /* requested spellcheck policy */
     char dom_contenteditable[KIR_NAME_MAX]; /* requested editing policy */
     char dom_autofocus[KIR_NAME_MAX];   /* requested autofocus expression */
+    char dom_inert[KIR_NAME_MAX];       /* requested inert expression */
+    char dom_autocapitalize[KIR_NAME_MAX]; /* requested autocapitalize policy */
+    char dom_enterkeyhint[KIR_NAME_MAX];/* requested virtual keyboard enter hint */
     char dom_download[KIR_TEXT_MAX];    /* requested download filename */
     char dom_formnovalidate[KIR_NAME_MAX]; /* requested formnovalidate expression */
     char dom_novalidate[KIR_NAME_MAX];  /* requested novalidate expression */
