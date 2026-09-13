@@ -94,7 +94,7 @@ composed_modal_frame :: () #ui {
             Column modal_content: {
                 bounds = {80,60,160,80}
                 gap = 4
-                Text((TextProps){.text="Native modal children",.color=GetThemeText(),.wrap=TextWrapNone})
+                Text((TextProps){.text="Native modal children",.wrap=TextWrapNone})
                 Button((ButtonProps){.bounds={0,0,100,24},.label="Confirm",.id=27041})
             }
         }
@@ -115,7 +115,7 @@ composed_tooltip_frame :: () #ui {
             Column tooltip_content: {
                 bounds = {98,68,134,54}
                 gap = 4
-                Text((TextProps){.text="Native children",.color=GetThemeText(),.wrap=TextWrapNone})
+                Text((TextProps){.text="Native children",.wrap=TextWrapNone})
                 if Button((ButtonProps){.bounds={0,0,100,24},.label="Details",.id=27031}) {
                     tooltip_frames += 10
                 }
@@ -135,7 +135,7 @@ composed_popup_early_exit :: (leave: bool) #ui {
         if leave {
             return
         }
-        Text((TextProps){.bounds={184, 56, 0, 0}, .text="balanced", .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={184, 56, 0, 0}, .text="balanced", .wrap=TextWrapNone})
     }
 }
 

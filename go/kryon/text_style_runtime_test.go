@@ -27,6 +27,9 @@ Text.accent {
   foreground: #654321;
   font-size: 19;
 }
+Text.explicit {
+  foreground: #aabbcc;
+}
 `, "Text", "") {
 		t.Fatal("style pack did not register")
 	}
@@ -35,7 +38,7 @@ Text.accent {
 	r.BeginFrame()
 	r.Text(TextProps{Text: "styled", Wrap: TextWrapNone})
 	r.Text(TextProps{Text: "classed", ClassName: StyleClassID("accent"), Wrap: TextWrapNone})
-	r.Text(TextProps{Text: "explicit", Color: Color{0xaa, 0xbb, 0xcc, 0xff}, Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "explicit", ClassName: StyleClassID("explicit"), Wrap: TextWrapNone})
 	r.EndFrame()
 
 	var styled, classed, explicit *FrameOp

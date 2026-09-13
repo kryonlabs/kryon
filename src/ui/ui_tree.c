@@ -2425,6 +2425,7 @@ Text(TextProps props)
     int letter_spacing = 0;
     int inherited_font = 0;
     Color inherited_color = {0};
+    Color color;
     bool inherited_color_set = false;
     int inherited_disabled = 0;
     int bounded = props.bounds.width > 0;
@@ -2459,9 +2460,6 @@ Text(TextProps props)
         StyleTextFacts(0, props.class_name, StyleKindText(),
             props.disabled ? ButtonStateDisabled : ButtonStateNormal),
         props.disabled ? ButtonStateDisabled : ButtonStateNormal));
-    if(props.color.a != 0)
-        style = MergeStyle(style, (Style){.fields = StyleForeground,
-            .foreground = props.color});
     if((style.fields & StyleFontSize) != 0)
         requested_font = (int)(style.font_size + 0.5f);
     if((style.fields & StyleTypeface) != 0)
@@ -2474,7 +2472,7 @@ Text(TextProps props)
         inherited_color_set, (style.fields & StyleForeground) != 0,
         props.disabled, inherited_disabled, letter_spacing);
     font = appearance.font;
-    props.color = GetColor(Opacity(appearance.color, style.opacity));
+    color = GetColor(Opacity(appearance.color, style.opacity));
     letter_spacing = appearance.letter_spacing;
     previous_spacing = ui_set_text_letter_spacing(Scale(letter_spacing));
     props.wrap = (TextWrap)TextWrapPolicy(bounds.width, props.wrap);
@@ -2485,7 +2483,7 @@ Text(TextProps props)
         if(bounded && props.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
-                .line_gap = Scale(2), .color = props.color
+                .line_gap = Scale(2), .color = color
             };
             measured_height = (float)ui_paragraph_height(paragraph);
         } else {
@@ -2499,7 +2497,7 @@ Text(TextProps props)
         ui_tree_nodes[node].data.primitive.font = font;
         ui_tree_nodes[node].data.primitive.font_token = ui_active_font_token();
         ui_tree_nodes[node].data.primitive.letter_spacing = letter_spacing;
-        ui_tree_nodes[node].data.primitive.color = props.color;
+        ui_tree_nodes[node].data.primitive.color = color;
         ui_tree_nodes[node].data.primitive.style = style;
         ui_tree_nodes[node].data.primitive.wrap = props.wrap;
         ui_tree_nodes[node].data.primitive.align = props.align;
@@ -2513,12 +2511,12 @@ Text(TextProps props)
     int selectable_token = PushTextSelectable(props.selectable);
     if(ui_tree_building && IsWindowReady() &&
        !ui_tree_node_uses_retained_layout(node)) {
-        ui_paint_text_box(value, bounds, font, props.color, props.wrap,
+        ui_paint_text_box(value, bounds, font, color, props.wrap,
                           props.align, props.vertical_align,
                           ui_active_font_token(), letter_spacing);
         ui_tree_mark_painted_immediate(node);
     } else if(!ui_tree_building) {
-        ui_paint_text_box(value, bounds, font, props.color, props.wrap,
+        ui_paint_text_box(value, bounds, font, color, props.wrap,
                           props.align, props.vertical_align,
                           ui_active_font_token(), letter_spacing);
     }
@@ -2531,10 +2529,10 @@ void
 ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level)
 {
     (void)font;
+    (void)color;
     if(!ui_tree_building)
         ui_tree_heading_semantic(text, level);
-    Text((TextProps){.bounds=bounds,.text=text,.color=color,
-                     .wrap=TextWrapNone});
+    Text((TextProps){.bounds=bounds,.text=text,.wrap=TextWrapNone});
     if(ui_tree_building && ui_tree_node_count > 0)
         ui_tree_nodes[ui_tree_node_count - 1].data.primitive.heading_level = level;
 }

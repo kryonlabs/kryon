@@ -690,7 +690,6 @@ typedef struct {
     Rectangle bounds;
     const char *text;
     int class_name;
-    Color color;
     TextWrap wrap;
     TextAlign align;
     TextAlign vertical_align;

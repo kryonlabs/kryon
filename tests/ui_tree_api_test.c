@@ -858,7 +858,7 @@ main(void)
         char boxed[] = "owned";
         BeginTree(Key("headless boxed text"));
         Row((RowProps){.bounds = {11,12,80,24}});
-        Text((TextProps){.bounds=(Rectangle){0,0,80,24}, .text=boxed, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
+        Text((TextProps){.bounds=(Rectangle){0,0,80,24}, .text=boxed, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
         End();
         boxed[0] = 'X';
         EndTree();

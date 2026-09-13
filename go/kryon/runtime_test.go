@@ -3319,7 +3319,7 @@ func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 	rt.BeginFrame()
 	rt.ClearBackground(WHITE)
 	rt.Column(ColumnProps{Bounds: Rectangle{X: 10, Y: 10, Width: 180, Height: 160}, Gap: 6, Padding: 4, Key: Key("ops")})
-	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "geld", Color: BLACK, Wrap: TextWrapNone})
+	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "geld", Wrap: TextWrapNone})
 	clicked := rt.Button(ButtonProps{Bounds: Rectangle{Width: 90, Height: 28}, Label: "Save", ID: 7})
 	rt.TextField(TextFieldProps{
 		Bounds:         Rectangle{Width: 120, Height: 28},
@@ -3419,8 +3419,8 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	rt.Image(ImageProps{AssetPath: "hero.png", AltText: "Hero", Bounds: Rectangle{Width: 120, Height: 60}, Tint: WHITE})
 	rt.End()
 	rt.Grid(GridProps{Bounds: Rectangle{X: 10, Y: 140, Width: 200, Height: 80}, Columns: 2, Gap: 4, Padding: 4})
-	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "A", Color: BLACK, Wrap: TextWrapNone})
-	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "B", Color: BLACK, Wrap: TextWrapNone})
+	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "A", Wrap: TextWrapNone})
+	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "B", Wrap: TextWrapNone})
 	rt.End()
 	rt.EndFrame()
 
@@ -3672,7 +3672,7 @@ func TestFrameOpsResetEachFrame(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 
 	rt.BeginFrame()
-	rt.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "first", Color: BLACK, Wrap: TextWrapNone})
+	rt.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "first", Wrap: TextWrapNone})
 	rt.EndFrame()
 	if got, want := len(rt.FrameOps()), 1; got != want {
 		t.Fatalf("first frame op count = %d, want %d", got, want)
@@ -4856,7 +4856,7 @@ func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
 
 	BeginFrame()
 	ClearBackground(RAYWHITE)
-	Text(TextProps{Bounds: NewRectangle(12, 12, 0, 0), Text: "geld", Color: BLACK, Wrap: TextWrapNone})
+	Text(TextProps{Bounds: NewRectangle(12, 12, 0, 0), Text: "geld", Wrap: TextWrapNone})
 	Button(ButtonProps{Bounds: Rectangle{X: 12, Y: 40, Width: 82, Height: 28}, Label: "Save", ID: 1})
 	TextField(TextFieldProps{
 		Bounds:         Rectangle{X: 12, Y: 82, Width: 140, Height: 32},
@@ -4886,7 +4886,7 @@ func TestTakeScreenshotWritesCurrentFramePNG(t *testing.T) {
 
 	BeginFrame()
 	ClearBackground(WHITE)
-	Text(TextProps{Bounds: NewRectangle(4, 4, 0, 0), Text: "shot", Color: BLACK, Wrap: TextWrapNone})
+	Text(TextProps{Bounds: NewRectangle(4, 4, 0, 0), Text: "shot", Wrap: TextWrapNone})
 	EndFrame()
 
 	path := filepath.Join(t.TempDir(), "shot.png")

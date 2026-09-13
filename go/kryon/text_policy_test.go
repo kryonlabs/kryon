@@ -285,7 +285,7 @@ func TestTransparentTextInheritanceAcrossDisabledScope(t *testing.T) {
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.transparent.text;
 Button.transparent-text { foreground: #11223300; font-size: 27; }
-Text.outside-text { font-size: 13; }`, "Button Transparent Text", "") {
+Text.outside-text { foreground: #445566; font-size: 13; }`, "Button Transparent Text", "") {
 		t.Fatal("button transparent text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
@@ -298,7 +298,7 @@ Text.outside-text { font-size: 13; }`, "Button Transparent Text", "") {
 	r.End()
 	r.EndDisabled()
 	r.End()
-	r.Text(TextProps{Text: "Outside", ClassName: StyleClassID("outside-text"), Color: Color{68, 85, 102, 255}})
+	r.Text(TextProps{Text: "Outside", ClassName: StyleClassID("outside-text")})
 	r.EndFrame()
 	count := 0
 	for _, op := range r.FrameOps() {
@@ -323,7 +323,8 @@ func TestComposedDisabledTextIsNotFadedTwice(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.disabled.text;
-Button.disabled-text:disabled { foreground: #11223380; }`, "Button Disabled Text", "") {
+Button.disabled-text:disabled { foreground: #11223380; }
+Text.explicit-disabled { foreground: #44556680; }`, "Button Disabled Text", "") {
 		t.Fatal("button disabled text style pack did not register")
 	}
 	for _, scoped := range []bool{false, true} {
@@ -333,7 +334,7 @@ Button.disabled-text:disabled { foreground: #11223380; }`, "Button Disabled Text
 		r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 963, Disabled: !scoped,
 			ClassName: StyleClassID("disabled-text")})
 		r.Text(TextProps{Text: "Inherited"})
-		r.Text(TextProps{Text: "Explicit", Color: Color{68, 85, 102, 128}})
+		r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-disabled")})
 		r.Text(TextProps{Text: "Disabled inherited", Disabled: true})
 		r.End()
 		r.EndDisabled()
@@ -363,7 +364,7 @@ func TestTextChildInheritsFontBeforeMeasurement(t *testing.T) {
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.inherit.text;
 Button.inherit-text { foreground: #11223300; font-size: 27; }
-Text.explicit-text { font-size: 13; }`, "Button Inherit Text", "") {
+Text.explicit-text { foreground: #445566; font-size: 13; }`, "Button Inherit Text", "") {
 		t.Fatal("button inherit text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
@@ -372,7 +373,7 @@ Text.explicit-text { font-size: 13; }`, "Button Inherit Text", "") {
 	r.Text(TextProps{Text: "Inherited", Wrap: TextWrapNone})
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 	r.Text(TextProps{Text: "Nested", Wrap: TextWrapNone})
-	r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-text"), Color: Color{68, 85, 102, 255}, Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-text"), Wrap: TextWrapNone})
 	r.End()
 	r.End()
 	count := 0

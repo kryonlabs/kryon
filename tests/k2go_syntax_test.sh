@@ -145,12 +145,12 @@ App :: () #ui {
     menus: [1] MenuGroup = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
     rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,1}}
     if tab == TAB_JOBS {
-        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text=tab_label_text(tab), .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text=tab_label_text(tab), .wrap=TextWrapNone})
     } else {
-        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .wrap=TextWrapNone})
     }
-    Text((TextProps){.bounds={Scale(10), Scale(38), 0, 0}, .text="small", .color=GetThemeText(), .wrap=TextWrapNone})
-    Text((TextProps){.bounds={Scale(10), Scale(56), 0, 0}, .text="large", .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={Scale(10), Scale(38), 0, 0}, .text="small", .wrap=TextWrapNone})
+    Text((TextProps){.bounds={Scale(10), Scale(56), 0, 0}, .text="large", .wrap=TextWrapNone})
     switch tab {
         case TAB_OVERVIEW:
             scroll_off = 0
@@ -177,15 +177,15 @@ App :: () #ui {
         Circle(Scale(120), Scale(120), Scale(30), (Color){0x2d, 0x4d, 0x7b, 0xff})
         Ring(Scale(120), Scale(120), Scale(36), Scale(40), (Color){0x70, 0x90, 0xc0, 0xff})
     }
-    Text((TextProps){.bounds = {Scale(4), Scale(130), Scale(160), Scale(20)}, .text = "in rect", .color = GetThemeText(), .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
-    Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(36), 0, 0}, .text = "three", .color = GetThemeText(), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), Scale(130), Scale(160), Scale(20)}, .text = "in rect", .wrap = TextWrapNone, .align = TextAlignCenter, .vertical_align = TextAlignCenter})
+    Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(36), 0, 0}, .text = "three", .wrap = TextWrapNone})
     lines_y += Scale(54)
     Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
     Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, 0})
-    Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
+    Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com"})
     SetPageTitle("Kryon Page")
@@ -205,11 +205,11 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Details", .level = 2})
     End()
     Flow((FlowProps){.bounds = {Scale(4), Scale(176), Scale(180), Scale(24)}, .gap = Scale(4)})
-    Text((TextProps){.bounds={0, 0, 0, 0}, .text="flow", .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="flow", .wrap=TextWrapNone})
     End()
     Grid((GridProps){.bounds = {Scale(4), Scale(204), Scale(180), Scale(40)}, .columns = 2, .gap = Scale(4), .padding = Scale(4)})
-    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g1", .color=GetThemeText(), .wrap=TextWrapNone})
-    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g1", .wrap=TextWrapNone})
+    Text((TextProps){.bounds={0, 0, 0, 0}, .text="g2", .wrap=TextWrapNone})
     End()
     slider_values: [1] int = {slider_val}
     Slider((SliderProps){.bounds = {Scale(4), Scale(170), Scale(180), Scale(56)}, .id = 9, .label = "S", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0, .format = "%"})
@@ -256,12 +256,12 @@ App :: () #ui {
     }
     Slider((SliderProps){.bounds = {Scale(250), Scale(8), Scale(60), Scale(56)}, .id = 23, .kind = 1, .int_values = nums, .value_count = 1, .min = 0.0, .max = 10.0})
     CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
-    Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
+    Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .wrap=TextWrapNone, .selectable=1})
     Toast((ToastProps){.message = "toast from kry"})
     TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 30})
     TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
-    Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .wrap=TextWrapNone})
     Radio((RadioProps){.bounds = {Scale(4), Scale(270), Scale(120), Scale(24)}, .label = "one", .id = 1, .checked = pick == 1})
     Spinbox((SpinboxProps){{Scale(140), Scale(270), Scale(90), Scale(28)}, 24, 0, 0, 10, 1, &slider_val, 0, ""})
     Dropdown((DropdownProps){.bounds = {Scale(240), Scale(270), Scale(70), Scale(28)}, .id = 25, .options = choices, .option_count = 3, .selected_index = &pick})
@@ -299,19 +299,19 @@ App :: () #ui {
     ColorPicker((ColorPickerProps){.bounds = {Scale(250), Scale(654), Scale(70), Scale(130)}, .id = 43, .values = edit_color, .value_count = 3, .picker = true})
     ColorPicker((ColorPickerProps){.bounds = {Scale(324), Scale(654), Scale(70), Scale(130)}, .id = 44, .values = edit_color, .value_count = 4, .picker = true})
     Button((ButtonProps){.bounds = {Scale(398), Scale(654), Scale(60), Scale(28)}, .id = 45, .label = "Tint", .swatch = true, .swatch_color = (Color){51,102,153,204}})
-    Text((TextProps){.bounds = {Scale(250), Scale(690), 0, 0}, .text = "colored", .color = {220,60,80,255}, .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250), Scale(690), 0, 0}, .text = "colored", .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(250), Scale(714), 0, 0}, .text = "disabled", .wrap = TextWrapNone, .disabled = 1})
-    Text((TextProps){.bounds = {Scale(250),Scale(738),Scale(160),Scale(40)}, .text = "wrapped text", .color = GetThemeText()})
-    Text((TextProps){.bounds = {Scale(250),Scale(782),0,0}, .text = "Status", .color = Fade(GetThemeText(), 0.72f), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(310),Scale(782),0,0}, .text = "Ready", .color = GetThemeText(), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250),Scale(738),Scale(160),Scale(40)}, .text = "wrapped text"})
+    Text((TextProps){.bounds = {Scale(250),Scale(782),0,0}, .text = "Status", .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(310),Scale(782),0,0}, .text = "Ready", .wrap = TextWrapNone})
     Bullet((Rectangle){Scale(250),Scale(806),Scale(16),Scale(20)})
-    Text((TextProps){.bounds = {Scale(270),Scale(806),0,0}, .text = "bullet text", .color = GetThemeText(), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(270),Scale(806),0,0}, .text = "bullet text", .wrap = TextWrapNone})
     enabled_text: const char* = "false"
     if check != 0 { enabled_text = "true" }
-    Text((TextProps){.bounds = {Scale(250),Scale(1030),0,0}, .text = TextFormat("Enabled: %s", enabled_text), .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(250),Scale(1054),0,0}, .text = TextFormat("Count: %d", scalar), .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(250),Scale(1078),0,0}, .text = TextFormat("Mask: %u", 42), .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(250),Scale(1102),0,0}, .text = TextFormat("Rate: %.1f", plot_values[0]), .color = GetThemeText(), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250),Scale(1030),0,0}, .text = TextFormat("Enabled: %s", enabled_text), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250),Scale(1054),0,0}, .text = TextFormat("Count: %d", scalar), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250),Scale(1078),0,0}, .text = TextFormat("Mask: %u", 42), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(250),Scale(1102),0,0}, .text = TextFormat("Rate: %.1f", plot_values[0]), .wrap = TextWrapNone})
     Menu((MenuProps){.id = 46, .mode = MenuModeBar, .bounds = {Scale(4),Scale(834),Scale(220),Scale(30)}, .menus = menus, .menu_count = 1, .open_index = &menu_open})
     Menu((MenuProps){.id = 47, .mode = MenuModePopup, .bounds = {Scale(4),Scale(868),0,0}, .items = menu_items, .item_count = 2})
     Menu((MenuProps){.id = 48, .mode = MenuModeContext, .trigger = {Scale(230),Scale(834),Scale(100),Scale(60)}, .items = menu_items, .item_count = 2, .open = &context_open, .x = &context_x, .y = &context_y})
@@ -320,7 +320,7 @@ App :: () #ui {
         id = 58
         trigger = {Scale(230),Scale(900),Scale(100),Scale(30)}
         flags = PopupTooltip
-        Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.color=GetThemeText(),.wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.wrap=TextWrapNone})
     }
     choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,ImageFitContain,0}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
@@ -338,9 +338,9 @@ App :: () #ui {
     Progress((ProgressProps){{Scale(140), Scale(252), Scale(100), Scale(10)}, 0, 100, c_abs(-8), ""})
     Progress((ProgressProps){{Scale(140), Scale(266), Scale(100), Scale(10)}, 0, 100, local_value() + goto_smoke(), ""})
     relay_text(field_text)
-    Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .color = GetThemeText(), .wrap = TextWrapNone})
-    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(36), 0, 0}, .text = "three", .color = GetThemeText(), .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .wrap = TextWrapNone})
+    Text((TextProps){.bounds = {Scale(4), lines_y + Scale(36), 0, 0}, .text = "three", .wrap = TextWrapNone})
     lines_y += Scale(54)
     }
 }
@@ -366,7 +366,7 @@ Main :: (viewport: Rectangle) #ui {
 
         Column body: {
             gap = 4
-            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .wrap=TextWrapNone})
         }
     }
 }
@@ -502,8 +502,8 @@ grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
 grep -q 'kr.Box(kr.Rectangle{X: float32(kr.Scale(4)), Y: float32(kr.Scale(8)), Width: float32(kr.Scale(2)), Height: float32(kr.Scale(2))}' "$out"
 grep -q 'kr.Box(kr.Rectangle{.*kr.Fade(kr.GetThemeSurface(), 0.5).*kr.GetThemeButton' "$out"
-grep -q 'Text: "small".*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
-grep -q 'Text: "large".*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
+grep -q 'Text: "small".*Wrap: kr.TextWrapNone' "$out"
+grep -q 'Text: "large".*Wrap: kr.TextWrapNone' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.

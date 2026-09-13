@@ -13,7 +13,7 @@ func TestComposedTooltipOwnsArbitraryPaintWithoutInputCapture(t *testing.T) {
 		t.Fatal("hovered tooltip popup returned false")
 	}
 	r.Column(ColumnProps{Bounds: NewRectangle(88, 58, 114, 54), Gap: 4})
-	r.Text(TextProps{Text: "arbitrary tooltip", Color: BLACK})
+	r.Text(TextProps{Text: "arbitrary tooltip"})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 90, 24), Label: "detail", ID: 29301})
 	r.End()
 	r.EndPopup()
@@ -61,7 +61,7 @@ func TestComposedModalOwnsArbitraryContentAndFullViewInput(t *testing.T) {
 		t.Fatal("open modal popup returned false")
 	}
 	r.Column(ColumnProps{Bounds: NewRectangle(48, 38, 104, 70), Gap: 4})
-	r.Text(TextProps{Text: "arbitrary modal", Color: BLACK})
+	r.Text(TextProps{Text: "arbitrary modal"})
 	r.Button(ButtonProps{Bounds: NewRectangle(0, 0, 90, 24), Label: "confirm", ID: 29401})
 	r.End()
 	r.EndPopup()
@@ -120,7 +120,7 @@ func TestComposedContextPopupOpensOnRightRelease(t *testing.T) {
 	}) {
 		t.Fatal("right release in trigger did not open context popup")
 	}
-	r.Text(TextProps{Bounds: NewRectangle(88, 58, 0, 0), Text: "context child", Color: BLACK, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(88, 58, 0, 0), Text: "context child", Wrap: TextWrapNone})
 	r.EndPopup()
 	r.EndFrame()
 	if !open {
@@ -328,7 +328,7 @@ func TestComposedPopupCloseAndMissingOwner(t *testing.T) {
 	open := true
 	r.BeginFrame()
 	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
-	r.Text(TextProps{Bounds: NewRectangle(24, 24, 0, 0), Text: "hidden", Color: BLACK, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(24, 24, 0, 0), Text: "hidden", Wrap: TextWrapNone})
 	r.ClosePopup()
 	r.EndPopup()
 	r.EndFrame()

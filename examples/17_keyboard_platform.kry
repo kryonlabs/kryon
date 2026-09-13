@@ -24,7 +24,7 @@ KeyboardPlatformExample :: (viewport: Rectangle) #ui {
             copied = 1
         }
         if copied {
-            Text((TextProps){.bounds={40, 130, 0, 0}, .text="Clipboard updated.", .color=GetThemeLink(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={40, 130, 0, 0}, .text="Clipboard updated.", .wrap=TextWrapNone})
         }
     }
 }

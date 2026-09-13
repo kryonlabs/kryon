@@ -32,8 +32,8 @@ static const DropdownOption fonts[] = {
 static void
 label(const char *text, int x, int y, int font, Color color)
 {
-    Text((TextProps){.text = text, .bounds = {x, y, 720, font + 8},
-        .color = color});
+    (void)color;
+    Text((TextProps){.text = text, .bounds = {x, y, 720, font + 8}});
 }
 
 /* Each specimen owns a normal dropdown store, so the board can show two open

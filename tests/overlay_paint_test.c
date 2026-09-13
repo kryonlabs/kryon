@@ -28,7 +28,7 @@ int main(void)
         ClearBackground(BLACK);
         BeginInterfaceFrame(640,480,1);
         BeginTree(2);
-        Text((TextProps){.bounds={10, 10, 0, 0}, .text="Select and copy this text.", .color=WHITE, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={10, 10, 0, 0}, .text="Select and copy this text.", .wrap=TextWrapNone});
         InvalidateTree(INVALIDATE_PAINT);
         EndTree();
         EndInterfaceFrame();
@@ -72,7 +72,7 @@ int main(void)
             BeginInterfaceFrame(640,480,1);
             BeginTree(1);
             Box((Rectangle){10,10,20,20},RED,BLANK);
-            Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .color=WHITE, .wrap=TextWrapNone});
+            Text((TextProps){.bounds={10, 45, 0, 0}, .text="Retained text", .wrap=TextWrapNone});
             if(kind == 0) {
                 ModalAction actions[] = {{"OK", ButtonToneAccent,
                                           ButtonEmphasisFilled, 0}};

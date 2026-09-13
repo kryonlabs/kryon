@@ -1215,9 +1215,6 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	style := unpackStyle(ResolveActiveStyle(packStyle(Style{Opacity: 1}),
 		StyleSheet_StyleTextFacts(0, props.ClassName, StyleSheet_StyleKindText(), textState),
 		textState))
-	if props.Color.A != 0 {
-		style = mergeStyle(style, Style{Fields: StyleForeground, Foreground: props.Color})
-	}
 	colorSet := style.Fields&StyleForeground != 0
 	requestedFont := int32(0)
 	if style.Fields&StyleFontSize != 0 {

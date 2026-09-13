@@ -3028,7 +3028,7 @@ test_composed_tooltip_scope(void)
             .trigger={20,20,80,30},.flags=PopupTooltip}),1);
     Column((ColumnProps){.bounds={88,58,114,54},.gap=4});
     Text((TextProps){.text="arbitrary tooltip",
-        .color=BLACK,.wrap=TextWrapNone});
+        .wrap=TextWrapNone});
     Button((ButtonProps){.bounds={0,0,90,24},.label="detail",.id=29301});
     End();
     check_int("tooltip does not capture popup input",
@@ -3062,7 +3062,7 @@ test_composed_modal_scope(void)
             .open=&open,.flags=PopupModal}),1);
     Column((ColumnProps){.bounds={48,38,104,70},.gap=4});
     Text((TextProps){.text="arbitrary modal",
-        .color=BLACK,.wrap=TextWrapNone});
+        .wrap=TextWrapNone});
     Button((ButtonProps){.bounds={0,0,90,24},.label="confirm",.id=29401});
     End();
     EndPopup();
