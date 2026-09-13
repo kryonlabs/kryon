@@ -457,7 +457,7 @@ int
 ui_focusable_pressed(Rectangle bounds, int id, int disabled, int *focused)
 {
     Vector2 mouse = ui_mouse_world();
-    int enabled = !disabled && !UIContentDisabled();
+    int enabled = !disabled && !ContentDisabled();
     int inside = ui_contains(bounds, mouse);
     int captured = InputCapturesClick(mouse);
     int hot = enabled && inside && !captured;
@@ -643,7 +643,7 @@ RenderDragDrop(DragDropProps drag_drop)
 {
     ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
-    int disabled = drag_drop.disabled || UIContentDisabled();
+    int disabled = drag_drop.disabled || ContentDisabled();
     int hot;
     int matches;
     int valid;
@@ -654,7 +654,7 @@ RenderDragDrop(DragDropProps drag_drop)
            IsMouseButtonDown(MOUSE_BUTTON_LEFT),
            IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
             toolkit->drag_drop = (UIDragDropState){0};
-        valid = DragDropSourceValid(drag_drop.disabled, UIContentDisabled(),
+        valid = DragDropSourceValid(drag_drop.disabled, ContentDisabled(),
                                     drag_drop.type != NULL &&
                                     drag_drop.type[0] != '\0',
                                     drag_drop.data_size, UI_DRAG_DROP_DATA_MAX,
@@ -701,7 +701,7 @@ RenderDragDrop(DragDropProps drag_drop)
         ui_tk_draw_style_frame(drag_drop.bounds, (Rectangle){0}, frame, hot, 0,
                                disabled, 0);
     }
-    if(!DragDropTargetAccepts(drag_drop.disabled, UIContentDisabled(), matches,
+    if(!DragDropTargetAccepts(drag_drop.disabled, ContentDisabled(), matches,
        hot, IsMouseButtonReleased(MOUSE_BUTTON_LEFT)))
         return 0;
     if(drag_drop.output != NULL && drag_drop.output_size > 0) {
@@ -738,7 +738,7 @@ RenderListBoxMulti(ListBoxProps list)
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     int paint = IsWindowReady();
     int clicked = -1;
-    int disabled = list.disabled || UIContentDisabled();
+    int disabled = list.disabled || ContentDisabled();
     StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         list.class_name, StyleKindListBoxMultiItem(), StyleAny());
@@ -866,7 +866,7 @@ RenderSelectable(SelectableProps selectable)
 {
     Vector2 mouse = ui_mouse_world();
     int selected = selectable.selected != NULL && *selectable.selected;
-    int disabled = selectable.disabled || UIContentDisabled();
+    int disabled = selectable.disabled || ContentDisabled();
     int focused = 0;
     int pressed = ui_focusable_pressed(selectable.bounds, selectable.id,
                                        selectable.disabled, &focused);
@@ -921,7 +921,7 @@ RenderSelectable(SelectableProps selectable)
 int
 RenderCheckbox(CheckboxProps checkbox)
 {
-    int disabled = checkbox.disabled || UIContentDisabled() ||
+    int disabled = checkbox.disabled || ContentDisabled() ||
         (checkbox.value == NULL && checkbox.flags == NULL);
     int focused = 0;
     int pressed = ui_focusable_pressed(checkbox.bounds, checkbox.id,
@@ -1170,7 +1170,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
     if(items == NULL || item_count <= 0)
         return 0;
 
-    keyboard = !UIContentDisabled() && focus_id > 0 && IsFocusActive(focus_id) &&
+    keyboard = !ContentDisabled() && focus_id > 0 && IsFocusActive(focus_id) &&
                IsKeyboardInputEnabled() &&
                !ui_popup_input_focus_captures(focus_id);
     if(keyboard && state->navigation.focus_id != focus_id)
@@ -1245,7 +1245,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
     for(int i = 0; i < item_count; i++) {
         Rectangle row = MenuRowBounds(panel, i, metrics);
         const MenuItem *item = &items[i];
-        int row_hot = !UIContentDisabled() && ui_contains(row, mouse) &&
+        int row_hot = !ContentDisabled() && ui_contains(row, mouse) &&
                       item->kind != MenuSeparator;
         int hot = row_hot && !item->disabled;
         int selected = keyboard && depth < UI_TK_MENU_DEPTH_MAX &&
@@ -1493,7 +1493,7 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
     }
     if(menu_count > UI_TK_MENU_MAX)
         menu_count = UI_TK_MENU_MAX;
-    focused = !UIContentDisabled() && id > 0 && RegisterFocus(id,bounds) &&
+    focused = !ContentDisabled() && id > 0 && RegisterFocus(id,bounds) &&
               !ui_popup_input_focus_captures(id);
     if(state->navigation.focus_id != id)
         menu_navigation_reset(id,NULL,0);
@@ -1564,7 +1564,7 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         Rectangle item = MenuGroupItemBounds(x, bounds, w, metrics);
         int menu_id = id + 1 + i;
         int open = state->open_id == menu_id;
-        int hot = !UIContentDisabled() && ui_hot(item);
+        int hot = !ContentDisabled() && ui_hot(item);
         ButtonState item_state = open ? ButtonStateSelected :
             (hot ? ButtonStateHover : ButtonStateNormal);
         StyleFrame item_frame = ui_tk_simple_style_frame_class_role(
@@ -1691,7 +1691,7 @@ RenderPopupMenu(int id, int class_name, int x, int y, const MenuItem *items,
                 int item_count)
 {
     Rectangle panel = menu_items_panel_bounds(x,y,items,item_count, class_name);
-    int focused = !UIContentDisabled() && id > 0 && RegisterFocus(id,panel);
+    int focused = !ContentDisabled() && id > 0 && RegisterFocus(id,panel);
     if(focused && !ui_popup_input_focus_captures(id) &&
        IsKeyPressed(KEY_ESCAPE)) {
         menu_navigation_reset(0,NULL,0);
@@ -1733,7 +1733,7 @@ RenderContextMenu(MenuProps menu)
         *menu.open = 0;
         return 0;
     }
-    if(!UIContentDisabled() && ui_contains(menu.trigger, mouse) &&
+    if(!ContentDisabled() && ui_contains(menu.trigger, mouse) &&
        !InputCapturesClick(mouse) &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
         Vector2 origin = PopupContextOrigin(mouse);
@@ -1757,7 +1757,7 @@ RenderContextMenu(MenuProps menu)
     panel = menu_items_panel_bounds(*menu.x, *menu.y,
                                     menu.items, menu.item_count,
                                     menu.class_name);
-    focused = !UIContentDisabled() && menu.id > 0 && RegisterFocus(menu.id,panel) &&
+    focused = !ContentDisabled() && menu.id > 0 && RegisterFocus(menu.id,panel) &&
               !ui_popup_input_focus_captures(menu.id);
     if(focused && IsKeyPressed(KEY_ESCAPE)) {
         *menu.open = 0;
@@ -1834,7 +1834,7 @@ RenderRadio(RadioProps radio)
 
     activated = ui_focusable_pressed(paint.hit_bounds, radio.id, radio.disabled,
                                      &focused);
-    hot = ui_hot(paint.hit_bounds) && !radio.disabled && !UIContentDisabled();
+    hot = ui_hot(paint.hit_bounds) && !radio.disabled && !ContentDisabled();
     down = hot && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
 
     if(hot)
@@ -2165,7 +2165,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
                      int disabled, int integer, int *editing)
 {
     ToolkitStore *toolkit = toolkit_state();
-    int enabled = !disabled && !UIContentDisabled();
+    int enabled = !disabled && !ContentDisabled();
     int control = IsKeyDown(KEY_LEFT_CONTROL) ||
                   IsKeyDown(KEY_RIGHT_CONTROL);
     int pressed = enabled && IsMouseButtonPressed(MOUSE_BUTTON_LEFT) &&
@@ -2269,7 +2269,7 @@ ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
 {
     ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
-    disabled = disabled || UIContentDisabled();
+    disabled = disabled || ContentDisabled();
     int hot = !disabled && ui_hot(bounds);
 
     *delta = 0.0f;
@@ -2348,7 +2348,7 @@ ui_update_drag_continuous(DragContinuousProps drag)
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
         Rectangle cell = DragCellBoundsFor(drag.bounds, count, i);
         float delta;
-        int enabled = !drag.disabled && !UIContentDisabled();
+        int enabled = !drag.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0) RegisterFocus(focus_id,cell);
         changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_FLOAT,
@@ -2387,7 +2387,7 @@ ui_update_drag_discrete(DragDiscreteProps drag)
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
         Rectangle cell = DragCellBoundsFor(drag.bounds, count, i);
         float delta;
-        int enabled = !drag.disabled && !UIContentDisabled();
+        int enabled = !drag.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0) RegisterFocus(focus_id,cell);
         changed |= ui_numeric_temp_edit(cell, UI_NUMERIC_EDIT_DRAG_INT,
@@ -2463,7 +2463,7 @@ ui_paint_drag_continuous(DragContinuousProps drag)
         int focus_id = ui_numeric_focus_id(drag.id,i,0);
         UINumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_DRAG_FLOAT, drag.id, i);
-        int disabled = drag.disabled || UIContentDisabled();
+        int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
             continue;
         int focused = !disabled && focus_id > 0 && IsFocusActive(focus_id) &&
@@ -2486,7 +2486,7 @@ ui_paint_drag_discrete(DragDiscreteProps drag)
         int focus_id = ui_numeric_focus_id(drag.id,i,1);
         UINumericInputState *state = ui_numeric_input_find(
             UI_NUMERIC_EDIT_DRAG_INT, drag.id, i);
-        int disabled = drag.disabled || UIContentDisabled();
+        int disabled = drag.disabled || ContentDisabled();
         if(state != NULL && state->focused)
             continue;
         int focused = !disabled && focus_id > 0 && IsFocusActive(focus_id) &&
@@ -2504,7 +2504,7 @@ ui_slider_ratio(int token, int focus_id, Rectangle bounds, int disabled,
 {
     ToolkitStore *toolkit = toolkit_state();
     Vector2 mouse = ui_mouse_world();
-    disabled = disabled || UIContentDisabled();
+    disabled = disabled || ContentDisabled();
     int hot = !disabled && ui_hot(bounds);
     int pressed = hot && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
@@ -2671,7 +2671,7 @@ ui_update_slider_continuous(SliderContinuousProps slider, int vertical)
         Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
         float ratio = SliderRatio(slider.values[i], slider.min,
                                        slider.max);
-        int enabled = !slider.disabled && !UIContentDisabled();
+        int enabled = !slider.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0)
             RegisterFocus(focus_id,cell);
@@ -2714,7 +2714,7 @@ ui_update_slider_discrete(SliderDiscreteProps slider, int vertical)
         Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
         float ratio = SliderDiscreteRatio(slider.values[i], slider.min,
                                      slider.max);
-        int enabled = !slider.disabled && !UIContentDisabled();
+        int enabled = !slider.disabled && !ContentDisabled();
         int editing = 0;
         if(enabled && focus_id > 0)
             RegisterFocus(focus_id,cell);
@@ -2748,7 +2748,7 @@ void
 ui_paint_slider_continuous(SliderContinuousProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
-    slider.disabled |= UIContentDisabled();
+    slider.disabled |= ContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
         Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
         float ratio = SliderRatio(slider.values[i], slider.min,
@@ -2773,7 +2773,7 @@ void
 ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
-    slider.disabled |= UIContentDisabled();
+    slider.disabled |= ContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
         Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
         float ratio = SliderDiscreteRatio(slider.values[i], slider.min,
@@ -2942,7 +2942,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         int commit = 0;
         double old_value = ui_numeric_value(values, i, kind);
 
-        if(UIContentDisabled() && state->focused)
+        if(ContentDisabled() && state->focused)
             while(GetCharPressed() != 0) {}
 
         if(!state->focused) {
@@ -3039,7 +3039,7 @@ RenderSpinbox(SpinboxProps spinbox)
 {
     SpinboxLayout layout = SpinboxLayoutFor(spinbox.bounds, Scale(28));
     int changed = 0;
-    int disabled = spinbox.disabled || UIContentDisabled();
+    int disabled = spinbox.disabled || ContentDisabled();
     char value_text[32];
     Rectangle left = layout.left;
     Rectangle right = layout.right;
@@ -3131,7 +3131,7 @@ int
 RenderListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
-    int disabled = list.disabled || UIContentDisabled();
+    int disabled = list.disabled || ContentDisabled();
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
@@ -3714,7 +3714,7 @@ RenderTableView(TableViewProps table)
     int cell_font;
     int header_font;
 
-    table.disabled = table.disabled || UIContentDisabled();
+    table.disabled = table.disabled || ContentDisabled();
     metrics = ui_table_metrics(table);
     StyleFrame default_header_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         table.disabled ? ButtonStateDisabled : ButtonStateNormal,
@@ -3740,8 +3740,8 @@ RenderTableView(TableViewProps table)
     }
 
     if(toolkit->resize_column >= 0 &&
-       (UIContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
-       (UIContentDisabled() || toolkit->resize_table_id != table.id || table.disabled || !table.resizable ||
+       (ContentDisabled() || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
+       (ContentDisabled() || toolkit->resize_table_id != table.id || table.disabled || !table.resizable ||
         table.column_widths == NULL)) {
         toolkit->resize_table_id = 0;
         toolkit->resize_column = -1;
@@ -3774,7 +3774,7 @@ RenderTableView(TableViewProps table)
     scroll_body_h = layout.scroll_body_height;
     default_col_w = TableViewDefaultColumnWidth((int)table.bounds.width,
                                                 visible_columns);
-    if(!UIContentDisabled() && !table.disabled && table.resizable && table.column_widths != NULL) {
+    if(!ContentDisabled() && !table.disabled && table.resizable && table.column_widths != NULL) {
         Vector2 mouse = ui_mouse_world();
         Rectangle header = {table.bounds.x, table.bounds.y,
                             table.bounds.width, (float)header_h};
@@ -4202,9 +4202,9 @@ RenderPanedView(PanedViewProps panes)
         toolkit->active_split = NULL;
     if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT))
         toolkit->active_split = NULL;
-    if(UIContentDisabled() && toolkit->active_split == panes.split)
+    if(ContentDisabled() && toolkit->active_split == panes.split)
         toolkit->active_split = NULL;
-    if(!UIContentDisabled() && ui_hot(handle)) {
+    if(!ContentDisabled() && ui_hot(handle)) {
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             toolkit->active_split = panes.split;
@@ -4290,7 +4290,7 @@ int
 RenderCollapsible(CollapsibleProps section)
 {
     ToolkitStore *toolkit = toolkit_state();
-    int enabled = !section.disabled && !UIContentDisabled();
+    int enabled = !section.disabled && !ContentDisabled();
     ButtonState default_state = !enabled ? ButtonStateDisabled
                               : section.selected ? ButtonStateSelected
                               : ButtonStateNormal;

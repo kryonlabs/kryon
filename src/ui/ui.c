@@ -452,12 +452,12 @@ ui_iabs(int value)
 int
 IsKeyboardInputEnabled(void)
 {
-    return KeyboardInputEnabled() && !UIContentDisabled() &&
+    return KeyboardInputEnabled() && !ContentDisabled() &&
            !ui_popup_input_keyboard_captures();
 }
 
 int
-UIContentDisabled(void)
+ContentDisabled(void)
 {
     return g_ui_disabled_start > 0;
 }
@@ -536,14 +536,14 @@ ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
             if(thumb_h > bounds.height) thumb_h = bounds.height;
             float travel = bounds.height-thumb_h;
             float thumb_y = bounds.y+travel*(*scroll_offset)/max_scroll;
-            if(!UIContentDisabled() && !InputCapturesClick(mouse) &&
+            if(!ContentDisabled() && !InputCapturesClick(mouse) &&
                CheckCollisionPointRec(mouse, track) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
                 g_scroll_drag_offset = scroll_offset;
                 g_scroll_drag_grab = mouse.y >= thumb_y && mouse.y < thumb_y+thumb_h
                     ? mouse.y-thumb_y : thumb_h/2;
             }
             if(g_scroll_drag_offset == scroll_offset) {
-                if(UIContentDisabled()) g_scroll_drag_offset = NULL;
+                if(ContentDisabled()) g_scroll_drag_offset = NULL;
                 else if(travel > 0 && (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)))
                     *scroll_offset = ui_clampi((int)((mouse.y-bounds.y-g_scroll_drag_grab)*max_scroll/travel),0,max_scroll);
                 if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
@@ -802,7 +802,7 @@ ui_input_captures_click_internal(Vector2 point, int include_pointer_drag)
 int
 ui_input_captures_snapshot(Vector2 point, UIPopupInputToken snapshot)
 {
-    return UIContentDisabled() || InspectInputCapturesClick(point) ||
+    return ContentDisabled() || InspectInputCapturesClick(point) ||
            ui_base_input_captures_click(point,1) ||
            dropdown_captures(point) ||
            ui_popup_input_snapshot_captures(snapshot,point);
@@ -1597,7 +1597,7 @@ ui_register_focus_snapshot(int id, Rectangle bounds, UIPopupInputToken snapshot)
     focus_point = (Vector2){bounds.x+bounds.width*0.5f,
                             bounds.y+bounds.height*0.5f};
     ui_popup_input_register_focus(id,snapshot,
-        !UIContentDisabled() && !InspectInputCapturesClick(focus_point) &&
+        !ContentDisabled() && !InspectInputCapturesClick(focus_point) &&
         !ui_base_input_captures_click(focus_point,0) &&
         !dropdown_captures(focus_point) &&
         !ui_popup_input_snapshot_captures(snapshot,focus_point));
@@ -1747,7 +1747,7 @@ int
 IsFocusActivatePressed(int id)
 {
     return IsFocusActive(id) && IsKeyboardInputEnabled() &&
-           !UIContentDisabled() && !ui_popup_input_focus_captures(id) &&
+           !ContentDisabled() && !ui_popup_input_focus_captures(id) &&
            (IsKeyPressed(KEY_ENTER) || (!g_ui_focus_text_input_active && IsKeyPressed(KEY_SPACE)));
 }
 
@@ -1962,7 +1962,7 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
                       int editable, int focus_id, const char *kind,
                       TextInputStyle requested, int class_name)
 {
-    int disabled = UIContentDisabled();
+    int disabled = ContentDisabled();
     int hovered = 0;
     int style_kind = ui_text_input_style_kind(kind);
 

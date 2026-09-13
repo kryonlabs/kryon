@@ -195,7 +195,7 @@ dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed,
                        int focused, int class_name)
 {
     ButtonProps props = {.id = id, .bounds = bounds, .tone = ButtonToneNeutral,
-        .emphasis = ButtonEmphasisSoft, .disabled = UIContentDisabled(),
+        .emphasis = ButtonEmphasisSoft, .disabled = ContentDisabled(),
         .class_name = class_name};
     ButtonSpec spec = {.props = props,
         .style = dropdown_trigger_style(class_name),
@@ -378,7 +378,7 @@ ui_dropdown(DropdownProps props)
 
     state->frame_seen = g_ui_frame_serial;
     state->input_snapshot = ui_popup_input_snapshot();
-    if(UIContentDisabled()) {
+    if(ContentDisabled()) {
         close_dropdown_state(state);
         state->pending_changed = 0;
     }
@@ -399,12 +399,12 @@ ui_dropdown(DropdownProps props)
     btn_bounds = (Rectangle){(float)x, (float)y, (float)w, (float)h};
     WidgetSetBounds(&widget, btn_bounds);
     button_inside = CheckCollisionPointRec(mouse, btn_bounds);
-    active = !UIContentDisabled() && button_inside &&
+    active = !ContentDisabled() && button_inside &&
              (state->open
                   ? !ui_base_input_captures_click(mouse, 1)
                   : !InputCapturesClick(mouse));
     hover = active && HoverEffectsEnabled();
-    int focused = !UIContentDisabled() && id > 0 && RegisterFocus(id, btn_bounds);
+    int focused = !ContentDisabled() && id > 0 && RegisterFocus(id, btn_bounds);
     if(focused) SetFocusTextInputActive(0);
 
     if(state->pending_changed) {
@@ -439,7 +439,7 @@ ui_dropdown(DropdownProps props)
         MarkClickable();
 
     int pointer_activate = active && IsMouseButtonReleased(MOUSE_BUTTON_LEFT);
-    int next_open = Trigger(state->open, UIContentDisabled(), option_count, focused,
+    int next_open = Trigger(state->open, ContentDisabled(), option_count, focused,
         !ui_popup_input_keyboard_captures(), pointer_activate,
         IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER),
         IsKeyPressed(KEY_SPACE), IsKeyPressed(KEY_DOWN));

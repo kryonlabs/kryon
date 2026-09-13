@@ -4280,18 +4280,18 @@ test_popup_disabled_restoration(void)
         DisabledScope(disabled);
         UIDisabledScope outer = ui_disabled_suspend();
         DisabledEndScope();
-        check_int("popup cannot end parent disabled scope",UIContentDisabled(),disabled);
+        check_int("popup cannot end parent disabled scope",ContentDisabled(),disabled);
         DisabledScope(1);
         UIDisabledScope inner = ui_disabled_suspend();
         DisabledScope(0); DisabledEndScope();
-        check_int("nested popup inherits disabled",UIContentDisabled(),1);
+        check_int("nested popup inherits disabled",ContentDisabled(),1);
         ui_disabled_resume(inner);
         DisabledEndScope();
-        check_int("popup child disabling restored",UIContentDisabled(),disabled);
+        check_int("popup child disabling restored",ContentDisabled(),disabled);
         ui_disabled_resume(outer);
-        check_int("popup parent disabling restored",UIContentDisabled(),disabled);
+        check_int("popup parent disabling restored",ContentDisabled(),disabled);
         DisabledEndScope();
-        check_int("parent disabled scope remains balanced",UIContentDisabled(),0);
+        check_int("parent disabled scope remains balanced",ContentDisabled(),0);
     }
 }
 
@@ -4431,9 +4431,9 @@ test_custom_table_cell_scope(void)
         if(Button((ButtonProps){.bounds = cell,.label = "Child",.id = 1000})) actions++;
         TableCellEndScope();
         p.disabled = 1; TableCellScope(p,0,1);
-        check_int("custom cell disabled",UIContentDisabled(),1);
+        check_int("custom cell disabled",ContentDisabled(),1);
         TableCellEndScope(); p.disabled = 0;
-        check_int("custom cell disabled restored",UIContentDisabled(),0);
+        check_int("custom cell disabled restored",ContentDisabled(),0);
         EndInterfaceFrame();
     }
     check_int("custom cell child action",actions,1);
@@ -4471,10 +4471,10 @@ test_list_box_scope(void)
         check_int("list scope scroll",offset,disabled ? 0 : 22);
         check_int("list scope content width",(int)content.width,108);
         check_int("list scope content y",(int)content.y,21-offset);
-        check_int("list scope disabled",UIContentDisabled(),disabled);
+        check_int("list scope disabled",ContentDisabled(),disabled);
         ScrollEndScope();
         DisabledEndScope();
-        check_int("list scope restored",UIContentDisabled(),0);
+        check_int("list scope restored",ContentDisabled(),0);
         EndInterfaceFrame();
     }
 }

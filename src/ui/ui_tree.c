@@ -548,7 +548,7 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
     node->paint_capture = ui_tree_capture_paint();
     node->popup_input_capture = ui_tree_capture_input();
     node->font_token = ui_active_font_token();
-    if(UIContentDisabled()) node->flags |= UI_NODE_SCOPE_DISABLED;
+    if(ContentDisabled()) node->flags |= UI_NODE_SCOPE_DISABLED;
     node->props = props;
     node->parent = -1;
     node->first_child = -1;
@@ -2458,7 +2458,7 @@ Text(TextProps props)
             }
         }
     }
-    props.disabled = props.disabled || (UIContentDisabled() && !inherited_disabled);
+    props.disabled = props.disabled || (ContentDisabled() && !inherited_disabled);
     Style style = ui_unpack_style(ResolveActiveStyle(
         ui_pack_style_states((ControlStyle){.normal = {.opacity = 1}}).normal,
         StyleTextFacts(0, props.class_name, StyleKindText(),
@@ -3378,7 +3378,7 @@ TitleBar(TitleBarProps title_bar)
 static Rectangle
 resolve_button_bounds_for_kind(ButtonProps button, int disclosure, int style_kind)
 {
-    button.disabled = button.disabled || UIContentDisabled();
+    button.disabled = button.disabled || ContentDisabled();
     Rectangle bounds = button.bounds;
     ThemeMetrics metrics = GetThemeMetrics();
     Style style = ui_resolve_button_style_kind(button, button.state, style_kind);
@@ -3408,7 +3408,7 @@ ui_tree_button_spec_for_kind(ButtonProps button, Rectangle surface_bounds,
                              int disclosure, int style_kind)
 {
     Style paint;
-    button.disabled = button.disabled || button.state == ButtonStateDisabled || UIContentDisabled();
+    button.disabled = button.disabled || button.state == ButtonStateDisabled || ContentDisabled();
     button.loading = button.loading || button.state == ButtonStateLoading;
     ButtonSpec spec = {
         .props = button,

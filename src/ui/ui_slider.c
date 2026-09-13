@@ -206,10 +206,10 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
                                                           ButtonStateNormal,
-                                                          UIContentDisabled());
+                                                          ContentDisabled());
     StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
                                                                 ButtonStateNormal,
-                                                                UIContentDisabled());
+                                                                ContentDisabled());
     SliderEditorLayout layout = SliderHorizontalEditorLayoutFor(
         x, y, w, ui_touch_target_min(), runtime_scale, metric_track_frame,
         metric_thumb_frame);
@@ -316,15 +316,15 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             .vertical = false,
             .active = active,
             .hovered = hovered,
-            .disabled = UIContentDisabled(),
+            .disabled = ContentDisabled(),
             .scale = runtime_scale,
             .track = ui_slider_style_frame(ButtonToneNeutral, state,
-                                           UIContentDisabled()),
+                                           ContentDisabled()),
             .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
-                                                       UIContentDisabled()),
+                                                       ContentDisabled()),
             .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
-                                                 UIContentDisabled())
-        }), hovered, active, UIContentDisabled());
+                                                 ContentDisabled())
+        }), hovered, active, ContentDisabled());
     }
 
     EndWidget(&widget);
@@ -340,10 +340,10 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
                                                           ButtonStateNormal,
-                                                          UIContentDisabled());
+                                                          ContentDisabled());
     StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
                                                                 ButtonStateNormal,
-                                                                UIContentDisabled());
+                                                                ContentDisabled());
     SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
         x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
         metric_thumb_frame);
@@ -416,15 +416,15 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
             .vertical = true,
             .active = active,
             .hovered = hovered,
-            .disabled = UIContentDisabled(),
+            .disabled = ContentDisabled(),
             .scale = runtime_scale,
             .track = ui_slider_style_frame(ButtonToneNeutral, state,
-                                           UIContentDisabled()),
+                                           ContentDisabled()),
             .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
-                                                       UIContentDisabled()),
+                                                       ContentDisabled()),
             .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
-                                                 UIContentDisabled())
-        }), hovered, active, UIContentDisabled());
+                                                 ContentDisabled())
+        }), hovered, active, ContentDisabled());
     }
 
     EndWidget(&widget);
@@ -455,10 +455,10 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     float runtime_scale = (float)Scale(1000) / 1000.0f;
     StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
                                                           ButtonStateNormal,
-                                                          UIContentDisabled());
+                                                          ContentDisabled());
     StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
                                                                 ButtonStateNormal,
-                                                                UIContentDisabled());
+                                                                ContentDisabled());
     SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
         x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
         metric_thumb_frame);
@@ -535,15 +535,15 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
             .vertical = true,
             .active = active,
             .hovered = hovered,
-            .disabled = UIContentDisabled(),
+            .disabled = ContentDisabled(),
             .scale = runtime_scale,
             .track = ui_slider_style_frame(ButtonToneNeutral, state,
-                                           UIContentDisabled()),
+                                           ContentDisabled()),
             .active_track = ui_slider_fill_style_frame(ButtonToneAccent, state,
-                                                       UIContentDisabled()),
+                                                       ContentDisabled()),
             .thumb = ui_slider_thumb_style_frame(ButtonToneAccent, state,
-                                                 UIContentDisabled())
-        }), hovered, active, UIContentDisabled());
+                                                 ContentDisabled())
+        }), hovered, active, ContentDisabled());
     }
 
     EndWidget(&widget);
@@ -565,7 +565,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     const char *off_text = off_label != NULL ? off_label : "";
     const char *on_text = on_label != NULL ? on_label : "";
     int has_labels = off_text[0] != '\0' || on_text[0] != '\0';
-    int enabled = value != NULL && !UIContentDisabled();
+    int enabled = value != NULL && !ContentDisabled();
     StyleFrame label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral,
         ButtonStateNormal, !enabled, class_name, 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);

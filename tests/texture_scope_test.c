@@ -363,15 +363,15 @@ int main(void)
                 DisabledScope(1);
                 UIPaintLayerToken foreign_layer = ui_paint_layer_begin(foreign,1);
                 DisabledEndScope();
-                if(!UIContentDisabled()) {
+                if(!ContentDisabled()) {
                     fprintf(stderr,"layer ended its parent's disabled scope\n");
                     failures++;
                 }
                 check_invalid_layer_end(parent_layer,"cross-host out-of-order close");
                 ui_paint_layer_end(foreign_layer);
-                if(!UIContentDisabled()) failures++;
+                if(!ContentDisabled()) failures++;
                 DisabledEndScope();
-                if(UIContentDisabled()) failures++;
+                if(ContentDisabled()) failures++;
                 ui_paint_layers_composite(foreign);
                 ui_paint_layers_destroy(foreign);
             }

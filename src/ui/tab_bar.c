@@ -262,7 +262,7 @@ ui_tab_bar_keyboard_input(TabBarProps bar)
     int selected;
 
     if(bar.tabs == NULL || bar.count <= 0 || bar.bounds.width <= 0 ||
-       bar.bounds.height <= 0 || bar.disabled || UIContentDisabled() ||
+       bar.bounds.height <= 0 || bar.disabled || ContentDisabled() ||
        bar.id <= 0 || !RegisterFocus(bar.id, bar.bounds) ||
        ui_popup_input_focus_captures(bar.id))
         return -1;
@@ -354,7 +354,7 @@ RenderTabBar(TabBarProps bar)
     int bar_y = (int)bar.bounds.y;
     int bar_w = (int)bar.bounds.width;
     int bar_h = (int)bar.bounds.height;
-    int disabled = bar.disabled || UIContentDisabled();
+    int disabled = bar.disabled || ContentDisabled();
     StyleFrame bar_frame = ui_tab_bar_style_frame(StyleKindTabBar(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         bar.class_name);

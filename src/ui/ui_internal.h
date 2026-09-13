@@ -45,7 +45,7 @@ int GetSmallFontSize(void);
 int GetTitleFontSize(const char *title, int max_width);
 int FitFontSize(const char *text, int max_width,
                 int preferred_size, int min_size);
-int UIContentDisabled(void);
+int ContentDisabled(void);
 int ui_current_input_clip(Rectangle *bounds);
 extern int g_ui_slider_active_id;
 extern int g_ui_pointer_dragging;
