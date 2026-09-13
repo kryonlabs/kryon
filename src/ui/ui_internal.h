@@ -562,8 +562,8 @@ void RenderInspectOverlay(void);
 
 /* Lowered host scopes for .kry block widgets. These are not public widget
  * names; parser/codegen and native tests use them to implement lexical blocks. */
-void BeginDisabled(int disabled);
-void EndDisabled(void);
+void DisabledScope(int disabled);
+void DisabledEndScope(void);
 Rectangle BeginScroll(Rectangle bounds, int content_height, int *scroll_offset);
 void EndScroll(void);
 NodeId CardScope(CardProps card);

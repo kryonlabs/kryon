@@ -1903,7 +1903,7 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
             node_widget = "Canvas";
         else if(strcmp(widget, "BeginTableCell") == 0)
             node_widget = "TableCell";
-        else if(strcmp(widget, "BeginDisabled") == 0)
+        else if(strcmp(widget, "DisabledScope") == 0)
             node_widget = "Disabled";
         else if(strcmp(widget, "PopupScope") == 0)
             node_widget = "Popup";
@@ -2029,7 +2029,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirStmt *statement;
 
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
-        ui_block_format(call, sizeof(call), span, "BeginDisabled(%s)", condition);
+        ui_block_format(call, sizeof(call), span, "DisabledScope(%s)", condition);
         /* Scope conditions are boolean expressions, not legacy integer UI
          * widget arguments. Keep the ordinary typed call in the shared IR. */
         statement = KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "",
@@ -2038,7 +2038,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("out of memory parsing Disabled block");
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "",
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer DisabledEndScope()", "",
                            source_span);
         block->opened = 1;
         return;

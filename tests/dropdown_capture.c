@@ -57,10 +57,10 @@ sample(int index, Rectangle bounds, const DropdownOption *items, int count,
     InjectPump();
     BeginInterfaceFrame(WIDTH, HEIGHT, 1.0f);
     SetFocus(focused || open ? id : 0);
-    BeginDisabled(disabled);
+    DisabledScope(disabled);
     Dropdown((DropdownProps){.id = id, .bounds = bounds,
         .items = items, .option_count = count, .selected_index = &chosen});
-    EndDisabled();
+    DisabledEndScope();
     EndInterfaceFrame();
     dropdown_store_swap(previous);
 }

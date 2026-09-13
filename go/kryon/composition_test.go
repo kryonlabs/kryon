@@ -190,9 +190,9 @@ func TestCompositionPreeditRetiresWithEditor(t *testing.T) {
 			r.setFocus(999)
 			compositionEditor(r, false, text, &cursor)
 		case "disabled":
-			r.BeginDisabled(true)
+			r.DisabledScope(true)
 			compositionEditor(r, false, text, &cursor)
-			r.EndDisabled()
+			r.DisabledEndScope()
 		case "popup":
 			popup := r.beginPopupInput(1, NewRectangle(20, 20, 60, 60))
 			r.endPopupInput(popup)

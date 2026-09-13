@@ -559,8 +559,8 @@ grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "GB"' "$out"
-grep -q '_ValidRuntime.BeginDisabled(true)' "$out"
-grep -q '_ValidRuntime.EndDisabled()' "$out"
+grep -q '_ValidRuntime.DisabledScope(true)' "$out"
+grep -q '_ValidRuntime.DisabledEndScope()' "$out"
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(22).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: int32(221).*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"

@@ -395,11 +395,11 @@ func TestPopupAcceleratorKeyboardOwnership(t *testing.T) {
 
 	r.QueueShortcut(KeyC)
 	r.BeginFrame()
-	r.BeginDisabled(true)
+	r.DisabledScope(true)
 	if got := r.AcceleratorPressed(copy); got != 0 {
 		t.Fatalf("disabled accelerator = %d, want 0", got)
 	}
-	r.EndDisabled()
+	r.DisabledEndScope()
 	r.EndFrame()
 }
 
@@ -567,7 +567,7 @@ func TestPopupWheelOwnershipAcrossScrollableWidgets(t *testing.T) {
 			for _, mode := range []string{"disabled", "clipped", "normal"} {
 				r.QueueMouseWheel(-1)
 				r.BeginFrame()
-				r.BeginDisabled(mode == "disabled")
+				r.DisabledScope(mode == "disabled")
 				if mode == "clipped" {
 					r.scrollClips = append(r.scrollClips, NewRectangle(0, 0, 1, 1))
 				}
@@ -576,7 +576,7 @@ func TestPopupWheelOwnershipAcrossScrollableWidgets(t *testing.T) {
 				if (offset > 0) != (mode == "normal") {
 					t.Fatalf("wheel mode %s: offset=%d", mode, offset)
 				}
-				r.EndDisabled()
+				r.DisabledEndScope()
 				r.EndFrame()
 			}
 		})

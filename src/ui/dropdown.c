@@ -347,7 +347,7 @@ ui_dropdown(DropdownProps props)
     const DropdownOption *options = props.items;
     int option_count = props.option_count;
     int *selected_index = props.selected_index;
-    BeginDisabled(props.disabled);
+    DisabledScope(props.disabled);
     if(props.disabled)
         MarkDisabled();
     char editor_id[96];
@@ -499,7 +499,7 @@ ui_dropdown(DropdownProps props)
                                 state->open, button_text);
 
     EndWidget(&widget);
-    EndDisabled();
+    DisabledEndScope();
     return changed;
 }
 

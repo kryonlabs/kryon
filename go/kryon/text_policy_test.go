@@ -292,11 +292,11 @@ Text.outside-text { foreground: #445566; font-size: 13; }`, "Button Transparent 
 	r.BeginFrame()
 	r.ButtonScope(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, ID: 992,
 		ClassName: StyleClassID("transparent-text")})
-	r.BeginDisabled(true)
+	r.DisabledScope(true)
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 	r.Text(TextProps{Text: "Transparent", Wrap: TextWrapNone})
 	r.End()
-	r.EndDisabled()
+	r.DisabledEndScope()
 	r.End()
 	r.Text(TextProps{Text: "Outside", ClassName: StyleClassID("outside-text")})
 	r.EndFrame()
@@ -330,14 +330,14 @@ Text.explicit-disabled { foreground: #44556680; }`, "Button Disabled Text", "") 
 	for _, scoped := range []bool{false, true} {
 		r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 		r.BeginFrame()
-		r.BeginDisabled(scoped)
+		r.DisabledScope(scoped)
 		r.ButtonScope(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 963, Disabled: !scoped,
 			ClassName: StyleClassID("disabled-text")})
 		r.Text(TextProps{Text: "Inherited"})
 		r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-disabled")})
 		r.Text(TextProps{Text: "Disabled inherited", Disabled: true})
 		r.End()
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.EndFrame()
 		texts := 0
 		for _, op := range r.FrameOps() {

@@ -1757,7 +1757,7 @@ DrawTree(void)
                 BeginClip((int)capture->clip.x,(int)capture->clip.y,
                             (int)capture->clip.width,(int)capture->clip.height);
         }
-        BeginDisabled((node->flags & UI_NODE_SCOPE_DISABLED) != 0);
+        DisabledScope((node->flags & UI_NODE_SCOPE_DISABLED) != 0);
         if(node->has_input_clip) {
             PushInputClip(node->input_clip);
             if(window_ready) BeginClip((int)node->input_clip.x,(int)node->input_clip.y,(int)node->input_clip.width,(int)node->input_clip.height);
@@ -1769,7 +1769,7 @@ DrawTree(void)
                 if(window_ready) EndClip();
                 PopInputClip();
             }
-            EndDisabled();
+            DisabledEndScope();
             continue;
         }
         switch(node->kind) {
@@ -2048,7 +2048,7 @@ DrawTree(void)
             if(window_ready) EndClip();
             PopInputClip();
         }
-        EndDisabled();
+        DisabledEndScope();
         if(window_ready && node->paint_capture != 0) {
             EndTextureMode();
             ui_blend_restore(parent_blend);

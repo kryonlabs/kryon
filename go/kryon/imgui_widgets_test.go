@@ -35,10 +35,10 @@ func TestNumericInputStepLifecycle(t *testing.T) {
 		r.keyDown[340] = scenario == 2
 		r.BeginFrame()
 		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
-		r.BeginDisabled(scenario == 3)
+		r.DisabledScope(scenario == 3)
 		r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 870,
 			Values: values, ValueCount: 1, Step: 2, StepFast: 5})
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.End()
 		r.EndFrame()
 		if values[0] != want {
@@ -62,10 +62,10 @@ func TestNumericInputTypingLifecycle(t *testing.T) {
 		}
 		r.BeginFrame()
 		r.Row(RowProps{Bounds: NewRectangle(20, 30, 120, 24)})
-		r.BeginDisabled(frame == 2)
+		r.DisabledScope(frame == 2)
 		changed := r.inputInt(inputIntProps{Bounds: NewRectangle(0, 0, 120, 24), ID: 871,
 			Values: values, ValueCount: 1})
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.End()
 		r.EndFrame()
 		want := int32(105)
@@ -213,9 +213,9 @@ func TestTreeHeaderKeyboardGates(t *testing.T) {
 		p.Leaf, p.Disabled = mode == "leaf", mode == "disabled"
 		r.QueueKey(KeyRight)
 		r.BeginFrame()
-		r.BeginDisabled(mode == "scope")
+		r.DisabledScope(mode == "scope")
 		changed := r.Collapsible(p)
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.EndFrame()
 		if open != (mode == "enabled") || (changed != 0) != (mode == "enabled") {
 			t.Fatalf("%s keyboard gating", mode)
@@ -229,11 +229,11 @@ func TestDropdownPopupLifecycle(t *testing.T) {
 	p := DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected}
 	draw := func(show, scope bool) {
 		r.BeginFrame()
-		r.BeginDisabled(scope)
+		r.DisabledScope(scope)
 		if show {
 			r.Dropdown(p)
 		}
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.EndFrame()
 	}
 	for _, mode := range []string{"disabled", "scope", "hidden"} {
@@ -415,7 +415,7 @@ func TestListBoxScope(t *testing.T) {
 		r.QueueMouseMove(30, 30)
 		r.QueueMouseWheel(-1)
 		r.BeginFrame()
-		r.BeginDisabled(disabled)
+		r.DisabledScope(disabled)
 		content := r.BeginScroll(NewRectangle(21, 21, 118, 78), 100, &offset)
 		want := int32(22)
 		if disabled {
@@ -428,7 +428,7 @@ func TestListBoxScope(t *testing.T) {
 			t.Fatal("list disabled scope")
 		}
 		r.EndScroll()
-		r.EndDisabled()
+		r.DisabledEndScope()
 		if r.contentDisabled() {
 			t.Fatal("list scope not restored")
 		}
@@ -936,7 +936,7 @@ func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
 				draw := func(disabled bool) {
 					r.BeginFrame()
 					if scope {
-						r.BeginDisabled(disabled)
+						r.DisabledScope(disabled)
 					}
 					if slider {
 						r.sliderFloat(sliderFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 981, Values: values, Min: 0, Max: 100, Disabled: disabled && !scope}, false)
@@ -944,7 +944,7 @@ func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
 						r.dragFloat(dragFloatProps{Bounds: NewRectangle(10, 10, 100, 24), ID: 982, Values: values, Speed: 1, Min: 0, Max: 100, Disabled: disabled && !scope})
 					}
 					if scope {
-						r.EndDisabled()
+						r.DisabledEndScope()
 					}
 					r.EndFrame()
 				}
@@ -1150,10 +1150,10 @@ func TestNativeDragKeyboardNavigation(t *testing.T) {
 	intRange := dragIntRangeProps{Bounds: NewRectangle(240, 50, 200, 30), ID: 73, CurrentMin: &intMin, CurrentMax: &intMax, Speed: 2, Min: 0, Max: 10}
 	drawRanges := func(disabled bool) {
 		r.BeginFrame()
-		r.BeginDisabled(disabled)
+		r.DisabledScope(disabled)
 		r.dragFloatRange(floatRange)
 		r.dragIntRange(intRange)
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.EndFrame()
 	}
 	drawRanges(false)
@@ -1407,9 +1407,9 @@ func TestNativeSpinboxUsesButtonInteraction(t *testing.T) {
 		Min: 0, Max: 4, Step: 1, Value: &value}
 	draw := func(disabled bool) bool {
 		r.BeginFrame()
-		r.BeginDisabled(disabled)
+		r.DisabledScope(disabled)
 		changed := r.Spinbox(props)
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 74, Label: "Next"})
 		r.EndFrame()
 		return changed
@@ -1529,11 +1529,11 @@ func TestFocusableChoiceAndImageWidgets(t *testing.T) {
 		if r.Selectable(SelectableProps{Bounds: NewRectangle(10, 50, 140, 28), ID: 901, Label: "Choice", Selected: &selected}) {
 			activations[901]++
 		}
-		r.BeginDisabled(disableFlags)
+		r.DisabledScope(disableFlags)
 		if r.Checkbox(CheckboxProps{Bounds: NewRectangle(10, 90, 140, 28), ID: 902, Label: "Flag", Flags: &flags, FlagsValue: 4}) {
 			activations[902]++
 		}
-		r.EndDisabled()
+		r.DisabledEndScope()
 		if got := r.Radio(RadioProps{Bounds: NewRectangle(10, 130, 140, 28), ID: 903, Label: "Radio"}); got != 0 {
 			activations[got]++
 		}
@@ -1601,9 +1601,9 @@ func TestToggleKeyboardNavigation(t *testing.T) {
 	value := int32(0)
 	draw := func(disabled bool) bool {
 		r.BeginFrame()
-		r.BeginDisabled(disabled)
+		r.DisabledScope(disabled)
 		activated := r.Toggle(ToggleProps{Bounds: NewRectangle(10, 10, 120, 34), ID: 907, Value: &value, OffLabel: "Off", OnLabel: "On"})
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 908, Label: "Next"})
 		r.EndFrame()
 		return activated
@@ -1692,9 +1692,9 @@ func TestNativeTabBarKeyboardNavigation(t *testing.T) {
 	draw := func(disabled bool) int32 {
 		props.SelectedIndex = selected
 		r.BeginFrame()
-		r.BeginDisabled(disabled)
+		r.DisabledScope(disabled)
 		clicked := r.TabBar(props)
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.Button(ButtonProps{Bounds: NewRectangle(10, 54, 80, 28), ID: 921, Label: "Next"})
 		r.EndFrame()
 		if clicked >= 0 {
@@ -2039,10 +2039,10 @@ func TestDropdownKeyboardOpen(t *testing.T) {
 			r.QueueKey(key)
 			r.BeginFrame()
 			r.SetFocus(24000)
-			r.BeginDisabled(mode == 2)
+			r.DisabledScope(mode == 2)
 			r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 24000,
 				Options: []string{"One", "Two"}, SelectedIndex: &selected, Disabled: mode == 1})
-			r.EndDisabled()
+			r.DisabledEndScope()
 			r.EndFrame()
 			if r.openDropdowns[24000] != (mode == 0) || selected != 1 {
 				t.Fatalf("opening key %d mode %d: open=%v selected=%d", key, mode, r.openDropdowns[24000], selected)
@@ -2161,9 +2161,9 @@ func TestNativeListBoxMultiKeyboardNavigation(t *testing.T) {
 	r.SetFocus(89)
 	r.QueueKey(KeySpace)
 	r.BeginFrame()
-	r.BeginDisabled(true)
+	r.DisabledScope(true)
 	clicked := r.ListBox(props)
-	r.EndDisabled()
+	r.DisabledEndScope()
 	r.EndFrame()
 	if clicked != -1 || selectedCount != 1 || selected[0] != 1 {
 		t.Fatalf("disabled keyboard changed selection: clicked=%d selected=%v count=%d", clicked, selected, selectedCount)

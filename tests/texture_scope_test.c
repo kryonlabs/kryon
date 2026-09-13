@@ -360,9 +360,9 @@ int main(void)
             if(frame == 0) {
                 UIPaintLayers *foreign = ui_paint_layers_create();
                 ui_paint_layers_frame(foreign,64,64);
-                BeginDisabled(1);
+                DisabledScope(1);
                 UIPaintLayerToken foreign_layer = ui_paint_layer_begin(foreign,1);
-                EndDisabled();
+                DisabledEndScope();
                 if(!UIContentDisabled()) {
                     fprintf(stderr,"layer ended its parent's disabled scope\n");
                     failures++;
@@ -370,7 +370,7 @@ int main(void)
                 check_invalid_layer_end(parent_layer,"cross-host out-of-order close");
                 ui_paint_layer_end(foreign_layer);
                 if(!UIContentDisabled()) failures++;
-                EndDisabled();
+                DisabledEndScope();
                 if(UIContentDisabled()) failures++;
                 ui_paint_layers_composite(foreign);
                 ui_paint_layers_destroy(foreign);
@@ -385,9 +385,9 @@ int main(void)
             Row((RowProps){.bounds={40,40,4,4}});
             check_invalid_layer_end(child_layer,"unclosed popup child layout");
             End();
-            BeginDisabled(1);
+            DisabledScope(1);
             check_invalid_layer_end(child_layer,"unclosed popup disabled scope");
-            EndDisabled();
+            DisabledEndScope();
             BeginScroll((Rectangle){0,0,4,4},20,NULL);
             check_invalid_layer_end(child_layer,"unclosed popup scroll scope");
             EndScroll();
@@ -764,10 +764,10 @@ int main(void)
     Row((RowProps){.bounds = {10,10,40,12}});
     test_drag_continuous((DragContinuousProps){.bounds = {0,0,20,12}, .id = 920,
               .values = &drag_float, .value_count = 1, .format = drag_format});
-    BeginDisabled(1);
+    DisabledScope(1);
     test_drag_discrete((DragDiscreteProps){.bounds = {0,0,20,12}, .id = 921,
             .values = &drag_int, .value_count = 1, .format = drag_format});
-    EndDisabled();
+    DisabledEndScope();
     End();
     Column((ColumnProps){.bounds = {10,30,40,28}, .gap = 4});
     test_drag_continuous_range((DragContinuousRangeProps){.bounds = {0,0,40,12}, .id = 922,
@@ -779,9 +779,9 @@ int main(void)
     End();
     drag_format[0] = 'X';
     EndTree();
-    BeginDisabled(1);
+    DisabledScope(1);
     DrawRectangle(54,10,4,4,c_surface);
-    EndDisabled();
+    DisabledEndScope();
     EndTextureMode();
     Image drags = LoadImageFromTexture(outer.texture);
     ImageFlipVertical(&drags);

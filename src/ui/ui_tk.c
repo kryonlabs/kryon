@@ -2223,7 +2223,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
         return 0;
     }
 
-    BeginDisabled(!enabled);
+    DisabledScope(!enabled);
     if(ui_text_field_render_filtered((TextFieldProps){
             .bounds = bounds,
             .text = state->text,
@@ -2253,7 +2253,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
             }
         }
     }
-    EndDisabled();
+    DisabledEndScope();
     if(commit) {
         state->focused = 0;
         ClearTextInputFocus();
@@ -2930,7 +2930,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
 
     if(values == NULL || count <= 0)
         return 0;
-    BeginDisabled(disabled);
+    DisabledScope(disabled);
     for(int i = 0; i < count; i++) {
         UINumericInputState *state = ui_numeric_input_state(kind, id, i);
         int token = state->token;
@@ -3006,7 +3006,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
         (void)commit;
     }
     ui_draw_slider_label(bounds, label, 0);
-    EndDisabled();
+    DisabledEndScope();
     return changed;
 }
 
@@ -3677,7 +3677,7 @@ BeginTableCell(TableViewProps table, int row, int column)
             row >= frozen);
         clip = GetCollisionRec(cell,viewport);
     }
-    BeginDisabled(table.disabled);
+    DisabledScope(table.disabled);
     (void)BeginScroll(clip,(int)clip.height,NULL);
     return cell;
 }
@@ -3686,7 +3686,7 @@ void
 EndTableCell(void)
 {
     EndScroll();
-    EndDisabled();
+    DisabledEndScope();
 }
 
 int

@@ -2770,13 +2770,13 @@ func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
 
 	rt.BeginFrame()
 	rt.QueueTap(40, 25)
-	rt.BeginDisabled(true)
-	rt.BeginDisabled(false)
+	rt.DisabledScope(true)
+	rt.DisabledScope(false)
 	if rt.Button(ButtonProps{Bounds: bounds, Label: "Blocked", ID: 203}) {
 		t.Fatal("button activated inside nested disabled scope")
 	}
-	rt.EndDisabled()
-	rt.EndDisabled()
+	rt.DisabledEndScope()
+	rt.DisabledEndScope()
 	if !rt.Button(ButtonProps{Bounds: bounds, Label: "Enabled", ID: 204}) {
 		t.Fatal("button did not activate after leaving disabled scope")
 	}
@@ -2799,20 +2799,20 @@ func TestNestedDisabledScopeUsesButtonStyleAndSuppressesInput(t *testing.T) {
 func TestDeepDisabledScopes(t *testing.T) {
 	rt := New(AppConfig{}).(*runtime)
 	for _, outer := range []bool{false, true} {
-		rt.BeginDisabled(outer)
+		rt.DisabledScope(outer)
 		for depth := 0; depth < 130; depth++ {
-			rt.BeginDisabled(depth == 100)
+			rt.DisabledScope(depth == 100)
 		}
 		if !rt.contentDisabled() {
 			t.Fatal("deep scope did not disable content")
 		}
 		for depth := 129; depth >= 0; depth-- {
-			rt.EndDisabled()
+			rt.DisabledEndScope()
 			if got, want := rt.contentDisabled(), outer || depth > 100; got != want {
 				t.Fatalf("outer=%v depth=%d: disabled=%v, want %v", outer, depth, got, want)
 			}
 		}
-		rt.EndDisabled()
+		rt.DisabledEndScope()
 		if rt.contentDisabled() {
 			t.Fatal("outer scope did not restore content")
 		}

@@ -447,9 +447,9 @@ app "Direct Scopes" {
 
 DirectScopes :: () #ui {
     Screen root: {
-        BeginDisabled(true)
+        DisabledScope(true)
         Text((TextProps){.text="Locked"})
-        EndDisabled()
+        DisabledEndScope()
     }
 }
 EOF
@@ -1080,8 +1080,8 @@ ParenthesizedScopeCalls :: () #ui {
     EndCanvas(canvas_spec)
     BeginCanvas(canvas_spec)
     EndCanvas(canvas_spec)
-    (BeginDisabled(true))
-    EndDisabled()
+    (DisabledScope(true))
+    DisabledEndScope()
     popup: PopupProps = (PopupProps){.bounds={0, 0, 80, 40}, .id=7}
     if (PopupScope(popup)) {
         PopupEndScope()

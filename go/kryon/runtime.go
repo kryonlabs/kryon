@@ -506,8 +506,8 @@ type Runtime interface {
 	WindowShouldClose() bool
 	BeginFrame()
 	EndFrame()
-	BeginDisabled(bool)
-	EndDisabled()
+	DisabledScope(bool)
+	DisabledEndScope()
 	PopupScope(PopupProps) bool
 	PopupEndScope()
 	AcceleratorPressed(Accelerator) int32
@@ -1134,13 +1134,13 @@ func (r *runtime) EndFrame() {
 	}
 	r.frames++
 }
-func (r *runtime) BeginDisabled(disabled bool) {
+func (r *runtime) DisabledScope(disabled bool) {
 	r.disabledStack = append(r.disabledStack, disabled)
 	if disabled {
 		r.disabledCount++
 	}
 }
-func (r *runtime) EndDisabled() {
+func (r *runtime) DisabledEndScope() {
 	if len(r.disabledStack) == 0 {
 		return
 	}
@@ -3838,8 +3838,8 @@ func (r *runtime) dropdownFromProps(p DropdownProps) bool {
 		for i := range labels {
 			labels[i] = p.Items[i].Label
 		}
-		r.BeginDisabled(p.Disabled)
-		defer r.EndDisabled()
+		r.DisabledScope(p.Disabled)
+		defer r.DisabledEndScope()
 		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex, p.ClassName)
 	}
 	n := p.OptionCount
@@ -3847,8 +3847,8 @@ func (r *runtime) dropdownFromProps(p DropdownProps) bool {
 		n = int32(len(p.Options))
 	}
 	opts := p.Options[:n]
-	r.BeginDisabled(p.Disabled)
-	defer r.EndDisabled()
+	r.DisabledScope(p.Disabled)
+	defer r.DisabledEndScope()
 	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex, p.ClassName)
 }
 
@@ -7736,12 +7736,12 @@ func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle
 	left, right := max(cell.X, props.Bounds.X), min(cell.X+cell.Width, props.Bounds.X+props.Bounds.Width)
 	top, bottom := max(viewport.Y, cell.Y), min(viewport.Y+viewport.Height, cell.Y+cell.Height)
 	clip := Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
-	r.BeginDisabled(props.Disabled)
+	r.DisabledScope(props.Disabled)
 	r.BeginScroll(clip, int32(clip.Height), nil)
 	return cell
 }
 
-func (r *runtime) EndTableCell() { r.EndScroll(); r.EndDisabled() }
+func (r *runtime) EndTableCell() { r.EndScroll(); r.DisabledEndScope() }
 
 func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)

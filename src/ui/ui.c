@@ -463,7 +463,7 @@ UIContentDisabled(void)
 }
 
 void
-BeginDisabled(int disabled)
+DisabledScope(int disabled)
 {
     g_ui_disabled_depth++;
     if(!disabled || g_ui_disabled_start > 0)
@@ -474,7 +474,7 @@ BeginDisabled(int disabled)
 }
 
 void
-EndDisabled(void)
+DisabledEndScope(void)
 {
     if(g_ui_disabled_depth <= g_ui_disabled_floor)
         return;
@@ -490,7 +490,7 @@ ui_reset_disabled_scope(void)
 {
     g_ui_disabled_floor = 0;
     while(g_ui_disabled_depth > 0)
-        EndDisabled();
+        DisabledEndScope();
     g_ui_disabled_start = 0;
 }
 

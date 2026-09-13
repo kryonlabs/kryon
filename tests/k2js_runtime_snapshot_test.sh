@@ -77,7 +77,7 @@ done
 cp "$root"/web/*.js "$work/out/"
 printf '%s\n' '{"type":"module"}' > "$work/out/package.json"
 
-if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|EndCanvas|EndDisabled|InvisibleButton)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
+if rg -n '\b(BeginButton|BeginCard|BeginCanvas|BeginDisabled|DisabledScope|EndCanvas|EndDisabled|DisabledEndScope|InvisibleButton)\b' "$work/out" >/tmp/kryon-k2js-lowered.$$ 2>/dev/null; then
     cat /tmp/kryon-k2js-lowered.$$ >&2
     rm -f /tmp/kryon-k2js-lowered.$$
     echo "k2js output must use canonical widget names, not lowered scope names" >&2

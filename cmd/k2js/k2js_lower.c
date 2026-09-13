@@ -2460,9 +2460,9 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 break;
             }
             if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
-               (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
+               (strcmp(name, "DisabledScope") == 0 || strcmp(name, "DisabledEndScope") == 0)) {
                 emit_indent(f, indent);
-                if(strcmp(name, "BeginDisabled") == 0) {
+                if(strcmp(name, "DisabledScope") == 0) {
                     tx_expr(m, args, out, sizeof(out));
                     fprintf(f, "kryon.widget($rt, \"Disabled\", (%s) ? 1 : 0, $state, ", out);
                     emit_web_metadata(f, m, st);

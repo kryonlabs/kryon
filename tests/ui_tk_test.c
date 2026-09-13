@@ -1539,7 +1539,7 @@ test_drag_keyboard_navigation(void)
         BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range max",imax,6);
         SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginInterfaceFrame(480,240,1); BeginDisabled(1); test_drag_continuous_range(fr); EndDisabled(); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); DisabledScope(1); test_drag_continuous_range(fr); DisabledEndScope(); EndInterfaceFrame();
         check_int("disabled drag range",(int)fmin,3);
     }
 }
@@ -1840,12 +1840,12 @@ draw_focusable_choices(int *checkbox, int *selected, int *flags,
         .bounds = {10,10,140,28}, .id = 610, .label = "Choice",
         .selected = selected
     });
-    BeginDisabled(disable_flags);
+    DisabledScope(disable_flags);
     *flags_activated = Checkbox((CheckboxProps){
         .bounds = {10,50,140,28}, .id = 611, .label = "Flag",
         .flags = flags, .flags_value = 4
     });
-    EndDisabled();
+    DisabledEndScope();
     *radio_activated = Radio((RadioProps){
         .bounds = {10,90,140,28}, .label = "Radio", .id = 612
     });
@@ -1938,9 +1938,9 @@ test_toggle_keyboard_navigation(void)
 
     SetFocus(613); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,120,1);
-    BeginDisabled(1);
+    DisabledScope(1);
     activated = Toggle((ToggleProps){.bounds={10,10,120,34},.id=613,.value=&value,.off_label="Off",.on_label="On"});
-    EndDisabled();
+    DisabledEndScope();
     EndInterfaceFrame();
     check_int("disabled toggle rejects activation",activated,0);
     check_int("disabled toggle preserves state",value,1);
@@ -2367,28 +2367,28 @@ test_nested_disabled_scope(void)
                           .id=145};
     Color text = GetThemeText();
 
-    BeginDisabled(1);
+    DisabledScope(1);
     check_int("disabled scope dims", GetThemeText().a < text.a, 1);
-    BeginDisabled(0);
+    DisabledScope(0);
     check_int("disabled false nested in true", GetThemeText().a < text.a, 1);
-    EndDisabled();
+    DisabledEndScope();
     check_int("disabled outer remains", GetThemeText().a < text.a, 1);
-    EndDisabled();
+    DisabledEndScope();
     check_color("disabled scope restores theme", GetThemeText(), text);
 
     InjectReset();
     InjectTap(30, 20);
     InjectPump();
     BeginInterfaceFrame(220, 100, 1.0f);
-    BeginDisabled(1);
+    DisabledScope(1);
     check_int("disabled button press frame", Button(button), 0);
-    EndDisabled();
+    DisabledEndScope();
     EndInterfaceFrame();
     InjectPump();
     BeginInterfaceFrame(220, 100, 1.0f);
-    BeginDisabled(1);
+    DisabledScope(1);
     check_int("disabled button release frame", Button(button), 0);
-    EndDisabled();
+    DisabledEndScope();
     EndInterfaceFrame();
 }
 
@@ -2418,14 +2418,14 @@ test_disabled_scalar_cancels_gesture(void)
                 InjectPump();
                 BeginInterfaceFrame(220, 100, 1.0f);
                 if(scope)
-                    BeginDisabled(step == 1);
+                    DisabledScope(step == 1);
                 drag.disabled = slide.disabled = !scope && step == 1;
                 if(slider)
                     (void)test_slider_continuous(slide);
                 else
                     (void)test_drag_continuous(drag);
                 if(scope)
-                    EndDisabled();
+                    DisabledEndScope();
                 EndInterfaceFrame();
                 if(step == 0)
                     before = value;
@@ -2441,16 +2441,16 @@ test_deep_disabled_scopes(void)
 {
     int keyboard = SetKeyboardInputEnabled(1);
     for(int outer = 0; outer < 2; outer++) {
-        BeginDisabled(outer);
+        DisabledScope(outer);
         for(int depth = 0; depth < 130; depth++)
-            BeginDisabled(depth == 100);
+            DisabledScope(depth == 100);
         check_int("deep disabled keyboard", IsKeyboardInputEnabled(), 0);
         for(int depth = 129; depth >= 0; depth--) {
-            EndDisabled();
+            DisabledEndScope();
             check_int("deep disabled unwind", IsKeyboardInputEnabled(),
                       !outer && depth <= 100);
         }
-        EndDisabled();
+        DisabledEndScope();
         check_int("deep disabled restored", IsKeyboardInputEnabled(), 1);
     }
     SetKeyboardInputEnabled(keyboard);
@@ -2559,9 +2559,9 @@ test_tree_header_keyboard_gates(void)
         for(int frame = 0; frame < 2; frame++) {
             InjectPump();
             BeginInterfaceFrame(240,240,1.0f);
-            BeginDisabled(mode == 2);
+            DisabledScope(mode == 2);
             Collapsible(p);
-            EndDisabled();
+            DisabledEndScope();
             EndInterfaceFrame();
         }
         check_int("tree keyboard gates",open,mode == 3);
@@ -2596,9 +2596,9 @@ test_dropdown_popup_lifecycle(void)
         InjectTap(20,75);
         for(int frame = 0; frame < 3; frame++) {
             InjectPump(); BeginInterfaceFrame(240,240,1.0f);
-            BeginDisabled(mode == 1);
+            DisabledScope(mode == 1);
             if(mode != 2) Dropdown(p);
-            EndDisabled(); EndInterfaceFrame();
+            DisabledEndScope(); EndInterfaceFrame();
         }
         check_int("dropdown lifecycle selection",selected,0);
         check_int("dropdown released capture",InputCapturesClick((Vector2){20,70}),0);
@@ -3565,9 +3565,9 @@ test_composed_popup_focus_lifecycle(void)
     check_int("focus parent popup opens",
         PopupScope((PopupProps){.bounds={20,20,180,130},.id=29610,
             .open=&parent_open}),1);
-    BeginDisabled(1);
+    DisabledScope(1);
     Button((ButtonProps){.bounds={30,30,100,24},.label="Disabled",.id=29612});
-    EndDisabled();
+    DisabledEndScope();
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
     PopupEndScope();
     EndTree();
@@ -3997,9 +3997,9 @@ test_popup_accelerator_keyboard_ownership(void)
     check_int("background accelerator blocked behind parent",AcceleratorPressed(copy),0);
     ui_popup_input_close(context,26000);
     check_int("background accelerator restored after popup close",AcceleratorPressed(copy),91);
-    BeginDisabled(1);
+    DisabledScope(1);
     check_int("disabled accelerator blocked",AcceleratorPressed(copy),0);
-    EndDisabled();
+    DisabledEndScope();
 
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -4277,20 +4277,20 @@ static void
 test_popup_disabled_restoration(void)
 {
     for(int disabled = 0; disabled < 2; disabled++) {
-        BeginDisabled(disabled);
+        DisabledScope(disabled);
         UIDisabledScope outer = ui_disabled_suspend();
-        EndDisabled();
+        DisabledEndScope();
         check_int("popup cannot end parent disabled scope",UIContentDisabled(),disabled);
-        BeginDisabled(1);
+        DisabledScope(1);
         UIDisabledScope inner = ui_disabled_suspend();
-        BeginDisabled(0); EndDisabled();
+        DisabledScope(0); DisabledEndScope();
         check_int("nested popup inherits disabled",UIContentDisabled(),1);
         ui_disabled_resume(inner);
-        EndDisabled();
+        DisabledEndScope();
         check_int("popup child disabling restored",UIContentDisabled(),disabled);
         ui_disabled_resume(outer);
         check_int("popup parent disabling restored",UIContentDisabled(),disabled);
-        EndDisabled();
+        DisabledEndScope();
         check_int("parent disabled scope remains balanced",UIContentDisabled(),0);
     }
 }
@@ -4396,11 +4396,11 @@ test_dropdown_keyboard_open(void)
                 InjectPump();
                 BeginInterfaceFrame(240,240,1);
                 SetFocus(24000);
-                BeginDisabled(mode == 2);
+                DisabledScope(mode == 2);
                 Dropdown((DropdownProps){.bounds = {10,10,160,28}, .id = 24000,
                     .options = options, .option_count = 2, .selected_index = &selected,
                     .disabled = mode == 1});
-                EndDisabled();
+                DisabledEndScope();
                 EndInterfaceFrame();
             }
             check_int("focused dropdown keyboard opening",InputCapturesClick((Vector2){20,70}),mode == 0);
@@ -4466,14 +4466,14 @@ test_list_box_scope(void)
         int offset = 0;
         InjectReset(); InjectMousePosition(30,30); InjectWheel(-1); InjectPump();
         BeginInterfaceFrame(200,150,1.0f);
-        BeginDisabled(disabled);
+        DisabledScope(disabled);
         Rectangle content = BeginScroll((Rectangle){21,21,118,78}, Scale(100), &offset);
         check_int("list scope scroll",offset,disabled ? 0 : 22);
         check_int("list scope content width",(int)content.width,108);
         check_int("list scope content y",(int)content.y,21-offset);
         check_int("list scope disabled",UIContentDisabled(),disabled);
         EndScroll();
-        EndDisabled();
+        DisabledEndScope();
         check_int("list scope restored",UIContentDisabled(),0);
         EndInterfaceFrame();
     }
@@ -5063,11 +5063,11 @@ main(void)
             BeginInterfaceFrame(220,120,1);
             BeginTree(Key("numeric typing"));
             Row((RowProps){.bounds = {20,30,120,24}});
-            BeginDisabled(frame == 2);
+            DisabledScope(frame == 2);
             int changed = test_input_whole((InputDiscreteProps){.bounds = {0,0,120,24}, .id = 871,
                 .values = &value, .value_count = 1});
             check_int("numeric typing returns during declaration", changed, frame == 1);
-            EndDisabled();
+            DisabledEndScope();
             End();
             EndTree();
             EndInterfaceFrame();
@@ -5088,10 +5088,10 @@ main(void)
                 BeginInterfaceFrame(220,120,1);
                 BeginTree(Key("numeric steps"));
                 Row((RowProps){.bounds = {20,30,120,24}});
-                BeginDisabled(scenario == 3);
+                DisabledScope(scenario == 3);
                 test_input_whole((InputDiscreteProps){.bounds = {0,0,120,24}, .id = 870,
                     .values = &value, .value_count = 1, .step = 2, .step_fast = 5});
-                EndDisabled();
+                DisabledEndScope();
                 End();
                 EndTree();
                 EndInterfaceFrame();

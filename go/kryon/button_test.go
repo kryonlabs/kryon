@@ -141,10 +141,10 @@ Button.measure-disabled:disabled { font-size: 27; padding-x: 19; padding-y: 20; 
 	for _, scoped := range []bool{false, true} {
 		r := New(AppConfig{Width: 400, Height: 180}).(*runtime)
 		r.BeginFrame()
-		r.BeginDisabled(scoped)
+		r.DisabledScope(scoped)
 		r.Button(ButtonProps{Label: "Measured", ID: 951, Disabled: !scoped,
 			ClassName: StyleClassID("measure-disabled")})
-		r.EndDisabled()
+		r.DisabledEndScope()
 		r.EndFrame()
 		op := r.FrameOps()[0]
 		if !scoped {
@@ -170,14 +170,14 @@ func TestButtonBlockingStateClearsAndRestartsMotion(t *testing.T) {
 			draw := func(blocked bool) (FrameOp, bool) {
 				now = now.Add(35 * time.Millisecond)
 				r.BeginFrame()
-				r.BeginDisabled(blocked && mode == "scope")
+				r.DisabledScope(blocked && mode == "scope")
 				props := ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 120, Height: 40}, Label: "Run", ID: 975,
 					Disabled: blocked && mode == "disabled", Loading: blocked && mode == "loading"}
 				if blocked && mode == "disabled-state" {
 					props.State = ButtonStateDisabled
 				}
 				clicked := r.Button(props)
-				r.EndDisabled()
+				r.DisabledEndScope()
 				r.EndFrame()
 				return r.FrameOps()[0], clicked
 			}

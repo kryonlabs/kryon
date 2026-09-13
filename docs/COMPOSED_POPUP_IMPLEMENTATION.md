@@ -169,8 +169,8 @@ child-layout checks reject ending a layer after changing its tree or leaving a
 child layout open. A headless node/position regression and real pixels verify
 an independent popup Column origin and the resumed parent Row's next position.
 C layers also isolate disabled-scope depth while inheriting the parent's disabled
-state. An internal floor prevents a child's `EndDisabled` from unwinding its
-parent. Ending the layer requires balanced child disabled scopes, then restores
+state. An internal floor prevents a child popup from unwinding its
+parent's disabled scope. Ending the layer requires balanced child disabled scopes, then restores
 the parent's depth and disabled origin. Headless tests cover enabled/disabled
 parents and nested scopes; the framebuffer test checks inheritance across host
 contexts and rejects an unclosed disabled child scope. C layer scopes now also

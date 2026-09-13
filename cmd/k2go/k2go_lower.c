@@ -129,8 +129,8 @@ is_runtime_go_type(const char *type)
 static int
 is_lowered_scope_widget(const char *name)
 {
-    return strcmp(name, "BeginDisabled") == 0 ||
-           strcmp(name, "EndDisabled") == 0 ||
+    return strcmp(name, "DisabledScope") == 0 ||
+           strcmp(name, "DisabledEndScope") == 0 ||
            strcmp(name, "PopupScope") == 0 ||
            strcmp(name, "PopupEndScope") == 0 ||
            strcmp(name, "BeginScroll") == 0 ||
@@ -145,7 +145,7 @@ static int
 module_uses_lowered_scope_runtime(const KirModule *m)
 {
     static const char *const lowered[] = {
-        "BeginDisabled", "EndDisabled", "PopupScope", "PopupEndScope",
+        "DisabledScope", "DisabledEndScope", "PopupScope", "PopupEndScope",
         "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
         "BeginCanvas", "EndCanvas", NULL
     };
@@ -2463,7 +2463,7 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
     tx_expr(context, text, out, size);
     if(!runtime_output && current_guard[0] != '\0') {
         static const char *const lowered[] = {
-            "BeginDisabled", "EndDisabled", "PopupScope", "PopupEndScope",
+            "DisabledScope", "DisabledEndScope", "PopupScope", "PopupEndScope",
             "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
             "BeginCanvas", "EndCanvas", NULL
         };
@@ -2811,8 +2811,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             emit_indent(f, indent);
             if(is_lowered_scope_widget(wname))
                 target = app_runtime;
-            if(strcmp(wname, "BeginDisabled") == 0)
-                fprintf(f, "%s.BeginDisabled((%s) != 0)\n",
+            if(strcmp(wname, "DisabledScope") == 0)
+                fprintf(f, "%s.DisabledScope((%s) != 0)\n",
                         target, wargs);
             else
                 fprintf(f, "%s.%s(%s)\n", target, wname, wargs);

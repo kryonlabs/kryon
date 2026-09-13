@@ -169,9 +169,9 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 	if !r.PopupScope(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen}) {
 		t.Fatal("parent popup did not open")
 	}
-	r.BeginDisabled(true)
+	r.DisabledScope(true)
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Disabled", ID: 29612})
-	r.EndDisabled()
+	r.DisabledEndScope()
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
 	r.PopupEndScope()
 	r.EndFrame()
