@@ -278,11 +278,11 @@ main(void)
                rules, 12, &result, diagnostic, sizeof(diagnostic)));
     assert(strstr(diagnostic, "unknown token group") != NULL);
 
-    assert_pack_parses("styles/kryon/material.kss", "kryon.material");
-    assert_pack_parses("styles/kryon/tk.kss", "kryon.tk");
-    assert_pack_parses("styles/kryon/vanilla.kss", "kryon.vanilla");
-    assert_pack_parses("styles/kryon/glow.kss", "kryon.glow");
-    assert_pack_parses("styles/kryon/lightfield.kss", "kryon.lightfield");
+    assert_pack_parses("styles/kryon/material.kss", "material");
+    assert_pack_parses("styles/kryon/tk.kss", "tk");
+    assert_pack_parses("styles/kryon/vanilla.kss", "vanilla");
+    assert_pack_parses("styles/kryon/glow.kss", "glow");
+    assert_pack_parses("styles/kryon/lightfield.kss", "lightfield");
 
     return 0;
 }

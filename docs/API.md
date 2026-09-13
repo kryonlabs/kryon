@@ -201,7 +201,7 @@ future backends.
 Use canonical widgets and retained primitives for normal UI:
 
 ```kry
-#style <kryon.material> as material
+#style <material> as material
 
 AppBackground()
 Button {

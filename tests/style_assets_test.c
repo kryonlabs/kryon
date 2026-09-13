@@ -21,11 +21,11 @@ assert_style_asset(const char *path, const char *pack)
 int
 main(void)
 {
-    assert_style_asset("styles/kryon/material.kss", "@pack kryon.material");
-    assert_style_asset("./styles/kryon/tk.kss", "@pack kryon.tk");
-    assert_style_asset("styles/kryon/vanilla.kss", "@pack kryon.vanilla");
-    assert_style_asset("styles/kryon/glow.kss", "@pack kryon.glow");
+    assert_style_asset("styles/kryon/material.kss", "@pack material");
+    assert_style_asset("./styles/kryon/tk.kss", "@pack tk");
+    assert_style_asset("styles/kryon/vanilla.kss", "@pack vanilla");
+    assert_style_asset("styles/kryon/glow.kss", "@pack glow");
     assert_style_asset("/styles/kryon/lightfield.kss",
-                       "@pack kryon.lightfield");
+                       "@pack lightfield");
     return 0;
 }

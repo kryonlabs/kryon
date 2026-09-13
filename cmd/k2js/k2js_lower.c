@@ -125,11 +125,17 @@ dir_from_source(const char *src, char *dst, size_t dst_size)
 static void
 style_builtin_path(const char *target, char *dst, size_t dst_size)
 {
-    const char *name = target;
+    snprintf(dst, dst_size, "styles/kryon/%s.kss", target);
+}
 
-    if(strncmp(target, "kryon.", 6) == 0)
-        name = target + 6;
-    snprintf(dst, dst_size, "styles/kryon/%s.kss", name);
+static int
+style_is_builtin(const char *target)
+{
+    return strcmp(target, "material") == 0 ||
+           strcmp(target, "tk") == 0 ||
+           strcmp(target, "vanilla") == 0 ||
+           strcmp(target, "glow") == 0 ||
+           strcmp(target, "lightfield") == 0;
 }
 
 static int
@@ -307,7 +313,7 @@ read_style_import_source(const KirModule *m, const char *root,
 
     if(style->kind == KIR_STYLE_IMPORT_BUILTIN) {
         relative[0] = '\0';
-        if(strncmp(style->target, "kryon.", 6) == 0) {
+        if(style_is_builtin(style->target)) {
             style_builtin_path(style->target, relative, sizeof(relative));
             snprintf(path, sizeof(path), "%s/%s", root, relative);
             text = read_text_file(path);

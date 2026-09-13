@@ -22,7 +22,7 @@ mkdir -p "$work/src" "$work/out" "$work/styles/kryon" "$work/styles/acme"
 
 cat > "$work/src/valid.kry" <<'EOF'
 #import "kryon.h"
-#style <kryon.material> as material
+#style <material> as material
 #style "brand.kss" as brand
 #style <brand> as brand_pack
 #style <acme.dark> as acme_dark
@@ -263,7 +263,7 @@ StyleCopies :: () #ui {
 EOF
 
 cat > "$work/styles/kryon/material.kss" <<'EOF'
-@pack kryon.material;
+@pack material;
 @layer components;
 Button {
   radius: 8;

@@ -15,12 +15,12 @@ assert.equal(generated.app.width, 320);
 assert.equal(generated.app.height, 240);
 assert.equal(generated.app.styles.length, 4);
 assert.deepEqual(generated.app.styles.map(({ kind, target, alias }) => ({ kind, target, alias })), [
-  { kind: "builtin", target: "kryon.material", alias: "material" },
+  { kind: "builtin", target: "material", alias: "material" },
   { kind: "file", target: "brand.kss", alias: "brand" },
   { kind: "builtin", target: "brand", alias: "brand_pack" },
   { kind: "builtin", target: "acme.dark", alias: "acme_dark" }
 ]);
-assert.match(generated.app.styles[0].source, /@pack kryon\.material;/);
+assert.match(generated.app.styles[0].source, /@pack material;/);
 assert.match(generated.app.styles[1].source, /@pack local\.brand;/);
 assert.match(generated.app.styles[2].source, /@pack brand;/);
 assert.match(generated.app.styles[3].source, /@pack acme\.dark;/);
@@ -1024,7 +1024,7 @@ function fakeDocument() {
     const appSheets = runtime.loadAppWebStyleSheets(generated.app);
     assert.equal(appSheets.length, 4);
     assert.deepEqual(appSheets.map((sheet) => sheet.pack),
-      ["kryon.material", "local.brand", "brand", "acme.dark"]);
+      ["material", "local.brand", "brand", "acme.dark"]);
     const removeAppStyles = runtime.installAppWebStyleSheets(generated.app, null, "valid-app");
     assert.equal(typeof removeAppStyles, "function");
     assert.equal(document.head.children.length, 1);

@@ -160,7 +160,7 @@ func TestDropdownStyleComesFromKSS(t *testing.T) {
 		t.Fatal("dropdown content did not inherit scaled KSS metrics")
 	}
 
-	if !SetActiveStylePack("kryon.lightfield") {
+	if !SetActiveStylePack("lightfield") {
 		t.Fatal("lightfield did not activate")
 	}
 	premium := r.dropdownStyle(0, false, ButtonStateNormal)

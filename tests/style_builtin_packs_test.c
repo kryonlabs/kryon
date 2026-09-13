@@ -266,11 +266,11 @@ main(void)
         {"Popup[role=Panel]", StyleKindPopup(), 2},
     };
     const char *pack_ids[] = {
-        "kryon.material",
-        "kryon.tk",
-        "kryon.vanilla",
-        "kryon.glow",
-        "kryon.lightfield",
+        "material",
+        "tk",
+        "vanilla",
+        "glow",
+        "lightfield",
     };
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
         ButtonToneAccent, ButtonEmphasisFilled, ControlSizeMedium,
@@ -286,12 +286,12 @@ main(void)
     ClearStylePacks();
     assert(RegisterBuiltInStylePacks());
     assert(GetStylePackCount() >= 5);
-    assert(strcmp(GetActiveStylePackId(), "kryon.material") == 0);
-    assert(FindStylePack("kryon.material") != NULL);
-    assert(FindStylePack("kryon.tk") != NULL);
-    assert(FindStylePack("kryon.vanilla") != NULL);
-    assert(FindStylePack("kryon.glow") != NULL);
-    assert(FindStylePack("kryon.lightfield") != NULL);
+    assert(strcmp(GetActiveStylePackId(), "material") == 0);
+    assert(FindStylePack("material") != NULL);
+    assert(FindStylePack("tk") != NULL);
+    assert(FindStylePack("vanilla") != NULL);
+    assert(FindStylePack("glow") != NULL);
+    assert(FindStylePack("lightfield") != NULL);
 
     for(size_t p = 0; p < sizeof(pack_ids) / sizeof(pack_ids[0]); p++)
         for(size_t k = 0; k < sizeof(style_kinds) / sizeof(style_kinds[0]); k++)
@@ -305,7 +305,7 @@ main(void)
         for(size_t k = 0; k < sizeof(role_kinds) / sizeof(role_kinds[0]); k++)
             assert_pack_covers_role(pack_ids[p], role_kinds[k]);
 
-    assert(SetActiveStylePack("kryon.material"));
+    assert(SetActiveStylePack("material"));
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0xd5bbffffu);
     assert(resolved.foreground == 0x171022ffu);
@@ -315,32 +315,32 @@ main(void)
     assert(resolved.background == 0x1a1f29ffu);
     assert(resolved.material == MaterialFlat);
 
-    assert(SetActiveStylePack("kryon.lightfield"));
+    assert(SetActiveStylePack("lightfield"));
     resolved = ResolveActiveStyle(base, surface, ButtonStateNormal);
     assert(resolved.material == MaterialLightfield);
     assert(resolved.background_end == 0x222936eeu);
 
-    assert(SetActiveStylePack("kryon.tk"));
+    assert(SetActiveStylePack("tk"));
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0x2f6bffffu);
     assert(resolved.radius == 3.0f);
 
-    assert(SetActiveStylePack("kryon.vanilla"));
+    assert(SetActiveStylePack("vanilla"));
     resolved = ResolveActiveStyle(base, accent, ButtonStateHover);
     assert(resolved.background == 0x245be0ffu);
     assert(resolved.material == MaterialFlat);
 
-    assert(SetActiveStylePack("kryon.glow"));
+    assert(SetActiveStylePack("glow"));
     resolved = ResolveActiveStyle(base, field, ButtonStateNormal);
     assert(resolved.background_end == 0x171b24ffu);
     assert(resolved.material == MaterialGlass);
 
     assert(EnsureBuiltInStylePacks());
-    assert(strcmp(GetActiveStylePackId(), "kryon.glow") == 0);
+    assert(strcmp(GetActiveStylePackId(), "glow") == 0);
 
     ClearStylePacks();
     assert(EnsureBuiltInStylePacks());
-    assert(strcmp(GetActiveStylePackId(), "kryon.material") == 0);
+    assert(strcmp(GetActiveStylePackId(), "material") == 0);
 
     ClearStylePacks();
     return 0;

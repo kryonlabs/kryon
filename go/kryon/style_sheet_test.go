@@ -658,23 +658,23 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"Popup[role=Panel]", StyleSheet_StyleKindPopup(), 2},
 	}
 	packIDs := []string{
-		"kryon.material",
-		"kryon.tk",
-		"kryon.vanilla",
-		"kryon.glow",
-		"kryon.lightfield",
+		"material",
+		"tk",
+		"vanilla",
+		"glow",
+		"lightfield",
 	}
 
 	if !RegisterBuiltInStylePacks() {
 		t.Fatal("built-in style packs did not register")
 	}
-	if GetActiveStylePackID() != "kryon.material" {
+	if GetActiveStylePackID() != "material" {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
-	if FindStylePack("kryon.tk") == nil ||
-		FindStylePack("kryon.vanilla") == nil ||
-		FindStylePack("kryon.glow") == nil ||
-		FindStylePack("kryon.lightfield") == nil {
+	if FindStylePack("tk") == nil ||
+		FindStylePack("vanilla") == nil ||
+		FindStylePack("glow") == nil ||
+		FindStylePack("lightfield") == nil {
 		t.Fatalf("missing built-ins: %#v", GetStylePackOptions())
 	}
 	for _, packID := range packIDs {
@@ -704,7 +704,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 			}
 		}
 	}
-	if !SetActiveStylePack("kryon.material") {
+	if !SetActiveStylePack("material") {
 		t.Fatal("material did not reactivate")
 	}
 	facts := StyleSheet_StyleControlFacts(StyleSheet_StyleKindButton(), 0, 0,
@@ -714,14 +714,14 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	if resolved.Background != 0xd5bbffff || resolved.Material != int32(MaterialFlat) {
 		t.Fatalf("material did not resolve: %#v", resolved)
 	}
-	if !SetActiveStylePack("kryon.vanilla") {
+	if !SetActiveStylePack("vanilla") {
 		t.Fatal("vanilla did not activate")
 	}
 	resolved = ResolveActiveStyle(StyleData{}, facts, int32(ButtonStateHover))
 	if resolved.Background != 0x245be0ff || resolved.Material != int32(MaterialFlat) {
 		t.Fatalf("vanilla did not resolve: %#v", resolved)
 	}
-	if !SetActiveStylePack("kryon.glow") {
+	if !SetActiveStylePack("glow") {
 		t.Fatal("glow did not activate")
 	}
 	field := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindTextField())
@@ -729,7 +729,7 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 	if resolved.Material != int32(MaterialGlass) || resolved.BackgroundEnd != 0x171b24ff {
 		t.Fatalf("glow did not resolve: %#v", resolved)
 	}
-	if !SetActiveStylePack("kryon.lightfield") {
+	if !SetActiveStylePack("lightfield") {
 		t.Fatal("lightfield did not activate")
 	}
 	surface := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindSurface())
@@ -765,19 +765,19 @@ func TestEnsureBuiltInStylePacksInGo(t *testing.T) {
 	if !EnsureBuiltInStylePacks() {
 		t.Fatal("built-in style packs did not ensure")
 	}
-	if GetActiveStylePackID() != "kryon.material" {
+	if GetActiveStylePackID() != "material" {
 		t.Fatalf("material was not active: %q", GetActiveStylePackID())
 	}
 	if len(GetStylePackOptions()) < 5 {
 		t.Fatalf("missing built-in options: %#v", GetStylePackOptions())
 	}
-	if !SetActiveStylePack("kryon.glow") {
+	if !SetActiveStylePack("glow") {
 		t.Fatal("glow did not activate")
 	}
 	if !EnsureBuiltInStylePacks() {
 		t.Fatal("second ensure failed")
 	}
-	if GetActiveStylePackID() != "kryon.glow" {
+	if GetActiveStylePackID() != "glow" {
 		t.Fatalf("ensure did not preserve selection: %q", GetActiveStylePackID())
 	}
 }

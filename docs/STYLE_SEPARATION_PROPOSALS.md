@@ -72,7 +72,7 @@ style sheet:
 
 ```text
 @pack app;
-@import <kryon.reset>;
+@import <reset>;
 @layer tokens, base, components, screens;
 
 tokens {
@@ -248,13 +248,13 @@ Kryon should have no implicit product style for app UI.
 New Kryon app templates should start with an explicit style attachment:
 
 ```kry
-#style <kryon.material> as material
+#style <material> as material
 ```
 
 That keeps source-level style attachment explicit for generated app templates.
 At runtime, `InitInterface()` also calls `EnsureBuiltInStylePacks()`: if the
 registry is empty, Kryon loads the shipped catalog and selects
-`<kryon.material>`. If a developer clears style packs or runs with an explicit
+`<material>`. If a developer clears style packs or runs with an explicit
 unstyled mode after startup, the app is unstyled.
 
 No attached style pack means:
@@ -272,17 +272,17 @@ Kryon can ship optional packs:
 
 | Pack | Purpose |
 |---|---|
-| `<kryon.reset>` | minimum readable/debug affordances and normalized inherited tokens |
-| `<kryon.material>` | default attached app pack: clean Material-like controls, restrained surfaces, flat/cheap paint |
-| `<kryon.tk>` | toolkit-native pack for dense desktop utilities and easy picker previews |
-| `<kryon.vanilla>` | the current default Kryon styling expressed as a style pack |
-| `<kryon.glow>` | the current modern glow treatment expressed as a style pack |
-| `<kryon.classic>` | preserved original Kryon look as an explicit pack |
-| `<kryon.lightfield>` | premium Lightfield/Button/Dropdown visual language, opt-in because it is more performance intensive |
-| `<kryon.high-contrast>` | accessibility-oriented overlay or full pack |
-| `<kryon.terminal>` | termi-focused mapping for cell backends |
+| `<reset>` | minimum readable/debug affordances and normalized inherited tokens |
+| `<material>` | default attached app pack: clean Material-like controls, restrained surfaces, flat/cheap paint |
+| `<tk>` | toolkit-native pack for dense desktop utilities and easy picker previews |
+| `<vanilla>` | the current default Kryon styling expressed as a style pack |
+| `<glow>` | the current modern glow treatment expressed as a style pack |
+| `<classic>` | preserved original Kryon look as an explicit pack |
+| `<lightfield>` | premium Lightfield/Button/Dropdown visual language, opt-in because it is more performance intensive |
+| `<high-contrast>` | accessibility-oriented overlay or full pack |
+| `<terminal>` | termi-focused mapping for cell backends |
 
-Project templates and app scaffolds still attach `<kryon.material>` explicitly
+Project templates and app scaffolds still attach `<material>` explicitly
 so the source describes the app's intended baseline. Runtime startup mirrors
 that choice for hand-written hosts: `EnsureBuiltInStylePacks()` loads the
 embedded `.kss` pack sources only when needed and preserves any active app
@@ -350,7 +350,7 @@ A `.kss` file is a style pack or style module.
 ```text
 @pack product;
 @version 1;
-@import <kryon.reset>;
+@import <reset>;
 @import "tokens.kss";
 @import "controls.kss";
 @layer reset, tokens, base, components, screens, overrides;
@@ -377,11 +377,11 @@ import surface names each candidate pack, then selects one active pack through
 app state or host preferences:
 
 ```kry
-#style <kryon.material> as material
-#style <kryon.tk> as tk
-#style <kryon.vanilla> as vanilla
-#style <kryon.glow> as glow
-#style <kryon.lightfield> as lightfield
+#style <material> as material
+#style <tk> as tk
+#style <vanilla> as vanilla
+#style <glow> as glow
+#style <lightfield> as lightfield
 #style "brand.kss" as brand
 
 App {
@@ -438,7 +438,7 @@ style pack + theme overlay + environment overlay + scoped rules
 ```
 
 This is important culturally for Kryon: today's default look should survive as
-`<kryon.vanilla>` or `<kryon.glow>`, but as one selectable style among many,
+`<vanilla>` or `<glow>`, but as one selectable style among many,
 not as an invisible assumption baked into every widget.
 
 ### Naming rule
@@ -1082,14 +1082,14 @@ Unsupported visual properties degrade; they do not fork style resolution.
 
 ### M2 - Ship explicit base packs
 
-- Add `<kryon.reset>` for zero-opinion readability/debug affordances.
-- Add `<kryon.material>` as the default template-attached app pack.
-- Add `<kryon.tk>` as the dense toolkit-native picker option.
-- Convert today's actual default/vanilla styling into `<kryon.vanilla>`.
-- Convert today's glow treatment into `<kryon.glow>`.
+- Add `<reset>` for zero-opinion readability/debug affordances.
+- Add `<material>` as the default template-attached app pack.
+- Add `<tk>` as the dense toolkit-native picker option.
+- Convert today's actual default/vanilla styling into `<vanilla>`.
+- Convert today's glow treatment into `<glow>`.
 - Move the current approved Lightfield/Button/Dropdown look into
-  `<kryon.lightfield>` as an opt-in premium pack.
-- Preserve the original beveled look as `<kryon.classic>`.
+  `<lightfield>` as an opt-in premium pack.
+- Preserve the original beveled look as `<classic>`.
 - Make examples attach a pack explicitly.
 - Add `StylePicker` as the standard dropdown-style control for choosing among
   registered packs.
@@ -1128,11 +1128,11 @@ Unsupported visual properties degrade; they do not fork style resolution.
 
 - Widget implementations have zero hidden visual defaults.
 - App startup ensures the shipped style catalog and selects
-  `<kryon.material>` only when no pack is active.
-- Project templates explicitly include `<kryon.material>` so generated source
+  `<material>` only when no pack is active.
+- Project templates explicitly include `<material>` so generated source
   still shows the baseline style choice.
 - Existing Kryon visual personality remains available through explicit
-  `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.tk>`, and `<kryon.lightfield>`
+  `<vanilla>`, `<glow>`, `<tk>`, and `<lightfield>`
   imports.
 - `KRYON_STYLE=none` becomes a required test mode for behavior/layout.
 - Leak scanners flip to zero exemptions.
@@ -1162,9 +1162,9 @@ The plan is complete when:
 - every app-facing widget can render in `KRYON_STYLE=none`;
 - legacy theme files, theme import/export, and theme-style compatibility modes
   are gone from the app-facing styling surface;
-- `<kryon.material>`, `<kryon.vanilla>`, `<kryon.glow>`, `<kryon.tk>`,
-  `<kryon.classic>`, and
-  `<kryon.lightfield>` are ordinary style packs, not hidden runtime modes;
+- `<material>`, `<vanilla>`, `<glow>`, `<tk>`,
+  `<classic>`, and
+  `<lightfield>` are ordinary style packs, not hidden runtime modes;
 - apps can register multiple packs and expose a `StylePicker` dropdown to
   switch between them quickly;
 - style switching preserves widget state and invalidates only style

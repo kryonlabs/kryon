@@ -1,4 +1,4 @@
-@pack kryon.lightfield;
+@pack lightfield;
 
 tokens {
   color {

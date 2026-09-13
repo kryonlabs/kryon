@@ -1,5 +1,5 @@
 #import "kryon.h"
-#style <kryon.material> as material
+#style <material> as material
 
 app "Kryon Dialogs" {
     size 800 600

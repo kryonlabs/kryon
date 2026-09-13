@@ -19,31 +19,31 @@ typedef struct BuiltInStylePack {
 
 static BuiltInStylePack builtin_style_packs[] = {
     {
-        .id = "kryon.material",
+        .id = "material",
         .label = "Material",
         .description = "Clean Material-like controls with flat paint",
         .path = "styles/kryon/material.kss",
     },
     {
-        .id = "kryon.tk",
+        .id = "tk",
         .label = "TK",
         .description = "Dense toolkit controls for desktop utilities",
         .path = "styles/kryon/tk.kss",
     },
     {
-        .id = "kryon.vanilla",
+        .id = "vanilla",
         .label = "Vanilla",
         .description = "Current Kryon default controls as an explicit pack",
         .path = "styles/kryon/vanilla.kss",
     },
     {
-        .id = "kryon.glow",
+        .id = "glow",
         .label = "Glow",
         .description = "Current glow treatment as an explicit pack",
         .path = "styles/kryon/glow.kss",
     },
     {
-        .id = "kryon.lightfield",
+        .id = "lightfield",
         .label = "Lightfield",
         .description = "Premium translucent Lightfield controls",
         .path = "styles/kryon/lightfield.kss",
@@ -88,7 +88,7 @@ RegisterBuiltInStylePacks(void)
     for(int i = 0; i < count; i++)
         if(!register_builtin_style_pack(&builtin_style_packs[i]))
             return false;
-    return SetActiveStylePack("kryon.material");
+    return SetActiveStylePack("material");
 }
 
 bool
@@ -107,5 +107,5 @@ EnsureBuiltInStylePacks(void)
         return SetActiveStylePack(active);
     if(GetActiveStylePack() != NULL)
         return true;
-    return SetActiveStylePack("kryon.material");
+    return SetActiveStylePack("material");
 }

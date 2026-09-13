@@ -62,7 +62,7 @@ the first route handles `/` and also acts as the fallback.
 Style imports identify KSS inputs:
 
 ```kry
-#style <kryon.material> as material
+#style <material> as material
 #style "brand.kss" as brand
 #style <brand> as brand_pack
 #style <acme.dark> as acme_dark

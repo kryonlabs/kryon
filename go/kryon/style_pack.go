@@ -71,7 +71,7 @@ func EnsureBuiltInStylePacks() bool {
 		return RegisterBuiltInStylePacks()
 	}
 	if activeStylePack < 0 {
-		return SetActiveStylePack("kryon.material")
+		return SetActiveStylePack("material")
 	}
 	return true
 }

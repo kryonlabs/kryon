@@ -8,7 +8,7 @@ func useMaterialStyleForTest(t *testing.T) {
 	if !RegisterBuiltInStylePacks() {
 		t.Fatal("built-in styles did not register")
 	}
-	if !SetActiveStylePack("kryon.material") {
+	if !SetActiveStylePack("material") {
 		t.Fatal("material style did not activate")
 	}
 	t.Cleanup(ClearStylePacks)

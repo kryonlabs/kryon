@@ -4,15 +4,15 @@ import sys
 from pathlib import Path
 
 PACKS = [
-    ("material", "kryon.material", "Material",
+    ("material", "material", "Material",
      "Clean Material-like controls with flat paint", "styles/kryon/material.kss"),
-    ("tk", "kryon.tk", "TK",
+    ("tk", "tk", "TK",
      "Dense toolkit controls for desktop utilities", "styles/kryon/tk.kss"),
-    ("vanilla", "kryon.vanilla", "Vanilla",
+    ("vanilla", "vanilla", "Vanilla",
      "Current Kryon default controls as an explicit pack", "styles/kryon/vanilla.kss"),
-    ("glow", "kryon.glow", "Glow",
+    ("glow", "glow", "Glow",
      "Current glow treatment as an explicit pack", "styles/kryon/glow.kss"),
-    ("lightfield", "kryon.lightfield", "Lightfield",
+    ("lightfield", "lightfield", "Lightfield",
      "Premium translucent Lightfield controls", "styles/kryon/lightfield.kss"),
 ]
 
@@ -45,7 +45,7 @@ def generated_source() -> str:
         "\t\t\treturn false",
         "\t\t}",
         "\t}",
-        '\treturn SetActiveStylePack("kryon.material")',
+        '\treturn SetActiveStylePack("material")',
         "}",
         "",
     ])

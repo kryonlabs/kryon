@@ -1,5 +1,5 @@
 #import "kryon.h"
-#style <kryon.material> as material
+#style <material> as material
 #import "file_dialog.h"
 #import "stdio.h"
 

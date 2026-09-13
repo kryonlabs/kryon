@@ -1,6 +1,6 @@
 package kryon
 
-const materialStyleSource = `@pack kryon.material;
+const materialStyleSource = `@pack material;
 
 tokens {
   color {
@@ -1695,7 +1695,7 @@ TextArea {
 }
 `
 
-const tkStyleSource = `@pack kryon.tk;
+const tkStyleSource = `@pack tk;
 
 tokens {
   color {
@@ -3363,7 +3363,7 @@ TextArea {
 }
 `
 
-const vanillaStyleSource = `@pack kryon.vanilla;
+const vanillaStyleSource = `@pack vanilla;
 
 tokens {
   color {
@@ -5063,7 +5063,7 @@ TextArea {
 }
 `
 
-const glowStyleSource = `@pack kryon.glow;
+const glowStyleSource = `@pack glow;
 
 tokens {
   color {
@@ -6855,7 +6855,7 @@ TextArea {
 }
 `
 
-const lightfieldStyleSource = `@pack kryon.lightfield;
+const lightfieldStyleSource = `@pack lightfield;
 
 tokens {
   color {
@@ -8606,11 +8606,11 @@ func RegisterBuiltInStylePacks() bool {
 	for _, pack := range []struct {
 		id, label, description, source string
 	}{
-		{"kryon.material", "Material", "Clean Material-like controls with flat paint", materialStyleSource},
-		{"kryon.tk", "TK", "Dense toolkit controls for desktop utilities", tkStyleSource},
-		{"kryon.vanilla", "Vanilla", "Current Kryon default controls as an explicit pack", vanillaStyleSource},
-		{"kryon.glow", "Glow", "Current glow treatment as an explicit pack", glowStyleSource},
-		{"kryon.lightfield", "Lightfield", "Premium translucent Lightfield controls", lightfieldStyleSource},
+		{"material", "Material", "Clean Material-like controls with flat paint", materialStyleSource},
+		{"tk", "TK", "Dense toolkit controls for desktop utilities", tkStyleSource},
+		{"vanilla", "Vanilla", "Current Kryon default controls as an explicit pack", vanillaStyleSource},
+		{"glow", "Glow", "Current glow treatment as an explicit pack", glowStyleSource},
+		{"lightfield", "Lightfield", "Premium translucent Lightfield controls", lightfieldStyleSource},
 	} {
 		if !RegisterStylePackSource(pack.source, pack.label, pack.description) {
 			return false
@@ -8619,5 +8619,5 @@ func RegisterBuiltInStylePacks() bool {
 			return false
 		}
 	}
-	return SetActiveStylePack("kryon.material")
+	return SetActiveStylePack("material")
 }

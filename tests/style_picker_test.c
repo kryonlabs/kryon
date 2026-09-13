@@ -32,7 +32,7 @@ main(void)
     assert(captured_dropdown.options != NULL);
     assert(strcmp(captured_dropdown.options[0], "Material") == 0);
     assert(GetActiveStylePack() != NULL);
-    assert(strcmp(GetActiveStylePack()->id, "kryon.material") == 0);
+    assert(strcmp(GetActiveStylePack()->id, "material") == 0);
 
     ClearStylePacks();
 
