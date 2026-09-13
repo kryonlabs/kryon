@@ -7,20 +7,6 @@ ImageFit :: enum {
     ImageFitCover = 2
 }
 
-ImageStyle :: struct {
-    enabled: bool
-    background: Color
-    tonal_overlay: Color
-    surface_overlay: Color
-    scrim_top: Color
-    scrim_bottom: Color
-    outline: Color
-    roundness: float
-    radius_px: i32
-    segments: i32
-    outline_px: i32
-}
-
 ImageProps :: struct {
     asset_path: const char*
     alt_text: const char*
@@ -30,6 +16,5 @@ ImageProps :: struct {
     rotation: float
     tint: Color
     fit: ImageFit
-    style: ImageStyle
     class_name: i32
 }

@@ -1497,11 +1497,10 @@ func TestNativeSelectionAndImageWidgets(t *testing.T) {
 
 	image := ImageProps{AssetPath: "tile.png", Bounds: NewRectangle(10, 90, 48, 32), Tint: White, Fit: ImageFitContain}
 	r.BeginFrame()
-	image.Style = ImageStyle{Enabled: true, Background: Color{R: 10, G: 20, B: 30, A: 255}}
 	r.Image(image)
 	ops := r.FrameOps()
 	if len(ops) != 2 || ops[0].Kind != FrameOpRect || ops[1].Kind != FrameOpImage {
-		t.Fatalf("Image style ops=%#v", ops)
+		t.Fatalf("Image ops=%#v", ops)
 	}
 	r.EndFrame()
 

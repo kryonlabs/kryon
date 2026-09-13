@@ -110,44 +110,6 @@ ImageFitRect(ImageProps image, Texture2D texture)
 }
 
 static float
-image_radius_from_roundness(Rectangle bounds, float roundness)
-{
-    float min_side;
-
-    if(roundness <= 0.0f || bounds.width <= 0.0f || bounds.height <= 0.0f)
-        return 0.0f;
-    if(roundness > 1.0f)
-        roundness = 1.0f;
-    min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
-    return min_side * roundness * 0.5f;
-}
-
-static float
-image_style_radius(Rectangle bounds, ImageStyle style)
-{
-    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
-    float radius = (float)style.radius_px;
-
-    if(radius <= 0.0f && style.roundness > 0.0f)
-        radius = image_radius_from_roundness(bounds, style.roundness);
-    if(min_side > 0.0f && radius > min_side * 0.5f)
-        radius = min_side * 0.5f;
-    return radius > 0.0f ? radius : 0.0f;
-}
-
-static float
-image_roundness_from_radius(Rectangle bounds, float radius)
-{
-    float min_side = bounds.width < bounds.height ? bounds.width : bounds.height;
-
-    if(radius <= 0.0f || min_side <= 0.0f)
-        return 0.0f;
-    if(radius > min_side * 0.5f)
-        radius = min_side * 0.5f;
-    return (radius * 2.0f) / min_side;
-}
-
-static float
 image_row_inset(Rectangle bounds, float radius, float sample_y)
 {
     float top_center;
@@ -241,135 +203,12 @@ image_draw_rounded_texture(Texture2D texture, Rectangle source,
     }
 }
 
-static void
-image_draw_rounded_solid(Rectangle bounds, float radius, Color color)
-{
-    int y_start;
-    int y_end;
-
-    if(color.a == 0)
-        return;
-    if(radius <= 0.0f) {
-        DrawRectangleRec(bounds, color);
-        return;
-    }
-
-    y_start = (int)floorf(bounds.y);
-    y_end = (int)ceilf(bounds.y + bounds.height);
-    for(int y = y_start; y < y_end; y++) {
-        float row_y = (float)y;
-        float row_bottom = row_y + 1.0f;
-        float strip_y = row_y < bounds.y ? bounds.y : row_y;
-        float strip_bottom = row_bottom > bounds.y + bounds.height
-                                 ? bounds.y + bounds.height
-                                 : row_bottom;
-        float strip_h = strip_bottom - strip_y;
-        float sample_y = strip_y + strip_h * 0.5f;
-        float inset;
-
-        if(strip_h <= 0.0f)
-            continue;
-        inset = image_row_inset(bounds, radius, sample_y);
-        DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
-                                     bounds.width - inset * 2.0f, strip_h},
-                         color);
-    }
-}
-
-static Color
-image_lerp_color(Color top, Color bottom, float t)
-{
-    if(t < 0.0f)
-        t = 0.0f;
-    if(t > 1.0f)
-        t = 1.0f;
-    return (Color){
-        (unsigned char)((float)top.r + ((float)bottom.r - (float)top.r) * t),
-        (unsigned char)((float)top.g + ((float)bottom.g - (float)top.g) * t),
-        (unsigned char)((float)top.b + ((float)bottom.b - (float)top.b) * t),
-        (unsigned char)((float)top.a + ((float)bottom.a - (float)top.a) * t)
-    };
-}
-
-static void
-image_draw_rounded_gradient(Rectangle bounds, float radius, Color top,
-                              Color bottom)
-{
-    int y_start;
-    int y_end;
-
-    if(top.a == 0 && bottom.a == 0)
-        return;
-    if(radius <= 0.0f) {
-        DrawRectangleGradientV((int)bounds.x, (int)bounds.y,
-                               (int)bounds.width, (int)bounds.height, top,
-                               bottom);
-        return;
-    }
-
-    y_start = (int)floorf(bounds.y);
-    y_end = (int)ceilf(bounds.y + bounds.height);
-    for(int y = y_start; y < y_end; y++) {
-        float row_y = (float)y;
-        float row_bottom = row_y + 1.0f;
-        float strip_y = row_y < bounds.y ? bounds.y : row_y;
-        float strip_bottom = row_bottom > bounds.y + bounds.height
-                                 ? bounds.y + bounds.height
-                                 : row_bottom;
-        float strip_h = strip_bottom - strip_y;
-        float sample_y = strip_y + strip_h * 0.5f;
-        float inset;
-        float t;
-        Color color;
-
-        if(strip_h <= 0.0f)
-            continue;
-        inset = image_row_inset(bounds, radius, sample_y);
-        t = bounds.height > 0.0f ? (sample_y - bounds.y) / bounds.height
-                                 : 0.0f;
-        color = image_lerp_color(top, bottom, t);
-        DrawRectangleRec((Rectangle){bounds.x + inset, strip_y,
-                                     bounds.width - inset * 2.0f, strip_h},
-                         color);
-    }
-}
-
-static void
-image_apply_style(Rectangle bounds, ImageStyle *style, float *radius,
-                    float *roundness, int *segments, int *outline_px,
-                    int class_name)
-{
-    Style resolved = image_widget_style(class_name);
-
-    if(*radius <= 0.0f && resolved.radius > 0.0f)
-        *radius = resolved.radius;
-    *roundness = image_roundness_from_radius(bounds, *radius);
-    *segments = *segments < 12 ? 12 : *segments;
-    if(style->background.a == 0)
-        style->background = resolved.background;
-    if(style->outline.a == 0)
-        style->outline = resolved.border;
-    if(*outline_px <= 0 && resolved.border_width > 0.0f)
-        *outline_px = (int)(resolved.border_width + 0.5f);
-    if(style->tonal_overlay.a > 30)
-        style->tonal_overlay.a = 30;
-    if(style->surface_overlay.a > 18)
-        style->surface_overlay.a = 18;
-    if(style->scrim_top.a > 8)
-        style->scrim_top.a = 8;
-    if(style->scrim_bottom.a > 42)
-        style->scrim_bottom.a = 42;
-}
-
 void
 ImageTexture(Texture2D texture, ImageProps image)
 {
     Rectangle source;
     Rectangle dst;
-    float radius;
-    int segments;
-    int outline_px;
-    float roundness;
+    Style style;
 
     if(texture.id == 0 || texture.width <= 0 || texture.height <= 0 ||
        image.bounds.width <= 0.0f || image.bounds.height <= 0.0f)
@@ -378,8 +217,19 @@ ImageTexture(Texture2D texture, ImageProps image)
     source = image_default_source(texture, image.source);
     dst = ImageFitRect(image, texture);
     image.tint = image.tint.a == 0 ? WHITE : image.tint;
+    style = image_widget_style(image.class_name);
 
-    if(!image.style.enabled) {
+    if(style.background.a > 0 || style.border.a > 0 ||
+       style.material != MaterialFlat || style.opacity < 1.0f ||
+       style.radius > 0.0f || style.border_width > 0.0f) {
+        ui_draw_material(image.bounds, (Rectangle){0}, style.background,
+                         style.border, style.border, style.radius,
+                         style.border_width, 0.0f, 0.0f, 0, style.focus,
+                         0.0f, style.opacity, ui_style_fill(style),
+                         style.material);
+    }
+
+    if(style.radius <= 0.0f) {
         image_begin_bounds_clip(image.bounds);
         DrawTexturePro(texture, source, dst, image.origin, image.rotation,
                        image.tint);
@@ -387,40 +237,6 @@ ImageTexture(Texture2D texture, ImageProps image)
         return;
     }
 
-    radius = image_style_radius(image.bounds, image.style);
-    segments = image.style.segments > 0 ? image.style.segments : 10;
-    outline_px = image.style.outline_px > 0 ? image.style.outline_px : 1;
-    roundness = image.style.roundness > 0.0f ? image.style.roundness : 0.0f;
-    image_apply_style(image.bounds, &image.style, &radius, &roundness, &segments,
-                        &outline_px, image.class_name);
-
-    ui_default_elevation(image.bounds, roundness,
-                         GetThemeMetrics().shadow_offset_y);
-
-    if(image.style.background.a > 0) {
-        if(roundness > 0.0f)
-            DrawRectangleRounded(image.bounds, roundness, segments,
-                                 image.style.background);
-        else
-            DrawRectangleRec(image.bounds, image.style.background);
-    }
-
-    image_draw_rounded_texture(texture, source, dst, image.bounds, radius,
+    image_draw_rounded_texture(texture, source, dst, image.bounds, style.radius,
                                  image.tint);
-    if(image.style.tonal_overlay.a > 0)
-        image_draw_rounded_solid(image.bounds, radius,
-                                   image.style.tonal_overlay);
-    if(image.style.surface_overlay.a > 0)
-        image_draw_rounded_solid(image.bounds, radius,
-                                   image.style.surface_overlay);
-    if(image.style.scrim_top.a > 0 || image.style.scrim_bottom.a > 0)
-        image_draw_rounded_gradient(image.bounds, radius,
-                                      image.style.scrim_top,
-                                      image.style.scrim_bottom);
-    if(roundness > 0.0f && image.style.outline.a > 0)
-        DrawRectangleRoundedLinesEx(image.bounds, roundness, segments,
-                                    (float)outline_px, image.style.outline);
-    else if(image.style.outline.a > 0)
-        DrawRectangleLinesEx(image.bounds, (float)outline_px,
-                             image.style.outline);
 }

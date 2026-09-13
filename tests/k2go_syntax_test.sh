@@ -184,7 +184,7 @@ App :: () #ui {
     lines_y += Scale(54)
     Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
-    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}, 0})
+    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, 0})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com", .font = Text16, .color = GetThemeLink()})
@@ -199,7 +199,7 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Welcome", .level = 1, .font = Text24, .color = GetThemeText()})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = Scale(4)})
     Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more", .font = Text16, .color = GetThemeLink()})
-    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitCover, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}, 0})
+    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitCover, 0})
     End()
     Section((SectionProps){.label = "Details", .gap = Scale(4), .padding = Scale(4)})
     Heading((HeadingProps){.text = "Details", .level = 2})
@@ -322,10 +322,9 @@ App :: () #ui {
         flags = PopupTooltip
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
     }
-    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,ImageFitContain,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
+    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,ImageFitContain,0}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     Checkbox((CheckboxProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
-    choice_image.style = (ImageStyle){.enabled = true, .background = GetThemeSurface()}
     Image(choice_image)
     Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = choice_image.tint, .image_fit = choice_image.fit, .image_background = GetThemeButton(), .id = 51})
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section", .font = Text14})
@@ -610,7 +609,6 @@ grep -q '_ValidRuntime.BeginPopup(kr.PopupProps{.*ID: int32(58).*Flags: kr.Popup
 grep -q 'Text: "Helpful text"' "$out"
 grep -q 'kr.Selectable(kr.SelectableProps{.*Selected: &st.SelectedRow' "$out"
 grep -q 'kr.Checkbox(kr.CheckboxProps{.*Flags: &st.FeatureFlags.*FlagsValue: int32(4)' "$out"
-grep -q 'choice_image.Style = kr.ImageStyle{Enabled: true, Background: kr.GetThemeSurface()}' "$out"
 grep -q 'kr.Image(choice_image)' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*ImageAssetPath: choice_image.AssetPath.*ImageBounds: choice_image.Bounds.*ID: int32(51)' "$out"
 grep -q 'kr.Separator(kr.SeparatorProps{.*Label: "Section".*Font: int32(kr.Text14)' "$out"

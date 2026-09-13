@@ -2346,9 +2346,7 @@ RenderImage(ImageProps image)
         int label_font = label_style.font_size > 0.0f
             ? (int)(label_style.font_size + 0.5f)
             : GetSmallFontSize();
-        fallback = image.style.enabled && image.style.background.a > 0
-                     ? image.style.background
-                     : image_style.background;
+        fallback = image_style.background;
         DrawRectangleRec(image.bounds, fallback);
         DrawRectangleLinesEx(image.bounds, image_style.border_width,
                              image_style.border);

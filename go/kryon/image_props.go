@@ -10,20 +10,6 @@ const (
 	ImageFitCover   ImageFit = 2
 )
 
-type ImageStyle struct {
-	Enabled        bool
-	Background     Color
-	TonalOverlay   Color
-	SurfaceOverlay Color
-	ScrimTop       Color
-	ScrimBottom    Color
-	Outline        Color
-	Roundness      float32
-	RadiusPx       int32
-	Segments       int32
-	OutlinePx      int32
-}
-
 type ImageProps struct {
 	AssetPath string
 	AltText   string
@@ -33,6 +19,5 @@ type ImageProps struct {
 	Rotation  float32
 	Tint      Color
 	Fit       ImageFit
-	Style     ImageStyle
 	ClassName int32
 }

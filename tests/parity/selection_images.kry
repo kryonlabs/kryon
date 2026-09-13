@@ -27,7 +27,6 @@ selection_images_frame :: () #ui {
         image: ImageProps = {.asset_path = "", .bounds = (Rectangle){20,100,96,64}, .source = (Rectangle){0,0,0,0}, .origin = (Vector2){0,0}, .rotation = 0.0f, .tint = WHITE, .fit = ImageFitContain}
         Selectable((SelectableProps){.bounds = {20,20,200,30}, .id = 950, .label = "Selectable", .selected = &selection_selected})
         Checkbox((CheckboxProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
-        image.style = (ImageStyle){.enabled = true, .background = (Color){40,50,60,255}}
         Image(image)
         image.bounds = (Rectangle){140,100,96,64}
         Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_tint = image.tint, .image_fit = image.fit, .image_background = (Color){30,40,50,255}, .id = 952})

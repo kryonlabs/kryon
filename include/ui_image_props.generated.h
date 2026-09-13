@@ -27,20 +27,6 @@ typedef enum ImageFit {
     ImageFitCover = 2,
 } ImageFit;
 
-typedef struct ImageStyle {
-    bool enabled;
-    Color background;
-    Color tonal_overlay;
-    Color surface_overlay;
-    Color scrim_top;
-    Color scrim_bottom;
-    Color outline;
-    float roundness;
-    int32_t radius_px;
-    int32_t segments;
-    int32_t outline_px;
-} ImageStyle;
-
 typedef struct ImageProps {
     const char* asset_path;
     const char* alt_text;
@@ -50,7 +36,6 @@ typedef struct ImageProps {
     float rotation;
     Color tint;
     ImageFit fit;
-    ImageStyle style;
     int32_t class_name;
 } ImageProps;
 
