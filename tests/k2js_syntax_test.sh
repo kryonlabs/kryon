@@ -548,6 +548,7 @@ grep -q '"sourcePath": "src/multiline_widget_metadata.kry"' "$multiline_out"
 grep -q '"sourceLine": 4' "$multiline_out"
 grep -q '"sourceColumn": 9' "$multiline_out"
 grep -q '"sourceEndLine": 8' "$multiline_out"
+grep -q '"sourceEndColumn": 10' "$multiline_out"
 
 cat > "$work/src/form_owner.kry" <<'EOF'
 #import "kryon.h"

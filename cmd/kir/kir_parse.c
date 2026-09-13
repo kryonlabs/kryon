@@ -66,6 +66,12 @@ source_column_for_trimmed(const char *line, const char *trimmed)
 }
 
 static int
+source_end_column_for_trimmed(const char *line, const char *trimmed)
+{
+    return source_column_for_trimmed(line, trimmed) + (int)strlen(trimmed);
+}
+
+static int
 parse_symbol_before_colons(const char *s, char *out, size_t out_size)
 {
     const char *p;
@@ -3088,6 +3094,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int pending_len = 0;
     int pending_start_line = 1;
     int pending_start_column = 1;
+    int pending_end_column = 1;
     int paren_depth = 0;
     int bracket_depth = 0;
     int in_string = 0;
@@ -3154,6 +3161,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 pending_start_line = line_no;
                 pending_start_column = trimmed_column;
             }
+            pending_end_column = source_end_column_for_trimmed(raw, trimmed);
             if(pending_len > 0 && pending_len + 2 < (int)sizeof(pending)) {
                 pending[pending_len++] = ' ';
                 pending[pending_len] = '\0';
@@ -3362,6 +3370,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                             have_look = 1;
                             break;
                         }
+                        pending_end_column = source_end_column_for_trimmed(la, lt);
                         if(pending_len > 0 &&
                            pending_len + 2 < (int)sizeof(pending)) {
                             pending[pending_len++] = ' ';
@@ -4042,8 +4051,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     block->statement_index = -1;
                     block->span = KirSpanEnd(rel, pending_start_line,
                                              pending_start_column, line_no,
-                                             pending_start_column +
-                                             (int)strlen(t));
+                                             pending_end_column);
                     snprintf(block->widget, sizeof(block->widget), "%s",
                              block_widget);
                     snprintf(block->name, sizeof(block->name), "%s",
@@ -4154,8 +4162,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     KirSourceSpan span = KirSpanEnd(rel, pending_start_line,
                                                     pending_start_column,
                                                     line_no,
-                                                    pending_start_column +
-                                                    (int)strlen(t));
+                                                    pending_end_column);
 
                     st = KirFunctionAddWidget(fn, widget, widget_args, t,
                                               span);
@@ -4168,8 +4175,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     KirSourceSpan span = KirSpanEnd(rel, pending_start_line,
                                                     pending_start_column,
                                                     line_no,
-                                                    pending_start_column +
-                                                    (int)strlen(t));
+                                                    pending_end_column);
 
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
