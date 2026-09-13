@@ -1,5 +1,6 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/style.h"
 #include "runtime/rows.h"
 
 static float
@@ -89,9 +90,8 @@ RenderInfoRows(InfoRowsProps rows)
     InfoRowsMetrics metrics = info_rows_metrics(rows);
     InfoRowsLayout layout;
     int row_h = metrics.row_height;
-    int default_font = text_style.font_size > 0.0f
-                           ? (int)(text_style.font_size + 0.5f)
-                           : GetFontSize();
+    int default_font = ResolveFont(0, (int)(text_style.font_size + 0.5f),
+                                   GetFontSize());
     int font_token;
 
     if(rows.rows == NULL || rows.row_count <= 0 || rows.width <= 0 || row_h <= 0)
@@ -107,7 +107,7 @@ RenderInfoRows(InfoRowsProps rows)
         const InfoRow *row = &rows.rows[i];
         InfoRowLayout row_layout =
             InfoRowLayoutFor(rows.x, rows.y, rows.width, i, metrics);
-        int font = row->font > 0 ? row->font : default_font;
+        int font = ResolveFont(row->font, 0, default_font);
         Color text = row->color.a != 0 ? row->color : default_text;
 
         if(i > 0)
@@ -142,10 +142,9 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
-    int label_font = row.label_font > 0 ? row.label_font
-                     : text_style.font_size > 0.0f
-                         ? (int)(text_style.font_size + 0.5f)
-                         : GetSmallFontSize();
+    int label_font = ResolveFont(row.label_font,
+                                 (int)(text_style.font_size + 0.5f),
+                                 GetSmallFontSize());
     Color label_color = row.label_color.a != 0 ? row.label_color
                                                : text_style.foreground;
     int font_token;
@@ -176,10 +175,8 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
-    int font = label.font > 0 ? label.font
-               : text_style.font_size > 0.0f
-                   ? (int)(text_style.font_size + 0.5f)
-                   : GetSmallFontSize();
+    int font = ResolveFont(label.font, (int)(text_style.font_size + 0.5f),
+                           GetSmallFontSize());
     Color color = label.color.a != 0 ? label.color : text_style.foreground;
     int font_token;
     if(label.color.a == 0)
@@ -386,7 +383,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     height = metrics.row_height;
     FormTakeRect(form, height);
 
-    label_font = row.label_font > 0 ? row.label_font : GetFontSize();
+    label_font = ResolveFont(row.label_font, 0, GetFontSize());
     layout = SpinboxRowLayoutFor(form->x, y, form->width, row.label_width,
                                  row.spinbox.bounds, metrics);
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
