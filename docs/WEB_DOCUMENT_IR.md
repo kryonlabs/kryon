@@ -341,6 +341,7 @@ The initial tag mapping is intentionally conservative:
 | `Progress` | `progress` |
 | `Separator` | `hr` |
 | `TableView` | `table` |
+| `Plot` | `canvas` |
 | `CanvasGrid` | `canvas` |
 
 Other widgets remain `div` nodes until they gain a specific web-native
@@ -348,8 +349,8 @@ contract.
 
 Div-backed widgets still expose conservative native ARIA roles when the widget
 semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
-`TreeView` uses `tree`, `Menu` uses `menu`, `Toast` uses `status`, and
-`Plot`/`CanvasGrid` use `img`.
+`TreeView` uses `tree`, `Menu` uses `menu`, and `Toast` uses `status`.
+Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 
 ## KSS Fit
 

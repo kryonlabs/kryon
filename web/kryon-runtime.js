@@ -1089,6 +1089,7 @@ function widgetTag(item) {
     return "hr";
   case "TableView":
     return "table";
+  case "Plot":
   case "CanvasGrid":
     return "canvas";
   default:
