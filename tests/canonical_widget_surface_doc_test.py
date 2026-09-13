@@ -32,6 +32,12 @@ GO_COMPAT_EXPORTS = set()
 
 WEB_COMPAT_ENTRIES = set()
 
+REGISTRY_PUBLIC_FORBIDDEN_STATES = {
+    "Internal support",
+    "Native support",
+    "Removed",
+}
+
 GO_SCOPE_EXPORT_ALLOWLIST = {
     "BeginFrame",
     "End",
@@ -488,6 +494,10 @@ def main() -> int:
     for name, cells in rows.items():
         runtime_source = cells[3]
         state = cells[4]
+        if state in REGISTRY_PUBLIC_FORBIDDEN_STATES:
+            errors.append(
+                f"{name}: registry row cannot be public registry entry with state {state}"
+            )
         modules = re.findall(r"`(runtime/[^`]+\.kry)`", runtime_source)
         if ".kry-backed" in state and not modules:
             errors.append(f"{name}: .kry-backed state needs runtime/*.kry source")
