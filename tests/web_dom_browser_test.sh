@@ -486,6 +486,13 @@ try {
     "listbox collection item relation refs missing");
   assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.collectionOwner ===
     "Page/article/choices", "option collection owner snapshot missing");
+  assert(kryon.webDOMRelations(target, "choiceBeta").selectedCollectionOwner.ref ===
+    "Page/article/choices", "selected collection owner relation missing");
+  assert(kryon.webDOMRelationRefs(target, "choices").selectedCollectionItems
+    .join(" ") === "Page/article/choices/beta",
+    "selected collection items relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.selectedCollectionOwner ===
+    "Page/article/choices", "selected collection owner snapshot missing");
   assert(menuItem.tagName === "BUTTON", "menu item button not rendered");
   assert(menuItem.getAttribute("role") === "menuitem", "menu item role missing");
   assert(kryon.webDOMSnapshot(target, "archiveItem").role === "menuitem",

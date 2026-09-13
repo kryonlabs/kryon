@@ -88,6 +88,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Semantic collection relationship facts expose `collectionOwner` and
   `collectionItems` for menu, tablist, tree, listbox, and list-style
   owner/member roles.
+- Semantic collection relationship facts expose `selectedCollectionOwner` and
+  `selectedCollectionItems` for selected members inside those collections.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:

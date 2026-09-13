@@ -2721,6 +2721,12 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/choice/alpha").domValue, "a");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").tag, "option");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/items/beta").state.selected, true);
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/items/beta").selectedCollectionOwner.path,
+      "Page/items");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/items").selectedCollectionItems,
+      ["Page/items/beta"]);
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/items/beta")
+      .relationRefs.selectedCollectionOwner, "Page/items");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/details").role, "tab");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").valueNow, "4");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").min, "0");
@@ -2786,6 +2792,12 @@ function fakeDocument() {
     assert.equal(listOption.tagName, "OPTION");
     assert.equal(listOption.attributes.selected, "");
     assert.equal(listOption.selected, true);
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/items/beta")
+      .selectedCollectionOwner.ref, "Page/items");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/items").selectedCollectionItems,
+      ["Page/items/beta"]);
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "Page/items/beta")
+      .relationRefs.selectedCollectionOwner, "Page/items");
     assert.equal(tabButton.tagName, "BUTTON");
     assert.equal(tabButton.attributes.role, "tab");
     const title = runtime.findWebElement(nativeTarget, "title");

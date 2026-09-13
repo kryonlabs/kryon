@@ -673,6 +673,8 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 semantic `groupOwner`/`groupMembers` links for grouped controls,
 semantic `collectionOwner`/`collectionItems` links for native menu, tablist,
 tree, listbox, and list-style owner/member roles,
+selected collection owner/item links for selected members inside those same
+collections,
 structural `previousSibling`/`nextSibling` links for adjacent Kry DOM objects,
 reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
 `errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for
