@@ -903,6 +903,11 @@ for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image 
     grep -Eq "\"path\": \"DirectRuntimeNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_runtime_out"
 done
 awk '/kryon\.widget\(\$rt,/ && $0 !~ /"path": "DirectRuntimeNodes\// { missing=1 } END { exit missing }' "$direct_runtime_out"
+awk '/kryon\.widget\(\$rt,/ && $0 !~ /"sourcePath": "src\/direct_runtime_nodes.kry"/ { missing=1 } END { exit missing }' "$direct_runtime_out"
+awk '/kryon\.widget\(\$rt,/ && $0 !~ /"sourceLine": [0-9]+/ { missing=1 } END { exit missing }' "$direct_runtime_out"
+awk '/kryon\.widget\(\$rt,/ && $0 !~ /"sourceColumn": [0-9]+/ { missing=1 } END { exit missing }' "$direct_runtime_out"
+awk '/kryon\.widget\(\$rt,/ && $0 !~ /"sourceEndLine": [0-9]+/ { missing=1 } END { exit missing }' "$direct_runtime_out"
+awk '/kryon\.widget\(\$rt,/ && $0 !~ /"sourceEndColumn": [0-9]+/ { missing=1 } END { exit missing }' "$direct_runtime_out"
 
 cat > "$work/src/form_owner.kry" <<'EOF'
 #import "kryon.h"
