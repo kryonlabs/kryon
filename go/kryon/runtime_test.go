@@ -1960,6 +1960,116 @@ Toast[role=Label] { foreground: text; font-size: 18; opacity: 0.66; }
 	}
 }
 
+func TestChromeWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.chrome.classes;
+tokens {
+  color {
+    panel: #123044;
+    ink: #e9f7ff;
+    action: #2f6bff;
+    toast: #3a2446;
+    toast-ink: #ffdfff;
+    title: #203820;
+    rule: #8fa4b8;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+Modal.chrome[role=Scrim] { background: #080a0d; opacity: 0.4; material: flat; }
+Modal.chrome[role=Panel] { background: panel; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Modal.chrome[role=Title] { foreground: ink; font-size: 17; opacity: 0.93; }
+Modal.chrome[role=Message] { foreground: ink; font-size: 15; opacity: 0.72; }
+Modal.chrome[role=Action] { background: action; foreground: ink; border: action; radius: radius; border-width: border; font-size: 16; material: flat; }
+TitleBar.chrome[role=Bar] { background: title; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+TitleBar.chrome[role=Title] { foreground: ink; font-size: 21; opacity: 0.81; }
+TitleBar.chrome[role=Action] { background: action; foreground: ink; border: action; radius: radius; border-width: border; material: flat; }
+Toast.chrome { background: toast; foreground: toast-ink; border: rule; radius: radius; border-width: border; material: flat; opacity: 0.88; }
+Toast.chrome[role=Label] { foreground: toast-ink; font-size: 18; opacity: 0.67; }
+`, "Test Chrome Classes", "") || !SetActiveStylePack("test.chrome.classes") {
+		t.Fatal("chrome class style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 220}).(*runtime)
+	className := StyleClassID("chrome")
+
+	rt.BeginFrame()
+	rt.Modal(ModalProps{
+		Title:       "Chrome",
+		ClassName:   className,
+		Message:     "Styled",
+		Actions:     []ModalAction{{Label: "OK"}},
+		ActionCount: 1,
+	})
+	rt.TitleBar(TitleBarProps{
+		Title:            "Screen",
+		ClassName:        className,
+		Height:           44,
+		HasLeadingAction: true,
+	})
+	rt.Toast(ToastProps{Message: "Saved", ClassName: className, Seconds: 1})
+	rt.EndFrame()
+
+	var sawModalPanel, sawModalTitle, sawModalAction bool
+	var sawTitleBar, sawTitle, sawTitleAction bool
+	var sawToast, sawToastLabel bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Color == (Color{R: 0x12, G: 0x30, B: 0x44, A: 0xff}):
+			sawModalPanel = true
+			if op.BorderColor != (Color{R: 0x8f, G: 0xa4, B: 0xb8, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("modal class panel op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Chrome":
+			sawModalTitle = true
+			if op.FontSize != 17 || op.Opacity != 0.93 || op.Color != (Color{R: 0xe9, G: 0xf7, B: 0xff, A: 0xff}) {
+				t.Fatalf("modal class title op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.Text == "OK":
+			sawModalAction = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) || style.FontSize != 16 {
+				t.Fatalf("modal class action op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 0, Y: 0, Width: 360, Height: 44}):
+			sawTitleBar = true
+			if op.Color != (Color{R: 0x20, G: 0x38, B: 0x20, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("title bar class surface op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Screen":
+			sawTitle = true
+			if op.FontSize != 21 || op.Opacity != 0.81 {
+				t.Fatalf("title bar class title op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.Bounds == (Rectangle{X: 12, Y: 2, Width: 40, Height: 40}):
+			sawTitleAction = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if style.Background != (Color{R: 0x2f, G: 0x6b, B: 0xff, A: 0xff}) {
+				t.Fatalf("title bar class action op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Color == (Color{R: 0x3a, G: 0x24, B: 0x46, A: 0xff}):
+			sawToast = true
+			if op.Opacity != 0.88 || op.BorderWidth != 2 || op.Radius != 6 {
+				t.Fatalf("toast class surface op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Saved":
+			sawToastLabel = true
+			if op.FontSize != 18 || op.Opacity != 0.67 || op.Color != (Color{R: 0xff, G: 0xdf, B: 0xff, A: 0xff}) {
+				t.Fatalf("toast class label op = %+v", op)
+			}
+		}
+	}
+	if !sawModalPanel || !sawModalTitle || !sawModalAction ||
+		!sawTitleBar || !sawTitle || !sawTitleAction ||
+		!sawToast || !sawToastLabel {
+		t.Fatalf("missing chrome class ops: modal(panel=%v title=%v action=%v) titlebar(bar=%v title=%v action=%v) toast(surface=%v label=%v) ops=%+v",
+			sawModalPanel, sawModalTitle, sawModalAction,
+			sawTitleBar, sawTitle, sawTitleAction,
+			sawToast, sawToastLabel, rt.FrameOps())
+	}
+}
+
 func TestPlotTextUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

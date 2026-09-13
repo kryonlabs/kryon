@@ -11,6 +11,7 @@ type ModalAction struct {
 
 type ModalProps struct {
 	Title          string
+	ClassName      int32
 	Message        string
 	Actions        []ModalAction
 	ActionCount    int32

@@ -564,6 +564,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "ModalProps :: struct {\n"
         "    title: const char*\n"
+        "    class_name: i32\n"
         "    message: const char*\n"
         "    actions: const ModalAction*\n"
         "    action_count: i32\n"
@@ -1083,6 +1084,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "TitleBarProps :: struct {\n"
         "    title: const char*\n"
+        "    class_name: i32\n"
         "    height: i32\n"
         "    leading_icon: Texture2D\n"
         "    has_leading_action: bool\n"
@@ -1096,6 +1098,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "ToastProps :: struct {\n"
         "    message: const char*\n"
+        "    class_name: i32\n"
         "    seconds: double\n"
         "}\n"
     },

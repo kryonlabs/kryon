@@ -30,6 +30,7 @@ typedef struct ModalAction {
 
 typedef struct ModalProps {
     const char* title;
+    int32_t class_name;
     const char* message;
     const ModalAction* actions;
     int32_t action_count;

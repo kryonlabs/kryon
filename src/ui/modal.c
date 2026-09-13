@@ -3,7 +3,8 @@
 #include "runtime/modal.h"
 
 static int
-ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *hover)
+ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon,
+                     int class_name, int *hover)
 {
     IconActionSpec props;
     Style normal;
@@ -18,13 +19,15 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
     normal = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
+                      .icon_only = true,
+                      .class_name = class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 15).value);
     hovered = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
+                      .icon_only = true,
+                      .class_name = class_name},
         ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 15).value);
     props.background = normal.background;
@@ -40,12 +43,13 @@ ui_modal_icon_button(int x, int y, int size, int padding, Texture2D icon, int *h
 static int
 ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                 ButtonTone tone, ButtonEmphasis emphasis, int disabled,
-                Vector2 mouse_world)
+                int class_name, Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
     ButtonProps props = {.bounds = bounds, .label = label, .font = font,
                          .tone = tone, .emphasis = emphasis,
-                         .disabled = disabled};
+                         .disabled = disabled,
+                         .class_name = class_name};
     ButtonSpec button = {0};
     int active = CheckCollisionPointRec(mouse_world, bounds) &&
                  !InputCapturesClick(mouse_world);
@@ -110,7 +114,8 @@ ui_modal_measure_action_rows(const ModalAction *actions, int count,
 static int
 ui_modal_draw_actions(const ModalAction *actions, int count,
                       int x, int y, int content_w, int button_h,
-                      int gap, int font, Vector2 mouse_world)
+                      int gap, int font, int class_name,
+                      Vector2 mouse_world)
 {
     int result = 0;
     int row_start = 0;
@@ -145,6 +150,7 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
                                    actions[action_index].tone,
                                    actions[action_index].emphasis,
                                    actions[action_index].disabled,
+                                   class_name,
                                    mouse_world))
                     result = action_index + 1;
                 draw_x += equal_w + gap;
@@ -192,21 +198,26 @@ RenderActionModal(ModalProps modal)
     Vector2 mouse_world = ui_mouse_world();
     Rectangle capture;
     Style panel_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        (ButtonProps){.class_name = modal.class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 2).value);
     Style title_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        (ButtonProps){.class_name = modal.class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 16).value);
     Style message_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        (ButtonProps){.class_name = modal.class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 20).value);
     Style action_style = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
-                      .emphasis = ButtonEmphasisSoft},
+                      .emphasis = ButtonEmphasisSoft,
+                      .class_name = modal.class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 17).value);
     Style scrim_style = ui_unpack_style(ui_control_style_frame_role_kind(
-        (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
+        (ButtonProps){.class_name = modal.class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
         StyleKindModal(), 19).value);
 
     modal_w = ModalClampWidth(ui_view_width, modal_max_w, metrics);
@@ -303,14 +314,16 @@ RenderActionModal(ModalProps modal)
 
         if(ui_modal_icon_button(modal_x + modal_w - icon_w - Scale(6),
                                modal_y + Scale(6), icon_size,
-                               icon_padding, modal.close_icon, &hover))
+                               icon_padding, modal.close_icon,
+                               modal.class_name, &hover))
             result = -1;
     }
 
     if(result == 0 && buttons_h > 0)
         result = ui_modal_draw_actions(modal.actions, modal.action_count,
                                        msg_x, btn_y, msg_w, btn_h, btn_gap,
-                                       btn_font, mouse_world);
+                                       btn_font, modal.class_name,
+                                       mouse_world);
     if(result == 0 && has_prompt && commit_pressed)
         result = modal.action_count > 1 ? 2 : 1;
     if(result == 0 && has_prompt && IsKeyPressed(KEY_ESCAPE))
@@ -418,13 +431,13 @@ RenderModalFrame(int width, int height, const char *title,
         frame.left_clicked = ui_modal_icon_button(frame.x + Scale(6),
                                                      frame.y + Scale(6),
                                                      icon_size, icon_padding,
-                                                     left_icon, &hover);
+                                                     left_icon, 0, &hover);
     }
     if(frame.right_clicked == 0 && right_icon.id != 0) {
         frame.right_clicked = ui_modal_icon_button(frame.x + frame.w - icon_w - Scale(6),
                                                       frame.y + Scale(6),
                                                       icon_size, icon_padding,
-                                                      right_icon, &hover);
+                                                      right_icon, 0, &hover);
     }
 
     EndWidget(&widget);

@@ -7,11 +7,11 @@
  * ui_modal.h, which kryon.h includes. */
 
 static void
-RenderTitleBarBackground(int height)
+RenderTitleBarBackground(int height, int class_name)
 {
     StyleFrame bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
+                      .size = ControlSizeMedium, .class_name = class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
     Style bar = ui_unpack_style(bar_frame.value);
     Rectangle bounds = {0, 0, (float)ui_view_width, (float)height};
@@ -25,7 +25,7 @@ RenderTitleBarBackground(int height)
 
 static int
 RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
-                           TitleBarMetrics metrics)
+                           TitleBarMetrics metrics, int class_name)
 {
     IconActionSpec button = {0};
 
@@ -35,11 +35,11 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
     button.icon_padding = metrics.leading_padding;
     Style normal = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
+                      .icon_only = true, .class_name = class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
     Style hover = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .icon_only = true},
+                      .icon_only = true, .class_name = class_name},
         ButtonStateHover, 0, 0, 0, 0, StyleKindTitleBar(), 17).value);
     button.icon_color = normal.foreground;
     button.hover_background = hover.background;
@@ -49,7 +49,7 @@ RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
 
 static void
 RenderTitleBarCenteredTitle(const char *title, int height,
-                                       int side_reserved)
+                            int side_reserved, int class_name)
 {
     int font;
     int title_w;
@@ -60,7 +60,7 @@ RenderTitleBarCenteredTitle(const char *title, int height,
     int max_w = (int)layout.title_bounds.width;
     Style text = ui_unpack_style(ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
+                      .size = ControlSizeMedium, .class_name = class_name},
         ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16).value);
 
     if(title == NULL)
@@ -101,10 +101,11 @@ RenderTitleBar(TitleBarProps title_bar)
                                title_bar.dropdown.height,
                                title_bar.dropdown.min_width,
                                metrics);
-    RenderTitleBarBackground(height);
+    RenderTitleBarBackground(height, title_bar.class_name);
     if(title_bar.has_leading_action) {
         clicked = RenderTitleBarReturnButton(title_bar.leading_icon,
-                                             layout.leading_bounds, metrics);
+                                             layout.leading_bounds, metrics,
+                                             title_bar.class_name);
         side_reserved = layout.side_reserved;
     }
     if(title_bar.has_dropdown) {
@@ -114,6 +115,7 @@ RenderTitleBar(TitleBarProps title_bar)
                 .options = dropdown.options, .option_count = dropdown.option_count, .selected_index = dropdown.selected_index});
         return clicked;
     }
-    RenderTitleBarCenteredTitle(title_bar.title, height, side_reserved);
+    RenderTitleBarCenteredTitle(title_bar.title, height, side_reserved,
+                                title_bar.class_name);
     return clicked;
 }

@@ -3,6 +3,7 @@ package kryon
 
 // #import kryon_compat.generated.h
 type ToastProps struct {
-	Message string
-	Seconds float64
+	Message   string
+	ClassName int32
+	Seconds   float64
 }

@@ -6,6 +6,7 @@
 #define UI_TOAST_DEFAULT_SECONDS 3.0
 
 static char toast_message[UI_TOAST_MESSAGE_SIZE];
+static int toast_class_name;
 static double toast_until;
 
 static void
@@ -18,6 +19,7 @@ static void
 ClearToast(void)
 {
     toast_message[0] = '\0';
+    toast_class_name = 0;
     toast_until = 0.0;
 }
 
@@ -31,6 +33,7 @@ Toast(ToastProps props)
         return;
     }
     copy_toast_message(props.message);
+    toast_class_name = props.class_name;
     toast_until = GetTime() + (double)ToastDuration((float)props.seconds,
                                                     metrics);
 }
@@ -60,12 +63,18 @@ RenderToast(void)
                       .font_size = (float)font,
                       .material = MaterialFlat};
     StyleFrame surface_frame = {
-        .value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindToast()),
-                                    ButtonStateNormal)};
+        .value = ResolveActiveStyle(
+            base,
+            StyleControlRoleFacts(StyleKindToast(), 0, toast_class_name,
+                                  StyleAny(), ButtonToneNeutral,
+                                  ButtonEmphasisSoft, ControlSizeMedium,
+                                  ButtonStateNormal),
+            ButtonStateNormal)};
     StyleFrame label_frame = {
         .value = ResolveActiveStyle(base,
                                     StyleControlRoleFacts(
-                                        StyleKindToast(), 0, 0, 6,
+                                        StyleKindToast(), 0,
+                                        toast_class_name, 6,
                                         ButtonToneNeutral,
                                         ButtonEmphasisSoft,
                                         ControlSizeMedium, ButtonStateNormal),

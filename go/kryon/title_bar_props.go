@@ -14,6 +14,7 @@ type TitleBarDropdown struct {
 
 type TitleBarProps struct {
 	Title            string
+	ClassName        int32
 	Height           int32
 	LeadingIcon      Texture2D
 	HasLeadingAction bool

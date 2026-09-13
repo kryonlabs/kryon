@@ -10,6 +10,7 @@ ModalAction :: struct {
 
 ModalProps :: struct {
     title: const char*
+    class_name: i32
     message: const char*
     actions: const ModalAction*
     action_count: i32

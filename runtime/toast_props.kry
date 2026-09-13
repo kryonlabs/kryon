@@ -3,5 +3,6 @@
 
 ToastProps :: struct {
     message: const char*
+    class_name: i32
     seconds: double
 }

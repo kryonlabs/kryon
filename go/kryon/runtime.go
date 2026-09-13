@@ -698,6 +698,7 @@ type runtime struct {
 	numericNextToken  int32
 	dragDrop          dragDropState
 	toastMessage      string
+	toastClassName    int32
 	toastUntil        time.Time
 	currentThemeID    ThemeId
 	themeSource       ThemeSource
@@ -4720,7 +4721,7 @@ func (r *runtime) Modal(props ModalProps) int32 {
 	if props.Text != nil && props.CursorPosition != nil && props.Focused != nil {
 		fieldHeight = 38
 	}
-	result, field := r.drawActionModal(props.Title, props.Message, actions, fieldHeight)
+	result, field := r.drawActionModal(props.Title, props.Message, actions, fieldHeight, props.ClassName)
 	commit := false
 	if fieldHeight > 0 {
 		focusID := props.FocusID
@@ -4806,7 +4807,7 @@ func modalActionLabel(action ModalAction, index, count int) string {
 	return "OK"
 }
 
-func (r *runtime) drawActionModal(title, message string, actions []ModalAction, fieldHeight float32) (int32, Rectangle) {
+func (r *runtime) drawActionModal(title, message string, actions []ModalAction, fieldHeight float32, className int32) (int32, Rectangle) {
 	metrics := Modal_ModalMetricsFor(1)
 	messageHeight := int32(0)
 	if message != "" {
@@ -4818,15 +4819,15 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 	}
 	layout := Modal_ModalLayoutFor(r.GetScreenWidth(), r.GetScreenHeight(), 0, messageHeight, buttonRows, fieldHeight > 0, metrics)
 	panel := layout.Panel
-	panelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindModal(), 2)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 2)
 	panelStyle := unpackStyle(panelFrame.Value)
-	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindModal(), 16).Value)
-	messageStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindModal(), 20).Value)
-	scrimStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindModal(), 19).Value)
+	titleStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 16).Value)
+	messageStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 20).Value)
+	scrimStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		className, StyleSheet_StyleKindModal(), 19).Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
 	titleFont, titleFontID := styleTextFace(titleStyle, Text16)
@@ -4853,7 +4854,7 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 			tone = ButtonToneAccent
 		}
 		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{Bounds: bounds, Label: label,
-			Tone: tone, Emphasis: emphasis, Disabled: action.Disabled},
+			ClassName: className, Tone: tone, Emphasis: emphasis, Disabled: action.Disabled},
 			panel, false, StyleSheet_StyleKindModal(), 17)
 		button.AmbientColor = panelStyle.Background
 		r.record(button)
@@ -4882,17 +4883,18 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	layout := TitleBar_TitleBarLayoutFor(r.GetScreenWidth(), height,
 		props.HasLeadingAction, props.HasDropdown, props.Dropdown.Height,
 		props.Dropdown.MinWidth, metrics)
-	surfaceFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindTitleBar(), 1)
+	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindTitleBar(), 1)
 	r.record(styleFrameRectOp(layout.Bounds, Rectangle{}, surfaceFrame))
 	clicked := int32(0)
 	if props.HasLeadingAction {
 		button, pressed := r.surfaceButtonFrameForRoleKind(ButtonProps{
-			Bounds:   layout.LeadingBounds,
-			Disabled: r.contentDisabled(),
-			Tone:     ButtonToneNeutral,
-			Emphasis: ButtonEmphasisSoft,
-			Size:     ControlSizeMedium,
+			Bounds:    layout.LeadingBounds,
+			Disabled:  r.contentDisabled(),
+			ClassName: props.ClassName,
+			Tone:      ButtonToneNeutral,
+			Emphasis:  ButtonEmphasisSoft,
+			Size:      ControlSizeMedium,
 		}, layout.Bounds, false, StyleSheet_StyleKindTitleBar(), 17)
 		if pressed {
 			clicked = 1
@@ -4921,8 +4923,8 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 		}
 		return clicked
 	}
-	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindTitleBar(), 16).Value)
+	titleStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindTitleBar(), 16).Value)
 	titleFont, titleFontID := styleTextFace(titleStyle, Text20)
 	titleW := runtimeTextWidthWithFont(props.Title, titleFont, titleFontID)
 	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
@@ -5518,10 +5520,12 @@ func (r *runtime) Toast(props ToastProps) {
 	metrics := Toast_ToastMetricsFor(1)
 	if props.Message == "" {
 		r.toastMessage = ""
+		r.toastClassName = 0
 		r.toastUntil = time.Time{}
 		return
 	}
 	r.toastMessage = props.Message
+	r.toastClassName = props.ClassName
 	duration := Toast_ToastDuration(float32(props.Seconds), metrics)
 	r.toastUntil = time.Now().Add(time.Duration(float64(duration) * float64(time.Second)))
 }
@@ -5531,8 +5535,10 @@ func (r *runtime) recordToast() {
 		return
 	}
 	metrics := Toast_ToastMetricsFor(1)
-	surfaceFrame := defaultStyleFrame(StyleSheet_StyleKindToast())
-	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindToast(), 6)
+	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, r.toastClassName, StyleSheet_StyleKindToast(), StyleSheet_StyleAny())
+	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, r.toastClassName, StyleSheet_StyleKindToast(), 6)
 	surface := unpackStyle(surfaceFrame.Value)
 	label := unpackStyle(labelFrame.Value)
 	labelFont, labelFontID := styleTextFace(label, Text14)

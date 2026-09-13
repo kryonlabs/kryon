@@ -33,6 +33,7 @@ typedef struct TitleBarDropdown {
 
 typedef struct TitleBarProps {
     const char* title;
+    int32_t class_name;
     int32_t height;
     Texture2D leading_icon;
     bool has_leading_action;

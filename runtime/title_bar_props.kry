@@ -13,6 +13,7 @@ TitleBarDropdown :: struct {
 
 TitleBarProps :: struct {
     title: const char*
+    class_name: i32
     height: i32
     leading_icon: Texture2D
     has_leading_action: bool

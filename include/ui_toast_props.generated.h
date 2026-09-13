@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct ToastProps {
     const char* message;
+    int32_t class_name;
     double seconds;
 } ToastProps;
 
