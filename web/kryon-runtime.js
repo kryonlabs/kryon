@@ -1689,6 +1689,7 @@ const webKssLengthProperties = new Set([
   "padding", "padding-x", "padding-y",
   "margin", "margin-x", "margin-y",
   "width", "height", "min-width", "max-width", "min-height", "max-height",
+  "inset", "top", "right", "bottom", "left",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height", "outline-width",
   "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
 ]);
@@ -1983,6 +1984,11 @@ const webCSSPropertyNames = new Map([
   ["max-width", "max-width"],
   ["min-height", "min-height"],
   ["max-height", "max-height"],
+  ["inset", "inset"],
+  ["top", "top"],
+  ["right", "right"],
+  ["bottom", "bottom"],
+  ["left", "left"],
   ["gap", "gap"],
   ["row-gap", "row-gap"],
   ["column-gap", "column-gap"],
@@ -2556,6 +2562,11 @@ function applyResolvedWebStyle(el, style) {
   set("maxWidth", style["max-width"]);
   set("minHeight", style["min-height"]);
   set("maxHeight", style["max-height"]);
+  set("inset", style.inset);
+  set("top", style.top);
+  set("right", style.right);
+  set("bottom", style.bottom);
+  set("left", style.left);
   set("gap", style.gap);
   set("rowGap", style["row-gap"]);
   set("columnGap", style["column-gap"]);
