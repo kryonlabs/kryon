@@ -2072,8 +2072,36 @@ emit_if(FILE *f, const KirModule *m, const KirStmt *st, const char *raw,
     *chained = 0;
     snprintf(cond, sizeof(cond), "%s", raw);
     kir_strip_block_brace(cond);
-    if(strncmp(cond, "guard ", 6) == 0)
+    if(strncmp(cond, "guard ", 6) == 0) {
         memmove(cond, cond + 6, strlen(cond + 6) + 1);
+        kir_trim_in_place(cond);
+        emit_indent(f, indent);
+        if(begin_popup_call_args(cond, args, sizeof(args))) {
+            fprintf(f, "if (kryon.widget($rt, \"Popup\", ");
+            emit_initializer_value(f, m, args);
+            fprintf(f, ", $state, ");
+            emit_web_metadata(f, m, st);
+            fprintf(f, ")) {\n");
+        } else if(condition_is_widget_call(cond, widget, sizeof(widget), args,
+                                    sizeof(args))) {
+            fprintf(f, "if (kryon.widget($rt, ");
+            js_string(f, widget);
+            fprintf(f, ", ");
+            emit_widget_arguments(f, m, widget, args);
+            fprintf(f, ", $state, ");
+            emit_web_metadata(f, m, st);
+            fprintf(f, ")) {\n");
+        } else {
+            tx_expr(m, cond, out, sizeof(out));
+            fprintf(f, "if (%s) {\n", out);
+        }
+        emit_indent(f, indent + 1);
+        fprintf(f, "return kryon.snapshot($rt);\n");
+        emit_indent(f, indent);
+        fprintf(f, "}\n");
+        *chained = -1;
+        return;
+    }
     if(strncmp(cond, "else if ", 8) == 0) {
         *chained = 1;
         memmove(cond, cond + 8, strlen(cond + 8) + 1);
@@ -2301,6 +2329,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
 
             emit_if(f, m, st, raw, indent, &chained);
             (void)chained;
+            if(chained < 0)
+                break;
             if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
                 block_stack[block_top++] = 1;
             indent++;

@@ -1703,6 +1703,9 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
         } else if(starts_word(expr, "if")) {
             memmove(expr, expr + 2, strlen(expr + 2) + 1);
             kir_trim_in_place(expr);
+        } else if(starts_word(expr, "guard")) {
+            memmove(expr, expr + 5, strlen(expr + 5) + 1);
+            kir_trim_in_place(expr);
         } else {
             return;
         }
