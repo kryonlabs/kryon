@@ -23,7 +23,7 @@ RenderInfoRows(InfoRowsProps rows)
     int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
     int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
     int default_font = text_style.font_size > 0.0f
-                           ? Scale((int)text_style.font_size)
+                           ? (int)(text_style.font_size + 0.5f)
                            : GetFontSize();
     int font_token;
 
@@ -79,7 +79,7 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
                                                     StyleKindText());
     int label_font = row.label_font > 0 ? row.label_font
                      : text_style.font_size > 0.0f
-                         ? Scale((int)text_style.font_size)
+                         ? (int)(text_style.font_size + 0.5f)
                          : GetSmallFontSize();
     Color label_color = row.label_color.a != 0 ? row.label_color
                                                : text_style.foreground;
@@ -110,7 +110,7 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
                                                     StyleKindText());
     int font = label.font > 0 ? label.font
                : text_style.font_size > 0.0f
-                   ? Scale((int)text_style.font_size)
+                   ? (int)(text_style.font_size + 0.5f)
                    : GetSmallFontSize();
     Color color = label.color.a != 0 ? label.color : text_style.foreground;
     int font_token;
