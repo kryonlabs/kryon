@@ -318,9 +318,11 @@ The initial tag mapping is intentionally conservative:
 | `Screen`, `Page` | `main` |
 | `Section` | `section` |
 | `NavigationBar` | `nav` |
+| `Disabled` | `fieldset` |
 | `Fieldset` | `fieldset` |
 | `Collapsible` | `details` |
 | `Modal` | `dialog` |
+| `Popup` | `div` |
 | `Text` | `span` |
 | `Heading` | `h1`-`h6` |
 | `Paragraph`, `ParagraphText` | `p` |

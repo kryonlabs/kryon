@@ -375,6 +375,8 @@ export function viewport(rt, app = null) {
 
 export function widget(rt, name, args, state = null, meta = null) {
   const item = { kind: "widget", name, args, meta };
+  if (name === "Disabled" && String(args || "").trim() === "end")
+    return handleWidget(rt, name, args, state);
   rt.frame.push(item);
   return handleWidget(rt, name, args, state);
 }
@@ -769,6 +771,16 @@ function handleCard(rt, args) {
   return handleButton(rt, args);
 }
 
+function handlePopup(args) {
+  if (isTruthyProp(args, "disabled"))
+    return false;
+  const open = args && typeof args === "object" ? args.open : null;
+  if (open && typeof open === "object" && "value" in open)
+    return !!open.value;
+  const flags = propNumber(args, "flags", 0);
+  return (flags & 1) !== 0;
+}
+
 function handleSlider(rt, state, args) {
   if (String(args || "").includes("SliderProps")) {
     const bounds = parseBounds(args);
@@ -1009,6 +1021,8 @@ function handleWidget(rt, name, args, state) {
     return handleButton(rt, args);
   case "Card":
     return handleCard(rt, args);
+  case "Popup":
+    return handlePopup(args);
   case "TextField":
   case "TextArea":
     return handleTextInput(rt, state, args);
@@ -1051,6 +1065,10 @@ function widgetTag(item) {
     return "details";
   case "Modal":
     return "dialog";
+  case "Disabled":
+    return "fieldset";
+  case "Popup":
+    return "div";
   case "Heading":
     return "h" + Math.max(1, Math.min(6, propNumber(args, "level", 2)));
   case "Paragraph":
@@ -1275,6 +1293,8 @@ function webNodeFromWidget(item, index) {
     pressed: false,
     focus: false
   };
+  if (item.name === "Disabled")
+    state.disabled = numberValue(args, 0) !== 0;
   const node = {
     index,
     kind: item.name,

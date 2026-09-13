@@ -1825,21 +1825,35 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
     }
     if(strcmp(block->widget, "Disabled") == 0) {
         const char *condition = block->prop_count ? block->props : "true";
+        KirStmt *statement;
+
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         ui_block_format(call, sizeof(call), span, "BeginDisabled(%s)", condition);
         /* Scope conditions are boolean expressions, not legacy integer UI
          * widget arguments. Keep the ordinary typed call in the shared IR. */
-        KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "", source_span);
+        statement = KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "",
+                                       source_span);
+        if(statement == NULL)
+            die("out of memory parsing Disabled block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndDisabled()", "",
                            source_span);
         block->opened = 1;
         return;
     }
     if(strcmp(block->widget, "Popup") == 0) {
+        KirStmt *statement;
+
         ui_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
         ui_block_format(call, sizeof(call), span, "if Begin%s(%s) {",
                         block->widget, args);
-        KirFunctionAddStmt(fn, KIR_STMT_IF, call, "", source_span);
+        statement = KirFunctionAddStmt(fn, KIR_STMT_IF, call, "",
+                                       source_span);
+        if(statement == NULL)
+            die("out of memory parsing Popup block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         snprintf(call,sizeof(call),"defer End%s()",block->widget);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;

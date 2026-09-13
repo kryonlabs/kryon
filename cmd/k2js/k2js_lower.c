@@ -1150,6 +1150,16 @@ begin_table_cell_call_args(const char *source, char *args, size_t args_size)
     return strcmp(name, "BeginTableCell") == 0;
 }
 
+static int
+begin_popup_call_args(const char *source, char *args, size_t args_size)
+{
+    char name[K2JS_NAME_MAX];
+
+    if(!split_direct_call(source, name, sizeof(name), args, args_size))
+        return 0;
+    return strcmp(name, "BeginPopup") == 0;
+}
+
 static void
 emit_scroll_widget_arguments(FILE *f, const KirModule *m, const char *args)
 {
@@ -1924,7 +1934,13 @@ emit_if(FILE *f, const KirModule *m, const KirStmt *st, const char *raw,
         memmove(cond, cond + 8, strlen(cond + 8) + 1);
         kir_trim_in_place(cond);
         emit_indent(f, indent);
-        if(condition_is_widget_call(cond, widget, sizeof(widget), args,
+        if(begin_popup_call_args(cond, args, sizeof(args))) {
+            fprintf(f, "} else if (kryon.widget($rt, \"Popup\", ");
+            emit_initializer_value(f, m, args);
+            fprintf(f, ", $state, ");
+            emit_web_metadata(f, m, st);
+            fprintf(f, ")) {\n");
+        } else if(condition_is_widget_call(cond, widget, sizeof(widget), args,
                                     sizeof(args))) {
             fprintf(f, "} else if (kryon.widget($rt, ");
             js_string(f, widget);
@@ -1950,7 +1966,13 @@ emit_if(FILE *f, const KirModule *m, const KirStmt *st, const char *raw,
         memmove(cond, cond + 3, strlen(cond + 3) + 1);
     kir_trim_in_place(cond);
     emit_indent(f, indent);
-    if(condition_is_widget_call(cond, widget, sizeof(widget), args,
+    if(begin_popup_call_args(cond, args, sizeof(args))) {
+        fprintf(f, "if (kryon.widget($rt, \"Popup\", ");
+        emit_initializer_value(f, m, args);
+        fprintf(f, ", $state, ");
+        emit_web_metadata(f, m, st);
+        fprintf(f, ")) {\n");
+    } else if(condition_is_widget_call(cond, widget, sizeof(widget), args,
                                 sizeof(args))) {
         fprintf(f, "if (kryon.widget($rt, ");
         js_string(f, widget);
@@ -2187,9 +2209,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 emit_indent(f, indent);
                 if(strcmp(name, "BeginDisabled") == 0) {
                     tx_expr(m, args, out, sizeof(out));
-                    fprintf(f, "kryon.widget($rt, \"Disabled\", (%s) ? 1 : 0, $state);\n", out);
+                    fprintf(f, "kryon.widget($rt, \"Disabled\", (%s) ? 1 : 0, $state, ", out);
+                    emit_web_metadata(f, m, st);
+                    fprintf(f, ");\n");
                 } else {
-                    fprintf(f, "kryon.widget($rt, \"Disabled\", \"end\", $state);\n");
+                    fprintf(f, "kryon.widget($rt, \"Disabled\", \"end\", $state, null);\n");
                 }
                 break;
             }

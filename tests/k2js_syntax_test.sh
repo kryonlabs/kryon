@@ -685,6 +685,87 @@ grep -q '"path": "TableCellBlockNodes/action_cell"' "$table_cell_block_out"
 grep -q 'const \$bounds = kryon.recordValue("Rectangle", \[0, 0, 0, 0\])' "$table_cell_block_out"
 grep -q 'let cell_width = kryon.copyValue(action_cell.width)' "$table_cell_block_out"
 
+cat > "$work/src/popup_block_nodes.kry" <<'EOF'
+#import "kryon.h"
+state {
+    popup_open: bool = true
+    closed_open: bool = false
+}
+PopupBlockNodes :: () #ui {
+    Popup tools: {
+        bounds = {20, 20, 120, 80}
+        id = 600
+        open = &popup_open
+        role = "dialog"
+        Text label: {
+            text = "Tools"
+        }
+    }
+    Popup closed: {
+        bounds = {200, 20, 120, 80}
+        id = 601
+        open = &closed_open
+        Text hidden_label: {
+            text = "Hidden"
+        }
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/popup_block_nodes.kry"
+popup_block_out="$work/out/src/popup_block_nodes.js"
+grep -q 'kryon.widget(\$rt, "Popup"' "$popup_block_out"
+grep -q '"nodeName": "tools"' "$popup_block_out"
+grep -q '"path": "PopupBlockNodes/tools"' "$popup_block_out"
+grep -q '"role": "dialog"' "$popup_block_out"
+node --input-type=module - "$popup_block_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const state = module.createState();
+const rt = runtime.createRuntime({});
+module.PopupBlockNodes_PopupBlockNodes(rt, state, {});
+const paths = runtime.webDocumentFrame(rt).nodes.map((node) => node.path);
+assert(paths.includes("PopupBlockNodes/tools"));
+assert(paths.includes("PopupBlockNodes/tools/label"));
+assert(paths.includes("PopupBlockNodes/closed"));
+assert(!paths.includes("PopupBlockNodes/closed/hidden_label"));
+EOF
+
+cat > "$work/src/disabled_block_nodes.kry" <<'EOF'
+#import "kryon.h"
+DisabledBlockNodes :: () #ui {
+    Disabled locked: {
+        when = true
+        Button child: {
+            label = "Locked"
+        }
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/disabled_block_nodes.kry"
+disabled_block_out="$work/out/src/disabled_block_nodes.js"
+grep -q 'kryon.widget(\$rt, "Disabled", (true) ? 1 : 0, \$state' "$disabled_block_out"
+grep -q 'kryon.widget(\$rt, "Disabled", "end", \$state, null)' "$disabled_block_out"
+grep -q '"nodeName": "locked"' "$disabled_block_out"
+grep -q '"path": "DisabledBlockNodes/locked"' "$disabled_block_out"
+node --input-type=module - "$disabled_block_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const state = module.createState();
+const rt = runtime.createRuntime({});
+module.DisabledBlockNodes_DisabledBlockNodes(rt, state, {});
+const frame = runtime.webDocumentFrame(rt);
+const disabled = frame.nodes.filter((node) => node.kind === "Disabled");
+assert.equal(disabled.length, 1);
+assert.equal(disabled[0].path, "DisabledBlockNodes/locked");
+assert.equal(disabled[0].tag, "fieldset");
+assert.equal(disabled[0].state.disabled, true);
+assert(frame.nodes.some((node) => node.path === "DisabledBlockNodes/locked/child"));
+EOF
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {
