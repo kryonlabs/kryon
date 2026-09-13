@@ -1474,7 +1474,6 @@ include/ui_draw.h function FitFontSize
 include/ui_draw.h function GetFontSize
 include/ui_draw.h function GetSmallFontSize
 include/ui_draw.h function GetTitleFontSize
-include/ui_draw.h function GetUIControlTextY
 include/ui_drawing_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_grid_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_icon_types.h enum ICON_ACTIVITY
