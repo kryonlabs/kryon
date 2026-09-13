@@ -44,6 +44,9 @@ try {
     attr_itemprop: "mainEntity",
     role: "region",
     aria_label: "Browser article",
+    aria_details: "Page/article/save",
+    aria_errormessage: "Page/article/save",
+    aria_flowto: "Page/article/save",
     on_click: "article_click"
   }, null, {
     nodeName: "article",
@@ -162,6 +165,10 @@ try {
   assert(article.getAttribute("itemprop") === "mainEntity", "extra attr missing");
   assert(article.getAttribute("role") === "region", "role attr missing");
   assert(article.getAttribute("aria-label") === "Browser article", "aria attr missing");
+  assert(article.getAttribute("aria-details") === "save", "aria-details relation not resolved");
+  assert(article.getAttribute("aria-errormessage") === "save",
+    "aria-errormessage relation not resolved");
+  assert(article.getAttribute("aria-flowto") === "save", "aria-flowto relation not resolved");
   assert(article.getAttribute("data-kry-source-range-ref") === "browser.kry:3:5-11:6",
     "source range attr missing");
   assert(article.dataset.krySourceRef === "browser.kry:3", "source ref dataset missing");
@@ -215,6 +222,25 @@ try {
     "root event refs missing click hook");
   assert(kryon.webDOMEventRefs(target, "article-ref").click === "article_click",
     "mounted event refs missing click hook");
+  const saveRelations = kryon.webDOMRelations(target, "save");
+  assert(kryon.webDOMRelations(target, "article-ref").details.ref === "Page/article/save",
+    "article details relation missing");
+  assert(kryon.webDOMRelations(target, "article-ref").errorMessage.ref === "Page/article/save",
+    "article error message relation missing");
+  assert(kryon.webDOMRelations(target, "article-ref").flowTo.map((object) => object.ref).join(" ") === "Page/article/save",
+    "article flow relation missing");
+  assert(saveRelations.detailedBy.map((object) => object.ref).join(" ") === "article-ref",
+    "save detailedBy relation missing");
+  assert(saveRelations.errorFor.map((object) => object.ref).join(" ") === "article-ref",
+    "save errorFor relation missing");
+  assert(saveRelations.flowFrom.map((object) => object.ref).join(" ") === "article-ref",
+    "save flowFrom relation missing");
+  assert(kryon.webDOMRelationRefs(target, "article-ref").details === "Page/article/save",
+    "article details relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "article-ref").relationRefs.errorMessage === "Page/article/save",
+    "article snapshot error relation missing");
+  assert(root.kryRelationRefs("article-ref").flowTo.join(" ") === "Page/article/save",
+    "root flow relation refs missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);
