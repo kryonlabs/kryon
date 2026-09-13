@@ -1308,12 +1308,13 @@ function widgetText(item) {
   case "Figcaption":
   case "Summary":
   case "Label":
-  case "Output":
   case "Option":
   case "ListItem":
   case "DescriptionTerm":
   case "DescriptionDetails":
     return propString(args, "text", "");
+  case "Output":
+    return propString(args, "text", propString(args, "value", ""));
   case "Button":
     return propString(args, "label", "");
   case "Selectable":
@@ -7043,6 +7044,7 @@ function webNodeCollectionMemberRoles(node) {
   case "tree":
     return new Set(["treeitem"]);
   case "listbox":
+  case "combobox":
     return new Set(["option"]);
   case "list":
     return new Set(["listitem"]);

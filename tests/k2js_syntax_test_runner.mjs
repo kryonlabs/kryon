@@ -3044,11 +3044,14 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Summary").tag, "summary");
     assert.equal(runtime.webNodeQuery(nativeRt, "Dialog").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").tag, "output");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Output").text, "Ready");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").domValue, "Ready");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeForm/label").labelFor.path,
       "Page/nativeForm/email");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeForm").formControls,
       ["Page/nativeForm/email"]);
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeSelect/one").collectionOwner.path,
+      "Page/nativeSelect");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/aside/related").landmarkOwner.path,
       "Page/aside");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/footer/legal").landmarkOwner.path,
@@ -3297,6 +3300,7 @@ function fakeDocument() {
     assert.equal(nativeDialog.open, true);
     assert.equal(nativeOutput.tagName, "OUTPUT");
     assert.equal(nativeOutput.attributes.value, "Ready");
+    assert.equal(nativeOutput.textContent, "Ready");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/list/first").collectionOwner.ref,
       "Page/list");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/ordered/third").collectionOwner.ref,
@@ -3307,6 +3311,8 @@ function fakeDocument() {
       "Page/nativeForm/email");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nativeForm").formControls,
       ["Page/nativeForm/email"]);
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeSelect/one").collectionOwner.ref,
+      "Page/nativeSelect");
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");
