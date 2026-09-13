@@ -3849,6 +3849,20 @@ function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
   return delta / a >= 0 && delta % a === 0;
 }
 
+function webNodeHasFocusWithin(node) {
+  if (!node)
+    return false;
+  if (node.state?.focus || node.state?.["focus-within"])
+    return true;
+  const parentPath = node.path || "";
+  if (!parentPath)
+    return false;
+  return (node.__kryFrameNodes || []).some((candidate) =>
+    candidate && candidate !== node && candidate.path !== parentPath &&
+    candidate.path?.startsWith(parentPath + "/") &&
+    (candidate.state?.focus || candidate.state?.["focus-within"]));
+}
+
 function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
@@ -3884,6 +3898,9 @@ function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
       const hasChildren = (node.__kryFrameNodes || []).some((candidate) =>
         candidate && candidate.parentPath === node.path && candidate.path !== node.path);
       if (hasChildren || String(node.text || node.domValue || "").length > 0)
+        return false;
+    } else if (pseudo === "focus-within") {
+      if (!webNodeHasFocusWithin(node))
         return false;
     } else if (String(pseudo).startsWith("nth-child(")) {
       if (!nthChildPseudoMatches(pseudo, siblings, node))

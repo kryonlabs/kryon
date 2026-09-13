@@ -241,6 +241,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS structural selectors support `:root` and scoped `:scope` matching in Web
   Document and mounted DOM queries, while CSS export preserves the native
   pseudo selectors.
+- KSS structural selectors support browser-native `:focus-within` in CSS
+  export, pre-mount style resolution, and mounted DOM queries by walking Kry
+  descendant focus state.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
