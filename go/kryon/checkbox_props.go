@@ -10,4 +10,5 @@ type CheckboxProps struct {
 	Flags      *int32
 	FlagsValue int32
 	Disabled   bool
+	ClassName  int32
 }

@@ -80,6 +80,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    flags: *i32\n"
         "    flags_value: i32\n"
         "    disabled: bool\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/collapsible_props.kry",
@@ -347,6 +348,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    id: i32\n"
         "    checked: bool\n"
         "    disabled: bool\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/scroll_props.kry",

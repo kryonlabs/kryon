@@ -2527,9 +2527,9 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 		}
 	}
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, disabled)
-	box := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, 9)
-	active := checkboxStyleFrame(ButtonToneAccent, state, disabled, checked, 10)
-	label := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, 6)
+	box := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, 9)
+	active := checkboxStyleFrame(ButtonToneAccent, state, disabled, checked, props.ClassName, 10)
+	label := checkboxStyleFrame(ButtonToneNeutral, state, disabled, checked, props.ClassName, 6)
 	paint := Checkbox_CheckboxPaintFor(CheckboxSpec{
 		Bounds:  props.Bounds,
 		Checked: checked,
@@ -2557,13 +2557,14 @@ func (r *runtime) Checkbox(props CheckboxProps) bool {
 	return changed
 }
 
-func checkboxStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, role int32) StyleFrame {
+func checkboxStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, className int32, role int32) StyleFrame {
 	props := ButtonProps{
-		Tone:     tone,
-		Emphasis: ButtonEmphasisOutline,
-		Size:     ControlSizeMedium,
-		Disabled: disabled,
-		Selected: selected,
+		ClassName: className,
+		Tone:      tone,
+		Emphasis:  ButtonEmphasisOutline,
+		Size:      ControlSizeMedium,
+		Disabled:  disabled,
+		Selected:  selected,
 	}
 	if tone == ButtonToneAccent {
 		props.Emphasis = ButtonEmphasisFilled
@@ -6140,7 +6141,7 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	props.Bounds = r.layoutRect(props.Bounds)
 	input := r.ReadActivation(props.Bounds, props.ID, !props.Disabled)
 	state := checkboxButtonState(input.Hovered, input.Pressed, input.Focused, props.Disabled)
-	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, 10)
+	selectedFrame := radioStyleFrame(ButtonToneAccent, state, props.Disabled, props.Checked, props.ClassName, 10)
 	paint := Radio_RadioPaintFor(RadioSpec{
 		Bounds:   props.Bounds,
 		Checked:  props.Checked,
@@ -6152,10 +6153,10 @@ func (r *runtime) Radio(props RadioProps) int32 {
 			return 0
 		}(),
 		Scale:    1,
-		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 11),
+		Frame:    radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, 11),
 		Selected: selectedFrame,
 	})
-	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, 6)
+	label := radioStyleFrame(ButtonToneNeutral, state, props.Disabled, props.Checked, props.ClassName, 6)
 	paint.LabelColor = label.Value.Foreground
 	markStyle := unpackStyle(selectedFrame.Value)
 	labelStyle := unpackStyle(label.Value)
@@ -6175,13 +6176,14 @@ func (r *runtime) Radio(props RadioProps) int32 {
 	return 0
 }
 
-func radioStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, role int32) StyleFrame {
+func radioStyleFrame(tone ButtonTone, state ButtonState, disabled, selected bool, className int32, role int32) StyleFrame {
 	props := ButtonProps{
-		Tone:     tone,
-		Emphasis: ButtonEmphasisOutline,
-		Size:     ControlSizeMedium,
-		Disabled: disabled,
-		Selected: selected,
+		ClassName: className,
+		Tone:      tone,
+		Emphasis:  ButtonEmphasisOutline,
+		Size:      ControlSizeMedium,
+		Disabled:  disabled,
+		Selected:  selected,
 	}
 	if tone == ButtonToneAccent {
 		props.Emphasis = ButtonEmphasisFilled

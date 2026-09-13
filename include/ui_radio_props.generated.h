@@ -27,6 +27,7 @@ typedef struct RadioProps {
     int32_t id;
     bool checked;
     bool disabled;
+    int32_t class_name;
 } RadioProps;
 
 #endif /* K_RUNTIME_RADIO_PROPS_H */

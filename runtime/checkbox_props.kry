@@ -9,4 +9,5 @@ CheckboxProps :: struct {
     flags: *i32
     flags_value: i32
     disabled: bool
+    class_name: i32
 }

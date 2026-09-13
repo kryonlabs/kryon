@@ -3,9 +3,10 @@ package kryon
 
 // #import kryon_compat.generated.h
 type RadioProps struct {
-	Bounds   Rectangle
-	Label    string
-	ID       int32
-	Checked  bool
-	Disabled bool
+	Bounds    Rectangle
+	Label     string
+	ID        int32
+	Checked   bool
+	Disabled  bool
+	ClassName int32
 }

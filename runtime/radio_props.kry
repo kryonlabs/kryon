@@ -7,4 +7,5 @@ RadioProps :: struct {
     id: i32
     checked: bool
     disabled: bool
+    class_name: i32
 }

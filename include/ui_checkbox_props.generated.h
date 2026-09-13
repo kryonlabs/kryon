@@ -29,6 +29,7 @@ typedef struct CheckboxProps {
     int32_t* flags;
     int32_t flags_value;
     bool disabled;
+    int32_t class_name;
 } CheckboxProps;
 
 #endif /* K_RUNTIME_CHECKBOX_PROPS_H */
