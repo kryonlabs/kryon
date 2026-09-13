@@ -167,6 +167,13 @@ main(void)
     frame.value.font_size = 13.0f;
     plot_text_paint = PlotTextPaintFor((Rectangle){20, 30, 120, 60},
         24.0f, 31.0f, 1.0f, frame, 1, 1);
+    check_float("plot padding falls back when unset",
+                plot_text_paint.label_bounds.x, 26.0f);
+    check_float("plot text height falls back when unset",
+                plot_text_paint.label_bounds.height, 18.0f);
+    frame.value.fields |= StylePaddingX | StylePaddingY | StyleFontSize;
+    plot_text_paint = PlotTextPaintFor((Rectangle){20, 30, 120, 60},
+        24.0f, 31.0f, 1.0f, frame, 1, 1);
     check_float("plot label x comes from style",
                 plot_text_paint.label_bounds.x, 31.0f);
     check_float("plot label y comes from style",
@@ -179,6 +186,13 @@ main(void)
                 plot_text_paint.overlay_bounds.y, 33.0f);
     frame.value.padding_y = 0.0f;
     frame.value.font_size = 0.0f;
+    plot_text_paint = PlotTextPaintFor((Rectangle){20, 30, 120, 60},
+        24.0f, 31.0f, 1.0f, frame, 1, 1);
+    check_float("plot keeps explicit zero padding y",
+                plot_text_paint.label_bounds.y, 30.0f);
+    check_float("plot text height protects layout",
+                plot_text_paint.label_bounds.height, 18.0f);
+    frame.value.fields &= ~(StylePaddingX | StylePaddingY | StyleFontSize);
     frame.value.icon_size = 8.0f;
     bullet_paint = BulletPaintFor((Rectangle){10, 20, 20, 12}, frame);
     check_float("bullet x comes from style size",

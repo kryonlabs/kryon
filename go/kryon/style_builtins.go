@@ -1218,6 +1218,8 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 6;
+  padding-y: 4;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -3045,6 +3047,8 @@ Plot {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 6;
+  padding-y: 4;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4840,6 +4844,8 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 6;
+  padding-y: 4;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6743,6 +6749,8 @@ Plot {
   border: border-soft;
   radius: radius.md;
   border-width: border;
+  padding-x: 6;
+  padding-y: 4;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8646,6 +8654,8 @@ Plot {
   border: card-border;
   radius: radius;
   border-width: border;
+  padding-x: 6;
+  padding-y: 4;
   font-size: font;
   opacity: 1;
   material: premium;
