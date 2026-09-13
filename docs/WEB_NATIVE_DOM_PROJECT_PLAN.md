@@ -70,6 +70,8 @@ the browser receives normal elements, attributes, CSS, and events.
   source maps.
 - Mounted DOM snapshots include effective role and `webNodeStyleFacts(...)`
   data, so devtools can inspect Kry identity and KSS selector facts together.
+- Web runtime TypeScript declarations expose the native DOM facts used by KSS
+  and DOM queries, including global attribute facts such as title and tab index.
 - Native relation resolution for `aria_controls`, `aria_owns`,
   `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `headers`,
   `dom_for`, `form`, and `popover_target`, while preserving authored Kry refs

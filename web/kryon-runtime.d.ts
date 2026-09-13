@@ -282,6 +282,8 @@ export interface WebNodeStyleFacts {
   sourceRangeRef: string;
   id: string;
   domName: string;
+  title: string;
+  tabIndex: number | null;
   domValue: string;
   href: string;
   target: string;
