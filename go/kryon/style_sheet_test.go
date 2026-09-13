@@ -158,6 +158,9 @@ Button[class=primary]:pressed {
   focus: accent;
   opacity: normal;
 }
+* {
+  gap: line;
+}
 Segment:selected {
   foreground: accent;
 }
@@ -252,7 +255,7 @@ Focus[role=Box]:focus {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 33 {
+	if id != "smoke" || len(rules) != 34 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -275,16 +278,20 @@ Focus[role=Box]:focus {
 		rules[2].Style.Opacity != 140 {
 		t.Fatalf("bad class attribute rule: %#v", rules[2])
 	}
-	if rules[3].Selector.Kind != StyleSheet_StyleKindSegment() ||
-		rules[3].State != int32(ButtonStateSelected) ||
-		rules[3].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad segment rule: %#v", rules[3])
+	if rules[3].Selector.Kind != StyleSheet_StyleKindAny() ||
+		rules[3].Style.Gap != 2 {
+		t.Fatalf("bad any rule: %#v", rules[3])
 	}
-	if rules[32].Selector.Kind != StyleSheet_StyleKindFocus() ||
-		rules[32].Selector.Role != 9 ||
-		rules[32].State != int32(ButtonStateFocus) ||
-		rules[32].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad focus role rule: %#v", rules[32])
+	if rules[4].Selector.Kind != StyleSheet_StyleKindSegment() ||
+		rules[4].State != int32(ButtonStateSelected) ||
+		rules[4].Style.Foreground != 0x2f6bffff {
+		t.Fatalf("bad segment rule: %#v", rules[4])
+	}
+	if rules[33].Selector.Kind != StyleSheet_StyleKindFocus() ||
+		rules[33].Selector.Role != 9 ||
+		rules[33].State != int32(ButtonStateFocus) ||
+		rules[33].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad focus role rule: %#v", rules[33])
 	}
 }
 

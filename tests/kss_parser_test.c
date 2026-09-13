@@ -73,6 +73,9 @@ main(void)
         "  focus: accent;\n"
         "  opacity: normal;\n"
         "}\n"
+        "* {\n"
+        "  gap: space.3;\n"
+        "}\n"
         "Segment:selected {\n"
         "  foreground: accent;\n"
         "}\n"
@@ -148,7 +151,7 @@ main(void)
         "Focus[role=Box]:focus {\n"
         "  border: accent;\n"
         "}\n";
-    StyleRule rules[29] = {0};
+    StyleRule rules[30] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -164,10 +167,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 29, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 30, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 29);
+    assert(result.rule_count == 30);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -187,13 +190,15 @@ main(void)
     assert(rules[3].state == ButtonStatePressed);
     assert(rules[3].style.focus == 0x2f6bffffu);
     assert(rules[3].style.opacity == 140.0f);
-    assert(rules[4].selector.kind == StyleKindSegment());
-    assert(rules[4].state == ButtonStateSelected);
-    assert(rules[4].style.foreground == 0x2f6bffffu);
-    assert(rules[28].selector.kind == StyleKindFocus());
-    assert(rules[28].selector.role == 9);
-    assert(rules[28].state == ButtonStateFocus);
-    assert(rules[28].style.border == 0x2f6bffffu);
+    assert(rules[4].selector.kind == StyleKindAny());
+    assert(rules[4].style.gap == 12.0f);
+    assert(rules[5].selector.kind == StyleKindSegment());
+    assert(rules[5].state == ButtonStateSelected);
+    assert(rules[5].style.foreground == 0x2f6bffffu);
+    assert(rules[29].selector.kind == StyleKindFocus());
+    assert(rules[29].selector.role == 9);
+    assert(rules[29].state == ButtonStateFocus);
+    assert(rules[29].style.border == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;

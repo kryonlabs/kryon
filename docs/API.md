@@ -233,6 +233,7 @@ tokens {
 KSS class selectors use CSS-style suffixes or an explicit selector attribute:
 
 ```kss
+* { gap: 12; }
 Button.primary { padding-y: 12; }
 Button[class=primary]:pressed { focus: #2f6bff; }
 ```

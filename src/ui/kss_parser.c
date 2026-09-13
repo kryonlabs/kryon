@@ -135,6 +135,16 @@ kss_read_selector_ident(KssParser *p, char *out, size_t out_size)
     size_t len = 0;
 
     kss_skip_ws(p);
+    if(*p->cursor == '*') {
+        if(out_size > 1) {
+            out[0] = '*';
+            out[1] = '\0';
+        } else if(out_size > 0) {
+            out[0] = '\0';
+        }
+        p->cursor++;
+        return true;
+    }
     if(!kss_ident_start(*p->cursor))
         return false;
     while(kss_selector_ident_char(*p->cursor)) {

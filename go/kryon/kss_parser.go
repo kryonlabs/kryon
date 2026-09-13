@@ -113,6 +113,10 @@ func (p *styleParser) ident() (string, bool) {
 
 func (p *styleParser) selectorIdent() (string, bool) {
 	p.skip()
+	if !p.done() && p.peek() == '*' {
+		p.pos++
+		return "*", true
+	}
 	if p.done() || !identStart(p.peek()) {
 		return "", false
 	}
