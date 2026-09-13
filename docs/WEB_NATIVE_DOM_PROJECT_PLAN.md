@@ -99,6 +99,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `TableBody`, `TableRow`, `TableColumnGroup`, and `TableColumn` render to
   browser table elements, including column span attributes and rowgroup/row
   accessibility facts.
+- Web-native aliases are exported from the JS runtime constructor surface and
+  TypeScript declarations, so generated and handwritten JS can name those DOM
+  widgets directly instead of relying on string-only runtime widget calls.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

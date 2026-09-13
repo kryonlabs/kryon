@@ -8,6 +8,17 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
   assert.equal(typeof runtime[name], "function");
   assert.equal(runtime[name]().type, name);
 }
+for (const name of [
+  "Article", "Aside", "Footer", "Figure", "Figcaption", "List", "ListItem",
+  "Strong", "Em", "Abbr", "Data", "Del", "Ins", "Sub", "Sup", "Kbd", "Samp",
+  "Var", "Cite", "Video", "Audio", "Picture", "Source", "Track", "IFrame",
+  "Embed", "Form", "Label", "Select", "Option", "Details", "Summary",
+  "Dialog", "Output", "Table", "TableCaption", "TableColumnGroup",
+  "TableColumn", "TableHead", "TableRow", "TableCell", "TableBody"
+]) {
+  assert.equal(typeof runtime[name], "function");
+  assert.equal(runtime[name]().type, name);
+}
 function rectangle(value) {
   const [x, y, width, height] = Array.isArray(value)
     ? value : [value.x, value.y, value.width, value.height];
