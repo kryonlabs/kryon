@@ -657,11 +657,13 @@ Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
 `kryRelations` and `kryRelationRefs`, and `WebDOMObject` exposes `relations`
 and `relationRefs` for the same live-object and serializable packets.
 Direct sibling traversal is also available before mount through
-`webNodePreviousSibling(rt, query)` and `webNodeNextSibling(rt, query)`, and
-after mount through `webDOMPreviousSibling(target, query)`,
-`webDOMNextSibling(target, query)`, `root.kryPreviousSibling(query)`,
-`root.kryNextSibling(query)`, `element.kryPreviousSibling`,
-`element.kryNextSibling`, `object.previousSibling`, and `object.nextSibling`.
+`webNodePreviousSibling(rt, query)`, `webNodeNextSibling(rt, query)`,
+`webNodePreviousSiblings(rt, query)`, `webNodeNextSiblings(rt, query)`, and
+`webNodeSiblings(rt, query)`, and after mount through
+`webDOMPreviousSibling(target, query)`, `webDOMNextSibling(target, query)`,
+`webDOMPreviousSiblings(target, query)`, `webDOMNextSiblings(target, query)`,
+`webDOMSiblings(target, query)`, matching mounted root helpers, element getters,
+and `WebDOMObject` getters.
 
 `webDOMSnapshot(target, query)`, `root.krySnapshot(query)`,
 `webDOMSnapshots(target, selector)`, and `root.krySnapshots(selector)` return

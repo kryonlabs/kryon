@@ -5328,6 +5328,33 @@ function bindWebDOMObjectProperties(el) {
         return node && root ? webDOMNextSibling(root, node.path) : null;
       }
     },
+    kryPreviousSiblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMPreviousSiblings(root, node.path) : [];
+      }
+    },
+    kryNextSiblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMNextSiblings(root, node.path) : [];
+      }
+    },
+    krySiblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMSiblings(root, node.path) : [];
+      }
+    },
     kryChildren: {
       configurable: true,
       enumerable: false,
@@ -5801,6 +5828,30 @@ function makeWebDOMObject(root, node, element, ref = "") {
       get() {
         const target = webDOMObjectRoot(this);
         return target ? webDOMNextSibling(target, webDOMObjectQuery(this)) : null;
+      }
+    },
+    previousSiblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMPreviousSiblings(target, webDOMObjectQuery(this)) : [];
+      }
+    },
+    nextSiblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMNextSiblings(target, webDOMObjectQuery(this)) : [];
+      }
+    },
+    siblings: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMSiblings(target, webDOMObjectQuery(this)) : [];
       }
     },
     children: {
@@ -6936,6 +6987,27 @@ function bindWebRootProperties(root) {
         return webDOMNextSibling(this, query);
       }
     },
+    kryPreviousSiblings: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMPreviousSiblings(this, query);
+      }
+    },
+    kryNextSiblings: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMNextSiblings(this, query);
+      }
+    },
+    krySiblings: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMSiblings(this, query);
+      }
+    },
     kryEventRefs: {
       configurable: true,
       enumerable: false,
@@ -7488,6 +7560,22 @@ export function webNodePreviousSibling(rt, query) {
 
 export function webNodeNextSibling(rt, query) {
   return webNodeNextSiblingFromFrame(webNodeQuery(rt, query));
+}
+
+export function webNodePreviousSiblings(rt, query) {
+  return webNodePreviousSiblingsFromFrame(webNodeQuery(rt, query));
+}
+
+export function webNodeNextSiblings(rt, query) {
+  const node = webNodeQuery(rt, query);
+  const siblings = webNodeSiblingsFromFrame(node);
+  const index = siblings.indexOf(node);
+  return index < 0 ? [] : siblings.slice(index + 1);
+}
+
+export function webNodeSiblings(rt, query) {
+  const node = webNodeQuery(rt, query);
+  return webNodeSiblingsFromFrame(node).filter((sibling) => sibling !== node);
 }
 
 export function webNodeChildren(rt, query = "") {
@@ -8623,6 +8711,36 @@ export function webDOMNextSibling(target, query) {
   const root = mountedRoot(target);
   const object = root ? webDOMObject(target, query) : null;
   return object ? webDOMSiblingObject(root, object.node, 1) : null;
+}
+
+function webDOMSiblingObjects(target, query) {
+  const root = mountedRoot(target);
+  const object = root ? webDOMObject(target, query) : null;
+  return object ? webDOMChildren(root, object.node.parentPath || "")
+    .filter((sibling) => sibling?.node) : [];
+}
+
+export function webDOMPreviousSiblings(target, query) {
+  const object = webDOMObject(target, query);
+  const siblings = webDOMSiblingObjects(target, query);
+  const index = siblings.findIndex((sibling) =>
+    sibling.node === object?.node || sibling.node.path === object?.node?.path);
+  return index <= 0 ? [] : siblings.slice(0, index);
+}
+
+export function webDOMNextSiblings(target, query) {
+  const object = webDOMObject(target, query);
+  const siblings = webDOMSiblingObjects(target, query);
+  const index = siblings.findIndex((sibling) =>
+    sibling.node === object?.node || sibling.node.path === object?.node?.path);
+  return index < 0 ? [] : siblings.slice(index + 1);
+}
+
+export function webDOMSiblings(target, query) {
+  const object = webDOMObject(target, query);
+  return webDOMSiblingObjects(target, query)
+    .filter((sibling) => sibling.node !== object?.node &&
+      sibling.node.path !== object?.node?.path);
 }
 
 export function webDOMChildren(target, query = "") {

@@ -3427,6 +3427,22 @@ function fakeDocument() {
     assert.equal(root.kryNextSibling("tap-button").ref, "search-box");
     assert.equal(runtime.webDOMPreviousSibling(target, "tap-button").ref, webDoc.nodes[1].path);
     assert.equal(runtime.webDOMNextSibling(target, "tap-button").ref, "search-box");
+    assert.deepEqual(buttonObject.previousSiblings.map((object) => object.ref),
+      [webDoc.nodes[1].path]);
+    assert.equal(buttonObject.nextSiblings[0].ref, "search-box");
+    assert.equal(buttonObject.siblings.some((object) => object.ref === "primary-action"), false);
+    assert.deepEqual(firstButton.kryPreviousSiblings.map((object) => object.ref),
+      [webDoc.nodes[1].path]);
+    assert.equal(firstButton.kryNextSiblings[0].ref, "search-box");
+    assert.equal(firstButton.krySiblings.some((object) => object.ref === "primary-action"), false);
+    assert.deepEqual(root.kryPreviousSiblings("tap-button").map((object) => object.ref),
+      [webDoc.nodes[1].path]);
+    assert.equal(root.kryNextSiblings("tap-button")[0].ref, "search-box");
+    assert.equal(root.krySiblings("tap-button").some((object) => object.ref === "primary-action"), false);
+    assert.deepEqual(runtime.webDOMPreviousSiblings(target, "tap-button").map((object) => object.ref),
+      [webDoc.nodes[1].path]);
+    assert.equal(runtime.webDOMNextSiblings(target, "tap-button")[0].ref, "search-box");
+    assert.equal(runtime.webDOMSiblings(target, "tap-button").some((object) => object.ref === "primary-action"), false);
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
     assert.equal(buttonObject.relations.previousSibling.ref, webDoc.nodes[1].path);
     assert.equal(buttonObject.relations.nextSibling.ref, "search-box");
@@ -3473,6 +3489,12 @@ function fakeDocument() {
       webDoc.nodes[1].path);
     assert.equal(runtime.webNodeNextSibling(rt, "primary-action").path,
       webDoc.nodes[3].path);
+    assert.deepEqual(runtime.webNodePreviousSiblings(rt, "primary-action").map((node) => node.path),
+      [webDoc.nodes[1].path]);
+    assert.equal(runtime.webNodeNextSiblings(rt, "primary-action")[0].path,
+      webDoc.nodes[3].path);
+    assert.equal(runtime.webNodeSiblings(rt, "primary-action")
+      .some((node) => node.webRef === "primary-action"), false);
     assert.equal(runtime.webNodeRelationRefs(rt, "primary-action").previousSibling,
       webDoc.nodes[1].path);
     assert.equal(runtime.webNodeRelationRefs(rt, "primary-action").nextSibling,

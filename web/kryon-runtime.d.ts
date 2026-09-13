@@ -446,6 +446,9 @@ export interface WebDOMObject {
   readonly parent: WebDOMObject | null;
   readonly previousSibling: WebDOMObject | null;
   readonly nextSibling: WebDOMObject | null;
+  readonly previousSiblings: WebDOMObject[];
+  readonly nextSiblings: WebDOMObject[];
+  readonly siblings: WebDOMObject[];
   readonly children: WebDOMObject[];
   readonly relations: WebDOMRelations | null;
   readonly relationRefs: WebDOMRelationRefs | null;
@@ -696,6 +699,9 @@ declare global {
     readonly kryParent?: WebDOMObject | null;
     readonly kryPreviousSibling?: WebDOMObject | null;
     readonly kryNextSibling?: WebDOMObject | null;
+    readonly kryPreviousSiblings?: WebDOMObject[];
+    readonly kryNextSiblings?: WebDOMObject[];
+    readonly krySiblings?: WebDOMObject[];
     readonly kryChildren?: WebDOMObject[];
     readonly kryRelations?: WebDOMRelations | null;
     readonly kryRelationRefs?: WebDOMRelationRefs | null;
@@ -719,6 +725,9 @@ declare global {
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
     kryPreviousSibling?(query: string): WebDOMObject | null;
     kryNextSibling?(query: string): WebDOMObject | null;
+    kryPreviousSiblings?(query: string): WebDOMObject[];
+    kryNextSiblings?(query: string): WebDOMObject[];
+    krySiblings?(query: string): WebDOMObject[];
     kryEventRefs?(query: string): WebNodeEventRefs | null;
     kryQuery?(selector: string): WebDOMObject | null;
     kryQueryAll?(selector: string): WebDOMObject[];
@@ -1052,6 +1061,9 @@ export function webNodeMatches(rt: Runtime, query: string, selector: string): bo
 export function webNodeParent(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodePreviousSibling(rt: Runtime, query: string): WebDocumentNode | null;
 export function webNodeNextSibling(rt: Runtime, query: string): WebDocumentNode | null;
+export function webNodePreviousSiblings(rt: Runtime, query: string): WebDocumentNode[];
+export function webNodeNextSiblings(rt: Runtime, query: string): WebDocumentNode[];
+export function webNodeSiblings(rt: Runtime, query: string): WebDocumentNode[];
 export function webNodeChildren(rt: Runtime, query?: string): WebDocumentNode[];
 export function webNodeDescendants(rt: Runtime, query?: string): WebDocumentNode[];
 export function webNodeClosest(rt: Runtime, query: string, selector: string): WebDocumentNode | null;
@@ -1093,6 +1105,9 @@ export function webDOMSnapshotFromEvent(eventOrTarget: Event | EventTarget | nul
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMPreviousSibling(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMNextSibling(target: Element | string | null, query: string): WebDOMObject | null;
+export function webDOMPreviousSiblings(target: Element | string | null, query: string): WebDOMObject[];
+export function webDOMNextSiblings(target: Element | string | null, query: string): WebDOMObject[];
+export function webDOMSiblings(target: Element | string | null, query: string): WebDOMObject[];
 export function webDOMChildren(target: Element | string | null, query?: string): WebDOMObject[];
 export function webDOMDescendants(target: Element | string | null, query?: string): WebDOMObject[];
 export function webDOMClosest(target: Element | string | null, query: string, selector: string): WebDOMObject | null;
