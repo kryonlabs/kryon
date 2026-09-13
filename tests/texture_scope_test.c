@@ -1063,7 +1063,7 @@ int main(void)
                 .open=&composed_open})) {
             DrawRectangle(0,8,8,8,GREEN);
             Box((Rectangle){16,16,8,8},YELLOW,BLANK);
-            if(frame == 1) ClosePopup();
+            if(frame == 1) popup_close_scope();
             EndPopup();
         }
         Box((Rectangle){0,0,64,64},RED,BLANK);
@@ -1079,7 +1079,7 @@ int main(void)
         UnloadImage(composed);
     }
     if(composed_open) {
-        fprintf(stderr,"internal ClosePopup did not update caller state\n");
+        fprintf(stderr,"internal popup_close_scope did not update caller state\n");
         failures++;
     }
     CloseNativeWindow(auxiliary);

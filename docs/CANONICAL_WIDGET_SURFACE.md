@@ -694,8 +694,8 @@ Recent retained-tree public C cleanup:
 | `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
 | app-facing `Texture`, `DrawTexture`, `DrawTexturePro`, `DrawTextureRec` fixes | `Image(ImageProps)`; if `ImageProps` cannot express the app case, add the reusable Kryon image primitive first. |
 | Go package-level `BeginButton`, `BeginCard` | Removed; public Go code uses `kr.Button` and `kr.Card`. Composed block lowering uses internal `ButtonScope`/`CardScope` hooks until direct child lowering is canonicalized. |
-| Go package-level `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Runtime methods remain internal host/test support. |
-| public C `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Native tests use the internal host hook. |
+| Go package-level `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Internal tests use `popupCloseScope` until direct popup-close lowering is removed. |
+| public C `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Native tests use the internal `popup_close_scope` hook. |
 | `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
 | direct `.kry` `BeginScroll`/`EndScroll` and `BeginTableCell`/`EndTableCell` calls | `Scroll` and `TableCell` lexical blocks |
 | direct `.kry` `BeginCanvas`/`EndCanvas` calls | `Canvas` lexical block |

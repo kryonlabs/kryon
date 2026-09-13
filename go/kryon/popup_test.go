@@ -188,7 +188,7 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 	if r.Focus() != 29621 {
 		t.Fatalf("nested popup focus=%d, want first child 29621", r.Focus())
 	}
-	r.ClosePopup()
+	r.popupCloseScope()
 	if r.Focus() != 29611 {
 		t.Fatalf("nested close restored focus=%d, want parent 29611", r.Focus())
 	}
@@ -199,7 +199,7 @@ func TestComposedPopupAcquiresAndRestoresNestedFocus(t *testing.T) {
 	r.BeginFrame()
 	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 180, 130), ID: 29610, Open: &parentOpen})
 	r.Button(ButtonProps{Bounds: NewRectangle(30, 30, 100, 24), Label: "Parent", ID: 29611})
-	r.ClosePopup()
+	r.popupCloseScope()
 	if r.Focus() != 29600 {
 		t.Fatalf("parent close restored focus=%d, want background 29600", r.Focus())
 	}
@@ -329,11 +329,11 @@ func TestComposedPopupCloseAndMissingOwner(t *testing.T) {
 	r.BeginFrame()
 	r.BeginPopup(PopupProps{Bounds: NewRectangle(20, 20, 100, 80), ID: 29200, Open: &open})
 	r.Text(TextProps{Bounds: NewRectangle(24, 24, 0, 0), Text: "hidden", Wrap: TextWrapNone})
-	r.ClosePopup()
+	r.popupCloseScope()
 	r.EndPopup()
 	r.EndFrame()
 	if open {
-		t.Fatal("ClosePopup did not update caller state")
+		t.Fatal("popupCloseScope did not update caller state")
 	}
 	for _, op := range r.ops {
 		if op.ID == 29200 || op.Text == "hidden" {

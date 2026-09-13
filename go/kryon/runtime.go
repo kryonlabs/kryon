@@ -510,7 +510,6 @@ type Runtime interface {
 	EndDisabled()
 	BeginPopup(PopupProps) bool
 	EndPopup()
-	ClosePopup()
 	AcceleratorPressed(Accelerator) int32
 	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)

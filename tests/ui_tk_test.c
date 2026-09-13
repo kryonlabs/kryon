@@ -3378,8 +3378,8 @@ test_composed_popup_children_scope(void)
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
         BeginPopup((PopupProps){.bounds={10,40,120,80},.id=27000,.open=&open}),1);
-    ClosePopup();
-    check_int("ClosePopup updates caller state",open,0);
+    popup_close_scope();
+    check_int("popup_close_scope updates caller state",open,0);
     EndPopup();
     EndTree();
     EndInterfaceFrame();
@@ -3419,8 +3419,8 @@ test_composed_popup_scope(void)
     BeginTree(Key("composed popup explicit close"));
     check_int("composed popup reopens from caller state",
         BeginPopup((PopupProps){.bounds={20,30,140,100},.id=29000,.open=&open}),1);
-    ClosePopup();
-    check_int("ClosePopup updates caller state",open,0);
+    popup_close_scope();
+    check_int("popup_close_scope updates caller state",open,0);
     EndPopup();
     EndTree();
     EndInterfaceFrame();
@@ -3605,7 +3605,7 @@ test_composed_popup_focus_lifecycle(void)
     BeginPopup((PopupProps){.bounds={50,60,130,80},.id=29620,
         .open=&child_open});
     Button((ButtonProps){.bounds={60,70,100,24},.label="Child",.id=29621});
-    ClosePopup();
+    popup_close_scope();
     check_int("nested popup restores parent focus",GetFocus(),29611);
     EndPopup();
     EndPopup();
@@ -3621,7 +3621,7 @@ test_composed_popup_focus_lifecycle(void)
     BeginPopup((PopupProps){.bounds={20,20,180,130},.id=29610,
         .open=&parent_open});
     Button((ButtonProps){.bounds={30,30,100,24},.label="Parent",.id=29611});
-    ClosePopup();
+    popup_close_scope();
     check_int("parent popup restores background focus",GetFocus(),29600);
     EndPopup();
     EndTree();

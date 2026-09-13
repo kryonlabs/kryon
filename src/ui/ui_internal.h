@@ -569,7 +569,7 @@ void EndScroll(void);
 NodeId CardScope(CardProps card);
 NodeId ButtonScope(ButtonProps button);
 int BeginPopup(PopupProps popup);
-void ClosePopup(void);
+void popup_close_scope(void);
 void EndPopup(void);
 Rectangle BeginTableCell(TableViewProps table, int row, int column);
 void EndTableCell(void);

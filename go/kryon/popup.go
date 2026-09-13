@@ -84,9 +84,9 @@ func (r *runtime) BeginPopup(p PopupProps) bool {
 	return true
 }
 
-func (r *runtime) ClosePopup() {
+func (r *runtime) popupCloseScope() {
 	if len(r.popupScopes) == 0 {
-		panic("ClosePopup without BeginPopup")
+		panic("popupCloseScope without BeginPopup")
 	}
 	s := &r.popupScopes[len(r.popupScopes)-1]
 	*s.open = false

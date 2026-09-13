@@ -155,7 +155,7 @@ int BeginPopup(PopupProps popup)
                              popup.class_name);
 }
 
-void ClosePopup(void)
+void popup_close_scope(void)
 {
     if(!popup_scope) abort();
     close_popup_scope(popup_scope);
