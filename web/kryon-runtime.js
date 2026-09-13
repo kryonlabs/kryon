@@ -1992,6 +1992,7 @@ const webKssLengthProperties = new Set([
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
   "flex-basis",
   "text-indent", "text-decoration-thickness", "text-underline-offset",
+  "vertical-align", "perspective",
   "outline-width", "outline-offset", "tab-size",
   "column-count", "column-width", "border-spacing",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
@@ -2012,11 +2013,15 @@ const webKssMaterialProperties = new Set(["material"]);
 const webKssLiteralProperties = new Set([
   "font", "typeface", "font-family", "font-weight", "font-style", "font-variant", "font-stretch",
   "font-kerning", "font-optical-sizing", "font-feature-settings",
-  "font-variation-settings", "text-align",
+  "font-variation-settings", "font-size-adjust", "font-synthesis",
+  "font-synthesis-weight", "font-synthesis-style",
+  "font-synthesis-small-caps", "font-synthesis-position",
+  "text-align", "text-align-last", "text-rendering",
   "text-decoration", "text-decoration-line", "text-decoration-style",
   "text-decoration-skip-ink", "text-shadow",
   "text-transform", "text-overflow", "white-space",
-  "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "text-size-adjust", "text-orientation", "text-wrap",
+  "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "border-top", "border-right", "border-bottom", "border-left",
   "border-inline", "border-block", "border-inline-start",
   "border-inline-end", "border-block-start", "border-block-end",
@@ -2024,6 +2029,8 @@ const webKssLiteralProperties = new Set([
   "border-bottom-style", "border-left-style", "border-inline-style",
   "border-block-style", "border-inline-start-style",
   "border-inline-end-style", "border-block-start-style", "border-block-end-style",
+  "border-image", "border-image-source", "border-image-slice",
+  "border-image-width", "border-image-outset", "border-image-repeat",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
   "list-style-position", "list-style-image",
@@ -2051,7 +2058,8 @@ const webKssLiteralProperties = new Set([
   "animation-timing-function", "animation-delay",
   "animation-iteration-count", "animation-direction",
   "animation-fill-mode", "animation-play-state",
-  "transform", "transform-origin",
+  "transform", "transform-origin", "transform-box", "transform-style",
+  "translate", "rotate", "scale", "perspective-origin", "backface-visibility",
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
@@ -2653,6 +2661,12 @@ const webCSSPropertyNames = new Map([
   ["border-inline-end", "border-inline-end"],
   ["border-block-start", "border-block-start"],
   ["border-block-end", "border-block-end"],
+  ["border-image", "border-image"],
+  ["border-image-source", "border-image-source"],
+  ["border-image-slice", "border-image-slice"],
+  ["border-image-width", "border-image-width"],
+  ["border-image-outset", "border-image-outset"],
+  ["border-image-repeat", "border-image-repeat"],
   ["border-style", "border-style"],
   ["border-top-style", "border-top-style"],
   ["border-right-style", "border-right-style"],
@@ -2739,10 +2753,18 @@ const webCSSPropertyNames = new Map([
   ["font-optical-sizing", "font-optical-sizing"],
   ["font-feature-settings", "font-feature-settings"],
   ["font-variation-settings", "font-variation-settings"],
+  ["font-size-adjust", "font-size-adjust"],
+  ["font-synthesis", "font-synthesis"],
+  ["font-synthesis-weight", "font-synthesis-weight"],
+  ["font-synthesis-style", "font-synthesis-style"],
+  ["font-synthesis-small-caps", "font-synthesis-small-caps"],
+  ["font-synthesis-position", "font-synthesis-position"],
   ["letter-spacing", "letter-spacing"],
   ["line-height", "line-height"],
   ["text-indent", "text-indent"],
   ["text-align", "text-align"],
+  ["text-align-last", "text-align-last"],
+  ["text-rendering", "text-rendering"],
   ["text-decoration", "text-decoration"],
   ["text-decoration-line", "text-decoration-line"],
   ["text-decoration-color", "text-decoration-color"],
@@ -2754,9 +2776,12 @@ const webCSSPropertyNames = new Map([
   ["text-transform", "text-transform"],
   ["text-overflow", "text-overflow"],
   ["white-space", "white-space"],
+  ["text-size-adjust", "text-size-adjust"],
+  ["text-orientation", "text-orientation"],
   ["text-wrap", "text-wrap"],
   ["word-break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
+  ["vertical-align", "vertical-align"],
   ["display", "display"],
   ["position", "position"],
   ["z-index", "z-index"],
@@ -2872,6 +2897,14 @@ const webCSSPropertyNames = new Map([
   ["animation-play-state", "animation-play-state"],
   ["transform", "transform"],
   ["transform-origin", "transform-origin"],
+  ["transform-box", "transform-box"],
+  ["transform-style", "transform-style"],
+  ["translate", "translate"],
+  ["rotate", "rotate"],
+  ["scale", "scale"],
+  ["perspective", "perspective"],
+  ["perspective-origin", "perspective-origin"],
+  ["backface-visibility", "backface-visibility"],
   ["filter", "filter"],
   ["backdrop-filter", "backdrop-filter"],
   ["clip-path", "clip-path"],
@@ -2917,17 +2950,22 @@ function webStyleCSSValue(name, value) {
       name !== "line-height" && name !== "lineHeight" &&
       name !== "z-index" && name !== "zIndex" &&
       name !== "tab-size" && name !== "tabSize" &&
+      name !== "font-size-adjust" && name !== "fontSizeAdjust" &&
       name !== "column-count" && name !== "columnCount" &&
       name !== "order" &&
       name !== "flex-grow" && name !== "flexGrow" &&
       name !== "flex-shrink" && name !== "flexShrink" &&
+      name !== "border-image-slice" && name !== "borderImageSlice" &&
+      name !== "border-image-width" && name !== "borderImageWidth" &&
+      name !== "border-image-outset" && name !== "borderImageOutset" &&
       name !== "grid-column-start" && name !== "gridColumnStart" &&
       name !== "grid-column-end" && name !== "gridColumnEnd" &&
       name !== "grid-row-start" && name !== "gridRowStart" &&
       name !== "grid-row-end" && name !== "gridRowEnd" &&
       name !== "line-clamp" && name !== "lineClamp" &&
       name !== "webkitLineClamp" &&
-      name !== "animation-iteration-count" && name !== "animationIterationCount"
+      name !== "animation-iteration-count" && name !== "animationIterationCount" &&
+      name !== "scale"
     ? value + "px" : String(value);
 }
 
@@ -3693,6 +3731,12 @@ function applyResolvedWebStyle(el, style) {
   set("borderInlineEnd", style["border-inline-end"]);
   set("borderBlockStart", style["border-block-start"]);
   set("borderBlockEnd", style["border-block-end"]);
+  set("borderImage", style["border-image"]);
+  set("borderImageSource", style["border-image-source"]);
+  set("borderImageSlice", style["border-image-slice"]);
+  set("borderImageWidth", style["border-image-width"]);
+  set("borderImageOutset", style["border-image-outset"]);
+  set("borderImageRepeat", style["border-image-repeat"]);
   set("borderStyle", style["border-style"]);
   set("borderTopStyle", style["border-top-style"]);
   set("borderRightStyle", style["border-right-style"]);
@@ -3783,10 +3827,18 @@ function applyResolvedWebStyle(el, style) {
   set("fontOpticalSizing", style["font-optical-sizing"]);
   set("fontFeatureSettings", style["font-feature-settings"]);
   set("fontVariationSettings", style["font-variation-settings"]);
+  set("fontSizeAdjust", style["font-size-adjust"]);
+  set("fontSynthesis", style["font-synthesis"]);
+  set("fontSynthesisWeight", style["font-synthesis-weight"]);
+  set("fontSynthesisStyle", style["font-synthesis-style"]);
+  set("fontSynthesisSmallCaps", style["font-synthesis-small-caps"]);
+  set("fontSynthesisPosition", style["font-synthesis-position"]);
   set("letterSpacing", style["letter-spacing"]);
   set("lineHeight", style["line-height"]);
   set("textIndent", style["text-indent"]);
   set("textAlign", style["text-align"]);
+  set("textAlignLast", style["text-align-last"]);
+  set("textRendering", style["text-rendering"]);
   set("textDecoration", style["text-decoration"]);
   set("textDecorationLine", style["text-decoration-line"]);
   set("textDecorationColor", style["text-decoration-color"]);
@@ -3798,9 +3850,12 @@ function applyResolvedWebStyle(el, style) {
   set("textTransform", style["text-transform"]);
   set("textOverflow", style["text-overflow"]);
   set("whiteSpace", style["white-space"]);
+  set("textSizeAdjust", style["text-size-adjust"]);
+  set("textOrientation", style["text-orientation"]);
   set("textWrap", style["text-wrap"]);
   set("wordBreak", style["word-break"]);
   set("overflowWrap", style["overflow-wrap"]);
+  set("verticalAlign", style["vertical-align"]);
   set("display", style.display);
   set("position", style.position);
   set("zIndex", style["z-index"]);
@@ -3918,6 +3973,14 @@ function applyResolvedWebStyle(el, style) {
         (offsetY !== undefined && offsetY !== null && offsetY !== "")))
     set("transform", style.transform);
   set("transformOrigin", style["transform-origin"]);
+  set("transformBox", style["transform-box"]);
+  set("transformStyle", style["transform-style"]);
+  set("translate", style.translate);
+  set("rotate", style.rotate);
+  set("scale", style.scale);
+  set("perspective", style.perspective);
+  set("perspectiveOrigin", style["perspective-origin"]);
+  set("backfaceVisibility", style["backface-visibility"]);
   set("filter", style.filter);
   set("backdropFilter", style["backdrop-filter"]);
   set("clipPath", style["clip-path"]);
