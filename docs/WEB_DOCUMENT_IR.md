@@ -406,7 +406,8 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, padding,
 margin, size constraints, radius, border width, opacity, font size, offsets,
 font family, font weight, letter spacing, text alignment, content offsets,
-line height, text decoration/wrapping, display/layout keywords,
+line height, text decoration/wrapping, display/layout keywords, flex flow,
+grid tracks, grid auto-flow, row/column gaps, placement alignment,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 

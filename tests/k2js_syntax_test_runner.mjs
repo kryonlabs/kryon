@@ -91,7 +91,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
   }
   TextField[required] {
     font-size: 11;
-    font-family: ui-sans-serif;
+    typeface: ui-sans-serif;
     font-weight: 600;
     line-height: 1.4;
     letter-spacing: 1;
@@ -113,6 +113,16 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     overflow-y: hidden;
     align-items: center;
     justify-content: space-between;
+    flex-direction: column;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    grid-auto-flow: row dense;
+    row-gap: 4;
+    column-gap: 6;
+    place-items: center;
+    place-content: stretch;
     cursor: pointer;
     pointer-events: auto;
     z-index: 3;
@@ -179,6 +189,16 @@ assert.match(webStyleCSS, /overflow-x: auto;/);
 assert.match(webStyleCSS, /overflow-y: hidden;/);
 assert.match(webStyleCSS, /align-items: center;/);
 assert.match(webStyleCSS, /justify-content: space-between;/);
+assert.match(webStyleCSS, /flex-direction: column;/);
+assert.match(webStyleCSS, /flex-wrap: wrap;/);
+assert.match(webStyleCSS, /flex: 1 1 auto;/);
+assert.match(webStyleCSS, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+assert.match(webStyleCSS, /grid-template-rows: auto 1fr;/);
+assert.match(webStyleCSS, /grid-auto-flow: row dense;/);
+assert.match(webStyleCSS, /row-gap: 4px;/);
+assert.match(webStyleCSS, /column-gap: 6px;/);
+assert.match(webStyleCSS, /place-items: center;/);
+assert.match(webStyleCSS, /place-content: stretch;/);
 assert.match(webStyleCSS, /cursor: pointer;/);
 assert.match(webStyleCSS, /pointer-events: auto;/);
 assert.match(webStyleCSS, /outline-width: 2px;/);
@@ -187,6 +207,15 @@ assert.match(webStyleCSS, /box-shadow: 0 1px 2px #0004;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
+for (const legacyAlias of [
+  "background-color", "color", "border-color", "focus-color",
+  "background_end", "border_width", "padding_x", "padding_y",
+  "font_size", "icon_size", "offset_x", "offset_y", "font-family",
+  "font_family", "text_align", "pointer_events", "outline_width"
+]) {
+  assert.throws(() => runtime.parseWebStyleSheet(`Button { ${legacyAlias}: #111111; }`),
+    /unknown KSS property/);
+}
 runtime.setWebStyleSheets(rt, webStyleSheet);
 assert.equal(generated.Valid_ApplyPreviewMode(rt, state, host, 1), 2);
 assert.equal(runtime.GetTheme().mode, 1);
@@ -543,7 +572,7 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-of
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).radius, 4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["content-offset-x"], 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-size"], 11);
-assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-family"], "ui-sans-serif");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).typeface, "ui-sans-serif");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-weight"], 600);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["line-height"], 1.4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["letter-spacing"], 1);
@@ -559,6 +588,16 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-x
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-y"], "hidden");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["align-items"], "center");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["justify-content"], "space-between");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["flex-direction"], "column");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["flex-wrap"], "wrap");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).flex, "1 1 auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["grid-template-columns"], "repeat(2, minmax(0, 1fr))");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["grid-template-rows"], "auto 1fr");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["grid-auto-flow"], "row dense");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["row-gap"], 4);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["column-gap"], 6);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["place-items"], "center");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["place-content"], "stretch");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["pointer-events"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-width"], 2);
@@ -2481,6 +2520,16 @@ function fakeDocument() {
     assert.equal(firstField.style.overflowY, "hidden");
     assert.equal(firstField.style.alignItems, "center");
     assert.equal(firstField.style.justifyContent, "space-between");
+    assert.equal(firstField.style.flexDirection, "column");
+    assert.equal(firstField.style.flexWrap, "wrap");
+    assert.equal(firstField.style.flex, "1 1 auto");
+    assert.equal(firstField.style.gridTemplateColumns, "repeat(2, minmax(0, 1fr))");
+    assert.equal(firstField.style.gridTemplateRows, "auto 1fr");
+    assert.equal(firstField.style.gridAutoFlow, "row dense");
+    assert.equal(firstField.style.rowGap, "4px");
+    assert.equal(firstField.style.columnGap, "6px");
+    assert.equal(firstField.style.placeItems, "center");
+    assert.equal(firstField.style.placeContent, "stretch");
     assert.equal(firstField.style.cursor, "pointer");
     assert.equal(firstField.style.pointerEvents, "auto");
     assert.equal(firstField.style.outlineWidth, "2px");

@@ -1684,7 +1684,7 @@ const webKssLengthProperties = new Set([
   "padding", "padding-x", "padding-y",
   "margin", "margin-x", "margin-y",
   "width", "height", "min-width", "max-width", "min-height", "max-height",
-  "gap", "font-size", "letter-spacing", "line-height", "outline-width",
+  "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height", "outline-width",
   "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
 ]);
 
@@ -1693,8 +1693,10 @@ const webKssMaterialProperties = new Set(["material"]);
 const webKssLiteralProperties = new Set([
   "typeface", "font-weight", "text-align", "text-decoration", "white-space",
   "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
-  "overflow-x", "overflow-y", "align-items", "justify-content", "cursor",
-  "pointer-events", "outline-style", "box-shadow"
+  "overflow-x", "overflow-y", "align-items", "justify-content",
+  "flex-direction", "flex-wrap", "flex", "grid-template-columns",
+  "grid-template-rows", "grid-auto-flow", "place-items", "place-content",
+  "cursor", "pointer-events", "outline-style", "box-shadow"
 ]);
 
 function stripKssComments(source) {
@@ -1954,80 +1956,57 @@ export function webStyleSelectorToCSS(selector) {
 const webCSSPropertyNames = new Map([
   ["foreground", "color"],
   ["background", "background"],
-  ["background-color", "background-color"],
-  ["color", "color"],
   ["border", "border-color"],
-  ["border-color", "border-color"],
   ["border-width", "border-width"],
-  ["border_width", "border-width"],
   ["radius", "border-radius"],
   ["opacity", "opacity"],
   ["padding", "padding"],
   ["padding-x", "padding-left"],
-  ["padding_x", "padding-left"],
   ["padding-y", "padding-top"],
-  ["padding_y", "padding-top"],
   ["margin", "margin"],
   ["margin-x", "margin-left"],
-  ["margin_x", "margin-left"],
   ["margin-y", "margin-top"],
-  ["margin_y", "margin-top"],
   ["width", "width"],
   ["height", "height"],
   ["min-width", "min-width"],
-  ["min_width", "min-width"],
   ["max-width", "max-width"],
-  ["max_width", "max-width"],
   ["min-height", "min-height"],
-  ["min_height", "min-height"],
   ["max-height", "max-height"],
-  ["max_height", "max-height"],
   ["gap", "gap"],
+  ["row-gap", "row-gap"],
+  ["column-gap", "column-gap"],
   ["font-size", "font-size"],
-  ["font_size", "font-size"],
-  ["font-family", "font-family"],
-  ["font_family", "font-family"],
+  ["typeface", "font-family"],
   ["font-weight", "font-weight"],
-  ["font_weight", "font-weight"],
   ["letter-spacing", "letter-spacing"],
-  ["letter_spacing", "letter-spacing"],
   ["line-height", "line-height"],
-  ["line_height", "line-height"],
   ["text-align", "text-align"],
-  ["text_align", "text-align"],
   ["text-decoration", "text-decoration"],
-  ["text_decoration", "text-decoration"],
   ["white-space", "white-space"],
-  ["white_space", "white-space"],
   ["word-break", "word-break"],
-  ["word_break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
-  ["overflow_wrap", "overflow-wrap"],
   ["display", "display"],
   ["position", "position"],
   ["z-index", "z-index"],
-  ["z_index", "z-index"],
   ["overflow", "overflow"],
   ["overflow-x", "overflow-x"],
-  ["overflow_x", "overflow-x"],
   ["overflow-y", "overflow-y"],
-  ["overflow_y", "overflow-y"],
   ["align-items", "align-items"],
-  ["align_items", "align-items"],
   ["justify-content", "justify-content"],
-  ["justify_content", "justify-content"],
+  ["flex-direction", "flex-direction"],
+  ["flex-wrap", "flex-wrap"],
+  ["flex", "flex"],
+  ["grid-template-columns", "grid-template-columns"],
+  ["grid-template-rows", "grid-template-rows"],
+  ["grid-auto-flow", "grid-auto-flow"],
+  ["place-items", "place-items"],
+  ["place-content", "place-content"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
-  ["pointer_events", "pointer-events"],
   ["outline-width", "outline-width"],
-  ["outline_width", "outline-width"],
   ["outline-style", "outline-style"],
-  ["outline_style", "outline-style"],
   ["box-shadow", "box-shadow"],
-  ["box_shadow", "box-shadow"],
-  ["focus", "outline-color"],
-  ["focus-color", "outline-color"],
-  ["focus_color", "outline-color"]
+  ["focus", "outline-color"]
 ]);
 
 function webStyleCSSValue(name, value) {
@@ -2052,51 +2031,50 @@ function webStyleRuleToCSS(rule) {
   const selector = webStyleSelectorToCSS(rule.selector);
   const lines = [];
   const style = rule.style || {};
-  const offsetX = style["offset-x"] ?? style.offset_x;
-  const offsetY = style["offset-y"] ?? style.offset_y;
-  const backgroundStart = style.background ?? style["background-color"];
-  const backgroundEnd = style["background-end"] ?? style.background_end;
+  const offsetX = style["offset-x"];
+  const offsetY = style["offset-y"];
+  const backgroundStart = style.background;
+  const backgroundEnd = style["background-end"];
   for (const [name, value] of Object.entries(rule.style || {})) {
-    if (name === "padding-x" || name === "padding_x") {
+    if (name === "padding-x") {
       const cssValue = webStyleCSSValue("padding-left", value);
       lines.push(`  padding-left: ${cssValue};`);
       lines.push(`  padding-right: ${cssValue};`);
       continue;
     }
-    if (name === "padding-y" || name === "padding_y") {
+    if (name === "padding-y") {
       const cssValue = webStyleCSSValue("padding-top", value);
       lines.push(`  padding-top: ${cssValue};`);
       lines.push(`  padding-bottom: ${cssValue};`);
       continue;
     }
-    if (name === "margin-x" || name === "margin_x") {
+    if (name === "margin-x") {
       const cssValue = webStyleCSSValue("margin-left", value);
       lines.push(`  margin-left: ${cssValue};`);
       lines.push(`  margin-right: ${cssValue};`);
       continue;
     }
-    if (name === "margin-y" || name === "margin_y") {
+    if (name === "margin-y") {
       const cssValue = webStyleCSSValue("margin-top", value);
       lines.push(`  margin-top: ${cssValue};`);
       lines.push(`  margin-bottom: ${cssValue};`);
       continue;
     }
-    if (name === "offset-x" || name === "offset_x" ||
-        name === "offset-y" || name === "offset_y")
+    if (name === "offset-x" || name === "offset-y")
       continue;
-    if (name === "content-offset-y" || name === "content_offset_y") {
+    if (name === "content-offset-y") {
       lines.push(`  --kry-content-offset-y: ${webStyleCSSValue("--kry-content-offset-y", value)};`);
       continue;
     }
-    if (name === "content-offset-x" || name === "content_offset_x") {
+    if (name === "content-offset-x") {
       lines.push(`  --kry-content-offset-x: ${webStyleCSSValue("--kry-content-offset-x", value)};`);
       continue;
     }
-    if (name === "icon-size" || name === "icon_size") {
+    if (name === "icon-size") {
       lines.push(`  --kry-icon-size: ${webStyleCSSValue("--kry-icon-size", value)};`);
       continue;
     }
-    if (name === "background-end" || name === "background_end") {
+    if (name === "background-end") {
       lines.push(`  --kry-background-end: ${webStyleCSSValue("--kry-background-end", value)};`);
       continue;
     }
@@ -2480,71 +2458,81 @@ function applyResolvedWebStyle(el, style) {
     applied.add(name);
   };
   style = style || {};
-  const backgroundStart = style.background ?? style["background-color"];
-  const backgroundEnd = style["background-end"] ?? style.background_end;
+  const backgroundStart = style.background;
+  const backgroundEnd = style["background-end"];
   set("background", backgroundStart);
   set("--kry-background-end", backgroundEnd);
   if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
       backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
     set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
-  set("color", style.foreground ?? style.color);
-  set("borderColor", style.border ?? style["border-color"]);
-  set("borderWidth", style["border-width"] ?? style.border_width);
+  set("color", style.foreground);
+  set("borderColor", style.border);
+  set("borderWidth", style["border-width"]);
   set("borderRadius", style.radius);
   set("opacity", style.opacity);
   set("padding", style.padding);
-  set("paddingLeft", style["padding-x"] ?? style.padding_x);
-  set("paddingRight", style["padding-x"] ?? style.padding_x);
-  set("paddingTop", style["padding-y"] ?? style.padding_y);
-  set("paddingBottom", style["padding-y"] ?? style.padding_y);
+  set("paddingLeft", style["padding-x"]);
+  set("paddingRight", style["padding-x"]);
+  set("paddingTop", style["padding-y"]);
+  set("paddingBottom", style["padding-y"]);
   set("margin", style.margin);
-  set("marginLeft", style["margin-x"] ?? style.margin_x);
-  set("marginRight", style["margin-x"] ?? style.margin_x);
-  set("marginTop", style["margin-y"] ?? style.margin_y);
-  set("marginBottom", style["margin-y"] ?? style.margin_y);
+  set("marginLeft", style["margin-x"]);
+  set("marginRight", style["margin-x"]);
+  set("marginTop", style["margin-y"]);
+  set("marginBottom", style["margin-y"]);
   set("width", style.width);
   set("height", style.height);
-  set("minWidth", style["min-width"] ?? style.min_width);
-  set("maxWidth", style["max-width"] ?? style.max_width);
-  set("minHeight", style["min-height"] ?? style.min_height);
-  set("maxHeight", style["max-height"] ?? style.max_height);
+  set("minWidth", style["min-width"]);
+  set("maxWidth", style["max-width"]);
+  set("minHeight", style["min-height"]);
+  set("maxHeight", style["max-height"]);
   set("gap", style.gap);
-  set("fontSize", style["font-size"] ?? style.font_size);
-  set("fontFamily", style["font-family"] ?? style.font_family);
-  set("fontWeight", style["font-weight"] ?? style.font_weight);
-  set("letterSpacing", style["letter-spacing"] ?? style.letter_spacing);
-  set("lineHeight", style["line-height"] ?? style.line_height);
-  set("textAlign", style["text-align"] ?? style.text_align);
-  set("textDecoration", style["text-decoration"] ?? style.text_decoration);
-  set("whiteSpace", style["white-space"] ?? style.white_space);
-  set("wordBreak", style["word-break"] ?? style.word_break);
-  set("overflowWrap", style["overflow-wrap"] ?? style.overflow_wrap);
+  set("rowGap", style["row-gap"]);
+  set("columnGap", style["column-gap"]);
+  set("fontSize", style["font-size"]);
+  set("fontFamily", style.typeface);
+  set("fontWeight", style["font-weight"]);
+  set("letterSpacing", style["letter-spacing"]);
+  set("lineHeight", style["line-height"]);
+  set("textAlign", style["text-align"]);
+  set("textDecoration", style["text-decoration"]);
+  set("whiteSpace", style["white-space"]);
+  set("wordBreak", style["word-break"]);
+  set("overflowWrap", style["overflow-wrap"]);
   set("display", style.display);
   set("position", style.position);
-  set("zIndex", style["z-index"] ?? style.z_index);
+  set("zIndex", style["z-index"]);
   set("overflow", style.overflow);
-  set("overflowX", style["overflow-x"] ?? style.overflow_x);
-  set("overflowY", style["overflow-y"] ?? style.overflow_y);
-  set("alignItems", style["align-items"] ?? style.align_items);
-  set("justifyContent", style["justify-content"] ?? style.justify_content);
+  set("overflowX", style["overflow-x"]);
+  set("overflowY", style["overflow-y"]);
+  set("alignItems", style["align-items"]);
+  set("justifyContent", style["justify-content"]);
+  set("flexDirection", style["flex-direction"]);
+  set("flexWrap", style["flex-wrap"]);
+  set("flex", style.flex);
+  set("gridTemplateColumns", style["grid-template-columns"]);
+  set("gridTemplateRows", style["grid-template-rows"]);
+  set("gridAutoFlow", style["grid-auto-flow"]);
+  set("placeItems", style["place-items"]);
+  set("placeContent", style["place-content"]);
   set("cursor", style.cursor);
-  set("pointerEvents", style["pointer-events"] ?? style.pointer_events);
-  set("outlineWidth", style["outline-width"] ?? style.outline_width);
-  set("outlineStyle", style["outline-style"] ?? style.outline_style);
-  set("boxShadow", style["box-shadow"] ?? style.box_shadow);
-  set("--kry-content-offset-x", style["content-offset-x"] ?? style.content_offset_x);
-  set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
-  set("--kry-icon-size", style["icon-size"] ?? style.icon_size);
-  const offsetX = style["offset-x"] ?? style.offset_x;
-  const offsetY = style["offset-y"] ?? style.offset_y;
+  set("pointerEvents", style["pointer-events"]);
+  set("outlineWidth", style["outline-width"]);
+  set("outlineStyle", style["outline-style"]);
+  set("boxShadow", style["box-shadow"]);
+  set("--kry-content-offset-x", style["content-offset-x"]);
+  set("--kry-content-offset-y", style["content-offset-y"]);
+  set("--kry-icon-size", style["icon-size"]);
+  const offsetX = style["offset-x"];
+  const offsetY = style["offset-y"];
   if ((offsetX !== undefined && offsetX !== null && offsetX !== "") ||
       (offsetY !== undefined && offsetY !== null && offsetY !== "")) {
     set("--kry-offset-x", offsetX ?? "0px");
     set("--kry-offset-y", offsetY ?? "0px");
     set("transform", "translate(var(--kry-offset-x, 0px), var(--kry-offset-y, 0px))");
   }
-  set("outlineColor", style.focus ?? style["focus-color"] ?? style.focus_color);
-  if (style.border || style["border-color"] || style["border-width"] || style.border_width) {
+  set("outlineColor", style.focus);
+  if (style.border || style["border-width"]) {
     el.style.borderStyle = el.style.borderStyle || "solid";
     applied.add("borderStyle");
   }
