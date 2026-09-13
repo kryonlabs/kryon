@@ -13,8 +13,6 @@ SegmentedControlProps :: struct {
     options: const SegmentOption*
     option_count: i32
     selected_index: *i32
-    font: i32
-    gap: i32
     height: i32
     min_item_width: i32
     max_item_width: i32

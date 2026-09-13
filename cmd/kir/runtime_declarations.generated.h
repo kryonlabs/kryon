@@ -982,8 +982,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    options: const SegmentOption*\n"
         "    option_count: i32\n"
         "    selected_index: *i32\n"
-        "    font: i32\n"
-        "    gap: i32\n"
         "    height: i32\n"
         "    min_item_width: i32\n"
         "    max_item_width: i32\n"

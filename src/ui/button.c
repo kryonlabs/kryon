@@ -590,22 +590,40 @@ ui_button_style_frame(ButtonProps button, ButtonState state,
                                        StyleKindButton());
 }
 
-static int
-segmented_control_font(SegmentedControlProps control)
+static void
+segmented_control_style_frame(SegmentedControlProps control, StyleFrame *frame)
 {
-    StyleFrame frame;
-
-    if(control.font > 0)
-        return control.font;
-    frame = ui_control_style_frame_kind(
+    if(frame == NULL)
+        return;
+    *frame = ui_control_style_frame_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
                       .class_name = control.class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindSegment());
+}
+
+static int
+segmented_control_font_from_frame(StyleFrame frame)
+{
     return frame.value.font_size > 0.0f
         ? (int)(frame.value.font_size + 0.5f)
         : GetSmallFontSize();
+}
+
+static int
+segmented_control_gap_from_frame(StyleFrame frame)
+{
+    return frame.value.gap > 0.0f ? Scale((int)(frame.value.gap + 0.5f))
+                                  : Scale(6);
+}
+
+static SegmentedMetrics
+segmented_control_metrics(SegmentedControlProps control, int gap)
+{
+    return SegmentedDefaultMetrics(gap, control.height, control.min_item_width,
+                                   control.max_item_width, Scale(6), Scale(30),
+                                   Scale(72), Scale(180));
 }
 
 static int
@@ -627,12 +645,16 @@ segmented_item_width(const SegmentOption *option, int font,
 int
 GetSegmentedControlHeight(SegmentedControlProps control)
 {
-    int font = segmented_control_font(control);
-    SegmentedMetrics metrics = SegmentedDefaultMetrics(
-        control.gap, control.height, control.min_item_width,
-        control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));
+    StyleFrame frame;
+    int font;
+    SegmentedMetrics metrics;
     int row_w = 0;
     int rows = 1;
+
+    segmented_control_style_frame(control, &frame);
+    font = segmented_control_font_from_frame(frame);
+    metrics = segmented_control_metrics(control,
+                                        segmented_control_gap_from_frame(frame));
 
     if(control.options == NULL || control.option_count <= 0 ||
        metrics.row_height <= 0)
@@ -664,10 +686,9 @@ SegmentedControlResult
 SegmentedControl(SegmentedControlProps control)
 {
     SegmentedControlResult result;
-    int font = segmented_control_font(control);
-    SegmentedMetrics metrics = SegmentedDefaultMetrics(
-        control.gap, control.height, control.min_item_width,
-        control.max_item_width, Scale(6), Scale(30), Scale(72), Scale(180));
+    StyleFrame frame;
+    int font;
+    SegmentedMetrics metrics;
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -675,6 +696,10 @@ SegmentedControl(SegmentedControlProps control)
     int selected = control.selected_index != NULL ? *control.selected_index : -1;
 
     memset(&result, 0, sizeof(result));
+    segmented_control_style_frame(control, &frame);
+    font = segmented_control_font_from_frame(frame);
+    metrics = segmented_control_metrics(control,
+                                        segmented_control_gap_from_frame(frame));
     result.selected_index = selected;
     result.clicked_index = -1;
     result.height = GetSegmentedControlHeight(control);

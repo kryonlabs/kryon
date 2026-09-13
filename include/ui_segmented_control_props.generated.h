@@ -33,8 +33,6 @@ typedef struct SegmentedControlProps {
     const SegmentOption* options;
     int32_t option_count;
     int32_t* selected_index;
-    int32_t font;
-    int32_t gap;
     int32_t height;
     int32_t min_item_width;
     int32_t max_item_width;

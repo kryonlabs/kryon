@@ -3864,6 +3864,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 	if count <= 0 || props.Bounds.Width <= 0 || metrics.RowHeight <= 0 {
 		return result
 	}
+	font, fontID := r.segmentedControlTextFace(props.ClassName)
 	rowStart := 0
 	rowWidth := int32(0)
 	rowCount := 0
@@ -3872,7 +3873,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 		endRow := i == count
 		itemWidth := int32(0)
 		if !endRow {
-			itemWidth = r.segmentedOptionWidth(props.Options[i], props.Font, props.ClassName, metrics)
+			itemWidth = r.segmentedOptionWidth(props.Options[i], font, fontID, metrics)
 		}
 		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
 		if !endRow && !SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
@@ -3900,7 +3901,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 					Selected:  int32(index) == selected,
 					Disabled:  option.Disabled || r.contentDisabled(),
 					ClassName: props.ClassName,
-				}, r.segmentedControlFont(props.Font, props.ClassName))
+				}, font)
 				if pressed {
 					result.ClickedIndex = int32(index)
 					result.SelectedIndex = int32(index)
@@ -3943,10 +3944,11 @@ func (r *runtime) segmentedControlHeight(props SegmentedControlProps) int32 {
 	if props.Bounds.Width <= 0 || !props.Wrap {
 		return metrics.RowHeight
 	}
+	font, fontID := r.segmentedControlTextFace(props.ClassName)
 	rows := int32(1)
 	rowWidth := int32(0)
 	for i := 0; i < count; i++ {
-		itemWidth := r.segmentedOptionWidth(props.Options[i], props.Font, props.ClassName, metrics)
+		itemWidth := r.segmentedOptionWidth(props.Options[i], font, fontID, metrics)
 		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
 		if SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
 			rows++
@@ -3967,32 +3969,39 @@ func (r *runtime) segmentedControlCount(props SegmentedControlProps) int {
 }
 
 func (r *runtime) segmentedControlMetrics(props SegmentedControlProps) SegmentedMetrics {
-	return SegmentedControl_SegmentedDefaultMetrics(props.Gap, props.Height,
+	style := r.segmentedControlStyle(props.ClassName)
+	gap := int32(style.Gap + 0.5)
+	if gap > 0 {
+		gap = r.Scale(gap)
+	}
+	return SegmentedControl_SegmentedDefaultMetrics(gap, props.Height,
 		props.MinItemWidth, props.MaxItemWidth, r.Scale(6), r.Scale(30),
 		r.Scale(72), r.Scale(180))
 }
 
-func (r *runtime) segmentedControlFont(font int32, className ...int32) int32 {
-	size, _ := r.segmentedControlTextFace(font, className...)
+func (r *runtime) segmentedControlFont(className ...int32) int32 {
+	size, _ := r.segmentedControlTextFace(className...)
 	return size
 }
 
-func (r *runtime) segmentedControlTextFace(font int32, className ...int32) (int32, uint32) {
-	if font > 0 {
-		return font, 0
-	}
-	props := ButtonProps{ClassName: int32(0)}
+func (r *runtime) segmentedControlTextFace(className ...int32) (int32, uint32) {
+	styleClass := int32(0)
 	if len(className) > 0 {
-		props.ClassName = className[0]
+		styleClass = className[0]
 	}
-	style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
-		props, ButtonStateNormal, StyleSheet_StyleKindSegment())
+	style := r.segmentedControlStyle(styleClass)
 	return styleTextFace(style, Text14)
 }
 
-func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, className int32, metrics SegmentedMetrics) int32 {
-	size, fontID := r.segmentedControlTextFace(font, className)
-	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidthWithFont(option.Label, size, fontID)), metrics, r.Scale(20))
+func (r *runtime) segmentedControlStyle(className int32) Style {
+	props := ButtonProps{ClassName: int32(0)}
+	props.ClassName = className
+	return resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
+		props, ButtonStateNormal, StyleSheet_StyleKindSegment())
+}
+
+func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, fontID uint32, metrics SegmentedMetrics) int32 {
+	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidthWithFont(option.Label, font, fontID)), metrics, r.Scale(20))
 }
 
 func (r *runtime) dropdownKeyboardAvailable(id int32) bool {

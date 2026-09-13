@@ -1,6 +1,8 @@
 #include "kryon.h"
 #include "kry_inject.h"
+#include "ui_style_sheet.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -31,10 +33,10 @@ props(void)
 
     control.bounds = (Rectangle){20, 20, 130, 80};
     control.id = 42;
+    control.class_name = StyleClassId("segmented-test");
     control.options = options;
     control.option_count = 3;
     control.selected_index = &selected;
-    control.gap = 4;
     control.height = 30;
     control.min_item_width = 60;
     control.wrap = 1;
@@ -56,8 +58,24 @@ step(void)
 int
 main(void)
 {
+    StyleRule rules[1] = {0};
+    StyleSheet sheet = {.rules = rules, .rule_count = 1};
     SegmentedControlProps control = props();
     SegmentedControlResult result;
+
+    rules[0].selector = StyleDefaultSelector();
+    rules[0].selector.kind = StyleKindSegment();
+    rules[0].selector.class_name = StyleClassId("segmented-test");
+    rules[0].state = StyleStateAny();
+    rules[0].style.fields = StyleGap;
+    rules[0].style.gap = 4.0f;
+
+    ClearStylePacks();
+    assert(RegisterStylePack((StylePack){
+        .id = "segmented-test",
+        .label = "Segmented Test",
+        .sheet = &sheet,
+    }));
 
     check_int("wrapped height", GetSegmentedControlHeight(control), 64);
 
@@ -82,5 +100,6 @@ main(void)
     check_int("wrapped third selected", selected, 2);
     check_int("wrapped third clicked", result.clicked_index, 2);
 
+    ClearStylePacks();
     return 0;
 }

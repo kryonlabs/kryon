@@ -14,8 +14,6 @@ type SegmentedControlProps struct {
 	Options       []SegmentOption
 	OptionCount   int32
 	SelectedIndex *int32
-	Font          int32
-	Gap           int32
 	Height        int32
 	MinItemWidth  int32
 	MaxItemWidth  int32
