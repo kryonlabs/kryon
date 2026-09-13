@@ -2070,6 +2070,11 @@ function fakeDocument() {
     assert.deepEqual(runtime.webDOMRelations(tableTarget, "priceCell").rowGroupHeaders
       .map((object) => object.ref),
       ["Page/prices/regionHeader"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(tableRt, "priceCell").headers,
+      ["Page/prices/priceHeader", "Page/prices/productHeader",
+       "Page/prices/quarterHeader", "Page/prices/regionHeader"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(tableRt, "priceCell").columnGroupHeaders,
+      ["Page/prices/quarterHeader"]);
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,
       ["Page/prices/priceHeader", "Page/prices/productHeader",
        "Page/prices/quarterHeader", "Page/prices/regionHeader"]);
@@ -3072,6 +3077,10 @@ function fakeDocument() {
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.controlledBy,
       ["primary-action"]);
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.ownedBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(rt, "search-box").controlledBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webNodeRelationRefs(rt, "search-box").ownedBy,
       ["primary-action"]);
     assert.deepEqual(runtime.webDOMRelationRefs(target, "search-box").controlledBy,
       ["primary-action"]);

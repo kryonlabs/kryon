@@ -7515,6 +7515,88 @@ export function webNodeEventRefs(node) {
   };
 }
 
+function webNodeRelationList(rt, value) {
+  const text = String(value || "").trim();
+  if (!rt || !text)
+    return [];
+  return text
+    .split(/\s+/)
+    .map((token) => webNodeQuery(rt, token))
+    .filter(Boolean);
+}
+
+function webNodeReverseRelationList(rt, node, field) {
+  const ref = webNodeRef(node);
+  if (!rt || !node || !ref)
+    return [];
+  const out = [];
+  for (const candidate of webDocumentFrame(rt).nodes || []) {
+    if (!candidate || candidate === node)
+      continue;
+    const related = webNodeRelationList(rt, candidate[field] || "");
+    if (related.some((relatedNode) => relatedNode === node || webNodeRef(relatedNode) === ref))
+      out.push(candidate);
+  }
+  return out;
+}
+
+function mergeWebNodeRelationRefs(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const node of list || []) {
+      const ref = webNodeRef(node);
+      if (!ref || seen.has(ref))
+        continue;
+      seen.add(ref);
+      out.push(ref);
+    }
+  }
+  return out;
+}
+
+function webNodeScopedHeaderList(rt, node, scope) {
+  const expected = new Set(Array.isArray(scope) ? scope.map((item) => String(item).toLowerCase())
+    : [String(scope || "").toLowerCase()]);
+  return webNodeRelationList(rt, node?.headers || "")
+    .filter((header) => expected.has(String(header?.scope || "").toLowerCase()));
+}
+
+function webNodeRefs(nodes) {
+  return (nodes || []).map((node) => webNodeRef(node)).filter(Boolean);
+}
+
+function webNodeRelationRefsForNode(rt, node) {
+  if (!node)
+    return null;
+  return {
+    describedBy: webNodeRefs(webNodeRelationList(rt, node.ariaDescribedBy)),
+    describes: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaDescribedBy")),
+    controls: webNodeRefs(webNodeRelationList(rt, node.ariaControls)),
+    controlledBy: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaControls")),
+    owns: webNodeRefs(webNodeRelationList(rt, node.ariaOwns)),
+    ownedBy: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaOwns")),
+    headers: webNodeRefs(webNodeRelationList(rt, node.headers)),
+    rowHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, ["row", "rowgroup"])),
+    columnHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, ["col", "colgroup"])),
+    rowGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "rowgroup")),
+    columnGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "colgroup")),
+    labelFor: webNodeRef(webNodeRelationList(rt, node.htmlFor)[0]) || "",
+    formOwner: webNodeRef(webNodeRelationList(rt, node.formOwner)[0]) || "",
+    labelledBy: mergeWebNodeRelationRefs(
+      webNodeRelationList(rt, node.ariaLabelledBy),
+      webNodeReverseRelationList(rt, node, "htmlFor")
+    ),
+    activeDescendant: webNodeRef(webNodeRelationList(rt, node.ariaActiveDescendant)[0]) || "",
+    popoverTarget: webNodeRef(webNodeRelationList(rt, node.popoverTarget)[0]) || "",
+    popoverInvokers: webNodeRefs(webNodeReverseRelationList(rt, node, "popoverTarget"))
+  };
+}
+
+export function webNodeRelationRefs(rt, query) {
+  return webNodeRelationRefsForNode(rt, webNodeQuery(rt, query));
+}
+
 function webDOMObjectSnapshot(target, object) {
   if (!object)
     return null;

@@ -92,7 +92,7 @@ the browser receives normal elements, attributes, CSS, and events.
   in Web Document facts; mounted relation objects and snapshots expose reverse
   `controlledBy`, `ownedBy`, `describes`, and `popoverInvokers` buckets for
   inspector navigation from relation targets, plus direct serializable
-  `webDOMRelationRefs(...)` lookup.
+  `webNodeRelationRefs(...)` and `webDOMRelationRefs(...)` lookup.
 - First-class ARIA structure facts for menus, lists, trees, and grouped
   controls: orientation, level, position in set, set size, popup type, sort
   order, and multiselect state.

@@ -604,8 +604,8 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `aria_activedescendant`, form owner links from `form`, reverse `controlledBy`,
 `ownedBy`, `describes`, and `popoverInvokers` links for targets referenced by
 other nodes, and reverse `labelledBy` links for controls targeted by
-`dom_for`; `webDOMRelationRefs(target, query)` and snapshots expose the same
-links as serializable `relationRefs`.
+`dom_for`; `webNodeRelationRefs(rt, query)`, `webDOMRelationRefs(target,
+query)`, and snapshots expose the same links as serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: the complete
