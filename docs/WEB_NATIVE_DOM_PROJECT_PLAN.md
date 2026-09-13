@@ -223,6 +223,8 @@ the browser receives normal elements, attributes, CSS, and events.
   current navigation items can use the same `:selected` Kry selector.
 - KSS state selectors support `:readonly`/`:read-only` and `:required` against
   Kry form-control facts and native browser pseudo/attribute selectors.
+- KSS state selectors support `:enabled` and `:optional` against Kry state and
+  form-control facts with native browser pseudo selector export.
 - KSS structural selectors support browser-native `:empty` in CSS export,
   pre-mount Web Document queries, and mounted DOM object queries.
 - KSS structural selectors support browser-native `:nth-last-child(...)`

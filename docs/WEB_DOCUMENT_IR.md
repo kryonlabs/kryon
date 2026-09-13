@@ -434,9 +434,9 @@ installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. Exported CSS also includes
 native browser pseudo/attribute selectors for states such as hover, focus,
-pressed, disabled, loading, checked, selected, invalid, expanded, readonly,
-required, and open when the browser has a matching concept. Selected-state CSS
-also targets `aria-current` for current-page links. The web
+pressed, disabled, enabled, loading, checked, selected, invalid, expanded,
+readonly, required, optional, and open when the browser has a matching concept.
+Selected-state CSS also targets `aria-current` for current-page links. The web
 resolver supports kind selectors, descendant, child, and sibling chains, `[index=...]`,
 `#id`, `.class`, `[ref=...]`, `[webRef=...]`, CSS-style attribute operators
 `=`, `~=`, `|=`, `^=`, `$=`, and `*=`, source identity selectors

@@ -773,6 +773,7 @@ assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button:disabled { opacity: 0.5; }
+  Button:enabled { cursor: pointer; }
   Selectable:selected { opacity: 0.6; }
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
@@ -781,9 +782,12 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   TextField:readonly { color: #111111; }
   TextField:read-only { caret-color: #222222; }
   TextField:required { outline-color: #333333; }
+  Input:optional { outline-style: dotted; }
 `));
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:is\(:disabled,\[aria-disabled="true"\],\[data-kry-state~="disabled"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Button"\]:is\(:enabled,\[data-kry-state~="enabled"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[aria-current\],\[data-kry-state~="selected"\]\)/);
 assert.match(stateSelectorCSS,
@@ -798,6 +802,8 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:read-only,\[readonly\],\[data-kry-state~="readonly"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:required,\[required\],\[data-kry-state~="required"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Input"\]:is\(:optional,\[data-kry-state~="optional"\]\)/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
 for (const legacyAlias of [
   "focus-color",
@@ -1232,6 +1238,8 @@ assert.equal(runtime.webNodeQuery(rt, "[required]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "TextField:readonly").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "TextField:read-only").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "TextField:required").path, "Scene/root/search");
+assert.equal(runtime.webNodeQuery(rt, "Button:enabled").path, "Scene/root/tap");
+assert.equal(runtime.webNodeQuery(rt, "Input:optional").path, webDoc.nodes[6].path);
 assert.equal(runtime.webNodeQuery(rt, "[min=1]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[max=100]").path, "Scene/root/search");
 assert.equal(runtime.webNodeQuery(rt, "[step=1]").path, "Scene/root/search");
@@ -4061,6 +4069,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "TextField:readonly").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "TextField:read-only").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "TextField:required").element, runtime.findWebElement(target, "q"));
+    assert.equal(runtime.webDOMQuery(target, "Button:enabled").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Input:optional").node.path, inputPaths[0]);
     assert.equal(runtime.webDOMQuery(target, "[min=1]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[max=100]").element, runtime.findWebElement(target, "q"));
     assert.equal(runtime.webDOMQuery(target, "[step=1]").element, runtime.findWebElement(target, "q"));
