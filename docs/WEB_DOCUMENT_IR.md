@@ -639,8 +639,9 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 semantic `groupOwner`/`groupMembers` links for grouped controls,
 reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
 `errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for
-targets referenced by other nodes, and reverse `labelledBy` links for controls targeted by
-`dom_for`; `webNodeRelations(rt, query)` exposes those links before mount as
+targets referenced by other nodes, reverse `labelledBy` links for controls targeted by
+`dom_for`, and native implicit label links where an authored `label` tag wraps
+a form control; `webNodeRelations(rt, query)` exposes those links before mount as
 Web Document nodes, while `webNodeRelationRefs(rt, query)`,
 `webDOMRelationRefs(target, query)`, and snapshots expose the same links as
 serializable `relationRefs`.

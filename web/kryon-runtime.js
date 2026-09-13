@@ -6184,6 +6184,31 @@ function webDOMFormControls(target, node) {
   return mergeWebDOMRelationObjects(explicit, descendants);
 }
 
+function webNodeIsLabel(node) {
+  return String(node?.tag || "").toLowerCase() === "label";
+}
+
+function webDOMImplicitLabelControl(target, node) {
+  if (!webNodeIsLabel(node))
+    return null;
+  return webDOMDescendants(target, node.path)
+    .find((object) => webNodeIsFormControl(object?.node)) || null;
+}
+
+function webDOMImplicitLabels(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node?.path || !webNodeIsFormControl(node))
+    return [];
+  const out = [];
+  let parent = webDOMParent(root, node.path);
+  while (parent) {
+    if (webNodeIsLabel(parent.node))
+      out.push(parent);
+    parent = webDOMParent(root, parent.node.path);
+  }
+  return out;
+}
+
 function mergeWebDOMRelationObjects(...lists) {
   const out = [];
   const seen = new Set();
@@ -6266,12 +6291,14 @@ function webDOMRelationsForNode(target, node) {
     columnHeaders: webDOMScopedHeaderList(target, node, ["col", "colgroup"]),
     rowGroupHeaders: webDOMScopedHeaderList(target, node, "rowgroup"),
     columnGroupHeaders: webDOMScopedHeaderList(target, node, "colgroup"),
-    labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
+    labelFor: webDOMRelationList(target, node.htmlFor)[0] ||
+      webDOMImplicitLabelControl(target, node),
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     formControls: webDOMFormControls(target, node),
     labelledBy: mergeWebDOMRelationObjects(
       webDOMRelationList(target, node.ariaLabelledBy),
-      webDOMReverseRelationList(target, node, "htmlFor")
+      webDOMReverseRelationList(target, node, "htmlFor"),
+      webDOMImplicitLabels(target, node)
     ),
     activeDescendant: webDOMRelationList(target, node.ariaActiveDescendant)[0] || null,
     activeDescendantOf: webDOMReverseRelationList(target, node, "ariaActiveDescendant"),
@@ -8090,6 +8117,26 @@ function webNodeFormControls(rt, node) {
   return mergeWebNodeRelations(explicit, descendants);
 }
 
+function webNodeImplicitLabelControl(rt, node) {
+  if (!webNodeIsLabel(node))
+    return null;
+  return webNodeDescendants(rt, node.path)
+    .find((candidate) => webNodeIsFormControl(candidate)) || null;
+}
+
+function webNodeImplicitLabels(rt, node) {
+  if (!rt || !node?.path || !webNodeIsFormControl(node))
+    return [];
+  const out = [];
+  let parent = webNodeParent(rt, node.path);
+  while (parent) {
+    if (webNodeIsLabel(parent))
+      out.push(parent);
+    parent = webNodeParent(rt, parent.path);
+  }
+  return out;
+}
+
 function mergeWebNodeRelationRefs(...lists) {
   const out = [];
   const seen = new Set();
@@ -8178,12 +8225,14 @@ function webNodeRelationsForNode(rt, node) {
     columnHeaders: webNodeScopedHeaderList(rt, node, ["col", "colgroup"]),
     rowGroupHeaders: webNodeScopedHeaderList(rt, node, "rowgroup"),
     columnGroupHeaders: webNodeScopedHeaderList(rt, node, "colgroup"),
-    labelFor: webNodeRelationList(rt, node.htmlFor)[0] || null,
+    labelFor: webNodeRelationList(rt, node.htmlFor)[0] ||
+      webNodeImplicitLabelControl(rt, node),
     formOwner: webNodeRelationList(rt, node.formOwner)[0] || null,
     formControls: webNodeFormControls(rt, node),
     labelledBy: mergeWebNodeRelations(
       webNodeRelationList(rt, node.ariaLabelledBy),
-      webNodeReverseRelationList(rt, node, "htmlFor")
+      webNodeReverseRelationList(rt, node, "htmlFor"),
+      webNodeImplicitLabels(rt, node)
     ),
     activeDescendant: webNodeRelationList(rt, node.ariaActiveDescendant)[0] || null,
     activeDescendantOf: webNodeReverseRelationList(rt, node, "ariaActiveDescendant"),
@@ -8217,12 +8266,14 @@ function webNodeRelationRefsForNode(rt, node) {
     columnHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, ["col", "colgroup"])),
     rowGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "rowgroup")),
     columnGroupHeaders: webNodeRefs(webNodeScopedHeaderList(rt, node, "colgroup")),
-    labelFor: webNodeRef(webNodeRelationList(rt, node.htmlFor)[0]) || "",
+    labelFor: webNodeRef(webNodeRelationList(rt, node.htmlFor)[0] ||
+      webNodeImplicitLabelControl(rt, node)) || "",
     formOwner: webNodeRef(webNodeRelationList(rt, node.formOwner)[0]) || "",
     formControls: webNodeRefs(webNodeFormControls(rt, node)),
     labelledBy: mergeWebNodeRelationRefs(
       webNodeRelationList(rt, node.ariaLabelledBy),
-      webNodeReverseRelationList(rt, node, "htmlFor")
+      webNodeReverseRelationList(rt, node, "htmlFor"),
+      webNodeImplicitLabels(rt, node)
     ),
     groupOwner: webNodeRef(webNodeGroupOwner(rt, node)) || "",
     groupMembers: webNodeRefs(webNodeGroupMembers(rt, node)),

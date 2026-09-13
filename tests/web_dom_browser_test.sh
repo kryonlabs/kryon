@@ -101,6 +101,16 @@ try {
     path: "Page/article/options/email",
     parentPath: "Page/article/options"
   });
+  kryon.widget(rt, "Column", { dom_tag: "label", web_ref: "newsletterLabel" }, null, {
+    nodeName: "newsletterLabel",
+    path: "Page/article/newsletterLabel",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "Checkbox", { checked: false }, null, {
+    nodeName: "newsletterOptIn",
+    path: "Page/article/newsletterLabel/optIn",
+    parentPath: "Page/article/newsletterLabel"
+  });
   kryon.widget(rt, "ListBox", {}, null, {
     nodeName: "choices",
     path: "Page/article/choices",
@@ -363,6 +373,13 @@ try {
     "fieldset group member relation refs missing");
   assert(kryon.webDOMSnapshot(target, "emailOptIn").relationRefs.groupOwner === "Page/article/options",
     "fieldset group owner snapshot missing");
+  assert(kryon.webDOMRelations(target, "newsletterLabel").labelFor.ref ===
+    "Page/article/newsletterLabel/optIn", "implicit labelFor relation missing");
+  assert(kryon.webDOMRelations(target, "newsletterOptIn").labelledBy
+    .map((object) => object.ref).join(" ") === "newsletterLabel",
+    "implicit labelledBy relation missing");
+  assert(kryon.webDOMSnapshot(target, "newsletterOptIn").relationRefs.labelledBy
+    .join(" ") === "newsletterLabel", "implicit labelledBy snapshot missing");
   assert(kryon.webDOMRelations(target, "choiceBeta").activeDescendantOf
     .map((object) => object.ref).join(" ") === "Page/article/choiceSearch",
     "active descendant reverse relation missing");

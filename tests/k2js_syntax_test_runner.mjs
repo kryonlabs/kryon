@@ -1912,8 +1912,16 @@ function fakeDocument() {
       { nodeName: "externalEmail", path: "Page/externalEmail", domName: "external_email", formOwner: "contact" });
     runtime.widget(submitRt, "TextField", { text: "loose@example.test" }, null,
       { nodeName: "looseEmail", path: "Page/looseEmail", parentPath: "Page", domName: "loose_email" });
+    runtime.widget(submitRt, "Column", {}, null,
+      { nodeName: "newsletterLabel", path: "Page/newsletterLabel", tag: "label", webRef: "newsletterLabel" });
+    runtime.widget(submitRt, "Checkbox", { checked: true }, null,
+      { nodeName: "newsletterOptIn", path: "Page/newsletterLabel/optIn", parentPath: "Page/newsletterLabel" });
     runtime.endFrame(submitRt);
     assert.equal(runtime.webNodeQuery(submitRt, "[form=contact]").path, "Page/externalEmail");
+    assert.equal(runtime.webNodeRelations(submitRt, "newsletterLabel").labelFor.path,
+      "Page/newsletterLabel/optIn");
+    assert.deepEqual(runtime.webNodeRelationRefs(submitRt, "newsletterOptIn").labelledBy,
+      ["newsletterLabel"]);
     assert.equal(runtime.webNodeQuery(submitRt, "[action=\"/contact\"]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[method=post]").path, "Page/contact");
     assert.equal(runtime.webNodeQuery(submitRt, "[enctype=\"multipart/form-data\"]").path, "Page/contact");
@@ -1941,6 +1949,10 @@ function fakeDocument() {
       .map((node) => node.path), ["Page/externalEmail", "Page/contact/email"]);
     assert.deepEqual(runtime.webNodeRelationRefs(submitRt, "contact").formControls,
       ["Page/externalEmail", "Page/contact/email"]);
+    assert.equal(runtime.webDOMRelations(submitTarget, "newsletterLabel").labelFor.ref,
+      "Page/newsletterLabel/optIn");
+    assert.deepEqual(runtime.webDOMSnapshot(submitTarget, "newsletterOptIn").relationRefs.labelledBy,
+      ["newsletterLabel"]);
     assert.equal(runtime.webFormValues(submitTarget, "contact").external_email, "outside@example.test");
     assert.equal(runtime.webFormValues(submitTarget, "contact").loose_email, undefined);
     assert.equal(runtime.webDOMQuery(submitTarget, "[action=\"/contact\"]").element, submitForm);
