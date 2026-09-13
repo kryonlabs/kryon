@@ -141,7 +141,7 @@ func GuidePager_GuidePagerMetricsFor(scale float32, bar StyleFrame) GuidePagerMe
 	var value_23 float32 = bar.Value.IconSize
 	var value_24 float32 = 48.0
 	var value_25 float32 = scale
-	var value_26 bool = false
+	var value_26 bool = true
 	var value_27 int32 = GuidePager_GuidePagerMetric(value_20, value_22, value_23, value_24, value_25, value_26)
 	metrics.ButtonHeight = value_27
 	var value_28 uint32 = bar.Value.Fields

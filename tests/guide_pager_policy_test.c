@@ -58,8 +58,10 @@ main(void)
     metrics = GuidePagerMetricsFor(1.0f, bar);
     assert(metrics.pad == 0);
     assert(metrics.gap == 0);
-    assert(metrics.button_height == 48);
+    assert(metrics.button_height == 0);
     assert(fabsf(metrics.swipe_min_distance - 48.0f) < 0.001f);
+    layout = GuidePagerLayoutFor((Rectangle){10, 400, 300, 80}, metrics);
+    assert(!layout.valid);
 
     policy = GuidePagerPolicyFor(0, 3, false, true, false, false, false);
     assert(policy.page == 1 && policy.changed && !policy.finished);

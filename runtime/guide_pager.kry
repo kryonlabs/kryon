@@ -56,7 +56,7 @@ GuidePagerMetricsFor :: (scale: float, bar: StyleFrame) -> GuidePagerMetrics #ex
     metrics.gap = GuidePagerMetric(bar.value.fields,
         (u32)StyleGap, bar.value.gap, 12.0, scale, true)
     metrics.button_height = GuidePagerMetric(bar.value.fields,
-        (u32)StyleIconSize, bar.value.icon_size, 48.0, scale, false)
+        (u32)StyleIconSize, bar.value.icon_size, 48.0, scale, true)
     metrics.swipe_min_distance = GuidePagerMetricFloat(bar.value.fields,
         (u32)StyleContentOffset, bar.value.offset_x, 48.0, scale, false)
     metrics.swipe_axis_bias = 1.25
