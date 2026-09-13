@@ -115,6 +115,15 @@ ResolveFont :: (requested: i32, inherited: i32, fallback: i32) -> i32 #export {
     return 16
 }
 
+# Style data can carry a default numeric value even when the property was not
+# present in the selected rule. Preserve field presence so hosts do not treat an
+# absent font as an explicit override.
+StyleFontValue :: (fields: u32, font_size: float) -> i32 #export {
+    if (fields & (u32)StyleFontSize) == (u32)0 { return 0 }
+    if font_size <= 0.0 { return 0 }
+    return (i32)(font_size + 0.5)
+}
+
 # Explicit dimensions win. Natural dimensions retain the theme minimum but
 # expand to fit content and padding. Hosts pass all values in the same units.
 FitHeight :: (requested: float, minimum: float, content: float, padding: float) -> float #export {

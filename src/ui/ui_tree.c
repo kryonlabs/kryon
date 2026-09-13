@@ -2445,10 +2445,8 @@ Text(TextProps props)
                 ButtonSpec *button = &parent->data.button;
 
                 Style style = ResolveButtonStyle(button->props, button->props.state);
-                inherited_font = ResolveFont(0,
-                    style.font_size > 0.0f
-                        ? (int)(style.font_size + 0.5f)
-                        : 0,
+                inherited_font = ResolveFont(
+                    0, StyleFontValue(style.fields, style.font_size),
                     GetFontSize());
                 inherited_color = button->paint.foreground;
                 inherited_color_set = true;
@@ -2463,8 +2461,7 @@ Text(TextProps props)
         StyleTextFacts(0, props.class_name, StyleKindText(),
             props.disabled ? ButtonStateDisabled : ButtonStateNormal),
         props.disabled ? ButtonStateDisabled : ButtonStateNormal));
-    if((style.fields & StyleFontSize) != 0)
-        requested_font = (int)(style.font_size + 0.5f);
+    requested_font = StyleFontValue(style.fields, style.font_size);
     if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
     if((style.fields & StyleLetterSpacing) != 0)
@@ -3383,9 +3380,8 @@ resolve_button_bounds_for_kind(ButtonProps button, int disclosure, int style_kin
     Style style = ui_resolve_button_style_kind(button, button.state, style_kind);
     int height = Scale(SizeValue(button.size, metrics.control_height_small,
         metrics.control_height_medium, metrics.control_height_large));
-    int font = ResolveFont(0,
-        style.font_size > 0.0f ? (int)(style.font_size + 0.5f) : 0,
-        GetFontSize());
+    int font = ResolveFont(0, StyleFontValue(style.fields, style.font_size),
+                           GetFontSize());
     float available_width = 0.0f;
     float scale = (float)Scale(1000) / 1000.0f;
     if(button.full_width && bounds.width <= 0) {
