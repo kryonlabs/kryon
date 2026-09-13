@@ -39,6 +39,10 @@ the browser receives normal elements, attributes, CSS, and events.
   KSS selectors and native DOM nesting see composed widgets as real structure.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
   source refs, aliases, state, classes, data attrs, ARIA attrs, and native attrs.
+- Direct `.kry` widget args feed native input/form attributes such as
+  `input_type`, `placeholder`, `required`, `autocomplete`, length/pattern
+  constraints, input mode, and enter key hints, with compiler metadata still
+  taking precedence.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
   selectors, segmented controls, progress, separators, tables, title/navigation

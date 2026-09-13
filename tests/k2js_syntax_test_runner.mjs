@@ -2071,7 +2071,17 @@ function fakeDocument() {
       { nodeName: "autoDetails", path: "Page/autoDetails" });
     runtime.widget(nativeRt, "Modal", {}, null,
       { nodeName: "autoDialog", path: "Page/autoDialog" });
-    runtime.widget(nativeRt, "TextField", { input_type: "email" }, null,
+    runtime.widget(nativeRt, "TextField", {
+      input_type: "email",
+      placeholder: "Email",
+      autocomplete: "email",
+      required: true,
+      min_length: 3,
+      max_length: 254,
+      pattern: ".+@.+",
+      input_mode: "email",
+      enter_key_hint: "send"
+    }, null,
       { nodeName: "email", path: "Page/email" });
     runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4 }, null,
       { nodeName: "volume", path: "Page/volume" });
@@ -2163,7 +2173,17 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").inputType, "email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").placeholder, "Email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").autoComplete, "email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").required, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").minLength, "3");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").maxLength, "254");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").pattern, ".+@.+");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").inputMode, "email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").enterKeyHint, "send");
     assert.equal(runtime.webNodeQuery(nativeRt, "[type=email]").path, "Page/email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[autocomplete=email]").path, "Page/email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[inputmode=email]").path, "Page/email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
@@ -2247,6 +2267,14 @@ function fakeDocument() {
     assert.equal(autoDialog.tagName, "DIALOG");
     assert.equal(email.tagName, "INPUT");
     assert.equal(email.attributes.type, "email");
+    assert.equal(email.attributes.placeholder, "Email");
+    assert.equal(email.attributes.autocomplete, "email");
+    assert.equal(email.attributes.required, "");
+    assert.equal(email.attributes.minlength, "3");
+    assert.equal(email.attributes.maxlength, "254");
+    assert.equal(email.attributes.pattern, ".+@.+");
+    assert.equal(email.attributes.inputmode, "email");
+    assert.equal(email.attributes.enterkeyhint, "send");
     assert.equal(volume.tagName, "INPUT");
     assert.equal(volume.attributes.type, "range");
     assert.equal(volume.attributes.min, "0");

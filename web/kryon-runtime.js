@@ -590,6 +590,15 @@ function propString(args, prop, fallback = "") {
   return stringValue(match[1], String(match[1] || "").trim());
 }
 
+function propStringAny(args, props, fallback = "") {
+  for (const prop of props) {
+    const value = propString(args, prop, undefined);
+    if (value !== undefined && value !== null && value !== "")
+      return String(value);
+  }
+  return fallback;
+}
+
 function propClassList(args) {
   const classes = [];
   const add = (value) => {
@@ -823,6 +832,10 @@ function isTruthyProp(args, name) {
     return !!args[name];
   const text = String(args || "");
   return new RegExp(`\\b\\.?${name}\\s*(?:=|:)\\s*(?:true|1)\\b`, "i").test(text);
+}
+
+function isTruthyPropAny(args, names) {
+  return names.some((name) => isTruthyProp(args, name));
 }
 
 function handleCard(rt, args) {
@@ -1226,7 +1239,7 @@ function widgetInputType(item) {
   case "Spinbox":
     return "number";
   case "TextField":
-    return propString(item.args, "input_type", propString(item.args, "type", "text"));
+    return propStringAny(item.args, ["input_type", "type", "dom_type", "html_type", "dom_input_type"], "text");
   default:
     return "";
   }
@@ -1256,7 +1269,9 @@ function widgetDOMValue(item) {
 
 function widgetMin(item) {
   if (item.name === "Slider" || item.name === "Spinbox")
-    return propString(item.args, "min", "");
+    return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
+  if (item.name === "TextField")
+    return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1268,7 +1283,9 @@ function widgetMin(item) {
 
 function widgetMax(item) {
   if (item.name === "Slider" || item.name === "Spinbox")
-    return propString(item.args, "max", "");
+    return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);
+  if (item.name === "TextField")
+    return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);
   if (item.name !== "Progress")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -1380,7 +1397,9 @@ function webNodeFromWidget(item, index) {
     domName: meta.domName === undefined || meta.domName === null ? "" : String(meta.domName),
     classes: [...new Set(classes)],
     title: meta.title === undefined || meta.title === null ? "" : String(meta.title),
-    placeholder: meta.placeholder === undefined || meta.placeholder === null ? "" : String(meta.placeholder),
+    placeholder: meta.placeholder === undefined || meta.placeholder === null
+      ? propStringAny(args, ["placeholder", "dom_placeholder"])
+      : String(meta.placeholder),
     tabIndex: Number.isFinite(Number(meta.tabIndex)) ? Math.trunc(Number(meta.tabIndex)) : null,
     clickable: isTruthyProp(args, "clickable") || isTruthyProp(args, "Clickable"),
     text: widgetText(item),
@@ -1396,11 +1415,21 @@ function webNodeFromWidget(item, index) {
     dataAttrs: propDataAttrs(meta),
     extraAttrs: propExtraAttrs(meta),
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
-    formOwner: meta.formOwner === undefined || meta.formOwner === null ? "" : String(meta.formOwner),
-    formAction: meta.formAction === undefined || meta.formAction === null ? "" : String(meta.formAction),
-    formMethod: meta.formMethod === undefined || meta.formMethod === null ? "" : String(meta.formMethod),
-    formEncType: meta.formEncType === undefined || meta.formEncType === null ? "" : String(meta.formEncType),
-    autoComplete: meta.autoComplete === undefined || meta.autoComplete === null ? "" : String(meta.autoComplete),
+    formOwner: meta.formOwner === undefined || meta.formOwner === null
+      ? propStringAny(args, ["form", "dom_form", "html_form"])
+      : String(meta.formOwner),
+    formAction: meta.formAction === undefined || meta.formAction === null
+      ? propStringAny(args, ["form_action", "dom_action", "html_action"])
+      : String(meta.formAction),
+    formMethod: meta.formMethod === undefined || meta.formMethod === null
+      ? propStringAny(args, ["form_method", "dom_method", "html_method"])
+      : String(meta.formMethod),
+    formEncType: meta.formEncType === undefined || meta.formEncType === null
+      ? propStringAny(args, ["form_enctype", "dom_enctype", "html_enctype"])
+      : String(meta.formEncType),
+    autoComplete: meta.autoComplete === undefined || meta.autoComplete === null
+      ? propStringAny(args, ["autocomplete", "dom_autocomplete", "html_autocomplete"])
+      : String(meta.autoComplete),
     hidden: metaBool(meta, "hidden"),
     draggable: metaString(meta, "draggable"),
     spellCheck: metaString(meta, "spellCheck"),
@@ -1408,24 +1437,34 @@ function webNodeFromWidget(item, index) {
     autoFocus: metaBool(meta, "autoFocus"),
     inert: metaBool(meta, "inert"),
     autoCapitalize: metaString(meta, "autoCapitalize"),
-    enterKeyHint: metaString(meta, "enterKeyHint"),
+    enterKeyHint: metaString(meta, "enterKeyHint") ||
+      propStringAny(args, ["enterkeyhint", "enter_key_hint", "dom_enterkeyhint", "html_enterkeyhint"]),
     download: metaString(meta, "download"),
     formNoValidate: metaBool(meta, "formNoValidate"),
     noValidate: metaBool(meta, "noValidate"),
     popover: metaString(meta, "popover"),
     popoverTarget: metaString(meta, "popoverTarget"),
     popoverTargetAction: metaString(meta, "popoverTargetAction"),
-    readOnly: metaBool(meta, "readOnly"),
-    required: metaBool(meta, "required"),
+    readOnly: metaBool(meta, "readOnly") ||
+      isTruthyPropAny(args, ["readonly", "read_only", "dom_readonly", "html_readonly"]),
+    required: metaBool(meta, "required") ||
+      isTruthyPropAny(args, ["required", "dom_required", "html_required"]),
     min: metaString(meta, "min") || widgetMin(item),
     max: metaString(meta, "max") || widgetMax(item),
-    step: metaString(meta, "step"),
-    minLength: metaString(meta, "minLength"),
-    maxLength: metaString(meta, "maxLength"),
-    pattern: metaString(meta, "pattern"),
-    accept: metaString(meta, "accept"),
-    multiple: metaBool(meta, "multiple"),
-    inputMode: metaString(meta, "inputMode"),
+    step: metaString(meta, "step") ||
+      propStringAny(args, ["step", "dom_step", "html_step"]),
+    minLength: metaString(meta, "minLength") ||
+      propStringAny(args, ["min_length", "minlength", "dom_minlength", "html_minlength"]),
+    maxLength: metaString(meta, "maxLength") ||
+      propStringAny(args, ["max_length", "maxlength", "dom_maxlength", "html_maxlength"]),
+    pattern: metaString(meta, "pattern") ||
+      propStringAny(args, ["pattern", "dom_pattern", "html_pattern"]),
+    accept: metaString(meta, "accept") ||
+      propStringAny(args, ["accept", "dom_accept", "html_accept"]),
+    multiple: metaBool(meta, "multiple") ||
+      isTruthyPropAny(args, ["multiple", "dom_multiple", "html_multiple"]),
+    inputMode: metaString(meta, "inputMode") ||
+      propStringAny(args, ["input_mode", "inputmode", "dom_inputmode", "html_inputmode"]),
     headers: metaString(meta, "headers"),
     scope: metaString(meta, "scope"),
     colSpan: metaString(meta, "colSpan"),
