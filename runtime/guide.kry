@@ -1,5 +1,7 @@
 #module "guide"
+#import "control_props"
 #import "drawing_props"
+#import "style"
 
 GuideMetrics :: struct {
     margin: i32
@@ -20,7 +22,6 @@ GuideMetrics :: struct {
     text_guard: i32
     min_tip_height: i32
     default_tip_width: i32
-    panel_segments: i32
 }
 
 GuideScrim :: struct {
@@ -64,28 +65,59 @@ guide_clampi :: (value: i32, minimum: i32, maximum: i32) -> i32 {
     return value
 }
 
-GuideMetricsFor :: (scale: float) -> GuideMetrics #export {
+GuideHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+GuideMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !GuideHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+GuideMetricsFor :: (scale: float, panel: StyleFrame, anchor: StyleFrame,
+    label: StyleFrame, action: StyleFrame, close: StyleFrame) -> GuideMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: GuideMetrics
-    metrics.margin = (i32)(12.0 * scale)
-    metrics.anchor_padding = (i32)(4.0 * scale)
-    metrics.anchor_stroke = (i32)(2.0 * scale)
-    metrics.gap = (i32)(20.0 * scale)
-    metrics.pad = (i32)(12.0 * scale)
-    metrics.button_size = (i32)(34.0 * scale)
-    metrics.close_size = (i32)(28.0 * scale)
-    metrics.close_icon_size = (i32)(16.0 * scale)
-    metrics.close_icon_padding = (i32)(6.0 * scale)
-    metrics.nav_icon_size = (i32)(19.0 * scale)
-    metrics.nav_icon_padding = (i32)(7.0 * scale)
-    metrics.nav_gap = (i32)(8.0 * scale)
-    metrics.text_gap = (i32)(8.0 * scale)
-    metrics.default_line_gap = (i32)(6.0 * scale)
-    metrics.controls_gap = (i32)(12.0 * scale)
-    metrics.text_guard = (i32)(8.0 * scale)
-    metrics.min_tip_height = (i32)(112.0 * scale)
-    metrics.default_tip_width = (i32)(300.0 * scale)
-    metrics.panel_segments = 8
+    metrics.margin = GuideMetric(panel.value.fields,
+        (u32)StylePaddingY, panel.value.padding_y, 12.0, scale, true)
+    metrics.anchor_padding = GuideMetric(anchor.value.fields,
+        (u32)StylePaddingX, anchor.value.padding_x, 4.0, scale, true)
+    metrics.anchor_stroke = GuideMetric(anchor.value.fields,
+        (u32)StyleBorderWidth, anchor.value.border_width, 2.0, scale, true)
+    metrics.gap = GuideMetric(panel.value.fields,
+        (u32)StyleGap, panel.value.gap, 20.0, scale, true)
+    metrics.pad = GuideMetric(panel.value.fields,
+        (u32)StylePaddingX, panel.value.padding_x, 12.0, scale, true)
+    metrics.button_size = GuideMetric(action.value.fields,
+        (u32)StyleContentOffset, action.value.offset_y, 34.0, scale, false)
+    metrics.close_size = GuideMetric(close.value.fields,
+        (u32)StyleContentOffset, close.value.offset_y, 28.0, scale, false)
+    metrics.close_icon_size = GuideMetric(close.value.fields,
+        (u32)StyleIconSize, close.value.icon_size, 16.0, scale, true)
+    metrics.close_icon_padding = GuideMetric(close.value.fields,
+        (u32)StylePaddingX, close.value.padding_x, 6.0, scale, true)
+    metrics.nav_icon_size = GuideMetric(action.value.fields,
+        (u32)StyleIconSize, action.value.icon_size, 19.0, scale, true)
+    metrics.nav_icon_padding = GuideMetric(action.value.fields,
+        (u32)StylePaddingX, action.value.padding_x, 7.0, scale, true)
+    metrics.nav_gap = GuideMetric(action.value.fields,
+        (u32)StyleGap, action.value.gap, 8.0, scale, true)
+    metrics.text_gap = GuideMetric(label.value.fields,
+        (u32)StyleGap, label.value.gap, 8.0, scale, true)
+    metrics.default_line_gap = GuideMetric(label.value.fields,
+        (u32)StylePaddingY, label.value.padding_y, 6.0, scale, true)
+    metrics.controls_gap = GuideMetric(close.value.fields,
+        (u32)StyleGap, close.value.gap, 12.0, scale, true)
+    metrics.text_guard = GuideMetric(label.value.fields,
+        (u32)StylePaddingX, label.value.padding_x, 8.0, scale, true)
+    metrics.min_tip_height = GuideMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_y, 112.0, scale, false)
+    metrics.default_tip_width = GuideMetric(panel.value.fields,
+        (u32)StyleContentOffset, panel.value.offset_x, 300.0, scale, false)
     return metrics
 }
 

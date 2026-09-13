@@ -15,23 +15,40 @@ guide_draw_scrim(GuideScrim scrim, Color color)
 }
 
 static void
-guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color)
+guide_draw_arrow(Rectangle tip, Rectangle anchor, Color color,
+                 GuideMetrics metrics)
 {
-    GuideArrow arrow = GuideArrowFor(tip, anchor,
-                                     GuideMetricsFor((float)GetScale()));
+    GuideArrow arrow = GuideArrowFor(tip, anchor, metrics);
 
     DrawLineEx(arrow.line_start, arrow.line_end, arrow.stroke_width, color);
     DrawTriangle(arrow.tip0, arrow.tip1, arrow.tip2, color);
 }
 
-static Style
-guide_style(int role, ButtonState state)
+static StyleFrame
+guide_frame(int role, ButtonState state)
 {
-    return ui_unpack_style(ui_control_style_frame_role_kind(
+    return ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
                       .icon_only = true},
-        state, 0, 0.0f, 0.0f, 0.0f, StyleKindGuide(), role).value);
+        state, 0, 0.0f, 0.0f, 0.0f, StyleKindGuide(), role);
+}
+
+static Style
+guide_style(int role, ButtonState state)
+{
+    return ui_unpack_style(guide_frame(role, state).value);
+}
+
+static GuideMetrics
+guide_metrics(void)
+{
+    return GuideMetricsFor((float)GetScale(),
+                           guide_frame(2, ButtonStateNormal),
+                           guide_frame(24, ButtonStateNormal),
+                           guide_frame(6, ButtonStateNormal),
+                           guide_frame(17, ButtonStateNormal),
+                           guide_frame(15, ButtonStateNormal));
 }
 
 static IconActionSpec
@@ -55,7 +72,7 @@ GuideResult
 RenderGuideOverlay(GuideOverlayProps guide)
 {
     GuideResult result = {0};
-    GuideMetrics metrics = GuideMetricsFor((float)GetScale());
+    GuideMetrics metrics = guide_metrics();
     GuideLayout layout;
     GuidePolicy policy;
     int view_w = guide.view_width > 0 ? guide.view_width : ui_view_width;
@@ -144,7 +161,8 @@ RenderGuideOverlay(GuideOverlayProps guide)
     DrawRectangleLinesEx(guide.steps[step].anchor,
                          (float)metrics.anchor_stroke,
                          anchor_style.border);
-    guide_draw_arrow(tip, guide.steps[step].anchor, anchor_style.foreground);
+    guide_draw_arrow(tip, guide.steps[step].anchor, anchor_style.foreground,
+                     metrics);
 
     ui_draw_material(tip, (Rectangle){0}, panel_style.background,
                      panel_style.border, panel_style.border,

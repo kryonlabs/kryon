@@ -989,6 +989,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;
@@ -1109,6 +1110,11 @@ Guide[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 12;
+  padding-y: 12;
+  gap: 20;
+  offset-x: 300;
+  offset-y: 112;
   opacity: 1;
   material: default;
 }
@@ -1118,6 +1124,7 @@ Guide[role=Anchor] {
   foreground: accent;
   border: accent;
   border-width: border;
+  padding-x: 4;
   opacity: 1;
   material: default;
 }
@@ -1125,6 +1132,9 @@ Guide[role=Anchor] {
 Guide[role=Label] {
   foreground: text;
   font-size: font.md;
+  padding-x: 8;
+  padding-y: 6;
+  gap: 8;
   opacity: 1;
   material: default;
 }
@@ -1135,6 +1145,10 @@ Guide[role=Action] {
   border: border-hover;
   radius: radius.md;
   border-width: border;
+  padding-x: 7;
+  gap: 8;
+  icon-size: 19;
+  offset-y: 34;
   opacity: 1;
   material: default;
 }
@@ -1149,6 +1163,10 @@ Guide[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 6;
+  gap: 12;
+  icon-size: 16;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -2862,6 +2880,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;
@@ -2978,6 +2997,11 @@ Guide[role=Panel] {
   focus: accent;
   radius: radius;
   border-width: border;
+  padding-x: 12;
+  padding-y: 12;
+  gap: 20;
+  offset-x: 300;
+  offset-y: 112;
   opacity: 1;
   material: default;
 }
@@ -2987,6 +3011,7 @@ Guide[role=Anchor] {
   foreground: accent;
   border: accent-border;
   border-width: border;
+  padding-x: 4;
   opacity: 1;
   material: default;
 }
@@ -2994,6 +3019,9 @@ Guide[role=Anchor] {
 Guide[role=Label] {
   foreground: text;
   font-size: font;
+  padding-x: 8;
+  padding-y: 6;
+  gap: 8;
   opacity: 1;
   material: default;
 }
@@ -3004,6 +3032,10 @@ Guide[role=Action] {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 7;
+  gap: 8;
+  icon-size: 19;
+  offset-y: 34;
   opacity: 1;
   material: default;
 }
@@ -3019,6 +3051,10 @@ Guide[role=Close] {
   border: transparent;
   radius: radius;
   border-width: border.none;
+  padding-x: 6;
+  gap: 12;
+  icon-size: 16;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -4693,6 +4729,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;
@@ -4813,6 +4850,11 @@ Guide[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 12;
+  padding-y: 12;
+  gap: 20;
+  offset-x: 300;
+  offset-y: 112;
   opacity: 1;
   material: default;
 }
@@ -4822,6 +4864,7 @@ Guide[role=Anchor] {
   foreground: accent;
   border: accent;
   border-width: border;
+  padding-x: 4;
   opacity: 1;
   material: default;
 }
@@ -4829,6 +4872,9 @@ Guide[role=Anchor] {
 Guide[role=Label] {
   foreground: text;
   font-size: font.md;
+  padding-x: 8;
+  padding-y: 6;
+  gap: 8;
   opacity: 1;
   material: default;
 }
@@ -4839,6 +4885,10 @@ Guide[role=Action] {
   border: border-hover;
   radius: radius.md;
   border-width: border;
+  padding-x: 7;
+  gap: 8;
+  icon-size: 19;
+  offset-y: 34;
   opacity: 1;
   material: default;
 }
@@ -4853,6 +4903,10 @@ Guide[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 6;
+  gap: 12;
+  icon-size: 16;
+  offset-y: 28;
   opacity: 1;
   material: default;
 }
@@ -6621,6 +6675,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;
@@ -6751,6 +6806,11 @@ Guide[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 12;
+  padding-y: 12;
+  gap: 20;
+  offset-x: 300;
+  offset-y: 112;
   opacity: 1;
   material: glow;
 }
@@ -6760,6 +6820,7 @@ Guide[role=Anchor] {
   foreground: accent;
   border: accent-hover;
   border-width: border;
+  padding-x: 4;
   opacity: 1;
   material: app;
 }
@@ -6767,6 +6828,9 @@ Guide[role=Anchor] {
 Guide[role=Label] {
   foreground: text;
   font-size: font.md;
+  padding-x: 8;
+  padding-y: 6;
+  gap: 8;
   opacity: 1;
   material: app;
 }
@@ -6778,6 +6842,10 @@ Guide[role=Action] {
   border: border;
   radius: radius.md;
   border-width: border;
+  padding-x: 7;
+  gap: 8;
+  icon-size: 19;
+  offset-y: 34;
   opacity: 1;
   material: glow;
 }
@@ -6793,6 +6861,10 @@ Guide[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 6;
+  gap: 12;
+  icon-size: 16;
+  offset-y: 28;
   opacity: 1;
   material: app;
 }
@@ -8572,6 +8644,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font.md;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;
@@ -8695,6 +8768,11 @@ Guide[role=Panel] {
   focus: focus;
   radius: radius;
   border-width: border;
+  padding-x: 12;
+  padding-y: 12;
+  gap: 20;
+  offset-x: 300;
+  offset-y: 112;
   opacity: 1;
   material: premium;
 }
@@ -8704,6 +8782,7 @@ Guide[role=Anchor] {
   foreground: accent;
   border: accent-border;
   border-width: border;
+  padding-x: 4;
   opacity: 1;
   material: app;
 }
@@ -8711,6 +8790,9 @@ Guide[role=Anchor] {
 Guide[role=Label] {
   foreground: text;
   font-size: font;
+  padding-x: 8;
+  padding-y: 6;
+  gap: 8;
   opacity: 1;
   material: app;
 }
@@ -8722,6 +8804,10 @@ Guide[role=Action] {
   border: border;
   radius: radius;
   border-width: border;
+  padding-x: 7;
+  gap: 8;
+  icon-size: 19;
+  offset-y: 34;
   opacity: 1;
   material: premium;
 }
@@ -8737,6 +8823,10 @@ Guide[role=Close] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  padding-x: 6;
+  gap: 12;
+  icon-size: 16;
+  offset-y: 28;
   opacity: 1;
   material: app;
 }
