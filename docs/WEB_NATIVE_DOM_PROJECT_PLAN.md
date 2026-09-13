@@ -61,7 +61,8 @@ the browser receives normal elements, attributes, CSS, and events.
   `dom_tag`, `html_tag`, or `tag`, and can expose stable web refs with
   `dom_ref`, `web_ref`, or `kry_ref`.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
-  scope metadata and surface row/column header roles in accessibility facts.
+  scope metadata or direct `scope` args and surface row/column header roles in
+  accessibility facts.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:

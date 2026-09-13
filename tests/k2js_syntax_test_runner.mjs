@@ -1869,13 +1869,12 @@ function fakeDocument() {
     runtime.beginFrame(tableRt);
     runtime.widget(tableRt, "TableView", {}, null,
       { nodeName: "prices", path: "Page/prices" });
-    runtime.widget(tableRt, "TableCell", { text: "Price" }, null,
+    runtime.widget(tableRt, "TableCell", { text: "Price", scope: "col" }, null,
       {
         nodeName: "priceHeader",
         path: "Page/prices/priceHeader",
         parentPath: "Page/prices",
         id: "price-header",
-        scope: "col",
         ariaSort: "ascending",
         ariaColIndex: 1,
         ariaColCount: 2

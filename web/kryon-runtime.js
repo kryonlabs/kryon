@@ -1188,7 +1188,8 @@ function widgetTag(item) {
   case "TableView":
     return "table";
   case "TableCell":
-    return /^(col|row|colgroup|rowgroup)$/i.test(metaString(item.meta, "scope"))
+    return /^(col|row|colgroup|rowgroup)$/i.test(
+      metaString(item.meta, "scope") || propStringAny(args, ["scope", "dom_scope", "html_scope"]))
       ? "th" : "td";
   case "Canvas":
   case "Plot":
