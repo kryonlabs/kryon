@@ -270,6 +270,15 @@ test_checkbox_paint_geometry_is_stable(void)
     custom.box.value.icon_size = 0.0f;
     check_int("checkbox explicit zero slot fallback",
               CheckboxSlotSize(1.0f, custom.box), 22);
+    check_int("checkbox explicit zero box size",
+              CheckboxBoxSize(1.0f, custom.box), 0);
+    custom.active.value.icon_size = 0.0f;
+    custom.checked = 1;
+    custom_paint = CheckboxPaintFor(custom);
+    check_float("checkbox explicit zero mark width",
+                custom_paint.mark_width, 0.0f);
+    check_int("checkbox explicit zero mark hidden",
+              custom_paint.show_mark, 0);
     custom.label.value.gap = 0.0f;
     check_int("checkbox explicit zero label gap",
               (int)CheckboxLabelXFor((Rectangle){10, 20, 22, 22}, 1.0f,

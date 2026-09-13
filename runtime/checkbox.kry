@@ -75,7 +75,7 @@ CheckboxSlotSize :: (scale: float, box: StyleFrame) -> i32 #export {
 
 CheckboxBoxSize :: (scale: float, box: StyleFrame) -> i32 #export {
     return (i32)CheckboxMetric(box.value.fields, (u32)StyleIconSize,
-        box.value.icon_size, 20.0, scale, false)
+        box.value.icon_size, 20.0, scale, true)
 }
 
 CheckboxLabelXFor :: (slot_bounds: Rectangle, scale: float,
@@ -148,7 +148,7 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     mark_inset: float = CheckboxMetric(spec.active.value.fields,
         (u32)StylePaddingX, spec.active.value.padding_x, 5.0, scale, true)
     mark_width: float = CheckboxMetric(spec.active.value.fields,
-        (u32)StyleIconSize, spec.active.value.icon_size, 2.4, scale, false)
+        (u32)StyleIconSize, spec.active.value.icon_size, 2.4, scale, true)
     border_width: float = spec.box.value.border_width * scale
 
     paint.bounds = spec.bounds
@@ -200,7 +200,7 @@ CheckboxPaintFor :: (spec: CheckboxSpec) -> CheckboxPaint #export {
     paint.mark_width = mark_width
 
     paint.show_fill = spec.checked
-    paint.show_mark = spec.checked
+    paint.show_mark = spec.checked && paint.mark_width > 0.0
     paint.show_state = spec.enabled && (spec.hovered || spec.pressed || spec.focused)
     paint.show_focus = spec.enabled && spec.focused
 
