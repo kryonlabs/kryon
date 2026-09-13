@@ -86,7 +86,13 @@ try {
     path: "Page/article/upload",
     parentPath: "Page/article"
   });
-  kryon.widget(rt, "Input", { min: -5, max: 5, step: 0.25, value: 1.5 }, null, {
+  kryon.widget(rt, "Input", {
+    min: -5,
+    max: 5,
+    step: 0.25,
+    value: 1.5,
+    label: "Amount"
+  }, null, {
     nodeName: "amount",
     path: "Page/article/amount",
     parentPath: "Page/article"
@@ -96,12 +102,12 @@ try {
     path: "Page/article/amountLabel",
     parentPath: "Page/article"
   });
-  kryon.widget(rt, "Fieldset", {}, null, {
+  kryon.widget(rt, "Fieldset", { title: "Options" }, null, {
     nodeName: "options",
     path: "Page/article/options",
     parentPath: "Page/article"
   });
-  kryon.widget(rt, "Checkbox", { checked: true }, null, {
+  kryon.widget(rt, "Checkbox", { checked: true, label: "Email opt in" }, null, {
     nodeName: "emailOptIn",
     path: "Page/article/options/email",
     parentPath: "Page/article/options"
@@ -361,6 +367,8 @@ try {
   assert(amount.getAttribute("max") === "5", "native Input max missing");
   assert(amount.getAttribute("step") === "0.25", "native Input step missing");
   assert(amount.getAttribute("value") === "1.5", "native Input value missing");
+  assert(amount.getAttribute("aria-label") === "Amount",
+    "native Input accessible label missing");
   const amountSnapshot = kryon.webDOMSnapshot(target, "amount");
   assert(amountSnapshot.valueNow === "1.5" && amountSnapshot.min === "-5" &&
     amountSnapshot.max === "5", "native Input snapshot range missing");
@@ -423,6 +431,10 @@ try {
     "root flow relation refs missing");
   assert(kryon.webDOMRelations(target, "emailOptIn").groupOwner.ref === "Page/article/options",
     "fieldset group owner relation missing");
+  assert(kryon.findWebElement(target, "options").getAttribute("aria-label") === "Options",
+    "fieldset accessible label missing");
+  assert(kryon.findWebElement(target, "emailOptIn").getAttribute("aria-label") === "Email opt in",
+    "checkbox accessible label missing");
   assert(kryon.webDOMRelationRefs(target, "options").groupMembers
     .join(" ") === "Page/article/options/email",
     "fieldset group member relation refs missing");

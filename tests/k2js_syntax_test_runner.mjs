@@ -2564,9 +2564,9 @@ function fakeDocument() {
       { nodeName: "plainCard", path: "Page/plainCard" });
     runtime.widget(nativeRt, "Card", { clickable: true }, null,
       { nodeName: "actionCard", path: "Page/actionCard" });
-    runtime.widget(nativeRt, "Fieldset", {}, null,
+    runtime.widget(nativeRt, "Fieldset", { title: "Preferences" }, null,
       { nodeName: "fieldset", path: "Page/fieldset" });
-    runtime.widget(nativeRt, "Checkbox", { checked: true }, null,
+    runtime.widget(nativeRt, "Checkbox", { checked: true, label: "Agree" }, null,
       { nodeName: "fieldsetAgree", path: "Page/fieldset/agree", parentPath: "Page/fieldset" });
     runtime.widget(nativeRt, "Collapsible", {}, null,
       { nodeName: "autoDetails", path: "Page/autoDetails" });
@@ -2584,11 +2584,11 @@ function fakeDocument() {
       enter_key_hint: "send"
     }, null,
       { nodeName: "email", path: "Page/email" });
-    runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4 }, null,
+    runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4, label: "Volume" }, null,
       { nodeName: "volume", path: "Page/volume" });
     runtime.widget(nativeRt, "Spinbox", { min: 1, max: 8, value: 3 }, null,
       { nodeName: "copies", path: "Page/copies" });
-    runtime.widget(nativeRt, "Input", { min: -10, max: 10, step: 0.5, value: 2.5 }, null,
+    runtime.widget(nativeRt, "Input", { min: -10, max: 10, step: 0.5, value: 2.5, label: "Amount" }, null,
       { nodeName: "amount", path: "Page/amount" });
     runtime.widget(nativeRt, "Dropdown", {}, null,
       { nodeName: "choice", path: "Page/choice" });
@@ -2598,7 +2598,7 @@ function fakeDocument() {
       { nodeName: "items", path: "Page/items" });
     runtime.widget(nativeRt, "Selectable", { text: "Beta", value: "b", selected: true }, null,
       { nodeName: "itemBeta", path: "Page/items/beta", parentPath: "Page/items" });
-    runtime.widget(nativeRt, "ColorPicker", { value: "#336699" }, null,
+    runtime.widget(nativeRt, "ColorPicker", { value: "#336699", label: "Accent" }, null,
       { nodeName: "accent", path: "Page/accent" });
     runtime.widget(nativeRt, "Checkbox", { checked: true }, null,
       { nodeName: "agree", path: "Page/agree" });
@@ -2679,6 +2679,11 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").clickable, true);
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Page/actionCard")).clickable, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").ariaLabel, "Preferences");
+    assert.equal(runtime.webNodeQuery(nativeRt, "fieldsetAgree").ariaLabel, "Agree");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/volume").ariaLabel, "Volume");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/amount").ariaLabel, "Amount");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/accent").ariaLabel, "Accent");
     assert.equal(runtime.webNodeRelations(nativeRt, "fieldsetAgree").groupOwner.path,
       "Page/fieldset");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Fieldset").groupMembers,
@@ -2689,6 +2694,10 @@ function fakeDocument() {
       .find((node) => node.kind === "TitleBar")?.role, "banner");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Fieldset")?.role, "group");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.path === "Page/fieldset")?.label, "Preferences");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.path === "Page/amount")?.label, "Amount");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").inputType, "email");
@@ -2819,7 +2828,9 @@ function fakeDocument() {
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");
+    assert.equal(fieldset.attributes["aria-label"], "Preferences");
     assert.equal(fieldsetAgree.tagName, "INPUT");
+    assert.equal(fieldsetAgree.attributes["aria-label"], "Agree");
     assert.equal(runtime.webDOMRelations(nativeTarget, "fieldsetAgree").groupOwner.ref,
       "Page/fieldset");
     assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.groupMembers,
@@ -2847,6 +2858,7 @@ function fakeDocument() {
     assert.equal(volume.attributes.min, "0");
     assert.equal(volume.attributes.max, "10");
     assert.equal(volume.attributes.value, "4");
+    assert.equal(volume.attributes["aria-label"], "Volume");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").valueNow, "4");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").min, "0");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").max, "10");
@@ -2867,12 +2879,14 @@ function fakeDocument() {
     assert.equal(amount.attributes.max, "10");
     assert.equal(amount.attributes.step, "0.5");
     assert.equal(amount.attributes.value, "2.5");
+    assert.equal(amount.attributes["aria-label"], "Amount");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "amount").valueNow, "2.5");
     assert.equal(choice.tagName, "SELECT");
     assert.equal(items.tagName, "SELECT");
     assert.equal(accent.tagName, "INPUT");
     assert.equal(accent.attributes.type, "color");
     assert.equal(accent.attributes.value, "#336699");
+    assert.equal(accent.attributes["aria-label"], "Accent");
     assert.equal(agree.tagName, "INPUT");
     assert.equal(agree.attributes.type, "checkbox");
     assert.equal(enabled.tagName, "INPUT");

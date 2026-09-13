@@ -1325,6 +1325,33 @@ function widgetLevel(item) {
   return Math.max(1, Math.min(6, propNumber(item.args || {}, "level", 2)));
 }
 
+function widgetAccessibleLabel(item) {
+  const args = item.args || {};
+  switch (item.name) {
+  case "Checkbox":
+  case "Radio":
+  case "Input":
+  case "Slider":
+  case "Spinbox":
+  case "ColorPicker":
+  case "Drag":
+  case "Progress":
+    return propString(args, "label", "");
+  case "Toggle":
+    return propString(args, "label",
+      propString(args, "on_label", propString(args, "off_label", "")));
+  case "Fieldset":
+    return propString(args, "title", "");
+  case "Modal":
+  case "Section":
+  case "NavigationBar":
+  case "TitleBar":
+    return propString(args, "label", propString(args, "title", ""));
+  default:
+    return "";
+  }
+}
+
 function propPrefixedAttrs(source, prefixes, normalize, valid) {
   const out = {};
   const add = (rawName, value) => {
@@ -1590,7 +1617,8 @@ function webNodeFromWidget(item, index) {
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: metaStringOrProp(meta, "role", args, ["role", "dom_role", "html_role"]),
     ariaLabel: metaStringOrProp(meta, "ariaLabel", args,
-      ["aria_label", "accessible_label", "dom_aria_label", "html_aria_label"]),
+      ["aria_label", "accessible_label", "dom_aria_label", "html_aria_label"]) ||
+      widgetAccessibleLabel(item),
     ariaDescription: metaStringOrProp(meta, "ariaDescription", args,
       ["aria_description", "accessible_description", "dom_aria_description", "html_aria_description"]),
     ariaDescribedBy: metaStringOrProp(meta, "ariaDescribedBy", args,

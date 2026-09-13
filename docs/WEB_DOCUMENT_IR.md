@@ -380,6 +380,12 @@ semantics are clear: `TitleBar` uses `banner`, `Toolbar` uses `toolbar`,
 `tree`. The `menu` element still receives explicit `role=menu`.
 Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 
+Label-bearing widgets derive a native accessible name from their ordinary Kry
+props when no explicit `aria_label`/`accessible_label` metadata is supplied:
+form controls and range/status widgets use `label`, `Toggle` falls back through
+`label`, `on_label`, and `off_label`, `Fieldset` uses `title`, and major
+landmark/dialog containers use `label` or `title`.
+
 ## KSS Fit
 
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,

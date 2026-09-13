@@ -59,6 +59,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `.kry` widget args feed native role and ARIA attributes for canonical
   accessibility fields plus generic `aria_*` passthrough, again with compiler
   metadata taking precedence.
+- Label-bearing widgets derive native accessible labels from ordinary Kry
+  `label`/`title` props when no explicit ARIA label metadata is supplied.
 - Direct `.kry` widget args feed native global attributes such as DOM id/name,
   title, tab index, hidden, draggable, content-editable, part, slot, popover,
   and table cell relation attributes.
