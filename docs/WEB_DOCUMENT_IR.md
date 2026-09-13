@@ -384,6 +384,9 @@ source text in `app.styles[].source` when a `#style` import resolves on disk.
 Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, attrOps,
 state, specificity }`, with `parts` for descendant and child selector chains,
 matching the facts used by node queries and DOM object lookup.
+Top-level `@keyframes name { from { ... } to { ... } }` blocks parse into
+`sheet.keyframes` and emit as native CSS animation assets; they do not
+participate in node matching.
 File imports resolve relative to the source module and then the project root;
 package imports resolve built-in `kryon.*` packs and project packages under
 `styles/`, including dotted package names as nested paths. Projects can also

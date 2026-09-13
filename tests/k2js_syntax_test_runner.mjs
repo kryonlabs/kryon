@@ -45,6 +45,20 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     length { radius.md: 9; space.3: 13; field-y: 5; line: 2; }
     duration { fast: 80ms; normal: 0.14s; }
   }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    50%, 75% {
+      opacity: 0.5;
+      outline-color: id-face;
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
   @layer components;
   Button.primary {
     background: button-face;
@@ -296,6 +310,13 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
+assert.equal(webStyleSheet.keyframes[0].name, "fade-in");
+assert.equal(webStyleSheet.keyframes[0].frames[1].selector, "50%, 75%");
+assert.equal(webStyleSheet.keyframes[0].frames[1].style["outline-color"], "#203040");
+assert.match(webStyleCSS, /@keyframes fade-in \{/);
+assert.match(webStyleCSS, /from \{\n    opacity: 0;\n    transform: translateY\(4px\);/);
+assert.match(webStyleCSS, /50%, 75% \{\n    opacity: 0\.5;\n    outline-color: #203040;/);
+assert.match(webStyleCSS, /to \{\n    opacity: 1;\n    transform: translateY\(0\);/);
 const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Button[webRef^="primary"] { cursor: pointer; }
   Button[webRef$="action"] { pointer-events: auto; }

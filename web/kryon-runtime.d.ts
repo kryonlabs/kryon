@@ -722,9 +722,20 @@ export interface WebStyleRule {
   score: number;
 }
 
+export interface WebStyleKeyframe {
+  selector: string;
+  style: Record<string, unknown>;
+}
+
+export interface WebStyleKeyframes {
+  name: string;
+  frames: WebStyleKeyframe[];
+}
+
 export interface WebStyleSheet {
   pack?: string;
   rules: WebStyleRule[];
+  keyframes?: WebStyleKeyframes[];
 }
 
 export interface Ref<T = unknown> {
@@ -1051,8 +1062,6 @@ export const THEME_MODE_LIGHT: number;
 export const THEME_MODE_DARK: number;
 export const THEME_SOURCE_SYSTEM: number;
 export const THEME_SOURCE_APP: number;
-export const THEME_STYLE_SYSTEM: number;
-export const THEME_STYLE_DEFAULT: number;
 export function SetFancyEffectsEnabled(enabled: unknown): void;
 export function FancyEffectsEnabled(): number;
 

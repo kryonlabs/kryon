@@ -250,8 +250,6 @@ export const THEME_MODE_LIGHT = 1;
 export const THEME_MODE_DARK = 2;
 export const THEME_SOURCE_SYSTEM = 0;
 export const THEME_SOURCE_APP = 1;
-export const THEME_STYLE_SYSTEM = 0;
-export const THEME_STYLE_DEFAULT = 1;
 export const SyntaxNone = 0;
 export const SyntaxKry = 1;
 export const SyntaxC = 2;
@@ -2070,9 +2068,41 @@ function parseWebStyleTokens(text) {
   return { text: stripped, tokens };
 }
 
+function parseWebStyleKeyframes(text, tokens) {
+  const keyframes = [];
+  let stripped = "";
+  let cursor = 0;
+  const keyframePattern = /@keyframes\s+([A-Za-z_][\w-]*)\s*\{/g;
+  for (let match; (match = keyframePattern.exec(text));) {
+    const open = keyframePattern.lastIndex - 1;
+    const close = findMatchingBrace(text, open);
+    if (close < 0)
+      break;
+    stripped += text.slice(cursor, match.index);
+    const body = text.slice(open + 1, close);
+    const frames = [];
+    const framePattern = /([^{}]+)\{([^{}]*)\}/g;
+    for (let frame; (frame = framePattern.exec(body));) {
+      const selector = splitSelectorList(frame[1]).join(", ");
+      if (!selector)
+        continue;
+      frames.push({
+        selector,
+        style: parseKssDeclarations(frame[2], tokens)
+      });
+    }
+    keyframes.push({ name: match[1], frames });
+    cursor = close + 1;
+    keyframePattern.lastIndex = close + 1;
+  }
+  stripped += text.slice(cursor);
+  return { text: stripped, keyframes };
+}
+
 export function parseWebStyleSheet(source) {
   const parsedTokens = parseWebStyleTokens(stripKssComments(source));
-  const text = parsedTokens.text;
+  const parsedKeyframes = parseWebStyleKeyframes(parsedTokens.text, parsedTokens.tokens);
+  const text = parsedKeyframes.text;
   const tokens = parsedTokens.tokens;
   const rules = [];
   let pack = "";
@@ -2108,7 +2138,7 @@ export function parseWebStyleSheet(source) {
       });
     }
   }
-  return { pack, rules };
+  return { pack, rules, keyframes: parsedKeyframes.keyframes };
 }
 
 function cssEscapeString(value) {
@@ -2510,10 +2540,41 @@ function webStyleRuleToCSS(rule) {
   return `${selector} {\n${lines.join("\n")}\n}`;
 }
 
+function webKeyframeSelectorToCSS(selector) {
+  return splitSelectorList(selector)
+    .map((part) => part.trim().toLowerCase())
+    .filter((part) => part === "from" || part === "to" || /^\d+(?:\.\d+)?%$/.test(part))
+    .join(", ");
+}
+
+function webKeyframesToCSS(keyframes) {
+  if (!keyframes || !keyframes.name || !Array.isArray(keyframes.frames))
+    return "";
+  const frames = [];
+  for (const frame of keyframes.frames) {
+    const selector = webKeyframeSelectorToCSS(frame.selector);
+    if (!selector)
+      continue;
+    const lines = [];
+    for (const [name, value] of Object.entries(frame.style || {})) {
+      const line = webStyleValueToCSS(name, value);
+      if (line)
+        lines.push("  " + line);
+    }
+    if (lines.length)
+      frames.push(`  ${selector} {\n${lines.join("\n")}\n  }`);
+  }
+  if (!frames.length)
+    return "";
+  return `@keyframes ${cssEscapeIdent(keyframes.name)} {\n${frames.join("\n")}\n}`;
+}
+
 export function webStyleSheetToCSS(sheet) {
   const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
-  return (parsed?.rules || [])
-    .map(webStyleRuleToCSS)
+  return [
+    ...(parsed?.keyframes || []).map(webKeyframesToCSS),
+    ...(parsed?.rules || []).map(webStyleRuleToCSS)
+  ]
     .filter(Boolean)
     .join("\n\n");
 }
