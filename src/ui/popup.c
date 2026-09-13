@@ -13,9 +13,9 @@ typedef struct UIComposedPopupScope {
     UIPaintLayers *layers;
     UIPaintLayerToken paint;
     UIPopupInputToken input;
-    UITreeLayoutScope layout;
-    UIDisabledScope disabled;
-    UIInputClipScope input_clip;
+    TreeLayoutScopeState layout;
+    DisabledScopeState disabled;
+    InputClipScopeState input_clip;
     Rectangle popup;
     int id, has_paint, has_input, has_clip;
     bool local_open;

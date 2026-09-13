@@ -494,17 +494,17 @@ ui_reset_disabled_scope(void)
     g_ui_disabled_start = 0;
 }
 
-UIDisabledScope
+DisabledScopeState
 ui_disabled_suspend(void)
 {
-    UIDisabledScope scope = {g_ui_disabled_depth,g_ui_disabled_start,g_ui_disabled_floor};
+    DisabledScopeState scope = {g_ui_disabled_depth,g_ui_disabled_start,g_ui_disabled_floor};
     g_ui_disabled_depth = g_ui_disabled_floor = 1;
     g_ui_disabled_start = scope.start > 0 ? 1 : 0;
     return scope;
 }
 
 void
-ui_disabled_resume(UIDisabledScope scope)
+ui_disabled_resume(DisabledScopeState scope)
 {
     if(g_ui_disabled_depth != 1 || g_ui_disabled_floor != 1 ||
        g_ui_disabled_start != (scope.start > 0 ? 1 : 0)) abort();
@@ -738,10 +738,10 @@ BeginModalLayer(void)
                                    (float)ui_view_height}, 0);
 }
 
-UIInputClipScope
+InputClipScopeState
 ui_input_clip_suspend(void)
 {
-    UIInputClipScope scope = {0};
+    InputClipScopeState scope = {0};
     scope.count = g_ui_input_clip_stack_count;
     scope.scroll_depth = g_scroll_scope_depth;
     memcpy(scope.clips,g_ui_input_clip_stack,(size_t)scope.count*sizeof(Rectangle));
@@ -751,7 +751,7 @@ ui_input_clip_suspend(void)
 }
 
 void
-ui_input_clip_resume(UIInputClipScope scope)
+ui_input_clip_resume(InputClipScopeState scope)
 {
     if(scope.count < 0 || scope.count > UI_INPUT_CLIP_STACK_MAX || scope.scroll_depth < 0 ||
        g_ui_input_clip_stack_count != 0 || g_scroll_scope_depth != 0) abort();

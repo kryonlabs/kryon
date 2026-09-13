@@ -4259,7 +4259,7 @@ test_popup_input_clip_restoration(void)
             BeginTree(Key("popup input clip"));
             PushInputCapture((Rectangle){0,0,blocked ? 5 : 100,100},1);
             ScrollScope((Rectangle){0,0,1,1},100,NULL);
-            UIInputClipScope scope = ui_input_clip_suspend();
+            InputClipScopeState scope = ui_input_clip_suspend();
             ScrollEndScope(); /* Cannot pop the suspended owner's scroll scope. */
             popup_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25004,.label="Popup"});
             ui_input_clip_resume(scope);
@@ -4278,11 +4278,11 @@ test_popup_disabled_restoration(void)
 {
     for(int disabled = 0; disabled < 2; disabled++) {
         DisabledScope(disabled);
-        UIDisabledScope outer = ui_disabled_suspend();
+        DisabledScopeState outer = ui_disabled_suspend();
         DisabledEndScope();
         check_int("popup cannot end parent disabled scope",ContentDisabled(),disabled);
         DisabledScope(1);
-        UIDisabledScope inner = ui_disabled_suspend();
+        DisabledScopeState inner = ui_disabled_suspend();
         DisabledScope(0); DisabledEndScope();
         check_int("nested popup inherits disabled",ContentDisabled(),1);
         ui_disabled_resume(inner);
@@ -4301,7 +4301,7 @@ test_popup_layout_restoration(void)
     BeginTree(Key("popup layout restoration"));
     NodeId parent = Row((RowProps){.bounds={10,10,200,20},.gap=5});
     Box((Rectangle){0,0,20,20},RED,BLANK);
-    UITreeLayoutScope scope = ui_tree_layout_suspend();
+    TreeLayoutScopeState scope = ui_tree_layout_suspend();
     NodeId popup = Row((RowProps){.bounds={0,0,100,20},.gap=3});
     Box((Rectangle){0,0,30,20},BLUE,BLANK);
     End();

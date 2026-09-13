@@ -888,10 +888,10 @@ EndTree(void)
     }
 }
 
-UITreeLayoutScope
+TreeLayoutScopeState
 ui_tree_layout_suspend(void)
 {
-    UITreeLayoutScope scope = {0};
+    TreeLayoutScopeState scope = {0};
     if(ui_tree_building && ui_tree_stack_depth < 1) abort();
     scope.depth = ui_tree_stack_depth;
     scope.building = ui_tree_building;
@@ -904,7 +904,7 @@ ui_tree_layout_suspend(void)
 }
 
 void
-ui_tree_layout_resume(UITreeLayoutScope scope)
+ui_tree_layout_resume(TreeLayoutScopeState scope)
 {
     if(scope.depth < 0 || scope.depth > UI_TREE_MAX_DEPTH ||
        scope.declaration != ui_tree_declaration || scope.building != ui_tree_building ||

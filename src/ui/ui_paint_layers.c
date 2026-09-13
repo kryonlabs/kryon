@@ -48,9 +48,9 @@ typedef struct UIPaintLayer {
     UIBlendState previous_blend;
     ClipState previous_clip;
     UIPaintLayerToken previous_scope;
-    UITreeLayoutScope previous_layout;
-    UIDisabledScope previous_disabled;
-    UIInputClipScope previous_input_clip;
+    TreeLayoutScopeState previous_layout;
+    DisabledScopeState previous_disabled;
+    InputClipScopeState previous_input_clip;
     int owner, parent, visible;
 } UIPaintLayer;
 
