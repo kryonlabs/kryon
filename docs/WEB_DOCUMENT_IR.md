@@ -398,7 +398,8 @@ attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
 
 The JavaScript runtime exposes `parseWebStyleSheet(source)`,
-`resolveWebStyle(node, sheets)`, `webStyleSheetToCSS(sheet)`,
+`resolveWebStyle(node, sheets)`, `traceWebStyle(node, sheets)`,
+`webStyleSheetToCSS(sheet)`,
 `installWebStyleSheet(sheet, target?, id?)`, `loadAppWebStyleSheets(app)`,
 `installAppWebStyleSheets(app, target?, id?)`, and `setWebStyleSheets(rt,
 sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
@@ -475,9 +476,10 @@ columns/break flow controls, form field sizing, overlay/interpolate sizing,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 
-The frame is also the right place for inspector data: matched KSS rules,
-winning declarations, token origins, state slice, and backend degradation can
-attach to nodes without changing app logic.
+The frame is also the right place for inspector data. `traceWebStyle(node,
+sheets)` and mounted `webDOMStyleTrace(target, query)` expose each node's KSS
+facts, matched rules, resolved values, and winning declarations so tools can
+explain style resolution without generated app logic owning browser DOM shape.
 
 ## Runtime DOM APIs
 
@@ -602,13 +604,14 @@ generated JS owning DOM structure.
 `webDOMIdentity(target, query)` returns the same plain identity projection for
 a mounted Kry DOM object. Mounted roots expose `kryIdentity(query)`,
 `krySnapshot(query)`, and `krySnapshots(selector)` for browser tooling.
-`webDOMStyleFacts(target, query)`
-and `root.kryStyleFacts(query)` expose the same KSS facts used for mounted
-style resolution. Rendered elements expose the native
+`webDOMStyleFacts(target, query)` and `webDOMStyleTrace(target, query)`
+expose the same KSS facts used for mounted style resolution plus matched rules,
+resolved values, and winning declarations. Mounted roots mirror those helpers
+with `root.kryStyleFacts(query)` and `root.kryStyleTrace(query)`. Rendered elements expose the native
 bridge directly as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
 scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryRoot`, `element.kryIdentity`, `element.krySnapshot`,
-`element.kryStyleFacts`, `element.kryParent`, and
+`element.kryStyleFacts`, `element.kryStyleTrace`, `element.kryParent`, and
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,

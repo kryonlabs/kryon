@@ -3795,6 +3795,52 @@ export function resolveWebStyle(node, sheets = []) {
   return resolved;
 }
 
+export function traceWebStyle(node, sheets = []) {
+  const resolved = {};
+  const winners = {};
+  const matchedRules = [];
+  const list = Array.isArray(sheets) ? sheets : [sheets];
+  for (const sheet of list) {
+    const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
+    const rules = parsed?.rules || [];
+    for (const rule of rules) {
+      if (!selectorMatchesWebNode(rule.selector, node))
+        continue;
+      const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
+      const selector = webStyleSelectorToCSS(rule.selector);
+      matchedRules.push({
+        selector,
+        layer: rule.layer || 0,
+        order: rule.order || 0,
+        specificity: rule.selector?.specificity || 0,
+        score,
+        style: { ...(rule.style || {}) },
+        pack: parsed?.pack || ""
+      });
+      for (const [name, value] of Object.entries(rule.style || {})) {
+        if (!winners[name] || score >= winners[name].score) {
+          resolved[name] = value;
+          winners[name] = {
+            value,
+            selector,
+            layer: rule.layer || 0,
+            order: rule.order || 0,
+            specificity: rule.selector?.specificity || 0,
+            score,
+            pack: parsed?.pack || ""
+          };
+        }
+      }
+    }
+  }
+  return {
+    facts: webNodeStyleFacts(node),
+    matchedRules,
+    resolved,
+    winners
+  };
+}
+
 function applyResolvedWebStyle(el, style) {
   if (!el)
     return;
@@ -5062,6 +5108,15 @@ function bindWebDOMObjectProperties(el) {
         return this.__kryDocNode ? webNodeStyleFacts(this.__kryDocNode) : null;
       }
     },
+    kryStyleTrace: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const node = this.__kryDocNode || null;
+        const root = this.__kryMountRoot || mountedRoot(this);
+        return node && root ? webDOMStyleTrace(root, webNodeRef(node)) : null;
+      }
+    },
     kryParent: {
       configurable: true,
       enumerable: false,
@@ -5566,6 +5621,14 @@ function makeWebDOMObject(root, node, element, ref = "") {
       enumerable: false,
       get() {
         return webNodeStyleFacts(this.node);
+      }
+    },
+    styleTrace: {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const target = webDOMObjectRoot(this);
+        return target ? webDOMStyleTrace(target, webDOMObjectQuery(this)) : null;
       }
     },
     descendants: {
@@ -6505,6 +6568,13 @@ function bindWebRootProperties(root) {
         return webDOMStyleFacts(this, query);
       }
     },
+    kryStyleTrace: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMStyleTrace(this, query);
+      }
+    },
     kryRelations: {
       configurable: true,
       enumerable: false,
@@ -7206,6 +7276,12 @@ export function webDOMEventRefs(target, query) {
 export function webDOMStyleFacts(target, query) {
   const object = webDOMObject(target, query);
   return object ? webNodeStyleFacts(object.node) : null;
+}
+
+export function webDOMStyleTrace(target, query) {
+  const root = mountedRoot(target);
+  const object = root ? webDOMObject(root, query) : null;
+  return object ? traceWebStyle(object.node, root.__kryRuntime?.webStyleSheets || []) : null;
 }
 
 export function webDOMRelations(target, query) {

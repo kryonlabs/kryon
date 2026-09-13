@@ -1017,6 +1017,15 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   }
 });
 assert.deepEqual(runtime.webNodeStyleFacts(webDoc.nodes[2]), webDoc.nodes[2].styleFacts);
+const buttonStyleTrace = runtime.traceWebStyle(webDoc.nodes[2], webStyleSheet);
+assert.equal(buttonStyleTrace.facts.ref, "primary-action");
+assert.equal(buttonStyleTrace.resolved.background, "#203040");
+assert.equal(buttonStyleTrace.resolved.foreground, "#f0f0f0");
+assert.equal(buttonStyleTrace.winners.background.value, "#203040");
+assert.equal(buttonStyleTrace.winners.background.selector.includes("#tap-button"), true);
+assert.equal(buttonStyleTrace.matchedRules.some((rule) =>
+  rule.selector.includes("Button") && rule.style.foreground === "#f0f0f0"), true);
+assert.equal(Object.keys(buttonStyleTrace).includes("matchedRules"), true);
 assert.deepEqual(runtime.webNodeIdentity(webDoc.nodes[2]), {
   ref: "primary-action",
   aliases: [
@@ -3110,6 +3119,11 @@ function fakeDocument() {
     assert.equal(firstButton.kryStyleFacts.kind, "Button");
     assert.equal(root.kryStyleFacts("tap-button").kind, "Button");
     assert.equal(runtime.webDOMStyleFacts(target, "tap-button").kind, "Button");
+    assert.equal(buttonObject.styleTrace.resolved.background, "#203040");
+    assert.equal(firstButton.kryStyleTrace.resolved.background, "#203040");
+    assert.equal(root.kryStyleTrace("tap-button").resolved.background, "#203040");
+    assert.equal(runtime.webDOMStyleTrace(target, "tap-button").resolved.background, "#203040");
+    assert.equal(Object.keys(buttonObject).includes("styleTrace"), false);
     assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
     assert.deepEqual(buttonObject.snapshot.relationRefs.owns, ["search-box"]);
     assert.equal(buttonObject.snapshot.relationRefs.details, "Scene/root/search_label");

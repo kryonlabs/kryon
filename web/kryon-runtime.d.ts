@@ -446,6 +446,7 @@ export interface WebDOMObject {
   readonly relationRefs: WebDOMRelationRefs | null;
   readonly eventRefs: WebNodeEventRefs;
   readonly styleFacts: WebNodeStyleFacts;
+  readonly styleTrace: WebStyleTrace | null;
   readonly descendants: WebDOMObject[];
   query(selector: string): WebDOMObject | null;
   queryAll(selector: string): WebDOMObject[];
@@ -665,6 +666,7 @@ declare global {
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
     readonly kryStyleFacts?: WebNodeStyleFacts | null;
+    readonly kryStyleTrace?: WebStyleTrace | null;
     readonly kryParent?: WebDOMObject | null;
     readonly kryChildren?: WebDOMObject[];
     readonly kryRelations?: WebDOMRelations | null;
@@ -683,6 +685,7 @@ declare global {
     krySnapshot?(query: string): WebDOMSnapshot | null;
     krySnapshots?(selector?: string): WebDOMSnapshot[];
     kryStyleFacts?(query: string): WebNodeStyleFacts | null;
+    kryStyleTrace?(query: string): WebStyleTrace | null;
     kryRelations?(query: string): WebDOMRelations | null;
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
     kryEventRefs?(query: string): WebNodeEventRefs | null;
@@ -875,6 +878,33 @@ export interface WebStyleRule {
   score: number;
 }
 
+export interface WebStyleTraceRule {
+  selector: string;
+  layer: number;
+  order: number;
+  specificity: number;
+  score: number;
+  style: Record<string, unknown>;
+  pack: string;
+}
+
+export interface WebStyleTraceWinner {
+  value: unknown;
+  selector: string;
+  layer: number;
+  order: number;
+  specificity: number;
+  score: number;
+  pack: string;
+}
+
+export interface WebStyleTrace {
+  facts: WebNodeStyleFacts;
+  matchedRules: WebStyleTraceRule[];
+  resolved: Record<string, unknown>;
+  winners: Record<string, WebStyleTraceWinner>;
+}
+
 export interface WebStyleKeyframe {
   selector: string;
   style: Record<string, unknown>;
@@ -967,6 +997,7 @@ export function webSourceRef(sourcePath: string, sourceLine: number, sourceColum
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
+export function traceWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): WebStyleTrace;
 export function webStyleSelectorToCSS(selector: WebStyleSelector | Partial<WebStyleSelector>): string;
 export function webStyleSheetToCSS(sheet: string | WebStyleSheet): string;
 export function installWebStyleSheet(sheet: string | WebStyleSheet,
@@ -998,6 +1029,7 @@ export function webDOMObject(target: Element | string | null, query: string): We
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;
 export function webDOMStyleFacts(target: Element | string | null, query: string): WebNodeStyleFacts | null;
+export function webDOMStyleTrace(target: Element | string | null, query: string): WebStyleTrace | null;
 export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
 export function webDOMRelationRefs(target: Element | string | null, query: string): WebDOMRelationRefs | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;

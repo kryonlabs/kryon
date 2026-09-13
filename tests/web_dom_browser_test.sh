@@ -207,6 +207,15 @@ try {
   assert(root.kryStyleFacts("article-ref").kind === "Section", "root style facts missing");
   assert(kryon.webDOMStyleFacts(target, "article-ref").kind === "Section",
     "mounted style facts missing");
+  const articleTrace = kryon.webDOMStyleTrace(target, "article-ref");
+  assert(articleTrace.resolved.display === "grid", "style trace resolved display missing");
+  assert(articleTrace.winners.display.selector.includes("Section"),
+    "style trace winner selector missing");
+  assert(root.kryStyleTrace("article-ref").resolved.display === "grid",
+    "root style trace missing");
+  assert(article.kryStyleTrace.resolved.display === "grid", "element style trace missing");
+  assert(kryon.webDOMObject(target, "article-ref").styleTrace.resolved.display === "grid",
+    "object style trace missing");
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
     "root source object map lookup failed");
   assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,

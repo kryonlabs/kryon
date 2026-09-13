@@ -92,6 +92,9 @@ the browser receives normal elements, attributes, CSS, and events.
   data, with direct mounted `webDOMStyleFacts(...)` and root/element/object
   accessors so devtools can inspect Kry identity and KSS selector facts
   together.
+- Web KSS style traces expose pre-mount `traceWebStyle(...)` and mounted
+  `webDOMStyleTrace(...)` data with matched rules, resolved values, and winning
+  declarations for inspectors.
 - Web runtime TypeScript declarations expose the native DOM facts used by KSS
   and DOM queries, including global attribute facts such as title and tab index.
 - Web runtime TypeScript declarations expose parsed KSS conditional groups for
