@@ -49,7 +49,7 @@ ApplyThemeState :: () {
 }
 
 TokenValue :: (label: const char *, value: int, x: int, y: int) {
-    Text((TextProps){.bounds={x, y, 0, 0}, .text=TextFormat("%s %d", label, value), .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={x, y, 0, 0}, .text=TextFormat("%s %d", label, value), .color=GetThemeIcon(), .wrap=TextWrapNone})
 }
 
 ThemeModeText :: () -> const char * {
@@ -64,7 +64,7 @@ ThemeModeText :: () -> const char * {
 
 ThemePanel :: (x: int, y: int, w: int) -> int {
     changed: int = 0
-    Text((TextProps){.bounds={x, y, 0, 0}, .text="Theme controls", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={x, y, 0, 0}, .text="Theme controls", .color=GetThemeText(), .wrap=TextWrapNone})
     y += Scale(42)
     if Button((ButtonProps){.bounds={x, y, w, Scale(38)}, .label=TextFormat("Mode: %s", ThemeModeText()), .id=101, .tone=ButtonToneNeutral, .emphasis=ButtonEmphasisSoft}) {
         theme_mode += 1
@@ -84,7 +84,7 @@ ThemePanel :: (x: int, y: int, w: int) -> int {
 ControlDemo :: (x: int, y: int, w: int) {
     options: [3] const char * = {"One", "Two", "Three"}
 
-    Text((TextProps){.bounds={x, y, 0, 0}, .text="Live controls", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
+    Text((TextProps){.bounds={x, y, 0, 0}, .text="Live controls", .color=GetThemeText(), .wrap=TextWrapNone})
     y += Scale(46)
     Button((ButtonProps){
         .bounds = {x, y, Scale(190), Scale(44)},
@@ -122,15 +122,15 @@ ThemeExample :: (viewport: Rectangle) #ui {
         panel_w: int = Scale(310)
         right_x: int = margin + panel_w + Scale(42)
     
-        Text((TextProps){.bounds={margin, Scale(24), 0, 0}, .text="Kryon Native Theme State", .font=Text24, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={right_x, Scale(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={margin, Scale(24), 0, 0}, .text="Kryon Native Theme State", .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right_x, Scale(30), 0, 0}, .text="Switch style and palette here; every control on the right uses Kryon live.", .color=GetThemeIcon(), .wrap=TextWrapNone})
         changed: int = ThemePanel(margin, Scale(64), panel_w)
     
         ControlDemo(right_x, Scale(88), Scale(420))
     
         tokens := GetThemeMetrics()
         token_y: int = Scale(520)
-        Text((TextProps){.bounds={right_x, token_y, 0, 0}, .text="Active style tokens", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={right_x, token_y, 0, 0}, .text="Active style tokens", .color=GetThemeText(), .wrap=TextWrapNone})
         token_y += Scale(30)
         TokenValue("control alpha", tokens.control_alpha, right_x, token_y)
         TokenValue("panel alpha", tokens.panel_alpha, right_x + Scale(150), token_y)

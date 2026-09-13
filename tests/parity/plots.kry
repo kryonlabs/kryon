@@ -49,18 +49,18 @@ plots_frame :: () #ui {
         ColorPicker((ColorPickerProps){.bounds = {20,620,100,130}, .id = 935, .label = "RGB picker", .values = edit_color, .value_count = 3, .picker = true})
         ColorPicker((ColorPickerProps){.bounds = {140,620,100,130}, .id = 936, .label = "RGBA picker", .values = edit_color, .value_count = 4, .picker = true})
         Button((ButtonProps){.bounds = {20,760,100,28}, .id = 937, .label = "Swatch", .swatch = true, .swatch_color = (Color){51,102,153,204}})
-        Text((TextProps){.bounds={20, 805, 0, 0}, .text="colored", .font=Text16, .color=(Color){220,60,80,255}, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={20, 830, 0, 0}, .text="disabled", .font=Text16, .wrap=TextWrapNone, .disabled=1})
-        Text((TextProps){.bounds=(Rectangle){20,855,220,40}, .text="wrapped text helper uses the available width", .font=Text16, .color=GetThemeText()})
-        Text((TextProps){.bounds={20,900,0,0}, .text="Status", .font=Text16, .color=Fade(GetThemeText(), 0.72f), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={80,900,0,0}, .text="Ready", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={20, 805, 0, 0}, .text="colored", .color=(Color){220,60,80,255}, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={20, 830, 0, 0}, .text="disabled", .wrap=TextWrapNone, .disabled=1})
+        Text((TextProps){.bounds=(Rectangle){20,855,220,40}, .text="wrapped text helper uses the available width", .color=GetThemeText()})
+        Text((TextProps){.bounds={20,900,0,0}, .text="Status", .color=Fade(GetThemeText(), 0.72f), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={80,900,0,0}, .text="Ready", .color=GetThemeText(), .wrap=TextWrapNone})
         Bullet((Rectangle){140,805,16,20})
-        Text((TextProps){.bounds={160,805,0,0}, .text="bullet text", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={160,805,0,0}, .text="bullet text", .color=GetThemeText(), .wrap=TextWrapNone})
         enabled_text: const char* = "false"
         if plots_whole_values[0] != 0 { enabled_text = "true" }
-        Text((TextProps){.bounds={20,925,0,0}, .text=TextFormat("Enabled: %s", enabled_text), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,925,0,0}, .text=TextFormat("Count: %d", plots_whole_values[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={20,950,0,0}, .text=TextFormat("Mask: %u", 42), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
-        Text((TextProps){.bounds={125,950,0,0}, .text=TextFormat("Rate: %.1f", plots_scalar_values[0]), .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={20,925,0,0}, .text=TextFormat("Enabled: %s", enabled_text), .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={125,925,0,0}, .text=TextFormat("Count: %d", plots_whole_values[0]), .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={20,950,0,0}, .text=TextFormat("Mask: %u", 42), .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={125,950,0,0}, .text=TextFormat("Rate: %.1f", plots_scalar_values[0]), .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }

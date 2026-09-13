@@ -1260,7 +1260,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    bounds: Rectangle\n"
         "    text: const char*\n"
         "    class_name: i32\n"
-        "    font: i32\n"
         "    color: Color\n"
         "    wrap: TextWrap\n"
         "    align: TextAlign\n"

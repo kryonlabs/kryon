@@ -276,7 +276,6 @@ Settings :: (viewport: Rectangle) #ui {
 
             Text((TextProps){
                 .text = "Account"
-                .font = Text24
             })
             TextField(account_field)
             Button(save_button)
@@ -691,7 +690,6 @@ typedef struct {
     Rectangle bounds;
     const char *text;
     int class_name;
-    int font;
     Color color;
     TextWrap wrap;
     TextAlign align;
@@ -707,9 +705,9 @@ void Text(TextProps text);
 word wrapping by default, and a positive height clips the result. Set
 `wrap = TextWrapNone` for one line; `align` and `vertical_align` control its
 placement inside the bounds.
-Zero width measures the line intrinsically. Zero font and transparent color
-select the current UI defaults. Color and disabled presentation are properties,
-not separate widget entry points.
+Zero width measures the line intrinsically. Transparent color selects the
+current UI default. Color and disabled presentation are properties, not
+separate widget entry points.
 
 `style` uses the shared `StyleForeground`, `StyleFontSize`, and `StyleOpacity`
 fields. Present style fields override `color` and `font`; other style fields
@@ -727,7 +725,7 @@ KSS `typeface` selects a registered font by name for text measurement,
 wrapping, and painting in C and native Go. Unknown names keep the current face.
 The bundled Noto font setup also registers `"semibold"`; use a text class with
 `typeface: semibold` for real semibold outlines, or register your own named
-face. `font` remains the size.
+face. KSS `font-size` controls the size.
 
 KSS `letter-spacing` adds a non-negative number of logical pixels between
 Unicode codepoints (not UTF-8 bytes), with no trailing gap. Zero preserves the

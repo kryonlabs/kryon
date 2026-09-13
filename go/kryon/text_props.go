@@ -21,7 +21,6 @@ type TextProps struct {
 	Bounds        Rectangle
 	Text          string
 	ClassName     int32
-	Font          int32
 	Color         Color
 	Wrap          TextWrap
 	Align         TextAlign

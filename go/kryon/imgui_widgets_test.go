@@ -492,13 +492,13 @@ func TestCanonicalTextProperties(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	color := Color{R: 20, G: 40, B: 60, A: 255}
 	r.BeginFrame()
-	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "colored", Font: Text16, Color: color, Wrap: TextWrapNone})
-	r.Text(TextProps{Bounds: NewRectangle(10, 30, 0, 0), Text: "disabled", Font: Text16, Wrap: TextWrapNone, Disabled: true})
-	r.Text(TextProps{Bounds: NewRectangle(10, 50, 48, 60), Text: "one two three four", Font: Text16, Color: color})
-	r.Text(TextProps{Bounds: NewRectangle(10, 120, 0, 0), Text: "Status", Font: Text16, Color: r.Fade(color, 0.72), Wrap: TextWrapNone})
-	r.Text(TextProps{Bounds: NewRectangle(70, 120, 0, 0), Text: "Ready", Font: Text16, Color: color, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "colored", Color: color, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 30, 0, 0), Text: "disabled", Wrap: TextWrapNone, Disabled: true})
+	r.Text(TextProps{Bounds: NewRectangle(10, 50, 48, 60), Text: "one two three four", Color: color})
+	r.Text(TextProps{Bounds: NewRectangle(10, 120, 0, 0), Text: "Status", Color: r.Fade(color, 0.72), Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(70, 120, 0, 0), Text: "Ready", Color: color, Wrap: TextWrapNone})
 	r.Bullet(NewRectangle(10, 150, 12, 20))
-	r.Text(TextProps{Bounds: NewRectangle(26, 150, 0, 0), Text: "item", Font: Text16, Color: color, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(26, 150, 0, 0), Text: "item", Color: color, Wrap: TextWrapNone})
 	r.EndFrame()
 
 	ops := r.FrameOps()
@@ -530,10 +530,10 @@ func TestCanonicalTextProperties(t *testing.T) {
 func TestNativeTextValueComposition(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 	r.BeginFrame()
-	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: r.TextFormat("Enabled: %t", true), Font: Text14, Color: White, Wrap: TextWrapNone})
-	r.Text(TextProps{Bounds: NewRectangle(10, 35, 0, 0), Text: r.TextFormat("Count: %d", -7), Font: Text14, Color: White, Wrap: TextWrapNone})
-	r.Text(TextProps{Bounds: NewRectangle(10, 60, 0, 0), Text: r.TextFormat("Mask: %d", 42), Font: Text14, Color: White, Wrap: TextWrapNone})
-	r.Text(TextProps{Bounds: NewRectangle(10, 85, 0, 0), Text: r.TextFormat("Rate: %.1f Hz", 1.25), Font: Text14, Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: r.TextFormat("Enabled: %t", true), Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 35, 0, 0), Text: r.TextFormat("Count: %d", -7), Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 60, 0, 0), Text: r.TextFormat("Mask: %d", 42), Color: White, Wrap: TextWrapNone})
+	r.Text(TextProps{Bounds: NewRectangle(10, 85, 0, 0), Text: r.TextFormat("Rate: %.1f Hz", 1.25), Color: White, Wrap: TextWrapNone})
 	r.EndFrame()
 	ops := r.FrameOps()
 	if len(ops) != 4 {
@@ -849,14 +849,14 @@ func TestNativeCollectionAndDisplayWidgets(t *testing.T) {
 	t.Run("selectable text copy", func(t *testing.T) {
 		r.QueueTap(12, 12)
 		r.BeginFrame()
-		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
 		if ops := r.FrameOps(); len(ops) != 1 || !ops[0].Selected {
 			t.Fatalf("selectable Text ops=%+v", ops)
 		}
 		r.EndFrame()
 		r.QueueShortcut(KeyC)
 		r.BeginFrame()
-		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Color: Color{R: 255, G: 255, B: 255, A: 255}, Selectable: true})
 		if r.ClipboardText() != "copy me" {
 			t.Fatalf("clipboard=%q, want copy me", r.ClipboardText())
 		}

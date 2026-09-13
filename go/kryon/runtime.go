@@ -1219,8 +1219,9 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 		style = mergeStyle(style, Style{Fields: StyleForeground, Foreground: props.Color})
 	}
 	colorSet := style.Fields&StyleForeground != 0
+	requestedFont := int32(0)
 	if style.Fields&StyleFontSize != 0 {
-		props.Font = int32(style.FontSize)
+		requestedFont = int32(style.FontSize)
 	}
 	if style.Fields&StyleTypeface != 0 {
 		if selected := registeredTypeface(style.Typeface); selected != 0 {
@@ -1231,7 +1232,7 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	if style.Fields&StyleLetterSpacing != 0 {
 		letterSpacing = styleLength(style.LetterSpacing)
 	}
-	appearance := Text_ResolveTextStyle(props.Font, inheritedFont, Text16,
+	appearance := Text_ResolveTextStyle(requestedFont, inheritedFont, Text16,
 		packRGBA(style.Foreground), packRGBA(inheritedColor), 0xffffffff,
 		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, letterSpacing)
 	font, spacing := appearance.Font, appearance.LetterSpacing

@@ -160,7 +160,7 @@ Scene :: (viewport: Rectangle) #ui {
     button_bounds: Rectangle = {left, 50 + count, widths[0] + widths[1], 28}
     button_bounds = (Rectangle){left, 50 + count, widths[0] + widths[1], 28}
     Screen root: {
-        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text="hello", .color=GetThemeText(), .wrap=TextWrapNone})
         Button tap: {
             bounds = button_bounds
             label = "Tap"
@@ -1302,14 +1302,14 @@ Home :: (viewport: Rectangle) #ui {
     unused viewport
     visits += 1
     Screen home: {
-        Text((TextProps){.bounds={0, 0, 0, 0}, .text="Home", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={0, 0, 0, 0}, .text="Home", .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }
 
 About :: () #ui {
     visits += 100
     Screen about: {
-        Text((TextProps){.bounds={0, 0, 0, 0}, .text="About", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={0, 0, 0, 0}, .text="About", .color=GetThemeText(), .wrap=TextWrapNone})
     }
 }
 EOF

@@ -3027,7 +3027,7 @@ test_composed_tooltip_scope(void)
         BeginPopup((PopupProps){.bounds={80,50,130,70},.id=29300,
             .trigger={20,20,80,30},.flags=PopupTooltip}),1);
     Column((ColumnProps){.bounds={88,58,114,54},.gap=4});
-    Text((TextProps){.text="arbitrary tooltip",.font=Text14,
+    Text((TextProps){.text="arbitrary tooltip",
         .color=BLACK,.wrap=TextWrapNone});
     Button((ButtonProps){.bounds={0,0,90,24},.label="detail",.id=29301});
     End();
@@ -3061,7 +3061,7 @@ test_composed_modal_scope(void)
         BeginPopup((PopupProps){.bounds={40,30,120,90},.id=29400,
             .open=&open,.flags=PopupModal}),1);
     Column((ColumnProps){.bounds={48,38,104,70},.gap=4});
-    Text((TextProps){.text="arbitrary modal",.font=Text14,
+    Text((TextProps){.text="arbitrary modal",
         .color=BLACK,.wrap=TextWrapNone});
     Button((ButtonProps){.bounds={0,0,90,24},.label="confirm",.id=29401});
     End();
@@ -3714,7 +3714,7 @@ test_card_props_retained_input(void)
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("card-content-scope"));
     card = BeginCard((CardProps){.bounds={10,10,120,80}});
-    Text((TextProps){.text="Inside",.font=Text16});
+    Text((TextProps){.text="Inside"});
     End();
     EndTree();
     nodes = GetTreeNodes(&count);

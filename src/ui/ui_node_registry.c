@@ -189,7 +189,6 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "\n    Text((TextProps){\n"
                  "        .bounds = {Scale(%d), Scale(%d), 0, 0},\n"
                  "        .text = \"Text\",\n"
-                 "        .font = Text16,\n"
                  "        .wrap = TextWrapNone,\n"
                  "    })\n",
                  x, y);

@@ -23,23 +23,23 @@ render_column(int x, int fancy)
     SetFancyEffectsEnabled(fancy);
     scheme = GetThemeScheme();
     Text((TextProps){.bounds = {x, 28, 320, 32}, .text = title,
-        .font = Text24, .color = scheme.on_surface,
+        .color = scheme.on_surface,
         .wrap = TextWrapNone});
     Text((TextProps){.bounds = {x, 60, 360, 24}, .text = subtitle,
-        .font = Text14, .color = scheme.on_surface_variant, .wrap = TextWrapNone});
+        .color = scheme.on_surface_variant, .wrap = TextWrapNone});
 
     Text((TextProps){.bounds = {x, 112, 260, 24}, .text = "Text",
-        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+        .color = scheme.on_surface, .wrap = TextWrapNone});
     Text((TextProps){.bounds = {x, 142, 360, 28}, .text = "Human tomorrow, quieter power.",
-        .font = Text18, .color = scheme.on_surface_variant, .wrap = TextWrapNone});
+        .color = scheme.on_surface_variant, .wrap = TextWrapNone});
 
     Text((TextProps){.bounds = {x, 214, 260, 24}, .text = "TextInput",
-        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+        .color = scheme.on_surface, .wrap = TextWrapNone});
     DrawTextInput((Rectangle){x, 246, 300, 44}, field_text, cursor, 1, 1,
         Text18, 8100 + fancy, 0);
 
     Text((TextProps){.bounds = {x, 330, 260, 24}, .text = "TextArea",
-        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+        .color = scheme.on_surface, .wrap = TextWrapNone});
     TextArea((TextAreaProps){.bounds = {x, 362, 300, 112}, .text = area_text,
         .text_size = sizeof(area_text), .cursor_position = &area_cursor,
         .focused = &area_focus, .scroll_y = &area_scroll, .max_codepoints = 127,
@@ -47,13 +47,13 @@ render_column(int x, int fancy)
         .placeholder = "Write proposal", .wrap = 1});
 
     Text((TextProps){.bounds = {x, 510, 260, 24}, .text = "Button",
-        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+        .color = scheme.on_surface, .wrap = TextWrapNone});
     Button((ButtonProps){.bounds = {x, 542, 220, 44}, .label = "Save changes",
         .id = 8200 + fancy, .tone = ButtonToneAccent,
         .emphasis = ButtonEmphasisFilled});
 
     Text((TextProps){.bounds = {x, 628, 260, 24}, .text = "Dropdown",
-        .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
+        .color = scheme.on_surface, .wrap = TextWrapNone});
     Dropdown((DropdownProps){.id = 8300 + fancy, .bounds = {x, 660, 260, 44},
         .options = items, .option_count = 3, .selected_index = &selected});
 }

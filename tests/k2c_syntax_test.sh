@@ -50,7 +50,7 @@ Valid :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         Background(GetThemeBackground())
-        Text((TextProps){.bounds={Scale(10), Scale(10), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(10), Scale(10), 0, 0}, .text="hi", .color=GetThemeText(), .wrap=TextWrapNone})
         Column form: {
             bounds = {Scale(4), Scale(40), Scale(180), Scale(120)}
             gap = Scale(4)
@@ -163,7 +163,7 @@ Main :: (viewport: Rectangle) #ui {
 
         Column body: {
             gap = 4
-            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={0, 0, 0, 0}, .text="Hello", .color=GetThemeText(), .wrap=TextWrapNone})
             Button {
                 bounds = {8, 40, 96, 28}
                 label = "Block"

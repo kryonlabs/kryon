@@ -172,7 +172,7 @@ Text.shared {
 `, alpha, disabled, alpha), "Text Shared", "") {
 				t.Fatal("style pack did not register")
 			}
-			r.Text(TextProps{Text: "Styled", ClassName: StyleClassID("shared"), Font: 13, Disabled: disabled})
+			r.Text(TextProps{Text: "Styled", ClassName: StyleClassID("shared"), Disabled: disabled})
 			want := uint32(alpha)
 			if disabled {
 				want = uint32(float32(want) * 0.45)
@@ -284,7 +284,8 @@ func TestTransparentTextInheritanceAcrossDisabledScope(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.transparent.text;
-Button.transparent-text { foreground: #11223300; font-size: 27; }`, "Button Transparent Text", "") {
+Button.transparent-text { foreground: #11223300; font-size: 27; }
+Text.outside-text { font-size: 13; }`, "Button Transparent Text", "") {
 		t.Fatal("button transparent text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
@@ -297,7 +298,7 @@ Button.transparent-text { foreground: #11223300; font-size: 27; }`, "Button Tran
 	r.End()
 	r.EndDisabled()
 	r.End()
-	r.Text(TextProps{Text: "Outside", Font: 13, Color: Color{68, 85, 102, 255}})
+	r.Text(TextProps{Text: "Outside", ClassName: StyleClassID("outside-text"), Color: Color{68, 85, 102, 255}})
 	r.EndFrame()
 	count := 0
 	for _, op := range r.FrameOps() {
@@ -361,7 +362,8 @@ func TestTextChildInheritsFontBeforeMeasurement(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.inherit.text;
-Button.inherit-text { foreground: #11223300; font-size: 27; }`, "Button Inherit Text", "") {
+Button.inherit-text { foreground: #11223300; font-size: 27; }
+Text.explicit-text { font-size: 13; }`, "Button Inherit Text", "") {
 		t.Fatal("button inherit text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
@@ -370,7 +372,7 @@ Button.inherit-text { foreground: #11223300; font-size: 27; }`, "Button Inherit 
 	r.Text(TextProps{Text: "Inherited", Wrap: TextWrapNone})
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 	r.Text(TextProps{Text: "Nested", Wrap: TextWrapNone})
-	r.Text(TextProps{Text: "Explicit", Font: 13, Color: Color{68, 85, 102, 255}, Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-text"), Color: Color{68, 85, 102, 255}, Wrap: TextWrapNone})
 	r.End()
 	r.End()
 	count := 0

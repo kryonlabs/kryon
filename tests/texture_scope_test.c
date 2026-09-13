@@ -824,7 +824,7 @@ int main(void)
     BeginTree(Key("boxed text lifecycle"));
     Box((Rectangle){0,0,64,64},RED,BLANK);
     Row((RowProps){.bounds = {10,10,20,20}});
-    Text((TextProps){.bounds=(Rectangle){0,0,20,20}, .text=boxed_text, .font=16, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
+    Text((TextProps){.bounds=(Rectangle){0,0,20,20}, .text=boxed_text, .color=WHITE, .wrap=TextWrapNone, .align=TextAlignCenter, .vertical_align=TextAlignCenter});
     End();
     memset(boxed_text,'X',4);
     Box((Rectangle){25,10,5,20},BLUE,BLANK);

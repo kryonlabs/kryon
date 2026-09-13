@@ -87,9 +87,9 @@ main(void)
     ClearBackground(bg);
     BeginInterfaceFrame(260, 180, 1.0f);
     BeginTree(Key("libdraw-hierarchy"));
-    Text((TextProps){.bounds={54, 68, 0, 0}, .text="HHHHHHHHHHHH", .font=32, .color=lower, .wrap=TextWrapNone});
+    Text((TextProps){.bounds={54, 68, 0, 0}, .text="HHHHHHHHHHHH", .color=lower, .wrap=TextWrapNone});
     DrawRectangle(44, 54, 160, 84, cover);
-    Text((TextProps){.bounds={72, 86, 0, 0}, .text="TOP", .font=24, .color=WHITE, .wrap=TextWrapNone});
+    Text((TextProps){.bounds={72, 86, 0, 0}, .text="TOP", .color=WHITE, .wrap=TextWrapNone});
     Button((ButtonProps){.bounds = {54, 134, 110, 28},
                          .label = "BUTTON-LEAK",
                          .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,

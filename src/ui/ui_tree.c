@@ -2421,6 +2421,7 @@ Text(TextProps props)
     const char *value = props.text != NULL ? props.text : "";
     const char *typeface = NULL;
     int font;
+    int requested_font = 0;
     int letter_spacing = 0;
     int inherited_font = 0;
     Color inherited_color = {0};
@@ -2462,13 +2463,13 @@ Text(TextProps props)
         style = MergeStyle(style, (Style){.fields = StyleForeground,
             .foreground = props.color});
     if((style.fields & StyleFontSize) != 0)
-        props.font = (int)(style.font_size + 0.5f);
+        requested_font = (int)(style.font_size + 0.5f);
     if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
     if((style.fields & StyleLetterSpacing) != 0)
         letter_spacing = (int)(style.letter_spacing + 0.5f);
     previous_typeface = PushTextFont(typeface);
-    TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
+    TextAppearance appearance = ResolveTextStyle(requested_font, inherited_font, GetFontSize(),
         ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,
         inherited_color_set, (style.fields & StyleForeground) != 0,
         props.disabled, inherited_disabled, letter_spacing);
@@ -2529,9 +2530,10 @@ Text(TextProps props)
 void
 ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level)
 {
+    (void)font;
     if(!ui_tree_building)
         ui_tree_heading_semantic(text, level);
-    Text((TextProps){.bounds=bounds,.text=text,.font=font,.color=color,
+    Text((TextProps){.bounds=bounds,.text=text,.color=color,
                      .wrap=TextWrapNone});
     if(ui_tree_building && ui_tree_node_count > 0)
         ui_tree_nodes[ui_tree_node_count - 1].data.primitive.heading_level = level;
@@ -2922,7 +2924,7 @@ ui_tree_drag_range_end(Rectangle bounds, const char *label)
     End();
     if(label != NULL && (ui_tree_building || IsWindowReady())) {
         int font = GetSmallFontSize();
-        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .font=font, .wrap=TextWrapNone});
+        Text((TextProps){.bounds={(int)bounds.x + Scale(6), (int)bounds.y - font - Scale(2), 0, 0}, .text=label, .wrap=TextWrapNone});
     }
 }
 

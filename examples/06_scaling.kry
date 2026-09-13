@@ -20,11 +20,11 @@ ScalingExample :: (viewport: Rectangle) #ui {
         SetScale(scales[scale_index])
         AppBackground()
         box_size: int = Scale(100)
-        Text((TextProps){.bounds={50, 20, 0, 0}, .text=TextFormat("DPI Scale:%.1f",scales[scale_index]), .font=20, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={50, 20, 0, 0}, .text=TextFormat("DPI Scale:%.1f",scales[scale_index]), .wrap=TextWrapNone})
         Box((Rectangle){box_x, box_y, box_size, box_size}, GetThemeButton(), GetThemeIcon())
-        Text((TextProps){.bounds={box_x + 10, box_y + 10, 0, 0}, .text="Scaled Box", .font=Text16, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={50, 60, 0, 0}, .text=TextFormat("Base:100px Scaled:%dpx",box_size), .font=Text16, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={50, 90, 0, 0}, .text="SPACE cycles DPI,arrows move box", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={box_x + 10, box_y + 10, 0, 0}, .text="Scaled Box", .wrap=TextWrapNone})
+        Text((TextProps){.bounds={50, 60, 0, 0}, .text=TextFormat("Base:100px Scaled:%dpx",box_size), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={50, 90, 0, 0}, .text="SPACE cycles DPI,arrows move box", .color=GetThemeIcon(), .wrap=TextWrapNone})
         if (IsKeyDown(KEY_RIGHT)) {
             box_x += 3
         }

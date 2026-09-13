@@ -24,8 +24,8 @@ FileDialogExample :: (viewport: Rectangle) #ui {
             InitFileDialog(&dlg)
             dlg_ready = 1
         }
-        Text((TextProps){.bounds={Scale(32), Scale(28), 0, 0}, .text="Kryon File Dialog", .font=Text24, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(32), Scale(66), 0, 0}, .text="Dialog backend and result state", .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(28), 0, 0}, .text="Kryon File Dialog", .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(66), 0, 0}, .text="Dialog backend and result state", .color=GetThemeIcon(), .wrap=TextWrapNone})
         if Button((ButtonProps){.bounds = {Scale(32), Scale(116), Scale(180), Scale(42)}, .label = "Open File", .id = 101}) {
             BeginLoadFileDialog(&dlg,"Open File")
             snprintf(status,sizeof(status),"Open file requested.")
@@ -46,8 +46,8 @@ FileDialogExample :: (viewport: Rectangle) #ui {
         if dialog_result < 0 {
             snprintf(status,sizeof(status),"Dialog cancelled.")
         }
-        Text((TextProps){.bounds={Scale(32), Scale(210), 0, 0}, .text="Status", .font=18, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(32), Scale(242), 0, 0}, .text=status, .font=Text16, .wrap=TextWrapNone})
-        Text((TextProps){.bounds={Scale(32), Scale(274), 0, 0}, .text=last_path, .font=Text16, .color=GetThemeIcon(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(210), 0, 0}, .text="Status", .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(242), 0, 0}, .text=status, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(274), 0, 0}, .text=last_path, .color=GetThemeIcon(), .wrap=TextWrapNone})
     }
 }

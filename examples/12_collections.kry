@@ -30,6 +30,6 @@ CollectionsExample :: (viewport: Rectangle) #ui {
         ListBox((ListBoxProps){.bounds={40,60,180,180},.id=301,.items=items,.item_count=4,.selected_index=&list_sel,.scroll_offset=&list_scroll,.row_height=30})
         TreeView((TreeViewProps){{260,60,220,180},302,tree,4,&tree_sel,&tree_scroll,28})
         TableView((TableViewProps){{520,60,320,180},303,cols,2,rows,2,NULL,&row_sel,NULL,NULL,NULL,NULL,NULL,&sort_col,&table_scroll,28})
-        Text((TextProps){.bounds={40, 280, 0, 0}, .text="Collections: list,tree,and table", .font=18, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={40, 280, 0, 0}, .text="Collections: list,tree,and table", .wrap=TextWrapNone})
     }
 }

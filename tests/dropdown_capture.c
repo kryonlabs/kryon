@@ -33,7 +33,7 @@ static void
 label(const char *text, int x, int y, int font, Color color)
 {
     Text((TextProps){.text = text, .bounds = {x, y, 720, font + 8},
-        .font = font, .color = color});
+        .color = color});
 }
 
 /* Each specimen owns a normal dropdown store, so the board can show two open

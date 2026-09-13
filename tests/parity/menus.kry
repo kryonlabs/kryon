@@ -28,7 +28,7 @@ menus_frame :: () #ui {
             id = 943
             trigger = {220,50,120,40}
             flags = PopupTooltip
-            Text((TextProps){.bounds={220,106,120,20},.text="Menu help",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
+            Text((TextProps){.bounds={220,106,120,20},.text="Menu help",.color=GetThemeText(),.wrap=TextWrapNone})
         }
         Progress((ProgressProps){{220,200,100,10},0,100,result.activated_id,""})
     }

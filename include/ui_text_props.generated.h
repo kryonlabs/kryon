@@ -36,7 +36,6 @@ typedef struct TextProps {
     Rectangle bounds;
     const char* text;
     int32_t class_name;
-    int32_t font;
     Color color;
     TextWrap wrap;
     TextAlign align;

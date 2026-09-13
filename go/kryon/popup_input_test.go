@@ -433,7 +433,7 @@ func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
 		r := New(AppConfig{}).(*runtime)
 		r.QueueTap(12, 12)
 		r.BeginFrame()
-		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: WHITE, Selectable: true})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Color: WHITE, Selectable: true})
 		r.EndFrame()
 		r.SetClipboardText("seed")
 		r.QueueShortcut(KeyC)
@@ -443,7 +443,7 @@ func TestPopupSelectableTextKeyboardOwnership(t *testing.T) {
 		if !inside {
 			r.endPopupInput(child)
 		}
-		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Font: Text16, Color: WHITE, Selectable: true})
+		r.Text(TextProps{Bounds: NewRectangle(10, 10, 0, 0), Text: "copy me", Color: WHITE, Selectable: true})
 		want := "seed"
 		if inside {
 			want = "copy me"

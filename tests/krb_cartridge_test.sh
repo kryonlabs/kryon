@@ -107,7 +107,7 @@ App :: () #ui {
     Screen root: {
         Background(GetThemeBackground())
         Background(GetThemeSurface())
-        Text((TextProps){.bounds={Scale(4), Scale(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(4), Scale(4), 0, 0}, .text="hi", .color=GetThemeText(), .wrap=TextWrapNone})
         Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, ImageFitContain})
         Checkbox((CheckboxProps){.bounds = {Scale(4), Scale(40), Scale(110), Scale(34)}, .id = 1, .label = "Flag", .value = &cb_flag})
         Radio((RadioProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})

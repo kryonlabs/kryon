@@ -12,7 +12,7 @@ app "Kryon Images" {
 App :: () #ui {
     Screen root: {
         AppBackground()
-        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Images are image nodes", .font=Text24, .wrap=TextWrapNone})
+        Text((TextProps){.bounds={Scale(32), Scale(30), 0, 0}, .text="Images are image nodes", .wrap=TextWrapNone})
         Stack image_card: {
             bounds = {Scale(32), Scale(82), Scale(260), Scale(210)}
             key = Key("image-card")
@@ -26,7 +26,7 @@ App :: () #ui {
                      .bounds = {Scale(168), Scale(104), Scale(96), Scale(96)},
                      .source = {0, 0, 0, 0}, .origin = {0, 0}, .rotation = 0.0f,
                      .tint = WHITE, .fit = ImageFitContain})
-            Text((TextProps){.bounds={Scale(52), Scale(226), 0, 0}, .text="Images keep their node bounds for editing", .font=Text12, .color=GetThemeIcon(), .wrap=TextWrapNone})
+            Text((TextProps){.bounds={Scale(52), Scale(226), 0, 0}, .text="Images keep their node bounds for editing", .color=GetThemeIcon(), .wrap=TextWrapNone})
         }
     }
 }
