@@ -1158,6 +1158,9 @@ function widgetTag(item) {
     return "map";
   case "Area":
     return "area";
+  case "Br":
+  case "LineBreak":
+    return "br";
   case "Template":
     return "template";
   case "Slot":
@@ -11719,13 +11722,13 @@ const runtimeCallNames = [
   "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Base",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
-  "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
+  "Audio", "BlockQuote", "Bold", "Br", "Cite", "Code", "CodeBlock",
   "Col", "ColGroup", "Data", "Datalist", "DataList", "Del", "Deleted",
   "DescriptionDetails", "DescriptionList", "DescriptionTerm",
   "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
   "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
-  "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
+  "Kbd", "Keyboard", "Label", "LineBreak", "List", "ListItem", "Main",
   "Legend", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
@@ -11775,6 +11778,7 @@ export function Bullet(...args) { return struct("Bullet", args); }
 export function Button(...args) { return struct("Button", args); }
 export function BlockQuote(...args) { return struct("BlockQuote", args); }
 export function Bold(...args) { return struct("Bold", args); }
+export function Br(...args) { return struct("Br", args); }
 export function Card(...args) { return struct("Card", args); }
 export function CanvasGrid(...args) { return struct("CanvasGrid", args); }
 export function Checkbox(...args) { return struct("Checkbox", args); }
@@ -11824,6 +11828,7 @@ export function SegmentedControl(...args) { return struct("SegmentedControl", ar
 export function Icon(...args) { return struct("Icon", args); }
 export function Fieldset(...args) { return struct("Fieldset", args); }
 export function Line(...args) { return struct("Line", args); }
+export function LineBreak(...args) { return struct("LineBreak", args); }
 export function Link(...args) { return struct("Link", args); }
 export function List(...args) { return struct("List", args); }
 export function ListBox(...args) { return struct("ListBox", args); }

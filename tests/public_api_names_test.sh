@@ -270,11 +270,11 @@ runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(
 web_native_only = {
     'Abbr', 'Abbreviation', 'Address', 'Area', 'Article', 'Aside', 'Audio', 'Base',
     'Bdi', 'Bdo', 'BidirectionalIsolate', 'BidirectionalOverride',
-    'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
+    'BlockQuote', 'Bold', 'Br', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
     'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'Hgroup', 'HGroup', 'IFrame', 'Iframe', 'ImageMap',
-    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
+    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'LineBreak', 'List',
     'ListItem', 'Main', 'Mark', 'Meta', 'Meter', 'Nav', 'Navigation', 'NoScript', 'Noscript', 'EmbeddedObject', 'OrderedList',
     'OptionGroup', 'OptGroup', 'Option', 'Output', 'Param', 'Pre', 'Quote',
     'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Script', 'Search', 'Select',

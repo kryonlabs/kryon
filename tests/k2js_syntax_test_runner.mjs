@@ -11,11 +11,11 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
 for (const name of [
   "Abbr", "Abbreviation", "Address", "Area", "Article", "Aside", "Audio", "Base",
   "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
-  "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
+  "BlockQuote", "Bold", "Br", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
   "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
-  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
+  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "LineBreak", "List",
   "ListItem", "Main", "Mark", "Meta", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
@@ -2902,6 +2902,8 @@ function fakeDocument() {
       { nodeName: "nativeBdi", path: "Page/bdi" });
     runtime.widget(nativeRt, "Bdo", { text: "abc", dir: "rtl", lang: "ar", translate: "no" }, null,
       { nodeName: "nativeBdo", path: "Page/bdo" });
+    runtime.widget(nativeRt, "Br", {}, null,
+      { nodeName: "nativeBr", path: "Page/break" });
     runtime.widget(nativeRt, "Wbr", {}, null,
       { nodeName: "nativeWbr", path: "Page/wbr" });
     runtime.widget(nativeRt, "DescriptionList", {}, null,
@@ -3284,6 +3286,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").lang, "ar");
     assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").translate, "no");
     assert.equal(runtime.webNodeQuery(nativeRt, "[dir=rtl]").path, "Page/bdo");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Br").tag, "br");
     assert.equal(runtime.webNodeQuery(nativeRt, "Wbr").tag, "wbr");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionList").tag, "dl");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").tag, "dt");
@@ -3625,6 +3628,7 @@ function fakeDocument() {
     const nativeRubyParenthesis = runtime.findWebElement(nativeTarget, "nativeRubyParenthesis");
     const nativeBdi = runtime.findWebElement(nativeTarget, "nativeBdi");
     const nativeBdo = runtime.findWebElement(nativeTarget, "nativeBdo");
+    const nativeBr = runtime.findWebElement(nativeTarget, "nativeBr");
     const nativeWbr = runtime.findWebElement(nativeTarget, "nativeWbr");
     const nativeDescriptionList = runtime.findWebElement(nativeTarget, "nativeDescriptionList");
     const nativeDescriptionTerm = runtime.findWebElement(nativeTarget, "nativeDescriptionTerm");
@@ -3780,6 +3784,7 @@ function fakeDocument() {
     assert.equal(nativeBdo.attributes.dir, "rtl");
     assert.equal(nativeBdo.attributes.lang, "ar");
     assert.equal(nativeBdo.attributes.translate, "no");
+    assert.equal(nativeBr.tagName, "BR");
     assert.equal(nativeWbr.tagName, "WBR");
     assert.equal(nativeDescriptionList.tagName, "DL");
     assert.equal(nativeDescriptionTerm.tagName, "DT");

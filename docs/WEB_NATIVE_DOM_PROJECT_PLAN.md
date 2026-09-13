@@ -127,7 +127,7 @@ the browser receives normal elements, attributes, CSS, and events.
   Kry DOM objects for selectors, snapshots, and devtools.
 - Native inline phrasing/editing aliases such as `Strong`, `Em`, `Abbr`,
   `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, `Cite`, `Ruby`,
-  `Rt`, `Rp`, `Bdi`, `Bdo`, and `Wbr` render to matching browser elements,
+  `Rt`, `Rp`, `Bdi`, `Bdo`, `Br`/`LineBreak`, and `Wbr` render to matching browser elements,
   including native data values, citations, and datetime attributes.
 - Native table structure aliases such as `Table`, `TableCaption`, `TableHead`,
   `TableBody`, `TableRow`, `TableColumnGroup`, and `TableColumn` render to

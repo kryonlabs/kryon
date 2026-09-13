@@ -363,6 +363,7 @@ The initial tag mapping is intentionally conservative:
 | `Button` under `TabBar` | `button role=tab` |
 | `Button`/`Selectable` under `TreeView` | `button role=treeitem` unless an explicit tag is authored |
 | `Selectable` under `Menu`/`TabBar` | `button role=menuitem` or `button role=tab` unless an explicit tag is authored |
+| `Br`/`LineBreak` | `br` |
 | clickable `Card` | `button` |
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text`, or authored `input_type`/`type` |
