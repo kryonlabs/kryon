@@ -15,6 +15,7 @@ main(void)
     CheckboxRowMetrics checkbox;
     ButtonRowMetrics buttons;
     ButtonRowPlacement button_placement;
+    ButtonRowWrapDecision button_wrap;
     SpinboxRowMetrics spinbox;
     FormRectResult form_rect;
     SpinboxRowLayout spinbox_layout;
@@ -112,6 +113,18 @@ main(void)
     assert(ButtonRowItemWidth(20, buttons) == 76);
     assert(ButtonRowItemWidth(100, buttons) == 120);
     assert(ButtonRowItemWidth(200, buttons) == 144);
+    button_wrap = ButtonRowWrapFor(0, 76, 160, buttons.gap);
+    assert(button_wrap.wraps == 0);
+    assert(button_wrap.row_width == 76);
+    button_wrap = ButtonRowWrapFor(76, 76, 160, buttons.gap);
+    assert(button_wrap.wraps == 0);
+    assert(button_wrap.row_width == 158);
+    button_wrap = ButtonRowWrapFor(158, 76, 160, buttons.gap);
+    assert(button_wrap.wraps == 1);
+    assert(button_wrap.row_width == 76);
+    button_wrap = ButtonRowWrapFor(20, 30, 40, -4);
+    assert(button_wrap.wraps == 1);
+    assert(button_wrap.row_width == 30);
     button_placement = ButtonRowPlacementFor(10, 320, 3, 8);
     assert(button_placement.button_width == 101);
     assert(button_placement.total_width == 319);

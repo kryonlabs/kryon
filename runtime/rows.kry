@@ -44,6 +44,11 @@ ButtonRowPlacement :: struct {
     total_width: i32
 }
 
+ButtonRowWrapDecision :: struct {
+    wraps: bool
+    row_width: i32
+}
+
 SpinboxRowMetrics :: struct {
     row_height: i32
     control_width: i32
@@ -182,6 +187,24 @@ ButtonRowItemWidth :: (label_width: i32, metrics: ButtonRowMetrics) -> i32 #expo
     if width < metrics.min_width { width = metrics.min_width }
     if width > metrics.max_width { width = metrics.max_width }
     return width
+}
+
+ButtonRowWrapFor :: (row_width: i32, item_width: i32, total_width: i32,
+    gap: i32) -> ButtonRowWrapDecision #export {
+    decision: ButtonRowWrapDecision
+    if item_width < 0 { item_width = 0 }
+    if gap < 0 { gap = 0 }
+    next_width: i32 = item_width
+    if row_width > 0 {
+        next_width = row_width + gap + item_width
+    }
+    if row_width > 0 && total_width > 0 && next_width > total_width {
+        decision.wraps = true
+        decision.row_width = item_width
+        return decision
+    }
+    decision.row_width = next_width
+    return decision
 }
 
 ButtonRowPlacementFor :: (x: i32, width: i32, row_count: i32,

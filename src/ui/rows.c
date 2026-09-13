@@ -233,14 +233,11 @@ GetButtonRowHeight(ButtonRowProps row)
             TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
                       font),
             metrics);
-        int next_w;
-        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
-        if(row_w > 0 && next_w > width) {
+        ButtonRowWrapDecision wrap =
+            ButtonRowWrapFor(row_w, item_w, width, gap);
+        if(wrap.wraps)
             rows++;
-            row_w = item_w;
-        } else {
-            row_w = next_w;
-        }
+        row_w = wrap.row_width;
     }
 
     return rows * height + (rows - 1) * gap;
@@ -440,18 +437,18 @@ RenderButtonRow(ButtonRowProps row)
     for(int i = 0; i <= row.count; i++) {
         int end_row = i == row.count;
         int item_w = 0;
-        int next_w;
+        ButtonRowWrapDecision wrap = {0};
 
         if(!end_row) {
             item_w = ButtonRowItemWidth(
                 TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
                           font),
                 metrics);
+            wrap = ButtonRowWrapFor(row_w, item_w, row.width, gap);
         }
-        next_w = row_w > 0 ? row_w + gap + item_w : item_w;
 
-        if(!end_row && (row_w == 0 || next_w <= row.width)) {
-            row_w = next_w;
+        if(!end_row && !wrap.wraps) {
+            row_w = wrap.row_width;
             row_count++;
             continue;
         }
@@ -481,7 +478,7 @@ RenderButtonRow(ButtonRowProps row)
         }
 
         row_start = i;
-        row_w = item_w;
+        row_w = end_row ? 0 : wrap.row_width;
         row_count = end_row ? 0 : 1;
     }
 
