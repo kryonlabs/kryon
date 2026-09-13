@@ -14,11 +14,11 @@ for (const name of [
   "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
   "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
-  "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Select",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
@@ -2817,6 +2817,14 @@ function fakeDocument() {
       { nodeName: "homeLink", path: "Page/nav/home", parentPath: "Page/nav" });
     runtime.widget(nativeRt, "TitleBar", {}, null,
       { nodeName: "title", path: "Page/title" });
+    runtime.widget(nativeRt, "Hgroup", {}, null,
+      { nodeName: "headingGroup", path: "Page/headingGroup" });
+    runtime.widget(nativeRt, "Heading", { text: "Native DOM" }, null,
+      { nodeName: "headingGroupTitle", path: "Page/headingGroup/title", parentPath: "Page/headingGroup" });
+    runtime.widget(nativeRt, "Search", {}, null,
+      { nodeName: "siteSearch", path: "Page/search" });
+    runtime.widget(nativeRt, "TextField", { placeholder: "Search" }, null,
+      { nodeName: "siteSearchField", path: "Page/search/field", parentPath: "Page/search" });
     runtime.widget(nativeRt, "Article", { text: "Release notes" }, null,
       { nodeName: "article", path: "Page/article" });
     runtime.widget(nativeRt, "Aside", {}, null,
@@ -3084,6 +3092,12 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").role, "");
     assert.equal(runtime.webNodeQuery(nativeRt, "TitleBar").tag, "header");
     assert.equal(runtime.webNodeQuery(nativeRt, "TitleBar").role, "");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Hgroup").tag, "hgroup");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Search").tag, "search");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/search/field").landmarkOwner.path,
+      "Page/search");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/search").landmarkMembers,
+      ["Page/search/field"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Card").tag, "div");
     assert.equal(runtime.webNodeQuery(nativeRt, "Card[clickable=true]").tag, "button");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").clickable, true);
@@ -3114,6 +3128,8 @@ function fakeDocument() {
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "TitleBar")?.role, "banner");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Search")?.role, "search");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Aside")?.role, "complementary");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3414,6 +3430,10 @@ function fakeDocument() {
     assert.equal(tabSelectable.attributes.role, "tab");
     const title = runtime.findWebElement(nativeTarget, "title");
     const nativeArticle = runtime.findWebElement(nativeTarget, "article");
+    const nativeHeadingGroup = runtime.findWebElement(nativeTarget, "headingGroup");
+    const nativeHeadingGroupTitle = runtime.findWebElement(nativeTarget, "headingGroupTitle");
+    const nativeSearch = runtime.findWebElement(nativeTarget, "siteSearch");
+    const nativeSearchField = runtime.findWebElement(nativeTarget, "siteSearchField");
     const nativeAside = runtime.findWebElement(nativeTarget, "aside");
     const nativeFooter = runtime.findWebElement(nativeTarget, "footer");
     const nativeFigure = runtime.findWebElement(nativeTarget, "figure");
@@ -3523,6 +3543,14 @@ function fakeDocument() {
     assert.equal(title.tagName, "HEADER");
     assert.equal(nativeArticle.tagName, "ARTICLE");
     assert.equal(nativeArticle.textContent, "Release notes");
+    assert.equal(nativeHeadingGroup.tagName, "HGROUP");
+    assert.equal(nativeHeadingGroupTitle.tagName, "H1");
+    assert.equal(nativeSearch.tagName, "SEARCH");
+    assert.equal(nativeSearchField.tagName, "INPUT");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/search/field").landmarkOwner.ref,
+      "Page/search");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/search").landmarkMembers,
+      ["Page/search/field"]);
     assert.equal(nativeAside.tagName, "ASIDE");
     assert.equal(nativeFooter.tagName, "FOOTER");
     assert.equal(nativeFigure.tagName, "FIGURE");

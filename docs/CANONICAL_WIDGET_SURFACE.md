@@ -279,6 +279,8 @@ host roles rather than retained nodes.
 | `Footer` | `.kry canonical` | Web-native footer landmark/content element. |
 | `Form` | `.kry canonical` | Web-native form element. |
 | `Header` | `.kry canonical` | Web-native header landmark/content element. |
+| `Hgroup` | `.kry canonical` | Web-native heading group element. |
+| `HGroup` | `.kry canonical` | Alternate casing for `Hgroup`. |
 | `IFrame` | `.kry canonical` | Web-native iframe element. |
 | `Iframe` | `.kry canonical` | Alternate casing for `IFrame`. |
 | `Ins` | `.kry canonical` | Web-native inserted text element. |
@@ -309,6 +311,7 @@ host roles rather than retained nodes.
 | `RubyText` | `.kry canonical` | Long-form alias for `Rt`. |
 | `Samp` | `.kry canonical` | Web-native sample output phrasing element. |
 | `Sample` | `.kry canonical` | Long-form alias for `Samp`. |
+| `Search` | `.kry canonical` | Web-native search landmark element. |
 | `Select` | `.kry canonical` | Web-native select element; app selection control remains `Dropdown`. |
 | `Small` | `.kry canonical` | Web-native side-comment/small text element. |
 | `Source` | `.kry canonical` | Web-native media source element. |

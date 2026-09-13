@@ -96,11 +96,11 @@ the browser receives normal elements, attributes, CSS, and events.
   roles, icon/list item content, canvas-backed widgets, and common overlay
   roles.
 - Native tags for browser-exact page/content nodes such as articles, asides,
-  footers, figures/captions, lists/items, description lists, block quotes,
-  code blocks, inline code, addresses, small print, marks, and time text,
-  including corresponding landmark and collection relationship facts where the
-  native semantics imply ownership, plus native quote citations, time
-  datetimes, and list/item numbering attributes.
+  footers, search landmarks, heading groups, figures/captions, lists/items,
+  description lists, block quotes, code blocks, inline code, addresses, small
+  print, marks, and time text, including corresponding landmark and collection
+  relationship facts where the native semantics imply ownership, plus native
+  quote citations, time datetimes, and list/item numbering attributes.
 - Browser quote aliases preserve native block/inline semantics: `BlockQuote`
   renders `<blockquote>`, while `Quote` renders `<q>`.
 - Native form/document aliases such as `Form`, `Label`, `Select`,

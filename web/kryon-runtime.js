@@ -1142,6 +1142,8 @@ function widgetTag(item) {
     return "main";
   case "Section":
     return "section";
+  case "Search":
+    return "search";
   case "Article":
     return "article";
   case "Aside":
@@ -1156,6 +1158,9 @@ function widgetTag(item) {
     return "nav";
   case "TitleBar":
     return "header";
+  case "Hgroup":
+  case "HGroup":
+    return "hgroup";
   case "Fieldset":
     return "fieldset";
   case "Legend":
@@ -2461,6 +2466,8 @@ function implicitRole(node) {
     return "main";
   if (node.tag === "nav")
     return "navigation";
+  if (node.tag === "search")
+    return "search";
   if (node.tag === "aside")
     return "complementary";
   if (node.tag === "header")
@@ -11510,12 +11517,12 @@ const runtimeCallNames = [
   "Col", "ColGroup", "Data", "Datalist", "DataList", "Del", "Deleted",
   "DescriptionDetails", "DescriptionList", "DescriptionTerm",
   "Details", "Dialog", "Em", "Embed", "Emphasis",
-  "Figcaption", "Figure", "Footer", "Form", "Header",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
   "IFrame", "Iframe", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
   "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Select",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
@@ -11592,6 +11599,8 @@ export function Figure(...args) { return struct("Figure", args); }
 export function Footer(...args) { return struct("Footer", args); }
 export function Form(...args) { return struct("Form", args); }
 export function Header(...args) { return struct("Header", args); }
+export function Hgroup(...args) { return struct("Hgroup", args); }
+export function HGroup(...args) { return struct("HGroup", args); }
 export function IFrame(...args) { return struct("IFrame", args); }
 export function Iframe(...args) { return struct("Iframe", args); }
 export function Input(...args) { return struct("Input", args); }
@@ -11647,6 +11656,7 @@ export function Samp(...args) { return struct("Samp", args); }
 export function Sample(...args) { return struct("Sample", args); }
 export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
+export function Search(...args) { return struct("Search", args); }
 export function Select(...args) { return struct("Select", args); }
 export function Selectable(...args) { return struct("Selectable", args); }
 export function Separator(...args) { return struct("Separator", args); }
