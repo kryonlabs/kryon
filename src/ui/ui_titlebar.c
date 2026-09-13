@@ -25,6 +25,25 @@ RenderTitleBarBackground(int height, int class_name)
              (int)paint.divider.y, bar.border);
 }
 
+static TitleBarMetrics
+ui_title_bar_metrics(int class_name)
+{
+    StyleFrame bar = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium, .class_name = class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 1);
+    StyleFrame title = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium, .class_name = class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 16);
+    StyleFrame action = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .icon_only = true, .class_name = class_name},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindTitleBar(), 17);
+
+    return TitleBarMetricsFor((float)GetScale(), bar, title, action);
+}
+
 static int
 RenderTitleBarReturnButton(Texture2D return_icon, Rectangle bounds,
                            TitleBarMetrics metrics, int class_name)
@@ -56,7 +75,7 @@ RenderTitleBarCenteredTitle(const char *title, int height,
     int font;
     int title_w;
     TitleBarTitlePaint paint;
-    TitleBarMetrics metrics = TitleBarMetricsFor((float)GetScale());
+    TitleBarMetrics metrics = ui_title_bar_metrics(class_name);
     TitleBarLayout layout = TitleBarLayoutFor(ui_view_width, height,
                                               side_reserved > Scale(12),
                                               false, 0, 0, metrics);
@@ -92,7 +111,7 @@ RenderTitleBar(TitleBarProps title_bar)
 {
     int height = title_bar.height;
     int clicked = 0;
-    TitleBarMetrics metrics = TitleBarMetricsFor((float)GetScale());
+    TitleBarMetrics metrics = ui_title_bar_metrics(title_bar.class_name);
     TitleBarLayout layout;
     int side_reserved = metrics.side_margin;
 
