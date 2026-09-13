@@ -135,6 +135,49 @@ main(void)
         return 1;
     }
 
+    frame.value.padding_x = 70.0f;
+    frame.value.padding_y = 28.0f;
+    frame.value.gap = 5.0f;
+    thumb.value.icon_size = 14.0f;
+    thumb.value.gap = 6.0f;
+    toggle_paint = TogglePaintFor((ToggleSpec){
+        .bounds = {10, 20, 1, 1},
+        .enabled = 1,
+        .scale = 1.0f,
+        .track = frame,
+        .active = frame,
+        .thumb = thumb
+    });
+    check_float("toggle track width comes from style",
+                toggle_paint.track_bounds.width, 70.0f);
+    check_float("toggle track height comes from style",
+                toggle_paint.track_bounds.height, 28.0f);
+    check_float("toggle focus gap comes from track style",
+                toggle_paint.focus_bounds.x, 5.0f);
+    check_float("toggle thumb size comes from thumb style",
+                toggle_paint.thumb_radius, 7.0f);
+    check_float("toggle thumb inset comes from thumb style",
+                toggle_paint.thumb_x, 23.0f);
+
+    frame.value.gap = 4.0f;
+    toggle_paint = TogglePaintFor((ToggleSpec){
+        .bounds = {10, 20, 100, 30},
+        .checked = 0,
+        .enabled = 1,
+        .has_labels = 1,
+        .off_width = 12,
+        .on_width = 12,
+        .font = 16,
+        .scale = 1.0f,
+        .track = frame,
+        .active = frame,
+        .thumb = thumb
+    });
+    check_float("toggle active inset comes from active style",
+                toggle_paint.active_bounds.x, 14.0f);
+    check_float("toggle active height comes from active style",
+                toggle_paint.active_bounds.height, 22.0f);
+
     thumb.value.opacity = 0.25f;
     slider_paint = SliderPaintFor((SliderSpec){
         .bounds = {10, 20, 160, 30},

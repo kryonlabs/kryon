@@ -47,18 +47,53 @@ TogglePaint :: struct {
     thumb_glow_color: u32
 }
 
-ToggleMinimumWidth :: (has_labels: bool, off_width: i32, on_width: i32,
-                       scale: float) -> i32 #export {
+ToggleTrackWidthForStyle :: (track: StyleFrame, scale: float) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
-    if !has_labels { return (i32)(54.0 * scale) }
-    widest: i32 = off_width
-    if on_width > widest { widest = on_width }
-    return (widest + (i32)(16.0 * scale)) * 2 + (i32)(6.0 * scale)
+    width: float = track.value.padding_x
+    if width <= 0.0 { width = 54.0 }
+    return width * scale
 }
 
-ToggleMinimumHeight :: (scale: float) -> i32 #export {
+ToggleTrackHeightForStyle :: (track: StyleFrame, scale: float) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(34.0 * scale)
+    height: float = track.value.padding_y
+    if height <= 0.0 { height = 32.0 }
+    return height * scale
+}
+
+ToggleThumbSizeForStyle :: (thumb: StyleFrame, checked: bool,
+    scale: float) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    size: float = thumb.value.icon_size
+    if size <= 0.0 {
+        size = checked ? 24.0 : 20.0
+    }
+    return size * scale
+}
+
+ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
+    on_width: i32, scale: float, track: StyleFrame,
+    active: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    if !has_labels { return (i32)ToggleTrackWidthForStyle(track, scale) }
+    active_gap: float = active.value.gap
+    if active_gap <= 0.0 { active_gap = 3.0 }
+    widest: i32 = off_width
+    if on_width > widest { widest = on_width }
+    return (widest + (i32)(16.0 * scale)) * 2 +
+        (i32)(active_gap * 2.0 * scale)
+}
+
+ToggleMinimumHeightForStyle :: (scale: float, track: StyleFrame,
+    thumb: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    track_h: float = ToggleTrackHeightForStyle(track, scale)
+    thumb_gap: float = thumb.value.gap
+    if thumb_gap <= 0.0 { thumb_gap = 4.0 }
+    thumb_min: float = ToggleThumbSizeForStyle(thumb, false, scale) +
+        thumb_gap * 2.0 * scale
+    if track_h < thumb_min { track_h = thumb_min }
+    return (i32)track_h
 }
 
 TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
@@ -66,14 +101,15 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     scale: float = spec.scale
     if scale <= 0.0 { scale = 1.0 }
     bounds: Rectangle = spec.bounds
-    min_w: float = (float)ToggleMinimumWidth(spec.has_labels, spec.off_width,
-        spec.on_width, scale)
-    min_h: float = (float)ToggleMinimumHeight(scale)
+    min_w: float = (float)ToggleMinimumWidthForStyle(spec.has_labels,
+        spec.off_width, spec.on_width, scale, spec.track, spec.active)
+    min_h: float = (float)ToggleMinimumHeightForStyle(scale, spec.track,
+        spec.thumb)
     if bounds.width < min_w { bounds.width = min_w }
     if bounds.height < min_h { bounds.height = min_h }
 
-    track_w: float = 54.0 * scale
-    track_h: float = 32.0 * scale
+    track_w: float = ToggleTrackWidthForStyle(spec.track, scale)
+    track_h: float = ToggleTrackHeightForStyle(spec.track, scale)
     if spec.has_labels {
         track_w = bounds.width
         track_h = bounds.height
@@ -90,7 +126,9 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     paint.active = spec.active
     paint.thumb = spec.thumb
 
-    focus_gap: float = 4.0 * scale
+    focus_gap: float = spec.track.value.gap
+    if focus_gap <= 0.0 { focus_gap = 4.0 }
+    focus_gap *= scale
     paint.focus_bounds.x = track.x - focus_gap
     paint.focus_bounds.y = track.y - focus_gap
     paint.focus_bounds.width = track.width + focus_gap * 2.0
@@ -105,13 +143,16 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     paint.on_label_color = Opacity(spec.track.value.foreground,
         spec.track.value.opacity)
     if spec.has_labels {
-        active_w: float = (track.width - 6.0 * scale) * 0.5
-        active_x: float = track.x + 3.0 * scale
-        if spec.checked { active_x = track.x + track.width - active_w - 3.0 * scale }
+        active_gap: float = spec.active.value.gap
+        if active_gap <= 0.0 { active_gap = 3.0 }
+        active_gap *= scale
+        active_w: float = (track.width - active_gap * 2.0) * 0.5
+        active_x: float = track.x + active_gap
+        if spec.checked { active_x = track.x + track.width - active_w - active_gap }
         paint.active_bounds.x = active_x
-        paint.active_bounds.y = track.y + 3.0 * scale
+        paint.active_bounds.y = track.y + active_gap
         paint.active_bounds.width = active_w
-        paint.active_bounds.height = track.height - 6.0 * scale
+        paint.active_bounds.height = track.height - active_gap * 2.0
         text_y: float = bounds.y + (bounds.height - (float)spec.font) * 0.5
         paint.off_label_bounds.x = bounds.x + bounds.width * 0.25 - (float)spec.off_width * 0.5
         paint.off_label_bounds.y = text_y
@@ -130,13 +171,16 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
                 paint.active.value.opacity)
         }
     } else {
-        thumb_size: float = 20.0 * scale
-        if spec.checked { thumb_size = 24.0 * scale }
+        thumb_size: float = ToggleThumbSizeForStyle(spec.thumb, spec.checked,
+            scale)
         if spec.pressed { thumb_size += 2.0 * scale }
-        max_thumb: float = track.height - 6.0 * scale
+        thumb_gap: float = spec.thumb.value.gap
+        if thumb_gap <= 0.0 { thumb_gap = 4.0 }
+        thumb_gap *= scale
+        max_thumb: float = track.height - thumb_gap * 2.0
         if thumb_size > max_thumb { thumb_size = max_thumb }
-        thumb_x: float = track.x + 4.0 * scale
-        if spec.checked { thumb_x = track.x + track.width - thumb_size - 4.0 * scale }
+        thumb_x: float = track.x + thumb_gap
+        if spec.checked { thumb_x = track.x + track.width - thumb_size - thumb_gap }
         thumb_y: float = track.y + (track.height - thumb_size) * 0.5
         paint.thumb_radius = thumb_size * 0.5
         paint.thumb_x = thumb_x + paint.thumb_radius

@@ -1505,6 +1505,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 54;
+  padding-y: 32;
+  gap: 4;
   opacity: 1;
 }
 
@@ -1526,6 +1529,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: #d8c0ff;
+  gap: 3;
 }
 
 Toggle:disabled {
@@ -1540,6 +1544,8 @@ ToggleThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: flat;
 }
@@ -1549,6 +1555,7 @@ ToggleThumb[tone=Accent] {
   foreground: #ffffff;
   border: #d8c0ff;
   focus: accent;
+  icon-size: 24;
 }
 
 ToggleThumb:disabled {

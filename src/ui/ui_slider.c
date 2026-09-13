@@ -545,13 +545,29 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
     StyleFrame label_frame = ui_toggle_style_frame_role_class(ButtonToneNeutral,
         ButtonStateNormal, !enabled, class_name, 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
+    int checked_for_metrics = value != NULL && *value;
+    ButtonTone metric_track_tone = checked_for_metrics && !has_labels
+        ? ButtonToneAccent
+        : ButtonToneNeutral;
+    int metric_track_role = checked_for_metrics && !has_labels ? 5 : 4;
+    StyleFrame metric_track_frame = ui_toggle_style_frame_role_class(
+        metric_track_tone, ButtonStateNormal, !enabled, class_name,
+        metric_track_role);
+    StyleFrame metric_active_frame = ui_toggle_style_frame_role_class(
+        ButtonToneAccent, ButtonStateNormal, !enabled, class_name, 5);
+    StyleFrame metric_thumb_frame = ui_toggle_thumb_style_frame_class(
+        metric_track_tone, ButtonStateNormal, !enabled, checked_for_metrics,
+        class_name);
     if(label_style.font_size > 0.0f)
         font = (int)(label_style.font_size + 0.5f);
     int off_w = has_labels ? TextWidth(off_text, font) : 0;
     int on_w = has_labels ? TextWidth(on_text, font) : 0;
     float runtime_scale = (float)Scale(1000) / 1000.0f;
-    int min_w = ToggleMinimumWidth(has_labels, off_w, on_w, runtime_scale);
-    int min_h = ToggleMinimumHeight(runtime_scale);
+    int min_w = ToggleMinimumWidthForStyle(has_labels, off_w, on_w,
+                                           runtime_scale, metric_track_frame,
+                                           metric_active_frame);
+    int min_h = ToggleMinimumHeightForStyle(runtime_scale, metric_track_frame,
+                                            metric_thumb_frame);
     Rectangle bounds;
     int pressed;
     int hovered;

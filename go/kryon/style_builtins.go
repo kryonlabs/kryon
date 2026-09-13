@@ -1507,6 +1507,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 54;
+  padding-y: 32;
+  gap: 4;
   opacity: 1;
 }
 
@@ -1528,6 +1531,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: #d8c0ff;
+  gap: 3;
 }
 
 Toggle:disabled {
@@ -1542,6 +1546,8 @@ ToggleThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: flat;
 }
@@ -1551,6 +1557,7 @@ ToggleThumb[tone=Accent] {
   foreground: #ffffff;
   border: #d8c0ff;
   focus: accent;
+  icon-size: 24;
 }
 
 ToggleThumb:disabled {
@@ -3189,6 +3196,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 46;
+  padding-y: 24;
+  gap: 2;
   opacity: 1;
 }
 
@@ -3211,6 +3221,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: accent-border;
+  gap: 2;
 }
 
 Toggle:disabled {
@@ -3227,6 +3238,8 @@ ToggleThumb {
   focus: accent;
   radius: radius;
   border-width: border;
+  gap: 4;
+  icon-size: 16;
   opacity: 1;
   material: default;
 }
@@ -3236,6 +3249,7 @@ ToggleThumb[tone=Accent] {
   foreground: #ffffff;
   border: accent-border;
   focus: accent;
+  icon-size: 18;
 }
 
 ToggleThumb:disabled {
@@ -4911,6 +4925,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 54;
+  padding-y: 32;
+  gap: 4;
   opacity: 1;
 }
 
@@ -4933,6 +4950,7 @@ Toggle[role=Fill] {
   background: accent;
   foreground: accent-ink;
   border: accent;
+  gap: 3;
 }
 
 Toggle:disabled {
@@ -4947,6 +4965,8 @@ ToggleThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: flat;
 }
@@ -4956,6 +4976,7 @@ ToggleThumb[tone=Accent] {
   foreground: #ffffff;
   border: accent;
   focus: accent;
+  icon-size: 24;
 }
 
 ToggleThumb:disabled {
@@ -6706,6 +6727,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 54;
+  padding-y: 32;
+  gap: 4;
   opacity: 1;
 }
 
@@ -6731,6 +6755,7 @@ Toggle[role=Fill] {
   background-end: accent-end;
   foreground: accent-ink;
   border: accent-hover;
+  gap: 3;
 }
 
 Toggle:disabled {
@@ -6746,12 +6771,15 @@ ToggleThumb {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: glow;
 }
 
 ToggleThumb[tone=Accent] {
   background: accent-ink;
+  icon-size: 24;
   foreground: #ffffff;
   border: accent-hover;
   focus: accent;
@@ -8473,6 +8501,9 @@ Toggle {
 }
 
 Toggle[role=Track] {
+  padding-x: 54;
+  padding-y: 32;
+  gap: 4;
   opacity: 1;
 }
 
@@ -8497,6 +8528,7 @@ Toggle[role=Fill] {
   background-end: accent-end;
   foreground: accent-ink;
   border: accent-border;
+  gap: 3;
 }
 
 Toggle:disabled {
@@ -8512,6 +8544,8 @@ ToggleThumb {
   focus: focus;
   radius: radius;
   border-width: border;
+  gap: 4;
+  icon-size: 20;
   opacity: 1;
   material: premium;
 }
@@ -8521,6 +8555,7 @@ ToggleThumb[tone=Accent] {
   foreground: #ffffff;
   border: accent-border;
   focus: accent;
+  icon-size: 24;
 }
 
 ToggleThumb:disabled {

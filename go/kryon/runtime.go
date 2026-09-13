@@ -4567,20 +4567,37 @@ func (r *runtime) Toggle(props ToggleProps) bool {
 	}
 	bounds := props.Bounds
 	hasLabels := props.OffLabel != "" || props.OnLabel != ""
+	disabled := props.Disabled || r.contentDisabled()
 	labelStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
-		props.Disabled || r.contentDisabled(), false, props.ClassName,
+		disabled, false, props.ClassName,
 		StyleSheet_StyleKindToggle(), 6).Value)
 	labelFont, labelFontID := styleTextFace(labelStyle, Text16)
 	offWidth := int32(runtimeTextWidthWithFont(props.OffLabel, labelFont, labelFontID))
 	onWidth := int32(runtimeTextWidthWithFont(props.OnLabel, labelFont, labelFontID))
-	if minW := float32(Toggle_ToggleMinimumWidth(hasLabels, offWidth, onWidth, 1)); bounds.Width < minW {
+	checkedForMetrics := *props.Value != 0
+	trackToneForMetrics := ButtonToneNeutral
+	trackRoleForMetrics := int32(4)
+	if checkedForMetrics && !hasLabels {
+		trackToneForMetrics = ButtonToneAccent
+		trackRoleForMetrics = 5
+	}
+	trackFrameForMetrics := simpleStyleFrameWithClassRole(trackToneForMetrics, ButtonStateNormal,
+		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(),
+		trackRoleForMetrics)
+	activeFrameForMetrics := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,
+		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggle(), 5)
+	thumbFrameForMetrics := simpleStyleFrameWithClassRole(trackToneForMetrics, ButtonStateNormal,
+		disabled, checkedForMetrics, props.ClassName, StyleSheet_StyleKindToggleThumb(),
+		StyleSheet_StyleAny())
+	if minW := float32(Toggle_ToggleMinimumWidthForStyle(hasLabels, offWidth, onWidth,
+		1, trackFrameForMetrics, activeFrameForMetrics)); bounds.Width < minW {
 		bounds.Width = minW
 	}
-	if minH := float32(Toggle_ToggleMinimumHeight(1)); bounds.Height < minH {
+	if minH := float32(Toggle_ToggleMinimumHeightForStyle(1, trackFrameForMetrics,
+		thumbFrameForMetrics)); bounds.Height < minH {
 		bounds.Height = minH
 	}
 	bounds = r.layoutRect(bounds)
-	disabled := props.Disabled || r.contentDisabled()
 	input := r.ReadActivation(bounds, props.ID, !disabled)
 	if input.Activated {
 		if *props.Value == 0 {
