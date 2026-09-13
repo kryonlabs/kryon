@@ -137,7 +137,7 @@ func ColorPicker_ColorPickerLayoutFor(bounds Rectangle, channels int32, scale fl
 	var value_11 float32 = metrics.Value.IconSize
 	var value_12 float32 = 36.0
 	var value_13 float32 = scale
-	var value_14 bool = false
+	var value_14 bool = true
 	var value_15 float32 = ColorPicker_ColorPickerMetric(value_8, value_10, value_11, value_12, value_13, value_14)
 	var swatch_height float32 = value_15
 	var value_16 uint32 = metrics.Value.Fields

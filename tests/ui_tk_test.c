@@ -408,13 +408,16 @@ test_color_picker_policy(void)
     check_float("styled color picker swatch height", layout.swatch_bounds.height, 40.0f);
     check_float("styled color picker channel height", row.height, 23.5f);
     metrics.value.gap = 0.0f;
+    metrics.value.icon_size = 0.0f;
     metrics.value.padding_y = 0.0f;
     layout = ColorPickerLayoutFor(bounds, 4, 1.0f, metrics);
     row = ColorPickerChannelBounds(bounds, 1, 4, 1.0f, metrics);
     check_float("color picker keeps explicit zero gap",
-                layout.swatch_bounds.y, 140.0f);
+                layout.swatch_bounds.y, 180.0f);
+    check_float("color picker keeps explicit zero swatch height",
+                layout.swatch_bounds.height, 0.0f);
     check_float("color picker keeps explicit zero row inset",
-                row.height, 30.0f);
+                row.height, 40.0f);
 }
 
 static void

@@ -54,7 +54,7 @@ ColorPickerLayoutFor :: (bounds: Rectangle, channels: i32,
     if scale <= 0.0 { scale = 1.0 }
     if channels < 1 { channels = 1 }
     swatch_height: float = ColorPickerMetric(metrics.value.fields,
-        (u32)StyleIconSize, metrics.value.icon_size, 36.0, scale, false)
+        (u32)StyleIconSize, metrics.value.icon_size, 36.0, scale, true)
     gap: float = ColorPickerMetric(metrics.value.fields, (u32)StyleGap,
         metrics.value.gap, 4.0, scale, true)
     minimum_row: float = ColorPickerMetric(metrics.value.fields,
