@@ -47,3 +47,8 @@ ImagePlaceholderLayoutFor :: (bounds: Rectangle, text_width: i32,
     layout.label_y = (i32)bounds.y + ((i32)bounds.height - font_height) / 2
     return layout
 }
+
+ImagePlaceholderFontFor :: (default_font: i32, style_font: i32) -> i32 #export {
+    if style_font > 0 { return style_font }
+    return default_font
+}

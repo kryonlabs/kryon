@@ -54,6 +54,11 @@ main(void)
                 placeholder.label_x, placeholder.label_y);
         failures++;
     }
+    if(ImagePlaceholderFontFor(16, 0) != 16 ||
+       ImagePlaceholderFontFor(16, 21) != 21) {
+        fprintf(stderr, "placeholder font fallback/override policy failed\n");
+        failures++;
+    }
 
     return failures == 0 ? 0 : 1;
 }

@@ -16,9 +16,8 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
 {
     Style image = tutorial_image_style(StyleAny());
     Style text = tutorial_image_style(6);
-    int font = text.font_size > 0.0f
-        ? (int)(text.font_size + 0.5f)
-        : GetFontSize();
+    int font = ImagePlaceholderFontFor(
+        GetFontSize(), (int)(text.font_size + 0.5f));
     int font_token = PushTextFont(text.typeface);
     int tw = TextWidth(label, font);
     ImagePlaceholderLayout layout =
