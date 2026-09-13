@@ -20,6 +20,21 @@ test_toolbar_action_bounds(void)
     assert(first.x == 140.0f);
     assert(first.y == -12.0f);
     assert(second.x == 224.0f);
+
+    layout = ToolbarLayoutFor((ToolbarSpec){
+        .x = 0, .y = 0, .width = 120, .height = 32,
+        .action_count = 1, .action_fields = StyleIconSize |
+            StylePaddingX | StyleGap, .bar_fields = StylePaddingX,
+        .scale = 1.0f
+    });
+    first = ToolbarActionBoundsFor(layout, 0, 1);
+    assert(layout.action_icon_size == 0);
+    assert(layout.action_icon_padding == 0);
+    assert(layout.action_width == 0);
+    assert(layout.action_gap == 0);
+    assert(layout.side_padding == 0);
+    assert(first.x == 120.0f);
+    assert(first.y == 16.0f);
 }
 
 static void

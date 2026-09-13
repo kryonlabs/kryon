@@ -1,4 +1,5 @@
 #module "toolbar"
+#import "control_props"
 #import "drawing_props"
 #import "toolbar_props"
 
@@ -12,6 +13,8 @@ ToolbarSpec :: struct {
     action_icon_padding: i32
     action_gap: i32
     side_padding: i32
+    action_fields: u32
+    bar_fields: u32
     dropdown_min_width: i32
     dropdown_max_width: i32
     dropdown_height: i32
@@ -30,15 +33,22 @@ ToolbarLayout :: struct {
     side_padding: i32
 }
 
-ToolbarMetric :: (value: i32, fallback: float, scale: float) -> i32 {
+ToolbarMetric :: (fields: u32, field: u32, value: i32, fallback: float,
+    scale: float) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) != (u32)0 && value >= 0 { return value }
+    return (i32)(fallback * scale)
+}
+
+ToolbarPropMetric :: (value: i32, fallback: float, scale: float) -> i32 {
     if value > 0 { return value }
     if scale <= 0.0 { scale = 1.0 }
     return (i32)(fallback * scale)
 }
 
-ToolbarSidePadding :: (value: i32, scale: float) -> i32 #export {
+ToolbarSidePadding :: (value: i32, fields: u32, scale: float) -> i32 #export {
     if value < 0 { return 0 }
-    return ToolbarMetric(value, 12.0, scale)
+    return ToolbarMetric(fields, (u32)StylePaddingX, value, 12.0, scale)
 }
 
 ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
@@ -56,10 +66,13 @@ ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
     layout.bounds.y = (float)spec.y
     layout.bounds.width = (float)width
     layout.bounds.height = (float)height
-    layout.side_padding = ToolbarSidePadding(spec.side_padding, scale)
-    layout.action_icon_size = ToolbarMetric(spec.action_icon_size, 20.0, scale)
-    layout.action_icon_padding = ToolbarMetric(spec.action_icon_padding, 8.0, scale)
-    layout.action_gap = ToolbarMetric(spec.action_gap, 6.0, scale)
+    layout.side_padding = ToolbarSidePadding(spec.side_padding, spec.bar_fields, scale)
+    layout.action_icon_size = ToolbarMetric(spec.action_fields,
+        (u32)StyleIconSize, spec.action_icon_size, 20.0, scale)
+    layout.action_icon_padding = ToolbarMetric(spec.action_fields,
+        (u32)StylePaddingX, spec.action_icon_padding, 8.0, scale)
+    layout.action_gap = ToolbarMetric(spec.action_fields,
+        (u32)StyleGap, spec.action_gap, 6.0, scale)
     layout.action_width = layout.action_icon_size + layout.action_icon_padding * 2
     layout.action_y = spec.y + (height - layout.action_width) / 2
     layout.controls_x = spec.x + width - layout.side_padding
@@ -87,7 +100,7 @@ ToolbarLayoutFor :: (spec: ToolbarSpec) -> ToolbarLayout #export {
     layout.dropdown_bounds.x = (float)spec.x
     layout.dropdown_bounds.y = (float)spec.y
     layout.dropdown_bounds.width = (float)dropdown_width
-    layout.dropdown_bounds.height = (float)ToolbarMetric(spec.dropdown_height, 36.0, scale)
+    layout.dropdown_bounds.height = (float)ToolbarPropMetric(spec.dropdown_height, 36.0, scale)
     return layout
 }
 
@@ -122,14 +135,14 @@ BottomIconRowLayoutFor :: (row: BottomIconRowProps, scale: float) -> BottomIconR
 
     count: i32 = row.count
     if count < 0 { count = 0 }
-    icon_size: i32 = ToolbarMetric(0, 24.0, scale)
-    icon_padding: i32 = ToolbarMetric(0, 10.0, scale)
-    gap: i32 = ToolbarMetric(0, 12.0, scale)
-    side_margin: i32 = ToolbarMetric(0, 24.0, scale)
-    bottom_margin: i32 = ToolbarMetric(0, 6.0, scale)
-    min_icon_size: i32 = ToolbarMetric(0, 16.0, scale)
-    min_icon_padding: i32 = ToolbarMetric(0, 6.0, scale)
-    min_gap: i32 = ToolbarMetric(0, 8.0, scale)
+    icon_size: i32 = ToolbarPropMetric(0, 24.0, scale)
+    icon_padding: i32 = ToolbarPropMetric(0, 10.0, scale)
+    gap: i32 = ToolbarPropMetric(0, 12.0, scale)
+    side_margin: i32 = ToolbarPropMetric(0, 24.0, scale)
+    bottom_margin: i32 = ToolbarPropMetric(0, 6.0, scale)
+    min_icon_size: i32 = ToolbarPropMetric(0, 16.0, scale)
+    min_icon_padding: i32 = ToolbarPropMetric(0, 6.0, scale)
+    min_gap: i32 = ToolbarPropMetric(0, 8.0, scale)
     available_w: i32 = row.view_width - side_margin * 2
     min_available: i32 = (i32)(120.0 * scale)
     if available_w < min_available { available_w = min_available }
