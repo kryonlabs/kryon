@@ -141,6 +141,22 @@ func StylePackVersion() uint64 {
 	return stylePackVersion
 }
 
+func StyleClassID(className string) int32 {
+	if className == "" {
+		return 0
+	}
+	var hash uint32 = 2166136261
+	for i := 0; i < len(className); i++ {
+		hash ^= uint32(className[i])
+		hash *= 16777619
+	}
+	hash &= 0x7fffffff
+	if hash == 0 {
+		return 1
+	}
+	return int32(hash)
+}
+
 func ResolveStyle(sheet []StyleRule, base StyleData, facts StyleFacts, activeState int32) StyleData {
 	if len(sheet) == 0 {
 		return base

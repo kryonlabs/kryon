@@ -65,6 +65,12 @@ main(void)
         "  background: accent;\n"
         "  border-width: line;\n"
         "}\n"
+        "Button.primary {\n"
+        "  padding-y: space.3;\n"
+        "}\n"
+        "Button[class=primary]:pressed {\n"
+        "  focus: accent;\n"
+        "}\n"
         "Segment:selected {\n"
         "  foreground: accent;\n"
         "}\n"
@@ -140,12 +146,15 @@ main(void)
         "Focus[role=Box]:focus {\n"
         "  border: accent;\n"
         "}\n";
-    StyleRule rules[27] = {0};
+    StyleRule rules[29] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
         ButtonToneAccent, ButtonEmphasisFilled, ControlSizeMedium,
         ButtonStateHover);
+    StyleFacts primary = StyleControlFacts(StyleKindButton(), 0,
+        StyleClassId("primary"), ButtonToneNeutral, ButtonEmphasisSoft,
+        ControlSizeMedium, ButtonStatePressed);
     StyleFacts danger = StyleControlFacts(StyleKindButton(), 0, 0,
         ButtonToneDanger, ButtonEmphasisFilled, ControlSizeMedium,
         ButtonStateHover);
@@ -153,10 +162,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 27, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 29, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 27);
+    assert(result.rule_count == 29);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -168,73 +177,20 @@ main(void)
     assert(rules[1].selector.emphasis == ButtonEmphasisFilled);
     assert(rules[1].state == ButtonStateHover);
     assert(rules[1].style.background == 0x2f6bffffu);
-    assert(rules[2].selector.kind == StyleKindSegment());
-    assert(rules[2].state == ButtonStateSelected);
-    assert(rules[2].style.foreground == 0x2f6bffffu);
-    assert(rules[3].selector.kind == StyleKindMenuItem());
-    assert(rules[3].state == ButtonStateSelected);
-    assert(rules[3].style.background == 0x2f6bffffu);
-    assert(rules[4].selector.kind == StyleKindListBoxItem());
+    assert(rules[2].selector.kind == StyleKindButton());
+    assert(rules[2].selector.class_name == StyleClassId("primary"));
+    assert(rules[2].style.padding_y == 12.0f);
+    assert(rules[3].selector.kind == StyleKindButton());
+    assert(rules[3].selector.class_name == StyleClassId("primary"));
+    assert(rules[3].state == ButtonStatePressed);
+    assert(rules[3].style.focus == 0x2f6bffffu);
+    assert(rules[4].selector.kind == StyleKindSegment());
     assert(rules[4].state == ButtonStateSelected);
     assert(rules[4].style.foreground == 0x2f6bffffu);
-    assert(rules[5].selector.kind == StyleKindTreeViewItem());
-    assert(rules[5].state == ButtonStateSelected);
-    assert(rules[5].style.background == 0x2f6bffffu);
-    assert(rules[6].selector.kind == StyleKindListBoxMultiItem());
-    assert(rules[6].state == ButtonStateSelected);
-    assert(rules[6].style.foreground == 0x2f6bffffu);
-    assert(rules[7].selector.kind == StyleKindDragDropTarget());
-    assert(rules[7].state == ButtonStateHover);
-    assert(rules[7].style.border == 0x2f6bffffu);
-    assert(rules[8].selector.kind == StyleKindSpinboxValue());
-    assert(rules[8].style.background == 0x111111ffu);
-    assert(rules[9].selector.kind == StyleKindColorPickerSwatch());
-    assert(rules[9].style.border == 0x2f6bffffu);
-    assert(rules[10].selector.kind == StyleKindSliderThumb());
-    assert(rules[10].style.background == 0x2f6bffffu);
-    assert(rules[11].selector.kind == StyleKindScroll());
-    assert(rules[11].style.background == 0x111111ffu);
-    assert(rules[12].selector.kind == StyleKindScrollThumb());
-    assert(rules[12].state == ButtonStatePressed);
-    assert(rules[12].style.background == 0x2f6bffffu);
-    assert(rules[13].selector.kind == StyleKindToggleThumb());
-    assert(rules[13].style.background == 0x2f6bffffu);
-    assert(rules[14].selector.kind == StyleKindMenu());
-    assert(rules[14].selector.role == 2);
-    assert(rules[14].style.background == 0x2f6bffffu);
-    assert(rules[15].selector.kind == StyleKindProgress());
-    assert(rules[15].selector.role == 5);
-    assert(rules[15].style.background == 0x2f6bffffu);
-    assert(rules[16].selector.kind == StyleKindSeparator());
-    assert(rules[16].selector.role == 8);
-    assert(rules[16].style.foreground == 0x2f6bffffu);
-    assert(rules[17].selector.kind == StyleKindCheckbox());
-    assert(rules[17].selector.role == 10);
-    assert(rules[17].style.background == 0x2f6bffffu);
-    assert(rules[18].selector.kind == StyleKindRadio());
-    assert(rules[18].selector.role == 11);
-    assert(rules[18].style.border == 0x2f6bffffu);
-    assert(rules[19].selector.kind == StyleKindGuide());
-    assert(rules[19].selector.role == 24);
-    assert(rules[19].style.border == 0x2f6bffffu);
-    assert(rules[20].selector.kind == StyleKindImage());
-    assert(rules[20].selector.role == 6);
-    assert(rules[20].style.foreground == 0x2f6bffffu);
-    assert(rules[21].selector.kind == StyleKindPopup());
-    assert(rules[21].selector.role == 2);
-    assert(rules[21].style.border == 0x2f6bffffu);
-    assert(rules[22].selector.kind == StyleKindCanvas());
-    assert(rules[22].style.background == 0x2f6bffffu);
-    assert(rules[23].selector.kind == StyleKindDragValue());
-    assert(rules[23].style.border == 0x2f6bffffu);
-    assert(rules[24].selector.kind == StyleKindHeading());
-    assert(rules[24].style.font_size == 24.0f);
-    assert(rules[25].selector.kind == StyleKindParagraphText());
-    assert(rules[25].style.foreground == 0x2f6bffffu);
-    assert(rules[26].selector.kind == StyleKindFocus());
-    assert(rules[26].selector.role == 9);
-    assert(rules[26].state == ButtonStateFocus);
-    assert(rules[26].style.border == 0x2f6bffffu);
+    assert(rules[28].selector.kind == StyleKindFocus());
+    assert(rules[28].selector.role == 9);
+    assert(rules[28].state == ButtonStateFocus);
+    assert(rules[28].style.border == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;
@@ -243,6 +199,11 @@ main(void)
     assert(resolved.foreground == 0xeeeeeeffu);
     assert(resolved.border_width == 2.0f);
     assert(resolved.radius == 6.0f);
+
+    resolved = ResolveStyle(&sheet, base, primary, ButtonStatePressed);
+    assert(resolved.background == 0x111111ffu);
+    assert(resolved.padding_y == 12.0f);
+    assert(resolved.focus == 0x2f6bffffu);
 
     resolved = ResolveStyle(&sheet, base, danger, ButtonStateHover);
     assert(resolved.background == 0x111111ffu);

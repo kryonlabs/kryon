@@ -20,6 +20,7 @@ Kryon is a lightweight C UI component library for embedded applications and runt
   - [Sync](#sync)
   - [Transitions](#transitions)
   - [Runtime Assets](#runtime-assets)
+  - [Style Sheets](#style-sheets)
   - [Desktop App Integration](#desktop-app-integration)
   - [File Dialogs](#file-dialogs)
   - [Web Utilities](#web-utilities)
@@ -213,6 +214,22 @@ Button {
 Generated `Draw*`, `BeginDrawing`, and raylib-shaped input/asset names are
 backend and test support, not app-facing widget API. New Kryon UI code should
 use the canonical widget names and props shown here.
+
+### Style sheet classes
+
+KSS class selectors use CSS-style suffixes or an explicit selector attribute:
+
+```kss
+Button.primary { padding-y: 12; }
+Button[class=primary]:pressed { focus: #2f6bff; }
+```
+
+Native code uses `StyleClassId` to assign the same stable class id to
+`StyleFacts.class_name` when resolving a stylesheet:
+
+```c
+int32_t primary = StyleClassId("primary");
+```
 
 Use canonical widget names when declaring controls from C:
 

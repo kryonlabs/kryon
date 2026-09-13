@@ -95,6 +95,10 @@ func identChar(b byte) bool {
 	return unicode.IsLetter(rune(b)) || unicode.IsDigit(rune(b)) || b == '_' || b == '-' || b == '.'
 }
 
+func selectorIdentChar(b byte) bool {
+	return unicode.IsLetter(rune(b)) || unicode.IsDigit(rune(b)) || b == '_' || b == '-'
+}
+
 func (p *styleParser) ident() (string, bool) {
 	p.skip()
 	if p.done() || !identStart(p.peek()) {
@@ -102,6 +106,18 @@ func (p *styleParser) ident() (string, bool) {
 	}
 	start := p.pos
 	for !p.done() && identChar(p.peek()) {
+		p.pos++
+	}
+	return p.source[start:p.pos], true
+}
+
+func (p *styleParser) selectorIdent() (string, bool) {
+	p.skip()
+	if p.done() || !identStart(p.peek()) {
+		return "", false
+	}
+	start := p.pos
+	for !p.done() && selectorIdentChar(p.peek()) {
 		p.pos++
 	}
 	return p.source[start:p.pos], true
@@ -240,7 +256,7 @@ func (p *styleParser) rule(order int) (StyleRule, error) {
 		Layer:    p.layer,
 		Order:    int32(order),
 	}
-	kind, ok := p.ident()
+	kind, ok := p.selectorIdent()
 	if !ok {
 		return rule, p.err("expected selector")
 	}
@@ -261,6 +277,13 @@ func (p *styleParser) rule(order int) (StyleRule, error) {
 			if err := p.attr(&rule.Selector); err != nil {
 				return rule, err
 			}
+		case '.':
+			p.pos++
+			className, ok := p.selectorIdent()
+			if !ok {
+				return rule, p.err("expected class name")
+			}
+			rule.Selector.ClassName = StyleClassID(className)
 		case ':':
 			p.pos++
 			state, ok := p.ident()
@@ -339,6 +362,8 @@ func (p *styleParser) attr(selector *StyleSelector) error {
 			return p.err("unknown role %q", value)
 		}
 		selector.Role = v
+	case "class":
+		selector.ClassName = StyleClassID(value)
 	default:
 		return p.err("unknown selector attribute %q", name)
 	}

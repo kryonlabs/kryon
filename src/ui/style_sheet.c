@@ -125,6 +125,23 @@ StylePackVersion(void)
     return style_pack_version;
 }
 
+int32_t
+StyleClassId(const char *class_name)
+{
+    uint32_t hash = 2166136261u;
+
+    if(class_name == NULL || class_name[0] == '\0')
+        return 0;
+
+    while(*class_name != '\0') {
+        hash ^= (uint8_t)*class_name;
+        hash *= 16777619u;
+        class_name++;
+    }
+    hash &= 0x7fffffffu;
+    return hash == 0 ? 1 : (int32_t)hash;
+}
+
 StyleData
 ResolveStyle(const StyleSheet *sheet, StyleData base, StyleFacts facts,
              int active_state)

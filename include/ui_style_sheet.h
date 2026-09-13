@@ -42,6 +42,7 @@ const StylePack *GetActiveStylePack(void);
 const char *GetActiveStylePackId(void);
 int GetStylePackOptions(StylePackOption *options, int capacity);
 uint64_t StylePackVersion(void);
+int32_t StyleClassId(const char *class_name);
 StyleData ResolveStyle(const StyleSheet *sheet, StyleData base,
                        StyleFacts facts, int active_state);
 StyleData ResolveActiveStyle(StyleData base, StyleFacts facts,

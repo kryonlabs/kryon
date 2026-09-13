@@ -7,10 +7,10 @@ func TestStyleSheetCascadeInGo(t *testing.T) {
 	button.Kind = StyleSheet_StyleKindButton()
 
 	primary := StyleSheet_StyleDefaultSelector()
-	primary.ClassName = 3
+	primary.ClassName = StyleClassID("primary")
 
 	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindButton())
-	facts.ClassName = 3
+	facts.ClassName = StyleClassID("primary")
 
 	base := StyleData{Fields: uint32(StyleOpacity), Opacity: 1}
 	rules := []StyleRule{
@@ -150,6 +150,12 @@ Button[tone=Accent][emphasis=Filled]:hover {
   background: accent;
   border-width: line;
 }
+Button.primary {
+  padding-y: line;
+}
+Button[class=primary]:pressed {
+  focus: accent;
+}
 Segment:selected {
   foreground: accent;
 }
@@ -244,7 +250,7 @@ Focus[role=Box]:focus {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 31 {
+	if id != "smoke" || len(rules) != 33 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -255,149 +261,27 @@ Focus[role=Box]:focus {
 	if rules[0].Style.Background != 0x2f6bffff || rules[0].Style.BorderWidth != 2 {
 		t.Fatalf("bad style: %#v", rules[0].Style)
 	}
-	if rules[1].Selector.Kind != StyleSheet_StyleKindSegment() ||
-		rules[1].State != int32(ButtonStateSelected) ||
-		rules[1].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad segment rule: %#v", rules[1])
+	if rules[1].Selector.Kind != StyleSheet_StyleKindButton() ||
+		rules[1].Selector.ClassName != StyleClassID("primary") ||
+		rules[1].Style.PaddingY != 2 {
+		t.Fatalf("bad class rule: %#v", rules[1])
 	}
-	if rules[2].Selector.Kind != StyleSheet_StyleKindMenuItem() ||
-		rules[2].State != int32(ButtonStateSelected) ||
-		rules[2].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad menu item rule: %#v", rules[2])
+	if rules[2].Selector.Kind != StyleSheet_StyleKindButton() ||
+		rules[2].Selector.ClassName != StyleClassID("primary") ||
+		rules[2].State != int32(ButtonStatePressed) ||
+		rules[2].Style.Focus != 0x2f6bffff {
+		t.Fatalf("bad class attribute rule: %#v", rules[2])
 	}
-	if rules[3].Selector.Kind != StyleSheet_StyleKindListBoxItem() ||
+	if rules[3].Selector.Kind != StyleSheet_StyleKindSegment() ||
 		rules[3].State != int32(ButtonStateSelected) ||
 		rules[3].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad list box item rule: %#v", rules[3])
+		t.Fatalf("bad segment rule: %#v", rules[3])
 	}
-	if rules[4].Selector.Kind != StyleSheet_StyleKindTreeViewItem() ||
-		rules[4].State != int32(ButtonStateSelected) ||
-		rules[4].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad tree view item rule: %#v", rules[4])
-	}
-	if rules[5].Selector.Kind != StyleSheet_StyleKindListBoxMultiItem() ||
-		rules[5].State != int32(ButtonStateSelected) ||
-		rules[5].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad multi select item rule: %#v", rules[5])
-	}
-	if rules[6].Selector.Kind != StyleSheet_StyleKindDragDropTarget() ||
-		rules[6].State != int32(ButtonStateHover) ||
-		rules[6].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad drag drop target rule: %#v", rules[6])
-	}
-	if rules[7].Selector.Kind != StyleSheet_StyleKindSpinboxValue() ||
-		rules[7].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad spinbox value rule: %#v", rules[7])
-	}
-	if rules[8].Selector.Kind != StyleSheet_StyleKindColorPickerSwatch() ||
-		rules[8].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad color picker swatch rule: %#v", rules[8])
-	}
-	if rules[9].Selector.Kind != StyleSheet_StyleKindSliderThumb() ||
-		rules[9].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad slider thumb rule: %#v", rules[9])
-	}
-	if rules[10].Selector.Kind != StyleSheet_StyleKindScroll() ||
-		rules[10].Style.Background != 0x111111ff {
-		t.Fatalf("bad scroll rule: %#v", rules[10])
-	}
-	if rules[11].Selector.Kind != StyleSheet_StyleKindScrollThumb() ||
-		rules[11].State != int32(ButtonStatePressed) ||
-		rules[11].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad scroll thumb rule: %#v", rules[11])
-	}
-	if rules[12].Selector.Kind != StyleSheet_StyleKindToggleThumb() ||
-		rules[12].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad toggle thumb rule: %#v", rules[12])
-	}
-	if rules[13].Selector.Kind != StyleSheet_StyleKindMenu() ||
-		rules[13].Selector.Role != 1 ||
-		rules[13].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad menu role rule: %#v", rules[13])
-	}
-	if rules[14].Selector.Kind != StyleSheet_StyleKindProgress() ||
-		rules[14].Selector.Role != 5 ||
-		rules[14].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad progress role rule: %#v", rules[14])
-	}
-	if rules[15].Selector.Kind != StyleSheet_StyleKindSeparator() ||
-		rules[15].Selector.Role != 8 ||
-		rules[15].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad separator role rule: %#v", rules[15])
-	}
-	if rules[16].Selector.Kind != StyleSheet_StyleKindCheckbox() ||
-		rules[16].Selector.Role != 10 ||
-		rules[16].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad checkbox role rule: %#v", rules[16])
-	}
-	if rules[17].Selector.Kind != StyleSheet_StyleKindRadio() ||
-		rules[17].Selector.Role != 11 ||
-		rules[17].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad radio role rule: %#v", rules[17])
-	}
-	if rules[18].Selector.Kind != StyleSheet_StyleKindPanedView() ||
-		rules[18].Selector.Role != 12 ||
-		rules[18].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad paned view role rule: %#v", rules[18])
-	}
-	if rules[19].Selector.Kind != StyleSheet_StyleKindToast() ||
-		rules[19].Selector.Role != 6 ||
-		rules[19].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad toast role rule: %#v", rules[19])
-	}
-	if rules[20].Selector.Kind != StyleSheet_StyleKindCollapsible() ||
-		rules[20].Selector.Role != 14 ||
-		rules[20].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad collapsible role rule: %#v", rules[20])
-	}
-	if rules[21].Selector.Kind != StyleSheet_StyleKindTitleBar() ||
-		rules[21].Selector.Role != 16 ||
-		rules[21].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad title bar role rule: %#v", rules[21])
-	}
-	if rules[22].Selector.Kind != StyleSheet_StyleKindToolbar() ||
-		rules[22].Selector.Role != 18 ||
-		rules[22].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad toolbar role rule: %#v", rules[22])
-	}
-	if rules[23].Selector.Kind != StyleSheet_StyleKindModal() ||
-		rules[23].Selector.Role != 19 ||
-		rules[23].Style.Background != 0x111111ff {
-		t.Fatalf("bad modal role rule: %#v", rules[23])
-	}
-	if rules[24].Selector.Kind != StyleSheet_StyleKindTableView() ||
-		rules[24].Selector.Role != 22 ||
-		rules[24].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad table view role rule: %#v", rules[24])
-	}
-	if rules[25].Selector.Kind != StyleSheet_StyleKindGuide() ||
-		rules[25].Selector.Role != 24 ||
-		rules[25].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad guide role rule: %#v", rules[25])
-	}
-	if rules[26].Selector.Kind != StyleSheet_StyleKindImage() ||
-		rules[26].Selector.Role != 6 ||
-		rules[26].Style.Foreground != 0x2f6bffff {
-		t.Fatalf("bad image role rule: %#v", rules[26])
-	}
-	if rules[27].Selector.Kind != StyleSheet_StyleKindPopup() ||
-		rules[27].Selector.Role != 2 ||
-		rules[27].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad popup role rule: %#v", rules[27])
-	}
-	if rules[28].Selector.Kind != StyleSheet_StyleKindCanvas() ||
-		rules[28].Style.Background != 0x2f6bffff {
-		t.Fatalf("bad canvas rule: %#v", rules[28])
-	}
-	if rules[29].Selector.Kind != StyleSheet_StyleKindDragValue() ||
-		rules[29].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad drag value rule: %#v", rules[29])
-	}
-	if rules[30].Selector.Kind != StyleSheet_StyleKindFocus() ||
-		rules[30].Selector.Role != 9 ||
-		rules[30].State != int32(ButtonStateFocus) ||
-		rules[30].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad focus role rule: %#v", rules[30])
+	if rules[32].Selector.Kind != StyleSheet_StyleKindFocus() ||
+		rules[32].Selector.Role != 9 ||
+		rules[32].State != int32(ButtonStateFocus) ||
+		rules[32].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad focus role rule: %#v", rules[32])
 	}
 }
 

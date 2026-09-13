@@ -105,6 +105,12 @@ kss_ident_char(char c)
 }
 
 static bool
+kss_selector_ident_char(char c)
+{
+    return isalnum((unsigned char)c) || c == '_' || c == '-';
+}
+
+static bool
 kss_read_ident(KssParser *p, char *out, size_t out_size)
 {
     size_t len = 0;
@@ -113,6 +119,24 @@ kss_read_ident(KssParser *p, char *out, size_t out_size)
     if(!kss_ident_start(*p->cursor))
         return false;
     while(kss_ident_char(*p->cursor)) {
+        if(len + 1 < out_size)
+            out[len++] = *p->cursor;
+        p->cursor++;
+    }
+    if(out_size > 0)
+        out[len] = '\0';
+    return true;
+}
+
+static bool
+kss_read_selector_ident(KssParser *p, char *out, size_t out_size)
+{
+    size_t len = 0;
+
+    kss_skip_ws(p);
+    if(!kss_ident_start(*p->cursor))
+        return false;
+    while(kss_selector_ident_char(*p->cursor)) {
         if(len + 1 < out_size)
             out[len++] = *p->cursor;
         p->cursor++;
@@ -718,6 +742,10 @@ kss_apply_attr(KssParser *p, StyleSelector *selector)
         selector->role = mapped;
         return true;
     }
+    if(kss_ieq(name, "class")) {
+        selector->class_name = StyleClassId(value);
+        return true;
+    }
     return kss_fail(p, "unknown selector attribute '%s'", name);
 }
 
@@ -729,7 +757,7 @@ kss_parse_selector(KssParser *p, StyleRule *rule)
 
     rule->selector = StyleDefaultSelector();
     rule->state = StyleStateAny();
-    if(!kss_read_ident(p, kind, sizeof(kind)))
+    if(!kss_read_selector_ident(p, kind, sizeof(kind)))
         return kss_fail(p, "expected style selector");
     mapped = kss_style_kind(kind);
     if(mapped == -999999)
@@ -743,6 +771,14 @@ kss_parse_selector(KssParser *p, StyleRule *rule)
             p->cursor++;
             if(!kss_apply_attr(p, &rule->selector))
                 return false;
+            continue;
+        }
+        if(*p->cursor == '.') {
+            char class_name[48];
+            p->cursor++;
+            if(!kss_read_selector_ident(p, class_name, sizeof(class_name)))
+                return kss_fail(p, "expected class name after '.'");
+            rule->selector.class_name = StyleClassId(class_name);
             continue;
         }
         if(*p->cursor == ':') {
