@@ -884,9 +884,8 @@ RenderSelectable(SelectableProps selectable)
         StyleKindSelectable(), StyleAny());
     float label_inset = SelectableLabelInset(
         (float)Scale(1000) / 1000.0f, face);
-    int font = face.value.font_size > 0.0f
-        ? (int)(face.value.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(face.value.font_size + 0.5f),
+                           GetFontSize());
     SelectablePaint paint = SelectablePaintFor((SelectableSpec){
         .bounds = selectable.bounds,
         .selected = selected,
@@ -974,9 +973,8 @@ RenderCheckbox(CheckboxProps checkbox)
         });
         Style label_style = ui_unpack_style(ui_style_apply_effects_frame(
             label_frame).value);
-        int label_font = label_style.font_size > 0.0f
-            ? (int)(label_style.font_size + 0.5f)
-            : GetFontSize();
+        int label_font = ResolveFont(
+            0, (int)(label_style.font_size + 0.5f), GetFontSize());
         paint.label_color = ColorToInt(label_style.foreground);
 
         if(paint.show_state)
@@ -1066,9 +1064,8 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
             picker.disabled, 0, picker.class_name,
             StyleKindColorPickerSwatch(), StyleAny());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-        int font = style.font_size > 0.0f
-            ? (int)(style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int font = ResolveFont(0, (int)(style.font_size + 0.5f),
+                               GetSmallFontSize());
         float label_inset = ColorPickerSwatchLabelInset(
             (float)Scale(1000) / 1000.0f, frame);
         paint = ColorPickerSwatchPaintFor(layout.swatch_bounds,
@@ -1153,9 +1150,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
     StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
         ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
         StyleKindMenu(), 1);
-    int font = base_item_style.font_size > 0.0f
-        ? (int)(base_item_style.font_size + 0.5f)
-        : GetFontSize();
+    int font = ResolveFont(0, (int)(base_item_style.font_size + 0.5f),
+                           GetFontSize());
     MenuMetrics metrics = MenuMetricsFor((float)Scale(1000) / 1000.0f,
                                          panel_frame, base_item_frame,
                                          bar_frame);
