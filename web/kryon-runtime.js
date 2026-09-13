@@ -1214,6 +1214,14 @@ function widgetTag(item) {
   }
 }
 
+function widgetHasAuthoredTag(item) {
+  const args = item.args || {};
+  if (item.meta?.tag)
+    return true;
+  return /^[a-z][a-z0-9-]*$/i.test(
+    propStringAny(args, ["dom", "dom_tag", "html_tag", "tag"]));
+}
+
 function widgetText(item) {
   const args = item.args || {};
   switch (item.name) {
@@ -1491,6 +1499,7 @@ function metaNumberOrProp(meta, name, args, props, fallback = null) {
 function webNodeFromWidget(item, index) {
   const args = item.args || {};
   const meta = item.meta || {};
+  const authoredTag = widgetHasAuthoredTag(item);
   const bounds = parseBounds(args);
   const classes = [...propClassList(args)];
   if (meta.class !== undefined && meta.class !== null)
@@ -1764,6 +1773,11 @@ function webNodeFromWidget(item, index) {
     scrollTop: 0,
     state
   };
+  Object.defineProperty(node, "__kryAuthoredTag", {
+    configurable: true,
+    enumerable: false,
+    value: authoredTag
+  });
   node.styleFacts = webNodeStyleFacts(node);
   return node;
 }
@@ -4857,9 +4871,14 @@ function normalizeWebDocumentNodes(nodes) {
   const byPath = new Map(nodes.filter(Boolean).map((node) => [node.path, node]));
   for (const node of nodes) {
     const parent = byPath.get(node?.parentPath || "");
-    if (node?.kind === "Selectable" &&
+    if (node?.kind === "Selectable" && !node.__kryAuthoredTag &&
         (parent?.kind === "Dropdown" || parent?.kind === "ListBox"))
       node.tag = "option";
+    if (node?.kind === "Selectable" && node.tag === "div" &&
+        !node.__kryAuthoredTag &&
+        (parent?.kind === "Menu" || parent?.kind === "TabBar" ||
+         parent?.kind === "TreeView"))
+      node.tag = "button";
     if (!node?.role && parent?.kind === "Menu" &&
         (node?.kind === "Button" || node?.kind === "Selectable"))
       node.role = "menuitem";

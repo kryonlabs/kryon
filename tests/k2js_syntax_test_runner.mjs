@@ -2718,6 +2718,8 @@ function fakeDocument() {
       "menuitem");
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(menuRt,
       "Page/choices/choiceTwo")).role, "menuitem");
+    assert.equal(runtime.webNodeQuery(menuRt, "Page/choices/choiceThree").tag,
+      "button");
     assert.equal(runtime.webNodeQuery(menuRt, "Page/choices/choiceThree").role,
       "menuitem");
     assert.deepEqual(runtime.webNodeRelationRefs(menuRt, "Page/choices").collectionItems,
@@ -2738,6 +2740,8 @@ function fakeDocument() {
     runtime.endFrame(treeItemRt);
     assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/branch").role,
       "treeitem");
+    assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/branch").tag,
+      "button");
     assert.equal(runtime.webNodeSnapshot(treeItemRt, "Page/tree/leaf").role,
       "treeitem");
     assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/custom").role,
@@ -2750,12 +2754,15 @@ function fakeDocument() {
     runtime.renderWebDocument(menuRt, menuTarget);
     const choices = runtime.findWebElement(menuTarget, "choices");
     const choiceOne = runtime.findWebElement(menuTarget, "choiceOne");
+    const choiceThree = runtime.findWebElement(menuTarget, "choiceThree");
     assert.equal(choices.attributes["aria-orientation"], "vertical");
     assert.equal(choices.attributes["aria-multiselectable"], "true");
     assert.equal(choiceOne.attributes["aria-level"], "2");
     assert.equal(choiceOne.attributes["aria-posinset"], "1");
     assert.equal(choiceOne.attributes["aria-setsize"], "3");
     assert.equal(choiceOne.attributes["aria-haspopup"], "menu");
+    assert.equal(choiceThree.tagName, "BUTTON");
+    assert.equal(choiceThree.attributes.role, "menuitem");
     assert.deepEqual(runtime.webDOMRelationRefs(menuTarget, "Page/choices").collectionItems,
       ["Page/choices/choiceOne", "Page/choices/choiceTwo", "Page/choices/choiceThree"]);
     assert.equal(runtime.webDOMSnapshot(menuTarget, "Page/choices/choiceThree")
@@ -2842,6 +2849,8 @@ function fakeDocument() {
       { nodeName: "tabs", path: "Page/tabs" });
     runtime.widget(nativeRt, "Button", { label: "Details" }, null,
       { nodeName: "detailsTab", path: "Page/tabs/details", parentPath: "Page/tabs" });
+    runtime.widget(nativeRt, "Selectable", { label: "Logs" }, null,
+      { nodeName: "logsTab", path: "Page/tabs/logs", parentPath: "Page/tabs" });
     runtime.widget(nativeRt, "TreeView", {}, null,
       { nodeName: "tree", path: "Page/tree" });
     runtime.widget(nativeRt, "Menu", {}, null,
@@ -2946,6 +2955,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/items/beta")
       .relationRefs.selectedCollectionOwner, "Page/items");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/details").role, "tab");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/logs").tag, "button");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/tabs/logs").role, "tab");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").valueNow, "4");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").min, "0");
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/volume").max, "10");
@@ -3012,6 +3023,7 @@ function fakeDocument() {
     const dropdownOption = runtime.findWebElement(nativeTarget, "Page/choice/alpha");
     const listOption = runtime.findWebElement(nativeTarget, "Page/items/beta");
     const tabButton = runtime.findWebElement(nativeTarget, "Page/tabs/details");
+    const tabSelectable = runtime.findWebElement(nativeTarget, "Page/tabs/logs");
     assert.equal(dropdownOption.tagName, "OPTION");
     assert.equal(dropdownOption.textContent, "Alpha");
     assert.equal(dropdownOption.attributes.value, "a");
@@ -3026,6 +3038,8 @@ function fakeDocument() {
       .relationRefs.selectedCollectionOwner, "Page/items");
     assert.equal(tabButton.tagName, "BUTTON");
     assert.equal(tabButton.attributes.role, "tab");
+    assert.equal(tabSelectable.tagName, "BUTTON");
+    assert.equal(tabSelectable.attributes.role, "tab");
     const title = runtime.findWebElement(nativeTarget, "title");
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");

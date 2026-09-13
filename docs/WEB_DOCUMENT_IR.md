@@ -351,8 +351,8 @@ The initial tag mapping is intentionally conservative:
 | `Button` | `button` |
 | `Button` under `Menu` | `button role=menuitem` |
 | `Button` under `TabBar` | `button role=tab` |
-| `Button`/`Selectable` under `TreeView` | `role=treeitem` |
-| `Selectable` under `Menu`/`TabBar` | `role=menuitem` or `role=tab` |
+| `Button`/`Selectable` under `TreeView` | `button role=treeitem` unless an explicit tag is authored |
+| `Selectable` under `Menu`/`TabBar` | `button role=menuitem` or `button role=tab` unless an explicit tag is authored |
 | clickable `Card` | `button` |
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text`, or authored `input_type`/`type` |
