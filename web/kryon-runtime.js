@@ -1748,6 +1748,7 @@ function parseKssDeclarationValue(name, value, tokens) {
     "width", "height", "min-width", "min_width", "max-width", "max_width",
     "min-height", "min_height", "max-height", "max_height",
     "gap", "font-size", "font_size", "letter-spacing", "letter_spacing",
+    "line-height", "line_height",
     "icon-size", "icon_size",
     "offset-x", "offset_x", "offset-y", "offset_y",
     "content-offset-x", "content_offset_x",
@@ -1978,8 +1979,21 @@ const webCSSPropertyNames = new Map([
   ["font_weight", "font-weight"],
   ["letter-spacing", "letter-spacing"],
   ["letter_spacing", "letter-spacing"],
+  ["line-height", "line-height"],
+  ["line_height", "line-height"],
   ["text-align", "text-align"],
   ["text_align", "text-align"],
+  ["display", "display"],
+  ["position", "position"],
+  ["overflow", "overflow"],
+  ["overflow-x", "overflow-x"],
+  ["overflow_x", "overflow-x"],
+  ["overflow-y", "overflow-y"],
+  ["overflow_y", "overflow-y"],
+  ["align-items", "align-items"],
+  ["align_items", "align-items"],
+  ["justify-content", "justify-content"],
+  ["justify_content", "justify-content"],
   ["focus", "outline-color"],
   ["focus-color", "outline-color"],
   ["focus_color", "outline-color"]
@@ -1987,7 +2001,8 @@ const webCSSPropertyNames = new Map([
 
 function webStyleCSSValue(name, value) {
   return typeof value === "number" && name !== "opacity" &&
-      name !== "font-weight" && name !== "fontWeight"
+      name !== "font-weight" && name !== "fontWeight" &&
+      name !== "line-height" && name !== "lineHeight"
     ? value + "px" : String(value);
 }
 
@@ -2466,7 +2481,15 @@ function applyResolvedWebStyle(el, style) {
   set("fontFamily", style["font-family"] ?? style.font_family);
   set("fontWeight", style["font-weight"] ?? style.font_weight);
   set("letterSpacing", style["letter-spacing"] ?? style.letter_spacing);
+  set("lineHeight", style["line-height"] ?? style.line_height);
   set("textAlign", style["text-align"] ?? style.text_align);
+  set("display", style.display);
+  set("position", style.position);
+  set("overflow", style.overflow);
+  set("overflowX", style["overflow-x"] ?? style.overflow_x);
+  set("overflowY", style["overflow-y"] ?? style.overflow_y);
+  set("alignItems", style["align-items"] ?? style.align_items);
+  set("justifyContent", style["justify-content"] ?? style.justify_content);
   set("--kry-content-offset-x", style["content-offset-x"] ?? style.content_offset_x);
   set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
   set("--kry-icon-size", style["icon-size"] ?? style.icon_size);
