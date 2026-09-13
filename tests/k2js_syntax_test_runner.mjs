@@ -2859,6 +2859,8 @@ function fakeDocument() {
       { nodeName: "toast", path: "Page/toast" });
     runtime.widget(nativeRt, "Plot", {}, null,
       { nodeName: "plot", path: "Page/plot" });
+    runtime.widget(nativeRt, "Popup", { flags: 3 }, null,
+      { nodeName: "modalPopup", path: "Page/modalPopup" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -3015,8 +3017,11 @@ function fakeDocument() {
         .find((node) => node.kind === kind)?.role),
       ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "listitem", "option", "img", "img"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Toast").ariaLive, "polite");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/modalPopup").tag, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/modalPopup").state.open, true);
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/modalPopup").role, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
-    assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Section[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
     runtime.renderWebDocument(nativeRt, nativeTarget);
     const nav = runtime.findWebElement(nativeTarget, "nav");
@@ -3071,6 +3076,7 @@ function fakeDocument() {
     const menu = runtime.findWebElement(nativeTarget, "menu");
     const toast = runtime.findWebElement(nativeTarget, "toast");
     const plot = runtime.findWebElement(nativeTarget, "plot");
+    const modalPopup = runtime.findWebElement(nativeTarget, "modalPopup");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
@@ -3177,6 +3183,9 @@ function fakeDocument() {
     assert.equal(toast.tagName, "OUTPUT");
     assert.equal(toast.attributes["aria-live"], "polite");
     assert.equal(plot.tagName, "CANVAS");
+    assert.equal(modalPopup.tagName, "DIALOG");
+    assert.equal(modalPopup.open, true);
+    assert.equal(modalPopup.attributes.open, "");
     assert.equal(toast.attributes.role, undefined);
     assert.equal(plot.attributes.role, "img");
     assert.equal(details.open, true);

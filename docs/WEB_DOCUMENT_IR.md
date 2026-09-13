@@ -340,7 +340,7 @@ The initial tag mapping is intentionally conservative:
 | `Fieldset` | `fieldset` |
 | `Collapsible` | `details` |
 | `Modal` | `dialog` |
-| `Popup` | `div` |
+| `Popup` | `div`, or `dialog` when `PopupModal` is set |
 | `Text` | `span` |
 | `Text`/other nodes with `dom_for`/`html_for` | `label` |
 | `Icon` | `span role=img` |

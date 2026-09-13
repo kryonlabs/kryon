@@ -1153,7 +1153,7 @@ function widgetTag(item) {
   case "Disabled":
     return "fieldset";
   case "Popup":
-    return "div";
+    return (propNumber(args, "flags", 0) & 2) !== 0 ? "dialog" : "div";
   case "Heading":
     return "h" + Math.max(1, Math.min(6, propNumber(args, "level", 2)));
   case "Paragraph":
@@ -1524,6 +1524,8 @@ function webNodeFromWidget(item, index) {
   };
   if (item.name === "Disabled")
     state.disabled = numberValue(args, 0) !== 0;
+  if (item.name === "Popup")
+    state.open = handlePopup(args);
   const node = {
     index,
     kind: item.name,
