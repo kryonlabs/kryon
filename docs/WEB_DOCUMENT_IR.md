@@ -352,7 +352,7 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `inert`, `autoCapitalize`, `enterKeyHint`,
-`download`, `formNoValidate`, `noValidate`,
+`download`, `formNoValidate`, `noValidate`, `clickable`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
 `multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,

@@ -269,6 +269,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   download: "",
   formNoValidate: false,
   noValidate: false,
+  clickable: false,
   popover: "",
   popoverTarget: "Scene/root/search_label",
   popoverTargetAction: "toggle",
@@ -1105,7 +1106,9 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").tag, "nav");
     assert.equal(runtime.webNodeQuery(nativeRt, "NavigationBar").role, "");
     assert.equal(runtime.webNodeQuery(nativeRt, "Card").tag, "div");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").tag, "button");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Card[clickable=true]").tag, "button");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").clickable, true);
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Page/actionCard")).clickable, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");

@@ -117,6 +117,7 @@ export interface WebDocumentNode {
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
+  clickable: boolean;
   popover: string;
   popoverTarget: string;
   popoverTargetAction: string;
@@ -277,6 +278,7 @@ export interface WebNodeStyleFacts {
   download: string;
   formNoValidate: boolean;
   noValidate: boolean;
+  clickable: boolean;
   popover: string;
   popoverTarget: string;
   popoverTargetAction: string;
