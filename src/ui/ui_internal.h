@@ -1,7 +1,8 @@
 #ifndef UI_INTERNAL_H
 #define UI_INTERNAL_H
 
-#include "ui.h"
+#include "ui_draw.h"
+#include "ui_tree.h"
 #include "ui_clip.h"
 #include "theme.h"
 #include "ui_color.h"
