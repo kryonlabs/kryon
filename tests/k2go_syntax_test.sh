@@ -326,7 +326,7 @@ App :: () #ui {
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     Checkbox((CheckboxProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
     Image(choice_image)
-    Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = WHITE, .image_fit = choice_image.fit, .id = 51})
+    Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_fit = choice_image.fit, .id = 51})
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section"})
     Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
     tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})

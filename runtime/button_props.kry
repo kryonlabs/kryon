@@ -28,7 +28,6 @@ ButtonProps :: struct {
     image_source: Rectangle
     image_origin: Vector2
     image_rotation: float
-    image_tint: Color
     image_fit: i32
     swatch: bool
     swatch_color: Color

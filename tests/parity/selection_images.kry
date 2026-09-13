@@ -29,7 +29,7 @@ selection_images_frame :: () #ui {
         Checkbox((CheckboxProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
         Image(image)
         image.bounds = (Rectangle){140,100,96,64}
-        Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_tint = WHITE, .image_fit = image.fit, .id = 952})
+        Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_fit = image.fit, .id = 952})
         Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section"})
         tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,1}}
         Button((ButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})

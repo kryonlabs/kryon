@@ -157,7 +157,7 @@ ui_button_has_image(ButtonProps props)
 }
 
 static void
-ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds)
+ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds, Color tint)
 {
     ImageProps image;
 
@@ -173,7 +173,7 @@ ui_draw_button_image(ButtonProps props, Rectangle fallback_bounds)
     image.rotation = props.image_rotation;
     image.fit = (ImageFit)props.image_fit;
     ImageTextureTinted(LoadImageTexture(image.asset_path), image,
-                       props.image_tint.a != 0 ? props.image_tint : WHITE);
+                       tint.a != 0 ? tint : WHITE);
 }
 
 static void
@@ -376,7 +376,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
                     GetTime() * 1000.0, button.disclosure,
                     ui_surface_painter, ui_painter);
         ui_draw_button_swatch(frame.props, frame.props.bounds);
-        ui_draw_button_image(frame.props, frame.props.bounds);
+        ui_draw_button_image(frame.props, frame.props.bounds, text);
         PopTextFont(typeface_token);
         if(handle_input)
             EndWidget(&widget);
@@ -416,7 +416,7 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     typeface_token = PushTextFont(typeface);
     ui_draw_button_content(&button, draw_bounds, font, text);
     PopTextFont(typeface_token);
-    ui_draw_button_image(button.props, draw_bounds);
+    ui_draw_button_image(button.props, draw_bounds, text);
     if(handle_input)
         EndWidget(&widget);
     return handle_input

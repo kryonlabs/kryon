@@ -417,7 +417,6 @@ const measurement = {
   image_source: { x: 0, y: 0, width: 0, height: 0 },
   image_origin: { x: 0, y: 0 },
   image_rotation: 0,
-  image_tint: color,
   image_fit: 0,
   swatch: false,
   swatch_color: color,

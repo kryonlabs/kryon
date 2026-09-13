@@ -47,7 +47,6 @@ typedef struct ButtonProps {
     Rectangle image_source;
     Vector2 image_origin;
     float image_rotation;
-    Color image_tint;
     int32_t image_fit;
     bool swatch;
     Color swatch_color;

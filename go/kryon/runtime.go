@@ -1608,23 +1608,23 @@ func (r *runtime) surfaceButtonAt(props ButtonProps, surfaceBounds Rectangle, di
 		frame.Color = props.SwatchColor
 	}
 	r.record(frame)
-	if image, tint, ok := buttonImageProps(frame.Button.Props); ok {
+	if image, ok := buttonImageProps(frame.Button.Props); ok {
+		tint := unpackRGBA(frame.Button.Foreground)
+		if tint.A == 0 {
+			tint = White
+		}
 		r.record(FrameOp{Kind: FrameOpImage, Bounds: image.Bounds, Text: image.AssetPath, Color: tint, Disabled: frame.Disabled})
 	}
 	return pressed
 }
 
-func buttonImageProps(props ButtonProps) (ImageProps, Color, bool) {
+func buttonImageProps(props ButtonProps) (ImageProps, bool) {
 	if props.ImageAssetPath == "" && props.ImageBounds.Width <= 0 && props.ImageBounds.Height <= 0 {
-		return ImageProps{}, Color{}, false
+		return ImageProps{}, false
 	}
 	bounds := props.ImageBounds
 	if bounds.Width <= 0 && bounds.Height <= 0 {
 		bounds = props.Bounds
-	}
-	tint := props.ImageTint
-	if tint.A == 0 {
-		tint = White
 	}
 	return ImageProps{
 		AssetPath: props.ImageAssetPath,
@@ -1633,7 +1633,7 @@ func buttonImageProps(props ButtonProps) (ImageProps, Color, bool) {
 		Origin:    props.ImageOrigin,
 		Rotation:  props.ImageRotation,
 		Fit:       ImageFit(props.ImageFit),
-	}, tint, true
+	}, true
 }
 
 // Resolve input and animation once. A composed button uses this same frame

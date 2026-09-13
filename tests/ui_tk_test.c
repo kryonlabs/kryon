@@ -1606,7 +1606,7 @@ test_focusable_image_keyboard_navigation(void)
         .bounds=image.bounds,.id=621,.image_asset_path=image.asset_path,
         .image_bounds=image.bounds,.image_source=image.source,
         .image_origin=image.origin,.image_rotation=image.rotation,
-        .image_tint=WHITE,.image_fit=image.fit,
+        .image_fit=image.fit,
     });
     Button((ButtonProps){
         .bounds={10,90,80,30},.id=622,.label="Color",
@@ -1631,7 +1631,6 @@ test_focusable_image_keyboard_navigation(void)
                   .image_source=image.source,
                   .image_origin=image.origin,
                   .image_rotation=image.rotation,
-                  .image_tint=WHITE,
                   .image_fit=image.fit,
               }),1);
     EndInterfaceFrame();

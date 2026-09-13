@@ -28,7 +28,6 @@ type ButtonProps struct {
 	ImageSource    Rectangle
 	ImageOrigin    Vector2
 	ImageRotation  float32
-	ImageTint      Color
 	ImageFit       int32
 	Swatch         bool
 	SwatchColor    Color

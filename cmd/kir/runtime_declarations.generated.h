@@ -31,7 +31,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    image_source: Rectangle\n"
         "    image_origin: Vector2\n"
         "    image_rotation: float\n"
-        "    image_tint: Color\n"
         "    image_fit: i32\n"
         "    swatch: bool\n"
         "    swatch_color: Color\n"
