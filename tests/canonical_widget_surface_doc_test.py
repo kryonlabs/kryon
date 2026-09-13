@@ -29,8 +29,6 @@ NATIVE_SCOPE_EXPORT_ALLOWLIST = {
 ROLE_COMPAT_EXPORTS = set()
 
 GO_COMPAT_EXPORTS = {
-    "BeginButton",
-    "BeginCard",
     "BeginDisabled",
     "BeginPopup",
     "BeginScroll",

@@ -308,8 +308,6 @@ those surfaces become available.
 
 | Export | Replacement concept | Removal note |
 |---|---|---|
-| `BeginButton` | `Button` block | Lowered host entry for composed button content. |
-| `BeginCard` | `Card` block | Lowered host entry for composed card content. |
 | `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
 | `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
 | `BeginScroll` | `Scroll` block | Lowered host entry for scroll content. |
@@ -550,6 +548,7 @@ Recent retained-tree public C cleanup:
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | `DragScalar*`, `DragWhole*`, `SliderScalar*`, `SliderWhole*`, neutral fixture values |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WIDGET_MOVABLE`/`WIDGET_RESIZABLE`/`WIDGET_READONLY` | Internal inspect registration; public code uses canonical widget declarations. |
 | `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
+| Go package-level `BeginButton`, `BeginCard` | Removed; public Go code uses `kr.Button` and `kr.Card`. Runtime methods remain internal lowering support until composed block lowering is canonicalized. |
 | `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
 | direct `.kry` `BeginScroll`/`EndScroll` and `BeginTableCell`/`EndTableCell` calls | `Scroll` and `TableCell` lexical blocks |
 | direct `.kry` `BeginCanvas`/`EndCanvas` calls | `Canvas` lexical block |

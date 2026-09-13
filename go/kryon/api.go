@@ -259,15 +259,14 @@ func EndTableCell() { active().EndTableCell() }
 func BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	return active().BeginScroll(bounds, contentHeight, offset)
 }
-func Button(props ButtonProps) bool                    { return active().Button(props) }
-func BeginButton(props ButtonProps)                    { active().BeginButton(props) }
-func Selectable(props SelectableProps) bool            { return active().Selectable(props) }
-func Checkbox(props CheckboxProps) bool                { return active().Checkbox(props) }
-func Bullet(bounds Rectangle)                          { active().Bullet(bounds) }
-func Separator(props SeparatorProps)                   { active().Separator(props) }
-func DragDrop(props DragDropProps) bool                { return active().DragDrop(props) }
-func ColorPicker(props ColorPickerProps) bool          { return active().ColorPicker(props) }
-func TabBar(props TabBarProps) int32                   { return active().TabBar(props) }
+func Button(props ButtonProps) bool           { return active().Button(props) }
+func Selectable(props SelectableProps) bool   { return active().Selectable(props) }
+func Checkbox(props CheckboxProps) bool       { return active().Checkbox(props) }
+func Bullet(bounds Rectangle)                 { active().Bullet(bounds) }
+func Separator(props SeparatorProps)          { active().Separator(props) }
+func DragDrop(props DragDropProps) bool       { return active().DragDrop(props) }
+func ColorPicker(props ColorPickerProps) bool { return active().ColorPicker(props) }
+func TabBar(props TabBarProps) int32          { return active().TabBar(props) }
 func Progress(props ProgressProps) {
 	active().Progress(props)
 }
@@ -329,7 +328,6 @@ func Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	active().Paragraph(spec, x, y)
 }
 func Card(props CardProps) bool     { return active().Card(props) }
-func BeginCard(props CardProps)     { active().BeginCard(props) }
 func Toggle(props ToggleProps) bool { return active().Toggle(props) }
 func Modal(props ModalProps) int32 {
 	return active().Modal(props)
