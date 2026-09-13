@@ -2370,9 +2370,8 @@ RenderImage(ImageProps image)
                           .class_name = image.class_name},
             ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
             StyleKindImage(), 6).value);
-        int label_font = label_style.font_size > 0.0f
-            ? (int)(label_style.font_size + 0.5f)
-            : GetSmallFontSize();
+        int label_font = ResolveFont(
+            0, (int)(label_style.font_size + 0.5f), GetSmallFontSize());
         fallback = image_style.background;
         DrawRectangleRec(image.bounds, fallback);
         DrawRectangleLinesEx(image.bounds, image_style.border_width,
