@@ -1681,7 +1681,8 @@ const webStyleLayers = {
 };
 
 const webKssColorProperties = new Set([
-  "background", "foreground", "border", "focus", "background-end"
+  "background", "foreground", "border", "focus", "background-end",
+  "accent-color", "caret-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -1710,7 +1711,8 @@ const webKssLiteralProperties = new Set([
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
   "background-size", "background-position", "background-repeat", "visibility",
   "transition", "transition-duration", "filter", "backdrop-filter",
-  "cursor", "pointer-events", "border-style", "outline-style", "box-shadow"
+  "cursor", "pointer-events", "appearance", "user-select", "resize",
+  "border-style", "outline-style", "box-shadow"
 ]);
 
 function stripKssComments(source) {
@@ -1976,6 +1978,8 @@ export function webStyleSelectorToCSS(selector) {
 const webCSSPropertyNames = new Map([
   ["foreground", "color"],
   ["background", "background"],
+  ["accent-color", "accent-color"],
+  ["caret-color", "caret-color"],
   ["border", "border-color"],
   ["border-width", "border-width"],
   ["border-top-width", "border-top-width"],
@@ -2057,6 +2061,9 @@ const webCSSPropertyNames = new Map([
   ["backdrop-filter", "backdrop-filter"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
+  ["appearance", "appearance"],
+  ["user-select", "user-select"],
+  ["resize", "resize"],
   ["outline-width", "outline-width"],
   ["outline-style", "outline-style"],
   ["box-shadow", "box-shadow"],
@@ -2579,6 +2586,8 @@ function applyResolvedWebStyle(el, style) {
       backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
     set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
   set("color", style.foreground);
+  set("accentColor", style["accent-color"]);
+  set("caretColor", style["caret-color"]);
   set("borderColor", style.border);
   set("borderWidth", style["border-width"]);
   set("borderTopWidth", style["border-top-width"]);
@@ -2664,6 +2673,9 @@ function applyResolvedWebStyle(el, style) {
   set("backdropFilter", style["backdrop-filter"]);
   set("cursor", style.cursor);
   set("pointerEvents", style["pointer-events"]);
+  set("appearance", style.appearance);
+  set("userSelect", style["user-select"]);
+  set("resize", style.resize);
   set("outlineWidth", style["outline-width"]);
   set("outlineStyle", style["outline-style"]);
   set("boxShadow", style["box-shadow"]);
