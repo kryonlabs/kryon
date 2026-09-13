@@ -23,6 +23,10 @@ Text {
   font-size: 21;
   typeface: test-kss-semibold;
 }
+Text.accent {
+  foreground: #654321;
+  font-size: 19;
+}
 `, "Text", "") {
 		t.Fatal("style pack did not register")
 	}
@@ -30,10 +34,11 @@ Text {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.BeginFrame()
 	r.Text(TextProps{Text: "styled", Wrap: TextWrapNone})
+	r.Text(TextProps{Text: "classed", ClassName: StyleClassID("accent"), Wrap: TextWrapNone})
 	r.Text(TextProps{Text: "explicit", Color: Color{0xaa, 0xbb, 0xcc, 0xff}, Wrap: TextWrapNone})
 	r.EndFrame()
 
-	var styled, explicit *FrameOp
+	var styled, classed, explicit *FrameOp
 	for i := range r.ops {
 		if r.ops[i].Kind != FrameOpText {
 			continue
@@ -41,6 +46,8 @@ Text {
 		switch r.ops[i].Text {
 		case "styled":
 			styled = &r.ops[i]
+		case "classed":
+			classed = &r.ops[i]
 		case "explicit":
 			explicit = &r.ops[i]
 		}
@@ -48,6 +55,10 @@ Text {
 	if styled == nil || styled.Color != (Color{0x12, 0x34, 0x56, 0xff}) ||
 		styled.FontSize != 21 || styled.FontID != id {
 		t.Fatalf("text did not use KSS: %#v", styled)
+	}
+	if classed == nil || classed.Color != (Color{0x65, 0x43, 0x21, 0xff}) ||
+		classed.FontSize != 19 || classed.FontID != id {
+		t.Fatalf("text class selector did not use KSS: %#v", classed)
 	}
 	if explicit == nil || explicit.Color != (Color{0xaa, 0xbb, 0xcc, 0xff}) {
 		t.Fatalf("explicit text color did not win during migration: %#v", explicit)
