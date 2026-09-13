@@ -91,6 +91,16 @@ try {
     path: "Page/article/amount",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Fieldset", {}, null, {
+    nodeName: "options",
+    path: "Page/article/options",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "Checkbox", { checked: true }, null, {
+    nodeName: "emailOptIn",
+    path: "Page/article/options/email",
+    parentPath: "Page/article/options"
+  });
   kryon.widget(rt, "ListBox", {}, null, {
     nodeName: "choices",
     path: "Page/article/choices",
@@ -341,6 +351,13 @@ try {
     "article snapshot error relation missing");
   assert(root.kryRelationRefs("article-ref").flowTo.join(" ") === "Page/article/save",
     "root flow relation refs missing");
+  assert(kryon.webDOMRelations(target, "emailOptIn").groupOwner.ref === "Page/article/options",
+    "fieldset group owner relation missing");
+  assert(kryon.webDOMRelationRefs(target, "options").groupMembers
+    .join(" ") === "Page/article/options/email",
+    "fieldset group member relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "emailOptIn").relationRefs.groupOwner === "Page/article/options",
+    "fieldset group owner snapshot missing");
   assert(kryon.webDOMRelations(target, "choiceBeta").activeDescendantOf
     .map((object) => object.ref).join(" ") === "Page/article/choiceSearch",
     "active descendant reverse relation missing");

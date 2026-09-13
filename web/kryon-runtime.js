@@ -6174,10 +6174,49 @@ function webDOMScopedHeaderList(target, node, scope) {
     .filter((object) => expected.has(String(object?.node?.scope || "").toLowerCase()));
 }
 
+function webNodeIsSemanticGroup(node) {
+  return !!node && (String(node.role || "").toLowerCase() === "group" ||
+    implicitRole(node) === "group");
+}
+
+function webDOMGroupOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return null;
+  let parentPath = node.parentPath || "";
+  while (parentPath && parentPath !== node.path) {
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeIsSemanticGroup(parent))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMGroupMembers(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !webNodeIsSemanticGroup(node))
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node)
+      continue;
+    const owner = webDOMGroupOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMRelationsForNode(target, node) {
   if (!node)
     return null;
   return {
+    groupOwner: webDOMGroupOwner(target, node),
+    groupMembers: webDOMGroupMembers(target, node),
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     describes: webDOMReverseRelationList(target, node, "ariaDescribedBy"),
     details: webDOMRelationList(target, node.ariaDetails)[0] || null,
@@ -7402,6 +7441,8 @@ function webDOMRelationRefsForRelations(relations) {
     labelFor: relations?.labelFor?.ref || "",
     formOwner: relations?.formOwner?.ref || "",
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
+    groupOwner: relations?.groupOwner?.ref || "",
+    groupMembers: (relations?.groupMembers || []).map((relation) => relation.ref),
     activeDescendant: relations?.activeDescendant?.ref || "",
     activeDescendantOf: (relations?.activeDescendantOf || []).map((relation) => relation.ref),
     popoverTarget: relations?.popoverTarget?.ref || "",
@@ -8028,6 +8069,30 @@ function webNodeScopedHeaderList(rt, node, scope) {
     .filter((header) => expected.has(String(header?.scope || "").toLowerCase()));
 }
 
+function webNodeGroupOwner(rt, node) {
+  if (!rt || !node)
+    return null;
+  let parent = webNodeParent(rt, node.path);
+  while (parent) {
+    if (webNodeIsSemanticGroup(parent))
+      return parent;
+    parent = webNodeParent(rt, parent.path);
+  }
+  return null;
+}
+
+function webNodeGroupMembers(rt, node) {
+  if (!rt || !webNodeIsSemanticGroup(node))
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node)
+      return false;
+    const owner = webNodeGroupOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
 function webNodeRefs(nodes) {
   return (nodes || []).map((node) => webNodeRef(node)).filter(Boolean);
 }
@@ -8051,6 +8116,8 @@ function webNodeRelationsForNode(rt, node) {
   if (!node)
     return null;
   return {
+    groupOwner: webNodeGroupOwner(rt, node),
+    groupMembers: webNodeGroupMembers(rt, node),
     describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
     describes: webNodeReverseRelationList(rt, node, "ariaDescribedBy"),
     details: webNodeRelationList(rt, node.ariaDetails)[0] || null,
@@ -8112,6 +8179,8 @@ function webNodeRelationRefsForNode(rt, node) {
       webNodeRelationList(rt, node.ariaLabelledBy),
       webNodeReverseRelationList(rt, node, "htmlFor")
     ),
+    groupOwner: webNodeRef(webNodeGroupOwner(rt, node)) || "",
+    groupMembers: webNodeRefs(webNodeGroupMembers(rt, node)),
     activeDescendant: webNodeRef(webNodeRelationList(rt, node.ariaActiveDescendant)[0]) || "",
     activeDescendantOf: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaActiveDescendant")),
     popoverTarget: webNodeRef(webNodeRelationList(rt, node.popoverTarget)[0]) || "",

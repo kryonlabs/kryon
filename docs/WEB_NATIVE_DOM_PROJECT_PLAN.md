@@ -73,6 +73,8 @@ the browser receives normal elements, attributes, CSS, and events.
   accessibility facts.
 - Mounted table relationship facts classify direct row/column headers and
   row-group/column-group headers for inspectors and browser DOM snapshots.
+- Semantic group relationship facts expose `groupOwner` and `groupMembers` for
+  controls inside native or ARIA groups.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
@@ -197,7 +199,7 @@ the browser receives normal elements, attributes, CSS, and events.
 - Grow KSS property coverage for web CSS export in lockstep with KSS language
   support, with tests for each property and state selector.
 - Add more semantic relationship facts where widgets need them beyond current
-  table header and row/column group coverage.
+  table header, row/column group, and semantic group coverage.
 - Expand browser-backed integration tests beyond the current smoke harness,
   keeping the fake DOM tests as fast contract tests.
 

@@ -2239,6 +2239,8 @@ function fakeDocument() {
       { nodeName: "actionCard", path: "Page/actionCard" });
     runtime.widget(nativeRt, "Fieldset", {}, null,
       { nodeName: "fieldset", path: "Page/fieldset" });
+    runtime.widget(nativeRt, "Checkbox", { checked: true }, null,
+      { nodeName: "fieldsetAgree", path: "Page/fieldset/agree", parentPath: "Page/fieldset" });
     runtime.widget(nativeRt, "Collapsible", {}, null,
       { nodeName: "autoDetails", path: "Page/autoDetails" });
     runtime.widget(nativeRt, "Modal", {}, null,
@@ -2350,6 +2352,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").clickable, true);
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Page/actionCard")).clickable, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
+    assert.equal(runtime.webNodeRelations(nativeRt, "fieldsetAgree").groupOwner.path,
+      "Page/fieldset");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Fieldset").groupMembers,
+      ["Page/fieldset/agree"]);
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -2448,6 +2454,7 @@ function fakeDocument() {
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
+    const fieldsetAgree = runtime.findWebElement(nativeTarget, "fieldsetAgree");
     const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
     const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
     const email = runtime.findWebElement(nativeTarget, "email");
@@ -2483,6 +2490,11 @@ function fakeDocument() {
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");
+    assert.equal(fieldsetAgree.tagName, "INPUT");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "fieldsetAgree").groupOwner.ref,
+      "Page/fieldset");
+    assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.groupMembers,
+      ["Page/fieldset/agree"]);
     assert.equal(autoDetails.tagName, "DETAILS");
     assert.equal(autoDetails.open, false);
     assert.equal(autoDialog.tagName, "DIALOG");
