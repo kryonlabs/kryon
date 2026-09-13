@@ -154,7 +154,7 @@ BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float,
     count: i32 = row.count
     if count < 0 { count = 0 }
     icon_size: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleIconSize, action.value.icon_size, 24.0, scale, false)
+        (u32)StyleIconSize, action.value.icon_size, 24.0, scale, true)
     icon_padding: i32 = ToolbarStyleMetric(action.value.fields,
         (u32)StylePaddingX, action.value.padding_x, 10.0, scale, true)
     gap: i32 = ToolbarStyleMetric(action.value.fields,
@@ -164,7 +164,7 @@ BottomIconRowLayoutForStyle :: (row: BottomIconRowProps, scale: float,
     bottom_margin: i32 = ToolbarStyleMetric(bar.value.fields,
         (u32)StylePaddingY, bar.value.padding_y, 6.0, scale, true)
     min_icon_size: i32 = ToolbarStyleMetric(action.value.fields,
-        (u32)StyleContentOffset, action.value.offset_x, 16.0, scale, false)
+        (u32)StyleContentOffset, action.value.offset_x, 16.0, scale, true)
     min_icon_padding: i32 = ToolbarStyleMetric(action.value.fields,
         (u32)StyleContentOffset, action.value.offset_y, 6.0, scale, true)
     min_gap: i32 = ToolbarStyleMetric(bar.value.fields,

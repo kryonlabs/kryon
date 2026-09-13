@@ -458,7 +458,7 @@ func Toolbar_BottomIconRowLayoutForStyle(row BottomIconRowProps, scale float32, 
 	var value_12 float32 = action.Value.IconSize
 	var value_13 float32 = 24.0
 	var value_14 float32 = scale
-	var value_15 bool = false
+	var value_15 bool = true
 	var value_16 int32 = Toolbar_ToolbarStyleMetric(value_9, value_11, value_12, value_13, value_14, value_15)
 	var icon_size int32 = value_16
 	var value_17 uint32 = action.Value.Fields
@@ -503,7 +503,7 @@ func Toolbar_BottomIconRowLayoutForStyle(row BottomIconRowProps, scale float32, 
 	var value_52 float32 = action.Value.OffsetX
 	var value_53 float32 = 16.0
 	var value_54 float32 = scale
-	var value_55 bool = false
+	var value_55 bool = true
 	var value_56 int32 = Toolbar_ToolbarStyleMetric(value_49, value_51, value_52, value_53, value_54, value_55)
 	var min_icon_size int32 = value_56
 	var value_57 uint32 = action.Value.Fields

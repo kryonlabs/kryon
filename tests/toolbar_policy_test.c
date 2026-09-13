@@ -82,6 +82,21 @@ test_bottom_icon_row_layout(void)
     assert(layout.start_x == 93);
     assert(layout.y == 198);
     assert(second.x == 141.0f);
+
+    bar.value.padding_y = 0.0f;
+    bar.value.gap = 0.0f;
+    action.value.padding_x = 0.0f;
+    action.value.icon_size = 0.0f;
+    action.value.offset_x = 0.0f;
+    action.value.offset_y = 0.0f;
+    layout = BottomIconRowLayoutForStyle(props, 1.0f, bar, action);
+    second = BottomIconRowButtonBoundsFor(layout, 1);
+    assert(layout.button_width == 0);
+    assert(layout.icon_size == 0);
+    assert(layout.icon_padding == 0);
+    assert(layout.gap == 0);
+    assert(layout.y == 240);
+    assert(second.width == 0.0f);
 }
 
 static void
