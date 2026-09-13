@@ -667,6 +667,57 @@ grep -q '"path": "DirectWebNodes/viewport"' "$direct_web_out"
 grep -q 'const \$bounds = kryon.copyValue' "$direct_web_out"
 grep -q 'let visible_width = kryon.copyValue(viewport.width)' "$direct_web_out"
 
+cat > "$work/src/native_alias_blocks.kry" <<'EOF'
+#import "kryon.h"
+NativeAliasBlocks :: () #ui {
+    Article story: {
+        class = "feature"
+        Text((TextProps){.text="Story"})
+    }
+    Figure chart: {
+        Figcaption caption: {
+            Text((TextProps){.text="Chart"})
+        }
+    }
+    Table grid: {
+        TableCaption caption: {
+            Text((TextProps){.text="Totals"})
+        }
+        TableHead head: {
+            TableRow labels: {
+                Text((TextProps){.text="Name"})
+            }
+        }
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/native_alias_blocks.kry"
+native_alias_blocks_out="$work/out/src/native_alias_blocks.js"
+grep -q '"nodeName": "story"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/story"' "$native_alias_blocks_out"
+grep -q '"class": "feature"' "$native_alias_blocks_out"
+grep -q '"nodeName": "chart"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/chart/caption"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/grid/head/labels"' "$native_alias_blocks_out"
+node --input-type=module - "$native_alias_blocks_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.NativeAliasBlocks_NativeAliasBlocks(rt, module.createState(), {});
+const frame = runtime.webDocumentFrame(rt);
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/story").tag, "article");
+assert.equal(runtime.webNodeQuery(rt, ".feature").path, "NativeAliasBlocks/story");
+assert.equal(runtime.webNodeChildren(rt, "NativeAliasBlocks/story")[0].text, "Story");
+assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/chart/caption").captionOwner.path,
+  "NativeAliasBlocks/chart");
+assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/grid/caption").captionOwner.path,
+  "NativeAliasBlocks/grid");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/grid/head/labels").tag, "tr");
+assert.ok(frame.nodes.every((node) => node.sourcePath === "src/native_alias_blocks.kry"));
+EOF
+
 cat > "$work/src/canvas_block_nodes.kry" <<'EOF'
 #import "kryon.h"
 state {
@@ -1251,7 +1302,6 @@ DirectRuntimeNodes :: () #ui {
     OrderedList()
     Option()
     Output()
-    Picture()
     Pre()
     Quote()
     Samp()
@@ -1268,7 +1318,6 @@ DirectRuntimeNodes :: () #ui {
     Table()
     TableBody()
     TableCaption()
-    TableCell()
     TableColumn()
     TableColumnGroup()
     TableFoot()
@@ -1288,7 +1337,7 @@ DirectRuntimeNodes :: () #ui {
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_runtime_nodes.kry"
 direct_runtime_out="$work/out/src/direct_runtime_nodes.js"
-for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbr Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Col ColGroup Data Del Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label List ListItem Main Mark Meter Nav Navigation OrderedList Option Output Picture Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table TableBody TableCaption TableCell TableColumn TableColumnGroup TableFoot TableHead TableRow Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video; do
+for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbr Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Col ColGroup Data Del Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label List ListItem Main Mark Meter Nav Navigation OrderedList Option Output Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video; do
     grep -Eq "\"path\": \"DirectRuntimeNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_runtime_out"
 done
 awk '/kryon\.widget\(\$rt,/ && $0 !~ /"path": "DirectRuntimeNodes\// { missing=1 } END { exit missing }' "$direct_runtime_out"

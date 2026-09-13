@@ -38,6 +38,10 @@ the browser receives normal elements, attributes, CSS, and events.
   surface, so expression-backed `Article(...)`, `Form(...)`, `Table(...)`, and
   related DOM widgets get compiler-owned Web Document metadata instead of
   falling through as opaque logic calls.
+- Named browser-native alias blocks such as `Article story: { ... }`,
+  `Figure chart: { ... }`, and `Table grid: { ... }` emit compiler-owned Web
+  Document nodes, preserving source names, paths, DOM metadata, and child
+  nesting for KSS and browser DOM tooling.
 - Browser-backed Web Document smoke coverage now exercises native elements,
   KSS inline and installed CSS styling, selector lookup, event decoration, table
   header relationships, form ownership, numeric input range facts, and source
@@ -96,7 +100,7 @@ the browser receives normal elements, attributes, CSS, and events.
   `Details`, `Summary`, `Dialog`, and `Output` render to matching browser
   elements and participate in label, form-control, collection, dialog, and
   status accessibility facts.
-- Native media/embed aliases such as `Video`, `Audio`, `Picture`, `Source`,
+- Native media/embed aliases such as `Video`, `Audio`, `Source`,
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
   standard source, preload, controls, poster, track, loading, allow, and MIME
   attributes available to snapshots, selectors, and mounted DOM.

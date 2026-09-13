@@ -493,10 +493,10 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         "IFrame", "Iframe", "Ins", "Inserted", "Italic",
         "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
         "Mark", "Meter", "Nav", "Navigation", "OrderedList", "Option",
-        "Output", "Picture", "Pre", "Quote", "Samp", "Sample", "Select",
+        "Output", "Pre", "Quote", "Samp", "Sample", "Select",
         "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
         "Sup", "Superscript", "Table", "TableBody", "TableCaption",
-        "TableCell", "TableColumn", "TableColumnGroup", "TableFoot",
+        "TableColumn", "TableColumnGroup", "TableFoot",
         "TableHead", "TableRow", "Tbody", "Tfoot", "Thead", "Time",
         "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
         "Bullet", "Separator",
@@ -665,6 +665,31 @@ is_layout_widget(const char *name)
            strcmp(name, "Button") == 0 || strcmp(name, "Card") == 0;
 }
 
+static int
+is_web_native_block_widget(const char *name)
+{
+    static const char *const widgets[] = {
+        "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
+        "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "ColGroup",
+        "Data", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
+        "DescriptionTerm", "Details", "Dialog", "Em", "Emphasis",
+        "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame",
+        "Iframe", "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label",
+        "List", "ListItem", "Main", "Mark", "Nav", "Navigation",
+        "OrderedList", "Option", "Output", "Pre", "Quote",
+        "Samp", "Sample", "Select", "Small", "Strong", "Sub", "Subscript",
+        "Summary", "Sup", "Superscript", "Table", "TableBody",
+        "TableCaption", "TableColumnGroup", "TableFoot", "TableHead",
+        "TableRow", "Tbody", "Tfoot", "Thead", "Time", "Tr",
+        "UnorderedList", "Var", "Variable", "Video"
+    };
+
+    for(size_t i = 0; i < sizeof(widgets) / sizeof(widgets[0]); i++)
+        if(strcmp(name, widgets[i]) == 0)
+            return 1;
+    return 0;
+}
+
 static const char *
 ui_block_prop_type(const char *widget)
 {
@@ -735,6 +760,8 @@ ui_block_prop_type(const char *widget)
         return "FlowProps";
     if(strcmp(widget, "Grid") == 0)
         return "GridProps";
+    if(is_web_native_block_widget(widget))
+        return "";
     return NULL;
 }
 
@@ -2015,6 +2042,20 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
         statement->declared_widget = 1;
+        block->opened = 1;
+        return;
+    }
+    if(prop_type[0] == '\0') {
+        if(block->props[0] != '\0')
+            die("%s:%d: native web block accepts only DOM metadata before child content: %s",
+                span.path, span.line, block->widget);
+        ui_block_format(call, sizeof(call), span, "%s()", block->widget);
+        KirStmt *statement = KirFunctionAddWidget(fn, block->widget, "", call,
+                                                  source_span);
+        if(statement == NULL)
+            die("out of memory parsing native web block");
+        block->statement_index = (int)(statement - fn->stmts);
+        ui_block_apply_web_metadata(statement, block);
         block->opened = 1;
         return;
     }
