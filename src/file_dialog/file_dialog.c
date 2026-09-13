@@ -152,12 +152,6 @@ SetFileDialogCurrentDir(FileDialog *dlg, const char *path)
     return 0;
 }
 
-void
-SetFileDialogThemeScope(const char *scope)
-{
-    (void)scope;
-}
-
 const char *
 GetFileDialogBackendName(void)
 {
@@ -318,7 +312,6 @@ int SetFileDialogCurrentDir(FileDialog *dlg, const char *path)
     return 1;
 }
 
-void SetFileDialogThemeScope(const char *scope) { (void)scope; }
 const char *GetFileDialogBackendName(void) { return "windows"; }
 
 static int CALLBACK win_folder_callback(HWND window, UINT message, LPARAM param, LPARAM data)
@@ -1196,12 +1189,6 @@ SetFileDialogCurrentDir(FileDialog *dlg, const char *path)
         return 0;
     snprintf(internal->current_dir, sizeof(internal->current_dir), "%s", path);
     return 1;
-}
-
-void
-SetFileDialogThemeScope(const char *scope)
-{
-    (void)scope;
 }
 
 const char *

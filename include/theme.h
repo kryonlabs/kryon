@@ -5,31 +5,7 @@
 #include "theme_style.h"
 #include <stdbool.h>
 
-#define THEME_MAX_SCOPES 24
-#define THEME_MAX_VALUES 64
 #define THEME_NAME_SIZE 64
-#define THEME_PATH_SIZE 256
-#define THEME_MAX_VARS 64
-
-typedef struct ThemeValue {
-    char key[THEME_NAME_SIZE];
-    Color value;
-} ThemeValue;
-
-typedef struct ThemeScope {
-    char name[THEME_NAME_SIZE];
-    char path[THEME_PATH_SIZE];
-    char dark_path[THEME_PATH_SIZE];
-    ThemeValue values[THEME_MAX_VALUES];
-    int count;
-} ThemeScope;
-
-typedef struct {
-    char key[THEME_NAME_SIZE];
-    Color value;
-    bool scopes[THEME_MAX_SCOPES];
-    int scope_count;
-} ThemeAggregateVariable;
 
 typedef enum {
     THEME_SOURCE_APP = 0,
@@ -97,29 +73,11 @@ Theme GetTheme(void);
 const Theme *GetThemeRef(void);
 
 void ResetTheme(void);
-ThemeScope *RegisterThemeScope(const char *name, const char *path);
-ThemeScope *RegisterDarkThemeScope(const char *name, const char *path, const char *dark_path);
-ThemeScope *GetThemeScope(const char *name);
-const ThemeScope *GetThemeScopeAt(int index);
-int GetThemeScopeCount(void);
 Color GetThemeColor(const char *scope, const char *key);
-bool SetThemeColor(const char *scope, const char *key, Color color);
-bool SaveThemeScope(const char *scope);
-bool SaveAllThemes(void);
-const char *GetThemeColorText(Color color, char *buffer, int size);
-bool ParseThemeColor(const char *text, Color *color);
 void DrawThemeTKBorder(Rectangle rec, int borderWidth, bool raised);
-
-void AggregateAllThemes(void);
-ThemeAggregateVariable* GetThemeAggregateVars(void);
-int GetThemeAggregateCount(void);
-void ApplyThemeAggregate(const char *key, Color color);
-bool SyncThemeFromScope(const char *src_scope);
-bool SyncThemeToApps(const char *src_scope);
 
 void SetThemeDarkMode(bool dark);
 bool GetThemeDarkMode(void);
-void ReloadThemes(void);
 
 void SetThemeSource(ThemeSource source);
 ThemeSource GetThemeSource(void);

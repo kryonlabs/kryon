@@ -111,13 +111,6 @@ GetThemeLabel(ThemeId theme)
     return label;
 }
 
-const char *
-GetThemeScopeName(ThemeId theme, bool dark_mode)
-{
-    const ThemeMeta *meta = GetThemeMeta(theme);
-    return dark_mode ? meta->dark_scope : meta->light_scope;
-}
-
 static bool
 catalog_value(const ThemeCatalogColors *colors, const char *key, Color *color)
 {

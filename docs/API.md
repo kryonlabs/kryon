@@ -813,26 +813,16 @@ Use those IDs for server storage or sync payloads instead of generated
 
 Theme management for colors and appearance.
 
-#### `ResetTheme` / `RegisterThemeScope`
+#### `ResetTheme`
 
 ```c
 void ResetTheme(void);
-ThemeScope *RegisterThemeScope(const char *name, const char *path);
-ThemeScope *RegisterDarkThemeScope(const char *name, const char *path, const char *dark_path);
 ```
 
-#### `GetThemeColor` / `SetThemeColor`
+#### `GetThemeColor`
 
 ```c
 Color GetThemeColor(const char *scope, const char *key);
-bool SetThemeColor(const char *scope, const char *key, Color color);
-```
-
-#### `SaveThemeScope` / `SaveAllThemes`
-
-```c
-bool SaveThemeScope(const char *scope);
-bool SaveAllThemes(void);
 ```
 
 #### Dark Mode

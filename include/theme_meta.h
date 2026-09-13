@@ -34,7 +34,6 @@ extern const ThemeMeta themes[THEME_COUNT];
 const ThemeMeta *GetThemeMeta(ThemeId theme);
 ThemeId NormalizeTheme(int theme);
 const char *GetThemeLabel(ThemeId theme);
-const char *GetThemeScopeName(ThemeId theme, bool dark_mode);
 bool GetThemeCatalogColor(ThemeId theme, bool dark_mode, const char *key, Color *color);
 bool GetThemeCatalogScopeColor(const char *scope, const char *key, Color *color);
 

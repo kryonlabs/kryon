@@ -32,9 +32,6 @@ void InitFileDialog(FileDialog *dlg);
 /* Set the current folder shown by the dialog. Returns 1 when the folder exists. */
 int SetFileDialogCurrentDir(FileDialog *dlg, const char *path);
 
-/* Set an explicit theme scope; pass NULL or empty to follow the current UI theme. */
-void SetFileDialogThemeScope(const char *scope);
-
 /* Return the resolved backend name: web, portal, gtk, zenity, kdialog, yad, or none. */
 const char *GetFileDialogBackendName(void);
 
