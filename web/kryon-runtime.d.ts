@@ -528,6 +528,26 @@ export interface WebDOMRelations {
   popoverInvokers: WebDOMObject[];
 }
 
+export interface WebNodeRelations {
+  describedBy: WebDocumentNode[];
+  describes: WebDocumentNode[];
+  controls: WebDocumentNode[];
+  controlledBy: WebDocumentNode[];
+  owns: WebDocumentNode[];
+  ownedBy: WebDocumentNode[];
+  headers: WebDocumentNode[];
+  rowHeaders: WebDocumentNode[];
+  columnHeaders: WebDocumentNode[];
+  rowGroupHeaders: WebDocumentNode[];
+  columnGroupHeaders: WebDocumentNode[];
+  labelFor: WebDocumentNode | null;
+  formOwner: WebDocumentNode | null;
+  labelledBy: WebDocumentNode[];
+  activeDescendant: WebDocumentNode | null;
+  popoverTarget: WebDocumentNode | null;
+  popoverInvokers: WebDocumentNode[];
+}
+
 export interface WebDOMRelationRefs {
   describedBy: string[];
   describes: string[];
@@ -908,6 +928,7 @@ export function webDocumentFrame(rt: Runtime): WebDocumentFrame;
 export function webNodeStyleFacts(node: WebDocumentNode): WebNodeStyleFacts;
 export function webNodeIdentity(node: WebDocumentNode): WebNodeIdentity;
 export function webNodeEventRefs(node: WebDocumentNode | null): WebNodeEventRefs;
+export function webNodeRelations(rt: Runtime, query: string): WebNodeRelations | null;
 export function webNodeRelationRefs(rt: Runtime, query: string): WebDOMRelationRefs | null;
 export function webSourceRef(sourcePath: string, sourceLine: number, sourceColumn?: number): string;
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;

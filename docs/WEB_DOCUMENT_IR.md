@@ -606,8 +606,10 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `aria_activedescendant`, form owner links from `form`, reverse `controlledBy`,
 `ownedBy`, `describes`, and `popoverInvokers` links for targets referenced by
 other nodes, and reverse `labelledBy` links for controls targeted by
-`dom_for`; `webNodeRelationRefs(rt, query)`, `webDOMRelationRefs(target,
-query)`, and snapshots expose the same links as serializable `relationRefs`.
+`dom_for`; `webNodeRelations(rt, query)` exposes those links before mount as
+Web Document nodes, while `webNodeRelationRefs(rt, query)`,
+`webDOMRelationRefs(target, query)`, and snapshots expose the same links as
+serializable `relationRefs`.
 Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
 `kryRelations` and `kryRelationRefs`, and `WebDOMObject` exposes `relations`
 and `relationRefs` for the same live-object and serializable packets.

@@ -7670,6 +7670,52 @@ function webNodeRefs(nodes) {
   return (nodes || []).map((node) => webNodeRef(node)).filter(Boolean);
 }
 
+function mergeWebNodeRelations(...lists) {
+  const out = [];
+  const seen = new Set();
+  for (const list of lists) {
+    for (const node of list || []) {
+      const ref = webNodeRef(node);
+      if (!node || !ref || seen.has(ref))
+        continue;
+      seen.add(ref);
+      out.push(node);
+    }
+  }
+  return out;
+}
+
+function webNodeRelationsForNode(rt, node) {
+  if (!node)
+    return null;
+  return {
+    describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
+    describes: webNodeReverseRelationList(rt, node, "ariaDescribedBy"),
+    controls: webNodeRelationList(rt, node.ariaControls),
+    controlledBy: webNodeReverseRelationList(rt, node, "ariaControls"),
+    owns: webNodeRelationList(rt, node.ariaOwns),
+    ownedBy: webNodeReverseRelationList(rt, node, "ariaOwns"),
+    headers: webNodeRelationList(rt, node.headers),
+    rowHeaders: webNodeScopedHeaderList(rt, node, ["row", "rowgroup"]),
+    columnHeaders: webNodeScopedHeaderList(rt, node, ["col", "colgroup"]),
+    rowGroupHeaders: webNodeScopedHeaderList(rt, node, "rowgroup"),
+    columnGroupHeaders: webNodeScopedHeaderList(rt, node, "colgroup"),
+    labelFor: webNodeRelationList(rt, node.htmlFor)[0] || null,
+    formOwner: webNodeRelationList(rt, node.formOwner)[0] || null,
+    labelledBy: mergeWebNodeRelations(
+      webNodeRelationList(rt, node.ariaLabelledBy),
+      webNodeReverseRelationList(rt, node, "htmlFor")
+    ),
+    activeDescendant: webNodeRelationList(rt, node.ariaActiveDescendant)[0] || null,
+    popoverTarget: webNodeRelationList(rt, node.popoverTarget)[0] || null,
+    popoverInvokers: webNodeReverseRelationList(rt, node, "popoverTarget")
+  };
+}
+
+export function webNodeRelations(rt, query) {
+  return webNodeRelationsForNode(rt, webNodeQuery(rt, query));
+}
+
 function webNodeRelationRefsForNode(rt, node) {
   if (!node)
     return null;
