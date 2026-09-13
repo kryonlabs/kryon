@@ -9,6 +9,7 @@ main(void)
     StyleFrame thumb = {0};
     ScrollMetrics metrics = ScrollMetricsFor(2.0f, track, thumb);
     ScrollPolicyView view;
+    ScrollBarPaint paint;
 
     assert(metrics.scrollbar_width == 20);
     assert(metrics.reserved_width == 32);
@@ -50,6 +51,23 @@ main(void)
     assert(view.max_scroll == 0);
     assert(view.scrollbar_x == 200);
 
+    paint = ScrollBarPaintFor(300, 20, 100, 260, 40, 160, metrics);
+    assert((int)paint.track_bounds.x == 300);
+    assert((int)paint.track_bounds.y == 20);
+    assert((int)paint.track_bounds.width == 10);
+    assert((int)paint.track_bounds.height == 100);
+    assert((int)paint.thumb_bounds.x == 302);
+    assert((int)paint.thumb_bounds.y == 35);
+    assert((int)paint.thumb_bounds.width == 6);
+    assert((int)paint.thumb_bounds.height == 38);
+    assert(paint.track_span == 62);
+    assert(paint.scroll_per_pixel > 2.58f && paint.scroll_per_pixel < 2.59f);
+
+    paint = ScrollBarPaintFor(300, 20, 40, 400, 999, 360, metrics);
+    assert((int)paint.thumb_bounds.y == 44);
+    assert((int)paint.thumb_bounds.height == 16);
+    assert(paint.track_span == 24);
+
     track.value.fields = StyleIconSize | StylePaddingX | StylePaddingY |
                          StyleGap | StyleContentOffset;
     thumb.value.fields = StyleIconSize | StylePaddingX;
@@ -62,6 +80,11 @@ main(void)
     assert(metrics.visual_bleed == 0);
     assert(metrics.thumb_min_height == 0);
     assert(metrics.thumb_inset == 0);
+    paint = ScrollBarPaintFor(20, 30, 12, 100, -20, 88, metrics);
+    assert((int)paint.track_bounds.width == 0);
+    assert((int)paint.thumb_bounds.x == 20);
+    assert((int)paint.thumb_bounds.y == 30);
+    assert((int)paint.thumb_bounds.width == 0);
 
     return 0;
 }

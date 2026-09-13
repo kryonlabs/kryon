@@ -430,35 +430,13 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         return 0;
 
     ScrollMetrics metrics = ui_scroll_metrics();
-    int scrollbar_width = metrics.scrollbar_width;
-    int scrollbar_min_thumb = metrics.thumb_min_height;
-    int track_padding = metrics.thumb_inset;
-
-    /* Calculate thumb size and position */
-    float content_ratio = (float)viewport_h / (float)content_h;
-    int thumb_height = (int)(viewport_h * content_ratio);
-    if(thumb_height < scrollbar_min_thumb)
-        thumb_height = scrollbar_min_thumb;
-    if(thumb_height > viewport_h)
-        thumb_height = viewport_h;
-
-    float scroll_ratio = max_scroll > 0 ? (float)*scroll_offset / (float)max_scroll : 0.0f;
-    int track_span = viewport_h - thumb_height;
-    int thumb_y;
-
+    ScrollBarPaint paint = ScrollBarPaintFor(x, y, viewport_h, content_h,
+                                             *scroll_offset, max_scroll,
+                                             metrics);
+    int track_span = paint.track_span;
     Vector2 mouse_pos = ui_mouse_world();
     int my = (int)mouse_pos.y;
-    if(scroll_ratio < 0.0f)
-        scroll_ratio = 0.0f;
-    if(scroll_ratio > 1.0f)
-        scroll_ratio = 1.0f;
-    thumb_y = y + (int)(scroll_ratio * (float)track_span);
-    if(thumb_y < y)
-        thumb_y = y;
-    if(thumb_y + thumb_height > y + viewport_h)
-        thumb_y = y + viewport_h - thumb_height;
-
-    Rectangle thumb_bounds = {x + track_padding, thumb_y, scrollbar_width - track_padding * 2, thumb_height};
+    Rectangle thumb_bounds = paint.thumb_bounds;
     int input_captured = overlay ? ui_base_input_captures_click(mouse_pos, 0)
                                  : ui_input_captures_click_internal(mouse_pos, 0);
     int thumb_active = CheckCollisionPointRec(mouse_pos, thumb_bounds) && !input_captured;
@@ -483,10 +461,8 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         } else if(scrollbar_drag_offset == scroll_offset) {
             /* Continue drag */
             int dy = my - scrollbar_drag_start_y;
-            float scroll_per_pixel = track_span > 0
-                                         ? (float)max_scroll / (float)track_span
-                                         : 0.0f;
-            int new_scroll = scrollbar_drag_start_scroll + (int)(dy * scroll_per_pixel);
+            int new_scroll = scrollbar_drag_start_scroll +
+                             (int)((float)dy * paint.scroll_per_pixel);
             *scroll_offset = new_scroll;
             if(*scroll_offset < 0) *scroll_offset = 0;
             if(*scroll_offset > max_scroll) *scroll_offset = max_scroll;
@@ -516,17 +492,15 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     thumb_style = ui_unpack_style(thumb_frame.value);
 
     if(IsWindowReady()) {
-        thumb_bounds.y = y + (int)((float)*scroll_offset / max_scroll * track_span);
-        ui_draw_material((Rectangle){(float)x, (float)y,
-                                     (float)scrollbar_width, (float)viewport_h},
-                         (Rectangle){0}, track_style.background,
+        paint = ScrollBarPaintFor(x, y, viewport_h, content_h,
+                                  *scroll_offset, max_scroll, metrics);
+        thumb_bounds = paint.thumb_bounds;
+        ui_draw_material(paint.track_bounds, (Rectangle){0}, track_style.background,
                          track_style.border, WHITE, track_style.radius,
                          track_style.border_width, 0.0f, 0.0f, 0,
                          track_style.focus, 0.0f, track_style.opacity,
                          track_frame.fill, track_style.material);
-        ui_draw_material(thumb_bounds, (Rectangle){(float)x, (float)y,
-                                                   (float)scrollbar_width,
-                                                   (float)viewport_h},
+        ui_draw_material(thumb_bounds, paint.track_bounds,
                          thumb_style.background, thumb_style.border, WHITE,
                          thumb_style.radius, thumb_style.border_width,
                          thumb_state == ButtonStateHover ? 1.0f : 0.0f,

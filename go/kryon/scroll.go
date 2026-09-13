@@ -25,6 +25,13 @@ type ScrollPolicyView struct {
 	ScrollbarX int32
 }
 
+type ScrollBarPaint struct {
+	TrackBounds    Rectangle
+	ThumbBounds    Rectangle
+	TrackSpan      int32
+	ScrollPerPixel float32
+}
+
 func Scroll_ScrollMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -325,4 +332,212 @@ func Scroll_ScrollMeasure(bounds Rectangle, content_height int32, content_x int3
 	view.ContentW = value_46
 	var value_47 ScrollPolicyView = view
 	return value_47
+}
+
+func Scroll_ScrollBarPaintFor(x int32, y int32, viewport_h int32, content_h int32, scroll_offset int32, max_scroll int32, metrics ScrollMetrics) ScrollBarPaint {
+	var paint ScrollBarPaint = ScrollBarPaint{}
+	var value_0 int32 = metrics.ScrollbarWidth
+	var scrollbar_w int32 = value_0
+	var value_1 int32 = scrollbar_w
+	var value_2 int32 = 0
+	var value_3 bool = value_1 < value_2
+	if value_3 {
+		var value_4 int32 = 0
+		scrollbar_w = value_4
+	}
+	var value_5 int32 = viewport_h
+	var value_6 int32 = 0
+	var value_7 bool = value_5 < value_6
+	if value_7 {
+		var value_8 int32 = 0
+		viewport_h = value_8
+	}
+	var value_9 int32 = content_h
+	var value_10 int32 = 0
+	var value_11 bool = value_9 < value_10
+	if value_11 {
+		var value_12 int32 = 0
+		content_h = value_12
+	}
+	var value_13 int32 = viewport_h
+	var thumb_h int32 = value_13
+	var value_14 int32 = content_h
+	var value_15 int32 = 0
+	var value_16 bool = value_14 > value_15
+	if value_16 {
+		var value_17 int32 = viewport_h
+		var value_18 float32 = float32(value_17)
+		var value_19 int32 = viewport_h
+		var value_20 float32 = float32(value_19)
+		var value_21 int32 = content_h
+		var value_22 float32 = float32(value_21)
+		var value_23 float32 = value_20 / value_22
+		var value_24 float32 = value_18 * value_23
+		var value_25 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_24), 32, true)), uint64(0), 32, true, 0))
+		thumb_h = value_25
+	}
+	var value_26 int32 = thumb_h
+	var value_27 int32 = metrics.ThumbMinHeight
+	var value_28 bool = value_26 < value_27
+	if value_28 {
+		var value_29 int32 = metrics.ThumbMinHeight
+		thumb_h = value_29
+	}
+	var value_30 int32 = thumb_h
+	var value_31 int32 = viewport_h
+	var value_32 bool = value_30 > value_31
+	if value_32 {
+		var value_33 int32 = viewport_h
+		thumb_h = value_33
+	}
+	var value_34 int32 = thumb_h
+	var value_35 int32 = 0
+	var value_36 bool = value_34 < value_35
+	if value_36 {
+		var value_37 int32 = 0
+		thumb_h = value_37
+	}
+	var value_38 int32 = scroll_offset
+	var value_39 int32 = max_scroll
+	var value_40 int32 = Scroll_ScrollClamp(value_38, value_39)
+	var clamped_scroll int32 = value_40
+	var value_41 int32 = max_scroll
+	var value_42 int32 = 0
+	var value_43 bool = value_41 > value_42
+	var value_44 float32 = 0
+	if value_43 {
+		var value_45 int32 = clamped_scroll
+		var value_46 float32 = float32(value_45)
+		var value_47 int32 = max_scroll
+		var value_48 float32 = float32(value_47)
+		var value_49 float32 = value_46 / value_48
+		value_44 = value_49
+	} else {
+		var value_50 float32 = 0.0
+		value_44 = value_50
+	}
+	var scroll_ratio float32 = value_44
+	var value_51 float32 = scroll_ratio
+	var value_52 float32 = 0.0
+	var value_53 bool = value_51 < value_52
+	if value_53 {
+		var value_54 float32 = 0.0
+		scroll_ratio = value_54
+	}
+	var value_55 float32 = scroll_ratio
+	var value_56 float32 = 1.0
+	var value_57 bool = value_55 > value_56
+	if value_57 {
+		var value_58 float32 = 1.0
+		scroll_ratio = value_58
+	}
+	var value_59 int32 = viewport_h
+	var value_60 int32 = thumb_h
+	var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
+	var track_span int32 = value_61
+	var value_62 int32 = track_span
+	var value_63 int32 = 0
+	var value_64 bool = value_62 < value_63
+	if value_64 {
+		var value_65 int32 = 0
+		track_span = value_65
+	}
+	var value_66 int32 = y
+	var value_67 float32 = scroll_ratio
+	var value_68 int32 = track_span
+	var value_69 float32 = float32(value_68)
+	var value_70 float32 = value_67 * value_69
+	var value_71 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_70), 32, true)), uint64(0), 32, true, 0))
+	var value_72 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_71), 32, true, 1))
+	var thumb_y int32 = value_72
+	var value_73 int32 = thumb_y
+	var value_74 int32 = y
+	var value_75 bool = value_73 < value_74
+	if value_75 {
+		var value_76 int32 = y
+		thumb_y = value_76
+	}
+	var value_77 int32 = thumb_y
+	var value_78 int32 = thumb_h
+	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 1))
+	var value_80 int32 = y
+	var value_81 int32 = viewport_h
+	var value_82 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_81), 32, true, 1))
+	var value_83 bool = value_79 > value_82
+	if value_83 {
+		var value_84 int32 = y
+		var value_85 int32 = viewport_h
+		var value_86 int32 = int32(number_runtime_bits(uint64(value_84), uint64(value_85), 32, true, 1))
+		var value_87 int32 = thumb_h
+		var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 2))
+		thumb_y = value_88
+	}
+	var value_89 int32 = metrics.ThumbInset
+	var inset int32 = value_89
+	var value_90 int32 = inset
+	var value_91 int32 = 0
+	var value_92 bool = value_90 < value_91
+	if value_92 {
+		var value_93 int32 = 0
+		inset = value_93
+	}
+	var value_94 int32 = scrollbar_w
+	var value_95 int32 = inset
+	var value_96 int32 = 2
+	var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 3))
+	var value_98 int32 = int32(number_runtime_bits(uint64(value_94), uint64(value_97), 32, true, 2))
+	var thumb_w int32 = value_98
+	var value_99 int32 = thumb_w
+	var value_100 int32 = 0
+	var value_101 bool = value_99 < value_100
+	if value_101 {
+		var value_102 int32 = 0
+		thumb_w = value_102
+	}
+	var value_103 int32 = x
+	var value_104 float32 = float32(value_103)
+	paint.TrackBounds.X = value_104
+	var value_105 int32 = y
+	var value_106 float32 = float32(value_105)
+	paint.TrackBounds.Y = value_106
+	var value_107 int32 = scrollbar_w
+	var value_108 float32 = float32(value_107)
+	paint.TrackBounds.Width = value_108
+	var value_109 int32 = viewport_h
+	var value_110 float32 = float32(value_109)
+	paint.TrackBounds.Height = value_110
+	var value_111 int32 = x
+	var value_112 int32 = inset
+	var value_113 int32 = int32(number_runtime_bits(uint64(value_111), uint64(value_112), 32, true, 1))
+	var value_114 float32 = float32(value_113)
+	paint.ThumbBounds.X = value_114
+	var value_115 int32 = thumb_y
+	var value_116 float32 = float32(value_115)
+	paint.ThumbBounds.Y = value_116
+	var value_117 int32 = thumb_w
+	var value_118 float32 = float32(value_117)
+	paint.ThumbBounds.Width = value_118
+	var value_119 int32 = thumb_h
+	var value_120 float32 = float32(value_119)
+	paint.ThumbBounds.Height = value_120
+	var value_121 int32 = track_span
+	paint.TrackSpan = value_121
+	var value_122 int32 = track_span
+	var value_123 int32 = 0
+	var value_124 bool = value_122 > value_123
+	var value_125 float32 = 0
+	if value_124 {
+		var value_126 int32 = max_scroll
+		var value_127 float32 = float32(value_126)
+		var value_128 int32 = track_span
+		var value_129 float32 = float32(value_128)
+		var value_130 float32 = value_127 / value_129
+		value_125 = value_130
+	} else {
+		var value_131 float32 = 0.0
+		value_125 = value_131
+	}
+	paint.ScrollPerPixel = value_125
+	var value_132 ScrollBarPaint = paint
+	return value_132
 }

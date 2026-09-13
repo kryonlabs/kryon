@@ -24,6 +24,13 @@ ScrollPolicyView :: struct {
     scrollbar_x: i32
 }
 
+ScrollBarPaint :: struct {
+    track_bounds: Rectangle
+    thumb_bounds: Rectangle
+    track_span: i32
+    scroll_per_pixel: float
+}
+
 ScrollMetric :: (fields: u32, field: u32, value: float, fallback: float,
     scale: float) -> i32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -113,4 +120,50 @@ ScrollMeasure :: (bounds: Rectangle, content_height: i32, content_x: i32,
     view.content_w = ScrollSafeContentWidth(content_x, content_width,
         scrollbar_x, view.max_scroll, metrics)
     return view
+}
+
+ScrollBarPaintFor :: (x: i32, y: i32, viewport_h: i32, content_h: i32,
+    scroll_offset: i32, max_scroll: i32, metrics: ScrollMetrics) -> ScrollBarPaint #export {
+    paint: ScrollBarPaint
+    scrollbar_w: i32 = metrics.scrollbar_width
+    if scrollbar_w < 0 { scrollbar_w = 0 }
+    if viewport_h < 0 { viewport_h = 0 }
+    if content_h < 0 { content_h = 0 }
+
+    thumb_h: i32 = viewport_h
+    if content_h > 0 {
+        thumb_h = (i32)((float)viewport_h * ((float)viewport_h / (float)content_h))
+    }
+    if thumb_h < metrics.thumb_min_height { thumb_h = metrics.thumb_min_height }
+    if thumb_h > viewport_h { thumb_h = viewport_h }
+    if thumb_h < 0 { thumb_h = 0 }
+
+    clamped_scroll: i32 = ScrollClamp(scroll_offset, max_scroll)
+    scroll_ratio: float = max_scroll > 0 ? (float)clamped_scroll / (float)max_scroll : 0.0
+    if scroll_ratio < 0.0 { scroll_ratio = 0.0 }
+    if scroll_ratio > 1.0 { scroll_ratio = 1.0 }
+    track_span: i32 = viewport_h - thumb_h
+    if track_span < 0 { track_span = 0 }
+    thumb_y: i32 = y + (i32)(scroll_ratio * (float)track_span)
+    if thumb_y < y { thumb_y = y }
+    if thumb_y + thumb_h > y + viewport_h {
+        thumb_y = y + viewport_h - thumb_h
+    }
+
+    inset: i32 = metrics.thumb_inset
+    if inset < 0 { inset = 0 }
+    thumb_w: i32 = scrollbar_w - inset * 2
+    if thumb_w < 0 { thumb_w = 0 }
+
+    paint.track_bounds.x = (float)x
+    paint.track_bounds.y = (float)y
+    paint.track_bounds.width = (float)scrollbar_w
+    paint.track_bounds.height = (float)viewport_h
+    paint.thumb_bounds.x = (float)(x + inset)
+    paint.thumb_bounds.y = (float)thumb_y
+    paint.thumb_bounds.width = (float)thumb_w
+    paint.thumb_bounds.height = (float)thumb_h
+    paint.track_span = track_span
+    paint.scroll_per_pixel = track_span > 0 ? (float)max_scroll / (float)track_span : 0.0
+    return paint
 }
