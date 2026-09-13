@@ -362,6 +362,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     cursor: pointer;
     pointer-events: auto;
     z-index: 3;
+    outline: 2px solid #445566;
     outline-width: line;
     outline-offset: 3;
     outline-style: solid;
@@ -692,6 +693,7 @@ assert.match(webStyleCSS, /border-end-start-radius: 38px;/);
 assert.match(webStyleCSS, /border-end-end-radius: 39px;/);
 assert.match(webStyleCSS, /cursor: pointer;/);
 assert.match(webStyleCSS, /pointer-events: auto;/);
+assert.match(webStyleCSS, /outline: 2px solid #445566;/);
 assert.match(webStyleCSS, /outline-width: 2px;/);
 assert.match(webStyleCSS, /outline-offset: 3px;/);
 assert.match(webStyleCSS, /outline-style: solid;/);
@@ -1370,6 +1372,7 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-end
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-end-end-radius"], 39);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["pointer-events"], "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).outline, "2px solid #445566");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-width"], 2);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-offset"], 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-style"], "solid");
@@ -3633,6 +3636,7 @@ function fakeDocument() {
     assert.equal(firstField.style.borderEndEndRadius, "39px");
     assert.equal(firstField.style.cursor, "pointer");
     assert.equal(firstField.style.pointerEvents, "auto");
+    assert.equal(firstField.style.outline, "2px solid #445566");
     assert.equal(firstField.style.outlineWidth, "2px");
     assert.equal(firstField.style.outlineOffset, "3px");
     assert.equal(firstField.style.outlineStyle, "solid");

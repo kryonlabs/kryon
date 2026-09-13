@@ -1883,7 +1883,7 @@ const webKssLiteralProperties = new Set([
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
-  "outline-style", "box-shadow", "color-scheme",
+  "outline", "outline-style", "box-shadow", "color-scheme",
   "contain", "container-type", "container-name", "will-change",
   "isolation", "mix-blend-mode", "columns", "column-rule",
   "break-before", "break-after", "break-inside", "float", "clear",
@@ -2686,6 +2686,7 @@ const webCSSPropertyNames = new Map([
   ["appearance", "appearance"],
   ["user-select", "user-select"],
   ["resize", "resize"],
+  ["outline", "outline"],
   ["outline-width", "outline-width"],
   ["outline-offset", "outline-offset"],
   ["outline-style", "outline-style"],
@@ -3692,6 +3693,7 @@ function applyResolvedWebStyle(el, style) {
   set("appearance", style.appearance);
   set("userSelect", style["user-select"]);
   set("resize", style.resize);
+  set("outline", style.outline);
   set("outlineWidth", style["outline-width"]);
   set("outlineOffset", style["outline-offset"]);
   set("outlineStyle", style["outline-style"]);
