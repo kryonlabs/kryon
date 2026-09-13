@@ -81,21 +81,23 @@ func Card_CardButtonProps(card CardProps, radius_large float32, border_width flo
 		var value_8 int32 = card.ID
 		button.ID = value_8
 	}
-	var value_9 ButtonTone = ButtonTone(card.Tone)
-	button.Tone = value_9
-	var value_10 ButtonEmphasis = ButtonEmphasis(card.Emphasis)
-	button.Emphasis = value_10
-	var value_11 int32 = int32(ControlSizeLarge)
-	var value_12 ControlSize = ControlSize(int32(number_runtime_bits(uint64(value_11), uint64(0), 32, true, 0)))
-	button.Size = value_12
-	var value_13 bool = card.Disabled
-	button.Disabled = value_13
-	var value_14 bool = card.Selected
-	button.Selected = value_14
-	var value_15 ButtonState = ButtonState(card.State)
-	button.State = value_15
-	var value_16 ControlStyle = card.Style
-	button.Style = value_16
-	var value_17 ButtonProps = button
-	return value_17
+	var value_9 int32 = card.ClassName
+	button.ClassName = value_9
+	var value_10 ButtonTone = ButtonTone(card.Tone)
+	button.Tone = value_10
+	var value_11 ButtonEmphasis = ButtonEmphasis(card.Emphasis)
+	button.Emphasis = value_11
+	var value_12 int32 = int32(ControlSizeLarge)
+	var value_13 ControlSize = ControlSize(int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0)))
+	button.Size = value_13
+	var value_14 bool = card.Disabled
+	button.Disabled = value_14
+	var value_15 bool = card.Selected
+	button.Selected = value_15
+	var value_16 ButtonState = ButtonState(card.State)
+	button.State = value_16
+	var value_17 ControlStyle = card.Style
+	button.Style = value_17
+	var value_18 ButtonProps = button
+	return value_18
 }

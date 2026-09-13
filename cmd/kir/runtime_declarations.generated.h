@@ -58,6 +58,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "CardProps :: struct {\n"
         "    bounds: Rectangle\n"
         "    id: i32\n"
+        "    class_name: i32\n"
         "    clickable: bool\n"
         "    disabled: bool\n"
         "    selected: bool\n"

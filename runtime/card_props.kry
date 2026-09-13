@@ -4,6 +4,7 @@
 CardProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     clickable: bool
     disabled: bool
     selected: bool

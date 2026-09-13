@@ -6,6 +6,7 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 	card := CardProps{
 		Bounds:    Rectangle{X: 8, Y: 9, Width: 120, Height: 48},
 		ID:        77,
+		ClassName: StyleClassID("elevated"),
 		Clickable: true,
 		Tone:      ButtonToneNeutral,
 		Emphasis:  ButtonEmphasisFilled,
@@ -21,6 +22,9 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 
 	if button.ID != card.ID || button.Bounds != card.Bounds {
 		t.Fatal("card button props must preserve clickable identity and bounds")
+	}
+	if button.ClassName != card.ClassName {
+		t.Fatal("card button props must preserve KSS class identity")
 	}
 	if button.Emphasis != ButtonEmphasisFilled {
 		t.Fatal("explicit style overrides should keep requested emphasis")
@@ -68,6 +72,42 @@ func TestCardRuntimeUsesCardStyleFacts(t *testing.T) {
 	}
 	if buttonStyle.Background == cardStyle.Background {
 		t.Fatal("card runtime should use Card style facts, not Button facts")
+	}
+}
+
+func TestCardRuntimeResolvesClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+
+	selector := StyleSheet_StyleDefaultSelector()
+	selector.Kind = StyleSheet_StyleKindCard()
+	selector.ClassName = StyleClassID("primary")
+	if !RegisterStylePack(StylePack{
+		ID:    "card-class",
+		Label: "Card class",
+		Sheet: []StyleRule{{
+			Selector: selector,
+			State:    StyleSheet_StyleStateAny(),
+			Style: StyleData{
+				Fields:     uint32(StyleBackground),
+				Background: 0x123456ff,
+			},
+		}},
+	}) {
+		t.Fatal("style pack did not register")
+	}
+
+	r := New(AppConfig{}).(*runtime)
+	button := Card_CardButtonProps(CardProps{
+		ClassName: StyleClassID("primary"),
+		Tone:      ButtonToneNeutral,
+		Emphasis:  ButtonEmphasisFilled,
+	}, 12, 1, 16, 10, Color{}, Color{})
+	style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
+		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())
+
+	if style.Background != (Color{0x12, 0x34, 0x56, 0xff}) {
+		t.Fatalf("card class selector did not resolve: %+v", style.Background)
 	}
 }
 

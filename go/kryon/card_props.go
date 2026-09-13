@@ -5,6 +5,7 @@ package kryon
 type CardProps struct {
 	Bounds    Rectangle
 	ID        int32
+	ClassName int32
 	Clickable bool
 	Disabled  bool
 	Selected  bool

@@ -26,6 +26,7 @@ CardButtonProps :: (card: CardProps, radius_large: float,
     unused accent
     button.bounds = card.bounds
     if card.clickable { button.id = card.id }
+    button.class_name = card.class_name
     button.tone = card.tone
     button.emphasis = card.emphasis
     button.size = (ControlSize)ControlSizeLarge
