@@ -457,7 +457,7 @@ native attribute aliases such as `[id=...]`, `[name=...]`, `[title=...]`,
 `[aria-multiselectable=...]`, `[aria-rowindex=...]`, `[aria-colindex=...]`,
 `[aria-rowcount=...]`, `[aria-colcount=...]`,
 data/ARIA/extra attribute selectors, state pseudos, structural pseudos
-`:first-child`, `:last-child`, `:only-child`, and numeric/odd/even
+`:first-child`, `:last-child`, `:only-child`, `:empty`, and numeric/odd/even
 `:nth-child(...)`, plus simple `:not(...)`, `:is(...)`, and `:where(...)`,
 layers, colors, padding,
 margin, logical spacing, per-edge spacing, size constraints, positioning insets,

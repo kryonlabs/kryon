@@ -452,6 +452,7 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Screen > Button:nth-child(2) { outline-width: 4; }
   Screen > Text:nth-child(odd) { line-height: 1.2; }
   Screen > Input:nth-child(even) { appearance: auto; }
+  Section:empty { field-sizing: content; }
   Button:not(.secondary) { caret-color: #112233; }
   :is(Button, TextField)[webRef^="primary"] { accent-color: #223344; }
   :where(TextField, Button)[data.tracking_id|="tap"] { resize: vertical; }
@@ -478,6 +479,8 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Input"\]:last-child/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]:nth-child\(2\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Section"\]:empty/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Button"\]:not\(\.kryon-node\.secondary\)/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
@@ -876,6 +879,17 @@ assert.equal(runtime.webNodeQuery(soloRt, `Screen > Text:only-child`).path,
   soloDoc.nodes[1].path);
 assert.equal(runtime.resolveWebStyle(soloDoc.nodes[1], onlyChildStyleSheet).visibility,
   "hidden");
+const emptyRt = runtime.createRuntime();
+runtime.beginFrame(emptyRt);
+runtime.widget(emptyRt, "Screen", {}, null, { nodeName: "root", path: "Empty/root" });
+runtime.widget(emptyRt, "Section", {}, null,
+  { nodeName: "panel", path: "Empty/root/panel", parentPath: "Empty/root" });
+runtime.endFrame(emptyRt);
+const emptyDoc = runtime.webDocumentFrame(emptyRt);
+assert.equal(runtime.webNodeQuery(emptyRt, `Section:empty`).path,
+  emptyDoc.nodes[1].path);
+assert.equal(runtime.resolveWebStyle(emptyDoc.nodes[1], operatorStyleSheet)["field-sizing"],
+  "content");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -3036,6 +3050,10 @@ function fakeDocument() {
     assert.equal(document.querySelector('link[rel="canonical"]').attributes.href, "https://example.test/page");
     assert.equal(document.querySelector('meta[name="theme-color"]').attributes.content, "rgb(1, 2, 3)");
     const root = target.children[0];
+    const emptyTarget = document.createElement("div");
+    runtime.renderWebDocument(emptyRt, emptyTarget);
+    assert.equal(runtime.webDOMQuery(emptyTarget, "Section:empty").node.path,
+      emptyDoc.nodes[1].path);
     assert.equal(runtime.webDOMRoot(target), root);
     assert.equal(runtime.webDOMRoot(root), root);
     assert.equal(runtime.webDOMFrame(target).nodes.length, runtime.webDocumentFrame(domRt).nodes.length);

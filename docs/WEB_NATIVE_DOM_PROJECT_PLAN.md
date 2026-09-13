@@ -206,6 +206,8 @@ the browser receives normal elements, attributes, CSS, and events.
   pressed, disabled, checked, selected, invalid, and expanded controls.
 - KSS state selectors support `:readonly`/`:read-only` and `:required` against
   Kry form-control facts and native browser pseudo/attribute selectors.
+- KSS structural selectors support browser-native `:empty` in CSS export,
+  pre-mount Web Document queries, and mounted DOM object queries.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 

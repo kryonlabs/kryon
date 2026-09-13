@@ -3776,6 +3776,11 @@ function selectorStructuralPseudosMatch(selector, node) {
     } else if (pseudo === "only-child") {
       if (siblings.length !== 1 || siblings[0] !== node)
         return false;
+    } else if (pseudo === "empty") {
+      const hasChildren = (node.__kryFrameNodes || []).some((candidate) =>
+        candidate && candidate.parentPath === node.path && candidate.path !== node.path);
+      if (hasChildren || String(node.text || node.domValue || "").length > 0)
+        return false;
     } else if (String(pseudo).startsWith("nth-child(")) {
       if (!nthChildPseudoMatches(pseudo, siblings, node))
         return false;
