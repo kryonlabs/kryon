@@ -131,6 +131,10 @@ export interface WebDocumentNode {
   accept: string;
   multiple: boolean;
   inputMode: string;
+  headers: string;
+  scope: string;
+  colSpan: string;
+  rowSpan: string;
   alt: string;
   asset: string;
   role: string;
@@ -141,6 +145,7 @@ export interface WebDocumentNode {
   ariaActiveDescendant: string;
   ariaControls: string;
   ariaOwns: string;
+  ariaSort: string;
   ariaLive: string;
   ariaAttrs: Record<string, string>;
   onClick: string;
@@ -283,6 +288,10 @@ export interface WebNodeStyleFacts {
   accept: string;
   multiple: boolean;
   inputMode: string;
+  headers: string;
+  scope: string;
+  colSpan: string;
+  rowSpan: string;
   classes: string[];
   dataAttrs: Record<string, string>;
   ariaAttrs: Record<string, string>;
@@ -291,6 +300,7 @@ export interface WebNodeStyleFacts {
   ariaLabelledBy: string;
   ariaActiveDescendant: string;
   ariaOwns: string;
+  ariaSort: string;
   state: Record<string, boolean>;
 }
 
@@ -440,6 +450,7 @@ export interface WebDOMRelations {
   describedBy: WebDOMObject[];
   controls: WebDOMObject[];
   owns: WebDOMObject[];
+  headers: WebDOMObject[];
   labelFor: WebDOMObject | null;
   formOwner: WebDOMObject | null;
   labelledBy: WebDOMObject[];
@@ -627,6 +638,7 @@ export interface WebDOMSnapshot {
     describedBy: string[];
     controls: string[];
     owns: string[];
+    headers: string[];
     labelFor: string;
     formOwner: string;
     labelledBy: string[];

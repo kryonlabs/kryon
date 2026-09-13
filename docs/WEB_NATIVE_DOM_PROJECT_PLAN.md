@@ -34,9 +34,9 @@ the browser receives normal elements, attributes, CSS, and events.
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
 - Native relation resolution for `aria_controls`, `aria_owns`,
-  `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`,
-  `form`, and `popover_target`, while preserving authored Kry refs in Web
-  Document facts.
+  `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `headers`,
+  `dom_for`, `form`, and `popover_target`, while preserving authored Kry refs
+  in Web Document facts.
 - Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
   wheel, drag/drop, clipboard, dialog, and popover events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,

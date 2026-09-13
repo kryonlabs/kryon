@@ -494,6 +494,10 @@ typedef struct UiBlock {
     char dom_accept[KIR_TEXT_MAX];
     char dom_multiple[KIR_NAME_MAX];
     char dom_inputmode[KIR_NAME_MAX];
+    char dom_headers[KIR_TEXT_MAX];
+    char dom_scope[KIR_NAME_MAX];
+    char dom_colspan[KIR_NAME_MAX];
+    char dom_rowspan[KIR_NAME_MAX];
     char dom_tab_index[KIR_NAME_MAX];
     char dom_role[KIR_NAME_MAX];
     char dom_aria_label[KIR_TEXT_MAX];
@@ -503,6 +507,7 @@ typedef struct UiBlock {
     char dom_aria_activedescendant[KIR_TEXT_MAX];
     char dom_aria_controls[KIR_TEXT_MAX];
     char dom_aria_owns[KIR_TEXT_MAX];
+    char dom_aria_sort[KIR_NAME_MAX];
     char dom_aria_live[KIR_NAME_MAX];
     char dom_aria_attrs[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
@@ -1052,6 +1057,26 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  value);
         return 1;
     }
+    if(strcmp(field, "headers") == 0 || strcmp(field, "dom_headers") == 0 ||
+       strcmp(field, "html_headers") == 0) {
+        snprintf(block->dom_headers, sizeof(block->dom_headers), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "scope") == 0 || strcmp(field, "dom_scope") == 0 ||
+       strcmp(field, "html_scope") == 0) {
+        snprintf(block->dom_scope, sizeof(block->dom_scope), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "colspan") == 0 || strcmp(field, "col_span") == 0 ||
+       strcmp(field, "dom_colspan") == 0 || strcmp(field, "html_colspan") == 0) {
+        snprintf(block->dom_colspan, sizeof(block->dom_colspan), "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "rowspan") == 0 || strcmp(field, "row_span") == 0 ||
+       strcmp(field, "dom_rowspan") == 0 || strcmp(field, "html_rowspan") == 0) {
+        snprintf(block->dom_rowspan, sizeof(block->dom_rowspan), "%s", value);
+        return 1;
+    }
     if(strcmp(field, "tab_index") == 0 || strcmp(field, "tabindex") == 0 ||
        strcmp(field, "dom_tab_index") == 0) {
         snprintf(block->dom_tab_index, sizeof(block->dom_tab_index), "%s",
@@ -1099,6 +1124,11 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
     }
     if(strcmp(field, "aria_owns") == 0 || strcmp(field, "aria_own") == 0) {
         snprintf(block->dom_aria_owns, sizeof(block->dom_aria_owns), "%s",
+                 value);
+        return 1;
+    }
+    if(strcmp(field, "aria_sort") == 0 || strcmp(field, "aria_sorted") == 0) {
+        snprintf(block->dom_aria_sort, sizeof(block->dom_aria_sort), "%s",
                  value);
         return 1;
     }
@@ -1392,6 +1422,14 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              block->dom_multiple);
     snprintf(statement->dom_inputmode, sizeof(statement->dom_inputmode), "%s",
              block->dom_inputmode);
+    snprintf(statement->dom_headers, sizeof(statement->dom_headers), "%s",
+             block->dom_headers);
+    snprintf(statement->dom_scope, sizeof(statement->dom_scope), "%s",
+             block->dom_scope);
+    snprintf(statement->dom_colspan, sizeof(statement->dom_colspan), "%s",
+             block->dom_colspan);
+    snprintf(statement->dom_rowspan, sizeof(statement->dom_rowspan), "%s",
+             block->dom_rowspan);
     snprintf(statement->dom_tab_index, sizeof(statement->dom_tab_index), "%s",
              block->dom_tab_index);
     snprintf(statement->dom_role, sizeof(statement->dom_role), "%s",
@@ -1414,6 +1452,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
              "%s", block->dom_aria_controls);
     snprintf(statement->dom_aria_owns, sizeof(statement->dom_aria_owns), "%s",
              block->dom_aria_owns);
+    snprintf(statement->dom_aria_sort, sizeof(statement->dom_aria_sort), "%s",
+             block->dom_aria_sort);
     snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
              block->dom_aria_live);
     snprintf(statement->dom_aria_attrs, sizeof(statement->dom_aria_attrs),

@@ -286,6 +286,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   accept: "",
   multiple: false,
   inputMode: "",
+  headers: "",
+  scope: "",
+  colSpan: "",
+  rowSpan: "",
   classes: ["primary", "action"],
   dataAttrs: { "tracking-id": "tap-1" },
   ariaAttrs: { current: "page", pressed: "false" },
@@ -294,6 +298,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   ariaLabelledBy: "",
   ariaActiveDescendant: "",
   ariaOwns: "search-box",
+  ariaSort: "",
   state: {
     disabled: false,
     loading: false,
@@ -922,6 +927,55 @@ function fakeDocument() {
     assert.equal(submitForm.kryReset(), true);
     assert.equal(resetValues.email, "hello@example.test");
     assert.equal(resetValues.external_email, "outside@example.test");
+
+    const tableRt = runtime.createRuntime();
+    runtime.beginFrame(tableRt);
+    runtime.widget(tableRt, "TableView", {}, null,
+      { nodeName: "prices", path: "Page/prices" });
+    runtime.widget(tableRt, "Text", { text: "Price" }, null,
+      {
+        nodeName: "priceHeader",
+        path: "Page/prices/priceHeader",
+        parentPath: "Page/prices",
+        tag: "th",
+        id: "price-header",
+        scope: "col",
+        ariaSort: "ascending"
+      });
+    runtime.widget(tableRt, "Text", { text: "$12" }, null,
+      {
+        nodeName: "priceCell",
+        path: "Page/prices/priceCell",
+        parentPath: "Page/prices",
+        tag: "td",
+        headers: "priceHeader",
+        colSpan: "2",
+        rowSpan: "1"
+      });
+    runtime.endFrame(tableRt);
+    assert.equal(runtime.webNodeQuery(tableRt, "[scope=col]").path,
+      "Page/prices/priceHeader");
+    assert.equal(runtime.webNodeQuery(tableRt, "[aria-sort=ascending]").path,
+      "Page/prices/priceHeader");
+    assert.equal(runtime.webNodeQuery(tableRt, "[headers=priceHeader]").path,
+      "Page/prices/priceCell");
+    assert.equal(runtime.webNodeQuery(tableRt, "[colspan=2]").path,
+      "Page/prices/priceCell");
+    assert.equal(runtime.webNodeQuery(tableRt, "[rowspan=1]").path,
+      "Page/prices/priceCell");
+    const tableTarget = document.createElement("div");
+    runtime.renderWebDocument(tableRt, tableTarget);
+    const priceHeader = runtime.findWebElement(tableTarget, "priceHeader");
+    const priceCell = runtime.findWebElement(tableTarget, "priceCell");
+    assert.equal(priceHeader.attributes.scope, "col");
+    assert.equal(priceHeader.attributes["aria-sort"], "ascending");
+    assert.equal(priceCell.attributes.headers, "price-header");
+    assert.equal(priceCell.attributes.colspan, "2");
+    assert.equal(priceCell.attributes.rowspan, "1");
+    assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").headers[0].ref,
+      "Page/prices/priceHeader");
+    assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,
+      ["Page/prices/priceHeader"]);
 
     const nativeRt = runtime.createRuntime();
     runtime.beginFrame(nativeRt);

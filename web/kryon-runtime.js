@@ -1327,6 +1327,10 @@ function webNodeFromWidget(item, index) {
     accept: metaString(meta, "accept"),
     multiple: metaBool(meta, "multiple"),
     inputMode: metaString(meta, "inputMode"),
+    headers: metaString(meta, "headers"),
+    scope: metaString(meta, "scope"),
+    colSpan: metaString(meta, "colSpan"),
+    rowSpan: metaString(meta, "rowSpan"),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
     role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
@@ -1337,6 +1341,7 @@ function webNodeFromWidget(item, index) {
     ariaActiveDescendant: meta.ariaActiveDescendant === undefined || meta.ariaActiveDescendant === null ? "" : String(meta.ariaActiveDescendant),
     ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
     ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
+    ariaSort: metaString(meta, "ariaSort"),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
@@ -1471,6 +1476,10 @@ export function webNodeStyleFacts(node) {
     accept: node?.accept || "",
     multiple: !!node?.multiple,
     inputMode: node?.inputMode || "",
+    headers: node?.headers || "",
+    scope: node?.scope || "",
+    colSpan: node?.colSpan || "",
+    rowSpan: node?.rowSpan || "",
     classes: [...(node?.classes || [])],
     dataAttrs: { ...(node?.dataAttrs || {}) },
     ariaAttrs: { ...(node?.ariaAttrs || {}) },
@@ -1479,6 +1488,7 @@ export function webNodeStyleFacts(node) {
     ariaLabelledBy: node?.ariaLabelledBy || "",
     ariaActiveDescendant: node?.ariaActiveDescendant || "",
     ariaOwns: node?.ariaOwns || "",
+    ariaSort: node?.ariaSort || "",
     state: { ...(node?.state || {}) }
   };
 }
@@ -2091,6 +2101,12 @@ function selectorNativeAttrValue(key, facts) {
     case "minlength": return facts.minLength;
     case "maxlength": return facts.maxLength;
     case "inputmode": return facts.inputMode;
+    case "headers": return facts.headers;
+    case "scope": return facts.scope;
+    case "colspan": return facts.colSpan;
+    case "rowspan": return facts.rowSpan;
+    case "aria-sort":
+    case "ariaSort": return facts.ariaSort;
     case "multiple": return facts.multiple;
     case "for": return facts.htmlFor;
     default: return facts[key] ?? facts.extraAttrs?.[key];
@@ -2110,6 +2126,8 @@ function selectorDataAttrPresent(key, facts) {
 }
 
 function selectorAriaAttrValue(key, facts) {
+  if (key === "aria-sort" || key === "aria.sort")
+    return facts.ariaSort || facts.ariaAttrs?.sort || facts.extraAttrs?.["aria-sort"];
   if (key.startsWith("aria-"))
     return facts.ariaAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("aria."))
@@ -2119,6 +2137,10 @@ function selectorAriaAttrValue(key, facts) {
 }
 
 function selectorAriaAttrPresent(key, facts) {
+  if (key === "aria-sort" || key === "aria.sort")
+    return !!facts.ariaSort ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "sort") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-sort");
   if (key.startsWith("aria-"))
     return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5)) ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);
@@ -3897,6 +3919,10 @@ function resolveWebDOMRelations(root) {
     setAttr(el, "aria-activedescendant", resolveWebDOMRelationToken(root, docNode.ariaActiveDescendant));
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
     setAttr(el, "aria-owns", resolveWebDOMRelationList(root, docNode.ariaOwns));
+    if (docNode.headers)
+      setAttr(el, "headers", resolveWebDOMRelationList(root, docNode.headers));
+    else if (!docNode.extraAttrs?.headers)
+      removeAttr(el, "headers");
     setAttr(el, "for", resolveWebDOMRelationToken(root, docNode.htmlFor));
     setAttr(el, "form", resolveWebDOMRelationToken(root, docNode.formOwner));
     setAttr(el, "popovertarget", resolveWebDOMRelationToken(root, docNode.popoverTarget));
@@ -3954,6 +3980,7 @@ function webDOMRelationsForNode(target, node) {
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     controls: webDOMRelationList(target, node.ariaControls),
     owns: webDOMRelationList(target, node.ariaOwns),
+    headers: webDOMRelationList(target, node.headers),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     labelledBy: mergeWebDOMRelationObjects(
@@ -4234,6 +4261,10 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "accept", docNode.accept);
   setAttr(el, "multiple", docNode.multiple);
   setAttr(el, "inputmode", docNode.inputMode);
+  setAttr(el, "scope", docNode.scope);
+  setAttr(el, "colspan", docNode.colSpan);
+  setAttr(el, "rowspan", docNode.rowSpan);
+  setAttr(el, "aria-sort", docNode.ariaSort);
   applyExtraAttrs(el, docNode.extraAttrs);
   if (docNode.tag === "img") {
     setAttr(el, "src", docNode.asset);
@@ -5304,13 +5335,14 @@ const webDOMInternalAttributeNames = new Set([
   "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
   "aria-activedescendant",
-  "aria-controls", "aria-owns", "aria-live",
+  "aria-controls", "aria-owns", "aria-sort", "aria-live",
   "href", "target", "rel", "for", "form", "part", "slot", "type", "action", "method", "enctype",
   "autocomplete", "hidden", "draggable", "spellcheck", "contenteditable",
   "autofocus", "inert", "autocapitalize", "enterkeyhint", "download", "formnovalidate", "novalidate", "popover",
   "popovertarget", "popovertargetaction", "readonly", "required", "min",
   "max", "step", "minlength", "maxlength", "pattern", "accept", "multiple",
-  "inputmode", "alt", "src", "checked", "disabled", "selected", "open"
+  "inputmode", "headers", "scope", "colspan", "rowspan", "alt", "src",
+  "checked", "disabled", "selected", "open"
 ]);
 
 function dataSetKeyToAttrName(key) {
@@ -5397,6 +5429,11 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.inert = !!el.inert || attrs.inert !== undefined;
   docNode.autoCapitalize = attrs.autocapitalize ?? docNode.autoCapitalize ?? "";
   docNode.enterKeyHint = attrs.enterkeyhint ?? docNode.enterKeyHint ?? "";
+  docNode.headers = attrs.headers ?? docNode.headers ?? "";
+  docNode.scope = attrs.scope ?? docNode.scope ?? "";
+  docNode.colSpan = attrs.colspan ?? docNode.colSpan ?? "";
+  docNode.rowSpan = attrs.rowspan ?? docNode.rowSpan ?? "";
+  docNode.ariaSort = attrs["aria-sort"] ?? docNode.ariaSort ?? "";
   docNode.tabIndex = attrs.tabindex !== undefined && Number.isFinite(Number(attrs.tabindex))
     ? Math.trunc(Number(attrs.tabindex)) : docNode.tabIndex;
   const dataAttrs = {};
@@ -5412,7 +5449,7 @@ function syncWebDOMElementFromNative(root, el) {
     }
     if (attr.startsWith("aria-")) {
       const ariaName = attr.slice(5);
-      if (!["label", "description", "describedby", "controls", "owns", "live"].includes(ariaName))
+      if (!["label", "description", "describedby", "controls", "owns", "sort", "live"].includes(ariaName))
         ariaAttrs[ariaName] = value;
       continue;
     }
@@ -5499,6 +5536,7 @@ function webDOMObjectSnapshot(target, object) {
       describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
       controls: (relations?.controls || []).map((relation) => relation.ref),
       owns: (relations?.owns || []).map((relation) => relation.ref),
+      headers: (relations?.headers || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
       formOwner: relations?.formOwner?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),

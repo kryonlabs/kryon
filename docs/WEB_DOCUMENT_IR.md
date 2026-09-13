@@ -151,6 +151,10 @@ Supported metadata fields:
 | `accept`, `dom_accept`, `html_accept` | `accept` |
 | `multiple`, `dom_multiple`, `html_multiple` | `multiple` |
 | `input_mode`, `inputmode`, `dom_inputmode`, `html_inputmode` | `inputMode` |
+| `headers`, `dom_headers`, `html_headers` | `headers` |
+| `scope`, `dom_scope`, `html_scope` | `scope` |
+| `colspan`, `col_span`, `dom_colspan`, `html_colspan` | `colSpan` |
+| `rowspan`, `row_span`, `dom_rowspan`, `html_rowspan` | `rowSpan` |
 | `tab_index`, `tabindex`, `dom_tab_index` | `tabIndex` |
 | `role` | `role` |
 | `aria_label`, `accessible_label` | `ariaLabel` |
@@ -160,6 +164,7 @@ Supported metadata fields:
 | `aria_activedescendant`, `aria_active_descendant` | `ariaActiveDescendant` |
 | `aria_controls` | `ariaControls` |
 | `aria_owns`, `aria_own` | `ariaOwns` |
+| `aria_sort`, `aria_sorted` | `ariaSort` |
 | `aria_live`, `live` | `ariaLive` |
 | `aria_*`, `dom_aria_*`, `html_aria_*` | `ariaAttrs` |
 | `on_click` | `onClick`, `action` |
@@ -241,6 +246,10 @@ Supported metadata fields:
       inert,
       autoCapitalize,
       enterKeyHint,
+      headers,
+      scope,
+      colSpan,
+      rowSpan,
       download,
       formNoValidate,
       noValidate,
@@ -251,6 +260,7 @@ Supported metadata fields:
       asset,
       role,
       ariaLabel,
+      ariaSort,
       onClick,
       onInput,
       onBeforeInput,
@@ -331,8 +341,9 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `download`, `formNoValidate`, `noValidate`,
 `popover`, `popoverTarget`, `popoverTargetAction`, `readOnly`, `required`,
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
-`multiple`, `inputMode`, `classes`, `dataAttrs`, `ariaAttrs`, `extraAttrs`,
-`role`, `open`, `scrollLeft`, `scrollTop`, and `state`. The DOM
+`multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,
+`dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaSort`, `open`,
+`scrollLeft`, `scrollTop`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -365,6 +376,8 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[popovertarget=...]`, `[popovertargetaction=...]`, `[min=...]`,
 `[max=...]`, `[step=...]`, `[minlength=...]`, `[maxlength=...]`,
 `[pattern=...]`, `[accept=...]`, `[multiple=true]`, `[inputmode=...]`,
+`[headers=...]`, `[scope=...]`, `[colspan=...]`, `[rowspan=...]`,
+`[aria-sort=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, spacing,
 radius, border width, opacity, font size, offsets, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
@@ -497,15 +510,15 @@ scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,
 `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`,
-`form`, and `popover_target` may name another Kry DOM object by ref, path, name, key, or
-native id. The Web Document facts keep the authored Kry value for KSS and
-queries, while the DOM renderer resolves the native attribute to a real element
-id during mount. `webDOMRelations(target, query)`, `element.kryRelations`, and
-`object.relations` expose the resolved Kry DOM objects, including `owns`,
-direct `labelledBy` links from `aria_labelledby`, active descendant links from
-`aria_activedescendant`, form owner links from `form`, and reverse `labelledBy`
-links for controls targeted by `dom_for`; snapshots include serializable
-`relationRefs`.
+`headers`, `form`, and `popover_target` may name another Kry DOM object by ref,
+path, name, key, or native id. The Web Document facts keep the authored Kry
+value for KSS and queries, while the DOM renderer resolves the native attribute
+to a real element id during mount. `webDOMRelations(target, query)`,
+`element.kryRelations`, and `object.relations` expose the resolved Kry DOM
+objects, including `owns`, `headers`, direct `labelledBy` links from
+`aria_labelledby`, active descendant links from `aria_activedescendant`, form
+owner links from `form`, and reverse `labelledBy` links for controls targeted
+by `dom_for`; snapshots include serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source

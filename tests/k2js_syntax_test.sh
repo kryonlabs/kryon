@@ -541,6 +541,42 @@ grep -q '"part": "external-control"' "$form_owner_out"
 grep -q '"slot": "contact-extra"' "$form_owner_out"
 grep -q '"formOwner": "contact"' "$form_owner_out"
 
+cat > "$work/src/table_headers.kry" <<'EOF'
+#import "kryon.h"
+
+app "Table Headers" {
+    size 80 60
+}
+
+TableHeaderScreen :: () #ui {
+    Screen root: {
+        Text price_header: {
+            text = "Price"
+            dom = "th"
+            dom_id = "price-header"
+            scope = "col"
+            aria_sort = "ascending"
+        }
+        Text price_cell: {
+            text = "$12"
+            dom = "td"
+            headers = "price_header"
+            colspan = 2
+            rowspan = 1
+        }
+    }
+}
+EOF
+"$k2js" --root "$work" -o "$work/out" "$work/src/table_headers.kry"
+table_headers_out="$work/out/src/table_headers.js"
+grep -q '"tag": "th"' "$table_headers_out"
+grep -q '"scope": "col"' "$table_headers_out"
+grep -q '"ariaSort": "ascending"' "$table_headers_out"
+grep -q '"tag": "td"' "$table_headers_out"
+grep -q '"headers": "price_header"' "$table_headers_out"
+grep -q '"colSpan": 2' "$table_headers_out"
+grep -q '"rowSpan": 1' "$table_headers_out"
+
 cat > "$work/src/state_arrays.kry" <<'EOF'
 Counter :: struct {
     value: i32

@@ -176,6 +176,10 @@ typedef struct KirStmt {
     char dom_accept[KIR_TEXT_MAX];      /* requested file accept list */
     char dom_multiple[KIR_NAME_MAX];    /* requested multiple expression */
     char dom_inputmode[KIR_NAME_MAX];   /* requested inputmode hint */
+    char dom_headers[KIR_TEXT_MAX];     /* requested table header refs */
+    char dom_scope[KIR_NAME_MAX];       /* requested table header scope */
+    char dom_colspan[KIR_NAME_MAX];     /* requested table colspan expression */
+    char dom_rowspan[KIR_NAME_MAX];     /* requested table rowspan expression */
     char dom_tab_index[KIR_NAME_MAX];   /* requested tabindex expression */
     char dom_role[KIR_NAME_MAX];        /* requested accessibility role */
     char dom_aria_label[KIR_TEXT_MAX];  /* requested accessible label */
@@ -185,6 +189,7 @@ typedef struct KirStmt {
     char dom_aria_activedescendant[KIR_TEXT_MAX]; /* requested active descendant */
     char dom_aria_controls[KIR_TEXT_MAX];    /* requested controlled element ids */
     char dom_aria_owns[KIR_TEXT_MAX];        /* requested owned element ids */
+    char dom_aria_sort[KIR_NAME_MAX];        /* requested table/list sort order */
     char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
     char dom_aria_attrs[KIR_TEXT_MAX];  /* requested arbitrary aria-* attributes */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */
