@@ -265,6 +265,18 @@ main(void)
                                  diagnostic, sizeof(diagnostic)));
         assert(strstr(diagnostic, "unknown property") != NULL);
     }
+    assert(!kss_parse_string("@theme dark; Button { background: #111111; }",
+                             rules, 12, &result, diagnostic,
+                             sizeof(diagnostic)));
+    assert(strstr(diagnostic, "unknown directive") != NULL);
+    assert(!kss_parse_string("@layer legacy; Button { background: #111111; }",
+                             rules, 12, &result, diagnostic,
+                             sizeof(diagnostic)));
+    assert(strstr(diagnostic, "unknown layer") != NULL);
+    assert(!kss_parse_string(
+               "tokens { colors { face: #111111; } } Button { background: #111111; }",
+               rules, 12, &result, diagnostic, sizeof(diagnostic)));
+    assert(strstr(diagnostic, "unknown token group") != NULL);
 
     assert_pack_parses("styles/kryon/material.kss", "kryon.material");
     assert_pack_parses("styles/kryon/tk.kss", "kryon.tk");

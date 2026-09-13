@@ -1825,7 +1825,7 @@ function parseWebStyleTokens(text) {
         (kind === "length" || kind === "number") ? tokens.lengths :
         kind === "material" ? tokens.materials : null;
       if (!target)
-        continue;
+        throw new Error(`unknown KSS token group ${group[1]}`);
       for (const part of group[2].split(";")) {
         const colon = part.indexOf(":");
         if (colon < 0)
@@ -1857,8 +1857,14 @@ export function parseWebStyleSheet(source) {
       const value = match[2].trim();
       if (name === "pack")
         pack = value;
-      else if (name === "layer")
-        layer = webStyleLayers[value.toLowerCase()] ?? layer;
+      else if (name === "layer") {
+        const nextLayer = webStyleLayers[value.toLowerCase()];
+        if (nextLayer === undefined)
+          throw new Error(`unknown KSS layer ${value}`);
+        layer = nextLayer;
+      } else {
+        throw new Error(`unknown KSS directive @${match[1]}`);
+      }
       continue;
     }
     for (const selectorText of String(match[3] || "").split(",")) {

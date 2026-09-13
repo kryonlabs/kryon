@@ -414,6 +414,19 @@ func TestParseStyleSheetRejectsLegacyPropertyAliases(t *testing.T) {
 	}
 }
 
+func TestParseStyleSheetRejectsLegacySyntax(t *testing.T) {
+	cases := []string{
+		"@theme dark; Button { background: #111111; }",
+		"@layer legacy; Button { background: #111111; }",
+		"tokens { colors { face: #111111; } } Button { background: #111111; }",
+	}
+	for _, source := range cases {
+		if _, _, err := ParseStyleSheet(source); err == nil {
+			t.Fatalf("legacy KSS syntax still parsed: %s", source)
+		}
+	}
+}
+
 func TestRegisterStylePackSourceInGo(t *testing.T) {
 	ClearStylePacks()
 	defer ClearStylePacks()
