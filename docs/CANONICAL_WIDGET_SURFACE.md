@@ -21,6 +21,7 @@ and what must move out of native code into `.kry`.
 | Status | Meaning |
 |---|---|
 | `.kry canonical` | This should be implemented as a first-class `.kry` widget or node. |
+| `.kry support` | Generated `.kry` policy/data used by a host-owned interaction or runtime helper, not a standalone public widget. |
 | `Native canonical` | This is low-level drawing/layout/runtime surface that may remain native. |
 | `Native support` | Runtime support only; not a canonical public widget. |
 | `Composite candidate` | Keep as `.kry` composition if it is reusable, otherwise fold into callers. |
@@ -98,8 +99,8 @@ surface review:
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
-| `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, and target-index policy | Native support |
-| `runtime/reorder_props.kry` | Reorder support state, data, and result records | Native support |
+| `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, and target-index policy | `.kry support` |
+| `runtime/reorder_props.kry` | Reorder support state, data, and result records | `.kry support` |
 | `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
 | `runtime/rows.kry` | Info/form row sizing and layout fallback policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout, gap, font fallback, wrapping, and segment sizing policy | `.kry canonical` |
@@ -118,8 +119,8 @@ surface review:
 | `runtime/style_picker_props.kry` | StylePicker props and option/selection policy | `.kry canonical` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
-| `runtime/swipe.kry` | Swipe direction/default/progress policy | Native support |
-| `runtime/swipe_props.kry` | Swipe support state, data, and result records | Native support |
+| `runtime/swipe.kry` | Swipe direction/default/progress policy | `.kry support` |
+| `runtime/swipe_props.kry` | Swipe support state, data, and result records | `.kry support` |
 | `runtime/tab_bar.kry` | TabBar sizing, scroll, keyboard index, and reorder marker policy | `.kry canonical` |
 | `runtime/tab_bar_props.kry` | TabBar props | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
