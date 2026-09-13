@@ -4265,6 +4265,7 @@ func (r *runtime) Page(props PageProps) {
 	if key == 0 {
 		key = Key(props.Title)
 	}
+	style := styleForClassKind(props.ClassName, StyleSheet_StyleKindPage())
 	if props.Title != "" {
 		r.SetPageTitle(props.Title)
 	}
@@ -4274,11 +4275,10 @@ func (r *runtime) Page(props PageProps) {
 	if props.CanonicalURL != "" {
 		r.SetPageCanonicalURL(props.CanonicalURL)
 	}
-	if props.ThemeColor.A != 0 {
-		r.SetPageThemeColor(props.ThemeColor)
+	if style.Background.A != 0 {
+		r.SetPageThemeColor(style.Background)
 	}
 	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage})
-	style := styleForClassKind(props.ClassName, StyleSheet_StyleKindPage())
 	r.Column(ColumnProps{Bounds: bounds, Gap: styleLength(style.Gap), Padding: styleLength(style.PaddingX), Key: key})
 }
 func (r *runtime) Section(props SectionProps) {

@@ -310,7 +310,6 @@ Supported metadata fields:
       pageTitle,
       pageDescription,
       pageCanonicalURL,
-      pageThemeColor,
       sourcePath,
       sourceLine,
       sourceColumn,

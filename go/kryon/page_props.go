@@ -8,7 +8,6 @@ type PageProps struct {
 	Title        string
 	Description  string
 	CanonicalURL string
-	ThemeColor   Color
 	ClassName    int32
 	Key          KeyID
 }

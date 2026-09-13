@@ -7,7 +7,6 @@ PageProps :: struct {
     title: const char*
     description: const char*
     canonical_url: const char*
-    theme_color: Color
     class_name: i32
     key: KeyID
 }

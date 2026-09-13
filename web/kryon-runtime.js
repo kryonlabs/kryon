@@ -1782,7 +1782,6 @@ function webNodeFromWidget(item, index) {
     pageTitle: propString(args, "title", ""),
     pageDescription: propString(args, "description", ""),
     pageCanonicalURL: propString(args, "canonical_url", ""),
-    pageThemeColor: colorToCss(args?.theme_color || args?.themeColor || ""),
     bounds,
     hasBounds: bounds.width > 0 || bounds.height > 0,
     scrollLeft: 0,
@@ -4835,7 +4834,7 @@ export function webDocumentFrame(rt) {
     app: rt?.app || null,
     nodes
   };
-  frame.metadata = webDocumentMetadata(frame);
+  frame.metadata = webDocumentMetadata(frame, rt?.webStyleSheets || []);
   return frame;
 }
 
@@ -4908,13 +4907,17 @@ function normalizeWebDocumentNodes(nodes) {
   }
 }
 
-function webDocumentMetadata(frame) {
+function webDocumentMetadata(frame, sheets = []) {
   const page = (frame.nodes || []).find((node) => node.kind === "Page");
+  const pageStyle = page ? resolveWebStyle(page, sheets) : {};
+  const pageThemeColor = pageStyle.background
+    ? webStyleCSSValue("background", pageStyle.background)
+    : "";
   return {
     title: pageMeta.title || page?.pageTitle || frame.app?.title || "",
     description: pageMeta.description || page?.pageDescription || "",
     canonicalURL: pageMeta.canonicalURL || page?.pageCanonicalURL || "",
-    themeColor: pageMeta.themeColor || page?.pageThemeColor || ""
+    themeColor: pageMeta.themeColor || pageThemeColor
   };
 }
 

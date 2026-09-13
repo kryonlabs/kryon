@@ -27,7 +27,6 @@ typedef struct PageProps {
     const char* title;
     const char* description;
     const char* canonical_url;
-    Color theme_color;
     int32_t class_name;
     KeyID key;
 } PageProps;

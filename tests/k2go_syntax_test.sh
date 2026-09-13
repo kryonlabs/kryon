@@ -195,7 +195,7 @@ App :: () #ui {
     ReplaceRoute("/page#top")
     route_version: int = GetRouteVersion()
     Progress((ProgressProps){{Scale(188), Scale(204), Scale(60), Scale(10)}, 0, 10, route_version, ""})
-    Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page", .theme_color = (Color){0x11, 0x22, 0x33, 0xff}})
+    Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page"})
     Heading((HeadingProps){.text = "Welcome", .level = 1})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body"})
     Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more"})

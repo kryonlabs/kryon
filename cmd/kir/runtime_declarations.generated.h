@@ -720,7 +720,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    title: const char*\n"
         "    description: const char*\n"
         "    canonical_url: const char*\n"
-        "    theme_color: Color\n"
         "    class_name: i32\n"
         "    key: KeyID\n"
         "}\n"

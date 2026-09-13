@@ -3407,6 +3407,15 @@ func TestBoxUsesPrimitiveBoundsPolicy(t *testing.T) {
 }
 
 func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.page.metadata;
+Page { background: #010203; }
+`, "Page Metadata", "") || !SetActiveStylePack("test.page.metadata") {
+		t.Fatal("test page metadata style did not activate")
+	}
+
 	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
 
 	rt.ReplaceRoute("/docs#install")
@@ -3415,7 +3424,6 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 		Title:        "Docs",
 		Description:  "Kryon docs",
 		CanonicalURL: "https://example.test/docs",
-		ThemeColor:   Color{R: 1, G: 2, B: 3, A: 255},
 	})
 	rt.Heading(HeadingProps{Text: "Install", Level: 2})
 	rt.Link(LinkProps{Text: "Read more", Link: "/more", Bounds: Rectangle{Width: 96, Height: 24}})

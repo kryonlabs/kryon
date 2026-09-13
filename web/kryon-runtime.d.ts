@@ -245,7 +245,6 @@ export interface WebDocumentNode {
   pageTitle: string;
   pageDescription: string;
   pageCanonicalURL: string;
-  pageThemeColor: string;
   bounds: { x: number; y: number; width: number; height: number };
   hasBounds: boolean;
   scrollLeft: number;

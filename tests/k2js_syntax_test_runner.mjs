@@ -3604,6 +3604,15 @@ function fakeDocument() {
   const previousDocument = globalThis.document;
   globalThis.document = fakeDocument();
   try {
+    const styledRt = runtime.createRuntime({
+      webStyleSheets: `@pack page.meta;
+Page { background: #0a141e; }`
+    });
+    runtime.beginFrame(styledRt);
+    runtime.widget(styledRt, "Page", { title: "Styled page" });
+    runtime.endFrame(styledRt);
+    assert.equal(runtime.webDocumentFrame(styledRt).metadata.themeColor, "#0a141e");
+
     const domState = generated.createState();
     const domRt = runtime.createRuntime({ app: generated.app });
     runtime.setWebStyleSheets(domRt, webStyleSheet);

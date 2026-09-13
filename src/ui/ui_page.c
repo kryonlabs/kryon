@@ -194,6 +194,7 @@ Page(PageProps props)
 {
     Rectangle bounds = page_bounds_or_view(props.bounds);
     KeyID key = props.key != 0 ? props.key : Key(props.title);
+    Style style = page_box_style(StyleKindPage(), props.class_name);
 
     if(props.title != NULL)
         SetPageTitle(props.title);
@@ -201,10 +202,9 @@ Page(PageProps props)
         SetPageDescription(props.description);
     if(props.canonical_url != NULL)
         SetPageCanonicalURL(props.canonical_url);
-    if(props.theme_color.a != 0)
-        SetPageThemeColor(props.theme_color);
+    if(style.background.a != 0)
+        SetPageThemeColor(style.background);
     page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
-    Style style = page_box_style(StyleKindPage(), props.class_name);
     int gap = style.gap > 0.0f ? (int)(style.gap + 0.5f) : 0;
     int padding = style.padding_x > 0.0f ? (int)(style.padding_x + 0.5f) : 0;
     return Column((ColumnProps){bounds, gap, padding, key});
