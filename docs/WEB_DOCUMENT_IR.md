@@ -344,7 +344,7 @@ The initial tag mapping is intentionally conservative:
 | `Separator` | `hr` |
 | `Menu` | `menu` |
 | `TableView` | `table` |
-| `TableCell` | `td` |
+| `TableCell` | `td`, or `th` when `scope` is `row`, `col`, `rowgroup`, or `colgroup` |
 | `Canvas` | `canvas` |
 | `Plot` | `canvas` |
 | `CanvasGrid` | `canvas` |
@@ -353,8 +353,8 @@ Other widgets remain `div` nodes until they gain a specific web-native
 contract.
 
 Div-backed widgets still expose conservative native ARIA roles when the widget
-semantics are clear: `Toolbar` uses `toolbar`, `TabBar` uses `tablist`,
-`TreeView` uses `tree`, and `Toast` uses `status`.
+semantics are clear: `Toolbar` uses `toolbar`, `SegmentedControl` uses `group`,
+`TabBar` uses `tablist`, `TreeView` uses `tree`, and `Toast` uses `status`.
 The `menu` element still receives explicit `role=menu`.
 Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 
@@ -363,7 +363,7 @@ Canvas-backed `Plot` and `CanvasGrid` nodes expose `img`.
 KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `key`,
 `name`, `path`, `parentPath`, `ref`, `webRef`, `sourcePath`, `sourceLine`, `sourceColumn`,
 `sourceEndLine`, `sourceEndColumn`, `sourceRef`, `sourceColumnRef`, `sourceRangeRef`,
-`id`, `domName`, `href`, `target`, `rel`, `part`, `slot`,
+`id`, `domName`, `href`, `target`, `rel`, `alt`, `asset`, `src`, `part`, `slot`,
 `inputType`, `formOwner`, `formAction`, `formMethod`,
 `formEncType`, `autoComplete`, `hidden`, `draggable`, `spellCheck`,
 `contentEditable`, `autoFocus`, `inert`, `autoCapitalize`, `enterKeyHint`,
