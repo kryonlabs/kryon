@@ -486,7 +486,7 @@ int ToggleSwitch(int x, int y, int w, int h, int *value,
                  int class_name, const char *off_label, const char *on_label,
                  int focused);
 int RenderCheckboxToggle(int x, int y, const char *label, int *value);
-int DrawDisabledUICheckboxToggle(int x, int y, const char *label,
+int DrawDisabledCheckboxToggle(int x, int y, const char *label,
                                  int *value, int disabled);
 int ui_dropdown(DropdownProps props);
 void RenderInfoRows(InfoRowsProps rows);

@@ -208,7 +208,7 @@ int
 RenderCheckboxRow(CheckboxRowProps row, int x, int y)
 {
     if(row.disabled)
-        return DrawDisabledUICheckboxToggle(x, y, row.label, row.value, 1);
+        return DrawDisabledCheckboxToggle(x, y, row.label, row.value, 1);
     return RenderCheckboxToggle(x, y, row.label, row.value);
 }
 

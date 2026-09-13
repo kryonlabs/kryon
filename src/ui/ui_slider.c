@@ -765,7 +765,7 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
 }
 
 int
-DrawDisabledUICheckboxToggle(int x, int y, const char *label,
+DrawDisabledCheckboxToggle(int x, int y, const char *label,
                              int *value, int disabled)
 {
     char editor_id[96];
@@ -892,5 +892,5 @@ DrawDisabledUICheckboxToggle(int x, int y, const char *label,
 int
 RenderCheckboxToggle(int x, int y, const char *label, int *value)
 {
-    return DrawDisabledUICheckboxToggle(x, y, label, value, 0);
+    return DrawDisabledCheckboxToggle(x, y, label, value, 0);
 }

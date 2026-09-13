@@ -1639,7 +1639,7 @@ RegisterFocus(int id, Rectangle bounds)
 }
 
 static void
-ClaimUITextFocus(int *focused)
+ClaimTextFocus(int *focused)
 {
     if(focused == NULL)
         return;
@@ -1658,27 +1658,27 @@ ClaimUITextFocus(int *focused)
 }
 
 static void
-ClaimUITextFieldFocus(int *focused)
+ClaimTextFieldFocus(int *focused)
 {
     int *previous = g_ui_text_focus_owner;
 
-    ClaimUITextFocus(focused);
+    ClaimTextFocus(focused);
     if(g_ui_text_focus_owner == focused && previous != focused)
         ui_clear_text_area_selection();
 }
 
 static void
-ClaimUITextAreaFocus(int *focused)
+ClaimTextAreaFocus(int *focused)
 {
     int *previous = g_ui_text_focus_owner;
 
-    ClaimUITextFocus(focused);
+    ClaimTextFocus(focused);
     if(g_ui_text_focus_owner == focused && previous != focused)
         ui_clear_text_field_selection();
 }
 
 static void
-ReleaseUITextFocus(int *focused, int focus_id)
+ReleaseTextFocus(int *focused, int focus_id)
 {
     if(focused == NULL)
         return;
@@ -1723,7 +1723,7 @@ ClearTextInputFocus(void)
 }
 
 static int
-IsUITextFocusOwner(int *focused)
+IsTextFocusOwner(int *focused)
 {
     /* Strict single-owner enforcement. A text input is focused if and only if
      * it is the recorded owner. Ownership survives across frames (so a stale
@@ -3755,12 +3755,12 @@ ui_text_area_render(TextAreaProps area)
     first_line_y = ControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
     focused = *area.focused != 0;
-    focused = IsUITextFocusOwner(area.focused) ? focused : 0;
+    focused = IsTextFocusOwner(area.focused) ? focused : 0;
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
 
     if(area.focus_id > 0 && RegisterFocus(area.focus_id, area.bounds)) {
         focused = 1;
-        ClaimUITextAreaFocus(area.focused);
+        ClaimTextAreaFocus(area.focused);
     }
 
     mouse_world = ui_mouse_world();
@@ -3775,7 +3775,7 @@ ui_text_area_render(TextAreaProps area)
                                              area.focused);
     if(context_active) {
         focused = 1;
-        ClaimUITextAreaFocus(area.focused);
+        ClaimTextAreaFocus(area.focused);
     }
 
     if(ui_text_context_open_for(TEXT_CONTEXT_AREA, drag_id, area.focused,
@@ -3785,7 +3785,7 @@ ui_text_area_render(TextAreaProps area)
         int current_end = 0;
 
         focused = 1;
-        ClaimUITextAreaFocus(area.focused);
+        ClaimTextAreaFocus(area.focused);
         clicked_cursor = ui_text_area_cursor_from_point(
             area.text, font, line_gap, wrap_width,
             (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
@@ -3812,7 +3812,7 @@ ui_text_area_render(TextAreaProps area)
             int double_click_slop = Scale(6);
 
             focused = 1;
-            ClaimUITextAreaFocus(area.focused);
+            ClaimTextAreaFocus(area.focused);
             g_ui_text_input_show_requested = 1;
             clicked_cursor = ui_text_area_cursor_from_point(area.text, font, line_gap,
                 wrap_width,
@@ -3855,7 +3855,7 @@ ui_text_area_render(TextAreaProps area)
             g_ui_text_area_last_click_time = now;
         } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
             focused = 0;
-            ReleaseUITextFocus(area.focused, area.focus_id);
+            ReleaseTextFocus(area.focused, area.focus_id);
         }
     }
     if(g_ui_text_area_drag_owner == area.focused &&
@@ -3867,7 +3867,7 @@ ui_text_area_render(TextAreaProps area)
         if(scroll_y < 0)
             scroll_y = 0;
         focused = 1;
-        ClaimUITextAreaFocus(area.focused);
+        ClaimTextAreaFocus(area.focused);
         *area.cursor_position = ui_text_area_cursor_from_point(area.text, font, line_gap,
             wrap_width,
             (int)area.bounds.x + padding_x, (int)area.bounds.y + padding_y,
@@ -3891,7 +3891,7 @@ ui_text_area_render(TextAreaProps area)
     SetFocusTextInputActive(focused && !area.read_only);
     if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
-        ReleaseUITextFocus(area.focused, area.focus_id);
+        ReleaseTextFocus(area.focused, area.focus_id);
         *area.focused = 0;
         SetFocusTextInputActive(0);
     }
@@ -3908,7 +3908,7 @@ ui_text_area_render(TextAreaProps area)
        ui_mod_key_down() &&
        (copy_pressed || cut_pressed || paste_pressed)) {
         focused = 1;
-        ClaimUITextAreaFocus(area.focused);
+        ClaimTextAreaFocus(area.focused);
         *area.focused = 1;
     }
     if((focused || context_active) && has_selection) {
@@ -4404,7 +4404,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     font = metrics.font;
     padding_x = metrics.padding_x;
     focused = *field.focused != 0;
-    focused = IsUITextFocusOwner(field.focused) ? focused : 0;
+    focused = IsTextFocusOwner(field.focused) ? focused : 0;
     scroll_x_ptr = ui_text_field_scroll_for(field.focus_id, field.focused);
     text_w = TextWidth(display_text, font);
     scroll_policy = TextFieldScrollFor(field.bounds.x, field.bounds.width,
@@ -4416,7 +4416,7 @@ ui_text_field_render_filtered(TextFieldProps field,
 
     if(field.focus_id > 0 && RegisterFocus(field.focus_id, field.bounds)) {
         focused = 1;
-        ClaimUITextFieldFocus(field.focused);
+        ClaimTextFieldFocus(field.focused);
     }
 
     mouse_world = ui_mouse_world();
@@ -4430,7 +4430,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                                              field.focus_id, field.focused);
     if(context_active) {
         focused = 1;
-        ClaimUITextFieldFocus(field.focused);
+        ClaimTextFieldFocus(field.focused);
     }
 
     if(!field.secure &&
@@ -4442,7 +4442,7 @@ ui_text_field_render_filtered(TextFieldProps field,
         int current_end = 0;
 
         focused = 1;
-        ClaimUITextFieldFocus(field.focused);
+        ClaimTextFieldFocus(field.focused);
         clicked_cursor = ui_text_cursor_from_x(
             display_text, font, text_origin_x, (int)mouse_world.x);
         if(ui_text_selection_matches(g_ui_text_field_selection,
@@ -4468,7 +4468,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                 now - g_ui_text_field_last_click_time <= 0.45 &&
                 abs(click_dx) <= Scale(6) && abs(click_dy) <= Scale(6);
             focused = 1;
-            ClaimUITextFieldFocus(field.focused);
+            ClaimTextFieldFocus(field.focused);
             g_ui_text_input_show_requested = 1;
             if(max_scroll_x > 0) {
                 g_ui_text_field_pan_id = field.focus_id;
@@ -4501,7 +4501,7 @@ ui_text_field_render_filtered(TextFieldProps field,
             g_ui_text_field_last_click_time = now;
         } else if(focused && !context_active && !g_ui_scroll_gesture_pending) {
             focused = 0;
-            ReleaseUITextFocus(field.focused, field.focus_id);
+            ReleaseTextFocus(field.focused, field.focus_id);
         }
     }
     if(g_ui_text_field_pan_owner == field.focused &&
@@ -4547,7 +4547,7 @@ ui_text_field_render_filtered(TextFieldProps field,
        !panning_field &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         focused = 1;
-        ClaimUITextFieldFocus(field.focused);
+        ClaimTextFieldFocus(field.focused);
         *field.cursor_position = ui_text_cursor_from_x(
             display_text, font, text_origin_x, (int)mouse_world.x);
         g_ui_text_field_selection.cursor = *field.cursor_position;
@@ -4571,7 +4571,7 @@ ui_text_field_render_filtered(TextFieldProps field,
     SetFocusTextInputActive(focused && !field.read_only);
     if(focused && IsKeyboardInputEnabled() && IsKeyPressed(KEY_ESCAPE)) {
         focused = 0;
-        ReleaseUITextFocus(field.focused, field.focus_id);
+        ReleaseTextFocus(field.focused, field.focus_id);
         *field.focused = 0;
         SetFocusTextInputActive(0);
     }
@@ -5034,7 +5034,7 @@ RenderTextLines(const char **lines, int count, int x, int *y, int font, int line
 }
 
 int
-GetUIIconBtnSize(int size)
+GetIconButtonSize(int size)
 {
     switch(size) {
     case ICON_SIZE_TINY: return ClampPx(12, 10, 18);
@@ -5046,7 +5046,7 @@ GetUIIconBtnSize(int size)
 }
 
 int
-GetUIIconBtnPadding(int size)
+GetIconButtonPadding(int size)
 {
     switch(size) {
     case ICON_SIZE_TINY: return Scale(4);
