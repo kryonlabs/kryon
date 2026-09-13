@@ -74,9 +74,10 @@ the browser receives normal elements, attributes, CSS, and events.
   equivalents or accessibility semantics, with coverage for form controls,
   selectors and selectable options, segmented controls, status output,
   progress, numeric input, separators, tables, title/navigation landmarks,
-  line/separator content, menu item buttons, menu/tab/tree selectable actions,
-  tab buttons, modal popup dialogs, tooltip/context popup roles, icon/list item
-  content, canvas-backed widgets, and common overlay roles.
+  meter output, line/separator content, menu item buttons, menu/tab/tree
+  selectable actions, tab buttons, modal popup dialogs, tooltip/context popup
+  roles, icon/list item content, canvas-backed widgets, and common overlay
+  roles.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

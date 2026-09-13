@@ -2848,6 +2848,8 @@ function fakeDocument() {
       { nodeName: "choiceRadio", path: "Page/choiceRadio" });
     runtime.widget(nativeRt, "Progress", { value: 42, max: 100 }, null,
       { nodeName: "upload", path: "Page/upload" });
+    runtime.widget(nativeRt, "Meter", { min: 0, max: 1, value: 0.75, label: "Storage" }, null,
+      { nodeName: "storage", path: "Page/storage" });
     runtime.widget(nativeRt, "Line", {}, null,
       { nodeName: "line", path: "Page/line" });
     runtime.widget(nativeRt, "Separator", {}, null,
@@ -3019,7 +3021,7 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "CanvasGrid").tag, "canvas");
     assert.deepEqual(
       ["Slider", "Spinbox", "Input", "Dropdown", "ListBox", "ColorPicker",
-       "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator"].map((kind) => {
+       "Checkbox", "Toggle", "Radio", "Progress", "Meter", "Line", "Separator"].map((kind) => {
         const node = runtime.webNodeQuery(nativeRt, kind);
         return [kind, node.tag, node.inputType, node.min, node.max, node.domValue];
       }),
@@ -3034,15 +3036,16 @@ function fakeDocument() {
         ["Toggle", "input", "checkbox", "", "", ""],
         ["Radio", "input", "radio", "", "", ""],
         ["Progress", "progress", "", "", "100", "42"],
+        ["Meter", "meter", "", "0", "1", "0.75"],
         ["Line", "hr", "", "", "", ""],
         ["Separator", "hr", "", "", "", ""]
       ]);
     assert.deepEqual(["Slider", "Spinbox", "Input", "Dropdown", "ListBox", "ColorPicker",
-      "Checkbox", "Toggle", "Radio", "Progress", "Line", "Separator", "TableView"]
+      "Checkbox", "Toggle", "Radio", "Progress", "Meter", "Line", "Separator", "TableView"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
       ["slider", "spinbutton", "spinbutton", "combobox", "listbox", "", "checkbox",
-       "switch", "radio", "progressbar", "separator", "separator", "table"]);
+       "switch", "radio", "progressbar", "meter", "separator", "separator", "table"]);
     assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Icon", "Bullet", "Selectable", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
@@ -3100,6 +3103,7 @@ function fakeDocument() {
     const enabled = runtime.findWebElement(nativeTarget, "enabled");
     const choiceRadio = runtime.findWebElement(nativeTarget, "choiceRadio");
     const upload = runtime.findWebElement(nativeTarget, "upload");
+    const storage = runtime.findWebElement(nativeTarget, "storage");
     const rule = runtime.findWebElement(nativeTarget, "rule");
     const table = runtime.findWebElement(nativeTarget, "table");
     const hero = runtime.findWebElement(nativeTarget, "hero");
@@ -3212,6 +3216,15 @@ function fakeDocument() {
     assert.equal(upload.tagName, "PROGRESS");
     assert.equal(upload.attributes.max, "100");
     assert.equal(upload.attributes.value, "42");
+    assert.equal(storage.tagName, "METER");
+    assert.equal(storage.attributes.min, "0");
+    assert.equal(storage.attributes.max, "1");
+    assert.equal(storage.attributes.value, "0.75");
+    assert.equal(storage.attributes["aria-label"], "Storage");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "storage").valueNow, "0.75");
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "storage").role, "meter");
+    assert.equal(runtime.webDOMAccessibilitySnapshot(nativeTarget).nodes
+      .find((node) => node.path === "Page/storage")?.role, "meter");
     assert.equal(rule.tagName, "HR");
     assert.equal(table.tagName, "TABLE");
     assert.equal(hero.tagName, "IMG");

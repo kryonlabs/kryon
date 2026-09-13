@@ -1192,6 +1192,8 @@ function widgetTag(item) {
     return "input";
   case "Progress":
     return "progress";
+  case "Meter":
+    return "meter";
   case "Line":
   case "Separator":
     return "hr";
@@ -1236,6 +1238,7 @@ function widgetText(item) {
   case "Selectable":
     return propString(args, "text", propString(args, "label", ""));
   case "Progress":
+  case "Meter":
     return propString(args, "label", "");
   case "TextField":
   case "TextArea":
@@ -1290,7 +1293,7 @@ function widgetDOMValue(item) {
     return propString(item.args, "value", "");
   if (item.name === "Selectable")
     return propStringAny(item.args, ["value", "dom_value", "html_value"]);
-  if (item.name !== "Progress")
+  if (item.name !== "Progress" && item.name !== "Meter")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
     const value = item.args.value;
@@ -1304,7 +1307,7 @@ function widgetMin(item) {
     return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
   if (item.name === "TextField")
     return propStringAny(item.args, ["min", "dom_min", "html_min", "form_min"]);
-  if (item.name !== "Progress")
+  if (item.name !== "Progress" && item.name !== "Meter")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
     const value = item.args.min;
@@ -1318,7 +1321,7 @@ function widgetMax(item) {
     return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);
   if (item.name === "TextField")
     return propStringAny(item.args, ["max", "dom_max", "html_max", "form_max"]);
-  if (item.name !== "Progress")
+  if (item.name !== "Progress" && item.name !== "Meter")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
     const value = item.args.max;
@@ -1344,6 +1347,7 @@ function widgetAccessibleLabel(item) {
   case "ColorPicker":
   case "Drag":
   case "Progress":
+  case "Meter":
     return propString(args, "label", "");
   case "Toggle":
     return propString(args, "label",
@@ -2028,7 +2032,7 @@ function webAccessibilityNodeFromDOMSnapshot(snapshot) {
 }
 
 function webNodeValueRange(node) {
-  const rangeLike = node?.tag === "progress" ||
+  const rangeLike = node?.tag === "progress" || node?.tag === "meter" ||
     (node?.tag === "input" && (node?.inputType === "range" || node?.inputType === "number"));
   if (!rangeLike)
     return { min: "", max: "", valueNow: "" };
@@ -2067,6 +2071,8 @@ function implicitRole(node) {
     return "textbox";
   if (node.tag === "progress")
     return "progressbar";
+  if (node.tag === "meter")
+    return "meter";
   if (node.tag === "output")
     return "status";
   if (node.tag === "hr")
