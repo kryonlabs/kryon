@@ -3027,8 +3027,8 @@ func (r *runtime) colorPickerFloat(props ColorPickerProps, channels int) bool {
 		if labelInset <= 0 {
 			labelInset = 6
 		}
-		font := styleFont(style, Text14)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.SwatchBounds.X + labelInset, Y: layout.SwatchBounds.Y + (layout.SwatchBounds.Height-float32(font))/2, Width: layout.SwatchBounds.Width - labelInset*2, Height: float32(font)}, Text: props.Label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, ID: props.ID, Disabled: disabled})
+		font, fontID := styleTextFace(style, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: layout.SwatchBounds.X + labelInset, Y: layout.SwatchBounds.Y + (layout.SwatchBounds.Height-float32(font))/2, Width: layout.SwatchBounds.Width - labelInset*2, Height: float32(font)}, Text: props.Label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Disabled: disabled})
 	}
 	return changed
 }
@@ -3134,6 +3134,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		r.inputEvents = remaining
 	}
 	font := props.Font
+	fontID := uint32(0)
 	if font <= 0 {
 		tabStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral,
 			func() ButtonState {
@@ -3142,7 +3143,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 				}
 				return ButtonStateNormal
 			}(), disabled, false, StyleSheet_StyleKindTab()).Value)
-		font = styleFont(tabStyle, Text12)
+		font, fontID = styleTextFace(tabStyle, Text12)
 	}
 	minWidth := float32(props.MinTabWidth)
 	if minWidth <= 0 {
@@ -3159,7 +3160,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 	widths := make([]float32, count)
 	totalWidth := int32(0)
 	for i := 0; i < count; i++ {
-		labelWidth := int32(runtimeTextWidth(props.Tabs[i].Label, font))
+		labelWidth := int32(runtimeTextWidthWithFont(props.Tabs[i].Label, font, fontID))
 		w := TabBar_TabBarTabWidth(labelWidth, props.Tabs[i].Label != "", false, props.Tabs[i].Closeable, metrics)
 		widths[i] = float32(w)
 		totalWidth += w
@@ -3275,12 +3276,12 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		r.recordButton(FrameOp{Kind: FrameOpButton, Opacity: 1,
 			BorderWidth: paint.BorderWidth, Radius: paint.Radius,
 			AmbientColor: unpackRGBA(paint.BarColor), FocusColor: unpackRGBA(paint.FocusColor), Bounds: tab, Clip: bounds, HasClip: true,
-			Text: fitTabLabel(item.Label, tab.Width-closeWidth-12, font), Color: unpackRGBA(paint.TabColor),
-			BorderColor: unpackRGBA(paint.TabBorderColor), TextColor: unpackRGBA(paint.TextColor), FontSize: font, ID: props.ID,
+			Text: fitTabLabelWithFont(item.Label, tab.Width-closeWidth-12, font, fontID), Color: unpackRGBA(paint.TabColor),
+			BorderColor: unpackRGBA(paint.TabBorderColor), TextColor: unpackRGBA(paint.TextColor), FontSize: font, FontID: fontID, ID: props.ID,
 			Disabled: itemDisabled, Pressed: isSelected, Focused: focused && isSelected, Row: int32(i)})
 		if item.Closeable {
 			r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Clip: bounds, HasClip: true, Text: "×", Color: unpackRGBA(paint.CloseColor),
-				FontSize: font, Disabled: itemDisabled, Pressed: closed, Row: int32(i)})
+				FontSize: font, FontID: fontID, Disabled: itemDisabled, Pressed: closed, Row: int32(i)})
 		}
 	}
 	if !disabled && props.ReorderedFromIndex != nil && props.ReorderedToIndex != nil {
@@ -3323,13 +3324,17 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 // maxWidth (rune-safe; measurement falls back to a width estimate when no
 // font face is loaded, e.g. headless tests).
 func fitTabLabel(label string, maxWidth float32, fontSize int32) string {
+	return fitTabLabelWithFont(label, maxWidth, fontSize, 0)
+}
+
+func fitTabLabelWithFont(label string, maxWidth float32, fontSize int32, fontID uint32) string {
 	if maxWidth <= 8 {
 		return ""
 	}
 	runes := []rune(label)
 	for len(runes) > 1 {
 		s := string(runes)
-		if w, ok := measureFontText(s, fontSize, 0); ok {
+		if w, ok := measureFontText(s, fontSize, fontID); ok {
 			if w.X <= maxWidth {
 				return s
 			}
@@ -3337,7 +3342,7 @@ func fitTabLabel(label string, maxWidth float32, fontSize int32) string {
 			return s
 		}
 		runes = runes[:len(runes)-1]
-		if w, ok := measureFontText(string(runes)+"\u2026", fontSize, 0); ok && w.X <= maxWidth {
+		if w, ok := measureFontText(string(runes)+"\u2026", fontSize, fontID); ok && w.X <= maxWidth {
 			return string(runes) + "\u2026"
 		}
 	}
@@ -5513,9 +5518,11 @@ func (r *runtime) drawActionModal(title, message string, actions []ModalAction, 
 		StyleSheet_StyleKindModal(), 19).Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: Rectangle{Width: float32(r.GetScreenWidth()), Height: float32(r.GetScreenHeight())}, Color: unpackRGBA(Surface_Opacity(packRGBA(scrimStyle.Background), scrimStyle.Opacity)), Opacity: scrimStyle.Opacity})
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: styleFont(titleStyle, Text16)})
+	titleFont, titleFontID := styleTextFace(titleStyle, Text16)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: panel.X + float32(metrics.PaddingX), Y: panel.Y + 14, Width: float32(layout.ContentWidth), Height: 30}, Text: title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont, FontID: titleFontID})
 	if message != "" {
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, Opacity: messageStyle.Opacity, FontSize: styleFont(messageStyle, Text16)})
+		messageFont, messageFontID := styleTextFace(messageStyle, Text16)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: float32(layout.MessageX), Y: float32(layout.MessageY), Width: float32(layout.ContentWidth), Height: float32(messageHeight)}, Text: message, Color: messageStyle.Foreground, Opacity: messageStyle.Opacity, FontSize: messageFont, FontID: messageFontID})
 	}
 
 	result := int32(0)
@@ -5605,13 +5612,13 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	}
 	titleStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 		StyleSheet_StyleKindTitleBar(), 16).Value)
-	titleFont := styleFont(titleStyle, Text20)
-	titleW := runtimeTextWidth(props.Title, titleFont)
+	titleFont, titleFontID := styleTextFace(titleStyle, Text20)
+	titleW := runtimeTextWidthWithFont(props.Title, titleFont, titleFontID)
 	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{
 		X: float32(titleX), Y: float32(height-titleFont) / 2,
 		Width: float32(titleW), Height: float32(titleFont + 4),
-	}, Text: props.Title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont})
+	}, Text: props.Title, Color: titleStyle.Foreground, Opacity: titleStyle.Opacity, FontSize: titleFont, FontID: titleFontID})
 	return clicked
 }
 func (r *runtime) NavigationBar(props NavigationBarProps) {
@@ -5653,7 +5660,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		}
 		baseFrame := simpleStyleFrame(ButtonToneNeutral, checkboxButtonState(false, false, false, item.Disabled), item.Disabled, false, StyleSheet_StyleKindNavigationBarItem())
 		baseStyle := unpackStyle(baseFrame.Value)
-		labelFont := styleFont(baseStyle, Text14)
+		labelFont, labelFontID := styleTextFace(baseStyle, Text14)
 		faceFrame := simpleStyleFrame(func() ButtonTone {
 			if item.Active {
 				return ButtonToneAccent
@@ -5679,6 +5686,11 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 				BorderColor: face.Border, BorderWidth: face.BorderWidth, Radius: face.Radius,
 				Material: face.Material, Selected: item.Active, Disabled: item.Disabled})
 		}
+		textFont := styleFont(textStyle, labelFont)
+		textFontID := labelFontID
+		if textStyle.Fields&StyleTypeface != 0 {
+			textFontID = styleFontID(textStyle)
+		}
 		if item.Icon.ID != 0 {
 			tint := props.IconColor
 			if tint.A == 0 {
@@ -5692,7 +5704,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		}
 		r.record(FrameOp{Kind: FrameOpText, Bounds: itemPaint.LabelBounds, Text: item.Label,
 			Color: unpackRGBA(itemPaint.TextColor), Opacity: textStyle.Opacity,
-			FontSize: styleFont(textStyle, labelFont), ID: item.Route,
+			FontSize: textFont, FontID: textFontID, ID: item.Route,
 			Pressed: pressed, Selected: item.Active, Disabled: item.Disabled})
 	}
 }
@@ -6390,23 +6402,24 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 	valueOp.ID = p.ID
 	valueOp.Disabled = disabled
 	r.record(valueOp)
-	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: valueStyle.Foreground, Opacity: valueStyle.Opacity, FontSize: styleFont(valueStyle, Text16), ID: p.ID, Disabled: disabled})
+	valueFont, valueFontID := styleTextFace(valueStyle, Text16)
+	r.record(FrameOp{Kind: FrameOpText, Bounds: center, Text: txt, Color: valueStyle.Foreground, Opacity: valueStyle.Opacity, FontSize: valueFont, FontID: valueFontID, ID: p.ID, Disabled: disabled})
 	return changed
 }
 func (r *runtime) Fieldset(p FieldsetProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
 	frame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindFieldset())
 	style := unpackStyle(frame.Value)
-	font := styleFont(style, Text14)
+	font, fontID := styleTextFace(style, Text14)
 	w := float32(0)
 	if p.Title != "" {
-		w = float32(runtimeTextWidth(p.Title, font))
+		w = float32(runtimeTextWidthWithFont(p.Title, font, fontID))
 	}
 	paint := Fieldset_FieldsetPaintFor(p.Bounds, w, p.Title != "", 1, frame)
 	r.record(styleFrameRectOp(paint.Frame, Rectangle{}, paint.Face))
 	if paint.ShowTitle {
 		r.record(FrameOp{Kind: FrameOpRect, Bounds: paint.TitleBackground, Color: unpackRGBA(paint.BackgroundColor)})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.TitleText, Text: p.Title, Color: unpackRGBA(paint.TextColor), Opacity: style.Opacity, FontSize: font, FontID: fontID})
 	}
 }
 func (r *runtime) PanedView(p PanedViewProps) int32 {
@@ -6586,8 +6599,9 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	}
 	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, !enabled, p.Selected,
 		StyleSheet_StyleKindCollapsible(), headerRole)
-	headerFont := styleFont(unpackStyle(frame.Value), Text16)
-	label := elideText(mark+"  "+p.Label, body.Width-12, headerFont)
+	headerStyle := unpackStyle(frame.Value)
+	headerFont, headerFontID := styleTextFace(headerStyle, Text16)
+	label := elideTextWithFont(mark+"  "+p.Label, body.Width-12, headerFont, headerFontID)
 	buttonProps.Label = label
 	button := Button_BuildFrame(buttonProps, ButtonInput{}, frame, InteractionMotion{},
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1,
@@ -6597,7 +6611,7 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		Bounds: header, Text: label, Color: unpackRGBA(button.Appearance.Value.Background),
 		BorderColor: unpackRGBA(button.Appearance.Value.Border), TextColor: fg,
 		BorderWidth: button.Appearance.Value.BorderWidth, Radius: button.Appearance.Value.Radius,
-		Material: MaterialKind(button.Appearance.Value.Material), FontSize: headerFont,
+		Material: MaterialKind(button.Appearance.Value.Material), FontSize: headerFont, FontID: headerFontID,
 		Pressed: pressed, Selected: p.Selected, ID: p.ID,
 		Focused: enabled && p.ID != 0 && r.focusID == p.ID, Disabled: !enabled})
 	if p.Visible != nil {
@@ -6609,7 +6623,8 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		}
 		closeStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, closeState, !enabled,
 			false, StyleSheet_StyleKindCollapsible(), 15).Value)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: styleFont(closeStyle, Text16), Pressed: closed, Disabled: !enabled})
+		closeFont, closeFontID := styleTextFace(closeStyle, Text16)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: closeBounds, Text: "×", Color: closeStyle.Foreground, Opacity: closeStyle.Opacity, FontSize: closeFont, FontID: closeFontID, Pressed: closed, Disabled: !enabled})
 	}
 	if pressed || closed {
 		return 1
@@ -6691,11 +6706,11 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 		if item.Expanded != 0 {
 			mark = "v"
 		}
-		font := styleFont(itemStyle, Text16)
+		font, fontID := styleTextFace(itemStyle, Text16)
 		markerBounds.Y += 4
 		textBounds.Y += 4
-		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: item.ID, Row: index, Disabled: props.Disabled})
-		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: item.ID, Row: index, Disabled: props.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
