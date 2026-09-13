@@ -868,8 +868,9 @@ test_segmented_control_policy(void)
     control.value.icon_size = 30.0f;
     control.value.offset_x = 72.0f;
     control.value.offset_y = 180.0f;
-    segment.value.fields |= StylePaddingX;
+    segment.value.fields |= StylePaddingX | StyleContentOffset;
     segment.value.padding_x = 10.0f;
+    segment.value.offset_x = 20.0f;
     metrics = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
     first = SegmentedItemWidth(40, metrics);
     second = SegmentedItemWidth(100, metrics);

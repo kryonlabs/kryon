@@ -333,6 +333,7 @@ Segment {
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
+  offset-x: 20;
   font-size: font.sm;
   opacity: 1;
   material: default;

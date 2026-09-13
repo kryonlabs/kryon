@@ -335,6 +335,7 @@ Segment {
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
+  offset-x: 20;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2316,6 +2317,7 @@ Segment {
   border-width: border;
   padding-x: space.2;
   padding-y: 5;
+  offset-x: 20;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4283,6 +4285,7 @@ Segment {
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
+  offset-x: 20;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6295,6 +6298,7 @@ Segment {
   border-width: border.none;
   padding-x: space.3;
   padding-y: 7;
+  offset-x: 20;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8377,6 +8381,7 @@ Segment {
   border-width: 0;
   padding-x: space.3;
   padding-y: 8;
+  offset-x: 20;
   font-size: font;
   opacity: 1;
   material: premium;

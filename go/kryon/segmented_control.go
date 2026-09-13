@@ -138,19 +138,32 @@ func SegmentedControl_SegmentedDefaultMetrics(row_height int32, min_item_width i
 		var value_55 int32 = metrics.MinItemWidth
 		metrics.MaxItemWidth = value_55
 	}
-	var value_56 uint32 = segment.Value.Fields
-	var value_57 int32 = int32(StylePaddingX)
-	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
-	var value_59 float32 = segment.Value.PaddingX
-	var value_60 float32 = 2.0
-	var value_61 float32 = value_59 * value_60
-	var value_62 float32 = 20.0
-	var value_63 float32 = scale
-	var value_64 bool = true
-	var value_65 int32 = SegmentedControl_SegmentedMetric(value_56, value_58, value_61, value_62, value_63, value_64)
-	metrics.LabelPadding = value_65
-	var value_66 SegmentedMetrics = metrics
-	return value_66
+	var value_56 float32 = segment.Value.PaddingX
+	var value_57 float32 = 2.0
+	var value_58 float32 = value_56 * value_57
+	var label_padding float32 = value_58
+	var value_59 uint32 = segment.Value.Fields
+	var value_60 int32 = int32(StylePaddingX)
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
+	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(value_61), 32, false, 8))
+	var value_63 int32 = 0
+	var value_64 uint32 = uint32(number_runtime_bits(uint64(value_63), uint64(0), 32, false, 0))
+	var value_65 bool = value_62 == value_64
+	if value_65 {
+		var value_66 float32 = 20.0
+		label_padding = value_66
+	}
+	var value_67 uint32 = segment.Value.Fields
+	var value_68 int32 = int32(StyleContentOffset)
+	var value_69 uint32 = uint32(number_runtime_bits(uint64(value_68), uint64(0), 32, false, 0))
+	var value_70 float32 = segment.Value.OffsetX
+	var value_71 float32 = label_padding
+	var value_72 float32 = scale
+	var value_73 bool = true
+	var value_74 int32 = SegmentedControl_SegmentedMetric(value_67, value_69, value_70, value_71, value_72, value_73)
+	metrics.LabelPadding = value_74
+	var value_75 SegmentedMetrics = metrics
+	return value_75
 }
 
 func SegmentedControl_SegmentedItemWidth(label_width int32, metrics SegmentedMetrics) int32 {
