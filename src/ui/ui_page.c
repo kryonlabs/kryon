@@ -1,4 +1,5 @@
 #include "kryon.h"
+#include "runtime/page.h"
 #include "ui_internal.h"
 #include "ui_style_internal.h"
 
@@ -45,7 +46,7 @@ page_bounds_or_view(Rectangle bounds)
     return bounds;
 }
 
-static Style
+static StyleData
 page_box_style(int style_kind, int class_name)
 {
     StyleData base = {
@@ -57,7 +58,7 @@ page_box_style(int style_kind, int class_name)
     StyleFacts facts = StyleDefaultFacts(style_kind);
     facts.class_name = class_name;
     facts.state = ButtonStateNormal;
-    return ui_unpack_style(ResolveActiveStyle(base, facts, ButtonStateNormal));
+    return ResolveActiveStyle(base, facts, ButtonStateNormal);
 }
 
 static Style
@@ -194,7 +195,8 @@ Page(PageProps props)
 {
     Rectangle bounds = page_bounds_or_view(props.bounds);
     KeyID key = props.key != 0 ? props.key : Key(props.title);
-    Style style = page_box_style(StyleKindPage(), props.class_name);
+    StyleData style_data = page_box_style(StyleKindPage(), props.class_name);
+    Style style = ui_unpack_style(style_data);
 
     if(props.title != NULL)
         SetPageTitle(props.title);
@@ -205,9 +207,8 @@ Page(PageProps props)
     if(style.background.a != 0)
         SetPageThemeColor(style.background);
     page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
-    int gap = style.gap > 0.0f ? (int)(style.gap + 0.5f) : 0;
-    int padding = style.padding_x > 0.0f ? (int)(style.padding_x + 0.5f) : 0;
-    return Column((ColumnProps){bounds, gap, padding, key});
+    PageLayoutMetrics metrics = PageLayoutMetricsFor(style_data);
+    return Column((ColumnProps){bounds, metrics.gap, metrics.padding, key});
 }
 
 NodeId
@@ -217,10 +218,9 @@ Section(SectionProps props)
     KeyID key = props.key != 0 ? props.key : Key(props.label);
 
     page_semantic_box(SEMANTIC_SECTION, bounds, props.label);
-    Style style = page_box_style(StyleKindSection(), props.class_name);
-    int gap = style.gap > 0.0f ? (int)(style.gap + 0.5f) : 0;
-    int padding = style.padding_x > 0.0f ? (int)(style.padding_x + 0.5f) : 0;
-    return Column((ColumnProps){bounds, gap, padding, key});
+    StyleData style = page_box_style(StyleKindSection(), props.class_name);
+    PageLayoutMetrics metrics = PageLayoutMetricsFor(style);
+    return Column((ColumnProps){bounds, metrics.gap, metrics.padding, key});
 }
 
 void

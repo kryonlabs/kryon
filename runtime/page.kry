@@ -1,0 +1,23 @@
+#module "page"
+#import "control_props"
+#import "style"
+
+PageLayoutMetrics :: struct {
+    gap: i32
+    padding: i32
+}
+
+PageLayoutMetric :: (fields: u32, field: u32, value: float) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 {
+        return 0
+    }
+    return (i32)(value + 0.5)
+}
+
+PageLayoutMetricsFor :: (style: StyleData) -> PageLayoutMetrics #export {
+    metrics: PageLayoutMetrics
+    metrics.gap = PageLayoutMetric(style.fields, (u32)StyleGap, style.gap)
+    metrics.padding = PageLayoutMetric(style.fields, (u32)StylePaddingX,
+        style.padding_x)
+    return metrics
+}
