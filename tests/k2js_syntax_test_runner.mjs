@@ -2071,6 +2071,8 @@ function fakeDocument() {
       { nodeName: "autoDetails", path: "Page/autoDetails" });
     runtime.widget(nativeRt, "Modal", {}, null,
       { nodeName: "autoDialog", path: "Page/autoDialog" });
+    runtime.widget(nativeRt, "TextField", { input_type: "email" }, null,
+      { nodeName: "email", path: "Page/email" });
     runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4 }, null,
       { nodeName: "volume", path: "Page/volume" });
     runtime.widget(nativeRt, "Spinbox", { min: 1, max: 8, value: 3 }, null,
@@ -2160,6 +2162,8 @@ function fakeDocument() {
       .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webNodeQuery(nativeRt, "Collapsible").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Modal").tag, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").inputType, "email");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[type=email]").path, "Page/email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Menu").tag, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableView").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "[alt=Hero]").path, "Page/hero");
@@ -2208,6 +2212,7 @@ function fakeDocument() {
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
     const autoDetails = runtime.findWebElement(nativeTarget, "autoDetails");
     const autoDialog = runtime.findWebElement(nativeTarget, "autoDialog");
+    const email = runtime.findWebElement(nativeTarget, "email");
     const volume = runtime.findWebElement(nativeTarget, "volume");
     const copies = runtime.findWebElement(nativeTarget, "copies");
     const choice = runtime.findWebElement(nativeTarget, "choice");
@@ -2240,6 +2245,8 @@ function fakeDocument() {
     assert.equal(autoDetails.tagName, "DETAILS");
     assert.equal(autoDetails.open, false);
     assert.equal(autoDialog.tagName, "DIALOG");
+    assert.equal(email.tagName, "INPUT");
+    assert.equal(email.attributes.type, "email");
     assert.equal(volume.tagName, "INPUT");
     assert.equal(volume.attributes.type, "range");
     assert.equal(volume.attributes.min, "0");

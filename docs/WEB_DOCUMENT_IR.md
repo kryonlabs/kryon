@@ -338,7 +338,7 @@ The initial tag mapping is intentionally conservative:
 | `Button` | `button` |
 | clickable `Card` | `button` |
 | invisible hit-test support | `button` |
-| `TextField` | `input type=text` |
+| `TextField` | `input type=text`, or authored `input_type`/`type` |
 | `TextArea` | `textarea` |
 | `Slider` | `input type=range` |
 | `Spinbox` | `input type=number` |

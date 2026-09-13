@@ -1226,7 +1226,7 @@ function widgetInputType(item) {
   case "Spinbox":
     return "number";
   case "TextField":
-    return "text";
+    return propString(item.args, "input_type", propString(item.args, "type", "text"));
   default:
     return "";
   }
