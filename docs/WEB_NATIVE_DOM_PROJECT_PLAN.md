@@ -47,6 +47,10 @@ the browser receives normal elements, attributes, CSS, and events.
 - Expression-backed widget calls in declarations, assignments, returns, and
   control-flow conditions emit source-derived Web Document metadata, so logic
   expressions still produce inspectable DOM nodes.
+- Expression-backed browser-native alias calls in declarations, assignments,
+  and conditions emit source-derived Web Document metadata and native tags, so
+  `.kry` DOM nodes such as `Article()`, `Form()`, and `Table()` remain
+  addressable before browser mount.
 - Parenthesized single-widget expressions use the same compiler-owned Web
   Document metadata path as bare widget expressions instead of falling back to
   generic JavaScript expression lowering.

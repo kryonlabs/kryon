@@ -871,6 +871,41 @@ assert.deepEqual(paths, [
 ]);
 EOF
 
+cat > "$work/src/native_alias_expression_nodes.kry" <<'EOF'
+#import "kryon.h"
+NativeAliasExpressionNodes :: () #ui {
+    node := Article()
+    node = Form()
+    if Table() {
+    }
+    unused node
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/native_alias_expression_nodes.kry"
+native_alias_expression_out="$work/out/src/native_alias_expression_nodes.js"
+grep -q 'let node = kryon.copyValue(kryon.widget(\$rt, "Article"' "$native_alias_expression_out"
+grep -q 'node = kryon.copyValue(kryon.widget(\$rt, "Form"' "$native_alias_expression_out"
+grep -q 'if (kryon.widget(\$rt, "Table"' "$native_alias_expression_out"
+grep -Eq '"path": "NativeAliasExpressionNodes/Article@[0-9]+(-[0-9]+)?"' "$native_alias_expression_out"
+grep -Eq '"path": "NativeAliasExpressionNodes/Form@[0-9]+(-[0-9]+)?"' "$native_alias_expression_out"
+grep -Eq '"path": "NativeAliasExpressionNodes/Table@[0-9]+(-[0-9]+)?"' "$native_alias_expression_out"
+node --input-type=module - "$native_alias_expression_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.NativeAliasExpressionNodes_NativeAliasExpressionNodes(rt, module.createState(), {});
+const nodes = runtime.webDocumentFrame(rt).nodes;
+assert.deepEqual(nodes.map((node) => [node.kind, node.tag]), [
+  ["Article", "article"],
+  ["Form", "form"],
+  ["Table", "table"]
+]);
+assert.ok(nodes.every((node) => node.path.startsWith("NativeAliasExpressionNodes/")));
+assert.ok(nodes.every((node) => node.sourcePath === "src/native_alias_expression_nodes.kry"));
+EOF
+
 cat > "$work/src/parenthesized_widget_nodes.kry" <<'EOF'
 #import "kryon.h"
 ParenthesizedWidgetNodes :: () #ui {
