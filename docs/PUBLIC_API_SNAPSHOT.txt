@@ -1900,7 +1900,6 @@ include/ui_tree.h function CanvasGrid
 include/ui_tree.h function Card
 include/ui_tree.h function Checkbox
 include/ui_tree.h function Circle
-include/ui_tree.h function ClosePopup
 include/ui_tree.h function Collapsible
 include/ui_tree.h function ColorPicker
 include/ui_tree.h function Column

@@ -626,7 +626,7 @@ func main() {
 	if ComposedPopupStateValue.PopupContentAction != 1 { panic("ordinary generated popup button did not activate") }
 	ComposedPopupStateValue.PopupContentClose = true
 	drawComposedPopupContent()
-	if ComposedPopupStateValue.PopupContentOpen { panic("generated ClosePopup did not update caller state") }
+	if ComposedPopupStateValue.PopupContentOpen { panic("generated popup state close did not update caller state") }
 	ComposedPopupStateValue.PopupContentClose = false
 	host.Draw(func() {
 		kryon.BeginFrame()
@@ -642,7 +642,7 @@ func main() {
 	ComposedPopupStateValue.PopupClose = true
 	drawComposedPopupTools()
 	if ComposedPopupStateValue.PopupOpen {
-		panic("generated ClosePopup did not update caller state")
+		panic("generated popup state close did not update caller state")
 	}
 	ComposedPopupStateValue.PopupClose = false
 	ComposedPopupStateValue.PopupOpen = true
@@ -1483,7 +1483,7 @@ int main(void)
     InjectPump(); draw_composed_popup_content();
     if(popup_content_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
     popup_content_close = 1; draw_composed_popup_content();
-    if(popup_content_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
+    if(popup_content_open) { fprintf(stderr,"generated popup state close did not update caller state\n"); return 1; }
     popup_content_close = 0;
     BeginInterfaceFrame(640,480,1);
     composed_popup_early_exit(1);
@@ -1493,7 +1493,7 @@ int main(void)
     InjectPump(); draw_composed_popup_tools();
     if(popup_action != 1) { fprintf(stderr,"ordinary generated popup button did not activate\n"); return 1; }
     popup_close = 1; draw_composed_popup_tools();
-    if(popup_open) { fprintf(stderr,"generated ClosePopup did not update caller state\n"); return 1; }
+    if(popup_open) { fprintf(stderr,"generated popup state close did not update caller state\n"); return 1; }
     popup_close = 0; popup_open = 1; draw_composed_popup_tools();
     InjectTap(180,170); InjectPump(); draw_composed_popup_tools();
     InjectPump(); draw_composed_popup_tools();

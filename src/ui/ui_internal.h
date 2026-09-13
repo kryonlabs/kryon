@@ -536,6 +536,7 @@ void EndScroll(void);
 NodeId BeginCard(CardProps card);
 NodeId BeginButton(ButtonProps button);
 int BeginPopup(PopupProps popup);
+void ClosePopup(void);
 void EndPopup(void);
 Rectangle BeginTableCell(TableViewProps table, int row, int column);
 void EndTableCell(void);

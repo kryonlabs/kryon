@@ -1061,7 +1061,7 @@ int main(void)
         BeginTextureMode(outer);
         ClearBackground(BLACK);
         BeginInterfaceFrame(64,64,1);
-        BeginTree(Key("public composed popup paint"));
+        BeginTree(Key("internal composed popup paint"));
         if(BeginPopup((PopupProps){.bounds={0,8,64,56},.id=28000,
                 .open=&composed_open})) {
             DrawRectangle(0,8,8,8,GREEN);
@@ -1076,13 +1076,13 @@ int main(void)
         Image composed = LoadImageFromTexture(outer.texture);
         ImageFlipVertical(&composed);
         check_pixel(composed,2,10,frame == 0 ? GREEN : RED,
-                    "public popup immediate paint layer");
+                    "internal popup immediate paint layer");
         check_pixel(composed,18,18,frame == 0 ? YELLOW : RED,
-                    "public popup retained paint layer");
+                    "internal popup retained paint layer");
         UnloadImage(composed);
     }
     if(composed_open) {
-        fprintf(stderr,"public ClosePopup did not update caller state\n");
+        fprintf(stderr,"internal ClosePopup did not update caller state\n");
         failures++;
     }
     CloseNativeWindow(auxiliary);

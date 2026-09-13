@@ -445,7 +445,6 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Popup` | `.kry canonical` | Arbitrary anchored/floating content. Mode/input policy is in `.kry`; host handles pointer sampling, paint layers, clipping, and child content. |
 | `BeginPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
-| `ClosePopup` | Native support | Explicit close operation for the active `.kry` `Popup` block. |
 | `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
@@ -552,6 +551,7 @@ Recent retained-tree public C cleanup:
 | app-facing `Texture`, `DrawTexture`, `DrawTexturePro`, `DrawTextureRec` fixes | `Image(ImageProps)`; if `ImageProps` cannot express the app case, add the reusable Kryon image primitive first. |
 | Go package-level `BeginButton`, `BeginCard` | Removed; public Go code uses `kr.Button` and `kr.Card`. Runtime methods remain internal lowering support until composed block lowering is canonicalized. |
 | Go package-level `ClosePopup` | Removed; popup close remains runtime/lowered block support until `Popup` owns the canonical close action. |
+| public C `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Native tests use the internal host hook. |
 | `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
 | direct `.kry` `BeginScroll`/`EndScroll` and `BeginTableCell`/`EndTableCell` calls | `Scroll` and `TableCell` lexical blocks |
 | direct `.kry` `BeginCanvas`/`EndCanvas` calls | `Canvas` lexical block |

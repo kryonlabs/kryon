@@ -232,7 +232,6 @@ int Drag(DragProps drag);
 int Input(InputProps input);
 int Slider(SliderProps slider);
 int Spinbox(SpinboxProps spinbox);
-void ClosePopup(void);
 void Fieldset(FieldsetProps frame);
 int ListBox(ListBoxProps list);
 int TreeView(TreeViewProps tree);
