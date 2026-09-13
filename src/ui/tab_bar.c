@@ -526,9 +526,9 @@ RenderTabBar(TabBarProps bar)
         int text_pad = (int)tab_frame.value.padding_x;
         if(text_pad <= 0)
             text_pad = Scale(8);
-        int icon_size = tab->icon_size > 0 ? tab->icon_size :
-            (tab_frame.value.icon_size > 0.0f ? (int)tab_frame.value.icon_size
-                                               : Scale(16));
+        int icon_size = tab_frame.value.icon_size > 0.0f
+            ? (int)tab_frame.value.icon_size
+            : Scale(16);
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
         int text_x = icon_x + icon_size + Scale(4);
@@ -586,17 +586,8 @@ RenderTabBar(TabBarProps bar)
             (float)content_h
         };
 
-        if(can_draw && text_rect.width > 0 && has_label) {
-            if(tab->italic) {
-                int y = TextBaselineY(tab->label, (int)text_rect.y,
-                                   (int)text_rect.height, font);
-                ui_begin_world_clip(text_rect);
-                RenderTextStyled(tab->label, (int)text_rect.x, y,
-                                   (TextStyle){font, text_color, 1, 0});
-                EndClip();
-            } else
-                DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
-        }
+        if(can_draw && text_rect.width > 0 && has_label)
+            DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
 
         if(can_draw && tab->closeable) {
             if(close_hovered) {

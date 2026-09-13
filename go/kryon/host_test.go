@@ -98,7 +98,6 @@ func TestHostLongRunningTextInputStaysBounded(t *testing.T) {
 			Focused:        &firstFocused,
 			FocusID:        201,
 			MaxCodepoints:  8191,
-			Font:           Text16,
 		})
 		TextField(TextFieldProps{
 			Bounds:         Rectangle{Width: 180, Height: 28},
@@ -107,7 +106,6 @@ func TestHostLongRunningTextInputStaysBounded(t *testing.T) {
 			Focused:        &secondFocused,
 			FocusID:        202,
 			MaxCodepoints:  8191,
-			Font:           Text16,
 		})
 		End()
 		EndFrame()

@@ -24,10 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct Tab {
     const char* label;
     Texture2D icon;
-    int32_t icon_size;
     bool disabled;
-    Color accent;
-    bool italic;
     bool closeable;
 } Tab;
 

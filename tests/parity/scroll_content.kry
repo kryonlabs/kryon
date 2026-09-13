@@ -97,7 +97,7 @@ scroll_content_frame :: () #ui {
                 bounds = edit_cell
                 gap = 0
                 padding = 0
-                TextField((TextFieldProps){.bounds = {0,0,140,40}, .text = custom_text, .text_size = sizeof(custom_text), .cursor_position = &custom_cursor, .max_codepoints = 63, .font = Text16, .focus_id = 1006})
+                TextField((TextFieldProps){.bounds = {0,0,140,40}, .text = custom_text, .text_size = sizeof(custom_text), .cursor_position = &custom_cursor, .max_codepoints = 63, .focus_id = 1006})
             }
         }
         if Button((ButtonProps){.bounds = {0,0,80,20}, .label = "After", .id = 1004}) { custom_outer_actions += 10 }
@@ -147,7 +147,7 @@ scroll_content_frame :: () #ui {
         content_height = 240
         scroll_offset = &mixed_offset
         Checkbox((CheckboxProps){.bounds = {list.x,list.y,160,28}, .id = 987, .label = "Enabled", .flags = &mixed_flags, .flags_value = 4})
-        TextField((TextFieldProps){.bounds = {list.x,list.y + 32,160,28}, .text = mixed_text, .text_size = sizeof(mixed_text), .cursor_position = &mixed_cursor, .max_codepoints = 63, .font = Text16, .focus_id = 988})
+        TextField((TextFieldProps){.bounds = {list.x,list.y + 32,160,28}, .text = mixed_text, .text_size = sizeof(mixed_text), .cursor_position = &mixed_cursor, .max_codepoints = 63, .focus_id = 988})
         if Button((ButtonProps){.bounds = {list.x,list.y + 100,160,28}, .label = "Apply", .id = 989}) {
             mixed_actions += 1
         }

@@ -242,7 +242,6 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .cursor_position = &field_cursor_%d,\n"
                  "        .focused = &field_focused_%d,\n"
                  "        .max_codepoints = 128,\n"
-                 "        .font = Text16,\n"
                  "        .focus_id = %d,\n"
                  "    })\n",
                  id, id, id, x, y, id, id, id, id, 5200 + (id % 1000));

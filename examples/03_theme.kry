@@ -100,7 +100,7 @@ ControlDemo :: (x: int, y: int, w: int) {
     y += Scale(70)
 
     TextField((TextFieldProps){{x, y, w, Scale(44)}, text_value, sizeof(text_value),
-                                  &text_cursor, &text_focused, 80, Text16, 303,
+                                  &text_cursor, &text_focused, 80, 303,
                                   NULL, NULL, NULL, 0})
     y += Scale(70)
     Dropdown((DropdownProps){.bounds = {x, y, w, Scale(44)}, .id = 304,

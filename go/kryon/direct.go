@@ -103,7 +103,6 @@ func textFieldString(label string, value *string) bool {
 		CursorPosition: &state.cursor,
 		Focused:        &state.focused,
 		MaxCodepoints:  int32(len(state.buf) - 1),
-		Font:           Text16,
 		FocusID:        state.focusID,
 	})
 	after := string(state.buf[:zeroIndex(state.buf)])

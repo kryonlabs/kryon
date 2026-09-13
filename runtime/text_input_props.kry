@@ -14,7 +14,6 @@ TextInputProps :: struct {
     cursor_position: i32
     focused: bool
     cursor_visible: bool
-    font: i32
     focus_id: i32
     class_name: i32
 }
@@ -26,7 +25,6 @@ TextFieldProps :: struct {
     cursor_position: *i32
     focused: *i32
     max_codepoints: i32
-    font: i32
     focus_id: i32
     commit_pressed: *i32
     secure: bool
@@ -42,7 +40,6 @@ TextAreaProps :: struct {
     focused: *i32
     scroll_y: *i32
     max_codepoints: i32
-    font: i32
     line_gap: i32
     focus_id: i32
     placeholder: const char*

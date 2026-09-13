@@ -34,7 +34,6 @@ typedef struct TextInputProps {
     int32_t cursor_position;
     bool focused;
     bool cursor_visible;
-    int32_t font;
     int32_t focus_id;
     int32_t class_name;
 } TextInputProps;
@@ -46,7 +45,6 @@ typedef struct TextFieldProps {
     int32_t* cursor_position;
     int32_t* focused;
     int32_t max_codepoints;
-    int32_t font;
     int32_t focus_id;
     int32_t* commit_pressed;
     bool secure;
@@ -62,7 +60,6 @@ typedef struct TextAreaProps {
     int32_t* focused;
     int32_t* scroll_y;
     int32_t max_codepoints;
-    int32_t font;
     int32_t line_gap;
     int32_t focus_id;
     const char* placeholder;

@@ -81,8 +81,8 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={Scale(24), y + Scale(18), 0, 0}, .text="Selectable", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
         Toast((ToastProps){.message = "Catalog toast"})
 
-        TextField((TextFieldProps){.bounds = {Scale(350), Scale(92), Scale(160), Scale(28)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
-        TextArea((TextAreaProps){.bounds = {Scale(350), Scale(128), Scale(180), Scale(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+        TextField((TextFieldProps){.bounds = {Scale(350), Scale(92), Scale(160), Scale(28)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 30})
+        TextArea((TextAreaProps){.bounds = {Scale(350), Scale(128), Scale(180), Scale(58)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
         Dropdown((DropdownProps){.bounds = {Scale(350), Scale(198), Scale(160), Scale(28)}, .id = 32,
             .options = choices[:], .option_count = 3, .selected_index = &pick})
         Slider((SliderProps){.bounds = {Scale(350), Scale(238), Scale(160), Scale(56)}, .id = 33, .label = "Slider", .kind = 1, .int_values = slider_values, .value_count = 1, .min = 0.0, .max = 100.0, .format = "%"})

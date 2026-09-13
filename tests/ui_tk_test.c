@@ -2711,7 +2711,7 @@ test_text_area_page_navigation(void)
     TextAreaProps area = {
         .bounds = {10,10,160,60}, .text = text, .text_size = sizeof(text),
         .cursor_position = &cursor, .focused = &focused,
-        .focus_id = 25510, .font = Text16
+        .focus_id = 25510
     };
 
     InjectReset();
@@ -2911,7 +2911,7 @@ test_text_area_wheel_scroll(void)
     TextAreaProps area = {
         .bounds = {10,10,160,60}, .text = text, .text_size = sizeof(text),
         .cursor_position = &cursor, .focused = &focused,
-        .scroll_y = &scroll, .focus_id = 25511, .font = Text16
+        .scroll_y = &scroll, .focus_id = 25511
     };
 
     InjectReset();

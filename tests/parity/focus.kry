@@ -16,8 +16,8 @@ state {
 
 focus_frame :: () #ui {
     Screen root: {
-        TextField((TextFieldProps){.bounds = {20,20,160,30}, .text = one, .text_size = sizeof(one), .cursor_position = &one_cursor, .focused = NULL, .max_codepoints = 31, .font = Text16, .focus_id = 401})
-        TextField((TextFieldProps){.bounds = {20,60,160,30}, .text = two, .text_size = sizeof(two), .cursor_position = &two_cursor, .focused = NULL, .max_codepoints = 31, .font = Text16, .focus_id = 402})
-        TextField((TextFieldProps){.bounds = {20,100,160,30}, .text = three, .text_size = sizeof(three), .cursor_position = &three_cursor, .focused = NULL, .max_codepoints = 31, .font = Text16, .focus_id = 403})
+        TextField((TextFieldProps){.bounds = {20,20,160,30}, .text = one, .text_size = sizeof(one), .cursor_position = &one_cursor, .focused = NULL, .max_codepoints = 31, .focus_id = 401})
+        TextField((TextFieldProps){.bounds = {20,60,160,30}, .text = two, .text_size = sizeof(two), .cursor_position = &two_cursor, .focused = NULL, .max_codepoints = 31, .focus_id = 402})
+        TextField((TextFieldProps){.bounds = {20,100,160,30}, .text = three, .text_size = sizeof(three), .cursor_position = &three_cursor, .focused = NULL, .max_codepoints = 31, .focus_id = 403})
     }
 }

@@ -533,7 +533,7 @@ main(void)
         TextField((TextFieldProps){
             .bounds = {10, 10, 220, 40}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .focused = &focused, .focus_id = 78, .font = 16,
+            .focused = &focused, .focus_id = 78,
             .commit_pressed = &committed
         });
         ReconcileTree();
@@ -577,7 +577,7 @@ main(void)
         TextField((TextFieldProps){
             .bounds = {10, 10, 220, 40}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .focused = &focused, .focus_id = 79, .font = 16
+            .focused = &focused, .focus_id = 79
         });
         ReconcileTree();
         LayoutTree();
@@ -659,11 +659,11 @@ main(void)
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30},
             .text = first, .text_size = sizeof(first),
             .cursor_position = &first_cursor, .focused = &first_focused,
-            .focus_id = 1001, .font = 16 });
+            .focus_id = 1001 });
         TextField((TextFieldProps){ .bounds = {10, 50, 160, 30},
             .text = second, .text_size = sizeof(second),
             .cursor_position = &second_cursor, .focused = &second_focused,
-            .focus_id = 1002, .font = 16 });
+            .focus_id = 1002 });
         EndTree();
         EndFocusScope();
         InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
@@ -675,10 +675,10 @@ main(void)
         BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
-            .focused = &first_focused, .focus_id = 1001, .font = 16 });
+            .focused = &first_focused, .focus_id = 1001 });
         TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
             .text_size = sizeof(second), .cursor_position = &second_cursor,
-            .focused = &second_focused, .focus_id = 1002, .font = 16 });
+            .focused = &second_focused, .focus_id = 1002 });
         EndTree();
         EndFocusScope();
 
@@ -689,10 +689,10 @@ main(void)
         BeginTree(1000);
         TextField((TextFieldProps){ .bounds = {10, 10, 160, 30}, .text = first,
             .text_size = sizeof(first), .cursor_position = &first_cursor,
-            .focused = &first_focused, .focus_id = 1001, .font = 16 });
+            .focused = &first_focused, .focus_id = 1001 });
         TextField((TextFieldProps){ .bounds = {10, 50, 160, 30}, .text = second,
             .text_size = sizeof(second), .cursor_position = &second_cursor,
-            .focused = &second_focused, .focus_id = 1002, .font = 16 });
+            .focused = &second_focused, .focus_id = 1002 });
         EndTree();
         EndFocusScope();
         check_int("retained tab focuses next field", strcmp(second, "x"), 0);
@@ -715,7 +715,7 @@ main(void)
             .bounds = {10, 10, 90, 44}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
-            .focus_id = 1004, .font = 16, .line_gap = 4, .wrap = 1
+            .focus_id = 1004, .line_gap = 4, .wrap = 1
         });
         ReconcileTree();
         LayoutTree();
@@ -756,7 +756,7 @@ main(void)
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
             .max_codepoints = 511, .focus_id = 1005,
-            .font = 16, .line_gap = 4
+            .line_gap = 4
         });
         ReconcileTree();
         LayoutTree();
@@ -782,7 +782,7 @@ main(void)
             .bounds = {20, 30, 180, 120}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
-            .focus_id = 1006, .font = 16, .line_gap = 4
+            .focus_id = 1006, .line_gap = 4
         }, cursor, focused, cursor, cursor);
         check_int("retained textarea clamps negative scroll", scroll_y, 0);
     }
@@ -797,14 +797,14 @@ main(void)
         ui_paint_text_area((TextAreaProps){
             .bounds = {20,30,180,80}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .scroll_y = &scroll_y, .font = 16, .line_gap = 4
+            .scroll_y = &scroll_y, .line_gap = 4
         }, cursor, 0, cursor, cursor);
         ordinary_rectangles = draw_rectangle_calls;
         draw_rectangle_calls = 0;
         ui_paint_text_area_composition((TextAreaProps){
             .bounds = {20,30,180,80}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .scroll_y = &scroll_y, .font = 16, .line_gap = 4
+            .scroll_y = &scroll_y, .line_gap = 4
         }, cursor, 0, cursor, cursor, 1, 7);
         check_int("textarea composition adds underline paint",
                   draw_rectangle_calls, ordinary_rectangles + 1);

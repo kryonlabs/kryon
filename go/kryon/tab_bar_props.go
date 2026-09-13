@@ -5,10 +5,7 @@ package kryon
 type Tab struct {
 	Label     string
 	Icon      Texture2D
-	IconSize  int32
 	Disabled  bool
-	Accent    Color
-	Italic    bool
 	Closeable bool
 }
 

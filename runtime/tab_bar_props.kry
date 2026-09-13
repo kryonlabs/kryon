@@ -4,10 +4,7 @@
 Tab :: struct {
     label: const char*
     icon: Texture2D
-    icon_size: i32
     disabled: bool
-    accent: Color
-    italic: bool
     closeable: bool
 }
 

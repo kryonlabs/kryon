@@ -270,7 +270,6 @@ int main(void)
         .focused = &syntax_focused,
         .scroll_y = &syntax_scroll,
         .max_codepoints = 128,
-        .font = 16,
         .line_gap = 0,
         .focus_id = 7771,
         .syntax = SyntaxKry
@@ -853,7 +852,7 @@ int main(void)
         int cursor = 3, focused = 0;
         TextFieldProps editor = {.bounds = {4,8,56,24}, .text = editor_text,
             .text_size = sizeof(editor_text), .cursor_position = &cursor,
-            .focused = &focused, .font = 16, .focus_id = 940 + secure,
+            .focused = &focused, .focus_id = 940 + secure,
             .secure = secure};
         BeginTextureMode(outer);
         ClearBackground(RED);

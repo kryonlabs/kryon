@@ -2677,7 +2677,6 @@ func TestTextFieldWidgetWorkflowBackspaceCommitAndFocusSwitch(t *testing.T) {
 			CommitPressed:  &firstCommit,
 			FocusID:        501,
 			MaxCodepoints:  31,
-			Font:           Text16,
 		})
 		rt.TextField(TextFieldProps{
 			Bounds:         Rectangle{X: 20, Y: 64, Width: 180, Height: 30},
@@ -2687,7 +2686,6 @@ func TestTextFieldWidgetWorkflowBackspaceCommitAndFocusSwitch(t *testing.T) {
 			CommitPressed:  &secondCommit,
 			FocusID:        502,
 			MaxCodepoints:  31,
-			Font:           Text16,
 		})
 		rt.EndFrame()
 	}
@@ -3331,7 +3329,6 @@ func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 		CursorPosition: &cursor,
 		Focused:        &focused,
 		FocusID:        8,
-		Font:           Text16,
 		Secure:         true,
 	})
 	rt.End()
@@ -4845,7 +4842,6 @@ func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
 		CursorPosition: &cursor,
 		Focused:        &focused,
 		FocusID:        2,
-		Font:           Text16,
 	})
 	EndFrame()
 

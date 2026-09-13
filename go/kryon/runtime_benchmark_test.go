@@ -17,7 +17,6 @@ func BenchmarkTextFieldWidgetWorkflow(b *testing.B) {
 			Focused:        &firstFocused,
 			FocusID:        601,
 			MaxCodepoints:  8191,
-			Font:           Text16,
 		})
 		rt.TextField(TextFieldProps{
 			Bounds:         Rectangle{X: 20, Y: 64, Width: 220, Height: 30},
@@ -26,7 +25,6 @@ func BenchmarkTextFieldWidgetWorkflow(b *testing.B) {
 			Focused:        &secondFocused,
 			FocusID:        602,
 			MaxCodepoints:  8191,
-			Font:           Text16,
 		})
 		rt.EndFrame()
 	}

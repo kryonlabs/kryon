@@ -1344,7 +1344,6 @@ RouteInput(void)
             field_storage.cursor_position = area->cursor_position;
             field_storage.focused = area->focused;
             field_storage.max_codepoints = area->max_codepoints;
-            field_storage.font = area->font;
             field_storage.focus_id = area->focus_id;
             field_storage.read_only = area->read_only;
             field_storage.class_name = area->class_name;
@@ -1369,7 +1368,10 @@ RouteInput(void)
                                                   : EVENT_BLUR, GetTime());
             }
             if(focused) {
-                int font = field->font > 0 ? field->font : GetFontSize();
+                int font = ui_text_input_default_font(
+                    node->kind == WIDGET_TEXT_AREA ? StyleKindTextArea()
+                                                   : StyleKindTextField(),
+                    field->class_name);
                 TextInputStyle style = ui_resolve_text_input_style(
                     (TextInputStyle){0}, StyleKindTextField(),
                     field->class_name);
@@ -1422,7 +1424,10 @@ RouteInput(void)
            keyboard_captured)
             continue;
         if(state->dragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-            int font = field->font > 0 ? field->font : GetFontSize();
+            int font = ui_text_input_default_font(
+                node->kind == WIDGET_TEXT_AREA ? StyleKindTextArea()
+                                               : StyleKindTextField(),
+                field->class_name);
             TextInputStyle style = ui_resolve_text_input_style(
                 (TextInputStyle){0}, StyleKindTextField(),
                 field->class_name);
@@ -1504,7 +1509,9 @@ RouteInput(void)
             int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
             int multiline = node->kind == WIDGET_TEXT_AREA;
             int navigation_key = ui_text_navigation_key(multiline);
-            int font = field->font > 0 ? field->font : GetFontSize();
+            int font = ui_text_input_default_font(
+                multiline ? StyleKindTextArea() : StyleKindTextField(),
+                field->class_name);
             TextNavigationInput navigation = {
                 .text = field->text,
                 .area = multiline ? &node->data.text_area : NULL,
@@ -1971,7 +1978,8 @@ DrawTree(void)
                     .editable = !field.read_only,
                     .caret = state != NULL && state->focused &&
                              !field.read_only,
-                    .font = field.font,
+                    .font = ui_text_input_default_font(StyleKindTextField(),
+                                                       field.class_name),
                     .font_token = node->font_token,
                     .selection_start = selection_start,
                     .selection_end = selection_end,

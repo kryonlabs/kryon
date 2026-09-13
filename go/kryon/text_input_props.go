@@ -17,7 +17,6 @@ type TextInputProps struct {
 	CursorPosition int32
 	Focused        bool
 	CursorVisible  bool
-	Font           int32
 	FocusID        int32
 	ClassName      int32
 }
@@ -28,7 +27,6 @@ type TextFieldProps struct {
 	CursorPosition *int32
 	Focused        *bool
 	MaxCodepoints  int32
-	Font           int32
 	FocusID        int32
 	CommitPressed  *bool
 	Secure         bool
@@ -43,7 +41,6 @@ type TextAreaProps struct {
 	Focused        *bool
 	ScrollY        *int32
 	MaxCodepoints  int32
-	Font           int32
 	LineGap        int32
 	FocusID        int32
 	Placeholder    string

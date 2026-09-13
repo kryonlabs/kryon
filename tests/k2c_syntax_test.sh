@@ -56,8 +56,8 @@ Valid :: (viewport: Rectangle) #ui {
             gap = Scale(4)
             padding = Scale(6)
             key = Key("form")
-            TextField((TextFieldProps){.bounds = {0, 0, Scale(160), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 101})
-            TextArea((TextAreaProps){.bounds = {0, 0, Scale(160), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 102, .placeholder = "Notes"})
+            TextField((TextFieldProps){.bounds = {0, 0, Scale(160), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 101})
+            TextArea((TextAreaProps){.bounds = {0, 0, Scale(160), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .line_gap = Scale(4), .focus_id = 102, .placeholder = "Notes"})
             Row actions: {
                 bounds = {0, 0, Scale(160), Scale(32)}
                 gap = Scale(4)
@@ -80,7 +80,7 @@ Valid :: (viewport: Rectangle) #ui {
         if nav_result.clicked_route != -1 {
             count = nav_result.clicked_route
         }
-        tabs: [1] Tab = {{"Main",(Texture2D){0},0,0,WHITE,0,0}}
+        tabs: [1] Tab = {{"Main",(Texture2D){0},0,0}}
         count = TabBar((TabBarProps){.bounds = {0, Scale(32), Scale(120), Scale(28)}, .tabs = tabs, .count = 1, .selected_index = count})
         count = c_abs(-3)
         value := count + 1

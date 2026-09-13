@@ -143,7 +143,7 @@ App :: () #ui {
     Background(GetThemeBackground())
     menu_items: [2] MenuItem = {{MenuCommand,"Open","Ctrl+O",46,0,0,NULL,0},{MenuCheck,"Grid",NULL,47,0,1,NULL,0}}
     menus: [1] MenuGroup = {{(Rectangle){0,0,0,0},"File",menu_items,2}}
-    rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
+    rich_tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,1}}
     if tab == TAB_JOBS {
         Text((TextProps){.bounds={Scale(10), Scale(20), 0, 0}, .text=tab_label_text(tab), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     } else {
@@ -258,8 +258,8 @@ App :: () #ui {
     CanvasGrid((Rectangle){Scale(4), Scale(230), Scale(60), Scale(40)}, 8, GetThemeIcon())
     Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
     Toast((ToastProps){.message = "toast from kry"})
-    TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .font = Text16, .focus_id = 30})
-    TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+    TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 30})
+    TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
     Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Radio((RadioProps){.bounds = {Scale(4), Scale(270), Scale(120), Scale(24)}, .label = "one", .id = 1, .checked = pick == 1})

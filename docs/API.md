@@ -1403,10 +1403,9 @@ typedef struct {
     int cursor_position;
     int focused;
     int cursor_visible;
-    int font;
     int focus_id;
-    TextInputStyle style;
-} TextInput;
+    int class_name;
+} TextInputProps;
 ```
 
 #### `TextField`
@@ -1419,19 +1418,18 @@ typedef struct {
     int *cursor_position;
     int *focused;
     int max_codepoints;
-    int font;
     int focus_id;
-    TextInputStyle style;
-    TextInputFilter filter;
-    void *filter_user_data;
     int *commit_pressed;
-} TextField;
+    int secure;
+    int read_only;
+    int class_name;
+} TextFieldProps;
 ```
 
 #### `TextField`
 
 ```c
-int TextField(TextField field);
+int TextField(TextFieldProps field);
 ```
 
 ---
@@ -1490,9 +1488,8 @@ ToolbarResult Toolbar(ToolbarProps toolbar);
 typedef struct {
     const char *label;
     Texture2D icon;
-    int icon_size;
     int disabled;
-    Color accent;
+    int closeable;
 } Tab;
 
 typedef struct {

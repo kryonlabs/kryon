@@ -229,7 +229,6 @@ main(void)
                                    .cursor_position = &cursor,
                                    .focused = &focused,
                                    .max_codepoints = 63,
-                                   .font = Text16,
                                    .focus_id = 1002});
         Dropdown((DropdownProps){.id = 1003, .bounds = {18, 140, 150, 34},
                                  .options = options,
