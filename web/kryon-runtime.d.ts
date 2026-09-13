@@ -694,8 +694,17 @@ export interface WebDOMSnapshot {
   scroll: { left: number; top: number; width: number; height: number } | null;
 }
 
+export interface WebStyleSelector {
+  kind: string;
+  id: string;
+  classes: string[];
+  attrs: Record<string, string | null>;
+  state: string;
+  specificity: number;
+}
+
 export interface WebStyleRule {
-  selector: Record<string, unknown>;
+  selector: WebStyleSelector;
   style: Record<string, unknown>;
   layer: number;
   order: number;
@@ -767,7 +776,7 @@ export function webSourceRef(sourcePath: string, sourceLine: number, sourceColum
 export function webAccessibilitySnapshot(source: Runtime | WebDocumentFrame): WebAccessibilitySnapshot;
 export function parseWebStyleSheet(source: string): WebStyleSheet;
 export function resolveWebStyle(node: WebDocumentNode, sheets?: string | WebStyleSheet | Array<string | WebStyleSheet>): Record<string, unknown>;
-export function webStyleSelectorToCSS(selector: Record<string, unknown>): string;
+export function webStyleSelectorToCSS(selector: WebStyleSelector | Partial<WebStyleSelector>): string;
 export function webStyleSheetToCSS(sheet: string | WebStyleSheet): string;
 export function installWebStyleSheet(sheet: string | WebStyleSheet,
   target?: Element | null, id?: string): (() => void) | null;

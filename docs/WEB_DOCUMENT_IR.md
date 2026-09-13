@@ -376,6 +376,8 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `installAppWebStyleSheets(app, target?, id?)`, and `setWebStyleSheets(rt,
 sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
 source text in `app.styles[].source` when a `#style` import resolves on disk.
+Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, state,
+specificity }`, matching the facts used by node queries and DOM object lookup.
 File imports resolve relative to the source module and then the project root;
 package imports resolve built-in `kryon.*` packs and project packages under
 `styles/`, including dotted package names as nested paths. Projects can also
