@@ -300,6 +300,8 @@ host roles rather than retained nodes.
 | `Meter` | `.kry canonical` | Web-native scalar meter element. |
 | `Nav` | `.kry canonical` | Web-native navigation landmark element. |
 | `Navigation` | `.kry canonical` | Long-form alias for `Nav`. |
+| `NoScript` | `.kry canonical` | Web-native fallback content element for script-disabled browsers. |
+| `Noscript` | `.kry canonical` | Browser-name casing alias for `NoScript`. |
 | `EmbeddedObject` | `.kry canonical` | Web-native embedded object element. |
 | `OrderedList` | `.kry canonical` | Web-native ordered list element. |
 | `OptionGroup` | `.kry canonical` | Web-native grouped select options element. |
@@ -316,6 +318,7 @@ host roles rather than retained nodes.
 | `RubyText` | `.kry canonical` | Long-form alias for `Rt`. |
 | `Samp` | `.kry canonical` | Web-native sample output phrasing element. |
 | `Sample` | `.kry canonical` | Long-form alias for `Samp`. |
+| `Script` | `.kry canonical` | Web-native script/data element; app logic still belongs in generated JS. |
 | `Search` | `.kry canonical` | Web-native search landmark element. |
 | `Select` | `.kry canonical` | Web-native select element; app selection control remains `Dropdown`. |
 | `Slot` | `.kry canonical` | Web-native shadow DOM slot element. |

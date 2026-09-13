@@ -117,9 +117,11 @@ the browser receives normal elements, attributes, CSS, and events.
   standard source, source-set, preload, controls, poster, track, loading,
   allow, sandbox, referrer policy, credentialless, frame-name, sizing, and MIME
   attributes available to snapshots, selectors, and mounted DOM.
-- Native document-composition aliases such as `Template` and `Slot` render to
-  matching browser elements and remain addressable through Kry DOM identity,
-  selector, snapshot, and mounted object APIs.
+- Native document-composition aliases such as `Template`, `Slot`, `Script`,
+  `NoScript`, and `Noscript` render to matching browser elements and remain
+  addressable through Kry DOM identity, selector, snapshot, and mounted object
+  APIs. `Script` is a DOM/data element alias only; generated k2js still owns app
+  logic.
 - Native inline phrasing/editing aliases such as `Strong`, `Em`, `Abbr`,
   `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, `Cite`, `Ruby`,
   `Rt`, `Rp`, `Bdi`, `Bdo`, and `Wbr` render to matching browser elements,

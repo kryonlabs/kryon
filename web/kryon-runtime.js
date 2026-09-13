@@ -1156,6 +1156,11 @@ function widgetTag(item) {
     return "template";
   case "Slot":
     return "slot";
+  case "Script":
+    return "script";
+  case "NoScript":
+  case "Noscript":
+    return "noscript";
   case "Header":
     return "header";
   case "Footer":
@@ -1462,6 +1467,9 @@ function widgetText(item) {
   case "ListItem":
   case "DescriptionTerm":
   case "DescriptionDetails":
+  case "Script":
+  case "NoScript":
+  case "Noscript":
     return propString(args, "text", "");
   case "Output":
     return propString(args, "text", propString(args, "value", ""));
@@ -1857,6 +1865,26 @@ function widgetNativeAttrs(item, meta, args) {
       propStringAny(args, ["label", "track_label", "dom_label", "html_label"]));
     setWidgetNativeAttr(out, "default", metaBool(meta, "default") ||
       isTruthyPropAny(args, ["default", "dom_default", "html_default"]));
+    break;
+  case "Script":
+    setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
+      propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
+      propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
+    setWidgetNativeAttr(out, "async", metaBool(meta, "async") ||
+      isTruthyPropAny(args, ["async", "dom_async", "html_async"]));
+    setWidgetNativeAttr(out, "defer", metaBool(meta, "defer") ||
+      isTruthyPropAny(args, ["defer", "dom_defer", "html_defer"]));
+    setWidgetNativeAttr(out, "crossorigin", metaString(meta, "crossOrigin") ||
+      propStringAny(args, ["crossorigin", "cross_origin", "dom_crossorigin", "html_crossorigin"]));
+    setWidgetNativeAttr(out, "integrity", metaString(meta, "integrity") ||
+      propStringAny(args, ["integrity", "dom_integrity", "html_integrity"]));
+    setWidgetNativeAttr(out, "referrerpolicy", metaString(meta, "referrerPolicy") ||
+      propStringAny(args, ["referrerpolicy", "referrer_policy", "dom_referrerpolicy", "html_referrerpolicy"]));
+    setWidgetNativeAttr(out, "nomodule", metaBool(meta, "noModule") ||
+      isTruthyPropAny(args, ["nomodule", "no_module", "dom_nomodule", "html_nomodule"]));
+    setWidgetNativeAttr(out, "nonce", metaString(meta, "nonce") ||
+      propStringAny(args, ["nonce", "dom_nonce", "html_nonce"]));
     break;
   case "IFrame":
   case "Iframe":
@@ -11669,9 +11697,9 @@ const runtimeCallNames = [
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup",
   "IFrame", "Iframe", "ImageMap", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
-  "Legend", "Mark", "Meter", "Nav", "Navigation", "EmbeddedObject", "OrderedList",
+  "Legend", "Mark", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
@@ -11781,6 +11809,8 @@ export function Meter(...args) { return struct("Meter", args); }
 export function Nav(...args) { return struct("Nav", args); }
 export function NavigationBar(...args) { return struct("NavigationBar", args); }
 export function Navigation(...args) { return struct("Navigation", args); }
+export function NoScript(...args) { return struct("NoScript", args); }
+export function Noscript(...args) { return struct("Noscript", args); }
 export function EmbeddedObject(...args) { return struct("EmbeddedObject", args); }
 export function OrderedList(...args) { return struct("OrderedList", args); }
 export function OptionGroup(...args) { return struct("OptionGroup", args); }
@@ -11809,6 +11839,7 @@ export function Samp(...args) { return struct("Samp", args); }
 export function Sample(...args) { return struct("Sample", args); }
 export function Screen(...args) { return struct("Screen", args); }
 export function Scroll(...args) { return struct("Scroll", args); }
+export function Script(...args) { return struct("Script", args); }
 export function Search(...args) { return struct("Search", args); }
 export function Select(...args) { return struct("Select", args); }
 export function Selectable(...args) { return struct("Selectable", args); }

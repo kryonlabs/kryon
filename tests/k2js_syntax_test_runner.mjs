@@ -16,9 +16,9 @@ for (const name of [
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "Hgroup", "HGroup", "IFrame", "Iframe", "ImageMap",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
-  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "EmbeddedObject", "OrderedList",
+  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "NoScript", "Noscript", "EmbeddedObject", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Param", "Pre", "Quote",
-  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Script", "Search", "Select",
   "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
@@ -2943,6 +2943,18 @@ function fakeDocument() {
       { nodeName: "nativeObject", path: "Page/object" });
     runtime.widget(nativeRt, "Param", { name: "page", value: "2" }, null,
       { nodeName: "nativeParam", path: "Page/object/page", parentPath: "Page/object" });
+    runtime.widget(nativeRt, "Script", {
+      type: "application/json",
+      text: "{\"enabled\":true}",
+      nonce: "nonce-1",
+      integrity: "sha256-demo",
+      referrer_policy: "no-referrer",
+      crossorigin: "anonymous",
+      no_module: true
+    }, null,
+      { nodeName: "nativeScript", path: "Page/script" });
+    runtime.widget(nativeRt, "NoScript", { text: "Enable JavaScript" }, null,
+      { nodeName: "nativeNoScript", path: "Page/noscript" });
     runtime.widget(nativeRt, "Source", { srcset: "hero.webp 1x, hero@2x.webp 2x", type: "image/webp" }, null,
       { nodeName: "nativePictureSource", path: "Page/sourceSet" });
     runtime.widget(nativeRt, "Template", { text: "Deferred content" }, null,
@@ -3307,6 +3319,17 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Param").extraAttrs.value, "2");
     assert.equal(runtime.webNodeQuery(nativeRt, "[data=\"document.pdf\"]").path, "Page/object");
     assert.equal(runtime.webNodeQuery(nativeRt, "[value=\"2\"]").path, "Page/object/page");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").tag, "script");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").text, "{\"enabled\":true}");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.type, "application/json");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.nonce, "nonce-1");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.integrity, "sha256-demo");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.referrerpolicy, "no-referrer");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.crossorigin, "anonymous");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Script").extraAttrs.nomodule, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "NoScript").tag, "noscript");
+    assert.equal(runtime.webNodeQuery(nativeRt, "NoScript").text, "Enable JavaScript");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[nonce=\"nonce-1\"]").path, "Page/script");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").tag, "source");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").extraAttrs.srcset,
       "hero.webp 1x, hero@2x.webp 2x");
@@ -3598,6 +3621,8 @@ function fakeDocument() {
     const nativeEmbed = runtime.findWebElement(nativeTarget, "nativeEmbed");
     const nativeObject = runtime.findWebElement(nativeTarget, "nativeObject");
     const nativeParam = runtime.findWebElement(nativeTarget, "nativeParam");
+    const nativeScript = runtime.findWebElement(nativeTarget, "nativeScript");
+    const nativeNoScript = runtime.findWebElement(nativeTarget, "nativeNoScript");
     const nativeTable = runtime.findWebElement(nativeTarget, "nativeTable");
     const nativeTableCaption = runtime.findWebElement(nativeTarget, "nativeTableCaption");
     const nativeColumns = runtime.findWebElement(nativeTarget, "nativeColumns");
@@ -3788,6 +3813,16 @@ function fakeDocument() {
     assert.equal(nativeParam.tagName, "PARAM");
     assert.equal(nativeParam.attributes.name, "page");
     assert.equal(nativeParam.attributes.value, "2");
+    assert.equal(nativeScript.tagName, "SCRIPT");
+    assert.equal(nativeScript.attributes.type, "application/json");
+    assert.equal(nativeScript.attributes.nonce, "nonce-1");
+    assert.equal(nativeScript.attributes.integrity, "sha256-demo");
+    assert.equal(nativeScript.attributes.referrerpolicy, "no-referrer");
+    assert.equal(nativeScript.attributes.crossorigin, "anonymous");
+    assert.equal(nativeScript.attributes.nomodule, "");
+    assert.equal(nativeScript.textContent, "{\"enabled\":true}");
+    assert.equal(nativeNoScript.tagName, "NOSCRIPT");
+    assert.equal(nativeNoScript.textContent, "Enable JavaScript");
     assert.equal(nativeTable.tagName, "TABLE");
     assert.equal(nativeTableCaption.tagName, "CAPTION");
     assert.equal(nativeTableCaption.textContent, "Totals");

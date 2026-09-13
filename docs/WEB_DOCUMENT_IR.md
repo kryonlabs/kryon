@@ -376,6 +376,8 @@ The initial tag mapping is intentionally conservative:
 | `Area` | `area` |
 | `EmbeddedObject` | `object` |
 | `Param` | `param` |
+| `Script` | `script` |
+| `NoScript`/`Noscript` | `noscript` |
 | `Template` | `template` |
 | `Slot` | `slot` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
@@ -481,7 +483,8 @@ and `[sourceColumnRef=...]`, `[role=...]`, `[state=...]`,
 native attribute aliases such as `[id=...]`, `[name=...]`, `[title=...]`,
 `[tabindex=...]`, `[type=...]`, `[href=...]`,
 `[target=...]`, `[rel=...]`, `[ping=...]`, `[hreflang=...]`,
-`[referrerpolicy=...]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
+`[referrerpolicy=...]`, `[nonce=...]`, `[integrity=...]`,
+`[crossorigin=...]`, `[nomodule=true]`, `[part=...]`, `[slot=...]`, `[action=...]`, `[method=...]`,
 `[enctype=...]`, `[autocomplete=...]`, `[hidden=true]`,
 `[draggable=true]`, `[spellcheck=...]`, `[contenteditable=...]`,
 `[inert=true]`, `[autocapitalize=...]`, `[enterkeyhint=...]`,
