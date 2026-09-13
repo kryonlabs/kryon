@@ -68,6 +68,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
+- Headless browser smoke coverage verifies real DOM rendering, native
+  attributes, source-range annotations, Kry object lookup, KSS application, and
+  decorated event dispatch in Chromium when available.
 - Mounted DOM snapshots include effective role and `webNodeStyleFacts(...)`
   data, so devtools can inspect Kry identity and KSS selector facts together.
 - Web runtime TypeScript declarations expose the native DOM facts used by KSS
@@ -119,7 +122,7 @@ the browser receives normal elements, attributes, CSS, and events.
   support, with tests for each property and state selector.
 - Add more semantic relationship facts where widgets need them, such as richer
   grid headers and row/column grouping.
-- Build browser-backed integration tests once a real DOM harness is available,
+- Expand browser-backed integration tests beyond the current smoke harness,
   keeping the fake DOM tests as fast contract tests.
 
 ## Coordination Contract
