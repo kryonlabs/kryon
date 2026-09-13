@@ -4885,12 +4885,16 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 	if height <= 0 {
 		height = 44
 	}
-	metrics := TitleBar_TitleBarMetricsFor(1)
+	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindTitleBar(), 1)
+	titleFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindTitleBar(), 16)
+	actionFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
+		props.ClassName, StyleSheet_StyleKindTitleBar(), 17)
+	metrics := TitleBar_TitleBarMetricsFor(1, surfaceFrame, titleFrame, actionFrame)
 	layout := TitleBar_TitleBarLayoutFor(r.GetScreenWidth(), height,
 		props.HasLeadingAction, props.HasDropdown, props.Dropdown.Height,
 		props.Dropdown.MinWidth, metrics)
-	surfaceFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindTitleBar(), 1)
 	r.record(styleFrameRectOp(layout.Bounds, Rectangle{}, surfaceFrame))
 	clicked := int32(0)
 	if props.HasLeadingAction {
@@ -4929,8 +4933,7 @@ func (r *runtime) TitleBar(props TitleBarProps) int32 {
 		}
 		return clicked
 	}
-	titleStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		props.ClassName, StyleSheet_StyleKindTitleBar(), 16).Value)
+	titleStyle := unpackStyle(titleFrame.Value)
 	titleFont, titleFontID := styleTextFace(titleStyle, Text20)
 	titleW := runtimeTextWidthWithFont(props.Title, titleFont, titleFontID)
 	titleX := TitleBar_TitleBarTitleX(r.GetScreenWidth(), int32(titleW))

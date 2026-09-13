@@ -1,5 +1,7 @@
 #module "title_bar"
+#import "control_props"
 #import "drawing_props"
+#import "style"
 
 TitleBarMetrics :: struct {
     side_margin: i32
@@ -31,18 +33,33 @@ TitleBarTitlePaint :: struct {
     y: i32
 }
 
-TitleBarMetricsFor :: (scale: float) -> TitleBarMetrics #export {
+TitleBarMetric :: (fields: u32, field: u32, value: float, fallback: float,
+    scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
+TitleBarMetricsFor :: (scale: float, bar: StyleFrame, title: StyleFrame,
+    action: StyleFrame) -> TitleBarMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TitleBarMetrics
-    metrics.side_margin = (i32)(12.0 * scale)
-    metrics.leading_reserved = (i32)(60.0 * scale)
-    metrics.leading_icon_size = (i32)(20.0 * scale)
-    metrics.leading_padding = (i32)(10.0 * scale)
-    metrics.leading_x = (i32)(12.0 * scale)
-    metrics.dropdown_gap = (i32)(4.0 * scale)
-    metrics.dropdown_default_height = (i32)(32.0 * scale)
-    metrics.title_min_width = (i32)(48.0 * scale)
-    metrics.title_horizontal_padding = (i32)(16.0 * scale)
+    metrics.side_margin = TitleBarMetric(bar.value.fields,
+        (u32)StylePaddingX, bar.value.padding_x, 12.0, scale)
+    metrics.leading_reserved = TitleBarMetric(bar.value.fields,
+        (u32)StyleContentOffset, bar.value.offset_x, 60.0, scale)
+    metrics.leading_icon_size = TitleBarMetric(action.value.fields,
+        (u32)StyleIconSize, action.value.icon_size, 20.0, scale)
+    metrics.leading_padding = TitleBarMetric(action.value.fields,
+        (u32)StylePaddingX, action.value.padding_x, 10.0, scale)
+    metrics.leading_x = metrics.side_margin
+    metrics.dropdown_gap = TitleBarMetric(bar.value.fields,
+        (u32)StyleGap, bar.value.gap, 4.0, scale)
+    metrics.dropdown_default_height = TitleBarMetric(bar.value.fields,
+        (u32)StyleIconSize, bar.value.icon_size, 32.0, scale)
+    metrics.title_min_width = TitleBarMetric(title.value.fields,
+        (u32)StyleIconSize, title.value.icon_size, 48.0, scale)
+    metrics.title_horizontal_padding = TitleBarMetric(title.value.fields,
+        (u32)StylePaddingX, title.value.padding_x, 16.0, scale)
     return metrics
 }
 

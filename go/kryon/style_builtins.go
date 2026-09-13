@@ -431,6 +431,10 @@ MenuSeparator {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -873,6 +877,8 @@ TitleBar[role=Title] {
   foreground: text;
   border: transparent;
   font-size: font.lg;
+  icon-size: 48;
+  padding-x: 16;
   opacity: 1;
   material: default;
 }
@@ -883,6 +889,8 @@ TitleBar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 20;
+  padding-x: 10;
   opacity: 1;
   material: default;
 }
@@ -2253,6 +2261,10 @@ MenuSeparator {
   border: border;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -2707,6 +2719,8 @@ TitleBar[role=Title] {
   foreground: text;
   border: transparent;
   font-size: font;
+  icon-size: 48;
+  padding-x: 16;
   opacity: 1;
   material: default;
 }
@@ -2717,6 +2731,8 @@ TitleBar[role=Action] {
   border: transparent;
   radius: radius;
   border-width: border.none;
+  icon-size: 20;
+  padding-x: 10;
   opacity: 1;
   material: default;
 }
@@ -4051,6 +4067,10 @@ MenuSeparator {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -4499,6 +4519,8 @@ TitleBar[role=Title] {
   foreground: text;
   border: transparent;
   font-size: font.lg;
+  icon-size: 48;
+  padding-x: 16;
   opacity: 1;
   material: default;
 }
@@ -4509,6 +4531,8 @@ TitleBar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 20;
+  padding-x: 10;
   opacity: 1;
   material: default;
 }
@@ -5907,6 +5931,10 @@ MenuSeparator {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: glow;
 }
@@ -6380,6 +6408,8 @@ TitleBar[role=Title] {
   foreground: text;
   border: transparent;
   font-size: font.lg;
+  icon-size: 48;
+  padding-x: 16;
   opacity: 1;
   material: app;
 }
@@ -6390,6 +6420,8 @@ TitleBar[role=Action] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  icon-size: 20;
+  padding-x: 10;
   opacity: 1;
   material: app;
 }
@@ -8283,6 +8315,10 @@ TitleBar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: premium;
 }
@@ -8292,6 +8328,8 @@ TitleBar[role=Title] {
   foreground: text;
   border: transparent;
   font-size: font.md;
+  icon-size: 48;
+  padding-x: 16;
   opacity: 1;
   material: app;
 }
@@ -8302,6 +8340,8 @@ TitleBar[role=Action] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  icon-size: 20;
+  padding-x: 10;
   opacity: 1;
   material: app;
 }

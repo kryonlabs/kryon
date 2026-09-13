@@ -15,7 +15,22 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    TitleBarMetrics metrics = TitleBarMetricsFor(2.0f);
+    StyleFrame bar = {0};
+    StyleFrame title = {0};
+    StyleFrame action = {0};
+    bar.value.fields = StylePaddingX | StyleGap | StyleIconSize |
+                       StyleContentOffset;
+    bar.value.padding_x = 12.0f;
+    bar.value.gap = 4.0f;
+    bar.value.icon_size = 32.0f;
+    bar.value.offset_x = 60.0f;
+    title.value.fields = StylePaddingX | StyleIconSize;
+    title.value.padding_x = 16.0f;
+    title.value.icon_size = 48.0f;
+    action.value.fields = StylePaddingX | StyleIconSize;
+    action.value.padding_x = 10.0f;
+    action.value.icon_size = 20.0f;
+    TitleBarMetrics metrics = TitleBarMetricsFor(2.0f, bar, title, action);
     TitleBarPaint paint;
     TitleBarTitlePaint title_paint;
     assert(metrics.side_margin == 24);
@@ -23,7 +38,8 @@ main(void)
     assert(metrics.leading_icon_size == 40);
     assert(metrics.leading_padding == 20);
     assert(metrics.dropdown_default_height == 64);
-    assert(TitleBarMetricsFor(0.0f).side_margin == 12);
+    assert(TitleBarMetricsFor(0.0f, (StyleFrame){0}, (StyleFrame){0},
+                              (StyleFrame){0}).side_margin == 12);
 
     TitleBarLayout layout = TitleBarLayoutFor(360, 88, true, true, 0, 0,
                                               metrics);
@@ -34,12 +50,30 @@ main(void)
     assert(layout.side_reserved == 120);
 
     layout = TitleBarLayoutFor(100, 44, false, false, 0, 0,
-                               TitleBarMetricsFor(1.0f));
+                               TitleBarMetricsFor(1.0f, bar, title, action));
     check_rect(layout.title_bounds, 12, 0, 76, 44);
 
     layout = TitleBarLayoutFor(90, 32, false, true, 20, 120,
-                               TitleBarMetricsFor(1.0f));
+                               TitleBarMetricsFor(1.0f, bar, title, action));
     check_rect(layout.dropdown_bounds, 12, 6, 78, 20);
+    bar.value.padding_x = 0.0f;
+    bar.value.gap = 0.0f;
+    bar.value.icon_size = 0.0f;
+    bar.value.offset_x = 0.0f;
+    title.value.padding_x = 0.0f;
+    title.value.icon_size = 0.0f;
+    action.value.padding_x = 0.0f;
+    action.value.icon_size = 0.0f;
+    metrics = TitleBarMetricsFor(1.0f, bar, title, action);
+    assert(metrics.side_margin == 0);
+    assert(metrics.leading_reserved == 0);
+    assert(metrics.leading_icon_size == 0);
+    assert(metrics.leading_padding == 0);
+    assert(metrics.leading_x == 0);
+    assert(metrics.dropdown_gap == 0);
+    assert(metrics.dropdown_default_height == 0);
+    assert(metrics.title_min_width == 0);
+    assert(metrics.title_horizontal_padding == 0);
     assert(TitleBarTitleX(360, 144) == 108);
     paint = TitleBarPaintFor(360, 88);
     check_rect(paint.bounds, 0, 0, 360, 88);
