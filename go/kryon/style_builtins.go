@@ -1415,6 +1415,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 32;
+  padding-y: 6;
+  gap: 0;
+  icon-size: 8;
+  offset-x: 36;
+  offset-y: 28;
   opacity: 1;
 }
 
@@ -1449,6 +1455,8 @@ SliderThumb {
   focus: accent;
   radius: radius.lg;
   border-width: border;
+  gap: 8;
+  icon-size: 22;
   opacity: 1;
   material: flat;
 }
@@ -3107,6 +3115,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 28;
+  padding-y: 4;
+  gap: 0;
+  icon-size: 6;
+  offset-x: 28;
+  offset-y: 24;
   opacity: 1;
 }
 
@@ -3140,6 +3154,8 @@ SliderThumb {
   focus: accent;
   radius: radius;
   border-width: border;
+  gap: 6;
+  icon-size: 18;
   opacity: 1;
   material: default;
 }
@@ -4836,6 +4852,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 32;
+  padding-y: 6;
+  gap: 0;
+  icon-size: 8;
+  offset-x: 36;
+  offset-y: 28;
   opacity: 1;
 }
 
@@ -4867,6 +4889,8 @@ SliderThumb {
   focus: accent;
   radius: radius.lg;
   border-width: border;
+  gap: 8;
+  icon-size: 22;
   opacity: 1;
   material: default;
 }
@@ -6631,6 +6655,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 32;
+  padding-y: 6;
+  gap: 0;
+  icon-size: 8;
+  offset-x: 36;
+  offset-y: 28;
   opacity: 1;
 }
 
@@ -6665,6 +6695,8 @@ SliderThumb {
   focus: accent;
   radius: radius.lg;
   border-width: border;
+  gap: 8;
+  icon-size: 22;
   opacity: 1;
   material: glow;
 }
@@ -8406,6 +8438,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 32;
+  padding-y: 6;
+  gap: 0;
+  icon-size: 8;
+  offset-x: 36;
+  offset-y: 28;
   opacity: 1;
 }
 
@@ -8439,6 +8477,8 @@ SliderThumb {
   focus: accent;
   radius: radius;
   border-width: border;
+  gap: 8;
+  icon-size: 22;
   opacity: 1;
   material: premium;
 }

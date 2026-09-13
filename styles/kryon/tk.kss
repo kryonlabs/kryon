@@ -1385,6 +1385,12 @@ Slider {
 }
 
 Slider[role=Track] {
+  padding-x: 28;
+  padding-y: 4;
+  gap: 0;
+  icon-size: 6;
+  offset-x: 28;
+  offset-y: 24;
   opacity: 1;
 }
 
@@ -1418,6 +1424,8 @@ SliderThumb {
   focus: accent;
   radius: radius;
   border-width: border;
+  gap: 6;
+  icon-size: 18;
   opacity: 1;
   material: default;
 }

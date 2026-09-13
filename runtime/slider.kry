@@ -88,16 +88,18 @@ SliderCenteredHitBounds :: (x: i32, y: i32, width: i32, height: i32,
 }
 
 SliderHorizontalEditorLayoutFor :: (x: i32, y: i32, width: i32,
-    min_touch_height: i32, scale: float) -> SliderEditorLayout #export {
+    min_touch_height: i32, scale: float, track: StyleFrame,
+    thumb: StyleFrame) -> SliderEditorLayout #export {
     layout: SliderEditorLayout
     if scale <= 0.0 { scale = 1.0 }
-    if width < SliderMinimumLength(scale) {
-        width = SliderMinimumLength(scale)
+    if width < SliderMinimumLengthForStyle(track, scale) {
+        width = SliderMinimumLengthForStyle(track, scale)
     }
-    editor_height: i32 = (i32)(56.0 * scale)
-    track_y: i32 = y + (i32)(28.0 * scale)
-    thumb_height: i32 = SliderThumbSize(scale)
-    track_height: i32 = SliderTrackSize(false, scale)
+    center_offset: i32 = SliderTrackCenterOffsetForStyle(track, scale)
+    editor_height: i32 = center_offset * 2
+    track_y: i32 = y + center_offset
+    thumb_height: i32 = SliderThumbSizeForStyle(thumb, scale)
+    track_height: i32 = SliderTrackSizeForStyle(false, track, scale)
     thumb_y: i32 = track_y - (thumb_height - track_height) / 2
     layout.editor_bounds.x = (float)x
     layout.editor_bounds.y = (float)y
@@ -113,15 +115,16 @@ SliderHorizontalEditorLayoutFor :: (x: i32, y: i32, width: i32,
 }
 
 SliderVerticalEditorLayoutFor :: (center_x: i32, y: i32, height: i32,
-    min_touch_width: i32, scale: float) -> SliderEditorLayout #export {
+    min_touch_width: i32, scale: float, track: StyleFrame,
+    thumb: StyleFrame) -> SliderEditorLayout #export {
     layout: SliderEditorLayout
     if scale <= 0.0 { scale = 1.0 }
-    if height < SliderMinimumLength(scale) {
-        height = SliderMinimumLength(scale)
+    if height < SliderMinimumLengthForStyle(track, scale) {
+        height = SliderMinimumLengthForStyle(track, scale)
     }
-    editor_width: i32 = (i32)(36.0 * scale)
-    track_width: i32 = SliderTrackSize(true, scale)
-    thumb_width: i32 = SliderThumbSize(scale)
+    editor_width: i32 = SliderVerticalEditorWidthForStyle(track, thumb, scale)
+    track_width: i32 = SliderTrackSizeForStyle(true, track, scale)
+    thumb_width: i32 = SliderThumbSizeForStyle(thumb, scale)
     track_x: i32 = center_x - track_width / 2
     layout.editor_bounds.x = (float)(center_x - editor_width / 2)
     layout.editor_bounds.y = (float)y
@@ -148,20 +151,58 @@ SliderCellBoundsFor :: (bounds: Rectangle, count: i32, index: i32) -> Rectangle 
     return cell
 }
 
-SliderMinimumLength :: (scale: float) -> i32 #export {
+SliderMinimumLengthForStyle :: (track: StyleFrame, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(32.0 * scale)
+    length: float = track.value.padding_x
+    if length <= 0.0 { length = 32.0 }
+    return (i32)(length * scale)
 }
 
-SliderThumbSize :: (scale: float) -> i32 #export {
+SliderThumbSizeForStyle :: (thumb: StyleFrame, scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    return (i32)(22.0 * scale)
+    size: float = thumb.value.icon_size
+    if size <= 0.0 { size = 22.0 }
+    return (i32)(size * scale)
 }
 
-SliderTrackSize :: (vertical: bool, scale: float) -> i32 #export {
+SliderTrackSizeForStyle :: (vertical: bool, track: StyleFrame,
+    scale: float) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
-    if vertical { return (i32)(8.0 * scale) }
-    return (i32)(6.0 * scale)
+    size: float = track.value.padding_y
+    if vertical {
+        size = track.value.icon_size
+        if size <= 0.0 { size = 8.0 }
+    } else {
+        if size <= 0.0 { size = 6.0 }
+    }
+    return (i32)(size * scale)
+}
+
+SliderTrackCenterOffsetForStyle :: (track: StyleFrame,
+    scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    offset: float = track.value.offset_y
+    if offset <= 0.0 { offset = 28.0 }
+    return (i32)(offset * scale)
+}
+
+SliderVerticalEditorWidthForStyle :: (track: StyleFrame, thumb: StyleFrame,
+    scale: float) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    width: float = track.value.offset_x
+    if width > 0.0 { return (i32)(width * scale) }
+    thumb_size: i32 = SliderThumbSizeForStyle(thumb, scale)
+    track_size: i32 = SliderTrackSizeForStyle(true, track, scale)
+    content: i32 = thumb_size
+    if track_size > content { content = track_size }
+    return content + (i32)(14.0 * scale)
+}
+
+SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    gap: float = thumb.value.gap
+    if gap <= 0.0 { gap = 8.0 }
+    return gap * scale
 }
 
 SliderClampRatio :: (ratio: float) -> float #export {
@@ -254,9 +295,10 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     if scale <= 0.0 { scale = 1.0 }
     ratio: float = SliderClampRatio(spec.ratio)
     bounds: Rectangle = spec.bounds
-    min_length: float = (float)SliderMinimumLength(scale)
-    thumb_size: float = (float)SliderThumbSize(scale)
-    track_size: float = (float)SliderTrackSize(spec.vertical, scale)
+    min_length: float = (float)SliderMinimumLengthForStyle(spec.track, scale)
+    thumb_size: float = (float)SliderThumbSizeForStyle(spec.thumb, scale)
+    track_size: float = (float)SliderTrackSizeForStyle(spec.vertical,
+        spec.track, scale)
     if spec.vertical {
         if bounds.height < min_length { bounds.height = min_length }
         if bounds.width < thumb_size { bounds.width = thumb_size }
@@ -287,7 +329,8 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     }
     paint.bounds = bounds
     paint.thumb_radius = thumb_size * 0.5
-    paint.glow_radius = paint.thumb_radius + 8.0 * scale
+    paint.glow_radius = paint.thumb_radius +
+        SliderGlowExpansionForStyle(spec.thumb, scale)
 
     paint.track = spec.track
     paint.active_track = spec.active_track

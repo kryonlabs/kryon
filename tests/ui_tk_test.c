@@ -839,7 +839,9 @@ test_slider_value_policy(void)
     cell = SliderCellBoundsFor((Rectangle){10, 20, 120, 30}, 4, -1);
     check_int("slider clamped cell x", (int)cell.x, 10);
 
-    horizontal_layout = SliderHorizontalEditorLayoutFor(10, 20, 20, 44, 1.0f);
+    horizontal_layout = SliderHorizontalEditorLayoutFor(10, 20, 20, 44, 1.0f,
+                                                       (StyleFrame){0},
+                                                       (StyleFrame){0});
     check_int("slider horizontal editor min width",
               (int)horizontal_layout.editor_bounds.width, 32);
     check_int("slider horizontal editor height",
@@ -849,7 +851,9 @@ test_slider_value_policy(void)
     check_int("slider horizontal paint y",
               (int)horizontal_layout.paint_bounds.y, 40);
 
-    vertical_layout = SliderVerticalEditorLayoutFor(50, 20, 20, 44, 1.0f);
+    vertical_layout = SliderVerticalEditorLayoutFor(50, 20, 20, 44, 1.0f,
+                                                   (StyleFrame){0},
+                                                   (StyleFrame){0});
     check_int("slider vertical editor x",
               (int)vertical_layout.editor_bounds.x, 32);
     check_int("slider vertical editor min height",

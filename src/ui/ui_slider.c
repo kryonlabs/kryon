@@ -204,8 +204,15 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
 {
     char editor_id[96];
     float runtime_scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
+                                                          ButtonStateNormal,
+                                                          UIContentDisabled());
+    StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
+                                                                ButtonStateNormal,
+                                                                UIContentDisabled());
     SliderEditorLayout layout = SliderHorizontalEditorLayoutFor(
-        x, y, w, ui_touch_target_min(), runtime_scale);
+        x, y, w, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
@@ -229,7 +236,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
     y = (int)editor_bounds.y;
     w = (int)editor_bounds.width;
     layout = SliderHorizontalEditorLayoutFor(
-        x, y, w, ui_touch_target_min(), runtime_scale);
+        x, y, w, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     editor_bounds = layout.editor_bounds;
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
@@ -330,8 +338,15 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
 {
     char editor_id[96];
     float runtime_scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
+                                                          ButtonStateNormal,
+                                                          UIContentDisabled());
+    StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
+                                                                ButtonStateNormal,
+                                                                UIContentDisabled());
     SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
-        x, y, h, ui_touch_target_min(), runtime_scale);
+        x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
@@ -350,7 +365,8 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
     layout = SliderVerticalEditorLayoutFor(
-        x, y, h, ui_touch_target_min(), runtime_scale);
+        x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     editor_bounds = layout.editor_bounds;
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);
@@ -437,8 +453,15 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
 {
     char editor_id[96];
     float runtime_scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame metric_track_frame = ui_slider_style_frame(ButtonToneNeutral,
+                                                          ButtonStateNormal,
+                                                          UIContentDisabled());
+    StyleFrame metric_thumb_frame = ui_slider_thumb_style_frame(ButtonToneAccent,
+                                                                ButtonStateNormal,
+                                                                UIContentDisabled());
     SliderEditorLayout layout = SliderVerticalEditorLayoutFor(
-        x, y, h, ui_touch_target_min(), runtime_scale);
+        x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     Rectangle editor_bounds = layout.editor_bounds;
     Widget widget;
     Vector2 mouse_world = ui_mouse_world();
@@ -458,7 +481,8 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
     y = (int)editor_bounds.y;
     h = (int)editor_bounds.height;
     layout = SliderVerticalEditorLayoutFor(
-        x, y, h, ui_touch_target_min(), runtime_scale);
+        x, y, h, ui_touch_target_min(), runtime_scale, metric_track_frame,
+        metric_thumb_frame);
     editor_bounds = layout.editor_bounds;
     hit = layout.hit_bounds;
     WidgetSetBounds(&widget, editor_bounds);

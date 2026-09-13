@@ -126,6 +126,38 @@ main(void)
         fprintf(stderr, "slider thumb edge did not come from thumb style\n");
         return 1;
     }
+    frame.value.padding_x = 72.0f;
+    frame.value.padding_y = 10.0f;
+    frame.value.icon_size = 12.0f;
+    thumb.value.icon_size = 18.0f;
+    thumb.value.gap = 5.0f;
+    slider_paint = SliderPaintFor((SliderSpec){
+        .bounds = {10, 20, 1, 1},
+        .ratio = 0.25f,
+        .scale = 1.0f,
+        .track = frame,
+        .active_track = frame,
+        .thumb = thumb
+    });
+    check_float("slider minimum length comes from track style",
+                slider_paint.track_bounds.width, 72.0f);
+    check_float("slider horizontal track size comes from track style",
+                slider_paint.track_bounds.height, 10.0f);
+    check_float("slider thumb size comes from thumb style",
+                slider_paint.thumb_radius, 9.0f);
+    check_float("slider glow expansion comes from thumb style",
+                slider_paint.glow_radius, 14.0f);
+    slider_paint = SliderPaintFor((SliderSpec){
+        .bounds = {10, 20, 1, 1},
+        .ratio = 0.25f,
+        .vertical = 1,
+        .scale = 1.0f,
+        .track = frame,
+        .active_track = frame,
+        .thumb = thumb
+    });
+    check_float("slider vertical track size comes from track style",
+                slider_paint.track_bounds.width, 12.0f);
     if(toggle_paint.thumb_fill_color != thumb.value.background) {
         fprintf(stderr, "toggle thumb fill did not come from thumb style\n");
         return 1;
