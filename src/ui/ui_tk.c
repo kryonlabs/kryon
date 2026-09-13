@@ -3128,6 +3128,10 @@ RenderListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
     int disabled = list.disabled || UIContentDisabled();
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        list.class_name, StyleKindListBox(), StyleAny());
     StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         list.class_name, StyleKindListBoxItem(), StyleAny());
@@ -3138,7 +3142,7 @@ RenderListBox(ListBoxProps list)
         : GetFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = ListBoxRowHeight(list.row_height > 0
-        ? Scale(list.row_height) : Scale(30));
+        ? Scale(list.row_height) : 0, runtime_scale, default_item_frame);
     ListBoxLayout layout;
     int scroll_y;
     int first;
@@ -3149,7 +3153,8 @@ RenderListBox(ListBoxProps list)
     max_scroll = ui_update_scroll(list.bounds, list.item_count * row_h,
                                   disabled ? NULL : list.scroll_offset, row_h);
     layout = ListBoxLayoutFor(list.bounds, list.item_count, row_h, 0,
-                              list.scroll_offset != NULL ? *list.scroll_offset : 0);
+                              list.scroll_offset != NULL ? *list.scroll_offset : 0,
+                              runtime_scale, default_item_frame);
     layout.max_scroll = max_scroll;
     layout.scroll = ListBoxClampScroll(layout.scroll, max_scroll);
     int focused = !disabled && list.id > 0 &&
@@ -3166,7 +3171,8 @@ RenderListBox(ListBoxProps list)
             ListBoxNavigation nav = ListBoxNavigate(selected, list.item_count,
                                                     key, layout.scroll, row_h,
                                                     list.bounds.height,
-                                                    max_scroll);
+                                                    max_scroll, runtime_scale,
+                                                    default_item_frame);
             if(nav.changed) {
                 *list.selected_index = nav.selected;
                 selected = nav.selected;
@@ -3179,13 +3185,11 @@ RenderListBox(ListBoxProps list)
         }
     }
     scroll_y = list.scroll_offset != NULL ? *list.scroll_offset : layout.scroll;
-    layout = ListBoxLayoutFor(list.bounds, list.item_count, row_h, 0, scroll_y);
+    layout = ListBoxLayoutFor(list.bounds, list.item_count, row_h, 0, scroll_y,
+                              runtime_scale, default_item_frame);
     first = layout.first_row;
     visible = layout.visible_rows;
     if(paint) {
-        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-            disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-            list.class_name, StyleKindListBox(), StyleAny());
         ui_tk_draw_style_frame(list.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, focused);
         BeginClip((int)list.bounds.x, (int)list.bounds.y,
@@ -3231,7 +3235,8 @@ RenderListBox(ListBoxProps list)
     if(paint)
         EndClip();
     if(paint && list.scroll_offset != NULL && max_scroll > 0) {
-        Rectangle scrollbar = ListBoxScrollbarBoundsFor(list.bounds, Scale(8));
+        Rectangle scrollbar = ListBoxScrollbarBoundsFor(list.bounds,
+            runtime_scale, frame);
         ui_scrollbar((int)scrollbar.x, (int)scrollbar.y,
                      (int)scrollbar.height,
                      list.item_count * row_h, list.scroll_offset,

@@ -552,6 +552,7 @@ ListBox {
   border-width: 1;
   padding-x: gap;
   padding-y: gap;
+  offset-y: 8;
   gap: gap;
   opacity: 1;
   material: premium;
@@ -566,6 +567,7 @@ ListBoxItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  icon-size: 30;
   font-size: font;
   opacity: 1;
   material: premium;

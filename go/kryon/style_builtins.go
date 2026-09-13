@@ -523,6 +523,7 @@ ListBox {
   border-width: border;
   padding-x: space.2;
   padding-y: space.2;
+  offset-y: 8;
   gap: space.2;
   opacity: 1;
   material: default;
@@ -537,6 +538,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2340,6 +2342,7 @@ ListBox {
   border-width: border;
   padding-x: space.1;
   padding-y: space.1;
+  offset-y: 8;
   gap: space.1;
   opacity: 1;
   material: default;
@@ -2354,6 +2357,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  icon-size: 30;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4133,6 +4137,7 @@ ListBox {
   border-width: border;
   padding-x: space.2;
   padding-y: space.2;
+  offset-y: 8;
   gap: gap;
   opacity: 1;
   material: default;
@@ -4147,6 +4152,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -5990,6 +5996,7 @@ ListBox {
   border-width: border;
   padding-x: space.2;
   padding-y: space.2;
+  offset-y: 8;
   gap: gap;
   opacity: 1;
   material: glow;
@@ -6004,6 +6011,7 @@ ListBoxItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 30;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -7897,6 +7905,7 @@ ListBox {
   border-width: 1;
   padding-x: gap;
   padding-y: gap;
+  offset-y: 8;
   gap: gap;
   opacity: 1;
   material: premium;
@@ -7911,6 +7920,7 @@ ListBoxItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  icon-size: 30;
   font-size: font;
   opacity: 1;
   material: premium;

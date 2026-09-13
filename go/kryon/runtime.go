@@ -6111,8 +6111,9 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 	props = normalizeListBoxProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)
 	props.Disabled = props.Disabled || r.contentDisabled()
-	rowH := ListBox_ListBoxRowHeight(props.RowHeight)
-	maxScroll := ListBox_ListBoxMaxScroll(props.Bounds.Height, int32(len(props.Items)), rowH, 0)
+	defaultItemFrame := listBoxItemMetricFrame(props.ClassName, props.Disabled)
+	rowH := ListBox_ListBoxRowHeight(props.RowHeight, 1, defaultItemFrame)
+	maxScroll := ListBox_ListBoxMaxScroll(props.Bounds.Height, int32(len(props.Items)), rowH, 0, 1, defaultItemFrame)
 	if props.ScrollOffset != nil {
 		*props.ScrollOffset = ListBox_ListBoxClampScroll(*props.ScrollOffset, maxScroll)
 	}
@@ -6142,7 +6143,7 @@ func (r *runtime) ListBox(props ListBoxProps) int32 {
 			if props.ScrollOffset != nil {
 				scroll = *props.ScrollOffset
 			}
-			nav := ListBox_ListBoxNavigate(*props.SelectedIndex, int32(len(props.Items)), key, scroll, rowH, props.Bounds.Height, maxScroll)
+			nav := ListBox_ListBoxNavigate(*props.SelectedIndex, int32(len(props.Items)), key, scroll, rowH, props.Bounds.Height, maxScroll, 1, defaultItemFrame)
 			if nav.Changed {
 				*props.SelectedIndex = nav.Selected
 				changed = 1
@@ -7559,7 +7560,8 @@ func textMoveSelection(current selection, cursor, target int, extend bool) (int,
 }
 
 func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
-	rowH = ListBox_ListBoxRowHeight(rowH)
+	defaultItemFrame := listBoxItemMetricFrame(props.ClassName, props.Disabled)
+	rowH = ListBox_ListBoxRowHeight(rowH, 1, defaultItemFrame)
 	changed := int32(0)
 	focused := !props.Disabled && props.ID != 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
 	listFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
@@ -7580,7 +7582,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	if props.ScrollOffset != nil {
 		scroll = *props.ScrollOffset
 	}
-	layout := ListBox_ListBoxLayoutFor(props.Bounds, int32(len(props.Items)), rowH, 0, scroll)
+	layout := ListBox_ListBoxLayoutFor(props.Bounds, int32(len(props.Items)), rowH, 0, scroll, 1, defaultItemFrame)
 	first := layout.FirstRow
 	visible := layout.VisibleRows
 	for i := int32(0); i <= visible && first+i < int32(len(props.Items)); i++ {
@@ -7631,6 +7633,15 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideTextWithFont(props.Items[index], row.Width-labelX*2, font, fontID), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
+}
+
+func listBoxItemMetricFrame(className int32, disabled bool) StyleFrame {
+	state := ButtonStateNormal
+	if disabled {
+		state = ButtonStateDisabled
+	}
+	return simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false,
+		className, StyleSheet_StyleKindListBoxItem(), StyleSheet_StyleAny())
 }
 
 func normalizeTableViewProps(props TableViewProps) TableViewProps {

@@ -1,5 +1,7 @@
 #module "list_box"
 #import "drawing_props"
+#import "style"
+#import "control_props"
 
 ListBoxLayout :: struct {
     row_height: i32
@@ -22,22 +24,30 @@ ListBoxItemPaint :: struct {
     text_y: i32
 }
 
-ListBoxRowHeight :: (row_height: i32) -> i32 #export {
+ListBoxMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
+ListBoxRowHeight :: (row_height: i32, scale: float, item: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
     if row_height <= 0 {
-        return 30
+        return ListBoxMetric(item.value.fields, (u32)StyleIconSize,
+            item.value.icon_size, 30.0, scale)
     }
     return row_height
 }
 
 ListBoxContentHeight :: (item_count: i32, row_height: i32,
-    content_height: i32) -> i32 #export {
+    content_height: i32, scale: float, item: StyleFrame) -> i32 #export {
     if content_height > 0 {
         return content_height
     }
     if item_count <= 0 {
         return 0
     }
-    row_height = ListBoxRowHeight(row_height)
+    row_height = ListBoxRowHeight(row_height, scale, item)
     height: i64 = (i64)item_count * (i64)row_height
     if height > 2147483647 {
         return 2147483647
@@ -46,8 +56,9 @@ ListBoxContentHeight :: (item_count: i32, row_height: i32,
 }
 
 ListBoxMaxScroll :: (bounds_height: float, item_count: i32,
-    row_height: i32, content_height: i32) -> i32 #export {
-    height: i32 = ListBoxContentHeight(item_count, row_height, content_height)
+    row_height: i32, content_height: i32, scale: float, item: StyleFrame) -> i32 #export {
+    height: i32 = ListBoxContentHeight(item_count, row_height, content_height,
+        scale, item)
     max_scroll: i32 = height - (i32)bounds_height
     if max_scroll < 0 {
         return 0
@@ -66,11 +77,12 @@ ListBoxClampScroll :: (scroll: i32, max_scroll: i32) -> i32 #export {
 }
 
 ListBoxRevealScroll :: (selected: i32, scroll: i32, row_height: i32,
-    viewport_height: float, max_scroll: i32) -> i32 #export {
+    viewport_height: float, max_scroll: i32, scale: float,
+    item: StyleFrame) -> i32 #export {
     if selected < 0 {
         return ListBoxClampScroll(scroll, max_scroll)
     }
-    row_height = ListBoxRowHeight(row_height)
+    row_height = ListBoxRowHeight(row_height, scale, item)
     top: i32 = selected * row_height
     bottom: i32 = top + row_height
     viewport: i32 = (i32)viewport_height
@@ -85,7 +97,7 @@ ListBoxRevealScroll :: (selected: i32, scroll: i32, row_height: i32,
 # key: 1 home, 2 end, 3 up, 4 down.
 ListBoxNavigate :: (selected: i32, item_count: i32, key: i32,
     scroll: i32, row_height: i32, viewport_height: float,
-    max_scroll: i32) -> ListBoxNavigation #export {
+    max_scroll: i32, scale: float, item: StyleFrame) -> ListBoxNavigation #export {
     nav: ListBoxNavigation
     nav.selected = selected
     nav.scroll = ListBoxClampScroll(scroll, max_scroll)
@@ -121,18 +133,18 @@ ListBoxNavigate :: (selected: i32, item_count: i32, key: i32,
     nav.changed = next != selected
     nav.selected = next
     nav.scroll = ListBoxRevealScroll(next, nav.scroll, row_height,
-        viewport_height, max_scroll)
+        viewport_height, max_scroll, scale, item)
     return nav
 }
 
 ListBoxLayoutFor :: (bounds: Rectangle, item_count: i32, row_height: i32,
-    content_height: i32, scroll: i32) -> ListBoxLayout #export {
+    content_height: i32, scroll: i32, scale: float, item: StyleFrame) -> ListBoxLayout #export {
     layout: ListBoxLayout
-    layout.row_height = ListBoxRowHeight(row_height)
+    layout.row_height = ListBoxRowHeight(row_height, scale, item)
     layout.content_height = ListBoxContentHeight(item_count,
-        layout.row_height, content_height)
+        layout.row_height, content_height, scale, item)
     layout.max_scroll = ListBoxMaxScroll(bounds.height, item_count,
-        layout.row_height, content_height)
+        layout.row_height, content_height, scale, item)
     layout.scroll = ListBoxClampScroll(scroll, layout.max_scroll)
     if layout.row_height > 0 {
         layout.first_row = layout.scroll / layout.row_height
@@ -160,9 +172,11 @@ ListBoxItemPaintFor :: (row: Rectangle, label_inset: i32,
     return paint
 }
 
-ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scrollbar_width: i32) -> Rectangle #export {
+ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scale: float,
+    list: StyleFrame) -> Rectangle #export {
     bar: Rectangle
-    if scrollbar_width <= 0 { scrollbar_width = 8 }
+    scrollbar_width: i32 = ListBoxMetric(list.value.fields,
+        (u32)StyleContentOffset, list.value.offset_y, 8.0, scale)
     bar.x = bounds.x + bounds.width - (float)scrollbar_width
     bar.y = bounds.y
     bar.width = (float)scrollbar_width
