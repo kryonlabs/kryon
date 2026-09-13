@@ -316,6 +316,30 @@ main(void)
     }
 
     frame.value.gap = 5.0f;
+    frame.value.fields &= ~(StylePaddingX | StylePaddingY | StyleGap |
+                            StyleIconSize);
+    thumb.value.fields &= ~(StyleIconSize | StyleGap);
+    toggle_paint = TogglePaintFor((ToggleSpec){
+        .bounds = {10, 20, 1, 1},
+        .enabled = 1,
+        .scale = 1.0f,
+        .track = frame,
+        .active = frame,
+        .thumb = thumb
+    });
+    check_float("toggle track width falls back when unset",
+                toggle_paint.track_bounds.width, 54.0f);
+    check_float("toggle track height falls back when unset",
+                toggle_paint.track_bounds.height, 32.0f);
+    check_float("toggle focus gap falls back when unset",
+                toggle_paint.focus_bounds.x, 6.0f);
+    check_float("toggle thumb size falls back when unset",
+                toggle_paint.thumb_radius, 10.0f);
+    check_float("toggle thumb inset falls back when unset",
+                toggle_paint.thumb_x, 24.0f);
+    frame.value.fields |= StylePaddingX | StylePaddingY | StyleGap |
+                          StyleIconSize;
+    thumb.value.fields |= StyleIconSize | StyleGap;
     toggle_paint = TogglePaintFor((ToggleSpec){
         .bounds = {10, 20, 1, 1},
         .enabled = 1,
@@ -335,7 +359,23 @@ main(void)
     check_float("toggle thumb inset comes from thumb style",
                 toggle_paint.thumb_x, 23.0f);
 
+    frame.value.gap = 0.0f;
+    thumb.value.gap = 0.0f;
+    toggle_paint = TogglePaintFor((ToggleSpec){
+        .bounds = {10, 20, 100, 30},
+        .enabled = 1,
+        .scale = 1.0f,
+        .track = frame,
+        .active = frame,
+        .thumb = thumb
+    });
+    check_float("toggle keeps explicit zero focus gap",
+                toggle_paint.focus_bounds.x, 25.0f);
+    check_float("toggle keeps explicit zero thumb inset",
+                toggle_paint.thumb_x, 32.0f);
+
     frame.value.gap = 4.0f;
+    thumb.value.gap = 6.0f;
     toggle_paint = TogglePaintFor((ToggleSpec){
         .bounds = {10, 20, 100, 30},
         .checked = 0,

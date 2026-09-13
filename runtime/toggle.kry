@@ -47,28 +47,31 @@ TogglePaint :: struct {
     thumb_glow_color: u32
 }
 
-ToggleTrackWidthForStyle :: (track: StyleFrame, scale: float) -> float #export {
+ToggleMetric :: (fields: u32, field: u32, value: float, fallback: float,
+    scale: float, allow_zero: bool) -> float {
     if scale <= 0.0 { scale = 1.0 }
-    width: float = track.value.padding_x
-    if width <= 0.0 { width = 54.0 }
-    return width * scale
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return value * scale
+}
+
+ToggleTrackWidthForStyle :: (track: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(track.value.fields, (u32)StylePaddingX,
+        track.value.padding_x, 54.0, scale, false)
 }
 
 ToggleTrackHeightForStyle :: (track: StyleFrame, scale: float) -> float #export {
-    if scale <= 0.0 { scale = 1.0 }
-    height: float = track.value.padding_y
-    if height <= 0.0 { height = 32.0 }
-    return height * scale
+    return ToggleMetric(track.value.fields, (u32)StylePaddingY,
+        track.value.padding_y, 32.0, scale, false)
 }
 
 ToggleThumbSizeForStyle :: (thumb: StyleFrame, checked: bool,
     scale: float) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
-    size: float = thumb.value.icon_size
-    if size <= 0.0 {
-        size = checked ? 24.0 : 20.0
-    }
-    return size * scale
+    return ToggleMetric(thumb.value.fields, (u32)StyleIconSize,
+        thumb.value.icon_size, checked ? 24.0 : 20.0, scale, false)
 }
 
 ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
@@ -76,22 +79,22 @@ ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
     active: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     if !has_labels { return (i32)ToggleTrackWidthForStyle(track, scale) }
-    active_gap: float = active.value.gap
-    if active_gap <= 0.0 { active_gap = 3.0 }
+    active_gap: float = ToggleMetric(active.value.fields, (u32)StyleGap,
+        active.value.gap, 3.0, scale, true)
     widest: i32 = off_width
     if on_width > widest { widest = on_width }
     return (widest + (i32)(16.0 * scale)) * 2 +
-        (i32)(active_gap * 2.0 * scale)
+        (i32)(active_gap * 2.0)
 }
 
 ToggleMinimumHeightForStyle :: (scale: float, track: StyleFrame,
     thumb: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     track_h: float = ToggleTrackHeightForStyle(track, scale)
-    thumb_gap: float = thumb.value.gap
-    if thumb_gap <= 0.0 { thumb_gap = 4.0 }
+    thumb_gap: float = ToggleMetric(thumb.value.fields, (u32)StyleGap,
+        thumb.value.gap, 4.0, scale, true)
     thumb_min: float = ToggleThumbSizeForStyle(thumb, false, scale) +
-        thumb_gap * 2.0 * scale
+        thumb_gap * 2.0
     if track_h < thumb_min { track_h = thumb_min }
     return (i32)track_h
 }
@@ -126,9 +129,8 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     paint.active = spec.active
     paint.thumb = spec.thumb
 
-    focus_gap: float = spec.track.value.gap
-    if focus_gap <= 0.0 { focus_gap = 4.0 }
-    focus_gap *= scale
+    focus_gap: float = ToggleMetric(spec.track.value.fields, (u32)StyleGap,
+        spec.track.value.gap, 4.0, scale, true)
     paint.focus_bounds.x = track.x - focus_gap
     paint.focus_bounds.y = track.y - focus_gap
     paint.focus_bounds.width = track.width + focus_gap * 2.0
@@ -143,9 +145,8 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
     paint.on_label_color = Opacity(spec.track.value.foreground,
         spec.track.value.opacity)
     if spec.has_labels {
-        active_gap: float = spec.active.value.gap
-        if active_gap <= 0.0 { active_gap = 3.0 }
-        active_gap *= scale
+        active_gap: float = ToggleMetric(spec.active.value.fields,
+            (u32)StyleGap, spec.active.value.gap, 3.0, scale, true)
         active_w: float = (track.width - active_gap * 2.0) * 0.5
         active_x: float = track.x + active_gap
         if spec.checked { active_x = track.x + track.width - active_w - active_gap }
@@ -174,9 +175,8 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
         thumb_size: float = ToggleThumbSizeForStyle(spec.thumb, spec.checked,
             scale)
         if spec.pressed { thumb_size += 2.0 * scale }
-        thumb_gap: float = spec.thumb.value.gap
-        if thumb_gap <= 0.0 { thumb_gap = 4.0 }
-        thumb_gap *= scale
+        thumb_gap: float = ToggleMetric(spec.thumb.value.fields,
+            (u32)StyleGap, spec.thumb.value.gap, 4.0, scale, true)
         max_thumb: float = track.height - thumb_gap * 2.0
         if thumb_size > max_thumb { thumb_size = max_thumb }
         thumb_x: float = track.x + thumb_gap

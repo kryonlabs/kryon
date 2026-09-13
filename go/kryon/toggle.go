@@ -48,7 +48,7 @@ type TogglePaint struct {
 	ThumbGlowColor      uint32
 }
 
-func Toggle_ToggleTrackWidthForStyle(track StyleFrame, scale float32) float32 {
+func Toggle_ToggleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -56,42 +56,64 @@ func Toggle_ToggleTrackWidthForStyle(track StyleFrame, scale float32) float32 {
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = track.Value.PaddingX
-	var width float32 = value_4
-	var value_5 float32 = width
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 54.0
-		width = value_8
+	var value_4 uint32 = fields
+	var value_5 uint32 = field
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, false, 8))
+	var value_7 int32 = 0
+	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(0), 32, false, 0))
+	var value_9 bool = value_6 == value_8
+	var value_10 bool = value_9
+	if !value_10 {
+		var value_11 float32 = value
+		var value_12 float32 = 0.0
+		var value_13 bool = value_11 < value_12
+		value_10 = value_13
 	}
-	var value_9 float32 = width
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	return value_11
+	var value_14 bool = value_10
+	if !value_14 {
+		var value_15 bool = allow_zero
+		var value_16 bool = !value_15
+		var value_17 bool = value_16
+		if value_17 {
+			var value_18 float32 = value
+			var value_19 float32 = 0.0
+			var value_20 bool = value_18 <= value_19
+			value_17 = value_20
+		}
+		value_14 = value_17
+	}
+	if value_14 {
+		var value_21 float32 = fallback
+		value = value_21
+	}
+	var value_22 float32 = value
+	var value_23 float32 = scale
+	var value_24 float32 = value_22 * value_23
+	return value_24
+}
+
+func Toggle_ToggleTrackWidthForStyle(track StyleFrame, scale float32) float32 {
+	var value_0 uint32 = track.Value.Fields
+	var value_1 int32 = int32(StylePaddingX)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = track.Value.PaddingX
+	var value_4 float32 = 54.0
+	var value_5 float32 = scale
+	var value_6 bool = false
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Toggle_ToggleTrackHeightForStyle(track StyleFrame, scale float32) float32 {
-	var value_0 float32 = scale
-	var value_1 float32 = 0.0
-	var value_2 bool = value_0 <= value_1
-	if value_2 {
-		var value_3 float32 = 1.0
-		scale = value_3
-	}
-	var value_4 float32 = track.Value.PaddingY
-	var height float32 = value_4
-	var value_5 float32 = height
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 float32 = 32.0
-		height = value_8
-	}
-	var value_9 float32 = height
-	var value_10 float32 = scale
-	var value_11 float32 = value_9 * value_10
-	return value_11
+	var value_0 uint32 = track.Value.Fields
+	var value_1 int32 = int32(StylePaddingY)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = track.Value.PaddingY
+	var value_4 float32 = 32.0
+	var value_5 float32 = scale
+	var value_6 bool = false
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Toggle_ToggleThumbSizeForStyle(thumb StyleFrame, checked bool, scale float32) float32 {
@@ -102,26 +124,22 @@ func Toggle_ToggleThumbSizeForStyle(thumb StyleFrame, checked bool, scale float3
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = thumb.Value.IconSize
-	var size float32 = value_4
-	var value_5 float32 = size
-	var value_6 float32 = 0.0
-	var value_7 bool = value_5 <= value_6
-	if value_7 {
-		var value_8 bool = checked
-		var value_9 float32 = 0
-		if value_8 {
-			var value_10 float32 = 24.0
-			value_9 = value_10
-		} else {
-			var value_11 float32 = 20.0
-			value_9 = value_11
-		}
-		size = value_9
+	var value_4 uint32 = thumb.Value.Fields
+	var value_5 int32 = int32(StyleIconSize)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = thumb.Value.IconSize
+	var value_8 bool = checked
+	var value_9 float32 = 0
+	if value_8 {
+		var value_10 float32 = 24.0
+		value_9 = value_10
+	} else {
+		var value_11 float32 = 20.0
+		value_9 = value_11
 	}
-	var value_12 float32 = size
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
+	var value_12 float32 = scale
+	var value_13 bool = false
+	var value_14 float32 = Toggle_ToggleMetric(value_4, value_6, value_7, value_9, value_12, value_13)
 	return value_14
 }
 
@@ -142,40 +160,38 @@ func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_widt
 		var value_9 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_8), 32, true)), uint64(0), 32, true, 0))
 		return value_9
 	}
-	var value_10 float32 = active.Value.Gap
-	var active_gap float32 = value_10
-	var value_11 float32 = active_gap
-	var value_12 float32 = 0.0
-	var value_13 bool = value_11 <= value_12
-	if value_13 {
-		var value_14 float32 = 3.0
-		active_gap = value_14
-	}
-	var value_15 int32 = off_width
-	var widest int32 = value_15
-	var value_16 int32 = on_width
-	var value_17 int32 = widest
-	var value_18 bool = value_16 > value_17
-	if value_18 {
-		var value_19 int32 = on_width
-		widest = value_19
-	}
+	var value_10 uint32 = active.Value.Fields
+	var value_11 int32 = int32(StyleGap)
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 float32 = active.Value.Gap
+	var value_14 float32 = 3.0
+	var value_15 float32 = scale
+	var value_16 bool = true
+	var value_17 float32 = Toggle_ToggleMetric(value_10, value_12, value_13, value_14, value_15, value_16)
+	var active_gap float32 = value_17
+	var value_18 int32 = off_width
+	var widest int32 = value_18
+	var value_19 int32 = on_width
 	var value_20 int32 = widest
-	var value_21 float32 = 16.0
-	var value_22 float32 = scale
-	var value_23 float32 = value_21 * value_22
-	var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-	var value_25 int32 = int32(number_runtime_bits(uint64(value_20), uint64(value_24), 32, true, 1))
-	var value_26 int32 = 2
-	var value_27 int32 = int32(number_runtime_bits(uint64(value_25), uint64(value_26), 32, true, 3))
-	var value_28 float32 = active_gap
-	var value_29 float32 = 2.0
-	var value_30 float32 = value_28 * value_29
-	var value_31 float32 = scale
-	var value_32 float32 = value_30 * value_31
-	var value_33 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_32), 32, true)), uint64(0), 32, true, 0))
-	var value_34 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_33), 32, true, 1))
-	return value_34
+	var value_21 bool = value_19 > value_20
+	if value_21 {
+		var value_22 int32 = on_width
+		widest = value_22
+	}
+	var value_23 int32 = widest
+	var value_24 float32 = 16.0
+	var value_25 float32 = scale
+	var value_26 float32 = value_24 * value_25
+	var value_27 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_26), 32, true)), uint64(0), 32, true, 0))
+	var value_28 int32 = int32(number_runtime_bits(uint64(value_23), uint64(value_27), 32, true, 1))
+	var value_29 int32 = 2
+	var value_30 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_29), 32, true, 3))
+	var value_31 float32 = active_gap
+	var value_32 float32 = 2.0
+	var value_33 float32 = value_31 * value_32
+	var value_34 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_33), 32, true)), uint64(0), 32, true, 0))
+	var value_35 int32 = int32(number_runtime_bits(uint64(value_30), uint64(value_34), 32, true, 1))
+	return value_35
 }
 
 func Toggle_ToggleMinimumHeightForStyle(scale float32, track StyleFrame, thumb StyleFrame) int32 {
@@ -190,36 +206,34 @@ func Toggle_ToggleMinimumHeightForStyle(scale float32, track StyleFrame, thumb S
 	var value_5 float32 = scale
 	var value_6 float32 = Toggle_ToggleTrackHeightForStyle(value_4, value_5)
 	var track_h float32 = value_6
-	var value_7 float32 = thumb.Value.Gap
-	var thumb_gap float32 = value_7
-	var value_8 float32 = thumb_gap
-	var value_9 float32 = 0.0
-	var value_10 bool = value_8 <= value_9
-	if value_10 {
-		var value_11 float32 = 4.0
-		thumb_gap = value_11
+	var value_7 uint32 = thumb.Value.Fields
+	var value_8 int32 = int32(StyleGap)
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 float32 = thumb.Value.Gap
+	var value_11 float32 = 4.0
+	var value_12 float32 = scale
+	var value_13 bool = true
+	var value_14 float32 = Toggle_ToggleMetric(value_7, value_9, value_10, value_11, value_12, value_13)
+	var thumb_gap float32 = value_14
+	var value_15 StyleFrame = thumb
+	var value_16 bool = false
+	var value_17 float32 = scale
+	var value_18 float32 = Toggle_ToggleThumbSizeForStyle(value_15, value_16, value_17)
+	var value_19 float32 = thumb_gap
+	var value_20 float32 = 2.0
+	var value_21 float32 = value_19 * value_20
+	var value_22 float32 = value_18 + value_21
+	var thumb_min float32 = value_22
+	var value_23 float32 = track_h
+	var value_24 float32 = thumb_min
+	var value_25 bool = value_23 < value_24
+	if value_25 {
+		var value_26 float32 = thumb_min
+		track_h = value_26
 	}
-	var value_12 StyleFrame = thumb
-	var value_13 bool = false
-	var value_14 float32 = scale
-	var value_15 float32 = Toggle_ToggleThumbSizeForStyle(value_12, value_13, value_14)
-	var value_16 float32 = thumb_gap
-	var value_17 float32 = 2.0
-	var value_18 float32 = value_16 * value_17
-	var value_19 float32 = scale
-	var value_20 float32 = value_18 * value_19
-	var value_21 float32 = value_15 + value_20
-	var thumb_min float32 = value_21
-	var value_22 float32 = track_h
-	var value_23 float32 = thumb_min
-	var value_24 bool = value_22 < value_23
-	if value_24 {
-		var value_25 float32 = thumb_min
-		track_h = value_25
-	}
-	var value_26 float32 = track_h
-	var value_27 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_26), 32, true)), uint64(0), 32, true, 0))
-	return value_27
+	var value_27 float32 = track_h
+	var value_28 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_27), 32, true)), uint64(0), 32, true, 0))
+	return value_28
 }
 
 func Toggle_TogglePaintFor(spec ToggleSpec) TogglePaint {
@@ -320,283 +334,274 @@ func Toggle_TogglePaintFor(spec ToggleSpec) TogglePaint {
 	paint.Active = value_61
 	var value_62 StyleFrame = spec.Thumb
 	paint.Thumb = value_62
-	var value_63 float32 = spec.Track.Value.Gap
-	var focus_gap float32 = value_63
-	var value_64 float32 = focus_gap
-	var value_65 float32 = 0.0
-	var value_66 bool = value_64 <= value_65
-	if value_66 {
-		var value_67 float32 = 4.0
-		focus_gap = value_67
-	}
-	var value_68 float32 = focus_gap
-	var value_69 float32 = scale
-	focus_gap = value_68 * value_69
-	var value_70 float32 = track.X
-	var value_71 float32 = focus_gap
-	var value_72 float32 = value_70 - value_71
-	paint.FocusBounds.X = value_72
-	var value_73 float32 = track.Y
-	var value_74 float32 = focus_gap
-	var value_75 float32 = value_73 - value_74
-	paint.FocusBounds.Y = value_75
-	var value_76 float32 = track.Width
-	var value_77 float32 = focus_gap
-	var value_78 float32 = 2.0
-	var value_79 float32 = value_77 * value_78
-	var value_80 float32 = value_76 + value_79
-	paint.FocusBounds.Width = value_80
-	var value_81 float32 = track.Height
-	var value_82 float32 = focus_gap
-	var value_83 float32 = 2.0
-	var value_84 float32 = value_82 * value_83
-	var value_85 float32 = value_81 + value_84
-	paint.FocusBounds.Height = value_85
-	var value_86 bool = spec.Focused
-	paint.ShowFocus = value_86
-	var value_87 Rectangle = bounds
-	paint.Bounds = value_87
-	var value_88 Rectangle = track
-	paint.TrackBounds = value_88
-	var value_89 bool = spec.HasLabels
-	paint.HasLabels = value_89
-	var value_90 uint32 = spec.Track.Value.Foreground
-	var value_91 float32 = spec.Track.Value.Opacity
-	var value_92 uint32 = Surface_Opacity(value_90, value_91)
-	paint.OffLabelColor = value_92
-	var value_93 uint32 = spec.Track.Value.Foreground
-	var value_94 float32 = spec.Track.Value.Opacity
-	var value_95 uint32 = Surface_Opacity(value_93, value_94)
-	paint.OnLabelColor = value_95
-	var value_96 bool = spec.HasLabels
-	if value_96 {
-		var value_97 float32 = spec.Active.Value.Gap
-		var active_gap float32 = value_97
-		var value_98 float32 = active_gap
-		var value_99 float32 = 0.0
-		var value_100 bool = value_98 <= value_99
-		if value_100 {
-			var value_101 float32 = 3.0
-			active_gap = value_101
-		}
-		var value_102 float32 = active_gap
+	var value_63 uint32 = spec.Track.Value.Fields
+	var value_64 int32 = int32(StyleGap)
+	var value_65 uint32 = uint32(number_runtime_bits(uint64(value_64), uint64(0), 32, false, 0))
+	var value_66 float32 = spec.Track.Value.Gap
+	var value_67 float32 = 4.0
+	var value_68 float32 = scale
+	var value_69 bool = true
+	var value_70 float32 = Toggle_ToggleMetric(value_63, value_65, value_66, value_67, value_68, value_69)
+	var focus_gap float32 = value_70
+	var value_71 float32 = track.X
+	var value_72 float32 = focus_gap
+	var value_73 float32 = value_71 - value_72
+	paint.FocusBounds.X = value_73
+	var value_74 float32 = track.Y
+	var value_75 float32 = focus_gap
+	var value_76 float32 = value_74 - value_75
+	paint.FocusBounds.Y = value_76
+	var value_77 float32 = track.Width
+	var value_78 float32 = focus_gap
+	var value_79 float32 = 2.0
+	var value_80 float32 = value_78 * value_79
+	var value_81 float32 = value_77 + value_80
+	paint.FocusBounds.Width = value_81
+	var value_82 float32 = track.Height
+	var value_83 float32 = focus_gap
+	var value_84 float32 = 2.0
+	var value_85 float32 = value_83 * value_84
+	var value_86 float32 = value_82 + value_85
+	paint.FocusBounds.Height = value_86
+	var value_87 bool = spec.Focused
+	paint.ShowFocus = value_87
+	var value_88 Rectangle = bounds
+	paint.Bounds = value_88
+	var value_89 Rectangle = track
+	paint.TrackBounds = value_89
+	var value_90 bool = spec.HasLabels
+	paint.HasLabels = value_90
+	var value_91 uint32 = spec.Track.Value.Foreground
+	var value_92 float32 = spec.Track.Value.Opacity
+	var value_93 uint32 = Surface_Opacity(value_91, value_92)
+	paint.OffLabelColor = value_93
+	var value_94 uint32 = spec.Track.Value.Foreground
+	var value_95 float32 = spec.Track.Value.Opacity
+	var value_96 uint32 = Surface_Opacity(value_94, value_95)
+	paint.OnLabelColor = value_96
+	var value_97 bool = spec.HasLabels
+	if value_97 {
+		var value_98 uint32 = spec.Active.Value.Fields
+		var value_99 int32 = int32(StyleGap)
+		var value_100 uint32 = uint32(number_runtime_bits(uint64(value_99), uint64(0), 32, false, 0))
+		var value_101 float32 = spec.Active.Value.Gap
+		var value_102 float32 = 3.0
 		var value_103 float32 = scale
-		active_gap = value_102 * value_103
-		var value_104 float32 = track.Width
-		var value_105 float32 = active_gap
-		var value_106 float32 = 2.0
-		var value_107 float32 = value_105 * value_106
-		var value_108 float32 = value_104 - value_107
-		var value_109 float32 = 0.5
-		var value_110 float32 = value_108 * value_109
-		var active_w float32 = value_110
-		var value_111 float32 = track.X
-		var value_112 float32 = active_gap
-		var value_113 float32 = value_111 + value_112
-		var active_x float32 = value_113
-		var value_114 bool = spec.Checked
-		if value_114 {
-			var value_115 float32 = track.X
-			var value_116 float32 = track.Width
-			var value_117 float32 = value_115 + value_116
-			var value_118 float32 = active_w
-			var value_119 float32 = value_117 - value_118
-			var value_120 float32 = active_gap
+		var value_104 bool = true
+		var value_105 float32 = Toggle_ToggleMetric(value_98, value_100, value_101, value_102, value_103, value_104)
+		var active_gap float32 = value_105
+		var value_106 float32 = track.Width
+		var value_107 float32 = active_gap
+		var value_108 float32 = 2.0
+		var value_109 float32 = value_107 * value_108
+		var value_110 float32 = value_106 - value_109
+		var value_111 float32 = 0.5
+		var value_112 float32 = value_110 * value_111
+		var active_w float32 = value_112
+		var value_113 float32 = track.X
+		var value_114 float32 = active_gap
+		var value_115 float32 = value_113 + value_114
+		var active_x float32 = value_115
+		var value_116 bool = spec.Checked
+		if value_116 {
+			var value_117 float32 = track.X
+			var value_118 float32 = track.Width
+			var value_119 float32 = value_117 + value_118
+			var value_120 float32 = active_w
 			var value_121 float32 = value_119 - value_120
-			active_x = value_121
+			var value_122 float32 = active_gap
+			var value_123 float32 = value_121 - value_122
+			active_x = value_123
 		}
-		var value_122 float32 = active_x
-		paint.ActiveBounds.X = value_122
-		var value_123 float32 = track.Y
-		var value_124 float32 = active_gap
-		var value_125 float32 = value_123 + value_124
-		paint.ActiveBounds.Y = value_125
-		var value_126 float32 = active_w
-		paint.ActiveBounds.Width = value_126
-		var value_127 float32 = track.Height
-		var value_128 float32 = active_gap
-		var value_129 float32 = 2.0
-		var value_130 float32 = value_128 * value_129
-		var value_131 float32 = value_127 - value_130
-		paint.ActiveBounds.Height = value_131
-		var value_132 float32 = bounds.Y
-		var value_133 float32 = bounds.Height
-		var value_134 int32 = spec.Font
-		var value_135 float32 = float32(value_134)
-		var value_136 float32 = value_133 - value_135
-		var value_137 float32 = 0.5
-		var value_138 float32 = value_136 * value_137
-		var value_139 float32 = value_132 + value_138
-		var text_y float32 = value_139
-		var value_140 float32 = bounds.X
-		var value_141 float32 = bounds.Width
-		var value_142 float32 = 0.25
-		var value_143 float32 = value_141 * value_142
-		var value_144 float32 = value_140 + value_143
-		var value_145 int32 = spec.OffWidth
-		var value_146 float32 = float32(value_145)
-		var value_147 float32 = 0.5
-		var value_148 float32 = value_146 * value_147
-		var value_149 float32 = value_144 - value_148
-		paint.OffLabelBounds.X = value_149
-		var value_150 float32 = text_y
-		paint.OffLabelBounds.Y = value_150
-		var value_151 int32 = spec.OffWidth
-		var value_152 float32 = float32(value_151)
-		paint.OffLabelBounds.Width = value_152
-		var value_153 int32 = spec.Font
+		var value_124 float32 = active_x
+		paint.ActiveBounds.X = value_124
+		var value_125 float32 = track.Y
+		var value_126 float32 = active_gap
+		var value_127 float32 = value_125 + value_126
+		paint.ActiveBounds.Y = value_127
+		var value_128 float32 = active_w
+		paint.ActiveBounds.Width = value_128
+		var value_129 float32 = track.Height
+		var value_130 float32 = active_gap
+		var value_131 float32 = 2.0
+		var value_132 float32 = value_130 * value_131
+		var value_133 float32 = value_129 - value_132
+		paint.ActiveBounds.Height = value_133
+		var value_134 float32 = bounds.Y
+		var value_135 float32 = bounds.Height
+		var value_136 int32 = spec.Font
+		var value_137 float32 = float32(value_136)
+		var value_138 float32 = value_135 - value_137
+		var value_139 float32 = 0.5
+		var value_140 float32 = value_138 * value_139
+		var value_141 float32 = value_134 + value_140
+		var text_y float32 = value_141
+		var value_142 float32 = bounds.X
+		var value_143 float32 = bounds.Width
+		var value_144 float32 = 0.25
+		var value_145 float32 = value_143 * value_144
+		var value_146 float32 = value_142 + value_145
+		var value_147 int32 = spec.OffWidth
+		var value_148 float32 = float32(value_147)
+		var value_149 float32 = 0.5
+		var value_150 float32 = value_148 * value_149
+		var value_151 float32 = value_146 - value_150
+		paint.OffLabelBounds.X = value_151
+		var value_152 float32 = text_y
+		paint.OffLabelBounds.Y = value_152
+		var value_153 int32 = spec.OffWidth
 		var value_154 float32 = float32(value_153)
-		paint.OffLabelBounds.Height = value_154
-		var value_155 float32 = bounds.X
-		var value_156 float32 = bounds.Width
-		var value_157 float32 = 0.75
-		var value_158 float32 = value_156 * value_157
-		var value_159 float32 = value_155 + value_158
-		var value_160 int32 = spec.OnWidth
-		var value_161 float32 = float32(value_160)
-		var value_162 float32 = 0.5
-		var value_163 float32 = value_161 * value_162
-		var value_164 float32 = value_159 - value_163
-		paint.OnLabelBounds.X = value_164
-		var value_165 float32 = text_y
-		paint.OnLabelBounds.Y = value_165
-		var value_166 int32 = spec.OnWidth
-		var value_167 float32 = float32(value_166)
-		paint.OnLabelBounds.Width = value_167
-		var value_168 int32 = spec.Font
+		paint.OffLabelBounds.Width = value_154
+		var value_155 int32 = spec.Font
+		var value_156 float32 = float32(value_155)
+		paint.OffLabelBounds.Height = value_156
+		var value_157 float32 = bounds.X
+		var value_158 float32 = bounds.Width
+		var value_159 float32 = 0.75
+		var value_160 float32 = value_158 * value_159
+		var value_161 float32 = value_157 + value_160
+		var value_162 int32 = spec.OnWidth
+		var value_163 float32 = float32(value_162)
+		var value_164 float32 = 0.5
+		var value_165 float32 = value_163 * value_164
+		var value_166 float32 = value_161 - value_165
+		paint.OnLabelBounds.X = value_166
+		var value_167 float32 = text_y
+		paint.OnLabelBounds.Y = value_167
+		var value_168 int32 = spec.OnWidth
 		var value_169 float32 = float32(value_168)
-		paint.OnLabelBounds.Height = value_169
-		var value_170 bool = spec.Checked
-		if value_170 {
-			var value_171 uint32 = paint.Active.Value.Foreground
-			var value_172 float32 = paint.Active.Value.Opacity
-			var value_173 uint32 = Surface_Opacity(value_171, value_172)
-			paint.OnLabelColor = value_173
+		paint.OnLabelBounds.Width = value_169
+		var value_170 int32 = spec.Font
+		var value_171 float32 = float32(value_170)
+		paint.OnLabelBounds.Height = value_171
+		var value_172 bool = spec.Checked
+		if value_172 {
+			var value_173 uint32 = paint.Active.Value.Foreground
+			var value_174 float32 = paint.Active.Value.Opacity
+			var value_175 uint32 = Surface_Opacity(value_173, value_174)
+			paint.OnLabelColor = value_175
 		} else {
-			var value_174 uint32 = paint.Active.Value.Foreground
-			var value_175 float32 = paint.Active.Value.Opacity
-			var value_176 uint32 = Surface_Opacity(value_174, value_175)
-			paint.OffLabelColor = value_176
+			var value_176 uint32 = paint.Active.Value.Foreground
+			var value_177 float32 = paint.Active.Value.Opacity
+			var value_178 uint32 = Surface_Opacity(value_176, value_177)
+			paint.OffLabelColor = value_178
 		}
 	} else {
-		var value_177 StyleFrame = spec.Thumb
-		var value_178 bool = spec.Checked
-		var value_179 float32 = scale
-		var value_180 float32 = Toggle_ToggleThumbSizeForStyle(value_177, value_178, value_179)
-		var thumb_size float32 = value_180
-		var value_181 bool = spec.Pressed
-		if value_181 {
-			var value_182 float32 = thumb_size
-			var value_183 float32 = 2.0
-			var value_184 float32 = scale
-			var value_185 float32 = value_183 * value_184
-			thumb_size = value_182 + value_185
+		var value_179 StyleFrame = spec.Thumb
+		var value_180 bool = spec.Checked
+		var value_181 float32 = scale
+		var value_182 float32 = Toggle_ToggleThumbSizeForStyle(value_179, value_180, value_181)
+		var thumb_size float32 = value_182
+		var value_183 bool = spec.Pressed
+		if value_183 {
+			var value_184 float32 = thumb_size
+			var value_185 float32 = 2.0
+			var value_186 float32 = scale
+			var value_187 float32 = value_185 * value_186
+			thumb_size = value_184 + value_187
 		}
-		var value_186 float32 = spec.Thumb.Value.Gap
-		var thumb_gap float32 = value_186
-		var value_187 float32 = thumb_gap
-		var value_188 float32 = 0.0
-		var value_189 bool = value_187 <= value_188
-		if value_189 {
-			var value_190 float32 = 4.0
-			thumb_gap = value_190
+		var value_188 uint32 = spec.Thumb.Value.Fields
+		var value_189 int32 = int32(StyleGap)
+		var value_190 uint32 = uint32(number_runtime_bits(uint64(value_189), uint64(0), 32, false, 0))
+		var value_191 float32 = spec.Thumb.Value.Gap
+		var value_192 float32 = 4.0
+		var value_193 float32 = scale
+		var value_194 bool = true
+		var value_195 float32 = Toggle_ToggleMetric(value_188, value_190, value_191, value_192, value_193, value_194)
+		var thumb_gap float32 = value_195
+		var value_196 float32 = track.Height
+		var value_197 float32 = thumb_gap
+		var value_198 float32 = 2.0
+		var value_199 float32 = value_197 * value_198
+		var value_200 float32 = value_196 - value_199
+		var max_thumb float32 = value_200
+		var value_201 float32 = thumb_size
+		var value_202 float32 = max_thumb
+		var value_203 bool = value_201 > value_202
+		if value_203 {
+			var value_204 float32 = max_thumb
+			thumb_size = value_204
 		}
-		var value_191 float32 = thumb_gap
-		var value_192 float32 = scale
-		thumb_gap = value_191 * value_192
-		var value_193 float32 = track.Height
-		var value_194 float32 = thumb_gap
-		var value_195 float32 = 2.0
-		var value_196 float32 = value_194 * value_195
-		var value_197 float32 = value_193 - value_196
-		var max_thumb float32 = value_197
-		var value_198 float32 = thumb_size
-		var value_199 float32 = max_thumb
-		var value_200 bool = value_198 > value_199
-		if value_200 {
-			var value_201 float32 = max_thumb
-			thumb_size = value_201
+		var value_205 float32 = track.X
+		var value_206 float32 = thumb_gap
+		var value_207 float32 = value_205 + value_206
+		var thumb_x float32 = value_207
+		var value_208 bool = spec.Checked
+		if value_208 {
+			var value_209 float32 = track.X
+			var value_210 float32 = track.Width
+			var value_211 float32 = value_209 + value_210
+			var value_212 float32 = thumb_size
+			var value_213 float32 = value_211 - value_212
+			var value_214 float32 = thumb_gap
+			var value_215 float32 = value_213 - value_214
+			thumb_x = value_215
 		}
-		var value_202 float32 = track.X
-		var value_203 float32 = thumb_gap
-		var value_204 float32 = value_202 + value_203
-		var thumb_x float32 = value_204
-		var value_205 bool = spec.Checked
-		if value_205 {
-			var value_206 float32 = track.X
-			var value_207 float32 = track.Width
-			var value_208 float32 = value_206 + value_207
-			var value_209 float32 = thumb_size
-			var value_210 float32 = value_208 - value_209
-			var value_211 float32 = thumb_gap
-			var value_212 float32 = value_210 - value_211
-			thumb_x = value_212
-		}
-		var value_213 float32 = track.Y
-		var value_214 float32 = track.Height
-		var value_215 float32 = thumb_size
-		var value_216 float32 = value_214 - value_215
-		var value_217 float32 = 0.5
-		var value_218 float32 = value_216 * value_217
-		var value_219 float32 = value_213 + value_218
-		var thumb_y float32 = value_219
-		var value_220 float32 = thumb_size
-		var value_221 float32 = 0.5
-		var value_222 float32 = value_220 * value_221
-		paint.ThumbRadius = value_222
-		var value_223 float32 = thumb_x
-		var value_224 float32 = paint.ThumbRadius
-		var value_225 float32 = value_223 + value_224
-		paint.ThumbX = value_225
-		var value_226 float32 = thumb_y
+		var value_216 float32 = track.Y
+		var value_217 float32 = track.Height
+		var value_218 float32 = thumb_size
+		var value_219 float32 = value_217 - value_218
+		var value_220 float32 = 0.5
+		var value_221 float32 = value_219 * value_220
+		var value_222 float32 = value_216 + value_221
+		var thumb_y float32 = value_222
+		var value_223 float32 = thumb_size
+		var value_224 float32 = 0.5
+		var value_225 float32 = value_223 * value_224
+		paint.ThumbRadius = value_225
+		var value_226 float32 = thumb_x
 		var value_227 float32 = paint.ThumbRadius
 		var value_228 float32 = value_226 + value_227
-		paint.ThumbY = value_228
-		var value_229 float32 = paint.Thumb.Value.Opacity
-		var thumb_opacity float32 = value_229
-		var value_230 uint32 = paint.Thumb.Value.Background
-		var value_231 float32 = thumb_opacity
-		var value_232 uint32 = Surface_Opacity(value_230, value_231)
-		paint.ThumbFillColor = value_232
-		var value_233 uint32 = paint.Thumb.Value.Border
+		paint.ThumbX = value_228
+		var value_229 float32 = thumb_y
+		var value_230 float32 = paint.ThumbRadius
+		var value_231 float32 = value_229 + value_230
+		paint.ThumbY = value_231
+		var value_232 float32 = paint.Thumb.Value.Opacity
+		var thumb_opacity float32 = value_232
+		var value_233 uint32 = paint.Thumb.Value.Background
 		var value_234 float32 = thumb_opacity
 		var value_235 uint32 = Surface_Opacity(value_233, value_234)
-		paint.ThumbEdgeColor = value_235
-		var value_236 uint32 = paint.Thumb.Value.Focus
-		var value_237 float32 = 0.36
-		var value_238 float32 = thumb_opacity
-		var value_239 float32 = value_237 * value_238
-		var value_240 uint32 = Surface_Opacity(value_236, value_239)
-		paint.ThumbGlowColor = value_240
-		var value_241 uint32 = paint.Thumb.Value.Border
-		var value_242 bool = spec.Enabled
-		var value_243 float32 = 0
-		if value_242 {
-			var value_244 float32 = 0.36
-			value_243 = value_244
+		paint.ThumbFillColor = value_235
+		var value_236 uint32 = paint.Thumb.Value.Border
+		var value_237 float32 = thumb_opacity
+		var value_238 uint32 = Surface_Opacity(value_236, value_237)
+		paint.ThumbEdgeColor = value_238
+		var value_239 uint32 = paint.Thumb.Value.Focus
+		var value_240 float32 = 0.36
+		var value_241 float32 = thumb_opacity
+		var value_242 float32 = value_240 * value_241
+		var value_243 uint32 = Surface_Opacity(value_239, value_242)
+		paint.ThumbGlowColor = value_243
+		var value_244 uint32 = paint.Thumb.Value.Border
+		var value_245 bool = spec.Enabled
+		var value_246 float32 = 0
+		if value_245 {
+			var value_247 float32 = 0.36
+			value_246 = value_247
 		} else {
-			var value_245 float32 = 0.18
-			value_243 = value_245
+			var value_248 float32 = 0.18
+			value_246 = value_248
 		}
-		var value_246 float32 = thumb_opacity
-		var value_247 float32 = value_243 * value_246
-		var value_248 uint32 = Surface_Opacity(value_241, value_247)
-		paint.ThumbShadowColor = value_248
-		var value_249 uint32 = paint.Thumb.Value.Foreground
-		var value_250 bool = spec.Enabled
-		var value_251 float32 = 0
-		if value_250 {
-			var value_252 float32 = 0.23
-			value_251 = value_252
+		var value_249 float32 = thumb_opacity
+		var value_250 float32 = value_246 * value_249
+		var value_251 uint32 = Surface_Opacity(value_244, value_250)
+		paint.ThumbShadowColor = value_251
+		var value_252 uint32 = paint.Thumb.Value.Foreground
+		var value_253 bool = spec.Enabled
+		var value_254 float32 = 0
+		if value_253 {
+			var value_255 float32 = 0.23
+			value_254 = value_255
 		} else {
-			var value_253 float32 = 0.09
-			value_251 = value_253
+			var value_256 float32 = 0.09
+			value_254 = value_256
 		}
-		var value_254 float32 = thumb_opacity
-		var value_255 float32 = value_251 * value_254
-		var value_256 uint32 = Surface_Opacity(value_249, value_255)
-		paint.ThumbHighlightColor = value_256
+		var value_257 float32 = thumb_opacity
+		var value_258 float32 = value_254 * value_257
+		var value_259 uint32 = Surface_Opacity(value_252, value_258)
+		paint.ThumbHighlightColor = value_259
 	}
-	var value_257 TogglePaint = paint
-	return value_257
+	var value_260 TogglePaint = paint
+	return value_260
 }
