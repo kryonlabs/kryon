@@ -233,7 +233,8 @@ the browser receives normal elements, attributes, CSS, and events.
   transform-style, perspective, perspective-origin, backface visibility, and
   motion-path offset fields.
 - KSS web containment styling supports native containment, content visibility,
-  intrinsic containment sizing, and container query naming/type properties.
+  intrinsic containment sizing, and container query shorthand/name/type
+  properties.
 - KSS web overlay and transition styling supports native anchor positioning
   fields and `view-transition-name`.
 - KSS web motion, sizing, accessibility, and paint styling supports native

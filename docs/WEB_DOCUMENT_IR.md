@@ -505,8 +505,8 @@ flex flow/grow/shrink/basis/order,
 grid tracks/areas/auto tracks/auto-flow/line placement,
 row/column gaps, placement/content/self alignment, transforms, motion paths,
 containment,
-content visibility, intrinsic containment sizing, container
-queries, anchor positioning, view-transition names, animation ranges,
+content visibility, intrinsic containment sizing, container query
+shorthand/name/type properties, anchor positioning, view-transition names, animation ranges,
 will-change, isolation, blend mode,
 media/background fit, view-box, image orientation/resolution, and rendering,
 visibility, transitions, filters,

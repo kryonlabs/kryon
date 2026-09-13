@@ -2253,7 +2253,7 @@ const webKssLiteralProperties = new Set([
   "contain", "content-visibility", "contain-intrinsic-size",
   "contain-intrinsic-width", "contain-intrinsic-height",
   "contain-intrinsic-inline-size", "contain-intrinsic-block-size",
-  "container-type", "container-name", "will-change",
+  "container", "container-type", "container-name", "will-change",
   "anchor-name", "position-anchor", "position-area", "position-try",
   "position-try-fallbacks", "position-try-order", "position-visibility",
   "view-transition-name", "isolation", "mix-blend-mode", "columns",
@@ -3242,6 +3242,7 @@ const webCSSPropertyNames = new Map([
   ["contain-intrinsic-height", "contain-intrinsic-height"],
   ["contain-intrinsic-inline-size", "contain-intrinsic-inline-size"],
   ["contain-intrinsic-block-size", "contain-intrinsic-block-size"],
+  ["container", "container"],
   ["container-type", "container-type"],
   ["container-name", "container-name"],
   ["anchor-name", "anchor-name"],
@@ -4702,6 +4703,7 @@ function applyResolvedWebStyle(el, style) {
   set("containIntrinsicHeight", style["contain-intrinsic-height"]);
   set("containIntrinsicInlineSize", style["contain-intrinsic-inline-size"]);
   set("containIntrinsicBlockSize", style["contain-intrinsic-block-size"]);
+  set("container", style.container);
   set("containerType", style["container-type"]);
   set("containerName", style["container-name"]);
   set("anchorName", style["anchor-name"]);

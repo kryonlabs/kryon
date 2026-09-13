@@ -449,6 +449,7 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     box-shadow: 0 1px 2px #0004;
     color-scheme: light dark;
     contain: layout paint;
+    container: search / inline-size;
     container-type: inline-size;
     container-name: search;
     will-change: transform;
@@ -883,6 +884,7 @@ assert.match(webStyleCSS, /outline-color: #445566;/);
 assert.match(webStyleCSS, /box-shadow: 0 1px 2px #0004;/);
 assert.match(webStyleCSS, /color-scheme: light dark;/);
 assert.match(webStyleCSS, /contain: layout paint;/);
+assert.match(webStyleCSS, /container: search \/ inline-size;/);
 assert.match(webStyleCSS, /container-type: inline-size;/);
 assert.match(webStyleCSS, /container-name: search;/);
 assert.match(webStyleCSS, /will-change: transform;/);
@@ -1917,6 +1919,7 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-co
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["box-shadow"], "0 1px 2px #0004");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["color-scheme"], "light dark");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).contain, "layout paint");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).container, "search / inline-size");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["container-type"], "inline-size");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["container-name"], "search");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["will-change"], "transform");
@@ -5026,6 +5029,7 @@ function fakeDocument() {
     assert.equal(firstField.style.boxShadow, "0 1px 2px #0004");
     assert.equal(firstField.style.colorScheme, "light dark");
     assert.equal(firstField.style.contain, "layout paint");
+    assert.equal(firstField.style.container, "search / inline-size");
     assert.equal(firstField.style.containerType, "inline-size");
     assert.equal(firstField.style.containerName, "search");
     assert.equal(firstField.style.willChange, "transform");
