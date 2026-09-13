@@ -1771,7 +1771,7 @@ const webStyleLayers = {
 
 const webKssColorProperties = new Set([
   "background", "foreground", "border", "focus", "background-end",
-  "accent-color", "caret-color", "outline-color"
+  "accent-color", "caret-color", "outline-color", "text-decoration-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -1796,7 +1796,8 @@ const webKssLengthProperties = new Set([
   "inset-block-start", "inset-block-end",
   "gap", "row-gap", "column-gap", "font-size", "letter-spacing", "line-height",
   "flex-basis",
-  "text-indent", "outline-width", "outline-offset", "tab-size",
+  "text-indent", "text-decoration-thickness", "text-underline-offset",
+  "outline-width", "outline-offset", "tab-size",
   "column-count", "column-width",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
   "scroll-margin-bottom", "scroll-margin-left",
@@ -1817,7 +1818,8 @@ const webKssLiteralProperties = new Set([
   "typeface", "font-weight", "font-style", "font-variant", "font-stretch",
   "font-kerning", "font-optical-sizing", "font-feature-settings",
   "font-variation-settings", "text-align",
-  "text-decoration", "text-transform", "text-overflow", "white-space",
+  "text-decoration", "text-decoration-style", "text-shadow",
+  "text-transform", "text-overflow", "white-space",
   "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
@@ -1825,7 +1827,8 @@ const webKssLiteralProperties = new Set([
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "overscroll-behavior-inline",
   "overscroll-behavior-block", "scroll-snap-type", "scroll-snap-align",
-  "scroll-snap-stop", "touch-action",
+  "scroll-snap-stop", "scrollbar-color", "scrollbar-width",
+  "scrollbar-gutter", "touch-action",
   "align-items", "justify-content", "align-self", "justify-self",
   "flex-direction", "flex-wrap", "flex", "flex-grow", "flex-shrink",
   "grid-template-columns", "grid-template-rows",
@@ -2466,6 +2469,11 @@ const webCSSPropertyNames = new Map([
   ["text-indent", "text-indent"],
   ["text-align", "text-align"],
   ["text-decoration", "text-decoration"],
+  ["text-decoration-color", "text-decoration-color"],
+  ["text-decoration-style", "text-decoration-style"],
+  ["text-decoration-thickness", "text-decoration-thickness"],
+  ["text-underline-offset", "text-underline-offset"],
+  ["text-shadow", "text-shadow"],
   ["text-transform", "text-transform"],
   ["text-overflow", "text-overflow"],
   ["white-space", "white-space"],
@@ -2497,6 +2505,9 @@ const webCSSPropertyNames = new Map([
   ["scroll-snap-type", "scroll-snap-type"],
   ["scroll-snap-align", "scroll-snap-align"],
   ["scroll-snap-stop", "scroll-snap-stop"],
+  ["scrollbar-color", "scrollbar-color"],
+  ["scrollbar-width", "scrollbar-width"],
+  ["scrollbar-gutter", "scrollbar-gutter"],
   ["scroll-margin", "scroll-margin"],
   ["scroll-margin-top", "scroll-margin-top"],
   ["scroll-margin-right", "scroll-margin-right"],
@@ -3423,6 +3434,11 @@ function applyResolvedWebStyle(el, style) {
   set("textIndent", style["text-indent"]);
   set("textAlign", style["text-align"]);
   set("textDecoration", style["text-decoration"]);
+  set("textDecorationColor", style["text-decoration-color"]);
+  set("textDecorationStyle", style["text-decoration-style"]);
+  set("textDecorationThickness", style["text-decoration-thickness"]);
+  set("textUnderlineOffset", style["text-underline-offset"]);
+  set("textShadow", style["text-shadow"]);
   set("textTransform", style["text-transform"]);
   set("textOverflow", style["text-overflow"]);
   set("whiteSpace", style["white-space"]);
@@ -3455,6 +3471,9 @@ function applyResolvedWebStyle(el, style) {
   set("scrollSnapType", style["scroll-snap-type"]);
   set("scrollSnapAlign", style["scroll-snap-align"]);
   set("scrollSnapStop", style["scroll-snap-stop"]);
+  set("scrollbarColor", style["scrollbar-color"]);
+  set("scrollbarWidth", style["scrollbar-width"]);
+  set("scrollbarGutter", style["scrollbar-gutter"]);
   set("scrollMargin", style["scroll-margin"]);
   set("scrollMarginTop", style["scroll-margin-top"]);
   set("scrollMarginRight", style["scroll-margin-right"]);
