@@ -153,6 +153,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `WebDOMObject` getters.
 - Ancestor traversal APIs expose full parent chains before and after mount for
   breadcrumb-style inspectors and scoped DOM tooling.
+- Decorated native browser events expose the same Kry DOM traversal helpers as
+  mounted elements and objects, so logic handlers can inspect structure without
+  generated JS rebuilding DOM shape.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
 - Browser-backed KSS coverage verifies mounted application of native container,

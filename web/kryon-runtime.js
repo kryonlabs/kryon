@@ -7964,6 +7964,69 @@ function bindWebDOMEventProperties(event) {
           return webDOMSnapshotFromEvent(this);
         }
       },
+      kryParent: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.parent || null;
+        }
+      },
+      kryAncestors: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.ancestors || [];
+        }
+      },
+      kryPreviousSibling: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.previousSibling || null;
+        }
+      },
+      kryNextSibling: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.nextSibling || null;
+        }
+      },
+      kryPreviousSiblings: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.previousSiblings || [];
+        }
+      },
+      kryNextSiblings: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.nextSiblings || [];
+        }
+      },
+      krySiblings: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.siblings || [];
+        }
+      },
+      kryChildren: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.children || [];
+        }
+      },
+      kryDescendants: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          return rawWebDOMObjectFromEvent(this)?.descendants || [];
+        }
+      },
       kryRelations: {
         configurable: true,
         enumerable: false,
@@ -7990,6 +8053,34 @@ function bindWebDOMEventProperties(event) {
         get() {
           const object = rawWebDOMObjectFromEvent(this);
           return object ? webNodeEventRefs(object.node) : null;
+        }
+      },
+      kryMatches: {
+        configurable: true,
+        enumerable: false,
+        value(selector) {
+          return rawWebDOMObjectFromEvent(this)?.matches(selector) || false;
+        }
+      },
+      kryClosest: {
+        configurable: true,
+        enumerable: false,
+        value(selector) {
+          return rawWebDOMObjectFromEvent(this)?.closest(selector) || null;
+        }
+      },
+      kryQuery: {
+        configurable: true,
+        enumerable: false,
+        value(selector) {
+          return rawWebDOMObjectFromEvent(this)?.query(selector) || null;
+        }
+      },
+      kryQueryAll: {
+        configurable: true,
+        enumerable: false,
+        value(selector) {
+          return rawWebDOMObjectFromEvent(this)?.queryAll(selector) || [];
         }
       }
     });

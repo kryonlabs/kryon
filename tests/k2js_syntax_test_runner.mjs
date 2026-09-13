@@ -3543,6 +3543,20 @@ function fakeDocument() {
     assert.equal(targetEvent.kryObject.node.path, "Scene/root/tap");
     assert.equal(targetEvent.kryIdentity.ref, "primary-action");
     assert.equal(targetEvent.krySnapshot.parentRef, "Scene/root");
+    assert.equal(targetEvent.kryParent.ref, "Scene/root");
+    assert.deepEqual(targetEvent.kryAncestors.map((object) => object.ref), ["Scene/root"]);
+    assert.equal(targetEvent.kryPreviousSibling.ref, webDoc.nodes[1].path);
+    assert.equal(targetEvent.kryNextSibling.ref, "search-box");
+    assert.deepEqual(targetEvent.kryPreviousSiblings.map((object) => object.ref),
+      [webDoc.nodes[1].path]);
+    assert.equal(targetEvent.kryNextSiblings[0].ref, "search-box");
+    assert.equal(targetEvent.krySiblings.some((object) => object.ref === "primary-action"), false);
+    assert.deepEqual(targetEvent.kryChildren.map((object) => object.ref), []);
+    assert.deepEqual(targetEvent.kryDescendants.map((object) => object.ref), []);
+    assert.equal(targetEvent.kryMatches("Button.primary"), true);
+    assert.equal(targetEvent.kryClosest("Screen").ref, "Scene/root");
+    assert.equal(targetEvent.kryQuery("Text"), null);
+    assert.deepEqual(targetEvent.kryQueryAll("Text"), []);
     assert.equal(targetEvent.kryEventRefs.click, "call_host");
     assert.deepEqual(targetEvent.kryRelations.controls.map((object) => object.ref), ["search-box"]);
     assert.deepEqual(targetEvent.kryRelationRefs.controls, ["search-box"]);

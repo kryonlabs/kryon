@@ -852,9 +852,22 @@ declare global {
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
+    readonly kryParent?: WebDOMObject | null;
+    readonly kryAncestors?: WebDOMObject[];
+    readonly kryPreviousSibling?: WebDOMObject | null;
+    readonly kryNextSibling?: WebDOMObject | null;
+    readonly kryPreviousSiblings?: WebDOMObject[];
+    readonly kryNextSiblings?: WebDOMObject[];
+    readonly krySiblings?: WebDOMObject[];
+    readonly kryChildren?: WebDOMObject[];
+    readonly kryDescendants?: WebDOMObject[];
     readonly kryRelations?: WebDOMRelations | null;
     readonly kryRelationRefs?: WebDOMRelationRefs | null;
     readonly kryEventRefs?: WebNodeEventRefs | null;
+    kryMatches?(selector: string): boolean;
+    kryClosest?(selector: string): WebDOMObject | null;
+    kryQuery?(selector: string): WebDOMObject | null;
+    kryQueryAll?(selector: string): WebDOMObject[];
   }
 }
 
