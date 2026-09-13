@@ -9,6 +9,7 @@ DragDropRole :: enum {
 DragDropProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     role: DragDropRole
     type: const char*
     data: const void*

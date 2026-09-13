@@ -6,6 +6,7 @@
 typedef struct {
     Rectangle bounds;
     int id;
+    int class_name;
     const char *label;
     float *values;
     int value_count;
@@ -19,6 +20,7 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     int id;
+    int class_name;
     const char *label;
     int *values;
     int value_count;
@@ -32,6 +34,7 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     int id;
+    int class_name;
     const char *label;
     float *current_min;
     float *current_max;
@@ -46,6 +49,7 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     int id;
+    int class_name;
     const char *label;
     int *current_min;
     int *current_max;

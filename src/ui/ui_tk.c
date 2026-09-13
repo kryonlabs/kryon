@@ -703,10 +703,11 @@ RenderDragDrop(DragDropProps drag_drop)
     if(drag_drop.accepted_size != NULL)
         *drag_drop.accepted_size = 0;
     if(matches && IsWindowReady()) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled :
             (hot ? ButtonStateHover : ButtonStateNormal),
-            disabled, hot, StyleKindDragDropTarget());
+            disabled, hot, drag_drop.class_name, StyleKindDragDropTarget(),
+            StyleAny());
         ui_tk_draw_style_frame(drag_drop.bounds, (Rectangle){0}, frame, hot, 0,
                                disabled, 0);
     }
@@ -2017,10 +2018,12 @@ ui_plot(PlotProps plot, int histogram)
 
     if(!IsWindowReady())
         return;
-    plot_frame = ui_tk_simple_style_frame(ButtonToneNeutral, ButtonStateNormal,
-                                          0, 0, StyleKindPlot());
-    mark_frame = ui_tk_simple_style_frame(ButtonToneAccent, ButtonStateSelected,
-                                          0, 1, StyleKindPlotMark());
+    plot_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral, ButtonStateNormal,
+                                                0, 0, plot.class_name,
+                                                StyleKindPlot(), StyleAny());
+    mark_frame = ui_tk_simple_style_frame_class_role(ButtonToneAccent, ButtonStateSelected,
+                                                0, 1, plot.class_name,
+                                                StyleKindPlotMark(), StyleAny());
     plot_style = ui_unpack_style(ui_style_apply_effects_frame(plot_frame).value);
     DrawRectangleRec(plot.bounds, plot_style.background);
     DrawRectangleLinesEx(plot.bounds, plot_style.border_width,
@@ -2395,12 +2398,13 @@ ui_update_drag_whole(DragWholeProps drag)
 }
 
 static void
-ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused)
+ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled,
+                   int focused, int class_name)
 {
     ButtonState state = disabled ? ButtonStateDisabled : ButtonStateNormal;
-    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral, state,
-                                                disabled, 0,
-                                                StyleKindDragValue());
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral, state,
+                                                      disabled, 0, class_name,
+                                                      StyleKindDragValue(), StyleAny());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     int font = style.font_size > 0.0f
         ? (int)(style.font_size + 0.5f)
@@ -2413,12 +2417,14 @@ ui_paint_drag_cell(Rectangle bounds, const char *text, int disabled, int focused
 }
 
 static void
-ui_paint_drag_label(Rectangle bounds, const char *label)
+ui_paint_drag_label(Rectangle bounds, const char *label, int class_name)
 {
     if(label != NULL) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-                                                    ButtonStateNormal, 0, 0,
-                                                    StyleKindDrag());
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+                                                          ButtonStateNormal, 0, 0,
+                                                          class_name,
+                                                          StyleKindDrag(),
+                                                          StyleAny());
         Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
@@ -2449,9 +2455,9 @@ ui_paint_drag_scalar(DragScalarProps drag)
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%.3f",
                  drag.values[i]);
-        ui_paint_drag_cell(cell,text,disabled,focused);
+        ui_paint_drag_cell(cell,text,disabled,focused,drag.class_name);
     }
-    ui_paint_drag_label(drag.bounds, drag.label);
+    ui_paint_drag_label(drag.bounds, drag.label, drag.class_name);
 }
 
 void
@@ -2474,9 +2480,9 @@ ui_paint_drag_whole(DragWholeProps drag)
                       !ui_popup_input_focus_captures(focus_id);
         snprintf(text, sizeof(text), drag.format != NULL ? drag.format : "%d",
                  drag.values[i]);
-        ui_paint_drag_cell(cell,text,disabled,focused);
+        ui_paint_drag_cell(cell,text,disabled,focused,drag.class_name);
     }
-    ui_paint_drag_label(drag.bounds, drag.label);
+    ui_paint_drag_label(drag.bounds, drag.label, drag.class_name);
 }
 
 static int
@@ -3091,8 +3097,9 @@ RenderFieldset(FieldsetProps frame)
 {
     int font = GetSmallFontSize();
     const char *title = frame.title != NULL ? frame.title : "";
-    StyleFrame style = ui_tk_simple_style_frame(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindFieldset());
+    StyleFrame style = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, frame.class_name, StyleKindFieldset(),
+        StyleAny());
     if(style.value.font_size > 0.0f)
         font = (int)(style.value.font_size + 0.5f);
     int title_width = title[0] != '\0' ? TextWidth(title, font) : 0;

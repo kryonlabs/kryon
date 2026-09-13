@@ -3,6 +3,7 @@
 
 PlotProps :: struct {
     bounds: Rectangle
+    class_name: i32
     label: const char*
     values: const float*
     value_count: i32

@@ -29,6 +29,7 @@ typedef enum DragMode {
 typedef struct DragProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     const char* label;
     NumericValueKind kind;
     DragMode mode;

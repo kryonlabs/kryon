@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct FieldsetProps {
     Rectangle bounds;
+    int32_t class_name;
     const char* title;
 } FieldsetProps;
 

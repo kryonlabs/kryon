@@ -1730,12 +1730,14 @@ DrawTree(void)
                 ? node->owned_text + node->data.drag.format_offset : NULL;
             if(drag.kind == NumericInt) {
                 ui_paint_drag_whole((DragWholeProps){
-                    drag.bounds, drag.id, drag.label, drag.int_values,
+                    drag.bounds, drag.id, drag.class_name, drag.label,
+                    drag.int_values,
                     drag.value_count, drag.speed, (int)drag.min, (int)drag.max,
                     drag.format, drag.disabled});
             } else {
                 ui_paint_drag_scalar((DragScalarProps){
-                    drag.bounds, drag.id, drag.label, drag.float_values,
+                    drag.bounds, drag.id, drag.class_name, drag.label,
+                    drag.float_values,
                     drag.value_count, drag.speed, (float)drag.min,
                     (float)drag.max, drag.format, drag.disabled});
             }
@@ -2813,7 +2815,8 @@ ui_tree_drag_scalar(DragScalarProps drag)
         TreeNode *node = &ui_tree_nodes[id];
         drag.bounds = node->bounds;
         node->data.drag.props = (DragProps){.bounds = drag.bounds,
-            .id = drag.id, .label = NULL, .kind = NumericFloat,
+            .id = drag.id, .class_name = drag.class_name,
+            .label = NULL, .kind = NumericFloat,
             .float_values = drag.values, .value_count = drag.value_count,
             .speed = drag.speed, .min = drag.min, .max = drag.max,
             .format = NULL, .disabled = drag.disabled};
@@ -2836,7 +2839,8 @@ ui_tree_drag_whole(DragWholeProps drag)
         TreeNode *node = &ui_tree_nodes[id];
         drag.bounds = node->bounds;
         node->data.drag.props = (DragProps){.bounds = drag.bounds,
-            .id = drag.id, .label = NULL, .kind = NumericInt,
+            .id = drag.id, .class_name = drag.class_name,
+            .label = NULL, .kind = NumericInt,
             .int_values = drag.values, .value_count = drag.value_count,
             .speed = drag.speed, .min = drag.min, .max = drag.max,
             .format = NULL, .disabled = drag.disabled};
@@ -2884,9 +2888,11 @@ ui_tree_drag_scalar_range(DragScalarRangeProps drag)
     high.x += low.width;
     high.width -= low.width;
     float old_min = *drag.current_min;
-    int changed = ui_tree_drag_scalar((DragScalarProps){low, drag.id, NULL, drag.current_min,
+    int changed = ui_tree_drag_scalar((DragScalarProps){low, drag.id,
+        drag.class_name, NULL, drag.current_min,
         1, drag.speed, drag.min, *drag.current_max, drag.format, drag.disabled});
-    changed |= ui_tree_drag_scalar((DragScalarProps){high, ui_numeric_focus_id(drag.id,1,0), NULL, drag.current_max,
+    changed |= ui_tree_drag_scalar((DragScalarProps){high, ui_numeric_focus_id(drag.id,1,0),
+        drag.class_name, NULL, drag.current_max,
         1, drag.speed, old_min, drag.max,
         drag.format_max != NULL ? drag.format_max : drag.format, drag.disabled});
     if(*drag.current_min > *drag.current_max)
@@ -2906,9 +2912,11 @@ ui_tree_drag_whole_range(DragWholeRangeProps drag)
     high.x += low.width;
     high.width -= low.width;
     int old_min = *drag.current_min;
-    int changed = ui_tree_drag_whole((DragWholeProps){low, drag.id, NULL, drag.current_min,
+    int changed = ui_tree_drag_whole((DragWholeProps){low, drag.id,
+        drag.class_name, NULL, drag.current_min,
         1, drag.speed, drag.min, *drag.current_max, drag.format, drag.disabled});
-    changed |= ui_tree_drag_whole((DragWholeProps){high, ui_numeric_focus_id(drag.id,1,1), NULL, drag.current_max,
+    changed |= ui_tree_drag_whole((DragWholeProps){high, ui_numeric_focus_id(drag.id,1,1),
+        drag.class_name, NULL, drag.current_max,
         1, drag.speed, old_min, drag.max,
         drag.format_max != NULL ? drag.format_max : drag.format, drag.disabled});
     if(*drag.current_min > *drag.current_max)
@@ -2925,24 +2933,28 @@ Drag(DragProps drag)
     if(drag.mode == DragRange) {
         if(drag.kind == NumericInt) {
             return ui_tree_drag_whole_range((DragWholeRangeProps){
-                drag.bounds, drag.id, drag.label, drag.int_min, drag.int_max,
+                drag.bounds, drag.id, drag.class_name, drag.label,
+                drag.int_min, drag.int_max,
                 drag.speed, (int)drag.min, (int)drag.max, drag.format,
                 drag.format_max, drag.disabled});
         }
         return ui_tree_drag_scalar_range((DragScalarRangeProps){
-            drag.bounds, drag.id, drag.label, drag.float_min, drag.float_max,
+            drag.bounds, drag.id, drag.class_name, drag.label,
+            drag.float_min, drag.float_max,
             drag.speed, (float)drag.min, (float)drag.max, drag.format,
             drag.format_max, drag.disabled});
     }
     if(count <= 0) count = 1;
     if(drag.kind == NumericInt) {
         return ui_tree_drag_whole((DragWholeProps){
-            drag.bounds, drag.id, drag.label, drag.int_values, count,
+            drag.bounds, drag.id, drag.class_name, drag.label,
+            drag.int_values, count,
             drag.speed, (int)drag.min, (int)drag.max, drag.format,
             drag.disabled});
     }
     return ui_tree_drag_scalar((DragScalarProps){
-        drag.bounds, drag.id, drag.label, drag.float_values, count,
+        drag.bounds, drag.id, drag.class_name, drag.label,
+        drag.float_values, count,
         drag.speed, (float)drag.min, (float)drag.max, drag.format,
         drag.disabled});
 }

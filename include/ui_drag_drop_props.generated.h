@@ -29,6 +29,7 @@ typedef enum DragDropRole {
 typedef struct DragDropProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     DragDropRole role;
     const char* type;
     const void* data;

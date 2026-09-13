@@ -2187,6 +2187,129 @@ Popup.shell[role=Panel] { background: popup; border: rule; radius: radius; borde
 	}
 }
 
+func TestDataWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.data.classes;
+tokens {
+  color {
+    panel: #182434;
+    mark: #69c6ff;
+    ink: #edf7ff;
+    field: #263c52;
+    drag: #59417a;
+    drop: #2f624f;
+    rule: #8da4b8;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Fieldset.data { background: field; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 15; material: flat; }
+Plot.data { background: panel; foreground: ink; border: rule; border-width: border; font-size: 14; material: flat; }
+PlotMark.data:selected { background: mark; border: mark; material: flat; }
+Drag.data { foreground: ink; font-size: 16; opacity: 0.73; }
+DragValue.data { background: drag; foreground: ink; border: rule; radius: radius; border-width: border; font-size: 17; material: flat; }
+DragDropTarget.data { background: drop; border: rule; radius: radius; border-width: border; material: flat; }
+`, "Test Data Classes", "") || !SetActiveStylePack("test.data.classes") {
+		t.Fatal("data class style did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 240}).(*runtime)
+	className := StyleClassID("data")
+	values := []float32{0.2, 0.7}
+	dropOutput := make([]byte, 4)
+	dropOutputSize := int32(len(dropOutput))
+	rt.dragDrop = dragDropState{active: true, typeName: "text/plain", data: []byte("x")}
+
+	rt.BeginFrame()
+	rt.Fieldset(FieldsetProps{
+		Bounds:    Rectangle{X: 8, Y: 8, Width: 120, Height: 50},
+		ClassName: className,
+		Title:     "Group",
+	})
+	rt.Plot(PlotProps{
+		Bounds:     Rectangle{X: 140, Y: 8, Width: 120, Height: 60},
+		ClassName:  className,
+		Label:      "Trend",
+		Values:     values,
+		ValueCount: int32(len(values)),
+	})
+	rt.Drag(DragProps{
+		Bounds:      Rectangle{X: 8, Y: 96, Width: 120, Height: 30},
+		ID:          502,
+		ClassName:   className,
+		Label:       "Gain",
+		FloatValues: []float32{0.5},
+		ValueCount:  1,
+		Min:         0,
+		Max:         1,
+	})
+	rt.DragDrop(DragDropProps{
+		Bounds:       Rectangle{X: 160, Y: 96, Width: 80, Height: 30},
+		ID:           503,
+		ClassName:    className,
+		Role:         DragDropRoleTarget,
+		Type:         "text/plain",
+		Output:       dropOutput,
+		OutputSize:   int32(len(dropOutput)),
+		AcceptedSize: &dropOutputSize,
+	})
+	rt.EndFrame()
+
+	var sawFieldset, sawFieldsetTitle, sawPlot, sawPlotMark, sawDragCell, sawDragLabel, sawDrop bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 8, Y: 8, Width: 120, Height: 50}):
+			sawFieldset = true
+			if op.Color != (Color{R: 0x26, G: 0x3c, B: 0x52, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x8d, G: 0xa4, B: 0xb8, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("fieldset class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Group":
+			sawFieldsetTitle = true
+			if op.Color != (Color{R: 0xed, G: 0xf7, B: 0xff, A: 0xff}) || op.FontSize != 15 {
+				t.Fatalf("fieldset title class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 140, Y: 8, Width: 120, Height: 60}):
+			sawPlot = true
+			if op.Color != (Color{R: 0x18, G: 0x24, B: 0x34, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x8d, G: 0xa4, B: 0xb8, A: 0xff}) ||
+				op.BorderWidth != 2 {
+				t.Fatalf("plot class op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.Color == (Color{R: 0x69, G: 0xc6, B: 0xff, A: 0xff}):
+			sawPlotMark = true
+		case op.Kind == FrameOpButton && op.ID == 502 && op.Row == 0:
+			sawDragCell = true
+			if op.Color != (Color{R: 0x59, G: 0x41, B: 0x7a, A: 0xff}) ||
+				op.TextColor != (Color{R: 0xed, G: 0xf7, B: 0xff, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x8d, G: 0xa4, B: 0xb8, A: 0xff}) ||
+				op.FontSize != 17 || op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("drag value class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Gain":
+			sawDragLabel = true
+			if op.Color != (Color{R: 0xed, G: 0xf7, B: 0xff, A: 0xff}) ||
+				op.FontSize != 16 || op.Opacity != 0.73 {
+				t.Fatalf("drag label class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 503:
+			sawDrop = true
+			if op.Color != (Color{R: 0x2f, G: 0x62, B: 0x4f, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0x8d, G: 0xa4, B: 0xb8, A: 0xff}) ||
+				op.BorderWidth != 2 || op.Radius != 5 {
+				t.Fatalf("drag-drop class op = %+v", op)
+			}
+		}
+	}
+	if !sawFieldset || !sawFieldsetTitle || !sawPlot || !sawPlotMark ||
+		!sawDragCell || !sawDragLabel || !sawDrop {
+		t.Fatalf("missing data class ops: fieldset=%v title=%v plot=%v mark=%v dragCell=%v dragLabel=%v drop=%v ops=%+v",
+			sawFieldset, sawFieldsetTitle, sawPlot, sawPlotMark, sawDragCell, sawDragLabel, sawDrop, rt.FrameOps())
+	}
+}
+
 func TestPlotTextUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

@@ -4,6 +4,7 @@ package kryon
 // #import kryon_compat.generated.h
 type PlotProps struct {
 	Bounds     Rectangle
+	ClassName  int32
 	Label      string
 	Values     []float32
 	ValueCount int32

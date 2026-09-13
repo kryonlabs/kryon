@@ -357,6 +357,7 @@ type FlowProps = ColumnProps
 type dragFloatProps struct {
 	Bounds     Rectangle
 	ID         int32
+	ClassName  int32
 	Label      string
 	Values     []float32
 	ValueCount int32
@@ -370,6 +371,7 @@ type dragFloatProps struct {
 type dragIntProps struct {
 	Bounds     Rectangle
 	ID         int32
+	ClassName  int32
 	Label      string
 	Values     []int32
 	ValueCount int32
@@ -383,6 +385,7 @@ type dragIntProps struct {
 type dragFloatRangeProps struct {
 	Bounds     Rectangle
 	ID         int32
+	ClassName  int32
 	Label      string
 	CurrentMin *float32
 	CurrentMax *float32
@@ -397,6 +400,7 @@ type dragFloatRangeProps struct {
 type dragIntRangeProps struct {
 	Bounds     Rectangle
 	ID         int32
+	ClassName  int32
 	Label      string
 	CurrentMin *int32
 	CurrentMax *int32
@@ -2039,7 +2043,7 @@ func (r *runtime) DragDrop(props DragDropProps) bool {
 		disabled := props.Disabled || r.contentDisabled()
 		hot := DragDrop_DragDropTargetHot(props.Disabled, r.contentDisabled(), r.pointerCanReach(bounds))
 		if matches {
-			frame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+			frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 				if disabled {
 					return ButtonStateDisabled
 				}
@@ -2047,7 +2051,7 @@ func (r *runtime) DragDrop(props DragDropProps) bool {
 					return ButtonStateHover
 				}
 				return ButtonStateNormal
-			}(), disabled, hot, StyleSheet_StyleKindDragDropTarget())
+			}(), disabled, hot, props.ClassName, StyleSheet_StyleKindDragDropTarget(), StyleSheet_StyleAny())
 			op := styleFrameRectOp(bounds, Rectangle{}, frame)
 			op.ID = props.ID
 			op.Disabled = disabled
@@ -2663,8 +2667,10 @@ func (r *runtime) Plot(props PlotProps) {
 	if count <= 0 || count > len(props.Values) {
 		count = len(props.Values)
 	}
-	plotFrame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindPlot())
-	markFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateSelected, false, true, StyleSheet_StyleKindPlotMark())
+	plotFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, props.ClassName, StyleSheet_StyleKindPlot(), StyleSheet_StyleAny())
+	markFrame := simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateSelected,
+		false, true, props.ClassName, StyleSheet_StyleKindPlotMark(), StyleSheet_StyleAny())
 	plotStyle := unpackStyle(plotFrame.Value)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: props.Bounds, Color: plotStyle.Background, BorderColor: plotStyle.Border, BorderWidth: plotStyle.BorderWidth})
 	if count == 0 {
@@ -2840,9 +2846,9 @@ func (r *runtime) dragFloat(props dragFloatProps) bool {
 			format = "%.3f"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ID, int32(i))
+		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ClassName, props.ID, int32(i))
 	}
-	r.drawDragLabel(props.Bounds, props.Label)
+	r.drawDragLabel(props.Bounds, props.Label, props.ClassName)
 	return changed
 }
 
@@ -2887,9 +2893,9 @@ func (r *runtime) dragInt(props dragIntProps) bool {
 			format = "%d"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ID, int32(i))
+		r.drawDragCell(cell, fmt.Sprintf(format, props.Values[i]), !enabled, focused, props.ClassName, props.ID, int32(i))
 	}
-	r.drawDragLabel(props.Bounds, props.Label)
+	r.drawDragLabel(props.Bounds, props.Label, props.ClassName)
 	return changed
 }
 
@@ -2933,12 +2939,12 @@ func (r *runtime) dragFloatRange(props dragFloatRangeProps) bool {
 			format = "%.3f"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ID, int32(i))
+		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ClassName, props.ID, int32(i))
 	}
 	if *props.CurrentMin > *props.CurrentMax {
 		*props.CurrentMin = *props.CurrentMax
 	}
-	r.drawDragLabel(props.Bounds, props.Label)
+	r.drawDragLabel(props.Bounds, props.Label, props.ClassName)
 	return changed
 }
 
@@ -2982,12 +2988,12 @@ func (r *runtime) dragIntRange(props dragIntRangeProps) bool {
 			format = "%d"
 		}
 		focused := enabled && focusID > 0 && r.focusID == focusID && !r.popupFocusCaptures(focusID)
-		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ID, int32(i))
+		r.drawDragCell(cell, fmt.Sprintf(format, *values[i]), !enabled, focused, props.ClassName, props.ID, int32(i))
 	}
 	if *props.CurrentMin > *props.CurrentMax {
 		*props.CurrentMin = *props.CurrentMax
 	}
-	r.drawDragLabel(props.Bounds, props.Label)
+	r.drawDragLabel(props.Bounds, props.Label, props.ClassName)
 	return changed
 }
 
@@ -3005,6 +3011,7 @@ func (r *runtime) Drag(props DragProps) bool {
 			return r.dragIntRange(dragIntRangeProps{
 				Bounds:     props.Bounds,
 				ID:         props.ID,
+				ClassName:  props.ClassName,
 				Label:      props.Label,
 				CurrentMin: props.IntMin,
 				CurrentMax: props.IntMax,
@@ -3019,6 +3026,7 @@ func (r *runtime) Drag(props DragProps) bool {
 		return r.dragFloatRange(dragFloatRangeProps{
 			Bounds:     props.Bounds,
 			ID:         props.ID,
+			ClassName:  props.ClassName,
 			Label:      props.Label,
 			CurrentMin: props.FloatMin,
 			CurrentMax: props.FloatMax,
@@ -3034,6 +3042,7 @@ func (r *runtime) Drag(props DragProps) bool {
 		return r.dragInt(dragIntProps{
 			Bounds:     props.Bounds,
 			ID:         props.ID,
+			ClassName:  props.ClassName,
 			Label:      props.Label,
 			Values:     props.IntValues,
 			ValueCount: count,
@@ -3047,6 +3056,7 @@ func (r *runtime) Drag(props DragProps) bool {
 	return r.dragFloat(dragFloatProps{
 		Bounds:     props.Bounds,
 		ID:         props.ID,
+		ClassName:  props.ClassName,
 		Label:      props.Label,
 		Values:     props.FloatValues,
 		ValueCount: count,
@@ -3058,7 +3068,7 @@ func (r *runtime) Drag(props DragProps) bool {
 	})
 }
 
-func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, id, component int32) {
+func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused bool, className, id, component int32) {
 	pressed := r.drag.active && r.drag.token == id*16+component+1
 	state := ButtonStateNormal
 	if disabled {
@@ -3069,15 +3079,17 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 		state = ButtonStateFocus
 	}
 	props := ButtonProps{
-		Bounds:   bounds,
-		Label:    text,
-		ID:       id,
-		Tone:     ButtonToneNeutral,
-		Emphasis: ButtonEmphasisSoft,
-		Size:     ControlSizeMedium,
-		Disabled: disabled,
+		Bounds:    bounds,
+		Label:     text,
+		ID:        id,
+		ClassName: className,
+		Tone:      ButtonToneNeutral,
+		Emphasis:  ButtonEmphasisSoft,
+		Size:      ControlSizeMedium,
+		Disabled:  disabled,
 	}
-	frame := simpleStyleFrame(ButtonToneNeutral, state, disabled, false, StyleSheet_StyleKindDragValue())
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false,
+		className, StyleSheet_StyleKindDragValue(), StyleSheet_StyleAny())
 	button := Button_BuildFrame(props, ButtonInput{}, frame, InteractionMotion{},
 		Rectangle{}, packRGBA(r.appAmbientColor()), 1, Text14, Text14)
 	style := unpackStyle(button.Appearance.Value)
@@ -3091,12 +3103,12 @@ func (r *runtime) drawDragCell(bounds Rectangle, text string, disabled, focused 
 		Disabled: disabled, Pressed: pressed, Focused: focused})
 }
 
-func (r *runtime) drawDragLabel(bounds Rectangle, label string) {
+func (r *runtime) drawDragLabel(bounds Rectangle, label string, className int32) {
 	if label == "" {
 		return
 	}
-	style := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false,
-		false, StyleSheet_StyleKindDrag()).Value)
+	style := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false,
+		false, className, StyleSheet_StyleKindDrag(), StyleSheet_StyleAny()).Value)
 	font, fontID := styleTextFace(style, Text14)
 	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + 6, Y: bounds.Y - float32(font) - 4, Width: bounds.Width - 12, Height: float32(font)}, Text: label, Color: style.Foreground, Opacity: style.Opacity, FontSize: font, FontID: fontID})
 }
@@ -5724,7 +5736,8 @@ func (r *runtime) Spinbox(p SpinboxProps) bool {
 }
 func (r *runtime) Fieldset(p FieldsetProps) {
 	p.Bounds = r.layoutRect(p.Bounds)
-	frame := simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindFieldset())
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, p.ClassName, StyleSheet_StyleKindFieldset(), StyleSheet_StyleAny())
 	style := unpackStyle(frame.Value)
 	font, fontID := styleTextFace(style, Text14)
 	w := float32(0)

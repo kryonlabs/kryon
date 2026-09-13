@@ -3,6 +3,7 @@ package kryon
 
 // #import kryon_compat.generated.h
 type FieldsetProps struct {
-	Bounds Rectangle
-	Title  string
+	Bounds    Rectangle
+	ClassName int32
+	Title     string
 }

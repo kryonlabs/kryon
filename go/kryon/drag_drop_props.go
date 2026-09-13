@@ -12,6 +12,7 @@ const (
 type DragDropProps struct {
 	Bounds       Rectangle
 	ID           int32
+	ClassName    int32
 	Role         DragDropRole
 	Type         string
 	Data         []byte

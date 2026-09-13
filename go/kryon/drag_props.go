@@ -12,6 +12,7 @@ const (
 type DragProps struct {
 	Bounds      Rectangle
 	ID          int32
+	ClassName   int32
 	Label       string
 	Kind        NumericValueKind
 	Mode        DragMode

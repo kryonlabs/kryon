@@ -23,6 +23,7 @@ static inline bool StringEqual(String a, String b) {
 
 typedef struct PlotProps {
     Rectangle bounds;
+    int32_t class_name;
     const char* label;
     const float* values;
     int32_t value_count;
