@@ -2616,8 +2616,11 @@ function fakeDocument() {
       dom_tag: "article",
       web_ref: "article-ref",
       title: "Article region",
+      live: "polite",
       on_click: "open_article",
-      on_key_up: "article_key"
+      on_key_up: "article_key",
+      on_beforeinput: "article_before",
+      on_dragstart: "article_drag"
     }, null,
       {
         nodeName: "article",
@@ -2625,8 +2628,11 @@ function fakeDocument() {
       });
     runtime.endFrame(tagRt);
     assert.equal(runtime.webNodeQuery(tagRt, "Section").tag, "article");
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").ariaLive, "polite");
     assert.equal(runtime.webNodeQuery(tagRt, "Section").onClick, "open_article");
     assert.equal(runtime.webNodeQuery(tagRt, "Section").onKeyUp, "article_key");
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").onBeforeInput, "article_before");
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").onDragStart, "article_drag");
     assert.equal(runtime.findWebNode(tagRt, "article-ref").path, "Page/article");
     const tagTarget = document.createElement("div");
     runtime.renderWebDocument(tagRt, tagTarget);
@@ -2635,7 +2641,10 @@ function fakeDocument() {
     assert.equal(article.dataset.kryWebRef, "article-ref");
     assert.equal(article.dataset.kryOnClick, "open_article");
     assert.equal(article.dataset.kryOnKeyUp, "article_key");
+    assert.equal(article.dataset.kryOnBeforeInput, "article_before");
+    assert.equal(article.dataset.kryOnDragStart, "article_drag");
     assert.equal(article.attributes.title, "Article region");
+    assert.equal(article.attributes["aria-live"], "polite");
 
     const sharedRt = runtime.createRuntime();
     runtime.beginFrame(sharedRt);

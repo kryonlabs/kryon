@@ -208,6 +208,7 @@ Supported metadata fields:
 | `on_pointer_up` | `onPointerUp`, `pointerUpAction()` |
 | `on_pointer_cancel` | `onPointerCancel`, `pointerCancelAction()` |
 | `on_wheel` | `onWheel`, `wheelAction(value)` |
+| `on_context_menu` | `onContextMenu`, `contextMenuAction()` |
 | `on_drag_start`, `on_dragstart` | `onDragStart`, `dragStartAction(value)` |
 | `on_drag_end`, `on_dragend` | `onDragEnd`, `dragEndAction(value)` |
 | `on_drag_over`, `on_dragover` | `onDragOver`, `dragOverAction()` |
