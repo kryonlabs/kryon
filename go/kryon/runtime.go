@@ -7249,6 +7249,7 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 		FillStates:        styleFill(paint),
 		FillStatesValid:   true,
 		FontSize:          font,
+		FontID:            styleFontID(paint),
 		Gap:               float32(opt.lineGap),
 		ContentOffset:     Vector2{X: float32(opt.paddingX), Y: float32(opt.paddingY)},
 		ScrollY:           opt.scrollY,

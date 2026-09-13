@@ -67,6 +67,8 @@ func TestRetainedTextOpsUseKSSTypeface(t *testing.T) {
 	}
 	if !RegisterStylePackSource(`
 @pack app.retained_text_face;
+TextField { typeface: test-retained-semibold; font-size: 16; foreground: #112233; }
+TextArea { typeface: test-retained-semibold; font-size: 16; foreground: #223344; }
 Heading { typeface: test-retained-semibold; font-size: 23; foreground: #102030; }
 ParagraphText { typeface: test-retained-semibold; font-size: 17; foreground: #203040; }
 Link { typeface: test-retained-semibold; font-size: 19; foreground: #304050; }
@@ -118,7 +120,11 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 	treeSelected := int32(1)
 	segmentSelected := int32(0)
 	paragraphY := int32(0)
+	fieldCursor := int32(0)
+	areaCursor := int32(0)
 	rt.BeginFrame()
+	rt.TextField(TextFieldProps{Bounds: Rectangle{Width: 180, Height: 30}, Text: []byte("Field"), CursorPosition: &fieldCursor, FocusID: 313})
+	rt.TextArea(TextAreaProps{Bounds: Rectangle{Width: 180, Height: 60}, Text: []byte("Area"), CursorPosition: &areaCursor, FocusID: 314})
 	rt.Heading(HeadingProps{Text: "Title"})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
 	rt.Paragraph(ParagraphSpec{Text: "Spec Body", Width: 180}, 0, &paragraphY)
@@ -148,6 +154,8 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 	rt.EndFrame()
 
 	want := map[string]bool{
+		"Field":       false,
+		"Area":        false,
 		"Title":       false,
 		"Body":        false,
 		"Spec Body":   false,
@@ -184,7 +192,8 @@ TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; for
 		"Saved":       false,
 	}
 	for _, op := range rt.FrameOps() {
-		if op.Kind != FrameOpText && op.Kind != FrameOpButton {
+		if op.Kind != FrameOpText && op.Kind != FrameOpButton &&
+			op.Kind != FrameOpTextField && op.Kind != FrameOpTextArea {
 			continue
 		}
 		if _, ok := want[op.Text]; !ok {
