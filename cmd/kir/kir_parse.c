@@ -3961,9 +3961,11 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 while(*eq == ' ' || *eq == '\t')
                     eq++;
                 if(depth > 1 && starts_word(eq, "else")) {
-                    KirSourceSpan span = KirSpan(rel, line_no,
-                                                 pending_start_column +
-                                                 (int)(eq - t));
+                    KirSourceSpan span = KirSpanEnd(rel, line_no,
+                                                    pending_start_column +
+                                                    (int)(eq - t),
+                                                    line_no,
+                                                    pending_end_column);
                     KirStmt *st;
 
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",

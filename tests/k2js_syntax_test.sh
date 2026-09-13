@@ -538,6 +538,7 @@ EOF
 conditional_out="$work/out/src/conditional_widgets.js"
 grep -Eq '"path": "Conditional/Button@[0-9]+(-[0-9]+)?"' "$conditional_out"
 grep -Eq '"path": "Conditional/Toggle@[0-9]+(-[0-9]+)?"' "$conditional_out"
+grep -q '"path": "Conditional/Toggle@4-2", "sourcePath": "src/conditional_widgets.kry", "sourceLine": 4, "sourceColumn": 7, "sourceEndLine": 4, "sourceEndColumn": 55' "$conditional_out"
 grep -q '"path": "Conditional/Button@6-3"' "$conditional_out"
 grep -q '"sourceLine": 6' "$conditional_out"
 grep -q '"sourceColumn": 5' "$conditional_out"
