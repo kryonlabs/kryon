@@ -22,18 +22,26 @@ ui_pager_button(Rectangle bounds, const char *label, ButtonEmphasis emphasis,
 }
 
 static Style
-ui_pager_guide_style(int role)
+ui_pager_style_from_frame(StyleFrame frame)
 {
-    return ui_unpack_style(ui_control_style_frame_role_kind(
+    return ui_unpack_style(frame.value);
+}
+
+static StyleFrame
+ui_pager_guide_frame(int role)
+{
+    return ui_control_style_frame_role_kind(
         (ButtonProps){0}, ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f,
-        StyleKindGuide(), role).value);
+        StyleKindGuide(), role);
 }
 
 GuidePagerResult
 GuidePager(GuidePagerProps pager)
 {
     GuidePagerResult result = {0};
-    GuidePagerMetrics metrics = GuidePagerMetricsFor((float)GetScale());
+    StyleFrame bar_frame = ui_pager_guide_frame(1);
+    GuidePagerMetrics metrics = GuidePagerMetricsFor((float)GetScale(),
+                                                     bar_frame);
     int page_count = GuidePagerPageCount(pager.page_count);
     int page = GuidePagerPageFor(pager.page, page_count);
     GuidePagerLayout layout;
@@ -75,8 +83,8 @@ GuidePager(GuidePagerProps pager)
         goto finish_policy;
 
     if(IsWindowReady()) {
-        Style bar = ui_pager_guide_style(1);
-        Style divider = ui_pager_guide_style(18);
+        Style bar = ui_pager_style_from_frame(bar_frame);
+        Style divider = ui_pager_style_from_frame(ui_pager_guide_frame(18));
         ui_draw_material(pager.footer_bounds, (Rectangle){0},
                          bar.background, bar.border, bar.border, bar.radius,
                          bar.border_width, 0.0f, 0.0f, 0, bar.focus, 0.0f,

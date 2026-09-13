@@ -1096,6 +1096,10 @@ Guide[role=Bar] {
   border: border;
   radius: 0;
   border-width: border.none;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: default;
 }

@@ -1,5 +1,7 @@
 #module "guide_pager"
+#import "control_props"
 #import "drawing_props"
+#import "style"
 
 GuidePagerMetrics :: struct {
     pad: i32
@@ -24,13 +26,39 @@ GuidePagerPolicy :: struct {
     finished: bool
 }
 
-GuidePagerMetricsFor :: (scale: float) -> GuidePagerMetrics #export {
+GuidePagerHas :: (fields: u32, field: u32) -> bool {
+    return (fields & field) != (u32)0
+}
+
+GuidePagerMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if !GuidePagerHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+GuidePagerMetricFloat :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> float {
+    if !GuidePagerHas(fields, field) || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return value * scale
+}
+
+GuidePagerMetricsFor :: (scale: float, bar: StyleFrame) -> GuidePagerMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: GuidePagerMetrics
-    metrics.pad = (i32)(12.0 * scale)
-    metrics.gap = (i32)(12.0 * scale)
-    metrics.button_height = (i32)(48.0 * scale)
-    metrics.swipe_min_distance = 48.0 * scale
+    metrics.pad = GuidePagerMetric(bar.value.fields,
+        (u32)StylePaddingX, bar.value.padding_x, 12.0, scale, true)
+    metrics.gap = GuidePagerMetric(bar.value.fields,
+        (u32)StyleGap, bar.value.gap, 12.0, scale, true)
+    metrics.button_height = GuidePagerMetric(bar.value.fields,
+        (u32)StyleIconSize, bar.value.icon_size, 48.0, scale, false)
+    metrics.swipe_min_distance = GuidePagerMetricFloat(bar.value.fields,
+        (u32)StyleContentOffset, bar.value.offset_x, 48.0, scale, false)
     metrics.swipe_axis_bias = 1.25
     metrics.swipe_max_duration = 0.8
     return metrics

@@ -2,6 +2,7 @@
 #include <math.h>
 
 #include "runtime/guide_pager.h"
+#include "runtime/style.h"
 
 static void
 check_rect(Rectangle got, float x, float y, float width, float height)
@@ -15,9 +16,18 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    GuidePagerMetrics metrics = GuidePagerMetricsFor(2.0f);
+    StyleFrame bar = {0};
+    GuidePagerMetrics metrics;
     GuidePagerLayout layout;
     GuidePagerPolicy policy;
+
+    bar.value.fields = StylePaddingX | StyleGap | StyleIconSize |
+                       StyleContentOffset;
+    bar.value.padding_x = 12.0f;
+    bar.value.gap = 12.0f;
+    bar.value.icon_size = 48.0f;
+    bar.value.offset_x = 48.0f;
+    metrics = GuidePagerMetricsFor(2.0f, bar);
 
     assert(metrics.pad == 24);
     assert(metrics.gap == 24);
@@ -31,7 +41,7 @@ main(void)
     assert(GuidePagerPageFor(7, 5) == 4);
     assert(GuidePagerPageFor(2, 5) == 2);
 
-    metrics = GuidePagerMetricsFor(1.0f);
+    metrics = GuidePagerMetricsFor(1.0f, bar);
     layout = GuidePagerLayoutFor((Rectangle){10, 400, 300, 80}, metrics);
     assert(layout.valid);
     assert(layout.button_height == 48);
@@ -40,6 +50,16 @@ main(void)
 
     layout = GuidePagerLayoutFor((Rectangle){0, 0, 40, 10}, metrics);
     assert(!layout.valid);
+
+    bar.value.padding_x = 0.0f;
+    bar.value.gap = 0.0f;
+    bar.value.icon_size = 0.0f;
+    bar.value.offset_x = 0.0f;
+    metrics = GuidePagerMetricsFor(1.0f, bar);
+    assert(metrics.pad == 0);
+    assert(metrics.gap == 0);
+    assert(metrics.button_height == 48);
+    assert(fabsf(metrics.swipe_min_distance - 48.0f) < 0.001f);
 
     policy = GuidePagerPolicyFor(0, 3, false, true, false, false, false);
     assert(policy.page == 1 && policy.changed && !policy.finished);

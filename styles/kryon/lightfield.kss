@@ -1154,6 +1154,10 @@ Guide[role=Bar] {
   border: card-border;
   radius: 0;
   border-width: 0;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: premium;
 }

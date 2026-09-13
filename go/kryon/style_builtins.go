@@ -1090,6 +1090,10 @@ Guide[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border.none;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: default;
 }
@@ -2977,6 +2981,10 @@ Guide[role=Bar] {
   border: border;
   radius: 0;
   border-width: border.none;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: default;
 }
@@ -4830,6 +4838,10 @@ Guide[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border.none;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: default;
 }
@@ -6785,6 +6797,10 @@ Guide[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border.none;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: glow;
 }
@@ -8747,6 +8763,10 @@ Guide[role=Bar] {
   border: card-border;
   radius: 0;
   border-width: 0;
+  padding-x: 12;
+  gap: 12;
+  icon-size: 48;
+  offset-x: 48;
   opacity: 1;
   material: premium;
 }
