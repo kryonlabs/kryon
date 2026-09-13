@@ -153,9 +153,9 @@ has a single place to land.
 | `Separator` | `UI/Layout` | Divider | `runtime/separator.kry` | `.kry-backed` | Line, label, and bullet policy are `.kry`. |
 | `Fieldset` | `UI/Layout` | Frame | `runtime/fieldset.kry` | `.kry-backed` | Titled group and border policy are `.kry`. |
 | `PanedView` | `UI/Layout` | Split panes | `runtime/paned_view.kry` | Partly `.kry-backed` | Split clamp and handle geometry are `.kry`; host keeps drag/input ownership. |
-| `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, and marker text are `.kry`; host keeps input, focus, tree navigation, and drawing. |
+| `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, marker text, and typography defaults are `.kry`/KSS-owned; host keeps input, focus, tree navigation, and drawing. |
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation policy is `.kry`; host keeps input/scroll sampling. |
-| `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, and text bounds policy are `.kry`; host keeps input, scrollbars, selection mutation, expansion state, and drawing. |
+| `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, text bounds policy, and item typography defaults are `.kry`/KSS-owned; host keeps input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, navigation, and edit intent are `.kry`; buffer mutation, IME, selection, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
@@ -405,7 +405,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Separator` | `.kry canonical` | Line, label, and bullet layout/paint policy are in `.kry`; label typography is KSS-owned; host handles text measurement and drawing. |
 | `Fieldset` | `.kry canonical` | Titled border group. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
-| `Collapsible` | `.kry canonical` | Header metrics, geometry, and marker text are in `.kry`; host keeps input, focus, tree navigation, and drawing. |
+| `Collapsible` | `.kry canonical` | Header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
@@ -431,7 +431,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | Public name | Current decision | Notes |
 |---|---|---|
 | `ListBox` | `.kry canonical` | Layout/navigation policy is in `.kry`; item typography is KSS-owned. Multi-selection uses `selected`, `selected_count`, and `anchor` props. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
-| `TreeView` | `.kry canonical` | Row/window geometry policy is in `.kry`; host handles input, scrollbars, selection mutation, expansion state, and drawing. |
+| `TreeView` | `.kry canonical` | Row/window geometry policy is in `.kry`; item typography defaults are KSS-owned; host handles input, scrollbars, selection mutation, expansion state, and drawing. |
 | `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/cell geometry is in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
 | `Canvas` | `.kry canonical` | Transform, hit-test, and result policy are in `.kry`; host keeps clip/camera renderer scope. |

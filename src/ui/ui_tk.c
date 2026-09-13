@@ -2149,7 +2149,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
             .cursor_position = &state->cursor,
             .focused = &state->focused,
             .max_codepoints = 63,
-            .font = GetSmallFontSize(),
+            .font = 0,
             .focus_id = focus_id,
             .style = kryon_zero_text_input_style,
             .filter = ui_numeric_input_filter,
@@ -3165,7 +3165,14 @@ int
 RenderTreeView(TreeViewProps tree)
 {
     int paint = IsWindowReady();
-    int font = GetFontSize();
+    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        tree.disabled, 0, StyleKindTreeViewItem());
+    Style default_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_item_frame).value);
+    int font = default_item_style.font_size > 0.0f
+        ? (int)(default_item_style.font_size + 0.5f)
+        : GetFontSize();
     TreeViewMetrics metrics = TreeViewMetricsFor((float)GetScale());
     int row_h = TreeViewRowHeight(tree.row_height, (float)GetScale(), metrics);
     int content_h = TreeViewContentHeight(tree.item_count, row_h);
@@ -4169,7 +4176,18 @@ int
 RenderCollapsible(CollapsibleProps section)
 {
     ToolkitStore *toolkit = toolkit_state();
-    int font = GetFontSize();
+    int enabled = !section.disabled && !UIContentDisabled();
+    ButtonState default_state = !enabled ? ButtonStateDisabled
+                              : section.selected ? ButtonStateSelected
+                              : ButtonStateNormal;
+    StyleFrame default_item_frame = ui_tk_simple_style_frame_role(
+        ButtonToneNeutral, default_state, !enabled, section.selected,
+        StyleKindCollapsible(), section.tree ? 14 : 13);
+    Style default_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_item_frame).value);
+    int font = default_item_style.font_size > 0.0f
+        ? (int)(default_item_style.font_size + 0.5f)
+        : GetFontSize();
     int changed = 0;
     CollapsibleMetrics metrics = CollapsibleMetricsFor((float)GetScale());
     CollapsibleLayout layout;
@@ -4185,7 +4203,6 @@ RenderCollapsible(CollapsibleProps section)
     header = layout.header;
     body = layout.body;
     close_bounds = layout.close_bounds;
-    int enabled = !section.disabled && !UIContentDisabled();
     ui_tree_header_register(section, enabled);
     int focused = enabled && section.id > 0 && RegisterFocus(section.id, header);
     if(focused) SetFocusTextInputActive(0);
