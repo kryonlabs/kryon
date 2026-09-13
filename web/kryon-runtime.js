@@ -5815,8 +5815,11 @@ function webDOMRelationsForNode(target, node) {
     return null;
   return {
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
+    describes: webDOMReverseRelationList(target, node, "ariaDescribedBy"),
     controls: webDOMRelationList(target, node.ariaControls),
+    controlledBy: webDOMReverseRelationList(target, node, "ariaControls"),
     owns: webDOMRelationList(target, node.ariaOwns),
+    ownedBy: webDOMReverseRelationList(target, node, "ariaOwns"),
     headers: webDOMRelationList(target, node.headers),
     rowHeaders: webDOMScopedHeaderList(target, node, ["row", "rowgroup"]),
     columnHeaders: webDOMScopedHeaderList(target, node, ["col", "colgroup"]),
@@ -5829,7 +5832,8 @@ function webDOMRelationsForNode(target, node) {
       webDOMReverseRelationList(target, node, "htmlFor")
     ),
     activeDescendant: webDOMRelationList(target, node.ariaActiveDescendant)[0] || null,
-    popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null
+    popoverTarget: webDOMRelationList(target, node.popoverTarget)[0] || null,
+    popoverInvokers: webDOMReverseRelationList(target, node, "popoverTarget")
   };
 }
 
@@ -7316,6 +7320,13 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.title = attrs.title ?? docNode.title ?? "";
   docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
   docNode.role = attrs.role ?? docNode.role ?? "";
+  docNode.ariaLabel = attrs["aria-label"] ?? docNode.ariaLabel ?? "";
+  docNode.ariaDescription = attrs["aria-description"] ?? docNode.ariaDescription ?? "";
+  docNode.ariaDescribedBy = attrs["aria-describedby"] ?? docNode.ariaDescribedBy ?? "";
+  docNode.ariaLabelledBy = attrs["aria-labelledby"] ?? docNode.ariaLabelledBy ?? "";
+  docNode.ariaActiveDescendant = attrs["aria-activedescendant"] ?? docNode.ariaActiveDescendant ?? "";
+  docNode.ariaControls = attrs["aria-controls"] ?? docNode.ariaControls ?? "";
+  docNode.ariaOwns = attrs["aria-owns"] ?? docNode.ariaOwns ?? "";
   docNode.formOwner = attrs.form ?? docNode.formOwner ?? "";
   docNode.part = attrs.part ?? docNode.part ?? "";
   docNode.slot = attrs.slot ?? docNode.slot ?? "";
@@ -7437,8 +7448,11 @@ function webDOMObjectSnapshot(target, object) {
     childRefs: webDOMChildren(target, node.path).map((child) => child.ref),
     relationRefs: {
       describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
+      describes: (relations?.describes || []).map((relation) => relation.ref),
       controls: (relations?.controls || []).map((relation) => relation.ref),
+      controlledBy: (relations?.controlledBy || []).map((relation) => relation.ref),
       owns: (relations?.owns || []).map((relation) => relation.ref),
+      ownedBy: (relations?.ownedBy || []).map((relation) => relation.ref),
       headers: (relations?.headers || []).map((relation) => relation.ref),
       rowHeaders: (relations?.rowHeaders || []).map((relation) => relation.ref),
       columnHeaders: (relations?.columnHeaders || []).map((relation) => relation.ref),
@@ -7448,7 +7462,8 @@ function webDOMObjectSnapshot(target, object) {
       formOwner: relations?.formOwner?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
       activeDescendant: relations?.activeDescendant?.ref || "",
-      popoverTarget: relations?.popoverTarget?.ref || ""
+      popoverTarget: relations?.popoverTarget?.ref || "",
+      popoverInvokers: (relations?.popoverInvokers || []).map((relation) => relation.ref)
     },
     name: node.name || "",
     key: node.key || "",
@@ -7790,6 +7805,13 @@ function syncDOMAttributeMutation(el) {
   if (!el || !docNode)
     return null;
   docNode.extraAttrs = { ...(el.__kryExtraAttrs || {}) };
+  docNode.ariaLabel = docNode.extraAttrs["aria-label"] ?? docNode.ariaLabel ?? "";
+  docNode.ariaDescription = docNode.extraAttrs["aria-description"] ?? docNode.ariaDescription ?? "";
+  docNode.ariaDescribedBy = docNode.extraAttrs["aria-describedby"] ?? docNode.ariaDescribedBy ?? "";
+  docNode.ariaLabelledBy = docNode.extraAttrs["aria-labelledby"] ?? docNode.ariaLabelledBy ?? "";
+  docNode.ariaActiveDescendant = docNode.extraAttrs["aria-activedescendant"] ?? docNode.ariaActiveDescendant ?? "";
+  docNode.ariaControls = docNode.extraAttrs["aria-controls"] ?? docNode.ariaControls ?? "";
+  docNode.ariaOwns = docNode.extraAttrs["aria-owns"] ?? docNode.ariaOwns ?? "";
   docNode.styleFacts = webNodeStyleFacts(docNode);
   applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
     ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)

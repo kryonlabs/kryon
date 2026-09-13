@@ -204,6 +204,13 @@ try {
   });
   assert(kryon.webDOMDispatchEvent(target, "article-ref", "click"), "dispatch failed");
   assert(eventLog[0] === "article-ref", "decorated event did not expose Kry object");
+  assert(kryon.webDOMSetAttribute(target, "article-ref", "aria-controls", "save"),
+    "aria-controls mutation failed");
+  assert(kryon.webDOMSync(target, "article-ref")?.ref === "article-ref",
+    "article sync after aria-controls failed");
+  assert(kryon.webDOMRelations(target, "save").controlledBy
+    .map((object) => object.ref).join(" ") === "article-ref",
+    "reverse controlledBy relation missing");
   const button = kryon.webDOMQuery(target, "Section > Button.primary");
   assert(button?.element?.id === "save", "child selector query failed");
   const bindLog = [];

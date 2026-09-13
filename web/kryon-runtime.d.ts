@@ -508,8 +508,11 @@ export interface WebDOMObserveOptions {
 
 export interface WebDOMRelations {
   describedBy: WebDOMObject[];
+  describes: WebDOMObject[];
   controls: WebDOMObject[];
+  controlledBy: WebDOMObject[];
   owns: WebDOMObject[];
+  ownedBy: WebDOMObject[];
   headers: WebDOMObject[];
   rowHeaders: WebDOMObject[];
   columnHeaders: WebDOMObject[];
@@ -520,6 +523,7 @@ export interface WebDOMRelations {
   labelledBy: WebDOMObject[];
   activeDescendant: WebDOMObject | null;
   popoverTarget: WebDOMObject | null;
+  popoverInvokers: WebDOMObject[];
 }
 
 export interface WebDOMBindHandlers {
@@ -701,8 +705,11 @@ export interface WebDOMSnapshot {
   childRefs: string[];
   relationRefs: {
     describedBy: string[];
+    describes: string[];
     controls: string[];
+    controlledBy: string[];
     owns: string[];
+    ownedBy: string[];
     headers: string[];
     rowHeaders: string[];
     columnHeaders: string[];
@@ -713,6 +720,7 @@ export interface WebDOMSnapshot {
     labelledBy: string[];
     activeDescendant: string;
     popoverTarget: string;
+    popoverInvokers: string[];
   };
   name: string;
   key: string;

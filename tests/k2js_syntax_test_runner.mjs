@@ -3026,10 +3026,22 @@ function fakeDocument() {
     assert.deepEqual(buttonObject.relations.owns.map((object) => object.ref), ["search-box"]);
     assert.equal(buttonObject.relations.popoverTarget.ref, "Scene/root/search_label");
     assert.equal(firstButton.kryRelations.controls[0].ref, "search-box");
+    assert.deepEqual(runtime.webDOMRelations(target, "search-box").controlledBy
+      .map((object) => object.ref), ["primary-action"]);
+    assert.deepEqual(runtime.webDOMRelations(target, "search-box").ownedBy
+      .map((object) => object.ref), ["primary-action"]);
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").labelledBy
       .map((object) => object.ref), ["Scene/root/search_label"]);
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.labelledBy,
       ["Scene/root/search_label"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.controlledBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.ownedBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webDOMRelations(target, "Scene/root/search_label").popoverInvokers
+      .map((object) => object.ref), ["primary-action"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "Scene/root/search_label").relationRefs.popoverInvokers,
+      ["primary-action"]);
     assert.equal(buttonObject.matches("Button.primary"), true);
     assert.equal(buttonObject.closest("Screen").node.path, "Scene/root");
     assert.equal(Object.keys(buttonObject).includes("root"), false);
@@ -3644,12 +3656,16 @@ function fakeDocument() {
     assert.equal(firstField.attributes["aria-activedescendant"], "kry-Scene-root-search_label");
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").describedBy
       .map((object) => object.ref), ["primary-action"]);
+    assert.deepEqual(runtime.webDOMRelations(target, "primary-action").describes
+      .map((object) => object.ref), ["search-box"]);
     assert.deepEqual(runtime.webDOMRelations(target, "search-box").labelledBy
       .map((object) => object.ref), ["Scene/root/search_label"]);
     assert.equal(runtime.webDOMRelations(target, "search-box").activeDescendant.ref,
       "Scene/root/search_label");
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.describedBy,
       ["primary-action"]);
+    assert.deepEqual(runtime.webDOMSnapshot(target, "primary-action").relationRefs.describes,
+      ["search-box"]);
     assert.equal(runtime.webDOMSnapshot(target, "search-box").relationRefs.activeDescendant,
       "Scene/root/search_label");
     firstField.setAttribute("aria-describedby", "primary-action");
