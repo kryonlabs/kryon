@@ -731,11 +731,11 @@ assert.match(webStyleCSS, /float: inline-start;/);
 assert.match(webStyleCSS, /clear: both;/);
 assert.match(webStyleCSS, /order: 2;/);
 assert.match(webStyleCSS,
-  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:hover,\[data-kry-state~="hover"\]\)/);
 assert.match(webStyleCSS,
-  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]\[data-kry-state~="pressed"\]/);
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:hover,\[data-kry-state~="hover"\]\):is\(:active,\[data-kry-state~="pressed"\]\)/);
 assert.match(webStyleCSS,
-  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(\[data-kry-state\]\)/);
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,\[open\],\[data-kry-state\]\)\)/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);

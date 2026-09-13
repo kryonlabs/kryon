@@ -2583,8 +2583,20 @@ function webStyleStateSelectorToCSS(state) {
   if (!text)
     return "";
   if (text === "normal")
-    return ":not([data-kry-state])";
-  return `[data-kry-state~="${cssEscapeString(text === "focused" ? "focus" : text)}"]`;
+    return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,[open],[data-kry-state]))";
+  const key = text === "focused" ? "focus" : text;
+  const mirrored = `[data-kry-state~="${cssEscapeString(key)}"]`;
+  const native = {
+    hover: [":hover"],
+    pressed: [":active"],
+    focus: [":focus", ":focus-visible"],
+    disabled: [":disabled"],
+    checked: [":checked"],
+    selected: [":checked"],
+    invalid: [":invalid"],
+    open: ["[open]"]
+  }[key] || [];
+  return native.length ? `:is(${[...native, mirrored].join(",")})` : mirrored;
 }
 
 export function webStyleSelectorToCSS(selector) {

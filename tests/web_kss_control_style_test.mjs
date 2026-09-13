@@ -169,6 +169,9 @@ const lexicalSheet = runtime.parseWebStyleSheet(`
   }
 `);
 
+assert.match(runtime.webStyleSheetToCSS(lexicalSheet),
+  /\[data-kry-kind="Disabled"\]:is\(:disabled,\[data-kry-state~="disabled"\]\)/);
+
 const disabledNode = {
   kind: "Disabled",
   tag: "fieldset",

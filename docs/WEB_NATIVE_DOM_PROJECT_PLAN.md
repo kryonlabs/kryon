@@ -137,7 +137,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
   states such as `:hover:pressed`, and `:normal` export against native
-  `data-kry-state` annotations.
+  `data-kry-state` annotations, plus real browser pseudo/attribute selectors
+  for hover, focus, pressed, disabled, checked, invalid, and open where the DOM
+  has matching native state.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
