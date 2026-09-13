@@ -202,10 +202,13 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     Widget widget;
     int hovered;
     int focused;
-    int font = button.props.font > 0 ? button.props.font : GetFontSize();
     Style normal_style = ui_resolve_button_style_kind(button.props,
         button.props.disabled ? ButtonStateDisabled : ButtonStateNormal,
         button.style_kind != 0 ? button.style_kind : StyleKindButton());
+    int font = button.props.font > 0 ? button.props.font :
+        (normal_style.font_size > 0.0f
+            ? (int)(normal_style.font_size + 0.5f)
+            : GetFontSize());
     Style hover_style = ui_resolve_button_style_kind(button.props,
         ButtonStateHover,
         button.style_kind != 0 ? button.style_kind : StyleKindButton());
@@ -225,8 +228,6 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
     int termi_button = ui_termi_backend();
     int default_controls = ui_default_style() && !termi_button;
 
-    if(button.props.font <= 0 && normal_style.font_size > 0.0f)
-        font = (int)(normal_style.font_size + 0.5f);
     memset(&widget, 0, sizeof(widget));
     if(handle_input) {
         widget = BeginWidget("button",
