@@ -622,7 +622,7 @@ DirectWebNodes :: () #ui {
     Section((SectionProps){.label="Intro"})
     Heading((HeadingProps){.text="Welcome", .level=1})
     ParagraphText((ParagraphTextProps){.text="Body"})
-    Link((LinkProps){.text="Read more", .href="/docs"})
+    Link((LinkProps){.text="Read more", .link="/docs"})
     Flow((FlowProps){.gap=4})
     Grid((GridProps){.columns=2})
     Fieldset((FieldsetProps){.legend="Options"})

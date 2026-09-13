@@ -1361,6 +1361,7 @@ padding leaves an empty area, and negative padding acts as zero.
 ```c
 typedef struct {
     Rectangle bounds;
+    int class_name;
     const char *text;
     const char *link;
     int focus_id;

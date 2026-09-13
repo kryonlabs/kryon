@@ -45,10 +45,22 @@ if [ -z "$generated" ]; then
 fi
 null_backend="$generated/kryon_null_backend.c"
 
-# Generated runtime C (widgets lowered from runtime/*.kry such as button and
-# dropdown) plus the generated icon sources. src/ui/*.c calls into these
-# (PaintButton, ReadButtonInput, ...), so the link needs them alongside src/.
-generated_srcs=$(find "$generated/src" -name '*.c' 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')
+# Generated runtime C (widgets lowered from current runtime/*.kry such as
+# button and dropdown) plus generated non-runtime support sources. Stale
+# generated runtime files from deleted compatibility modules must not be linked.
+generated_srcs=""
+while IFS= read -r file; do
+    case "$file" in
+        "$generated"/src/runtime/*.c)
+            base=${file##*/}
+            module=${base%.c}
+            [ -f "$root/runtime/$module.kry" ] || continue
+            ;;
+    esac
+    generated_srcs="$generated_srcs $file"
+done <<EOF
+$(find "$generated/src" -name '*.c' 2>/dev/null | LC_ALL=C sort)
+EOF
 
 srcs=$(find "$root/src" -name '*.c' \
     ! -path '*/sync/*' \
