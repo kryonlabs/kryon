@@ -263,12 +263,14 @@ try {
         event.target.tagName,
         object.ref,
         event.kryObject?.ref || "",
-        event.krySnapshot?.identity?.ref || ""
+        event.krySnapshot?.identity?.ref || "",
+        event.kryEventRefs?.click || "",
+        event.kryRelationRefs?.controlledBy?.join(" ") || ""
       ].join(":"));
     });
   assert(typeof removeDelegated === "function", "delegated listener cleanup missing");
   nestedButtonSpan.dispatchEvent(new Event("kry-browser-delegated", { bubbles: true }));
-  assert(delegatedLog[0] === "kry-browser-delegated:SPAN:Page/article/save:Page/article/save:Page/article/save",
+  assert(delegatedLog[0] === "kry-browser-delegated:SPAN:Page/article/save:Page/article/save:Page/article/save::",
     "delegated listener did not resolve nested target");
   assert(kryon.webDOMSnapshotFromEvent({ target: nestedButtonSpan })?.ref === "Page/article/save",
     "event snapshot did not resolve nested target");

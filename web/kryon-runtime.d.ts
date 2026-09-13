@@ -778,6 +778,9 @@ declare global {
     readonly kryObject?: WebDOMObject | null;
     readonly kryIdentity?: WebNodeIdentity | null;
     readonly krySnapshot?: WebDOMSnapshot | null;
+    readonly kryRelations?: WebDOMRelations | null;
+    readonly kryRelationRefs?: WebDOMRelationRefs | null;
+    readonly kryEventRefs?: WebNodeEventRefs | null;
   }
 }
 

@@ -7237,6 +7237,34 @@ function bindWebDOMEventProperties(event) {
         get() {
           return webDOMSnapshotFromEvent(this);
         }
+      },
+      kryRelations: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          const root = object?.element?.__kryMountRoot ||
+            mountedRoot(this.currentTarget || this.target || null);
+          return object && root ? webDOMRelationsForNode(root, object.node) : null;
+        }
+      },
+      kryRelationRefs: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          const root = object?.element?.__kryMountRoot ||
+            mountedRoot(this.currentTarget || this.target || null);
+          return object && root ? webDOMRelationRefs(root, object.ref) : null;
+        }
+      },
+      kryEventRefs: {
+        configurable: true,
+        enumerable: false,
+        get() {
+          const object = rawWebDOMObjectFromEvent(this);
+          return object ? webNodeEventRefs(object.node) : null;
+        }
       }
     });
     Object.defineProperty(event, "__kryEventPropertiesBound", {

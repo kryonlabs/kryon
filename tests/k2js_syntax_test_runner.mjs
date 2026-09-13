@@ -3132,6 +3132,9 @@ function fakeDocument() {
     assert.equal(targetEvent.kryObject.node.path, "Scene/root/tap");
     assert.equal(targetEvent.kryIdentity.ref, "primary-action");
     assert.equal(targetEvent.krySnapshot.parentRef, "Scene/root");
+    assert.equal(targetEvent.kryEventRefs.click, "call_host");
+    assert.deepEqual(targetEvent.kryRelations.controls.map((object) => object.ref), ["search-box"]);
+    assert.deepEqual(targetEvent.kryRelationRefs.controls, ["search-box"]);
     assert.equal(Object.keys(targetEvent).includes("kryObject"), false);
     assert.equal(runtime.webDOMObjectFromEvent({ target: nestedSpan }).ref, "primary-action");
     assert.equal(runtime.webDOMObjectFromEvent({ currentTarget: firstButton }).node.path,
