@@ -146,6 +146,17 @@ ClampIndex :: (value: i32, count: i32) -> i32 #export {
     return value
 }
 
+DropdownOptionCountFor :: (count: i32) -> i32 #export {
+    if count < 0 { return 0 }
+    return count
+}
+
+DropdownCurrentIndexFor :: (selected: i32, count: i32) -> i32 #export {
+    index: i32 = ClampIndex(selected, count)
+    if index < 0 { return 0 }
+    return index
+}
+
 Trigger :: (open: bool, disabled: bool, count: i32, focused: bool,
     keyboard: bool, activated: bool, enter: bool, space: bool, down: bool) -> bool #export {
     if disabled || count <= 0 {

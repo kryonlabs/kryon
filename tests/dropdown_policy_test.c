@@ -135,6 +135,11 @@ test_existing_policy(void)
     assert(ClampIndex(-2, 3) == 0);
     assert(ClampIndex(5, 3) == 2);
     assert(ClampIndex(0, 0) == -1);
+    assert(DropdownOptionCountFor(-4) == 0);
+    assert(DropdownOptionCountFor(5) == 5);
+    assert(DropdownCurrentIndexFor(-2, 3) == 0);
+    assert(DropdownCurrentIndexFor(5, 3) == 2);
+    assert(DropdownCurrentIndexFor(0, 0) == 0);
     assert(ContentHeight(3, 20.0f, 8.0f) == 68);
     assert(WheelOffset(20, 1.0f, 10.0f, 100) == 10);
     assert(rows.first == 1);

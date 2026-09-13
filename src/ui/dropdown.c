@@ -424,8 +424,7 @@ ui_dropdown(DropdownProps props)
     state->clip_bottom = dropdown_store->clip_bottom;
     state->selected_index = selected_index != NULL ? *selected_index : state->selected_index;
     state->class_name = props.class_name;
-    if(option_count < 0)
-        option_count = 0;
+    option_count = DropdownOptionCountFor(option_count);
     dropdown_resize_options(state, option_count);
     for(int i = 0; i < option_count; i++) {
         state->options[i].icon_type = options != NULL ? options[i].icon_type : ICON_NONE;
@@ -465,9 +464,8 @@ ui_dropdown(DropdownProps props)
             focused, props.class_name);
 
     /* Draw current selection text, clipped before the chevron. */
-    int current_index = state->selected_index;
-    if(current_index < 0 || current_index >= option_count)
-        current_index = 0;
+    int current_index = DropdownCurrentIndexFor(state->selected_index,
+                                                option_count);
     const char *current_name = option_count > 0 ? state->options[current_index].label : "";
     int has_icon = option_count > 0 &&
                    state->options[current_index].icon_type != ICON_NONE;
