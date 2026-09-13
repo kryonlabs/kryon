@@ -93,7 +93,9 @@ of structure. Rendered elements also expose non-enumerable `kryRef`, `kryNode`,
 and `kryObject` getters, so native event targets and browser inspectors can move
 directly from an element back to the source `.kry` object. `sourcePath`,
 `sourceLine`, and `sourceColumn` identify the
-`.kry` source location that produced each node. Source references support both
+`.kry` source location that produced each node, including the 1-based column of
+the DOM-producing widget/block token when the compiler can see the original
+source line. Source references support both
 `path:line` and `path:line:column` lookup forms. Anonymous widget expressions
 receive source-derived path components such as `Text@42`; repeated anonymous
 widgets under the same

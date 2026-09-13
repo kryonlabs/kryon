@@ -211,6 +211,7 @@ assert.equal(webDoc.nodes[2].webRef, "primary-action");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
+assert.equal(webDoc.nodes[2].sourceColumn, 9);
 assert.ok(webDoc.nodes[2].sourceEndLine > 0);
 assert.ok(webDoc.nodes[2].sourceEndColumn > 0);
 assert.ok(webDoc.nodes[2].sourceEndLine > webDoc.nodes[2].sourceLine);

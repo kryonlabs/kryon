@@ -58,6 +58,14 @@ is_identifier_text(const char *text)
 }
 
 static int
+source_column_for_trimmed(const char *line, const char *trimmed)
+{
+    if(line == NULL || trimmed == NULL || trimmed < line)
+        return 1;
+    return (int)(trimmed - line) + 1;
+}
+
+static int
 parse_symbol_before_colons(const char *s, char *out, size_t out_size)
 {
     const char *p;
@@ -3067,6 +3075,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int onelineq_count = 0;
     int from_queue = 0;
     int pending_len = 0;
+    int pending_start_column = 1;
     int paren_depth = 0;
     int bracket_depth = 0;
     int in_string = 0;
@@ -3121,12 +3130,16 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         snprintf(raw, sizeof(raw), "%s", line);
         {
             char *trimmed = kir_trim(raw);
+            int trimmed_column = from_queue ? 1 :
+                                 source_column_for_trimmed(raw, trimmed);
 
             if(trimmed[0] == '\0' || strncmp(trimmed, "//", 2) == 0) {
                 if(pending_len == 0)
                     continue;
                 continue;
             }
+            if(pending_len == 0)
+                pending_start_column = trimmed_column;
             if(pending_len > 0 && pending_len + 2 < (int)sizeof(pending)) {
                 pending[pending_len++] = ' ';
                 pending[pending_len] = '\0';
@@ -3998,14 +4011,17 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
                     if(ui_block_count > 0)
                         ui_block_open(fn, &ui_blocks[ui_block_count - 1],
-                                      KirSpan(rel, line_no, 1), 0);
+                                      KirSpan(rel, line_no,
+                                              pending_start_column), 0);
                     if(ui_block_count >= UI_BLOCK_CAP)
                         die("%s:%d: too many nested UI blocks", rel, line_no);
                     block = &ui_blocks[ui_block_count++];
                     memset(block, 0, sizeof(*block));
                     block->statement_index = -1;
-                    block->span = KirSpanEnd(rel, line_no, 1, line_no,
-                                             (int)strlen(t) + 1);
+                    block->span = KirSpanEnd(rel, line_no,
+                                             pending_start_column, line_no,
+                                             pending_start_column +
+                                             (int)strlen(t));
                     snprintf(block->widget, sizeof(block->widget), "%s",
                              block_widget);
                     snprintf(block->name, sizeof(block->name), "%s",
@@ -4103,7 +4119,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                    !ui_blocks[ui_block_count - 1].opened &&
                    depth == ui_blocks[ui_block_count - 1].close_depth)
                     ui_block_open(fn, &ui_blocks[ui_block_count - 1],
-                                  KirSpan(rel, line_no, 1), 0);
+                                  KirSpan(rel, line_no, pending_start_column),
+                                  0);
 
                 if(kind == KIR_STMT_EXPR &&
                    parse_widget_statement(t, widget, sizeof(widget),
@@ -4112,8 +4129,11 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     kind = KIR_STMT_WIDGET;
                 if(kind == KIR_STMT_WIDGET) {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpanEnd(rel, line_no, 1, line_no,
-                                                    (int)strlen(t) + 1);
+                    KirSourceSpan span = KirSpanEnd(rel, line_no,
+                                                    pending_start_column,
+                                                    line_no,
+                                                    pending_start_column +
+                                                    (int)strlen(t));
 
                     st = KirFunctionAddWidget(fn, widget, widget_args, t,
                                               span);
@@ -4123,8 +4143,11 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         widget, span);
                 } else {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpanEnd(rel, line_no, 1, line_no,
-                                                    (int)strlen(t) + 1);
+                    KirSourceSpan span = KirSpanEnd(rel, line_no,
+                                                    pending_start_column,
+                                                    line_no,
+                                                    pending_start_column +
+                                                    (int)strlen(t));
 
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
