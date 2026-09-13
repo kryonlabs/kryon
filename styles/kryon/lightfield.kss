@@ -761,6 +761,8 @@ Collapsible[role=Header] {
   radius: radius;
   border-width: border;
   font-size: font;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: premium;
 }

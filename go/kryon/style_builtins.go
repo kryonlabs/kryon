@@ -421,6 +421,8 @@ Drag {
   radius: radius.md;
   border-width: border;
   font-size: font.sm;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: default;
 }
@@ -2153,6 +2155,8 @@ Drag {
   radius: radius;
   border-width: border;
   font-size: font;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: default;
 }
@@ -3861,6 +3865,8 @@ Drag {
   radius: radius.md;
   border-width: border;
   font-size: font.sm;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: default;
 }
@@ -5630,6 +5636,8 @@ Drag {
   radius: radius.md;
   border-width: border;
   font-size: font.sm;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: glow;
 }
@@ -7766,6 +7774,8 @@ Collapsible[role=Header] {
   radius: radius;
   border-width: border;
   font-size: font;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: premium;
 }

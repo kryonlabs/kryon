@@ -285,68 +285,92 @@ func Plot_PlotTextPaintFor(bounds Rectangle, label_width float32, overlay_width 
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = 6.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var pad_x float32 = value_6
-	var value_7 float32 = 4.0
-	var value_8 float32 = scale
-	var value_9 float32 = value_7 * value_8
-	var pad_y float32 = value_9
-	var value_10 float32 = 18.0
-	var value_11 float32 = scale
-	var value_12 float32 = value_10 * value_11
-	var text_height float32 = value_12
-	var value_13 uint32 = frame.Value.Foreground
-	paint.TextColor = value_13
-	var value_14 bool = show_label
-	paint.ShowLabel = value_14
-	var value_15 bool = show_overlay
-	paint.ShowOverlay = value_15
-	var value_16 float32 = bounds.X
-	var value_17 float32 = pad_x
-	var value_18 float32 = value_16 + value_17
-	paint.LabelBounds.X = value_18
-	var value_19 float32 = bounds.Y
-	var value_20 float32 = pad_y
-	var value_21 float32 = value_19 + value_20
-	paint.LabelBounds.Y = value_21
-	var value_22 float32 = label_width
-	paint.LabelBounds.Width = value_22
+	var value_4 float32 = frame.Value.PaddingX
+	var pad_x float32 = value_4
+	var value_5 float32 = pad_x
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 float32 = 6.0
+		pad_x = value_8
+	}
+	var value_9 float32 = pad_x
+	var value_10 float32 = scale
+	pad_x = value_9 * value_10
+	var value_11 float32 = frame.Value.PaddingY
+	var pad_y float32 = value_11
+	var value_12 float32 = pad_y
+	var value_13 float32 = 0.0
+	var value_14 bool = value_12 <= value_13
+	if value_14 {
+		var value_15 float32 = 4.0
+		pad_y = value_15
+	}
+	var value_16 float32 = pad_y
+	var value_17 float32 = scale
+	pad_y = value_16 * value_17
+	var value_18 float32 = frame.Value.FontSize
+	var text_height float32 = value_18
+	var value_19 float32 = text_height
+	var value_20 float32 = 0.0
+	var value_21 bool = value_19 <= value_20
+	if value_21 {
+		var value_22 float32 = 18.0
+		text_height = value_22
+	}
 	var value_23 float32 = text_height
-	paint.LabelBounds.Height = value_23
-	var value_24 float32 = bounds.X
-	var value_25 float32 = bounds.Width
-	var value_26 float32 = value_24 + value_25
-	var value_27 float32 = overlay_width
-	var value_28 float32 = value_26 - value_27
+	var value_24 float32 = scale
+	text_height = value_23 * value_24
+	var value_25 uint32 = frame.Value.Foreground
+	paint.TextColor = value_25
+	var value_26 bool = show_label
+	paint.ShowLabel = value_26
+	var value_27 bool = show_overlay
+	paint.ShowOverlay = value_27
+	var value_28 float32 = bounds.X
 	var value_29 float32 = pad_x
-	var value_30 float32 = value_28 - value_29
-	paint.OverlayBounds.X = value_30
+	var value_30 float32 = value_28 + value_29
+	paint.LabelBounds.X = value_30
 	var value_31 float32 = bounds.Y
 	var value_32 float32 = pad_y
 	var value_33 float32 = value_31 + value_32
-	paint.OverlayBounds.Y = value_33
-	var value_34 float32 = overlay_width
-	paint.OverlayBounds.Width = value_34
+	paint.LabelBounds.Y = value_33
+	var value_34 float32 = label_width
+	paint.LabelBounds.Width = value_34
 	var value_35 float32 = text_height
-	paint.OverlayBounds.Height = value_35
-	var value_36 bool = show_label
-	var value_37 bool = !value_36
-	if value_37 {
-		var value_38 float32 = 0.0
-		paint.LabelBounds.Width = value_38
-		var value_39 float32 = 0.0
-		paint.LabelBounds.Height = value_39
+	paint.LabelBounds.Height = value_35
+	var value_36 float32 = bounds.X
+	var value_37 float32 = bounds.Width
+	var value_38 float32 = value_36 + value_37
+	var value_39 float32 = overlay_width
+	var value_40 float32 = value_38 - value_39
+	var value_41 float32 = pad_x
+	var value_42 float32 = value_40 - value_41
+	paint.OverlayBounds.X = value_42
+	var value_43 float32 = bounds.Y
+	var value_44 float32 = pad_y
+	var value_45 float32 = value_43 + value_44
+	paint.OverlayBounds.Y = value_45
+	var value_46 float32 = overlay_width
+	paint.OverlayBounds.Width = value_46
+	var value_47 float32 = text_height
+	paint.OverlayBounds.Height = value_47
+	var value_48 bool = show_label
+	var value_49 bool = !value_48
+	if value_49 {
+		var value_50 float32 = 0.0
+		paint.LabelBounds.Width = value_50
+		var value_51 float32 = 0.0
+		paint.LabelBounds.Height = value_51
 	}
-	var value_40 bool = show_overlay
-	var value_41 bool = !value_40
-	if value_41 {
-		var value_42 float32 = 0.0
-		paint.OverlayBounds.Width = value_42
-		var value_43 float32 = 0.0
-		paint.OverlayBounds.Height = value_43
+	var value_52 bool = show_overlay
+	var value_53 bool = !value_52
+	if value_53 {
+		var value_54 float32 = 0.0
+		paint.OverlayBounds.Width = value_54
+		var value_55 float32 = 0.0
+		paint.OverlayBounds.Height = value_55
 	}
-	var value_44 PlotTextPaint = paint
-	return value_44
+	var value_56 PlotTextPaint = paint
+	return value_56
 }

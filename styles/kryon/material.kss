@@ -419,6 +419,8 @@ Drag {
   radius: radius.md;
   border-width: border;
   font-size: font.sm;
+  padding-x: 6;
+  padding-y: 4;
   opacity: 1;
   material: default;
 }

@@ -1,6 +1,7 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
 #include "runtime/fieldset.h"
+#include "runtime/plot.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
 #include "runtime/slider.h"
@@ -65,6 +66,7 @@ main(void)
     };
     CheckboxPaint checkbox_paint;
     FieldsetPaint fieldset_paint;
+    PlotTextPaint plot_text_paint;
     SwatchPaint swatch_paint;
     RadioPaint radio_paint;
     ProgressPaint progress_paint;
@@ -138,6 +140,23 @@ main(void)
                 fieldset_paint.title_text.height, 14.0f);
     frame.value.padding_y = 0.0f;
     frame.value.gap = 0.0f;
+    frame.value.font_size = 0.0f;
+    frame.value.padding_x = 11.0f;
+    frame.value.padding_y = 3.0f;
+    frame.value.font_size = 13.0f;
+    plot_text_paint = PlotTextPaintFor((Rectangle){20, 30, 120, 60},
+        24.0f, 31.0f, 1.0f, frame, 1, 1);
+    check_float("plot label x comes from style",
+                plot_text_paint.label_bounds.x, 31.0f);
+    check_float("plot label y comes from style",
+                plot_text_paint.label_bounds.y, 33.0f);
+    check_float("plot label height comes from style",
+                plot_text_paint.label_bounds.height, 13.0f);
+    check_float("plot overlay x comes from style",
+                plot_text_paint.overlay_bounds.x, 98.0f);
+    check_float("plot overlay y comes from style",
+                plot_text_paint.overlay_bounds.y, 33.0f);
+    frame.value.padding_y = 0.0f;
     frame.value.font_size = 0.0f;
     frame.value.padding_x = 10.0f;
     progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
