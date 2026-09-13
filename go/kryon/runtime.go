@@ -5854,7 +5854,27 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 	if p.Visible != nil && !*p.Visible {
 		return 0
 	}
-	metrics := Collapsible_CollapsibleMetricsFor(1)
+	defaultState := ButtonStateNormal
+	if p.Disabled || r.contentDisabled() {
+		defaultState = ButtonStateDisabled
+	} else if p.Selected {
+		defaultState = ButtonStateSelected
+	}
+	headerRole := int32(13)
+	if p.Tree {
+		headerRole = 14
+	}
+	defaultHeaderFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		defaultState, p.Disabled || r.contentDisabled(), p.Selected,
+		p.ClassName, StyleSheet_StyleKindCollapsible(), headerRole)
+	treeHeaderFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		defaultState, p.Disabled || r.contentDisabled(), p.Selected,
+		p.ClassName, StyleSheet_StyleKindCollapsible(), 14)
+	closeDefaultFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral,
+		ButtonStateNormal, p.Disabled || r.contentDisabled(), false,
+		p.ClassName, StyleSheet_StyleKindCollapsible(), 15)
+	metrics := Collapsible_CollapsibleMetricsFor(1, defaultHeaderFrame,
+		treeHeaderFrame, closeDefaultFrame)
 	layoutBounds := p.Bounds
 	layoutBounds.Height = float32(metrics.HeaderHeight)
 	p.Bounds = r.layoutRect(layoutBounds)
@@ -5940,10 +5960,6 @@ func (r *runtime) Collapsible(p CollapsibleProps) int32 {
 		Size:      ControlSizeMedium,
 		Selected:  p.Selected,
 		Disabled:  !enabled,
-	}
-	headerRole := int32(13)
-	if p.Tree {
-		headerRole = 14
 	}
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state, !enabled, p.Selected,
 		p.ClassName, StyleSheet_StyleKindCollapsible(), headerRole)

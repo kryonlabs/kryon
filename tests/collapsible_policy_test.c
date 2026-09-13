@@ -16,31 +16,41 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    CollapsibleMetrics metrics = CollapsibleMetricsFor(2.0f);
-    assert(metrics.header_height == 64);
-    assert(metrics.depth_indent == 40);
-    assert(metrics.close_width == 56);
-    assert(metrics.icon_offset == 16);
-    assert(metrics.text_offset == 56);
+    StyleFrame header = {0};
+    StyleFrame tree_header = {0};
+    StyleFrame close = {0};
+    header.value.font_size = 14.0f;
+    header.value.padding_x = 6.0f;
+    header.value.padding_y = 10.0f;
+    header.value.icon_size = 18.0f;
+    tree_header.value.padding_x = 17.0f;
+    close.value.icon_size = 22.0f;
+    CollapsibleMetrics metrics = CollapsibleMetricsFor(2.0f, header,
+                                                       tree_header, close);
+    assert(metrics.header_height == 68);
+    assert(metrics.depth_indent == 34);
+    assert(metrics.close_width == 44);
+    assert(metrics.icon_offset == 12);
+    assert(metrics.text_offset == 48);
 
     CollapsibleLayout layout = CollapsibleLayoutFor(
         (Rectangle){10, 20, 180, 120}, true, 2, true, metrics);
     assert(layout.has_close);
-    check_rect(layout.header, 90, 20, 100, 64);
-    check_rect(layout.body, 90, 20, 44, 64);
-    check_rect(layout.close_bounds, 134, 20, 56, 64);
+    check_rect(layout.header, 78, 20, 112, 68);
+    check_rect(layout.body, 78, 20, 68, 68);
+    check_rect(layout.close_bounds, 146, 20, 44, 68);
 
     layout = CollapsibleLayoutFor((Rectangle){0, 0, 32, 99},
                                   true, 4, true, metrics);
-    check_rect(layout.header, 32, 0, 0, 64);
-    check_rect(layout.body, 32, 0, 0, 64);
-    check_rect(layout.close_bounds, 32, 0, 0, 64);
+    check_rect(layout.header, 32, 0, 0, 68);
+    check_rect(layout.body, 32, 0, 0, 68);
+    check_rect(layout.close_bounds, 32, 0, 0, 68);
 
     layout = CollapsibleLayoutFor((Rectangle){3, 4, 50, 70},
                                   false, 9, false, metrics);
     assert(!layout.has_close);
-    check_rect(layout.header, 3, 4, 50, 64);
-    check_rect(layout.body, 3, 4, 50, 64);
+    check_rect(layout.header, 3, 4, 50, 68);
+    check_rect(layout.body, 3, 4, 50, 68);
 
     assert(CollapsibleMarkerFor(false, false) == CollapsibleMarkerClosed);
     assert(CollapsibleMarkerFor(true, false) == CollapsibleMarkerOpen);
@@ -48,6 +58,13 @@ main(void)
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerClosed), ">") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerOpen), "v") == 0);
     assert(strcmp(CollapsibleMarkerText(CollapsibleMarkerLeaf), "•") == 0);
-    assert(CollapsibleMetricsFor(0.0f).header_height == 32);
+    header.value.font_size = 0.0f;
+    header.value.padding_x = 0.0f;
+    header.value.padding_y = 0.0f;
+    header.value.icon_size = 0.0f;
+    tree_header.value.padding_x = 0.0f;
+    close.value.icon_size = 0.0f;
+    assert(CollapsibleMetricsFor(0.0f, header, tree_header,
+                                 close).header_height == 32);
     return 0;
 }

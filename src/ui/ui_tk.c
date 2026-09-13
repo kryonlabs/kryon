@@ -4234,8 +4234,15 @@ RenderCollapsible(CollapsibleProps section)
     int font = default_item_style.font_size > 0.0f
         ? (int)(default_item_style.font_size + 0.5f)
         : GetFontSize();
+    StyleFrame tree_item_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, default_state, !enabled, section.selected,
+        section.class_name, StyleKindCollapsible(), 14);
+    StyleFrame close_default_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, !enabled, 0,
+        section.class_name, StyleKindCollapsible(), 15);
     int changed = 0;
-    CollapsibleMetrics metrics = CollapsibleMetricsFor((float)GetScale());
+    CollapsibleMetrics metrics = CollapsibleMetricsFor((float)GetScale(),
+        default_item_frame, tree_item_frame, close_default_frame);
     CollapsibleLayout layout;
     Rectangle header;
     Rectangle body;

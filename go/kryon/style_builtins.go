@@ -717,6 +717,9 @@ Collapsible[role=Header] {
   radius: radius.md;
   border-width: border;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 8;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -747,6 +750,9 @@ Collapsible[role=TreeHeader] {
   radius: radius.sm;
   border-width: border.none;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 20;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -770,6 +776,7 @@ Collapsible[role=Close] {
   foreground: muted;
   border: transparent;
   font-size: font.md;
+  icon-size: 28;
   opacity: 1;
   material: default;
 }
@@ -2467,6 +2474,9 @@ Collapsible[role=Header] {
   radius: radius;
   border-width: border;
   font-size: font;
+  icon-size: 20;
+  padding-x: 8;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -2497,6 +2507,9 @@ Collapsible[role=TreeHeader] {
   radius: 0;
   border-width: border.none;
   font-size: font;
+  icon-size: 20;
+  padding-x: 20;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -2520,6 +2533,7 @@ Collapsible[role=Close] {
   foreground: muted;
   border: transparent;
   font-size: font;
+  icon-size: 28;
   opacity: 1;
   material: default;
 }
@@ -4175,6 +4189,9 @@ Collapsible[role=Header] {
   radius: radius.md;
   border-width: border;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 8;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -4205,6 +4222,9 @@ Collapsible[role=TreeHeader] {
   radius: radius.sm;
   border-width: border.none;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 20;
+  padding-y: 8;
   opacity: 1;
   material: default;
 }
@@ -4228,6 +4248,7 @@ Collapsible[role=Close] {
   foreground: muted;
   border: transparent;
   font-size: font.md;
+  icon-size: 28;
   opacity: 1;
   material: default;
 }
@@ -5966,6 +5987,9 @@ Collapsible[role=Header] {
   radius: radius.md;
   border-width: border;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 8;
+  padding-y: 8;
   opacity: 1;
   material: glow;
 }
@@ -5999,6 +6023,9 @@ Collapsible[role=TreeHeader] {
   radius: radius.sm;
   border-width: border.none;
   font-size: font.md;
+  icon-size: 20;
+  padding-x: 20;
+  padding-y: 8;
   opacity: 1;
   material: app;
 }
@@ -6024,6 +6051,7 @@ Collapsible[role=Close] {
   foreground: muted;
   border: transparent;
   font-size: font.md;
+  icon-size: 28;
   opacity: 1;
   material: app;
 }
@@ -7794,7 +7822,8 @@ Collapsible[role=Header] {
   border-width: border;
   font-size: font;
   padding-x: 6;
-  padding-y: 4;
+  padding-y: 8;
+  icon-size: 20;
   opacity: 1;
   material: premium;
 }
@@ -7828,6 +7857,9 @@ Collapsible[role=TreeHeader] {
   radius: radius;
   border-width: 0;
   font-size: font;
+  icon-size: 20;
+  padding-x: 20;
+  padding-y: 8;
   opacity: 1;
   material: app;
 }
@@ -7853,6 +7885,7 @@ Collapsible[role=Close] {
   foreground: muted;
   border: transparent;
   font-size: font;
+  icon-size: 28;
   opacity: 1;
   material: app;
 }

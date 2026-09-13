@@ -1,5 +1,6 @@
 #module "collapsible"
 #import "drawing_props"
+#import "style"
 
 CollapsibleMarkerKind :: enum {
     CollapsibleMarkerClosed = 0
@@ -22,14 +23,32 @@ CollapsibleLayout :: struct {
     has_close: bool
 }
 
-CollapsibleMetricsFor :: (scale: float) -> CollapsibleMetrics #export {
+CollapsibleMetricsFor :: (scale: float, header: StyleFrame,
+    tree_header: StyleFrame, close: StyleFrame) -> CollapsibleMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: CollapsibleMetrics
-    metrics.header_height = (i32)(32.0 * scale)
-    metrics.depth_indent = (i32)(20.0 * scale)
-    metrics.close_width = (i32)(28.0 * scale)
-    metrics.icon_offset = (i32)(8.0 * scale)
-    metrics.text_offset = (i32)(28.0 * scale)
+    header_height: float = 32.0
+    if header.value.padding_y > 0.0 {
+        font_size: float = header.value.font_size
+        if font_size <= 0.0 { font_size = 16.0 }
+        header_height = font_size + header.value.padding_y * 2.0
+    }
+    if header_height < 32.0 { header_height = 32.0 }
+    depth_indent: float = tree_header.value.padding_x
+    if depth_indent <= 0.0 { depth_indent = 20.0 }
+    close_width: float = close.value.icon_size
+    if close_width <= 0.0 { close_width = 28.0 }
+    icon_offset: float = header.value.padding_x
+    if icon_offset <= 0.0 { icon_offset = 8.0 }
+    text_offset: float = 28.0
+    if header.value.padding_x > 0.0 && header.value.icon_size > 0.0 {
+        text_offset = header.value.padding_x + header.value.icon_size
+    }
+    metrics.header_height = (i32)(header_height * scale)
+    metrics.depth_indent = (i32)(depth_indent * scale)
+    metrics.close_width = (i32)(close_width * scale)
+    metrics.icon_offset = (i32)(icon_offset * scale)
+    metrics.text_offset = (i32)(text_offset * scale)
     return metrics
 }
 

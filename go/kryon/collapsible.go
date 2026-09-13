@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type CollapsibleMarkerKind int32
 
 const (
@@ -25,7 +26,7 @@ type CollapsibleLayout struct {
 	HasClose    bool
 }
 
-func Collapsible_CollapsibleMetricsFor(scale float32) CollapsibleMetrics {
+func Collapsible_CollapsibleMetricsFor(scale float32, header StyleFrame, tree_header StyleFrame, close StyleFrame) CollapsibleMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -35,32 +36,106 @@ func Collapsible_CollapsibleMetricsFor(scale float32) CollapsibleMetrics {
 	}
 	var metrics CollapsibleMetrics = CollapsibleMetrics{}
 	var value_4 float32 = 32.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	metrics.HeaderHeight = value_7
-	var value_8 float32 = 20.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	metrics.DepthIndent = value_11
-	var value_12 float32 = 28.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	metrics.CloseWidth = value_15
-	var value_16 float32 = 8.0
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	metrics.IconOffset = value_19
-	var value_20 float32 = 28.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
-	metrics.TextOffset = value_23
-	var value_24 CollapsibleMetrics = metrics
-	return value_24
+	var header_height float32 = value_4
+	var value_5 float32 = header.Value.PaddingY
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 > value_6
+	if value_7 {
+		var value_8 float32 = header.Value.FontSize
+		var font_size float32 = value_8
+		var value_9 float32 = font_size
+		var value_10 float32 = 0.0
+		var value_11 bool = value_9 <= value_10
+		if value_11 {
+			var value_12 float32 = 16.0
+			font_size = value_12
+		}
+		var value_13 float32 = font_size
+		var value_14 float32 = header.Value.PaddingY
+		var value_15 float32 = 2.0
+		var value_16 float32 = value_14 * value_15
+		var value_17 float32 = value_13 + value_16
+		header_height = value_17
+	}
+	var value_18 float32 = header_height
+	var value_19 float32 = 32.0
+	var value_20 bool = value_18 < value_19
+	if value_20 {
+		var value_21 float32 = 32.0
+		header_height = value_21
+	}
+	var value_22 float32 = tree_header.Value.PaddingX
+	var depth_indent float32 = value_22
+	var value_23 float32 = depth_indent
+	var value_24 float32 = 0.0
+	var value_25 bool = value_23 <= value_24
+	if value_25 {
+		var value_26 float32 = 20.0
+		depth_indent = value_26
+	}
+	var value_27 float32 = close.Value.IconSize
+	var close_width float32 = value_27
+	var value_28 float32 = close_width
+	var value_29 float32 = 0.0
+	var value_30 bool = value_28 <= value_29
+	if value_30 {
+		var value_31 float32 = 28.0
+		close_width = value_31
+	}
+	var value_32 float32 = header.Value.PaddingX
+	var icon_offset float32 = value_32
+	var value_33 float32 = icon_offset
+	var value_34 float32 = 0.0
+	var value_35 bool = value_33 <= value_34
+	if value_35 {
+		var value_36 float32 = 8.0
+		icon_offset = value_36
+	}
+	var value_37 float32 = 28.0
+	var text_offset float32 = value_37
+	var value_38 float32 = header.Value.PaddingX
+	var value_39 float32 = 0.0
+	var value_40 bool = value_38 > value_39
+	var value_41 bool = value_40
+	if value_41 {
+		var value_42 float32 = header.Value.IconSize
+		var value_43 float32 = 0.0
+		var value_44 bool = value_42 > value_43
+		value_41 = value_44
+	}
+	if value_41 {
+		var value_45 float32 = header.Value.PaddingX
+		var value_46 float32 = header.Value.IconSize
+		var value_47 float32 = value_45 + value_46
+		text_offset = value_47
+	}
+	var value_48 float32 = header_height
+	var value_49 float32 = scale
+	var value_50 float32 = value_48 * value_49
+	var value_51 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_50), 32, true)), uint64(0), 32, true, 0))
+	metrics.HeaderHeight = value_51
+	var value_52 float32 = depth_indent
+	var value_53 float32 = scale
+	var value_54 float32 = value_52 * value_53
+	var value_55 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_54), 32, true)), uint64(0), 32, true, 0))
+	metrics.DepthIndent = value_55
+	var value_56 float32 = close_width
+	var value_57 float32 = scale
+	var value_58 float32 = value_56 * value_57
+	var value_59 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_58), 32, true)), uint64(0), 32, true, 0))
+	metrics.CloseWidth = value_59
+	var value_60 float32 = icon_offset
+	var value_61 float32 = scale
+	var value_62 float32 = value_60 * value_61
+	var value_63 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_62), 32, true)), uint64(0), 32, true, 0))
+	metrics.IconOffset = value_63
+	var value_64 float32 = text_offset
+	var value_65 float32 = scale
+	var value_66 float32 = value_64 * value_65
+	var value_67 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_66), 32, true)), uint64(0), 32, true, 0))
+	metrics.TextOffset = value_67
+	var value_68 CollapsibleMetrics = metrics
+	return value_68
 }
 
 func Collapsible_CollapsibleMarkerFor(open bool, leaf bool) int32 {
