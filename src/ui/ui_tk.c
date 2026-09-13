@@ -224,6 +224,7 @@ typedef struct UIMenuOverlayState {
     int active;
     int bar_id;
     int menu_id;
+    int class_name;
     int x;
     int y;
     int item_count;
@@ -233,6 +234,7 @@ typedef struct UIMenuOverlayState {
 typedef struct UIContextMenuOverlayState {
     int active;
     int id;
+    int class_name;
     int x;
     int y;
     int item_count;
@@ -512,10 +514,11 @@ ui_canvas_frame(void)
 }
 
 static void
-ui_draw_menu_panel(Rectangle bounds)
+ui_draw_menu_panel(Rectangle bounds, int class_name)
 {
-    StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindMenu(), 2);
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenu(), 2);
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     ui_default_elevation(bounds, style.radius, 2);
     ui_tk_draw_style_frame(bounds, (Rectangle){0}, frame, 0, 0, 0, 0);
@@ -1133,11 +1136,12 @@ menu_navigation_reset(int focus_id, const MenuItem *items, int item_count)
 
 static int
 draw_menu_items(int x, int y, const MenuItem *items, int item_count,
-                int focus_id, int depth)
+                int focus_id, int depth, int class_name)
 {
     ToolkitStore *state = toolkit_state();
-    StyleFrame base_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    StyleFrame base_item_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenuItem(), StyleAny());
     Style base_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(base_item_frame).value);
     int font = base_item_style.font_size > 0.0f
@@ -1219,7 +1223,7 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 
     panel = MenuPanelBounds(x, y, w, item_count, metrics);
     if(can_draw)
-        ui_draw_menu_panel(panel);
+        ui_draw_menu_panel(panel, class_name);
     ui_menu_track_panel(panel);
     PushInputCapture(panel, 1);
     mouse = ui_mouse_world();
@@ -1239,8 +1243,9 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                  ButtonStatePressed :
              (hot ? ButtonStateHover :
               (selected ? ButtonStateSelected : ButtonStateNormal)));
-        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-            item_state, item->disabled, selected, StyleKindMenuItem());
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(
+            ButtonToneNeutral, item_state, item->disabled, selected,
+            class_name, StyleKindMenuItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         int item_font = item_style.font_size > 0.0f
@@ -1249,8 +1254,18 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         Color item_text = Fade(item_style.foreground, item_style.opacity);
 
         if(item->kind == MenuSeparator) {
-            if(can_draw)
-                RenderSeparator((SeparatorProps){.bounds = row});
+            if(can_draw) {
+                StyleFrame separator_frame = ui_tk_simple_style_frame_class_role(
+                    ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+                    StyleKindMenuSeparator(), StyleAny());
+                Style separator_style = ui_unpack_style(
+                    ui_style_apply_effects_frame(separator_frame).value);
+                Line((int)row.x + Scale(8),
+                     (int)(row.y + row.height / 2.0f),
+                     (int)(row.x + row.width) - Scale(8),
+                     (int)(row.y + row.height / 2.0f),
+                     separator_style.border);
+            }
             continue;
         }
 
@@ -1304,8 +1319,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                 : state->submenu_id == item->id) &&
            item->submenu != NULL && item->submenu_count > 0) {
             int sub = draw_menu_items((int)(row.x + row.width), (int)row.y,
-                                      item->submenu,
-                                      item->submenu_count, focus_id, depth+1);
+                                      item->submenu, item->submenu_count,
+                                      focus_id, depth+1, class_name);
             if(sub != 0)
                 activated = sub;
         }
@@ -1331,10 +1346,12 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
 }
 
 static Rectangle
-menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count)
+menu_items_panel_bounds(int x, int y, const MenuItem *items, int item_count,
+                        int class_name)
 {
-    StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenuItem(), StyleAny());
     Style style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     int font = style.font_size > 0.0f
         ? (int)(style.font_size + 0.5f)
@@ -1407,6 +1424,7 @@ queue_context_menu_overlay(MenuProps menu, int suppress_close)
 
     state->context_overlay.active = 1;
     state->context_overlay.id = menu.id;
+    state->context_overlay.class_name = menu.class_name;
     state->context_overlay.x = menu.x != NULL ? *menu.x : 0;
     state->context_overlay.y = menu.y != NULL ? *menu.y : 0;
     state->context_overlay.item_count = count;
@@ -1414,12 +1432,14 @@ queue_context_menu_overlay(MenuProps menu, int suppress_close)
 }
 
 MenuResult
-RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_count, int *open_index)
+RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menus,
+                 int menu_count, int *open_index)
 {
     ToolkitStore *state = toolkit_state();
     MenuResult result = {0, -1};
-    StyleFrame base_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindMenuItem());
+    StyleFrame base_item_frame = ui_tk_simple_style_frame_class_role(
+        ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+        StyleKindMenuItem(), StyleAny());
     Style base_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(base_item_frame).value);
     int font = base_item_style.font_size > 0.0f
@@ -1511,8 +1531,9 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
     }
     state->overlay.active = 0;
     if(can_draw) {
-        StyleFrame bar_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-            ButtonStateNormal, 0, 0, StyleKindMenu(), 1);
+        StyleFrame bar_frame = ui_tk_simple_style_frame_class_role(
+            ButtonToneNeutral, ButtonStateNormal, 0, 0, class_name,
+            StyleKindMenu(), 1);
         ui_tk_draw_style_frame(bounds, (Rectangle){0}, bar_frame, 0, 0, 0, 0);
     }
 
@@ -1524,8 +1545,9 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
         int hot = !UIContentDisabled() && ui_hot(item);
         ButtonState item_state = open ? ButtonStateSelected :
             (hot ? ButtonStateHover : ButtonStateNormal);
-        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-            item_state, 0, open, StyleKindMenuItem());
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(
+            ButtonToneNeutral, item_state, 0, open, class_name,
+            StyleKindMenuItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         int item_font = item_style.font_size > 0.0f
@@ -1564,6 +1586,7 @@ RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus, int menu_coun
             state->overlay.active = 1;
             state->overlay.bar_id = id;
             state->overlay.menu_id = id + i;
+            state->overlay.class_name = class_name;
             state->overlay.x = x;
             state->overlay.y = (int)(bounds.y + bounds.height);
             int used = 0;
@@ -1602,7 +1625,8 @@ ui_draw_menu_overlays(void)
                                     state->overlay.y,
                                     state->overlay.items,
                                     state->overlay.item_count,
-                                    state->overlay.bar_id, 0);
+                                    state->overlay.bar_id, 0,
+                                    state->overlay.class_name);
         if(activated != 0) {
             state->pending_bar_id = state->overlay.bar_id;
             state->pending_activated = activated;
@@ -1620,7 +1644,8 @@ ui_draw_menu_overlays(void)
                                     state->context_overlay.y,
                                     state->context_overlay.items,
                                     state->context_overlay.item_count,
-                                    state->context_overlay.id, 0);
+                                    state->context_overlay.id, 0,
+                                    state->context_overlay.class_name);
         if(activated != 0) {
             state->context_pending_id = state->context_overlay.id;
             state->context_pending_activated = activated;
@@ -1638,9 +1663,10 @@ ui_draw_menu_overlays(void)
 }
 
 int
-RenderPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
+RenderPopupMenu(int id, int class_name, int x, int y, const MenuItem *items,
+                int item_count)
 {
-    Rectangle panel = menu_items_panel_bounds(x,y,items,item_count);
+    Rectangle panel = menu_items_panel_bounds(x,y,items,item_count, class_name);
     int focused = !UIContentDisabled() && id > 0 && RegisterFocus(id,panel);
     if(focused && !ui_popup_input_focus_captures(id) &&
        IsKeyPressed(KEY_ESCAPE)) {
@@ -1649,7 +1675,7 @@ RenderPopupMenu(int id, int x, int y, const MenuItem *items, int item_count)
         return 0;
     }
     menu_navigation_begin_frame();
-    return draw_menu_items(x,y,items,item_count,id,0);
+    return draw_menu_items(x,y,items,item_count,id,0, class_name);
 }
 
 int
@@ -1704,7 +1730,8 @@ RenderContextMenu(MenuProps menu)
         suppress_close = 1;
     state->context_open_id = menu.id;
     panel = menu_items_panel_bounds(*menu.x, *menu.y,
-                                    menu.items, menu.item_count);
+                                    menu.items, menu.item_count,
+                                    menu.class_name);
     focused = !UIContentDisabled() && menu.id > 0 && RegisterFocus(menu.id,panel) &&
               !ui_popup_input_focus_captures(menu.id);
     if(focused && IsKeyPressed(KEY_ESCAPE)) {
@@ -1728,11 +1755,12 @@ RenderMenu(MenuProps menu)
 {
     MenuResult result = {0, -1};
     if(menu.mode == MenuModeBar) {
-        return RenderMenuGroups(menu.id, menu.bounds, menu.menus,
+        return RenderMenuGroups(menu.id, menu.class_name, menu.bounds, menu.menus,
                                 menu.menu_count, menu.open_index);
     }
     if(menu.mode == MenuModePopup) {
-        result.activated_id = RenderPopupMenu(menu.id, (int)menu.bounds.x,
+        result.activated_id = RenderPopupMenu(menu.id, menu.class_name,
+                                              (int)menu.bounds.x,
                                               (int)menu.bounds.y, menu.items,
                                               menu.item_count);
         return result;

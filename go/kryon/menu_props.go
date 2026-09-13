@@ -45,6 +45,7 @@ type MenuResult struct {
 
 type MenuProps struct {
 	ID        int32
+	ClassName int32
 	Mode      MenuMode
 	Bounds    Rectangle
 	Trigger   Rectangle

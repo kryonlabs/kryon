@@ -895,6 +895,80 @@ TabClose.navkit { foreground: ink; font-size: 17; material: flat; }
 	}
 }
 
+func TestMenuResolvesClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.menu.classes;
+tokens {
+  color {
+    bar: #122032;
+    popup: #202636;
+    ink: #e8f0ff;
+    selected: #6a4bc3;
+    rule: #a0a8b5;
+  }
+  length { radius: 5; border: 2; }
+  material { flat: Flat; }
+}
+Menu.palette[role=Bar] { background: bar; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+Menu.palette[role=Popup] { background: popup; foreground: ink; border: rule; radius: radius; border-width: border; material: flat; }
+MenuItem.palette { foreground: ink; font-size: 15; material: flat; }
+MenuItem.palette:selected { background: selected; foreground: ink; border: selected; radius: radius; border-width: border; font-size: 15; material: flat; }
+MenuSeparator.palette { border: rule; }
+`, "Test Menu Classes", "") || !SetActiveStylePack("test.menu.classes") {
+		t.Fatal("menu class style did not activate")
+	}
+	rt := New(AppConfig{Width: 320, Height: 180}).(*runtime)
+	open := int32(0)
+	rt.Menu(MenuProps{
+		ID:        93,
+		ClassName: StyleClassID("palette"),
+		Mode:      MenuModeBar,
+		Bounds:    Rectangle{X: 0, Y: 0, Width: 220, Height: 30},
+		Menus: []MenuGroup{{
+			Label: "File",
+			Items: []MenuItem{
+				{Kind: MenuCommand, Label: "Open", ID: 1},
+				{Kind: MenuSeparator},
+				{Kind: MenuCommand, Label: "Save", ID: 2},
+			},
+		}},
+		MenuCount: 1,
+		OpenIndex: &open,
+	})
+
+	var sawBar, sawPopup, sawItem, sawSeparator bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 0, Y: 0, Width: 220, Height: 30}):
+			sawBar = true
+			if op.Color != (Color{R: 0x12, G: 0x20, B: 0x32, A: 0xff}) ||
+				op.BorderColor != (Color{R: 0xa0, G: 0xa8, B: 0xb5, A: 0xff}) ||
+				op.Radius != 5 || op.BorderWidth != 2 {
+				t.Fatalf("menu bar class op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.Color == (Color{R: 0x20, G: 0x26, B: 0x36, A: 0xff}):
+			sawPopup = true
+			if op.BorderColor != (Color{R: 0xa0, G: 0xa8, B: 0xb5, A: 0xff}) ||
+				op.Radius != 5 || op.BorderWidth != 2 {
+				t.Fatalf("menu popup class op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.Text == "Open":
+			sawItem = true
+			if op.FontSize != 15 || op.Color != (Color{R: 0xe8, G: 0xf0, B: 0xff, A: 0xff}) {
+				t.Fatalf("menu item class op = %+v", op)
+			}
+		case op.Kind == FrameOpLine && op.Color == (Color{R: 0xa0, G: 0xa8, B: 0xb5, A: 0xff}):
+			sawSeparator = true
+		}
+	}
+	if !sawBar || !sawPopup || !sawItem || !sawSeparator {
+		t.Fatalf("missing classed menu ops: bar=%v popup=%v item=%v separator=%v ops=%+v",
+			sawBar, sawPopup, sawItem, sawSeparator, rt.FrameOps())
+	}
+}
+
 func TestProgressAndSeparatorRolesUseStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

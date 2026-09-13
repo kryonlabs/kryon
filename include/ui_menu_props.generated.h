@@ -60,6 +60,7 @@ typedef struct MenuResult {
 
 typedef struct MenuProps {
     int32_t id;
+    int32_t class_name;
     MenuMode mode;
     Rectangle bounds;
     Rectangle trigger;

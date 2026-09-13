@@ -502,7 +502,7 @@ int main(void)
         ui_paint_layers_frame(host_a,size,size);
         int host_a_open = frame == 0 ? 0 : -1;
         MenuResult host_a_menu = RenderMenuGroups(
-            41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
+            41300, 0, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"first host lost its open menu: %d\n",
                     host_a_menu.open_index);
@@ -527,7 +527,7 @@ int main(void)
         ui_paint_layers_frame(host_b,16,16);
         int host_b_open = -1;
         MenuResult host_b_menu = RenderMenuGroups(
-            41300, (Rectangle){0,0,16,12}, host_menus, 1, &host_b_open);
+            41300, 0, (Rectangle){0,0,16,12}, host_menus, 1, &host_b_open);
         if(host_b_menu.open_index != -1) {
             fprintf(stderr,"open menu crossed hosts: %d\n",
                     host_b_menu.open_index);
@@ -557,7 +557,7 @@ int main(void)
         BeginTextureMode(host_target);
         host_a_open = -1;
         host_a_menu = RenderMenuGroups(
-            41300, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
+            41300, 0, (Rectangle){0,0,32,12}, host_menus, 1, &host_a_open);
         if(host_a_menu.open_index != 0) {
             fprintf(stderr,"restored host has wrong open menu: %d\n",
                     host_a_menu.open_index);

@@ -537,6 +537,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "\n"
         "MenuProps :: struct {\n"
         "    id: i32\n"
+        "    class_name: i32\n"
         "    mode: MenuMode\n"
         "    bounds: Rectangle\n"
         "    trigger: Rectangle\n"

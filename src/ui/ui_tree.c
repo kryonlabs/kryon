@@ -3485,7 +3485,7 @@ Button(ButtonProps button)
         }
         if(*button.open) {
             *button.activated_id = RenderPopupMenu(
-                button.menu_id, (int)action.bounds.x,
+                button.menu_id, button.class_name, (int)action.bounds.x,
                 (int)(action.bounds.y + action.bounds.height),
                 button.items, button.item_count);
             *button.open = ButtonCloseMenuAfterActivation(
@@ -3500,7 +3500,7 @@ Button(ButtonProps button)
         *button.open = ButtonToggleMenuOpen(*button.open,
             ui_tree_surface_button(button, (Rectangle){0}, 1));
         if(*button.open) {
-            *button.activated_id = RenderPopupMenu(button.menu_id,
+            *button.activated_id = RenderPopupMenu(button.menu_id, button.class_name,
                 (int)button.bounds.x,
                 (int)(button.bounds.y + button.bounds.height),
                 button.items, button.item_count);

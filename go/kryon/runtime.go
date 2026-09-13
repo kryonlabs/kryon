@@ -1482,7 +1482,7 @@ func (r *runtime) Button(props ButtonProps) bool {
 				Height: menu.Bounds.Height - 2*layout.DividerInset}, Color: divider.Border})
 		if *props.Open != 0 {
 			*props.ActivatedID = r.Menu(MenuProps{
-				ID: props.MenuID, Mode: MenuModePopup,
+				ID: props.MenuID, ClassName: props.ClassName, Mode: MenuModePopup,
 				Bounds:    NewRectangle(fullBounds.X, fullBounds.Y+fullBounds.Height, 0, 0),
 				Items:     props.Items,
 				ItemCount: props.ItemCount,
@@ -1512,7 +1512,7 @@ func (r *runtime) Button(props ButtonProps) bool {
 			return false
 		}
 		*props.ActivatedID = r.Menu(MenuProps{
-			ID: props.MenuID, Mode: MenuModePopup,
+			ID: props.MenuID, ClassName: props.ClassName, Mode: MenuModePopup,
 			Bounds:    NewRectangle(props.Bounds.X, props.Bounds.Y+props.Bounds.Height, 0, 0),
 			Items:     props.Items,
 			ItemCount: props.ItemCount,
@@ -5101,7 +5101,7 @@ func resetMenuPath(state *menuNavigation, items []MenuItem) {
 	}
 }
 
-func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openIndex *int32) MenuResult {
+func (r *runtime) menuBar(id int32, className int32, bounds Rectangle, menus []MenuGroup, openIndex *int32) MenuResult {
 	result := MenuResult{OpenIndex: -1}
 	state := r.menuNav(id)
 	metrics := Menu_MenuMetricsFor(1)
@@ -5173,14 +5173,14 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 			}
 		}
 	}
-	barFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, StyleSheet_StyleKindMenu(), 1)
+	barFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 1)
 	barStyle := unpackStyle(barFrame.Value)
 	r.record(styleFrameRectOp(bounds, Rectangle{}, barFrame))
 	r.record(FrameOp{Kind: FrameOpLine, Bounds: Rectangle{X: bounds.X, Y: bounds.Y + bounds.Height - 1, Width: bounds.Width, Height: 0}, Color: barStyle.Border})
 	x := bounds.X + 4
-	menuItemBaseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
-		false, false, StyleSheet_StyleKindMenuItem()).Value)
+	menuItemBaseStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny()).Value)
 	font, fontID := styleTextFace(menuItemBaseStyle, Text14)
 	for i, menu := range menus {
 		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
@@ -5202,7 +5202,7 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 		}
 		itemSelected := open == int32(i)
 		itemFocused := focused && open < 0 && state.Top == int32(i)
-		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		itemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 			if itemSelected {
 				return ButtonStateSelected
 			}
@@ -5210,7 +5210,7 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 				return ButtonStateFocus
 			}
 			return ButtonStateNormal
-		}(), false, itemSelected, StyleSheet_StyleKindMenuItem())
+		}(), false, itemSelected, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
 		itemStyle := unpackStyle(itemFrame.Value)
 		itemFont, itemFontID := styleTextFace(itemStyle, font)
 		if itemSelected || itemFocused {
@@ -5235,7 +5235,7 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
 		handled := openedByKeyboard
-		result.ActivatedID, _ = r.drawPopupMenu(id, int32(menuX), int32(bounds.Y+bounds.Height), items, id, 0, &handled)
+		result.ActivatedID, _ = r.drawPopupMenu(id, className, int32(menuX), int32(bounds.Y+bounds.Height), items, id, 0, &handled)
 		if result.ActivatedID != 0 {
 			delete(r.openMenus, id)
 			delete(r.openSubmenus, id)
@@ -5263,9 +5263,9 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 	return items[:count]
 }
 
-func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
-	baseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
-		false, false, StyleSheet_StyleKindMenuItem()).Value)
+func (r *runtime) drawPopupMenu(id, className, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
+	baseStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny()).Value)
 	font, fontID := styleTextFace(baseStyle, Text14)
 	metrics := Menu_MenuMetricsFor(1)
 	width := metrics.PanelMinWidth
@@ -5323,9 +5323,10 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			}
 		}
 	}
-	panelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal,
-		false, false, StyleSheet_StyleKindMenu(), 2)
-	separatorStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindMenuSeparator()).Value)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenu(), 2)
+	separatorStyle := unpackStyle(simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, className, StyleSheet_StyleKindMenuSeparator(), StyleSheet_StyleAny()).Value)
 	r.record(styleFrameRectOp(panel, Rectangle{}, panelFrame))
 	for i, item := range items {
 		row := Menu_MenuRowBounds(panel, int32(i), metrics)
@@ -5335,7 +5336,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 		}
 		hovered := !r.contentDisabled() && pointInRect(r.mousePos.X, r.mousePos.Y, row)
 		selected := keyboard && len(state.Path) > depth && state.Path[depth] == i
-		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		itemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 			if item.Disabled {
 				return ButtonStateDisabled
 			}
@@ -5346,7 +5347,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 				return ButtonStateSelected
 			}
 			return ButtonStateNormal
-		}(), item.Disabled, selected, StyleSheet_StyleKindMenuItem())
+		}(), item.Disabled, selected, className, StyleSheet_StyleKindMenuItem(), StyleSheet_StyleAny())
 		itemStyle := unpackStyle(itemFrame.Value)
 		itemFont, itemFontID := styleTextFace(itemStyle, font)
 		if hovered && !item.Disabled {
@@ -5392,7 +5393,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			}
 			if submenuOpen {
 				subitems := limitedMenuItems(item.Submenu, item.SubmenuCount)
-				activated, _ := r.drawPopupMenu(item.ID, Menu_MenuSubmenuX(row), int32(row.Y), subitems, focusID, depth+1, handled)
+				activated, _ := r.drawPopupMenu(item.ID, className, Menu_MenuSubmenuX(row), int32(row.Y), subitems, focusID, depth+1, handled)
 				if activated != 0 {
 					return activated, panel
 				}
@@ -5402,7 +5403,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 	return 0, panel
 }
 
-func (r *runtime) popupMenu(id, x, y int32, items []MenuItem, itemCount int32) int32 {
+func (r *runtime) popupMenu(id, className, x, y int32, items []MenuItem, itemCount int32) int32 {
 	items = limitedMenuItems(items, itemCount)
 	if !r.contentDisabled() {
 		r.registerField(id)
@@ -5414,7 +5415,7 @@ func (r *runtime) popupMenu(id, x, y int32, items []MenuItem, itemCount int32) i
 		return 0
 	}
 	handled := false
-	selected, _ := r.drawPopupMenu(id, x, y, items, id, 0, &handled)
+	selected, _ := r.drawPopupMenu(id, className, x, y, items, id, 0, &handled)
 	return selected
 }
 
@@ -5463,7 +5464,7 @@ func (r *runtime) contextMenu(props MenuProps) int32 {
 		return 0
 	}
 	handled := false
-	selected, panel := r.drawPopupMenu(props.ID, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount), props.ID, 0, &handled)
+	selected, panel := r.drawPopupMenu(props.ID, props.ClassName, int32(pos.X), int32(pos.Y), limitedMenuItems(props.Items, props.ItemCount), props.ID, 0, &handled)
 	closeMenu := selected != 0
 	if !closeMenu && !r.contentDisabled() {
 		for i := range r.taps {
@@ -5489,10 +5490,10 @@ func (r *runtime) Menu(props MenuProps) MenuResult {
 	result := MenuResult{OpenIndex: -1}
 	switch props.Mode {
 	case MenuModeBar:
-		return r.menuBar(props.ID, props.Bounds,
+		return r.menuBar(props.ID, props.ClassName, props.Bounds,
 			limitedMenus(props.Menus, props.MenuCount), props.OpenIndex)
 	case MenuModePopup:
-		result.ActivatedID = r.popupMenu(props.ID, int32(props.Bounds.X),
+		result.ActivatedID = r.popupMenu(props.ID, props.ClassName, int32(props.Bounds.X),
 			int32(props.Bounds.Y), props.Items, props.ItemCount)
 		return result
 	default:

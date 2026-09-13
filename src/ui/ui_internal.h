@@ -482,10 +482,11 @@ int RenderSelectable(SelectableProps selectable);
 int RenderCheckbox(CheckboxProps checkbox);
 void RenderBullet(Rectangle bounds);
 int RenderColorPicker(ColorPickerProps picker);
-MenuResult RenderMenuGroups(int id, Rectangle bounds, const MenuGroup *menus,
-                            int menu_count, int *open_index);
-int RenderPopupMenu(int id, int x, int y, const MenuItem *items,
-                    int item_count);
+MenuResult RenderMenuGroups(int id, int class_name, Rectangle bounds,
+                            const MenuGroup *menus, int menu_count,
+                            int *open_index);
+int RenderPopupMenu(int id, int class_name, int x, int y,
+                    const MenuItem *items, int item_count);
 int RenderContextMenu(MenuProps menu);
 MenuResult RenderMenu(MenuProps menu);
 int RenderRadio(RadioProps radio);
