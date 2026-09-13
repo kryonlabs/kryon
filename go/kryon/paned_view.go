@@ -19,7 +19,7 @@ func PanedView_PanedViewMetric(fields uint32, field uint32, value float32, fallb
 	if !value_6 {
 		var value_7 float32 = value
 		var value_8 float32 = 0.0
-		var value_9 bool = value_7 <= value_8
+		var value_9 bool = value_7 < value_8
 		value_6 = value_9
 	}
 	if value_6 {
