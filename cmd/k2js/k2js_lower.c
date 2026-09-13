@@ -401,9 +401,9 @@ js_string(FILE *f, const char *s)
 static const char *
 canonical_widget_name(const char *widget)
 {
-    if(strcmp(widget, "BeginButton") == 0)
+    if(strcmp(widget, "ButtonScope") == 0)
         return "Button";
-    if(strcmp(widget, "BeginCard") == 0)
+    if(strcmp(widget, "CardScope") == 0)
         return "Card";
     return widget;
 }

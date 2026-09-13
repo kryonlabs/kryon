@@ -451,13 +451,13 @@ Layout :: (settings: Settings) #ui {
         assert "chosen" in generated, (target, "lost explicit layout key")
         if target == "js":
             assert generated.count('"Button"') == 2, (target, "button calls should use the canonical widget name")
-            assert '"BeginButton"' not in generated, (target, "JS output exposed lowered button scope")
+            assert '"ButtonScope"' not in generated, (target, "JS output exposed lowered button scope")
             assert generated.count('"Card"') == 2, (target, "card calls should use the canonical widget name")
-            assert '"BeginCard"' not in generated, (target, "JS output exposed lowered card scope")
+            assert '"CardScope"' not in generated, (target, "JS output exposed lowered card scope")
         else:
             assert len(re.findall(r"(?<![A-Za-z])Button\(", generated)) == 1, (target, "leaf button opened a content scope")
-            assert generated.count("BeginButton(") == 1, (target, "composed button lost its content scope")
+            assert generated.count("ButtonScope(") == 1, (target, "composed button lost its content scope")
             assert len(re.findall(r"(?<![A-Za-z])Card\(", generated)) == 1, (target, "leaf card opened a content scope")
-            assert generated.count("BeginCard(") == 1, (target, "composed card lost its content scope")
+            assert generated.count("CardScope(") == 1, (target, "composed card lost its content scope")
 
 print("widget declarations: typed blocks and ordinary calls agree in C, C++, Go, JavaScript")

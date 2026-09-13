@@ -2065,7 +2065,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         int is_card = strcmp(block->widget, "Card") == 0;
         const char *constructor = closing
             ? block->widget
-            : (is_card ? "BeginCard" : "BeginButton");
+            : (is_card ? "CardScope" : "ButtonScope");
         const char *props_type = is_card ? "CardProps" : "ButtonProps";
         ui_block_format(args, sizeof(args), span, "(%s){%s}", props_type, block->props);
         ui_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);

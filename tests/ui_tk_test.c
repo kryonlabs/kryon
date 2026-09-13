@@ -4129,7 +4129,7 @@ test_card_props_retained_input(void)
 
     BeginInterfaceFrame(240,180,1);
     BeginTree(Key("card-content-scope"));
-    card = BeginCard((CardProps){.bounds={10,10,120,80}});
+    card = CardScope((CardProps){.bounds={10,10,120,80}});
     Text((TextProps){.text="Inside"});
     End();
     EndTree();

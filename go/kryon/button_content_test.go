@@ -199,7 +199,7 @@ Button.child-padding:hover { padding-x: 0; padding-y: 0; }`, "Button Children", 
 	r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStateNormal} {
 		r.BeginFrame()
-		r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 901, State: state,
+		r.ButtonScope(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 901, State: state,
 			ClassName: StyleClassID("child-padding")})
 		r.Column(ColumnProps{})
 		r.End()

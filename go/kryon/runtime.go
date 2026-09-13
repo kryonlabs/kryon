@@ -539,10 +539,10 @@ type Runtime interface {
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Card(CardProps) bool
-	BeginCard(CardProps)
+	CardScope(CardProps)
 	Button(ButtonProps) bool
 	ReadActivation(bounds Rectangle, id int32, enabled bool) Activation
-	BeginButton(ButtonProps)
+	ButtonScope(ButtonProps)
 	Selectable(SelectableProps) bool
 	Checkbox(CheckboxProps) bool
 	Bullet(Rectangle)
@@ -1567,7 +1567,7 @@ func (r *runtime) Card(props CardProps) bool {
 	return pressed
 }
 
-func (r *runtime) BeginCard(props CardProps) {
+func (r *runtime) CardScope(props CardProps) {
 	button := r.resolveSurfaceButtonPropsForKind(cardButtonProps(props), false, StyleSheet_StyleKindCard())
 	button.Bounds = r.layoutRect(button.Bounds)
 	button.Label = ""
@@ -1581,7 +1581,7 @@ func (r *runtime) BeginCard(props CardProps) {
 	})
 }
 
-func (r *runtime) BeginButton(props ButtonProps) {
+func (r *runtime) ButtonScope(props ButtonProps) {
 	label := props.Label
 	props = r.resolveButtonProps(props)
 	props.Bounds = r.layoutRect(props.Bounds)

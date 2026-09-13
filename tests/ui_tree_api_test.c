@@ -106,13 +106,13 @@ main(void)
     ScaffoldFixture scaffold_fixture = {.closed = 1};
 
     BeginTree(7000);
-    BeginButton((ButtonProps){
+    ButtonScope((ButtonProps){
         .bounds = {10, 10, 120, 40},
         .label = "Save",
         .id = 7001
     });
     End();
-    BeginButton((ButtonProps){
+    ButtonScope((ButtonProps){
         .bounds = {150, 10, 120, 40},
         .id = 7002
     });

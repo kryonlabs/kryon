@@ -373,12 +373,12 @@ func TestButtonLabelAndTextChildUseSameTextPath(t *testing.T) {
 		Label:  "Save", ID: 991,
 	}
 
-	rt.BeginButton(props)
+	rt.ButtonScope(props)
 	rt.End()
 	shorthand := append([]FrameOp(nil), rt.ops...)
 	rt.ops = nil
 	props.Label = ""
-	rt.BeginButton(props)
+	rt.ButtonScope(props)
 	rt.Text(TextProps{Text: "Save", Wrap: TextWrapNone})
 	rt.End()
 	composed := append([]FrameOp(nil), rt.ops...)

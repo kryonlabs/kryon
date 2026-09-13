@@ -206,14 +206,16 @@ func SegmentedControl(props SegmentedControlProps) SegmentedControlResult {
 func StylePicker(props StylePickerProps) bool {
 	return active().StylePicker(props)
 }
-func Column(props ColumnProps)  { active().Column(props) }
-func Row(props ColumnProps)     { active().Row(props) }
-func Group(props ColumnProps)   { active().Group(props) }
-func Stack(props ColumnProps)   { active().Stack(props) }
-func Screen(props ColumnProps)  { active().Screen(props) }
-func Grid(props GridProps)      { active().Grid(props) }
-func End()                      { active().End() }
-func SetPageTitle(title string) { active().SetPageTitle(title) }
+func ButtonScope(props ButtonProps) { active().ButtonScope(props) }
+func CardScope(props CardProps)     { active().CardScope(props) }
+func Column(props ColumnProps)      { active().Column(props) }
+func Row(props ColumnProps)         { active().Row(props) }
+func Group(props ColumnProps)       { active().Group(props) }
+func Stack(props ColumnProps)       { active().Stack(props) }
+func Screen(props ColumnProps)      { active().Screen(props) }
+func Grid(props GridProps)          { active().Grid(props) }
+func End()                          { active().End() }
+func SetPageTitle(title string)     { active().SetPageTitle(title) }
 func SetPageDescription(description string) {
 	active().SetPageDescription(description)
 }

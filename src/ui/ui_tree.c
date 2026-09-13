@@ -3578,7 +3578,7 @@ Button(ButtonProps button)
 }
 
 NodeId
-BeginButton(ButtonProps button)
+ButtonScope(ButtonProps button)
 {
     ButtonSpec spec;
     NodeId node;
@@ -3640,7 +3640,7 @@ Menu(MenuProps menu)
 }
 
 NodeId
-BeginCard(CardProps card)
+CardScope(CardProps card)
 {
     ButtonProps button = ui_card_button_props(card);
     ButtonSpec spec;

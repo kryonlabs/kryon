@@ -70,7 +70,7 @@ Button.composed:hover { foreground: #1464f0; opacity: 1; }`, "Button Composed", 
 		draw := func(delta time.Duration) FrameOp {
 			now = now.Add(delta)
 			r.BeginFrame()
-			r.BeginButton(props)
+			r.ButtonScope(props)
 			r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
 			r.Text(TextProps{Text: "Inherited"})
 			r.End()
@@ -220,7 +220,7 @@ Button.text-parent { foreground: #11223380; opacity: 0.5; }
 	}
 	r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	r.BeginFrame()
-	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 923,
+	r.ButtonScope(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 923,
 		ClassName: StyleClassID("text-parent")})
 	r.Text(TextProps{Text: "Transparent", ClassName: StyleClassID("transparent")})
 	r.Text(TextProps{Text: "Half", ClassName: StyleClassID("half")})
@@ -290,7 +290,7 @@ Text.outside-text { foreground: #445566; font-size: 13; }`, "Button Transparent 
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
 	r.BeginFrame()
-	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, ID: 992,
+	r.ButtonScope(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, ID: 992,
 		ClassName: StyleClassID("transparent-text")})
 	r.BeginDisabled(true)
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
@@ -331,7 +331,7 @@ Text.explicit-disabled { foreground: #44556680; }`, "Button Disabled Text", "") 
 		r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 		r.BeginFrame()
 		r.BeginDisabled(scoped)
-		r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 963, Disabled: !scoped,
+		r.ButtonScope(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 963, Disabled: !scoped,
 			ClassName: StyleClassID("disabled-text")})
 		r.Text(TextProps{Text: "Inherited"})
 		r.Text(TextProps{Text: "Explicit", ClassName: StyleClassID("explicit-disabled")})
@@ -368,7 +368,7 @@ Text.explicit-text { foreground: #445566; font-size: 13; }`, "Button Inherit Tex
 		t.Fatal("button inherit text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
-	r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 991,
+	r.ButtonScope(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 991,
 		ClassName: StyleClassID("inherit-text")})
 	r.Text(TextProps{Text: "Inherited", Wrap: TextWrapNone})
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
