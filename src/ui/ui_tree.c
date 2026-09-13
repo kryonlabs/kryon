@@ -32,15 +32,15 @@ ui_paint_surface(Rectangle bounds, Style style)
 }
 
 #define TREE_MAX_DEPTH TREE_LAYOUT_DEPTH
-#define UI_NODE_HOVERED (1U << 28)
-#define UI_NODE_PRESSED (1U << 29)
-#define UI_NODE_OWNS_STATE (1U << 30)
-#define UI_NODE_PAINTED_IMMEDIATE (1U << 27)
-#define UI_NODE_SCOPE_DISABLED (1U << 26)
-#define UI_NODE_INHERIT_FOREGROUND (1U << 25)
-#define UI_NODE_TEXT_DISABLED (1U << 24)
-#define UI_NODE_TEXT_INPUT_PAINT (1U << 23)
-#define UI_NODE_BUILD_ACTIVATED (1U << 22)
+#define NODE_HOVERED (1U << 28)
+#define NODE_PRESSED (1U << 29)
+#define NODE_OWNS_STATE (1U << 30)
+#define NODE_PAINTED_IMMEDIATE (1U << 27)
+#define NODE_SCOPE_DISABLED (1U << 26)
+#define NODE_INHERIT_FOREGROUND (1U << 25)
+#define NODE_TEXT_DISABLED (1U << 24)
+#define NODE_TEXT_INPUT_PAINT (1U << 23)
+#define NODE_BUILD_ACTIVATED (1U << 22)
 
 typedef struct TextFieldState {
     int cursor;
@@ -471,8 +471,8 @@ ui_reconcile_node_changed(const TreeNode *old_node,
               sizeof(old_node->declared_bounds)) != 0)
         return 1;
     old_data = old_node->data;
-    if((old_node->flags & UI_NODE_SCOPE_DISABLED) != (new_node->flags & UI_NODE_SCOPE_DISABLED)) return 1;
-    unsigned text_flags = UI_NODE_INHERIT_FOREGROUND | UI_NODE_TEXT_DISABLED;
+    if((old_node->flags & NODE_SCOPE_DISABLED) != (new_node->flags & NODE_SCOPE_DISABLED)) return 1;
+    unsigned text_flags = NODE_INHERIT_FOREGROUND | NODE_TEXT_DISABLED;
     if((old_node->flags & text_flags) != (new_node->flags & text_flags))
         return 1;
     if(old_node->has_input_clip != new_node->has_input_clip ||
@@ -548,7 +548,7 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
     node->paint_capture = ui_tree_capture_paint();
     node->popup_input_capture = ui_tree_capture_input();
     node->font_token = ui_active_font_token();
-    if(ContentDisabled()) node->flags |= UI_NODE_SCOPE_DISABLED;
+    if(ContentDisabled()) node->flags |= NODE_SCOPE_DISABLED;
     node->props = props;
     node->parent = -1;
     node->first_child = -1;
@@ -640,7 +640,7 @@ ui_tree_store_node(NodeId id, TreeNode src)
     src.has_input_clip = dst->has_input_clip;
     src.paint_capture = dst->paint_capture;
     src.popup_input_capture = dst->popup_input_capture;
-    src.flags |= dst->flags & UI_NODE_SCOPE_DISABLED;
+    src.flags |= dst->flags & NODE_SCOPE_DISABLED;
     *dst = src;
 }
 
@@ -653,7 +653,7 @@ ui_tree_mark_painted_immediate(NodeId id)
         return;
     node = ui_tree_node(id);
     if(node != NULL)
-        node->flags |= UI_NODE_PAINTED_IMMEDIATE;
+        node->flags |= NODE_PAINTED_IMMEDIATE;
 }
 
 static void
@@ -667,7 +667,7 @@ static void
 ui_tree_mark_build_activation(NodeId node, int activated)
 {
     if(ui_tree_building && activated && node >= 0)
-        ui_tree_nodes[node].flags |= UI_NODE_BUILD_ACTIVATED;
+        ui_tree_nodes[node].flags |= NODE_BUILD_ACTIVATED;
     ui_tree_note_build_activation(activated);
 }
 
@@ -1051,11 +1051,11 @@ ReconcileTree(void)
                                           ui_tree_nodes, i)) {
                 next.state = old_nodes[old].state;
                 next.flags |= old_nodes[old].flags &
-                    (UI_NODE_OWNS_STATE | UI_NODE_HOVERED | UI_NODE_PRESSED);
+                    (NODE_OWNS_STATE | NODE_HOVERED | NODE_PRESSED);
                 matched_old[i] = old;
                 if(ui_reconcile_node_changed(&old_nodes[old], &next))
                     tree_changed = 1;
-                old_nodes[old].flags &= ~UI_NODE_OWNS_STATE;
+                old_nodes[old].flags &= ~NODE_OWNS_STATE;
                 break;
             }
             slot = (slot + 1U) & (unsigned)(slot_count - 1);
@@ -1075,7 +1075,7 @@ ReconcileTree(void)
     }
     for(i = 0; i < old_count; i++) {
         free(old_nodes[i].owned_text);
-        if((old_nodes[i].flags & UI_NODE_OWNS_STATE) != 0)
+        if((old_nodes[i].flags & NODE_OWNS_STATE) != 0)
             free(old_nodes[i].state);
     }
     for(i = 0; i < ui_tree_node_count; i++) {
@@ -1100,7 +1100,7 @@ ReconcileTree(void)
                     ? *cursor_position : length);
                 state->focused = focused != NULL ? *focused != 0 : 0;
                 node->state = state;
-                node->flags |= UI_NODE_OWNS_STATE;
+                node->flags |= NODE_OWNS_STATE;
             }
         }
     }
@@ -1242,7 +1242,7 @@ RouteInput(void)
         TreeNode *node = &ui_committed_nodes[i];
         int focus_id = 0;
 
-        if((node->flags & UI_NODE_SCOPE_DISABLED) != 0) continue;
+        if((node->flags & NODE_SCOPE_DISABLED) != 0) continue;
         if(node->kind == WIDGET_TEXT_FIELD)
             focus_id = node->data.text_field.focus_id;
         else if(node->kind == WIDGET_TEXT_AREA)
@@ -1266,14 +1266,14 @@ RouteInput(void)
         if(!ui_tree_interactive_button_like(node))
             continue;
         before = node->flags;
-        node->flags &= ~(UI_NODE_HOVERED | UI_NODE_PRESSED);
-        if((node->flags & UI_NODE_SCOPE_DISABLED) == 0 &&
+        node->flags &= ~(NODE_HOVERED | NODE_PRESSED);
+        if((node->flags & NODE_SCOPE_DISABLED) == 0 &&
            !ui_tree_input_blocked(node,mouse) &&
            (!node->has_input_clip || CheckCollisionPointRec(mouse,node->input_clip)) &&
            CheckCollisionPointRec(mouse, node->bounds)) {
-            node->flags |= UI_NODE_HOVERED;
+            node->flags |= NODE_HOVERED;
             if(pressed)
-                node->flags |= UI_NODE_PRESSED;
+                node->flags |= NODE_PRESSED;
         }
         if(before != node->flags)
             ui_tree_invalid |= INVALIDATE_PAINT;
@@ -1294,7 +1294,7 @@ RouteInput(void)
         TreeNode *node = &ui_committed_nodes[i];
         Event event;
 
-        int build_activated = (node->flags & UI_NODE_BUILD_ACTIVATED) != 0;
+        int build_activated = (node->flags & NODE_BUILD_ACTIVATED) != 0;
 
         if(!ui_tree_interactive_button_like(node) ||
            (!build_activated &&
@@ -1308,7 +1308,7 @@ RouteInput(void)
         event.kind = EVENT_CLICK;
         event.timestamp = GetTime();
         ui_event_push(event);
-        node->flags &= ~UI_NODE_BUILD_ACTIVATED;
+        node->flags &= ~NODE_BUILD_ACTIVATED;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     for(i = 0; i < ui_committed_node_count; i++) {
@@ -1327,7 +1327,7 @@ RouteInput(void)
             node->kind != WIDGET_TEXT_AREA) ||
            node->state == NULL)
             continue;
-        if((node->flags & UI_NODE_SCOPE_DISABLED) != 0) {
+        if((node->flags & NODE_SCOPE_DISABLED) != 0) {
             int id = node->kind == WIDGET_TEXT_FIELD
                 ? node->data.text_field.focus_id : node->data.text_area.focus_id;
             /* Input sent to a disabled focused editor must not be replayed
@@ -1705,10 +1705,10 @@ ui_tree_inherit_foreground(int parent, Color foreground, bool disabled)
         if(ui_tree_button_like_kind(node->kind))
             continue;
         if(node->kind == WIDGET_TEXT &&
-           (node->flags & UI_NODE_INHERIT_FOREGROUND) != 0) {
+           (node->flags & NODE_INHERIT_FOREGROUND) != 0) {
             TextAppearance appearance = ResolveTextStyle(0, 0, 16, 0,
                 ColorToInt(foreground), 0, true, false,
-                (node->flags & UI_NODE_TEXT_DISABLED) != 0, disabled, 0);
+                (node->flags & NODE_TEXT_DISABLED) != 0, disabled, 0);
             node->data.primitive.color = GetColor(Opacity(appearance.color,
                 node->data.primitive.style.opacity));
         }
@@ -1732,7 +1732,7 @@ DrawTree(void)
         ClipState parent_clip = {0};
         BlendState parent_blend = {{0}};
 
-        if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
+        if((node->flags & NODE_PAINTED_IMMEDIATE) != 0)
             continue;
 
         /* Slider/toggle/checkbox helpers also route their legacy input. Keep
@@ -1757,12 +1757,12 @@ DrawTree(void)
                 BeginClip((int)capture->clip.x,(int)capture->clip.y,
                             (int)capture->clip.width,(int)capture->clip.height);
         }
-        DisabledScope((node->flags & UI_NODE_SCOPE_DISABLED) != 0);
+        DisabledScope((node->flags & NODE_SCOPE_DISABLED) != 0);
         if(node->has_input_clip) {
             PushInputClip(node->input_clip);
             if(window_ready) BeginClip((int)node->input_clip.x,(int)node->input_clip.y,(int)node->input_clip.width,(int)node->input_clip.height);
         }
-        if((node->flags & UI_NODE_TEXT_INPUT_PAINT) != 0) {
+        if((node->flags & NODE_TEXT_INPUT_PAINT) != 0) {
             ui_paint_text_input(node->bounds, node->owned_text,
                                 ui_tree_load_text_input_paint(node));
             if(node->has_input_clip) {
@@ -1825,7 +1825,7 @@ DrawTree(void)
             DrawRectangleRec(node->bounds, node->data.primitive.color);
             break;
         case WIDGET_TEXT:
-            if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
+            if((node->flags & NODE_PAINTED_IMMEDIATE) != 0)
                 break;
             if(node->data.primitive.heading_level > 0)
                 ui_tree_heading_semantic(
@@ -1882,13 +1882,13 @@ DrawTree(void)
             int hovered;
             int pressed;
 
-            if((node->flags & UI_NODE_PAINTED_IMMEDIATE) != 0)
+            if((node->flags & NODE_PAINTED_IMMEDIATE) != 0)
                 break;
             spec.props.bounds = node->bounds;
             spec.props.label = node->first_child >= 0 ? "" :
                 (node->owned_text != NULL ? node->owned_text : "");
-            hovered = (node->flags & UI_NODE_HOVERED) != 0;
-            pressed = (node->flags & UI_NODE_PRESSED) != 0;
+            hovered = (node->flags & NODE_HOVERED) != 0;
+            pressed = (node->flags & NODE_PRESSED) != 0;
             Color foreground = ui_paint_button(spec, hovered, pressed);
             ui_tree_inherit_foreground(i, foreground, node->data.button.props.disabled);
             break;
@@ -2171,7 +2171,7 @@ HitTestNode(Vector2 point)
         ? ui_committed_node_count : ui_tree_node_count;
 
     for(i = count - 1; i >= 0; i--) {
-        if((nodes[i].flags & UI_NODE_SCOPE_DISABLED) != 0) continue;
+        if((nodes[i].flags & NODE_SCOPE_DISABLED) != 0) continue;
         if(ui_tree_input_blocked(&nodes[i],point)) continue;
         if(nodes[i].bounds.width <= 0 || nodes[i].bounds.height <= 0)
             continue;
@@ -2507,9 +2507,9 @@ Text(TextProps props)
         ui_tree_nodes[node].data.primitive.align = props.align;
         ui_tree_nodes[node].data.primitive.vertical_align = props.vertical_align;
         if((style.fields & StyleForeground) == 0 && inherited_color_set)
-            ui_tree_nodes[node].flags |= UI_NODE_INHERIT_FOREGROUND;
+            ui_tree_nodes[node].flags |= NODE_INHERIT_FOREGROUND;
         if(props.disabled)
-            ui_tree_nodes[node].flags |= UI_NODE_TEXT_DISABLED;
+            ui_tree_nodes[node].flags |= NODE_TEXT_DISABLED;
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     int selectable_token = PushTextSelectable(props.selectable);
@@ -2710,7 +2710,7 @@ ui_tree_submit_text_input(Rectangle bounds, const char *text,
     }
     NodeId id = ui_tree_add(focus_id, WIDGET_CUSTOM, bounds, NULL);
     if(id >= 0) {
-        ui_tree_nodes[id].flags |= UI_NODE_TEXT_INPUT_PAINT;
+        ui_tree_nodes[id].flags |= NODE_TEXT_INPUT_PAINT;
         ui_tree_nodes[id].owned_text = ui_tree_strdup(text);
         ui_tree_store_text_input_paint(&ui_tree_nodes[id], paint);
         InvalidateTree(INVALIDATE_PAINT);
@@ -3318,7 +3318,7 @@ ui_tree_paint_before_overlay(void)
             if(ui_tree_nodes[i].owned_text != NULL)
                 memcpy(ui_tree_nodes[i].owned_text,ui_committed_nodes[i].owned_text,size);
         }
-        ui_tree_nodes[i].flags |= UI_NODE_PAINTED_IMMEDIATE;
+        ui_tree_nodes[i].flags |= NODE_PAINTED_IMMEDIATE;
     }
 }
 

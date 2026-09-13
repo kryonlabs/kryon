@@ -1,20 +1,20 @@
 #include "ui_internal.h"
 #include "ui_inspect.h"
 
-#define UI_INSPECT_MAX_WIDGETS 512
-#define UI_INSPECT_MAX_OVERRIDES 512
-#define UI_INSPECT_ID_MAX 96
-#define UI_INSPECT_KIND_MAX 32
-#define UI_INSPECT_ACTION_MAX 64
-#define UI_INSPECT_PATH_MAX 512
-#define UI_INSPECT_SOURCE_STACK_MAX 32
-#define UI_INSPECT_TRANSFORM_STACK_MAX 16
+#define INSPECT_MAX_WIDGETS 512
+#define INSPECT_MAX_OVERRIDES 512
+#define INSPECT_ID_MAX 96
+#define INSPECT_KIND_MAX 32
+#define INSPECT_ACTION_MAX 64
+#define INSPECT_PATH_MAX 512
+#define INSPECT_SOURCE_STACK_MAX 32
+#define INSPECT_TRANSFORM_STACK_MAX 16
 
 typedef struct InspectWidget {
-    char id[UI_INSPECT_ID_MAX];
-    char kind[UI_INSPECT_KIND_MAX];
-    char action[UI_INSPECT_ACTION_MAX];
-    char source_path[UI_INSPECT_PATH_MAX];
+    char id[INSPECT_ID_MAX];
+    char kind[INSPECT_KIND_MAX];
+    char action[INSPECT_ACTION_MAX];
+    char source_path[INSPECT_PATH_MAX];
     Rectangle bounds;
     Rectangle screen_bounds;
     float screen_zoom;
@@ -26,7 +26,7 @@ typedef struct InspectWidget {
 } InspectWidget;
 
 typedef struct InspectOverride {
-    char id[UI_INSPECT_ID_MAX];
+    char id[INSPECT_ID_MAX];
     Rectangle bounds;
     int enabled;
 } InspectOverride;
@@ -42,19 +42,19 @@ typedef struct InspectState {
     int chrome_depth;
     int canvas_active;
     Rectangle canvas_bounds;
-    Camera2D transform_stack[UI_INSPECT_TRANSFORM_STACK_MAX];
+    Camera2D transform_stack[INSPECT_TRANSFORM_STACK_MAX];
     int transform_depth;
     Vector2 drag_start;
     Rectangle edit_start;
-    char project_root[UI_INSPECT_PATH_MAX];
-    char source_path_stack[UI_INSPECT_SOURCE_STACK_MAX][UI_INSPECT_PATH_MAX];
-    int source_line_stack[UI_INSPECT_SOURCE_STACK_MAX];
+    char project_root[INSPECT_PATH_MAX];
+    char source_path_stack[INSPECT_SOURCE_STACK_MAX][INSPECT_PATH_MAX];
+    int source_line_stack[INSPECT_SOURCE_STACK_MAX];
     int source_depth;
-    int widget_stack[UI_INSPECT_MAX_WIDGETS];
+    int widget_stack[INSPECT_MAX_WIDGETS];
     int widget_depth;
-    InspectWidget widgets[UI_INSPECT_MAX_WIDGETS];
+    InspectWidget widgets[INSPECT_MAX_WIDGETS];
     int widget_count;
-    InspectOverride overrides[UI_INSPECT_MAX_OVERRIDES];
+    InspectOverride overrides[INSPECT_MAX_OVERRIDES];
     int override_count;
 } InspectState;
 
@@ -141,7 +141,7 @@ ui_inspect_get_override(const char *id)
     override = ui_inspect_find_override(id);
     if(override != NULL)
         return override;
-    if(g_ui_inspect.override_count >= UI_INSPECT_MAX_OVERRIDES)
+    if(g_ui_inspect.override_count >= INSPECT_MAX_OVERRIDES)
         return NULL;
     override = &g_ui_inspect.overrides[g_ui_inspect.override_count++];
     memset(override, 0, sizeof(*override));
@@ -248,7 +248,7 @@ static int
 ui_inspect_match_selector(const InspectWidget *widget, const char *selector)
 {
     const char *value;
-    char source[UI_INSPECT_PATH_MAX + 32];
+    char source[INSPECT_PATH_MAX + 32];
 
     if(widget == NULL || selector == NULL || selector[0] == '\0')
         return 0;
@@ -373,7 +373,7 @@ PushInspectTransform(Camera2D camera)
 
     ui_inspect_init_from_env();
     token = g_ui_inspect.transform_depth;
-    if(g_ui_inspect.transform_depth >= UI_INSPECT_TRANSFORM_STACK_MAX)
+    if(g_ui_inspect.transform_depth >= INSPECT_TRANSFORM_STACK_MAX)
         return token;
     if(camera.zoom <= 0.0f)
         camera.zoom = 1.0f;
@@ -454,7 +454,7 @@ PushInspectSource(const char *path, int line)
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled)
         return;
-    if(g_ui_inspect.source_depth >= UI_INSPECT_SOURCE_STACK_MAX)
+    if(g_ui_inspect.source_depth >= INSPECT_SOURCE_STACK_MAX)
         return;
     index = g_ui_inspect.source_depth++;
     ui_inspect_strncpy(g_ui_inspect.source_path_stack[index],
@@ -483,7 +483,7 @@ ui_inspect_register_widget(const char *id, const char *kind,
 
     ui_inspect_init_from_env();
     if(!g_ui_inspect.enabled || id == NULL || id[0] == '\0' ||
-       bounds == NULL || g_ui_inspect.widget_count >= UI_INSPECT_MAX_WIDGETS)
+       bounds == NULL || g_ui_inspect.widget_count >= INSPECT_MAX_WIDGETS)
         return -1;
     if(g_ui_inspect.chrome_depth > 0)
         return -1;
@@ -565,7 +565,7 @@ BeginWidget(const char *kind, const char *id, Rectangle bounds, int flags)
     if(index >= 0) {
         widget.index = index;
         widget.active = 1;
-        if(g_ui_inspect.widget_depth < UI_INSPECT_MAX_WIDGETS)
+        if(g_ui_inspect.widget_depth < INSPECT_MAX_WIDGETS)
             g_ui_inspect.widget_stack[g_ui_inspect.widget_depth++] = index;
     }
     return widget;

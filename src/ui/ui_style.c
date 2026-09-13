@@ -74,11 +74,11 @@ typedef struct {
     float age;
     int active;
     unsigned long frame_seen;
-} UIDefaultRipple;
+} DefaultRipple;
 
 #define DEFAULT_RIPPLE_MAX 64
 
-static UIDefaultRipple g_default_ripples[DEFAULT_RIPPLE_MAX];
+static DefaultRipple g_default_ripples[DEFAULT_RIPPLE_MAX];
 #endif
 
 ThemeMetrics
@@ -640,7 +640,7 @@ ui_default_ripple(Rectangle bounds, Color on_color, int key, int pressed)
     (void)pressed;
     return;
 #else
-    UIDefaultRipple *ripple;
+    DefaultRipple *ripple;
     Vector2 mouse;
     float dt;
     float max_radius;
