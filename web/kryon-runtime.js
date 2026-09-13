@@ -7128,6 +7128,41 @@ function webDOMRelationsForNode(target, node) {
   };
 }
 
+function syncWebFieldsetLegend(el, docNode) {
+  if (!el || String(docNode?.tag || "").toLowerCase() !== "fieldset")
+    return;
+  const label = String(docNode.ariaLabel || docNode.title || "").trim();
+  let legend = el.__kryLegend || null;
+  if (!label) {
+    if (legend?.parentNode && typeof legend.parentNode.removeChild === "function")
+      legend.parentNode.removeChild(legend);
+    el.__kryLegend = null;
+    return;
+  }
+  if (!legend || legend.tagName?.toLowerCase() !== "legend") {
+    legend = document.createElement("legend");
+    legend.dataset.kryGenerated = "legend";
+    el.__kryLegend = legend;
+  }
+  legend.textContent = label;
+  if (el.children?.[0] === legend)
+    return;
+  if (typeof el.insertBefore === "function") {
+    el.insertBefore(legend, el.children?.[0] || null);
+    return;
+  }
+  if (Array.isArray(el.children)) {
+    const index = el.children.indexOf(legend);
+    if (index >= 0)
+      el.children.splice(index, 1);
+    legend.parentNode = el;
+    el.children.unshift(legend);
+    return;
+  }
+  if (typeof el.appendChild === "function")
+    el.appendChild(legend);
+}
+
 function applyWebNode(el, docNode, rt) {
   el.__kryDocNode = docNode;
   el.__kryRuntime = rt;
@@ -7202,7 +7237,8 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "placeholder", docNode.placeholder);
   setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
   setAttr(el, "role", webDOMRole(docNode));
-  setAttr(el, "aria-label", docNode.ariaLabel);
+  setAttr(el, "aria-label", docNode.tag === "fieldset" &&
+    (docNode.ariaLabel || docNode.title) ? "" : docNode.ariaLabel);
   setAttr(el, "aria-description", docNode.ariaDescription);
   setAttr(el, "aria-live", docNode.ariaLive);
   if (docNode.onClick)
@@ -7476,6 +7512,8 @@ function applyWebNode(el, docNode, rt) {
       el.indeterminate = !!docNode.state.indeterminate;
   } else if (docNode.tag === "textarea") {
     el.value = docNode.value;
+  } else if (docNode.tag === "fieldset") {
+    syncWebFieldsetLegend(el, docNode);
   } else {
     el.textContent = docNode.text;
   }
@@ -8133,6 +8171,11 @@ export function renderWebDocument(rt, target) {
       if (el.parentNode && typeof el.parentNode.removeChild === "function")
         el.parentNode.removeChild(el);
       children.delete(identity);
+  }
+  for (const docNode of frame.nodes) {
+    const identity = docNode.tag + ":" + (docNode.path || docNode.key);
+    const el = children.get(identity);
+    syncWebFieldsetLegend(el, docNode);
   }
   root.__kryChildren = children;
   syncWebDOMRootIndexes(root);

@@ -3123,7 +3123,9 @@ function fakeDocument() {
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");
-    assert.equal(fieldset.attributes["aria-label"], "Preferences");
+    assert.equal(fieldset.attributes["aria-label"], undefined);
+    assert.equal(fieldset.children[0].tagName, "LEGEND");
+    assert.equal(fieldset.children[0].textContent, "Preferences");
     assert.equal(fieldsetAgree.tagName, "INPUT");
     assert.equal(fieldsetAgree.attributes["aria-label"], "Agree");
     assert.equal(runtime.webDOMRelations(nativeTarget, "fieldsetAgree").groupOwner.ref,
@@ -3132,6 +3134,8 @@ function fakeDocument() {
       ["Page/fieldset/agree"]);
     assert.equal(lockedFieldset.tagName, "FIELDSET");
     assert.equal(lockedFieldset.attributes.disabled, "");
+    assert.equal(lockedFieldset.children[0].tagName, "LEGEND");
+    assert.equal(lockedFieldset.children[0].textContent, "Locked");
     assert.equal(lockedField.tagName, "INPUT");
     assert.equal(runtime.webDOMRelations(nativeTarget, "lockedField").disabledOwner.ref,
       "Page/locked");

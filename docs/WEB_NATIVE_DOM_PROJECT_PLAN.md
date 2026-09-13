@@ -84,6 +84,8 @@ the browser receives normal elements, attributes, CSS, and events.
   `dom_ref`, `web_ref`, or `kry_ref`.
 - Nodes with `dom_for`/`html_for` infer native `<label>` tags when no explicit
   tag override is present, so label ownership uses browser-native markup.
+- `Fieldset` titles render as native `<legend>` children while preserving Kry
+  label facts for queries, snapshots, KSS, and accessibility inspection.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata or direct `scope` args and surface row/column header roles in
   accessibility facts.

@@ -455,8 +455,10 @@ try {
     "root flow relation refs missing");
   assert(kryon.webDOMRelations(target, "emailOptIn").groupOwner.ref === "Page/article/options",
     "fieldset group owner relation missing");
-  assert(kryon.findWebElement(target, "options").getAttribute("aria-label") === "Options",
-    "fieldset accessible label missing");
+  assert(kryon.findWebElement(target, "options").firstElementChild?.tagName === "LEGEND",
+    "fieldset native legend missing");
+  assert(kryon.findWebElement(target, "options").firstElementChild?.textContent === "Options",
+    "fieldset native legend text missing");
   assert(kryon.findWebElement(target, "emailOptIn").getAttribute("aria-label") === "Email opt in",
     "checkbox accessible label missing");
   assert(kryon.webDOMRelationRefs(target, "options").groupMembers
@@ -466,6 +468,10 @@ try {
     "fieldset group owner snapshot missing");
   assert(kryon.findWebElement(target, "lockedOptions").getAttribute("disabled") === "",
     "disabled fieldset attribute missing");
+  assert(kryon.findWebElement(target, "lockedOptions").firstElementChild?.tagName === "LEGEND",
+    "disabled fieldset native legend missing");
+  assert(kryon.findWebElement(target, "lockedOptions").firstElementChild?.textContent === "Locked",
+    "disabled fieldset native legend text missing");
   assert(kryon.webDOMRelations(target, "lockedField").disabledOwner.ref ===
     "Page/article/lockedOptions", "disabled owner relation missing");
   assert(kryon.webDOMRelationRefs(target, "lockedOptions").disabledMembers
