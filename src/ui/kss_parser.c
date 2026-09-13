@@ -394,6 +394,10 @@ kss_role(const char *name)
         return 24;
     if(kss_ieq(name, "Placeholder"))
         return 25;
+    if(kss_ieq(name, "Option"))
+        return 26;
+    if(kss_ieq(name, "Scrollbar"))
+        return 27;
     return -999999;
 }
 

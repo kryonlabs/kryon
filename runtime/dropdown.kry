@@ -211,7 +211,7 @@ DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,
         (u32)StylePaddingY, panel.value.padding_y, 4.0, scale, true)
     metrics.padding_bottom = metrics.padding_top
     metrics.scrollbar_width = DropdownMetric(scrollbar.value.fields,
-        (u32)StylePaddingX, scrollbar.value.padding_x, 8.0, scale, false)
+        (u32)StyleIconSize, scrollbar.value.icon_size, 8.0, scale, false)
     metrics.scrollbar_gap = DropdownMetric(scrollbar.value.fields,
         (u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
     metrics.scrollbar_track_inset = DropdownMetric(scrollbar.value.fields,

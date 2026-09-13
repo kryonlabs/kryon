@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BUILTIN_STYLE_RULE_MAX 256
+#define BUILTIN_STYLE_RULE_MAX 320
 
 typedef struct BuiltInStylePack {
     const char *id;

@@ -1585,6 +1585,36 @@ Dropdown:selected {
   border: #d8c0ff;
 }
 
+Dropdown[role=Panel] {
+  background: panel;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
+Dropdown[role=Option]:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: #d8c0ff;
+}
+
 Slider {
   background: #2a303b;
   foreground: text;
@@ -3476,6 +3506,36 @@ Dropdown[tone=Accent] {
 }
 
 Dropdown:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
+Dropdown[role=Panel] {
+  background: card;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
+Dropdown[role=Option]:selected {
   background: accent;
   foreground: accent-ink;
   border: accent-border;
@@ -5409,6 +5469,36 @@ Dropdown[tone=Accent] {
 }
 
 Dropdown:selected {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Dropdown[role=Panel] {
+  background: panel;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  foreground: accent-ink;
+  border: accent;
+}
+
+Dropdown[role=Option]:selected {
   background: accent;
   foreground: accent-ink;
   border: accent;
@@ -7412,6 +7502,39 @@ Dropdown:selected {
   border: accent-hover;
 }
 
+Dropdown[role=Panel] {
+  background: panel;
+  background-end: panel-end;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-hover;
+}
+
+Dropdown[role=Option]:selected {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-hover;
+}
+
 Slider {
   background: panel-pressed;
   background-end: panel-pressed-end;
@@ -9384,6 +9507,39 @@ Dropdown[tone=Accent] {
 }
 
 Dropdown:selected {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
+Dropdown[role=Panel] {
+  background: surface;
+  background-end: dropdown-end;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
+Dropdown[role=Option]:selected {
   background: accent;
   background-end: accent-end;
   foreground: accent-ink;

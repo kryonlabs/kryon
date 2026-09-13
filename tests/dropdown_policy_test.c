@@ -148,9 +148,9 @@ test_menu_metrics(void)
     option.value.fields = StylePaddingX | StylePaddingY;
     option.value.padding_x = 5.0f;
     option.value.padding_y = 3.0f;
-    scrollbar.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+    scrollbar.value.fields = StyleIconSize | StylePaddingY | StyleGap |
         StyleContentOffset;
-    scrollbar.value.padding_x = 11.0f;
+    scrollbar.value.icon_size = 11.0f;
     scrollbar.value.padding_y = 4.0f;
     scrollbar.value.gap = 7.0f;
     scrollbar.value.offset_x = 9.0f;
@@ -168,7 +168,7 @@ test_menu_metrics(void)
     panel.value.padding_y = 0.0f;
     option.value.padding_x = 0.0f;
     option.value.padding_y = 0.0f;
-    scrollbar.value.padding_x = 0.0f;
+    scrollbar.value.icon_size = 0.0f;
     scrollbar.value.padding_y = 0.0f;
     scrollbar.value.gap = 0.0f;
     scrollbar.value.offset_x = 0.0f;

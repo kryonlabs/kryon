@@ -1617,6 +1617,39 @@ Dropdown:selected {
   border: accent-border;
 }
 
+Dropdown[role=Panel] {
+  background: surface;
+  background-end: dropdown-end;
+  border: border;
+  padding-y: 4;
+}
+
+Dropdown[role=Option] {
+  padding-x: 4;
+  padding-y: 2;
+}
+
+Dropdown[role=Scrollbar] {
+  icon-size: 8;
+  padding-y: 2;
+  gap: 2;
+  offset-x: 8;
+}
+
+Dropdown[role=Option]:hover {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
+Dropdown[role=Option]:selected {
+  background: accent;
+  background-end: accent-end;
+  foreground: accent-ink;
+  border: accent-border;
+}
+
 Slider {
   background: button-pressed;
   background-end: button-pressed-end;

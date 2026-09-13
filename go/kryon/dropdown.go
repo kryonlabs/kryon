@@ -570,9 +570,9 @@ func Dropdown_DropdownMenuMetricsFor(scale float32, panel StyleFrame, option Sty
 	var value_8 int32 = metrics.PaddingTop
 	metrics.PaddingBottom = value_8
 	var value_9 uint32 = scrollbar.Value.Fields
-	var value_10 int32 = int32(StylePaddingX)
+	var value_10 int32 = int32(StyleIconSize)
 	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
-	var value_12 float32 = scrollbar.Value.PaddingX
+	var value_12 float32 = scrollbar.Value.IconSize
 	var value_13 float32 = 8.0
 	var value_14 float32 = scale
 	var value_15 bool = false
