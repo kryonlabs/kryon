@@ -504,7 +504,8 @@ row/column gaps, placement/content/self alignment, transforms, containment,
 content visibility, intrinsic containment sizing, container
 queries, anchor positioning, view-transition names, animation ranges,
 will-change, isolation, blend mode,
-media/background fit and rendering, visibility, transitions, filters,
+media/background fit, view-box, image orientation/resolution, and rendering,
+visibility, transitions, filters,
 animations, clip/mask paint controls including mask origin/clip/composite/mode,
 writing direction/mode, hyphenation,
 line clamping, color scheme, forced/print color adjustment, SVG

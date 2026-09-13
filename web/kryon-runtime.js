@@ -2219,7 +2219,8 @@ const webKssLiteralProperties = new Set([
   "grid-column", "grid-column-start", "grid-column-end", "grid-area",
   "grid-row", "grid-row-start", "grid-row-end",
   "align-content", "justify-items", "place-items", "place-content", "place-self",
-  "object-fit", "object-position", "aspect-ratio", "image-rendering",
+  "object-fit", "object-position", "object-view-box", "aspect-ratio",
+  "image-rendering", "image-orientation", "image-resolution",
   "background-image", "background-size", "background-position",
   "background-position-x", "background-position-y",
   "background-repeat", "background-clip", "background-origin",
@@ -3133,8 +3134,11 @@ const webCSSPropertyNames = new Map([
   ["place-self", "place-self"],
   ["object-fit", "object-fit"],
   ["object-position", "object-position"],
+  ["object-view-box", "object-view-box"],
   ["aspect-ratio", "aspect-ratio"],
   ["image-rendering", "image-rendering"],
+  ["image-orientation", "image-orientation"],
+  ["image-resolution", "image-resolution"],
   ["background-image", "background-image"],
   ["background-size", "background-size"],
   ["background-position", "background-position"],
@@ -4569,8 +4573,11 @@ function applyResolvedWebStyle(el, style) {
   set("placeSelf", style["place-self"]);
   set("objectFit", style["object-fit"]);
   set("objectPosition", style["object-position"]);
+  set("objectViewBox", style["object-view-box"]);
   set("aspectRatio", style["aspect-ratio"]);
   set("imageRendering", style["image-rendering"]);
+  set("imageOrientation", style["image-orientation"]);
+  set("imageResolution", style["image-resolution"]);
   set("backgroundImage", style["background-image"]);
   set("backgroundSize", style["background-size"]);
   set("backgroundPosition", style["background-position"]);

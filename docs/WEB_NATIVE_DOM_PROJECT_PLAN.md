@@ -203,9 +203,10 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web color styling accepts both Kryon aliases (`foreground`,
   `background`) and native CSS names (`color`, `background-color`) for browser
   CSS export and mounted DOM style application.
-- KSS web background styling accepts native `background-image` alongside size,
-  position, position-axis longhands, repeat, origin, clip, attachment, and
-  blend controls.
+- KSS web media/background styling accepts native object fit/position/view-box,
+  image rendering/orientation/resolution, and `background-image` alongside
+  size, position, position-axis longhands, repeat, origin, clip, attachment,
+  and blend controls.
 - KSS web type styling accepts native `font` shorthand, Kryon's `typeface`
   alias, the native `font-family` property name, font size adjustment, and font
   synthesis controls, plus native font variant longhands, language override,
