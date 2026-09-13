@@ -79,6 +79,16 @@ SliderLabelTextPaintFor :: (bounds: Rectangle, inset: float, font_size: i32,
     return paint
 }
 
+SliderLabelInsetForStyle :: (label: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(label.value.fields, (u32)StylePaddingX,
+        label.value.padding_x, 6.0, scale, true)
+}
+
+SliderLabelGapForStyle :: (label: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(label.value.fields, (u32)StyleGap,
+        label.value.gap, 2.0, scale, true)
+}
+
 SliderCenteredHitBounds :: (x: i32, y: i32, width: i32, height: i32,
     min_width: i32, min_height: i32) -> Rectangle #export {
     hit: Rectangle

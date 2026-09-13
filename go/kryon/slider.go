@@ -99,6 +99,30 @@ func Slider_SliderLabelTextPaintFor(bounds Rectangle, inset float32, font_size i
 	return value_9
 }
 
+func Slider_SliderLabelInsetForStyle(label StyleFrame, scale float32) float32 {
+	var value_0 uint32 = label.Value.Fields
+	var value_1 int32 = int32(StylePaddingX)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = label.Value.PaddingX
+	var value_4 float32 = 6.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Slider_SliderLabelGapForStyle(label StyleFrame, scale float32) float32 {
+	var value_0 uint32 = label.Value.Fields
+	var value_1 int32 = int32(StyleGap)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = label.Value.Gap
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
 func Slider_SliderCenteredHitBounds(x int32, y int32, width int32, height int32, min_width int32, min_height int32) Rectangle {
 	var hit Rectangle = Rectangle{}
 	var value_0 int32 = width

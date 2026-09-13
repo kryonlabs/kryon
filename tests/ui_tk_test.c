@@ -1233,6 +1233,10 @@ test_slider_value_policy(void)
     slider_thumb.value.fields = StyleIconSize | StyleGap;
     slider_thumb.value.icon_size = 20.0f;
     slider_thumb.value.gap = 0.0f;
+    check_float("slider label default inset",
+                SliderLabelInsetForStyle((StyleFrame){0}, 1.0f), 6.0f);
+    check_float("slider label default gap",
+                SliderLabelGapForStyle((StyleFrame){0}, 1.0f), 2.0f);
     horizontal_layout = SliderHorizontalEditorLayoutFor(10, 20, 20, 44, 1.0f,
                                                        slider_track,
                                                        slider_thumb);
@@ -1250,6 +1254,17 @@ test_slider_value_policy(void)
     check_int("slider explicit zero glow",
               (int)SliderGlowExpansionForStyle(slider_thumb, 1.0f), 0);
 
+    slider_thumb.value.fields = StylePaddingX | StyleGap;
+    slider_thumb.value.padding_x = 0.0f;
+    slider_thumb.value.gap = 0.0f;
+    check_float("slider label explicit zero inset",
+                SliderLabelInsetForStyle(slider_thumb, 1.0f), 0.0f);
+    check_float("slider label explicit zero gap",
+                SliderLabelGapForStyle(slider_thumb, 1.0f), 0.0f);
+
+    slider_thumb.value.fields = StyleIconSize | StyleGap;
+    slider_thumb.value.icon_size = 20.0f;
+    slider_thumb.value.gap = 0.0f;
     slider_track.value.fields = StylePaddingY | StyleIconSize | StyleGap;
     slider_track.value.padding_y = 9.0f;
     slider_track.value.icon_size = 11.0f;

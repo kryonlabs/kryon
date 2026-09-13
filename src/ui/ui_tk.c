@@ -2619,8 +2619,10 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
     int label_font = label_style.font_size > 0.0f
         ? (int)(label_style.font_size + 0.5f)
         : GetSmallFontSize();
+    float scale = (float)Scale(1000) / 1000.0f;
     SliderTextPaint text_paint = SliderCellTextPaintFor(
-        cell, (float)Scale(6), (float)TextLineHeight(label_font));
+        cell, SliderLabelInsetForStyle(label, scale),
+        (float)TextLineHeight(label_font));
 
     ui_tk_draw_slider_paint(SliderPaintFor((SliderSpec){
         .bounds = cell,
@@ -2629,7 +2631,7 @@ ui_draw_slider_cell(Rectangle cell, float ratio, const char *text,
         .active = focused,
         .hovered = hovered,
         .disabled = disabled,
-        .scale = (float)Scale(1000) / 1000.0f,
+        .scale = scale,
         .track = track,
         .active_track = active,
         .thumb = thumb
@@ -2650,8 +2652,10 @@ ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
             : GetSmallFontSize();
+        float scale = (float)Scale(1000) / 1000.0f;
         SliderTextPaint paint = SliderLabelTextPaintFor(
-            bounds, (float)Scale(6), font, (float)Scale(2));
+            bounds, SliderLabelInsetForStyle(frame, scale), font,
+            SliderLabelGapForStyle(frame, scale));
         RenderText(label, (int)paint.text_x, (int)paint.text_y,
                    font, Fade(style.foreground, style.opacity));
     }
