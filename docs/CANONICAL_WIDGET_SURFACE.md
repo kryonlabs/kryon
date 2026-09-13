@@ -77,7 +77,7 @@ surface review:
 | `runtime/list_box.kry` | ListBox layout/navigation and row paint geometry policy | `.kry canonical` |
 | `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly | `.kry canonical` |
-| `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
+| `runtime/menu.kry` | Menu metrics, geometry, selectable navigation, and bar open/index policy | `.kry canonical` |
 | `runtime/menu_props.kry` | Menu item/group/result data and props | `.kry canonical` |
 | `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
@@ -157,7 +157,7 @@ text measurement, painting, storage, or platform services.
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` component/step-button layout and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox`, `TextField`/`TextArea` metrics/paint geometry/buffer-limit/navigation/edit intent/selection state policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; reorder pointer ownership and gesture lifecycle remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
-| Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
+| Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
 
@@ -573,7 +573,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `NavigationBar` | `.kry canonical` | Paint, sizing, and configuration modal layout/count policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
-| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
+| `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props; metrics, selectable navigation, and bar open/index policy are in `.kry`. |
 | `TabBar` | `.kry canonical` | Sizing, scroll, keyboard index, and reorder marker policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |
@@ -720,8 +720,8 @@ and host plumbing behind the canonical names.
    native files. The latest focused audits moved context-popup activation into
    `runtime/popup_policy.kry` and label text-field row layout into
   `runtime/rows.kry`; InfoRows background/text/separator geometry now also
-  routes through `runtime/rows.kry`; menu selectable-item and wraparound
-  navigation policy now routes through `runtime/menu.kry`; centered-column and
+  routes through `runtime/rows.kry`; menu selectable-item, wraparound
+  navigation, and bar open/index policy now route through `runtime/menu.kry`; centered-column and
   page side-padding policy now route through `runtime/layout.kry`; scroll-page
   content-width normalization now routes through `runtime/scroll.kry`; table
   keyboard selection and scroll-into-view policy now route through

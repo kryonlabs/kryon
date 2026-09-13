@@ -138,5 +138,24 @@ main(void)
     assert(!MenuItemSelectable(0, 1));
     assert(MenuItemSelectable(0, 0));
     assert(MenuItemSelectable(4, 0));
+    assert(MenuBarCountFor(-2, 8) == 0);
+    assert(MenuBarCountFor(12, 8) == 8);
+    assert(MenuBarCountFor(3, 8) == 3);
+    assert(MenuBarOpenIndexFor(20, 21, 3) == 0);
+    assert(MenuBarOpenIndexFor(20, 23, 3) == 2);
+    assert(MenuBarOpenIndexFor(20, 24, 3) == -1);
+    assert(MenuBarOpenIndexFor(0, 1, 3) == -1);
+    assert(MenuBarOpenIdFor(20, 0, 3) == 21);
+    assert(MenuBarOpenIdFor(20, 2, 3) == 23);
+    assert(MenuBarOpenIdFor(20, 3, 3) == 0);
+    assert(MenuBarOpenIdFor(0, 0, 3) == 0);
+    assert(MenuBarTopIndexFor(-1, 3) == 0);
+    assert(MenuBarTopIndexFor(3, 3) == 0);
+    assert(MenuBarTopIndexFor(2, 3) == 2);
+    assert(MenuBarTopIndexFor(0, 0) == -1);
+    assert(MenuBarMoveTopIndex(0, 3, -1) == 2);
+    assert(MenuBarMoveTopIndex(2, 3, 1) == 0);
+    assert(MenuBarMoveTopIndex(1, 3, 0) == 1);
+    assert(MenuBarMoveTopIndex(1, 0, 1) == -1);
     return 0;
 }

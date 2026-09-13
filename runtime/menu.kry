@@ -50,6 +50,38 @@ MenuItemSelectable :: (kind: i32, disabled: bool) -> bool #export {
     return kind != 3 && !disabled
 }
 
+MenuBarCountFor :: (count: i32, limit: i32) -> i32 #export {
+    if count < 0 { return 0 }
+    if limit >= 0 && count > limit { return limit }
+    return count
+}
+
+MenuBarOpenIndexFor :: (bar_id: i32, open_id: i32, menu_count: i32) -> i32 #export {
+    if bar_id <= 0 || menu_count <= 0 { return -1 }
+    index: i32 = open_id - bar_id - 1
+    if index < 0 || index >= menu_count { return -1 }
+    return index
+}
+
+MenuBarOpenIdFor :: (bar_id: i32, index: i32, menu_count: i32) -> i32 #export {
+    if bar_id <= 0 || index < 0 || index >= menu_count { return 0 }
+    return bar_id + 1 + index
+}
+
+MenuBarTopIndexFor :: (top: i32, menu_count: i32) -> i32 #export {
+    if menu_count <= 0 { return -1 }
+    if top < 0 || top >= menu_count { return 0 }
+    return top
+}
+
+MenuBarMoveTopIndex :: (top: i32, menu_count: i32,
+    direction: i32) -> i32 #export {
+    if menu_count <= 0 { return -1 }
+    top = MenuBarTopIndexFor(top, menu_count)
+    if direction == 0 { return top }
+    return (top + direction + menu_count) % menu_count
+}
+
 MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
     bar: StyleFrame) -> MenuMetrics #export {
     if scale <= 0.0 { scale = 1.0 }

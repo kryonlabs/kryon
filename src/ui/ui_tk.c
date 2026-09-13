@@ -488,7 +488,7 @@ ui_menu_bar_owns_open_menu(int id, int menu_count)
 {
     ToolkitStore *state = toolkit_state();
 
-    return state->open_id >= id + 1 && state->open_id <= id + menu_count;
+    return MenuBarOpenIndexFor(id, state->open_id, menu_count) >= 0;
 }
 
 static int
@@ -1492,32 +1492,31 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         if(open_index != NULL)
             *open_index = -1;
     }
-    if(menu_count > TK_MENU_MAX)
-        menu_count = TK_MENU_MAX;
+    menu_count = MenuBarCountFor(menu_count, TK_MENU_MAX);
     focused = !ContentDisabled() && id > 0 && RegisterFocus(id,bounds) &&
               !ui_popup_input_focus_captures(id);
     if(state->navigation.focus_id != id)
         menu_navigation_reset(id,NULL,0);
-    if(state->navigation.top < 0 || state->navigation.top >= menu_count)
-        state->navigation.top = 0;
+    state->navigation.top = MenuBarTopIndexFor(state->navigation.top,
+                                               menu_count);
     menu_navigation_begin_frame();
     if(!skip_external_open && open_index != NULL && *open_index >= 0)
-        state->open_id = id + 1 + *open_index;
+        state->open_id = MenuBarOpenIdFor(id, *open_index, menu_count);
     if(focused && menu_count > 0) {
-        int current = ui_menu_bar_owns_open_menu(id,menu_count)
-            ? state->open_id-id-1 : -1;
+        int current = MenuBarOpenIndexFor(id, state->open_id, menu_count);
         if(current < 0) {
             if(IsKeyPressed(KEY_LEFT))
                 state->navigation.top =
-                    (state->navigation.top+menu_count-1)%menu_count;
+                    MenuBarMoveTopIndex(state->navigation.top, menu_count, -1);
             else if(IsKeyPressed(KEY_RIGHT))
-                state->navigation.top = (state->navigation.top+1)%menu_count;
+                state->navigation.top =
+                    MenuBarMoveTopIndex(state->navigation.top, menu_count, 1);
             else if(IsKeyPressed(KEY_HOME)) state->navigation.top = 0;
             else if(IsKeyPressed(KEY_END)) state->navigation.top = menu_count-1;
             else if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) ||
                     IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_DOWN)) {
                 current = state->navigation.top;
-                state->open_id = id+1+current;
+                state->open_id = MenuBarOpenIdFor(id, current, menu_count);
                 menu_navigation_reset(id,menus[current].items,
                                        menus[current].item_count);
                 state->navigation.top = current;
@@ -1529,8 +1528,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             state->navigation.depth = 0;
             state->navigation.path[0] = -1;
         } else if(state->navigation.depth == 0 && IsKeyPressed(KEY_LEFT)) {
-            current = (current+menu_count-1)%menu_count;
-            state->open_id = id+1+current;
+            current = MenuBarMoveTopIndex(current, menu_count, -1);
+            state->open_id = MenuBarOpenIdFor(id, current, menu_count);
             menu_navigation_reset(id,menus[current].items,
                                    menus[current].item_count);
             state->navigation.top = current;
@@ -1542,8 +1541,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
                 menus[current].items[selected].kind == MenuSubmenu &&
                 !menus[current].items[selected].disabled;
             if(!opens_submenu) {
-                current = (current+1)%menu_count;
-                state->open_id = id+1+current;
+                current = MenuBarMoveTopIndex(current, menu_count, 1);
+                state->open_id = MenuBarOpenIdFor(id, current, menu_count);
                 menu_navigation_reset(id,menus[current].items,
                                        menus[current].item_count);
                 state->navigation.top = current;
@@ -1563,7 +1562,7 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
     for(int i = 0; i < menu_count; i++) {
         int w = MenuGroupItemWidth(TextWidth(menus[i].label != NULL ? menus[i].label : "", font), metrics);
         Rectangle item = MenuGroupItemBounds(x, bounds, w, metrics);
-        int menu_id = id + 1 + i;
+        int menu_id = MenuBarOpenIdFor(id, i, menu_count);
         int open = state->open_id == menu_id;
         int hot = !ContentDisabled() && ui_hot(item);
         ButtonState item_state = open ? ButtonStateSelected :
