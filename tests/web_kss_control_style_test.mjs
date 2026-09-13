@@ -20,6 +20,8 @@ const sheet = runtime.parseWebStyleSheet(`
     background-position-y: top;
     font-family: system-ui;
     border-radius: 6;
+    border-top: 1px solid #3366ff;
+    border-inline-start: 2px solid #ff6633;
     text-decoration-line: underline;
     text-decoration-skip-ink: auto;
     accent-color: accent;
@@ -39,6 +41,8 @@ assert.match(css, /background-position-x: left;/);
 assert.match(css, /background-position-y: top;/);
 assert.match(css, /font-family: system-ui;/);
 assert.match(css, /border-radius: 6px;/);
+assert.match(css, /border-top: 1px solid #3366ff;/);
+assert.match(css, /border-inline-start: 2px solid #ff6633;/);
 assert.match(css, /text-decoration-line: underline;/);
 assert.match(css, /text-decoration-skip-ink: auto;/);
 assert.match(css, /accent-color: #3366ff;/);
@@ -61,6 +65,8 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "background-position-y": "top",
   "font-family": "system-ui",
   "border-radius": 6,
+  "border-top": "1px solid #3366ff",
+  "border-inline-start": "2px solid #ff6633",
   "text-decoration-line": "underline",
   "text-decoration-skip-ink": "auto",
   "accent-color": "#3366ff",
@@ -193,6 +199,8 @@ assert.equal(field.style.backgroundPositionX, "left");
 assert.equal(field.style.backgroundPositionY, "top");
 assert.equal(field.style.fontFamily, "system-ui");
 assert.equal(field.style.borderRadius, "6px");
+assert.equal(field.style.borderTop, "1px solid #3366ff");
+assert.equal(field.style.borderInlineStart, "2px solid #ff6633");
 assert.equal(field.style.textDecorationLine, "underline");
 assert.equal(field.style.textDecorationSkipInk, "auto");
 assert.equal(field.style.accentColor, "#3366ff");

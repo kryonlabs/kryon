@@ -2017,6 +2017,9 @@ const webKssLiteralProperties = new Set([
   "text-decoration-skip-ink", "text-shadow",
   "text-transform", "text-overflow", "white-space",
   "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "border-top", "border-right", "border-bottom", "border-left",
+  "border-inline", "border-block", "border-inline-start",
+  "border-inline-end", "border-block-start", "border-block-end",
   "border-style", "border-top-style", "border-right-style",
   "border-bottom-style", "border-left-style", "border-inline-style",
   "border-block-style", "border-inline-start-style",
@@ -2640,6 +2643,16 @@ const webCSSPropertyNames = new Map([
   ["border-inline-end-width", "border-inline-end-width"],
   ["border-block-start-width", "border-block-start-width"],
   ["border-block-end-width", "border-block-end-width"],
+  ["border-top", "border-top"],
+  ["border-right", "border-right"],
+  ["border-bottom", "border-bottom"],
+  ["border-left", "border-left"],
+  ["border-inline", "border-inline"],
+  ["border-block", "border-block"],
+  ["border-inline-start", "border-inline-start"],
+  ["border-inline-end", "border-inline-end"],
+  ["border-block-start", "border-block-start"],
+  ["border-block-end", "border-block-end"],
   ["border-style", "border-style"],
   ["border-top-style", "border-top-style"],
   ["border-right-style", "border-right-style"],
@@ -3660,6 +3673,16 @@ function applyResolvedWebStyle(el, style) {
   set("borderInlineEndWidth", style["border-inline-end-width"]);
   set("borderBlockStartWidth", style["border-block-start-width"]);
   set("borderBlockEndWidth", style["border-block-end-width"]);
+  set("borderTop", style["border-top"]);
+  set("borderRight", style["border-right"]);
+  set("borderBottom", style["border-bottom"]);
+  set("borderLeft", style["border-left"]);
+  set("borderInline", style["border-inline"]);
+  set("borderBlock", style["border-block"]);
+  set("borderInlineStart", style["border-inline-start"]);
+  set("borderInlineEnd", style["border-inline-end"]);
+  set("borderBlockStart", style["border-block-start"]);
+  set("borderBlockEnd", style["border-block-end"]);
   set("borderStyle", style["border-style"]);
   set("borderTopStyle", style["border-top-style"]);
   set("borderRightStyle", style["border-right-style"]);
