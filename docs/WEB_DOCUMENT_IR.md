@@ -609,8 +609,8 @@ other nodes, and reverse `labelledBy` links for controls targeted by
 `dom_for`; `webNodeRelationRefs(rt, query)`, `webDOMRelationRefs(target,
 query)`, and snapshots expose the same links as serializable `relationRefs`.
 Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
-`kryRelationRefs`, and `WebDOMObject` exposes `relationRefs` for the same
-serializable packet.
+`kryRelations` and `kryRelationRefs`, and `WebDOMObject` exposes `relations`
+and `relationRefs` for the same live-object and serializable packets.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: the complete

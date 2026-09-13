@@ -6350,6 +6350,13 @@ function bindWebRootProperties(root) {
         return webDOMSnapshot(this, query);
       }
     },
+    kryRelations: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMRelations(this, query);
+      }
+    },
     kryRelationRefs: {
       configurable: true,
       enumerable: false,

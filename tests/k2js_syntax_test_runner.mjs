@@ -3070,6 +3070,7 @@ function fakeDocument() {
     assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);
     assert.deepEqual(buttonObject.relations.owns.map((object) => object.ref), ["search-box"]);
     assert.equal(buttonObject.relations.popoverTarget.ref, "Scene/root/search_label");
+    assert.deepEqual(root.kryRelations("tap-button").controls.map((object) => object.ref), ["search-box"]);
     assert.equal(firstButton.kryRelations.controls[0].ref, "search-box");
     assert.deepEqual(buttonObject.relationRefs.controls, ["search-box"]);
     assert.deepEqual(firstButton.kryRelationRefs.controls, ["search-box"]);

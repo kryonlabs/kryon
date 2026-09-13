@@ -233,6 +233,9 @@ try {
   assert(kryon.webDOMRelations(target, "save").controlledBy
     .map((object) => object.ref).join(" ") === "article-ref",
     "reverse controlledBy relation missing");
+  assert(root.kryRelations("save").controlledBy
+    .map((object) => object.ref).join(" ") === "article-ref",
+    "root relation object lookup missing");
   assert(kryon.webDOMRelationRefs(target, "save").controlledBy.join(" ") === "article-ref",
     "reverse controlledBy relation refs missing");
   assert(root.kryRelationRefs("save").controlledBy.join(" ") === "article-ref",
