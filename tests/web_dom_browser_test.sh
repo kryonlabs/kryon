@@ -215,6 +215,8 @@ try {
   assert(kryon.webDOMRelations(target, "save").controlledBy
     .map((object) => object.ref).join(" ") === "article-ref",
     "reverse controlledBy relation missing");
+  assert(kryon.webDOMRelationRefs(target, "save").controlledBy.join(" ") === "article-ref",
+    "reverse controlledBy relation refs missing");
   assert(kryon.webDOMRemoveAttribute(target, "article-ref", "aria-controls"),
     "aria-controls removal failed");
   assert(kryon.webDOMSync(target, "article-ref")?.ref === "article-ref",

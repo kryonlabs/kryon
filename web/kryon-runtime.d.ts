@@ -526,6 +526,26 @@ export interface WebDOMRelations {
   popoverInvokers: WebDOMObject[];
 }
 
+export interface WebDOMRelationRefs {
+  describedBy: string[];
+  describes: string[];
+  controls: string[];
+  controlledBy: string[];
+  owns: string[];
+  ownedBy: string[];
+  headers: string[];
+  rowHeaders: string[];
+  columnHeaders: string[];
+  rowGroupHeaders: string[];
+  columnGroupHeaders: string[];
+  labelFor: string;
+  formOwner: string;
+  labelledBy: string[];
+  activeDescendant: string;
+  popoverTarget: string;
+  popoverInvokers: string[];
+}
+
 export interface WebNodeEventRefs {
   click: string;
   doubleClick: string;
@@ -745,25 +765,7 @@ export interface WebDOMSnapshot {
   parentPath: string;
   parentRef: string;
   childRefs: string[];
-  relationRefs: {
-    describedBy: string[];
-    describes: string[];
-    controls: string[];
-    controlledBy: string[];
-    owns: string[];
-    ownedBy: string[];
-    headers: string[];
-    rowHeaders: string[];
-    columnHeaders: string[];
-    rowGroupHeaders: string[];
-    columnGroupHeaders: string[];
-    labelFor: string;
-    formOwner: string;
-    labelledBy: string[];
-    activeDescendant: string;
-    popoverTarget: string;
-    popoverInvokers: string[];
-  };
+  relationRefs: WebDOMRelationRefs;
   eventRefs: WebNodeEventRefs;
   name: string;
   key: string;
@@ -932,6 +934,7 @@ export function webDOMObject(target: Element | string | null, query: string): We
 export function webDOMIdentity(target: Element | string | null, query: string): WebNodeIdentity | null;
 export function webDOMEventRefs(target: Element | string | null, query: string): WebNodeEventRefs | null;
 export function webDOMRelations(target: Element | string | null, query: string): WebDOMRelations | null;
+export function webDOMRelationRefs(target: Element | string | null, query: string): WebDOMRelationRefs | null;
 export function webDOMObjectFromElement(element: Element | null): WebDOMObject | null;
 export function webDOMDecorateEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;
 export function webDOMObjectFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMObject | null;

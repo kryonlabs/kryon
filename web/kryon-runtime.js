@@ -6945,6 +6945,33 @@ export function webDOMRelations(target, query) {
   return object ? webDOMRelationsForNode(target, object.node) : null;
 }
 
+function webDOMRelationRefsForRelations(relations) {
+  return {
+    describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
+    describes: (relations?.describes || []).map((relation) => relation.ref),
+    controls: (relations?.controls || []).map((relation) => relation.ref),
+    controlledBy: (relations?.controlledBy || []).map((relation) => relation.ref),
+    owns: (relations?.owns || []).map((relation) => relation.ref),
+    ownedBy: (relations?.ownedBy || []).map((relation) => relation.ref),
+    headers: (relations?.headers || []).map((relation) => relation.ref),
+    rowHeaders: (relations?.rowHeaders || []).map((relation) => relation.ref),
+    columnHeaders: (relations?.columnHeaders || []).map((relation) => relation.ref),
+    rowGroupHeaders: (relations?.rowGroupHeaders || []).map((relation) => relation.ref),
+    columnGroupHeaders: (relations?.columnGroupHeaders || []).map((relation) => relation.ref),
+    labelFor: relations?.labelFor?.ref || "",
+    formOwner: relations?.formOwner?.ref || "",
+    labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
+    activeDescendant: relations?.activeDescendant?.ref || "",
+    popoverTarget: relations?.popoverTarget?.ref || "",
+    popoverInvokers: (relations?.popoverInvokers || []).map((relation) => relation.ref)
+  };
+}
+
+export function webDOMRelationRefs(target, query) {
+  const relations = webDOMRelations(target, query);
+  return relations ? webDOMRelationRefsForRelations(relations) : null;
+}
+
 function webDOMObjectForNode(root, node) {
   if (!root || !node)
     return null;
@@ -7504,25 +7531,7 @@ function webDOMObjectSnapshot(target, object) {
     parentPath: node.parentPath || "",
     parentRef: webDOMParent(target, node.path)?.ref || "",
     childRefs: webDOMChildren(target, node.path).map((child) => child.ref),
-    relationRefs: {
-      describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
-      describes: (relations?.describes || []).map((relation) => relation.ref),
-      controls: (relations?.controls || []).map((relation) => relation.ref),
-      controlledBy: (relations?.controlledBy || []).map((relation) => relation.ref),
-      owns: (relations?.owns || []).map((relation) => relation.ref),
-      ownedBy: (relations?.ownedBy || []).map((relation) => relation.ref),
-      headers: (relations?.headers || []).map((relation) => relation.ref),
-      rowHeaders: (relations?.rowHeaders || []).map((relation) => relation.ref),
-      columnHeaders: (relations?.columnHeaders || []).map((relation) => relation.ref),
-      rowGroupHeaders: (relations?.rowGroupHeaders || []).map((relation) => relation.ref),
-      columnGroupHeaders: (relations?.columnGroupHeaders || []).map((relation) => relation.ref),
-      labelFor: relations?.labelFor?.ref || "",
-      formOwner: relations?.formOwner?.ref || "",
-      labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
-      activeDescendant: relations?.activeDescendant?.ref || "",
-      popoverTarget: relations?.popoverTarget?.ref || "",
-      popoverInvokers: (relations?.popoverInvokers || []).map((relation) => relation.ref)
-    },
+    relationRefs: webDOMRelationRefsForRelations(relations),
     eventRefs: webNodeEventRefs(node),
     name: node.name || "",
     key: node.key || "",

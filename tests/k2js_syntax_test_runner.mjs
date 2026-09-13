@@ -2081,6 +2081,9 @@ function fakeDocument() {
       ["Page/prices/quarterHeader"]);
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.rowGroupHeaders,
       ["Page/prices/regionHeader"]);
+    assert.deepEqual(runtime.webDOMRelationRefs(tableTarget, "priceCell").headers,
+      ["Page/prices/priceHeader", "Page/prices/productHeader",
+       "Page/prices/quarterHeader", "Page/prices/regionHeader"]);
 
     const menuRt = runtime.createRuntime();
     runtime.beginFrame(menuRt);
@@ -3068,6 +3071,10 @@ function fakeDocument() {
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.controlledBy,
       ["primary-action"]);
     assert.deepEqual(runtime.webDOMSnapshot(target, "search-box").relationRefs.ownedBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webDOMRelationRefs(target, "search-box").controlledBy,
+      ["primary-action"]);
+    assert.deepEqual(runtime.webDOMRelationRefs(target, "search-box").ownedBy,
       ["primary-action"]);
     assert.deepEqual(runtime.webDOMRelations(target, "Scene/root/search_label").popoverInvokers
       .map((object) => object.ref), ["primary-action"]);
