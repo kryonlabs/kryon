@@ -675,7 +675,7 @@ scalar path/kind/tag/name/key/index/source identity getters, plus
 Relationship fields such as `aria_controls`, `aria_owns`,
 `aria_labelledby`, `aria_activedescendant`, `aria_describedby`,
 `aria_details`, `aria_errormessage`, `aria_flowto`, `dom_for`, `headers`,
-`form`, and `popover_target` may name another Kry DOM object by ref,
+native input `list`, `form`, and `popover_target` may name another Kry DOM object by ref,
 path, name, key, or native id. The Web Document facts keep the authored Kry
 value for KSS and queries, while the DOM renderer resolves the native attribute
 to a real element id during mount. `webDOMRelations(target, query)`,
@@ -685,9 +685,10 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `headerFor` links for table header nodes referenced by data cells, direct
 `labelledBy` links from `aria_labelledby`, active descendant links from
 `aria_activedescendant`, detail, error-message, and flow links from
-`aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
-`form`, output/control links from native output `for`, reverse `formControls`
-links for controls owned by a form-like node,
+`aria_details`, `aria_errormessage`, and `aria_flowto`, input/datalist links
+from native input `list`, form owner links from `form`, output/control links
+from native output `for`, reverse `formControls` links for controls owned by a
+form-like node,
 semantic `groupOwner`/`groupMembers` links for grouped controls,
 disabled scope owner/member links for controls inside disabled fieldsets or
 `Disabled` scopes,

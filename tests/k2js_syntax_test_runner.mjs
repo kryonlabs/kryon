@@ -1269,6 +1269,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   id: "tap-button",
   domName: "",
   title: "Tap details",
+  lang: "",
+  dir: "",
+  translate: "",
+  dirname: "",
   placeholder: "",
   tabIndex: 3,
   domValue: "tap-value",
@@ -2895,7 +2899,7 @@ function fakeDocument() {
       { nodeName: "nativeRubyParenthesis", path: "Page/ruby/open", parentPath: "Page/ruby" });
     runtime.widget(nativeRt, "Bdi", { text: "\u0645\u0631\u062d\u0628\u0627" }, null,
       { nodeName: "nativeBdi", path: "Page/bdi" });
-    runtime.widget(nativeRt, "Bdo", { text: "abc", attr_dir: "rtl" }, null,
+    runtime.widget(nativeRt, "Bdo", { text: "abc", dir: "rtl", lang: "ar", translate: "no" }, null,
       { nodeName: "nativeBdo", path: "Page/bdo" });
     runtime.widget(nativeRt, "Wbr", {}, null,
       { nodeName: "nativeWbr", path: "Page/wbr" });
@@ -2989,6 +2993,7 @@ function fakeDocument() {
       pattern: ".+@.+",
       input_mode: "email",
       enter_key_hint: "send",
+      dirname: "email.dir",
       list: "suggestions"
     }, null,
       { nodeName: "email", path: "Page/email" });
@@ -3201,7 +3206,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Rp").tag, "rp");
     assert.equal(runtime.webNodeQuery(nativeRt, "Bdi").tag, "bdi");
     assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").tag, "bdo");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").extraAttrs.dir, "rtl");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").dir, "rtl");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").lang, "ar");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").translate, "no");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[dir=rtl]").path, "Page/bdo");
     assert.equal(runtime.webNodeQuery(nativeRt, "Wbr").tag, "wbr");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionList").tag, "dl");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").tag, "dt");
@@ -3310,6 +3318,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").minLength, "3");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").maxLength, "254");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").dataList, "suggestions");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").dirname, "email.dir");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[dirname=\"email.dir\"]").path, "Page/email");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/email").dataList.path, "Page/suggestions");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/suggestions").listedBy,
       ["Page/email"]);
@@ -3608,6 +3618,8 @@ function fakeDocument() {
     assert.equal(nativeBdi.textContent, "\u0645\u0631\u062d\u0628\u0627");
     assert.equal(nativeBdo.tagName, "BDO");
     assert.equal(nativeBdo.attributes.dir, "rtl");
+    assert.equal(nativeBdo.attributes.lang, "ar");
+    assert.equal(nativeBdo.attributes.translate, "no");
     assert.equal(nativeWbr.tagName, "WBR");
     assert.equal(nativeDescriptionList.tagName, "DL");
     assert.equal(nativeDescriptionTerm.tagName, "DT");
@@ -3775,12 +3787,15 @@ function fakeDocument() {
     assert.equal(email.attributes.pattern, ".+@.+");
     assert.equal(email.attributes.inputmode, "email");
     assert.equal(email.attributes.enterkeyhint, "send");
+    assert.equal(email.attributes.dirname, "email.dir");
     assert.equal(email.attributes.list, nativeSuggestions.attributes.id);
     assert.equal(email.attributes.list, "kry-Page-suggestions");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/email").dataList.ref,
       "Page/suggestions");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/suggestions").listedBy,
       ["Page/email"]);
+    nativeBdo.setAttribute("lang", "he");
+    assert.equal(runtime.webDOMSync(nativeTarget, "Page/bdo").node.lang, "he");
     assert.equal(runtime.webDOMQuery(nativeTarget, "[placeholder=Email]").element, email);
     assert.equal(runtime.webDOMSetState(nativeTarget, "enabled", "indeterminate", true), true);
     assert.equal(runtime.webDOMQuery(nativeTarget, "Toggle:indeterminate").node.path, "Page/enabled");

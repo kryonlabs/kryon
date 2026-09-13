@@ -1919,6 +1919,10 @@ function webNodeFromWidget(item, index) {
     domName: metaStringOrProp(meta, "domName", args, ["dom_name", "html_name", "name_attr"]),
     classes: [...new Set(classes)],
     title: metaStringOrProp(meta, "title", args, ["title", "dom_title", "html_title"]),
+    lang: metaStringOrProp(meta, "lang", args, ["lang", "language", "dom_lang", "html_lang"]),
+    dir: metaStringOrProp(meta, "dir", args, ["dir", "dom_dir", "html_dir"]),
+    translate: metaStringOrProp(meta, "translate", args, ["translate", "dom_translate", "html_translate"]),
+    dirname: metaStringOrProp(meta, "dirname", args, ["dirname", "dir_name", "dom_dirname", "html_dirname"]),
     placeholder: meta.placeholder === undefined || meta.placeholder === null
       ? propStringAny(args, ["placeholder", "dom_placeholder"])
       : String(meta.placeholder),
@@ -2180,6 +2184,10 @@ export function webNodeStyleFacts(node) {
     id: node?.domId || "",
     domName: node?.domName || "",
     title: node?.title || "",
+    lang: node?.lang || "",
+    dir: node?.dir || "",
+    translate: node?.translate || "",
+    dirname: node?.dirname || "",
     placeholder: node?.placeholder || "",
     tabIndex: Number.isFinite(Number(node?.tabIndex)) ? Math.trunc(Number(node.tabIndex)) : null,
     domValue: node?.domValue || "",
@@ -3992,6 +4000,10 @@ function selectorNativeAttrValue(key, facts) {
     case "id": return facts.id;
     case "name": return facts.domName;
     case "title": return facts.title;
+    case "lang": return facts.lang;
+    case "dir": return facts.dir;
+    case "translate": return facts.translate;
+    case "dirname": return facts.dirname;
     case "tabindex": return facts.tabIndex;
     case "value": return facts.domValue || facts.value;
     case "type": return facts.inputType;
@@ -7951,6 +7963,10 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "name", docNode.domName);
   setAttr(el, "value", docNode.domValue);
   setAttr(el, "title", docNode.title);
+  setAttr(el, "lang", docNode.lang);
+  setAttr(el, "dir", docNode.dir);
+  setAttr(el, "translate", docNode.translate);
+  setAttr(el, "dirname", docNode.dirname);
   setAttr(el, "placeholder", docNode.placeholder);
   setAttr(el, "tabindex", docNode.tabIndex === null ? "" : String(docNode.tabIndex));
   setAttr(el, "role", webDOMRole(docNode));
@@ -9670,7 +9686,8 @@ export function webDOMBind(target, selector, handlers, options = {}) {
 }
 
 const webDOMInternalAttributeNames = new Set([
-  "class", "id", "name", "value", "title", "placeholder", "tabindex", "role",
+  "class", "id", "name", "value", "title", "lang", "dir", "translate", "dirname",
+  "placeholder", "tabindex", "role",
   "aria-label", "aria-description", "aria-describedby", "aria-labelledby",
   "aria-activedescendant",
   "aria-controls", "aria-owns", "aria-sort", "aria-orientation",
@@ -9761,6 +9778,10 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.domName = attrs.name ?? el.name ?? "";
   docNode.domValue = attrs.value ?? docNode.domValue ?? "";
   docNode.title = attrs.title ?? docNode.title ?? "";
+  docNode.lang = attrs.lang ?? docNode.lang ?? "";
+  docNode.dir = attrs.dir ?? docNode.dir ?? "";
+  docNode.translate = attrs.translate ?? docNode.translate ?? "";
+  docNode.dirname = attrs.dirname ?? docNode.dirname ?? "";
   docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
   docNode.role = attrs.role ?? docNode.role ?? "";
   syncDOMAriaRelationAttributes(docNode, attrs);

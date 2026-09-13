@@ -93,6 +93,10 @@ export interface WebDocumentNode {
   domValue: string;
   classes: string[];
   title: string;
+  lang: string;
+  dir: string;
+  translate: string;
+  dirname: string;
   placeholder: string;
   tabIndex: number | null;
   text: string;
@@ -291,6 +295,10 @@ export interface WebNodeStyleFacts {
   id: string;
   domName: string;
   title: string;
+  lang: string;
+  dir: string;
+  translate: string;
+  dirname: string;
   placeholder: string;
   tabIndex: number | null;
   domValue: string;

@@ -85,8 +85,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Label-bearing widgets derive native accessible labels from ordinary Kry
   `label`/`title` props when no explicit ARIA label metadata is supplied.
 - Direct `.kry` widget args feed native global attributes such as DOM id/name,
-  title, tab index, hidden, draggable, content-editable, part, slot, popover,
-  and table cell relation attributes.
+  title, language, direction, translation, dirname, tab index, hidden,
+  draggable, content-editable, part, slot, popover, and table cell relation
+  attributes.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
   selectors and selectable options, segmented controls, status output,
