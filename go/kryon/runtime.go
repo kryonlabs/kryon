@@ -4058,7 +4058,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}
 	r.openDropdowns[id] = open
 	keyboardAvailable := r.dropdownKeyboardAvailable(id)
-	panel := r.dropdownPanel(bounds, len(labels))
+	panel := r.dropdownPanel(bounds, len(labels), styleClass)
 	outside := r.mousePressed[MouseButtonLeft] && !pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !pointInRect(r.mousePos.X, r.mousePos.Y, panel)
 	for _, tap := range r.taps {
 		outside = outside || (!pointInRect(tap.x, tap.y, bounds) && !pointInRect(tap.x, tap.y, panel))

@@ -1,6 +1,8 @@
 package kryon
 
-func (r *runtime) dropdownPanel(button Rectangle, count int) Rectangle {
+func (r *runtime) dropdownPanel(button Rectangle, count int, className int32) Rectangle {
+	panel := StyleFrame{Value: packStyle(r.dropdownStyle(1, false,
+		ButtonStateNormal, className))}
 	return Dropdown_PopupBounds(button,
-		Rectangle{Width: float32(r.config.Width), Height: float32(r.config.Height)}, int32(count), 1)
+		Rectangle{Width: float32(r.config.Width), Height: float32(r.config.Height)}, int32(count), 1, panel)
 }

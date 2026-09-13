@@ -1407,6 +1407,7 @@ Dropdown {
   padding-x: 14;
   padding-y: 9;
   gap: 8;
+  offset-y: 16;
   font-size: font.md;
   material: Flat;
 }
@@ -3150,6 +3151,7 @@ Dropdown {
   padding-x: space.2;
   padding-y: space.1;
   gap: gap;
+  offset-y: 16;
   font-size: font;
   material: default;
 }
@@ -4934,6 +4936,7 @@ Dropdown {
   padding-x: space.3;
   padding-y: pad.field-y;
   gap: gap;
+  offset-y: 16;
   font-size: font.md;
   material: default;
 }
@@ -6777,6 +6780,7 @@ Dropdown {
   padding-x: 14;
   padding-y: pad.field-y;
   gap: gap;
+  offset-y: 16;
   font-size: font.md;
   material: glow;
 }
@@ -8604,6 +8608,7 @@ Dropdown {
   padding-x: 14;
   padding-y: pad.dropdown-y;
   gap: gap;
+  offset-y: 16;
   font-size: font;
   material: premium;
 }

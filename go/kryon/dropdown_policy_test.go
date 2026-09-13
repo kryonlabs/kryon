@@ -25,7 +25,7 @@ func TestDropdownPolicyLimitsAndActivation(t *testing.T) {
 	if Dropdown_ContentHeight(2147483647, 44, 8) != 2147483647 {
 		t.Fatal("content height overflowed")
 	}
-	panel := Dropdown_PopupBounds(Rectangle{X: 50, Y: 90, Width: 400, Height: 44}, Rectangle{Width: 20, Height: 10}, 100, 1)
+	panel := Dropdown_PopupBounds(Rectangle{X: 50, Y: 90, Width: 400, Height: 44}, Rectangle{Width: 20, Height: 10}, 100, 1, StyleFrame{})
 	if panel.X != 0 || panel.Y != 0 || panel.Width != 20 || panel.Height != 10 {
 		t.Fatalf("tiny viewport: %+v", panel)
 	}
