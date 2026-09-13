@@ -255,6 +255,30 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    focused: bool\n"
         "}\n"
     },
+    {"runtime/progress_props.kry",
+        "#module \"progress_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "ProgressProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    min: i32\n"
+        "    max: i32\n"
+        "    value: i32\n"
+        "    label: const char*\n"
+        "}\n"
+    },
+    {"runtime/radio_props.kry",
+        "#module \"radio_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "RadioProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    label: const char*\n"
+        "    id: i32\n"
+        "    checked: bool\n"
+        "    disabled: bool\n"
+        "}\n"
+    },
     {"runtime/selectable_props.kry",
         "#module \"selectable_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"

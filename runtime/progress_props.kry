@@ -1,0 +1,10 @@
+#module "progress_props"
+#import "kryon_compat.generated.h"
+
+ProgressProps :: struct {
+    bounds: Rectangle
+    min: i32
+    max: i32
+    value: i32
+    label: const char*
+}

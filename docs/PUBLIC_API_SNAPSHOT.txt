@@ -1666,12 +1666,14 @@ include/ui_profile.h enum SYNC_PROFILE_ICON_TREE2
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE3
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE4
 include/ui_profile.h enum SYNC_PROFILE_ICON_TREE5
+include/ui_progress_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_profile.h function GetProfileImageIconCount
 include/ui_profile.h function GetProfileImageIconName
 include/ui_profile.h function GetProfileImageIconType
 include/ui_profile.h function GetProfileImageIconTypeForSyncID
 include/ui_profile.h function GetSyncIDForProfileImageIconType
 include/ui_reorder.h function UpdateReorderList
+include/ui_radio_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_scaling.h function ClampPx
 include/ui_scaling.h function GetScale
 include/ui_scaling.h function Scale

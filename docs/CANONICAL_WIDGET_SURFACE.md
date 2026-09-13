@@ -76,7 +76,9 @@ surface review:
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
+| `runtime/progress_props.kry` | Progress props | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
+| `runtime/radio_props.kry` | Radio props | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
 | `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
@@ -352,9 +354,9 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
-| `Radio` | `.kry canonical` | Paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
+| `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
-| `Progress` | `.kry canonical` | Prefer one public progress name. |
+| `Progress` | `.kry canonical` | Public props live in `runtime/progress_props.kry`; prefer one public progress name. |
 | `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; segment typography and paint are KSS-owned; host handles label measurement, focus/input, and button drawing. |
 | `LabelTextField` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `TextField`. |

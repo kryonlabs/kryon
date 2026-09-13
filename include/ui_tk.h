@@ -2,6 +2,8 @@
 #define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_progress_props.generated.h"
+#include "ui_radio_props.generated.h"
 #include "ui_separator_props.generated.h"
 #include "ui_toggle_props.generated.h"
 #include "ui_controls.h"
@@ -23,22 +25,6 @@ typedef enum {
 typedef int (*ClipboardOSC52WriteFn)(void *userdata, const char *text);
 typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
-
-typedef struct {
-    Rectangle bounds;
-    const char *label;
-    int id;
-    int checked;
-    int disabled;
-} RadioProps;
-
-typedef struct {
-    Rectangle bounds;
-    int min;
-    int max;
-    int value;
-    const char *label;
-} ProgressProps;
 
 typedef struct {
     Rectangle bounds;
@@ -130,6 +116,7 @@ typedef enum {
 typedef struct {
     Rectangle bounds;
     const char *text;
+    int class_name;
     int font;
     Color color;
     TextWrap wrap;

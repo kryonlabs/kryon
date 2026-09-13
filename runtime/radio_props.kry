@@ -1,0 +1,10 @@
+#module "radio_props"
+#import "kryon_compat.generated.h"
+
+RadioProps :: struct {
+    bounds: Rectangle
+    label: const char*
+    id: i32
+    checked: bool
+    disabled: bool
+}

@@ -747,22 +747,6 @@ type MenuProps struct {
 	Y         *int32
 }
 
-type RadioProps struct {
-	Bounds   Rectangle
-	Label    string
-	ID       int32
-	Checked  bool
-	Disabled bool
-}
-
-type ProgressProps struct {
-	Bounds Rectangle
-	Min    int32
-	Max    int32
-	Value  int32
-	Label  string
-}
-
 type PlotProps struct {
 	Bounds     Rectangle
 	Label      string

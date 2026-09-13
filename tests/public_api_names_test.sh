@@ -479,7 +479,7 @@ if [ -n "$stale_tree_api_matches" ]; then
 fi
 
 manual_widget_props_matches="$(
-    rg -n 'typedef struct \{[^}]*\} (CheckboxProps|SelectableProps|ToggleProps|SeparatorProps)|type (CheckboxProps|SelectableProps|ToggleProps|SeparatorProps) struct' \
+    rg -n 'typedef struct \{[^}]*\} (CheckboxProps|SelectableProps|ToggleProps|SeparatorProps|RadioProps|ProgressProps)|type (CheckboxProps|SelectableProps|ToggleProps|SeparatorProps|RadioProps|ProgressProps) struct' \
         include/ui_tree.h \
         include/ui_tk.h \
         go/kryon/runtime.go \
