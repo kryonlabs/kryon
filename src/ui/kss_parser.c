@@ -398,6 +398,10 @@ kss_role(const char *name)
         return 26;
     if(kss_ieq(name, "Scrollbar"))
         return 27;
+    if(kss_ieq(name, "BottomBar"))
+        return 28;
+    if(kss_ieq(name, "BottomAction"))
+        return 29;
     return -999999;
 }
 

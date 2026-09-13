@@ -44,6 +44,19 @@ test_bottom_icon_row_layout(void)
         .center_x = 160, .view_width = 320, .view_height = 240, .count = 3
     };
     BottomIconRowLayout layout = BottomIconRowLayoutFor(props, 1.0f);
+    StyleFrame bar = {.value = {.fields = StylePaddingX | StylePaddingY |
+                                StyleGap | StyleContentOffset,
+                                .padding_x = 20.0f,
+                                .padding_y = 4.0f,
+                                .gap = 10.0f,
+                                .offset_x = 140.0f}};
+    StyleFrame action = {.value = {.fields = StylePaddingX | StyleGap |
+                                   StyleIconSize | StyleContentOffset,
+                                   .padding_x = 8.0f,
+                                   .gap = 14.0f,
+                                   .icon_size = 22.0f,
+                                   .offset_x = 12.0f,
+                                   .offset_y = 5.0f}};
     Rectangle second = BottomIconRowButtonBoundsFor(layout, 1);
 
     assert(layout.button_width == 44);
@@ -55,6 +68,16 @@ test_bottom_icon_row_layout(void)
     assert(second.x == 138.0f);
     assert(second.y == 190.0f);
     assert(second.width == 44.0f);
+
+    layout = BottomIconRowLayoutForStyle(props, 1.0f, bar, action);
+    second = BottomIconRowButtonBoundsFor(layout, 1);
+    assert(layout.button_width == 38);
+    assert(layout.icon_size == 22);
+    assert(layout.icon_padding == 8);
+    assert(layout.gap == 10);
+    assert(layout.start_x == 93);
+    assert(layout.y == 198);
+    assert(second.x == 141.0f);
 }
 
 static void

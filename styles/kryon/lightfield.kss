@@ -1065,6 +1065,21 @@ Toolbar[role=Action]:pressed {
   background-end: button-pressed-end;
 }
 
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
+}
+
 Modal {
   background: transparent;
   foreground: text;

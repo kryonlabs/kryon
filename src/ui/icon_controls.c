@@ -79,12 +79,24 @@ RenderBottomIconRow(BottomIconRowProps row)
 {
     IconRowResult result = {-1, 0, 0};
     int count = row.count;
+    StyleFrame bar_frame;
+    StyleFrame action_frame;
     BottomIconRowLayout layout;
 
     if(row.items == NULL || count <= 0)
         return result;
 
-    layout = BottomIconRowLayoutFor(row, (float)Scale(1000) / 1000.0f);
+    bar_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 28);
+    action_frame = ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium, .icon_only = true},
+        ButtonStateNormal, 0, 0, 0, 0, StyleKindToolbar(), 29);
+
+    layout = BottomIconRowLayoutForStyle(row, (float)Scale(1000) / 1000.0f,
+                                        bar_frame, action_frame);
     result.y = layout.y;
     result.button_width = layout.button_width;
 

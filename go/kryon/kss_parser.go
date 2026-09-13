@@ -798,6 +798,10 @@ func styleRole(name string) (int32, bool) {
 		return 26, true
 	case "scrollbar":
 		return 27, true
+	case "bottombar":
+		return 28, true
+	case "bottomaction":
+		return 29, true
 	default:
 		return 0, false
 	}

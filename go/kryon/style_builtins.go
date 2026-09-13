@@ -1008,6 +1008,21 @@ Toolbar[role=Action]:pressed {
   background: panel-pressed;
 }
 
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
+}
+
 Modal {
   background: transparent;
   foreground: text;
@@ -2992,6 +3007,21 @@ Toolbar[role=Action]:pressed {
   background: button-pressed;
 }
 
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
+}
+
 Modal {
   background: transparent;
   foreground: text;
@@ -4932,6 +4962,21 @@ Toolbar[role=Action]:hover {
 
 Toolbar[role=Action]:pressed {
   background: panel-pressed;
+}
+
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
 }
 
 Modal {
@@ -6970,6 +7015,21 @@ Toolbar[role=Action]:hover {
 Toolbar[role=Action]:pressed {
   background: panel-pressed;
   background-end: panel-pressed-end;
+}
+
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
 }
 
 Modal {
@@ -9031,6 +9091,21 @@ Toolbar[role=Action]:hover {
 Toolbar[role=Action]:pressed {
   background: button-pressed;
   background-end: button-pressed-end;
+}
+
+Toolbar[role=BottomBar] {
+  padding-x: 24;
+  padding-y: 6;
+  gap: 8;
+  offset-x: 120;
+}
+
+Toolbar[role=BottomAction] {
+  padding-x: 10;
+  gap: 12;
+  icon-size: 24;
+  offset-x: 16;
+  offset-y: 6;
 }
 
 Modal {
