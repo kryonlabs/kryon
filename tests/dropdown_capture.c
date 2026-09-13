@@ -3,6 +3,7 @@
 #include "../examples/kryon_example_font.h"
 #include "../src/ui/dropdown_store.h"
 #include "../src/ui/ui_blend_internal.h"
+#include "../src/ui/ui_internal.h"
 
 #include <stdio.h>
 

@@ -18,7 +18,17 @@ DOC = ROOT / "docs/CANONICAL_WIDGET_SURFACE.md"
 FEATURE_MATRIX = ROOT / "docs/FEATURE_MATRIX.md"
 RUNTIME = ROOT / "runtime"
 
-NATIVE_COMPAT_EXPORTS = {
+NATIVE_COMPAT_EXPORTS = set()
+
+NATIVE_SCOPE_EXPORT_ALLOWLIST = {
+    "BeginTree",
+    "End",
+    "EndTree",
+}
+
+ROLE_COMPAT_EXPORTS = set()
+
+GO_COMPAT_EXPORTS = {
     "BeginButton",
     "BeginCard",
     "BeginDisabled",
@@ -29,17 +39,6 @@ NATIVE_COMPAT_EXPORTS = {
     "EndPopup",
     "EndScroll",
     "EndTableCell",
-}
-
-NATIVE_SCOPE_EXPORT_ALLOWLIST = {
-    "BeginTree",
-    "End",
-    "EndTree",
-}
-
-ROLE_COMPAT_EXPORTS = set()
-
-GO_COMPAT_EXPORTS = NATIVE_COMPAT_EXPORTS | {
     "BeginCanvas",
     "EndCanvas",
 }

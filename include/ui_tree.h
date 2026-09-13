@@ -189,11 +189,6 @@ void SetAccessibilitySink(AccessibilitySink sink, void *userdata);
 
 Style ResolveButtonStyle(ButtonProps button, ButtonState state);
 
-void BeginDisabled(int disabled);
-void EndDisabled(void);
-Rectangle BeginScroll(Rectangle bounds, int content_height, int *scroll_offset);
-void EndScroll(void);
-
 typedef struct {
     Rectangle bounds;
     int id;
@@ -216,7 +211,6 @@ void AppBackground(void);
 void Background(Color color);
 void Surface(Rectangle bounds, Style style);
 int Card(CardProps card);
-NodeId BeginCard(CardProps card);
 void Text(TextProps props);
 void Paragraph(ParagraphSpec paragraph, int x, int *y);
 void Box(Rectangle bounds, Color fill, Color border);
@@ -240,15 +234,11 @@ int Drag(DragProps drag);
 int Input(InputProps input);
 int Slider(SliderProps slider);
 int Spinbox(SpinboxProps spinbox);
-int BeginPopup(PopupProps popup);
-void EndPopup(void);
 void ClosePopup(void);
 void Fieldset(FieldsetProps frame);
 int ListBox(ListBoxProps list);
 int TreeView(TreeViewProps tree);
 int TableView(TableViewProps table);
-Rectangle BeginTableCell(TableViewProps table, int row, int column);
-void EndTableCell(void);
 int TextArea(TextAreaProps area);
 void CanvasGrid(Rectangle bounds, int step, Color color);
 int PanedView(PanedViewProps panes);
@@ -263,7 +253,6 @@ int TitleBar(TitleBarProps title_bar);
 MenuResult Menu(MenuProps menu);
 
 int Button(ButtonProps button);
-NodeId BeginButton(ButtonProps button);
 int Selectable(SelectableProps selectable);
 void Bullet(Rectangle bounds);
 /* Layout nodes: auto-position children like flexbox. */

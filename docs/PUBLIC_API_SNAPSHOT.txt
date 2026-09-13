@@ -1811,7 +1811,6 @@ include/ui_tk.h enum CLIPBOARD_SOURCE_CLIPBOARD
 include/ui_tk.h enum CLIPBOARD_SOURCE_PRIMARY
 include/ui_tk.h enum CLIPBOARD_SOURCE_PRIMARY_OR_CLIPBOARD
 include/ui_tk.h function AcceleratorPressed
-include/ui_tk.h function BeginCanvas
 include/ui_tk.h function CanvasHitTest
 include/ui_tk.h function CanvasRectToScreen
 include/ui_tk.h function CanvasToScreen
@@ -1821,7 +1820,6 @@ include/ui_tk.h function ClipboardTargetIncludes
 include/ui_tk.h function ClipboardTargetUsesPrimary
 include/ui_tk.h function CopySelectionTextToClipboard
 include/ui_tk.h function DispatchAccelerators
-include/ui_tk.h function EndCanvas
 include/ui_tk.h function FlushClipboardBufferToHost
 include/ui_tk.h function GetClipboardBufferText
 include/ui_tk.h function GetClipboardSourceText
@@ -1898,12 +1896,6 @@ include/ui_tree.h enum WIDGET_TOGGLE
 include/ui_tree.h enum WIDGET_TRIANGLE
 include/ui_tree.h function AppBackground
 include/ui_tree.h function Background
-include/ui_tree.h function BeginButton
-include/ui_tree.h function BeginCard
-include/ui_tree.h function BeginDisabled
-include/ui_tree.h function BeginPopup
-include/ui_tree.h function BeginScroll
-include/ui_tree.h function BeginTableCell
 include/ui_tree.h function BeginTree
 include/ui_tree.h function Bevel
 include/ui_tree.h function Box
@@ -1921,10 +1913,6 @@ include/ui_tree.h function Drag
 include/ui_tree.h function DragDrop
 include/ui_tree.h function Dropdown
 include/ui_tree.h function End
-include/ui_tree.h function EndDisabled
-include/ui_tree.h function EndPopup
-include/ui_tree.h function EndScroll
-include/ui_tree.h function EndTableCell
 include/ui_tree.h function EndTree
 include/ui_tree.h function Fieldset
 include/ui_tree.h function Focus

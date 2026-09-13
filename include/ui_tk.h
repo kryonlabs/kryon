@@ -366,8 +366,6 @@ typedef struct {
     int checked;
 } AccessibilityNode;
 
-CanvasResult BeginCanvas(Canvas canvas);
-void EndCanvas(Canvas canvas);
 int CanvasHitTest(Vector2 point, Rectangle *items, int item_count);
 Vector2 CanvasToScreen(Canvas canvas, Vector2 point);
 Rectangle CanvasRectToScreen(Canvas canvas, Rectangle rect);

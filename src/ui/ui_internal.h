@@ -522,6 +522,21 @@ void RenderReorderPlaceholder(Rectangle bounds);
 void RenderToast(void);
 void RenderInspectOverlay(void);
 
+/* Lowered host scopes for .kry block widgets. These are not public widget
+ * names; parser/codegen and native tests use them to implement lexical blocks. */
+void BeginDisabled(int disabled);
+void EndDisabled(void);
+Rectangle BeginScroll(Rectangle bounds, int content_height, int *scroll_offset);
+void EndScroll(void);
+NodeId BeginCard(CardProps card);
+NodeId BeginButton(ButtonProps button);
+int BeginPopup(PopupProps popup);
+void EndPopup(void);
+Rectangle BeginTableCell(TableViewProps table, int row, int column);
+void EndTableCell(void);
+CanvasResult BeginCanvas(Canvas canvas);
+void EndCanvas(Canvas canvas);
+
 /* Retained submissions borrow this destination until EndTree. The caller
  * separately captures immediate drawing and owns the texture lifetime. */
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);

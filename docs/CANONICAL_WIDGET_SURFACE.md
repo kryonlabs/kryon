@@ -291,23 +291,12 @@ widget blocks; lowered `Begin*`/`End*` calls remain native support only.
 
 ## Native Public Compatibility Exports
 
-These names are still exported by `include/ui_tree.h`, but they are not clean
-widget concepts. They are compatibility or lowered host support that should
-disappear from the public surface once the canonical `.kry` surface owns the
-behavior.
+No lowered widget block scopes are exported by `include/ui_tree.h`. Parser
+lowering and native tests use internal declarations for these host scopes until
+the canonical `.kry` block surface owns the remaining generated backends.
 
 | Export | Replacement concept | Removal note |
 |---|---|---|
-| `BeginButton` | `Button` block | Lowered host entry for composed button content. |
-| `BeginCard` | `Card` block | Lowered host entry for composed card content. |
-| `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
-| `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
-| `BeginScroll` | `Scroll` block | Lowered host entry for scroll content. |
-| `EndScroll` | `Scroll` block | Lowered host exit for scroll content. |
-| `BeginPopup` | `Popup` block | Lowered host entry for popup content. |
-| `EndPopup` | `Popup` block | Lowered host exit for popup content. |
-| `BeginTableCell` | `TableCell` block | Lowered host entry for custom table-cell content. |
-| `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
 
 ## Go Public Compatibility Exports
 
