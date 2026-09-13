@@ -117,6 +117,25 @@ func ListBoxMulti_ListBoxMultiRowBounds(bounds Rectangle, index int32, row_heigh
 	return value_10
 }
 
+func ListBoxMulti_ListBoxMultiItemLabelInset(scale float32, item StyleFrame) int32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = item.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = item.Value.PaddingX
+	var value_8 float32 = 8.0
+	var value_9 float32 = scale
+	var value_10 bool = true
+	var value_11 int32 = ListBoxMulti_ListBoxMultiMetric(value_4, value_6, value_7, value_8, value_9, value_10)
+	return value_11
+}
+
 func ListBoxMulti_ListBoxMultiFocusedRow(anchor int32, selected_first int32, item_count int32) int32 {
 	var value_0 int32 = item_count
 	var value_1 int32 = 0

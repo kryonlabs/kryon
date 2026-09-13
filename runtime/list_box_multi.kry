@@ -43,6 +43,12 @@ ListBoxMultiRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rec
     return row
 }
 
+ListBoxMultiItemLabelInset :: (scale: float, item: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return ListBoxMultiMetric(item.value.fields, (u32)StylePaddingX,
+        item.value.padding_x, 8.0, scale, true)
+}
+
 ListBoxMultiFocusedRow :: (anchor: i32, selected_first: i32, item_count: i32) -> i32 #export {
     if item_count <= 0 { return -1 }
     if anchor >= 0 && anchor < item_count { return anchor }

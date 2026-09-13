@@ -174,14 +174,14 @@ ui_tk_draw_slider_paint(SliderPaint paint, int hovered, int active,
     if((active || hovered) && paint.glow_radius > 0.0f)
         DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                    paint.glow_radius, GetColor(paint.glow_color));
-    DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
-               paint.thumb_radius + (float)Scale(1),
+    DrawCircle((int)paint.thumb_shadow_x, (int)paint.thumb_shadow_y,
+               paint.thumb_shadow_radius,
                GetColor(paint.thumb_shadow_color));
     DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                paint.thumb_radius, GetColor(paint.thumb_fill_color));
-    DrawCircle((int)(paint.thumb_x - Scale(3)),
-               (int)(paint.thumb_y - Scale(4)),
-               paint.thumb_radius * 0.45f,
+    DrawCircle((int)paint.thumb_highlight_x,
+               (int)paint.thumb_highlight_y,
+               paint.thumb_highlight_radius,
                GetColor(paint.thumb_highlight_color));
     DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
                     paint.thumb_radius, GetColor(paint.thumb_edge_color));
@@ -813,9 +813,8 @@ RenderListBoxMulti(ListBoxProps list)
             int font = item_style.font_size > 0.0f
                 ? (int)(item_style.font_size + 0.5f)
                 : default_item_font;
-            int label_inset = item_style.padding_x > 0.0f
-                ? (int)(item_style.padding_x + 0.5f)
-                : Scale(8);
+            int label_inset = ListBoxMultiItemLabelInset(
+                (float)Scale(1000) / 1000.0f, item_frame);
             if(selected || hot || disabled)
                 ui_tk_draw_style_frame(row, list.bounds, item_frame, hot, 0,
                                        disabled, 0);
@@ -3222,9 +3221,7 @@ RenderListBox(ListBoxProps list)
             int item_font = item_style.font_size > 0.0f
                 ? (int)(item_style.font_size + 0.5f)
                 : font;
-            int label_inset = item_style.padding_x > 0.0f
-                ? (int)(item_style.padding_x + 0.5f)
-                : Scale(8);
+            int label_inset = ListBoxItemLabelInset(runtime_scale, item_frame);
             ListBoxItemPaint item_paint =
                 ListBoxItemPaintFor(row, label_inset,
                                     TextLineHeight(item_font));

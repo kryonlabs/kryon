@@ -827,6 +827,8 @@ test_list_box_layout_policy(void)
     check_int("list visible rows", layout.visible_rows, 3);
     check_int("list row y", (int)row.y, 42);
     check_int("list paint text x", paint.text_x, 18);
+    check_int("list default label inset",
+              ListBoxItemLabelInset(1.0f, (StyleFrame){0}), 8);
     check_int("list default row height from KSS",
               ListBoxRowHeight(0, 1.0f, item), 30);
     check_int("list scrollbar width from KSS",
@@ -838,9 +840,13 @@ test_list_box_layout_policy(void)
     check_int("list custom scrollbar width from KSS",
               (int)ListBoxScrollbarBoundsFor(bounds, 1.0f, list).width, 10);
     item.value.offset_y = 0.0f;
+    item.value.fields |= StylePaddingX;
+    item.value.padding_x = 0.0f;
     list.value.offset_y = 0.0f;
     check_int("list explicit zero row height fallback",
               ListBoxRowHeight(0, 1.0f, item), 30);
+    check_int("list explicit zero label inset",
+              ListBoxItemLabelInset(1.0f, item), 0);
     check_int("list explicit zero scrollbar width",
               (int)ListBoxScrollbarBoundsFor(bounds, 1.0f, list).width, 0);
     check_int("list paint text y", paint.text_y, 47);
@@ -873,6 +879,12 @@ test_multi_select_policy(void)
     check_int("multi row explicit height", ListBoxMultiRowHeight(26, 1.0f, item), 26);
     item.value.offset_y = 0.0f;
     check_int("multi row zero style height fallback", ListBoxMultiRowHeight(0, 1.0f, item), 34);
+    check_int("multi default label inset",
+              ListBoxMultiItemLabelInset(1.0f, (StyleFrame){0}), 8);
+    item.value.fields |= StylePaddingX;
+    item.value.padding_x = 0.0f;
+    check_int("multi explicit zero label inset",
+              ListBoxMultiItemLabelInset(1.0f, item), 0);
     check_float("multi row y", row.y, 76.0f);
     check_float("multi row height", row.height, 28.0f);
     check_int("multi focused fallback", ListBoxMultiFocusedRow(-1, 2, 3), 2);

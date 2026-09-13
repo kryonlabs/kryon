@@ -180,6 +180,12 @@ ListBoxItemPaintFor :: (row: Rectangle, label_inset: i32,
     return paint
 }
 
+ListBoxItemLabelInset :: (scale: float, item: StyleFrame) -> i32 #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return ListBoxMetric(item.value.fields, (u32)StylePaddingX,
+        item.value.padding_x, 8.0, scale, true)
+}
+
 ListBoxScrollbarBoundsFor :: (bounds: Rectangle, scale: float,
     list: StyleFrame) -> Rectangle #export {
     bar: Rectangle
