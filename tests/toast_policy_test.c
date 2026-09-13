@@ -33,9 +33,23 @@ main(void)
     frame.value.padding_y = 12.0f;
     frame.value.gap = 24.0f;
     metrics = ToastMetricsFor(1.0f, frame);
+    assert(metrics.pad_x == 14);
+    assert(metrics.pad_y == 10);
+    assert(metrics.margin == 18);
+
+    frame.value.fields = StylePaddingX | StylePaddingY | StyleGap;
+    metrics = ToastMetricsFor(1.0f, frame);
     assert(metrics.pad_x == 20);
     assert(metrics.pad_y == 12);
     assert(metrics.margin == 24);
+
+    frame.value.padding_x = 0.0f;
+    frame.value.padding_y = 0.0f;
+    frame.value.gap = 0.0f;
+    metrics = ToastMetricsFor(1.0f, frame);
+    assert(metrics.pad_x == 0);
+    assert(metrics.pad_y == 0);
+    assert(metrics.margin == 18);
 
     frame = (StyleFrame){0};
     metrics = ToastMetricsFor(1.0f, frame);
