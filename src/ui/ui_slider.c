@@ -288,13 +288,8 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
        !ui_input_captures_click_internal(mouse_world, 0)) {
         int old_value = *value;
-        float drag_t = (float)(mx - x) / (float)w;
-        if(drag_t < 0.0f)
-            drag_t = 0.0f;
-        if(drag_t > 1.0f)
-            drag_t = 1.0f;
-        *value = min + (int)(drag_t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
+        *value = SliderDiscretePointerValue((float)mx, (float)x, (float)w,
+                                            min, max, false);
         changed = (*value != old_value);
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             g_ui_slider_active_id = 0;
@@ -388,13 +383,8 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
        (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
        !ui_input_captures_click_internal(mouse_world, 0)) {
         int old_value = *value;
-        float t = 1.0f - (float)(my - y) / (float)h;
-        if(t < 0.0f)
-            t = 0.0f;
-        if(t > 1.0f)
-            t = 1.0f;
-        *value = min + (int)(t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
+        *value = SliderDiscretePointerValue((float)my, (float)y, (float)h,
+                                            min, max, true);
         changed = (*value != old_value);
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             g_ui_slider_active_id = 0;
@@ -507,13 +497,8 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
        (IsMouseButtonDown(MOUSE_BUTTON_LEFT) || IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
        !ui_input_captures_click_internal(mouse_world, 0)) {
         int old_value = *value;
-        float t = 1.0f - (float)(my - y) / (float)h;
-        if(t < 0.0f)
-            t = 0.0f;
-        if(t > 1.0f)
-            t = 1.0f;
-        *value = min + (int)(t * (float)(max - min) + 0.5f);
-        *value = ui_clampi(*value, min, max);
+        *value = SliderDiscretePointerValue((float)my, (float)y, (float)h,
+                                            min, max, true);
         changed = (*value != old_value);
         if(IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
             g_ui_slider_active_id = 0;

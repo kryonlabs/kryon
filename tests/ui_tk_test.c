@@ -1186,6 +1186,14 @@ test_slider_value_policy(void)
     check_float("slider float value clamps", SliderValue(0.0f, 1.0f, 1.25f), 1.0f);
     check_float("slider int ratio", SliderDiscreteRatio(5, 0, 10), 0.5f);
     check_int("slider int value rounds", SliderDiscreteValue(0, 10, 0.86f), 9);
+    check_float("slider pointer ratio clamps low",
+                SliderPointerRatio(-5.0f, 10.0f, 100.0f, 0), 0.0f);
+    check_float("slider inverted pointer ratio",
+                SliderPointerRatio(35.0f, 10.0f, 100.0f, 1), 0.75f);
+    check_int("slider pointer int value",
+              SliderDiscretePointerValue(94.0f, 10.0f, 100.0f, 0, 10, 0), 8);
+    check_int("slider inverted pointer int value",
+              SliderDiscretePointerValue(35.0f, 10.0f, 100.0f, 0, 10, 1), 8);
 
     float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 0);
     check_int("slider float keyboard changed", float_step.changed ? 1 : 0, 1);

@@ -265,6 +265,16 @@ SliderClampRatio :: (ratio: float) -> float #export {
     return ratio
 }
 
+SliderPointerRatio :: (pointer: float, origin: float, length: float,
+    inverted: bool) -> float #export {
+    if length <= 0.0 { return 0.0 }
+    ratio: float = (pointer - origin) / length
+    if inverted {
+        ratio = 1.0 - ratio
+    }
+    return SliderClampRatio(ratio)
+}
+
 SliderRatio :: (value: float, minimum: float, maximum: float) -> float #export {
     span: float = maximum - minimum
     if span <= 0.0 { return 0.0 }
@@ -312,6 +322,12 @@ SliderDiscreteValue :: (minimum: i32, maximum: i32, ratio: float) -> i32 #export
     span: i64 = (i64)maximum - (i64)minimum
     if span <= 0 { return minimum }
     return (i32)((i64)minimum + (i64)(SliderClampRatio(ratio) * (float)span + 0.5))
+}
+
+SliderDiscretePointerValue :: (pointer: float, origin: float, length: float,
+    minimum: i32, maximum: i32, inverted: bool) -> i32 #export {
+    return SliderDiscreteValue(minimum, maximum,
+        SliderPointerRatio(pointer, origin, length, inverted))
 }
 
 SliderDiscreteKeyboardValue :: (value: i32, minimum: i32, maximum: i32,
