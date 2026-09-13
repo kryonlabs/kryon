@@ -78,6 +78,14 @@ main(void)
     assert(close_width == 82);
     assert(icon_width == 44);
     assert(total == 214);
+    assert(TabBarSelectedIndexFor(-1, 3) == 0);
+    assert(TabBarSelectedIndexFor(9, 3) == 0);
+    assert(TabBarSelectedIndexFor(2, 3) == 2);
+    assert(TabBarSelectedIndexFor(0, 0) == -1);
+    assert(TabBarWrappedIndex(0, -1, 1, 3) == 2);
+    assert(TabBarWrappedIndex(2, 1, 1, 3) == 0);
+    assert(TabBarWrappedIndex(1, 0, 2, 3) == 0);
+    assert(TabBarWrappedIndex(1, 1, 2, 0) == -1);
     assert(scroll.equal_tabs == 1);
     assert(scroll.scroll == 0);
     check_rect(TabBarEqualTabBounds(bounds, 3, 2), 170, 20, 80, 32);

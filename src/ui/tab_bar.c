@@ -246,10 +246,8 @@ static int
 ui_tab_bar_next_enabled(TabBarProps bar, int from, int direction)
 {
     for(int step = 1; step <= bar.count; step++) {
-        int index = (from + direction * step) % bar.count;
+        int index = TabBarWrappedIndex(from, direction, step, bar.count);
 
-        if(index < 0)
-            index += bar.count;
         if(!bar.tabs[index].disabled)
             return index;
     }
@@ -268,9 +266,7 @@ ui_tab_bar_keyboard_input(TabBarProps bar)
         return -1;
 
     SetFocusTextInputActive(0);
-    selected = bar.selected_index;
-    if(selected < 0 || selected >= bar.count)
-        selected = 0;
+    selected = TabBarSelectedIndexFor(bar.selected_index, bar.count);
     if(IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_UP))
         return ui_tab_bar_next_enabled(bar, selected, -1);
     if(IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_DOWN))

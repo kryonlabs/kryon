@@ -214,6 +214,22 @@ TabBarTotalWidth :: (tab_width_sum: i32, count: i32, gap: i32) -> i32 #export {
     return total
 }
 
+TabBarSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
+    if count <= 0 { return -1 }
+    if selected < 0 || selected >= count { return 0 }
+    return selected
+}
+
+TabBarWrappedIndex :: (from: i32, direction: i32, step: i32,
+    count: i32) -> i32 #export {
+    if count <= 0 { return -1 }
+    if direction == 0 { direction = 1 }
+    if step < 0 { step = 0 }
+    index: i32 = (from + direction * step) % count
+    if index < 0 { index += count }
+    return index
+}
+
 TabBarScrollFor :: (bounds_width: float, total_width: i32, scroll: i32) -> TabBarScroll #export {
     result: TabBarScroll
     result.equal_tabs = (float)total_width <= bounds_width

@@ -120,7 +120,7 @@ surface review:
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/swipe.kry` | Swipe direction/default/progress policy | Native support |
 | `runtime/swipe_props.kry` | Swipe support state, data, and result records | Native support |
-| `runtime/tab_bar.kry` | TabBar sizing, scroll, and reorder marker policy | `.kry canonical` |
+| `runtime/tab_bar.kry` | TabBar sizing, scroll, keyboard index, and reorder marker policy | `.kry canonical` |
 | `runtime/tab_bar_props.kry` | TabBar props | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
@@ -157,7 +157,7 @@ text measurement, painting, storage, or platform services.
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` component/step-button layout and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox`, `TextField`/`TextArea` metrics/paint geometry/buffer-limit/navigation/edit intent/selection state policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; reorder pointer ownership and gesture lifecycle remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry policy | drag/drop payload storage |
-| Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
+| Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
 
@@ -208,7 +208,7 @@ has a single place to land.
 | `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data and bar, popup, and context behavior props are generated from `.kry`. |
 | `NavigationBar` | `UI/Navigation` | Tabs | `runtime/navigation_bar.kry` | `.kry-backed` | Paint, sizing, and configuration modal layout/count policy are `.kry`. |
 | `Toolbar` | `UI/Navigation` | Tools | `runtime/toolbar.kry` | `.kry-backed` | Metrics/geometry are `.kry`; host dispatches child actions. |
-| `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing/scroll/reorder marker policy is `.kry`; host keeps input sampling. |
+| `TabBar` | `UI/Navigation` | Tabs | `runtime/tab_bar.kry` | `.kry-backed` | Sizing, scroll, keyboard index, and reorder marker policy are `.kry`; host keeps input sampling. |
 | `TitleBar` | `UI/Navigation` | Title | `runtime/title_bar.kry` | Partly `.kry-backed` | Layout, paint geometry, and title font-fit policy are `.kry`; host keeps dropdown dispatch, text measurement, and leading-action input/rendering. |
 | `Focus` | `UI/Overlays` | Focus | `runtime/focus.kry` | Partly `.kry-backed` | Ring geometry policy is `.kry`; host keeps focus state, registration, and drawing. |
 | `Modal` | `UI/Overlays` | Dialog | `runtime/modal.kry` | Partly `.kry-backed` | Layout, frame geometry, and action sizing policy are `.kry`; host keeps modal input layer, text editing, and drawing. |
@@ -574,7 +574,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `NavigationBar` | `.kry canonical` | Paint, sizing, and configuration modal layout/count policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
-| `TabBar` | `.kry canonical` | Sizing, scroll, and reorder marker policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
+| `TabBar` | `.kry canonical` | Sizing, scroll, keyboard index, and reorder marker policy are in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout and paint geometry policy are in `.kry`; title typography uses resolved KSS font sizes directly; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
