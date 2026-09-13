@@ -34,6 +34,10 @@ the browser receives normal elements, attributes, CSS, and events.
   runtime fallback synthesis.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
+- Direct runtime/web widget recognition covers the browser-native alias
+  surface, so expression-backed `Article(...)`, `Form(...)`, `Table(...)`, and
+  related DOM widgets get compiler-owned Web Document metadata instead of
+  falling through as opaque logic calls.
 - Browser-backed Web Document smoke coverage now exercises native elements,
   KSS inline and installed CSS styling, selector lookup, event decoration, table
   header relationships, form ownership, numeric input range facts, and source
