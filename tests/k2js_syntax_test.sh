@@ -808,6 +808,36 @@ assert.equal(runtime.webNodeQuery(rt, "Panel > Text").path,
   "DeclaredWidgetBlockNodes/card/Text@6");
 EOF
 
+cat > "$work/src/expression_widget_nodes.kry" <<'EOF'
+#import "kryon.h"
+state {
+    pressed: bool = false
+}
+ExpressionWidgetNodes :: () #ui {
+    local: bool = Button((ButtonProps){.label="Declare"})
+    pressed = Button((ButtonProps){.label="Assign"})
+    unused local
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/expression_widget_nodes.kry"
+expression_widget_out="$work/out/src/expression_widget_nodes.js"
+grep -q '"path": "ExpressionWidgetNodes/Button@6"' "$expression_widget_out"
+grep -q '"path": "ExpressionWidgetNodes/Button@7-2"' "$expression_widget_out"
+node --input-type=module - "$expression_widget_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const state = module.createState();
+const rt = runtime.createRuntime({});
+module.ExpressionWidgetNodes_ExpressionWidgetNodes(rt, state, {});
+const paths = runtime.webDocumentFrame(rt).nodes.map((node) => node.path);
+assert.deepEqual(paths, [
+  "ExpressionWidgetNodes/Button@6",
+  "ExpressionWidgetNodes/Button@7-2"
+]);
+EOF
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {

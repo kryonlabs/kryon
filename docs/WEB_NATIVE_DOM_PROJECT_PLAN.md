@@ -31,6 +31,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `TableCell`, `Popup`, and `Disabled`.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
+- Expression-backed widget calls in declarations and assignments emit
+  source-derived Web Document metadata, so logic expressions still produce
+  inspectable DOM nodes.
 - Declared `.kry` widget blocks emit a call-site Web Document node and remap
   child nodes from the component definition path into that call-site subtree, so
   KSS selectors and native DOM nesting see composed widgets as real structure.
