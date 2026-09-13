@@ -111,11 +111,17 @@ RenderNavigationBar(NavigationBarProps nav)
     NavigationBarPaint paint;
     StyleFrame bar_frame;
     Style bar_style;
+    Style base_icon_style;
+    int icon_size = 0;
     int i;
     Rectangle dst;
 
     if(nav.items == NULL || count <= 0 || nav.view_width <= 0 || nav.view_height <= 0)
         return result;
+    base_icon_style = ui_unpack_style(
+        ui_navigation_bar_item_frame(0, 0, 0, nav.class_name).value);
+    if(base_icon_style.icon_size > 0.0f)
+        icon_size = (int)(base_icon_style.icon_size + 0.5f);
     paint = NavigationBarPaintFor((NavigationBarSpec){
         .view_width = nav.view_width,
         .view_height = nav.view_height,
@@ -123,7 +129,7 @@ RenderNavigationBar(NavigationBarProps nav)
         .height = height,
         .side_margin = nav.side_margin,
         .bottom_margin = nav.bottom_margin,
-        .icon_size = nav.icon_size,
+        .icon_size = icon_size,
         .scale = runtime_scale,
         .bar = ui_navigation_bar_surface_frame(nav.class_name)
     });
@@ -208,9 +214,8 @@ RenderNavigationBar(NavigationBarProps nav)
         }
         dst = item_paint.icon_bounds;
         ui_draw_navigation_bar_icon(item->icon, item->icon_type, dst,
-                                nav.icon_color.a == 0 ? GetColor(item_paint.icon_color)
-                                                      : nav.icon_color,
-                                (unsigned char)item_paint.icon_alpha);
+                                    GetColor(item_paint.icon_color),
+                                    (unsigned char)item_paint.icon_alpha);
         if(item->label != NULL && item->label[0] != '\0') {
             DrawFittedTextInRect(item->label, item_paint.label_bounds,
                                  label_font, Text8,

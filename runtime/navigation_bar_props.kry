@@ -17,12 +17,9 @@ NavigationBarProps :: struct {
     count: i32
     items: const NavigationBarItem*
     height: i32
-    icon_size: i32
-    icon_padding: i32
     side_margin: i32
     bottom_margin: i32
     max_button_width: i32
-    icon_color: Color
 }
 
 NavigationBarResult :: struct {

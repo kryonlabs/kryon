@@ -274,24 +274,5 @@ main(void)
         check_int("active navigation bar icon KSS blue", icon_tints[1].b, 0x22);
         check_int("disabled navigation bar icon alpha", icon_tints[2].a, 150);
     }
-    for(int dark = 0; dark <= 1; dark++) {
-        SetCurrentTheme(THEME_SKY, dark);
-        Color tint = GetThemeText();
-        icon_calls = 0;
-        BeginInterfaceFrame(900, 720, 1.0f);
-        NavigationBar((NavigationBarProps){
-            .view_width = 900, .view_height = 720,
-            .count = 3, .items = items, .height = 66,
-            .icon_color = tint,
-        });
-        EndInterfaceFrame();
-        check_int("tinted icon count", icon_calls, 3);
-        for(int i = 0; i < 3; i++) {
-            check_int("theme tint red", icon_tints[i].r, tint.r);
-            check_int("theme tint green", icon_tints[i].g, tint.g);
-            check_int("theme tint blue", icon_tints[i].b, tint.b);
-        }
-        check_int("tinted disabled alpha", icon_tints[2].a, 150);
-    }
     return 0;
 }

@@ -18,12 +18,9 @@ type NavigationBarProps struct {
 	Count          int32
 	Items          []NavigationBarItem
 	Height         int32
-	IconSize       int32
-	IconPadding    int32
 	SideMargin     int32
 	BottomMargin   int32
 	MaxButtonWidth int32
-	IconColor      Color
 }
 
 type NavigationBarResult struct {

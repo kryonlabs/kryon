@@ -4903,6 +4903,12 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 	if viewH <= 0 {
 		viewH = r.GetScreenHeight()
 	}
+	itemBaseFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBarItem(), StyleSheet_StyleAny())
+	itemBaseStyle := unpackStyle(itemBaseFrame.Value)
+	iconSize := int32(0)
+	if itemBaseStyle.IconSize > 0 {
+		iconSize = int32(itemBaseStyle.IconSize + 0.5)
+	}
 	paint := NavigationBar_NavigationBarPaintFor(NavigationBarSpec{
 		ViewWidth:    w,
 		ViewHeight:   viewH,
@@ -4910,7 +4916,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		Height:       props.Height,
 		SideMargin:   props.SideMargin,
 		BottomMargin: props.BottomMargin,
-		IconSize:     props.IconSize,
+		IconSize:     iconSize,
 		Scale:        1,
 		Bar:          simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false, props.ClassName, StyleSheet_StyleKindNavigationBar(), StyleSheet_StyleAny()),
 	})
@@ -4954,10 +4960,7 @@ func (r *runtime) NavigationBar(props NavigationBarProps) {
 		}
 		textFont, textFontID := styleTextFaceWithFallback(textStyle, labelFont, labelFontID)
 		if item.Icon.ID != 0 {
-			tint := props.IconColor
-			if tint.A == 0 {
-				tint = unpackRGBA(itemPaint.IconColor)
-			}
+			tint := unpackRGBA(itemPaint.IconColor)
 			if item.Disabled {
 				tint.A = uint8(uint32(tint.A) * uint32(itemPaint.IconAlpha) / 255)
 			}

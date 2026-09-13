@@ -37,12 +37,9 @@ typedef struct NavigationBarProps {
     int32_t count;
     const NavigationBarItem* items;
     int32_t height;
-    int32_t icon_size;
-    int32_t icon_padding;
     int32_t side_margin;
     int32_t bottom_margin;
     int32_t max_button_width;
-    Color icon_color;
 } NavigationBarProps;
 
 typedef struct NavigationBarResult {

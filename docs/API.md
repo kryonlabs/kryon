@@ -1444,6 +1444,7 @@ typedef struct {
     int route;
     const char *label;
     Texture2D icon;
+    int icon_type;
     int active;
     int disabled;
 } NavigationBarItem;
@@ -1451,11 +1452,10 @@ typedef struct {
 typedef struct {
     int view_width;
     int view_height;
+    int class_name;
     int count;
     const NavigationBarItem *items;
     int height;
-    int icon_size;
-    int icon_padding;
     int side_margin;
     int bottom_margin;
     int max_button_width;
