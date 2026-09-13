@@ -2,7 +2,22 @@
 # k2go syntax test — verifies the Kir-based .kry->Go pipeline output.
 set -eu
 
-k2go=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2go build/*/bin/k2go 2>/dev/null | head -1)}
+platform=$(uname -s | tr '[:upper:]' '[:lower:]')
+if [ $# -gt 0 ]; then
+    k2go=$1
+else
+    k2go=
+    for candidate in \
+        build/"$platform"-x86_64/bin/k2go \
+        build/"$platform"-*/bin/k2go \
+        build/*/bin/k2go
+    do
+        if [ -f "$candidate" ]; then
+            k2go=$candidate
+            break
+        fi
+    done
+fi
 work=${TMPDIR:-/tmp}/kryon-k2go-syntax-test.$$
 root=$(pwd)
 
@@ -457,7 +472,13 @@ if grep -q 'TODO k2go' "$out"; then
     exit 1
 fi
 unqualified_runtime_calls="$(
-    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Box|Circle|Ring|Scroll|ScrollEndScope|Open|Close)\(' "$out" || true
+    awk '
+        /^type .* interface \{/ { in_interface = 1 }
+        in_interface && /^\}/ { in_interface = 0; next }
+        !in_interface && /^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Box|Circle|Ring|Scroll|ScrollEndScope|Open|Close)\(/ {
+            print FNR ":" $0
+        }
+    ' "$out"
 )"
 if [ -n "$unqualified_runtime_calls" ]; then
     echo "k2go emitted unqualified runtime calls; generated Go must use kr.<Name>:" >&2
@@ -559,14 +580,14 @@ grep -q 'GetThemeSurface()' "$out"
 
 # Go-parity surface: the remaining widget families lower and compile
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "GB"' "$out"
-grep -q '_ValidRuntime.DisabledScope(true)' "$out"
-grep -q '_ValidRuntime.DisabledEndScope()' "$out"
+grep -q '_ValidScopes().DisabledScope(true)' "$out"
+grep -q '_ValidScopes().DisabledEndScope()' "$out"
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(22).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: int32(221).*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"
 grep -q 'canvas_result_spec kr.Canvas = kr.Canvas{' "$out"
-grep -q 'canvas_result kr.CanvasResult = _ValidRuntime.CanvasScope(canvas_result_spec)' "$out"
-grep -q '_ValidRuntime.CanvasEndScope(canvas_result_spec)' "$out"
+grep -q 'canvas_result kr.CanvasResult = _ValidScopes().CanvasScope(canvas_result_spec)' "$out"
+grep -q '_ValidScopes().CanvasEndScope(canvas_result_spec)' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'Selectable: (1 != 0)' "$out"
 grep -q 'kr.Toast(kr.ToastProps{.*Message: "toast from kry"' "$out"
@@ -616,7 +637,7 @@ grep -q 'kr.TextFormat("Rate: %.1f"' "$out"
 grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(46).*Mode: kr.MenuModeBar.*Menus: menus\[:\].*OpenIndex: &st.MenuOpen' "$out"
 grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(47).*Mode: kr.MenuModePopup.*Items: menu_items\[:\]' "$out"
 grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(48).*Mode: kr.MenuModeContext.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
-grep -q '_ValidRuntime.PopupScope(kr.PopupProps{.*ID: int32(58).*Flags: kr.PopupTooltip' "$out"
+grep -q '_ValidScopes().PopupScope(kr.PopupProps{.*ID: int32(58).*Flags: kr.PopupTooltip' "$out"
 grep -q 'Text: "Helpful text"' "$out"
 grep -q 'kr.Selectable(kr.SelectableProps{.*Selected: &st.SelectedRow' "$out"
 grep -q 'kr.Checkbox(kr.CheckboxProps{.*Flags: &st.FeatureFlags.*FlagsValue: int32(4)' "$out"

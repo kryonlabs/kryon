@@ -506,10 +506,6 @@ type Runtime interface {
 	WindowShouldClose() bool
 	BeginFrame()
 	EndFrame()
-	DisabledScope(bool)
-	DisabledEndScope()
-	PopupScope(PopupProps) bool
-	PopupEndScope()
 	AcceleratorPressed(Accelerator) int32
 	DispatchAccelerators([]Accelerator, ...int32) int32
 	ClearBackground(Color)
@@ -535,13 +531,9 @@ type Runtime interface {
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
 	Scroll(ScrollProps, func(Rectangle))
-	ScrollEndScope()
-	ScrollScope(Rectangle, int32, *int32) Rectangle
 	Card(CardProps) bool
-	CardScope(CardProps)
 	Button(ButtonProps) bool
 	ReadActivation(bounds Rectangle, id int32, enabled bool) Activation
-	ButtonScope(ButtonProps)
 	Selectable(SelectableProps) bool
 	Checkbox(CheckboxProps) bool
 	Bullet(Rectangle)
@@ -617,10 +609,6 @@ type Runtime interface {
 	TreeView(props TreeViewProps) int32
 	ListBox(props ListBoxProps) int32
 	TableView(props TableViewProps) int32
-	TableCellScope(TableViewProps, int32, int32) Rectangle
-	TableCellEndScope()
-	CanvasScope(canvas Canvas) CanvasResult
-	CanvasEndScope(canvas Canvas)
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeSource(source ThemeSource)
 	SetThemeMode(mode ThemeMode)

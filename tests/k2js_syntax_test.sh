@@ -2,7 +2,22 @@
 # k2js syntax test - verifies the Kir-based .kry->JavaScript pipeline output.
 set -eu
 
-k2js=${1:-$(ls build/$(uname -s | tr [:upper:] [:lower:])-*/bin/k2js build/*/bin/k2js 2>/dev/null | head -1)}
+platform=$(uname -s | tr '[:upper:]' '[:lower:]')
+if [ $# -gt 0 ]; then
+    k2js=$1
+else
+    k2js=
+    for candidate in \
+        build/"$platform"-x86_64/bin/k2js \
+        build/"$platform"-*/bin/k2js \
+        build/*/bin/k2js
+    do
+        if [ -f "$candidate" ]; then
+            k2js=$candidate
+            break
+        fi
+    done
+fi
 work=${TMPDIR:-/tmp}/kryon-k2js-syntax-test.$$
 root=$(pwd)
 
@@ -437,28 +452,6 @@ registry_out="$work/out/src/registry_styles.js"
 grep -q 'target: "registered.theme"' "$registry_out"
 grep -q 'alias: "registered_theme"' "$registry_out"
 grep -q '@pack registered.theme;' "$registry_out"
-
-cat > "$work/src/direct_scopes.kry" <<'EOF'
-#import "kryon.h"
-
-app "Direct Scopes" {
-    size 80 60
-}
-
-DirectScopes :: () #ui {
-    Screen root: {
-        DisabledScope(true)
-        Text((TextProps){.text="Locked"})
-        DisabledEndScope()
-    }
-}
-EOF
-"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_scopes.kry"
-direct_scopes_out="$work/out/src/direct_scopes.js"
-grep -Eq '"path": "DirectScopes/root/Disabled@[0-9]+(-[0-9]+)?"' "$direct_scopes_out"
-grep -q '"parentPath": "DirectScopes/root"' "$direct_scopes_out"
-awk '/kryon.widget\(\$rt, "Disabled"/ && /"sourcePath": "src\/direct_scopes.kry"/ && /"sourceEndLine":/ { found=1 } END { exit !found }' "$direct_scopes_out"
-grep -q 'kryon.widget(\$rt, "Disabled", "end", \$state, null)' "$direct_scopes_out"
 
 cat > "$work/src/anon_refs.kry" <<'EOF'
 #import "kryon.h"
@@ -1062,73 +1055,6 @@ assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
   "ParenthesizedWidgetNodes/Button@3",
   "ParenthesizedWidgetNodes/Button@4-2",
   "ParenthesizedWidgetNodes/Button@6-3"
-]);
-EOF
-
-cat > "$work/src/parenthesized_scope_calls.kry" <<'EOF'
-#import "kryon.h"
-ParenthesizedScopeCalls :: () #ui {
-    scroll: Rectangle = (ScrollScope({0, 0, 100, 100}, 240, nil))
-    ScrollEndScope()
-    table: TableViewProps = (TableViewProps){}
-    cell: Rectangle = (TableCellScope(table, 0, 0))
-    TableCellEndScope()
-    TableCellScope(table, 0, 0)
-    TableCellEndScope()
-    canvas_spec: Canvas = (Canvas){.bounds = {0, 0, 100, 100}}
-    canvas: CanvasResult = (CanvasScope(canvas_spec))
-    CanvasEndScope(canvas_spec)
-    CanvasScope(canvas_spec)
-    CanvasEndScope(canvas_spec)
-    (DisabledScope(true))
-    DisabledEndScope()
-    popup: PopupProps = (PopupProps){.bounds={0, 0, 80, 40}, .id=7}
-    if (PopupScope(popup)) {
-        PopupEndScope()
-    }
-    popup_expr: PopupProps = (PopupProps){.bounds={0, 50, 80, 40}, .id=8, .flags=1}
-    popup_visible: bool = (PopupScope(popup_expr))
-    if popup_visible {
-        PopupEndScope()
-    }
-    PopupScope(popup_expr)
-    PopupEndScope()
-}
-EOF
-"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"
-parenthesized_scope_out="$work/out/src/parenthesized_scope_calls.js"
-grep -q 'kryon.widget(\$rt, "Scroll"' "$parenthesized_scope_out"
-grep -q 'kryon.widget(\$rt, "TableCell"' "$parenthesized_scope_out"
-grep -q 'kryon.widget(\$rt, "Canvas"' "$parenthesized_scope_out"
-grep -q 'kryon.widget(\$rt, "Disabled"' "$parenthesized_scope_out"
-grep -q 'kryon.widget(\$rt, "Popup"' "$parenthesized_scope_out"
-grep -Eq '"path": "ParenthesizedScopeCalls/TableCell@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
-grep -Eq '"path": "ParenthesizedScopeCalls/Canvas@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
-grep -Eq '"path": "ParenthesizedScopeCalls/Popup@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Scroll@3"' "$parenthesized_scope_out"
-[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/TableCell@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 2 ]
-[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/Canvas@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 2 ]
-[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/Popup@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 3 ]
-grep -q '"path": "ParenthesizedScopeCalls/Disabled@15-6"' "$parenthesized_scope_out"
-grep -q 'let popup_visible = kryon.copyValue((() => { const $open = kryon.widget($rt, "Popup"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Popup@18-7"' "$parenthesized_scope_out"
-node --input-type=module - "$parenthesized_scope_out" "$work/out/kryon-runtime.js" <<'EOF'
-import assert from "node:assert/strict";
-import { pathToFileURL } from "node:url";
-const module = await import(pathToFileURL(process.argv[2]).href);
-const runtime = await import(pathToFileURL(process.argv[3]).href);
-const rt = runtime.createRuntime({});
-module.ParenthesizedScopeCalls_ParenthesizedScopeCalls(rt, module.createState(), {});
-assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
-  "ParenthesizedScopeCalls/Scroll@3",
-  "ParenthesizedScopeCalls/TableCell@6-2",
-  "ParenthesizedScopeCalls/TableCell@8-3",
-  "ParenthesizedScopeCalls/Canvas@11-4",
-  "ParenthesizedScopeCalls/Canvas@13-5",
-  "ParenthesizedScopeCalls/Disabled@15-6",
-  "ParenthesizedScopeCalls/Popup@18-7",
-  "ParenthesizedScopeCalls/Popup@22-8",
-  "ParenthesizedScopeCalls/Popup@26-9"
 ]);
 EOF
 

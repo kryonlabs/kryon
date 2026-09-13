@@ -164,6 +164,26 @@ module_uses_lowered_scope_runtime(const KirModule *m)
 }
 
 static void
+emit_lowered_scope_runtime(FILE *f, const char *guard)
+{
+    fprintf(f, "type _%sScopeRuntime interface {\n", guard);
+    fprintf(f, "\tDisabledScope(bool)\n");
+    fprintf(f, "\tDisabledEndScope()\n");
+    fprintf(f, "\tPopupScope(kr.PopupProps) bool\n");
+    fprintf(f, "\tPopupEndScope()\n");
+    fprintf(f, "\tScrollScope(kr.Rectangle, int32, *int32) kr.Rectangle\n");
+    fprintf(f, "\tScrollEndScope()\n");
+    fprintf(f, "\tTableCellScope(kr.TableViewProps, int32, int32) kr.Rectangle\n");
+    fprintf(f, "\tTableCellEndScope()\n");
+    fprintf(f, "\tCanvasScope(canvas kr.Canvas) kr.CanvasResult\n");
+    fprintf(f, "\tCanvasEndScope(canvas kr.Canvas)\n");
+    fprintf(f, "}\n\n");
+    fprintf(f, "func _%sScopes() _%sScopeRuntime {\n", guard, guard);
+    fprintf(f, "\treturn _%sRuntime.(_%sScopeRuntime)\n", guard, guard);
+    fprintf(f, "}\n\n");
+}
+
+static void
 qualify_runtime_go_type(const char *type, char *dst, size_t dst_size)
 {
     const KirType *declared = type_scope != NULL ? KirFindType(type_scope, type, NULL) : NULL;
@@ -2095,7 +2115,7 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
             if(!runtime_output && current_guard[0] != '\0' &&
                is_lowered_scope_widget(ident)) {
                 dn += (size_t)snprintf(dst + dn, dst_size - dn,
-                    "_%sRuntime.%s", current_guard, ident);
+                    "_%sScopes().%s", current_guard, ident);
                 p = q;
                 continue;
             }
@@ -2473,7 +2493,7 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
             snprintf(package_call, sizeof(package_call), "%s.%s(",
                      K2GO_RUNTIME_PKG, lowered[i]);
             if(strncmp(out, package_call, strlen(package_call)) == 0) {
-                snprintf(runtime_call, sizeof(runtime_call), "_%sRuntime.%s(%s",
+                snprintf(runtime_call, sizeof(runtime_call), "_%sScopes().%s(%s",
                          current_guard, lowered[i], out + strlen(package_call));
                 kir_copy(out, size, runtime_call);
                 return;
@@ -2809,8 +2829,11 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             tx_expr(m, st->args, wargs, sizeof(wargs));
             snprintf(app_runtime, sizeof(app_runtime), "_%sRuntime", guard);
             emit_indent(f, indent);
-            if(is_lowered_scope_widget(wname))
+            if(is_lowered_scope_widget(wname)) {
+                snprintf(app_runtime, sizeof(app_runtime), "_%sScopes()",
+                         guard);
                 target = app_runtime;
+            }
             if(strcmp(wname, "DisabledScope") == 0)
                 fprintf(f, "%s.DisabledScope((%s) != 0)\n",
                         target, wargs);
@@ -3069,10 +3092,14 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             if(g_extern_count > 0)
                 fprintf(f, "\n");
 
+            int uses_lowered_scope_runtime =
+                module_uses_lowered_scope_runtime(m);
             if(!runtime_implementation &&
-               (m->app.has_app || module_uses_lowered_scope_runtime(m)))
+               (m->app.has_app || uses_lowered_scope_runtime))
                 fprintf(f, "var _%sRuntime %s.Runtime\n\n", guard,
                         K2GO_RUNTIME_PKG);
+            if(!runtime_implementation && uses_lowered_scope_runtime)
+                emit_lowered_scope_runtime(f, guard);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];

@@ -29,8 +29,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Lexical UI scopes that lower through host begin/end support now emit Web
   Document nodes at their `.kry` block boundary: `Scroll`, `Canvas`,
   `TableCell`, `Popup`, and `Disabled`.
-- Direct expression-statement scope calls for `CanvasScope`, `TableCellScope`,
-  and `PopupScope` lower through the same metadata path instead of relying on
+- Generated scope hooks for `Canvas`, `TableCell`, and `Popup` lower through
+  the same metadata path as authored lexical blocks instead of relying on
   runtime fallback synthesis.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
@@ -192,9 +192,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Source lookup APIs include cursor containment and source-range overlap
   helpers for editors and devtools mapping `.kry` selections to Kry DOM
   objects.
-- k2js syntax coverage locks direct `DisabledScope` scope calls to emitted
-  Web Document path, parent, and source-range metadata so authored Kry scopes
-  remain addressable before browser mount.
+- k2js syntax coverage locks authored `Disabled` lexical blocks to emitted
+  Web Document path, parent, and source-range metadata so Kry scopes remain
+  addressable before browser mount.
 - Pre-mount Web Document snapshots expose the same serializable Kry identity,
   relation, event, and style-fact packet shape before a frame is rendered into
   live browser DOM.
@@ -252,11 +252,10 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `Scroll(...)` widget expressions now participate in compiler-owned
   Web Document identity and source-span metadata instead of relying on runtime
   fallback paths.
-- Parenthesized `ScrollScope(...)`, `CanvasScope(...)`,
-  `TableCellScope(...)`, `DisabledScope(...)`, and `PopupScope(...)`
-  scope-producing expressions emit compiler-owned `Scroll`, `Canvas`,
-  `TableCell`, `Disabled`, and `Popup` Web Document identity, including popup
-  open results stored in locals.
+- Parenthesized authored `Scroll`, `Canvas`, `TableCell`, `Disabled`, and
+  `Popup` block expressions emit compiler-owned Web Document identity,
+  including popup open results stored in locals. Generated `*Scope` hooks
+  remain compiler/runtime implementation details, not authored API.
 - Web relationship facts include reverse `formControls` links so form-like DOM
   nodes can enumerate controls that reference them through native form
   ownership.
