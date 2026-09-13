@@ -531,7 +531,7 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     return known && length > 0;
 }
 
-typedef struct UiBlock {
+typedef struct WidgetBlock {
     char widget[KIR_NAME_MAX];
     char name[KIR_NAME_MAX];
     char path[KIR_TEXT_MAX];
@@ -648,14 +648,14 @@ typedef struct UiBlock {
     int has_key;
     char *scope_args[3];
     unsigned scope_fields;
-} UiBlock;
+} WidgetBlock;
 
 typedef struct SlotParseFrame {
     int function_index;
     int depth;
     int root_anonymous_count;
     int block_count;
-    UiBlock *blocks;
+    WidgetBlock *blocks;
     int body_count;
     int body_depth[8];
 } SlotParseFrame;
@@ -698,7 +698,7 @@ is_web_native_block_widget(const char *name)
 }
 
 static const char *
-ui_block_prop_type(const char *widget)
+widget_block_prop_type(const char *widget)
 {
     /* A lexical scope, not a runtime props type or another widget API. */
     if(strcmp(widget, "Disabled") == 0 || strcmp(widget, "Scroll") == 0 ||
@@ -773,7 +773,7 @@ ui_block_prop_type(const char *widget)
 }
 
 static int
-parse_ui_block_header(const char *text, char *widget, size_t widget_size,
+parse_widget_block_header(const char *text, char *widget, size_t widget_size,
                       char *name, size_t name_size)
 {
     const char *p = text;
@@ -793,7 +793,7 @@ parse_ui_block_header(const char *text, char *widget, size_t widget_size,
     /* Switch labels share the colon-and-brace shape of a widget block. */
     if(strcmp(widget, "case") == 0 || strcmp(widget, "default") == 0)
         return 0;
-    int known_widget = ui_block_prop_type(widget) != NULL;
+    int known_widget = widget_block_prop_type(widget) != NULL;
     while(*p == ' ' || *p == '\t')
         p++;
     start = p;
@@ -820,7 +820,7 @@ parse_ui_block_header(const char *text, char *widget, size_t widget_size,
 }
 
 static int
-parse_ui_prop_line(char *text, char *field, size_t field_size,
+parse_widget_prop_line(char *text, char *field, size_t field_size,
                    char *value, size_t value_size)
 {
     char *eq;
@@ -852,7 +852,7 @@ parse_ui_prop_line(char *text, char *field, size_t field_size,
 }
 
 static void
-ui_block_append_prop(UiBlock *block, const char *field, const char *value,
+widget_block_append_prop(WidgetBlock *block, const char *field, const char *value,
                      KirSourceSpan span)
 {
     size_t used = strlen(block->props);
@@ -867,7 +867,7 @@ ui_block_append_prop(UiBlock *block, const char *field, const char *value,
 }
 
 static int
-ui_block_append_extra_attr(UiBlock *block, const char *attr, const char *value)
+widget_block_append_extra_attr(WidgetBlock *block, const char *attr, const char *value)
 {
     size_t used = strlen(block->dom_extra_attrs);
     int written;
@@ -883,38 +883,38 @@ ui_block_append_extra_attr(UiBlock *block, const char *attr, const char *value)
 }
 
 static int
-ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
+widget_block_set_web_prop(WidgetBlock *block, const char *field, const char *value)
 {
     if(block != NULL && is_web_native_block_widget(block->widget)) {
         if(strcmp(field, "src") == 0 || strcmp(field, "dom_src") == 0 ||
            strcmp(field, "html_src") == 0)
-            return ui_block_append_extra_attr(block, "src", value);
+            return widget_block_append_extra_attr(block, "src", value);
         if(strcmp(field, "type") == 0 || strcmp(field, "mime_type") == 0 ||
            strcmp(field, "dom_type") == 0 || strcmp(field, "html_type") == 0)
-            return ui_block_append_extra_attr(block, "type", value);
+            return widget_block_append_extra_attr(block, "type", value);
         if(strcmp(field, "media") == 0 || strcmp(field, "dom_media") == 0 ||
            strcmp(field, "html_media") == 0)
-            return ui_block_append_extra_attr(block, "media", value);
+            return widget_block_append_extra_attr(block, "media", value);
         if(strcmp(field, "kind") == 0 || strcmp(field, "track_kind") == 0 ||
            strcmp(field, "dom_kind") == 0 || strcmp(field, "html_kind") == 0)
-            return ui_block_append_extra_attr(block, "kind", value);
+            return widget_block_append_extra_attr(block, "kind", value);
         if(strcmp(field, "srclang") == 0 || strcmp(field, "src_lang") == 0 ||
            strcmp(field, "dom_srclang") == 0 ||
            strcmp(field, "html_srclang") == 0)
-            return ui_block_append_extra_attr(block, "srclang", value);
+            return widget_block_append_extra_attr(block, "srclang", value);
         if(strcmp(field, "track_label") == 0 ||
            strcmp(field, "dom_label") == 0 ||
            strcmp(field, "html_label") == 0 ||
            (strcmp(block->widget, "Track") == 0 &&
             strcmp(field, "label") == 0))
-            return ui_block_append_extra_attr(block, "label", value);
+            return widget_block_append_extra_attr(block, "label", value);
         if(strcmp(field, "default") == 0 ||
            strcmp(field, "dom_default") == 0 ||
            strcmp(field, "html_default") == 0)
-            return ui_block_append_extra_attr(block, "default", value);
+            return widget_block_append_extra_attr(block, "default", value);
         if(strcmp(field, "span") == 0 || strcmp(field, "dom_span") == 0 ||
            strcmp(field, "html_span") == 0)
-            return ui_block_append_extra_attr(block, "span", value);
+            return widget_block_append_extra_attr(block, "span", value);
     }
     if(strcmp(field, "dom") == 0 || strcmp(field, "dom_tag") == 0 ||
        strcmp(field, "html_tag") == 0 || strcmp(field, "tag") == 0) {
@@ -1547,7 +1547,7 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
 }
 
 static void
-ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
+widget_block_apply_web_metadata(KirStmt *statement, const WidgetBlock *block)
 {
     if(statement == NULL || block == NULL)
         return;
@@ -1787,8 +1787,8 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
 }
 
 static void
-ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
-                              UiBlock *parent, int *root_anonymous_count,
+widget_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
+                              WidgetBlock *parent, int *root_anonymous_count,
                               const char *widget, KirSourceSpan span)
 {
     const char *parent_path;
@@ -1822,9 +1822,9 @@ ui_stmt_apply_source_metadata(KirStmt *statement, const KirFunction *fn,
 }
 
 static void
-ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
+widget_stmt_apply_expression_metadata(KirStmt *statement,
                                          const KirFunction *fn,
-                                         UiBlock *parent,
+                                         WidgetBlock *parent,
                                          int *root_anonymous_count,
                                          const char *raw,
                                          KirStmtKind kind,
@@ -1891,7 +1891,7 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
         return;
     }
     if(parse_widget_statement(expr, widget, sizeof(widget), args, sizeof(args)))
-        ui_stmt_apply_source_metadata(statement, fn, parent,
+        widget_stmt_apply_source_metadata(statement, fn, parent,
                                       root_anonymous_count, widget, span);
     else if(parse_direct_call_statement(expr, widget, sizeof(widget), args,
                                         sizeof(args))) {
@@ -1908,14 +1908,14 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
         else if(strcmp(widget, "PopupScope") == 0)
             node_widget = "Popup";
         if(node_widget != NULL)
-            ui_stmt_apply_source_metadata(statement, fn, parent,
+            widget_stmt_apply_source_metadata(statement, fn, parent,
                                           root_anonymous_count, node_widget,
                                           span);
     }
 }
 
 static void
-ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
+widget_block_format(char *destination, size_t capacity, KirSourceSpan span,
                 const char *format, ...)
 {
     va_list arguments;
@@ -1928,7 +1928,7 @@ ui_block_format(char *destination, size_t capacity, KirSourceSpan span,
 }
 
 static void
-ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
+widget_block_open(KirFunction *fn, WidgetBlock *block, KirSourceSpan span, int closing)
 {
     char call[KIR_TEXT_MAX];
     char args[KIR_TEXT_MAX];
@@ -1964,7 +1964,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(statement == NULL)
             die("out of memory parsing Scroll block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer ScrollEndScope()", "",
                            source_span);
         block->opened = 1;
@@ -1980,7 +1980,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("%s:%d: TableCell requires a rectangle binding name", span.path, span.line);
         if(table == NULL || row == NULL || column == NULL)
             die("%s:%d: TableCell requires table, row and column", span.path, span.line);
-        ui_block_format(call, sizeof(call), span,
+        widget_block_format(call, sizeof(call), span,
                         "%s: Rectangle = TableCellScope(%s, %s, %s)",
                         block->name, table, row, column);
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
@@ -1989,7 +1989,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(statement == NULL)
             die("out of memory parsing TableCell block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer TableCellEndScope()", "",
                            source_span);
         block->opened = 1;
@@ -2003,13 +2003,13 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("%s:%d: Canvas requires a result binding name", span.path, span.line);
         if(!(block->scope_fields & 1))
             die("%s:%d: Canvas requires 'bounds'", span.path, span.line);
-        ui_block_format(spec_name, sizeof(spec_name), span, "%s_spec", block->name);
-        ui_block_format(args, sizeof(args), span, "(Canvas){%s}", block->props);
-        ui_block_format(call, sizeof(call), span, "%s: Canvas = %s",
+        widget_block_format(spec_name, sizeof(spec_name), span, "%s_spec", block->name);
+        widget_block_format(args, sizeof(args), span, "(Canvas){%s}", block->props);
+        widget_block_format(call, sizeof(call), span, "%s: Canvas = %s",
                         spec_name, args);
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
-        ui_block_format(call, sizeof(call), span,
+        widget_block_format(call, sizeof(call), span,
                         "%s: CanvasResult = CanvasScope(%s)",
                         block->name, spec_name);
         statement = KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "",
@@ -2017,8 +2017,8 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(statement == NULL)
             die("out of memory parsing Canvas block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
-        ui_block_format(call, sizeof(call), span, "defer CanvasEndScope(%s)",
+        widget_block_apply_web_metadata(statement, block);
+        widget_block_format(call, sizeof(call), span, "defer CanvasEndScope(%s)",
                         spec_name);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;
@@ -2029,7 +2029,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirStmt *statement;
 
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
-        ui_block_format(call, sizeof(call), span, "DisabledScope(%s)", condition);
+        widget_block_format(call, sizeof(call), span, "DisabledScope(%s)", condition);
         /* Scope conditions are boolean expressions, not legacy integer UI
          * widget arguments. Keep the ordinary typed call in the shared IR. */
         statement = KirFunctionAddStmt(fn, KIR_STMT_EXPR, call, "",
@@ -2037,7 +2037,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(statement == NULL)
             die("out of memory parsing Disabled block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer DisabledEndScope()", "",
                            source_span);
         block->opened = 1;
@@ -2046,15 +2046,15 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
     if(strcmp(block->widget, "Popup") == 0) {
         KirStmt *statement;
 
-        ui_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
-        ui_block_format(call, sizeof(call), span, "if PopupScope(%s) {",
+        widget_block_format(args, sizeof(args), span, "(PopupProps){%s}", block->props);
+        widget_block_format(call, sizeof(call), span, "if PopupScope(%s) {",
                         args);
         statement = KirFunctionAddStmt(fn, KIR_STMT_IF, call, "",
                                        source_span);
         if(statement == NULL)
             die("out of memory parsing Popup block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         snprintf(call,sizeof(call),"defer PopupEndScope()");
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;
@@ -2067,14 +2067,14 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             ? block->widget
             : (is_card ? "CardScope" : "ButtonScope");
         const char *props_type = is_card ? "CardProps" : "ButtonProps";
-        ui_block_format(args, sizeof(args), span, "(%s){%s}", props_type, block->props);
-        ui_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);
+        widget_block_format(args, sizeof(args), span, "(%s){%s}", props_type, block->props);
+        widget_block_format(call, sizeof(call), span, "%s(%s)", constructor, args);
         KirStmt *statement = KirFunctionAddWidget(fn, constructor, args, call,
                                                   source_span);
         if(statement == NULL)
             die("out of memory parsing widget block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         if(closing) {
             statement->declared_widget = 1;
             statement->widget_fallback = 1;
@@ -2083,7 +2083,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         block->opened = 1;
         return;
     }
-    prop_type = ui_block_prop_type(block->widget);
+    prop_type = widget_block_prop_type(block->widget);
     if(prop_type == NULL) {
         if(!closing)
             die("%s:%d: declared widget blocks do not yet accept child content: %s",
@@ -2094,7 +2094,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(statement == NULL)
             die("out of memory parsing declared widget");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         statement->declared_widget = 1;
         block->opened = 1;
         return;
@@ -2103,29 +2103,29 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(block->props[0] != '\0')
             die("%s:%d: native web block accepts only DOM metadata before child content: %s",
                 span.path, span.line, block->widget);
-        ui_block_format(call, sizeof(call), span, "%s()", block->widget);
+        widget_block_format(call, sizeof(call), span, "%s()", block->widget);
         KirStmt *statement = KirFunctionAddWidget(fn, block->widget, "", call,
                                                   source_span);
         if(statement == NULL)
             die("out of memory parsing native web block");
         block->statement_index = (int)(statement - fn->stmts);
-        ui_block_apply_web_metadata(statement, block);
+        widget_block_apply_web_metadata(statement, block);
         block->opened = 1;
         return;
     }
     if(!block->emits_end || block->has_key)
-        ui_block_format(args, sizeof(args), span, "(%s){%s}", prop_type, block->props);
+        widget_block_format(args, sizeof(args), span, "(%s){%s}", prop_type, block->props);
     else
-        ui_block_format(args, sizeof(args), span,
+        widget_block_format(args, sizeof(args), span,
                         "(%s){%s.key = Key(\"%s\")}",
                         prop_type, block->props, block->path);
-    ui_block_format(call, sizeof(call), span, "%s(%s)", block->widget, args);
+    widget_block_format(call, sizeof(call), span, "%s(%s)", block->widget, args);
     KirStmt *statement = KirFunctionAddWidget(fn, block->widget, args, call,
                                               source_span);
     if(statement == NULL)
         die("out of memory parsing widget block");
     block->statement_index = (int)(statement - fn->stmts);
-    ui_block_apply_web_metadata(statement, block);
+    widget_block_apply_web_metadata(statement, block);
     if(closing && !block->emits_end) {
         statement->declared_widget = 1;
         statement->widget_fallback = 1;
@@ -2134,7 +2134,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
 }
 
 static KirSourceSpan
-ui_block_close_span(const UiBlock *block, const char *path, int line_no,
+widget_block_close_span(const WidgetBlock *block, const char *path, int line_no,
                     const char *line)
 {
     KirSourceSpan start = block != NULL && block->span.path[0] != '\0'
@@ -3355,14 +3355,14 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int body_mdepth[8];
     int body_mcount = 0;
     int in_block_comment = 0;
-    enum { UI_BLOCK_CAP = 64 };
-    UiBlock *ui_blocks = calloc(UI_BLOCK_CAP, sizeof(*ui_blocks));
-    int ui_block_count = 0;
+    enum { WIDGET_BLOCK_CAP = 64 };
+    WidgetBlock *widget_blocks = calloc(WIDGET_BLOCK_CAP, sizeof(*widget_blocks));
+    int widget_block_count = 0;
     int root_anonymous_widget_count = 0;
     SlotParseFrame slot_frames[64];
     int slot_frame_count = 0;
 
-    if(ui_blocks == NULL)
+    if(widget_blocks == NULL)
         die("out of memory");
     memset(&consts, 0, sizeof(consts));
     cur_guard[0] = '\0';
@@ -3446,7 +3446,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         strcmp(pending, "{") == 0 ||   /* bare scope-open */
                         parse_slot_header(pending, slot_binding, sizeof(slot_binding),
                                           slot_arguments, sizeof(slot_arguments)) ||
-                        parse_ui_block_header(pending, uiw, sizeof(uiw),
+                        parse_widget_block_header(pending, uiw, sizeof(uiw),
                                               uin, sizeof(uin)) ||
                         /* 'name :: Type = {' carries an initializer, not a
                          * body: its braces are expression braces so the
@@ -3845,7 +3845,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 if(has_body && !is_extern) {
                     mode = FUNCTION;
                     depth = 1;
-                    ui_block_count = 0;
+                    widget_block_count = 0;
                     root_anonymous_widget_count = 0;
                 } else {
                     /* extern / body-less prototype: no body follows */
@@ -4160,27 +4160,27 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                    KirSpan(rel, line_no, 1));
             } else if(t[0] == '#') {
                 /* comment inside a body — skip (directives are top-level) */
-            } else if(t[0] == '}' && slot_frame_count > 0 && depth == 1 && ui_block_count == 0) {
+            } else if(t[0] == '}' && slot_frame_count > 0 && depth == 1 && widget_block_count == 0) {
                 if(*kir_skip_ws(t + 1))
                     die("%s:%d: slot body closing brace must be on its own line", rel, line_no);
                 SlotParseFrame *frame = &slot_frames[--slot_frame_count];
                 fn = &module->functions[frame->function_index];
                 depth = frame->depth;
                 root_anonymous_widget_count = frame->root_anonymous_count;
-                ui_block_count = frame->block_count;
-                if(ui_block_count)
-                    memcpy(ui_blocks, frame->blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
+                widget_block_count = frame->block_count;
+                if(widget_block_count)
+                    memcpy(widget_blocks, frame->blocks, (size_t)widget_block_count * sizeof(*widget_blocks));
                 free(frame->blocks);
                 frame->blocks = NULL;
                 body_mcount = frame->body_count;
                 memcpy(body_mdepth, frame->body_depth, sizeof(body_mdepth));
-            } else if(t[0] == '}' && ui_block_count > 0 &&
-                      depth == ui_blocks[ui_block_count - 1].close_depth) {
-                UiBlock *block = &ui_blocks[ui_block_count - 1];
-                KirSourceSpan block_span = ui_block_close_span(block, rel,
+            } else if(t[0] == '}' && widget_block_count > 0 &&
+                      depth == widget_blocks[widget_block_count - 1].close_depth) {
+                WidgetBlock *block = &widget_blocks[widget_block_count - 1];
+                KirSourceSpan block_span = widget_block_close_span(block, rel,
                                                                line_no, t);
 
-                ui_block_open(fn, block, block_span, 1);
+                widget_block_open(fn, block, block_span, 1);
                 if(block->statement_index >= 0 &&
                    block->statement_index < fn->stmt_count)
                     fn->stmts[block->statement_index].span = block_span;
@@ -4196,7 +4196,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                                          KirSpan(rel, line_no, 1));
                 for(int field = 0; field < 3; field++)
                     free(block->scope_args[field]);
-                ui_block_count--;
+                widget_block_count--;
                 if(depth > 0)
                     depth--;
             } else if(t[0] == '}') {
@@ -4220,8 +4220,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, "}", "",
                                        KirSpan(rel, line_no, 1));
                     st = KirFunctionAddStmt(fn, KIR_STMT_IF, eq, "", span);
-                    ui_stmt_apply_expression_widget_metadata(st, fn,
-                        ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                    widget_stmt_apply_expression_metadata(st, fn,
+                        widget_block_count > 0 ? &widget_blocks[widget_block_count - 1] : NULL,
                         &root_anonymous_widget_count,
                         eq, KIR_STMT_IF, span);
                 } else {
@@ -4231,7 +4231,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         mode = TOP;
                         cond_frame_settle(tframes, tframe_count);
                         fn = NULL;
-                        ui_block_count = 0;
+                        widget_block_count = 0;
                     } else {
                         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_CLOSE, t, "",
                                            KirSpan(rel, line_no, 1));
@@ -4262,42 +4262,42 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     char name[KIR_NAME_MAX];
                     snprintf(name, sizeof(name), "slot_body_%d_%d", module->function_count, line_no);
                     KirSourceSpan span = KirSpan(rel, line_no, 1);
-                    if(ui_block_count > 0 && !ui_blocks[ui_block_count - 1].opened &&
-                       depth == ui_blocks[ui_block_count - 1].close_depth &&
+                    if(widget_block_count > 0 && !widget_blocks[widget_block_count - 1].opened &&
+                       depth == widget_blocks[widget_block_count - 1].close_depth &&
                        is_identifier_text(slot_binding)) {
-                        ui_block_append_prop(&ui_blocks[ui_block_count - 1], slot_binding, name, span);
+                        widget_block_append_prop(&widget_blocks[widget_block_count - 1], slot_binding, name, span);
                     } else {
                         char initializer[KIR_TEXT_MAX];
-                        ui_block_format(initializer, sizeof(initializer), span, "%s = %s", slot_binding, name);
+                        widget_block_format(initializer, sizeof(initializer), span, "%s = %s", slot_binding, name);
                         KirFunctionAddStmt(fn, strchr(slot_binding, ':') ? KIR_STMT_DECL : KIR_STMT_ASSIGN,
                                            initializer, "", span);
                     }
-                    frame->block_count = ui_block_count;
-                    frame->blocks = ui_block_count ? malloc((size_t)ui_block_count * sizeof(*ui_blocks)) : NULL;
-                    if(ui_block_count && frame->blocks == NULL)
+                    frame->block_count = widget_block_count;
+                    frame->blocks = widget_block_count ? malloc((size_t)widget_block_count * sizeof(*widget_blocks)) : NULL;
+                    if(widget_block_count && frame->blocks == NULL)
                         die("out of memory parsing slot body");
-                    if(ui_block_count)
-                        memcpy(frame->blocks, ui_blocks, (size_t)ui_block_count * sizeof(*ui_blocks));
+                    if(widget_block_count)
+                        memcpy(frame->blocks, widget_blocks, (size_t)widget_block_count * sizeof(*widget_blocks));
                     fn = KirModuleAddFunction(module, name, slot_arguments, "void", 0, span);
                     fn->is_closure = 1;
                     kir_copy(fn->guard, sizeof(fn->guard), cur_guard);
                     depth = 1;
                     root_anonymous_widget_count = 0;
-                    ui_block_count = body_mcount = 0;
+                    widget_block_count = body_mcount = 0;
                     continue;
                 }
-                if(parse_ui_block_header(t, block_widget,
+                if(parse_widget_block_header(t, block_widget,
                                          sizeof(block_widget),
                                          block_name, sizeof(block_name))) {
-                    UiBlock *block;
+                    WidgetBlock *block;
 
-                    if(ui_block_count > 0)
-                        ui_block_open(fn, &ui_blocks[ui_block_count - 1],
+                    if(widget_block_count > 0)
+                        widget_block_open(fn, &widget_blocks[widget_block_count - 1],
                                       KirSpan(rel, line_no,
                                               pending_start_column), 0);
-                    if(ui_block_count >= UI_BLOCK_CAP)
-                        die("%s:%d: too many nested UI blocks", rel, line_no);
-                    block = &ui_blocks[ui_block_count++];
+                    if(widget_block_count >= WIDGET_BLOCK_CAP)
+                        die("%s:%d: too many nested widget blocks", rel, line_no);
+                    block = &widget_blocks[widget_block_count++];
                     memset(block, 0, sizeof(*block));
                     block->statement_index = -1;
                     block->span = KirSpanEnd(rel, pending_start_line,
@@ -4308,12 +4308,12 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     snprintf(block->name, sizeof(block->name), "%s",
                              block_name);
                     block->emits_end = is_layout_widget(block_widget);
-                    if(ui_block_count > 1)
+                    if(widget_block_count > 1)
                     {
                         char parent_path[KIR_TEXT_MAX];
 
                         snprintf(parent_path, sizeof(parent_path), "%s",
-                                 ui_blocks[ui_block_count - 2].path);
+                                 widget_blocks[widget_block_count - 2].path);
                         snprintf(block->parent_path, sizeof(block->parent_path),
                                  "%s", parent_path);
                         snprintf(block->path, sizeof(block->path), "%.3000s/%.900s",
@@ -4332,13 +4332,13 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                 }
 
                 kir_copy(prop_line, sizeof(prop_line), t);
-                if(ui_block_count > 0 &&
-                   !ui_blocks[ui_block_count - 1].opened &&
-                   depth == ui_blocks[ui_block_count - 1].close_depth &&
-                   parse_ui_prop_line(prop_line, prop_field,
+                if(widget_block_count > 0 &&
+                   !widget_blocks[widget_block_count - 1].opened &&
+                   depth == widget_blocks[widget_block_count - 1].close_depth &&
+                   parse_widget_prop_line(prop_line, prop_field,
                                       sizeof(prop_field), prop_value,
                                       sizeof(prop_value))) {
-                    UiBlock *block = &ui_blocks[ui_block_count - 1];
+                    WidgetBlock *block = &widget_blocks[widget_block_count - 1];
                     if(strcmp(block->widget, "Scroll") == 0 ||
                        strcmp(block->widget, "TableCell") == 0 ||
                        strcmp(block->widget, "Canvas") == 0) {
@@ -4369,7 +4369,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                             die("%s:%d: duplicate %s '%s' property",
                                 rel, line_no, block->widget, prop_field);
                         if(strcmp(block->widget, "Canvas") == 0)
-                            ui_block_append_prop(block, prop_field, prop_value,
+                            widget_block_append_prop(block, prop_field, prop_value,
                                                  KirSpan(rel, line_no, 1));
                         else {
                             block->scope_args[field] = malloc(strlen(prop_value) + 1);
@@ -4385,21 +4385,21 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                             die("%s:%d: duplicate Disabled 'when' property", rel, line_no);
                         kir_copy(block->props, sizeof(block->props), prop_value);
                         block->prop_count = 1;
-                    } else if(ui_block_set_web_prop(block, prop_field,
+                    } else if(widget_block_set_web_prop(block, prop_field,
                                                     prop_value)) {
                         /* Source-level web facts travel in KIR metadata.
                          * They are not fields on the native widget props. */
                     } else {
-                        ui_block_append_prop(block, prop_field, prop_value,
+                        widget_block_append_prop(block, prop_field, prop_value,
                                              KirSpan(rel, line_no, 1));
                     }
                     continue;
                 }
 
-                if(ui_block_count > 0 &&
-                   !ui_blocks[ui_block_count - 1].opened &&
-                   depth == ui_blocks[ui_block_count - 1].close_depth)
-                    ui_block_open(fn, &ui_blocks[ui_block_count - 1],
+                if(widget_block_count > 0 &&
+                   !widget_blocks[widget_block_count - 1].opened &&
+                   depth == widget_blocks[widget_block_count - 1].close_depth)
+                    widget_block_open(fn, &widget_blocks[widget_block_count - 1],
                                   KirSpan(rel, line_no, pending_start_column),
                                   0);
 
@@ -4417,8 +4417,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
 
                     st = KirFunctionAddWidget(fn, widget, widget_args, t,
                                               span);
-                    ui_stmt_apply_source_metadata(st, fn,
-                        ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                    widget_stmt_apply_source_metadata(st, fn,
+                        widget_block_count > 0 ? &widget_blocks[widget_block_count - 1] : NULL,
                         &root_anonymous_widget_count,
                         widget, span);
                 } else {
@@ -4433,8 +4433,8 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                        kind == KIR_STMT_ASSIGN || kind == KIR_STMT_EXPR ||
                        kind == KIR_STMT_IF || kind == KIR_STMT_WHILE ||
                        kind == KIR_STMT_FOR || kind == KIR_STMT_SWITCH)
-                        ui_stmt_apply_expression_widget_metadata(st, fn,
-                            ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
+                        widget_stmt_apply_expression_metadata(st, fn,
+                            widget_block_count > 0 ? &widget_blocks[widget_block_count - 1] : NULL,
                             &root_anonymous_widget_count,
                             t, kind, span);
                 }
@@ -4452,12 +4452,12 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
         for(int fi = 0; fi < program->modules[mi].function_count; fi++) {
             if(!KirLowerCleanup(&program->modules[mi].functions[fi])) {
                 KirProgramFree(program);
-                free(ui_blocks);
+                free(widget_blocks);
                 return NULL;
             }
             KirStructureFunction(&program->modules[mi].functions[fi], &program->modules[mi]);
         }
-    free(ui_blocks);
+    free(widget_blocks);
     return program;
 }
 

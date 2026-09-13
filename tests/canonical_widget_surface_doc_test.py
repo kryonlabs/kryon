@@ -117,18 +117,18 @@ def parser_widget_names() -> list[str]:
 def block_widget_names() -> list[str]:
     text = PARSER.read_text(encoding="utf-8")
     match = re.search(
-        r"static const char \*\nui_block_prop_type\(const char \*widget\)\n\{(?P<body>.*?)\n\}",
+        r"static const char \*\nwidget_block_prop_type\(const char \*widget\)\n\{(?P<body>.*?)\n\}",
         text,
         flags=re.S,
     )
     if not match:
-        raise AssertionError("missing ui_block_prop_type block widget list")
+        raise AssertionError("missing widget_block_prop_type block widget list")
     names: list[str] = []
     for name in re.findall(r'strcmp\(widget,\s*"([^"]+)"\)', match.group("body")):
         if name not in names:
             names.append(name)
     if not names:
-        raise AssertionError("empty ui_block_prop_type block widget list")
+        raise AssertionError("empty widget_block_prop_type block widget list")
     return names
 
 
@@ -443,7 +443,7 @@ def main() -> int:
         if name not in block_doc_rows:
             errors.append(f"missing block statement surface row: {name}")
     for name in sorted(set(block_doc_rows) - set(block_expected)):
-        errors.append(f"block statement row is not in ui_block_prop_type: {name}")
+        errors.append(f"block statement row is not in widget_block_prop_type: {name}")
     for name in sorted(BLOCK_ONLY_WIDGET_NAMES - set(block_expected)):
         errors.append(f"block-only widget is missing from block statement surface: {name}")
     if compat_expected != NATIVE_COMPAT_EXPORTS:
