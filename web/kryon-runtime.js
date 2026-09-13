@@ -3169,7 +3169,9 @@ export function installAppWebStyleSheets(app, target = null, id = "kryon-app") {
     return null;
   return installWebStyleSheet({
     pack: app?.title || id || "kryon-app",
-    rules: sheets.flatMap((sheet) => sheet.rules || [])
+    rules: sheets.flatMap((sheet) => sheet.rules || []),
+    keyframes: sheets.flatMap((sheet) => sheet.keyframes || []),
+    groups: sheets.flatMap((sheet) => sheet.groups || [])
   }, target, id);
 }
 

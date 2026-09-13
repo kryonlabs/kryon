@@ -103,7 +103,8 @@ the browser receives normal elements, attributes, CSS, and events.
   populate Web Document event facts and rendered `data-kry-on-*` glue hooks.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
-  `data-kry-state` mirroring.
+  `data-kry-state` mirroring. App style installation preserves embedded
+  `@keyframes` and conditional groups as native browser CSS.
 - KSS web CSS export and mounted DOM styling cover physical and logical border
   colors, widths, styles, and corner radii, including per-side inline/block
   properties and side shorthands, with both Kryon's `radius` alias and native

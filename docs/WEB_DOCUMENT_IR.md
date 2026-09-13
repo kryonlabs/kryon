@@ -398,6 +398,8 @@ The JavaScript runtime exposes `parseWebStyleSheet(source)`,
 `installAppWebStyleSheets(app, target?, id?)`, and `setWebStyleSheets(rt,
 sheets)` for the same bridge in browser-hosted k2js apps. k2js embeds KSS
 source text in `app.styles[].source` when a `#style` import resolves on disk.
+App style installation preserves normal rules, top-level `@keyframes`, and
+conditional groups from every embedded sheet.
 Parsed KSS rules expose selectors as `{ kind, id, classes, attrs, attrOps,
 state, specificity }`, with `parts` for descendant and child selector chains,
 matching the facts used by node queries and DOM object lookup.

@@ -1743,6 +1743,24 @@ function fakeDocument() {
     assert.match(document.head.children[0].textContent, /\[data-kry-kind="Button"\]\.primary/);
     removeAppStyles();
     assert.equal(document.head.children.length, 0);
+    const removeRichAppStyles = runtime.installAppWebStyleSheets({
+      title: "Rich App Styles",
+      styles: [{
+        source: `
+          @keyframes app-fade { from { opacity: 0; } to { opacity: 1; } }
+          @media (min-width: 600px) { Button.primary { display: flex; } }
+          @supports (display: grid) { Screen { display: grid; } }
+          @container (min-width: 300px) { TextField.field { padding-inline: 8; } }
+        `
+      }]
+    }, null, "rich-app");
+    assert.equal(typeof removeRichAppStyles, "function");
+    assert.match(document.head.children[0].textContent, /@keyframes app-fade \{/);
+    assert.match(document.head.children[0].textContent, /@media \(min-width: 600px\)/);
+    assert.match(document.head.children[0].textContent, /@supports \(display: grid\)/);
+    assert.match(document.head.children[0].textContent, /@container \(min-width: 300px\)/);
+    removeRichAppStyles();
+    assert.equal(document.head.children.length, 0);
 
     const ariaRt = runtime.createRuntime();
     runtime.beginFrame(ariaRt);
