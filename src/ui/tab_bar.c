@@ -597,7 +597,7 @@ RenderTabBar(TabBarProps bar)
                                    (TextStyle){font, text_color, 1, 0});
                 EndClip();
             } else
-                DrawLeftUIControlTextInRect(tab->label, text_rect, font, text_color);
+                DrawLeftControlTextInRect(tab->label, text_rect, font, text_color);
         }
 
         if(can_draw && tab->closeable) {

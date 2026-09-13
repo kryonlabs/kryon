@@ -41,7 +41,7 @@ RenderInfoRows(InfoRowsProps rows)
 
         if(i > 0)
             DrawLine(rows.x, y, rows.x + rows.width, y, separator);
-        DrawLeftUIControlTextInRect(row->text ? row->text : "",
+        DrawLeftControlTextInRect(row->text ? row->text : "",
                                         (Rectangle){(float)(rows.x + padding_x),
                                                     (float)y,
                                                     (float)(rows.width - padding_x * 2),
@@ -348,7 +348,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     label_color = row.label_color.a != 0 ? row.label_color
                                          : text_style.foreground;
 
-    DrawLeftUIControlTextInRect(row.label != NULL ? row.label : "",
+    DrawLeftControlTextInRect(row.label != NULL ? row.label : "",
                                 (Rectangle){(float)form->x, (float)y,
                                             (float)label_w, (float)height},
                                 label_font, label_color);

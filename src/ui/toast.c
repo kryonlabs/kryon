@@ -110,7 +110,7 @@ RenderToast(void)
                      ui_style_fill(surface), surface.material);
     RenderText(display,
                (int)layout.text_bounds.x,
-               GetUIControlTextY(display, (int)layout.bounds.y,
+               ControlTextY(display, (int)layout.bounds.y,
                                  (int)layout.bounds.height, font),
                font, Fade(text.foreground, text.opacity));
     PopTextFont(font_token);

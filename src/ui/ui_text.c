@@ -1615,7 +1615,7 @@ ui_text_block_lines(const char *text, int width, int font_size,
 }
 
 int
-MeasureUISelectableTextBlock(const char *text, int width, int font_size,
+MeasureSelectableTextBlock(const char *text, int width, int font_size,
                              int line_gap)
 {
     UITextBlockLine *lines = NULL;
@@ -1855,7 +1855,7 @@ PopTextSelectable(int token)
 }
 
 void
-DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
+DrawScaledText(const char *text, int x, int y, int scale, Color color)
 {
     Font font = active_font();
     int cursor_x = x;
@@ -1892,7 +1892,7 @@ DrawScaledUIText(const char *text, int x, int y, int scale, Color color)
 }
 
 void
-DrawCenteredUIText(const char *text, int center_x, int center_y, int font_size, Color color)
+DrawCenteredText(const char *text, int center_x, int center_y, int font_size, Color color)
 {
     int text_w = TextWidth(text, font_size);
     int line_h = TextLineHeight(font_size);

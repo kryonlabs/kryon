@@ -373,7 +373,7 @@ int ui_text_word_left(const char *text, int cursor);
 int ui_text_word_right(const char *text, int cursor);
 int ui_text_navigation_key(int multiline);
 int ui_text_navigate(TextNavigationInput input, int *anchor, int *cursor);
-int GetUIControlTextY(const char *text, int box_y, int box_h, int font);
+int ControlTextY(const char *text, int box_y, int box_h, int font);
 int PushTextSelectable(int selectable);
 void PopTextSelectable(int token);
 void RenderTextEx(const char *text, int x, int y, int font_size, Color color,
@@ -381,14 +381,14 @@ void RenderTextEx(const char *text, int x, int y, int font_size, Color color,
 void RenderTextStyled(const char *text, int x, int y, TextStyle style);
 void RenderNonSelectableText(const char *text, int x, int y, int font_size,
                              Color color);
-void DrawScaledUIText(const char *text, int x, int y, int scale, Color color);
-void DrawCenteredUIText(const char *text, int center_x, int center_y,
+void DrawScaledText(const char *text, int x, int y, int scale, Color color);
+void DrawCenteredText(const char *text, int center_x, int center_y,
                         int font_size, Color color);
-void DrawLeftUIControlTextInRect(const char *text, Rectangle rect,
+void DrawLeftControlTextInRect(const char *text, Rectangle rect,
                                  int font_size, Color color);
 void DrawFittedTextInRect(const char *text, Rectangle rect,
                           int preferred_size, int min_size, Color color);
-int MeasureUISelectableTextBlock(const char *text, int width, int font_size,
+int MeasureSelectableTextBlock(const char *text, int width, int font_size,
                                  int line_gap);
 int RenderSelectableTextBlock(SelectableTextBlock block);
 void DrawTextLayout(TextLayout *layout, int x, int *y, int font_size,

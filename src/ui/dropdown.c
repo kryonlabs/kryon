@@ -472,7 +472,7 @@ ui_dropdown(DropdownProps props)
                          (int)(g_ui_camera.offset.y + (float)y * g_ui_camera.zoom),
                          (int)((float)text_w * g_ui_camera.zoom),
                          (int)((float)h * g_ui_camera.zoom));
-        RenderText(current_name, text_x, GetUIControlTextY(current_name, y, h, font), font, button_text);
+        RenderText(current_name, text_x, ControlTextY(current_name, y, h, font), font, button_text);
         EndClip();
         PopTextFont(font_token);
     }
@@ -684,7 +684,7 @@ dropdown_paint_menu(int id)
                 (int)(fmaxf(0, text_w) * g_ui_camera.zoom),
                 (int)(visible_h * g_ui_camera.zoom));
             RenderText(options[i].label, text_x,
-                       GetUIControlTextY(options[i].label, option_y, option_h, font),
+                       ControlTextY(options[i].label, option_y, option_h, font),
                        font, row_text);
             EndClip();
             PopTextFont(font_token);

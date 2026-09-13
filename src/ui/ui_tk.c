@@ -1990,7 +1990,7 @@ RenderProgress(ProgressProps progress)
     }
     if(label != NULL) {
         int text_x = (int)paint.layout.label_x;
-        int text_y = GetUIControlTextY(label, (int)progress.bounds.y,
+        int text_y = ControlTextY(label, (int)progress.bounds.y,
                                        (int)progress.bounds.height, font);
         Color text_color = GetColor(paint.layout.label_on_fill
             ? paint.filled_label_color
@@ -3042,7 +3042,7 @@ RenderSpinbox(SpinboxProps spinbox)
                                disabled, 0);
         ui_tk_draw_style_frame(text, spinbox.bounds, value_frame, 0, 0,
                                disabled, 0);
-        DrawCenteredUIText(value_text, (int)(text.x + text.width / 2),
+        DrawCenteredText(value_text, (int)(text.x + text.width / 2),
                            (int)(text.y + text.height / 2), value_font,
                            Fade(value_style.foreground, value_style.opacity));
     }

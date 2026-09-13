@@ -549,7 +549,7 @@ line boxes, baseline positions, clipping, selection ranges, and semantic paint.
 | `TextProps.font` | `TextProps.role` resolved through `ThemeTypography` |
 | `TextProps.color` | `TextProps.tone` resolved through `ThemeColors` |
 | positional or macro `Text` forms | `Text(TextProps)` only |
-| public `RenderText*` and `DrawScaledUIText` | private painter behind `Text` |
+| public `RenderText*` and `DrawScaledText` | private painter behind `Text` |
 | public `TextStyle` | remove; role + tone + theme |
 | public `TextInputStyle` | remove; shared control and theme resolution |
 | `TextWidth` / `TextHeight` / baseline helpers | `MeasureText(TextProps)` |

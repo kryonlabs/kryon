@@ -1371,7 +1371,7 @@ ui_draw_text_centered_in_rect(const char *text, Rectangle rect, int font_size, C
     const char *value = text != NULL ? text : "";
     int text_w = TextWidth(value, font_size);
     int x = (int)(rect.x + (rect.width - (float)text_w) * 0.5f);
-    int y = GetUIControlTextY(value, (int)rect.y, (int)rect.height, font_size);
+    int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
     int guard = 1;
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
@@ -1458,10 +1458,10 @@ FitFontSize(const char *text, int max_width,
 }
 
 void
-DrawLeftUIControlTextInRect(const char *text, Rectangle rect, int font_size, Color color)
+DrawLeftControlTextInRect(const char *text, Rectangle rect, int font_size, Color color)
 {
     const char *value = text != NULL ? text : "";
-    int y = GetUIControlTextY(value, (int)rect.y, (int)rect.height, font_size);
+    int y = ControlTextY(value, (int)rect.y, (int)rect.height, font_size);
     int guard = 1;
 
     ui_begin_world_clip((Rectangle){rect.x, rect.y - guard,
@@ -1830,7 +1830,7 @@ GetTitleFontSize(const char *title, int max_width)
 }
 
 int
-GetUIControlTextY(const char *text, int box_y, int box_h, int font)
+ControlTextY(const char *text, int box_y, int box_h, int font)
 {
     (void)text;
     return TextBaselineY("Hg", box_y, box_h, font);
@@ -2030,7 +2030,7 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                                              TextLineHeight(font), Scale(8),
                                              Scale(8), clip_guard);
     int text_x = paint.text_x;
-    int text_y = GetUIControlTextY(value, y, h, font);
+    int text_y = ControlTextY(value, y, h, font);
     int cursor_h = paint.cursor_height;
     int cursor_y = paint.cursor_y;
     Color text_color = style.text.a != 0 ? style.text : c_text;
@@ -2387,7 +2387,7 @@ RenderLink(LinkProps link)
     }
 
     RenderText(text, (int)bounds.x,
-               GetUIControlTextY(text, (int)bounds.y, (int)bounds.height, font),
+               ControlTextY(text, (int)bounds.y, (int)bounds.height, font),
                font, color);
     if(appearance.underline && text_w > 0) {
         int underline_y = (int)(bounds.y + bounds.height) - Scale(2);
@@ -3687,7 +3687,7 @@ ui_text_area_render(TextAreaProps area)
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
     if(wrap_width < Scale(24))
         wrap_width = 0;
-    first_line_y = GetUIControlTextY("Hg", (int)area.bounds.y + padding_y,
+    first_line_y = ControlTextY("Hg", (int)area.bounds.y + padding_y,
                                      line_h, font);
     focused = *area.focused != 0;
     focused = IsUITextFocusOwner(area.focused) ? focused : 0;
