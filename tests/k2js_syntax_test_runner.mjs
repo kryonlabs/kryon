@@ -63,6 +63,21 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
       transform: translateY(0);
     }
   }
+  @media (min-width: 720px) {
+    Button.primary {
+      display: flex;
+    }
+  }
+  @supports (display: grid) {
+    Screen > TextField {
+      display: grid;
+    }
+  }
+  @container sidebar (min-width: 320px) {
+    TextField.control {
+      padding-inline: 18;
+    }
+  }
   @layer components;
   Button.primary {
     background: button-face;
@@ -343,10 +358,21 @@ const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
 assert.equal(webStyleSheet.keyframes[0].name, "fade-in");
 assert.equal(webStyleSheet.keyframes[0].frames[1].selector, "50%, 75%");
 assert.equal(webStyleSheet.keyframes[0].frames[1].style["outline-color"], "#203040");
+assert.deepEqual(webStyleSheet.groups.map((group) => [group.kind, group.query, group.rules.length]), [
+  ["media", "(min-width: 720px)", 1],
+  ["supports", "(display: grid)", 1],
+  ["container", "sidebar (min-width: 320px)", 1]
+]);
 assert.match(webStyleCSS, /@keyframes fade-in \{/);
 assert.match(webStyleCSS, /from \{\n    opacity: 0;\n    transform: translateY\(4px\);/);
 assert.match(webStyleCSS, /50%, 75% \{\n    opacity: 0\.5;\n    outline-color: #203040;/);
 assert.match(webStyleCSS, /to \{\n    opacity: 1;\n    transform: translateY\(0\);/);
+assert.match(webStyleCSS,
+  /@media \(min-width: 720px\) \{\n  \[data-kry-kind="Button"\]\.primary \{\n    display: flex;\n  \}\n\}/);
+assert.match(webStyleCSS,
+  /@supports \(display: grid\) \{\n  \[data-kry-kind="Screen"\] > \[data-kry-kind="TextField"\] \{\n    display: grid;\n  \}\n\}/);
+assert.match(webStyleCSS,
+  /@container sidebar \(min-width: 320px\) \{\n  \[data-kry-kind="TextField"\]\.control \{\n    padding-inline: 18px;\n  \}\n\}/);
 const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Button[webRef^="primary"] { cursor: pointer; }
   Button[webRef$="action"] { pointer-events: auto; }
