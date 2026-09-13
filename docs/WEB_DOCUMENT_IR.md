@@ -643,6 +643,7 @@ objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
 `form`, reverse `formControls` links for controls owned by a form-like node,
 semantic `groupOwner`/`groupMembers` links for grouped controls,
+structural `previousSibling`/`nextSibling` links for adjacent Kry DOM objects,
 reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
 `errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for
 targets referenced by other nodes, reverse `labelledBy` links for controls targeted by

@@ -144,6 +144,8 @@ the browser receives normal elements, attributes, CSS, and events.
   `label` tags that wrap form controls.
 - Table header relationship facts include reverse `headerFor` links so header
   nodes can enumerate cells that reference them.
+- Web relationship facts include structural `previousSibling`/`nextSibling`
+  links for adjacent Kry DOM objects in both pre-mount and mounted snapshots.
 - Browser-backed inspector coverage verifies mounted tree traversal bridges for
   children, descendants, closest ancestor lookup, and scoped descendant query.
 - Browser-backed KSS coverage verifies mounted application of native container,
