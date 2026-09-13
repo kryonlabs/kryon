@@ -743,8 +743,10 @@ and host plumbing behind the canonical names.
    storage/timing are still native support around `.kry` policy.
 6. Finish lowered block backend cleanup:
    `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
-   blocks are canonical `.kry` syntax, but their lowered host scopes still
-   require backend support until generated backends own the whole block path.
+   blocks are canonical `.kry` syntax. Lowered `Scroll` scope geometry, wheel,
+   and thumb-drag policy now route through `runtime/scroll.kry`; the remaining
+   host scopes still require backend support until generated backends own the
+   whole block path.
 7. Separate pure host services from widget policy:
    image cache/loading/drawing, icon sheet/type lookup, URL dispatch, text
    measurement, focus registration, paint layers, clipping, and platform
