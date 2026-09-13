@@ -252,6 +252,20 @@ main(void)
                              diagnostic, sizeof(diagnostic)));
     assert(strstr(diagnostic, "unknown property") != NULL);
 
+    const char *legacy_aliases[] = {
+        "background-color", "color", "border-color", "focus-color",
+        "background_end", "border_width", "padding_x", "padding_y",
+        "font_size", "icon_size", "offset_x", "offset_y", "font-family",
+    };
+    for(size_t i = 0; i < sizeof(legacy_aliases) / sizeof(legacy_aliases[0]); i++) {
+        char legacy_source[128];
+        snprintf(legacy_source, sizeof(legacy_source), "Button { %s: #111111; }",
+                 legacy_aliases[i]);
+        assert(!kss_parse_string(legacy_source, rules, 12, &result,
+                                 diagnostic, sizeof(diagnostic)));
+        assert(strstr(diagnostic, "unknown property") != NULL);
+    }
+
     assert_pack_parses("styles/kryon/material.kss", "kryon.material");
     assert_pack_parses("styles/kryon/tk.kss", "kryon.tk");
     assert_pack_parses("styles/kryon/vanilla.kss", "kryon.vanilla");

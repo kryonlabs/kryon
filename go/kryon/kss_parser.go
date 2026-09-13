@@ -354,35 +354,35 @@ func (p *styleParser) property(style *StyleData) error {
 		return p.err("expected ':'")
 	}
 	switch strings.ToLower(name) {
-	case "background", "background-color":
+	case "background":
 		v, err := p.colorValue()
 		if err != nil {
 			return err
 		}
 		style.Fields |= StyleBackground
 		style.Background = v
-	case "foreground", "color":
+	case "foreground":
 		v, err := p.colorValue()
 		if err != nil {
 			return err
 		}
 		style.Fields |= StyleForeground
 		style.Foreground = v
-	case "border", "border-color":
+	case "border":
 		v, err := p.colorValue()
 		if err != nil {
 			return err
 		}
 		style.Fields |= StyleBorder
 		style.Border = v
-	case "focus", "focus-color":
+	case "focus":
 		v, err := p.colorValue()
 		if err != nil {
 			return err
 		}
 		style.Fields |= StyleFocus
 		style.Focus = v
-	case "background-end", "background_end":
+	case "background-end":
 		v, err := p.colorValue()
 		if err != nil {
 			return err
@@ -391,23 +391,23 @@ func (p *styleParser) property(style *StyleData) error {
 		style.BackgroundEnd = v
 	case "radius":
 		return p.numberField(&style.Fields, StyleRadius, &style.Radius)
-	case "border-width", "border_width":
+	case "border-width":
 		return p.numberField(&style.Fields, StyleBorderWidth, &style.BorderWidth)
 	case "opacity":
 		return p.numberField(&style.Fields, StyleOpacity, &style.Opacity)
-	case "padding-x", "padding_x":
+	case "padding-x":
 		return p.numberField(&style.Fields, StylePaddingX, &style.PaddingX)
-	case "padding-y", "padding_y":
+	case "padding-y":
 		return p.numberField(&style.Fields, StylePaddingY, &style.PaddingY)
 	case "gap":
 		return p.numberField(&style.Fields, StyleGap, &style.Gap)
-	case "font-size", "font_size":
+	case "font-size":
 		return p.numberField(&style.Fields, StyleFontSize, &style.FontSize)
-	case "icon-size", "icon_size":
+	case "icon-size":
 		return p.numberField(&style.Fields, StyleIconSize, &style.IconSize)
-	case "offset-x", "offset_x":
+	case "offset-x":
 		return p.numberField(&style.Fields, StyleContentOffset, &style.OffsetX)
-	case "offset-y", "offset_y":
+	case "offset-y":
 		return p.numberField(&style.Fields, StyleContentOffset, &style.OffsetY)
 	case "material":
 		mapped, err := p.materialValue()
@@ -416,7 +416,7 @@ func (p *styleParser) property(style *StyleData) error {
 		}
 		style.Fields |= StyleMaterial
 		style.Material = mapped
-	case "typeface", "font-family":
+	case "typeface":
 		value, ok := p.ident()
 		if !ok {
 			return p.err("expected typeface name")

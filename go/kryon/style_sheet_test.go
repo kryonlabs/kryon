@@ -401,6 +401,19 @@ Focus[role=Box]:focus {
 	}
 }
 
+func TestParseStyleSheetRejectsLegacyPropertyAliases(t *testing.T) {
+	legacyAliases := []string{
+		"background-color", "color", "border-color", "focus-color",
+		"background_end", "border_width", "padding_x", "padding_y",
+		"font_size", "icon_size", "offset_x", "offset_y", "font-family",
+	}
+	for _, alias := range legacyAliases {
+		if _, _, err := ParseStyleSheet("Button { " + alias + ": #111111; }"); err == nil {
+			t.Fatalf("legacy KSS property alias %q still parsed", alias)
+		}
+	}
+}
+
 func TestRegisterStylePackSourceInGo(t *testing.T) {
 	ClearStylePacks()
 	defer ClearStylePacks()

@@ -774,28 +774,27 @@ kss_parse_property(KssParser *p, StyleData *style)
     if(!kss_expect(p, ':'))
         return kss_fail(p, "expected ':' after property");
 
-    if(kss_ieq(name, "background") || kss_ieq(name, "background-color")) {
+    if(kss_ieq(name, "background")) {
         if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBackground;
         style->background = color;
-    } else if(kss_ieq(name, "foreground") || kss_ieq(name, "color")) {
+    } else if(kss_ieq(name, "foreground")) {
         if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleForeground;
         style->foreground = color;
-    } else if(kss_ieq(name, "border") || kss_ieq(name, "border-color")) {
+    } else if(kss_ieq(name, "border")) {
         if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBorder;
         style->border = color;
-    } else if(kss_ieq(name, "focus") || kss_ieq(name, "focus-color")) {
+    } else if(kss_ieq(name, "focus")) {
         if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleFocus;
         style->focus = color;
-    } else if(kss_ieq(name, "background-end") ||
-              kss_ieq(name, "background_end")) {
+    } else if(kss_ieq(name, "background-end")) {
         if(!kss_read_color_value(p, &color))
             return kss_fail(p, "expected hex color");
         style->fields |= (uint32_t)StyleBackgroundEnd;
@@ -805,8 +804,7 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleRadius;
         style->radius = number;
-    } else if(kss_ieq(name, "border-width") ||
-              kss_ieq(name, "border_width")) {
+    } else if(kss_ieq(name, "border-width")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleBorderWidth;
@@ -816,12 +814,12 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleOpacity;
         style->opacity = number;
-    } else if(kss_ieq(name, "padding-x") || kss_ieq(name, "padding_x")) {
+    } else if(kss_ieq(name, "padding-x")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StylePaddingX;
         style->padding_x = number;
-    } else if(kss_ieq(name, "padding-y") || kss_ieq(name, "padding_y")) {
+    } else if(kss_ieq(name, "padding-y")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StylePaddingY;
@@ -831,22 +829,22 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleGap;
         style->gap = number;
-    } else if(kss_ieq(name, "font-size") || kss_ieq(name, "font_size")) {
+    } else if(kss_ieq(name, "font-size")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleFontSize;
         style->font_size = number;
-    } else if(kss_ieq(name, "icon-size") || kss_ieq(name, "icon_size")) {
+    } else if(kss_ieq(name, "icon-size")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleIconSize;
         style->icon_size = number;
-    } else if(kss_ieq(name, "offset-x") || kss_ieq(name, "offset_x")) {
+    } else if(kss_ieq(name, "offset-x")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleContentOffset;
         style->offset_x = number;
-    } else if(kss_ieq(name, "offset-y") || kss_ieq(name, "offset_y")) {
+    } else if(kss_ieq(name, "offset-y")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleContentOffset;
@@ -858,7 +856,7 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected material");
         style->fields |= (uint32_t)StyleMaterial;
         style->material = mapped;
-    } else if(kss_ieq(name, "typeface") || kss_ieq(name, "font-family")) {
+    } else if(kss_ieq(name, "typeface")) {
         if(!kss_read_ident_view(p, &text))
             return kss_fail(p, "expected typeface name");
         style->fields |= (uint32_t)StyleTypeface;
