@@ -3465,3 +3465,23 @@ for (const [actionName, action] of [
     assert.deepEqual(rectangle(result.frame[0].args.bounds), { x: 20, y: 100, width: 80, height: 32 });
   }
 }
+
+{
+  const actionRuntime = runtime.createRuntime({ app: generated.app });
+  runtime.beginFrame(actionRuntime);
+  assert.equal(generated.Valid_CompoundAction(actionRuntime, state, host, 20), 0);
+  let result = runtime.endFrame(actionRuntime);
+  assert.equal(result.frame.length, 1);
+  assert.equal(result.frame[0].name, "Button");
+  assert.match(result.frame[0].meta.path, /^CompoundAction\/Button@\d+$/);
+  assert.equal(result.frame[0].meta.key, result.frame[0].meta.path);
+  assert.equal(result.frame[0].meta.sourcePath, "src/valid.kry");
+  assert.ok(result.frame[0].meta.sourceLine > 0);
+  assert.ok(result.frame[0].meta.sourceColumn > 0);
+
+  actionRuntime.QueueTap(30, 110);
+  runtime.beginFrame(actionRuntime);
+  assert.equal(generated.Valid_CompoundAction(actionRuntime, state, host, 20), 1);
+  result = runtime.endFrame(actionRuntime);
+  assert.equal(result.frame[0].meta.path, result.frame[0].meta.key);
+}
