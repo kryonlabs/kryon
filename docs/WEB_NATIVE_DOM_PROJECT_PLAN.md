@@ -47,6 +47,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `data_*`, `dom_data_*`, `html_data_*`, `attr_*`, `dom_attr_*`, and
   `html_attr_*`, with compiler metadata overlays preserving the stronger source
   of truth.
+- Direct `.kry` widget args feed native role and ARIA attributes for canonical
+  accessibility fields plus generic `aria_*` passthrough, again with compiler
+  metadata taking precedence.
 - Native tags and fallback ARIA roles for widgets with clear browser
   equivalents or accessibility semantics, with coverage for form controls,
   selectors, segmented controls, progress, separators, tables, title/navigation

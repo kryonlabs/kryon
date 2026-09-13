@@ -2523,7 +2523,11 @@ function fakeDocument() {
       rel: "noopener",
       download: "manual.pdf",
       data_tracking_id: "manual-link",
-      attr_itemprop: "url"
+      attr_itemprop: "url",
+      role: "doc-biblioref",
+      aria_label: "Open manual",
+      aria_description: "Downloadable PDF",
+      aria_details: "manual-details"
     }, null,
       {
         nodeName: "manual",
@@ -2550,6 +2554,14 @@ function fakeDocument() {
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[itemprop=\"url\"]").path,
       "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[role=\"doc-biblioref\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[aria-label=\"Open manual\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[aria-description=\"Downloadable PDF\"]").path,
+      "Page/manual");
+    assert.equal(runtime.webNodeQuery(linkRt, "[aria-details=\"manual-details\"]").path,
+      "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[hidden]").path,
       "Page/manual");
     assert.equal(runtime.webNodeQuery(linkRt, "[draggable=false]").path,
@@ -2567,6 +2579,10 @@ function fakeDocument() {
     assert.equal(manual.attributes.download, "manual.pdf");
     assert.equal(manual.attributes["data-tracking-id"], "manual-link");
     assert.equal(manual.attributes.itemprop, "url");
+    assert.equal(manual.attributes.role, "doc-biblioref");
+    assert.equal(manual.attributes["aria-label"], "Open manual");
+    assert.equal(manual.attributes["aria-description"], "Downloadable PDF");
+    assert.equal(manual.attributes["aria-details"], "manual-details");
     assert.equal(manual.attributes.hidden, "");
     assert.equal(manual.hidden, true);
     assert.equal(manual.attributes.draggable, "false");

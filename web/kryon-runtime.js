@@ -1340,12 +1340,24 @@ function propDataAttrs(meta, args = null) {
   return out;
 }
 
-function propAriaAttrs(meta) {
-  const out = {};
+const canonicalAriaAttrNames = new Set([
+  "activedescendant", "busy", "checked", "colcount", "colindex", "controls",
+  "current", "describedby", "description", "disabled", "expanded", "haspopup",
+  "invalid", "label", "labelledby", "level", "live", "multiselectable",
+  "orientation", "owns", "posinset", "pressed", "readonly", "required",
+  "rowcount", "rowindex", "selected", "setsize", "sort"
+]);
+
+function propAriaAttrs(meta, args = null) {
+  const out = propPrefixedAttrs(args, ["aria_", "dom_aria_", "html_aria_"],
+    (name) => String(name).replace(/_/g, "-").toLowerCase(),
+    /^[a-z0-9][a-z0-9.-]*$/);
+  for (const name of Object.keys(out)) {
+    if (canonicalAriaAttrNames.has(name))
+      delete out[name];
+  }
   const aria = meta && typeof meta.aria === "object" && !Array.isArray(meta.aria) ? meta.aria : null;
-  if (!aria)
-    return out;
-  for (const [name, value] of Object.entries(aria)) {
+  for (const [name, value] of Object.entries(aria || {})) {
     const attr = String(name).trim().replace(/_/g, "-").toLowerCase();
     if (!attr || !/^[a-z0-9][a-z0-9.-]*$/.test(attr))
       continue;
@@ -1379,6 +1391,11 @@ function metaBool(meta, name) {
 function metaString(meta, name) {
   const value = meta?.[name];
   return value === undefined || value === null ? "" : String(value);
+}
+
+function metaStringOrProp(meta, name, args, props) {
+  const value = meta?.[name];
+  return value === undefined || value === null ? propStringAny(args, props) : String(value);
 }
 
 function webNodeFromWidget(item, index) {
@@ -1501,27 +1518,46 @@ function webNodeFromWidget(item, index) {
     rowSpan: metaString(meta, "rowSpan"),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
-    role: meta.role === undefined || meta.role === null ? "" : String(meta.role),
-    ariaLabel: meta.ariaLabel === undefined || meta.ariaLabel === null ? "" : String(meta.ariaLabel),
-    ariaDescription: meta.ariaDescription === undefined || meta.ariaDescription === null ? "" : String(meta.ariaDescription),
-    ariaDescribedBy: meta.ariaDescribedBy === undefined || meta.ariaDescribedBy === null ? "" : String(meta.ariaDescribedBy),
-    ariaLabelledBy: meta.ariaLabelledBy === undefined || meta.ariaLabelledBy === null ? "" : String(meta.ariaLabelledBy),
-    ariaActiveDescendant: meta.ariaActiveDescendant === undefined || meta.ariaActiveDescendant === null ? "" : String(meta.ariaActiveDescendant),
-    ariaControls: meta.ariaControls === undefined || meta.ariaControls === null ? "" : String(meta.ariaControls),
-    ariaOwns: meta.ariaOwns === undefined || meta.ariaOwns === null ? "" : String(meta.ariaOwns),
-    ariaSort: metaString(meta, "ariaSort"),
-    ariaOrientation: metaString(meta, "ariaOrientation"),
-    ariaLevel: metaString(meta, "ariaLevel"),
-    ariaPosInSet: metaString(meta, "ariaPosInSet"),
-    ariaSetSize: metaString(meta, "ariaSetSize"),
-    ariaHasPopup: metaString(meta, "ariaHasPopup"),
-    ariaMultiSelectable: metaString(meta, "ariaMultiSelectable"),
-    ariaRowIndex: metaString(meta, "ariaRowIndex"),
-    ariaColIndex: metaString(meta, "ariaColIndex"),
-    ariaRowCount: metaString(meta, "ariaRowCount"),
-    ariaColCount: metaString(meta, "ariaColCount"),
-    ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
-    ariaAttrs: propAriaAttrs(meta),
+    role: metaStringOrProp(meta, "role", args, ["role", "dom_role", "html_role"]),
+    ariaLabel: metaStringOrProp(meta, "ariaLabel", args,
+      ["aria_label", "accessible_label", "dom_aria_label", "html_aria_label"]),
+    ariaDescription: metaStringOrProp(meta, "ariaDescription", args,
+      ["aria_description", "accessible_description", "dom_aria_description", "html_aria_description"]),
+    ariaDescribedBy: metaStringOrProp(meta, "ariaDescribedBy", args,
+      ["aria_describedby", "aria_described_by", "dom_aria_describedby", "html_aria_describedby"]),
+    ariaLabelledBy: metaStringOrProp(meta, "ariaLabelledBy", args,
+      ["aria_labelledby", "aria_labelled_by", "dom_aria_labelledby", "html_aria_labelledby"]),
+    ariaActiveDescendant: metaStringOrProp(meta, "ariaActiveDescendant", args,
+      ["aria_activedescendant", "aria_active_descendant", "dom_aria_activedescendant", "html_aria_activedescendant"]),
+    ariaControls: metaStringOrProp(meta, "ariaControls", args,
+      ["aria_controls", "dom_aria_controls", "html_aria_controls"]),
+    ariaOwns: metaStringOrProp(meta, "ariaOwns", args,
+      ["aria_owns", "aria_own", "dom_aria_owns", "html_aria_owns"]),
+    ariaSort: metaStringOrProp(meta, "ariaSort", args,
+      ["aria_sort", "aria_sorted", "dom_aria_sort", "html_aria_sort"]),
+    ariaOrientation: metaStringOrProp(meta, "ariaOrientation", args,
+      ["aria_orientation", "dom_aria_orientation", "html_aria_orientation"]),
+    ariaLevel: metaStringOrProp(meta, "ariaLevel", args,
+      ["aria_level", "dom_aria_level", "html_aria_level"]),
+    ariaPosInSet: metaStringOrProp(meta, "ariaPosInSet", args,
+      ["aria_posinset", "aria_pos_in_set", "dom_aria_posinset", "html_aria_posinset"]),
+    ariaSetSize: metaStringOrProp(meta, "ariaSetSize", args,
+      ["aria_setsize", "aria_set_size", "dom_aria_setsize", "html_aria_setsize"]),
+    ariaHasPopup: metaStringOrProp(meta, "ariaHasPopup", args,
+      ["aria_haspopup", "aria_has_popup", "dom_aria_haspopup", "html_aria_haspopup"]),
+    ariaMultiSelectable: metaStringOrProp(meta, "ariaMultiSelectable", args,
+      ["aria_multiselectable", "aria_multi_selectable", "dom_aria_multiselectable", "html_aria_multiselectable"]),
+    ariaRowIndex: metaStringOrProp(meta, "ariaRowIndex", args,
+      ["aria_rowindex", "aria_row_index", "dom_aria_rowindex", "html_aria_rowindex"]),
+    ariaColIndex: metaStringOrProp(meta, "ariaColIndex", args,
+      ["aria_colindex", "aria_col_index", "dom_aria_colindex", "html_aria_colindex"]),
+    ariaRowCount: metaStringOrProp(meta, "ariaRowCount", args,
+      ["aria_rowcount", "aria_row_count", "dom_aria_rowcount", "html_aria_rowcount"]),
+    ariaColCount: metaStringOrProp(meta, "ariaColCount", args,
+      ["aria_colcount", "aria_col_count", "dom_aria_colcount", "html_aria_colcount"]),
+    ariaLive: metaStringOrProp(meta, "ariaLive", args,
+      ["aria_live", "dom_aria_live", "html_aria_live"]),
+    ariaAttrs: propAriaAttrs(meta, args),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
     onDoubleClick: meta.onDoubleClick === undefined || meta.onDoubleClick === null ? "" : String(meta.onDoubleClick),
     onInput: meta.onInput === undefined || meta.onInput === null ? "" : String(meta.onInput),
