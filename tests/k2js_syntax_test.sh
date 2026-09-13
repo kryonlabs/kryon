@@ -566,6 +566,26 @@ grep -q '"sourceColumn": 9' "$multiline_out"
 grep -q '"sourceEndLine": 8' "$multiline_out"
 grep -q '"sourceEndColumn": 10' "$multiline_out"
 
+cat > "$work/src/direct_web_nodes.kry" <<'EOF'
+#import "kryon.h"
+DirectWebNodes :: () #ui {
+    Page((PageProps){.title="Docs"})
+    Section((SectionProps){.label="Intro"})
+    Heading((HeadingProps){.text="Welcome", .level=1})
+    ParagraphText((ParagraphTextProps){.text="Body"})
+    Link((LinkProps){.text="Read more", .href="/docs"})
+    Flow((FlowProps){.gap=4})
+    Grid((GridProps){.columns=2})
+    Scroll()
+    Fieldset((FieldsetProps){.legend="Options"})
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_web_nodes.kry"
+direct_web_out="$work/out/src/direct_web_nodes.js"
+for widget in Page Section Heading ParagraphText Link Flow Grid Scroll Fieldset; do
+    grep -Eq "\"path\": \"DirectWebNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_web_out"
+done
+
 cat > "$work/src/form_owner.kry" <<'EOF'
 #import "kryon.h"
 

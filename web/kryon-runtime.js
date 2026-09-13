@@ -7773,9 +7773,10 @@ const runtimeCallNames = [
   "AppBackground", "Background", "Bevel", "Box", "Bullet", "Button", "Card", "CanvasGrid", "Checkbox",
   "Collapsible", "ColorPicker", "Column", "Drag", "DragDrop", "Dropdown", "Input", "SegmentedControl",
   "Icon", "Fieldset", "Line", "Link", "ListBox", "Menu",
-  "Modal", "NavigationBar", "PanedView", "Paragraph", "Image", "Plot", "Progress", "Radio",
+  "Flow", "Grid", "Heading", "Modal", "NavigationBar", "Page", "PanedView",
+  "Paragraph", "ParagraphText", "Image", "Plot", "Progress", "Radio",
   "Row", "Screen", "Scroll", "Selectable", "Separator", "SetCurrentTheme",
-  "Toast", "Slider", "Spinbox", "Stack", "TabBar",
+  "Section", "Toast", "Slider", "Spinbox", "Stack", "TabBar",
   "TableView", "Text", "TextArea", "TextField", "TitleBar", "TreeView",
   "Toggle", "Toolbar"
 ];
@@ -7809,10 +7810,15 @@ export function Line(...args) { return struct("Line", args); }
 export function Link(...args) { return struct("Link", args); }
 export function ListBox(...args) { return struct("ListBox", args); }
 export function Menu(...args) { return struct("Menu", args); }
+export function Flow(...args) { return struct("Flow", args); }
+export function Grid(...args) { return struct("Grid", args); }
+export function Heading(...args) { return struct("Heading", args); }
 export function Modal(...args) { return struct("Modal", args); }
 export function NavigationBar(...args) { return struct("NavigationBar", args); }
+export function Page(...args) { return struct("Page", args); }
 export function PanedView(...args) { return struct("PanedView", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
+export function ParagraphText(...args) { return struct("ParagraphText", args); }
 export function Image(...args) { return struct("Image", args); }
 export function Plot(...args) { return struct("Plot", args); }
 export function Progress(...args) { return struct("Progress", args); }
@@ -7824,6 +7830,7 @@ export function Scroll(...args) { return struct("Scroll", args); }
 export function Selectable(...args) { return struct("Selectable", args); }
 export function Separator(...args) { return struct("Separator", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
+export function Section(...args) { return struct("Section", args); }
 export function Toast(...args) { return struct("Toast", args); }
 export function Slider(...args) { return struct("Slider", args); }
 export function Spinbox(...args) { return struct("Spinbox", args); }

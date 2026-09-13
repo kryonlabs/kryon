@@ -4,6 +4,10 @@ import { pathToFileURL } from "node:url";
 const [generatedPath, runtimePath] = process.argv.slice(2);
 const generated = await import(pathToFileURL(generatedPath).href);
 const runtime = await import(pathToFileURL(runtimePath).href);
+for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow", "Grid", "Scroll", "Fieldset"]) {
+  assert.equal(typeof runtime[name], "function");
+  assert.equal(runtime[name]().type, name);
+}
 function rectangle(value) {
   const [x, y, width, height] = Array.isArray(value)
     ? value : [value.x, value.y, value.width, value.height];

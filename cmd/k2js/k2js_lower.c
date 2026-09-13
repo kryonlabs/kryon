@@ -1095,11 +1095,17 @@ condition_is_widget_call(const char *cond, char *widget, size_t widget_size,
                          char *args, size_t args_size)
 {
     static const char *const widgets[] = {
+        "AppBackground", "Background", "Text", "Paragraph",
+        "Box", "Line", "Bevel", "Icon", "Image", "Bullet", "Separator",
+        "Link", "Fieldset",
         "Button", "Card", "Selectable", "Checkbox", "Drag", "DragDrop",
         "Dropdown", "Input", "Slider", "Toggle", "Radio", "Spinbox",
         "ColorPicker", "SegmentedControl", "Menu", "Modal", "TitleBar",
         "TabBar", "Toolbar", "PanedView", "Collapsible", "ListBox",
-        "TreeView", "TableView", "TextField", "TextArea"
+        "TreeView", "TableView", "TextField", "TextArea",
+        "Screen", "Page", "Section", "Heading", "ParagraphText",
+        "Column", "Row", "Stack", "Flow", "Grid", "Scroll", "Toast",
+        "Progress", "Plot", "CanvasGrid", "NavigationBar"
     };
     char name[K2JS_NAME_MAX];
 
