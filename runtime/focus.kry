@@ -1,4 +1,5 @@
 #module "focus"
+#import "control_props"
 #import "drawing_props"
 #import "style"
 
@@ -17,9 +18,13 @@ FocusDebugOverlayPaint :: struct {
 FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
     pad_value: float = frame.value.padding_x
-    if pad_value <= 0.0 { pad_value = 3.0 }
+    if (frame.value.fields & (u32)StylePaddingX) == (u32)0 || pad_value < 0.0 {
+        pad_value = 3.0
+    }
     stroke_value: float = frame.value.border_width
-    if stroke_value <= 0.0 { stroke_value = 2.0 }
+    if (frame.value.fields & (u32)StyleBorderWidth) == (u32)0 || stroke_value <= 0.0 {
+        stroke_value = 2.0
+    }
     pad: i32 = (i32)(pad_value * scale)
     stroke: i32 = (i32)(stroke_value * scale)
     if stroke < 1 { stroke = 1 }
