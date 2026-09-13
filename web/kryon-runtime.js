@@ -5124,6 +5124,12 @@ function mergeWebDOMRelationObjects(...lists) {
   return out;
 }
 
+function webDOMScopedHeaderList(target, node, scope) {
+  const expected = String(scope || "").toLowerCase();
+  return webDOMRelationList(target, node?.headers || "")
+    .filter((object) => String(object?.node?.scope || "").toLowerCase() === expected);
+}
+
 function webDOMRelationsForNode(target, node) {
   if (!node)
     return null;
@@ -5132,6 +5138,8 @@ function webDOMRelationsForNode(target, node) {
     controls: webDOMRelationList(target, node.ariaControls),
     owns: webDOMRelationList(target, node.ariaOwns),
     headers: webDOMRelationList(target, node.headers),
+    rowHeaders: webDOMScopedHeaderList(target, node, "row"),
+    columnHeaders: webDOMScopedHeaderList(target, node, "col"),
     labelFor: webDOMRelationList(target, node.htmlFor)[0] || null,
     formOwner: webDOMRelationList(target, node.formOwner)[0] || null,
     labelledBy: mergeWebDOMRelationObjects(
@@ -6713,6 +6721,8 @@ function webDOMObjectSnapshot(target, object) {
       controls: (relations?.controls || []).map((relation) => relation.ref),
       owns: (relations?.owns || []).map((relation) => relation.ref),
       headers: (relations?.headers || []).map((relation) => relation.ref),
+      rowHeaders: (relations?.rowHeaders || []).map((relation) => relation.ref),
+      columnHeaders: (relations?.columnHeaders || []).map((relation) => relation.ref),
       labelFor: relations?.labelFor?.ref || "",
       formOwner: relations?.formOwner?.ref || "",
       labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),

@@ -482,6 +482,8 @@ export interface WebDOMRelations {
   controls: WebDOMObject[];
   owns: WebDOMObject[];
   headers: WebDOMObject[];
+  rowHeaders: WebDOMObject[];
+  columnHeaders: WebDOMObject[];
   labelFor: WebDOMObject | null;
   formOwner: WebDOMObject | null;
   labelledBy: WebDOMObject[];
@@ -670,6 +672,8 @@ export interface WebDOMSnapshot {
     controls: string[];
     owns: string[];
     headers: string[];
+    rowHeaders: string[];
+    columnHeaders: string[];
     labelFor: string;
     formOwner: string;
     labelledBy: string[];

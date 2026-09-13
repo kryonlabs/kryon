@@ -571,10 +571,11 @@ path, name, key, or native id. The Web Document facts keep the authored Kry
 value for KSS and queries, while the DOM renderer resolves the native attribute
 to a real element id during mount. `webDOMRelations(target, query)`,
 `element.kryRelations`, and `object.relations` expose the resolved Kry DOM
-objects, including `owns`, `headers`, direct `labelledBy` links from
-`aria_labelledby`, active descendant links from `aria_activedescendant`, form
-owner links from `form`, and reverse `labelledBy` links for controls targeted
-by `dom_for`; snapshots include serializable `relationRefs`.
+objects, including `owns`, `headers`, `rowHeaders`, `columnHeaders`, direct
+`labelledBy` links from `aria_labelledby`, active descendant links from
+`aria_activedescendant`, form owner links from `form`, and reverse
+`labelledBy` links for controls targeted by `dom_for`; snapshots include
+serializable `relationRefs`.
 
 `webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
 plain, serializable views of mounted Kry DOM objects: identity, source

@@ -1634,13 +1634,23 @@ function fakeDocument() {
         ariaColIndex: 1,
         ariaColCount: 2
       });
+    runtime.widget(tableRt, "Text", { text: "Product" }, null,
+      {
+        nodeName: "productHeader",
+        path: "Page/prices/productHeader",
+        parentPath: "Page/prices",
+        tag: "th",
+        id: "product-header",
+        scope: "row",
+        ariaRowIndex: 2
+      });
     runtime.widget(tableRt, "Text", { text: "$12" }, null,
       {
         nodeName: "priceCell",
         path: "Page/prices/priceCell",
         parentPath: "Page/prices",
         tag: "td",
-        headers: "priceHeader",
+        headers: "priceHeader productHeader",
         colSpan: "2",
         rowSpan: "1",
         ariaRowIndex: 2,
@@ -1656,25 +1666,28 @@ function fakeDocument() {
       "Page/prices/priceHeader");
     assert.equal(runtime.webNodeQuery(tableRt, "[aria-colcount=2]").path,
       "Page/prices/priceHeader");
-    assert.equal(runtime.webNodeQuery(tableRt, "[headers=priceHeader]").path,
+    assert.equal(runtime.webNodeQuery(tableRt, "[headers~=priceHeader]").path,
       "Page/prices/priceCell");
     assert.equal(runtime.webNodeQuery(tableRt, "[colspan=2]").path,
       "Page/prices/priceCell");
     assert.equal(runtime.webNodeQuery(tableRt, "[rowspan=1]").path,
       "Page/prices/priceCell");
-    assert.equal(runtime.webNodeQuery(tableRt, "[aria-rowindex=2]").path,
+    assert.equal(runtime.webNodeQuery(tableRt, "[headers~=priceHeader][aria-rowindex=2]").path,
       "Page/prices/priceCell");
     assert.equal(runtime.webNodeQuery(tableRt, "[aria-rowcount=4]").path,
       "Page/prices/priceCell");
     const tableTarget = document.createElement("div");
     runtime.renderWebDocument(tableRt, tableTarget);
     const priceHeader = runtime.findWebElement(tableTarget, "priceHeader");
+    const productHeader = runtime.findWebElement(tableTarget, "productHeader");
     const priceCell = runtime.findWebElement(tableTarget, "priceCell");
     assert.equal(priceHeader.attributes.scope, "col");
     assert.equal(priceHeader.attributes["aria-sort"], "ascending");
     assert.equal(priceHeader.attributes["aria-colindex"], "1");
     assert.equal(priceHeader.attributes["aria-colcount"], "2");
-    assert.equal(priceCell.attributes.headers, "price-header");
+    assert.equal(productHeader.attributes.scope, "row");
+    assert.equal(productHeader.attributes["aria-rowindex"], "2");
+    assert.equal(priceCell.attributes.headers, "price-header product-header");
     assert.equal(priceCell.attributes.colspan, "2");
     assert.equal(priceCell.attributes.rowspan, "1");
     assert.equal(priceCell.attributes["aria-rowindex"], "2");
@@ -1721,8 +1734,16 @@ function fakeDocument() {
       });
     assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").headers[0].ref,
       "Page/prices/priceHeader");
+    assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").columnHeaders[0].ref,
+      "Page/prices/priceHeader");
+    assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").rowHeaders[0].ref,
+      "Page/prices/productHeader");
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,
+      ["Page/prices/priceHeader", "Page/prices/productHeader"]);
+    assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.columnHeaders,
       ["Page/prices/priceHeader"]);
+    assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.rowHeaders,
+      ["Page/prices/productHeader"]);
 
     const menuRt = runtime.createRuntime();
     runtime.beginFrame(menuRt);
