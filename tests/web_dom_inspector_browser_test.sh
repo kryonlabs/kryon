@@ -83,8 +83,11 @@ try {
   const target = document.getElementById("target");
   kryon.renderWebDocument(rt, target);
   const root = kryon.webDOMRoot(target);
+  const screen = kryon.findWebElement(target, "Inspect/root");
   const button = kryon.findWebElement(target, "save-ref");
+  const progress = kryon.findWebElement(target, "Inspect/root/done");
   assert(root && button, "mounted objects missing");
+  assert(screen && progress, "mounted tree objects missing");
 
   assert(kryon.webDOMSourceMap(target).some((object) =>
     object.ref === "save-ref" && object.identity.sourceColumnRef === "inspect.kry:4:3"),
@@ -93,6 +96,20 @@ try {
     "root object map did not expose ref");
   assert(root.kryObjectMap.get("inspect.kry:4:3")?.element === button,
     "root object map did not expose source ref");
+  assert(kryon.webDOMChildren(target, "Inspect/root").map((object) => object.ref).join(" ") ===
+    "save-ref Inspect/root/done", "mounted children did not follow Web Document parent paths");
+  assert(kryon.webDOMDescendants(target, "Inspect/root").map((object) => object.ref).join(" ") ===
+    "save-ref Inspect/root/done", "mounted descendants did not follow Web Document parent paths");
+  assert(kryon.webDOMQueryAllWithin(target, "Inspect/root", "Progress").map((object) => object.ref).join(" ") ===
+    "Inspect/root/done", "scoped mounted query did not filter descendants");
+  assert(kryon.webDOMClosest(target, "save-ref", "Screen").ref === "Inspect/root",
+    "mounted closest lookup did not find screen ancestor");
+  assert(screen.kryChildren.map((object) => object.ref).join(" ") ===
+    "save-ref Inspect/root/done", "element child bridge did not expose mounted children");
+  assert(button.kryClosest("Screen").ref === "Inspect/root",
+    "element closest bridge did not find screen ancestor");
+  assert(root.kryQueryAllWithin("Inspect/root", "Progress")[0]?.element === progress,
+    "root scoped query bridge did not expose progress");
 
   const buttonSnapshot = kryon.webDOMSnapshot(target, "save-ref");
   assert(buttonSnapshot.identity.sourceRangeRef === "inspect.kry:4:3-6:4",
