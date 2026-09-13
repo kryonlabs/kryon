@@ -78,6 +78,7 @@ dotted package paths such as `styles/acme/dark.kss`.
 Rendered DOM elements carry source identity as native attributes:
 `data-kry-ref`, `data-kry-index`, `data-kry-path`, `data-kry-parent-path`,
 `data-kry-name`, `data-kry-key`, `data-kry-kind`, `data-kry-aliases`,
+`data-kry-web-ref` when the node declares `dom_ref`, `web_ref`, or `kry_ref`,
 `data-kry-source`,
 `data-kry-line`, and `data-kry-column`. The same source location is also available as
 `data-kry-source-ref` (`path:line`) and `data-kry-source-column-ref`

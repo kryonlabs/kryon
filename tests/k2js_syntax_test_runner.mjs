@@ -189,6 +189,9 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
 assert.equal(webStyleSheet.pack, "smoke");
 const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
+assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
+  Button[webRef="primary-action"] { cursor: pointer; }
+`)), /\[data-kry-kind="Button"\]\[data-kry-web-ref="primary-action"\]/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -1850,6 +1853,7 @@ function fakeDocument() {
     assert.equal(firstButton.attributes.value, "tap-value");
     assert.equal(firstButton.dataset.kryIndex, "2");
     assert.equal(firstButton.dataset.kryRef, "primary-action");
+    assert.equal(firstButton.dataset.kryWebRef, "primary-action");
     assert.deepEqual(JSON.parse(firstButton.dataset.kryAliases).slice(0, 4), [
       "primary-action",
       "Scene/root/tap",

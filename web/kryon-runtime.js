@@ -1929,8 +1929,10 @@ function webStyleSelectorAttrToCSS(key, value) {
     return attr("data-" + key.slice(5).replace(/_/g, "-").toLowerCase());
   if (key.startsWith("aria."))
     return attr("aria-" + key.slice(5).replace(/_/g, "-").toLowerCase());
-  if (key === "ref" || key === "webRef")
+  if (key === "ref")
     return attr("data-kry-ref");
+  if (key === "webRef")
+    return attr("data-kry-web-ref");
   if (key === "path")
     return attr("data-kry-path");
   if (key === "parentPath")
@@ -4442,6 +4444,10 @@ function applyWebNode(el, docNode, rt) {
   el.dataset.kryIndex = String(docNode.index);
   el.dataset.kryKey = docNode.key;
   el.dataset.kryRef = webNodeRef(docNode);
+  if (docNode.webRef)
+    el.dataset.kryWebRef = docNode.webRef;
+  else
+    delete el.dataset.kryWebRef;
   el.dataset.kryAliases = JSON.stringify(webNodeIdentity(docNode).aliases);
   updateWebElementStateDataset(el, docNode.state);
   if (docNode.path)
