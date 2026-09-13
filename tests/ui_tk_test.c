@@ -4369,14 +4369,14 @@ test_dropdown_scrollbar_dismissal(void)
         Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
             .options=options,.option_count=131,.selected_index=&selected});
         EndInterfaceFrame();
-        check_int("dropdown scrollbar acquired drag",g_ui_pointer_owner,UI_POINTER_OWNER_SCROLL);
+        check_int("dropdown scrollbar acquired drag",g_ui_pointer_owner,POINTER_OWNER_SCROLL);
         if(mode == 0) InjectKeyTap(KEY_ESCAPE);
         InjectPump(); BeginInterfaceFrame(240,240,1);
         if(mode != 2)
             Dropdown((DropdownProps){.bounds={10,10,160,28},.id=25001,
                 .options=options,.option_count=131,.selected_index=&selected,.disabled=mode==1});
         EndInterfaceFrame();
-        check_int("dismissed dropdown scrollbar released drag",g_ui_pointer_owner,UI_POINTER_OWNER_NONE);
+        check_int("dismissed dropdown scrollbar released drag",g_ui_pointer_owner,POINTER_OWNER_NONE);
         check_int("dismissed dropdown scrollbar released capture",dropdown_captures((Vector2){20,70}),0);
         InjectReset(); BeginInterfaceFrame(240,240,1); EndInterfaceFrame();
     }

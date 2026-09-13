@@ -88,7 +88,7 @@ static int g_ui_mouse_world_override_enabled = 0;
 static Vector2 g_ui_mouse_world_override = {0};
 static int ui_default_font_auto_load = 1;
 
-int g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+int g_ui_pointer_owner = POINTER_OWNER_NONE;
 int g_ui_scroll_gesture_pending = 0;
 
 #define UI_FOCUS_MAX_ITEMS 256
@@ -678,7 +678,7 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_dragged_this_click = 0;
         g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
         g_ui_pointer_start_x = mx;
         g_ui_pointer_start_y = my;
         g_ui_pointer_start_world = screen_to_world_for_input(mouse);
@@ -701,14 +701,14 @@ ui_update_pointer_gesture(void)
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_scroll_gesture_pending = 0;
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
     } else if(!IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         g_ui_pointer_down = 0;
         g_ui_pointer_dragging = 0;
         g_ui_pointer_dragged_this_click = 0;
         g_ui_scroll_gesture_pending = 0;
         g_ui_release_consumed = 0;
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
         g_ui_pointer_start_x = INT_MIN;
         g_ui_pointer_start_y = INT_MIN;
     }
@@ -4500,8 +4500,8 @@ ui_text_field_render_filtered(TextFieldProps field,
     if(g_ui_text_field_pan_owner == field.focused &&
        (field.focus_id <= 0 || g_ui_text_field_pan_id == field.focus_id) &&
        IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-       (g_ui_pointer_owner == UI_POINTER_OWNER_NONE ||
-        g_ui_pointer_owner == UI_POINTER_OWNER_TEXT_FIELD_PAN)) {
+       (g_ui_pointer_owner == POINTER_OWNER_NONE ||
+        g_ui_pointer_owner == POINTER_OWNER_TEXT_FIELD_PAN)) {
         int dx = (int)mouse_world.x - g_ui_text_field_pan_start_x;
         int dy = (int)mouse_world.y - g_ui_text_field_pan_start_y;
         int drag_threshold = Scale(5);
@@ -4516,7 +4516,7 @@ ui_text_field_render_filtered(TextFieldProps field,
                 (float)ui_view_height
             };
 
-            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_FIELD_PAN;
+            g_ui_pointer_owner = POINTER_OWNER_TEXT_FIELD_PAN;
             g_ui_text_field_panning = 1;
             *scroll_x_ptr = g_ui_text_field_pan_start_scroll - dx;
             scroll_policy = TextFieldScrollFor(field.bounds.x,

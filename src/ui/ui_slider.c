@@ -274,17 +274,17 @@ ui_render_slider(int id, int x, int y, int w, const char *label,
             g_ui_slider_active_id = id;
     }
 
-    if(g_ui_slider_active_id == id && g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
+    if(g_ui_slider_active_id == id && g_ui_pointer_owner == POINTER_OWNER_NONE &&
        g_ui_pointer_dragging) {
         if(ui_pointer_drag_is_horizontal())
-            g_ui_pointer_owner = UI_POINTER_OWNER_HORIZONTAL_SLIDER;
+            g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER;
         else
             g_ui_slider_active_id = 0;
     }
 
     if(g_ui_slider_active_id == id &&
        ((IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-         g_ui_pointer_owner == UI_POINTER_OWNER_HORIZONTAL_SLIDER) ||
+         g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER) ||
         IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) &&
        !ui_input_captures_click_internal(mouse_world, 0)) {
         int old_value = *value;
@@ -380,7 +380,7 @@ ui_render_vertical_slider_visual(int id, int x, int y, int h,
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
-            g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
+            g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
         }
     }
 
@@ -499,7 +499,7 @@ ui_render_vertical_slider_with_marks(int id, int x, int y, int h,
         MarkClickable();
         if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
             g_ui_slider_active_id = id;
-            g_ui_pointer_owner = UI_POINTER_OWNER_VERTICAL_SLIDER;
+            g_ui_pointer_owner = POINTER_OWNER_VERTICAL_SLIDER;
         }
     }
 

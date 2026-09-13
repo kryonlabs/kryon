@@ -7,8 +7,8 @@ ResetSwipe(SwipeGesture *gesture)
     if(gesture == NULL)
         return;
     memset(gesture, 0, sizeof(*gesture));
-    if(g_ui_pointer_owner == UI_POINTER_OWNER_SWIPE)
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+    if(g_ui_pointer_owner == POINTER_OWNER_SWIPE)
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
 }
 
 SwipeResult
@@ -29,7 +29,7 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
 
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
         ResetSwipe(gesture);
-        if(g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
+        if(g_ui_pointer_owner == POINTER_OWNER_NONE &&
            !ui_input_captures_click_internal(pointer, 0) &&
            CheckCollisionPointRec(pointer, spec.bounds)) {
             gesture->active = 1;
@@ -51,8 +51,8 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
     if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
         SwipeDragState drag;
 
-        if(g_ui_pointer_owner != UI_POINTER_OWNER_NONE &&
-           g_ui_pointer_owner != UI_POINTER_OWNER_SWIPE) {
+        if(g_ui_pointer_owner != POINTER_OWNER_NONE &&
+           g_ui_pointer_owner != POINTER_OWNER_SWIPE) {
             gesture->active = 0;
             gesture->cancelled = 1;
             result.active = 0;
@@ -72,7 +72,7 @@ UpdateSwipe(SwipeGesture *gesture, SwipeSpec spec)
         }
         if(!gesture->dragging && drag.dragging) {
             gesture->dragging = 1;
-            g_ui_pointer_owner = UI_POINTER_OWNER_SWIPE;
+            g_ui_pointer_owner = POINTER_OWNER_SWIPE;
         }
 
         result.dragging = gesture->dragging;

@@ -1419,7 +1419,7 @@ RenderTextEx(const char *text, int x, int y, int font_size, Color color,
             g_ui_text_selection.anchor = offset;
             g_ui_text_selection.cursor = offset;
             g_ui_text_selection.dragging = 1;
-            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
+            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
         }
         if(g_ui_text_selection.id == id && g_ui_text_selection.dragging) {
             if(IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
@@ -1688,7 +1688,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
                 g_ui_text_block_last_click_position = mouse;
                 g_ui_text_block_last_click_time = now;
             }
-            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
+            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
         }
         free(line);
     }
@@ -1711,7 +1711,7 @@ RenderSelectableTextBlock(SelectableTextBlock block)
                                                  (int)(mouse.x - block.bounds.x));
             free(line);
             g_ui_text_block_selection.cursor = lines[line_index].start + local;
-            g_ui_pointer_owner = UI_POINTER_OWNER_TEXT_SELECTION;
+            g_ui_pointer_owner = POINTER_OWNER_TEXT_SELECTION;
         } else {
             g_ui_text_block_selection.dragging = 0;
         }

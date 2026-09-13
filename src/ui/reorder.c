@@ -63,8 +63,8 @@ static void
 ui_reorder_cancel(void)
 {
     memset(&g_ui_reorder_state, 0, sizeof(g_ui_reorder_state));
-    if(g_ui_pointer_owner == UI_POINTER_OWNER_REORDER)
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+    if(g_ui_pointer_owner == POINTER_OWNER_REORDER)
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
 }
 
 ReorderListResult
@@ -126,7 +126,7 @@ UpdateReorderList(ReorderList list)
                 list.max_scroll, metrics);
             if(!g_ui_reorder_state.dragging && motion.dragging) {
                 g_ui_reorder_state.dragging = 1;
-                g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
+                g_ui_pointer_owner = POINTER_OWNER_REORDER;
             }
             if(g_ui_reorder_state.dragging) {
                 result.dragging = 1;
@@ -155,7 +155,7 @@ UpdateReorderList(ReorderList list)
 
     if(list.id == 0 || list.items == NULL || list.item_count <= 0 ||
        !IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || captured ||
-       g_ui_pointer_owner != UI_POINTER_OWNER_NONE ||
+       g_ui_pointer_owner != POINTER_OWNER_NONE ||
        !CheckCollisionPointRec(mouse, list.bounds))
         return result;
 

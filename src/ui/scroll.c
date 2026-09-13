@@ -231,19 +231,19 @@ BeginScrollContainer(ScrollArea area)
         }
 
         if(g_ui_slider_active_id != 0 &&
-           g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
+           g_ui_pointer_owner == POINTER_OWNER_NONE &&
            g_ui_pointer_dragging &&
            ui_pointer_drag_is_horizontal())
-            g_ui_pointer_owner = UI_POINTER_OWNER_HORIZONTAL_SLIDER;
+            g_ui_pointer_owner = POINTER_OWNER_HORIZONTAL_SLIDER;
 
-        if(g_ui_pointer_owner == UI_POINTER_OWNER_HORIZONTAL_SLIDER ||
-           g_ui_pointer_owner == UI_POINTER_OWNER_VERTICAL_SLIDER) {
+        if(g_ui_pointer_owner == POINTER_OWNER_HORIZONTAL_SLIDER ||
+           g_ui_pointer_owner == POINTER_OWNER_VERTICAL_SLIDER) {
             content_drag_active = 0;
             content_dragging = 0;
         }
 
         if(view.max_scroll > 0 &&
-           g_ui_pointer_owner == UI_POINTER_OWNER_NONE &&
+           g_ui_pointer_owner == POINTER_OWNER_NONE &&
            IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && inside && !captured &&
            !on_scrollbar) {
             g_ui_scroll_gesture_pending = 1;
@@ -253,11 +253,11 @@ BeginScrollContainer(ScrollArea area)
             content_drag_start_scroll = *area.scroll_offset;
         }
         if(content_drag_active && IsMouseButtonDown(MOUSE_BUTTON_LEFT) &&
-           (g_ui_pointer_owner == UI_POINTER_OWNER_NONE ||
-            g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)) {
+           (g_ui_pointer_owner == POINTER_OWNER_NONE ||
+            g_ui_pointer_owner == POINTER_OWNER_SCROLL)) {
             int dy = (int)mouse_world.y - content_drag_start_y;
             if(content_dragging || dy > drag_threshold || dy < -drag_threshold) {
-                g_ui_pointer_owner = UI_POINTER_OWNER_SCROLL;
+                g_ui_pointer_owner = POINTER_OWNER_SCROLL;
                 content_dragging = 1;
                 *area.scroll_offset = content_drag_start_scroll - dy;
                 *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
@@ -412,8 +412,8 @@ void
 ui_scrollbar_cancel(int *scroll_offset)
 {
     if(scrollbar_drag_offset != scroll_offset) return;
-    if(scrollbar_drag_active && g_ui_pointer_owner == UI_POINTER_OWNER_SCROLL)
-        g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+    if(scrollbar_drag_active && g_ui_pointer_owner == POINTER_OWNER_SCROLL)
+        g_ui_pointer_owner = POINTER_OWNER_NONE;
     scrollbar_drag_active = 0;
     scrollbar_drag_offset = NULL;
 }
@@ -451,10 +451,10 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         (scrollbar_drag_active && scrollbar_drag_offset == scroll_offset))) {
         if(!scrollbar_drag_active) {
             /* Start drag if clicking on thumb */
-            if(thumb_active && g_ui_pointer_owner == UI_POINTER_OWNER_NONE) {
+            if(thumb_active && g_ui_pointer_owner == POINTER_OWNER_NONE) {
                 scrollbar_drag_active = 1;
                 scrollbar_drag_offset = scroll_offset;
-                g_ui_pointer_owner = UI_POINTER_OWNER_SCROLL;
+                g_ui_pointer_owner = POINTER_OWNER_SCROLL;
                 scrollbar_drag_start_y = my;
                 scrollbar_drag_start_scroll = *scroll_offset;
             }

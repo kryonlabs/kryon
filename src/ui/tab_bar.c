@@ -470,7 +470,7 @@ RenderTabBar(TabBarProps bar)
         if(!tab_bar_store->reorder_drag_active &&
            abs_dx >= threshold && abs_dx >= abs_dy) {
             tab_bar_store->reorder_drag_active = 1;
-            g_ui_pointer_owner = UI_POINTER_OWNER_REORDER;
+            g_ui_pointer_owner = POINTER_OWNER_REORDER;
         }
         if(tab_bar_store->reorder_drag_active) {
             drag_target = ui_tab_bar_reorder_target(
@@ -700,8 +700,8 @@ RenderTabBar(TabBarProps bar)
         tab_bar_store->press_bar_bounds =
             (Rectangle){0.0f, 0.0f, 0.0f, 0.0f};
         tab_bar_store->reorder_drag_active = 0;
-        if(g_ui_pointer_owner == UI_POINTER_OWNER_REORDER)
-            g_ui_pointer_owner = UI_POINTER_OWNER_NONE;
+        if(g_ui_pointer_owner == POINTER_OWNER_REORDER)
+            g_ui_pointer_owner = POINTER_OWNER_NONE;
     }
 
     if(!disabled && needs_scroll && !(reorder_enabled && owns_drag)) {

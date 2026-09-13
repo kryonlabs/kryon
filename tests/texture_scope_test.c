@@ -951,7 +951,7 @@ int main(void)
         if(frame == 4) expected_dropdown_text = "Last row";
         EndInterfaceFrame();
         expected_dropdown_text = NULL;
-        if(frame == 3 && g_ui_pointer_owner != UI_POINTER_OWNER_SCROLL) {
+        if(frame == 3 && g_ui_pointer_owner != POINTER_OWNER_SCROLL) {
             fprintf(stderr,"rendered popup scrollbar did not acquire drag\n");
             failures++;
         }
