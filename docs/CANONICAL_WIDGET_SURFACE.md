@@ -44,7 +44,9 @@ surface review:
 | `runtime/checkbox.kry` | Checkbox paint/layout policy | `.kry canonical` |
 | `runtime/checkbox_props.kry` | Checkbox props | `.kry canonical` |
 | `runtime/collapsible.kry` | Collapsible metrics/header geometry policy | `.kry canonical` |
+| `runtime/collapsible_props.kry` | Collapsible props | `.kry canonical` |
 | `runtime/color_picker.kry` | ColorPicker channel layout and color policy | `.kry canonical` |
+| `runtime/color_picker_props.kry` | ColorPicker props | `.kry canonical` |
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
 | `runtime/drawing_props.kry` | Shared drawing props | `.kry canonical` |
 | `runtime/dropdown.kry` | Dropdown composition | `.kry canonical` |
@@ -72,8 +74,10 @@ surface review:
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
 | `runtime/paint.kry` | Paint/drawing helpers | Native support |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
+| `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
 | `runtime/paragraph.kry` | Paragraph metrics/default policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
+| `runtime/plot_props.kry` | Plot props | `.kry canonical` |
 | `runtime/popup_policy.kry` | Popup mode/input policy | `.kry canonical` |
 | `runtime/primitive.kry` | Background/Box/Line/Circle/Ring/Triangle primitive geometry policy | `.kry canonical` |
 | `runtime/progress.kry` | Progress layout policy | `.kry canonical` |
@@ -222,7 +226,7 @@ host roles rather than retained nodes.
 | `Checkbox` | `.kry canonical` | Boolean checkbox. |
 | `Radio` | `.kry canonical` | Choice control. |
 | `Progress` | `.kry canonical` | One progress concept. |
-| `Plot` | `.kry canonical` | Plot geometry/text policy lives in `.kry`. |
+| `Plot` | `.kry canonical` | Public props live in `runtime/plot_props.kry`; plot geometry/text policy lives in `.kry`. |
 | `Drag` | `.kry canonical` | Numeric drag value control; value type/count are props. |
 | `Input` | `.kry canonical` | Numeric input control; value type/count are props. |
 | `Spinbox` | `.kry canonical` | Numeric stepper; value typography is `SpinboxValue`, step controls use `Button`. |
@@ -366,7 +370,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
 | `Selectable` | `.kry canonical` | Public props live in `runtime/selectable_props.kry`; paint/layout policy is in `.kry`; review whether list item props should absorb it later. |
 | `Progress` | `.kry canonical` | Public props live in `runtime/progress_props.kry`; prefer one public progress name. |
-| `ColorPicker` | `.kry canonical` | Channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
+| `ColorPicker` | `.kry canonical` | Public props live in `runtime/color_picker_props.kry`; channel layout and color conversion are in `.kry`; swatch activation is `Button` with swatch props. |
 | `SegmentedControl` | `.kry canonical` | Layout policy is in `.kry`; segment typography and paint are KSS-owned; host handles label measurement, focus/input, and button drawing. |
 | `LabelTextField` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `TextField`. |
 | `CheckboxRow` | Removed | Removed from public headers; internal row helper only. Public code should compose `Text` and `Checkbox`. |
@@ -388,8 +392,8 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Separator` | `.kry canonical` | Public props live in `runtime/separator_props.kry`; line, label, and bullet layout/paint policy are in `.kry`; label typography is KSS-owned; host handles text measurement and drawing. |
 | `Fieldset` | `.kry canonical` | Public props live in `runtime/fieldset_props.kry`; titled border group. |
-| `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
-| `Collapsible` | `.kry canonical` | Header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
+| `PanedView` | `.kry canonical` | Public props live in `runtime/paned_view_props.kry`; split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
+| `Collapsible` | `.kry canonical` | Public props live in `runtime/collapsible_props.kry`; header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
 | `Scroll` | `.kry canonical` | Public props live in `runtime/scroll_props.kry`; lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |

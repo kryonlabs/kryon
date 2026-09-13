@@ -1335,8 +1335,10 @@ include/ui_clip.h function EndClip
 include/ui_clip.h function GetClipEffective
 include/ui_clip.h function GetClipIntersection
 include/ui_clip.h function ResetClip
+include/ui_collapsible_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_color.h function DarkenColor
 include/ui_color.h function LightenColor
+include/ui_color_picker_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_control_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_controls.h enum ICON_SIZE_LARGE
 include/ui_controls.h enum ICON_SIZE_MEDIUM
@@ -1640,6 +1642,8 @@ include/ui_page.h function SetPageCanonicalURL
 include/ui_page.h function SetPageDescription
 include/ui_page.h function SetPageThemeColor
 include/ui_page.h function SetPageTitle
+include/ui_paned_view_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_plot_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_profile.h enum SYNC_PROFILE_ICON_BAMBUS
 include/ui_profile.h enum SYNC_PROFILE_ICON_BIRD
 include/ui_profile.h enum SYNC_PROFILE_ICON_BOWL

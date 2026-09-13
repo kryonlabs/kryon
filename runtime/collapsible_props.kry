@@ -1,0 +1,15 @@
+#module "collapsible_props"
+#import "kryon_compat.generated.h"
+
+CollapsibleProps :: struct {
+    bounds: Rectangle
+    label: const char*
+    open: *bool
+    tree: bool
+    depth: i32
+    leaf: bool
+    selected: bool
+    disabled: bool
+    id: i32
+    visible: *bool
+}

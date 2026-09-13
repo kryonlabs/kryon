@@ -1,0 +1,12 @@
+#module "color_picker_props"
+#import "kryon_compat.generated.h"
+
+ColorPickerProps :: struct {
+    bounds: Rectangle
+    id: i32
+    label: const char*
+    values: *float
+    value_count: i32
+    disabled: bool
+    picker: bool
+}

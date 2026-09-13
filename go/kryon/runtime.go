@@ -442,16 +442,6 @@ const (
 	ArrowDown
 )
 
-type ColorPickerProps struct {
-	Bounds     Rectangle
-	ID         int32
-	Label      string
-	Values     []float32
-	ValueCount int32
-	Disabled   bool
-	Picker     bool
-}
-
 type TextFieldProps struct {
 	Bounds         Rectangle
 	Text           []byte
@@ -746,18 +736,6 @@ type MenuProps struct {
 	Open      *int32
 	X         *int32
 	Y         *int32
-}
-
-type PlotProps struct {
-	Bounds     Rectangle
-	Label      string
-	Values     []float32
-	ValueCount int32
-	Offset     int32
-	Overlay    string
-	ScaleMin   float32
-	ScaleMax   float32
-	Mode       int32
 }
 
 type dragFloatProps struct {
@@ -1073,28 +1051,6 @@ type TableViewProps struct {
 	HeaderHeight         int32
 	HeaderAngle          float32
 	CustomCells          bool
-}
-
-type PanedViewProps struct {
-	Bounds    Rectangle
-	ID        int32
-	Vertical  bool
-	Split     *int32
-	MinFirst  int32
-	MinSecond int32
-}
-
-type CollapsibleProps struct {
-	Bounds   Rectangle
-	Label    string
-	Open     *bool
-	Tree     bool
-	Depth    int32
-	Leaf     bool
-	Selected bool
-	Disabled bool
-	ID       int32
-	Visible  *bool
 }
 
 type ModalAction struct {

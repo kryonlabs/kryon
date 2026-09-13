@@ -2,7 +2,11 @@
 #define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_collapsible_props.generated.h"
+#include "ui_color_picker_props.generated.h"
 #include "ui_fieldset_props.generated.h"
+#include "ui_paned_view_props.generated.h"
+#include "ui_plot_props.generated.h"
 #include "ui_progress_props.generated.h"
 #include "ui_radio_props.generated.h"
 #include "ui_scroll_props.generated.h"
@@ -28,18 +32,6 @@ typedef enum {
 typedef int (*ClipboardOSC52WriteFn)(void *userdata, const char *text);
 typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
-
-typedef struct {
-    Rectangle bounds;
-    const char *label;
-    const float *values;
-    int value_count;
-    int offset;
-    const char *overlay;
-    float scale_min;
-    float scale_max;
-    int mode;
-} PlotProps;
 
 typedef enum {
     NumericFloat = 0,
@@ -160,16 +152,6 @@ typedef enum {
 typedef struct {
     Rectangle bounds;
     int id;
-    const char *label;
-    float *values;
-    int value_count;
-    int disabled;
-    int picker;
-} ColorPickerProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
     const char **options;
     int option_count;
     int *selected_index;
@@ -280,32 +262,6 @@ typedef struct {
     int selected_index;
     Vector2 world;
 } CanvasResult;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    int vertical;
-    int *split;
-    int min_first;
-    int min_second;
-} PanedViewProps;
-
-typedef struct {
-    Rectangle bounds;
-    const char *label;
-    bool *open;
-    /* Tree-style headers indent by depth; callers lay out conditional children.
-       Leaves never toggle open. Return value remains whether open changed. */
-    int tree;
-    int depth;
-    int leaf;
-    int selected;
-    int disabled;
-    int id;
-    /* Optional ImGui-style close state. A false value hides the header;
-       activating the close affordance sets it false without toggling open. */
-    bool *visible;
-} CollapsibleProps;
 
 typedef struct {
     int key;

@@ -1,0 +1,14 @@
+#module "plot_props"
+#import "kryon_compat.generated.h"
+
+PlotProps :: struct {
+    bounds: Rectangle
+    label: const char*
+    values: const float*
+    value_count: i32
+    offset: i32
+    overlay: const char*
+    scale_min: float
+    scale_max: float
+    mode: i32
+}

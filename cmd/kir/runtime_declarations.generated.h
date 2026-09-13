@@ -82,6 +82,37 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "}\n"
     },
+    {"runtime/collapsible_props.kry",
+        "#module \"collapsible_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "CollapsibleProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    label: const char*\n"
+        "    open: *bool\n"
+        "    tree: bool\n"
+        "    depth: i32\n"
+        "    leaf: bool\n"
+        "    selected: bool\n"
+        "    disabled: bool\n"
+        "    id: i32\n"
+        "    visible: *bool\n"
+        "}\n"
+    },
+    {"runtime/color_picker_props.kry",
+        "#module \"color_picker_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "ColorPickerProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    label: const char*\n"
+        "    values: *float\n"
+        "    value_count: i32\n"
+        "    disabled: bool\n"
+        "    picker: bool\n"
+        "}\n"
+    },
     {"runtime/control_props.kry",
         "#module \"control_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
@@ -262,6 +293,35 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    pressed: bool\n"
         "    hovered: bool\n"
         "    focused: bool\n"
+        "}\n"
+    },
+    {"runtime/paned_view_props.kry",
+        "#module \"paned_view_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "PanedViewProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    vertical: bool\n"
+        "    split: *i32\n"
+        "    min_first: i32\n"
+        "    min_second: i32\n"
+        "}\n"
+    },
+    {"runtime/plot_props.kry",
+        "#module \"plot_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "PlotProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    label: const char*\n"
+        "    values: const float*\n"
+        "    value_count: i32\n"
+        "    offset: i32\n"
+        "    overlay: const char*\n"
+        "    scale_min: float\n"
+        "    scale_max: float\n"
+        "    mode: i32\n"
         "}\n"
     },
     {"runtime/progress_props.kry",

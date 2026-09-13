@@ -2113,15 +2113,22 @@ function parseWebStyleKeyframes(text, tokens) {
   return { text: stripped, keyframes };
 }
 
-function parseWebStyleRuleItems(text, tokens, initialLayer = 0) {
+export function parseWebStyleSheet(source) {
+  const parsedTokens = parseWebStyleTokens(stripKssComments(source));
+  const parsedKeyframes = parseWebStyleKeyframes(parsedTokens.text, parsedTokens.tokens);
+  const text = parsedKeyframes.text;
+  const tokens = parsedTokens.tokens;
   const rules = [];
-  let layer = initialLayer;
+  let pack = "";
+  let layer = 0;
   const itemPattern = /@([A-Za-z_][\w-]*)\s+([^;{}]+);|([^@{}]+)\{([^{}]*)\}/g;
   for (let match; (match = itemPattern.exec(text));) {
     if (match[1]) {
       const name = match[1].toLowerCase();
       const value = match[2].trim();
-      if (name === "layer") {
+      if (name === "pack")
+        pack = value;
+      else if (name === "layer") {
         const nextLayer = webStyleLayers[value.toLowerCase()];
         if (nextLayer === undefined)
           throw new Error(`unknown KSS layer ${value}`);
@@ -2145,58 +2152,7 @@ function parseWebStyleRuleItems(text, tokens, initialLayer = 0) {
       });
     }
   }
-  return rules;
-}
-
-function parseWebStyleConditionalGroups(text, tokens) {
-  const groups = [];
-  let stripped = "";
-  let cursor = 0;
-  const conditionalPattern = /@(media|supports|container)\s+([^{}]+)\{/g;
-  for (let match; (match = conditionalPattern.exec(text));) {
-    const open = conditionalPattern.lastIndex - 1;
-    const close = findMatchingBrace(text, open);
-    if (close < 0)
-      break;
-    stripped += text.slice(cursor, match.index);
-    const query = match[2].trim();
-    if (query) {
-      groups.push({
-        kind: match[1].toLowerCase(),
-        query,
-        rules: parseWebStyleRuleItems(text.slice(open + 1, close), tokens)
-      });
-    }
-    cursor = close + 1;
-    conditionalPattern.lastIndex = close + 1;
-  }
-  stripped += text.slice(cursor);
-  return { text: stripped, groups };
-}
-
-export function parseWebStyleSheet(source) {
-  const parsedTokens = parseWebStyleTokens(stripKssComments(source));
-  const parsedKeyframes = parseWebStyleKeyframes(parsedTokens.text, parsedTokens.tokens);
-  const parsedGroups = parseWebStyleConditionalGroups(parsedKeyframes.text, parsedTokens.tokens);
-  const text = parsedGroups.text;
-  const tokens = parsedTokens.tokens;
-  let pack = "";
-  const rules = parseWebStyleRuleItems(text.replace(/@pack\s+([^;{}]+);/g, (_all, value) => {
-    pack = value.trim();
-    return "";
-  }), tokens);
-  const directivePattern = /@([A-Za-z_][\w-]*)\s+([^;{}]+);/g;
-  for (let match; (match = directivePattern.exec(text));) {
-    const name = match[1].toLowerCase();
-    if (name !== "pack" && name !== "layer")
-      throw new Error(`unknown KSS directive @${match[1]}`);
-  }
-  return {
-    pack,
-    rules,
-    keyframes: parsedKeyframes.keyframes,
-    groups: parsedGroups.groups
-  };
+  return { pack, rules, keyframes: parsedKeyframes.keyframes };
 }
 
 function cssEscapeString(value) {
@@ -2660,29 +2616,11 @@ function webKeyframesToCSS(keyframes) {
   return `@keyframes ${cssEscapeIdent(keyframes.name)} {\n${frames.join("\n")}\n}`;
 }
 
-function webConditionalGroupToCSS(group) {
-  if (!group || !group.kind || !group.query || !Array.isArray(group.rules))
-    return "";
-  if (group.kind !== "media" && group.kind !== "supports" && group.kind !== "container")
-    return "";
-  const query = String(group.query).replace(/[{}]/g, "").trim();
-  if (!query)
-    return "";
-  const rules = group.rules
-    .map(webStyleRuleToCSS)
-    .filter(Boolean)
-    .map((rule) => rule.replace(/^/gm, "  "));
-  if (!rules.length)
-    return "";
-  return `@${group.kind} ${query} {\n${rules.join("\n\n")}\n}`;
-}
-
 export function webStyleSheetToCSS(sheet) {
   const parsed = typeof sheet === "string" ? parseWebStyleSheet(sheet) : sheet;
   return [
     ...(parsed?.keyframes || []).map(webKeyframesToCSS),
-    ...(parsed?.rules || []).map(webStyleRuleToCSS),
-    ...(parsed?.groups || []).map(webConditionalGroupToCSS)
+    ...(parsed?.rules || []).map(webStyleRuleToCSS)
   ]
     .filter(Boolean)
     .join("\n\n");
