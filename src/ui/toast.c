@@ -84,7 +84,7 @@ RenderToast(void)
     Style text = ui_unpack_style(ui_style_apply_effects_frame(label_frame).value);
     int font_token;
     metrics = ToastMetricsFor(scale, surface_frame);
-    font = ResolveFont(0, (int)(text.font_size + 0.5f), font);
+    font = ResolveFont(0, StyleFontValue(text.fields, text.font_size), font);
 
     font_token = PushTextFont(text.typeface);
     snprintf(display, sizeof(display), "%s", toast_message);

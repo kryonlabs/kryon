@@ -255,7 +255,8 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         button.props.disabled ? ButtonStateDisabled : ButtonStateNormal,
         0, 0, 0, 0,
         button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
-    int font = ResolveFont(0, (int)(normal_style.font_size + 0.5f),
+    int font = ResolveFont(0, StyleFontValue(normal_style.fields,
+                                             normal_style.font_size),
                            GetFontSize());
     Style hover_style = ui_unpack_style(ui_resolve_button_spec_frame(button,
         ButtonStateHover, 0, 0, 0, 0,
@@ -354,7 +355,10 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
             input.interaction.state, (int)props.state == ButtonStateAuto,
             motion.hover.value, motion.press.value, motion.focus.value,
             button.style_kind != 0 ? button.style_kind : StyleKindButton());
-        style_font = (int)(appearance.value.font_size * GetScale() + 0.5f);
+        style_font = StyleFontValue(appearance.value.fields,
+                                    appearance.value.font_size);
+        if(style_font > 0)
+            style_font = (int)((float)style_font * GetScale() + 0.5f);
         ButtonFrame frame = BuildFrame(props, input, appearance, motion,
             button.surface_bounds, ColorToInt(ui_app_style().background),
             GetScale(), style_font, GetFontSize());
@@ -508,7 +512,8 @@ ui_text_button_render(int x, int y, const char *label, int *hover)
                       .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindButton());
-    int font = ResolveFont(0, (int)(frame.value.font_size + 0.5f),
+    int font = ResolveFont(0, StyleFontValue(frame.value.fields,
+                                             frame.value.font_size),
                            GetFontSize());
     const char *text = label != NULL ? label : "";
     TextButtonMetrics metrics = TextButtonMetricsFor(
@@ -826,7 +831,7 @@ RenderButtonInfoIndicator(int center_x, int center_y, int diameter)
         fill = style.background;
         stroke = style.border;
         text = style.foreground;
-        font = ResolveFont(0, (int)(style.font_size + 0.5f),
+        font = ResolveFont(0, StyleFontValue(style.fields, style.font_size),
                            GetSmallFontSize());
     }
     DrawCircle(center_x, center_y, radius, fill);

@@ -34,7 +34,8 @@ ui_tab_bar_font(TabBarProps bar, int disabled)
     tab_frame = ui_tab_bar_style_frame(StyleKindTab(),
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         bar.class_name);
-    return ResolveFont(0, (int)(tab_frame.value.font_size + 0.5f),
+    return ResolveFont(0, StyleFontValue(tab_frame.value.fields,
+                                         tab_frame.value.font_size),
                        GetSmallFontSize());
 }
 
