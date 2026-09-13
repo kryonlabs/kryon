@@ -602,9 +602,9 @@ segmented_control_style_frame(SegmentedControlProps control, StyleFrame *frame)
 static int
 segmented_control_font_from_frame(StyleFrame frame)
 {
-    return frame.value.font_size > 0.0f
-        ? (int)(frame.value.font_size + 0.5f)
-        : GetSmallFontSize();
+    return ResolveFont(0, StyleFontValue(frame.value.fields,
+                                         frame.value.font_size),
+                       GetSmallFontSize());
 }
 
 static StyleFrame

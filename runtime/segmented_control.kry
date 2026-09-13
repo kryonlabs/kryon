@@ -33,8 +33,12 @@ SegmentedDefaultMetrics :: (row_height: i32, min_item_width: i32,
     segment: StyleFrame) -> SegmentedMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: SegmentedMetrics
-    metrics.gap = SegmentedMetric(control.value.fields, (u32)StyleGap,
-        control.value.gap, 6.0, scale, true)
+    metrics.gap = SegmentedMetric(segment.value.fields, (u32)StyleGap,
+        segment.value.gap, -1.0, scale, true)
+    if metrics.gap < 0 {
+        metrics.gap = SegmentedMetric(control.value.fields, (u32)StyleGap,
+            control.value.gap, 6.0, scale, true)
+    }
     metrics.row_height = row_height
     if metrics.row_height <= 0 {
         metrics.row_height = SegmentedMetric(control.value.fields,
