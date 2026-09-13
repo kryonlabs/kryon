@@ -1279,7 +1279,6 @@ dropdown role mapping.
 typedef struct {
     Rectangle bounds;
     const char *label;
-    int font;
     int id;
     int class_name;
     ButtonTone tone;
@@ -1292,7 +1291,6 @@ typedef struct {
     int pill;
     int circle;
     ButtonState state;
-    ControlStyle style;
 } ButtonProps;
 ```
 
@@ -1341,9 +1339,10 @@ offsets and icon sizing use logical pixels, scaled into physical drawing bounds.
 Material layers also use shared `.kry` assembly, preserving gradient endpoints,
 joined-surface bounds, and content displacement across native renderers.
 For example, `Button(ButtonProps{Label: "Save"})` uses the shared `.kry`
-measurement and font defaults. There is no string overload, fixed-size
-shorthand, or label-derived identity; supply `ID` when stable explicit identity
-is needed.
+measurement and KSS-resolved font defaults. Visual styling belongs in style
+packs selected by `class_name`, state, tone, emphasis, and size; there is no
+per-button font/style escape hatch, string overload, fixed-size shorthand, or
+label-derived identity. Supply `ID` when stable explicit identity is needed.
 
 **Returns:** 1 if clicked, 0 otherwise. In retained `BeginTree`/`EndTree`
 declarations, reconciliation is atomic: a synchronous activation observed while
