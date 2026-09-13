@@ -45,7 +45,6 @@ typedef struct TextProps {
     int32_t letter_spacing;
     bool selectable;
     const char* typeface;
-    Style style;
 } TextProps;
 
 #endif /* K_RUNTIME_TEXT_PROPS_H */

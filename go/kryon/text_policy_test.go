@@ -2,6 +2,7 @@ package kryon
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -154,11 +155,19 @@ func TestSharedTextAppearanceAndLayout(t *testing.T) {
 func TestTextSharedStyle(t *testing.T) {
 	for _, alpha := range []uint8{0, 128, 255} {
 		for _, disabled := range []bool{false, true} {
+			ClearStylePacks()
 			r := New(AppConfig{Width: 240, Height: 100}).(*runtime)
-			foreground := Color{0, 0, 0, alpha}
-			r.Text(TextProps{Text: "Styled", Font: 13, Color: Color{255, 0, 0, 255}, Disabled: disabled,
-				Style: Style{Fields: StyleForeground | StyleFontSize | StyleOpacity,
-					Foreground: foreground, FontSize: 27, Opacity: 0.5}})
+			if !RegisterStylePackSource(fmt.Sprintf(`
+@pack test.text_shared_%d_%t;
+Text.shared {
+  foreground: #000000%02x;
+  font-size: 27;
+  opacity: 0.5;
+}
+`, alpha, disabled, alpha), "Text Shared", "") {
+				t.Fatal("style pack did not register")
+			}
+			r.Text(TextProps{Text: "Styled", ClassName: StyleClassID("shared"), Font: 13, Disabled: disabled})
 			want := uint32(alpha)
 			if disabled {
 				want = uint32(float32(want) * 0.45)
@@ -173,6 +182,7 @@ func TestTextSharedStyle(t *testing.T) {
 			}
 		}
 	}
+	ClearStylePacks()
 }
 
 func TestUnstyledTextFallbackIgnoresThemeTextColor(t *testing.T) {
@@ -192,14 +202,24 @@ func TestUnstyledTextFallbackIgnoresThemeTextColor(t *testing.T) {
 }
 
 func TestNestedTextStyleKeepsExplicitTransparency(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+	if !RegisterStylePackSource(`
+@pack test.nested_text_style;
+Text.transparent { foreground: #00000000; }
+Text.half { opacity: 0.5; }
+Text.hidden { opacity: 0; }
+`, "Nested Text Style", "") {
+		t.Fatal("style pack did not register")
+	}
 	r := New(AppConfig{Width: 240, Height: 140}).(*runtime)
 	r.BeginFrame()
 	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 220, Height: 120}, ID: 923,
 		Style: ControlStyle{Normal: Style{Fields: StyleForeground | StyleOpacity,
 			Foreground: Color{17, 34, 51, 128}, Opacity: 0.5}}})
-	r.Text(TextProps{Text: "Transparent", Style: Style{Fields: StyleForeground}})
-	r.Text(TextProps{Text: "Half", Style: Style{Fields: StyleOpacity, Opacity: 0.5}})
-	r.Text(TextProps{Text: "Hidden", Style: Style{Fields: StyleOpacity}})
+	r.Text(TextProps{Text: "Transparent", ClassName: StyleClassID("transparent")})
+	r.Text(TextProps{Text: "Half", ClassName: StyleClassID("half")})
+	r.Text(TextProps{Text: "Hidden", ClassName: StyleClassID("hidden")})
 	r.End()
 	r.EndFrame()
 	texts := 0

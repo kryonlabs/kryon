@@ -25,5 +25,4 @@ TextProps :: struct {
     letter_spacing: i32
     selectable: bool
     typeface: const char*
-    style: Style
 }

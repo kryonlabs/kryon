@@ -1222,7 +1222,6 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 	if props.Color.A != 0 {
 		style = mergeStyle(style, Style{Fields: StyleForeground, Foreground: props.Color})
 	}
-	style = mergeStyle(style, props.Style)
 	colorSet := style.Fields&StyleForeground != 0
 	if style.Fields&StyleFontSize != 0 {
 		props.Font = int32(style.FontSize)
