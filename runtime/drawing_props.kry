@@ -38,6 +38,6 @@ ParagraphSpec :: struct {
     width: i32
     font: i32
     line_gap: i32
-    color: Color
     align: TextAlign
+    class_name: i32
 }

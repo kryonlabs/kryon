@@ -262,6 +262,7 @@ ParagraphText(ParagraphTextProps props)
     memset(&paragraph, 0, sizeof(paragraph));
     paragraph.text = text;
     paragraph.width = width;
+    paragraph.class_name = props.class_name;
     Style text_style = page_text_style(StyleKindParagraphText(),
                                        props.class_name, GetFontSize());
     paragraph.font = (int)text_style.font_size;
@@ -269,7 +270,6 @@ ParagraphText(ParagraphTextProps props)
         paragraph.font = GetFontSize();
     if(text_style.gap > 0.0f)
         paragraph.line_gap = (int)(text_style.gap + 0.5f);
-    paragraph.color = Fade(text_style.foreground, text_style.opacity);
     ui_page_semantic_next(SEMANTIC_PARAGRAPH, text, NULL, NULL, 0, -1);
     Paragraph(paragraph, (int)props.bounds.x, &y);
 }

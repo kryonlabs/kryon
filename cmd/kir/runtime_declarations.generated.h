@@ -324,8 +324,8 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    width: i32\n"
         "    font: i32\n"
         "    line_gap: i32\n"
-        "    color: Color\n"
         "    align: TextAlign\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/dropdown_props.kry",

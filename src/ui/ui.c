@@ -4866,6 +4866,25 @@ ParagraphLayout(ParagraphSpec paragraph)
     return layout;
 }
 
+static Color
+paragraph_text_color(ParagraphSpec paragraph)
+{
+    StyleData base = {
+        .fields = StyleOpacity,
+        .opacity = 1.0f
+    };
+    StyleFacts facts = StyleDefaultFacts(StyleKindParagraphText());
+    Style style;
+
+    facts.class_name = paragraph.class_name;
+    facts.state = ButtonStateNormal;
+    style = ui_unpack_style(ResolveActiveStyle(base, facts,
+                                               ButtonStateNormal));
+    if((style.fields & StyleForeground) == 0)
+        style.foreground = ui_default_text_color();
+    return Fade(style.foreground, style.opacity);
+}
+
 int
 ui_paragraph_height(ParagraphSpec paragraph)
 {
@@ -4877,8 +4896,9 @@ ui_paragraph_height(ParagraphSpec paragraph)
     return height;
 }
 
-void
-ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
+static void
+ui_draw_paragraph_color(ParagraphSpec paragraph, int x, int *y, int align,
+                        Color color)
 {
     if(y == NULL || !ParagraphCanLayout(paragraph.width))
         return;
@@ -4891,36 +4911,34 @@ ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
                                                        paragraph.width,
                                                        0, *y);
     int font = metrics.font;
-    Color color = paragraph.color.a != 0 ? paragraph.color
-                                         : ui_default_text_color();
     TextLayout layout = ParagraphLayout(paragraph);
-    if(paragraph.align != TextAlignStart)
+    if(align != TextAlignStart)
         DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width,
-                              paragraph.align);
+                              align);
     else
         DrawTextLayout(&layout, x, y, font, color);
     FreeTextLayout(&layout);
 }
 
 void
+ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y)
+{
+    ui_draw_paragraph_color(paragraph, x, y, paragraph.align,
+                            paragraph_text_color(paragraph));
+}
+
+void
 ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y, int align)
 {
-    if(y == NULL || !ParagraphCanLayout(paragraph.width))
-        return;
-    ParagraphMetrics metrics = ParagraphResolveMetrics(paragraph.font,
-                                                       GetFontSize(),
-                                                       paragraph.line_gap,
-                                                       Scale(4),
-                                                       paragraph.icon_size,
-                                                       paragraph.width,
-                                                       paragraph.width,
-                                                       0, *y);
-    int font = metrics.font;
-    Color color = paragraph.color.a != 0 ? paragraph.color
-                                         : ui_default_text_color();
-    TextLayout layout = ParagraphLayout(paragraph);
-    DrawTextLayoutAligned(&layout, x, y, font, color, paragraph.width, align);
-    FreeTextLayout(&layout);
+    ui_draw_paragraph_color(paragraph, x, y, align,
+                            paragraph_text_color(paragraph));
+}
+
+void
+ui_draw_paragraph_aligned_color(ParagraphSpec paragraph, int x, int *y,
+                                int align, Color color)
+{
+    ui_draw_paragraph_color(paragraph, x, y, align, color);
 }
 
 void

@@ -3584,27 +3584,32 @@ Text { foreground: ink; font-size: 21; opacity: 0.62; }
 	t.Fatalf("missing styled text op: %+v", rt.FrameOps())
 }
 
-func TestParagraphFallbackColorUsesTextStyleSheet(t *testing.T) {
+func TestParagraphColorUsesParagraphStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`
-@pack test.paragraph_text_fallback;
+@pack test.paragraph_text_color;
 tokens {
   color { ink: #314253; }
 }
-Text { foreground: ink; font-size: 18; }
-`, "Test Paragraph Text Fallback", "") || !SetActiveStylePack("test.paragraph_text_fallback") {
-		t.Fatal("test paragraph fallback style did not activate")
+ParagraphText.note { foreground: ink; font-size: 18; opacity: 0.5; }
+`, "Test Paragraph Text Color", "") || !SetActiveStylePack("test.paragraph_text_color") {
+		t.Fatal("test paragraph color style did not activate")
 	}
 	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)
 	y := int32(10)
 
-	rt.Paragraph(ParagraphSpec{Text: "Body", Width: 120}, 8, &y)
+	rt.Paragraph(ParagraphSpec{
+		Text:      "Body",
+		Width:     120,
+		ClassName: StyleClassID("note"),
+	}, 8, &y)
 
 	for _, op := range rt.FrameOps() {
 		if op.Kind == FrameOpText && op.Text == "Body" {
-			if op.Color != (Color{R: 0x31, G: 0x42, B: 0x53, A: 0xff}) {
-				t.Fatalf("paragraph fallback text op = %+v", op)
+			if op.Color != (Color{R: 0x31, G: 0x42, B: 0x53, A: 0x7f}) ||
+				op.FontSize != 18 {
+				t.Fatalf("paragraph styled text op = %+v", op)
 			}
 			return
 		}

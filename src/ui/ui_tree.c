@@ -1671,11 +1671,12 @@ ui_paint_text_box(const char *value, Rectangle bounds, int font, Color color,
     if(wrap == TextWrapAuto) {
         ParagraphSpec paragraph = {
             .text = value, .width = (int)bounds.width, .font = font,
-            .line_gap = Scale(2), .color = color
+            .line_gap = Scale(2)
         };
         int height = ui_paragraph_height(paragraph);
         y += (int)TextAlignmentOffset((int)bounds.height, height, vertical_align);
-        ui_draw_paragraph_aligned(paragraph, (int)bounds.x, &y, align);
+        ui_draw_paragraph_aligned_color(paragraph, (int)bounds.x, &y, align,
+                                        color);
     } else {
         int x = (int)bounds.x;
         x += (int)TextAlignmentOffset((int)bounds.width, text_width, align);
@@ -2483,7 +2484,7 @@ Text(TextProps props)
         if(bounded && props.wrap == TextWrapAuto) {
             ParagraphSpec paragraph = {
                 .text = value, .width = (int)bounds.width, .font = font,
-                .line_gap = Scale(2), .color = color
+                .line_gap = Scale(2)
             };
             measured_height = (float)ui_paragraph_height(paragraph);
         } else {

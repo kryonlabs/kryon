@@ -399,6 +399,8 @@ void DrawTextLayoutAligned(TextLayout *layout, int x, int *y, int font_size,
 void ui_draw_paragraph(ParagraphSpec paragraph, int x, int *y);
 void ui_draw_paragraph_aligned(ParagraphSpec paragraph, int x, int *y,
                                int align);
+void ui_draw_paragraph_aligned_color(ParagraphSpec paragraph, int x, int *y,
+                                     int align, Color color);
 void RenderBevel(int x, int y, int w, int h, Color light, Color dark);
 void RenderTextLines(const char **lines, int count, int x, int *y, int font,
                      int line_h, Color color);

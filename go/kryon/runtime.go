@@ -4467,8 +4467,10 @@ func (r *runtime) Image(props ImageProps) {
 	r.record(op)
 }
 func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
+	facts := StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindParagraphText())
+	facts.ClassName = spec.ClassName
 	style := unpackStyle(ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleOpacity), Opacity: 1}),
-		StyleSheet_StyleDefaultFacts(StyleSheet_StyleKindParagraphText()),
+		facts,
 		int32(ButtonStateNormal)))
 	textStyle := defaultTextStyle(Text16)
 	textFont, textFontID := styleTextFace(textStyle, Text16)
@@ -4476,12 +4478,12 @@ func (r *runtime) Paragraph(spec ParagraphSpec, x int32, y *int32) {
 	if spec.Font > 0 {
 		font = spec.Font
 	}
-	color := spec.Color
-	if color.A == 0 {
-		color = textStyle.Foreground
-		if style.Fields&StyleForeground != 0 {
-			color = style.Foreground
-		}
+	color := textStyle.Foreground
+	if style.Fields&StyleForeground != 0 {
+		color = style.Foreground
+	}
+	if style.Opacity < 1 {
+		color = unpackRGBA(Surface_Opacity(packRGBA(color), style.Opacity))
 	}
 	textY := int32(0)
 	if y != nil {

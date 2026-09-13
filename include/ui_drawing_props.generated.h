@@ -30,8 +30,8 @@ typedef struct ParagraphSpec {
     int32_t width;
     int32_t font;
     int32_t line_gap;
-    Color color;
     TextAlign align;
+    int32_t class_name;
 } ParagraphSpec;
 
 #endif /* K_RUNTIME_DRAWING_PROPS_H */

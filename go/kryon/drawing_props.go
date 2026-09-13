@@ -31,13 +31,13 @@ type Texture2D struct {
 }
 
 type ParagraphSpec struct {
-	Text     string
-	Icon     Texture2D
-	IconType int32
-	IconSize int32
-	Width    int32
-	Font     int32
-	LineGap  int32
-	Color    Color
-	Align    TextAlign
+	Text      string
+	Icon      Texture2D
+	IconType  int32
+	IconSize  int32
+	Width     int32
+	Font      int32
+	LineGap   int32
+	Align     TextAlign
+	ClassName int32
 }

@@ -67,6 +67,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     char page_text[32];
     int label_font;
     ParagraphSpec paragraph;
+    Color label_color;
     int paragraph_h;
     int tip_h;
     Rectangle tip;
@@ -119,8 +120,8 @@ RenderGuideOverlay(GuideOverlayProps guide)
         paragraph.font = (int)(label_style.font_size + 0.5f);
     label_font = paragraph.font;
     paragraph.line_gap = line_gap;
-    paragraph.color = GetColor(Opacity(ColorToInt(label_style.foreground),
-                                       label_style.opacity));
+    label_color = GetColor(Opacity(ColorToInt(label_style.foreground),
+                                   label_style.opacity));
     paragraph_h = ui_paragraph_height(paragraph);
     while(paragraph.font > Text12 &&
           paragraph_h > max_tip_h - GuideChromeHeight(metrics)) {
@@ -187,7 +188,7 @@ RenderGuideOverlay(GuideOverlayProps guide)
     RenderText(page_text, (int)tip.x + metrics.pad,
                     layout.controls_y +
                         (metrics.button_size - label_font) / 2,
-                    label_font, paragraph.color);
+                    label_font, label_color);
 
     if(step > 0) {
         g_guide_debug.back_button = layout.back_button;
