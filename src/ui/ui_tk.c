@@ -111,6 +111,25 @@ ui_tk_simple_style_frame_role(ButtonTone tone, ButtonState state, int disabled,
                                             0.0f, style_kind, role);
 }
 
+static StyleFrame
+ui_tk_simple_style_frame_class_role(ButtonTone tone, ButtonState state,
+                                    int disabled, int selected,
+                                    int class_name, int style_kind, int role)
+{
+    ButtonProps props = {0};
+    props.class_name = class_name;
+    props.tone = tone;
+    props.emphasis = tone == ButtonToneAccent
+                       ? ButtonEmphasisFilled
+                       : ButtonEmphasisSoft;
+    props.size = ControlSizeMedium;
+    props.pill = 1;
+    props.disabled = disabled;
+    props.selected = selected;
+    return ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
+                                            0.0f, style_kind, role);
+}
+
 static void
 ui_tk_draw_style_frame(Rectangle bounds, Rectangle surface_bounds,
                        StyleFrame frame, int hovered, int pressed,
@@ -1889,18 +1908,18 @@ RenderProgress(ProgressProps progress)
     ProgressPaint paint;
     Rectangle fill;
     const char *label = progress.label;
-    StyleFrame text = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindProgress(), 6);
+    StyleFrame text = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 6);
     Style text_style = ui_unpack_style(ui_style_apply_effects_frame(text).value);
     int font = text_style.font_size > 0.0f
         ? (int)(text_style.font_size + 0.5f)
         : GetSmallFontSize();
     int label_w = label != NULL ? TextWidth(label, font) : 0;
     int pad = Scale(6);
-    StyleFrame track = ui_tk_simple_style_frame_role(ButtonToneNeutral,
-        ButtonStateNormal, 0, 0, StyleKindProgress(), 4);
-    StyleFrame active = ui_tk_simple_style_frame_role(ButtonToneAccent,
-        ButtonStateNormal, 0, 1, StyleKindProgress(), 5);
+    StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 4);
+    StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
+        ButtonStateNormal, 0, 1, progress.class_name, StyleKindProgress(), 5);
 
     paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
                              progress.value, (float)label_w, (float)pad,

@@ -817,8 +817,11 @@ tokens {
   material { flat: Flat; }
 }
 Progress[role=Track] { background: track; foreground: label; border: line; radius: radius; border-width: border; material: flat; opacity: 1; }
+Progress.primary[role=Track] { background: #223344; }
 Progress[role=Fill] { background: fill; foreground: ink; border: fill; radius: radius; border-width: border; material: flat; opacity: 1; }
+Progress.primary[role=Fill] { background: #44aa77; }
 Progress[role=Label] { foreground: label; font-size: 18; material: flat; opacity: 0.68; }
+Progress.primary[role=Label] { foreground: #101820; }
 Separator[role=Line] { background: line; foreground: line; gap: gap; opacity: 1; }
 Separator[role=Label] { background: line; foreground: label; font-size: 17; gap: gap; opacity: 0.57; }
 Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity: 1; }
@@ -828,8 +831,12 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
 
 	rt.Progress(ProgressProps{
-		Bounds: Rectangle{X: 10, Y: 10, Width: 100, Height: 12},
-		Min:    0, Max: 100, Value: 50, Label: "50%",
+		Bounds:    Rectangle{X: 10, Y: 10, Width: 100, Height: 12},
+		Min:       0,
+		Max:       100,
+		Value:     10,
+		Label:     "10%",
+		ClassName: StyleClassID("primary"),
 	})
 	rt.Separator(SeparatorProps{
 		Bounds: Rectangle{X: 10, Y: 40, Width: 100, Height: 20},
@@ -842,20 +849,20 @@ Separator[role=Bullet] { background: line; foreground: bullet; gap: gap; opacity
 		switch {
 		case op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 10, Width: 100, Height: 12}):
 			sawTrack = true
-			if op.Color != (Color{R: 0x18, G: 0x20, B: 0x2a, A: 0xff}) ||
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) ||
 				op.BorderColor != (Color{R: 0x53, G: 0x60, B: 0x70, A: 0xff}) ||
 				op.BorderWidth != 2 || op.Radius != 6 {
 				t.Fatalf("progress track style op = %+v", op)
 			}
 		case op.Kind == FrameOpRect && op.Selected:
 			sawFill = true
-			if op.Color != (Color{R: 0xc9, G: 0xa8, B: 0xff, A: 0xff}) ||
+			if op.Color != (Color{R: 0x44, G: 0xaa, B: 0x77, A: 0xff}) ||
 				op.Radius != 6 {
 				t.Fatalf("progress fill style op = %+v", op)
 			}
-		case op.Kind == FrameOpText && op.Text == "50%":
+		case op.Kind == FrameOpText && op.Text == "10%":
 			sawProgressLabel = true
-			if op.Color != (Color{R: 0x17, G: 0x10, B: 0x22, A: 0xff}) ||
+			if op.Color != (Color{R: 0x10, G: 0x18, B: 0x20, A: 0xff}) ||
 				op.FontSize != 18 || op.Opacity != 0.68 {
 				t.Fatalf("progress label on fill style op = %+v", op)
 			}

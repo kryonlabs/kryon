@@ -3,9 +3,10 @@ package kryon
 
 // #import kryon_compat.generated.h
 type ProgressProps struct {
-	Bounds Rectangle
-	Min    int32
-	Max    int32
-	Value  int32
-	Label  string
+	Bounds    Rectangle
+	Min       int32
+	Max       int32
+	Value     int32
+	Label     string
+	ClassName int32
 }

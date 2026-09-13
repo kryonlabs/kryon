@@ -3275,16 +3275,16 @@ func fitTabLabelWithFont(label string, maxWidth float32, fontSize int32, fontID 
 }
 func (r *runtime) Progress(props ProgressProps) {
 	bounds := r.layoutRect(props.Bounds)
-	labelFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-		StyleSheet_StyleKindProgress(), 6)
+	labelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+		false, false, props.ClassName, StyleSheet_StyleKindProgress(), 6)
 	labelStyle := unpackStyle(labelFrame.Value)
 	font, fontID := styleTextFace(labelStyle, Text14)
 	labelW := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 6, 1,
-		simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false,
-			StyleSheet_StyleKindProgress(), 4),
-		simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true,
-			StyleSheet_StyleKindProgress(), 5),
+		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
+			false, false, props.ClassName, StyleSheet_StyleKindProgress(), 4),
+		simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,
+			false, true, props.ClassName, StyleSheet_StyleKindProgress(), 5),
 		labelFrame)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: unpackRGBA(paint.TrackColor), BorderColor: unpackRGBA(paint.BorderColor), BorderWidth: paint.BorderWidth, Radius: paint.Radius})
 	if bounds.Width > 0 && bounds.Height > 0 && paint.Layout.Ratio > 0 {

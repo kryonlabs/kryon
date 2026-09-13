@@ -274,6 +274,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    max: i32\n"
         "    value: i32\n"
         "    label: const char*\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/radio_props.kry",

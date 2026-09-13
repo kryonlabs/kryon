@@ -27,6 +27,7 @@ typedef struct ProgressProps {
     int32_t max;
     int32_t value;
     const char* label;
+    int32_t class_name;
 } ProgressProps;
 
 #endif /* K_RUNTIME_PROGRESS_PROPS_H */
