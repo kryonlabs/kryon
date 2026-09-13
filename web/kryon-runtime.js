@@ -7320,13 +7320,7 @@ function syncWebDOMElementFromNative(root, el) {
   docNode.title = attrs.title ?? docNode.title ?? "";
   docNode.placeholder = attrs.placeholder ?? docNode.placeholder ?? "";
   docNode.role = attrs.role ?? docNode.role ?? "";
-  docNode.ariaLabel = attrs["aria-label"] ?? docNode.ariaLabel ?? "";
-  docNode.ariaDescription = attrs["aria-description"] ?? docNode.ariaDescription ?? "";
-  docNode.ariaDescribedBy = attrs["aria-describedby"] ?? docNode.ariaDescribedBy ?? "";
-  docNode.ariaLabelledBy = attrs["aria-labelledby"] ?? docNode.ariaLabelledBy ?? "";
-  docNode.ariaActiveDescendant = attrs["aria-activedescendant"] ?? docNode.ariaActiveDescendant ?? "";
-  docNode.ariaControls = attrs["aria-controls"] ?? docNode.ariaControls ?? "";
-  docNode.ariaOwns = attrs["aria-owns"] ?? docNode.ariaOwns ?? "";
+  syncDOMAriaRelationAttributes(docNode, attrs);
   docNode.formOwner = attrs.form ?? docNode.formOwner ?? "";
   docNode.part = attrs.part ?? docNode.part ?? "";
   docNode.slot = attrs.slot ?? docNode.slot ?? "";
@@ -7800,18 +7794,26 @@ function cleanDOMAttributeName(name) {
   return value && /^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(value) ? value : "";
 }
 
+function syncDOMAriaRelationAttributes(docNode, attrs) {
+  if (!docNode)
+    return;
+  const read = (name) => Object.prototype.hasOwnProperty.call(attrs || {}, name)
+    ? String(attrs[name] ?? "") : "";
+  docNode.ariaLabel = read("aria-label");
+  docNode.ariaDescription = read("aria-description");
+  docNode.ariaDescribedBy = read("aria-describedby");
+  docNode.ariaLabelledBy = read("aria-labelledby");
+  docNode.ariaActiveDescendant = read("aria-activedescendant");
+  docNode.ariaControls = read("aria-controls");
+  docNode.ariaOwns = read("aria-owns");
+}
+
 function syncDOMAttributeMutation(el) {
   const docNode = el?.__kryDocNode;
   if (!el || !docNode)
     return null;
   docNode.extraAttrs = { ...(el.__kryExtraAttrs || {}) };
-  docNode.ariaLabel = docNode.extraAttrs["aria-label"] ?? docNode.ariaLabel ?? "";
-  docNode.ariaDescription = docNode.extraAttrs["aria-description"] ?? docNode.ariaDescription ?? "";
-  docNode.ariaDescribedBy = docNode.extraAttrs["aria-describedby"] ?? docNode.ariaDescribedBy ?? "";
-  docNode.ariaLabelledBy = docNode.extraAttrs["aria-labelledby"] ?? docNode.ariaLabelledBy ?? "";
-  docNode.ariaActiveDescendant = docNode.extraAttrs["aria-activedescendant"] ?? docNode.ariaActiveDescendant ?? "";
-  docNode.ariaControls = docNode.extraAttrs["aria-controls"] ?? docNode.ariaControls ?? "";
-  docNode.ariaOwns = docNode.extraAttrs["aria-owns"] ?? docNode.ariaOwns ?? "";
+  syncDOMAriaRelationAttributes(docNode, plainElementMap(el.attributes));
   docNode.styleFacts = webNodeStyleFacts(docNode);
   applyResolvedWebStyle(el, el.__kryRuntime?.webStyleSheets
     ? resolveWebStyle(docNode, el.__kryRuntime.webStyleSheets)
