@@ -717,8 +717,10 @@ and host plumbing behind the canonical names.
 1. Finish C geometry-to-`.kry` migration:
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
    widgets already have `.kry` policy, but raw widget constants still remain in
-   native files. The next focused audits are popup placement in `src/ui/ui_tk.c`
-   and any remaining row/form host placement in `src/ui/rows.c`.
+   native files. The latest focused audits moved context-popup activation into
+   `runtime/popup_policy.kry` and label text-field row layout into
+   `runtime/rows.kry`; continue by reducing raw native constants in button-row
+   wrapping, menu host glue, and other shared immediate-mode helpers.
 2. Keep prefix cleanup verified:
    Guard tests intentionally mention old names so they can reject regressions,
    but `src/ui` and public headers should stay free of Kryon-owned `UI*` and
