@@ -187,6 +187,8 @@ try {
     "root source range lookup failed");
   assert(article.kryObject.element === article, "element Kry object getter failed");
   assert(article.kryMatches("Section[webRef='article-ref']"), "KSS selector match failed");
+  assert(kryon.webDOMSnapshot(target, "article-ref").eventRefs.click === "article_click",
+    "snapshot event refs missing click hook");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);

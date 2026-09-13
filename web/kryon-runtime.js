@@ -7437,6 +7437,48 @@ function plainElementMap(source) {
   return out;
 }
 
+function webNodeEventRefs(node) {
+  return {
+    click: node?.onClick || "",
+    doubleClick: node?.onDoubleClick || "",
+    input: node?.onInput || "",
+    beforeInput: node?.onBeforeInput || "",
+    change: node?.onChange || "",
+    select: node?.onSelect || "",
+    key: node?.onKey || "",
+    keyUp: node?.onKeyUp || "",
+    invalid: node?.onInvalid || "",
+    submit: node?.onSubmit || "",
+    reset: node?.onReset || "",
+    toggle: node?.onToggle || "",
+    close: node?.onClose || "",
+    cancel: node?.onCancel || "",
+    focus: node?.onFocus || "",
+    blur: node?.onBlur || "",
+    scroll: node?.onScroll || "",
+    mouseEnter: node?.onMouseEnter || "",
+    mouseLeave: node?.onMouseLeave || "",
+    mouseMove: node?.onMouseMove || "",
+    mouseDown: node?.onMouseDown || "",
+    mouseUp: node?.onMouseUp || "",
+    pointerEnter: node?.onPointerEnter || "",
+    pointerLeave: node?.onPointerLeave || "",
+    pointerMove: node?.onPointerMove || "",
+    pointerDown: node?.onPointerDown || "",
+    pointerUp: node?.onPointerUp || "",
+    pointerCancel: node?.onPointerCancel || "",
+    wheel: node?.onWheel || "",
+    contextMenu: node?.onContextMenu || "",
+    dragStart: node?.onDragStart || "",
+    dragEnd: node?.onDragEnd || "",
+    dragOver: node?.onDragOver || "",
+    drop: node?.onDrop || "",
+    copy: node?.onCopy || "",
+    cut: node?.onCut || "",
+    paste: node?.onPaste || ""
+  };
+}
+
 function webDOMObjectSnapshot(target, object) {
   if (!object)
     return null;
@@ -7476,6 +7518,7 @@ function webDOMObjectSnapshot(target, object) {
       popoverTarget: relations?.popoverTarget?.ref || "",
       popoverInvokers: (relations?.popoverInvokers || []).map((relation) => relation.ref)
     },
+    eventRefs: webNodeEventRefs(node),
     name: node.name || "",
     key: node.key || "",
     id: node.domId || el.id || "",

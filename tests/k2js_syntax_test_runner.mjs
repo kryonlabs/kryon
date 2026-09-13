@@ -3045,6 +3045,8 @@ function fakeDocument() {
     assert.deepEqual(buttonObject.snapshot.relationRefs.controls, ["search-box"]);
     assert.deepEqual(buttonObject.snapshot.relationRefs.owns, ["search-box"]);
     assert.equal(buttonObject.snapshot.relationRefs.popoverTarget, "Scene/root/search_label");
+    assert.equal(buttonObject.snapshot.eventRefs.click, "call_host");
+    assert.equal(buttonObject.snapshot.eventRefs.keyUp, "");
     assert.equal(buttonObject.parent.node.path, "Scene/root");
     assert.deepEqual(buttonObject.children.map((object) => object.ref), []);
     assert.deepEqual(buttonObject.relations.controls.map((object) => object.ref), ["search-box"]);
@@ -3103,6 +3105,7 @@ function fakeDocument() {
     const buttonSnapshot = runtime.webDOMSnapshot(target, "tap-button");
     assert.equal(buttonSnapshot.ref, "primary-action");
     assert.equal(buttonSnapshot.webRef, "primary-action");
+    assert.equal(buttonSnapshot.eventRefs.click, "call_host");
     assert.equal(buttonSnapshot.element, undefined);
     assert.equal(buttonSnapshot.role, "button");
     assert.equal(buttonSnapshot.parentRef, "Scene/root");
