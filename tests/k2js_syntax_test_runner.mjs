@@ -2841,6 +2841,8 @@ function fakeDocument() {
       { nodeName: "orderedItem", path: "Page/ordered/third", parentPath: "Page/ordered" });
     runtime.widget(nativeRt, "BlockQuote", { text: "Native DOM first.", cite: "/notes/native-dom" }, null,
       { nodeName: "quote", path: "Page/quote" });
+    runtime.widget(nativeRt, "Quote", { text: "Inline quote", cite: "/notes/inline" }, null,
+      { nodeName: "inlineQuote", path: "Page/inlineQuote" });
     runtime.widget(nativeRt, "CodeBlock", { text: "Button.primary {}" }, null,
       { nodeName: "codeBlock", path: "Page/codeBlock" });
     runtime.widget(nativeRt, "Code", { text: "dom_ref" }, null,
@@ -3152,6 +3154,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/ordered/third").extraAttrs.value, "3");
     assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").tag, "blockquote");
     assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").extraAttrs.cite, "/notes/native-dom");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Quote").tag, "q");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Quote").extraAttrs.cite, "/notes/inline");
     assert.equal(runtime.webNodeQuery(nativeRt, "CodeBlock").tag, "pre");
     assert.equal(runtime.webNodeQuery(nativeRt, "Code").tag, "code");
     assert.equal(runtime.webNodeQuery(nativeRt, "Strong").tag, "strong");
@@ -3419,6 +3423,7 @@ function fakeDocument() {
     const nativeOrderedList = runtime.findWebElement(nativeTarget, "orderedList");
     const nativeOrderedItem = runtime.findWebElement(nativeTarget, "orderedItem");
     const nativeQuote = runtime.findWebElement(nativeTarget, "quote");
+    const nativeInlineQuote = runtime.findWebElement(nativeTarget, "inlineQuote");
     const nativeCodeBlock = runtime.findWebElement(nativeTarget, "codeBlock");
     const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
     const nativeStrong = runtime.findWebElement(nativeTarget, "strongText");
@@ -3534,6 +3539,9 @@ function fakeDocument() {
     assert.equal(nativeOrderedItem.attributes.value, "3");
     assert.equal(nativeQuote.tagName, "BLOCKQUOTE");
     assert.equal(nativeQuote.attributes.cite, "/notes/native-dom");
+    assert.equal(nativeInlineQuote.tagName, "Q");
+    assert.equal(nativeInlineQuote.attributes.cite, "/notes/inline");
+    assert.equal(nativeInlineQuote.textContent, "Inline quote");
     assert.equal(nativeCodeBlock.tagName, "PRE");
     assert.equal(nativeInlineCode.tagName, "CODE");
     assert.equal(nativeStrong.tagName, "STRONG");

@@ -1184,8 +1184,9 @@ function widgetTag(item) {
   case "ParagraphText":
     return "p";
   case "BlockQuote":
-  case "Quote":
     return "blockquote";
+  case "Quote":
+    return "q";
   case "CodeBlock":
   case "Pre":
     return "pre";

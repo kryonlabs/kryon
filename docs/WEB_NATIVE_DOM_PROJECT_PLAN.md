@@ -101,6 +101,8 @@ the browser receives normal elements, attributes, CSS, and events.
   including corresponding landmark and collection relationship facts where the
   native semantics imply ownership, plus native quote citations, time
   datetimes, and list/item numbering attributes.
+- Browser quote aliases preserve native block/inline semantics: `BlockQuote`
+  renders `<blockquote>`, while `Quote` renders `<q>`.
 - Native form/document aliases such as `Form`, `Label`, `Select`,
   `Datalist`/`DataList`, `OptionGroup`/`OptGroup`, `Option`, `Details`,
   `Summary`, `Dialog`, and `Output` render to matching browser elements and
