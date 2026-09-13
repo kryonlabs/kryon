@@ -79,6 +79,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Event bridge for click/tap/double-click, form/text/key down/key up,
   focus/blur, scroll, first-class pointer and mouse events, wheel/context menu,
   drag/drop, clipboard, dialog, and popover events.
+- Direct `.kry` widget event args such as `on_click`, `on_input`, `on_key_up`,
+  pointer/mouse/drag/clipboard handlers, and dialog/popover lifecycle handlers
+  populate Web Document event facts and rendered `data-kry-on-*` glue hooks.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring.

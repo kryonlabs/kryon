@@ -2615,7 +2615,9 @@ function fakeDocument() {
     runtime.widget(tagRt, "Section", {
       dom_tag: "article",
       web_ref: "article-ref",
-      title: "Article region"
+      title: "Article region",
+      on_click: "open_article",
+      on_key_up: "article_key"
     }, null,
       {
         nodeName: "article",
@@ -2623,12 +2625,16 @@ function fakeDocument() {
       });
     runtime.endFrame(tagRt);
     assert.equal(runtime.webNodeQuery(tagRt, "Section").tag, "article");
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").onClick, "open_article");
+    assert.equal(runtime.webNodeQuery(tagRt, "Section").onKeyUp, "article_key");
     assert.equal(runtime.findWebNode(tagRt, "article-ref").path, "Page/article");
     const tagTarget = document.createElement("div");
     runtime.renderWebDocument(tagRt, tagTarget);
     const article = runtime.findWebElement(tagTarget, "article-ref");
     assert.equal(article.tagName, "ARTICLE");
     assert.equal(article.dataset.kryWebRef, "article-ref");
+    assert.equal(article.dataset.kryOnClick, "open_article");
+    assert.equal(article.dataset.kryOnKeyUp, "article_key");
     assert.equal(article.attributes.title, "Article region");
 
     const sharedRt = runtime.createRuntime();
