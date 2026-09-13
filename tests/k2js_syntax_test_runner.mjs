@@ -209,6 +209,8 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Button:not(.secondary) { caret-color: #112233; }
   :is(Button, TextField)[webRef^="primary"] { accent-color: #223344; }
   :where(TextField, Button)[data.tracking_id|="tap"] { resize: vertical; }
+  Text + Button { background-size: contain; }
+  Button ~ Input { background-repeat: repeat-x; }
 `);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -234,6 +236,10 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Button"\]:not\(\.kryon-node\.secondary\)/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\.kryon-node\[data-kry-web-ref\^="primary"\]:is\(\[data-kry-kind="Button"\],\[data-kry-kind="TextField"\]\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Text"\] \+ \[data-kry-kind="Button"\]/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Button"\] ~ \[data-kry-kind="Input"\]/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -396,6 +402,8 @@ assert.equal(runtime.webNodeQuery(rt, `:is(Button, TextField)[webRef^="primary"]
   webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `:where(TextField, Button)[data.tracking_id|="tap"]`).path,
   webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `Text + Button`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `Button ~ Input`).path, webDoc.nodes[6].path);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["pointer-events"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).appearance, "none");
@@ -411,6 +419,8 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet).appear
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["caret-color"], "#112233");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["accent-color"], "#223344");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "vertical");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["background-size"], "contain");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[6], operatorStyleSheet)["background-repeat"], "repeat-x");
 const soloRt = runtime.createRuntime();
 runtime.beginFrame(soloRt);
 runtime.widget(soloRt, "Screen", {}, null, { nodeName: "root", path: "Solo/root" });
@@ -2357,6 +2367,8 @@ function fakeDocument() {
       firstButton);
     assert.equal(runtime.webDOMQuery(target, ":where(TextField, Button)[data.tracking_id|=\"tap\"]").element,
       firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Text + Button").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Button ~ Input").node.path, inputPaths[0]);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);

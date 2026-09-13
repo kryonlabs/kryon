@@ -1768,9 +1768,9 @@ function splitSelectorSequence(text) {
       token += ch;
       continue;
     }
-    if (!bracketDepth && !parenDepth && ch === ">") {
+    if (!bracketDepth && !parenDepth && (ch === ">" || ch === "+" || ch === "~")) {
       push();
-      pendingCombinator = ">";
+      pendingCombinator = ch;
       continue;
     }
     if (!bracketDepth && !parenDepth && /\s/.test(ch)) {
@@ -2145,7 +2145,9 @@ function webStylePseudoToCSS(pseudo) {
 export function webStyleSelectorToCSS(selector) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
     return selector.parts.map((part, index) => {
-      const prefix = index === 0 ? "" : (part.combinator === ">" ? " > " : " ");
+      const prefix = index === 0 ? "" :
+        (part.combinator === ">" || part.combinator === "+" || part.combinator === "~"
+          ? ` ${part.combinator} ` : " ");
       return prefix + webStyleSelectorToCSS(part);
     }).join("");
   const parts = [];
@@ -2777,6 +2779,12 @@ function webNodeSiblingsFromFrame(node) {
   });
 }
 
+function webNodePreviousSiblingsFromFrame(node) {
+  const siblings = webNodeSiblingsFromFrame(node);
+  const index = siblings.indexOf(node);
+  return index <= 0 ? [] : siblings.slice(0, index);
+}
+
 function nthChildPseudoMatches(pseudo, siblings, node) {
   const match = String(pseudo || "").match(/^nth-child\(([^)]*)\)$/);
   if (!match)
@@ -2842,6 +2850,20 @@ function selectorChainMatchesWebNode(selector, node) {
     const relation = parts[index].combinator || " ";
     if (relation === ">") {
       current = webNodeParentFromFrame(current);
+      continue;
+    }
+    if (relation === "+") {
+      current = webNodePreviousSiblingsFromFrame(current).pop() || null;
+      continue;
+    }
+    if (relation === "~") {
+      const siblingSelector = parts[index - 1];
+      const sibling = webNodePreviousSiblingsFromFrame(current)
+        .reverse()
+        .find((candidate) => selectorMatchesSimpleWebNode(siblingSelector, candidate));
+      if (!sibling)
+        return false;
+      current = sibling;
       continue;
     }
     let ancestor = webNodeParentFromFrame(current);

@@ -393,7 +393,7 @@ embedded sheets automatically. CSS export and
 installation target Kry's native DOM annotations,
 including `data-kry-*`, data/ARIA/native attributes, classes, and
 `data-kry-state` for KSS pseudo-state selectors. The web
-resolver supports kind selectors, descendant and child chains, `[index=...]`,
+resolver supports kind selectors, descendant, child, and sibling chains, `[index=...]`,
 `#id`, `.class`, `[ref=...]`, `[webRef=...]`, CSS-style attribute operators
 `=`, `~=`, `|=`, `^=`, `$=`, and `*=`, source identity selectors
 such as `[source=...]`, `[line=...]`, `[column=...]`, `[sourceRef=...]`,
