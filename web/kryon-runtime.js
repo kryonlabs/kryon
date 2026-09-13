@@ -1728,6 +1728,7 @@ function parseSelector(text) {
     id: "",
     classes: [],
     attrs: {},
+    attrOps: {},
     state: "",
     specificity: 0
   };
@@ -1737,8 +1738,9 @@ function parseSelector(text) {
     selector.specificity += 10;
     source = source.slice(0, stateMatch.index).trim();
   }
-  source = source.replace(/\[([A-Za-z_][\w.-]*)\s*=\s*([^\]]+)\]/g, (_all, key, value) => {
+  source = source.replace(/\[([A-Za-z_][\w.-]*)\s*([~|^$*]?=)\s*([^\]]+)\]/g, (_all, key, op, value) => {
     selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
+    selector.attrOps[key] = op || "=";
     selector.specificity += 10;
     return "";
   });
@@ -1920,11 +1922,12 @@ function cssEscapeIdent(value) {
     "\\" + ch.charCodeAt(0).toString(16) + " ");
 }
 
-function webStyleSelectorAttrToCSS(key, value) {
+function webStyleSelectorAttrToCSS(key, value, op = "=") {
   const present = value === null || value === undefined;
+  const operator = /^(?:=|~=|\|=|\^=|\$=|\*=)$/.test(op) ? op : "=";
   const attr = (name) => present
     ? `[${name}]`
-    : `[${name}="${cssEscapeString(value)}"]`;
+    : `[${name}${operator}"${cssEscapeString(value)}"]`;
   if (key.startsWith("data."))
     return attr("data-" + key.slice(5).replace(/_/g, "-").toLowerCase());
   if (key.startsWith("aria."))
@@ -1973,7 +1976,7 @@ export function webStyleSelectorToCSS(selector) {
   for (const cls of selector.classes || [])
     parts.push("." + cssEscapeIdent(cls));
   for (const [key, value] of Object.entries(selector.attrs || {}))
-    parts.push(webStyleSelectorAttrToCSS(key, value));
+    parts.push(webStyleSelectorAttrToCSS(key, value, selector.attrOps?.[key] || "="));
   if (selector.state)
     parts.push(`[data-kry-state~="${cssEscapeString(selector.state === "focused" ? "focus" : selector.state)}"]`);
   return parts.join("");
@@ -2511,6 +2514,36 @@ function selectorAttrPresent(key, facts) {
   return value !== undefined && value !== null && value !== false && value !== "";
 }
 
+function selectorAttrValue(key, facts) {
+  if (key === "role")
+    return facts.role;
+  if (key.startsWith("data-") || key.startsWith("data."))
+    return selectorDataAttrValue(key, facts);
+  if (key.startsWith("aria-") || key.startsWith("aria."))
+    return selectorAriaAttrValue(key, facts);
+  return selectorNativeAttrValue(key, facts);
+}
+
+function selectorAttrValueMatches(actual, expected, op) {
+  const value = String(actual ?? "");
+  const needle = String(expected ?? "");
+  switch (op || "=") {
+    case "~=":
+      return value.split(/\s+/).filter(Boolean).includes(needle);
+    case "^=":
+      return value.startsWith(needle);
+    case "$=":
+      return value.endsWith(needle);
+    case "*=":
+      return value.includes(needle);
+    case "|=":
+      return value === needle || value.startsWith(needle + "-");
+    case "=":
+    default:
+      return value === needle;
+  }
+}
+
 function selectorMatchesFacts(selector, facts) {
   if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
     return false;
@@ -2520,23 +2553,15 @@ function selectorMatchesFacts(selector, facts) {
     if (!facts.classes?.includes(cls))
       return false;
   for (const [key, value] of Object.entries(selector.attrs)) {
+    const op = selector.attrOps?.[key] || "=";
     if (value === null) {
       if (!selectorAttrPresent(key, facts))
         return false;
     }
-    else if (key === "role" && value !== facts.role)
-      return false;
     else if (key === "state" && !styleStateMatches(value, facts.state))
       return false;
-    else if (key.startsWith("data-") || key.startsWith("data.")) {
-      if (String(selectorDataAttrValue(key, facts) ?? "") !== value)
-        return false;
-    }
-    else if (key.startsWith("aria-") || key.startsWith("aria.")) {
-      if (String(selectorAriaAttrValue(key, facts) ?? "") !== value)
-        return false;
-    }
-    else if (!["role", "state"].includes(key) && String(selectorNativeAttrValue(key, facts) ?? "") !== value)
+    else if (key !== "state" &&
+             !selectorAttrValueMatches(selectorAttrValue(key, facts), value, op))
       return false;
   }
   return styleStateMatches(selector.state, facts.state);

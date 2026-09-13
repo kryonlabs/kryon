@@ -188,10 +188,23 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
 `);
 assert.equal(webStyleSheet.pack, "smoke");
 const webStyleCSS = runtime.webStyleSheetToCSS(webStyleSheet);
+const operatorStyleSheet = runtime.parseWebStyleSheet(`
+  Button[webRef^="primary"] { cursor: pointer; }
+  Button[webRef$="action"] { pointer-events: auto; }
+  Button[webRef*="ary-act"] { appearance: none; }
+  Button[data.tracking_id|="tap"] { user-select: none; }
+  Button[aria.controls~="search-box"] { resize: both; }
+`);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Button[webRef="primary-action"] { cursor: pointer; }
 `)), /\[data-kry-kind="Button"\]\[data-kry-web-ref="primary-action"\]/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Button"\]\[data-kry-web-ref\^="primary"\]/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Button"\]\[data-tracking-id\|="tap"\]/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Button"\]\[aria-controls~="search-box"\]/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -334,6 +347,16 @@ assert.equal(webDoc.nodes[2].name, "tap");
 assert.equal(webDoc.nodes[2].path, "Scene/root/tap");
 assert.equal(webDoc.nodes[2].parentPath, "Scene/root");
 assert.equal(webDoc.nodes[2].webRef, "primary-action");
+assert.equal(runtime.webNodeQuery(rt, `[webRef^="primary"]`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `[webRef$="action"]`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `[webRef*="ary-act"]`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `[data.tracking_id|="tap"]`).path, webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `[aria.controls~="search-box"]`).path, webDoc.nodes[2].path);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).cursor, "pointer");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["pointer-events"], "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).appearance, "none");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["user-select"], "none");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "both");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -2242,6 +2265,11 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, "Button.primary").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[ref=\"primary-action\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[webRef=\"primary-action\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[webRef^=\"primary\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[webRef$=\"action\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[webRef*=\"ary-act\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[data.tracking_id|=\"tap\"]").element, firstButton);
+    assert.equal(runtime.webDOMQuery(target, "[aria.controls~=\"search-box\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);
