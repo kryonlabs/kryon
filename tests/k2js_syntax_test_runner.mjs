@@ -762,7 +762,7 @@ assert.match(webStyleCSS,
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:hover,\[data-kry-state~="hover"\]\):is\(:active,\[aria-pressed="true"\],\[data-kry-state~="pressed"\]\)/);
 assert.match(webStyleCSS,
-  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,\[readonly\],\[required\],\[open\],\[selected\],\[aria-pressed="true"\],\[aria-disabled="true"\],\[aria-busy="true"\],\[aria-checked="true"\],\[aria-selected="true"\],\[aria-invalid="true"\],\[aria-expanded="true"\],\[data-kry-state\]\)\)/);
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,\[readonly\],\[required\],\[open\],\[selected\],\[aria-pressed="true"\],\[aria-disabled="true"\],\[aria-busy="true"\],\[aria-checked="true"\],\[aria-selected="true"\],\[aria-current\],\[aria-invalid="true"\],\[aria-expanded="true"\],\[data-kry-state\]\)\)/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -779,7 +779,7 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Button"\]:is\(:disabled,\[aria-disabled="true"\],\[data-kry-state~="disabled"\]\)/);
 assert.match(stateSelectorCSS,
-  /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[data-kry-state~="selected"\]\)/);
+  /\[data-kry-kind="Selectable"\]:is\(:checked,\[selected\],\[aria-selected="true"\],\[aria-current\],\[data-kry-state~="selected"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Toggle"\]:is\(:checked,\[aria-checked="true"\],\[data-kry-state~="checked"\]\)/);
 assert.match(stateSelectorCSS,
@@ -944,6 +944,17 @@ const loadingSheet = runtime.parseWebStyleSheet(`Section:loading { cursor: progr
 assert.equal(runtime.webNodeQuery(loadingRt, `Section:loading`).path,
   loadingDoc.nodes[1].path);
 assert.equal(runtime.resolveWebStyle(loadingDoc.nodes[1], loadingSheet).cursor, "progress");
+const currentRt = runtime.createRuntime();
+runtime.beginFrame(currentRt);
+runtime.widget(currentRt, "Screen", {}, null, { nodeName: "root", path: "Current/root" });
+runtime.widget(currentRt, "Link", { href: "/now", text: "Now", selected: true }, null,
+  { nodeName: "now", path: "Current/root/now", parentPath: "Current/root" });
+runtime.endFrame(currentRt);
+const currentDoc = runtime.webDocumentFrame(currentRt);
+const currentSheet = runtime.parseWebStyleSheet(`Link:selected { color: #abcdef; }`);
+assert.equal(runtime.webNodeQuery(currentRt, `Link:selected`).path,
+  currentDoc.nodes[1].path);
+assert.equal(runtime.resolveWebStyle(currentDoc.nodes[1], currentSheet).color, "#abcdef");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -3114,6 +3125,12 @@ function fakeDocument() {
       loadingDoc.nodes[1].path);
     assert.equal(runtime.findWebElement(loadingTarget, "Loading/root/panel").attributes["aria-busy"],
       "true");
+    const currentTarget = document.createElement("div");
+    runtime.renderWebDocument(currentRt, currentTarget);
+    assert.equal(runtime.webDOMQuery(currentTarget, "Link:selected").node.path,
+      currentDoc.nodes[1].path);
+    assert.equal(runtime.findWebElement(currentTarget, "Current/root/now").attributes["aria-current"],
+      "page");
     assert.equal(runtime.webDOMRoot(target), root);
     assert.equal(runtime.webDOMRoot(root), root);
     assert.equal(runtime.webDOMFrame(target).nodes.length, runtime.webDocumentFrame(domRt).nodes.length);

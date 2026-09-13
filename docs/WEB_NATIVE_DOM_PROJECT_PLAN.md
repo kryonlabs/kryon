@@ -204,6 +204,8 @@ the browser receives normal elements, attributes, CSS, and events.
   has matching native state.
 - KSS state selector CSS export also targets native ARIA/state attributes for
   pressed, disabled, loading, checked, selected, invalid, and expanded controls.
+- KSS selected-state CSS export also targets native `aria-current` links, so
+  current navigation items can use the same `:selected` Kry selector.
 - KSS state selectors support `:readonly`/`:read-only` and `:required` against
   Kry form-control facts and native browser pseudo/attribute selectors.
 - KSS structural selectors support browser-native `:empty` in CSS export,
