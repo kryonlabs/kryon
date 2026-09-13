@@ -2828,6 +2828,24 @@ function fakeDocument() {
       { nodeName: "mark", path: "Page/mark" });
     runtime.widget(nativeRt, "Time", { text: "2026-09-13", datetime: "2026-09-13" }, null,
       { nodeName: "time", path: "Page/time" });
+    runtime.widget(nativeRt, "Form", { form_action: "/signup", form_method: "post" }, null,
+      { nodeName: "nativeForm", path: "Page/nativeForm" });
+    runtime.widget(nativeRt, "Label", { text: "Email", for: "form-email" }, null,
+      { nodeName: "nativeLabel", path: "Page/nativeForm/label", parentPath: "Page/nativeForm" });
+    runtime.widget(nativeRt, "TextField", { text: "hello@example.test" }, null,
+      { nodeName: "nativeEmail", path: "Page/nativeForm/email", parentPath: "Page/nativeForm", id: "form-email" });
+    runtime.widget(nativeRt, "Select", {}, null,
+      { nodeName: "nativeSelect", path: "Page/nativeSelect" });
+    runtime.widget(nativeRt, "Option", { text: "One", value: "1", selected: true }, null,
+      { nodeName: "nativeOption", path: "Page/nativeSelect/one", parentPath: "Page/nativeSelect" });
+    runtime.widget(nativeRt, "Details", { open: true }, null,
+      { nodeName: "nativeDetails", path: "Page/nativeDetails" });
+    runtime.widget(nativeRt, "Summary", { text: "More" }, null,
+      { nodeName: "nativeSummary", path: "Page/nativeDetails/summary", parentPath: "Page/nativeDetails" });
+    runtime.widget(nativeRt, "Dialog", { open: true }, null,
+      { nodeName: "nativeDialog", path: "Page/nativeDialog" });
+    runtime.widget(nativeRt, "Output", { value: "Ready" }, null,
+      { nodeName: "nativeOutput", path: "Page/nativeOutput" });
     runtime.widget(nativeRt, "Card", {}, null,
       { nodeName: "plainCard", path: "Page/plainCard" });
     runtime.widget(nativeRt, "Card", { clickable: true }, null,
@@ -2988,6 +3006,12 @@ function fakeDocument() {
       .find((node) => node.kind === "Figure")?.role, "figure");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "List")?.role, "list");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Form")?.role, "form");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Summary")?.role, "button");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Output")?.role, "status");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nav/home").landmarkOwner.path,
       "Page/nav");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nav").landmarkMembers,
@@ -3012,6 +3036,19 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Form").tag, "form");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Label").tag, "label");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Select").tag, "select");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Option").tag, "option");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Details").tag, "details");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Summary").tag, "summary");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Dialog").tag, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Output").tag, "output");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Output").domValue, "Ready");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeForm/label").labelFor.path,
+      "Page/nativeForm/email");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeForm").formControls,
+      ["Page/nativeForm/email"]);
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/aside/related").landmarkOwner.path,
       "Page/aside");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/footer/legal").landmarkOwner.path,
@@ -3166,6 +3203,15 @@ function fakeDocument() {
     const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
     const nativeMark = runtime.findWebElement(nativeTarget, "mark");
     const nativeTime = runtime.findWebElement(nativeTarget, "time");
+    const nativeForm = runtime.findWebElement(nativeTarget, "nativeForm");
+    const nativeLabel = runtime.findWebElement(nativeTarget, "nativeLabel");
+    const nativeEmail = runtime.findWebElement(nativeTarget, "nativeEmail");
+    const nativeSelect = runtime.findWebElement(nativeTarget, "nativeSelect");
+    const nativeOption = runtime.findWebElement(nativeTarget, "nativeOption");
+    const nativeDetailsElement = runtime.findWebElement(nativeTarget, "nativeDetails");
+    const nativeSummary = runtime.findWebElement(nativeTarget, "nativeSummary");
+    const nativeDialog = runtime.findWebElement(nativeTarget, "nativeDialog");
+    const nativeOutput = runtime.findWebElement(nativeTarget, "nativeOutput");
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
@@ -3231,12 +3277,36 @@ function fakeDocument() {
     assert.equal(nativeMark.tagName, "MARK");
     assert.equal(nativeTime.tagName, "TIME");
     assert.equal(nativeTime.attributes.datetime, "2026-09-13");
+    assert.equal(nativeForm.tagName, "FORM");
+    assert.equal(nativeForm.attributes.action, "/signup");
+    assert.equal(nativeForm.attributes.method, "post");
+    assert.equal(nativeLabel.tagName, "LABEL");
+    assert.equal(nativeLabel.attributes.for, "form-email");
+    assert.equal(nativeLabel.textContent, "Email");
+    assert.equal(nativeEmail.tagName, "INPUT");
+    assert.equal(nativeEmail.attributes.id, "form-email");
+    assert.equal(nativeSelect.tagName, "SELECT");
+    assert.equal(nativeOption.tagName, "OPTION");
+    assert.equal(nativeOption.attributes.value, "1");
+    assert.equal(nativeOption.attributes.selected, "");
+    assert.equal(nativeDetailsElement.tagName, "DETAILS");
+    assert.equal(nativeDetailsElement.open, true);
+    assert.equal(nativeSummary.tagName, "SUMMARY");
+    assert.equal(nativeSummary.textContent, "More");
+    assert.equal(nativeDialog.tagName, "DIALOG");
+    assert.equal(nativeDialog.open, true);
+    assert.equal(nativeOutput.tagName, "OUTPUT");
+    assert.equal(nativeOutput.attributes.value, "Ready");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/list/first").collectionOwner.ref,
       "Page/list");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/ordered/third").collectionOwner.ref,
       "Page/ordered");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/aside/related").landmarkOwner.ref,
       "Page/aside");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeForm/label").labelFor.ref,
+      "Page/nativeForm/email");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nativeForm").formControls,
+      ["Page/nativeForm/email"]);
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");

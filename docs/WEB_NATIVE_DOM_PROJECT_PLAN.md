@@ -83,6 +83,10 @@ the browser receives normal elements, attributes, CSS, and events.
   code, marks, and time text, including corresponding landmark and collection
   relationship facts where the native semantics imply ownership, plus native
   quote citations, time datetimes, and list/item numbering attributes.
+- Native form/document aliases such as `Form`, `Label`, `Select`, `Option`,
+  `Details`, `Summary`, `Dialog`, and `Output` render to matching browser
+  elements and participate in label, form-control, collection, dialog, and
+  status accessibility facts.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

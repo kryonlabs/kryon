@@ -1158,9 +1158,19 @@ function widgetTag(item) {
   case "Fieldset":
     return "fieldset";
   case "Collapsible":
+  case "Details":
     return "details";
+  case "Summary":
+    return "summary";
   case "Modal":
+  case "Dialog":
     return "dialog";
+  case "Form":
+    return "form";
+  case "Label":
+    return "label";
+  case "Output":
+    return "output";
   case "Disabled":
     return "fieldset";
   case "Popup":
@@ -1226,7 +1236,10 @@ function widgetTag(item) {
     return "input";
   case "Dropdown":
   case "ListBox":
+  case "Select":
     return "select";
+  case "Option":
+    return "option";
   case "Image":
     return "img";
   case "Checkbox":
@@ -1293,6 +1306,10 @@ function widgetText(item) {
   case "Small":
   case "Figure":
   case "Figcaption":
+  case "Summary":
+  case "Label":
+  case "Output":
+  case "Option":
   case "ListItem":
   case "DescriptionTerm":
   case "DescriptionDetails":
@@ -1355,8 +1372,10 @@ function widgetDOMValue(item) {
     return propString(item.args, "value", "");
   if (item.name === "Slider" || item.name === "Spinbox" || item.name === "Input")
     return propString(item.args, "value", "");
-  if (item.name === "Selectable")
+  if (item.name === "Selectable" || item.name === "Option")
     return propStringAny(item.args, ["value", "dom_value", "html_value"]);
+  if (item.name === "Output")
+    return propString(item.args, "value", propString(item.args, "text", ""));
   if (item.name !== "Progress" && item.name !== "Meter")
     return "";
   if (item.args && typeof item.args === "object" && !Array.isArray(item.args)) {
@@ -2180,6 +2199,10 @@ function implicitRole(node) {
     return "meter";
   if (node.tag === "output")
     return "status";
+  if (node.tag === "summary")
+    return "button";
+  if (node.tag === "form")
+    return "form";
   if (node.tag === "hr")
     return "separator";
   if (node.tag === "li")
