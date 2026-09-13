@@ -1948,14 +1948,13 @@ RenderProgress(ProgressProps progress)
         ? (int)(text_style.font_size + 0.5f)
         : GetSmallFontSize();
     int label_w = label != NULL ? TextWidth(label, font) : 0;
-    int pad = Scale(6);
     StyleFrame track = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         ButtonStateNormal, 0, 0, progress.class_name, StyleKindProgress(), 4);
     StyleFrame active = ui_tk_simple_style_frame_class_role(ButtonToneAccent,
         ButtonStateNormal, 0, 1, progress.class_name, StyleKindProgress(), 5);
 
     paint = ProgressPaintFor(progress.bounds, progress.min, progress.max,
-                             progress.value, (float)label_w, (float)pad,
+                             progress.value, (float)label_w,
                              (float)Scale(1000) / 1000.0f, track, active,
                              text);
     fill = paint.layout.fill_bounds;

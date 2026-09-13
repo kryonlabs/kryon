@@ -173,7 +173,30 @@ func Progress_ProgressLayoutFor(bounds Rectangle, min int32, max int32, value in
 	return value_16
 }
 
-func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, padding float32, scale float32, track StyleFrame, fill StyleFrame, label StyleFrame) ProgressPaint {
+func Progress_ProgressLabelPaddingForStyle(label StyleFrame, scale float32) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 float32 = label.Value.PaddingX
+	var padding float32 = value_4
+	var value_5 float32 = padding
+	var value_6 float32 = 0.0
+	var value_7 bool = value_5 <= value_6
+	if value_7 {
+		var value_8 float32 = 6.0
+		padding = value_8
+	}
+	var value_9 float32 = padding
+	var value_10 float32 = scale
+	var value_11 float32 = value_9 * value_10
+	return value_11
+}
+
+func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, scale float32, track StyleFrame, fill StyleFrame, label StyleFrame) ProgressPaint {
 	var paint ProgressPaint = ProgressPaint{}
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -182,45 +205,49 @@ func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 Rectangle = bounds
-	var value_5 int32 = min
-	var value_6 int32 = max
-	var value_7 int32 = value
-	var value_8 float32 = label_width
-	var value_9 float32 = padding
-	var value_10 ProgressLayout = Progress_ProgressLayoutFor(value_4, value_5, value_6, value_7, value_8, value_9)
-	paint.Layout = value_10
-	var value_11 StyleFrame = track
-	paint.Track = value_11
-	var value_12 StyleFrame = fill
-	paint.Fill = value_12
-	var value_13 StyleFrame = label
-	paint.Label = value_13
-	var value_14 uint32 = track.Value.Background
-	paint.TrackColor = value_14
-	var value_15 uint32 = fill.Value.Background
-	paint.FillColor = value_15
-	var value_16 uint32 = track.Value.Border
-	paint.BorderColor = value_16
-	var value_17 uint32 = label.Value.Foreground
-	paint.LabelColor = value_17
-	var value_18 uint32 = fill.Value.Foreground
-	paint.FilledLabelColor = value_18
-	var value_19 float32 = track.Value.Radius
-	var value_20 float32 = scale
-	var value_21 float32 = value_19 * value_20
-	paint.Radius = value_21
-	var value_22 float32 = track.Value.BorderWidth
+	var value_4 StyleFrame = label
+	var value_5 float32 = scale
+	var value_6 float32 = Progress_ProgressLabelPaddingForStyle(value_4, value_5)
+	var padding float32 = value_6
+	var value_7 Rectangle = bounds
+	var value_8 int32 = min
+	var value_9 int32 = max
+	var value_10 int32 = value
+	var value_11 float32 = label_width
+	var value_12 float32 = padding
+	var value_13 ProgressLayout = Progress_ProgressLayoutFor(value_7, value_8, value_9, value_10, value_11, value_12)
+	paint.Layout = value_13
+	var value_14 StyleFrame = track
+	paint.Track = value_14
+	var value_15 StyleFrame = fill
+	paint.Fill = value_15
+	var value_16 StyleFrame = label
+	paint.Label = value_16
+	var value_17 uint32 = track.Value.Background
+	paint.TrackColor = value_17
+	var value_18 uint32 = fill.Value.Background
+	paint.FillColor = value_18
+	var value_19 uint32 = track.Value.Border
+	paint.BorderColor = value_19
+	var value_20 uint32 = label.Value.Foreground
+	paint.LabelColor = value_20
+	var value_21 uint32 = fill.Value.Foreground
+	paint.FilledLabelColor = value_21
+	var value_22 float32 = track.Value.Radius
 	var value_23 float32 = scale
 	var value_24 float32 = value_22 * value_23
-	paint.BorderWidth = value_24
-	var value_25 float32 = paint.BorderWidth
-	var value_26 float32 = 0.0
-	var value_27 bool = value_25 < value_26
-	if value_27 {
-		var value_28 float32 = 0.0
-		paint.BorderWidth = value_28
+	paint.Radius = value_24
+	var value_25 float32 = track.Value.BorderWidth
+	var value_26 float32 = scale
+	var value_27 float32 = value_25 * value_26
+	paint.BorderWidth = value_27
+	var value_28 float32 = paint.BorderWidth
+	var value_29 float32 = 0.0
+	var value_30 bool = value_28 < value_29
+	if value_30 {
+		var value_31 float32 = 0.0
+		paint.BorderWidth = value_31
 	}
-	var value_29 ProgressPaint = paint
-	return value_29
+	var value_32 ProgressPaint = paint
+	return value_32
 }

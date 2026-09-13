@@ -1255,6 +1255,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 6;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2983,6 +2984,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 4;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4693,6 +4695,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 6;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6508,6 +6511,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 6;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8313,6 +8317,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 6;
   font-size: font;
   opacity: 1;
   material: premium;

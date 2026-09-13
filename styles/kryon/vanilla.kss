@@ -1262,6 +1262,7 @@ Progress[role=Label] {
   background: transparent;
   foreground: text;
   border: transparent;
+  padding-x: 6;
   font-size: font.sm;
   opacity: 1;
   material: default;

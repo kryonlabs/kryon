@@ -2630,7 +2630,7 @@ func (r *runtime) Progress(props ProgressProps) {
 	labelStyle := unpackStyle(labelFrame.Value)
 	font, fontID := styleTextFace(labelStyle, Text14)
 	labelW := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
-	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 6, 1,
+	paint := Progress_ProgressPaintFor(bounds, props.Min, props.Max, props.Value, labelW, 1,
 		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
 			false, false, props.ClassName, StyleSheet_StyleKindProgress(), 4),
 		simpleStyleFrameWithClassRole(ButtonToneAccent, ButtonStateNormal,

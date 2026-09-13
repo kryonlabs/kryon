@@ -80,11 +80,19 @@ ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
     return layout
 }
 
+ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    padding: float = label.value.padding_x
+    if padding <= 0.0 { padding = 6.0 }
+    return padding * scale
+}
+
 ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
-    label_width: float, padding: float, scale: float, track: StyleFrame,
-    fill: StyleFrame, label: StyleFrame) -> ProgressPaint #export {
+    label_width: float, scale: float, track: StyleFrame, fill: StyleFrame,
+    label: StyleFrame) -> ProgressPaint #export {
     paint: ProgressPaint
     if scale <= 0.0 { scale = 1.0 }
+    padding: float = ProgressLabelPaddingForStyle(label, scale)
     paint.layout = ProgressLayoutFor(bounds, min, max, value, label_width, padding)
     paint.track = track
     paint.fill = fill

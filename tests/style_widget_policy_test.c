@@ -1,5 +1,6 @@
 #include "runtime/button.h"
 #include "runtime/checkbox.h"
+#include "runtime/progress.h"
 #include "runtime/radio.h"
 #include "runtime/slider.h"
 #include "runtime/toggle.h"
@@ -64,6 +65,7 @@ main(void)
     CheckboxPaint checkbox_paint;
     SwatchPaint swatch_paint;
     RadioPaint radio_paint;
+    ProgressPaint progress_paint;
     StyleFrame thumb = test_style_frame(0x334455ff, 0xaabbccff,
                                         0x667788ff);
     SliderPaint slider_paint;
@@ -116,6 +118,12 @@ main(void)
         fprintf(stderr, "swatch checker alt did not come from style\n");
         return 1;
     }
+    frame.value.padding_x = 10.0f;
+    progress_paint = ProgressPaintFor((Rectangle){10, 20, 100, 20}, 0, 100,
+        25, 20.0f, 1.0f, frame, frame, frame);
+    check_float("progress label padding comes from label style",
+                progress_paint.layout.label_x, 45.0f);
+    frame.value.padding_x = 0.0f;
     check_float("radio keeps zero stroke width",
                 radio_paint.stroke_width, 0.0f);
     if(slider_paint.thumb_fill_color != thumb.value.background) {
