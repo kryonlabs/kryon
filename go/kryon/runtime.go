@@ -3701,7 +3701,7 @@ func (r *runtime) inputDouble(props inputDoubleProps) bool {
 			}
 		}
 		if direction != 0 {
-			step := Input_InputDoubleStepValue(value, props.Step, props.StepFast, direction, fast)
+			step := Input_InputStepValue(value, props.Step, props.StepFast, direction, fast)
 			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}

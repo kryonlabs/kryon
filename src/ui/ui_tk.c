@@ -2965,7 +2965,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                         (int)step, (int)step_fast, direction, fast);
                     value = (double)result.value;
                 } else {
-                    InputDoubleStep result = InputDoubleStepValue(value, step,
+                    InputStep result = InputStepValue(value, step,
                         step_fast, direction, fast);
                     value = result.value;
                 }

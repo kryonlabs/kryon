@@ -11,7 +11,7 @@ InputWholeStep :: struct {
     changed: bool
 }
 
-InputDoubleStep :: struct {
+InputStep :: struct {
     value: f64
     changed: bool
 }
@@ -67,7 +67,7 @@ InputWholeEffectiveStep :: (step: i32, step_fast: i32, fast: bool) -> i32 #expor
     return step
 }
 
-InputDoubleEffectiveStep :: (step: f64, step_fast: f64, fast: bool) -> f64 #export {
+InputEffectiveStep :: (step: f64, step_fast: f64, fast: bool) -> f64 #export {
     if fast && step_fast != 0.0 { return step_fast }
     return step
 }
@@ -97,14 +97,14 @@ InputWholeStepValue :: (value: i32, step: i32, step_fast: i32,
     return result
 }
 
-InputDoubleStepValue :: (value: f64, step: f64, step_fast: f64,
-    direction: i32, fast: bool) -> InputDoubleStep #export {
-    result: InputDoubleStep
+InputStepValue :: (value: f64, step: f64, step_fast: f64,
+    direction: i32, fast: bool) -> InputStep #export {
+    result: InputStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0.0 { return result }
     next: f64 = value + (f64)direction *
-        InputDoubleEffectiveStep(step, step_fast, fast)
+        InputEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result

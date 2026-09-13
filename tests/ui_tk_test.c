@@ -930,7 +930,7 @@ test_input_value_policy(void)
 {
     InputScalarStep float_step;
     InputWholeStep int_step;
-    InputDoubleStep double_step;
+    InputStep double_step;
     InputCellLayout layout;
 
     check_float("input float effective step",
@@ -953,7 +953,7 @@ test_input_value_policy(void)
     int_step = InputWholeStepValue(6, 2, 10, -1, 1);
     check_int("input int fast minus", int_step.value, -4);
 
-    double_step = InputDoubleStepValue(2.125, 0.125, 1.0, 1, 0);
+    double_step = InputStepValue(2.125, 0.125, 1.0, 1, 0);
     check_int("input double changed", double_step.changed ? 1 : 0, 1);
     check_float("input double step value", (float)double_step.value, 2.25f);
 

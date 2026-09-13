@@ -12,7 +12,7 @@ type InputWholeStep struct {
 	Changed bool
 }
 
-type InputDoubleStep struct {
+type InputStep struct {
 	Value   float64
 	Changed bool
 }
@@ -169,7 +169,7 @@ func Input_InputWholeEffectiveStep(step int32, step_fast int32, fast bool) int32
 	return value_6
 }
 
-func Input_InputDoubleEffectiveStep(step float64, step_fast float64, fast bool) float64 {
+func Input_InputEffectiveStep(step float64, step_fast float64, fast bool) float64 {
 	var value_0 bool = fast
 	var value_1 bool = value_0
 	if value_1 {
@@ -265,8 +265,8 @@ func Input_InputWholeStepValue(value int32, step int32, step_fast int32, directi
 	return value_22
 }
 
-func Input_InputDoubleStepValue(value float64, step float64, step_fast float64, direction int32, fast bool) InputDoubleStep {
-	var result InputDoubleStep = InputDoubleStep{}
+func Input_InputStepValue(value float64, step float64, step_fast float64, direction int32, fast bool) InputStep {
+	var result InputStep = InputStep{}
 	var value_0 float64 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -282,7 +282,7 @@ func Input_InputDoubleStepValue(value float64, step float64, step_fast float64, 
 		value_5 = value_8
 	}
 	if value_5 {
-		var value_9 InputDoubleStep = result
+		var value_9 InputStep = result
 		return value_9
 	}
 	var value_10 float64 = value
@@ -291,7 +291,7 @@ func Input_InputDoubleStepValue(value float64, step float64, step_fast float64, 
 	var value_13 float64 = step
 	var value_14 float64 = step_fast
 	var value_15 bool = fast
-	var value_16 float64 = Input_InputDoubleEffectiveStep(value_13, value_14, value_15)
+	var value_16 float64 = Input_InputEffectiveStep(value_13, value_14, value_15)
 	var value_17 float64 = value_12 * value_16
 	var value_18 float64 = value_10 + value_17
 	var next float64 = value_18
@@ -301,6 +301,6 @@ func Input_InputDoubleStepValue(value float64, step float64, step_fast float64, 
 	var value_21 float64 = value
 	var value_22 bool = value_20 != value_21
 	result.Changed = value_22
-	var value_23 InputDoubleStep = result
+	var value_23 InputStep = result
 	return value_23
 }
