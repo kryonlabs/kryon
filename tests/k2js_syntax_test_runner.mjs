@@ -16,7 +16,7 @@ for (const name of [
   "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "Option", "Output", "Picture", "Pre", "Quote", "Samp", "Sample", "Select",
+  "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
@@ -2888,8 +2888,6 @@ function fakeDocument() {
       { nodeName: "nativeVideoTrack", path: "Page/video/captions", parentPath: "Page/video" });
     runtime.widget(nativeRt, "Audio", { src: "theme.mp3", controls: true, loop: true }, null,
       { nodeName: "nativeAudio", path: "Page/audio" });
-    runtime.widget(nativeRt, "Picture", {}, null,
-      { nodeName: "nativePicture", path: "Page/picture" });
     runtime.widget(nativeRt, "IFrame", { src: "/embed", loading: "lazy", allow: "fullscreen", allow_fullscreen: true, text: "Embedded content" }, null,
       { nodeName: "nativeFrame", path: "Page/frame" });
     runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
@@ -3160,7 +3158,6 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Track").tag, "track");
     assert.equal(runtime.webNodeQuery(nativeRt, "Track").extraAttrs.srclang, "en");
     assert.equal(runtime.webNodeQuery(nativeRt, "Audio").tag, "audio");
-    assert.equal(runtime.webNodeQuery(nativeRt, "Picture").tag, "picture");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").tag, "iframe");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.loading, "lazy");
     assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
@@ -3378,7 +3375,6 @@ function fakeDocument() {
     const nativeVideoSource = runtime.findWebElement(nativeTarget, "nativeVideoSource");
     const nativeVideoTrack = runtime.findWebElement(nativeTarget, "nativeVideoTrack");
     const nativeAudio = runtime.findWebElement(nativeTarget, "nativeAudio");
-    const nativePicture = runtime.findWebElement(nativeTarget, "nativePicture");
     const nativeFrame = runtime.findWebElement(nativeTarget, "nativeFrame");
     const nativeEmbed = runtime.findWebElement(nativeTarget, "nativeEmbed");
     const nativeTable = runtime.findWebElement(nativeTarget, "nativeTable");
@@ -3511,7 +3507,6 @@ function fakeDocument() {
     assert.equal(nativeAudio.attributes.src, "theme.mp3");
     assert.equal(nativeAudio.attributes.controls, "");
     assert.equal(nativeAudio.attributes.loop, "");
-    assert.equal(nativePicture.tagName, "PICTURE");
     assert.equal(nativeFrame.tagName, "IFRAME");
     assert.equal(nativeFrame.attributes.src, "/embed");
     assert.equal(nativeFrame.attributes.loading, "lazy");

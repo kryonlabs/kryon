@@ -1277,8 +1277,6 @@ function widgetTag(item) {
     return "option";
   case "Image":
     return "img";
-  case "Picture":
-    return "picture";
   case "Video":
     return "video";
   case "Audio":
@@ -4261,8 +4259,19 @@ function selectorAttrValueMatches(actual, expected, op) {
   }
 }
 
+function selectorKindMatches(kind, facts) {
+  const text = String(kind || "");
+  if (!text || text === "*")
+    return true;
+  const lower = text.toLowerCase();
+  if (lower === String(facts.kind || "").toLowerCase())
+    return true;
+  return [facts.path, facts.name, facts.key, facts.ref, facts.webRef, facts.id]
+    .some((value) => text === String(value || ""));
+}
+
 function selectorMatchesFacts(selector, facts) {
-  if (selector.kind !== "*" && selector.kind.toLowerCase() !== String(facts.kind || "").toLowerCase())
+  if (!selectorKindMatches(selector.kind, facts))
     return false;
   if (selector.id && selector.id !== facts.id && selector.id !== facts.name && selector.id !== facts.key)
     return false;
@@ -11162,15 +11171,35 @@ export function CanvasHitTest(canvas, screen) {
 }
 
 const runtimeCallNames = [
-  "AppBackground", "Background", "Bevel", "Box", "Bullet", "Button", "Card", "CanvasGrid", "Checkbox",
-  "Collapsible", "ColorPicker", "Column", "Drag", "DragDrop", "Dropdown", "Input", "SegmentedControl",
-  "Icon", "Fieldset", "Line", "Link", "ListBox", "Menu",
-  "Flow", "Grid", "Heading", "Modal", "NavigationBar", "Page", "PanedView",
-  "Paragraph", "ParagraphText", "Image", "Plot", "Progress", "Radio",
-  "Row", "Screen", "Scroll", "Selectable", "Separator", "SetCurrentTheme",
-  "Section", "Toast", "Slider", "Spinbox", "Stack", "TabBar",
-  "TableView", "Text", "TextArea", "TextField", "TitleBar", "TreeView",
-  "Toggle", "Toolbar"
+  "AppBackground", "Background", "Text", "Paragraph",
+  "Abbr", "Abbreviation", "Address", "Article", "Aside",
+  "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
+  "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
+  "Col", "ColGroup", "Data", "Del", "Deleted",
+  "DescriptionDetails", "DescriptionList", "DescriptionTerm",
+  "Details", "Dialog", "Em", "Embed", "Emphasis",
+  "Figcaption", "Figure", "Footer", "Form", "Header",
+  "IFrame", "Iframe", "Ins", "Inserted", "Italic",
+  "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
+  "Mark", "Meter", "Nav", "Navigation", "OrderedList", "Option",
+  "Output", "Pre", "Quote", "Samp", "Sample", "Select",
+  "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
+  "Sup", "Superscript", "Table", "TableBody", "TableCaption",
+  "TableColumn", "TableColumnGroup", "TableFoot",
+  "TableHead", "TableRow", "Tbody", "Tfoot", "Thead", "Time",
+  "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
+  "Bullet", "Separator",
+  "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
+  "Slider", "Menu",
+  "Toggle", "Checkbox", "Radio", "Progress", "Plot",
+  "Drag", "Input", "Spinbox",
+  "DragDrop",
+  "Screen", "Page", "Section", "Heading", "ParagraphText",
+  "Column", "Row", "Stack", "Flow", "Grid", "Scroll",
+  "Modal", "TitleBar", "TabBar",
+  "NavigationBar", "Toolbar", "Toast", "Fieldset", "PanedView",
+  "Collapsible", "ListBox", "TreeView", "TableView", "ColorPicker",
+  "CanvasGrid", "SetCurrentTheme"
 ];
 
 for (const name of runtimeCallNames) {
@@ -11259,7 +11288,6 @@ export function PanedView(...args) { return struct("PanedView", args); }
 export function Paragraph(...args) { return struct("Paragraph", args); }
 export function ParagraphText(...args) { return struct("ParagraphText", args); }
 export function Image(...args) { return struct("Image", args); }
-export function Picture(...args) { return struct("Picture", args); }
 export function Plot(...args) { return struct("Plot", args); }
 export function Pre(...args) { return struct("Pre", args); }
 export function Progress(...args) { return struct("Progress", args); }

@@ -236,6 +236,11 @@ host roles rather than retained nodes.
 | `Background` | `.kry canonical` | Fill/display widget; geometry policy is in `.kry`. |
 | `Text` | `.kry canonical` | Canonical text surface. |
 | `Paragraph` | `.kry canonical` | Rich text surface. Plain labels stay `Text`; paragraph flow, icons, wrapping metrics, and rich text policy stay here. |
+| `Abbr` | `.kry canonical` | Web-native abbreviation alias; renders as semantic DOM in the web runtime. |
+| `Abbreviation` | `.kry canonical` | Long-form alias for `Abbr` in web-native content. |
+| `Address` | `.kry canonical` | Web-native contact/address content element. |
+| `Article` | `.kry canonical` | Web-native article content region. |
+| `Aside` | `.kry canonical` | Web-native aside/related-content region. |
 | `Box` | `.kry canonical` | Canonical rectangle primitive with `Rectangle` bounds. |
 | `Line` | `.kry canonical` | Endpoint and retained-bounds policy are in `.kry`; host keeps stroke drawing. |
 | `Bevel` | Native canonical | Drawing effect unless material/surface props absorb it. |
@@ -244,6 +249,79 @@ host roles rather than retained nodes.
 | `Button` | `.kry canonical` | One button surface; variants belong in props/composition. |
 | `Card` | `.kry canonical` | Surface action/card composition. |
 | `Selectable` | `.kry canonical` | Selectable row/action surface. |
+| `Audio` | `.kry canonical` | Web-native audio media element. |
+| `BlockQuote` | `.kry canonical` | Web-native block quotation element. |
+| `Bold` | `.kry canonical` | Web-native bold phrasing element. |
+| `Cite` | `.kry canonical` | Web-native citation phrasing element. |
+| `Code` | `.kry canonical` | Web-native inline code element. |
+| `CodeBlock` | `.kry canonical` | Web-native preformatted code block. |
+| `Col` | `.kry canonical` | Web-native table column element. |
+| `ColGroup` | `.kry canonical` | Web-native table column group element. |
+| `Data` | `.kry canonical` | Web-native machine-readable data element. |
+| `Del` | `.kry canonical` | Web-native deleted text element. |
+| `Deleted` | `.kry canonical` | Long-form alias for `Del`. |
+| `DescriptionDetails` | `.kry canonical` | Web-native description details element. |
+| `DescriptionList` | `.kry canonical` | Web-native description list element. |
+| `DescriptionTerm` | `.kry canonical` | Web-native description term element. |
+| `Details` | `.kry canonical` | Web-native disclosure details element. |
+| `Dialog` | `.kry canonical` | Web-native dialog element. |
+| `Em` | `.kry canonical` | Web-native emphasized text element. |
+| `Embed` | `.kry canonical` | Web-native embedded external content element. |
+| `Emphasis` | `.kry canonical` | Long-form alias for `Em`. |
+| `Figcaption` | `.kry canonical` | Web-native figure caption element. |
+| `Figure` | `.kry canonical` | Web-native figure element. |
+| `Footer` | `.kry canonical` | Web-native footer landmark/content element. |
+| `Form` | `.kry canonical` | Web-native form element. |
+| `Header` | `.kry canonical` | Web-native header landmark/content element. |
+| `IFrame` | `.kry canonical` | Web-native iframe element. |
+| `Iframe` | `.kry canonical` | Alternate casing for `IFrame`. |
+| `Ins` | `.kry canonical` | Web-native inserted text element. |
+| `Inserted` | `.kry canonical` | Long-form alias for `Ins`. |
+| `Italic` | `.kry canonical` | Web-native italic phrasing element. |
+| `Kbd` | `.kry canonical` | Web-native keyboard input phrasing element. |
+| `Keyboard` | `.kry canonical` | Long-form alias for `Kbd`. |
+| `Label` | `.kry canonical` | Web-native form label element. |
+| `List` | `.kry canonical` | Web-native unordered list alias. |
+| `ListItem` | `.kry canonical` | Web-native list item element. |
+| `Main` | `.kry canonical` | Web-native main landmark element. |
+| `Mark` | `.kry canonical` | Web-native marked/highlighted text element. |
+| `Meter` | `.kry canonical` | Web-native scalar meter element. |
+| `Nav` | `.kry canonical` | Web-native navigation landmark element. |
+| `Navigation` | `.kry canonical` | Long-form alias for `Nav`. |
+| `OrderedList` | `.kry canonical` | Web-native ordered list element. |
+| `Option` | `.kry canonical` | Web-native select option element. |
+| `Output` | `.kry canonical` | Web-native calculation output element. |
+| `Pre` | `.kry canonical` | Web-native preformatted text element. |
+| `Quote` | `.kry canonical` | Web-native inline quote element. |
+| `Samp` | `.kry canonical` | Web-native sample output phrasing element. |
+| `Sample` | `.kry canonical` | Long-form alias for `Samp`. |
+| `Select` | `.kry canonical` | Web-native select element; app selection control remains `Dropdown`. |
+| `Small` | `.kry canonical` | Web-native side-comment/small text element. |
+| `Source` | `.kry canonical` | Web-native media source element. |
+| `Strong` | `.kry canonical` | Web-native strong-importance phrasing element. |
+| `Sub` | `.kry canonical` | Web-native subscript element. |
+| `Subscript` | `.kry canonical` | Long-form alias for `Sub`. |
+| `Summary` | `.kry canonical` | Web-native summary element for `Details`. |
+| `Sup` | `.kry canonical` | Web-native superscript element. |
+| `Superscript` | `.kry canonical` | Long-form alias for `Sup`. |
+| `Table` | `.kry canonical` | Web-native table element. |
+| `TableBody` | `.kry canonical` | Web-native table body element. |
+| `TableCaption` | `.kry canonical` | Web-native table caption element. |
+| `TableColumn` | `.kry canonical` | Web-native table column alias for `Col`. |
+| `TableColumnGroup` | `.kry canonical` | Web-native table column group alias for `ColGroup`. |
+| `TableFoot` | `.kry canonical` | Web-native table footer element. |
+| `TableHead` | `.kry canonical` | Web-native table head element. |
+| `TableRow` | `.kry canonical` | Web-native table row element. |
+| `Tbody` | `.kry canonical` | Web-native short alias for `TableBody`. |
+| `Tfoot` | `.kry canonical` | Web-native short alias for `TableFoot`. |
+| `Thead` | `.kry canonical` | Web-native short alias for `TableHead`. |
+| `Time` | `.kry canonical` | Web-native time element. |
+| `Tr` | `.kry canonical` | Web-native short alias for `TableRow`. |
+| `Track` | `.kry canonical` | Web-native media text track element. |
+| `UnorderedList` | `.kry canonical` | Web-native unordered list element. |
+| `Var` | `.kry canonical` | Web-native variable phrasing element. |
+| `Variable` | `.kry canonical` | Long-form alias for `Var`. |
+| `Video` | `.kry canonical` | Web-native video media element. |
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |

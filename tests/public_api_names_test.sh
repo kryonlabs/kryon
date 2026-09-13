@@ -267,7 +267,22 @@ pm = re.search(r'static const char \*const widgets\[\]\s*=\s*\{(?P<body>.*?)\};'
 parser_names = re.findall(r'"([^"]+)"', pm.group('body')) if pm else []
 api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
 runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
-special = {'Canvas', 'End'}
+web_native_only = {
+    'Abbr', 'Abbreviation', 'Address', 'Article', 'Aside', 'Audio',
+    'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
+    'Data', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
+    'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
+    'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'IFrame', 'Iframe',
+    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'List',
+    'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
+    'Option', 'Output', 'Pre', 'Quote', 'Samp', 'Sample', 'Select',
+    'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
+    'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
+    'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
+    'Tbody', 'Tfoot', 'Thead', 'Time', 'Tr', 'Track', 'UnorderedList',
+    'Var', 'Variable', 'Video',
+}
+special = {'Canvas', 'End'} | web_native_only
 for name in parser_names:
     if name in special:
         continue

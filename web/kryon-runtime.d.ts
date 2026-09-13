@@ -1478,7 +1478,6 @@ export function PanedView(...args: unknown[]): unknown;
 export function Paragraph(...args: unknown[]): unknown;
 export function ParagraphText(...args: unknown[]): unknown;
 export function Image(...args: unknown[]): unknown;
-export function Picture(...args: unknown[]): unknown;
 export function Plot(...args: unknown[]): unknown;
 export function Pre(...args: unknown[]): unknown;
 export function Progress(...args: unknown[]): unknown;
