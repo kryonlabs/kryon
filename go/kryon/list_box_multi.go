@@ -2,6 +2,8 @@
 package kryon
 
 // #import drawing_props
+// #import style
+// #import control_props
 type ListBoxMultiNavResult struct {
 	Clicked       int32
 	Anchor        int32
@@ -11,7 +13,32 @@ type ListBoxMultiNavResult struct {
 	RangeAnchor   int32
 }
 
-func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32) int32 {
+func ListBoxMulti_ListBoxMultiMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 <= value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
+func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32, item StyleFrame) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -26,11 +53,14 @@ func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32) int32 {
 		var value_7 int32 = row_height
 		return value_7
 	}
-	var value_8 float32 = 28.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	return value_11
+	var value_8 uint32 = item.Value.Fields
+	var value_9 int32 = int32(StyleIconSize)
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+	var value_11 float32 = item.Value.IconSize
+	var value_12 float32 = 28.0
+	var value_13 float32 = scale
+	var value_14 int32 = ListBoxMulti_ListBoxMultiMetric(value_8, value_10, value_11, value_12, value_13)
+	return value_14
 }
 
 func ListBoxMulti_ListBoxMultiRowBounds(bounds Rectangle, index int32, row_height int32) Rectangle {

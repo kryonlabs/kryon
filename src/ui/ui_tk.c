@@ -734,14 +734,15 @@ int
 RenderListBoxMulti(ListBoxProps list)
 {
     Vector2 mouse = ui_mouse_world();
-    int row_height = ListBoxMultiRowHeight(list.row_height,
-        (float)Scale(1000) / 1000.0f);
+    float runtime_scale = (float)Scale(1000) / 1000.0f;
     int paint = IsWindowReady();
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
     StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
         list.class_name, StyleKindListBoxMultiItem(), StyleAny());
+    int row_height = ListBoxMultiRowHeight(list.row_height, runtime_scale,
+        default_item_frame);
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int default_item_font = default_item_style.font_size > 0.0f

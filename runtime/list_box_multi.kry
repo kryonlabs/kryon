@@ -1,5 +1,7 @@
 #module "list_box_multi"
 #import "drawing_props"
+#import "style"
+#import "control_props"
 
 ListBoxMultiNavResult :: struct {
     clicked: i32
@@ -10,10 +12,18 @@ ListBoxMultiNavResult :: struct {
     range_anchor: i32
 }
 
-ListBoxMultiRowHeight :: (row_height: i32, scale: float) -> i32 #export {
+ListBoxMultiMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value <= 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
+ListBoxMultiRowHeight :: (row_height: i32, scale: float,
+    item: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     if row_height > 0 { return row_height }
-    return (i32)(28.0 * scale)
+    return ListBoxMultiMetric(item.value.fields, (u32)StyleIconSize,
+        item.value.icon_size, 28.0, scale)
 }
 
 ListBoxMultiRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {

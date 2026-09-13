@@ -2105,8 +2105,9 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 		return -1
 	}
 	bounds := r.layoutRect(props.Bounds)
-	rowHeight := ListBoxMulti_ListBoxMultiRowHeight(props.RowHeight, 1)
 	disabled := props.Disabled || r.contentDisabled()
+	defaultItemFrame := listBoxMultiItemMetricFrame(props.ClassName, disabled)
+	rowHeight := ListBoxMulti_ListBoxMultiRowHeight(props.RowHeight, 1, defaultItemFrame)
 	if !disabled {
 		r.registerField(props.ID)
 	}
@@ -7642,6 +7643,15 @@ func listBoxItemMetricFrame(className int32, disabled bool) StyleFrame {
 	}
 	return simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false,
 		className, StyleSheet_StyleKindListBoxItem(), StyleSheet_StyleAny())
+}
+
+func listBoxMultiItemMetricFrame(className int32, disabled bool) StyleFrame {
+	state := ButtonStateNormal
+	if disabled {
+		state = ButtonStateDisabled
+	}
+	return simpleStyleFrameWithClassRole(ButtonToneNeutral, state, disabled, false,
+		className, StyleSheet_StyleKindListBoxMultiItem(), StyleSheet_StyleAny())
 }
 
 func normalizeTableViewProps(props TableViewProps) TableViewProps {

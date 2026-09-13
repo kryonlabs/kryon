@@ -673,6 +673,7 @@ static void
 test_multi_select_policy(void)
 {
     Rectangle bounds = {10, 20, 120, 90};
+    StyleFrame item = {0};
     Rectangle row = ListBoxMultiRowBounds(bounds, 2, 28);
     ListBoxMultiNavResult down = ListBoxMultiNavigate(3, 0, 0, 0,
         0, 0, 0, 1, 0, 0);
@@ -681,7 +682,11 @@ test_multi_select_policy(void)
     ListBoxMultiNavResult space = ListBoxMultiNavigate(3, 2, 0, 0,
         0, 0, 0, 0, 1, 0);
 
-    check_int("multi row default height", ListBoxMultiRowHeight(0, 1.0f), 28);
+    item.value.fields = StyleIconSize;
+    item.value.icon_size = 34.0f;
+
+    check_int("multi row default height", ListBoxMultiRowHeight(0, 1.0f, item), 34);
+    check_int("multi row explicit height", ListBoxMultiRowHeight(26, 1.0f, item), 26);
     check_float("multi row y", row.y, 76.0f);
     check_float("multi row height", row.height, 28.0f);
     check_int("multi focused fallback", ListBoxMultiFocusedRow(-1, 2, 3), 2);

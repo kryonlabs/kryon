@@ -665,6 +665,7 @@ ListBoxMultiItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  icon-size: 28;
   font-size: font;
   opacity: 1;
   material: premium;

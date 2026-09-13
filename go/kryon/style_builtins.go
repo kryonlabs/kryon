@@ -628,6 +628,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2455,6 +2456,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.2;
   padding-y: space.1;
+  icon-size: 28;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4246,6 +4248,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6109,6 +6112,7 @@ ListBoxMultiItem {
   border-width: border.none;
   padding-x: space.3;
   padding-y: space.2;
+  icon-size: 28;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8018,6 +8022,7 @@ ListBoxMultiItem {
   border-width: 0;
   padding-x: space.3;
   padding-y: gap;
+  icon-size: 28;
   font-size: font;
   opacity: 1;
   material: premium;
