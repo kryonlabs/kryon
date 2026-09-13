@@ -256,6 +256,19 @@ if [ -n "$go_missing_parser_widgets" ]; then
     exit 1
 fi
 
+go_lowered_scope_exports="$(
+    rg -n '^func (BeginDisabled|EndDisabled|BeginPopup|EndPopup|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas)\(' \
+        go/kryon/api.go \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$go_lowered_scope_exports" ]; then
+    echo "Go package API must expose canonical widgets only; lowered lexical Begin*/End* scopes stay on runtime instances for generated internals:"
+    echo "$go_lowered_scope_exports"
+    exit 1
+fi
+
 lowered_doc_matches="$(
     rg -n '\b(BeginButton|BeginScroll|EndScroll|BeginTableCell|EndTableCell|BeginCanvas|EndCanvas|BeginPopup|EndPopup)\b' \
         docs/API.md docs/RUNTIME_PARITY.md docs/FEATURE_MATRIX.md docs/FEATURE_MATRIX.html docs/IMGUI_WIDGET_COVERAGE.md docs/ARCHITECTURE.md docs/COMPOSED_POPUP_IMPLEMENTATION.md docs/site/matrices.html \
