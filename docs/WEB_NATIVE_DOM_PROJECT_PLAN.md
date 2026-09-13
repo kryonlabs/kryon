@@ -67,6 +67,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web CSS export and mounted DOM styling cover physical and logical border
   colors, widths, styles, and corner radii, including per-side inline/block
   properties.
+- KSS web sizing supports logical `inline-size`/`block-size` and min/max
+  variants for writing-mode-aware layouts.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
   states such as `:hover:pressed`, and `:normal` export against native
   `data-kry-state` annotations.
