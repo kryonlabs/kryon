@@ -16,6 +16,31 @@ type FocusDebugOverlayPaint struct {
 	LabelVisible  bool
 }
 
+func Focus_FocusMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
 func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) FocusPaint {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -24,85 +49,51 @@ func Focus_FocusPaintFor(bounds Rectangle, scale float32, frame StyleFrame) Focu
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = frame.Value.PaddingX
-	var pad_value float32 = value_4
-	var value_5 uint32 = frame.Value.Fields
-	var value_6 int32 = int32(StylePaddingX)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 float32 = pad_value
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
-	}
-	if value_12 {
-		var value_16 float32 = 3.0
-		pad_value = value_16
-	}
-	var value_17 float32 = frame.Value.BorderWidth
-	var stroke_value float32 = value_17
-	var value_18 uint32 = frame.Value.Fields
-	var value_19 int32 = int32(StyleBorderWidth)
-	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
-	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_18), uint64(value_20), 32, false, 8))
-	var value_22 int32 = 0
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
-	var value_24 bool = value_21 == value_23
-	var value_25 bool = value_24
-	if !value_25 {
-		var value_26 float32 = stroke_value
-		var value_27 float32 = 0.0
-		var value_28 bool = value_26 < value_27
-		value_25 = value_28
-	}
-	if value_25 {
-		var value_29 float32 = 2.0
-		stroke_value = value_29
-	}
-	var value_30 float32 = pad_value
-	var value_31 float32 = scale
-	var value_32 float32 = value_30 * value_31
-	var value_33 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_32), 32, true)), uint64(0), 32, true, 0))
-	var pad int32 = value_33
-	var value_34 float32 = stroke_value
-	var value_35 float32 = scale
-	var value_36 float32 = value_34 * value_35
-	var value_37 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_36), 32, true)), uint64(0), 32, true, 0))
-	var stroke int32 = value_37
+	var value_4 uint32 = frame.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = frame.Value.PaddingX
+	var value_8 float32 = 3.0
+	var value_9 float32 = scale
+	var value_10 int32 = Focus_FocusMetric(value_4, value_6, value_7, value_8, value_9)
+	var pad int32 = value_10
+	var value_11 uint32 = frame.Value.Fields
+	var value_12 int32 = int32(StyleBorderWidth)
+	var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+	var value_14 float32 = frame.Value.BorderWidth
+	var value_15 float32 = 2.0
+	var value_16 float32 = scale
+	var value_17 int32 = Focus_FocusMetric(value_11, value_13, value_14, value_15, value_16)
+	var stroke int32 = value_17
 	var paint FocusPaint = FocusPaint{}
-	var value_38 float32 = bounds.X
-	var value_39 int32 = pad
-	var value_40 float32 = float32(value_39)
-	var value_41 float32 = value_38 - value_40
-	paint.Bounds.X = value_41
-	var value_42 float32 = bounds.Y
-	var value_43 int32 = pad
-	var value_44 float32 = float32(value_43)
-	var value_45 float32 = value_42 - value_44
-	paint.Bounds.Y = value_45
-	var value_46 float32 = bounds.Width
-	var value_47 int32 = pad
-	var value_48 int32 = 2
-	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 3))
-	var value_50 float32 = float32(value_49)
-	var value_51 float32 = value_46 + value_50
-	paint.Bounds.Width = value_51
-	var value_52 float32 = bounds.Height
-	var value_53 int32 = pad
-	var value_54 int32 = 2
-	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 3))
-	var value_56 float32 = float32(value_55)
-	var value_57 float32 = value_52 + value_56
-	paint.Bounds.Height = value_57
-	var value_58 int32 = stroke
-	paint.StrokeWidth = value_58
-	var value_59 FocusPaint = paint
-	return value_59
+	var value_18 float32 = bounds.X
+	var value_19 int32 = pad
+	var value_20 float32 = float32(value_19)
+	var value_21 float32 = value_18 - value_20
+	paint.Bounds.X = value_21
+	var value_22 float32 = bounds.Y
+	var value_23 int32 = pad
+	var value_24 float32 = float32(value_23)
+	var value_25 float32 = value_22 - value_24
+	paint.Bounds.Y = value_25
+	var value_26 float32 = bounds.Width
+	var value_27 int32 = pad
+	var value_28 int32 = 2
+	var value_29 int32 = int32(number_runtime_bits(uint64(value_27), uint64(value_28), 32, true, 3))
+	var value_30 float32 = float32(value_29)
+	var value_31 float32 = value_26 + value_30
+	paint.Bounds.Width = value_31
+	var value_32 float32 = bounds.Height
+	var value_33 int32 = pad
+	var value_34 int32 = 2
+	var value_35 int32 = int32(number_runtime_bits(uint64(value_33), uint64(value_34), 32, true, 3))
+	var value_36 float32 = float32(value_35)
+	var value_37 float32 = value_32 + value_36
+	paint.Bounds.Height = value_37
+	var value_38 int32 = stroke
+	paint.StrokeWidth = value_38
+	var value_39 FocusPaint = paint
+	return value_39
 }
 
 func Focus_FocusDebugOverlayPaintFor(bounds Rectangle, font_height int32, has_label bool) FocusDebugOverlayPaint {

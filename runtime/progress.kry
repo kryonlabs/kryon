@@ -24,6 +24,12 @@ ProgressPaint :: struct {
     border_width: float
 }
 
+ProgressMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> float {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return value * scale
+}
+
 ProgressRatio :: (min: i32, max: i32, value: i32) -> float #export {
     if max <= min {
         max = min + 1
@@ -83,11 +89,8 @@ ProgressLayoutFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,
 
 ProgressLabelPaddingForStyle :: (label: StyleFrame, scale: float) -> float #export {
     if scale <= 0.0 { scale = 1.0 }
-    padding: float = label.value.padding_x
-    if (label.value.fields & (u32)StylePaddingX) == (u32)0 || padding < 0.0 {
-        padding = 6.0
-    }
-    return padding * scale
+    return ProgressMetric(label.value.fields, (u32)StylePaddingX,
+        label.value.padding_x, 6.0, scale)
 }
 
 ProgressPaintFor :: (bounds: Rectangle, min: i32, max: i32, value: i32,

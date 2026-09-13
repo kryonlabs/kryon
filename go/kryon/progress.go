@@ -25,6 +25,30 @@ type ProgressPaint struct {
 	BorderWidth      float32
 }
 
+func Progress_ProgressMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	return value_13
+}
+
 func Progress_ProgressRatio(min int32, max int32, value int32) float32 {
 	var value_0 int32 = max
 	var value_1 int32 = min
@@ -182,30 +206,14 @@ func Progress_ProgressLabelPaddingForStyle(label StyleFrame, scale float32) floa
 		var value_3 float32 = 1.0
 		scale = value_3
 	}
-	var value_4 float32 = label.Value.PaddingX
-	var padding float32 = value_4
-	var value_5 uint32 = label.Value.Fields
-	var value_6 int32 = int32(StylePaddingX)
-	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-	var value_8 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(value_7), 32, false, 8))
-	var value_9 int32 = 0
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 bool = value_8 == value_10
-	var value_12 bool = value_11
-	if !value_12 {
-		var value_13 float32 = padding
-		var value_14 float32 = 0.0
-		var value_15 bool = value_13 < value_14
-		value_12 = value_15
-	}
-	if value_12 {
-		var value_16 float32 = 6.0
-		padding = value_16
-	}
-	var value_17 float32 = padding
-	var value_18 float32 = scale
-	var value_19 float32 = value_17 * value_18
-	return value_19
+	var value_4 uint32 = label.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = label.Value.PaddingX
+	var value_8 float32 = 6.0
+	var value_9 float32 = scale
+	var value_10 float32 = Progress_ProgressMetric(value_4, value_6, value_7, value_8, value_9)
+	return value_10
 }
 
 func Progress_ProgressPaintFor(bounds Rectangle, min int32, max int32, value int32, label_width float32, scale float32, track StyleFrame, fill StyleFrame, label StyleFrame) ProgressPaint {

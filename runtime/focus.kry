@@ -15,18 +15,18 @@ FocusDebugOverlayPaint :: struct {
     label_visible: bool
 }
 
+FocusMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 { value = fallback }
+    return (i32)(value * scale)
+}
+
 FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
-    pad_value: float = frame.value.padding_x
-    if (frame.value.fields & (u32)StylePaddingX) == (u32)0 || pad_value < 0.0 {
-        pad_value = 3.0
-    }
-    stroke_value: float = frame.value.border_width
-    if (frame.value.fields & (u32)StyleBorderWidth) == (u32)0 || stroke_value < 0.0 {
-        stroke_value = 2.0
-    }
-    pad: i32 = (i32)(pad_value * scale)
-    stroke: i32 = (i32)(stroke_value * scale)
+    pad: i32 = FocusMetric(frame.value.fields, (u32)StylePaddingX,
+        frame.value.padding_x, 3.0, scale)
+    stroke: i32 = FocusMetric(frame.value.fields, (u32)StyleBorderWidth,
+        frame.value.border_width, 2.0, scale)
     paint: FocusPaint
     paint.bounds.x = bounds.x - (float)pad
     paint.bounds.y = bounds.y - (float)pad
