@@ -151,6 +151,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `Scroll(...)` widget expressions now participate in compiler-owned
   Web Document identity and source-span metadata instead of relying on runtime
   fallback paths.
+- Parenthesized `BeginScroll(...)`, `BeginCanvas(...)`, and
+  `BeginTableCell(...)` scope-producing expressions emit compiler-owned
+  `Scroll`, `Canvas`, and `TableCell` Web Document identity.
 - Web relationship facts include reverse `formControls` links so form-like DOM
   nodes can enumerate controls that reference them through native form
   ownership.

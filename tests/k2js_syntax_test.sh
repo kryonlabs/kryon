@@ -881,6 +881,41 @@ assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
 ]);
 EOF
 
+cat > "$work/src/parenthesized_scope_calls.kry" <<'EOF'
+#import "kryon.h"
+ParenthesizedScopeCalls :: () #ui {
+    scroll: Rectangle = (BeginScroll({0, 0, 100, 100}, 240, nil))
+    EndScroll()
+    table: TableViewProps = (TableViewProps){}
+    cell: Rectangle = (BeginTableCell(table, 0, 0))
+    EndTableCell()
+    canvas_spec: Canvas = (Canvas){.bounds = {0, 0, 100, 100}}
+    canvas: CanvasResult = (BeginCanvas(canvas_spec))
+    EndCanvas(canvas_spec)
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"
+parenthesized_scope_out="$work/out/src/parenthesized_scope_calls.js"
+grep -q 'kryon.widget(\$rt, "Scroll"' "$parenthesized_scope_out"
+grep -q 'kryon.widget(\$rt, "TableCell"' "$parenthesized_scope_out"
+grep -q 'kryon.widget(\$rt, "Canvas"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Scroll@3"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/TableCell@6-2"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Canvas@9-3"' "$parenthesized_scope_out"
+node --input-type=module - "$parenthesized_scope_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.ParenthesizedScopeCalls_ParenthesizedScopeCalls(rt, module.createState(), {});
+assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
+  "ParenthesizedScopeCalls/Scroll@3",
+  "ParenthesizedScopeCalls/TableCell@6-2",
+  "ParenthesizedScopeCalls/Canvas@9-3"
+]);
+EOF
+
 cat > "$work/src/while_widget_nodes.kry" <<'EOF'
 #import "kryon.h"
 WhileWidgetNodes :: () #ui {

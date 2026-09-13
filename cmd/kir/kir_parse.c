@@ -418,32 +418,13 @@ unwrap_outer_parentheses(const char *text, char *out, size_t out_size)
 }
 
 static int
-parse_widget_statement(const char *text, char *name, size_t name_size,
-                       char *args, size_t args_size)
+parse_direct_call_statement(const char *text, char *name, size_t name_size,
+                            char *args, size_t args_size)
 {
-    static const char *const widgets[] = {
-        "AppBackground", "Background", "Text", "Paragraph",
-        "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
-        "Bullet", "Separator",
-        "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
-        "Slider", "Menu",
-        "Toggle", "Checkbox", "Radio", "Progress", "Plot",
-        "Drag", "Input", "Spinbox",
-        "DragDrop",
-        "Screen", "Page", "Section", "Heading", "ParagraphText",
-        "Column", "Row", "Stack", "Flow", "Grid", "Scroll", "End",
-        "Modal", "TitleBar", "TabBar",
-        "NavigationBar",
-        "Toolbar", "Toast", "Fieldset",
-		"PanedView", "Collapsible", "ListBox", "TreeView", "TableView",
-		"ColorPicker", "CanvasGrid"
-    };
     const char *p = text;
     const char *open;
     const char *close;
     size_t length;
-    size_t i;
-    int known = 0;
     int depth = 0;
     int in_string = 0;
     char inner[KIR_TEXT_MAX];
@@ -451,8 +432,8 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     while(*p == ' ' || *p == '\t')
         p++;
     if(unwrap_outer_parentheses(p, inner, sizeof(inner)))
-        return parse_widget_statement(inner, name, name_size, args,
-                                      args_size);
+        return parse_direct_call_statement(inner, name, name_size, args,
+                                           args_size);
     open = p;
     while(isalnum((unsigned char)*p) || *p == '_')
         p++;
@@ -461,13 +442,6 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
         return 0;
     memcpy(name, open, length);
     name[length] = '\0';
-    for(i = 0; i < sizeof(widgets) / sizeof(widgets[0]); i++)
-        if(strcmp(name, widgets[i]) == 0) {
-            known = 1;
-            break;
-        }
-    if(!known)
-        return 0;
     while(*p == ' ' || *p == '\t')
         p++;
     if(*p != '(')
@@ -501,6 +475,42 @@ parse_widget_statement(const char *text, char *name, size_t name_size,
     memcpy(args, open + 1, (size_t)(close - open - 1));
     args[close - open - 1] = '\0';
     return 1;
+}
+
+static int
+parse_widget_statement(const char *text, char *name, size_t name_size,
+                       char *args, size_t args_size)
+{
+    static const char *const widgets[] = {
+        "AppBackground", "Background", "Text", "Paragraph",
+        "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
+        "Bullet", "Separator",
+        "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
+        "Slider", "Menu",
+        "Toggle", "Checkbox", "Radio", "Progress", "Plot",
+        "Drag", "Input", "Spinbox",
+        "DragDrop",
+        "Screen", "Page", "Section", "Heading", "ParagraphText",
+        "Column", "Row", "Stack", "Flow", "Grid", "Scroll", "End",
+        "Modal", "TitleBar", "TabBar",
+        "NavigationBar",
+        "Toolbar", "Toast", "Fieldset",
+		"PanedView", "Collapsible", "ListBox", "TreeView", "TableView",
+		"ColorPicker", "CanvasGrid"
+    };
+    size_t length;
+    size_t i;
+    int known = 0;
+
+    if(!parse_direct_call_statement(text, name, name_size, args, args_size))
+        return 0;
+    length = strlen(name);
+    for(i = 0; i < sizeof(widgets) / sizeof(widgets[0]); i++)
+        if(strcmp(name, widgets[i]) == 0) {
+            known = 1;
+            break;
+        }
+    return known && length > 0;
 }
 
 typedef struct UiBlock {
@@ -1785,6 +1795,21 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
     if(parse_widget_statement(expr, widget, sizeof(widget), args, sizeof(args)))
         ui_stmt_apply_source_metadata(statement, fn, parent,
                                       root_anonymous_count, widget, span);
+    else if(parse_direct_call_statement(expr, widget, sizeof(widget), args,
+                                        sizeof(args))) {
+        const char *node_widget = NULL;
+
+        if(strcmp(widget, "BeginScroll") == 0)
+            node_widget = "Scroll";
+        else if(strcmp(widget, "BeginCanvas") == 0)
+            node_widget = "Canvas";
+        else if(strcmp(widget, "BeginTableCell") == 0)
+            node_widget = "TableCell";
+        if(node_widget != NULL)
+            ui_stmt_apply_source_metadata(statement, fn, parent,
+                                          root_anonymous_count, node_widget,
+                                          span);
+    }
 }
 
 static void
