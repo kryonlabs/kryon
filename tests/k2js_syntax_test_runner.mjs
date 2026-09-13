@@ -2778,6 +2778,7 @@ function fakeDocument() {
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
       ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "listitem", "option", "img", "img"]);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Toast").ariaLive, "polite");
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -2929,6 +2930,7 @@ function fakeDocument() {
     assert.equal(menu.tagName, "MENU");
     assert.equal(menu.attributes.role, "menu");
     assert.equal(toast.tagName, "OUTPUT");
+    assert.equal(toast.attributes["aria-live"], "polite");
     assert.equal(plot.tagName, "CANVAS");
     assert.equal(toast.attributes.role, undefined);
     assert.equal(plot.attributes.role, "img");

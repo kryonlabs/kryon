@@ -379,6 +379,10 @@ The initial tag mapping is intentionally conservative:
 Other widgets remain `div` nodes until they gain a specific web-native
 contract.
 
+`Toast` nodes default to `aria-live="polite"` so status updates become native
+live regions without requiring generated JavaScript or app code to add ARIA
+attributes. Authored `aria_live`/`live` metadata still takes precedence.
+
 Div-backed widgets still expose conservative native ARIA roles when the widget
 semantics are clear: `TitleBar` uses `banner`, `Toolbar` uses `toolbar`,
 `SegmentedControl` uses `group`, `TabBar` uses `tablist`, `TreeView` uses

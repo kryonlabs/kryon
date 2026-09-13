@@ -86,6 +86,11 @@ try {
     path: "Page/article/upload",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Toast", { text: "Saved" }, null, {
+    nodeName: "status",
+    path: "Page/article/status",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "Input", {
     min: -5,
     max: 5,
@@ -359,6 +364,9 @@ try {
   assert(mountedA11y.nodes.some((node) => node.path === "Page/article/upload" &&
     node.role === "progressbar" && node.valueNow === "64"),
     "mounted accessibility range node missing");
+  assert(mountedA11y.nodes.some((node) => node.path === "Page/article/status" &&
+    node.role === "status"),
+    "mounted accessibility status node missing");
   const amount = kryon.findWebElement(target, "amount");
   const amountLabel = kryon.findWebElement(target, "amountLabel");
   assert(amount.tagName === "INPUT", "native Input tag missing");
@@ -457,6 +465,7 @@ try {
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");
   const upload = kryon.findWebElement(target, "upload");
+  const status = kryon.findWebElement(target, "status");
   const choice = kryon.findWebElement(target, "choiceBeta");
   const menuItem = kryon.findWebElement(target, "archiveItem");
   const tab = kryon.findWebElement(target, "overviewTab");
@@ -476,6 +485,9 @@ try {
     "progress snapshot max missing");
   assert(kryon.webDOMSnapshot(target, "upload").valueNow === "64",
     "progress snapshot valueNow missing");
+  assert(status.tagName === "OUTPUT", "toast native output not rendered");
+  assert(status.getAttribute("aria-live") === "polite",
+    "toast live region default missing");
   assert(choice.tagName === "OPTION", "selectable native option not rendered");
   assert(choice.value === "b", "selectable option value missing");
   assert(choice.selected === true, "selectable option selected state missing");

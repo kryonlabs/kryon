@@ -1352,6 +1352,12 @@ function widgetAccessibleLabel(item) {
   }
 }
 
+function widgetAriaLive(item) {
+  if (item.name === "Toast")
+    return "polite";
+  return "";
+}
+
 function propPrefixedAttrs(source, prefixes, normalize, valid) {
   const out = {};
   const add = (rawName, value) => {
@@ -1660,7 +1666,8 @@ function webNodeFromWidget(item, index) {
     ariaColCount: metaStringOrProp(meta, "ariaColCount", args,
       ["aria_colcount", "aria_col_count", "dom_aria_colcount", "html_aria_colcount"]),
     ariaLive: metaStringOrProp(meta, "ariaLive", args,
-      ["aria_live", "live", "dom_aria_live", "html_aria_live"]),
+      ["aria_live", "live", "dom_aria_live", "html_aria_live"]) ||
+      widgetAriaLive(item),
     ariaAttrs: propAriaAttrs(meta, args),
     onClick: metaStringOrProp(meta, "onClick", args, ["on_click", "onClick", "click"]),
     onDoubleClick: metaStringOrProp(meta, "onDoubleClick", args,
