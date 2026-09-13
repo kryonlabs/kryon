@@ -1999,6 +1999,9 @@ const webKssLengthProperties = new Set([
   "vertical-align", "perspective",
   "outline-width", "outline-offset", "tab-size",
   "column-count", "column-width", "border-spacing",
+  "contain-intrinsic-size", "contain-intrinsic-width",
+  "contain-intrinsic-height", "contain-intrinsic-inline-size",
+  "contain-intrinsic-block-size", "overflow-clip-margin",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
   "scroll-margin-bottom", "scroll-margin-left",
   "scroll-margin-inline", "scroll-margin-block",
@@ -2068,7 +2071,10 @@ const webKssLiteralProperties = new Set([
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
   "outline", "outline-style", "box-shadow", "color-scheme",
-  "contain", "container-type", "container-name", "will-change",
+  "contain", "content-visibility", "contain-intrinsic-size",
+  "contain-intrinsic-width", "contain-intrinsic-height",
+  "contain-intrinsic-inline-size", "contain-intrinsic-block-size",
+  "container-type", "container-name", "will-change",
   "isolation", "mix-blend-mode", "columns", "column-rule",
   "break-before", "break-after", "break-inside", "float", "clear",
   "order"
@@ -2831,6 +2837,7 @@ const webCSSPropertyNames = new Map([
   ["scrollbar-color", "scrollbar-color"],
   ["scrollbar-width", "scrollbar-width"],
   ["scrollbar-gutter", "scrollbar-gutter"],
+  ["overflow-clip-margin", "overflow-clip-margin"],
   ["scroll-margin", "scroll-margin"],
   ["scroll-margin-top", "scroll-margin-top"],
   ["scroll-margin-right", "scroll-margin-right"],
@@ -2942,6 +2949,12 @@ const webCSSPropertyNames = new Map([
   ["box-shadow", "box-shadow"],
   ["color-scheme", "color-scheme"],
   ["contain", "contain"],
+  ["content-visibility", "content-visibility"],
+  ["contain-intrinsic-size", "contain-intrinsic-size"],
+  ["contain-intrinsic-width", "contain-intrinsic-width"],
+  ["contain-intrinsic-height", "contain-intrinsic-height"],
+  ["contain-intrinsic-inline-size", "contain-intrinsic-inline-size"],
+  ["contain-intrinsic-block-size", "contain-intrinsic-block-size"],
   ["container-type", "container-type"],
   ["container-name", "container-name"],
   ["will-change", "will-change"],
@@ -3908,6 +3921,7 @@ function applyResolvedWebStyle(el, style) {
   set("scrollbarColor", style["scrollbar-color"]);
   set("scrollbarWidth", style["scrollbar-width"]);
   set("scrollbarGutter", style["scrollbar-gutter"]);
+  set("overflowClipMargin", style["overflow-clip-margin"]);
   set("scrollMargin", style["scroll-margin"]);
   set("scrollMarginTop", style["scroll-margin-top"]);
   set("scrollMarginRight", style["scroll-margin-right"]);
@@ -4020,6 +4034,12 @@ function applyResolvedWebStyle(el, style) {
   set("boxShadow", style["box-shadow"]);
   set("colorScheme", style["color-scheme"]);
   set("contain", style.contain);
+  set("contentVisibility", style["content-visibility"]);
+  set("containIntrinsicSize", style["contain-intrinsic-size"]);
+  set("containIntrinsicWidth", style["contain-intrinsic-width"]);
+  set("containIntrinsicHeight", style["contain-intrinsic-height"]);
+  set("containIntrinsicInlineSize", style["contain-intrinsic-inline-size"]);
+  set("containIntrinsicBlockSize", style["contain-intrinsic-block-size"]);
   set("containerType", style["container-type"]);
   set("containerName", style["container-name"]);
   set("willChange", style["will-change"]);

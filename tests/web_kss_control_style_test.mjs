@@ -51,6 +51,11 @@ const sheet = runtime.parseWebStyleSheet(`
     perspective: 800;
     perspective-origin: 50% 50%;
     backface-visibility: hidden;
+    content-visibility: auto;
+    contain-intrinsic-size: 320;
+    contain-intrinsic-inline-size: 320;
+    contain-intrinsic-block-size: 180;
+    overflow-clip-margin: 12;
     accent-color: accent;
     caret-color: caret;
     appearance: none;
@@ -99,6 +104,11 @@ assert.match(css, /scale: 1.2;/);
 assert.match(css, /perspective: 800px;/);
 assert.match(css, /perspective-origin: 50% 50%;/);
 assert.match(css, /backface-visibility: hidden;/);
+assert.match(css, /content-visibility: auto;/);
+assert.match(css, /contain-intrinsic-size: 320px;/);
+assert.match(css, /contain-intrinsic-inline-size: 320px;/);
+assert.match(css, /contain-intrinsic-block-size: 180px;/);
+assert.match(css, /overflow-clip-margin: 12px;/);
 assert.match(css, /accent-color: #3366ff;/);
 assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
@@ -150,6 +160,11 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   perspective: 800,
   "perspective-origin": "50% 50%",
   "backface-visibility": "hidden",
+  "content-visibility": "auto",
+  "contain-intrinsic-size": 320,
+  "contain-intrinsic-inline-size": 320,
+  "contain-intrinsic-block-size": 180,
+  "overflow-clip-margin": 12,
   "accent-color": "#3366ff",
   "caret-color": "#ff6633",
   appearance: "none",
@@ -314,6 +329,11 @@ assert.equal(field.style.scale, "1.2");
 assert.equal(field.style.perspective, "800px");
 assert.equal(field.style.perspectiveOrigin, "50% 50%");
 assert.equal(field.style.backfaceVisibility, "hidden");
+assert.equal(field.style.contentVisibility, "auto");
+assert.equal(field.style.containIntrinsicSize, "320px");
+assert.equal(field.style.containIntrinsicInlineSize, "320px");
+assert.equal(field.style.containIntrinsicBlockSize, "180px");
+assert.equal(field.style.overflowClipMargin, "12px");
 assert.equal(field.style.accentColor, "#3366ff");
 assert.equal(field.style.caretColor, "#ff6633");
 assert.equal(field.style.appearance, "none");

@@ -457,7 +457,8 @@ display/layout keywords, box sizing, scroll behavior/snap/margins/padding,
 overscroll including logical inline/block controls, touch-action controls,
 list-style and table layout controls, flex flow/grow/shrink/basis/order,
 grid tracks/areas/auto tracks/auto-flow/line placement,
-row/column gaps, placement/content/self alignment, transforms, containment/container
+row/column gaps, placement/content/self alignment, transforms, containment,
+content visibility, intrinsic containment sizing, container
 queries, will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
 animations, clip/mask paint controls, writing direction/mode, hyphenation,

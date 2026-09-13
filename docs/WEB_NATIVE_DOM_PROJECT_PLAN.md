@@ -139,6 +139,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web transform styling supports native transform longhands and 3D
   transform fields such as translate, rotate, scale, transform-box,
   transform-style, perspective, perspective-origin, and backface visibility.
+- KSS web containment styling supports native containment, content visibility,
+  intrinsic containment sizing, and container query naming/type properties.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
