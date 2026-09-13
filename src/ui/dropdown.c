@@ -253,9 +253,15 @@ dropdown_menu_bounds(const DropdownState *state)
     Rectangle view = {0, state->clip_top, ui_view_width, bottom - state->clip_top};
     Style panel_style = dropdown_style(1, 0, ButtonStateNormal,
                                        state->class_name);
+    StyleStates panel_states =
+        ui_pack_style_states((ControlStyle){.normal = panel_style});
+    StyleFrame panel_frame = {
+        .value = panel_states.normal,
+        .fill = ui_style_fill(panel_style)
+    };
     return PopupBounds((Rectangle){state->x, state->y, state->w, state->h},
         view, state->option_count, (float)Scale(1000) / 1000.0f,
-        ui_pack_style_states((ControlStyle){.normal = panel_style}).normal);
+        panel_frame);
 }
 
 int
