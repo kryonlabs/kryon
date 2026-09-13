@@ -687,6 +687,7 @@ declare global {
     kryIdentity?(query: string): WebNodeIdentity | null;
     krySnapshot?(query: string): WebDOMSnapshot | null;
     krySnapshots?(selector?: string): WebDOMSnapshot[];
+    kryAccessibilitySnapshot?(selector?: string): WebAccessibilitySnapshot;
     kryStyleFacts?(query: string): WebNodeStyleFacts | null;
     kryStyleTrace?(query: string): WebStyleTrace | null;
     kryRelations?(query: string): WebDOMRelations | null;
@@ -1055,6 +1056,7 @@ export function webDOMSync(target: Element | string | null): WebDOMObject[];
 export function webDOMSync(target: Element | string | null, query: string): WebDOMObject | null;
 export function webDOMSnapshot(target: Element | string | null, query: string): WebDOMSnapshot | null;
 export function webDOMSnapshots(target: Element | string | null, selector?: string): WebDOMSnapshot[];
+export function webDOMAccessibilitySnapshot(target: Element | string | null, selector?: string): WebAccessibilitySnapshot;
 export function webDOMSnapshotFromElement(element: Element | null): WebDOMSnapshot | null;
 export function webDOMSnapshotFromEvent(eventOrTarget: Event | EventTarget | null): WebDOMSnapshot | null;
 export function webDOMParent(target: Element | string | null, query: string): WebDOMObject | null;

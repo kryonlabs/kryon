@@ -93,6 +93,9 @@ the browser receives normal elements, attributes, CSS, and events.
   data, with direct mounted `webDOMStyleFacts(...)` and root/element/object
   accessors so devtools can inspect Kry identity and KSS selector facts
   together.
+- Mounted DOM accessibility snapshots project rendered Kry DOM objects into
+  the same serializable accessibility-node packet as pre-mount frame
+  snapshots, including current text/value, role, state, and range facts.
 - Web KSS style traces expose pre-mount `traceWebStyle(...)` and mounted
   `webDOMStyleTrace(...)` data with matched rules, resolved values, and winning
   declarations for inspectors.

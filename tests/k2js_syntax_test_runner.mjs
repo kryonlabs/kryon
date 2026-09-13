@@ -2490,6 +2490,12 @@ function fakeDocument() {
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").valueNow, "4");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").min, "0");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "volume").max, "10");
+    assert.equal(runtime.webDOMAccessibilitySnapshot(nativeTarget).nodes
+      .find((node) => node.path === "Page/volume")?.valueNow, "4");
+    assert.equal(runtime.webDOMAccessibilitySnapshot(nativeTarget, "Button[role=tab]").nodes[0]?.role,
+      "tab");
+    assert.equal(nativeTarget.children[0].kryAccessibilitySnapshot("Selectable").nodes
+      .some((node) => node.role === "option"), true);
     assert.equal(copies.tagName, "INPUT");
     assert.equal(copies.attributes.type, "number");
     assert.equal(choice.tagName, "SELECT");

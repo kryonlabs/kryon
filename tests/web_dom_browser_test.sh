@@ -268,6 +268,12 @@ try {
     "object style trace missing");
   const uploadSnapshot = kryon.webDOMSnapshot(target, "Page/prices/priceCell");
   assert(uploadSnapshot.valueNow === "", "non-range snapshot should not expose valueNow");
+  const mountedA11y = kryon.webDOMAccessibilitySnapshot(target);
+  assert(mountedA11y.nodes.some((node) => node.path === "Page/article/upload" &&
+    node.role === "progressbar" && node.valueNow === "64"),
+    "mounted accessibility range node missing");
+  assert(root.kryAccessibilitySnapshot("Button[role=tab]").nodes[0]?.role === "tab",
+    "root mounted accessibility selector missing");
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
     "root source object map lookup failed");
   assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,

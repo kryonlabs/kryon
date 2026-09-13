@@ -1865,39 +1865,74 @@ export function webAccessibilitySnapshot(source) {
   return {
     title: frame.metadata?.title || "",
     description: frame.metadata?.description || "",
-    nodes: (frame.nodes || []).map((node) => {
-      const range = webNodeValueRange(node);
-      return {
-        path: node.path,
-        sourcePath: node.sourcePath,
-        sourceLine: node.sourceLine,
-        sourceColumn: node.sourceColumn,
-        sourceEndLine: node.sourceEndLine,
-        sourceEndColumn: node.sourceEndColumn,
-        name: node.name,
-        kind: node.kind,
-        tag: node.tag,
-        id: node.domId,
-        classes: [...node.classes],
-        role: node.role || implicitRole(node),
-        label: node.ariaLabel || node.text || node.name,
-        description: node.ariaDescription,
-        text: node.text,
-        value: node.tag === "progress" ? node.domValue
-          : node.tag === "input" || node.tag === "textarea" ? node.value : "",
-        min: range.min,
-        max: range.max,
-        valueNow: range.valueNow,
-        href: node.href,
-        inputType: node.inputType,
-        level: node.level || 0,
-        rowIndex: node.ariaRowIndex,
-        colIndex: node.ariaColIndex,
-        rowCount: node.ariaRowCount,
-        colCount: node.ariaColCount,
-        state: { ...node.state }
-      };
-    })
+    nodes: (frame.nodes || []).map(webAccessibilityNodeFromNode)
+  };
+}
+
+function webAccessibilityNodeFromNode(node) {
+  const range = webNodeValueRange(node);
+  return {
+    path: node.path,
+    sourcePath: node.sourcePath,
+    sourceLine: node.sourceLine,
+    sourceColumn: node.sourceColumn,
+    sourceEndLine: node.sourceEndLine,
+    sourceEndColumn: node.sourceEndColumn,
+    name: node.name,
+    kind: node.kind,
+    tag: node.tag,
+    id: node.domId,
+    classes: [...node.classes],
+    role: node.role || implicitRole(node),
+    label: node.ariaLabel || node.text || node.name,
+    description: node.ariaDescription,
+    text: node.text,
+    value: node.tag === "progress" ? node.domValue
+      : node.tag === "input" || node.tag === "textarea" ? node.value : "",
+    min: range.min,
+    max: range.max,
+    valueNow: range.valueNow,
+    href: node.href,
+    inputType: node.inputType,
+    level: node.level || 0,
+    rowIndex: node.ariaRowIndex,
+    colIndex: node.ariaColIndex,
+    rowCount: node.ariaRowCount,
+    colCount: node.ariaColCount,
+    state: { ...node.state }
+  };
+}
+
+function webAccessibilityNodeFromDOMSnapshot(snapshot) {
+  const facts = snapshot?.styleFacts || {};
+  return {
+    path: snapshot?.path || "",
+    sourcePath: snapshot?.sourcePath || "",
+    sourceLine: snapshot?.sourceLine || 0,
+    sourceColumn: snapshot?.sourceColumn || 0,
+    sourceEndLine: snapshot?.sourceEndLine || 0,
+    sourceEndColumn: snapshot?.sourceEndColumn || 0,
+    name: snapshot?.name || "",
+    kind: snapshot?.kind || "",
+    tag: snapshot?.tag || "",
+    id: snapshot?.id || "",
+    classes: [...(snapshot?.classes || [])],
+    role: snapshot?.role || "",
+    label: facts.ariaLabel || snapshot?.text || snapshot?.name || "",
+    description: facts.ariaDescription || "",
+    text: snapshot?.text || "",
+    value: snapshot?.value ?? "",
+    min: snapshot?.min || "",
+    max: snapshot?.max || "",
+    valueNow: snapshot?.valueNow || "",
+    href: facts.href || "",
+    inputType: facts.inputType || "",
+    level: Number(facts.ariaLevel || 0) || 0,
+    rowIndex: facts.ariaRowIndex || "",
+    colIndex: facts.ariaColIndex || "",
+    rowCount: facts.ariaRowCount || "",
+    colCount: facts.ariaColCount || "",
+    state: { ...(snapshot?.state || {}) }
   };
 }
 
@@ -6606,6 +6641,13 @@ function bindWebRootProperties(root) {
         return webDOMSnapshots(this, selector);
       }
     },
+    kryAccessibilitySnapshot: {
+      configurable: true,
+      enumerable: false,
+      value(selector = "") {
+        return webDOMAccessibilitySnapshot(this, selector);
+      }
+    },
     kryStyleFacts: {
       configurable: true,
       enumerable: false,
@@ -8192,6 +8234,16 @@ export function webDOMSnapshots(target, selector = "") {
   const text = String(selector || "").trim();
   const objects = text ? webDOMQueryAll(target, text) : webDOMObjects(target);
   return objects.map((object) => webDOMObjectSnapshot(target, object)).filter(Boolean);
+}
+
+export function webDOMAccessibilitySnapshot(target, selector = "") {
+  const root = mountedRoot(target);
+  const frame = root?.__kryFrame || null;
+  return {
+    title: frame?.metadata?.title || "",
+    description: frame?.metadata?.description || "",
+    nodes: webDOMSnapshots(root || target, selector).map(webAccessibilityNodeFromDOMSnapshot)
+  };
 }
 
 export function webDOMSnapshotFromElement(element) {

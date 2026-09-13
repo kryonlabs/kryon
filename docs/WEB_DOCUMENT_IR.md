@@ -650,6 +650,10 @@ plain, serializable views of mounted Kry DOM objects: the complete
 relation refs, event refs, attributes, dataset, style, text/value, state,
 value range facts for slider/spinbox/progress nodes, geometry, and scroll
 without live DOM references.
+`webDOMAccessibilitySnapshot(target, selector?)` and
+`root.kryAccessibilitySnapshot(selector?)` project mounted DOM objects into the
+same serializable accessibility-node shape as `webAccessibilitySnapshot(...)`,
+including current DOM text/value, role, state, and range facts.
 `webNodeEventRefs(node)` and `webDOMEventRefs(target, query)` return the same
 event-ref packet directly for unmounted Web Document nodes or mounted DOM
 objects. Mounted roots expose `kryEventRefs(query)`, mounted elements expose
