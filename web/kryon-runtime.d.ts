@@ -633,6 +633,8 @@ declare global {
     kryClosest?(selector: string): WebDOMObject | null;
     kryElement?(query: string): Element | null;
     kryObject?(query: string): WebDOMObject | null;
+    kryIdentity?(query: string): WebNodeIdentity | null;
+    krySnapshot?(query: string): WebDOMSnapshot | null;
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
     kryEventRefs?(query: string): WebNodeEventRefs | null;
     kryQuery?(selector: string): WebDOMObject | null;

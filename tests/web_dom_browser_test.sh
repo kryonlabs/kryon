@@ -181,6 +181,9 @@ try {
   assert(article.style.overflowClipMargin === "12px", "KSS overflow clip margin not applied");
   assert(kryon.webDOMObject(target, "article-ref").element === article, "DOM object lookup failed");
   const root = kryon.webDOMRoot(target);
+  assert(root.kryIdentity("article-ref").domId === "article-id", "root identity lookup failed");
+  assert(root.krySnapshot("article-ref").identity.ref === "article-ref",
+    "root snapshot lookup failed");
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
     "root source object map lookup failed");
   assert(root.kryObjectMap.get("browser.kry:3:5")?.element === article,

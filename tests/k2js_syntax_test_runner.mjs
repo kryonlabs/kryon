@@ -3033,6 +3033,8 @@ function fakeDocument() {
     assert.equal(runtime.webDOMObject(target, "Scene/root/tap").element, firstButton);
     assert.equal(runtime.webDOMObject(target, "tap-button").node.path, "Scene/root/tap");
     assert.equal(runtime.webDOMIdentity(target, "primary-action").domId, "tap-button");
+    assert.equal(root.kryIdentity("primary-action").domId, "tap-button");
+    assert.equal(root.krySnapshot("primary-action").identity.ref, "primary-action");
     assert.deepEqual(runtime.webDOMIdentity(target, "tap-button").aliases.slice(0, 4), [
       "primary-action",
       "Scene/root/tap",

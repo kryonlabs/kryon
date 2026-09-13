@@ -6336,6 +6336,20 @@ function bindWebRootProperties(root) {
         return webDOMObject(this, query);
       }
     },
+    kryIdentity: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMIdentity(this, query);
+      }
+    },
+    krySnapshot: {
+      configurable: true,
+      enumerable: false,
+      value(query) {
+        return webDOMSnapshot(this, query);
+      }
+    },
     kryRelationRefs: {
       configurable: true,
       enumerable: false,
