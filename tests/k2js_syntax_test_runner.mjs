@@ -14,7 +14,7 @@ for (const name of [
   "Data", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
-  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "List",
+  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
@@ -2936,6 +2936,8 @@ function fakeDocument() {
       { nodeName: "actionCard", path: "Page/actionCard" });
     runtime.widget(nativeRt, "Fieldset", { title: "Preferences" }, null,
       { nodeName: "fieldset", path: "Page/fieldset" });
+    runtime.widget(nativeRt, "Legend", { text: "Preferences" }, null,
+      { nodeName: "fieldsetLegend", path: "Page/fieldset/legend", parentPath: "Page/fieldset" });
     runtime.widget(nativeRt, "Checkbox", { checked: true, label: "Agree" }, null,
       { nodeName: "fieldsetAgree", path: "Page/fieldset/agree", parentPath: "Page/fieldset" });
     runtime.widget(nativeRt, "Fieldset", { title: "Locked", disabled: true }, null,
@@ -3063,6 +3065,8 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/actionCard").clickable, true);
     assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(nativeRt, "Page/actionCard")).clickable, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").tag, "fieldset");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Legend").tag, "legend");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Legend").text, "Preferences");
     assert.equal(runtime.webNodeQuery(nativeRt, "Fieldset").ariaLabel, "Preferences");
     assert.equal(runtime.webNodeQuery(nativeRt, "fieldsetAgree").ariaLabel, "Agree");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/volume").ariaLabel, "Volume");
@@ -3072,6 +3076,10 @@ function fakeDocument() {
       "Page/fieldset");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Fieldset").groupMembers,
       ["Page/fieldset/agree"]);
+    assert.equal(runtime.webNodeRelations(nativeRt, "fieldsetLegend").legendOwner.path,
+      "Page/fieldset");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Fieldset").legendItems,
+      ["Page/fieldset/legend"]);
     assert.equal(runtime.webNodeRelations(nativeRt, "lockedField").disabledOwner.path,
       "Page/locked");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "lockedFieldset").disabledMembers,
@@ -3589,12 +3597,17 @@ function fakeDocument() {
     assert.equal(fieldset.attributes["aria-label"], undefined);
     assert.equal(fieldset.children[0].tagName, "LEGEND");
     assert.equal(fieldset.children[0].textContent, "Preferences");
+    assert.equal(runtime.findWebElement(nativeTarget, "fieldsetLegend").tagName, "LEGEND");
     assert.equal(fieldsetAgree.tagName, "INPUT");
     assert.equal(fieldsetAgree.attributes["aria-label"], "Agree");
     assert.equal(runtime.webDOMRelations(nativeTarget, "fieldsetAgree").groupOwner.ref,
       "Page/fieldset");
     assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.groupMembers,
       ["Page/fieldset/agree"]);
+    assert.equal(runtime.webDOMRelations(nativeTarget, "fieldsetLegend").legendOwner.ref,
+      "Page/fieldset");
+    assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.legendItems,
+      ["Page/fieldset/legend"]);
     assert.equal(lockedFieldset.tagName, "FIELDSET");
     assert.equal(lockedFieldset.attributes.disabled, "");
     assert.equal(lockedFieldset.children[0].tagName, "LEGEND");

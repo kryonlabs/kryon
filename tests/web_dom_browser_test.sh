@@ -45,6 +45,11 @@ NativeBlocks :: () #ui {
             Text((TextProps){.text="Chart"})
         }
     }
+    Fieldset profile: {
+        Legend heading: {
+            Text((TextProps){.text="Profile"})
+        }
+    }
     Video hero: {
         Source webm: {
             src = "intro.webm"
@@ -824,6 +829,7 @@ try {
     kryon.renderWebDocument(compiledRt, compiledTarget);
     const compiledStory = kryon.findWebElement(compiledTarget, "NativeBlocks/story");
     const compiledCaption = kryon.findWebElement(compiledTarget, "NativeBlocks/chart/caption");
+    const compiledLegend = kryon.findWebElement(compiledTarget, "NativeBlocks/profile/heading");
     const compiledSource = kryon.findWebElement(compiledTarget, "NativeBlocks/hero/webm");
     const compiledTrack = kryon.findWebElement(compiledTarget, "NativeBlocks/hero/captions");
     const compiledEmbed = kryon.findWebElement(compiledTarget, "NativeBlocks/chartEmbed");
@@ -849,6 +855,11 @@ try {
       "NativeBlocks/chart", "compiled Figure :has query failed");
     assert(compiledCaption?.tagName === "FIGCAPTION",
       "compiled Figcaption native tag missing");
+    assert(compiledLegend?.tagName === "LEGEND",
+      "compiled Legend native tag missing");
+    assert(kryon.webDOMRelations(compiledTarget, "NativeBlocks/profile/heading")
+      .legendOwner.ref === "NativeBlocks/profile",
+      "compiled legend relation missing");
     assert(compiledSource?.tagName === "SOURCE",
       "compiled Source native tag missing");
     assert(compiledSource.getAttribute("type") === "video/webm",

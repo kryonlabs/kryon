@@ -548,6 +548,8 @@ export interface WebDOMRelations {
   captionItems: WebDOMObject[];
   summaryOwner: WebDOMObject | null;
   summaryItems: WebDOMObject[];
+  legendOwner: WebDOMObject | null;
+  legendItems: WebDOMObject[];
   selectedCollectionOwner: WebDOMObject | null;
   selectedCollectionItems: WebDOMObject[];
   activeCollectionOwner: WebDOMObject | null;
@@ -595,6 +597,8 @@ export interface WebNodeRelations {
   captionItems: WebDocumentNode[];
   summaryOwner: WebDocumentNode | null;
   summaryItems: WebDocumentNode[];
+  legendOwner: WebDocumentNode | null;
+  legendItems: WebDocumentNode[];
   selectedCollectionOwner: WebDocumentNode | null;
   selectedCollectionItems: WebDocumentNode[];
   activeCollectionOwner: WebDocumentNode | null;
@@ -642,6 +646,8 @@ export interface WebDOMRelationRefs {
   captionItems: string[];
   summaryOwner: string;
   summaryItems: string[];
+  legendOwner: string;
+  legendItems: string[];
   selectedCollectionOwner: string;
   selectedCollectionItems: string[];
   activeCollectionOwner: string;
@@ -1457,6 +1463,7 @@ export function Italic(...args: unknown[]): unknown;
 export function Kbd(...args: unknown[]): unknown;
 export function Keyboard(...args: unknown[]): unknown;
 export function Label(...args: unknown[]): unknown;
+export function Legend(...args: unknown[]): unknown;
 export function SegmentedControl(...args: unknown[]): unknown;
 export function Icon(...args: unknown[]): unknown;
 export function Fieldset(...args: unknown[]): unknown;

@@ -679,6 +679,11 @@ NativeAliasBlocks :: () #ui {
             Text((TextProps){.text="Chart"})
         }
     }
+    Fieldset profile: {
+        Legend heading: {
+            Text((TextProps){.text="Profile"})
+        }
+    }
     Video hero: {
         Source webm: {
             src = "intro.webm"
@@ -721,6 +726,7 @@ grep -q '"path": "NativeAliasBlocks/story"' "$native_alias_blocks_out"
 grep -q '"class": "feature"' "$native_alias_blocks_out"
 grep -q '"nodeName": "chart"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/chart/caption"' "$native_alias_blocks_out"
+grep -q '"path": "NativeAliasBlocks/profile/heading"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/hero/webm"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/hero/captions"' "$native_alias_blocks_out"
 grep -q '"path": "NativeAliasBlocks/chartEmbed"' "$native_alias_blocks_out"
@@ -763,6 +769,11 @@ assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/chart/caption").cap
   "NativeAliasBlocks/chart");
 assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/grid/caption").captionOwner.path,
   "NativeAliasBlocks/grid");
+assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/profile/heading").tag, "legend");
+assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/profile/heading").legendOwner.path,
+  "NativeAliasBlocks/profile");
+assert.deepEqual(runtime.webNodeRelationRefs(rt, "NativeAliasBlocks/profile").legendItems,
+  ["NativeAliasBlocks/profile/heading"]);
 assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/webm").tag, "source");
 assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/hero/webm").extraAttrs.src,
   "intro.webm");
@@ -1356,6 +1367,7 @@ DirectRuntimeNodes :: () #ui {
     Italic()
     Kbd()
     Keyboard()
+    Legend()
     Label()
     List()
     ListItem()
@@ -1402,7 +1414,7 @@ DirectRuntimeNodes :: () #ui {
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/direct_runtime_nodes.kry"
 direct_runtime_out="$work/out/src/direct_runtime_nodes.js"
-for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbr Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Col ColGroup Data Del Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label List ListItem Main Mark Meter Nav Navigation OrderedList Option Output Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video; do
+for widget in AppBackground Background Text Paragraph Box Line Bevel Icon Image Button Card Selectable Bullet Separator Link TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading ParagraphText Column Row Stack Flow Grid Scroll Modal TitleBar TabBar NavigationBar Toolbar Toast Fieldset PanedView Collapsible ListBox TreeView TableView ColorPicker CanvasGrid Abbr Abbreviation Address Article Aside Audio BlockQuote Bold Cite Code CodeBlock Col ColGroup Data Del Deleted DescriptionDetails DescriptionList DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label Legend List ListItem Main Mark Meter Nav Navigation OrderedList Option Output Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video; do
     grep -Eq "\"path\": \"DirectRuntimeNodes/${widget}@[0-9]+(-[0-9]+)?\"" "$direct_runtime_out"
 done
 awk '/kryon\.widget\(\$rt,/ && $0 !~ /"path": "DirectRuntimeNodes\// { missing=1 } END { exit missing }' "$direct_runtime_out"

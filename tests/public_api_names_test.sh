@@ -273,7 +273,7 @@ web_native_only = {
     'Data', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'IFrame', 'Iframe',
-    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'List',
+    'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
     'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
     'Option', 'Output', 'Pre', 'Quote', 'Samp', 'Sample', 'Select',
     'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',

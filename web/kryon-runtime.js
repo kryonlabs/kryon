@@ -7377,7 +7377,7 @@ function webNodeIsSelectedCollectionMember(node) {
 
 function webDOMGroupOwner(target, node) {
   const root = mountedRoot(target);
-  if (!root || !node)
+  if (!root || !node || String(node.tag || "").toLowerCase() === "legend")
     return null;
   let parentPath = node.parentPath || "";
   while (parentPath && parentPath !== node.path) {
@@ -7416,8 +7416,14 @@ function webDOMDisabledOwner(target, node) {
     const parent = root.__kryNodes?.get(parentPath) || null;
     if (!parent)
       break;
-    if (webNodeIsDisabledScope(parent))
+    if (webNodeIsDisabledScope(parent)) {
+      if (String(parent.tag || "").toLowerCase() === "fieldset" &&
+          webNodeCanOwnLegend(parent, node)) {
+        parentPath = parent.parentPath || "";
+        continue;
+      }
       return webDOMObjectForNode(root, parent);
+    }
     parentPath = parent.parentPath || "";
   }
   return null;
@@ -9829,7 +9835,7 @@ function webNodeScopedHeaderList(rt, node, scope) {
 }
 
 function webNodeGroupOwner(rt, node) {
-  if (!rt || !node)
+  if (!rt || !node || String(node.tag || "").toLowerCase() === "legend")
     return null;
   let parent = webNodeParent(rt, node.path);
   while (parent) {
@@ -9857,8 +9863,14 @@ function webNodeDisabledOwner(rt, node) {
     return null;
   let parent = webNodeParent(rt, node.path);
   while (parent) {
-    if (webNodeIsDisabledScope(parent))
+    if (webNodeIsDisabledScope(parent)) {
+      if (String(parent.tag || "").toLowerCase() === "fieldset" &&
+          webNodeCanOwnLegend(parent, node)) {
+        parent = webNodeParent(rt, parent.path);
+        continue;
+      }
       return parent;
+    }
     parent = webNodeParent(rt, parent.path);
   }
   return null;

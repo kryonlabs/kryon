@@ -337,6 +337,7 @@ The initial tag mapping is intentionally conservative:
 | `TitleBar` | `header` |
 | `Disabled` | `fieldset` |
 | `Fieldset` | `fieldset` |
+| `Legend` | `legend` |
 | `Collapsible` | `details` |
 | `Modal` | `dialog` |
 | `Popup` | `div`, or `dialog` when `PopupModal` is set; `PopupTooltip` and `PopupContext` expose `tooltip` and `menu` roles |
@@ -698,6 +699,7 @@ collections,
 active collection owner/item links for composite widgets with an active
 descendant,
 native details summary owner/item links for disclosure summary nodes,
+native fieldset legend owner/item links for authored legend nodes,
 structural `previousSibling`/`nextSibling` links for adjacent Kry DOM objects,
 reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
 `errorFor`, `flowFrom`, `activeDescendantOf`, and `popoverInvokers` links for

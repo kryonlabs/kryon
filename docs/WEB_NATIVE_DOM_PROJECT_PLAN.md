@@ -129,6 +129,8 @@ the browser receives normal elements, attributes, CSS, and events.
   tag override is present, so label ownership uses browser-native markup.
 - `Fieldset` titles render as native `<legend>` children while preserving Kry
   label facts for queries, snapshots, KSS, and accessibility inspection.
+- Authored `Legend` nodes render as native `<legend>` DOM objects and expose
+  `legendOwner`/`legendItems` relationship facts for fieldset tooling.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata or direct `scope` args and surface row/column header roles in
   accessibility facts.
@@ -154,6 +156,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Semantic summary relationship facts expose `summaryOwner` and `summaryItems`
   for native details/summary disclosure nodes in pre-mount and mounted DOM
   snapshots.
+- Semantic legend relationship facts expose `legendOwner` and `legendItems`
+  for authored native fieldset legends in pre-mount and mounted DOM snapshots.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, pre-mount and mounted DOM
   snapshots, and accessibility snapshots.
