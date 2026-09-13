@@ -245,6 +245,8 @@ the browser receives normal elements, attributes, CSS, and events.
   column-rule shorthand and color/style/width longhands, and break controls.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
+- KSS web list styling supports native list-style, counters, quotes, and
+  marker positioning fields for document-style content.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
   states such as `:hover:pressed`, and `:normal` export against native
   `data-kry-state` annotations, plus real browser pseudo/attribute selectors

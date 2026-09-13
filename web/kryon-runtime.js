@@ -2205,7 +2205,9 @@ const webKssLiteralProperties = new Set([
   "border-image-width", "border-image-outset", "border-image-repeat",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
-  "list-style-position", "list-style-image",
+  "list-style-position", "list-style-image", "counter-reset",
+  "counter-increment", "counter-set", "quotes", "marker-side",
+  "marker-start", "marker-end",
   "border-collapse", "table-layout", "caption-side", "empty-cells",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "overscroll-behavior-inline",
@@ -3056,6 +3058,13 @@ const webCSSPropertyNames = new Map([
   ["list-style-type", "list-style-type"],
   ["list-style-position", "list-style-position"],
   ["list-style-image", "list-style-image"],
+  ["counter-reset", "counter-reset"],
+  ["counter-increment", "counter-increment"],
+  ["counter-set", "counter-set"],
+  ["quotes", "quotes"],
+  ["marker-side", "marker-side"],
+  ["marker-start", "marker-start"],
+  ["marker-end", "marker-end"],
   ["border-collapse", "border-collapse"],
   ["border-spacing", "border-spacing"],
   ["table-layout", "table-layout"],
@@ -4500,6 +4509,13 @@ function applyResolvedWebStyle(el, style) {
   set("listStyleType", style["list-style-type"]);
   set("listStylePosition", style["list-style-position"]);
   set("listStyleImage", style["list-style-image"]);
+  set("counterReset", style["counter-reset"]);
+  set("counterIncrement", style["counter-increment"]);
+  set("counterSet", style["counter-set"]);
+  set("quotes", style.quotes);
+  set("markerSide", style["marker-side"]);
+  set("markerStart", style["marker-start"]);
+  set("markerEnd", style["marker-end"]);
   set("borderCollapse", style["border-collapse"]);
   set("borderSpacing", style["border-spacing"]);
   set("tableLayout", style["table-layout"]);
