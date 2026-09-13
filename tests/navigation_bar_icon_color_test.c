@@ -1,5 +1,6 @@
 #include "kryon.h"
 #include "runtime/navigation_bar.h"
+#include "../src/ui/ui_internal.h"
 
 #include <stdio.h>
 #include <stdlib.h>

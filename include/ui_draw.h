@@ -16,10 +16,4 @@ typedef struct {
     int align;
 } ParagraphSpec;
 
-int GetFontSize(void);
-int GetSmallFontSize(void);
-int GetTitleFontSize(const char *title, int max_width);
-int FitFontSize(const char *text, int max_width,
-                int preferred_size, int min_size);
-
 #endif

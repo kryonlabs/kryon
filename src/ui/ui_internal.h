@@ -38,6 +38,11 @@ extern unsigned long g_ui_frame_serial;
 extern float g_theme_content_alpha;
 void DrawIcon(IconType type, Rectangle bounds, Color tint);
 void DrawProfileImageIcon(IconType type, Rectangle bounds, int dark_mode);
+int GetFontSize(void);
+int GetSmallFontSize(void);
+int GetTitleFontSize(const char *title, int max_width);
+int FitFontSize(const char *text, int max_width,
+                int preferred_size, int min_size);
 int UIContentDisabled(void);
 int ui_current_input_clip(Rectangle *bounds);
 extern int g_ui_slider_active_id;
