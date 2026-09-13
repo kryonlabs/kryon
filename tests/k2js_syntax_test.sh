@@ -566,6 +566,44 @@ grep -q '"sourceColumn": 9' "$multiline_out"
 grep -q '"sourceEndLine": 8' "$multiline_out"
 grep -q '"sourceEndColumn": 10' "$multiline_out"
 
+cat > "$work/src/multiline_expression_widget_metadata.kry" <<'EOF'
+#import "kryon.h"
+MultilineExpression :: () #ui {
+    first := Button(
+        (ButtonProps){
+            .label = "Declared"
+        }
+    )
+    first = Toggle(
+        (ToggleProps){
+            .label = "Assigned"
+        }
+    )
+    return Card(
+        (CardProps){
+            .bounds = {0, 0, 10, 10}
+        }
+    )
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/multiline_expression_widget_metadata.kry"
+multiline_expr_out="$work/out/src/multiline_expression_widget_metadata.js"
+grep -q '"path": "MultilineExpression/Button@3"' "$multiline_expr_out"
+grep -q '"sourceLine": 3' "$multiline_expr_out"
+grep -q '"sourceColumn": 5' "$multiline_expr_out"
+grep -q '"sourceEndLine": 7' "$multiline_expr_out"
+grep -q '"sourceEndColumn": 6' "$multiline_expr_out"
+grep -q '"path": "MultilineExpression/Toggle@8-2"' "$multiline_expr_out"
+grep -q '"sourceLine": 8' "$multiline_expr_out"
+grep -q '"sourceColumn": 5' "$multiline_expr_out"
+grep -q '"sourceEndLine": 12' "$multiline_expr_out"
+grep -q '"sourceEndColumn": 6' "$multiline_expr_out"
+grep -q '"path": "MultilineExpression/Card@13-3"' "$multiline_expr_out"
+grep -q '"sourceLine": 13' "$multiline_expr_out"
+grep -q '"sourceColumn": 5' "$multiline_expr_out"
+grep -q '"sourceEndLine": 17' "$multiline_expr_out"
+grep -q '"sourceEndColumn": 6' "$multiline_expr_out"
+
 cat > "$work/src/direct_web_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectWebNodes :: () #ui {
