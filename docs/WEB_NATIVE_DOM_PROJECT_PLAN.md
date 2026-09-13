@@ -62,7 +62,7 @@ the browser receives normal elements, attributes, CSS, and events.
   equivalents or accessibility semantics, with coverage for form controls,
   selectors and selectable options, segmented controls, status output,
   progress, separators, tables, title/navigation landmarks, line/separator
-  content, icon/list item content, canvas-backed widgets,
+  content, menu item buttons, icon/list item content, canvas-backed widgets,
   and common overlay roles.
 - Direct `.kry` widget args can override native tag choice with `dom`,
   `dom_tag`, `html_tag`, or `tag`, and can expose stable web refs with

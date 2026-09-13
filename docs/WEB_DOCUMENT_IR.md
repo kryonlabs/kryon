@@ -342,6 +342,7 @@ The initial tag mapping is intentionally conservative:
 | `Paragraph`, `ParagraphText` | `p` |
 | `Link` | `a` |
 | `Button` | `button` |
+| `Button` under `Menu` | `button role=menuitem` |
 | clickable `Card` | `button` |
 | invisible hit-test support | `button` |
 | `TextField` | `input type=text`, or authored `input_type`/`type` |

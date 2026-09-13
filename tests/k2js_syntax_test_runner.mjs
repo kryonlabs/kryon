@@ -2154,6 +2154,12 @@ function fakeDocument() {
         ariaSetSize: 3,
         ariaHasPopup: "menu"
       });
+    runtime.widget(menuRt, "Button", { label: "Two" }, null,
+      {
+        nodeName: "choiceTwo",
+        path: "Page/choices/choiceTwo",
+        parentPath: "Page/choices"
+      });
     runtime.endFrame(menuRt);
     assert.equal(runtime.webNodeQuery(menuRt, "[aria-orientation=vertical]").path,
       "Page/choices");
@@ -2167,6 +2173,10 @@ function fakeDocument() {
       "Page/choices/choiceOne");
     assert.equal(runtime.webNodeQuery(menuRt, "[aria-haspopup=menu]").path,
       "Page/choices/choiceOne");
+    assert.equal(runtime.webNodeQuery(menuRt, "Page/choices/choiceTwo").role,
+      "menuitem");
+    assert.equal(runtime.webNodeStyleFacts(runtime.webNodeQuery(menuRt,
+      "Page/choices/choiceTwo")).role, "menuitem");
     const menuTarget = document.createElement("div");
     runtime.renderWebDocument(menuRt, menuTarget);
     const choices = runtime.findWebElement(menuTarget, "choices");

@@ -4370,6 +4370,8 @@ function normalizeWebDocumentNodes(nodes) {
     if (node?.kind === "Selectable" &&
         (parent?.kind === "Dropdown" || parent?.kind === "ListBox"))
       node.tag = "option";
+    if (!node?.role && parent?.kind === "Menu" && node?.kind === "Button")
+      node.role = "menuitem";
     node.styleFacts = webNodeStyleFacts(node);
   }
 }

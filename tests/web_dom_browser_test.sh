@@ -91,6 +91,16 @@ try {
     path: "Page/article/choices/beta",
     parentPath: "Page/article/choices"
   });
+  kryon.widget(rt, "Menu", {}, null, {
+    nodeName: "contextMenu",
+    path: "Page/article/contextMenu",
+    parentPath: "Page/article"
+  });
+  kryon.widget(rt, "Button", { label: "Archive" }, null, {
+    nodeName: "archiveItem",
+    path: "Page/article/contextMenu/archive",
+    parentPath: "Page/article/contextMenu"
+  });
   kryon.widget(rt, "TableView", {}, null, {
     nodeName: "prices",
     path: "Page/prices"
@@ -279,6 +289,7 @@ try {
   const bullet = kryon.findWebElement(target, "bullet");
   const line = kryon.findWebElement(target, "line");
   const choice = kryon.findWebElement(target, "choiceBeta");
+  const menuItem = kryon.findWebElement(target, "archiveItem");
   assert(icon.tagName === "SPAN", "icon native span not rendered");
   assert(icon.getAttribute("role") === "img", "icon image role missing");
   assert(bullet.tagName === "LI", "bullet native list item not rendered");
@@ -292,6 +303,10 @@ try {
   assert(choice.selected === true, "selectable option selected state missing");
   assert(kryon.webDOMSnapshot(target, "choiceBeta").role === "option",
     "selectable option snapshot role missing");
+  assert(menuItem.tagName === "BUTTON", "menu item button not rendered");
+  assert(menuItem.getAttribute("role") === "menuitem", "menu item role missing");
+  assert(kryon.webDOMSnapshot(target, "archiveItem").role === "menuitem",
+    "menu item snapshot role missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);
