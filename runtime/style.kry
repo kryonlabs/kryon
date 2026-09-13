@@ -68,7 +68,7 @@ ControlStyleNone :: () -> ControlStyle #export {
     blank: Style
     blank.fields = StyleBackground | StyleBorder | StyleFocus |
                    StyleRadius | StyleBorderWidth | StylePaddingX |
-                   StylePaddingY | StyleOpacity | StyleMaterial
+                   StylePaddingY | StyleOpacity
     blank.background = (Color){0, 0, 0, 0}
     blank.border = (Color){0, 0, 0, 0}
     blank.focus = (Color){0, 0, 0, 0}
@@ -77,7 +77,6 @@ ControlStyleNone :: () -> ControlStyle #export {
     blank.padding_x = 0.0
     blank.padding_y = 0.0
     blank.opacity = 1.0
-    blank.material = (MaterialKind)MaterialFlat
 
     style: ControlStyle
     style.normal = blank

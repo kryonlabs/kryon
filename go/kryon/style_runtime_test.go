@@ -60,6 +60,9 @@ func TestButtonWithoutStylePackHasNoVisualDefaults(t *testing.T) {
 			style.Focus != 0 || style.Radius != 0 || style.BorderWidth != 0 {
 			t.Fatalf("unstyled button leaked visual defaults: %+v", style)
 		}
+		if style.Fields&uint32(StyleMaterial) != 0 {
+			t.Fatalf("unstyled button leaked material styling: %+v", style)
+		}
 		if style.Opacity != 1 || style.FontSize == 0 {
 			t.Fatalf("unstyled button lost minimal behavior metrics: %+v", style)
 		}

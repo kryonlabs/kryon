@@ -2471,11 +2471,10 @@ func resolveButtonFrameForKind(theme themePalette, dark bool, active *Theme, pro
 
 func minimalControlStyleData() StyleData {
 	return StyleData{
-		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize | StyleMaterial),
+		Fields:   uint32(StyleOpacity | StyleFontSize | StyleIconSize),
 		Opacity:  1,
 		FontSize: 16,
 		IconSize: 20,
-		Material: int32(MaterialFlat),
 	}
 }
 

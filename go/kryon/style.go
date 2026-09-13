@@ -185,9 +185,7 @@ func Style_ControlStyleNone() ControlStyle {
 	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(value_11), 32, false, 9))
 	var value_13 uint32 = uint32(StyleOpacity)
 	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_13), 32, false, 9))
-	var value_15 uint32 = uint32(StyleMaterial)
-	var value_16 uint32 = uint32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, false, 9))
-	blank.Fields = value_16
+	blank.Fields = value_14
 	var value_17 Color = Color{}
 	var value_18 uint8 = 0
 	value_17.R = value_18
@@ -228,9 +226,6 @@ func Style_ControlStyleNone() ControlStyle {
 	blank.PaddingY = value_35
 	var value_36 float32 = 1.0
 	blank.Opacity = value_36
-	var value_37 int32 = int32(MaterialFlat)
-	var value_38 MaterialKind = MaterialKind(int32(number_runtime_bits(uint64(value_37), uint64(0), 32, true, 0)))
-	blank.Material = value_38
 	var style ControlStyle = ControlStyle{}
 	var value_39 Style = blank
 	style.Normal = value_39
