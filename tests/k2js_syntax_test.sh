@@ -884,6 +884,41 @@ assert.equal(frame.nodes[0].sourceLine, 3);
 assert.equal(frame.nodes[0].sourceEndLine, 7);
 EOF
 
+cat > "$work/src/for_widget_nodes.kry" <<'EOF'
+#import "kryon.h"
+ForWidgetNodes :: () #ui {
+    for int i = 0; Button(
+        (ButtonProps){
+            .label = "Loop"
+        }
+    ); i++ {
+        break
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/for_widget_nodes.kry"
+for_widget_out="$work/out/src/for_widget_nodes.js"
+grep -q 'for (let i = 0; kryon.widget(\$rt, "Button"' "$for_widget_out"
+grep -q '"path": "ForWidgetNodes/Button@3"' "$for_widget_out"
+grep -q '"sourcePath": "src/for_widget_nodes.kry"' "$for_widget_out"
+grep -q '"sourceLine": 3' "$for_widget_out"
+grep -q '"sourceColumn": 5' "$for_widget_out"
+grep -q '"sourceEndLine": 7' "$for_widget_out"
+grep -q '"sourceEndColumn": 13' "$for_widget_out"
+node --input-type=module - "$for_widget_out" "$work/out/kryon-runtime.js" <<'EOF'
+import assert from "node:assert/strict";
+import { pathToFileURL } from "node:url";
+const module = await import(pathToFileURL(process.argv[2]).href);
+const runtime = await import(pathToFileURL(process.argv[3]).href);
+const rt = runtime.createRuntime({});
+module.ForWidgetNodes_ForWidgetNodes(rt, module.createState(), {});
+const frame = runtime.webDocumentFrame(rt);
+assert.equal(frame.nodes.length, 1);
+assert.equal(frame.nodes[0].path, "ForWidgetNodes/Button@3");
+assert.equal(frame.nodes[0].sourceLine, 3);
+assert.equal(frame.nodes[0].sourceEndLine, 7);
+EOF
+
 cat > "$work/src/direct_runtime_nodes.kry" <<'EOF'
 #import "kryon.h"
 DirectRuntimeNodes :: () #ui {

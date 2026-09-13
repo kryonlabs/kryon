@@ -1702,6 +1702,22 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
         } else {
             return;
         }
+    } else if(kind == KIR_STMT_FOR) {
+        char *first;
+        char *second;
+
+        kir_strip_block_brace(expr);
+        if(!starts_word(expr, "for"))
+            return;
+        memmove(expr, expr + 3, strlen(expr + 3) + 1);
+        kir_trim_in_place(expr);
+        first = strchr(expr, ';');
+        second = first != NULL ? strchr(first + 1, ';') : NULL;
+        if(first == NULL || second == NULL)
+            return;
+        *second = '\0';
+        memmove(expr, first + 1, strlen(first + 1) + 1);
+        kir_trim_in_place(expr);
     } else if(kind == KIR_STMT_DECL || kind == KIR_STMT_ASSIGN) {
         eq = strchr(expr, '=');
         if(eq == NULL || eq[1] == '=')
@@ -4219,7 +4235,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     st = KirFunctionAddStmt(fn, kind, t, widget, span);
                     if(kind == KIR_STMT_RETURN || kind == KIR_STMT_DECL ||
                        kind == KIR_STMT_ASSIGN || kind == KIR_STMT_IF ||
-                       kind == KIR_STMT_WHILE)
+                       kind == KIR_STMT_WHILE || kind == KIR_STMT_FOR)
                         ui_stmt_apply_expression_widget_metadata(st, fn,
                             ui_block_count > 0 ? &ui_blocks[ui_block_count - 1] : NULL,
                             &root_anonymous_widget_count,

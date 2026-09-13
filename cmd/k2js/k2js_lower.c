@@ -2505,6 +2505,8 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
             char init_out[K2JS_TEXT_MAX];
             char condition_out[K2JS_TEXT_MAX];
             char step_out[K2JS_TEXT_MAX];
+            char widget[K2JS_NAME_MAX];
+            char widget_args[K2JS_TEXT_MAX];
             char *first;
             char *second;
             const char *body = kir_skip_ws(raw + 3);
@@ -2530,11 +2532,33 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 snprintf(init_out, sizeof(init_out), "let %s", init + 4);
             else
                 tx_expr(m, init, init_out, sizeof(init_out));
-            tx_expr(m, condition, condition_out, sizeof(condition_out));
             tx_expr(m, step, step_out, sizeof(step_out));
             emit_indent(f, indent);
-            fprintf(f, "for (%s; %s; %s) {\n",
-                    init_out, condition_out, step_out);
+            fprintf(f, "for (%s; ", init_out);
+            if(stmt_has_web_metadata(st) &&
+               begin_popup_call_args(condition, widget_args,
+                                     sizeof(widget_args))) {
+                fprintf(f, "kryon.widget($rt, \"Popup\", ");
+                emit_initializer_value(f, m, widget_args);
+                fprintf(f, ", $state, ");
+                emit_web_metadata(f, m, st);
+                fputc(')', f);
+            } else if(stmt_has_web_metadata(st) &&
+                      condition_is_widget_call(condition, widget,
+                                               sizeof(widget), widget_args,
+                                               sizeof(widget_args))) {
+                fprintf(f, "kryon.widget($rt, ");
+                js_string(f, widget);
+                fprintf(f, ", ");
+                emit_widget_arguments(f, m, widget, widget_args);
+                fprintf(f, ", $state, ");
+                emit_web_metadata(f, m, st);
+                fputc(')', f);
+            } else {
+                tx_expr(m, condition, condition_out, sizeof(condition_out));
+                fputs(condition_out, f);
+            }
+            fprintf(f, "; %s) {\n", step_out);
             if(block_top < (int)(sizeof(block_stack) / sizeof(block_stack[0])))
                 block_stack[block_top++] = 1;
             indent++;
