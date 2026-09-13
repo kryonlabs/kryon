@@ -26,6 +26,9 @@ the browser receives normal elements, attributes, CSS, and events.
 
 - Stable node identity for named and anonymous `.kry` widgets, including
   multiline compiler source spans for UI blocks.
+- Lexical UI scopes that lower through host begin/end support now emit Web
+  Document nodes at their `.kry` block boundary: `Scroll`, `Canvas`,
+  `TableCell`, `Popup`, and `Disabled`.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
 - Native DOM annotations: `data-kry-ref`, path/name/key/kind/tag/source fields,
@@ -52,8 +55,9 @@ the browser receives normal elements, attributes, CSS, and events.
 
 ## Remaining Work
 
-- Finish all-node compiler metadata so every `.kry` syntactic node that should
-  have a DOM surface emits complete identity without runtime fallback synthesis.
+- Finish all-node compiler metadata for remaining expression-backed or
+  generated composite nodes that should have a DOM surface without runtime
+  fallback synthesis.
 - Extend compiler source ranges beyond UI blocks to full multiline AST spans
   for every expression-backed DOM node editors and devtools need.
 - Expand native tag contracts for remaining widgets that still render as `div`,
