@@ -4549,63 +4549,6 @@ func (r *runtime) iconAction(props iconActionProps) bool {
 	r.Icon(props.FocusID, iconX, iconY, size, iconType, unpackRGBA(frame.Button.Foreground))
 	return pressed
 }
-func (r *runtime) sliderAt(id int32, bounds Rectangle, label string, min, max int32, value *int32, rest ...any) bool {
-	if value == nil {
-		return false
-	}
-	if max < min {
-		min, max = max, min
-	}
-	*value = clamp32(*value, min, max)
-	changed := false
-	if tapX, tapped := r.consumeTapPoint(bounds); tapped {
-		old := *value
-		span := max - min
-		if span > 0 && bounds.Width > 0 {
-			t := (tapX - bounds.X) / bounds.Width
-			if t < 0 {
-				t = 0
-			} else if t > 1 {
-				t = 1
-			}
-			*value = min + int32(t*float32(span)+0.5)
-			*value = clamp32(*value, min, max)
-		}
-		changed = *value != old
-	}
-	valueText := fmt.Sprintf("%d%s", *value, sliderSuffix(rest...))
-	ratio := float32(0)
-	if max > min {
-		ratio = float32(*value-min) / float32(max-min)
-	}
-	trackFrame := simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 4)
-	activeFrame := simpleStyleFrameWithRole(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSlider(), 5)
-	thumbFrame := simpleStyleFrame(ButtonToneAccent, ButtonStateNormal, false, true, StyleSheet_StyleKindSliderThumb())
-	labelStyle := unpackStyle(simpleStyleFrameWithRole(ButtonToneNeutral, ButtonStateNormal, false, false, StyleSheet_StyleKindSlider(), 6).Value)
-	font, fontID := styleTextFace(labelStyle, Text16)
-	paint := Slider_SliderPaintFor(SliderSpec{
-		Bounds:      Rectangle{X: bounds.X, Y: bounds.Y + 18, Width: bounds.Width, Height: bounds.Height - 18},
-		Ratio:       ratio,
-		Scale:       1,
-		Track:       trackFrame,
-		ActiveTrack: activeFrame,
-		Thumb:       thumbFrame,
-	})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X, Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: label, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, ID: id})
-	r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: bounds.X + bounds.Width - float32(runtimeTextWidthWithFont(valueText, font, fontID)), Y: bounds.Y, Width: bounds.Width * 0.5, Height: 18}, Text: valueText, Color: labelStyle.Foreground, Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, ID: id})
-	trackOp := styleFrameRectOp(paint.TrackBounds, Rectangle{}, paint.Track)
-	trackOp.ID = id
-	r.record(trackOp)
-	activeOp := styleFrameRectOp(paint.ActiveBounds, paint.TrackBounds, paint.ActiveTrack)
-	activeOp.ID = id
-	activeOp.Selected = true
-	r.record(activeOp)
-	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY+2, paint.ThumbRadius+1), Color: unpackRGBA(paint.ThumbShadowColor), ID: id})
-	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Color: unpackRGBA(paint.ThumbFillColor), ID: id, Pressed: changed})
-	r.record(FrameOp{Kind: FrameOpCircle, Bounds: circleBounds(paint.ThumbX-3, paint.ThumbY-4, paint.ThumbRadius*0.45), Color: unpackRGBA(paint.ThumbHighlightColor), ID: id})
-	r.record(FrameOp{Kind: FrameOpRing, Bounds: circleBounds(paint.ThumbX, paint.ThumbY, paint.ThumbRadius), Radius: paint.ThumbRadius - 1, Color: unpackRGBA(paint.ThumbEdgeColor), ID: id})
-	return changed
-}
 func (r *runtime) Toggle(props ToggleProps) bool {
 	if props.Value == nil {
 		return false
