@@ -9,6 +9,8 @@ type ScrollMetrics struct {
 	ReservedWidth    int32
 	SafeGap          int32
 	DefaultWheelStep int32
+	DragThreshold    int32
+	VisualBleed      int32
 	ThumbMinHeight   int32
 	ThumbInset       int32
 }
@@ -99,24 +101,40 @@ func Scroll_ScrollMetricsFor(scale float32, track StyleFrame, thumb StyleFrame) 
 	var value_30 float32 = scale
 	var value_31 int32 = Scroll_ScrollMetric(value_25, value_27, value_28, value_29, value_30)
 	metrics.DefaultWheelStep = value_31
-	var value_32 uint32 = thumb.Value.Fields
-	var value_33 int32 = int32(StyleIconSize)
+	var value_32 uint32 = track.Value.Fields
+	var value_33 int32 = int32(StyleContentOffset)
 	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 float32 = thumb.Value.IconSize
-	var value_36 float32 = 16.0
+	var value_35 float32 = track.Value.OffsetX
+	var value_36 float32 = 5.0
 	var value_37 float32 = scale
 	var value_38 int32 = Scroll_ScrollMetric(value_32, value_34, value_35, value_36, value_37)
-	metrics.ThumbMinHeight = value_38
-	var value_39 uint32 = thumb.Value.Fields
-	var value_40 int32 = int32(StylePaddingX)
+	metrics.DragThreshold = value_38
+	var value_39 uint32 = track.Value.Fields
+	var value_40 int32 = int32(StylePaddingY)
 	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 float32 = thumb.Value.PaddingX
-	var value_43 float32 = 2.0
+	var value_42 float32 = track.Value.PaddingY
+	var value_43 float32 = 8.0
 	var value_44 float32 = scale
 	var value_45 int32 = Scroll_ScrollMetric(value_39, value_41, value_42, value_43, value_44)
-	metrics.ThumbInset = value_45
-	var value_46 ScrollMetrics = metrics
-	return value_46
+	metrics.VisualBleed = value_45
+	var value_46 uint32 = thumb.Value.Fields
+	var value_47 int32 = int32(StyleIconSize)
+	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
+	var value_49 float32 = thumb.Value.IconSize
+	var value_50 float32 = 16.0
+	var value_51 float32 = scale
+	var value_52 int32 = Scroll_ScrollMetric(value_46, value_48, value_49, value_50, value_51)
+	metrics.ThumbMinHeight = value_52
+	var value_53 uint32 = thumb.Value.Fields
+	var value_54 int32 = int32(StylePaddingX)
+	var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
+	var value_56 float32 = thumb.Value.PaddingX
+	var value_57 float32 = 2.0
+	var value_58 float32 = scale
+	var value_59 int32 = Scroll_ScrollMetric(value_53, value_55, value_56, value_57, value_58)
+	metrics.ThumbInset = value_59
+	var value_60 ScrollMetrics = metrics
+	return value_60
 }
 
 func Scroll_ScrollClamp(value int32, maximum int32) int32 {

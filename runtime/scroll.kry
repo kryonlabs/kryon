@@ -8,6 +8,8 @@ ScrollMetrics :: struct {
     reserved_width: i32
     safe_gap: i32
     default_wheel_step: i32
+    drag_threshold: i32
+    visual_bleed: i32
     thumb_min_height: i32
     thumb_inset: i32
 }
@@ -42,6 +44,10 @@ ScrollMetricsFor :: (scale: float, track: StyleFrame, thumb: StyleFrame) -> Scro
         (u32)StyleGap, track.value.gap, 20.0, scale)
     metrics.default_wheel_step = ScrollMetric(track.value.fields,
         (u32)StyleContentOffset, track.value.offset_y, 42.0, scale)
+    metrics.drag_threshold = ScrollMetric(track.value.fields,
+        (u32)StyleContentOffset, track.value.offset_x, 5.0, scale)
+    metrics.visual_bleed = ScrollMetric(track.value.fields,
+        (u32)StylePaddingY, track.value.padding_y, 8.0, scale)
     metrics.thumb_min_height = ScrollMetric(thumb.value.fields,
         (u32)StyleIconSize, thumb.value.icon_size, 16.0, scale)
     metrics.thumb_inset = ScrollMetric(thumb.value.fields,

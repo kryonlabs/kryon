@@ -102,8 +102,11 @@ BeginScrollPage(ScrollPageSpec spec)
         area.content_x = content_x;
         area.content_width = content_w;
         area.scroll_offset = spec.scroll_offset;
-        area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step : Scale(42);
-        area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x : ui_view_width - Scale(8);
+        ScrollMetrics metrics = ui_scroll_metrics();
+        area.wheel_step = spec.wheel_step > 0 ? spec.wheel_step :
+            metrics.default_wheel_step;
+        area.scrollbar_x = spec.scrollbar_x > 0 ? spec.scrollbar_x :
+            ui_view_width - metrics.scrollbar_width;
         measured = MeasureScrollContainer(area);
         if(measured.content_w == draw_w)
             break;
@@ -192,11 +195,13 @@ BeginScrollContainer(ScrollArea area)
     ScrollView view = MeasureScrollContainer(area);
     Vector2 mouse_world = ui_mouse_world();
     int y = (int)area.bounds.y;
-    int wheel_step = area.wheel_step > 0 ? area.wheel_step : Scale(42);
+    ScrollMetrics metrics = ui_scroll_metrics();
+    int wheel_step = area.wheel_step > 0 ? area.wheel_step :
+        metrics.default_wheel_step;
     int inside = CheckCollisionPointRec(mouse_world, area.bounds);
     int captured = InputCapturesClick(mouse_world);
-    int drag_threshold = Scale(5);
-    int scrollbar_w = Scale(8);
+    int drag_threshold = metrics.drag_threshold;
+    int scrollbar_w = metrics.scrollbar_width;
     int scrollbar_x = area.scrollbar_x > 0
                           ? area.scrollbar_x
                           : (int)(area.bounds.x + area.bounds.width) - scrollbar_w;
@@ -269,7 +274,7 @@ BeginScrollContainer(ScrollArea area)
         view.content_y = y;
     }
     {
-        int visual_bleed = Scale(8);
+        int visual_bleed = metrics.visual_bleed;
         Rectangle screen_bounds = {
             g_ui_camera.offset.x + area.bounds.x * g_ui_camera.zoom,
             g_ui_camera.offset.y + area.bounds.y * g_ui_camera.zoom,
@@ -337,7 +342,8 @@ BeginScrollContainer(ScrollArea area)
 void
 EndScrollContainer(ScrollArea area, ScrollView view)
 {
-    int scrollbar_w = Scale(8);
+    ScrollMetrics metrics = ui_scroll_metrics();
+    int scrollbar_w = metrics.scrollbar_width;
     int scrollbar_x;
 
     EndClip();
@@ -423,9 +429,10 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
     if(viewport_h <= 0 || content_h <= 0 || scroll_offset == NULL)
         return 0;
 
-    int scrollbar_width = Scale(12);
-    int scrollbar_min_thumb = Scale(24);
-    int track_padding = 0;
+    ScrollMetrics metrics = ui_scroll_metrics();
+    int scrollbar_width = metrics.scrollbar_width;
+    int scrollbar_min_thumb = metrics.thumb_min_height;
+    int track_padding = metrics.thumb_inset;
 
     /* Calculate thumb size and position */
     float content_ratio = (float)viewport_h / (float)content_h;

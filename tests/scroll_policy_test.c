@@ -14,6 +14,8 @@ main(void)
     assert(metrics.reserved_width == 32);
     assert(metrics.safe_gap == 40);
     assert(metrics.default_wheel_step == 84);
+    assert(metrics.drag_threshold == 10);
+    assert(metrics.visual_bleed == 16);
     assert(metrics.thumb_min_height == 32);
     assert(metrics.thumb_inset == 4);
     assert(ScrollMax(300, 100) == 200);
@@ -48,14 +50,16 @@ main(void)
     assert(view.max_scroll == 0);
     assert(view.scrollbar_x == 200);
 
-    track.value.fields = StyleIconSize | StylePaddingX | StyleGap |
-                         StyleContentOffset;
+    track.value.fields = StyleIconSize | StylePaddingX | StylePaddingY |
+                         StyleGap | StyleContentOffset;
     thumb.value.fields = StyleIconSize | StylePaddingX;
     metrics = ScrollMetricsFor(1.0f, track, thumb);
     assert(metrics.scrollbar_width == 0);
     assert(metrics.reserved_width == 0);
     assert(metrics.safe_gap == 0);
     assert(metrics.default_wheel_step == 0);
+    assert(metrics.drag_threshold == 0);
+    assert(metrics.visual_bleed == 0);
     assert(metrics.thumb_min_height == 0);
     assert(metrics.thumb_inset == 0);
 
