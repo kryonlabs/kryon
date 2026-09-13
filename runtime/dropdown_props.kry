@@ -4,6 +4,7 @@
 DropdownProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     options: const char**
     option_count: i32
     selected_index: *i32

@@ -3667,8 +3667,6 @@ ui_text_area_render(TextAreaProps area)
     area_edit.text_size = area.text_size;
     area_edit.cursor_position = area.cursor_position;
     area_edit.max_codepoints = area.max_codepoints;
-    area_edit.filter = area.filter;
-    area_edit.filter_user_data = area.filter_user_data;
 
     widget = BeginWidget("text_area",
                            ui_inspect_control_id(editor_id, sizeof(editor_id),
@@ -3964,9 +3962,7 @@ ui_text_area_render(TextAreaProps area)
                                          selection_start, selection_end);
                     deleted_selection = 1;
                 }
-                if((area.filter == NULL ||
-                    area.filter(codepoint, area.filter_user_data)) &&
-                   ui_text_insert_codepoint(area.text, area.text_size,
+                if(ui_text_insert_codepoint(area.text, area.text_size,
                                             area.cursor_position, codepoint,
                                             area.max_codepoints))
                     changed = 1;
@@ -3981,9 +3977,7 @@ ui_text_area_render(TextAreaProps area)
                                          selection_start, selection_end);
                     deleted_selection = 1;
                 }
-                if((area.filter == NULL ||
-                    area.filter(codepoint, area.filter_user_data)) &&
-                   ui_text_insert_codepoint(area.text, area.text_size,
+                if(ui_text_insert_codepoint(area.text, area.text_size,
                                             area.cursor_position, codepoint,
                                             area.max_codepoints))
                     changed = 1;
@@ -4110,8 +4104,7 @@ ui_text_area_render(TextAreaProps area)
     ui_text_context_register_target(UI_TEXT_CONTEXT_AREA, drag_id,
                                     area.focused, area.text, area.text_size,
                                     area.cursor_position,
-                                    area.max_codepoints, area.filter,
-                                    area.filter_user_data,
+                                    area.max_codepoints, NULL, NULL,
                                     &g_ui_text_area_selection,
                                     committed_selection_start,
                                     committed_selection_end, 1, 0,
@@ -4229,6 +4222,14 @@ SetTextAreaSelection(int focus_id, int anchor, int cursor)
 int
 ui_text_field_render(TextFieldProps field)
 {
+    return ui_text_field_render_filtered(field, NULL, NULL);
+}
+
+int
+ui_text_field_render_filtered(TextFieldProps field,
+                              TextInputFilter filter,
+                              void *filter_user_data)
+{
     enum { TEXT_FIELD_FALLBACK_FOCUS_SLOTS = 128 };
     typedef struct {
         unsigned int key;
@@ -4310,8 +4311,8 @@ ui_text_field_render(TextFieldProps field)
     field_edit.text_size = field.text_size;
     field_edit.cursor_position = field.cursor_position;
     field_edit.max_codepoints = field.max_codepoints;
-    field_edit.filter = field.filter;
-    field_edit.filter_user_data = field.filter_user_data;
+    field_edit.filter = filter;
+    field_edit.filter_user_data = filter_user_data;
     field_edit.commit_pressed = field.commit_pressed != NULL
                                   ? field.commit_pressed
                                   : &commit_pressed;
@@ -4659,8 +4660,8 @@ ui_text_field_render(TextFieldProps field)
                                          selection_start, selection_end);
                     deleted_selection = 1;
                 }
-                if((field.filter == NULL ||
-                    field.filter(codepoint, field.filter_user_data)) &&
+                if((filter == NULL ||
+                    filter(codepoint, filter_user_data)) &&
                    ui_text_insert_codepoint(field.text, field.text_size,
                                             field.cursor_position, codepoint,
                                             field.max_codepoints))
@@ -4676,8 +4677,8 @@ ui_text_field_render(TextFieldProps field)
                                          selection_start, selection_end);
                     deleted_selection = 1;
                 }
-                if((field.filter == NULL ||
-                    field.filter(codepoint, field.filter_user_data)) &&
+                if((filter == NULL ||
+                    filter(codepoint, filter_user_data)) &&
                    ui_text_insert_codepoint(field.text, field.text_size,
                                             field.cursor_position, codepoint,
                                             field.max_codepoints))
@@ -4784,8 +4785,8 @@ ui_text_field_render(TextFieldProps field)
         ui_text_context_register_target(UI_TEXT_CONTEXT_FIELD, field.focus_id,
                                         field.focused, field.text,
                                         field.text_size, field.cursor_position,
-                                        field.max_codepoints, field.filter,
-                                        field.filter_user_data,
+                                        field.max_codepoints, filter,
+                                        filter_user_data,
                                         &g_ui_text_field_selection,
                                         committed_selection_start,
                                         committed_selection_end, 0, 1,

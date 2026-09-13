@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct ListBoxProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     const char** items;
     int32_t item_count;
     int32_t* selected_index;

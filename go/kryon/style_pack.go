@@ -14,12 +14,6 @@ type StylePackOption struct {
 	Active      bool
 }
 
-type StylePickerProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Disabled bool
-}
-
 var stylePacks []StylePack
 var activeStylePack = -1
 var stylePackVersion uint64

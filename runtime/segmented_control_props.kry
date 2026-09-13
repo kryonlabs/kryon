@@ -9,6 +9,7 @@ SegmentOption :: struct {
 SegmentedControlProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     options: const SegmentOption*
     option_count: i32
     selected_index: *i32

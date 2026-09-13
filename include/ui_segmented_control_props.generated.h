@@ -29,6 +29,7 @@ typedef struct SegmentOption {
 typedef struct SegmentedControlProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     const SegmentOption* options;
     int32_t option_count;
     int32_t* selected_index;

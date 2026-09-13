@@ -1,0 +1,40 @@
+#module "router_props"
+#import "kryon_compat.generated.h"
+#import "kryon_key.h"
+
+RouterRoute :: struct {
+    id: i32
+    parent: i32
+    path: const char*
+    title: const char*
+    group: const char*
+}
+
+RouterState :: struct {
+    initialized: i32
+    current_route: i32
+    previous_route: i32
+    requested_route: i32
+    changed: i32
+    route_version: i32
+    generation: u32
+}
+
+RouterProps :: struct {
+    bounds: Rectangle
+    key: KeyID
+    state: *RouterState
+    routes: const RouterRoute*
+    route_count: i32
+    initial_route: i32
+    sync_url: bool
+    replace_on_init: bool
+}
+
+RouterResult :: struct {
+    route: i32
+    previous_route: i32
+    requested_route: i32
+    changed: bool
+    route_info: const RouterRoute*
+}

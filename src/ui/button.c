@@ -551,7 +551,8 @@ segmented_control_font(SegmentedControlProps control)
     frame = ui_control_style_frame_kind(
         (ButtonProps){.tone = ButtonToneNeutral,
                       .emphasis = ButtonEmphasisSoft,
-                      .size = ControlSizeMedium},
+                      .size = ControlSizeMedium,
+                      .class_name = control.class_name},
         ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindSegment());
     return frame.value.font_size > 0.0f
         ? (int)(frame.value.font_size + 0.5f)
@@ -679,6 +680,7 @@ SegmentedControl(SegmentedControlProps control)
                     ? ButtonToneAccent : ButtonToneNeutral;
                 button.props.emphasis = ButtonEmphasisSoft;
                 button.props.selected = selected_item;
+                button.props.class_name = control.class_name;
                 button.style_kind = StyleKindSegment();
                 button.style_resolved = 1;
                 if(ui_button_render(button)) {

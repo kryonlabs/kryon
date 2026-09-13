@@ -96,6 +96,7 @@ surface review:
 | `runtime/progress_props.kry` | Progress props | `.kry canonical` |
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
+| `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
 | `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
@@ -109,6 +110,7 @@ surface review:
 | `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
 | `runtime/scroll_props.kry` | Scroll props | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
+| `runtime/style_picker_props.kry` | StylePicker props | `.kry canonical` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
@@ -116,6 +118,7 @@ surface review:
 | `runtime/text.kry` | Text composition | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea metrics, scroll, navigation, and edit-intent policy | `.kry canonical` |
+| `runtime/text_input_props.kry` | TextField/TextArea props and text input style enums | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout policy | `.kry canonical` |
 | `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
@@ -148,7 +151,7 @@ text measurement, painting, storage, or platform services.
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy | scroll/list/table begin-end wrappers |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/multi-selection policy, `Plot` geometry policy, `TreeView` row/window geometry policy, `TableView` layout/scroll geometry policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint policy, `TabBar` sizing/scroll policy, `Toolbar` metrics/geometry policy, `TitleBar` layout policy, `Menu` geometry policy | retained menu open/focus/input state, router/link helpers |
-| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy | theme pickers |
+| Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/step policy, `Modal` layout/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props | theme picker rendering/input host support |
 | Game2D | Native scene nodes | Game2D nodes are separate from UI widgets; keep them in the Game2D runtime unless `.kry` scene declarations are introduced. |
 
 The immediate migration target is to finish moving high-use controls first:
@@ -466,6 +469,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Label typography uses resolved KSS font sizes directly. Current C rendering is host support around `runtime/guide.kry` policy. |
 | `GuideStep` | Props/data only | One anchored instruction inside `GuideProps`; not a standalone widget. |
 | `GuidePager` | Internal support | Not a public widget. Footer layout/page transition policy is `.kry`; the C helper lives under `src/ui` and is not exported by public headers. |
+| `StylePicker` | `.kry canonical` | Public props live in `runtime/style_picker_props.kry`; style-pack storage, KSS parsing, and dropdown rendering remain host support. |
 
 ## Game2D Nodes
 

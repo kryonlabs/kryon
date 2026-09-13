@@ -5,6 +5,7 @@ package kryon
 type DropdownProps struct {
 	Bounds        Rectangle
 	ID            int32
+	ClassName     int32
 	Options       []string
 	OptionCount   int32
 	SelectedIndex *int32

@@ -1123,10 +1123,10 @@ props_field_at(const KirModule *module, const char *type, int index,
                           "Disabled", "ValueText", "Wrap"}},
         {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
                             "SeparatorBefore"}},
-        {"DropdownProps", {"Bounds", "ID", "Options", "OptionCount",
+        {"DropdownProps", {"Bounds", "ID", "ClassName", "Options", "OptionCount",
                            "SelectedIndex", "Disabled", "Items"}},
         {"SegmentOption", {"Label", "Disabled"}},
-        {"SegmentedControlProps", {"Bounds", "ID", "Options", "OptionCount",
+        {"SegmentedControlProps", {"Bounds", "ID", "ClassName", "Options", "OptionCount",
                                    "SelectedIndex", "Font", "Gap", "Height",
                                    "MinItemWidth", "MaxItemWidth", "Wrap"}},
         {"SegmentedControlResult", {"SelectedIndex", "ClickedIndex", "Changed",
@@ -1135,18 +1135,16 @@ props_field_at(const KirModule *module, const char *type, int index,
         {"Accelerator", {"Key", "Ctrl", "Shift", "Alt", "ID"}},
         {"TextFieldProps", {"Bounds", "Text", "TextSize", "CursorPosition",
                             "Focused", "MaxCodepoints", "Font", "FocusID",
-                            "Style", "Filter", "FilterUserData",
-                            "CommitPressed", "Secure", "ReadOnly"}},
+                            "Style", "CommitPressed", "Secure", "ReadOnly"}},
         {"TextAreaProps", {"Bounds", "Text", "TextSize", "CursorPosition",
                            "Focused", "ScrollY", "MaxCodepoints", "Font",
                            "LineGap", "FocusID", "Placeholder", "Syntax",
-                           "Style", "Filter", "FilterUserData",
-                           "ContentVersion", "ReadOnly", "Wrap"}},
-		{"ListBoxProps", {"Bounds", "ID", "Items", "ItemCount",
+                           "Style", "ContentVersion", "ReadOnly", "Wrap"}},
+		{"ListBoxProps", {"Bounds", "ID", "ClassName", "Items", "ItemCount",
 		                  "SelectedIndex", "Selected", "SelectedCount", "Anchor",
 		                  "ScrollOffset", "RowHeight", "Disabled", "ContentHeight"}},
 		{"TreeItem", {"Label", "Depth", "ID", "Expanded", "Selectable"}},
-		{"TreeViewProps", {"Bounds", "ID", "Items", "ItemCount",
+		{"TreeViewProps", {"Bounds", "ID", "ClassName", "Items", "ItemCount",
 		                   "SelectedID", "ScrollOffset", "RowHeight", "Disabled"}},
         {"TableViewProps", {"Bounds", "ID", "Columns", "ColumnCount",
                             "Rows", "RowCount", "ColumnWidths", "SelectedRow",
@@ -1370,6 +1368,8 @@ slice_prop_field(const char *type, const char *field)
     if(strcmp(type, "MenuProps") == 0 &&
        (strcmp(field, "Items") == 0 || strcmp(field, "Menus") == 0))
         return 1;
+    if(strcmp(type, "RouterProps") == 0 && strcmp(field, "Routes") == 0)
+        return 1;
     if(strcmp(type, "TableViewProps") == 0 &&
        (strcmp(field, "Columns") == 0 || strcmp(field, "Rows") == 0 ||
         strcmp(field, "ColumnWidths") == 0 ||
@@ -1572,7 +1572,10 @@ tx_compound(const KirModule *m, const char *p, char *dst, size_t *dn)
                     kir_go_field_ident(part + 1, field, sizeof(field));
                     source = kir_skip_ws(eq + 1);
                 }
-                if(!declared_record && strcmp(field, "TextSize") == 0)
+                if(strcmp(field, "TextSize") == 0 &&
+                   (!declared_record ||
+                    strcmp(type, "TextFieldProps") == 0 ||
+                    strcmp(type, "TextAreaProps") == 0))
                     continue;
                 char field_type[KIR_NAME_MAX] = "";
                 const KirType *contract = KirFindType(m, type, NULL);
@@ -3130,6 +3133,21 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                             if(strcmp(t->name, "ModalProps") == 0 &&
                                strcmp(fname, "Text") == 0)
                                 snprintf(gt, sizeof(gt), "[]byte");
+                            if((strcmp(t->name, "TextFieldProps") == 0 ||
+                                strcmp(t->name, "TextAreaProps") == 0) &&
+                               strcmp(fname, "Text") == 0)
+                                snprintf(gt, sizeof(gt), "[]byte");
+                            if((strcmp(t->name, "TextFieldProps") == 0 ||
+                                strcmp(t->name, "TextAreaProps") == 0) &&
+                               strcmp(fname, "Focused") == 0)
+                                snprintf(gt, sizeof(gt), "*bool");
+                            if(strcmp(t->name, "TextFieldProps") == 0 &&
+                               strcmp(fname, "CommitPressed") == 0)
+                                snprintf(gt, sizeof(gt), "*bool");
+                            if((strcmp(t->name, "TextFieldProps") == 0 ||
+                                strcmp(t->name, "TextAreaProps") == 0) &&
+                               strcmp(fname, "TextSize") == 0)
+                                continue;
                             if(slice_prop_field(t->name, fname) && gt[0] == '*') {
                                 char elem[K2GO_NAME_MAX];
                                 snprintf(elem, sizeof(elem), "%s", gt + 1);

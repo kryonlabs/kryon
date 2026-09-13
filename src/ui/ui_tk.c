@@ -746,9 +746,9 @@ RenderListBoxMulti(ListBoxProps list)
     int paint = IsWindowReady();
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
-    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+    StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-        StyleKindListBoxMultiItem());
+        list.class_name, StyleKindListBoxMultiItem(), StyleAny());
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int default_item_font = default_item_style.font_size > 0.0f
@@ -793,9 +793,9 @@ RenderListBoxMulti(ListBoxProps list)
     if(clicked >= 0)
         ui_list_box_multi_apply(list,clicked,control,shift,range_anchor);
     if(paint) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-            StyleKindListBoxMulti());
+            list.class_name, StyleKindListBoxMulti(), StyleAny());
         ui_tk_draw_style_frame(list.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, focused);
         BeginClip((int)list.bounds.x, (int)list.bounds.y,
@@ -809,8 +809,9 @@ RenderListBoxMulti(ListBoxProps list)
         ButtonState item_state = disabled ? ButtonStateDisabled :
             (hot ? ButtonStateHover :
              (selected ? ButtonStateSelected : ButtonStateNormal));
-        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-            item_state, disabled, selected, StyleKindListBoxMultiItem());
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+            item_state, disabled, selected, list.class_name,
+            StyleKindListBoxMultiItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         if(paint) {
@@ -2171,7 +2172,7 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
     }
 
     BeginDisabled(!enabled);
-    if(ui_text_field_render((TextFieldProps){
+    if(ui_text_field_render_filtered((TextFieldProps){
             .bounds = bounds,
             .text = state->text,
             .text_size = sizeof(state->text),
@@ -2181,10 +2182,9 @@ ui_numeric_temp_edit(Rectangle bounds, int kind, int widget_id, int component,
             .font = 0,
             .focus_id = focus_id,
             .style = kryon_zero_text_input_style,
-            .filter = ui_numeric_input_filter,
             .commit_pressed = &commit,
             .read_only = !enabled
-        })) {
+        }, ui_numeric_input_filter, NULL)) {
         char *end = NULL;
         if(integer) {
             long parsed = strtol(state->text, &end, 0);
@@ -2906,13 +2906,20 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
             plus.x = minus.x + minus.width;
             plus.width = button_w;
         }
-        if(ui_text_field_render((TextFieldProps){field_bounds, state->text,
-                                                     sizeof(state->text), &state->cursor,
-                                                     &state->focused, 63,
-                                                     0, token,
-                                                     kryon_zero_text_input_style,
-                                                     ui_numeric_input_filter, NULL,
-                                                     &commit, 0, disabled})) {
+        if(ui_text_field_render_filtered((TextFieldProps){
+                .bounds = field_bounds,
+                .text = state->text,
+                .text_size = sizeof(state->text),
+                .cursor_position = &state->cursor,
+                .focused = &state->focused,
+                .max_codepoints = 63,
+                .font = 0,
+                .focus_id = token,
+                .style = kryon_zero_text_input_style,
+                .commit_pressed = &commit,
+                .secure = 0,
+                .read_only = disabled
+            }, ui_numeric_input_filter, NULL)) {
             char *end = NULL;
             double value = strtod(state->text, &end);
             if(end != state->text && *end == '\0') {
@@ -3080,9 +3087,9 @@ RenderListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
     int disabled = list.disabled || UIContentDisabled();
-    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+    StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-        StyleKindListBoxItem());
+        list.class_name, StyleKindListBoxItem(), StyleAny());
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int font = default_item_style.font_size > 0.0f
@@ -3135,9 +3142,9 @@ RenderListBox(ListBoxProps list)
     first = layout.first_row;
     visible = layout.visible_rows;
     if(paint) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
-            StyleKindListBox());
+            list.class_name, StyleKindListBox(), StyleAny());
         ui_tk_draw_style_frame(list.bounds, (Rectangle){0}, frame, 0, 0,
                                disabled, focused);
         BeginClip((int)list.bounds.x, (int)list.bounds.y,
@@ -3150,8 +3157,9 @@ RenderListBox(ListBoxProps list)
         ButtonState item_state = disabled ? ButtonStateDisabled :
             (hot ? ButtonStateHover :
              (index == selected ? ButtonStateSelected : ButtonStateNormal));
-        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-            item_state, disabled, index == selected, StyleKindListBoxItem());
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+            item_state, disabled, index == selected, list.class_name,
+            StyleKindListBoxItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         if(paint && (index == selected || hot || disabled))
@@ -3192,9 +3200,9 @@ int
 RenderTreeView(TreeViewProps tree)
 {
     int paint = IsWindowReady();
-    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+    StyleFrame default_item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        tree.disabled, 0, StyleKindTreeViewItem());
+        tree.disabled, 0, tree.class_name, StyleKindTreeViewItem(), StyleAny());
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
     int font = default_item_style.font_size > 0.0f
@@ -3218,9 +3226,9 @@ RenderTreeView(TreeViewProps tree)
     first = scroll_layout.first;
     y_offset = scroll_layout.y_offset;
     if(paint) {
-        StyleFrame frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
             tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            tree.disabled, 0, StyleKindTreeView());
+            tree.disabled, 0, tree.class_name, StyleKindTreeView(), StyleAny());
         ui_tk_draw_style_frame(tree.bounds, (Rectangle){0}, frame, 0, 0,
                                tree.disabled, 0);
         BeginClip((int)tree.bounds.x, (int)tree.bounds.y,
@@ -3237,8 +3245,9 @@ RenderTreeView(TreeViewProps tree)
         ButtonState item_state = tree.disabled ? ButtonStateDisabled :
             (hot ? ButtonStateHover :
              (selected ? ButtonStateSelected : ButtonStateNormal));
-        StyleFrame item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
-            item_state, tree.disabled, selected, StyleKindTreeViewItem());
+        StyleFrame item_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+            item_state, tree.disabled, selected, tree.class_name,
+            StyleKindTreeViewItem(), StyleAny());
         Style item_style = ui_unpack_style(
             ui_style_apply_effects_frame(item_frame).value);
         int item_font = item_style.font_size > 0.0f

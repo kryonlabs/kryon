@@ -22,6 +22,7 @@ typedef struct DropdownState {
     DropdownOption *options;
     int option_count;
     int selected_index;
+    int class_name;
     int highlight_index;
     int pending_changed;
     int pending_index;
@@ -131,7 +132,7 @@ dropdown_resize_options(DropdownState *state, int count)
 
 /* Dropdowns expose semantic roles; KSS owns the visual result. */
 static Style
-dropdown_style(int role, int selected, ButtonState state)
+dropdown_style(int role, int selected, ButtonState state, int class_name)
 {
     ButtonProps props = {0};
     Style base;
@@ -139,6 +140,7 @@ dropdown_style(int role, int selected, ButtonState state)
 
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
+    props.class_name = class_name;
     if(role == 1)
         props.emphasis = ButtonEmphasisFilled;
     if(role == 2 && selected && state != ButtonStateDisabled) {
@@ -164,23 +166,24 @@ dropdown_style(int role, int selected, ButtonState state)
 }
 
 static ControlStyle
-dropdown_trigger_style(void)
+dropdown_trigger_style(int class_name)
 {
     return (ControlStyle){
-        .normal = dropdown_style(0, 0, ButtonStateNormal),
-        .hover = dropdown_style(0, 0, ButtonStateHover),
-        .pressed = dropdown_style(0, 0, ButtonStatePressed),
-        .focused = dropdown_style(0, 0, ButtonStateFocus),
-        .disabled = dropdown_style(0, 0, ButtonStateDisabled)
+        .normal = dropdown_style(0, 0, ButtonStateNormal, class_name),
+        .hover = dropdown_style(0, 0, ButtonStateHover, class_name),
+        .pressed = dropdown_style(0, 0, ButtonStatePressed, class_name),
+        .focused = dropdown_style(0, 0, ButtonStateFocus, class_name),
+        .disabled = dropdown_style(0, 0, ButtonStateDisabled, class_name)
     };
 }
 
 static Color
-dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed, int focused)
+dropdown_paint_trigger(int id, Rectangle bounds, int hovered, int pressed,
+                       int focused, int class_name)
 {
     ButtonProps props = {.id = id, .bounds = bounds, .tone = ButtonToneNeutral,
         .emphasis = ButtonEmphasisSoft, .disabled = UIContentDisabled(),
-        .style = dropdown_trigger_style()};
+        .class_name = class_name, .style = dropdown_trigger_style(class_name)};
     Activation sample = {.hovered = hovered, .pressed = pressed, .focused = focused};
     if(focused && IsFocusActivatePressed(id))
         sample.pressed = true;
@@ -334,7 +337,7 @@ ui_dropdown(DropdownProps props)
     char editor_id[96];
     DropdownState *state = get_or_create_dropdown_state(id);
     Widget widget;
-    Style content_style = dropdown_style(0, 0, ButtonStateNormal);
+    Style content_style = dropdown_style(0, 0, ButtonStateNormal, props.class_name);
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
         (float)Scale(1000) / 1000.0f);
@@ -404,6 +407,7 @@ ui_dropdown(DropdownProps props)
     state->clip_top = dropdown_store->clip_top;
     state->clip_bottom = dropdown_store->clip_bottom;
     state->selected_index = selected_index != NULL ? *selected_index : state->selected_index;
+    state->class_name = props.class_name;
     if(option_count < 0)
         option_count = 0;
     dropdown_resize_options(state, option_count);
@@ -448,7 +452,8 @@ ui_dropdown(DropdownProps props)
     button_text = content_style.foreground;
     if(can_draw)
         button_text = dropdown_paint_trigger(id, btn_bounds,
-            hover || state->open, active && IsMouseButtonDown(MOUSE_BUTTON_LEFT), focused);
+            hover || state->open, active && IsMouseButtonDown(MOUSE_BUTTON_LEFT),
+            focused, props.class_name);
 
     /* Draw current selection text, clipped before the chevron. */
     int current_index = state->selected_index;
@@ -500,7 +505,7 @@ dropdown_paint_menu(int id)
     keyboard_available =
         !ui_popup_input_snapshot_keyboard_captures(state->input_snapshot);
 
-    Style content_style = dropdown_style(0, 0, ButtonStateNormal);
+    Style content_style = dropdown_style(0, 0, ButtonStateNormal, state->class_name);
     ContentMetrics content = Content(
         ui_pack_style_states((ControlStyle){.normal = content_style}).normal,
         (float)Scale(1000) / 1000.0f);
@@ -590,7 +595,7 @@ dropdown_paint_menu(int id)
     }
 
     if(can_draw) {
-        Style paint = dropdown_style(1, 0, ButtonStateNormal);
+        Style paint = dropdown_style(1, 0, ButtonStateNormal, state->class_name);
         dropdown_draw_surface(menu_bounds, paint, 0);
     }
 
@@ -635,7 +640,8 @@ dropdown_paint_menu(int id)
             int selected = state->selected_index == i;
             Style paint = dropdown_style(2, selected,
                 options[i].disabled ? ButtonStateDisabled :
-                (option_hover ? ButtonStateHover : ButtonStateNormal));
+                (option_hover ? ButtonStateHover : ButtonStateNormal),
+                state->class_name);
             row_text = GetColor(Opacity(ColorToInt(paint.foreground), paint.opacity));
             if(selected || option_hover) {
                 Rectangle row = {x + Scale(4), option_y + Scale(2),

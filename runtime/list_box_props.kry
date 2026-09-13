@@ -4,6 +4,7 @@
 ListBoxProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     items: const char**
     item_count: i32
     selected_index: *i32

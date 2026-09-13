@@ -1691,6 +1691,7 @@ include/ui_profile.h function GetSyncIDForProfileImageIconType
 include/ui_progress_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_radio_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_reorder.h function UpdateReorderList
+include/ui_router_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_scaling.h function ClampPx
 include/ui_scaling.h function GetScale
 include/ui_scaling.h function Scale
@@ -1704,6 +1705,7 @@ include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_separator_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_slider_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_spinbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_style_picker_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks
 include/ui_style_sheet.h function FindStylePack
@@ -1782,6 +1784,7 @@ include/ui_text_backend.h function TextFontHasNativeText
 include/ui_text_backend.h function TextFontNativeTextHeight
 include/ui_text_backend.h function TextFontNativeTextWidth
 include/ui_text_backend.h function TextFontReady
+include/ui_text_input_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_text_layout.h enum TEXT_ELEMENT_ICON
 include/ui_text_layout.h enum TEXT_ELEMENT_LINE_BREAK
 include/ui_text_layout.h enum TEXT_ELEMENT_TEXT

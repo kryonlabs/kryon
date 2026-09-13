@@ -2,6 +2,7 @@
 #define KRYON_STYLE_SHEET_H
 
 #include "runtime/style_sheet.h"
+#include "ui_style_picker_props.generated.h"
 #include "ui_tk.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,12 +22,6 @@ typedef struct StylePackOption {
     const char *description;
     bool active;
 } StylePackOption;
-
-typedef struct StylePickerProps {
-    Rectangle bounds;
-    int id;
-    int disabled;
-} StylePickerProps;
 
 bool RegisterStylePack(StylePack pack);
 bool RegisterStylePackSource(const char *source, const char *label,

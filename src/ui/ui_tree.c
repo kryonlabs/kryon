@@ -1324,8 +1324,6 @@ RouteInput(void)
             field_storage.font = area->font;
             field_storage.focus_id = area->focus_id;
             field_storage.style = area->style;
-            field_storage.filter = area->filter;
-            field_storage.filter_user_data = area->filter_user_data;
             field_storage.read_only = area->read_only;
             field = &field_storage;
         }
@@ -1466,8 +1464,6 @@ RouteInput(void)
                 edit.text_size = field->text_size;
                 edit.cursor_position = &state->cursor;
                 edit.max_codepoints = field->max_codepoints;
-                edit.filter = field->filter;
-                edit.filter_user_data = field->filter_user_data;
                 changed |= ui_text_paste_clipboard(edit, allow_newlines);
             }
             state->anchor = state->cursor;
@@ -1506,9 +1502,7 @@ RouteInput(void)
                 state->anchor = state->cursor;
                 start = end = state->cursor;
             }
-            if((field->filter == NULL ||
-                field->filter(codepoint, field->filter_user_data)) &&
-               ui_text_insert_codepoint(field->text, field->text_size,
+            if(ui_text_insert_codepoint(field->text, field->text_size,
                                         &state->cursor, codepoint,
                                         field->max_codepoints)) {
                 state->anchor = state->cursor;
@@ -1522,9 +1516,7 @@ RouteInput(void)
                 .text = field->text,
                 .text_size = field->text_size,
                 .cursor_position = &state->cursor,
-                .max_codepoints = field->max_codepoints,
-                .filter = field->filter,
-                .filter_user_data = field->filter_user_data
+                .max_codepoints = field->max_codepoints
             };
             TextCompositionResult composition = ui_text_composition_apply(
                 edit, &state->anchor, state, state->focused,

@@ -12,6 +12,7 @@ TreeItem :: struct {
 TreeViewProps :: struct {
     bounds: Rectangle
     id: i32
+    class_name: i32
     items: const TreeItem*
     item_count: i32
     selected_id: *i32

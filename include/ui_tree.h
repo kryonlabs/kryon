@@ -16,6 +16,7 @@
 #include "ui_nav.h"
 #include "ui_profile.h"
 #include "ui_image.h"
+#include "ui_router_props.generated.h"
 #include "ui_tk.h"
 
 struct TransitionState;
@@ -138,43 +139,6 @@ typedef ColumnProps RowProps;
 enum {
     ROUTER_NO_ROUTE = -2147483647
 };
-
-typedef struct RouterRoute {
-    int id;
-    int parent;
-    const char *path;
-    const char *title;
-    const char *group;
-} RouterRoute;
-
-typedef struct RouterState {
-    int initialized;
-    int current_route;
-    int previous_route;
-    int requested_route;
-    int changed;
-    int route_version;
-    unsigned int generation;
-} RouterState;
-
-typedef struct RouterProps {
-    Rectangle bounds;
-    KeyID key;
-    RouterState *state;
-    const RouterRoute *routes;
-    int route_count;
-    int initial_route;
-    int sync_url;
-    int replace_on_init;
-} RouterProps;
-
-typedef struct RouterResult {
-    int route;
-    int previous_route;
-    int requested_route;
-    int changed;
-    const RouterRoute *route_info;
-} RouterResult;
 
 void RouterStateInit(RouterState *state, int initial_route);
 void RouterNavigate(RouterState *state, int route_id);

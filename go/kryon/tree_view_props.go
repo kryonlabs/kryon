@@ -13,6 +13,7 @@ type TreeItem struct {
 type TreeViewProps struct {
 	Bounds       Rectangle
 	ID           int32
+	ClassName    int32
 	Items        []TreeItem
 	ItemCount    int32
 	SelectedID   *int32

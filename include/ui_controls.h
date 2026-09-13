@@ -5,6 +5,7 @@
 #include "ui_control_props.generated.h"
 #include "ui_button_props.generated.h"
 #include "ui_segmented_control_props.generated.h"
+#include "ui_text_input_props.generated.h"
 #include "ui_icon_types.h"
 #include <stddef.h>
 
@@ -17,36 +18,7 @@ typedef enum {
 
 
 
-typedef enum {
-    SyntaxNone,
-    SyntaxKry,
-    SyntaxC,
-    SyntaxMake
-} SyntaxMode;
-
-typedef struct {
-    Color background;
-    Color border;
-    Color focus_border;
-    Color text;
-    Color cursor;
-    float radius;
-    int padding_x;
-    int padding_y;
-} TextInputStyle;
-
 Style MergeStyle(Style base, Style overrides);
-
-typedef struct {
-    Rectangle bounds;
-    const char *text;
-    int cursor_position;
-    int focused;
-    int cursor_visible;
-    int font;
-    int focus_id;
-    TextInputStyle style;
-} TextInputProps;
 
 typedef int (*TextInputFilter)(int codepoint, void *user_data);
 
@@ -59,44 +31,6 @@ typedef struct {
     void *filter_user_data;
     int *commit_pressed;
 } TextEdit;
-
-typedef struct {
-    Rectangle bounds;
-    char *text;
-    size_t text_size;
-    int *cursor_position;
-    int *focused;
-    int max_codepoints;
-    int font;
-    int focus_id;
-    TextInputStyle style;
-    TextInputFilter filter;
-    void *filter_user_data;
-    int *commit_pressed;
-    int secure;
-    int read_only;
-} TextFieldProps;
-
-typedef struct {
-    Rectangle bounds;
-    char *text;
-    size_t text_size;
-    int *cursor_position;
-    int *focused;
-    int *scroll_y;
-    int max_codepoints;
-    int font;
-    int line_gap;
-    int focus_id;
-    const char *placeholder;
-    SyntaxMode syntax;
-    TextInputStyle style;
-    TextInputFilter filter;
-    void *filter_user_data;
-    int content_version;
-    int read_only;
-    int wrap;
-} TextAreaProps;
 
 /* Public control metric tokens. Visual style selection belongs to KSS packs;
  * apps override these metrics only when they need full control. */

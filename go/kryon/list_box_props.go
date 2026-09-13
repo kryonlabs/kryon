@@ -5,6 +5,7 @@ package kryon
 type ListBoxProps struct {
 	Bounds        Rectangle
 	ID            int32
+	ClassName     int32
 	Items         []string
 	ItemCount     int32
 	SelectedIndex *int32

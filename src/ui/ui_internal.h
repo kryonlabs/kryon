@@ -430,6 +430,9 @@ void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
                      TextInputStyle style, int focus_id);
 int ui_text_field_render(TextFieldProps field);
+int ui_text_field_render_filtered(TextFieldProps field,
+                                  TextInputFilter filter,
+                                  void *filter_user_data);
 int ui_text_area_render(TextAreaProps area);
 int ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y);
 void ui_text_area_reveal_cursor(TextAreaProps area, int cursor);

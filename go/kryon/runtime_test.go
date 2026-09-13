@@ -1174,6 +1174,100 @@ ListBoxMultiItem:selected { background: selected; foreground: ink; border: selec
 	}
 }
 
+func TestGeneratedChoiceWidgetsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.choice.classes;
+tokens {
+  color {
+    trigger: #204060;
+    panel: #223344;
+    ink: #f4fbff;
+    row: #6750a4;
+  }
+  length { radius: 7; border: 2; inset: 13; }
+  material { flat: Flat; }
+}
+Dropdown.choice { background: trigger; foreground: ink; border: panel; radius: radius; border-width: border; font-size: 18; material: flat; }
+Segment.choice { background: row; foreground: ink; border: row; radius: radius; border-width: border; font-size: 19; material: flat; }
+ListBox.choice { background: panel; foreground: ink; border: trigger; radius: radius; border-width: border; material: flat; }
+ListBoxItem.choice:selected { background: row; foreground: ink; padding-x: inset; font-size: 18; opacity: 0.74; material: flat; }
+ListBoxMulti.choice { background: panel; foreground: ink; border: trigger; radius: radius; border-width: border; material: flat; }
+ListBoxMultiItem.choice:selected { background: row; foreground: ink; padding-x: inset; font-size: 17; opacity: 0.73; material: flat; }
+TreeView.choice { background: panel; foreground: ink; border: trigger; radius: radius; border-width: border; material: flat; }
+TreeViewItem.choice:selected { background: row; foreground: ink; font-size: 18; opacity: 0.72; material: flat; }
+`, "Test Choice Classes", "") || !SetActiveStylePack("test.choice.classes") {
+		t.Fatal("choice class style pack did not activate")
+	}
+	rt := New(AppConfig{Width: 360, Height: 260}).(*runtime)
+	className := StyleClassID("choice")
+	dropdownSelected := int32(0)
+	segmentSelected := int32(0)
+	listSelected := int32(1)
+	multiSelected := []int32{0, 1}
+	multiCount := int32(0)
+	treeSelected := int32(2)
+
+	rt.Dropdown(DropdownProps{Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 28}, ID: 70, ClassName: className, Options: []string{"Alpha"}, SelectedIndex: &dropdownSelected})
+	rt.SegmentedControl(SegmentedControlProps{Bounds: Rectangle{X: 8, Y: 44, Width: 140, Height: 30}, ID: 71, ClassName: className, Options: []SegmentOption{{Label: "One"}}, SelectedIndex: &segmentSelected})
+	rt.ListBox(ListBoxProps{Bounds: Rectangle{X: 8, Y: 82, Width: 120, Height: 60}, ID: 72, ClassName: className, Items: []string{"One", "Two"}, SelectedIndex: &listSelected, RowHeight: 24})
+	rt.ListBox(ListBoxProps{Bounds: Rectangle{X: 160, Y: 82, Width: 120, Height: 60}, ID: 73, ClassName: className, Items: []string{"One", "Two"}, Selected: multiSelected, SelectedCount: &multiCount, RowHeight: 24})
+	rt.TreeView(TreeViewProps{Bounds: Rectangle{X: 8, Y: 152, Width: 120, Height: 60}, ID: 74, ClassName: className, Items: []TreeItem{{Label: "Root", ID: 1}, {Label: "Child", ID: 2, Selectable: 1}}, SelectedID: &treeSelected, RowHeight: 24})
+
+	var sawDropdown, sawSegment, sawListPanel, sawListItem, sawMultiPanel, sawMultiItem, sawTreePanel, sawTreeItem bool
+	for _, op := range rt.FrameOps() {
+		switch {
+		case op.Kind == FrameOpText && op.ID == 70 && op.Row == -1:
+			sawDropdown = true
+			if op.Color != (Color{R: 0xf4, G: 0xfb, B: 0xff, A: 0xff}) || op.FontSize != 18 {
+				t.Fatalf("dropdown class style op = %+v", op)
+			}
+		case op.Kind == FrameOpButton && op.ID == 71001:
+			sawSegment = true
+			style := unpackStyle(op.Button.Appearance.Value)
+			if op.Button.Font != 19 || style.Background != (Color{R: 0x67, G: 0x50, B: 0xa4, A: 0xff}) || style.Foreground != (Color{R: 0xf4, G: 0xfb, B: 0xff, A: 0xff}) {
+				t.Fatalf("segment class style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 72 && op.Row == 0 && op.Bounds == (Rectangle{X: 8, Y: 82, Width: 120, Height: 60}):
+			sawListPanel = true
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
+				t.Fatalf("list panel class style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.ID == 72 && op.Row == 1:
+			sawListItem = true
+			if op.FontSize != 18 || op.Opacity != 0.74 || op.Bounds.X != 21 || op.Color != (Color{R: 0xf4, G: 0xfb, B: 0xff, A: 0xff}) {
+				t.Fatalf("list item class style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 73 && op.Row == 0 && op.Bounds == (Rectangle{X: 160, Y: 82, Width: 120, Height: 60}):
+			sawMultiPanel = true
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
+				t.Fatalf("multi panel class style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.ID == 73 && op.Row == 1:
+			sawMultiItem = true
+			if op.FontSize != 17 || op.Opacity != 0.73 || op.Bounds.X != 173 || op.Color != (Color{R: 0xf4, G: 0xfb, B: 0xff, A: 0xff}) {
+				t.Fatalf("multi item class style op = %+v", op)
+			}
+		case op.Kind == FrameOpRect && op.ID == 74 && op.Row == 0 && op.Bounds == (Rectangle{X: 8, Y: 152, Width: 120, Height: 60}):
+			sawTreePanel = true
+			if op.Color != (Color{R: 0x22, G: 0x33, B: 0x44, A: 0xff}) || op.BorderWidth != 2 || op.Radius != 7 {
+				t.Fatalf("tree panel class style op = %+v", op)
+			}
+		case op.Kind == FrameOpText && op.ID == 2 && op.Text == "Child":
+			sawTreeItem = true
+			if op.FontSize != 18 || op.Opacity != 0.72 || op.Color != (Color{R: 0xf4, G: 0xfb, B: 0xff, A: 0xff}) {
+				t.Fatalf("tree item class style op = %+v", op)
+			}
+		}
+	}
+	if !sawDropdown || !sawSegment || !sawListPanel || !sawListItem ||
+		!sawMultiPanel || !sawMultiItem || !sawTreePanel || !sawTreeItem {
+		t.Fatalf("missing class styled ops: dropdown=%v segment=%v listPanel=%v listItem=%v multiPanel=%v multiItem=%v treePanel=%v treeItem=%v ops=%+v",
+			sawDropdown, sawSegment, sawListPanel, sawListItem, sawMultiPanel, sawMultiItem, sawTreePanel, sawTreeItem, rt.FrameOps())
+	}
+}
+
 func TestDragDropTargetPaintUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)

@@ -1,8 +1,11 @@
 package kryon
 
 // Popup surfaces expose semantic roles; KSS owns the visual result.
-func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState) Style {
+func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState, className ...int32) Style {
 	props := ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft}
+	if len(className) > 0 {
+		props.ClassName = className[0]
+	}
 	if role == 1 {
 		props.Emphasis = ButtonEmphasisFilled
 	}
@@ -17,7 +20,7 @@ func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState) St
 	if role != 2 {
 		return base
 	}
-	accentProps := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled, Selected: selected}
+	accentProps := ButtonProps{Tone: ButtonToneAccent, Emphasis: ButtonEmphasisFilled, Selected: selected, ClassName: props.ClassName}
 	accentState := state
 	if selected && state != ButtonStateDisabled {
 		accentState = ButtonStateSelected
@@ -27,8 +30,8 @@ func (r *runtime) dropdownStyle(role int32, selected bool, state ButtonState) St
 	return unpackStyle(Dropdown_Appearance(packStyle(base), packStyle(accent), role, int32(state), selected))
 }
 
-func (r *runtime) dropdownSurface(bounds Rectangle, role int32, selected bool, state ButtonState) FrameOp {
-	paint := r.dropdownStyle(role, selected, state)
+func (r *runtime) dropdownSurface(bounds Rectangle, role int32, selected bool, state ButtonState, className ...int32) FrameOp {
+	paint := r.dropdownStyle(role, selected, state, className...)
 	return FrameOp{Kind: FrameOpSurface, Bounds: bounds,
 		Color: paint.Background, BorderColor: paint.Border, TextColor: paint.Foreground,
 		FocusColor: paint.Focus, AmbientColor: r.appAmbientColor(),
@@ -37,17 +40,20 @@ func (r *runtime) dropdownSurface(bounds Rectangle, role int32, selected bool, s
 		Hovered: role == 2 && !selected && state == ButtonStateHover}
 }
 
-func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool) Color {
+func (r *runtime) dropdownTrigger(id int32, bounds Rectangle, open, focused bool, className ...int32) Color {
 	disabled := r.contentDisabled()
 	hovered := !disabled && (open || pointInRect(r.mousePos.X, r.mousePos.Y, bounds) && !r.popupCaptures(r.mousePos.X, r.mousePos.Y))
 	held := hovered && r.mouseDown[MouseButtonLeft]
 	props := ButtonProps{Bounds: bounds, ID: id, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}
+	if len(className) > 0 {
+		props.ClassName = className[0]
+	}
 	props.Style = ControlStyle{
-		Normal:   r.dropdownStyle(0, false, ButtonStateNormal),
-		Hover:    r.dropdownStyle(0, false, ButtonStateHover),
-		Pressed:  r.dropdownStyle(0, false, ButtonStatePressed),
-		Focused:  r.dropdownStyle(0, false, ButtonStateFocus),
-		Disabled: r.dropdownStyle(0, false, ButtonStateDisabled),
+		Normal:   r.dropdownStyle(0, false, ButtonStateNormal, props.ClassName),
+		Hover:    r.dropdownStyle(0, false, ButtonStateHover, props.ClassName),
+		Pressed:  r.dropdownStyle(0, false, ButtonStatePressed, props.ClassName),
+		Focused:  r.dropdownStyle(0, false, ButtonStateFocus, props.ClassName),
+		Disabled: r.dropdownStyle(0, false, ButtonStateDisabled, props.ClassName),
 	}
 	input := Button_ResolveButtonInput(int32(props.State), props.Disabled, props.Loading, props.Selected,
 		Activation{Hovered: hovered, Pressed: held, Focused: focused})

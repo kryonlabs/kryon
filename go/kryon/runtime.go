@@ -31,7 +31,6 @@ type Font struct {
 }
 
 type KeyID uint64
-type SyntaxMode int32
 type ThemeId int32
 type ThemeSource int32
 type ThemeMode int32
@@ -74,13 +73,6 @@ const (
 	MouseButtonMiddle int32 = 2
 
 	FilterBilinear int32 = 1
-)
-
-const (
-	SyntaxNone SyntaxMode = 0
-	SyntaxKry  SyntaxMode = 1
-	SyntaxC    SyntaxMode = 2
-	SyntaxMake SyntaxMode = 3
 )
 
 const (
@@ -322,17 +314,6 @@ var (
 	Black      = BLACK
 )
 
-type TextInputStyle struct {
-	Background  Color
-	Border      Color
-	FocusBorder Color
-	Text        Color
-	Cursor      Color
-	Radius      float32
-	PaddingX    int32
-	PaddingY    int32
-}
-
 type ThemeColors struct {
 	Background, Surface, SurfaceRaised, SurfaceSunken, Overlay Color
 	Text, MutedText, DisabledText, Icon, MutedIcon             Color
@@ -377,38 +358,6 @@ const (
 	ArrowUp
 	ArrowDown
 )
-
-type TextFieldProps struct {
-	Bounds         Rectangle
-	Text           []byte
-	CursorPosition *int32
-	Focused        *bool
-	MaxCodepoints  int32
-	Font           int32
-	FocusID        int32
-	Style          TextInputStyle
-	CommitPressed  *bool
-	Secure         bool
-	ReadOnly       bool
-}
-
-type TextAreaProps struct {
-	Bounds         Rectangle
-	Text           []byte
-	CursorPosition *int32
-	Focused        *bool
-	ScrollY        *int32
-	MaxCodepoints  int32
-	Font           int32
-	LineGap        int32
-	FocusID        int32
-	Placeholder    string
-	Syntax         SyntaxMode
-	Style          TextInputStyle
-	ContentVersion int32
-	ReadOnly       bool
-	Wrap           bool
-}
 
 type RowProps = ColumnProps
 
@@ -2301,7 +2250,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			}
 		}
 	}
-	listFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	listFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if disabled {
 			return ButtonStateDisabled
 		}
@@ -2309,7 +2258,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 			return ButtonStateFocus
 		}
 		return ButtonStateNormal
-	}(), disabled, false, StyleSheet_StyleKindListBoxMulti())
+	}(), disabled, false, props.ClassName, StyleSheet_StyleKindListBoxMulti(), StyleSheet_StyleAny())
 	listOp := styleFrameRectOp(bounds, Rectangle{}, listFrame)
 	listOp.ID = props.ID
 	listOp.Disabled = disabled
@@ -2324,7 +2273,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 		rowFocused := focusRow == int32(i)
 		hovered := !disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
 		pressed := int32(i) == clicked
-		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		itemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 			if disabled {
 				return ButtonStateDisabled
 			}
@@ -2338,7 +2287,7 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 				return ButtonStateFocus
 			}
 			return ButtonStateNormal
-		}(), disabled, selected, StyleSheet_StyleKindListBoxMultiItem())
+		}(), disabled, selected, props.ClassName, StyleSheet_StyleKindListBoxMultiItem(), StyleSheet_StyleAny())
 		itemStyle := unpackStyle(itemFrame.Value)
 		if selected || hovered || disabled || rowFocused {
 			op := styleFrameRectOp(row, bounds, itemFrame)
@@ -3927,7 +3876,7 @@ func (r *runtime) dropdownFromProps(p DropdownProps) bool {
 		}
 		r.BeginDisabled(p.Disabled)
 		defer r.EndDisabled()
-		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex)
+		return r.dropdownOptionsAt(p.ID, p.Bounds, labels, p.Items[:count], p.SelectedIndex, p.ClassName)
 	}
 	n := p.OptionCount
 	if n <= 0 || n > int32(len(p.Options)) {
@@ -3936,7 +3885,7 @@ func (r *runtime) dropdownFromProps(p DropdownProps) bool {
 	opts := p.Options[:n]
 	r.BeginDisabled(p.Disabled)
 	defer r.EndDisabled()
-	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex)
+	return r.dropdownAt(p.ID, p.Bounds, opts, p.SelectedIndex, p.ClassName)
 }
 
 func (r *runtime) GetSegmentedControlHeight(props SegmentedControlProps) int32 {
@@ -3968,7 +3917,7 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 		endRow := i == count
 		itemWidth := int32(0)
 		if !endRow {
-			itemWidth = r.segmentedOptionWidth(props.Options[i], props.Font, metrics)
+			itemWidth = r.segmentedOptionWidth(props.Options[i], props.Font, props.ClassName, metrics)
 		}
 		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
 		if !endRow && !SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
@@ -3989,13 +3938,14 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 					Height: float32(metrics.RowHeight),
 				}
 				pressed := r.segmentedButtonAt(ButtonProps{
-					Bounds:   bounds,
-					ID:       props.ID*1000 + int32(index) + 1,
-					Label:    option.Label,
-					Font:     r.segmentedControlFont(props.Font),
-					Pill:     true,
-					Selected: int32(index) == selected,
-					Disabled: option.Disabled || r.contentDisabled(),
+					Bounds:    bounds,
+					ID:        props.ID*1000 + int32(index) + 1,
+					Label:     option.Label,
+					Font:      r.segmentedControlFont(props.Font, props.ClassName),
+					Pill:      true,
+					Selected:  int32(index) == selected,
+					Disabled:  option.Disabled || r.contentDisabled(),
+					ClassName: props.ClassName,
 				})
 				if pressed {
 					result.ClickedIndex = int32(index)
@@ -4020,6 +3970,9 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 func (r *runtime) segmentedButtonAt(props ButtonProps) bool {
 	frame, pressed := r.surfaceButtonFrameForKind(props, Rectangle{}, false,
 		StyleSheet_StyleKindSegment())
+	if frame.Button.Appearance.Value.FontSize > 0 {
+		frame.Button.Font = int32(frame.Button.Appearance.Value.FontSize + 0.5)
+	}
 	r.record(frame)
 	return pressed
 }
@@ -4036,7 +3989,7 @@ func (r *runtime) segmentedControlHeight(props SegmentedControlProps) int32 {
 	rows := int32(1)
 	rowWidth := int32(0)
 	for i := 0; i < count; i++ {
-		itemWidth := r.segmentedOptionWidth(props.Options[i], props.Font, metrics)
+		itemWidth := r.segmentedOptionWidth(props.Options[i], props.Font, props.ClassName, metrics)
 		nextWidth := SegmentedControl_SegmentedNextRowWidth(rowWidth, itemWidth, metrics.Gap)
 		if SegmentedControl_SegmentedShouldWrap(props.Wrap, rowWidth, nextWidth, int32(props.Bounds.Width)) {
 			rows++
@@ -4062,20 +4015,26 @@ func (r *runtime) segmentedControlMetrics(props SegmentedControlProps) Segmented
 		r.Scale(72), r.Scale(180))
 }
 
-func (r *runtime) segmentedControlFont(font int32) int32 {
-	size, _ := r.segmentedControlTextFace(font)
+func (r *runtime) segmentedControlFont(font int32, className ...int32) int32 {
+	size, _ := r.segmentedControlTextFace(font, className...)
 	return size
 }
 
-func (r *runtime) segmentedControlTextFace(font int32) (int32, uint32) {
+func (r *runtime) segmentedControlTextFace(font int32, className ...int32) (int32, uint32) {
 	if font > 0 {
 		return font, 0
 	}
-	return styleTextFace(defaultTextStyleForKind(Text14, StyleSheet_StyleKindSegment()), Text14)
+	props := ButtonProps{ClassName: int32(0)}
+	if len(className) > 0 {
+		props.ClassName = className[0]
+	}
+	style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
+		props, ButtonStateNormal, StyleSheet_StyleKindSegment())
+	return styleTextFace(style, Text14)
 }
 
-func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, metrics SegmentedMetrics) int32 {
-	size, fontID := r.segmentedControlTextFace(font)
+func (r *runtime) segmentedOptionWidth(option SegmentOption, font int32, className int32, metrics SegmentedMetrics) int32 {
+	size, fontID := r.segmentedControlTextFace(font, className)
 	return SegmentedControl_SegmentedItemWidth(int32(runtimeTextWidthWithFont(option.Label, size, fontID)), metrics, r.Scale(20))
 }
 
@@ -4086,12 +4045,16 @@ func (r *runtime) dropdownKeyboardAvailable(id int32) bool {
 	return !r.popupFocusCaptures(id)
 }
 
-func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32) bool {
-	return r.dropdownOptionsAt(id, bounds, labels, nil, selected)
+func (r *runtime) dropdownAt(id int32, bounds Rectangle, labels []string, selected *int32, className ...int32) bool {
+	return r.dropdownOptionsAt(id, bounds, labels, nil, selected, className...)
 }
 
-func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string, items []DropdownOption, selected *int32) bool {
-	contentMetrics := Dropdown_Content(packStyle(r.dropdownStyle(0, false, ButtonStateNormal)), 1)
+func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string, items []DropdownOption, selected *int32, className ...int32) bool {
+	styleClass := int32(0)
+	if len(className) > 0 {
+		styleClass = className[0]
+	}
+	contentMetrics := Dropdown_Content(packStyle(r.dropdownStyle(0, false, ButtonStateNormal, styleClass)), 1)
 	disabledRow := func(index int32) bool {
 		return index >= 0 && int(index) < len(items) && items[index].Disabled
 	}
@@ -4171,7 +4134,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		r.closeDropdown(id)
 	}
 	focused := !r.contentDisabled() && id > 0 && r.focusID == id
-	foreground := r.dropdownTrigger(id, bounds, open, focused)
+	foreground := r.dropdownTrigger(id, bounds, open, focused, styleClass)
 	selectedFontID := uint32(0)
 	if selected != nil && *selected >= 0 && int(*selected) < len(items) {
 		selectedFontID = registeredTypeface(items[*selected].FontName)
@@ -4194,7 +4157,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		r.endPopupInput(input)
 		r.endPaintLayer(layer)
 	}()
-	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal)
+	surface := r.dropdownSurface(panel, 1, false, ButtonStateNormal, styleClass)
 	surface.ID = id
 	r.record(surface)
 	if r.dropdownOffsets == nil {
@@ -4245,7 +4208,7 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 		if disabledRow(int32(i)) {
 			state = ButtonStateDisabled
 		}
-		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, 2, selectedRow, state)
+		paint := r.dropdownSurface(Rectangle{X: row.X + 4, Y: row.Y + 2, Width: max(float32(0), row.Width-8), Height: max(float32(0), row.Height-4)}, 2, selectedRow, state, styleClass)
 		paint.ID, paint.Row, paint.Selected, paint.Focused = id, int32(i), selectedRow, highlighted
 		if selectedRow || highlighted {
 			r.record(paint)
@@ -6051,12 +6014,12 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	}
 	scrollLayout := TreeView_TreeViewScrollFor(scroll, rowH)
 	visible := TreeView_TreeViewVisibleRows(int32(props.Bounds.Height), rowH)
-	panelFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if props.Disabled {
 			return ButtonStateDisabled
 		}
 		return ButtonStateNormal
-	}(), props.Disabled, false, StyleSheet_StyleKindTreeView())
+	}(), props.Disabled, false, props.ClassName, StyleSheet_StyleKindTreeView(), StyleSheet_StyleAny())
 	panelOp := styleFrameRectOp(props.Bounds, Rectangle{}, panelFrame)
 	panelOp.ID = props.ID
 	panelOp.Disabled = props.Disabled
@@ -6078,7 +6041,7 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 			changed = 1
 		}
 		hovered := !props.Disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
-		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		itemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 			if props.Disabled {
 				return ButtonStateDisabled
 			}
@@ -6089,7 +6052,7 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 				return ButtonStateSelected
 			}
 			return ButtonStateNormal
-		}(), props.Disabled, selected, StyleSheet_StyleKindTreeViewItem())
+		}(), props.Disabled, selected, props.ClassName, StyleSheet_StyleKindTreeViewItem(), StyleSheet_StyleAny())
 		itemStyle := unpackStyle(itemFrame.Value)
 		if selected || hovered || props.Disabled {
 			op := styleFrameRectOp(row, props.Bounds, itemFrame)
@@ -7539,7 +7502,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 	rowH = ListBox_ListBoxRowHeight(rowH)
 	changed := int32(0)
 	focused := !props.Disabled && props.ID != 0 && r.focusID == props.ID && !r.popupFocusCaptures(props.ID)
-	listFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+	listFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 		if props.Disabled {
 			return ButtonStateDisabled
 		}
@@ -7547,7 +7510,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 			return ButtonStateFocus
 		}
 		return ButtonStateNormal
-	}(), props.Disabled, false, StyleSheet_StyleKindListBox())
+	}(), props.Disabled, false, props.ClassName, StyleSheet_StyleKindListBox(), StyleSheet_StyleAny())
 	listOp := styleFrameRectOp(props.Bounds, Rectangle{}, listFrame)
 	listOp.ID = props.ID
 	listOp.Disabled = props.Disabled
@@ -7574,7 +7537,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		}
 		selected := props.SelectedIndex != nil && *props.SelectedIndex == index
 		hovered := !props.Disabled && pointInRect(r.mousePos.X, r.mousePos.Y, row)
-		itemFrame := simpleStyleFrame(ButtonToneNeutral, func() ButtonState {
+		itemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
 			if props.Disabled {
 				return ButtonStateDisabled
 			}
@@ -7585,7 +7548,7 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 				return ButtonStateSelected
 			}
 			return ButtonStateNormal
-		}(), props.Disabled, selected, StyleSheet_StyleKindListBoxItem())
+		}(), props.Disabled, selected, props.ClassName, StyleSheet_StyleKindListBoxItem(), StyleSheet_StyleAny())
 		itemStyle := unpackStyle(itemFrame.Value)
 		if selected || hovered || props.Disabled {
 			op := styleFrameRectOp(row, props.Bounds, itemFrame)

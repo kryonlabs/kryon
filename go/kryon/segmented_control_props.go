@@ -10,6 +10,7 @@ type SegmentOption struct {
 type SegmentedControlProps struct {
 	Bounds        Rectangle
 	ID            int32
+	ClassName     int32
 	Options       []SegmentOption
 	OptionCount   int32
 	SelectedIndex *int32

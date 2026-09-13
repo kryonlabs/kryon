@@ -1,0 +1,65 @@
+#module "text_input_props"
+#import "kryon_compat.generated.h"
+
+SyntaxMode :: enum {
+    SyntaxNone = 0
+    SyntaxKry = 1
+    SyntaxC = 2
+    SyntaxMake = 3
+}
+
+TextInputStyle :: struct {
+    background: Color
+    border: Color
+    focus_border: Color
+    text: Color
+    cursor: Color
+    radius: f32
+    padding_x: i32
+    padding_y: i32
+}
+
+TextInputProps :: struct {
+    bounds: Rectangle
+    text: const char*
+    cursor_position: i32
+    focused: bool
+    cursor_visible: bool
+    font: i32
+    focus_id: i32
+    style: TextInputStyle
+}
+
+TextFieldProps :: struct {
+    bounds: Rectangle
+    text: char*
+    text_size: size_t
+    cursor_position: *i32
+    focused: *i32
+    max_codepoints: i32
+    font: i32
+    focus_id: i32
+    style: TextInputStyle
+    commit_pressed: *i32
+    secure: bool
+    read_only: bool
+}
+
+TextAreaProps :: struct {
+    bounds: Rectangle
+    text: char*
+    text_size: size_t
+    cursor_position: *i32
+    focused: *i32
+    scroll_y: *i32
+    max_codepoints: i32
+    font: i32
+    line_gap: i32
+    focus_id: i32
+    placeholder: const char*
+    syntax: SyntaxMode
+    style: TextInputStyle
+    content_version: i32
+    read_only: bool
+    wrap: bool
+}
