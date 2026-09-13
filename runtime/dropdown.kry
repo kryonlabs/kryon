@@ -258,9 +258,15 @@ PopupBounds :: (button: Rectangle, view: Rectangle, count: i32,
     gap: float = panel.value.gap
     padding: float = panel.value.padding_y
     margin: float = panel.value.offset_y
-    if gap <= 0.0 { gap = 4.0 }
-    if padding <= 0.0 { padding = 8.0 }
-    if margin <= 0.0 { margin = 16.0 }
+    if (panel.value.fields & (u32)StyleGap) == (u32)0 || gap < 0.0 {
+        gap = 4.0
+    }
+    if (panel.value.fields & (u32)StylePaddingY) == (u32)0 || padding < 0.0 {
+        padding = 8.0
+    }
+    if (panel.value.fields & (u32)StyleContentOffset) == (u32)0 || margin <= 0.0 {
+        margin = 16.0
+    }
     gap *= scale
     padding *= scale
     margin *= scale

@@ -103,6 +103,13 @@ test_existing_policy(void)
     assert(option.option_y == 46);
     check_rect(option.visible_bounds, 10, 46, 90, 20);
     check_rect(option.highlight_bounds, 14, 48, 82, 16);
+    frame.value.padding_y = 10.0f;
+    frame.value.gap = 6.0f;
+    frame.value.offset_y = 20.0f;
+    check_rect(PopupBounds((Rectangle){20, 30, 80, 24},
+                           (Rectangle){0, 0, 200, 200}, 2, 1.0f, frame),
+               20, 58, 80, 56);
+
     frame.value.fields = StylePaddingY | StyleGap | StyleContentOffset;
     frame.value.padding_y = 10.0f;
     frame.value.gap = 6.0f;
@@ -110,6 +117,12 @@ test_existing_policy(void)
     check_rect(PopupBounds((Rectangle){20, 30, 80, 24},
                            (Rectangle){0, 0, 200, 200}, 2, 1.0f, frame),
                20, 60, 80, 58);
+    frame.value.padding_y = 0.0f;
+    frame.value.gap = 0.0f;
+    frame.value.offset_y = 0.0f;
+    check_rect(PopupBounds((Rectangle){20, 30, 80, 24},
+                           (Rectangle){0, 0, 200, 200}, 2, 1.0f, frame),
+               20, 54, 80, 48);
 }
 
 int

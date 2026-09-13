@@ -754,228 +754,261 @@ func Dropdown_PopupBounds(button Rectangle, view Rectangle, count int32, scale f
 	var padding float32 = value_5
 	var value_6 float32 = panel.Value.OffsetY
 	var margin float32 = value_6
-	var value_7 float32 = gap
-	var value_8 float32 = 0.0
-	var value_9 bool = value_7 <= value_8
-	if value_9 {
-		var value_10 float32 = 4.0
-		gap = value_10
+	var value_7 uint32 = panel.Value.Fields
+	var value_8 int32 = int32(StyleGap)
+	var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
+	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_7), uint64(value_9), 32, false, 8))
+	var value_11 int32 = 0
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+	var value_13 bool = value_10 == value_12
+	var value_14 bool = value_13
+	if !value_14 {
+		var value_15 float32 = gap
+		var value_16 float32 = 0.0
+		var value_17 bool = value_15 < value_16
+		value_14 = value_17
 	}
-	var value_11 float32 = padding
-	var value_12 float32 = 0.0
-	var value_13 bool = value_11 <= value_12
-	if value_13 {
-		var value_14 float32 = 8.0
-		padding = value_14
+	if value_14 {
+		var value_18 float32 = 4.0
+		gap = value_18
 	}
-	var value_15 float32 = margin
-	var value_16 float32 = 0.0
-	var value_17 bool = value_15 <= value_16
-	if value_17 {
-		var value_18 float32 = 16.0
-		margin = value_18
+	var value_19 uint32 = panel.Value.Fields
+	var value_20 int32 = int32(StylePaddingY)
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(value_21), 32, false, 8))
+	var value_23 int32 = 0
+	var value_24 uint32 = uint32(number_runtime_bits(uint64(value_23), uint64(0), 32, false, 0))
+	var value_25 bool = value_22 == value_24
+	var value_26 bool = value_25
+	if !value_26 {
+		var value_27 float32 = padding
+		var value_28 float32 = 0.0
+		var value_29 bool = value_27 < value_28
+		value_26 = value_29
 	}
-	var value_19 float32 = gap
-	var value_20 float32 = scale
-	gap = value_19 * value_20
-	var value_21 float32 = padding
-	var value_22 float32 = scale
-	padding = value_21 * value_22
-	var value_23 float32 = margin
-	var value_24 float32 = scale
-	margin = value_23 * value_24
-	var value_25 float32 = view.Y
-	var value_26 float32 = view.Height
-	var value_27 float32 = value_25 + value_26
-	var bottom float32 = value_27
-	var value_28 float32 = button.Y
-	var value_29 float32 = button.Height
-	var value_30 float32 = value_28 + value_29
-	var value_31 float32 = gap
-	var value_32 float32 = value_30 + value_31
-	var below_y float32 = value_32
-	var value_33 float32 = below_y
-	var value_34 float32 = view.Y
-	var value_35 bool = value_33 < value_34
-	if value_35 {
-		var value_36 float32 = view.Y
-		below_y = value_36
+	if value_26 {
+		var value_30 float32 = 8.0
+		padding = value_30
 	}
-	var value_37 float32 = bottom
-	var value_38 float32 = below_y
-	var value_39 float32 = value_37 - value_38
-	var value_40 float32 = margin
-	var value_41 float32 = value_39 - value_40
-	var below float32 = value_41
-	var value_42 float32 = button.Y
-	var value_43 float32 = view.Y
-	var value_44 float32 = value_42 - value_43
-	var value_45 float32 = margin
-	var value_46 float32 = value_44 - value_45
-	var above float32 = value_46
-	var value_47 float32 = below
-	var value_48 float32 = 0.0
-	var value_49 bool = value_47 < value_48
-	if value_49 {
-		var value_50 float32 = 0.0
-		below = value_50
+	var value_31 uint32 = panel.Value.Fields
+	var value_32 int32 = int32(StyleContentOffset)
+	var value_33 uint32 = uint32(number_runtime_bits(uint64(value_32), uint64(0), 32, false, 0))
+	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(value_33), 32, false, 8))
+	var value_35 int32 = 0
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
+	var value_37 bool = value_34 == value_36
+	var value_38 bool = value_37
+	if !value_38 {
+		var value_39 float32 = margin
+		var value_40 float32 = 0.0
+		var value_41 bool = value_39 <= value_40
+		value_38 = value_41
 	}
-	var value_51 float32 = above
-	var value_52 float32 = 0.0
-	var value_53 bool = value_51 < value_52
-	if value_53 {
-		var value_54 float32 = 0.0
-		above = value_54
+	if value_38 {
+		var value_42 float32 = 16.0
+		margin = value_42
 	}
-	var value_55 float32 = below
-	var available float32 = value_55
-	var value_56 float32 = above
-	var value_57 float32 = available
-	var value_58 bool = value_56 > value_57
-	if value_58 {
-		var value_59 float32 = above
-		available = value_59
+	var value_43 float32 = gap
+	var value_44 float32 = scale
+	gap = value_43 * value_44
+	var value_45 float32 = padding
+	var value_46 float32 = scale
+	padding = value_45 * value_46
+	var value_47 float32 = margin
+	var value_48 float32 = scale
+	margin = value_47 * value_48
+	var value_49 float32 = view.Y
+	var value_50 float32 = view.Height
+	var value_51 float32 = value_49 + value_50
+	var bottom float32 = value_51
+	var value_52 float32 = button.Y
+	var value_53 float32 = button.Height
+	var value_54 float32 = value_52 + value_53
+	var value_55 float32 = gap
+	var value_56 float32 = value_54 + value_55
+	var below_y float32 = value_56
+	var value_57 float32 = below_y
+	var value_58 float32 = view.Y
+	var value_59 bool = value_57 < value_58
+	if value_59 {
+		var value_60 float32 = view.Y
+		below_y = value_60
 	}
-	var value_60 int32 = count
-	var value_61 float32 = button.Height
-	var value_62 float32 = padding
-	var value_63 int32 = Dropdown_ContentHeight(value_60, value_61, value_62)
-	var value_64 float32 = float32(value_63)
-	var height float32 = value_64
-	var value_65 float32 = height
-	var value_66 float32 = available
-	var value_67 bool = value_65 > value_66
-	var value_68 bool = value_67
-	if value_68 {
-		var value_69 float32 = button.Height
-		var value_70 float32 = 0.0
-		var value_71 bool = value_69 > value_70
-		value_68 = value_71
+	var value_61 float32 = bottom
+	var value_62 float32 = below_y
+	var value_63 float32 = value_61 - value_62
+	var value_64 float32 = margin
+	var value_65 float32 = value_63 - value_64
+	var below float32 = value_65
+	var value_66 float32 = button.Y
+	var value_67 float32 = view.Y
+	var value_68 float32 = value_66 - value_67
+	var value_69 float32 = margin
+	var value_70 float32 = value_68 - value_69
+	var above float32 = value_70
+	var value_71 float32 = below
+	var value_72 float32 = 0.0
+	var value_73 bool = value_71 < value_72
+	if value_73 {
+		var value_74 float32 = 0.0
+		below = value_74
 	}
-	if value_68 {
-		var value_72 float32 = available
-		var value_73 float32 = padding
-		var value_74 float32 = value_72 - value_73
-		var value_75 float32 = button.Height
-		var value_76 float32 = value_74 / value_75
-		var value_77 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_76), 32, true)), uint64(0), 32, true, 0))
-		var rows int32 = value_77
-		var value_78 int32 = rows
-		var value_79 int32 = 1
-		var value_80 bool = value_78 < value_79
-		if value_80 {
-			var value_81 int32 = 1
-			rows = value_81
+	var value_75 float32 = above
+	var value_76 float32 = 0.0
+	var value_77 bool = value_75 < value_76
+	if value_77 {
+		var value_78 float32 = 0.0
+		above = value_78
+	}
+	var value_79 float32 = below
+	var available float32 = value_79
+	var value_80 float32 = above
+	var value_81 float32 = available
+	var value_82 bool = value_80 > value_81
+	if value_82 {
+		var value_83 float32 = above
+		available = value_83
+	}
+	var value_84 int32 = count
+	var value_85 float32 = button.Height
+	var value_86 float32 = padding
+	var value_87 int32 = Dropdown_ContentHeight(value_84, value_85, value_86)
+	var value_88 float32 = float32(value_87)
+	var height float32 = value_88
+	var value_89 float32 = height
+	var value_90 float32 = available
+	var value_91 bool = value_89 > value_90
+	var value_92 bool = value_91
+	if value_92 {
+		var value_93 float32 = button.Height
+		var value_94 float32 = 0.0
+		var value_95 bool = value_93 > value_94
+		value_92 = value_95
+	}
+	if value_92 {
+		var value_96 float32 = available
+		var value_97 float32 = padding
+		var value_98 float32 = value_96 - value_97
+		var value_99 float32 = button.Height
+		var value_100 float32 = value_98 / value_99
+		var value_101 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_100), 32, true)), uint64(0), 32, true, 0))
+		var rows int32 = value_101
+		var value_102 int32 = rows
+		var value_103 int32 = 1
+		var value_104 bool = value_102 < value_103
+		if value_104 {
+			var value_105 int32 = 1
+			rows = value_105
 		}
-		var value_82 int32 = rows
-		var value_83 float32 = button.Height
-		var value_84 float32 = padding
-		var value_85 int32 = Dropdown_ContentHeight(value_82, value_83, value_84)
-		var value_86 float32 = float32(value_85)
-		height = value_86
+		var value_106 int32 = rows
+		var value_107 float32 = button.Height
+		var value_108 float32 = padding
+		var value_109 int32 = Dropdown_ContentHeight(value_106, value_107, value_108)
+		var value_110 float32 = float32(value_109)
+		height = value_110
 	}
-	var value_87 float32 = below_y
-	var y float32 = value_87
-	var value_88 float32 = height
-	var value_89 float32 = below
-	var value_90 bool = value_88 > value_89
-	var value_91 bool = value_90
-	if value_91 {
-		var value_92 float32 = above
-		var value_93 float32 = below
-		var value_94 bool = value_92 > value_93
-		value_91 = value_94
+	var value_111 float32 = below_y
+	var y float32 = value_111
+	var value_112 float32 = height
+	var value_113 float32 = below
+	var value_114 bool = value_112 > value_113
+	var value_115 bool = value_114
+	if value_115 {
+		var value_116 float32 = above
+		var value_117 float32 = below
+		var value_118 bool = value_116 > value_117
+		value_115 = value_118
 	}
-	if value_91 {
-		var value_95 float32 = button.Y
-		var value_96 float32 = gap
-		var value_97 float32 = value_95 - value_96
-		var value_98 float32 = height
-		var value_99 float32 = value_97 - value_98
-		y = value_99
+	if value_115 {
+		var value_119 float32 = button.Y
+		var value_120 float32 = gap
+		var value_121 float32 = value_119 - value_120
+		var value_122 float32 = height
+		var value_123 float32 = value_121 - value_122
+		y = value_123
 	}
-	var value_100 float32 = height
-	var value_101 float32 = view.Height
-	var value_102 bool = value_100 > value_101
-	if value_102 {
-		var value_103 float32 = view.Height
-		height = value_103
+	var value_124 float32 = height
+	var value_125 float32 = view.Height
+	var value_126 bool = value_124 > value_125
+	if value_126 {
+		var value_127 float32 = view.Height
+		height = value_127
 	}
-	var value_104 float32 = height
-	var value_105 float32 = 0.0
-	var value_106 bool = value_104 < value_105
-	if value_106 {
-		var value_107 float32 = 0.0
-		height = value_107
+	var value_128 float32 = height
+	var value_129 float32 = 0.0
+	var value_130 bool = value_128 < value_129
+	if value_130 {
+		var value_131 float32 = 0.0
+		height = value_131
 	}
-	var value_108 float32 = y
-	var value_109 float32 = bottom
-	var value_110 float32 = height
-	var value_111 float32 = value_109 - value_110
-	var value_112 bool = value_108 > value_111
-	if value_112 {
-		var value_113 float32 = bottom
-		var value_114 float32 = height
-		var value_115 float32 = value_113 - value_114
-		y = value_115
-	}
-	var value_116 float32 = y
-	var value_117 float32 = view.Y
-	var value_118 bool = value_116 < value_117
-	if value_118 {
-		var value_119 float32 = view.Y
-		y = value_119
-	}
-	var value_120 float32 = button.Width
-	var width float32 = value_120
-	var value_121 float32 = width
-	var value_122 float32 = view.Width
-	var value_123 bool = value_121 > value_122
-	if value_123 {
-		var value_124 float32 = view.Width
-		width = value_124
-	}
-	var value_125 float32 = width
-	var value_126 float32 = 0.0
-	var value_127 bool = value_125 < value_126
-	if value_127 {
-		var value_128 float32 = 0.0
-		width = value_128
-	}
-	var value_129 float32 = button.X
-	var x float32 = value_129
-	var value_130 float32 = x
-	var value_131 float32 = view.X
-	var value_132 float32 = view.Width
-	var value_133 float32 = value_131 + value_132
-	var value_134 float32 = width
+	var value_132 float32 = y
+	var value_133 float32 = bottom
+	var value_134 float32 = height
 	var value_135 float32 = value_133 - value_134
-	var value_136 bool = value_130 > value_135
+	var value_136 bool = value_132 > value_135
 	if value_136 {
-		var value_137 float32 = view.X
-		var value_138 float32 = view.Width
-		var value_139 float32 = value_137 + value_138
-		var value_140 float32 = width
-		var value_141 float32 = value_139 - value_140
-		x = value_141
+		var value_137 float32 = bottom
+		var value_138 float32 = height
+		var value_139 float32 = value_137 - value_138
+		y = value_139
 	}
-	var value_142 float32 = x
-	var value_143 float32 = view.X
-	var value_144 bool = value_142 < value_143
-	if value_144 {
-		var value_145 float32 = view.X
-		x = value_145
+	var value_140 float32 = y
+	var value_141 float32 = view.Y
+	var value_142 bool = value_140 < value_141
+	if value_142 {
+		var value_143 float32 = view.Y
+		y = value_143
 	}
-	var value_146 Rectangle = Rectangle{}
-	var value_147 float32 = x
-	value_146.X = value_147
-	var value_148 float32 = y
-	value_146.Y = value_148
+	var value_144 float32 = button.Width
+	var width float32 = value_144
+	var value_145 float32 = width
+	var value_146 float32 = view.Width
+	var value_147 bool = value_145 > value_146
+	if value_147 {
+		var value_148 float32 = view.Width
+		width = value_148
+	}
 	var value_149 float32 = width
-	value_146.Width = value_149
-	var value_150 float32 = height
-	value_146.Height = value_150
-	return value_146
+	var value_150 float32 = 0.0
+	var value_151 bool = value_149 < value_150
+	if value_151 {
+		var value_152 float32 = 0.0
+		width = value_152
+	}
+	var value_153 float32 = button.X
+	var x float32 = value_153
+	var value_154 float32 = x
+	var value_155 float32 = view.X
+	var value_156 float32 = view.Width
+	var value_157 float32 = value_155 + value_156
+	var value_158 float32 = width
+	var value_159 float32 = value_157 - value_158
+	var value_160 bool = value_154 > value_159
+	if value_160 {
+		var value_161 float32 = view.X
+		var value_162 float32 = view.Width
+		var value_163 float32 = value_161 + value_162
+		var value_164 float32 = width
+		var value_165 float32 = value_163 - value_164
+		x = value_165
+	}
+	var value_166 float32 = x
+	var value_167 float32 = view.X
+	var value_168 bool = value_166 < value_167
+	if value_168 {
+		var value_169 float32 = view.X
+		x = value_169
+	}
+	var value_170 Rectangle = Rectangle{}
+	var value_171 float32 = x
+	value_170.X = value_171
+	var value_172 float32 = y
+	value_170.Y = value_172
+	var value_173 float32 = width
+	value_170.Width = value_173
+	var value_174 float32 = height
+	value_170.Height = value_174
+	return value_170
 }
 
 func Dropdown_ScrollOffset(offset float64, maximum int32) int32 {
