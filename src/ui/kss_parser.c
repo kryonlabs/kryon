@@ -11,7 +11,8 @@
 typedef enum KssTokenKind {
     KSS_TOKEN_COLOR,
     KSS_TOKEN_LENGTH,
-    KSS_TOKEN_MATERIAL
+    KSS_TOKEN_MATERIAL,
+    KSS_TOKEN_DURATION
 } KssTokenKind;
 
 typedef struct KssToken {
@@ -481,6 +482,32 @@ kss_read_number(KssParser *p, float *out)
     return true;
 }
 
+static bool
+kss_read_duration(KssParser *p, float *out)
+{
+    char unit[8];
+    const char *save;
+    float value;
+
+    if(!kss_read_number(p, &value))
+        return false;
+    save = p->cursor;
+    if(kss_read_ident(p, unit, sizeof(unit))) {
+        if(kss_ieq(unit, "ms")) {
+            *out = value;
+            return true;
+        }
+        if(kss_ieq(unit, "s")) {
+            *out = value * 1000.0f;
+            return true;
+        }
+        p->cursor = save;
+        return false;
+    }
+    *out = value;
+    return true;
+}
+
 static void
 kss_copy_id(char *dest, size_t dest_size, const char *src)
 {
@@ -509,7 +536,8 @@ static bool
 kss_find_length_token(KssParser *p, const char *name, float *out)
 {
     for(int i = p->token_count - 1; i >= 0; i--)
-        if(p->tokens[i].kind == KSS_TOKEN_LENGTH &&
+        if((p->tokens[i].kind == KSS_TOKEN_LENGTH ||
+            p->tokens[i].kind == KSS_TOKEN_DURATION) &&
            strcmp(p->tokens[i].name, name) == 0) {
             *out = p->tokens[i].number;
             return true;
@@ -602,6 +630,8 @@ kss_parse_token_group(KssParser *p)
         kind = KSS_TOKEN_COLOR;
     else if(kss_ieq(group, "length") || kss_ieq(group, "number"))
         kind = KSS_TOKEN_LENGTH;
+    else if(kss_ieq(group, "duration"))
+        kind = KSS_TOKEN_DURATION;
     else if(kss_ieq(group, "material"))
         kind = KSS_TOKEN_MATERIAL;
     else
@@ -629,6 +659,9 @@ kss_parse_token_group(KssParser *p)
         } else if(kind == KSS_TOKEN_LENGTH) {
             if(!kss_read_number(p, &token.number))
                 return kss_fail(p, "expected token number");
+        } else if(kind == KSS_TOKEN_DURATION) {
+            if(!kss_read_duration(p, &token.number))
+                return kss_fail(p, "expected token duration");
         } else if(!kss_read_material_value(p, &token.material)) {
             return kss_fail(p, "expected token material");
         }

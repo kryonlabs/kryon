@@ -217,6 +217,19 @@ use the canonical widget names and props shown here.
 
 ### Style sheet classes
 
+KSS tokens are grouped in one `tokens { ... }` block. Accepted groups are
+`color`, `length`, `number`, `duration`, and `material`; duration values are
+stored as milliseconds, so `80ms` is `80` and `0.14s` is `140`.
+
+```kss
+tokens {
+  color { accent: #2f6bff; }
+  length { space.3: 12; }
+  duration { fast: 80ms; normal: 0.14s; }
+  material { default: Flat; }
+}
+```
+
 KSS class selectors use CSS-style suffixes or an explicit selector attribute:
 
 ```kss
@@ -1674,9 +1687,13 @@ generated/runtime code and are not public widget names.
 #### Node Measurement
 
 ```c
+const char *GetNodeKindName(WidgetKind kind);
 int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 ```
+
+`GetNodeKindName` returns clean inspection names such as `"Button"`,
+`"TextField"`, and `"Image"`; retained `WIDGET_*` constants are internal.
 
 ---
 

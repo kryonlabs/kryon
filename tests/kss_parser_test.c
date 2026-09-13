@@ -52,6 +52,7 @@ main(void)
         "tokens {\n"
         "  color { face: #111111; ink: #eeeeeeff; accent: #2f6bff; }\n"
         "  length { radius.md: 6; space.3: 12; line: 2; }\n"
+        "  duration { fast: 80ms; normal: 0.14s; }\n"
         "}\n"
         "@layer components;\n"
         "Button {\n"
@@ -66,10 +67,11 @@ main(void)
         "  border-width: line;\n"
         "}\n"
         "Button.primary {\n"
-        "  padding-y: space.3;\n"
+        "  padding-y: fast;\n"
         "}\n"
         "Button[class=primary]:pressed {\n"
         "  focus: accent;\n"
+        "  opacity: normal;\n"
         "}\n"
         "Segment:selected {\n"
         "  foreground: accent;\n"
@@ -179,11 +181,12 @@ main(void)
     assert(rules[1].style.background == 0x2f6bffffu);
     assert(rules[2].selector.kind == StyleKindButton());
     assert(rules[2].selector.class_name == StyleClassId("primary"));
-    assert(rules[2].style.padding_y == 12.0f);
+    assert(rules[2].style.padding_y == 80.0f);
     assert(rules[3].selector.kind == StyleKindButton());
     assert(rules[3].selector.class_name == StyleClassId("primary"));
     assert(rules[3].state == ButtonStatePressed);
     assert(rules[3].style.focus == 0x2f6bffffu);
+    assert(rules[3].style.opacity == 140.0f);
     assert(rules[4].selector.kind == StyleKindSegment());
     assert(rules[4].state == ButtonStateSelected);
     assert(rules[4].style.foreground == 0x2f6bffffu);
@@ -202,8 +205,9 @@ main(void)
 
     resolved = ResolveStyle(&sheet, base, primary, ButtonStatePressed);
     assert(resolved.background == 0x111111ffu);
-    assert(resolved.padding_y == 12.0f);
+    assert(resolved.padding_y == 80.0f);
     assert(resolved.focus == 0x2f6bffffu);
+    assert(resolved.opacity == 140.0f);
 
     resolved = ResolveStyle(&sheet, base, danger, ButtonStateHover);
     assert(resolved.background == 0x111111ffu);

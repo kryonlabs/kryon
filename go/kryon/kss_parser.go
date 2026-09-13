@@ -192,7 +192,7 @@ func (p *styleParser) tokenGroup() error {
 		return p.err("expected token group")
 	}
 	group = strings.ToLower(group)
-	if group != "color" && group != "length" && group != "number" && group != "material" {
+	if group != "color" && group != "length" && group != "number" && group != "duration" && group != "material" {
 		return p.err("unknown token group %q", group)
 	}
 	if !p.expect('{') {
@@ -226,6 +226,15 @@ func (p *styleParser) tokenGroup() error {
 			p.tokens.colors[name] = value
 		case "length", "number":
 			value, err := p.number()
+			if err != nil {
+				return err
+			}
+			if p.tokens.lengths == nil {
+				p.tokens.lengths = map[string]float32{}
+			}
+			p.tokens.lengths[name] = value
+		case "duration":
+			value, err := p.duration()
 			if err != nil {
 				return err
 			}
@@ -505,6 +514,27 @@ func (p *styleParser) number() (float32, error) {
 		return 0, p.err("invalid number")
 	}
 	return float32(v), nil
+}
+
+func (p *styleParser) duration() (float32, error) {
+	value, err := p.number()
+	if err != nil {
+		return 0, err
+	}
+	save := p.pos
+	unit, ok := p.ident()
+	if !ok {
+		return value, nil
+	}
+	switch strings.ToLower(unit) {
+	case "ms":
+		return value, nil
+	case "s":
+		return value * 1000, nil
+	default:
+		p.pos = save
+		return 0, p.err("expected duration unit")
+	}
 }
 
 func (p *styleParser) colorValue() (uint32, error) {

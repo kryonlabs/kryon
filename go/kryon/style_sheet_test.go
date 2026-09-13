@@ -144,6 +144,7 @@ func TestParseStyleSheetInGo(t *testing.T) {
 tokens {
   color { accent: #2f6bff; face: #111111; }
   length { line: 2; }
+  duration { fast: 80ms; normal: 0.14s; }
 }
 @layer components;
 Button[tone=Accent][emphasis=Filled]:hover {
@@ -151,10 +152,11 @@ Button[tone=Accent][emphasis=Filled]:hover {
   border-width: line;
 }
 Button.primary {
-  padding-y: line;
+  padding-y: fast;
 }
 Button[class=primary]:pressed {
   focus: accent;
+  opacity: normal;
 }
 Segment:selected {
   foreground: accent;
@@ -263,13 +265,14 @@ Focus[role=Box]:focus {
 	}
 	if rules[1].Selector.Kind != StyleSheet_StyleKindButton() ||
 		rules[1].Selector.ClassName != StyleClassID("primary") ||
-		rules[1].Style.PaddingY != 2 {
+		rules[1].Style.PaddingY != 80 {
 		t.Fatalf("bad class rule: %#v", rules[1])
 	}
 	if rules[2].Selector.Kind != StyleSheet_StyleKindButton() ||
 		rules[2].Selector.ClassName != StyleClassID("primary") ||
 		rules[2].State != int32(ButtonStatePressed) ||
-		rules[2].Style.Focus != 0x2f6bffff {
+		rules[2].Style.Focus != 0x2f6bffff ||
+		rules[2].Style.Opacity != 140 {
 		t.Fatalf("bad class attribute rule: %#v", rules[2])
 	}
 	if rules[3].Selector.Kind != StyleSheet_StyleKindSegment() ||
