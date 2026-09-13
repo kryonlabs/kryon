@@ -1410,6 +1410,8 @@ stmt_has_web_metadata(const KirStmt *st)
            st->dom_aria_posinset[0] || st->dom_aria_setsize[0] ||
            st->dom_aria_haspopup[0] ||
            st->dom_aria_multiselectable[0] ||
+           st->dom_aria_rowindex[0] || st->dom_aria_colindex[0] ||
+           st->dom_aria_rowcount[0] || st->dom_aria_colcount[0] ||
            st->dom_aria_live[0] || st->dom_aria_attrs[0] ||
            st->dom_on_click[0] || st->dom_on_input[0] ||
            st->dom_on_before_input[0] ||
@@ -1684,6 +1686,14 @@ emit_web_metadata(FILE *f, const KirModule *m, const KirStmt *st)
                              &emitted);
     emit_metadata_expr_field(f, m, "ariaMultiSelectable",
                              st->dom_aria_multiselectable, &emitted);
+    emit_metadata_expr_field(f, m, "ariaRowIndex", st->dom_aria_rowindex,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaColIndex", st->dom_aria_colindex,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaRowCount", st->dom_aria_rowcount,
+                             &emitted);
+    emit_metadata_expr_field(f, m, "ariaColCount", st->dom_aria_colcount,
+                             &emitted);
     emit_metadata_expr_field(f, m, "ariaLive", st->dom_aria_live, &emitted);
     emit_metadata_attr_map(f, m, "aria", st->dom_aria_attrs, &emitted);
     emit_web_action(f, m, "onClick", "action", st->dom_on_click, "", &emitted);

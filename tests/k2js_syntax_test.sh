@@ -556,6 +556,8 @@ TableHeaderScreen :: () #ui {
             dom_id = "price-header"
             scope = "col"
             aria_sort = "ascending"
+            aria_colindex = 1
+            aria_colcount = 2
         }
         Text price_cell: {
             text = "$12"
@@ -563,6 +565,9 @@ TableHeaderScreen :: () #ui {
             headers = "price_header"
             colspan = 2
             rowspan = 1
+            aria_rowindex = 2
+            aria_col_index = 1
+            aria_row_count = 4
         }
     }
 }
@@ -572,10 +577,15 @@ table_headers_out="$work/out/src/table_headers.js"
 grep -q '"tag": "th"' "$table_headers_out"
 grep -q '"scope": "col"' "$table_headers_out"
 grep -q '"ariaSort": "ascending"' "$table_headers_out"
+grep -q '"ariaColIndex": 1' "$table_headers_out"
+grep -q '"ariaColCount": 2' "$table_headers_out"
 grep -q '"tag": "td"' "$table_headers_out"
 grep -q '"headers": "price_header"' "$table_headers_out"
 grep -q '"colSpan": 2' "$table_headers_out"
 grep -q '"rowSpan": 1' "$table_headers_out"
+grep -q '"ariaRowIndex": 2' "$table_headers_out"
+grep -q '"ariaColIndex": 1' "$table_headers_out"
+grep -q '"ariaRowCount": 4' "$table_headers_out"
 
 cat > "$work/src/menu_semantics.kry" <<'EOF'
 #import "kryon.h"

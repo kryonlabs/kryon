@@ -514,6 +514,10 @@ typedef struct UiBlock {
     char dom_aria_setsize[KIR_NAME_MAX];
     char dom_aria_haspopup[KIR_NAME_MAX];
     char dom_aria_multiselectable[KIR_NAME_MAX];
+    char dom_aria_rowindex[KIR_NAME_MAX];
+    char dom_aria_colindex[KIR_NAME_MAX];
+    char dom_aria_rowcount[KIR_NAME_MAX];
+    char dom_aria_colcount[KIR_NAME_MAX];
     char dom_aria_live[KIR_NAME_MAX];
     char dom_aria_attrs[KIR_TEXT_MAX];
     char dom_on_click[KIR_NAME_MAX];
@@ -1172,6 +1176,30 @@ ui_block_set_web_prop(UiBlock *block, const char *field, const char *value)
                  sizeof(block->dom_aria_multiselectable), "%s", value);
         return 1;
     }
+    if(strcmp(field, "aria_rowindex") == 0 ||
+       strcmp(field, "aria_row_index") == 0) {
+        snprintf(block->dom_aria_rowindex, sizeof(block->dom_aria_rowindex),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_colindex") == 0 ||
+       strcmp(field, "aria_col_index") == 0) {
+        snprintf(block->dom_aria_colindex, sizeof(block->dom_aria_colindex),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_rowcount") == 0 ||
+       strcmp(field, "aria_row_count") == 0) {
+        snprintf(block->dom_aria_rowcount, sizeof(block->dom_aria_rowcount),
+                 "%s", value);
+        return 1;
+    }
+    if(strcmp(field, "aria_colcount") == 0 ||
+       strcmp(field, "aria_col_count") == 0) {
+        snprintf(block->dom_aria_colcount, sizeof(block->dom_aria_colcount),
+                 "%s", value);
+        return 1;
+    }
     if(strcmp(field, "aria_live") == 0 || strcmp(field, "live") == 0) {
         snprintf(block->dom_aria_live, sizeof(block->dom_aria_live), "%s",
                  value);
@@ -1510,6 +1538,18 @@ ui_block_apply_web_metadata(KirStmt *statement, const UiBlock *block)
     snprintf(statement->dom_aria_multiselectable,
              sizeof(statement->dom_aria_multiselectable), "%s",
              block->dom_aria_multiselectable);
+    snprintf(statement->dom_aria_rowindex,
+             sizeof(statement->dom_aria_rowindex), "%s",
+             block->dom_aria_rowindex);
+    snprintf(statement->dom_aria_colindex,
+             sizeof(statement->dom_aria_colindex), "%s",
+             block->dom_aria_colindex);
+    snprintf(statement->dom_aria_rowcount,
+             sizeof(statement->dom_aria_rowcount), "%s",
+             block->dom_aria_rowcount);
+    snprintf(statement->dom_aria_colcount,
+             sizeof(statement->dom_aria_colcount), "%s",
+             block->dom_aria_colcount);
     snprintf(statement->dom_aria_live, sizeof(statement->dom_aria_live), "%s",
              block->dom_aria_live);
     snprintf(statement->dom_aria_attrs, sizeof(statement->dom_aria_attrs),

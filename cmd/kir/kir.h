@@ -196,6 +196,10 @@ typedef struct KirStmt {
     char dom_aria_setsize[KIR_NAME_MAX];     /* requested set size */
     char dom_aria_haspopup[KIR_NAME_MAX];    /* requested popup relationship type */
     char dom_aria_multiselectable[KIR_NAME_MAX]; /* requested multi-select state */
+    char dom_aria_rowindex[KIR_NAME_MAX];    /* requested table/grid row index */
+    char dom_aria_colindex[KIR_NAME_MAX];    /* requested table/grid column index */
+    char dom_aria_rowcount[KIR_NAME_MAX];    /* requested table/grid row count */
+    char dom_aria_colcount[KIR_NAME_MAX];    /* requested table/grid column count */
     char dom_aria_live[KIR_NAME_MAX];        /* requested live region policy */
     char dom_aria_attrs[KIR_TEXT_MAX];  /* requested arbitrary aria-* attributes */
     char dom_on_click[KIR_NAME_MAX];    /* logic function bound to click */

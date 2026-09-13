@@ -171,6 +171,10 @@ Supported metadata fields:
 | `aria_setsize`, `aria_set_size` | `ariaSetSize` |
 | `aria_haspopup`, `aria_has_popup` | `ariaHasPopup` |
 | `aria_multiselectable`, `aria_multi_selectable` | `ariaMultiSelectable` |
+| `aria_rowindex`, `aria_row_index` | `ariaRowIndex` |
+| `aria_colindex`, `aria_col_index` | `ariaColIndex` |
+| `aria_rowcount`, `aria_row_count` | `ariaRowCount` |
+| `aria_colcount`, `aria_col_count` | `ariaColCount` |
 | `aria_live`, `live` | `ariaLive` |
 | `aria_*`, `dom_aria_*`, `html_aria_*` | `ariaAttrs` |
 | `on_click` | `onClick`, `action` |
@@ -358,8 +362,8 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,
 `dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaSort`,
 `ariaOrientation`, `ariaLevel`, `ariaPosInSet`, `ariaSetSize`,
-`ariaHasPopup`, `ariaMultiSelectable`, `open`, `scrollLeft`, `scrollTop`,
-and `state`. The DOM
+`ariaHasPopup`, `ariaMultiSelectable`, `ariaRowIndex`, `ariaColIndex`,
+`ariaRowCount`, `ariaColCount`, `open`, `scrollLeft`, `scrollTop`, and `state`. The DOM
 backend may translate resolved KSS values to CSS variables, classes, or style
 attributes, but browser CSS is an output detail rather than the authoring source
 of truth.
@@ -395,7 +399,8 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[headers=...]`, `[scope=...]`, `[colspan=...]`, `[rowspan=...]`,
 `[aria-sort=...]`, `[aria-orientation=...]`, `[aria-level=...]`,
 `[aria-posinset=...]`, `[aria-setsize=...]`, `[aria-haspopup=...]`,
-`[aria-multiselectable=...]`,
+`[aria-multiselectable=...]`, `[aria-rowindex=...]`, `[aria-colindex=...]`,
+`[aria-rowcount=...]`, `[aria-colcount=...]`,
 data/ARIA/extra attribute selectors, state pseudos, layers, colors, padding,
 margin, size constraints, radius, border width, opacity, font size, offsets,
 font family, font weight, letter spacing, text alignment, content offsets,

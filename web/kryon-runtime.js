@@ -1358,6 +1358,10 @@ function webNodeFromWidget(item, index) {
     ariaSetSize: metaString(meta, "ariaSetSize"),
     ariaHasPopup: metaString(meta, "ariaHasPopup"),
     ariaMultiSelectable: metaString(meta, "ariaMultiSelectable"),
+    ariaRowIndex: metaString(meta, "ariaRowIndex"),
+    ariaColIndex: metaString(meta, "ariaColIndex"),
+    ariaRowCount: metaString(meta, "ariaRowCount"),
+    ariaColCount: metaString(meta, "ariaColCount"),
     ariaLive: meta.ariaLive === undefined || meta.ariaLive === null ? "" : String(meta.ariaLive),
     ariaAttrs: propAriaAttrs(meta),
     onClick: meta.onClick === undefined || meta.onClick === null ? "" : String(meta.onClick),
@@ -1512,6 +1516,10 @@ export function webNodeStyleFacts(node) {
     ariaSetSize: node?.ariaSetSize || "",
     ariaHasPopup: node?.ariaHasPopup || "",
     ariaMultiSelectable: node?.ariaMultiSelectable || "",
+    ariaRowIndex: node?.ariaRowIndex || "",
+    ariaColIndex: node?.ariaColIndex || "",
+    ariaRowCount: node?.ariaRowCount || "",
+    ariaColCount: node?.ariaColCount || "",
     state: { ...(node?.state || {}) }
   };
 }
@@ -1582,6 +1590,10 @@ export function webAccessibilitySnapshot(source) {
       href: node.href,
       inputType: node.inputType,
       level: node.level || 0,
+      rowIndex: node.ariaRowIndex,
+      colIndex: node.ariaColIndex,
+      rowCount: node.ariaRowCount,
+      colCount: node.ariaColCount,
       state: { ...node.state }
     }))
   };
@@ -2196,7 +2208,20 @@ function selectorNativeAttrValue(key, facts) {
     case "aria-haspopup":
     case "ariaHasPopup": return facts.ariaHasPopup;
     case "aria-multiselectable":
+    case "ariamultiselectable":
     case "ariaMultiSelectable": return facts.ariaMultiSelectable;
+    case "aria-rowindex":
+    case "ariarowindex":
+    case "ariaRowIndex": return facts.ariaRowIndex;
+    case "aria-colindex":
+    case "ariacolindex":
+    case "ariaColIndex": return facts.ariaColIndex;
+    case "aria-rowcount":
+    case "ariarowcount":
+    case "ariaRowCount": return facts.ariaRowCount;
+    case "aria-colcount":
+    case "ariacolcount":
+    case "ariaColCount": return facts.ariaColCount;
     case "multiple": return facts.multiple;
     case "for": return facts.htmlFor;
     default: return facts[key] ?? facts.extraAttrs?.[key];
@@ -2240,6 +2265,22 @@ function selectorAriaAttrValue(key, facts) {
       key === "aria.multi_selectable")
     return facts.ariaMultiSelectable || facts.ariaAttrs?.multiselectable ||
       facts.extraAttrs?.["aria-multiselectable"];
+  if (key === "aria-rowindex" || key === "aria.rowindex" ||
+      key === "aria.row_index")
+    return facts.ariaRowIndex || facts.ariaAttrs?.rowindex ||
+      facts.extraAttrs?.["aria-rowindex"];
+  if (key === "aria-colindex" || key === "aria.colindex" ||
+      key === "aria.col_index")
+    return facts.ariaColIndex || facts.ariaAttrs?.colindex ||
+      facts.extraAttrs?.["aria-colindex"];
+  if (key === "aria-rowcount" || key === "aria.rowcount" ||
+      key === "aria.row_count")
+    return facts.ariaRowCount || facts.ariaAttrs?.rowcount ||
+      facts.extraAttrs?.["aria-rowcount"];
+  if (key === "aria-colcount" || key === "aria.colcount" ||
+      key === "aria.col_count")
+    return facts.ariaColCount || facts.ariaAttrs?.colcount ||
+      facts.extraAttrs?.["aria-colcount"];
   if (key.startsWith("aria-"))
     return facts.ariaAttrs?.[key.slice(5)] ?? facts.extraAttrs?.[key];
   if (key.startsWith("aria."))
@@ -2281,6 +2322,26 @@ function selectorAriaAttrPresent(key, facts) {
     return !!facts.ariaMultiSelectable ||
       Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "multiselectable") ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-multiselectable");
+  if (key === "aria-rowindex" || key === "aria.rowindex" ||
+      key === "aria.row_index")
+    return !!facts.ariaRowIndex ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "rowindex") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-rowindex");
+  if (key === "aria-colindex" || key === "aria.colindex" ||
+      key === "aria.col_index")
+    return !!facts.ariaColIndex ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "colindex") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-colindex");
+  if (key === "aria-rowcount" || key === "aria.rowcount" ||
+      key === "aria.row_count")
+    return !!facts.ariaRowCount ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "rowcount") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-rowcount");
+  if (key === "aria-colcount" || key === "aria.colcount" ||
+      key === "aria.col_count")
+    return !!facts.ariaColCount ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "colcount") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-colcount");
   if (key.startsWith("aria-"))
     return Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, key.slice(5)) ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, key);
@@ -4359,6 +4420,10 @@ function applyWebNode(el, docNode, rt) {
   setAttr(el, "aria-setsize", docNode.ariaSetSize);
   setAttr(el, "aria-haspopup", docNode.ariaHasPopup);
   setAttr(el, "aria-multiselectable", docNode.ariaMultiSelectable);
+  setAttr(el, "aria-rowindex", docNode.ariaRowIndex);
+  setAttr(el, "aria-colindex", docNode.ariaColIndex);
+  setAttr(el, "aria-rowcount", docNode.ariaRowCount);
+  setAttr(el, "aria-colcount", docNode.ariaColCount);
   if (docNode.tag === "details" || docNode.tag === "dialog") {
     setAttr(el, "open", docNode.state.open);
     el.open = !!docNode.state.open;

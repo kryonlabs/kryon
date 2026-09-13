@@ -325,6 +325,10 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   ariaSetSize: "",
   ariaHasPopup: "",
   ariaMultiSelectable: "",
+  ariaRowIndex: "",
+  ariaColIndex: "",
+  ariaRowCount: "",
+  ariaColCount: "",
   state: {
     disabled: false,
     loading: false,
@@ -974,7 +978,9 @@ function fakeDocument() {
         tag: "th",
         id: "price-header",
         scope: "col",
-        ariaSort: "ascending"
+        ariaSort: "ascending",
+        ariaColIndex: 1,
+        ariaColCount: 2
       });
     runtime.widget(tableRt, "Text", { text: "$12" }, null,
       {
@@ -984,12 +990,19 @@ function fakeDocument() {
         tag: "td",
         headers: "priceHeader",
         colSpan: "2",
-        rowSpan: "1"
+        rowSpan: "1",
+        ariaRowIndex: 2,
+        ariaColIndex: 1,
+        ariaRowCount: 4
       });
     runtime.endFrame(tableRt);
     assert.equal(runtime.webNodeQuery(tableRt, "[scope=col]").path,
       "Page/prices/priceHeader");
     assert.equal(runtime.webNodeQuery(tableRt, "[aria-sort=ascending]").path,
+      "Page/prices/priceHeader");
+    assert.equal(runtime.webNodeQuery(tableRt, "[aria-colindex=1]").path,
+      "Page/prices/priceHeader");
+    assert.equal(runtime.webNodeQuery(tableRt, "[aria-colcount=2]").path,
       "Page/prices/priceHeader");
     assert.equal(runtime.webNodeQuery(tableRt, "[headers=priceHeader]").path,
       "Page/prices/priceCell");
@@ -997,15 +1010,63 @@ function fakeDocument() {
       "Page/prices/priceCell");
     assert.equal(runtime.webNodeQuery(tableRt, "[rowspan=1]").path,
       "Page/prices/priceCell");
+    assert.equal(runtime.webNodeQuery(tableRt, "[aria-rowindex=2]").path,
+      "Page/prices/priceCell");
+    assert.equal(runtime.webNodeQuery(tableRt, "[aria-rowcount=4]").path,
+      "Page/prices/priceCell");
     const tableTarget = document.createElement("div");
     runtime.renderWebDocument(tableRt, tableTarget);
     const priceHeader = runtime.findWebElement(tableTarget, "priceHeader");
     const priceCell = runtime.findWebElement(tableTarget, "priceCell");
     assert.equal(priceHeader.attributes.scope, "col");
     assert.equal(priceHeader.attributes["aria-sort"], "ascending");
+    assert.equal(priceHeader.attributes["aria-colindex"], "1");
+    assert.equal(priceHeader.attributes["aria-colcount"], "2");
     assert.equal(priceCell.attributes.headers, "price-header");
     assert.equal(priceCell.attributes.colspan, "2");
     assert.equal(priceCell.attributes.rowspan, "1");
+    assert.equal(priceCell.attributes["aria-rowindex"], "2");
+    assert.equal(priceCell.attributes["aria-colindex"], "1");
+    assert.equal(priceCell.attributes["aria-rowcount"], "4");
+    assert.deepEqual(runtime.webAccessibilitySnapshot(tableRt).nodes
+      .find((node) => node.kind === "Text" && node.path === "Page/prices/priceCell"),
+      {
+        path: "Page/prices/priceCell",
+        sourcePath: "",
+        sourceLine: 0,
+        sourceColumn: 0,
+        sourceEndLine: 0,
+        sourceEndColumn: 0,
+        name: "priceCell",
+        kind: "Text",
+        tag: "td",
+        id: "",
+        classes: [],
+        role: "",
+        label: "$12",
+        description: "",
+        text: "$12",
+        value: "",
+        href: "",
+        inputType: "",
+        level: 0,
+        rowIndex: "2",
+        colIndex: "1",
+        rowCount: "4",
+        colCount: "",
+        state: {
+          disabled: false,
+          loading: false,
+          selected: false,
+          checked: false,
+          invalid: false,
+          expanded: false,
+          open: false,
+          hover: false,
+          pressed: false,
+          focus: false
+        }
+      });
     assert.equal(runtime.webDOMRelations(tableTarget, "priceCell").headers[0].ref,
       "Page/prices/priceHeader");
     assert.deepEqual(runtime.webDOMSnapshot(tableTarget, "priceCell").relationRefs.headers,

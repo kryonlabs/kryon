@@ -153,6 +153,10 @@ export interface WebDocumentNode {
   ariaSetSize: string;
   ariaHasPopup: string;
   ariaMultiSelectable: string;
+  ariaRowIndex: string;
+  ariaColIndex: string;
+  ariaRowCount: string;
+  ariaColCount: string;
   ariaLive: string;
   ariaAttrs: Record<string, string>;
   onClick: string;
@@ -315,6 +319,10 @@ export interface WebNodeStyleFacts {
   ariaSetSize: string;
   ariaHasPopup: string;
   ariaMultiSelectable: string;
+  ariaRowIndex: string;
+  ariaColIndex: string;
+  ariaRowCount: string;
+  ariaColCount: string;
   state: Record<string, boolean>;
 }
 
@@ -372,6 +380,10 @@ export interface WebAccessibilityNode {
   href: string;
   inputType: string;
   level: number;
+  rowIndex: string;
+  colIndex: string;
+  rowCount: string;
+  colCount: string;
   state: Record<string, boolean>;
 }
 
