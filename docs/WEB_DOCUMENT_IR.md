@@ -610,6 +610,9 @@ function when the listener is installed.
 Mount roots expose the same behavior as `root.kryListen(query, type, handler)`
 and `root.kryDelegate(selector, type, handler)`. Mounted elements expose
 `element.kryListen(type, handler)` for local Kry-aware native handlers.
+Widget metadata may also expose built-in action hooks such as pointer, wheel,
+context menu, form, clipboard, dialog, and popover callbacks; handled context
+menu callbacks suppress the browser default menu.
 
 `webDOMParent(target, query)`, `webDOMChildren(target, query)`, and
 `webDOMClosest(target, query, selector)` expose the mounted `.kry` node tree as

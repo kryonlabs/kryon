@@ -186,6 +186,7 @@ export interface WebDocumentNode {
   onMouseDown: string;
   onMouseUp: string;
   onWheel: string;
+  onContextMenu: string;
   onDragStart: string;
   onDragEnd: string;
   onDragOver: string;
@@ -214,6 +215,7 @@ export interface WebDocumentNode {
   mouseDownAction: (() => unknown) | null;
   mouseUpAction: (() => unknown) | null;
   wheelAction: ((value: number) => unknown) | null;
+  contextMenuAction: (() => unknown) | null;
   dragStartAction: ((value: unknown) => unknown) | null;
   dragEndAction: ((value: unknown) => unknown) | null;
   dragOverAction: (() => unknown) | null;

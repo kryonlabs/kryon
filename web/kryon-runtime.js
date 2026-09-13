@@ -1474,6 +1474,7 @@ function webNodeFromWidget(item, index) {
     onMouseDown: meta.onMouseDown === undefined || meta.onMouseDown === null ? "" : String(meta.onMouseDown),
     onMouseUp: meta.onMouseUp === undefined || meta.onMouseUp === null ? "" : String(meta.onMouseUp),
     onWheel: meta.onWheel === undefined || meta.onWheel === null ? "" : String(meta.onWheel),
+    onContextMenu: meta.onContextMenu === undefined || meta.onContextMenu === null ? "" : String(meta.onContextMenu),
     onDragStart: meta.onDragStart === undefined || meta.onDragStart === null ? "" : String(meta.onDragStart),
     onDragEnd: meta.onDragEnd === undefined || meta.onDragEnd === null ? "" : String(meta.onDragEnd),
     onDragOver: meta.onDragOver === undefined || meta.onDragOver === null ? "" : String(meta.onDragOver),
@@ -1502,6 +1503,7 @@ function webNodeFromWidget(item, index) {
     mouseDownAction: typeof meta.mouseDownAction === "function" ? meta.mouseDownAction : null,
     mouseUpAction: typeof meta.mouseUpAction === "function" ? meta.mouseUpAction : null,
     wheelAction: typeof meta.wheelAction === "function" ? meta.wheelAction : null,
+    contextMenuAction: typeof meta.contextMenuAction === "function" ? meta.contextMenuAction : null,
     dragStartAction: typeof meta.dragStartAction === "function" ? meta.dragStartAction : null,
     dragEndAction: typeof meta.dragEndAction === "function" ? meta.dragEndAction : null,
     dragOverAction: typeof meta.dragOverAction === "function" ? meta.dragOverAction : null,
@@ -3957,6 +3959,14 @@ function bindNodeEvents(el) {
     if (docNode?.wheelAction)
       docNode.wheelAction(value);
   });
+  el.addEventListener("contextmenu", (event) => {
+    const docNode = el.__kryDocNode;
+    if (docNode?.contextMenuAction) {
+      if (event?.preventDefault)
+        event.preventDefault();
+      docNode.contextMenuAction();
+    }
+  });
   el.addEventListener("focus", () => {
     interactiveState({ focus: true });
     const docNode = el.__kryDocNode;
@@ -5636,6 +5646,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnWheel = docNode.onWheel;
   else
     delete el.dataset.kryOnWheel;
+  if (docNode.onContextMenu)
+    el.dataset.kryOnContextMenu = docNode.onContextMenu;
+  else
+    delete el.dataset.kryOnContextMenu;
   if (docNode.onDragStart)
     el.dataset.kryOnDragStart = docNode.onDragStart;
   else

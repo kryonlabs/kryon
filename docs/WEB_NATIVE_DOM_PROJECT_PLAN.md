@@ -60,7 +60,7 @@ the browser receives normal elements, attributes, CSS, and events.
   controls: orientation, level, position in set, set size, popup type, sort
   order, and multiselect state.
 - Event bridge for click/tap, form/text/key, focus/blur, scroll, pointer/mouse,
-  wheel, drag/drop, clipboard, dialog, and popover events.
+  wheel/context menu, drag/drop, clipboard, dialog, and popover events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring.
