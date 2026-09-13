@@ -34,7 +34,7 @@ ui_tab_bar_font(TabBarProps bar, int disabled)
         disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0);
     return tab_frame.value.font_size > 0.0f
         ? (int)(tab_frame.value.font_size + 0.5f)
-        : Text12;
+        : GetSmallFontSize();
 }
 
 static float

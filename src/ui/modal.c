@@ -213,10 +213,10 @@ RenderActionModal(ModalProps modal)
     msg_w = ModalContentWidth(modal_w, metrics);
     if((message_style.fields & (uint32_t)StyleFontSize) != 0 &&
        message_style.font_size > 0.0f)
-        msg_font = Scale((int)message_style.font_size);
+        msg_font = (int)(message_style.font_size + 0.5f);
     if((action_style.fields & (uint32_t)StyleFontSize) != 0 &&
        action_style.font_size > 0.0f)
-        btn_font = Scale((int)action_style.font_size);
+        btn_font = (int)(action_style.font_size + 0.5f);
 
     TextLayout msg_layout = ParseTextLayout(modal.message, g_ui_gear_icon,
                                                 ICON_GEAR, msg_font);
@@ -266,7 +266,7 @@ RenderActionModal(ModalProps modal)
     title_font = GetTitleFontSize(modal.title, modal_w - Scale(92));
     if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
        title_style.font_size > 0.0f)
-        title_font = Scale((int)title_style.font_size);
+        title_font = (int)(title_style.font_size + 0.5f);
     title_w = TextWidth(modal.title != NULL ? modal.title : "", title_font);
     RenderText(modal.title != NULL ? modal.title : "",
                modal_x + (modal_w - title_w) / 2,
@@ -405,7 +405,7 @@ RenderModalFrame(int width, int height, const char *title,
 
     if((title_style.fields & (uint32_t)StyleFontSize) != 0 &&
        title_style.font_size > 0.0f)
-        title_font = Scale((int)title_style.font_size);
+        title_font = (int)(title_style.font_size + 0.5f);
     title_w = TextWidth(title, title_font);
     RenderText(title, frame.x + (frame.w - title_w) / 2,
                frame.y + Scale(14), title_font,

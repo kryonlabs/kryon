@@ -446,7 +446,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `NavigationBar` | `.kry canonical` | Paint and sizing policy are in `.kry`; item and configuration-slot labels use `NavigationBarItem` KSS typography. |
 | `Toolbar` | `.kry canonical` | Metrics and geometry policy are in `.kry`; host handles input, drawing, and child `Button`/`Dropdown` calls. |
 | `Menu` | `.kry canonical` | Command menu surface; bar, popup, and context behavior are selected by props. |
-| `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; tab label typography is KSS-owned; host handles input sampling, drag state, and drawing. |
+| `TabBar` | `.kry canonical` | Sizing/scroll policy is in `.kry`; tab label typography is KSS-owned, including native fallback sizing; host handles input sampling, drag state, and drawing. |
 | `TitleBar` | `.kry canonical` | Layout policy is in `.kry`; leading action and dropdown behavior live in `TitleBarProps`. |
 | `Router` | Native support | Navigation runtime, not a visual widget. |
 | `Link` | `.kry canonical` | Canonical navigation/link widget. |
@@ -459,7 +459,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `BeginPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `EndPopup` | Native support | Lowered host entry for `.kry` `Popup` blocks; not a separate public widget name. |
 | `ClosePopup` | Native support | Explicit close operation for the active `.kry` `Popup` block. |
-| `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
+| `Modal` | `.kry canonical` | Layout/action sizing policy is in `.kry`; title, message, and action text typography is KSS-owned with resolved font sizes used directly; prompt fields use `TextField` typography; host handles capture, input, text editing, and drawing. |
 | `Toast` | `.kry canonical` | Public toast feedback surface. Duration and layout policy are in `.kry`; host keeps message storage, timing source, truncation, and drawing. |
 | `Focus` | Native support | Focus ring geometry is in `.kry`; focus state remains host support. |
 | `Guide` | `.kry canonical` | Guided overlay flow. The clean public API is one `Guide(GuideProps)` surface with step data in props; `GuideStep` is data, not a widget. Current C rendering is host support around `runtime/guide.kry` policy. |
