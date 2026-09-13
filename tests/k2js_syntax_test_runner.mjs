@@ -96,6 +96,10 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     line-height: 1.4;
     letter-spacing: 1;
     text-align: center;
+    text-decoration: underline;
+    white-space: nowrap;
+    word-break: keep-all;
+    overflow-wrap: anywhere;
   }
   TextField[maxlength=64] {
     offset-x: 4;
@@ -109,6 +113,12 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     overflow-y: hidden;
     align-items: center;
     justify-content: space-between;
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 3;
+    outline-width: line;
+    outline-style: solid;
+    box-shadow: 0 1px 2px #0004;
   }
   TextField[spellcheck=false] {
     offset-y: 6;
@@ -158,12 +168,22 @@ assert.match(webStyleCSS, /font-weight: 600;/);
 assert.match(webStyleCSS, /line-height: 1.4;/);
 assert.match(webStyleCSS, /letter-spacing: 1px;/);
 assert.match(webStyleCSS, /text-align: center;/);
+assert.match(webStyleCSS, /text-decoration: underline;/);
+assert.match(webStyleCSS, /white-space: nowrap;/);
+assert.match(webStyleCSS, /word-break: keep-all;/);
+assert.match(webStyleCSS, /overflow-wrap: anywhere;/);
 assert.match(webStyleCSS, /display: flex;/);
 assert.match(webStyleCSS, /position: relative;/);
+assert.match(webStyleCSS, /z-index: 3;/);
 assert.match(webStyleCSS, /overflow-x: auto;/);
 assert.match(webStyleCSS, /overflow-y: hidden;/);
 assert.match(webStyleCSS, /align-items: center;/);
 assert.match(webStyleCSS, /justify-content: space-between;/);
+assert.match(webStyleCSS, /cursor: pointer;/);
+assert.match(webStyleCSS, /pointer-events: auto;/);
+assert.match(webStyleCSS, /outline-width: 2px;/);
+assert.match(webStyleCSS, /outline-style: solid;/);
+assert.match(webStyleCSS, /box-shadow: 0 1px 2px #0004;/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\)\[data-kry-state~="hover"\]/);
 assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/);
@@ -528,12 +548,22 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["font-weigh
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["line-height"], 1.4);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["letter-spacing"], 1);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["text-align"], "center");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["text-decoration"], "underline");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["white-space"], "nowrap");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["word-break"], "keep-all");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-wrap"], "anywhere");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).display, "flex");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).position, "relative");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["z-index"], 3);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-x"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["overflow-y"], "hidden");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["align-items"], "center");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["justify-content"], "space-between");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).cursor, "pointer");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["pointer-events"], "auto");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-width"], 2);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["outline-style"], "solid");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["box-shadow"], "0 1px 2px #0004");
 assert.deepEqual(webDoc.nodes[3].classes, ["field"]);
 assert.equal(webDoc.nodes[3].placeholder, "Search terms");
 assert.equal(webDoc.nodes[3].ariaLabel, "Search");
@@ -2440,12 +2470,22 @@ function fakeDocument() {
     assert.equal(firstField.style.lineHeight, "1.4");
     assert.equal(firstField.style.letterSpacing, "1px");
     assert.equal(firstField.style.textAlign, "center");
+    assert.equal(firstField.style.textDecoration, "underline");
+    assert.equal(firstField.style.whiteSpace, "nowrap");
+    assert.equal(firstField.style.wordBreak, "keep-all");
+    assert.equal(firstField.style.overflowWrap, "anywhere");
     assert.equal(firstField.style.display, "flex");
     assert.equal(firstField.style.position, "relative");
+    assert.equal(firstField.style.zIndex, "3");
     assert.equal(firstField.style.overflowX, "auto");
     assert.equal(firstField.style.overflowY, "hidden");
     assert.equal(firstField.style.alignItems, "center");
     assert.equal(firstField.style.justifyContent, "space-between");
+    assert.equal(firstField.style.cursor, "pointer");
+    assert.equal(firstField.style.pointerEvents, "auto");
+    assert.equal(firstField.style.outlineWidth, "2px");
+    assert.equal(firstField.style.outlineStyle, "solid");
+    assert.equal(firstField.style.boxShadow, "0 1px 2px #0004");
     assert.equal(runtime.webFormValue(target, "Scene/root/search"), "label");
     assert.equal(runtime.webFormValue(target, "search-box"), "label");
     assert.equal(runtime.webFormValues(target)["search-field"], "label");

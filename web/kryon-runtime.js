@@ -1675,6 +1675,28 @@ const webStyleLayers = {
   overrides: 3
 };
 
+const webKssColorProperties = new Set([
+  "background", "foreground", "border", "focus", "background-end"
+]);
+
+const webKssLengthProperties = new Set([
+  "radius", "border-width", "opacity",
+  "padding", "padding-x", "padding-y",
+  "margin", "margin-x", "margin-y",
+  "width", "height", "min-width", "max-width", "min-height", "max-height",
+  "gap", "font-size", "letter-spacing", "line-height", "outline-width",
+  "icon-size", "offset-x", "offset-y", "content-offset-x", "content-offset-y"
+]);
+
+const webKssMaterialProperties = new Set(["material"]);
+
+const webKssLiteralProperties = new Set([
+  "typeface", "font-weight", "text-align", "text-decoration", "white-space",
+  "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "overflow-x", "overflow-y", "align-items", "justify-content", "cursor",
+  "pointer-events", "outline-style", "box-shadow"
+]);
+
 function stripKssComments(source) {
   return String(source || "")
     .replace(/\/\*[\s\S]*?\*\//g, "")
@@ -1739,24 +1761,14 @@ function parseKssDeclarationValue(name, value, tokens) {
     return parsed;
   const key = parsed.trim();
   const property = String(name || "").toLowerCase();
-  if (["background", "background-color", "foreground", "color", "border", "border-color", "focus", "focus-color", "background-end", "background_end"].includes(property))
+  if (webKssColorProperties.has(property))
     return tokens.colors.get(key) ?? parsed;
-  if ([
-    "radius", "border-width", "border_width", "opacity",
-    "padding", "padding-x", "padding_x", "padding-y", "padding_y",
-    "margin", "margin-x", "margin_x", "margin-y", "margin_y",
-    "width", "height", "min-width", "min_width", "max-width", "max_width",
-    "min-height", "min_height", "max-height", "max_height",
-    "gap", "font-size", "font_size", "letter-spacing", "letter_spacing",
-    "line-height", "line_height",
-    "icon-size", "icon_size",
-    "offset-x", "offset_x", "offset-y", "offset_y",
-    "content-offset-x", "content_offset_x",
-    "content-offset-y", "content_offset_y"
-  ].includes(property))
+  if (webKssLengthProperties.has(property))
     return tokens.lengths.get(key) ?? parsed;
-  if (property === "material")
+  if (webKssMaterialProperties.has(property))
     return tokens.materials.get(key) ?? parsed;
+  if (!webKssLiteralProperties.has(property))
+    throw new Error(`unknown KSS property ${name}`);
   return parsed;
 }
 
@@ -1983,8 +1995,18 @@ const webCSSPropertyNames = new Map([
   ["line_height", "line-height"],
   ["text-align", "text-align"],
   ["text_align", "text-align"],
+  ["text-decoration", "text-decoration"],
+  ["text_decoration", "text-decoration"],
+  ["white-space", "white-space"],
+  ["white_space", "white-space"],
+  ["word-break", "word-break"],
+  ["word_break", "word-break"],
+  ["overflow-wrap", "overflow-wrap"],
+  ["overflow_wrap", "overflow-wrap"],
   ["display", "display"],
   ["position", "position"],
+  ["z-index", "z-index"],
+  ["z_index", "z-index"],
   ["overflow", "overflow"],
   ["overflow-x", "overflow-x"],
   ["overflow_x", "overflow-x"],
@@ -1994,6 +2016,15 @@ const webCSSPropertyNames = new Map([
   ["align_items", "align-items"],
   ["justify-content", "justify-content"],
   ["justify_content", "justify-content"],
+  ["cursor", "cursor"],
+  ["pointer-events", "pointer-events"],
+  ["pointer_events", "pointer-events"],
+  ["outline-width", "outline-width"],
+  ["outline_width", "outline-width"],
+  ["outline-style", "outline-style"],
+  ["outline_style", "outline-style"],
+  ["box-shadow", "box-shadow"],
+  ["box_shadow", "box-shadow"],
   ["focus", "outline-color"],
   ["focus-color", "outline-color"],
   ["focus_color", "outline-color"]
@@ -2002,7 +2033,8 @@ const webCSSPropertyNames = new Map([
 function webStyleCSSValue(name, value) {
   return typeof value === "number" && name !== "opacity" &&
       name !== "font-weight" && name !== "fontWeight" &&
-      name !== "line-height" && name !== "lineHeight"
+      name !== "line-height" && name !== "lineHeight" &&
+      name !== "z-index" && name !== "zIndex"
     ? value + "px" : String(value);
 }
 
@@ -2483,13 +2515,23 @@ function applyResolvedWebStyle(el, style) {
   set("letterSpacing", style["letter-spacing"] ?? style.letter_spacing);
   set("lineHeight", style["line-height"] ?? style.line_height);
   set("textAlign", style["text-align"] ?? style.text_align);
+  set("textDecoration", style["text-decoration"] ?? style.text_decoration);
+  set("whiteSpace", style["white-space"] ?? style.white_space);
+  set("wordBreak", style["word-break"] ?? style.word_break);
+  set("overflowWrap", style["overflow-wrap"] ?? style.overflow_wrap);
   set("display", style.display);
   set("position", style.position);
+  set("zIndex", style["z-index"] ?? style.z_index);
   set("overflow", style.overflow);
   set("overflowX", style["overflow-x"] ?? style.overflow_x);
   set("overflowY", style["overflow-y"] ?? style.overflow_y);
   set("alignItems", style["align-items"] ?? style.align_items);
   set("justifyContent", style["justify-content"] ?? style.justify_content);
+  set("cursor", style.cursor);
+  set("pointerEvents", style["pointer-events"] ?? style.pointer_events);
+  set("outlineWidth", style["outline-width"] ?? style.outline_width);
+  set("outlineStyle", style["outline-style"] ?? style.outline_style);
+  set("boxShadow", style["box-shadow"] ?? style.box_shadow);
   set("--kry-content-offset-x", style["content-offset-x"] ?? style.content_offset_x);
   set("--kry-content-offset-y", style["content-offset-y"] ?? style.content_offset_y);
   set("--kry-icon-size", style["icon-size"] ?? style.icon_size);
