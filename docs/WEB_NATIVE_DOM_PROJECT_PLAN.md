@@ -40,6 +40,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Expression-backed widget calls in declarations, assignments, returns, and
   control-flow conditions emit source-derived Web Document metadata, so logic
   expressions still produce inspectable DOM nodes.
+- Guard expression widgets emit source-derived Web Document metadata and k2js
+  lowers blockless guards to a closed early-return branch, so generated JS does
+  not lose the DOM node or produce malformed control flow.
 - Declared `.kry` widget blocks emit a call-site Web Document node and remap
   child nodes from the component definition path into that call-site subtree, so
   KSS selectors and native DOM nesting see composed widgets as real structure.
