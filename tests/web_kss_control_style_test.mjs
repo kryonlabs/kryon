@@ -15,6 +15,7 @@ const sheet = runtime.parseWebStyleSheet(`
     --control-ring: 2px solid #3366ff;
     color: caret;
     background-color: #101820;
+    font-family: system-ui;
     accent-color: accent;
     caret-color: caret;
     appearance: none;
@@ -27,6 +28,7 @@ const css = runtime.webStyleSheetToCSS(sheet);
 assert.match(css, /--control-ring: 2px solid #3366ff;/);
 assert.match(css, /color: #ff6633;/);
 assert.match(css, /background-color: #101820;/);
+assert.match(css, /font-family: system-ui;/);
 assert.match(css, /accent-color: #3366ff;/);
 assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
@@ -42,6 +44,7 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   "--control-ring": "2px solid #3366ff",
   color: "#ff6633",
   "background-color": "#101820",
+  "font-family": "system-ui",
   "accent-color": "#3366ff",
   "caret-color": "#ff6633",
   appearance: "none",
@@ -167,6 +170,7 @@ const field = runtime.findWebElement(host, "Page/control");
 assert.equal(field.style["--control-ring"], "2px solid #3366ff");
 assert.equal(field.style.color, "#ff6633");
 assert.equal(field.style.backgroundColor, "#101820");
+assert.equal(field.style.fontFamily, "system-ui");
 assert.equal(field.style.accentColor, "#3366ff");
 assert.equal(field.style.caretColor, "#ff6633");
 assert.equal(field.style.appearance, "none");

@@ -742,8 +742,8 @@ assert.match(webStyleCSS, /\[data-kry-kind="TextField"\]\[data-role="search"\]/)
 for (const legacyAlias of [
   "focus-color",
   "background_end", "border_width", "padding_x", "padding_y",
-  "font_size", "icon_size", "offset_x", "offset_y", "font-family",
-  "font_family", "text_align", "pointer_events", "outline_width"
+  "font_size", "icon_size", "offset_x", "offset_y", "font_family",
+  "text_align", "pointer_events", "outline_width"
 ]) {
   assert.throws(() => runtime.parseWebStyleSheet(`Button { ${legacyAlias}: #111111; }`),
     /unknown KSS property/);
