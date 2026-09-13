@@ -229,6 +229,29 @@ main(void)
                               item_paint.icon_bounds.height) / 2.0f));
         check_int("compact navigation bar active badge uses KSS radius",
                   (int)item_paint.face.value.radius, 29);
+
+        item.value.fields |= StylePaddingX | StylePaddingY | StyleGap |
+                             StyleContentOffset;
+        item.value.padding_x = 10.0f;
+        item.value.padding_y = 6.0f;
+        item.value.gap = 8.0f;
+        item.value.offset_x = 20.0f;
+        item_paint = NavigationBarItemPaintFor((NavigationBarItemSpec){
+            .bar = paint,
+            .index = 1,
+            .active = true,
+            .label_height = TextLineHeight(GetSmallFontSize()),
+            .base = item,
+            .face = item,
+        });
+        check_int("compact navigation bar badge width uses KSS",
+                  (int)item_paint.state_bounds.width, 52);
+        check_int("compact navigation bar badge height uses KSS",
+                  (int)item_paint.state_bounds.height, 52);
+        check_int("compact navigation bar label inset uses KSS",
+                  (int)item_paint.label_bounds.x, 235);
+        check_int("compact navigation bar label width uses KSS",
+                  (int)item_paint.label_bounds.width, 205);
     }
     {
         StyleFrame panel = {.value = {.fields = StyleContentOffset |

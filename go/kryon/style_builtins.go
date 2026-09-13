@@ -215,7 +215,12 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  padding-x: 3;
+  padding-y: 2;
+  gap: 4;
   font-size: font.sm;
+  icon-size: 32;
+  offset-x: 16;
   opacity: 1;
   material: default;
 }
@@ -2161,7 +2166,12 @@ NavigationBarItem {
   focus: accent;
   radius: radius;
   border-width: border.none;
+  padding-x: 3;
+  padding-y: 2;
+  gap: 4;
   font-size: font;
+  icon-size: 32;
+  offset-x: 16;
   opacity: 1;
   material: default;
 }
@@ -4097,7 +4107,12 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  padding-x: 3;
+  padding-y: 2;
+  gap: 4;
   font-size: font.sm;
+  icon-size: 32;
+  offset-x: 16;
   opacity: 1;
   material: default;
 }
@@ -6070,7 +6085,12 @@ NavigationBarItem {
   focus: focus;
   radius: radius.lg;
   border-width: border.none;
+  padding-x: 3;
+  padding-y: 2;
+  gap: 4;
   font-size: font.sm;
+  icon-size: 32;
+  offset-x: 16;
   opacity: 1;
   material: glow;
 }
@@ -8119,7 +8139,12 @@ NavigationBarItem {
   focus: focus;
   radius: radius;
   border-width: 0;
+  padding-x: 3;
+  padding-y: 2;
+  gap: 4;
   font-size: font;
+  icon-size: 32;
+  offset-x: 16;
   opacity: 1;
   material: premium;
 }
