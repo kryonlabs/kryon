@@ -1727,9 +1727,11 @@ const webKssLengthProperties = new Set([
 const webKssMaterialProperties = new Set(["material"]);
 
 const webKssLiteralProperties = new Set([
-  "typeface", "font-weight", "font-style", "font-variant", "text-align",
+  "typeface", "font-weight", "font-style", "font-variant", "font-stretch",
+  "font-kerning", "font-optical-sizing", "font-feature-settings",
+  "font-variation-settings", "text-align",
   "text-decoration", "text-transform", "text-overflow", "white-space",
-  "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
+  "text-wrap", "word-break", "overflow-wrap", "display", "position", "z-index", "overflow",
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
   "list-style-position", "list-style-image",
@@ -2323,6 +2325,11 @@ const webCSSPropertyNames = new Map([
   ["font-weight", "font-weight"],
   ["font-style", "font-style"],
   ["font-variant", "font-variant"],
+  ["font-stretch", "font-stretch"],
+  ["font-kerning", "font-kerning"],
+  ["font-optical-sizing", "font-optical-sizing"],
+  ["font-feature-settings", "font-feature-settings"],
+  ["font-variation-settings", "font-variation-settings"],
   ["letter-spacing", "letter-spacing"],
   ["line-height", "line-height"],
   ["text-indent", "text-indent"],
@@ -2331,6 +2338,7 @@ const webCSSPropertyNames = new Map([
   ["text-transform", "text-transform"],
   ["text-overflow", "text-overflow"],
   ["white-space", "white-space"],
+  ["text-wrap", "text-wrap"],
   ["word-break", "word-break"],
   ["overflow-wrap", "overflow-wrap"],
   ["display", "display"],
@@ -3256,6 +3264,11 @@ function applyResolvedWebStyle(el, style) {
   set("fontWeight", style["font-weight"]);
   set("fontStyle", style["font-style"]);
   set("fontVariant", style["font-variant"]);
+  set("fontStretch", style["font-stretch"]);
+  set("fontKerning", style["font-kerning"]);
+  set("fontOpticalSizing", style["font-optical-sizing"]);
+  set("fontFeatureSettings", style["font-feature-settings"]);
+  set("fontVariationSettings", style["font-variation-settings"]);
   set("letterSpacing", style["letter-spacing"]);
   set("lineHeight", style["line-height"]);
   set("textIndent", style["text-indent"]);
@@ -3264,6 +3277,7 @@ function applyResolvedWebStyle(el, style) {
   set("textTransform", style["text-transform"]);
   set("textOverflow", style["text-overflow"]);
   set("whiteSpace", style["white-space"]);
+  set("textWrap", style["text-wrap"]);
   set("wordBreak", style["word-break"]);
   set("overflowWrap", style["overflow-wrap"]);
   set("display", style.display);
