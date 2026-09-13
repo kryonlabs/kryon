@@ -62,17 +62,37 @@ func ListBox_ListBoxRowHeight(row_height int32, scale float32, item StyleFrame) 
 	var value_5 int32 = 0
 	var value_6 bool = value_4 <= value_5
 	if value_6 {
-		var value_7 uint32 = item.Value.Fields
-		var value_8 int32 = int32(StyleIconSize)
-		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-		var value_10 float32 = item.Value.IconSize
-		var value_11 float32 = 30.0
-		var value_12 float32 = scale
-		var value_13 int32 = ListBox_ListBoxMetric(value_7, value_9, value_10, value_11, value_12)
-		return value_13
+		var value_7 float32 = 30.0
+		var fallback float32 = value_7
+		var value_8 uint32 = item.Value.Fields
+		var value_9 int32 = int32(StyleIconSize)
+		var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
+		var value_11 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(value_10), 32, false, 8))
+		var value_12 int32 = 0
+		var value_13 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(0), 32, false, 0))
+		var value_14 bool = value_11 != value_13
+		var value_15 bool = value_14
+		if value_15 {
+			var value_16 float32 = item.Value.IconSize
+			var value_17 float32 = 0.0
+			var value_18 bool = value_16 > value_17
+			value_15 = value_18
+		}
+		if value_15 {
+			var value_19 float32 = item.Value.IconSize
+			fallback = value_19
+		}
+		var value_20 uint32 = item.Value.Fields
+		var value_21 int32 = int32(StyleContentOffset)
+		var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
+		var value_23 float32 = item.Value.OffsetY
+		var value_24 float32 = fallback
+		var value_25 float32 = scale
+		var value_26 int32 = ListBox_ListBoxMetric(value_20, value_22, value_23, value_24, value_25)
+		return value_26
 	}
-	var value_14 int32 = row_height
-	return value_14
+	var value_27 int32 = row_height
+	return value_27
 }
 
 func ListBox_ListBoxContentHeight(item_count int32, row_height int32, content_height int32, scale float32, item StyleFrame) int32 {

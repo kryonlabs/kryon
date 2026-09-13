@@ -550,6 +550,7 @@ ListBoxItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 30;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -641,6 +642,7 @@ ListBoxMultiItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 28;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;

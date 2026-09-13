@@ -53,14 +53,34 @@ func ListBoxMulti_ListBoxMultiRowHeight(row_height int32, scale float32, item St
 		var value_7 int32 = row_height
 		return value_7
 	}
-	var value_8 uint32 = item.Value.Fields
-	var value_9 int32 = int32(StyleIconSize)
-	var value_10 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(0), 32, false, 0))
-	var value_11 float32 = item.Value.IconSize
-	var value_12 float32 = 28.0
-	var value_13 float32 = scale
-	var value_14 int32 = ListBoxMulti_ListBoxMultiMetric(value_8, value_10, value_11, value_12, value_13)
-	return value_14
+	var value_8 float32 = 28.0
+	var fallback float32 = value_8
+	var value_9 uint32 = item.Value.Fields
+	var value_10 int32 = int32(StyleIconSize)
+	var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
+	var value_12 uint32 = uint32(number_runtime_bits(uint64(value_9), uint64(value_11), 32, false, 8))
+	var value_13 int32 = 0
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 bool = value_12 != value_14
+	var value_16 bool = value_15
+	if value_16 {
+		var value_17 float32 = item.Value.IconSize
+		var value_18 float32 = 0.0
+		var value_19 bool = value_17 > value_18
+		value_16 = value_19
+	}
+	if value_16 {
+		var value_20 float32 = item.Value.IconSize
+		fallback = value_20
+	}
+	var value_21 uint32 = item.Value.Fields
+	var value_22 int32 = int32(StyleContentOffset)
+	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_22), uint64(0), 32, false, 0))
+	var value_24 float32 = item.Value.OffsetY
+	var value_25 float32 = fallback
+	var value_26 float32 = scale
+	var value_27 int32 = ListBoxMulti_ListBoxMultiMetric(value_21, value_23, value_24, value_25, value_26)
+	return value_27
 }
 
 func ListBoxMulti_ListBoxMultiRowBounds(bounds Rectangle, index int32, row_height int32) Rectangle {

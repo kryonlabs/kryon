@@ -638,8 +638,8 @@ test_list_box_layout_policy(void)
     Rectangle bounds = {10, 20, 100, 95};
     StyleFrame list = {.value = {.fields = StyleContentOffset,
                                   .offset_y = 8.0f}};
-    StyleFrame item = {.value = {.fields = StyleIconSize,
-                                  .icon_size = 30.0f}};
+    StyleFrame item = {.value = {.fields = StyleIconSize | StyleContentOffset,
+                                  .icon_size = 30.0f, .offset_y = 30.0f}};
     ListBoxLayout layout = ListBoxLayoutFor(bounds, 10, 24, 0, 50, 1.0f,
                                             item);
     Rectangle row = ListBoxRowBounds(bounds, 1, layout);
@@ -664,7 +664,7 @@ test_list_box_layout_policy(void)
               ListBoxRowHeight(0, 1.0f, item), 30);
     check_int("list scrollbar width from KSS",
               (int)scrollbar.width, 8);
-    item.value.icon_size = 34.0f;
+    item.value.offset_y = 34.0f;
     list.value.offset_y = 10.0f;
     check_int("list custom row height from KSS",
               ListBoxRowHeight(0, 1.0f, item), 34);
@@ -692,8 +692,9 @@ test_multi_select_policy(void)
     ListBoxMultiNavResult space = ListBoxMultiNavigate(3, 2, 0, 0,
         0, 0, 0, 0, 1, 0);
 
-    item.value.fields = StyleIconSize;
+    item.value.fields = StyleIconSize | StyleContentOffset;
     item.value.icon_size = 34.0f;
+    item.value.offset_y = 34.0f;
 
     check_int("multi row default height", ListBoxMultiRowHeight(0, 1.0f, item), 34);
     check_int("multi row explicit height", ListBoxMultiRowHeight(26, 1.0f, item), 26);

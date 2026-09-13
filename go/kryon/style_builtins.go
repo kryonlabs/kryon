@@ -552,6 +552,7 @@ ListBoxItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 30;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -643,6 +644,7 @@ ListBoxMultiItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 28;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2516,6 +2518,7 @@ ListBoxItem {
   padding-x: space.2;
   padding-y: space.1;
   icon-size: 30;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: default;
@@ -2615,6 +2618,7 @@ ListBoxMultiItem {
   padding-x: space.2;
   padding-y: space.1;
   icon-size: 28;
+  offset-y: 28;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4456,6 +4460,7 @@ ListBoxItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 30;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -4551,6 +4556,7 @@ ListBoxMultiItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 28;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6460,6 +6466,7 @@ ListBoxItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 30;
+  offset-y: 30;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -6559,6 +6566,7 @@ ListBoxMultiItem {
   padding-x: space.3;
   padding-y: space.2;
   icon-size: 28;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8513,6 +8521,7 @@ ListBoxItem {
   padding-x: space.3;
   padding-y: gap;
   icon-size: 30;
+  offset-y: 30;
   font-size: font;
   opacity: 1;
   material: premium;
@@ -8612,6 +8621,7 @@ ListBoxMultiItem {
   padding-x: space.3;
   padding-y: gap;
   icon-size: 28;
+  offset-y: 28;
   font-size: font;
   opacity: 1;
   material: premium;

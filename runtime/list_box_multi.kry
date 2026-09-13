@@ -22,8 +22,13 @@ ListBoxMultiRowHeight :: (row_height: i32, scale: float,
     item: StyleFrame) -> i32 #export {
     if scale <= 0.0 { scale = 1.0 }
     if row_height > 0 { return row_height }
-    return ListBoxMultiMetric(item.value.fields, (u32)StyleIconSize,
-        item.value.icon_size, 28.0, scale)
+    fallback: float = 28.0
+    if (item.value.fields & (u32)StyleIconSize) != (u32)0 &&
+       item.value.icon_size > 0.0 {
+        fallback = item.value.icon_size
+    }
+    return ListBoxMultiMetric(item.value.fields, (u32)StyleContentOffset,
+        item.value.offset_y, fallback, scale)
 }
 
 ListBoxMultiRowBounds :: (bounds: Rectangle, index: i32, row_height: i32) -> Rectangle #export {
