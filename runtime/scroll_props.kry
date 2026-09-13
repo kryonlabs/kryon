@@ -1,0 +1,8 @@
+#module "scroll_props"
+#import "kryon_compat.generated.h"
+
+ScrollProps :: struct {
+    bounds: Rectangle
+    content_height: i32
+    offset: *i32
+}

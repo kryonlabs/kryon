@@ -2,9 +2,12 @@
 #define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_fieldset_props.generated.h"
 #include "ui_progress_props.generated.h"
 #include "ui_radio_props.generated.h"
+#include "ui_scroll_props.generated.h"
 #include "ui_separator_props.generated.h"
+#include "ui_spinbox_props.generated.h"
 #include "ui_toggle_props.generated.h"
 #include "ui_controls.h"
 #include "ui_menu_types.h"
@@ -167,18 +170,6 @@ typedef struct {
 typedef struct {
     Rectangle bounds;
     int id;
-    int min;
-    int max;
-    int step;
-    int *value;
-    int disabled;
-    const char *value_text;
-    int wrap;
-} SpinboxProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
     const char **options;
     int option_count;
     int *selected_index;
@@ -201,11 +192,6 @@ typedef struct {
     Rectangle trigger;
     unsigned int flags;
 } PopupProps;
-
-typedef struct {
-    Rectangle bounds;
-    const char *title;
-} FieldsetProps;
 
 typedef struct {
     Rectangle bounds;

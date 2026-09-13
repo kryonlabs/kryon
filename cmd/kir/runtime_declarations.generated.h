@@ -211,6 +211,15 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    format: i32\n"
         "}\n"
     },
+    {"runtime/fieldset_props.kry",
+        "#module \"fieldset_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "FieldsetProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    title: const char*\n"
+        "}\n"
+    },
     {"runtime/grid_props.kry",
         "#module \"grid_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
@@ -279,6 +288,16 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    disabled: bool\n"
         "}\n"
     },
+    {"runtime/scroll_props.kry",
+        "#module \"scroll_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "ScrollProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    content_height: i32\n"
+        "    offset: *i32\n"
+        "}\n"
+    },
     {"runtime/selectable_props.kry",
         "#module \"selectable_props\"\n"
         "#import \"kryon_compat.generated.h\"\n"
@@ -301,6 +320,22 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    label: const char*\n"
         "    font: i32\n"
         "    disabled: bool\n"
+        "}\n"
+    },
+    {"runtime/spinbox_props.kry",
+        "#module \"spinbox_props\"\n"
+        "#import \"kryon_compat.generated.h\"\n"
+        "\n"
+        "SpinboxProps :: struct {\n"
+        "    bounds: Rectangle\n"
+        "    id: i32\n"
+        "    min: i32\n"
+        "    max: i32\n"
+        "    step: i32\n"
+        "    value: *i32\n"
+        "    disabled: bool\n"
+        "    value_text: const char*\n"
+        "    wrap: bool\n"
         "}\n"
     },
     {"runtime/toggle_props.kry",

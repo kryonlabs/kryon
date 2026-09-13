@@ -1,0 +1,14 @@
+#module "spinbox_props"
+#import "kryon_compat.generated.h"
+
+SpinboxProps :: struct {
+    bounds: Rectangle
+    id: i32
+    min: i32
+    max: i32
+    step: i32
+    value: *i32
+    disabled: bool
+    value_text: const char*
+    wrap: bool
+}

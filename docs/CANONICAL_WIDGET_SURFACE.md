@@ -61,6 +61,7 @@ surface review:
 | `runtime/input_props.kry` | Input props | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
 | `runtime/fieldset.kry` | Fieldset layout/paint policy | `.kry canonical` |
+| `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
 | `runtime/focus.kry` | Focus ring and debug overlay geometry policy | Native support |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
 | `runtime/link.kry` | Link state/color policy | `.kry canonical` |
@@ -86,7 +87,9 @@ surface review:
 | `runtime/separator_props.kry` | Separator props | `.kry canonical` |
 | `runtime/slider.kry` | Slider composition plus value/keyboard policy | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
+| `runtime/spinbox_props.kry` | Spinbox props | `.kry canonical` |
 | `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
+| `runtime/scroll_props.kry` | Scroll props | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
@@ -226,9 +229,15 @@ host roles rather than retained nodes.
 | `DragDrop` | `.kry canonical` | Typed source/target roles are selected through props. |
 | `ListBox` multi-selection | `.kry canonical` | Use `ListBoxProps.selected`, `selected_count`, and `anchor`; no separate public widget name. |
 | `Screen` | `.kry canonical` | Top-level screen container. |
+| `Page` | `.kry canonical` | Top-level generated page/document surface. |
+| `Section` | `.kry canonical` | Semantic page section container. |
+| `Heading` | `.kry canonical` | Semantic heading backed by KSS heading policy. |
+| `ParagraphText` | `.kry canonical` | Semantic plain page paragraph text backed by KSS paragraph text policy. |
 | `Column` | `.kry canonical` | Layout block. |
 | `Row` | `.kry canonical` | Layout block. |
 | `Stack` | `.kry canonical` | Layout block. |
+| `Flow` | `.kry canonical` | Page/content flow layout. |
+| `Grid` | `.kry canonical` | Grid layout; metrics and cursor placement are in `.kry`. |
 | `End` | Native support | Lowered/parser block close marker, not a widget. |
 | `Modal` | `.kry canonical` | Dialog/overlay layout surface. |
 | `TitleBar` | `.kry canonical` | Title/action bar. |
@@ -351,7 +360,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Slider` | `.kry canonical` | Value type, orientation, and angle/unit live in `SliderProps`; generated Go uses `kr.Slider`. |
 | `Drag` | `.kry canonical` | Value type and range mode live in `DragProps`; generated Go uses `kr.Drag`. |
 | `Input` | `.kry canonical` | Value type, values, and step policy live in `InputProps`; generated Go uses `kr.Input`; embedded editing uses `TextField` typography and step controls use `Button` typography. |
-| `Spinbox` | `.kry canonical` | Layout and value stepping policy are in `.kry`; host handles button input and drawing. |
+| `Spinbox` | `.kry canonical` | Public props live in `runtime/spinbox_props.kry`; layout and value stepping policy are in `.kry`; host handles button input and drawing. |
 | `Toggle` | `.kry canonical` | Public props live in `runtime/toggle_props.kry`; paint/layout policy is in `.kry`, label typography is KSS-owned, host handles input and drawing. |
 | `Checkbox` | `.kry canonical` | Public props live in `runtime/checkbox_props.kry`; paint, layout, and flags toggle policy are in `.kry`; host handles input and drawing. |
 | `Radio` | `.kry canonical` | Public props live in `runtime/radio_props.kry`; paint, layout, and marker text policy are in `.kry`; host handles focus/input and drawing. |
@@ -378,10 +387,10 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Screen` | `.kry canonical` | Top-level screen container; viewport fallback bounds policy is in `.kry`. |
 | `Group` | `.kry canonical` | Non-layout grouping scope. Bounds/content policy is in `.kry`; host keeps retained tree scope ownership. |
 | `Separator` | `.kry canonical` | Public props live in `runtime/separator_props.kry`; line, label, and bullet layout/paint policy are in `.kry`; label typography is KSS-owned; host handles text measurement and drawing. |
-| `Fieldset` | `.kry canonical` | Titled border group. |
+| `Fieldset` | `.kry canonical` | Public props live in `runtime/fieldset_props.kry`; titled border group. |
 | `PanedView` | `.kry canonical` | Split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `.kry canonical` | Header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
-| `Scroll` | `.kry canonical` | Lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
+| `Scroll` | `.kry canonical` | Public props live in `runtime/scroll_props.kry`; lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
 | `ScrollPage` | Native support | Internal host helper only; not a public widget concept. |

@@ -178,8 +178,8 @@ func RectGradientH(x, y, w, h int32, left, right Color) {
 	active().RectGradientH(x, y, w, h, left, right)
 }
 func Line(x1, y1, x2, y2 int32, color Color) { active().Line(x1, y1, x2, y2, color) }
-func Scroll(bounds Rectangle, contentHeight int32, offset *int32, body func(Rectangle)) {
-	active().Scroll(bounds, contentHeight, offset, body)
+func Scroll(props ScrollProps, body func(Rectangle)) {
+	active().Scroll(props, body)
 }
 func Button(props ButtonProps) bool           { return active().Button(props) }
 func Selectable(props SelectableProps) bool   { return active().Selectable(props) }

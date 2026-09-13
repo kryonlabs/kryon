@@ -1,0 +1,7 @@
+#module "fieldset_props"
+#import "kryon_compat.generated.h"
+
+FieldsetProps :: struct {
+    bounds: Rectangle
+    title: const char*
+}

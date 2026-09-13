@@ -1181,7 +1181,7 @@ type Runtime interface {
 	Surface(Rectangle, Style)
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
-	Scroll(Rectangle, int32, *int32, func(Rectangle))
+	Scroll(ScrollProps, func(Rectangle))
 	EndScroll()
 	BeginScroll(Rectangle, int32, *int32) Rectangle
 	Card(CardProps) bool
@@ -2053,8 +2053,8 @@ func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int
 	bounds.Height = float32(max32(0, contentHeight))
 	return bounds
 }
-func (r *runtime) Scroll(bounds Rectangle, contentHeight int32, offset *int32, body func(Rectangle)) {
-	content := r.BeginScroll(bounds, contentHeight, offset)
+func (r *runtime) Scroll(props ScrollProps, body func(Rectangle)) {
+	content := r.BeginScroll(props.Bounds, props.ContentHeight, props.Offset)
 	defer r.EndScroll()
 	if body != nil {
 		body(content)

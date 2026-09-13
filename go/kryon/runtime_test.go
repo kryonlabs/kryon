@@ -2138,7 +2138,11 @@ func TestScrollWrapperClosesScope(t *testing.T) {
 	r.QueueMouseMove(30, 30)
 	r.QueueMouseWheel(-1)
 	r.BeginFrame()
-	r.Scroll(NewRectangle(10, 10, 100, 60), 200, &offset, func(rect Rectangle) {
+	r.Scroll(ScrollProps{
+		Bounds:        NewRectangle(10, 10, 100, 60),
+		ContentHeight: 200,
+		Offset:        &offset,
+	}, func(rect Rectangle) {
 		called = true
 		content = rect
 		r.Box(NewRectangle(10, 0, 100, 160), RED, BLANK)
