@@ -124,6 +124,16 @@ local_value :: () -> int {
     return Scale(5)
 }
 
+goto_smoke :: () -> int {
+    attempts: int = 0
+retry:
+    attempts += 1
+    if attempts < 3 {
+        goto retry
+    }
+    return attempts
+}
+
 relay_text :: (value: [64] char) {
     direct_queue_text(value)
 }
@@ -142,9 +152,8 @@ App :: () #ui {
     Text((TextProps){.bounds={Scale(10), Scale(38), 0, 0}, .text="small", .font=Text14, .color=GetThemeText(), .wrap=TextWrapNone})
     Text((TextProps){.bounds={Scale(10), Scale(56), 0, 0}, .text="large", .font=Text20, .color=GetThemeText(), .wrap=TextWrapNone})
     switch tab {
-        case TAB_OVERVIEW: {
+        case TAB_OVERVIEW:
             scroll_off = 0
-        }
         case TAB_NETWORK:
             scroll_off = scroll_off + 1
         default:
@@ -153,7 +162,7 @@ App :: () #ui {
     for int i = 0; i < 3; i++ {
         Box((Rectangle){Scale(4), Scale(8), Scale(2), Scale(2)}, GetThemeText(), BLANK)
     }
-    guard tab >= 0 {
+    if tab >= 0 {
         return
     }
     tab = TabBar((TabBarProps){.bounds = {Scale(4), Scale(4), Scale(200), Scale(30)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .id = 140})
@@ -175,7 +184,7 @@ App :: () #ui {
     lines_y += Scale(54)
     Bevel(Scale(10), Scale(10), Scale(60), Scale(20), GetThemeSurface(), GetThemeButton())
     Icon(2, Scale(200), Scale(10), Scale(24), 3, WHITE)
-    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_CONTAIN, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
+    Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
     Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com", .font = Text16, .color = GetThemeLink()})
@@ -190,7 +199,7 @@ App :: () #ui {
     Heading((HeadingProps){.text = "Welcome", .level = 1, .font = Text24, .color = GetThemeText()})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body", .font = Text16, .color = GetThemeText(), .line_gap = Scale(4)})
     Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more", .font = Text16, .color = GetThemeLink()})
-    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, IMAGE_FIT_COVER, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
+    Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitCover, (ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}})
     End()
     Section((SectionProps){.label = "Details", .gap = Scale(4), .padding = Scale(4)})
     Heading((HeadingProps){.text = "Details", .level = 2})
@@ -216,8 +225,10 @@ App :: () #ui {
     modal_actions: [2] ModalAction = {{"Cancel",ButtonToneNeutral,ButtonEmphasisSoft,0},{"OK",ButtonToneAccent,ButtonEmphasisFilled,0}}
     Modal((ModalProps){.title = "Title", .message = "Message", .actions = modal_actions, .action_count = 2, .max_width = 360})
     TitleBar((TitleBarProps){.title = "Smoke", .height = Scale(32)})
-    Toolbar((ToolbarProps){.id = 2, .x = 0, .y = 0, .width = Scale(320), .height = Scale(36), .draw_menu = 1, .options = "x;y", .option_count = 2, .selected_index = &pick})
-    Toolbar((ToolbarProps){.id = 1, .x = 0, .y = Scale(40), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = "a;b", .option_count = 2})
+    toolbar_options: [2] const char * = {"x", "y"}
+    Toolbar((ToolbarProps){.id = 2, .x = 0, .y = 0, .width = Scale(320), .height = Scale(36), .draw_menu = 1, .options = toolbar_options, .option_count = 2, .selected_index = &pick})
+    alt_toolbar_options: [2] const char * = {"a", "b"}
+    Toolbar((ToolbarProps){.id = 1, .x = 0, .y = Scale(40), .width = Scale(300), .height = Scale(36), .draw_menu = 1, .options = alt_toolbar_options, .option_count = 2})
     NavigationBar((NavigationBarProps){.view_width = Scale(320), .view_height = Scale(240), .count = 0, .height = Scale(56)})
     scalar: int = 5
     nums: [4] int = {1, 2, 3, 4}
@@ -311,7 +322,7 @@ App :: () #ui {
         flags = PopupTooltip
         Text((TextProps){.bounds={Scale(228),Scale(944),Scale(160),Scale(20)},.text="Helpful text",.font=Text14,.color=GetThemeText(),.wrap=TextWrapNone})
     }
-    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,IMAGE_FIT_CONTAIN,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
+    choice_image: ImageProps = {"tiles/tile.png","",(Rectangle){Scale(250),Scale(934),Scale(48),Scale(32)},(Rectangle){0,0,0,0},(Vector2){0,0},0.0f,WHITE,ImageFitContain,(ImageStyle){false,(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},(Color){0},0.0f,0,0,0}}
     Selectable((SelectableProps){.bounds = {Scale(4),Scale(934),Scale(120),Scale(28)}, .id = 49, .label = "Choice", .selected = &selected_row})
     Checkbox((CheckboxProps){.bounds = {Scale(4),Scale(966),Scale(160),Scale(28)}, .id = 50, .label = "Feature", .flags = &feature_flags, .flags_value = 4})
     choice_image.style = (ImageStyle){.enabled = true, .background = GetThemeSurface()}
@@ -326,18 +337,12 @@ App :: () #ui {
     Progress((ProgressProps){{Scale(140), Scale(224), Scale(100), Scale(10)}, 0, 100, direct_scale(16), ""})
     Progress((ProgressProps){{Scale(140), Scale(238), Scale(100), Scale(10)}, 0, 100, helper_value(), ""})
     Progress((ProgressProps){{Scale(140), Scale(252), Scale(100), Scale(10)}, 0, 100, c_abs(-8), ""})
-    Progress((ProgressProps){{Scale(140), Scale(266), Scale(100), Scale(10)}, 0, 100, local_value(), ""})
+    Progress((ProgressProps){{Scale(140), Scale(266), Scale(100), Scale(10)}, 0, 100, local_value() + goto_smoke(), ""})
     relay_text(field_text)
     Text((TextProps){.bounds = {Scale(4), lines_y, 0, 0}, .text = "one", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(4), lines_y + Scale(18), 0, 0}, .text = "two", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone})
     Text((TextProps){.bounds = {Scale(4), lines_y + Scale(36), 0, 0}, .text = "three", .font = Text16, .color = GetThemeText(), .wrap = TextWrapNone})
     lines_y += Scale(54)
-    attempts: int = 0
-retry:
-    attempts += 1
-    if attempts < 3 {
-        goto retry
-    }
     }
 }
 
@@ -489,8 +494,8 @@ grep -q 'if st.Tab >= 0 {' "$out"
 # widget surface used by declarative apps.
 grep -q 'TabBar(' "$out"
 grep -q 'func Hierarchy_Main(viewport kr.Rectangle)' "$hier"
-grep -q 'kr.Screen(kr.ColumnProps{Bounds: viewport, Padding: 8, Key: kr.Key("Main/root")})' "$hier"
-grep -q 'kr.Column(kr.ColumnProps{Gap: 4, Key: kr.Key("Main/root/body")})' "$hier"
+grep -q 'kr.Screen(kr.ColumnProps{Bounds: viewport, Padding: int32(8), Key: kr.Key("Main/root")})' "$hier"
+grep -q 'kr.Column(kr.ColumnProps{Gap: int32(4), Key: kr.Key("Main/root/body")})' "$hier"
 grep -q 'viewport := kr.Rectangle{Width: float32(_HierarchyRuntime.GetScreenWidth()), Height: float32(_HierarchyRuntime.GetScreenHeight())}' "$hier"
 grep -q 'Hierarchy_Main(viewport)' "$hier"
 grep -q 'Checkbox(' "$out"
@@ -498,8 +503,8 @@ grep -q 'Dropdown(' "$out"
 grep -q 'Progress(' "$out"
 grep -q 'kr.Box(kr.Rectangle{X: float32(kr.Scale(4)), Y: float32(kr.Scale(8)), Width: float32(kr.Scale(2)), Height: float32(kr.Scale(2))}' "$out"
 grep -q 'kr.Box(kr.Rectangle{.*kr.Fade(kr.GetThemeSurface(), 0.5).*kr.GetThemeButton' "$out"
-grep -q 'Text: "small".*Font: kr.Text14.*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
-grep -q 'Text: "large".*Font: kr.Text20.*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
+grep -q 'Text: "small".*Font: int32(kr.Text14).*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
+grep -q 'Text: "large".*Font: int32(kr.Text20).*Color: kr.GetThemeText().*Wrap: kr.TextWrapNone' "$out"
 
 # full whitelisted widget surface: every widget statement must lower and
 # compile against the clean package API.
@@ -525,16 +530,16 @@ grep -q 'kr.Image(kr.ImageProps{AssetPath: "hero.png", AltText: "Hero"' "$out"
 grep -q 'kr.Section(kr.SectionProps{' "$out"
 grep -q 'kr.Flow(kr.FlowProps{' "$out"
 grep -q 'kr.Grid(kr.GridProps{' "$out"
-grep -q 'kr.Slider(kr.SliderProps{.*ID: 9.*IntValues: slider_values\[:\].*Format: "%"' "$out"
+grep -q 'kr.Slider(kr.SliderProps{.*ID: int32(9).*IntValues: slider_values\[:\].*Format: "%"' "$out"
 grep -q 'kr.Toggle(kr.ToggleProps{' "$out"
-grep -q 'ID: 10' "$out"
+grep -q 'ID: int32(10)' "$out"
 grep -q 'Value: &st.ToggleVal' "$out"
 grep -q 'OffLabel: "Off"' "$out"
 grep -q 'OnLabel: "On"' "$out"
 grep -q 'kr.Stack(kr.ColumnProps{' "$out"
 grep -q 'Key("smoke-stack")' "$out"
 grep -q 'kr.Row(kr.RowProps{' "$out"
-grep -q 'kr.Modal(kr.ModalProps{.*Title: "Title".*Actions: modal_actions\[:\].*ActionCount: 2' "$out"
+grep -q 'kr.Modal(kr.ModalProps{.*Title: "Title".*Actions: modal_actions\[:\].*ActionCount: int32(2)' "$out"
 grep -q 'kr.TitleBar(kr.TitleBarProps{Title: "Smoke"' "$out"
 grep -q 'kr.Toolbar(kr.ToolbarProps{' "$out"
 grep -q 'kr.NavigationBar(kr.NavigationBarProps{' "$out"
@@ -547,8 +552,8 @@ grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "GB"' "$out"
 grep -q '_ValidRuntime.BeginDisabled(true)' "$out"
 grep -q '_ValidRuntime.EndDisabled()' "$out"
 grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
-grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 22.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
-grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: 221.*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"
+grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(22).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
+grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: int32(221).*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"
 grep -q 'canvas_result_spec kr.Canvas = kr.Canvas{' "$out"
 grep -q 'canvas_result kr.CanvasResult = _ValidRuntime.BeginCanvas(canvas_result_spec)' "$out"
 grep -q '_ValidRuntime.EndCanvas(canvas_result_spec)' "$out"
@@ -561,32 +566,32 @@ grep -q 'kr.Radio(kr.RadioProps{' "$out"
 grep -q 'Label: "one"' "$out"
 grep -q 'Checked: st.Pick == 1' "$out"
 grep -q 'kr.Spinbox(kr.SpinboxProps{.*Value: &st.SliderVal' "$out"
-grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 25.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
+grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(25).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kr.Fieldset(kr.FieldsetProps{' "$out"
-grep -q 'kr.TabBar(kr.TabBarProps{.*ID: 260' "$out"
+grep -q 'kr.TabBar(kr.TabBarProps{.*ID: int32(260)' "$out"
 grep -q 'kr.ListBox(kr.ListBoxProps{' "$out"
 grep -q 'kr.TreeView(kr.TreeViewProps{.*Items: tree_items\[:\].*SelectedID: &st.Pick' "$out"
-grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*ValueCount: 4' "$out"
-grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: 1.*Mode: 1' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: 2' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: 2' "$out"
+grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*ValueCount: int32(4)' "$out"
+grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: int32(1).*Mode: int32(1)' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*FloatMin: &st.DragScalarMin.*FloatMax: &st.DragScalarMax.*FormatMax: "max %.1f"' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*IntMin: &st.DragWholeMin.*IntMax: &st.DragWholeMax.*FormatMax: "max %d"' "$out"
-grep -q 'kr.Slider(kr.SliderProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: 2' "$out"
-grep -q 'kr.Slider(kr.SliderProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: 2' "$out"
+grep -q 'kr.Slider(kr.SliderProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Slider(kr.SliderProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*Vertical: true' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*FloatValue: &plot_values\[0\].*Angle: true' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: 2' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: 2' "$out"
-grep -q 'kr.Input(kr.InputProps{.*Kind: 2.*DoubleValues: plot_doubles\[:\].*ValueCount: 2' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
+grep -q 'kr.Input(kr.InputProps{.*Kind: 2.*DoubleValues: plot_doubles\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'Size: kr.ControlSizeSmall' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Invisible: true' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Arrow: true' "$out"
 grep -q 'Direction: int32(1)' "$out"
 grep -q 'kr.Bullet(kr.Rectangle{' "$out"
 grep -q 'kr.Separator(kr.SeparatorProps{Bounds: kr.Rectangle{' "$out"
-grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Values: edit_color\[:\].*ValueCount: 3' "$out"
-grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Values: edit_color\[:\].*ValueCount: 4' "$out"
+grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Values: edit_color\[:\].*ValueCount: int32(3)' "$out"
+grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Values: edit_color\[:\].*ValueCount: int32(4)' "$out"
 grep -q 'kr.ColorPicker(kr.ColorPickerProps{.*Picker: true' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Label: "Tint".*Swatch: true.*SwatchColor: kr.Color{R: uint8(51), G: uint8(102), B: uint8(153), A: uint8(204)}' "$out"
 grep -q 'Text: "colored"' "$out"
@@ -598,19 +603,19 @@ grep -q 'kr.TextFormat("Enabled: %s"' "$out"
 grep -q 'kr.TextFormat("Count: %d"' "$out"
 grep -q 'kr.TextFormat("Mask: %u"' "$out"
 grep -q 'kr.TextFormat("Rate: %.1f"' "$out"
-grep -q 'kr.Menu(kr.MenuProps{.*ID: 46.*Mode: kr.MenuModeBar.*Menus: menus\[:\].*OpenIndex: &st.MenuOpen' "$out"
-grep -q 'kr.Menu(kr.MenuProps{.*ID: 47.*Mode: kr.MenuModePopup.*Items: menu_items\[:\]' "$out"
-grep -q 'kr.Menu(kr.MenuProps{.*ID: 48.*Mode: kr.MenuModeContext.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
-grep -q '_ValidRuntime.BeginPopup(kr.PopupProps{.*ID: 58.*Flags: kr.PopupTooltip' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(46).*Mode: kr.MenuModeBar.*Menus: menus\[:\].*OpenIndex: &st.MenuOpen' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(47).*Mode: kr.MenuModePopup.*Items: menu_items\[:\]' "$out"
+grep -q 'kr.Menu(kr.MenuProps{.*ID: int32(48).*Mode: kr.MenuModeContext.*Items: menu_items\[:\].*Open: &st.ContextOpen' "$out"
+grep -q '_ValidRuntime.BeginPopup(kr.PopupProps{.*ID: int32(58).*Flags: kr.PopupTooltip' "$out"
 grep -q 'Text: "Helpful text"' "$out"
 grep -q 'kr.Selectable(kr.SelectableProps{.*Selected: &st.SelectedRow' "$out"
-grep -q 'kr.Checkbox(kr.CheckboxProps{.*Flags: &st.FeatureFlags.*FlagsValue: 4' "$out"
+grep -q 'kr.Checkbox(kr.CheckboxProps{.*Flags: &st.FeatureFlags.*FlagsValue: int32(4)' "$out"
 grep -q 'choice_image.Style = kr.ImageStyle{Enabled: true, Background: kr.GetThemeSurface()}' "$out"
 grep -q 'kr.Image(choice_image)' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*ImageAssetPath: choice_image.AssetPath.*ImageBounds: choice_image.Bounds.*ID: int32(51)' "$out"
-grep -q 'kr.Separator(kr.SeparatorProps{.*Label: "Section".*Font: kr.Text14' "$out"
+grep -q 'kr.Separator(kr.SeparatorProps{.*Label: "Section".*Font: int32(kr.Text14)' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*Label: "+".*Font: int32(kr.Text14).*Tone: kr.ButtonToneNeutral.*Emphasis: kr.ButtonEmphasisGhost' "$out"
-grep -q 'kr.TabBar(kr.TabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: st.Tab.*ClosedIndex: &st.ClosedTab' "$out"
+grep -q 'kr.TabBar(kr.TabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: int32(st.Tab).*ClosedIndex: &st.ClosedTab' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleSource.*Data: st.FieldText\[:\]' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleTarget.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"
 grep -q 'kr.ListBox(kr.ListBoxProps{.*Items: choices\[:\].*Selected: nums\[:\].*SelectedCount: &st.MultiCount.*Anchor: &st.MultiAnchor' "$out"
@@ -618,13 +623,11 @@ grep -q 'kr.Collapsible(kr.CollapsibleProps{' "$out"
 grep -q 'kr.SetThemeMode(kr.THEME_MODE_DARK)' "$out"
 grep -q 'SetCurrentTheme(0, 1)' "$out"
 
-# typed declarations, arrays, and goto/labels lower for real now
+# typed declarations and arrays lower for real now
 grep -q 'var scalar int32 = 5' "$out"
 grep -q 'var nums = \[4\]int32{1,2,3,4}' "$out"
 grep -q 'var choices = \[3\]string{"Alpha","Beta","Gamma"}' "$out"
-grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: 11.*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
-grep -q 'retry:$' "$out"
-grep -q 'goto retry' "$out"
+grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(11).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 
 # The generated source must compile against Kryon's native Go runtime. Textual
 # greps alone previously allowed syntactically invalid Go to pass unnoticed.

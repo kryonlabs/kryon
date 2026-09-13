@@ -4,6 +4,7 @@
 #include "kryon_compat.generated.h"
 #include "ui_control_props.generated.h"
 #include "ui_button_props.generated.h"
+#include "ui_segmented_control_props.generated.h"
 #include "ui_icon_types.h"
 #include <stddef.h>
 
@@ -173,32 +174,6 @@ typedef struct {
     int disabled;
     int separator_before;
 } DropdownOption;
-
-typedef struct {
-    const char *label;
-    int disabled;
-} SegmentOption;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const SegmentOption *options;
-    int option_count;
-    int *selected_index;
-    int font;
-    int gap;
-    int height;
-    int min_item_width;
-    int max_item_width;
-    int wrap;
-} SegmentedControlProps;
-
-typedef struct {
-    int selected_index;
-    int clicked_index;
-    int changed;
-    int height;
-} SegmentedControlResult;
 
 ThemeMetrics GetThemeMetrics(void);
 ThemeMetrics GetDefaultThemeMetrics(void);

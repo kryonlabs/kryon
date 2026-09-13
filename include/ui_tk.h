@@ -2,11 +2,16 @@
 #define KRYON_TK_H
 
 #include "kryon_compat.generated.h"
+#include "ui_canvas_props.generated.h"
 #include "ui_collapsible_props.generated.h"
 #include "ui_color_picker_props.generated.h"
+#include "ui_drag_drop_props.generated.h"
 #include "ui_drag_props.generated.h"
+#include "ui_dropdown_props.generated.h"
 #include "ui_fieldset_props.generated.h"
 #include "ui_input_props.generated.h"
+#include "ui_list_box_props.generated.h"
+#include "ui_menu_props.generated.h"
 #include "ui_paned_view_props.generated.h"
 #include "ui_plot_props.generated.h"
 #include "ui_popup_props.generated.h"
@@ -16,8 +21,10 @@
 #include "ui_separator_props.generated.h"
 #include "ui_slider_props.generated.h"
 #include "ui_spinbox_props.generated.h"
+#include "ui_table_view_props.generated.h"
 #include "ui_text_props.generated.h"
 #include "ui_toggle_props.generated.h"
+#include "ui_tree_view_props.generated.h"
 #include "ui_controls.h"
 #include "ui_menu_types.h"
 
@@ -39,127 +46,11 @@ typedef int (*ClipboardPasteWriteFn)(void *userdata, const char *text,
                                        int size);
 
 typedef enum {
-    DragDropRoleSource = 0,
-    DragDropRoleTarget = 1
-} DragDropRole;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    DragDropRole role;
-    const char *type;
-    const void *data;
-    int data_size;
-    void *output;
-    int output_size;
-    int *accepted_size;
-    int disabled;
-} DragDropProps;
-
-typedef enum {
     ARROW_LEFT = 0,
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN
 } ArrowDirection;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char **options;
-    int option_count;
-    int *selected_index;
-    int disabled;
-    const DropdownOption *items;
-} DropdownProps;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char **items;
-    int item_count;
-    int *selected_index;
-    int *selected;
-    int *selected_count;
-    int *anchor;
-    int *scroll_offset;
-    int row_height;
-    int disabled;
-    int content_height;
-} ListBoxProps;
-
-typedef struct {
-    const char *label;
-    int depth;
-    int id;
-    int expanded;
-    int selectable;
-} TreeItem;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const TreeItem *items;
-    int item_count;
-    int *selected_id;
-    int *scroll_offset;
-    int row_height;
-    int disabled;
-} TreeViewProps;
-
-typedef struct {
-    const char **cells;
-    int cell_count;
-    const Color *text_colors;
-    const Color *background_colors;
-} TableRow;
-
-typedef struct {
-    Rectangle bounds;
-    int id;
-    const char **columns;
-    int column_count;
-    const TableRow *rows;
-    int row_count;
-    int *column_widths;
-    int *selected_row;
-    int *selected_column;
-    int *activated_row;
-    int *activated_column;
-    int *right_clicked_row;
-    int *right_clicked_column;
-    int *sort_column;
-    int *scroll_offset;
-    int row_height;
-    const int *column_enabled;
-    const int *column_order;
-    int *sort_direction;
-    int disabled;
-    int resizable;
-    int min_column_width;
-    int freeze_rows;
-    int header_height;
-    float header_angle;
-    int custom_cells;
-    const char *copy_text;
-    const char **pasted_text;
-    int *pasted_row;
-    int *pasted_column;
-} TableViewProps;
-
-typedef struct {
-    Rectangle bounds;
-    int *scroll_x;
-    int *scroll_y;
-    float *zoom;
-} Canvas;
-
-typedef struct {
-    int active;
-    int dragging;
-    int selected_index;
-    Vector2 world;
-} CanvasResult;
 
 typedef struct {
     int key;

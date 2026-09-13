@@ -1,0 +1,10 @@
+#module "layout_props"
+#import "kryon_compat.generated.h"
+#import "kryon_key.h"
+
+ColumnProps :: struct {
+    bounds: Rectangle
+    gap: i32
+    padding: i32
+    key: KeyID
+}

@@ -1499,7 +1499,7 @@ test_focusable_image_keyboard_navigation(void)
 {
     ImageProps image = {
         .asset_path = "", .bounds = {10,10,40,30}, .tint = WHITE,
-        .fit = IMAGE_FIT_CONTAIN
+        .fit = ImageFitContain
     };
 
     InjectReset();

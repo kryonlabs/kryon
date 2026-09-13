@@ -177,6 +177,7 @@ go_type(const char *type, char *dst, size_t dst_size)
         {"char", "byte"}, {"unsigned char", "byte"}, {"byte", "byte"},
         {"int8", "int8"}, {"int16", "int16"}, {"int32", "int32"},
         {"int64", "int64"}, {"float32", "float32"}, {"float64", "float64"},
+        {"void*", "*byte"}, {"const void*", "*byte"},
         {"void", ""},
         {"Canvas", "Canvas"},
         {"CanvasResult", "CanvasResult"},
@@ -1027,6 +1028,8 @@ props_field_at(const KirModule *module, const char *type, int index,
         const char *type;
         const char *fields[40];
     } table[] = {
+        {"Canvas", {"Bounds", "ScrollX", "ScrollY", "Zoom"}},
+        {"CanvasResult", {"Active", "Dragging", "SelectedIndex", "World"}},
         {"ColumnProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"FlowProps", {"Bounds", "Gap", "Padding", "Key"}},
         {"GridProps", {"Bounds", "Columns", "MinItemWidth", "MaxColumns", "Gap", "Padding", "Key"}},
@@ -1102,6 +1105,20 @@ props_field_at(const KirModule *module, const char *type, int index,
 		{"MenuProps", {"ID", "Mode", "Bounds", "Trigger", "Menus",
 		                 "MenuCount", "Items", "ItemCount", "OpenIndex",
 		                 "Open", "X", "Y"}},
+        {"IconRowItem", {"Icon", "Disabled"}},
+        {"BottomIconRowProps", {"CenterX", "ViewWidth", "ViewHeight", "Count",
+                                "Items", "IconSize", "IconPadding", "Gap",
+                                "SideMargin", "BottomMargin", "MaxButtonWidth",
+                                "MinIconSize", "MinIconPadding", "MinGap"}},
+        {"IconRowResult", {"ClickedIndex", "Y", "ButtonWidth"}},
+        {"ToolbarAction", {"Icon", "IconType", "Disabled"}},
+        {"ToolbarProps", {"ID", "X", "Y", "Width", "Height", "DrawMenu",
+                          "Options", "OptionCount", "SelectedIndex",
+                          "DropdownMinWidth", "DropdownMaxWidth",
+                          "DropdownHeight", "Actions", "ActionCount",
+                          "ActionIconSize", "ActionIconPadding", "ActionGap",
+                          "SidePadding"}},
+        {"ToolbarResult", {"SelectedMenuItem", "ClickedAction"}},
         {"SpinboxProps", {"Bounds", "ID", "Min", "Max", "Step", "Value",
                           "Disabled", "ValueText", "Wrap"}},
         {"DropdownOption", {"Label", "FontName", "IconType", "Disabled",
@@ -1317,7 +1334,17 @@ slice_prop_field(const char *type, const char *field)
         return 1;
     if(strcmp(type, "TreeViewProps") == 0 && strcmp(field, "Items") == 0)
         return 1;
+    if(strcmp(type, "NavigationBarProps") == 0 && strcmp(field, "Items") == 0)
+        return 1;
     if(strcmp(type, "TabBarProps") == 0 && strcmp(field, "Tabs") == 0)
+        return 1;
+    if(strcmp(type, "BottomIconRowProps") == 0 && strcmp(field, "Items") == 0)
+        return 1;
+    if(strcmp(type, "ToolbarProps") == 0 &&
+       (strcmp(field, "Options") == 0 || strcmp(field, "Actions") == 0))
+        return 1;
+    if(strcmp(type, "ModalProps") == 0 &&
+       (strcmp(field, "Actions") == 0 || strcmp(field, "Text") == 0))
         return 1;
     if(strcmp(type, "DragDropProps") == 0 &&
        (strcmp(field, "Data") == 0 || strcmp(field, "Output") == 0))
@@ -2123,9 +2150,9 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     {"THEME_XFCE", "THEME_XFCE"},
                     {"THEME_SWEET", "THEME_SWEET"},
                     {"THEME_COUNT", "THEME_COUNT"},
-                    {"IMAGE_FIT_STRETCH", "IMAGE_FIT_STRETCH"},
-                    {"IMAGE_FIT_CONTAIN", "IMAGE_FIT_CONTAIN"},
-                    {"IMAGE_FIT_COVER", "IMAGE_FIT_COVER"},
+                    {"ImageFitStretch", "ImageFitStretch"},
+                    {"ImageFitContain", "ImageFitContain"},
+                    {"ImageFitCover", "ImageFitCover"},
                     {"WHITE", "WHITE"},
                     {"BLACK", "BLACK"},
                     {"RAYWHITE", "RAYWHITE"},
@@ -3096,6 +3123,13 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                             kir_go_field_ident(field.name, fname, sizeof(fname));
                             if(!go_type(field.type, gt, sizeof(gt)))
                                 snprintf(gt, sizeof(gt), "/* TODO %s */ any", field.type);
+                            if(strcmp(t->name, "TableViewProps") == 0 &&
+                               (strcmp(fname, "CopyText") == 0 ||
+                                strcmp(fname, "PastedText") == 0))
+                                snprintf(gt, sizeof(gt), "*string");
+                            if(strcmp(t->name, "ModalProps") == 0 &&
+                               strcmp(fname, "Text") == 0)
+                                snprintf(gt, sizeof(gt), "[]byte");
                             if(slice_prop_field(t->name, fname) && gt[0] == '*') {
                                 char elem[K2GO_NAME_MAX];
                                 snprintf(elem, sizeof(elem), "%s", gt + 1);

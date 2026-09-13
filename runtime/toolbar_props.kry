@@ -1,0 +1,62 @@
+#module "toolbar_props"
+#import "kryon_compat.generated.h"
+
+IconRowItem :: struct {
+    icon: Texture2D
+    disabled: bool
+}
+
+BottomIconRowProps :: struct {
+    center_x: i32
+    view_width: i32
+    view_height: i32
+    count: i32
+    items: const IconRowItem*
+    icon_size: i32
+    icon_padding: i32
+    gap: i32
+    side_margin: i32
+    bottom_margin: i32
+    max_button_width: i32
+    min_icon_size: i32
+    min_icon_padding: i32
+    min_gap: i32
+}
+
+IconRowResult :: struct {
+    clicked_index: i32
+    y: i32
+    button_width: i32
+}
+
+ToolbarAction :: struct {
+    icon: Texture2D
+    icon_type: i32
+    disabled: bool
+}
+
+ToolbarProps :: struct {
+    id: i32
+    x: i32
+    y: i32
+    width: i32
+    height: i32
+    draw_menu: bool
+    options: const char**
+    option_count: i32
+    selected_index: *i32
+    dropdown_min_width: i32
+    dropdown_max_width: i32
+    dropdown_height: i32
+    actions: const ToolbarAction*
+    action_count: i32
+    action_icon_size: i32
+    action_icon_padding: i32
+    action_gap: i32
+    side_padding: i32
+}
+
+ToolbarResult :: struct {
+    selected_menu_item: i32
+    clicked_action: i32
+}

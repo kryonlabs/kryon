@@ -38,6 +38,7 @@ surface review:
 | `runtime/button.kry` | Button composition | `.kry canonical` |
 | `runtime/button_props.kry` | Button props | `.kry canonical` |
 | `runtime/canvas.kry` | Canvas transform and hit-test policy | `.kry canonical` |
+| `runtime/canvas_props.kry` | Canvas props and result | `.kry canonical` |
 | `runtime/canvas_grid.kry` | CanvasGrid line policy | `.kry canonical` |
 | `runtime/card.kry` | Card composition | `.kry canonical` |
 | `runtime/card_props.kry` | Card props | `.kry canonical` |
@@ -50,7 +51,9 @@ surface review:
 | `runtime/control_props.kry` | Shared control props | `.kry canonical` |
 | `runtime/drawing_props.kry` | Shared drawing props | `.kry canonical` |
 | `runtime/dropdown.kry` | Dropdown composition | `.kry canonical` |
+| `runtime/dropdown_props.kry` | Dropdown props | `.kry canonical` |
 | `runtime/drag_drop.kry` | DragDrop decision policy | `.kry canonical` |
+| `runtime/drag_drop_props.kry` | DragDrop props and role enum | `.kry canonical` |
 | `runtime/drag.kry` | Drag value/keyboard policy | `.kry canonical` |
 | `runtime/drag_props.kry` | Drag props | `.kry canonical` |
 | `runtime/grid.kry` | Grid composition | `.kry canonical` |
@@ -60,6 +63,7 @@ surface review:
 | `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | Native support |
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
 | `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
+| `runtime/image_props.kry` | Image props | `.kry canonical` |
 | `runtime/input.kry` | Input value/step policy | `.kry canonical` |
 | `runtime/input_props.kry` | Input props and shared numeric value kind | `.kry canonical` |
 | `runtime/instance.kry` | Generated widget instance identity helpers | Native support |
@@ -67,15 +71,21 @@ surface review:
 | `runtime/fieldset_props.kry` | Fieldset props | `.kry canonical` |
 | `runtime/focus.kry` | Focus ring and debug overlay geometry policy | Native support |
 | `runtime/layout.kry` | Column/Row/Stack content and child placement policy | `.kry canonical` |
+| `runtime/layout_props.kry` | Column/Row/Flow layout props | `.kry canonical` |
 | `runtime/link.kry` | Link state/color policy | `.kry canonical` |
+| `runtime/link_props.kry` | Link props | `.kry canonical` |
 | `runtime/list_box.kry` | ListBox layout/navigation policy | `.kry canonical` |
+| `runtime/list_box_props.kry` | ListBox props | `.kry canonical` |
 | `runtime/material.kry` | Material layer assembly | `.kry canonical` |
 | `runtime/menu.kry` | Menu metrics and geometry policy | `.kry canonical` |
+| `runtime/menu_props.kry` | Menu props | `.kry canonical` |
 | `runtime/list_box_multi.kry` | ListBox multi-selection row/navigation/selection policy | `.kry canonical` |
 | `runtime/navigation_bar.kry` | Navigation bar composition | `.kry canonical` |
+| `runtime/navigation_bar_props.kry` | NavigationBar props and result | `.kry canonical` |
 | `runtime/paint.kry` | Paint/drawing helpers | Native support |
 | `runtime/paned_view.kry` | PanedView split/handle geometry policy | `.kry canonical` |
 | `runtime/paned_view_props.kry` | PanedView props | `.kry canonical` |
+| `runtime/page_props.kry` | Page/Section/Heading/Paragraph props | `.kry canonical` |
 | `runtime/paragraph.kry` | Paragraph metrics/default policy | `.kry canonical` |
 | `runtime/plot.kry` | Plot geometry and text policy | `.kry canonical` |
 | `runtime/plot_props.kry` | Plot props | `.kry canonical` |
@@ -87,6 +97,7 @@ surface review:
 | `runtime/radio.kry` | Radio paint/layout policy | `.kry canonical` |
 | `runtime/radio_props.kry` | Radio props | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
+| `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
 | `runtime/selectable_props.kry` | Selectable props | `.kry canonical` |
 | `runtime/separator.kry` | Separator/Bullet layout and paint policy | `.kry canonical` |
@@ -101,20 +112,26 @@ surface review:
 | `runtime/style_sheet.kry` | Style sheet evaluation helpers | `.kry canonical` |
 | `runtime/surface.kry` | Surface/container helpers | `.kry canonical` |
 | `runtime/tab_bar.kry` | TabBar sizing/scroll policy | `.kry canonical` |
+| `runtime/tab_bar_props.kry` | TabBar props | `.kry canonical` |
 | `runtime/text.kry` | Text composition | `.kry canonical` |
 | `runtime/text_props.kry` | Text props | `.kry canonical` |
 | `runtime/text_input.kry` | TextField/TextArea metrics, scroll, navigation, and edit-intent policy | `.kry canonical` |
 | `runtime/theme.kry` | Theme data/helpers | `.kry canonical` |
 | `runtime/title_bar.kry` | TitleBar layout policy | `.kry canonical` |
+| `runtime/title_bar_props.kry` | TitleBar props | `.kry canonical` |
 | `runtime/toggle.kry` | Toggle composition | `.kry canonical` |
 | `runtime/toggle_props.kry` | Toggle props | `.kry canonical` |
 | `runtime/toolbar.kry` | Toolbar metrics and geometry policy | `.kry canonical` |
+| `runtime/toolbar_props.kry` | Toolbar and bottom icon row props/results | `.kry canonical` |
 | `runtime/toast.kry` | Toast duration and layout policy | `.kry canonical` |
 | `runtime/toast_props.kry` | Toast props | `.kry canonical` |
 | `runtime/transition_fade.kry` | Transition fade alpha/easing policy | Native support |
 | `runtime/modal.kry` | Modal layout and action policy | `.kry canonical` |
+| `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window geometry policy | `.kry canonical` |
+| `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
 | `runtime/table_view.kry` | TableView layout and scroll geometry policy | `.kry canonical` |
+| `runtime/table_view_props.kry` | TableView row and props | `.kry canonical` |
 
 ## Current Implementation Audit
 

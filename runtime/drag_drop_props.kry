@@ -1,0 +1,20 @@
+#module "drag_drop_props"
+#import "kryon_compat.generated.h"
+
+DragDropRole :: enum {
+    DragDropRoleSource = 0
+    DragDropRoleTarget = 1
+}
+
+DragDropProps :: struct {
+    bounds: Rectangle
+    id: i32
+    role: DragDropRole
+    type: const char*
+    data: const void*
+    data_size: i32
+    output: void*
+    output_size: i32
+    accepted_size: *i32
+    disabled: bool
+}

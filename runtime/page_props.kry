@@ -1,0 +1,41 @@
+#module "page_props"
+#import "kryon_compat.generated.h"
+#import "kryon_key.h"
+
+PageProps :: struct {
+    bounds: Rectangle
+    title: const char*
+    description: const char*
+    canonical_url: const char*
+    theme_color: Color
+    background: Color
+    gap: i32
+    padding: i32
+    key: KeyID
+}
+
+SectionProps :: struct {
+    bounds: Rectangle
+    label: const char*
+    gap: i32
+    padding: i32
+    key: KeyID
+}
+
+HeadingProps :: struct {
+    bounds: Rectangle
+    text: const char*
+    level: i32
+    font: i32
+    color: Color
+    key: KeyID
+}
+
+ParagraphTextProps :: struct {
+    bounds: Rectangle
+    text: const char*
+    font: i32
+    color: Color
+    line_gap: i32
+    key: KeyID
+}

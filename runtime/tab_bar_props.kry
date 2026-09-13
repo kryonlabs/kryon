@@ -1,0 +1,32 @@
+#module "tab_bar_props"
+#import "kryon_compat.generated.h"
+
+Tab :: struct {
+    label: const char*
+    icon: Texture2D
+    icon_size: i32
+    disabled: bool
+    accent: Color
+    italic: bool
+    closeable: bool
+}
+
+TabBarProps :: struct {
+    bounds: Rectangle
+    tabs: const Tab*
+    count: i32
+    selected_index: i32
+    font: i32
+    min_tab_width: i32
+    max_tab_width: i32
+    scroll_offset: *i32
+    focus_selected: bool
+    closed_index: *i32
+    double_clicked_index: *i32
+    reordered_from_index: *i32
+    reordered_to_index: *i32
+    selected_tab_bounds: *Rectangle
+    middle_clicked_index: *i32
+    id: i32
+    disabled: bool
+}

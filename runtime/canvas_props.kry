@@ -1,0 +1,16 @@
+#module "canvas_props"
+#import "kryon_compat.generated.h"
+
+Canvas :: struct {
+    bounds: Rectangle
+    scroll_x: *i32
+    scroll_y: *i32
+    zoom: *f32
+}
+
+CanvasResult :: struct {
+    active: bool
+    dragging: bool
+    selected_index: i32
+    world: Vector2
+}

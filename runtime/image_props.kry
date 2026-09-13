@@ -1,0 +1,34 @@
+#module "image_props"
+#import "kryon_compat.generated.h"
+
+ImageFit :: enum {
+    ImageFitStretch = 0
+    ImageFitContain = 1
+    ImageFitCover = 2
+}
+
+ImageStyle :: struct {
+    enabled: bool
+    background: Color
+    tonal_overlay: Color
+    surface_overlay: Color
+    scrim_top: Color
+    scrim_bottom: Color
+    outline: Color
+    roundness: float
+    radius_px: i32
+    segments: i32
+    outline_px: i32
+}
+
+ImageProps :: struct {
+    asset_path: const char*
+    alt_text: const char*
+    bounds: Rectangle
+    source: Rectangle
+    origin: Vector2
+    rotation: float
+    tint: Color
+    fit: ImageFit
+    style: ImageStyle
+}

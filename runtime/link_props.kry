@@ -1,0 +1,13 @@
+#module "link_props"
+#import "kryon_compat.generated.h"
+
+LinkProps :: struct {
+    bounds: Rectangle
+    text: const char*
+    link: const char*
+    font: i32
+    focus_id: i32
+    disabled: bool
+    color: Color
+    hover_color: Color
+}

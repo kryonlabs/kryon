@@ -1,0 +1,17 @@
+#module "menu_props"
+#import "ui_menu_types.h"
+
+MenuProps :: struct {
+    id: i32
+    mode: MenuMode
+    bounds: Rectangle
+    trigger: Rectangle
+    menus: const MenuGroup*
+    menu_count: i32
+    items: const MenuItem*
+    item_count: i32
+    open_index: *i32
+    open: *i32
+    x: *i32
+    y: *i32
+}

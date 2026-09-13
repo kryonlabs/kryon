@@ -285,11 +285,14 @@ RenderActionModal(ModalProps modal)
         field_props.text = modal.text;
         field_props.text_size = (size_t)modal.text_size;
         field_props.cursor_position = modal.cursor_position;
-        field_props.focused = modal.focused;
+        int field_focused = modal.focused != NULL && *modal.focused;
+        field_props.focused = &field_focused;
         field_props.max_codepoints = modal.text_size - 1;
         field_props.focus_id = modal.focus_id > 0 ? modal.focus_id : 7301;
         field_props.commit_pressed = &commit_pressed;
         ui_text_field_render(field_props);
+        if(modal.focused != NULL)
+            *modal.focused = field_focused != 0;
     }
 
     if(result == 0 && modal.close_icon.id != 0) {

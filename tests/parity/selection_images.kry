@@ -24,7 +24,7 @@ state {
 selection_images_frame :: () #ui {
     Screen selection_images_root: {
         bounds = {0,0,320,260}
-        image: ImageProps = {.asset_path = "", .bounds = (Rectangle){20,100,96,64}, .source = (Rectangle){0,0,0,0}, .origin = (Vector2){0,0}, .rotation = 0.0f, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN}
+        image: ImageProps = {.asset_path = "", .bounds = (Rectangle){20,100,96,64}, .source = (Rectangle){0,0,0,0}, .origin = (Vector2){0,0}, .rotation = 0.0f, .tint = WHITE, .fit = ImageFitContain}
         Selectable((SelectableProps){.bounds = {20,20,200,30}, .id = 950, .label = "Selectable", .selected = &selection_selected})
         Checkbox((CheckboxProps){.bounds = {20,60,200,30}, .id = 951, .label = "Feature bit", .flags = &feature_flags, .flags_value = 4})
         image.style = (ImageStyle){.enabled = true, .background = (Color){40,50,60,255}}

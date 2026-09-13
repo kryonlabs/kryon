@@ -1,0 +1,23 @@
+#module "modal_props"
+#import "ui_control_props.generated.h"
+
+ModalAction :: struct {
+    label: const char*
+    tone: ButtonTone
+    emphasis: ButtonEmphasis
+    disabled: bool
+}
+
+ModalProps :: struct {
+    title: const char*
+    message: const char*
+    actions: const ModalAction*
+    action_count: i32
+    close_icon: Texture2D
+    max_width: i32
+    text: char*
+    text_size: i32
+    cursor_position: *i32
+    focused: *bool
+    focus_id: i32
+}

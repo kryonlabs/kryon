@@ -1234,9 +1234,9 @@ int SyncWebWindowSize(void);
 
 ```c
 typedef enum ImageFit {
-    IMAGE_FIT_STRETCH,
-    IMAGE_FIT_CONTAIN,
-    IMAGE_FIT_COVER
+    ImageFitStretch,
+    ImageFitContain,
+    ImageFitCover
 } ImageFit;
 
 typedef struct ImageProps {

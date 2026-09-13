@@ -61,6 +61,7 @@ RenderToolbar(ToolbarProps toolbar)
                 ButtonStateHover, 0, 0, 0, 0, StyleKindToolbar(), 17).value);
             button.props.bounds = action_bounds;
             button.props.icon = toolbar.actions[i].icon;
+            button.props.icon_type = toolbar.actions[i].icon_type;
             button.props.icon_only = 1;
             button.props.disabled = toolbar.actions[i].disabled;
             button.props.tone = ButtonToneNeutral;

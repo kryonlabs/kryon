@@ -1,0 +1,28 @@
+#module "segmented_control_props"
+#import "kryon_compat.generated.h"
+
+SegmentOption :: struct {
+    label: const char*
+    disabled: bool
+}
+
+SegmentedControlProps :: struct {
+    bounds: Rectangle
+    id: i32
+    options: const SegmentOption*
+    option_count: i32
+    selected_index: *i32
+    font: i32
+    gap: i32
+    height: i32
+    min_item_width: i32
+    max_item_width: i32
+    wrap: bool
+}
+
+SegmentedControlResult :: struct {
+    selected_index: i32
+    clicked_index: i32
+    changed: i32
+    height: i32
+}

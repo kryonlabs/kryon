@@ -40,19 +40,4 @@ typedef struct {
     int open_index;
 } MenuResult;
 
-typedef struct {
-    int id;
-    MenuMode mode;
-    Rectangle bounds;
-    Rectangle trigger;
-    const MenuGroup *menus;
-    int menu_count;
-    const MenuItem *items;
-    int item_count;
-    int *open_index;
-    int *open;
-    int *x;
-    int *y;
-} MenuProps;
-
 #endif

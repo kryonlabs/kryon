@@ -1,0 +1,21 @@
+#module "title_bar_props"
+#import "kryon_compat.generated.h"
+
+TitleBarDropdown :: struct {
+    id: i32
+    options: const char**
+    option_count: i32
+    selected_index: *i32
+    disabled: bool
+    min_width: i32
+    height: i32
+}
+
+TitleBarProps :: struct {
+    title: const char*
+    height: i32
+    leading_icon: Texture2D
+    has_leading_action: bool
+    dropdown: TitleBarDropdown
+    has_dropdown: bool
+}

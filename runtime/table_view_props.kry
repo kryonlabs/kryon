@@ -1,0 +1,46 @@
+#module "table_view_props"
+#import "kryon_compat.generated.h"
+
+TableRow :: struct {
+    cells: const char**
+    cell_count: i32
+    text_colors: const Color*
+    background_colors: const Color*
+}
+
+TableViewProps :: struct {
+    bounds: Rectangle
+    id: i32
+    columns: const char**
+    column_count: i32
+    rows: const TableRow*
+    row_count: i32
+    column_widths: *i32
+    selected_row: *i32
+    selected_column: *i32
+    activated_row: *i32
+    activated_column: *i32
+    right_clicked_row: *i32
+    right_clicked_column: *i32
+    sort_column: *i32
+    scroll_offset: *i32
+    row_height: i32
+    column_enabled: *i32
+    column_order: *i32
+    sort_direction: *i32
+    disabled: bool
+    resizable: bool
+    min_column_width: i32
+    freeze_rows: i32
+    header_height: i32
+    header_angle: f32
+    custom_cells: bool
+    copy_text: const char*
+    pasted_text: const char**
+    pasted_row: *i32
+    pasted_column: *i32
+    selection_start_row: *i32
+    selection_start_column: *i32
+    selection_end_row: *i32
+    selection_end_column: *i32
+}

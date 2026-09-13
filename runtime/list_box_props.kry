@@ -1,0 +1,17 @@
+#module "list_box_props"
+#import "kryon_compat.generated.h"
+
+ListBoxProps :: struct {
+    bounds: Rectangle
+    id: i32
+    items: const char**
+    item_count: i32
+    selected_index: *i32
+    selected: *i32
+    selected_count: *i32
+    anchor: *i32
+    scroll_offset: *i32
+    row_height: i32
+    disabled: bool
+    content_height: i32
+}

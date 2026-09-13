@@ -3,6 +3,8 @@
 
 #include "kryon_compat.generated.h"
 #include "ui_image.h"
+#include "ui_link_props.generated.h"
+#include "ui_page_props.generated.h"
 #include "ui_tree.h"
 
 typedef enum SemanticKind {
@@ -16,61 +18,7 @@ typedef enum SemanticKind {
     SEMANTIC_BUTTON
 } SemanticKind;
 
-typedef struct PageProps {
-    Rectangle bounds;
-    const char *title;
-    const char *description;
-    const char *canonical_url;
-    Color theme_color;
-    Color background;
-    int gap;
-    int padding;
-    KeyID key;
-} PageProps;
-
-typedef struct SectionProps {
-    Rectangle bounds;
-    const char *label;
-    int gap;
-    int padding;
-    KeyID key;
-} SectionProps;
-
-typedef struct HeadingProps {
-    Rectangle bounds;
-    const char *text;
-    int level;
-    int font;
-    Color color;
-    KeyID key;
-} HeadingProps;
-
-typedef struct ParagraphTextProps {
-    Rectangle bounds;
-    const char *text;
-    int font;
-    Color color;
-    int line_gap;
-    KeyID key;
-} ParagraphTextProps;
-
-typedef struct LinkProps {
-    Rectangle bounds;
-    const char *text;
-    const char *link;
-    int font;
-    int focus_id;
-    int disabled;
-    Color color;
-    Color hover_color;
-} LinkProps;
-
-typedef struct FlowProps {
-    Rectangle bounds;
-    int gap;
-    int padding;
-    KeyID key;
-} FlowProps;
+typedef ColumnProps FlowProps;
 
 void SetPageTitle(const char *title);
 void SetPageDescription(const char *description);

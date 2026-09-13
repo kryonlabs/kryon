@@ -35,7 +35,6 @@ type SyntaxMode int32
 type ThemeId int32
 type ThemeSource int32
 type ThemeMode int32
-type ImageFit int32
 type MenuItemKind int32
 type SemanticKind int32
 
@@ -115,10 +114,6 @@ const (
 )
 
 const (
-	ImageFitStretch ImageFit = iota
-	ImageFitContain
-	ImageFitCover
-
 	Text8  int32 = 8
 	Text12 int32 = 12
 	Text14 int32 = 14
@@ -151,10 +146,6 @@ const (
 	THEME_XFCE     = 13
 	THEME_SWEET    = 14
 	THEME_COUNT    = 15
-
-	IMAGE_FIT_STRETCH = ImageFitStretch
-	IMAGE_FIT_CONTAIN = ImageFitContain
-	IMAGE_FIT_COVER   = ImageFitCover
 )
 
 const (
@@ -378,56 +369,6 @@ type ThemeFamily struct {
 	Dark  Theme
 }
 
-type Tab struct {
-	Label     string
-	Icon      Texture2D
-	IconSize  int32
-	Disabled  bool
-	Accent    Color
-	Italic    bool
-	Closeable bool
-}
-
-type TabBarProps struct {
-	Bounds             Rectangle
-	Tabs               []Tab
-	Count              int32
-	SelectedIndex      int32
-	Font               int32
-	MinTabWidth        int32
-	MaxTabWidth        int32
-	ScrollOffset       *int32
-	FocusSelected      bool
-	ClosedIndex        *int32
-	DoubleClickedIndex *int32
-	ReorderedFromIndex *int32
-	ReorderedToIndex   *int32
-	SelectedTabBounds  *Rectangle
-	MiddleClickedIndex *int32
-	ID                 int32
-	Disabled           bool
-}
-
-type DragDropRole int32
-
-const (
-	DragDropRoleSource DragDropRole = 0
-	DragDropRoleTarget DragDropRole = 1
-)
-
-type DragDropProps struct {
-	Bounds       Rectangle
-	ID           int32
-	Role         DragDropRole
-	Type         string
-	Data         []byte
-	DataSize     int32
-	Output       []byte
-	OutputSize   int32
-	AcceptedSize *int32
-	Disabled     bool
-}
-
 type ArrowDirection int32
 
 const (
@@ -469,13 +410,6 @@ type TextAreaProps struct {
 	Wrap           bool
 }
 
-type ColumnProps struct {
-	Bounds  Rectangle
-	Gap     int32
-	Padding int32
-	Key     KeyID
-}
-
 type RowProps = ColumnProps
 
 type ParagraphSpec struct {
@@ -489,154 +423,7 @@ type ParagraphSpec struct {
 	Align    TextAlign
 }
 
-type ImageProps struct {
-	AssetPath string
-	AltText   string
-	Bounds    Rectangle
-	Source    Rectangle
-	Origin    Vector2
-	Rotation  float32
-	Tint      Color
-	Fit       ImageFit
-	Style     ImageStyle
-}
-
-type ImageStyle struct {
-	Enabled        bool
-	Background     Color
-	TonalOverlay   Color
-	SurfaceOverlay Color
-	ScrimTop       Color
-	ScrimBottom    Color
-	Outline        Color
-	Roundness      float32
-	RadiusPx       int32
-	Segments       int32
-	OutlinePx      int32
-}
-
-type PageProps struct {
-	Bounds       Rectangle
-	Title        string
-	Description  string
-	CanonicalURL string
-	ThemeColor   Color
-	Background   Color
-	Gap          int32
-	Padding      int32
-	Key          KeyID
-}
-
-type SectionProps struct {
-	Bounds  Rectangle
-	Label   string
-	Gap     int32
-	Padding int32
-	Key     KeyID
-}
-
-type HeadingProps struct {
-	Bounds Rectangle
-	Text   string
-	Level  int32
-	Font   int32
-	Color  Color
-	Key    KeyID
-}
-
-type ParagraphTextProps struct {
-	Bounds  Rectangle
-	Text    string
-	Font    int32
-	Color   Color
-	LineGap int32
-	Key     KeyID
-}
-
-type LinkProps struct {
-	Bounds     Rectangle
-	Text       string
-	Link       string
-	Font       int32
-	FocusID    int32
-	Disabled   bool
-	Color      Color
-	HoverColor Color
-}
-
-type TitleBarDropdown struct {
-	ID            int32
-	Options       []string
-	OptionCount   int32
-	SelectedIndex *int32
-	Disabled      bool
-	MinWidth      int32
-	Height        int32
-}
-
-type TitleBarProps struct {
-	Title            string
-	Height           int32
-	LeadingIcon      Texture2D
-	HasLeadingAction bool
-	Dropdown         TitleBarDropdown
-	HasDropdown      bool
-}
-
 type FlowProps = ColumnProps
-
-type NavigationBarItem struct {
-	Route    int32
-	Label    string
-	Icon     Texture2D
-	IconType int32
-	Active   bool
-	Disabled bool
-}
-
-type NavigationBarProps struct {
-	ViewWidth      int32
-	ViewHeight     int32
-	Count          int32
-	Items          []NavigationBarItem
-	Height         int32
-	IconSize       int32
-	IconPadding    int32
-	SideMargin     int32
-	BottomMargin   int32
-	MaxButtonWidth int32
-	IconColor      Color
-}
-
-type ToolbarProps struct {
-	ID                int32
-	X, Y              int32
-	Width, Height     int32
-	DrawMenu          bool
-	Options           string
-	OptionCount       int32
-	SelectedIndex     *int32
-	DropdownMinWidth  int32
-	DropdownMaxWidth  int32
-	DropdownHeight    int32
-	ActionIconSize    int32
-	ActionIconPadding int32
-	ActionGap         int32
-	SidePadding       int32
-	Actions           []ToolbarAction
-	ActionCount       int32
-}
-
-type ToolbarAction struct {
-	Icon     Texture2D
-	IconType int32
-	Disabled bool
-}
-
-type ToolbarResult struct {
-	SelectedMenuItem int32
-	ClickedAction    int32
-}
 
 type MenuItem struct {
 	Kind         MenuItemKind
@@ -667,21 +454,6 @@ const (
 type MenuResult struct {
 	ActivatedID int32
 	OpenIndex   int32
-}
-
-type MenuProps struct {
-	ID        int32
-	Mode      MenuMode
-	Bounds    Rectangle
-	Trigger   Rectangle
-	Menus     []MenuGroup
-	MenuCount int32
-	Items     []MenuItem
-	ItemCount int32
-	OpenIndex *int32
-	Open      *int32
-	X         *int32
-	Y         *int32
 }
 
 type dragFloatProps struct {
@@ -818,155 +590,6 @@ type DropdownOption struct {
 	IconType        int32
 	Disabled        bool
 	SeparatorBefore bool
-}
-
-type DropdownProps struct {
-	Items         []DropdownOption
-	Bounds        Rectangle
-	ID            int32
-	Options       []string
-	OptionCount   int32
-	SelectedIndex *int32
-	Disabled      bool
-}
-
-type SegmentOption struct {
-	Label    string
-	Disabled bool
-}
-
-type SegmentedControlProps struct {
-	Bounds        Rectangle
-	ID            int32
-	Options       []SegmentOption
-	OptionCount   int32
-	SelectedIndex *int32
-	Font          int32
-	Gap           int32
-	Height        int32
-	MinItemWidth  int32
-	MaxItemWidth  int32
-	Wrap          bool
-}
-
-type SegmentedControlResult struct {
-	SelectedIndex int32
-	ClickedIndex  int32
-	Changed       int32
-	Height        int32
-}
-
-type ListBoxProps struct {
-	Bounds        Rectangle
-	ID            int32
-	Items         []string
-	ItemCount     int32
-	SelectedIndex *int32
-	Selected      []int32
-	SelectedCount *int32
-	Anchor        *int32
-	ScrollOffset  *int32
-	RowHeight     int32
-	Disabled      bool
-	ContentHeight int32
-}
-
-type TreeItem struct {
-	Label      string
-	Depth      int32
-	ID         int32
-	Expanded   int32
-	Selectable int32
-}
-
-type TreeViewProps struct {
-	Bounds       Rectangle
-	ID           int32
-	Items        []TreeItem
-	ItemCount    int32
-	SelectedID   *int32
-	ScrollOffset *int32
-	RowHeight    int32
-	Disabled     bool
-}
-
-type TableRow struct {
-	Cells            []string
-	CellCount        int32
-	TextColors       []Color
-	BackgroundColors []Color
-}
-
-type TableViewProps struct {
-	Bounds               Rectangle
-	ID                   int32
-	Columns              []string
-	ColumnCount          int32
-	Rows                 []TableRow
-	RowCount             int32
-	ColumnWidths         []int32
-	ColumnEnabled        []int32
-	ColumnOrder          []int32
-	SelectedRow          *int32
-	SelectedColumn       *int32
-	SelectionStartRow    *int32
-	SelectionStartColumn *int32
-	SelectionEndRow      *int32
-	SelectionEndColumn   *int32
-	ActivatedRow         *int32
-	ActivatedColumn      *int32
-	RightClickedRow      *int32
-	RightClickedColumn   *int32
-	CopyText             *string
-	PastedText           *string
-	PastedRow            *int32
-	PastedColumn         *int32
-	SortColumn           *int32
-	SortDirection        *int32
-	ScrollOffset         *int32
-	RowHeight            int32
-	Disabled             bool
-	Resizable            bool
-	MinColumnWidth       int32
-	FreezeRows           int32
-	HeaderHeight         int32
-	HeaderAngle          float32
-	CustomCells          bool
-}
-
-type ModalAction struct {
-	Label    string
-	Tone     ButtonTone
-	Emphasis ButtonEmphasis
-	Disabled bool
-}
-
-type ModalProps struct {
-	Title          string
-	Message        string
-	Actions        []ModalAction
-	ActionCount    int32
-	CloseIcon      Texture2D
-	MaxWidth       int32
-	Text           []byte
-	TextSize       int32
-	CursorPosition *int32
-	Focused        *bool
-	FocusID        int32
-}
-
-type Canvas struct {
-	Bounds  Rectangle
-	ScrollX *int32
-	ScrollY *int32
-	Zoom    *float32
-}
-
-type CanvasResult struct {
-	Active        bool
-	Dragging      bool
-	SelectedIndex int32
-	World         Vector2
 }
 
 // Accelerator describes one keyboard chord and the command returned when it

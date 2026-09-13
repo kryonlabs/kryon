@@ -208,7 +208,7 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .alt_text = \"\",\n"
                  "        .bounds = {Scale(%d), Scale(%d), Scale(180), Scale(110)},\n"
                  "        .tint = WHITE,\n"
-                 "        .fit = IMAGE_FIT_CONTAIN,\n"
+                 "        .fit = ImageFitContain,\n"
                  "    })\n",
                  x, y);
     } else if(strcmp(type->name, "Card") == 0) {

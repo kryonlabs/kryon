@@ -168,8 +168,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Bevel(right, y + Scale(132), Scale(120), Scale(34), GetThemeSurface(), GetThemeButton())
         Icon(100, right + Scale(150), y + Scale(46), Scale(28), 1, GetThemeIcon())
         Fieldset((FieldsetProps){.bounds = {right + Scale(200), y + Scale(36), Scale(150), Scale(58)}, .title = "Fieldset"})
-        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(200), y + Scale(112), Scale(58), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
-        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(278), y + Scale(112), Scale(72), Scale(58)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN})
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(200), y + Scale(112), Scale(58), Scale(58)}, .tint = WHITE, .fit = ImageFitContain})
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right + Scale(278), y + Scale(112), Scale(72), Scale(58)}, .tint = WHITE, .fit = ImageFitContain})
 
         Text((TextProps){.bounds={x, y + Scale(260), 0, 0}, .text="Custom color", .font=Text16, .color=GetThemeLink(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={x, y + Scale(300), 0, 0}, .text="Disabled text", .font=Text16, .wrap=TextWrapNone, .disabled=1})
@@ -185,8 +185,8 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Text((TextProps){.bounds={right,y + Scale(300),0,0}, .text=TextFormat("Int: %d", 42), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right,y + Scale(340),0,0}, .text=TextFormat("UInt: %u", 42), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
         Text((TextProps){.bounds={right,y + Scale(380),0,0}, .text=TextFormat("Float: %.2f", 0.5f), .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = IMAGE_FIT_CONTAIN, .style = {.enabled = true, .background = GetThemeSurface()}})
-        if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_asset_path = image_path, .image_source = {0,0,64,64}, .image_bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_tint = WHITE, .image_fit = IMAGE_FIT_CONTAIN, .image_background = GetThemeSurface(), .id = 210}) {
+        Image((ImageProps){.asset_path = image_path, .source = {0,0,64,64}, .bounds = {right,y + Scale(500),Scale(80),Scale(80)}, .tint = WHITE, .fit = ImageFitContain, .style = {.enabled = true, .background = GetThemeSurface()}})
+        if Button((ButtonProps){.bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_asset_path = image_path, .image_source = {0,0,64,64}, .image_bounds = {right + Scale(110),y + Scale(500),Scale(80),Scale(80)}, .image_tint = WHITE, .image_fit = ImageFitContain, .image_background = GetThemeSurface(), .id = 210}) {
             action_count += 1
             Toast((ToastProps){.message = "Image button clicked"})
         }

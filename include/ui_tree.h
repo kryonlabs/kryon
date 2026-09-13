@@ -2,11 +2,15 @@
 #define KRYON_TREE_H
 
 #include "kryon_compat.generated.h"
+#include "kryon_key.h"
 #include "ui_controls.h"
 #include "ui_button_props.generated.h"
 #include "ui_card_props.generated.h"
 #include "ui_checkbox_props.generated.h"
+#include "ui_draw.h"
 #include "ui_grid_props.generated.h"
+#include "ui_layout_props.generated.h"
+#include "ui_list_box_props.generated.h"
 #include "ui_selectable_props.generated.h"
 #include "ui_modal.h"
 #include "ui_nav.h"
@@ -17,7 +21,6 @@
 struct TransitionState;
 
 typedef int NodeId;
-typedef unsigned long long KeyID;
 
 typedef enum EventKind {
     EVENT_NONE = 0,
@@ -130,19 +133,7 @@ int Button(ButtonProps button);
 int Selectable(SelectableProps selectable);
 void Bullet(Rectangle bounds);
 /* Layout nodes: auto-position children like flexbox. */
-typedef struct {
-    Rectangle bounds;
-    int gap;
-    int padding;
-    KeyID key;
-} ColumnProps;
-
-typedef struct {
-    Rectangle bounds;
-    int gap;
-    int padding;
-    KeyID key;
-} RowProps;
+typedef ColumnProps RowProps;
 
 enum {
     ROUTER_NO_ROUTE = -2147483647

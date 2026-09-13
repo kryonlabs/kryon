@@ -108,7 +108,7 @@ App :: () #ui {
         Background(GetThemeBackground())
         Background(GetThemeSurface())
         Text((TextProps){.bounds={Scale(4), Scale(4), 0, 0}, .text="hi", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
-        Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, IMAGE_FIT_CONTAIN})
+        Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(8), Scale(20), Scale(16), Scale(16)}, (Rectangle){0,0,0,0}, (Vector2){0,0}, 0.0f, WHITE, ImageFitContain})
         Checkbox((CheckboxProps){.bounds = {Scale(4), Scale(40), Scale(110), Scale(34)}, .id = 1, .label = "Flag", .value = &cb_flag})
         Radio((RadioProps){{Scale(4), Scale(56), Scale(80), Scale(20)}, "Pick", 0, radio_sel == 0, 0})
         Progress((ProgressProps){.bounds = {Scale(30), Scale(42), Scale(60), Scale(10)}, .min = 0, .max = 100, .value = progress_value, .label = "Load"})
