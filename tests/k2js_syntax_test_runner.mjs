@@ -9,12 +9,19 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
   assert.equal(runtime[name]().type, name);
 }
 for (const name of [
-  "Article", "Aside", "Footer", "Figure", "Figcaption", "List", "ListItem",
-  "Strong", "Em", "Abbr", "Data", "Del", "Ins", "Sub", "Sup", "Kbd", "Samp",
-  "Var", "Cite", "Video", "Audio", "Picture", "Source", "Track", "IFrame",
-  "Embed", "Form", "Label", "Select", "Option", "Details", "Summary",
-  "Dialog", "Output", "Table", "TableCaption", "TableColumnGroup",
-  "TableColumn", "TableHead", "TableRow", "TableCell", "TableBody"
+  "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
+  "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
+  "Data", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
+  "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
+  "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
+  "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "List",
+  "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
+  "Option", "Output", "Picture", "Pre", "Quote", "Samp", "Sample", "Select",
+  "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
+  "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
+  "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
+  "Tbody", "Tfoot", "Thead", "Time", "Tr", "Track", "UnorderedList", "Var",
+  "Variable", "Video"
 ]) {
   assert.equal(typeof runtime[name], "function");
   assert.equal(runtime[name]().type, name);
