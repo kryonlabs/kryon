@@ -1068,18 +1068,18 @@ EOF
 cat > "$work/src/parenthesized_scope_calls.kry" <<'EOF'
 #import "kryon.h"
 ParenthesizedScopeCalls :: () #ui {
-    scroll: Rectangle = (BeginScroll({0, 0, 100, 100}, 240, nil))
-    EndScroll()
+    scroll: Rectangle = (ScrollScope({0, 0, 100, 100}, 240, nil))
+    ScrollEndScope()
     table: TableViewProps = (TableViewProps){}
-    cell: Rectangle = (BeginTableCell(table, 0, 0))
-    EndTableCell()
-    BeginTableCell(table, 0, 0)
-    EndTableCell()
+    cell: Rectangle = (TableCellScope(table, 0, 0))
+    TableCellEndScope()
+    TableCellScope(table, 0, 0)
+    TableCellEndScope()
     canvas_spec: Canvas = (Canvas){.bounds = {0, 0, 100, 100}}
-    canvas: CanvasResult = (BeginCanvas(canvas_spec))
-    EndCanvas(canvas_spec)
-    BeginCanvas(canvas_spec)
-    EndCanvas(canvas_spec)
+    canvas: CanvasResult = (CanvasScope(canvas_spec))
+    CanvasEndScope(canvas_spec)
+    CanvasScope(canvas_spec)
+    CanvasEndScope(canvas_spec)
     (DisabledScope(true))
     DisabledEndScope()
     popup: PopupProps = (PopupProps){.bounds={0, 0, 80, 40}, .id=7}

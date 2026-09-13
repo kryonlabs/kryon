@@ -266,9 +266,9 @@ func TestDropdownOverlayLayerAndCapture(t *testing.T) {
 		if r.Button(ButtonProps{Bounds: NewRectangle(10, 42, 160, 56), Label: "Behind", ID: 997}) {
 			actions++
 		}
-		r.BeginScroll(NewRectangle(10, 10, 180, 28), 28, nil)
+		r.ScrollScope(NewRectangle(10, 10, 180, 28), 28, nil)
 		r.Dropdown(DropdownProps{Bounds: NewRectangle(10, 10, 160, 28), ID: 996, Options: []string{"One", "Two"}, SelectedIndex: &selected})
-		r.EndScroll()
+		r.ScrollEndScope()
 		r.Box(NewRectangle(10, 42, 160, 56), RED, BLANK)
 		r.EndFrame()
 	}
@@ -382,7 +382,7 @@ func TestCustomTableCellScope(t *testing.T) {
 	r.QueueTap(120, 75)
 	r.BeginFrame()
 	r.TableView(p)
-	cell := r.BeginTableCell(p, 1, 0)
+	cell := r.TableCellScope(p, 1, 0)
 	if cell.X != 110 || cell.Y != 50 {
 		t.Fatalf("reordered scrolling cell: %+v", cell)
 	}
@@ -390,13 +390,13 @@ func TestCustomTableCellScope(t *testing.T) {
 	if !r.Button(ButtonProps{Bounds: cell, ID: 1000}) {
 		t.Fatal("visible cell child inactive")
 	}
-	r.EndTableCell()
+	r.TableCellEndScope()
 	p.Disabled = true
-	r.BeginTableCell(p, 0, 1)
+	r.TableCellScope(p, 0, 1)
 	if !r.contentDisabled() {
 		t.Fatal("cell did not inherit disabled")
 	}
-	r.EndTableCell()
+	r.TableCellEndScope()
 	if r.contentDisabled() {
 		t.Fatal("cell leaked disabled scope")
 	}
@@ -416,7 +416,7 @@ func TestListBoxScope(t *testing.T) {
 		r.QueueMouseWheel(-1)
 		r.BeginFrame()
 		r.DisabledScope(disabled)
-		content := r.BeginScroll(NewRectangle(21, 21, 118, 78), 100, &offset)
+		content := r.ScrollScope(NewRectangle(21, 21, 118, 78), 100, &offset)
 		want := int32(22)
 		if disabled {
 			want = 0
@@ -427,7 +427,7 @@ func TestListBoxScope(t *testing.T) {
 		if r.contentDisabled() != disabled {
 			t.Fatal("list disabled scope")
 		}
-		r.EndScroll()
+		r.ScrollEndScope()
 		r.DisabledEndScope()
 		if r.contentDisabled() {
 			t.Fatal("list scope not restored")
@@ -435,15 +435,15 @@ func TestListBoxScope(t *testing.T) {
 		r.EndFrame()
 	}
 	r.BeginFrame()
-	r.BeginScroll(NewRectangle(10, 10, 100, 80), 80, nil)
-	r.BeginScroll(NewRectangle(21, 21, 118, 78), 200, nil)
+	r.ScrollScope(NewRectangle(10, 10, 100, 80), 80, nil)
+	r.ScrollScope(NewRectangle(21, 21, 118, 78), 200, nil)
 	r.Box(NewRectangle(0, 0, 300, 300), RED, BLANK)
 	op := r.FrameOps()[len(r.FrameOps())-1]
 	if !op.HasClip || op.Clip != NewRectangle(21, 21, 89, 69) {
 		t.Fatalf("nested list clip: %+v", op)
 	}
-	r.EndScroll()
-	r.EndScroll()
+	r.ScrollEndScope()
+	r.ScrollEndScope()
 	r.EndFrame()
 }
 

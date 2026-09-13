@@ -29,7 +29,7 @@ the browser receives normal elements, attributes, CSS, and events.
 - Lexical UI scopes that lower through host begin/end support now emit Web
   Document nodes at their `.kry` block boundary: `Scroll`, `Canvas`,
   `TableCell`, `Popup`, and `Disabled`.
-- Direct expression-statement scope calls for `BeginCanvas`, `BeginTableCell`,
+- Direct expression-statement scope calls for `CanvasScope`, `TableCellScope`,
   and `PopupScope` lower through the same metadata path instead of relying on
   runtime fallback synthesis.
 - Direct runtime/web widget calls are covered by a compiler contract test that
@@ -252,8 +252,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - Direct `Scroll(...)` widget expressions now participate in compiler-owned
   Web Document identity and source-span metadata instead of relying on runtime
   fallback paths.
-- Parenthesized `BeginScroll(...)`, `BeginCanvas(...)`,
-  `BeginTableCell(...)`, `DisabledScope(...)`, and `PopupScope(...)`
+- Parenthesized `ScrollScope(...)`, `CanvasScope(...)`,
+  `TableCellScope(...)`, `DisabledScope(...)`, and `PopupScope(...)`
   scope-producing expressions emit compiler-owned `Scroll`, `Canvas`,
   `TableCell`, `Disabled`, and `Popup` Web Document identity, including popup
   open results stored in locals.

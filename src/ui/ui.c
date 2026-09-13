@@ -514,7 +514,7 @@ ui_disabled_resume(UIDisabledScope scope)
 }
 
 Rectangle
-BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
+ScrollScope(Rectangle bounds, int content_height, int *scroll_offset)
 {
     int max_scroll = content_height - (int)bounds.height;
     int offset = 0;
@@ -601,7 +601,7 @@ BeginScroll(Rectangle bounds, int content_height, int *scroll_offset)
 }
 
 void
-EndScroll(void)
+ScrollEndScope(void)
 {
     if(g_scroll_scope_depth <= 0)
         return;

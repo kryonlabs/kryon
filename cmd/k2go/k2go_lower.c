@@ -133,12 +133,12 @@ is_lowered_scope_widget(const char *name)
            strcmp(name, "DisabledEndScope") == 0 ||
            strcmp(name, "PopupScope") == 0 ||
            strcmp(name, "PopupEndScope") == 0 ||
-           strcmp(name, "BeginScroll") == 0 ||
-           strcmp(name, "EndScroll") == 0 ||
-           strcmp(name, "BeginTableCell") == 0 ||
-           strcmp(name, "EndTableCell") == 0 ||
-           strcmp(name, "BeginCanvas") == 0 ||
-           strcmp(name, "EndCanvas") == 0;
+           strcmp(name, "ScrollScope") == 0 ||
+           strcmp(name, "ScrollEndScope") == 0 ||
+           strcmp(name, "TableCellScope") == 0 ||
+           strcmp(name, "TableCellEndScope") == 0 ||
+           strcmp(name, "CanvasScope") == 0 ||
+           strcmp(name, "CanvasEndScope") == 0;
 }
 
 static int
@@ -146,8 +146,8 @@ module_uses_lowered_scope_runtime(const KirModule *m)
 {
     static const char *const lowered[] = {
         "DisabledScope", "DisabledEndScope", "PopupScope", "PopupEndScope",
-        "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
-        "BeginCanvas", "EndCanvas", NULL
+        "ScrollScope", "ScrollEndScope", "TableCellScope", "TableCellEndScope",
+        "CanvasScope", "CanvasEndScope", NULL
     };
     for(int i = 0; i < m->function_count; i++) {
         const KirFunction *fn = &m->functions[i];
@@ -2464,8 +2464,8 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
     if(!runtime_output && current_guard[0] != '\0') {
         static const char *const lowered[] = {
             "DisabledScope", "DisabledEndScope", "PopupScope", "PopupEndScope",
-            "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
-            "BeginCanvas", "EndCanvas", NULL
+            "ScrollScope", "ScrollEndScope", "TableCellScope", "TableCellEndScope",
+            "CanvasScope", "CanvasEndScope", NULL
         };
         for(int i = 0; lowered[i] != NULL; i++) {
             char runtime_call[K2GO_TEXT_MAX];

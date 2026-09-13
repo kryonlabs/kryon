@@ -457,7 +457,7 @@ if grep -q 'TODO k2go' "$out"; then
     exit 1
 fi
 unqualified_runtime_calls="$(
-    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Box|Circle|Ring|Scroll|EndScroll|Open|Close)\(' "$out" || true
+    rg -n '^\t+(BeginFrame|EndFrame|Text|Button|TextField|TextArea|Row|Column|Stack|Dropdown|Progress|Box|Circle|Ring|Scroll|ScrollEndScope|Open|Close)\(' "$out" || true
 )"
 if [ -n "$unqualified_runtime_calls" ]; then
     echo "k2go emitted unqualified runtime calls; generated Go must use kr.<Name>:" >&2
@@ -565,8 +565,8 @@ grep -q 'kr.Button(kr.ButtonProps{Bounds: kr.Rectangle{.*Label: "TB"' "$out"
 grep -q 'kr.Dropdown(kr.DropdownProps{.*ID: int32(22).*Options: choices\[:\].*SelectedIndex: &st.Pick' "$out"
 grep -q 'kr.SegmentedControl(kr.SegmentedControlProps{.*ID: int32(221).*Options: segments\[:\].*SelectedIndex: &st.Pick.*Wrap: true' "$out"
 grep -q 'canvas_result_spec kr.Canvas = kr.Canvas{' "$out"
-grep -q 'canvas_result kr.CanvasResult = _ValidRuntime.BeginCanvas(canvas_result_spec)' "$out"
-grep -q '_ValidRuntime.EndCanvas(canvas_result_spec)' "$out"
+grep -q 'canvas_result kr.CanvasResult = _ValidRuntime.CanvasScope(canvas_result_spec)' "$out"
+grep -q '_ValidRuntime.CanvasEndScope(canvas_result_spec)' "$out"
 grep -q 'CanvasGrid(' "$out"
 grep -q 'Selectable: (1 != 0)' "$out"
 grep -q 'kr.Toast(kr.ToastProps{.*Message: "toast from kry"' "$out"

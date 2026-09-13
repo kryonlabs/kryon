@@ -46,17 +46,17 @@ GO_SCOPE_EXPORT_ALLOWLIST = {
 
 LOWERED_HOST_SCOPE_NAMES = {
     "BeginButton",
-    "BeginCanvas",
+    "CanvasScope",
     "BeginCard",
     "DisabledScope",
     "PopupScope",
-    "BeginScroll",
-    "BeginTableCell",
-    "EndCanvas",
+    "ScrollScope",
+    "TableCellScope",
+    "CanvasEndScope",
     "DisabledEndScope",
     "PopupEndScope",
-    "EndScroll",
-    "EndTableCell",
+    "ScrollEndScope",
+    "TableCellEndScope",
 }
 
 BLOCK_ONLY_WIDGET_NAMES = {

@@ -2587,8 +2587,8 @@ test_dropdown_popup_lifecycle(void)
         InjectWheel(-1);
         InjectPump();
         BeginInterfaceFrame(240,240,1.0f);
-        BeginScroll((Rectangle){10,40,180,120},400,&background_scroll);
-        EndScroll();
+        ScrollScope((Rectangle){10,40,180,120},400,&background_scroll);
+        ScrollEndScope();
         Dropdown(p);
         EndInterfaceFrame();
         check_int("popup owns wheel before owner declaration",background_scroll,0);
@@ -4258,13 +4258,13 @@ test_popup_input_clip_restoration(void)
             InjectPump(); BeginInterfaceFrame(240,240,1);
             BeginTree(Key("popup input clip"));
             PushInputCapture((Rectangle){0,0,blocked ? 5 : 100,100},1);
-            BeginScroll((Rectangle){0,0,1,1},100,NULL);
+            ScrollScope((Rectangle){0,0,1,1},100,NULL);
             UIInputClipScope scope = ui_input_clip_suspend();
-            EndScroll(); /* Cannot pop the suspended owner's scroll scope. */
+            ScrollEndScope(); /* Cannot pop the suspended owner's scroll scope. */
             popup_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25004,.label="Popup"});
             ui_input_clip_resume(scope);
             parent_actions += Button((ButtonProps){.bounds={10,10,40,20},.id=25005,.label="Clipped"});
-            EndScroll();
+            ScrollEndScope();
             EndTree(); ClearInputCaptures(); EndInterfaceFrame();
         }
         check_int("popup input escapes owner clip but respects capture",popup_actions,!blocked);
@@ -4424,15 +4424,15 @@ test_custom_table_cell_scope(void)
     InjectReset(); InjectTap(120,75);
     for(int frame = 0; frame < 2; frame++) {
         InjectPump(); BeginInterfaceFrame(300,200,1.0f); TableView(p);
-        Rectangle cell = BeginTableCell(p,1,0);
+        Rectangle cell = TableCellScope(p,1,0);
         check_int("custom cell reordered x",(int)cell.x,110);
         check_int("custom cell scrolling y",(int)cell.y,50);
         check_int("custom cell frozen clip",InputCapturesClick((Vector2){120,60}),1);
         if(Button((ButtonProps){.bounds = cell,.label = "Child",.id = 1000})) actions++;
-        EndTableCell();
-        p.disabled = 1; BeginTableCell(p,0,1);
+        TableCellEndScope();
+        p.disabled = 1; TableCellScope(p,0,1);
         check_int("custom cell disabled",UIContentDisabled(),1);
-        EndTableCell(); p.disabled = 0;
+        TableCellEndScope(); p.disabled = 0;
         check_int("custom cell disabled restored",UIContentDisabled(),0);
         EndInterfaceFrame();
     }
@@ -4445,10 +4445,10 @@ test_retained_scope_clip(void)
     InjectReset();
     BeginInterfaceFrame(200,120,1.0f);
     BeginTree(Key("retained-scope-clip"));
-    BeginScroll((Rectangle){10,10,50,30},30,NULL);
+    ScrollScope((Rectangle){10,10,50,30},30,NULL);
     Row((RowProps){.bounds = {10,10,100,30}});
     Button((ButtonProps){.bounds = {0,0,100,30},.label = "Clipped",.id = 1005});
-    End(); EndScroll(); EndTree();
+    End(); ScrollEndScope(); EndTree();
     NodeId inside = HitTestNode((Vector2){20,20});
     const TreeNode *node = GetNode(inside);
     check_int("retained cell hit",node != NULL ? node->id : -1,1005);
@@ -4467,12 +4467,12 @@ test_list_box_scope(void)
         InjectReset(); InjectMousePosition(30,30); InjectWheel(-1); InjectPump();
         BeginInterfaceFrame(200,150,1.0f);
         DisabledScope(disabled);
-        Rectangle content = BeginScroll((Rectangle){21,21,118,78}, Scale(100), &offset);
+        Rectangle content = ScrollScope((Rectangle){21,21,118,78}, Scale(100), &offset);
         check_int("list scope scroll",offset,disabled ? 0 : 22);
         check_int("list scope content width",(int)content.width,108);
         check_int("list scope content y",(int)content.y,21-offset);
         check_int("list scope disabled",UIContentDisabled(),disabled);
-        EndScroll();
+        ScrollEndScope();
         DisabledEndScope();
         check_int("list scope restored",UIContentDisabled(),0);
         EndInterfaceFrame();
@@ -4562,14 +4562,14 @@ test_scroll_scope(void)
     InjectWheel(-1);
     InjectPump();
     BeginInterfaceFrame(220, 220, 1.0f);
-    content = BeginScroll((Rectangle){10,10,100,60}, 200, &offset);
+    content = ScrollScope((Rectangle){10,10,100,60}, 200, &offset);
     check_int("scroll offset", offset, 42);
     check_int("scroll content y", (int)content.y, -32);
     check_int("scroll clipped input", InputCapturesClick((Vector2){20,90}), 1);
-    (void)BeginScroll((Rectangle){20,30,100,60}, 100, NULL);
+    (void)ScrollScope((Rectangle){20,30,100,60}, 100, NULL);
     check_int("nested scroll clips to parent", InputCapturesClick((Vector2){115,40}), 1);
-    EndScroll();
-    EndScroll();
+    ScrollEndScope();
+    ScrollEndScope();
     check_int("scroll restores input", InputCapturesClick((Vector2){20,90}), 0);
     EndInterfaceFrame();
 }
@@ -4585,10 +4585,10 @@ test_scroll_thumb_drag(void)
         if(frame == 2) InjectMouseButton(MOUSE_BUTTON_LEFT, 0);
         InjectPump();
         BeginInterfaceFrame(220,220,1.0f);
-        Rectangle content = BeginScroll((Rectangle){10,10,100,60},200,&offset);
+        Rectangle content = ScrollScope((Rectangle){10,10,100,60},200,&offset);
         check_int("scrollbar reserves width", (int)content.width, 90);
         check_int("scrollbar excludes child input", InputCapturesClick((Vector2){105,20}), 1);
-        EndScroll();
+        ScrollEndScope();
         EndInterfaceFrame();
         check_int("scroll thumb drag and release", offset, frame == 0 ? 0 : 140);
     }

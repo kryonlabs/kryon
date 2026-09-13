@@ -535,8 +535,8 @@ type Runtime interface {
 	RectGradientH(int32, int32, int32, int32, Color, Color)
 	Line(int32, int32, int32, int32, Color)
 	Scroll(ScrollProps, func(Rectangle))
-	EndScroll()
-	BeginScroll(Rectangle, int32, *int32) Rectangle
+	ScrollEndScope()
+	ScrollScope(Rectangle, int32, *int32) Rectangle
 	Card(CardProps) bool
 	CardScope(CardProps)
 	Button(ButtonProps) bool
@@ -617,10 +617,10 @@ type Runtime interface {
 	TreeView(props TreeViewProps) int32
 	ListBox(props ListBoxProps) int32
 	TableView(props TableViewProps) int32
-	BeginTableCell(TableViewProps, int32, int32) Rectangle
-	EndTableCell()
-	BeginCanvas(canvas Canvas) CanvasResult
-	EndCanvas(canvas Canvas)
+	TableCellScope(TableViewProps, int32, int32) Rectangle
+	TableCellEndScope()
+	CanvasScope(canvas Canvas) CanvasResult
+	CanvasEndScope(canvas Canvas)
 	SetCurrentTheme(themeID int32, darkMode int32)
 	SetThemeSource(source ThemeSource)
 	SetThemeMode(mode ThemeMode)
@@ -1343,7 +1343,7 @@ func (r *runtime) Line(x1, y1, x2, y2 int32, color Color) {
 		Color:  color,
 	})
 }
-func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
+func (r *runtime) ScrollScope(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
 	clip := r.scrollClip(bounds)
 	trackMetricFrame := styleMetricFrame(0, StyleSheet_StyleKindScroll(), StyleSheet_StyleAny())
 	thumbMetricFrame := styleMetricFrame(0, StyleSheet_StyleKindScrollThumb(), StyleSheet_StyleAny())
@@ -1419,13 +1419,13 @@ func (r *runtime) BeginScroll(bounds Rectangle, contentHeight int32, offset *int
 	return bounds
 }
 func (r *runtime) Scroll(props ScrollProps, body func(Rectangle)) {
-	content := r.BeginScroll(props.Bounds, props.ContentHeight, props.Offset)
-	defer r.EndScroll()
+	content := r.ScrollScope(props.Bounds, props.ContentHeight, props.Offset)
+	defer r.ScrollEndScope()
 	if body != nil {
 		body(content)
 	}
 }
-func (r *runtime) EndScroll() {
+func (r *runtime) ScrollEndScope() {
 	if len(r.scrollClips) > 0 {
 		r.scrollClips = r.scrollClips[:len(r.scrollClips)-1]
 	}
@@ -4188,8 +4188,8 @@ func (r *runtime) dropdownOptionsAt(id int32, bounds Rectangle, labels []string,
 	}
 	// The generic scroll host owns clipping and its scrollbar. Dropdown's
 	// wheel, drag, reveal, and visible-row decisions come from shared policy.
-	content := r.BeginScroll(viewport, contentHeight, offset)
-	defer r.EndScroll()
+	content := r.ScrollScope(viewport, contentHeight, offset)
+	defer r.ScrollEndScope()
 	rows := Dropdown_Rows(int32(len(labels)), *offset, viewport.Height, itemH)
 	for i := int(rows.First); i < int(rows.End); i++ {
 
@@ -6406,7 +6406,7 @@ func (r *runtime) TableView(props TableViewProps) int32 {
 	r.drawTableOps(props, rowH, headerH)
 	return changed
 }
-func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
+func (r *runtime) CanvasScope(canvas Canvas) CanvasResult {
 	var scrollX, scrollY int32
 	zoom := float32(1)
 	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal,
@@ -6424,7 +6424,7 @@ func (r *runtime) BeginCanvas(canvas Canvas) CanvasResult {
 	policy := Canvas_CanvasBeginResultFor(canvas.Bounds, r.mousePos, scrollX, scrollY, zoom, r.mouseDown[MouseButtonLeft])
 	return CanvasResult{Active: policy.Active, Dragging: policy.Dragging, World: policy.World}
 }
-func (r *runtime) EndCanvas(Canvas) {}
+func (r *runtime) CanvasEndScope(Canvas) {}
 func (r *runtime) SetCurrentTheme(themeID int32, darkMode int32) {
 	r.defaultTheme = false
 	r.activeTheme = nil
@@ -7727,7 +7727,7 @@ func normalizeListBoxProps(props ListBoxProps) ListBoxProps {
 	return props
 }
 
-func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle {
+func (r *runtime) TableCellScope(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)
 	cell := TableCellRect(props, row, col)
 	metrics := tableViewMetrics(props)
@@ -7737,11 +7737,11 @@ func (r *runtime) BeginTableCell(props TableViewProps, row, col int32) Rectangle
 	top, bottom := max(viewport.Y, cell.Y), min(viewport.Y+viewport.Height, cell.Y+cell.Height)
 	clip := Rectangle{X: left, Y: top, Width: max(float32(0), right-left), Height: max(float32(0), bottom-top)}
 	r.DisabledScope(props.Disabled)
-	r.BeginScroll(clip, int32(clip.Height), nil)
+	r.ScrollScope(clip, int32(clip.Height), nil)
 	return cell
 }
 
-func (r *runtime) EndTableCell() { r.EndScroll(); r.DisabledEndScope() }
+func (r *runtime) TableCellEndScope() { r.ScrollEndScope(); r.DisabledEndScope() }
 
 func TableCellRect(props TableViewProps, row, col int32) Rectangle {
 	props = normalizeTableViewProps(props)

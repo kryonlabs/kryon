@@ -564,17 +564,17 @@ void RenderInspectOverlay(void);
  * names; parser/codegen and native tests use them to implement lexical blocks. */
 void DisabledScope(int disabled);
 void DisabledEndScope(void);
-Rectangle BeginScroll(Rectangle bounds, int content_height, int *scroll_offset);
-void EndScroll(void);
+Rectangle ScrollScope(Rectangle bounds, int content_height, int *scroll_offset);
+void ScrollEndScope(void);
 NodeId CardScope(CardProps card);
 NodeId ButtonScope(ButtonProps button);
 int PopupScope(PopupProps popup);
 void popup_close_scope(void);
 void PopupEndScope(void);
-Rectangle BeginTableCell(TableViewProps table, int row, int column);
-void EndTableCell(void);
-CanvasResult BeginCanvas(Canvas canvas);
-void EndCanvas(Canvas canvas);
+Rectangle TableCellScope(TableViewProps table, int row, int column);
+void TableCellEndScope(void);
+CanvasResult CanvasScope(Canvas canvas);
+void CanvasEndScope(Canvas canvas);
 
 /* Retained submissions borrow this destination until EndTree. The caller
  * separately captures immediate drawing and owns the texture lifetime. */

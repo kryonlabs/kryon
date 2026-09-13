@@ -3649,7 +3649,7 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
 }
 
 Rectangle
-BeginTableCell(TableViewProps table, int row, int column)
+TableCellScope(TableViewProps table, int row, int column)
 {
     Rectangle cell = {0,0,0,0}, clip = {0,0,0,0};
     int visible = ui_table_visible_columns(table), found = 0;
@@ -3678,14 +3678,14 @@ BeginTableCell(TableViewProps table, int row, int column)
         clip = GetCollisionRec(cell,viewport);
     }
     DisabledScope(table.disabled);
-    (void)BeginScroll(clip,(int)clip.height,NULL);
+    (void)ScrollScope(clip,(int)clip.height,NULL);
     return cell;
 }
 
 void
-EndTableCell(void)
+TableCellEndScope(void)
 {
-    EndScroll();
+    ScrollEndScope();
     DisabledEndScope();
 }
 
@@ -4093,7 +4093,7 @@ CanvasRectToScreen(Canvas canvas, Rectangle rect)
 }
 
 CanvasResult
-BeginCanvas(Canvas canvas)
+CanvasScope(Canvas canvas)
 {
     ToolkitStore *toolkit = toolkit_state();
     CanvasResult result = {0};
@@ -4128,7 +4128,7 @@ BeginCanvas(Canvas canvas)
 }
 
 void
-EndCanvas(Canvas canvas)
+CanvasEndScope(Canvas canvas)
 {
     ToolkitStore *toolkit = toolkit_state();
 

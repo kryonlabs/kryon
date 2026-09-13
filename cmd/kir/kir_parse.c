@@ -1897,11 +1897,11 @@ ui_stmt_apply_expression_widget_metadata(KirStmt *statement,
                                         sizeof(args))) {
         const char *node_widget = NULL;
 
-        if(strcmp(widget, "BeginScroll") == 0)
+        if(strcmp(widget, "ScrollScope") == 0)
             node_widget = "Scroll";
-        else if(strcmp(widget, "BeginCanvas") == 0)
+        else if(strcmp(widget, "CanvasScope") == 0)
             node_widget = "Canvas";
-        else if(strcmp(widget, "BeginTableCell") == 0)
+        else if(strcmp(widget, "TableCellScope") == 0)
             node_widget = "TableCell";
         else if(strcmp(widget, "DisabledScope") == 0)
             node_widget = "Disabled";
@@ -1951,7 +1951,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
                          *source_bounds == '{' ? "(Rectangle)" : "", source_bounds);
         if(n < 0 || (size_t)n >= sizeof(bounds))
             die("%s:%d: Scroll bounds expression is too long", span.path, span.line);
-        n = snprintf(call, sizeof(call), "%s%sBeginScroll(%s, %s, %s)",
+        n = snprintf(call, sizeof(call), "%s%sScrollScope(%s, %s, %s)",
                      block->name, block->name[0] ? ": Rectangle = " : "",
                      bounds, height, offset);
         if(n < 0 || (size_t)n >= sizeof(call))
@@ -1965,7 +1965,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("out of memory parsing Scroll block");
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndScroll()", "",
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer ScrollEndScope()", "",
                            source_span);
         block->opened = 1;
         return;
@@ -1981,7 +1981,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         if(table == NULL || row == NULL || column == NULL)
             die("%s:%d: TableCell requires table, row and column", span.path, span.line);
         ui_block_format(call, sizeof(call), span,
-                        "%s: Rectangle = BeginTableCell(%s, %s, %s)",
+                        "%s: Rectangle = TableCellScope(%s, %s, %s)",
                         block->name, table, row, column);
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         statement = KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "",
@@ -1990,7 +1990,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("out of memory parsing TableCell block");
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
-        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer EndTableCell()", "",
+        KirFunctionAddStmt(fn, KIR_STMT_DEFER, "defer TableCellEndScope()", "",
                            source_span);
         block->opened = 1;
         return;
@@ -2010,7 +2010,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
         KirFunctionAddStmt(fn, KIR_STMT_BLOCK_OPEN, "{", "", source_span);
         KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "", source_span);
         ui_block_format(call, sizeof(call), span,
-                        "%s: CanvasResult = BeginCanvas(%s)",
+                        "%s: CanvasResult = CanvasScope(%s)",
                         block->name, spec_name);
         statement = KirFunctionAddStmt(fn, KIR_STMT_DECL, call, "",
                                        source_span);
@@ -2018,7 +2018,7 @@ ui_block_open(KirFunction *fn, UiBlock *block, KirSourceSpan span, int closing)
             die("out of memory parsing Canvas block");
         block->statement_index = (int)(statement - fn->stmts);
         ui_block_apply_web_metadata(statement, block);
-        ui_block_format(call, sizeof(call), span, "defer EndCanvas(%s)",
+        ui_block_format(call, sizeof(call), span, "defer CanvasEndScope(%s)",
                         spec_name);
         KirFunctionAddStmt(fn, KIR_STMT_DEFER, call, "", source_span);
         block->opened = 1;

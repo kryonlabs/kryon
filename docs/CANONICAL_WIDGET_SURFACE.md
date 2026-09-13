@@ -697,8 +697,8 @@ Recent retained-tree public C cleanup:
 | Go package-level `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Internal tests use `popupCloseScope` until direct popup-close lowering is removed. |
 | public C `ClosePopup` | Removed; app `.kry` closes a popup by updating its caller-owned `open` state. Native tests use the internal `popup_close_scope` hook. |
 | `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
-| direct `.kry` `BeginScroll`/`EndScroll` and `BeginTableCell`/`EndTableCell` calls | `Scroll` and `TableCell` lexical blocks |
-| direct `.kry` `BeginCanvas`/`EndCanvas` calls | `Canvas` lexical block |
+| direct `.kry` `ScrollScope`/`ScrollEndScope` and `TableCellScope`/`TableCellEndScope` calls | `Scroll` and `TableCell` lexical blocks |
+| direct `.kry` `CanvasScope`/`CanvasEndScope` calls | `Canvas` lexical block |
 
 `include/*.h` and `docs/PUBLIC_API_SNAPSHOT.txt` are guarded by
 `canonical-surface-test`: public `UI*`/`UI_*` prefixes are not accepted there.

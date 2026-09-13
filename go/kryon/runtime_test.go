@@ -1628,11 +1628,11 @@ Button.panel { background: button; foreground: ink; border: rule; radius: radius
 	spinValue := int32(3)
 
 	rt.BeginFrame()
-	rt.BeginCanvas(Canvas{
+	rt.CanvasScope(Canvas{
 		Bounds:    Rectangle{X: 8, Y: 8, Width: 120, Height: 50},
 		ClassName: className,
 	})
-	rt.EndCanvas(Canvas{Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 50}, ClassName: className})
+	rt.CanvasEndScope(Canvas{Bounds: Rectangle{X: 8, Y: 8, Width: 120, Height: 50}, ClassName: className})
 	rt.Link(LinkProps{
 		Bounds:    Rectangle{X: 144, Y: 8, Width: 120, Height: 28},
 		ClassName: className,
@@ -2825,7 +2825,7 @@ func TestScrollScopeClipsAndRestoresChildren(t *testing.T) {
 	r.QueueMouseMove(30, 30)
 	r.QueueMouseWheel(-1)
 	r.BeginFrame()
-	content := r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
+	content := r.ScrollScope(NewRectangle(10, 10, 100, 60), 200, &offset)
 	if offset != 42 || content.Y != -32 {
 		t.Fatalf("content=%v offset=%d", content, offset)
 	}
@@ -2834,10 +2834,10 @@ func TestScrollScopeClipsAndRestoresChildren(t *testing.T) {
 		t.Fatal("clipped child activated")
 	}
 	r.Box(NewRectangle(10, 0, 100, 160), RED, BLANK)
-	r.BeginScroll(NewRectangle(20, 30, 100, 60), 100, nil)
+	r.ScrollScope(NewRectangle(20, 30, 100, 60), 100, nil)
 	r.Box(NewRectangle(0, 0, 160, 160), BLUE, BLANK)
-	r.EndScroll()
-	r.EndScroll()
+	r.ScrollEndScope()
+	r.ScrollEndScope()
 	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 80, 100, 28), Label: "outside"}) {
 		t.Fatal("parent input not restored")
 	}
@@ -2893,14 +2893,14 @@ func TestScrollThumbDrag(t *testing.T) {
 	offset := int32(0)
 	draw := func() {
 		r.BeginFrame()
-		content := r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
+		content := r.ScrollScope(NewRectangle(10, 10, 100, 60), 200, &offset)
 		if content.Width != 90 {
 			t.Fatal("scrollbar space not reserved")
 		}
 		if r.Button(ButtonProps{Bounds: NewRectangle(100, 10, 10, 60)}) {
 			t.Fatal("child activated through scrollbar")
 		}
-		r.EndScroll()
+		r.ScrollEndScope()
 		r.EndFrame()
 	}
 	r.QueueMouseButtonDown(MouseButtonLeft, 105, 20)
@@ -2949,8 +2949,8 @@ ScrollThumb { background: thumb; border: thumb; radius: radius; border-width: bo
 	offset := int32(40)
 
 	r.BeginFrame()
-	r.BeginScroll(NewRectangle(10, 10, 100, 60), 200, &offset)
-	r.EndScroll()
+	r.ScrollScope(NewRectangle(10, 10, 100, 60), 200, &offset)
+	r.ScrollEndScope()
 	r.EndFrame()
 
 	var sawTrack, sawThumb bool
@@ -4022,12 +4022,12 @@ TableView[role=Selection] { background: selected; foreground: ink; border: selec
 	}
 	selectedRow := int32(0)
 	r.BeginFrame()
-	r.BeginScroll(NewRectangle(10, 10, 100, 60), 120, nil)
+	r.ScrollScope(NewRectangle(10, 10, 100, 60), 120, nil)
 	r.TableView(TableViewProps{Bounds: NewRectangle(10, 10, 150, 120), Columns: []string{""}, Rows: []TableRow{
 		{Cells: []string{""}},
 		{Cells: []string{""}},
 	}, RowHeight: 24, SelectedRow: &selectedRow})
-	r.EndScroll()
+	r.ScrollEndScope()
 	r.EndFrame()
 	img := RenderFrame(200, 160, r.FrameOps())
 	for _, p := range []image.Point{{50, 75}, {120, 50}} {
@@ -5244,8 +5244,8 @@ Canvas { background: panel; border: rule; radius: radius; border-width: border; 
 	}
 	rt := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 
-	rt.BeginCanvas(Canvas{Bounds: Rectangle{X: 10, Y: 20, Width: 140, Height: 90}})
-	rt.EndCanvas(Canvas{})
+	rt.CanvasScope(Canvas{Bounds: Rectangle{X: 10, Y: 20, Width: 140, Height: 90}})
+	rt.CanvasEndScope(Canvas{})
 
 	for _, op := range rt.FrameOps() {
 		if op.Kind == FrameOpRect && op.Bounds == (Rectangle{X: 10, Y: 20, Width: 140, Height: 90}) {

@@ -388,9 +388,9 @@ int main(void)
             DisabledScope(1);
             check_invalid_layer_end(child_layer,"unclosed popup disabled scope");
             DisabledEndScope();
-            BeginScroll((Rectangle){0,0,4,4},20,NULL);
+            ScrollScope((Rectangle){0,0,4,4},20,NULL);
             check_invalid_layer_end(child_layer,"unclosed popup scroll scope");
-            EndScroll();
+            ScrollEndScope();
             Box((Rectangle){4,4,4,4},GREEN,BLANK);
             ui_paint_layer_end(child_layer);
             ui_popup_input_end(child_input);
@@ -998,7 +998,7 @@ int main(void)
         if(frame == 0) {
             UIPaintLayers *main_layers = ui_frame_paint_layers();
             if(main_layers == NULL) return 1;
-            BeginScroll((Rectangle){0,0,1,1},1,NULL);
+            ScrollScope((Rectangle){0,0,1,1},1,NULL);
             UIPaintLayerToken layer = ui_paint_layer_begin(main_layers,1);
             main_input = ui_paint_layers_input(main_layers);
             UIPopupInputToken input = ui_popup_input_begin(main_input,1,(Rectangle){0,0,64,64});
@@ -1009,7 +1009,7 @@ int main(void)
             Box((Rectangle){40,40,4,4},YELLOW,BLANK);
             ui_paint_layer_end(layer);
             ui_popup_input_end(input);
-            EndScroll();
+            ScrollEndScope();
         }
         Box((Rectangle){0,0,8,8},ORANGE,BLANK);
         End();

@@ -528,8 +528,8 @@ func TestPopupWheelOwnershipAcrossScrollableWidgets(t *testing.T) {
 	bounds := NewRectangle(10, 10, 100, 100)
 	draws := map[string]func(*runtime, *int32){
 		"scroll": func(r *runtime, offset *int32) {
-			r.BeginScroll(bounds, 600, offset)
-			r.EndScroll()
+			r.ScrollScope(bounds, 600, offset)
+			r.ScrollEndScope()
 		},
 		"list": func(r *runtime, offset *int32) {
 			r.ListBox(ListBoxProps{Bounds: bounds, Items: make([]string, 20), ScrollOffset: offset})

@@ -2392,7 +2392,7 @@ parse_fieldset(KrbBuild *b, const char *call)
 }
 
 /* Scroll(x, y, w, h, contentH, &offset) -> SCROLL node opening a child
- * range; EndScroll() closes it. Widgets between get parent = the scroll. */
+ * range; ScrollEndScope() closes it. Widgets between get parent = the scroll. */
 /* TextField(x, y, w, h, &state.field) -> TEXTINPUT node. */
 /* Register a .kry string-array initializer as a joined "a;b;c" option list. */
 static void
@@ -2918,7 +2918,7 @@ try_widget(KrbBuild *b, const char *raw)
         b->scroll_open = -1;
         return 1;
     }
-    if(starts_ident(call, "EndScroll")) {
+    if(starts_ident(call, "ScrollEndScope")) {
         b->scroll_open = -1;
         return 1;
     }
