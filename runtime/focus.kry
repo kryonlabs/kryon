@@ -1,5 +1,6 @@
 #module "focus"
 #import "drawing_props"
+#import "style"
 
 FocusPaint :: struct {
     bounds: Rectangle
@@ -13,10 +14,14 @@ FocusDebugOverlayPaint :: struct {
     label_visible: bool
 }
 
-FocusPaintFor :: (bounds: Rectangle, scale: float) -> FocusPaint #export {
+FocusPaintFor :: (bounds: Rectangle, scale: float, frame: StyleFrame) -> FocusPaint #export {
     if scale <= 0.0 { scale = 1.0 }
-    pad: i32 = (i32)(3.0 * scale)
-    stroke: i32 = (i32)(2.0 * scale)
+    pad_value: float = frame.value.padding_x
+    if pad_value <= 0.0 { pad_value = 3.0 }
+    stroke_value: float = frame.value.border_width
+    if stroke_value <= 0.0 { stroke_value = 2.0 }
+    pad: i32 = (i32)(pad_value * scale)
+    stroke: i32 = (i32)(stroke_value * scale)
     if stroke < 1 { stroke = 1 }
     paint: FocusPaint
     paint.bounds.x = bounds.x - (float)pad

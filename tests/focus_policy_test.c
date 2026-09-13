@@ -15,11 +15,18 @@ check_rect(Rectangle got, float x, float y, float width, float height)
 int
 main(void)
 {
-    FocusPaint paint = FocusPaintFor((Rectangle){10, 20, 30, 40}, 2.0f);
-    check_rect(paint.bounds, 4, 14, 42, 52);
-    assert(paint.stroke_width == 4);
+    StyleFrame frame = {0};
+    frame.value.padding_x = 5.0f;
+    frame.value.border_width = 3.0f;
 
-    paint = FocusPaintFor((Rectangle){1, 2, 3, 4}, 0.0f);
+    FocusPaint paint = FocusPaintFor((Rectangle){10, 20, 30, 40}, 2.0f,
+                                     frame);
+    check_rect(paint.bounds, 0, 10, 50, 60);
+    assert(paint.stroke_width == 6);
+
+    frame.value.padding_x = 0.0f;
+    frame.value.border_width = 0.0f;
+    paint = FocusPaintFor((Rectangle){1, 2, 3, 4}, 0.0f, frame);
     check_rect(paint.bounds, -2, -1, 9, 10);
     assert(paint.stroke_width == 2);
 

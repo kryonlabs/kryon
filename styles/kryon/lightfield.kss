@@ -151,6 +151,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: border;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: app;
 }

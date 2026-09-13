@@ -144,6 +144,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: border-hover;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: default;
 }
@@ -1871,6 +1873,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: outline-border;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: default;
 }
@@ -3588,6 +3592,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: border-hover;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: default;
 }
@@ -5341,6 +5347,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: border;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: app;
 }
@@ -7168,6 +7176,8 @@ Focus:focus {
 Focus[role=Box] {
   foreground: muted;
   border: border;
+  border-width: 2;
+  padding-x: 3;
   opacity: 1;
   material: app;
 }
