@@ -693,7 +693,8 @@ dropdown_paint_menu(int id)
         if(can_draw) {
             int text_x = x + (int)content.padding;
             if(options[i].separator_before)
-                DrawLine(x + Scale(16), option_y, x + option_w - Scale(16), option_y,
+                DrawLine(x + metrics.separator_inset, option_y,
+                    x + option_w - metrics.separator_inset, option_y,
                     Fade(row_text, 0.18f));
             if(options[i].icon_type != ICON_NONE) {
                 DrawIcon(options[i].icon_type,

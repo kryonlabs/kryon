@@ -63,6 +63,7 @@ type DropdownMenuMetrics struct {
 	ScrollbarTrackInset int32
 	HighlightInsetX     int32
 	HighlightInsetY     int32
+	SeparatorInset      int32
 	DragThreshold       int32
 }
 
@@ -672,17 +673,26 @@ func Dropdown_DropdownMenuMetricsFor(scale float32, panel StyleFrame, option Sty
 	var value_47 bool = true
 	var value_48 int32 = Dropdown_DropdownMetric(value_41, value_43, value_44, value_45, value_46, value_47)
 	metrics.HighlightInsetY = value_48
-	var value_49 uint32 = scrollbar.Value.Fields
+	var value_49 uint32 = option.Value.Fields
 	var value_50 int32 = int32(StyleContentOffset)
 	var value_51 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(0), 32, false, 0))
-	var value_52 float32 = scrollbar.Value.OffsetX
-	var value_53 float32 = 8.0
+	var value_52 float32 = option.Value.OffsetX
+	var value_53 float32 = 16.0
 	var value_54 float32 = scale
-	var value_55 bool = false
+	var value_55 bool = true
 	var value_56 int32 = Dropdown_DropdownMetric(value_49, value_51, value_52, value_53, value_54, value_55)
-	metrics.DragThreshold = value_56
-	var value_57 DropdownMenuMetrics = metrics
-	return value_57
+	metrics.SeparatorInset = value_56
+	var value_57 uint32 = scrollbar.Value.Fields
+	var value_58 int32 = int32(StyleContentOffset)
+	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
+	var value_60 float32 = scrollbar.Value.OffsetX
+	var value_61 float32 = 8.0
+	var value_62 float32 = scale
+	var value_63 bool = false
+	var value_64 int32 = Dropdown_DropdownMetric(value_57, value_59, value_60, value_61, value_62, value_63)
+	metrics.DragThreshold = value_64
+	var value_65 DropdownMenuMetrics = metrics
+	return value_65
 }
 
 func Dropdown_MenuLayoutFor(bounds Rectangle, count int32, row_height int32, padding_top int32, padding_bottom int32, scrollbar_width int32, scrollbar_gap int32) MenuLayout {

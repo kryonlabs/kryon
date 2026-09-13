@@ -168,13 +168,15 @@ test_menu_metrics(void)
     assert(metrics.scrollbar_track_inset == 2);
     assert(metrics.highlight_inset_x == 4);
     assert(metrics.highlight_inset_y == 2);
+    assert(metrics.separator_inset == 16);
     assert(metrics.drag_threshold == 8);
 
     panel.value.fields = StylePaddingY;
     panel.value.padding_y = 6.0f;
-    option.value.fields = StylePaddingX | StylePaddingY;
+    option.value.fields = StylePaddingX | StylePaddingY | StyleContentOffset;
     option.value.padding_x = 5.0f;
     option.value.padding_y = 3.0f;
+    option.value.offset_x = 12.0f;
     scrollbar.value.fields = StyleIconSize | StylePaddingY | StyleGap |
         StyleContentOffset;
     scrollbar.value.icon_size = 11.0f;
@@ -190,11 +192,13 @@ test_menu_metrics(void)
     assert(metrics.scrollbar_track_inset == 8);
     assert(metrics.highlight_inset_x == 10);
     assert(metrics.highlight_inset_y == 6);
+    assert(metrics.separator_inset == 24);
     assert(metrics.drag_threshold == 18);
 
     panel.value.padding_y = 0.0f;
     option.value.padding_x = 0.0f;
     option.value.padding_y = 0.0f;
+    option.value.offset_x = 0.0f;
     scrollbar.value.icon_size = 0.0f;
     scrollbar.value.padding_y = 0.0f;
     scrollbar.value.gap = 0.0f;
@@ -208,6 +212,7 @@ test_menu_metrics(void)
     assert(metrics.scrollbar_track_inset == 0);
     assert(metrics.highlight_inset_x == 0);
     assert(metrics.highlight_inset_y == 0);
+    assert(metrics.separator_inset == 0);
     assert(metrics.drag_threshold == 8);
 }
 

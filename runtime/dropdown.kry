@@ -223,6 +223,7 @@ DropdownMenuMetrics :: struct {
     scrollbar_track_inset: i32
     highlight_inset_x: i32
     highlight_inset_y: i32
+    separator_inset: i32
     drag_threshold: i32
 }
 
@@ -242,6 +243,8 @@ DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,
         (u32)StylePaddingX, option.value.padding_x, 4.0, scale, true)
     metrics.highlight_inset_y = DropdownMetric(option.value.fields,
         (u32)StylePaddingY, option.value.padding_y, 2.0, scale, true)
+    metrics.separator_inset = DropdownMetric(option.value.fields,
+        (u32)StyleContentOffset, option.value.offset_x, 16.0, scale, true)
     metrics.drag_threshold = DropdownMetric(scrollbar.value.fields,
         (u32)StyleContentOffset, scrollbar.value.offset_x, 8.0, scale, false)
     return metrics
