@@ -1813,6 +1813,8 @@ const webKssLengthProperties = new Set([
   "margin-inline-start", "margin-inline-end",
   "margin-block-start", "margin-block-end",
   "width", "height", "min-width", "max-width", "min-height", "max-height",
+  "inline-size", "block-size", "min-inline-size", "max-inline-size",
+  "min-block-size", "max-block-size",
   "inset", "top", "right", "bottom", "left",
   "inset-inline", "inset-block",
   "inset-inline-start", "inset-inline-end",
@@ -2516,6 +2518,12 @@ const webCSSPropertyNames = new Map([
   ["max-width", "max-width"],
   ["min-height", "min-height"],
   ["max-height", "max-height"],
+  ["inline-size", "inline-size"],
+  ["block-size", "block-size"],
+  ["min-inline-size", "min-inline-size"],
+  ["max-inline-size", "max-inline-size"],
+  ["min-block-size", "min-block-size"],
+  ["max-block-size", "max-block-size"],
   ["inset", "inset"],
   ["top", "top"],
   ["right", "right"],
@@ -3513,6 +3521,12 @@ function applyResolvedWebStyle(el, style) {
   set("maxWidth", style["max-width"]);
   set("minHeight", style["min-height"]);
   set("maxHeight", style["max-height"]);
+  set("inlineSize", style["inline-size"]);
+  set("blockSize", style["block-size"]);
+  set("minInlineSize", style["min-inline-size"]);
+  set("maxInlineSize", style["max-inline-size"]);
+  set("minBlockSize", style["min-block-size"]);
+  set("maxBlockSize", style["max-block-size"]);
   set("inset", style.inset);
   set("top", style.top);
   set("right", style.right);
