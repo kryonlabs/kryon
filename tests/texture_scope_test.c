@@ -799,7 +799,7 @@ int main(void)
     int drag_nodes = 0;
     for(int i = 0; i < node_count; i++) {
         size_t offset;
-        if(nodes[i].kind != WIDGET_DRAG)
+        if(strcmp(GetNodeKindName(nodes[i].kind), "Drag") != 0)
             continue;
         offset = nodes[i].data.drag.format_offset;
         drag_nodes++;

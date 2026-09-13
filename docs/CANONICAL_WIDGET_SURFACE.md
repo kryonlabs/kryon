@@ -455,9 +455,11 @@ UI widgets.
 
 ## Retained Node Kinds
 
-These are the current `WidgetKind` values in the retained UI tree. They are
-runtime/node names, not necessarily final public widget constructor names. Use
-this table for naming feedback before we lock the clean surface.
+These are the current internal retained UI tree kind values. They are no longer
+public header constants; public inspection uses `GetNodeKindName(kind)` and gets
+clean names such as `Button`, `TextField`, and `Image`. Use this table for
+naming feedback on the internal/runtime mapping while the app-facing surface
+stays prefix-free.
 
 | Current node kind | Public widget/concept | Decision |
 |---|---|---|
@@ -501,7 +503,7 @@ Recent retained-tree public C cleanup:
 | `UIEventKind`, `UI_EVENT_*` | `EventKind`, `EVENT_*` |
 | `UIEvent` | `Event` |
 | `UIInvalidation`, `UI_INVALIDATE_*` | `Invalidation`, `INVALIDATE_*` |
-| `UIWidgetKind`, `UI_WIDGET_*_NODE` | `WidgetKind`, `WIDGET_*` |
+| `UIWidgetKind`, `UI_WIDGET_*_NODE`, public `WIDGET_*` constants | `WidgetKind` as an opaque integer plus `GetNodeKindName(kind)` |
 | `UIWidgetNode` | `WidgetNode` |
 | `UIWidgetData` | `WidgetData` |
 | text input paint snapshot | Internal `TextInputPaint` host snapshot. |

@@ -1,4 +1,5 @@
 #include "ui_internal.h"
+#include "ui_tree_kind_internal.h"
 #include "runtime/icon.h"
 #include "ui_style_internal.h"
 #include "runtime/button.h"
@@ -2030,6 +2031,46 @@ GetNode(NodeId id)
         return &ui_committed_nodes[id];
     }
     return ui_tree_node(id);
+}
+
+const char *
+GetNodeKindName(WidgetKind kind)
+{
+    static const char *const names[WIDGET_KIND_COUNT] = {
+        [WIDGET_SCREEN] = "Screen",
+        [WIDGET_BACKGROUND] = "Background",
+        [WIDGET_TEXT] = "Text",
+        [WIDGET_BOX] = "Box",
+        [WIDGET_CIRCLE] = "Circle",
+        [WIDGET_RING] = "Ring",
+        [WIDGET_LINE] = "Line",
+        [WIDGET_TRIANGLE] = "Triangle",
+        [WIDGET_BUTTON] = "Button",
+        [WIDGET_TEXT_FIELD] = "TextField",
+        [WIDGET_TEXT_AREA] = "TextArea",
+        [WIDGET_DROPDOWN] = "Dropdown",
+        [WIDGET_SLIDER] = "Slider",
+        [WIDGET_TOGGLE] = "Toggle",
+        [WIDGET_CHECKBOX] = "Checkbox",
+        [WIDGET_PARAGRAPH] = "Paragraph",
+        [WIDGET_NAVIGATION_BAR] = "NavigationBar",
+        [WIDGET_TAB_BAR] = "TabBar",
+        [WIDGET_TITLE_BAR] = "TitleBar",
+        [WIDGET_GROUP] = "Group",
+        [WIDGET_COLUMN] = "Column",
+        [WIDGET_ROW] = "Row",
+        [WIDGET_STACK] = "Stack",
+        [WIDGET_GRID] = "Grid",
+        [WIDGET_IMAGE] = "Image",
+        [WIDGET_CUSTOM] = "Custom",
+        [WIDGET_DRAG] = "Drag",
+        [WIDGET_ROUTER] = "Router",
+        [WIDGET_CARD] = "Card",
+    };
+
+    if(kind < 0 || kind >= WIDGET_KIND_COUNT || names[kind] == NULL)
+        return "";
+    return names[kind];
 }
 
 NodeId

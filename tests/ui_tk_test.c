@@ -3618,7 +3618,7 @@ test_card_props_retained_input(void)
     EndTree();
     nodes = GetTreeNodes(&count);
     check_int("card tree node count",count,3);
-    check_int("card node kind",nodes[1].kind,WIDGET_CARD);
+    check_int("card node kind",strcmp(GetNodeKindName(nodes[1].kind),"Card"),0);
     check_int("card child parent",nodes[2].parent,card);
     EndInterfaceFrame();
 }
@@ -4483,7 +4483,8 @@ main(void)
         int count = 0, paints = 0, next = 0;
         const WidgetNode *nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind == WIDGET_CUSTOM && nodes[i].parent >= 0 &&
+            if(strcmp(GetNodeKindName(nodes[i].kind),"Custom") == 0 &&
+               nodes[i].parent >= 0 &&
                nodes[nodes[i].parent].id == 872 && nodes[i].owned_text != NULL) {
                 paints++;
                 check_int("numeric origin paint x", (int)nodes[i].bounds.x, 0);

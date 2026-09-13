@@ -47,37 +47,7 @@ typedef enum Invalidation {
     INVALIDATE_TREE = 1 << 2
 } Invalidation;
 
-typedef enum WidgetKind {
-    WIDGET_SCREEN,
-    WIDGET_BACKGROUND,
-    WIDGET_TEXT,
-    WIDGET_BOX,
-    WIDGET_CIRCLE,
-    WIDGET_RING,
-    WIDGET_LINE,
-    WIDGET_TRIANGLE,
-    WIDGET_BUTTON,
-    WIDGET_TEXT_FIELD,
-    WIDGET_TEXT_AREA,
-    WIDGET_DROPDOWN,
-    WIDGET_SLIDER,
-    WIDGET_TOGGLE,
-    WIDGET_CHECKBOX,
-    WIDGET_PARAGRAPH,
-    WIDGET_NAVIGATION_BAR,
-    WIDGET_TAB_BAR,
-    WIDGET_TITLE_BAR,
-    WIDGET_GROUP,
-    WIDGET_COLUMN,
-    WIDGET_ROW,
-    WIDGET_STACK,
-    WIDGET_GRID,
-    WIDGET_IMAGE,
-    WIDGET_CUSTOM,
-    WIDGET_DRAG,
-    WIDGET_ROUTER,
-    WIDGET_CARD
-} WidgetKind;
+typedef int WidgetKind;
 
 typedef union WidgetData {
     struct {
@@ -180,6 +150,7 @@ void RouteInput(void);
 void UpdateTree(void);
 void Overlays(void);
 const WidgetNode *GetTreeNodes(int *count);
+const char *GetNodeKindName(WidgetKind kind);
 int GetNodeHeight(WidgetNode node);
 int GetNodeHeightById(int id);
 const WidgetNode *GetNode(NodeId id);

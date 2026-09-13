@@ -417,6 +417,21 @@ if [ -n "$retained_rect_kind_matches" ]; then
     exit 1
 fi
 
+public_widget_kind_matches="$(
+    rg -n '\bWIDGET_(SCREEN|BACKGROUND|TEXT|BOX|CIRCLE|RING|LINE|TRIANGLE|BUTTON|TEXT_FIELD|TEXT_AREA|DROPDOWN|SLIDER|TOGGLE|CHECKBOX|PARAGRAPH|NAVIGATION_BAR|TAB_BAR|TITLE_BAR|GROUP|COLUMN|ROW|STACK|GRID|IMAGE|CUSTOM|DRAG|ROUTER|CARD)\b' \
+        include \
+        docs/PUBLIC_API_SNAPSHOT.txt \
+        docs/API.md \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$public_widget_kind_matches" ]; then
+    echo "Retained WIDGET_* node constants are internal; public inspection uses GetNodeKindName:"
+    echo "$public_widget_kind_matches"
+    exit 1
+fi
+
 public_button_matches="$(
     rg -n '\b(UIButtonSpec|UIButtonNode)\b' \
         include/ui_controls.h \

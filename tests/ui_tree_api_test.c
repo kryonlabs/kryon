@@ -11,6 +11,8 @@ static int draw_rectangle_calls;
 
 static void
 check_int(const char *name, int got, int want);
+static void
+check_string(const char *name, const char *got, const char *want);
 
 void __wrap_DrawRectangle(int posX, int posY, int width, int height,
                           Color color);
@@ -66,6 +68,15 @@ check_int(const char *name, int got, int want)
     failures++;
 }
 
+static void
+check_string(const char *name, const char *got, const char *want)
+{
+    if(strcmp(got, want) == 0)
+        return;
+    fprintf(stderr, "FAIL: %s got %s want %s\n", name, got, want);
+    failures++;
+}
+
 int
 main(void)
 {
@@ -118,9 +129,11 @@ main(void)
         const WidgetNode *child_text = NULL;
 
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind == WIDGET_BUTTON && nodes[i].id == 7001)
+            if(strcmp(GetNodeKindName(nodes[i].kind), "Button") == 0 &&
+               nodes[i].id == 7001)
                 short_button = &nodes[i];
-            else if(nodes[i].kind == WIDGET_BUTTON && nodes[i].id == 7002)
+            else if(strcmp(GetNodeKindName(nodes[i].kind), "Button") == 0 &&
+                    nodes[i].id == 7002)
                 child_button = &nodes[i];
         }
         if(short_button != NULL && short_button->first_child >= 0)
@@ -129,10 +142,10 @@ main(void)
             child_text = &nodes[child_button->first_child];
         check_int("button shorthand has Text child",
                   short_text != NULL &&
-                  short_text->kind == WIDGET_TEXT, 1);
+                  strcmp(GetNodeKindName(short_text->kind), "Text") == 0, 1);
         check_int("button composition has Text child",
                   child_text != NULL &&
-                  child_text->kind == WIDGET_TEXT, 1);
+                  strcmp(GetNodeKindName(child_text->kind), "Text") == 0, 1);
         if(short_text != NULL && child_text != NULL) {
             check_int("button Text font parity",
                       short_text->data.primitive.font,
@@ -332,11 +345,14 @@ main(void)
     End();
     EndTree();
     nodes = GetTreeNodes(&count);
-    check_int("page fallback node kind", nodes[page].kind, WIDGET_COLUMN);
+    check_string("page fallback node kind", GetNodeKindName(nodes[page].kind),
+                 "Column");
     check_int("page fallback width", (int)nodes[page].bounds.width, 320);
     check_int("page fallback height", (int)nodes[page].bounds.height, 240);
-    check_int("page section node kind", nodes[page_section].kind, WIDGET_COLUMN);
-    check_int("page grid kind", nodes[page_grid].kind, WIDGET_GRID);
+    check_string("page section node kind",
+                 GetNodeKindName(nodes[page_section].kind), "Column");
+    check_string("page grid kind", GetNodeKindName(nodes[page_grid].kind),
+                 "Grid");
     grid_first = nodes[page_grid].first_child;
     grid_second = nodes[grid_first].next_sibling;
     check_int("page grid first x", (int)nodes[grid_first].bounds.x,
@@ -866,7 +882,7 @@ main(void)
         nodes = GetTreeNodes(&count);
         int boxed_count = 0;
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind != WIDGET_TEXT)
+            if(strcmp(GetNodeKindName(nodes[i].kind), "Text") != 0)
                 continue;
             boxed_count++;
             check_int("boxed text owns string", strcmp(nodes[i].owned_text,"owned"), 0);
@@ -911,8 +927,8 @@ main(void)
         EndTree();
         nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
-            if(nodes[i].kind != WIDGET_TEXT_FIELD &&
-               nodes[i].kind != WIDGET_TEXT_AREA)
+            if(strcmp(GetNodeKindName(nodes[i].kind), "TextField") != 0 &&
+               strcmp(GetNodeKindName(nodes[i].kind), "TextArea") != 0)
                 continue;
             text_inputs++;
             check_int("retained text captures declaration font",
@@ -945,9 +961,9 @@ main(void)
         check_int("router initializes to initial route", result.route, 1);
         check_int("router initial frame is not changed", result.changed, 0);
         nodes = GetTreeNodes(&count);
-        check_int("router node is retained",
-                  count > 1 ? (int)nodes[1].kind : -1,
-                  WIDGET_ROUTER);
+        check_string("router node is retained",
+                     count > 1 ? GetNodeKindName(nodes[1].kind) : "",
+                     "Router");
 
         RouterNavigate(&state, 2);
         BeginTree(4100);
