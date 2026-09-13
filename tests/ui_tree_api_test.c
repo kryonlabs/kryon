@@ -309,13 +309,9 @@ main(void)
     BeginTree(38);
     page = Page((PageProps){.title = "Docs",
                             .bounds = {0, 0, 0, 0},
-                            .gap = 6,
-                            .padding = 8,
                             .key = 380});
     page_section = Section((SectionProps){.label = "Intro",
                                           .bounds = {0, 0, 0, 0},
-                                          .gap = 2,
-                                          .padding = 3,
                                           .key = 382});
     Flow((FlowProps){.bounds = {0, 0, 100, 24}, .gap = 4, .key = 383});
     Stack((ColumnProps){.bounds = {0, 0, 20, 12}, .key = 384}); End();

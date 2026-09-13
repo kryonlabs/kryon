@@ -1159,6 +1159,16 @@ Text {
   font-size: font;
 }
 
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
+}
+
 Heading {
   foreground: text;
   font-size: 24;

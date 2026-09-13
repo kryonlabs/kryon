@@ -148,10 +148,16 @@ main(void)
         "ParagraphText {\n"
         "  foreground: accent;\n"
         "}\n"
+        "Page {\n"
+        "  padding-x: 8;\n"
+        "}\n"
+        "Section {\n"
+        "  gap: 6;\n"
+        "}\n"
         "Focus[role=Box]:focus {\n"
         "  border: accent;\n"
         "}\n";
-    StyleRule rules[30] = {0};
+    StyleRule rules[32] = {0};
     KssParseResult result = {0};
     StyleSheet sheet;
     StyleFacts accent = StyleControlFacts(StyleKindButton(), 0, 0,
@@ -167,10 +173,10 @@ main(void)
     StyleData resolved;
     char diagnostic[128];
 
-    assert(kss_parse_string(source, rules, 30, &result, diagnostic,
+    assert(kss_parse_string(source, rules, 32, &result, diagnostic,
                             sizeof(diagnostic)));
     assert(strcmp(result.pack_id, "glow") == 0);
-    assert(result.rule_count == 30);
+    assert(result.rule_count == 32);
     assert(rules[0].selector.kind == StyleKindButton());
     assert(rules[0].layer == 1);
     assert(rules[0].style.background == 0x111111ffu);
@@ -195,10 +201,14 @@ main(void)
     assert(rules[5].selector.kind == StyleKindSegment());
     assert(rules[5].state == ButtonStateSelected);
     assert(rules[5].style.foreground == 0x2f6bffffu);
-    assert(rules[29].selector.kind == StyleKindFocus());
-    assert(rules[29].selector.role == 9);
-    assert(rules[29].state == ButtonStateFocus);
-    assert(rules[29].style.border == 0x2f6bffffu);
+    assert(rules[29].selector.kind == StyleKindPage());
+    assert(rules[29].style.padding_x == 8.0f);
+    assert(rules[30].selector.kind == StyleKindSection());
+    assert(rules[30].style.gap == 6.0f);
+    assert(rules[31].selector.kind == StyleKindFocus());
+    assert(rules[31].selector.role == 9);
+    assert(rules[31].state == ButtonStateFocus);
+    assert(rules[31].style.border == 0x2f6bffffu);
 
     sheet.rules = rules;
     sheet.rule_count = result.rule_count;

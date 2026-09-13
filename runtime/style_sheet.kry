@@ -253,6 +253,14 @@ StyleKindParagraphText :: () -> i32 #export {
     return 59
 }
 
+StyleKindPage :: () -> i32 #export {
+    return 60
+}
+
+StyleKindSection :: () -> i32 #export {
+    return 61
+}
+
 StyleFacts :: struct {
     kind: i32
     name: i32

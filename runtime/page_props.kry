@@ -8,16 +8,14 @@ PageProps :: struct {
     description: const char*
     canonical_url: const char*
     theme_color: Color
-    gap: i32
-    padding: i32
+    class_name: i32
     key: KeyID
 }
 
 SectionProps :: struct {
     bounds: Rectangle
     label: const char*
-    gap: i32
-    padding: i32
+    class_name: i32
     key: KeyID
 }
 

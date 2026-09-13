@@ -315,6 +315,12 @@ Canvas {
 DragValue {
   border: accent;
 }
+Page {
+  padding-x: 8;
+}
+Section {
+  gap: 6;
+}
 Focus[role=Box]:focus {
   border: accent;
 }
@@ -322,7 +328,7 @@ Focus[role=Box]:focus {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if id != "smoke" || len(rules) != 34 {
+	if id != "smoke" || len(rules) != 36 {
 		t.Fatalf("bad parse result: id=%q len=%d", id, len(rules))
 	}
 	if rules[0].Selector.Kind != StyleSheet_StyleKindButton() ||
@@ -354,11 +360,15 @@ Focus[role=Box]:focus {
 		rules[4].Style.Foreground != 0x2f6bffff {
 		t.Fatalf("bad segment rule: %#v", rules[4])
 	}
-	if rules[33].Selector.Kind != StyleSheet_StyleKindFocus() ||
-		rules[33].Selector.Role != 9 ||
-		rules[33].State != int32(ButtonStateFocus) ||
-		rules[33].Style.Border != 0x2f6bffff {
-		t.Fatalf("bad focus role rule: %#v", rules[33])
+	if rules[33].Selector.Kind != StyleSheet_StyleKindPage() ||
+		rules[33].Style.PaddingX != 8 ||
+		rules[34].Selector.Kind != StyleSheet_StyleKindSection() ||
+		rules[34].Style.Gap != 6 ||
+		rules[35].Selector.Kind != StyleSheet_StyleKindFocus() ||
+		rules[35].Selector.Role != 9 ||
+		rules[35].State != int32(ButtonStateFocus) ||
+		rules[35].Style.Border != 0x2f6bffff {
+		t.Fatalf("bad page/section/focus rule: %#v %#v %#v", rules[33], rules[34], rules[35])
 	}
 }
 
@@ -492,6 +502,8 @@ func TestBuiltInStylePacksInGo(t *testing.T) {
 		{"DragValue", StyleSheet_StyleKindDragValue()},
 		{"Heading", StyleSheet_StyleKindHeading()},
 		{"ParagraphText", StyleSheet_StyleKindParagraphText()},
+		{"Page", StyleSheet_StyleKindPage()},
+		{"Section", StyleSheet_StyleKindSection()},
 	}
 	stateKinds := []struct {
 		name  string

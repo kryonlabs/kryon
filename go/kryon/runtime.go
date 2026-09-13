@@ -4247,6 +4247,19 @@ func (r *runtime) PushRoute(path string) {
 func (r *runtime) ReplaceRoute(path string) {
 	r.setRoute(path)
 }
+func styleLength(value float32) int32 {
+	if value <= 0 {
+		return 0
+	}
+	return int32(value + 0.5)
+}
+func styleForClassKind(className int32, kind int32) Style {
+	facts := StyleSheet_StyleDefaultFacts(kind)
+	facts.ClassName = className
+	facts.State = int32(ButtonStateNormal)
+	return unpackStyle(ResolveActiveStyle(packStyle(Style{Fields: uint32(StyleGap | StylePaddingX | StylePaddingY)}),
+		facts, int32(ButtonStateNormal)))
+}
 func (r *runtime) Page(props PageProps) {
 	bounds := Layout_LayoutScopeBounds(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
 	key := props.Key
@@ -4266,7 +4279,8 @@ func (r *runtime) Page(props PageProps) {
 		r.SetPageThemeColor(props.ThemeColor)
 	}
 	r.record(FrameOp{Kind: FrameOpPage, Bounds: bounds, Text: props.Title, Semantic: SemanticPage})
-	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
+	style := styleForClassKind(props.ClassName, StyleSheet_StyleKindPage())
+	r.Column(ColumnProps{Bounds: bounds, Gap: styleLength(style.Gap), Padding: styleLength(style.PaddingX), Key: key})
 }
 func (r *runtime) Section(props SectionProps) {
 	bounds := Layout_LayoutScopeBounds(props.Bounds, r.GetScreenWidth(), r.GetScreenHeight())
@@ -4275,7 +4289,8 @@ func (r *runtime) Section(props SectionProps) {
 		key = Key(props.Label)
 	}
 	r.record(FrameOp{Kind: FrameOpSection, Bounds: bounds, Text: props.Label, Semantic: SemanticSection})
-	r.Column(ColumnProps{Bounds: bounds, Gap: props.Gap, Padding: props.Padding, Key: key})
+	style := styleForClassKind(props.ClassName, StyleSheet_StyleKindSection())
+	r.Column(ColumnProps{Bounds: bounds, Gap: styleLength(style.Gap), Padding: styleLength(style.PaddingX), Key: key})
 }
 func (r *runtime) Heading(props HeadingProps) {
 	level := props.Level

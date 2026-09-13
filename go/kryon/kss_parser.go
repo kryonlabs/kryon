@@ -725,6 +725,10 @@ func styleKind(name string) (int32, bool) {
 		return StyleSheet_StyleKindHeading(), true
 	case "paragraphtext":
 		return StyleSheet_StyleKindParagraphText(), true
+	case "page":
+		return StyleSheet_StyleKindPage(), true
+	case "section":
+		return StyleSheet_StyleKindSection(), true
 	default:
 		return 0, false
 	}

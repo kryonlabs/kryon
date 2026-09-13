@@ -46,6 +46,21 @@ page_bounds_or_view(Rectangle bounds)
 }
 
 static Style
+page_box_style(int style_kind, int class_name)
+{
+    StyleData base = {
+        .fields = (uint32_t)(StyleGap | StylePaddingX | StylePaddingY),
+        .gap = 0.0f,
+        .padding_x = 0.0f,
+        .padding_y = 0.0f
+    };
+    StyleFacts facts = StyleDefaultFacts(style_kind);
+    facts.class_name = class_name;
+    facts.state = ButtonStateNormal;
+    return ui_unpack_style(ResolveActiveStyle(base, facts, ButtonStateNormal));
+}
+
+static Style
 page_text_style(int style_kind, int class_name, int fallback_font)
 {
     StyleData base = {
@@ -189,7 +204,10 @@ Page(PageProps props)
     if(props.theme_color.a != 0)
         SetPageThemeColor(props.theme_color);
     page_semantic_box(SEMANTIC_PAGE, bounds, props.title);
-    return Column((ColumnProps){bounds, props.gap, props.padding, key});
+    Style style = page_box_style(StyleKindPage(), props.class_name);
+    int gap = style.gap > 0.0f ? (int)(style.gap + 0.5f) : 0;
+    int padding = style.padding_x > 0.0f ? (int)(style.padding_x + 0.5f) : 0;
+    return Column((ColumnProps){bounds, gap, padding, key});
 }
 
 NodeId
@@ -199,7 +217,10 @@ Section(SectionProps props)
     KeyID key = props.key != 0 ? props.key : Key(props.label);
 
     page_semantic_box(SEMANTIC_SECTION, bounds, props.label);
-    return Column((ColumnProps){bounds, props.gap, props.padding, key});
+    Style style = page_box_style(StyleKindSection(), props.class_name);
+    int gap = style.gap > 0.0f ? (int)(style.gap + 0.5f) : 0;
+    int padding = style.padding_x > 0.0f ? (int)(style.padding_x + 0.5f) : 0;
+    return Column((ColumnProps){bounds, gap, padding, key});
 }
 
 void

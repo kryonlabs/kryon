@@ -305,6 +305,10 @@ kss_style_kind(const char *name)
         return StyleKindHeading();
     if(kss_ieq(name, "ParagraphText"))
         return StyleKindParagraphText();
+    if(kss_ieq(name, "Page"))
+        return StyleKindPage();
+    if(kss_ieq(name, "Section"))
+        return StyleKindSection();
     return -999999;
 }
 

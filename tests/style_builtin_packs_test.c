@@ -147,6 +147,8 @@ main(void)
         {"DragValue", StyleKindDragValue()},
         {"Heading", StyleKindHeading()},
         {"ParagraphText", StyleKindParagraphText()},
+        {"Page", StyleKindPage()},
+        {"Section", StyleKindSection()},
     };
     StyleStateCase state_kinds[] = {
         {"Button:hover", StyleKindButton(), ButtonStateHover},

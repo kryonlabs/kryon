@@ -429,8 +429,6 @@ Page((PageProps){
     .bounds = {0, 0, GetViewWidth(), GetViewHeight()},
     .title = "Kryon",
     .description = "Native-feeling apps across desktop and web.",
-    .gap = Scale(16),
-    .padding = GetPageSidePadding(),
     .key = Key("home")
 });
 Heading((HeadingProps){

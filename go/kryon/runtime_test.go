@@ -3413,8 +3413,6 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 		Description:  "Kryon docs",
 		CanonicalURL: "https://example.test/docs",
 		ThemeColor:   Color{R: 1, G: 2, B: 3, A: 255},
-		Gap:          8,
-		Padding:      12,
 	})
 	rt.Heading(HeadingProps{Text: "Install", Level: 2})
 	rt.Link(LinkProps{Text: "Read more", Link: "/more", Bounds: Rectangle{Width: 96, Height: 24}})
@@ -3464,6 +3462,29 @@ func TestPageAPIsRecordSemanticFrameOps(t *testing.T) {
 	}
 	if !sawPage || !sawHeading || !sawLink || !sawImage || !sawGrid {
 		t.Fatalf("missing semantic ops: page=%v heading=%v link=%v image=%v grid=%v ops=%#v", sawPage, sawHeading, sawLink, sawImage, sawGrid, rt.FrameOps())
+	}
+}
+
+func TestPageAndSectionSpacingUsesStyleSheet(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.page.spacing;
+Page.sheet { gap: 7; padding-x: 11; }
+Section.sheet { gap: 3; padding-x: 5; }
+`, "Page Spacing", "") || !SetActiveStylePack("test.page.spacing") {
+		t.Fatal("test page spacing style did not activate")
+	}
+
+	rt := New(AppConfig{Width: 320, Height: 240}).(*runtime)
+	className := StyleClassID("sheet")
+	rt.Page(PageProps{Title: "Docs", ClassName: className})
+	if len(rt.layout) != 1 || rt.layout[0].gap != 7 || rt.layout[0].padding != 11 {
+		t.Fatalf("page layout = %#v", rt.layout)
+	}
+	rt.Section(SectionProps{Label: "Intro", ClassName: className})
+	if len(rt.layout) != 2 || rt.layout[1].gap != 3 || rt.layout[1].padding != 5 {
+		t.Fatalf("section layout = %#v", rt.layout)
 	}
 }
 

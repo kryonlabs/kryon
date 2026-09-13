@@ -1155,6 +1155,16 @@ Text {
   opacity: 1;
 }
 
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
+}
+
 Heading {
   foreground: text;
   font-size: 24;
@@ -2861,6 +2871,16 @@ Text {
   font-size: font;
 }
 
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
+}
+
 Heading {
   foreground: text;
   font-size: 24;
@@ -4535,6 +4555,16 @@ Text {
   foreground: text;
   font-size: font.md;
   opacity: 1;
+}
+
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
 }
 
 Heading {
@@ -6321,6 +6351,16 @@ Text {
   opacity: 1;
 }
 
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
+}
+
 Heading {
   foreground: text;
   font-size: 24;
@@ -8102,6 +8142,16 @@ PlotMark {
 Text {
   foreground: text;
   font-size: font;
+}
+
+Page {
+  gap: 0;
+  padding-x: 0;
+}
+
+Section {
+  gap: 0;
+  padding-x: 0;
 }
 
 Heading {

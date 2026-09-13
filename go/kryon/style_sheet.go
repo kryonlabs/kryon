@@ -374,6 +374,16 @@ func StyleSheet_StyleKindParagraphText() int32 {
 	return value_0
 }
 
+func StyleSheet_StyleKindPage() int32 {
+	var value_0 int32 = 60
+	return value_0
+}
+
+func StyleSheet_StyleKindSection() int32 {
+	var value_0 int32 = 61
+	return value_0
+}
+
 func StyleSheet_StyleDefaultFacts(kind int32) StyleFacts {
 	var facts StyleFacts = StyleFacts{}
 	var value_0 int32 = kind

@@ -28,16 +28,14 @@ typedef struct PageProps {
     const char* description;
     const char* canonical_url;
     Color theme_color;
-    int32_t gap;
-    int32_t padding;
+    int32_t class_name;
     KeyID key;
 } PageProps;
 
 typedef struct SectionProps {
     Rectangle bounds;
     const char* label;
-    int32_t gap;
-    int32_t padding;
+    int32_t class_name;
     KeyID key;
 } SectionProps;
 

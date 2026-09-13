@@ -47,8 +47,6 @@ int main(void)
             .description = "DOM smoke description",
             .canonical_url = "/dom-smoke",
             .theme_color = {18, 20, 24, 255},
-            .gap = 8,
-            .padding = 0,
             .key = Key("page")
         });
         Heading((HeadingProps){
