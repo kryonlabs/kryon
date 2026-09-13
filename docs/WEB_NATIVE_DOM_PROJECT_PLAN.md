@@ -140,6 +140,8 @@ the browser receives normal elements, attributes, CSS, and events.
   ownership.
 - Web relationship facts include native implicit label links for authored
   `label` tags that wrap form controls.
+- Table header relationship facts include reverse `headerFor` links so header
+  nodes can enumerate cells that reference them.
 - Mounted DOM snapshots serialize event refs for generated logic hooks so
   inspectors can show which Kry logic action is attached to each native DOM
   object without scraping `data-kry-on-*` attributes; direct

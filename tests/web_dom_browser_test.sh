@@ -549,6 +549,12 @@ try {
   const tableRelations = kryon.webDOMRelations(target, "priceCell");
   assert(tableRelations.headers.map((object) => object.ref).join(" ") === "priceHeader itemHeader quarterHeader regionHeader",
     "table relation refs missing");
+  assert(kryon.webDOMRelations(target, "priceHeader").headerFor
+    .map((object) => object.ref).join(" ") === "Page/prices/priceCell",
+    "table header reverse relation missing");
+  assert(kryon.webDOMSnapshot(target, "priceHeader").relationRefs.headerFor
+    .join(" ") === "Page/prices/priceCell",
+    "table header reverse snapshot missing");
   assert(tableRelations.columnHeaders.map((object) => object.ref).join(" ") === "priceHeader quarterHeader",
     "column header relation missing");
   assert(tableRelations.rowHeaders.map((object) => object.ref).join(" ") === "itemHeader regionHeader",

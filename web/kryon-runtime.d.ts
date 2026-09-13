@@ -535,6 +535,7 @@ export interface WebDOMRelations {
   owns: WebDOMObject[];
   ownedBy: WebDOMObject[];
   headers: WebDOMObject[];
+  headerFor: WebDOMObject[];
   rowHeaders: WebDOMObject[];
   columnHeaders: WebDOMObject[];
   rowGroupHeaders: WebDOMObject[];
@@ -565,6 +566,7 @@ export interface WebNodeRelations {
   owns: WebDocumentNode[];
   ownedBy: WebDocumentNode[];
   headers: WebDocumentNode[];
+  headerFor: WebDocumentNode[];
   rowHeaders: WebDocumentNode[];
   columnHeaders: WebDocumentNode[];
   rowGroupHeaders: WebDocumentNode[];
@@ -595,6 +597,7 @@ export interface WebDOMRelationRefs {
   owns: string[];
   ownedBy: string[];
   headers: string[];
+  headerFor: string[];
   rowHeaders: string[];
   columnHeaders: string[];
   rowGroupHeaders: string[];
