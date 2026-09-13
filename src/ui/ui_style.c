@@ -256,12 +256,10 @@ Style
 ui_surface_style(void)
 {
     StyleData base = {
-        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize |
-                             StyleMaterial),
+        .fields = (uint32_t)(StyleOpacity | StyleFontSize | StyleIconSize),
         .opacity = 1.0f,
         .font_size = 16.0f,
-        .icon_size = 20.0f,
-        .material = MaterialFlat
+        .icon_size = 20.0f
     };
     StyleData value = ResolveActiveStyle(base, StyleDefaultFacts(StyleKindSurface()),
                                          ButtonStateNormal);

@@ -35,6 +35,7 @@ int main(void)
     }
     assert(DefaultFields() == 24575u);
     assert((DefaultFields() & StyleBackgroundEnd) == 0);
+    assert((ControlStyleNone().normal.fields & StyleMaterial) == 0);
     StyleData named = {.fields = StyleTypeface, .typeface = {"semibold", 8}};
     StyleData other = {.typeface = {"ignored", 7}};
     assert(StringEqual(MergeValues(named, other).typeface, named.typeface));

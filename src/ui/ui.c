@@ -1852,9 +1852,8 @@ ui_text_input_default_font(int style_kind)
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
         ResolveActiveStyle(
             ui_pack_style_states((ControlStyle){.normal = {
-                .fields = StyleOpacity | StyleMaterial,
-                .opacity = 1.0f,
-                .material = MaterialFlat
+                .fields = StyleOpacity,
+                .opacity = 1.0f
             }}).normal,
             StyleDefaultFacts(style_kind), ButtonStateNormal)));
     return resolved.font_size > 0.0f
@@ -1867,9 +1866,8 @@ ui_resolve_text_input_style(TextInputStyle style, int style_kind)
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
         ResolveActiveStyle(
             ui_pack_style_states((ControlStyle){.normal = {
-                .fields = StyleOpacity | StyleMaterial,
-                .opacity = 1.0f,
-                .material = MaterialFlat
+                .fields = StyleOpacity,
+                .opacity = 1.0f
             }}).normal,
             StyleDefaultFacts(style_kind), ButtonStateNormal)));
 
