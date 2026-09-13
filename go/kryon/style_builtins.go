@@ -854,7 +854,7 @@ Toolbar[role=Action] {
   radius: radius.sm;
   border-width: border.none;
   padding-x: 8;
-  gap: 6;
+  gap: 0;
   icon-size: 20;
   opacity: 1;
   material: default;
@@ -1706,6 +1706,7 @@ TextArea {
   padding-x: 12;
   padding-y: 10;
   font-size: 16;
+  gap: 6;
   material: Flat;
 }
 `
@@ -1978,7 +1979,7 @@ SegmentedControl {
   border-width: border;
   padding-x: 2;
   padding-y: 2;
-  gap: space.1;
+  gap: 0;
   opacity: 1;
   material: default;
 }
@@ -3389,6 +3390,7 @@ TextArea {
   padding-x: field-x;
   padding-y: gap;
   font-size: font;
+  gap: space.1;
   material: default;
 }
 `
@@ -5104,6 +5106,7 @@ TextArea {
   padding-x: space.3;
   padding-y: pad.control-y;
   font-size: font.md;
+  gap: 0;
   material: default;
 }
 `
@@ -6911,6 +6914,7 @@ TextArea {
   padding-x: space.3;
   padding-y: pad.control-y;
   font-size: font.md;
+  gap: 0;
   material: glow;
 }
 `
@@ -8162,7 +8166,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font;
-  gap: 4;
+  gap: 0;
 }
 
 Link {
@@ -8673,6 +8677,7 @@ TextArea {
   padding-x: space.3;
   padding-y: pad.control-y;
   font-size: font.md;
+  gap: 4;
   material: premium;
 }
 `

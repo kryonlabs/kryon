@@ -711,7 +711,7 @@ main(void)
             .bounds = {10, 10, 90, 44}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
-            .focus_id = 1004, .line_gap = 4, .wrap = 1
+            .focus_id = 1004, .wrap = 1
         });
         ReconcileTree();
         LayoutTree();
@@ -751,8 +751,7 @@ main(void)
             .bounds = {10, 10, 160, 56}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
-            .max_codepoints = 511, .focus_id = 1005,
-            .line_gap = 4
+            .max_codepoints = 511, .focus_id = 1005
         });
         ReconcileTree();
         LayoutTree();
@@ -778,7 +777,7 @@ main(void)
             .bounds = {20, 30, 180, 120}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
             .focused = &focused, .scroll_y = &scroll_y,
-            .focus_id = 1006, .line_gap = 4
+            .focus_id = 1006
         }, cursor, focused, cursor, cursor);
         check_int("retained textarea clamps negative scroll", scroll_y, 0);
     }
@@ -793,14 +792,14 @@ main(void)
         ui_paint_text_area((TextAreaProps){
             .bounds = {20,30,180,80}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .scroll_y = &scroll_y, .line_gap = 4
+            .scroll_y = &scroll_y
         }, cursor, 0, cursor, cursor);
         ordinary_rectangles = draw_rectangle_calls;
         draw_rectangle_calls = 0;
         ui_paint_text_area_composition((TextAreaProps){
             .bounds = {20,30,180,80}, .text = value,
             .text_size = sizeof(value), .cursor_position = &cursor,
-            .scroll_y = &scroll_y, .line_gap = 4
+            .scroll_y = &scroll_y
         }, cursor, 0, cursor, cursor, 1, 7);
         check_int("textarea composition adds underline paint",
                   draw_rectangle_calls, ordinary_rectangles + 1);

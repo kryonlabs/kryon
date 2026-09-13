@@ -1230,7 +1230,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    focused: *i32\n"
         "    scroll_y: *i32\n"
         "    max_codepoints: i32\n"
-        "    line_gap: i32\n"
         "    focus_id: i32\n"
         "    placeholder: const char*\n"
         "    syntax: SyntaxMode\n"

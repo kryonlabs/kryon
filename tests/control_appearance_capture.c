@@ -43,7 +43,7 @@ render_column(int x, int fancy)
     TextArea((TextAreaProps){.bounds = {x, 362, 300, 112}, .text = area_text,
         .text_size = sizeof(area_text), .cursor_position = &area_cursor,
         .focused = &area_focus, .scroll_y = &area_scroll, .max_codepoints = 127,
-        .line_gap = 4, .focus_id = 8150 + fancy,
+        .focus_id = 8150 + fancy,
         .placeholder = "Write proposal", .wrap = 1});
 
     Text((TextProps){.bounds = {x, 510, 260, 24}, .text = "Button",

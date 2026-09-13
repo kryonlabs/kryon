@@ -5557,7 +5557,7 @@ func (r *runtime) TextArea(props TextAreaProps) bool {
 func (r *runtime) textAreaPageRows(props TextAreaProps) int {
 	style := r.textInputStyle(FrameOpTextArea, false, r.contentDisabled(), props.ClassName)
 	defaultFont := r.textInputDefaultFont(FrameOpTextArea, false, r.contentDisabled(), props.ClassName, Text16)
-	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), props.LineGap, defaultFont, 10, 8, 6)
+	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
 	return int(TextInput_TextAreaPageRows(props.Bounds.Height, metrics.Font, metrics.LineGap, metrics.PaddingY))
 }
 
@@ -6554,7 +6554,7 @@ func (r *runtime) recordTextArea(props TextAreaProps) {
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
 	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName, Text16)
 	style := r.textInputStyle(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName)
-	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), props.LineGap, defaultFont, 10, 8, 6)
+	metrics := TextInput_TextInputMetricsFor(0, int32(style.PaddingX), int32(style.PaddingY), styleGapLength(style), defaultFont, 10, 8, 0)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY
@@ -6597,6 +6597,13 @@ func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool, class
 func (r *runtime) textInputDefaultFont(kind FrameOpKind, focused, disabled bool, className int32, fallback int32) int32 {
 	style := r.textInputStyle(kind, focused, disabled, className)
 	return styleFont(style, fallback)
+}
+
+func styleGapLength(style Style) int32 {
+	if style.Fields&StyleGap == 0 {
+		return -1
+	}
+	return styleLength(style.Gap)
 }
 
 func (r *runtime) pushLayout(props ColumnProps, horizontal bool, kind FrameOpKind) {

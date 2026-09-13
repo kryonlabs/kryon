@@ -40,7 +40,6 @@ TextAreaProps :: struct {
     focused: *i32
     scroll_y: *i32
     max_codepoints: i32
-    line_gap: i32
     focus_id: i32
     placeholder: const char*
     syntax: SyntaxMode

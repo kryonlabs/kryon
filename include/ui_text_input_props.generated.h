@@ -60,7 +60,6 @@ typedef struct TextAreaProps {
     int32_t* focused;
     int32_t* scroll_y;
     int32_t max_codepoints;
-    int32_t line_gap;
     int32_t focus_id;
     const char* placeholder;
     SyntaxMode syntax;

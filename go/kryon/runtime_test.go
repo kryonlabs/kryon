@@ -4618,7 +4618,7 @@ App { background: #101820; }
 Surface { background: #101820; material: flat; }
 TextField { background: field; foreground: field-ink; border: field-rule; focus: focus-ring; radius: field-radius; border-width: border; font-size: 19; material: flat; }
 TextField:focus { background: field-focus; foreground: field-ink; border: focus-ring; focus: focus-ring; material: flat; }
-TextArea { background: area; foreground: area-ink; border: area-rule; focus: focus-ring; radius: area-radius; border-width: border; font-size: 21; material: flat; }
+TextArea { background: area; foreground: area-ink; border: area-rule; focus: focus-ring; radius: area-radius; border-width: border; font-size: 21; gap: 5; material: flat; }
 `, "Test Text Input", "") || !SetActiveStylePack("test.text_input") {
 		t.Fatal("test text input style did not activate")
 	}
@@ -4691,6 +4691,9 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 		}
 		if got := op.FontSize; got != wantFont {
 			t.Fatalf("%s font size = %d, want %d", op.Kind, got, wantFont)
+		}
+		if op.Kind == FrameOpTextArea && op.Gap != 5 {
+			t.Fatalf("textarea gap = %.1f, want 5", op.Gap)
 		}
 		if got, want := op.SelectionColor, want.Focus; got != want {
 			t.Fatalf("selection color = %#v, want %#v", got, want)

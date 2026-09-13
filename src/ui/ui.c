@@ -1885,6 +1885,11 @@ ui_resolve_text_input_style(TextInputStyle style, int style_kind,
         style.padding_x = Scale((int)(resolved.padding_x + 0.5f));
     if(style.padding_y <= 0 && resolved.padding_y > 0.0f)
         style.padding_y = Scale((int)(resolved.padding_y + 0.5f));
+    if((resolved.fields & StyleGap) != 0)
+        style.line_gap = resolved.gap > 0.0f
+            ? Scale((int)(resolved.gap + 0.5f)) : 0;
+    else if(style.line_gap <= 0)
+        style.line_gap = -1;
     return style;
 }
 
@@ -2532,7 +2537,7 @@ ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
     TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
         StyleKindTextArea(), area.class_name);
     int font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    int line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int page_rows = TextAreaPageRows(area.bounds.height, font, line_gap,
                                      padding_y);
@@ -3207,7 +3212,7 @@ ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
     TextInputStyle style = ui_resolve_text_input_style((TextInputStyle){0},
         StyleKindTextArea(), area.class_name);
     int font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    int line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     int padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
     int padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     int wrap_width = area.wrap
@@ -3244,7 +3249,7 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
                                         StyleKindTextArea(),
                                         area.class_name);
     font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
     padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     wrap_width = area.wrap ? (int)area.bounds.width - padding_x * 2 : 0;
@@ -3289,7 +3294,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
     style = ui_resolve_text_input_style((TextInputStyle){0},
                                         StyleKindTextArea(), area.class_name);
     font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
     padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);
     scroll_y = area.scroll_y != NULL ? *area.scroll_y : 0;
@@ -3560,7 +3565,7 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
     style = ui_resolve_text_input_style((TextInputStyle){0},
                                         StyleKindTextArea(), area.class_name);
     font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     line_h = TextLineHeight(font) + line_gap;
     if(line_h <= 0)
         return area.bounds;
@@ -3664,7 +3669,7 @@ ui_text_area_render(TextAreaProps area)
     area.bounds = widget.bounds;
 
     font = ui_text_input_default_font(StyleKindTextArea(), area.class_name);
-    line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
+    line_gap = style.line_gap >= 0 ? style.line_gap : 0;
     line_h = TextLineHeight(font) + line_gap;
     padding_x = style.padding_x > 0 ? style.padding_x : Scale(10);
     padding_y = style.padding_y > 0 ? style.padding_y : Scale(8);

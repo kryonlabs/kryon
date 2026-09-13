@@ -10,7 +10,7 @@ func TestTextAreaMultilineNavigation(t *testing.T) {
 	focused := true
 	props := TextAreaProps{
 		Bounds: NewRectangle(10, 10, 160, 60), Text: text,
-		CursorPosition: &cursor, Focused: &focused, FocusID: 32100, LineGap: 4,
+		CursorPosition: &cursor, Focused: &focused, FocusID: 32100,
 	}
 	draw := func(key int32) {
 		if key != 0 {

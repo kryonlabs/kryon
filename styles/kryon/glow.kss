@@ -1801,5 +1801,6 @@ TextArea {
   padding-x: space.3;
   padding-y: pad.control-y;
   font-size: font.md;
+  gap: 0;
   material: glow;
 }

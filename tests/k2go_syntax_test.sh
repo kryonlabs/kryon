@@ -259,7 +259,7 @@ App :: () #ui {
     Text((TextProps){.bounds={Scale(150), Scale(100), 0, 0}, .text="select me", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone, .selectable=1})
     Toast((ToastProps){.message = "toast from kry"})
     TextField((TextFieldProps){.bounds = {Scale(150), Scale(124), Scale(90), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 30})
-    TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .line_gap = Scale(4), .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
+    TextArea((TextAreaProps){.bounds = {Scale(250), Scale(124), Scale(90), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .focus_id = 31, .placeholder = "Notes", .syntax = SyntaxNone})
     store_secret(field_text, area_text, "literal", 1, 2, 3, 4, 5, 6, area_text)
     Text((TextProps){.bounds={Scale(150), Scale(152), 0, 0}, .text="ro", .font=Text16, .color=GetThemeText(), .wrap=TextWrapNone})
     Radio((RadioProps){.bounds = {Scale(4), Scale(270), Scale(120), Scale(24)}, .label = "one", .id = 1, .checked = pick == 1})

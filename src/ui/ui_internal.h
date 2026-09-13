@@ -141,6 +141,7 @@ typedef struct TextInputStyle {
     float radius;
     int padding_x;
     int padding_y;
+    int line_gap;
 } TextInputStyle;
 
 /* Prepared retained painting only: no editing-state pointers survive

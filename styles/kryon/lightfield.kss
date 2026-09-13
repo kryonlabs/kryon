@@ -1245,7 +1245,7 @@ Heading {
 ParagraphText {
   foreground: text;
   font-size: font;
-  gap: 4;
+  gap: 0;
 }
 
 Link {
@@ -1756,5 +1756,6 @@ TextArea {
   padding-x: space.3;
   padding-y: pad.control-y;
   font-size: font.md;
+  gap: 4;
   material: premium;
 }

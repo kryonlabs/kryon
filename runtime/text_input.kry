@@ -165,6 +165,9 @@ TextAreaPageRows :: (bounds_height: float, font: i32, line_gap: i32,
     if rows < 1 {
         return 1
     }
+    if rows < 2 {
+        return 2
+    }
     return rows
 }
 

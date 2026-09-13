@@ -270,7 +270,6 @@ int main(void)
         .focused = &syntax_focused,
         .scroll_y = &syntax_scroll,
         .max_codepoints = 128,
-        .line_gap = 0,
         .focus_id = 7771,
         .syntax = SyntaxKry
     });

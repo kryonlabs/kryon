@@ -57,7 +57,7 @@ Valid :: (viewport: Rectangle) #ui {
             padding = Scale(6)
             key = Key("form")
             TextField((TextFieldProps){.bounds = {0, 0, Scale(160), Scale(24)}, .text = field_text, .text_size = sizeof(field_text), .cursor_position = &field_cursor, .focused = NULL, .max_codepoints = 63, .focus_id = 101})
-            TextArea((TextAreaProps){.bounds = {0, 0, Scale(160), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .line_gap = Scale(4), .focus_id = 102, .placeholder = "Notes"})
+            TextArea((TextAreaProps){.bounds = {0, 0, Scale(160), Scale(48)}, .text = area_text, .text_size = sizeof(area_text), .cursor_position = &area_cursor, .focused = NULL, .scroll_y = &area_scroll, .max_codepoints = 127, .focus_id = 102, .placeholder = "Notes"})
             Row actions: {
                 bounds = {0, 0, Scale(160), Scale(32)}
                 gap = Scale(4)

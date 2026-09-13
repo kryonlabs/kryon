@@ -242,7 +242,14 @@ func TextInput_TextAreaPageRows(bounds_height float32, font int32, line_gap int3
 		return value_23
 	}
 	var value_24 int32 = rows
-	return value_24
+	var value_25 int32 = 2
+	var value_26 bool = value_24 < value_25
+	if value_26 {
+		var value_27 int32 = 2
+		return value_27
+	}
+	var value_28 int32 = rows
+	return value_28
 }
 
 func TextInput_TextAreaWrapWidthFor(bounds_width float32, padding_x int32, wrap bool, min_wrap_width int32) int32 {

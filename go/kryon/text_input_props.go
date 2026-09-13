@@ -41,7 +41,6 @@ type TextAreaProps struct {
 	Focused        *bool
 	ScrollY        *int32
 	MaxCodepoints  int32
-	LineGap        int32
 	FocusID        int32
 	Placeholder    string
 	Syntax         SyntaxMode
