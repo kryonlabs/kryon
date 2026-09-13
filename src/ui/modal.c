@@ -361,13 +361,13 @@ RenderActionModal(ModalProps modal)
     return result;
 }
 
-UIPanelFrame
+PanelFrame
 RenderModalFrame(int width, int height, const char *title,
                     Texture2D left_icon,
                     Texture2D right_icon)
 {
     char editor_id[96];
-    UIPanelFrame frame = {0};
+    PanelFrame frame = {0};
     Widget widget;
     ModalMetrics metrics = ui_modal_metrics_for_class(0);
     ModalFrameLayout layout;

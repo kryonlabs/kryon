@@ -131,7 +131,7 @@ typedef struct {
     const char *text;
     int font;
     Color color;
-} UIInfoRow;
+} InfoRow;
 
 typedef struct TextInputStyle {
     uint32_t fields;
@@ -170,7 +170,7 @@ typedef struct {
     int width;
     int row_height;
     int padding_x;
-    const UIInfoRow *rows;
+    const InfoRow *rows;
     int row_count;
     Color background;
     Color separator;
@@ -269,7 +269,7 @@ typedef struct {
     int content_h;
     int left_clicked;
     int right_clicked;
-} UIPanelFrame;
+} PanelFrame;
 
 enum {
     UI_POINTER_OWNER_NONE = 0,
@@ -551,7 +551,7 @@ void RenderTutorialImage(Texture2D texture, const char *fallback,
 void RenderImage(ImageProps image);
 int RenderActionModal(ModalProps modal);
 int RenderTitleBar(TitleBarProps title_bar);
-UIPanelFrame RenderModalFrame(int width, int height, const char *title,
+PanelFrame RenderModalFrame(int width, int height, const char *title,
                               Texture2D left_icon, Texture2D right_icon);
 SidebarAccountHeaderResult RenderSidebarAccountHeader(SidebarAccountHeaderProps header);
 ProfileImagePickerResult RenderProfileImagePickerModal(ProfileImagePickerProps modal);

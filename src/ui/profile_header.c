@@ -361,7 +361,7 @@ RenderProfileImagePickerModal(ProfileImagePickerProps modal)
                                                      : &default_scroll_offset;
     ScrollArea scroll_area;
     ScrollView scroll_view;
-    UIPanelFrame frame;
+    PanelFrame frame;
     IconType selected =
         modal.selected_icon_type != NULL ? *modal.selected_icon_type
                                          : ICON_NONE;

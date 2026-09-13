@@ -101,7 +101,7 @@ RenderInfoRows(InfoRowsProps rows)
     DrawRectangle(rows.x, rows.y, rows.width, row_h * rows.row_count,
                   background);
     for(int i = 0; i < rows.row_count; i++) {
-        const UIInfoRow *row = &rows.rows[i];
+        const InfoRow *row = &rows.rows[i];
         int y = rows.y + i * row_h;
         int font = row->font > 0 ? row->font : default_font;
         Color text = row->color.a != 0 ? row->color : default_text;

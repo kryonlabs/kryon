@@ -274,7 +274,7 @@ RenderNavigationBarConfigModal(NavigationBarConfigProps modal)
 {
     static int route_scroll_offset = 0;
     NavigationBarConfigResult result = {0, 0};
-    UIPanelFrame frame;
+    PanelFrame frame;
     ScrollArea route_area;
     ScrollView route_view;
     const char *option_labels[16];
