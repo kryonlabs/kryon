@@ -54,6 +54,12 @@ ModalFrameLayout :: struct {
     icon_padding: i32
 }
 
+ModalActionPlacement :: struct {
+    start_x: i32
+    action_width: i32
+    total_width: i32
+}
+
 ModalHas :: (fields: u32, field: u32) -> bool {
     return (fields & field) != (u32)0
 }
@@ -164,6 +170,22 @@ ModalActionRowWidthStep :: (row_width: i32, action_width: i32,
     if row_width > 0 { next_width = row_width + gap + action_width }
     if row_width > 0 && next_width > content_width { return action_width }
     return next_width
+}
+
+ModalActionPlacementFor :: (x: i32, content_width: i32, row_count: i32,
+    gap: i32) -> ModalActionPlacement #export {
+    placement: ModalActionPlacement
+    if row_count <= 0 || content_width <= 0 {
+        placement.start_x = x
+        return placement
+    }
+    usable: i32 = content_width - gap * (row_count - 1)
+    placement.action_width = usable / row_count
+    if placement.action_width < 0 { placement.action_width = 0 }
+    placement.total_width = placement.action_width * row_count +
+        gap * (row_count - 1)
+    placement.start_x = x + (content_width - placement.total_width) / 2
+    return placement
 }
 
 ModalButtonsHeight :: (rows: i32, metrics: ModalMetrics) -> i32 #export {

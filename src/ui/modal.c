@@ -164,8 +164,10 @@ ui_modal_draw_actions(const ModalAction *actions, int count,
         }
 
         if(row_count > 0) {
-            int equal_w = (content_w - gap * (row_count - 1)) / row_count;
-            int draw_x = x + (content_w - (equal_w * row_count + gap * (row_count - 1))) / 2;
+            ModalActionPlacement placement =
+                ModalActionPlacementFor(x, content_w, row_count, gap);
+            int equal_w = placement.action_width;
+            int draw_x = placement.start_x;
 
             for(j = 0; j < row_count; j++) {
                 int action_index = row_start + j;

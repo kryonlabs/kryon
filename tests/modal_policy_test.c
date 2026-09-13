@@ -30,6 +30,7 @@ main(void)
     ModalMetrics metrics;
     ModalLayout layout;
     ModalFrameLayout frame_layout;
+    ModalActionPlacement placement;
 
     panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
                          StyleIconSize | StyleContentOffset;
@@ -107,6 +108,21 @@ main(void)
     assert(ModalActionRowWidthStep(176, 176, 320, 16) == 176);
     assert(ModalActionRowsStep(176, 1, 100, 320, 16) == 1);
     assert(ModalActionRowWidthStep(176, 100, 320, 16) == 292);
+    placement = ModalActionPlacementFor(10, 320, 3, 8);
+    assert(placement.action_width == 101);
+    assert(placement.total_width == 319);
+    assert(placement.start_x == 10);
+    placement = ModalActionPlacementFor(10, 322, 3, 8);
+    assert(placement.action_width == 102);
+    assert(placement.total_width == 322);
+    assert(placement.start_x == 10);
+    placement = ModalActionPlacementFor(10, 5, 3, 8);
+    assert(placement.action_width == 0);
+    assert(placement.start_x == 5);
+    placement = ModalActionPlacementFor(10, 100, 0, 8);
+    assert(placement.action_width == 0);
+    assert(placement.total_width == 0);
+    assert(placement.start_x == 10);
     assert(ModalButtonsHeight(0, metrics) == 0);
     assert(ModalButtonsHeight(3, metrics) == 296);
 
