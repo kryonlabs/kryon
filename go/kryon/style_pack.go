@@ -195,6 +195,7 @@ func (r *runtime) StylePicker(props StylePickerProps) bool {
 	changed := r.Dropdown(DropdownProps{
 		Bounds:        props.Bounds,
 		ID:            props.ID,
+		ClassName:     props.ClassName,
 		Options:       labels,
 		OptionCount:   int32(count),
 		SelectedIndex: &value,

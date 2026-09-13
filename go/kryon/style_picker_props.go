@@ -3,7 +3,8 @@ package kryon
 
 // #import kryon_compat.generated.h
 type StylePickerProps struct {
-	Bounds   Rectangle
-	ID       int32
-	Disabled bool
+	Bounds    Rectangle
+	ID        int32
+	ClassName int32
+	Disabled  bool
 }

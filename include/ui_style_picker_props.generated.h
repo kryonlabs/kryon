@@ -24,6 +24,7 @@ static inline bool StringEqual(String a, String b) {
 typedef struct StylePickerProps {
     Rectangle bounds;
     int32_t id;
+    int32_t class_name;
     bool disabled;
 } StylePickerProps;
 

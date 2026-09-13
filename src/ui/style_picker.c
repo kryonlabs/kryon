@@ -35,6 +35,7 @@ StylePicker(StylePickerProps props)
         .options = labels,
         .option_count = count,
         .selected_index = &selected,
+        .class_name = props.class_name,
         .disabled = props.disabled,
     });
     if(changed && selected >= 0 && selected < count) {

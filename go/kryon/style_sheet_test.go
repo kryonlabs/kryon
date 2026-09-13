@@ -165,6 +165,46 @@ func TestStylePickerEmptyRegistryInGo(t *testing.T) {
 	}
 }
 
+func TestStylePickerForwardsClassNameInGo(t *testing.T) {
+	ClearStylePacks()
+	defer ClearStylePacks()
+
+	if !RegisterStylePackSource(`@pack picker.class;
+Dropdown.picker {
+  background: #203040;
+  foreground: #f4f7fb;
+  border: #506070;
+  material: Flat;
+}`, "Picker", "") {
+		t.Fatal("style picker class pack did not register")
+	}
+
+	r := New(AppConfig{Width: 180, Height: 80}).(*runtime)
+	r.BeginFrame()
+	r.StylePicker(StylePickerProps{
+		Bounds:    NewRectangle(8, 8, 128, 28),
+		ID:        43,
+		ClassName: StyleClassID("picker"),
+	})
+	r.EndFrame()
+
+	ops := r.FrameOps()
+	for _, op := range ops {
+		if op.ID != 43 || op.Kind != FrameOpButton {
+			continue
+		}
+		style := unpackStyle(op.Button.Appearance.Value)
+		if style.Background != (Color{0x20, 0x30, 0x40, 0xff}) ||
+			style.Foreground != (Color{0xf4, 0xf7, 0xfb, 0xff}) ||
+			style.Border != (Color{0x50, 0x60, 0x70, 0xff}) ||
+			style.Material != MaterialFlat {
+			t.Fatalf("style picker dropdown style = %#v", style)
+		}
+		return
+	}
+	t.Fatalf("style picker did not emit dropdown op: %#v", ops)
+}
+
 func TestParseStyleSheetInGo(t *testing.T) {
 	id, rules, err := ParseStyleSheet(`
 @pack smoke;
