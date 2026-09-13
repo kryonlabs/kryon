@@ -4229,6 +4229,14 @@ function fakeDocument() {
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
       webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
       .map((object) => object.node.path), [webDoc.nodes[2].path, webDoc.nodes[0].path]);
+    assert.equal(root.kryOverlappingSourceRange("src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+      webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
+      .element, firstButton);
+    assert.deepEqual(root.kryOverlappingSourceRanges("src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+      webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
+      .map((object) => object.node.path), [webDoc.nodes[2].path, webDoc.nodes[0].path]);
     assert.deepEqual(runtime.webDOMObjectsAtSource(target, "src/valid.kry",
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn).map((object) => object.ref),
       [tapSourceColumnRef]);

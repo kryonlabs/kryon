@@ -535,6 +535,8 @@ Mount roots also provide non-enumerable `kryElement(query)`,
 `kryQueryAll(selector)`, and `kryAtSource(sourcePath, sourceLine,
 sourceColumn?)` methods so native browser code can resolve `.kry` nodes
 without importing the module-level helpers.
+Source-range helpers on mount roots include `kryAtSourceRange(...)`,
+`kryOverlappingSourceRange(...)`, and `kryOverlappingSourceRanges(...)`.
 They also expose query-based `kryAddClass(...)`, `krySetAttr(...)`,
 `krySetStyle(...)`, `krySetState(...)`, `kryText(...)`, `kryValue(...)`,
 `kryDispatch(...)`, geometry, scroll, dialog, popover, and native command

@@ -751,6 +751,8 @@ declare global {
     kryQueryAllWithin?(query: string, selector: string): WebDOMObject[];
     kryAtSource?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
     kryAtSourceRange?(sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
+    kryOverlappingSourceRange?(sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDOMObject | null;
+    kryOverlappingSourceRanges?(sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDOMObject[];
     readonly krySourceMap?: WebDOMObject[];
     kryListen?: {
       (type: string, handler: (event: Event, object: WebDOMObject | null) => unknown,

@@ -7376,6 +7376,24 @@ function bindWebRootProperties(root) {
         return webDOMObjectAtSourceRange(this, sourcePath, sourceLine, sourceColumn);
       }
     },
+    kryOverlappingSourceRange: {
+      configurable: true,
+      enumerable: false,
+      value(sourcePath, sourceLine, sourceColumn = 0,
+            sourceEndLine = sourceLine, sourceEndColumn = sourceColumn) {
+        return webDOMObjectOverlappingSourceRange(this, sourcePath, sourceLine,
+          sourceColumn, sourceEndLine, sourceEndColumn);
+      }
+    },
+    kryOverlappingSourceRanges: {
+      configurable: true,
+      enumerable: false,
+      value(sourcePath, sourceLine, sourceColumn = 0,
+            sourceEndLine = sourceLine, sourceEndColumn = sourceColumn) {
+        return webDOMObjectsOverlappingSourceRange(this, sourcePath, sourceLine,
+          sourceColumn, sourceEndLine, sourceEndColumn);
+      }
+    },
     krySourceMap: {
       configurable: true,
       enumerable: false,
