@@ -1707,6 +1707,8 @@ include/ui_selectable_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_separator_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_slider_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_spinbox_props.generated.h macro KIR_STRING_VALUE_DEFINED
+include/ui_style_picker_props.generated.h function StylePickerOptionCountFor
+include/ui_style_picker_props.generated.h function StylePickerSelectedIndexFor
 include/ui_style_picker_props.generated.h macro KIR_STRING_VALUE_DEFINED
 include/ui_style_sheet.h function ClearStylePacks
 include/ui_style_sheet.h function EnsureBuiltInStylePacks

@@ -11,10 +11,9 @@ StylePicker(StylePickerProps props)
 
     if(count <= 0 && EnsureBuiltInStylePacks())
         count = GetStylePackCount();
+    count = StylePickerOptionCountFor(count, STYLE_PACK_MAX);
     if(count <= 0)
         return false;
-    if(count > STYLE_PACK_MAX)
-        count = STYLE_PACK_MAX;
 
     for(int i = 0; i < count; i++) {
         const StylePack *pack = GetStylePackAt(i);
@@ -26,8 +25,7 @@ StylePicker(StylePickerProps props)
             selected = i;
     }
 
-    if(selected < 0)
-        selected = 0;
+    selected = StylePickerSelectedIndexFor(selected, count);
 
     bool changed = Dropdown((DropdownProps){
         .bounds = props.bounds,

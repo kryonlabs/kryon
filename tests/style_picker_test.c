@@ -26,6 +26,12 @@ main(void)
     dropdown_calls = 0;
     dropdown_changed = 0;
     dropdown_next_index = 0;
+    assert(StylePickerOptionCountFor(-1, 32) == 0);
+    assert(StylePickerOptionCountFor(40, 32) == 32);
+    assert(StylePickerOptionCountFor(4, 0) == 4);
+    assert(StylePickerSelectedIndexFor(-1, 3) == 0);
+    assert(StylePickerSelectedIndexFor(9, 3) == 2);
+    assert(StylePickerSelectedIndexFor(0, 0) == -1);
     assert(!StylePicker((StylePickerProps){.id = 41}));
     assert(dropdown_calls == 1);
     assert(captured_dropdown.option_count >= 5);

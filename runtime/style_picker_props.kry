@@ -14,3 +14,17 @@ StylePickerProps :: struct {
     class_name: i32
     disabled: bool
 }
+
+StylePickerOptionCountFor :: (count: i32, limit: i32) -> i32 #export {
+    if count < 0 { return 0 }
+    if limit > 0 && count > limit { return limit }
+    return count
+}
+
+StylePickerSelectedIndexFor :: (selected: i32, count: i32) -> i32 #export {
+    count = StylePickerOptionCountFor(count, 0)
+    if count <= 0 { return -1 }
+    if selected < 0 { return 0 }
+    if selected >= count { return count - 1 }
+    return selected
+}

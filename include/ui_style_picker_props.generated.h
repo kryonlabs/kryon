@@ -34,5 +34,7 @@ typedef struct StylePickerProps {
     int32_t class_name;
     bool disabled;
 } StylePickerProps;
+int32_t StylePickerOptionCountFor(int32_t count, int32_t  limit);
+int32_t StylePickerSelectedIndexFor(int32_t selected, int32_t  count);
 
 #endif /* K_RUNTIME_STYLE_PICKER_PROPS_H */
