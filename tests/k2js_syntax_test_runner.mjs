@@ -2498,6 +2498,10 @@ function fakeDocument() {
       "Page/choices/choiceTwo")).role, "menuitem");
     assert.equal(runtime.webNodeQuery(menuRt, "Page/choices/choiceThree").role,
       "menuitem");
+    assert.deepEqual(runtime.webNodeRelationRefs(menuRt, "Page/choices").collectionItems,
+      ["Page/choices/choiceOne", "Page/choices/choiceTwo", "Page/choices/choiceThree"]);
+    assert.equal(runtime.webNodeRelationRefs(menuRt, "Page/choices/choiceTwo").collectionOwner,
+      "Page/choices");
 
     const treeItemRt = runtime.createRuntime();
     runtime.beginFrame(treeItemRt);
@@ -2516,6 +2520,10 @@ function fakeDocument() {
       "treeitem");
     assert.equal(runtime.webNodeQuery(treeItemRt, "Page/tree/custom").role,
       "button");
+    assert.deepEqual(runtime.webNodeRelationRefs(treeItemRt, "Page/tree").collectionItems,
+      ["Page/tree/branch", "Page/tree/leaf"]);
+    assert.equal(runtime.webNodeRelationRefs(treeItemRt, "Page/tree/branch").collectionOwner,
+      "Page/tree");
     const menuTarget = document.createElement("div");
     runtime.renderWebDocument(menuRt, menuTarget);
     const choices = runtime.findWebElement(menuTarget, "choices");
@@ -2526,6 +2534,10 @@ function fakeDocument() {
     assert.equal(choiceOne.attributes["aria-posinset"], "1");
     assert.equal(choiceOne.attributes["aria-setsize"], "3");
     assert.equal(choiceOne.attributes["aria-haspopup"], "menu");
+    assert.deepEqual(runtime.webDOMRelationRefs(menuTarget, "Page/choices").collectionItems,
+      ["Page/choices/choiceOne", "Page/choices/choiceTwo", "Page/choices/choiceThree"]);
+    assert.equal(runtime.webDOMSnapshot(menuTarget, "Page/choices/choiceThree")
+      .relationRefs.collectionOwner, "Page/choices");
     assert.equal(runtime.webDOMQuery(menuTarget, "[aria-level=2]").element,
       choiceOne);
 

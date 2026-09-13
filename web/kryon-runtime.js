@@ -6596,6 +6596,38 @@ function webNodeIsSemanticGroup(node) {
     implicitRole(node) === "group");
 }
 
+function webNodeRoleName(node) {
+  return String(node?.role || implicitRole(node) || "").toLowerCase();
+}
+
+function webNodeCollectionMemberRoles(node) {
+  const role = webNodeRoleName(node);
+  const tag = String(node?.tag || "").toLowerCase();
+  switch (role) {
+  case "menu":
+  case "menubar":
+    return new Set(["menuitem", "menuitemcheckbox", "menuitemradio"]);
+  case "tablist":
+    return new Set(["tab"]);
+  case "tree":
+    return new Set(["treeitem"]);
+  case "listbox":
+    return new Set(["option"]);
+  case "list":
+    return new Set(["listitem"]);
+  default:
+    break;
+  }
+  if (tag === "ul" || tag === "ol")
+    return new Set(["listitem"]);
+  return null;
+}
+
+function webNodeCanOwnCollectionMember(owner, member) {
+  const roles = webNodeCollectionMemberRoles(owner);
+  return !!roles && roles.has(webNodeRoleName(member));
+}
+
 function webDOMGroupOwner(target, node) {
   const root = mountedRoot(target);
   if (!root || !node)
@@ -6628,6 +6660,38 @@ function webDOMGroupMembers(target, node) {
   return out;
 }
 
+function webDOMCollectionOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return null;
+  let parentPath = node.parentPath || "";
+  while (parentPath && parentPath !== node.path) {
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnCollectionMember(parent, node))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMCollectionItems(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !webNodeCollectionMemberRoles(node))
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node)
+      continue;
+    const owner = webDOMCollectionOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMSiblingObject(target, node, offset) {
   const root = mountedRoot(target);
   if (!root || !node)
@@ -6648,6 +6712,8 @@ function webDOMRelationsForNode(target, node) {
     nextSibling: webDOMSiblingObject(target, node, 1),
     groupOwner: webDOMGroupOwner(target, node),
     groupMembers: webDOMGroupMembers(target, node),
+    collectionOwner: webDOMCollectionOwner(target, node),
+    collectionItems: webDOMCollectionItems(target, node),
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     describes: webDOMReverseRelationList(target, node, "ariaDescribedBy"),
     details: webDOMRelationList(target, node.ariaDetails)[0] || null,
@@ -7972,6 +8038,8 @@ function webDOMRelationRefsForRelations(relations) {
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
     groupOwner: relations?.groupOwner?.ref || "",
     groupMembers: (relations?.groupMembers || []).map((relation) => relation.ref),
+    collectionOwner: relations?.collectionOwner?.ref || "",
+    collectionItems: (relations?.collectionItems || []).map((relation) => relation.ref),
     activeDescendant: relations?.activeDescendant?.ref || "",
     activeDescendantOf: (relations?.activeDescendantOf || []).map((relation) => relation.ref),
     popoverTarget: relations?.popoverTarget?.ref || "",
@@ -8742,6 +8810,30 @@ function webNodeGroupMembers(rt, node) {
   });
 }
 
+function webNodeCollectionOwner(rt, node) {
+  if (!rt || !node)
+    return null;
+  let parent = webNodeParent(rt, node.path);
+  while (parent) {
+    if (webNodeCanOwnCollectionMember(parent, node))
+      return parent;
+    parent = webNodeParent(rt, parent.path);
+  }
+  return null;
+}
+
+function webNodeCollectionItems(rt, node) {
+  if (!rt || !webNodeCollectionMemberRoles(node))
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node)
+      return false;
+    const owner = webNodeCollectionOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
 function webNodeRefs(nodes) {
   return (nodes || []).map((node) => webNodeRef(node)).filter(Boolean);
 }
@@ -8769,6 +8861,8 @@ function webNodeRelationsForNode(rt, node) {
     nextSibling: webNodeNextSiblingFromFrame(node),
     groupOwner: webNodeGroupOwner(rt, node),
     groupMembers: webNodeGroupMembers(rt, node),
+    collectionOwner: webNodeCollectionOwner(rt, node),
+    collectionItems: webNodeCollectionItems(rt, node),
     describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
     describes: webNodeReverseRelationList(rt, node, "ariaDescribedBy"),
     details: webNodeRelationList(rt, node.ariaDetails)[0] || null,
@@ -8842,6 +8936,8 @@ function webNodeRelationRefsForNode(rt, node) {
     ),
     groupOwner: webNodeRef(webNodeGroupOwner(rt, node)) || "",
     groupMembers: webNodeRefs(webNodeGroupMembers(rt, node)),
+    collectionOwner: webNodeRef(webNodeCollectionOwner(rt, node)) || "",
+    collectionItems: webNodeRefs(webNodeCollectionItems(rt, node)),
     activeDescendant: webNodeRef(webNodeRelationList(rt, node.ariaActiveDescendant)[0]) || "",
     activeDescendantOf: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaActiveDescendant")),
     popoverTarget: webNodeRef(webNodeRelationList(rt, node.popoverTarget)[0]) || "",

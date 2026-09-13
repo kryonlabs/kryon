@@ -80,6 +80,9 @@ the browser receives normal elements, attributes, CSS, and events.
   row-group/column-group headers for inspectors and browser DOM snapshots.
 - Semantic group relationship facts expose `groupOwner` and `groupMembers` for
   controls inside native or ARIA groups.
+- Semantic collection relationship facts expose `collectionOwner` and
+  `collectionItems` for menu, tablist, tree, listbox, and list-style
+  owner/member roles.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
