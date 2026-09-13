@@ -244,6 +244,69 @@ try {
   removeInstalledStyle();
   assert(!document.querySelector('style[data-kry-style="browser-install"]'),
     "installed CSS cleanup failed");
+
+  const lifecycleTarget = document.createElement("div");
+  document.body.appendChild(lifecycleTarget);
+  const lifecycleEvents = [];
+  const renderCounts = [];
+  for (const type of ["kry-mount", "kry-update", "kry-unmount"]) {
+    lifecycleTarget.addEventListener(type, (event) => {
+      lifecycleEvents.push([type, event.kryObject?.ref || "", event.detail?.object?.element === event.target]);
+    });
+  }
+  lifecycleTarget.addEventListener("kry-render", (event) => {
+    renderCounts.push(event.detail?.objects?.length || 0);
+  });
+  const lifecycleRt = kryon.createRuntime();
+  kryon.beginFrame(lifecycleRt);
+  kryon.widget(lifecycleRt, "Screen", {}, null, { nodeName: "root", path: "Life/root" });
+  kryon.widget(lifecycleRt, "Button", { label: "One", class: "primary" }, null, {
+    nodeName: "action",
+    path: "Life/root/action",
+    parentPath: "Life/root",
+    ref: "life-action"
+  });
+  kryon.endFrame(lifecycleRt);
+  kryon.renderWebDocument(lifecycleRt, lifecycleTarget);
+  const lifecycleButton = kryon.findWebElement(lifecycleTarget, "life-action");
+  const directUnmountEvents = [];
+  lifecycleButton.addEventListener("kry-unmount", (event) => {
+    directUnmountEvents.push([event.kryObject?.ref || "", event.detail?.object?.element === lifecycleButton]);
+  });
+  const observedRefs = [];
+  const removeLifecycleObserver = kryon.webDOMObserve(lifecycleTarget, "Button.primary",
+    (objects, detail) => observedRefs.push([
+      objects.map((object) => object.ref).join(" "),
+      detail.event?.type || "immediate"
+    ]));
+  kryon.beginFrame(lifecycleRt);
+  kryon.widget(lifecycleRt, "Screen", {}, null, { nodeName: "root", path: "Life/root" });
+  kryon.widget(lifecycleRt, "Button", { label: "Two", class: "primary" }, null, {
+    nodeName: "action",
+    path: "Life/root/action",
+    parentPath: "Life/root",
+    ref: "life-action"
+  });
+  kryon.endFrame(lifecycleRt);
+  kryon.renderWebDocument(lifecycleRt, lifecycleTarget);
+  kryon.beginFrame(lifecycleRt);
+  kryon.widget(lifecycleRt, "Screen", {}, null, { nodeName: "root", path: "Life/root" });
+  kryon.endFrame(lifecycleRt);
+  kryon.renderWebDocument(lifecycleRt, lifecycleTarget);
+  removeLifecycleObserver();
+  assert(renderCounts.join(" ") === "2 2 1", "render lifecycle counts missing");
+  assert(lifecycleEvents.some((entry) => entry[0] === "kry-mount" && entry[1] === "life-action" && entry[2]),
+    "mount lifecycle event missing");
+  assert(lifecycleEvents.some((entry) => entry[0] === "kry-update" && entry[1] === "life-action" && entry[2]),
+    "update lifecycle event missing");
+  assert(directUnmountEvents.some((entry) => entry[0] === "life-action" && entry[1]),
+    "direct unmount lifecycle event missing: " + JSON.stringify(directUnmountEvents));
+  assert(observedRefs.some((entry) => entry[0] === "life-action" && entry[1] === "immediate"),
+    "immediate observer result missing");
+  assert(observedRefs.some((entry) => entry[0] === "life-action" && entry[1] === "kry-render"),
+    "render observer result missing");
+  assert(observedRefs.some((entry) => entry[0] === "" && entry[1] === "kry-render"),
+    "empty observer result after unmount missing");
   document.body.dataset.result = "ok";
 } catch (error) {
   document.body.dataset.result = "fail";

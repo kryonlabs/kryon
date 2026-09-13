@@ -34,7 +34,7 @@ the browser receives normal elements, attributes, CSS, and events.
 - Browser-backed Web Document smoke coverage now exercises native elements,
   KSS inline and installed CSS styling, selector lookup, event decoration, table
   header relationships, form ownership, and source ref/range object lookup
-  against a real DOM.
+  against a real DOM, plus native lifecycle events and DOM observers.
 - Expression-backed widget calls in declarations and assignments emit
   source-derived Web Document metadata, so logic expressions still produce
   inspectable DOM nodes.
