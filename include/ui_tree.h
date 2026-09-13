@@ -9,7 +9,6 @@
 #include "ui_modal.h"
 #include "ui_nav.h"
 #include "ui_profile.h"
-#include "ui_rows.h"
 #include "ui_image.h"
 #include "ui_tk.h"
 

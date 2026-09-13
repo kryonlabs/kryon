@@ -128,7 +128,7 @@ fi
 
 form_matches="$(
     rg -n '\b(UIForm[A-Za-z0-9_]*|GetUI(LabelTextField|ButtonRow|SpinboxRow)Height|UIButtonRowNode|UIListBoxNode|UIScroll[A-Za-z0-9_]*|UIScreenScaffold[A-Za-z0-9_]*|BeginUIScrollContainer|EndUIScrollContainer|MeasureUIScrollContainer|EnsureUIScrollRectVisible|BeginUIScrollPage|EndUIScrollPage|BeginUIScreenScaffold|EndUIScreenScaffold|GetUIScrollbar[A-Za-z0-9_]*)\b' \
-        include/ui_rows.h include/ui_scroll.h src/ui/rows.c src/ui/scroll.c \
+        include/ui_scroll.h src/ui/rows.c src/ui/scroll.c \
         docs/API.md docs/FEATURE_MATRIX.md \
         docs/FEATURE_MATRIX.html tests/ui_tree_api_test.c || true
 )"
@@ -141,7 +141,7 @@ fi
 
 public_form_row_matches="$(
     rg -n '\b(ButtonRowItem|ButtonRowProps|LabelTextFieldProps|SectionLabelProps|CheckboxRowProps|SpinboxRowProps|FormBegin|FormY|FormAdvance|FormTakeRect|FormNoteFocus|FormEnsureFocusedVisible|FormSection|FormTextField|FormCheckbox|FormSpinbox|FormButtons|Get(LabelTextField|ButtonRow|SpinboxRow)Height)\b' \
-        include/ui_rows.h docs/API.md docs/PUBLIC_API_SNAPSHOT.txt \
+        docs/API.md docs/PUBLIC_API_SNAPSHOT.txt \
         --glob '!vendor/**' \
         --glob '!build/**' || true
 )"
@@ -521,7 +521,6 @@ fi
 
 public_composite_draw_matches="$(
     rg -n "\bDraw[A-Za-z0-9_]*${stale_ui_fragment}[A-Za-z0-9_]*\b|\b(ShowUIToast|ShowUIToastFor|ClearUIToast)\b" \
-        include/ui_rows.h \
         include/ui_toast.h \
         include/ui_modal.h \
         include/ui_nav.h \

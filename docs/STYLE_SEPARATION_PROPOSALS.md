@@ -337,7 +337,7 @@ plus explicit per-call style overrides while those overrides are being retired.
 | Inline override table | `ButtonProps.style: ControlStyle` | remove; use class/name/semantic selectors |
 | Raw input styling | `TextInputStyle` in `include/ui_controls.h` and text-input props | remove; style rules cover input families |
 | Raw text colors | `TextProps.color`, retained primitive colors | remove from app-facing text; style rules handle foreground and selection |
-| Row, link, page colors | `ui_rows.h`, `ui_page.h` | convert to semantic role/tone plus style rules |
+| Row, link, page colors | internal row helpers, `ui_page.h` | convert to semantic role/tone plus style rules |
 | Alpha-zero defaults | widget paint fallbacks such as `background.a != 0` | remove; presence bits live in style declarations only |
 | Paint-time theme reads | `GetTheme*` calls in `src/ui/*.c` paint paths | renderer consumes resolved frames only |
 | Inline literals in app code | examples and maintained `.kry` apps | move into `.kss` or scoped `Style` |
