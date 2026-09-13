@@ -433,7 +433,7 @@ if [ -n "$public_widget_kind_matches" ]; then
 fi
 
 public_widget_data_matches="$(
-    rg -n '\bWidgetData\b|\bstruct WidgetNode\s*\{' \
+    rg -n '\bWidgetData\b|\bWidgetNode\b|\bstruct TreeNode\s*\{' \
         include \
         docs/PUBLIC_API_SNAPSHOT.txt \
         docs/API.md \
@@ -442,7 +442,7 @@ public_widget_data_matches="$(
 )"
 
 if [ -n "$public_widget_data_matches" ]; then
-    echo "Retained WidgetNode payloads are internal; public code uses opaque nodes and clean inspection helpers:"
+    echo "Retained tree payloads are internal; public code uses opaque TreeNode handles and clean inspection helpers:"
     echo "$public_widget_data_matches"
     exit 1
 fi

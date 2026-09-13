@@ -1688,13 +1688,13 @@ generated/runtime code and are not public widget names.
 #### Node Measurement
 
 ```c
-int GetNodeId(const WidgetNode *node);
-int GetNodeKind(const WidgetNode *node);
+int GetNodeId(const TreeNode *node);
+int GetNodeKind(const TreeNode *node);
 const char *GetNodeKindName(int kind);
-Rectangle GetNodeBounds(const WidgetNode *node);
-int GetNodeParent(const WidgetNode *node);
-int GetNodeFirstChild(const WidgetNode *node);
-int GetNodeNextSibling(const WidgetNode *node);
+Rectangle GetNodeBounds(const TreeNode *node);
+int GetNodeParent(const TreeNode *node);
+int GetNodeFirstChild(const TreeNode *node);
+int GetNodeNextSibling(const TreeNode *node);
 int GetNodeHeightById(int id);
 ```
 

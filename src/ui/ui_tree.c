@@ -49,13 +49,13 @@ typedef struct TextFieldState {
     int dragging;
 } TextFieldState;
 
-static WidgetNode *ui_tree_nodes = NULL;
+static TreeNode *ui_tree_nodes = NULL;
 static int ui_tree_node_count = 0;
 static int ui_tree_node_capacity = 0;
-static WidgetNode *ui_committed_nodes = NULL;
+static TreeNode *ui_committed_nodes = NULL;
 static int ui_committed_node_count = 0;
 static int ui_committed_node_capacity = 0;
-static WidgetNode *ui_reconcile_old_nodes = NULL;
+static TreeNode *ui_reconcile_old_nodes = NULL;
 static int ui_reconcile_old_node_capacity = 0;
 static int *ui_reconcile_slots = NULL;
 static int ui_reconcile_slot_capacity = 0;
@@ -107,10 +107,10 @@ static void (*kry_platform_accessibility_snapshot)(
 #endif
 
 typedef struct WidgetOps {
-    int (*measure_height)(WidgetNode node);
+    int (*measure_height)(TreeNode node);
 } WidgetOps;
 
-static WidgetNode *ui_tree_node(NodeId id);
+static TreeNode *ui_tree_node(NodeId id);
 static void ui_tree_note_build_activation(int activated);
 static void DrawTree(void);
 /* Apply semantic metadata when the retained text is actually painted. */
@@ -159,7 +159,7 @@ ui_tree_capture_input(void)
 }
 
 static UIPopupInputToken
-ui_tree_input_snapshot(const WidgetNode *node)
+ui_tree_input_snapshot(const TreeNode *node)
 {
     UIPopupInputToken *captures = ui_committed_node_count > 0 ?
         ui_committed_input_captures : ui_tree_input_captures;
@@ -168,7 +168,7 @@ ui_tree_input_snapshot(const WidgetNode *node)
 }
 
 static int
-ui_tree_input_blocked(const WidgetNode *node, Vector2 point)
+ui_tree_input_blocked(const TreeNode *node, Vector2 point)
 {
     return ui_input_captures_snapshot(point,ui_tree_input_snapshot(node));
 }
@@ -297,7 +297,7 @@ ui_event_push(Event event)
 }
 
 static void
-ui_text_field_event(WidgetNode *node, EventKind kind, double timestamp)
+ui_text_field_event(TreeNode *node, EventKind kind, double timestamp)
 {
     Event event;
     TextFieldState *state = node != NULL ? node->state : NULL;
@@ -321,9 +321,9 @@ ui_text_field_event(WidgetNode *node, EventKind kind, double timestamp)
 }
 
 static int
-ui_tree_reserve(WidgetNode **nodes, int *capacity, int needed)
+ui_tree_reserve(TreeNode **nodes, int *capacity, int needed)
 {
-    WidgetNode *grown;
+    TreeNode *grown;
     int next;
 
     if(needed <= *capacity)
@@ -379,11 +379,11 @@ ui_reconcile_hash(KeyID parent, KeyID key, int kind)
 }
 
 static int
-ui_reconcile_same_identity(const WidgetNode *old_nodes, int old_index,
-                           const WidgetNode *new_nodes, int new_index)
+ui_reconcile_same_identity(const TreeNode *old_nodes, int old_index,
+                           const TreeNode *new_nodes, int new_index)
 {
-    const WidgetNode *old_node = &old_nodes[old_index];
-    const WidgetNode *new_node = &new_nodes[new_index];
+    const TreeNode *old_node = &old_nodes[old_index];
+    const TreeNode *new_node = &new_nodes[new_index];
     KeyID old_parent = old_node->parent >= 0
         ? old_nodes[old_node->parent].key : 0;
     KeyID new_parent = new_node->parent >= 0
@@ -395,7 +395,7 @@ ui_reconcile_same_identity(const WidgetNode *old_nodes, int old_index,
 }
 
 static size_t
-ui_tree_owned_text_size(const WidgetNode *node)
+ui_tree_owned_text_size(const TreeNode *node)
 {
     if(node->owned_text == NULL) return 0;
     size_t offset = 0;
@@ -413,7 +413,7 @@ ui_tree_button_like_kind(int kind)
 }
 
 static int
-ui_tree_interactive_button_like(const WidgetNode *node)
+ui_tree_interactive_button_like(const TreeNode *node)
 {
     if(node == NULL || !ui_tree_button_like_kind(node->kind))
         return 0;
@@ -424,8 +424,8 @@ ui_tree_interactive_button_like(const WidgetNode *node)
 }
 
 static int
-ui_reconcile_node_changed(const WidgetNode *old_node,
-                          const WidgetNode *new_node)
+ui_reconcile_node_changed(const TreeNode *old_node,
+                          const TreeNode *new_node)
 {
     WidgetData old_data;
     WidgetData new_data;
@@ -469,7 +469,7 @@ ui_reconcile_node_changed(const WidgetNode *old_node,
 
 /* Resolve grid cells before handling immediate input and again during layout. */
 static void
-ui_layout_grid_children(WidgetNode *nodes, WidgetNode *parent)
+ui_layout_grid_children(TreeNode *nodes, TreeNode *parent)
 {
     NodeId child;
     GridProps props = {0};
@@ -485,7 +485,7 @@ ui_layout_grid_children(WidgetNode *nodes, WidgetNode *parent)
 
     for(child = parent->first_child; child >= 0;
         child = nodes[child].next_sibling) {
-        WidgetNode *node = &nodes[child];
+        TreeNode *node = &nodes[child];
         int height;
 
         if(node->declared_bounds.x != 0 || node->declared_bounds.y != 0)
@@ -502,8 +502,8 @@ ui_layout_grid_children(WidgetNode *nodes, WidgetNode *parent)
 static NodeId
 ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
 {
-    WidgetNode *node;
-    WidgetNode *parent;
+    TreeNode *node;
+    TreeNode *parent;
     NodeId parent_id;
     int index;
 
@@ -559,7 +559,7 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
                                                      parent->data.layout.padding);
             float cursor;
             for(NodeId sibling = parent->first_child; sibling >= 0 && sibling != index; sibling = ui_tree_nodes[sibling].next_sibling) {
-                WidgetNode *previous = &ui_tree_nodes[sibling];
+                TreeNode *previous = &ui_tree_nodes[sibling];
                 if(previous->declared_bounds.x != 0 || previous->declared_bounds.y != 0) continue;
                 previous_extent_sum += horizontal
                     ? previous->bounds.width : previous->bounds.height;
@@ -576,7 +576,7 @@ ui_tree_add(int id, int kind, Rectangle bounds, const void *props)
     return index;
 }
 
-static WidgetNode *
+static TreeNode *
 ui_tree_node(NodeId id)
 {
     if(id < 0 || id >= ui_tree_node_count)
@@ -584,10 +584,10 @@ ui_tree_node(NodeId id)
     return &ui_tree_nodes[id];
 }
 
-static WidgetNode
+static TreeNode
 ui_node(int id, int kind, Rectangle bounds)
 {
-    WidgetNode node;
+    TreeNode node;
 
     memset(&node, 0, sizeof(node));
     node.id = id;
@@ -601,9 +601,9 @@ ui_node(int id, int kind, Rectangle bounds)
 }
 
 static void
-ui_tree_store_node(NodeId id, WidgetNode src)
+ui_tree_store_node(NodeId id, TreeNode src)
 {
-    WidgetNode *dst;
+    TreeNode *dst;
 
     dst = ui_tree_node(id);
     if(dst == NULL)
@@ -623,7 +623,7 @@ ui_tree_store_node(NodeId id, WidgetNode src)
 static void
 ui_tree_mark_painted_immediate(NodeId id)
 {
-    WidgetNode *node;
+    TreeNode *node;
 
     if(!ui_tree_building)
         return;
@@ -650,8 +650,8 @@ ui_tree_mark_build_activation(NodeId node, int activated)
 static int
 ui_tree_node_uses_retained_layout(NodeId id)
 {
-    WidgetNode *node = ui_tree_node(id);
-    WidgetNode *parent;
+    TreeNode *node = ui_tree_node(id);
+    TreeNode *parent;
 
     if(node == NULL || node->parent < 0)
         return 0;
@@ -667,13 +667,13 @@ ui_tree_node_uses_retained_layout(NodeId id)
 }
 
 static int
-ui_measure_bounds_height(WidgetNode node)
+ui_measure_bounds_height(TreeNode node)
 {
     return (int)ceilf(node.bounds.height);
 }
 
 static int
-ui_measure_paragraph(WidgetNode node)
+ui_measure_paragraph(TreeNode node)
 {
     if(node.props != NULL)
         return ui_paragraph_height(*(const ParagraphSpec *)node.props);
@@ -681,7 +681,7 @@ ui_measure_paragraph(WidgetNode node)
 }
 
 static int
-ui_measure_navigation_bar(WidgetNode node)
+ui_measure_navigation_bar(TreeNode node)
 {
     if(node.bounds.height > 0)
         return (int)ceilf(node.bounds.height);
@@ -689,7 +689,7 @@ ui_measure_navigation_bar(WidgetNode node)
 }
 
 static int
-ui_measure_tab_bar(WidgetNode node)
+ui_measure_tab_bar(TreeNode node)
 {
     if(node.bounds.height > 0)
         return (int)ceilf(node.bounds.height);
@@ -697,7 +697,7 @@ ui_measure_tab_bar(WidgetNode node)
 }
 
 static int
-ui_measure_title_bar(WidgetNode node)
+ui_measure_title_bar(TreeNode node)
 {
     if(node.bounds.height > 0)
         return (int)ceilf(node.bounds.height);
@@ -736,7 +736,7 @@ static const WidgetOps ui_widget_ops[] = {
 };
 
 static void
-ui_tree_store_text_input_paint(WidgetNode *node, TextInputPaint paint)
+ui_tree_store_text_input_paint(TreeNode *node, TextInputPaint paint)
 {
     if(sizeof(paint) > sizeof(node->data.internal.words))
         abort();
@@ -744,7 +744,7 @@ ui_tree_store_text_input_paint(WidgetNode *node, TextInputPaint paint)
 }
 
 static TextInputPaint
-ui_tree_load_text_input_paint(const WidgetNode *node)
+ui_tree_load_text_input_paint(const TreeNode *node)
 {
     TextInputPaint paint;
 
@@ -909,7 +909,7 @@ SetSelection(KeyID key, int anchor, int cursor)
     int i;
 
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         TextFieldState *state;
         int length;
 
@@ -947,7 +947,7 @@ ReconcileTree(void)
 {
     int *slots;
     int *matched_old;
-    WidgetNode *old_nodes;
+    TreeNode *old_nodes;
     int old_count = ui_committed_node_count;
     int slot_count = 1;
     int tree_changed;
@@ -989,7 +989,7 @@ ReconcileTree(void)
     for(i = 0; i < slot_count; i++)
         slots[i] = -1;
     for(i = 0; i < old_count; i++) {
-        WidgetNode *node = &old_nodes[i];
+        TreeNode *node = &old_nodes[i];
         KeyID parent = node->parent >= 0
             ? old_nodes[node->parent].key : 0;
         unsigned slot = (unsigned)(ui_reconcile_hash(parent, node->key,
@@ -1002,7 +1002,7 @@ ReconcileTree(void)
     }
     ui_tree_generation++;
     for(i = 0; i < ui_tree_node_count; i++) {
-        WidgetNode next = ui_tree_nodes[i];
+        TreeNode next = ui_tree_nodes[i];
         KeyID parent = next.parent >= 0 ? ui_tree_nodes[next.parent].key : 0;
         unsigned slot = (unsigned)(ui_reconcile_hash(parent, next.key,
                                                       next.kind) &
@@ -1045,7 +1045,7 @@ ReconcileTree(void)
             free(old_nodes[i].state);
     }
     for(i = 0; i < ui_tree_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
 
         if((node->kind == WIDGET_TEXT_FIELD ||
             node->kind == WIDGET_TEXT_AREA) &&
@@ -1096,13 +1096,13 @@ LayoutTree(void)
     if((ui_tree_invalid & INVALIDATE_LAYOUT) == 0)
         return;
     for(i = ui_committed_node_count - 1; i >= 0; i--) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
 
         if(node->bounds.height <= 0)
             node->bounds.height = (float)GetNodeHeight(*node);
     }
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *parent = &ui_committed_nodes[i];
+        TreeNode *parent = &ui_committed_nodes[i];
         int child;
         float cursor;
         float content_x;
@@ -1149,7 +1149,7 @@ LayoutTree(void)
         if(ui_tree_button_like_kind(parent->kind)) {
             for(child = parent->first_child; child >= 0;
                 child = ui_committed_nodes[child].next_sibling) {
-                WidgetNode *node = &ui_committed_nodes[child];
+                TreeNode *node = &ui_committed_nodes[child];
 
                 Rectangle content = {content_x, content_y, content_w, content_h};
                 node->bounds = CenterChild(node->declared_bounds, node->bounds, content);
@@ -1158,7 +1158,7 @@ LayoutTree(void)
         }
         for(child = parent->first_child; child >= 0;
             child = ui_committed_nodes[child].next_sibling) {
-            WidgetNode *node = &ui_committed_nodes[child];
+            TreeNode *node = &ui_committed_nodes[child];
 
             if(node->declared_bounds.x != 0 || node->declared_bounds.y != 0) continue;
             if(parent->kind == WIDGET_COLUMN) {
@@ -1206,7 +1206,7 @@ RouteInput(void)
      * before routing input so Tab follows declaration order for fields and
      * buttons exactly as it does in the immediate UI API. */
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         int focus_id = 0;
 
         if((node->flags & UI_NODE_SCOPE_DISABLED) != 0) continue;
@@ -1227,7 +1227,7 @@ RouteInput(void)
     hit = HitTestNode(mouse);
     pressed = IsMouseButtonDown(MOUSE_BUTTON_LEFT);
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         unsigned before;
 
         if(!ui_tree_interactive_button_like(node))
@@ -1258,7 +1258,7 @@ RouteInput(void)
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         Event event;
 
         int build_activated = (node->flags & UI_NODE_BUILD_ACTIVATED) != 0;
@@ -1279,7 +1279,7 @@ RouteInput(void)
         ui_tree_invalid |= INVALIDATE_PAINT;
     }
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         TextFieldProps field_storage;
         TextFieldProps *field;
         TextFieldState *state;
@@ -1595,7 +1595,7 @@ RouteInput(void)
 void
 UpdateTree(void)
 {
-    WidgetNode *root;
+    TreeNode *root;
 
     if(ui_committed_node_count <= 0)
         return;
@@ -1657,7 +1657,7 @@ ui_tree_inherit_foreground(int parent, Color foreground, bool disabled)
 {
     for(int child = ui_committed_nodes[parent].first_child; child >= 0;
         child = ui_committed_nodes[child].next_sibling) {
-        WidgetNode *node = &ui_committed_nodes[child];
+        TreeNode *node = &ui_committed_nodes[child];
         /* Nested buttons establish their own style when they are painted. */
         if(ui_tree_button_like_kind(node->kind))
             continue;
@@ -1685,7 +1685,7 @@ DrawTree(void)
     /* Requests made while painting belong to the next animation frame. */
     ui_tree_invalid &= ~INVALIDATE_PAINT;
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         ClipState parent_clip = {0};
         UIBlendState parent_blend = {{0}};
 
@@ -2013,7 +2013,7 @@ Overlays(void)
     RenderFrameOverlays();
 }
 
-const WidgetNode *
+const TreeNode *
 GetTreeNodes(int *count)
 {
     if(count != NULL)
@@ -2022,7 +2022,7 @@ GetTreeNodes(int *count)
     return ui_committed_node_count > 0 ? ui_committed_nodes : ui_tree_nodes;
 }
 
-const WidgetNode *
+const TreeNode *
 GetNode(NodeId id)
 {
     if(ui_committed_node_count > 0) {
@@ -2034,13 +2034,13 @@ GetNode(NodeId id)
 }
 
 int
-GetNodeId(const WidgetNode *node)
+GetNodeId(const TreeNode *node)
 {
     return node != NULL ? node->id : 0;
 }
 
 int
-GetNodeKind(const WidgetNode *node)
+GetNodeKind(const TreeNode *node)
 {
     return node != NULL ? node->kind : -1;
 }
@@ -2086,25 +2086,25 @@ GetNodeKindName(int kind)
 }
 
 Rectangle
-GetNodeBounds(const WidgetNode *node)
+GetNodeBounds(const TreeNode *node)
 {
     return node != NULL ? node->bounds : (Rectangle){0};
 }
 
 int
-GetNodeParent(const WidgetNode *node)
+GetNodeParent(const TreeNode *node)
 {
     return node != NULL ? node->parent : -1;
 }
 
 int
-GetNodeFirstChild(const WidgetNode *node)
+GetNodeFirstChild(const TreeNode *node)
 {
     return node != NULL ? node->first_child : -1;
 }
 
 int
-GetNodeNextSibling(const WidgetNode *node)
+GetNodeNextSibling(const TreeNode *node)
 {
     return node != NULL ? node->next_sibling : -1;
 }
@@ -2113,7 +2113,7 @@ NodeId
 HitTestNode(Vector2 point)
 {
     int i;
-    WidgetNode *nodes = ui_committed_node_count > 0
+    TreeNode *nodes = ui_committed_node_count > 0
         ? ui_committed_nodes : ui_tree_nodes;
     int count = ui_committed_node_count > 0
         ? ui_committed_node_count : ui_tree_node_count;
@@ -2158,7 +2158,7 @@ ui_accessibility_role(int kind)
 }
 
 static const char *
-ui_tree_first_text(const WidgetNode *nodes, int count, int parent)
+ui_tree_first_text(const TreeNode *nodes, int count, int parent)
 {
     int child;
 
@@ -2186,7 +2186,7 @@ GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity)
     int i;
 
     for(i = 0; i < ui_committed_node_count; i++) {
-        WidgetNode *node = &ui_committed_nodes[i];
+        TreeNode *node = &ui_committed_nodes[i];
         const char *role = ui_accessibility_role(node->kind);
         const char *label = node->owned_text;
 
@@ -2233,7 +2233,7 @@ SetAccessibilitySink(AccessibilitySink sink, void *userdata)
 }
 
 int
-GetNodeHeight(WidgetNode node)
+GetNodeHeight(TreeNode node)
 {
     const WidgetOps *ops;
 
@@ -2258,10 +2258,10 @@ GetNodeHeightById(int id)
     return 0;
 }
 
-WidgetNode
+TreeNode
 NodeParagraph(ParagraphSpec paragraph, int x, int y)
 {
-    WidgetNode node;
+    TreeNode node;
 
     node = ui_node(0, WIDGET_PARAGRAPH,
                    (Rectangle){x, y, paragraph.width, 0});
@@ -2269,10 +2269,10 @@ NodeParagraph(ParagraphSpec paragraph, int x, int y)
     return node;
 }
 
-WidgetNode
+TreeNode
 NodeNavigationBar(NavigationBarProps nav)
 {
-    WidgetNode node;
+    TreeNode node;
     int height;
 
     height = nav.height > 0 ? nav.height : 0;
@@ -2281,13 +2281,13 @@ NodeNavigationBar(NavigationBarProps nav)
     return node;
 }
 
-WidgetNode
+TreeNode
 NodeTabBar(TabBarProps bar)
 {
     return ui_node(0, WIDGET_TAB_BAR, bar.bounds);
 }
 
-WidgetNode
+TreeNode
 NodeTitleBar(int height)
 {
     return ui_node(0, WIDGET_TITLE_BAR,
@@ -2385,7 +2385,7 @@ Text(TextProps props)
 
     if(ui_tree_building) {
         for(int i = ui_tree_stack_depth - 1; i >= 0; i--) {
-            WidgetNode *parent = ui_tree_node(ui_tree_stack[i]);
+            TreeNode *parent = ui_tree_node(ui_tree_stack[i]);
 
             if(parent != NULL && ui_tree_button_like_kind(parent->kind)) {
                 ButtonSpec *button = &parent->data.button;
@@ -2494,7 +2494,7 @@ ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int l
 void
 Paragraph(ParagraphSpec paragraph, int x, int *y)
 {
-    WidgetNode node;
+    TreeNode node;
     NodeId id;
     int start_y = y != NULL ? *y : 0;
 
@@ -2813,7 +2813,7 @@ ui_tree_drag_scalar(DragScalarProps drag)
     NodeId id = ui_tree_add(drag.id, WIDGET_DRAG, drag.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
-        WidgetNode *node = &ui_tree_nodes[id];
+        TreeNode *node = &ui_tree_nodes[id];
         drag.bounds = node->bounds;
         node->data.drag.props = (DragProps){.bounds = drag.bounds,
             .id = drag.id, .label = NULL, .kind = NumericFloat,
@@ -2836,7 +2836,7 @@ ui_tree_drag_whole(DragWholeProps drag)
     NodeId id = ui_tree_add(drag.id, WIDGET_DRAG, drag.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
-        WidgetNode *node = &ui_tree_nodes[id];
+        TreeNode *node = &ui_tree_nodes[id];
         drag.bounds = node->bounds;
         node->data.drag.props = (DragProps){.bounds = drag.bounds,
             .id = drag.id, .label = NULL, .kind = NumericInt,
@@ -2858,7 +2858,7 @@ ui_tree_drag_range_begin(Rectangle bounds, int id)
 {
     NodeId row = Row((RowProps){.bounds = bounds});
     if(row >= 0) {
-        WidgetNode *node = &ui_tree_nodes[row];
+        TreeNode *node = &ui_tree_nodes[row];
         node->id = id;
         node->key = (KeyID)(unsigned)id;
         bounds = node->bounds;
@@ -2972,7 +2972,7 @@ ui_tree_scalar_slider(SliderScalarProps slider, int vertical)
     if(id >= 0) {
         /* Caller-owned values can change without an input event. */
         InvalidateTree(INVALIDATE_PAINT);
-        WidgetNode *node = &ui_tree_nodes[id];
+        TreeNode *node = &ui_tree_nodes[id];
         slider.bounds = node->bounds;
         node->data.slider.props = (SliderProps){.bounds = slider.bounds,
             .id = slider.id, .label = NULL, .kind = NumericFloat,
@@ -2996,7 +2996,7 @@ ui_tree_whole_slider(SliderWholeProps slider, int vertical)
                             slider.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
-        WidgetNode *node = &ui_tree_nodes[id];
+        TreeNode *node = &ui_tree_nodes[id];
         slider.bounds = node->bounds;
         node->data.slider.props = (SliderProps){.bounds = slider.bounds,
             .id = slider.id, .label = NULL, .kind = NumericInt,
@@ -3044,7 +3044,7 @@ ui_tree_slider_angle(SliderAngleProps slider)
                             slider.bounds, NULL);
     if(id >= 0) {
         InvalidateTree(INVALIDATE_PAINT);
-        WidgetNode *node = &ui_tree_nodes[id];
+        TreeNode *node = &ui_tree_nodes[id];
         slider.bounds = node->bounds;
         node->data.slider.props = (SliderProps){.bounds = slider.bounds,
             .id = slider.id, .label = NULL, .kind = NumericFloat,

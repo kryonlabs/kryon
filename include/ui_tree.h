@@ -47,7 +47,7 @@ typedef enum Invalidation {
     INVALIDATE_TREE = 1 << 2
 } Invalidation;
 
-typedef struct WidgetNode WidgetNode;
+typedef struct TreeNode TreeNode;
 
 typedef void (*AccessibilitySink)(const AccessibilityNode *nodes,
                                     int count, void *userdata);
@@ -66,16 +66,16 @@ void LayoutTree(void);
 void RouteInput(void);
 void UpdateTree(void);
 void Overlays(void);
-const WidgetNode *GetTreeNodes(int *count);
-int GetNodeId(const WidgetNode *node);
-int GetNodeKind(const WidgetNode *node);
+const TreeNode *GetTreeNodes(int *count);
+int GetNodeId(const TreeNode *node);
+int GetNodeKind(const TreeNode *node);
 const char *GetNodeKindName(int kind);
-Rectangle GetNodeBounds(const WidgetNode *node);
-int GetNodeParent(const WidgetNode *node);
-int GetNodeFirstChild(const WidgetNode *node);
-int GetNodeNextSibling(const WidgetNode *node);
+Rectangle GetNodeBounds(const TreeNode *node);
+int GetNodeParent(const TreeNode *node);
+int GetNodeFirstChild(const TreeNode *node);
+int GetNodeNextSibling(const TreeNode *node);
 int GetNodeHeightById(int id);
-const WidgetNode *GetNode(NodeId id);
+const TreeNode *GetNode(NodeId id);
 NodeId HitTestNode(Vector2 point);
 int GetAccessibilitySnapshot(AccessibilityNode *nodes, int capacity);
 void SetAccessibilitySink(AccessibilitySink sink, void *userdata);

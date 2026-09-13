@@ -547,12 +547,12 @@ void EndCanvas(Canvas canvas);
 /* Retained submissions borrow this destination until EndTree. The caller
  * separately captures immediate drawing and owns the texture lifetime. */
 RenderTexture2D ui_tree_set_paint_target(RenderTexture2D target);
-int GetNodeHeight(WidgetNode node);
+int GetNodeHeight(TreeNode node);
 void ui_tree_heading(const char *text, Rectangle bounds, int font, Color color, int level);
-WidgetNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
-WidgetNode NodeNavigationBar(NavigationBarProps nav);
-WidgetNode NodeTabBar(TabBarProps bar);
-WidgetNode NodeTitleBar(int height);
+TreeNode NodeParagraph(ParagraphSpec paragraph, int x, int y);
+TreeNode NodeNavigationBar(NavigationBarProps nav);
+TreeNode NodeTabBar(TabBarProps bar);
+TreeNode NodeTitleBar(int height);
 void ui_tree_submit_text_input(Rectangle bounds, const char *text,
                                TextInputPaint paint, int id);
 void ui_paint_text_input(Rectangle bounds, const char *text,

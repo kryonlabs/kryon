@@ -67,7 +67,7 @@ typedef union WidgetData {
     } checkbox;
 } WidgetData;
 
-struct WidgetNode {
+struct TreeNode {
     int id;
     KeyID key;
     int kind;

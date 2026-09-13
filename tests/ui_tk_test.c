@@ -2846,7 +2846,7 @@ test_composed_popup_children_scope(void)
     Button((ButtonProps){.bounds={120,10,80,24},.label="After",.id=27003});
     EndTree();
     int count = 0, action = 0, field = 0, after = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) {
         if(nodes[i].id == 27001) {
             action++;
@@ -2891,7 +2891,7 @@ test_composed_popup_scope(void)
     Button((ButtonProps){.bounds={160,30,70,28},.label="After",.id=29002});
     EndTree();
     int count = 0, child = 0, after = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) {
         if(nodes[i].id == 29001) {
             child++;
@@ -2939,7 +2939,7 @@ test_composed_tooltip_scope(void)
     EndPopup();
     EndTree();
     int count = 0, child = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) if(nodes[i].id == 29301) child++;
     check_int("ordinary child retained in tooltip",child,1);
     EndInterfaceFrame();
@@ -2972,7 +2972,7 @@ test_composed_modal_scope(void)
     Button((ButtonProps){.bounds={190,145,45,30},.label="Behind",.id=29402});
     EndTree();
     int count = 0, child = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++) if(nodes[i].id == 29401) child++;
     check_int("ordinary child retained in modal",child,1);
     check_int("outside declaration leaves modal open",open,1);
@@ -3009,7 +3009,7 @@ test_composed_context_popup_scope(void)
     EndTree();
     check_int("context popup updates caller open state",open,1);
     int count = 0, child = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     for(int i = 0; i < count; i++)
         if(nodes[i].id == 29501) child++;
     check_int("ordinary child retained in context popup",child,1);
@@ -3571,7 +3571,7 @@ test_card_props_retained_input(void)
     Event event;
     int clicks;
     int count;
-    const WidgetNode *nodes;
+    const TreeNode *nodes;
     NodeId card;
 
     InjectReset();
@@ -3642,7 +3642,7 @@ test_retained_popup_input_ownership(void)
     ui_popup_input_end(outer);
     Button((ButtonProps){.bounds={50,50,40,24},.id=25203,.label="After"});
     EndTree();
-    const WidgetNode *node = GetNode(HitTestNode((Vector2){60,60}));
+    const TreeNode *node = GetNode(HitTestNode((Vector2){60,60}));
     check_int("retained child beats later parent and background",node ? node->id : -1,25201);
     NodeId child_hit = HitTestNode((Vector2){60,60});
     BeginTree(Key("replacement-popup-tree"));
@@ -3794,7 +3794,7 @@ test_popup_layout_restoration(void)
     End();
     EndTree();
     int count = 0;
-    const WidgetNode *nodes = GetTreeNodes(&count);
+    const TreeNode *nodes = GetTreeNodes(&count);
     check_int("isolated popup tree count",count,6);
     if(count != 6) return;
     check_int("popup attached to screen root",nodes[popup].parent,0);
@@ -3934,7 +3934,7 @@ test_retained_scope_clip(void)
     Button((ButtonProps){.bounds = {0,0,100,30},.label = "Clipped",.id = 1005});
     End(); EndScroll(); EndTree();
     NodeId inside = HitTestNode((Vector2){20,20});
-    const WidgetNode *node = GetNode(inside);
+    const TreeNode *node = GetNode(inside);
     check_int("retained cell hit",node != NULL ? node->id : -1,1005);
     check_int("retained clip captured",node->has_input_clip,1);
     check_int("retained clip width",(int)node->input_clip.width,50);
@@ -4498,7 +4498,7 @@ main(void)
         EndTree();
         EndInterfaceFrame();
         int count = 0, paints = 0, next = 0;
-        const WidgetNode *nodes = GetTreeNodes(&count);
+        const TreeNode *nodes = GetTreeNodes(&count);
         for(int i = 0; i < count; i++) {
             if(strcmp(GetNodeKindName(nodes[i].kind),"Custom") == 0 &&
                nodes[i].parent >= 0 &&

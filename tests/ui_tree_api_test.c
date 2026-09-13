@@ -91,8 +91,8 @@ main(void)
     ScreenScaffold scaffold;
     NavigationBarProps nav = {0};
     TabBarProps tabs = {0};
-    const WidgetNode *nodes;
-    const WidgetNode *node;
+    const TreeNode *nodes;
+    const TreeNode *node;
     NodeId group;
     NodeId nested;
     NodeId page;
@@ -123,10 +123,10 @@ main(void)
     EndTree();
     nodes = GetTreeNodes(&count);
     {
-        const WidgetNode *short_button = NULL;
-        const WidgetNode *child_button = NULL;
-        const WidgetNode *short_text = NULL;
-        const WidgetNode *child_text = NULL;
+        const TreeNode *short_button = NULL;
+        const TreeNode *child_button = NULL;
+        const TreeNode *short_text = NULL;
+        const TreeNode *child_text = NULL;
 
         for(int i = 0; i < count; i++) {
             if(strcmp(GetNodeKindName(nodes[i].kind), "Button") == 0 &&
@@ -242,7 +242,7 @@ main(void)
     check_int("dynamic last id", nodes[5000].id, 5999);
 
     /* Reconciliation retains node-owned state by parent/key/type. */
-    ((WidgetNode *)&nodes[2500])->state = (void *)0x1234;
+    ((TreeNode *)&nodes[2500])->state = (void *)0x1234;
     BeginTree(19);
     for(int i = 0; i < 5000; i++) {
         Stack((ColumnProps){.bounds = {0, 0, 2, 2},
@@ -259,8 +259,8 @@ main(void)
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
     EndTree();
     nodes = GetTreeNodes(&count);
-    ((WidgetNode *)&nodes[1])->state = (void *)0x1111;
-    ((WidgetNode *)&nodes[2])->state = (void *)0x2222;
+    ((TreeNode *)&nodes[1])->state = (void *)0x1111;
+    ((TreeNode *)&nodes[2])->state = (void *)0x2222;
     BeginTree(23);
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 2}); End();
     Stack((ColumnProps){.bounds = {0, 0, 10, 10}, .key = 1}); End();

@@ -746,7 +746,7 @@ int main(void)
     }
     UnloadImage(sliders);
     int node_count = 0;
-    const WidgetNode *nodes = GetTreeNodes(&node_count);
+    const TreeNode *nodes = GetTreeNodes(&node_count);
     for(int i = 0; i < node_count; i++) {
         if(nodes[i].id == 912 &&
            (nodes[i].bounds.x != 30 || nodes[i].bounds.y != 10 ||

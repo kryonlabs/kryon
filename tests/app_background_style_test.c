@@ -32,7 +32,7 @@ void __wrap_EndScissorMode(void);
 int
 main(void)
 {
-    const WidgetNode *nodes;
+    const TreeNode *nodes;
     int count;
 
     ClearStylePacks();
