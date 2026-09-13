@@ -707,14 +707,38 @@ const runtime = await import(pathToFileURL(process.argv[3]).href);
 const rt = runtime.createRuntime({});
 module.NativeAliasBlocks_NativeAliasBlocks(rt, module.createState(), {});
 const frame = runtime.webDocumentFrame(rt);
-assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/story").tag, "article");
+const story = runtime.webNodeQuery(rt, "NativeAliasBlocks/story");
+const caption = runtime.webNodeQuery(rt, "NativeAliasBlocks/chart/caption");
+const nativeSheet = runtime.parseWebStyleSheet(`
+  Article.feature { display: grid; color: #102030; }
+  Figure:has(> Figcaption) { margin-block: 12; }
+  Table > TableHead > TableRow { grid-area: labels; }
+`);
+assert.equal(story.tag, "article");
+assert.equal(story.sourceLine, 3);
+assert.equal(story.sourceColumn, 5);
+assert.equal(story.sourceEndLine, 6);
+assert.equal(story.sourceEndColumn, 2);
+assert.equal(runtime.webNodeQuery(rt, "Article.feature").path, "NativeAliasBlocks/story");
 assert.equal(runtime.webNodeQuery(rt, ".feature").path, "NativeAliasBlocks/story");
+assert.equal(runtime.webNodeQuery(rt, "[sourceRef=\"src/native_alias_blocks.kry:3\"]").path,
+  "NativeAliasBlocks/story");
+assert.equal(runtime.webNodeQuery(rt, "Figure:has(> Figcaption)").path, "NativeAliasBlocks/chart");
 assert.equal(runtime.webNodeChildren(rt, "NativeAliasBlocks/story")[0].text, "Story");
+assert.equal(runtime.resolveWebStyle(story, nativeSheet).display, "grid");
+assert.equal(runtime.traceWebStyle(story, nativeSheet).winners.color.selector,
+  "[data-kry-kind=\"Article\"].feature");
+assert.equal(runtime.resolveWebStyle(runtime.webNodeQuery(rt, "NativeAliasBlocks/chart"),
+  nativeSheet)["margin-block"], 12);
+assert.equal(runtime.resolveWebStyle(runtime.webNodeQuery(rt, "NativeAliasBlocks/grid/head/labels"),
+  nativeSheet)["grid-area"], "labels");
 assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/chart/caption").captionOwner.path,
   "NativeAliasBlocks/chart");
 assert.equal(runtime.webNodeRelations(rt, "NativeAliasBlocks/grid/caption").captionOwner.path,
   "NativeAliasBlocks/grid");
 assert.equal(runtime.webNodeQuery(rt, "NativeAliasBlocks/grid/head/labels").tag, "tr");
+assert.equal(caption.sourceLine, 8);
+assert.equal(caption.sourceEndLine, 10);
 assert.ok(frame.nodes.every((node) => node.sourcePath === "src/native_alias_blocks.kry"));
 EOF
 
