@@ -40,6 +40,18 @@ SpinboxRowMetrics :: struct {
     control_height_inset: i32
 }
 
+FormRectResult :: struct {
+    bounds: Rectangle
+    next_cursor_y: i32
+}
+
+SpinboxRowLayout :: struct {
+    label_bounds: Rectangle
+    spinbox_bounds: Rectangle
+    control_width: i32
+    label_width: i32
+}
+
 RowsMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if scale <= 0.0 { scale = 1.0 }
@@ -153,4 +165,58 @@ SpinboxRowMetricsFor :: (row_height: i32, control_width: i32,
     metrics.control_height_inset = RowsMetric(control.value.fields,
         (u32)StylePaddingY, control.value.padding_y, 14.0, scale, true)
     return metrics
+}
+
+FormAdvanceY :: (cursor_y: i32, height: i32, gap: i32) -> i32 #export {
+    next_y: i32 = cursor_y
+    if height > 0 { next_y += height }
+    if gap > 0 { next_y += gap }
+    return next_y
+}
+
+FormRectFor :: (x: i32, cursor_y: i32, width: i32, height: i32,
+    gap: i32) -> FormRectResult #export {
+    result: FormRectResult
+    rect_h: i32 = height
+    if rect_h < 0 { rect_h = 0 }
+    result.bounds.x = (float)x
+    result.bounds.y = (float)cursor_y
+    result.bounds.width = (float)width
+    result.bounds.height = (float)rect_h
+    result.next_cursor_y = FormAdvanceY(cursor_y, height, gap)
+    return result
+}
+
+SpinboxRowLayoutFor :: (x: i32, y: i32, width: i32, label_width: i32,
+    requested_bounds: Rectangle, metrics: SpinboxRowMetrics) -> SpinboxRowLayout #export {
+    layout: SpinboxRowLayout
+    height: i32 = metrics.row_height
+    control_w: i32 = metrics.control_width
+    if control_w > width { control_w = width }
+    if control_w < 0 { control_w = 0 }
+
+    label_w: i32 = label_width
+    if label_w <= 0 {
+        label_w = width - control_w - metrics.label_gap
+    }
+    if label_w < 0 { label_w = 0 }
+
+    spinbox_w: i32 = (i32)requested_bounds.width
+    spinbox_h: i32 = (i32)requested_bounds.height
+    if spinbox_w <= 0 { spinbox_w = control_w }
+    if spinbox_h <= 0 { spinbox_h = height - metrics.control_height_inset }
+    if spinbox_w < 0 { spinbox_w = 0 }
+    if spinbox_h < 0 { spinbox_h = 0 }
+
+    layout.label_bounds.x = (float)x
+    layout.label_bounds.y = (float)y
+    layout.label_bounds.width = (float)label_w
+    layout.label_bounds.height = (float)height
+    layout.spinbox_bounds.x = (float)(x + width - spinbox_w)
+    layout.spinbox_bounds.y = (float)(y + (height - spinbox_h) / 2)
+    layout.spinbox_bounds.width = (float)spinbox_w
+    layout.spinbox_bounds.height = (float)spinbox_h
+    layout.control_width = control_w
+    layout.label_width = label_w
+    return layout
 }

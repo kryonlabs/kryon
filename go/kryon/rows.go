@@ -41,6 +41,18 @@ type SpinboxRowMetrics struct {
 	ControlHeightInset int32
 }
 
+type FormRectResult struct {
+	Bounds      Rectangle
+	NextCursorY int32
+}
+
+type SpinboxRowLayout struct {
+	LabelBounds   Rectangle
+	SpinboxBounds Rectangle
+	ControlWidth  int32
+	LabelWidth    int32
+}
+
 func Rows_RowsMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) int32 {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
@@ -377,4 +389,177 @@ func Rows_SpinboxRowMetricsFor(row_height int32, control_width int32, scale floa
 	metrics.ControlHeightInset = value_33
 	var value_34 SpinboxRowMetrics = metrics
 	return value_34
+}
+
+func Rows_FormAdvanceY(cursor_y int32, height int32, gap int32) int32 {
+	var value_0 int32 = cursor_y
+	var next_y int32 = value_0
+	var value_1 int32 = height
+	var value_2 int32 = 0
+	var value_3 bool = value_1 > value_2
+	if value_3 {
+		var value_4 int32 = next_y
+		var value_5 int32 = height
+		next_y = int32(number_runtime_bits(uint64(value_4), uint64(value_5), 32, true, 1))
+	}
+	var value_6 int32 = gap
+	var value_7 int32 = 0
+	var value_8 bool = value_6 > value_7
+	if value_8 {
+		var value_9 int32 = next_y
+		var value_10 int32 = gap
+		next_y = int32(number_runtime_bits(uint64(value_9), uint64(value_10), 32, true, 1))
+	}
+	var value_11 int32 = next_y
+	return value_11
+}
+
+func Rows_FormRectFor(x int32, cursor_y int32, width int32, height int32, gap int32) FormRectResult {
+	var result FormRectResult = FormRectResult{}
+	var value_0 int32 = height
+	var rect_h int32 = value_0
+	var value_1 int32 = rect_h
+	var value_2 int32 = 0
+	var value_3 bool = value_1 < value_2
+	if value_3 {
+		var value_4 int32 = 0
+		rect_h = value_4
+	}
+	var value_5 int32 = x
+	var value_6 float32 = float32(value_5)
+	result.Bounds.X = value_6
+	var value_7 int32 = cursor_y
+	var value_8 float32 = float32(value_7)
+	result.Bounds.Y = value_8
+	var value_9 int32 = width
+	var value_10 float32 = float32(value_9)
+	result.Bounds.Width = value_10
+	var value_11 int32 = rect_h
+	var value_12 float32 = float32(value_11)
+	result.Bounds.Height = value_12
+	var value_13 int32 = cursor_y
+	var value_14 int32 = height
+	var value_15 int32 = gap
+	var value_16 int32 = Rows_FormAdvanceY(value_13, value_14, value_15)
+	result.NextCursorY = value_16
+	var value_17 FormRectResult = result
+	return value_17
+}
+
+func Rows_SpinboxRowLayoutFor(x int32, y int32, width int32, label_width int32, requested_bounds Rectangle, metrics SpinboxRowMetrics) SpinboxRowLayout {
+	var layout SpinboxRowLayout = SpinboxRowLayout{}
+	var value_0 int32 = metrics.RowHeight
+	var height int32 = value_0
+	var value_1 int32 = metrics.ControlWidth
+	var control_w int32 = value_1
+	var value_2 int32 = control_w
+	var value_3 int32 = width
+	var value_4 bool = value_2 > value_3
+	if value_4 {
+		var value_5 int32 = width
+		control_w = value_5
+	}
+	var value_6 int32 = control_w
+	var value_7 int32 = 0
+	var value_8 bool = value_6 < value_7
+	if value_8 {
+		var value_9 int32 = 0
+		control_w = value_9
+	}
+	var value_10 int32 = label_width
+	var label_w int32 = value_10
+	var value_11 int32 = label_w
+	var value_12 int32 = 0
+	var value_13 bool = value_11 <= value_12
+	if value_13 {
+		var value_14 int32 = width
+		var value_15 int32 = control_w
+		var value_16 int32 = int32(number_runtime_bits(uint64(value_14), uint64(value_15), 32, true, 2))
+		var value_17 int32 = metrics.LabelGap
+		var value_18 int32 = int32(number_runtime_bits(uint64(value_16), uint64(value_17), 32, true, 2))
+		label_w = value_18
+	}
+	var value_19 int32 = label_w
+	var value_20 int32 = 0
+	var value_21 bool = value_19 < value_20
+	if value_21 {
+		var value_22 int32 = 0
+		label_w = value_22
+	}
+	var value_23 float32 = requested_bounds.Width
+	var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
+	var spinbox_w int32 = value_24
+	var value_25 float32 = requested_bounds.Height
+	var value_26 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_25), 32, true)), uint64(0), 32, true, 0))
+	var spinbox_h int32 = value_26
+	var value_27 int32 = spinbox_w
+	var value_28 int32 = 0
+	var value_29 bool = value_27 <= value_28
+	if value_29 {
+		var value_30 int32 = control_w
+		spinbox_w = value_30
+	}
+	var value_31 int32 = spinbox_h
+	var value_32 int32 = 0
+	var value_33 bool = value_31 <= value_32
+	if value_33 {
+		var value_34 int32 = height
+		var value_35 int32 = metrics.ControlHeightInset
+		var value_36 int32 = int32(number_runtime_bits(uint64(value_34), uint64(value_35), 32, true, 2))
+		spinbox_h = value_36
+	}
+	var value_37 int32 = spinbox_w
+	var value_38 int32 = 0
+	var value_39 bool = value_37 < value_38
+	if value_39 {
+		var value_40 int32 = 0
+		spinbox_w = value_40
+	}
+	var value_41 int32 = spinbox_h
+	var value_42 int32 = 0
+	var value_43 bool = value_41 < value_42
+	if value_43 {
+		var value_44 int32 = 0
+		spinbox_h = value_44
+	}
+	var value_45 int32 = x
+	var value_46 float32 = float32(value_45)
+	layout.LabelBounds.X = value_46
+	var value_47 int32 = y
+	var value_48 float32 = float32(value_47)
+	layout.LabelBounds.Y = value_48
+	var value_49 int32 = label_w
+	var value_50 float32 = float32(value_49)
+	layout.LabelBounds.Width = value_50
+	var value_51 int32 = height
+	var value_52 float32 = float32(value_51)
+	layout.LabelBounds.Height = value_52
+	var value_53 int32 = x
+	var value_54 int32 = width
+	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 1))
+	var value_56 int32 = spinbox_w
+	var value_57 int32 = int32(number_runtime_bits(uint64(value_55), uint64(value_56), 32, true, 2))
+	var value_58 float32 = float32(value_57)
+	layout.SpinboxBounds.X = value_58
+	var value_59 int32 = y
+	var value_60 int32 = height
+	var value_61 int32 = spinbox_h
+	var value_62 int32 = int32(number_runtime_bits(uint64(value_60), uint64(value_61), 32, true, 2))
+	var value_63 int32 = 2
+	var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 4))
+	var value_65 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_64), 32, true, 1))
+	var value_66 float32 = float32(value_65)
+	layout.SpinboxBounds.Y = value_66
+	var value_67 int32 = spinbox_w
+	var value_68 float32 = float32(value_67)
+	layout.SpinboxBounds.Width = value_68
+	var value_69 int32 = spinbox_h
+	var value_70 float32 = float32(value_69)
+	layout.SpinboxBounds.Height = value_70
+	var value_71 int32 = control_w
+	layout.ControlWidth = value_71
+	var value_72 int32 = label_w
+	layout.LabelWidth = value_72
+	var value_73 SpinboxRowLayout = layout
+	return value_73
 }

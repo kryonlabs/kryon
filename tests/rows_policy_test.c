@@ -14,6 +14,9 @@ main(void)
     CheckboxRowMetrics checkbox;
     ButtonRowMetrics buttons;
     SpinboxRowMetrics spinbox;
+    FormRectResult form_rect;
+    SpinboxRowLayout spinbox_layout;
+    Rectangle requested;
 
     info = InfoRowsMetricsFor(0, 0, 1.0f, row);
     assert(info.row_height == 32);
@@ -123,6 +126,46 @@ main(void)
     assert(spinbox.control_width == 180);
     assert(spinbox.label_gap == 10);
     assert(spinbox.control_height_inset == 6);
+
+    assert(FormAdvanceY(40, 0, 8) == 48);
+    assert(FormAdvanceY(40, -10, 8) == 48);
+    assert(FormAdvanceY(40, 30, 8) == 78);
+    assert(FormAdvanceY(40, 30, -8) == 70);
+
+    form_rect = FormRectFor(12, 40, 180, 30, 8);
+    assert((int)form_rect.bounds.x == 12);
+    assert((int)form_rect.bounds.y == 40);
+    assert((int)form_rect.bounds.width == 180);
+    assert((int)form_rect.bounds.height == 30);
+    assert(form_rect.next_cursor_y == 78);
+    form_rect = FormRectFor(12, 40, 180, -30, 8);
+    assert((int)form_rect.bounds.height == 0);
+    assert(form_rect.next_cursor_y == 48);
+
+    spinbox = (SpinboxRowMetrics){.row_height = 54, .control_width = 156,
+                                  .label_gap = 12,
+                                  .control_height_inset = 14};
+    requested = (Rectangle){0};
+    spinbox_layout = SpinboxRowLayoutFor(10, 20, 240, 0, requested, spinbox);
+    assert((int)spinbox_layout.label_bounds.x == 10);
+    assert((int)spinbox_layout.label_bounds.y == 20);
+    assert((int)spinbox_layout.label_bounds.width == 72);
+    assert((int)spinbox_layout.label_bounds.height == 54);
+    assert((int)spinbox_layout.spinbox_bounds.x == 94);
+    assert((int)spinbox_layout.spinbox_bounds.y == 27);
+    assert((int)spinbox_layout.spinbox_bounds.width == 156);
+    assert((int)spinbox_layout.spinbox_bounds.height == 40);
+    assert(spinbox_layout.control_width == 156);
+    assert(spinbox_layout.label_width == 72);
+
+    requested = (Rectangle){0, 0, 80, 20};
+    spinbox_layout = SpinboxRowLayoutFor(10, 20, 120, 30, requested, spinbox);
+    assert((int)spinbox_layout.label_bounds.width == 30);
+    assert((int)spinbox_layout.spinbox_bounds.x == 50);
+    assert((int)spinbox_layout.spinbox_bounds.y == 37);
+    assert((int)spinbox_layout.spinbox_bounds.width == 80);
+    assert((int)spinbox_layout.spinbox_bounds.height == 20);
+    assert(spinbox_layout.control_width == 120);
 
     return 0;
 }

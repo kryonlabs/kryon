@@ -279,25 +279,22 @@ FormAdvance(Form *form, int height)
     if(form == NULL)
         return 0;
     y = form->cursor_y;
-    if(height > 0)
-        form->cursor_y += height;
-    if(form->gap > 0)
-        form->cursor_y += form->gap;
+    form->cursor_y = FormAdvanceY(form->cursor_y, height, form->gap);
     return y;
 }
 
 Rectangle
 FormTakeRect(Form *form, int height)
 {
-    Rectangle bounds = {0};
+    FormRectResult result;
 
     if(form == NULL)
-        return bounds;
-    bounds = (Rectangle){(float)form->x, (float)form->cursor_y,
-                         (float)form->width, (float)(height > 0 ? height : 0)};
-    form->last_bounds = bounds;
-    FormAdvance(form, height);
-    return bounds;
+        return (Rectangle){0};
+    result = FormRectFor(form->x, form->cursor_y, form->width, height,
+                         form->gap);
+    form->last_bounds = result.bounds;
+    form->cursor_y = result.next_cursor_y;
+    return result.bounds;
 }
 
 void
@@ -383,10 +380,9 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     int y;
     int height;
     int label_font;
-    int control_w;
-    int label_w;
     Color label_color;
     SpinboxProps spinbox;
+    SpinboxRowLayout layout;
 
     if(form == NULL)
         return 0;
@@ -396,14 +392,8 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     FormTakeRect(form, height);
 
     label_font = row.label_font > 0 ? row.label_font : GetFontSize();
-    control_w = metrics.control_width;
-    if(control_w > form->width)
-        control_w = form->width;
-    label_w = row.label_width > 0
-                  ? row.label_width
-                  : form->width - control_w - metrics.label_gap;
-    if(label_w < 0)
-        label_w = 0;
+    layout = SpinboxRowLayoutFor(form->x, y, form->width, row.label_width,
+                                 row.spinbox.bounds, metrics);
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
@@ -411,16 +401,10 @@ FormSpinbox(Form *form, SpinboxRowProps row)
                                          : text_style.foreground;
 
     DrawLeftControlTextInRect(row.label != NULL ? row.label : "",
-                                (Rectangle){(float)form->x, (float)y,
-                                            (float)label_w, (float)height},
+                                layout.label_bounds,
                                 label_font, label_color);
     spinbox = row.spinbox;
-    if(spinbox.bounds.width <= 0)
-        spinbox.bounds.width = (float)control_w;
-    if(spinbox.bounds.height <= 0)
-        spinbox.bounds.height = (float)(height - metrics.control_height_inset);
-    spinbox.bounds.x = (float)(form->x + form->width - (int)spinbox.bounds.width);
-    spinbox.bounds.y = (float)(y + (height - (int)spinbox.bounds.height) / 2);
+    spinbox.bounds = layout.spinbox_bounds;
     return Spinbox(spinbox);
 }
 
