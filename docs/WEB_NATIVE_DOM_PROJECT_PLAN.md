@@ -243,6 +243,8 @@ the browser receives normal elements, attributes, CSS, and events.
   origin, clip, composite, and mode longhands for browser paint effects.
 - KSS web multicolumn styling supports `columns`, column count/width/fill/span,
   column-rule shorthand and color/style/width longhands, and break controls.
+- KSS web fragmentation styling supports native `orphans`, `widows`, and
+  `box-decoration-break` for paged, multicolumn, and wrapped inline content.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS web list styling supports native list-style, counters, quotes, and

@@ -2207,7 +2207,8 @@ const webKssLiteralProperties = new Set([
   "hyphens", "line-clamp", "list-style", "list-style-type",
   "list-style-position", "list-style-image", "counter-reset",
   "counter-increment", "counter-set", "quotes", "marker-side",
-  "marker-start", "marker-end",
+  "marker-start", "marker-end", "orphans", "widows",
+  "box-decoration-break",
   "border-collapse", "table-layout", "caption-side", "empty-cells",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "overscroll-behavior-inline",
@@ -3065,6 +3066,9 @@ const webCSSPropertyNames = new Map([
   ["marker-side", "marker-side"],
   ["marker-start", "marker-start"],
   ["marker-end", "marker-end"],
+  ["orphans", "orphans"],
+  ["widows", "widows"],
+  ["box-decoration-break", "box-decoration-break"],
   ["border-collapse", "border-collapse"],
   ["border-spacing", "border-spacing"],
   ["table-layout", "table-layout"],
@@ -3286,6 +3290,7 @@ function webStyleCSSValue(name, value) {
       name !== "grid-row-end" && name !== "gridRowEnd" &&
       name !== "line-clamp" && name !== "lineClamp" &&
       name !== "webkitLineClamp" &&
+      name !== "orphans" && name !== "widows" &&
       name !== "animation-iteration-count" && name !== "animationIterationCount" &&
       name !== "shape-image-threshold" && name !== "shapeImageThreshold" &&
       name !== "scale"
@@ -4516,6 +4521,10 @@ function applyResolvedWebStyle(el, style) {
   set("markerSide", style["marker-side"]);
   set("markerStart", style["marker-start"]);
   set("markerEnd", style["marker-end"]);
+  set("orphans", style.orphans);
+  set("widows", style.widows);
+  set("boxDecorationBreak", style["box-decoration-break"]);
+  set("webkitBoxDecorationBreak", style["box-decoration-break"]);
   set("borderCollapse", style["border-collapse"]);
   set("borderSpacing", style["border-spacing"]);
   set("tableLayout", style["table-layout"]);
