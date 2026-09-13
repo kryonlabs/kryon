@@ -45,6 +45,8 @@ the browser receives normal elements, attributes, CSS, and events.
   navigation/overlay roles.
 - Table header `TableCell` nodes infer native `<th>` tags from row/column
   scope metadata and surface row/column header roles in accessibility facts.
+- Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
+  through DOM attributes, KSS selector facts, and mounted DOM snapshots.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
