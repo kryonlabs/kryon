@@ -60,6 +60,11 @@ main(void)
     assert(metrics.marker_width == 12);
     assert(metrics.text_gap == 3);
 
+    item.value.offset_y = 44.0f;
+    metrics = TreeViewMetricsFor(1.0f, panel, item);
+    assert(metrics.default_row_height == 44);
+    item.value.offset_y = 0.0f;
+
     panel.value.padding_x = 0.0f;
     item.value.gap = 0.0f;
     metrics = TreeViewMetricsFor(1.0f, panel, item);

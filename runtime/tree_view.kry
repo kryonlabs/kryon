@@ -40,16 +40,13 @@ TreeViewMetricsFor :: (scale: float, panel: StyleFrame,
     item: StyleFrame) -> TreeViewMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TreeViewMetrics
+    row_height: float = 28.0
     if TreeViewHas(item.value.fields, (u32)StyleFontSize) &&
        TreeViewHas(item.value.fields, (u32)StylePaddingY) {
-        metrics.default_row_height = (i32)((item.value.font_size +
-            item.value.padding_y * 2.0) * scale)
-    } else {
-        metrics.default_row_height = (i32)(28.0 * scale)
+        row_height = item.value.font_size + item.value.padding_y * 2.0
     }
-    if metrics.default_row_height <= 0 {
-        metrics.default_row_height = (i32)(28.0 * scale)
-    }
+    metrics.default_row_height = TreeViewMetric(item.value.fields,
+        (u32)StyleContentOffset, item.value.offset_y, row_height, scale, false)
     metrics.indent_x = TreeViewMetric(panel.value.fields,
         (u32)StylePaddingX, panel.value.padding_x, 8.0, scale, true)
     metrics.depth_indent = TreeViewMetric(item.value.fields,

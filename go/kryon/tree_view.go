@@ -79,83 +79,75 @@ func TreeView_TreeViewMetricsFor(scale float32, panel StyleFrame, item StyleFram
 		scale = value_3
 	}
 	var metrics TreeViewMetrics = TreeViewMetrics{}
-	var value_4 uint32 = item.Value.Fields
-	var value_5 int32 = int32(StyleFontSize)
-	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-	var value_7 bool = TreeView_TreeViewHas(value_4, value_6)
-	var value_8 bool = value_7
-	if value_8 {
-		var value_9 uint32 = item.Value.Fields
-		var value_10 int32 = int32(StylePaddingY)
-		var value_11 uint32 = uint32(number_runtime_bits(uint64(value_10), uint64(0), 32, false, 0))
-		var value_12 bool = TreeView_TreeViewHas(value_9, value_11)
-		value_8 = value_12
+	var value_4 float32 = 28.0
+	var row_height float32 = value_4
+	var value_5 uint32 = item.Value.Fields
+	var value_6 int32 = int32(StyleFontSize)
+	var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
+	var value_8 bool = TreeView_TreeViewHas(value_5, value_7)
+	var value_9 bool = value_8
+	if value_9 {
+		var value_10 uint32 = item.Value.Fields
+		var value_11 int32 = int32(StylePaddingY)
+		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
+		var value_13 bool = TreeView_TreeViewHas(value_10, value_12)
+		value_9 = value_13
 	}
-	if value_8 {
-		var value_13 float32 = item.Value.FontSize
-		var value_14 float32 = item.Value.PaddingY
-		var value_15 float32 = 2.0
-		var value_16 float32 = value_14 * value_15
-		var value_17 float32 = value_13 + value_16
-		var value_18 float32 = scale
-		var value_19 float32 = value_17 * value_18
-		var value_20 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_19), 32, true)), uint64(0), 32, true, 0))
-		metrics.DefaultRowHeight = value_20
-	} else {
-		var value_21 float32 = 28.0
-		var value_22 float32 = scale
-		var value_23 float32 = value_21 * value_22
-		var value_24 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_23), 32, true)), uint64(0), 32, true, 0))
-		metrics.DefaultRowHeight = value_24
+	if value_9 {
+		var value_14 float32 = item.Value.FontSize
+		var value_15 float32 = item.Value.PaddingY
+		var value_16 float32 = 2.0
+		var value_17 float32 = value_15 * value_16
+		var value_18 float32 = value_14 + value_17
+		row_height = value_18
 	}
-	var value_25 int32 = metrics.DefaultRowHeight
-	var value_26 int32 = 0
-	var value_27 bool = value_25 <= value_26
-	if value_27 {
-		var value_28 float32 = 28.0
-		var value_29 float32 = scale
-		var value_30 float32 = value_28 * value_29
-		var value_31 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_30), 32, true)), uint64(0), 32, true, 0))
-		metrics.DefaultRowHeight = value_31
-	}
-	var value_32 uint32 = panel.Value.Fields
-	var value_33 int32 = int32(StylePaddingX)
-	var value_34 uint32 = uint32(number_runtime_bits(uint64(value_33), uint64(0), 32, false, 0))
-	var value_35 float32 = panel.Value.PaddingX
-	var value_36 float32 = 8.0
-	var value_37 float32 = scale
-	var value_38 bool = true
-	var value_39 int32 = TreeView_TreeViewMetric(value_32, value_34, value_35, value_36, value_37, value_38)
-	metrics.IndentX = value_39
-	var value_40 uint32 = item.Value.Fields
-	var value_41 int32 = int32(StyleContentOffset)
-	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_41), uint64(0), 32, false, 0))
-	var value_43 float32 = item.Value.OffsetX
-	var value_44 float32 = 18.0
-	var value_45 float32 = scale
-	var value_46 bool = false
-	var value_47 int32 = TreeView_TreeViewMetric(value_40, value_42, value_43, value_44, value_45, value_46)
-	metrics.DepthIndent = value_47
-	var value_48 uint32 = item.Value.Fields
-	var value_49 int32 = int32(StyleIconSize)
-	var value_50 uint32 = uint32(number_runtime_bits(uint64(value_49), uint64(0), 32, false, 0))
-	var value_51 float32 = item.Value.IconSize
-	var value_52 float32 = 16.0
-	var value_53 float32 = scale
-	var value_54 bool = false
-	var value_55 int32 = TreeView_TreeViewMetric(value_48, value_50, value_51, value_52, value_53, value_54)
-	metrics.MarkerWidth = value_55
-	var value_56 uint32 = item.Value.Fields
-	var value_57 int32 = int32(StyleGap)
-	var value_58 uint32 = uint32(number_runtime_bits(uint64(value_57), uint64(0), 32, false, 0))
-	var value_59 float32 = item.Value.Gap
-	var value_60 float32 = 2.0
-	var value_61 float32 = scale
-	var value_62 bool = true
-	var value_63 int32 = TreeView_TreeViewMetric(value_56, value_58, value_59, value_60, value_61, value_62)
-	metrics.TextGap = value_63
-	var value_64 TreeViewMetrics = metrics
-	return value_64
+	var value_19 uint32 = item.Value.Fields
+	var value_20 int32 = int32(StyleContentOffset)
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 float32 = item.Value.OffsetY
+	var value_23 float32 = row_height
+	var value_24 float32 = scale
+	var value_25 bool = false
+	var value_26 int32 = TreeView_TreeViewMetric(value_19, value_21, value_22, value_23, value_24, value_25)
+	metrics.DefaultRowHeight = value_26
+	var value_27 uint32 = panel.Value.Fields
+	var value_28 int32 = int32(StylePaddingX)
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
+	var value_30 float32 = panel.Value.PaddingX
+	var value_31 float32 = 8.0
+	var value_32 float32 = scale
+	var value_33 bool = true
+	var value_34 int32 = TreeView_TreeViewMetric(value_27, value_29, value_30, value_31, value_32, value_33)
+	metrics.IndentX = value_34
+	var value_35 uint32 = item.Value.Fields
+	var value_36 int32 = int32(StyleContentOffset)
+	var value_37 uint32 = uint32(number_runtime_bits(uint64(value_36), uint64(0), 32, false, 0))
+	var value_38 float32 = item.Value.OffsetX
+	var value_39 float32 = 18.0
+	var value_40 float32 = scale
+	var value_41 bool = false
+	var value_42 int32 = TreeView_TreeViewMetric(value_35, value_37, value_38, value_39, value_40, value_41)
+	metrics.DepthIndent = value_42
+	var value_43 uint32 = item.Value.Fields
+	var value_44 int32 = int32(StyleIconSize)
+	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
+	var value_46 float32 = item.Value.IconSize
+	var value_47 float32 = 16.0
+	var value_48 float32 = scale
+	var value_49 bool = false
+	var value_50 int32 = TreeView_TreeViewMetric(value_43, value_45, value_46, value_47, value_48, value_49)
+	metrics.MarkerWidth = value_50
+	var value_51 uint32 = item.Value.Fields
+	var value_52 int32 = int32(StyleGap)
+	var value_53 uint32 = uint32(number_runtime_bits(uint64(value_52), uint64(0), 32, false, 0))
+	var value_54 float32 = item.Value.Gap
+	var value_55 float32 = 2.0
+	var value_56 float32 = scale
+	var value_57 bool = true
+	var value_58 int32 = TreeView_TreeViewMetric(value_51, value_53, value_54, value_55, value_56, value_57)
+	metrics.TextGap = value_58
+	var value_59 TreeViewMetrics = metrics
+	return value_59
 }
 
 func TreeView_TreeViewRowHeight(requested_row_height int32, scale float32, metrics TreeViewMetrics) int32 {

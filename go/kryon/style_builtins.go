@@ -598,6 +598,7 @@ TreeViewItem {
   gap: 2;
   icon-size: 16;
   offset-x: 18;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -2565,6 +2566,7 @@ TreeViewItem {
   gap: 2;
   icon-size: 16;
   offset-x: 18;
+  offset-y: 28;
   font-size: font;
   opacity: 1;
   material: default;
@@ -4502,6 +4504,7 @@ TreeViewItem {
   gap: 2;
   icon-size: 16;
   offset-x: 18;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: default;
@@ -6507,6 +6510,7 @@ TreeViewItem {
   gap: 2;
   icon-size: 16;
   offset-x: 18;
+  offset-y: 28;
   font-size: font.sm;
   opacity: 1;
   material: glow;
@@ -8559,6 +8563,7 @@ TreeViewItem {
   gap: 2;
   icon-size: 16;
   offset-x: 18;
+  offset-y: 28;
   font-size: font;
   opacity: 1;
   material: premium;
