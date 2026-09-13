@@ -3553,8 +3553,8 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         return 0;
 
     row = *table.selected_row >= 0
-        ? (*table.selected_row < table.row_count ? *table.selected_row : table.row_count-1)
-        : 0;
+        ? TableViewSelectedRowFor(*table.selected_row, table.row_count)
+        : TableViewSelectedRowFor(-1, table.row_count);
     column = ui_table_display_column(table,0);
     if(table.selected_column != NULL) {
         for(int slot = 0; slot < visible_columns; slot++) {
@@ -3568,35 +3568,31 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
     }
 
     if(IsKeyPressed(KEY_UP)) {
-        if(row > 0) row--;
+        row = TableViewSelectionMoveRow(row, table.row_count, -1);
         selection_changed = changed = 1;
     }
     if(IsKeyPressed(KEY_DOWN)) {
-        if(row < table.row_count-1) row++;
+        row = TableViewSelectionMoveRow(row, table.row_count, 1);
         selection_changed = changed = 1;
     }
     if(IsKeyPressed(KEY_LEFT)) {
-        if(column_slot > 0) column_slot--;
+        column_slot = TableViewSelectionMoveColumn(column_slot, visible_columns,
+                                                   -1);
         column = ui_table_display_column(table,column_slot);
         selection_changed = changed = 1;
     }
     if(IsKeyPressed(KEY_RIGHT)) {
-        if(column_slot < visible_columns-1) column_slot++;
+        column_slot = TableViewSelectionMoveColumn(column_slot, visible_columns,
+                                                   1);
         column = ui_table_display_column(table,column_slot);
         selection_changed = changed = 1;
     }
     if(IsKeyPressed(KEY_TAB)) {
-        if(IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT)) {
-            if(column_slot > 0) column_slot--;
-            else {
-                column_slot = visible_columns-1;
-                if(row > 0) row--;
-            }
-        } else if(column_slot < visible_columns-1) column_slot++;
-        else {
-            column_slot = 0;
-            if(row < table.row_count-1) row++;
-        }
+        TableViewSelection selection = TableViewSelectionTab(
+            row, column_slot, table.row_count, visible_columns,
+            IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
+        row = selection.row;
+        column_slot = selection.column_slot;
         column = ui_table_display_column(table,column_slot);
         ui_consume_focus_tab();
         selection_changed = changed = 1;
@@ -3639,15 +3635,9 @@ ui_table_handle_keys(TableViewProps table, int row_h, int header_h,
         if(table.selected_column != NULL) *table.selected_column = column;
         if(row >= frozen_rows && table.scroll_offset != NULL) {
             int view_h = (int)table.bounds.height-header_h-frozen_rows*row_h;
-            int top = (row-frozen_rows)*row_h;
-            int bottom = top+row_h;
-            if(view_h > 0) {
-                if(top < *table.scroll_offset) *table.scroll_offset = top;
-                else if(bottom > *table.scroll_offset+view_h)
-                    *table.scroll_offset = bottom-view_h;
-                if(*table.scroll_offset < 0) *table.scroll_offset = 0;
-                if(*table.scroll_offset > max_scroll) *table.scroll_offset = max_scroll;
-            }
+            *table.scroll_offset = TableViewSelectionScrollOffset(
+                row, frozen_rows, row_h, view_h, *table.scroll_offset,
+                max_scroll);
         }
     }
     return changed;

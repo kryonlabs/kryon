@@ -27,6 +27,11 @@ TableViewScrollLayout :: struct {
     visible_rows: i32
 }
 
+TableViewSelection :: struct {
+    row: i32
+    column_slot: i32
+}
+
 TableViewMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> i32 {
     if (fields & field) == (u32)0 || value < 0.0 ||
@@ -231,4 +236,84 @@ TableViewMinimumColumnWidth :: (requested_min_width: i32, scale: float,
         if width > 0 { return width }
     }
     return metrics.default_min_column_width
+}
+
+TableViewSelectedRowFor :: (selected_row: i32, row_count: i32) -> i32 #export {
+    if row_count <= 0 { return -1 }
+    if selected_row < 0 { return 0 }
+    if selected_row >= row_count { return row_count - 1 }
+    return selected_row
+}
+
+TableViewSelectionMoveRow :: (row: i32, row_count: i32,
+    direction: i32) -> i32 #export {
+    if row_count <= 0 { return -1 }
+    row = TableViewSelectedRowFor(row, row_count)
+    if direction < 0 && row > 0 { row -= 1 }
+    if direction > 0 && row < row_count - 1 { row += 1 }
+    return row
+}
+
+TableViewColumnSlotFor :: (slot: i32, visible_columns: i32) -> i32 #export {
+    if visible_columns <= 0 { return -1 }
+    if slot < 0 { return 0 }
+    if slot >= visible_columns { return visible_columns - 1 }
+    return slot
+}
+
+TableViewSelectionMoveColumn :: (slot: i32, visible_columns: i32,
+    direction: i32) -> i32 #export {
+    if visible_columns <= 0 { return -1 }
+    slot = TableViewColumnSlotFor(slot, visible_columns)
+    if direction < 0 && slot > 0 { slot -= 1 }
+    if direction > 0 && slot < visible_columns - 1 { slot += 1 }
+    return slot
+}
+
+TableViewSelectionTab :: (row: i32, column_slot: i32, row_count: i32,
+    visible_columns: i32, backwards: bool) -> TableViewSelection #export {
+    selection: TableViewSelection
+    selection.row = TableViewSelectedRowFor(row, row_count)
+    selection.column_slot = TableViewColumnSlotFor(column_slot, visible_columns)
+    if selection.row < 0 || selection.column_slot < 0 {
+        return selection
+    }
+    if backwards {
+        if selection.column_slot > 0 {
+            selection.column_slot -= 1
+        } else {
+            selection.column_slot = visible_columns - 1
+            if selection.row > 0 { selection.row -= 1 }
+        }
+    } else {
+        if selection.column_slot < visible_columns - 1 {
+            selection.column_slot += 1
+        } else {
+            selection.column_slot = 0
+            if selection.row < row_count - 1 { selection.row += 1 }
+        }
+    }
+    return selection
+}
+
+TableViewSelectionScrollOffset :: (row: i32, frozen_rows: i32,
+    row_height: i32, view_height: i32, scroll_offset: i32,
+    max_scroll: i32) -> i32 #export {
+    if scroll_offset < 0 { scroll_offset = 0 }
+    if max_scroll < 0 { max_scroll = 0 }
+    if row < frozen_rows || view_height <= 0 {
+        if scroll_offset > max_scroll { return max_scroll }
+        return scroll_offset
+    }
+    if row_height <= 0 { row_height = 1 }
+    top: i32 = (row - frozen_rows) * row_height
+    bottom: i32 = top + row_height
+    if top < scroll_offset {
+        scroll_offset = top
+    } else if bottom > scroll_offset + view_height {
+        scroll_offset = bottom - view_height
+    }
+    if scroll_offset < 0 { scroll_offset = 0 }
+    if scroll_offset > max_scroll { scroll_offset = max_scroll }
+    return scroll_offset
 }

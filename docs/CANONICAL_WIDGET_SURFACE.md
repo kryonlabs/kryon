@@ -140,7 +140,7 @@ surface review:
 | `runtime/modal_props.kry` | Modal props and action props | `.kry canonical` |
 | `runtime/tree_view.kry` | TreeView row/window and paint geometry policy | `.kry canonical` |
 | `runtime/tree_view_props.kry` | TreeView props | `.kry canonical` |
-| `runtime/table_view.kry` | TableView layout, scroll, scrollbar, and cell geometry policy | `.kry canonical` |
+| `runtime/table_view.kry` | TableView layout, scroll, scrollbar, cell geometry, and keyboard selection policy | `.kry canonical` |
 | `runtime/table_view_props.kry` | TableView row and props | `.kry canonical` |
 
 ## Current Implementation Audit
@@ -156,7 +156,7 @@ text measurement, painting, storage, or platform services.
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options | helper button variants belong in `ButtonProps` or composition; invisible hit testing is host support |
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` component/step-button layout and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox`, `TextField`/`TextArea` metrics/paint geometry/buffer-limit/navigation/edit intent/selection state policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
 | Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; reorder pointer ownership and gesture lifecycle remain host support |
-| Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry policy | drag/drop payload storage |
+| Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
 | Game2D | `Camera2D`, `Sprite2D`, `AnimatedSprite2D`, `TileMap`, `CollisionShape2D`, `Area2D`, `Body2D`, `AnimationPlayer`, `AudioSource`, and `Light2D` public props/enums | Scene ownership, lifecycle, physics/audio handles, rendering, and `Scene`/`Node2D` runtime behavior remain native Game2D support. |
@@ -202,7 +202,7 @@ has a single place to land.
 | `Collapsible` | `UI/Layout` | Section | `runtime/collapsible.kry` | Partly `.kry-backed` | Header metrics, geometry, marker text, and typography defaults are `.kry`/KSS-owned; host keeps input, focus, tree navigation, and drawing. |
 | `ListBox` | `UI/Collections` | List | `runtime/list_box.kry` | `.kry-backed` | Layout/navigation and row paint geometry policy is `.kry`; host keeps input/scroll sampling. |
 | `TreeView` | `UI/Collections` | Tree | `runtime/tree_view.kry` | Partly `.kry-backed` | Row, indent, scroll-window, text bounds, and paint geometry policy are `.kry`; item typography defaults are KSS-owned; host keeps input, selection mutation, expansion state, and drawing. |
-| `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry policy is `.kry`; host keeps column ordering, input, selection mutation, resizing, clipboard, and drawing. |
+| `TableView` | `UI/Collections` | Table | `runtime/table_view.kry` | Partly `.kry-backed` | Header/body/frozen-row/scroll/scrollbar/cell geometry and keyboard selection policy are `.kry`; host keeps column ordering, input sampling, stored selection pointers, resizing, clipboard, and drawing. |
 | `TextArea` | `UI/Collections` | Text area | `runtime/text_input.kry` | Partly `.kry-backed` | Metrics, page-navigation rows, paint geometry, buffer-limit, navigation, edit intent, and selection range/movement/collapse/select-all policy are `.kry`; buffer mutation, IME, selection ownership, and paint still native. |
 | `CanvasGrid` | `UI/Collections` | Grid | `runtime/canvas_grid.kry` | `.kry-backed` | Grid spacing and line geometry are `.kry`; host draws. |
 | `Menu` | `UI/Navigation` | Menu | `runtime/menu.kry`, `runtime/menu_props.kry` | `.kry canonical` | Command menu surface; item/group/result data and bar, popup, and context behavior props are generated from `.kry`. |
@@ -400,7 +400,7 @@ host roles rather than retained nodes.
 | `Collapsible` | `.kry canonical` | Collapsible section. |
 | `ListBox` | `.kry canonical` | List selection/navigation. |
 | `TreeView` | `.kry canonical` | Tree rows/window and paint geometry policy in `.kry`; host keeps state/input. |
-| `TableView` | `.kry canonical` | Table layout, scroll, scrollbar, and cell geometry policy in `.kry`; host keeps state/input. |
+| `TableView` | `.kry canonical` | Table layout, scroll, scrollbar, cell geometry, and keyboard selection policy in `.kry`; host keeps state/input. |
 | `ColorPicker` | `.kry canonical` | Color channel layout/conversion. |
 | `CanvasGrid` | `.kry canonical` | Canvas grid line policy. |
 
@@ -562,7 +562,7 @@ No web runtime widget entries are accepted as public compatibility names.
 |---|---|---|
 | `ListBox` | `.kry canonical` | Layout/navigation and row paint geometry policy is in `.kry`; item typography is KSS-owned. Multi-selection uses `selected`, `selected_count`, and `anchor` props. KSS styles multi-select mode with `ListBoxMulti` and `ListBoxMultiItem`, not a separate `MultiSelectList` widget. Host handles input sampling, scroll scope, and drawing. |
 | `TreeView` | `.kry canonical` | Row/window and paint geometry policy is in `.kry`; item typography defaults are KSS-owned; host handles input, selection mutation, expansion state, and drawing. |
-| `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/scrollbar/cell geometry is in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input, selection mutation, resizing, clipboard, and drawing. |
+| `TableView` | `.kry canonical` | Header/body/frozen-row/scroll/scrollbar/cell geometry and keyboard selection policy are in `.kry`; header, cell, and selection text typography is KSS-owned, including native fallback sizing; host handles column ordering, input sampling, stored selection pointers, resizing, clipboard, and drawing. |
 | `CanvasGrid` | `.kry canonical` | Grid spacing, line counts, and line rectangles are in `.kry`; host handles drawing. |
 | `Canvas` | `.kry canonical` | Transform, hit-test, and result policy are in `.kry`; host keeps clip/camera renderer scope. |
 | `DragDrop` | `.kry canonical` | Typed drag/drop interaction concept. Source and target roles belong in props or composition; decision policy is in `.kry`, host keeps payload storage, type comparison, and pointer ownership. |
@@ -743,7 +743,7 @@ and host plumbing behind the canonical names.
    still host work.
 5. Audit host-owned input/state lifecycles:
    retained menu open/focus/input state, drag/drop payload storage, reorder and
-   swipe pointer ownership, paned-view drag ownership, tree/table selection
+   swipe pointer ownership, paned-view drag ownership, tree/table stored selection
    mutation, table resizing/clipboard, modal input capture, and toast message
    storage/timing are still native support around `.kry` policy.
 6. Finish lowered block backend cleanup:
