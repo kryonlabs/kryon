@@ -398,6 +398,8 @@ test_color_picker_policy(void)
     check_float("color picker channel height", row.height, 28.0f);
     check_float("color picker swatch label x", swatch.label_x, 18.0f);
     check_float("color picker swatch label y", swatch.label_y, 155.0f);
+    check_float("color picker default swatch label inset",
+                ColorPickerSwatchLabelInset(1.0f, (StyleFrame){0}), 6.0f);
     check_int("color picker clamp low", ColorPickerChannelByte(-1.0f), 0);
     check_int("color picker clamp high", ColorPickerChannelByte(2.0f), 255);
     check_color("color picker rgba", rgba, (Color){0, 128, 255, 64});
@@ -419,6 +421,8 @@ test_color_picker_policy(void)
     metrics.value.gap = 0.0f;
     metrics.value.icon_size = 0.0f;
     metrics.value.padding_y = 0.0f;
+    metrics.value.fields |= StylePaddingX;
+    metrics.value.padding_x = 0.0f;
     layout = ColorPickerLayoutFor(bounds, 4, 1.0f, metrics);
     row = ColorPickerChannelBounds(bounds, 1, 4, 1.0f, metrics);
     check_float("color picker keeps explicit zero gap",
@@ -427,6 +431,8 @@ test_color_picker_policy(void)
                 layout.swatch_bounds.height, 0.0f);
     check_float("color picker keeps explicit zero row inset",
                 row.height, 40.0f);
+    check_float("color picker keeps explicit zero swatch label inset",
+                ColorPickerSwatchLabelInset(1.0f, metrics), 0.0f);
 }
 
 static void

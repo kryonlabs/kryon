@@ -23,6 +23,12 @@ ColorPickerSwatchPaintFor :: (bounds: Rectangle, label_inset: float,
     return paint
 }
 
+ColorPickerSwatchLabelInset :: (scale: float, swatch: StyleFrame) -> float #export {
+    if scale <= 0.0 { scale = 1.0 }
+    return ColorPickerMetric(swatch.value.fields, (u32)StylePaddingX,
+        swatch.value.padding_x, 6.0, scale, true)
+}
+
 ColorPickerMetric :: (fields: u32, field: u32, value: float,
     fallback: float, scale: float, allow_zero: bool) -> float {
     if (fields & field) == (u32)0 || value < 0.0 {

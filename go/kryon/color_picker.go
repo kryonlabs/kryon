@@ -35,6 +35,25 @@ func ColorPicker_ColorPickerSwatchPaintFor(bounds Rectangle, label_inset float32
 	return value_11
 }
 
+func ColorPicker_ColorPickerSwatchLabelInset(scale float32, swatch StyleFrame) float32 {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
+	var value_4 uint32 = swatch.Value.Fields
+	var value_5 int32 = int32(StylePaddingX)
+	var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
+	var value_7 float32 = swatch.Value.PaddingX
+	var value_8 float32 = 6.0
+	var value_9 float32 = scale
+	var value_10 bool = true
+	var value_11 float32 = ColorPicker_ColorPickerMetric(value_4, value_6, value_7, value_8, value_9, value_10)
+	return value_11
+}
+
 func ColorPicker_ColorPickerMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
 	var value_0 uint32 = fields
 	var value_1 uint32 = field

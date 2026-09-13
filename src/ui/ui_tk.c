@@ -1071,11 +1071,10 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
         int font = style.font_size > 0.0f
             ? (int)(style.font_size + 0.5f)
             : GetSmallFontSize();
-        int label_inset = style.padding_x > 0.0f
-            ? (int)(style.padding_x + 0.5f)
-            : Scale(6);
+        float label_inset = ColorPickerSwatchLabelInset(
+            (float)Scale(1000) / 1000.0f, frame);
         paint = ColorPickerSwatchPaintFor(layout.swatch_bounds,
-                                          (float)label_inset,
+                                          label_inset,
                                           (float)TextLineHeight(font));
         DrawRectangleRec(paint.bounds, ui_float_color(picker.values, channels));
         ui_tk_draw_style_frame(paint.bounds, picker.bounds, frame, 0, 0,
