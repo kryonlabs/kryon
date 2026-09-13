@@ -148,6 +148,9 @@ export interface WebDocumentNode {
   ariaLabel: string;
   ariaDescription: string;
   ariaDescribedBy: string;
+  ariaDetails: string;
+  ariaErrorMessage: string;
+  ariaFlowTo: string;
   ariaLabelledBy: string;
   ariaActiveDescendant: string;
   ariaControls: string;
@@ -341,6 +344,9 @@ export interface WebNodeStyleFacts {
   ariaLabel: string;
   ariaDescription: string;
   ariaDescribedBy: string;
+  ariaDetails: string;
+  ariaErrorMessage: string;
+  ariaFlowTo: string;
   ariaLabelledBy: string;
   ariaActiveDescendant: string;
   ariaControls: string;
@@ -512,6 +518,12 @@ export interface WebDOMObserveOptions {
 export interface WebDOMRelations {
   describedBy: WebDOMObject[];
   describes: WebDOMObject[];
+  details: WebDOMObject | null;
+  detailedBy: WebDOMObject[];
+  errorMessage: WebDOMObject | null;
+  errorFor: WebDOMObject[];
+  flowTo: WebDOMObject[];
+  flowFrom: WebDOMObject[];
   controls: WebDOMObject[];
   controlledBy: WebDOMObject[];
   owns: WebDOMObject[];
@@ -532,6 +544,12 @@ export interface WebDOMRelations {
 export interface WebNodeRelations {
   describedBy: WebDocumentNode[];
   describes: WebDocumentNode[];
+  details: WebDocumentNode | null;
+  detailedBy: WebDocumentNode[];
+  errorMessage: WebDocumentNode | null;
+  errorFor: WebDocumentNode[];
+  flowTo: WebDocumentNode[];
+  flowFrom: WebDocumentNode[];
   controls: WebDocumentNode[];
   controlledBy: WebDocumentNode[];
   owns: WebDocumentNode[];
@@ -552,6 +570,12 @@ export interface WebNodeRelations {
 export interface WebDOMRelationRefs {
   describedBy: string[];
   describes: string[];
+  details: string;
+  detailedBy: string[];
+  errorMessage: string;
+  errorFor: string[];
+  flowTo: string[];
+  flowFrom: string[];
   controls: string[];
   controlledBy: string[];
   owns: string[];

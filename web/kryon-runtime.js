@@ -1348,10 +1348,14 @@ function propDataAttrs(meta, args = null) {
 
 const canonicalAriaAttrNames = new Set([
   "activedescendant", "busy", "checked", "colcount", "colindex", "controls",
-  "current", "describedby", "description", "disabled", "expanded", "haspopup",
-  "invalid", "label", "labelledby", "level", "live", "multiselectable",
+  "current", "describedby", "description", "details", "disabled", "errormessage",
+  "expanded", "flowto", "haspopup", "invalid", "label", "labelledby", "level", "live", "multiselectable",
   "orientation", "owns", "posinset", "pressed", "readonly", "required",
   "rowcount", "rowindex", "selected", "setsize", "sort"
+]);
+
+const promotedAriaRelationAttrNames = new Set([
+  "details", "errormessage", "flowto"
 ]);
 
 function propAriaAttrs(meta, args = null) {
@@ -1366,6 +1370,8 @@ function propAriaAttrs(meta, args = null) {
   for (const [name, value] of Object.entries(aria || {})) {
     const attr = String(name).trim().replace(/_/g, "-").toLowerCase();
     if (!attr || !/^[a-z0-9][a-z0-9.-]*$/.test(attr))
+      continue;
+    if (promotedAriaRelationAttrNames.has(attr))
       continue;
     out[attr] = value === undefined || value === null ? "" : String(value);
   }
@@ -1402,6 +1408,15 @@ function metaString(meta, name) {
 function metaStringOrProp(meta, name, args, props) {
   const value = meta?.[name];
   return value === undefined || value === null ? propStringAny(args, props) : String(value);
+}
+
+function metaAriaStringOrProp(meta, name, ariaName, args, props) {
+  const value = meta?.[name];
+  if (value !== undefined && value !== null)
+    return String(value);
+  const aria = meta && typeof meta.aria === "object" && !Array.isArray(meta.aria) ? meta.aria : null;
+  const ariaValue = aria?.[ariaName];
+  return ariaValue === undefined || ariaValue === null ? propStringAny(args, props) : String(ariaValue);
 }
 
 function metaBoolOrProp(meta, name, args, props) {
@@ -1556,6 +1571,12 @@ function webNodeFromWidget(item, index) {
       ["aria_description", "accessible_description", "dom_aria_description", "html_aria_description"]),
     ariaDescribedBy: metaStringOrProp(meta, "ariaDescribedBy", args,
       ["aria_describedby", "aria_described_by", "dom_aria_describedby", "html_aria_describedby"]),
+    ariaDetails: metaAriaStringOrProp(meta, "ariaDetails", "details", args,
+      ["aria_details", "aria_detail", "dom_aria_details", "html_aria_details"]),
+    ariaErrorMessage: metaAriaStringOrProp(meta, "ariaErrorMessage", "errormessage", args,
+      ["aria_errormessage", "aria_error_message", "dom_aria_errormessage", "html_aria_errormessage"]),
+    ariaFlowTo: metaAriaStringOrProp(meta, "ariaFlowTo", "flowto", args,
+      ["aria_flowto", "aria_flow_to", "dom_aria_flowto", "html_aria_flowto"]),
     ariaLabelledBy: metaStringOrProp(meta, "ariaLabelledBy", args,
       ["aria_labelledby", "aria_labelled_by", "dom_aria_labelledby", "html_aria_labelledby"]),
     ariaActiveDescendant: metaStringOrProp(meta, "ariaActiveDescendant", args,
@@ -1768,6 +1789,9 @@ export function webNodeStyleFacts(node) {
     ariaLabel: node?.ariaLabel || "",
     ariaDescription: node?.ariaDescription || "",
     ariaDescribedBy: node?.ariaDescribedBy || "",
+    ariaDetails: node?.ariaDetails || "",
+    ariaErrorMessage: node?.ariaErrorMessage || "",
+    ariaFlowTo: node?.ariaFlowTo || "",
     ariaLabelledBy: node?.ariaLabelledBy || "",
     ariaActiveDescendant: node?.ariaActiveDescendant || "",
     ariaControls: node?.ariaControls || "",
@@ -3369,6 +3393,16 @@ function selectorAriaAttrValue(key, facts) {
       key === "aria.described_by")
     return facts.ariaDescribedBy || facts.ariaAttrs?.describedby ||
       facts.extraAttrs?.["aria-describedby"];
+  if (key === "aria-details" || key === "aria.details")
+    return facts.ariaDetails || facts.ariaAttrs?.details ||
+      facts.extraAttrs?.["aria-details"];
+  if (key === "aria-errormessage" || key === "aria.errormessage" ||
+      key === "aria.error_message")
+    return facts.ariaErrorMessage || facts.ariaAttrs?.errormessage ||
+      facts.extraAttrs?.["aria-errormessage"];
+  if (key === "aria-flowto" || key === "aria.flowto" || key === "aria.flow_to")
+    return facts.ariaFlowTo || facts.ariaAttrs?.flowto ||
+      facts.extraAttrs?.["aria-flowto"];
   if (key === "aria-labelledby" || key === "aria.labelledby" ||
       key === "aria.labelled_by")
     return facts.ariaLabelledBy || facts.ariaAttrs?.labelledby ||
@@ -3446,6 +3480,19 @@ function selectorAriaAttrPresent(key, facts) {
     return !!facts.ariaDescribedBy ||
       Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "describedby") ||
       Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-describedby");
+  if (key === "aria-details" || key === "aria.details")
+    return !!facts.ariaDetails ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "details") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-details");
+  if (key === "aria-errormessage" || key === "aria.errormessage" ||
+      key === "aria.error_message")
+    return !!facts.ariaErrorMessage ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "errormessage") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-errormessage");
+  if (key === "aria-flowto" || key === "aria.flowto" || key === "aria.flow_to")
+    return !!facts.ariaFlowTo ||
+      Object.prototype.hasOwnProperty.call(facts.ariaAttrs || {}, "flowto") ||
+      Object.prototype.hasOwnProperty.call(facts.extraAttrs || {}, "aria-flowto");
   if (key === "aria-labelledby" || key === "aria.labelledby" ||
       key === "aria.labelled_by")
     return !!facts.ariaLabelledBy ||
@@ -5910,6 +5957,9 @@ function resolveWebDOMRelations(root) {
     if (!docNode)
       continue;
     setAttr(el, "aria-describedby", resolveWebDOMRelationList(root, docNode.ariaDescribedBy));
+    setAttr(el, "aria-details", resolveWebDOMRelationToken(root, docNode.ariaDetails));
+    setAttr(el, "aria-errormessage", resolveWebDOMRelationToken(root, docNode.ariaErrorMessage));
+    setAttr(el, "aria-flowto", resolveWebDOMRelationList(root, docNode.ariaFlowTo));
     setAttr(el, "aria-labelledby", resolveWebDOMRelationList(root, docNode.ariaLabelledBy));
     setAttr(el, "aria-activedescendant", resolveWebDOMRelationToken(root, docNode.ariaActiveDescendant));
     setAttr(el, "aria-controls", resolveWebDOMRelationList(root, docNode.ariaControls));
@@ -5981,6 +6031,12 @@ function webDOMRelationsForNode(target, node) {
   return {
     describedBy: webDOMRelationList(target, node.ariaDescribedBy),
     describes: webDOMReverseRelationList(target, node, "ariaDescribedBy"),
+    details: webDOMRelationList(target, node.ariaDetails)[0] || null,
+    detailedBy: webDOMReverseRelationList(target, node, "ariaDetails"),
+    errorMessage: webDOMRelationList(target, node.ariaErrorMessage)[0] || null,
+    errorFor: webDOMReverseRelationList(target, node, "ariaErrorMessage"),
+    flowTo: webDOMRelationList(target, node.ariaFlowTo),
+    flowFrom: webDOMReverseRelationList(target, node, "ariaFlowTo"),
     controls: webDOMRelationList(target, node.ariaControls),
     controlledBy: webDOMReverseRelationList(target, node, "ariaControls"),
     owns: webDOMRelationList(target, node.ariaOwns),
@@ -7154,6 +7210,12 @@ function webDOMRelationRefsForRelations(relations) {
   return {
     describedBy: (relations?.describedBy || []).map((relation) => relation.ref),
     describes: (relations?.describes || []).map((relation) => relation.ref),
+    details: relations?.details?.ref || "",
+    detailedBy: (relations?.detailedBy || []).map((relation) => relation.ref),
+    errorMessage: relations?.errorMessage?.ref || "",
+    errorFor: (relations?.errorFor || []).map((relation) => relation.ref),
+    flowTo: (relations?.flowTo || []).map((relation) => relation.ref),
+    flowFrom: (relations?.flowFrom || []).map((relation) => relation.ref),
     controls: (relations?.controls || []).map((relation) => relation.ref),
     controlledBy: (relations?.controlledBy || []).map((relation) => relation.ref),
     owns: (relations?.owns || []).map((relation) => relation.ref),
@@ -7633,8 +7695,8 @@ function syncWebDOMElementFromNative(root, el) {
     }
     if (attr.startsWith("aria-")) {
       const ariaName = attr.slice(5);
-      if (!["label", "description", "describedby", "controls", "owns",
-             "sort", "orientation", "level", "posinset", "setsize",
+      if (!["label", "description", "describedby", "details", "errormessage",
+             "flowto", "controls", "owns", "sort", "orientation", "level", "posinset", "setsize",
              "haspopup", "multiselectable", "live"].includes(ariaName))
         ariaAttrs[ariaName] = value;
       continue;
@@ -7816,6 +7878,12 @@ function webNodeRelationsForNode(rt, node) {
   return {
     describedBy: webNodeRelationList(rt, node.ariaDescribedBy),
     describes: webNodeReverseRelationList(rt, node, "ariaDescribedBy"),
+    details: webNodeRelationList(rt, node.ariaDetails)[0] || null,
+    detailedBy: webNodeReverseRelationList(rt, node, "ariaDetails"),
+    errorMessage: webNodeRelationList(rt, node.ariaErrorMessage)[0] || null,
+    errorFor: webNodeReverseRelationList(rt, node, "ariaErrorMessage"),
+    flowTo: webNodeRelationList(rt, node.ariaFlowTo),
+    flowFrom: webNodeReverseRelationList(rt, node, "ariaFlowTo"),
     controls: webNodeRelationList(rt, node.ariaControls),
     controlledBy: webNodeReverseRelationList(rt, node, "ariaControls"),
     owns: webNodeRelationList(rt, node.ariaOwns),
@@ -7847,6 +7915,12 @@ function webNodeRelationRefsForNode(rt, node) {
   return {
     describedBy: webNodeRefs(webNodeRelationList(rt, node.ariaDescribedBy)),
     describes: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaDescribedBy")),
+    details: webNodeRef(webNodeRelationList(rt, node.ariaDetails)[0]) || "",
+    detailedBy: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaDetails")),
+    errorMessage: webNodeRef(webNodeRelationList(rt, node.ariaErrorMessage)[0]) || "",
+    errorFor: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaErrorMessage")),
+    flowTo: webNodeRefs(webNodeRelationList(rt, node.ariaFlowTo)),
+    flowFrom: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaFlowTo")),
     controls: webNodeRefs(webNodeRelationList(rt, node.ariaControls)),
     controlledBy: webNodeRefs(webNodeReverseRelationList(rt, node, "ariaControls")),
     owns: webNodeRefs(webNodeRelationList(rt, node.ariaOwns)),
@@ -8292,6 +8366,9 @@ function syncDOMAriaRelationAttributes(docNode, attrs) {
   docNode.ariaLabel = read("aria-label");
   docNode.ariaDescription = read("aria-description");
   docNode.ariaDescribedBy = read("aria-describedby");
+  docNode.ariaDetails = read("aria-details");
+  docNode.ariaErrorMessage = read("aria-errormessage");
+  docNode.ariaFlowTo = read("aria-flowto");
   docNode.ariaLabelledBy = read("aria-labelledby");
   docNode.ariaActiveDescendant = read("aria-activedescendant");
   docNode.ariaControls = read("aria-controls");

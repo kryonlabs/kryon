@@ -96,12 +96,14 @@ the browser receives normal elements, attributes, CSS, and events.
 - Web runtime TypeScript declarations expose parsed KSS conditional groups for
   `@media`, `@supports`, and `@container`.
 - Native relation resolution for `aria_controls`, `aria_owns`,
-  `aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `headers`,
-  `dom_for`, `form`, and `popover_target`, while preserving authored Kry refs
-  in Web Document facts; mounted relation objects and snapshots expose reverse
-  `controlledBy`, `ownedBy`, `describes`, and `popoverInvokers` buckets for
-  inspector navigation from relation targets, plus direct serializable
-  `webNodeRelations(...)`, `webNodeRelationRefs(...)`, and
+  `aria_labelledby`, `aria_activedescendant`, `aria_describedby`,
+  `aria_details`, `aria_errormessage`, `aria_flowto`, `headers`, `dom_for`,
+  `form`, and `popover_target`, while preserving authored Kry refs in Web
+  Document facts; mounted relation objects and snapshots expose reverse
+  `controlledBy`, `ownedBy`, `describes`, `detailedBy`, `errorFor`,
+  `flowFrom`, and `popoverInvokers` buckets for inspector navigation from
+  relation targets, plus direct serializable `webNodeRelations(...)`,
+  `webNodeRelationRefs(...)`, and
   `webDOMRelationRefs(...)` lookup.
 - First-class ARIA structure facts for menus, lists, trees, and grouped
   controls: orientation, level, position in set, set size, popup type, sort

@@ -163,6 +163,9 @@ Supported metadata fields:
 | `aria_label`, `accessible_label` | `ariaLabel` |
 | `aria_description`, `accessible_description` | `ariaDescription` |
 | `aria_describedby`, `aria_described_by` | `ariaDescribedBy` |
+| `aria_details`, `aria_detail` | `ariaDetails` |
+| `aria_errormessage`, `aria_error_message` | `ariaErrorMessage` |
+| `aria_flowto`, `aria_flow_to` | `ariaFlowTo` |
 | `aria_labelledby`, `aria_labelled_by` | `ariaLabelledBy` |
 | `aria_activedescendant`, `aria_active_descendant` | `ariaActiveDescendant` |
 | `aria_controls` | `ariaControls` |
@@ -382,8 +385,8 @@ KSS should resolve against each node's `styleFacts`: `index`, `kind`, `tag`, `ke
 `min`, `max`, `step`, `minLength`, `maxLength`, `pattern`, `accept`,
 `multiple`, `inputMode`, `headers`, `scope`, `colSpan`, `rowSpan`, `classes`,
 `dataAttrs`, `ariaAttrs`, `extraAttrs`, `role`, `ariaLabel`,
-`ariaDescription`, `ariaDescribedBy`, `ariaLabelledBy`, `ariaActiveDescendant`,
-`ariaControls`, `ariaOwns`, `ariaSort`,
+`ariaDescription`, `ariaDescribedBy`, `ariaDetails`, `ariaErrorMessage`,
+`ariaFlowTo`, `ariaLabelledBy`, `ariaActiveDescendant`, `ariaControls`, `ariaOwns`, `ariaSort`,
 `ariaOrientation`, `ariaLevel`, `ariaPosInSet`, `ariaSetSize`,
 `ariaHasPopup`, `ariaMultiSelectable`, `ariaRowIndex`, `ariaColIndex`,
 `ariaRowCount`, `ariaColCount`, `ariaLive`, `open`, `scrollLeft`, `scrollTop`,
@@ -607,8 +610,9 @@ scalar path/kind/tag/name/key/index/source identity getters, plus
 `element.kryChildren` getters, plus `element.kryMatches(selector)` and
 `element.kryClosest(selector)` methods for KSS-style selector checks.
 Relationship fields such as `aria_controls`, `aria_owns`,
-`aria_labelledby`, `aria_activedescendant`, `aria_describedby`, `dom_for`,
-`headers`, `form`, and `popover_target` may name another Kry DOM object by ref,
+`aria_labelledby`, `aria_activedescendant`, `aria_describedby`,
+`aria_details`, `aria_errormessage`, `aria_flowto`, `dom_for`, `headers`,
+`form`, and `popover_target` may name another Kry DOM object by ref,
 path, name, key, or native id. The Web Document facts keep the authored Kry
 value for KSS and queries, while the DOM renderer resolves the native attribute
 to a real element id during mount. `webDOMRelations(target, query)`,
@@ -616,8 +620,10 @@ to a real element id during mount. `webDOMRelations(target, query)`,
 objects, including `owns`, `headers`, group-aware `rowHeaders` and
 `columnHeaders`, explicit `rowGroupHeaders` and `columnGroupHeaders`, direct
 `labelledBy` links from `aria_labelledby`, active descendant links from
-`aria_activedescendant`, form owner links from `form`, reverse `controlledBy`,
-`ownedBy`, `describes`, and `popoverInvokers` links for targets referenced by
+`aria_activedescendant`, detail, error-message, and flow links from
+`aria_details`, `aria_errormessage`, and `aria_flowto`, form owner links from
+`form`, reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
+`errorFor`, `flowFrom`, and `popoverInvokers` links for targets referenced by
 other nodes, and reverse `labelledBy` links for controls targeted by
 `dom_for`; `webNodeRelations(rt, query)` exposes those links before mount as
 Web Document nodes, while `webNodeRelationRefs(rt, query)`,
