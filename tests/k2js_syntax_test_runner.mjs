@@ -10,18 +10,20 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
 }
 for (const name of [
   "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
+  "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
   "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
+  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
   "Tbody", "Tfoot", "Thead", "Time", "Tr", "Track", "UnorderedList", "Var",
-  "Variable", "Video"
+  "Variable", "Video", "Wbr", "WordBreakOpportunity"
 ]) {
   assert.equal(typeof runtime[name], "function");
   assert.equal(runtime[name]().type, name);
@@ -2875,6 +2877,18 @@ function fakeDocument() {
       { nodeName: "nativeAddress", path: "Page/address" });
     runtime.widget(nativeRt, "Small", { text: "Fine print" }, null,
       { nodeName: "nativeSmall", path: "Page/small" });
+    runtime.widget(nativeRt, "Ruby", { text: "\u6f22" }, null,
+      { nodeName: "nativeRuby", path: "Page/ruby" });
+    runtime.widget(nativeRt, "Rt", { text: "kan" }, null,
+      { nodeName: "nativeRubyText", path: "Page/ruby/text", parentPath: "Page/ruby" });
+    runtime.widget(nativeRt, "Rp", { text: "(" }, null,
+      { nodeName: "nativeRubyParenthesis", path: "Page/ruby/open", parentPath: "Page/ruby" });
+    runtime.widget(nativeRt, "Bdi", { text: "\u0645\u0631\u062d\u0628\u0627" }, null,
+      { nodeName: "nativeBdi", path: "Page/bdi" });
+    runtime.widget(nativeRt, "Bdo", { text: "abc", attr_dir: "rtl" }, null,
+      { nodeName: "nativeBdo", path: "Page/bdo" });
+    runtime.widget(nativeRt, "Wbr", {}, null,
+      { nodeName: "nativeWbr", path: "Page/wbr" });
     runtime.widget(nativeRt, "DescriptionList", {}, null,
       { nodeName: "nativeDescriptionList", path: "Page/descriptions" });
     runtime.widget(nativeRt, "DescriptionTerm", { text: "DOM" }, null,
@@ -3161,6 +3175,14 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
     assert.equal(runtime.webNodeQuery(nativeRt, "Address").tag, "address");
     assert.equal(runtime.webNodeQuery(nativeRt, "Small").tag, "small");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Ruby").tag, "ruby");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Ruby").text, "\u6f22");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Rt").tag, "rt");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Rp").tag, "rp");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdi").tag, "bdi");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").tag, "bdo");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Bdo").extraAttrs.dir, "rtl");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Wbr").tag, "wbr");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionList").tag, "dl");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").tag, "dt");
     assert.equal(runtime.webNodeQuery(nativeRt, "DescriptionTerm").text, "DOM");
@@ -3415,6 +3437,12 @@ function fakeDocument() {
     const nativeTime = runtime.findWebElement(nativeTarget, "time");
     const nativeAddress = runtime.findWebElement(nativeTarget, "nativeAddress");
     const nativeSmall = runtime.findWebElement(nativeTarget, "nativeSmall");
+    const nativeRuby = runtime.findWebElement(nativeTarget, "nativeRuby");
+    const nativeRubyText = runtime.findWebElement(nativeTarget, "nativeRubyText");
+    const nativeRubyParenthesis = runtime.findWebElement(nativeTarget, "nativeRubyParenthesis");
+    const nativeBdi = runtime.findWebElement(nativeTarget, "nativeBdi");
+    const nativeBdo = runtime.findWebElement(nativeTarget, "nativeBdo");
+    const nativeWbr = runtime.findWebElement(nativeTarget, "nativeWbr");
     const nativeDescriptionList = runtime.findWebElement(nativeTarget, "nativeDescriptionList");
     const nativeDescriptionTerm = runtime.findWebElement(nativeTarget, "nativeDescriptionTerm");
     const nativeDescriptionDetails = runtime.findWebElement(nativeTarget, "nativeDescriptionDetails");
@@ -3534,6 +3562,17 @@ function fakeDocument() {
     assert.equal(nativeAddress.textContent, "hello@example.test");
     assert.equal(nativeSmall.tagName, "SMALL");
     assert.equal(nativeSmall.textContent, "Fine print");
+    assert.equal(nativeRuby.tagName, "RUBY");
+    assert.equal(nativeRuby.textContent, "\u6f22");
+    assert.equal(nativeRubyText.tagName, "RT");
+    assert.equal(nativeRubyText.textContent, "kan");
+    assert.equal(nativeRubyParenthesis.tagName, "RP");
+    assert.equal(nativeRubyParenthesis.textContent, "(");
+    assert.equal(nativeBdi.tagName, "BDI");
+    assert.equal(nativeBdi.textContent, "\u0645\u0631\u062d\u0628\u0627");
+    assert.equal(nativeBdo.tagName, "BDO");
+    assert.equal(nativeBdo.attributes.dir, "rtl");
+    assert.equal(nativeWbr.tagName, "WBR");
     assert.equal(nativeDescriptionList.tagName, "DL");
     assert.equal(nativeDescriptionTerm.tagName, "DT");
     assert.equal(nativeDescriptionTerm.textContent, "DOM");

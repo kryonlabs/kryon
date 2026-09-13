@@ -1252,6 +1252,23 @@ function widgetTag(item) {
     return "dt";
   case "DescriptionDetails":
     return "dd";
+  case "Ruby":
+    return "ruby";
+  case "Rt":
+  case "RubyText":
+    return "rt";
+  case "Rp":
+  case "RubyParenthesis":
+    return "rp";
+  case "Bdi":
+  case "BidirectionalIsolate":
+    return "bdi";
+  case "Bdo":
+  case "BidirectionalOverride":
+    return "bdo";
+  case "Wbr":
+  case "WordBreakOpportunity":
+    return "wbr";
   case "Text":
   case "Icon":
     return "span";
@@ -1405,6 +1422,15 @@ function widgetText(item) {
   case "Time":
   case "Address":
   case "Small":
+  case "Ruby":
+  case "Rt":
+  case "RubyText":
+  case "Rp":
+  case "RubyParenthesis":
+  case "Bdi":
+  case "BidirectionalIsolate":
+  case "Bdo":
+  case "BidirectionalOverride":
   case "Figure":
   case "Figcaption":
   case "Video":
@@ -11477,6 +11503,7 @@ export function CanvasHitTest(canvas, screen) {
 const runtimeCallNames = [
   "AppBackground", "Background", "Text", "Paragraph",
   "Abbr", "Abbreviation", "Address", "Article", "Aside",
+  "Bdi", "Bdo", "BidirectionalIsolate", "BidirectionalOverride",
   "Box", "Line", "Bevel", "Icon", "Image", "Button", "Card", "Selectable",
   "Audio", "BlockQuote", "Bold", "Cite", "Code", "CodeBlock",
   "Col", "ColGroup", "Data", "Datalist", "DataList", "Del", "Deleted",
@@ -11486,12 +11513,14 @@ const runtimeCallNames = [
   "IFrame", "Iframe", "Ins", "Inserted", "Italic",
   "Kbd", "Keyboard", "Label", "List", "ListItem", "Main",
   "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
-  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote", "Samp", "Sample", "Select",
+  "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
+  "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Select",
   "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
   "TableHead", "TableRow", "Tbody", "Tfoot", "Thead", "Time",
   "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
+  "Wbr", "WordBreakOpportunity",
   "Bullet", "Separator",
   "Link", "TextField", "TextArea", "Dropdown", "SegmentedControl",
   "Slider", "Menu",
@@ -11521,6 +11550,10 @@ export function Background(...args) { return struct("Background", args); }
 export function Bevel(...args) { return struct("Bevel", args); }
 export function Article(...args) { return struct("Article", args); }
 export function Aside(...args) { return struct("Aside", args); }
+export function Bdi(...args) { return struct("Bdi", args); }
+export function Bdo(...args) { return struct("Bdo", args); }
+export function BidirectionalIsolate(...args) { return struct("BidirectionalIsolate", args); }
+export function BidirectionalOverride(...args) { return struct("BidirectionalOverride", args); }
 export function Audio(...args) { return struct("Audio", args); }
 export function Bullet(...args) { return struct("Bullet", args); }
 export function Button(...args) { return struct("Button", args); }
@@ -11601,6 +11634,11 @@ export function Plot(...args) { return struct("Plot", args); }
 export function Pre(...args) { return struct("Pre", args); }
 export function Progress(...args) { return struct("Progress", args); }
 export function Quote(...args) { return struct("Quote", args); }
+export function Rp(...args) { return struct("Rp", args); }
+export function Rt(...args) { return struct("Rt", args); }
+export function Ruby(...args) { return struct("Ruby", args); }
+export function RubyParenthesis(...args) { return struct("RubyParenthesis", args); }
+export function RubyText(...args) { return struct("RubyText", args); }
 export function Radio(...args) { return struct("Radio", args); }
 export function Box(...args) { return struct("Box", args); }
 export function Row(...args) { return struct("Row", args); }
@@ -11653,3 +11691,5 @@ export function UnorderedList(...args) { return struct("UnorderedList", args); }
 export function Var(...args) { return struct("Var", args); }
 export function Variable(...args) { return struct("Variable", args); }
 export function Video(...args) { return struct("Video", args); }
+export function Wbr(...args) { return struct("Wbr", args); }
+export function WordBreakOpportunity(...args) { return struct("WordBreakOpportunity", args); }

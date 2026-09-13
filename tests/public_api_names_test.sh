@@ -269,18 +269,20 @@ api_funcs = set(re.findall(r'^func ([A-Z][A-Za-z0-9_]*)\(', api, re.M))
 runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(', runtime))
 web_native_only = {
     'Abbr', 'Abbreviation', 'Address', 'Article', 'Aside', 'Audio',
+    'Bdi', 'Bdo', 'BidirectionalIsolate', 'BidirectionalOverride',
     'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
     'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'IFrame', 'Iframe',
     'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',
     'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
-    'OptionGroup', 'OptGroup', 'Option', 'Output', 'Pre', 'Quote', 'Samp', 'Sample', 'Select',
+    'OptionGroup', 'OptGroup', 'Option', 'Output', 'Pre', 'Quote',
+    'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Select',
     'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
     'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
     'Tbody', 'Tfoot', 'Thead', 'Time', 'Tr', 'Track', 'UnorderedList',
-    'Var', 'Variable', 'Video',
+    'Var', 'Variable', 'Video', 'Wbr', 'WordBreakOpportunity',
 }
 special = {'Canvas', 'End'} | web_native_only
 for name in parser_names:

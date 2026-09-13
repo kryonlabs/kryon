@@ -250,6 +250,10 @@ host roles rather than retained nodes.
 | `Card` | `.kry canonical` | Surface action/card composition. |
 | `Selectable` | `.kry canonical` | Selectable row/action surface. |
 | `Audio` | `.kry canonical` | Web-native audio media element. |
+| `Bdi` | `.kry canonical` | Web-native bidirectional isolate phrasing element. |
+| `Bdo` | `.kry canonical` | Web-native bidirectional override phrasing element. |
+| `BidirectionalIsolate` | `.kry canonical` | Long-form alias for `Bdi`. |
+| `BidirectionalOverride` | `.kry canonical` | Long-form alias for `Bdo`. |
 | `BlockQuote` | `.kry canonical` | Web-native block quotation element. |
 | `Bold` | `.kry canonical` | Web-native bold phrasing element. |
 | `Cite` | `.kry canonical` | Web-native citation phrasing element. |
@@ -298,6 +302,11 @@ host roles rather than retained nodes.
 | `Output` | `.kry canonical` | Web-native calculation output element. |
 | `Pre` | `.kry canonical` | Web-native preformatted text element. |
 | `Quote` | `.kry canonical` | Web-native inline quote element. |
+| `Rp` | `.kry canonical` | Web-native ruby fallback parenthesis element. |
+| `Rt` | `.kry canonical` | Web-native ruby annotation text element. |
+| `Ruby` | `.kry canonical` | Web-native ruby annotation container element. |
+| `RubyParenthesis` | `.kry canonical` | Long-form alias for `Rp`. |
+| `RubyText` | `.kry canonical` | Long-form alias for `Rt`. |
 | `Samp` | `.kry canonical` | Web-native sample output phrasing element. |
 | `Sample` | `.kry canonical` | Long-form alias for `Samp`. |
 | `Select` | `.kry canonical` | Web-native select element; app selection control remains `Dropdown`. |
@@ -327,6 +336,8 @@ host roles rather than retained nodes.
 | `Var` | `.kry canonical` | Web-native variable phrasing element. |
 | `Variable` | `.kry canonical` | Long-form alias for `Var`. |
 | `Video` | `.kry canonical` | Web-native video media element. |
+| `Wbr` | `.kry canonical` | Web-native word-break opportunity element. |
+| `WordBreakOpportunity` | `.kry canonical` | Long-form alias for `Wbr`. |
 | `Bullet` | `.kry canonical` | Small list/text marker primitive. |
 | `Separator` | `.kry canonical` | Divider primitive. |
 | `Link` | `.kry canonical` | Canonical link activation name. |

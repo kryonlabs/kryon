@@ -48,21 +48,23 @@ Two backend tiers exist (see `docs/BACKENDS.md`):
 
 ## Widget statement whitelist (`.kry` frontend)
 
-`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 139 widget names.
+`parse_widget_statement` (`cmd/kir/kir_parse.c`) recognizes 150 widget names.
 `k2c` compiles any library call regardless (plain call statement); `k2cpp` shares that lowering (C++ output, C linkage); `k2go` lowers
 the full whitelist onto its `Runtime` interface;
 `k2js` records whitelisted standalone widget calls as browser-loadable runtime
 operations; and `k2b` lowers a subset of it:
 
 `AppBackground Background Text Paragraph Abbr Abbreviation Address Article Aside
-Box Line Bevel Icon Image Button Card Selectable Audio BlockQuote Bold Cite Code
+Box Line Bevel Icon Image Button Card Selectable Audio Bdi Bdo
+BidirectionalIsolate BidirectionalOverride BlockQuote Bold Cite Code
 CodeBlock Col ColGroup Data Datalist DataList Del Deleted DescriptionDetails DescriptionList
 DescriptionTerm Details Dialog Em Embed Emphasis Figcaption Figure Footer Form
 Header IFrame Iframe Ins Inserted Italic Kbd Keyboard Label Legend List
 ListItem Main Mark Meter Nav Navigation OrderedList OptionGroup OptGroup Option
-Output Pre Quote Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table
+Output Pre Quote Rp Rt Ruby RubyParenthesis RubyText Samp Sample Select Small Source Strong Sub Subscript Summary Sup Superscript Table
 TableBody TableCaption TableColumn TableColumnGroup TableFoot TableHead TableRow
-Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video Bullet Separator Link
+Tbody Tfoot Thead Time Tr Track UnorderedList Var Variable Video Wbr
+WordBreakOpportunity Bullet Separator Link
 TextField TextArea Dropdown SegmentedControl Slider Menu Toggle Checkbox Radio
 Progress Plot Drag Input Spinbox DragDrop Screen Page Section Heading
 ParagraphText Column Row Stack Flow Grid Scroll End Modal TitleBar TabBar
