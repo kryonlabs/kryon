@@ -30,31 +30,46 @@ main(void)
     assert(metrics.panel_padding == 24);
     assert(metrics.panel_margin == 8);
     assert(metrics.accelerator_gap == 176);
+    assert(metrics.separator_inset == 16);
+    assert(metrics.checked_mark_inset == 16);
+    assert(metrics.label_inset == 56);
+    assert(metrics.submenu_indicator_inset == 36);
     assert(metrics.bar_item_padding == 48);
     assert(metrics.bar_item_gap == 4);
     assert(metrics.bar_item_y_padding == 6);
+    assert(metrics.bar_label_inset == 24);
 
     panel.value.fields = StylePaddingX | StyleGap | StyleContentOffset;
     panel.value.padding_x = 10.0f;
     panel.value.gap = 3.0f;
     panel.value.offset_x = 160.0f;
-    item.value.fields = StyleFontSize | StylePaddingY | StyleContentOffset;
+    item.value.fields = StyleFontSize | StylePaddingX | StylePaddingY |
+                        StyleIconSize | StyleContentOffset;
     item.value.font_size = 18.0f;
+    item.value.padding_x = 7.0f;
     item.value.padding_y = 6.0f;
+    item.value.icon_size = 22.0f;
     item.value.offset_x = 70.0f;
-    bar.value.fields = StylePaddingX | StylePaddingY | StyleGap;
+    bar.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+                       StyleIconSize;
     bar.value.padding_x = 9.0f;
     bar.value.padding_y = 2.0f;
     bar.value.gap = 5.0f;
+    bar.value.icon_size = 11.0f;
     metrics = MenuMetricsFor(1.0f, panel, item, bar);
     assert(metrics.row_height == 30);
     assert(metrics.panel_min_width == 160);
     assert(metrics.panel_padding == 10);
     assert(metrics.panel_margin == 3);
     assert(metrics.accelerator_gap == 70);
+    assert(metrics.separator_inset == 7);
+    assert(metrics.checked_mark_inset == 7);
+    assert(metrics.label_inset == 22);
+    assert(metrics.submenu_indicator_inset == 6);
     assert(metrics.bar_item_padding == 18);
     assert(metrics.bar_item_gap == 5);
     assert(metrics.bar_item_y_padding == 2);
+    assert(metrics.bar_label_inset == 11);
 
     item.value.offset_y = 44.0f;
     metrics = MenuMetricsFor(1.0f, panel, item, bar);
@@ -64,12 +79,21 @@ main(void)
     panel.value.padding_x = 0.0f;
     panel.value.gap = 0.0f;
     item.value.offset_x = 0.0f;
+    item.value.padding_x = 0.0f;
+    item.value.padding_y = 0.0f;
+    item.value.icon_size = 0.0f;
     bar.value.gap = 0.0f;
+    bar.value.icon_size = 0.0f;
     metrics = MenuMetricsFor(1.0f, panel, item, bar);
     assert(metrics.panel_padding == 0);
     assert(metrics.panel_margin == 0);
     assert(metrics.accelerator_gap == 0);
+    assert(metrics.separator_inset == 0);
+    assert(metrics.checked_mark_inset == 0);
+    assert(metrics.label_inset == 0);
+    assert(metrics.submenu_indicator_inset == 0);
     assert(metrics.bar_item_gap == 0);
+    assert(metrics.bar_label_inset == 0);
 
     panel = (StyleFrame){0};
     item = (StyleFrame){0};

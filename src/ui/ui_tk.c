@@ -1274,9 +1274,9 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                     StyleKindMenuSeparator(), StyleAny());
                 Style separator_style = ui_unpack_style(
                     ui_style_apply_effects_frame(separator_frame).value);
-                Line((int)row.x + Scale(8),
+                Line((int)row.x + metrics.separator_inset,
                      (int)(row.y + row.height / 2.0f),
-                     (int)(row.x + row.width) - Scale(8),
+                     (int)(row.x + row.width) - metrics.separator_inset,
                      (int)(row.y + row.height / 2.0f),
                      separator_style.border);
             }
@@ -1305,12 +1305,12 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
         if(item->disabled && row_hot)
             MarkDisabled();
         if(can_draw && item->checked)
-            RenderText("*", (int)row.x + Scale(8),
+            RenderText("*", (int)row.x + metrics.checked_mark_inset,
                        ui_row_text_y(row, item_font),
                        item_font, item_text);
         if(can_draw)
             RenderText(item->label != NULL ? item->label : "",
-                       (int)row.x + Scale(28),
+                       (int)row.x + metrics.label_inset,
                        ui_row_text_y(row, item_font),
                        item_font, item_text);
         if(can_draw && item->accelerator != NULL) {
@@ -1322,7 +1322,8 @@ draw_menu_items(int x, int y, const MenuItem *items, int item_count,
                        item_font, item_text);
         }
         if(can_draw && item->kind == MenuSubmenu)
-            RenderText(">", (int)(row.x + row.width - Scale(18)),
+            RenderText(">", (int)(row.x + row.width -
+                                  metrics.submenu_indicator_inset),
                        ui_row_text_y(row, item_font),
                        item_font, item_text);
         if(hot && item->kind == MenuSubmenu)
@@ -1587,7 +1588,8 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
             MarkClickable();
         if(can_draw)
             RenderText(menus[i].label != NULL ? menus[i].label : "",
-                       x + Scale(12), ui_row_text_y(item, item_font),
+                       x + metrics.bar_label_inset,
+                       ui_row_text_y(item, item_font),
                        item_font, item_text);
         if(hot && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
             ConsumeRelease();

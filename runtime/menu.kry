@@ -9,10 +9,15 @@ MenuMetrics :: struct {
     panel_padding: i32
     panel_margin: i32
     accelerator_gap: i32
+    separator_inset: i32
+    checked_mark_inset: i32
+    label_inset: i32
+    submenu_indicator_inset: i32
     bar_item_min_width: i32
     bar_item_padding: i32
     bar_item_gap: i32
     bar_item_y_padding: i32
+    bar_label_inset: i32
 }
 
 MenuHas :: (fields: u32, field: u32) -> bool {
@@ -47,6 +52,13 @@ MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
         (u32)StyleGap, panel.value.gap, 4.0, scale, true)
     metrics.accelerator_gap = MenuMetric(item.value.fields,
         (u32)StyleContentOffset, item.value.offset_x, 88.0, scale, true)
+    metrics.separator_inset = MenuMetric(item.value.fields,
+        (u32)StylePaddingX, item.value.padding_x, 8.0, scale, true)
+    metrics.checked_mark_inset = metrics.separator_inset
+    metrics.label_inset = MenuMetric(item.value.fields,
+        (u32)StyleIconSize, item.value.icon_size, 28.0, scale, true)
+    metrics.submenu_indicator_inset = MenuMetric(item.value.fields,
+        (u32)StylePaddingY, item.value.padding_y, 18.0, scale, true)
     metrics.bar_item_min_width = 0
     metrics.bar_item_padding = MenuMetric(bar.value.fields,
         (u32)StylePaddingX, bar.value.padding_x * 2.0, 24.0, scale, true)
@@ -54,6 +66,8 @@ MenuMetricsFor :: (scale: float, panel: StyleFrame, item: StyleFrame,
         (u32)StyleGap, bar.value.gap, 2.0, scale, true)
     metrics.bar_item_y_padding = MenuMetric(bar.value.fields,
         (u32)StylePaddingY, bar.value.padding_y, 3.0, scale, true)
+    metrics.bar_label_inset = MenuMetric(bar.value.fields,
+        (u32)StyleIconSize, bar.value.icon_size, 12.0, scale, true)
     return metrics
 }
 

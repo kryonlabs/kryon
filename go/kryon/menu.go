@@ -5,15 +5,20 @@ package kryon
 // #import style
 // #import control_props
 type MenuMetrics struct {
-	RowHeight       int32
-	PanelMinWidth   int32
-	PanelPadding    int32
-	PanelMargin     int32
-	AcceleratorGap  int32
-	BarItemMinWidth int32
-	BarItemPadding  int32
-	BarItemGap      int32
-	BarItemYPadding int32
+	RowHeight             int32
+	PanelMinWidth         int32
+	PanelPadding          int32
+	PanelMargin           int32
+	AcceleratorGap        int32
+	SeparatorInset        int32
+	CheckedMarkInset      int32
+	LabelInset            int32
+	SubmenuIndicatorInset int32
+	BarItemMinWidth       int32
+	BarItemPadding        int32
+	BarItemGap            int32
+	BarItemYPadding       int32
+	BarLabelInset         int32
 }
 
 func Menu_MenuHas(fields uint32, field uint32) bool {
@@ -138,39 +143,77 @@ func Menu_MenuMetricsFor(scale float32, panel StyleFrame, item StyleFrame, bar S
 	var value_57 bool = true
 	var value_58 int32 = Menu_MenuMetric(value_51, value_53, value_54, value_55, value_56, value_57)
 	metrics.AcceleratorGap = value_58
-	var value_59 int32 = 0
-	metrics.BarItemMinWidth = value_59
-	var value_60 uint32 = bar.Value.Fields
-	var value_61 int32 = int32(StylePaddingX)
-	var value_62 uint32 = uint32(number_runtime_bits(uint64(value_61), uint64(0), 32, false, 0))
-	var value_63 float32 = bar.Value.PaddingX
-	var value_64 float32 = 2.0
-	var value_65 float32 = value_63 * value_64
-	var value_66 float32 = 24.0
-	var value_67 float32 = scale
-	var value_68 bool = true
-	var value_69 int32 = Menu_MenuMetric(value_60, value_62, value_65, value_66, value_67, value_68)
-	metrics.BarItemPadding = value_69
-	var value_70 uint32 = bar.Value.Fields
-	var value_71 int32 = int32(StyleGap)
-	var value_72 uint32 = uint32(number_runtime_bits(uint64(value_71), uint64(0), 32, false, 0))
-	var value_73 float32 = bar.Value.Gap
-	var value_74 float32 = 2.0
-	var value_75 float32 = scale
-	var value_76 bool = true
-	var value_77 int32 = Menu_MenuMetric(value_70, value_72, value_73, value_74, value_75, value_76)
-	metrics.BarItemGap = value_77
-	var value_78 uint32 = bar.Value.Fields
-	var value_79 int32 = int32(StylePaddingY)
-	var value_80 uint32 = uint32(number_runtime_bits(uint64(value_79), uint64(0), 32, false, 0))
-	var value_81 float32 = bar.Value.PaddingY
-	var value_82 float32 = 3.0
-	var value_83 float32 = scale
-	var value_84 bool = true
-	var value_85 int32 = Menu_MenuMetric(value_78, value_80, value_81, value_82, value_83, value_84)
-	metrics.BarItemYPadding = value_85
-	var value_86 MenuMetrics = metrics
-	return value_86
+	var value_59 uint32 = item.Value.Fields
+	var value_60 int32 = int32(StylePaddingX)
+	var value_61 uint32 = uint32(number_runtime_bits(uint64(value_60), uint64(0), 32, false, 0))
+	var value_62 float32 = item.Value.PaddingX
+	var value_63 float32 = 8.0
+	var value_64 float32 = scale
+	var value_65 bool = true
+	var value_66 int32 = Menu_MenuMetric(value_59, value_61, value_62, value_63, value_64, value_65)
+	metrics.SeparatorInset = value_66
+	var value_67 int32 = metrics.SeparatorInset
+	metrics.CheckedMarkInset = value_67
+	var value_68 uint32 = item.Value.Fields
+	var value_69 int32 = int32(StyleIconSize)
+	var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
+	var value_71 float32 = item.Value.IconSize
+	var value_72 float32 = 28.0
+	var value_73 float32 = scale
+	var value_74 bool = true
+	var value_75 int32 = Menu_MenuMetric(value_68, value_70, value_71, value_72, value_73, value_74)
+	metrics.LabelInset = value_75
+	var value_76 uint32 = item.Value.Fields
+	var value_77 int32 = int32(StylePaddingY)
+	var value_78 uint32 = uint32(number_runtime_bits(uint64(value_77), uint64(0), 32, false, 0))
+	var value_79 float32 = item.Value.PaddingY
+	var value_80 float32 = 18.0
+	var value_81 float32 = scale
+	var value_82 bool = true
+	var value_83 int32 = Menu_MenuMetric(value_76, value_78, value_79, value_80, value_81, value_82)
+	metrics.SubmenuIndicatorInset = value_83
+	var value_84 int32 = 0
+	metrics.BarItemMinWidth = value_84
+	var value_85 uint32 = bar.Value.Fields
+	var value_86 int32 = int32(StylePaddingX)
+	var value_87 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(0), 32, false, 0))
+	var value_88 float32 = bar.Value.PaddingX
+	var value_89 float32 = 2.0
+	var value_90 float32 = value_88 * value_89
+	var value_91 float32 = 24.0
+	var value_92 float32 = scale
+	var value_93 bool = true
+	var value_94 int32 = Menu_MenuMetric(value_85, value_87, value_90, value_91, value_92, value_93)
+	metrics.BarItemPadding = value_94
+	var value_95 uint32 = bar.Value.Fields
+	var value_96 int32 = int32(StyleGap)
+	var value_97 uint32 = uint32(number_runtime_bits(uint64(value_96), uint64(0), 32, false, 0))
+	var value_98 float32 = bar.Value.Gap
+	var value_99 float32 = 2.0
+	var value_100 float32 = scale
+	var value_101 bool = true
+	var value_102 int32 = Menu_MenuMetric(value_95, value_97, value_98, value_99, value_100, value_101)
+	metrics.BarItemGap = value_102
+	var value_103 uint32 = bar.Value.Fields
+	var value_104 int32 = int32(StylePaddingY)
+	var value_105 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(0), 32, false, 0))
+	var value_106 float32 = bar.Value.PaddingY
+	var value_107 float32 = 3.0
+	var value_108 float32 = scale
+	var value_109 bool = true
+	var value_110 int32 = Menu_MenuMetric(value_103, value_105, value_106, value_107, value_108, value_109)
+	metrics.BarItemYPadding = value_110
+	var value_111 uint32 = bar.Value.Fields
+	var value_112 int32 = int32(StyleIconSize)
+	var value_113 uint32 = uint32(number_runtime_bits(uint64(value_112), uint64(0), 32, false, 0))
+	var value_114 float32 = bar.Value.IconSize
+	var value_115 float32 = 12.0
+	var value_116 float32 = scale
+	var value_117 bool = true
+	var value_118 int32 = Menu_MenuMetric(value_111, value_113, value_114, value_115, value_116, value_117)
+	metrics.BarLabelInset = value_118
+	var value_119 MenuMetrics = metrics
+	return value_119
 }
 
 func Menu_MenuGroupItemWidth(label_width int32, metrics MenuMetrics) int32 {
