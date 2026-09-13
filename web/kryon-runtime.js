@@ -2107,7 +2107,7 @@ const webKssColorProperties = new Set([
   "border-right-color", "border-bottom-color", "border-left-color",
   "border-inline-color", "border-block-color", "border-inline-start-color",
   "border-inline-end-color", "border-block-start-color", "border-block-end-color",
-  "outline-color", "text-decoration-color"
+  "outline-color", "text-decoration-color", "column-rule-color"
 ]);
 
 const webKssLengthProperties = new Set([
@@ -2141,7 +2141,7 @@ const webKssLengthProperties = new Set([
   "text-indent", "text-decoration-thickness", "text-underline-offset",
   "vertical-align", "perspective",
   "outline-width", "outline-offset", "tab-size",
-  "column-count", "column-width", "border-spacing",
+  "column-count", "column-width", "column-rule-width", "border-spacing",
   "contain-intrinsic-size", "contain-intrinsic-width",
   "contain-intrinsic-height", "contain-intrinsic-inline-size",
   "contain-intrinsic-block-size", "overflow-clip-margin",
@@ -2229,7 +2229,8 @@ const webKssLiteralProperties = new Set([
   "container-type", "container-name", "will-change",
   "anchor-name", "position-anchor", "position-area", "position-try",
   "position-try-fallbacks", "position-try-order", "position-visibility",
-  "view-transition-name", "isolation", "mix-blend-mode", "columns", "column-rule",
+  "view-transition-name", "isolation", "mix-blend-mode", "columns",
+  "column-fill", "column-span", "column-rule", "column-rule-style",
   "break-before", "break-after", "break-inside", "float", "clear",
   "order"
 ]);
@@ -3182,7 +3183,12 @@ const webCSSPropertyNames = new Map([
   ["columns", "columns"],
   ["column-count", "column-count"],
   ["column-width", "column-width"],
+  ["column-fill", "column-fill"],
+  ["column-span", "column-span"],
   ["column-rule", "column-rule"],
+  ["column-rule-color", "column-rule-color"],
+  ["column-rule-style", "column-rule-style"],
+  ["column-rule-width", "column-rule-width"],
   ["break-before", "break-before"],
   ["break-after", "break-after"],
   ["break-inside", "break-inside"],
@@ -4587,7 +4593,12 @@ function applyResolvedWebStyle(el, style) {
   set("columns", style.columns);
   set("columnCount", style["column-count"]);
   set("columnWidth", style["column-width"]);
+  set("columnFill", style["column-fill"]);
+  set("columnSpan", style["column-span"]);
   set("columnRule", style["column-rule"]);
+  set("columnRuleColor", style["column-rule-color"]);
+  set("columnRuleStyle", style["column-rule-style"]);
+  set("columnRuleWidth", style["column-rule-width"]);
   set("breakBefore", style["break-before"]);
   set("breakAfter", style["break-after"]);
   set("breakInside", style["break-inside"]);

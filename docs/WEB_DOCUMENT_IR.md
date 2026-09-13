@@ -502,7 +502,8 @@ media/background fit and rendering, visibility, transitions, filters,
 animations, clip/mask paint controls, writing direction/mode, hyphenation,
 line clamping, color scheme, forced/print color adjustment, SVG
 interpolation and paint-order controls, shape controls,
-columns/break flow controls, form field sizing, overlay/interpolate sizing,
+columns, column-rule longhands, column fill/span, break flow controls,
+form field sizing, overlay/interpolate sizing,
 interaction affordances, outlines, shadows, icon size, and local
 `tokens { color { ... } length { ... } material { ... } }` references.
 

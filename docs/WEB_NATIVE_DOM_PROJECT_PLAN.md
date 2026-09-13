@@ -231,6 +231,8 @@ the browser receives normal elements, attributes, CSS, and events.
   scroll/view timelines, animation ranges, `field-sizing`, `interpolate-size`,
   `overlay`, forced/print color adjustment, SVG paint-order/interpolation, and
   CSS shape/text box controls for browser-native layouts.
+- KSS web multicolumn styling supports `columns`, column count/width/fill/span,
+  column-rule shorthand and color/style/width longhands, and break controls.
 - KSS web table styling supports native `border-collapse`, `border-spacing`,
   `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
