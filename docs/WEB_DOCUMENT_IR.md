@@ -186,6 +186,7 @@ Supported metadata fields:
 | `on_change` | `onChange`, `changeAction(value)` |
 | `on_select` | `onSelect`, `selectAction(value)` |
 | `on_key`, `on_key_down` | `onKey`, `keyAction(key)` |
+| `on_key_up` | `onKeyUp`, `keyUpAction(key)` |
 | `on_invalid` | `onInvalid`, `invalidAction(value)` |
 | `on_submit` | `onSubmit`, `submitAction(values)` |
 | `on_reset` | `onReset`, `resetAction(values)` |

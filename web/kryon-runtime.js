@@ -1460,6 +1460,7 @@ function webNodeFromWidget(item, index) {
     onChange: meta.onChange === undefined || meta.onChange === null ? "" : String(meta.onChange),
     onSelect: meta.onSelect === undefined || meta.onSelect === null ? "" : String(meta.onSelect),
     onKey: meta.onKey === undefined || meta.onKey === null ? "" : String(meta.onKey),
+    onKeyUp: meta.onKeyUp === undefined || meta.onKeyUp === null ? "" : String(meta.onKeyUp),
     onInvalid: meta.onInvalid === undefined || meta.onInvalid === null ? "" : String(meta.onInvalid),
     onSubmit: meta.onSubmit === undefined || meta.onSubmit === null ? "" : String(meta.onSubmit),
     onReset: meta.onReset === undefined || meta.onReset === null ? "" : String(meta.onReset),
@@ -1496,6 +1497,7 @@ function webNodeFromWidget(item, index) {
     changeAction: typeof meta.changeAction === "function" ? meta.changeAction : null,
     selectAction: typeof meta.selectAction === "function" ? meta.selectAction : null,
     keyAction: typeof meta.keyAction === "function" ? meta.keyAction : null,
+    keyUpAction: typeof meta.keyUpAction === "function" ? meta.keyUpAction : null,
     invalidAction: typeof meta.invalidAction === "function" ? meta.invalidAction : null,
     submitAction: typeof meta.submitAction === "function" ? meta.submitAction : null,
     resetAction: typeof meta.resetAction === "function" ? meta.resetAction : null,
@@ -4161,6 +4163,12 @@ function bindNodeEvents(el) {
     if (docNode?.keyAction)
       docNode.keyAction(String(key));
   });
+  el.addEventListener("keyup", (event) => {
+    const docNode = el.__kryDocNode;
+    const key = event?.key ?? event?.code ?? "";
+    if (docNode?.keyUpAction)
+      docNode.keyUpAction(String(key));
+  });
   el.addEventListener("invalid", (event) => {
     if (event?.preventDefault)
       event.preventDefault();
@@ -5644,6 +5652,10 @@ function applyWebNode(el, docNode, rt) {
     el.dataset.kryOnKey = docNode.onKey;
   else
     delete el.dataset.kryOnKey;
+  if (docNode.onKeyUp)
+    el.dataset.kryOnKeyUp = docNode.onKeyUp;
+  else
+    delete el.dataset.kryOnKeyUp;
   if (docNode.onInvalid)
     el.dataset.kryOnInvalid = docNode.onInvalid;
   else

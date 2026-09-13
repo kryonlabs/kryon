@@ -1595,6 +1595,7 @@ function fakeDocument() {
           this.onchange();
       },
       keydown(key) { if (this.onkeydown) this.onkeydown({ key }); },
+      keyup(key) { if (this.onkeyup) this.onkeyup({ key }); },
       scroll(left, top) {
         this.scrollLeft = left;
         this.scrollTop = top;
@@ -2402,6 +2403,25 @@ function fakeDocument() {
       "enter", "down", "up", "leave", "move", "wheel:12", "context", "double",
       "p-enter", "p-down", "p-move", "p-up", "p-down", "p-cancel", "p-leave"
     ]);
+
+    const keyEvents = [];
+    const keyRt = runtime.createRuntime();
+    runtime.beginFrame(keyRt);
+    runtime.widget(keyRt, "TextField", {}, null,
+      {
+        nodeName: "keyField",
+        path: "Page/keyField",
+        onKeyUp: "release",
+        keyUpAction(key) { keyEvents.push("up:" + key); }
+      });
+    runtime.endFrame(keyRt);
+    assert.equal(runtime.webNodeQuery(keyRt, "TextField").onKeyUp, "release");
+    const keyTarget = document.createElement("div");
+    runtime.renderWebDocument(keyRt, keyTarget);
+    const keyField = runtime.findWebElement(keyTarget, "keyField");
+    assert.equal(keyField.dataset.kryOnKeyUp, "release");
+    keyField.keyup("Enter");
+    assert.deepEqual(keyEvents, ["up:Enter"]);
 
     const dragEvents = [];
     const dragRt = runtime.createRuntime();

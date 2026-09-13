@@ -172,6 +172,7 @@ export interface WebDocumentNode {
   onChange: string;
   onSelect: string;
   onKey: string;
+  onKeyUp: string;
   onInvalid: string;
   onSubmit: string;
   onReset: string;
@@ -208,6 +209,7 @@ export interface WebDocumentNode {
   changeAction: ((value: unknown) => unknown) | null;
   selectAction: ((value: string) => unknown) | null;
   keyAction: ((key: string) => unknown) | null;
+  keyUpAction: ((key: string) => unknown) | null;
   invalidAction: ((value: unknown) => unknown) | null;
   submitAction: ((values: Record<string, unknown>) => unknown) | null;
   resetAction: ((values: Record<string, unknown>) => unknown) | null;
