@@ -19,6 +19,7 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
     int font = text.font_size > 0.0f
         ? (int)(text.font_size + 0.5f)
         : GetFontSize();
+    int font_token = PushTextFont(text.typeface);
     int tw = TextWidth(label, font);
     ImagePlaceholderLayout layout =
         ImagePlaceholderLayoutFor((Rectangle){(float)x, (float)y,
@@ -31,6 +32,7 @@ RenderTutorialImagePlaceholder(const char *label, int x, int y, int w, int h)
                      image.material);
     RenderText(label, layout.label_x, layout.label_y, font,
                Fade(text.foreground, text.opacity));
+    PopTextFont(font_token);
 }
 
 void
