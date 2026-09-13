@@ -196,6 +196,8 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Button[aria.controls~="search-box"] { resize: both; }
   Screen > Button[webRef="primary-action"] { outline-style: solid; }
   Screen TextField { border-style: dotted; }
+  Screen > Text:first-child { visibility: hidden; }
+  Screen > Input:last-child { user-select: text; }
 `);
 assert.match(webStyleCSS, /\[data-kry-kind="Button"\]\.primary/);
 assert.match(runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -211,6 +213,10 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] > \[data-kry-kind="Button"\]\[data-kry-web-ref="primary-action"\]/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Screen"\] \[data-kry-kind="TextField"\]/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\] > \[data-kry-kind="Text"\]:first-child/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\] > \[data-kry-kind="Input"\]:last-child/);
 assert.match(webStyleCSS, /background: #102030;/);
 assert.match(webStyleCSS, /--kry-background-end: #203850;/);
 assert.match(webStyleCSS, /background-image: linear-gradient\(#102030, #203850\);/);
@@ -361,6 +367,8 @@ assert.equal(runtime.webNodeQuery(rt, `[aria.controls~="search-box"]`).path, web
 assert.equal(runtime.webNodeQuery(rt, `Screen > Button[webRef="primary-action"]`).path,
   webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `Screen TextField`).path, webDoc.nodes[3].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Text:first-child`).path, webDoc.nodes[1].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen > Input:last-child`).path, webDoc.nodes[7].path);
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).cursor, "pointer");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["pointer-events"], "auto");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).appearance, "none");
@@ -368,6 +376,22 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["user-
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet).resize, "both");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[2], operatorStyleSheet)["outline-style"], "solid");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], operatorStyleSheet)["border-style"], "dotted");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[1], operatorStyleSheet).visibility, "hidden");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[7], operatorStyleSheet)["user-select"], "text");
+const soloRt = runtime.createRuntime();
+runtime.beginFrame(soloRt);
+runtime.widget(soloRt, "Screen", {}, null, { nodeName: "root", path: "Solo/root" });
+runtime.widget(soloRt, "Text", { text: "Only" }, null,
+  { nodeName: "only", path: "Solo/root/only", parentPath: "Solo/root" });
+runtime.endFrame(soloRt);
+const soloDoc = runtime.webDocumentFrame(soloRt);
+const onlyChildStyleSheet = runtime.parseWebStyleSheet(`
+  Screen > Text:only-child { visibility: hidden; }
+`);
+assert.equal(runtime.webNodeQuery(soloRt, `Screen > Text:only-child`).path,
+  soloDoc.nodes[1].path);
+assert.equal(runtime.resolveWebStyle(soloDoc.nodes[1], onlyChildStyleSheet).visibility,
+  "hidden");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -2285,6 +2309,10 @@ function fakeDocument() {
       firstButton);
     assert.equal(runtime.webDOMQuery(target, "Screen TextField").element,
       runtime.findWebElement(target, "search-box"));
+    assert.equal(runtime.webDOMQuery(target, "Screen > Text:first-child").element,
+      firstText);
+    assert.equal(runtime.webDOMQuery(target, "Screen > Input:last-child").node.path,
+      inputPaths[inputPaths.length - 1]);
     assert.equal(runtime.webDOMQuery(target, "#tap-button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[value=\"tap-value\"]").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "[index=2]").element, firstButton);

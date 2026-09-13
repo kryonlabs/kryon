@@ -705,6 +705,7 @@ export interface WebStyleSelector {
   classes: string[];
   attrs: Record<string, string | null>;
   attrOps: Record<string, string>;
+  pseudos: string[];
   state: string;
   specificity: number;
   combinator?: string;

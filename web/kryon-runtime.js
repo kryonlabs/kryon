@@ -1782,18 +1782,25 @@ function parseSimpleSelector(text) {
     classes: [],
     attrs: {},
     attrOps: {},
+    pseudos: [],
     state: "",
     specificity: 0
   };
-  const stateMatch = source.match(/:([A-Za-z_][\w-]*)\s*$/);
-  if (stateMatch) {
-    selector.state = stateMatch[1];
-    selector.specificity += 10;
-    source = source.slice(0, stateMatch.index).trim();
-  }
   source = source.replace(/\[([A-Za-z_][\w.-]*)\s*([~|^$*]?=)\s*([^\]]+)\]/g, (_all, key, op, value) => {
     selector.attrs[key] = String(value).trim().replace(/^["']|["']$/g, "");
     selector.attrOps[key] = op || "=";
+    selector.specificity += 10;
+    return "";
+  });
+  source = source.replace(/:([A-Za-z_][\w-]*)/g, (_all, name) => {
+    const pseudo = name.replace(/_/g, "-").toLowerCase();
+    if (pseudo === "hover" || pseudo === "pressed" || pseudo === "focus" ||
+        pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
+        pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
+        pseudo === "invalid" || pseudo === "expanded" || pseudo === "open")
+      selector.state = name;
+    else
+      selector.pseudos.push(pseudo);
     selector.specificity += 10;
     return "";
   });
@@ -1834,6 +1841,7 @@ function parseSelector(text) {
     classes: [],
     attrs: {},
     attrOps: {},
+    pseudos: [],
     state: "",
     specificity: selectors.reduce((sum, selector) => sum + selector.specificity, 0),
     parts: selectors
@@ -2055,6 +2063,8 @@ export function webStyleSelectorToCSS(selector) {
     parts.push("." + cssEscapeIdent(cls));
   for (const [key, value] of Object.entries(selector.attrs || {}))
     parts.push(webStyleSelectorAttrToCSS(key, value, selector.attrOps?.[key] || "="));
+  for (const pseudo of selector.pseudos || [])
+    parts.push(`:${cssEscapeIdent(pseudo)}`);
   if (selector.state)
     parts.push(`[data-kry-state~="${cssEscapeString(selector.state === "focused" ? "focus" : selector.state)}"]`);
   return parts.join("");
@@ -2655,6 +2665,43 @@ function webNodeParentFromFrame(node) {
   return null;
 }
 
+function webNodeSiblingsFromFrame(node) {
+  if (!node)
+    return [];
+  const nodes = node.__kryFrameNodes || [];
+  const parentPath = node.parentPath || "";
+  return nodes.filter((candidate) => {
+    if (!candidate || candidate.path === candidate.parentPath)
+      return false;
+    return (candidate.parentPath || "") === parentPath;
+  });
+}
+
+function selectorStructuralPseudosMatch(selector, node) {
+  for (const pseudo of selector?.pseudos || []) {
+    const siblings = webNodeSiblingsFromFrame(node);
+    if (pseudo === "first-child") {
+      if (siblings[0] !== node)
+        return false;
+    } else if (pseudo === "last-child") {
+      if (siblings[siblings.length - 1] !== node)
+        return false;
+    } else if (pseudo === "only-child") {
+      if (siblings.length !== 1 || siblings[0] !== node)
+        return false;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+function selectorMatchesSimpleWebNode(selector, node) {
+  const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
+  return selectorMatchesFacts(selector, facts) &&
+    selectorStructuralPseudosMatch(selector, node);
+}
+
 function selectorChainMatchesWebNode(selector, node) {
   const parts = selector?.parts || [];
   if (!parts.length)
@@ -2662,7 +2709,7 @@ function selectorChainMatchesWebNode(selector, node) {
   let current = node;
   for (let index = parts.length - 1; index >= 0; index--) {
     const part = parts[index];
-    if (!current || !selectorMatchesFacts(part, { ...(current?.styleFacts || {}), ...webNodeStyleFacts(current) }))
+    if (!current || !selectorMatchesSimpleWebNode(part, current))
       return false;
     if (index === 0)
       return true;
@@ -2673,8 +2720,7 @@ function selectorChainMatchesWebNode(selector, node) {
     }
     let ancestor = webNodeParentFromFrame(current);
     const ancestorSelector = parts[index - 1];
-    while (ancestor &&
-           !selectorMatchesFacts(ancestorSelector, { ...(ancestor?.styleFacts || {}), ...webNodeStyleFacts(ancestor) }))
+    while (ancestor && !selectorMatchesSimpleWebNode(ancestorSelector, ancestor))
       ancestor = webNodeParentFromFrame(ancestor);
     if (!ancestor)
       return false;
@@ -2686,19 +2732,17 @@ function selectorChainMatchesWebNode(selector, node) {
 function selectorMatchesWebNode(selector, node) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
     return selectorChainMatchesWebNode(selector, node);
-  const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
-  return selectorMatchesFacts(selector, facts);
+  return selectorMatchesSimpleWebNode(selector, node);
 }
 
 export function resolveWebStyle(node, sheets = []) {
-  const facts = node?.styleFacts || webNodeStyleFacts(node);
   const resolved = {};
   const scores = {};
   const list = Array.isArray(sheets) ? sheets : [sheets];
   for (const sheet of list) {
     const rules = typeof sheet === "string" ? parseWebStyleSheet(sheet).rules : (sheet?.rules || []);
     for (const rule of rules) {
-      if (!selectorMatchesFacts(rule.selector, facts))
+      if (!selectorMatchesWebNode(rule.selector, node))
         continue;
       const score = rule.score ?? ((rule.layer || 0) * 1000000 + (rule.selector?.specificity || 0) * 1000 + (rule.order || 0));
       for (const [name, value] of Object.entries(rule.style || {})) {
