@@ -975,6 +975,12 @@ Modal[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 18;
+  padding-y: 18;
+  gap: 24;
+  icon-size: 280;
+  offset-x: 420;
+  offset-y: 58;
   opacity: 1;
   material: default;
 }
@@ -982,6 +988,9 @@ Modal[role=Panel] {
 Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
+  padding-x: 24;
+  icon-size: 48;
+  offset-y: 14;
   opacity: 1;
   material: default;
 }
@@ -989,6 +998,11 @@ Modal[role=Title] {
 Modal[role=Message] {
   foreground: text;
   font-size: font.md;
+  padding-x: 120;
+  padding-y: 160;
+  gap: 18;
+  icon-size: 38;
+  offset-y: 18;
   opacity: 1;
   material: default;
 }
@@ -1000,6 +1014,11 @@ Modal[role=Action] {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  padding-x: 24;
+  gap: 8;
+  icon-size: 44;
+  offset-x: 88;
+  offset-y: 150;
   opacity: 1;
   material: default;
 }
@@ -1030,6 +1049,12 @@ Modal[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  padding-y: 16;
+  gap: 6;
+  icon-size: 20;
+  offset-x: 120;
+  offset-y: 96;
   opacity: 1;
   material: default;
 }
@@ -2823,6 +2848,12 @@ Modal[role=Panel] {
   focus: accent;
   radius: radius;
   border-width: border;
+  padding-x: 18;
+  padding-y: 18;
+  gap: 24;
+  icon-size: 280;
+  offset-x: 420;
+  offset-y: 58;
   opacity: 1;
   material: default;
 }
@@ -2830,6 +2861,9 @@ Modal[role=Panel] {
 Modal[role=Title] {
   foreground: text;
   font-size: font;
+  padding-x: 24;
+  icon-size: 48;
+  offset-y: 14;
   opacity: 1;
   material: default;
 }
@@ -2837,6 +2871,11 @@ Modal[role=Title] {
 Modal[role=Message] {
   foreground: text;
   font-size: font;
+  padding-x: 120;
+  padding-y: 160;
+  gap: 18;
+  icon-size: 38;
+  offset-y: 18;
   opacity: 1;
   material: default;
 }
@@ -2848,6 +2887,11 @@ Modal[role=Action] {
   focus: accent;
   radius: radius;
   border-width: border;
+  padding-x: 24;
+  gap: 8;
+  icon-size: 44;
+  offset-x: 88;
+  offset-y: 150;
   opacity: 1;
   material: default;
 }
@@ -2873,6 +2917,12 @@ Modal[role=Close] {
   border: transparent;
   radius: radius;
   border-width: border.none;
+  padding-x: 8;
+  padding-y: 16;
+  gap: 6;
+  icon-size: 20;
+  offset-x: 120;
+  offset-y: 96;
   opacity: 1;
   material: default;
 }
@@ -4629,6 +4679,12 @@ Modal[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 18;
+  padding-y: 18;
+  gap: 24;
+  icon-size: 280;
+  offset-x: 420;
+  offset-y: 58;
   opacity: 1;
   material: default;
 }
@@ -4636,6 +4692,9 @@ Modal[role=Panel] {
 Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
+  padding-x: 24;
+  icon-size: 48;
+  offset-y: 14;
   opacity: 1;
   material: default;
 }
@@ -4643,6 +4702,11 @@ Modal[role=Title] {
 Modal[role=Message] {
   foreground: text;
   font-size: font.md;
+  padding-x: 120;
+  padding-y: 160;
+  gap: 18;
+  icon-size: 38;
+  offset-y: 18;
   opacity: 1;
   material: default;
 }
@@ -4654,6 +4718,11 @@ Modal[role=Action] {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  padding-x: 24;
+  gap: 8;
+  icon-size: 44;
+  offset-x: 88;
+  offset-y: 150;
   opacity: 1;
   material: default;
 }
@@ -4684,6 +4753,12 @@ Modal[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  padding-y: 16;
+  gap: 6;
+  icon-size: 20;
+  offset-x: 120;
+  offset-y: 96;
   opacity: 1;
   material: default;
 }
@@ -6532,6 +6607,12 @@ Modal[role=Panel] {
   focus: focus;
   radius: radius.lg;
   border-width: border;
+  padding-x: 18;
+  padding-y: 18;
+  gap: 24;
+  icon-size: 280;
+  offset-x: 420;
+  offset-y: 58;
   opacity: 1;
   material: glow;
 }
@@ -6539,6 +6620,9 @@ Modal[role=Panel] {
 Modal[role=Title] {
   foreground: text;
   font-size: font.lg;
+  padding-x: 24;
+  icon-size: 48;
+  offset-y: 14;
   opacity: 1;
   material: app;
 }
@@ -6546,6 +6630,11 @@ Modal[role=Title] {
 Modal[role=Message] {
   foreground: text;
   font-size: font.md;
+  padding-x: 120;
+  padding-y: 160;
+  gap: 18;
+  icon-size: 38;
+  offset-y: 18;
   opacity: 1;
   material: app;
 }
@@ -6558,6 +6647,11 @@ Modal[role=Action] {
   focus: focus;
   radius: radius.md;
   border-width: border;
+  padding-x: 24;
+  gap: 8;
+  icon-size: 44;
+  offset-x: 88;
+  offset-y: 150;
   opacity: 1;
   material: glow;
 }
@@ -6592,6 +6686,12 @@ Modal[role=Close] {
   border: transparent;
   radius: radius.sm;
   border-width: border.none;
+  padding-x: 8;
+  padding-y: 16;
+  gap: 6;
+  icon-size: 20;
+  offset-x: 120;
+  offset-y: 96;
   opacity: 1;
   material: app;
 }
@@ -8458,6 +8558,12 @@ Modal[role=Panel] {
   focus: focus;
   radius: radius;
   border-width: border;
+  padding-x: 18;
+  padding-y: 18;
+  gap: 24;
+  icon-size: 280;
+  offset-x: 420;
+  offset-y: 58;
   opacity: 1;
   material: premium;
 }
@@ -8465,6 +8571,9 @@ Modal[role=Panel] {
 Modal[role=Title] {
   foreground: text;
   font-size: font.md;
+  padding-x: 24;
+  icon-size: 48;
+  offset-y: 14;
   opacity: 1;
   material: app;
 }
@@ -8472,6 +8581,11 @@ Modal[role=Title] {
 Modal[role=Message] {
   foreground: text;
   font-size: font.md;
+  padding-x: 120;
+  padding-y: 160;
+  gap: 18;
+  icon-size: 38;
+  offset-y: 18;
   opacity: 1;
   material: app;
 }
@@ -8484,6 +8598,11 @@ Modal[role=Action] {
   focus: focus;
   radius: radius;
   border-width: border;
+  padding-x: 24;
+  gap: 8;
+  icon-size: 44;
+  offset-x: 88;
+  offset-y: 150;
   opacity: 1;
   material: premium;
 }
@@ -8511,6 +8630,12 @@ Modal[role=Close] {
   border: transparent;
   radius: radius;
   border-width: 0;
+  padding-x: 8;
+  padding-y: 16;
+  gap: 6;
+  icon-size: 20;
+  offset-x: 120;
+  offset-y: 96;
   opacity: 1;
   material: app;
 }

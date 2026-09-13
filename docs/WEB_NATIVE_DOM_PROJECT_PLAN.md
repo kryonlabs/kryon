@@ -150,6 +150,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Semantic caption relationship facts expose `captionOwner` and `captionItems`
   for native figure captions and table captions in pre-mount and mounted DOM
   snapshots.
+- Semantic summary relationship facts expose `summaryOwner` and `summaryItems`
+  for native details/summary disclosure nodes in pre-mount and mounted DOM
+  snapshots.
 - Canonical `Image(ImageProps)` nodes expose native `img` source and alt text
   through DOM attributes, KSS selector facts, pre-mount and mounted DOM
   snapshots, and accessibility snapshots.

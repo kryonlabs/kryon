@@ -3182,6 +3182,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Option").tag, "option");
     assert.equal(runtime.webNodeQuery(nativeRt, "Details").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Summary").tag, "summary");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeDetails/summary").summaryOwner.path,
+      "Page/nativeDetails");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nativeDetails").summaryItems,
+      ["Page/nativeDetails/summary"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Dialog").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").tag, "output");
     assert.equal(runtime.webNodeQuery(nativeRt, "Output").text, "Ready");
@@ -3550,6 +3554,10 @@ function fakeDocument() {
     assert.equal(nativeDetailsElement.open, true);
     assert.equal(nativeSummary.tagName, "SUMMARY");
     assert.equal(nativeSummary.textContent, "More");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nativeDetails/summary").summaryOwner.ref,
+      "Page/nativeDetails");
+    assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Page/nativeDetails").relationRefs.summaryItems,
+      ["Page/nativeDetails/summary"]);
     assert.equal(nativeDialog.tagName, "DIALOG");
     assert.equal(nativeDialog.open, true);
     assert.equal(nativeOutput.tagName, "OUTPUT");

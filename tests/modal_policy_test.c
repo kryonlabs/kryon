@@ -27,10 +27,48 @@ main(void)
     StyleFrame message = {0};
     StyleFrame action = {0};
     StyleFrame close = {0};
-    ModalMetrics metrics = test_modal_metrics(2.0f, panel, title, message,
-                                              action, close);
+    ModalMetrics metrics;
     ModalLayout layout;
     ModalFrameLayout frame_layout;
+
+    panel.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+                         StyleIconSize | StyleContentOffset;
+    panel.value.padding_x = 18.0f;
+    panel.value.padding_y = 8.0f;
+    panel.value.gap = 24.0f;
+    panel.value.icon_size = 280.0f;
+    panel.value.offset_x = 420.0f;
+    panel.value.offset_y = 58.0f;
+    title.value.fields = StylePaddingX | StylePaddingY | StyleIconSize |
+                         StyleContentOffset;
+    title.value.padding_x = 24.0f;
+    title.value.padding_y = 18.0f;
+    title.value.icon_size = 48.0f;
+    title.value.offset_y = 14.0f;
+    message.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+                           StyleIconSize | StyleContentOffset;
+    message.value.padding_x = 120.0f;
+    message.value.padding_y = 160.0f;
+    message.value.gap = 18.0f;
+    message.value.icon_size = 38.0f;
+    message.value.offset_y = 18.0f;
+    action.value.fields = StylePaddingX | StyleGap | StyleIconSize |
+                          StyleContentOffset;
+    action.value.padding_x = 24.0f;
+    action.value.gap = 8.0f;
+    action.value.icon_size = 44.0f;
+    action.value.offset_x = 88.0f;
+    action.value.offset_y = 150.0f;
+    close.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+                         StyleIconSize | StyleContentOffset;
+    close.value.padding_x = 8.0f;
+    close.value.padding_y = 16.0f;
+    close.value.gap = 6.0f;
+    close.value.icon_size = 20.0f;
+    close.value.offset_x = 120.0f;
+    close.value.offset_y = 96.0f;
+
+    metrics = test_modal_metrics(2.0f, panel, title, message, action, close);
 
     assert(metrics.screen_pad == 48);
     assert(metrics.min_width == 560);
@@ -53,8 +91,11 @@ main(void)
     assert(metrics.frame_min_height == 192);
     assert(metrics.frame_title_y == 28);
     assert(metrics.frame_content_y == 116);
+    assert(metrics.frame_content_bottom_pad == 32);
     assert(metrics.frame_icon_size == 40);
     assert(metrics.frame_icon_padding == 16);
+    assert(metrics.frame_icon_edge_gap == 12);
+    assert(metrics.frame_title_side_padding == 48);
 
     assert(ModalClampWidth(900, 0, metrics) == 840);
     assert(ModalClampWidth(500, 0, metrics) == 484);
@@ -101,8 +142,10 @@ main(void)
     panel.value.icon_size = 300.0f;
     panel.value.offset_x = 460.0f;
     panel.value.offset_y = 60.0f;
-    title.value.fields = StylePaddingX | StyleIconSize | StyleContentOffset;
+    title.value.fields = StylePaddingX | StylePaddingY | StyleIconSize |
+                         StyleContentOffset;
     title.value.padding_x = 26.0f;
+    title.value.padding_y = 19.0f;
     title.value.icon_size = 52.0f;
     title.value.offset_y = 12.0f;
     message.value.fields = StylePaddingX | StylePaddingY | StyleGap |
@@ -135,7 +178,7 @@ main(void)
     assert(metrics.edge_pad == 10);
     assert(metrics.title_height == 52);
     assert(metrics.padding_x == 20);
-    assert(metrics.padding_bottom == 10);
+    assert(metrics.padding_bottom == 19);
     assert(metrics.message_gap == 20);
     assert(metrics.prompt_height == 40);
     assert(metrics.prompt_gap == 22);

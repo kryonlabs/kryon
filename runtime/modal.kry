@@ -83,8 +83,8 @@ ModalMetricsFor :: (scale: float, panel: StyleFrame, title: StyleFrame,
         (u32)StyleIconSize, title.value.icon_size, 48.0, scale, true)
     metrics.padding_x = ModalMetric(panel.value.fields,
         (u32)StylePaddingX, panel.value.padding_x, 18.0, scale, true)
-    metrics.padding_bottom = ModalMetric(panel.value.fields,
-        (u32)StylePaddingY, panel.value.padding_y, 18.0, scale, true)
+    metrics.padding_bottom = ModalMetric(title.value.fields,
+        (u32)StylePaddingY, title.value.padding_y, 18.0, scale, true)
     metrics.message_gap = ModalMetric(message.value.fields,
         (u32)StyleGap, message.value.gap, 18.0, scale, true)
     metrics.prompt_height = ModalMetric(message.value.fields,

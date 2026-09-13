@@ -7267,6 +7267,11 @@ function webNodeCanOwnCaption(owner, caption) {
     (ownerTag === "table" && captionTag === "caption");
 }
 
+function webNodeCanOwnSummary(owner, summary) {
+  return String(owner?.tag || "").toLowerCase() === "details" &&
+    String(summary?.tag || "").toLowerCase() === "summary";
+}
+
 function webNodeCaptionOwner(rt, node) {
   if (!rt || !node)
     return null;
@@ -7287,6 +7292,36 @@ function webNodeCaptionItems(rt, node) {
     if (!candidate || candidate === node)
       return false;
     const owner = webNodeCaptionOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
+function webNodeSummaryOwner(rt, node) {
+  if (!rt || !node || String(node.tag || "").toLowerCase() !== "summary")
+    return null;
+  const nodes = webFrameNodeMap(webDocumentFrame(rt));
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = nodes.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnSummary(parent, node))
+      return parent;
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webNodeSummaryItems(rt, node) {
+  if (!rt || !node || String(node.tag || "").toLowerCase() !== "details")
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node)
+      return false;
+    const owner = webNodeSummaryOwner(rt, candidate);
     return owner === node || (ref && webNodeRef(owner) === ref);
   });
 }
@@ -7461,6 +7496,40 @@ function webDOMCaptionItems(target, node) {
   return out;
 }
 
+function webDOMSummaryOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node || String(node.tag || "").toLowerCase() !== "summary")
+    return null;
+  const seen = new Set([node.path]);
+  let parentPath = node.parentPath || "";
+  while (parentPath && !seen.has(parentPath)) {
+    seen.add(parentPath);
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeCanOwnSummary(parent, node))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMSummaryItems(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node || String(node.tag || "").toLowerCase() !== "details")
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node)
+      continue;
+    const owner = webDOMSummaryOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMSelectedCollectionOwner(target, node) {
   return webNodeIsSelectedCollectionMember(node)
     ? webDOMCollectionOwner(target, node)
@@ -7510,6 +7579,8 @@ function webDOMRelationsForNode(target, node) {
     collectionItems: webDOMCollectionItems(target, node),
     captionOwner: webDOMCaptionOwner(target, node),
     captionItems: webDOMCaptionItems(target, node),
+    summaryOwner: webDOMSummaryOwner(target, node),
+    summaryItems: webDOMSummaryItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
     selectedCollectionItems: webDOMSelectedCollectionItems(target, node),
     activeCollectionOwner: webDOMActiveCollectionOwner(target, node),
@@ -8927,6 +8998,8 @@ function webDOMRelationRefsForRelations(relations) {
     collectionItems: (relations?.collectionItems || []).map((relation) => relation.ref),
     captionOwner: relations?.captionOwner?.ref || "",
     captionItems: (relations?.captionItems || []).map((relation) => relation.ref),
+    summaryOwner: relations?.summaryOwner?.ref || "",
+    summaryItems: (relations?.summaryItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
     selectedCollectionItems: (relations?.selectedCollectionItems || []).map((relation) => relation.ref),
     activeCollectionOwner: relations?.activeCollectionOwner?.ref || "",
@@ -9829,6 +9902,8 @@ function webNodeRelationsForNode(rt, node) {
     collectionItems: webNodeCollectionItems(rt, node),
     captionOwner: webNodeCaptionOwner(rt, node),
     captionItems: webNodeCaptionItems(rt, node),
+    summaryOwner: webNodeSummaryOwner(rt, node),
+    summaryItems: webNodeSummaryItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
     selectedCollectionItems: webNodeSelectedCollectionItems(rt, node),
     activeCollectionOwner: webNodeActiveCollectionOwner(rt, node),
@@ -9914,6 +9989,8 @@ function webNodeRelationRefsForNode(rt, node) {
     collectionItems: webNodeRefs(webNodeCollectionItems(rt, node)),
     captionOwner: webNodeRef(webNodeCaptionOwner(rt, node)) || "",
     captionItems: webNodeRefs(webNodeCaptionItems(rt, node)),
+    summaryOwner: webNodeRef(webNodeSummaryOwner(rt, node)) || "",
+    summaryItems: webNodeRefs(webNodeSummaryItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
     selectedCollectionItems: webNodeRefs(webNodeSelectedCollectionItems(rt, node)),
     activeCollectionOwner: webNodeRef(webNodeActiveCollectionOwner(rt, node)) || "",

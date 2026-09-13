@@ -1051,6 +1051,7 @@ Modal[role=Title] {
   foreground: text;
   font-size: font.md;
   padding-x: 24;
+  padding-y: 18;
   icon-size: 48;
   offset-y: 14;
   opacity: 1;

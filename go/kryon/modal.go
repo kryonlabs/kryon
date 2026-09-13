@@ -164,10 +164,10 @@ func Modal_ModalMetricsFor(scale float32, panel StyleFrame, title StyleFrame, me
 	var value_50 bool = true
 	var value_51 int32 = Modal_ModalMetric(value_44, value_46, value_47, value_48, value_49, value_50)
 	metrics.PaddingX = value_51
-	var value_52 uint32 = panel.Value.Fields
+	var value_52 uint32 = title.Value.Fields
 	var value_53 int32 = int32(StylePaddingY)
 	var value_54 uint32 = uint32(number_runtime_bits(uint64(value_53), uint64(0), 32, false, 0))
-	var value_55 float32 = panel.Value.PaddingY
+	var value_55 float32 = title.Value.PaddingY
 	var value_56 float32 = 18.0
 	var value_57 float32 = scale
 	var value_58 bool = true
