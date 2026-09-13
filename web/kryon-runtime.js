@@ -1992,7 +1992,7 @@ const webKssLengthProperties = new Set([
   "flex-basis",
   "text-indent", "text-decoration-thickness", "text-underline-offset",
   "outline-width", "outline-offset", "tab-size",
-  "column-count", "column-width",
+  "column-count", "column-width", "border-spacing",
   "scroll-margin", "scroll-margin-top", "scroll-margin-right",
   "scroll-margin-bottom", "scroll-margin-left",
   "scroll-margin-inline", "scroll-margin-block",
@@ -2022,6 +2022,7 @@ const webKssLiteralProperties = new Set([
   "overflow-x", "overflow-y", "box-sizing", "direction", "writing-mode",
   "hyphens", "line-clamp", "list-style", "list-style-type",
   "list-style-position", "list-style-image",
+  "border-collapse", "table-layout", "caption-side", "empty-cells",
   "scroll-behavior", "overscroll-behavior", "overscroll-behavior-x",
   "overscroll-behavior-y", "overscroll-behavior-inline",
   "overscroll-behavior-block", "scroll-snap-type", "scroll-snap-align",
@@ -2749,6 +2750,11 @@ const webCSSPropertyNames = new Map([
   ["list-style-type", "list-style-type"],
   ["list-style-position", "list-style-position"],
   ["list-style-image", "list-style-image"],
+  ["border-collapse", "border-collapse"],
+  ["border-spacing", "border-spacing"],
+  ["table-layout", "table-layout"],
+  ["caption-side", "caption-side"],
+  ["empty-cells", "empty-cells"],
   ["scroll-behavior", "scroll-behavior"],
   ["overscroll-behavior", "overscroll-behavior"],
   ["overscroll-behavior-x", "overscroll-behavior-x"],
@@ -3757,6 +3763,11 @@ function applyResolvedWebStyle(el, style) {
   set("listStyleType", style["list-style-type"]);
   set("listStylePosition", style["list-style-position"]);
   set("listStyleImage", style["list-style-image"]);
+  set("borderCollapse", style["border-collapse"]);
+  set("borderSpacing", style["border-spacing"]);
+  set("tableLayout", style["table-layout"]);
+  set("captionSide", style["caption-side"]);
+  set("emptyCells", style["empty-cells"]);
   set("scrollBehavior", style["scroll-behavior"]);
   set("overscrollBehavior", style["overscroll-behavior"]);
   set("overscrollBehaviorX", style["overscroll-behavior-x"]);

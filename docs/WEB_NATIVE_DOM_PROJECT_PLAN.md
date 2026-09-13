@@ -93,6 +93,8 @@ the browser receives normal elements, attributes, CSS, and events.
   variants for writing-mode-aware layouts.
 - KSS web outline styling supports the native shorthand plus width, offset,
   style, and color fields.
+- KSS web table styling supports native `border-collapse`, `border-spacing`,
+  `table-layout`, `caption-side`, and `empty-cells` for real browser tables.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
   states such as `:hover:pressed`, and `:normal` export against native
   `data-kry-state` annotations.

@@ -172,6 +172,11 @@ const webStyleSheet = runtime.parseWebStyleSheet(`
     list-style-type: square;
     list-style-position: inside;
     list-style-image: none;
+    border-collapse: collapse;
+    border-spacing: 3;
+    table-layout: fixed;
+    caption-side: bottom;
+    empty-cells: hide;
   }
   TextField[maxlength=64] {
     offset-x: 4;
@@ -561,6 +566,11 @@ assert.match(webStyleCSS, /list-style: square inside;/);
 assert.match(webStyleCSS, /list-style-type: square;/);
 assert.match(webStyleCSS, /list-style-position: inside;/);
 assert.match(webStyleCSS, /list-style-image: none;/);
+assert.match(webStyleCSS, /border-collapse: collapse;/);
+assert.match(webStyleCSS, /border-spacing: 3px;/);
+assert.match(webStyleCSS, /table-layout: fixed;/);
+assert.match(webStyleCSS, /caption-side: bottom;/);
+assert.match(webStyleCSS, /empty-cells: hide;/);
 assert.match(webStyleCSS, /display: flex;/);
 assert.match(webStyleCSS, /position: relative;/);
 assert.match(webStyleCSS, /z-index: 3;/);
@@ -1242,6 +1252,11 @@ assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-type"], "square");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-position"], "inside");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["list-style-image"], "none");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-collapse"], "collapse");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["border-spacing"], 3);
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["table-layout"], "fixed");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["caption-side"], "bottom");
+assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["empty-cells"], "hide");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).display, "flex");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet).position, "relative");
 assert.equal(runtime.resolveWebStyle(webDoc.nodes[3], webStyleSheet)["z-index"], 3);
@@ -3700,6 +3715,11 @@ function fakeDocument() {
     assert.equal(firstField.style.listStyleType, "square");
     assert.equal(firstField.style.listStylePosition, "inside");
     assert.equal(firstField.style.listStyleImage, "none");
+    assert.equal(firstField.style.borderCollapse, "collapse");
+    assert.equal(firstField.style.borderSpacing, "3px");
+    assert.equal(firstField.style.tableLayout, "fixed");
+    assert.equal(firstField.style.captionSide, "bottom");
+    assert.equal(firstField.style.emptyCells, "hide");
     assert.equal(firstField.style.display, "flex");
     assert.equal(firstField.style.position, "relative");
     assert.equal(firstField.style.zIndex, "3");
