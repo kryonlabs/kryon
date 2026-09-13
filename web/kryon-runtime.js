@@ -2037,9 +2037,9 @@ const webKssLiteralProperties = new Set([
   "grid-row", "grid-row-start", "grid-row-end",
   "align-content", "justify-items", "place-items", "place-content", "place-self",
   "object-fit", "object-position", "aspect-ratio", "image-rendering",
-  "background-size", "background-position", "background-repeat",
-  "background-clip", "background-origin", "background-attachment",
-  "background-blend-mode", "visibility",
+  "background-image", "background-size", "background-position",
+  "background-repeat", "background-clip", "background-origin",
+  "background-attachment", "background-blend-mode", "visibility",
   "transition", "transition-property", "transition-duration",
   "transition-timing-function", "transition-delay",
   "animation", "animation-name", "animation-duration",
@@ -2827,6 +2827,7 @@ const webCSSPropertyNames = new Map([
   ["object-position", "object-position"],
   ["aspect-ratio", "aspect-ratio"],
   ["image-rendering", "image-rendering"],
+  ["background-image", "background-image"],
   ["background-size", "background-size"],
   ["background-position", "background-position"],
   ["background-repeat", "background-repeat"],
@@ -3625,6 +3626,7 @@ function applyResolvedWebStyle(el, style) {
   if (backgroundStart !== undefined && backgroundStart !== null && backgroundStart !== "" &&
       backgroundEnd !== undefined && backgroundEnd !== null && backgroundEnd !== "")
     set("backgroundImage", `linear-gradient(${webStyleCSSValue("background", backgroundStart)}, ${webStyleCSSValue("background", backgroundEnd)})`);
+  set("backgroundImage", style["background-image"]);
   set("color", style.foreground);
   set("color", style.color);
   set("accentColor", style["accent-color"]);
