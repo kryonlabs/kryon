@@ -2814,7 +2814,11 @@ function fakeDocument() {
       { nodeName: "list", path: "Page/list" });
     runtime.widget(nativeRt, "ListItem", { text: "First" }, null,
       { nodeName: "listItem", path: "Page/list/first", parentPath: "Page/list" });
-    runtime.widget(nativeRt, "BlockQuote", { text: "Native DOM first." }, null,
+    runtime.widget(nativeRt, "OrderedList", { start: 3, reversed: true, type: "A" }, null,
+      { nodeName: "orderedList", path: "Page/ordered" });
+    runtime.widget(nativeRt, "ListItem", { text: "Third", value: 3 }, null,
+      { nodeName: "orderedItem", path: "Page/ordered/third", parentPath: "Page/ordered" });
+    runtime.widget(nativeRt, "BlockQuote", { text: "Native DOM first.", cite: "/notes/native-dom" }, null,
       { nodeName: "quote", path: "Page/quote" });
     runtime.widget(nativeRt, "CodeBlock", { text: "Button.primary {}" }, null,
       { nodeName: "codeBlock", path: "Page/codeBlock" });
@@ -2997,11 +3001,17 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Figcaption").tag, "figcaption");
     assert.equal(runtime.webNodeQuery(nativeRt, "List").tag, "ul");
     assert.equal(runtime.webNodeQuery(nativeRt, "ListItem").tag, "li");
+    assert.equal(runtime.webNodeQuery(nativeRt, "OrderedList").tag, "ol");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/ordered").extraAttrs.start, "3");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/ordered").extraAttrs.reversed, true);
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/ordered/third").extraAttrs.value, "3");
     assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").tag, "blockquote");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").extraAttrs.cite, "/notes/native-dom");
     assert.equal(runtime.webNodeQuery(nativeRt, "CodeBlock").tag, "pre");
     assert.equal(runtime.webNodeQuery(nativeRt, "Code").tag, "code");
     assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
     assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Time").extraAttrs.datetime, "2026-09-13");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/aside/related").landmarkOwner.path,
       "Page/aside");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/footer/legal").landmarkOwner.path,
@@ -3010,6 +3020,8 @@ function fakeDocument() {
       "Page/list");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/list").collectionItems,
       ["Page/list/first"]);
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/ordered/third").collectionOwner.path,
+      "Page/ordered");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3147,6 +3159,8 @@ function fakeDocument() {
     const nativeCaption = runtime.findWebElement(nativeTarget, "caption");
     const nativeList = runtime.findWebElement(nativeTarget, "list");
     const nativeListItem = runtime.findWebElement(nativeTarget, "listItem");
+    const nativeOrderedList = runtime.findWebElement(nativeTarget, "orderedList");
+    const nativeOrderedItem = runtime.findWebElement(nativeTarget, "orderedItem");
     const nativeQuote = runtime.findWebElement(nativeTarget, "quote");
     const nativeCodeBlock = runtime.findWebElement(nativeTarget, "codeBlock");
     const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
@@ -3204,13 +3218,23 @@ function fakeDocument() {
     assert.equal(nativeList.tagName, "UL");
     assert.equal(nativeListItem.tagName, "LI");
     assert.equal(nativeListItem.textContent, "First");
+    assert.equal(nativeOrderedList.tagName, "OL");
+    assert.equal(nativeOrderedList.attributes.start, "3");
+    assert.equal(nativeOrderedList.attributes.reversed, "");
+    assert.equal(nativeOrderedList.attributes.type, "A");
+    assert.equal(nativeOrderedItem.tagName, "LI");
+    assert.equal(nativeOrderedItem.attributes.value, "3");
     assert.equal(nativeQuote.tagName, "BLOCKQUOTE");
+    assert.equal(nativeQuote.attributes.cite, "/notes/native-dom");
     assert.equal(nativeCodeBlock.tagName, "PRE");
     assert.equal(nativeInlineCode.tagName, "CODE");
     assert.equal(nativeMark.tagName, "MARK");
     assert.equal(nativeTime.tagName, "TIME");
+    assert.equal(nativeTime.attributes.datetime, "2026-09-13");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/list/first").collectionOwner.ref,
       "Page/list");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/ordered/third").collectionOwner.ref,
+      "Page/ordered");
     assert.equal(runtime.webDOMRelations(nativeTarget, "Page/aside/related").landmarkOwner.ref,
       "Page/aside");
     assert.equal(plainCard.tagName, "DIV");

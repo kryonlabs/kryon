@@ -1533,6 +1533,47 @@ function propExtraAttrs(meta, args = null) {
   return out;
 }
 
+function setWidgetNativeAttr(out, name, value) {
+  if (value === undefined || value === null || value === false || value === "")
+    return;
+  out[name] = value === true ? true : String(value);
+}
+
+function widgetNativeAttrs(item, meta, args) {
+  const out = {};
+  switch (item.name) {
+  case "BlockQuote":
+  case "Quote":
+    setWidgetNativeAttr(out, "cite", metaString(meta, "cite") ||
+      propStringAny(args, ["cite", "dom_cite", "html_cite"]));
+    break;
+  case "Time":
+    setWidgetNativeAttr(out, "datetime", metaString(meta, "dateTime") ||
+      propStringAny(args, ["datetime", "date_time", "dom_datetime", "html_datetime"]));
+    break;
+  case "OrderedList":
+    setWidgetNativeAttr(out, "start", metaString(meta, "start") ||
+      propStringAny(args, ["start", "dom_start", "html_start"]));
+    setWidgetNativeAttr(out, "type", metaString(meta, "listType") ||
+      propStringAny(args, ["type", "list_type", "dom_type", "html_type"]));
+    setWidgetNativeAttr(out, "reversed", metaBool(meta, "reversed") ||
+      isTruthyPropAny(args, ["reversed", "dom_reversed", "html_reversed"]));
+    break;
+  case "UnorderedList":
+  case "List":
+    setWidgetNativeAttr(out, "type", metaString(meta, "listType") ||
+      propStringAny(args, ["type", "list_type", "dom_type", "html_type"]));
+    break;
+  case "ListItem":
+    setWidgetNativeAttr(out, "value", metaString(meta, "domValue") ||
+      propStringAny(args, ["value", "dom_value", "html_value"]));
+    break;
+  default:
+    break;
+  }
+  return out;
+}
+
 function metaBool(meta, name) {
   const value = meta?.[name];
   if (typeof value === "string")
@@ -1648,7 +1689,7 @@ function webNodeFromWidget(item, index) {
     part: metaStringOrProp(meta, "part", args, ["part", "dom_part", "html_part"]),
     slot: metaStringOrProp(meta, "slot", args, ["slot", "dom_slot", "html_slot"]),
     dataAttrs: propDataAttrs(meta, args),
-    extraAttrs: propExtraAttrs(meta, args),
+    extraAttrs: { ...widgetNativeAttrs(item, meta, args), ...propExtraAttrs(meta, args) },
     inputType: meta.inputType === undefined || meta.inputType === null ? widgetInputType(item) : String(meta.inputType),
     formOwner: meta.formOwner === undefined || meta.formOwner === null
       ? propStringAny(args, ["form", "dom_form", "html_form"])
