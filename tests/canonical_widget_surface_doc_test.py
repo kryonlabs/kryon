@@ -28,18 +28,7 @@ NATIVE_SCOPE_EXPORT_ALLOWLIST = {
 
 ROLE_COMPAT_EXPORTS = set()
 
-GO_COMPAT_EXPORTS = {
-    "BeginDisabled",
-    "BeginPopup",
-    "BeginScroll",
-    "BeginTableCell",
-    "EndDisabled",
-    "EndPopup",
-    "EndScroll",
-    "EndTableCell",
-    "BeginCanvas",
-    "EndCanvas",
-}
+GO_COMPAT_EXPORTS = set()
 
 WEB_COMPAT_ENTRIES = set()
 

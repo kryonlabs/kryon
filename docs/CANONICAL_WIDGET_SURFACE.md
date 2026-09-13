@@ -298,24 +298,14 @@ the canonical `.kry` block surface owns the remaining generated backends.
 
 ## Go Public Compatibility Exports
 
-These names are still exported by `go/kryon/api.go`, but they mirror lowered
-host support or role-specific compatibility rather than clean widget concepts.
-Generated Go should continue to prefer canonical calls such as `kr.Button`,
-`kr.Scroll` blocks, `kr.Popup` blocks, `kr.Menu`, and `kr.DragDrop` roles as
-those surfaces become available.
+No lowered widget block scopes are exported as package-level functions by
+`go/kryon/api.go`. Generated Go routes lowered lexical scopes through its
+private runtime value; public Go code uses canonical calls such as `kr.Button`,
+`kr.Slider`, `kr.Menu`, and `.kry` blocks for `Scroll`, `Popup`, `Disabled`,
+`TableCell`, and `Canvas`.
 
 | Export | Replacement concept | Removal note |
 |---|---|---|
-| `BeginDisabled` | `Disabled` block | Lowered host entry for disabled lexical content. |
-| `EndDisabled` | `Disabled` block | Lowered host exit for disabled lexical content. |
-| `BeginScroll` | `Scroll` block | Lowered host entry for scroll content. |
-| `EndScroll` | `Scroll` block | Lowered host exit for scroll content. |
-| `BeginPopup` | `Popup` block | Lowered host entry for popup content. |
-| `EndPopup` | `Popup` block | Lowered host exit for popup content. |
-| `BeginTableCell` | `TableCell` block | Lowered host entry for custom table-cell content. |
-| `EndTableCell` | `TableCell` block | Lowered host exit for custom table-cell content. |
-| `BeginCanvas` | `Canvas` block | Lowered host entry for canvas content. |
-| `EndCanvas` | `Canvas` block | Lowered host exit for canvas content. |
 
 ## Web Runtime Compatibility Entries
 

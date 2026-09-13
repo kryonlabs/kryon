@@ -85,10 +85,6 @@ func EndFrame() {
 	active().EndFrame()
 	endDirectFrame()
 }
-func BeginDisabled(disabled bool)      { active().BeginDisabled(disabled) }
-func EndDisabled()                     { active().EndDisabled() }
-func BeginPopup(props PopupProps) bool { return active().BeginPopup(props) }
-func EndPopup()                        { active().EndPopup() }
 func AcceleratorPressed(accelerator Accelerator) int32 {
 	return active().AcceleratorPressed(accelerator)
 }
@@ -165,11 +161,11 @@ func ReadActivation(bounds Rectangle, id int32, enabled bool) Activation {
 }
 func TextFormat(format string, args ...any) string { return active().TextFormat(format, args...) }
 func Scale(px int32) int32                         { return active().Scale(px) }
-func GetScreenWidth() int32     { return active().GetScreenWidth() }
-func GetScreenHeight() int32    { return active().GetScreenHeight() }
-func GetThemeBackground() Color { return active().GetThemeBackground() }
-func GetThemeText() Color       { return active().GetThemeText() }
-func GetThemeIcon() Color       { return active().GetThemeIcon() }
+func GetScreenWidth() int32                        { return active().GetScreenWidth() }
+func GetScreenHeight() int32                       { return active().GetScreenHeight() }
+func GetThemeBackground() Color                    { return active().GetThemeBackground() }
+func GetThemeText() Color                          { return active().GetThemeText() }
+func GetThemeIcon() Color                          { return active().GetThemeIcon() }
 func Circle(centerX, centerY, radius int32, color Color) {
 	active().Circle(centerX, centerY, radius, color)
 }
@@ -181,15 +177,7 @@ func Surface(bounds Rectangle, style Style)          { active().Surface(bounds, 
 func RectGradientH(x, y, w, h int32, left, right Color) {
 	active().RectGradientH(x, y, w, h, left, right)
 }
-func Line(x1, y1, x2, y2 int32, color Color) { active().Line(x1, y1, x2, y2, color) }
-func EndScroll() { active().EndScroll() }
-func BeginTableCell(props TableViewProps, row, column int32) Rectangle {
-	return active().BeginTableCell(props, row, column)
-}
-func EndTableCell() { active().EndTableCell() }
-func BeginScroll(bounds Rectangle, contentHeight int32, offset *int32) Rectangle {
-	return active().BeginScroll(bounds, contentHeight, offset)
-}
+func Line(x1, y1, x2, y2 int32, color Color)  { active().Line(x1, y1, x2, y2, color) }
 func Button(props ButtonProps) bool           { return active().Button(props) }
 func Selectable(props SelectableProps) bool   { return active().Selectable(props) }
 func Checkbox(props CheckboxProps) bool       { return active().Checkbox(props) }
@@ -279,8 +267,6 @@ func Collapsible(props CollapsibleProps) int32             { return active().Col
 func TreeView(props TreeViewProps) int32                   { return active().TreeView(props) }
 func ListBox(props ListBoxProps) int32                     { return active().ListBox(props) }
 func TableView(props TableViewProps) int32                 { return active().TableView(props) }
-func BeginCanvas(canvas Canvas) CanvasResult               { return active().BeginCanvas(canvas) }
-func EndCanvas(canvas Canvas)                              { active().EndCanvas(canvas) }
 func SetCurrentTheme(themeID, darkMode int32)              { active().SetCurrentTheme(themeID, darkMode) }
 func SetTheme(theme Theme)                                 { active().SetTheme(theme) }
 func SetThemeFamily(family ThemeFamily)                    { active().SetThemeFamily(family) }

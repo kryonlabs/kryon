@@ -22,6 +22,7 @@
 static int runtime_output;
 static const KirModule *type_scope;
 static char instance_receiver[KIR_NAME_MAX];
+static char current_guard[K2GO_NAME_MAX];
 static char state_receiver[KIR_NAME_MAX] = "st";
 
 /* ---------------------------------------------------------------- helpers */
@@ -99,6 +100,43 @@ is_runtime_go_type(const char *type)
     for(int i = 0; types[i] != NULL; i++)
         if(strcmp(type, types[i]) == 0)
             return 1;
+    return 0;
+}
+
+static int
+is_lowered_scope_widget(const char *name)
+{
+    return strcmp(name, "BeginDisabled") == 0 ||
+           strcmp(name, "EndDisabled") == 0 ||
+           strcmp(name, "BeginPopup") == 0 ||
+           strcmp(name, "EndPopup") == 0 ||
+           strcmp(name, "BeginScroll") == 0 ||
+           strcmp(name, "EndScroll") == 0 ||
+           strcmp(name, "BeginTableCell") == 0 ||
+           strcmp(name, "EndTableCell") == 0 ||
+           strcmp(name, "BeginCanvas") == 0 ||
+           strcmp(name, "EndCanvas") == 0;
+}
+
+static int
+module_uses_lowered_scope_runtime(const KirModule *m)
+{
+    static const char *const lowered[] = {
+        "BeginDisabled", "EndDisabled", "BeginPopup", "EndPopup",
+        "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
+        "BeginCanvas", "EndCanvas", NULL
+    };
+    for(int i = 0; i < m->function_count; i++) {
+        const KirFunction *fn = &m->functions[i];
+        for(int j = 0; j < fn->stmt_count; j++) {
+            if(fn->stmts[j].kind == KIR_STMT_WIDGET &&
+               is_lowered_scope_widget(fn->stmts[j].widget))
+                return 1;
+            for(int k = 0; lowered[k] != NULL; k++)
+                if(strstr(fn->stmts[j].text, lowered[k]) != NULL)
+                    return 1;
+        }
+    }
     return 0;
 }
 
@@ -2009,6 +2047,13 @@ tx_expr(const KirModule *m, const char *src, char *dst, size_t dst_size)
                     continue;
                 }
             }
+            if(!runtime_output && current_guard[0] != '\0' &&
+               is_lowered_scope_widget(ident)) {
+                dn += (size_t)snprintf(dst + dn, dst_size - dn,
+                    "_%sRuntime.%s", current_guard, ident);
+                p = q;
+                continue;
+            }
             if(KirFindRuntimeEnumMember(ident) != NULL) {
                 dn += (size_t)snprintf(dst + dn, dst_size - dn, "%s%s",
                     runtime_output ? "" : K2GO_RUNTIME_PKG ".", ident);
@@ -2374,6 +2419,25 @@ resolve_body_symbol(void *context, const char *text, char *out, size_t size)
         }
     }
     tx_expr(context, text, out, size);
+    if(!runtime_output && current_guard[0] != '\0') {
+        static const char *const lowered[] = {
+            "BeginDisabled", "EndDisabled", "BeginPopup", "EndPopup",
+            "BeginScroll", "EndScroll", "BeginTableCell", "EndTableCell",
+            "BeginCanvas", "EndCanvas", NULL
+        };
+        for(int i = 0; lowered[i] != NULL; i++) {
+            char runtime_call[K2GO_TEXT_MAX];
+            char package_call[KIR_NAME_MAX + 8];
+            snprintf(package_call, sizeof(package_call), "%s.%s(",
+                     K2GO_RUNTIME_PKG, lowered[i]);
+            if(strncmp(out, package_call, strlen(package_call)) == 0) {
+                snprintf(runtime_call, sizeof(runtime_call), "_%sRuntime.%s(%s",
+                         current_guard, lowered[i], out + strlen(package_call));
+                kir_copy(out, size, runtime_call);
+                return;
+            }
+        }
+    }
     const char *arguments = strchr(text, '(');
     if(runtime_output && arguments != NULL && *instance_receiver) {
         char name[KIR_NAME_MAX];
@@ -2404,6 +2468,7 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
     int saved_array_count = k2go_array_count;
 
     instance_receiver[0] = '\0';
+    snprintf(current_guard, sizeof(current_guard), "%s", guard);
     if(runtime_output && fn->uses_host) {
         int collision;
         int serial = 0;
@@ -2695,15 +2760,20 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
         case KIR_STMT_WIDGET: {
             char wname[K2GO_NAME_MAX];
             char wargs[K2GO_TEXT_MAX];
+            char app_runtime[K2GO_NAME_MAX * 2];
+            const char *target = K2GO_RUNTIME_PKG;
 
             kir_camel_ident(st->widget, wname, sizeof(wname));
             tx_expr(m, st->args, wargs, sizeof(wargs));
+            snprintf(app_runtime, sizeof(app_runtime), "_%sRuntime", guard);
             emit_indent(f, indent);
+            if(is_lowered_scope_widget(wname))
+                target = app_runtime;
             if(strcmp(wname, "BeginDisabled") == 0)
                 fprintf(f, "%s.BeginDisabled((%s) != 0)\n",
-                        K2GO_RUNTIME_PKG, wargs);
+                        target, wargs);
             else
-                fprintf(f, "%s.%s(%s)\n", K2GO_RUNTIME_PKG, wname, wargs);
+                fprintf(f, "%s.%s(%s)\n", target, wname, wargs);
             break;
         }
         case KIR_STMT_RETURN:
@@ -2866,6 +2936,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             type_scope = m;
             runtime_output = runtime_implementation;
             k2go_set_module(m, guard);
+            snprintf(current_guard, sizeof(current_guard), "%s", guard);
             fprintf(f, "// Code generated by k2go from %s. DO NOT EDIT.\n",
                     m->source_path);
             fprintf(f, "package %s\n\n", pkg);
@@ -2896,6 +2967,11 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             }
             if(g_extern_count > 0)
                 fprintf(f, "\n");
+
+            if(!runtime_implementation &&
+               (m->app.has_app || module_uses_lowered_scope_runtime(m)))
+                fprintf(f, "var _%sRuntime %s.Runtime\n\n", guard,
+                        K2GO_RUNTIME_PKG);
 
             for(int i = 0; i < m->import_count; i++) {
                 const KirImport *imp = &m->imports[i];
@@ -3117,6 +3193,7 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
             /* app -> main */
             if(m->app.has_app && !no_main) {
                 char frame[K2GO_NAME_MAX * 2];
+                char app_runtime[K2GO_NAME_MAX * 2];
                 const KirFunction *entry = NULL;
 
                 if(m->app.frame[0] != '\0') {
@@ -3139,22 +3216,22 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                     kir_camel_ident(entry->name, frame, sizeof(frame));
                 else
                     kir_camel_ident(m->app.frame, frame, sizeof(frame));
+                snprintf(app_runtime, sizeof(app_runtime), "_%sRuntime", guard);
                 fprintf(f, "func main() {\n");
-                fprintf(f, "\t%s.Open(%s.AppConfig{\n", K2GO_RUNTIME_PKG,
-                        K2GO_RUNTIME_PKG);
+                fprintf(f, "\t%s = %s.Open(%s.AppConfig{\n", app_runtime,
+                        K2GO_RUNTIME_PKG, K2GO_RUNTIME_PKG);
                 fprintf(f, "\t\tTitle: \"%s\",\n", m->app.title);
                 fprintf(f, "\t\tWidth: %d, Height: %d, FPS: %d,\n",
                         m->app.width, m->app.height, m->app.fps);
                 fprintf(f, "\t})\n");
-                fprintf(f, "\tdefer %s.Close()\n", K2GO_RUNTIME_PKG);
+                fprintf(f, "\tdefer %s.Close()\n", app_runtime);
                 fprintf(f, "\tfor !%s.WindowShouldClose() {\n",
-                        K2GO_RUNTIME_PKG);
+                        app_runtime);
                 if(entry != NULL && entry->is_ui) {
-                    fprintf(f, "\t\t%s.BeginFrame()\n", K2GO_RUNTIME_PKG);
+                    fprintf(f, "\t\t%s.BeginFrame()\n", app_runtime);
                     if(strstr(entry->args, "Rectangle") != NULL) {
                         fprintf(f, "\t\tviewport := %s.Rectangle{Width: float32(%s.GetScreenWidth()), Height: float32(%s.GetScreenHeight())}\n",
-                                K2GO_RUNTIME_PKG, K2GO_RUNTIME_PKG,
-                                K2GO_RUNTIME_PKG);
+                                K2GO_RUNTIME_PKG, app_runtime, app_runtime);
                         if(m->state_count > 0)
                             fprintf(f, "\t\t%s_%s(%sStateValue, viewport)\n",
                                     guard, frame, guard);
@@ -3167,11 +3244,11 @@ k2go_lower(const KirProgram *const *progs, int prog_count,
                         else
                             fprintf(f, "\t\t%s_%s()\n", guard, frame);
                     }
-                    fprintf(f, "\t\t%s.EndFrame()\n", K2GO_RUNTIME_PKG);
+                    fprintf(f, "\t\t%s.EndFrame()\n", app_runtime);
                 } else if(entry != NULL && strstr(entry->args, "Rectangle") != NULL) {
                     fprintf(f, "\t\tviewport := %s.Rectangle{Width: float32(%s.GetScreenWidth()), Height: float32(%s.GetScreenHeight())}\n",
-                            K2GO_RUNTIME_PKG, K2GO_RUNTIME_PKG,
-                            K2GO_RUNTIME_PKG);
+                            K2GO_RUNTIME_PKG, app_runtime,
+                            app_runtime);
                     if(m->state_count > 0)
                         fprintf(f, "\t\t%s_%s(%sStateValue, viewport)\n",
                                 guard, frame, guard);
