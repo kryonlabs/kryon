@@ -3,16 +3,16 @@
 #include <stdio.h>
 #include <string.h>
 
-#define EDITABLE (KRYON_NODE_SELECTABLE | KRYON_NODE_MOVABLE | \
-                  KRYON_NODE_RESIZABLE)
-#define INSERT_EDITABLE (KRYON_NODE_INSERTABLE | EDITABLE)
-#define MOVABLE_TEXT (KRYON_NODE_INSERTABLE | KRYON_NODE_SELECTABLE | \
-                      KRYON_NODE_MOVABLE)
+#define EDITABLE (NODE_SELECTABLE | NODE_MOVABLE | \
+                  NODE_RESIZABLE)
+#define INSERT_EDITABLE (NODE_INSERTABLE | EDITABLE)
+#define MOVABLE_TEXT (NODE_INSERTABLE | NODE_SELECTABLE | \
+                      NODE_MOVABLE)
 
-static const KryonNodeType kryon_node_types[] = {
-    {"Background", "Background", "UI/Display", "Control", "Fill", KRYON_NODE_INSERTABLE | KRYON_NODE_SELECTABLE},
+static const NodeType node_types[] = {
+    {"Background", "Background", "UI/Display", "Control", "Fill", NODE_INSERTABLE | NODE_SELECTABLE},
     {"Text", "Text", "UI/Display", "Control", "Label", MOVABLE_TEXT},
-    {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", KRYON_NODE_SELECTABLE},
+    {"Paragraph", "Paragraph", "UI/Display", "Control", "Rich text", NODE_SELECTABLE},
     {"Box", "Box", "UI/Display", "Control", "Shape", INSERT_EDITABLE},
     {"Line", "Line", "UI/Display", "Control", "Stroke", INSERT_EDITABLE},
     {"Bevel", "Bevel", "UI/Display", "Control", "Relief", EDITABLE},
@@ -69,16 +69,16 @@ static const KryonNodeType kryon_node_types[] = {
     {"Light2D", "Light2D", "Game2D/Rendering", "Node2D", "Point light", 0}
 };
 
-static const KryonNodeType *
-kryon_node_type_checked(int index)
+static const NodeType *
+node_type_checked(int index)
 {
-    if(index < 0 || index >= KryonNodeTypeCount())
+    if(index < 0 || index >= NodeTypeCount())
         return NULL;
-    return &kryon_node_types[index];
+    return &node_types[index];
 }
 
 static int
-kryon_node_type_has_snippet(const char *name)
+node_type_has_snippet(const char *name)
 {
     static const char *snippet_names[] = {
         "Background",
@@ -106,79 +106,79 @@ kryon_node_type_has_snippet(const char *name)
 }
 
 int
-KryonNodeTypeCount(void)
+NodeTypeCount(void)
 {
-    return (int)(sizeof(kryon_node_types) / sizeof(kryon_node_types[0]));
+    return (int)(sizeof(node_types) / sizeof(node_types[0]));
 }
 
-const KryonNodeType *
-KryonNodeTypeAt(int index)
+const NodeType *
+NodeTypeAt(int index)
 {
-    return kryon_node_type_checked(index);
+    return node_type_checked(index);
 }
 
 const char *
-KryonNodeTypeName(int index)
+NodeTypeName(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->name : "";
 }
 
 const char *
-KryonNodeTypeLabel(int index)
+NodeTypeLabel(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->label : "";
 }
 
 const char *
-KryonNodeTypeGroup(int index)
+NodeTypeGroup(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->group : "";
 }
 
 const char *
-KryonNodeTypeBase(int index)
+NodeTypeBase(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->base : "";
 }
 
 const char *
-KryonNodeTypeDetail(int index)
+NodeTypeDetail(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->detail : "";
 }
 
 unsigned
-KryonNodeTypeFlagsAt(int index)
+NodeTypeFlagsAt(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     return type != NULL ? type->flags : 0;
 }
 
 int
-KryonNodeTypeInsertable(int index)
+NodeTypeInsertable(int index)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
 
     return type != NULL &&
-           (type->flags & KRYON_NODE_INSERTABLE) != 0 &&
-           kryon_node_type_has_snippet(type->name);
+           (type->flags & NODE_INSERTABLE) != 0 &&
+           node_type_has_snippet(type->name);
 }
 
 int
-KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
+NodeTypeSnippet(int index, int x, int y, char *dst, int cap)
 {
-    const KryonNodeType *type = kryon_node_type_checked(index);
+    const NodeType *type = node_type_checked(index);
     int id;
 
     if(dst == NULL || cap <= 0)
         return 0;
     dst[0] = '\0';
-    if(type == NULL || !KryonNodeTypeInsertable(index))
+    if(type == NULL || !NodeTypeInsertable(index))
         return 0;
     id = (x * 31 + y * 17 + index * 101) & 0x7fffffff;
     if(strcmp(type->name, "Background") == 0) {

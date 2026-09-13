@@ -112,6 +112,19 @@ if [ -n "$internal_overlay_registry_matches" ]; then
     exit 1
 fi
 
+node_registry_prefix_matches="$(
+    rg -n '\b(KryonNodeType|KRYON_NODE_(INSERTABLE|SELECTABLE|MOVABLE|RESIZABLE))\b' \
+        include/ui_node_registry.h src/ui/ui_node_registry.c docs/PUBLIC_API_SNAPSHOT.txt \
+        --glob '!vendor/**' \
+        --glob '!build/**' || true
+)"
+
+if [ -n "$node_registry_prefix_matches" ]; then
+    echo "Node registry public API must use clean NodeType names without Kryon/KRYON prefixes:"
+    echo "$node_registry_prefix_matches"
+    exit 1
+fi
+
 profile_picture_doc_matches="$(
     rg -n '\bProfilePicture\b|\bprofile_picture\b|\bprofile picture\b|\bUISyncProfileIcon\b|\bUI_SYNC_PROFILE_ICON_' \
         docs/CANONICAL_WIDGET_SURFACE.md \
