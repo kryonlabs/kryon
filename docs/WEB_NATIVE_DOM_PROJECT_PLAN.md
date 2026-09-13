@@ -29,6 +29,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Lexical UI scopes that lower through host begin/end support now emit Web
   Document nodes at their `.kry` block boundary: `Scroll`, `Canvas`,
   `TableCell`, `Popup`, and `Disabled`.
+- Direct expression-statement scope calls for `BeginCanvas`, `BeginTableCell`,
+  and `BeginPopup` lower through the same metadata path instead of relying on
+  runtime fallback synthesis.
 - Direct runtime/web widget calls are covered by a compiler contract test that
   requires source-derived `path`/`key` metadata before runtime fallback.
 - Browser-backed Web Document smoke coverage now exercises native elements,

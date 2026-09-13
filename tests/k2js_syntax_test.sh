@@ -911,8 +911,12 @@ ParenthesizedScopeCalls :: () #ui {
     table: TableViewProps = (TableViewProps){}
     cell: Rectangle = (BeginTableCell(table, 0, 0))
     EndTableCell()
+    BeginTableCell(table, 0, 0)
+    EndTableCell()
     canvas_spec: Canvas = (Canvas){.bounds = {0, 0, 100, 100}}
     canvas: CanvasResult = (BeginCanvas(canvas_spec))
+    EndCanvas(canvas_spec)
+    BeginCanvas(canvas_spec)
     EndCanvas(canvas_spec)
     (BeginDisabled(true))
     EndDisabled()
@@ -925,6 +929,8 @@ ParenthesizedScopeCalls :: () #ui {
     if popup_visible {
         EndPopup()
     }
+    BeginPopup(popup_expr)
+    EndPopup()
 }
 EOF
 "$k2js" --no-main --root "$work" -o "$work/out" "$work/src/parenthesized_scope_calls.kry"
@@ -934,13 +940,16 @@ grep -q 'kryon.widget(\$rt, "TableCell"' "$parenthesized_scope_out"
 grep -q 'kryon.widget(\$rt, "Canvas"' "$parenthesized_scope_out"
 grep -q 'kryon.widget(\$rt, "Disabled"' "$parenthesized_scope_out"
 grep -q 'kryon.widget(\$rt, "Popup"' "$parenthesized_scope_out"
+grep -Eq '"path": "ParenthesizedScopeCalls/TableCell@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
+grep -Eq '"path": "ParenthesizedScopeCalls/Canvas@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
+grep -Eq '"path": "ParenthesizedScopeCalls/Popup@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out"
 grep -q '"path": "ParenthesizedScopeCalls/Scroll@3"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/TableCell@6-2"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Canvas@9-3"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Disabled@11-4"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Popup@14-5"' "$parenthesized_scope_out"
+[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/TableCell@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 2 ]
+[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/Canvas@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 2 ]
+[ "$(grep -Ec '"path": "ParenthesizedScopeCalls/Popup@[0-9]+(-[0-9]+)?"' "$parenthesized_scope_out")" -eq 3 ]
+grep -q '"path": "ParenthesizedScopeCalls/Disabled@15-6"' "$parenthesized_scope_out"
 grep -q 'let popup_visible = kryon.copyValue((() => { const $open = kryon.widget($rt, "Popup"' "$parenthesized_scope_out"
-grep -q '"path": "ParenthesizedScopeCalls/Popup@18-6"' "$parenthesized_scope_out"
+grep -q '"path": "ParenthesizedScopeCalls/Popup@18-7"' "$parenthesized_scope_out"
 node --input-type=module - "$parenthesized_scope_out" "$work/out/kryon-runtime.js" <<'EOF'
 import assert from "node:assert/strict";
 import { pathToFileURL } from "node:url";
@@ -951,10 +960,13 @@ module.ParenthesizedScopeCalls_ParenthesizedScopeCalls(rt, module.createState(),
 assert.deepEqual(runtime.webDocumentFrame(rt).nodes.map((node) => node.path), [
   "ParenthesizedScopeCalls/Scroll@3",
   "ParenthesizedScopeCalls/TableCell@6-2",
-  "ParenthesizedScopeCalls/Canvas@9-3",
-  "ParenthesizedScopeCalls/Disabled@11-4",
-  "ParenthesizedScopeCalls/Popup@14-5",
-  "ParenthesizedScopeCalls/Popup@18-6"
+  "ParenthesizedScopeCalls/TableCell@8-3",
+  "ParenthesizedScopeCalls/Canvas@11-4",
+  "ParenthesizedScopeCalls/Canvas@13-5",
+  "ParenthesizedScopeCalls/Disabled@15-6",
+  "ParenthesizedScopeCalls/Popup@18-7",
+  "ParenthesizedScopeCalls/Popup@22-8",
+  "ParenthesizedScopeCalls/Popup@26-9"
 ]);
 EOF
 

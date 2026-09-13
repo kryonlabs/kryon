@@ -2424,6 +2424,27 @@ lower_function(FILE *f, const KirModule *m, const KirFunction *fn,
                 fputs(";\n", f);
                 break;
             }
+            if(stmt_has_web_metadata(st) &&
+               begin_canvas_call_args(raw, args, sizeof(args))) {
+                emit_indent(f, indent);
+                emit_canvas_initializer_with_meta(f, m, args, st);
+                fputs(";\n", f);
+                break;
+            }
+            if(stmt_has_web_metadata(st) &&
+               begin_table_cell_call_args(raw, args, sizeof(args))) {
+                emit_indent(f, indent);
+                emit_table_cell_initializer_with_meta(f, m, args, st);
+                fputs(";\n", f);
+                break;
+            }
+            if(stmt_has_web_metadata(st) &&
+               begin_popup_call_args(raw, args, sizeof(args))) {
+                emit_indent(f, indent);
+                emit_popup_initializer_with_meta(f, m, args, st);
+                fputs(";\n", f);
+                break;
+            }
             if(split_direct_call(raw, name, sizeof(name), args, sizeof(args)) &&
                (strcmp(name, "BeginDisabled") == 0 || strcmp(name, "EndDisabled") == 0)) {
                 emit_indent(f, indent);
