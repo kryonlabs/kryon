@@ -1,0 +1,156 @@
+#module "rows"
+#import "control_props"
+#import "style"
+
+InfoRowsMetrics :: struct {
+    row_height: i32
+    padding_x: i32
+}
+
+LabelTextFieldMetrics :: struct {
+    label_height: i32
+    field_height: i32
+    gap: i32
+    bottom_gap: i32
+}
+
+SectionLabelMetrics :: struct {
+    height: i32
+    icon_diameter: i32
+    info_gap: i32
+    info_y_offset: i32
+}
+
+CheckboxRowMetrics :: struct {
+    height: i32
+}
+
+ButtonRowMetrics :: struct {
+    height: i32
+    gap: i32
+    item_padding_x: i32
+    min_width: i32
+    max_width: i32
+}
+
+SpinboxRowMetrics :: struct {
+    row_height: i32
+    control_width: i32
+    label_gap: i32
+    control_height_inset: i32
+}
+
+RowsMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+RowsRequestedMetric :: (requested: i32, fields: u32, field: u32,
+    value: float, fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if requested > 0 { return requested }
+    return RowsMetric(fields, field, value, fallback, scale, allow_zero)
+}
+
+InfoRowsMetricsFor :: (row_height: i32, padding_x: i32, scale: float,
+    row: StyleFrame) -> InfoRowsMetrics #export {
+    metrics: InfoRowsMetrics
+    metrics.row_height = RowsRequestedMetric(row_height, row.value.fields,
+        (u32)StyleContentOffset, row.value.offset_y, 32.0, scale, false)
+    metrics.padding_x = RowsRequestedMetric(padding_x, row.value.fields,
+        (u32)StylePaddingX, row.value.padding_x, 10.0, scale, true)
+    return metrics
+}
+
+LabelTextFieldMetricsFor :: (label_height: i32, field_height: i32,
+    gap: i32, bottom_gap: i32, scale: float, label: StyleFrame,
+    field: StyleFrame) -> LabelTextFieldMetrics #export {
+    metrics: LabelTextFieldMetrics
+    metrics.label_height = RowsRequestedMetric(label_height,
+        label.value.fields, (u32)StyleContentOffset, label.value.offset_y,
+        22.0, scale, false)
+    metrics.field_height = RowsRequestedMetric(field_height,
+        field.value.fields, (u32)StyleContentOffset, field.value.offset_y,
+        40.0, scale, false)
+    if gap > 0 {
+        metrics.gap = gap
+    } else {
+        metrics.gap = RowsMetric(label.value.fields, (u32)StyleGap,
+            label.value.gap, 0.0, scale, true)
+    }
+    metrics.bottom_gap = RowsRequestedMetric(bottom_gap, field.value.fields,
+        (u32)StyleGap, field.value.gap, 24.0, scale, true)
+    return metrics
+}
+
+SectionLabelMetricsFor :: (height: i32, icon_diameter: i32, scale: float,
+    label: StyleFrame) -> SectionLabelMetrics #export {
+    metrics: SectionLabelMetrics
+    metrics.height = RowsRequestedMetric(height, label.value.fields,
+        (u32)StyleContentOffset, label.value.offset_y, 24.0, scale, false)
+    metrics.icon_diameter = RowsRequestedMetric(icon_diameter,
+        label.value.fields, (u32)StyleIconSize, label.value.icon_size,
+        18.0, scale, false)
+    metrics.info_gap = RowsMetric(label.value.fields, (u32)StylePaddingX,
+        label.value.padding_x, 16.0, scale, true)
+    metrics.info_y_offset = RowsMetric(label.value.fields, (u32)StylePaddingY,
+        label.value.padding_y, 1.0, scale, true)
+    return metrics
+}
+
+CheckboxRowMetricsFor :: (height: i32, scale: float,
+    row: StyleFrame) -> CheckboxRowMetrics #export {
+    metrics: CheckboxRowMetrics
+    metrics.height = RowsRequestedMetric(height, row.value.fields,
+        (u32)StyleContentOffset, row.value.offset_y, 42.0, scale, false)
+    return metrics
+}
+
+ButtonRowMetricsFor :: (height: i32, gap: i32, scale: float,
+    row: StyleFrame, item: StyleFrame) -> ButtonRowMetrics #export {
+    metrics: ButtonRowMetrics
+    metrics.height = RowsRequestedMetric(height, row.value.fields,
+        (u32)StyleContentOffset, row.value.offset_y, 30.0, scale, false)
+    if gap > 0 {
+        metrics.gap = gap
+    } else {
+        metrics.gap = RowsMetric(row.value.fields, (u32)StyleGap,
+            row.value.gap, 6.0, scale, true)
+    }
+    metrics.item_padding_x = RowsMetric(item.value.fields,
+        (u32)StylePaddingX, item.value.padding_x, 10.0, scale, true)
+    metrics.min_width = RowsMetric(item.value.fields,
+        (u32)StyleContentOffset, item.value.offset_x, 76.0, scale, false)
+    metrics.max_width = RowsMetric(item.value.fields,
+        (u32)StyleIconSize, item.value.icon_size, 144.0, scale, false)
+    if metrics.max_width < metrics.min_width {
+        metrics.max_width = metrics.min_width
+    }
+    return metrics
+}
+
+ButtonRowItemWidth :: (label_width: i32, metrics: ButtonRowMetrics) -> i32 #export {
+    width: i32 = label_width + metrics.item_padding_x * 2
+    if width < metrics.min_width { width = metrics.min_width }
+    if width > metrics.max_width { width = metrics.max_width }
+    return width
+}
+
+SpinboxRowMetricsFor :: (row_height: i32, control_width: i32,
+    scale: float, row: StyleFrame, control: StyleFrame) -> SpinboxRowMetrics #export {
+    metrics: SpinboxRowMetrics
+    metrics.row_height = RowsRequestedMetric(row_height, row.value.fields,
+        (u32)StyleContentOffset, row.value.offset_y, 54.0, scale, false)
+    metrics.control_width = RowsRequestedMetric(control_width,
+        control.value.fields, (u32)StyleContentOffset, control.value.offset_x,
+        156.0, scale, false)
+    metrics.label_gap = RowsMetric(row.value.fields, (u32)StyleGap,
+        row.value.gap, 12.0, scale, true)
+    metrics.control_height_inset = RowsMetric(control.value.fields,
+        (u32)StylePaddingY, control.value.padding_y, 14.0, scale, true)
+    return metrics
+}

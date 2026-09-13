@@ -1,5 +1,71 @@
 #include "ui_internal.h"
 #include "ui_style_internal.h"
+#include "runtime/rows.h"
+
+static float
+rows_runtime_scale(void)
+{
+    return (float)Scale(1000) / 1000.0f;
+}
+
+static StyleFrame
+rows_style_frame(int style_kind, int role)
+{
+    return ui_control_style_frame_role_kind(
+        (ButtonProps){.tone = ButtonToneNeutral,
+                      .emphasis = ButtonEmphasisSoft,
+                      .size = ControlSizeMedium},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, style_kind, role);
+}
+
+static InfoRowsMetrics
+info_rows_metrics(InfoRowsProps rows)
+{
+    return InfoRowsMetricsFor(rows.row_height, rows.padding_x,
+                              rows_runtime_scale(),
+                              rows_style_frame(StyleKindText(), 0));
+}
+
+static LabelTextFieldMetrics
+label_text_field_metrics(LabelTextFieldProps row)
+{
+    return LabelTextFieldMetricsFor(
+        row.label_h, row.field_h, row.gap, row.bottom_gap,
+        rows_runtime_scale(), rows_style_frame(StyleKindText(), 1),
+        rows_style_frame(StyleKindTextField(), 2));
+}
+
+static SectionLabelMetrics
+section_label_metrics(SectionLabelProps label)
+{
+    return SectionLabelMetricsFor(label.height, label.icon_diameter,
+                                  rows_runtime_scale(),
+                                  rows_style_frame(StyleKindText(), 3));
+}
+
+static CheckboxRowMetrics
+checkbox_row_metrics(CheckboxRowProps row)
+{
+    return CheckboxRowMetricsFor(row.height, rows_runtime_scale(),
+                                 rows_style_frame(StyleKindCheckbox(), 4));
+}
+
+static ButtonRowMetrics
+button_row_metrics(ButtonRowProps row)
+{
+    return ButtonRowMetricsFor(row.height, row.gap, rows_runtime_scale(),
+                               rows_style_frame(StyleKindButton(), 5),
+                               rows_style_frame(StyleKindButton(), 6));
+}
+
+static SpinboxRowMetrics
+spinbox_row_metrics(SpinboxRowProps row)
+{
+    return SpinboxRowMetricsFor(row.row_height, row.control_width,
+                                rows_runtime_scale(),
+                                rows_style_frame(StyleKindSpinbox(), 7),
+                                rows_style_frame(StyleKindSpinbox(), 8));
+}
 
 void
 RenderInfoRows(InfoRowsProps rows)
@@ -20,8 +86,9 @@ RenderInfoRows(InfoRowsProps rows)
     Color default_text = rows.default_text.a != 0
                              ? rows.default_text
                              : text_style.foreground;
-    int row_h = rows.row_height > 0 ? rows.row_height : Scale(32);
-    int padding_x = rows.padding_x > 0 ? rows.padding_x : Scale(10);
+    InfoRowsMetrics metrics = info_rows_metrics(rows);
+    int row_h = metrics.row_height;
+    int padding_x = metrics.padding_x;
     int default_font = text_style.font_size > 0.0f
                            ? (int)(text_style.font_size + 0.5f)
                            : GetFontSize();
@@ -54,12 +121,10 @@ RenderInfoRows(InfoRowsProps rows)
 int
 ui_label_text_field_height(LabelTextFieldProps row)
 {
-    int label_h = row.label_h > 0 ? row.label_h : Scale(22);
-    int field_h = row.field_h > 0 ? row.field_h : Scale(40);
-    int gap = row.gap > 0 ? row.gap : 0;
-    int bottom_gap = row.bottom_gap > 0 ? row.bottom_gap : Scale(24);
+    LabelTextFieldMetrics metrics = label_text_field_metrics(row);
 
-    return label_h + gap + field_h + bottom_gap;
+    return metrics.label_height + metrics.gap + metrics.field_height +
+           metrics.bottom_gap;
 }
 
 int
@@ -71,9 +136,7 @@ GetLabelTextFieldHeight(LabelTextFieldProps row)
 int
 RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
 {
-    int label_h = row.label_h > 0 ? row.label_h : Scale(22);
-    int field_h = row.field_h > 0 ? row.field_h : Scale(40);
-    int gap = row.gap > 0 ? row.gap : 0;
+    LabelTextFieldMetrics metrics = label_text_field_metrics(row);
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
@@ -91,20 +154,23 @@ RenderLabelTextField(LabelTextFieldProps row, int x, int y, int w)
     font_token = PushTextFont(text_style.typeface);
     RenderText(row.label != NULL ? row.label : "", x, y, label_font, label_color);
     PopTextFont(font_token);
-    field.bounds = (Rectangle){(float)x, (float)(y + label_h + gap), (float)w, (float)field_h};
+    field.bounds = (Rectangle){(float)x,
+                               (float)(y + metrics.label_height + metrics.gap),
+                               (float)w, (float)metrics.field_height};
     return ui_text_field_render(field);
 }
 
 int
 ui_section_label_height(SectionLabelProps label)
 {
-    return label.height > 0 ? label.height : Scale(24);
+    return section_label_metrics(label).height;
 }
 
 int
 RenderSectionLabel(SectionLabelProps label, int x, int y)
 {
-    int icon_d = label.icon_diameter > 0 ? label.icon_diameter : Scale(18);
+    SectionLabelMetrics metrics = section_label_metrics(label);
+    int icon_d = metrics.icon_diameter;
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
                                                     ButtonStateNormal,
                                                     StyleKindText());
@@ -127,14 +193,14 @@ RenderSectionLabel(SectionLabelProps label, int x, int y)
     }
     label_w = TextWidth(text, font);
     PopTextFont(font_token);
-    return RenderButtonInfoIndicator(x + label_w + Scale(16),
-                               y + font / 2 + Scale(1), icon_d);
+    return RenderButtonInfoIndicator(x + label_w + metrics.info_gap,
+                               y + font / 2 + metrics.info_y_offset, icon_d);
 }
 
 int
 ui_checkbox_row_height(CheckboxRowProps row)
 {
-    return row.height > 0 ? row.height : Scale(42);
+    return checkbox_row_metrics(row).height;
 }
 
 int
@@ -148,8 +214,9 @@ RenderCheckboxRow(CheckboxRowProps row, int x, int y)
 int
 GetButtonRowHeight(ButtonRowProps row)
 {
-    int height = row.height > 0 ? row.height : Scale(30);
-    int gap = row.gap > 0 ? row.gap : Scale(6);
+    ButtonRowMetrics metrics = button_row_metrics(row);
+    int height = metrics.height;
+    int gap = metrics.gap;
     int width = row.width;
     int row_w = 0;
     int rows = 1;
@@ -161,16 +228,11 @@ GetButtonRowHeight(ButtonRowProps row)
         return height;
 
     for(int i = 0; i < row.count; i++) {
-        int item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + Scale(20);
-        int min_w = Scale(76);
-        int max_w = Scale(144);
+        int item_w = ButtonRowItemWidth(
+            TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
+                      font),
+            metrics);
         int next_w;
-
-        if(item_w < min_w)
-            item_w = min_w;
-        if(item_w > max_w)
-            item_w = max_w;
         next_w = row_w > 0 ? row_w + gap + item_w : item_w;
         if(row_w > 0 && next_w > width) {
             rows++;
@@ -186,7 +248,7 @@ GetButtonRowHeight(ButtonRowProps row)
 int
 GetSpinboxRowHeight(SpinboxRowProps row)
 {
-    return row.row_height > 0 ? row.row_height : Scale(54);
+    return spinbox_row_metrics(row).row_height;
 }
 
 Form
@@ -290,13 +352,12 @@ FormTextField(Form *form, LabelTextFieldProps row)
 
     field_bounds = row.field.bounds;
     if(field_bounds.width <= 0 || field_bounds.height <= 0) {
-        int label_h = row.label_h > 0 ? row.label_h : Scale(22);
-        int field_h = row.field_h > 0 ? row.field_h : Scale(40);
-        int gap = row.gap > 0 ? row.gap : 0;
+        LabelTextFieldMetrics metrics = label_text_field_metrics(row);
         field_bounds = (Rectangle){(float)form->x,
-                                   (float)(y + label_h + gap),
+                                   (float)(y + metrics.label_height +
+                                           metrics.gap),
                                    (float)form->width,
-                                   (float)field_h};
+                                   (float)metrics.field_height};
     }
     FormNoteFocus(form, row.field.focus_id, field_bounds);
     return result;
@@ -330,16 +391,17 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     if(form == NULL)
         return 0;
     y = form->cursor_y;
-    height = GetSpinboxRowHeight(row);
+    SpinboxRowMetrics metrics = spinbox_row_metrics(row);
+    height = metrics.row_height;
     FormTakeRect(form, height);
 
     label_font = row.label_font > 0 ? row.label_font : GetFontSize();
-    control_w = row.control_width > 0 ? row.control_width : Scale(156);
+    control_w = metrics.control_width;
     if(control_w > form->width)
         control_w = form->width;
     label_w = row.label_width > 0
                   ? row.label_width
-                  : form->width - control_w - Scale(12);
+                  : form->width - control_w - metrics.label_gap;
     if(label_w < 0)
         label_w = 0;
     Style text_style = ui_resolve_button_style_kind((ButtonProps){0},
@@ -356,7 +418,7 @@ FormSpinbox(Form *form, SpinboxRowProps row)
     if(spinbox.bounds.width <= 0)
         spinbox.bounds.width = (float)control_w;
     if(spinbox.bounds.height <= 0)
-        spinbox.bounds.height = (float)(height - Scale(14));
+        spinbox.bounds.height = (float)(height - metrics.control_height_inset);
     spinbox.bounds.x = (float)(form->x + form->width - (int)spinbox.bounds.width);
     spinbox.bounds.y = (float)(y + (height - (int)spinbox.bounds.height) / 2);
     return Spinbox(spinbox);
@@ -381,7 +443,8 @@ int
 RenderButtonRow(ButtonRowProps row)
 {
     int clicked = -1;
-    int gap = row.gap > 0 ? row.gap : Scale(6);
+    ButtonRowMetrics metrics = button_row_metrics(row);
+    int gap = metrics.gap;
     int row_start = 0;
     int row_w = 0;
     int row_count = 0;
@@ -389,7 +452,7 @@ RenderButtonRow(ButtonRowProps row)
     int font = GetSmallFontSize();
 
     if(row.height <= 0)
-        row.height = Scale(30);
+        row.height = metrics.height;
     if(row.items == NULL || row.count <= 0 || row.width <= 0)
         return -1;
 
@@ -399,12 +462,10 @@ RenderButtonRow(ButtonRowProps row)
         int next_w;
 
         if(!end_row) {
-            item_w = TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
-                                   font) + Scale(20);
-            if(item_w < Scale(76))
-                item_w = Scale(76);
-            if(item_w > Scale(144))
-                item_w = Scale(144);
+            item_w = ButtonRowItemWidth(
+                TextWidth(row.items[i].label != NULL ? row.items[i].label : "",
+                          font),
+                metrics);
         }
         next_w = row_w > 0 ? row_w + gap + item_w : item_w;
 

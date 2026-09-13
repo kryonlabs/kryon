@@ -100,6 +100,7 @@ surface review:
 | `runtime/reorder.kry` | Reorder metrics, handle/placeholder paint geometry, and target-index policy | Native support |
 | `runtime/reorder_props.kry` | Reorder support state, data, and result records | Native support |
 | `runtime/router_props.kry` | Router routes, state, props, and result | `.kry canonical` |
+| `runtime/rows.kry` | Info/form row sizing and layout fallback policy | `.kry canonical` |
 | `runtime/segmented_control.kry` | SegmentedControl layout policy | `.kry canonical` |
 | `runtime/segmented_control_props.kry` | SegmentedControl props and result | `.kry canonical` |
 | `runtime/selectable.kry` | Selectable paint/layout policy | `.kry canonical` |
@@ -703,9 +704,8 @@ of internal policy and host plumbing behind the canonical names.
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
    widgets already have `.kry` policy, but raw widget constants still remain in
    native files. The next focused audits are menu rows and popup placement in
-   `src/ui/ui_tk.c`, option-row/separator details in `src/ui/dropdown.c`,
-   slider/toggle paint offsets in `src/ui/ui_slider.c`, row/forms metrics in
-   `src/ui/rows.c`, and button/icon fallback metrics in `src/ui/button.c`.
+   `src/ui/ui_tk.c`, slider/toggle paint offsets in `src/ui/ui_slider.c`,
+   and any remaining row/form host placement in `src/ui/rows.c`.
 2. Finish internal `UI*` cleanup:
    Public headers/docs are clean, but internal implementation structs still use
    old names such as popup input, paint layers, numeric input state, blend
