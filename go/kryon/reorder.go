@@ -4,6 +4,55 @@ package kryon
 // #import control_props
 // #import reorder_props
 // #import style
+func Reorder_ReorderMetric(fields uint32, field uint32, value float32, fallback float32, scale float32) int32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	var value_14 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_13), 32, true)), uint64(0), 32, true, 0))
+	return value_14
+}
+
+func Reorder_ReorderMetricFloat(fields uint32, field uint32, value float32, fallback float32, scale float32) float32 {
+	var value_0 uint32 = fields
+	var value_1 uint32 = field
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_0), uint64(value_1), 32, false, 8))
+	var value_3 int32 = 0
+	var value_4 uint32 = uint32(number_runtime_bits(uint64(value_3), uint64(0), 32, false, 0))
+	var value_5 bool = value_2 == value_4
+	var value_6 bool = value_5
+	if !value_6 {
+		var value_7 float32 = value
+		var value_8 float32 = 0.0
+		var value_9 bool = value_7 < value_8
+		value_6 = value_9
+	}
+	if value_6 {
+		var value_10 float32 = fallback
+		value = value_10
+	}
+	var value_11 float32 = value
+	var value_12 float32 = scale
+	var value_13 float32 = value_11 * value_12
+	return value_13
+}
+
 func Reorder_ReorderMetricsFor(scale float32, handle_width int32, drag_threshold int32, auto_scroll_margin int32, auto_scroll_step int32, handle StyleFrame, placeholder StyleFrame) ReorderMetrics {
 	var metrics ReorderMetrics = ReorderMetrics{}
 	var value_0 int32 = handle_width
@@ -15,135 +64,59 @@ func Reorder_ReorderMetricsFor(scale float32, handle_width int32, drag_threshold
 		var value_4 uint32 = handle.Value.Fields
 		var value_5 int32 = int32(StyleContentOffset)
 		var value_6 uint32 = uint32(number_runtime_bits(uint64(value_5), uint64(0), 32, false, 0))
-		var value_7 uint32 = uint32(number_runtime_bits(uint64(value_4), uint64(value_6), 32, false, 8))
-		var value_8 int32 = 0
-		var value_9 uint32 = uint32(number_runtime_bits(uint64(value_8), uint64(0), 32, false, 0))
-		var value_10 bool = value_7 != value_9
-		var value_11 bool = value_10
-		if value_11 {
-			var value_12 float32 = handle.Value.OffsetX
-			var value_13 float32 = 0.0
-			var value_14 bool = value_12 >= value_13
-			value_11 = value_14
-		}
-		if value_11 {
-			var value_15 float32 = handle.Value.OffsetX
-			var value_16 float32 = scale
-			var value_17 float32 = value_15 * value_16
-			var value_18 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_17), 32, true)), uint64(0), 32, true, 0))
-			metrics.HandleWidth = value_18
-		} else {
-			var value_19 float32 = 36.0
-			var value_20 float32 = scale
-			var value_21 float32 = value_19 * value_20
-			var value_22 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_21), 32, true)), uint64(0), 32, true, 0))
-			metrics.HandleWidth = value_22
-		}
+		var value_7 float32 = handle.Value.OffsetX
+		var value_8 float32 = 36.0
+		var value_9 float32 = scale
+		var value_10 int32 = Reorder_ReorderMetric(value_4, value_6, value_7, value_8, value_9)
+		metrics.HandleWidth = value_10
 	}
-	var value_23 int32 = drag_threshold
-	metrics.DragThreshold = value_23
-	var value_24 int32 = metrics.DragThreshold
-	var value_25 int32 = 0
-	var value_26 bool = value_24 <= value_25
-	if value_26 {
-		var value_27 uint32 = handle.Value.Fields
-		var value_28 int32 = int32(StyleContentOffset)
-		var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-		var value_30 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(value_29), 32, false, 8))
-		var value_31 int32 = 0
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
-		var value_33 bool = value_30 != value_32
-		var value_34 bool = value_33
-		if value_34 {
-			var value_35 float32 = handle.Value.OffsetY
-			var value_36 float32 = 0.0
-			var value_37 bool = value_35 >= value_36
-			value_34 = value_37
-		}
-		if value_34 {
-			var value_38 float32 = handle.Value.OffsetY
-			var value_39 float32 = scale
-			var value_40 float32 = value_38 * value_39
-			var value_41 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_40), 32, true)), uint64(0), 32, true, 0))
-			metrics.DragThreshold = value_41
-		} else {
-			var value_42 float32 = 5.0
-			var value_43 float32 = scale
-			var value_44 float32 = value_42 * value_43
-			var value_45 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_44), 32, true)), uint64(0), 32, true, 0))
-			metrics.DragThreshold = value_45
-		}
+	var value_11 int32 = drag_threshold
+	metrics.DragThreshold = value_11
+	var value_12 int32 = metrics.DragThreshold
+	var value_13 int32 = 0
+	var value_14 bool = value_12 <= value_13
+	if value_14 {
+		var value_15 uint32 = handle.Value.Fields
+		var value_16 int32 = int32(StyleContentOffset)
+		var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
+		var value_18 float32 = handle.Value.OffsetY
+		var value_19 float32 = 5.0
+		var value_20 float32 = scale
+		var value_21 int32 = Reorder_ReorderMetric(value_15, value_17, value_18, value_19, value_20)
+		metrics.DragThreshold = value_21
 	}
-	var value_46 int32 = auto_scroll_margin
-	metrics.AutoScrollMargin = value_46
-	var value_47 int32 = metrics.AutoScrollMargin
-	var value_48 int32 = 0
-	var value_49 bool = value_47 <= value_48
-	if value_49 {
-		var value_50 uint32 = placeholder.Value.Fields
-		var value_51 int32 = int32(StyleContentOffset)
-		var value_52 uint32 = uint32(number_runtime_bits(uint64(value_51), uint64(0), 32, false, 0))
-		var value_53 uint32 = uint32(number_runtime_bits(uint64(value_50), uint64(value_52), 32, false, 8))
-		var value_54 int32 = 0
-		var value_55 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(0), 32, false, 0))
-		var value_56 bool = value_53 != value_55
-		var value_57 bool = value_56
-		if value_57 {
-			var value_58 float32 = placeholder.Value.OffsetX
-			var value_59 float32 = 0.0
-			var value_60 bool = value_58 >= value_59
-			value_57 = value_60
-		}
-		if value_57 {
-			var value_61 float32 = placeholder.Value.OffsetX
-			var value_62 float32 = scale
-			var value_63 float32 = value_61 * value_62
-			var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
-			metrics.AutoScrollMargin = value_64
-		} else {
-			var value_65 float32 = 34.0
-			var value_66 float32 = scale
-			var value_67 float32 = value_65 * value_66
-			var value_68 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_67), 32, true)), uint64(0), 32, true, 0))
-			metrics.AutoScrollMargin = value_68
-		}
+	var value_22 int32 = auto_scroll_margin
+	metrics.AutoScrollMargin = value_22
+	var value_23 int32 = metrics.AutoScrollMargin
+	var value_24 int32 = 0
+	var value_25 bool = value_23 <= value_24
+	if value_25 {
+		var value_26 uint32 = placeholder.Value.Fields
+		var value_27 int32 = int32(StyleContentOffset)
+		var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
+		var value_29 float32 = placeholder.Value.OffsetX
+		var value_30 float32 = 34.0
+		var value_31 float32 = scale
+		var value_32 int32 = Reorder_ReorderMetric(value_26, value_28, value_29, value_30, value_31)
+		metrics.AutoScrollMargin = value_32
 	}
-	var value_69 int32 = auto_scroll_step
-	metrics.AutoScrollStep = value_69
-	var value_70 int32 = metrics.AutoScrollStep
-	var value_71 int32 = 0
-	var value_72 bool = value_70 <= value_71
-	if value_72 {
-		var value_73 uint32 = placeholder.Value.Fields
-		var value_74 int32 = int32(StyleContentOffset)
-		var value_75 uint32 = uint32(number_runtime_bits(uint64(value_74), uint64(0), 32, false, 0))
-		var value_76 uint32 = uint32(number_runtime_bits(uint64(value_73), uint64(value_75), 32, false, 8))
-		var value_77 int32 = 0
-		var value_78 uint32 = uint32(number_runtime_bits(uint64(value_77), uint64(0), 32, false, 0))
-		var value_79 bool = value_76 != value_78
-		var value_80 bool = value_79
-		if value_80 {
-			var value_81 float32 = placeholder.Value.OffsetY
-			var value_82 float32 = 0.0
-			var value_83 bool = value_81 >= value_82
-			value_80 = value_83
-		}
-		if value_80 {
-			var value_84 float32 = placeholder.Value.OffsetY
-			var value_85 float32 = scale
-			var value_86 float32 = value_84 * value_85
-			var value_87 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_86), 32, true)), uint64(0), 32, true, 0))
-			metrics.AutoScrollStep = value_87
-		} else {
-			var value_88 float32 = 12.0
-			var value_89 float32 = scale
-			var value_90 float32 = value_88 * value_89
-			var value_91 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_90), 32, true)), uint64(0), 32, true, 0))
-			metrics.AutoScrollStep = value_91
-		}
+	var value_33 int32 = auto_scroll_step
+	metrics.AutoScrollStep = value_33
+	var value_34 int32 = metrics.AutoScrollStep
+	var value_35 int32 = 0
+	var value_36 bool = value_34 <= value_35
+	if value_36 {
+		var value_37 uint32 = placeholder.Value.Fields
+		var value_38 int32 = int32(StyleContentOffset)
+		var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
+		var value_40 float32 = placeholder.Value.OffsetY
+		var value_41 float32 = 12.0
+		var value_42 float32 = scale
+		var value_43 int32 = Reorder_ReorderMetric(value_37, value_39, value_40, value_41, value_42)
+		metrics.AutoScrollStep = value_43
 	}
-	var value_92 ReorderMetrics = metrics
-	return value_92
+	var value_44 ReorderMetrics = metrics
+	return value_44
 }
 
 func Reorder_ReorderHandleBounds(item_bounds Rectangle, handle_width int32, handle_height int32) Rectangle {
@@ -193,203 +166,149 @@ func Reorder_ReorderHandlePaintFor(bounds Rectangle, scale float32, handle Style
 		var value_11 ReorderHandlePaint = paint
 		return value_11
 	}
-	var value_12 float32 = 3.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	var dot int32 = value_15
-	var value_16 float32 = 4.0
+	var value_12 uint32 = handle.Value.Fields
+	var value_13 int32 = int32(StyleIconSize)
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 float32 = handle.Value.IconSize
+	var value_16 float32 = 3.0
 	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	var gap int32 = value_19
-	var value_20 float32 = 8.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
-	var col_gap int32 = value_23
-	var value_24 uint32 = handle.Value.Fields
-	var value_25 int32 = int32(StyleIconSize)
-	var value_26 uint32 = uint32(number_runtime_bits(uint64(value_25), uint64(0), 32, false, 0))
-	var value_27 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(value_26), 32, false, 8))
-	var value_28 int32 = 0
-	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
-	var value_30 bool = value_27 != value_29
-	var value_31 bool = value_30
-	if value_31 {
-		var value_32 float32 = handle.Value.IconSize
-		var value_33 float32 = 0.0
-		var value_34 bool = value_32 >= value_33
-		value_31 = value_34
+	var value_18 int32 = Reorder_ReorderMetric(value_12, value_14, value_15, value_16, value_17)
+	var dot int32 = value_18
+	var value_19 uint32 = handle.Value.Fields
+	var value_20 int32 = int32(StyleGap)
+	var value_21 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(0), 32, false, 0))
+	var value_22 float32 = handle.Value.Gap
+	var value_23 float32 = 4.0
+	var value_24 float32 = scale
+	var value_25 int32 = Reorder_ReorderMetric(value_19, value_21, value_22, value_23, value_24)
+	var gap int32 = value_25
+	var value_26 uint32 = handle.Value.Fields
+	var value_27 int32 = int32(StylePaddingX)
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
+	var value_29 float32 = handle.Value.PaddingX
+	var value_30 float32 = 8.0
+	var value_31 float32 = scale
+	var value_32 int32 = Reorder_ReorderMetric(value_26, value_28, value_29, value_30, value_31)
+	var col_gap int32 = value_32
+	var value_33 int32 = dot
+	var value_34 int32 = 1
+	var value_35 bool = value_33 < value_34
+	if value_35 {
+		var value_36 int32 = 1
+		dot = value_36
 	}
-	if value_31 {
-		var value_35 float32 = handle.Value.IconSize
-		var value_36 float32 = scale
-		var value_37 float32 = value_35 * value_36
-		var value_38 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_37), 32, true)), uint64(0), 32, true, 0))
-		dot = value_38
+	var value_37 int32 = gap
+	var value_38 int32 = 0
+	var value_39 bool = value_37 < value_38
+	if value_39 {
+		var value_40 int32 = 0
+		gap = value_40
 	}
-	var value_39 uint32 = handle.Value.Fields
-	var value_40 int32 = int32(StyleGap)
-	var value_41 uint32 = uint32(number_runtime_bits(uint64(value_40), uint64(0), 32, false, 0))
-	var value_42 uint32 = uint32(number_runtime_bits(uint64(value_39), uint64(value_41), 32, false, 8))
-	var value_43 int32 = 0
-	var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
-	var value_45 bool = value_42 != value_44
-	var value_46 bool = value_45
-	if value_46 {
-		var value_47 float32 = handle.Value.Gap
-		var value_48 float32 = 0.0
-		var value_49 bool = value_47 >= value_48
-		value_46 = value_49
+	var value_41 int32 = col_gap
+	var value_42 int32 = 0
+	var value_43 bool = value_41 < value_42
+	if value_43 {
+		var value_44 int32 = 0
+		col_gap = value_44
 	}
-	if value_46 {
-		var value_50 float32 = handle.Value.Gap
-		var value_51 float32 = scale
-		var value_52 float32 = value_50 * value_51
-		var value_53 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_52), 32, true)), uint64(0), 32, true, 0))
-		gap = value_53
-	}
-	var value_54 uint32 = handle.Value.Fields
-	var value_55 int32 = int32(StylePaddingX)
-	var value_56 uint32 = uint32(number_runtime_bits(uint64(value_55), uint64(0), 32, false, 0))
-	var value_57 uint32 = uint32(number_runtime_bits(uint64(value_54), uint64(value_56), 32, false, 8))
-	var value_58 int32 = 0
-	var value_59 uint32 = uint32(number_runtime_bits(uint64(value_58), uint64(0), 32, false, 0))
-	var value_60 bool = value_57 != value_59
-	var value_61 bool = value_60
-	if value_61 {
-		var value_62 float32 = handle.Value.PaddingX
-		var value_63 float32 = 0.0
-		var value_64 bool = value_62 >= value_63
-		value_61 = value_64
-	}
-	if value_61 {
-		var value_65 float32 = handle.Value.PaddingX
-		var value_66 float32 = scale
-		var value_67 float32 = value_65 * value_66
-		var value_68 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_67), 32, true)), uint64(0), 32, true, 0))
-		col_gap = value_68
-	}
-	var value_69 int32 = dot
-	var value_70 int32 = 1
-	var value_71 bool = value_69 < value_70
-	if value_71 {
-		var value_72 int32 = 1
-		dot = value_72
-	}
-	var value_73 int32 = gap
-	var value_74 int32 = 0
-	var value_75 bool = value_73 < value_74
-	if value_75 {
-		var value_76 int32 = 0
-		gap = value_76
-	}
-	var value_77 int32 = col_gap
-	var value_78 int32 = 0
-	var value_79 bool = value_77 < value_78
-	if value_79 {
-		var value_80 int32 = 0
-		col_gap = value_80
-	}
-	var value_81 int32 = dot
-	var value_82 int32 = 2
-	var value_83 int32 = int32(number_runtime_bits(uint64(value_81), uint64(value_82), 32, true, 3))
-	var value_84 int32 = col_gap
-	var value_85 int32 = int32(number_runtime_bits(uint64(value_83), uint64(value_84), 32, true, 1))
-	var total_w int32 = value_85
-	var value_86 int32 = dot
-	var value_87 int32 = 3
-	var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 3))
+	var value_45 int32 = dot
+	var value_46 int32 = 2
+	var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 3))
+	var value_48 int32 = col_gap
+	var value_49 int32 = int32(number_runtime_bits(uint64(value_47), uint64(value_48), 32, true, 1))
+	var total_w int32 = value_49
+	var value_50 int32 = dot
+	var value_51 int32 = 3
+	var value_52 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_51), 32, true, 3))
+	var value_53 int32 = gap
+	var value_54 int32 = 2
+	var value_55 int32 = int32(number_runtime_bits(uint64(value_53), uint64(value_54), 32, true, 3))
+	var value_56 int32 = int32(number_runtime_bits(uint64(value_52), uint64(value_55), 32, true, 1))
+	var total_h int32 = value_56
+	var value_57 float32 = bounds.X
+	var value_58 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_57), 32, true)), uint64(0), 32, true, 0))
+	var value_59 int32 = w
+	var value_60 int32 = total_w
+	var value_61 int32 = int32(number_runtime_bits(uint64(value_59), uint64(value_60), 32, true, 2))
+	var value_62 int32 = 2
+	var value_63 int32 = int32(number_runtime_bits(uint64(value_61), uint64(value_62), 32, true, 4))
+	var value_64 int32 = int32(number_runtime_bits(uint64(value_58), uint64(value_63), 32, true, 1))
+	var start_x int32 = value_64
+	var value_65 float32 = bounds.Y
+	var value_66 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_65), 32, true)), uint64(0), 32, true, 0))
+	var value_67 int32 = h
+	var value_68 int32 = total_h
+	var value_69 int32 = int32(number_runtime_bits(uint64(value_67), uint64(value_68), 32, true, 2))
+	var value_70 int32 = 2
+	var value_71 int32 = int32(number_runtime_bits(uint64(value_69), uint64(value_70), 32, true, 4))
+	var value_72 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_71), 32, true, 1))
+	var start_y int32 = value_72
+	var value_73 int32 = start_x
+	var value_74 int32 = start_y
+	var value_75 int32 = dot
+	var value_76 Rectangle = Reorder_ReorderDotBounds(value_73, value_74, value_75)
+	paint.Dot0 = value_76
+	var value_77 int32 = start_x
+	var value_78 int32 = dot
+	var value_79 int32 = int32(number_runtime_bits(uint64(value_77), uint64(value_78), 32, true, 1))
+	var value_80 int32 = col_gap
+	var value_81 int32 = int32(number_runtime_bits(uint64(value_79), uint64(value_80), 32, true, 1))
+	var value_82 int32 = start_y
+	var value_83 int32 = dot
+	var value_84 Rectangle = Reorder_ReorderDotBounds(value_81, value_82, value_83)
+	paint.Dot1 = value_84
+	var value_85 int32 = start_x
+	var value_86 int32 = start_y
+	var value_87 int32 = dot
+	var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 1))
 	var value_89 int32 = gap
-	var value_90 int32 = 2
-	var value_91 int32 = int32(number_runtime_bits(uint64(value_89), uint64(value_90), 32, true, 3))
-	var value_92 int32 = int32(number_runtime_bits(uint64(value_88), uint64(value_91), 32, true, 1))
-	var total_h int32 = value_92
-	var value_93 float32 = bounds.X
-	var value_94 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_93), 32, true)), uint64(0), 32, true, 0))
-	var value_95 int32 = w
-	var value_96 int32 = total_w
-	var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 2))
-	var value_98 int32 = 2
-	var value_99 int32 = int32(number_runtime_bits(uint64(value_97), uint64(value_98), 32, true, 4))
-	var value_100 int32 = int32(number_runtime_bits(uint64(value_94), uint64(value_99), 32, true, 1))
-	var start_x int32 = value_100
-	var value_101 float32 = bounds.Y
-	var value_102 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_101), 32, true)), uint64(0), 32, true, 0))
-	var value_103 int32 = h
-	var value_104 int32 = total_h
-	var value_105 int32 = int32(number_runtime_bits(uint64(value_103), uint64(value_104), 32, true, 2))
-	var value_106 int32 = 2
-	var value_107 int32 = int32(number_runtime_bits(uint64(value_105), uint64(value_106), 32, true, 4))
-	var value_108 int32 = int32(number_runtime_bits(uint64(value_102), uint64(value_107), 32, true, 1))
-	var start_y int32 = value_108
-	var value_109 int32 = start_x
-	var value_110 int32 = start_y
-	var value_111 int32 = dot
-	var value_112 Rectangle = Reorder_ReorderDotBounds(value_109, value_110, value_111)
-	paint.Dot0 = value_112
-	var value_113 int32 = start_x
-	var value_114 int32 = dot
-	var value_115 int32 = int32(number_runtime_bits(uint64(value_113), uint64(value_114), 32, true, 1))
-	var value_116 int32 = col_gap
+	var value_90 int32 = int32(number_runtime_bits(uint64(value_88), uint64(value_89), 32, true, 1))
+	var value_91 int32 = dot
+	var value_92 Rectangle = Reorder_ReorderDotBounds(value_85, value_90, value_91)
+	paint.Dot2 = value_92
+	var value_93 int32 = start_x
+	var value_94 int32 = dot
+	var value_95 int32 = int32(number_runtime_bits(uint64(value_93), uint64(value_94), 32, true, 1))
+	var value_96 int32 = col_gap
+	var value_97 int32 = int32(number_runtime_bits(uint64(value_95), uint64(value_96), 32, true, 1))
+	var value_98 int32 = start_y
+	var value_99 int32 = dot
+	var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 1))
+	var value_101 int32 = gap
+	var value_102 int32 = int32(number_runtime_bits(uint64(value_100), uint64(value_101), 32, true, 1))
+	var value_103 int32 = dot
+	var value_104 Rectangle = Reorder_ReorderDotBounds(value_97, value_102, value_103)
+	paint.Dot3 = value_104
+	var value_105 int32 = start_x
+	var value_106 int32 = start_y
+	var value_107 int32 = dot
+	var value_108 int32 = gap
+	var value_109 int32 = int32(number_runtime_bits(uint64(value_107), uint64(value_108), 32, true, 1))
+	var value_110 int32 = 2
+	var value_111 int32 = int32(number_runtime_bits(uint64(value_109), uint64(value_110), 32, true, 3))
+	var value_112 int32 = int32(number_runtime_bits(uint64(value_106), uint64(value_111), 32, true, 1))
+	var value_113 int32 = dot
+	var value_114 Rectangle = Reorder_ReorderDotBounds(value_105, value_112, value_113)
+	paint.Dot4 = value_114
+	var value_115 int32 = start_x
+	var value_116 int32 = dot
 	var value_117 int32 = int32(number_runtime_bits(uint64(value_115), uint64(value_116), 32, true, 1))
-	var value_118 int32 = start_y
-	var value_119 int32 = dot
-	var value_120 Rectangle = Reorder_ReorderDotBounds(value_117, value_118, value_119)
-	paint.Dot1 = value_120
-	var value_121 int32 = start_x
-	var value_122 int32 = start_y
-	var value_123 int32 = dot
-	var value_124 int32 = int32(number_runtime_bits(uint64(value_122), uint64(value_123), 32, true, 1))
-	var value_125 int32 = gap
-	var value_126 int32 = int32(number_runtime_bits(uint64(value_124), uint64(value_125), 32, true, 1))
+	var value_118 int32 = col_gap
+	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 1))
+	var value_120 int32 = start_y
+	var value_121 int32 = dot
+	var value_122 int32 = gap
+	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 1))
+	var value_124 int32 = 2
+	var value_125 int32 = int32(number_runtime_bits(uint64(value_123), uint64(value_124), 32, true, 3))
+	var value_126 int32 = int32(number_runtime_bits(uint64(value_120), uint64(value_125), 32, true, 1))
 	var value_127 int32 = dot
-	var value_128 Rectangle = Reorder_ReorderDotBounds(value_121, value_126, value_127)
-	paint.Dot2 = value_128
-	var value_129 int32 = start_x
-	var value_130 int32 = dot
-	var value_131 int32 = int32(number_runtime_bits(uint64(value_129), uint64(value_130), 32, true, 1))
-	var value_132 int32 = col_gap
-	var value_133 int32 = int32(number_runtime_bits(uint64(value_131), uint64(value_132), 32, true, 1))
-	var value_134 int32 = start_y
-	var value_135 int32 = dot
-	var value_136 int32 = int32(number_runtime_bits(uint64(value_134), uint64(value_135), 32, true, 1))
-	var value_137 int32 = gap
-	var value_138 int32 = int32(number_runtime_bits(uint64(value_136), uint64(value_137), 32, true, 1))
-	var value_139 int32 = dot
-	var value_140 Rectangle = Reorder_ReorderDotBounds(value_133, value_138, value_139)
-	paint.Dot3 = value_140
-	var value_141 int32 = start_x
-	var value_142 int32 = start_y
-	var value_143 int32 = dot
-	var value_144 int32 = gap
-	var value_145 int32 = int32(number_runtime_bits(uint64(value_143), uint64(value_144), 32, true, 1))
-	var value_146 int32 = 2
-	var value_147 int32 = int32(number_runtime_bits(uint64(value_145), uint64(value_146), 32, true, 3))
-	var value_148 int32 = int32(number_runtime_bits(uint64(value_142), uint64(value_147), 32, true, 1))
-	var value_149 int32 = dot
-	var value_150 Rectangle = Reorder_ReorderDotBounds(value_141, value_148, value_149)
-	paint.Dot4 = value_150
-	var value_151 int32 = start_x
-	var value_152 int32 = dot
-	var value_153 int32 = int32(number_runtime_bits(uint64(value_151), uint64(value_152), 32, true, 1))
-	var value_154 int32 = col_gap
-	var value_155 int32 = int32(number_runtime_bits(uint64(value_153), uint64(value_154), 32, true, 1))
-	var value_156 int32 = start_y
-	var value_157 int32 = dot
-	var value_158 int32 = gap
-	var value_159 int32 = int32(number_runtime_bits(uint64(value_157), uint64(value_158), 32, true, 1))
-	var value_160 int32 = 2
-	var value_161 int32 = int32(number_runtime_bits(uint64(value_159), uint64(value_160), 32, true, 3))
-	var value_162 int32 = int32(number_runtime_bits(uint64(value_156), uint64(value_161), 32, true, 1))
-	var value_163 int32 = dot
-	var value_164 Rectangle = Reorder_ReorderDotBounds(value_155, value_162, value_163)
-	paint.Dot5 = value_164
-	var value_165 int32 = 6
-	paint.DotCount = value_165
-	var value_166 ReorderHandlePaint = paint
-	return value_166
+	var value_128 Rectangle = Reorder_ReorderDotBounds(value_119, value_126, value_127)
+	paint.Dot5 = value_128
+	var value_129 int32 = 6
+	paint.DotCount = value_129
+	var value_130 ReorderHandlePaint = paint
+	return value_130
 }
 
 func Reorder_ReorderDotBounds(x int32, y int32, size int32) Rectangle {
@@ -438,237 +357,167 @@ func Reorder_ReorderPlaceholderPaintFor(bounds Rectangle, scale float32, placeho
 		var value_15 ReorderPlaceholderPaint = paint
 		return value_15
 	}
-	var value_16 float32 = 2.0
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	var line_h int32 = value_19
-	var value_20 uint32 = placeholder.Value.Fields
-	var value_21 int32 = int32(StyleBorderWidth)
-	var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-	var value_23 uint32 = uint32(number_runtime_bits(uint64(value_20), uint64(value_22), 32, false, 8))
-	var value_24 int32 = 0
-	var value_25 uint32 = uint32(number_runtime_bits(uint64(value_24), uint64(0), 32, false, 0))
-	var value_26 bool = value_23 != value_25
-	var value_27 bool = value_26
-	if value_27 {
-		var value_28 float32 = placeholder.Value.BorderWidth
-		var value_29 float32 = 0.0
-		var value_30 bool = value_28 >= value_29
-		value_27 = value_30
+	var value_16 uint32 = placeholder.Value.Fields
+	var value_17 int32 = int32(StyleBorderWidth)
+	var value_18 uint32 = uint32(number_runtime_bits(uint64(value_17), uint64(0), 32, false, 0))
+	var value_19 float32 = placeholder.Value.BorderWidth
+	var value_20 float32 = 2.0
+	var value_21 float32 = scale
+	var value_22 int32 = Reorder_ReorderMetric(value_16, value_18, value_19, value_20, value_21)
+	var line_h int32 = value_22
+	var value_23 int32 = line_h
+	var value_24 int32 = 1
+	var value_25 bool = value_23 < value_24
+	if value_25 {
+		var value_26 int32 = 1
+		line_h = value_26
 	}
-	if value_27 {
-		var value_31 float32 = placeholder.Value.BorderWidth
-		var value_32 float32 = scale
-		var value_33 float32 = value_31 * value_32
-		var value_34 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_33), 32, true)), uint64(0), 32, true, 0))
-		line_h = value_34
-	}
-	var value_35 int32 = line_h
-	var value_36 int32 = 1
-	var value_37 bool = value_35 < value_36
-	if value_37 {
-		var value_38 int32 = 1
-		line_h = value_38
-	}
-	var value_39 float32 = 32.0
-	var value_40 float32 = scale
-	var value_41 float32 = value_39 * value_40
-	var value_42 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_41), 32, true)), uint64(0), 32, true, 0))
-	var threshold int32 = value_42
-	var value_43 uint32 = placeholder.Value.Fields
-	var value_44 int32 = int32(StyleIconSize)
-	var value_45 uint32 = uint32(number_runtime_bits(uint64(value_44), uint64(0), 32, false, 0))
-	var value_46 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(value_45), 32, false, 8))
-	var value_47 int32 = 0
-	var value_48 uint32 = uint32(number_runtime_bits(uint64(value_47), uint64(0), 32, false, 0))
-	var value_49 bool = value_46 != value_48
-	var value_50 bool = value_49
-	if value_50 {
-		var value_51 float32 = placeholder.Value.IconSize
-		var value_52 float32 = 0.0
-		var value_53 bool = value_51 >= value_52
-		value_50 = value_53
-	}
-	if value_50 {
-		var value_54 float32 = placeholder.Value.IconSize
-		var value_55 float32 = scale
-		var value_56 float32 = value_54 * value_55
-		var value_57 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_56), 32, true)), uint64(0), 32, true, 0))
-		threshold = value_57
-	}
-	var value_58 int32 = h
-	var value_59 int32 = threshold
-	var value_60 bool = value_58 >= value_59
-	if value_60 {
-		var value_61 float32 = 3.0
-		var value_62 float32 = scale
-		var value_63 float32 = value_61 * value_62
-		var value_64 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_63), 32, true)), uint64(0), 32, true, 0))
-		var inset int32 = value_64
-		var value_65 uint32 = placeholder.Value.Fields
-		var value_66 int32 = int32(StylePaddingX)
-		var value_67 uint32 = uint32(number_runtime_bits(uint64(value_66), uint64(0), 32, false, 0))
-		var value_68 uint32 = uint32(number_runtime_bits(uint64(value_65), uint64(value_67), 32, false, 8))
-		var value_69 int32 = 0
-		var value_70 uint32 = uint32(number_runtime_bits(uint64(value_69), uint64(0), 32, false, 0))
-		var value_71 bool = value_68 != value_70
-		var value_72 bool = value_71
-		if value_72 {
-			var value_73 float32 = placeholder.Value.PaddingX
-			var value_74 float32 = 0.0
-			var value_75 bool = value_73 >= value_74
-			value_72 = value_75
+	var value_27 uint32 = placeholder.Value.Fields
+	var value_28 int32 = int32(StyleIconSize)
+	var value_29 uint32 = uint32(number_runtime_bits(uint64(value_28), uint64(0), 32, false, 0))
+	var value_30 float32 = placeholder.Value.IconSize
+	var value_31 float32 = 32.0
+	var value_32 float32 = scale
+	var value_33 int32 = Reorder_ReorderMetric(value_27, value_29, value_30, value_31, value_32)
+	var threshold int32 = value_33
+	var value_34 int32 = h
+	var value_35 int32 = threshold
+	var value_36 bool = value_34 >= value_35
+	if value_36 {
+		var value_37 uint32 = placeholder.Value.Fields
+		var value_38 int32 = int32(StylePaddingX)
+		var value_39 uint32 = uint32(number_runtime_bits(uint64(value_38), uint64(0), 32, false, 0))
+		var value_40 float32 = placeholder.Value.PaddingX
+		var value_41 float32 = 3.0
+		var value_42 float32 = scale
+		var value_43 int32 = Reorder_ReorderMetric(value_37, value_39, value_40, value_41, value_42)
+		var inset int32 = value_43
+		var value_44 int32 = w
+		var value_45 int32 = inset
+		var value_46 int32 = 2
+		var value_47 int32 = int32(number_runtime_bits(uint64(value_45), uint64(value_46), 32, true, 3))
+		var value_48 int32 = int32(number_runtime_bits(uint64(value_44), uint64(value_47), 32, true, 2))
+		var slot_w int32 = value_48
+		var value_49 int32 = h
+		var value_50 int32 = inset
+		var value_51 int32 = 2
+		var value_52 int32 = int32(number_runtime_bits(uint64(value_50), uint64(value_51), 32, true, 3))
+		var value_53 int32 = int32(number_runtime_bits(uint64(value_49), uint64(value_52), 32, true, 2))
+		var slot_h int32 = value_53
+		var value_54 int32 = slot_w
+		var value_55 int32 = 0
+		var value_56 bool = value_54 <= value_55
+		var value_57 bool = value_56
+		if !value_57 {
+			var value_58 int32 = slot_h
+			var value_59 int32 = 0
+			var value_60 bool = value_58 <= value_59
+			value_57 = value_60
 		}
-		if value_72 {
-			var value_76 float32 = placeholder.Value.PaddingX
-			var value_77 float32 = scale
-			var value_78 float32 = value_76 * value_77
-			var value_79 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_78), 32, true)), uint64(0), 32, true, 0))
-			inset = value_79
+		if value_57 {
+			var value_61 ReorderPlaceholderPaint = paint
+			return value_61
 		}
-		var value_80 int32 = w
-		var value_81 int32 = inset
-		var value_82 int32 = 2
-		var value_83 int32 = int32(number_runtime_bits(uint64(value_81), uint64(value_82), 32, true, 3))
-		var value_84 int32 = int32(number_runtime_bits(uint64(value_80), uint64(value_83), 32, true, 2))
-		var slot_w int32 = value_84
-		var value_85 int32 = h
-		var value_86 int32 = inset
-		var value_87 int32 = 2
-		var value_88 int32 = int32(number_runtime_bits(uint64(value_86), uint64(value_87), 32, true, 3))
-		var value_89 int32 = int32(number_runtime_bits(uint64(value_85), uint64(value_88), 32, true, 2))
-		var slot_h int32 = value_89
-		var value_90 int32 = slot_w
-		var value_91 int32 = 0
-		var value_92 bool = value_90 <= value_91
+		var value_62 int32 = x
+		var value_63 int32 = inset
+		var value_64 int32 = int32(number_runtime_bits(uint64(value_62), uint64(value_63), 32, true, 1))
+		var value_65 float32 = float32(value_64)
+		paint.SlotBounds.X = value_65
+		var value_66 int32 = y
+		var value_67 int32 = inset
+		var value_68 int32 = int32(number_runtime_bits(uint64(value_66), uint64(value_67), 32, true, 1))
+		var value_69 float32 = float32(value_68)
+		paint.SlotBounds.Y = value_69
+		var value_70 int32 = slot_w
+		var value_71 float32 = float32(value_70)
+		paint.SlotBounds.Width = value_71
+		var value_72 int32 = slot_h
+		var value_73 float32 = float32(value_72)
+		paint.SlotBounds.Height = value_73
+		var value_74 uint32 = placeholder.Value.Fields
+		var value_75 int32 = int32(StyleBorderWidth)
+		var value_76 uint32 = uint32(number_runtime_bits(uint64(value_75), uint64(0), 32, false, 0))
+		var value_77 float32 = placeholder.Value.BorderWidth
+		var value_78 float32 = 2.0
+		var value_79 float32 = scale
+		var value_80 float32 = Reorder_ReorderMetricFloat(value_74, value_76, value_77, value_78, value_79)
+		paint.StrokeWidth = value_80
+		var value_81 float32 = paint.StrokeWidth
+		var value_82 float32 = 1.0
+		var value_83 bool = value_81 < value_82
+		if value_83 {
+			var value_84 float32 = 1.0
+			paint.StrokeWidth = value_84
+		}
+		var value_85 float32 = 0.12
+		paint.Radius = value_85
+		var value_86 uint32 = placeholder.Value.Fields
+		var value_87 int32 = int32(StyleRadius)
+		var value_88 uint32 = uint32(number_runtime_bits(uint64(value_87), uint64(0), 32, false, 0))
+		var value_89 uint32 = uint32(number_runtime_bits(uint64(value_86), uint64(value_88), 32, false, 8))
+		var value_90 int32 = 0
+		var value_91 uint32 = uint32(number_runtime_bits(uint64(value_90), uint64(0), 32, false, 0))
+		var value_92 bool = value_89 != value_91
 		var value_93 bool = value_92
-		if !value_93 {
-			var value_94 int32 = slot_h
-			var value_95 int32 = 0
-			var value_96 bool = value_94 <= value_95
+		if value_93 {
+			var value_94 float32 = placeholder.Value.Radius
+			var value_95 float32 = 0.0
+			var value_96 bool = value_94 >= value_95
 			value_93 = value_96
 		}
 		if value_93 {
-			var value_97 ReorderPlaceholderPaint = paint
-			return value_97
+			var value_97 float32 = placeholder.Value.Radius
+			paint.Radius = value_97
 		}
-		var value_98 int32 = x
-		var value_99 int32 = inset
-		var value_100 int32 = int32(number_runtime_bits(uint64(value_98), uint64(value_99), 32, true, 1))
-		var value_101 float32 = float32(value_100)
-		paint.SlotBounds.X = value_101
-		var value_102 int32 = y
-		var value_103 int32 = inset
-		var value_104 int32 = int32(number_runtime_bits(uint64(value_102), uint64(value_103), 32, true, 1))
-		var value_105 float32 = float32(value_104)
-		paint.SlotBounds.Y = value_105
-		var value_106 int32 = slot_w
-		var value_107 float32 = float32(value_106)
-		paint.SlotBounds.Width = value_107
-		var value_108 int32 = slot_h
-		var value_109 float32 = float32(value_108)
-		paint.SlotBounds.Height = value_109
-		var value_110 float32 = 2.0
-		var value_111 float32 = scale
-		var value_112 float32 = value_110 * value_111
-		paint.StrokeWidth = value_112
-		var value_113 uint32 = placeholder.Value.Fields
-		var value_114 int32 = int32(StyleBorderWidth)
-		var value_115 uint32 = uint32(number_runtime_bits(uint64(value_114), uint64(0), 32, false, 0))
-		var value_116 uint32 = uint32(number_runtime_bits(uint64(value_113), uint64(value_115), 32, false, 8))
-		var value_117 int32 = 0
-		var value_118 uint32 = uint32(number_runtime_bits(uint64(value_117), uint64(0), 32, false, 0))
-		var value_119 bool = value_116 != value_118
-		var value_120 bool = value_119
-		if value_120 {
-			var value_121 float32 = placeholder.Value.BorderWidth
-			var value_122 float32 = 0.0
-			var value_123 bool = value_121 >= value_122
-			value_120 = value_123
+		var value_98 int32 = 10
+		paint.Segments = value_98
+		var value_99 float32 = 0.10
+		paint.FillAlpha = value_99
+		var value_100 uint32 = placeholder.Value.Fields
+		var value_101 int32 = int32(StyleOpacity)
+		var value_102 uint32 = uint32(number_runtime_bits(uint64(value_101), uint64(0), 32, false, 0))
+		var value_103 uint32 = uint32(number_runtime_bits(uint64(value_100), uint64(value_102), 32, false, 8))
+		var value_104 int32 = 0
+		var value_105 uint32 = uint32(number_runtime_bits(uint64(value_104), uint64(0), 32, false, 0))
+		var value_106 bool = value_103 != value_105
+		var value_107 bool = value_106
+		if value_107 {
+			var value_108 float32 = placeholder.Value.Opacity
+			var value_109 float32 = 0.0
+			var value_110 bool = value_108 >= value_109
+			value_107 = value_110
 		}
-		if value_120 {
-			var value_124 float32 = placeholder.Value.BorderWidth
-			var value_125 float32 = scale
-			var value_126 float32 = value_124 * value_125
-			paint.StrokeWidth = value_126
+		if value_107 {
+			var value_111 float32 = placeholder.Value.Opacity
+			paint.FillAlpha = value_111
 		}
-		var value_127 float32 = paint.StrokeWidth
-		var value_128 float32 = 1.0
-		var value_129 bool = value_127 < value_128
-		if value_129 {
-			var value_130 float32 = 1.0
-			paint.StrokeWidth = value_130
-		}
-		var value_131 float32 = 0.12
-		paint.Radius = value_131
-		var value_132 uint32 = placeholder.Value.Fields
-		var value_133 int32 = int32(StyleRadius)
-		var value_134 uint32 = uint32(number_runtime_bits(uint64(value_133), uint64(0), 32, false, 0))
-		var value_135 uint32 = uint32(number_runtime_bits(uint64(value_132), uint64(value_134), 32, false, 8))
-		var value_136 int32 = 0
-		var value_137 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(0), 32, false, 0))
-		var value_138 bool = value_135 != value_137
-		var value_139 bool = value_138
-		if value_139 {
-			var value_140 float32 = placeholder.Value.Radius
-			var value_141 float32 = 0.0
-			var value_142 bool = value_140 >= value_141
-			value_139 = value_142
-		}
-		if value_139 {
-			var value_143 float32 = placeholder.Value.Radius
-			paint.Radius = value_143
-		}
-		var value_144 int32 = 10
-		paint.Segments = value_144
-		var value_145 float32 = 0.10
-		paint.FillAlpha = value_145
-		var value_146 uint32 = placeholder.Value.Fields
-		var value_147 int32 = int32(StyleOpacity)
-		var value_148 uint32 = uint32(number_runtime_bits(uint64(value_147), uint64(0), 32, false, 0))
-		var value_149 uint32 = uint32(number_runtime_bits(uint64(value_146), uint64(value_148), 32, false, 8))
-		var value_150 int32 = 0
-		var value_151 uint32 = uint32(number_runtime_bits(uint64(value_150), uint64(0), 32, false, 0))
-		var value_152 bool = value_149 != value_151
-		var value_153 bool = value_152
-		if value_153 {
-			var value_154 float32 = placeholder.Value.Opacity
-			var value_155 float32 = 0.0
-			var value_156 bool = value_154 >= value_155
-			value_153 = value_156
-		}
-		if value_153 {
-			var value_157 float32 = placeholder.Value.Opacity
-			paint.FillAlpha = value_157
-		}
-		var value_158 int32 = 1
-		paint.UseSlot = value_158
-		var value_159 ReorderPlaceholderPaint = paint
-		return value_159
+		var value_112 int32 = 1
+		paint.UseSlot = value_112
+		var value_113 ReorderPlaceholderPaint = paint
+		return value_113
 	}
-	var value_160 int32 = x
-	var value_161 float32 = float32(value_160)
-	paint.LineBounds.X = value_161
-	var value_162 int32 = y
-	var value_163 int32 = h
-	var value_164 int32 = 2
-	var value_165 int32 = int32(number_runtime_bits(uint64(value_163), uint64(value_164), 32, true, 4))
-	var value_166 int32 = int32(number_runtime_bits(uint64(value_162), uint64(value_165), 32, true, 1))
-	var value_167 int32 = line_h
-	var value_168 int32 = 2
-	var value_169 int32 = int32(number_runtime_bits(uint64(value_167), uint64(value_168), 32, true, 4))
-	var value_170 int32 = int32(number_runtime_bits(uint64(value_166), uint64(value_169), 32, true, 2))
-	var value_171 float32 = float32(value_170)
-	paint.LineBounds.Y = value_171
-	var value_172 int32 = w
-	var value_173 float32 = float32(value_172)
-	paint.LineBounds.Width = value_173
-	var value_174 int32 = line_h
-	var value_175 float32 = float32(value_174)
-	paint.LineBounds.Height = value_175
-	var value_176 ReorderPlaceholderPaint = paint
-	return value_176
+	var value_114 int32 = x
+	var value_115 float32 = float32(value_114)
+	paint.LineBounds.X = value_115
+	var value_116 int32 = y
+	var value_117 int32 = h
+	var value_118 int32 = 2
+	var value_119 int32 = int32(number_runtime_bits(uint64(value_117), uint64(value_118), 32, true, 4))
+	var value_120 int32 = int32(number_runtime_bits(uint64(value_116), uint64(value_119), 32, true, 1))
+	var value_121 int32 = line_h
+	var value_122 int32 = 2
+	var value_123 int32 = int32(number_runtime_bits(uint64(value_121), uint64(value_122), 32, true, 4))
+	var value_124 int32 = int32(number_runtime_bits(uint64(value_120), uint64(value_123), 32, true, 2))
+	var value_125 float32 = float32(value_124)
+	paint.LineBounds.Y = value_125
+	var value_126 int32 = w
+	var value_127 float32 = float32(value_126)
+	paint.LineBounds.Width = value_127
+	var value_128 int32 = line_h
+	var value_129 float32 = float32(value_128)
+	paint.LineBounds.Height = value_129
+	var value_130 ReorderPlaceholderPaint = paint
+	return value_130
 }
 
 func Reorder_ReorderDraggedCenterY(pointer_y int32, press_offset_y int32, item_height float32) int32 {
