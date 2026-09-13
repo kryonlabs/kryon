@@ -898,7 +898,7 @@ assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "Button.primary"), tru
 assert.equal(runtime.webNodeMatches(rt, "Scene/root/tap", "TextField"), false);
 assert.equal(webDoc.nodes.every((node) => !!node.path), true);
 const selectablePath = webDoc.nodes[5].path;
-assert.match(selectablePath, /^Scene\/root\/Selectable_\d+-5$/);
+assert.match(selectablePath, /^Scene\/root\/Selectable@\d+(?:-\d+)?$/);
 assert.equal(runtime.webNodeQuery(rt, selectablePath).kind, "Selectable");
 const inputPaths = webDoc.nodes
   .filter((node) => node.kind === "Input")

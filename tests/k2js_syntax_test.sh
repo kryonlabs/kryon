@@ -345,6 +345,8 @@ awk '/kryon.widget\(\$rt, "Text"/ && /"sourcePath": "src\/valid.kry"/ { found=1 
 grep -q '"nodeName": "tap"' "$out"
 grep -q '"path": "Scene/root/tap"' "$out"
 grep -q '"parentPath": "Scene/root"' "$out"
+grep -Eq '"path": "Scene/root/Selectable@[0-9]+(-[0-9]+)?"' "$out"
+grep -q '"parentPath": "Scene/root"' "$out"
 grep -q '"sourceColumn":' "$out"
 grep -q '"tag": "button"' "$out"
 grep -q '"domValue": "tap-value"' "$out"
