@@ -3823,11 +3823,20 @@ function nthChildPositionMatches(text, siblings, node, fromEnd = false) {
   return delta / a >= 0 && delta % a === 0;
 }
 
-function selectorStructuralPseudosMatch(selector, node) {
+function selectorStructuralPseudosMatch(selector, node, scopeNode = null) {
   for (const pseudo of selector?.pseudos || []) {
     const siblings = webNodeSiblingsFromFrame(node);
     const typeSiblings = webNodeSameTypeSiblingsFromFrame(siblings, node);
-    if (pseudo === "first-child") {
+    if (pseudo === "root") {
+      if (webNodeParentFromFrame(node))
+        return false;
+    } else if (pseudo === "scope") {
+      if (scopeNode) {
+        if (node !== scopeNode && node?.path !== scopeNode.path)
+          return false;
+      } else if (webNodeParentFromFrame(node))
+        return false;
+    } else if (pseudo === "first-child") {
       if (siblings[0] !== node)
         return false;
     } else if (pseudo === "last-child") {
@@ -3869,29 +3878,29 @@ function selectorStructuralPseudosMatch(selector, node) {
   return true;
 }
 
-function selectorMatchesSimpleWebNode(selector, node) {
+function selectorMatchesSimpleWebNode(selector, node, scopeNode = null) {
   const facts = { ...(node?.styleFacts || {}), ...webNodeStyleFacts(node) };
   if (!selectorMatchesFacts(selector, facts) ||
-      !selectorStructuralPseudosMatch(selector, node))
+      !selectorStructuralPseudosMatch(selector, node, scopeNode))
     return false;
   if ((selector.not || []).some((notSelector) =>
-      selectorMatchesSimpleWebNode(notSelector, node)))
+      selectorMatchesSimpleWebNode(notSelector, node, scopeNode)))
     return false;
   if (selector.matches?.length &&
       !selector.matches.some((matchSelector) =>
-        selectorMatchesSimpleWebNode(matchSelector, node)))
+        selectorMatchesSimpleWebNode(matchSelector, node, scopeNode)))
     return false;
   return true;
 }
 
-function selectorChainMatchesWebNode(selector, node) {
+function selectorChainMatchesWebNode(selector, node, scopeNode = null) {
   const parts = selector?.parts || [];
   if (!parts.length)
     return false;
   let current = node;
   for (let index = parts.length - 1; index >= 0; index--) {
     const part = parts[index];
-    if (!current || !selectorMatchesSimpleWebNode(part, current))
+    if (!current || !selectorMatchesSimpleWebNode(part, current, scopeNode))
       return false;
     if (index === 0)
       return true;
@@ -3908,7 +3917,7 @@ function selectorChainMatchesWebNode(selector, node) {
       const siblingSelector = parts[index - 1];
       const sibling = webNodePreviousSiblingsFromFrame(current)
         .reverse()
-        .find((candidate) => selectorMatchesSimpleWebNode(siblingSelector, candidate));
+        .find((candidate) => selectorMatchesSimpleWebNode(siblingSelector, candidate, scopeNode));
       if (!sibling)
         return false;
       current = sibling;
@@ -3916,7 +3925,7 @@ function selectorChainMatchesWebNode(selector, node) {
     }
     let ancestor = webNodeParentFromFrame(current);
     const ancestorSelector = parts[index - 1];
-    while (ancestor && !selectorMatchesSimpleWebNode(ancestorSelector, ancestor))
+    while (ancestor && !selectorMatchesSimpleWebNode(ancestorSelector, ancestor, scopeNode))
       ancestor = webNodeParentFromFrame(ancestor);
     if (!ancestor)
       return false;
@@ -3925,10 +3934,10 @@ function selectorChainMatchesWebNode(selector, node) {
   return true;
 }
 
-function selectorMatchesWebNode(selector, node) {
+function selectorMatchesWebNode(selector, node, scopeNode = null) {
   if (Array.isArray(selector?.parts) && selector.parts.length)
-    return selectorChainMatchesWebNode(selector, node);
-  return selectorMatchesSimpleWebNode(selector, node);
+    return selectorChainMatchesWebNode(selector, node, scopeNode);
+  return selectorMatchesSimpleWebNode(selector, node, scopeNode);
 }
 
 export function resolveWebStyle(node, sheets = []) {
@@ -7663,9 +7672,10 @@ export function webNodeQueryAllWithin(rt, query, selector) {
   const text = String(selector || "").trim();
   if (!text)
     return [];
+  const scope = webNodeQuery(rt, query);
   const parsed = parseSelector(text);
   return webNodeDescendants(rt, query)
-    .filter((node) => selectorMatchesWebNode(parsed, node));
+    .filter((node) => selectorMatchesWebNode(parsed, node, scope));
 }
 
 export function webNodeQueryWithin(rt, query, selector) {
@@ -8956,9 +8966,10 @@ export function webDOMQueryAllWithin(target, query, selector) {
   const text = String(selector || "").trim();
   if (!text)
     return [];
+  const scope = webDOMObject(target, query)?.node || null;
   const parsed = parseSelector(text);
   return webDOMDescendants(target, query)
-    .filter((object) => selectorMatchesWebNode(parsed, object.node));
+    .filter((object) => selectorMatchesWebNode(parsed, object.node, scope));
 }
 
 export function webDOMQueryWithin(target, query, selector) {

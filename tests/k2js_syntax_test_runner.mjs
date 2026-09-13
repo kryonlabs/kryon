@@ -466,6 +466,8 @@ const operatorStyleSheet = runtime.parseWebStyleSheet(`
   Button:not(.secondary) { caret-color: #112233; }
   :is(Button, TextField)[webRef^="primary"] { accent-color: #223344; }
   :where(TextField, Button)[data.tracking_id|="tap"] { resize: vertical; }
+  Screen:root { text-align: start; }
+  :scope > Button { contain: layout; }
   Text + Button { background-size: contain; }
   Button ~ Input { background-repeat: repeat-x; }
 `);
@@ -505,6 +507,10 @@ assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Button"\]:not\(\.kryon-node\.secondary\)/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\.kryon-node\[data-kry-web-ref\^="primary"\]:is\(\[data-kry-kind="Button"\],\[data-kry-kind="TextField"\]\)/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\[data-kry-kind="Screen"\]:root/);
+assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
+  /\.kryon-node:scope > \[data-kry-kind="Button"\]/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
   /\[data-kry-kind="Text"\] \+ \[data-kry-kind="Button"\]/);
 assert.match(runtime.webStyleSheetToCSS(operatorStyleSheet),
@@ -878,6 +884,9 @@ assert.equal(runtime.webNodeQuery(rt, `Button:not(.secondary)`).path, webDoc.nod
 assert.equal(runtime.webNodeQuery(rt, `:is(Button, TextField)[webRef^="primary"]`).path,
   webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `:where(TextField, Button)[data.tracking_id|="tap"]`).path,
+  webDoc.nodes[2].path);
+assert.equal(runtime.webNodeQuery(rt, `Screen:root`).path, "Scene/root");
+assert.equal(runtime.webNodeQueryWithin(rt, "Scene/root", `:scope > Button`).path,
   webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `Text + Button`).path, webDoc.nodes[2].path);
 assert.equal(runtime.webNodeQuery(rt, `Button ~ Input`).path, webDoc.nodes[6].path);
@@ -3828,6 +3837,9 @@ function fakeDocument() {
     assert.equal(runtime.webDOMQuery(target, ":is(Button, TextField)[webRef^=\"primary\"]").element,
       firstButton);
     assert.equal(runtime.webDOMQuery(target, ":where(TextField, Button)[data.tracking_id|=\"tap\"]").element,
+      firstButton);
+    assert.equal(runtime.webDOMQuery(target, "Screen:root").node.path, "Scene/root");
+    assert.equal(runtime.webDOMQueryWithin(target, "Scene/root", ":scope > Button").element,
       firstButton);
     assert.equal(runtime.webDOMQuery(target, "Text + Button").element, firstButton);
     assert.equal(runtime.webDOMQuery(target, "Button ~ Input").node.path, inputPaths[0]);

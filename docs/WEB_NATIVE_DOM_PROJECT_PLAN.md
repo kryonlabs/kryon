@@ -232,6 +232,9 @@ the browser receives normal elements, attributes, CSS, and events.
   `:nth-of-type(...)`, and `:nth-last-of-type(...)`.
 - KSS `nth-*` structural selectors support CSS `an+b` formulas such as
   `2n+1`, `n+2`, and `-n+4` in Web Document and mounted DOM queries.
+- KSS structural selectors support `:root` and scoped `:scope` matching in Web
+  Document and mounted DOM queries, while CSS export preserves the native
+  pseudo selectors.
 - k2js route dispatch for explicit route paths with nested `:param` segments,
   plus runtime access to captured route params.
 
