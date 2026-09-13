@@ -2702,7 +2702,7 @@ function webStyleStateSelectorToCSS(state) {
   if (!text)
     return "";
   if (text === "normal")
-    return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,[readonly],[required],[open],[selected],[aria-pressed=\"true\"],[aria-disabled=\"true\"],[aria-checked=\"true\"],[aria-selected=\"true\"],[aria-invalid=\"true\"],[aria-expanded=\"true\"],[data-kry-state]))";
+    return ":not(:is(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,[readonly],[required],[open],[selected],[aria-pressed=\"true\"],[aria-disabled=\"true\"],[aria-busy=\"true\"],[aria-checked=\"true\"],[aria-selected=\"true\"],[aria-invalid=\"true\"],[aria-expanded=\"true\"],[data-kry-state]))";
   const key = text === "focused" ? "focus" : text;
   const mirrored = `[data-kry-state~="${cssEscapeString(key)}"]`;
   const native = {
@@ -2710,6 +2710,7 @@ function webStyleStateSelectorToCSS(state) {
     pressed: [":active", "[aria-pressed=\"true\"]"],
     focus: [":focus", ":focus-visible"],
     disabled: [":disabled", "[aria-disabled=\"true\"]"],
+    loading: ["[aria-busy=\"true\"]"],
     checked: [":checked", "[aria-checked=\"true\"]"],
     selected: [":checked", "[selected]", "[aria-selected=\"true\"]"],
     invalid: [":invalid", "[aria-invalid=\"true\"]"],

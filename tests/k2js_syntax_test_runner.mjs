@@ -762,7 +762,7 @@ assert.match(webStyleCSS,
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):is\(:hover,\[data-kry-state~="hover"\]\):is\(:active,\[aria-pressed="true"\],\[data-kry-state~="pressed"\]\)/);
 assert.match(webStyleCSS,
-  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,\[readonly\],\[required\],\[open\],\[selected\],\[aria-pressed="true"\],\[aria-disabled="true"\],\[aria-checked="true"\],\[aria-selected="true"\],\[aria-invalid="true"\],\[aria-expanded="true"\],\[data-kry-state\]\)\)/);
+  /\[data-kry-kind="Button"\]:is\(#tap-button,\[data-kry-name="tap-button"\],\[data-kry-key="tap-button"\]\):not\(:is\(:hover,:focus,:active,:disabled,:checked,:invalid,:read-only,:required,\[readonly\],\[required\],\[open\],\[selected\],\[aria-pressed="true"\],\[aria-disabled="true"\],\[aria-busy="true"\],\[aria-checked="true"\],\[aria-selected="true"\],\[aria-invalid="true"\],\[aria-expanded="true"\],\[data-kry-state\]\)\)/);
 assert.match(webStyleCSS,
   /\[data-kry-kind="Button"\]\[data-kry-state~="hover"\]/);
 const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
@@ -771,6 +771,7 @@ const stateSelectorCSS = runtime.webStyleSheetToCSS(runtime.parseWebStyleSheet(`
   Toggle:checked { opacity: 0.7; }
   TextField:invalid { opacity: 0.8; }
   Section:expanded { opacity: 0.9; }
+  Section:loading { cursor: progress; }
   TextField:readonly { color: #111111; }
   TextField:read-only { caret-color: #222222; }
   TextField:required { outline-color: #333333; }
@@ -785,6 +786,8 @@ assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:invalid,\[aria-invalid="true"\],\[data-kry-state~="invalid"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="Section"\]:is\(\[aria-expanded="true"\],\[data-kry-state~="expanded"\]\)/);
+assert.match(stateSelectorCSS,
+  /\[data-kry-kind="Section"\]:is\(\[aria-busy="true"\],\[data-kry-state~="loading"\]\)/);
 assert.match(stateSelectorCSS,
   /\[data-kry-kind="TextField"\]:is\(:read-only,\[readonly\],\[data-kry-state~="readonly"\]\)/);
 assert.match(stateSelectorCSS,
@@ -930,6 +933,17 @@ assert.equal(runtime.webNodeQuery(emptyRt, `Section:empty`).path,
   emptyDoc.nodes[1].path);
 assert.equal(runtime.resolveWebStyle(emptyDoc.nodes[1], operatorStyleSheet)["field-sizing"],
   "content");
+const loadingRt = runtime.createRuntime();
+runtime.beginFrame(loadingRt);
+runtime.widget(loadingRt, "Screen", {}, null, { nodeName: "root", path: "Loading/root" });
+runtime.widget(loadingRt, "Section", { loading: true }, null,
+  { nodeName: "panel", path: "Loading/root/panel", parentPath: "Loading/root" });
+runtime.endFrame(loadingRt);
+const loadingDoc = runtime.webDocumentFrame(loadingRt);
+const loadingSheet = runtime.parseWebStyleSheet(`Section:loading { cursor: progress; }`);
+assert.equal(runtime.webNodeQuery(loadingRt, `Section:loading`).path,
+  loadingDoc.nodes[1].path);
+assert.equal(runtime.resolveWebStyle(loadingDoc.nodes[1], loadingSheet).cursor, "progress");
 assert.equal(webDoc.nodes[2].sourcePath, "src/valid.kry");
 assert.ok(webDoc.nodes[2].sourceLine > 0);
 assert.ok(webDoc.nodes[2].sourceColumn > 0);
@@ -3094,6 +3108,12 @@ function fakeDocument() {
     runtime.renderWebDocument(emptyRt, emptyTarget);
     assert.equal(runtime.webDOMQuery(emptyTarget, "Section:empty").node.path,
       emptyDoc.nodes[1].path);
+    const loadingTarget = document.createElement("div");
+    runtime.renderWebDocument(loadingRt, loadingTarget);
+    assert.equal(runtime.webDOMQuery(loadingTarget, "Section:loading").node.path,
+      loadingDoc.nodes[1].path);
+    assert.equal(runtime.findWebElement(loadingTarget, "Loading/root/panel").attributes["aria-busy"],
+      "true");
     assert.equal(runtime.webDOMRoot(target), root);
     assert.equal(runtime.webDOMRoot(root), root);
     assert.equal(runtime.webDOMFrame(target).nodes.length, runtime.webDocumentFrame(domRt).nodes.length);

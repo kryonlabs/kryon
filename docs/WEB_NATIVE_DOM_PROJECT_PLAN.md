@@ -203,7 +203,7 @@ the browser receives normal elements, attributes, CSS, and events.
   for hover, focus, pressed, disabled, checked, invalid, and open where the DOM
   has matching native state.
 - KSS state selector CSS export also targets native ARIA/state attributes for
-  pressed, disabled, checked, selected, invalid, and expanded controls.
+  pressed, disabled, loading, checked, selected, invalid, and expanded controls.
 - KSS state selectors support `:readonly`/`:read-only` and `:required` against
   Kry form-control facts and native browser pseudo/attribute selectors.
 - KSS structural selectors support browser-native `:empty` in CSS export,
