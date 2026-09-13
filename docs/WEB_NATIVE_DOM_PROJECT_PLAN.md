@@ -100,7 +100,7 @@ the browser receives normal elements, attributes, CSS, and events.
   `data-kry-state` mirroring.
 - KSS web CSS export and mounted DOM styling cover physical and logical border
   colors, widths, styles, and corner radii, including per-side inline/block
-  properties.
+  properties, with both Kryon's `radius` alias and native `border-radius`.
 - KSS web color styling accepts both Kryon aliases (`foreground`,
   `background`) and native CSS names (`color`, `background-color`) for browser
   CSS export and mounted DOM style application.

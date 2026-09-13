@@ -16,6 +16,7 @@ const sheet = runtime.parseWebStyleSheet(`
     color: caret;
     background-color: #101820;
     font-family: system-ui;
+    border-radius: 6;
     accent-color: accent;
     caret-color: caret;
     appearance: none;
@@ -29,6 +30,7 @@ assert.match(css, /--control-ring: 2px solid #3366ff;/);
 assert.match(css, /color: #ff6633;/);
 assert.match(css, /background-color: #101820;/);
 assert.match(css, /font-family: system-ui;/);
+assert.match(css, /border-radius: 6px;/);
 assert.match(css, /accent-color: #3366ff;/);
 assert.match(css, /caret-color: #ff6633;/);
 assert.match(css, /appearance: none;/);
@@ -45,6 +47,7 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   color: "#ff6633",
   "background-color": "#101820",
   "font-family": "system-ui",
+  "border-radius": 6,
   "accent-color": "#3366ff",
   "caret-color": "#ff6633",
   appearance: "none",
@@ -171,6 +174,7 @@ assert.equal(field.style["--control-ring"], "2px solid #3366ff");
 assert.equal(field.style.color, "#ff6633");
 assert.equal(field.style.backgroundColor, "#101820");
 assert.equal(field.style.fontFamily, "system-ui");
+assert.equal(field.style.borderRadius, "6px");
 assert.equal(field.style.accentColor, "#3366ff");
 assert.equal(field.style.caretColor, "#ff6633");
 assert.equal(field.style.appearance, "none");

@@ -1964,7 +1964,7 @@ const webKssColorProperties = new Set([
 ]);
 
 const webKssLengthProperties = new Set([
-  "radius", "border-width", "opacity",
+  "radius", "border-radius", "border-width", "opacity",
   "border-top-width", "border-right-width", "border-bottom-width", "border-left-width",
   "border-inline-width", "border-block-width", "border-inline-start-width",
   "border-inline-end-width", "border-block-start-width", "border-block-end-width",
@@ -2650,6 +2650,7 @@ const webCSSPropertyNames = new Map([
   ["border-block-start-style", "border-block-start-style"],
   ["border-block-end-style", "border-block-end-style"],
   ["radius", "border-radius"],
+  ["border-radius", "border-radius"],
   ["border-top-left-radius", "border-top-left-radius"],
   ["border-top-right-radius", "border-top-right-radius"],
   ["border-bottom-right-radius", "border-bottom-right-radius"],
@@ -3663,6 +3664,7 @@ function applyResolvedWebStyle(el, style) {
   set("borderBlockStartStyle", style["border-block-start-style"]);
   set("borderBlockEndStyle", style["border-block-end-style"]);
   set("borderRadius", style.radius);
+  set("borderRadius", style["border-radius"]);
   set("borderTopLeftRadius", style["border-top-left-radius"]);
   set("borderTopRightRadius", style["border-top-right-radius"]);
   set("borderBottomRightRadius", style["border-bottom-right-radius"]);
