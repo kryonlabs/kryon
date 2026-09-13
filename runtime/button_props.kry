@@ -6,7 +6,6 @@
 ButtonProps :: struct {
     bounds: Rectangle
     label: const char*
-    font: i32
     id: i32
     class_name: i32
     tone: ButtonTone

@@ -25,7 +25,6 @@ static inline bool StringEqual(String a, String b) {
 typedef struct ButtonProps {
     Rectangle bounds;
     const char* label;
-    int32_t font;
     int32_t id;
     int32_t class_name;
     ButtonTone tone;

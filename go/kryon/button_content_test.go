@@ -401,11 +401,11 @@ func TestDefaultAndExplicitButtonSizes(t *testing.T) {
 	}{{ControlSizeMedium, 40, 16}, {ControlSizeSmall, 32, 14}, {ControlSizeLarge, 48, 18}} {
 		props := r.resolveButtonProps(ButtonProps{Label: "Run", Size: test.size})
 		frame, _ := r.surfaceButtonFrame(props, Rectangle{}, false)
-		if props.Bounds.Height != test.height || props.Font != 0 || frame.Button.Font != test.font {
-			t.Fatalf("size %v: got height %v/request %v/painted font %v", test.size, props.Bounds.Height, props.Font, frame.Button.Font)
+		if props.Bounds.Height != test.height || frame.Button.Font != test.font {
+			t.Fatalf("size %v: got height %v/painted font %v", test.size, props.Bounds.Height, frame.Button.Font)
 		}
 	}
-	if props := r.resolveButtonProps(ButtonProps{Label: "Run"}); props.Bounds.Height != 40 || props.Font != 0 {
+	if props := r.resolveButtonProps(ButtonProps{Label: "Run"}); props.Bounds.Height != 40 {
 		t.Fatalf("zero-value props did not select medium: %+v", props)
 	}
 }

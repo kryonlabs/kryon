@@ -19,13 +19,13 @@ DialogsExample :: (viewport: Rectangle) #ui {
     Screen root: {
         bounds = viewport
         AppBackground()
-        if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message",  .font = Text16, .id = 101}) {
+        if Button((ButtonProps){.bounds = {40, 60, 150, 34}, .label = "Message", .id = 101}) {
             dialog = 1
         }
-        if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm",  .font = Text16, .id = 102}) {
+        if Button((ButtonProps){.bounds = {40, 104, 150, 34}, .label = "Confirm", .id = 102}) {
             dialog = 2
         }
-        if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt",  .font = Text16, .id = 103}) {
+        if Button((ButtonProps){.bounds = {40, 148, 150, 34}, .label = "Prompt", .id = 103}) {
             dialog = 3
         }
         ColorPicker((ColorPickerProps){.bounds = {240,60,320,160}, .id = 104, .values = color_values, .value_count = 4, .picker = true})

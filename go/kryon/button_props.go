@@ -6,7 +6,6 @@ package kryon
 type ButtonProps struct {
 	Bounds          Rectangle
 	Label           string
-	Font            int32
 	ID              int32
 	ClassName       int32
 	Tone            ButtonTone

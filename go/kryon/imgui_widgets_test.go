@@ -1659,7 +1659,7 @@ func TestNativeTabItemControls(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.QueueTap(20, 20)
 	r.BeginFrame()
-	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 10, 60, 28), ID: 86, Label: "+", Font: Text14, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisGhost}) {
+	if !r.Button(ButtonProps{Bounds: NewRectangle(10, 10, 60, 28), ID: 86, Label: "+", Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisGhost}) {
 		t.Fatal("Button did not consume its tap")
 	}
 	r.EndFrame()

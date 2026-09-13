@@ -2420,15 +2420,12 @@ Text(TextProps props)
             if(parent != NULL && ui_tree_button_like_kind(parent->kind)) {
                 ButtonSpec *button = &parent->data.button;
 
-                inherited_font = button->props.font;
-                if(inherited_font <= 0) {
-                    Style style = ResolveButtonStyle(button->props, button->props.state);
-                    inherited_font = ResolveFont(button->props.font,
-                        style.font_size > 0.0f
-                            ? (int)(style.font_size + 0.5f)
-                            : 0,
-                        GetFontSize());
-                }
+                Style style = ResolveButtonStyle(button->props, button->props.state);
+                inherited_font = ResolveFont(0,
+                    style.font_size > 0.0f
+                        ? (int)(style.font_size + 0.5f)
+                        : 0,
+                    GetFontSize());
                 inherited_color = button->paint.foreground;
                 inherited_color_set = true;
                 inherited_disabled = button->props.disabled;
@@ -3363,7 +3360,7 @@ resolve_button_bounds_for_kind(ButtonProps button, int disclosure, int style_kin
     Style style = ui_resolve_button_style_kind(button, button.state, style_kind);
     int height = Scale(SizeValue(button.size, metrics.control_height_small,
         metrics.control_height_medium, metrics.control_height_large));
-    int font = ResolveFont(button.font,
+    int font = ResolveFont(0,
         style.font_size > 0.0f ? (int)(style.font_size + 0.5f) : 0,
         GetFontSize());
     float available_width = 0.0f;
@@ -3479,8 +3476,8 @@ Button(ButtonProps button)
     if(button.arrow) {
         button.label = ui_tree_arrow_button_label(
             ButtonArrowGlyph((int)button.direction));
-        if(button.font <= 0)
-            button.font = GetSmallFontSize();
+        if(button.size == ControlSizeMedium)
+            button.size = ControlSizeSmall;
         return ui_tree_surface_button(button, (Rectangle){0}, 0);
     }
     if(button.menu || button.split) {

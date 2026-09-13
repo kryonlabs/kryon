@@ -2276,13 +2276,13 @@ ui_update_drag_scalar_keyboard(int focus_id, float speed, float minimum,
                               float maximum, float *value)
 {
     int direction;
-    DragScalarStep step;
+    DragStep step;
 
     if(focus_id <= 0 || !IsFocusActive(focus_id) ||
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(0);
-    step = DragScalarKeyboardValue(*value, speed, minimum, maximum, direction,
+    step = DragKeyboardValue(*value, speed, minimum, maximum, direction,
         IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
@@ -2338,7 +2338,7 @@ ui_update_drag_scalar(DragScalarProps drag)
         if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
                                (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
-            DragScalarStep step = DragScalarDeltaValue(drag.values[i], delta,
+            DragStep step = DragDeltaValue(drag.values[i], delta,
                                                      speed, drag.min,
                                                      drag.max);
             if(step.changed) {
@@ -2530,13 +2530,13 @@ ui_update_slider_scalar_keyboard(int focus_id, int vertical, float minimum,
                                 float maximum, float *value)
 {
     int direction;
-    SliderScalarStep step;
+    SliderStep step;
 
     if(focus_id <= 0 || !IsFocusActive(focus_id) ||
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(vertical);
-    step = SliderScalarKeyboardValue(*value, minimum, maximum, direction,
+    step = SliderKeyboardValue(*value, minimum, maximum, direction,
         IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
@@ -2641,7 +2641,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(slider.id,i,0);
         Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
-        float ratio = SliderScalarRatio(slider.values[i], slider.min,
+        float ratio = SliderRatio(slider.values[i], slider.min,
                                        slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
         int editing = 0;
@@ -2654,7 +2654,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
             continue;
         if(enabled && ui_update_slider_scalar_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
-            ratio = SliderScalarRatio(slider.values[i], slider.min,
+            ratio = SliderRatio(slider.values[i], slider.min,
                                      slider.max);
             changed = 1;
         }
@@ -2663,7 +2663,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
                                            (unsigned int)(i + 1)),
                                            focus_id, cell, slider.disabled,
                                            vertical, &ratio)) {
-            float value = SliderScalarValue(slider.min, slider.max, ratio);
+            float value = SliderValue(slider.min, slider.max, ratio);
             if(value != slider.values[i]) {
                 slider.values[i] = value;
                 changed = 1;
@@ -2723,7 +2723,7 @@ ui_paint_slider_scalar(SliderScalarProps slider, int vertical)
     slider.disabled |= UIContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
         Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
-        float ratio = SliderScalarRatio(slider.values[i], slider.min,
+        float ratio = SliderRatio(slider.values[i], slider.min,
                                        slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,0);

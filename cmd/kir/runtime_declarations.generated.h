@@ -9,7 +9,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "ButtonProps :: struct {\n"
         "    bounds: Rectangle\n"
         "    label: const char*\n"
-        "    font: i32\n"
         "    id: i32\n"
         "    class_name: i32\n"
         "    tone: ButtonTone\n"

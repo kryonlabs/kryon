@@ -12,6 +12,9 @@ else
 fi
 work=${TMPDIR:-/tmp}/kryon-k2cpp-syntax-test.$$
 root=$(pwd)
+generated_include="$root/$host/generated/src"
+internal_include="$root/src/ui"
+internal_header="$root/src/ui/ui_internal.h"
 
 cleanup() { rm -rf "$work"; }
 trap cleanup EXIT INT TERM
@@ -63,7 +66,7 @@ Valid :: (viewport: Rectangle) #ui {
                 gap = Scale(4)
                 padding = 0
                 key = Key("actions")
-                Button((ButtonProps){.bounds = {0, 0, Scale(70), Scale(28)}, .label = "Save",  .font = Text16, .id = 103})
+                Button((ButtonProps){.bounds = {0, 0, Scale(70), Scale(28)}, .label = "Save", .id = 103})
             }
         }
         menu_items: [2] MenuItem = {{MenuCommand,"Save","Ctrl+S",301,0,0,NULL,0},{MenuSeparator,NULL,NULL,0,0,0,NULL,0}}
@@ -175,7 +178,6 @@ Main :: (viewport: Rectangle) #ui {
                 label = "Block"
                 tone = ButtonToneNeutral
                 emphasis = ButtonEmphasisSoft
-                font = Text16
                 id = 77
             }
         }
@@ -316,8 +318,11 @@ if grep -Fq 'defer ' "$c"; then
 fi
 
 # the generated C++ compiles
-c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$work/out" "$c"
-c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" -I"$work/out" "$hc"
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+    -I"$generated_include" -I"$internal_include" -I"$work/out" "$c"
+c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
+    -I"$generated_include" -I"$internal_include" -I"$work/out" \
+    -include "$internal_header" "$hc"
 
 # Keep native C++ codegen on the same clean composed-widget surface as C and
 # Go. This fixture is shared with generated runtime parity.
@@ -332,7 +337,8 @@ grep -Fq 'popup_content_open = 0;' "$popup_cpp"
 grep -Fq 'popup_open = 0;' "$popup_cpp"
 grep -Fq 'EndPopup();' "$popup_cpp"
 c++ -fsyntax-only -std=gnu++17 -Wno-narrowing -I"$root/include" \
-    -I"$work/composed" "$popup_cpp"
+    -I"$generated_include" -I"$internal_include" -I"$work/composed" \
+    -include "$internal_header" "$popup_cpp"
 
 # C++-specific output: extern "C" linkage in header and source
 grep -Fq '#ifdef __cplusplus' "$h"
@@ -348,7 +354,7 @@ grep -Fq 'EndDisabled();' "$hc"
 grep -Fq 'BeginScroll(viewport, 480, NULL)' "$hc"
 grep -Fq 'BeginScroll(content, 0, NULL)' "$hc"
 grep -Fq 'EndScroll();' "$hc"
-grep -Fq 'Button(([&]() { ButtonProps record_value_0{}; record_value_0.bounds = {8, 40, 96, 28}; record_value_0.label = "Block"; record_value_0.tone = ButtonToneNeutral; record_value_0.emphasis = ButtonEmphasisSoft; record_value_0.font = Text16; record_value_0.id = 77; return record_value_0; }()));' "$hc"
+grep -Fq 'Button(([&]() { ButtonProps record_value_0{}; record_value_0.bounds = {8, 40, 96, 28}; record_value_0.label = "Block"; record_value_0.tone = ButtonToneNeutral; record_value_0.emphasis = ButtonEmphasisSoft; record_value_0.id = 77; return record_value_0; }()));' "$hc"
 grep -Fq '{"home", "App", "Home", "src/hierarchy.kry"' "$project"
 grep -Fq 'AppHost *host;' "$project"
 grep -Fq 'host = CreateAppHost(APP_HOST_ABI_VERSION, ".");' "$project"
@@ -438,7 +444,7 @@ void PushInspectSource(const char *, int) {}
 void PopInspectSource(void) {}
 int main() { return check(); }
 EOF
-c++ -std=c++17 -I"$root/include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
+c++ -std=c++17 -I"$root/include" -I"$generated_include" -I"$internal_include" -I"$work/records" "$work/records/driver.cpp" -o "$work/records/check"
 "$work/records/check"
 
 echo "k2cpp ok"

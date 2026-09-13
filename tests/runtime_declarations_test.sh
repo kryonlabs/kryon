@@ -34,14 +34,13 @@ int main(void) {
     ButtonProps *props = &value;
     enum ButtonTone tone = ButtonToneAccent;
     enum ButtonState state = ButtonStateHover;
-    enum StyleField fields = StyleBackground;
     props->tone = tone;
     props->state = state;
-    props->style.normal.fields = fields;
+    props->class_name = 23;
     props->disabled = true;
     return props->disabled && props->tone == ButtonToneAccent &&
            props->state == ButtonStateHover &&
-           props->style.normal.fields == StyleBackground ? 0 : 1;
+           props->class_name == 23 ? 0 : 1;
 }
 C
 ${CC:-cc} -Iinclude -I"$build/generated/include" "$work/consumer.c" -o "$work/consumer"
@@ -52,16 +51,16 @@ cat > "$work/props.kry" <<'KRY'
 #module "props"
 Read :: () -> i32 {
     props: ButtonProps = (ButtonProps){(Rectangle){1, 2, 3, 4}, "label", 17}
-    return props.font
+    return props.id
 }
 Change :: (props: ButtonProps) {
-    props.font = 99
+    props.id = 99
 }
 ReadZero :: () -> i32 {
     props: ButtonProps
-    props.font = 18
+    props.id = 18
     Change(props)
-    return props.font
+    return props.id
 }
 KRY
 (cd "$work" && ./k2go --strict --no-main --pkg props --root . -o app props.kry)

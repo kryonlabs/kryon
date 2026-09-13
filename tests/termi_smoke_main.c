@@ -52,7 +52,6 @@ main(void)
         if(Button((ButtonProps){
             .bounds = (Rectangle){24, 88, 180, 44},
             .label = "Button",
-            .font = Text16,
             .id = 1001,
         }))
             clicked = 1;

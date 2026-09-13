@@ -256,10 +256,9 @@ ui_render_button(ButtonSpec button, int handle_input, int paint,
         button.props.disabled ? ButtonStateDisabled : ButtonStateNormal,
         0, 0, 0, 0,
         button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
-    int font = button.props.font > 0 ? button.props.font :
-        (normal_style.font_size > 0.0f
-            ? (int)(normal_style.font_size + 0.5f)
-            : GetFontSize());
+    int font = normal_style.font_size > 0.0f
+        ? (int)(normal_style.font_size + 0.5f)
+        : GetFontSize();
     Style hover_style = ui_unpack_style(ui_resolve_button_spec_frame(button,
         ButtonStateHover, 0, 0, 0, 0,
         button.style_kind != 0 ? button.style_kind : StyleKindButton()).value);
@@ -723,7 +722,8 @@ SegmentedControl(SegmentedControlProps control)
                                             (float)button_w,
                                             (float)metrics.row_height};
                 button.props.label = option->label;
-                button.props.font = font;
+                button.style.normal.font_size = (float)font;
+                button.style.normal.fields |= StyleFontSize;
                 button.props.id = focus_id;
                 button.props.disabled = option->disabled;
                 button.props.tone = selected_item

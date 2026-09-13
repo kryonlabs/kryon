@@ -226,7 +226,6 @@ KryonNodeTypeSnippet(int index, int x, int y, char *dst, int cap)
                  "        .bounds = {Scale(%d), Scale(%d), Scale(140), Scale(36)},\n"
                  "        .label = \"Button\",\n"
                  "        \n"
-                 "        .font = Text16,\n"
                  "        .id = %d,\n"
                  "    }) {\n"
                  "    }\n",

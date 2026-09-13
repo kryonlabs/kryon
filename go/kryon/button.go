@@ -904,7 +904,7 @@ func Button_BuildFrame(props ButtonProps, input ButtonInput, appearance StyleFra
 	var value_27 float32 = result.Material.Scale
 	var value_28 Rectangle = Style_InsetBounds(value_24, value_25, value_26, value_27)
 	result.ContentBounds = value_28
-	var value_29 int32 = props.Font
+	var value_29 int32 = 0
 	var value_30 int32 = style_font
 	var value_31 int32 = fallback_font
 	var value_32 int32 = Style_ResolveFont(value_29, value_30, value_31)

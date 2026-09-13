@@ -93,7 +93,6 @@ main(void)
     Button((ButtonProps){.bounds = {54, 134, 110, 28},
                          .label = "BUTTON-LEAK",
                          .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-                         .font = Text12,
                          .id = 901});
     DrawRectangle(44, 128, 160, 42, cover);
     EndTree();

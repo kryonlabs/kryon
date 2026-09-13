@@ -239,8 +239,8 @@ App :: () #ui {
     segments: [3] SegmentOption = {{"Day",0},{"Week",0},{"Month",1}}
     tree_items: [2] TreeItem = {{"Root",0,1,1,0},{"Leaf",1,2,0,1}}
     AppBackground()
-    Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 20})
-    Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 21})
+    Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .id = 20})
+    Button((ButtonProps){.bounds = {Scale(150), Scale(40), Scale(90), Scale(28)}, .label = "TB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .id = 21})
     Dropdown((DropdownProps){.bounds = {Scale(150), Scale(70), Scale(90), Scale(24)}, .id = 22, .options = choices, .option_count = 3, .selected_index = &pick})
     SegmentedControl((SegmentedControlProps){.bounds = {Scale(150), Scale(98), Scale(180), Scale(30)}, .id = 221, .options = segments, .option_count = 3, .selected_index = &pick, .wrap = true})
     grid_cell: Rectangle = {Scale(12), Scale(400), Scale(64), Scale(24)}
@@ -328,7 +328,7 @@ App :: () #ui {
     Image(choice_image)
     Button((ButtonProps){.bounds = choice_image.bounds, .image_asset_path = choice_image.asset_path, .image_bounds = choice_image.bounds, .image_source = choice_image.source, .image_origin = choice_image.origin, .image_rotation = choice_image.rotation, .image_tint = choice_image.tint, .image_fit = choice_image.fit, .image_background = GetThemeButton(), .id = 51})
     Separator((SeparatorProps){.bounds = {Scale(250),Scale(1000),Scale(160),Scale(24)}, .label = "Section", .font = Text14})
-    Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .font = Text14, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
+    Button((ButtonProps){.bounds = {Scale(250),Scale(1130),Scale(60),Scale(28)}, .id = 54, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
     tab = TabBar((TabBarProps){.bounds = {Scale(314),Scale(1130),Scale(180),Scale(28)}, .tabs = rich_tabs, .count = 2, .selected_index = tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = Scale(90), .max_tab_width = Scale(90)})
     DragDrop((DragDropProps){.bounds = {Scale(250),Scale(1162),Scale(80),Scale(28)}, .id = 55, .role = DragDropRoleSource, .type = "TEXT", .data = field_text, .data_size = 64})
     DragDrop((DragDropProps){.bounds = {Scale(334),Scale(1162),Scale(120),Scale(28)}, .id = 56, .role = DragDropRoleTarget, .type = "TEXT", .output = area_text, .output_size = 128, .accepted_size = &accepted_size})
@@ -347,7 +347,7 @@ App :: () #ui {
 
 DisabledSmoke :: () #ui {
     Disabled scoped_disabled: {
-        Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .font = Text16, .id = 120})
+        Button((ButtonProps){.bounds = {Scale(150), Scale(8), Scale(90), Scale(28)}, .label = "GB", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .id = 120})
     }
 }
 EOF
@@ -612,7 +612,7 @@ grep -q 'kr.Checkbox(kr.CheckboxProps{.*Flags: &st.FeatureFlags.*FlagsValue: int
 grep -q 'kr.Image(choice_image)' "$out"
 grep -q 'kr.Button(kr.ButtonProps{.*ImageAssetPath: choice_image.AssetPath.*ImageBounds: choice_image.Bounds.*ID: int32(51)' "$out"
 grep -q 'kr.Separator(kr.SeparatorProps{.*Label: "Section".*Font: int32(kr.Text14)' "$out"
-grep -q 'kr.Button(kr.ButtonProps{.*Label: "+".*Font: int32(kr.Text14).*Tone: kr.ButtonToneNeutral.*Emphasis: kr.ButtonEmphasisGhost' "$out"
+grep -q 'kr.Button(kr.ButtonProps{.*Label: "+".*Tone: kr.ButtonToneNeutral.*Emphasis: kr.ButtonEmphasisGhost' "$out"
 grep -q 'kr.TabBar(kr.TabBarProps{.*Tabs: rich_tabs\[:\].*SelectedIndex: int32(st.Tab).*ClosedIndex: &st.ClosedTab' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleSource.*Data: st.FieldText\[:\]' "$out"
 grep -q 'kr.DragDrop(kr.DragDropProps{.*Role: kr.DragDropRoleTarget.*Output: st.AreaText\[:\].*AcceptedSize: &st.AcceptedSize' "$out"

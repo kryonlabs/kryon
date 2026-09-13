@@ -801,7 +801,7 @@ test_semantic_font_sizes_follow_ui_scale(void)
 static void
 test_slider_value_policy(void)
 {
-    SliderScalarStep float_step;
+    SliderStep float_step;
     SliderWholeStep int_step;
     SliderEditorLayout horizontal_layout;
     SliderEditorLayout vertical_layout;
@@ -811,19 +811,19 @@ test_slider_value_policy(void)
 
     check_float("slider clamp low", SliderClampRatio(-0.5f), 0.0f);
     check_float("slider clamp high", SliderClampRatio(1.5f), 1.0f);
-    check_float("slider float ratio", SliderScalarRatio(0.25f, 0.0f, 1.0f), 0.25f);
-    check_float("slider float value clamps", SliderScalarValue(0.0f, 1.0f, 1.25f), 1.0f);
+    check_float("slider float ratio", SliderRatio(0.25f, 0.0f, 1.0f), 0.25f);
+    check_float("slider float value clamps", SliderValue(0.0f, 1.0f, 1.25f), 1.0f);
     check_float("slider int ratio", SliderWholeRatio(5, 0, 10), 0.5f);
     check_int("slider int value rounds", SliderWholeValue(0, 10, 0.86f), 9);
 
-    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 0);
+    float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 0);
     check_int("slider float keyboard changed", float_step.changed ? 1 : 0, 1);
     check_float("slider float keyboard value", float_step.value, 0.26f);
-    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 1, 0);
+    float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 1, 0);
     check_float("slider float keyboard slow", float_step.value, 0.251f);
-    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 1);
+    float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 1);
     check_float("slider float keyboard fast", float_step.value, 0.35f);
-    float_step = SliderScalarKeyboardValue(0.25f, 0.0f, 1.0f, 0, 1, 0, 0, 0);
+    float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 0, 1, 0, 0, 0);
     check_float("slider float keyboard home", float_step.value, 0.0f);
 
     int_step = SliderWholeKeyboardValue(5, 0, 10, 1, 0, 0, 0, 0);
@@ -875,14 +875,14 @@ test_slider_value_policy(void)
 static void
 test_drag_value_policy(void)
 {
-    DragScalarStep float_step;
+    DragStep float_step;
     DragWholeStep int_step;
     DragTextPaint cell_paint;
     DragTextPaint label_paint;
     Rectangle cell;
 
     check_float("drag default speed", DragEffectiveSpeed(0.0f), 1.0f);
-    check_float("drag float clamp", DragScalarClamp(12.0f, 0.0f, 10.0f), 10.0f);
+    check_float("drag float clamp", DragClamp(12.0f, 0.0f, 10.0f), 10.0f);
     check_int("drag int clamp", DragWholeClamp(-2, 0, 10), 0);
     check_int("drag int rounded positive",
               DragWholeRoundedDelta(0.49f, 0), 0);
@@ -891,14 +891,14 @@ test_drag_value_policy(void)
     check_int("drag int rounded negative",
               DragWholeRoundedDelta(-1.6f, 0), -2);
 
-    float_step = DragScalarKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
+    float_step = DragKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
                                         1, 0, 0, 0, 0);
     check_int("drag float keyboard changed", float_step.changed ? 1 : 0, 1);
     check_float("drag float keyboard value", float_step.value, 2.25f);
-    float_step = DragScalarKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
+    float_step = DragKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
                                         1, 0, 0, 0, 1);
     check_float("drag float keyboard fast", float_step.value, 4.5f);
-    float_step = DragScalarDeltaValue(2.0f, 5.0f, 0.5f, 0.0f, 4.0f);
+    float_step = DragDeltaValue(2.0f, 5.0f, 0.5f, 0.0f, 4.0f);
     check_float("drag float delta clamps", float_step.value, 4.0f);
 
     int_step = DragWholeKeyboardValue(3, 0.25f, 0, 10, 1, 0, 0, 0, 0);
@@ -1948,7 +1948,7 @@ static void
 test_nested_disabled_scope(void)
 {
     ButtonProps button = {.bounds={10,10,80,28},.label="Blocked",
-                          .font=14,.id=145};
+                          .id=145};
     Color text = GetThemeText();
 
     BeginDisabled(1);
@@ -2047,7 +2047,7 @@ test_collapsible_composes_children(void)
     int actions = 0;
     CollapsibleProps section = {.bounds = {10, 10, 180, 200}, .label = "Details", .open = &open};
     ButtonProps child = {.bounds={10,46,100,28},.label="Child",
-                         .font=14,.id=983};
+                         .id=983};
     int ys[] = {20, 50, 20, 50};
 
     InjectReset();

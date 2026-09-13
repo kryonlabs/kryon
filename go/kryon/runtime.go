@@ -1430,16 +1430,16 @@ func (r *runtime) scrollClip(bounds Rectangle) Rectangle {
 func (r *runtime) Button(props ButtonProps) bool {
 	if props.Arrow {
 		props.Label = string(rune(Button_ButtonArrowGlyph(props.Direction)))
-		if props.Font <= 0 {
-			props.Font = Text14
+		if props.Size == ControlSizeMedium {
+			props.Size = ControlSizeSmall
 		}
 	}
 	if props.Info {
 		props.Label = "i"
 		props.Circle = true
 		props.IconOnly = false
-		if props.Font <= 0 {
-			props.Font = Text14
+		if props.Size == ControlSizeMedium {
+			props.Size = ControlSizeSmall
 		}
 		if props.Bounds.Width <= 0 {
 			props.Bounds.Width = 18
@@ -1702,7 +1702,7 @@ func (r *runtime) resolveSurfaceButtonPropsForKind(props ButtonProps, disclosure
 func (r *runtime) resolveSurfaceButtonPropsForRoleKind(props ButtonProps, disclosure bool, styleKind int32, role int32) ButtonProps {
 	props.Disabled = props.Disabled || r.contentDisabled()
 	style := unpackStyle(resolveMinimalControlRoleState(props, props.State, styleKind, role))
-	font := Style_ResolveFont(props.Font, int32(style.FontSize), Text16)
+	font := Style_ResolveFont(0, int32(style.FontSize), Text16)
 	metrics := defaultThemeMetrics()
 	if r.activeTheme != nil {
 		metrics = r.activeTheme.Metrics
@@ -2763,7 +2763,7 @@ func (r *runtime) dragFloatKeyboard(focusID int32, speed, minimum, maximum, valu
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(false, event.key)
-			step := Drag_DragScalarKeyboardValue(next, speed, minimum, maximum,
+			step := Drag_DragKeyboardValue(next, speed, minimum, maximum,
 				direction, event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
@@ -2837,7 +2837,7 @@ func (r *runtime) dragFloat(props dragFloatProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			step := Drag_DragScalarDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
+			step := Drag_DragDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
 			changed = changed || step.Changed
 			props.Values[i] = step.Value
 		}
@@ -2927,7 +2927,7 @@ func (r *runtime) dragFloatRange(props dragFloatRangeProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			step := Drag_DragScalarDeltaValue(*values[i], delta, speed, low, high)
+			step := Drag_DragDeltaValue(*values[i], delta, speed, low, high)
 			changed = changed || step.Changed
 			*values[i] = step.Value
 		}
@@ -3273,7 +3273,7 @@ func (r *runtime) sliderFloatKeyboard(focusID int32, vertical bool, minimum, max
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(vertical, event.key)
-			step := Slider_SliderScalarKeyboardValue(next, minimum, maximum,
+			step := Slider_SliderKeyboardValue(next, minimum, maximum,
 				direction, event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
@@ -3388,17 +3388,17 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 		if editing {
 			continue
 		}
-		ratio := Slider_SliderScalarRatio(props.Values[i], props.Min, props.Max)
+		ratio := Slider_SliderRatio(props.Values[i], props.Min, props.Max)
 		if enabled {
 			if next, keyboardChanged := r.sliderFloatKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
-				ratio = Slider_SliderScalarRatio(next, props.Min, props.Max)
+				ratio = Slider_SliderRatio(next, props.Min, props.Max)
 				changed = true
 			}
 		}
 		if next, active := r.sliderRatio(0x40000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
-			value := Slider_SliderScalarValue(props.Min, props.Max, ratio)
+			value := Slider_SliderValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]
 			props.Values[i] = value
 		}
@@ -3591,9 +3591,9 @@ func (r *runtime) numericInputCell(bounds Rectangle, key numericInputKey, format
 	if !stepEnabled {
 		return string(state.text[:zeroIndex(state.text)]), 0, false, textChanged
 	}
-	minusPressed := r.buttonAt(ButtonProps{Bounds: minus, Label: "-", Font: Text14,
+	minusPressed := r.buttonAt(ButtonProps{Bounds: minus, Label: "-", Size: ControlSizeSmall,
 		ID: token + 1, Disabled: disabled})
-	plusPressed := r.buttonAt(ButtonProps{Bounds: plus, Label: "+", Font: Text14,
+	plusPressed := r.buttonAt(ButtonProps{Bounds: plus, Label: "+", Size: ControlSizeSmall,
 		ID: token + 2, Disabled: disabled})
 	if !minusPressed && !plusPressed {
 		return string(state.text[:zeroIndex(state.text)]), 0, false, textChanged
@@ -3899,12 +3899,11 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 					Bounds:    bounds,
 					ID:        props.ID*1000 + int32(index) + 1,
 					Label:     option.Label,
-					Font:      r.segmentedControlFont(props.Font, props.ClassName),
 					Pill:      true,
 					Selected:  int32(index) == selected,
 					Disabled:  option.Disabled || r.contentDisabled(),
 					ClassName: props.ClassName,
-				})
+				}, r.segmentedControlFont(props.Font, props.ClassName))
 				if pressed {
 					result.ClickedIndex = int32(index)
 					result.SelectedIndex = int32(index)
@@ -3925,10 +3924,13 @@ func (r *runtime) SegmentedControl(props SegmentedControlProps) SegmentedControl
 	return result
 }
 
-func (r *runtime) segmentedButtonAt(props ButtonProps) bool {
+func (r *runtime) segmentedButtonAt(props ButtonProps, font int32) bool {
 	frame, pressed := r.surfaceButtonFrameForKind(props, Rectangle{}, false,
 		StyleSheet_StyleKindSegment())
-	if frame.Button.Appearance.Value.FontSize > 0 {
+	if font > 0 {
+		frame.Button.Font = font
+		frame.Button.Appearance.Value.FontSize = float32(font)
+	} else if frame.Button.Appearance.Value.FontSize > 0 {
 		frame.Button.Font = int32(frame.Button.Appearance.Value.FontSize + 0.5)
 	}
 	r.record(frame)

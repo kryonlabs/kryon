@@ -2,7 +2,7 @@
 package kryon
 
 // #import drawing_props
-type DragScalarStep struct {
+type DragStep struct {
 	Value   float32
 	Changed bool
 }
@@ -112,7 +112,7 @@ func Drag_DragEffectiveSpeed(speed float32) float32 {
 	return value_4
 }
 
-func Drag_DragScalarClamp(value float32, minimum float32, maximum float32) float32 {
+func Drag_DragClamp(value float32, minimum float32, maximum float32) float32 {
 	var value_0 float32 = minimum
 	var value_1 float32 = maximum
 	var value_2 bool = value_0 < value_1
@@ -200,8 +200,8 @@ func Drag_DragWholeRoundedDelta(scaled float32, force_minimum_step bool) int32 {
 	return value_20
 }
 
-func Drag_DragScalarKeyboardValue(value float32, speed float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) DragScalarStep {
-	var result DragScalarStep = DragScalarStep{}
+func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) DragStep {
+	var result DragStep = DragStep{}
 	var value_0 float32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -261,7 +261,7 @@ func Drag_DragScalarKeyboardValue(value float32, speed float32, minimum float32,
 				var value_33 float32 = value_28 + value_32
 				var value_34 float32 = minimum
 				var value_35 float32 = maximum
-				var value_36 float32 = Drag_DragScalarClamp(value_33, value_34, value_35)
+				var value_36 float32 = Drag_DragClamp(value_33, value_34, value_35)
 				next = value_36
 			}
 		}
@@ -272,7 +272,7 @@ func Drag_DragScalarKeyboardValue(value float32, speed float32, minimum float32,
 	var value_39 float32 = value
 	var value_40 bool = value_38 != value_39
 	result.Changed = value_40
-	var value_41 DragScalarStep = result
+	var value_41 DragStep = result
 	return value_41
 }
 
@@ -353,8 +353,8 @@ func Drag_DragWholeKeyboardValue(value int32, speed float32, minimum int32, maxi
 	return value_42
 }
 
-func Drag_DragScalarDeltaValue(value float32, delta float32, speed float32, minimum float32, maximum float32) DragScalarStep {
-	var result DragScalarStep = DragScalarStep{}
+func Drag_DragDeltaValue(value float32, delta float32, speed float32, minimum float32, maximum float32) DragStep {
+	var result DragStep = DragStep{}
 	var value_0 float32 = value
 	var value_1 float32 = delta
 	var value_2 float32 = speed
@@ -363,13 +363,13 @@ func Drag_DragScalarDeltaValue(value float32, delta float32, speed float32, mini
 	var value_5 float32 = value_0 + value_4
 	var value_6 float32 = minimum
 	var value_7 float32 = maximum
-	var value_8 float32 = Drag_DragScalarClamp(value_5, value_6, value_7)
+	var value_8 float32 = Drag_DragClamp(value_5, value_6, value_7)
 	result.Value = value_8
 	var value_9 float32 = result.Value
 	var value_10 float32 = value
 	var value_11 bool = value_9 != value_10
 	result.Changed = value_11
-	var value_12 DragScalarStep = result
+	var value_12 DragStep = result
 	return value_12
 }
 

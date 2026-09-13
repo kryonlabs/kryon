@@ -24,7 +24,7 @@ ActionProps :: struct {
 CancelAction :: (props: ActionProps) -> bool #ui {
     activated: bool = Button((ButtonProps){.bounds = {props.x, props.y, props.width, props.height},
         .label = "Cancel", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
-        .font = Text16, .id = props.id})
+        .id = props.id})
     if activated {
         buttons_action += props.amount
     }
@@ -73,7 +73,7 @@ buttons_frame :: () #ui {
                     when = 2 >= 1
                     Disabled {
                         when = false
-                        if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save",  .font = Text16, .id = 501}) {
+                        if Button((ButtonProps){.bounds = {20,120,80,32}, .label = "Save", .id = 501}) {
                             buttons_action += 1
                         }
                     }

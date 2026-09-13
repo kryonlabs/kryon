@@ -36,7 +36,7 @@ SliderPaint :: struct {
     thumb: StyleFrame
 }
 
-SliderScalarStep :: struct {
+SliderStep :: struct {
     value: float
     changed: bool
 }
@@ -170,21 +170,21 @@ SliderClampRatio :: (ratio: float) -> float #export {
     return ratio
 }
 
-SliderScalarRatio :: (value: float, minimum: float, maximum: float) -> float #export {
+SliderRatio :: (value: float, minimum: float, maximum: float) -> float #export {
     span: float = maximum - minimum
     if span <= 0.0 { return 0.0 }
     return SliderClampRatio((value - minimum) / span)
 }
 
-SliderScalarValue :: (minimum: float, maximum: float, ratio: float) -> float #export {
+SliderValue :: (minimum: float, maximum: float, ratio: float) -> float #export {
     span: float = maximum - minimum
     if span <= 0.0 { return minimum }
     return minimum + SliderClampRatio(ratio) * span
 }
 
-SliderScalarKeyboardValue :: (value: float, minimum: float, maximum: float,
-    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderScalarStep #export {
-    result: SliderScalarStep
+SliderKeyboardValue :: (value: float, minimum: float, maximum: float,
+    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderStep #export {
+    result: SliderStep
     result.value = value
     result.changed = false
     span: float = maximum - minimum

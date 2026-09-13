@@ -37,7 +37,7 @@ type SliderPaint struct {
 	Thumb               StyleFrame
 }
 
-type SliderScalarStep struct {
+type SliderStep struct {
 	Value   float32
 	Changed bool
 }
@@ -426,7 +426,7 @@ func Slider_SliderClampRatio(ratio float32) float32 {
 	return value_8
 }
 
-func Slider_SliderScalarRatio(value float32, minimum float32, maximum float32) float32 {
+func Slider_SliderRatio(value float32, minimum float32, maximum float32) float32 {
 	var value_0 float32 = maximum
 	var value_1 float32 = minimum
 	var value_2 float32 = value_0 - value_1
@@ -447,7 +447,7 @@ func Slider_SliderScalarRatio(value float32, minimum float32, maximum float32) f
 	return value_12
 }
 
-func Slider_SliderScalarValue(minimum float32, maximum float32, ratio float32) float32 {
+func Slider_SliderValue(minimum float32, maximum float32, ratio float32) float32 {
 	var value_0 float32 = maximum
 	var value_1 float32 = minimum
 	var value_2 float32 = value_0 - value_1
@@ -468,8 +468,8 @@ func Slider_SliderScalarValue(minimum float32, maximum float32, ratio float32) f
 	return value_12
 }
 
-func Slider_SliderScalarKeyboardValue(value float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) SliderScalarStep {
-	var result SliderScalarStep = SliderScalarStep{}
+func Slider_SliderKeyboardValue(value float32, minimum float32, maximum float32, direction int32, home bool, end bool, alt bool, shift bool) SliderStep {
+	var result SliderStep = SliderStep{}
 	var value_0 float32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -482,7 +482,7 @@ func Slider_SliderScalarKeyboardValue(value float32, minimum float32, maximum fl
 	var value_6 float32 = 0.0
 	var value_7 bool = value_5 <= value_6
 	if value_7 {
-		var value_8 SliderScalarStep = result
+		var value_8 SliderStep = result
 		return value_8
 	}
 	var value_9 float32 = value
@@ -549,7 +549,7 @@ func Slider_SliderScalarKeyboardValue(value float32, minimum float32, maximum fl
 	var value_44 float32 = value
 	var value_45 bool = value_43 != value_44
 	result.Changed = value_45
-	var value_46 SliderScalarStep = result
+	var value_46 SliderStep = result
 	return value_46
 }
 

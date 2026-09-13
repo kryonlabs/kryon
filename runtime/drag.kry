@@ -1,7 +1,7 @@
 #module "drag"
 #import "drawing_props"
 
-DragScalarStep :: struct {
+DragStep :: struct {
     value: float
     changed: bool
 }
@@ -49,7 +49,7 @@ DragEffectiveSpeed :: (speed: float) -> float #export {
     return speed
 }
 
-DragScalarClamp :: (value: float, minimum: float, maximum: float) -> float #export {
+DragClamp :: (value: float, minimum: float, maximum: float) -> float #export {
     if minimum < maximum {
         if value < minimum { return minimum }
         if value > maximum { return maximum }
@@ -74,10 +74,10 @@ DragWholeRoundedDelta :: (scaled: float, force_minimum_step: bool) -> i32 #expor
     return step
 }
 
-DragScalarKeyboardValue :: (value: float, speed: float, minimum: float,
+DragKeyboardValue :: (value: float, speed: float, minimum: float,
     maximum: float, direction: i32, home: bool, end: bool, alt: bool,
-    shift: bool) -> DragScalarStep #export {
-    result: DragScalarStep
+    shift: bool) -> DragStep #export {
+    result: DragStep
     result.value = value
     result.changed = false
     next: float = value
@@ -89,7 +89,7 @@ DragScalarKeyboardValue :: (value: float, speed: float, minimum: float,
         step: float = DragEffectiveSpeed(speed)
         if alt { step = step * 0.1 }
         if shift { step = step * 10.0 }
-        next = DragScalarClamp(next + (float)direction * step, minimum, maximum)
+        next = DragClamp(next + (float)direction * step, minimum, maximum)
     }
     result.value = next
     result.changed = next != value
@@ -119,10 +119,10 @@ DragWholeKeyboardValue :: (value: i32, speed: float, minimum: i32,
     return result
 }
 
-DragScalarDeltaValue :: (value: float, delta: float, speed: float,
-    minimum: float, maximum: float) -> DragScalarStep #export {
-    result: DragScalarStep
-    result.value = DragScalarClamp(value + delta * DragEffectiveSpeed(speed),
+DragDeltaValue :: (value: float, delta: float, speed: float,
+    minimum: float, maximum: float) -> DragStep #export {
+    result: DragStep
+    result.value = DragClamp(value + delta * DragEffectiveSpeed(speed),
         minimum, maximum)
     result.changed = result.value != value
     return result

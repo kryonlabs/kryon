@@ -3324,7 +3324,7 @@ func TestFrameOpsRecordRenderableNativeFrame(t *testing.T) {
 	rt.ClearBackground(WHITE)
 	rt.Column(ColumnProps{Bounds: Rectangle{X: 10, Y: 10, Width: 180, Height: 160}, Gap: 6, Padding: 4, Key: Key("ops")})
 	rt.Text(TextProps{Bounds: NewRectangle(0, 0, 0, 0), Text: "geld", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
-	clicked := rt.Button(ButtonProps{Bounds: Rectangle{Width: 90, Height: 28}, Label: "Save", ID: 7, Font: Text16})
+	clicked := rt.Button(ButtonProps{Bounds: Rectangle{Width: 90, Height: 28}, Label: "Save", ID: 7})
 	rt.TextField(TextFieldProps{
 		Bounds:         Rectangle{Width: 120, Height: 28},
 		Text:           text,
@@ -4838,7 +4838,7 @@ func TestRenderCurrentFramePaintsNativeOps(t *testing.T) {
 	BeginFrame()
 	ClearBackground(RAYWHITE)
 	Text(TextProps{Bounds: NewRectangle(12, 12, 0, 0), Text: "geld", Font: Text16, Color: BLACK, Wrap: TextWrapNone})
-	Button(ButtonProps{Bounds: Rectangle{X: 12, Y: 40, Width: 82, Height: 28}, Label: "Save", ID: 1, Font: Text16})
+	Button(ButtonProps{Bounds: Rectangle{X: 12, Y: 40, Width: 82, Height: 28}, Label: "Save", ID: 1})
 	TextField(TextFieldProps{
 		Bounds:         Rectangle{X: 12, Y: 82, Width: 140, Height: 32},
 		Text:           text,

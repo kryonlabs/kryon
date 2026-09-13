@@ -26,34 +26,29 @@ Button.measured-font { font-size: 17; }
 Button.measured-font:hover { font-size: 27; }`, "Button Fonts", "") {
 		t.Fatal("button font style pack did not register")
 	}
-	for _, explicit := range []int32{0, 13} {
-		now := time.Unix(1, 0)
-		r := New(AppConfig{Width: 400, Height: 200, FrameClock: func() time.Time { return now }}).(*runtime)
-		props := ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 180, Height: 60}, Label: "Measured", ID: 911, Font: explicit,
-			ClassName: StyleClassID("measured-font")}
-		for _, hovered := range []bool{false, true, false} {
-			if hovered {
-				r.QueueMouseMove(25, 25)
-			} else {
-				r.QueueMouseMove(300, 150)
-			}
-			for i := 0; i < 20; i++ {
-				now = now.Add(20 * time.Millisecond)
-				r.BeginFrame()
-				r.Button(props)
-				r.EndFrame()
-			}
-			want := int32(17)
-			if hovered {
-				want = 27
-			}
-			if explicit > 0 {
-				want = explicit
-			}
-			frame := r.FrameOps()[0]
-			if frame.Button.Font != want || frame.Bounds != props.Bounds {
-				t.Fatalf("hover %v explicit %d: got font %d bounds %+v, want font %d bounds %+v", hovered, explicit, frame.Button.Font, frame.Bounds, want, props.Bounds)
-			}
+	now := time.Unix(1, 0)
+	r := New(AppConfig{Width: 400, Height: 200, FrameClock: func() time.Time { return now }}).(*runtime)
+	props := ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 180, Height: 60}, Label: "Measured", ID: 911,
+		ClassName: StyleClassID("measured-font")}
+	for _, hovered := range []bool{false, true, false} {
+		if hovered {
+			r.QueueMouseMove(25, 25)
+		} else {
+			r.QueueMouseMove(300, 150)
+		}
+		for i := 0; i < 20; i++ {
+			now = now.Add(20 * time.Millisecond)
+			r.BeginFrame()
+			r.Button(props)
+			r.EndFrame()
+		}
+		want := int32(17)
+		if hovered {
+			want = 27
+		}
+		frame := r.FrameOps()[0]
+		if frame.Button.Font != want || frame.Bounds != props.Bounds {
+			t.Fatalf("hover %v: got font %d bounds %+v, want font %d bounds %+v", hovered, frame.Button.Font, frame.Bounds, want, props.Bounds)
 		}
 	}
 }
@@ -268,23 +263,18 @@ Button.state-font:selected { font-size: 27; padding-x: 19; }`, "Button State Fon
 	}
 	for _, state := range []ButtonState{ButtonStateNormal, ButtonStateHover, ButtonStatePressed, ButtonStateFocus,
 		ButtonStateDisabled, ButtonStateLoading, ButtonStateSelected} {
-		for _, explicit := range []int32{0, 13} {
-			props := ButtonProps{Label: "Measured", State: state, Font: explicit, ID: 11,
-				ClassName: StyleClassID("state-font")}
-			r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
-			r.Button(props)
-			wantFont, padding := int32(27), float32(19)
-			if state == ButtonStateNormal {
-				wantFont, padding = 17, 8
-			}
-			if explicit > 0 {
-				wantFont = explicit
-			}
-			ops := r.FrameOps()
-			if len(ops) != 1 || ops[0].Button.Font != wantFont ||
-				ops[0].Bounds.Width != float32(runtimeTextWidth(props.Label, wantFont))+padding*2 {
-				t.Fatalf("state %v must measure and paint the same font %d: %+v", state, wantFont, ops)
-			}
+		props := ButtonProps{Label: "Measured", State: state, ID: 11,
+			ClassName: StyleClassID("state-font")}
+		r := New(AppConfig{Width: 400, Height: 200}).(*runtime)
+		r.Button(props)
+		wantFont, padding := int32(27), float32(19)
+		if state == ButtonStateNormal {
+			wantFont, padding = 17, 8
+		}
+		ops := r.FrameOps()
+		if len(ops) != 1 || ops[0].Button.Font != wantFont ||
+			ops[0].Bounds.Width != float32(runtimeTextWidth(props.Label, wantFont))+padding*2 {
+			t.Fatalf("state %v must measure and paint the same font %d: %+v", state, wantFont, ops)
 		}
 	}
 }
@@ -293,12 +283,12 @@ func TestTransparentTextInheritanceAcrossDisabledScope(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.transparent.text;
-Button.transparent-text { foreground: #11223300; }`, "Button Transparent Text", "") {
+Button.transparent-text { foreground: #11223300; font-size: 27; }`, "Button Transparent Text", "") {
 		t.Fatal("button transparent text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
 	r.BeginFrame()
-	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, Font: 27, ID: 992,
+	r.BeginButton(ButtonProps{Bounds: Rectangle{Width: 200, Height: 100}, ID: 992,
 		ClassName: StyleClassID("transparent-text")})
 	r.BeginDisabled(true)
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})
@@ -370,11 +360,11 @@ func TestTextChildInheritsFontBeforeMeasurement(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.inherit.text;
-Button.inherit-text { foreground: #11223300; }`, "Button Inherit Text", "") {
+Button.inherit-text { foreground: #11223300; font-size: 27; }`, "Button Inherit Text", "") {
 		t.Fatal("button inherit text style pack did not register")
 	}
 	r := New(AppConfig{Width: 320, Height: 160}).(*runtime)
-	r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, Font: 27, ID: 991,
+	r.BeginButton(ButtonProps{Bounds: Rectangle{X: 20, Y: 20, Width: 200, Height: 100}, ID: 991,
 		ClassName: StyleClassID("inherit-text")})
 	r.Text(TextProps{Text: "Inherited", Wrap: TextWrapNone})
 	r.Column(ColumnProps{Bounds: Rectangle{Width: 180, Height: 60}})

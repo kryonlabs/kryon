@@ -383,7 +383,7 @@ BuildFrame :: (props: ButtonProps, input: ButtonInput, appearance: StyleFrame,
     result.material = PrepareMaterial(result.material)
     result.content_bounds = InsetBounds(props.bounds, appearance.value.padding_x,
         appearance.value.padding_y, result.material.scale)
-    result.font = ResolveFont(props.font, style_font, fallback_font)
+    result.font = ResolveFont(0, style_font, fallback_font)
     result.foreground = Opacity(appearance.value.foreground, appearance.value.opacity)
     result.repaint = motion.active || (props.loading && !props.disabled)
     return result

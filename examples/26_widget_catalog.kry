@@ -137,7 +137,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         Line(Scale(220), Scale(76), Scale(220), (int)viewport.height - Scale(24), GetThemeButton())
         i: int = 0
         for i = 0; i < 10; i++ {
-            if Button((ButtonProps){.bounds = {Scale(16),Scale(86 + i * 46),Scale(190),Scale(38)}, .label = category_names[i], .font = Text14, .id = 900 + i, .tone = category == i ? ButtonToneAccent : ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .selected = category == i}) {
+            if Button((ButtonProps){.bounds = {Scale(16),Scale(86 + i * 46),Scale(190),Scale(38)}, .label = category_names[i], .id = 900 + i, .tone = category == i ? ButtonToneAccent : ButtonToneNeutral, .emphasis = ButtonEmphasisSoft, .selected = category == i}) {
                 category = i
                 scroll_off = 0
                 open_menu = -1
@@ -197,7 +197,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
 
         if category == 1 {
         Text((TextProps){.bounds={x, y, 0, 0}, .text="ACTIONS AND INPUT", .font=Text20, .color=GetThemeLink(), .wrap=TextWrapNone})
-        if Button((ButtonProps){.bounds = {x, y + Scale(38), Scale(140), Scale(34)}, .label = "Button", .font = Text16, .id = 101}) {
+        if Button((ButtonProps){.bounds = {x, y + Scale(38), Scale(140), Scale(34)}, .label = "Button", .id = 101}) {
             action_count += 1
         }
         if Button((ButtonProps){.bounds = {x + Scale(154), y + Scale(38), Scale(34), Scale(34)}, .icon_type = 1, .icon_only = true, .id = 102}) {
@@ -351,7 +351,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if close_tab_result >= 0 {
             tab_selected = close_tab_result
         }
-        if Button((ButtonProps){.bounds = {right,y + Scale(308),Scale(130),Scale(36)}, .id = 209, .label = "New tab", .font = Text16, .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost, .disabled = tab_count >= 8}) {
+        if Button((ButtonProps){.bounds = {right,y + Scale(308),Scale(130),Scale(36)}, .id = 209, .label = "New tab", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost, .disabled = tab_count >= 8}) {
             open_tabs[tab_count] = (Tab){.label = tab_labels[tab_count], .closeable = 1}
             tab_selected = tab_count
             tab_count += 1

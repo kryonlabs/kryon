@@ -46,7 +46,7 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
                 int class_name, Vector2 mouse_world)
 {
     Rectangle bounds = {(float)x, (float)y, (float)w, (float)h};
-    ButtonProps props = {.bounds = bounds, .label = label, .font = font,
+    ButtonProps props = {.bounds = bounds, .label = label,
                          .tone = tone, .emphasis = emphasis,
                          .disabled = disabled,
                          .class_name = class_name};
@@ -62,6 +62,8 @@ ui_modal_button(int x, int y, int w, int h, const char *label, int font,
         ui_control_style_frame_role_kind(
             props, disabled ? ButtonStateDisabled : ButtonStateNormal,
             0, 0.0f, 0.0f, 0.0f, StyleKindModal(), 17).value);
+    button.style.normal.font_size = (float)font;
+    button.style.normal.fields |= StyleFontSize;
     button.style.hover = ui_unpack_style(
         ui_control_style_frame_role_kind(
             props, ButtonStateHover, 0, 0.0f, 0.0f, 0.0f,
