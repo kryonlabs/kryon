@@ -2796,6 +2796,34 @@ function fakeDocument() {
       { nodeName: "homeLink", path: "Page/nav/home", parentPath: "Page/nav" });
     runtime.widget(nativeRt, "TitleBar", {}, null,
       { nodeName: "title", path: "Page/title" });
+    runtime.widget(nativeRt, "Article", { text: "Release notes" }, null,
+      { nodeName: "article", path: "Page/article" });
+    runtime.widget(nativeRt, "Aside", {}, null,
+      { nodeName: "aside", path: "Page/aside" });
+    runtime.widget(nativeRt, "Text", { text: "Related" }, null,
+      { nodeName: "asideText", path: "Page/aside/related", parentPath: "Page/aside" });
+    runtime.widget(nativeRt, "Footer", {}, null,
+      { nodeName: "footer", path: "Page/footer" });
+    runtime.widget(nativeRt, "Text", { text: "Legal" }, null,
+      { nodeName: "footerText", path: "Page/footer/legal", parentPath: "Page/footer" });
+    runtime.widget(nativeRt, "Figure", {}, null,
+      { nodeName: "figure", path: "Page/figure" });
+    runtime.widget(nativeRt, "Figcaption", { text: "Launch chart" }, null,
+      { nodeName: "caption", path: "Page/figure/caption", parentPath: "Page/figure" });
+    runtime.widget(nativeRt, "List", {}, null,
+      { nodeName: "list", path: "Page/list" });
+    runtime.widget(nativeRt, "ListItem", { text: "First" }, null,
+      { nodeName: "listItem", path: "Page/list/first", parentPath: "Page/list" });
+    runtime.widget(nativeRt, "BlockQuote", { text: "Native DOM first." }, null,
+      { nodeName: "quote", path: "Page/quote" });
+    runtime.widget(nativeRt, "CodeBlock", { text: "Button.primary {}" }, null,
+      { nodeName: "codeBlock", path: "Page/codeBlock" });
+    runtime.widget(nativeRt, "Code", { text: "dom_ref" }, null,
+      { nodeName: "inlineCode", path: "Page/inlineCode" });
+    runtime.widget(nativeRt, "Mark", { text: "highlight" }, null,
+      { nodeName: "mark", path: "Page/mark" });
+    runtime.widget(nativeRt, "Time", { text: "2026-09-13", datetime: "2026-09-13" }, null,
+      { nodeName: "time", path: "Page/time" });
     runtime.widget(nativeRt, "Card", {}, null,
       { nodeName: "plainCard", path: "Page/plainCard" });
     runtime.widget(nativeRt, "Card", { clickable: true }, null,
@@ -2948,12 +2976,40 @@ function fakeDocument() {
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "TitleBar")?.role, "banner");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Aside")?.role, "complementary");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Footer")?.role, "contentinfo");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "Figure")?.role, "figure");
+    assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
+      .find((node) => node.kind === "List")?.role, "list");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nav/home").landmarkOwner.path,
       "Page/nav");
     assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nav").landmarkMembers,
       ["Page/nav/home"]);
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/nav/home")
       .relationRefs.landmarkOwner, "Page/nav");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Article").tag, "article");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Aside").tag, "aside");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Footer").tag, "footer");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Figure").tag, "figure");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Figcaption").tag, "figcaption");
+    assert.equal(runtime.webNodeQuery(nativeRt, "List").tag, "ul");
+    assert.equal(runtime.webNodeQuery(nativeRt, "ListItem").tag, "li");
+    assert.equal(runtime.webNodeQuery(nativeRt, "BlockQuote").tag, "blockquote");
+    assert.equal(runtime.webNodeQuery(nativeRt, "CodeBlock").tag, "pre");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Code").tag, "code");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Mark").tag, "mark");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Time").tag, "time");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/aside/related").landmarkOwner.path,
+      "Page/aside");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/footer/legal").landmarkOwner.path,
+      "Page/footer");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/list/first").collectionOwner.path,
+      "Page/list");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/list").collectionItems,
+      ["Page/list/first"]);
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3084,6 +3140,18 @@ function fakeDocument() {
     assert.equal(tabSelectable.tagName, "BUTTON");
     assert.equal(tabSelectable.attributes.role, "tab");
     const title = runtime.findWebElement(nativeTarget, "title");
+    const nativeArticle = runtime.findWebElement(nativeTarget, "article");
+    const nativeAside = runtime.findWebElement(nativeTarget, "aside");
+    const nativeFooter = runtime.findWebElement(nativeTarget, "footer");
+    const nativeFigure = runtime.findWebElement(nativeTarget, "figure");
+    const nativeCaption = runtime.findWebElement(nativeTarget, "caption");
+    const nativeList = runtime.findWebElement(nativeTarget, "list");
+    const nativeListItem = runtime.findWebElement(nativeTarget, "listItem");
+    const nativeQuote = runtime.findWebElement(nativeTarget, "quote");
+    const nativeCodeBlock = runtime.findWebElement(nativeTarget, "codeBlock");
+    const nativeInlineCode = runtime.findWebElement(nativeTarget, "inlineCode");
+    const nativeMark = runtime.findWebElement(nativeTarget, "mark");
+    const nativeTime = runtime.findWebElement(nativeTarget, "time");
     const plainCard = runtime.findWebElement(nativeTarget, "plainCard");
     const actionCard = runtime.findWebElement(nativeTarget, "actionCard");
     const fieldset = runtime.findWebElement(nativeTarget, "fieldset");
@@ -3126,6 +3194,25 @@ function fakeDocument() {
     const popoverButton = runtime.findWebElement(nativeTarget, "popoverButton");
     assert.equal(nav.tagName, "NAV");
     assert.equal(title.tagName, "HEADER");
+    assert.equal(nativeArticle.tagName, "ARTICLE");
+    assert.equal(nativeArticle.textContent, "Release notes");
+    assert.equal(nativeAside.tagName, "ASIDE");
+    assert.equal(nativeFooter.tagName, "FOOTER");
+    assert.equal(nativeFigure.tagName, "FIGURE");
+    assert.equal(nativeCaption.tagName, "FIGCAPTION");
+    assert.equal(nativeCaption.textContent, "Launch chart");
+    assert.equal(nativeList.tagName, "UL");
+    assert.equal(nativeListItem.tagName, "LI");
+    assert.equal(nativeListItem.textContent, "First");
+    assert.equal(nativeQuote.tagName, "BLOCKQUOTE");
+    assert.equal(nativeCodeBlock.tagName, "PRE");
+    assert.equal(nativeInlineCode.tagName, "CODE");
+    assert.equal(nativeMark.tagName, "MARK");
+    assert.equal(nativeTime.tagName, "TIME");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/list/first").collectionOwner.ref,
+      "Page/list");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/aside/related").landmarkOwner.ref,
+      "Page/aside");
     assert.equal(plainCard.tagName, "DIV");
     assert.equal(actionCard.tagName, "BUTTON");
     assert.equal(fieldset.tagName, "FIELDSET");

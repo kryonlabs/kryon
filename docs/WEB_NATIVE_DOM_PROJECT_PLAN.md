@@ -78,6 +78,10 @@ the browser receives normal elements, attributes, CSS, and events.
   selectable actions, tab buttons, modal popup dialogs, tooltip/context popup
   roles, icon/list item content, canvas-backed widgets, and common overlay
   roles.
+- Native tags for browser-exact page/content nodes such as articles, asides,
+  footers, figures/captions, lists/items, block quotes, code blocks, inline
+  code, marks, and time text, including corresponding landmark and collection
+  relationship facts where the native semantics imply ownership.
 - `Toast` status output nodes default to polite native live regions while still
   allowing explicit `aria_live`/`live` metadata to override the default.
 - Direct `.kry` widget args can override native tag choice with `dom`,

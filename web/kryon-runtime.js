@@ -1137,10 +1137,21 @@ function widgetTag(item) {
   switch (item.name) {
   case "Screen":
   case "Page":
+  case "Main":
     return "main";
   case "Section":
     return "section";
+  case "Article":
+    return "article";
+  case "Aside":
+    return "aside";
+  case "Header":
+    return "header";
+  case "Footer":
+    return "footer";
   case "NavigationBar":
+  case "Navigation":
+  case "Nav":
     return "nav";
   case "TitleBar":
     return "header";
@@ -1159,10 +1170,42 @@ function widgetTag(item) {
   case "Paragraph":
   case "ParagraphText":
     return "p";
+  case "BlockQuote":
+  case "Quote":
+    return "blockquote";
+  case "CodeBlock":
+  case "Pre":
+    return "pre";
+  case "Code":
+    return "code";
+  case "Mark":
+    return "mark";
+  case "Time":
+    return "time";
+  case "Address":
+    return "address";
+  case "Small":
+    return "small";
+  case "Figure":
+    return "figure";
+  case "Figcaption":
+    return "figcaption";
+  case "UnorderedList":
+  case "List":
+    return "ul";
+  case "OrderedList":
+    return "ol";
+  case "DescriptionList":
+    return "dl";
+  case "DescriptionTerm":
+    return "dt";
+  case "DescriptionDetails":
+    return "dd";
   case "Text":
   case "Icon":
     return "span";
   case "Bullet":
+  case "ListItem":
     return "li";
   case "Link":
     return "a";
@@ -1232,6 +1275,27 @@ function widgetText(item) {
   case "Paragraph":
   case "ParagraphText":
   case "Link":
+  case "Article":
+  case "Aside":
+  case "Header":
+  case "Footer":
+  case "Main":
+  case "Navigation":
+  case "Nav":
+  case "BlockQuote":
+  case "Quote":
+  case "CodeBlock":
+  case "Pre":
+  case "Code":
+  case "Mark":
+  case "Time":
+  case "Address":
+  case "Small":
+  case "Figure":
+  case "Figcaption":
+  case "ListItem":
+  case "DescriptionTerm":
+  case "DescriptionDetails":
     return propString(args, "text", "");
   case "Button":
     return propString(args, "label", "");
@@ -2096,8 +2160,18 @@ function implicitRole(node) {
     return "main";
   if (node.tag === "nav")
     return "navigation";
+  if (node.tag === "aside")
+    return "complementary";
   if (node.tag === "header")
     return "banner";
+  if (node.tag === "footer")
+    return "contentinfo";
+  if (node.tag === "figure")
+    return "figure";
+  if (node.tag === "ul" || node.tag === "ol")
+    return "list";
+  if (node.tag === "blockquote")
+    return "blockquote";
   if (node.tag === "fieldset" || node.tag === "details")
     return "group";
   if (node.tag === "dialog")
