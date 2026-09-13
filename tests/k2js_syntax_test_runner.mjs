@@ -1969,6 +1969,8 @@ function fakeDocument() {
       { nodeName: "grid", path: "Page/grid" });
     runtime.widget(nativeRt, "Toolbar", {}, null,
       { nodeName: "toolbar", path: "Page/toolbar" });
+    runtime.widget(nativeRt, "SegmentedControl", {}, null,
+      { nodeName: "segments", path: "Page/segments" });
     runtime.widget(nativeRt, "TabBar", {}, null,
       { nodeName: "tabs", path: "Page/tabs" });
     runtime.widget(nativeRt, "TreeView", {}, null,
@@ -2057,10 +2059,10 @@ function fakeDocument() {
         .find((node) => node.kind === kind)?.role),
       ["slider", "spinbutton", "combobox", "listbox", "", "checkbox",
        "switch", "radio", "progressbar", "separator", "table"]);
-    assert.deepEqual(["Toolbar", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
+    assert.deepEqual(["Toolbar", "SegmentedControl", "TabBar", "TreeView", "Menu", "Toast", "Plot", "CanvasGrid"]
       .map((kind) => runtime.webAccessibilitySnapshot(nativeRt).nodes
         .find((node) => node.kind === kind)?.role),
-      ["toolbar", "tablist", "tree", "menu", "status", "img", "img"]);
+      ["toolbar", "group", "tablist", "tree", "menu", "status", "img", "img"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -2085,6 +2087,7 @@ function fakeDocument() {
     const hero = runtime.findWebElement(nativeTarget, "hero");
     const grid = runtime.findWebElement(nativeTarget, "grid");
     const toolbar = runtime.findWebElement(nativeTarget, "toolbar");
+    const segments = runtime.findWebElement(nativeTarget, "segments");
     const tabs = runtime.findWebElement(nativeTarget, "tabs");
     const tree = runtime.findWebElement(nativeTarget, "tree");
     const menu = runtime.findWebElement(nativeTarget, "menu");
@@ -2131,6 +2134,8 @@ function fakeDocument() {
     assert.equal(grid.tagName, "CANVAS");
     assert.equal(grid.attributes.role, "img");
     assert.equal(toolbar.attributes.role, "toolbar");
+    assert.equal(segments.tagName, "DIV");
+    assert.equal(segments.attributes.role, "group");
     assert.equal(tabs.attributes.role, "tablist");
     assert.equal(tree.attributes.role, "tree");
     assert.equal(menu.tagName, "MENU");

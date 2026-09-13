@@ -1746,6 +1746,8 @@ function implicitRole(node) {
   switch (node.kind) {
   case "Toolbar":
     return "toolbar";
+  case "SegmentedControl":
+    return "group";
   case "TabBar":
     return "tablist";
   case "TreeView":
