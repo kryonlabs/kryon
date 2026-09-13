@@ -249,6 +249,8 @@ dropdown_draw_indicator(int center_x, int center_y, int size, int open,
     DropdownIndicator indicator =
         DropdownIndicatorFor(center_x, center_y, size, open);
 
+    if(size <= 0)
+        return;
     DrawLine(indicator.x1, indicator.y1, indicator.x2, indicator.y2, color);
     DrawLine(indicator.x3, indicator.y3, indicator.x4, indicator.y4, color);
 }

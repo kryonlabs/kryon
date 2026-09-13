@@ -55,9 +55,9 @@ DropdownTriggerMetricsFor :: (scale: float, trigger: StyleFrame) -> DropdownTrig
     metrics.min_width = (i32)(32.0 * scale)
     metrics.min_height = (i32)(24.0 * scale)
     metrics.indicator_padding = DropdownMetric(trigger.value.fields,
-        (u32)StyleContentOffset, trigger.value.offset_x, 24.0, scale, false)
+        (u32)StyleContentOffset, trigger.value.offset_x, 24.0, scale, true)
     metrics.indicator_size = DropdownMetric(trigger.value.fields,
-        (u32)StyleIconSize, trigger.value.icon_size, 10.0, scale, false)
+        (u32)StyleIconSize, trigger.value.icon_size, 10.0, scale, true)
     metrics.text_indicator_gap = DropdownMetric(trigger.value.fields,
         (u32)StyleGap, trigger.value.gap, 8.0, scale, true)
     return metrics
@@ -234,7 +234,7 @@ DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,
         (u32)StylePaddingY, panel.value.padding_y, 4.0, scale, true)
     metrics.padding_bottom = metrics.padding_top
     metrics.scrollbar_width = DropdownMetric(scrollbar.value.fields,
-        (u32)StyleIconSize, scrollbar.value.icon_size, 8.0, scale, false)
+        (u32)StyleIconSize, scrollbar.value.icon_size, 8.0, scale, true)
     metrics.scrollbar_gap = DropdownMetric(scrollbar.value.fields,
         (u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
     metrics.scrollbar_track_inset = DropdownMetric(scrollbar.value.fields,

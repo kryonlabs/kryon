@@ -96,8 +96,8 @@ test_indicator(void)
     trigger.value.icon_size = 0.0f;
     trigger.value.gap = 0.0f;
     metrics = DropdownTriggerMetricsFor(1.0f, trigger);
-    assert(metrics.indicator_padding == 24);
-    assert(metrics.indicator_size == 10);
+    assert(metrics.indicator_padding == 0);
+    assert(metrics.indicator_size == 0);
     assert(metrics.text_indicator_gap == 0);
 }
 
@@ -207,7 +207,7 @@ test_menu_metrics(void)
 
     assert(metrics.padding_top == 0);
     assert(metrics.padding_bottom == 0);
-    assert(metrics.scrollbar_width == 8);
+    assert(metrics.scrollbar_width == 0);
     assert(metrics.scrollbar_gap == 0);
     assert(metrics.scrollbar_track_inset == 0);
     assert(metrics.highlight_inset_x == 0);

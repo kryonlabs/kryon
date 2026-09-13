@@ -202,7 +202,7 @@ func Dropdown_DropdownTriggerMetricsFor(scale float32, trigger StyleFrame) Dropd
 	var value_15 float32 = trigger.Value.OffsetX
 	var value_16 float32 = 24.0
 	var value_17 float32 = scale
-	var value_18 bool = false
+	var value_18 bool = true
 	var value_19 int32 = Dropdown_DropdownMetric(value_12, value_14, value_15, value_16, value_17, value_18)
 	metrics.IndicatorPadding = value_19
 	var value_20 uint32 = trigger.Value.Fields
@@ -211,7 +211,7 @@ func Dropdown_DropdownTriggerMetricsFor(scale float32, trigger StyleFrame) Dropd
 	var value_23 float32 = trigger.Value.IconSize
 	var value_24 float32 = 10.0
 	var value_25 float32 = scale
-	var value_26 bool = false
+	var value_26 bool = true
 	var value_27 int32 = Dropdown_DropdownMetric(value_20, value_22, value_23, value_24, value_25, value_26)
 	metrics.IndicatorSize = value_27
 	var value_28 uint32 = trigger.Value.Fields
@@ -634,7 +634,7 @@ func Dropdown_DropdownMenuMetricsFor(scale float32, panel StyleFrame, option Sty
 	var value_12 float32 = scrollbar.Value.IconSize
 	var value_13 float32 = 8.0
 	var value_14 float32 = scale
-	var value_15 bool = false
+	var value_15 bool = true
 	var value_16 int32 = Dropdown_DropdownMetric(value_9, value_11, value_12, value_13, value_14, value_15)
 	metrics.ScrollbarWidth = value_16
 	var value_17 uint32 = scrollbar.Value.Fields
