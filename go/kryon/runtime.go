@@ -2974,8 +2974,8 @@ func (r *runtime) listBoxMultiSelect(props ListBoxProps) int32 {
 		if labelY <= 0 {
 			labelY = 4
 		}
-		font := styleFont(itemStyle, Text14)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: props.Items[i], Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
+		font, fontID := styleTextFace(itemStyle, Text14)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: props.Items[i], Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: int32(i), Selected: selected, Disabled: disabled, Pressed: pressed, Focused: rowFocused})
 	}
 	if props.SelectedCount != nil {
 		*props.SelectedCount = selectedCount
@@ -5473,6 +5473,10 @@ func styleFontID(style Style) uint32 {
 	return registeredTypeface(style.Typeface)
 }
 
+func styleTextFace(style Style, fallback int32) (int32, uint32) {
+	return styleFont(style, fallback), styleFontID(style)
+}
+
 func modalActionLabel(action ModalAction, index, count int) string {
 	if action.Label != "" {
 		return action.Label
@@ -5857,9 +5861,9 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 	x := bounds.X + 4
 	menuItemBaseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
 		false, false, StyleSheet_StyleKindMenuItem()).Value)
-	font := styleFont(menuItemBaseStyle, Text14)
+	font, fontID := styleTextFace(menuItemBaseStyle, Text14)
 	for i, menu := range menus {
-		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidth(menu.Label, font)), metrics)
+		w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menu.Label, font, fontID)), metrics)
 		item := Menu_MenuGroupItemBounds(int32(x), bounds, w, metrics)
 		if !r.contentDisabled() && r.consumeTap(item) {
 			r.setFocus(id)
@@ -5888,14 +5892,14 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 			return ButtonStateNormal
 		}(), false, itemSelected, StyleSheet_StyleKindMenuItem())
 		itemStyle := unpackStyle(itemFrame.Value)
-		itemFont := styleFont(itemStyle, font)
+		itemFont, itemFontID := styleTextFace(itemStyle, font)
 		if itemSelected || itemFocused {
 			op := styleFrameRectOp(item, bounds, itemFrame)
 			op.Selected = itemSelected
 			op.Focused = itemFocused
 			r.record(op)
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: itemFont})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: item.X + 10, Y: item.Y + 5, Width: item.Width - 20, Height: item.Height}, Text: menu.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
 		x += float32(w + metrics.BarItemGap)
 	}
 	if open >= 0 && int(open) < len(menus) {
@@ -5906,7 +5910,7 @@ func (r *runtime) menuBar(id int32, bounds Rectangle, menus []MenuGroup, openInd
 		menu := menus[open]
 		menuX := bounds.X + 4
 		for i := 0; i < int(open); i++ {
-			w := Menu_MenuGroupItemWidth(int32(runtimeTextWidth(menus[i].Label, font)), metrics)
+			w := Menu_MenuGroupItemWidth(int32(runtimeTextWidthWithFont(menus[i].Label, font, fontID)), metrics)
 			menuX += float32(w + metrics.BarItemGap)
 		}
 		items := limitedMenuItems(menu.Items, menu.ItemCount)
@@ -5942,16 +5946,16 @@ func limitedMenuItems(items []MenuItem, count int32) []MenuItem {
 func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32, depth int, handled *bool) (int32, Rectangle) {
 	baseStyle := unpackStyle(simpleStyleFrame(ButtonToneNeutral, ButtonStateNormal,
 		false, false, StyleSheet_StyleKindMenuItem()).Value)
-	font := styleFont(baseStyle, Text14)
+	font, fontID := styleTextFace(baseStyle, Text14)
 	metrics := Menu_MenuMetricsFor(1)
 	width := metrics.PanelMinWidth
 	for _, item := range items {
 		accelWidth := int32(0)
 		if item.Accelerator != "" {
-			accelWidth = int32(runtimeTextWidth(item.Accelerator, font))
+			accelWidth = int32(runtimeTextWidthWithFont(item.Accelerator, font, fontID))
 		}
 		width = Menu_MenuPanelWidthStep(width,
-			int32(runtimeTextWidth(item.Label, font)), accelWidth,
+			int32(runtimeTextWidthWithFont(item.Label, font, fontID)), accelWidth,
 			item.Accelerator != "", metrics)
 	}
 	panel := Menu_MenuPanelBounds(x, y, width, int32(len(items)), metrics)
@@ -6024,7 +6028,7 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 			return ButtonStateNormal
 		}(), item.Disabled, selected, StyleSheet_StyleKindMenuItem())
 		itemStyle := unpackStyle(itemFrame.Value)
-		itemFont := styleFont(itemStyle, font)
+		itemFont, itemFontID := styleTextFace(itemStyle, font)
 		if hovered && !item.Disabled {
 			if len(state.Path) > depth {
 				state.Path[depth] = i
@@ -6055,13 +6059,13 @@ func (r *runtime) drawPopupMenu(id, x, y int32, items []MenuItem, focusID int32,
 		if (item.Kind == MenuCheck || item.Kind == MenuRadio) && item.Checked {
 			label = "✓ " + label
 		}
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, Disabled: item.Disabled})
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + 10, Y: row.Y + 6, Width: row.Width - 20, Height: row.Height}, Text: label, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
 		if item.Accelerator != "" {
-			accelWidth := runtimeTextWidth(item.Accelerator, itemFont)
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, Disabled: item.Disabled})
+			accelWidth := runtimeTextWidthWithFont(item.Accelerator, itemFont, itemFontID)
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - float32(accelWidth) - float32(metrics.PanelPadding), Y: row.Y + 6, Width: float32(accelWidth), Height: row.Height}, Text: item.Accelerator, Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID, Disabled: item.Disabled})
 		}
 		if item.Kind == MenuSubmenu {
-			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + row.Width - 18, Y: row.Y + 6, Width: 12, Height: row.Height}, Text: ">", Color: textColor, Opacity: itemStyle.Opacity, FontSize: itemFont, FontID: itemFontID})
 			submenuOpen := r.openSubmenus[id] == item.ID
 			if keyboard {
 				submenuOpen = selected && len(state.Path) > depth+1
@@ -8213,8 +8217,8 @@ func (r *runtime) recordListBoxOps(props ListBoxProps, rowH int32) int32 {
 		if labelY <= 0 {
 			labelY = 4
 		}
-		font := styleFont(itemStyle, Text16)
-		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideText(props.Items[index], row.Width-labelX*2, font), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
+		font, fontID := styleTextFace(itemStyle, Text16)
+		r.record(FrameOp{Kind: FrameOpText, Bounds: Rectangle{X: row.X + labelX, Y: row.Y + labelY, Width: row.Width - labelX*2, Height: row.Height - labelY*2}, Text: elideTextWithFont(props.Items[index], row.Width-labelX*2, font, fontID), Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: props.ID, Row: index, Selected: selected, Disabled: props.Disabled})
 	}
 	return changed
 }
@@ -8599,7 +8603,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 	if rowH >= 28 {
 		fallbackFont = Text14
 	}
-	cellFont := styleFont(cellStyle, fallbackFont)
+	cellFont, cellFontID := styleTextFace(cellStyle, fallbackFont)
 	metrics := TableView_TableViewMetricsFor(1)
 	layout := TableView_TableViewLayoutFor(props.Bounds, int32(len(props.Rows)), rowH, headerH, props.FreezeRows, 1, metrics)
 	for _, col := range displayColumns {
@@ -8631,7 +8635,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			return ButtonStateNormal
 		}(), props.Disabled, selected, StyleSheet_StyleKindTableView(), 13)
 		headerStyle := unpackStyle(headerFrame.Value)
-		headerFont := styleFont(headerStyle, fallbackFont)
+		headerFont, headerFontID := styleTextFace(headerStyle, fallbackFont)
 		shift := tableHeaderShift(props, rect.Y)
 		var polygon [4]Vector2
 		if shift != 0 {
@@ -8651,7 +8655,7 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			r.ops[len(r.ops)-1].Clip = headerClip
 			r.ops[len(r.ops)-1].HasClip = true
 		}
-		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(props.Columns[c], rect.Width-12, headerFont), Color: disabledColor(headerStyle.Foreground), Opacity: headerStyle.Opacity, FontSize: headerFont, Row: -1, Column: col, Disabled: props.Disabled}
+		textOp := FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideTextWithFont(props.Columns[c], rect.Width-12, headerFont, headerFontID), Color: disabledColor(headerStyle.Foreground), Opacity: headerStyle.Opacity, FontSize: headerFont, FontID: headerFontID, Row: -1, Column: col, Disabled: props.Disabled}
 		angle := props.HeaderAngle
 		if math.IsNaN(float64(angle)) || math.IsInf(float64(angle), 0) {
 			angle = 0
@@ -8747,11 +8751,15 @@ func (r *runtime) drawTableOps(props TableViewProps, rowH, headerH int32) {
 			}
 			textOpacity := cellStyle.Opacity
 			textFont := cellFont
+			textFontID := cellFontID
 			if selectedCell {
 				textOpacity = selectedStyle.Opacity
 				textFont = styleFont(selectedStyle, cellFont)
+				if selectedStyle.Fields&StyleTypeface != 0 {
+					textFontID = styleFontID(selectedStyle)
+				}
 			}
-			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideText(text, rect.Width-12, textFont), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, Row: row, Column: col, Disabled: props.Disabled})
+			r.record(FrameOp{Kind: FrameOpText, Bounds: tableTextBounds(rect), Text: elideTextWithFont(text, rect.Width-12, textFont, textFontID), Color: disabledColor(cellTextColor), Opacity: textOpacity, FontSize: textFont, FontID: textFontID, Row: row, Column: col, Disabled: props.Disabled})
 		}
 	}
 	for row := int32(0); row < frozenRows; row++ {
@@ -8870,18 +8878,28 @@ func tableDisplayColumns(props TableViewProps) []int32 {
 }
 
 func elideText(text string, maxWidth float32, font int32) string {
+	return elideTextWithFont(text, maxWidth, font, 0)
+}
+
+func elideTextWithFont(text string, maxWidth float32, font int32, fontID uint32) string {
 	if maxWidth <= 0 {
 		return ""
 	}
-	maxRunes := int(maxWidth / float32(6*glyphScale(font)))
 	runes := []rune(text)
-	if len(runes) <= maxRunes {
+	if runtimeTextWidthWithFont(text, font, fontID) <= int(maxWidth) {
 		return text
 	}
-	if maxRunes <= 1 {
+	ellipsis := "…"
+	if runtimeTextWidthWithFont(ellipsis, font, fontID) > int(maxWidth) {
 		return ""
 	}
-	return string(runes[:maxRunes-1]) + "…"
+	for i := len(runes) - 1; i > 0; i-- {
+		short := string(runes[:i]) + ellipsis
+		if runtimeTextWidthWithFont(short, font, fontID) <= int(maxWidth) {
+			return short
+		}
+	}
+	return ellipsis
 }
 
 func runtimeTextWidth(text string, font int32) int {

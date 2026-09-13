@@ -78,6 +78,12 @@ Plot { typeface: test-retained-semibold; font-size: 13; foreground: #8090a0; }
 Slider[role=Label] { typeface: test-retained-semibold; font-size: 12; foreground: #90a0b0; }
 Toggle[role=Label] { typeface: test-retained-semibold; font-size: 11; foreground: #a0b0c0; }
 Drag { typeface: test-retained-semibold; font-size: 10; foreground: #b0c0d0; }
+ListBoxItem { typeface: test-retained-semibold; font-size: 16; foreground: #c0d0e0; }
+ListBoxMultiItem { typeface: test-retained-semibold; font-size: 16; foreground: #d0e0f0; }
+MenuItem { typeface: test-retained-semibold; font-size: 16; foreground: #e0f0ff; }
+TableView[role=Header] { typeface: test-retained-semibold; font-size: 16; foreground: #f0ffff; }
+TableView[role=Cell] { typeface: test-retained-semibold; font-size: 16; foreground: #fff0ff; }
+TableView[role=Selection] { typeface: test-retained-semibold; font-size: 16; foreground: #fffff0; }
 `, "Retained Text Face", "") {
 		t.Fatal("style pack did not register")
 	}
@@ -87,6 +93,12 @@ Drag { typeface: test-retained-semibold; font-size: 10; foreground: #b0c0d0; }
 	toggled := int32(0)
 	sliderValues := []float32{0.5}
 	dragValues := []float32{2}
+	listSelected := int32(0)
+	multiSelected := []int32{1, 0}
+	multiSelectedCount := int32(0)
+	tableSelectedRow := int32(0)
+	tableSelectedColumn := int32(0)
+	openMenu := int32(0)
 	rt.BeginFrame()
 	rt.Heading(HeadingProps{Text: "Title"})
 	rt.ParagraphText(ParagraphTextProps{Text: "Body", Bounds: Rectangle{Width: 200}})
@@ -98,23 +110,34 @@ Drag { typeface: test-retained-semibold; font-size: 10; foreground: #b0c0d0; }
 	rt.Slider(SliderProps{Bounds: Rectangle{Width: 180, Height: 42}, ID: 301, Label: "Gain", FloatValues: sliderValues, ValueCount: 1, Min: 0, Max: 1})
 	rt.Toggle(ToggleProps{Bounds: Rectangle{Width: 0, Height: 0}, ID: 302, Value: &toggled, OffLabel: "Off", OnLabel: "On"})
 	rt.Drag(DragProps{Bounds: Rectangle{Width: 180, Height: 32}, ID: 303, Label: "Drag", FloatValues: dragValues, ValueCount: 1, Min: 0, Max: 10})
+	rt.ListBox(ListBoxProps{Bounds: Rectangle{Width: 180, Height: 54}, ID: 304, Items: []string{"List Item"}, SelectedIndex: &listSelected})
+	rt.ListBox(ListBoxProps{Bounds: Rectangle{Width: 180, Height: 54}, ID: 305, Items: []string{"Multi A", "Multi B"}, Selected: multiSelected, SelectedCount: &multiSelectedCount})
+	rt.TableView(TableViewProps{Bounds: Rectangle{Width: 220, Height: 78}, ID: 306, Columns: []string{"Column"}, Rows: []TableRow{{Cells: []string{"Cell"}}}, ColumnWidths: []int32{120}, SelectedRow: &tableSelectedRow, SelectedColumn: &tableSelectedColumn})
+	rt.Menu(MenuProps{ID: 307, Mode: MenuModeBar, Bounds: Rectangle{Width: 220, Height: 30}, Menus: []MenuGroup{{Label: "File", Items: []MenuItem{{Kind: MenuCommand, Label: "Save", ID: 1}}}}, OpenIndex: &openMenu})
 	rt.Toast(ToastProps{Message: "Saved", Seconds: 1})
 	rt.EndFrame()
 
 	want := map[string]bool{
-		"Title":   false,
-		"Body":    false,
-		"Docs":    false,
-		"Group":   false,
-		"Check":   false,
-		"Loading": false,
-		"Trend":   false,
-		"Now":     false,
-		"Gain":    false,
-		"Off":     false,
-		"On":      false,
-		"Drag":    false,
-		"Saved":   false,
+		"Title":     false,
+		"Body":      false,
+		"Docs":      false,
+		"Group":     false,
+		"Check":     false,
+		"Loading":   false,
+		"Trend":     false,
+		"Now":       false,
+		"Gain":      false,
+		"Off":       false,
+		"On":        false,
+		"Drag":      false,
+		"List Item": false,
+		"Multi A":   false,
+		"Multi B":   false,
+		"Column":    false,
+		"Cell":      false,
+		"File":      false,
+		"Save":      false,
+		"Saved":     false,
 	}
 	for _, op := range rt.FrameOps() {
 		if op.Kind != FrameOpText {
