@@ -59,6 +59,7 @@ main(void)
         "  foreground: ink;\n"
         "  radius: radius.md;\n"
         "  padding-x: space.3;\n"
+        "  typeface: semibold;\n"
         "}\n"
         "Button[tone=Accent][emphasis=Filled]:hover {\n"
         "  background: accent;\n"
@@ -162,6 +163,7 @@ main(void)
     assert(rules[0].style.foreground == 0xeeeeeeffu);
     assert(rules[0].style.radius == 6.0f);
     assert(rules[0].style.padding_x == 12.0f);
+    assert(StringEqual(rules[0].style.typeface, StringView("semibold", 8)));
     assert(rules[1].selector.tone == ButtonToneAccent);
     assert(rules[1].selector.emphasis == ButtonEmphasisFilled);
     assert(rules[1].state == ButtonStateHover);

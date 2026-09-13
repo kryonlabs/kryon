@@ -12,6 +12,7 @@ main(void)
         "Button[tone=Accent]:hover {\n"
         "  background: #123456;\n"
         "  radius: 5;\n"
+        "  typeface: semibold;\n"
         "}\n";
     StyleFacts facts = StyleControlFacts(StyleKindButton(), 0, 0,
         ButtonToneAccent, ButtonEmphasisSoft, ControlSizeMedium,
@@ -26,6 +27,7 @@ main(void)
     resolved = ResolveActiveStyle((StyleData){0}, facts, ButtonStateHover);
     assert(resolved.background == 0x123456ffu);
     assert(resolved.radius == 5.0f);
+    assert(StringEqual(resolved.typeface, StringView("semibold", 8)));
 
     assert(RegisterStylePackSource(
         "@pack app.brand; Button { background: #abcdef; }",

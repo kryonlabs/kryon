@@ -2291,9 +2291,10 @@ Background(Color color)
 void
 Text(TextProps props)
 {
-    int previous_typeface = PushTextFont(props.typeface);
+    int previous_typeface;
     int previous_spacing;
     const char *value = props.text != NULL ? props.text : "";
+    const char *typeface = props.typeface;
     int font;
     int inherited_font = 0;
     Color inherited_color = {0};
@@ -2336,6 +2337,10 @@ Text(TextProps props)
     style = MergeStyle(style, props.style);
     if((style.fields & StyleFontSize) != 0)
         props.font = Scale((int)style.font_size);
+    if((typeface == NULL || typeface[0] == '\0') &&
+       (style.fields & StyleTypeface) != 0)
+        typeface = style.typeface;
+    previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
         ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,
         inherited_color_set, (style.fields & StyleForeground) != 0,

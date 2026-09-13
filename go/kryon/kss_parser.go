@@ -416,6 +416,13 @@ func (p *styleParser) property(style *StyleData) error {
 		}
 		style.Fields |= StyleMaterial
 		style.Material = mapped
+	case "typeface", "font-family":
+		value, ok := p.ident()
+		if !ok {
+			return p.err("expected typeface name")
+		}
+		style.Fields |= StyleTypeface
+		style.Typeface = value
 	default:
 		return p.err("unknown property %q", name)
 	}

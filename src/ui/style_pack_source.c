@@ -11,6 +11,7 @@
 
 typedef struct StyleSourcePack {
     char id[64];
+    const char *source;
     const char *label;
     const char *description;
     StyleRule rules[STYLE_SOURCE_RULE_MAX];
@@ -55,32 +56,47 @@ RegisterStylePackSource(const char *source, const char *label,
     StyleRule rules[STYLE_SOURCE_RULE_MAX] = {0};
     char diagnostic[256];
     StyleSourcePack *slot;
+    char *source_copy = NULL;
     char *label_copy = NULL;
     char *description_copy = NULL;
 
     if(source == NULL)
         return false;
-    if(!kss_parse_string(source, rules, STYLE_SOURCE_RULE_MAX, &result,
+    source_copy = style_copy_text(source);
+    if(source_copy == NULL)
+        return false;
+    if(!kss_parse_string(source_copy, rules, STYLE_SOURCE_RULE_MAX, &result,
                          diagnostic, sizeof(diagnostic)))
+    {
+        free(source_copy);
         return false;
+    }
     if(result.pack_id[0] == '\0' || result.rule_count <= 0)
+    {
+        free(source_copy);
         return false;
+    }
 
     slot = style_source_pack_slot(result.pack_id);
-    if(slot == NULL)
+    if(slot == NULL) {
+        free(source_copy);
         return false;
+    }
     label_copy = style_copy_text(label != NULL ? label : result.pack_id);
     description_copy = style_copy_text(description != NULL ? description : "");
     if(label_copy == NULL || description_copy == NULL) {
+        free(source_copy);
         free(label_copy);
         free(description_copy);
         return false;
     }
 
+    free((void *)slot->source);
     free((void *)slot->label);
     free((void *)slot->description);
     memset(slot, 0, sizeof(*slot));
     snprintf(slot->id, sizeof(slot->id), "%s", result.pack_id);
+    slot->source = source_copy;
     slot->label = label_copy;
     slot->description = description_copy;
     memcpy(slot->rules, rules, (size_t)result.rule_count * sizeof(rules[0]));

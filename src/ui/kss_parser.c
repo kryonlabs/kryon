@@ -123,6 +123,21 @@ kss_read_ident(KssParser *p, char *out, size_t out_size)
 }
 
 static bool
+kss_read_ident_view(KssParser *p, String *out)
+{
+    const char *start;
+
+    kss_skip_ws(p);
+    if(!kss_ident_start(*p->cursor))
+        return false;
+    start = p->cursor;
+    while(kss_ident_char(*p->cursor))
+        p->cursor++;
+    *out = StringView(start, (size_t)(p->cursor - start));
+    return true;
+}
+
+static bool
 kss_expect(KssParser *p, char c)
 {
     kss_skip_ws(p);
@@ -752,6 +767,7 @@ kss_parse_property(KssParser *p, StyleData *style)
     uint32_t color;
     float number;
     char ident[48];
+    String text;
 
     if(!kss_read_ident(p, name, sizeof(name)))
         return kss_fail(p, "expected property name");
@@ -842,6 +858,11 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected material");
         style->fields |= (uint32_t)StyleMaterial;
         style->material = mapped;
+    } else if(kss_ieq(name, "typeface") || kss_ieq(name, "font-family")) {
+        if(!kss_read_ident_view(p, &text))
+            return kss_fail(p, "expected typeface name");
+        style->fields |= (uint32_t)StyleTypeface;
+        style->typeface = text;
     } else {
         return kss_fail(p, "unknown property '%s'", name);
     }
