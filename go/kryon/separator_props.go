@@ -3,9 +3,10 @@ package kryon
 
 // #import kryon_compat.generated.h
 type SeparatorProps struct {
-	Bounds   Rectangle
-	Vertical bool
-	Label    string
-	Font     int32
-	Disabled bool
+	Bounds    Rectangle
+	Vertical  bool
+	Label     string
+	Font      int32
+	Disabled  bool
+	ClassName int32
 }

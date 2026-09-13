@@ -585,14 +585,14 @@ ui_update_scroll(Rectangle bounds, int content_h, int *scroll_offset, int row_h)
 }
 
 static void
-ui_render_separator_line(Rectangle bounds, int vertical)
+ui_render_separator_line(Rectangle bounds, int vertical, int class_name)
 {
     SeparatorLine paint;
     StyleFrame frame;
     if(!IsWindowReady())
         return;
-    frame = ui_tk_simple_style_frame_role(ButtonToneNeutral, ButtonStateNormal,
-                                          0, 0, StyleKindSeparator(), 7);
+    frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        ButtonStateNormal, 0, 0, class_name, StyleKindSeparator(), 7);
     paint = SeparatorLineFor(bounds, vertical != 0, frame);
     if(vertical)
         DrawLine((int)paint.line.x, (int)paint.line.y,
@@ -609,9 +609,9 @@ void
 RenderSeparator(SeparatorProps separator)
 {
     const char *label = separator.label != NULL ? separator.label : "";
-    StyleFrame frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+    StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        separator.disabled, 0, StyleKindSeparator(), 6);
+        separator.disabled, 0, separator.class_name, StyleKindSeparator(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
     int font = separator.font > 0 ? separator.font :
         (label_style.font_size > 0.0f
@@ -619,16 +619,17 @@ RenderSeparator(SeparatorProps separator)
             : GetSmallFontSize());
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
-    StyleFrame line_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+    StyleFrame line_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
-        separator.disabled, 0, StyleKindSeparator(), 7);
+        separator.disabled, 0, separator.class_name, StyleKindSeparator(), 7);
     SeparatorLabelPaint paint = SeparatorLabelPaintFor(
         separator.bounds, (float)text_width, label[0] != '\0', font,
         (float)Scale(1000) / 1000.0f, frame);
     paint.line_color = line_frame.value.background;
 
     if(label[0] == '\0') {
-        ui_render_separator_line(separator.bounds, separator.vertical);
+        ui_render_separator_line(separator.bounds, separator.vertical,
+                                 separator.class_name);
         return;
     }
     if(!IsWindowReady())

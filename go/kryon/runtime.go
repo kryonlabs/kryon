@@ -2645,11 +2645,11 @@ func (r *runtime) Separator(props SeparatorProps) {
 	if props.Disabled {
 		state = ButtonStateDisabled
 	}
-	frame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
-		StyleSheet_StyleKindSeparator(), 6)
+	frame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
+		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 6)
 	if props.Label == "" {
-		lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
-			StyleSheet_StyleKindSeparator(), 7)
+		lineFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
+			props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 7)
 		paint := Separator_SeparatorLineFor(props.Bounds, props.Vertical, lineFrame)
 		r.record(FrameOp{Kind: FrameOpLine, Bounds: paint.Line, Color: unpackRGBA(paint.Color)})
 		return
@@ -2664,8 +2664,8 @@ func (r *runtime) Separator(props SeparatorProps) {
 	}
 	labelWidth := float32(runtimeTextWidthWithFont(props.Label, font, fontID))
 	paint := Separator_SeparatorLabelPaintFor(props.Bounds, labelWidth, props.Label != "", font, 1, frame)
-	lineFrame := simpleStyleFrameWithRole(ButtonToneNeutral, state, props.Disabled, false,
-		StyleSheet_StyleKindSeparator(), 7)
+	lineFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, state,
+		props.Disabled, false, props.ClassName, StyleSheet_StyleKindSeparator(), 7)
 	paint.LineColor = lineFrame.Value.Background
 	if paint.ShowText {
 		r.record(FrameOp{Kind: FrameOpText, Bounds: paint.Text, Text: props.Label, Color: unpackRGBA(paint.TextColor), Opacity: labelStyle.Opacity, FontSize: font, FontID: fontID, Disabled: props.Disabled})

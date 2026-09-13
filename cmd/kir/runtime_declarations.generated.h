@@ -321,6 +321,7 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    label: const char*\n"
         "    font: i32\n"
         "    disabled: bool\n"
+        "    class_name: i32\n"
         "}\n"
     },
     {"runtime/spinbox_props.kry",

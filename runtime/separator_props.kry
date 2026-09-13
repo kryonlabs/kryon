@@ -7,4 +7,5 @@ SeparatorProps :: struct {
     label: const char*
     font: i32
     disabled: bool
+    class_name: i32
 }

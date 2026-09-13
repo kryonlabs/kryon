@@ -27,6 +27,7 @@ typedef struct SeparatorProps {
     const char* label;
     int32_t font;
     bool disabled;
+    int32_t class_name;
 } SeparatorProps;
 
 #endif /* K_RUNTIME_SEPARATOR_PROPS_H */
