@@ -130,12 +130,12 @@ dropdown_resize_options(DropdownState *state, int count)
 }
 
 /* Dropdowns expose semantic roles; KSS owns the visual result. */
-static Style
-dropdown_style(int role, int selected, ButtonState state, int class_name)
+static StyleFrame
+dropdown_style_frame(int role, int selected, ButtonState state, int class_name)
 {
     ButtonProps props = {0};
-    Style base;
-    Style accent;
+    StyleFrame base;
+    StyleFrame accent;
 
     props.tone = ButtonToneNeutral;
     props.emphasis = ButtonEmphasisSoft;
@@ -148,20 +148,28 @@ dropdown_style(int role, int selected, ButtonState state, int class_name)
         props.selected = 1;
         state = ButtonStateSelected;
     }
-    base = ui_resolve_button_style_kind(props, state, StyleKindDropdown());
+    base = ui_control_style_frame_role_kind(props, state, 0, 0.0f, 0.0f,
+        0.0f, StyleKindDropdown(), role);
     if(role != 2)
-        return ui_style_apply_effects(base);
+        return base;
 
     props.tone = ButtonToneAccent;
     props.emphasis = ButtonEmphasisFilled;
     props.selected = selected;
-    accent = ui_resolve_button_style_kind(props,
+    accent = ui_control_style_frame_role_kind(props,
         selected && state != ButtonStateDisabled ? ButtonStateSelected : state,
-        StyleKindDropdown());
-    return ui_style_apply_effects(ui_unpack_style(Appearance(
-        ui_pack_style_states((ControlStyle){.normal = base}).normal,
-        ui_pack_style_states((ControlStyle){.normal = accent}).normal,
-        role, state, selected)));
+        0, 0.0f, 0.0f, 0.0f, StyleKindDropdown(), role);
+    base.value = Appearance(base.value, accent.value, role, state, selected);
+    if(selected && state != ButtonStateDisabled)
+        base.fill = accent.fill;
+    return base;
+}
+
+static Style
+dropdown_style(int role, int selected, ButtonState state, int class_name)
+{
+    return ui_unpack_style(dropdown_style_frame(role, selected, state,
+                                               class_name).value);
 }
 
 static ControlStyle
@@ -251,14 +259,8 @@ dropdown_menu_bounds(const DropdownState *state)
 {
     int bottom = state->clip_bottom > 0 ? state->clip_bottom : ui_view_height;
     Rectangle view = {0, state->clip_top, ui_view_width, bottom - state->clip_top};
-    Style panel_style = dropdown_style(1, 0, ButtonStateNormal,
-                                       state->class_name);
-    StyleStates panel_states =
-        ui_pack_style_states((ControlStyle){.normal = panel_style});
-    StyleFrame panel_frame = {
-        .value = panel_states.normal,
-        .fill = ui_style_fill(panel_style)
-    };
+    StyleFrame panel_frame = dropdown_style_frame(1, 0, ButtonStateNormal,
+                                                  state->class_name);
     return PopupBounds((Rectangle){state->x, state->y, state->w, state->h},
         view, state->option_count, (float)Scale(1000) / 1000.0f,
         panel_frame);
@@ -515,19 +517,31 @@ dropdown_paint_menu(int id)
     int can_draw = IsWindowReady();
     int clip_started = 0;
 
-    int padding_top = Scale(4);
-    int padding_bottom = Scale(4);
     int content_h;
     int max_scroll;
-    int scrollbar_w = Scale(8);
     Rectangle btn_bounds = {x, y, w, h};
     Rectangle menu_bounds = dropdown_menu_bounds(state);
+    StyleFrame panel_frame = dropdown_style_frame(1, 0, ButtonStateNormal,
+                                                  state->class_name);
+    StyleFrame option_frame = dropdown_style_frame(2, 0, ButtonStateNormal,
+                                                   state->class_name);
+    StyleFrame scrollbar_frame = ui_control_style_frame_kind(
+        (ButtonProps){.tone = ButtonToneAccent,
+                      .emphasis = ButtonEmphasisFilled,
+                      .size = ControlSizeSmall,
+                      .pill = 1,
+                      .class_name = state->class_name},
+        ButtonStateNormal, 0, 0.0f, 0.0f, 0.0f, StyleKindScrollThumb());
+    DropdownMenuMetrics metrics = DropdownMenuMetricsFor(
+        (float)Scale(1000) / 1000.0f, panel_frame, option_frame,
+        scrollbar_frame);
     MenuLayout menu_layout;
     x = (int)menu_bounds.x;
     w = (int)menu_bounds.width;
     menu_layout = MenuLayoutFor(menu_bounds, option_count, option_h,
-                                padding_top, padding_bottom, scrollbar_w,
-                                Scale(2));
+                                metrics.padding_top, metrics.padding_bottom,
+                                metrics.scrollbar_width,
+                                metrics.scrollbar_gap);
     content_h = menu_layout.content_height;
     max_scroll = menu_layout.max_scroll;
     int option_w = menu_layout.option_width;
@@ -544,7 +558,7 @@ dropdown_paint_menu(int id)
 
     state->gesture = PopupDragGesture(state->gesture, state->scroll_offset,
         IsMouseButtonDown(MOUSE_BUTTON_LEFT), pointer_in_dropdown,
-        state->scrollbar_pressed, my, max_scroll, Scale(8));
+        state->scrollbar_pressed, my, max_scroll, metrics.drag_threshold);
     state->scroll_offset = state->gesture.offset;
     if(Dismiss(state->open, state->just_opened, option_count, h, false, false,
         IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !pointer_in_dropdown))
@@ -587,14 +601,15 @@ dropdown_paint_menu(int id)
     }
 
     if(can_draw) {
-        Style paint = dropdown_style(1, 0, ButtonStateNormal, state->class_name);
+        Style paint = ui_unpack_style(panel_frame.value);
         dropdown_draw_surface(menu_bounds, paint, 0);
     }
 
     /* Resolve thumb input before rows use the offset, so thumb and content
      * paint the same state on the drag frame. The panel is already painted. */
     if(max_scroll > 0) {
-        Rectangle track = ScrollbarTrackBounds(scrollbar_bounds, Scale(2));
+        Rectangle track = ScrollbarTrackBounds(scrollbar_bounds,
+                                               metrics.scrollbar_track_inset);
         ui_scrollbar((int)track.x, (int)track.y, (int)track.height,
                      content_h, &state->scroll_offset, max_scroll, 1);
     }
@@ -614,8 +629,9 @@ dropdown_paint_menu(int id)
         menu_layout.content_bounds.height, option_h);
     for(int i = rows.first; i < rows.end; i++) {
         OptionPaint option_paint = OptionPaintFor(menu_bounds, option_w, i,
-            option_h, state->scroll_offset, padding_top, padding_bottom,
-            Scale(4), Scale(2));
+            option_h, state->scroll_offset, metrics.padding_top,
+            metrics.padding_bottom, metrics.highlight_inset_x,
+            metrics.highlight_inset_y);
         int option_y = option_paint.option_y;
         int visible_y = (int)option_paint.visible_bounds.y;
         int visible_h = (int)option_paint.visible_bounds.height;

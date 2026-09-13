@@ -183,6 +183,48 @@ OptionPaint :: struct {
     highlight_bounds: Rectangle
 }
 
+DropdownMenuMetrics :: struct {
+    padding_top: i32
+    padding_bottom: i32
+    scrollbar_width: i32
+    scrollbar_gap: i32
+    scrollbar_track_inset: i32
+    highlight_inset_x: i32
+    highlight_inset_y: i32
+    drag_threshold: i32
+}
+
+DropdownMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if scale <= 0.0 { scale = 1.0 }
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
+DropdownMenuMetricsFor :: (scale: float, panel: StyleFrame,
+    option: StyleFrame, scrollbar: StyleFrame) -> DropdownMenuMetrics #export {
+    metrics: DropdownMenuMetrics
+    metrics.padding_top = DropdownMetric(panel.value.fields,
+        (u32)StylePaddingY, panel.value.padding_y, 4.0, scale, true)
+    metrics.padding_bottom = metrics.padding_top
+    metrics.scrollbar_width = DropdownMetric(scrollbar.value.fields,
+        (u32)StylePaddingX, scrollbar.value.padding_x, 8.0, scale, false)
+    metrics.scrollbar_gap = DropdownMetric(scrollbar.value.fields,
+        (u32)StyleGap, scrollbar.value.gap, 2.0, scale, true)
+    metrics.scrollbar_track_inset = DropdownMetric(scrollbar.value.fields,
+        (u32)StylePaddingY, scrollbar.value.padding_y, 2.0, scale, true)
+    metrics.highlight_inset_x = DropdownMetric(option.value.fields,
+        (u32)StylePaddingX, option.value.padding_x, 4.0, scale, true)
+    metrics.highlight_inset_y = DropdownMetric(option.value.fields,
+        (u32)StylePaddingY, option.value.padding_y, 2.0, scale, true)
+    metrics.drag_threshold = DropdownMetric(scrollbar.value.fields,
+        (u32)StyleContentOffset, scrollbar.value.offset_x, 8.0, scale, false)
+    return metrics
+}
+
 MenuLayoutFor :: (bounds: Rectangle, count: i32, row_height: i32,
     padding_top: i32, padding_bottom: i32, scrollbar_width: i32,
     scrollbar_gap: i32) -> MenuLayout #export {

@@ -125,10 +125,70 @@ test_existing_policy(void)
                20, 54, 80, 48);
 }
 
+static void
+test_menu_metrics(void)
+{
+    StyleFrame panel = {0};
+    StyleFrame option = {0};
+    StyleFrame scrollbar = {0};
+    DropdownMenuMetrics metrics =
+        DropdownMenuMetricsFor(1.0f, panel, option, scrollbar);
+
+    assert(metrics.padding_top == 4);
+    assert(metrics.padding_bottom == 4);
+    assert(metrics.scrollbar_width == 8);
+    assert(metrics.scrollbar_gap == 2);
+    assert(metrics.scrollbar_track_inset == 2);
+    assert(metrics.highlight_inset_x == 4);
+    assert(metrics.highlight_inset_y == 2);
+    assert(metrics.drag_threshold == 8);
+
+    panel.value.fields = StylePaddingY;
+    panel.value.padding_y = 6.0f;
+    option.value.fields = StylePaddingX | StylePaddingY;
+    option.value.padding_x = 5.0f;
+    option.value.padding_y = 3.0f;
+    scrollbar.value.fields = StylePaddingX | StylePaddingY | StyleGap |
+        StyleContentOffset;
+    scrollbar.value.padding_x = 11.0f;
+    scrollbar.value.padding_y = 4.0f;
+    scrollbar.value.gap = 7.0f;
+    scrollbar.value.offset_x = 9.0f;
+    metrics = DropdownMenuMetricsFor(2.0f, panel, option, scrollbar);
+
+    assert(metrics.padding_top == 12);
+    assert(metrics.padding_bottom == 12);
+    assert(metrics.scrollbar_width == 22);
+    assert(metrics.scrollbar_gap == 14);
+    assert(metrics.scrollbar_track_inset == 8);
+    assert(metrics.highlight_inset_x == 10);
+    assert(metrics.highlight_inset_y == 6);
+    assert(metrics.drag_threshold == 18);
+
+    panel.value.padding_y = 0.0f;
+    option.value.padding_x = 0.0f;
+    option.value.padding_y = 0.0f;
+    scrollbar.value.padding_x = 0.0f;
+    scrollbar.value.padding_y = 0.0f;
+    scrollbar.value.gap = 0.0f;
+    scrollbar.value.offset_x = 0.0f;
+    metrics = DropdownMenuMetricsFor(1.0f, panel, option, scrollbar);
+
+    assert(metrics.padding_top == 0);
+    assert(metrics.padding_bottom == 0);
+    assert(metrics.scrollbar_width == 8);
+    assert(metrics.scrollbar_gap == 0);
+    assert(metrics.scrollbar_track_inset == 0);
+    assert(metrics.highlight_inset_x == 0);
+    assert(metrics.highlight_inset_y == 0);
+    assert(metrics.drag_threshold == 8);
+}
+
 int
 main(void)
 {
     test_indicator();
     test_existing_policy();
+    test_menu_metrics();
     return 0;
 }
