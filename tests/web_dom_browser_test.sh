@@ -206,6 +206,47 @@ try {
   assert(eventLog[0] === "article-ref", "decorated event did not expose Kry object");
   const button = kryon.webDOMQuery(target, "Section > Button.primary");
   assert(button?.element?.id === "save", "child selector query failed");
+  const bindLog = [];
+  const unbindPrimary = kryon.webDOMBind(target, "Button.primary", {
+    mount(object, detail) {
+      bindLog.push("mount:" + object.ref + ":" + (detail.event?.type || "immediate"));
+      object.element.addEventListener("click", () => bindLog.push("click:" + object.ref));
+      return () => bindLog.push("cleanup:" + object.ref);
+    },
+    update(object, detail, previous) {
+      bindLog.push("update:" + object.ref + ":" + (previous?.ref || "") + ":" + (detail.event?.type || ""));
+    },
+    unmount(object, detail) {
+      bindLog.push("unmount:" + object.ref + ":" + (detail.event?.type || ""));
+    }
+  });
+  assert(typeof unbindPrimary === "function", "webDOMBind cleanup missing");
+  assert(bindLog[0] === "mount:Page/article/save:immediate", "webDOMBind mount missing");
+  assert(kryon.webDOMSetAttribute(target, "Page/article/save", "data-runtime", "1"),
+    "webDOMSetAttribute failed");
+  assert(button.element.getAttribute("data-runtime") === "1", "runtime attr not set");
+  assert(kryon.webDOMQuery(target, "[data-runtime='1']")?.ref === "Page/article/save",
+    "runtime attr not queryable");
+  assert(kryon.webDOMSetStyle(target, "Page/article/save", "--runtime-accent", "hotpink"),
+    "webDOMSetStyle failed");
+  assert(kryon.webDOMGetStyle(target, "Page/article/save", "--runtime-accent") === "hotpink",
+    "runtime custom style not readable");
+  assert(kryon.webDOMSetProperty(target, "Page/article/save", "disabled", true),
+    "webDOMSetProperty failed");
+  assert(button.element.disabled === true, "runtime property not set");
+  assert((button.element.dataset.kryState || "").includes("disabled"),
+    "property mutation did not sync state: " + (button.element.dataset.kryState || ""));
+  assert(kryon.webDOMQuery(target, "Button:disabled")?.ref === "Page/article/save",
+    "state selector did not see property mutation");
+  assert(button.element.kryAddClass("browser-bound"), "element class helper failed");
+  assert(kryon.webDOMQuery(target, "Button.browser-bound")?.element === button.element,
+    "class helper mutation not queryable");
+  assert(kryon.webDOMDispatchEvent(target, "Page/article/save", "click"), "bound button dispatch failed");
+  assert(bindLog.includes("click:Page/article/save"), "webDOMBind listener did not receive click");
+  assert(kryon.webDOMSetProperty(target, "Page/article/save", "disabled", false),
+    "webDOMSetProperty disable reset failed");
+  assert(!(button.element.dataset.kryState || "").includes("disabled"),
+    "property mutation did not clear state: " + (button.element.dataset.kryState || ""));
   assert(getComputedStyle(button.element).backgroundColor === "rgb(12, 34, 56)",
     "installed CSS did not style Kryon element");
   const priceHeader = kryon.findWebElement(target, "priceHeader");
@@ -241,6 +282,8 @@ try {
   const contactValues = kryon.webFormValues(target, "contact");
   assert(contactValues.email === "hello@example.test", "nested form value missing");
   assert(contactValues.external_email === "outside@example.test", "owned form value missing");
+  unbindPrimary();
+  assert(bindLog.includes("cleanup:Page/article/save"), "webDOMBind cleanup callback missing");
   removeInstalledStyle();
   assert(!document.querySelector('style[data-kry-style="browser-install"]'),
     "installed CSS cleanup failed");
