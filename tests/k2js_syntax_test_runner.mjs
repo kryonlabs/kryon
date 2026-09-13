@@ -1052,6 +1052,18 @@ assert.deepEqual(runtime.webNodesAtSourceRange(rt, "src/valid.kry", webDoc.nodes
   [webDoc.nodes[2].path, webDoc.nodes[0].path]);
 assert.deepEqual(runtime.webNodesAtSourceRange(rt, "src/valid.kry", webDoc.nodes[2].sourceEndLine,
   webDoc.nodes[2].sourceEndColumn + 1).map((node) => node.path), [webDoc.nodes[0].path]);
+assert.equal(runtime.webNodeOverlappingSourceRange(rt, "src/valid.kry",
+  webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+  webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1).path,
+  webDoc.nodes[2].path);
+assert.deepEqual(runtime.webNodesOverlappingSourceRange(rt, "src/valid.kry",
+  webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+  webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
+  .map((node) => node.path), [webDoc.nodes[2].path, webDoc.nodes[0].path]);
+assert.deepEqual(runtime.webNodesOverlappingSourceRange(rt, "src/valid.kry",
+  webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn + 1,
+  webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn + 4)
+  .map((node) => node.path), [webDoc.nodes[0].path]);
 assert.equal(runtime.findWebNode(rt, "primary-action").path, webDoc.nodes[2].path);
 assert.equal(webDoc.nodes[2].domId, "tap-button");
 assert.equal(webDoc.nodes[2].domValue, "tap-value");
@@ -4209,6 +4221,14 @@ function fakeDocument() {
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1).element, firstButton);
     assert.equal(root.kryAtSourceRange("src/valid.kry", webDoc.nodes[2].sourceLine,
       webDoc.nodes[2].sourceColumn + 1).element, firstButton);
+    assert.equal(runtime.webDOMObjectOverlappingSourceRange(target, "src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+      webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
+      .element, firstButton);
+    assert.deepEqual(runtime.webDOMObjectsOverlappingSourceRange(target, "src/valid.kry",
+      webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn + 1,
+      webDoc.nodes[2].sourceEndLine, webDoc.nodes[2].sourceEndColumn - 1)
+      .map((object) => object.node.path), [webDoc.nodes[2].path, webDoc.nodes[0].path]);
     assert.deepEqual(runtime.webDOMObjectsAtSource(target, "src/valid.kry",
       webDoc.nodes[2].sourceLine, webDoc.nodes[2].sourceColumn).map((object) => object.ref),
       [tapSourceColumnRef]);

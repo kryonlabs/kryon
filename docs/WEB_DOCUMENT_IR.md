@@ -548,6 +548,11 @@ identity string for a `.kry` node. `webNodeAtSource(...)` and
 Document nodes without requiring callers to hand-format selector strings.
 `webNodeAtSourceRange(...)` and `webNodesAtSourceRange(...)` resolve a cursor
 position within compiler source spans.
+`webNodeOverlappingSourceRange(...)`, `webNodesOverlappingSourceRange(...)`,
+`webDOMObjectOverlappingSourceRange(...)`, and
+`webDOMObjectsOverlappingSourceRange(...)` resolve source selections or changed
+ranges to every overlapping Kry DOM object, sorted deepest first for editor and
+inspector hit testing.
 `webSourceMap(rt)` returns the source-backed node identities in the current
 frame.
 

@@ -1103,6 +1103,8 @@ export function webNodeAtSource(rt: Runtime, sourcePath: string, sourceLine: num
 export function webNodesAtSource(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
 export function webNodeAtSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode | null;
 export function webNodesAtSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDocumentNode[];
+export function webNodeOverlappingSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDocumentNode | null;
+export function webNodesOverlappingSourceRange(rt: Runtime, sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDocumentNode[];
 export function webSourceMap(rt: Runtime): WebNodeIdentity[];
 export function findWebElement(target: Element | string | null, query: string): Element | null;
 export function findWebElements(target: Element | string | null, query: string): Element[];
@@ -1152,6 +1154,8 @@ export function webDOMObjectAtSource(target: Element | string | null, sourcePath
 export function webDOMObjectsAtSource(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
 export function webDOMObjectAtSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject | null;
 export function webDOMObjectsAtSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number): WebDOMObject[];
+export function webDOMObjectOverlappingSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDOMObject | null;
+export function webDOMObjectsOverlappingSourceRange(target: Element | string | null, sourcePath: string, sourceLine: number, sourceColumn?: number, sourceEndLine?: number, sourceEndColumn?: number): WebDOMObject[];
 export function webDOMSourceMap(target: Element | string | null): WebDOMObject[];
 export function webDOMAddEventListener(target: Element | string | null, query: string, type: string,
   handler: (event: Event, object: WebDOMObject | null) => unknown,

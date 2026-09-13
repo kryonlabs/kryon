@@ -5213,6 +5213,55 @@ function sourcePositionWithinNode(node, sourcePath, line, column = 0) {
   return true;
 }
 
+function compareSourcePositions(aLine, aColumn, bLine, bColumn) {
+  const lineDelta = (aLine || 0) - (bLine || 0);
+  if (lineDelta !== 0)
+    return lineDelta;
+  if (aColumn <= 0 || bColumn <= 0)
+    return 0;
+  return aColumn - bColumn;
+}
+
+function normalizeSourceRange(sourceLine, sourceColumn, sourceEndLine, sourceEndColumn) {
+  let startLine = Number.isFinite(Number(sourceLine)) ? Math.trunc(Number(sourceLine)) : 0;
+  let startColumn = Number.isFinite(Number(sourceColumn)) ? Math.trunc(Number(sourceColumn)) : 0;
+  let endLine = Number.isFinite(Number(sourceEndLine)) ? Math.trunc(Number(sourceEndLine)) : 0;
+  let endColumn = Number.isFinite(Number(sourceEndColumn)) ? Math.trunc(Number(sourceEndColumn)) : 0;
+  if (startLine <= 0)
+    return null;
+  if (endLine <= 0)
+    endLine = startLine;
+  if (compareSourcePositions(endLine, endColumn, startLine, startColumn) < 0) {
+    const swapLine = startLine;
+    const swapColumn = startColumn;
+    startLine = endLine;
+    startColumn = endColumn;
+    endLine = swapLine;
+    endColumn = swapColumn;
+  }
+  return { startLine, startColumn, endLine, endColumn };
+}
+
+function sourceRangeOverlapsNode(node, sourcePath, sourceLine, sourceColumn,
+                                 sourceEndLine, sourceEndColumn) {
+  if (!webNodeHasSource(node) || node.sourcePath !== sourcePath)
+    return false;
+  const range = normalizeSourceRange(sourceLine, sourceColumn, sourceEndLine, sourceEndColumn);
+  if (!range)
+    return false;
+  const nodeStartLine = node.sourceLine || 0;
+  const nodeStartColumn = node.sourceColumn || 0;
+  const nodeEndLine = node.sourceEndLine || nodeStartLine;
+  const nodeEndColumn = node.sourceEndColumn || nodeStartColumn;
+  if (compareSourcePositions(nodeEndLine, nodeEndColumn,
+      range.startLine, range.startColumn) < 0)
+    return false;
+  if (compareSourcePositions(nodeStartLine, nodeStartColumn,
+      range.endLine, range.endColumn) > 0)
+    return false;
+  return true;
+}
+
 function webNodePathDepth(node) {
   return String(node?.path || "").split("/").filter(Boolean).length;
 }
@@ -7928,6 +7977,26 @@ export function webNodeAtSourceRange(rt, sourcePath, sourceLine, sourceColumn = 
   return webNodesAtSourceRange(rt, sourcePath, sourceLine, sourceColumn)[0] || null;
 }
 
+export function webNodesOverlappingSourceRange(rt, sourcePath, sourceLine,
+                                                sourceColumn = 0,
+                                                sourceEndLine = sourceLine,
+                                                sourceEndColumn = sourceColumn) {
+  const path = String(sourcePath || "").trim();
+  if (!path)
+    return [];
+  return sortWebNodesDeepestFirst(webDocumentFrame(rt).nodes
+    .filter((node) => sourceRangeOverlapsNode(node, path, sourceLine,
+      sourceColumn, sourceEndLine, sourceEndColumn)));
+}
+
+export function webNodeOverlappingSourceRange(rt, sourcePath, sourceLine,
+                                               sourceColumn = 0,
+                                               sourceEndLine = sourceLine,
+                                               sourceEndColumn = sourceColumn) {
+  return webNodesOverlappingSourceRange(rt, sourcePath, sourceLine,
+    sourceColumn, sourceEndLine, sourceEndColumn)[0] || null;
+}
+
 export function webSourceMap(rt) {
   return webDocumentFrame(rt).nodes
     .filter((node) => webNodeHasSource(node))
@@ -9256,6 +9325,29 @@ export function webDOMObjectsAtSourceRange(target, sourcePath, sourceLine, sourc
 
 export function webDOMObjectAtSourceRange(target, sourcePath, sourceLine, sourceColumn = 0) {
   return webDOMObjectsAtSourceRange(target, sourcePath, sourceLine, sourceColumn)[0] || null;
+}
+
+export function webDOMObjectsOverlappingSourceRange(target, sourcePath,
+                                                     sourceLine,
+                                                     sourceColumn = 0,
+                                                     sourceEndLine = sourceLine,
+                                                     sourceEndColumn = sourceColumn) {
+  const root = mountedRoot(target);
+  const path = String(sourcePath || "").trim();
+  if (!root || !path)
+    return [];
+  return sortWebDOMObjectsDeepestFirst(webDOMObjects(target)
+    .filter((object) => sourceRangeOverlapsNode(object.node, path,
+      sourceLine, sourceColumn, sourceEndLine, sourceEndColumn)));
+}
+
+export function webDOMObjectOverlappingSourceRange(target, sourcePath,
+                                                    sourceLine,
+                                                    sourceColumn = 0,
+                                                    sourceEndLine = sourceLine,
+                                                    sourceEndColumn = sourceColumn) {
+  return webDOMObjectsOverlappingSourceRange(target, sourcePath, sourceLine,
+    sourceColumn, sourceEndLine, sourceEndColumn)[0] || null;
 }
 
 export function webDOMSourceMap(target) {

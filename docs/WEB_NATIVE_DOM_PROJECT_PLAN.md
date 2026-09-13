@@ -88,6 +88,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Query APIs for unmounted Web Document nodes and mounted DOM objects:
   exact identity, KSS-style selectors, subtree queries, source lookup, and
   source maps.
+- Source lookup APIs include cursor containment and source-range overlap
+  helpers for editors and devtools mapping `.kry` selections to Kry DOM
+  objects.
 - Pre-mount Web Document snapshots expose the same serializable Kry identity,
   relation, event, and style-fact packet shape before a frame is rendered into
   live browser DOM.

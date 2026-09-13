@@ -385,6 +385,10 @@ try {
     "DOM object source column lookup failed");
   assert(kryon.webDOMObjectAtSourceRange(target, "browser.kry", 3, 5)?.element === article,
     "DOM object source range lookup failed");
+  assert(kryon.webDOMObjectOverlappingSourceRange(target, "browser.kry", 3, 6, 11, 5)
+    ?.element === article, "DOM object source overlap lookup failed");
+  assert(kryon.webDOMObjectsOverlappingSourceRange(target, "browser.kry", 12, 1, 12, 3)
+    .length === 0, "DOM object source overlap returned unrelated nodes");
   assert(root.kryAtSource("browser.kry", 3, 5)?.element === article,
     "root source lookup failed");
   assert(root.kryAtSourceRange("browser.kry", 3, 5)?.element === article,
