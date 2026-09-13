@@ -524,6 +524,26 @@ conditional_out="$work/out/src/conditional_widgets.js"
 grep -Eq '"path": "Conditional/Button@[0-9]+(-[0-9]+)?"' "$conditional_out"
 grep -Eq '"path": "Conditional/Toggle@[0-9]+(-[0-9]+)?"' "$conditional_out"
 
+cat > "$work/src/multiline_widget_metadata.kry" <<'EOF'
+#import "kryon.h"
+Multiline :: () #ui {
+    Screen root: {
+        Button(
+            (ButtonProps){
+                .label = "Wrapped"
+            }
+        )
+    }
+}
+EOF
+"$k2js" --no-main --root "$work" -o "$work/out" "$work/src/multiline_widget_metadata.kry"
+multiline_out="$work/out/src/multiline_widget_metadata.js"
+grep -q '"path": "Multiline/root/Button@4"' "$multiline_out"
+grep -q '"sourcePath": "src/multiline_widget_metadata.kry"' "$multiline_out"
+grep -q '"sourceLine": 4' "$multiline_out"
+grep -q '"sourceColumn": 9' "$multiline_out"
+grep -q '"sourceEndLine": 8' "$multiline_out"
+
 cat > "$work/src/form_owner.kry" <<'EOF'
 #import "kryon.h"
 

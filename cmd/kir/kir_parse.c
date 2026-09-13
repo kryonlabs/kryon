@@ -3086,6 +3086,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
     int onelineq_count = 0;
     int from_queue = 0;
     int pending_len = 0;
+    int pending_start_line = 1;
     int pending_start_column = 1;
     int paren_depth = 0;
     int bracket_depth = 0;
@@ -3149,8 +3150,10 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     continue;
                 continue;
             }
-            if(pending_len == 0)
+            if(pending_len == 0) {
+                pending_start_line = line_no;
                 pending_start_column = trimmed_column;
+            }
             if(pending_len > 0 && pending_len + 2 < (int)sizeof(pending)) {
                 pending[pending_len++] = ' ';
                 pending[pending_len] = '\0';
@@ -4037,7 +4040,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     block = &ui_blocks[ui_block_count++];
                     memset(block, 0, sizeof(*block));
                     block->statement_index = -1;
-                    block->span = KirSpanEnd(rel, line_no,
+                    block->span = KirSpanEnd(rel, pending_start_line,
                                              pending_start_column, line_no,
                                              pending_start_column +
                                              (int)strlen(t));
@@ -4148,7 +4151,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                     kind = KIR_STMT_WIDGET;
                 if(kind == KIR_STMT_WIDGET) {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpanEnd(rel, line_no,
+                    KirSourceSpan span = KirSpanEnd(rel, pending_start_line,
                                                     pending_start_column,
                                                     line_no,
                                                     pending_start_column +
@@ -4162,7 +4165,7 @@ parse_source(const char *path, const char *root, FILE *in, const char *source)
                         widget, span);
                 } else {
                     KirStmt *st;
-                    KirSourceSpan span = KirSpanEnd(rel, line_no,
+                    KirSourceSpan span = KirSpanEnd(rel, pending_start_line,
                                                     pending_start_column,
                                                     line_no,
                                                     pending_start_column +
