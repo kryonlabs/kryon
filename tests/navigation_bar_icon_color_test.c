@@ -173,6 +173,16 @@ main(void)
         fprintf(stderr, "built-in styles did not register\n");
         return 1;
     }
+    if(!RegisterStylePackSource("@pack test.navigation.margin;\n"
+                                "NavigationBar { padding-y: 48; }\n"
+                                "NavigationBarItem { foreground: #8d919a; }\n"
+                                "NavigationBarItem:selected { foreground: #171022; }\n"
+                                "NavigationBarItem:disabled { foreground: #8d919a; }\n",
+                                "Test Navigation Margin", "") ||
+       !SetActiveStylePack("test.navigation.margin")) {
+        fprintf(stderr, "test navigation margin style did not activate\n");
+        return 1;
+    }
 
     check_int("compact navigation bar default height",
               NavigationBarDefaultHeight(1.0f), 86);
@@ -255,13 +265,12 @@ main(void)
         .count = 3,
         .items = items,
         .height = 66,
-        .bottom_margin = 48,
     });
     EndInterfaceFrame();
 
     check_int("navigation bar drew all icons", icon_calls, 3);
-    check_int("navigation bar y honors bottom margin", result.y, 606);
-    check_int("navigation bar lower edge anchors to usable bottom",
+    check_int("navigation bar y honors KSS padding-y", result.y, 606);
+    check_int("navigation bar lower edge anchors to KSS padding-y",
               result.y + result.height + 48, 720);
     {
         check_int("inactive navigation bar icon alpha", icon_tints[0].a, 255);

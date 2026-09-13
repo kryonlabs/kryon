@@ -1456,9 +1456,6 @@ typedef struct {
     int count;
     const NavigationBarItem *items;
     int height;
-    int side_margin;
-    int bottom_margin;
-    int max_button_width;
 } NavigationBarProps;
 
 NavigationBarResult NavigationBar(NavigationBarProps nav);

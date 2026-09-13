@@ -109,10 +109,12 @@ RenderNavigationBar(NavigationBarProps nav)
     Widget widget;
     Rectangle bounds;
     NavigationBarPaint paint;
-    StyleFrame bar_frame;
     Style bar_style;
+    StyleFrame bar_frame;
     Style base_icon_style;
     int icon_size = 0;
+    int side_margin = 0;
+    int bottom_margin = 0;
     int i;
     Rectangle dst;
 
@@ -122,16 +124,22 @@ RenderNavigationBar(NavigationBarProps nav)
         ui_navigation_bar_item_frame(0, 0, 0, nav.class_name).value);
     if(base_icon_style.icon_size > 0.0f)
         icon_size = (int)(base_icon_style.icon_size + 0.5f);
+    bar_frame = ui_navigation_bar_surface_frame(nav.class_name);
+    bar_style = ui_unpack_style(bar_frame.value);
+    if(bar_style.padding_x > 0.0f)
+        side_margin = (int)(bar_style.padding_x + 0.5f);
+    if(bar_style.padding_y > 0.0f)
+        bottom_margin = (int)(bar_style.padding_y + 0.5f);
     paint = NavigationBarPaintFor((NavigationBarSpec){
         .view_width = nav.view_width,
         .view_height = nav.view_height,
         .count = count,
         .height = height,
-        .side_margin = nav.side_margin,
-        .bottom_margin = nav.bottom_margin,
+        .side_margin = side_margin,
+        .bottom_margin = bottom_margin,
         .icon_size = icon_size,
         .scale = runtime_scale,
-        .bar = ui_navigation_bar_surface_frame(nav.class_name)
+        .bar = bar_frame
     });
     count = paint.count;
     result.y = paint.y;

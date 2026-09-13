@@ -12,15 +12,12 @@ type NavigationBarItem struct {
 }
 
 type NavigationBarProps struct {
-	ViewWidth      int32
-	ViewHeight     int32
-	ClassName      int32
-	Count          int32
-	Items          []NavigationBarItem
-	Height         int32
-	SideMargin     int32
-	BottomMargin   int32
-	MaxButtonWidth int32
+	ViewWidth  int32
+	ViewHeight int32
+	ClassName  int32
+	Count      int32
+	Items      []NavigationBarItem
+	Height     int32
 }
 
 type NavigationBarResult struct {
