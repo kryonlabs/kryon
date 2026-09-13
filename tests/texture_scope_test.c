@@ -88,7 +88,7 @@ static void check_pixel_not(Image image, int x, int y, Color unexpected, const c
 }
 
 static int
-test_drag_scalar(DragScalarProps props)
+test_drag_continuous(DragContinuousProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -98,7 +98,7 @@ test_drag_scalar(DragScalarProps props)
 }
 
 static int
-test_drag_whole(DragWholeProps props)
+test_drag_discrete(DragDiscreteProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -108,7 +108,7 @@ test_drag_whole(DragWholeProps props)
 }
 
 static int
-test_drag_scalar_range(DragScalarRangeProps props)
+test_drag_continuous_range(DragContinuousRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat, .mode = DragRange,
@@ -119,7 +119,7 @@ test_drag_scalar_range(DragScalarRangeProps props)
 }
 
 static int
-test_drag_whole_range(DragWholeRangeProps props)
+test_drag_discrete_range(DragDiscreteRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .mode = DragRange,
@@ -130,7 +130,7 @@ test_drag_whole_range(DragWholeRangeProps props)
 }
 
 static int
-test_slider_whole(SliderWholeProps props)
+test_slider_discrete(SliderDiscreteProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -139,7 +139,7 @@ test_slider_whole(SliderWholeProps props)
 }
 
 static int
-test_vslider_scalar(SliderScalarProps props)
+test_vslider_continuous(SliderContinuousProps props)
 {
     SliderProps slider = {.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -714,9 +714,9 @@ int main(void)
     BeginTree(Key("slider lifecycle"));
     Box((Rectangle){1,1,63,63},RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    test_slider_whole((SliderWholeProps){.bounds = {0,0,20,12}, .id = 911,
+    test_slider_discrete((SliderDiscreteProps){.bounds = {0,0,20,12}, .id = 911,
               .values = &int_value, .value_count = 1, .min = 0, .max = 10, .format = " "});
-    test_vslider_scalar((SliderScalarProps){.bounds = {0,0,20,12}, .id = 912,
+    test_vslider_continuous((SliderContinuousProps){.bounds = {0,0,20,12}, .id = 912,
                  .values = &float_value, .value_count = 1, .min = 0, .max = 1,
                  .label = slider_label, .format = slider_format});
     End();
@@ -764,18 +764,18 @@ int main(void)
     BeginTree(Key("drag lifecycle"));
     Box((Rectangle){1,1,63,63},RED,BLANK);
     Row((RowProps){.bounds = {10,10,40,12}});
-    test_drag_scalar((DragScalarProps){.bounds = {0,0,20,12}, .id = 920,
+    test_drag_continuous((DragContinuousProps){.bounds = {0,0,20,12}, .id = 920,
               .values = &drag_float, .value_count = 1, .format = drag_format});
     BeginDisabled(1);
-    test_drag_whole((DragWholeProps){.bounds = {0,0,20,12}, .id = 921,
+    test_drag_discrete((DragDiscreteProps){.bounds = {0,0,20,12}, .id = 921,
             .values = &drag_int, .value_count = 1, .format = drag_format});
     EndDisabled();
     End();
     Column((ColumnProps){.bounds = {10,30,40,28}, .gap = 4});
-    test_drag_scalar_range((DragScalarRangeProps){.bounds = {0,0,40,12}, .id = 922,
+    test_drag_continuous_range((DragContinuousRangeProps){.bounds = {0,0,40,12}, .id = 922,
         .current_min = &range_min, .current_max = &range_max,
         .format = drag_format, .format_max = drag_format});
-    test_drag_whole_range((DragWholeRangeProps){.bounds = {0,0,40,12}, .id = 923,
+    test_drag_discrete_range((DragDiscreteRangeProps){.bounds = {0,0,40,12}, .id = 923,
         .current_min = &int_min, .current_max = &int_max,
         .format = drag_format, .format_max = drag_format});
     End();

@@ -3,13 +3,10 @@ package kryon
 
 // #import kryon_compat.generated.h
 type LinkProps struct {
-	Bounds     Rectangle
-	ClassName  int32
-	Text       string
-	Link       string
-	Font       int32
-	FocusID    int32
-	Disabled   bool
-	Color      Color
-	HoverColor Color
+	Bounds    Rectangle
+	ClassName int32
+	Text      string
+	Link      string
+	FocusID   int32
+	Disabled  bool
 }

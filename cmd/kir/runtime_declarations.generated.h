@@ -470,11 +470,8 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    class_name: i32\n"
         "    text: const char*\n"
         "    link: const char*\n"
-        "    font: i32\n"
         "    focus_id: i32\n"
         "    disabled: bool\n"
-        "    color: Color\n"
-        "    hover_color: Color\n"
         "}\n"
     },
     {"runtime/list_box_props.kry",

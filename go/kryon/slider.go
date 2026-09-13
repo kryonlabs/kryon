@@ -42,7 +42,7 @@ type SliderStep struct {
 	Changed bool
 }
 
-type SliderWholeStep struct {
+type SliderDiscreteStep struct {
 	Value   int32
 	Changed bool
 }
@@ -553,7 +553,7 @@ func Slider_SliderKeyboardValue(value float32, minimum float32, maximum float32,
 	return value_46
 }
 
-func Slider_SliderWholeRatio(value int32, minimum int32, maximum int32) float32 {
+func Slider_SliderDiscreteRatio(value int32, minimum int32, maximum int32) float32 {
 	var value_0 int32 = maximum
 	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
 	var value_2 int32 = minimum
@@ -580,7 +580,7 @@ func Slider_SliderWholeRatio(value int32, minimum int32, maximum int32) float32 
 	return value_18
 }
 
-func Slider_SliderWholeValue(minimum int32, maximum int32, ratio float32) int32 {
+func Slider_SliderDiscreteValue(minimum int32, maximum int32, ratio float32) int32 {
 	var value_0 int32 = maximum
 	var value_1 int64 = int64(number_runtime_bits(uint64(value_0), uint64(0), 64, true, 0))
 	var value_2 int32 = minimum
@@ -609,8 +609,8 @@ func Slider_SliderWholeValue(minimum int32, maximum int32, ratio float32) int32 
 	return value_20
 }
 
-func Slider_SliderWholeKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderWholeStep {
-	var result SliderWholeStep = SliderWholeStep{}
+func Slider_SliderDiscreteKeyboardValue(value int32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) SliderDiscreteStep {
+	var result SliderDiscreteStep = SliderDiscreteStep{}
 	var value_0 int32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -625,7 +625,7 @@ func Slider_SliderWholeKeyboardValue(value int32, minimum int32, maximum int32, 
 	var value_8 int64 = 0
 	var value_9 bool = value_7 <= value_8
 	if value_9 {
-		var value_10 SliderWholeStep = result
+		var value_10 SliderDiscreteStep = result
 		return value_10
 	}
 	var value_11 int32 = value
@@ -716,7 +716,7 @@ func Slider_SliderWholeKeyboardValue(value int32, minimum int32, maximum int32, 
 	var value_64 int32 = value
 	var value_65 bool = value_63 != value_64
 	result.Changed = value_65
-	var value_66 SliderWholeStep = result
+	var value_66 SliderDiscreteStep = result
 	return value_66
 }
 

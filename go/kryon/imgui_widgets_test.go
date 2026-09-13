@@ -967,7 +967,7 @@ func TestScalarGestureCancelledWhenDisabled(t *testing.T) {
 	}
 }
 
-func TestNativeDragScalars(t *testing.T) {
+func TestNativeDragContinuouss(t *testing.T) {
 	r := New(AppConfig{Width: 640, Height: 480}).(*runtime)
 	floats := []float32{1, 2}
 	floatProps := dragFloatProps{Bounds: NewRectangle(10, 10, 200, 30), ID: 50, Label: "Position", Values: floats, ValueCount: 2, Speed: 0.1, Min: 0, Max: 10}
@@ -1034,7 +1034,7 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	r.BeginFrame()
 	r.dragFloat(drag)
 	r.EndFrame()
-	if r.numericInputs[numericInputKey{kind: numericEditDragScalar, widgetID: 520}].focused {
+	if r.numericInputs[numericInputKey{kind: numericEditDragContinuous, widgetID: 520}].focused {
 		t.Fatal("Enter did not finish drag keyboard entry")
 	}
 
@@ -1061,7 +1061,7 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	r.dragInt(dragIntProps{Bounds: NewRectangle(10, 100, 120, 30), ID: 522,
 		Values: disabled, ValueCount: 1, Min: 0, Max: 10, Disabled: true})
 	r.EndFrame()
-	state := r.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 522}]
+	state := r.numericInputs[numericInputKey{kind: numericEditDragDiscrete, widgetID: 522}]
 	if state != nil && state.focused {
 		t.Fatal("disabled drag accepted Ctrl-click keyboard entry")
 	}
@@ -1074,14 +1074,14 @@ func TestNumericDragAndSliderCtrlClickEditing(t *testing.T) {
 	doubleRuntime.BeginFrame()
 	doubleRuntime.dragInt(doubleDrag)
 	doubleRuntime.EndFrame()
-	if state := doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 523}]; state != nil {
+	if state := doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragDiscrete, widgetID: 523}]; state != nil {
 		t.Fatal("single click created a temporary drag editor")
 	}
 	doubleRuntime.QueueTap(40, 20)
 	doubleRuntime.BeginFrame()
 	doubleRuntime.dragInt(doubleDrag)
 	doubleRuntime.EndFrame()
-	state = doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragWhole, widgetID: 523}]
+	state = doubleRuntime.numericInputs[numericInputKey{kind: numericEditDragDiscrete, widgetID: 523}]
 	if state == nil || !state.focused {
 		t.Fatal("double-click did not open temporary drag editor")
 	}

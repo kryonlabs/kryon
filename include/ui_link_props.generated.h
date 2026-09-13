@@ -26,11 +26,8 @@ typedef struct LinkProps {
     int32_t class_name;
     const char* text;
     const char* link;
-    int32_t font;
     int32_t focus_id;
     bool disabled;
-    Color color;
-    Color hover_color;
 } LinkProps;
 
 #endif /* K_RUNTIME_LINK_PROPS_H */

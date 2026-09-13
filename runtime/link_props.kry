@@ -6,9 +6,6 @@ LinkProps :: struct {
     class_name: i32
     text: const char*
     link: const char*
-    font: i32
     focus_id: i32
     disabled: bool
-    color: Color
-    hover_color: Color
 }

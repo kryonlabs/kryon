@@ -1152,7 +1152,7 @@ func main() {
 	driver.SetFocus(925)
 	driver.QueueKey(kryon.KeyUp)
 	drawPlots()
-	if value := PlotsStateValue.PlotsSliderWholeValues[0]; value != 3 {
+	if value := PlotsStateValue.PlotsSliderDiscreteValues[0]; value != 3 {
 		panic(fmt.Sprintf("generated vertical int slider keyboard value=%d, want 3", value))
 	}
 	driver.QueueKey(kryon.KeyLeftControl)
@@ -1184,13 +1184,13 @@ func main() {
 	driver.QueueShortcut(kryon.KeyA)
 	driver.QueueText("19")
 	drawPlots()
-	if value := PlotsStateValue.PlotsSliderWholeValues[0]; value != 19 {
+	if value := PlotsStateValue.PlotsSliderDiscreteValues[0]; value != 19 {
 		panic(fmt.Sprintf("generated int slider temporary input=%d, want 19", value))
 	}
 	driver.SetFocus(0x60000008)
 	driver.QueueKey(kryon.KeySpace)
 	drawPlots()
-	if value := PlotsStateValue.PlotsInputWholeValues[0]; value != 5 {
+	if value := PlotsStateValue.PlotsInputDiscreteValues[0]; value != 5 {
 		panic(fmt.Sprintf("generated input step keyboard value=%d, want 5", value))
 	}
 	requireFrameOps("progress", map[kryon.FrameOpKind]int{
@@ -2295,9 +2295,9 @@ int main(void)
         return 1;
     }
     SetFocus(925); InjectKeyTap(KEY_UP); InjectPump(); draw_plots();
-    if(plots_slider_whole_values[0] != 3) {
+    if(plots_slider_discrete_values[0] != 3) {
         fprintf(stderr,"generated vertical int slider keyboard value=%d, want 3\n",
-                plots_slider_whole_values[0]);
+                plots_slider_discrete_values[0]);
         return 1;
     }
     InjectMousePosition(30,190); InjectKey(KEY_LEFT_CONTROL,1);
@@ -2338,9 +2338,9 @@ int main(void)
     InjectPump(); draw_plots();
     InjectKey(KEY_LEFT_CONTROL,0); InjectText("19");
     InjectPump(); draw_plots();
-    if(plots_slider_whole_values[0] != 19) {
+    if(plots_slider_discrete_values[0] != 19) {
         fprintf(stderr,"generated int slider temporary input=%d, want 19\n",
-                plots_slider_whole_values[0]);
+                plots_slider_discrete_values[0]);
         return 1;
     }
     SetFocus(0x60000008); InjectKeyTap(KEY_SPACE); InjectPump(); draw_plots();

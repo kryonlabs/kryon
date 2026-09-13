@@ -85,7 +85,7 @@ check_color(const char *name, Color got, Color want)
 }
 
 static int
-test_drag_scalar(DragScalarProps props)
+test_drag_continuous(DragContinuousProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -95,7 +95,7 @@ test_drag_scalar(DragScalarProps props)
 }
 
 static int
-test_drag_whole(DragWholeProps props)
+test_drag_discrete(DragDiscreteProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -105,7 +105,7 @@ test_drag_whole(DragWholeProps props)
 }
 
 static int
-test_drag_scalar_range(DragScalarRangeProps props)
+test_drag_continuous_range(DragContinuousRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat, .mode = DragRange,
@@ -116,7 +116,7 @@ test_drag_scalar_range(DragScalarRangeProps props)
 }
 
 static int
-test_drag_whole_range(DragWholeRangeProps props)
+test_drag_discrete_range(DragDiscreteRangeProps props)
 {
     return Drag((DragProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .mode = DragRange,
@@ -127,7 +127,7 @@ test_drag_whole_range(DragWholeRangeProps props)
 }
 
 static int
-test_slider_scalar(SliderScalarProps props)
+test_slider_continuous(SliderContinuousProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericFloat,
@@ -137,7 +137,7 @@ test_slider_scalar(SliderScalarProps props)
 }
 
 static int
-test_slider_whole(SliderWholeProps props)
+test_slider_discrete(SliderDiscreteProps props)
 {
     return Slider((SliderProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -146,7 +146,7 @@ test_slider_whole(SliderWholeProps props)
 }
 
 static int
-test_vslider_whole(SliderWholeProps props)
+test_vslider_discrete(SliderDiscreteProps props)
 {
     SliderProps slider = {.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -156,7 +156,7 @@ test_vslider_whole(SliderWholeProps props)
 }
 
 static int
-test_input_whole(InputWholeProps props)
+test_input_whole(InputDiscreteProps props)
 {
     return Input((InputProps){.bounds = props.bounds, .id = props.id,
         .label = props.label, .kind = NumericInt, .int_values = props.values,
@@ -802,7 +802,7 @@ static void
 test_slider_value_policy(void)
 {
     SliderStep float_step;
-    SliderWholeStep int_step;
+    SliderDiscreteStep int_step;
     SliderEditorLayout horizontal_layout;
     SliderEditorLayout vertical_layout;
     SliderTextPaint cell_paint;
@@ -813,8 +813,8 @@ test_slider_value_policy(void)
     check_float("slider clamp high", SliderClampRatio(1.5f), 1.0f);
     check_float("slider float ratio", SliderRatio(0.25f, 0.0f, 1.0f), 0.25f);
     check_float("slider float value clamps", SliderValue(0.0f, 1.0f, 1.25f), 1.0f);
-    check_float("slider int ratio", SliderWholeRatio(5, 0, 10), 0.5f);
-    check_int("slider int value rounds", SliderWholeValue(0, 10, 0.86f), 9);
+    check_float("slider int ratio", SliderDiscreteRatio(5, 0, 10), 0.5f);
+    check_int("slider int value rounds", SliderDiscreteValue(0, 10, 0.86f), 9);
 
     float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 1, 0, 0, 0, 0);
     check_int("slider float keyboard changed", float_step.changed ? 1 : 0, 1);
@@ -826,14 +826,14 @@ test_slider_value_policy(void)
     float_step = SliderKeyboardValue(0.25f, 0.0f, 1.0f, 0, 1, 0, 0, 0);
     check_float("slider float keyboard home", float_step.value, 0.0f);
 
-    int_step = SliderWholeKeyboardValue(5, 0, 10, 1, 0, 0, 0, 0);
+    int_step = SliderDiscreteKeyboardValue(5, 0, 10, 1, 0, 0, 0, 0);
     check_int("slider int keyboard changed", int_step.changed ? 1 : 0, 1);
     check_int("slider int keyboard value", int_step.value, 6);
-    int_step = SliderWholeKeyboardValue(50, 0, 1000, 1, 0, 0, 1, 0);
+    int_step = SliderDiscreteKeyboardValue(50, 0, 1000, 1, 0, 0, 1, 0);
     check_int("slider int keyboard slow", int_step.value, 51);
-    int_step = SliderWholeKeyboardValue(50, 0, 1000, 1, 0, 0, 0, 1);
+    int_step = SliderDiscreteKeyboardValue(50, 0, 1000, 1, 0, 0, 0, 1);
     check_int("slider int keyboard fast", int_step.value, 150);
-    int_step = SliderWholeKeyboardValue(5, 0, 10, 0, 0, 1, 0, 0);
+    int_step = SliderDiscreteKeyboardValue(5, 0, 10, 0, 0, 1, 0, 0);
     check_int("slider int keyboard end", int_step.value, 10);
 
     cell = SliderCellBoundsFor((Rectangle){10, 20, 120, 30}, 4, 2);
@@ -876,20 +876,20 @@ static void
 test_drag_value_policy(void)
 {
     DragStep float_step;
-    DragWholeStep int_step;
+    DragDiscreteStep int_step;
     DragTextPaint cell_paint;
     DragTextPaint label_paint;
     Rectangle cell;
 
     check_float("drag default speed", DragEffectiveSpeed(0.0f), 1.0f);
     check_float("drag float clamp", DragClamp(12.0f, 0.0f, 10.0f), 10.0f);
-    check_int("drag int clamp", DragWholeClamp(-2, 0, 10), 0);
+    check_int("drag int clamp", DragDiscreteClamp(-2, 0, 10), 0);
     check_int("drag int rounded positive",
-              DragWholeRoundedDelta(0.49f, 0), 0);
+              DragDiscreteRoundedDelta(0.49f, 0), 0);
     check_int("drag int forced positive",
-              DragWholeRoundedDelta(0.49f, 1), 1);
+              DragDiscreteRoundedDelta(0.49f, 1), 1);
     check_int("drag int rounded negative",
-              DragWholeRoundedDelta(-1.6f, 0), -2);
+              DragDiscreteRoundedDelta(-1.6f, 0), -2);
 
     float_step = DragKeyboardValue(2.0f, 0.25f, 0.0f, 10.0f,
                                         1, 0, 0, 0, 0);
@@ -901,13 +901,13 @@ test_drag_value_policy(void)
     float_step = DragDeltaValue(2.0f, 5.0f, 0.5f, 0.0f, 4.0f);
     check_float("drag float delta clamps", float_step.value, 4.0f);
 
-    int_step = DragWholeKeyboardValue(3, 0.25f, 0, 10, 1, 0, 0, 0, 0);
+    int_step = DragDiscreteKeyboardValue(3, 0.25f, 0, 10, 1, 0, 0, 0, 0);
     check_int("drag int keyboard minimum step", int_step.value, 4);
-    int_step = DragWholeKeyboardValue(3, 2.0f, 0, 10, 1, 0, 0, 0, 1);
+    int_step = DragDiscreteKeyboardValue(3, 2.0f, 0, 10, 1, 0, 0, 0, 1);
     check_int("drag int keyboard fast", int_step.value, 10);
-    int_step = DragWholeDeltaValue(3, 0.4f, 1.0f, 0, 10);
+    int_step = DragDiscreteDeltaValue(3, 0.4f, 1.0f, 0, 10);
     check_int("drag int small delta unchanged", int_step.changed ? 1 : 0, 0);
-    int_step = DragWholeDeltaValue(3, -2.0f, 1.0f, 0, 10);
+    int_step = DragDiscreteDeltaValue(3, -2.0f, 1.0f, 0, 10);
     check_int("drag int delta value", int_step.value, 1);
 
     cell = DragCellBoundsFor((Rectangle){10, 20, 120, 30}, 3, 1);
@@ -928,29 +928,29 @@ test_drag_value_policy(void)
 static void
 test_input_value_policy(void)
 {
-    InputScalarStep float_step;
-    InputWholeStep int_step;
+    InputContinuousStep float_step;
+    InputDiscreteStep int_step;
     InputStep double_step;
     InputCellLayout layout;
 
     check_float("input float effective step",
-                InputScalarEffectiveStep(0.1f, 1.0f, 0), 0.1f);
+                InputContinuousEffectiveStep(0.1f, 1.0f, 0), 0.1f);
     check_float("input float effective fast",
-                InputScalarEffectiveStep(0.1f, 1.0f, 1), 1.0f);
+                InputContinuousEffectiveStep(0.1f, 1.0f, 1), 1.0f);
     check_int("input int effective step",
-              InputWholeEffectiveStep(2, 10, 0), 2);
+              InputDiscreteEffectiveStep(2, 10, 0), 2);
     check_int("input int effective fast",
-              InputWholeEffectiveStep(2, 10, 1), 10);
+              InputDiscreteEffectiveStep(2, 10, 1), 10);
 
-    float_step = InputScalarStepValue(2.5f, 0.5f, 4.0f, 1, 0);
+    float_step = InputContinuousStepValue(2.5f, 0.5f, 4.0f, 1, 0);
     check_int("input float step changed", float_step.changed ? 1 : 0, 1);
     check_float("input float step value", float_step.value, 3.0f);
-    float_step = InputScalarStepValue(2.5f, 0.5f, 4.0f, -1, 1);
+    float_step = InputContinuousStepValue(2.5f, 0.5f, 4.0f, -1, 1);
     check_float("input float fast minus", float_step.value, -1.5f);
 
-    int_step = InputWholeStepValue(6, 2, 10, 1, 0);
+    int_step = InputDiscreteStepValue(6, 2, 10, 1, 0);
     check_int("input int step value", int_step.value, 8);
-    int_step = InputWholeStepValue(6, 2, 10, -1, 1);
+    int_step = InputDiscreteStepValue(6, 2, 10, -1, 1);
     check_int("input int fast minus", int_step.value, -4);
 
     double_step = InputStepValue(2.125, 0.125, 1.0, 1, 0);
@@ -980,11 +980,11 @@ test_slider_keyboard_navigation(void)
 {
     float floats[2] = {0.25f,0.75f};
     int ints[1] = {5};
-    SliderScalarProps horizontal = {
+    SliderContinuousProps horizontal = {
         .bounds = {10,10,200,30}, .id = 600, .values = floats,
         .value_count = 2, .min = 0.0f, .max = 1.0f
     };
-    SliderWholeProps vertical = {
+    SliderDiscreteProps vertical = {
         .bounds = {10,60,30,120}, .id = 601, .values = ints,
         .value_count = 1, .min = 0, .max = 10
     };
@@ -992,75 +992,75 @@ test_slider_keyboard_navigation(void)
     int inspect_enabled;
 
     InjectReset();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     inspect_enabled = InspectEnabled();
     SetInspectEnabled(0);
     InjectMousePosition(35,20);
     InjectMouseButton(MOUSE_BUTTON_LEFT,1);
     InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     check_int("click focuses slider component",GetFocus(),600);
     InjectMouseButton(MOUSE_BUTTON_LEFT,0);
     InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     SetInspectEnabled(inspect_enabled);
 
     InjectKeyTap(KEY_RIGHT); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
-    check_int("slider Right changed",test_slider_scalar(horizontal),1);
+    check_int("slider Right changed",test_slider_continuous(horizontal),1);
     EndInterfaceFrame();
     check_int("slider Right value",(int)(floats[0]*1000.0f+0.5f),260);
 
     InjectPump();
     InjectKey(KEY_LEFT_SHIFT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     check_int("slider Shift fast value",(int)(floats[0]*1000.0f+0.5f),360);
     InjectKey(KEY_LEFT_SHIFT,0); InjectPump();
     InjectKey(KEY_LEFT_ALT,1); InjectKeyTap(KEY_RIGHT); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     check_int("slider Alt slow value",(int)(floats[0]*1000.0f+0.5f),361);
     InjectKey(KEY_LEFT_ALT,0); InjectPump();
 
     InjectKeyTap(KEY_TAB); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_slider_scalar(horizontal); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_slider_continuous(horizontal); EndInterfaceFrame();
     second_focus = GetFocus();
     check_int("slider Tab reaches second component",second_focus != 600,1);
     InjectKeyTap(KEY_LEFT); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
-    check_int("second slider component changed",test_slider_scalar(horizontal),1);
+    check_int("second slider component changed",test_slider_continuous(horizontal),1);
     EndInterfaceFrame();
     check_int("second slider component value",
               (int)(floats[1]*1000.0f+0.5f),740);
 
     SetFocus(601); InjectKeyTap(KEY_UP); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
-    check_int("vertical slider Up changed",test_vslider_whole(vertical),1);
+    check_int("vertical slider Up changed",test_vslider_discrete(vertical),1);
     EndInterfaceFrame();
     check_int("vertical slider Up value",ints[0],6);
     InjectKeyTap(KEY_DOWN); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_discrete(vertical); EndInterfaceFrame();
     check_int("vertical slider Down value",ints[0],5);
     InjectKeyTap(KEY_HOME); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_discrete(vertical); EndInterfaceFrame();
     check_int("vertical slider Home value",ints[0],0);
     InjectKeyTap(KEY_END); InjectPump();
-    BeginInterfaceFrame(640,480,1.0f); test_vslider_whole(vertical); EndInterfaceFrame();
+    BeginInterfaceFrame(640,480,1.0f); test_vslider_discrete(vertical); EndInterfaceFrame();
     check_int("vertical slider End value",ints[0],10);
 
     vertical.disabled = 1;
     SetFocus(601); InjectKeyTap(KEY_DOWN); InjectPump();
     BeginInterfaceFrame(640,480,1.0f);
-    check_int("disabled slider unchanged",test_vslider_whole(vertical),0);
+    check_int("disabled slider unchanged",test_vslider_discrete(vertical),0);
     EndInterfaceFrame();
     check_int("disabled slider value",ints[0],10);
 }
 
 static void
-draw_drag_keyboard(DragScalarProps floats, DragWholeProps ints)
+draw_drag_keyboard(DragContinuousProps floats, DragDiscreteProps ints)
 {
     BeginInterfaceFrame(480,240,1);
-    (void)test_drag_scalar(floats);
-    (void)test_drag_whole(ints);
+    (void)test_drag_continuous(floats);
+    (void)test_drag_discrete(ints);
     EndInterfaceFrame();
 }
 
@@ -1069,9 +1069,9 @@ test_drag_keyboard_navigation(void)
 {
     float floats[] = {2.0f,5.0f};
     int ints[] = {2,5};
-    DragScalarProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
+    DragContinuousProps fp = {.bounds={10,10,200,30},.id=630,.values=floats,
         .value_count=2,.speed=0.25f,.min=0,.max=10};
-    DragWholeProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
+    DragDiscreteProps ip = {.bounds={10,50,200,30},.id=631,.values=ints,
         .value_count=2,.speed=2,.min=0,.max=10};
 
     InjectReset(); draw_drag_keyboard(fp,ip);
@@ -1096,41 +1096,41 @@ test_drag_keyboard_navigation(void)
     {
         float fmin=2.0f, fmax=8.0f;
         int imin=2, imax=8;
-        DragScalarRangeProps fr = {.bounds={240,10,200,30},.id=632,
+        DragContinuousRangeProps fr = {.bounds={240,10,200,30},.id=632,
             .current_min=&fmin,.current_max=&fmax,.speed=1,.min=0,.max=10};
-        DragWholeRangeProps ir = {.bounds={240,50,200,30},.id=633,
+        DragDiscreteRangeProps ir = {.bounds={240,50,200,30},.id=633,
             .current_min=&imin,.current_max=&imax,.speed=2,.min=0,.max=10};
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag float range min",(int)fmin,3);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag float range Tab",GetFocus(),ui_numeric_focus_id(632,1,0));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag float range max",(int)fmax,7);
         SetFocus(633); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range min",imin,4);
         InjectKeyTap(KEY_TAB); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range Tab",GetFocus(),ui_numeric_focus_id(633,1,1));
         InjectKeyTap(KEY_LEFT); InjectPump();
-        BeginInterfaceFrame(480,240,1); test_drag_scalar_range(fr); test_drag_whole_range(ir); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); test_drag_continuous_range(fr); test_drag_discrete_range(ir); EndInterfaceFrame();
         check_int("drag int range max",imax,6);
         SetFocus(632); InjectKeyTap(KEY_RIGHT); InjectPump();
-        BeginInterfaceFrame(480,240,1); BeginDisabled(1); test_drag_scalar_range(fr); EndDisabled(); EndInterfaceFrame();
+        BeginInterfaceFrame(480,240,1); BeginDisabled(1); test_drag_continuous_range(fr); EndDisabled(); EndInterfaceFrame();
         check_int("disabled drag range",(int)fmin,3);
     }
 }
 
 static void
-draw_numeric_temporary_inputs(DragScalarProps drag, SliderWholeProps slider)
+draw_numeric_temporary_inputs(DragContinuousProps drag, SliderDiscreteProps slider)
 {
     BeginInterfaceFrame(320,160,1);
-    (void)test_drag_scalar(drag);
-    (void)test_slider_whole(slider);
+    (void)test_drag_continuous(drag);
+    (void)test_slider_discrete(slider);
     EndInterfaceFrame();
 }
 
@@ -1139,9 +1139,9 @@ test_numeric_ctrl_click_editing(void)
 {
     float drag_value = 1.25f;
     int slider_value = 4;
-    DragScalarProps drag = {.bounds={10,10,140,30},.id=634,
+    DragContinuousProps drag = {.bounds={10,10,140,30},.id=634,
         .values=&drag_value,.value_count=1,.speed=0.1f,.min=0,.max=10};
-    SliderWholeProps slider = {.bounds={10,60,140,30},.id=635,
+    SliderDiscreteProps slider = {.bounds={10,60,140,30},.id=635,
         .values=&slider_value,.value_count=1,.min=0,.max=10};
 
     InjectReset();
@@ -1377,22 +1377,22 @@ test_step_button_keyboard_navigation(void)
     int input = 4;
     SpinboxProps spin = {.bounds={10,10,120,30},.id=635,.min=0,.max=5,
         .step=1,.value=&value};
-    InputWholeProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
+    InputDiscreteProps field = {.bounds={10,50,160,30},.id=636,.values=&input,
         .value_count=1,.step=2,.step_fast=10};
 
     InjectReset();
-    BeginInterfaceFrame(240,140,1); RenderSpinbox(spin); RenderInputWhole(field); EndInterfaceFrame();
+    BeginInterfaceFrame(240,140,1); RenderSpinbox(spin); RenderInputDiscrete(field); EndInterfaceFrame();
     SetFocus(spin.id * 10 + 2); InjectKeyTap(KEY_ENTER); InjectPump();
     BeginInterfaceFrame(240,140,1);
     check_int("spinbox keyboard changed",RenderSpinbox(spin),1);
-    RenderInputWhole(field); EndInterfaceFrame();
+    RenderInputDiscrete(field); EndInterfaceFrame();
     check_int("spinbox keyboard increment",value,3);
 
     {
         UINumericInputState *state = ui_numeric_input_state(1,field.id,0);
         SetFocus(state->token + 2); InjectKeyTap(KEY_SPACE); InjectPump();
         BeginInterfaceFrame(240,140,1); RenderSpinbox(spin);
-        check_int("numeric step keyboard changed",RenderInputWhole(field),1);
+        check_int("numeric step keyboard changed",RenderInputDiscrete(field),1);
         EndInterfaceFrame();
         check_int("numeric step keyboard increment",input,6);
     }
@@ -1983,8 +1983,8 @@ test_disabled_scalar_cancels_gesture(void)
         for(int scope = 0; scope < 2; scope++) {
             float value = 25.0f;
             float before = value;
-            DragScalarProps drag = {0};
-            SliderScalarProps slide = {0};
+            DragContinuousProps drag = {0};
+            SliderContinuousProps slide = {0};
             drag.bounds = slide.bounds = (Rectangle){10, 10, 100, 24};
             drag.id = 982;
             slide.id = 981;
@@ -2005,9 +2005,9 @@ test_disabled_scalar_cancels_gesture(void)
                     BeginDisabled(step == 1);
                 drag.disabled = slide.disabled = !scope && step == 1;
                 if(slider)
-                    (void)test_slider_scalar(slide);
+                    (void)test_slider_continuous(slide);
                 else
-                    (void)test_drag_scalar(drag);
+                    (void)test_drag_continuous(drag);
                 if(scope)
                     EndDisabled();
                 EndInterfaceFrame();
@@ -2612,7 +2612,7 @@ test_popup_drag_keyboard_ownership(void)
             context,1,(Rectangle){190,190,20,20});
         if(!inside) ui_popup_input_end(child);
         SetFocus(25707);
-        int changed = test_drag_scalar((DragScalarProps){
+        int changed = test_drag_continuous((DragContinuousProps){
             .bounds={10,10,120,28},.id=25707,.values=&value,.value_count=1,
             .speed=1,.min=0,.max=10
         });
@@ -3252,11 +3252,11 @@ test_popup_active_drag_ownership(void)
     float background_value = 10.0f;
     float slider_value = 0.0f;
     int split = 50;
-    DragScalarProps drag = {.bounds={30,30,80,24},.id=401,
+    DragContinuousProps drag = {.bounds={30,30,80,24},.id=401,
         .values=&drag_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
-    SliderScalarProps slider = {.bounds={30,30,80,24},.id=411,
+    SliderContinuousProps slider = {.bounds={30,30,80,24},.id=411,
         .values=&slider_value,.value_count=1,.min=0,.max=100};
-    DragScalarProps background_drag = {.bounds={30,30,80,24},.id=391,
+    DragContinuousProps background_drag = {.bounds={30,30,80,24},.id=391,
         .values=&background_value,.value_count=1,.speed=1.0f,.min=0,.max=500};
     const char *columns[] = {"A","B"};
     const char *cells[] = {"a","b"};
@@ -3285,7 +3285,7 @@ test_popup_active_drag_ownership(void)
     BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)test_drag_scalar(background_drag);
+    (void)test_drag_continuous(background_drag);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -3297,7 +3297,7 @@ test_popup_active_drag_ownership(void)
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,390,(Rectangle){20,20,120,100});
     ui_popup_input_end(owner);
-    check_int("new popup cancels background drag",test_drag_scalar(background_drag),0);
+    check_int("new popup cancels background drag",test_drag_continuous(background_drag),0);
     check_int("new popup blocks background drag mutation",(int)background_value,10);
     ui_popup_input_close(context,390);
     ui_popup_input_finish(context);
@@ -3314,7 +3314,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    (void)test_drag_scalar(drag);
+    (void)test_drag_continuous(drag);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3326,7 +3326,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,400,(Rectangle){20,20,120,100});
-    check_int("popup drag continues outside bounds",test_drag_scalar(drag),1);
+    check_int("popup drag continues outside bounds",test_drag_continuous(drag),1);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3338,7 +3338,7 @@ test_popup_active_drag_ownership(void)
     BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    check_int("missing popup cancels active drag",test_drag_scalar(drag),0);
+    check_int("missing popup cancels active drag",test_drag_continuous(drag),0);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -3353,7 +3353,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)test_slider_scalar(slider);
+    (void)test_slider_continuous(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3365,7 +3365,7 @@ test_popup_active_drag_ownership(void)
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
     owner = ui_popup_input_begin(context,410,(Rectangle){20,20,120,100});
-    (void)test_slider_scalar(slider);
+    (void)test_slider_continuous(slider);
     ui_popup_input_end(owner);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
@@ -3377,7 +3377,7 @@ test_popup_active_drag_ownership(void)
     BeginInterfaceFrame(300,200,1);
     ui_popup_input_frame(context);
     previous = ui_popup_input_bind(context);
-    (void)test_slider_scalar(slider);
+    (void)test_slider_continuous(slider);
     ui_popup_input_finish(context);
     ui_popup_input_bind(previous);
     EndInterfaceFrame();
@@ -4608,7 +4608,7 @@ main(void)
         BeginInterfaceFrame(220,120,1);
         BeginTree(Key("numeric origin layout"));
         Row((RowProps){.bounds = {0,0,220,24}});
-        test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 872,
+        test_input_whole((InputDiscreteProps){.bounds = {0,0,120,24}, .id = 872,
             .values = &value, .value_count = 1, .step = 1});
         Button((ButtonProps){.bounds = {0,0,40,24}, .id = 873, .label = "next"});
         End();
@@ -4648,7 +4648,7 @@ main(void)
             BeginTree(Key("numeric typing"));
             Row((RowProps){.bounds = {20,30,120,24}});
             BeginDisabled(frame == 2);
-            int changed = test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 871,
+            int changed = test_input_whole((InputDiscreteProps){.bounds = {0,0,120,24}, .id = 871,
                 .values = &value, .value_count = 1});
             check_int("numeric typing returns during declaration", changed, frame == 1);
             EndDisabled();
@@ -4673,7 +4673,7 @@ main(void)
                 BeginTree(Key("numeric steps"));
                 Row((RowProps){.bounds = {20,30,120,24}});
                 BeginDisabled(scenario == 3);
-                test_input_whole((InputWholeProps){.bounds = {0,0,120,24}, .id = 870,
+                test_input_whole((InputDiscreteProps){.bounds = {0,0,120,24}, .id = 870,
                     .values = &value, .value_count = 1, .step = 2, .step_fast = 5});
                 EndDisabled();
                 End();

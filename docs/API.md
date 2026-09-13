@@ -439,7 +439,8 @@ Heading((HeadingProps){
     .level = 1,
     .key = Key("hero-heading")
 });
-Link((LinkProps){{40, 96, 160, 28}, "Docs", "/docs", Text16, 101, 0, GetThemeLink(), {0}});
+Link((LinkProps){.bounds = {40, 96, 160, 28}, .text = "Docs", .link = "/docs",
+    .focus_id = 101});
 End();
 ```
 
@@ -1362,17 +1363,14 @@ typedef struct {
     Rectangle bounds;
     const char *text;
     const char *link;
-    int font;
     int focus_id;
     int disabled;
-    Color color;
-    Color hover_color;
 } LinkProps;
 ```
 
 #### `Link`
 
-Draw and handle a text link using the current theme link color by default.
+Draw and handle a text link using the KSS-resolved `Link` foreground and font.
 
 ```c
 int Link(LinkProps link);

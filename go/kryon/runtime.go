@@ -833,10 +833,10 @@ type numericInputState struct {
 }
 
 const (
-	numericEditDragScalar int32 = 3 + iota
-	numericEditDragWhole
-	numericEditSliderScalar
-	numericEditSliderWhole
+	numericEditDragContinuous int32 = 3 + iota
+	numericEditDragDiscrete
+	numericEditSliderContinuous
+	numericEditSliderDiscrete
 )
 
 type dragDropState struct {
@@ -2789,7 +2789,7 @@ func (r *runtime) dragIntKeyboard(focusID int32, speed float32, minimum, maximum
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(false, event.key)
-			step := Drag_DragWholeKeyboardValue(next, speed, minimum, maximum,
+			step := Drag_DragDiscreteKeyboardValue(next, speed, minimum, maximum,
 				direction, event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
@@ -2824,7 +2824,7 @@ func (r *runtime) dragFloat(props dragFloatProps) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempFloat(cell,
-			numericInputKey{kind: numericEditDragScalar, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditDragContinuous, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
@@ -2871,7 +2871,7 @@ func (r *runtime) dragInt(props dragIntProps) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempInt(cell,
-			numericInputKey{kind: numericEditDragWhole, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditDragDiscrete, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
@@ -2884,7 +2884,7 @@ func (r *runtime) dragInt(props dragIntProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			step := Drag_DragWholeDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
+			step := Drag_DragDiscreteDeltaValue(props.Values[i], delta, speed, props.Min, props.Max)
 			changed = changed || step.Changed
 			props.Values[i] = step.Value
 		}
@@ -2976,7 +2976,7 @@ func (r *runtime) dragIntRange(props dragIntRangeProps) bool {
 			}
 		}
 		if delta, dragged := r.dragDelta(props.ID*16+int32(i)+1, focusID, cell, props.Disabled); dragged {
-			step := Drag_DragWholeDeltaValue(*values[i], delta, speed, low, high)
+			step := Drag_DragDiscreteDeltaValue(*values[i], delta, speed, low, high)
 			changed = changed || step.Changed
 			*values[i] = step.Value
 		}
@@ -3299,7 +3299,7 @@ func (r *runtime) sliderIntKeyboard(focusID int32, vertical bool, minimum, maxim
 		handled := false
 		if !event.shortcut {
 			direction := r.sliderKeyboardDirection(vertical, event.key)
-			step := Slider_SliderWholeKeyboardValue(next, minimum, maximum,
+			step := Slider_SliderDiscreteKeyboardValue(next, minimum, maximum,
 				direction, event.key == KeyHome, event.key == KeyEnd,
 				r.keyDown[KeyLeftAlt] || r.keyDown[KeyRightAlt],
 				event.shift || r.keyDown[KeyLeftShift] || r.keyDown[KeyRightShift])
@@ -3382,7 +3382,7 @@ func (r *runtime) sliderFloat(props sliderFloatProps, vertical bool) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempFloat(cell,
-			numericInputKey{kind: numericEditSliderScalar, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditSliderContinuous, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
@@ -3431,23 +3431,23 @@ func (r *runtime) sliderInt(props sliderIntProps, vertical bool) bool {
 			r.registerField(focusID)
 		}
 		edited, editing := r.numericTempInt(cell,
-			numericInputKey{kind: numericEditSliderWhole, widgetID: props.ID, component: int32(i)},
+			numericInputKey{kind: numericEditSliderDiscrete, widgetID: props.ID, component: int32(i)},
 			focusID, props.Values, i, props.Format, props.Disabled)
 		changed = changed || edited
 		if editing {
 			continue
 		}
-		ratio := Slider_SliderWholeRatio(props.Values[i], props.Min, props.Max)
+		ratio := Slider_SliderDiscreteRatio(props.Values[i], props.Min, props.Max)
 		if enabled {
 			if next, keyboardChanged := r.sliderIntKeyboard(focusID, vertical, props.Min, props.Max, props.Values[i]); keyboardChanged {
 				props.Values[i] = next
-				ratio = Slider_SliderWholeRatio(next, props.Min, props.Max)
+				ratio = Slider_SliderDiscreteRatio(next, props.Min, props.Max)
 				changed = true
 			}
 		}
 		if next, active := r.sliderRatio(0x50000000^(props.ID*16+int32(i)+1), focusID, cell, props.Disabled, vertical); active && props.Max > props.Min {
 			ratio = next
-			value := Slider_SliderWholeValue(props.Min, props.Max, ratio)
+			value := Slider_SliderDiscreteValue(props.Min, props.Max, ratio)
 			changed = changed || value != props.Values[i]
 			props.Values[i] = value
 		}
@@ -3629,7 +3629,7 @@ func (r *runtime) inputFloat(props inputFloatProps) bool {
 			}
 		}
 		if direction != 0 {
-			step := Input_InputScalarStepValue(value, props.Step, props.StepFast, direction, fast)
+			step := Input_InputContinuousStepValue(value, props.Step, props.StepFast, direction, fast)
 			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
@@ -3665,7 +3665,7 @@ func (r *runtime) inputInt(props inputIntProps) bool {
 			}
 		}
 		if direction != 0 {
-			step := Input_InputWholeStepValue(value, props.Step, props.StepFast, direction, fast)
+			step := Input_InputDiscreteStepValue(value, props.Step, props.StepFast, direction, fast)
 			value, valid = step.Value, true
 			r.setNumericInputText(key, fmt.Sprintf(format, value))
 		}
@@ -4325,9 +4325,6 @@ func (r *runtime) Link(props LinkProps) bool {
 		props.ClassName, StyleSheet_StyleKindLink(), StyleSheet_StyleAny())
 	linkStyle := unpackStyle(frame.Value)
 	font, fontID := styleTextFace(linkStyle, Text16)
-	if props.Font > 0 {
-		font = props.Font
-	}
 	bounds := r.layoutRect(props.Bounds)
 	if bounds.Width <= 0 {
 		bounds.Width = float32(runtimeTextWidthWithFont(props.Text, font, fontID))
@@ -4338,9 +4335,6 @@ func (r *runtime) Link(props LinkProps) bool {
 	pressed := false
 	if !props.Disabled {
 		pressed = r.consumeTap(bounds)
-	}
-	if !props.Disabled && props.Color.A != 0 {
-		frame.Value.Foreground = packRGBA(props.Color)
 	}
 	appearance := Link_ResolveLinkAppearance(frame, false, props.Disabled)
 	color := unpackRGBA(appearance.Color)

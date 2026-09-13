@@ -2336,10 +2336,9 @@ RenderLink(LinkProps link)
                                               link.disabled ? ButtonStateDisabled : ButtonStateNormal,
                                               0, 0.0f, 0.0f, 0.0f,
                                               StyleKindLink());
-    font = link.font > 0 ? link.font :
-        (style_frame.value.font_size > 0.0f
-            ? (int)(style_frame.value.font_size + 0.5f)
-            : GetFontSize());
+    font = style_frame.value.font_size > 0.0f
+        ? (int)(style_frame.value.font_size + 0.5f)
+        : GetFontSize();
     text_w = TextWidth(text, font);
 
     if(bounds.width <= 0)
@@ -2370,10 +2369,6 @@ RenderLink(LinkProps link)
         state = ButtonStateHover;
     style_frame = ui_control_style_frame_kind(style_props, state, 0, 0.0f,
                                               0.0f, 0.0f, StyleKindLink());
-    if(!link.disabled && hovered && link.hover_color.a != 0)
-        style_frame.value.foreground = (uint32_t)ColorToInt(link.hover_color);
-    else if(!link.disabled && link.color.a != 0)
-        style_frame.value.foreground = (uint32_t)ColorToInt(link.color);
     appearance = ResolveLinkAppearance(style_frame, hovered != 0,
                                        link.disabled != 0);
     color = Fade(GetColor(appearance.color), style_frame.value.opacity);

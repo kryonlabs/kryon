@@ -6,7 +6,7 @@ DragStep :: struct {
     changed: bool
 }
 
-DragWholeStep :: struct {
+DragDiscreteStep :: struct {
     value: i32
     changed: bool
 }
@@ -57,7 +57,7 @@ DragClamp :: (value: float, minimum: float, maximum: float) -> float #export {
     return value
 }
 
-DragWholeClamp :: (value: i32, minimum: i32, maximum: i32) -> i32 #export {
+DragDiscreteClamp :: (value: i32, minimum: i32, maximum: i32) -> i32 #export {
     if minimum < maximum {
         if value < minimum { return minimum }
         if value > maximum { return maximum }
@@ -65,7 +65,7 @@ DragWholeClamp :: (value: i32, minimum: i32, maximum: i32) -> i32 #export {
     return value
 }
 
-DragWholeRoundedDelta :: (scaled: float, force_minimum_step: bool) -> i32 #export {
+DragDiscreteRoundedDelta :: (scaled: float, force_minimum_step: bool) -> i32 #export {
     step: i32 = (i32)(scaled + (scaled < 0.0 ? -0.5 : 0.5))
     if force_minimum_step && step == 0 {
         if scaled < 0.0 { return -1 }
@@ -96,10 +96,10 @@ DragKeyboardValue :: (value: float, speed: float, minimum: float,
     return result
 }
 
-DragWholeKeyboardValue :: (value: i32, speed: float, minimum: i32,
+DragDiscreteKeyboardValue :: (value: i32, speed: float, minimum: i32,
     maximum: i32, direction: i32, home: bool, end: bool, alt: bool,
-    shift: bool) -> DragWholeStep #export {
-    result: DragWholeStep
+    shift: bool) -> DragDiscreteStep #export {
+    result: DragDiscreteStep
     result.value = value
     result.changed = false
     next: i32 = value
@@ -111,7 +111,7 @@ DragWholeKeyboardValue :: (value: i32, speed: float, minimum: i32,
         scaled: float = DragEffectiveSpeed(speed)
         if alt { scaled = scaled * 0.1 }
         if shift { scaled = scaled * 10.0 }
-        next = DragWholeClamp(next + direction * DragWholeRoundedDelta(scaled, true),
+        next = DragDiscreteClamp(next + direction * DragDiscreteRoundedDelta(scaled, true),
             minimum, maximum)
     }
     result.value = next
@@ -128,11 +128,11 @@ DragDeltaValue :: (value: float, delta: float, speed: float,
     return result
 }
 
-DragWholeDeltaValue :: (value: i32, delta: float, speed: float,
-    minimum: i32, maximum: i32) -> DragWholeStep #export {
-    result: DragWholeStep
+DragDiscreteDeltaValue :: (value: i32, delta: float, speed: float,
+    minimum: i32, maximum: i32) -> DragDiscreteStep #export {
+    result: DragDiscreteStep
     scaled: float = delta * DragEffectiveSpeed(speed)
-    result.value = DragWholeClamp(value + DragWholeRoundedDelta(scaled, false),
+    result.value = DragDiscreteClamp(value + DragDiscreteRoundedDelta(scaled, false),
         minimum, maximum)
     result.changed = result.value != value
     return result

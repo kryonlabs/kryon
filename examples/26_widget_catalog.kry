@@ -203,7 +203,7 @@ WidgetCatalogExample :: (viewport: Rectangle) #ui {
         if Button((ButtonProps){.bounds = {x + Scale(154), y + Scale(38), Scale(34), Scale(34)}, .icon_type = 1, .icon_only = true, .id = 102}) {
             action_count += 1
         }
-        Link((LinkProps){.bounds = {x + Scale(204), y + Scale(40), Scale(100), Scale(30)}, .text = "Kryon Labs", .link = "https://kryonlabs.com", .font = Text16, .focus_id = 103, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+        Link((LinkProps){.bounds = {x + Scale(204), y + Scale(40), Scale(100), Scale(30)}, .text = "Kryon Labs", .link = "https://kryonlabs.com", .focus_id = 103})
         TextField((TextFieldProps){.bounds = {right, y + Scale(38), Scale(260), Scale(34)}, .text = text_value, .text_size = sizeof(text_value), .cursor_position = &text_cursor, .focused = &text_focused, .max_codepoints = 63, .font = Text16, .focus_id = 104})
         TextArea((TextAreaProps){.bounds = {right, y + Scale(86), Scale(300), Scale(76)}, .text = area_value, .text_size = sizeof(area_value), .cursor_position = &area_cursor, .focused = &area_focused, .scroll_y = &area_scroll, .max_codepoints = 127, .font = Text16, .line_gap = Scale(4), .focus_id = 105, .placeholder = "Notes", .syntax = SyntaxNone})
 

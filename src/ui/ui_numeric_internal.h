@@ -15,7 +15,7 @@ typedef struct {
     float max;
     const char *format;
     int disabled;
-} DragScalarProps;
+} DragContinuousProps;
 
 typedef struct {
     Rectangle bounds;
@@ -29,7 +29,7 @@ typedef struct {
     int max;
     const char *format;
     int disabled;
-} DragWholeProps;
+} DragDiscreteProps;
 
 typedef struct {
     Rectangle bounds;
@@ -44,7 +44,7 @@ typedef struct {
     const char *format;
     const char *format_max;
     int disabled;
-} DragScalarRangeProps;
+} DragContinuousRangeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -59,7 +59,7 @@ typedef struct {
     const char *format;
     const char *format_max;
     int disabled;
-} DragWholeRangeProps;
+} DragDiscreteRangeProps;
 
 typedef struct {
     Rectangle bounds;
@@ -72,7 +72,7 @@ typedef struct {
     const char *format;
     int disabled;
     int class_name;
-} SliderScalarProps;
+} SliderContinuousProps;
 
 typedef struct {
     Rectangle bounds;
@@ -85,7 +85,7 @@ typedef struct {
     const char *format;
     int disabled;
     int class_name;
-} SliderWholeProps;
+} SliderDiscreteProps;
 
 typedef struct {
     Rectangle bounds;
@@ -109,7 +109,7 @@ typedef struct {
     float step_fast;
     const char *format;
     int disabled;
-} InputScalarProps;
+} InputContinuousProps;
 
 typedef struct {
     Rectangle bounds;
@@ -121,7 +121,7 @@ typedef struct {
     int step_fast;
     const char *format;
     int disabled;
-} InputWholeProps;
+} InputDiscreteProps;
 
 typedef struct {
     Rectangle bounds;

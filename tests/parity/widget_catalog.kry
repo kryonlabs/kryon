@@ -60,7 +60,7 @@ WidgetCatalog :: (viewport: Rectangle) #ui {
                 gap = Scale(6)
                 Button((ButtonProps){.bounds = {Scale(32), Scale(128), Scale(96), Scale(32)}, .label = "Button", .id = 20})
                 Button((ButtonProps){.bounds = {Scale(136), Scale(128), Scale(32), Scale(32)}, .icon_type = 1, .icon_only = true, .id = 21})
-                Link((LinkProps){.bounds = {Scale(176), Scale(130), Scale(80), Scale(28)}, .text = "Docs", .link = "https://kryonlabs.com", .font = Text16, .focus_id = 22, .color = GetThemeLink(), .hover_color = GetThemeLink()})
+                Link((LinkProps){.bounds = {Scale(176), Scale(130), Scale(80), Scale(28)}, .text = "Docs", .link = "https://kryonlabs.com", .focus_id = 22})
             }
             Stack surface_stack: {
                 bounds = {Scale(32), Scale(170), Scale(230), Scale(60)}

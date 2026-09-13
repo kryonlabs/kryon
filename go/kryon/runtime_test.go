@@ -2449,11 +2449,11 @@ PlotMark { background: mark; foreground: ink; border: mark; material: flat; }
 	}
 }
 
-func TestDragScalarPaintUsesStyleSheet(t *testing.T) {
+func TestDragContinuousPaintUsesStyleSheet(t *testing.T) {
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`
-@pack test.drag_scalar;
+@pack test.drag_continuous;
 tokens {
   color {
     surface: #101820;
@@ -2477,7 +2477,7 @@ Drag { foreground: label; font-size: 15; opacity: 0.69; }
 DragValue { background: field; foreground: ink; border: rule; focus: focus-ring; radius: radius; border-width: border; font-size: 17; material: flat; }
 DragValue:focus { background: field-focus; foreground: ink; border: focus-ring; focus: focus-ring; material: flat; }
 DragValue:disabled { background: field-disabled; foreground: disabled-ink; border: disabled-rule; opacity: 0.55; }
-`, "Test Drag Scalar", "") || !SetActiveStylePack("test.drag_scalar") {
+`, "Test Drag Continuous", "") || !SetActiveStylePack("test.drag_continuous") {
 		t.Fatal("test drag scalar style did not activate")
 	}
 	rt := New(AppConfig{Width: 240, Height: 120}).(*runtime)

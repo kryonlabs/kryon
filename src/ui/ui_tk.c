@@ -209,7 +209,7 @@ typedef struct UIDragDropState {
     unsigned char data[UI_DRAG_DROP_DATA_MAX];
     int data_size;
 } UIDragDropState;
-static int ui_slider_scalar(SliderScalarProps slider, int vertical);
+static int ui_slider_continuous(SliderContinuousProps slider, int vertical);
 typedef struct UIMenuOverlayState {
     int active;
     int bar_id;
@@ -1015,7 +1015,7 @@ ui_color_edit(ColorPickerProps edit, int channels)
 {
     if(edit.values == NULL || edit.value_count < channels)
         return 0;
-    return ui_slider_scalar((SliderScalarProps){edit.bounds, edit.id,
+    return ui_slider_continuous((SliderContinuousProps){edit.bounds, edit.id,
                                                edit.label, edit.values, channels,
                                                0.0f, 1.0f, "%.3f",
                                                edit.disabled, edit.class_name}, 0);
@@ -1046,12 +1046,12 @@ ui_color_picker_float(ColorPickerProps picker, int channels)
     for(int i = 0; i < channels; i++) {
         Rectangle row = ColorPickerChannelBounds(picker.bounds, i, channels,
                                                  scale);
-        SliderScalarProps channel = {
+        SliderContinuousProps channel = {
             row,
             picker.id * 8 + i + 1, labels[i], &picker.values[i], 1,
             0.0f, 1.0f, "%.3f", picker.disabled, picker.class_name
         };
-        changed |= ui_slider_scalar(channel, 0);
+        changed |= ui_slider_continuous(channel, 0);
     }
     if(IsWindowReady()) {
         ColorPickerSwatchPaint paint;
@@ -2272,7 +2272,7 @@ ui_drag_delta(int token, int focus_id, Rectangle bounds, int disabled,
 }
 
 static int
-ui_update_drag_scalar_keyboard(int focus_id, float speed, float minimum,
+ui_update_drag_continuous_keyboard(int focus_id, float speed, float minimum,
                               float maximum, float *value)
 {
     int direction;
@@ -2292,17 +2292,17 @@ ui_update_drag_scalar_keyboard(int focus_id, float speed, float minimum,
 }
 
 static int
-ui_update_drag_whole_keyboard(int focus_id, float speed, int minimum,
+ui_update_drag_discrete_keyboard(int focus_id, float speed, int minimum,
                             int maximum, int *value)
 {
     int direction;
-    DragWholeStep step;
+    DragDiscreteStep step;
 
     if(focus_id <= 0 || !IsFocusActive(focus_id) ||
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(0);
-    step = DragWholeKeyboardValue(*value, speed, minimum, maximum, direction,
+    step = DragDiscreteKeyboardValue(*value, speed, minimum, maximum, direction,
         IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
@@ -2312,7 +2312,7 @@ ui_update_drag_whole_keyboard(int focus_id, float speed, int minimum,
 }
 
 int
-ui_update_drag_scalar(DragScalarProps drag)
+ui_update_drag_continuous(DragContinuousProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
@@ -2332,7 +2332,7 @@ ui_update_drag_scalar(DragScalarProps drag)
             drag.disabled, 0, &editing);
         if(editing)
             continue;
-        if(enabled && ui_update_drag_scalar_keyboard(focus_id,speed,
+        if(enabled && ui_update_drag_continuous_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
         if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
@@ -2351,7 +2351,7 @@ ui_update_drag_scalar(DragScalarProps drag)
 }
 
 int
-ui_update_drag_whole(DragWholeProps drag)
+ui_update_drag_discrete(DragDiscreteProps drag)
 {
     int count = drag.value_count;
     int changed = 0;
@@ -2371,13 +2371,13 @@ ui_update_drag_whole(DragWholeProps drag)
             drag.disabled, 1, &editing);
         if(editing)
             continue;
-        if(enabled && ui_update_drag_whole_keyboard(focus_id,speed,
+        if(enabled && ui_update_drag_discrete_keyboard(focus_id,speed,
                 drag.min,drag.max,&drag.values[i]))
             changed = 1;
         if(ui_drag_delta((int)(((unsigned int)drag.id << 4) ^
                                (unsigned int)(i + 1)), focus_id, cell,
                          drag.disabled, &delta)) {
-            DragWholeStep step = DragWholeDeltaValue(drag.values[i], delta,
+            DragDiscreteStep step = DragDiscreteDeltaValue(drag.values[i], delta,
                                                  speed, drag.min, drag.max);
             if(step.changed) {
                 drag.values[i] = step.value;
@@ -2429,7 +2429,7 @@ ui_paint_drag_label(Rectangle bounds, const char *label, int class_name)
 }
 
 void
-ui_paint_drag_scalar(DragScalarProps drag)
+ui_paint_drag_continuous(DragContinuousProps drag)
 {
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
@@ -2452,7 +2452,7 @@ ui_paint_drag_scalar(DragScalarProps drag)
 }
 
 void
-ui_paint_drag_whole(DragWholeProps drag)
+ui_paint_drag_discrete(DragDiscreteProps drag)
 {
     if(!IsWindowReady() || drag.values == NULL || drag.value_count <= 0)
         return;
@@ -2526,7 +2526,7 @@ ui_slider_keyboard_direction(int vertical)
 }
 
 static int
-ui_update_slider_scalar_keyboard(int focus_id, int vertical, float minimum,
+ui_update_slider_continuous_keyboard(int focus_id, int vertical, float minimum,
                                 float maximum, float *value)
 {
     int direction;
@@ -2547,17 +2547,17 @@ ui_update_slider_scalar_keyboard(int focus_id, int vertical, float minimum,
 }
 
 static int
-ui_update_slider_whole_keyboard(int focus_id, int vertical, int minimum,
+ui_update_slider_discrete_keyboard(int focus_id, int vertical, int minimum,
                               int maximum, int *value)
 {
     int direction;
-    SliderWholeStep step;
+    SliderDiscreteStep step;
 
     if(focus_id <= 0 || !IsFocusActive(focus_id) ||
        !IsKeyboardInputEnabled() || ui_popup_input_focus_captures(focus_id))
         return 0;
     direction = ui_slider_keyboard_direction(vertical);
-    step = SliderWholeKeyboardValue(*value, minimum, maximum, direction,
+    step = SliderDiscreteKeyboardValue(*value, minimum, maximum, direction,
         IsKeyPressed(KEY_HOME), IsKeyPressed(KEY_END),
         IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT),
         IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT));
@@ -2631,7 +2631,7 @@ ui_draw_slider_label(Rectangle bounds, const char *label, int class_name)
 }
 
 int
-ui_update_slider_scalar(SliderScalarProps slider, int vertical)
+ui_update_slider_continuous(SliderContinuousProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
@@ -2652,7 +2652,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
             slider.disabled, 0, &editing);
         if(editing)
             continue;
-        if(enabled && ui_update_slider_scalar_keyboard(focus_id,vertical,
+        if(enabled && ui_update_slider_continuous_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
             ratio = SliderRatio(slider.values[i], slider.min,
                                      slider.max);
@@ -2674,7 +2674,7 @@ ui_update_slider_scalar(SliderScalarProps slider, int vertical)
 }
 
 int
-ui_update_slider_whole(SliderWholeProps slider, int vertical)
+ui_update_slider_discrete(SliderDiscreteProps slider, int vertical)
 {
     int changed = 0;
     int count = slider.value_count;
@@ -2684,7 +2684,7 @@ ui_update_slider_whole(SliderWholeProps slider, int vertical)
     for(int i = 0; i < count; i++) {
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
         Rectangle cell = SliderCellBoundsFor(slider.bounds, count, i);
-        float ratio = SliderWholeRatio(slider.values[i], slider.min,
+        float ratio = SliderDiscreteRatio(slider.values[i], slider.min,
                                      slider.max);
         int enabled = !slider.disabled && !UIContentDisabled();
         int editing = 0;
@@ -2695,9 +2695,9 @@ ui_update_slider_whole(SliderWholeProps slider, int vertical)
             slider.disabled, 1, &editing);
         if(editing)
             continue;
-        if(enabled && ui_update_slider_whole_keyboard(focus_id,vertical,
+        if(enabled && ui_update_slider_discrete_keyboard(focus_id,vertical,
                     slider.min,slider.max,&slider.values[i])) {
-            ratio = SliderWholeRatio(slider.values[i], slider.min,
+            ratio = SliderDiscreteRatio(slider.values[i], slider.min,
                                    slider.max);
             changed = 1;
         }
@@ -2706,7 +2706,7 @@ ui_update_slider_whole(SliderWholeProps slider, int vertical)
                                         (unsigned int)(i + 1)),
                                         focus_id, cell, slider.disabled,
                                         vertical, &ratio)) {
-            int value = SliderWholeValue(slider.min, slider.max, ratio);
+            int value = SliderDiscreteValue(slider.min, slider.max, ratio);
             if(value != slider.values[i]) {
                 slider.values[i] = value;
                 changed = 1;
@@ -2717,7 +2717,7 @@ ui_update_slider_whole(SliderWholeProps slider, int vertical)
 }
 
 void
-ui_paint_slider_scalar(SliderScalarProps slider, int vertical)
+ui_paint_slider_continuous(SliderContinuousProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
@@ -2742,13 +2742,13 @@ ui_paint_slider_scalar(SliderScalarProps slider, int vertical)
 }
 
 void
-ui_paint_slider_whole(SliderWholeProps slider, int vertical)
+ui_paint_slider_discrete(SliderDiscreteProps slider, int vertical)
 {
     if(!IsWindowReady() || slider.values == NULL || slider.value_count <= 0) return;
     slider.disabled |= UIContentDisabled();
     for(int i = 0; i < slider.value_count; i++) {
         Rectangle cell = SliderCellBoundsFor(slider.bounds, slider.value_count, i);
-        float ratio = SliderWholeRatio(slider.values[i], slider.min,
+        float ratio = SliderDiscreteRatio(slider.values[i], slider.min,
                                      slider.max);
         char text[64];
         int focus_id = ui_numeric_focus_id(slider.id,i,1);
@@ -2767,10 +2767,10 @@ ui_paint_slider_whole(SliderWholeProps slider, int vertical)
 }
 
 static int
-ui_slider_scalar(SliderScalarProps slider, int vertical)
+ui_slider_continuous(SliderContinuousProps slider, int vertical)
 {
-    int changed = ui_update_slider_scalar(slider,vertical);
-    ui_paint_slider_scalar(slider,vertical);
+    int changed = ui_update_slider_continuous(slider,vertical);
+    ui_paint_slider_continuous(slider,vertical);
     return changed;
 }
 
@@ -2780,17 +2780,17 @@ ui_update_slider_angle(SliderAngleProps slider)
     const float radians_to_degrees = 57.295779513082320876f;
     const float degrees_to_radians = 0.01745329251994329577f;
     float degrees;
-    SliderScalarProps value_slider;
+    SliderContinuousProps value_slider;
     int changed;
 
     if(slider.value == NULL)
         return 0;
     degrees = *slider.value * radians_to_degrees;
-    value_slider = (SliderScalarProps){slider.bounds, slider.id, slider.label,
+    value_slider = (SliderContinuousProps){slider.bounds, slider.id, slider.label,
                                       &degrees, 1, slider.min_degrees,
                                       slider.max_degrees, slider.format,
                                       slider.disabled, slider.class_name};
-    changed = ui_update_slider_scalar(value_slider, 0);
+    changed = ui_update_slider_continuous(value_slider, 0);
     if(changed)
         *slider.value = degrees * degrees_to_radians;
     return changed;
@@ -2802,12 +2802,12 @@ ui_paint_slider_angle(SliderAngleProps slider)
     if(slider.value == NULL)
         return;
     float degrees = *slider.value * 57.295779513082320876f;
-    SliderScalarProps value_slider = {
+    SliderContinuousProps value_slider = {
         slider.bounds, slider.id, slider.label, &degrees, 1,
         slider.min_degrees, slider.max_degrees, slider.format,
         slider.disabled, slider.class_name
     };
-    ui_paint_slider_scalar(value_slider, 0);
+    ui_paint_slider_continuous(value_slider, 0);
 }
 
 static UINumericInputState *
@@ -2957,11 +2957,11 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
                 int direction = plus_pressed ? 1 : -1;
                 double value = ui_numeric_value(values, i, kind);
                 if(kind == 0) {
-                    InputScalarStep result = InputScalarStepValue((float)value,
+                    InputContinuousStep result = InputContinuousStepValue((float)value,
                         (float)step, (float)step_fast, direction, fast);
                     value = result.value;
                 } else if(kind == 1) {
-                    InputWholeStep result = InputWholeStepValue((int)value,
+                    InputDiscreteStep result = InputDiscreteStepValue((int)value,
                         (int)step, (int)step_fast, direction, fast);
                     value = (double)result.value;
                 } else {
@@ -2984,7 +2984,7 @@ ui_numeric_input(Rectangle bounds, int id, const char *label, void *values,
 }
 
 int
-RenderInputScalar(InputScalarProps input)
+RenderInputContinuous(InputContinuousProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,
@@ -2992,7 +2992,7 @@ RenderInputScalar(InputScalarProps input)
 }
 
 int
-RenderInputWhole(InputWholeProps input)
+RenderInputDiscrete(InputDiscreteProps input)
 {
     return ui_numeric_input(input.bounds, input.id, input.label, input.values,
                             input.value_count, input.step, input.step_fast,

@@ -7,7 +7,7 @@ type DragStep struct {
 	Changed bool
 }
 
-type DragWholeStep struct {
+type DragDiscreteStep struct {
 	Value   int32
 	Changed bool
 }
@@ -136,7 +136,7 @@ func Drag_DragClamp(value float32, minimum float32, maximum float32) float32 {
 	return value_11
 }
 
-func Drag_DragWholeClamp(value int32, minimum int32, maximum int32) int32 {
+func Drag_DragDiscreteClamp(value int32, minimum int32, maximum int32) int32 {
 	var value_0 int32 = minimum
 	var value_1 int32 = maximum
 	var value_2 bool = value_0 < value_1
@@ -160,7 +160,7 @@ func Drag_DragWholeClamp(value int32, minimum int32, maximum int32) int32 {
 	return value_11
 }
 
-func Drag_DragWholeRoundedDelta(scaled float32, force_minimum_step bool) int32 {
+func Drag_DragDiscreteRoundedDelta(scaled float32, force_minimum_step bool) int32 {
 	var value_0 float32 = scaled
 	var value_1 float32 = scaled
 	var value_2 float32 = 0.0
@@ -276,8 +276,8 @@ func Drag_DragKeyboardValue(value float32, speed float32, minimum float32, maxim
 	return value_41
 }
 
-func Drag_DragWholeKeyboardValue(value int32, speed float32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) DragWholeStep {
-	var result DragWholeStep = DragWholeStep{}
+func Drag_DragDiscreteKeyboardValue(value int32, speed float32, minimum int32, maximum int32, direction int32, home bool, end bool, alt bool, shift bool) DragDiscreteStep {
+	var result DragDiscreteStep = DragDiscreteStep{}
 	var value_0 int32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -333,12 +333,12 @@ func Drag_DragWholeKeyboardValue(value int32, speed float32, minimum int32, maxi
 				var value_29 int32 = direction
 				var value_30 float32 = scaled
 				var value_31 bool = true
-				var value_32 int32 = Drag_DragWholeRoundedDelta(value_30, value_31)
+				var value_32 int32 = Drag_DragDiscreteRoundedDelta(value_30, value_31)
 				var value_33 int32 = int32(number_runtime_bits(uint64(value_29), uint64(value_32), 32, true, 3))
 				var value_34 int32 = int32(number_runtime_bits(uint64(value_28), uint64(value_33), 32, true, 1))
 				var value_35 int32 = minimum
 				var value_36 int32 = maximum
-				var value_37 int32 = Drag_DragWholeClamp(value_34, value_35, value_36)
+				var value_37 int32 = Drag_DragDiscreteClamp(value_34, value_35, value_36)
 				next = value_37
 			}
 		}
@@ -349,7 +349,7 @@ func Drag_DragWholeKeyboardValue(value int32, speed float32, minimum int32, maxi
 	var value_40 int32 = value
 	var value_41 bool = value_39 != value_40
 	result.Changed = value_41
-	var value_42 DragWholeStep = result
+	var value_42 DragDiscreteStep = result
 	return value_42
 }
 
@@ -373,8 +373,8 @@ func Drag_DragDeltaValue(value float32, delta float32, speed float32, minimum fl
 	return value_12
 }
 
-func Drag_DragWholeDeltaValue(value int32, delta float32, speed float32, minimum int32, maximum int32) DragWholeStep {
-	var result DragWholeStep = DragWholeStep{}
+func Drag_DragDiscreteDeltaValue(value int32, delta float32, speed float32, minimum int32, maximum int32) DragDiscreteStep {
+	var result DragDiscreteStep = DragDiscreteStep{}
 	var value_0 float32 = delta
 	var value_1 float32 = speed
 	var value_2 float32 = Drag_DragEffectiveSpeed(value_1)
@@ -383,16 +383,16 @@ func Drag_DragWholeDeltaValue(value int32, delta float32, speed float32, minimum
 	var value_4 int32 = value
 	var value_5 float32 = scaled
 	var value_6 bool = false
-	var value_7 int32 = Drag_DragWholeRoundedDelta(value_5, value_6)
+	var value_7 int32 = Drag_DragDiscreteRoundedDelta(value_5, value_6)
 	var value_8 int32 = int32(number_runtime_bits(uint64(value_4), uint64(value_7), 32, true, 1))
 	var value_9 int32 = minimum
 	var value_10 int32 = maximum
-	var value_11 int32 = Drag_DragWholeClamp(value_8, value_9, value_10)
+	var value_11 int32 = Drag_DragDiscreteClamp(value_8, value_9, value_10)
 	result.Value = value_11
 	var value_12 int32 = result.Value
 	var value_13 int32 = value
 	var value_14 bool = value_12 != value_13
 	result.Changed = value_14
-	var value_15 DragWholeStep = result
+	var value_15 DragDiscreteStep = result
 	return value_15
 }

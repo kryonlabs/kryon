@@ -109,10 +109,10 @@ state {
     selected_row: int = 0
     feature_flags: int = 1
     closed_tab: int = -1
-    drag_scalar_min: float = 2.0f
-    drag_scalar_max: float = 8.0f
-    drag_whole_min: int = 2
-    drag_whole_max: int = 8
+    drag_continuous_min: float = 2.0f
+    drag_continuous_max: float = 8.0f
+    drag_discrete_min: int = 2
+    drag_discrete_max: int = 8
 }
 
 app "Smoke" {
@@ -187,7 +187,7 @@ App :: () #ui {
     Image((ImageProps){"tiles/tile.png", "", (Rectangle){Scale(4), Scale(150), Scale(96), Scale(96)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitContain, 0})
     Paragraph((ParagraphSpec){.text = "Rich text", .icon_type = 1, .icon_size = Scale(16), .width = Scale(200), .font = Text16, .line_gap = Scale(4), .color = GetThemeText(), .align = TextAlignCenter}, Scale(4), &lines_y)
     Button((ButtonProps){.bounds = {Scale(210), Scale(60), Scale(36), Scale(36)}, .icon_type = 2, .icon_only = true, .id = 3})
-    Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com", .font = Text16, .color = GetThemeLink()})
+    Link((LinkProps){.bounds = {Scale(210), Scale(110), Scale(90), Scale(24)}, .text = "docs", .link = "https://example.com"})
     SetPageTitle("Kryon Page")
     SetPageDescription("Generated page")
     SetPageCanonicalURL("https://example.com/page")
@@ -198,7 +198,7 @@ App :: () #ui {
     Page((PageProps){.title = "Kryon Page", .description = "Generated page", .canonical_url = "https://example.com/page", .theme_color = (Color){0x11, 0x22, 0x33, 0xff}, .gap = Scale(6), .padding = Scale(8)})
     Heading((HeadingProps){.text = "Welcome", .level = 1})
     ParagraphText((ParagraphTextProps){.bounds = {0, 0, Scale(160), 0}, .text = "Body", .line_gap = Scale(4)})
-    Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more", .font = Text16, .color = GetThemeLink()})
+    Link((LinkProps){.bounds = {0, 0, Scale(90), Scale(24)}, .text = "More", .link = "/more"})
     Image((ImageProps){"hero.png", "Hero", (Rectangle){0, 0, Scale(96), Scale(48)}, (Rectangle){0, 0, 0, 0}, (Vector2){0, 0}, 0.0f, WHITE, ImageFitCover, 0})
     End()
     Section((SectionProps){.label = "Details", .gap = Scale(4), .padding = Scale(4)})
@@ -279,8 +279,8 @@ App :: () #ui {
     Plot((PlotProps){.bounds = {Scale(250), Scale(254), Scale(100), Scale(40)}, .label = "Bars", .values = plot_values, .value_count = 4, .offset = 1, .mode = 1})
     Drag((DragProps){.bounds = {Scale(250), Scale(298), Scale(100), Scale(28)}, .id = 28, .label = "Float", .kind = 0, .float_values = plot_values, .value_count = 2, .speed = 0.1f, .min = 0.0, .max = 1.0})
     Drag((DragProps){.bounds = {Scale(250), Scale(330), Scale(100), Scale(28)}, .id = 29, .label = "Int", .kind = 1, .int_values = nums, .value_count = 2, .speed = 1.0f, .min = 0.0, .max = 10.0})
-    Drag((DragProps){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .kind = 0, .mode = 1, .float_min = &drag_scalar_min, .float_max = &drag_scalar_max, .speed = 0.1f, .min = 0.0, .max = 10.0, .format_max = "max %.1f"})
-    Drag((DragProps){.bounds = {Scale(250),Scale(378),Scale(100),Scale(28)}, .id = 53, .label = "Int range", .kind = 1, .mode = 1, .int_min = &drag_whole_min, .int_max = &drag_whole_max, .min = 0.0, .max = 10.0, .format_max = "max %d"})
+    Drag((DragProps){.bounds = {Scale(250),Scale(346),Scale(100),Scale(28)}, .id = 52, .label = "Float range", .kind = 0, .mode = 1, .float_min = &drag_continuous_min, .float_max = &drag_continuous_max, .speed = 0.1f, .min = 0.0, .max = 10.0, .format_max = "max %.1f"})
+    Drag((DragProps){.bounds = {Scale(250),Scale(378),Scale(100),Scale(28)}, .id = 53, .label = "Int range", .kind = 1, .mode = 1, .int_min = &drag_discrete_min, .int_max = &drag_discrete_max, .min = 0.0, .max = 10.0, .format_max = "max %d"})
     Slider((SliderProps){.bounds = {Scale(250), Scale(362), Scale(100), Scale(28)}, .id = 30, .label = "Slider float", .kind = 0, .float_values = plot_values, .value_count = 2, .min = 0.0, .max = 1.0})
     Slider((SliderProps){.bounds = {Scale(250), Scale(394), Scale(100), Scale(28)}, .id = 31, .label = "Slider int", .kind = 1, .int_values = nums, .value_count = 2, .min = 0.0, .max = 10.0})
     Slider((SliderProps){.bounds = {Scale(362), Scale(298), Scale(28), Scale(100)}, .id = 32, .kind = 0, .float_values = plot_values, .value_count = 1, .min = 0.0, .max = 1.0, .vertical = true})
@@ -574,8 +574,8 @@ grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*ValueCount: int32(4)' 
 grep -q 'kr.Plot(kr.PlotProps{.*Values: plot_values\[:\].*Offset: int32(1).*Mode: int32(1)' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Drag(kr.DragProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*FloatMin: &st.DragScalarMin.*FloatMax: &st.DragScalarMax.*FormatMax: "max %.1f"' "$out"
-grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*IntMin: &st.DragWholeMin.*IntMax: &st.DragWholeMax.*FormatMax: "max %d"' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*FloatMin: &st.DragContinuousMin.*FloatMax: &st.DragContinuousMax.*FormatMax: "max %.1f"' "$out"
+grep -q 'kr.Drag(kr.DragProps{.*Mode: 1.*IntMin: &st.DragDiscreteMin.*IntMax: &st.DragDiscreteMax.*FormatMax: "max %d"' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*Kind: 0.*FloatValues: plot_values\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*Kind: 1.*IntValues: nums\[:\].*ValueCount: int32(2)' "$out"
 grep -q 'kr.Slider(kr.SliderProps{.*Vertical: true' "$out"

@@ -1,12 +1,12 @@
 #module "input"
 #import "input_props"
 
-InputScalarStep :: struct {
+InputContinuousStep :: struct {
     value: float
     changed: bool
 }
 
-InputWholeStep :: struct {
+InputDiscreteStep :: struct {
     value: i32
     changed: bool
 }
@@ -57,12 +57,12 @@ InputCellLayoutFor :: (bounds: Rectangle, count: i32, index: i32,
     return layout
 }
 
-InputScalarEffectiveStep :: (step: float, step_fast: float, fast: bool) -> float #export {
+InputContinuousEffectiveStep :: (step: float, step_fast: float, fast: bool) -> float #export {
     if fast && step_fast != 0.0 { return step_fast }
     return step
 }
 
-InputWholeEffectiveStep :: (step: i32, step_fast: i32, fast: bool) -> i32 #export {
+InputDiscreteEffectiveStep :: (step: i32, step_fast: i32, fast: bool) -> i32 #export {
     if fast && step_fast != 0 { return step_fast }
     return step
 }
@@ -72,26 +72,26 @@ InputEffectiveStep :: (step: f64, step_fast: f64, fast: bool) -> f64 #export {
     return step
 }
 
-InputScalarStepValue :: (value: float, step: float, step_fast: float,
-    direction: i32, fast: bool) -> InputScalarStep #export {
-    result: InputScalarStep
+InputContinuousStepValue :: (value: float, step: float, step_fast: float,
+    direction: i32, fast: bool) -> InputContinuousStep #export {
+    result: InputContinuousStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0.0 { return result }
     next: float = value + (float)direction *
-        InputScalarEffectiveStep(step, step_fast, fast)
+        InputContinuousEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result
 }
 
-InputWholeStepValue :: (value: i32, step: i32, step_fast: i32,
-    direction: i32, fast: bool) -> InputWholeStep #export {
-    result: InputWholeStep
+InputDiscreteStepValue :: (value: i32, step: i32, step_fast: i32,
+    direction: i32, fast: bool) -> InputDiscreteStep #export {
+    result: InputDiscreteStep
     result.value = value
     result.changed = false
     if direction == 0 || step == 0 { return result }
-    next: i32 = value + direction * InputWholeEffectiveStep(step, step_fast, fast)
+    next: i32 = value + direction * InputDiscreteEffectiveStep(step, step_fast, fast)
     result.value = next
     result.changed = next != value
     return result

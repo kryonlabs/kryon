@@ -2,12 +2,12 @@
 package kryon
 
 // #import input_props
-type InputScalarStep struct {
+type InputContinuousStep struct {
 	Value   float32
 	Changed bool
 }
 
-type InputWholeStep struct {
+type InputDiscreteStep struct {
 	Value   int32
 	Changed bool
 }
@@ -135,7 +135,7 @@ func Input_InputCellLayoutFor(bounds Rectangle, count int32, index int32, reques
 	return value_69
 }
 
-func Input_InputScalarEffectiveStep(step float32, step_fast float32, fast bool) float32 {
+func Input_InputContinuousEffectiveStep(step float32, step_fast float32, fast bool) float32 {
 	var value_0 bool = fast
 	var value_1 bool = value_0
 	if value_1 {
@@ -152,7 +152,7 @@ func Input_InputScalarEffectiveStep(step float32, step_fast float32, fast bool) 
 	return value_6
 }
 
-func Input_InputWholeEffectiveStep(step int32, step_fast int32, fast bool) int32 {
+func Input_InputDiscreteEffectiveStep(step int32, step_fast int32, fast bool) int32 {
 	var value_0 bool = fast
 	var value_1 bool = value_0
 	if value_1 {
@@ -186,8 +186,8 @@ func Input_InputEffectiveStep(step float64, step_fast float64, fast bool) float6
 	return value_6
 }
 
-func Input_InputScalarStepValue(value float32, step float32, step_fast float32, direction int32, fast bool) InputScalarStep {
-	var result InputScalarStep = InputScalarStep{}
+func Input_InputContinuousStepValue(value float32, step float32, step_fast float32, direction int32, fast bool) InputContinuousStep {
+	var result InputContinuousStep = InputContinuousStep{}
 	var value_0 float32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -203,7 +203,7 @@ func Input_InputScalarStepValue(value float32, step float32, step_fast float32, 
 		value_5 = value_8
 	}
 	if value_5 {
-		var value_9 InputScalarStep = result
+		var value_9 InputContinuousStep = result
 		return value_9
 	}
 	var value_10 float32 = value
@@ -212,7 +212,7 @@ func Input_InputScalarStepValue(value float32, step float32, step_fast float32, 
 	var value_13 float32 = step
 	var value_14 float32 = step_fast
 	var value_15 bool = fast
-	var value_16 float32 = Input_InputScalarEffectiveStep(value_13, value_14, value_15)
+	var value_16 float32 = Input_InputContinuousEffectiveStep(value_13, value_14, value_15)
 	var value_17 float32 = value_12 * value_16
 	var value_18 float32 = value_10 + value_17
 	var next float32 = value_18
@@ -222,12 +222,12 @@ func Input_InputScalarStepValue(value float32, step float32, step_fast float32, 
 	var value_21 float32 = value
 	var value_22 bool = value_20 != value_21
 	result.Changed = value_22
-	var value_23 InputScalarStep = result
+	var value_23 InputContinuousStep = result
 	return value_23
 }
 
-func Input_InputWholeStepValue(value int32, step int32, step_fast int32, direction int32, fast bool) InputWholeStep {
-	var result InputWholeStep = InputWholeStep{}
+func Input_InputDiscreteStepValue(value int32, step int32, step_fast int32, direction int32, fast bool) InputDiscreteStep {
+	var result InputDiscreteStep = InputDiscreteStep{}
 	var value_0 int32 = value
 	result.Value = value_0
 	var value_1 bool = false
@@ -243,7 +243,7 @@ func Input_InputWholeStepValue(value int32, step int32, step_fast int32, directi
 		value_5 = value_8
 	}
 	if value_5 {
-		var value_9 InputWholeStep = result
+		var value_9 InputDiscreteStep = result
 		return value_9
 	}
 	var value_10 int32 = value
@@ -251,7 +251,7 @@ func Input_InputWholeStepValue(value int32, step int32, step_fast int32, directi
 	var value_12 int32 = step
 	var value_13 int32 = step_fast
 	var value_14 bool = fast
-	var value_15 int32 = Input_InputWholeEffectiveStep(value_12, value_13, value_14)
+	var value_15 int32 = Input_InputDiscreteEffectiveStep(value_12, value_13, value_14)
 	var value_16 int32 = int32(number_runtime_bits(uint64(value_11), uint64(value_15), 32, true, 3))
 	var value_17 int32 = int32(number_runtime_bits(uint64(value_10), uint64(value_16), 32, true, 1))
 	var next int32 = value_17
@@ -261,7 +261,7 @@ func Input_InputWholeStepValue(value int32, step int32, step_fast int32, directi
 	var value_20 int32 = value
 	var value_21 bool = value_19 != value_20
 	result.Changed = value_21
-	var value_22 InputWholeStep = result
+	var value_22 InputDiscreteStep = result
 	return value_22
 }
 

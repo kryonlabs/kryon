@@ -41,7 +41,7 @@ SliderStep :: struct {
     changed: bool
 }
 
-SliderWholeStep :: struct {
+SliderDiscreteStep :: struct {
     value: i32
     changed: bool
 }
@@ -207,21 +207,21 @@ SliderKeyboardValue :: (value: float, minimum: float, maximum: float,
     return result
 }
 
-SliderWholeRatio :: (value: i32, minimum: i32, maximum: i32) -> float #export {
+SliderDiscreteRatio :: (value: i32, minimum: i32, maximum: i32) -> float #export {
     span: i64 = (i64)maximum - (i64)minimum
     if span <= 0 { return 0.0 }
     return SliderClampRatio((float)((i64)value - (i64)minimum) / (float)span)
 }
 
-SliderWholeValue :: (minimum: i32, maximum: i32, ratio: float) -> i32 #export {
+SliderDiscreteValue :: (minimum: i32, maximum: i32, ratio: float) -> i32 #export {
     span: i64 = (i64)maximum - (i64)minimum
     if span <= 0 { return minimum }
     return (i32)((i64)minimum + (i64)(SliderClampRatio(ratio) * (float)span + 0.5))
 }
 
-SliderWholeKeyboardValue :: (value: i32, minimum: i32, maximum: i32,
-    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderWholeStep #export {
-    result: SliderWholeStep
+SliderDiscreteKeyboardValue :: (value: i32, minimum: i32, maximum: i32,
+    direction: i32, home: bool, end: bool, alt: bool, shift: bool) -> SliderDiscreteStep #export {
+    result: SliderDiscreteStep
     result.value = value
     result.changed = false
     span: i64 = (i64)maximum - (i64)minimum
