@@ -413,7 +413,8 @@ native attribute aliases such as `[name=...]`, `[type=...]`, `[href=...]`,
 `[aria-multiselectable=...]`, `[aria-rowindex=...]`, `[aria-colindex=...]`,
 `[aria-rowcount=...]`, `[aria-colcount=...]`,
 data/ARIA/extra attribute selectors, state pseudos, structural pseudos
-`:first-child`, `:last-child`, and `:only-child`, layers, colors, padding,
+`:first-child`, `:last-child`, `:only-child`, and numeric/odd/even
+`:nth-child(...)`, layers, colors, padding,
 margin, per-edge spacing, size constraints, positioning insets, radius,
 border styles, per-side border widths, per-corner radii, opacity, font size, offsets,
 font family, font weight, letter spacing, text alignment, content offsets,
