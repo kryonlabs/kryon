@@ -184,6 +184,8 @@ try {
   assert(root.kryIdentity("article-ref").domId === "article-id", "root identity lookup failed");
   assert(root.krySnapshot("article-ref").identity.ref === "article-ref",
     "root snapshot lookup failed");
+  assert(root.krySnapshots("Section").map((snapshot) => snapshot.ref).includes("article-ref"),
+    "root snapshots lookup failed");
   assert(article.kryStyleFacts.kind === "Section", "element style facts missing");
   assert(root.kryStyleFacts("article-ref").kind === "Section", "root style facts missing");
   assert(kryon.webDOMStyleFacts(target, "article-ref").kind === "Section",

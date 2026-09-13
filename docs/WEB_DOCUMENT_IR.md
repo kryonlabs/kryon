@@ -590,8 +590,9 @@ mount root, so ordinary browser handlers can inspect `.kry` identity without
 generated JS owning DOM structure.
 
 `webDOMIdentity(target, query)` returns the same plain identity projection for
-a mounted Kry DOM object. Mounted roots expose `kryIdentity(query)` and
-`krySnapshot(query)` for browser tooling. `webDOMStyleFacts(target, query)`
+a mounted Kry DOM object. Mounted roots expose `kryIdentity(query)`,
+`krySnapshot(query)`, and `krySnapshots(selector)` for browser tooling.
+`webDOMStyleFacts(target, query)`
 and `root.kryStyleFacts(query)` expose the same KSS facts used for mounted
 style resolution. Rendered elements expose the native
 bridge directly as non-enumerable `element.kryRef`, `element.kryNode`, `element.kryObject`,
@@ -621,7 +622,8 @@ Mounted roots expose `kryRelationRefs(query)`, mounted elements expose
 `kryRelations` and `kryRelationRefs`, and `WebDOMObject` exposes `relations`
 and `relationRefs` for the same live-object and serializable packets.
 
-`webDOMSnapshot(target, query)` and `webDOMSnapshots(target, selector)` return
+`webDOMSnapshot(target, query)`, `root.krySnapshot(query)`,
+`webDOMSnapshots(target, selector)`, and `root.krySnapshots(selector)` return
 plain, serializable views of mounted Kry DOM objects: the complete
 `WebNodeIdentity` packet and alias list, source location, parent/child refs,
 relation refs, event refs, attributes, dataset, style, text/value, state,

@@ -3171,6 +3171,9 @@ function fakeDocument() {
     });
     assert.deepEqual(runtime.webDOMSnapshots(target, "Button.primary").map((snapshot) => snapshot.ref),
       ["primary-action"]);
+    assert.deepEqual(root.krySnapshots("Button.primary").map((snapshot) => snapshot.ref),
+      ["primary-action"]);
+    assert.equal(Object.keys(root).includes("krySnapshots"), false);
     assert.equal(runtime.webDOMElementMatches(nestedSpan, "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "Button.primary"), true);
     assert.equal(runtime.webDOMMatches(target, "tap-button", "TextField"), false);

@@ -78,6 +78,9 @@ the browser receives normal elements, attributes, CSS, and events.
 - Mounted DOM snapshots serialize the full `WebNodeIdentity` packet and alias
   list so devtools can show every stable lookup key for a `.kry` node without
   keeping live DOM references.
+- Mounted roots expose both single-node `krySnapshot(query)` and selector-based
+  `krySnapshots(selector)` helpers, mirroring module-level snapshot APIs for
+  browser tools that start from the native root element.
 - Headless browser smoke coverage verifies real DOM rendering, native
   attributes, source-range annotations, Kry object lookup, KSS application, and
   decorated event dispatch in Chromium when available.

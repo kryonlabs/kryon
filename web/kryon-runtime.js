@@ -6428,6 +6428,13 @@ function bindWebRootProperties(root) {
         return webDOMSnapshot(this, query);
       }
     },
+    krySnapshots: {
+      configurable: true,
+      enumerable: false,
+      value(selector = "") {
+        return webDOMSnapshots(this, selector);
+      }
+    },
     kryStyleFacts: {
       configurable: true,
       enumerable: false,

@@ -657,6 +657,7 @@ declare global {
     kryObject?(query: string): WebDOMObject | null;
     kryIdentity?(query: string): WebNodeIdentity | null;
     krySnapshot?(query: string): WebDOMSnapshot | null;
+    krySnapshots?(selector?: string): WebDOMSnapshot[];
     kryStyleFacts?(query: string): WebNodeStyleFacts | null;
     kryRelations?(query: string): WebDOMRelations | null;
     kryRelationRefs?(query: string): WebDOMRelationRefs | null;
