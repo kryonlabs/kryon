@@ -2861,6 +2861,10 @@ function fakeDocument() {
       { nodeName: "plot", path: "Page/plot" });
     runtime.widget(nativeRt, "Popup", { flags: 3 }, null,
       { nodeName: "modalPopup", path: "Page/modalPopup" });
+    runtime.widget(nativeRt, "Popup", { flags: 1 }, null,
+      { nodeName: "tipPopup", path: "Page/tipPopup" });
+    runtime.widget(nativeRt, "Popup", { flags: 4 }, null,
+      { nodeName: "contextPopup", path: "Page/contextPopup" });
     runtime.widget(nativeRt, "Section", { open: true }, null,
       {
         nodeName: "details",
@@ -3020,6 +3024,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/modalPopup").tag, "dialog");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/modalPopup").state.open, true);
     assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/modalPopup").role, "dialog");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/tipPopup").tag, "div");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/tipPopup").role, "tooltip");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/contextPopup").tag, "div");
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/contextPopup").role, "menu");
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open=true]").path, "Page/details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Section[open]").path, "Page/details");
     const nativeTarget = document.createElement("div");
@@ -3077,6 +3085,8 @@ function fakeDocument() {
     const toast = runtime.findWebElement(nativeTarget, "toast");
     const plot = runtime.findWebElement(nativeTarget, "plot");
     const modalPopup = runtime.findWebElement(nativeTarget, "modalPopup");
+    const tipPopup = runtime.findWebElement(nativeTarget, "tipPopup");
+    const contextPopup = runtime.findWebElement(nativeTarget, "contextPopup");
     const details = runtime.findWebElement(nativeTarget, "details");
     const dialog = runtime.findWebElement(nativeTarget, "dialog");
     const popover = runtime.findWebElement(nativeTarget, "popover");
@@ -3186,6 +3196,10 @@ function fakeDocument() {
     assert.equal(modalPopup.tagName, "DIALOG");
     assert.equal(modalPopup.open, true);
     assert.equal(modalPopup.attributes.open, "");
+    assert.equal(tipPopup.tagName, "DIV");
+    assert.equal(tipPopup.attributes.role, "tooltip");
+    assert.equal(contextPopup.tagName, "DIV");
+    assert.equal(contextPopup.attributes.role, "menu");
     assert.equal(toast.attributes.role, undefined);
     assert.equal(plot.attributes.role, "img");
     assert.equal(details.open, true);

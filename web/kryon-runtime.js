@@ -1360,6 +1360,19 @@ function widgetAccessibleLabel(item) {
   }
 }
 
+function widgetFallbackRole(item) {
+  if (item.name !== "Popup")
+    return "";
+  const flags = propNumber(item.args || {}, "flags", 0);
+  if ((flags & 2) !== 0)
+    return "";
+  if ((flags & 4) !== 0)
+    return "menu";
+  if ((flags & 1) !== 0)
+    return "tooltip";
+  return "";
+}
+
 function widgetAriaLive(item) {
   if (item.name === "Toast")
     return "polite";
@@ -1632,7 +1645,8 @@ function webNodeFromWidget(item, index) {
     rowSpan: metaStringOrProp(meta, "rowSpan", args, ["rowspan", "row_span", "dom_rowspan", "html_rowspan"]),
     alt: propString(args, "alt", propString(args, "alt_text", "")),
     asset: propString(args, "asset_path", propString(args, "src", "")),
-    role: metaStringOrProp(meta, "role", args, ["role", "dom_role", "html_role"]),
+    role: metaStringOrProp(meta, "role", args, ["role", "dom_role", "html_role"]) ||
+      widgetFallbackRole(item),
     ariaLabel: metaStringOrProp(meta, "ariaLabel", args,
       ["aria_label", "accessible_label", "dom_aria_label", "html_aria_label"]) ||
       widgetAccessibleLabel(item),
