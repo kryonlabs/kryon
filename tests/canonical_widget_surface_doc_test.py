@@ -32,7 +32,6 @@ NATIVE_COMPAT_EXPORTS = {
 }
 
 NATIVE_SCOPE_EXPORT_ALLOWLIST = {
-    "BeginGridCursor",
     "BeginTree",
     "End",
     "EndTree",

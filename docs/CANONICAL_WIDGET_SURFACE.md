@@ -560,6 +560,7 @@ Recent retained-tree public C cleanup:
 | `BeginUIClip`, `EndUIClip`, `ResetUIClip`, `GetUIClip*` | `BeginClip`, `EndClip`, `ResetClip`, `GetClip*` |
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | `DragScalar*`, `DragWhole*`, `SliderScalar*`, `SliderWhole*`, neutral fixture values |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WIDGET_MOVABLE`/`WIDGET_RESIZABLE`/`WIDGET_READONLY` | Internal inspect registration; public code uses canonical widget declarations. |
+| `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
 | `BeginTabBar`, `BeginTabItem`, `EndTabItem`, `EndTabBar` | `TabBar` plus caller-owned selected state and ordinary conditionals |
 | direct `.kry` `BeginScroll`/`EndScroll` and `BeginTableCell`/`EndTableCell` calls | `Scroll` and `TableCell` lexical blocks |
 | direct `.kry` `BeginCanvas`/`EndCanvas` calls | `Canvas` lexical block |

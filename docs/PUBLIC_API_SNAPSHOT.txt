@@ -1901,7 +1901,6 @@ include/ui_tree.h function Background
 include/ui_tree.h function BeginButton
 include/ui_tree.h function BeginCard
 include/ui_tree.h function BeginDisabled
-include/ui_tree.h function BeginGridCursor
 include/ui_tree.h function BeginPopup
 include/ui_tree.h function BeginScroll
 include/ui_tree.h function BeginTableCell
@@ -1935,8 +1934,6 @@ include/ui_tree.h function GetNodeHeight
 include/ui_tree.h function GetNodeHeightById
 include/ui_tree.h function GetTreeNodes
 include/ui_tree.h function Grid
-include/ui_tree.h function GridCursorHeight
-include/ui_tree.h function GridStep
 include/ui_tree.h function Group
 include/ui_tree.h function HitTestNode
 include/ui_tree.h function Icon
@@ -1946,7 +1943,6 @@ include/ui_tree.h function Key
 include/ui_tree.h function LayoutTree
 include/ui_tree.h function Line
 include/ui_tree.h function ListBox
-include/ui_tree.h function MeasureGrid
 include/ui_tree.h function Menu
 include/ui_tree.h function Modal
 include/ui_tree.h function NavigationBar

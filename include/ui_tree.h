@@ -322,11 +322,6 @@ typedef struct RouterResult {
     const RouterRoute *route_info;
 } RouterResult;
 
-GridMetrics MeasureGrid(GridProps props);
-GridCursor BeginGridCursor(GridProps props);
-GridCursor GridStep(GridCursor cursor, int32_t height, int32_t column_span);
-int32_t GridCursorHeight(GridCursor cursor);
-
 void RouterStateInit(RouterState *state, int initial_route);
 void RouterNavigate(RouterState *state, int route_id);
 int RouterSetRoute(RouterProps props, int route_id, int push);

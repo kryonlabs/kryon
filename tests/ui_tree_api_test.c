@@ -1,5 +1,6 @@
 #include "../src/ui/ui_internal.h"
 #include "kry_inject.h"
+#include "runtime/grid.h"
 #include "runtime/navigation_bar.h"
 #include "theme.h"
 #include <stdio.h>
