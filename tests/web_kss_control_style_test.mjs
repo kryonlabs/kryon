@@ -43,6 +43,48 @@ assert.deepEqual(runtime.resolveWebStyle(node, sheet), {
   resize: "vertical"
 });
 
+const lexicalSheet = runtime.parseWebStyleSheet(`
+  Disabled:disabled {
+    opacity: 0.5;
+  }
+  Popup[role=dialog] {
+    z-index: 20;
+  }
+  Popup > Text {
+    foreground: #223344;
+  }
+`);
+
+const disabledNode = {
+  kind: "Disabled",
+  tag: "fieldset",
+  state: { disabled: true }
+};
+assert.deepEqual(runtime.resolveWebStyle(disabledNode, lexicalSheet), {
+  opacity: 0.5
+});
+
+const popupNode = {
+  kind: "Popup",
+  tag: "div",
+  role: "dialog",
+  path: "PopupBlockNodes/tools"
+};
+assert.deepEqual(runtime.resolveWebStyle(popupNode, lexicalSheet), {
+  "z-index": 20
+});
+
+const popupChildNode = {
+  kind: "Text",
+  tag: "span",
+  path: "PopupBlockNodes/tools/label",
+  parentPath: "PopupBlockNodes/tools",
+  __kryFrameNodes: [popupNode]
+};
+assert.deepEqual(runtime.resolveWebStyle(popupChildNode, lexicalSheet), {
+  foreground: "#223344"
+});
+
 function fakeElement(tag) {
   const element = {
     tagName: String(tag || "div").toUpperCase(),
