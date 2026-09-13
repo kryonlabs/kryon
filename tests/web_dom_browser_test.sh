@@ -86,6 +86,11 @@ try {
     path: "Page/article/upload",
     parentPath: "Page/article"
   });
+  kryon.widget(rt, "Input", { min: -5, max: 5, step: 0.25, value: 1.5 }, null, {
+    nodeName: "amount",
+    path: "Page/article/amount",
+    parentPath: "Page/article"
+  });
   kryon.widget(rt, "ListBox", {}, null, {
     nodeName: "choices",
     path: "Page/article/choices",
@@ -277,6 +282,19 @@ try {
   assert(mountedA11y.nodes.some((node) => node.path === "Page/article/upload" &&
     node.role === "progressbar" && node.valueNow === "64"),
     "mounted accessibility range node missing");
+  const amount = kryon.findWebElement(target, "amount");
+  assert(amount.tagName === "INPUT", "native Input tag missing");
+  assert(amount.getAttribute("type") === "number", "native Input type missing");
+  assert(amount.getAttribute("min") === "-5", "native Input min missing");
+  assert(amount.getAttribute("max") === "5", "native Input max missing");
+  assert(amount.getAttribute("step") === "0.25", "native Input step missing");
+  assert(amount.getAttribute("value") === "1.5", "native Input value missing");
+  const amountSnapshot = kryon.webDOMSnapshot(target, "amount");
+  assert(amountSnapshot.valueNow === "1.5" && amountSnapshot.min === "-5" &&
+    amountSnapshot.max === "5", "native Input snapshot range missing");
+  assert(mountedA11y.nodes.some((node) => node.path === "Page/article/amount" &&
+    node.role === "spinbutton" && node.valueNow === "1.5"),
+    "mounted accessibility numeric Input missing");
   assert(root.kryAccessibilitySnapshot("Button[role=tab]").nodes[0]?.role === "tab",
     "root mounted accessibility selector missing");
   assert(root.kryObjectMap.get("browser.kry:3")?.element === article,
