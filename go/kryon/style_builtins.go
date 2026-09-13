@@ -920,6 +920,10 @@ TitleBar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -2898,6 +2902,10 @@ TitleBar[role=Bar] {
   border: border;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -4834,6 +4842,10 @@ TitleBar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: default;
 }
@@ -6859,6 +6871,10 @@ TitleBar[role=Bar] {
   border: border-soft;
   radius: 0;
   border-width: border;
+  padding-x: 12;
+  gap: 4;
+  icon-size: 32;
+  offset-x: 60;
   opacity: 1;
   material: glow;
 }
