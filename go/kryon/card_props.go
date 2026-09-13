@@ -12,5 +12,4 @@ type CardProps struct {
 	Tone      ButtonTone
 	Emphasis  ButtonEmphasis
 	State     ButtonState
-	Style     ControlStyle
 }

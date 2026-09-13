@@ -11,5 +11,4 @@ CardProps :: struct {
     tone: ButtonTone
     emphasis: ButtonEmphasis
     state: ButtonState
-    style: ControlStyle
 }

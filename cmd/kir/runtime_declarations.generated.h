@@ -84,7 +84,6 @@ static const struct { const char *path; const char *source; } runtime_sources[] 
         "    tone: ButtonTone\n"
         "    emphasis: ButtonEmphasis\n"
         "    state: ButtonState\n"
-        "    style: ControlStyle\n"
         "}\n"
     },
     {"runtime/checkbox_props.kry",

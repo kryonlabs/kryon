@@ -2440,7 +2440,6 @@ Text(TextProps props)
     if(props.color.a != 0)
         style = MergeStyle(style, (Style){.fields = StyleForeground,
             .foreground = props.color});
-    style = MergeStyle(style, props.style);
     if((style.fields & StyleFontSize) != 0)
         props.font = (int)(style.font_size + 0.5f);
     if((typeface == NULL || typeface[0] == '\0') &&
@@ -2547,7 +2546,7 @@ Surface(Rectangle bounds, Style style)
 static ButtonProps
 ui_card_button_props(CardProps card)
 {
-    return CardButtonProps(card, 0.0f, 0.0f, 0.0f, 0.0f, BLANK, BLANK);
+    return CardButtonProps(card);
 }
 
 static void

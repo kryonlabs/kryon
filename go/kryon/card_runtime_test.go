@@ -10,15 +10,9 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 		Clickable: true,
 		Tone:      ButtonToneNeutral,
 		Emphasis:  ButtonEmphasisFilled,
-		Style: ControlStyle{
-			Normal: Style{Fields: StyleRadius | StyleBackground,
-				Radius: 3, Background: Color{1, 2, 3, 4}},
-			Hover: Style{Fields: StyleBorder, Border: Color{5, 6, 7, 8}},
-		},
 	}
 
-	button := Card_CardButtonProps(card, 12, 1, 16, 10,
-		Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
+	button := Card_CardButtonProps(card)
 
 	if button.ID != card.ID || button.Bounds != card.Bounds {
 		t.Fatal("card button props must preserve clickable identity and bounds")
@@ -27,11 +21,7 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 		t.Fatal("card button props must preserve KSS class identity")
 	}
 	if button.Emphasis != ButtonEmphasisFilled {
-		t.Fatal("explicit style overrides should keep requested emphasis")
-	}
-	if button.Style.Normal.Radius != 3 ||
-		button.Style.Normal.Background != (Color{1, 2, 3, 4}) {
-		t.Fatalf("normal overrides did not win: %+v", button.Style.Normal)
+		t.Fatal("card button props should keep requested emphasis")
 	}
 	if button.Style.Normal.PaddingX != 0 || button.Style.Normal.PaddingY != 0 {
 		t.Fatal("card must not provide hidden padding defaults")
@@ -39,13 +29,13 @@ func TestCardButtonPropsHasNoVisualDefaults(t *testing.T) {
 	if button.Style.Normal.Material != 0 || button.Style.Hover.Material != 0 {
 		t.Fatal("card must not provide hidden material defaults")
 	}
-	if button.Style.Hover.Border != (Color{5, 6, 7, 8}) {
-		t.Fatal("hover override was not preserved")
+	if button.Style.Normal.Fields != 0 || button.Style.Hover.Fields != 0 {
+		t.Fatal("card must not carry inline visual style")
 	}
 
 	plain := Card_CardButtonProps(CardProps{
 		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
-	}, 12, 1, 16, 10, Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
+	})
 	if plain.Emphasis != ButtonEmphasisFilled || plain.Style.Normal.Fields != 0 {
 		t.Fatal("plain card should preserve semantics and carry no visual style")
 	}
@@ -61,7 +51,7 @@ func TestCardRuntimeUsesCardStyleFacts(t *testing.T) {
 	r := New(AppConfig{}).(*runtime)
 	button := Card_CardButtonProps(CardProps{
 		Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisFilled,
-	}, 12, 1, 16, 10, Color{32, 40, 48, 255}, Color{180, 90, 40, 220})
+	})
 	cardStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
 		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())
 	buttonStyle := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
@@ -102,7 +92,7 @@ func TestCardRuntimeResolvesClassSelectors(t *testing.T) {
 		ClassName: StyleClassID("primary"),
 		Tone:      ButtonToneNeutral,
 		Emphasis:  ButtonEmphasisFilled,
-	}, 12, 1, 16, 10, Color{}, Color{})
+	})
 	style := resolveButtonStyleForKind(r.theme(), r.effectiveDark(),
 		r.activeTheme, button, ButtonStateNormal, StyleSheet_StyleKindCard())
 

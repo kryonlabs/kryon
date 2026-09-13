@@ -3,27 +3,9 @@
 #import "button_props"
 #import "control_props"
 
-CardStyleEmpty :: (style: ControlStyle) -> bool #export {
-    return style.normal.fields == (u32)0 &&
-           style.hover.fields == (u32)0 &&
-           style.pressed.fields == (u32)0 &&
-           style.focused.fields == (u32)0 &&
-           style.disabled.fields == (u32)0 &&
-           style.loading.fields == (u32)0 &&
-           style.selected.fields == (u32)0
-}
-
-CardButtonProps :: (card: CardProps, radius_large: float,
-    border_width: float, padding_large: float, padding_medium: float,
-    surface: Color, accent: Color) -> ButtonProps #export {
+CardButtonProps :: (card: CardProps) -> ButtonProps #export {
     button: ButtonProps
 
-    unused radius_large
-    unused border_width
-    unused padding_large
-    unused padding_medium
-    unused surface
-    unused accent
     button.bounds = card.bounds
     if card.clickable { button.id = card.id }
     button.class_name = card.class_name
@@ -33,6 +15,5 @@ CardButtonProps :: (card: CardProps, radius_large: float,
     button.disabled = card.disabled
     button.selected = card.selected
     button.state = card.state
-    button.style = card.style
     return button
 }

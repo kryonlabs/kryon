@@ -4,100 +4,30 @@ package kryon
 // #import card_props
 // #import button_props
 // #import control_props
-func Card_CardStyleEmpty(style ControlStyle) bool {
-	var value_0 uint32 = style.Normal.Fields
-	var value_1 int32 = 0
-	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
-	var value_3 bool = value_0 == value_2
-	var value_4 bool = value_3
-	if value_4 {
-		var value_5 uint32 = style.Hover.Fields
-		var value_6 int32 = 0
-		var value_7 uint32 = uint32(number_runtime_bits(uint64(value_6), uint64(0), 32, false, 0))
-		var value_8 bool = value_5 == value_7
-		value_4 = value_8
-	}
-	var value_9 bool = value_4
-	if value_9 {
-		var value_10 uint32 = style.Pressed.Fields
-		var value_11 int32 = 0
-		var value_12 uint32 = uint32(number_runtime_bits(uint64(value_11), uint64(0), 32, false, 0))
-		var value_13 bool = value_10 == value_12
-		value_9 = value_13
-	}
-	var value_14 bool = value_9
-	if value_14 {
-		var value_15 uint32 = style.Focused.Fields
-		var value_16 int32 = 0
-		var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
-		var value_18 bool = value_15 == value_17
-		value_14 = value_18
-	}
-	var value_19 bool = value_14
-	if value_19 {
-		var value_20 uint32 = style.Disabled.Fields
-		var value_21 int32 = 0
-		var value_22 uint32 = uint32(number_runtime_bits(uint64(value_21), uint64(0), 32, false, 0))
-		var value_23 bool = value_20 == value_22
-		value_19 = value_23
-	}
-	var value_24 bool = value_19
-	if value_24 {
-		var value_25 uint32 = style.Loading.Fields
-		var value_26 int32 = 0
-		var value_27 uint32 = uint32(number_runtime_bits(uint64(value_26), uint64(0), 32, false, 0))
-		var value_28 bool = value_25 == value_27
-		value_24 = value_28
-	}
-	var value_29 bool = value_24
-	if value_29 {
-		var value_30 uint32 = style.Selected.Fields
-		var value_31 int32 = 0
-		var value_32 uint32 = uint32(number_runtime_bits(uint64(value_31), uint64(0), 32, false, 0))
-		var value_33 bool = value_30 == value_32
-		value_29 = value_33
-	}
-	return value_29
-}
-
-func Card_CardButtonProps(card CardProps, radius_large float32, border_width float32, padding_large float32, padding_medium float32, surface Color, accent Color) ButtonProps {
+func Card_CardButtonProps(card CardProps) ButtonProps {
 	var button ButtonProps = ButtonProps{}
-	var value_0 float32 = radius_large
-	_ = value_0
-	var value_1 float32 = border_width
-	_ = value_1
-	var value_2 float32 = padding_large
-	_ = value_2
-	var value_3 float32 = padding_medium
-	_ = value_3
-	var value_4 Color = surface
-	_ = value_4
-	var value_5 Color = accent
-	_ = value_5
-	var value_6 Rectangle = card.Bounds
-	button.Bounds = value_6
-	var value_7 bool = card.Clickable
-	if value_7 {
-		var value_8 int32 = card.ID
-		button.ID = value_8
+	var value_0 Rectangle = card.Bounds
+	button.Bounds = value_0
+	var value_1 bool = card.Clickable
+	if value_1 {
+		var value_2 int32 = card.ID
+		button.ID = value_2
 	}
-	var value_9 int32 = card.ClassName
-	button.ClassName = value_9
-	var value_10 ButtonTone = ButtonTone(card.Tone)
-	button.Tone = value_10
-	var value_11 ButtonEmphasis = ButtonEmphasis(card.Emphasis)
-	button.Emphasis = value_11
-	var value_12 int32 = int32(ControlSizeLarge)
-	var value_13 ControlSize = ControlSize(int32(number_runtime_bits(uint64(value_12), uint64(0), 32, true, 0)))
-	button.Size = value_13
-	var value_14 bool = card.Disabled
-	button.Disabled = value_14
-	var value_15 bool = card.Selected
-	button.Selected = value_15
-	var value_16 ButtonState = ButtonState(card.State)
-	button.State = value_16
-	var value_17 ControlStyle = card.Style
-	button.Style = value_17
-	var value_18 ButtonProps = button
-	return value_18
+	var value_3 int32 = card.ClassName
+	button.ClassName = value_3
+	var value_4 ButtonTone = ButtonTone(card.Tone)
+	button.Tone = value_4
+	var value_5 ButtonEmphasis = ButtonEmphasis(card.Emphasis)
+	button.Emphasis = value_5
+	var value_6 int32 = int32(ControlSizeLarge)
+	var value_7 ControlSize = ControlSize(int32(number_runtime_bits(uint64(value_6), uint64(0), 32, true, 0)))
+	button.Size = value_7
+	var value_8 bool = card.Disabled
+	button.Disabled = value_8
+	var value_9 bool = card.Selected
+	button.Selected = value_9
+	var value_10 ButtonState = ButtonState(card.State)
+	button.State = value_10
+	var value_11 ButtonProps = button
+	return value_11
 }

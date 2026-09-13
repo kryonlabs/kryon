@@ -1532,14 +1532,14 @@ func (r *runtime) Button(props ButtonProps) bool {
 
 func cardButtonProps(props CardProps) ButtonProps {
 	return ButtonProps{
-		Bounds:   props.Bounds,
-		ID:       props.ID,
-		Tone:     props.Tone,
-		Emphasis: props.Emphasis,
-		Disabled: props.Disabled,
-		Selected: props.Selected,
-		State:    props.State,
-		Style:    props.Style,
+		Bounds:    props.Bounds,
+		ID:        props.ID,
+		ClassName: props.ClassName,
+		Tone:      props.Tone,
+		Emphasis:  props.Emphasis,
+		Disabled:  props.Disabled,
+		Selected:  props.Selected,
+		State:     props.State,
 	}
 }
 

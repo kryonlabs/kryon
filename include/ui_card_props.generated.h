@@ -31,7 +31,6 @@ typedef struct CardProps {
     ButtonTone tone;
     ButtonEmphasis emphasis;
     ButtonState state;
-    ControlStyle style;
 } CardProps;
 
 #endif /* K_RUNTIME_CARD_PROPS_H */
