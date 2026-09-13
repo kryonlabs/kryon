@@ -20,21 +20,27 @@ type SliderSpec struct {
 }
 
 type SliderPaint struct {
-	Bounds              Rectangle
-	TrackBounds         Rectangle
-	ActiveBounds        Rectangle
-	ThumbX              float32
-	ThumbY              float32
-	ThumbRadius         float32
-	GlowRadius          float32
-	GlowColor           uint32
-	ThumbFillColor      uint32
-	ThumbEdgeColor      uint32
-	ThumbShadowColor    uint32
-	ThumbHighlightColor uint32
-	Track               StyleFrame
-	ActiveTrack         StyleFrame
-	Thumb               StyleFrame
+	Bounds               Rectangle
+	TrackBounds          Rectangle
+	ActiveBounds         Rectangle
+	ThumbX               float32
+	ThumbY               float32
+	ThumbRadius          float32
+	GlowRadius           float32
+	ThumbShadowX         float32
+	ThumbShadowY         float32
+	ThumbShadowRadius    float32
+	ThumbHighlightX      float32
+	ThumbHighlightY      float32
+	ThumbHighlightRadius float32
+	GlowColor            uint32
+	ThumbFillColor       uint32
+	ThumbEdgeColor       uint32
+	ThumbShadowColor     uint32
+	ThumbHighlightColor  uint32
+	Track                StyleFrame
+	ActiveTrack          StyleFrame
+	Thumb                StyleFrame
 }
 
 type SliderStep struct {
@@ -585,6 +591,68 @@ func Slider_SliderGlowExpansionForStyle(thumb StyleFrame, scale float32) float32
 	return value_7
 }
 
+func Slider_SliderThumbShadowOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.OffsetX
+	var value_4 float32 = 0.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Slider_SliderThumbShadowOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.OffsetY
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Slider_SliderThumbShadowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleBorderWidth)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.BorderWidth
+	var value_4 float32 = 1.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Slider_SliderThumbHighlightOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StylePaddingX)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.PaddingX
+	var value_4 float32 = 3.0
+	var value_5 float32 = -value_4
+	var value_6 float32 = scale
+	var value_7 bool = true
+	var value_8 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_5, value_6, value_7)
+	return value_8
+}
+
+func Slider_SliderThumbHighlightOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StylePaddingY)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.PaddingY
+	var value_4 float32 = 4.0
+	var value_5 float32 = -value_4
+	var value_6 float32 = scale
+	var value_7 bool = true
+	var value_8 float32 = Slider_SliderMetricFloat(value_0, value_2, value_3, value_5, value_6, value_7)
+	return value_8
+}
+
 func Slider_SliderClampRatio(ratio float32) float32 {
 	var value_0 float32 = ratio
 	var value_1 float32 = 0.0
@@ -1052,72 +1120,106 @@ func Slider_SliderPaintFor(spec SliderSpec) SliderPaint {
 	var value_102 float32 = Slider_SliderGlowExpansionForStyle(value_100, value_101)
 	var value_103 float32 = value_99 + value_102
 	paint.GlowRadius = value_103
-	var value_104 StyleFrame = spec.Track
-	paint.Track = value_104
-	var value_105 StyleFrame = spec.ActiveTrack
-	paint.ActiveTrack = value_105
-	var value_106 StyleFrame = spec.Thumb
-	paint.Thumb = value_106
-	var value_107 float32 = paint.Thumb.Value.Opacity
-	var thumb_opacity float32 = value_107
-	var value_108 uint32 = paint.Thumb.Value.Background
-	var value_109 float32 = thumb_opacity
-	var value_110 uint32 = Surface_Opacity(value_108, value_109)
-	paint.ThumbFillColor = value_110
-	var value_111 uint32 = paint.Thumb.Value.Border
-	var value_112 float32 = thumb_opacity
-	var value_113 uint32 = Surface_Opacity(value_111, value_112)
-	paint.ThumbEdgeColor = value_113
-	var value_114 uint32 = paint.Thumb.Value.Focus
-	var value_115 bool = spec.Disabled
-	var value_116 float32 = 0
-	if value_115 {
-		var value_117 float32 = 0.18
-		value_116 = value_117
+	var value_104 float32 = paint.ThumbX
+	var value_105 StyleFrame = spec.Thumb
+	var value_106 float32 = scale
+	var value_107 float32 = Slider_SliderThumbShadowOffsetXForStyle(value_105, value_106)
+	var value_108 float32 = value_104 + value_107
+	paint.ThumbShadowX = value_108
+	var value_109 float32 = paint.ThumbY
+	var value_110 StyleFrame = spec.Thumb
+	var value_111 float32 = scale
+	var value_112 float32 = Slider_SliderThumbShadowOffsetYForStyle(value_110, value_111)
+	var value_113 float32 = value_109 + value_112
+	paint.ThumbShadowY = value_113
+	var value_114 float32 = paint.ThumbRadius
+	var value_115 StyleFrame = spec.Thumb
+	var value_116 float32 = scale
+	var value_117 float32 = Slider_SliderThumbShadowExpansionForStyle(value_115, value_116)
+	var value_118 float32 = value_114 + value_117
+	paint.ThumbShadowRadius = value_118
+	var value_119 float32 = paint.ThumbX
+	var value_120 StyleFrame = spec.Thumb
+	var value_121 float32 = scale
+	var value_122 float32 = Slider_SliderThumbHighlightOffsetXForStyle(value_120, value_121)
+	var value_123 float32 = value_119 + value_122
+	paint.ThumbHighlightX = value_123
+	var value_124 float32 = paint.ThumbY
+	var value_125 StyleFrame = spec.Thumb
+	var value_126 float32 = scale
+	var value_127 float32 = Slider_SliderThumbHighlightOffsetYForStyle(value_125, value_126)
+	var value_128 float32 = value_124 + value_127
+	paint.ThumbHighlightY = value_128
+	var value_129 float32 = paint.ThumbRadius
+	var value_130 float32 = 0.45
+	var value_131 float32 = value_129 * value_130
+	paint.ThumbHighlightRadius = value_131
+	var value_132 StyleFrame = spec.Track
+	paint.Track = value_132
+	var value_133 StyleFrame = spec.ActiveTrack
+	paint.ActiveTrack = value_133
+	var value_134 StyleFrame = spec.Thumb
+	paint.Thumb = value_134
+	var value_135 float32 = paint.Thumb.Value.Opacity
+	var thumb_opacity float32 = value_135
+	var value_136 uint32 = paint.Thumb.Value.Background
+	var value_137 float32 = thumb_opacity
+	var value_138 uint32 = Surface_Opacity(value_136, value_137)
+	paint.ThumbFillColor = value_138
+	var value_139 uint32 = paint.Thumb.Value.Border
+	var value_140 float32 = thumb_opacity
+	var value_141 uint32 = Surface_Opacity(value_139, value_140)
+	paint.ThumbEdgeColor = value_141
+	var value_142 uint32 = paint.Thumb.Value.Focus
+	var value_143 bool = spec.Disabled
+	var value_144 float32 = 0
+	if value_143 {
+		var value_145 float32 = 0.18
+		value_144 = value_145
 	} else {
-		var value_118 float32 = 0.36
-		value_116 = value_118
+		var value_146 float32 = 0.36
+		value_144 = value_146
 	}
-	var value_119 float32 = thumb_opacity
-	var value_120 float32 = value_116 * value_119
-	var value_121 uint32 = Surface_Opacity(value_114, value_120)
-	paint.ThumbShadowColor = value_121
-	var value_122 uint32 = paint.Thumb.Value.Foreground
-	var value_123 bool = spec.Disabled
-	var value_124 float32 = 0
-	if value_123 {
-		var value_125 float32 = 0.08
-		value_124 = value_125
+	var value_147 float32 = thumb_opacity
+	var value_148 float32 = value_144 * value_147
+	var value_149 uint32 = Surface_Opacity(value_142, value_148)
+	paint.ThumbShadowColor = value_149
+	var value_150 uint32 = paint.Thumb.Value.Foreground
+	var value_151 bool = spec.Disabled
+	var value_152 float32 = 0
+	if value_151 {
+		var value_153 float32 = 0.08
+		value_152 = value_153
 	} else {
-		var value_126 float32 = 0.20
-		value_124 = value_126
+		var value_154 float32 = 0.20
+		value_152 = value_154
 	}
-	var value_127 float32 = thumb_opacity
-	var value_128 float32 = value_124 * value_127
-	var value_129 uint32 = Surface_Opacity(value_122, value_128)
-	paint.ThumbHighlightColor = value_129
-	var value_130 uint32 = paint.Thumb.Value.Focus
-	var value_131 bool = spec.Active
-	var value_132 float32 = 0
-	if value_131 {
-		var value_133 float32 = 0.32
-		value_132 = value_133
+	var value_155 float32 = thumb_opacity
+	var value_156 float32 = value_152 * value_155
+	var value_157 uint32 = Surface_Opacity(value_150, value_156)
+	paint.ThumbHighlightColor = value_157
+	var value_158 uint32 = paint.Thumb.Value.Focus
+	var value_159 bool = spec.Active
+	var value_160 float32 = 0
+	if value_159 {
+		var value_161 float32 = 0.32
+		value_160 = value_161
 	} else {
-		var value_134 bool = spec.Hovered
-		var value_135 float32 = 0
-		if value_134 {
-			var value_136 float32 = 0.18
-			value_135 = value_136
+		var value_162 bool = spec.Hovered
+		var value_163 float32 = 0
+		if value_162 {
+			var value_164 float32 = 0.18
+			value_163 = value_164
 		} else {
-			var value_137 float32 = 0.0
-			value_135 = value_137
+			var value_165 float32 = 0.0
+			value_163 = value_165
 		}
-		value_132 = value_135
+		value_160 = value_163
 	}
-	var value_138 float32 = thumb_opacity
-	var value_139 float32 = value_132 * value_138
-	var value_140 uint32 = Surface_Opacity(value_130, value_139)
-	paint.GlowColor = value_140
-	var value_141 SliderPaint = paint
-	return value_141
+	var value_166 float32 = thumb_opacity
+	var value_167 float32 = value_160 * value_166
+	var value_168 uint32 = Surface_Opacity(value_158, value_167)
+	paint.GlowColor = value_168
+	var value_169 SliderPaint = paint
+	return value_169
 }

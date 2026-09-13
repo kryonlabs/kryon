@@ -37,16 +37,16 @@ ui_draw_slider_paint(SliderPaint paint, int hovered, int active,
         DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                    paint.glow_radius, GetColor(paint.glow_color));
     if(FancyEffectsEnabled()) {
-        DrawCircle((int)paint.thumb_x, (int)(paint.thumb_y + Scale(2)),
-                   paint.thumb_radius + (float)Scale(1),
+        DrawCircle((int)paint.thumb_shadow_x, (int)paint.thumb_shadow_y,
+                   paint.thumb_shadow_radius,
                    GetColor(paint.thumb_shadow_color));
     }
     DrawCircle((int)paint.thumb_x, (int)paint.thumb_y,
                paint.thumb_radius, GetColor(paint.thumb_fill_color));
     if(FancyEffectsEnabled()) {
-        DrawCircle((int)(paint.thumb_x - Scale(3)),
-                   (int)(paint.thumb_y - Scale(4)),
-                   paint.thumb_radius * 0.45f,
+        DrawCircle((int)paint.thumb_highlight_x,
+                   (int)paint.thumb_highlight_y,
+                   paint.thumb_highlight_radius,
                    GetColor(paint.thumb_highlight_color));
     }
     DrawCircleLines((int)paint.thumb_x, (int)paint.thumb_y,
@@ -738,19 +738,21 @@ ToggleSwitch(int x, int y, int w, int h, int *value,
             int thumb_r = (int)paint.thumb_radius;
             if(FancyEffectsEnabled() && hovered && enabled) {
                 DrawCircle(thumb_cx, thumb_cy,
-                           paint.thumb_radius + (float)Scale(5),
+                           paint.thumb_glow_radius,
                            GetColor(paint.thumb_glow_color));
             }
             if(FancyEffectsEnabled()) {
-                DrawCircle(thumb_cx, thumb_cy + Scale(2),
-                           paint.thumb_radius + (float)Scale(1),
+                DrawCircle((int)paint.thumb_shadow_x,
+                           (int)paint.thumb_shadow_y,
+                           paint.thumb_shadow_radius,
                            GetColor(paint.thumb_shadow_color));
             }
             DrawCircle(thumb_cx, thumb_cy, paint.thumb_radius,
                        GetColor(paint.thumb_fill_color));
             if(FancyEffectsEnabled()) {
-                DrawCircle(thumb_cx - Scale(3), thumb_cy - Scale(4),
-                           paint.thumb_radius * 0.5f,
+                DrawCircle((int)paint.thumb_highlight_x,
+                           (int)paint.thumb_highlight_y,
+                           paint.thumb_highlight_radius,
                            GetColor(paint.thumb_highlight_color));
             }
             DrawCircleLines(thumb_cx, thumb_cy, (float)thumb_r,

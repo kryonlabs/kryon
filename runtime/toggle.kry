@@ -41,6 +41,13 @@ TogglePaint :: struct {
     thumb_x: float
     thumb_y: float
     thumb_radius: float
+    thumb_shadow_x: float
+    thumb_shadow_y: float
+    thumb_shadow_radius: float
+    thumb_highlight_x: float
+    thumb_highlight_y: float
+    thumb_highlight_radius: float
+    thumb_glow_radius: float
     thumb_shadow_color: u32
     thumb_fill_color: u32
     thumb_edge_color: u32
@@ -73,6 +80,36 @@ ToggleThumbSizeForStyle :: (thumb: StyleFrame, checked: bool,
     if scale <= 0.0 { scale = 1.0 }
     return ToggleMetric(thumb.value.fields, (u32)StyleIconSize,
         thumb.value.icon_size, checked ? 24.0 : 20.0, scale, false)
+}
+
+ToggleThumbShadowOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StyleContentOffset,
+        thumb.value.offset_x, 0.0, scale, true)
+}
+
+ToggleThumbShadowOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StyleContentOffset,
+        thumb.value.offset_y, 2.0, scale, true)
+}
+
+ToggleThumbShadowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StyleBorderWidth,
+        thumb.value.border_width, 1.0, scale, true)
+}
+
+ToggleThumbHighlightOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StylePaddingX,
+        thumb.value.padding_x, -3.0, scale, true)
+}
+
+ToggleThumbHighlightOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StylePaddingY,
+        thumb.value.padding_y, -4.0, scale, true)
+}
+
+ToggleThumbGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return ToggleMetric(thumb.value.fields, (u32)StyleContentOffset,
+        thumb.value.offset_y, 5.0, scale, true)
 }
 
 ToggleMinimumWidthForStyle :: (has_labels: bool, off_width: i32,
@@ -189,6 +226,19 @@ TogglePaintFor :: (spec: ToggleSpec) -> TogglePaint #export {
         paint.thumb_radius = thumb_size * 0.5
         paint.thumb_x = thumb_x + paint.thumb_radius
         paint.thumb_y = thumb_y + paint.thumb_radius
+        paint.thumb_shadow_x = paint.thumb_x +
+            ToggleThumbShadowOffsetXForStyle(spec.thumb, scale)
+        paint.thumb_shadow_y = paint.thumb_y +
+            ToggleThumbShadowOffsetYForStyle(spec.thumb, scale)
+        paint.thumb_shadow_radius = paint.thumb_radius +
+            ToggleThumbShadowExpansionForStyle(spec.thumb, scale)
+        paint.thumb_highlight_x = paint.thumb_x +
+            ToggleThumbHighlightOffsetXForStyle(spec.thumb, scale)
+        paint.thumb_highlight_y = paint.thumb_y +
+            ToggleThumbHighlightOffsetYForStyle(spec.thumb, scale)
+        paint.thumb_highlight_radius = paint.thumb_radius * 0.5
+        paint.thumb_glow_radius = paint.thumb_radius +
+            ToggleThumbGlowExpansionForStyle(spec.thumb, scale)
         thumb_opacity: float = paint.thumb.value.opacity
         paint.thumb_fill_color = Opacity(paint.thumb.value.background,
             thumb_opacity)

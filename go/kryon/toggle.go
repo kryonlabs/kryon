@@ -26,27 +26,34 @@ type ToggleSpec struct {
 }
 
 type TogglePaint struct {
-	Bounds              Rectangle
-	TrackBounds         Rectangle
-	FocusBounds         Rectangle
-	ActiveBounds        Rectangle
-	OffLabelBounds      Rectangle
-	OnLabelBounds       Rectangle
-	Track               StyleFrame
-	Active              StyleFrame
-	Thumb               StyleFrame
-	ShowFocus           bool
-	HasLabels           bool
-	OffLabelColor       uint32
-	OnLabelColor        uint32
-	ThumbX              float32
-	ThumbY              float32
-	ThumbRadius         float32
-	ThumbShadowColor    uint32
-	ThumbFillColor      uint32
-	ThumbEdgeColor      uint32
-	ThumbHighlightColor uint32
-	ThumbGlowColor      uint32
+	Bounds               Rectangle
+	TrackBounds          Rectangle
+	FocusBounds          Rectangle
+	ActiveBounds         Rectangle
+	OffLabelBounds       Rectangle
+	OnLabelBounds        Rectangle
+	Track                StyleFrame
+	Active               StyleFrame
+	Thumb                StyleFrame
+	ShowFocus            bool
+	HasLabels            bool
+	OffLabelColor        uint32
+	OnLabelColor         uint32
+	ThumbX               float32
+	ThumbY               float32
+	ThumbRadius          float32
+	ThumbShadowX         float32
+	ThumbShadowY         float32
+	ThumbShadowRadius    float32
+	ThumbHighlightX      float32
+	ThumbHighlightY      float32
+	ThumbHighlightRadius float32
+	ThumbGlowRadius      float32
+	ThumbShadowColor     uint32
+	ThumbFillColor       uint32
+	ThumbEdgeColor       uint32
+	ThumbHighlightColor  uint32
+	ThumbGlowColor       uint32
 }
 
 func Toggle_ToggleMetric(fields uint32, field uint32, value float32, fallback float32, scale float32, allow_zero bool) float32 {
@@ -142,6 +149,80 @@ func Toggle_ToggleThumbSizeForStyle(thumb StyleFrame, checked bool, scale float3
 	var value_13 bool = false
 	var value_14 float32 = Toggle_ToggleMetric(value_4, value_6, value_7, value_9, value_12, value_13)
 	return value_14
+}
+
+func Toggle_ToggleThumbShadowOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.OffsetX
+	var value_4 float32 = 0.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Toggle_ToggleThumbShadowOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.OffsetY
+	var value_4 float32 = 2.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Toggle_ToggleThumbShadowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleBorderWidth)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.BorderWidth
+	var value_4 float32 = 1.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
+}
+
+func Toggle_ToggleThumbHighlightOffsetXForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StylePaddingX)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.PaddingX
+	var value_4 float32 = 3.0
+	var value_5 float32 = -value_4
+	var value_6 float32 = scale
+	var value_7 bool = true
+	var value_8 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_5, value_6, value_7)
+	return value_8
+}
+
+func Toggle_ToggleThumbHighlightOffsetYForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StylePaddingY)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.PaddingY
+	var value_4 float32 = 4.0
+	var value_5 float32 = -value_4
+	var value_6 float32 = scale
+	var value_7 bool = true
+	var value_8 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_5, value_6, value_7)
+	return value_8
+}
+
+func Toggle_ToggleThumbGlowExpansionForStyle(thumb StyleFrame, scale float32) float32 {
+	var value_0 uint32 = thumb.Value.Fields
+	var value_1 int32 = int32(StyleContentOffset)
+	var value_2 uint32 = uint32(number_runtime_bits(uint64(value_1), uint64(0), 32, false, 0))
+	var value_3 float32 = thumb.Value.OffsetY
+	var value_4 float32 = 5.0
+	var value_5 float32 = scale
+	var value_6 bool = true
+	var value_7 float32 = Toggle_ToggleMetric(value_0, value_2, value_3, value_4, value_5, value_6)
+	return value_7
 }
 
 func Toggle_ToggleMinimumWidthForStyle(has_labels bool, off_width int32, on_width int32, scale float32, track StyleFrame, active StyleFrame, label StyleFrame) int32 {
@@ -566,51 +647,91 @@ func Toggle_TogglePaintFor(spec ToggleSpec) TogglePaint {
 		var value_231 float32 = paint.ThumbRadius
 		var value_232 float32 = value_230 + value_231
 		paint.ThumbY = value_232
-		var value_233 float32 = paint.Thumb.Value.Opacity
-		var thumb_opacity float32 = value_233
-		var value_234 uint32 = paint.Thumb.Value.Background
-		var value_235 float32 = thumb_opacity
-		var value_236 uint32 = Surface_Opacity(value_234, value_235)
-		paint.ThumbFillColor = value_236
-		var value_237 uint32 = paint.Thumb.Value.Border
-		var value_238 float32 = thumb_opacity
-		var value_239 uint32 = Surface_Opacity(value_237, value_238)
-		paint.ThumbEdgeColor = value_239
-		var value_240 uint32 = paint.Thumb.Value.Focus
-		var value_241 float32 = 0.36
-		var value_242 float32 = thumb_opacity
-		var value_243 float32 = value_241 * value_242
-		var value_244 uint32 = Surface_Opacity(value_240, value_243)
-		paint.ThumbGlowColor = value_244
-		var value_245 uint32 = paint.Thumb.Value.Border
-		var value_246 bool = spec.Enabled
-		var value_247 float32 = 0
-		if value_246 {
-			var value_248 float32 = 0.36
-			value_247 = value_248
+		var value_233 float32 = paint.ThumbX
+		var value_234 StyleFrame = spec.Thumb
+		var value_235 float32 = scale
+		var value_236 float32 = Toggle_ToggleThumbShadowOffsetXForStyle(value_234, value_235)
+		var value_237 float32 = value_233 + value_236
+		paint.ThumbShadowX = value_237
+		var value_238 float32 = paint.ThumbY
+		var value_239 StyleFrame = spec.Thumb
+		var value_240 float32 = scale
+		var value_241 float32 = Toggle_ToggleThumbShadowOffsetYForStyle(value_239, value_240)
+		var value_242 float32 = value_238 + value_241
+		paint.ThumbShadowY = value_242
+		var value_243 float32 = paint.ThumbRadius
+		var value_244 StyleFrame = spec.Thumb
+		var value_245 float32 = scale
+		var value_246 float32 = Toggle_ToggleThumbShadowExpansionForStyle(value_244, value_245)
+		var value_247 float32 = value_243 + value_246
+		paint.ThumbShadowRadius = value_247
+		var value_248 float32 = paint.ThumbX
+		var value_249 StyleFrame = spec.Thumb
+		var value_250 float32 = scale
+		var value_251 float32 = Toggle_ToggleThumbHighlightOffsetXForStyle(value_249, value_250)
+		var value_252 float32 = value_248 + value_251
+		paint.ThumbHighlightX = value_252
+		var value_253 float32 = paint.ThumbY
+		var value_254 StyleFrame = spec.Thumb
+		var value_255 float32 = scale
+		var value_256 float32 = Toggle_ToggleThumbHighlightOffsetYForStyle(value_254, value_255)
+		var value_257 float32 = value_253 + value_256
+		paint.ThumbHighlightY = value_257
+		var value_258 float32 = paint.ThumbRadius
+		var value_259 float32 = 0.5
+		var value_260 float32 = value_258 * value_259
+		paint.ThumbHighlightRadius = value_260
+		var value_261 float32 = paint.ThumbRadius
+		var value_262 StyleFrame = spec.Thumb
+		var value_263 float32 = scale
+		var value_264 float32 = Toggle_ToggleThumbGlowExpansionForStyle(value_262, value_263)
+		var value_265 float32 = value_261 + value_264
+		paint.ThumbGlowRadius = value_265
+		var value_266 float32 = paint.Thumb.Value.Opacity
+		var thumb_opacity float32 = value_266
+		var value_267 uint32 = paint.Thumb.Value.Background
+		var value_268 float32 = thumb_opacity
+		var value_269 uint32 = Surface_Opacity(value_267, value_268)
+		paint.ThumbFillColor = value_269
+		var value_270 uint32 = paint.Thumb.Value.Border
+		var value_271 float32 = thumb_opacity
+		var value_272 uint32 = Surface_Opacity(value_270, value_271)
+		paint.ThumbEdgeColor = value_272
+		var value_273 uint32 = paint.Thumb.Value.Focus
+		var value_274 float32 = 0.36
+		var value_275 float32 = thumb_opacity
+		var value_276 float32 = value_274 * value_275
+		var value_277 uint32 = Surface_Opacity(value_273, value_276)
+		paint.ThumbGlowColor = value_277
+		var value_278 uint32 = paint.Thumb.Value.Border
+		var value_279 bool = spec.Enabled
+		var value_280 float32 = 0
+		if value_279 {
+			var value_281 float32 = 0.36
+			value_280 = value_281
 		} else {
-			var value_249 float32 = 0.18
-			value_247 = value_249
+			var value_282 float32 = 0.18
+			value_280 = value_282
 		}
-		var value_250 float32 = thumb_opacity
-		var value_251 float32 = value_247 * value_250
-		var value_252 uint32 = Surface_Opacity(value_245, value_251)
-		paint.ThumbShadowColor = value_252
-		var value_253 uint32 = paint.Thumb.Value.Foreground
-		var value_254 bool = spec.Enabled
-		var value_255 float32 = 0
-		if value_254 {
-			var value_256 float32 = 0.23
-			value_255 = value_256
+		var value_283 float32 = thumb_opacity
+		var value_284 float32 = value_280 * value_283
+		var value_285 uint32 = Surface_Opacity(value_278, value_284)
+		paint.ThumbShadowColor = value_285
+		var value_286 uint32 = paint.Thumb.Value.Foreground
+		var value_287 bool = spec.Enabled
+		var value_288 float32 = 0
+		if value_287 {
+			var value_289 float32 = 0.23
+			value_288 = value_289
 		} else {
-			var value_257 float32 = 0.09
-			value_255 = value_257
+			var value_290 float32 = 0.09
+			value_288 = value_290
 		}
-		var value_258 float32 = thumb_opacity
-		var value_259 float32 = value_255 * value_258
-		var value_260 uint32 = Surface_Opacity(value_253, value_259)
-		paint.ThumbHighlightColor = value_260
+		var value_291 float32 = thumb_opacity
+		var value_292 float32 = value_288 * value_291
+		var value_293 uint32 = Surface_Opacity(value_286, value_292)
+		paint.ThumbHighlightColor = value_293
 	}
-	var value_261 TogglePaint = paint
-	return value_261
+	var value_294 TogglePaint = paint
+	return value_294
 }

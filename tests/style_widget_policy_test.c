@@ -251,6 +251,16 @@ main(void)
                 slider_paint.thumb_radius, 11.0f);
     check_float("slider glow expansion falls back when unset",
                 slider_paint.glow_radius, 19.0f);
+    check_float("slider shadow y falls back in policy",
+                slider_paint.thumb_shadow_y, 33.0f);
+    check_float("slider shadow radius falls back in policy",
+                slider_paint.thumb_shadow_radius, 12.0f);
+    check_float("slider highlight x falls back in policy",
+                slider_paint.thumb_highlight_x, 15.0f);
+    check_float("slider highlight y falls back in policy",
+                slider_paint.thumb_highlight_y, 27.0f);
+    check_float("slider highlight radius falls back in policy",
+                slider_paint.thumb_highlight_radius, 4.95f);
     frame.value.fields |= StylePaddingX | StylePaddingY | StyleIconSize;
     thumb.value.fields |= StyleIconSize | StyleGap;
     slider_paint = SliderPaintFor((SliderSpec){
@@ -337,6 +347,18 @@ main(void)
                 toggle_paint.thumb_radius, 10.0f);
     check_float("toggle thumb inset falls back when unset",
                 toggle_paint.thumb_x, 24.0f);
+    check_float("toggle glow radius falls back in policy",
+                toggle_paint.thumb_glow_radius, 15.0f);
+    check_float("toggle shadow y falls back in policy",
+                toggle_paint.thumb_shadow_y, 38.0f);
+    check_float("toggle shadow radius falls back in policy",
+                toggle_paint.thumb_shadow_radius, 11.0f);
+    check_float("toggle highlight x falls back in policy",
+                toggle_paint.thumb_highlight_x, 21.0f);
+    check_float("toggle highlight y falls back in policy",
+                toggle_paint.thumb_highlight_y, 32.0f);
+    check_float("toggle highlight radius falls back in policy",
+                toggle_paint.thumb_highlight_radius, 5.0f);
     frame.value.fields |= StylePaddingX | StylePaddingY | StyleGap |
                           StyleIconSize;
     thumb.value.fields |= StyleIconSize | StyleGap;

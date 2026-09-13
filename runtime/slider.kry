@@ -26,6 +26,12 @@ SliderPaint :: struct {
     thumb_y: float
     thumb_radius: float
     glow_radius: float
+    thumb_shadow_x: float
+    thumb_shadow_y: float
+    thumb_shadow_radius: float
+    thumb_highlight_x: float
+    thumb_highlight_y: float
+    thumb_highlight_radius: float
     glow_color: u32
     thumb_fill_color: u32
     thumb_edge_color: u32
@@ -218,6 +224,31 @@ SliderGlowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #expor
         thumb.value.gap, 8.0, scale, true)
 }
 
+SliderThumbShadowOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(thumb.value.fields, (u32)StyleContentOffset,
+        thumb.value.offset_x, 0.0, scale, true)
+}
+
+SliderThumbShadowOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(thumb.value.fields, (u32)StyleContentOffset,
+        thumb.value.offset_y, 2.0, scale, true)
+}
+
+SliderThumbShadowExpansionForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(thumb.value.fields, (u32)StyleBorderWidth,
+        thumb.value.border_width, 1.0, scale, true)
+}
+
+SliderThumbHighlightOffsetXForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(thumb.value.fields, (u32)StylePaddingX,
+        thumb.value.padding_x, -3.0, scale, true)
+}
+
+SliderThumbHighlightOffsetYForStyle :: (thumb: StyleFrame, scale: float) -> float #export {
+    return SliderMetricFloat(thumb.value.fields, (u32)StylePaddingY,
+        thumb.value.padding_y, -4.0, scale, true)
+}
+
 SliderClampRatio :: (ratio: float) -> float #export {
     if ratio < 0.0 { return 0.0 }
     if ratio > 1.0 { return 1.0 }
@@ -344,6 +375,17 @@ SliderPaintFor :: (spec: SliderSpec) -> SliderPaint #export {
     paint.thumb_radius = thumb_size * 0.5
     paint.glow_radius = paint.thumb_radius +
         SliderGlowExpansionForStyle(spec.thumb, scale)
+    paint.thumb_shadow_x = paint.thumb_x +
+        SliderThumbShadowOffsetXForStyle(spec.thumb, scale)
+    paint.thumb_shadow_y = paint.thumb_y +
+        SliderThumbShadowOffsetYForStyle(spec.thumb, scale)
+    paint.thumb_shadow_radius = paint.thumb_radius +
+        SliderThumbShadowExpansionForStyle(spec.thumb, scale)
+    paint.thumb_highlight_x = paint.thumb_x +
+        SliderThumbHighlightOffsetXForStyle(spec.thumb, scale)
+    paint.thumb_highlight_y = paint.thumb_y +
+        SliderThumbHighlightOffsetYForStyle(spec.thumb, scale)
+    paint.thumb_highlight_radius = paint.thumb_radius * 0.45
 
     paint.track = spec.track
     paint.active_track = spec.active_track

@@ -706,8 +706,8 @@ of internal policy and host plumbing behind the canonical names.
    `Button`, `Dropdown`, `Scroll`, `TabBar`, `PanedView`, and several primitive
    widgets already have `.kry` policy, but raw widget constants still remain in
    native files. The next focused audits are menu rows and popup placement in
-   `src/ui/ui_tk.c`, slider/toggle paint offsets in `src/ui/ui_slider.c`,
-   and any remaining row/form host placement in `src/ui/rows.c`.
+   `src/ui/ui_tk.c` and any remaining row/form host placement in
+   `src/ui/rows.c`.
 2. Finish internal `UI*` cleanup:
    Public headers/docs are clean, but internal implementation structs still use
    old names such as popup input, paint layers, numeric input state, blend
