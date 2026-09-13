@@ -2726,6 +2726,8 @@ function fakeDocument() {
     const nativeEvents = [];
     runtime.widget(nativeRt, "NavigationBar", {}, null,
       { nodeName: "nav", path: "Page/nav" });
+    runtime.widget(nativeRt, "Button", { label: "Home" }, null,
+      { nodeName: "homeLink", path: "Page/nav/home", parentPath: "Page/nav" });
     runtime.widget(nativeRt, "TitleBar", {}, null,
       { nodeName: "title", path: "Page/title" });
     runtime.widget(nativeRt, "Card", {}, null,
@@ -2860,6 +2862,12 @@ function fakeDocument() {
       .find((node) => node.kind === "NavigationBar")?.role, "navigation");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "TitleBar")?.role, "banner");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/nav/home").landmarkOwner.path,
+      "Page/nav");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/nav").landmarkMembers,
+      ["Page/nav/home"]);
+    assert.equal(runtime.webNodeSnapshot(nativeRt, "Page/nav/home")
+      .relationRefs.landmarkOwner, "Page/nav");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
       .find((node) => node.kind === "Fieldset")?.role, "group");
     assert.equal(runtime.webAccessibilitySnapshot(nativeRt).nodes
@@ -3023,6 +3031,12 @@ function fakeDocument() {
       "Page/fieldset");
     assert.deepEqual(runtime.webDOMSnapshot(nativeTarget, "Fieldset").relationRefs.groupMembers,
       ["Page/fieldset/agree"]);
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/nav/home").landmarkOwner.ref,
+      "Page/nav");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/nav").landmarkMembers,
+      ["Page/nav/home"]);
+    assert.equal(runtime.webDOMSnapshot(nativeTarget, "Page/nav/home")
+      .relationRefs.landmarkOwner, "Page/nav");
     assert.equal(autoDetails.tagName, "DETAILS");
     assert.equal(autoDetails.open, false);
     assert.equal(autoDialog.tagName, "DIALOG");

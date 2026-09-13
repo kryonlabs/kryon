@@ -87,6 +87,8 @@ the browser receives normal elements, attributes, CSS, and events.
   row-group/column-group headers for inspectors and browser DOM snapshots.
 - Semantic group relationship facts expose `groupOwner` and `groupMembers` for
   controls inside native or ARIA groups.
+- Semantic landmark relationship facts expose `landmarkOwner` and
+  `landmarkMembers` for nodes inside native or ARIA page landmarks.
 - Semantic collection relationship facts expose `collectionOwner` and
   `collectionItems` for menu, tablist, tree, listbox, and list-style
   owner/member roles.
@@ -137,7 +139,8 @@ the browser receives normal elements, attributes, CSS, and events.
   Document facts; mounted relation objects and snapshots expose reverse
   `controlledBy`, `ownedBy`, `describes`, `detailedBy`, `errorFor`,
   `flowFrom`, `activeDescendantOf`, and `popoverInvokers` buckets for
-  inspector navigation from relation targets, plus direct serializable
+  inspector navigation from relation targets; semantic landmark ownership
+  exposes nodes inside native or ARIA page landmarks, plus direct serializable
   `webNodeRelations(...)`,
   `webNodeRelationRefs(...)`, and
   `webDOMRelationRefs(...)` lookup.

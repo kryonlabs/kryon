@@ -6820,6 +6820,15 @@ function webNodeRoleName(node) {
   return String(node?.role || implicitRole(node) || "").toLowerCase();
 }
 
+const webLandmarkRoles = new Set([
+  "banner", "complementary", "contentinfo", "form", "main",
+  "navigation", "region", "search"
+]);
+
+function webNodeIsLandmark(node) {
+  return webLandmarkRoles.has(webNodeRoleName(node));
+}
+
 function webNodeCollectionMemberRoles(node) {
   const role = webNodeRoleName(node);
   const tag = String(node?.tag || "").toLowerCase();
@@ -6890,6 +6899,38 @@ function webDOMGroupMembers(target, node) {
   return out;
 }
 
+function webDOMLandmarkOwner(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !node)
+    return null;
+  let parentPath = node.parentPath || "";
+  while (parentPath && parentPath !== node.path) {
+    const parent = root.__kryNodes?.get(parentPath) || null;
+    if (!parent)
+      break;
+    if (webNodeIsLandmark(parent))
+      return webDOMObjectForNode(root, parent);
+    parentPath = parent.parentPath || "";
+  }
+  return null;
+}
+
+function webDOMLandmarkMembers(target, node) {
+  const root = mountedRoot(target);
+  if (!root || !webNodeIsLandmark(node))
+    return [];
+  const ref = webNodeRef(node);
+  const out = [];
+  for (const object of webDOMObjects(root)) {
+    if (!object?.node || object.node === node)
+      continue;
+    const owner = webDOMLandmarkOwner(root, object.node);
+    if (owner?.node === node || (ref && owner?.ref === ref))
+      out.push(object);
+  }
+  return out;
+}
+
 function webDOMCollectionOwner(target, node) {
   const root = mountedRoot(target);
   if (!root || !node)
@@ -6953,6 +6994,8 @@ function webDOMRelationsForNode(target, node) {
     nextSibling: webDOMSiblingObject(target, node, 1),
     groupOwner: webDOMGroupOwner(target, node),
     groupMembers: webDOMGroupMembers(target, node),
+    landmarkOwner: webDOMLandmarkOwner(target, node),
+    landmarkMembers: webDOMLandmarkMembers(target, node),
     collectionOwner: webDOMCollectionOwner(target, node),
     collectionItems: webDOMCollectionItems(target, node),
     selectedCollectionOwner: webDOMSelectedCollectionOwner(target, node),
@@ -8319,6 +8362,8 @@ function webDOMRelationRefsForRelations(relations) {
     labelledBy: (relations?.labelledBy || []).map((relation) => relation.ref),
     groupOwner: relations?.groupOwner?.ref || "",
     groupMembers: (relations?.groupMembers || []).map((relation) => relation.ref),
+    landmarkOwner: relations?.landmarkOwner?.ref || "",
+    landmarkMembers: (relations?.landmarkMembers || []).map((relation) => relation.ref),
     collectionOwner: relations?.collectionOwner?.ref || "",
     collectionItems: (relations?.collectionItems || []).map((relation) => relation.ref),
     selectedCollectionOwner: relations?.selectedCollectionOwner?.ref || "",
@@ -9117,6 +9162,30 @@ function webNodeCollectionItems(rt, node) {
   });
 }
 
+function webNodeLandmarkOwner(rt, node) {
+  if (!rt || !node)
+    return null;
+  let parent = webNodeParent(rt, node.path);
+  while (parent) {
+    if (webNodeIsLandmark(parent))
+      return parent;
+    parent = webNodeParent(rt, parent.path);
+  }
+  return null;
+}
+
+function webNodeLandmarkMembers(rt, node) {
+  if (!rt || !webNodeIsLandmark(node))
+    return [];
+  const ref = webNodeRef(node);
+  return (webDocumentFrame(rt).nodes || []).filter((candidate) => {
+    if (!candidate || candidate === node)
+      return false;
+    const owner = webNodeLandmarkOwner(rt, candidate);
+    return owner === node || (ref && webNodeRef(owner) === ref);
+  });
+}
+
 function webNodeSelectedCollectionOwner(rt, node) {
   return webNodeIsSelectedCollectionMember(node)
     ? webNodeCollectionOwner(rt, node)
@@ -9155,6 +9224,8 @@ function webNodeRelationsForNode(rt, node) {
     nextSibling: webNodeNextSiblingFromFrame(node),
     groupOwner: webNodeGroupOwner(rt, node),
     groupMembers: webNodeGroupMembers(rt, node),
+    landmarkOwner: webNodeLandmarkOwner(rt, node),
+    landmarkMembers: webNodeLandmarkMembers(rt, node),
     collectionOwner: webNodeCollectionOwner(rt, node),
     collectionItems: webNodeCollectionItems(rt, node),
     selectedCollectionOwner: webNodeSelectedCollectionOwner(rt, node),
@@ -9232,6 +9303,8 @@ function webNodeRelationRefsForNode(rt, node) {
     ),
     groupOwner: webNodeRef(webNodeGroupOwner(rt, node)) || "",
     groupMembers: webNodeRefs(webNodeGroupMembers(rt, node)),
+    landmarkOwner: webNodeRef(webNodeLandmarkOwner(rt, node)) || "",
+    landmarkMembers: webNodeRefs(webNodeLandmarkMembers(rt, node)),
     collectionOwner: webNodeRef(webNodeCollectionOwner(rt, node)) || "",
     collectionItems: webNodeRefs(webNodeCollectionItems(rt, node)),
     selectedCollectionOwner: webNodeRef(webNodeSelectedCollectionOwner(rt, node)) || "",
