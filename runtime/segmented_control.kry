@@ -1,5 +1,6 @@
 #module "segmented_control"
 #import "style"
+#import "control_props"
 
 SegmentedMetrics :: struct {
     gap: i32
@@ -18,43 +19,44 @@ SegmentedRow :: struct {
     y: i32
 }
 
+SegmentedMetric :: (fields: u32, field: u32, value: float,
+    fallback: float, scale: float, allow_zero: bool) -> i32 {
+    if (fields & field) == (u32)0 || value < 0.0 ||
+       (!allow_zero && value <= 0.0) {
+        value = fallback
+    }
+    return (i32)(value * scale)
+}
+
 SegmentedDefaultMetrics :: (row_height: i32, min_item_width: i32,
     max_item_width: i32, scale: float, control: StyleFrame,
     segment: StyleFrame) -> SegmentedMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: SegmentedMetrics
-    metrics.gap = (i32)(control.value.gap * scale)
-    if metrics.gap <= 0 {
-        metrics.gap = (i32)(6.0 * scale)
-    }
+    metrics.gap = SegmentedMetric(control.value.fields, (u32)StyleGap,
+        control.value.gap, 6.0, scale, true)
     metrics.row_height = row_height
     if metrics.row_height <= 0 {
-        metrics.row_height = (i32)(control.value.icon_size * scale)
-        if metrics.row_height <= 0 {
-            metrics.row_height = (i32)(30.0 * scale)
-        }
+        metrics.row_height = SegmentedMetric(control.value.fields,
+            (u32)StyleIconSize, control.value.icon_size, 30.0, scale, false)
     }
     metrics.min_item_width = min_item_width
     if metrics.min_item_width <= 0 {
-        metrics.min_item_width = (i32)(control.value.offset_x * scale)
-        if metrics.min_item_width <= 0 {
-            metrics.min_item_width = (i32)(72.0 * scale)
-        }
+        metrics.min_item_width = SegmentedMetric(control.value.fields,
+            (u32)StyleContentOffset, control.value.offset_x, 72.0, scale,
+            false)
     }
     metrics.max_item_width = max_item_width
     if metrics.max_item_width <= 0 {
-        metrics.max_item_width = (i32)(control.value.offset_y * scale)
-        if metrics.max_item_width <= 0 {
-            metrics.max_item_width = (i32)(180.0 * scale)
-        }
+        metrics.max_item_width = SegmentedMetric(control.value.fields,
+            (u32)StyleContentOffset, control.value.offset_y, 180.0, scale,
+            false)
     }
     if metrics.max_item_width > 0 && metrics.max_item_width < metrics.min_item_width {
         metrics.max_item_width = metrics.min_item_width
     }
-    metrics.label_padding = (i32)(segment.value.padding_x * 2.0 * scale)
-    if metrics.label_padding <= 0 {
-        metrics.label_padding = (i32)(20.0 * scale)
-    }
+    metrics.label_padding = SegmentedMetric(segment.value.fields,
+        (u32)StylePaddingX, segment.value.padding_x * 2.0, 20.0, scale, true)
     return metrics
 }
 

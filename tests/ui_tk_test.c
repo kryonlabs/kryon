@@ -837,6 +837,7 @@ test_segmented_control_policy(void)
     int second;
     int next;
     SegmentedRow row;
+    SegmentedMetrics zero_gap;
 
     control.value.fields |= StyleGap | StyleIconSize | StyleContentOffset;
     control.value.gap = 6.0f;
@@ -862,6 +863,10 @@ test_segmented_control_policy(void)
     check_int("segmented height", SegmentedHeightForRows(2, 30, 6), 66);
     check_int("segmented row button width", row.button_width, 117);
     check_int("segmented row x", row.x, 10);
+
+    control.value.gap = 0.0f;
+    zero_gap = SegmentedDefaultMetrics(0, 0, 0, 1.0f, control, segment);
+    check_int("segmented explicit zero gap", zero_gap.gap, 0);
 }
 
 static void
