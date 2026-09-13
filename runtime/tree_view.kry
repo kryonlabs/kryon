@@ -1,5 +1,6 @@
 #module "tree_view"
 #import "drawing_props"
+#import "style"
 
 TreeViewMetrics :: struct {
     default_row_height: i32
@@ -21,14 +22,25 @@ TreeViewTextPaint :: struct {
     text_y: i32
 }
 
-TreeViewMetricsFor :: (scale: float) -> TreeViewMetrics #export {
+TreeViewMetricsFor :: (scale: float, panel: StyleFrame,
+    item: StyleFrame) -> TreeViewMetrics #export {
     if scale <= 0.0 { scale = 1.0 }
     metrics: TreeViewMetrics
-    metrics.default_row_height = (i32)(28.0 * scale)
-    metrics.indent_x = (i32)(8.0 * scale)
-    metrics.depth_indent = (i32)(18.0 * scale)
-    metrics.marker_width = (i32)(16.0 * scale)
-    metrics.text_gap = (i32)(2.0 * scale)
+    row_height: float = item.value.font_size + item.value.padding_y * 2.0
+    indent_x: float = panel.value.padding_x
+    depth_indent: float = item.value.offset_x
+    marker_width: float = item.value.icon_size
+    text_gap: float = item.value.gap
+    if row_height <= 0.0 { row_height = 28.0 }
+    if indent_x <= 0.0 { indent_x = 8.0 }
+    if depth_indent <= 0.0 { depth_indent = 18.0 }
+    if marker_width <= 0.0 { marker_width = 16.0 }
+    if text_gap <= 0.0 { text_gap = 2.0 }
+    metrics.default_row_height = (i32)(row_height * scale)
+    metrics.indent_x = (i32)(indent_x * scale)
+    metrics.depth_indent = (i32)(depth_indent * scale)
+    metrics.marker_width = (i32)(marker_width * scale)
+    metrics.text_gap = (i32)(text_gap * scale)
     return metrics
 }
 

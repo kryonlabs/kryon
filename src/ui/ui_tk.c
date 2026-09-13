@@ -3222,10 +3222,15 @@ RenderTreeView(TreeViewProps tree)
         tree.disabled, 0, tree.class_name, StyleKindTreeViewItem(), StyleAny());
     Style default_item_style = ui_unpack_style(
         ui_style_apply_effects_frame(default_item_frame).value);
+    StyleFrame panel_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
+        tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        tree.disabled, 0, tree.class_name, StyleKindTreeView(), StyleAny());
     int font = default_item_style.font_size > 0.0f
         ? (int)(default_item_style.font_size + 0.5f)
         : GetFontSize();
-    TreeViewMetrics metrics = TreeViewMetricsFor((float)GetScale());
+    TreeViewMetrics metrics = TreeViewMetricsFor((float)GetScale(),
+                                                 panel_frame,
+                                                 default_item_frame);
     int row_h = TreeViewRowHeight(tree.row_height, (float)GetScale(), metrics);
     int content_h = TreeViewContentHeight(tree.item_count, row_h);
     TreeViewScrollLayout scroll_layout;
@@ -3243,10 +3248,7 @@ RenderTreeView(TreeViewProps tree)
     first = scroll_layout.first;
     y_offset = scroll_layout.y_offset;
     if(paint) {
-        StyleFrame frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,
-            tree.disabled ? ButtonStateDisabled : ButtonStateNormal,
-            tree.disabled, 0, tree.class_name, StyleKindTreeView(), StyleAny());
-        ui_tk_draw_style_frame(tree.bounds, (Rectangle){0}, frame, 0, 0,
+        ui_tk_draw_style_frame(tree.bounds, (Rectangle){0}, panel_frame, 0, 0,
                                tree.disabled, 0);
         BeginClip((int)tree.bounds.x, (int)tree.bounds.y,
                     (int)tree.bounds.width, (int)tree.bounds.height);

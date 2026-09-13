@@ -6001,7 +6001,19 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	if count <= 0 || count > int32(len(props.Items)) {
 		count = int32(len(props.Items))
 	}
-	metrics := TreeView_TreeViewMetricsFor(1)
+	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
+		if props.Disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), props.Disabled, false, props.ClassName, StyleSheet_StyleKindTreeView(), StyleSheet_StyleAny())
+	defaultItemFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
+		if props.Disabled {
+			return ButtonStateDisabled
+		}
+		return ButtonStateNormal
+	}(), props.Disabled, false, props.ClassName, StyleSheet_StyleKindTreeViewItem(), StyleSheet_StyleAny())
+	metrics := TreeView_TreeViewMetricsFor(1, panelFrame, defaultItemFrame)
 	rowH := TreeView_TreeViewRowHeight(props.RowHeight, 1, metrics)
 	contentHeight := TreeView_TreeViewContentHeight(count, rowH)
 	maxScroll := TreeView_TreeViewMaxScroll(int32(props.Bounds.Height), contentHeight)
@@ -6017,12 +6029,6 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 	}
 	scrollLayout := TreeView_TreeViewScrollFor(scroll, rowH)
 	visible := TreeView_TreeViewVisibleRows(int32(props.Bounds.Height), rowH)
-	panelFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, func() ButtonState {
-		if props.Disabled {
-			return ButtonStateDisabled
-		}
-		return ButtonStateNormal
-	}(), props.Disabled, false, props.ClassName, StyleSheet_StyleKindTreeView(), StyleSheet_StyleAny())
 	panelOp := styleFrameRectOp(props.Bounds, Rectangle{}, panelFrame)
 	panelOp.ID = props.ID
 	panelOp.Disabled = props.Disabled
@@ -6071,8 +6077,13 @@ func (r *runtime) TreeView(props TreeViewProps) int32 {
 			mark = "v"
 		}
 		font, fontID := styleTextFace(itemStyle, Text16)
-		markerBounds.Y += 4
-		textBounds.Y += 4
+		textPaint := TreeView_TreeViewTextPaintFor(markerBounds, textBounds, font)
+		markerBounds.X = float32(textPaint.MarkerX)
+		markerBounds.Y = float32(textPaint.MarkerY)
+		markerBounds.Height = float32(font)
+		textBounds.X = float32(textPaint.TextX)
+		textBounds.Y = float32(textPaint.TextY)
+		textBounds.Height = float32(font)
 		r.record(FrameOp{Kind: FrameOpText, Bounds: markerBounds, Text: mark, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: item.ID, Row: index, Disabled: props.Disabled})
 		r.record(FrameOp{Kind: FrameOpText, Bounds: textBounds, Text: item.Label, Color: itemStyle.Foreground, Opacity: itemStyle.Opacity, FontSize: font, FontID: fontID, ID: item.ID, Row: index, Pressed: pressed, Selected: selected, Disabled: props.Disabled})
 	}

@@ -567,7 +567,10 @@ TreeViewItem {
   radius: radius.sm;
   border-width: border.none;
   padding-x: space.3;
-  padding-y: space.2;
+  padding-y: 7;
+  gap: 2;
+  icon-size: 16;
+  offset-x: 18;
   font-size: font.sm;
   opacity: 1;
   material: glow;

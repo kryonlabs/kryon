@@ -2,6 +2,7 @@
 package kryon
 
 // #import drawing_props
+// #import style
 type TreeViewMetrics struct {
 	DefaultRowHeight int32
 	IndentX          int32
@@ -22,7 +23,7 @@ type TreeViewTextPaint struct {
 	TextY   int32
 }
 
-func TreeView_TreeViewMetricsFor(scale float32) TreeViewMetrics {
+func TreeView_TreeViewMetricsFor(scale float32, panel StyleFrame, item StyleFrame) TreeViewMetrics {
 	var value_0 float32 = scale
 	var value_1 float32 = 0.0
 	var value_2 bool = value_0 <= value_1
@@ -31,33 +32,82 @@ func TreeView_TreeViewMetricsFor(scale float32) TreeViewMetrics {
 		scale = value_3
 	}
 	var metrics TreeViewMetrics = TreeViewMetrics{}
-	var value_4 float32 = 28.0
-	var value_5 float32 = scale
-	var value_6 float32 = value_4 * value_5
-	var value_7 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_6), 32, true)), uint64(0), 32, true, 0))
-	metrics.DefaultRowHeight = value_7
-	var value_8 float32 = 8.0
-	var value_9 float32 = scale
-	var value_10 float32 = value_8 * value_9
-	var value_11 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_10), 32, true)), uint64(0), 32, true, 0))
-	metrics.IndentX = value_11
-	var value_12 float32 = 18.0
-	var value_13 float32 = scale
-	var value_14 float32 = value_12 * value_13
-	var value_15 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_14), 32, true)), uint64(0), 32, true, 0))
-	metrics.DepthIndent = value_15
-	var value_16 float32 = 16.0
-	var value_17 float32 = scale
-	var value_18 float32 = value_16 * value_17
-	var value_19 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_18), 32, true)), uint64(0), 32, true, 0))
-	metrics.MarkerWidth = value_19
-	var value_20 float32 = 2.0
-	var value_21 float32 = scale
-	var value_22 float32 = value_20 * value_21
-	var value_23 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_22), 32, true)), uint64(0), 32, true, 0))
-	metrics.TextGap = value_23
-	var value_24 TreeViewMetrics = metrics
-	return value_24
+	var value_4 float32 = item.Value.FontSize
+	var value_5 float32 = item.Value.PaddingY
+	var value_6 float32 = 2.0
+	var value_7 float32 = value_5 * value_6
+	var value_8 float32 = value_4 + value_7
+	var row_height float32 = value_8
+	var value_9 float32 = panel.Value.PaddingX
+	var indent_x float32 = value_9
+	var value_10 float32 = item.Value.OffsetX
+	var depth_indent float32 = value_10
+	var value_11 float32 = item.Value.IconSize
+	var marker_width float32 = value_11
+	var value_12 float32 = item.Value.Gap
+	var text_gap float32 = value_12
+	var value_13 float32 = row_height
+	var value_14 float32 = 0.0
+	var value_15 bool = value_13 <= value_14
+	if value_15 {
+		var value_16 float32 = 28.0
+		row_height = value_16
+	}
+	var value_17 float32 = indent_x
+	var value_18 float32 = 0.0
+	var value_19 bool = value_17 <= value_18
+	if value_19 {
+		var value_20 float32 = 8.0
+		indent_x = value_20
+	}
+	var value_21 float32 = depth_indent
+	var value_22 float32 = 0.0
+	var value_23 bool = value_21 <= value_22
+	if value_23 {
+		var value_24 float32 = 18.0
+		depth_indent = value_24
+	}
+	var value_25 float32 = marker_width
+	var value_26 float32 = 0.0
+	var value_27 bool = value_25 <= value_26
+	if value_27 {
+		var value_28 float32 = 16.0
+		marker_width = value_28
+	}
+	var value_29 float32 = text_gap
+	var value_30 float32 = 0.0
+	var value_31 bool = value_29 <= value_30
+	if value_31 {
+		var value_32 float32 = 2.0
+		text_gap = value_32
+	}
+	var value_33 float32 = row_height
+	var value_34 float32 = scale
+	var value_35 float32 = value_33 * value_34
+	var value_36 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_35), 32, true)), uint64(0), 32, true, 0))
+	metrics.DefaultRowHeight = value_36
+	var value_37 float32 = indent_x
+	var value_38 float32 = scale
+	var value_39 float32 = value_37 * value_38
+	var value_40 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_39), 32, true)), uint64(0), 32, true, 0))
+	metrics.IndentX = value_40
+	var value_41 float32 = depth_indent
+	var value_42 float32 = scale
+	var value_43 float32 = value_41 * value_42
+	var value_44 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_43), 32, true)), uint64(0), 32, true, 0))
+	metrics.DepthIndent = value_44
+	var value_45 float32 = marker_width
+	var value_46 float32 = scale
+	var value_47 float32 = value_45 * value_46
+	var value_48 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_47), 32, true)), uint64(0), 32, true, 0))
+	metrics.MarkerWidth = value_48
+	var value_49 float32 = text_gap
+	var value_50 float32 = scale
+	var value_51 float32 = value_49 * value_50
+	var value_52 int32 = int32(number_runtime_bits(uint64(number_runtime_float(float64(value_51), 32, true)), uint64(0), 32, true, 0))
+	metrics.TextGap = value_52
+	var value_53 TreeViewMetrics = metrics
+	return value_53
 }
 
 func TreeView_TreeViewRowHeight(requested_row_height int32, scale float32, metrics TreeViewMetrics) int32 {

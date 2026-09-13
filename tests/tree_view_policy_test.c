@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <math.h>
 
+#include "runtime/style.h"
 #include "runtime/tree_view.h"
 
 static void
@@ -16,7 +17,9 @@ int
 main(void)
 {
     Rectangle bounds = {10, 20, 180, 90};
-    TreeViewMetrics metrics = TreeViewMetricsFor(2.0f);
+    StyleFrame panel = {0};
+    StyleFrame item = {0};
+    TreeViewMetrics metrics = TreeViewMetricsFor(2.0f, panel, item);
     TreeViewScrollLayout scroll;
     Rectangle row;
     Rectangle marker;
@@ -41,7 +44,22 @@ main(void)
     assert(scroll.first == 2);
     assert(scroll.y_offset == 9);
 
-    metrics = TreeViewMetricsFor(1.0f);
+    panel.value.padding_x = 6.0f;
+    item.value.font_size = 18.0f;
+    item.value.padding_y = 5.0f;
+    item.value.offset_x = 14.0f;
+    item.value.icon_size = 12.0f;
+    item.value.gap = 3.0f;
+    metrics = TreeViewMetricsFor(1.0f, panel, item);
+    assert(metrics.default_row_height == 28);
+    assert(metrics.indent_x == 6);
+    assert(metrics.depth_indent == 14);
+    assert(metrics.marker_width == 12);
+    assert(metrics.text_gap == 3);
+
+    panel = (StyleFrame){0};
+    item = (StyleFrame){0};
+    metrics = TreeViewMetricsFor(1.0f, panel, item);
     row = TreeViewRowBounds(bounds, 1, 28, 9);
     check_rect(row, 10, 39, 180, 28);
     assert(TreeViewIndent(-2, metrics) == 8);
