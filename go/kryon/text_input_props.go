@@ -31,6 +31,7 @@ type TextInputProps struct {
 	Font           int32
 	FocusID        int32
 	Style          TextInputStyle
+	ClassName      int32
 }
 
 type TextFieldProps struct {
@@ -45,6 +46,7 @@ type TextFieldProps struct {
 	CommitPressed  *bool
 	Secure         bool
 	ReadOnly       bool
+	ClassName      int32
 }
 
 type TextAreaProps struct {
@@ -63,4 +65,5 @@ type TextAreaProps struct {
 	ContentVersion int32
 	ReadOnly       bool
 	Wrap           bool
+	ClassName      int32
 }

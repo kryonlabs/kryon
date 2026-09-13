@@ -136,6 +136,7 @@ typedef struct {
  * submission. This is internal host storage, not a public widget surface. */
 typedef struct TextInputPaint {
     TextInputStyle style;
+    int class_name;
     int cursor;
     int focused;
     int editable;
@@ -428,7 +429,7 @@ int RenderLink(LinkProps link);
 int ui_text_input_control_render(TextInputProps input);
 void DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                      int focused, int cursor_visible, int font,
-                     TextInputStyle style, int focus_id);
+                     TextInputStyle style, int focus_id, int class_name);
 int ui_text_field_render(TextFieldProps field);
 int ui_text_field_render_filtered(TextFieldProps field,
                                   TextInputFilter filter,

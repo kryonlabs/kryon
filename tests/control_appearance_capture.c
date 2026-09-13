@@ -36,7 +36,7 @@ render_column(int x, int fancy)
     Text((TextProps){.bounds = {x, 214, 260, 24}, .text = "TextInput",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});
     DrawTextInput((Rectangle){x, 246, 300, 44}, field_text, cursor, 1, 1,
-        Text18, (TextInputStyle){0}, 8100 + fancy);
+        Text18, (TextInputStyle){0}, 8100 + fancy, 0);
 
     Text((TextProps){.bounds = {x, 330, 260, 24}, .text = "TextArea",
         .font = Text18, .color = scheme.on_surface, .wrap = TextWrapNone});

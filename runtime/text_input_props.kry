@@ -28,6 +28,7 @@ TextInputProps :: struct {
     font: i32
     focus_id: i32
     style: TextInputStyle
+    class_name: i32
 }
 
 TextFieldProps :: struct {
@@ -43,6 +44,7 @@ TextFieldProps :: struct {
     commit_pressed: *i32
     secure: bool
     read_only: bool
+    class_name: i32
 }
 
 TextAreaProps :: struct {
@@ -62,4 +64,5 @@ TextAreaProps :: struct {
     content_version: i32
     read_only: bool
     wrap: bool
+    class_name: i32
 }

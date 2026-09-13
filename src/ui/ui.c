@@ -1847,7 +1847,7 @@ GetUIControlTextY(const char *text, int box_y, int box_h, int font)
 }
 
 static int
-ui_text_input_default_font(int style_kind)
+ui_text_input_default_font(int style_kind, int class_name)
 {
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
         ResolveActiveStyle(
@@ -1855,13 +1855,17 @@ ui_text_input_default_font(int style_kind)
                 .fields = StyleOpacity,
                 .opacity = 1.0f
             }}).normal,
-            StyleDefaultFacts(style_kind), ButtonStateNormal)));
+            StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
+                              ButtonEmphasisSoft, ControlSizeMedium,
+                              ButtonStateNormal),
+            ButtonStateNormal)));
     return resolved.font_size > 0.0f
         ? (int)(resolved.font_size + 0.5f) : GetFontSize();
 }
 
 static TextInputStyle
-ui_resolve_text_input_style(TextInputStyle style, int style_kind)
+ui_resolve_text_input_style(TextInputStyle style, int style_kind,
+                            int class_name)
 {
     Style resolved = ui_unpack_style(ui_style_apply_effects_data(
         ResolveActiveStyle(
@@ -1869,7 +1873,10 @@ ui_resolve_text_input_style(TextInputStyle style, int style_kind)
                 .fields = StyleOpacity,
                 .opacity = 1.0f
             }}).normal,
-            StyleDefaultFacts(style_kind), ButtonStateNormal)));
+            StyleControlFacts(style_kind, 0, class_name, ButtonToneNeutral,
+                              ButtonEmphasisSoft, ControlSizeMedium,
+                              ButtonStateNormal),
+            ButtonStateNormal)));
 
     if(style.background.a == 0)
         style.background = resolved.background;
@@ -1924,7 +1931,7 @@ ui_text_input_motion_key(Rectangle bounds, int focus_id, const char *kind)
 static Rectangle
 ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
                       int editable, int focus_id, const char *kind,
-                      TextInputStyle requested)
+                      TextInputStyle requested, int class_name)
 {
     int disabled = UIContentDisabled();
     int hovered = 0;
@@ -1935,7 +1942,8 @@ ui_text_input_surface(Rectangle bounds, TextInputStyle style, int focused,
         ButtonProps props = {.bounds = bounds, .id = focus_id,
                              .tone = ButtonToneNeutral,
                              .emphasis = ButtonEmphasisSoft,
-                             .disabled = disabled};
+                             .disabled = disabled,
+                             .class_name = class_name};
         Style paint = ui_resolve_button_style_kind(
             props, disabled ? ButtonStateDisabled
                             : (focused ? ButtonStateFocus
@@ -2016,11 +2024,13 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
                   int focused, int text_input_active, int cursor_visible, int font,
                   TextInputStyle style, int selection_start,
                   int selection_end, int composition_start,
-                  int composition_end, int scroll_x, int focus_id)
+                  int composition_end, int scroll_x, int focus_id,
+                  int class_name)
 {
     TextInputStyle requested_style = style;
 
-    style = ui_resolve_text_input_style(style, StyleKindTextField());
+    style = ui_resolve_text_input_style(style, StyleKindTextField(),
+                                        class_name);
     const char *value = text ? text : "";
     int x = (int)bounds.x;
     int y = (int)bounds.y;
@@ -2040,7 +2050,8 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
         SetFocusTextInputActive(1);
 
     (void)ui_text_input_surface(bounds, style, focused, text_input_active,
-                                focus_id, "text_input", requested_style);
+                                focus_id, "text_input", requested_style,
+                                class_name);
 
     if(clip_w < 0)
         clip_w = 0;
@@ -2124,10 +2135,11 @@ RenderTextInputEx(Rectangle bounds, const char *text, int cursor_position,
 void
 DrawTextInput(Rectangle bounds, const char *text, int cursor_position,
                          int focused, int cursor_visible, int font,
-                         TextInputStyle style, int focus_id)
+                         TextInputStyle style, int focus_id, int class_name)
 {
     RenderTextInputEx(bounds, text, cursor_position, focused, 1,
-                      cursor_visible, font, style, 0, 0, 0, 0, 0, focus_id);
+                      cursor_visible, font, style, 0, 0, 0, 0, 0, focus_id,
+                      class_name);
 }
 
 static int
@@ -2186,7 +2198,7 @@ ui_draw_text_input_selection(Rectangle bounds, const char *text, int cursor,
                              int selection_start, int selection_end)
 {
     RenderTextInputEx(bounds, text, cursor, focused, 1, 1, font, style,
-                      selection_start, selection_end, 0, 0, 0, 0);
+                      selection_start, selection_end, 0, 0, 0, 0, 0);
 }
 
 int
@@ -2303,7 +2315,8 @@ ui_text_input_control_render(TextInputProps input)
     DrawTextInput(input.bounds, input.text, input.cursor_position,
                              focused, input.cursor_visible,
                              input.font > 0 ? input.font : GetFontSize(),
-                             input.style, input.focus_id);
+                             input.style, input.focus_id,
+                             input.class_name);
     EndWidget(&widget);
     return focused;
 }
@@ -2542,7 +2555,7 @@ int
 ui_text_area_move_page(TextAreaProps area, int cursor, int direction)
 {
     int font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_y = area.style.padding_y > 0
         ? area.style.padding_y : Scale(8);
@@ -3213,7 +3226,7 @@ int
 ui_text_area_cursor_at_point(TextAreaProps area, int mouse_x, int mouse_y)
 {
     int font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     int line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     int padding_x = area.style.padding_x > 0
         ? area.style.padding_x : Scale(10);
@@ -3249,7 +3262,7 @@ ui_text_area_reveal_cursor(TextAreaProps area, int cursor)
     if(area.text == NULL || area.scroll_y == NULL)
         return;
     font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     padding_x = area.style.padding_x > 0
         ? area.style.padding_x : Scale(10);
@@ -3294,9 +3307,10 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
 
     if(area.text == NULL)
         return;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
+                                             area.class_name);
     font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0
@@ -3324,7 +3338,7 @@ ui_paint_text_area_internal(TextAreaProps area, int cursor, int focused,
         "Hg", (int)area.bounds.y + padding_y, line_h, font);
     (void)ui_text_input_surface(area.bounds, area.style, focused,
                                 !area.read_only, area.focus_id, "text_area",
-                                requested_style);
+                                requested_style, area.class_name);
     ui_begin_world_clip((Rectangle){
         area.bounds.x + padding_x, area.bounds.y + padding_y,
         area.bounds.width - padding_x * 2,
@@ -3573,9 +3587,10 @@ TextAreaGutter(TextAreaProps area, int gutter_width)
 
     if(gutter_width <= 0)
         return area.bounds;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
+                                             area.class_name);
     font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     if(line_h <= 0)
@@ -3662,7 +3677,8 @@ ui_text_area_render(TextAreaProps area)
 
     if(area.text == NULL || area.text_size == 0 || area.cursor_position == NULL || area.focused == NULL)
         return 0;
-    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea());
+    area.style = ui_resolve_text_input_style(area.style, StyleKindTextArea(),
+                                             area.class_name);
     memset(&area_edit, 0, sizeof(area_edit));
     area_edit.text = area.text;
     area_edit.text_size = area.text_size;
@@ -3679,7 +3695,7 @@ ui_text_area_render(TextAreaProps area)
     area.bounds = widget.bounds;
 
     font = area.font > 0 ? area.font
-        : ui_text_input_default_font(StyleKindTextArea());
+        : ui_text_input_default_font(StyleKindTextArea(), area.class_name);
     line_gap = area.line_gap >= 0 ? area.line_gap : Scale(6);
     line_h = TextLineHeight(font) + line_gap;
     padding_x = area.style.padding_x > 0 ? area.style.padding_x : Scale(10);
@@ -4340,10 +4356,13 @@ ui_text_field_render_filtered(TextFieldProps field,
                            WIDGET_RESIZABLE);
     field.bounds = widget.bounds;
 
-    layout_style = ui_resolve_text_input_style(field.style, StyleKindTextField());
+    layout_style = ui_resolve_text_input_style(field.style,
+                                               StyleKindTextField(),
+                                               field.class_name);
     metrics = TextInputMetricsFor(field.font, layout_style.padding_x,
                                   layout_style.padding_y, 0,
-                                  ui_text_input_default_font(StyleKindTextField()),
+                                  ui_text_input_default_font(StyleKindTextField(),
+                                                             field.class_name),
                                   Scale(10), Scale(8), 0);
     font = metrics.font;
     padding_x = metrics.padding_x;
@@ -4795,6 +4814,7 @@ ui_text_field_render_filtered(TextFieldProps field,
 
     TextInputPaint paint = {
         .style = field.style, .cursor = paint_cursor, .focused = focused,
+        .class_name = field.class_name,
         .editable = !field.read_only,
         .caret = focused && !field.read_only && ui_caret_blink_visible(),
         .font = font, .font_token = ui_active_font_token(),
@@ -4821,7 +4841,7 @@ ui_paint_text_input(Rectangle bounds, const char *text, TextInputPaint paint)
                       paint.caret, paint.font, paint.style,
                       paint.selection_start, paint.selection_end,
                       paint.composition_start, paint.composition_end,
-                      paint.scroll_x, 0);
+                      paint.scroll_x, 0, paint.class_name);
     PopTextFont(previous_font);
 }
 

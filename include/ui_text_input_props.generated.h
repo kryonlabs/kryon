@@ -48,6 +48,7 @@ typedef struct TextInputProps {
     int32_t font;
     int32_t focus_id;
     TextInputStyle style;
+    int32_t class_name;
 } TextInputProps;
 
 typedef struct TextFieldProps {
@@ -63,6 +64,7 @@ typedef struct TextFieldProps {
     int32_t* commit_pressed;
     bool secure;
     bool read_only;
+    int32_t class_name;
 } TextFieldProps;
 
 typedef struct TextAreaProps {
@@ -82,6 +84,7 @@ typedef struct TextAreaProps {
     int32_t content_version;
     bool read_only;
     bool wrap;
+    int32_t class_name;
 } TextAreaProps;
 
 #endif /* K_RUNTIME_TEXT_INPUT_PROPS_H */

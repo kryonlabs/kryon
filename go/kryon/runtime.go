@@ -4691,8 +4691,9 @@ func (r *runtime) Modal(props ModalProps) int32 {
 		}
 		r.editText(field, props.Text, props.CursorPosition, props.Focused, &commit, focusID, textEditOptions{maxCodepoints: maxCodepoints})
 		focused := r.focusID == focusID || props.Focused != nil && *props.Focused
-		font := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), Text16)
-		r.recordTextInput(FrameOpTextField, field, props.Text, props.CursorPosition, props.Focused, focusID, font, false, false)
+		font := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), props.ClassName, Text16)
+		r.recordTextInput(FrameOpTextField, field, props.Text, props.CursorPosition, props.Focused, focusID, font, false, false,
+			textInputRecordOptions{className: props.ClassName})
 	}
 	if result == 0 && commit {
 		if count > 1 {
@@ -6358,7 +6359,7 @@ func themeLabel(id int32) string {
 func (r *runtime) TextField(props TextFieldProps) {
 	props.Bounds = r.layoutRect(props.Bounds)
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
-	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), Text16)
+	defaultFont := r.textInputDefaultFont(FrameOpTextField, focused, r.contentDisabled(), props.ClassName, Text16)
 	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, 0, defaultFont, 10, 8, 0)
 	r.editText(props.Bounds, props.Text, props.CursorPosition, props.Focused, props.CommitPressed, props.FocusID, textEditOptions{
 		maxCodepoints: props.MaxCodepoints,
@@ -6366,8 +6367,9 @@ func (r *runtime) TextField(props TextFieldProps) {
 		readOnly:      props.ReadOnly,
 	})
 	r.recordTextInput(FrameOpTextField, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, metrics.Font, props.Secure, props.ReadOnly, textInputRecordOptions{
-		paddingX: metrics.PaddingX,
-		paddingY: metrics.PaddingY,
+		className: props.ClassName,
+		paddingX:  metrics.PaddingX,
+		paddingY:  metrics.PaddingY,
 	})
 }
 
@@ -6462,11 +6464,11 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 	}
 	fieldFocused := r.focusID == focusID || focused != nil && *focused
 	disabled := r.contentDisabled()
-	paint := r.textInputStyle(kind, fieldFocused, disabled)
 	var opt textInputRecordOptions
 	if len(options) > 0 {
 		opt = options[0]
 	}
+	paint := r.textInputStyle(kind, fieldFocused, disabled, opt.className)
 	op := FrameOp{
 		Kind:              kind,
 		Bounds:            bounds,
@@ -6510,30 +6512,32 @@ func (r *runtime) recordTextInput(kind FrameOpKind, bounds Rectangle, buf []byte
 
 func (r *runtime) recordTextArea(props TextAreaProps) {
 	focused := r.focusID == props.FocusID || props.Focused != nil && *props.Focused
-	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), Text16)
+	defaultFont := r.textInputDefaultFont(FrameOpTextArea, focused, r.contentDisabled(), props.ClassName, Text16)
 	metrics := TextInput_TextInputMetricsFor(props.Font, props.Style.PaddingX, props.Style.PaddingY, props.LineGap, defaultFont, 10, 8, 6)
 	scrollY := int32(0)
 	if props.ScrollY != nil {
 		scrollY = *props.ScrollY
 	}
 	r.recordTextInput(FrameOpTextArea, props.Bounds, props.Text, props.CursorPosition, props.Focused, props.FocusID, metrics.Font, false, props.ReadOnly, textInputRecordOptions{
-		lineGap:  metrics.LineGap,
-		paddingX: metrics.PaddingX,
-		paddingY: metrics.PaddingY,
-		scrollY:  scrollY,
-		wrap:     props.Wrap,
+		className: props.ClassName,
+		lineGap:   metrics.LineGap,
+		paddingX:  metrics.PaddingX,
+		paddingY:  metrics.PaddingY,
+		scrollY:   scrollY,
+		wrap:      props.Wrap,
 	})
 }
 
 type textInputRecordOptions struct {
-	lineGap  int32
-	paddingX int32
-	paddingY int32
-	scrollY  int32
-	wrap     bool
+	className int32
+	lineGap   int32
+	paddingX  int32
+	paddingY  int32
+	scrollY   int32
+	wrap      bool
 }
 
-func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool) Style {
+func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool, className int32) Style {
 	state := ButtonStateNormal
 	if focused {
 		state = ButtonStateFocus
@@ -6546,11 +6550,11 @@ func (r *runtime) textInputStyle(kind FrameOpKind, focused, disabled bool) Style
 		styleKind = StyleSheet_StyleKindTextArea()
 	}
 	return resolveButtonStyleForKind(r.theme(), r.effectiveDark(), r.activeTheme,
-		ButtonProps{Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state, styleKind)
+		ButtonProps{ClassName: className, Tone: ButtonToneNeutral, Emphasis: ButtonEmphasisSoft, Disabled: disabled}, state, styleKind)
 }
 
-func (r *runtime) textInputDefaultFont(kind FrameOpKind, focused, disabled bool, fallback int32) int32 {
-	style := r.textInputStyle(kind, focused, disabled)
+func (r *runtime) textInputDefaultFont(kind FrameOpKind, focused, disabled bool, className int32, fallback int32) int32 {
+	style := r.textInputStyle(kind, focused, disabled, className)
 	return styleFont(style, fallback)
 }
 

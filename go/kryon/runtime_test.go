@@ -4579,8 +4579,8 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 	})
 	EndFrame()
 
-	wantFocused := rt.textInputStyle(FrameOpTextField, true, false)
-	wantIdle := rt.textInputStyle(FrameOpTextArea, false, false)
+	wantFocused := rt.textInputStyle(FrameOpTextField, true, false, 0)
+	wantIdle := rt.textInputStyle(FrameOpTextArea, false, false, 0)
 	foundField := false
 	foundArea := false
 	ops := FrameOps()
@@ -4644,6 +4644,79 @@ TextArea { background: area; foreground: area-ink; border: area-rule; focus: foc
 	if !foundField || !foundArea {
 		t.Fatalf("text input ops not found: field=%v area=%v ops=%#v",
 			foundField, foundArea, ops)
+	}
+}
+
+func TestTextInputsResolveClassSelectors(t *testing.T) {
+	ClearStylePacks()
+	t.Cleanup(ClearStylePacks)
+	if !RegisterStylePackSource(`
+@pack test.text_input.classes;
+tokens {
+  color {
+    field: #2a3142;
+    field-ink: #f2f6ff;
+    area: #1f342c;
+    area-ink: #e8fff2;
+    focus: #d97319;
+  }
+  length { radius: 6; border: 2; }
+  material { flat: Flat; }
+}
+TextField.search { background: field; foreground: field-ink; border: focus; focus: focus; radius: radius; border-width: border; font-size: 18; material: flat; }
+TextArea.editor { background: area; foreground: area-ink; border: focus; focus: focus; radius: radius; border-width: border; font-size: 20; material: flat; }
+`, "Text Input Classes", "") || !SetActiveStylePack("test.text_input.classes") {
+		t.Fatal("test text input class style did not activate")
+	}
+	rt := New(AppConfig{Width: 240, Height: 160}).(*runtime)
+	searchClass := StyleClassID("search")
+	editorClass := StyleClassID("editor")
+	fieldText := []byte("Find")
+	areaText := []byte("Notes")
+	fieldCursor := int32(0)
+	areaCursor := int32(0)
+
+	rt.BeginFrame()
+	rt.TextField(TextFieldProps{
+		Bounds:         Rectangle{X: 10, Y: 10, Width: 160, Height: 32},
+		Text:           fieldText,
+		CursorPosition: &fieldCursor,
+		FocusID:        701,
+		ClassName:      searchClass,
+	})
+	rt.TextArea(TextAreaProps{
+		Bounds:         Rectangle{X: 10, Y: 54, Width: 160, Height: 64},
+		Text:           areaText,
+		CursorPosition: &areaCursor,
+		FocusID:        702,
+		ClassName:      editorClass,
+	})
+	rt.EndFrame()
+
+	var sawField, sawArea bool
+	for _, op := range rt.FrameOps() {
+		switch op.Kind {
+		case FrameOpTextField:
+			sawField = true
+			if op.Color != (Color{0x2a, 0x31, 0x42, 0xff}) ||
+				op.TextColor != (Color{0xf2, 0xf6, 0xff, 0xff}) ||
+				op.FontSize != 18 || op.Radius != 6 ||
+				op.BorderWidth != 2 || op.Material != MaterialFlat {
+				t.Fatalf("classed text field op = %+v", op)
+			}
+		case FrameOpTextArea:
+			sawArea = true
+			if op.Color != (Color{0x1f, 0x34, 0x2c, 0xff}) ||
+				op.TextColor != (Color{0xe8, 0xff, 0xf2, 0xff}) ||
+				op.FontSize != 20 || op.Radius != 6 ||
+				op.BorderWidth != 2 || op.Material != MaterialFlat {
+				t.Fatalf("classed text area op = %+v", op)
+			}
+		}
+	}
+	if !sawField || !sawArea {
+		t.Fatalf("missing classed text input ops: field=%v area=%v ops=%+v",
+			sawField, sawArea, rt.FrameOps())
 	}
 }
 
