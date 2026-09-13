@@ -20,6 +20,7 @@
 #include "runtime/list_box_multi.h"
 #include "runtime/paned_view.h"
 #include "runtime/plot.h"
+#include "runtime/popup_policy.h"
 #include "runtime/progress.h"
 #include "runtime/radio.h"
 #include "runtime/selectable.h"
@@ -1610,13 +1611,14 @@ RenderMenuGroups(int id, int class_name, Rectangle bounds, const MenuGroup *menu
         }
         open = state->open_id == menu_id;
         if(open) {
+            Vector2 origin = PopupMenuBarOrigin(item, bounds);
             result.open_index = i;
             state->overlay.active = 1;
             state->overlay.bar_id = id;
             state->overlay.menu_id = id + i;
             state->overlay.class_name = class_name;
-            state->overlay.x = x;
-            state->overlay.y = (int)(bounds.y + bounds.height);
+            state->overlay.x = (int)origin.x;
+            state->overlay.y = (int)origin.y;
             int used = 0;
             copy_menu_items(state->overlay.items,&used,menus[i].items,
                             menus[i].item_count,&state->overlay.item_count);
@@ -1740,9 +1742,10 @@ RenderContextMenu(MenuProps menu)
     if(!UIContentDisabled() && ui_contains(menu.trigger, mouse) &&
        !InputCapturesClick(mouse) &&
        IsMouseButtonReleased(MOUSE_BUTTON_RIGHT)) {
+        Vector2 origin = PopupContextOrigin(mouse);
         *menu.open = 1;
-        *menu.x = (int)mouse.x;
-        *menu.y = (int)mouse.y;
+        *menu.x = (int)origin.x;
+        *menu.y = (int)origin.y;
         SetFocus(menu.id);
         menu_navigation_reset(menu.id,menu.items,menu.item_count);
         suppress_close = 1;

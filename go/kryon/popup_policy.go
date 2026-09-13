@@ -214,6 +214,23 @@ func PopupPolicy_PopupInputBounds(decision PopupDecision, bounds Rectangle, view
 	return value_6
 }
 
+func PopupPolicy_PopupMenuBarOrigin(item Rectangle, bar Rectangle) Vector2 {
+	var origin Vector2 = Vector2{}
+	var value_0 float32 = item.X
+	origin.X = value_0
+	var value_1 float32 = bar.Y
+	var value_2 float32 = bar.Height
+	var value_3 float32 = value_1 + value_2
+	origin.Y = value_3
+	var value_4 Vector2 = origin
+	return value_4
+}
+
+func PopupPolicy_PopupContextOrigin(mouse Vector2) Vector2 {
+	var value_0 Vector2 = mouse
+	return value_0
+}
+
 func PopupPolicy_PopupBackdropAlpha(decision PopupDecision) int32 {
 	var value_0 bool = decision.Modal
 	if value_0 {

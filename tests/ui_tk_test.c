@@ -977,6 +977,9 @@ test_popup_policy(void)
     PopupDecision context = PopupDecisionFor(PopupContext, 0);
     PopupDecision invalid = PopupDecisionFor(PopupTooltip | PopupModal, 0);
     Rectangle modal_input = PopupInputBounds(modal, bounds, 640.0f, 480.0f);
+    Vector2 bar_origin = PopupMenuBarOrigin((Rectangle){10, 20, 80, 24},
+                                            (Rectangle){0, 5, 200, 40});
+    Vector2 context_origin = PopupContextOrigin((Vector2){33, 44});
 
     check_int("popup plain valid", plain.valid, 1);
     check_int("popup plain captures", plain.captures_input, 1);
@@ -996,6 +999,10 @@ test_popup_policy(void)
               PopupOpenAfterDisabled(tooltip, 1, 1), 1);
     check_int("popup modal input x", (int)modal_input.x, 0);
     check_int("popup modal input w", (int)modal_input.width, 640);
+    check_int("popup menu bar origin x", (int)bar_origin.x, 10);
+    check_int("popup menu bar origin y", (int)bar_origin.y, 45);
+    check_int("popup context origin x", (int)context_origin.x, 33);
+    check_int("popup context origin y", (int)context_origin.y, 44);
 }
 
 static void

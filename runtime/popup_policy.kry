@@ -76,6 +76,17 @@ PopupInputBounds :: (decision: PopupDecision, bounds: Rectangle,
     return input
 }
 
+PopupMenuBarOrigin :: (item: Rectangle, bar: Rectangle) -> Vector2 #export {
+    origin: Vector2
+    origin.x = item.x
+    origin.y = bar.y + bar.height
+    return origin
+}
+
+PopupContextOrigin :: (mouse: Vector2) -> Vector2 #export {
+    return mouse
+}
+
 PopupBackdropAlpha :: (decision: PopupDecision) -> i32 #export {
     if decision.modal {
         return 180
