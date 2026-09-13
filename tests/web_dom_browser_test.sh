@@ -219,6 +219,33 @@ try {
     "removed aria-controls still produced controlledBy relation");
   const button = kryon.webDOMQuery(target, "Section > Button.primary");
   assert(button?.element?.id === "save", "child selector query failed");
+  const nestedButtonSpan = document.createElement("span");
+  nestedButtonSpan.textContent = "nested";
+  button.element.appendChild(nestedButtonSpan);
+  assert(kryon.webDOMObjectFromElement(nestedButtonSpan)?.ref === "Page/article/save",
+    "nested native element did not resolve to Kry object");
+  assert(kryon.webDOMSnapshotFromElement(nestedButtonSpan)?.identity?.ref === "Page/article/save",
+    "nested native element snapshot did not include Kry identity");
+  const delegatedLog = [];
+  const removeDelegated = kryon.webDOMAddDelegatedEventListener(target, "Button.primary",
+    "kry-browser-delegated", (event, object) => {
+      delegatedLog.push([
+        event.type,
+        event.target.tagName,
+        object.ref,
+        event.kryObject?.ref || "",
+        event.krySnapshot?.identity?.ref || ""
+      ].join(":"));
+    });
+  assert(typeof removeDelegated === "function", "delegated listener cleanup missing");
+  nestedButtonSpan.dispatchEvent(new Event("kry-browser-delegated", { bubbles: true }));
+  assert(delegatedLog[0] === "kry-browser-delegated:SPAN:Page/article/save:Page/article/save:Page/article/save",
+    "delegated listener did not resolve nested target");
+  assert(kryon.webDOMSnapshotFromEvent({ target: nestedButtonSpan })?.ref === "Page/article/save",
+    "event snapshot did not resolve nested target");
+  removeDelegated();
+  nestedButtonSpan.dispatchEvent(new Event("kry-browser-delegated", { bubbles: true }));
+  assert(delegatedLog.length === 1, "delegated listener cleanup failed");
   const bindLog = [];
   const unbindPrimary = kryon.webDOMBind(target, "Button.primary", {
     mount(object, detail) {
