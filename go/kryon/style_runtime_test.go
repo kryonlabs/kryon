@@ -24,6 +24,13 @@ func TestTypefaceStylePresenceAndButtonMeasurement(t *testing.T) {
 	if got := mergeStyle(base, Style{Fields: StyleTypeface}); got.Typeface != "" {
 		t.Fatal("explicit empty typeface must restore the default face")
 	}
+	spaced := Style{Fields: StyleLetterSpacing, LetterSpacing: 2}
+	if got := mergeStyle(spaced, Style{LetterSpacing: 99}); got.LetterSpacing != 2 {
+		t.Fatal("absent letter-spacing override replaced the inherited value")
+	}
+	if got := mergeStyle(spaced, Style{Fields: StyleLetterSpacing, LetterSpacing: 99}); got.LetterSpacing != 99 {
+		t.Fatal("explicit letter-spacing override did not apply")
+	}
 	ClearStylePacks()
 	t.Cleanup(ClearStylePacks)
 	if !RegisterStylePackSource(`@pack test.button.typeface;

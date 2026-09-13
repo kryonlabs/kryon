@@ -1227,6 +1227,9 @@ func (r *runtime) textWithFont(props TextProps, fontID uint32) {
 			fontID = selected
 		}
 	}
+	if style.Fields&StyleLetterSpacing != 0 {
+		props.LetterSpacing = styleLength(style.LetterSpacing)
+	}
 	appearance := Text_ResolveTextStyle(props.Font, inheritedFont, Text16,
 		packRGBA(style.Foreground), packRGBA(inheritedColor), 0xffffffff,
 		inheritedColorSet, colorSet, props.Disabled, inheritedDisabled, props.LetterSpacing)

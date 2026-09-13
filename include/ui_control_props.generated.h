@@ -82,6 +82,7 @@ typedef enum StyleField {
     StyleBackgroundEnd = (uint32_t)8192,
     StyleMaterial = (uint32_t)16384,
     StyleTypeface = (uint32_t)32768,
+    StyleLetterSpacing = (uint32_t)65536,
 } StyleField;
 
 typedef struct Style {
@@ -102,6 +103,7 @@ typedef struct Style {
     Color background_end;
     MaterialKind material;
     const char* typeface;
+    float letter_spacing;
 } Style;
 
 typedef struct ControlStyle {

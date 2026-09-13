@@ -188,6 +188,7 @@ StyleData :: struct {
     background_end: u32
     material: i32
     typeface: string
+    letter_spacing: float
 }
 
 # Layout metrics remain those of the resolved state. Paint properties use
@@ -245,6 +246,7 @@ MergeValues :: (base: StyleData, override: StyleData) -> StyleData #export {
     if (override.fields & (u32)StyleBackgroundEnd) != (u32)0 { base.background_end = override.background_end }
     if (override.fields & (u32)StyleMaterial) != (u32)0 { base.material = override.material }
     if (override.fields & (u32)StyleTypeface) != (u32)0 { base.typeface = override.typeface }
+    if (override.fields & (u32)StyleLetterSpacing) != (u32)0 { base.letter_spacing = override.letter_spacing }
     base.fields = base.fields | override.fields
     return base
 }

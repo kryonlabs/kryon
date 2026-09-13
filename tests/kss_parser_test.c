@@ -61,6 +61,7 @@ main(void)
         "  radius: radius.md;\n"
         "  padding-x: space.3;\n"
         "  typeface: semibold;\n"
+        "  letter-spacing: 2;\n"
         "}\n"
         "Button[tone=Accent][emphasis=Filled]:hover {\n"
         "  background: accent;\n"
@@ -184,6 +185,7 @@ main(void)
     assert(rules[0].style.radius == 6.0f);
     assert(rules[0].style.padding_x == 12.0f);
     assert(StringEqual(rules[0].style.typeface, StringView("semibold", 8)));
+    assert(rules[0].style.letter_spacing == 2.0f);
     assert(rules[1].selector.tone == ButtonToneAccent);
     assert(rules[1].selector.emphasis == ButtonEmphasisFilled);
     assert(rules[1].state == ButtonStateHover);
@@ -217,6 +219,7 @@ main(void)
     assert(resolved.foreground == 0xeeeeeeffu);
     assert(resolved.border_width == 2.0f);
     assert(resolved.radius == 6.0f);
+    assert(resolved.letter_spacing == 2.0f);
 
     resolved = ResolveStyle(&sheet, base, primary, ButtonStatePressed);
     assert(resolved.background == 0x111111ffu);

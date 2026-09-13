@@ -43,6 +43,11 @@ int main(void)
     assert(StringEqual(MergeValues(named, other).typeface, other.typeface));
     other.typeface = StringView(NULL, 0);
     assert(StringEqual(MergeValues(named, other).typeface, StringView("", 0)));
+    StyleData spaced = {.fields = StyleLetterSpacing, .letter_spacing = 2};
+    StyleData unspaced = {.letter_spacing = 99};
+    assert(MergeValues(spaced, unspaced).letter_spacing == 2);
+    unspaced.fields = StyleLetterSpacing;
+    assert(MergeValues(spaced, unspaced).letter_spacing == 99);
     assert(SizeValue(ControlSizeMedium, 32, 40, 48) == 40);
     assert(SizeValue(ControlSizeSmall, 32, 40, 48) == 32);
     assert(SizeValue(ControlSizeLarge, 32, 40, 48) == 48);

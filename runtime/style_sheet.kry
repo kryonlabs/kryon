@@ -320,6 +320,7 @@ StyleCascade :: struct {
     background_end_score: i32
     material_score: i32
     typeface_score: i32
+    letter_spacing_score: i32
 }
 
 StyleDefaultFacts :: (kind: i32) -> StyleFacts #export {
@@ -540,6 +541,12 @@ ApplyStyleRule :: (cascade: StyleCascade, rule: StyleRule,
         cascade.result.font_size = style.font_size
         cascade.result.fields = cascade.result.fields | (u32)StyleFontSize
         cascade.font_size_score = score
+    }
+    if (style.fields & (u32)StyleLetterSpacing) != (u32)0 &&
+       StyleWins(score, cascade.letter_spacing_score) {
+        cascade.result.letter_spacing = style.letter_spacing
+        cascade.result.fields = cascade.result.fields | (u32)StyleLetterSpacing
+        cascade.letter_spacing_score = score
     }
     if (style.fields & (u32)StyleIconSize) != (u32)0 &&
        StyleWins(score, cascade.icon_size_score) {

@@ -62,6 +62,7 @@ StyleField :: enum {
     StyleBackgroundEnd = (uint32_t)8192
     StyleMaterial = (uint32_t)16384
     StyleTypeface = (uint32_t)32768
+    StyleLetterSpacing = (uint32_t)65536
 }
 
 Style :: struct {
@@ -82,6 +83,7 @@ Style :: struct {
     background_end: Color
     material: MaterialKind
     typeface: const char*
+    letter_spacing: float
 }
 
 ControlStyle :: struct {

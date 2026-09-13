@@ -441,6 +441,8 @@ func (p *styleParser) property(style *StyleData) error {
 		return p.numberField(&style.Fields, StyleGap, &style.Gap)
 	case "font-size":
 		return p.numberField(&style.Fields, StyleFontSize, &style.FontSize)
+	case "letter-spacing":
+		return p.numberField(&style.Fields, StyleLetterSpacing, &style.LetterSpacing)
 	case "icon-size":
 		return p.numberField(&style.Fields, StyleIconSize, &style.IconSize)
 	case "offset-x":

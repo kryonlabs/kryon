@@ -77,6 +77,7 @@ const (
 	StyleBackgroundEnd = uint32(8192)
 	StyleMaterial      = uint32(16384)
 	StyleTypeface      = uint32(32768)
+	StyleLetterSpacing = uint32(65536)
 )
 
 type Style struct {
@@ -97,6 +98,7 @@ type Style struct {
 	BackgroundEnd Color
 	Material      MaterialKind
 	Typeface      string
+	LetterSpacing float32
 }
 
 type ControlStyle struct {

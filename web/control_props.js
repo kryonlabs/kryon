@@ -43,6 +43,7 @@ export const StyleContentOffset = Math.trunc(Number(4096));
 export const StyleBackgroundEnd = Math.trunc(Number(8192));
 export const StyleMaterial = Math.trunc(Number(16384));
 export const StyleTypeface = Math.trunc(Number(32768));
+export const StyleLetterSpacing = Math.trunc(Number(65536));
 export const app = {
   title: "control_props",
   width: 800,

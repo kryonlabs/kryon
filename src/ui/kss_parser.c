@@ -917,6 +917,11 @@ kss_parse_property(KssParser *p, StyleData *style)
             return kss_fail(p, "expected number");
         style->fields |= (uint32_t)StyleFontSize;
         style->font_size = number;
+    } else if(kss_ieq(name, "letter-spacing")) {
+        if(!kss_read_number_value(p, &number))
+            return kss_fail(p, "expected number");
+        style->fields |= (uint32_t)StyleLetterSpacing;
+        style->letter_spacing = number;
     } else if(kss_ieq(name, "icon-size")) {
         if(!kss_read_number_value(p, &number))
             return kss_fail(p, "expected number");

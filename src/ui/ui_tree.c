@@ -2464,6 +2464,8 @@ Text(TextProps props)
         props.font = (int)(style.font_size + 0.5f);
     if((style.fields & StyleTypeface) != 0)
         typeface = style.typeface;
+    if((style.fields & StyleLetterSpacing) != 0)
+        props.letter_spacing = (int)(style.letter_spacing + 0.5f);
     previous_typeface = PushTextFont(typeface);
     TextAppearance appearance = ResolveTextStyle(props.font, inherited_font, GetFontSize(),
         ColorToInt(style.foreground), ColorToInt(inherited_color), 0xffffffffu,

@@ -62,6 +62,7 @@ type StyleCascade struct {
 	BackgroundEndScore int32
 	MaterialScore      int32
 	TypefaceScore      int32
+	LetterSpacingScore int32
 }
 
 func StyleSheet_StyleAny() int32 {
@@ -1060,7 +1061,7 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 		cascade.FontSizeScore = value_195
 	}
 	var value_196 uint32 = style.Fields
-	var value_197 int32 = int32(StyleIconSize)
+	var value_197 int32 = int32(StyleLetterSpacing)
 	var value_198 uint32 = uint32(number_runtime_bits(uint64(value_197), uint64(0), 32, false, 0))
 	var value_199 uint32 = uint32(number_runtime_bits(uint64(value_196), uint64(value_198), 32, false, 8))
 	var value_200 int32 = 0
@@ -1069,23 +1070,23 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_203 bool = value_202
 	if value_203 {
 		var value_204 int32 = score
-		var value_205 int32 = cascade.IconSizeScore
+		var value_205 int32 = cascade.LetterSpacingScore
 		var value_206 bool = StyleSheet_StyleWins(value_204, value_205)
 		value_203 = value_206
 	}
 	if value_203 {
-		var value_207 float32 = style.IconSize
-		cascade.Result.IconSize = value_207
+		var value_207 float32 = style.LetterSpacing
+		cascade.Result.LetterSpacing = value_207
 		var value_208 uint32 = cascade.Result.Fields
-		var value_209 int32 = int32(StyleIconSize)
+		var value_209 int32 = int32(StyleLetterSpacing)
 		var value_210 uint32 = uint32(number_runtime_bits(uint64(value_209), uint64(0), 32, false, 0))
 		var value_211 uint32 = uint32(number_runtime_bits(uint64(value_208), uint64(value_210), 32, false, 9))
 		cascade.Result.Fields = value_211
 		var value_212 int32 = score
-		cascade.IconSizeScore = value_212
+		cascade.LetterSpacingScore = value_212
 	}
 	var value_213 uint32 = style.Fields
-	var value_214 int32 = int32(StyleContentOffset)
+	var value_214 int32 = int32(StyleIconSize)
 	var value_215 uint32 = uint32(number_runtime_bits(uint64(value_214), uint64(0), 32, false, 0))
 	var value_216 uint32 = uint32(number_runtime_bits(uint64(value_213), uint64(value_215), 32, false, 8))
 	var value_217 int32 = 0
@@ -1094,50 +1095,50 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_220 bool = value_219
 	if value_220 {
 		var value_221 int32 = score
-		var value_222 int32 = cascade.ContentOffsetScore
+		var value_222 int32 = cascade.IconSizeScore
 		var value_223 bool = StyleSheet_StyleWins(value_221, value_222)
 		value_220 = value_223
 	}
 	if value_220 {
-		var value_224 float32 = style.OffsetX
-		cascade.Result.OffsetX = value_224
-		var value_225 float32 = style.OffsetY
-		cascade.Result.OffsetY = value_225
-		var value_226 uint32 = cascade.Result.Fields
-		var value_227 int32 = int32(StyleContentOffset)
-		var value_228 uint32 = uint32(number_runtime_bits(uint64(value_227), uint64(0), 32, false, 0))
-		var value_229 uint32 = uint32(number_runtime_bits(uint64(value_226), uint64(value_228), 32, false, 9))
-		cascade.Result.Fields = value_229
-		var value_230 int32 = score
-		cascade.ContentOffsetScore = value_230
+		var value_224 float32 = style.IconSize
+		cascade.Result.IconSize = value_224
+		var value_225 uint32 = cascade.Result.Fields
+		var value_226 int32 = int32(StyleIconSize)
+		var value_227 uint32 = uint32(number_runtime_bits(uint64(value_226), uint64(0), 32, false, 0))
+		var value_228 uint32 = uint32(number_runtime_bits(uint64(value_225), uint64(value_227), 32, false, 9))
+		cascade.Result.Fields = value_228
+		var value_229 int32 = score
+		cascade.IconSizeScore = value_229
 	}
-	var value_231 uint32 = style.Fields
-	var value_232 int32 = int32(StyleBackgroundEnd)
-	var value_233 uint32 = uint32(number_runtime_bits(uint64(value_232), uint64(0), 32, false, 0))
-	var value_234 uint32 = uint32(number_runtime_bits(uint64(value_231), uint64(value_233), 32, false, 8))
-	var value_235 int32 = 0
-	var value_236 uint32 = uint32(number_runtime_bits(uint64(value_235), uint64(0), 32, false, 0))
-	var value_237 bool = value_234 != value_236
-	var value_238 bool = value_237
-	if value_238 {
-		var value_239 int32 = score
-		var value_240 int32 = cascade.BackgroundEndScore
-		var value_241 bool = StyleSheet_StyleWins(value_239, value_240)
-		value_238 = value_241
+	var value_230 uint32 = style.Fields
+	var value_231 int32 = int32(StyleContentOffset)
+	var value_232 uint32 = uint32(number_runtime_bits(uint64(value_231), uint64(0), 32, false, 0))
+	var value_233 uint32 = uint32(number_runtime_bits(uint64(value_230), uint64(value_232), 32, false, 8))
+	var value_234 int32 = 0
+	var value_235 uint32 = uint32(number_runtime_bits(uint64(value_234), uint64(0), 32, false, 0))
+	var value_236 bool = value_233 != value_235
+	var value_237 bool = value_236
+	if value_237 {
+		var value_238 int32 = score
+		var value_239 int32 = cascade.ContentOffsetScore
+		var value_240 bool = StyleSheet_StyleWins(value_238, value_239)
+		value_237 = value_240
 	}
-	if value_238 {
-		var value_242 uint32 = style.BackgroundEnd
-		cascade.Result.BackgroundEnd = value_242
+	if value_237 {
+		var value_241 float32 = style.OffsetX
+		cascade.Result.OffsetX = value_241
+		var value_242 float32 = style.OffsetY
+		cascade.Result.OffsetY = value_242
 		var value_243 uint32 = cascade.Result.Fields
-		var value_244 int32 = int32(StyleBackgroundEnd)
+		var value_244 int32 = int32(StyleContentOffset)
 		var value_245 uint32 = uint32(number_runtime_bits(uint64(value_244), uint64(0), 32, false, 0))
 		var value_246 uint32 = uint32(number_runtime_bits(uint64(value_243), uint64(value_245), 32, false, 9))
 		cascade.Result.Fields = value_246
 		var value_247 int32 = score
-		cascade.BackgroundEndScore = value_247
+		cascade.ContentOffsetScore = value_247
 	}
 	var value_248 uint32 = style.Fields
-	var value_249 int32 = int32(StyleMaterial)
+	var value_249 int32 = int32(StyleBackgroundEnd)
 	var value_250 uint32 = uint32(number_runtime_bits(uint64(value_249), uint64(0), 32, false, 0))
 	var value_251 uint32 = uint32(number_runtime_bits(uint64(value_248), uint64(value_250), 32, false, 8))
 	var value_252 int32 = 0
@@ -1146,23 +1147,23 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_255 bool = value_254
 	if value_255 {
 		var value_256 int32 = score
-		var value_257 int32 = cascade.MaterialScore
+		var value_257 int32 = cascade.BackgroundEndScore
 		var value_258 bool = StyleSheet_StyleWins(value_256, value_257)
 		value_255 = value_258
 	}
 	if value_255 {
-		var value_259 int32 = style.Material
-		cascade.Result.Material = value_259
+		var value_259 uint32 = style.BackgroundEnd
+		cascade.Result.BackgroundEnd = value_259
 		var value_260 uint32 = cascade.Result.Fields
-		var value_261 int32 = int32(StyleMaterial)
+		var value_261 int32 = int32(StyleBackgroundEnd)
 		var value_262 uint32 = uint32(number_runtime_bits(uint64(value_261), uint64(0), 32, false, 0))
 		var value_263 uint32 = uint32(number_runtime_bits(uint64(value_260), uint64(value_262), 32, false, 9))
 		cascade.Result.Fields = value_263
 		var value_264 int32 = score
-		cascade.MaterialScore = value_264
+		cascade.BackgroundEndScore = value_264
 	}
 	var value_265 uint32 = style.Fields
-	var value_266 int32 = int32(StyleTypeface)
+	var value_266 int32 = int32(StyleMaterial)
 	var value_267 uint32 = uint32(number_runtime_bits(uint64(value_266), uint64(0), 32, false, 0))
 	var value_268 uint32 = uint32(number_runtime_bits(uint64(value_265), uint64(value_267), 32, false, 8))
 	var value_269 int32 = 0
@@ -1171,23 +1172,48 @@ func StyleSheet_ApplyStyleRule(cascade StyleCascade, rule StyleRule, facts Style
 	var value_272 bool = value_271
 	if value_272 {
 		var value_273 int32 = score
-		var value_274 int32 = cascade.TypefaceScore
+		var value_274 int32 = cascade.MaterialScore
 		var value_275 bool = StyleSheet_StyleWins(value_273, value_274)
 		value_272 = value_275
 	}
 	if value_272 {
-		var value_276 string = style.Typeface
-		cascade.Result.Typeface = value_276
+		var value_276 int32 = style.Material
+		cascade.Result.Material = value_276
 		var value_277 uint32 = cascade.Result.Fields
-		var value_278 int32 = int32(StyleTypeface)
+		var value_278 int32 = int32(StyleMaterial)
 		var value_279 uint32 = uint32(number_runtime_bits(uint64(value_278), uint64(0), 32, false, 0))
 		var value_280 uint32 = uint32(number_runtime_bits(uint64(value_277), uint64(value_279), 32, false, 9))
 		cascade.Result.Fields = value_280
 		var value_281 int32 = score
-		cascade.TypefaceScore = value_281
+		cascade.MaterialScore = value_281
 	}
-	var value_282 StyleCascade = cascade
-	return value_282
+	var value_282 uint32 = style.Fields
+	var value_283 int32 = int32(StyleTypeface)
+	var value_284 uint32 = uint32(number_runtime_bits(uint64(value_283), uint64(0), 32, false, 0))
+	var value_285 uint32 = uint32(number_runtime_bits(uint64(value_282), uint64(value_284), 32, false, 8))
+	var value_286 int32 = 0
+	var value_287 uint32 = uint32(number_runtime_bits(uint64(value_286), uint64(0), 32, false, 0))
+	var value_288 bool = value_285 != value_287
+	var value_289 bool = value_288
+	if value_289 {
+		var value_290 int32 = score
+		var value_291 int32 = cascade.TypefaceScore
+		var value_292 bool = StyleSheet_StyleWins(value_290, value_291)
+		value_289 = value_292
+	}
+	if value_289 {
+		var value_293 string = style.Typeface
+		cascade.Result.Typeface = value_293
+		var value_294 uint32 = cascade.Result.Fields
+		var value_295 int32 = int32(StyleTypeface)
+		var value_296 uint32 = uint32(number_runtime_bits(uint64(value_295), uint64(0), 32, false, 0))
+		var value_297 uint32 = uint32(number_runtime_bits(uint64(value_294), uint64(value_296), 32, false, 9))
+		cascade.Result.Fields = value_297
+		var value_298 int32 = score
+		cascade.TypefaceScore = value_298
+	}
+	var value_299 StyleCascade = cascade
+	return value_299
 }
 
 func StyleSheet_FinishStyleCascade(cascade StyleCascade) StyleData {

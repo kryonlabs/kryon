@@ -6,6 +6,7 @@ func packStyle(value Style) StyleData {
 		Fields:        value.Fields,
 		Material:      int32(value.Material),
 		Typeface:      value.Typeface,
+		LetterSpacing: value.LetterSpacing,
 		Background:    packRGBA(value.Background),
 		BackgroundEnd: packRGBA(value.BackgroundEnd),
 		Foreground:    packRGBA(value.Foreground),
@@ -28,6 +29,7 @@ func unpackStyle(value StyleData) Style {
 	return Style{
 		Material:      MaterialKind(value.Material),
 		Typeface:      value.Typeface,
+		LetterSpacing: value.LetterSpacing,
 		Fields:        value.Fields,
 		Background:    unpackRGBA(value.Background),
 		BackgroundEnd: unpackRGBA(value.BackgroundEnd),

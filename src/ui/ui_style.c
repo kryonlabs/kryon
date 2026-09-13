@@ -187,6 +187,7 @@ pack_style(Style value)
         .fields = value.fields,
         .material = value.material,
         .typeface = StringView(value.typeface, value.typeface ? strlen(value.typeface) : 0),
+        .letter_spacing = value.letter_spacing,
         .background = ColorToInt(value.background),
         .background_end = ColorToInt(value.background_end),
         .foreground = ColorToInt(value.foreground),
@@ -340,6 +341,7 @@ ui_unpack_style(StyleData value)
     return (Style){
         .material = (MaterialKind)value.material,
         .typeface = value.typeface.data,
+        .letter_spacing = value.letter_spacing,
         .fields = value.fields,
         .background = GetColor(value.background),
         .background_end = GetColor(value.background_end),

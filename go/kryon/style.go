@@ -35,6 +35,7 @@ type StyleData struct {
 	BackgroundEnd uint32
 	Material      int32
 	Typeface      string
+	LetterSpacing float32
 }
 
 type StyleFrame struct {
@@ -827,12 +828,23 @@ func Style_MergeValues(base StyleData, override StyleData) StyleData {
 		var value_135 string = override.Typeface
 		base.Typeface = value_135
 	}
-	var value_136 uint32 = base.Fields
-	var value_137 uint32 = override.Fields
-	var value_138 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(value_137), 32, false, 9))
-	base.Fields = value_138
-	var value_139 StyleData = base
-	return value_139
+	var value_136 uint32 = override.Fields
+	var value_137 int32 = int32(StyleLetterSpacing)
+	var value_138 uint32 = uint32(number_runtime_bits(uint64(value_137), uint64(0), 32, false, 0))
+	var value_139 uint32 = uint32(number_runtime_bits(uint64(value_136), uint64(value_138), 32, false, 8))
+	var value_140 int32 = 0
+	var value_141 uint32 = uint32(number_runtime_bits(uint64(value_140), uint64(0), 32, false, 0))
+	var value_142 bool = value_139 != value_141
+	if value_142 {
+		var value_143 float32 = override.LetterSpacing
+		base.LetterSpacing = value_143
+	}
+	var value_144 uint32 = base.Fields
+	var value_145 uint32 = override.Fields
+	var value_146 uint32 = uint32(number_runtime_bits(uint64(value_144), uint64(value_145), 32, false, 9))
+	base.Fields = value_146
+	var value_147 StyleData = base
+	return value_147
 }
 
 func Style_ResolveValues(base StyleData, states StyleStates, state int32) StyleData {

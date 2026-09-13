@@ -166,6 +166,7 @@ func TestTextSharedStyle(t *testing.T) {
 Text.shared {
   foreground: #000000%02x;
   font-size: 27;
+  letter-spacing: 2;
   opacity: 0.5;
 }
 `, alpha, disabled, alpha), "Text Shared", "") {
@@ -178,8 +179,8 @@ Text.shared {
 			}
 			want = Surface_Opacity(want, 0.5)
 			op := r.FrameOps()[0]
-			if op.FontSize != 27 || packRGBA(op.Color) != want {
-				t.Fatalf("alpha %d disabled %v: font %d color %#x, want 27/%#x", alpha, disabled, op.FontSize, packRGBA(op.Color), want)
+			if op.FontSize != 27 || op.LetterSpacing != 2 || packRGBA(op.Color) != want {
+				t.Fatalf("alpha %d disabled %v: font %d spacing %d color %#x, want 27/2/%#x", alpha, disabled, op.FontSize, op.LetterSpacing, packRGBA(op.Color), want)
 			}
 			if alpha == 0 && !bytes.Equal(RenderFrame(240, 100, r.FrameOps()).Pix, RenderFrame(240, 100, nil).Pix) {
 				t.Fatal("explicit transparent text painted visible pixels")
