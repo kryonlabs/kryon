@@ -46,8 +46,6 @@ typedef struct {
 } ButtonSpec;
 
 Style MergeStyle(Style base, Style overrides);
-Style ResolveControlStyle(Style base, ControlStyle control,
-                          ButtonState state);
 
 typedef struct {
     Rectangle bounds;

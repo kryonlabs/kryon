@@ -17,6 +17,8 @@ StyleFrame ui_control_style_frame_role_kind(ButtonProps button, ButtonState stat
 /* Representation adapters; transition and field-presence policy is .kry. */
 Style ui_unpack_style(StyleData value);
 StyleStates ui_pack_style_states(ControlStyle control);
+Style ResolveControlStyle(Style base, ControlStyle control,
+                          ButtonState state);
 Style ui_style_transition(Style resolved, Style normal, Style hover,
                           Style press, Style focus, float h, float p, float f,
                           FillStates *fill);

@@ -27,6 +27,7 @@
 #include "../src/ui/ui_numeric_input_internal.h"
 #include "../src/ui/ui_tree_layout_internal.h"
 #include "../src/ui/ui_disabled_internal.h"
+#include "../src/ui/ui_style_internal.h"
 #include "../src/ui/dropdown_store.h"
 #include "../src/ui/ui_input_clip_internal.h"
 #include "../src/ui/ui_popup_input_internal.h"
