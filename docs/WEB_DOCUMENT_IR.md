@@ -504,7 +504,8 @@ content visibility, intrinsic containment sizing, container
 queries, anchor positioning, view-transition names, animation ranges,
 will-change, isolation, blend mode,
 media/background fit and rendering, visibility, transitions, filters,
-animations, clip/mask paint controls, writing direction/mode, hyphenation,
+animations, clip/mask paint controls including mask origin/clip/composite/mode,
+writing direction/mode, hyphenation,
 line clamping, color scheme, forced/print color adjustment, SVG
 interpolation and paint-order controls, shape controls,
 columns, column-rule longhands, column fill/span, break flow controls,

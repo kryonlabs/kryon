@@ -2231,6 +2231,7 @@ const webKssLiteralProperties = new Set([
   "translate", "rotate", "scale", "perspective-origin", "backface-visibility",
   "filter", "backdrop-filter", "clip-path",
   "mask", "mask-image", "mask-size", "mask-position", "mask-repeat",
+  "mask-origin", "mask-clip", "mask-composite", "mask-mode",
   "cursor", "pointer-events", "appearance", "user-select", "resize",
   "outline", "outline-style", "box-shadow", "color-scheme",
   "field-sizing", "interpolate-size", "overlay", "forced-color-adjust",
@@ -3157,6 +3158,10 @@ const webCSSPropertyNames = new Map([
   ["mask-size", "mask-size"],
   ["mask-position", "mask-position"],
   ["mask-repeat", "mask-repeat"],
+  ["mask-origin", "mask-origin"],
+  ["mask-clip", "mask-clip"],
+  ["mask-composite", "mask-composite"],
+  ["mask-mode", "mask-mode"],
   ["cursor", "cursor"],
   ["pointer-events", "pointer-events"],
   ["appearance", "appearance"],
@@ -4574,6 +4579,10 @@ function applyResolvedWebStyle(el, style) {
   set("maskSize", style["mask-size"]);
   set("maskPosition", style["mask-position"]);
   set("maskRepeat", style["mask-repeat"]);
+  set("maskOrigin", style["mask-origin"]);
+  set("maskClip", style["mask-clip"]);
+  set("maskComposite", style["mask-composite"]);
+  set("maskMode", style["mask-mode"]);
   set("cursor", style.cursor);
   set("pointerEvents", style["pointer-events"]);
   set("appearance", style.appearance);
