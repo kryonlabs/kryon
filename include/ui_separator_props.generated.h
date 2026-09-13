@@ -25,7 +25,6 @@ typedef struct SeparatorProps {
     Rectangle bounds;
     bool vertical;
     const char* label;
-    int32_t font;
     bool disabled;
     int32_t class_name;
 } SeparatorProps;

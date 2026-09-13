@@ -6,7 +6,6 @@ type SeparatorProps struct {
 	Bounds    Rectangle
 	Vertical  bool
 	Label     string
-	Font      int32
 	Disabled  bool
 	ClassName int32
 }

@@ -30,7 +30,7 @@ selection_images_frame :: () #ui {
         Image(image)
         image.bounds = (Rectangle){140,100,96,64}
         Button((ButtonProps){.bounds = image.bounds, .image_asset_path = image.asset_path, .image_bounds = image.bounds, .image_source = image.source, .image_origin = image.origin, .image_rotation = image.rotation, .image_tint = image.tint, .image_fit = image.fit, .image_background = (Color){30,40,50,255}, .id = 952})
-        Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section", .font = Text14})
+        Separator((SeparatorProps){.bounds = {20,180,220,24}, .label = "Section"})
         tabs: [2] Tab = {{"One",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1},{"Two",(Texture2D){0,0,0,0,0},0,0,(Color){0},0,1}}
         Button((ButtonProps){.bounds = {20,210,80,28}, .id = 954, .label = "+", .tone = ButtonToneNeutral, .emphasis = ButtonEmphasisGhost})
         TabBar((TabBarProps){.bounds = {105,210,180,28}, .tabs = tabs, .count = 2, .selected_index = selected_tab, .font = Text14, .closed_index = &closed_tab, .min_tab_width = 90, .max_tab_width = 90})

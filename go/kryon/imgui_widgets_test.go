@@ -1644,7 +1644,7 @@ func TestToggleKeyboardNavigation(t *testing.T) {
 func TestNativeSeparatorLabel(t *testing.T) {
 	r := New(AppConfig{Width: 320, Height: 200}).(*runtime)
 	r.BeginFrame()
-	r.Separator(SeparatorProps{Bounds: NewRectangle(10, 20, 200, 24), Label: "Section", Font: Text14})
+	r.Separator(SeparatorProps{Bounds: NewRectangle(10, 20, 200, 24), Label: "Section"})
 	r.EndFrame()
 	ops := r.FrameOps()
 	if len(ops) != 2 || ops[0].Kind != FrameOpText || ops[0].Text != "Section" || ops[1].Kind != FrameOpLine {

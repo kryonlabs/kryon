@@ -2014,9 +2014,6 @@ func (r *runtime) Separator(props SeparatorProps) {
 	}
 	labelStyle := unpackStyle(frame.Value)
 	font, fontID := styleTextFace(labelStyle, Text14)
-	if props.Font > 0 {
-		font = props.Font
-	}
 	if font <= 0 {
 		font = Text14
 	}

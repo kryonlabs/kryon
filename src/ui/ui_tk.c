@@ -608,10 +608,9 @@ RenderSeparator(SeparatorProps separator)
         separator.disabled ? ButtonStateDisabled : ButtonStateNormal,
         separator.disabled, 0, separator.class_name, StyleKindSeparator(), 6);
     Style label_style = ui_unpack_style(ui_style_apply_effects_frame(frame).value);
-    int font = separator.font > 0 ? separator.font :
-        (label_style.font_size > 0.0f
-            ? (int)(label_style.font_size + 0.5f)
-            : GetSmallFontSize());
+    int font = label_style.font_size > 0.0f
+        ? (int)(label_style.font_size + 0.5f)
+        : GetSmallFontSize();
     int text_width = TextWidth(label, font);
     int text_y = ui_row_text_y(separator.bounds, font);
     StyleFrame line_frame = ui_tk_simple_style_frame_class_role(ButtonToneNeutral,

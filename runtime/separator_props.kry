@@ -5,7 +5,6 @@ SeparatorProps :: struct {
     bounds: Rectangle
     vertical: bool
     label: const char*
-    font: i32
     disabled: bool
     class_name: i32
 }
