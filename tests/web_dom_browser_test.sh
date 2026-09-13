@@ -465,17 +465,37 @@ try {
   assert(choice.selected === true, "selectable option selected state missing");
   assert(kryon.webDOMSnapshot(target, "choiceBeta").role === "option",
     "selectable option snapshot role missing");
+  assert(kryon.webDOMRelationRefs(target, "choices").collectionItems
+    .join(" ") === "Page/article/choices/beta",
+    "listbox collection item relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "choiceBeta").relationRefs.collectionOwner ===
+    "Page/article/choices", "option collection owner snapshot missing");
   assert(menuItem.tagName === "BUTTON", "menu item button not rendered");
   assert(menuItem.getAttribute("role") === "menuitem", "menu item role missing");
   assert(kryon.webDOMSnapshot(target, "archiveItem").role === "menuitem",
     "menu item snapshot role missing");
+  assert(kryon.webDOMRelations(target, "contextMenu").collectionItems
+    .map((object) => object.ref).join(" ") === "Page/article/contextMenu/archive",
+    "menu collection item relation missing");
+  assert(kryon.webDOMRelationRefs(target, "archiveItem").collectionOwner ===
+    "Page/article/contextMenu", "menu item collection owner missing");
   assert(tab.tagName === "BUTTON", "tab button not rendered");
   assert(tab.getAttribute("role") === "tab", "tab button role missing");
   assert(kryon.webDOMSnapshot(target, "overviewTab").role === "tab",
     "tab button snapshot role missing");
+  assert(kryon.webDOMRelationRefs(target, "tabs").collectionItems
+    .join(" ") === "Page/article/tabs/overview",
+    "tablist collection item relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "overviewTab").relationRefs.collectionOwner ===
+    "Page/article/tabs", "tab collection owner snapshot missing");
   assert(treeItem.getAttribute("role") === "treeitem", "tree item role missing");
   assert(kryon.webDOMSnapshot(target, "introNode").role === "treeitem",
     "tree item snapshot role missing");
+  assert(kryon.webDOMRelationRefs(target, "outline").collectionItems
+    .join(" ") === "Page/article/outline/intro",
+    "tree collection item relation refs missing");
+  assert(kryon.webDOMSnapshot(target, "introNode").relationRefs.collectionOwner ===
+    "Page/article/outline", "tree item collection owner snapshot missing");
   const removeInstalledStyle = kryon.installWebStyleSheet(kryon.parseWebStyleSheet(\`
     Button.primary {
       background-color: rgb(12, 34, 56);
