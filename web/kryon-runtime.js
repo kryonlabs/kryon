@@ -2344,7 +2344,8 @@ function parseSimpleSelector(text) {
         pseudo === "focused" || pseudo === "normal" || pseudo === "disabled" ||
         pseudo === "loading" || pseudo === "selected" || pseudo === "checked" ||
         pseudo === "invalid" || pseudo === "expanded" || pseudo === "open" ||
-        pseudo === "readonly" || pseudo === "read-only" || pseudo === "required")) {
+        pseudo === "readonly" || pseudo === "read-only" || pseudo === "required" ||
+        pseudo === "enabled" || pseudo === "optional")) {
       const state = pseudo === "focused" ? "focus" :
         (pseudo === "read-only" ? "readonly" : pseudo);
       selector.state = state;
@@ -2710,6 +2711,7 @@ function webStyleStateSelectorToCSS(state) {
     pressed: [":active", "[aria-pressed=\"true\"]"],
     focus: [":focus", ":focus-visible"],
     disabled: [":disabled", "[aria-disabled=\"true\"]"],
+    enabled: [":enabled"],
     loading: ["[aria-busy=\"true\"]"],
     checked: [":checked", "[aria-checked=\"true\"]"],
     selected: [":checked", "[selected]", "[aria-selected=\"true\"]", "[aria-current]"],
@@ -2717,6 +2719,7 @@ function webStyleStateSelectorToCSS(state) {
     expanded: ["[aria-expanded=\"true\"]"],
     readonly: [":read-only", "[readonly]"],
     required: [":required", "[required]"],
+    optional: [":optional"],
     open: ["[open]"]
   }[key] || [];
   return native.length ? `:is(${[...native, mirrored].join(",")})` : mirrored;
@@ -3349,10 +3352,14 @@ function styleStateMatches(name, state, facts = {}) {
     return !Object.values(state || {}).some(Boolean) && !facts.readOnly && !facts.required;
   if (key === "hover" || key === "pressed" || key === "focus" || key === "focused")
     return !!state?.[key] || !!state?.[key === "focused" ? "focus" : key];
+  if (key === "enabled")
+    return !state?.disabled && !facts.disabled;
   if (key === "readonly" || key === "read-only")
     return !!facts.readOnly || !!state?.readonly || !!state?.readOnly;
   if (key === "required")
     return !!facts.required || !!state?.required;
+  if (key === "optional")
+    return !facts.required && !state?.required;
   return !!state?.[key];
 }
 
