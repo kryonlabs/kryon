@@ -303,80 +303,99 @@ func Button_SwatchPaintFor(spec SwatchSpec) SwatchPaint {
 	var value_9 float32 = 0.5
 	var value_10 float32 = value_8 * value_9
 	var half_h float32 = value_10
-	var value_11 float32 = 6.0
-	var value_12 float32 = scale
-	var value_13 float32 = value_11 * value_12
-	var inset float32 = value_13
-	var value_14 float32 = spec.Face.Value.BorderWidth
-	var border_width float32 = value_14
-	var value_15 float32 = spec.Face.Value.BorderWidth
-	var focus_width float32 = value_15
-	var value_16 Rectangle = spec.Bounds
-	paint.Bounds = value_16
-	var value_17 Rectangle = spec.Bounds
-	paint.CheckerBase = value_17
-	var value_18 float32 = spec.Bounds.X
-	paint.CheckerA.X = value_18
-	var value_19 float32 = spec.Bounds.Y
-	paint.CheckerA.Y = value_19
-	var value_20 float32 = half_w
-	paint.CheckerA.Width = value_20
-	var value_21 float32 = half_h
-	paint.CheckerA.Height = value_21
-	var value_22 float32 = spec.Bounds.X
-	var value_23 float32 = half_w
-	var value_24 float32 = value_22 + value_23
-	paint.CheckerB.X = value_24
-	var value_25 float32 = spec.Bounds.Y
-	var value_26 float32 = half_h
-	var value_27 float32 = value_25 + value_26
-	paint.CheckerB.Y = value_27
-	var value_28 float32 = half_w
-	paint.CheckerB.Width = value_28
-	var value_29 float32 = half_h
-	paint.CheckerB.Height = value_29
-	var value_30 Rectangle = spec.Bounds
-	paint.Swatch = value_30
-	var value_31 Rectangle = spec.Bounds
-	paint.FocusBounds = value_31
-	var value_32 Color = spec.Color
-	paint.SwatchColor = value_32
-	var value_33 float32 = spec.Bounds.X
-	var value_34 float32 = inset
-	var value_35 float32 = value_33 + value_34
-	paint.LabelX = value_35
-	var value_36 float32 = spec.Face.Value.Radius
-	paint.Radius = value_36
-	var value_37 float32 = border_width
-	paint.BorderWidth = value_37
-	var value_38 float32 = focus_width
-	paint.FocusWidth = value_38
-	var value_39 uint32 = spec.Face.Value.Background
-	paint.CheckerBaseColor = value_39
-	var value_40 uint32 = spec.Face.Value.BackgroundEnd
-	paint.CheckerAltColor = value_40
-	var value_41 uint32 = spec.Face.Value.Border
-	paint.BorderColor = value_41
-	var value_42 uint32 = spec.Face.Value.Focus
-	paint.FocusColor = value_42
-	var value_43 uint32 = spec.Face.Value.Foreground
-	paint.TextColor = value_43
-	var value_44 bool = spec.Disabled
-	var value_45 bool = !value_44
-	var value_46 bool = value_45
-	if value_46 {
-		var value_47 bool = spec.Focused
-		value_46 = value_47
+	var value_11 float32 = spec.Face.Value.PaddingX
+	var inset float32 = value_11
+	var value_12 uint32 = spec.Face.Value.Fields
+	var value_13 int32 = int32(StylePaddingX)
+	var value_14 uint32 = uint32(number_runtime_bits(uint64(value_13), uint64(0), 32, false, 0))
+	var value_15 uint32 = uint32(number_runtime_bits(uint64(value_12), uint64(value_14), 32, false, 8))
+	var value_16 int32 = 0
+	var value_17 uint32 = uint32(number_runtime_bits(uint64(value_16), uint64(0), 32, false, 0))
+	var value_18 bool = value_15 == value_17
+	var value_19 bool = value_18
+	if !value_19 {
+		var value_20 float32 = inset
+		var value_21 float32 = 0.0
+		var value_22 bool = value_20 < value_21
+		value_19 = value_22
 	}
-	paint.ShowFocus = value_46
-	var value_48 bool = spec.Disabled
-	if value_48 {
-		var value_49 int32 = 128
-		var value_50 uint8 = uint8(number_runtime_bits(uint64(value_49), uint64(0), 8, false, 0))
-		paint.SwatchColor.A = value_50
+	if value_19 {
+		var value_23 float32 = 6.0
+		inset = value_23
 	}
-	var value_51 SwatchPaint = paint
-	return value_51
+	var value_24 float32 = inset
+	var value_25 float32 = scale
+	inset = value_24 * value_25
+	var value_26 float32 = spec.Face.Value.BorderWidth
+	var border_width float32 = value_26
+	var value_27 float32 = spec.Face.Value.BorderWidth
+	var focus_width float32 = value_27
+	var value_28 Rectangle = spec.Bounds
+	paint.Bounds = value_28
+	var value_29 Rectangle = spec.Bounds
+	paint.CheckerBase = value_29
+	var value_30 float32 = spec.Bounds.X
+	paint.CheckerA.X = value_30
+	var value_31 float32 = spec.Bounds.Y
+	paint.CheckerA.Y = value_31
+	var value_32 float32 = half_w
+	paint.CheckerA.Width = value_32
+	var value_33 float32 = half_h
+	paint.CheckerA.Height = value_33
+	var value_34 float32 = spec.Bounds.X
+	var value_35 float32 = half_w
+	var value_36 float32 = value_34 + value_35
+	paint.CheckerB.X = value_36
+	var value_37 float32 = spec.Bounds.Y
+	var value_38 float32 = half_h
+	var value_39 float32 = value_37 + value_38
+	paint.CheckerB.Y = value_39
+	var value_40 float32 = half_w
+	paint.CheckerB.Width = value_40
+	var value_41 float32 = half_h
+	paint.CheckerB.Height = value_41
+	var value_42 Rectangle = spec.Bounds
+	paint.Swatch = value_42
+	var value_43 Rectangle = spec.Bounds
+	paint.FocusBounds = value_43
+	var value_44 Color = spec.Color
+	paint.SwatchColor = value_44
+	var value_45 float32 = spec.Bounds.X
+	var value_46 float32 = inset
+	var value_47 float32 = value_45 + value_46
+	paint.LabelX = value_47
+	var value_48 float32 = spec.Face.Value.Radius
+	paint.Radius = value_48
+	var value_49 float32 = border_width
+	paint.BorderWidth = value_49
+	var value_50 float32 = focus_width
+	paint.FocusWidth = value_50
+	var value_51 uint32 = spec.Face.Value.Background
+	paint.CheckerBaseColor = value_51
+	var value_52 uint32 = spec.Face.Value.BackgroundEnd
+	paint.CheckerAltColor = value_52
+	var value_53 uint32 = spec.Face.Value.Border
+	paint.BorderColor = value_53
+	var value_54 uint32 = spec.Face.Value.Focus
+	paint.FocusColor = value_54
+	var value_55 uint32 = spec.Face.Value.Foreground
+	paint.TextColor = value_55
+	var value_56 bool = spec.Disabled
+	var value_57 bool = !value_56
+	var value_58 bool = value_57
+	if value_58 {
+		var value_59 bool = spec.Focused
+		value_58 = value_59
+	}
+	paint.ShowFocus = value_58
+	var value_60 bool = spec.Disabled
+	if value_60 {
+		var value_61 int32 = 128
+		var value_62 uint8 = uint8(number_runtime_bits(uint64(value_61), uint64(0), 8, false, 0))
+		paint.SwatchColor.A = value_62
+	}
+	var value_63 SwatchPaint = paint
+	return value_63
 }
 
 func (instance_host_0 *runtime) Button_MeasureButton(props ButtonProps, paint Style, minimum_height float32, font int32, available_width float32, scale float32, disclosure bool) Rectangle {

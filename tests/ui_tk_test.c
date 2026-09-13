@@ -344,6 +344,24 @@ test_swatch_policy(void)
                 paint.border_width, 0.0f);
     check_float("unstyled swatch keeps zero focus width",
                 paint.focus_width, 0.0f);
+    frame.value.fields |= StylePaddingX;
+    frame.value.padding_x = 10.0f;
+    paint = SwatchPaintFor((SwatchSpec){
+        .bounds = {10, 20, 80, 30},
+        .color = {20, 40, 60, 128},
+        .scale = 1.0f,
+        .face = frame
+    });
+    check_int("styled color button label x", (int)paint.label_x, 20);
+    frame.value.padding_x = 0.0f;
+    paint = SwatchPaintFor((SwatchSpec){
+        .bounds = {10, 20, 80, 30},
+        .color = {20, 40, 60, 128},
+        .scale = 1.0f,
+        .face = frame
+    });
+    check_int("color button explicit zero label inset",
+              (int)paint.label_x, 10);
     check_int("color button disabled alpha", disabled.swatch_color.a, 128);
     check_int("color button disabled focus hidden", disabled.show_focus, 0);
 }

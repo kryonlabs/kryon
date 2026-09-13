@@ -154,7 +154,12 @@ SwatchPaintFor :: (spec: SwatchSpec) -> SwatchPaint #export {
 
     half_w: float = spec.bounds.width * 0.5
     half_h: float = spec.bounds.height * 0.5
-    inset: float = 6.0 * scale
+    inset: float = spec.face.value.padding_x
+    if (spec.face.value.fields & (u32)StylePaddingX) == (u32)0 ||
+       inset < 0.0 {
+        inset = 6.0
+    }
+    inset *= scale
     border_width: float = spec.face.value.border_width
     focus_width: float = spec.face.value.border_width
 
