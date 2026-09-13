@@ -2496,7 +2496,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		*scroll = TabBar_TabBarRevealScroll(x, widths[selected], bounds, *scroll, maxScroll)
 	}
-	barPaint := TabBar_TabBarPaintFor(barFrame, barFrame, barFrame)
+	barPaint := TabBar_TabBarPaintFor(barFrame, barFrame, barFrame, 1)
 	r.record(FrameOp{Kind: FrameOpRect, Bounds: bounds, Color: unpackRGBA(barPaint.BarColor), BorderColor: unpackRGBA(barPaint.BarBorderColor), BorderWidth: barFrame.Value.BorderWidth, Radius: barFrame.Value.Radius})
 	x := bounds.X - float32(*scroll)
 	for i := 0; i < count; i++ {
@@ -2566,7 +2566,7 @@ func (r *runtime) TabBar(props TabBarProps) int32 {
 		}
 		closeFrame := simpleStyleFrameWithClassRole(ButtonToneNeutral, closeState, itemDisabled,
 			false, props.ClassName, StyleSheet_StyleKindTabClose(), StyleSheet_StyleAny())
-		paint := TabBar_TabBarPaintFor(barFrame, tabFrame, closeFrame)
+		paint := TabBar_TabBarPaintFor(barFrame, tabFrame, closeFrame, 1)
 		r.recordButton(FrameOp{Kind: FrameOpButton, Button: ButtonFrame{Props: ButtonProps{ClassName: props.ClassName}}, Opacity: 1,
 			BorderWidth: paint.BorderWidth, Radius: paint.Radius,
 			AmbientColor: unpackRGBA(paint.BarColor), FocusColor: unpackRGBA(paint.FocusColor), Bounds: tab, Clip: bounds, HasClip: true,

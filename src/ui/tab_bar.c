@@ -461,7 +461,10 @@ RenderTabBar(TabBarProps bar)
         int dy = (int)(mouse_world.y - tab_bar_store->press_position.y);
         int abs_dx = dx < 0 ? -dx : dx;
         int abs_dy = dy < 0 ? -dy : dy;
-        int threshold = Scale(6);
+        TabBarPaint drag_paint = TabBarPaintFor(bar_frame, metric_tab_frame,
+                                                metric_close_frame,
+                                                (float)Scale(1000) / 1000.0f);
+        int threshold = drag_paint.reorder_drag_threshold;
 
         if(!tab_bar_store->reorder_drag_active &&
            abs_dx >= threshold && abs_dx >= abs_dy) {
@@ -512,7 +515,8 @@ RenderTabBar(TabBarProps bar)
         if(is_selected && bar.selected_tab_bounds != NULL)
             *bar.selected_tab_bounds = tab_rect;
 
-        paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
+        paint = TabBarPaintFor(bar_frame, tab_frame, close_frame,
+                               (float)Scale(1000) / 1000.0f);
         styled_tab_frame = ui_style_apply_effects_frame(tab_frame);
         tab_style = ui_unpack_style(styled_tab_frame.value);
         close_style = ui_unpack_style(
@@ -545,19 +549,17 @@ RenderTabBar(TabBarProps bar)
         }
 
         // Draw tab text and icon
-        int text_pad = (int)tab_frame.value.padding_x;
-        if(text_pad <= 0)
-            text_pad = Scale(8);
-        int icon_size = tab_frame.value.icon_size > 0.0f
-            ? (int)tab_frame.value.icon_size
-            : Scale(16);
+        int text_pad = paint.text_padding;
+        int icon_size = paint.icon_size;
         int has_label = tab->label != NULL && tab->label[0] != '\0';
         int icon_x = tab_x + text_pad;
-        int text_x = icon_x + icon_size + Scale(4);
-        int content_h = bar_h - Scale(8);
+        int text_x = icon_x + icon_size + paint.icon_gap;
+        int content_h = bar_h - paint.content_inset_y;
+        if(content_h < 0)
+            content_h = 0;
         int content_y = bar_y + (bar_h - content_h) / 2;
-        int close_size = Scale(18);
-        int close_pad = Scale(6);
+        int close_size = paint.close_size;
+        int close_pad = paint.close_gap;
         Rectangle close_rect = {
             (float)(tab_x + tab_w - text_pad - close_size),
             (float)(bar_y + (bar_h - close_size) / 2),
@@ -577,7 +579,7 @@ RenderTabBar(TabBarProps bar)
             if(!has_label)
                 icon_x = tab_x + (tab_w - icon_size) / 2;
             else {
-                int gap = Scale(4);
+                int gap = paint.icon_gap;
                 int label_w = TextWidth(tab->label, font);
                 int content_w = icon_size + gap + label_w;
                 if(content_w > tab_w - text_pad * 2)
@@ -595,7 +597,7 @@ RenderTabBar(TabBarProps bar)
             if(can_draw)
                 DrawTexturePro(tab->icon, icon_src, icon_rect,
                                kryon_zero_vector2, 0, icon_tint);
-            text_x = icon_x + icon_size + Scale(4);
+            text_x = icon_x + icon_size + paint.icon_gap;
         } else
             text_x = tab_x + text_pad;
 
@@ -615,7 +617,8 @@ RenderTabBar(TabBarProps bar)
             if(close_hovered) {
                 close_frame = ui_tab_bar_style_frame(StyleKindTabClose(),
                     ButtonStateHover, is_disabled, 0, bar.class_name);
-                paint = TabBarPaintFor(bar_frame, tab_frame, close_frame);
+                paint = TabBarPaintFor(bar_frame, tab_frame, close_frame,
+                                       (float)Scale(1000) / 1000.0f);
                 close_style = ui_unpack_style(
                     ui_style_apply_effects_frame(close_frame).value);
                 DrawRectangleRounded(close_rect,

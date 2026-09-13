@@ -1725,6 +1725,7 @@ func TestNativeTabBarKeyboardNavigation(t *testing.T) {
 			0, StyleSheet_StyleKindTab(), StyleSheet_StyleAny()),
 		simpleStyleFrameWithClassRole(ButtonToneNeutral, ButtonStateNormal, false, false,
 			0, StyleSheet_StyleKindTabClose(), StyleSheet_StyleAny()),
+		1,
 	).FocusColor)
 	for _, op := range r.FrameOps() {
 		if op.ID == props.ID && op.Row == 0 && op.Focused && op.FocusColor == expectedFocus {

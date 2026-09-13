@@ -33,10 +33,18 @@ TabBarPaint :: struct {
     radius: float
     border_width: float
     opacity: float
+    text_padding: i32
+    icon_size: i32
+    icon_gap: i32
+    content_inset_y: i32
+    close_size: i32
+    close_gap: i32
+    reorder_drag_threshold: i32
 }
 
 TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
-    close: StyleFrame) -> TabBarPaint #export {
+    close: StyleFrame, scale: float) -> TabBarPaint #export {
+    if scale <= 0.0 { scale = 1.0 }
     paint: TabBarPaint
     paint.bar = bar
     paint.tab = tab
@@ -52,6 +60,20 @@ TabBarPaintFor :: (bar: StyleFrame, tab: StyleFrame,
     paint.radius = tab.value.radius
     paint.border_width = tab.value.border_width
     paint.opacity = tab.value.opacity
+    paint.text_padding = TabBarMetric(tab.value.fields,
+        (u32)StylePaddingX, tab.value.padding_x, 8.0, scale, true)
+    paint.icon_size = TabBarMetric(tab.value.fields,
+        (u32)StyleIconSize, tab.value.icon_size, 16.0, scale, false)
+    paint.icon_gap = TabBarMetric(tab.value.fields,
+        (u32)StyleGap, tab.value.gap, 4.0, scale, true)
+    paint.content_inset_y = TabBarMetric(tab.value.fields,
+        (u32)StylePaddingY, tab.value.padding_y, 8.0, scale, true)
+    paint.close_size = TabBarMetric(close.value.fields,
+        (u32)StyleIconSize, close.value.icon_size, 18.0, scale, false)
+    paint.close_gap = TabBarMetric(close.value.fields,
+        (u32)StyleGap, close.value.gap, 6.0, scale, true)
+    paint.reorder_drag_threshold = TabBarMetric(bar.value.fields,
+        (u32)StylePaddingY, bar.value.padding_y, 6.0, scale, false)
     return paint
 }
 

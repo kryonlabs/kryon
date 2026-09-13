@@ -20,54 +20,131 @@ type TabBarScroll struct {
 }
 
 type TabBarPaint struct {
-	Bar            StyleFrame
-	Tab            StyleFrame
-	Close          StyleFrame
-	BarColor       uint32
-	BarBorderColor uint32
-	TabColor       uint32
-	TabBorderColor uint32
-	TextColor      uint32
-	IconColor      uint32
-	CloseColor     uint32
-	FocusColor     uint32
-	Radius         float32
-	BorderWidth    float32
-	Opacity        float32
+	Bar                  StyleFrame
+	Tab                  StyleFrame
+	Close                StyleFrame
+	BarColor             uint32
+	BarBorderColor       uint32
+	TabColor             uint32
+	TabBorderColor       uint32
+	TextColor            uint32
+	IconColor            uint32
+	CloseColor           uint32
+	FocusColor           uint32
+	Radius               float32
+	BorderWidth          float32
+	Opacity              float32
+	TextPadding          int32
+	IconSize             int32
+	IconGap              int32
+	ContentInsetY        int32
+	CloseSize            int32
+	CloseGap             int32
+	ReorderDragThreshold int32
 }
 
-func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame) TabBarPaint {
+func TabBar_TabBarPaintFor(bar StyleFrame, tab StyleFrame, close StyleFrame, scale float32) TabBarPaint {
+	var value_0 float32 = scale
+	var value_1 float32 = 0.0
+	var value_2 bool = value_0 <= value_1
+	if value_2 {
+		var value_3 float32 = 1.0
+		scale = value_3
+	}
 	var paint TabBarPaint = TabBarPaint{}
-	var value_0 StyleFrame = bar
-	paint.Bar = value_0
-	var value_1 StyleFrame = tab
-	paint.Tab = value_1
-	var value_2 StyleFrame = close
-	paint.Close = value_2
-	var value_3 uint32 = bar.Value.Background
-	paint.BarColor = value_3
-	var value_4 uint32 = bar.Value.Border
-	paint.BarBorderColor = value_4
-	var value_5 uint32 = tab.Value.Background
-	paint.TabColor = value_5
-	var value_6 uint32 = tab.Value.Border
-	paint.TabBorderColor = value_6
-	var value_7 uint32 = tab.Value.Foreground
-	paint.TextColor = value_7
-	var value_8 uint32 = tab.Value.Foreground
-	paint.IconColor = value_8
-	var value_9 uint32 = close.Value.Foreground
-	paint.CloseColor = value_9
-	var value_10 uint32 = tab.Value.Focus
-	paint.FocusColor = value_10
-	var value_11 float32 = tab.Value.Radius
-	paint.Radius = value_11
-	var value_12 float32 = tab.Value.BorderWidth
-	paint.BorderWidth = value_12
-	var value_13 float32 = tab.Value.Opacity
-	paint.Opacity = value_13
-	var value_14 TabBarPaint = paint
-	return value_14
+	var value_4 StyleFrame = bar
+	paint.Bar = value_4
+	var value_5 StyleFrame = tab
+	paint.Tab = value_5
+	var value_6 StyleFrame = close
+	paint.Close = value_6
+	var value_7 uint32 = bar.Value.Background
+	paint.BarColor = value_7
+	var value_8 uint32 = bar.Value.Border
+	paint.BarBorderColor = value_8
+	var value_9 uint32 = tab.Value.Background
+	paint.TabColor = value_9
+	var value_10 uint32 = tab.Value.Border
+	paint.TabBorderColor = value_10
+	var value_11 uint32 = tab.Value.Foreground
+	paint.TextColor = value_11
+	var value_12 uint32 = tab.Value.Foreground
+	paint.IconColor = value_12
+	var value_13 uint32 = close.Value.Foreground
+	paint.CloseColor = value_13
+	var value_14 uint32 = tab.Value.Focus
+	paint.FocusColor = value_14
+	var value_15 float32 = tab.Value.Radius
+	paint.Radius = value_15
+	var value_16 float32 = tab.Value.BorderWidth
+	paint.BorderWidth = value_16
+	var value_17 float32 = tab.Value.Opacity
+	paint.Opacity = value_17
+	var value_18 uint32 = tab.Value.Fields
+	var value_19 int32 = int32(StylePaddingX)
+	var value_20 uint32 = uint32(number_runtime_bits(uint64(value_19), uint64(0), 32, false, 0))
+	var value_21 float32 = tab.Value.PaddingX
+	var value_22 float32 = 8.0
+	var value_23 float32 = scale
+	var value_24 bool = true
+	var value_25 int32 = TabBar_TabBarMetric(value_18, value_20, value_21, value_22, value_23, value_24)
+	paint.TextPadding = value_25
+	var value_26 uint32 = tab.Value.Fields
+	var value_27 int32 = int32(StyleIconSize)
+	var value_28 uint32 = uint32(number_runtime_bits(uint64(value_27), uint64(0), 32, false, 0))
+	var value_29 float32 = tab.Value.IconSize
+	var value_30 float32 = 16.0
+	var value_31 float32 = scale
+	var value_32 bool = false
+	var value_33 int32 = TabBar_TabBarMetric(value_26, value_28, value_29, value_30, value_31, value_32)
+	paint.IconSize = value_33
+	var value_34 uint32 = tab.Value.Fields
+	var value_35 int32 = int32(StyleGap)
+	var value_36 uint32 = uint32(number_runtime_bits(uint64(value_35), uint64(0), 32, false, 0))
+	var value_37 float32 = tab.Value.Gap
+	var value_38 float32 = 4.0
+	var value_39 float32 = scale
+	var value_40 bool = true
+	var value_41 int32 = TabBar_TabBarMetric(value_34, value_36, value_37, value_38, value_39, value_40)
+	paint.IconGap = value_41
+	var value_42 uint32 = tab.Value.Fields
+	var value_43 int32 = int32(StylePaddingY)
+	var value_44 uint32 = uint32(number_runtime_bits(uint64(value_43), uint64(0), 32, false, 0))
+	var value_45 float32 = tab.Value.PaddingY
+	var value_46 float32 = 8.0
+	var value_47 float32 = scale
+	var value_48 bool = true
+	var value_49 int32 = TabBar_TabBarMetric(value_42, value_44, value_45, value_46, value_47, value_48)
+	paint.ContentInsetY = value_49
+	var value_50 uint32 = close.Value.Fields
+	var value_51 int32 = int32(StyleIconSize)
+	var value_52 uint32 = uint32(number_runtime_bits(uint64(value_51), uint64(0), 32, false, 0))
+	var value_53 float32 = close.Value.IconSize
+	var value_54 float32 = 18.0
+	var value_55 float32 = scale
+	var value_56 bool = false
+	var value_57 int32 = TabBar_TabBarMetric(value_50, value_52, value_53, value_54, value_55, value_56)
+	paint.CloseSize = value_57
+	var value_58 uint32 = close.Value.Fields
+	var value_59 int32 = int32(StyleGap)
+	var value_60 uint32 = uint32(number_runtime_bits(uint64(value_59), uint64(0), 32, false, 0))
+	var value_61 float32 = close.Value.Gap
+	var value_62 float32 = 6.0
+	var value_63 float32 = scale
+	var value_64 bool = true
+	var value_65 int32 = TabBar_TabBarMetric(value_58, value_60, value_61, value_62, value_63, value_64)
+	paint.CloseGap = value_65
+	var value_66 uint32 = bar.Value.Fields
+	var value_67 int32 = int32(StylePaddingY)
+	var value_68 uint32 = uint32(number_runtime_bits(uint64(value_67), uint64(0), 32, false, 0))
+	var value_69 float32 = bar.Value.PaddingY
+	var value_70 float32 = 6.0
+	var value_71 float32 = scale
+	var value_72 bool = false
+	var value_73 int32 = TabBar_TabBarMetric(value_66, value_68, value_69, value_70, value_71, value_72)
+	paint.ReorderDragThreshold = value_73
+	var value_74 TabBarPaint = paint
+	return value_74
 }
 
 func TabBar_TabBarHas(fields uint32, field uint32) bool {

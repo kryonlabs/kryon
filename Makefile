@@ -343,6 +343,7 @@ TITLE_BAR_POLICY_TEST = $(BUILD_DIR)/title-bar-policy-test
 TOOLBAR_POLICY_TEST = $(BUILD_DIR)/toolbar-policy-test
 PARAGRAPH_POLICY_TEST = $(BUILD_DIR)/paragraph-policy-test
 RADIO_POLICY_TEST = $(BUILD_DIR)/radio-policy-test
+TAB_BAR_POLICY_TEST = $(BUILD_DIR)/tab-bar-policy-test
 BEVEL_POLICY_TEST = $(BUILD_DIR)/bevel-policy-test
 ICON_POLICY_TEST = $(BUILD_DIR)/icon-policy-test
 TRANSITION_FADE_POLICY_TEST = $(BUILD_DIR)/transition-fade-policy-test
@@ -655,6 +656,10 @@ paragraph-policy-test: $(GENERATED_SRC_DIR)/runtime/paragraph.c $(GENERATED_SRC_
 radio-policy-test: $(GENERATED_SRC_DIR)/runtime/radio.c $(GENERATED_SRC_DIR)/runtime/radio.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/radio_policy_test.c $(GENERATED_SRC_DIR)/runtime/radio.c -lm -o $(RADIO_POLICY_TEST)
 	$(RADIO_POLICY_TEST)
+
+tab-bar-policy-test: $(GENERATED_SRC_DIR)/runtime/tab_bar.c $(GENERATED_SRC_DIR)/runtime/tab_bar.h
+	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/tab_bar_policy_test.c $(GENERATED_SRC_DIR)/runtime/tab_bar.c -lm -o $(TAB_BAR_POLICY_TEST)
+	$(TAB_BAR_POLICY_TEST)
 
 bevel-policy-test: $(GENERATED_SRC_DIR)/runtime/bevel.c $(GENERATED_SRC_DIR)/runtime/bevel.h
 	$(CC) -std=c99 -Wall -Werror -Iinclude -I$(GENERATED_SRC_DIR) tests/bevel_policy_test.c $(GENERATED_SRC_DIR)/runtime/bevel.c -lm -o $(BEVEL_POLICY_TEST)
