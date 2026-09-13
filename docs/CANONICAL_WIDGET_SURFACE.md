@@ -545,6 +545,7 @@ Recent retained-tree public C cleanup:
 | `SetUIScale`, `GetUIScale`, `ClampUIPx` | `SetScale`, `GetScale`, `ClampPx` |
 | `LightenUIColor`, `DarkenUIColor` | `LightenColor`, `DarkenColor` |
 | `BeginUIClip`, `EndUIClip`, `ResetUIClip`, `GetUIClip*` | `BeginClip`, `EndClip`, `ResetClip`, `GetClip*` |
+| `GetFontSize`, `GetSmallFontSize`, `GetTitleFontSize`, `FitFontSize` | Internal native/KSS typography helpers; public code uses explicit text tokens or style props. |
 | `UIFloatDrag*`, `UIIntDrag*`, `UIFloatSlider*`, `UIIntSlider*`, typed fixture values | `DragScalar*`, `DragWhole*`, `SliderScalar*`, `SliderWhole*`, neutral fixture values |
 | `BeginWidget`, `EndWidget`, `WidgetSet*`, `WIDGET_MOVABLE`/`WIDGET_RESIZABLE`/`WIDGET_READONLY` | Internal inspect registration; public code uses canonical widget declarations. |
 | `MeasureGrid`, `BeginGridCursor`, `GridStep`, `GridCursorHeight` | Internal `.kry` grid placement policy; public code uses `Grid(GridProps)`. |
