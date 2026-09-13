@@ -520,6 +520,8 @@ export interface WebDOMObserveOptions {
 }
 
 export interface WebDOMRelations {
+  previousSibling: WebDOMObject | null;
+  nextSibling: WebDOMObject | null;
   groupOwner: WebDOMObject | null;
   groupMembers: WebDOMObject[];
   describedBy: WebDOMObject[];
@@ -551,6 +553,8 @@ export interface WebDOMRelations {
 }
 
 export interface WebNodeRelations {
+  previousSibling: WebDocumentNode | null;
+  nextSibling: WebDocumentNode | null;
   groupOwner: WebDocumentNode | null;
   groupMembers: WebDocumentNode[];
   describedBy: WebDocumentNode[];
@@ -582,6 +586,8 @@ export interface WebNodeRelations {
 }
 
 export interface WebDOMRelationRefs {
+  previousSibling: string;
+  nextSibling: string;
   groupOwner: string;
   groupMembers: string[];
   describedBy: string[];
