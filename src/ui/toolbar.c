@@ -12,10 +12,6 @@ RenderToolbar(ToolbarProps toolbar)
     Style bar;
     Style divider;
     Style action_style;
-    int action_icon_size = 0;
-    int action_icon_padding = 0;
-    int action_gap = 0;
-    int side_padding = 0;
     bar_frame = ui_control_style_frame_role_kind(
         (ButtonProps){.tone = ButtonToneNeutral, .emphasis = ButtonEmphasisSoft,
                       .size = ControlSizeMedium,
@@ -34,24 +30,18 @@ RenderToolbar(ToolbarProps toolbar)
     bar = ui_unpack_style(bar_frame.value);
     divider = ui_unpack_style(divider_frame.value);
     action_style = ui_unpack_style(action_frame.value);
-    if(action_style.icon_size > 0.0f)
-        action_icon_size = (int)(action_style.icon_size + 0.5f);
-    if(action_style.padding_x > 0.0f)
-        action_icon_padding = (int)(action_style.padding_x + 0.5f);
-    if(action_style.gap > 0.0f)
-        action_gap = (int)(action_style.gap + 0.5f);
-    if(bar.padding_x > 0.0f)
-        side_padding = (int)(bar.padding_x + 0.5f);
     ToolbarLayout layout = ToolbarLayoutFor((ToolbarSpec){
         .x = toolbar.x,
         .y = toolbar.y,
         .width = toolbar.width,
         .height = toolbar.height,
         .action_count = toolbar.action_count,
-        .action_icon_size = action_icon_size,
-        .action_icon_padding = action_icon_padding,
-        .action_gap = action_gap,
-        .side_padding = side_padding,
+        .action_icon_size = (int)(action_style.icon_size + 0.5f),
+        .action_icon_padding = (int)(action_style.padding_x + 0.5f),
+        .action_gap = (int)(action_style.gap + 0.5f),
+        .side_padding = (int)(bar.padding_x + 0.5f),
+        .action_fields = action_style.fields,
+        .bar_fields = bar.fields,
         .dropdown_min_width = toolbar.dropdown_min_width,
         .dropdown_max_width = toolbar.dropdown_max_width,
         .dropdown_height = toolbar.dropdown_height,
