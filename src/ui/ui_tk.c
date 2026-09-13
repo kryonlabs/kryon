@@ -724,6 +724,14 @@ RenderListBoxMulti(ListBoxProps list)
     int paint = IsWindowReady();
     int clicked = -1;
     int disabled = list.disabled || UIContentDisabled();
+    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        StyleKindListBoxMultiItem());
+    Style default_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_item_frame).value);
+    int default_item_font = default_item_style.font_size > 0.0f
+        ? (int)(default_item_style.font_size + 0.5f)
+        : GetSmallFontSize();
     int control = IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL);
     int shift = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
     int focused;
@@ -786,7 +794,7 @@ RenderListBoxMulti(ListBoxProps list)
         if(paint) {
             int font = item_style.font_size > 0.0f
                 ? (int)(item_style.font_size + 0.5f)
-                : GetSmallFontSize();
+                : default_item_font;
             int label_inset = item_style.padding_x > 0.0f
                 ? (int)(item_style.padding_x + 0.5f)
                 : Scale(8);
@@ -3044,8 +3052,15 @@ int
 RenderListBox(ListBoxProps list)
 {
     int paint = IsWindowReady();
-    int font = GetFontSize();
     int disabled = list.disabled || UIContentDisabled();
+    StyleFrame default_item_frame = ui_tk_simple_style_frame(ButtonToneNeutral,
+        disabled ? ButtonStateDisabled : ButtonStateNormal, disabled, 0,
+        StyleKindListBoxItem());
+    Style default_item_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_item_frame).value);
+    int font = default_item_style.font_size > 0.0f
+        ? (int)(default_item_style.font_size + 0.5f)
+        : GetFontSize();
     int selected = list.selected_index != NULL ? *list.selected_index : -1;
     int row_h = ListBoxRowHeight(list.row_height > 0
         ? Scale(list.row_height) : Scale(30));
@@ -3554,8 +3569,6 @@ RenderTableView(TableViewProps table)
 {
     ToolkitStore *toolkit = toolkit_state();
     int paint = IsWindowReady();
-    int fallback_font = GetSmallFontSize();
-    int cell_font = fallback_font;
     TableViewMetrics metrics = TableViewMetricsFor((float)GetScale());
     TableViewLayout layout;
     TableViewScrollLayout scroll_layout;
@@ -3572,8 +3585,27 @@ RenderTableView(TableViewProps table)
     Style text_style = {0};
     Style selection_style = {0};
     Style divider_style = {0};
+    Style header_style = {0};
+    int cell_font;
+    int header_font;
 
     table.disabled = table.disabled || UIContentDisabled();
+    StyleFrame default_header_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        table.disabled, 0, StyleKindTableView(), 13);
+    StyleFrame default_cell_frame = ui_tk_simple_style_frame_role(ButtonToneNeutral,
+        table.disabled ? ButtonStateDisabled : ButtonStateNormal,
+        table.disabled, 0, StyleKindTableView(), 22);
+    header_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_header_frame).value);
+    text_style = ui_unpack_style(
+        ui_style_apply_effects_frame(default_cell_frame).value);
+    header_font = header_style.font_size > 0.0f
+        ? (int)(header_style.font_size + 0.5f)
+        : GetSmallFontSize();
+    cell_font = text_style.font_size > 0.0f
+        ? (int)(text_style.font_size + 0.5f)
+        : header_font;
 
     if(toolkit->resize_column >= 0 &&
        ui_popup_input_owner_captures(toolkit->resize_owner)) {
@@ -3720,9 +3752,9 @@ RenderTableView(TableViewProps table)
             Color header_color = header_paint.background;
             Color text_color = Fade(header_paint.foreground,
                                     header_paint.opacity);
-            int header_font = header_paint.font_size > 0.0f
+            int render_header_font = header_paint.font_size > 0.0f
                 ? (int)(header_paint.font_size + 0.5f)
-                : fallback_font;
+                : header_font;
             float shift = ui_table_header_shift(table,head.y);
             if(shift != 0) {
                 Vector2 a = {head.x+shift,head.y}, b = {head.x+head.width+shift,head.y};
@@ -3747,10 +3779,10 @@ RenderTableView(TableViewProps table)
                     BeginClip(x0,(int)head.y+row,x1-x0,1);
                     DrawTextPro(GetTextFont(), label,
                             (Vector2){head.x + (angle > 0 ? shift : 0) + Scale(6), angle < 0 ? head.y + head.height - Scale(6) : head.y + Scale(6)},
-                            (Vector2){0,0}, angle, header_font, 1, text_color);
+                            (Vector2){0,0}, angle, render_header_font, 1, text_color);
                     EndClip();
                 }
-            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, header_font), header_font, text_color);
+            } else RenderText(label, (int)head.x + Scale(6), ui_row_text_y(head, render_header_font), render_header_font, text_color);
             if(table.resizable && table.column_widths != NULL) {
                 BeginClip((int)table.bounds.x,(int)head.y,(int)table.bounds.width,header_h);
                 DrawLine((int)(head.x + head.width + shift) - 1, (int)head.y,
