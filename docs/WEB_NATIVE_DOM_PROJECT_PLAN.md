@@ -64,6 +64,8 @@ the browser receives normal elements, attributes, CSS, and events.
 - KSS web runtime parsing, style resolution, CSS export, style installation,
   app style loading, project package maps, list/logical scroll styling, and
   `data-kry-state` mirroring.
+- KSS web CSS export and mounted DOM styling cover physical and logical border
+  colors/widths, including per-side inline/block properties.
 - KSS state selectors support explicit `[state=...]`, accumulated pseudo
   states such as `:hover:pressed`, and `:normal` export against native
   `data-kry-state` annotations.
