@@ -315,6 +315,7 @@ host roles rather than retained nodes.
 | `Sample` | `.kry canonical` | Long-form alias for `Samp`. |
 | `Search` | `.kry canonical` | Web-native search landmark element. |
 | `Select` | `.kry canonical` | Web-native select element; app selection control remains `Dropdown`. |
+| `Slot` | `.kry canonical` | Web-native shadow DOM slot element. |
 | `Small` | `.kry canonical` | Web-native side-comment/small text element. |
 | `Source` | `.kry canonical` | Web-native media source element. |
 | `Strong` | `.kry canonical` | Web-native strong-importance phrasing element. |
@@ -332,6 +333,7 @@ host roles rather than retained nodes.
 | `TableHead` | `.kry canonical` | Web-native table head element. |
 | `TableRow` | `.kry canonical` | Web-native table row element. |
 | `Tbody` | `.kry canonical` | Web-native short alias for `TableBody`. |
+| `Template` | `.kry canonical` | Web-native inert template element. |
 | `Tfoot` | `.kry canonical` | Web-native short alias for `TableFoot`. |
 | `Thead` | `.kry canonical` | Web-native short alias for `TableHead`. |
 | `Time` | `.kry canonical` | Web-native time element. |

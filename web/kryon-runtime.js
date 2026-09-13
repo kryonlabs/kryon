@@ -1152,6 +1152,10 @@ function widgetTag(item) {
     return "map";
   case "Area":
     return "area";
+  case "Template":
+    return "template";
+  case "Slot":
+    return "slot";
   case "Header":
     return "header";
   case "Footer":
@@ -1795,6 +1799,10 @@ function widgetNativeAttrs(item, meta, args) {
   case "Source":
     setWidgetNativeAttr(out, "src", metaString(meta, "src") ||
       propStringAny(args, ["src", "asset_path", "dom_src", "html_src"]));
+    setWidgetNativeAttr(out, "srcset", metaString(meta, "srcSet") ||
+      propStringAny(args, ["srcset", "src_set", "dom_srcset", "html_srcset"]));
+    setWidgetNativeAttr(out, "sizes", metaString(meta, "sizes") ||
+      propStringAny(args, ["sizes", "dom_sizes", "html_sizes"]));
     setWidgetNativeAttr(out, "type", metaString(meta, "type") ||
       propStringAny(args, ["type", "mime_type", "dom_type", "html_type"]));
     setWidgetNativeAttr(out, "media", metaString(meta, "media") ||
@@ -11598,10 +11606,10 @@ const runtimeCallNames = [
   "Legend", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
-  "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
+  "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary",
   "Sup", "Superscript", "Table", "TableBody", "TableCaption",
   "TableColumn", "TableColumnGroup", "TableFoot",
-  "TableHead", "TableRow", "Tbody", "Tfoot", "Thead", "Time",
+  "TableHead", "TableRow", "Tbody", "Template", "Tfoot", "Thead", "Time",
   "Tr", "Track", "UnorderedList", "Var", "Variable", "Video",
   "Wbr", "WordBreakOpportunity",
   "Bullet", "Separator",
@@ -11739,6 +11747,7 @@ export function Selectable(...args) { return struct("Selectable", args); }
 export function Separator(...args) { return struct("Separator", args); }
 export function SetCurrentTheme(...args) { return struct("SetCurrentTheme", args); }
 export function Section(...args) { return struct("Section", args); }
+export function Slot(...args) { return struct("Slot", args); }
 export function Small(...args) { return struct("Small", args); }
 export function Source(...args) { return struct("Source", args); }
 export function Toast(...args) { return struct("Toast", args); }
@@ -11763,6 +11772,7 @@ export function TableHead(...args) { return struct("TableHead", args); }
 export function TableRow(...args) { return struct("TableRow", args); }
 export function TableView(...args) { return struct("TableView", args); }
 export function Tbody(...args) { return struct("Tbody", args); }
+export function Template(...args) { return struct("Template", args); }
 export function Text(...args) { return struct("Text", args); }
 export function TextArea(...args) { return struct("TextArea", args); }
 export function TextField(...args) { return struct("TextField", args); }

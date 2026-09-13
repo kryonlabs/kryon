@@ -111,8 +111,12 @@ the browser receives normal elements, attributes, CSS, and events.
   grouped-option, and status accessibility facts.
 - Native media/embed aliases such as `Video`, `Audio`, `Source`,
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
-  standard source, preload, controls, poster, track, loading, allow, and MIME
-  attributes available to snapshots, selectors, and mounted DOM.
+  standard source, source-set, preload, controls, poster, track, loading,
+  allow, and MIME attributes available to snapshots, selectors, and mounted
+  DOM.
+- Native document-composition aliases such as `Template` and `Slot` render to
+  matching browser elements and remain addressable through Kry DOM identity,
+  selector, snapshot, and mounted object APIs.
 - Native inline phrasing/editing aliases such as `Strong`, `Em`, `Abbr`,
   `Data`, `Del`, `Ins`, `Sub`, `Sup`, `Kbd`, `Samp`, `Var`, `Cite`, `Ruby`,
   `Rt`, `Rp`, `Bdi`, `Bdo`, and `Wbr` render to matching browser elements,

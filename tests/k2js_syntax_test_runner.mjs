@@ -19,10 +19,10 @@ for (const name of [
   "ListItem", "Main", "Mark", "Meter", "Nav", "Navigation", "OrderedList",
   "OptionGroup", "OptGroup", "Option", "Output", "Pre", "Quote",
   "Rp", "Rt", "Ruby", "RubyParenthesis", "RubyText", "Samp", "Sample", "Search", "Select",
-  "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
+  "Slot", "Small", "Source", "Strong", "Sub", "Subscript", "Summary", "Sup",
   "Superscript", "Table", "TableBody", "TableCaption", "TableCell",
   "TableColumn", "TableColumnGroup", "TableFoot", "TableHead", "TableRow",
-  "Tbody", "Tfoot", "Thead", "Time", "Tr", "Track", "UnorderedList", "Var",
+  "Tbody", "Template", "Tfoot", "Thead", "Time", "Tr", "Track", "UnorderedList", "Var",
   "Variable", "Video", "Wbr", "WordBreakOpportunity"
 ]) {
   assert.equal(typeof runtime[name], "function");
@@ -2922,6 +2922,12 @@ function fakeDocument() {
       { nodeName: "nativeFrame", path: "Page/frame" });
     runtime.widget(nativeRt, "Embed", { src: "chart.svg", type: "image/svg+xml" }, null,
       { nodeName: "nativeEmbed", path: "Page/embed" });
+    runtime.widget(nativeRt, "Source", { srcset: "hero.webp 1x, hero@2x.webp 2x", type: "image/webp" }, null,
+      { nodeName: "nativePictureSource", path: "Page/sourceSet" });
+    runtime.widget(nativeRt, "Template", { text: "Deferred content" }, null,
+      { nodeName: "nativeTemplate", path: "Page/template" });
+    runtime.widget(nativeRt, "Slot", { dom_name: "actions" }, null,
+      { nodeName: "nativeSlot", path: "Page/slot" });
     runtime.widget(nativeRt, "Table", {}, null,
       { nodeName: "nativeTable", path: "Page/nativeTable" });
     runtime.widget(nativeRt, "TableCaption", { text: "Totals" }, null,
@@ -3243,6 +3249,13 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").tag, "iframe");
     assert.equal(runtime.webNodeQuery(nativeRt, "IFrame").extraAttrs.loading, "lazy");
     assert.equal(runtime.webNodeQuery(nativeRt, "Embed").tag, "embed");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").tag, "source");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/sourceSet").extraAttrs.srcset,
+      "hero.webp 1x, hero@2x.webp 2x");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Template").tag, "template");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Slot").tag, "slot");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Slot").domName, "actions");
+    assert.equal(runtime.webNodeQuery(nativeRt, "[name=actions]").path, "Page/slot");
     assert.equal(runtime.webNodeQuery(nativeRt, "Table").tag, "table");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableCaption").tag, "caption");
     assert.equal(runtime.webNodeQuery(nativeRt, "TableCaption").text, "Totals");
@@ -3555,6 +3568,9 @@ function fakeDocument() {
     const hero = runtime.findWebElement(nativeTarget, "hero");
     const heroMap = runtime.findWebElement(nativeTarget, "heroMap");
     const heroArea = runtime.findWebElement(nativeTarget, "heroArea");
+    const nativePictureSource = runtime.findWebElement(nativeTarget, "nativePictureSource");
+    const nativeTemplate = runtime.findWebElement(nativeTarget, "nativeTemplate");
+    const nativeSlot = runtime.findWebElement(nativeTarget, "nativeSlot");
     const glyph = runtime.findWebElement(nativeTarget, "glyph");
     const bullet = runtime.findWebElement(nativeTarget, "bullet");
     const grid = runtime.findWebElement(nativeTarget, "grid");
@@ -3893,6 +3909,12 @@ function fakeDocument() {
       "Page/heroMap");
     assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "ImageMap").mappedImages,
       ["Page/hero"]);
+    assert.equal(nativePictureSource.tagName, "SOURCE");
+    assert.equal(nativePictureSource.attributes.srcset, "hero.webp 1x, hero@2x.webp 2x");
+    assert.equal(nativeTemplate.tagName, "TEMPLATE");
+    assert.equal(nativeSlot.tagName, "SLOT");
+    assert.equal(nativeSlot.attributes.name, "actions");
+    assert.equal(runtime.webDOMQuery(nativeTarget, "[name=actions]").ref, "Page/slot");
     assert.equal(runtime.webDOMSnapshot(nativeTarget, "hero").styleFacts.src, "hero.png");
     assert.equal(glyph.tagName, "SPAN");
     assert.equal(glyph.attributes.role, "img");

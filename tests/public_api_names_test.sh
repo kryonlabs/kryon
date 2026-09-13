@@ -278,10 +278,10 @@ web_native_only = {
     'ListItem', 'Main', 'Mark', 'Meter', 'Nav', 'Navigation', 'OrderedList',
     'OptionGroup', 'OptGroup', 'Option', 'Output', 'Pre', 'Quote',
     'Rp', 'Rt', 'Ruby', 'RubyParenthesis', 'RubyText', 'Samp', 'Sample', 'Search', 'Select',
-    'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
+    'Slot', 'Small', 'Source', 'Strong', 'Sub', 'Subscript', 'Summary', 'Sup',
     'Superscript', 'Table', 'TableBody', 'TableCaption', 'TableColumn',
     'TableColumnGroup', 'TableFoot', 'TableHead', 'TableRow',
-    'Tbody', 'Tfoot', 'Thead', 'Time', 'Tr', 'Track', 'UnorderedList',
+    'Tbody', 'Template', 'Tfoot', 'Thead', 'Time', 'Tr', 'Track', 'UnorderedList',
     'Var', 'Variable', 'Video', 'Wbr', 'WordBreakOpportunity',
 }
 special = {'Canvas', 'End'} | web_native_only

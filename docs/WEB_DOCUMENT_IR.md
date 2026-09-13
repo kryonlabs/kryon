@@ -366,6 +366,10 @@ The initial tag mapping is intentionally conservative:
 | `ListBox` | `select` |
 | `Selectable` under `Dropdown`/`ListBox` | `option` |
 | `Image` with `alt_text` | `img` |
+| `ImageMap` | `map` |
+| `Area` | `area` |
+| `Template` | `template` |
+| `Slot` | `slot` |
 | `Checkbox`, `Toggle` | `input type=checkbox` |
 | `Radio` | `input type=radio` |
 | `Progress` | `progress` |
