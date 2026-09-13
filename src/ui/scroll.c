@@ -253,8 +253,8 @@ BeginScrollContainer(ScrollArea area)
             if(content_dragging || dy > drag_threshold || dy < -drag_threshold) {
                 g_ui_pointer_owner = POINTER_OWNER_SCROLL;
                 content_dragging = 1;
-                *area.scroll_offset = content_drag_start_scroll - dy;
-                *area.scroll_offset = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
+                *area.scroll_offset = ScrollDragDeltaOffsetFor(
+                    content_drag_start_scroll, dy, view.max_scroll);
                 PushInputCapture(capture, 0);
             }
         } else if(content_drag_active) {
@@ -361,11 +361,6 @@ void
 EnsureScrollRectVisible(ScrollArea area, Rectangle rect, int margin)
 {
     ScrollView view;
-    int next_scroll;
-    int viewport_top;
-    int viewport_bottom;
-    int rect_top;
-    int rect_bottom;
 
     if(area.scroll_offset == NULL)
         return;
@@ -374,23 +369,9 @@ EnsureScrollRectVisible(ScrollArea area, Rectangle rect, int margin)
     if(view.max_scroll <= 0)
         return;
 
-    if(margin < 0)
-        margin = 0;
-    next_scroll = ui_clampi(*area.scroll_offset, 0, view.max_scroll);
-    viewport_top = (int)area.bounds.y + margin;
-    viewport_bottom = (int)(area.bounds.y + area.bounds.height) - margin;
-    rect_top = (int)rect.y;
-    rect_bottom = (int)(rect.y + rect.height);
-
-    if(viewport_bottom < viewport_top)
-        viewport_bottom = viewport_top;
-
-    if(rect_bottom > viewport_bottom)
-        next_scroll += rect_bottom - viewport_bottom;
-    if(rect_top < viewport_top)
-        next_scroll -= viewport_top - rect_top;
-
-    *area.scroll_offset = ui_clampi(next_scroll, 0, view.max_scroll);
+    *area.scroll_offset = ScrollRectVisibleOffsetFor(
+        *area.scroll_offset, (int)area.bounds.y, (int)area.bounds.height,
+        (int)rect.y, (int)rect.height, margin, view.max_scroll);
 }
 
 /* ================================================================
@@ -455,11 +436,8 @@ ui_scrollbar(int x, int y, int viewport_h, int content_h, int *scroll_offset, in
         } else if(scrollbar_drag_offset == scroll_offset) {
             /* Continue drag */
             int dy = my - scrollbar_drag_start_y;
-            int new_scroll = scrollbar_drag_start_scroll +
-                             (int)((float)dy * paint.scroll_per_pixel);
-            *scroll_offset = new_scroll;
-            if(*scroll_offset < 0) *scroll_offset = 0;
-            if(*scroll_offset > max_scroll) *scroll_offset = max_scroll;
+            *scroll_offset = ScrollThumbDragDeltaOffsetFor(
+                scrollbar_drag_start_scroll, dy, max_scroll, paint);
         }
     } else if(scrollbar_drag_offset == scroll_offset) {
         ui_scrollbar_cancel(scroll_offset);

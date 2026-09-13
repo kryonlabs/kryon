@@ -134,6 +134,40 @@ ScrollDragOffsetFor :: (mouse_y: float, track_y: float, grab_y: float,
     return ScrollClamp(offset, max_scroll)
 }
 
+ScrollDragDeltaOffsetFor :: (start_scroll: i32, delta_y: i32,
+    max_scroll: i32) -> i32 #export {
+    return ScrollClamp(start_scroll - delta_y, max_scroll)
+}
+
+ScrollThumbDragDeltaOffsetFor :: (start_scroll: i32, delta_y: i32,
+    max_scroll: i32, paint: ScrollBarPaint) -> i32 #export {
+    offset: i32 = start_scroll
+    if paint.scroll_per_pixel > 0.0 {
+        offset += (i32)((float)delta_y * paint.scroll_per_pixel)
+    }
+    return ScrollClamp(offset, max_scroll)
+}
+
+ScrollRectVisibleOffsetFor :: (scroll_offset: i32, viewport_y: i32,
+    viewport_height: i32, rect_y: i32, rect_height: i32, margin: i32,
+    max_scroll: i32) -> i32 #export {
+    if margin < 0 { margin = 0 }
+    next_scroll: i32 = ScrollClamp(scroll_offset, max_scroll)
+    viewport_top: i32 = viewport_y + margin
+    viewport_bottom: i32 = viewport_y + viewport_height - margin
+    rect_top: i32 = rect_y
+    rect_bottom: i32 = rect_y + rect_height
+
+    if viewport_bottom < viewport_top { viewport_bottom = viewport_top }
+    if rect_bottom > viewport_bottom {
+        next_scroll += rect_bottom - viewport_bottom
+    }
+    if rect_top < viewport_top {
+        next_scroll -= viewport_top - rect_top
+    }
+    return ScrollClamp(next_scroll, max_scroll)
+}
+
 ScrollMeasure :: (bounds: Rectangle, content_height: i32, content_x: i32,
     content_width: i32, scroll_offset: i32, scrollbar_x: i32,
     metrics: ScrollMetrics) -> ScrollPolicyView #export {

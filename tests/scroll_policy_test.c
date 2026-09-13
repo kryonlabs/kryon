@@ -78,6 +78,13 @@ main(void)
     assert(paint.track_span == 62);
     assert(paint.scroll_per_pixel > 2.58f && paint.scroll_per_pixel < 2.59f);
     assert(ScrollDragOffsetFor(66.0f, 20.0f, 8.0f, 160, paint) == 98);
+    assert(ScrollDragDeltaOffsetFor(80, 12, 160) == 68);
+    assert(ScrollDragDeltaOffsetFor(4, 12, 160) == 0);
+    assert(ScrollThumbDragDeltaOffsetFor(40, 10, 160, paint) == 65);
+    assert(ScrollThumbDragDeltaOffsetFor(150, 20, 160, paint) == 160);
+    assert(ScrollRectVisibleOffsetFor(0, 20, 100, 140, 20, 8, 160) == 48);
+    assert(ScrollRectVisibleOffsetFor(80, 20, 100, 0, 20, 8, 160) == 52);
+    assert(ScrollRectVisibleOffsetFor(0, 20, 100, 140, 20, -8, 160) == 40);
 
     paint = ScrollBarPaintFor(300, 20, 40, 400, 999, 360, metrics);
     assert((int)paint.thumb_bounds.y == 44);

@@ -112,7 +112,7 @@ surface review:
 | `runtime/slider_props.kry` | Slider props | `.kry canonical` |
 | `runtime/spinbox.kry` | Spinbox layout/value policy | `.kry canonical` |
 | `runtime/spinbox_props.kry` | Spinbox props | `.kry canonical` |
-| `runtime/scroll.kry` | Scroll measurement/sizing policy | `.kry canonical` |
+| `runtime/scroll.kry` | Scroll measurement, sizing, wheel, drag, and ensure-visible policy | `.kry canonical` |
 | `runtime/scroll_props.kry` | Scroll props | `.kry canonical` |
 | `runtime/style.kry` | Style helpers | `.kry canonical` |
 | `runtime/style_picker_props.kry` | StylePicker props and option/selection policy | `.kry canonical` |
@@ -155,7 +155,7 @@ text measurement, painting, storage, or platform services.
 | Text and drawing | `Text` style resolution, `Paragraph` metrics/default policy, `ParagraphSpec` generated data, `Background`/`Box`/`Line`/`Circle`/`Ring`/`Triangle` geometry policy, `Bevel` line geometry, `Icon` bounds/size policy, `Image` canonical props/name and placeholder layout, clean drawing primitive names (`Box`, `Circle`, `Ring`, `Triangle`) | icon sheet/drawing host support, paragraph reflow/rendering |
 | Actions | `Button`, `Card`, `Link`, `Button` menu/split/arrow/info options | helper button variants belong in `ButtonProps` or composition; invisible hit testing is host support |
 | Inputs | `Checkbox` paint/row/text/flag policy, `Dropdown` option/index normalization, popup/row/scrollbar/navigation/indicator policy, `DropdownOption`, `Drag` component layout/text paint/value policy, `Input` component/step-button layout and value policy, `Progress`, `Radio`, `SegmentedControl`, `Selectable`, `Slider` component/editor/hit layout, text paint geometry, and value/keyboard policy, `Spinbox`, `TextField`/`TextArea` metrics/paint geometry/buffer-limit/navigation/edit intent/selection state policy, `Toggle`, `Button` swatch props, `ColorPicker` layout/swatch/color policy | text composition/buffer mutation host support |
-| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; reorder pointer ownership and gesture lifecycle remain host support |
+| Layout | `Column`/`Row`/`Stack` content and child placement policy, `Group` bounds/content policy, `Screen` viewport fallback bounds policy, `Grid`, `Fieldset` layout policy, `PanedView` split geometry, `Collapsible` header geometry, `Separator`, `Scroll` measurement/sizing/wheel/drag/ensure-visible policy, shared `Surface`/`Style`/`Material` policy, `Reorder` metrics/handle geometry/placeholder paint geometry/target-index policy, `ReorderState`/`ReorderItem`/`ReorderList`/`ReorderListResult` generated support records | scroll/list/table begin-end wrappers; scroll pointer ownership/clipping and reorder pointer ownership/gesture lifecycle remain host support |
 | Collections | `Canvas` transform/hit-test policy, `CanvasGrid`, drag/drop decision policy, `ListBox` layout/navigation/row paint geometry/multi-selection policy, `Plot` geometry policy, `TreeView` row/window/paint geometry policy, `TableView` layout/scroll/scrollbar/cell geometry and keyboard selection policy | drag/drop payload storage |
 | Navigation | `NavigationBar` paint/config layout/count policy, `TabBar` sizing/scroll/keyboard-index/reorder marker policy, `Toolbar`, bottom icon row, and icon slider popup metrics/geometry policy, `TitleBar` layout/paint geometry policy, `Menu` geometry/bar navigation policy, `MenuItem`/`MenuGroup`/`MenuResult` data | retained menu open/focus/input state, router/link helpers |
 | Overlays | `Popup` mode/input policy, `Focus` ring geometry policy, `Guide` overlay layout/arrow/step policy, swipe direction/default/progress policy, `SwipeGesture`/`SwipeSpec`/`SwipeResult` generated pager support records, `Modal` layout/frame/action policy, `Toast` duration/layout policy, transition fade alpha/easing policy, `StylePicker` public props and option/selection policy | theme picker rendering/input host support; swipe pointer ownership and gesture lifecycle remain host support |
@@ -540,7 +540,7 @@ No web runtime widget entries are accepted as public compatibility names.
 | `Fieldset` | `.kry canonical` | Public props live in `runtime/fieldset_props.kry`; titled border group. |
 | `PanedView` | `.kry canonical` | Public props live in `runtime/paned_view_props.kry`; split clamp and handle geometry are in `.kry`; host keeps drag/input ownership. |
 | `Collapsible` | `.kry canonical` | Public props live in `runtime/collapsible_props.kry`; header metrics, geometry, marker text, and typography defaults are in `.kry`/KSS; host keeps input, focus, tree navigation, and drawing. |
-| `Scroll` | `.kry canonical` | Public props live in `runtime/scroll_props.kry`; lexical scroll-content block. Measurement and sizing policy are in `.kry`; host keeps wheel/drag/clipping and lowered scope ownership. |
+| `Scroll` | `.kry canonical` | Public props live in `runtime/scroll_props.kry`; lexical scroll-content block. Measurement, sizing, wheel offset, content/thumb drag offset, and ensure-visible policy are in `.kry`; host keeps pointer ownership, clipping, and lowered scope ownership. |
 | `TableCell` | `.kry canonical` | Lexical custom table-cell block; lowers to host cell scope. |
 | `ScrollContainer` | Native support | Internal host helper only; public callers should use `Scroll` blocks. |
 | `ScrollPage` | Native support | Internal host helper only; not a public widget concept. |
@@ -723,7 +723,8 @@ and host plumbing behind the canonical names.
   routes through `runtime/rows.kry`; menu selectable-item, wraparound
   navigation, and bar open/index policy now route through `runtime/menu.kry`; centered-column and
   page side-padding policy now route through `runtime/layout.kry`; scroll-page
-  content-width normalization now routes through `runtime/scroll.kry`; table
+  content-width normalization and scroll drag/ensure-visible policy now route
+  through `runtime/scroll.kry`; table
   keyboard selection and scroll-into-view policy now route through
   `runtime/table_view.kry`. Continue by
   reducing raw native constants in menu host glue and other shared
@@ -751,7 +752,8 @@ and host plumbing behind the canonical names.
 6. Finish lowered block backend cleanup:
    `Scroll`, `Popup`, `Disabled`, `TableCell`, `Canvas`, and composed content
    blocks are canonical `.kry` syntax. Lowered `Scroll` scope geometry, wheel,
-   and thumb-drag policy now route through `runtime/scroll.kry`; the remaining
+   content-drag, thumb-drag, and ensure-visible policy now route through
+   `runtime/scroll.kry`; the remaining
    host scopes still require backend support until generated backends own the
    whole block path.
 7. Separate pure host services from widget policy:
