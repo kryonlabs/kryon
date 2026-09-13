@@ -270,7 +270,7 @@ runtime_methods = set(re.findall(r'\nfunc \(r \*runtime\) ([A-Z][A-Za-z0-9_]*)\(
 web_native_only = {
     'Abbr', 'Abbreviation', 'Address', 'Article', 'Aside', 'Audio',
     'BlockQuote', 'Bold', 'Cite', 'Code', 'CodeBlock', 'Col', 'ColGroup',
-    'Data', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
+    'Data', 'Datalist', 'DataList', 'Del', 'Deleted', 'DescriptionDetails', 'DescriptionList',
     'DescriptionTerm', 'Details', 'Dialog', 'Em', 'Embed', 'Emphasis',
     'Figcaption', 'Figure', 'Footer', 'Form', 'Header', 'IFrame', 'Iframe',
     'Ins', 'Inserted', 'Italic', 'Kbd', 'Keyboard', 'Label', 'Legend', 'List',

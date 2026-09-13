@@ -11,7 +11,7 @@ for (const name of ["Page", "Section", "Heading", "ParagraphText", "Link", "Flow
 for (const name of [
   "Abbr", "Abbreviation", "Address", "Article", "Aside", "Audio",
   "BlockQuote", "Bold", "Cite", "Code", "CodeBlock", "Col", "ColGroup",
-  "Data", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
+  "Data", "Datalist", "DataList", "Del", "Deleted", "DescriptionDetails", "DescriptionList",
   "DescriptionTerm", "Details", "Dialog", "Em", "Embed", "Emphasis",
   "Figcaption", "Figure", "Footer", "Form", "Header", "IFrame", "Iframe",
   "Ins", "Inserted", "Italic", "Kbd", "Keyboard", "Label", "Legend", "List",
@@ -1277,6 +1277,7 @@ assert.deepEqual(webDoc.nodes[2].styleFacts, {
   asset: "",
   src: "",
   htmlFor: "",
+  dataList: "",
   part: "",
   slot: "",
   inputType: "",
@@ -2924,6 +2925,10 @@ function fakeDocument() {
       { nodeName: "nativeOptionGroup", path: "Page/nativeSelect/numbers", parentPath: "Page/nativeSelect" });
     runtime.widget(nativeRt, "Option", { text: "One", value: "1", selected: true }, null,
       { nodeName: "nativeOption", path: "Page/nativeSelect/numbers/one", parentPath: "Page/nativeSelect/numbers" });
+    runtime.widget(nativeRt, "Datalist", {}, null,
+      { nodeName: "suggestions", path: "Page/suggestions" });
+    runtime.widget(nativeRt, "Option", { value: "hello@example.test" }, null,
+      { nodeName: "suggestedEmail", path: "Page/suggestions/email", parentPath: "Page/suggestions" });
     runtime.widget(nativeRt, "Details", { open: true }, null,
       { nodeName: "nativeDetails", path: "Page/nativeDetails" });
     runtime.widget(nativeRt, "Summary", { text: "More" }, null,
@@ -2959,7 +2964,8 @@ function fakeDocument() {
       max_length: 254,
       pattern: ".+@.+",
       input_mode: "email",
-      enter_key_hint: "send"
+      enter_key_hint: "send",
+      list: "suggestions"
     }, null,
       { nodeName: "email", path: "Page/email" });
     runtime.widget(nativeRt, "Slider", { min: 0, max: 10, value: 4, label: "Volume" }, null,
@@ -3198,6 +3204,11 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").tag, "optgroup");
     assert.equal(runtime.webNodeQuery(nativeRt, "OptionGroup").extraAttrs.label, "Numbers");
     assert.equal(runtime.webNodeQuery(nativeRt, "Option").tag, "option");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Datalist").tag, "datalist");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/suggestions/email").collectionOwner.path,
+      "Page/suggestions");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/suggestions").collectionItems,
+      ["Page/suggestions/email"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Details").tag, "details");
     assert.equal(runtime.webNodeQuery(nativeRt, "Summary").tag, "summary");
     assert.equal(runtime.webNodeRelations(nativeRt, "Page/nativeDetails/summary").summaryOwner.path,
@@ -3256,6 +3267,10 @@ function fakeDocument() {
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").required, true);
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").minLength, "3");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").maxLength, "254");
+    assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").dataList, "suggestions");
+    assert.equal(runtime.webNodeRelations(nativeRt, "Page/email").dataList.path, "Page/suggestions");
+    assert.deepEqual(runtime.webNodeRelationRefs(nativeRt, "Page/suggestions").listedBy,
+      ["Page/email"]);
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").pattern, ".+@.+");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").inputMode, "email");
     assert.equal(runtime.webNodeQuery(nativeRt, "Page/email").enterKeyHint, "send");
@@ -3425,6 +3440,8 @@ function fakeDocument() {
     const nativeSelect = runtime.findWebElement(nativeTarget, "nativeSelect");
     const nativeOptionGroup = runtime.findWebElement(nativeTarget, "nativeOptionGroup");
     const nativeOption = runtime.findWebElement(nativeTarget, "nativeOption");
+    const nativeSuggestions = runtime.findWebElement(nativeTarget, "suggestions");
+    const nativeSuggestedEmail = runtime.findWebElement(nativeTarget, "suggestedEmail");
     const nativeDetailsElement = runtime.findWebElement(nativeTarget, "nativeDetails");
     const nativeSummary = runtime.findWebElement(nativeTarget, "nativeSummary");
     const nativeDialog = runtime.findWebElement(nativeTarget, "nativeDialog");
@@ -3586,6 +3603,13 @@ function fakeDocument() {
     assert.equal(nativeOption.tagName, "OPTION");
     assert.equal(nativeOption.attributes.value, "1");
     assert.equal(nativeOption.attributes.selected, "");
+    assert.equal(nativeSuggestions.tagName, "DATALIST");
+    assert.equal(nativeSuggestedEmail.tagName, "OPTION");
+    assert.equal(nativeSuggestedEmail.attributes.value, "hello@example.test");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/suggestions/email").collectionOwner.ref,
+      "Page/suggestions");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/suggestions").collectionItems,
+      ["Page/suggestions/email"]);
     assert.equal(nativeDetailsElement.tagName, "DETAILS");
     assert.equal(nativeDetailsElement.open, true);
     assert.equal(nativeSummary.tagName, "SUMMARY");
@@ -3676,6 +3700,12 @@ function fakeDocument() {
     assert.equal(email.attributes.pattern, ".+@.+");
     assert.equal(email.attributes.inputmode, "email");
     assert.equal(email.attributes.enterkeyhint, "send");
+    assert.equal(email.attributes.list, nativeSuggestions.attributes.id);
+    assert.equal(email.attributes.list, "kry-Page-suggestions");
+    assert.equal(runtime.webDOMRelations(nativeTarget, "Page/email").dataList.ref,
+      "Page/suggestions");
+    assert.deepEqual(runtime.webDOMRelationRefs(nativeTarget, "Page/suggestions").listedBy,
+      ["Page/email"]);
     assert.equal(runtime.webDOMQuery(nativeTarget, "[placeholder=Email]").element, email);
     assert.equal(runtime.webDOMSetState(nativeTarget, "enabled", "indeterminate", true), true);
     assert.equal(runtime.webDOMQuery(nativeTarget, "Toggle:indeterminate").node.path, "Page/enabled");

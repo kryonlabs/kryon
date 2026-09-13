@@ -102,10 +102,10 @@ the browser receives normal elements, attributes, CSS, and events.
   native semantics imply ownership, plus native quote citations, time
   datetimes, and list/item numbering attributes.
 - Native form/document aliases such as `Form`, `Label`, `Select`,
-  `OptionGroup`/`OptGroup`, `Option`, `Details`, `Summary`, `Dialog`, and
-  `Output` render to matching browser elements and participate in label,
-  form-control, collection, dialog, grouped-option, and status accessibility
-  facts.
+  `Datalist`/`DataList`, `OptionGroup`/`OptGroup`, `Option`, `Details`,
+  `Summary`, `Dialog`, and `Output` render to matching browser elements and
+  participate in label, form-control, datalist, collection, dialog,
+  grouped-option, and status accessibility facts.
 - Native media/embed aliases such as `Video`, `Audio`, `Source`,
   `Track`, `IFrame`, and `Embed` render to matching browser elements with
   standard source, preload, controls, poster, track, loading, allow, and MIME
@@ -206,10 +206,11 @@ the browser receives normal elements, attributes, CSS, and events.
 - Native relation resolution for `aria_controls`, `aria_owns`,
   `aria_labelledby`, `aria_activedescendant`, `aria_describedby`,
   `aria_details`, `aria_errormessage`, `aria_flowto`, `headers`, `dom_for`,
-  `form`, and `popover_target`, while preserving authored Kry refs in Web
-  Document facts; mounted relation objects and snapshots expose reverse
-  `controlledBy`, `ownedBy`, `describes`, `detailedBy`, `errorFor`,
-  `flowFrom`, `activeDescendantOf`, and `popoverInvokers` buckets for
+  native input `list`, `form`, and `popover_target`, while preserving authored
+  Kry refs in Web Document facts; mounted relation objects and snapshots
+  expose reverse `controlledBy`, `ownedBy`, `describes`, `detailedBy`,
+  `errorFor`, `flowFrom`, `activeDescendantOf`, `listedBy`, and
+  `popoverInvokers` buckets for
   inspector navigation from relation targets; semantic landmark ownership
   exposes nodes inside native or ARIA page landmarks, plus direct serializable
   `webNodeRelations(...)`,

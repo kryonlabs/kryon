@@ -258,6 +258,8 @@ host roles rather than retained nodes.
 | `Col` | `.kry canonical` | Web-native table column element. |
 | `ColGroup` | `.kry canonical` | Web-native table column group element. |
 | `Data` | `.kry canonical` | Web-native machine-readable data element. |
+| `Datalist` | `.kry canonical` | Web-native input suggestion list element. |
+| `DataList` | `.kry canonical` | Alternate casing for `Datalist`. |
 | `Del` | `.kry canonical` | Web-native deleted text element. |
 | `Deleted` | `.kry canonical` | Long-form alias for `Del`. |
 | `DescriptionDetails` | `.kry canonical` | Web-native description details element. |

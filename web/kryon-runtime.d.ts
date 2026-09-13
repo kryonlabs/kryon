@@ -102,6 +102,7 @@ export interface WebDocumentNode {
   target: string;
   rel: string;
   htmlFor: string;
+  dataList: string;
   part: string;
   slot: string;
   dataAttrs: Record<string, string>;
@@ -577,6 +578,8 @@ export interface WebDOMRelations {
   labelFor: WebDOMObject | null;
   outputFor: WebDOMObject[];
   outputBy: WebDOMObject[];
+  dataList: WebDOMObject | null;
+  listedBy: WebDOMObject[];
   formOwner: WebDOMObject | null;
   formControls: WebDOMObject[];
   labelledBy: WebDOMObject[];
@@ -630,6 +633,8 @@ export interface WebNodeRelations {
   labelFor: WebDocumentNode | null;
   outputFor: WebDocumentNode[];
   outputBy: WebDocumentNode[];
+  dataList: WebDocumentNode | null;
+  listedBy: WebDocumentNode[];
   formOwner: WebDocumentNode | null;
   formControls: WebDocumentNode[];
   labelledBy: WebDocumentNode[];
@@ -683,6 +688,8 @@ export interface WebDOMRelationRefs {
   labelFor: string;
   outputFor: string[];
   outputBy: string[];
+  dataList: string;
+  listedBy: string[];
   formOwner: string;
   formControls: string[];
   labelledBy: string[];
@@ -1448,6 +1455,8 @@ export function CodeBlock(...args: unknown[]): unknown;
 export function Col(...args: unknown[]): unknown;
 export function ColGroup(...args: unknown[]): unknown;
 export function Data(...args: unknown[]): unknown;
+export function Datalist(...args: unknown[]): unknown;
+export function DataList(...args: unknown[]): unknown;
 export function Del(...args: unknown[]): unknown;
 export function Deleted(...args: unknown[]): unknown;
 export function DescriptionDetails(...args: unknown[]): unknown;
