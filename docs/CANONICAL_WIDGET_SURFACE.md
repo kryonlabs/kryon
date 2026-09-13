@@ -61,7 +61,7 @@ surface review:
 | `runtime/grid_props.kry` | Grid props | `.kry canonical` |
 | `runtime/group.kry` | Group bounds/content policy | `.kry canonical` |
 | `runtime/guide.kry` | Guide overlay layout, arrow geometry, and step policy | `.kry canonical` |
-| `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | Native support |
+| `runtime/guide_pager.kry` | Internal pager footer layout and page transition policy | `.kry support` |
 | `runtime/icon.kry` | Icon bounds/size policy | `.kry canonical` |
 | `runtime/image.kry` | Image fit and placeholder layout policy | `.kry canonical` |
 | `runtime/image_props.kry` | Image props | `.kry canonical` |
